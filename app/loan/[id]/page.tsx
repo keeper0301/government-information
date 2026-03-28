@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/ad-slot";
 import { AlarmButton } from "@/components/alarm-button";
+import { GovernmentServiceSchema } from "@/components/json-ld";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -59,6 +60,13 @@ export default async function LoanDetailPage({ params }: Props) {
 
   return (
     <main className="pt-28 pb-20">
+      <GovernmentServiceSchema
+        name={program.title}
+        description={program.description || ""}
+        url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://jungcheck.kr"}/loan/${program.id}`}
+        provider={program.source}
+        category={program.category}
+      />
       <section className="max-w-content mx-auto px-10 max-md:px-6">
         {/* Back link */}
         <a

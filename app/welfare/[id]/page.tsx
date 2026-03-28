@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { AlarmButton } from "@/components/alarm-button";
+import { GovernmentServiceSchema } from "@/components/json-ld";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -60,6 +61,13 @@ export default async function WelfareDetailPage({ params }: Props) {
 
   return (
     <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
+      <GovernmentServiceSchema
+        name={program.title}
+        description={program.description || ""}
+        url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://jungcheck.kr"}/welfare/${program.id}`}
+        provider={program.source}
+        category={program.category}
+      />
       {/* Back */}
       <a href="/welfare" className="text-sm text-grey-500 no-underline hover:text-blue-500 transition-colors mb-6 inline-block">
         &larr; 복지 정보 목록
