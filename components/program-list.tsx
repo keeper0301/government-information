@@ -1,9 +1,9 @@
 import { ProgramRow } from "./program-row";
-import type { Program } from "@/lib/mock-data";
+import type { DisplayProgram } from "@/lib/programs";
 
 type Props = {
   title: string;
-  programs: Program[];
+  programs: DisplayProgram[];
   moreHref: string;
 };
 

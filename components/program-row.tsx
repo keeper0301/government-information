@@ -7,7 +7,7 @@ import {
   StoreIcon,
   ShieldCheckIcon,
 } from "./icons";
-import type { Program } from "@/lib/mock-data";
+import type { DisplayProgram } from "@/lib/programs";
 
 const iconMap = {
   house: HouseIcon,
@@ -41,12 +41,12 @@ function DdayLabel({ dday }: { dday: number | null }) {
   );
 }
 
-export function ProgramRow({ program }: { program: Program }) {
+export function ProgramRow({ program }: { program: DisplayProgram }) {
   const Icon = iconMap[program.icon];
 
   return (
     <a
-      href="#"
+      href={`/${program.type}/${program.id}`}
       className="flex items-center gap-4 py-[18px] border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-colors hover:bg-grey-50 hover:mx-[-12px] hover:px-3 hover:rounded-xl"
     >
       <div className="shrink-0 w-10 h-10 bg-grey-100 rounded-[11px] grid place-items-center">

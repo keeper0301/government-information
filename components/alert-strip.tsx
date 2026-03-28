@@ -1,17 +1,28 @@
-export function AlertStrip() {
+import type { DisplayProgram } from "@/lib/programs";
+
+export function AlertStrip({ program }: { program: DisplayProgram | null }) {
+  if (!program || program.dday === null) return null;
+
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + program.dday);
+  const dateStr = `${endDate.getMonth() + 1}.${endDate.getDate()} 마감`;
+
   return (
     <div className="max-w-content mx-auto px-10 max-md:px-6">
-      <div className="flex items-center border-b border-grey-100 py-[18px] gap-3.5 cursor-pointer hover:opacity-75 transition-opacity">
+      <a
+        href={`/${program.type}/${program.id}`}
+        className="flex items-center border-b border-grey-100 py-[18px] gap-3.5 cursor-pointer hover:opacity-75 transition-opacity no-underline text-inherit"
+      >
         <span className="shrink-0 text-xs font-bold text-white bg-red rounded-[5px] px-2 py-[3px]">
-          D-3
+          D-{program.dday}
         </span>
         <span className="flex-1 text-[15px] font-medium text-grey-800 truncate">
-          2026 청년 주거안정 월세지원 신청이 3일 후 마감됩니다
+          {program.title} 신청이 {program.dday}일 후 마감됩니다
         </span>
         <span className="shrink-0 text-[13px] font-medium text-grey-500">
-          3.31 마감
+          {dateStr}
         </span>
-      </div>
+      </a>
     </div>
   );
 }

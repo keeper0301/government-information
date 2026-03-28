@@ -4,9 +4,17 @@ import { ProgramList } from "@/components/program-list";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { AdSlot } from "@/components/ad-slot";
-import { welfarePrograms, loanPrograms } from "@/lib/mock-data";
+import { getTopWelfare, getTopLoans, getUrgentProgram } from "@/lib/programs";
 
-export default function Home() {
+export const revalidate = 600; // ISR: 10분마다 갱신
+
+export default async function Home() {
+  const [welfare, loans, urgent] = await Promise.all([
+    getTopWelfare(4),
+    getTopLoans(3),
+    getUrgentProgram(),
+  ]);
+
   return (
     <main>
       {/* Hero */}
@@ -28,14 +36,14 @@ export default function Home() {
       </section>
 
       {/* Alert */}
-      <AlertStrip />
+      <AlertStrip program={urgent} />
 
       {/* Welfare */}
       <div className="bg-grey-50">
         <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
           <ProgramList
             title="지금 신청 가능한 복지"
-            programs={welfarePrograms}
+            programs={welfare}
             moreHref="/welfare"
           />
         </section>
@@ -48,7 +56,7 @@ export default function Home() {
       <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
         <ProgramList
           title="소상공인 대출·지원금"
-          programs={loanPrograms}
+          programs={loans}
           moreHref="/loan"
         />
       </section>
