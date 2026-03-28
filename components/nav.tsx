@@ -33,9 +33,12 @@ export function Nav() {
               {item.label}
             </a>
           ))}
-          <button className="ml-3 px-4 py-[7px] text-sm font-semibold text-blue-500 bg-blue-50 border-none rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+          <a
+            href="/login"
+            className="ml-3 px-4 py-[7px] text-sm font-semibold text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors no-underline"
+          >
             로그인
-          </button>
+          </a>
         </div>
       </div>
     </nav>
