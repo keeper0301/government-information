@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   const { email, programId, programType } = await request.json();
@@ -35,7 +36,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "이미 알림이 등록되어 있습니다." });
   }
 
-  const { error } = await supabase.from("alarm_subscriptions").insert({
+  const adminSupabase = createAdminClient();
+  const { error } = await adminSupabase.from("alarm_subscriptions").insert({
     user_id: user?.id || null,
     email,
     program_type: programType,

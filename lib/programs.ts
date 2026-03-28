@@ -66,9 +66,11 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
 
 export async function getTopWelfare(limit = 4): Promise<DisplayProgram[]> {
   const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
   const { data } = await supabase
     .from("welfare_programs")
     .select("*")
+    .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(limit);
   return (data || []).map(welfareToDisplay);
@@ -76,9 +78,11 @@ export async function getTopWelfare(limit = 4): Promise<DisplayProgram[]> {
 
 export async function getTopLoans(limit = 3): Promise<DisplayProgram[]> {
   const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
   const { data } = await supabase
     .from("loan_programs")
     .select("*")
+    .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(limit);
   return (data || []).map(loanToDisplay);
@@ -87,21 +91,29 @@ export async function getTopLoans(limit = 3): Promise<DisplayProgram[]> {
 export async function getUrgentProgram(): Promise<DisplayProgram | null> {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
-  const { data } = await supabase
-    .from("welfare_programs")
-    .select("*")
-    .gte("apply_end", today)
-    .order("apply_end", { ascending: true })
-    .limit(1);
-  if (data && data.length > 0) return welfareToDisplay(data[0]);
 
-  const { data: loanData } = await supabase
-    .from("loan_programs")
-    .select("*")
-    .gte("apply_end", today)
-    .order("apply_end", { ascending: true })
-    .limit(1);
-  if (loanData && loanData.length > 0) return loanToDisplay(loanData[0]);
+  const [{ data: welfareData }, { data: loanData }] = await Promise.all([
+    supabase
+      .from("welfare_programs")
+      .select("*")
+      .gte("apply_end", today)
+      .order("apply_end", { ascending: true })
+      .limit(1),
+    supabase
+      .from("loan_programs")
+      .select("*")
+      .gte("apply_end", today)
+      .order("apply_end", { ascending: true })
+      .limit(1),
+  ]);
 
-  return null;
+  const welfare = welfareData?.[0] ? welfareToDisplay(welfareData[0]) : null;
+  const loan = loanData?.[0] ? loanToDisplay(loanData[0]) : null;
+
+  if (!welfare && !loan) return null;
+  if (!welfare) return loan;
+  if (!loan) return welfare;
+
+  // Return whichever has the sooner deadline
+  return (welfare.dday !== null && loan.dday !== null && welfare.dday <= loan.dday) ? welfare : loan;
 }

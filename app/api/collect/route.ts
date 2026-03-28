@@ -46,7 +46,7 @@ async function collectBokjiroCentral(supabase: SupabaseAdmin) {
   const seen = new Set<string>();
 
   for (const code of codes) {
-    for (let page = 1; page <= 4; page++) {
+    for (let page = 1; page <= 10; page++) {  // max 10 pages = 1000 items per category
       try {
         const params = new URLSearchParams({
           serviceKey: DATA_GO_KR_KEY,
