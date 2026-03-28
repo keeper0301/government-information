@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { loanToDisplay } from "@/lib/programs";
 import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { FilterBar } from "./filter-bar";
+
+export const metadata: Metadata = {
+  title: "대출·지원금 정보 — 정책알리미",
+  description: "소상공인·자영업자를 위한 정부 대출 및 지원금 정보를 확인하세요.",
+};
 
 const CATEGORIES = ["전체", "대출", "지원금", "보증"];
 const PER_PAGE = 10;

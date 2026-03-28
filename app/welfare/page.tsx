@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { welfareToDisplay } from "@/lib/programs";
 import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { FilterBar } from "./filter-bar";
+
+export const metadata: Metadata = {
+  title: "복지 정보 — 정책알리미",
+  description: "공공기관에서 제공하는 복지 프로그램을 한눈에 확인하세요.",
+};
 
 const CATEGORIES = ["전체", "주거", "취업", "양육", "의료", "소득"];
 const PER_PAGE = 10;
