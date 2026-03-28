@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
-import { ChatbotFab } from "@/components/chatbot-fab";
+import { ChatbotPanel } from "@/components/chatbot-panel";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default function RootLayout({
         <Nav />
         {children}
         <Footer />
-        <ChatbotFab />
+        <ChatbotPanel />
         {process.env.NEXT_PUBLIC_GA_ID && (
           <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
         )}
