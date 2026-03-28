@@ -25,3 +25,13 @@ select:focus-visible {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+button,
+a {
+  transition: transform 0.1s ease-out, background-color 0.15s ease-out, color 0.15s ease-out;
+}
+
+button:not(:disabled):active,
+a:active {
+  transform: scale(0.98);
+}
