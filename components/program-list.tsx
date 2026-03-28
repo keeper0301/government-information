@@ -11,7 +11,7 @@ export function ProgramList({ title, programs, moreHref }: Props) {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-8">
-        <h2 className="text-[22px] font-bold tracking-[-0.6px] text-grey-900">
+        <h2 className="text-[26px] font-bold tracking-[-0.8px] text-grey-900">
           {title}
         </h2>
         <a

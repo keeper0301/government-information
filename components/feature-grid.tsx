@@ -20,7 +20,7 @@ export function FeatureGrid() {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="text-[22px] font-bold tracking-[-0.6px] text-grey-900">
+        <h2 className="text-[26px] font-bold tracking-[-0.8px] text-grey-900">
           이렇게 도와드려요
         </h2>
       </div>
