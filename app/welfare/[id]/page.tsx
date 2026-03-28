@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import { AlarmButton } from "@/components/alarm-button";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -127,11 +128,7 @@ export default async function WelfareDetailPage({ params }: Props) {
             신청하기
           </a>
         )}
-        <button
-          className="px-6 py-3 bg-grey-100 text-grey-700 text-[15px] font-semibold rounded-xl border-none cursor-pointer hover:bg-grey-200 transition-colors font-pretendard"
-        >
-          알림 받기
-        </button>
+        <AlarmButton programId={program.id} programType="welfare" />
       </div>
     </main>
   );

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/ad-slot";
+import { AlarmButton } from "@/components/alarm-button";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -115,17 +116,20 @@ export default async function LoanDetailPage({ params }: Props) {
           <InfoRow label="출처" value={program.source} />
         </dl>
 
-        {/* Apply button */}
-        {program.apply_url && (
-          <a
-            href={program.apply_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-blue-500 rounded-xl no-underline hover:bg-blue-600 transition-colors"
-          >
-            신청하러 가기
-          </a>
-        )}
+        {/* Action buttons */}
+        <div className="flex items-center gap-3">
+          {program.apply_url && (
+            <a
+              href={program.apply_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-blue-500 rounded-xl no-underline hover:bg-blue-600 transition-colors"
+            >
+              신청하러 가기
+            </a>
+          )}
+          <AlarmButton programId={program.id} programType="loan" />
+        </div>
       </section>
 
       {/* Ad */}
