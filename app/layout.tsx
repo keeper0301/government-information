@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { ChatbotFab } from "@/components/chatbot-fab";
@@ -22,6 +23,9 @@ export default function RootLayout({
         {children}
         <Footer />
         <ChatbotFab />
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        )}
       </body>
     </html>
   );
