@@ -24,7 +24,7 @@ export function Nav() {
             <a
               key={item.href}
               href={item.href}
-              className={`px-3.5 py-2 text-[15px] rounded-lg transition-colors ${
+              className={`px-3.5 py-2.5 text-[15px] min-h-[44px] flex items-center rounded-lg transition-colors ${
                 item.active
                   ? "font-semibold text-grey-900"
                   : "font-medium text-grey-700 hover:bg-grey-50 hover:text-grey-900"
@@ -35,7 +35,7 @@ export function Nav() {
           ))}
           <a
             href="/login"
-            className="ml-3 px-4 py-[7px] text-sm font-semibold text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors no-underline"
+            className="ml-3 px-4 py-[7px] text-sm font-semibold text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors no-underline min-h-[44px] flex items-center"
           >
             로그인
           </a>
