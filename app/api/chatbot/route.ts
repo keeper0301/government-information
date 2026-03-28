@@ -73,10 +73,11 @@ export async function POST(request: NextRequest) {
     reply = "검색어를 좀 더 구체적으로 입력해주세요. 예: '청년 주거', '소상공인 대출', '의료 지원'";
   } else {
     // Fallback: full-text search
-    const searchTerm = `%${message}%`;
+    const sanitized = message.replace(/[%_\\]/g, '\\$&');
+    const searchTerm = `%${sanitized}%`;
     const [{ data: w }, { data: l }] = await Promise.all([
-      supabase.from("welfare_programs").select("*").or(`title.ilike.${searchTerm},description.ilike.${searchTerm}`).limit(3),
-      supabase.from("loan_programs").select("*").or(`title.ilike.${searchTerm},description.ilike.${searchTerm}`).limit(3),
+      supabase.from("welfare_programs").select("*").or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`).limit(3),
+      supabase.from("loan_programs").select("*").or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`).limit(3),
     ]);
     const fallback = [
       ...(w || []).map(welfareToDisplay),

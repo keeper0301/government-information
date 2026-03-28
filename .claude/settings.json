@@ -1,5 +1,11 @@
 {
   "enabledPlugins": {
-    "supabase@claude-plugins-official": true
+    "supabase@claude-plugins-official": true,
+    "docs-guide@gptaku_plugins": true,
+    "deep-research@gptaku_plugins": true,
+    "show-me-the-prd@gptaku_plugins": true,
+    "vibe-sunsang@gptaku_plugins": true,
+    "nopal@gptaku_plugins": true,
+    "pumasi@gptaku_plugins": true
   }
 }

@@ -13,19 +13,20 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const searchTerm = `%${q.trim()}%`;
+  const sanitized = q.trim().replace(/[%_\\]/g, '\\$&');
+  const searchTerm = `%${sanitized}%`;
 
   const [{ data: welfare }, { data: loans }] = await Promise.all([
     supabase
       .from("welfare_programs")
       .select("*")
-      .or(`title.ilike.${searchTerm},description.ilike.${searchTerm},category.ilike.${searchTerm}`)
+      .or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%,category.ilike.%${sanitized}%`)
       .order("view_count", { ascending: false })
       .limit(10),
     supabase
       .from("loan_programs")
       .select("*")
-      .or(`title.ilike.${searchTerm},description.ilike.${searchTerm},category.ilike.${searchTerm}`)
+      .or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%,category.ilike.%${sanitized}%`)
       .order("view_count", { ascending: false })
       .limit(10),
   ]);

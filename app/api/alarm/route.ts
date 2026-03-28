@@ -12,6 +12,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "잘못된 프로그램 유형입니다." }, { status: 400 });
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return NextResponse.json({ error: "올바른 이메일 주소를 입력해주세요." }, { status: 400 });
+  }
+
   const supabase = await createClient();
 
   // Check if user is logged in
