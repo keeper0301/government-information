@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
+import { ChatbotFab } from "@/components/chatbot-fab";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +17,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <Nav />
+        {children}
+        <Footer />
+        <ChatbotFab />
+      </body>
     </html>
   );
 }
