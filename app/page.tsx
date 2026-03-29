@@ -42,7 +42,7 @@ export default async function Home() {
       <div className="bg-grey-50">
         <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
           <ProgramList
-            title="지금 신청 가능한 복지"
+            title="지금 신청 가능한 복지서비스"
             programs={welfare}
             moreHref="/welfare"
           />

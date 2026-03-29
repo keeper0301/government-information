@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: "소상공인·자영업자를 위한 정부 대출 및 지원금 정보를 확인하세요.",
 };
 
-const CATEGORIES = ["전체", "대출", "지원금", "보증"];
+const CATEGORIES = ["전체", "대출", "보증", "창업지원", "지원금", "소상공인지원"];
 const PER_PAGE = 10;
 
 type Props = {
