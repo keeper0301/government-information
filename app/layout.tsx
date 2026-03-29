@@ -40,6 +40,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
+      <head>
+        {process.env.NEXT_PUBLIC_ADSENSE_ID && (
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}`}
+            crossOrigin="anonymous"
+          />
+        )}
+      </head>
       <body>
         <WebSiteSchema
           name="정책알리미"
