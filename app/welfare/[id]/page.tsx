@@ -125,8 +125,8 @@ export default async function WelfareDetailPage({ params }: Props) {
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3">
-        {program.apply_url && (
+      <div className="flex gap-3 flex-wrap">
+        {program.apply_url ? (
           <a
             href={program.apply_url}
             target="_blank"
@@ -134,6 +134,15 @@ export default async function WelfareDetailPage({ params }: Props) {
             className="px-6 py-3 bg-blue-500 text-white text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-600 transition-colors"
           >
             신청하기
+          </a>
+        ) : (
+          <a
+            href={`https://www.google.com/search?q=${encodeURIComponent(program.source + ' ' + program.title + ' 신청')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3 bg-grey-100 text-grey-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-grey-200 transition-colors"
+          >
+            {program.source}에서 신청 방법 찾기
           </a>
         )}
         <AlarmButton programId={program.id} programType="welfare" />

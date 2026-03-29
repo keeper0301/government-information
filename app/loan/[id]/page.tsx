@@ -125,8 +125,8 @@ export default async function LoanDetailPage({ params }: Props) {
         </dl>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-3">
-          {program.apply_url && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {program.apply_url ? (
             <a
               href={program.apply_url}
               target="_blank"
@@ -134,6 +134,15 @@ export default async function LoanDetailPage({ params }: Props) {
               className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white bg-blue-500 rounded-xl no-underline hover:bg-blue-600 transition-colors"
             >
               신청하러 가기
+            </a>
+          ) : (
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(program.source + ' ' + program.title + ' 신청')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-grey-700 bg-grey-100 rounded-xl no-underline hover:bg-grey-200 transition-colors"
+            >
+              {program.source}에서 신청 방법 찾기
             </a>
           )}
           <AlarmButton programId={program.id} programType="loan" />
