@@ -5,6 +5,7 @@ import { loanToDisplay } from "@/lib/programs";
 import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { FilterBar } from "./filter-bar";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = {
   title: "대출·지원금 정보 — 정책알리미",
@@ -150,39 +151,7 @@ export default async function LoanPage({ searchParams }: Props) {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <section className="max-w-content mx-auto px-10 mt-8 flex justify-center gap-2 max-md:px-6">
-          {page > 1 && (
-            <a
-              href={buildUrl({ page: String(page - 1) })}
-              className="px-4 py-2 text-sm font-medium text-grey-700 bg-grey-100 rounded-lg no-underline hover:bg-grey-200 transition-colors"
-            >
-              이전
-            </a>
-          )}
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <a
-              key={p}
-              href={buildUrl({ page: String(p) })}
-              className={`px-3 py-2 text-sm font-medium rounded-lg no-underline transition-colors ${
-                p === page
-                  ? "bg-blue-500 text-white"
-                  : "text-grey-600 hover:bg-grey-100"
-              }`}
-            >
-              {p}
-            </a>
-          ))}
-          {page < totalPages && (
-            <a
-              href={buildUrl({ page: String(page + 1) })}
-              className="px-4 py-2 text-sm font-medium text-grey-700 bg-grey-100 rounded-lg no-underline hover:bg-grey-200 transition-colors"
-            >
-              다음
-            </a>
-          )}
-        </section>
-      )}
+      <Pagination currentPage={page} totalPages={totalPages} buildUrl={buildUrl} />
     </main>
   );
 }
