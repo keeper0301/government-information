@@ -38,7 +38,9 @@ export default async function LoanPage({ searchParams }: Props) {
       `title.ilike.%${search}%,description.ilike.%${search}%`,
     );
 
+  const today = new Date().toISOString().split("T")[0];
   query = query
+    .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 

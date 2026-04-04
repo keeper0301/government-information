@@ -25,7 +25,7 @@ const categoryIconMap: Record<string, DisplayProgram["icon"]> = {
   "보증": "shield",
 };
 
-function calcDday(dateStr: string | null): number | null {
+export function calcDday(dateStr: string | null): number | null {
   if (!dateStr) return null;
   const end = new Date(dateStr);
   const now = new Date();
@@ -116,4 +116,48 @@ export async function getUrgentProgram(): Promise<DisplayProgram | null> {
 
   // Return whichever has the sooner deadline
   return (welfare.dday !== null && loan.dday !== null && welfare.dday <= loan.dday) ? welfare : loan;
+}
+
+export async function getRelatedPrograms(
+  type: "welfare" | "loan",
+  category: string,
+  excludeId: string,
+  region?: string | null,
+  limit = 4,
+): Promise<DisplayProgram[]> {
+  const supabase = await createClient();
+  const table = type === "welfare" ? "welfare_programs" : "loan_programs";
+  const today = new Date().toISOString().split("T")[0];
+
+  let query = supabase
+    .from(table)
+    .select("*")
+    .eq("category", category)
+    .neq("id", excludeId)
+    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .order("apply_end", { ascending: true, nullsFirst: false })
+    .limit(limit);
+
+  if (region && region !== "전국" && type === "welfare") {
+    query = query.eq("region", region);
+  }
+
+  const { data } = await query;
+  if (!data || data.length === 0) {
+    // region 필터로 결과가 없으면 region 없이 재조회
+    if (region && region !== "전국" && type === "welfare") {
+      const { data: fallback } = await supabase
+        .from(table)
+        .select("*")
+        .eq("category", category)
+        .neq("id", excludeId)
+        .or(`apply_end.gte.${today},apply_end.is.null`)
+        .order("apply_end", { ascending: true, nullsFirst: false })
+        .limit(limit);
+      return (fallback || []).map(type === "welfare" ? welfareToDisplay : loanToDisplay);
+    }
+    return [];
+  }
+
+  return data.map(type === "welfare" ? welfareToDisplay : loanToDisplay);
 }

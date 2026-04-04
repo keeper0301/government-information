@@ -13,6 +13,12 @@ export type WelfareProgram = {
   source: string;
   source_url: string | null;
   region: string | null;
+  serv_id: string | null;
+  detailed_content: string | null;
+  selection_criteria: string | null;
+  required_documents: string | null;
+  contact_info: string | null;
+  last_enriched_at: string | null;
   view_count: number;
   created_at: string;
   updated_at: string;
@@ -34,6 +40,10 @@ export type LoanProgram = {
   apply_end: string | null;
   source: string;
   source_url: string | null;
+  detailed_content: string | null;
+  required_documents: string | null;
+  contact_info: string | null;
+  last_enriched_at: string | null;
   view_count: number;
   created_at: string;
   updated_at: string;
