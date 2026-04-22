@@ -308,7 +308,7 @@ async function collectLoans(supabase: SupabaseAdmin) {
       break;
     }
   }
-  return { collected: total }
+  return { collected: total };
 }
 
 // ━━━ API Handler ━━━

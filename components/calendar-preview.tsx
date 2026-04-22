@@ -9,6 +9,14 @@ type CalendarItem = {
   type: "welfare" | "loan";
 };
 
+// 달력 표시용으로 제목에서 연도 제거 (예: "2026년 청년 월세" → "청년 월세")
+function shortenTitle(title: string): string {
+  return title
+    .replace(/^\d{4}년도?\s*/g, "")
+    .replace(/^「|」/g, "")
+    .trim();
+}
+
 // 이번 달 마감 예정인 복지/대출 프로그램을 DB에서 가져와서 달력에 표시
 export async function CalendarPreview() {
   const supabase = await createClient();
@@ -99,17 +107,18 @@ export async function CalendarPreview() {
               {items && (
                 <div className="flex flex-col gap-[3px]">
                   {items.slice(0, 2).map((item) => (
-                    <div
+                    <a
                       key={item.id}
-                      className={`text-[10px] leading-[1.3] px-1 py-[2px] rounded truncate max-md:hidden ${
+                      href={`/${item.type}/${item.id}`}
+                      className={`block text-[10px] leading-[1.3] px-1 py-[2px] rounded truncate no-underline max-md:hidden hover:opacity-80 transition-opacity ${
                         item.type === "welfare"
                           ? "bg-blue-50 text-blue-600"
                           : "bg-[#FFF4E6] text-[#E8590C]"
                       }`}
                       title={item.title}
                     >
-                      {item.title}
-                    </div>
+                      {shortenTitle(item.title)}
+                    </a>
                   ))}
                   {items.length > 2 && (
                     <div className="text-[10px] text-grey-500 px-1 max-md:hidden">
