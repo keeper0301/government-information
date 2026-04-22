@@ -47,28 +47,41 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
   return (
     <a
       href={`/${program.type}/${program.id}`}
-      className="flex items-center gap-4 py-[18px] border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-colors hover:bg-grey-50 hover:mx-[-12px] hover:px-3 hover:rounded-xl overflow-hidden"
+      className="block py-[18px] border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-colors hover:bg-grey-50 hover:mx-[-12px] hover:px-3 hover:rounded-xl overflow-hidden"
     >
-      <div className="shrink-0 w-10 h-10 bg-grey-100 rounded-[11px] grid place-items-center">
-        <Icon className="w-5 h-5 text-grey-700" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-[3px]">
-          <div className="text-base font-semibold text-grey-900 tracking-[-0.3px] truncate">
-            {program.title}
+      {/* 데스크톱: 아이콘 + 제목/설명 + 금액 가로 배치 */}
+      <div className="flex items-center gap-4">
+        <div className="shrink-0 w-10 h-10 bg-grey-100 rounded-[11px] grid place-items-center max-md:w-8 max-md:h-8">
+          <Icon className="w-5 h-5 text-grey-700 max-md:w-4 max-md:h-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-[3px]">
+            <div className="text-base font-semibold text-grey-900 tracking-[-0.3px] truncate max-md:text-[15px]">
+              {program.title}
+            </div>
+            <DdayLabel dday={program.dday} />
           </div>
-          <DdayLabel dday={program.dday} />
+          <div className="text-sm text-grey-600 leading-[1.45] truncate">
+            {program.description}
+          </div>
         </div>
-        <div className="text-sm text-grey-600 leading-[1.45] truncate">
-          {program.description}
+        {/* 데스크톱에서만 오른쪽에 금액 표시 */}
+        <div className="shrink-0 text-right max-w-[240px] max-md:hidden">
+          <div className="text-[15px] font-bold text-grey-900 tracking-[-0.3px] mb-0.5 truncate">
+            {program.amount}
+          </div>
+          <div className="text-xs text-grey-500 truncate">{program.source}</div>
         </div>
       </div>
-      <div className="shrink-0 text-right max-w-[240px]">
-        <div className="text-[15px] font-bold text-grey-900 tracking-[-0.3px] mb-0.5 truncate">
-          {program.amount}
+      {/* 모바일에서만 아래에 금액 표시 */}
+      {program.amount && (
+        <div className="hidden max-md:flex items-center justify-between mt-2 ml-12 pl-0.5">
+          <div className="text-[13px] font-bold text-grey-900 truncate">
+            {program.amount}
+          </div>
+          <div className="text-[11px] text-grey-500 shrink-0 ml-2">{program.source}</div>
         </div>
-        <div className="text-xs text-grey-500 truncate">{program.source}</div>
-      </div>
+      )}
     </a>
   );
 }
