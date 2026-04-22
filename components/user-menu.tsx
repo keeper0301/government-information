@@ -103,6 +103,12 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
         >
           내 정보
         </a>
+        <a
+          href="/mypage/billing"
+          className="block px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg no-underline"
+        >
+          내 구독
+        </a>
         <button
           onClick={handleLogout}
           className="w-full text-left px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg border-none bg-transparent cursor-pointer"
@@ -134,6 +140,13 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
             onClick={() => setOpen(false)}
           >
             내 정보
+          </a>
+          <a
+            href="/mypage/billing"
+            className="block px-4 py-2.5 text-[14px] text-grey-700 hover:bg-grey-50 no-underline"
+            onClick={() => setOpen(false)}
+          >
+            내 구독
           </a>
           <button
             onClick={handleLogout}

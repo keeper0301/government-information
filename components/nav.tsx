@@ -18,6 +18,7 @@ const moreItems = [
   { label: "달력", href: "/calendar" },
   { label: "AI상담", href: "/consult" },
   { label: "알림센터", href: "/alerts" },
+  { label: "요금제", href: "/pricing" },
 ];
 
 // 모바일 메뉴용 전체 항목

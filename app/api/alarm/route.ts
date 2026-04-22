@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireTier } from "@/lib/subscription";
 
 // 내 알림 목록 조회
 export async function GET() {
@@ -95,10 +96,29 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // Check if user is logged in
+  // 로그인 필수 (이전엔 비로그인도 가능했지만, 유료 기능으로 전환)
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "알림 등록은 로그인 후 이용 가능해요.", needsLogin: true },
+      { status: 401 },
+    );
+  }
 
-  // Check for duplicate
+  // 베이직 이상 티어만 알림 등록 가능 (무료 사용자는 가격표 안내)
+  const tier = await requireTier(user.id, "basic");
+  if (!tier) {
+    return NextResponse.json(
+      {
+        error: "마감 알림은 베이직 이상 플랜에서 이용 가능해요.",
+        needsUpgrade: true,
+        upgradeUrl: "/pricing",
+      },
+      { status: 403 },
+    );
+  }
+
+  // 중복 체크
   const { data: existing } = await supabase
     .from("alarm_subscriptions")
     .select("id")
@@ -113,7 +133,7 @@ export async function POST(request: NextRequest) {
 
   const adminSupabase = createAdminClient();
   const { error } = await adminSupabase.from("alarm_subscriptions").insert({
-    user_id: user?.id || null,
+    user_id: user.id,
     email,
     program_type: programType,
     program_id: programId,
