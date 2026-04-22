@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { BellIcon } from "./icons";
+import { UserMenu } from "./user-menu";
 
 // 메인 메뉴 항목
 const mainItems = [
@@ -124,13 +125,8 @@ export function Nav() {
             )}
           </div>
 
-          {/* 로그인 버튼 */}
-          <a
-            href="/login"
-            className="ml-3 px-4 py-[7px] text-sm font-semibold text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors no-underline min-h-[44px] flex items-center"
-          >
-            로그인
-          </a>
+          {/* 로그인 상태에 따라 로그인 버튼 ↔ 내 계정 메뉴를 보여줌 */}
+          <UserMenu />
         </div>
 
         {/* 모바일 햄버거 버튼 */}
@@ -176,12 +172,8 @@ export function Nav() {
               {item.label}
             </a>
           ))}
-          <a
-            href="/login"
-            className="block px-4 py-3 text-[15px] font-semibold text-blue-500 no-underline"
-          >
-            로그인
-          </a>
+          {/* 모바일용 로그인/로그아웃 영역 */}
+          <UserMenu mobile />
         </div>
       )}
     </nav>
