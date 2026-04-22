@@ -54,7 +54,7 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-[3px]">
-          <div className="text-base font-semibold text-grey-900 tracking-[-0.3px]">
+          <div className="text-base font-semibold text-grey-900 tracking-[-0.3px] truncate">
             {program.title}
           </div>
           <DdayLabel dday={program.dday} />
