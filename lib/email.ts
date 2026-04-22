@@ -1,6 +1,17 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Resend 클라이언트를 lazy 하게 초기화
+// 빌드 시점에 RESEND_API_KEY 가 없어도 빌드 통과하도록 (실제 호출 시 에러)
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (_resend) return _resend;
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    throw new Error("RESEND_API_KEY 환경변수가 설정되지 않았습니다.");
+  }
+  _resend = new Resend(key);
+  return _resend;
+}
 
 // 발신자 (모든 메일 공통)
 const FROM_ADDRESS = "정책알리미 <onboarding@resend.dev>";
@@ -25,7 +36,7 @@ export async function sendAlarmEmail({
   const typeLabel = programType === "welfare" ? "복지" : "대출";
   const detailUrl = `https://정책알리미.kr/${programType}/${programId}`;
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: FROM_ADDRESS,
     to: [to],
     subject: `[정책알리미] ${programTitle} 신청 마감 ${daysLeft}일 전입니다`,
@@ -88,7 +99,7 @@ export async function sendReceiptEmail({
   // 영수증 URL 은 토스가 보내지만, 만일을 대비해 https 만 허용 (javascript: 등 차단)
   const safeReceiptUrl = receiptUrl && receiptUrl.startsWith("https://") ? receiptUrl : null;
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: FROM_ADDRESS,
     to: [to],
     subject: `[정책알리미] ${tierName} 구독료 ${amountStr}원 결제 완료`,
