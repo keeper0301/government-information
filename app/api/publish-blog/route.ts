@@ -54,6 +54,12 @@ export async function POST(request: NextRequest) {
       sourceProgramId: result.sourceProgramId,
       sourceProgramType: result.sourceProgramType,
       url: result.dryRun ? null : `/blog/${result.slug}`,
+      // dryRun 일 때만 본문·FAQ·meta 도 응답에 포함 (검토용)
+      ...(result.dryRun && {
+        meta_description: result.generated.meta_description,
+        content: result.generated.content,
+        faqs: result.generated.faqs,
+      }),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
