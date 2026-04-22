@@ -226,52 +226,70 @@ async function collectYouth(supabase: SupabaseAdmin) {
 async function collectLoans(supabase: SupabaseAdmin) {
   if (!DATA_GO_KR_KEY) return { collected: 0, error: "API key not set" };
 
-  try {
-    const params = new URLSearchParams({
-      serviceKey: DATA_GO_KR_KEY,
-      pageNo: "1",
-      numOfRows: "100",
-    });
-    const res = await fetch(`${SMALLBIZ_API}?${params}`, { cache: "no-store" });
-    if (!res.ok) return { collected: 0, error: `HTTP ${res.status}` };
+  let total = 0;
+  const PER_PAGE = 100;
+  let totalPages = 5; // 최대 500건 수집
 
-    const xml = await res.text();
-    if (xml.includes("Unauthorized") || xml.includes("SERVICE_KEY")) {
-      return { collected: 0, error: "API key unauthorized" };
+  for (let page = 1; page <= totalPages; page++) {
+    try {
+      const params = new URLSearchParams({
+        serviceKey: DATA_GO_KR_KEY,
+        pageNo: String(page),
+        numOfRows: String(PER_PAGE),
+      });
+      const res = await fetch(`${SMALLBIZ_API}?${params}`, { cache: "no-store" });
+      if (!res.ok) break;
+
+      const xml = await res.text();
+      if (xml.includes("Unauthorized") || xml.includes("SERVICE_KEY")) {
+        return { collected: total, error: "API key unauthorized" };
+      }
+
+      // 첫 페이지에서 전체 건수 확인
+      if (page === 1) {
+        const totalMatch = xml.match(/<totalCount>(\d+)<\/totalCount>/);
+        if (totalMatch) {
+          totalPages = Math.min(Math.ceil(parseInt(totalMatch[1]) / PER_PAGE), 10);
+        }
+      }
+
+      const regex = /<item>([\s\S]*?)<\/item>/g;
+      let m;
+
+      while ((m = regex.exec(xml)) !== null) {
+        const b = m[1];
+        // API 응답의 실제 태그명: title (CDATA), dataContents, viewUrl 등
+        const titleMatch = b.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/);
+        const title = titleMatch ? titleMatch[1].trim() : null;
+        if (!title) continue;
+
+        const viewUrlMatch = b.match(/<viewUrl>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/viewUrl>/);
+        const viewUrl = viewUrlMatch ? viewUrlMatch[1].trim() : null;
+        const contentMatch = b.match(/<dataContents>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/dataContents>/);
+        const content = contentMatch ? contentMatch[1].replace(/<[^>]*>/g, " ").trim().substring(0, 1000) : null;
+
+        const { error } = await supabase.from("loan_programs").upsert(
+          {
+            title: title.substring(0, 200),
+            category: mapLoanCategory(title),
+            target: parseXmlTag(b, "writerPosition") || "소상공인",
+            description: content,
+            apply_url: viewUrl,
+            apply_start: parseXmlTag(b, "applicationStartDate"),
+            apply_end: parseXmlTag(b, "applicationEndDate") || null,
+            source: "중소벤처기업부",
+            source_url: viewUrl,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "title" }
+        );
+        if (!error) total++;
+      }
+    } catch {
+      break;
     }
-
-    const regex = /<item>([\s\S]*?)<\/item>/g;
-    let m;
-    let count = 0;
-
-    while ((m = regex.exec(xml)) !== null) {
-      const b = m[1];
-      const title = parseXmlTag(b, "pblancNm") || parseXmlTag(b, "bizPbancNm");
-      if (!title) continue;
-
-      const { error } = await supabase.from("loan_programs").upsert(
-        {
-          title,
-          category: mapLoanCategory(title),
-          target: parseXmlTag(b, "jrsdInsttNm") || "소상공인",
-          description: parseXmlTag(b, "bsnsSumryCn") || parseXmlTag(b, "pblancCn"),
-          eligibility: parseXmlTag(b, "trgtNm"),
-          loan_amount: parseXmlTag(b, "sportCn"),
-          apply_url: parseXmlTag(b, "detailPageUrl"),
-          apply_start: parseXmlTag(b, "pblancBgngYmd"),
-          apply_end: parseXmlTag(b, "pblancEndYmd"),
-          source: "중소벤처기업부",
-          source_url: parseXmlTag(b, "detailPageUrl"),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "title" }
-      );
-      if (!error) count++;
-    }
-    return { collected: count };
-  } catch (e) {
-    return { collected: 0, error: String(e) };
   }
+  return { collected: total }
 }
 
 // ━━━ API Handler ━━━
