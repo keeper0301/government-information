@@ -47,7 +47,7 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
   return (
     <a
       href={`/${program.type}/${program.id}`}
-      className="flex items-center gap-4 py-[18px] border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-colors hover:bg-grey-50 hover:mx-[-12px] hover:px-3 hover:rounded-xl"
+      className="flex items-center gap-4 py-[18px] border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-colors hover:bg-grey-50 hover:mx-[-12px] hover:px-3 hover:rounded-xl overflow-hidden"
     >
       <div className="shrink-0 w-10 h-10 bg-grey-100 rounded-[11px] grid place-items-center">
         <Icon className="w-5 h-5 text-grey-700" />
@@ -63,11 +63,11 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
           {program.description}
         </div>
       </div>
-      <div className="shrink-0 text-right">
-        <div className="text-[15px] font-bold text-grey-900 tracking-[-0.3px] mb-0.5">
+      <div className="shrink-0 text-right max-w-[240px]">
+        <div className="text-[15px] font-bold text-grey-900 tracking-[-0.3px] mb-0.5 truncate">
           {program.amount}
         </div>
-        <div className="text-xs text-grey-500">{program.source}</div>
+        <div className="text-xs text-grey-500 truncate">{program.source}</div>
       </div>
     </a>
   );
