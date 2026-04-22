@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/collect",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 4 * * *"
     },
     {
       "path": "/api/enrich",
-      "schedule": "0 3,15 * * *"
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cleanup",
