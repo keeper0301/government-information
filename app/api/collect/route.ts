@@ -32,9 +32,28 @@ function mapLoanCategory(text: string): string {
   return "대출";
 }
 
+// HTML 엔티티를 일반 텍스트로 변환
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&ldquo;/g, "\u201C")
+    .replace(/&rdquo;/g, "\u201D")
+    .replace(/&lsquo;/g, "\u2018")
+    .replace(/&rsquo;/g, "\u2019")
+    .replace(/&middot;/g, "\u00B7")
+    .replace(/&bull;/g, "\u2022")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
 function parseXmlTag(block: string, tag: string): string | null {
   const match = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
-  return match ? match[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim() : null;
+  return match ? decodeEntities(match[1]).trim() : null;
 }
 
 // ━━━ 1. 복지로 중앙 (카테고리별 전체 수집) ━━━
@@ -260,13 +279,13 @@ async function collectLoans(supabase: SupabaseAdmin) {
         const b = m[1];
         // API 응답의 실제 태그명: title (CDATA), dataContents, viewUrl 등
         const titleMatch = b.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/);
-        const title = titleMatch ? titleMatch[1].trim() : null;
+        const title = titleMatch ? decodeEntities(titleMatch[1]).trim() : null;
         if (!title) continue;
 
         const viewUrlMatch = b.match(/<viewUrl>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/viewUrl>/);
         const viewUrl = viewUrlMatch ? viewUrlMatch[1].trim() : null;
         const contentMatch = b.match(/<dataContents>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/dataContents>/);
-        const content = contentMatch ? contentMatch[1].replace(/<[^>]*>/g, " ").trim().substring(0, 1000) : null;
+        const content = contentMatch ? decodeEntities(contentMatch[1].replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim().substring(0, 1000) : null;
 
         const { error } = await supabase.from("loan_programs").upsert(
           {
