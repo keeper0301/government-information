@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
+export { calcDday } from "@/lib/utils";
+import { calcDday } from "@/lib/utils";
 
 export type DisplayProgram = {
   id: string;
@@ -24,14 +26,6 @@ const categoryIconMap: Record<string, DisplayProgram["icon"]> = {
   "지원금": "store",
   "보증": "shield",
 };
-
-export function calcDday(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  const end = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  return diff >= 0 ? diff : null;
-}
 
 export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
   return {
@@ -116,6 +110,32 @@ export async function getUrgentProgram(): Promise<DisplayProgram | null> {
 
   // Return whichever has the sooner deadline
   return (welfare.dday !== null && loan.dday !== null && welfare.dday <= loan.dday) ? welfare : loan;
+}
+
+// 인기 복지 프로그램 조회 (조회수 높은 순)
+export async function getPopularWelfare(limit = 20): Promise<DisplayProgram[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+  const { data } = await supabase
+    .from("welfare_programs")
+    .select("*")
+    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .order("view_count", { ascending: false })
+    .limit(limit);
+  return (data || []).map(welfareToDisplay);
+}
+
+// 인기 대출 프로그램 조회 (조회수 높은 순)
+export async function getPopularLoans(limit = 20): Promise<DisplayProgram[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+  const { data } = await supabase
+    .from("loan_programs")
+    .select("*")
+    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .order("view_count", { ascending: false })
+    .limit(limit);
+  return (data || []).map(loanToDisplay);
 }
 
 export async function getRelatedPrograms(

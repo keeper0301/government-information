@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { ChatIcon } from "./icons";
 import type { DisplayProgram } from "@/lib/programs";
 
@@ -11,6 +12,7 @@ type Message = {
 };
 
 export function ChatbotPanel() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
@@ -18,6 +20,9 @@ export function ChatbotPanel() {
   ]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // AI상담 페이지(/consult)에서는 FAB 챗봇을 숨김 (Hook 호출 뒤에 조건부 return)
+  if (pathname === "/consult") return null;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
