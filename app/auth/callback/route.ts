@@ -39,13 +39,30 @@ export async function GET(request: Request) {
 
   // 인증 코드를 세션(로그인 상태)으로 교환
   const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   // 교환 실패 시 사용자에게 원인 전달
   if (error) {
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent(error.message)}`
     );
+  }
+
+  // 로그인 성공 → user_profiles 테이블에 빈 프로필이 있는지 확인
+  // 없으면 생성 (첫 로그인 시 1회만). 실패해도 로그인 자체는 성공시킴.
+  const user = data.user;
+  if (user) {
+    // RLS 때문에 본인 id 로만 조회 가능 — 이미 세션이 있으니 허용됨
+    const { data: existing } = await supabase
+      .from("user_profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!existing) {
+      // 빈 프로필 생성 — 나이·지역·직업은 나중에 /mypage 에서 입력받음
+      await supabase.from("user_profiles").insert({ id: user.id });
+    }
   }
 
   // 정상 로그인 → 원래 가려던 페이지 또는 홈으로

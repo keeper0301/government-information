@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/auth-errors";
 
 // 로그인 페이지
 // - 카카오/구글 소셜 로그인 버튼 (빠른 가입)
@@ -14,16 +15,31 @@ export default function LoginPage() {
   // 어떤 소셜 버튼이 눌렸는지 (중복 클릭 방지용)
   const [loading, setLoading] = useState<"kakao" | "google" | null>(null);
 
-  // OAuth 콜백에서 에러가 ?error= 쿼리로 전달된 경우 화면에 표시
-  // 예: 사용자가 동의 취소, 잘못된 리다이렉트 URL, Provider 미설정 등
+  // 로그인 성공 후 돌아갈 페이지 (?next=/xxx)
+  // 예: /alerts 에 접근하려다 로그인 페이지로 온 사용자는 로그인 후 /alerts 로 복귀
+  const [next, setNext] = useState("/");
+
+  // URL 쿼리 파라미터 읽기 (?next, ?error)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    // URLSearchParams.get 이 이미 URL 디코딩을 해주므로 그대로 사용
+    const nextParam = params.get("next");
+    // 내부 경로만 허용 (외부 리다이렉트 방지)
+    if (nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")) {
+      setNext(nextParam);
+    }
+    // 콜백에서 넘어온 에러 메시지를 한국어로 번역해서 표시
     const errMsg = params.get("error");
     if (errMsg) {
-      setError(errMsg);
-      // URL에서 error 파라미터 제거 (새로고침 시 계속 보이지 않게)
-      window.history.replaceState({}, "", window.location.pathname);
+      setError(translateAuthError(errMsg));
+      // URL 에서 error 파라미터만 제거 (next 는 유지)
+      const cleanParams = new URLSearchParams(window.location.search);
+      cleanParams.delete("error");
+      const query = cleanParams.toString();
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + (query ? `?${query}` : "")
+      );
     }
   }, []);
 
@@ -33,15 +49,15 @@ export default function LoginPage() {
     setError("");
     setLoading(provider);
     const supabase = createClient();
+    // 콜백 URL에 next 를 붙여서 로그인 후 원래 페이지로 복귀시킴
+    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: callbackUrl },
     });
     // 성공 시엔 자동으로 리다이렉트되므로 여기 아래 코드는 실패 시에만 실행됨
     if (error) {
-      setError(error.message);
+      setError(translateAuthError(error.message));
       setLoading(null);
     }
   }
@@ -51,12 +67,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     const supabase = createClient();
+    // 매직링크 클릭 시 돌아올 URL 에도 next 를 붙여서 복귀 경로 유지
+    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { emailRedirectTo: callbackUrl },
     });
     if (error) {
-      setError(error.message);
+      setError(translateAuthError(error.message));
     } else {
       setSent(true);
     }

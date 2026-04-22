@@ -1,0 +1,83 @@
+// Supabase Auth 에러 메시지를 한국어 사용자 친화 문구로 변환
+// Supabase는 에러 메시지가 영어로 나오는데, 일반 사용자에게 보여주면 혼란스러움
+// 메시지에 특정 키워드가 있으면 번역하고, 없으면 일반 안내문으로 대체
+
+type ErrorKey =
+  | string // Supabase가 주는 원문 메시지 (부분 일치로 매칭)
+  | "missing_code"
+  | "access_denied";
+
+// 키워드 기반 번역 맵 — 부분 문자열 일치로 탐색
+const TRANSLATIONS: Array<{ match: RegExp; message: string }> = [
+  // 로그인 자체 실패
+  {
+    match: /invalid login credentials/i,
+    message: "이메일 또는 비밀번호가 올바르지 않아요.",
+  },
+  {
+    match: /email not confirmed/i,
+    message: "이메일 인증이 아직 완료되지 않았어요. 받은 편지함을 확인해주세요.",
+  },
+  {
+    match: /user already registered/i,
+    message: "이미 가입된 이메일이에요. 로그인 링크를 받아주세요.",
+  },
+
+  // 속도 제한
+  {
+    match: /rate limit|too many requests|only request this once every/i,
+    message: "요청이 너무 잦아요. 잠시 후 다시 시도해주세요.",
+  },
+
+  // OAuth 설정·동의 문제
+  {
+    match: /provider is not enabled|oauth provider not enabled/i,
+    message: "이 로그인 방식이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.",
+  },
+  {
+    match: /user email not available|missing email/i,
+    message:
+      "카카오 계정에서 이메일 제공에 동의해야 로그인할 수 있어요. 카카오 로그인 시 '이메일' 항목에 체크해주세요.",
+  },
+  {
+    match: /redirect_uri_mismatch/i,
+    message:
+      "로그인 설정에 문제가 있어요. 관리자에게 문의해주세요. (redirect_uri_mismatch)",
+  },
+  {
+    match: /access_denied/i,
+    message: "로그인을 취소하셨어요.",
+  },
+
+  // 콜백 자체 문제
+  {
+    match: /missing_code/i,
+    message: "로그인 정보가 누락되었어요. 다시 시도해주세요.",
+  },
+  {
+    match: /code verifier|pkce/i,
+    message: "로그인 세션이 만료되었어요. 처음부터 다시 시도해주세요.",
+  },
+
+  // 세션 관련
+  {
+    match: /token has expired|jwt expired/i,
+    message: "세션이 만료되었어요. 다시 로그인해주세요.",
+  },
+  {
+    match: /network|failed to fetch/i,
+    message: "네트워크 연결에 문제가 있어요. 인터넷 상태를 확인해주세요.",
+  },
+];
+
+// 에러 메시지를 한국어로 변환
+// 매칭되는 게 없으면 원문을 괄호로 붙여서 대략적 안내문 반환
+export function translateAuthError(raw: ErrorKey | null | undefined): string {
+  if (!raw) return "알 수 없는 오류가 발생했어요.";
+  const text = String(raw);
+  for (const { match, message } of TRANSLATIONS) {
+    if (match.test(text)) return message;
+  }
+  // 매칭 안 되는 경우: 사용자에게 일반 안내 + 개발자용 원문 포함
+  return `로그인 중 문제가 발생했어요. (${text})`;
+}

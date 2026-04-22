@@ -90,13 +90,19 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
   // === 로그인 된 상태 === (이메일 첫 글자로 아바타 만들기)
   const initial = (user.email?.[0] || "U").toUpperCase();
 
-  // 모바일: 햄버거 메뉴 하단에 이메일과 로그아웃 버튼
+  // 모바일: 햄버거 메뉴 하단에 이메일·내 정보·로그아웃 순서로
   if (mobile) {
     return (
       <div className="border-t border-grey-100 mt-2 pt-2">
         <div className="px-4 py-2 text-[13px] text-grey-500 truncate">
           {user.email}
         </div>
+        <a
+          href="/mypage"
+          className="block px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg no-underline"
+        >
+          내 정보
+        </a>
         <button
           onClick={handleLogout}
           className="w-full text-left px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg border-none bg-transparent cursor-pointer"
@@ -107,7 +113,7 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
     );
   }
 
-  // 데스크톱: 원형 아바타 + 드롭다운
+  // 데스크톱: 원형 아바타 + 드롭다운(이메일 → 내 정보 → 로그아웃)
   return (
     <div ref={menuRef} className="relative ml-3">
       <button
@@ -122,6 +128,13 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
           <div className="px-4 py-2 text-[13px] text-grey-500 truncate border-b border-grey-100">
             {user.email}
           </div>
+          <a
+            href="/mypage"
+            className="block px-4 py-2.5 text-[14px] text-grey-700 hover:bg-grey-50 no-underline"
+            onClick={() => setOpen(false)}
+          >
+            내 정보
+          </a>
           <button
             onClick={handleLogout}
             className="w-full text-left px-4 py-2.5 text-[14px] text-grey-700 hover:bg-grey-50 border-none bg-transparent cursor-pointer"
