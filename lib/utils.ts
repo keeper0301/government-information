@@ -44,8 +44,9 @@ export function currentMinAllowedYear(): number {
 
 // 한글 제목 → URL 친화적 slug 생성
 // 한글은 그대로 유지 (Next.js·Vercel 모두 한글 URL 지원), 공백 → 하이픈,
-// 특수문자 제거. 마지막에 시간기반 4자 suffix 로 충돌 방지.
-//   예: "2026년 청년월세 신청방법" → "2026년-청년월세-신청방법-a3f9"
+// 특수문자 제거. 마지막에 시간+random 8자 suffix 로 충돌 방지.
+//   예: "2026년 청년월세 신청방법" → "2026년-청년월세-신청방법-a3f9k2x1"
+// 4자 → 8자로 늘려서 동시 호출에서도 UNIQUE 위반 거의 0.
 export function makeSlug(title: string): string {
   const base = title
     .toLowerCase()
@@ -55,9 +56,55 @@ export function makeSlug(title: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .slice(0, 80);
-  // 시간 기반 4자 suffix (충돌 가능성 거의 0)
-  const suffix = Date.now().toString(36).slice(-4);
-  return `${base}-${suffix}`;
+  // 시간 4자 + random 4자 = 8자 suffix (36^8 = 2.8조 가지)
+  const time = Date.now().toString(36).slice(-4);
+  const rand = Math.random().toString(36).slice(2, 6);
+  return `${base}-${time}${rand}`;
+}
+
+// ============================================================
+// HTML Sanitizer — AI 생성 HTML 의 위험 태그·속성 제거
+// ============================================================
+// 화이트리스트 기반 간단 정제. 외부 패키지 없이 정규식으로.
+// AdSense 정책 + XSS 방어를 위해 발행 전 항상 적용.
+//
+// 제거:
+//   - <script>, <style>, <iframe>, <object>, <embed>, <link>, <meta>, <form>
+//   - on* 이벤트 속성 (onclick, onerror, onload 등)
+//   - javascript:, data:, vbscript: 스킴의 href/src
+//
+// 유지: 일반 텍스트 마크업 (h1~h6, p, ul, ol, li, table, a, strong, em, blockquote 등)
+// ============================================================
+export function sanitizeHtml(html: string): string {
+  let safe = html;
+
+  // 위험 태그 통째로 제거 (내용 포함)
+  const dangerousTags = ["script", "style", "iframe", "object", "embed", "form", "input", "button", "select", "textarea"];
+  for (const tag of dangerousTags) {
+    const re = new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "gi");
+    safe = safe.replace(re, "");
+    // 자체 닫힘 또는 닫힘 태그 누락도 제거
+    const re2 = new RegExp(`<\\/?${tag}\\b[^>]*>`, "gi");
+    safe = safe.replace(re2, "");
+  }
+
+  // 단독 위험 태그 (link, meta 등)
+  const voidDanger = ["link", "meta", "base"];
+  for (const tag of voidDanger) {
+    const re = new RegExp(`<${tag}\\b[^>]*>`, "gi");
+    safe = safe.replace(re, "");
+  }
+
+  // on* 이벤트 속성 제거 (onclick, onerror 등)
+  safe = safe.replace(/\son\w+\s*=\s*"[^"]*"/gi, "");
+  safe = safe.replace(/\son\w+\s*=\s*'[^']*'/gi, "");
+  safe = safe.replace(/\son\w+\s*=\s*[^\s>]+/gi, "");
+
+  // 위험 스킴 (javascript:, data:, vbscript:) → 빈 href 로 변환
+  safe = safe.replace(/(href|src)\s*=\s*"\s*(javascript|data|vbscript):[^"]*"/gi, '$1=""');
+  safe = safe.replace(/(href|src)\s*=\s*'\s*(javascript|data|vbscript):[^']*'/gi, "$1=''");
+
+  return safe;
 }
 
 // 한국어 글의 예상 읽기 시간 (분)

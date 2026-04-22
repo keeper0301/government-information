@@ -6,7 +6,14 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateBlogPost, type ProgramContext } from "@/lib/ai";
-import { makeSlug, estimateReadingTime } from "@/lib/utils";
+import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
+
+// AdSense 가이드 — 본문 최소 길이 (한글 기준)
+// 1,000자 미만이면 "valuable inventory: low quality" 로 거절될 위험
+const MIN_CONTENT_LENGTH = 1000;
+const VALID_CATEGORIES = new Set([
+  "청년", "소상공인", "주거", "육아·가족", "노년", "학생·교육", "큐레이션",
+]);
 
 // 요일별 카테고리 순환 (0=일, 1=월, ..., 6=토)
 // 일=큐레이션 외 6일 = 6개 메인 카테고리
@@ -181,13 +188,38 @@ export async function publishOnePost(opts: {
     throw new Error(`발행 가능한 정책을 못 찾았어요 (카테고리: ${category}). 모든 정책이 이미 글로 발행됐거나 매칭이 없어요.`);
   }
 
-  // AI 호출
-  const generated = await generateBlogPost(picked.ctx);
+  // AI 호출 (1회 retry — 일시적 5xx·timeout 대응)
+  let generated;
+  try {
+    generated = await generateBlogPost(picked.ctx);
+  } catch (firstErr) {
+    // 한 번 더 시도 (Gemini 일시 오류는 흔함)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      generated = await generateBlogPost(picked.ctx);
+    } catch {
+      // 두 번째도 실패하면 첫 에러 던짐
+      throw firstErr;
+    }
+  }
+
+  // AI 응답 검증 (AdSense 정책 + 데이터 무결성)
+  const plainLen = generated.content.replace(/<[^>]+>/g, "").trim().length;
+  if (plainLen < MIN_CONTENT_LENGTH) {
+    throw new Error(`본문이 너무 짧음 (${plainLen}자, 최소 ${MIN_CONTENT_LENGTH}자). AdSense 정책상 발행 불가.`);
+  }
+  if (!VALID_CATEGORIES.has(generated.category)) {
+    // AI 가 다른 카테고리 반환 시 요청 카테고리로 강제 (안전한 fallback)
+    generated.category = category;
+  }
+
+  // XSS 방어: AI 가 생성한 HTML 의 위험 태그·속성 제거
+  generated.content = sanitizeHtml(generated.content);
 
   // 본문 글자수 기준 읽기 시간
   const reading = estimateReadingTime(generated.content);
 
-  // slug 생성 (제목 기반 + 시간 suffix)
+  // slug 생성 (제목 기반 + 시간·random 8자 suffix)
   const slug = makeSlug(generated.title);
 
   if (opts.dryRun) {
