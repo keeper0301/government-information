@@ -15,6 +15,7 @@ const mainItems = [
 
 // "더보기" 드롭다운 메뉴 항목
 const moreItems = [
+  { label: "정책가이드", href: "/blog" },
   { label: "달력", href: "/calendar" },
   { label: "AI상담", href: "/consult" },
   { label: "알림센터", href: "/alerts" },
