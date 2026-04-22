@@ -48,20 +48,18 @@ export async function GET(request: Request) {
     );
   }
 
-  // 로그인 성공 → user_profiles 테이블에 빈 프로필이 있는지 확인
-  // 없으면 생성 (첫 로그인 시 1회만). 실패해도 로그인 자체는 성공시킴.
+  // 로그인 성공 → user_profiles 에 빈 프로필 보장 (없으면 생성)
+  // upsert + ignoreDuplicates 로 한 쿼리로 원자적 처리
+  // (동시 로그인·재시도에도 안전하고, 이미 있으면 아무것도 안 함)
   const user = data.user;
   if (user) {
-    // RLS 때문에 본인 id 로만 조회 가능 — 이미 세션이 있으니 허용됨
-    const { data: existing } = await supabase
+    const { error: profileError } = await supabase
       .from("user_profiles")
-      .select("id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (!existing) {
-      // 빈 프로필 생성 — 나이·지역·직업은 나중에 /mypage 에서 입력받음
-      await supabase.from("user_profiles").insert({ id: user.id });
+      .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+    // 프로필 생성 실패해도 로그인 자체는 성공시킴 (나중에 /mypage 에서 재시도됨)
+    // 서버 로그에만 남김
+    if (profileError) {
+      console.error("[auth/callback] 프로필 생성 실패:", profileError.message);
     }
   }
 
