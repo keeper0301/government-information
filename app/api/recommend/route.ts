@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { welfareToDisplay, loanToDisplay } from "@/lib/programs";
+import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
 
 // 나이대를 target 검색 키워드로 매핑
 const ageKeywords: Record<string, string[]> = {
@@ -29,8 +30,12 @@ const VALID_REGIONS = [
   "전북", "전남", "경북", "경남", "제주",
 ];
 
+// programType: "all" (기본) / "welfare" (복지만) / "loan" (대출만)
+const VALID_PROGRAM_TYPES = ["all", "welfare", "loan"] as const;
+type ProgramType = (typeof VALID_PROGRAM_TYPES)[number];
+
 export async function POST(request: NextRequest) {
-  const { ageGroup, region, occupation } = await request.json();
+  const { ageGroup, region, occupation, programType = "all" } = await request.json();
 
   // 입력값 검증: 허용된 값인지 확인
   if (!ageGroup || !region || !occupation) {
@@ -45,6 +50,9 @@ export async function POST(request: NextRequest) {
   if (!(occupation in occupationKeywords)) {
     return NextResponse.json({ error: "올바른 직업을 선택해주세요." }, { status: 400 });
   }
+  if (!VALID_PROGRAM_TYPES.includes(programType as ProgramType)) {
+    return NextResponse.json({ error: "올바른 정보 종류를 선택해주세요." }, { status: 400 });
+  }
 
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
@@ -55,31 +63,41 @@ export async function POST(request: NextRequest) {
     ...(occupationKeywords[occupation] || []),
   ];
 
-  // 복지 프로그램 조회 (충분한 수를 가져와서 키워드 매칭)
-  let welfareQuery = supabase
-    .from("welfare_programs")
-    .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("view_count", { ascending: false })
-    .limit(100);
+  // 조회할 종류 결정: 전체(all) 면 둘 다, 아니면 하나만
+  const includeWelfare = programType === "all" || programType === "welfare";
+  const includeLoan = programType === "all" || programType === "loan";
 
-  // 지역 필터 (전국이 아닌 경우)
-  if (region && region !== "전국") {
-    welfareQuery = welfareQuery.or(`region.eq.${region},region.eq.전국,region.is.null`);
+  // 복지 프로그램 조회 (includeWelfare=true 일 때만)
+  let welfareData: WelfareProgram[] = [];
+  if (includeWelfare) {
+    let welfareQuery = supabase
+      .from("welfare_programs")
+      .select("*")
+      .or(`apply_end.gte.${today},apply_end.is.null`)
+      .order("view_count", { ascending: false })
+      .limit(100);
+
+    if (region && region !== "전국") {
+      welfareQuery = welfareQuery.or(`region.eq.${region},region.eq.전국,region.is.null`);
+    }
+    const { data } = await welfareQuery;
+    welfareData = data || [];
   }
 
-  const { data: welfareData } = await welfareQuery;
+  // 대출 프로그램 조회 (includeLoan=true 일 때만)
+  let loanData: LoanProgram[] = [];
+  if (includeLoan) {
+    const { data } = await supabase
+      .from("loan_programs")
+      .select("*")
+      .or(`apply_end.gte.${today},apply_end.is.null`)
+      .order("view_count", { ascending: false })
+      .limit(100);
+    loanData = data || [];
+  }
 
-  // 대출 프로그램 조회
-  const { data: loanData } = await supabase
-    .from("loan_programs")
-    .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("view_count", { ascending: false })
-    .limit(100);
-
-  // 키워드 매칭으로 점수 계산 후 정렬
-  const scoredWelfare = (welfareData || []).map((w) => {
+  // 키워드 매칭 점수 계산
+  const scoredWelfare = welfareData.map((w) => {
     let score = 0;
     const target = (w.target || "").toLowerCase();
     const desc = (w.description || "").toLowerCase();
@@ -89,7 +107,7 @@ export async function POST(request: NextRequest) {
     return { program: welfareToDisplay(w), score };
   });
 
-  const scoredLoan = (loanData || []).map((l) => {
+  const scoredLoan = loanData.map((l) => {
     let score = 0;
     const target = (l.target || "").toLowerCase();
     const desc = (l.description || "").toLowerCase();
