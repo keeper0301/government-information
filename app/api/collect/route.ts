@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isOutdatedByTitle, currentMinAllowedYear } from "@/lib/utils";
 
 const DATA_GO_KR_KEY = process.env.DATA_GO_KR_API_KEY || "";
 
@@ -62,7 +63,9 @@ async function collectBokjiroCentral(supabase: SupabaseAdmin) {
 
   const codes = ["001", "002", "003", "004", "005", "006", "007", "008", "009", "010"];
   let total = 0;
+  let skippedOld = 0;
   const seen = new Set<string>();
+  const minYear = currentMinAllowedYear();
 
   for (const code of codes) {
     for (let page = 1; page <= 10; page++) {  // max 10 pages = 1000 items per category
@@ -89,6 +92,12 @@ async function collectBokjiroCentral(supabase: SupabaseAdmin) {
           if (!title || seen.has(title)) continue;
           seen.add(title);
 
+          // 제목에 옛 연도(예: "2023년 ...") 있으면 수집 안 함
+          if (isOutdatedByTitle(title, minYear)) {
+            skippedOld++;
+            continue;
+          }
+
           const { error } = await supabase.from("welfare_programs").upsert(
             {
               title,
@@ -114,7 +123,7 @@ async function collectBokjiroCentral(supabase: SupabaseAdmin) {
       }
     }
   }
-  return { collected: total };
+  return { collected: total, skipped_old: skippedOld };
 }
 
 // ━━━ 2. 지자체 복지 (전체 페이지 수집) ━━━
@@ -122,9 +131,11 @@ async function collectLocalWelfare(supabase: SupabaseAdmin) {
   if (!DATA_GO_KR_KEY) return { collected: 0, error: "API key not set" };
 
   let total = 0;
+  let skippedOld = 0;
   const PER_PAGE = 500;
   let totalPages = 10;
   const seen = new Set<string>();
+  const minYear = currentMinAllowedYear();
 
   for (let page = 1; page <= totalPages; page++) {
     try {
@@ -157,6 +168,12 @@ async function collectLocalWelfare(supabase: SupabaseAdmin) {
         if (!title || !fullTitle || seen.has(fullTitle)) continue;
         seen.add(fullTitle);
 
+        // 제목에 옛 연도 있으면 수집 안 함
+        if (isOutdatedByTitle(fullTitle, minYear)) {
+          skippedOld++;
+          continue;
+        }
+
         const { error } = await supabase.from("welfare_programs").upsert(
           {
             title: fullTitle.substring(0, 200),
@@ -180,7 +197,7 @@ async function collectLocalWelfare(supabase: SupabaseAdmin) {
       break;
     }
   }
-  return { collected: total };
+  return { collected: total, skipped_old: skippedOld };
 }
 
 // ━━━ 3. 온통청년 (최신 정책 수집) ━━━
@@ -188,6 +205,8 @@ async function collectYouth(supabase: SupabaseAdmin) {
   // 온통청년 API는 외부 호출 시 페이지네이션이 제한적 (최신 10건만 반환)
   // 하지만 최신 정책을 주기적으로 가져오면 누적 수집 가능
   let total = 0;
+  let skippedOld = 0;
+  const minYear = currentMinAllowedYear();
 
   try {
     const res = await fetch(YOUTH_API, {
@@ -204,6 +223,12 @@ async function collectYouth(supabase: SupabaseAdmin) {
     for (const item of items) {
       const title = item.PLCY_NM;
       if (!title) continue;
+
+      // 제목에 옛 연도 있으면 수집 안 함
+      if (isOutdatedByTitle(title, minYear)) {
+        skippedOld++;
+        continue;
+      }
 
       const fmtDate = (d: string) => {
         if (!d || d.length < 8) return null;
@@ -238,7 +263,7 @@ async function collectYouth(supabase: SupabaseAdmin) {
   } catch (e) {
     return { collected: 0, error: String(e) };
   }
-  return { collected: total };
+  return { collected: total, skipped_old: skippedOld };
 }
 
 // ━━━ 4. 소상공인 대출 ━━━
@@ -246,8 +271,10 @@ async function collectLoans(supabase: SupabaseAdmin) {
   if (!DATA_GO_KR_KEY) return { collected: 0, error: "API key not set" };
 
   let total = 0;
+  let skippedOld = 0;
   const PER_PAGE = 100;
   let totalPages = 5; // 최대 500건 수집
+  const minYear = currentMinAllowedYear();
 
   for (let page = 1; page <= totalPages; page++) {
     try {
@@ -282,6 +309,12 @@ async function collectLoans(supabase: SupabaseAdmin) {
         const title = titleMatch ? decodeEntities(titleMatch[1]).trim() : null;
         if (!title) continue;
 
+        // 제목에 옛 연도 있으면 수집 안 함 (예: "2023년 ... 공고")
+        if (isOutdatedByTitle(title, minYear)) {
+          skippedOld++;
+          continue;
+        }
+
         const viewUrlMatch = b.match(/<viewUrl>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/viewUrl>/);
         const viewUrl = viewUrlMatch ? viewUrlMatch[1].trim() : null;
         const contentMatch = b.match(/<dataContents>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/dataContents>/);
@@ -308,7 +341,7 @@ async function collectLoans(supabase: SupabaseAdmin) {
       break;
     }
   }
-  return { collected: total };
+  return { collected: total, skipped_old: skippedOld };
 }
 
 // ━━━ API Handler ━━━
