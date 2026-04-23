@@ -12,6 +12,7 @@
 
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectedItem } from "@/lib/collectors";
 
 export const maxDuration = 60;
 
@@ -97,20 +98,73 @@ export async function GET(request: NextRequest) {
             : `두번째 item OK`,
         );
 
-        // 8) 모든 나머지 item drain (DB upsert 없이)
-        send(`나머지 item drain 시작`);
-        let count = 2;
-        for await (const _item of {
+        // 8) 나머지 item buffer 에 모음 + 200건 단위 batch upsert 실측
+        send(`나머지 item buffer 시작 (실제 upsert 측정)`);
+        const buffer: CollectedItem[] = [];
+        if (!firstNext.done) buffer.push(firstNext.value);
+        if (!secondNext.done) buffer.push(secondNext.value);
+        let count = buffer.length;
+        for await (const item of {
           [Symbol.asyncIterator]() {
             return gen;
           },
-        } as AsyncIterable<unknown>) {
+        } as AsyncIterable<CollectedItem>) {
           count++;
+          buffer.push(item);
           if (count % 100 === 0) {
             send(`item ${count} 도착`);
           }
         }
-        send(`drain 완료 totalItems=${count}`);
+        send(`buffer 완료 totalItems=${count}`);
+
+        // 9) batch upsert 첫 200건만 시도 + 시간 측정
+        const batchToTest: CollectedItem[] = buffer.slice(0, 200);
+        send(`첫 batch upsert (${batchToTest.length}건) 시작`);
+        const table =
+          batchToTest[0]?.table === "loan" ? "loan_programs" : "welfare_programs";
+        send(`테이블=${table}`);
+
+        const rows = batchToTest.map((item) => {
+          const now = new Date().toISOString();
+          const base: Record<string, unknown> = {
+            title: item.title.substring(0, 200),
+            category: item.category || "소득",
+            target: item.target ?? null,
+            description: item.description?.substring(0, 2000) ?? null,
+            apply_url: item.applyUrl ?? null,
+            source: item.source,
+            source_url: item.sourceUrl ?? null,
+            source_code: item.sourceCode,
+            source_id: item.sourceId,
+            published_at: item.publishedAt ?? null,
+            fetched_at: now,
+            raw_payload: item.rawPayload ?? null,
+            region_tags: item.regionTags ?? [],
+            age_tags: item.ageTags ?? [],
+            occupation_tags: item.occupationTags ?? [],
+            benefit_tags: item.benefitTags ?? [],
+            household_tags: item.householdTags ?? [],
+            updated_at: now,
+          };
+          if (item.table === "welfare") {
+            base.benefits = item.benefits?.substring(0, 1000) ?? null;
+            base.region = item.region ?? "전국";
+          } else {
+            base.loan_amount = item.loanAmount ?? null;
+            base.interest_rate = item.interestRate ?? null;
+            base.repayment_period = item.repaymentPeriod ?? null;
+          }
+          return base;
+        });
+
+        send(`upsert RPC 호출 직전 (rows=${rows.length})`);
+        const upsertStart = Date.now();
+        const { error: upsertErr } = await supabase
+          .from(table)
+          .upsert(rows, { onConflict: "source_code,source_id" });
+        send(
+          `upsert RPC 응답 ${Date.now() - upsertStart}ms err=${upsertErr?.message || "null"}`,
+        );
 
         controller.close();
       } catch (err) {
