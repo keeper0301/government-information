@@ -44,12 +44,13 @@ const CATEGORY_COLORS: Record<string, string> = {
   큐레이션: "#6B7280",
 };
 
-// slug 한글 디코드 (Next.js 16 percent-encoded params 대응)
-function safeDecodeSlug(raw: string): string {
+// slug 한글 디코드 (Next.js 16 percent-encoded params 대응). 비정상 인코딩 (CP949 등)
+// 으로 throw 되면 null → fallback 이미지 사용 (500 대신 "정책알리미" 기본 이미지)
+function safeDecodeSlug(raw: string): string | null {
   try {
     return decodeURIComponent(raw);
   } catch {
-    return raw;
+    return null;
   }
 }
 
@@ -61,13 +62,16 @@ export default async function Image({
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
 
+  // slug decode 실패 시 DB 조회 스킵하고 fallback 으로 진행
   // DB 에서 제목·카테고리 가져오기 (없으면 fallback)
   const supabase = await createClient();
-  const { data: post } = await supabase
-    .from("blog_posts")
-    .select("title, category")
-    .eq("slug", slug)
-    .maybeSingle();
+  const { data: post } = slug
+    ? await supabase
+        .from("blog_posts")
+        .select("title, category")
+        .eq("slug", slug)
+        .maybeSingle()
+    : { data: null };
 
   const title = post?.title || "정책알리미";
   const category = post?.category || "정책 가이드";

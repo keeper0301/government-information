@@ -23,11 +23,15 @@ type FaqItem = { question: string; answer: string };
 // 한글 slug 처리: Next.js 16 의 params.slug 가 percent-encoded 형태로
 // 들어올 수 있어 DB 매칭 실패 → 500/404. decode 한 번 더 안전망.
 // 이미 decode 된 경우 decodeURIComponent 가 그대로 반환하므로 no-op.
-function safeDecodeSlug(raw: string): string {
+//
+// CP949/EUC-KR 로 인코딩된 비정상 요청 (일부 오래된 크롤러·봇) 은 UTF-8 decode
+// 시 throw → null 반환 → 호출부에서 404 로 처리 (500 대신). Supabase 쿼리에
+// invalid byte 전달 시 내부 오류 나던 문제도 같이 해결.
+function safeDecodeSlug(raw: string): string | null {
   try {
     return decodeURIComponent(raw);
   } catch {
-    return raw;
+    return null;
   }
 }
 
@@ -55,6 +59,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
+
+  // slug decode 실패 (비정상 인코딩) → 메타 최소화, 404 처리는 render 에서
+  if (!slug) {
+    return { title: "글을 찾을 수 없어요 | 정책알리미" };
+  }
+
   const supabase = await createClient();
   const { data: post } = await supabase
     .from("blog_posts")
@@ -95,6 +105,10 @@ export default async function BlogPostPage({
 }) {
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
+
+  // slug decode 실패 (비정상 인코딩) → 404 (500 대신)
+  if (!slug) notFound();
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("blog_posts")
