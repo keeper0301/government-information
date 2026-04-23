@@ -88,13 +88,18 @@ export async function pickProgramForCategory(category: string): Promise<{
     .flatMap((k) => [`title.ilike.%${k}%`, `target.ilike.%${k}%`, `description.ilike.%${k}%`])
     .join(",");
 
+  // 활성 정책 (apply_end >= 오늘) + 상시 정책 (apply_end IS NULL) 모두 포함
+  // 정부 정책은 99% 가 apply_end NULL (상시 모집) — 이걸 빼면 매칭 거의 안 됨
+  // 마감 임박순으로 활성 우선, NULL 은 마지막
+  const datePolicy = `apply_end.is.null,apply_end.gte.${today}`;
+
   // welfare 우선 시도
   const { data: welfares } = await admin
     .from("welfare_programs")
     .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
     .or(orFilter)
-    .gte("apply_end", today)
-    .order("apply_end", { ascending: true })
+    .or(datePolicy)
+    .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(30);
 
   for (const w of welfares || []) {
@@ -112,8 +117,8 @@ export async function pickProgramForCategory(category: string): Promise<{
     .from("loan_programs")
     .select("id, title, category, target, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_url, apply_start, apply_end, source")
     .or(orFilter)
-    .gte("apply_end", today)
-    .order("apply_end", { ascending: true })
+    .or(datePolicy)
+    .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(30);
 
   for (const l of loans || []) {
@@ -141,11 +146,12 @@ async function pickCurationProgram(
   usedWelfare: Set<string>,
   usedLoan: Set<string>,
 ) {
+  // 큐레이션도 동일 — 활성 + 상시 정책 모두 포함, 활성 우선
   const { data } = await admin
     .from("welfare_programs")
     .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
-    .gte("apply_end", today)
-    .order("apply_end", { ascending: true })
+    .or(`apply_end.is.null,apply_end.gte.${today}`)
+    .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(20);
 
   for (const w of data || []) {
