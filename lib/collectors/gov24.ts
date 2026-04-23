@@ -14,6 +14,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -104,7 +105,7 @@ async function fetchList(page: number): Promise<Gov24Response> {
   url.searchParams.set("perPage", String(PER_PAGE));
   url.searchParams.set("serviceKey", KEY);
 
-  const res = await fetch(url.toString(), { cache: "no-store" });
+  const res = await fetchWithTimeout(url.toString());
   if (!res.ok) {
     throw new Error(`gov24 serviceList ${page} HTTP ${res.status}`);
   }
@@ -134,6 +135,7 @@ const collector: Collector = {
       try {
         res = await fetchList(page);
       } catch (err) {
+        if (err instanceof Error && err.message.includes("429")) throw err;
         console.error(`[gov24] page ${page} 실패:`, err);
         break;
       }

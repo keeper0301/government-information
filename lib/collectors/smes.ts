@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -54,10 +55,11 @@ const collector: Collector = {
         url.searchParams.set("pageNo", String(page));
         url.searchParams.set("numOfRows", String(PER_PAGE));
 
-        const res = await fetch(url.toString(), { cache: "no-store" });
+        const res = await fetchWithTimeout(url.toString());
         if (!res.ok) break;
         xml = await res.text();
       } catch (err) {
+        if (err instanceof Error && err.message.includes("429")) throw err;
         console.error(`[smes] ${page}:`, err);
         break;
       }

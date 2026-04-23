@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -51,10 +52,12 @@ const collector: Collector = {
             numOfRows: "100",
             srchKeyCode: code,
           });
-          const res = await fetch(`${API}?${params}`, { cache: "no-store" });
+          const res = await fetchWithTimeout(`${API}?${params}`);
           if (!res.ok) break;
           xml = await res.text();
-        } catch {
+        } catch (err) {
+          // 429 는 fetchWithTimeout 이 throw → 상위 catch 로 올려 운영자 알림
+          if (err instanceof Error && err.message.includes("429")) throw err;
           break;
         }
 

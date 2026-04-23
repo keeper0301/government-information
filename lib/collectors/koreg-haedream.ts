@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -82,13 +83,13 @@ const collector: Collector = {
   async *fetch() {
     let html: string;
     try {
-      const res = await fetch(LIST_URL, {
+      const res = await fetchWithTimeout(LIST_URL, {
         headers: { "User-Agent": UA },
-        cache: "no-store",
       });
       if (!res.ok) throw new Error(`koreg HTTP ${res.status}`);
       html = await res.text();
     } catch (err) {
+      if (err instanceof Error && err.message.includes("429")) throw err;
       console.error("[koreg-haedream] fetch 실패:", err);
       return;
     }

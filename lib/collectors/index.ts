@@ -80,12 +80,17 @@ export type Collector = {
 // runOneCollector 가 result.error 세팅 → 운영자 알림.
 export async function fetchWithTimeout(
   url: string,
-  timeoutMs: number = 20000,
+  opts?: { timeoutMs?: number; headers?: Record<string, string> },
 ): Promise<Response> {
+  const timeoutMs = opts?.timeoutMs ?? 20000;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      cache: "no-store",
+      ...(opts?.headers ? { headers: opts.headers } : {}),
+    });
     if (res.status === 429) {
       const body = await res.clone().text().catch(() => "");
       throw new Error(`HTTP 429 quota exceeded: ${body.substring(0, 200)}`);

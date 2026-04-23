@@ -10,6 +10,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -101,7 +102,7 @@ async function fetchAll(): Promise<BizinfoItem[]> {
   url.searchParams.set("searchCnt", "0"); // 0 = 전체
   url.searchParams.set("pageUnit", "500");
 
-  const res = await fetch(url.toString(), { cache: "no-store" });
+  const res = await fetchWithTimeout(url.toString());
   if (!res.ok) throw new Error(`bizinfo HTTP ${res.status}`);
 
   const text = await res.text();

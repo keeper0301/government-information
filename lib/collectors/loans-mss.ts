@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -50,11 +51,12 @@ const collector: Collector = {
           pageNo: String(page),
           numOfRows: String(PER_PAGE),
         });
-        const res = await fetch(`${API}?${params}`, { cache: "no-store" });
+        const res = await fetchWithTimeout(`${API}?${params}`);
         if (!res.ok) break;
         xml = await res.text();
         if (xml.includes("Unauthorized") || xml.includes("SERVICE_KEY")) break;
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("429")) throw err;
         break;
       }
 

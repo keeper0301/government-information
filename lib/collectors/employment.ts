@@ -14,6 +14,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -81,7 +82,7 @@ const collector: Collector = {
 
       let data: EmploymentResponse;
       try {
-        const res = await fetch(`${API}?${params}`, { cache: "no-store" });
+        const res = await fetchWithTimeout(`${API}?${params}`);
         if (!res.ok) break;
         const text = await res.text();
         if (text.includes("SERVICE_KEY") || text.includes("Unauthorized")) break;
@@ -90,7 +91,8 @@ const collector: Collector = {
         } catch {
           break; // JSON 파싱 실패 = 응답 포맷 이상
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("429")) throw err;
         break;
       }
 

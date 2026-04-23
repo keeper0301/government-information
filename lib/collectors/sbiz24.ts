@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -27,13 +28,13 @@ const FALLBACK_URL = "https://www.sbiz.or.kr/nedu/main/nt/ntList.do";
 
 async function tryFetch(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { "User-Agent": UA },
-      cache: "no-store",
     });
     if (!res.ok) return null;
     return await res.text();
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("429")) throw err;
     return null;
   }
 }

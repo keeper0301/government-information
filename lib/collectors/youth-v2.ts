@@ -7,6 +7,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -47,7 +48,7 @@ async function fetchPage(page: number): Promise<{ items: YouthItem[]; total: num
   url.searchParams.set("pageIndex", String(page));
   url.searchParams.set("display", String(PER_PAGE));
 
-  const res = await fetch(url.toString(), { cache: "no-store" });
+  const res = await fetchWithTimeout(url.toString());
   if (!res.ok) throw new Error(`youth-v2 HTTP ${res.status}`);
 
   const xml = await res.text();
@@ -111,6 +112,7 @@ const collector: Collector = {
       try {
         res = await fetchPage(page);
       } catch (err) {
+        if (err instanceof Error && err.message.includes("429")) throw err;
         console.error(`[youth-v2] page ${page} 실패:`, err);
         break;
       }

@@ -7,6 +7,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -58,10 +59,11 @@ const collector: Collector = {
         url.searchParams.set("perPage", String(PER_PAGE));
         url.searchParams.set("returnType", "XML");
 
-        const res = await fetch(url.toString(), { cache: "no-store" });
+        const res = await fetchWithTimeout(url.toString());
         if (!res.ok) break;
         xml = await res.text();
       } catch (err) {
+        if (err instanceof Error && err.message.includes("429")) throw err;
         console.error(`[kstartup] page ${page}:`, err);
         break;
       }
