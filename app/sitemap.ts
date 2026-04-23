@@ -41,13 +41,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // Blog posts (발행된 글만)
+  // Blog posts (발행된 글만) — 한글 slug 는 percent-encode 해서 XML sitemap 표준 준수
+  // (일부 크롤러가 raw 한글을 CP949 등으로 재인코딩하는 문제 회피)
   const { data: posts } = await supabase
     .from("blog_posts")
     .select("slug, updated_at, published_at")
     .not("published_at", "is", null);
   const blogPages: MetadataRoute.Sitemap = (posts || []).map((p) => ({
-    url: `${baseUrl}/blog/${p.slug}`,
+    url: `${baseUrl}/blog/${encodeURIComponent(p.slug)}`,
     lastModified: new Date(p.updated_at),
     changeFrequency: "weekly" as const,
     priority: 0.8,
