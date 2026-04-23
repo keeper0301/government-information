@@ -51,14 +51,29 @@ jobs:
             exit 1
           fi
           echo "== source=${{ matrix.source }} · $(date -u '+%Y-%m-%d %H:%M:%S') UTC =="
-          http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
-            --max-time 90 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/collect?source=${{ matrix.source }}")
-          echo "== HTTP $http_status =="
-          cat /tmp/response.json
-          echo ""
+
+          # 최대 2회 시도 — Vercel 이 edge region 을 라운드 로빈으로 선택하므로
+          # 첫 시도가 sfo1 (미국) 이라 60초 timeout 나도 재시도 시 icn1 (한국)
+          # 갈 수 있음. sleep 20 으로 load balancer 가 region 바꿀 시간 확보.
+          http_status=000
+          for attempt in 1 2; do
+            http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+              --max-time 90 \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              "https://www.keepioo.com/api/collect?source=${{ matrix.source }}")
+            echo "== attempt $attempt · HTTP $http_status =="
+            cat /tmp/response.json
+            echo ""
+            if [ "$http_status" -eq 200 ]; then
+              break
+            fi
+            if [ "$attempt" -lt 2 ]; then
+              echo "== 재시도 대기 20초 =="
+              sleep 20
+            fi
+          done
+
           if [ "$http_status" -ne 200 ]; then
-            echo "::error::collect[${{ matrix.source }}] 실패 (HTTP $http_status)"
+            echo "::error::collect[${{ matrix.source }}] 실패 (HTTP $http_status, 2회 시도)"
             exit 1
           fi
