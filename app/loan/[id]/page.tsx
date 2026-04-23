@@ -69,10 +69,10 @@ export default async function LoanDetailPage({ params }: Props) {
       />
       <section className="max-w-content mx-auto px-10 max-md:px-6">
         {/* Breadcrumb */}
-        <nav className="text-sm text-grey-500 mb-6">
-          <a href="/loan" className="no-underline hover:text-blue-500 transition-colors">대출·지원금</a>
-          <span className="mx-2">&gt;</span>
-          <span className="text-grey-700">{program.title.length > 30 ? program.title.substring(0, 30) + "..." : program.title}</span>
+        <nav className="text-sm text-grey-700 mb-6">
+          <a href="/loan" className="font-medium no-underline hover:text-blue-500 transition-colors">대출·지원금</a>
+          <span className="mx-2 text-grey-500">&gt;</span>
+          <span className="text-grey-900 font-medium">{program.title.length > 30 ? program.title.substring(0, 30) + "..." : program.title}</span>
         </nav>
 
         {/* Badges */}
@@ -100,17 +100,17 @@ export default async function LoanDetailPage({ params }: Props) {
             </span>
           )}
           {dday === null && !program.apply_end && (
-            <span className="text-sm font-bold px-2.5 py-1 rounded-md bg-grey-100 text-grey-600">상시</span>
+            <span className="text-sm font-bold px-2.5 py-1 rounded-md bg-grey-100 text-grey-700">상시</span>
           )}
-          <span className="text-sm text-grey-500">{program.source}</span>
+          <span className="text-sm font-medium text-grey-700">{program.source}</span>
           {program.view_count > 0 && (
-            <span className="text-sm text-grey-400">조회 {program.view_count.toLocaleString()}회</span>
+            <span className="text-sm text-grey-600">조회 {program.view_count.toLocaleString()}회</span>
           )}
         </div>
 
-        {/* Description */}
+        {/* Description — 가장 중요한 한 줄 요약. 제목 다음으로 돋보이게 */}
         {program.description && (
-          <p className="text-base text-grey-700 leading-[1.7] mb-8 max-w-[700px]">
+          <p className="text-[18px] font-medium text-grey-900 leading-[1.65] mb-10 max-w-[760px] max-md:text-[17px]">
             {program.description}
           </p>
         )}
@@ -130,10 +130,10 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* 핵심 정보 카드 */}
-        <div className="bg-grey-50 rounded-2xl p-8 mb-8 max-md:p-6">
-          <h2 className="text-base font-bold text-grey-900 mb-4">핵심 정보</h2>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1 max-md:grid-cols-1">
+        {/* 핵심 정보 카드 — 크림 페이지 위에 흰 카드로 시각 분리 */}
+        <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <h2 className="text-[17px] font-bold text-grey-900 mb-2 tracking-[-0.3px]">핵심 정보</h2>
+          <div className="grid grid-cols-2 gap-x-10 max-md:grid-cols-1 divide-y divide-grey-100 md:divide-y-0">
             <SummaryItem label="자격 요건" value={program.eligibility} fallbackUrl={sourceLink} />
             <SummaryItem label="대출 한도" value={program.loan_amount} fallbackUrl={sourceLink} />
             <SummaryItem label="금리" value={program.interest_rate} fallbackUrl={sourceLink} />
@@ -163,9 +163,9 @@ export default async function LoanDetailPage({ params }: Props) {
         )}
 
         {/* 출처 안내 */}
-        <div className="bg-grey-50 rounded-xl px-6 py-5 mb-8">
-          <div className="text-sm font-medium text-grey-900 mb-1">출처: {program.source}</div>
-          <div className="text-xs text-grey-400">
+        <div className="bg-white border border-grey-200 rounded-xl px-6 py-5 mb-8">
+          <div className="text-[14px] font-semibold text-grey-900 mb-1">출처: {program.source}</div>
+          <div className="text-[12px] text-grey-700">
             마지막 업데이트: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
             {" · "}본 내용은 원문을 자동 수집한 것입니다.
           </div>
