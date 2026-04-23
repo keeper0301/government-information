@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyCronFailure } from "@/lib/email";
+
+async function runEnrichAndRespond(jobLabel: string) {
+  try {
+    const supabase = createAdminClient();
+    const result = await enrichBatch(supabase);
+    return NextResponse.json({ timestamp: new Date().toISOString(), ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "알 수 없는 오류";
+    await notifyCronFailure(jobLabel, message);
+    return NextResponse.json({ error: "보강 실패", detail: message }, { status: 500 });
+  }
+}
 
 const DATA_GO_KR_KEY = process.env.DATA_GO_KR_API_KEY || "";
 const DETAIL_API =
@@ -95,14 +108,7 @@ export async function POST(request: NextRequest) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const supabase = createAdminClient();
-  const result = await enrichBatch(supabase);
-
-  return NextResponse.json({
-    timestamp: new Date().toISOString(),
-    ...result,
-  });
+  return runEnrichAndRespond("enrich (POST)");
 }
 
 export async function GET(request: NextRequest) {
@@ -114,12 +120,5 @@ export async function GET(request: NextRequest) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const supabase = createAdminClient();
-  const result = await enrichBatch(supabase);
-
-  return NextResponse.json({
-    timestamp: new Date().toISOString(),
-    ...result,
-  });
+  return runEnrichAndRespond("enrich (cron)");
 }

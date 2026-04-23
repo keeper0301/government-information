@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isOutdatedByTitle, currentMinAllowedYear } from "@/lib/utils";
+import { notifyCronFailure } from "@/lib/email";
+
+// 4개 source 수집 + 운영자 알림. POST/GET 공용으로 호출.
+async function runCollectAndRespond(jobLabel: string) {
+  try {
+    const supabase = createAdminClient();
+    const [bokjiro, localWelfare, youth, loans] = await Promise.all([
+      collectBokjiroCentral(supabase),
+      collectLocalWelfare(supabase),
+      collectYouth(supabase),
+      collectLoans(supabase),
+    ]);
+    return NextResponse.json({
+      timestamp: new Date().toISOString(),
+      bokjiro_central: bokjiro,
+      local_welfare: localWelfare,
+      youth: youth,
+      loans: loans,
+      total: (bokjiro.collected || 0) + (localWelfare.collected || 0) + (youth.collected || 0) + (loans.collected || 0),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "알 수 없는 오류";
+    await notifyCronFailure(jobLabel, message);
+    return NextResponse.json({ error: "수집 실패", detail: message }, { status: 500 });
+  }
+}
 
 const DATA_GO_KR_KEY = process.env.DATA_GO_KR_API_KEY || "";
 
@@ -354,25 +380,7 @@ export async function POST(request: NextRequest) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const supabase = createAdminClient();
-
-  // 4개 소스 병렬 수집
-  const [bokjiro, localWelfare, youth, loans] = await Promise.all([
-    collectBokjiroCentral(supabase),
-    collectLocalWelfare(supabase),
-    collectYouth(supabase),
-    collectLoans(supabase),
-  ]);
-
-  return NextResponse.json({
-    timestamp: new Date().toISOString(),
-    bokjiro_central: bokjiro,
-    local_welfare: localWelfare,
-    youth: youth,
-    loans: loans,
-    total: (bokjiro.collected || 0) + (localWelfare.collected || 0) + (youth.collected || 0) + (loans.collected || 0),
-  });
+  return runCollectAndRespond("collect (POST)");
 }
 
 // Vercel Cron sends GET with CRON_SECRET in header
@@ -387,22 +395,5 @@ export async function GET(request: NextRequest) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const supabase = createAdminClient();
-
-  const [bokjiro, localWelfare, youth, loans] = await Promise.all([
-    collectBokjiroCentral(supabase),
-    collectLocalWelfare(supabase),
-    collectYouth(supabase),
-    collectLoans(supabase),
-  ]);
-
-  return NextResponse.json({
-    timestamp: new Date().toISOString(),
-    bokjiro_central: bokjiro,
-    local_welfare: localWelfare,
-    youth: youth,
-    loans: loans,
-    total: (bokjiro.collected || 0) + (localWelfare.collected || 0) + (youth.collected || 0) + (loans.collected || 0),
-  });
+  return runCollectAndRespond("collect (cron)");
 }

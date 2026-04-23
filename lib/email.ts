@@ -139,6 +139,21 @@ export async function sendCronFailureEmail({
   return { data, error };
 }
 
+// 공용 wrapper — cron 라우트의 catch 블록에서 호출.
+// 메일 발송 실패가 cron 응답에 영향 주지 않도록 swallow.
+// 각 라우트에서 try/catch 헬퍼 중복 작성 안 하도록 분리.
+export async function notifyCronFailure(
+  jobName: string,
+  errorMessage: string,
+  context?: string,
+) {
+  try {
+    await sendCronFailureEmail({ jobName, errorMessage, context });
+  } catch {
+    // 메일 발송 실패는 무시
+  }
+}
+
 // ============================================================
 // 결제 영수증 메일
 // ============================================================

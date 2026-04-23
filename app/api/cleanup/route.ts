@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { currentMinAllowedYear, isOutdatedByTitle } from "@/lib/utils";
+import { notifyCronFailure } from "@/lib/email";
 
 const RETENTION_DAYS = 180; // 6개월 (만료 후 이 일수 이상 지난 공고만 삭제)
 const BATCH_SIZE = 100;
@@ -140,13 +141,25 @@ function checkAuth(request: NextRequest): NextResponse | null {
   return null;
 }
 
+async function runCleanupAndRespond(jobLabel: string) {
+  try {
+    const result = await runCleanup();
+    return NextResponse.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "알 수 없는 오류";
+    await notifyCronFailure(jobLabel, message);
+    return NextResponse.json({ error: "정리 실패", detail: message }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const authError = checkAuth(request);
   if (authError) return authError;
-  const result = await runCleanup();
-  return NextResponse.json(result);
+  return runCleanupAndRespond("cleanup (POST)");
 }
 
 export async function GET(request: NextRequest) {
-  return POST(request);
+  const authError = checkAuth(request);
+  if (authError) return authError;
+  return runCleanupAndRespond("cleanup (cron)");
 }
