@@ -90,15 +90,20 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // ?count=N (1~3) — 여러 글 한 번에 발행 (오늘 / 내일 / 모레 카테고리)
-  // Vercel Hobby cron 한도 (하루 1회) 우회용
-  // 60초 maxDuration 안전 마진 위해 max 3 (Gemini 호출 ~30초 × 3 병렬 = ~30초)
+  // ?count=N (1~3) — 여러 글 한 번에 발행 (베이스 날짜 + 0, +1, +2 카테고리)
+  // ?offset=N — 베이스 날짜를 오늘 +N 일로 조정 (GitHub Actions 에서 count=1 × 여러 step 으로 분리 호출 시 사용)
+  //
+  // Hobby 60초 maxDuration 한도 때문에 실제 운영은 count=1 + offset 0/1 조합으로
+  // 별도 호출하는 게 안정적 (Gemini 호출 타임아웃 시 504 회피)
   const countParam = parseInt(request.nextUrl.searchParams.get("count") || "1", 10);
   const count = Math.min(Math.max(countParam, 1), 3);
+  const offsetParam = parseInt(request.nextUrl.searchParams.get("offset") || "0", 10);
+  const offset = Math.max(Math.min(offsetParam, 6), 0);
 
-  // 카테고리 목록 결정 (오늘부터 +0, +1, +2)
+  // 카테고리 목록 결정 (베이스 = 오늘 + offset 일, 그로부터 +0, +1, +2)
   const categories: string[] = [];
   const baseDate = new Date();
+  baseDate.setDate(baseDate.getDate() + offset);
   for (let i = 0; i < count; i++) {
     const d = new Date(baseDate);
     d.setDate(d.getDate() + i);
