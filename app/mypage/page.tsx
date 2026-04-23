@@ -45,7 +45,9 @@ export default async function MyPage() {
           이메일
         </label>
         <div className="px-4 py-3 bg-grey-50 border border-grey-200 rounded-lg text-[15px] text-grey-700">
-          {user.email}
+          {user.email || (
+            <span className="text-grey-500">(이메일 미공개)</span>
+          )}
         </div>
       </div>
 

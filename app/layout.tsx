@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "정책알리미 — 나에게 맞는 복지·대출 정보",
   description:
     "복지로·소상공인24·금융위원회 데이터를 한곳에. 맞춤 복지·대출 정보를 찾고, 마감 알림을 받아보세요.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://jungcheck.kr"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"),
   openGraph: {
     title: "정책알리미 — 나에게 맞는 복지·대출 정보",
     description: "복지로·소상공인24·금융위원회 데이터를 한곳에. 맞춤 복지·대출 정보를 찾고, 마감 알림을 받아보세요.",
@@ -53,12 +53,12 @@ export default function RootLayout({
       <body>
         <WebSiteSchema
           name="정책알리미"
-          url={process.env.NEXT_PUBLIC_SITE_URL || "https://jungcheck.kr"}
+          url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
           description="대한민국 복지 정보와 소상공인 대출·지원금 정보를 한곳에 모아 제공하는 플랫폼"
         />
         <OrganizationSchema
           name="정책알리미"
-          url={process.env.NEXT_PUBLIC_SITE_URL || "https://jungcheck.kr"}
+          url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
           description="공공기관 데이터 기반 복지·대출 정보 안내 서비스"
         />
         <Nav />

@@ -61,7 +61,7 @@ export default async function WelfareDetailPage({ params }: Props) {
       <GovernmentServiceSchema
         name={program.title}
         description={program.description || ""}
-        url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://jungcheck.kr"}/welfare/${program.id}`}
+        url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}/welfare/${program.id}`}
         provider={program.source}
         category={program.category}
       />

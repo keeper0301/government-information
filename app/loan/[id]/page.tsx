@@ -63,7 +63,7 @@ export default async function LoanDetailPage({ params }: Props) {
       <GovernmentServiceSchema
         name={program.title}
         description={program.description || ""}
-        url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://jungcheck.kr"}/loan/${program.id}`}
+        url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}/loan/${program.id}`}
         provider={program.source}
         category={program.category}
       />
