@@ -225,6 +225,8 @@ export async function getAllCollectors(): Promise<Collector[]> {
     import("./koreg-haedream"),
     import("./nhis"),
     import("./employment"),
+    import("./fsc"),
+    import("./kinfa"),
   ]);
   return mods.map((m) => m.default);
 }
