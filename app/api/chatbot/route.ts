@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { welfareToDisplay, loanToDisplay, type DisplayProgram } from "@/lib/programs";
+import { checkAndConsumeAiQuota } from "@/lib/quota";
 
 const KEYWORD_MAP: Record<string, { table: "welfare_programs" | "loan_programs"; field: string; value: string }[]> = {
   "청년": [{ table: "welfare_programs", field: "target", value: "%청년%" }, { table: "loan_programs", field: "target", value: "%청년%" }],
@@ -25,6 +26,27 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createClient();
+
+  // ━━━ AI 일일 사용량 가드 (가격표 약속 강제) ━━━
+  // 무료/베이직: 5회/일. 프로: 무제한.
+  // 익명 사용자(비로그인)는 우선 통과 — 별도 IP 기반 rate limit 은 추후.
+  // CEO 리뷰 Q4: DB 장애 시 fail-open (호출 허용 + 경고 로그).
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const quota = await checkAndConsumeAiQuota(user.id);
+    if (!quota.ok && quota.reason === "over_limit") {
+      return NextResponse.json(
+        {
+          reply: `오늘은 AI 정책 상담을 ${quota.limit}회 모두 사용하셨어요. 내일 다시 이용 가능합니다. 더 자주 쓰시려면 프로 플랜을 확인해보세요.`,
+          programs: [],
+          quota: { exceeded: true, limit: quota.limit, tier: quota.tier },
+        },
+        { status: 429 },
+      );
+    }
+    // fail_open / ok 둘 다 통과 — 기존 검색 로직 진행.
+  }
+
   const programs: DisplayProgram[] = [];
   const matchedKeywords: string[] = [];
 
