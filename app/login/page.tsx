@@ -40,7 +40,15 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const nextParam = params.get("next");
     // 내부 경로만 허용 (외부 리다이렉트 방지)
-    if (nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")) {
+    // 콜백 라우트의 safeNext 와 동일 규칙으로 통일:
+    // - "/" 로 시작해야 (절대 경로)
+    // - "//" 또는 "/\\" 시작은 외부 사이트로 해석될 수 있어 차단
+    if (
+      nextParam &&
+      nextParam.startsWith("/") &&
+      !nextParam.startsWith("//") &&
+      !nextParam.startsWith("/\\")
+    ) {
       setNext(nextParam);
     }
     // 콜백에서 넘어온 에러 메시지를 한국어로 번역해서 표시
@@ -245,6 +253,7 @@ export default function LoginPage() {
             onClick={() => {
               setMode("magic");
               setError("");
+              setMagicSent(false);
             }}
             className="w-full text-center mt-3 text-[14px] text-grey-600 hover:text-grey-900 bg-transparent border-none cursor-pointer"
           >

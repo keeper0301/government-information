@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
 
@@ -10,21 +11,26 @@ import { translateAuthError } from "@/lib/auth-errors";
 // - 로그인 페이지로 가는 링크 제공
 //
 // 쿼리 파라미터로 ?email=xxx 가 들어옴 (이전 페이지에서 넘겨줌)
-// useEffect 안에서 읽는 이유: 기존 /login 패턴과 일관성 유지 (Next.js 16의
-// useSearchParams 는 Suspense 경계가 필요해서 client 단순 표시에는 과함)
+// 직접 URL 입력으로 들어와 이메일이 없으면 /signup 으로 보냄 (사용자 혼란 방지)
 export default function SignupSentPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   // 다시 보내기 버튼 상태 (전송 중 / 전송 완료 / 에러)
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [error, setError] = useState("");
 
-  // URL 에서 이메일 읽기 (수동으로 직접 들어와서 이메일이 없으면 빈 문자열)
+  // URL 에서 이메일 읽기. 없으면 가입 페이지로 돌려보냄
+  // (이메일 없는 안내 페이지는 보일 이유가 없음 — 다시보내기 버튼도 못 씀)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const e = params.get("email");
-    if (e) setEmail(e);
-  }, []);
+    if (e) {
+      setEmail(e);
+    } else {
+      router.replace("/signup");
+    }
+  }, [router]);
 
   // 확인 메일 다시 보내기
   // - Supabase 의 resend API: type='signup' 으로 가입 확인 메일을 재발송

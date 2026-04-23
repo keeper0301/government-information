@@ -62,17 +62,23 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // 성공 — 보안을 위해 세션을 끊고 다시 로그인하게 함
-    await supabase.auth.signOut();
+    // 성공 — 보안을 위해 모든 기기의 세션을 끊고 새 비번으로 다시 로그인하게 함
+    // scope: 'global' 옵션으로 다른 디바이스/브라우저의 로그인 상태도 무효화
+    // (비밀번호 분실 재설정의 핵심 의도 — 공격자가 세션 갖고 있어도 끊김)
+    await supabase.auth.signOut({ scope: "global" });
     router.push("/login?reset=success");
   }
 
-  // 세션 확인 중에는 빈 화면 (깜빡임 방지)
+  // 세션 확인 중 — 깜빡임 대신 안내 문구 한 줄
   if (checking) {
-    return <main className="pt-40 pb-20 px-10 max-w-[400px] mx-auto" />;
+    return (
+      <main className="pt-40 pb-20 px-10 max-w-[400px] mx-auto text-center text-[14px] text-grey-500">
+        확인 중...
+      </main>
+    );
   }
 
-  // 세션 없음 — 위 useEffect 가 이미 리다이렉트 시킴 (안전장치로 빈 화면)
+  // 세션 없음 — 위 useEffect 가 이미 리다이렉트 시킴 (이동 직전 안전장치)
   if (!hasSession) {
     return <main className="pt-40 pb-20 px-10 max-w-[400px] mx-auto" />;
   }
