@@ -61,6 +61,37 @@ export async function GET(request: NextRequest) {
         }
         send(`찾음: ${collector.label} enabled=${collector.enabled()}`);
 
+        // 4.5) source 가 local-welfare 인 경우 raw fetch 직접 시도 (collector 우회)
+        if (source === "local-welfare") {
+          send(`[raw] local-welfare API 직접 호출`);
+          const RAW_API =
+            "https://apis.data.go.kr/B554287/LocalGovernmentWelfareInformations/LcgvWelfarelist";
+          const RAW_KEY = process.env.DATA_GO_KR_API_KEY || "";
+          const params = new URLSearchParams({
+            serviceKey: RAW_KEY,
+            pageNo: "1",
+            numOfRows: "5",
+          });
+          const rawStart = Date.now();
+          try {
+            const res = await fetch(`${RAW_API}?${params}`, { cache: "no-store" });
+            const text = await res.text();
+            send(
+              `[raw] HTTP=${res.status} size=${text.length} ${Date.now() - rawStart}ms`,
+            );
+            const totalCount = text.match(/<totalCount>(\d+)<\/totalCount>/)?.[1];
+            send(`[raw] totalCount=${totalCount || "MISSING"}`);
+            const servListCount = (text.match(/<servList>/g) || []).length;
+            send(`[raw] servList 매칭=${servListCount}`);
+            const resultMsg = text.match(/<resultMsg>([^<]+)<\/resultMsg>/)?.[1];
+            const resultCode = text.match(/<resultCode>([^<]+)<\/resultCode>/)?.[1];
+            send(`[raw] resultCode=${resultCode || "?"} resultMsg=${resultMsg || "?"}`);
+            send(`[raw] 첫 600자: ${text.substring(0, 600).replace(/\s+/g, " ")}`);
+          } catch (err) {
+            send(`[raw] threw: ${err instanceof Error ? err.message : err}`);
+          }
+        }
+
         // 5) source_fetch_log SELECT
         send(`source_fetch_log SELECT 시작`);
         const { data: logRow, error: selectErr } = await supabase
