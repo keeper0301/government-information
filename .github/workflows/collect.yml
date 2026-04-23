@@ -19,6 +19,9 @@ jobs:
     strategy:
       # 하나 실패해도 나머지 계속 진행 (부분 수집 허용)
       fail-fast: false
+      # Vercel serverless 동시 cold start 경쟁 방지 (15개 동시 호출 → timeout)
+      # 3개씩 묶어 5 라운드로 순차화. 각 라운드 약 60~90초, 총 5~7분
+      max-parallel: 3
       matrix:
         source:
           - bokjiro
