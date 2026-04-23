@@ -59,7 +59,10 @@ const collector: Collector = {
 
       if (page === 1) {
         const tm = xml.match(/<totalCount>(\d+)<\/totalCount>/);
-        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), 30);
+        // 최대 10페이지(=5000건) 로 제한.
+        // Vercel Hobby 60초 한도 안에서 batch upsert + 첫 수집 INSERT 비용 고려.
+        // 다음 cron 에서 이어서 갱신되므로 한 번에 다 가져오지 않아도 됨.
+        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), 10);
       }
 
       const regex = /<servList>([\s\S]*?)<\/servList>/g;

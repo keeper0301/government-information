@@ -111,24 +111,62 @@ export async function runOneCollector(
   let latestPublishedAt: string | null = null;
   let lastSourceId: string | null = null;
 
+  // ─────────────────────────────────────────────────────────────
+  // 배치 업서트
+  // ─────────────────────────────────────────────────────────────
+  // 이전엔 yield 마다 await upsertItem (RPC 1회). 신규 3개 source
+  // (local-welfare/fsc/kinfa) 는 첫 수집 시 100~수천 건 INSERT 가
+  // 있어 Vercel Hobby 60초 한도를 넘겼음.
+  // 이제 50건씩 한 번에 upsert → RPC 횟수 50배 감소.
+  const FLUSH_SIZE = 50;
+  const buffer: CollectedItem[] = [];
+
+  async function flush() {
+    if (buffer.length === 0) return;
+    try {
+      await upsertItems(supabase, buffer);
+      result.collected += buffer.length;
+    } catch (err) {
+      // 배치 실패 시 개별 폴백 (한 건이 unique 위반 등으로 깨졌을 때
+      // 나머지가 함께 실패하지 않도록)
+      console.error(
+        `[collect:${collector.sourceCode}] 배치 ${buffer.length}건 실패, 개별 폴백`,
+        err,
+      );
+      for (const item of buffer) {
+        try {
+          await upsertItem(supabase, item);
+          result.collected++;
+        } catch (innerErr) {
+          result.errors++;
+          console.error(
+            `[collect:${collector.sourceCode}] upsert 실패`,
+            innerErr,
+          );
+        }
+      }
+    } finally {
+      buffer.length = 0;
+    }
+  }
+
   try {
     for await (const item of collector.fetch({ lastFetchedAt })) {
-      try {
-        await upsertItem(supabase, item);
-        result.collected++;
-        if (item.publishedAt) {
-          if (!latestPublishedAt || item.publishedAt > latestPublishedAt) {
-            latestPublishedAt = item.publishedAt;
-          }
+      buffer.push(item);
+      if (item.publishedAt) {
+        if (!latestPublishedAt || item.publishedAt > latestPublishedAt) {
+          latestPublishedAt = item.publishedAt;
         }
-        lastSourceId = item.sourceId;
-      } catch (err) {
-        result.errors++;
-        // 개별 실패는 흐름을 멈추지 않음
-        console.error(`[collect:${collector.sourceCode}] upsert 실패`, err);
+      }
+      lastSourceId = item.sourceId;
+      if (buffer.length >= FLUSH_SIZE) {
+        await flush();
       }
     }
+    await flush();
   } catch (err) {
+    // fetch 도중 throw 가 나도 지금까지 buffer 에 모인 건 저장 시도
+    await flush();
     result.error = err instanceof Error ? err.message : String(err);
   }
 
@@ -151,13 +189,10 @@ export async function runOneCollector(
 }
 
 // ============================================================
-// 개별 item DB 저장 (welfare / loan 분기)
+// 개별 item → DB row 변환
 // ============================================================
-async function upsertItem(supabase: SupabaseAdmin, item: CollectedItem) {
-  const table = item.table === "loan" ? "loan_programs" : "welfare_programs";
+function toRow(item: CollectedItem): Record<string, unknown> {
   const now = new Date().toISOString();
-
-  // 공통 필드
   const base: Record<string, unknown> = {
     title: item.title.substring(0, 200),
     category: item.category || (item.table === "loan" ? "대출" : "소득"),
@@ -192,17 +227,56 @@ async function upsertItem(supabase: SupabaseAdmin, item: CollectedItem) {
     base.repayment_period = item.repaymentPeriod ?? null;
   }
 
-  // (source_code, source_id) 기반 upsert — 007 마이그레이션의 unique index
+  return base;
+}
+
+// ============================================================
+// 단건 upsert (배치 폴백 시에만 사용)
+// ============================================================
+async function upsertItem(supabase: SupabaseAdmin, item: CollectedItem) {
+  const table = item.table === "loan" ? "loan_programs" : "welfare_programs";
+  const row = toRow(item);
+
   const { error } = await supabase
     .from(table)
-    .upsert(base, { onConflict: "source_code,source_id" });
+    .upsert(row, { onConflict: "source_code,source_id" });
 
   if (error) {
     // source_id 가 없거나 unique 위반 외 에러 → title 기반 폴백 (기존 호환)
     const { error: fallbackError } = await supabase
       .from(table)
-      .upsert(base, { onConflict: "title" });
+      .upsert(row, { onConflict: "title" });
     if (fallbackError) throw fallbackError;
+  }
+}
+
+// ============================================================
+// 배치 upsert — 같은 테이블끼리 묶어서 1회 RPC 로 전송
+// ============================================================
+async function upsertItems(supabase: SupabaseAdmin, items: CollectedItem[]) {
+  if (items.length === 0) return;
+
+  // welfare / loan 분리
+  const welfareRows: Record<string, unknown>[] = [];
+  const loanRows: Record<string, unknown>[] = [];
+  for (const item of items) {
+    const row = toRow(item);
+    if (item.table === "loan") loanRows.push(row);
+    else welfareRows.push(row);
+  }
+
+  if (welfareRows.length > 0) {
+    const { error } = await supabase
+      .from("welfare_programs")
+      .upsert(welfareRows, { onConflict: "source_code,source_id" });
+    if (error) throw error;
+  }
+
+  if (loanRows.length > 0) {
+    const { error } = await supabase
+      .from("loan_programs")
+      .upsert(loanRows, { onConflict: "source_code,source_id" });
+    if (error) throw error;
   }
 }
 
