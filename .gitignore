@@ -52,3 +52,6 @@ supabase/.temp/
 # Claude Code 개인 설정 (권한·환경변수 등, 커밋하지 않음)
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# 임시 디버그 파일 (curl payload, dryRun 결과 등)
+tmp/
