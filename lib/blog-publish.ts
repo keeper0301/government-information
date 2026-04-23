@@ -8,9 +8,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generateBlogPost, type ProgramContext } from "@/lib/ai";
 import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
 
-// AdSense 가이드 — 본문 최소 길이 (한글 기준)
+// AdSense 가이드 — 본문 길이 (한글 기준)
 // 1,000자 미만이면 "valuable inventory: low quality" 로 거절될 위험
+// 3,000자 초과는 가독성 떨어지고 AI 가 잡담 늘리는 신호 (재시도 권장)
 const MIN_CONTENT_LENGTH = 1000;
+const MAX_CONTENT_LENGTH = 3000;
 const VALID_CATEGORIES = new Set([
   "청년", "소상공인", "주거", "육아·가족", "노년", "학생·교육", "큐레이션",
 ]);
@@ -29,12 +31,12 @@ const WEEKDAY_CATEGORY: Record<number, string> = {
 
 // 카테고리별로 정책 데이터에서 매칭에 쓸 키워드 (target/title/description 에서 검색)
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  "청년": ["청년", "취업준비생", "구직자", "20대", "30대"],
-  "소상공인": ["소상공인", "자영업", "창업", "사업자", "중소기업"],
-  "주거": ["주거", "전세", "월세", "임대", "주택"],
-  "육아·가족": ["육아", "보육", "출산", "아동", "가족", "다자녀"],
-  "노년": ["노년", "고령", "노인", "65세", "기초연금"],
-  "학생·교육": ["학생", "장학", "학자금", "교육비", "유아"],
+  "청년": ["청년", "취업준비생", "구직자", "20대", "30대", "사회초년생"],
+  "소상공인": ["소상공인", "자영업", "창업", "사업자", "중소기업", "벤처", "스타트업"],
+  "주거": ["주거", "전세", "월세", "임대", "주택", "보증금", "공공임대", "전월세"],
+  "육아·가족": ["육아", "보육", "출산", "아동", "가족", "다자녀", "임산부", "양육", "어린이집", "유아", "신생아"],
+  "노년": ["노년", "고령", "노인", "65세", "기초연금", "어르신", "은퇴", "장년", "노후", "60세"],
+  "학생·교육": ["학생", "장학", "학자금", "교육비", "초등", "중등", "고등학생", "대학생", "학교", "학습"],
 };
 
 // 오늘 발행할 카테고리 결정
@@ -80,10 +82,10 @@ export async function pickProgramForCategory(category: string): Promise<{
   const keywords = CATEGORY_KEYWORDS[category] || [];
   if (keywords.length === 0) return null;
 
-  // 키워드를 title 또는 target 에 포함하는 welfare 정책 (마감 임박순, 50개)
-  // OR 검색을 위해 .or() 사용
+  // 키워드를 title/target/description 에 포함하는 정책 (마감 임박순)
+  // OR 검색을 위해 .or() 사용. description 까지 보면 매칭 폭이 넓어짐
   const orFilter = keywords
-    .flatMap((k) => [`title.ilike.%${k}%`, `target.ilike.%${k}%`])
+    .flatMap((k) => [`title.ilike.%${k}%`, `target.ilike.%${k}%`, `description.ilike.%${k}%`])
     .join(",");
 
   // welfare 우선 시도
@@ -124,24 +126,9 @@ export async function pickProgramForCategory(category: string): Promise<{
     }
   }
 
-  // 매칭 실패 — 마감 임박 정책 아무거나 1개
-  const { data: fallback } = await admin
-    .from("welfare_programs")
-    .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
-    .gte("apply_end", today)
-    .order("apply_end", { ascending: true })
-    .limit(20);
-
-  for (const w of fallback || []) {
-    if (!usedWelfare.has(w.id)) {
-      return {
-        programId: w.id,
-        programType: "welfare",
-        ctx: { type: "welfare", ...w },
-      };
-    }
-  }
-
+  // 키워드 매칭 실패 시: 카테고리 무관 fallback 안 함
+  // 잘못된 정책으로 카테고리 글 발행하면 SEO·UX 모두 나쁨
+  // cron 다음날 재시도되니 발행 한 번 거르는 게 안전
   return null;
 }
 
@@ -207,6 +194,9 @@ export async function publishOnePost(opts: {
   const plainLen = generated.content.replace(/<[^>]+>/g, "").trim().length;
   if (plainLen < MIN_CONTENT_LENGTH) {
     throw new Error(`본문이 너무 짧음 (${plainLen}자, 최소 ${MIN_CONTENT_LENGTH}자). AdSense 정책상 발행 불가.`);
+  }
+  if (plainLen > MAX_CONTENT_LENGTH) {
+    throw new Error(`본문이 너무 김 (${plainLen}자, 최대 ${MAX_CONTENT_LENGTH}자). AI 가 잡담 늘리는 신호. 다음 cron 에서 재시도.`);
   }
   if (!VALID_CATEGORIES.has(generated.category)) {
     // AI 가 다른 카테고리 반환 시 요청 카테고리로 강제 (안전한 fallback)
