@@ -71,19 +71,21 @@ export async function CalendarPreview() {
           달력 전체보기
         </a>
       </div>
-      <div className="grid grid-cols-7 gap-0.5 bg-grey-100 rounded-lg overflow-hidden">
-        {/* 요일 헤더 */}
+      {/* 매거진 달력: dot marker + editorial-num 숫자 + 요일 small caps */}
+      <div className="grid grid-cols-7 gap-px bg-grey-200 rounded-xl overflow-hidden border border-grey-200">
+        {/* 요일 헤더 (small caps tracking) */}
         {DAYS.map((d) => (
           <div
             key={d}
-            className="bg-grey-50 py-2.5 text-center text-xs font-semibold text-grey-500"
+            className="bg-white py-3 text-center text-[11px] font-bold text-grey-600"
+            style={{ letterSpacing: "3px" }}
           >
             {d}
           </div>
         ))}
         {/* 빈 칸 (1일 시작 전) */}
         {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`e${i}`} className="bg-grey-50 min-h-[90px] max-md:min-h-[68px]" />
+          <div key={`e${i}`} className="bg-white min-h-[104px] max-md:min-h-[72px]" />
         ))}
         {/* 날짜 칸 */}
         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -93,45 +95,55 @@ export async function CalendarPreview() {
           return (
             <div
               key={day}
-              className={`relative bg-white p-1.5 min-h-[90px] max-md:min-h-[68px] text-[13px] font-medium overflow-hidden ${
-                isToday ? "bg-blue-50" : ""
+              className={`relative p-2 min-h-[104px] max-md:min-h-[72px] overflow-hidden transition-colors ${
+                isToday ? "bg-blue-50" : "bg-white"
               }`}
             >
-              {/* 날짜 숫자 */}
-              <div className="text-right mb-1">
-                <span className={isToday ? "text-blue-500 font-bold" : "text-grey-800"}>
-                  {day}
-                </span>
+              {/* 날짜 숫자 — 좌상단 + Editorial serif (editorial-num) */}
+              <div
+                className={`editorial-num leading-none mb-2 ${
+                  isToday
+                    ? "text-blue-700 font-bold text-[22px]"
+                    : "text-grey-700 text-[17px]"
+                }`}
+              >
+                {day}
               </div>
-              {/* 사업명 태그 (최대 2개 + 더보기) */}
+              {/* 사업명 — dot + 어두운 텍스트 (데스크톱) */}
               {items && (
-                <div className="flex flex-col gap-[3px]">
+                <div className="flex flex-col gap-[4px]">
                   {items.slice(0, 2).map((item) => (
                     <a
                       key={item.id}
                       href={`/${item.type}/${item.id}`}
-                      className={`block text-[10px] leading-[1.3] px-1 py-[2px] rounded truncate no-underline max-md:hidden hover:opacity-80 transition-opacity ${
-                        item.type === "welfare"
-                          ? "bg-blue-50 text-blue-700"      /* 버건디 톤 */
-                          : "bg-[#F3E8D4] text-[#6B3A00]"   /* 세피아 톤 (WCAG AA 통과) */
-                      }`}
+                      className="flex items-start gap-1.5 no-underline group max-md:hidden"
                       title={item.title}
                     >
-                      {shortenTitle(item.title)}
+                      <span
+                        aria-hidden="true"
+                        className={`shrink-0 mt-[5px] w-[6px] h-[6px] rounded-full ${
+                          item.type === "welfare"
+                            ? "bg-blue-500"            /* 버건디 dot */
+                            : "bg-[#B87A2E]"           /* 세피아 dot */
+                        }`}
+                      />
+                      <span className="text-[11.5px] leading-[1.4] text-grey-800 group-hover:text-grey-900 font-medium truncate">
+                        {shortenTitle(item.title)}
+                      </span>
                     </a>
                   ))}
                   {items.length > 2 && (
-                    <div className="text-[10px] text-grey-500 px-1 max-md:hidden">
-                      +{items.length - 2}건
+                    <div className="editorial-num text-[12px] text-grey-500 pl-[14px] max-md:hidden">
+                      +{items.length - 2}
                     </div>
                   )}
-                  {/* 모바일에서는 점으로 표시 */}
+                  {/* 모바일에서는 점만 */}
                   <div className="hidden max-md:flex gap-1 justify-center mt-1">
                     {items.some((it) => it.type === "welfare") && (
-                      <span className="w-[5px] h-[5px] rounded-full bg-blue-500" />
+                      <span className="w-[6px] h-[6px] rounded-full bg-blue-500" />
                     )}
                     {items.some((it) => it.type === "loan") && (
-                      <span className="w-[5px] h-[5px] rounded-full bg-orange" />
+                      <span className="w-[6px] h-[6px] rounded-full bg-[#B87A2E]" />
                     )}
                   </div>
                 </div>
@@ -139,6 +151,17 @@ export async function CalendarPreview() {
             </div>
           );
         })}
+      </div>
+      {/* 범례 (데스크톱) */}
+      <div className="hidden md:flex items-center gap-5 mt-4 text-[12px] text-grey-600">
+        <div className="flex items-center gap-1.5">
+          <span className="w-[7px] h-[7px] rounded-full bg-blue-500" aria-hidden="true" />
+          <span>복지·수혜</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-[7px] h-[7px] rounded-full bg-[#B87A2E]" aria-hidden="true" />
+          <span>대출·지원금</span>
+        </div>
       </div>
     </div>
   );
