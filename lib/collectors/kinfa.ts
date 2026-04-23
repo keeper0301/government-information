@@ -60,7 +60,9 @@ const collector: Collector = {
 
   async *fetch() {
     const PER_PAGE = 100;
-    const MAX_PAGES = 5; // 최대 500건 (KINFA 총 325건 전량 커버)
+    // MAX_PAGES 2 = 최대 200건. KINFA 총 325건 중 상위 200만 수집.
+    // 서민금융 대출상품은 거의 변동 없어 전량 재수집 불필요. Vercel 60초 안전.
+    const MAX_PAGES = 2;
 
     for (let page = 1; page <= MAX_PAGES; page++) {
       const params = new URLSearchParams({

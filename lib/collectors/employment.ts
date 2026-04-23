@@ -66,7 +66,10 @@ const collector: Collector = {
   async *fetch() {
     const minYear = currentMinAllowedYear();
     const PER_PAGE = 100;
-    const MAX_PAGES = 5; // 최대 500건 (페이지당 100)
+    // MAX_PAGES 2 = 최대 200건. lastFetchedAt 증분 수집 미구현이라 매번 전량
+    // 재수집 시도 → Vercel 60초 한도 초과 방지 위해 상위 페이지만.
+    // 고용 공고는 최신순 정렬돼 있으므로 상위 2페이지면 최근 공고 커버.
+    const MAX_PAGES = 2;
 
     for (let page = 1; page <= MAX_PAGES; page++) {
       const params = new URLSearchParams({

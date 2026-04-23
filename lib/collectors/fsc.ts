@@ -80,7 +80,9 @@ const collector: Collector = {
 
   async *fetch() {
     const PER_PAGE = 100;
-    const MAX_PAGES = 10; // 최대 1,000건 (전체 8,500 중 최신 일부)
+    // MAX_PAGES 3 = 최대 300건. lastFetchedAt 증분 수집 미구현 + Vercel 60초
+    // 한도 방지. 금융상품은 매일 대량 신규 등록 안 됨, 상위 3페이지면 최신분 커버.
+    const MAX_PAGES = 3;
 
     for (let page = 1; page <= MAX_PAGES; page++) {
       const params = new URLSearchParams({
