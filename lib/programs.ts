@@ -3,6 +3,7 @@ import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
 import {
   AGE_KEYWORDS,
   OCCUPATION_KEYWORDS,
+  REGION_OPTIONS,
   type AgeOption,
   type OccupationOption,
 } from "@/lib/profile-options";
@@ -200,8 +201,15 @@ export async function getPersonalizedWelfare(
     .order("view_count", { ascending: false })
     .limit(100);
 
-  if (profile.region && profile.region !== "전국") {
-    query = query.or(`region.eq.${profile.region},region.eq.전국,region.is.null`);
+  // profile.region 은 사용자가 RLS 를 우회해 임의 값을 저장할 수 있으므로
+  // 서버에서 REGION_OPTIONS 화이트리스트 재검증 (PostgREST .or() interpolation
+  // injection 방지)
+  const validRegion =
+    profile.region && (REGION_OPTIONS as readonly string[]).includes(profile.region)
+      ? profile.region
+      : null;
+  if (validRegion && validRegion !== "전국") {
+    query = query.or(`region.eq.${validRegion},region.eq.전국,region.is.null`);
   }
 
   const { data } = await query;
