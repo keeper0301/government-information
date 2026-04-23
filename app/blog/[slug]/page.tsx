@@ -20,6 +20,17 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 
 type FaqItem = { question: string; answer: string };
 
+// 한글 slug 처리: Next.js 16 의 params.slug 가 percent-encoded 형태로
+// 들어올 수 있어 DB 매칭 실패 → 500/404. decode 한 번 더 안전망.
+// 이미 decode 된 경우 decodeURIComponent 가 그대로 반환하므로 no-op.
+function safeDecodeSlug(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 type BlogPost = {
   id: string;
   slug: string;
@@ -42,7 +53,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecodeSlug(rawSlug);
   const supabase = await createClient();
   const { data: post } = await supabase
     .from("blog_posts")
@@ -81,7 +93,8 @@ export default async function BlogPostPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecodeSlug(rawSlug);
   const supabase = await createClient();
   const { data } = await supabase
     .from("blog_posts")
