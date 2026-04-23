@@ -19,8 +19,26 @@ const TRANSLATIONS: Array<{ match: RegExp; message: string }> = [
     message: "이메일 인증이 아직 완료되지 않았어요. 받은 편지함을 확인해주세요.",
   },
   {
-    match: /user already registered/i,
-    message: "이미 가입된 이메일이에요. 로그인 링크를 받아주세요.",
+    match: /user already registered|already been registered/i,
+    message: "이미 가입된 이메일이에요. 로그인 페이지에서 로그인해주세요.",
+  },
+
+  // 비밀번호 관련
+  {
+    match: /password should be at least|weak password|password is too short/i,
+    message: "비밀번호는 8자 이상으로 입력해주세요.",
+  },
+  {
+    match: /passwords do not match|password mismatch/i,
+    message: "비밀번호가 일치하지 않아요.",
+  },
+  {
+    match: /new password should be different|same as the old/i,
+    message: "새 비밀번호는 기존 비밀번호와 달라야 해요.",
+  },
+  {
+    match: /signup.*disabled|signups not allowed/i,
+    message: "현재 회원가입이 일시 중단되었어요. 잠시 후 다시 시도해주세요.",
   },
 
   // 속도 제한

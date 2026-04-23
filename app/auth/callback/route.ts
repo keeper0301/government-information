@@ -20,6 +20,10 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   // 로그인 후 이동할 페이지 (없거나 외부 URL이면 홈으로 강제)
   const next = safeNext(searchParams.get("next"));
+  // 인증 흐름 종류 (Supabase 가 메일 링크에 type 파라미터를 붙여서 보냄)
+  // - "recovery": 비밀번호 재설정 메일에서 온 경우 → 새 비밀번호 입력 페이지로 보냄
+  // - 그 외(매직링크, OAuth, 가입 확인 등): 평소대로 next 페이지로
+  const authType = searchParams.get("type");
   // OAuth 제공사가 에러를 돌려준 경우 (예: 사용자가 동의 취소)
   const oauthError = searchParams.get("error");
   const oauthErrorDescription = searchParams.get("error_description");
@@ -61,6 +65,12 @@ export async function GET(request: Request) {
     if (profileError) {
       console.error("[auth/callback] 프로필 생성 실패:", profileError.message);
     }
+  }
+
+  // 비밀번호 재설정 흐름이면 새 비밀번호 입력 페이지로 이동
+  // (이때 세션은 임시로 만들어진 상태이고, 새 비번을 저장하면 정상 세션이 됨)
+  if (authType === "recovery") {
+    return NextResponse.redirect(`${origin}/reset-password`);
   }
 
   // 정상 로그인 → 원래 가려던 페이지 또는 홈으로

@@ -1,25 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
 
 // 로그인 페이지
-// - 카카오/구글 소셜 로그인 버튼 (빠른 가입)
-// - 이메일 매직링크 (소셜 계정이 없는 사용자용 대안)
+// - 카카오/구글 소셜 로그인 버튼 (가장 간편)
+// - 이메일 + 비밀번호 로그인 (기본 모드)
+// - 이메일 매직링크 로그인 (비밀번호 없는 분을 위한 대안, 토글로 전환)
+// - 회원가입 / 비밀번호 분실 보조 링크
 export default function LoginPage() {
-  // 이메일 입력값과 전송 상태 관리
+  const router = useRouter();
+
+  // 이메일 폼 모드 — 'password' (기본) 또는 'magic' (메일 링크)
+  const [mode, setMode] = useState<"password" | "magic">("password");
+
+  // 입력값
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+
+  // 매직링크 전송 완료 표시
+  const [magicSent, setMagicSent] = useState(false);
+  // 비밀번호 변경 직후 진입 시 보여줄 성공 알림 (?reset=success)
+  const [resetSuccess, setResetSuccess] = useState(false);
+
   const [error, setError] = useState("");
-  // 어떤 소셜 버튼이 눌렸는지 (중복 클릭 방지용)
-  const [loading, setLoading] = useState<"kakao" | "google" | null>(null);
+  // 어떤 액션이 실행 중인지 (중복 클릭 방지)
+  const [loading, setLoading] = useState<
+    "kakao" | "google" | "password" | "magic" | null
+  >(null);
 
   // 로그인 성공 후 돌아갈 페이지 (?next=/xxx)
   // 예: /alerts 에 접근하려다 로그인 페이지로 온 사용자는 로그인 후 /alerts 로 복귀
   const [next, setNext] = useState("/");
 
-  // URL 쿼리 파라미터 읽기 (?next, ?error)
+  // URL 쿼리 파라미터 읽기 (?next, ?error, ?reset=success)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const nextParam = params.get("next");
@@ -31,9 +47,16 @@ export default function LoginPage() {
     const errMsg = params.get("error");
     if (errMsg) {
       setError(translateAuthError(errMsg));
-      // URL 에서 error 파라미터만 제거 (next 는 유지)
+    }
+    // 비밀번호 변경 완료 후 진입 시 알림
+    if (params.get("reset") === "success") {
+      setResetSuccess(true);
+    }
+    // URL 에서 일회성 파라미터(error, reset)만 제거 (next 는 유지)
+    if (errMsg || params.get("reset")) {
       const cleanParams = new URLSearchParams(window.location.search);
       cleanParams.delete("error");
+      cleanParams.delete("reset");
       const query = cleanParams.toString();
       window.history.replaceState(
         {},
@@ -62,10 +85,31 @@ export default function LoginPage() {
     }
   }
 
-  // 이메일 매직링크 방식 로그인 (기존 유지)
-  async function handleEmailSubmit(e: React.FormEvent) {
+  // 이메일 + 비밀번호 로그인
+  async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setLoading("password");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      setError(translateAuthError(error.message));
+      setLoading(null);
+      return;
+    }
+    // 성공 — 원래 가려던 페이지(또는 홈) 로 이동 + 서버 컴포넌트 재검증
+    router.push(next);
+    router.refresh();
+  }
+
+  // 이메일 매직링크 로그인 (비밀번호 없이 메일 링크로)
+  async function handleMagicSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading("magic");
     const supabase = createClient();
     // 매직링크 클릭 시 돌아올 URL 에도 next 를 붙여서 복귀 경로 유지
     const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
@@ -76,8 +120,9 @@ export default function LoginPage() {
     if (error) {
       setError(translateAuthError(error.message));
     } else {
-      setSent(true);
+      setMagicSent(true);
     }
+    setLoading(null);
   }
 
   return (
@@ -88,8 +133,15 @@ export default function LoginPage() {
       <p className="text-[15px] text-grey-600 mb-8 leading-[1.6]">
         소셜 계정으로 빠르게 시작하거나
         <br />
-        이메일로 로그인 링크를 받으세요.
+        이메일로 로그인하세요.
       </p>
+
+      {/* 비밀번호 변경 완료 알림 (초록 톤) */}
+      {resetSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-sm text-green-700 leading-[1.5]">
+          비밀번호가 변경되었어요. 새 비밀번호로 로그인해주세요.
+        </div>
+      )}
 
       {/* 공통 에러 메시지 (소셜 로그인·이메일·콜백 에러 모두 여기 표시) */}
       {error && (
@@ -151,21 +203,33 @@ export default function LoginPage() {
         <div className="flex-1 h-px bg-grey-200" />
       </div>
 
-      {/* 이메일 매직링크 로그인 영역 */}
-      {sent ? (
+      {/* 이메일 로그인 영역 — 비밀번호 모드 vs 매직링크 모드 토글 */}
+      {magicSent ? (
+        // 매직링크 전송 완료 안내
         <div className="bg-blue-50 rounded-lg p-5 text-[15px] text-blue-600 font-medium leading-[1.6]">
-          {email}로 로그인 링크를 보냈습니다.
+          {email}로 로그인 링크를 보냈어요.
           <br />
           이메일을 확인해주세요.
         </div>
-      ) : (
-        <form onSubmit={handleEmailSubmit}>
+      ) : mode === "password" ? (
+        // === 비밀번호 모드 ===
+        <form onSubmit={handlePasswordSubmit}>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="이메일 주소"
             required
+            autoComplete="email"
+            className="w-full px-4 py-3 border-[1.5px] border-grey-200 rounded-lg text-base text-grey-900 font-pretendard outline-none transition-all focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(49,130,246,0.12)] placeholder:text-grey-400 mb-3"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="비밀번호"
+            required
+            autoComplete="current-password"
             className="w-full px-4 py-3 border-[1.5px] border-grey-200 rounded-lg text-base text-grey-900 font-pretendard outline-none transition-all focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(49,130,246,0.12)] placeholder:text-grey-400 mb-3"
           />
           <button
@@ -173,9 +237,69 @@ export default function LoginPage() {
             disabled={loading !== null}
             className="w-full py-3 bg-blue-500 text-white border-none rounded-lg text-[15px] font-semibold font-pretendard cursor-pointer hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
-            이메일로 로그인 링크 받기
+            {loading === "password" ? "로그인 중..." : "로그인"}
+          </button>
+          {/* 모드 전환 — 매직링크로 */}
+          <button
+            type="button"
+            onClick={() => {
+              setMode("magic");
+              setError("");
+            }}
+            className="w-full text-center mt-3 text-[14px] text-grey-600 hover:text-grey-900 bg-transparent border-none cursor-pointer"
+          >
+            비밀번호 없이 이메일 링크로 받기
           </button>
         </form>
+      ) : (
+        // === 매직링크 모드 ===
+        <form onSubmit={handleMagicSubmit}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일 주소"
+            required
+            autoComplete="email"
+            className="w-full px-4 py-3 border-[1.5px] border-grey-200 rounded-lg text-base text-grey-900 font-pretendard outline-none transition-all focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(49,130,246,0.12)] placeholder:text-grey-400 mb-3"
+          />
+          <button
+            type="submit"
+            disabled={loading !== null}
+            className="w-full py-3 bg-blue-500 text-white border-none rounded-lg text-[15px] font-semibold font-pretendard cursor-pointer hover:bg-blue-600 transition-colors disabled:opacity-50"
+          >
+            {loading === "magic" ? "전송 중..." : "이메일로 로그인 링크 받기"}
+          </button>
+          {/* 모드 전환 — 비밀번호로 */}
+          <button
+            type="button"
+            onClick={() => {
+              setMode("password");
+              setError("");
+            }}
+            className="w-full text-center mt-3 text-[14px] text-grey-600 hover:text-grey-900 bg-transparent border-none cursor-pointer"
+          >
+            비밀번호로 로그인하기
+          </button>
+        </form>
+      )}
+
+      {/* 보조 링크 — 비밀번호 분실 / 회원가입 */}
+      {!magicSent && (
+        <div className="mt-8 pt-6 border-t border-grey-100 flex items-center justify-between text-[14px]">
+          <a
+            href="/forgot-password"
+            className="text-grey-600 no-underline hover:text-grey-900"
+          >
+            비밀번호를 잊으셨나요?
+          </a>
+          <a
+            href="/signup"
+            className="text-blue-500 font-semibold no-underline hover:underline"
+          >
+            회원가입
+          </a>
+        </div>
       )}
     </main>
   );
