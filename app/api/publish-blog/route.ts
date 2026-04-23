@@ -1,22 +1,22 @@
 // ============================================================
 // /api/publish-blog — 블로그 글 자동 발행 (cron)
 // ============================================================
-// 매일 1번 Vercel Cron 에서 호출.
+// 매일 1번 Vercel Cron 에서 호출. count 파라미터로 1~3 글 동시 발행.
 //
 // 인증:
 //   Vercel Cron 은 자동으로 Authorization: Bearer ${CRON_SECRET} 헤더 추가.
 //   외부 호출 차단 위해 동일 시크릿 검증.
 //
-// 동작:
-//   1) 오늘 요일 → 카테고리 결정 (월=청년, 화=소상공인, ...)
-//   2) 미발행 정책 1개 선택 (마감 임박 우선)
-//   3) Gemini API 로 글 생성 (title·content·faqs·tags)
-//   4) blog_posts 에 저장 (published_at = now)
+// 동작 (GET ?count=N):
+//   1) 오늘부터 +0,+1,+2 일치 N개 카테고리 선택
+//   2) Promise.allSettled 로 병렬 발행 (한 개 실패해도 나머지 진행)
+//   3) 각 카테고리별 정책 1개 골라서 Gemini → DB 저장
+//   4) 실패한 카테고리만 모아서 운영자 알림
 //
-// 수동 테스트:
+// 수동 테스트 (POST):
 //   POST { dryRun: true, category: "청년" } — DB 저장 안 하고 결과만
-//   POST { category: "청년" } — 특정 카테고리로 발행
-//   POST {} — 오늘 요일 카테고리로 발행
+//   POST { category: "청년" } — 특정 카테고리로 1글 발행
+//   POST {} — 오늘 요일 카테고리로 1글 발행
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -90,24 +90,60 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Vercel Cron 또는 인증된 GET → 자동 발행
-  try {
-    const result = await publishOnePost();
-    return NextResponse.json({
-      message: "글 발행 완료 (cron)",
-      slug: result.slug,
-      title: result.generated.title,
-      category: result.generated.category,
-      url: `/blog/${result.slug}`,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "알 수 없는 오류";
-    const category = getTodayCategory();
-    // GET 은 cron 자동 호출. 실패 시 무조건 알림.
-    await notifyCronFailure("publish-blog (cron)", message, `카테고리: ${category}`);
-    return NextResponse.json(
-      { error: "발행 실패", detail: message, category },
-      { status: 500 },
-    );
+  // ?count=N (1~3) — 여러 글 한 번에 발행 (오늘 / 내일 / 모레 카테고리)
+  // Vercel Hobby cron 한도 (하루 1회) 우회용
+  // 60초 maxDuration 안전 마진 위해 max 3 (Gemini 호출 ~30초 × 3 병렬 = ~30초)
+  const countParam = parseInt(request.nextUrl.searchParams.get("count") || "1", 10);
+  const count = Math.min(Math.max(countParam, 1), 3);
+
+  // 카테고리 목록 결정 (오늘부터 +0, +1, +2)
+  const categories: string[] = [];
+  const baseDate = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + i);
+    categories.push(getTodayCategory(d));
   }
+
+  // 병렬 발행 — 한 개 실패해도 나머지는 진행 (allSettled)
+  const settled = await Promise.allSettled(
+    categories.map((cat) => publishOnePost({ category: cat })),
+  );
+
+  // 결과 정리
+  const results = settled.map((s, i) => {
+    if (s.status === "fulfilled") {
+      return {
+        category: categories[i],
+        ok: true,
+        slug: s.value.slug,
+        title: s.value.generated.title,
+        url: `/blog/${s.value.slug}`,
+      };
+    }
+    return {
+      category: categories[i],
+      ok: false,
+      error: s.reason instanceof Error ? s.reason.message : String(s.reason),
+    };
+  });
+
+  // 실패한 카테고리만 모아서 알림 (성공 1+ 면 200, 모두 실패면 500)
+  const failures = results.filter((r) => !r.ok);
+  if (failures.length > 0) {
+    const detail = failures.map((f) => `[${f.category}] ${f.error}`).join("\n");
+    await notifyCronFailure("publish-blog (cron)", detail, `count=${count}`);
+  }
+
+  const status = results.every((r) => !r.ok) ? 500 : 200;
+  return NextResponse.json(
+    {
+      message: status === 200 ? "발행 완료" : "모든 카테고리 발행 실패",
+      count,
+      success: results.filter((r) => r.ok).length,
+      failed: failures.length,
+      results,
+    },
+    { status },
+  );
 }

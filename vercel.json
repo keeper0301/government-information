@@ -13,7 +13,7 @@
       "schedule": "0 5 * * *"
     },
     {
-      "path": "/api/publish-blog",
+      "path": "/api/publish-blog?count=2",
       "schedule": "0 6 * * *"
     }
   ]
