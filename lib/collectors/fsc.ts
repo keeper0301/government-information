@@ -165,7 +165,7 @@ const collector: Collector = {
         const textBlob = [fullTitle, target, purpose, description].join(" ");
 
         const regionTags = extractRegionTags(textBlob);
-        if (regionTags.length === 0) regionTags.push(area || "전국");
+        if (regionTags.length === 0) regionTags.push("전국");
 
         const occupationTags = extractOccupationTags(textBlob);
 
