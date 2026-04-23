@@ -160,8 +160,9 @@ ${programInfo}
       responseMimeType: "application/json",
       // JSON 응답 강제. schema 는 텍스트 지시로도 충분
       temperature: 0.7,
-      // 2,300자 한글 + JSON overhead = 약 4,000~5,000 토큰. 8192 → 6144 로 줄여 길이 폭주 방지
-      maxOutputTokens: 6144,
+      // 본문 2,300자 + faqs 5개 + meta + tags ≈ 4,200~5,200 토큰. 안전 마진으로 7168.
+      // 길이 제어는 instruction + MAX_CONTENT_LENGTH 검증 두 단계로 처리 (여기는 절대 상한)
+      maxOutputTokens: 7168,
     },
   });
 
