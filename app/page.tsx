@@ -5,7 +5,14 @@ import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { AdSlot } from "@/components/ad-slot";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
-import { getTopWelfare, getTopLoans, getUrgentProgram } from "@/lib/programs";
+import {
+  getTopWelfare,
+  getTopLoans,
+  getUrgentPrograms,
+  getPersonalizedWelfare,
+  getPersonalizedLoans,
+  type ProfileLite,
+} from "@/lib/programs";
 import { createClient } from "@/lib/supabase/server";
 
 // 홈페이지는 로그인 사용자·비로그인 사용자마다 프로필 자동 채움이 달라서
@@ -13,22 +20,16 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  // 홈 데이터·로그인 사용자 프로필 병렬 조회
+  // 1) 로그인 상태 + urgent 리스트 먼저 확보 (이 둘은 프로필 유무와 무관)
   const supabase = await createClient();
-  const [welfare, loans, urgent, userResult] = await Promise.all([
-    getTopWelfare(4),
-    getTopLoans(3),
-    getUrgentProgram(),
+  const [urgents, userResult] = await Promise.all([
+    getUrgentPrograms(3),
     supabase.auth.getUser(),
   ]);
 
-  // 로그인 사용자면 프로필 추가 조회 (홈카드 자동 채움용)
+  // 2) 로그인 사용자면 프로필 조회 (홈카드 + 개인화 섹션 둘 다에 사용)
   const user = userResult.data.user;
-  let initialProfile: {
-    age_group: string | null;
-    region: string | null;
-    occupation: string | null;
-  } | null = null;
+  let initialProfile: ProfileLite | null = null;
   if (user) {
     const { data: profile } = await supabase
       .from("user_profiles")
@@ -43,6 +44,25 @@ export default async function Home() {
       };
     }
   }
+
+  // 3) 프로필 3필드 중 하나라도 있으면 개인화 모드
+  const hasProfile = !!(
+    initialProfile &&
+    (initialProfile.age_group || initialProfile.region || initialProfile.occupation)
+  );
+
+  // 4) 복지·대출 목록: 개인화 vs 일반 분기
+  const [welfare, loans] =
+    hasProfile && initialProfile
+      ? await Promise.all([
+          getPersonalizedWelfare(initialProfile, 4),
+          getPersonalizedLoans(initialProfile, 3),
+        ])
+      : await Promise.all([getTopWelfare(4), getTopLoans(3)]);
+
+  // 5) 섹션 제목도 상태에 따라 변경 (개인화 모드 사용자에게 명확히 인식시킴)
+  const welfareTitle = hasProfile ? "나에게 맞는 복지 서비스" : "지금 신청 가능한 복지서비스";
+  const loanTitle = hasProfile ? "나에게 맞는 대출·지원금" : "소상공인 대출·지원금";
 
   return (
     <main>
@@ -75,13 +95,13 @@ export default async function Home() {
       </section>
 
       {/* Alert */}
-      <AlertStrip program={urgent} />
+      <AlertStrip programs={urgents} isLoggedIn={!!user} />
 
-      {/* Welfare */}
+      {/* Welfare — 프로필 있으면 개인화 매칭 결과, 없으면 일반 */}
       <div className="bg-grey-50">
         <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
           <ProgramList
-            title="지금 신청 가능한 복지서비스"
+            title={welfareTitle}
             programs={welfare}
             moreHref="/welfare"
           />
@@ -91,10 +111,10 @@ export default async function Home() {
       {/* Ad */}
       <AdSlot />
 
-      {/* Loans */}
+      {/* Loans — 프로필 있으면 개인화, 없으면 일반 */}
       <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
         <ProgramList
-          title="소상공인 대출·지원금"
+          title={loanTitle}
           programs={loans}
           moreHref="/loan"
         />

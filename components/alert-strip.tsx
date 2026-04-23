@@ -1,29 +1,65 @@
 import type { DisplayProgram } from "@/lib/programs";
 
-export function AlertStrip({ program }: { program: DisplayProgram | null }) {
-  if (!program || program.dday === null) return null;
+type Props = {
+  programs: DisplayProgram[];
+  isLoggedIn?: boolean;
+};
 
-  const endDate = new Date();
-  endDate.setDate(endDate.getDate() + program.dday);
-  const dateStr = `${endDate.getMonth() + 1}.${endDate.getDate()} 마감`;
+// 마감 임박 다건 나열 (기존 1건 표시 → 정보 밀도 ↑)
+// - 데스크톱: 좌측 라벨 + 3건 가로 나열 + 우측 CTA
+// - 모바일: 가로 스크롤 (overflow-x-auto)
+// - 비로그인: CTA "내 조건 찾기" (/recommend)
+// - 로그인: CTA "모두 보기" (/calendar)
+export function AlertStrip({ programs, isLoggedIn = false }: Props) {
+  const visible = programs.filter((p) => p.dday !== null).slice(0, 3);
+  if (visible.length === 0) return null;
+
+  const ctaHref = isLoggedIn ? "/calendar" : "/recommend";
+  const ctaLabel = isLoggedIn ? "모두 보기" : "내 조건으로 찾기";
 
   return (
     <div className="max-w-content mx-auto px-10 max-md:px-6">
-      <a
-        href={`/${program.type}/${program.id}`}
-        className="flex items-center border-b border-grey-100 py-[18px] gap-3.5 cursor-pointer hover:opacity-75 transition-opacity no-underline text-inherit"
-      >
-        {/* 마감임박 배지 — 깊은 와인색 (브랜드 버건디 계열) */}
-        <span className="shrink-0 text-xs font-bold text-white bg-blue-700 rounded-[5px] px-2 py-[3px]">
-          D-{program.dday}
-        </span>
-        <span className="flex-1 text-[15px] font-medium text-grey-800 truncate">
-          {program.title} 신청이 {program.dday}일 후 마감됩니다
-        </span>
-        <span className="shrink-0 text-[13px] font-medium text-grey-800">
-          {dateStr}
-        </span>
-      </a>
+      <div className="flex items-center gap-4 border-b border-grey-100 py-[14px] max-md:py-3 max-md:gap-2">
+        {/* 좌측 라벨 — 데스크톱에서만 */}
+        <div className="shrink-0 flex items-center gap-1.5 text-[13px] font-bold text-grey-900 max-md:hidden">
+          <span aria-hidden="true">⏰</span>
+          <span>마감 임박</span>
+        </div>
+        {/* 모바일 compact 라벨 */}
+        <div className="shrink-0 hidden max-md:flex items-center gap-1 text-[12px] font-bold text-grey-900">
+          <span aria-hidden="true">⏰</span>
+        </div>
+
+        {/* 정책 카드 가로 나열 (모바일 스크롤) */}
+        <div className="flex-1 min-w-0 flex items-center gap-4 overflow-x-auto max-md:gap-3 scrollbar-none">
+          {visible.map((p) => (
+            <a
+              key={p.id}
+              href={`/${p.type}/${p.id}`}
+              className="shrink-0 flex items-center gap-2 no-underline text-inherit hover:opacity-75 transition-opacity"
+            >
+              <span
+                className={`shrink-0 text-[11px] font-bold text-white rounded-[5px] px-2 py-[3px] ${
+                  (p.dday ?? 99) <= 7 ? "bg-blue-700" : "bg-grey-700"
+                }`}
+              >
+                D-{p.dday}
+              </span>
+              <span className="text-[14px] font-medium text-grey-900 truncate max-w-[260px] max-md:max-w-[200px]">
+                {p.title}
+              </span>
+            </a>
+          ))}
+        </div>
+
+        {/* 우측 CTA */}
+        <a
+          href={ctaHref}
+          className="shrink-0 text-[13px] font-semibold text-blue-700 no-underline hover:text-blue-800 transition-colors whitespace-nowrap"
+        >
+          {ctaLabel} →
+        </a>
+      </div>
     </div>
   );
 }

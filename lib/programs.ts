@@ -1,7 +1,33 @@
 import { createClient } from "@/lib/supabase/server";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
+import {
+  AGE_KEYWORDS,
+  OCCUPATION_KEYWORDS,
+  type AgeOption,
+  type OccupationOption,
+} from "@/lib/profile-options";
 export { calcDday } from "@/lib/utils";
 import { calcDday } from "@/lib/utils";
+
+// 홈 개인화용 경량 프로필 타입 (user_profiles 에서 select 한 세 필드만)
+export type ProfileLite = {
+  age_group: string | null;
+  region: string | null;
+  occupation: string | null;
+};
+
+// 프로필 → 검색 키워드 (title/target/description ILIKE 매칭용)
+function buildProfileKeywords(profile: ProfileLite): string[] {
+  const keywords: string[] = [];
+  if (profile.age_group && profile.age_group in AGE_KEYWORDS) {
+    keywords.push(...AGE_KEYWORDS[profile.age_group as AgeOption]);
+  }
+  if (profile.occupation && profile.occupation in OCCUPATION_KEYWORDS) {
+    keywords.push(...OCCUPATION_KEYWORDS[profile.occupation as OccupationOption]);
+  }
+  // 중복 제거 + 소문자 정규화
+  return [...new Set(keywords.map((k) => k.toLowerCase()))];
+}
 
 export type DisplayProgram = {
   id: string;
@@ -152,6 +178,108 @@ export async function getPopularLoans(limit = 20): Promise<DisplayProgram[]> {
     .order("view_count", { ascending: false })
     .limit(limit);
   return (data || []).map(loanToDisplay);
+}
+
+/**
+ * 프로필 기반 맞춤 복지 — 활성 정책 중 프로필 키워드 (연령·직업) 와
+ * 지역이 가장 잘 매칭되는 top-K. 매칭 부족 시 조회수 상위로 채움.
+ */
+export async function getPersonalizedWelfare(
+  profile: ProfileLite,
+  limit = 4,
+): Promise<DisplayProgram[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+  const keywords = buildProfileKeywords(profile);
+
+  // 후보 풀 — 활성 + 지역 (프로필 지역 + 전국·NULL)
+  let query = supabase
+    .from("welfare_programs")
+    .select("*")
+    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .order("view_count", { ascending: false })
+    .limit(100);
+
+  if (profile.region && profile.region !== "전국") {
+    query = query.or(`region.eq.${profile.region},region.eq.전국,region.is.null`);
+  }
+
+  const { data } = await query;
+  const rows = data ?? [];
+
+  // 키워드 없음 (프로필 비어있음) 이면 지역 필터만으로 top-K
+  if (keywords.length === 0) {
+    return rows.slice(0, limit).map(welfareToDisplay);
+  }
+
+  // 키워드 점수 (title/target/description ILIKE)
+  const scored = rows.map((r) => {
+    const hay = `${r.title ?? ""} ${r.target ?? ""} ${r.description ?? ""}`.toLowerCase();
+    let score = 0;
+    for (const k of keywords) if (hay.includes(k)) score += 1;
+    return { row: r, score };
+  });
+
+  const matched = scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  if (matched.length >= limit) {
+    return matched.map((s) => welfareToDisplay(s.row));
+  }
+
+  // 매칭 부족 → 조회수 상위로 보충 (중복 제외)
+  const matchedIds = new Set(matched.map((s) => s.row.id));
+  const fill = rows.filter((r) => !matchedIds.has(r.id)).slice(0, limit - matched.length);
+  return [...matched.map((s) => welfareToDisplay(s.row)), ...fill.map(welfareToDisplay)].slice(
+    0,
+    limit,
+  );
+}
+
+/**
+ * 프로필 기반 맞춤 대출·지원금 — 직업 매칭이 핵심 (대출은 지역 기반보다
+ * 자영업·창업 등 업종 필터링이 더 유효)
+ */
+export async function getPersonalizedLoans(
+  profile: ProfileLite,
+  limit = 3,
+): Promise<DisplayProgram[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
+  const keywords = buildProfileKeywords(profile);
+
+  const { data } = await supabase
+    .from("loan_programs")
+    .select("*")
+    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .order("view_count", { ascending: false })
+    .limit(100);
+
+  const rows = data ?? [];
+  if (keywords.length === 0) return rows.slice(0, limit).map(loanToDisplay);
+
+  const scored = rows.map((r) => {
+    const hay = `${r.title ?? ""} ${r.target ?? ""} ${r.description ?? ""}`.toLowerCase();
+    let score = 0;
+    for (const k of keywords) if (hay.includes(k)) score += 1;
+    return { row: r, score };
+  });
+
+  const matched = scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  if (matched.length >= limit) return matched.map((s) => loanToDisplay(s.row));
+
+  const matchedIds = new Set(matched.map((s) => s.row.id));
+  const fill = rows.filter((r) => !matchedIds.has(r.id)).slice(0, limit - matched.length);
+  return [...matched.map((s) => loanToDisplay(s.row)), ...fill.map(loanToDisplay)].slice(
+    0,
+    limit,
+  );
 }
 
 export async function getRelatedPrograms(
