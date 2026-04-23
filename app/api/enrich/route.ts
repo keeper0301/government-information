@@ -6,6 +6,20 @@ async function runEnrichAndRespond(jobLabel: string) {
   try {
     const supabase = createAdminClient();
     const result = await enrichBatch(supabase);
+
+    // 50% 이상 실패 시 알림 (외부 API quota 초과·서비스 다운 등 감지)
+    // P3-B dedupe 덕분에 같은 원인이면 24h 메일 1통만.
+    if (
+      result.total_candidates &&
+      result.total_candidates > 0 &&
+      (result.failed ?? 0) / result.total_candidates >= 0.5
+    ) {
+      await notifyCronFailure(
+        `${jobLabel} - 보강 실패율 ${result.failed}/${result.total_candidates}`,
+        `외부 API (data.go.kr NationalWelfareDetail) 응답 이상. quota 초과·서비스 다운 가능성.`,
+      );
+    }
+
     return NextResponse.json({ timestamp: new Date().toISOString(), ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
@@ -84,9 +98,10 @@ async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
     .or(`last_enriched_at.is.null,last_enriched_at.lt.${sevenDaysAgo}`)
     .limit(50);
 
-  if (!rows || rows.length === 0) return { enriched: 0 };
+  if (!rows || rows.length === 0) return { enriched: 0, failed: 0, total_candidates: 0 };
 
   let enriched = 0;
+  let failed = 0;
   // 5개씩 병렬 처리
   for (let i = 0; i < rows.length; i += 5) {
     const batch = rows.slice(i, i + 5);
@@ -94,9 +109,10 @@ async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
       batch.map((r) => enrichOne(supabase, r as { id: string; serv_id: string })),
     );
     enriched += results.filter(Boolean).length;
+    failed += results.filter((ok) => !ok).length;
   }
 
-  return { enriched, total_candidates: rows.length };
+  return { enriched, failed, total_candidates: rows.length };
 }
 
 export async function POST(request: NextRequest) {
