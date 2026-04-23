@@ -16,7 +16,7 @@ export function ProgramList({ title, programs, moreHref }: Props) {
         </h2>
         <a
           href={moreHref}
-          className="text-sm font-medium text-grey-500 no-underline hover:text-blue-500 transition-colors py-2 min-h-[44px] flex items-center"
+          className="text-sm font-semibold text-grey-800 no-underline hover:text-blue-500 transition-colors py-2 min-h-[44px] flex items-center"
         >
           전체보기
         </a>

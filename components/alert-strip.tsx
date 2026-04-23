@@ -20,7 +20,7 @@ export function AlertStrip({ program }: { program: DisplayProgram | null }) {
         <span className="flex-1 text-[15px] font-medium text-grey-800 truncate">
           {program.title} 신청이 {program.dday}일 후 마감됩니다
         </span>
-        <span className="shrink-0 text-[13px] font-medium text-grey-500">
+        <span className="shrink-0 text-[13px] font-medium text-grey-800">
           {dateStr}
         </span>
       </a>

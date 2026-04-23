@@ -30,7 +30,7 @@ export function FeatureGrid() {
       </div>
       <div className="space-y-6">
         {features.map((f) => (
-          <div key={f.num} className="flex items-start gap-6 p-6 bg-grey-50 rounded-2xl max-md:flex-col max-md:gap-4">
+          <div key={f.num} className="flex items-start gap-6 p-6 bg-white border border-grey-200 rounded-2xl max-md:flex-col max-md:gap-4">
             {/* 번호 — EB Garamond italic (editorial-num) 로 매거진 느낌 */}
             <div className="editorial-num shrink-0 text-[44px] text-blue-500 w-[60px] leading-none mt-1">
               {f.num}
@@ -39,7 +39,7 @@ export function FeatureGrid() {
               <div className="text-[17px] font-bold text-grey-900 tracking-[-0.4px] mb-2 leading-[1.4]">
                 {f.title}
               </div>
-              <div className="text-sm text-grey-600 leading-[1.6]">{f.desc}</div>
+              <div className="text-[16px] text-grey-900 leading-[1.75]">{f.desc}</div>
             </div>
           </div>
         ))}
