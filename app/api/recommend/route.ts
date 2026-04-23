@@ -42,10 +42,10 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
 
-  // 검색 키워드 목록 생성
+  // 검색 키워드 목록 생성 (위 validation 에서 이미 in 체크 통과했으므로 type 단언 안전)
   const keywords = [
-    ...(ageKeywords[ageGroup] || []),
-    ...(occupationKeywords[occupation] || []),
+    ...(ageKeywords[ageGroup as AgeOption] || []),
+    ...(occupationKeywords[occupation as OccupationOption] || []),
   ];
 
   // 조회할 종류 결정: 전체(all) 면 둘 다, 아니면 하나만
