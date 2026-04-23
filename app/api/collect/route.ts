@@ -14,12 +14,22 @@ import {
   type CollectorResult,
 } from "@/lib/collectors";
 
-export const maxDuration = 300; // 5분 — 여러 컬렉터 순차 실행
+// Vercel Hobby 의 진짜 함수 한도는 60초. 300 으로 늘려놔도 Hobby 에선
+// 60초에 강제 종료될 뿐 아니라, stuck 시 80초+ 응답 0bytes 가 계속됨.
+// 60 으로 명시해 stuck 시 빠르게 504 받아 다음 시도 가능하게 함.
+export const maxDuration = 60;
 
 async function runCollectAndRespond(jobLabel: string, sourceFilter?: string[]) {
+  console.log(`[collect-route] 진입 jobLabel=${jobLabel}`);
   try {
+    const t0 = Date.now();
     const supabase = createAdminClient();
+    console.log(`[collect-route] createAdminClient ${Date.now() - t0}ms`);
+    const t1 = Date.now();
     const allCollectors = await getAllCollectors();
+    console.log(
+      `[collect-route] getAllCollectors ${Date.now() - t1}ms, count=${allCollectors.length}`,
+    );
 
     // ?source=X,Y,Z 로 일부 collector 만 선택 실행 (Vercel Hobby 60초 한도
     // 안에서 모든 15개가 못 끝나서 GitHub Actions matrix 로 병렬 분할 호출)
