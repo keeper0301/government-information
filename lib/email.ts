@@ -80,6 +80,18 @@ type SendCronFailureEmailParams = {
 
 const ADMIN_EMAIL = "keeper0301@gmail.com";
 
+// 메일 HTML 안에 신뢰할 수 없는 문자열 (AI 응답, 사용자 입력) 박을 때
+// <, >, &, ", ' 를 escape 해서 렌더 깨짐·인젝션 방지.
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[c]!);
+}
+
 export async function sendCronFailureEmail({
   jobName,
   errorMessage,
@@ -109,12 +121,12 @@ export async function sendCronFailureEmail({
         ${context ? `
           <div style="background: #f9fafb; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
             <div style="font-size: 12px; color: #8b95a1; margin-bottom: 4px;">컨텍스트</div>
-            <div style="font-size: 14px; color: #191f28;">${context}</div>
+            <div style="font-size: 14px; color: #191f28;">${escapeHtml(context)}</div>
           </div>
         ` : ""}
         <div style="background: #f9fafb; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
           <div style="font-size: 12px; color: #8b95a1; margin-bottom: 4px;">에러 메시지</div>
-          <div style="font-size: 13px; color: #191f28; font-family: monospace; word-break: break-all;">${errorMessage}</div>
+          <div style="font-size: 13px; color: #191f28; font-family: monospace; word-break: break-all;">${escapeHtml(errorMessage)}</div>
         </div>
         <div style="font-size: 12px; color: #8b95a1; line-height: 1.7;">
           이 메일은 cron 실패 시 자동으로 발송됩니다.
