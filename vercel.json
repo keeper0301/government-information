@@ -15,6 +15,10 @@
     {
       "path": "/api/publish-blog?count=2",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/alert-dispatch",
+      "schedule": "0 7 * * *"
     }
   ]
 }

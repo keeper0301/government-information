@@ -67,6 +67,79 @@ export async function sendAlarmEmail({
 }
 
 // ============================================================
+// 맞춤 정책 다이제스트 알림 (신규)
+// ============================================================
+// user_alert_rules 매칭 결과 — 새 정책 여러 건을 묶어 하루 1회 발송
+// ============================================================
+type CustomAlertProgram = {
+  title: string;
+  source: string;
+  applyUrl: string | null;
+  applyEnd: string | null;
+  table: "welfare_programs" | "loan_programs";
+  id: string;
+};
+
+type SendCustomAlertEmailParams = {
+  to: string;
+  ruleName: string;
+  programs: CustomAlertProgram[];
+};
+
+export async function sendCustomAlertEmail({
+  to,
+  ruleName,
+  programs,
+}: SendCustomAlertEmailParams) {
+  if (programs.length === 0) return { data: null, error: null };
+
+  const safeRule = escapeHtml(ruleName);
+  const rows = programs.map((p) => {
+    const typeLabel = p.table === "welfare_programs" ? "복지" : "대출";
+    const typePath = p.table === "welfare_programs" ? "welfare" : "loan";
+    const safeTitle = escapeHtml(p.title);
+    const safeSource = escapeHtml(p.source || "");
+    const deadline = p.applyEnd ? `마감 ${p.applyEnd}` : "상시";
+    const url = p.applyUrl && p.applyUrl.startsWith("http")
+      ? p.applyUrl
+      : `https://www.keepioo.com/${typePath}/${p.id}`;
+    return `
+      <div style="padding: 16px; border-bottom: 1px solid #e5e8eb;">
+        <div style="font-size: 11px; font-weight: 700; color: #3182f6; margin-bottom: 4px;">${typeLabel} · ${safeSource}</div>
+        <a href="${url}" style="font-size: 16px; font-weight: 700; color: #191f28; text-decoration: none;">${safeTitle}</a>
+        <div style="font-size: 13px; color: #8b95a1; margin-top: 4px;">${deadline}</div>
+      </div>
+    `;
+  }).join("");
+
+  const { data, error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: [to],
+    subject: `[키피오] ${safeRule} · 새 맞춤 정책 ${programs.length}건`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
+        <div style="margin-bottom: 16px;">
+          <span style="font-size: 18px; font-weight: 800; color: #191f28;">keepioo 정책알리미</span>
+        </div>
+        <div style="background: #f0f7ff; border-radius: 16px; padding: 20px 24px; margin-bottom: 20px;">
+          <div style="font-size: 12px; font-weight: 600; color: #3182f6; margin-bottom: 6px;">맞춤 알림 · ${safeRule}</div>
+          <div style="font-size: 18px; font-weight: 700; color: #191f28;">오늘 새로 등록된 정책 ${programs.length}건</div>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e5e8eb; border-radius: 12px;">
+          ${rows}
+        </div>
+        <div style="margin-top: 24px; font-size: 12px; color: #8b95a1; line-height: 1.7;">
+          이 이메일은 <a href="https://www.keepioo.com/mypage/notifications" style="color: #3182f6;">맞춤 알림 설정</a> 에 의해 발송되었습니다.<br />
+          알림 규칙을 조정하거나 해제할 수 있어요.
+        </div>
+      </div>
+    `,
+  });
+
+  return { data, error };
+}
+
+// ============================================================
 // 운영자 알림 — cron 작업 실패 시
 // ============================================================
 // publish-blog 등 cron 이 throw 했을 때 keeper0301@gmail.com 으로 알림.

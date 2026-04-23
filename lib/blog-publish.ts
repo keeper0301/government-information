@@ -14,7 +14,7 @@ import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
 const MIN_CONTENT_LENGTH = 1000;
 const MAX_CONTENT_LENGTH = 3000;
 const VALID_CATEGORIES = new Set([
-  "청년", "소상공인", "주거", "육아·가족", "노년", "학생·교육", "큐레이션",
+  "청년", "소상공인", "주거", "육아·가족", "노년", "학생·교육", "문화", "큐레이션",
 ]);
 
 // 요일별 카테고리 순환 (0=일, 1=월, ..., 6=토)
@@ -37,6 +37,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   "육아·가족": ["육아", "보육", "출산", "아동", "가족", "다자녀", "임산부", "양육", "어린이집", "유아", "신생아"],
   "노년": ["노년", "고령", "노인", "65세", "기초연금", "어르신", "은퇴", "장년", "노후", "60세"],
   "학생·교육": ["학생", "장학", "학자금", "교육비", "초등", "중등", "고등학생", "대학생", "학교", "학습"],
+  "문화": ["문화", "여가", "예술", "체육", "공연", "전시", "도서관", "관광", "스포츠", "박물관", "문화생활"],
 };
 
 // 오늘 발행할 카테고리 결정
@@ -94,11 +95,14 @@ export async function pickProgramForCategory(category: string): Promise<{
   const datePolicy = `apply_end.is.null,apply_end.gte.${today}`;
 
   // welfare 우선 시도
+  // 정렬: 최신 등록순(published_at DESC) 우선, 같은 날짜는 마감임박순 보조
+  // — 사용자 요청: "최신글을 가져오는 게 제일 중요"
   const { data: welfares } = await admin
     .from("welfare_programs")
     .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
     .or(orFilter)
     .or(datePolicy)
+    .order("published_at", { ascending: false, nullsFirst: false })
     .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(30);
 
@@ -112,12 +116,13 @@ export async function pickProgramForCategory(category: string): Promise<{
     }
   }
 
-  // welfare 다 사용했으면 loan 시도
+  // welfare 다 사용했으면 loan 시도 (동일 정렬 정책)
   const { data: loans } = await admin
     .from("loan_programs")
     .select("id, title, category, target, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_url, apply_start, apply_end, source")
     .or(orFilter)
     .or(datePolicy)
+    .order("published_at", { ascending: false, nullsFirst: false })
     .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(30);
 
@@ -146,11 +151,12 @@ async function pickCurationProgram(
   usedWelfare: Set<string>,
   usedLoan: Set<string>,
 ) {
-  // 큐레이션도 동일 — 활성 + 상시 정책 모두 포함, 활성 우선
+  // 큐레이션도 동일 — 활성 + 상시 정책 모두 포함, 최신순 우선
   const { data } = await admin
     .from("welfare_programs")
     .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
     .or(`apply_end.is.null,apply_end.gte.${today}`)
+    .order("published_at", { ascending: false, nullsFirst: false })
     .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(20);
 
