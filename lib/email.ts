@@ -1,4 +1,6 @@
 import { Resend } from "resend";
+import { createHash } from "crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Resend 클라이언트를 lazy 하게 초기화
 // 빌드 시점에 RESEND_API_KEY 가 없어도 빌드 통과하도록 (실제 호출 시 에러)
@@ -212,18 +214,80 @@ export async function sendCronFailureEmail({
   return { data, error };
 }
 
+// ============================================================
+// dedupe 헬퍼 — 같은 (job, signature) 24시간 내 재발 시 메일 스킵
+// ============================================================
+// signature: 에러 메시지에서 변동값(타임스탬프·ID 등 숫자) 을 일반화
+// 한 후 SHA1. 같은 외부 API 가 같은 이유로 죽어도 문구만 약간
+// 다르면 다른 알림으로 가지 않게 함.
+const NOTIFY_DEDUPE_HOURS = 24;
+
+function makeFailureSignature(jobName: string, errorMessage: string): string {
+  const normalized = errorMessage
+    .replace(/\d+/g, "N")        // 숫자 일반화 (timestamps, IDs, HTTP code 등)
+    .replace(/\s+/g, " ")
+    .trim()
+    .substring(0, 200);
+  return createHash("sha1")
+    .update(`${jobName}::${normalized}`)
+    .digest("hex");
+}
+
 // 공용 wrapper — cron 라우트의 catch 블록에서 호출.
 // 메일 발송 실패가 cron 응답에 영향 주지 않도록 swallow.
-// 각 라우트에서 try/catch 헬퍼 중복 작성 안 하도록 분리.
+// 24시간 내 같은 (job, signature) 가 이미 알림됐으면 메일 스킵 +
+// occurrences 만 증가시켜 운영자 메일함이 폭주하지 않게 함.
 export async function notifyCronFailure(
   jobName: string,
   errorMessage: string,
   context?: string,
 ) {
   try {
-    await sendCronFailureEmail({ jobName, errorMessage, context });
+    const signature = makeFailureSignature(jobName, errorMessage);
+    const supabase = createAdminClient();
+    const now = new Date();
+    const nowIso = now.toISOString();
+
+    // 기존 로그 조회
+    const { data: existing } = await supabase
+      .from("cron_failure_log")
+      .select("id, notified_at, occurrences")
+      .eq("job_name", jobName)
+      .eq("signature", signature)
+      .maybeSingle();
+
+    let shouldNotify: boolean;
+    if (!existing) {
+      // 신규 에러 → 메일 발송 + 새 로그
+      shouldNotify = true;
+      await supabase.from("cron_failure_log").insert({
+        job_name: jobName,
+        signature,
+        error_message: errorMessage,
+        context: context || null,
+      });
+    } else {
+      const lastNotified = new Date(existing.notified_at as string);
+      const hoursSince = (now.getTime() - lastNotified.getTime()) / 3_600_000;
+      shouldNotify = hoursSince >= NOTIFY_DEDUPE_HOURS;
+
+      // 기존 로그 갱신 (occurrences++ + last_seen_at, 알림 보낼 땐 notified_at 도)
+      const updates: Record<string, unknown> = {
+        last_seen_at: nowIso,
+        occurrences: ((existing.occurrences as number) || 0) + 1,
+      };
+      if (shouldNotify) updates.notified_at = nowIso;
+      await supabase
+        .from("cron_failure_log")
+        .update(updates)
+        .eq("id", existing.id as number);
+    }
+
+    if (shouldNotify) {
+      await sendCronFailureEmail({ jobName, errorMessage, context });
+    }
   } catch {
-    // 메일 발송 실패는 무시
+    // dedupe·메일 발송 실패는 cron 응답에 영향 주지 않도록 swallow
   }
 }
 
