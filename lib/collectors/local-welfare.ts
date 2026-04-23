@@ -72,10 +72,12 @@ const collector: Collector = {
 
       if (page === 1) {
         const tm = xml.match(/<totalCount>(\d+)<\/totalCount>/);
-        // 최대 10페이지(=5000건) 로 제한.
-        // Vercel Hobby 60초 한도 안에서 batch upsert + 첫 수집 INSERT 비용 고려.
-        // 다음 cron 에서 이어서 갱신되므로 한 번에 다 가져오지 않아도 됨.
-        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), 10);
+        // 최대 3페이지(=1500건) 로 제한.
+        // 디버그 streaming 결과 (a686ed2 검증):
+        //   - fetch + parse + yield 19.8초 (4559건)
+        //   - 50건 batch upsert × 91회 = 60초 초과 → stuck
+        // 1500건이면 batch upsert 약 8회로 충분. 다음 cron 에 갱신.
+        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), 3);
       }
 
       const regex = /<servList>([\s\S]*?)<\/servList>/g;

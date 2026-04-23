@@ -141,8 +141,9 @@ export async function runOneCollector(
   // 이전엔 yield 마다 await upsertItem (RPC 1회). 신규 3개 source
   // (local-welfare/fsc/kinfa) 는 첫 수집 시 100~수천 건 INSERT 가
   // 있어 Vercel Hobby 60초 한도를 넘겼음.
-  // 이제 50건씩 한 번에 upsert → RPC 횟수 50배 감소.
-  const FLUSH_SIZE = 50;
+  // FLUSH_SIZE=200 — debug streaming (a686ed2) 측정 결과 50 으로는
+  // RPC 91회로 60초 초과. 200 으로 RPC ~8회 → 60초 안에 충분.
+  const FLUSH_SIZE = 200;
   const buffer: CollectedItem[] = [];
 
   async function flush() {
