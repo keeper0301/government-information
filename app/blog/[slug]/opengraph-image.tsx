@@ -13,12 +13,25 @@
 // ============================================================
 
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
 
 // Next.js 메타데이터 설정
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "정책알리미 블로그 글";
+
+// Pretendard 폰트 데이터 — 모듈 스코프 캐시로 cold start 이후 디스크 I/O 1회만
+let fontDataPromise: Promise<Buffer> | null = null;
+function loadFontData(): Promise<Buffer> {
+  if (!fontDataPromise) {
+    fontDataPromise = readFile(
+      join(process.cwd(), "assets/Pretendard-Bold.woff"),
+    );
+  }
+  return fontDataPromise;
+}
 
 // 카테고리별 색상 (홈·블로그 인덱스 와 통일)
 const CATEGORY_COLORS: Record<string, string> = {
@@ -60,11 +73,9 @@ export default async function Image({
   const category = post?.category || "정책 가이드";
   const color = CATEGORY_COLORS[category] || "#3182f6";
 
-  // Pretendard 폰트 fetch — ImageResponse 기본 폰트는 한글 지원 안 함
-  // Bold 한 weight 만 받아서 가벼움 유지 (~150KB)
-  const fontData = await fetch(
-    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/packages/pretendard/dist/web/static/woff/Pretendard-Bold.woff",
-  ).then((r) => r.arrayBuffer());
+  // Pretendard 폰트 — 프로젝트 루트의 assets/ 에서 정적 로드
+  // (이전엔 매 요청마다 jsdelivr CDN fetch → 외부 의존 제거 + 디스크 I/O 1회 캐시)
+  const fontData = await loadFontData();
 
   return new ImageResponse(
     (
