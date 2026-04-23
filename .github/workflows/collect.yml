@@ -1,0 +1,39 @@
+name: 정책 수집 (collect)
+
+# 04:00 UTC (한국 13:00) — 새 정책 데이터 수집
+# source_fetch_log 의 lastFetchedAt 체크로 중복 수집 자동 차단
+# Vercel cron 이 fallback 으로 남아있으나 GitHub Actions 가 주력
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  collect:
+    name: keepioo.com collect 엔드포인트 호출
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: collect 엔드포인트 호출
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET 시크릿이 설정되지 않음."
+            exit 1
+          fi
+          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
+          http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            --max-time 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.keepioo.com/api/collect")
+          echo "== HTTP $http_status =="
+          cat /tmp/response.json
+          echo ""
+          if [ "$http_status" -ne 200 ]; then
+            echo "::error::collect 호출 실패 (HTTP $http_status)"
+            exit 1
+          fi

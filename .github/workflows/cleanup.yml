@@ -1,0 +1,39 @@
+name: 만료 정책 정리 (cleanup)
+
+# 05:00 UTC (한국 14:00) — 만료된 정책 삭제·보관
+# idempotent — 이미 정리된 데이터엔 영향 없음
+# Vercel cron 이 fallback 으로 남아있으나 GitHub Actions 가 주력
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    name: keepioo.com cleanup 엔드포인트 호출
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: cleanup 엔드포인트 호출
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET 시크릿이 설정되지 않음."
+            exit 1
+          fi
+          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
+          http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            --max-time 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.keepioo.com/api/cleanup")
+          echo "== HTTP $http_status =="
+          cat /tmp/response.json
+          echo ""
+          if [ "$http_status" -ne 200 ]; then
+            echo "::error::cleanup 호출 실패 (HTTP $http_status)"
+            exit 1
+          fi
