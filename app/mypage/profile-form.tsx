@@ -3,14 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  AGE_OPTIONS,
+  REGION_OPTIONS,
+  OCCUPATION_OPTIONS,
+} from "@/lib/profile-options";
 
-// 프로필 선택지 목록 (상수)
-const AGE_GROUPS = ["10대", "20대", "30대", "40대", "50대", "60대 이상"];
-const REGIONS = [
-  "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
-  "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
-];
-const OCCUPATIONS = ["학생", "직장인", "자영업", "공무원", "주부", "무직", "기타"];
+// 프로필 선택지 (lib/profile-options.ts 단일 소스 import).
+// 여기와 /recommend, /api/recommend 가 같은 옵션을 써야 프로필 매칭이 정상 작동.
+const AGE_GROUPS = AGE_OPTIONS;
+// /mypage 에서는 "전국" 을 뺀 실제 지역 17개만 보여줌 (지역 고정용)
+const REGIONS = REGION_OPTIONS.filter((r) => r !== "전국");
+const OCCUPATIONS = OCCUPATION_OPTIONS;
 const INTERESTS = [
   "복지", "대출", "청년", "출산·육아", "창업", "주거", "교육", "의료", "고용",
 ];

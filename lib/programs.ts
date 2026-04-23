@@ -83,33 +83,49 @@ export async function getTopLoans(limit = 3): Promise<DisplayProgram[]> {
 }
 
 export async function getUrgentProgram(): Promise<DisplayProgram | null> {
+  const urgents = await getUrgentPrograms(1);
+  return urgents[0] ?? null;
+}
+
+/**
+ * 마감 임박 N건 (복지 + 대출 통합, apply_end 오름차순)
+ * 홈 상단 AlertStrip 에서 사용. 정보 밀도를 높이려 1건 → N건 노출.
+ * - daysAhead: 향후 N일 이내 마감만 고려 (너무 먼 미래 제외)
+ * - limit: 반환 개수
+ */
+export async function getUrgentPrograms(limit = 3, daysAhead = 14): Promise<DisplayProgram[]> {
   const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const futureDate = new Date(today);
+  futureDate.setDate(today.getDate() + daysAhead);
+  const futureStr = futureDate.toISOString().split("T")[0];
 
   const [{ data: welfareData }, { data: loanData }] = await Promise.all([
     supabase
       .from("welfare_programs")
       .select("*")
-      .gte("apply_end", today)
+      .gte("apply_end", todayStr)
+      .lte("apply_end", futureStr)
       .order("apply_end", { ascending: true })
-      .limit(1),
+      .limit(limit),
     supabase
       .from("loan_programs")
       .select("*")
-      .gte("apply_end", today)
+      .gte("apply_end", todayStr)
+      .lte("apply_end", futureStr)
       .order("apply_end", { ascending: true })
-      .limit(1),
+      .limit(limit),
   ]);
 
-  const welfare = welfareData?.[0] ? welfareToDisplay(welfareData[0]) : null;
-  const loan = loanData?.[0] ? loanToDisplay(loanData[0]) : null;
+  const welfare = (welfareData ?? []).map(welfareToDisplay);
+  const loan = (loanData ?? []).map(loanToDisplay);
 
-  if (!welfare && !loan) return null;
-  if (!welfare) return loan;
-  if (!loan) return welfare;
-
-  // Return whichever has the sooner deadline
-  return (welfare.dday !== null && loan.dday !== null && welfare.dday <= loan.dday) ? welfare : loan;
+  // 복지·대출 합쳐서 dday 오름차순으로 top-K
+  return [...welfare, ...loan]
+    .filter((p) => p.dday !== null)
+    .sort((a, b) => (a.dday ?? Infinity) - (b.dday ?? Infinity))
+    .slice(0, limit);
 }
 
 // 인기 복지 프로그램 조회 (조회수 높은 순)

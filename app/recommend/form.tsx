@@ -4,18 +4,12 @@ import { useState } from "react";
 import { ProgramRow } from "@/components/program-row";
 import type { DisplayProgram } from "@/lib/programs";
 
-// 선택 옵션 목록
-const AGE_OPTIONS = ["10대", "20대", "30대", "40대", "50대", "60대 이상"];
-const REGION_OPTIONS = [
-  "전국", "서울", "경기", "인천", "부산", "대구", "광주",
-  "대전", "울산", "세종", "강원", "충북", "충남",
-  "전북", "전남", "경북", "경남", "제주",
-];
-const OCCUPATION_OPTIONS = ["대학생", "직장인", "자영업자", "구직자", "주부", "기타"];
+// 선택 옵션 목록 (lib/profile-options.ts 단일 소스 import)
+import { AGE_OPTIONS, REGION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/profile-options";
 
 // 프로필 값이 폼의 옵션 목록에 있을 때만 초기값으로 사용
-// (맞춤추천 폼과 /mypage 폼의 옵션이 약간 달라서 불일치 시 빈 값 반환)
-function pickMatching(value: string | null | undefined, options: string[]): string {
+// (readonly tuple 대응)
+function pickMatching(value: string | null | undefined, options: readonly string[]): string {
   if (!value) return "";
   return options.includes(value) ? value : "";
 }

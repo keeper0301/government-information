@@ -2,33 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { welfareToDisplay, loanToDisplay } from "@/lib/programs";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
+import {
+  AGE_KEYWORDS,
+  OCCUPATION_KEYWORDS,
+  REGION_OPTIONS,
+  type AgeOption,
+  type OccupationOption,
+} from "@/lib/profile-options";
 
-// 나이대를 target 검색 키워드로 매핑
-const ageKeywords: Record<string, string[]> = {
-  "10대": ["청소년", "학생"],
-  "20대": ["청년", "대학생"],
-  "30대": ["청년", "신혼"],
-  "40대": ["중장년"],
-  "50대": ["중장년", "중년"],
-  "60대 이상": ["노인", "어르신", "고령"],
-};
-
-// 직업을 target 검색 키워드로 매핑
-const occupationKeywords: Record<string, string[]> = {
-  "대학생": ["대학생", "학생", "청년"],
-  "직장인": ["근로자", "직장인"],
-  "자영업자": ["소상공인", "자영업", "사업자"],
-  "구직자": ["구직", "실업", "취업"],
-  "주부": ["가정", "양육", "출산"],
-  "기타": [],
-};
-
-// 허용된 지역 목록
-const VALID_REGIONS = [
-  "전국", "서울", "경기", "인천", "부산", "대구", "광주",
-  "대전", "울산", "세종", "강원", "충북", "충남",
-  "전북", "전남", "경북", "경남", "제주",
-];
+// lib/profile-options 에서 import. /mypage 와 /recommend 폼과 동일 vocabulary 사용.
+const ageKeywords = AGE_KEYWORDS;
+const occupationKeywords = OCCUPATION_KEYWORDS;
+const VALID_REGIONS = REGION_OPTIONS;
 
 // programType: "all" (기본) / "welfare" (복지만) / "loan" (대출만)
 const VALID_PROGRAM_TYPES = ["all", "welfare", "loan"] as const;
