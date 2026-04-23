@@ -43,6 +43,8 @@ async function runAlertDispatch(jobLabel: string) {
     let dispatchedEmail = 0;
     let dispatchedKakao = 0;
     let skipped = 0;
+    let emailFailures = 0;
+    const emailFailureDetail: string[] = [];
 
     for (const rule of rules as AlertRule[]) {
       const matches = await findMatchingPrograms(supabase, rule, since, 20);
@@ -105,9 +107,22 @@ async function runAlertDispatch(jobLabel: string) {
                 sent_at: error ? null : new Date().toISOString(),
               });
             }
-            if (!error) dispatchedEmail += toSend.length;
+            if (!error) {
+              dispatchedEmail += toSend.length;
+            } else {
+              emailFailures += toSend.length;
+              emailFailureDetail.push(
+                `rule=${rule.id} (${toSend.length}건): ${String(error).substring(0, 120)}`,
+              );
+            }
           } catch (e) {
             console.error(`[alert-dispatch] 이메일 발송 실패 rule=${rule.id}:`, e);
+            emailFailures += toSend.length;
+            emailFailureDetail.push(
+              `rule=${rule.id} (${toSend.length}건): ${
+                (e instanceof Error ? e.message : String(e)).substring(0, 120)
+              }`,
+            );
           }
         }
       } else {
@@ -135,10 +150,21 @@ async function runAlertDispatch(jobLabel: string) {
       }
     }
 
+    // 이메일 발송 실패가 1건이라도 있으면 운영자 알림.
+    // 사용자에게 중요 알림이 못 간 상황은 조용히 넘어가면 안 됨.
+    // P3-B dedupe 가 같은 (rule, error) 반복 시 24h 메일 1통만 유지.
+    if (emailFailures > 0) {
+      await notifyCronFailure(
+        `${jobLabel} - 이메일 발송 실패 ${emailFailures}건`,
+        emailFailureDetail.slice(0, 10).join("\n"),
+      );
+    }
+
     return NextResponse.json({
       timestamp: new Date().toISOString(),
       rules_processed: rules.length,
       dispatched_email: dispatchedEmail,
+      email_failures: emailFailures,
       queued_kakao: dispatchedKakao,
       skipped,
     });
