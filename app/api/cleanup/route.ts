@@ -17,16 +17,21 @@ async function deleteAlarmsBatch(
   ids: string[],
 ) {
   let deleted = 0;
+  const errors: string[] = [];
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const batch = ids.slice(i, i + BATCH_SIZE);
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from("alarm_subscriptions")
       .delete({ count: "exact" })
       .eq("program_type", programType)
       .in("program_id", batch);
-    deleted += count || 0;
+    if (error) {
+      errors.push(`alarm ${programType} batch[${i}-${i + batch.length}]: ${error.message}`);
+    } else {
+      deleted += count || 0;
+    }
   }
-  return deleted;
+  return { deleted, errors };
 }
 
 // 제목에 옛 연도가 포함된 공고 ID 를 찾아 반환
@@ -100,29 +105,44 @@ async function runCleanup() {
   // ID 목록이 크면 in() 이 실패할 수 있어서 배치로 나눔
   async function deleteByIds(table: "welfare_programs" | "loan_programs", ids: string[]) {
     let total = 0;
+    const errs: string[] = [];
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const batch = ids.slice(i, i + BATCH_SIZE);
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from(table)
         .delete({ count: "exact" })
         .in("id", batch);
-      total += count || 0;
+      if (error) {
+        errs.push(`${table} batch[${i}-${i + batch.length}]: ${error.message}`);
+      } else {
+        total += count || 0;
+      }
     }
-    return total;
+    return { total, errors: errs };
   }
 
-  const [welfareDeleted, loansDeleted] = await Promise.all([
+  const [welfareResult, loansResult] = await Promise.all([
     deleteByIds("welfare_programs", welfareIds),
     deleteByIds("loan_programs", loanIds),
   ]);
+
+  // 배치 에러 모아서 반환 — runCleanupAndRespond 가 알림 트리거
+  const allErrors = [
+    ...alarmsW.errors,
+    ...alarmsL.errors,
+    ...welfareResult.errors,
+    ...loansResult.errors,
+  ];
 
   return {
     timestamp: new Date().toISOString(),
     cutoff_date: cutoff,
     min_year: minYear,
-    welfare_deleted: welfareDeleted,
-    loans_deleted: loansDeleted,
-    alarms_deleted: alarmsW + alarmsL,
+    welfare_deleted: welfareResult.total,
+    loans_deleted: loansResult.total,
+    alarms_deleted: alarmsW.deleted + alarmsL.deleted,
+    batch_errors: allErrors.length,
+    error_detail: allErrors.slice(0, 10),
   };
 }
 
@@ -144,6 +164,16 @@ function checkAuth(request: NextRequest): NextResponse | null {
 async function runCleanupAndRespond(jobLabel: string) {
   try {
     const result = await runCleanup();
+
+    // 배치 단위 DELETE 실패가 1건이라도 있으면 운영자 알림.
+    // P3-B dedupe 가 같은 에러 24h 1통으로 제한.
+    if (result.batch_errors > 0) {
+      await notifyCronFailure(
+        `${jobLabel} - 배치 DELETE 실패 ${result.batch_errors}건`,
+        result.error_detail.join("\n"),
+      );
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
