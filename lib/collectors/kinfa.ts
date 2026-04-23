@@ -75,19 +75,11 @@ const collector: Collector = {
       let xml: string;
       try {
         const res = await fetchWithTimeout(`${API}?${params}`);
-        if (!res.ok) {
-          if (res.status === 429) {
-            const body = await res.text().catch(() => "");
-            throw new Error(
-              `kinfa HTTP 429 quota exceeded (page ${page}): ${body.substring(0, 200)}`,
-            );
-          }
-          break;
-        }
+        if (!res.ok) break;
         xml = await res.text();
         if (xml.includes("SERVICE_KEY") || xml.includes("Unauthorized")) break;
       } catch (err) {
-        if (err instanceof Error && err.message.includes("429")) throw err;
+        if (err instanceof Error && err.message.includes("HTTP 429")) throw err;
         break;
       }
 
