@@ -1,19 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./user-menu";
 
-// 메인 메뉴 항목
-const mainItems = [
+// 전체 메뉴 항목 (더보기 드롭다운 없이 데스크톱 한 줄에 모두 나열)
+const items = [
   { label: "복지정보", href: "/welfare" },
   { label: "대출정보", href: "/loan" },
   { label: "맞춤추천", href: "/recommend" },
   { label: "인기정책", href: "/popular" },
-];
-
-// "더보기" 드롭다운 메뉴 항목
-const moreItems = [
   { label: "정책가이드", href: "/blog" },
   { label: "달력", href: "/calendar" },
   { label: "AI상담", href: "/consult" },
@@ -21,39 +17,19 @@ const moreItems = [
   { label: "요금제", href: "/pricing" },
 ];
 
-// 모바일 메뉴용 전체 항목
-const allItems = [...mainItems, ...moreItems];
-
 export function Nav() {
   const pathname = usePathname();
-  const [moreOpen, setMoreOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
 
-  // 더보기 메뉴 바깥 클릭 시 닫기
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  // 페이지 이동 시 메뉴 닫기
+  // 페이지 이동 시 모바일 메뉴 닫기
   useEffect(() => {
     setMobileOpen(false);
-    setMoreOpen(false);
   }, [pathname]);
 
   // 현재 경로와 메뉴 링크 비교
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
   }
-
-  // 더보기 메뉴 안의 항목이 활성화인지 확인
-  const moreIsActive = moreItems.some((item) => isActive(item.href));
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100">
@@ -80,9 +56,9 @@ export function Nav() {
               marginTop: 4,
             }}
           />
-          {/* 데스크톱에서만 한글 부텍스트 노출 */}
+          {/* xl 이상에서만 한글 부텍스트 노출 — 메뉴 9개 나열 공간 확보 */}
           <span
-            className="hidden sm:inline-block text-grey-900"
+            className="hidden xl:inline-block text-grey-900"
             style={{
               fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
               fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px",
@@ -94,14 +70,13 @@ export function Nav() {
           </span>
         </a>
 
-        {/* 데스크톱 메뉴 */}
-        <div className="hidden md:flex items-center gap-0.5">
-          {/* 메인 메뉴 */}
-          {mainItems.map((item) => (
+        {/* 데스크톱 메뉴 — lg (1024px) 부터 9개 항목 전부 나열 (md~lg 구간은 햄버거) */}
+        <div className="hidden lg:flex items-center gap-0.5">
+          {items.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className={`px-3.5 py-2.5 text-[15px] min-h-[44px] flex items-center rounded-lg transition-colors no-underline ${
+              className={`px-3 py-2.5 text-[15px] min-h-[44px] flex items-center rounded-lg transition-colors no-underline ${
                 isActive(item.href)
                   ? "font-semibold text-grey-900"
                   : "font-medium text-grey-700 hover:bg-grey-50 hover:text-grey-900"
@@ -111,55 +86,14 @@ export function Nav() {
             </a>
           ))}
 
-          {/* 더보기 드롭다운 */}
-          <div ref={moreRef} className="relative">
-            <button
-              onClick={() => setMoreOpen(!moreOpen)}
-              className={`px-3.5 py-2.5 text-[15px] min-h-[44px] flex items-center gap-1 rounded-lg transition-colors border-none bg-transparent cursor-pointer ${
-                moreIsActive
-                  ? "font-semibold text-grey-900"
-                  : "font-medium text-grey-700 hover:bg-grey-50 hover:text-grey-900"
-              }`}
-            >
-              더보기
-              <svg
-                className={`w-3.5 h-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-            {moreOpen && (
-              <div className="absolute top-full right-0 mt-1 w-[160px] bg-white border border-grey-100 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] py-1 overflow-hidden">
-                {moreItems.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className={`block px-4 py-2.5 text-[14px] no-underline transition-colors ${
-                      isActive(item.href)
-                        ? "font-semibold text-grey-900 bg-grey-50"
-                        : "text-grey-700 hover:bg-grey-50"
-                    }`}
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* 로그인 상태에 따라 로그인 버튼 ↔ 내 계정 메뉴를 보여줌 */}
           <UserMenu />
         </div>
 
-        {/* 모바일 햄버거 버튼 */}
+        {/* 모바일·태블릿 햄버거 버튼 (lg 미만) */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden w-10 h-10 grid place-items-center border-none bg-transparent cursor-pointer"
+          className="lg:hidden w-10 h-10 grid place-items-center border-none bg-transparent cursor-pointer"
           aria-label="메뉴 열기"
         >
           <svg
@@ -183,10 +117,10 @@ export function Nav() {
         </button>
       </div>
 
-      {/* 모바일 메뉴 패널 */}
+      {/* 모바일·태블릿 메뉴 패널 (lg 미만) */}
       {mobileOpen && (
-        <div className="md:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1">
-          {allItems.map((item) => (
+        <div className="lg:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1">
+          {items.map((item) => (
             <a
               key={item.href}
               href={item.href}
