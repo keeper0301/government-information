@@ -224,6 +224,7 @@ export async function getAllCollectors(): Promise<Collector[]> {
     import("./semas-policy-fund"),
     import("./koreg-haedream"),
     import("./nhis"),
+    import("./employment"),
   ]);
   return mods.map((m) => m.default);
 }
