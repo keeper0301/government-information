@@ -76,6 +76,7 @@ export function Nav() {
             <a
               key={item.href}
               href={item.href}
+              aria-current={isActive(item.href) ? "page" : undefined}
               className={`px-3 py-2.5 text-[15px] min-h-[44px] flex items-center rounded-lg transition-colors no-underline ${
                 isActive(item.href)
                   ? "font-semibold text-grey-900"
@@ -94,7 +95,9 @@ export function Nav() {
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="lg:hidden w-10 h-10 grid place-items-center border-none bg-transparent cursor-pointer"
-          aria-label="메뉴 열기"
+          aria-label={mobileOpen ? "메뉴 닫기" : "메뉴 열기"}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-menu"
         >
           <svg
             className="w-6 h-6 text-grey-900"
@@ -119,11 +122,12 @@ export function Nav() {
 
       {/* 모바일·태블릿 메뉴 패널 (lg 미만) */}
       {mobileOpen && (
-        <div className="lg:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1">
+        <div id="mobile-menu" className="lg:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1">
           {items.map((item) => (
             <a
               key={item.href}
               href={item.href}
+              aria-current={isActive(item.href) ? "page" : undefined}
               className={`block px-4 py-3 text-[15px] rounded-lg no-underline transition-colors ${
                 isActive(item.href)
                   ? "font-semibold text-grey-900 bg-grey-50"
