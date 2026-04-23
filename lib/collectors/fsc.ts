@@ -96,7 +96,15 @@ const collector: Collector = {
       let data: FscResponse;
       try {
         const res = await fetchWithTimeout(`${API}?${params}`);
-        if (!res.ok) break;
+        if (!res.ok) {
+          if (res.status === 429) {
+            const body = await res.text().catch(() => "");
+            throw new Error(
+              `fsc HTTP 429 quota exceeded (page ${page}): ${body.substring(0, 200)}`,
+            );
+          }
+          break;
+        }
         const text = await res.text();
         if (text.includes("SERVICE_KEY") || text.includes("Unauthorized")) break;
         try {
@@ -104,7 +112,8 @@ const collector: Collector = {
         } catch {
           break;
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("429")) throw err;
         break;
       }
 

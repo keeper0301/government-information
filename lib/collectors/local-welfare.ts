@@ -52,9 +52,20 @@ const collector: Collector = {
           numOfRows: String(PER_PAGE),
         });
         const res = await fetchWithTimeout(`${API}?${params}`);
-        if (!res.ok) break;
+        if (!res.ok) {
+          // 429 = quota 초과. generator throw 로 올려서 운영자 알림까지 전달.
+          if (res.status === 429) {
+            const body = await res.text().catch(() => "");
+            throw new Error(
+              `local-welfare HTTP 429 quota exceeded (page ${page}): ${body.substring(0, 200)}`,
+            );
+          }
+          break;
+        }
         xml = await res.text();
-      } catch {
+      } catch (err) {
+        // 429 quota 는 상위로 전파, 그 외 일시 에러는 break (기존 동작 유지)
+        if (err instanceof Error && err.message.includes("429")) throw err;
         break;
       }
 
