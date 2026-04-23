@@ -53,10 +53,13 @@ export async function updateSession(request: NextRequest) {
     );
 
   // 미로그인 + 보호 경로 → 로그인 페이지로 (원래 가려던 곳을 next 에 담아둠)
+  // pathname 뿐 아니라 search(?tier=basic 같은 쿼리)까지 함께 보존해야
+  // 로그인 후 사용자가 의도한 화면(요금제 선택 결과 등)으로 정확히 복귀 가능
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    loginUrl.search = `?next=${encodeURIComponent(pathname)}`;
+    const originalPath = pathname + request.nextUrl.search;
+    loginUrl.search = `?next=${encodeURIComponent(originalPath)}`;
     return NextResponse.redirect(loginUrl);
   }
 
