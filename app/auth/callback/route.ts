@@ -73,6 +73,23 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/reset-password`);
   }
 
+  // ━━━ 온보딩 분기 ━━━
+  // next 파라미터가 명시되지 않은 (= 기본값 "/") 신규 사용자는
+  // 관심 분야 선택 권유 페이지로. 이미 골라뒀거나 명시 next 가 있으면 패스.
+  // CEO 리뷰 Q2: 권유 (스킵 가능, 미선택 시 전체 알림).
+  if (user && next === "/") {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("interests")
+      .eq("id", user.id)
+      .maybeSingle();
+    const hasInterests =
+      Array.isArray(profile?.interests) && profile!.interests!.length > 0;
+    if (!hasInterests) {
+      return NextResponse.redirect(`${origin}/onboarding/topics`);
+    }
+  }
+
   // 정상 로그인 → 원래 가려던 페이지 또는 홈으로
   return NextResponse.redirect(`${origin}${next}`);
 }
