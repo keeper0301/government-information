@@ -1,0 +1,55 @@
+name: 블로그 자동 발행 (매일)
+
+# Vercel Hobby cron 의 ±59분 윈도우 + 배포 충돌 이슈를 피하기 위해
+# GitHub Actions 로 이전. 분 단위 정확도 + 배포와 무관한 스케줄링.
+#
+# 동작: 매일 06:00 UTC (한국 15:00) 에 keepioo.com 의 publish-blog 엔드포인트를
+# Bearer 토큰 인증으로 호출. count=2 로 오늘·내일 카테고리 2글 발행.
+#
+# 필요한 GitHub Secret:
+#   CRON_SECRET — Vercel 환경변수와 동일한 값
+
+on:
+  schedule:
+    # 06:00 UTC = 한국 15:00
+    - cron: "0 6 * * *"
+  # Actions 탭에서 수동 실행 가능 (테스트·긴급 발행용)
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: keepioo.com 블로그 발행
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: publish-blog 엔드포인트 호출
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET 시크릿이 설정되지 않음. Settings → Secrets and variables → Actions 에서 추가 필요."
+            exit 1
+          fi
+
+          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
+
+          # 응답 본문 + HTTP 상태를 함께 받아서 실패 시 원인 파악
+          http_status=$(curl -sS -o /tmp/publish_response.json -w "%{http_code}" \
+            --max-time 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.keepioo.com/api/publish-blog?count=2")
+
+          echo "== HTTP $http_status =="
+          echo "== 응답 본문 =="
+          cat /tmp/publish_response.json
+          echo ""
+
+          if [ "$http_status" -ne 200 ]; then
+            echo "::error::publish-blog 호출 실패 (HTTP $http_status)"
+            exit 1
+          fi
+
+          echo "== 발행 성공 =="
