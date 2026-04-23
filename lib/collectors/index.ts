@@ -73,6 +73,24 @@ export type Collector = {
 };
 
 // ============================================================
+// 외부 API fetch helper — AbortController + timeout
+// ============================================================
+// data.go.kr 등 외부 API 가 응답 안 줄 때 함수가 무한히 stuck
+// 되는 걸 방지. 기본 20초.
+export async function fetchWithTimeout(
+  url: string,
+  timeoutMs: number = 20000,
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// ============================================================
 // 공통 실행 루프
 // ============================================================
 
@@ -98,12 +116,18 @@ export async function runOneCollector(
     return result;
   }
 
+  console.log(`[collect:${collector.sourceCode}] start`);
+
   // 마지막 수집 시각 조회 (증분 수집)
+  const t0 = Date.now();
   const { data: logRow } = await supabase
     .from("source_fetch_log")
     .select("last_fetched_at")
     .eq("source_code", collector.sourceCode)
     .maybeSingle();
+  console.log(
+    `[collect:${collector.sourceCode}] source_fetch_log SELECT ${Date.now() - t0}ms`,
+  );
   const lastFetchedAt = logRow?.last_fetched_at
     ? new Date(logRow.last_fetched_at)
     : null;
@@ -123,9 +147,14 @@ export async function runOneCollector(
 
   async function flush() {
     if (buffer.length === 0) return;
+    const flushStart = Date.now();
+    const flushSize = buffer.length;
     try {
       await upsertItems(supabase, buffer);
       result.collected += buffer.length;
+      console.log(
+        `[collect:${collector.sourceCode}] flush ${flushSize} items in ${Date.now() - flushStart}ms (total=${result.collected})`,
+      );
     } catch (err) {
       // 배치 실패 시 개별 폴백 (한 건이 unique 위반 등으로 깨졌을 때
       // 나머지가 함께 실패하지 않도록)
@@ -150,8 +179,17 @@ export async function runOneCollector(
     }
   }
 
+  let firstItem = true;
+  let itemCount = 0;
   try {
     for await (const item of collector.fetch({ lastFetchedAt })) {
+      if (firstItem) {
+        console.log(
+          `[collect:${collector.sourceCode}] first item received (+${Date.now() - startedAt}ms)`,
+        );
+        firstItem = false;
+      }
+      itemCount++;
       buffer.push(item);
       if (item.publishedAt) {
         if (!latestPublishedAt || item.publishedAt > latestPublishedAt) {
@@ -163,9 +201,15 @@ export async function runOneCollector(
         await flush();
       }
     }
+    console.log(
+      `[collect:${collector.sourceCode}] generator done, items=${itemCount} (+${Date.now() - startedAt}ms)`,
+    );
     await flush();
   } catch (err) {
     // fetch 도중 throw 가 나도 지금까지 buffer 에 모인 건 저장 시도
+    console.log(
+      `[collect:${collector.sourceCode}] generator threw at item=${itemCount} (+${Date.now() - startedAt}ms): ${err instanceof Error ? err.message : err}`,
+    );
     await flush();
     result.error = err instanceof Error ? err.message : String(err);
   }

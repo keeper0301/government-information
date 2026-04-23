@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -50,10 +51,22 @@ const collector: Collector = {
           pageNo: String(page),
           numOfRows: String(PER_PAGE),
         });
-        const res = await fetch(`${API}?${params}`, { cache: "no-store" });
-        if (!res.ok) break;
+        const fetchStart = Date.now();
+        const res = await fetchWithTimeout(`${API}?${params}`);
+        if (!res.ok) {
+          console.log(
+            `[collect:local-welfare] page ${page} HTTP ${res.status} (${Date.now() - fetchStart}ms) — break`,
+          );
+          break;
+        }
         xml = await res.text();
-      } catch {
+        console.log(
+          `[collect:local-welfare] page ${page} fetched ${xml.length}바이트 (${Date.now() - fetchStart}ms)`,
+        );
+      } catch (err) {
+        console.log(
+          `[collect:local-welfare] page ${page} fetch threw: ${err instanceof Error ? err.message : err} — break`,
+        );
         break;
       }
 

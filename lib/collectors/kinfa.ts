@@ -24,6 +24,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -73,11 +74,26 @@ const collector: Collector = {
 
       let xml: string;
       try {
-        const res = await fetch(`${API}?${params}`, { cache: "no-store" });
-        if (!res.ok) break;
+        const fetchStart = Date.now();
+        const res = await fetchWithTimeout(`${API}?${params}`);
+        if (!res.ok) {
+          console.log(
+            `[collect:kinfa] page ${page} HTTP ${res.status} (${Date.now() - fetchStart}ms) — break`,
+          );
+          break;
+        }
         xml = await res.text();
-        if (xml.includes("SERVICE_KEY") || xml.includes("Unauthorized")) break;
-      } catch {
+        console.log(
+          `[collect:kinfa] page ${page} fetched ${xml.length}바이트 (${Date.now() - fetchStart}ms)`,
+        );
+        if (xml.includes("SERVICE_KEY") || xml.includes("Unauthorized")) {
+          console.log(`[collect:kinfa] page ${page} unauthorized — break`);
+          break;
+        }
+      } catch (err) {
+        console.log(
+          `[collect:kinfa] page ${page} fetch threw: ${err instanceof Error ? err.message : err} — break`,
+        );
         break;
       }
 

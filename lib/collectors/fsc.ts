@@ -24,6 +24,7 @@
 // ============================================================
 
 import type { Collector, CollectedItem } from "./index";
+import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -94,16 +95,32 @@ const collector: Collector = {
 
       let data: FscResponse;
       try {
-        const res = await fetch(`${API}?${params}`, { cache: "no-store" });
-        if (!res.ok) break;
+        const fetchStart = Date.now();
+        const res = await fetchWithTimeout(`${API}?${params}`);
+        if (!res.ok) {
+          console.log(
+            `[collect:fsc] page ${page} HTTP ${res.status} (${Date.now() - fetchStart}ms) — break`,
+          );
+          break;
+        }
         const text = await res.text();
-        if (text.includes("SERVICE_KEY") || text.includes("Unauthorized")) break;
+        console.log(
+          `[collect:fsc] page ${page} fetched ${text.length}바이트 (${Date.now() - fetchStart}ms)`,
+        );
+        if (text.includes("SERVICE_KEY") || text.includes("Unauthorized")) {
+          console.log(`[collect:fsc] page ${page} unauthorized — break`);
+          break;
+        }
         try {
           data = JSON.parse(text);
         } catch {
+          console.log(`[collect:fsc] page ${page} JSON parse 실패 — break`);
           break;
         }
-      } catch {
+      } catch (err) {
+        console.log(
+          `[collect:fsc] page ${page} fetch threw: ${err instanceof Error ? err.message : err} — break`,
+        );
         break;
       }
 
