@@ -116,18 +116,12 @@ export async function runOneCollector(
     return result;
   }
 
-  console.log(`[collect:${collector.sourceCode}] start`);
-
   // 마지막 수집 시각 조회 (증분 수집)
-  const t0 = Date.now();
   const { data: logRow } = await supabase
     .from("source_fetch_log")
     .select("last_fetched_at")
     .eq("source_code", collector.sourceCode)
     .maybeSingle();
-  console.log(
-    `[collect:${collector.sourceCode}] source_fetch_log SELECT ${Date.now() - t0}ms`,
-  );
   const lastFetchedAt = logRow?.last_fetched_at
     ? new Date(logRow.last_fetched_at)
     : null;
@@ -148,17 +142,12 @@ export async function runOneCollector(
 
   async function flush() {
     if (buffer.length === 0) return;
-    const flushStart = Date.now();
-    const flushSize = buffer.length;
     try {
       await upsertItems(supabase, buffer);
       result.collected += buffer.length;
-      console.log(
-        `[collect:${collector.sourceCode}] flush ${flushSize} items in ${Date.now() - flushStart}ms (total=${result.collected})`,
-      );
     } catch (err) {
-      // 배치 실패 시 개별 폴백 (한 건이 unique 위반 등으로 깨졌을 때
-      // 나머지가 함께 실패하지 않도록)
+      // 일시 네트워크 에러 등 대응 — 개별 재시도 (010·011 마이그레이션 후엔
+      // constraint 매칭 실패 가능성 없음)
       console.error(
         `[collect:${collector.sourceCode}] 배치 ${buffer.length}건 실패, 개별 폴백`,
         err,
@@ -180,17 +169,8 @@ export async function runOneCollector(
     }
   }
 
-  let firstItem = true;
-  let itemCount = 0;
   try {
     for await (const item of collector.fetch({ lastFetchedAt })) {
-      if (firstItem) {
-        console.log(
-          `[collect:${collector.sourceCode}] first item received (+${Date.now() - startedAt}ms)`,
-        );
-        firstItem = false;
-      }
-      itemCount++;
       buffer.push(item);
       if (item.publishedAt) {
         if (!latestPublishedAt || item.publishedAt > latestPublishedAt) {
@@ -202,15 +182,9 @@ export async function runOneCollector(
         await flush();
       }
     }
-    console.log(
-      `[collect:${collector.sourceCode}] generator done, items=${itemCount} (+${Date.now() - startedAt}ms)`,
-    );
     await flush();
   } catch (err) {
     // fetch 도중 throw 가 나도 지금까지 buffer 에 모인 건 저장 시도
-    console.log(
-      `[collect:${collector.sourceCode}] generator threw at item=${itemCount} (+${Date.now() - startedAt}ms): ${err instanceof Error ? err.message : err}`,
-    );
     await flush();
     result.error = err instanceof Error ? err.message : String(err);
   }
@@ -278,6 +252,9 @@ function toRow(item: CollectedItem): Record<string, unknown> {
 // ============================================================
 // 단건 upsert (배치 폴백 시에만 사용)
 // ============================================================
+// 010 마이그레이션 후 (source_code, source_id) UNIQUE CONSTRAINT 가
+// 정식으로 존재하므로 onConflict 매칭 보장. 011 이후 title 단독
+// unique 는 사라졌으므로 title 폴백은 오히려 에러 원인이라 제거.
 async function upsertItem(supabase: SupabaseAdmin, item: CollectedItem) {
   const table = item.table === "loan" ? "loan_programs" : "welfare_programs";
   const row = toRow(item);
@@ -286,13 +263,7 @@ async function upsertItem(supabase: SupabaseAdmin, item: CollectedItem) {
     .from(table)
     .upsert(row, { onConflict: "source_code,source_id" });
 
-  if (error) {
-    // source_id 가 없거나 unique 위반 외 에러 → title 기반 폴백 (기존 호환)
-    const { error: fallbackError } = await supabase
-      .from(table)
-      .upsert(row, { onConflict: "title" });
-    if (fallbackError) throw fallbackError;
-  }
+  if (error) throw error;
 }
 
 // ============================================================

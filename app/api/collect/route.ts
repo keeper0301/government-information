@@ -20,16 +20,9 @@ import {
 export const maxDuration = 60;
 
 async function runCollectAndRespond(jobLabel: string, sourceFilter?: string[]) {
-  console.log(`[collect-route] 진입 jobLabel=${jobLabel}`);
   try {
-    const t0 = Date.now();
     const supabase = createAdminClient();
-    console.log(`[collect-route] createAdminClient ${Date.now() - t0}ms`);
-    const t1 = Date.now();
     const allCollectors = await getAllCollectors();
-    console.log(
-      `[collect-route] getAllCollectors ${Date.now() - t1}ms, count=${allCollectors.length}`,
-    );
 
     // ?source=X,Y,Z 로 일부 collector 만 선택 실행 (Vercel Hobby 60초 한도
     // 안에서 모든 15개가 못 끝나서 GitHub Actions matrix 로 병렬 분할 호출)

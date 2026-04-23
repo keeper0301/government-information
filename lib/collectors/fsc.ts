@@ -95,32 +95,16 @@ const collector: Collector = {
 
       let data: FscResponse;
       try {
-        const fetchStart = Date.now();
         const res = await fetchWithTimeout(`${API}?${params}`);
-        if (!res.ok) {
-          console.log(
-            `[collect:fsc] page ${page} HTTP ${res.status} (${Date.now() - fetchStart}ms) — break`,
-          );
-          break;
-        }
+        if (!res.ok) break;
         const text = await res.text();
-        console.log(
-          `[collect:fsc] page ${page} fetched ${text.length}바이트 (${Date.now() - fetchStart}ms)`,
-        );
-        if (text.includes("SERVICE_KEY") || text.includes("Unauthorized")) {
-          console.log(`[collect:fsc] page ${page} unauthorized — break`);
-          break;
-        }
+        if (text.includes("SERVICE_KEY") || text.includes("Unauthorized")) break;
         try {
           data = JSON.parse(text);
         } catch {
-          console.log(`[collect:fsc] page ${page} JSON parse 실패 — break`);
           break;
         }
-      } catch (err) {
-        console.log(
-          `[collect:fsc] page ${page} fetch threw: ${err instanceof Error ? err.message : err} — break`,
-        );
+      } catch {
         break;
       }
 

@@ -51,22 +51,10 @@ const collector: Collector = {
           pageNo: String(page),
           numOfRows: String(PER_PAGE),
         });
-        const fetchStart = Date.now();
         const res = await fetchWithTimeout(`${API}?${params}`);
-        if (!res.ok) {
-          console.log(
-            `[collect:local-welfare] page ${page} HTTP ${res.status} (${Date.now() - fetchStart}ms) — break`,
-          );
-          break;
-        }
+        if (!res.ok) break;
         xml = await res.text();
-        console.log(
-          `[collect:local-welfare] page ${page} fetched ${xml.length}바이트 (${Date.now() - fetchStart}ms)`,
-        );
-      } catch (err) {
-        console.log(
-          `[collect:local-welfare] page ${page} fetch threw: ${err instanceof Error ? err.message : err} — break`,
-        );
+      } catch {
         break;
       }
 

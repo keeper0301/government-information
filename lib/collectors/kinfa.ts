@@ -74,26 +74,11 @@ const collector: Collector = {
 
       let xml: string;
       try {
-        const fetchStart = Date.now();
         const res = await fetchWithTimeout(`${API}?${params}`);
-        if (!res.ok) {
-          console.log(
-            `[collect:kinfa] page ${page} HTTP ${res.status} (${Date.now() - fetchStart}ms) — break`,
-          );
-          break;
-        }
+        if (!res.ok) break;
         xml = await res.text();
-        console.log(
-          `[collect:kinfa] page ${page} fetched ${xml.length}바이트 (${Date.now() - fetchStart}ms)`,
-        );
-        if (xml.includes("SERVICE_KEY") || xml.includes("Unauthorized")) {
-          console.log(`[collect:kinfa] page ${page} unauthorized — break`);
-          break;
-        }
-      } catch (err) {
-        console.log(
-          `[collect:kinfa] page ${page} fetch threw: ${err instanceof Error ? err.message : err} — break`,
-        );
+        if (xml.includes("SERVICE_KEY") || xml.includes("Unauthorized")) break;
+      } catch {
         break;
       }
 
