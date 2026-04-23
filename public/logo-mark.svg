@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 48" width="260" height="48">
+  <!-- ═══════════════════════════════════════════════════════════════
+       keepioo Compact Lockup · Editorial
+       사용처: Nav bar (58px 높이), footer, 이메일 헤더.
+       Single rule + 이탤릭 워드마크 + 버건디 dot. 한글 부텍스트 inline.
+       ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- 이탤릭 세리프 'keepioo' — 주 워드마크 -->
+  <text x="0" y="30" font-family="'Bodoni Moda','Didot','Playfair Display',Georgia,serif"
+        font-size="30" font-weight="400" fill="#0E0B08"
+        letter-spacing="-1.2" font-style="italic">keepioo</text>
+
+  <!-- 버건디 dot — Masthead ornament 의 최소 표현 -->
+  <circle cx="142" cy="20" r="3.5" fill="#8A2A2A"/>
+
+  <!-- 얇은 vertical divider -->
+  <line x1="156" y1="8" x2="156" y2="34" stroke="#0E0B08" stroke-width="0.6" opacity="0.4"/>
+
+  <!-- 한글 부텍스트 -->
+  <text x="168" y="28" font-family="'Nanum Myeongjo','Noto Serif KR',serif"
+        font-size="14" font-weight="700" fill="#0E0B08" letter-spacing="2.5">정책알리미</text>
+</svg>

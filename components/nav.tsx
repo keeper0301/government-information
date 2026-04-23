@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { BellIcon } from "./icons";
 import { UserMenu } from "./user-menu";
 
 // 메인 메뉴 항목
@@ -59,12 +58,38 @@ export function Nav() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100">
       <div className="max-w-content mx-auto px-10 h-[58px] flex items-center justify-between max-md:px-5">
-        {/* 로고 */}
-        <a href="/" className="flex items-center gap-2 no-underline">
-          <div className="w-[30px] h-[30px] rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 grid place-items-center">
-            <BellIcon className="w-[18px] h-[18px] text-white" />
-          </div>
-          <span className="text-[18px] font-extrabold tracking-[-0.6px] text-grey-900">
+        {/* 로고 — Editorial Masthead (이탤릭 세리프 워드마크 + 버건디 dot) */}
+        <a
+          href="/"
+          aria-label="keepioo · 정책알리미 홈으로"
+          className="flex items-center gap-2.5 no-underline"
+          style={{ fontFamily: "'Bodoni Moda', 'Didot', 'Playfair Display', Georgia, serif" }}
+        >
+          <span
+            className="italic font-normal text-grey-900"
+            style={{ fontSize: "26px", letterSpacing: "-0.9px", lineHeight: 1 }}
+          >
+            keepioo
+          </span>
+          {/* 버건디 ornament */}
+          <span
+            aria-hidden="true"
+            style={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: "#8A2A2A", display: "inline-block",
+              marginTop: 4,
+            }}
+          />
+          {/* 데스크톱에서만 한글 부텍스트 노출 */}
+          <span
+            className="hidden sm:inline-block text-grey-900"
+            style={{
+              fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
+              fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px",
+              borderLeft: "0.5px solid rgba(14,11,8,0.35)",
+              paddingLeft: "10px", marginLeft: "2px",
+            }}
+          >
             정책알리미
           </span>
         </a>

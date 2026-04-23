@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 140" width="560" height="140">
+  <!-- ═══════════════════════════════════════════════════════════════
+       keepioo Primary Logo · Editorial Masthead
+       사용처: About 페이지, 이메일 서명, OG 이미지 기준, 포스터.
+       Full version with dual rules + small caps meta + burgundy ornament.
+       ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- 상단 이중 rule (얇은 + 굵은) -->
+  <line x1="20" y1="28" x2="540" y2="28" stroke="#0E0B08" stroke-width="0.8"/>
+  <line x1="20" y1="34" x2="540" y2="34" stroke="#0E0B08" stroke-width="2.5"/>
+
+  <!-- 좌측 small caps meta -->
+  <text x="20" y="20" font-family="'EB Garamond','Baskerville',Georgia,serif"
+        font-size="9" font-weight="500" fill="#3D2F22" letter-spacing="3.5"
+        font-variant="small-caps">EST · MMXXVI · SEOUL</text>
+
+  <!-- 우측 small caps meta -->
+  <text x="540" y="20" text-anchor="end"
+        font-family="'EB Garamond','Baskerville',Georgia,serif"
+        font-size="9" font-weight="500" fill="#3D2F22" letter-spacing="3.5"
+        font-variant="small-caps">NO · Ⅰ</text>
+
+  <!-- 중앙 거대 이탤릭 세리프 워드마크 -->
+  <text x="280" y="94" text-anchor="middle"
+        font-family="'Bodoni Moda','Didot','Playfair Display','EB Garamond',Georgia,serif"
+        font-size="72" font-weight="400" fill="#0E0B08"
+        letter-spacing="-2.5" font-style="italic">keepioo</text>
+
+  <!-- 하단 이중 rule -->
+  <line x1="20" y1="108" x2="540" y2="108" stroke="#0E0B08" stroke-width="2.5"/>
+  <line x1="20" y1="114" x2="540" y2="114" stroke="#0E0B08" stroke-width="0.8"/>
+
+  <!-- 하단 좌측: 영문 italic -->
+  <text x="20" y="132" font-family="'EB Garamond',Georgia,serif"
+        font-size="11" fill="#3D2F22" font-style="italic">Curating Korea&apos;s public benefits.</text>
+
+  <!-- 하단 우측: 버건디 ornament + 한글 -->
+  <g transform="translate(540, 132)">
+    <polygon points="-88,-5 -84,-9 -80,-5 -84,-1" fill="#8A2A2A"/>
+    <text x="-72" y="0" text-anchor="end"
+          font-family="'Nanum Myeongjo','Noto Serif KR',serif"
+          font-size="12" font-weight="700" fill="#0E0B08" letter-spacing="3.5">정책알리미</text>
+  </g>
+</svg>

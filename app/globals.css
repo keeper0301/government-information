@@ -13,15 +13,54 @@ body {
   font-family: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", sans-serif;
-  color: #191f28;
-  background: #fff;
+  color: #0E0B08;         /* 잉크 블랙 (로고 텍스트와 동일) */
+  background: #FAF8F4;    /* 거의 화이트에 가까운 아주 옅은 크림 — 편집물 톤 */
+}
+
+/* ============================================================
+   Typography — 전면 Pretendard 통일 + 세리프 악센트
+   ============================================================
+   사이트 전체를 Pretendard 하나로 통일 → 자연스럽고 이질감 없음.
+   위계는 weight · letter-spacing · size 로 만듦 (폰트 교체 X).
+
+   세리프는 "앵커 포인트" 에만 선택적 적용:
+   - 로고 (keepioo 이탤릭)
+   - editorial-italic 클래스 (catchline, 인용)
+   - editorial-num 클래스 (매거진 풍 숫자)
+   - editorial-smallcaps 클래스 (상단·하단 rule 메타)
+   ============================================================ */
+h1, h2, h3 {
+  color: #0E0B08;              /* 잉크 블랙 */
+  letter-spacing: -0.025em;    /* 타이트 tracking 으로 밀도감 */
+}
+h1 { letter-spacing: -0.035em; font-weight: 800; }
+h2 { letter-spacing: -0.028em; font-weight: 800; }
+h3 { letter-spacing: -0.02em;  font-weight: 700; }
+
+/* Editorial 악센트 유틸리티 — 특정 지점에 선택 적용 */
+.editorial-italic {
+  font-family: "EB Garamond", "Bodoni Moda", Georgia, serif;
+  font-style: italic;
+  letter-spacing: 0;
+}
+.editorial-num {
+  font-family: "EB Garamond", "Bodoni Moda", Georgia, serif;
+  font-variant-numeric: tabular-nums;
+  font-style: italic;
+  letter-spacing: 0;
+}
+.editorial-smallcaps {
+  font-family: "EB Garamond", Georgia, serif;
+  font-variant: small-caps;
+  letter-spacing: 0.22em;
+  font-weight: 500;
 }
 
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid #3182f6;
+  outline: 2px solid #8A2A2A;  /* 버건디 focus ring */
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -43,7 +82,7 @@ a:active {
 .blog-content h2 {
   font-size: 22px;
   font-weight: 800;
-  color: #191f28;
+  color: #0E0B08;
   margin: 36px 0 14px;
   line-height: 1.4;
   letter-spacing: -0.3px;
@@ -51,7 +90,7 @@ a:active {
 .blog-content h3 {
   font-size: 18px;
   font-weight: 700;
-  color: #191f28;
+  color: #0E0B08;
   margin: 28px 0 10px;
   line-height: 1.4;
 }
@@ -74,19 +113,19 @@ a:active {
 }
 .blog-content strong {
   font-weight: 700;
-  color: #191f28;
+  color: #0E0B08;
 }
 .blog-content a {
-  color: #3182f6;
+  color: #8A2A2A;
   text-decoration: underline;
 }
 .blog-content blockquote {
-  border-left: 3px solid #3182f6;
+  border-left: 3px solid #8A2A2A;
   padding: 10px 16px;
   margin: 18px 0;
-  background: #f0f7ff;
+  background: #FBF4F1;
   border-radius: 4px;
-  color: #4e5968;
+  color: #4C4538;
 }
 .blog-content table {
   width: 100%;

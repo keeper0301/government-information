@@ -9,32 +9,43 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Brand Primary — Editorial Masthead Burgundy
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 기존 파란색 `blue` 팔레트명은 legacy — 실제 값은 로고 브랜드 버건디.
+        // `bg-blue-500` 사용 중인 기존 코드 전부가 자동으로 새 톤으로 전환됨.
         blue: {
-          50: "#e8f3ff",
-          100: "#c9e2ff",
-          200: "#90c2ff",
-          400: "#4da2ff",
-          500: "#3182f6",
-          600: "#1b64da",
-          700: "#1957c2",
-          800: "#194aa6",
+          50:  "#FBF4F1",  // 가장 연한 크림 핑크 (hover bg, 알림 box)
+          100: "#F5E3DD",  // 라이트 bg, 카드 highlight
+          200: "#E9BFB5",  // chip, disabled
+          400: "#CE6F5C",  // 호버 라이트
+          500: "#8A2A2A",  // ★ primary — 로고 버건디와 동일
+          600: "#701F1F",  // hover
+          700: "#5A1818",  // active
+          800: "#4A1414",  // pressed
         },
+        // Warm grey — Editorial paper 와 어울리는 따뜻한 회색 (옅은 브라운 tint)
         grey: {
-          50: "#f9fafb",
-          100: "#f2f4f6",
-          200: "#e5e8eb",
-          300: "#d1d6db",
-          400: "#b0b8c1",
-          500: "#8b95a1",
-          600: "#6b7684",
-          700: "#4e5968",
-          800: "#333d4b",
-          900: "#191f28",
+          50:  "#FAF8F4",
+          100: "#F4F1EA",
+          200: "#E5E0D5",
+          300: "#CFC7B6",
+          400: "#A9A08D",
+          500: "#847A68",
+          600: "#665E4E",
+          700: "#4C4538",
+          800: "#2E2A21",
+          900: "#0E0B08",  // 로고 잉크 블랙과 동일
         },
-        red: "#f04452",
-        orange: "#fe9800",
-        green: "#03b26c",
-        purple: "#a234c7",
+        // Editorial 액센트
+        cream:    "#F5EEDC",  // 페이퍼 배경
+        burgundy: "#8A2A2A",  // 버건디 (blue.500 alias)
+        sepia:    "#3D2F22",  // 세피아 (small caps 등)
+        // 상태 컬러 (변경 없음)
+        red:    "#C93434",  // 조금 더 경고적이고 editorial 톤과 어울리는 레드로
+        orange: "#D97A28",  // 머스타드 쪽으로
+        green:  "#3F7D52",  // 깊은 올리브 그린
+        purple: "#7A3A6F",
       },
       fontFamily: {
         pretendard: [

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- iOS 홈스크린용 아이콘 (Next.js 16 apple-icon convention) -->
+  <rect width="180" height="180" rx="40" fill="#F5EEDC"/>
+  <rect x="2" y="2" width="176" height="176" rx="38" fill="none" stroke="#0E0B08" stroke-width="1" opacity="0.25"/>
+
+  <!-- 상단 수평선 (Masthead rule) -->
+  <line x1="30" y1="40" x2="150" y2="40" stroke="#0E0B08" stroke-width="1"/>
+
+  <!-- 메인 'k' 이탤릭 세리프 -->
+  <text x="90" y="128" text-anchor="middle"
+        font-family="'Bodoni Moda','Didot','Playfair Display',Georgia,serif"
+        font-size="148" font-weight="400" font-style="italic"
+        fill="#0E0B08" letter-spacing="-5">k</text>
+
+  <!-- 버건디 ornament -->
+  <circle cx="128" cy="120" r="8" fill="#8A2A2A"/>
+
+  <!-- 하단 수평선 + 캡션 -->
+  <line x1="30" y1="148" x2="150" y2="148" stroke="#0E0B08" stroke-width="1"/>
+  <text x="90" y="164" text-anchor="middle"
+        font-family="'EB Garamond',Georgia,serif"
+        font-size="9" fill="#3D2F22" letter-spacing="2.5">KEEPIOO · MMXXVI</text>
+</svg>

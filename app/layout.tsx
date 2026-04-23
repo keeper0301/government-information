@@ -7,21 +7,24 @@ import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "정책알리미 — 나에게 맞는 복지·대출 정보",
+  title: "keepioo · 정책알리미 — 한국의 공공 지원제도 큐레이션",
   description:
-    "복지로·소상공인24·금융위원회 데이터를 한곳에. 맞춤 복지·대출 정보를 찾고, 마감 알림을 받아보세요.",
+    "보조금24·복지로·기업마당·온통청년 데이터를 한곳에. 내 조건에 맞는 새 정부·지자체 정책을 이메일·알림톡으로 받아보세요.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"),
+  applicationName: "keepioo",
+  authors: [{ name: "keepioo" }],
   openGraph: {
-    title: "정책알리미 — 나에게 맞는 복지·대출 정보",
-    description: "복지로·소상공인24·금융위원회 데이터를 한곳에. 맞춤 복지·대출 정보를 찾고, 마감 알림을 받아보세요.",
-    siteName: "정책알리미",
+    title: "keepioo · 정책알리미",
+    description:
+      "한국의 공공 지원제도를 큐레이션해 이메일·알림톡으로 전달합니다.",
+    siteName: "keepioo",
     locale: "ko_KR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "정책알리미",
-    description: "나에게 맞는 복지·대출 정보를 한곳에서",
+    title: "keepioo · 정책알리미",
+    description: "한국의 공공 지원제도를 큐레이션합니다.",
   },
   alternates: {
     canonical: "/",
@@ -31,6 +34,12 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true },
   },
+  // Next.js 16: app/icon.svg / apple-icon.svg / manifest.ts 는 자동 감지.
+};
+
+// 테마 컬러 (브랜드 ink black) — 새 viewport export 경로
+export const viewport = {
+  themeColor: "#0E0B08",
 };
 
 export default function RootLayout({
@@ -49,6 +58,13 @@ export default function RootLayout({
             crossOrigin="anonymous"
           />
         )}
+        {/* 브랜드 폰트 (Editorial Masthead 로고·헤더 전용) */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,700;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Nanum+Myeongjo:wght@400;700;800&display=swap"
+        />
       </head>
       <body>
         <WebSiteSchema

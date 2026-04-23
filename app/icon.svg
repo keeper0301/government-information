@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Next.js 자동 favicon. Editorial Masthead 의 정수를 32x32 급 공간에 축약. -->
+  <!-- 크림 베이스 + 검은 이탤릭 세리프 'k' + 버건디 dot. 얇은 외곽선. -->
+
+  <rect width="64" height="64" rx="14" fill="#F5EEDC"/>
+  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="13.25" fill="none"
+        stroke="#0E0B08" stroke-width="1.2" opacity="0.5"/>
+
+  <!-- 이탤릭 세리프 'k' — 브랜드 워드마크의 대표 글자 -->
+  <text x="32" y="48" text-anchor="middle"
+        font-family="'Bodoni Moda','Didot','Playfair Display',Georgia,serif"
+        font-size="54" font-weight="400" font-style="italic"
+        fill="#0E0B08" letter-spacing="-2">k</text>
+
+  <!-- 버건디 dot (Masthead 의 다이아몬드 ornament 를 dot 으로 축약) -->
+  <circle cx="48" cy="46" r="3.5" fill="#8A2A2A"/>
+</svg>
