@@ -38,9 +38,12 @@ export function AlertStrip({ programs, isLoggedIn = false }: Props) {
               href={`/${p.type}/${p.id}`}
               className="shrink-0 flex items-center gap-2 no-underline text-inherit hover:opacity-75 transition-opacity"
             >
+              {/* ProgramRow DdayLabel 과 동일 스타일 — 전체 사이트 D-N 배지 일관성 */}
               <span
-                className={`shrink-0 text-[11px] font-bold text-white rounded-[5px] px-2 py-[3px] ${
-                  (p.dday ?? 99) <= 7 ? "bg-blue-700" : "bg-grey-700"
+                className={`shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                  (p.dday ?? 99) <= 7
+                    ? "bg-[#FFEEEE] text-red"
+                    : "bg-blue-50 text-blue-600"
                 }`}
               >
                 D-{p.dday}

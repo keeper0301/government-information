@@ -155,3 +155,14 @@ a:active {
   border: none;
   border-top: 1px solid #e5e8eb;
 }
+
+/* 가로 스크롤 컨테이너의 스크롤바 숨김 (AlertStrip 모바일 등)
+   tailwind plugin 없이 순수 CSS 로 처리 */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
