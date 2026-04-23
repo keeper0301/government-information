@@ -13,7 +13,8 @@ export function AlertStrip({ program }: { program: DisplayProgram | null }) {
         href={`/${program.type}/${program.id}`}
         className="flex items-center border-b border-grey-100 py-[18px] gap-3.5 cursor-pointer hover:opacity-75 transition-opacity no-underline text-inherit"
       >
-        <span className="shrink-0 text-xs font-bold text-white bg-red rounded-[5px] px-2 py-[3px]">
+        {/* 마감임박 배지 — 깊은 와인색 (브랜드 버건디 계열) */}
+        <span className="shrink-0 text-xs font-bold text-white bg-blue-700 rounded-[5px] px-2 py-[3px]">
           D-{program.dday}
         </span>
         <span className="flex-1 text-[15px] font-medium text-grey-800 truncate">

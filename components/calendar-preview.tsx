@@ -112,8 +112,8 @@ export async function CalendarPreview() {
                       href={`/${item.type}/${item.id}`}
                       className={`block text-[10px] leading-[1.3] px-1 py-[2px] rounded truncate no-underline max-md:hidden hover:opacity-80 transition-opacity ${
                         item.type === "welfare"
-                          ? "bg-blue-50 text-blue-600"
-                          : "bg-[#FFF4E6] text-[#E8590C]"
+                          ? "bg-blue-50 text-blue-700"      /* 버건디 톤 */
+                          : "bg-[#F3E8D4] text-[#6B3A00]"   /* 세피아 톤 (WCAG AA 통과) */
                       }`}
                       title={item.title}
                     >
