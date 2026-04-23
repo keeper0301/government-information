@@ -16,16 +16,23 @@ import {
 
 export const maxDuration = 300; // 5분 — 여러 컬렉터 순차 실행
 
-async function runCollectAndRespond(jobLabel: string) {
+async function runCollectAndRespond(jobLabel: string, sourceFilter?: string[]) {
   try {
     const supabase = createAdminClient();
-    const collectors = await getAllCollectors();
+    const allCollectors = await getAllCollectors();
+
+    // ?source=X,Y,Z 로 일부 collector 만 선택 실행 (Vercel Hobby 60초 한도
+    // 안에서 모든 15개가 못 끝나서 GitHub Actions matrix 로 병렬 분할 호출)
+    const collectors =
+      sourceFilter && sourceFilter.length > 0
+        ? allCollectors.filter((c) => sourceFilter.includes(c.sourceCode))
+        : allCollectors;
 
     const results: Record<string, CollectorResult> = {};
     let totalCollected = 0;
     const failedSources: string[] = [];
 
-    // 각 컬렉터 순차 실행 (병렬은 Rate Limit 우려로 미적용)
+    // 선택된 컬렉터 순차 실행 (보통 1~2개 — matrix 병렬 호출)
     for (const collector of collectors) {
       const r = await runOneCollector(supabase, collector);
       results[collector.sourceCode] = r;
@@ -70,7 +77,14 @@ export async function POST(request: NextRequest) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return runCollectAndRespond("collect (POST)");
+  const sourceParam = request.nextUrl.searchParams.get("source");
+  const filter = sourceParam
+    ? sourceParam.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+  return runCollectAndRespond(
+    filter ? `collect[${filter.join(",")}]` : "collect (POST)",
+    filter,
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -85,5 +99,12 @@ export async function GET(request: NextRequest) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return runCollectAndRespond("collect (cron)");
+  const sourceParam = request.nextUrl.searchParams.get("source");
+  const filter = sourceParam
+    ? sourceParam.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+  return runCollectAndRespond(
+    filter ? `collect[${filter.join(",")}]` : "collect (cron)",
+    filter,
+  );
 }

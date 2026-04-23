@@ -1,8 +1,9 @@
 name: 정책 수집 (collect)
 
-# 04:00 UTC (한국 13:00) — 새 정책 데이터 수집
-# source_fetch_log 의 lastFetchedAt 체크로 중복 수집 자동 차단
-# Vercel cron 이 fallback 으로 남아있으나 GitHub Actions 가 주력
+# 04:00 UTC (한국 13:00) — 15개 collector 병렬 실행
+# Vercel Hobby 60초 maxDuration 제약 우회:
+#   단일 호출로 15개 순차 실행하면 60초 초과 → matrix 로 병렬 분할 호출
+# 각 source 별 독립된 Vercel 함수 호출 → 60초 여유 ✓
 
 on:
   schedule:
@@ -11,12 +12,33 @@ on:
 
 jobs:
   collect:
-    name: keepioo.com collect 엔드포인트 호출
+    name: collect [${{ matrix.source }}]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
+    strategy:
+      # 하나 실패해도 나머지 계속 진행 (부분 수집 허용)
+      fail-fast: false
+      matrix:
+        source:
+          - bokjiro
+          - local-welfare
+          - youth-v2
+          - mss
+          - gov24
+          - bizinfo
+          - kstartup
+          - smes
+          - sbiz24
+          - semas-policy-fund
+          - koreg-haedream
+          - nhis
+          - employment
+          - fsc
+          - kinfa
+
     steps:
-      - name: collect 엔드포인트 호출
+      - name: ${{ matrix.source }} 수집
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
@@ -25,15 +47,15 @@ jobs:
             echo "::error::CRON_SECRET 시크릿이 설정되지 않음."
             exit 1
           fi
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
+          echo "== source=${{ matrix.source }} · $(date -u '+%Y-%m-%d %H:%M:%S') UTC =="
           http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
-            --max-time 120 \
+            --max-time 90 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/collect")
+            "https://www.keepioo.com/api/collect?source=${{ matrix.source }}")
           echo "== HTTP $http_status =="
           cat /tmp/response.json
           echo ""
           if [ "$http_status" -ne 200 ]; then
-            echo "::error::collect 호출 실패 (HTTP $http_status)"
+            echo "::error::collect[${{ matrix.source }}] 실패 (HTTP $http_status)"
             exit 1
           fi
