@@ -2,8 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // 로그인한 사용자만 볼 수 있는 경로 목록
-// 이 경로에 미로그인 상태로 접근하면 /login?next=<원래경로> 로 리다이렉트
-const PROTECTED_PATHS = ["/mypage", "/alerts"];
+// 이 경로(자기 자신 + 모든 하위)에 미로그인 상태로 접근하면
+// /login?next=<원래경로> 로 리다이렉트
+const PROTECTED_PATHS = ["/mypage", "/alerts", "/checkout"];
+
+// 보호 경로 안에 있지만 비로그인도 봐야 하는 예외 (정확 매치)
+// - /checkout/fail: 토스 결제가 실패한 사용자에게 안내를 보여주는 페이지
+//   세션이 만료된 채로 토스에서 돌아오는 경우에도 메시지가 표시되어야 함
+const PROTECTED_EXCEPTIONS = ["/checkout/fail"];
 
 // 모든 요청 전에 실행되는 미들웨어
 // 1) Supabase 세션 쿠키를 갱신해서 로그인 상태 유지
@@ -37,11 +43,14 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 보호 경로 여부 확인
+  // 보호 경로 여부 확인 — 예외 경로면 보호 대상이 아님
   const { pathname } = request.nextUrl;
-  const isProtected = PROTECTED_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
+  const isException = PROTECTED_EXCEPTIONS.includes(pathname);
+  const isProtected =
+    !isException &&
+    PROTECTED_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(p + "/")
+    );
 
   // 미로그인 + 보호 경로 → 로그인 페이지로 (원래 가려던 곳을 next 에 담아둠)
   if (isProtected && !user) {
