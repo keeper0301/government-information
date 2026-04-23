@@ -67,6 +67,67 @@ export async function sendAlarmEmail({
 }
 
 // ============================================================
+// 운영자 알림 — cron 작업 실패 시
+// ============================================================
+// publish-blog 등 cron 이 throw 했을 때 keeper0301@gmail.com 으로 알림.
+// 발행 실패가 며칠간 무음으로 쌓이는 걸 방지.
+// ============================================================
+type SendCronFailureEmailParams = {
+  jobName: string;       // "publish-blog" / "collect" 등
+  errorMessage: string;
+  context?: string;      // 추가 정보 (예: 카테고리)
+};
+
+const ADMIN_EMAIL = "keeper0301@gmail.com";
+
+export async function sendCronFailureEmail({
+  jobName,
+  errorMessage,
+  context,
+}: SendCronFailureEmailParams) {
+  // 시간 표기 (KST)
+  const now = new Date().toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const { data, error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: [ADMIN_EMAIL],
+    subject: `[정책알리미 운영] cron 실패: ${jobName}`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
+        <div style="margin-bottom: 16px;">
+          <span style="font-size: 16px; font-weight: 800; color: #191f28;">정책알리미 · 운영 알림</span>
+        </div>
+        <div style="background: #fef2f2; border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #f04452;">
+          <div style="font-size: 13px; font-weight: 700; color: #f04452; margin-bottom: 6px;">CRON 실패</div>
+          <div style="font-size: 18px; font-weight: 700; color: #191f28; margin-bottom: 6px;">${jobName}</div>
+          <div style="font-size: 13px; color: #8b95a1;">${now} (KST)</div>
+        </div>
+        ${context ? `
+          <div style="background: #f9fafb; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+            <div style="font-size: 12px; color: #8b95a1; margin-bottom: 4px;">컨텍스트</div>
+            <div style="font-size: 14px; color: #191f28;">${context}</div>
+          </div>
+        ` : ""}
+        <div style="background: #f9fafb; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #8b95a1; margin-bottom: 4px;">에러 메시지</div>
+          <div style="font-size: 13px; color: #191f28; font-family: monospace; word-break: break-all;">${errorMessage}</div>
+        </div>
+        <div style="font-size: 12px; color: #8b95a1; line-height: 1.7;">
+          이 메일은 cron 실패 시 자동으로 발송됩니다.
+          반복되면 Vercel Functions 로그를 확인하세요.
+        </div>
+      </div>
+    `,
+  });
+
+  return { data, error };
+}
+
+// ============================================================
 // 결제 영수증 메일
 // ============================================================
 // charge 라우트에서 자동결제 성공 시 호출됨.

@@ -21,6 +21,17 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { publishOnePost, getTodayCategory } from "@/lib/blog-publish";
+import { sendCronFailureEmail } from "@/lib/email";
+
+// 운영자 알림 헬퍼: 진짜 발행에서만 호출 (dryRun 은 운영 알림 X)
+// 메일 실패가 본 응답을 막지 않도록 swallow.
+async function notifyAdmin(jobName: string, errorMessage: string, context?: string) {
+  try {
+    await sendCronFailureEmail({ jobName, errorMessage, context });
+  } catch {
+    // 메일 발송 실패는 무시 (cron 응답에 영향 X)
+  }
+}
 
 // AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림
 export const maxDuration = 60;
@@ -63,12 +74,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
+    const category = opts.category || getTodayCategory();
+    // dryRun 실패는 무음 (수동 테스트), 진짜 발행 실패만 운영자에게 알림
+    if (!opts.dryRun) {
+      await notifyAdmin("publish-blog (POST)", message, `카테고리: ${category}`);
+    }
     return NextResponse.json(
-      {
-        error: "발행 실패",
-        detail: message,
-        category: opts.category || getTodayCategory(),
-      },
+      { error: "발행 실패", detail: message, category },
       { status: 500 },
     );
   }
@@ -100,8 +112,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
+    const category = getTodayCategory();
+    // GET 은 cron 자동 호출. 실패 시 무조건 알림.
+    await notifyAdmin("publish-blog (cron)", message, `카테고리: ${category}`);
     return NextResponse.json(
-      { error: "발행 실패", detail: message, category: getTodayCategory() },
+      { error: "발행 실패", detail: message, category },
       { status: 500 },
     );
   }
