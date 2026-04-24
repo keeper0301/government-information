@@ -425,69 +425,55 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      {/* Legend — editorial legend strip
-          축: 행=카테고리(복지/대출), 열=상태(마감/시작)
-          상단 smallcaps 헤더 + hairline 경계로 신문 박스 느낌 */}
-      <div className="mb-10 inline-block border border-grey-300 bg-white">
-        <div className="px-4 py-2 border-b border-grey-300 bg-grey-50">
-          <span className="editorial-smallcaps text-[10px] text-grey-700">
-            Legend · 범례
+      {/* Legend — inline flat. 매트릭스·박스·헤더 전부 제거.
+          설계 원칙:
+          · 카테고리 색은 '복지'/'대출' 텍스트 자체가 전달 (burgundy / orange)
+          · 모양(●/○)만 '마감/시작' 구분 — 같은 라벨("복지 마감" 등) 반복 제거
+          · 한 줄(모바일은 wrap), 공간 절약 + 시선 흐름 명확 */}
+      <div className="mb-10 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-grey-700">
+        <span className="editorial-smallcaps text-[10px] text-grey-500 mr-1">
+          범례
+        </span>
+
+        {/* 복지 그룹 */}
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-burgundy">복지</span>
+          <span className="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="w-2.5 h-2.5 rounded-full bg-burgundy shrink-0"
+            />
+            마감
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="w-2.5 h-2.5 rounded-full bg-white ring-[1.5px] ring-burgundy shrink-0"
+            />
+            시작
           </span>
         </div>
-        <div className="grid grid-cols-[auto_auto_auto] gap-x-8 gap-y-3 items-center p-4">
-          <div />
-          <div className="editorial-smallcaps text-[10px] text-grey-600">
-            <span aria-hidden="true" className="mr-1">●</span>마감
-          </div>
-          <div className="editorial-smallcaps text-[10px] text-grey-600">
-            <span aria-hidden="true" className="mr-1">○</span>시작
-          </div>
 
-          {/* 복지 행 */}
-          <div className="flex items-center gap-2 text-[12px] font-semibold text-burgundy pr-2">
-            <span
-              aria-hidden="true"
-              className="inline-block w-[3px] h-4 bg-burgundy"
-            />
-            복지
-          </div>
-          <div className="flex items-center gap-2 text-[12px] text-grey-700">
-            <span
-              className="w-3 h-3 rounded-full bg-burgundy shrink-0"
-              aria-hidden="true"
-            />
-            <span>복지 마감</span>
-          </div>
-          <div className="flex items-center gap-2 text-[12px] text-grey-700">
-            <span
-              className="w-3 h-3 rounded-full bg-white ring-2 ring-burgundy shrink-0"
-              aria-hidden="true"
-            />
-            <span>복지 시작</span>
-          </div>
+        {/* 구분선 — md 이상에서만 (모바일은 wrap 으로 자연 분리) */}
+        <span aria-hidden="true" className="hidden md:block w-px h-4 bg-grey-200" />
 
-          {/* 대출 행 */}
-          <div className="flex items-center gap-2 text-[12px] font-semibold text-[#B8661F] pr-2">
+        {/* 대출 그룹 */}
+        <div className="flex items-center gap-3">
+          <span className="font-semibold text-[#B8661F]">대출</span>
+          <span className="flex items-center gap-1.5">
             <span
               aria-hidden="true"
-              className="inline-block w-[3px] h-4 bg-orange"
+              className="w-2.5 h-2.5 rounded-full bg-orange shrink-0"
             />
-            대출
-          </div>
-          <div className="flex items-center gap-2 text-[12px] text-grey-700">
+            마감
+          </span>
+          <span className="flex items-center gap-1.5">
             <span
-              className="w-3 h-3 rounded-full bg-orange shrink-0"
               aria-hidden="true"
+              className="w-2.5 h-2.5 rounded-full bg-white ring-[1.5px] ring-orange shrink-0"
             />
-            <span>대출 마감</span>
-          </div>
-          <div className="flex items-center gap-2 text-[12px] text-grey-700">
-            <span
-              className="w-3 h-3 rounded-full bg-white ring-2 ring-orange shrink-0"
-              aria-hidden="true"
-            />
-            <span>대출 시작</span>
-          </div>
+            시작
+          </span>
         </div>
       </div>
 
