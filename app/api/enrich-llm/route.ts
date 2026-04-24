@@ -26,6 +26,9 @@ const LOAN_BATCH = 5;
 const RATE_LIMIT_DELAY_MS = 4000;
 // description 이 너무 짧으면 추출할 정보 없음 → 스킵
 const MIN_DESCRIPTION_LEN = 80;
+// Vercel Hobby 60초 한도 방어 — 이 시간 초과 임박 시 남은 row 는 스킵하고 조기 종료.
+// 한 row 당 평균 대기 4s + Gemini 1~3s = 5~7s → 53초 초과 시 다음 1건 더 돌리기 위험.
+const TIME_BUDGET_MS = 53000;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -162,8 +165,12 @@ async function runEnrichAndRespond(jobLabel: string) {
 
     let enriched = 0;
     let failed = 0;
+    let skippedByTime = 0;
 
     // 순차 처리 — 호출 사이 4초 간격 (Gemini 분당 15회 제한)
+    // + 60초 한도 방어용 시간 예산 체크 — Gemini 응답이 예상보다 길어져도
+    // Vercel 이 함수를 강제 종료하기 전에 지금까지 결과를 깔끔히 반환.
+    const startedAt = Date.now();
     const processRow = async (
       table: "welfare_programs" | "loan_programs",
       row: EnrichRow,
@@ -174,8 +181,20 @@ async function runEnrichAndRespond(jobLabel: string) {
       await new Promise((r) => setTimeout(r, RATE_LIMIT_DELAY_MS));
     };
 
-    for (const row of welfareRows) await processRow("welfare_programs", row);
-    for (const row of loanRows) await processRow("loan_programs", row);
+    for (const row of welfareRows) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        skippedByTime++;
+        continue;
+      }
+      await processRow("welfare_programs", row);
+    }
+    for (const row of loanRows) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        skippedByTime++;
+        continue;
+      }
+      await processRow("loan_programs", row);
+    }
 
     const total = welfareRows.length + loanRows.length;
 
@@ -191,9 +210,11 @@ async function runEnrichAndRespond(jobLabel: string) {
       timestamp: new Date().toISOString(),
       enriched,
       failed,
+      skipped_by_time: skippedByTime,
       total_candidates: total,
       welfare_processed: welfareRows.length,
       loan_processed: loanRows.length,
+      elapsed_ms: Date.now() - startedAt,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류";
