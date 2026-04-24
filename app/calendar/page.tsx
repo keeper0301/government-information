@@ -155,14 +155,39 @@ export default async function CalendarPage({
   pushEvents(welfareRows ?? [], "welfare");
   pushEvents(loanRows ?? [], "loan");
 
-  // day -> events 맵 (달력 그리드용)
+  // day -> (카테고리 × 상태) 집계 — 셀 렌더링 시 바로 쓰기 위해 미리 계산.
   // e.date 는 "YYYY-MM-DD" 포맷 → new Date() 가 UTC 자정으로 파싱하므로
-  // getUTCDate() 를 써야 서버 로컬 타임존 무관하게 일자를 정확히 추출
-  const dayMap: Record<number, CalendarEvent[]> = {};
+  // getUTCDate() 를 써야 서버 로컬 타임존 무관하게 일자를 정확히 추출.
+  // 점 8개를 한 줄에 나열하는 대신 복지 행 / 대출 행 두 줄로 정리해야 가독성↑.
+  type CellSummary = {
+    welfareEnd: number;
+    welfareStart: number;
+    loanEnd: number;
+    loanStart: number;
+  };
+  const cellSummary: Record<number, CellSummary> = {};
   for (const e of events) {
     const day = new Date(e.date).getUTCDate();
-    (dayMap[day] ||= []).push(e);
+    const s = (cellSummary[day] ||= {
+      welfareEnd: 0,
+      welfareStart: 0,
+      loanEnd: 0,
+      loanStart: 0,
+    });
+    if (e.type === "welfare" && e.kind === "end") s.welfareEnd++;
+    else if (e.type === "welfare" && e.kind === "start") s.welfareStart++;
+    else if (e.type === "loan" && e.kind === "end") s.loanEnd++;
+    else if (e.type === "loan" && e.kind === "start") s.loanStart++;
   }
+
+  // 전/다음 달의 "앞뒤 빈칸" 에 실제 날짜를 회색으로 미리 찍어주면
+  // (현재는 완전 빈 사각형) 시선 흐름이 매끄럽고 편집물 느낌이 난다.
+  // 이전 달의 마지막 며칠: firstDay 만큼 필요
+  const prevMonthDate = new Date(Date.UTC(year, month, 0));
+  const prevMonthDays = prevMonthDate.getUTCDate();
+  // 다음 달의 앞쪽 며칠: 그리드가 7×6=42 칸 완성되도록 채움 (일관된 세로 높이)
+  const totalSlots = 42;
+  const trailingSlots = totalSlots - firstDay - daysInMonth;
 
   // 하단 리스트용 — 시작/마감을 두 섹션으로 분리 (가독성 ↑)
   // - 마감: 오늘 이후(D-1 이상)만 노출. D-0·과거는 제외 (이미 끝났거나 임박한 것은 액션 불가)
@@ -191,144 +216,274 @@ export default async function CalendarPage({
         <b className="text-grey-900">마감일</b>을 한눈에 확인하세요.
       </p>
 
-      {/* 월 네비게이션 — 좌우 화살표로 ±24개월 이동. 중앙에 현재 월 + 요약 + "오늘로" */}
+      {/* 월 네비게이션 — editorial ledger 헤더 스타일
+          상단 얇은 rule + smallcaps 요약 + 큰 숫자 월 + 양쪽 arrow 박스
+          신문 1면 하단의 편집 정보 박스 느낌 */}
       <nav
-        className="flex items-center justify-between gap-3 mb-4"
+        className="relative mb-6 pt-5 pb-5 border-t-2 border-b border-grey-900"
         aria-label="달력 월 이동"
       >
-        <a
-          href={`/calendar?year=${prevMonth.year}&month=${prevMonth.month}`}
-          aria-label={`이전 달 (${prevMonth.year}년 ${prevMonth.month}월)`}
-          className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
-        >
-          <span aria-hidden="true">◀</span>
-        </a>
+        <div className="flex items-center justify-between gap-4">
+          <a
+            href={`/calendar?year=${prevMonth.year}&month=${prevMonth.month}`}
+            aria-label={`이전 달 (${prevMonth.year}년 ${prevMonth.month}월)`}
+            className="shrink-0 w-10 h-10 flex items-center justify-center border border-grey-300 text-grey-700 hover:border-burgundy hover:text-burgundy transition-colors no-underline text-[14px]"
+          >
+            <span aria-hidden="true">◀</span>
+          </a>
 
-        <div className="flex-1 min-w-0 text-center">
-          <div className="flex items-baseline justify-center gap-2 flex-wrap">
-            <h2 className="text-lg font-bold text-grey-900">{monthName}</h2>
-            {!isCurrentMonth && (
-              <a
-                href="/calendar"
-                className="text-[12px] font-semibold text-blue-600 no-underline hover:underline"
-              >
-                오늘로
-              </a>
-            )}
-          </div>
-          <div className="text-[13px] font-medium text-grey-600 mt-0.5">
-            신규 시작 {newCount}건 · 마감 예정 {upcomingCount}건
-          </div>
-        </div>
-
-        <a
-          href={`/calendar?year=${nextMonth.year}&month=${nextMonth.month}`}
-          aria-label={`다음 달 (${nextMonth.year}년 ${nextMonth.month}월)`}
-          className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
-        >
-          <span aria-hidden="true">▶</span>
-        </a>
-      </nav>
-
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-0.5 bg-grey-100 rounded-2xl overflow-hidden mb-4">
-        {DAYS.map((d) => (
-          <div key={d} className="bg-grey-50 py-2.5 text-center text-xs font-semibold text-grey-600">
-            {d}
-          </div>
-        ))}
-        {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`e${i}`} className="bg-grey-50 min-h-[80px]" />
-        ))}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const isToday = day === today;
-          const items = dayMap[day];
-          return (
-            <div
-              key={day}
-              className={`relative bg-white p-2 pb-4 min-h-[80px] text-right ${isToday ? "bg-blue-50" : ""}`}
-            >
-              <span
-                className={`text-[13px] font-medium ${isToday ? "text-blue-500 font-bold" : "text-grey-800"}`}
-              >
-                {day}
+          <div className="flex-1 min-w-0 text-center">
+            <div className="editorial-smallcaps text-[10px] text-burgundy mb-1">
+              Monthly Ledger
+            </div>
+            <h2 className="text-[26px] font-bold text-grey-900 leading-none tracking-[-0.02em]">
+              <span className="editorial-num italic font-semibold">{year}</span>
+              <span className="mx-1.5 text-grey-400 font-light">·</span>
+              <span className="editorial-num italic font-semibold">
+                {String(month + 1).padStart(2, "0")}
               </span>
-              {items && (
-                <div className="flex gap-1 justify-end mt-1 flex-wrap">
-                  {items.map((item) => {
-                    // 마감 = 채운 점, 시작 = 테두리만
-                    const color = item.type === "welfare" ? "bg-blue-500" : "bg-orange";
-                    const ringColor = item.type === "welfare" ? "ring-blue-500" : "ring-orange";
-                    if (item.kind === "end") {
-                      return (
-                        <span
-                          key={item.id}
-                          className={`w-[6px] h-[6px] rounded-full ${color}`}
-                          title={`${item.title} — 마감`}
-                        />
-                      );
-                    }
-                    return (
-                      // 시작 이벤트 — ring-2 로 두껍게 해야 6px 작은 원에서도
-                      // "테두리 원" 이 "채움 원" 과 확실히 구별됨 (범례와 두께 통일)
-                      <span
-                        key={item.id}
-                        className={`w-[6px] h-[6px] rounded-full bg-white ring-2 ${ringColor}`}
-                        title={`${item.title} — 시작`}
-                      />
-                    );
-                  })}
-                </div>
+              <span className="ml-1 text-[14px] font-semibold text-grey-600 align-baseline">
+                {month + 1}월
+              </span>
+            </h2>
+            <div className="mt-2 flex items-center justify-center gap-3 text-[11px] text-grey-700">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="editorial-smallcaps text-grey-600">신규</span>
+                <span className="editorial-num italic font-semibold text-grey-900">
+                  {newCount}
+                </span>
+              </span>
+              <span className="text-grey-300">/</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="editorial-smallcaps text-grey-600">마감</span>
+                <span className="editorial-num italic font-semibold text-grey-900">
+                  {upcomingCount}
+                </span>
+              </span>
+              {!isCurrentMonth && (
+                <>
+                  <span className="text-grey-300">/</span>
+                  <a
+                    href="/calendar"
+                    className="editorial-smallcaps text-burgundy hover:underline no-underline"
+                  >
+                    오늘로
+                  </a>
+                </>
               )}
             </div>
-          );
-        })}
+          </div>
+
+          <a
+            href={`/calendar?year=${nextMonth.year}&month=${nextMonth.month}`}
+            aria-label={`다음 달 (${nextMonth.year}년 ${nextMonth.month}월)`}
+            className="shrink-0 w-10 h-10 flex items-center justify-center border border-grey-300 text-grey-700 hover:border-burgundy hover:text-burgundy transition-colors no-underline text-[14px]"
+          >
+            <span aria-hidden="true">▶</span>
+          </a>
+        </div>
+      </nav>
+
+      {/* Calendar grid — editorial ledger 본체
+          - 요일 헤더: smallcaps burgundy (신문 톤)
+          - 그리드 선: hairline grey-200, 격자가 또렷하게 찍히는 편집물 표
+          - 셀: 흰 바탕 + 이전/다음 달 날짜는 cream 바탕 (완전 빈 칸 대신)
+          - 숫자: editorial-num (EB Garamond italic) — keepioo 브랜드 numeric voice
+          - 이벤트: 복지 행 / 대출 행 2줄 분리 (8개 점 나열 대신)
+          - 오늘: 좌측 3px burgundy rail + 상단 smallcaps "오늘" 태그 */}
+      <div className="border border-grey-300 bg-grey-300 overflow-hidden mb-4 shadow-[0_1px_0_rgba(0,0,0,0.02)]">
+        {/* 요일 헤더 */}
+        <div className="grid grid-cols-7 gap-px bg-grey-300">
+          {DAYS.map((d, idx) => (
+            <div
+              key={d}
+              className={`bg-grey-900 py-2.5 text-center editorial-smallcaps text-[10px] ${
+                idx === 0
+                  ? "text-[#E9BFB5]"
+                  : idx === 6
+                    ? "text-cream"
+                    : "text-cream"
+              }`}
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* 날짜 셀 */}
+        <div className="grid grid-cols-7 gap-px bg-grey-300">
+          {/* 이전 달 꼬리 — 회색으로 희미하게 */}
+          {Array.from({ length: firstDay }).map((_, i) => {
+            const d = prevMonthDays - firstDay + 1 + i;
+            return (
+              <div
+                key={`p${i}`}
+                className="bg-cream/60 min-h-[96px] p-2 opacity-50"
+                aria-hidden="true"
+              >
+                <span className="editorial-num italic text-[16px] text-grey-400">
+                  {d}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* 이번 달 날짜 */}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const isToday = day === today;
+            const dow = (firstDay + i) % 7; // 0=일, 6=토
+            const isSunday = dow === 0;
+            const isSaturday = dow === 6;
+            const s = cellSummary[day];
+            const hasEvents = !!s;
+
+            // 숫자 색: 오늘=burgundy 굵게 / 일=red / 토=burgundy soft / 평일=grey-900
+            const numColor = isToday
+              ? "text-burgundy"
+              : isSunday
+                ? "text-red"
+                : isSaturday
+                  ? "text-[#701F1F]"
+                  : "text-grey-900";
+
+            return (
+              <div
+                key={day}
+                className={`relative bg-white min-h-[96px] p-2 pl-2.5 ${
+                  isToday ? "ring-2 ring-burgundy ring-inset bg-[#FBF4F1]/60" : ""
+                }`}
+              >
+                {/* 오늘 좌측 vertical rail + 상단 "오늘" 태그 */}
+                {isToday && (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-0 bottom-0 w-[3px] bg-burgundy"
+                    />
+                    <span className="absolute top-1.5 right-1.5 editorial-smallcaps text-[8px] text-burgundy bg-white px-1 py-0.5 border border-burgundy/30">
+                      오늘
+                    </span>
+                  </>
+                )}
+
+                {/* 날짜 숫자 — editorial italic */}
+                <div className="flex items-baseline">
+                  <span
+                    className={`editorial-num italic text-[22px] font-semibold leading-none ${numColor}`}
+                  >
+                    {day}
+                  </span>
+                </div>
+
+                {/* 이벤트 요약 — 복지 행 / 대출 행 분리 */}
+                {hasEvents && (
+                  <div className="mt-2 flex flex-col gap-[3px]">
+                    {(s.welfareEnd > 0 || s.welfareStart > 0) && (
+                      <CategoryLine
+                        label="복지"
+                        railColor="bg-burgundy"
+                        dotColor="bg-burgundy"
+                        ringColor="ring-burgundy"
+                        textColor="text-burgundy"
+                        endCount={s.welfareEnd}
+                        startCount={s.welfareStart}
+                      />
+                    )}
+                    {(s.loanEnd > 0 || s.loanStart > 0) && (
+                      <CategoryLine
+                        label="대출"
+                        railColor="bg-orange"
+                        dotColor="bg-orange"
+                        ringColor="ring-orange"
+                        textColor="text-[#B8661F]"
+                        endCount={s.loanEnd}
+                        startCount={s.loanStart}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 다음 달 머리 — 이전 달 꼬리와 동일 처리 */}
+          {Array.from({ length: Math.max(0, trailingSlots) }).map((_, i) => {
+            const d = i + 1;
+            return (
+              <div
+                key={`n${i}`}
+                className="bg-cream/60 min-h-[96px] p-2 opacity-50"
+                aria-hidden="true"
+              >
+                <span className="editorial-num italic text-[16px] text-grey-400">
+                  {d}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Legend — 2×2 테이블로 재구성 (행=카테고리, 열=상태)
-          기존: 한 줄 4개 나열 → 축 구분 모호 + 6~8px 점이라 채움/테두리 차이 불분명
-          개선: 헤더로 축 명시 + 점 크기 ↑ + ring 두께 ↑ → 4종이 한눈에 구별됨 */}
-      <div className="mb-8 inline-block">
-        <div className="grid grid-cols-[auto_auto_auto] gap-x-8 gap-y-3 items-center border border-grey-200 rounded-lg p-4 bg-white">
-          {/* 헤더 행 — 상태 축 (마감 / 시작) */}
+      {/* Legend — editorial legend strip
+          축: 행=카테고리(복지/대출), 열=상태(마감/시작)
+          상단 smallcaps 헤더 + hairline 경계로 신문 박스 느낌 */}
+      <div className="mb-10 inline-block border border-grey-300 bg-white">
+        <div className="px-4 py-2 border-b border-grey-300 bg-grey-50">
+          <span className="editorial-smallcaps text-[10px] text-grey-700">
+            Legend · 범례
+          </span>
+        </div>
+        <div className="grid grid-cols-[auto_auto_auto] gap-x-8 gap-y-3 items-center p-4">
           <div />
-          <div className="text-[11px] font-bold text-grey-600 tracking-wider">
-            <span aria-hidden="true">● </span>마감
+          <div className="editorial-smallcaps text-[10px] text-grey-600">
+            <span aria-hidden="true" className="mr-1">●</span>마감
           </div>
-          <div className="text-[11px] font-bold text-grey-600 tracking-wider">
-            <span aria-hidden="true">○ </span>시작
+          <div className="editorial-smallcaps text-[10px] text-grey-600">
+            <span aria-hidden="true" className="mr-1">○</span>시작
           </div>
 
           {/* 복지 행 */}
-          <div className="text-[13px] font-bold text-grey-800 pr-2">복지</div>
-          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+          <div className="flex items-center gap-2 text-[12px] font-semibold text-burgundy pr-2">
             <span
-              className="w-3.5 h-3.5 rounded-full bg-blue-500 shrink-0"
+              aria-hidden="true"
+              className="inline-block w-[3px] h-4 bg-burgundy"
+            />
+            복지
+          </div>
+          <div className="flex items-center gap-2 text-[12px] text-grey-700">
+            <span
+              className="w-3 h-3 rounded-full bg-burgundy shrink-0"
               aria-hidden="true"
             />
             <span>복지 마감</span>
           </div>
-          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+          <div className="flex items-center gap-2 text-[12px] text-grey-700">
             <span
-              className="w-3.5 h-3.5 rounded-full bg-white ring-2 ring-blue-500 shrink-0"
+              className="w-3 h-3 rounded-full bg-white ring-2 ring-burgundy shrink-0"
               aria-hidden="true"
             />
             <span>복지 시작</span>
           </div>
 
           {/* 대출 행 */}
-          <div className="text-[13px] font-bold text-grey-800 pr-2">대출</div>
-          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+          <div className="flex items-center gap-2 text-[12px] font-semibold text-[#B8661F] pr-2">
             <span
-              className="w-3.5 h-3.5 rounded-full bg-orange shrink-0"
+              aria-hidden="true"
+              className="inline-block w-[3px] h-4 bg-orange"
+            />
+            대출
+          </div>
+          <div className="flex items-center gap-2 text-[12px] text-grey-700">
+            <span
+              className="w-3 h-3 rounded-full bg-orange shrink-0"
               aria-hidden="true"
             />
             <span>대출 마감</span>
           </div>
-          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+          <div className="flex items-center gap-2 text-[12px] text-grey-700">
             <span
-              className="w-3.5 h-3.5 rounded-full bg-white ring-2 ring-orange shrink-0"
+              className="w-3 h-3 rounded-full bg-white ring-2 ring-orange shrink-0"
               aria-hidden="true"
             />
             <span>대출 시작</span>
@@ -443,5 +598,72 @@ function renderEventRow(e: CalendarEvent, kstNow: Date, month0: number) {
         </span>
       </div>
     </a>
+  );
+}
+
+// 달력 셀 안의 카테고리 한 줄 (복지 or 대출).
+// 좌측 2px 컬러 rail + (md+ 에서만) 카테고리 smallcaps 라벨 + 마감·시작 dot+count.
+// - 좁은 모바일에서는 라벨 숨김 → rail 색으로 카테고리 구분
+// - 카운트가 0 인 상태는 아예 렌더링 생략 → 정보 노이즈 최소화
+// - 숫자는 editorial-num italic 으로 브랜드 voice 유지
+function CategoryLine({
+  label,
+  railColor,
+  dotColor,
+  ringColor,
+  textColor,
+  endCount,
+  startCount,
+}: {
+  label: string;
+  railColor: string;
+  dotColor: string;
+  ringColor: string;
+  textColor: string;
+  endCount: number;
+  startCount: number;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 pl-1.5 relative leading-none">
+      {/* 카테고리 rail — 2px 세로 바 (카테고리 색) */}
+      <span
+        aria-hidden="true"
+        className={`absolute left-0 top-[2px] bottom-[2px] w-[2px] ${railColor}`}
+      />
+      {/* md+ 에서만 카테고리 텍스트 라벨 (좁은 뷰포트에서는 rail 만) */}
+      <span
+        className={`hidden md:inline editorial-smallcaps text-[9px] ${textColor} mr-0.5`}
+      >
+        {label}
+      </span>
+      {endCount > 0 && (
+        <span className="inline-flex items-center gap-1">
+          <span
+            aria-hidden="true"
+            className={`w-[7px] h-[7px] rounded-full ${dotColor}`}
+          />
+          <span
+            className={`editorial-num italic text-[12px] font-semibold ${textColor}`}
+            title={`${label} 마감 ${endCount}건`}
+          >
+            {endCount}
+          </span>
+        </span>
+      )}
+      {startCount > 0 && (
+        <span className="inline-flex items-center gap-1">
+          <span
+            aria-hidden="true"
+            className={`w-[7px] h-[7px] rounded-full bg-white ring-[1.5px] ${ringColor}`}
+          />
+          <span
+            className={`editorial-num italic text-[12px] font-semibold ${textColor} opacity-80`}
+            title={`${label} 시작 ${startCount}건`}
+          >
+            {startCount}
+          </span>
+        </span>
+      )}
+    </div>
   );
 }
