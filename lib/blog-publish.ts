@@ -24,6 +24,13 @@ import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
 // 3,000자 초과는 가독성 떨어지고 AI 가 잡담 늘리는 신호 (재시도 권장)
 const MIN_CONTENT_LENGTH = 1000;
 const MAX_CONTENT_LENGTH = 3000;
+
+// SEO — meta description 길이 가드 (검색 스니펫 잘림 방지)
+// 프롬프트 지시는 150~160자(목표 155). 실제 AI 출력엔 편차가 있어
+// 소프트 가드 범위 135~170자. 너무 엄격하면 false positive 로 발행 실패 증가.
+// 135자 미만·170자 초과 시에만 거절 → 다음 cron 재시도.
+const META_MIN_LENGTH = 135;
+const META_MAX_LENGTH = 170;
 const VALID_CATEGORIES = new Set([
   "청년", "소상공인", "주거", "육아·가족", "노년", "학생·교육", "문화", "큐레이션",
 ]);
@@ -224,6 +231,16 @@ export async function publishOnePost(opts: {
   if (!VALID_CATEGORIES.has(generated.category)) {
     // AI 가 다른 카테고리 반환 시 요청 카테고리로 강제 (안전한 fallback)
     generated.category = category;
+  }
+
+  // SEO 가드 — meta description 길이 체크 (2026-04-24 신규)
+  // 150~160자 권장 범위를 크게 벗어나면 거절 → 검색 결과 스니펫 품질 보호.
+  const metaLen = (generated.meta_description || "").length;
+  if (metaLen < META_MIN_LENGTH || metaLen > META_MAX_LENGTH) {
+    throw new Error(
+      `meta_description 길이 부적정 (${metaLen}자, 권장 ${META_MIN_LENGTH}~${META_MAX_LENGTH}자). ` +
+      `SEO 검색 스니펫 잘림·저품질 위험. 다음 cron 에서 재시도.`,
+    );
   }
 
   // 품질 가드 — 원문 description 복붙 감지 (2026-04-24 신규)
