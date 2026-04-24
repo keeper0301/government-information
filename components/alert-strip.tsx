@@ -65,16 +65,19 @@ export function AlertStrip({ programs, isLoggedIn = false }: Props) {
         {/* 마퀴 뷰포트 (overflow hidden 으로 넘치는 부분 가림) */}
         <div className="flex-1 min-w-0 marquee-viewport overflow-hidden">
           {shouldAnimate ? (
-            // 자동 흐름: 원본 세트 + 복제 세트 나란히 → 무한 루프
+            // 자동 흐름: 원본 세트 + 복제 세트 나란히 → 무한 루프.
+            // 점프 방지: 두 그룹 모두에 mr-4(내부 gap 과 동일)를 줘서
+            // 전체 width = 2 × (W + gap) 이 되게 함. 이래야 translateX(-50%)
+            // 지점에서 복제 첫 카드가 원본 첫 카드 위치와 정확히 일치 → 매끈한 루프.
             <div
-              className="marquee-track flex items-center gap-4 max-md:gap-3"
+              className="marquee-track flex items-center"
               style={{ animationDuration: `${durationSec}s` }}
             >
-              <div className="flex items-center gap-4 max-md:gap-3 shrink-0">
+              <div className="flex items-center gap-4 max-md:gap-3 shrink-0 mr-4 max-md:mr-3">
                 {visible.map((p, idx) => renderCard(p, idx, false))}
               </div>
               <div
-                className="flex items-center gap-4 max-md:gap-3 shrink-0"
+                className="flex items-center gap-4 max-md:gap-3 shrink-0 mr-4 max-md:mr-3"
                 aria-hidden="true"
               >
                 {visible.map((p, idx) => renderCard(p, idx, true))}
