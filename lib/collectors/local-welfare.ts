@@ -2,7 +2,7 @@
 // 지자체 복지 (광역·기초 지자체 통합)
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
@@ -28,7 +28,10 @@ function mapCategory(text: string): string {
   if (/양육|보육|출산|임신/.test(text)) return "양육";
   if (/의료|건강|장애/.test(text)) return "의료";
   if (/교육|학자금|장학/.test(text)) return "교육";
-  if (/문화|여가/.test(text)) return "문화";
+  if (/문화|여가|바우처|관광/.test(text)) return "문화";
+  if (/소상공인|자영업|창업|중소기업/.test(text)) return "소상공인";
+  if (/농업|어업|임업|귀농/.test(text)) return "농업";
+  if (/재난|긴급|위기|이재민/.test(text)) return "재난";
   return "소득";
 }
 
@@ -62,12 +65,10 @@ const collector: Collector = {
 
       if (page === 1) {
         const tm = xml.match(/<totalCount>(\d+)<\/totalCount>/);
-        // 최대 3페이지(=1500건) 로 제한.
-        // 디버그 streaming 결과 (a686ed2 검증):
-        //   - fetch + parse + yield 19.8초 (4559건)
-        //   - 50건 batch upsert × 91회 = 60초 초과 → stuck
-        // 1500건이면 batch upsert 약 8회로 충분. 다음 cron 에 갱신.
-        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), 3);
+        // 2026-04-24 Vercel Pro 300s maxDuration 확보 이후 3페이지 → 10페이지
+        // 로 확대 (최대 5,000건). 지자체 시군구 시책 커버리지 대폭 확대.
+        // 이전 3페이지 제한 이유는 Hobby 60s 내 60초 초과 stuck 방지였음.
+        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), 10);
       }
 
       const regex = /<servList>([\s\S]*?)<\/servList>/g;
@@ -89,8 +90,15 @@ const collector: Collector = {
         const desc = parseXmlTag(b, "servDgst");
         const textBlob = [title, theme, target, desc, ctpv, sgg].filter(Boolean).join(" ");
 
-        const regionTags = extractRegionTags(ctpv);
+        // regionTags: 광역 + 시군구 모두 태그로 — "전라남도" 와 "순천시" 둘 다
+        // 검색/필터 가능하게. 이전엔 광역만 쓰던 탓에 "순천 정책" 검색이 title
+        // ILIKE 외엔 걸리지 않았음.
+        const regionTags = extractRegionTags(`${ctpv} ${sgg}`);
         if (regionTags.length === 0) regionTags.push("전국");
+
+        // region 컬럼: 이전엔 광역만("전라남도") 저장. 시군구까지 붙여 지역
+        // 필터·region ILIKE 검색 정확도 ↑.
+        const regionFull = sgg ? `${ctpv} ${sgg}` : ctpv || "전국";
 
         yield {
           sourceCode: "local-welfare",
@@ -105,7 +113,7 @@ const collector: Collector = {
           applyUrl: parseXmlTag(b, "servDtlLink"),
           source: ctpv || "지자체",
           sourceUrl: parseXmlTag(b, "servDtlLink"),
-          region: ctpv || "전국",
+          region: regionFull,
           regionTags,
           ageTags: extractAgeTags(textBlob),
           occupationTags: extractOccupationTags(textBlob),
