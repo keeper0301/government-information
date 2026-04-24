@@ -25,6 +25,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
 import { stripHtmlTags } from "@/lib/utils";
+import { RichEditor } from "./rich-editor";
 
 export const metadata: Metadata = {
   title: "블로그 글 편집 | 어드민",
@@ -307,18 +308,15 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
 
         <div>
           <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
-            본문 (HTML)
+            본문
           </label>
-          <textarea
-            name="content"
-            defaultValue={post.content}
-            rows={28}
-            className="w-full px-3 py-3 text-[13px] font-mono border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500 leading-[1.6]"
-            style={{ tabSize: 2 }}
-          />
+          {/* 워드프레스 클래식 에디터 스타일 비주얼 에디터.
+              내부에 hidden <input name="content"> 가 있어 form action 그대로 작동.
+              우측 상단 "HTML" 버튼으로 raw HTML 직접 편집도 가능. */}
+          <RichEditor initialHtml={post.content ?? ""} name="content" />
           <p className="mt-1 text-[12px] text-grey-500">
-            HTML 문법을 그대로 사용합니다. {`<h2>`}, {`<p>`}, {`<ul>`}, {`<strong>`},{" "}
-            {`<table>`} 등 기본 태그 렌더링됨. 저장 후 /blog 페이지가 자동 재생성됩니다.
+            툴바로 제목·강조·목록·표·이미지 삽입. 우측 &quot;HTML&quot; 버튼으로 원본 편집 가능.
+            저장 후 /blog 페이지가 자동 재생성됩니다.
           </p>
         </div>
 
