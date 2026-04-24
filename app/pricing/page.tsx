@@ -161,9 +161,9 @@ function PlanCard({ plan, currentTier, isLoggedIn }: {
       {/* 기능 목록 */}
       <ul className="space-y-2.5 mb-6 min-h-[180px]">
         {plan.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2 text-[14px] text-grey-800">
+          <li key={feature} className="flex items-start gap-2 text-[15px] text-grey-800">
             <CheckIcon />
-            <span className="leading-[1.5]">{feature}</span>
+            <span className="leading-[1.55]">{feature}</span>
           </li>
         ))}
       </ul>

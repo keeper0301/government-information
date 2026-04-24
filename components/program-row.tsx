@@ -73,10 +73,10 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
           <div className="text-[13px] font-medium text-grey-800 truncate">{program.source}</div>
         </div>
       </div>
-      {/* 모바일에서만 아래에 금액 표시 */}
+      {/* 모바일에서만 아래에 금액 표시 — 40~50대 가독성 위해 14px */}
       {program.amount && (
         <div className="hidden max-md:flex items-center justify-between mt-2 ml-12 pl-0.5">
-          <div className="text-[13px] font-bold text-grey-900 truncate">
+          <div className="text-[14px] font-bold text-grey-900 truncate">
             {program.amount}
           </div>
           <div className="text-[12px] font-medium text-grey-800 shrink-0 ml-2">{program.source}</div>
