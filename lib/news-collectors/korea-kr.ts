@@ -142,7 +142,7 @@ export type KoreaKrItem = {
 // RSS 1개 피드 fetch·파싱
 async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
   const res = await fetchWithTimeout(feed.url, {
-    timeoutMs: 15000,
+    timeoutMs: 25000,
     headers: {
       "User-Agent": "Mozilla/5.0 keepioo-bot (+https://www.keepioo.com)",
     },
@@ -212,6 +212,9 @@ async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
 }
 
 // 전체 feed 수집 + news_posts upsert
+// 2026-04-24 순차 → 병렬(Promise.allSettled) 로 개선. 6개 피드 순차는 Vercel
+// 60초 maxDuration 내 일부 누락되던 문제 → 전체 시간이 "가장 느린 피드 1개"
+// 수준으로 단축. 한 피드 실패해도 다른 피드 정상 처리됨.
 export async function collectKoreaKr(): Promise<{
   total: number;
   upserted: number;
@@ -224,13 +227,24 @@ export async function collectKoreaKr(): Promise<{
   let errors = 0;
   const breakdown: Record<string, number> = {};
 
-  for (const feed of FEEDS) {
-    try {
-      const items = await fetchFeed(feed);
-      total += items.length;
-      breakdown[feed.code] = items.length;
+  // 모든 피드 병렬 fetch (실패·성공 독립)
+  const fetchResults = await Promise.allSettled(
+    FEEDS.map((feed) => fetchFeed(feed).then((items) => ({ feed, items }))),
+  );
 
-      if (items.length === 0) continue;
+  // 피드별 upsert 도 병렬 (서로 독립적인 DB 작업)
+  const upsertResults = await Promise.allSettled(
+    fetchResults.map(async (fr, idx) => {
+      const feed = FEEDS[idx];
+      if (fr.status !== "fulfilled") {
+        const msg = fr.reason instanceof Error ? fr.reason.message : String(fr.reason);
+        console.error(`[news:${feed.code}] fetch 실패:`, msg);
+        throw new Error(`fetch: ${msg}`);
+      }
+      const items = fr.value.items;
+      breakdown[feed.code] = items.length;
+      total += items.length;
+      if (items.length === 0) return { upserted: 0 };
 
       const payload = items.map((it) => ({
         source_code: it.source_code,
@@ -256,15 +270,15 @@ export async function collectKoreaKr(): Promise<{
 
       if (error) {
         console.error(`[news:${feed.code}] upsert 실패:`, error.message);
-        errors++;
-      } else {
-        upserted += data?.length ?? 0;
+        throw new Error(`upsert: ${error.message}`);
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[news:${feed.code}] fetch 실패:`, msg);
-      errors++;
-    }
+      return { upserted: data?.length ?? 0 };
+    }),
+  );
+
+  for (const ur of upsertResults) {
+    if (ur.status === "fulfilled") upserted += ur.value.upserted;
+    else errors++;
   }
 
   return { total, upserted, errors, breakdown };
