@@ -99,3 +99,44 @@ export function translateAuthError(raw: ErrorKey | null | undefined): string {
   // 매칭 안 되는 경우: 사용자에게 일반 안내 + 개발자용 원문 포함
   return `로그인 중 문제가 발생했어요. (${text})`;
 }
+
+// ============================================================
+// 에러 분류 — GA4 reason 파라미터용 enum 분류
+// ============================================================
+// translateAuthError 는 사용자 표시 문구, classifyAuthError 는 집계 분석용 카테고리.
+// reason 값은 snake_case 고정 — GA4 Custom Dimension 히스토리 연속성 보장.
+// 새 reason 추가 시 signup_failed / login_failed 이벤트 문서도 함께 업데이트.
+// ============================================================
+
+export type AuthErrorReason =
+  | "email_exists"        // 이미 가입된 이메일 (회원가입 중복)
+  | "weak_password"       // 비밀번호 8자 미만 또는 Supabase weak password 정책 위반
+  | "password_mismatch"   // 비밀번호/확인 불일치 (signup 클라 검증)
+  | "consent_required"    // 필수 동의(약관·방침) 미체크 (signup 클라 검증)
+  | "invalid_credentials" // 로그인 시 이메일·비번 불일치
+  | "email_not_confirmed" // 가입은 했으나 이메일 인증 미완료
+  | "rate_limited"        // 메일 재발송 한도·로그인 시도 한도 초과
+  | "network_error"       // 네트워크 단절·fetch 실패
+  | "provider_disabled"   // OAuth provider 미활성
+  | "oauth_cancelled"     // 사용자가 OAuth 동의 취소 (access_denied)
+  | "missing_email"       // 카카오 OAuth 이메일 미동의 등
+  | "unknown";            // 위 어느 것도 매칭 안 됨
+
+export function classifyAuthError(
+  raw: string | null | undefined,
+): AuthErrorReason {
+  if (!raw) return "unknown";
+  const text = String(raw);
+  // 순서 중요 — 더 구체적 패턴을 위에 (예: password_mismatch 가 weak_password 보다 먼저)
+  if (/user already registered|already been registered/i.test(text)) return "email_exists";
+  if (/passwords do not match|password mismatch/i.test(text)) return "password_mismatch";
+  if (/password should be at least|weak password|password is too short/i.test(text)) return "weak_password";
+  if (/invalid login credentials/i.test(text)) return "invalid_credentials";
+  if (/email not confirmed/i.test(text)) return "email_not_confirmed";
+  if (/rate limit|too many requests|only request this once/i.test(text)) return "rate_limited";
+  if (/network|failed to fetch/i.test(text)) return "network_error";
+  if (/provider is not enabled|oauth provider not enabled/i.test(text)) return "provider_disabled";
+  if (/access_denied/i.test(text)) return "oauth_cancelled";
+  if (/user email not available|missing email/i.test(text)) return "missing_email";
+  return "unknown";
+}

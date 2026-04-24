@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { translateAuthError } from "@/lib/auth-errors";
+import { translateAuthError, classifyAuthError } from "@/lib/auth-errors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 회원가입 페이지 (이메일 + 비밀번호 방식)
@@ -41,18 +41,22 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
-    // 클라이언트 검증 (UX용 — 진짜 강제는 Supabase 서버에서)
+    // 클라이언트 검증 (UX용 — 진짜 강제는 Supabase 서버에서).
+    // 실패 시 signup_failed 이벤트 reason 세분 — 서버 왕복 전 drop-off 측정.
     if (password.length < 8) {
       setError(translateAuthError("password should be at least"));
+      trackEvent(EVENTS.SIGNUP_FAILED, { reason: "weak_password", stage: "client" });
       return;
     }
     if (password !== passwordConfirm) {
       setError(translateAuthError("passwords do not match"));
+      trackEvent(EVENTS.SIGNUP_FAILED, { reason: "password_mismatch", stage: "client" });
       return;
     }
     // 필수 동의 확인
     if (!agreeTerms || !agreePrivacy) {
       setError("이용약관과 개인정보처리방침에 동의해주세요.");
+      trackEvent(EVENTS.SIGNUP_FAILED, { reason: "consent_required", stage: "client" });
       return;
     }
 
@@ -72,6 +76,11 @@ export default function SignupPage() {
 
     if (signUpError) {
       setError(translateAuthError(signUpError.message));
+      // 서버 에러 → classifyAuthError 로 reason 세분 (email_exists·rate_limited·network_error 등)
+      trackEvent(EVENTS.SIGNUP_FAILED, {
+        reason: classifyAuthError(signUpError.message),
+        stage: "server",
+      });
       setSubmitting(false);
       return;
     }

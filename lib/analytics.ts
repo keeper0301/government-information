@@ -31,10 +31,14 @@ export const EVENTS = {
   // 인증 (가입·로그인 전환율)
   SIGNUP_INITIATED: "signup_initiated",   // 가입 요청(메일 발송)까지 성공 — 메일 확인 전 drop-off 측정 기반
   SIGNUP_COMPLETED: "signup_completed",   // 확인 메일 클릭 → callback 에서 isNewUser 판정
+  SIGNUP_FAILED: "signup_failed",         // 가입 요청 실패 — reason 파라미터로 원인 세분
   LOGIN_COMPLETED: "login_completed",
+  LOGIN_FAILED: "login_failed",           // 로그인 실패 — reason 파라미터 (wrong_password·user_not_found 등)
   // 계정 생명주기 (이탈 퍼널 분석)
-  ACCOUNT_DELETED: "account_deleted",
+  ACCOUNT_DELETED: "account_deleted",             // 최종 삭제 (30일 경과 cron 또는 즉시 요청)
   ACCOUNT_DELETION_BLOCKED: "account_deletion_blocked",
+  ACCOUNT_DELETE_REQUESTED: "account_delete_requested",  // 30일 유예 요청 시점
+  ACCOUNT_RESTORED: "account_restored",           // 유예 기간 내 복구 — 이탈 저지 효과 측정
   // 동의 관리 (신뢰 신호)
   CONSENT_WITHDRAWN: "consent_withdrawn",
   RECONSENT_ACKNOWLEDGED: "reconsent_acknowledged",
