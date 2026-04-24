@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { TERMS_VERSION } from "@/lib/consent";
 
 export const metadata: Metadata = {
   title: "이용약관 — 정책알리미",
@@ -7,7 +8,10 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
-      <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-6">이용약관</h1>
+      <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">이용약관</h1>
+      <p className="text-[13px] text-grey-500 mb-8">
+        시행일자: {TERMS_VERSION} · 운영자: 키피오 (사업자등록번호 657-24-02265)
+      </p>
       <div className="text-[15px] text-grey-700 leading-[1.8] space-y-6">
         <section>
           <h2 className="text-[18px] font-bold text-grey-900 mb-3">제1조 (목적)</h2>
