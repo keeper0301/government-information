@@ -6,6 +6,7 @@ import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { FilterBar } from "./filter-bar";
 import { Pagination } from "@/components/pagination";
+import { getRegionMatchPatterns } from "@/lib/regions";
 
 export const metadata: Metadata = {
   title: "대출·지원금 정보 — 정책알리미",
@@ -21,7 +22,8 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 };
 
-export const revalidate = 600;
+// 60s ISR — welfare 와 동일 사유. fix 검증·신규 공고 빠른 노출.
+export const revalidate = 60;
 
 // 지역 필터 화이트리스트 — URL 쿼리 임의 값 주입 차단 (PostgREST ilike
 // interpolation 에 들어가므로 서버에서 재검증 필수).
@@ -44,11 +46,24 @@ export default async function LoanPage({ searchParams }: Props) {
 
   if (category !== "전체") query = query.eq("category", category);
   if (target !== "전체") query = query.ilike("target", `%${target}%`);
-  // 지역 필터 — loan_programs 에 region 컬럼이 없어 제목 prefix `[대전]` 같은
-  // 패턴으로 ilike 매칭. lib/recommend.ts 의 regionMatches 처럼 별칭(대전시·
-  // 대전광역시)까지 전부 커버하진 않음 — 대부분의 loan 공고 prefix 가
-  // 광역시도명 2글자 형태라 충분. 향후 정확도 개선 시 별칭 확장 가능.
-  if (region !== "전체") query = query.ilike("title", `%[${region}%`);
+  // 지역 필터 — loan_programs 에 region 컬럼이 없어 title 안 다양한 형식의
+  // 광역명 표기를 OR 매칭으로 흡수.
+  // 잡히는 패턴 (예: region="전남"):
+  //   - "[전남] 보령시 ..." 대괄호 prefix (139건)
+  //   - "(전남신용보증재단)" 괄호 안 광역명 prefix (30건 신용보증재단 패턴)
+  //   - "[전라남도] ..." 정식 이름 대괄호
+  //   - "(전라남도 ...)" 정식 이름 괄호
+  // 못 잡는 패턴: 광역 표기 자체가 없는 1402건 (전국 단위 또는 정보 부족).
+  // 이건 "그 광역에 특화된 것만" 보여주는 자연스러운 동작.
+  if (region !== "전체") {
+    const patterns = getRegionMatchPatterns(region); // ["전라남도", "전남"]
+    const orParts: string[] = [];
+    for (const p of patterns) {
+      orParts.push(`title.ilike.%[${p}%`);
+      orParts.push(`title.ilike.%(${p}%`);
+    }
+    query = query.or(orParts.join(","));
+  }
   if (search) {
     // 공백 기준 토큰 AND 매칭 — "대전 소상공인 경영위기" 같은 multi-word 가
     // title "[대전] 소상공인 경영위기극복" 에 매칭되도록. 단일 substring ilike 는

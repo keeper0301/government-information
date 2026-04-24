@@ -22,7 +22,10 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 };
 
-export const revalidate = 600;
+// 60s ISR — 운영 중 데이터/필터 fix 검증을 빠르게 보기 위함. 600s 였을 때
+// 지역 드롭다운 fix 후에도 옛 결과가 10분 살아있어 검증이 어려웠음.
+// keepioo 트래픽 규모에서 SSR 부하 미미.
+export const revalidate = 60;
 
 export default async function WelfarePage({ searchParams }: Props) {
   const params = await searchParams;

@@ -19,8 +19,18 @@ import {
 import { Pagination } from "@/components/pagination";
 import { AdSlot } from "@/components/ad-slot";
 import { TOPIC_CATEGORIES } from "@/lib/news-collectors/korea-kr-topics";
+import { PROVINCES } from "@/lib/regions";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
+
+// 유효 광역 코드 집합 — URL 임의 값 차단. ministry 컬럼 매칭에 사용.
+// 네이버 뉴스 광역별 cron 수집분(ministry = "전라남도" 등) 만 잡힘.
+// korea.kr 부처 뉴스(ministry = "보건복지부" 등) 는 자연스럽게 빠짐
+// = "지역 뉴스만 보기" 효과.
+const VALID_PROVINCE_CODES = new Set<string>(PROVINCES.map((p) => p.code));
+const PROVINCE_BY_CODE: Record<string, string> = Object.fromEntries(
+  PROVINCES.map((p) => [p.code, p.name]),
+);
 
 // 카테고리 필터 탭 — DB 값(news/policy-doc) 과 1:1 매칭.
 // press(보도자료) 는 2026-04-24 부터 비노출.
@@ -45,11 +55,17 @@ export const metadata: Metadata = {
   },
 };
 
-// 5분 간격 ISR — RSS 수집 주기(일 1회) 대비 여유
-export const revalidate = 300;
+// 60s ISR — 네이버 뉴스 광역별 cron(매일 23:00~00:20 KST 5분 간격) 직후
+// 신규 뉴스가 빨리 노출되도록. welfare/loan 과 동일 정책.
+export const revalidate = 60;
 
 type Props = {
-  searchParams: Promise<{ category?: string; topic?: string; page?: string }>;
+  searchParams: Promise<{
+    category?: string;
+    topic?: string;
+    province?: string;
+    page?: string;
+  }>;
 };
 
 // 유효 topic(주제 카테고리) 이름 집합 — URL 쿼리 임의값 차단
@@ -63,6 +79,10 @@ export default async function NewsIndexPage({ searchParams }: Props) {
       : "all";
   const activeTopic =
     params.topic && VALID_TOPICS.has(params.topic) ? params.topic : null;
+  const activeProvince =
+    params.province && VALID_PROVINCE_CODES.has(params.province)
+      ? params.province
+      : null;
   const page = Math.max(1, parseInt(params.page || "1", 10));
 
   const supabase = await createClient();
@@ -88,6 +108,11 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   if (activeTopic) {
     query = query.contains("topic_categories", [activeTopic]);
   }
+  // 광역 필터 — ministry 컬럼이 광역명인 row 만 (네이버 뉴스 광역별 수집분).
+  if (activeProvince) {
+    const provinceName = PROVINCE_BY_CODE[activeProvince];
+    if (provinceName) query = query.eq("ministry", provinceName);
+  }
 
   const { data: posts, count } = await query.range(
     (page - 1) * PER_PAGE,
@@ -101,6 +126,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     const p = {
       category: activeCategory,
       topic: activeTopic ?? "",
+      province: activeProvince ?? "",
       page: String(page),
       ...overrides,
     };
@@ -117,14 +143,32 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     }`;
   }
 
-  // 주제 칩 URL — category 는 유지, topic 만 토글
+  // 주제 칩 URL — category·province 유지, topic 만 토글
   function topicUrl(topicName: string | null): string {
     const parts: string[] = [];
     if (activeCategory !== "all") {
       parts.push(`category=${encodeURIComponent(activeCategory)}`);
     }
+    if (activeProvince) {
+      parts.push(`province=${encodeURIComponent(activeProvince)}`);
+    }
     if (topicName) {
       parts.push(`topic=${encodeURIComponent(topicName)}`);
+    }
+    return `/news${parts.length ? "?" + parts.join("&") : ""}`;
+  }
+
+  // 광역 칩 URL — category·topic 유지, province 만 토글
+  function provinceUrl(code: string | null): string {
+    const parts: string[] = [];
+    if (activeCategory !== "all") {
+      parts.push(`category=${encodeURIComponent(activeCategory)}`);
+    }
+    if (activeTopic) {
+      parts.push(`topic=${encodeURIComponent(activeTopic)}`);
+    }
+    if (code) {
+      parts.push(`province=${encodeURIComponent(code)}`);
     }
     return `/news${parts.length ? "?" + parts.join("&") : ""}`;
   }
@@ -156,11 +200,12 @@ export default async function NewsIndexPage({ searchParams }: Props) {
         >
           {CATEGORIES.map((cat) => {
             const selected = activeCategory === cat.key;
-            // 탭 전환 시 topic 쿼리는 보존 — 사용자가 선택한 주제 카테고리를 유지
+            // 탭 전환 시 topic·province 쿼리 보존 — 사용자 선택 필터 유지
             const href = (() => {
               const parts: string[] = [];
               if (cat.key !== "all") parts.push(`category=${cat.key}`);
               if (activeTopic) parts.push(`topic=${encodeURIComponent(activeTopic)}`);
+              if (activeProvince) parts.push(`province=${encodeURIComponent(activeProvince)}`);
               return `/news${parts.length ? "?" + parts.join("&") : ""}`;
             })();
             return (
@@ -202,6 +247,51 @@ export default async function NewsIndexPage({ searchParams }: Props) {
           <TopicGroup label="대상별" topics={topicGroups.target} active={activeTopic} urlFn={topicUrl} />
           <TopicGroup label="주제별" topics={topicGroups.topic} active={activeTopic} urlFn={topicUrl} />
           <TopicGroup label="핫이슈" topics={topicGroups.hot} active={activeTopic} urlFn={topicUrl} />
+        </section>
+
+        {/* 지역 필터 — 17 광역 칩. 네이버 뉴스 광역별 cron 수집분 만 잡힘
+            (korea.kr 부처 뉴스는 ministry = 부처명이라 자연 제외 = "지역
+            뉴스만 보기" 효과). 칩 클릭 시 같은 광역 재클릭 = 해제. */}
+        <section
+          aria-label="뉴스 지역 필터"
+          className="mb-8 bg-white rounded-2xl border border-grey-100 p-5 md:p-6"
+        >
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <h2 className="text-[14px] font-bold text-grey-900 tracking-[-0.2px]">
+              지역으로 찾기
+            </h2>
+            {activeProvince && (
+              <a
+                href={provinceUrl(null)}
+                className="text-[13px] text-blue-600 hover:text-blue-700 no-underline"
+              >
+                필터 해제
+              </a>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {PROVINCES.map((p) => {
+              const selected = activeProvince === p.code;
+              // 짧은 라벨 — UI 좁음 회피. "서울특별시" → "서울", 등.
+              const shortLabel = p.name
+                .replace(/특별시|광역시|특별자치시|특별자치도/, "")
+                .replace(/도$/, "");
+              return (
+                <a
+                  key={p.code}
+                  href={provinceUrl(selected ? null : p.code)}
+                  aria-current={selected ? "page" : undefined}
+                  className={`inline-flex items-center min-h-[32px] px-3 text-[13px] rounded-full no-underline transition-colors ${
+                    selected
+                      ? "bg-grey-900 text-white font-semibold"
+                      : "bg-grey-50 text-grey-700 border border-grey-100 hover:bg-grey-100"
+                  }`}
+                >
+                  {shortLabel}
+                </a>
+              );
+            })}
+          </div>
         </section>
 
         {/* 목록 */}
