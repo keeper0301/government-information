@@ -232,12 +232,12 @@ export function ConsentsPanel({
                   {description}
                 </p>
                 {needs ? (
-                  <p className="text-[12px] text-red font-medium">
+                  <p className="text-[13px] text-red font-medium">
                     ⚠️ 최신 방침에 대한 동의 기록이 없어요. 확인해 주세요.
                   </p>
                 ) : (
                   consentedAt && (
-                    <p className="text-[12px] text-grey-600">
+                    <p className="text-[13px] text-grey-600">
                       {new Date(consentedAt).toLocaleDateString("ko-KR")} 동의
                     </p>
                   )

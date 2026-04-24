@@ -79,7 +79,7 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
           <div className="text-[14px] font-bold text-grey-900 truncate">
             {program.amount}
           </div>
-          <div className="text-[12px] font-medium text-grey-800 shrink-0 ml-2">{program.source}</div>
+          <div className="text-[13px] font-medium text-grey-800 shrink-0 ml-2">{program.source}</div>
         </div>
       )}
     </a>

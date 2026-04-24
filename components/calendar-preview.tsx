@@ -153,7 +153,7 @@ export async function CalendarPreview() {
         })}
       </div>
       {/* 범례 (데스크톱) */}
-      <div className="hidden md:flex items-center gap-5 mt-4 text-[12px] text-grey-600">
+      <div className="hidden md:flex items-center gap-5 mt-4 text-[13px] text-grey-600">
         <div className="flex items-center gap-1.5">
           <span className="w-[7px] h-[7px] rounded-full bg-blue-500" aria-hidden="true" />
           <span>복지·수혜</span>

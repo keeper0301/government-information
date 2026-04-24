@@ -212,7 +212,7 @@ export default async function LoanDetailPage({ params }: Props) {
         {/* 출처 안내 */}
         <div className="bg-white border border-grey-200 rounded-xl px-6 py-5 mb-8">
           <div className="text-[14px] font-semibold text-grey-900 mb-1">출처: {program.source}</div>
-          <div className="text-[12px] text-grey-700">
+          <div className="text-[13px] text-grey-700">
             마지막 업데이트: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
             {" · "}본 내용은 원문을 자동 수집한 것입니다.
           </div>

@@ -58,7 +58,7 @@ export function CancelButton({ tierName }: { tierName: string }) {
         남은 기간 동안은 계속 사용할 수 있고, 다음 결제부터 청구되지 않아요.
       </p>
       {error && (
-        <p className="text-[12px] text-red-700 mb-2">{error}</p>
+        <p className="text-[13px] text-red-700 mb-2">{error}</p>
       )}
       <div className="flex gap-2">
         <button

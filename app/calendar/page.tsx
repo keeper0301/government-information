@@ -216,7 +216,7 @@ export default async function CalendarPage({
               </a>
             )}
           </div>
-          <div className="text-[12px] font-medium text-grey-600 mt-0.5">
+          <div className="text-[13px] font-medium text-grey-600 mt-0.5">
             신규 시작 {newCount}건 · 마감 예정 {upcomingCount}건
           </div>
         </div>
@@ -301,7 +301,7 @@ export default async function CalendarPage({
           </div>
 
           {/* 복지 행 */}
-          <div className="text-[12px] font-bold text-grey-800 pr-2">복지</div>
+          <div className="text-[13px] font-bold text-grey-800 pr-2">복지</div>
           <div className="flex items-center gap-2 text-[13px] text-grey-700">
             <span
               className="w-3.5 h-3.5 rounded-full bg-blue-500 shrink-0"
@@ -318,7 +318,7 @@ export default async function CalendarPage({
           </div>
 
           {/* 대출 행 */}
-          <div className="text-[12px] font-bold text-grey-800 pr-2">대출</div>
+          <div className="text-[13px] font-bold text-grey-800 pr-2">대출</div>
           <div className="flex items-center gap-2 text-[13px] text-grey-700">
             <span
               className="w-3.5 h-3.5 rounded-full bg-orange shrink-0"

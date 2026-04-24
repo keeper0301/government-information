@@ -112,7 +112,7 @@ export default function ConsultPage() {
                         <div className="text-[14px] font-semibold text-grey-900 mb-1">
                           {p.title}
                         </div>
-                        <div className="text-[12px] text-grey-600">
+                        <div className="text-[13px] text-grey-600">
                           {p.amount} · {p.source}
                         </div>
                       </a>

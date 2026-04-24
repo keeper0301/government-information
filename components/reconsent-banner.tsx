@@ -95,13 +95,13 @@ export function ReconsentBanner({ missing }: Props) {
         <span aria-hidden="true" className="text-[16px]">
           📋
         </span>
-        <p className="flex-1 text-[13px] leading-[1.5] text-amber-900 max-md:text-[12px]">
+        <p className="flex-1 text-[13px] leading-[1.5] text-amber-900">
           <span className="font-semibold">{labelList}</span> 동의 기록을 확인해
           주세요. 최신 방침에 동의하시면 맞춤 알림·추천을 정확하게 받을 수 있어요.
         </p>
         <a
           href="/mypage"
-          className="shrink-0 text-[13px] font-semibold text-amber-900 no-underline hover:underline whitespace-nowrap max-md:text-[12px]"
+          className="shrink-0 text-[13px] font-semibold text-amber-900 no-underline hover:underline whitespace-nowrap"
         >
           확인하러 가기 →
         </a>

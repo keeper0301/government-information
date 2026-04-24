@@ -121,7 +121,7 @@ export function WithdrawSection() {
           떠나시는 이유를 알려주시겠어요?{" "}
           <span className="text-grey-600 font-normal">(선택)</span>
         </legend>
-        <p className="text-[12px] text-grey-600 mb-3 leading-[1.5]">
+        <p className="text-[13px] text-grey-600 mb-3 leading-[1.5]">
           서비스 개선에 큰 도움이 돼요. 건너뛰셔도 괜찮아요.
         </p>
         <div className="flex flex-col gap-2">

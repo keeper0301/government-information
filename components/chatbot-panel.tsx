@@ -101,7 +101,7 @@ export function ChatbotPanel() {
                           className="block bg-white rounded-xl p-3 no-underline text-inherit border border-grey-100 hover:border-blue-200 transition-colors"
                         >
                           <div className="text-[13px] font-semibold text-grey-900 mb-1">{p.title}</div>
-                          <div className="text-[12px] text-grey-600">{p.amount} · {p.source}</div>
+                          <div className="text-[13px] text-grey-600">{p.amount} · {p.source}</div>
                         </a>
                       ))}
                     </div>

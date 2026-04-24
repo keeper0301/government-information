@@ -224,7 +224,7 @@ function LoginForm() {
 
       {/* 동의 안내 — 신규 사용자는 로그인/가입 완료 시 약관·방침 동의로 간주
           (실제 consent_log 기록은 /auth/callback 에서 신규 사용자 판정 후 자동) */}
-      <p className="text-[12px] text-grey-600 text-center mb-6 leading-[1.5]">
+      <p className="text-[13px] text-grey-600 text-center mb-6 leading-[1.5]">
         로그인·가입 시{" "}
         <a
           href="/terms"

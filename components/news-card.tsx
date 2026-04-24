@@ -77,7 +77,7 @@ export function NewsCard({ post }: { post: NewsCardData }) {
             {categoryLabel}
           </span>
           {post.ministry && (
-            <span className="text-[12px] text-grey-600 truncate max-w-[180px]">
+            <span className="text-[13px] text-grey-600 truncate max-w-[180px]">
               {post.ministry}
             </span>
           )}
@@ -96,7 +96,7 @@ export function NewsCard({ post }: { post: NewsCardData }) {
         )}
 
         {/* 발행일 */}
-        <div className="text-[12px] text-grey-600">{dateLabel}</div>
+        <div className="text-[13px] text-grey-600">{dateLabel}</div>
       </div>
     </Link>
   );
