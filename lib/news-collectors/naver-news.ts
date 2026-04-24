@@ -245,17 +245,23 @@ async function collectProvinceItems(
   return items;
 }
 
-// URL 안전 + 결정론적 slug — title + sourceId 결합.
-// korea-kr 과 동일한 규칙 (한글 유지, 특수문자 제거, 60자 제한 후 sourceId 부착).
-function deterministicSlug(title: string, sourceId: string): string {
+// URL 안전 + 결정론적 slug — title + 광역코드 + sourceId 결합.
+// 광역코드 포함 이유: 여러 광역 cron 이 같은 뉴스(같은 originallink) 를 수집하면
+// title+sourceId 만으로 slug 가 같아져 news_posts.slug UNIQUE 제약 충돌. 광역을
+// slug 에 넣어 '각 광역에서 수집된 기록' 으로 분리.
+function deterministicSlug(
+  title: string,
+  provinceCode: string,
+  sourceId: string,
+): string {
   const base = title
     .toLowerCase()
     .trim()
     .replace(/[^\p{L}\p{N}\s-]/gu, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .slice(0, 60);
-  return `${base}-${sourceId}`.slice(0, 120);
+    .slice(0, 50);
+  return `${base}-${provinceCode}-${sourceId}`.slice(0, 130);
 }
 
 // 광역별 cron 진입점. news_posts 로 UPSERT.
@@ -334,7 +340,7 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
     summary: it.summary,
     body: null,
     thumbnail_url: null,
-    slug: deterministicSlug(it.title, it.source_id),
+    slug: deterministicSlug(it.title, provinceCode, it.source_id),
     published_at: it.published_at,
     created_at: now,
     updated_at: now,
