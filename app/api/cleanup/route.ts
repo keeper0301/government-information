@@ -3,7 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { currentMinAllowedYear, isOutdatedByTitle } from "@/lib/utils";
 import { notifyCronFailure } from "@/lib/email";
 
-const RETENTION_DAYS = 180; // 6개월 (만료 후 이 일수 이상 지난 공고만 삭제)
+const RETENTION_DAYS = 180; // 6개월 (welfare/loan: 만료 후 이 일수 이상 지난 공고만 삭제)
+// news_posts 는 published_at 기준 retention. 네이버 광역별 cron 17개가 매일
+// 1,000~2,000건 upsert 추정 → 90일 retention 으로 10~20만건 안에 안정화.
+// 90일은 keepioo 사용자에게 의미 있는 "최근 정책 뉴스" 범위와 DB 사이즈
+// (Supabase 무료 500MB) 균형점.
+const NEWS_RETENTION_DAYS = 90;
 const BATCH_SIZE = 100;
 // Supabase/PostgREST 기본 1000행 제한을 넘기기 위한 한계값
 // (실제로 이 이상일 일은 드물지만 안전 마진)
@@ -50,6 +55,32 @@ async function findOldTitledIds(
   return (data || [])
     .filter((row) => row.title && isOutdatedByTitle(row.title, minYear))
     .map((row) => row.id);
+}
+
+// 90일 이상 오래된 news_posts 삭제. FK 의존성 없어 단순 DELETE.
+// PostgREST 한 번에 1,000행 제한 → 반복 호출.
+async function deleteOldNews(supabase: AdminClient): Promise<{ deleted: number; errors: string[] }> {
+  const cutoff = new Date(Date.now() - NEWS_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+    .toISOString();
+  let deleted = 0;
+  const errors: string[] = [];
+  // 안전 마진 — 한 cron 실행에 최대 10,000건만 삭제 (보통 일 1~2천건 추가
+  // 만큼만 만료되니 충분). 더 많으면 다음날로 미룸.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const { count, error } = await supabase
+      .from("news_posts")
+      .delete({ count: "exact" })
+      .lt("published_at", cutoff)
+      .limit(1000);
+    if (error) {
+      errors.push(`news batch ${attempt}: ${error.message}`);
+      break;
+    }
+    if (!count) break;
+    deleted += count;
+    if (count < 1000) break; // 더 이상 없음
+  }
+  return { deleted, errors };
 }
 
 // 핵심 청소 로직 (POST/GET 공용)
@@ -121,9 +152,10 @@ async function runCleanup() {
     return { total, errors: errs };
   }
 
-  const [welfareResult, loansResult] = await Promise.all([
+  const [welfareResult, loansResult, newsResult] = await Promise.all([
     deleteByIds("welfare_programs", welfareIds),
     deleteByIds("loan_programs", loanIds),
+    deleteOldNews(supabase),
   ]);
 
   // 배치 에러 모아서 반환 — runCleanupAndRespond 가 알림 트리거
@@ -132,6 +164,7 @@ async function runCleanup() {
     ...alarmsL.errors,
     ...welfareResult.errors,
     ...loansResult.errors,
+    ...newsResult.errors,
   ];
 
   return {
@@ -140,6 +173,7 @@ async function runCleanup() {
     min_year: minYear,
     welfare_deleted: welfareResult.total,
     loans_deleted: loansResult.total,
+    news_deleted: newsResult.deleted,
     alarms_deleted: alarmsW.deleted + alarmsL.deleted,
     batch_errors: allErrors.length,
     error_detail: allErrors.slice(0, 10),
