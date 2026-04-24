@@ -253,7 +253,12 @@ a:active {
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* keepioo 브랜드 컬러 매핑 (2026-04-24)
+     --primary: burgundy #8A2A2A (CTA 버튼·로고 점) → oklch 변환
+     --ring: blue #3182f6 (포커스 outline, 링크) → oklch 변환
+     기존 shadcn neutral 기본값(검은색) 을 브랜드에 맞춰 교체.
+     기존 custom 컴포넌트의 bg-burgundy / bg-blue-500 과 자연스럽게 매칭. */
+  --primary: oklch(0.39 0.13 24);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -264,7 +269,7 @@ a:active {
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.60 0.20 254);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -273,12 +278,12 @@ a:active {
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.39 0.13 24);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.60 0.20 254);
 }
 
 .dark {
