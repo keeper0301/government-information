@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure, sendCustomAlertEmail } from "@/lib/email";
 import { findMatchingPrograms, type AlertRule } from "@/lib/alerts/matching";
 import { getUserTier } from "@/lib/subscription";
+import { sendAlimtalk } from "@/lib/kakao-alimtalk";
 
 export const maxDuration = 300; // 5분
 
@@ -129,12 +130,35 @@ async function runAlertDispatch(jobLabel: string) {
         skipped += matches.length;
       }
 
-      // ━━ 카카오 알림톡 (pro만) — 구현은 Phase 4 에서 ━━
+      // ━━ 카카오 알림톡 (pro만) — sendAlimtalk stub 으로 호출 ━━
+      // 발송 대행사 미정 시 sendAlimtalk 가 'skipped_no_provider' 반환 →
+      // alert_deliveries 에 status='skipped' 로 기록. 운영자가 어드민에서 식별 가능.
+      // 대행사 결정 후엔 lib/kakao-alimtalk.ts 의 sendAlimtalkLive 만 채우면 됨.
       if (canKakao) {
-        // TODO: lib/kakao-alimtalk.ts 완성 후 호출
-        // 현재는 큐 상태만 기록
         const toSend = matches.filter((m) => !alreadyKakao.has(`${m.table}:${m.id}`));
         for (const m of toSend) {
+          const result = await sendAlimtalk({
+            phoneNumber: rule.phone_number!,
+            templateCode: "POLICY_NEW",
+            variables: {
+              title: m.title,
+              deadline: m.apply_end ?? "상시",
+            },
+          });
+
+          // 결과 → alert_deliveries 행 (UNIQUE INDEX 가 중복 방지)
+          let status: "sent" | "failed" | "skipped";
+          let errorMsg: string | null = null;
+          if (result.ok) {
+            status = "sent";
+          } else if (result.reason === "skipped_no_provider") {
+            status = "skipped";
+            errorMsg = "kakao_provider_not_configured";
+          } else {
+            status = "failed";
+            errorMsg = `${result.reason}: ${result.error ?? ""}`.slice(0, 500);
+          }
+
           await supabase.from("alert_deliveries").insert({
             rule_id: rule.id,
             user_id: rule.user_id,
@@ -142,8 +166,9 @@ async function runAlertDispatch(jobLabel: string) {
             program_id: m.id,
             program_title: m.title,
             channel: "kakao",
-            status: "queued",
-            sent_at: null,
+            status,
+            error: errorMsg,
+            sent_at: result.ok ? new Date().toISOString() : null,
           });
           dispatchedKakao++;
         }
