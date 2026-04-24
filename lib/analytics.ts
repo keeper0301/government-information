@@ -9,9 +9,10 @@
 //
 // @next/third-parties/google 의 GoogleAnalytics 가 layout.tsx 에 설치돼 있어
 // window.gtag 가 전역 주입됨. 그 gtag 를 직접 호출.
+//
+// ⚠️ "use client" 를 파일에 넣지 않음 — 나중에 서버 action 에서 불릴 수 있고,
+// lib/ 헬퍼는 빌드 경계 안전하도록 중립 유지. 실제 실행 시 window 가드로 no-op.
 // ============================================================
-
-"use client";
 
 // 이벤트 이름 상수 — 타입 안전성. 새 이벤트 추가 시 여기부터.
 export const EVENTS = {

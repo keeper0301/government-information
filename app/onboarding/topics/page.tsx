@@ -18,6 +18,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/safe-next";
 import { TopicPicker } from "./topic-picker";
 
 export const metadata: Metadata = {
@@ -60,11 +61,12 @@ export default async function OnboardingTopicsPage({
   // 이미 선택돼 있으면 굳이 온보딩 다시 보일 필요 없음
   if (initialInterests.length > 0) {
     const params = await searchParams;
-    redirect(params.next ?? "/mypage");
+    // next 파라미터는 open redirect 방어 위해 safeNext 로 검증
+    redirect(safeNext(params.next) === "/" ? "/mypage" : safeNext(params.next));
   }
 
   const params = await searchParams;
-  const nextHref = params.next ?? "/";
+  const nextHref = safeNext(params.next);
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -87,7 +89,7 @@ export default async function OnboardingTopicsPage({
         {/* 토픽 선택 (클라이언트 컴포넌트) */}
         <TopicPicker
           userId={user.id}
-          topics={TOPICS as unknown as string[]}
+          topics={TOPICS}
           maxSelectable={MAX_TOPICS}
           initialSelected={initialInterests}
           nextHref={nextHref}

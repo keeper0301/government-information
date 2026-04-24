@@ -27,25 +27,38 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
 
+  // ━━━ 로그인 필수 (비용·남용 방어) ━━━
+  // 비로그인자는 챗봇 호출 자체 차단. 기존엔 통과시켰으나 악성 스크립트가
+  // 무한 호출해 Gemini 비용 유발 가능 → 로그인 유도가 가장 단순·안전.
+  // 가입 후엔 getUserTier → 무료/베이직 5회/일 · 프로 무제한 제한 적용.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json(
+      {
+        reply:
+          "AI 정책 상담은 로그인 후 이용하실 수 있어요. 무료 가입하시면 1일 5회 사용 가능합니다.",
+        programs: [],
+        requireLogin: true,
+      },
+      { status: 401 },
+    );
+  }
+
   // ━━━ AI 일일 사용량 가드 (가격표 약속 강제) ━━━
   // 무료/베이직: 5회/일. 프로: 무제한.
-  // 익명 사용자(비로그인)는 우선 통과 — 별도 IP 기반 rate limit 은 추후.
   // CEO 리뷰 Q4: DB 장애 시 fail-open (호출 허용 + 경고 로그).
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const quota = await checkAndConsumeAiQuota(user.id);
-    if (!quota.ok && quota.reason === "over_limit") {
-      return NextResponse.json(
-        {
-          reply: `오늘은 AI 정책 상담을 ${quota.limit}회 모두 사용하셨어요. 내일 다시 이용 가능합니다. 더 자주 쓰시려면 프로 플랜을 확인해보세요.`,
-          programs: [],
-          quota: { exceeded: true, limit: quota.limit, tier: quota.tier },
-        },
-        { status: 429 },
-      );
-    }
-    // fail_open / ok 둘 다 통과 — 기존 검색 로직 진행.
+  const quota = await checkAndConsumeAiQuota(user.id);
+  if (!quota.ok && quota.reason === "over_limit") {
+    return NextResponse.json(
+      {
+        reply: `오늘은 AI 정책 상담을 ${quota.limit}회 모두 사용하셨어요. 내일 다시 이용 가능합니다. 더 자주 쓰시려면 프로 플랜을 확인해보세요.`,
+        programs: [],
+        quota: { exceeded: true, limit: quota.limit, tier: quota.tier },
+      },
+      { status: 429 },
+    );
   }
+  // fail_open / ok 둘 다 통과 — 기존 검색 로직 진행.
 
   const programs: DisplayProgram[] = [];
   const matchedKeywords: string[] = [];

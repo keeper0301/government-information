@@ -21,7 +21,8 @@ import { trackEvent, EVENTS } from "@/lib/analytics";
 
 type Props = {
   userId: string;
-  topics: string[];
+  // readonly 허용 — page.tsx 가 `as const` 배열을 바로 넘길 수 있게.
+  topics: readonly string[];
   maxSelectable: number;
   initialSelected: string[];
   nextHref: string;
