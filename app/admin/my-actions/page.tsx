@@ -58,7 +58,7 @@ export default async function MyActionsPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin/my-actions");
-  if (!isAdminUser(user.id)) redirect("/");
+  if (!isAdminUser(user.email)) redirect("/");
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1", 10));

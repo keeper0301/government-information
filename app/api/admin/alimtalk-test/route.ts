@@ -6,7 +6,7 @@
 // 결과(성공·실패·사유) 를 그대로 돌려줘서 어드민 페이지에서 표시.
 //
 // 설계 원칙:
-//   - admin 권한 필수 (ADMIN_USER_IDS 환경변수 기반)
+//   - admin 권한 필수 (ADMIN_EMAILS 환경변수 기반)
 //   - alert_deliveries 에는 기록하지 않음 — 테스트 발송은 실제 운영 데이터 아님.
 //     대신 admin_actions 테이블에 alimtalk_test 로 기록 (감사 추적용, 번호 마스킹).
 //   - body.variables override 허용 — 심사 시 사용한 샘플 데이터와 맞추거나
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
-  if (!isAdminUser(user.id)) {
+  if (!isAdminUser(user.email)) {
     return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
   }
 

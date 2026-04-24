@@ -8,7 +8,7 @@
 //      · failed 에러 Top 5 (blocked_by_user/template_rejected 등)
 //   2) 테스트 발송 폼 — 본인 번호 입력 → POLICY_NEW 발송 → 결과 즉시 표시
 //
-// 권한: ADMIN_USER_IDS 환경변수에 포함된 user 만 접근. 그 외 / 로 redirect.
+// 권한: ADMIN_EMAILS 환경변수에 포함된 이메일 만 접근. 그 외 / 로 redirect.
 // ============================================================
 
 import type { Metadata } from "next";
@@ -171,7 +171,7 @@ export default async function AlimtalkAdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin/alimtalk");
-  if (!isAdminUser(user.id)) redirect("/");
+  if (!isAdminUser(user.email)) redirect("/");
 
   const [stats, recentLogs] = await Promise.all([
     collect24hStats(),

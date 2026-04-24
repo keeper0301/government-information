@@ -28,7 +28,7 @@ async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin/enrich-detail");
-  if (!isAdminUser(user.id)) redirect("/");
+  if (!isAdminUser(user.email)) redirect("/");
   return user;
 }
 
