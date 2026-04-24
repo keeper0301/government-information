@@ -8,6 +8,7 @@ import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema } from "@/components/json-ld";
 import { SummaryItem } from "@/components/summary-item";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
+import { cleanDescription } from "@/lib/utils";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -133,10 +134,11 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* Description — 가장 중요한 한 줄 요약. 제목 다음으로 돋보이게 */}
+        {/* Description — HTML 엔티티·태그 제거 후 섹션 단위 줄바꿈 살려서 렌더.
+            whitespace-pre-wrap 이 cleanDescription 이 삽입한 \n 을 실제 줄바꿈으로 표시. */}
         {program.description && (
-          <p className="text-[18px] font-medium text-grey-900 leading-[1.65] mb-10 max-w-[760px] max-md:text-[17px]">
-            {program.description}
+          <p className="text-[16px] font-medium text-grey-900 leading-[1.75] mb-10 max-w-[760px] max-md:text-[15px] whitespace-pre-wrap">
+            {cleanDescription(program.description)}
           </p>
         )}
 
@@ -182,22 +184,24 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* 상세 정보 섹션들 */}
+        {/* 상세 정보 섹션들 — 모두 cleanDescription 으로 정제 후 렌더
+            (detailed_content · required_documents · contact_info 역시 스크래퍼가
+            HTML 엔티티 포함한 원문을 저장해두는 경우 많음) */}
         {program.detailed_content && (
           <InfoSection title="상세 내용">
-            {program.detailed_content}
+            {cleanDescription(program.detailed_content)}
           </InfoSection>
         )}
 
         {program.required_documents && (
           <InfoSection title="필요 서류">
-            {program.required_documents}
+            {cleanDescription(program.required_documents)}
           </InfoSection>
         )}
 
         {program.contact_info && (
           <InfoSection title="문의처">
-            {program.contact_info}
+            {cleanDescription(program.contact_info)}
           </InfoSection>
         )}
 

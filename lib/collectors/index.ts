@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { cleanDescription } from "@/lib/utils";
 
 // 수집한 정책 1건 — 컬렉터가 리턴하는 표준 포맷
 export type CollectedItem = {
@@ -223,13 +224,20 @@ export async function runOneCollector(
 // ============================================================
 function toRow(item: CollectedItem): Record<string, unknown> {
   const now = new Date().toISOString();
+  // description·eligibility·apply_method 는 원문 HTML 텍스트가 섞여 들어오는
+  // 경우가 많아 저장 전에 cleanDescription 으로 엔티티·태그 제거 + 섹션 줄바꿈.
+  // cleanDescription 은 idempotent 라 이미 정제된 값에도 안전.
+  const cleanedDesc = cleanDescription(item.description);
+  const cleanedElig = cleanDescription(item.eligibility);
+  const cleanedApply = cleanDescription(item.applyMethod);
+
   const base: Record<string, unknown> = {
     title: item.title.substring(0, 200),
     category: item.category || (item.table === "loan" ? "대출" : "소득"),
     target: item.target ?? null,
-    description: item.description?.substring(0, 2000) ?? null,
-    eligibility: item.eligibility?.substring(0, 2000) ?? null,
-    apply_method: item.applyMethod?.substring(0, 1000) ?? null,
+    description: cleanedDesc ? cleanedDesc.substring(0, 2000) : null,
+    eligibility: cleanedElig ? cleanedElig.substring(0, 2000) : null,
+    apply_method: cleanedApply ? cleanedApply.substring(0, 1000) : null,
     apply_url: item.applyUrl ?? null,
     apply_start: item.applyStart ?? null,
     apply_end: item.applyEnd ?? null,

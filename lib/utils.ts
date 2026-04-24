@@ -39,6 +39,98 @@ export function currentMinAllowedYear(): number {
 }
 
 // ============================================================
+// 공고 본문(description) 정제 — HTML 엔티티·태그 해제 + 구조화
+// ============================================================
+// 스크래퍼가 원문 HTML 을 텍스트로 그대로 저장해 &nbsp; · &middot; · &#39; 같은
+// 엔티티가 화면에 노출되고 ▶ 섹션 구분자가 한 덩어리로 뭉쳐 보이는 문제 해결.
+//
+// 안전 원칙
+//   - 입력이 null/undefined → "" 반환 (안전 기본값)
+//   - 결과는 평문 (plaintext) — XSS 안전, React 가 기본적으로 escape
+//   - idempotent (이미 정제된 텍스트를 다시 넣어도 같은 결과)
+// ============================================================
+
+// HTML 엔티티 디코드. 정부 공고에 자주 나오는 것만 커버 + 숫자 엔티티 범용 처리.
+function decodeHtmlEntities(text: string): string {
+  const named: Record<string, string> = {
+    "&nbsp;": " ",
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&apos;": "'",
+    "&middot;": "·",
+    "&hellip;": "…",
+    "&ndash;": "–",
+    "&mdash;": "—",
+    "&lsquo;": "'",
+    "&rsquo;": "'",
+    "&ldquo;": "“",
+    "&rdquo;": "”",
+  };
+  let out = text;
+  for (const [entity, ch] of Object.entries(named)) {
+    out = out.split(entity).join(ch);
+  }
+  // 숫자 엔티티 &#123; / 16진수 엔티티 &#x1F;
+  out = out.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    const n = parseInt(hex, 16);
+    if (!Number.isFinite(n) || n < 0 || n > 0x10ffff) return "";
+    try {
+      return String.fromCodePoint(n);
+    } catch {
+      return "";
+    }
+  });
+  out = out.replace(/&#(\d+);/g, (_, dec) => {
+    const n = parseInt(dec, 10);
+    if (!Number.isFinite(n) || n < 0 || n > 0x10ffff) return "";
+    try {
+      return String.fromCodePoint(n);
+    } catch {
+      return "";
+    }
+  });
+  return out;
+}
+
+export function cleanDescription(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let text = raw;
+
+  // 1) HTML 엔티티 디코드 먼저 (이후 구조 파악 정확도 ↑)
+  text = decodeHtmlEntities(text);
+
+  // 2) 블록 태그 → 줄바꿈. 그 외 태그는 공백으로 제거.
+  text = text.replace(/<br\s*\/?\s*>/gi, "\n");
+  text = text.replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n");
+  text = text.replace(/<li[^>]*>/gi, "• ");
+  text = text.replace(/<[^>]+>/g, " ");
+
+  // 3) 섹션 구분자 앞에 줄바꿈 — 정부 공고 관행상 ▶/◆/■/◎/※ 가 새 섹션 시작 신호
+  text = text.replace(/\s*▶\s*/g, "\n\n▶ ");
+  text = text.replace(/\s*◆\s*/g, "\n\n◆ ");
+  text = text.replace(/\s*■\s*/g, "\n\n■ ");
+  text = text.replace(/\s*◎\s*/g, "\n\n◎ ");
+  text = text.replace(/\s*※\s*/g, "\n※ ");
+
+  // 4) ①②③... 원문자 번호 앞에 줄바꿈 (목록 가독성)
+  text = text.replace(/\s*([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮])\s*/g, "\n$1 ");
+
+  // 5) 공백 정리 — 줄 단위로 처리해 줄바꿈 보존
+  text = text
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
+
+  // 6) 3줄 이상 공백 줄은 2줄로 제한 (단락 간격 통일)
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  return text.trim();
+}
+
+// ============================================================
 // 블로그 글 헬퍼
 // ============================================================
 
