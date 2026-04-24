@@ -55,3 +55,6 @@ supabase/.temp/
 
 # 임시 디버그 파일 (curl payload, dryRun 결과 등)
 tmp/
+
+# gstack 도구 메타데이터 (retros 등) — 로컬 전용
+.context/
