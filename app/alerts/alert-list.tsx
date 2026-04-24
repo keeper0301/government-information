@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import type { AlarmSubscription } from "@/lib/database.types";
 import { calcDday } from "@/lib/utils";
@@ -63,12 +64,29 @@ export function AlertList() {
   const inactiveAlerts = subscriptions.filter((s) => !s.is_active);
 
   if (subscriptions.length === 0) {
+    // 빈 상태 CTA — 신규 사용자 동선 ↑.
+    // 정책 둘러보기(/welfare) + 맞춤 추천(/recommend) 두 진입점 제공.
+    // 둘 다 정책 상세 페이지로 도달 → 거기서 알림 등록 흐름.
     return (
       <div className="text-center py-16">
         <div className="text-[48px] mb-4">📭</div>
-        <p className="text-[15px] text-grey-600">
+        <p className="text-[15px] text-grey-600 mb-6">
           등록된 알림이 없습니다. 정책 상세 페이지에서 알림을 등록해보세요.
         </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/welfare"
+            className="min-h-[44px] px-5 inline-flex items-center text-[14px] font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors no-underline"
+          >
+            복지 정책 둘러보기
+          </Link>
+          <Link
+            href="/recommend"
+            className="min-h-[44px] px-5 inline-flex items-center text-[14px] font-semibold rounded-lg border border-blue-500 text-blue-500 hover:bg-blue-50 transition-colors no-underline"
+          >
+            내 조건으로 추천받기
+          </Link>
+        </div>
       </div>
     );
   }
