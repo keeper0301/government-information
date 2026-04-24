@@ -77,6 +77,12 @@ export async function generateMetadata({
     return { title: "글을 찾을 수 없어요 | 정책알리미" };
   }
 
+  // OG 이미지 — 글에 cover_image 있으면 그걸, 없으면 opengraph-image.tsx 로 자동 생성.
+  // images 를 undefined 로 두면 Next.js 16 이 static convention 을 덮어씀 →
+  // 항상 명시적으로 URL 넘겨 SNS 공유 시 썸네일 누락 방지.
+  const ogImage =
+    post.cover_image || `/blog/${encodeURIComponent(slug)}/opengraph-image`;
+
   return {
     title: `${post.title} | 정책알리미`,
     description: post.meta_description || undefined,
@@ -85,15 +91,17 @@ export async function generateMetadata({
       title: post.title,
       description: post.meta_description || undefined,
       type: "article",
+      url: `/blog/${slug}`,
       publishedTime: post.published_at || undefined,
       modifiedTime: post.updated_at,
       tags: post.tags || undefined,
-      images: post.cover_image ? [post.cover_image] : undefined,
+      images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.meta_description || undefined,
+      images: [ogImage],
     },
   };
 }
