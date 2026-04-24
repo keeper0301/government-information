@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { translateAuthError } from "@/lib/auth-errors";
+import { translateAuthError, classifyAuthError } from "@/lib/auth-errors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 로그인 페이지 (Suspense wrapper).
@@ -74,9 +74,12 @@ function LoginForm() {
 
   // URL 에서 일회성 파라미터(error, reset)만 제거 — next 는 유지.
   // setState 는 하지 않음 (initial state 는 이미 위에서 설정됨).
+  // 초기 진입 시 error 쿼리가 있었다면 callback·OAuth 실패로 redirect 된 것이므로
+  // LOGIN_FAILED 이벤트로도 기록 (trackEvent 는 side effect 라 rule 통과).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("error") || params.get("reset")) {
+    const errMsg = params.get("error");
+    if (errMsg || params.get("reset")) {
       params.delete("error");
       params.delete("reset");
       const query = params.toString();
@@ -85,6 +88,12 @@ function LoginForm() {
         "",
         window.location.pathname + (query ? `?${query}` : "")
       );
+    }
+    if (errMsg) {
+      trackEvent(EVENTS.LOGIN_FAILED, {
+        reason: classifyAuthError(errMsg),
+        method: "callback",
+      });
     }
   }, []);
 
@@ -100,9 +109,16 @@ function LoginForm() {
       provider,
       options: { redirectTo: callbackUrl },
     });
-    // 성공 시엔 자동으로 리다이렉트되므로 여기 아래 코드는 실패 시에만 실행됨
+    // 성공 시엔 자동으로 리다이렉트되므로 여기 아래 코드는 실패 시에만 실행됨.
+    // provider_disabled·network 등 OAuth 초기화 단계 실패만 잡힘
+    // (사용자가 OAuth 창에서 취소한 경우는 /auth/callback 이 error 쿼리로 돌려보냄).
     if (error) {
       setError(translateAuthError(error.message));
+      trackEvent(EVENTS.LOGIN_FAILED, {
+        reason: classifyAuthError(error.message),
+        method: provider,
+        stage: "init",
+      });
       setLoading(null);
     }
   }
@@ -119,6 +135,10 @@ function LoginForm() {
     });
     if (error) {
       setError(translateAuthError(error.message));
+      trackEvent(EVENTS.LOGIN_FAILED, {
+        reason: classifyAuthError(error.message),
+        method: "email_password",
+      });
       setLoading(null);
       return;
     }
@@ -145,6 +165,10 @@ function LoginForm() {
     });
     if (error) {
       setError(translateAuthError(error.message));
+      trackEvent(EVENTS.LOGIN_FAILED, {
+        reason: classifyAuthError(error.message),
+        method: "magic_link",
+      });
     } else {
       setMagicSent(true);
     }
