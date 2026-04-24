@@ -60,9 +60,10 @@ export function Nav({ isAdmin = false }: NavProps) {
               marginTop: 4,
             }}
           />
-          {/* xl 이상에서만 한글 부텍스트 노출 — 메뉴 9개 나열 공간 확보 */}
+          {/* 2xl 이상에서만 한글 부텍스트 노출 — 1024~1280 구간에 11개 메뉴
+              나열 공간 확보 (기존 xl 이상 노출은 1280~1536 구간 가독성 침해) */}
           <span
-            className="hidden xl:inline-block text-grey-900"
+            className="hidden 2xl:inline-block text-grey-900"
             style={{
               fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
               fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px",
@@ -74,22 +75,36 @@ export function Nav({ isAdmin = false }: NavProps) {
           </span>
         </Link>
 
-        {/* 데스크톱 메뉴 — lg (1024px) 부터 9개 항목 전부 나열 (md~lg 구간은 햄버거) */}
-        <div className="hidden lg:flex items-center gap-0.5">
-          {items.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              aria-current={isActive(item.href) ? "page" : undefined}
-              className={`px-3 py-2.5 text-[15px] min-h-[44px] flex items-center rounded-lg transition-colors no-underline ${
-                isActive(item.href)
-                  ? "font-semibold text-grey-900"
-                  : "font-medium text-grey-700 hover:bg-grey-50 hover:text-grey-900"
-              }`}
-            >
-              {item.label}
-            </a>
-          ))}
+        {/* 데스크톱 메뉴 — lg (1024px) 부터 11개 항목 전부 나열 (md~lg 구간은 햄버거).
+            디자인 원칙:
+            · 14px (데스크톱 nav 표준) · font-medium · grey-700
+            · hover 는 배경 칩 대신 글자색만 진해짐 → 11개가 모여 있어도 덜 산만
+            · active 는 굵기 + 버건디 2px hairline (로고 dot 과 브랜드 연결) */}
+        <div className="hidden lg:flex items-center gap-1">
+          {items.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`relative px-2.5 xl:px-3 py-2.5 text-[14px] min-h-[44px] flex items-center transition-colors no-underline ${
+                  active
+                    ? "font-semibold text-grey-900"
+                    : "font-medium text-grey-700 hover:text-grey-900"
+                }`}
+              >
+                {item.label}
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-2.5 right-2.5 xl:left-3 xl:right-3 bottom-1.5 h-[2px] rounded-full"
+                    style={{ background: "#8A2A2A" }}
+                  />
+                )}
+              </a>
+            );
+          })}
 
           {/* 로그인 상태에 따라 로그인 버튼 ↔ 내 계정 메뉴를 보여줌 */}
           <UserMenu isAdmin={isAdmin} />
@@ -124,24 +139,36 @@ export function Nav({ isAdmin = false }: NavProps) {
         </button>
       </div>
 
-      {/* 모바일·태블릿 메뉴 패널 (lg 미만) */}
+      {/* 모바일·태블릿 메뉴 패널 (lg 미만) — 세로 나열은 공간 여유 있으므로
+          데스크톱과 달리 rounded bg 유지. active 표시는 버건디 좌측 bar 로
+          데스크톱 밑줄과 시각 일관성. */}
       {mobileOpen && (
         <div id="mobile-menu" className="lg:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1">
-          {items.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              aria-current={isActive(item.href) ? "page" : undefined}
-              className={`block px-4 py-3 text-[15px] rounded-lg no-underline transition-colors ${
-                isActive(item.href)
-                  ? "font-semibold text-grey-900 bg-grey-50"
-                  : "text-grey-700 hover:bg-grey-50"
-              }`}
-            >
-              {item.label}
-            </a>
-          ))}
+          {items.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                aria-current={active ? "page" : undefined}
+                className={`relative block pl-5 pr-4 py-3 text-[15px] rounded-lg no-underline transition-colors ${
+                  active
+                    ? "font-semibold text-grey-900 bg-grey-50"
+                    : "text-grey-700 hover:bg-grey-50"
+                }`}
+              >
+                {item.label}
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
+                    style={{ background: "#8A2A2A" }}
+                  />
+                )}
+              </a>
+            );
+          })}
           {/* 모바일용 로그인/로그아웃 영역 — 선택 시 햄버거 닫기 */}
           <UserMenu mobile isAdmin={isAdmin} onNavigate={() => setMobileOpen(false)} />
         </div>
