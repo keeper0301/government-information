@@ -26,6 +26,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { getUserConsents, type ConsentStatus } from "@/lib/consent";
+import {
+  getTargetActions,
+  logAdminAction,
+  ACTION_LABELS,
+  type AdminActionRecord,
+} from "@/lib/admin-actions";
 
 export const metadata: Metadata = {
   title: "사용자 상세 | 어드민 | 정책알리미",
@@ -46,7 +52,7 @@ async function requireAdmin() {
 // 어드민 권한은 action 내부에서도 다시 확인 (CSRF·직접 호출 방지).
 async function resetAiQuotaToday(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const actor = await requireAdmin();
 
   const userId = String(formData.get("userId") ?? "").trim();
   if (!userId) return;
@@ -68,6 +74,19 @@ async function resetAiQuotaToday(formData: FormData) {
       today,
       message: error.message,
     });
+  } else {
+    // 감사 로그 — 실제 DB 업데이트가 성공했을 때만 기록.
+    // 로그 저장 실패는 조용히 warn (메인 작업은 이미 성공했으니 block 안 함)
+    try {
+      await logAdminAction({
+        actorId: actor.id,
+        targetUserId: userId,
+        action: "reset_ai_quota",
+        details: { date: today },
+      });
+    } catch (logErr) {
+      console.warn("[admin/reset-ai-quota] 감사 로그 기록 실패:", logErr);
+    }
   }
 
   revalidatePath(`/admin/users/${userId}`);
@@ -122,6 +141,7 @@ export default async function AdminUserDetailPage({
     { data: aiUsage },
     { data: alertDeliveries },
     consents,
+    adminActions,
   ] = await Promise.all([
     admin.from("user_profiles").select("*").eq("id", userId).maybeSingle(),
     admin.from("subscriptions").select("*").eq("user_id", userId).maybeSingle(),
@@ -139,6 +159,7 @@ export default async function AdminUserDetailPage({
       .order("created_at", { ascending: false })
       .limit(50),
     getUserConsents(userId),
+    getTargetActions(userId, 20),
   ]);
 
   const projectRef = getSupabaseProjectRef();
@@ -314,6 +335,11 @@ export default async function AdminUserDetailPage({
             )}
           </Panel>
 
+          {/* 관리자 액션 로그 — 이 사용자 대상 최근 20건 */}
+          <Panel title="관리자 액션 로그 (최근 20건)">
+            <AdminActionsRows actions={adminActions} />
+          </Panel>
+
         </div>
       </div>
     </main>
@@ -393,5 +419,43 @@ function ConsentsRows({ consents }: { consents: ConsentStatus[] }) {
         );
       })}
     </div>
+  );
+}
+
+// 관리자 액션 로그 테이블. 시각·액션·세부정보(JSON) 표시.
+// 빈 배열이면 "기록 없음" 안내.
+function AdminActionsRows({ actions }: { actions: AdminActionRecord[] }) {
+  if (actions.length === 0) {
+    return <p className="text-[14px] text-grey-600 py-2">관리 액션 기록 없음</p>;
+  }
+
+  return (
+    <table className="w-full text-[13px]">
+      <thead>
+        <tr className="text-left text-grey-600 border-b border-grey-200">
+          <th className="py-2 font-medium">시각</th>
+          <th className="py-2 font-medium">액션</th>
+          <th className="py-2 font-medium">세부</th>
+        </tr>
+      </thead>
+      <tbody>
+        {actions.map((a) => (
+          <tr
+            key={a.id}
+            className="border-b border-grey-100 last:border-b-0 align-top"
+          >
+            <td className="py-2 text-grey-600 text-[12px] whitespace-nowrap">
+              {fmtDate(a.createdAt)}
+            </td>
+            <td className="py-2 font-medium text-grey-900">
+              {ACTION_LABELS[a.action] ?? a.action}
+            </td>
+            <td className="py-2 text-grey-700 text-[12px] font-mono break-all">
+              {a.details ? JSON.stringify(a.details) : "—"}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
