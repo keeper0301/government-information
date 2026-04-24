@@ -9,6 +9,7 @@ import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate } from "@/lib/utils";
+import { isDeepLink } from "@/lib/utils/apply-url";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -216,8 +217,13 @@ export default async function WelfareDetailPage({ params }: Props) {
       </div>
 
       {/* Action buttons */}
+      {/* apply_url 상태별 3단 분기 —
+          (1) 직링크 (쿼리·path 있는 deep link) → '신청하기' (primary)
+          (2) 홈페이지·쿼리 없는 .do 등 비-deep → '{source} 홈페이지 방문' (secondary)
+              : 누르면 에러 나는 대신 사용자가 기관 홈페이지에서 직접 찾도록 유도
+          (3) null → Google 검색 fallback */}
       <div className="flex gap-3 flex-wrap mb-4">
-        {program.apply_url ? (
+        {program.apply_url && isDeepLink(program.apply_url) ? (
           <a
             href={program.apply_url}
             target="_blank"
@@ -225,6 +231,15 @@ export default async function WelfareDetailPage({ params }: Props) {
             className="px-6 py-3 bg-blue-500 text-white text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-600 transition-colors"
           >
             신청하기
+          </a>
+        ) : program.apply_url ? (
+          <a
+            href={program.apply_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3 bg-grey-100 text-grey-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-grey-200 transition-colors"
+          >
+            {program.source} 홈페이지 방문
           </a>
         ) : (
           <a

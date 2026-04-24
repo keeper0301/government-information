@@ -10,6 +10,7 @@ import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate } from "@/lib/utils";
+import { isDeepLink } from "@/lib/utils/apply-url";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -218,9 +219,9 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons — welfare 페이지와 동일한 3단 분기 (deep·홈페이지·null) */}
         <div className="flex items-center gap-3 flex-wrap mb-4">
-          {program.apply_url ? (
+          {program.apply_url && isDeepLink(program.apply_url) ? (
             <a
               href={program.apply_url}
               target="_blank"
@@ -228,6 +229,15 @@ export default async function LoanDetailPage({ params }: Props) {
               className="px-6 py-3 text-[15px] font-semibold text-white bg-blue-500 rounded-xl no-underline hover:bg-blue-600 transition-colors"
             >
               신청하러 가기
+            </a>
+          ) : program.apply_url ? (
+            <a
+              href={program.apply_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 text-[15px] font-semibold text-grey-700 bg-grey-100 rounded-xl no-underline hover:bg-grey-200 transition-colors"
+            >
+              {program.source} 홈페이지 방문
             </a>
           ) : (
             <a

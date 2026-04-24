@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cleanDescription } from "@/lib/utils";
+import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 
 // 수집한 정책 1건 — 컬렉터가 리턴하는 표준 포맷
 export type CollectedItem = {
@@ -238,7 +239,9 @@ function toRow(item: CollectedItem): Record<string, unknown> {
     description: cleanedDesc ? cleanedDesc.substring(0, 2000) : null,
     eligibility: cleanedElig ? cleanedElig.substring(0, 2000) : null,
     apply_method: cleanedApply ? cleanedApply.substring(0, 1000) : null,
-    apply_url: item.applyUrl ?? null,
+    // 깨진 URL (한글/공백 섞임·프로토콜 누락·파싱 실패) 은 저장 단계에서 null 처리.
+    // 상세 페이지는 null 이면 '신청 방법 찾기' Google 검색 fallback 으로 자동 전환.
+    apply_url: sanitizeApplyUrl(item.applyUrl),
     apply_start: item.applyStart ?? null,
     apply_end: item.applyEnd ?? null,
     source: item.source,
