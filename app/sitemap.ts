@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getAllKeywords } from "@/lib/news-keywords";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -11,6 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/welfare`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
     { url: `${baseUrl}/loan`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
     { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/news`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
     { url: `${baseUrl}/calendar`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/recommend`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/popular`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
@@ -54,5 +56,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...welfarePages, ...loanPages, ...blogPages];
+  // News posts (korea.kr 수집) — slug 는 `{title-slug}-{newsId}` 형식이며 title
+  // 부분에 한글 포함. XML sitemap 표준상 한글 URL 은 percent-encode 해야 함.
+  const { data: newsPosts } = await supabase
+    .from("news_posts")
+    .select("slug, updated_at");
+  const newsPages: MetadataRoute.Sitemap = (newsPosts || []).map((n) => ({
+    url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,
+    lastModified: new Date(n.updated_at),
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
+  // 뉴스 키워드 페이지 24개 — SEO long-tail (청년·소상공인·지원금 등 각각 URL)
+  const keywordPages: MetadataRoute.Sitemap = getAllKeywords().map((k) => ({
+    url: `${baseUrl}/news/keyword/${encodeURIComponent(k)}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
+    priority: 0.7,
+  }));
+
+  return [
+    ...staticPages,
+    ...keywordPages,
+    ...welfarePages,
+    ...loanPages,
+    ...blogPages,
+    ...newsPages,
+  ];
 }

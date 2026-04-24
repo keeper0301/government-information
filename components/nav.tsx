@@ -10,6 +10,7 @@ const items = [
   { label: "대출정보", href: "/loan" },
   { label: "맞춤추천", href: "/recommend" },
   { label: "인기정책", href: "/popular" },
+  { label: "정책소식", href: "/news" },
   { label: "정책가이드", href: "/blog" },
   { label: "달력", href: "/calendar" },
   { label: "AI상담", href: "/consult" },
