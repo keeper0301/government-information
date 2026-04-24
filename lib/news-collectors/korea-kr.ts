@@ -12,6 +12,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractBenefitTags } from "@/lib/tags/taxonomy";
+import { extractNewsKeywords } from "@/lib/news-keywords";
 import { cleanDescription } from "@/lib/utils";
 import { fetchWithTimeout } from "@/lib/collectors";
 
@@ -97,6 +98,7 @@ export type KoreaKrItem = {
   thumbnail_url: string | null;
   slug: string;
   benefit_tags: string[];
+  keywords: string[];
   published_at: string;
 };
 
@@ -141,6 +143,7 @@ async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
 
     const textBlob = [title, cleaned].filter(Boolean).join(" ");
     const benefit_tags = extractBenefitTags(textBlob);
+    const keywords = extractNewsKeywords([title, cleaned]);
 
     items.push({
       source_code: feed.code,
@@ -154,6 +157,7 @@ async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
       thumbnail_url: thumbnail,
       slug: deterministicSlug(title, source_id),
       benefit_tags,
+      keywords,
       published_at,
     });
   }
@@ -193,6 +197,7 @@ export async function collectKoreaKr(): Promise<{
         thumbnail_url: it.thumbnail_url,
         slug: it.slug,
         benefit_tags: it.benefit_tags,
+        keywords: it.keywords,
         published_at: it.published_at,
         updated_at: new Date().toISOString(),
       }));
