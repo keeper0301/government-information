@@ -13,7 +13,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ArticleSchema, FAQSchema } from "@/components/json-ld";
+import { ArticleSchema, FAQSchema, BreadcrumbSchema } from "@/components/json-ld";
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { formatKoreanDate } from "@/lib/utils";
 
@@ -167,6 +167,15 @@ export default async function BlogPostPage({
 
       {/* 구조화 데이터: FAQPage (있을 때만) */}
       {post.faqs && post.faqs.length > 0 && <FAQSchema questions={post.faqs} />}
+
+      {/* BreadcrumbList — Google 리치 결과 + AI 검색 경로 이해 */}
+      <BreadcrumbSchema
+        items={[
+          { name: "홈", url: SITE_URL },
+          { name: "정책가이드", url: `${SITE_URL}/blog` },
+          { name: post.title, url },
+        ]}
+      />
 
       <article className="max-w-[720px] mx-auto px-5">
         {/* 카테고리 + 날짜 */}

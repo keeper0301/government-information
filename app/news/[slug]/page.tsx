@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import { ShareButton } from "@/components/share-button";
 import { RelatedPrograms } from "@/components/related-programs";
 import { AdSlot } from "@/components/ad-slot";
+import { BreadcrumbSchema } from "@/components/json-ld";
 import {
   NEWS_CATEGORY_LABEL,
   NEWS_CATEGORY_COLOR,
@@ -37,6 +38,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .single();
 
   if (!data) return { title: "정책 소식 — 정책알리미" };
+  // 썸네일 없는 뉴스는 사이트 기본 OG 이미지로 fallback — 카카오톡·페이스북 공유
+  // 미리보기가 빈 회색 박스 안 나오게. 기본 OG 는 /opengraph-image (Next.js 자동).
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
+  const ogImage = data.thumbnail_url || `${siteUrl}/opengraph-image`;
   return {
     title: `${data.title} | 정책알리미`,
     description: data.summary || undefined,
@@ -44,8 +49,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: data.title,
       description: data.summary || undefined,
-      images: data.thumbnail_url ? [{ url: data.thumbnail_url }] : undefined,
+      images: [{ url: ogImage }],
       type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: data.title,
+      description: data.summary || undefined,
+      images: [ogImage],
     },
   };
 }
@@ -122,6 +133,13 @@ export default async function NewsDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <BreadcrumbSchema
+        items={[
+          { name: "홈", url: baseUrl },
+          { name: "정책소식", url: `${baseUrl}/news` },
+          { name: post.title, url: `${baseUrl}/news/${post.slug}` },
+        ]}
       />
 
       {/* Breadcrumb */}

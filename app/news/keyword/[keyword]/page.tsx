@@ -16,6 +16,7 @@ import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { Pagination } from "@/components/pagination";
 import { RelatedPrograms } from "@/components/related-programs";
 import { AdSlot } from "@/components/ad-slot";
+import { BreadcrumbSchema } from "@/components/json-ld";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { findRelatedPrograms } from "@/lib/news-matching";
 
@@ -85,8 +86,17 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
     }`;
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
+
   return (
     <main className="min-h-screen bg-grey-50 pt-28 pb-20">
+      <BreadcrumbSchema
+        items={[
+          { name: "홈", url: baseUrl },
+          { name: "정책소식", url: `${baseUrl}/news` },
+          { name: `#${decoded}`, url: `${baseUrl}/news/keyword/${encodeURIComponent(decoded)}` },
+        ]}
+      />
       <div className="max-w-content mx-auto px-10 max-md:px-6">
         {/* Breadcrumb */}
         <nav className="text-sm text-grey-700 mb-6">

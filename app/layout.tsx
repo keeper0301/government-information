@@ -37,6 +37,20 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true },
   },
+  // 검색엔진 소유권 확인 토큰 — Vercel 환경변수에 값만 넣으면 자동 주입.
+  // 사용 방법:
+  //   1) Google Search Console 등록 → 메타 태그 방식 선택 → content 값 복사
+  //      → Vercel env GOOGLE_SITE_VERIFICATION 에 저장 → 재배포 → 확인 버튼.
+  //   2) Naver Search Advisor 에서 메타 태그 받아 NAVER_SITE_VERIFICATION 에 저장.
+  //   3) 기타 (Bing 등) 도 필요시 other 에 추가.
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+    other: {
+      ...(process.env.NAVER_SITE_VERIFICATION && {
+        "naver-site-verification": process.env.NAVER_SITE_VERIFICATION,
+      }),
+    },
+  },
   // Next.js 16: app/icon.svg / apple-icon.svg / manifest.ts 는 자동 감지.
 };
 

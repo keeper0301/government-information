@@ -114,6 +114,29 @@ type GovernmentServiceSchemaProps = {
   category: string;
 };
 
+// BreadcrumbList — Google 리치 결과의 빵부스러기 경로 표시 + AI 검색엔진이
+// 페이지 위계를 이해. 모든 상세 페이지에 부착 권장.
+type BreadcrumbItem = { name: string; url: string };
+
+export function BreadcrumbSchema({ items }: { items: BreadcrumbItem[] }) {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      name: it.name,
+      item: it.url,
+    })),
+  };
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  );
+}
+
 export function GovernmentServiceSchema({ name, description, url, provider, category }: GovernmentServiceSchemaProps) {
   const schema = {
     "@context": "https://schema.org",

@@ -5,7 +5,7 @@ import { AlarmButton } from "@/components/alarm-button";
 import { ShareButton } from "@/components/share-button";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
-import { GovernmentServiceSchema } from "@/components/json-ld";
+import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld";
 import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
@@ -97,6 +97,13 @@ export default async function LoanDetailPage({ params }: Props) {
         url={`${process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}/loan/${program.id}`}
         provider={program.source}
         category={program.category}
+      />
+      <BreadcrumbSchema
+        items={[
+          { name: "홈", url: process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com" },
+          { name: "대출정보", url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}/loan` },
+          { name: program.title, url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}/loan/${program.id}` },
+        ]}
       />
       <section className="max-w-content mx-auto px-10 max-md:px-6">
         {/* Breadcrumb */}
