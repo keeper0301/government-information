@@ -109,6 +109,41 @@ const REASON_LABELS: Record<string, string> = {
   unknown: "알 수 없음",
 };
 
+// Solapi 발송에 필요한 환경변수 목록. 각 항목의 존재 여부·길이만 UI 에 노출해
+// 값 유출 없이 "등록 여부" 감지 가능. provider 만 값 자체 표시 (공개돼도 OK).
+const REQUIRED_ENVS = [
+  { name: "KAKAO_ALIMTALK_PROVIDER", exposeValue: true },
+  { name: "SOLAPI_API_KEY", exposeValue: false },
+  { name: "SOLAPI_API_SECRET", exposeValue: false },
+  { name: "KAKAO_CHANNEL_PFID", exposeValue: false },
+  { name: "SOLAPI_TEMPLATE_ID_POLICY_NEW", exposeValue: false },
+] as const;
+
+type EnvStatus = {
+  name: string;
+  present: boolean;
+  displayValue: string | null;
+};
+
+function checkEnvStatus(): { envs: EnvStatus[]; allSet: boolean } {
+  const envs: EnvStatus[] = REQUIRED_ENVS.map(({ name, exposeValue }) => {
+    const raw = process.env[name];
+    const present = typeof raw === "string" && raw.trim().length > 0;
+    let displayValue: string | null = null;
+    if (present && raw) {
+      if (exposeValue) {
+        displayValue = raw;
+      } else {
+        // 값 미노출 — 글자 수만 표시해 "오타 없이 복붙됐는지" 감만 확인 가능.
+        displayValue = `${raw.length}자`;
+      }
+    }
+    return { name, present, displayValue };
+  });
+  const allSet = envs.every((e) => e.present);
+  return { envs, allSet };
+}
+
 export default async function AlimtalkAdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -116,7 +151,8 @@ export default async function AlimtalkAdminPage() {
   if (!isAdminUser(user.id)) redirect("/");
 
   const stats = await collect24hStats();
-  const providerConfigured = !!process.env.KAKAO_ALIMTALK_PROVIDER;
+  const { envs: envStatus, allSet: envsAllSet } = checkEnvStatus();
+  const setCount = envStatus.filter((e) => e.present).length;
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -133,29 +169,72 @@ export default async function AlimtalkAdminPage() {
           </p>
         </div>
 
-        {/* 대행사 설정 상태 배너 */}
-        <div
-          className={`mb-6 rounded-lg border p-4 text-[13px] leading-[1.6] ${
-            providerConfigured
-              ? "border-blue-200 bg-blue-50 text-blue-900"
-              : "border-yellow-300 bg-yellow-50 text-yellow-900"
-          }`}
-        >
-          {providerConfigured ? (
-            <>
-              ✅ <strong>KAKAO_ALIMTALK_PROVIDER</strong> 환경변수 설정됨
-              (<code>{process.env.KAKAO_ALIMTALK_PROVIDER}</code>). 실제 발송 경로가
-              활성화 상태입니다.
-            </>
-          ) : (
-            <>
-              ⚠️ <strong>KAKAO_ALIMTALK_PROVIDER</strong> 환경변수가 설정되지 않았습니다.
-              현재 sendAlimtalk 은 <code>skipped_no_provider</code> 를 반환하고
-              실제 발송은 이루어지지 않습니다. Vercel 대시보드에서 환경변수 5종을
-              등록한 뒤 재배포해 주세요.
-            </>
-          )}
-        </div>
+        {/* 환경변수 설정 체크리스트 */}
+        <section className="mb-6 rounded-lg border border-grey-200 bg-white p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[14px] font-bold text-grey-900">
+              환경변수 설정 상태
+            </h2>
+            <span
+              className={`text-[12px] font-semibold px-2 py-0.5 rounded ${
+                envsAllSet
+                  ? "bg-blue-50 text-blue-700"
+                  : "bg-yellow-50 text-yellow-800"
+              }`}
+            >
+              {setCount} / {envStatus.length} 설정됨
+            </span>
+          </div>
+
+          <ul className="space-y-1.5 text-[13px]">
+            {envStatus.map((e) => (
+              <li
+                key={e.name}
+                className="flex items-center justify-between gap-3 py-1.5 border-b border-grey-100 last:border-b-0"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="shrink-0">
+                    {e.present ? "✅" : "❌"}
+                  </span>
+                  <code className="text-grey-800 break-all">{e.name}</code>
+                </div>
+                <span className={`shrink-0 text-[12px] ${e.present ? "text-grey-700" : "text-yellow-800"}`}>
+                  {e.displayValue ?? "미설정"}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div
+            className={`mt-4 rounded-lg border p-3 text-[12px] leading-[1.6] ${
+              envsAllSet
+                ? "border-blue-200 bg-blue-50 text-blue-900"
+                : "border-yellow-300 bg-yellow-50 text-yellow-900"
+            }`}
+          >
+            {envsAllSet ? (
+              <>
+                ✅ 환경변수 5종 모두 설정되었습니다. 아래 <strong>테스트 발송</strong> 폼에서
+                본인 번호로 POLICY_NEW 알림톡이 정상 수신되는지 확인해 주세요.
+              </>
+            ) : (
+              <>
+                ⚠️ 아직 설정되지 않은 환경변수가 있습니다.{" "}
+                <a
+                  href="https://vercel.com/dashboard"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline font-semibold"
+                >
+                  Vercel 대시보드
+                </a>{" "}
+                → keepioo 프로젝트 → <strong>Settings → Environment Variables</strong> 에서
+                추가 후 재배포(Deployments → 최신 배포 우측 ⋯ → Redeploy) 가 필요합니다.
+                값은 보안을 위해 화면에 노출되지 않고, 글자 수와 설정 여부만 표시됩니다.
+              </>
+            )}
+          </div>
+        </section>
 
         {/* 24h 집계 카드 */}
         <section className="mb-8">
