@@ -70,6 +70,8 @@ export async function GET(request: Request) {
   // 2) 동의 기록은 로그인 페이지·회원가입 폼에 "로그인/가입 시 동의" 문구 표시 전제
   //    (실제 동의 UI 는 회원가입 폼에서, OAuth 는 로그인 페이지 안내로 대체)
   const user = data.user;
+  // GA4 signup/login 이벤트 분기에도 재사용 — 블록 밖에서 참조 가능하게 let 선언.
+  let isNewUser = false;
   if (user) {
     const admin = createAdminClient();
     const { data: existingProfile } = await admin
@@ -78,7 +80,7 @@ export async function GET(request: Request) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const isNewUser = !existingProfile;
+    isNewUser = !existingProfile;
 
     if (isNewUser) {
       // 프로필 행 생성 (동시 로그인 경쟁 방어 위해 upsert)
@@ -132,6 +134,14 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/reset-password`);
   }
 
+  // ━━━ GA4 auth_event 쿼리 마커 ━━━
+  // /auth/callback 은 서버 route 라 gtag 직접 호출 불가.
+  // redirect URL 에 auth_event 쿼리를 실어 클라이언트(AuthEventTracker) 가
+  // useEffect 로 감지 후 trackEvent 호출, URL 에서 쿼리 제거.
+  //
+  // 위 블록의 isNewUser 그대로 재사용 (신규=signup, 기존=login).
+  const authEventParam = user ? (isNewUser ? "signup" : "login") : "";
+
   // ━━━ 온보딩 분기 ━━━
   // next 파라미터가 명시되지 않은 (= 기본값 "/") 신규 사용자는
   // 관심 분야 선택 권유 페이지로. 이미 골라뒀거나 명시 next 가 있으면 패스.
@@ -148,10 +158,23 @@ export async function GET(request: Request) {
     const hasInterests =
       Array.isArray(profile?.interests) && profile!.interests!.length > 0;
     if (!hasInterests) {
-      return NextResponse.redirect(`${origin}/onboarding/topics`);
+      return NextResponse.redirect(
+        appendAuthEvent(`${origin}/onboarding/topics`, authEventParam),
+      );
     }
   }
 
   // 정상 로그인 → 원래 가려던 페이지 또는 홈으로
-  return NextResponse.redirect(`${origin}${next}`);
+  return NextResponse.redirect(
+    appendAuthEvent(`${origin}${next}`, authEventParam),
+  );
+}
+
+// redirect 대상 URL 에 auth_event 쿼리 덧붙이는 헬퍼.
+// 빈 문자열이면 원본 URL 그대로 (비밀번호 재설정 등 이벤트 대상 아닌 흐름).
+function appendAuthEvent(urlStr: string, event: string): string {
+  if (!event) return urlStr;
+  const u = new URL(urlStr);
+  u.searchParams.set("auth_event", event);
+  return u.toString();
 }

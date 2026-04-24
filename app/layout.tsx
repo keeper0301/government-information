@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { ChatbotPanel } from "@/components/chatbot-panel";
 import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
+import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import "./globals.css";
 
@@ -83,6 +85,11 @@ export default function RootLayout({
         {children}
         <Footer />
         <ChatbotPanel />
+        {/* OAuth/매직링크 callback 의 ?auth_event 쿼리를 GA4 로 전송.
+            useSearchParams 사용하므로 Suspense 경계로 감싸 정적 렌더 영향 방지. */}
+        <Suspense fallback={null}>
+          <AuthEventTracker />
+        </Suspense>
         {process.env.NEXT_PUBLIC_GA_ID && (
           <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
         )}

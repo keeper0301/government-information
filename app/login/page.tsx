@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 로그인 페이지
 // - 카카오/구글 소셜 로그인 버튼 (가장 간편)
@@ -108,6 +109,10 @@ export default function LoginPage() {
       setLoading(null);
       return;
     }
+    // 이메일+비밀번호 로그인은 callback 을 거치지 않으므로 직접 GA4 이벤트.
+    // (소셜·매직링크는 /auth/callback → auth_event 쿼리 → AuthEventTracker 가 처리)
+    trackEvent(EVENTS.LOGIN_COMPLETED, { method: "email_password" });
+
     // 성공 — 원래 가려던 페이지(또는 홈) 로 이동 + 서버 컴포넌트 재검증
     router.push(next);
     router.refresh();

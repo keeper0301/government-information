@@ -28,6 +28,9 @@ export const EVENTS = {
   AI_CHAT_SENT: "ai_chat_sent",
   // 블로그
   BLOG_POST_VIEWED: "blog_post_viewed",
+  // 인증 (가입·로그인 전환율)
+  SIGNUP_COMPLETED: "signup_completed",
+  LOGIN_COMPLETED: "login_completed",
   // 계정 생명주기 (이탈 퍼널 분석)
   ACCOUNT_DELETED: "account_deleted",
   ACCOUNT_DELETION_BLOCKED: "account_deletion_blocked",
