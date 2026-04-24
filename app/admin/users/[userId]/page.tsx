@@ -369,10 +369,10 @@ export default async function AdminUserDetailPage({
   if (authErr || !authUser?.user) notFound();
   const u = authUser.user;
 
-  // 2) 프로필 + 구독 + AI 사용량 + 알림 이력 (병렬)
-  // eslint-disable-next-line react-hooks/purity -- Server Component 에서 현재
-  // 시간 기준 쿼리 범위 계산. react-hooks/purity 룰이 server context 를 구별
-  // 못해 false positive (runtime 엔 서버에서 1회 평가되고 결과 캐싱됨).
+  // 2) 프로필 + 구독 + AI 사용량 + 알림 이력 (병렬).
+  // Server Component 에서 현재 시간 기준 쿼리 범위 계산. react-hooks/purity
+  // 룰이 server context 를 구별 못해 false positive — 서버 요청당 1회만 평가.
+  // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const since30 = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
   const since30Date = since30.slice(0, 10);
