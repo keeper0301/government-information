@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -33,8 +33,23 @@ export function ProfileForm({ initial }: { initial: Profile }) {
   const router = useRouter();
   const [form, setForm] = useState<Profile>(initial);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 저장 성공 상태는 1.8초 뒤 자동 해제 → 버튼이 평상시 라벨로 복귀
+  // (언마운트·재저장 시 타이머 자동 정리)
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 1800);
+    return () => clearTimeout(t);
+  }, [saved]);
+
+  // 폼이 바뀌면 성공 배지를 즉시 해제 → "저장됐어요 ✓" 상태에서
+  // 사용자가 다른 칩을 눌렀을 때 "이미 저장된 줄" 오인하지 않도록.
+  // 성공 배지가 뜬 동안에도 폼 변경 = 미저장 상태로 복귀.
+  useEffect(() => {
+    setSaved(false);
+  }, [form]);
 
   // 관심사는 체크박스 다중 선택 → 토글 방식
   function toggleInterest(value: string) {
@@ -49,7 +64,6 @@ export function ProfileForm({ initial }: { initial: Profile }) {
   // 저장: 본인 id 로 upsert (RLS가 auth.uid() == id 만 허용)
   async function handleSave() {
     setSaving(true);
-    setMessage(null);
     setError(null);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -68,7 +82,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
     if (error) {
       setError("저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.");
     } else {
-      setMessage("저장됐어요.");
+      setSaved(true);
       router.refresh();
     }
     setSaving(false);
@@ -127,25 +141,31 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         </div>
       </div>
 
-      {/* 메시지 */}
+      {/* 에러 메시지 (실패는 지속 노출 — 사용자가 원인 확인할 시간 필요) */}
       {error && (
         <div className="bg-red/10 border border-red/30 rounded-lg p-3 text-sm text-red">
           {error}
         </div>
       )}
-      {message && (
-        <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-600 font-medium">
-          {message}
-        </div>
-      )}
 
-      {/* 저장 버튼 */}
+      {/* 스크린리더 전용 라이브 영역 — 저장 성공을 소리로도 공지 */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {saved ? "프로필이 저장됐어요" : ""}
+      </span>
+
+      {/* 저장 버튼 — 3가지 상태(평상시 / 저장 중 / 저장 성공)
+          성공 상태는 1.8초 뒤 useEffect 타이머가 자동 해제 → 버튼이 원래대로 복귀.
+          성공 색은 브랜드 그린(#3F7D52)으로 성공을 명확히 시각화하되 톤은 유지 */}
       <button
         onClick={handleSave}
-        disabled={saving}
-        className="w-full py-3 bg-blue-500 text-white rounded-lg text-[15px] font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 cursor-pointer"
+        disabled={saving || saved}
+        className={`w-full py-3 rounded-lg text-[15px] font-semibold transition-colors cursor-pointer disabled:cursor-default ${
+          saved
+            ? "bg-green text-white"
+            : "bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+        }`}
       >
-        {saving ? "저장 중..." : "저장하기"}
+        {saving ? "저장 중..." : saved ? "저장됐어요 ✓" : "저장하기"}
       </button>
     </div>
   );
