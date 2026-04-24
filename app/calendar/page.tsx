@@ -19,10 +19,32 @@ function formatYmd(year: number, month0: number, day: number): string {
   return `${year}-${String(month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export default async function CalendarPage() {
+// 주어진 (year, month0) 에서 delta 달만큼 이동한 결과를 1-based month 로 반환.
+// delta=-1 → 이전 달, +1 → 다음 달. 연도 경계 자동 처리.
+function shiftMonth(
+  year: number,
+  month0: number,
+  delta: number,
+): { year: number; month: number } {
+  const total = year * 12 + month0 + delta;
+  const newYear = Math.floor(total / 12);
+  const newMonth0 = ((total % 12) + 12) % 12; // 음수 delta 방어
+  return { year: newYear, month: newMonth0 + 1 };
+}
+
+type SearchParams = { year?: string; month?: string };
+
+// 월 이동 네비게이션 지원 — ?year=YYYY&month=M 쿼리로 다른 달 조회.
+// 없으면 KST 기준 이번 달이 기본. 오늘 기준 ±24개월 바깥은 이번 달로 폴백.
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
 
-  // 한국 시간(KST, UTC+9) 기준으로 년·월·일 해석.
+  // 한국 시간(KST, UTC+9) 기준으로 "오늘" 결정.
   // Vercel 기본 타임존이 UTC 라 그대로 쓰면 KST 00:00 ~ 09:00 창에서
   // 서버가 "어제"를 오늘로 판정 → 한국 사용자 달력과 하루 어긋남.
   // now.getTime() 에 9h 를 더해 가상 "KST 시점" 을 만든 뒤
@@ -30,9 +52,40 @@ export default async function CalendarPage() {
   const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
   const now = new Date();
   const kstNow = new Date(now.getTime() + KST_OFFSET_MS);
-  const year = kstNow.getUTCFullYear();
-  const month = kstNow.getUTCMonth(); // 0-indexed
-  const today = kstNow.getUTCDate();
+  const todayYear = kstNow.getUTCFullYear();
+  const todayMonth = kstNow.getUTCMonth(); // 0-indexed
+  const todayDay = kstNow.getUTCDate();
+
+  // 조회할 월 결정 — URL 쿼리 우선, 유효성 검사 통과 못하면 이번 달
+  const parsedYear = params.year ? parseInt(params.year, 10) : NaN;
+  const parsedMonth = params.month ? parseInt(params.month, 10) : NaN; // 1-based
+  const hasValidParam =
+    Number.isFinite(parsedYear) &&
+    Number.isFinite(parsedMonth) &&
+    parsedYear >= 2000 &&
+    parsedYear <= 2100 &&
+    parsedMonth >= 1 &&
+    parsedMonth <= 12;
+
+  let year = todayYear;
+  let month = todayMonth;
+  if (hasValidParam) {
+    const candidateYear = parsedYear;
+    const candidateMonth = parsedMonth - 1;
+    // 오늘 기준 ±24개월 바깥은 이탈 방지 차원에서 이번 달로 폴백
+    const monthsDiff =
+      (candidateYear - todayYear) * 12 + (candidateMonth - todayMonth);
+    if (monthsDiff >= -24 && monthsDiff <= 24) {
+      year = candidateYear;
+      month = candidateMonth;
+    }
+  }
+
+  // 조회 월이 실제 "이번 달" 인지 (오늘 강조용)
+  const isCurrentMonth = year === todayYear && month === todayMonth;
+  // today 는 달력 그리드에서 "오늘" 셀 하이라이트에만 쓰임.
+  // 조회 월이 이번 달이 아니면 매치되는 날이 없도록 0 (1~31 와 절대 매치 X).
+  const today = isCurrentMonth ? todayDay : 0;
 
   // 월의 첫 요일·일수 — Date.UTC 로 생성해 서버 로컬 타임존 영향 제거
   const firstDay = new Date(Date.UTC(year, month, 1)).getUTCDay();
@@ -40,7 +93,12 @@ export default async function CalendarPage() {
 
   const monthStart = formatYmd(year, month, 1);
   const monthEnd = formatYmd(year, month, daysInMonth);
-  const todayStr = formatYmd(year, month, today);
+  // todayStr 은 "오늘 이후" 필터링에 쓰이는 실제 오늘 날짜 (조회 월 무관)
+  const todayStr = formatYmd(todayYear, todayMonth, todayDay);
+
+  // 이전/다음 달 계산 (네비게이션 링크용) — 1-based month 로 반환 (URL 쿼리 형식과 동일)
+  const prevMonth = shiftMonth(year, month, -1);
+  const nextMonth = shiftMonth(year, month, +1);
 
   // 이번 달 apply_start 또는 apply_end 가 걸친 복지·대출 프로그램 수집
   // PostgREST or() + and() 조합으로 한 번에 처리
@@ -133,13 +191,44 @@ export default async function CalendarPage() {
         <b className="text-grey-900">마감일</b>을 한눈에 확인하세요.
       </p>
 
-      {/* 이번 달 요약 */}
-      <div className="text-lg font-bold text-grey-900 mb-4">
-        {monthName}
-        <span className="ml-3 text-[13px] font-medium text-grey-600">
-          마감 예정 {upcomingCount}건 · 신규 시작 {newCount}건
-        </span>
-      </div>
+      {/* 월 네비게이션 — 좌우 화살표로 ±24개월 이동. 중앙에 현재 월 + 요약 + "오늘로" */}
+      <nav
+        className="flex items-center justify-between gap-3 mb-4"
+        aria-label="달력 월 이동"
+      >
+        <a
+          href={`/calendar?year=${prevMonth.year}&month=${prevMonth.month}`}
+          aria-label={`이전 달 (${prevMonth.year}년 ${prevMonth.month}월)`}
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
+        >
+          <span aria-hidden="true">◀</span>
+        </a>
+
+        <div className="flex-1 min-w-0 text-center">
+          <div className="flex items-baseline justify-center gap-2 flex-wrap">
+            <h2 className="text-lg font-bold text-grey-900">{monthName}</h2>
+            {!isCurrentMonth && (
+              <a
+                href="/calendar"
+                className="text-[12px] font-semibold text-blue-600 no-underline hover:underline"
+              >
+                오늘로
+              </a>
+            )}
+          </div>
+          <div className="text-[12px] font-medium text-grey-600 mt-0.5">
+            마감 예정 {upcomingCount}건 · 신규 시작 {newCount}건
+          </div>
+        </div>
+
+        <a
+          href={`/calendar?year=${nextMonth.year}&month=${nextMonth.month}`}
+          aria-label={`다음 달 (${nextMonth.year}년 ${nextMonth.month}월)`}
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
+        >
+          <span aria-hidden="true">▶</span>
+        </a>
+      </nav>
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-0.5 bg-grey-100 rounded-2xl overflow-hidden mb-4">
