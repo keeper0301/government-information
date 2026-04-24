@@ -139,14 +139,30 @@ export type KoreaKrItem = {
   published_at: string;
 };
 
-// RSS 1개 피드 fetch·파싱
+// RSS 1개 피드 fetch·파싱. Vercel 서버리스에서 korea.kr 동시 병렬 요청 시
+// 일시적 "fetch failed" 가 발생 → 1회 재시도로 대부분 복구.
 async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
-  const res = await fetchWithTimeout(feed.url, {
-    timeoutMs: 25000,
-    headers: {
-      "User-Agent": "Mozilla/5.0 keepioo-bot (+https://www.keepioo.com)",
-    },
-  });
+  async function attempt() {
+    return fetchWithTimeout(feed.url, {
+      timeoutMs: 25000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 keepioo-bot (+https://www.keepioo.com)",
+      },
+    });
+  }
+  let res;
+  try {
+    res = await attempt();
+  } catch (err) {
+    // 1.5초 대기 후 재시도 — 일시적 네트워크 오류 대응
+    await new Promise((r) => setTimeout(r, 1500));
+    res = await attempt().catch(() => {
+      throw new Error(
+        `${feed.code} fetch failed (retry): ${err instanceof Error ? err.message : err}`,
+      );
+    });
+    if (!res) throw err;
+  }
   if (!res.ok) throw new Error(`${feed.code} HTTP ${res.status}`);
   const xml = await res.text();
 
@@ -266,9 +282,14 @@ export async function collectKoreaKr(): Promise<{
         updated_at: new Date().toISOString(),
       }));
 
+      // slug 는 DB 에 unique constraint 가 있음. 부처별 RSS 는 동일 뉴스가
+      // 여러 부처에 동시 노출되는 케이스가 있음 (예: 복지부+성평등가족부 공동
+      // 발표 → 양쪽 피드에 같은 newsId 로 나타남 → 같은 slug 생성).
+      // onConflict 를 slug 로 설정 + ignoreDuplicates: 이미 있으면 건너뛰기.
+      // 먼저 들어온 피드가 "첫 번째 승자" — 부처 정보 유지.
       const { data, error } = await supabase
         .from("news_posts")
-        .upsert(payload, { onConflict: "source_code,source_id" })
+        .upsert(payload, { onConflict: "slug", ignoreDuplicates: true })
         .select("id");
 
       if (error) {
