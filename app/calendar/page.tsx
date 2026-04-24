@@ -217,7 +217,7 @@ export default async function CalendarPage({
             )}
           </div>
           <div className="text-[12px] font-medium text-grey-600 mt-0.5">
-            마감 예정 {upcomingCount}건 · 신규 시작 {newCount}건
+            신규 시작 {newCount}건 · 마감 예정 {upcomingCount}건
           </div>
         </div>
 
@@ -336,35 +336,17 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      {/* List — 마감 예정 / 신규 시작 두 섹션으로 분리 (가독성 ↑)
+      {/* List — 신규 시작 / 마감 예정 두 섹션으로 분리 (가독성 ↑)
+          순서 의도: 새 기회(발견 UX) 먼저 → 마감(긴급 UX) 뒤에.
+          자연스러운 시간 흐름 (열림 → 마감) 과 일치하고, 마감 임박은
+          이미 홈 AlertStrip 에서 별도로 강조되므로 여기선 뒤로 배치.
           각 섹션 내부는 날짜 오름차순. 과거·D-0 마감은 숨김 (액션 불가 정보). */}
       <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900 mb-6">
         {monthName} 일정
       </h2>
 
       <div className="space-y-10">
-        {/* ⏰ 마감 예정 섹션 */}
-        <section aria-labelledby="section-endings">
-          <div className="flex items-baseline gap-2 mb-4 pb-2 border-b-2 border-grey-200">
-            <h3 id="section-endings" className="text-[17px] font-bold text-grey-900">
-              <span aria-hidden="true">⏰ </span>마감 예정
-            </h3>
-            <span className="text-[13px] font-medium text-grey-600">
-              {upcomingEndings.length}건
-            </span>
-          </div>
-          {upcomingEndings.length > 0 ? (
-            <div className="flex flex-col">
-              {upcomingEndings.map((e) => renderEventRow(e, kstNow, month))}
-            </div>
-          ) : (
-            <div className="py-10 text-center text-[13px] text-grey-600 bg-grey-50 rounded-lg">
-              이번 달 남은 마감 예정이 없어요.
-            </div>
-          )}
-        </section>
-
-        {/* 🆕 신규 시작 섹션 */}
+        {/* 🆕 신규 시작 섹션 (먼저 — 발견 UX) */}
         <section aria-labelledby="section-starts">
           <div className="flex items-baseline gap-2 mb-4 pb-2 border-b-2 border-grey-200">
             <h3 id="section-starts" className="text-[17px] font-bold text-grey-900">
@@ -381,6 +363,27 @@ export default async function CalendarPage({
           ) : (
             <div className="py-10 text-center text-[13px] text-grey-600 bg-grey-50 rounded-lg">
               이번 달 남은 신규 시작이 없어요.
+            </div>
+          )}
+        </section>
+
+        {/* ⏰ 마감 예정 섹션 (뒤에 — 긴급 UX, AlertStrip 과 중복 완화) */}
+        <section aria-labelledby="section-endings">
+          <div className="flex items-baseline gap-2 mb-4 pb-2 border-b-2 border-grey-200">
+            <h3 id="section-endings" className="text-[17px] font-bold text-grey-900">
+              <span aria-hidden="true">⏰ </span>마감 예정
+            </h3>
+            <span className="text-[13px] font-medium text-grey-600">
+              {upcomingEndings.length}건
+            </span>
+          </div>
+          {upcomingEndings.length > 0 ? (
+            <div className="flex flex-col">
+              {upcomingEndings.map((e) => renderEventRow(e, kstNow, month))}
+            </div>
+          ) : (
+            <div className="py-10 text-center text-[13px] text-grey-600 bg-grey-50 rounded-lg">
+              이번 달 남은 마감 예정이 없어요.
             </div>
           )}
         </section>
