@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { previewMatchCount } from "@/lib/alerts/matching";
 import { requireTier } from "@/lib/subscription";
+import { hasActiveConsent } from "@/lib/consent";
 
 // 알림 규칙은 basic 이상만 (무료 사용자는 pricing 페이지로 유도)
 async function requireAuth() {
@@ -72,6 +73,22 @@ export async function POST(request: NextRequest) {
       { error: "카카오 알림톡은 프로 플랜에서만 이용 가능해요.", needsUpgrade: true },
       { status: 403 },
     );
+  }
+
+  // 카카오 채널 저장 시 kakao_messaging 수신 동의 선행 필수 (정보통신망법 제50조).
+  // 동의 없으면 규칙 자체를 저장하지 않음 — 저장 후 발송에서만 막으면 사용자가
+  // "등록됐다"고 오해할 수 있어 UX 도 나쁨.
+  if (channels.includes("kakao")) {
+    const consented = await hasActiveConsent(auth.user.id, "kakao_messaging");
+    if (!consented) {
+      return NextResponse.json(
+        {
+          error: "카카오 알림톡 수신 동의가 필요해요. 마이페이지 '동의 관리' 에서 동의 후 다시 시도해 주세요.",
+          needsConsent: "kakao_messaging",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : "내 맞춤 알림";

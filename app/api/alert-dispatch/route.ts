@@ -12,6 +12,7 @@ import { notifyCronFailure, sendCustomAlertEmail } from "@/lib/email";
 import { findMatchingPrograms, type AlertRule } from "@/lib/alerts/matching";
 import { getUserTier } from "@/lib/subscription";
 import { sendAlimtalk } from "@/lib/kakao-alimtalk";
+import { hasActiveConsent } from "@/lib/consent";
 
 export const maxDuration = 300; // 5분
 
@@ -45,7 +46,19 @@ async function runAlertDispatch(jobLabel: string) {
     let dispatchedKakao = 0;
     let skipped = 0;
     let emailFailures = 0;
+    let kakaoSkippedConsent = 0;
     const emailFailureDetail: string[] = [];
+
+    // 사용자별 kakao_messaging 동의 상태 캐시 — 같은 사용자가 규칙 여러 개 들고 있어도 1회만 조회.
+    // 동의 없으면 알림톡 발송 불가 (정보통신망법 제50조 수신동의 의무).
+    const kakaoConsentCache = new Map<string, boolean>();
+    async function getKakaoConsent(userId: string): Promise<boolean> {
+      const cached = kakaoConsentCache.get(userId);
+      if (cached !== undefined) return cached;
+      const ok = await hasActiveConsent(userId, "kakao_messaging");
+      kakaoConsentCache.set(userId, ok);
+      return ok;
+    }
 
     for (const rule of rules as AlertRule[]) {
       const matches = await findMatchingPrograms(supabase, rule, since, 20);
@@ -135,42 +148,64 @@ async function runAlertDispatch(jobLabel: string) {
       // alert_deliveries 에 status='skipped' 로 기록. 운영자가 어드민에서 식별 가능.
       // 대행사 결정 후엔 lib/kakao-alimtalk.ts 의 sendAlimtalkLive 만 채우면 됨.
       if (canKakao) {
+        // 수신 동의 게이트 — 카톡 동의 없으면 sendAlimtalk 호출 자체를 스킵하고
+        // status='skipped', error='consent_missing' 으로 기록해 어드민에서 추적 가능.
+        // 다음 cron 실행 시 사용자가 동의하면 자동으로 발송 재개됨.
+        const consented = await getKakaoConsent(rule.user_id);
         const toSend = matches.filter((m) => !alreadyKakao.has(`${m.table}:${m.id}`));
-        for (const m of toSend) {
-          const result = await sendAlimtalk({
-            phoneNumber: rule.phone_number!,
-            templateCode: "POLICY_NEW",
-            variables: {
-              title: m.title,
-              deadline: m.apply_end ?? "상시",
-            },
-          });
 
-          // 결과 → alert_deliveries 행 (UNIQUE INDEX 가 중복 방지)
-          let status: "sent" | "failed" | "skipped";
-          let errorMsg: string | null = null;
-          if (result.ok) {
-            status = "sent";
-          } else if (result.reason === "skipped_no_provider") {
-            status = "skipped";
-            errorMsg = "kakao_provider_not_configured";
-          } else {
-            status = "failed";
-            errorMsg = `${result.reason}: ${result.error ?? ""}`.slice(0, 500);
+        if (!consented) {
+          for (const m of toSend) {
+            await supabase.from("alert_deliveries").insert({
+              rule_id: rule.id,
+              user_id: rule.user_id,
+              program_table: m.table,
+              program_id: m.id,
+              program_title: m.title,
+              channel: "kakao",
+              status: "skipped",
+              error: "consent_missing",
+              sent_at: null,
+            });
+            kakaoSkippedConsent++;
           }
+        } else {
+          for (const m of toSend) {
+            const result = await sendAlimtalk({
+              phoneNumber: rule.phone_number!,
+              templateCode: "POLICY_NEW",
+              variables: {
+                title: m.title,
+                deadline: m.apply_end ?? "상시",
+              },
+            });
 
-          await supabase.from("alert_deliveries").insert({
-            rule_id: rule.id,
-            user_id: rule.user_id,
-            program_table: m.table,
-            program_id: m.id,
-            program_title: m.title,
-            channel: "kakao",
-            status,
-            error: errorMsg,
-            sent_at: result.ok ? new Date().toISOString() : null,
-          });
-          dispatchedKakao++;
+            // 결과 → alert_deliveries 행 (UNIQUE INDEX 가 중복 방지)
+            let status: "sent" | "failed" | "skipped";
+            let errorMsg: string | null = null;
+            if (result.ok) {
+              status = "sent";
+            } else if (result.reason === "skipped_no_provider") {
+              status = "skipped";
+              errorMsg = "kakao_provider_not_configured";
+            } else {
+              status = "failed";
+              errorMsg = `${result.reason}: ${result.error ?? ""}`.slice(0, 500);
+            }
+
+            await supabase.from("alert_deliveries").insert({
+              rule_id: rule.id,
+              user_id: rule.user_id,
+              program_table: m.table,
+              program_id: m.id,
+              program_title: m.title,
+              channel: "kakao",
+              status,
+              error: errorMsg,
+              sent_at: result.ok ? new Date().toISOString() : null,
+            });
+            dispatchedKakao++;
+          }
         }
       }
     }
@@ -191,6 +226,7 @@ async function runAlertDispatch(jobLabel: string) {
       dispatched_email: dispatchedEmail,
       email_failures: emailFailures,
       queued_kakao: dispatchedKakao,
+      kakao_skipped_consent: kakaoSkippedConsent,
       skipped,
     });
   } catch (err) {

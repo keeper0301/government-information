@@ -74,7 +74,7 @@ export default async function MyPage() {
       />
 
       {/* 동의 관리 섹션 — 필수/선택 동의 현황과 토글 */}
-      <section className="mt-12 pt-8 border-t border-grey-100">
+      <section id="consents" className="mt-12 pt-8 border-t border-grey-100 scroll-mt-20">
         <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900 mb-2">
           동의 관리
         </h2>

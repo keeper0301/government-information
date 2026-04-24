@@ -8,6 +8,7 @@
 // ============================================================
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   REGION_TAGS,
@@ -35,9 +36,11 @@ type Rule = {
 type Props = {
   tier: Tier;
   existingRules: Rule[];
+  /** 카카오 알림톡 수신 동의 현재 상태 — 체크박스 활성화 조건 (tier + consent 둘 다 필요) */
+  kakaoConsented: boolean;
 };
 
-export function RuleForm({ tier, existingRules }: Props) {
+export function RuleForm({ tier, existingRules, kakaoConsented }: Props) {
   const router = useRouter();
   const [name, setName] = useState("내 맞춤 알림");
   const [regions, setRegions] = useState<string[]>([]);
@@ -215,15 +218,30 @@ export function RuleForm({ tier, existingRules }: Props) {
               <span>이메일 알림</span>
             </label>
             <label className="flex items-center gap-2">
-              <input type="checkbox" disabled={tier !== "pro"} checked={channels.includes("kakao")}
+              <input
+                type="checkbox"
+                disabled={tier !== "pro" || !kakaoConsented}
+                checked={channels.includes("kakao")}
                 onChange={(e) => setChannels(e.target.checked
                   ? Array.from(new Set([...channels, "kakao"]))
                   : channels.filter((c) => c !== "kakao"))} />
-              <span className={tier !== "pro" ? "text-gray-400" : ""}>
+              <span className={tier !== "pro" || !kakaoConsented ? "text-gray-400" : ""}>
                 카카오 알림톡
                 {tier !== "pro" && <span className="ml-2 text-xs text-gray-500">(프로 플랜 전용)</span>}
+                {tier === "pro" && !kakaoConsented && (
+                  <span className="ml-2 text-xs text-gray-500">(수신 동의 필요)</span>
+                )}
               </span>
             </label>
+            {tier === "pro" && !kakaoConsented && (
+              <p className="text-xs text-gray-600 ml-6">
+                카카오 알림톡을 받으려면 먼저{" "}
+                <Link href="/mypage#consents" className="text-blue-600 underline">
+                  마이페이지 동의 관리
+                </Link>{" "}
+                에서 <strong>카카오 알림톡 수신</strong> 동의를 켜 주세요.
+              </p>
+            )}
           </div>
           {channels.includes("kakao") && (
             <input

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTier, TIER_NAMES } from "@/lib/subscription";
+import { hasActiveConsent } from "@/lib/consent";
 import { RuleForm } from "./rule-form";
 
 export const metadata: Metadata = {
@@ -52,6 +53,9 @@ export default async function NotificationsPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  // 카카오 알림톡 수신 동의 상태 — 폼 UI 에서 채널 선택 전 안내하기 위해 서버에서 미리 조회.
+  const kakaoConsented = await hasActiveConsent(user.id, "kakao_messaging");
+
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
       <div className="flex items-start justify-between mb-2">
@@ -70,7 +74,11 @@ export default async function NotificationsPage() {
         )}
       </p>
 
-      <RuleForm tier={tier} existingRules={rules || []} />
+      <RuleForm
+        tier={tier}
+        existingRules={rules || []}
+        kakaoConsented={kakaoConsented}
+      />
     </main>
   );
 }

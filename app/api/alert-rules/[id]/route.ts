@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTier } from "@/lib/subscription";
+import { hasActiveConsent } from "@/lib/consent";
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -34,6 +35,21 @@ export async function PATCH(
       { error: "카카오 알림톡은 프로 플랜 전용이에요.", needsUpgrade: true },
       { status: 403 },
     );
+  }
+
+  // 카카오 채널로 수정 시 kakao_messaging 수신 동의 선행 필수 (정보통신망법 제50조).
+  // body.channels 가 전달된 경우에만 체크 — PATCH 로 is_active 토글 등만 할 때는 영향 없음.
+  if (Array.isArray(body.channels) && body.channels.includes("kakao")) {
+    const consented = await hasActiveConsent(auth.user.id, "kakao_messaging");
+    if (!consented) {
+      return NextResponse.json(
+        {
+          error: "카카오 알림톡 수신 동의가 필요해요. 마이페이지 '동의 관리' 에서 동의 후 다시 시도해 주세요.",
+          needsConsent: "kakao_messaging",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   // 본인 규칙인지 먼저 확인
