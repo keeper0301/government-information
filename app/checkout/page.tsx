@@ -78,7 +78,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
       <div className="max-w-[560px] mx-auto px-5">
         {/* 헤더 */}
         <div className="mb-6">
-          <a href="/pricing" className="text-[13px] text-grey-500 hover:text-grey-700 no-underline">
+          <a href="/pricing" className="text-[13px] text-grey-600 hover:text-grey-700 no-underline">
             ← 요금제 다시 보기
           </a>
           <h1 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 mt-3 tracking-[-0.5px]">
@@ -93,11 +93,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         <div className="bg-white rounded-2xl border border-grey-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-5">
           <div className="flex items-baseline justify-between mb-4">
             <div>
-              <div className="text-[13px] text-grey-500 mb-1">선택한 요금제</div>
+              <div className="text-[13px] text-grey-600 mb-1">선택한 요금제</div>
               <div className="text-[20px] font-extrabold text-grey-900">{tierName}</div>
             </div>
             <div className="text-right">
-              <div className="text-[13px] text-grey-500 mb-1">월 결제</div>
+              <div className="text-[13px] text-grey-600 mb-1">월 결제</div>
               <div className="text-[20px] font-extrabold text-grey-900">
                 {price.toLocaleString()}원
               </div>
@@ -134,7 +134,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         />
 
         {/* 안내 */}
-        <p className="text-[12px] text-grey-500 text-center mt-5 leading-[1.6]">
+        <p className="text-[12px] text-grey-600 text-center mt-5 leading-[1.6]">
           카드 정보는 <b>토스페이먼츠에만</b> 저장되며, 정책알리미 서버에는 저장되지 않습니다.<br />
           결제 진행 시 <a href="/terms" className="underline">이용약관</a>과 <a href="/privacy" className="underline">개인정보처리방침</a>에 동의한 것으로 간주됩니다.
         </p>

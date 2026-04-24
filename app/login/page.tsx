@@ -206,7 +206,7 @@ export default function LoginPage() {
 
       {/* 동의 안내 — 신규 사용자는 로그인/가입 완료 시 약관·방침 동의로 간주
           (실제 consent_log 기록은 /auth/callback 에서 신규 사용자 판정 후 자동) */}
-      <p className="text-[12px] text-grey-500 text-center mb-6 leading-[1.5]">
+      <p className="text-[12px] text-grey-600 text-center mb-6 leading-[1.5]">
         로그인·가입 시{" "}
         <a
           href="/terms"
@@ -233,7 +233,7 @@ export default function LoginPage() {
       {/* "또는" 구분선 */}
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 h-px bg-grey-200" />
-        <span className="text-[13px] text-grey-500">또는</span>
+        <span className="text-[13px] text-grey-600">또는</span>
         <div className="flex-1 h-px bg-grey-200" />
       </div>
 

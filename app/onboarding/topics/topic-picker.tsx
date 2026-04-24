@@ -108,7 +108,7 @@ export function TopicPicker({
       </div>
 
       {/* 카운터 + 한도 안내 */}
-      <p className="text-[13px] text-grey-500 mb-6">
+      <p className="text-[13px] text-grey-600 mb-6">
         선택됨 {selected.length} / 최대 {maxSelectable}개
       </p>
 
@@ -136,7 +136,7 @@ export function TopicPicker({
           type="button"
           onClick={handleSkip}
           disabled={saving}
-          className="w-full py-3 text-grey-500 text-[14px] font-medium hover:text-grey-700 transition-colors cursor-pointer"
+          className="w-full py-3 text-grey-600 text-[14px] font-medium hover:text-grey-700 transition-colors cursor-pointer"
         >
           지금은 건너뛰기
         </button>

@@ -159,7 +159,7 @@ export function RecommendForm({ initial }: RecommendFormProps) {
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 text-grey-500 text-[15px]">
+            <div className="text-center py-16 text-grey-600 text-[15px]">
               조건에 맞는 정책을 찾지 못했습니다. 다른 조건으로 시도해보세요.
             </div>
           )}

@@ -109,7 +109,7 @@ export function HomeRecommendCard({ initial }: Props) {
               {completedCount}/3
             </span>
           </div>
-          <p className="text-[13px] text-grey-500 leading-[1.5]">
+          <p className="text-[13px] text-grey-600 leading-[1.5]">
             3가지만 고르면 30초 안에 보여드려요
             {autoFilled && !searched && (
               <span className="text-blue-500 font-medium"> · 내 정보에서 불러왔어요</span>
@@ -140,7 +140,7 @@ export function HomeRecommendCard({ initial }: Props) {
             <button
               type="button"
               onClick={() => setRegionExpanded(true)}
-              className="min-h-[36px] px-3 text-[13px] font-medium rounded-full border-none bg-transparent text-grey-500 hover:text-grey-700 hover:bg-grey-50 cursor-pointer transition-colors"
+              className="min-h-[36px] px-3 text-[13px] font-medium rounded-full border-none bg-transparent text-grey-600 hover:text-grey-700 hover:bg-grey-50 cursor-pointer transition-colors"
             >
               + 다른 지역 ({OTHER_REGIONS.length})
             </button>
@@ -194,7 +194,7 @@ export function HomeRecommendCard({ initial }: Props) {
           ) : (
             <div className="rounded-xl border border-grey-100 bg-grey-50 p-5 text-center">
               <div className="text-[14px] font-semibold text-grey-900 mb-1">딱 맞는 정책이 아직 없어요</div>
-              <p className="text-[12px] text-grey-500 leading-[1.5]">새 공고가 올라오면 알려드릴 수 있어요</p>
+              <p className="text-[12px] text-grey-600 leading-[1.5]">새 공고가 올라오면 알려드릴 수 있어요</p>
               <a href="/alerts" className="inline-block mt-3 px-4 py-2 text-[13px] font-semibold text-blue-500 bg-white border border-blue-100 rounded-lg no-underline hover:bg-blue-50 transition-colors">
                 알림 설정하기
               </a>
@@ -231,13 +231,13 @@ function Field({
             className={`inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-bold transition-colors ${
               completed
                 ? "bg-blue-500 text-white"
-                : "bg-grey-100 text-grey-500"
+                : "bg-grey-100 text-grey-600"
             }`}
           >
             {completed ? "✓" : step}
           </span>
         )}
-        <div className="text-[12px] font-semibold text-grey-500 tracking-wide">{label}</div>
+        <div className="text-[12px] font-semibold text-grey-600 tracking-wide">{label}</div>
       </div>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>

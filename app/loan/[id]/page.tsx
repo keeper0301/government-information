@@ -71,7 +71,7 @@ export default async function LoanDetailPage({ params }: Props) {
         {/* Breadcrumb */}
         <nav className="text-sm text-grey-700 mb-6">
           <a href="/loan" className="font-medium no-underline hover:text-blue-500 transition-colors">대출·지원금</a>
-          <span className="mx-2 text-grey-500">&gt;</span>
+          <span className="mx-2 text-grey-600">&gt;</span>
           <span className="text-grey-900 font-medium">{program.title.length > 30 ? program.title.substring(0, 30) + "..." : program.title}</span>
         </nav>
 

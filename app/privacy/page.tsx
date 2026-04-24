@@ -23,7 +23,7 @@ export default function PrivacyPage() {
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
         개인정보처리방침
       </h1>
-      <p className="text-[13px] text-grey-500 mb-8">
+      <p className="text-[13px] text-grey-600 mb-8">
         시행일자: {PRIVACY_POLICY_VERSION} · 운영자: 키피오 (사업자등록번호 657-24-02265)
       </p>
 
@@ -89,7 +89,7 @@ export default function PrivacyPage() {
               <Row k="Google" w="이용 분석 (GA4) · 광고 (AdSense)" d="익명 사용 통계, 광고 식별자" />
             </tbody>
           </table>
-          <p className="text-[13px] text-grey-500 mt-2">위탁받은 자는 위탁 목적 외 사용·재제공이 금지되며, 위탁 종료 시 보유 정보를 즉시 파기합니다.</p>
+          <p className="text-[13px] text-grey-600 mt-2">위탁받은 자는 위탁 목적 외 사용·재제공이 금지되며, 위탁 종료 시 보유 정보를 즉시 파기합니다.</p>
         </Section>
 
         <Section title="6. 동의 철회 및 정보 수정·삭제">
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
 
         <Section title="9. 개인정보처리방침의 변경">
           <p>방침 내용이 변경될 경우, 변경 사항을 서비스 공지사항을 통해 안내하며, 중대한 변경의 경우 다음 로그인 시 재동의를 요청합니다. 모든 동의 시점·버전은 시스템에 기록되어 사용자가 마이페이지에서 조회할 수 있습니다.</p>
-          <p className="mt-2 text-[13px] text-grey-500">현재 버전: <b>{PRIVACY_POLICY_VERSION}</b></p>
+          <p className="mt-2 text-[13px] text-grey-600">현재 버전: <b>{PRIVACY_POLICY_VERSION}</b></p>
         </Section>
 
         <Section title="10. 문의처">
@@ -144,7 +144,7 @@ function Row({ k, w, d }: { k: string; w: string; d: string }) {
     <tr>
       <td className="p-2 border-b border-grey-100 align-top font-medium text-grey-900">{k}</td>
       <td className="p-2 border-b border-grey-100 align-top">{w}</td>
-      <td className="p-2 border-b border-grey-100 align-top text-grey-500 text-[13px]">{d}</td>
+      <td className="p-2 border-b border-grey-100 align-top text-grey-600 text-[13px]">{d}</td>
     </tr>
   );
 }

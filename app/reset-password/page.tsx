@@ -72,7 +72,7 @@ export default function ResetPasswordPage() {
   // 세션 확인 중 — 깜빡임 대신 안내 문구 한 줄
   if (checking) {
     return (
-      <main className="pt-40 pb-20 px-10 max-w-[400px] mx-auto text-center text-[14px] text-grey-500">
+      <main className="pt-40 pb-20 px-10 max-w-[400px] mx-auto text-center text-[14px] text-grey-600">
         확인 중...
       </main>
     );

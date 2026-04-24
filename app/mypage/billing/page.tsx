@@ -70,7 +70,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
       <div className="max-w-[640px] mx-auto px-5">
         {/* 헤더 */}
         <div className="mb-6">
-          <a href="/mypage" className="text-[13px] text-grey-500 hover:text-grey-700 no-underline">
+          <a href="/mypage" className="text-[13px] text-grey-600 hover:text-grey-700 no-underline">
             ← 내 정보
           </a>
           <h1 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 mt-3 tracking-[-0.5px]">
@@ -97,7 +97,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
         <div className="bg-white rounded-2xl border border-grey-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 mb-5">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <div className="text-[13px] text-grey-500 mb-1">현재 플랜</div>
+              <div className="text-[13px] text-grey-600 mb-1">현재 플랜</div>
               <div className="text-[22px] font-extrabold text-grey-900">{tierName}</div>
             </div>
             <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full ${statusInfo.badgeClass}`}>
@@ -138,7 +138,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
         <div className="bg-white rounded-2xl border border-grey-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
           <h2 className="text-[16px] font-bold text-grey-900 mb-4">결제 이력</h2>
           {!history || history.length === 0 ? (
-            <p className="text-[14px] text-grey-500">아직 결제 이력이 없어요.</p>
+            <p className="text-[14px] text-grey-600">아직 결제 이력이 없어요.</p>
           ) : (
             <ul className="divide-y divide-grey-100">
               {history.map((h) => (
@@ -181,7 +181,7 @@ function FreeUserView() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-[13px] text-grey-500 flex-shrink-0">{label}</span>
+      <span className="text-[13px] text-grey-600 flex-shrink-0">{label}</span>
       <span className="text-[14px] font-semibold text-grey-900 text-right break-all">{value}</span>
     </div>
   );
@@ -197,7 +197,7 @@ function HistoryRow({ item }: { item: PaymentHistoryRow }) {
   return (
     <li className="py-3 flex items-center justify-between gap-3">
       <div>
-        <div className="text-[13px] text-grey-500">{date}</div>
+        <div className="text-[13px] text-grey-600">{date}</div>
         <div className="text-[14px] font-semibold text-grey-900">
           {TIER_NAMES[item.tier as Tier] || item.tier} 구독
         </div>
@@ -206,7 +206,7 @@ function HistoryRow({ item }: { item: PaymentHistoryRow }) {
         <div className={`text-[14px] font-bold ${isFailed ? "text-red-500" : "text-grey-900"}`}>
           {item.amount.toLocaleString()}원
         </div>
-        <div className={`text-[11px] font-semibold ${isFailed ? "text-red-500" : "text-grey-500"}`}>
+        <div className={`text-[11px] font-semibold ${isFailed ? "text-red-500" : "text-grey-600"}`}>
           {isFailed ? "실패" : "결제 완료"}
         </div>
       </div>

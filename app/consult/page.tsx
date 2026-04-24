@@ -112,7 +112,7 @@ export default function ConsultPage() {
                         <div className="text-[14px] font-semibold text-grey-900 mb-1">
                           {p.title}
                         </div>
-                        <div className="text-[12px] text-grey-500">
+                        <div className="text-[12px] text-grey-600">
                           {p.amount} · {p.source}
                         </div>
                       </a>
@@ -124,7 +124,7 @@ export default function ConsultPage() {
           ))}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-grey-50 text-grey-500 rounded-2xl rounded-bl-md px-5 py-3.5 text-[15px]">
+              <div className="bg-grey-50 text-grey-600 rounded-2xl rounded-bl-md px-5 py-3.5 text-[15px]">
                 검색 중...
               </div>
             </div>

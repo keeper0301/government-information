@@ -21,7 +21,7 @@ export function FeatureGrid() {
     <div>
       <div className="mb-8">
         {/* 섹션 overline (Editorial small caps meta) */}
-        <div className="editorial-smallcaps text-[10.5px] text-grey-500 mb-3">
+        <div className="editorial-smallcaps text-[10.5px] text-grey-600 mb-3">
           — THREE STEPS
         </div>
         <h2 className="text-[26px] font-bold tracking-[-0.8px] text-grey-900">

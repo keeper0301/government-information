@@ -49,7 +49,7 @@ export function BlogCard({ post }: { post: BlogCardData }) {
       )}
 
       {/* 메타: 날짜 + 읽기시간 */}
-      <div className="flex items-center gap-2 text-[12px] text-grey-500">
+      <div className="flex items-center gap-2 text-[12px] text-grey-600">
         <span>{dateLabel}</span>
         {readingLabel && (
           <>

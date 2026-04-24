@@ -219,7 +219,7 @@ function ConsentCheckbox({
         <span className="text-[13px] text-grey-700">
           <span
             className={
-              required ? "text-red font-semibold mr-1" : "text-grey-500 mr-1"
+              required ? "text-red font-semibold mr-1" : "text-grey-600 mr-1"
             }
           >
             {required ? "[필수]" : "[선택]"}
@@ -232,7 +232,7 @@ function ConsentCheckbox({
           href={linkHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[12px] text-grey-500 no-underline hover:text-grey-700 underline"
+          className="text-[12px] text-grey-600 no-underline hover:text-grey-700 underline"
         >
           보기
         </a>

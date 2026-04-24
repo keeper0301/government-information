@@ -98,10 +98,10 @@ export default async function PricingPage() {
 
         {/* 안내 문구 */}
         <div className="max-w-[720px] mx-auto mt-12 text-center space-y-2">
-          <p className="text-[13px] text-grey-500">
+          <p className="text-[13px] text-grey-600">
             결제는 토스페이먼츠로 안전하게 처리됩니다. 카드 정보는 토스에만 저장돼요.
           </p>
-          <p className="text-[13px] text-grey-500">
+          <p className="text-[13px] text-grey-600">
             언제든 <a href="/mypage/billing" className="text-blue-500 underline">내 구독</a>에서 카드를 변경하거나 해지할 수 있습니다.
           </p>
         </div>
@@ -141,7 +141,7 @@ function PlanCard({ plan, currentTier, isLoggedIn }: {
         <h3 className="text-[20px] font-extrabold text-grey-900 mb-1">
           {TIER_NAMES[plan.tier]}
         </h3>
-        <p className="text-[13px] text-grey-500">{plan.tagline}</p>
+        <p className="text-[13px] text-grey-600">{plan.tagline}</p>
       </div>
 
       {/* 가격 */}
@@ -153,7 +153,7 @@ function PlanCard({ plan, currentTier, isLoggedIn }: {
             <span className="text-[28px] font-extrabold text-grey-900">
               {price.toLocaleString()}원
             </span>
-            <span className="text-[14px] text-grey-500">/월</span>
+            <span className="text-[14px] text-grey-600">/월</span>
           </div>
         )}
       </div>
@@ -189,7 +189,7 @@ function CtaButton({ plan, isCurrent, isLoggedIn }: {
   // 이미 이 플랜을 쓰고 있는 경우: 비활성 표시
   if (isCurrent) {
     return (
-      <div className={`${baseClass} bg-grey-100 text-grey-500 cursor-default`}>
+      <div className={`${baseClass} bg-grey-100 text-grey-600 cursor-default`}>
         현재 플랜
       </div>
     );
@@ -198,7 +198,7 @@ function CtaButton({ plan, isCurrent, isLoggedIn }: {
   // 무료 플랜: 가입 유도 또는 "지금 무료로 사용 중"
   if (plan.tier === "free") {
     if (isLoggedIn) {
-      return <div className={`${baseClass} bg-grey-100 text-grey-500 cursor-default`}>무료로 이용 중</div>;
+      return <div className={`${baseClass} bg-grey-100 text-grey-600 cursor-default`}>무료로 이용 중</div>;
     }
     return (
       <a href="/login" className={`${baseClass} bg-grey-100 text-grey-800 hover:bg-grey-200`}>

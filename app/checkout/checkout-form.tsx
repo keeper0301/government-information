@@ -66,7 +66,7 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
     <div className="bg-white rounded-2xl border border-grey-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
       {/* 등록할 이메일 안내 */}
       <div className="mb-4">
-        <div className="text-[13px] text-grey-500 mb-1">결제 알림 받을 이메일</div>
+        <div className="text-[13px] text-grey-600 mb-1">결제 알림 받을 이메일</div>
         <div className="text-[15px] font-semibold text-grey-900">{userEmail}</div>
       </div>
 
@@ -77,7 +77,7 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
         disabled={loading}
         className={`w-full min-h-[56px] flex items-center justify-center gap-2 text-[16px] font-bold rounded-xl border-none cursor-pointer transition-colors ${
           loading
-            ? "bg-grey-200 text-grey-500 cursor-wait"
+            ? "bg-grey-200 text-grey-600 cursor-wait"
             : "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_2px_8px_rgba(49,130,246,0.25)]"
         }`}
       >

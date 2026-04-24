@@ -85,7 +85,7 @@ export default async function PopularPage({
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 text-grey-500 text-[15px]">
+        <div className="text-center py-20 text-grey-600 text-[15px]">
           표시할 정책이 없습니다.
         </div>
       )}

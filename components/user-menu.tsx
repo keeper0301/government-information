@@ -94,7 +94,7 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
   if (mobile) {
     return (
       <div className="border-t border-grey-100 mt-2 pt-2">
-        <div className="px-4 py-2 text-[13px] text-grey-500 truncate">
+        <div className="px-4 py-2 text-[13px] text-grey-600 truncate">
           {user.email}
         </div>
         <a
@@ -131,7 +131,7 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
       </button>
       {open && (
         <div className="absolute top-full right-0 mt-1 w-[220px] bg-white border border-grey-100 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] py-1 overflow-hidden">
-          <div className="px-4 py-2 text-[13px] text-grey-500 truncate border-b border-grey-100">
+          <div className="px-4 py-2 text-[13px] text-grey-600 truncate border-b border-grey-100">
             {user.email}
           </div>
           <a

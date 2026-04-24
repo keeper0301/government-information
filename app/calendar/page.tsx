@@ -144,7 +144,7 @@ export default async function CalendarPage() {
       {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-0.5 bg-grey-100 rounded-2xl overflow-hidden mb-4">
         {DAYS.map((d) => (
-          <div key={d} className="bg-grey-50 py-2.5 text-center text-xs font-semibold text-grey-500">
+          <div key={d} className="bg-grey-50 py-2.5 text-center text-xs font-semibold text-grey-600">
             {d}
           </div>
         ))}
@@ -204,10 +204,10 @@ export default async function CalendarPage() {
         <div className="grid grid-cols-[auto_auto_auto] gap-x-8 gap-y-3 items-center border border-grey-200 rounded-lg p-4 bg-white">
           {/* 헤더 행 — 상태 축 (마감 / 시작) */}
           <div />
-          <div className="text-[11px] font-bold text-grey-500 tracking-wider">
+          <div className="text-[11px] font-bold text-grey-600 tracking-wider">
             <span aria-hidden="true">● </span>마감
           </div>
-          <div className="text-[11px] font-bold text-grey-500 tracking-wider">
+          <div className="text-[11px] font-bold text-grey-600 tracking-wider">
             <span aria-hidden="true">○ </span>시작
           </div>
 
@@ -260,7 +260,7 @@ export default async function CalendarPage() {
             <h3 id="section-endings" className="text-[17px] font-bold text-grey-900">
               <span aria-hidden="true">⏰ </span>마감 예정
             </h3>
-            <span className="text-[13px] font-medium text-grey-500">
+            <span className="text-[13px] font-medium text-grey-600">
               {upcomingEndings.length}건
             </span>
           </div>
@@ -269,7 +269,7 @@ export default async function CalendarPage() {
               {upcomingEndings.map((e) => renderEventRow(e, kstNow, month))}
             </div>
           ) : (
-            <div className="py-10 text-center text-[13px] text-grey-500 bg-grey-50 rounded-lg">
+            <div className="py-10 text-center text-[13px] text-grey-600 bg-grey-50 rounded-lg">
               이번 달 남은 마감 예정이 없어요.
             </div>
           )}
@@ -281,7 +281,7 @@ export default async function CalendarPage() {
             <h3 id="section-starts" className="text-[17px] font-bold text-grey-900">
               <span aria-hidden="true">🆕 </span>신규 시작
             </h3>
-            <span className="text-[13px] font-medium text-grey-500">
+            <span className="text-[13px] font-medium text-grey-600">
               {upcomingStarts.length}건
             </span>
           </div>
@@ -290,7 +290,7 @@ export default async function CalendarPage() {
               {upcomingStarts.map((e) => renderEventRow(e, kstNow, month))}
             </div>
           ) : (
-            <div className="py-10 text-center text-[13px] text-grey-500 bg-grey-50 rounded-lg">
+            <div className="py-10 text-center text-[13px] text-grey-600 bg-grey-50 rounded-lg">
               이번 달 남은 신규 시작이 없어요.
             </div>
           )}
@@ -337,13 +337,13 @@ function renderEventRow(e: CalendarEvent, kstNow: Date, month0: number) {
     >
       <div className="shrink-0 w-12 text-center">
         <div className="text-[20px] font-bold text-grey-900">{day}</div>
-        <div className="text-[11px] text-grey-500">{month0 + 1}월</div>
+        <div className="text-[11px] text-grey-600">{month0 + 1}월</div>
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[15px] font-semibold text-grey-900 truncate mb-0.5">
           {e.title}
         </div>
-        <div className="text-[13px] text-grey-500">{e.source}</div>
+        <div className="text-[13px] text-grey-600">{e.source}</div>
       </div>
       <div className="shrink-0">
         <span className={`text-[13px] font-bold px-2 py-1 rounded ${badgeClass}`}>

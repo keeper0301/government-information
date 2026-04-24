@@ -58,7 +58,7 @@ export default async function MyPage() {
         </label>
         <div className="px-4 py-3 bg-grey-50 border border-grey-200 rounded-lg text-[15px] text-grey-700">
           {user.email || (
-            <span className="text-grey-500">(이메일 미공개)</span>
+            <span className="text-grey-600">(이메일 미공개)</span>
           )}
         </div>
       </div>
@@ -90,7 +90,7 @@ export default async function MyPage() {
           }}
         />
 
-        <p className="mt-6 text-[12px] text-grey-500 leading-[1.6]">
+        <p className="mt-6 text-[12px] text-grey-600 leading-[1.6]">
           필수 동의(이용약관·개인정보처리방침)는 서비스 이용을 위해 철회할 수 없습니다.
           <br />
           철회를 원하시면 아래 <b>회원 탈퇴</b> 섹션에서 탈퇴를 진행해 주세요.

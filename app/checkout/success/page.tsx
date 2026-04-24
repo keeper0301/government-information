@@ -119,7 +119,7 @@ function ErrorState({ message, extra }: { message: string; extra?: string }) {
           </div>
           <h1 className="text-[22px] font-extrabold text-grey-900 mb-2">결제 등록에 실패했어요</h1>
           <p className="text-[14px] text-grey-700 leading-[1.6]">{message}</p>
-          {extra && <p className="text-[13px] text-grey-500 mt-2">{extra}</p>}
+          {extra && <p className="text-[13px] text-grey-600 mt-2">{extra}</p>}
         </div>
         <div className="space-y-2.5">
           <a href="/pricing" className="block w-full min-h-[52px] flex items-center justify-center text-[15px] font-bold rounded-xl bg-blue-500 text-white hover:bg-blue-600 no-underline">

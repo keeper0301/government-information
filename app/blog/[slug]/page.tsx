@@ -170,7 +170,7 @@ export default async function BlogPostPage({
 
       <article className="max-w-[720px] mx-auto px-5">
         {/* 카테고리 + 날짜 */}
-        <div className="flex items-center gap-2 mb-3 text-[13px] text-grey-500">
+        <div className="flex items-center gap-2 mb-3 text-[13px] text-grey-600">
           {post.category && (
             <a
               href={`/blog?category=${encodeURIComponent(post.category)}`}
@@ -226,7 +226,7 @@ export default async function BlogPostPage({
         )}
 
         {/* 마무리 정보: 저자·출처·업데이트 (E-E-A-T) */}
-        <footer className="mt-10 pt-6 border-t border-grey-100 text-[13px] text-grey-500 leading-[1.7]">
+        <footer className="mt-10 pt-6 border-t border-grey-100 text-[13px] text-grey-600 leading-[1.7]">
           <div>작성: <b className="text-grey-700">정책알리미 편집팀</b></div>
           <div>마지막 업데이트: {updatedLabel}</div>
           <div className="mt-2">

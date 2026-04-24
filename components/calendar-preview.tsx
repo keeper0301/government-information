@@ -66,7 +66,7 @@ export async function CalendarPreview() {
         </h2>
         <a
           href="/calendar"
-          className="text-sm font-medium text-grey-500 no-underline hover:text-blue-500 transition-colors"
+          className="text-sm font-medium text-grey-600 no-underline hover:text-blue-500 transition-colors"
         >
           달력 전체보기
         </a>
@@ -133,7 +133,7 @@ export async function CalendarPreview() {
                     </a>
                   ))}
                   {items.length > 2 && (
-                    <div className="editorial-num text-[12px] text-grey-500 pl-[14px] max-md:hidden">
+                    <div className="editorial-num text-[12px] text-grey-600 pl-[14px] max-md:hidden">
                       +{items.length - 2}
                     </div>
                   )}

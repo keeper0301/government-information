@@ -82,7 +82,7 @@ export default async function AdminHomePage({
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
             사용자 조회
           </h1>
-          <p className="text-[14px] text-grey-500">
+          <p className="text-[14px] text-grey-600">
             이메일 또는 사용자 UUID 로 검색하세요.
           </p>
         </div>

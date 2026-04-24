@@ -140,7 +140,7 @@ export function SearchBox() {
         {showDropdown && (
           <div className="absolute top-full left-0 right-0 max-w-[560px] mt-1.5 bg-white border border-grey-200 rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] z-50 overflow-hidden">
             {loading ? (
-              <div className="px-5 py-4 text-sm text-grey-500">검색 중...</div>
+              <div className="px-5 py-4 text-sm text-grey-600">검색 중...</div>
             ) : suggestions.length > 0 ? (
               <>
                 {suggestions.map((item, index) => (
@@ -180,7 +180,7 @@ export function SearchBox() {
                 </button>
               </>
             ) : (
-              <div className="px-5 py-4 text-sm text-grey-500">
+              <div className="px-5 py-4 text-sm text-grey-600">
                 검색 결과가 없습니다
               </div>
             )}

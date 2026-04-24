@@ -83,7 +83,7 @@ export function ChatbotPanel() {
           {/* Header */}
           <div className="px-5 py-4 border-b border-grey-100">
             <div className="text-[16px] font-bold text-grey-900">정책알리미 챗봇</div>
-            <div className="text-[13px] text-grey-500">복지·대출 정보를 물어보세요</div>
+            <div className="text-[13px] text-grey-600">복지·대출 정보를 물어보세요</div>
           </div>
 
           {/* Messages */}
@@ -101,7 +101,7 @@ export function ChatbotPanel() {
                           className="block bg-white rounded-xl p-3 no-underline text-inherit border border-grey-100 hover:border-blue-200 transition-colors"
                         >
                           <div className="text-[13px] font-semibold text-grey-900 mb-1">{p.title}</div>
-                          <div className="text-[12px] text-grey-500">{p.amount} · {p.source}</div>
+                          <div className="text-[12px] text-grey-600">{p.amount} · {p.source}</div>
                         </a>
                       ))}
                     </div>
@@ -111,7 +111,7 @@ export function ChatbotPanel() {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-grey-50 text-grey-500 rounded-2xl rounded-bl-md px-4 py-3 text-[14px]">
+                <div className="bg-grey-50 text-grey-600 rounded-2xl rounded-bl-md px-4 py-3 text-[14px]">
                   검색 중...
                 </div>
               </div>

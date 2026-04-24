@@ -131,14 +131,14 @@ export default async function LoanPage({ searchParams }: Props) {
 
       {/* Results */}
       <section className="max-w-content mx-auto px-10 max-md:px-6">
-        <div className="text-sm text-grey-500 mb-4">
+        <div className="text-sm text-grey-600 mb-4">
           {count || 0}개의 프로그램
         </div>
         <div className="flex flex-col">
           {programs.length > 0 ? (
             programs.map((p) => <ProgramRow key={p.id} program={p} />)
           ) : (
-            <div className="py-20 text-center text-grey-500">
+            <div className="py-20 text-center text-grey-600">
               검색 결과가 없습니다.
             </div>
           )}

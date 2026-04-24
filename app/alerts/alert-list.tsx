@@ -52,7 +52,7 @@ export function AlertList() {
 
   if (loading) {
     return (
-      <div className="text-center py-16 text-grey-500 text-[15px]">
+      <div className="text-center py-16 text-grey-600 text-[15px]">
         불러오는 중...
       </div>
     );
@@ -66,7 +66,7 @@ export function AlertList() {
     return (
       <div className="text-center py-16">
         <div className="text-[48px] mb-4">📭</div>
-        <p className="text-[15px] text-grey-500">
+        <p className="text-[15px] text-grey-600">
           등록된 알림이 없습니다. 정책 상세 페이지에서 알림을 등록해보세요.
         </p>
       </div>
@@ -108,7 +108,7 @@ export function AlertList() {
                         </span>
                       )}
                     </div>
-                    <div className="text-[13px] text-grey-500">
+                    <div className="text-[13px] text-grey-600">
                       {sub.program_type === "welfare" ? "복지" : "대출"} · 마감{" "}
                       {sub.notify_before_days}일 전 알림 ·{" "}
                       {program?.apply_end || "상시"}
@@ -130,7 +130,7 @@ export function AlertList() {
       {/* 비활성 알림 */}
       {inactiveAlerts.length > 0 && (
         <div>
-          <h2 className="text-[17px] font-bold text-grey-500 mb-4">
+          <h2 className="text-[17px] font-bold text-grey-600 mb-4">
             해제된 알림 ({inactiveAlerts.length}건)
           </h2>
           <div className="space-y-3 opacity-60">

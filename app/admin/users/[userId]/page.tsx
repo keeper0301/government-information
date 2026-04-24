@@ -165,7 +165,7 @@ export default async function AdminUserDetailPage({
             <h1 className="text-[22px] font-extrabold tracking-[-0.4px] text-grey-900">
               {u.email ?? "(이메일 없음)"}
             </h1>
-            <p className="text-[12px] text-grey-500 mt-1 font-mono">{u.id}</p>
+            <p className="text-[12px] text-grey-600 mt-1 font-mono">{u.id}</p>
           </div>
           <Link
             href="/admin"
@@ -240,11 +240,11 @@ export default async function AdminUserDetailPage({
               </form>
             )}
             {(aiUsage ?? []).length === 0 ? (
-              <p className="text-[14px] text-grey-500 py-2">사용 기록 없음</p>
+              <p className="text-[14px] text-grey-600 py-2">사용 기록 없음</p>
             ) : (
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="text-left text-grey-500 border-b border-grey-200">
+                  <tr className="text-left text-grey-600 border-b border-grey-200">
                     <th className="py-2 font-medium">날짜</th>
                     <th className="py-2 font-medium text-right">호출 수</th>
                     <th className="py-2 font-medium text-right">마지막 시각</th>
@@ -259,7 +259,7 @@ export default async function AdminUserDetailPage({
                       >
                         <td className="py-2">{r.date}</td>
                         <td className="py-2 text-right font-mono">{r.count}</td>
-                        <td className="py-2 text-right text-grey-500 text-[12px]">
+                        <td className="py-2 text-right text-grey-600 text-[12px]">
                           {fmtDate(r.updated_at)}
                         </td>
                       </tr>
@@ -273,11 +273,11 @@ export default async function AdminUserDetailPage({
           {/* 알림 이력 */}
           <Panel title={`알림 발송 이력 (지난 30일, 최대 50건)`}>
             {(alertDeliveries ?? []).length === 0 ? (
-              <p className="text-[14px] text-grey-500 py-2">발송 이력 없음</p>
+              <p className="text-[14px] text-grey-600 py-2">발송 이력 없음</p>
             ) : (
               <table className="w-full text-[13px]">
                 <thead>
-                  <tr className="text-left text-grey-500 border-b border-grey-200">
+                  <tr className="text-left text-grey-600 border-b border-grey-200">
                     <th className="py-2 font-medium">시각</th>
                     <th className="py-2 font-medium">채널</th>
                     <th className="py-2 font-medium">정책 ID</th>
@@ -298,7 +298,7 @@ export default async function AdminUserDetailPage({
                         key={d.id}
                         className="border-b border-grey-100 last:border-b-0"
                       >
-                        <td className="py-2 text-grey-500 text-[12px]">
+                        <td className="py-2 text-grey-600 text-[12px]">
                           {fmtDate(d.created_at)}
                         </td>
                         <td className="py-2">{fmt(d.channel)}</td>
@@ -334,7 +334,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 function Row({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="flex items-start gap-4 py-2 border-b border-grey-100 last:border-b-0">
-      <div className="w-[120px] flex-shrink-0 text-[13px] text-grey-500">{label}</div>
+      <div className="w-[120px] flex-shrink-0 text-[13px] text-grey-600">{label}</div>
       <div className="flex-1 text-[14px] text-grey-900 break-all">
         {typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}
       </div>
@@ -375,7 +375,7 @@ function ConsentsRows({ consents }: { consents: ConsentStatus[] }) {
                     className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
                       c.isActive
                         ? "bg-blue-50 text-blue-600"
-                        : "bg-grey-100 text-grey-500"
+                        : "bg-grey-100 text-grey-600"
                     }`}
                   >
                     {c.isActive ? "active" : "withdrawn"}
@@ -383,7 +383,7 @@ function ConsentsRows({ consents }: { consents: ConsentStatus[] }) {
                   <span className="text-grey-600 font-mono text-[12px]">
                     v{c.version}
                   </span>
-                  <span className="text-grey-500 text-[12px]">{dateStr}</span>
+                  <span className="text-grey-600 text-[12px]">{dateStr}</span>
                 </div>
               ) : (
                 <span className="text-grey-400">기록 없음</span>

@@ -118,7 +118,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       <div>
         <label className="block text-[13px] font-semibold text-grey-700 mb-2">
           관심 분야{" "}
-          <span className="text-grey-500 font-normal">(여러 개 선택 가능)</span>
+          <span className="text-grey-600 font-normal">(여러 개 선택 가능)</span>
         </label>
         <div className="flex flex-wrap gap-2">
           {INTERESTS.map((item) => {

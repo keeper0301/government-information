@@ -230,7 +230,7 @@ export function ConsentsPanel({
                   </p>
                 ) : (
                   consentedAt && (
-                    <p className="text-[12px] text-grey-500">
+                    <p className="text-[12px] text-grey-600">
                       {new Date(consentedAt).toLocaleDateString("ko-KR")} 동의
                     </p>
                   )
