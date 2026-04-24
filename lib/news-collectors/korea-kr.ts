@@ -1,16 +1,26 @@
 // ============================================================
-// korea.kr RSS 수집 — 정책뉴스·전문자료
+// korea.kr RSS 수집 — 부처별 뉴스 + 정책자료
 // ============================================================
-// 2개 RSS 피드 를 매일 1회 fetch 후 news_posts 테이블에 upsert.
+// 6개 RSS 피드 를 매일 1회 fetch 후 news_posts 테이블에 upsert.
 // 공공누리 제1유형 (출처표시 + 상업이용·변형 허용) — license 컬럼에 기록.
 //
-// 소스별 특성:
-//   - policy.xml: 본문 HTML 풍부 (이미지·본문 포함). 메인 콘텐츠.
-//   - expdoc.xml: 전문자료 (연감·백서·보고서). 본문은 목차 정도.
+// 2026-04-24 구성 변경 배경:
+//   - 기존 policy.xml (정책뉴스 전체) 는 keepioo 와 무관한 외교·안보·순방 등
+//     노이즈 다수. 부처 전체 뉴스에서 kr 키워드 필터로 거르는 접근은 수량이
+//     적어지고 필터 실패 시 노이즈가 쉽게 노출됨.
+//   - korea.kr 이 부처별 RSS 를 `/rss/dept_{code}.xml` 형식으로 제공하는 것을
+//     확인 → keepioo 타겟 부처 5개 (복지·고용·중기·국토·성평등) 만 수집.
+//     → 소스 수준에서 노이즈 사전 제거 + 수량 5배 확대 (250건).
 //
-// 2026-04-24 제외: pressrelease.xml (보도자료) — 사용자 가치 낮음 판단 후
-// 수집 중단. DB 의 기존 press 건은 보존하되 UI 에서는 "전체/카테고리" 모두
-// 에서 숨김 (app/news/page.tsx 참조).
+// 수집 피드 목록:
+//   1. dept_mw.xml  (보건복지부)   — 복지·의료·아동·노인
+//   2. dept_moel.xml (고용노동부)   — 청년·일자리·창업
+//   3. dept_mss.xml  (중소벤처기업부) — 소상공인·창업·지원금
+//   4. dept_molit.xml (국토교통부)  — 주거·전세·월세
+//   5. dept_mogef.xml (성평등가족부) — 출산·육아·한부모
+//   6. expdoc.xml   (정책자료)     — 연감·백서·보고서 (카테고리: policy-doc)
+//
+// 제외: policy.xml (부처별과 중복 + 노이즈), pressrelease.xml (저품질)
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,23 +31,51 @@ import { fetchWithTimeout } from "@/lib/collectors";
 
 type FeedCategory = "news" | "press" | "policy-doc";
 
+// source_code 는 news_posts 의 unique constraint (source_code, source_id) 키.
+// 부처 코드는 korea.kr URL 의 dept_{code}.xml 에서 따와 접두사 korea-kr- 붙임.
 type Feed = {
-  code: "korea-kr-policy" | "korea-kr-press" | "korea-kr-expdoc";
+  code: string;
   category: FeedCategory;
   url: string;
+  ministry: string;
 };
 
 const FEEDS: Feed[] = [
   {
-    code: "korea-kr-policy",
+    code: "korea-kr-dept-mw",
     category: "news",
-    url: "https://www.korea.kr/rss/policy.xml",
+    url: "https://www.korea.kr/rss/dept_mw.xml",
+    ministry: "보건복지부",
   },
-  // korea-kr-press 피드는 2026-04-24 수집 중단 (사용자 가치 낮음)
+  {
+    code: "korea-kr-dept-moel",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_moel.xml",
+    ministry: "고용노동부",
+  },
+  {
+    code: "korea-kr-dept-mss",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_mss.xml",
+    ministry: "중소벤처기업부",
+  },
+  {
+    code: "korea-kr-dept-molit",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_molit.xml",
+    ministry: "국토교통부",
+  },
+  {
+    code: "korea-kr-dept-mogef",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_mogef.xml",
+    ministry: "성평등가족부",
+  },
   {
     code: "korea-kr-expdoc",
     category: "policy-doc",
     url: "https://www.korea.kr/rss/expdoc.xml",
+    ministry: "대한민국 정책브리핑",
   },
 ];
 
@@ -125,7 +163,11 @@ async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
 
     if (!rawTitle || !link) continue;
 
-    const { ministry, clean: title } = extractMinistry(rawTitle);
+    // 제목 앞 [부처명] prefix 가 있으면 그걸 쓰고, 없으면 feed 의 ministry fallback.
+    // 부처별 RSS(dept_*.xml) 는 prefix 가 있거나 없거나 항상 해당 부처 뉴스이므로
+    // feed.ministry 가 최소 보장치.
+    const { ministry: prefixMinistry, clean: title } = extractMinistry(rawTitle);
+    const ministry = prefixMinistry || feed.ministry;
 
     // source_id: newsId / docId 우선, 없으면 guid
     const idMatch = link.match(/newsId=(\d+)|docId=(\d+)/);
