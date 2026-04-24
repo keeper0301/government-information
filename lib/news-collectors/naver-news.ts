@@ -64,10 +64,29 @@ const KEYWORDS = [
   "민생회복",
 ];
 
-// loan 분기 키워드 — title·summary 안에 이 단어 있으면 loan_programs.
-// "대출", "보증", "융자", "이차보전" 등은 금융상품 신호.
-// 나머지 (지원금·보조금 등) 는 welfare_programs.
-const LOAN_KEYWORDS = /대출|보증|융자|이차보전|융자금|보증재단|상품권 대여/;
+// loan 분기 — 강·약 신호 가중치 + title 우선 + 네거티브 키워드.
+//
+// 정확도 60-70% → 향상 전략:
+//   1) title 만 검사 (summary 노이즈 제거)
+//   2) STRONG (대출·융자·이차보전) = +2점, WEAK (보증재단 단순언급) = +1점
+//   3) NEGATIVE (지원금·보조금·바우처 등 명시적 welfare 단어) = -3점
+//   4) 합산 ≥ 1 이면 loan, 그 외는 welfare
+//
+// 예시:
+//   "[전남] 소상공인 융자금 신청" → 융자금(+2) → loan ✓
+//   "전남신용보증재단 지원금 안내" → 보증재단(+1) - 지원금(-3) = -2 → welfare ✓
+//   "민생회복지원금 신청" → 지원금(-3) → welfare ✓
+const LOAN_STRONG = /대출|융자|이차보전|융자금|보증부\s*월세|특례보증/;
+const LOAN_WEAK = /보증재단/;
+const LOAN_NEGATIVE = /지원금|보조금|바우처|장려금|수당|민생회복|모집|공모/;
+
+function classifyAsLoan(title: string): boolean {
+  let score = 0;
+  if (LOAN_STRONG.test(title)) score += 2;
+  if (LOAN_WEAK.test(title)) score += 1;
+  if (LOAN_NEGATIVE.test(title)) score -= 3;
+  return score >= 1;
+}
 
 // welfare 카테고리 자동 매핑 — local-welfare collector 와 동일 규칙.
 function mapCategory(text: string): string {
@@ -199,7 +218,9 @@ async function collectProvinceItems(
         if (newsKeywords.length === 0) continue;
 
         const sourceId = hashSourceId(url);
-        const isLoan = LOAN_KEYWORDS.test(textBlob);
+        // 분기는 title 만 검사 (summary 노이즈 제거 → 정확도 ↑).
+        // 카테고리 매핑은 title+summary 합쳐서 (더 풍부한 신호).
+        const isLoan = classifyAsLoan(title);
         const table: "welfare" | "loan" = isLoan ? "loan" : "welfare";
         const category = isLoan ? mapLoanCategory(textBlob) : mapCategory(textBlob);
 

@@ -331,3 +331,82 @@ a:active {
     @apply font-sans;
   }
 }
+
+/* ============================================================
+   RichEditor (TipTap) — admin/blog 본문 편집기
+   .rich-editor-content scope 으로 격리해서 다른 페이지 영향 없음
+   ============================================================ */
+.rich-editor-content h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 1.2em 0 0.5em;
+}
+.rich-editor-content h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 1em 0 0.4em;
+}
+.rich-editor-content p {
+  margin: 0.6em 0;
+  line-height: 1.7;
+}
+.rich-editor-content ul,
+.rich-editor-content ol {
+  padding-left: 1.5em;
+  margin: 0.6em 0;
+}
+.rich-editor-content ul {
+  list-style: disc;
+}
+.rich-editor-content ol {
+  list-style: decimal;
+}
+.rich-editor-content li {
+  margin: 0.2em 0;
+}
+.rich-editor-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.rich-editor-content strong {
+  font-weight: 700;
+}
+.rich-editor-content em {
+  font-style: italic;
+}
+.rich-editor-content s {
+  text-decoration: line-through;
+}
+.rich-editor-content table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  width: 100%;
+}
+.rich-editor-content th,
+.rich-editor-content td {
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+  min-width: 80px;
+}
+.rich-editor-content th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+.rich-editor-content .rich-img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.8em auto;
+}
+.rich-editor-content .rich-codeblock {
+  background: #1f2937;
+  color: #f3f4f6;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: "Menlo", monospace;
+  font-size: 13px;
+  overflow-x: auto;
+}
+.rich-editor-content .ProseMirror-selectednode {
+  outline: 2px solid #2563eb;
+}

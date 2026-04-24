@@ -42,6 +42,11 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
   const hiddenRef = useRef<HTMLInputElement>(null);
   const [showHtml, setShowHtml] = useState(false);
   const [htmlBuffer, setHtmlBuffer] = useState(initialHtml);
+  const [linkModal, setLinkModal] = useState<{ open: boolean; initial: string }>({
+    open: false,
+    initial: "",
+  });
+  const [imageModal, setImageModal] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -103,6 +108,11 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
         editor={editor}
         showHtml={showHtml}
         onToggleHtml={() => setShowHtml((v) => !v)}
+        onOpenLinkModal={() => {
+          const previous = (editor.getAttributes("link").href as string) ?? "";
+          setLinkModal({ open: true, initial: previous });
+        }}
+        onOpenImageModal={() => setImageModal(true)}
       />
 
       {/* 본문 영역 — 비주얼 모드 / HTML 모드 토글 */}
@@ -121,74 +131,37 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
         <EditorContent editor={editor} />
       )}
 
-      {/* form 호환 hidden input — name="content" 그대로 server action 에 들어감 */}
+      {/* form 호환 hidden input — name="content" 그대로 server action 에 들어감.
+          editor 변경마다 hiddenRef.current.value 동기화 (onUpdate). */}
       <input ref={hiddenRef} type="hidden" name={name} defaultValue={initialHtml} />
+      {/* 스타일은 app/globals.css 의 .rich-editor-content scope 에 있음 */}
 
-      {/* TipTap 기본 prose 스타일 + 표 테두리 (간결 inline) */}
-      <style jsx global>{`
-        .rich-editor-content h2 {
-          font-size: 22px;
-          font-weight: 700;
-          margin: 1.2em 0 0.5em;
-        }
-        .rich-editor-content h3 {
-          font-size: 18px;
-          font-weight: 700;
-          margin: 1em 0 0.4em;
-        }
-        .rich-editor-content p {
-          margin: 0.6em 0;
-          line-height: 1.7;
-        }
-        .rich-editor-content ul,
-        .rich-editor-content ol {
-          padding-left: 1.5em;
-          margin: 0.6em 0;
-        }
-        .rich-editor-content li {
-          margin: 0.2em 0;
-        }
-        .rich-editor-content a {
-          color: #2563eb;
-          text-decoration: underline;
-        }
-        .rich-editor-content strong {
-          font-weight: 700;
-        }
-        .rich-editor-content table {
-          border-collapse: collapse;
-          margin: 0.8em 0;
-          width: 100%;
-        }
-        .rich-editor-content th,
-        .rich-editor-content td {
-          border: 1px solid #d1d5db;
-          padding: 6px 10px;
-          min-width: 80px;
-        }
-        .rich-editor-content th {
-          background: #f3f4f6;
-          font-weight: 600;
-        }
-        .rich-editor-content .rich-img {
-          max-width: 100%;
-          height: auto;
-          display: block;
-          margin: 0.8em auto;
-        }
-        .rich-editor-content .rich-codeblock {
-          background: #1f2937;
-          color: #f3f4f6;
-          padding: 12px;
-          border-radius: 6px;
-          font-family: "Menlo", monospace;
-          font-size: 13px;
-          overflow-x: auto;
-        }
-        .rich-editor-content .ProseMirror-selectednode {
-          outline: 2px solid #2563eb;
-        }
-      `}</style>
+      {/* 링크 모달 */}
+      {linkModal.open && (
+        <LinkModal
+          initial={linkModal.initial}
+          onCancel={() => setLinkModal({ open: false, initial: "" })}
+          onSubmit={(url) => {
+            if (url === "") {
+              editor.chain().focus().unsetLink().run();
+            } else {
+              editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+            }
+            setLinkModal({ open: false, initial: "" });
+          }}
+        />
+      )}
+
+      {/* 이미지 업로드 모달 */}
+      {imageModal && (
+        <ImageModal
+          onCancel={() => setImageModal(false)}
+          onInsert={(url) => {
+            editor.chain().focus().setImage({ src: url }).run();
+            setImageModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -200,10 +173,14 @@ function Toolbar({
   editor,
   showHtml,
   onToggleHtml,
+  onOpenLinkModal,
+  onOpenImageModal,
 }: {
   editor: Editor;
   showHtml: boolean;
   onToggleHtml: () => void;
+  onOpenLinkModal: () => void;
+  onOpenImageModal: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1 px-2 py-2 border-b border-grey-200 bg-grey-50">
@@ -286,7 +263,7 @@ function Toolbar({
       {/* 링크 */}
       <Btn
         active={editor.isActive("link")}
-        onClick={() => promptAndSetLink(editor)}
+        onClick={onOpenLinkModal}
         title="링크"
         disabled={showHtml}
       >
@@ -342,10 +319,10 @@ function Toolbar({
 
       <Sep />
 
-      {/* 이미지 */}
+      {/* 이미지 — 파일 업로드 또는 URL */}
       <Btn
-        onClick={() => promptAndInsertImage(editor)}
-        title="이미지 URL 삽입"
+        onClick={onOpenImageModal}
+        title="이미지 업로드 또는 URL 삽입"
         disabled={showHtml}
       >
         🖼 이미지
@@ -427,20 +404,236 @@ function Sep() {
   return <span className="mx-1 h-5 w-px bg-grey-300 inline-block" aria-hidden />;
 }
 
-// 링크 입력 — 기본 prompt (간단). 향후 모달로 업그레이드 가능.
-function promptAndSetLink(editor: Editor) {
-  const previous = editor.getAttributes("link").href as string | undefined;
-  const url = window.prompt("링크 URL", previous ?? "https://");
-  if (url === null) return; // 취소
-  if (url === "") {
-    editor.chain().focus().unsetLink().run();
-    return;
-  }
-  editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+// ─────────────────────────────────────────────────────────────
+// 링크 모달 — URL 입력 + 적용·제거
+// ─────────────────────────────────────────────────────────────
+function LinkModal({
+  initial,
+  onCancel,
+  onSubmit,
+}: {
+  initial: string;
+  onCancel: () => void;
+  onSubmit: (url: string) => void;
+}) {
+  const [url, setUrl] = useState(initial || "https://");
+  return (
+    <ModalShell title="링크" onCancel={onCancel}>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+            URL
+          </label>
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://..."
+            autoFocus
+            className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+          />
+          <p className="mt-1 text-[12px] text-grey-500">
+            비워두고 적용하면 기존 링크가 제거됩니다.
+          </p>
+        </div>
+        <div className="flex gap-2 justify-end pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-[14px] font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={() => onSubmit(url.trim() === "https://" ? "" : url.trim())}
+            className="px-4 py-2 text-[14px] font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer"
+          >
+            적용
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
 }
 
-function promptAndInsertImage(editor: Editor) {
-  const url = window.prompt("이미지 URL (https://...)", "https://");
-  if (!url || url === "https://") return;
-  editor.chain().focus().setImage({ src: url }).run();
+// ─────────────────────────────────────────────────────────────
+// 이미지 모달 — 파일 업로드 또는 URL 직접 입력
+// ─────────────────────────────────────────────────────────────
+function ImageModal({
+  onCancel,
+  onInsert,
+}: {
+  onCancel: () => void;
+  onInsert: (url: string) => void;
+}) {
+  const [tab, setTab] = useState<"upload" | "url">("upload");
+  const [externalUrl, setExternalUrl] = useState("https://");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("5MB 이하 파일만 업로드 가능합니다");
+      return;
+    }
+    setError(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/upload-image", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || `업로드 실패 (HTTP ${res.status})`);
+      } else {
+        onInsert(data.url);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <ModalShell title="이미지 삽입" onCancel={onCancel}>
+      {/* 탭 */}
+      <div className="flex gap-1 mb-4 border-b border-grey-200">
+        {(
+          [
+            { key: "upload", label: "파일 업로드" },
+            { key: "url", label: "URL 입력" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-[14px] font-semibold border-b-2 cursor-pointer ${
+              tab === t.key
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-grey-600 hover:text-grey-800"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "upload" ? (
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleFileChange}
+            disabled={uploading}
+            className="block w-full text-[13px] text-grey-700
+              file:mr-3 file:px-4 file:py-2 file:border-0 file:rounded-lg
+              file:bg-blue-500 file:text-white file:font-semibold
+              file:cursor-pointer file:hover:bg-blue-600
+              disabled:opacity-50"
+          />
+          <p className="text-[12px] text-grey-500">
+            JPEG / PNG / WebP / GIF, 최대 5MB. 업로드 즉시 본문에 삽입됩니다.
+          </p>
+          {uploading && (
+            <p className="text-[13px] text-blue-600">업로드 중...</p>
+          )}
+          {error && (
+            <p className="text-[13px] text-red-600">⚠ {error}</p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+              이미지 URL
+            </label>
+            <input
+              type="url"
+              value={externalUrl}
+              onChange={(e) => setExternalUrl(e.target.value)}
+              placeholder="https://..."
+              autoFocus
+              className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+            />
+            <p className="mt-1 text-[12px] text-grey-500">
+              외부 호스팅 이미지의 직접 링크 (https://). korea.kr 썸네일·imgur 등.
+            </p>
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 text-[14px] font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const trimmed = externalUrl.trim();
+                if (trimmed && trimmed !== "https://") onInsert(trimmed);
+              }}
+              className="px-4 py-2 text-[14px] font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer"
+            >
+              삽입
+            </button>
+          </div>
+        </div>
+      )}
+    </ModalShell>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// 모달 공통 셸 — backdrop + 카드 + 닫기 (Esc·바깥 클릭)
+// ─────────────────────────────────────────────────────────────
+function ModalShell({
+  title,
+  children,
+  onCancel,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onCancel: () => void;
+}) {
+  // Esc 로 닫기
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-md bg-white rounded-2xl shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b border-grey-200">
+          <h3 className="text-[15px] font-bold text-grey-900">{title}</h3>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="닫기"
+            className="w-8 h-8 flex items-center justify-center text-grey-600 hover:bg-grey-100 rounded cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
 }
