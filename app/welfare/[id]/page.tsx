@@ -53,8 +53,21 @@ export default async function WelfareDetailPage({ params }: Props) {
   const sourceLink = program.source_url || program.apply_url;
   const related = await getRelatedPrograms("welfare", program.category, program.id, program.region);
 
+  // 핵심 정보 4종 — value 있는 것만 표시
+  const summaryFields: { label: string; value: string | null }[] = [
+    { label: "자격 요건", value: program.eligibility },
+    { label: "혜택 내용", value: program.benefits },
+    { label: "신청 기간", value: period },
+    { label: "신청 방법", value: program.apply_method },
+  ];
+  const filledSummary = summaryFields.filter((f) => f.value);
+
   // 데이터 풍부도 판단
   const hasDetailedData = !!(program.detailed_content || program.selection_criteria || program.eligibility || program.contact_info);
+
+  // 마감 판정 — apply_end 있고 오늘보다 이전이면 "마감됨"
+  const today = new Date().toISOString().split("T")[0];
+  const isClosed = !!(program.apply_end && program.apply_end < today);
 
   return (
     <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
@@ -111,6 +124,16 @@ export default async function WelfareDetailPage({ params }: Props) {
         )}
       </div>
 
+      {/* 마감 공고 경고 배너 */}
+      {isClosed && (
+        <div className="bg-[#FFEEEE] border border-red/30 rounded-xl px-5 py-4 mb-6 text-[14px] text-red leading-[1.6] font-medium">
+          <span className="font-bold">⚠ 이 공고는 신청이 마감됐습니다</span>
+          {program.apply_end && (
+            <span className="font-normal"> · 마감일: {program.apply_end}</span>
+          )}
+        </div>
+      )}
+
       {/* Description — 가장 중요한 한 줄 요약. 제목 다음으로 돋보이게 */}
       {program.description && (
         <p className="text-[18px] font-medium text-grey-900 leading-[1.65] mb-10 max-w-[760px] max-md:text-[17px]">
@@ -118,31 +141,45 @@ export default async function WelfareDetailPage({ params }: Props) {
         </p>
       )}
 
-      {/* 데이터 부족 안내 */}
-      {!hasDetailedData && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-4 mb-8 text-[14px] text-blue-700 leading-[1.6]">
-          이 프로그램은 요약 정보만 수집된 상태입니다. 상세 내용은{" "}
-          {sourceLink ? (
-            <a href={sourceLink} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
-              원문 페이지
-            </a>
-          ) : (
-            "원문"
-          )}
-          를 확인해 주세요.
+      {/* 핵심 정보 카드 — 채워진 필드가 1개 이상일 때만 노출 */}
+      {filledSummary.length > 0 && (
+        <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <h2 className="text-[17px] font-bold text-grey-900 mb-2 tracking-[-0.3px]">핵심 정보</h2>
+          <div className="grid grid-cols-2 gap-x-10 max-md:grid-cols-1 divide-y divide-grey-100 md:divide-y-0">
+            {filledSummary.map((f) => (
+              <SummaryItem key={f.label} label={f.label} value={f.value} />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* 핵심 정보 카드 — 크림 페이지 위에 흰 카드로 시각 분리 */}
-      <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-        <h2 className="text-[17px] font-bold text-grey-900 mb-2 tracking-[-0.3px]">핵심 정보</h2>
-        <div className="grid grid-cols-2 gap-x-10 max-md:grid-cols-1 divide-y divide-grey-100 md:divide-y-0">
-          <SummaryItem label="자격 요건" value={program.eligibility} fallbackUrl={sourceLink} />
-          <SummaryItem label="혜택 내용" value={program.benefits} fallbackUrl={sourceLink} />
-          <SummaryItem label="신청 기간" value={period} fallbackUrl={sourceLink} />
-          <SummaryItem label="신청 방법" value={program.apply_method} fallbackUrl={sourceLink} />
+      {/* 데이터 부족 안내 — 상세 필드가 거의 없으면 원문 CTA 를 크고 명확하게 */}
+      {!hasDetailedData && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-6 mb-8">
+          <div className="text-[15px] font-bold text-grey-900 mb-1">
+            자격·혜택 등 세부 정보는 원문에서 확인할 수 있어요
+          </div>
+          <p className="text-[13px] text-grey-700 leading-[1.6] mb-4">
+            이 공고는 요약 정보만 수집된 상태입니다. 정확한 신청 조건과 절차는
+            기관 원문 페이지에서 확인해 주세요.
+          </p>
+          {sourceLink ? (
+            <a
+              href={sourceLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-500 text-white text-[14px] font-semibold rounded-lg no-underline hover:bg-blue-600 transition-colors"
+            >
+              원문 페이지 열기
+              <span aria-hidden="true">↗</span>
+            </a>
+          ) : (
+            <span className="text-[13px] text-grey-600">
+              원문 링크가 수집되지 않았어요. 기관에 직접 문의해 주세요.
+            </span>
+          )}
         </div>
-      </div>
+      )}
 
       {/* 상세 정보 섹션들 */}
       {program.detailed_content && (
