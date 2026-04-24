@@ -29,10 +29,22 @@ const MIN_DESCRIPTION_LEN = 80;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+// 기존 값도 함께 select — 이미 채워진 필드는 LLM 결과로 덮어쓰지 않기 위함.
+// (welfare 는 /api/enrich 가 data.go.kr 공식 API 로 정확한 값을 넣어둠.
+// LLM 이 description 재해석으로 덮으면 오히려 퇴보할 수 있음)
 type EnrichRow = {
   id: string;
   title: string;
   description: string | null;
+  eligibility: string | null;
+  apply_method: string | null;
+  required_documents: string | null;
+  // welfare 만 사용
+  benefits?: string | null;
+  // loan 만 사용
+  loan_amount?: string | null;
+  interest_rate?: string | null;
+  repayment_period?: string | null;
 };
 
 // 1건 보강: Gemini 호출 → DB update
@@ -55,23 +67,37 @@ async function enrichOne(
   try {
     const extracted = await extractFieldsFromText(row.title, row.description, type);
 
-    // 추출된 값만 선택적으로 업데이트 (빈 값은 기존 유지).
-    // 기존 값이 있는 필드도 새 값이 있으면 덮어씀 — LLM 추출이 보통 더 정제됨.
-    // (원치 않으면 if (!existingRow.field) 체크로 변경 가능)
+    // 보수적 덮어쓰기 정책:
+    // 기존 값이 이미 있으면 LLM 결과 무시 (데이터 퇴보 방지).
+    // welfare 는 /api/enrich (data.go.kr 공식) 가 먼저 정확한 값을 넣어두기 때문에
+    // 그 위에 LLM 재해석을 덮어쓰면 오히려 품질 저하 가능.
+    // "채워진 필드는 보존 · 비어있는 필드만 LLM 으로 보강" 방향.
     const update: Record<string, unknown> = {
       last_llm_enriched_at: new Date().toISOString(),
     };
-    if (extracted.eligibility) update.eligibility = extracted.eligibility;
-    if (extracted.apply_method) update.apply_method = extracted.apply_method;
-    if (extracted.required_documents) update.required_documents = extracted.required_documents;
+    if (extracted.eligibility && !row.eligibility) {
+      update.eligibility = extracted.eligibility;
+    }
+    if (extracted.apply_method && !row.apply_method) {
+      update.apply_method = extracted.apply_method;
+    }
+    if (extracted.required_documents && !row.required_documents) {
+      update.required_documents = extracted.required_documents;
+    }
 
     if (table === "welfare_programs") {
-      if (extracted.benefits) update.benefits = extracted.benefits;
+      if (extracted.benefits && !row.benefits) update.benefits = extracted.benefits;
     } else {
       // loan 전용 필드
-      if (extracted.loan_amount) update.loan_amount = extracted.loan_amount;
-      if (extracted.interest_rate) update.interest_rate = extracted.interest_rate;
-      if (extracted.repayment_period) update.repayment_period = extracted.repayment_period;
+      if (extracted.loan_amount && !row.loan_amount) {
+        update.loan_amount = extracted.loan_amount;
+      }
+      if (extracted.interest_rate && !row.interest_rate) {
+        update.interest_rate = extracted.interest_rate;
+      }
+      if (extracted.repayment_period && !row.repayment_period) {
+        update.repayment_period = extracted.repayment_period;
+      }
     }
 
     const { error } = await supabase.from(table).update(update).eq("id", row.id);
@@ -111,7 +137,9 @@ async function runEnrichAndRespond(jobLabel: string) {
     const [welfareRes, loanRes] = await Promise.all([
       supabase
         .from("welfare_programs")
-        .select("id, title, description")
+        .select(
+          "id, title, description, eligibility, benefits, apply_method, required_documents",
+        )
         .not("description", "is", null)
         .or(`last_llm_enriched_at.is.null,last_llm_enriched_at.lt.${sevenDaysAgo}`)
         .or("eligibility.is.null,benefits.is.null,apply_method.is.null")
@@ -119,7 +147,9 @@ async function runEnrichAndRespond(jobLabel: string) {
         .limit(WELFARE_BATCH),
       supabase
         .from("loan_programs")
-        .select("id, title, description")
+        .select(
+          "id, title, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, required_documents",
+        )
         .not("description", "is", null)
         .or(`last_llm_enriched_at.is.null,last_llm_enriched_at.lt.${sevenDaysAgo}`)
         .or("eligibility.is.null,loan_amount.is.null,apply_method.is.null")
