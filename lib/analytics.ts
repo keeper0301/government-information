@@ -29,7 +29,8 @@ export const EVENTS = {
   // 블로그
   BLOG_POST_VIEWED: "blog_post_viewed",
   // 인증 (가입·로그인 전환율)
-  SIGNUP_COMPLETED: "signup_completed",
+  SIGNUP_INITIATED: "signup_initiated",   // 가입 요청(메일 발송)까지 성공 — 메일 확인 전 drop-off 측정 기반
+  SIGNUP_COMPLETED: "signup_completed",   // 확인 메일 클릭 → callback 에서 isNewUser 판정
   LOGIN_COMPLETED: "login_completed",
   // 계정 생명주기 (이탈 퍼널 분석)
   ACCOUNT_DELETED: "account_deleted",

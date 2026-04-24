@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 회원가입 페이지 (이메일 + 비밀번호 방식)
 // - 가입 후에는 Supabase가 확인 메일을 보냄
@@ -74,6 +75,14 @@ export default function SignupPage() {
       setSubmitting(false);
       return;
     }
+
+    // 가입 요청(메일 발송) 성공 — router.push 전에 호출해 unmount 레이스 방지.
+    // signup_completed (callback) 와 함께 "가입 시도 → 메일 확인" drop-off 퍼널 분석.
+    // had_marketing_consent 로 "마케팅 동의 사용자가 메일 확인율 높은가" 세그먼트 가능.
+    trackEvent(EVENTS.SIGNUP_INITIATED, {
+      method: "email",
+      had_marketing_consent: agreeMarketing,
+    });
 
     // 성공 — 안내 페이지로 이동 (이메일을 쿼리로 넘겨서 표시)
     router.push(`/signup/sent?email=${encodeURIComponent(email)}`);
