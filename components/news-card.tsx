@@ -6,7 +6,7 @@
 // ============================================================
 
 import Link from "next/link";
-import { formatKoreanDate } from "@/lib/utils";
+import { cleanDescription, formatKoreanDate } from "@/lib/utils";
 
 export type NewsCategory = "news" | "press" | "policy-doc";
 
@@ -88,10 +88,12 @@ export function NewsCard({ post }: { post: NewsCardData }) {
           {post.title}
         </h2>
 
-        {/* 요약 — summary 가 비어있으면 아예 생략 */}
+        {/* 요약 — summary 가 비어있으면 아예 생략. cleanDescription 으로 HTML
+            엔티티(&nbsp; 등)·태그 정제해서 raw 노출 방지. line-clamp 에 삽입된
+            \n 은 CSS 가 자동으로 공백 처리. */}
         {post.summary && (
           <p className="text-[13px] text-grey-700 leading-[1.6] mb-3 line-clamp-2">
-            {post.summary}
+            {cleanDescription(post.summary)}
           </p>
         )}
 

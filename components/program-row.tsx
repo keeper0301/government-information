@@ -8,6 +8,7 @@ import {
   ShieldCheckIcon,
 } from "./icons";
 import type { DisplayProgram } from "@/lib/programs";
+import { cleanDescription } from "@/lib/utils";
 
 const iconMap = {
   house: HouseIcon,
@@ -61,8 +62,12 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
             </div>
             <DdayLabel dday={program.dday} />
           </div>
+          {/* description 은 원문 그대로 저장돼 있어 &nbsp; · ☞ · <br> 등 raw 엔티티·
+              섹션 기호가 노출되는 사례가 있음. 상세 페이지와 동일하게 cleanDescription
+              으로 엔티티·태그 정리. truncate 한 줄이라 삽입된 \n 은 CSS 가 공백으로
+              합쳐 한 줄로 렌더됨 (ellipsis 위치만 자연스러워짐). */}
           <div className="text-[15px] text-grey-900 leading-[1.55] truncate">
-            {program.description}
+            {cleanDescription(program.description)}
           </div>
         </div>
         {/* 데스크톱에서만 오른쪽에 금액 표시 */}
