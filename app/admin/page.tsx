@@ -1,13 +1,18 @@
 // ============================================================
-// /admin — 운영자 평면 페이지 (사용자 조회 입구)
+// /admin — 운영자 허브 대시보드
 // ============================================================
-// CEO 리뷰 Q10 결정: MVP 에 최소 평면 페이지 포함.
-// "사용자 ID 또는 이메일로 검색 → 알림 이력 + 구독 + AI 사용량 표시"
+// 사이트 전반을 한눈에 — 지표 카드·빠른 액션 그리드·최근 활동 목록.
 //
-// 이 페이지의 역할은 입구 + 검색 폼만. 결과 페이지는 [userId]/page.tsx.
+// 역할:
+//   1. 최근 24시간 핵심 지표 6종 (가입·구독·알림·뉴스·AI·공고)
+//   2. 사용자 조회 입력 폼 (기존 기능 유지)
+//   3. 빠른 액션 링크 그리드 (하위 관리 페이지 진입점)
+//   4. 최근 활동 목록 (신규 가입 5건 + 내 관리자 액션 5건)
+//
 // 권한:
-//   - 비로그인 → /login
-//   - 어드민 아닌 일반 사용자 → /
+//   - 비로그인 → /login?next=/admin
+//   - 어드민 아니면 → /
+//   - ADMIN_USER_IDS 환경변수에 user_id 포함돼야 함 (lib/admin-auth.ts)
 // ============================================================
 
 import { redirect } from "next/navigation";
@@ -17,13 +22,19 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
+import {
+  getActorActionsPaged,
+  ACTION_LABELS,
+} from "@/lib/admin-actions";
 
 export const metadata: Metadata = {
-  title: "어드민 | 정책알리미",
+  title: "어드민 대시보드 | 정책알리미",
   robots: { index: false, follow: false },
 };
 
-// 권한 가드 — 어드민 아니면 즉시 리다이렉트
+export const dynamic = "force-dynamic";
+
+// 권한 가드
 async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,24 +43,18 @@ async function requireAdmin() {
   return user;
 }
 
-// 검색 server action
-// 입력: 이메일 또는 user_id (UUID)
-// 결과: 일치하는 user 의 /admin/users/[userId] 로 redirect
+// 사용자 검색 server action — 기존 동작 유지
 async function searchUser(formData: FormData) {
   "use server";
   const raw = String(formData.get("query") ?? "").trim();
   if (!raw) return;
 
   const admin = createAdminClient();
-
-  // UUID 형식이면 user_id 직접 사용
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRe.test(raw)) {
     redirect(`/admin/users/${raw}`);
   }
 
-  // 그 외는 이메일로 간주, auth.users 에서 조회
-  // listUsers + filter — 작은 운영이라 충분. 사용자 많아지면 별도 RPC.
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error || !data) {
     redirect(`/admin?error=${encodeURIComponent("조회 실패: " + (error?.message ?? "알수없음"))}`);
@@ -59,31 +64,163 @@ async function searchUser(formData: FormData) {
     redirect(`/admin?error=${encodeURIComponent("일치하는 사용자 없음: " + raw)}`);
   }
   redirect(`/admin/users/${found.id}`);
-  // unreachable, 그러나 타입 만족
   revalidatePath("/admin");
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 24시간 지표 집계 — 한 번의 Promise.all 로 병렬 수집
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function get24hStats() {
+  const admin = createAdminClient();
+  const nowMs = Date.now();
+  const since24hIso = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString();
+  const kstToday = new Date(nowMs + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const [
+    profilesCount,
+    activeSubsCount,
+    alertsSent,
+    newsCount,
+    welfareCount,
+    loanCount,
+    aiUsageRows,
+  ] = await Promise.all([
+    // 신규 가입 — user_profiles 기준. 온보딩 스킵 시 생성 안 될 수도 있어
+    // 실사용자 대비 하회할 수 있지만, 실제 회원가입 퍼널 통과 사용자만 카운트.
+    admin
+      .from("user_profiles")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since24hIso),
+    // 활성 구독 — basic/pro 중 trialing/active/charging/manual_grant
+    admin
+      .from("subscriptions")
+      .select("user_id", { count: "exact", head: true })
+      .in("tier", ["basic", "pro"])
+      .in("status", ["trialing", "active", "charging", "manual_grant"]),
+    // 알림 성공 발송
+    admin
+      .from("alert_deliveries")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "sent")
+      .gte("created_at", since24hIso),
+    // 뉴스 수집
+    admin
+      .from("news_posts")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since24hIso),
+    // 공고 수집 (welfare + loan 따로 조회 후 합산)
+    admin
+      .from("welfare_programs")
+      .select("id", { count: "exact", head: true })
+      .gte("fetched_at", since24hIso),
+    admin
+      .from("loan_programs")
+      .select("id", { count: "exact", head: true })
+      .gte("fetched_at", since24hIso),
+    // AI 상담 — 오늘(KST) 전체 사용자 합산. 호출 1회당 count +1.
+    admin.from("ai_usage_log").select("count").eq("date", kstToday),
+  ]);
+
+  const aiTotal = (aiUsageRows.data ?? []).reduce(
+    (s: number, r: { count: number }) => s + (r.count ?? 0),
+    0,
+  );
+
+  return {
+    newUsers: profilesCount.count ?? 0,
+    activeSubs: activeSubsCount.count ?? 0,
+    alertsSent: alertsSent.count ?? 0,
+    newsCollected: newsCount.count ?? 0,
+    programsCollected: (welfareCount.count ?? 0) + (loanCount.count ?? 0),
+    aiToday: aiTotal,
+  };
+}
+
+// 최근 가입 사용자 5건 — user_profiles 기준 (실제 프로필 작성 완료자)
+async function getRecentSignups(limit = 5) {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("user_profiles")
+    .select("id, created_at, region, occupation")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (!data || data.length === 0) return [];
+
+  // 이메일은 auth.users 에서 각각 조회 (5건이라 N+1 감수)
+  const results: {
+    id: string;
+    email: string | null;
+    created_at: string;
+    region: string | null;
+    occupation: string | null;
+  }[] = [];
+  for (const p of data as {
+    id: string;
+    created_at: string;
+    region: string | null;
+    occupation: string | null;
+  }[]) {
+    let email: string | null = null;
+    try {
+      const { data: auth } = await admin.auth.admin.getUserById(p.id);
+      email = auth?.user?.email ?? null;
+    } catch {
+      // 이미 삭제된 사용자일 수 있음
+    }
+    results.push({
+      id: p.id,
+      email,
+      created_at: p.created_at,
+      region: p.region,
+      occupation: p.occupation,
+    });
+  }
+  return results;
+}
+
+// "방금 전", "5분 전", "3시간 전" 같은 상대 시각 포맷 — 대시보드 가독성용
+function fmtRelative(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.floor(diffMs / (60 * 1000));
+  if (diffMin < 1) return "방금 전";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export default async function AdminHomePage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const params = await searchParams;
   const error = params.error;
 
+  const [stats, recentSignups, myActions] = await Promise.all([
+    get24hStats(),
+    getRecentSignups(5),
+    getActorActionsPaged(actor.id, { limit: 5, offset: 0 }),
+  ]);
+
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <div className="max-w-[680px] mx-auto px-5">
+      <div className="max-w-[980px] mx-auto px-5">
+        {/* 헤더 */}
         <div className="mb-8">
           <p className="text-[12px] text-burgundy font-semibold tracking-[0.2em] mb-3">
-            ADMIN
+            ADMIN · 대시보드
           </p>
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            사용자 조회
+            사이트 한눈에 보기
           </h1>
-          <p className="text-[14px] text-grey-600">
-            이메일 또는 사용자 UUID 로 검색하세요.
+          <p className="text-[13px] text-grey-600">
+            {actor.email ?? "운영자"} 로 로그인됨 · 최근 24시간 기준 지표
           </p>
         </div>
 
@@ -91,58 +228,260 @@ export default async function AdminHomePage({
         {error && (
           <div
             role="alert"
-            className="bg-red/10 border border-red/30 rounded-lg p-3 text-sm text-red mb-4"
+            className="bg-red/10 border border-red/30 rounded-lg p-3 text-[13px] text-red mb-4"
           >
             {error}
           </div>
         )}
 
-        {/* 검색 폼 */}
-        <form action={searchUser} className="space-y-3">
-          <input
-            type="text"
-            name="query"
-            required
-            placeholder="user@example.com 또는 UUID"
-            className="w-full px-4 py-3 border border-grey-200 rounded-lg text-[15px] focus:border-blue-500 focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="w-full py-3 bg-blue-500 text-white rounded-lg text-[15px] font-bold hover:bg-blue-600 transition-colors cursor-pointer"
-          >
-            조회
-          </button>
-        </form>
+        {/* 24h 지표 카드 6종 */}
+        <section className="mb-8">
+          <h2 className="text-[14px] font-bold text-grey-900 mb-3">
+            최근 24시간 운영 지표
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <StatCard label="신규 가입" value={stats.newUsers} suffix="명" />
+            <StatCard
+              label="활성 구독 (전체)"
+              value={stats.activeSubs}
+              suffix="명"
+              hint="basic·pro (trialing/active/charging/manual_grant)"
+            />
+            <StatCard
+              label="알림 발송 성공"
+              value={stats.alertsSent}
+              suffix="건"
+              hint="email + kakao (alert_deliveries status=sent)"
+            />
+            <StatCard label="뉴스 수집" value={stats.newsCollected} suffix="건" />
+            <StatCard
+              label="공고 수집"
+              value={stats.programsCollected}
+              suffix="건"
+              hint="welfare + loan programs"
+            />
+            <StatCard
+              label="AI 상담 (오늘 KST)"
+              value={stats.aiToday}
+              suffix="회"
+              hint="ai_usage_log sum"
+            />
+          </div>
+        </section>
 
-        {/* 풋노트 */}
-        <p className="mt-8 text-[12px] text-grey-500 leading-[1.6]">
-          이 페이지는 운영자 전용입니다. 권한은 환경변수 <code>ADMIN_USER_IDS</code> 로 관리합니다.
+        {/* 사용자 조회 */}
+        <section className="mb-8">
+          <h2 className="text-[14px] font-bold text-grey-900 mb-3">
+            사용자 조회
+          </h2>
+          <form action={searchUser} className="flex gap-2 max-md:flex-col">
+            <input
+              type="text"
+              name="query"
+              required
+              placeholder="이메일 또는 UUID (예: user@example.com 또는 7e25d1c8-...)"
+              className="flex-1 px-4 py-3 border border-grey-200 rounded-lg text-[14px] focus:border-blue-500 focus:outline-none bg-white"
+            />
+            <button
+              type="submit"
+              className="px-5 py-3 bg-blue-500 text-white rounded-lg text-[14px] font-bold hover:bg-blue-600 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              조회
+            </button>
+          </form>
+        </section>
+
+        {/* 빠른 액션 그리드 */}
+        <section className="mb-8">
+          <h2 className="text-[14px] font-bold text-grey-900 mb-3">
+            관리 페이지
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <ActionCard
+              href="/admin/alimtalk"
+              title="알림톡 운영"
+              desc="24h 발송 집계·환경변수·테스트 발송"
+            />
+            <ActionCard
+              href="/admin/news"
+              title="정책 뉴스 운영"
+              desc="수집 현황·수동 trigger·카테고리별"
+            />
+            <ActionCard
+              href="/admin/enrich-detail"
+              title="공고 상세 보강"
+              desc="bokjiro·youthcenter Detail fetcher 즉시 실행"
+            />
+            <ActionCard
+              href="/admin/my-actions"
+              title="내 수행 내역"
+              desc="감사 로그 페이지네이션 열람"
+            />
+            <ActionCard
+              href="/"
+              title="홈으로"
+              desc="사용자 화면으로 이동"
+            />
+          </div>
+        </section>
+
+        {/* 최근 활동 2열 */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+          {/* 최근 가입자 5건 */}
+          <Panel title={`최근 가입자 ${recentSignups.length}명`}>
+            {recentSignups.length === 0 ? (
+              <p className="text-[13px] text-grey-600 py-2">
+                최근 가입자가 없어요.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {recentSignups.map((u) => (
+                  <li
+                    key={u.id}
+                    className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold text-grey-900 truncate">
+                        {u.email ?? "(이메일 없음)"}
+                      </div>
+                      <div className="text-[11px] text-grey-600">
+                        {[u.region, u.occupation].filter(Boolean).join(" · ") || "프로필 미작성"}
+                        {" · "}
+                        {fmtRelative(u.created_at)}
+                      </div>
+                    </div>
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="text-[11px] text-blue-500 hover:underline whitespace-nowrap"
+                    >
+                      상세 →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          {/* 내 최근 관리자 액션 5건 */}
+          <Panel title={`내 최근 관리자 액션 ${myActions.records.length}건`}>
+            {myActions.records.length === 0 ? (
+              <p className="text-[13px] text-grey-600 py-2">
+                최근 수행한 관리 작업이 없어요.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {myActions.records.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold text-grey-900">
+                        {ACTION_LABELS[a.action] ?? a.action}
+                      </div>
+                      <div className="text-[11px] text-grey-600 truncate">
+                        {a.targetUserId ? (
+                          <span className="font-mono">
+                            {a.targetUserId.slice(0, 8)}…
+                          </span>
+                        ) : (
+                          <span>—</span>
+                        )}
+                        {" · "}
+                        {fmtRelative(a.createdAt)}
+                      </div>
+                    </div>
+                    {a.targetUserId && (
+                      <Link
+                        href={`/admin/users/${a.targetUserId}`}
+                        className="text-[11px] text-blue-500 hover:underline whitespace-nowrap"
+                      >
+                        대상 →
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link
+              href="/admin/my-actions"
+              className="block text-[12px] text-blue-500 hover:underline mt-3"
+            >
+              전체 보기 →
+            </Link>
+          </Panel>
+        </section>
+
+        {/* 권한 안내 */}
+        <p className="mt-10 text-[12px] text-grey-600 leading-[1.6]">
+          이 페이지는 운영자 전용입니다. 권한은 Vercel 환경변수{" "}
+          <code>ADMIN_USER_IDS</code> (쉼표 구분 user_id 목록) 로 관리합니다.
           <br />
-          검색 가능한 정보: 구독 상태 · AI 사용량 (지난 30일) · 알림 발송 이력 (지난 30일).
-        </p>
-
-        <p className="mt-4 text-[12px] flex items-center gap-4 flex-wrap">
-          <Link href="/" className="text-blue-500 underline">
-            ← 홈으로
-          </Link>
-          <span className="text-grey-300">·</span>
-          <Link href="/admin/my-actions" className="text-blue-500 underline">
-            내 수행 내역 보기
-          </Link>
-          <span className="text-grey-300">·</span>
-          <Link href="/admin/alimtalk" className="text-blue-500 underline">
-            알림톡 운영
-          </Link>
-          <span className="text-grey-300">·</span>
-          <Link href="/admin/enrich-detail" className="text-blue-500 underline">
-            공고 상세 보강
-          </Link>
-          <span className="text-grey-300">·</span>
-          <Link href="/admin/news" className="text-blue-500 underline">
-            정책 뉴스 운영
-          </Link>
+          어드민 추가 시: Vercel Settings → Environment Variables → ADMIN_USER_IDS
+          에 user_id 추가 후 재배포.
         </p>
       </div>
     </main>
+  );
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 작은 컴포넌트
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function StatCard({
+  label,
+  value,
+  suffix,
+  hint,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  hint?: string;
+}) {
+  return (
+    <div className="bg-white rounded-lg border border-grey-200 p-4">
+      <div className="text-[11px] font-semibold tracking-[0.1em] text-grey-600 uppercase mb-1">
+        {label}
+      </div>
+      <div className="text-[24px] font-extrabold text-grey-900 leading-none">
+        {value.toLocaleString()}
+        {suffix && <span className="text-[13px] font-semibold text-grey-600 ml-1">{suffix}</span>}
+      </div>
+      {hint && <div className="text-[11px] text-grey-600 mt-1.5 leading-[1.4]">{hint}</div>}
+    </div>
+  );
+}
+
+function ActionCard({
+  href,
+  title,
+  desc,
+}: {
+  href: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="bg-white rounded-lg border border-grey-200 p-4 no-underline hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(49,130,246,0.08)] transition-all block"
+    >
+      <div className="text-[14px] font-bold text-grey-900 mb-1 flex items-center gap-1.5">
+        {title}
+        <span className="text-blue-500 text-[13px]">→</span>
+      </div>
+      <div className="text-[12px] text-grey-600 leading-[1.5]">{desc}</div>
+    </Link>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-white border border-grey-200 rounded-lg p-5">
+      <h3 className="text-[13px] font-bold text-grey-900 mb-3">{title}</h3>
+      {children}
+    </section>
   );
 }
