@@ -9,15 +9,32 @@ import { translateAuthError } from "@/lib/auth-errors";
 // - 가입 후에는 Supabase가 확인 메일을 보냄
 // - 사용자가 메일의 링크를 클릭해야 비로소 로그인 가능 상태가 됨
 // - 가입 직후엔 /signup/sent 안내 페이지로 이동
+// 동의 흐름:
+//   - 약관·개인정보처리방침 필수 (체크해야 버튼 활성화)
+//   - 마케팅 선택 (체크 시 user_metadata.marketing_consent=true 로 넘어감)
+//   - 실제 consent_log 기록은 콜백에서 신규 사용자 판정 후 자동
 export default function SignupPage() {
   const router = useRouter();
   // 입력값 3종 (이메일, 비밀번호, 비밀번호 확인)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  // 동의 체크박스 — 약관·방침은 필수, 마케팅은 선택
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeMarketing, setAgreeMarketing] = useState(false);
   // 폼 제출 중인지 (중복 클릭 방지)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // 전체 동의 체크박스 상태 계산 + 토글
+  const allChecked = agreeTerms && agreePrivacy && agreeMarketing;
+  function toggleAll() {
+    const next = !allChecked;
+    setAgreeTerms(next);
+    setAgreePrivacy(next);
+    setAgreeMarketing(next);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,15 +49,24 @@ export default function SignupPage() {
       setError(translateAuthError("passwords do not match"));
       return;
     }
+    // 필수 동의 확인
+    if (!agreeTerms || !agreePrivacy) {
+      setError("이용약관과 개인정보처리방침에 동의해주세요.");
+      return;
+    }
 
     setSubmitting(true);
     const supabase = createClient();
     // 가입 요청 — 확인 메일의 링크를 클릭하면 /auth/callback?next=/ 로 돌아옴
+    // options.data 는 user.user_metadata 로 저장됨 → 콜백에서 마케팅 동의 여부 판정
     const callbackUrl = `${window.location.origin}/auth/callback?next=/`;
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: callbackUrl },
+      options: {
+        emailRedirectTo: callbackUrl,
+        data: { marketing_consent: agreeMarketing },
+      },
     });
 
     if (signUpError) {
@@ -103,6 +129,47 @@ export default function SignupPage() {
           autoComplete="new-password"
           className="w-full px-4 py-3 border-[1.5px] border-grey-200 rounded-lg text-base text-grey-900 font-pretendard outline-none transition-all focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(49,130,246,0.12)] placeholder:text-grey-400 mb-4"
         />
+
+        {/* 동의 섹션 */}
+        <div className="bg-grey-50 border border-grey-100 rounded-lg p-4 mb-4">
+          {/* 전체 동의 */}
+          <label className="flex items-center gap-2.5 pb-3 border-b border-grey-200 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allChecked}
+              onChange={toggleAll}
+              className="w-[18px] h-[18px] accent-blue-500 cursor-pointer"
+            />
+            <span className="text-[15px] font-semibold text-grey-900">
+              전체 동의
+            </span>
+          </label>
+
+          {/* 개별 동의 */}
+          <div className="pt-3 space-y-2.5">
+            <ConsentCheckbox
+              checked={agreeTerms}
+              onChange={setAgreeTerms}
+              label="이용약관 동의"
+              required
+              linkHref="/terms"
+            />
+            <ConsentCheckbox
+              checked={agreePrivacy}
+              onChange={setAgreePrivacy}
+              label="개인정보처리방침 동의"
+              required
+              linkHref="/privacy"
+            />
+            <ConsentCheckbox
+              checked={agreeMarketing}
+              onChange={setAgreeMarketing}
+              label="마케팅 정보 수신 (이메일·카카오톡으로 혜택·이벤트 안내)"
+              required={false}
+            />
+          </div>
+        </div>
+
         <button
           type="submit"
           disabled={submitting}
@@ -123,5 +190,53 @@ export default function SignupPage() {
         </a>
       </p>
     </main>
+  );
+}
+
+// 개별 동의 체크박스 — 텍스트 + (선택) 전문 보기 링크
+function ConsentCheckbox({
+  checked,
+  onChange,
+  label,
+  required,
+  linkHref,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  required: boolean;
+  linkHref?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <label className="flex items-center gap-2.5 cursor-pointer flex-1">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="w-[16px] h-[16px] accent-blue-500 cursor-pointer"
+        />
+        <span className="text-[13px] text-grey-700">
+          <span
+            className={
+              required ? "text-red font-semibold mr-1" : "text-grey-500 mr-1"
+            }
+          >
+            {required ? "[필수]" : "[선택]"}
+          </span>
+          {label}
+        </span>
+      </label>
+      {linkHref && (
+        <a
+          href={linkHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[12px] text-grey-500 no-underline hover:text-grey-700 underline"
+        >
+          보기
+        </a>
+      )}
+    </div>
   );
 }

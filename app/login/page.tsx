@@ -204,6 +204,32 @@ export default function LoginPage() {
         {loading === "google" ? "연결 중..." : "Google로 계속하기"}
       </button>
 
+      {/* 동의 안내 — 신규 사용자는 로그인/가입 완료 시 약관·방침 동의로 간주
+          (실제 consent_log 기록은 /auth/callback 에서 신규 사용자 판정 후 자동) */}
+      <p className="text-[12px] text-grey-500 text-center mb-6 leading-[1.5]">
+        로그인·가입 시{" "}
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-grey-700 underline hover:text-grey-900"
+        >
+          이용약관
+        </a>
+        과{" "}
+        <a
+          href="/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-grey-700 underline hover:text-grey-900"
+        >
+          개인정보처리방침
+        </a>
+        에
+        <br />
+        동의하는 것으로 간주됩니다.
+      </p>
+
       {/* "또는" 구분선 */}
       <div className="flex items-center gap-3 mb-6">
         <div className="flex-1 h-px bg-grey-200" />

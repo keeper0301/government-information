@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  recordConsent,
+  PRIVACY_POLICY_VERSION,
+  TERMS_VERSION,
+} from "@/lib/consent";
 
 // OAuth 콜백 라우트
 // 소셜 로그인(카카오·구글) 또는 이메일 매직링크 인증이 끝나면
@@ -13,6 +18,13 @@ function safeNext(value: string | null): string {
   if (!value.startsWith("/")) return "/";
   if (value.startsWith("//") || value.startsWith("/\\")) return "/";
   return value;
+}
+
+// 요청 헤더에서 클라이언트 IP 추출 (Vercel 환경)
+function getClientIp(req: Request): string | undefined {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0]?.trim();
+  return req.headers.get("x-real-ip") ?? undefined;
 }
 
 export async function GET(request: Request) {
@@ -52,18 +64,65 @@ export async function GET(request: Request) {
     );
   }
 
-  // 로그인 성공 → user_profiles 에 빈 프로필 보장 (없으면 생성)
-  // upsert + ignoreDuplicates 로 한 쿼리로 원자적 처리
-  // (동시 로그인·재시도에도 안전하고, 이미 있으면 아무것도 안 함)
+  // 로그인 성공 → user_profiles 에 빈 프로필 보장 + 신규 사용자면 필수 동의 자동 기록
+  // 1) 기존 프로필이 있는지 먼저 확인해서 '신규 사용자' 판정
+  //    - 있음: 재로그인 — 동의 기록 생략
+  //    - 없음: 첫 로그인 — 프로필 생성 + privacy_policy / terms 자동 기록
+  // 2) 동의 기록은 로그인 페이지·회원가입 폼에 "로그인/가입 시 동의" 문구 표시 전제
+  //    (실제 동의 UI 는 회원가입 폼에서, OAuth 는 로그인 페이지 안내로 대체)
   const user = data.user;
   if (user) {
-    const { error: profileError } = await supabase
+    const { data: existingProfile } = await supabase
       .from("user_profiles")
-      .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
-    // 프로필 생성 실패해도 로그인 자체는 성공시킴 (나중에 /mypage 에서 재시도됨)
-    // 서버 로그에만 남김
-    if (profileError) {
-      console.error("[auth/callback] 프로필 생성 실패:", profileError.message);
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const isNewUser = !existingProfile;
+
+    if (isNewUser) {
+      // 프로필 행 생성 (동시 로그인 경쟁 방어 위해 upsert)
+      const { error: profileError } = await supabase
+        .from("user_profiles")
+        .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+      if (profileError) {
+        console.error("[auth/callback] 프로필 생성 실패:", profileError.message);
+      }
+
+      // 필수 동의 자동 기록 — 실패해도 로그인은 성공시킴
+      // (개인정보처리방침·이용약관 은 "로그인/가입 완료" = 동의 로 간주)
+      const ip = getClientIp(request);
+      const ua = request.headers.get("user-agent") ?? undefined;
+      try {
+        await recordConsent({
+          userId: user.id,
+          consentType: "privacy_policy",
+          version: PRIVACY_POLICY_VERSION,
+          ipAddress: ip,
+          userAgent: ua,
+        });
+        await recordConsent({
+          userId: user.id,
+          consentType: "terms",
+          version: TERMS_VERSION,
+          ipAddress: ip,
+          userAgent: ua,
+        });
+
+        // 회원가입 폼에서 마케팅 수신 체크한 경우 (signUp options.data.marketing_consent)
+        // OAuth 소셜 로그인은 이 플래그가 없음 → 마케팅 동의는 기본 미기록
+        if (user.user_metadata?.marketing_consent === true) {
+          await recordConsent({
+            userId: user.id,
+            consentType: "marketing",
+            version: PRIVACY_POLICY_VERSION,
+            ipAddress: ip,
+            userAgent: ua,
+          });
+        }
+      } catch (err) {
+        console.error("[auth/callback] 필수 동의 기록 실패:", err);
+      }
     }
   }
 
