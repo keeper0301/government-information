@@ -57,27 +57,20 @@ function extractTitlePrefix(title: string): string | null {
 //   3) 제목·출처 본문에 타지역 명시 → 제외 (단 사용자 지역도 함께 있으면 유지)
 //   4) 판단 근거 없음 → 전국 대상으로 간주 (포함)
 //
-// 시군구 (district) 가 주어지면 매칭 우선순위 ↑:
-//   - region 컬럼·title·source 어디든 시군구명 포함 시 즉시 통과 + 매칭점수↑
-//   - 시군구가 안 잡히면 광역(userRegion) 으로 폴백
-//   - "순천시" 사용자가 "전라남도" 광역 데이터를 봐도 OK (광역 폴백)
+// 시군구 (district) 는 매칭 통과 여부에는 영향 X — districtBonus 로 정렬
+// 가산점만 부여. 즉 같은 광역의 다른 시군구 정책도 노출하되, 사용자
+// 시군구 항목은 위쪽에 정렬. 시군구로 매칭 통과 결정하면 false positive
+// 위험 (예: "중구"·"동구" 같은 동명 시군구가 7개 광역에 모두 존재
+// → "부산 중구" 사용자가 "서울 중구" 정책도 매칭되는 버그).
 function regionMatches(
   title: string,
   source: string | null,
   region: string | null,
   userRegion: RegionOption,
-  userDistrict?: string | null,
 ): boolean {
   if (userRegion === "전국") return true;
 
   const userAliases = REGION_ALIASES[userRegion] ?? [userRegion];
-
-  // 0) 시군구 직접 매칭 — 가장 강한 신호. region·title·source 어디든 시군구명
-  //    포함되면 즉시 통과 (광역 매칭 검사 생략).
-  if (userDistrict && userDistrict.length >= 2) {
-    const haystack = `${region ?? ""} ${title} ${source ?? ""}`;
-    if (haystack.includes(userDistrict)) return true;
-  }
 
   // 1) DB region 명시된 경우가 가장 강한 신호
   if (region && region.trim().length > 0) {
@@ -112,7 +105,11 @@ function regionMatches(
 }
 
 // 시군구 정확 매칭 가산점 — 같은 광역 안에서도 사용자가 자기 시군구 항목을
-// 위쪽에 보도록 함. regionMatches 가 true 일 때만 호출.
+// 위쪽에 보도록 함. regionMatches 가 true 일 때 (= 광역 매칭 통과) 만 의미 있음.
+//
+// 광역 매칭이 이미 통과한 row 만 들어오므로 false positive 위험 없음.
+// 예: "부산 중구" 사용자 → 부산광역시 매칭 row 만 후보 → 그중 "중구" 포함된
+// 항목에만 가산점 → 같은 부산 안에서 중구 정책 우선 노출.
 function districtBonus(
   title: string,
   source: string | null,
@@ -207,7 +204,7 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
   ]);
 
   const filteredWelfare = welfareData
-    .filter((w) => regionMatches(w.title, w.source, w.region, region, district))
+    .filter((w) => regionMatches(w.title, w.source, w.region, region))
     .map((w) => {
       const s = scoreProgram(w.target, w.description, ageKw, occKw);
       return {
@@ -220,7 +217,7 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
 
   // LoanProgram 에는 region 컬럼 없음 → null 전달, 제목·출처로 판단
   const filteredLoan = loanData
-    .filter((l) => regionMatches(l.title, l.source, null, region, district))
+    .filter((l) => regionMatches(l.title, l.source, null, region))
     .map((l) => {
       const s = scoreProgram(l.target, l.description, ageKw, occKw);
       return {

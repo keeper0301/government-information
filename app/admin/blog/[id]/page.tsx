@@ -25,6 +25,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
 import { stripHtmlTags } from "@/lib/utils";
+import { sanitizeBlogHtml } from "@/lib/html-sanitize";
 import { RichEditor } from "./rich-editor";
 
 export const metadata: Metadata = {
@@ -82,6 +83,8 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
       .filter(Boolean);
 
     const metaDescription = stripHtmlTags(metaRaw);
+    // XSS 차단 — DB 저장 전 sanitize. <script>·on*·javascript: URL 등 제거.
+    const safeContent = sanitizeBlogHtml(content);
 
     const admin2 = createAdminClient();
     const { error: updateError } = await admin2
@@ -92,7 +95,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
         category,
         tags: tags.length > 0 ? tags : null,
         cover_image: coverImage,
-        content,
+        content: safeContent,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id);
