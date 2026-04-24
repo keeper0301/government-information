@@ -23,10 +23,19 @@ type Props = {
 
 export const revalidate = 600;
 
+// 지역 필터 화이트리스트 — URL 쿼리 임의 값 주입 차단 (PostgREST ilike
+// interpolation 에 들어가므로 서버에서 재검증 필수).
+const ALLOWED_REGIONS = new Set([
+  "서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산",
+  "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+]);
+
 export default async function LoanPage({ searchParams }: Props) {
   const params = await searchParams;
   const category = params.category || "전체";
   const target = params.target || "전체";
+  const rawRegion = params.region || "전체";
+  const region = ALLOWED_REGIONS.has(rawRegion) ? rawRegion : "전체";
   const search = params.q || "";
   const page = parseInt(params.page || "1", 10);
 
@@ -35,6 +44,11 @@ export default async function LoanPage({ searchParams }: Props) {
 
   if (category !== "전체") query = query.eq("category", category);
   if (target !== "전체") query = query.ilike("target", `%${target}%`);
+  // 지역 필터 — loan_programs 에 region 컬럼이 없어 제목 prefix `[대전]` 같은
+  // 패턴으로 ilike 매칭. lib/recommend.ts 의 regionMatches 처럼 별칭(대전시·
+  // 대전광역시)까지 전부 커버하진 않음 — 대부분의 loan 공고 prefix 가
+  // 광역시도명 2글자 형태라 충분. 향후 정확도 개선 시 별칭 확장 가능.
+  if (region !== "전체") query = query.ilike("title", `%[${region}%`);
   if (search) {
     // 공백 기준 토큰 AND 매칭 — "대전 소상공인 경영위기" 같은 multi-word 가
     // title "[대전] 소상공인 경영위기극복" 에 매칭되도록. 단일 substring ilike 는
@@ -64,6 +78,7 @@ export default async function LoanPage({ searchParams }: Props) {
   function buildUrl(overrides: Record<string, string>) {
     const p = {
       category,
+      region,
       target,
       q: search,
       page: String(page),
@@ -110,7 +125,7 @@ export default async function LoanPage({ searchParams }: Props) {
         <div className="flex gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Suspense fallback={null}>
-              <FilterBar target={target} />
+              <FilterBar target={target} region={region} />
             </Suspense>
             <div className="flex-1 min-w-[200px]">
               <form action="/loan">
@@ -132,6 +147,9 @@ export default async function LoanPage({ searchParams }: Props) {
                 {/* Preserve current filters */}
                 {category !== "전체" && (
                   <input type="hidden" name="category" value={category} />
+                )}
+                {region !== "전체" && (
+                  <input type="hidden" name="region" value={region} />
                 )}
                 {target !== "전체" && (
                   <input type="hidden" name="target" value={target} />
