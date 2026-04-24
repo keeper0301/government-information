@@ -106,9 +106,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Alert */}
-      <AlertStrip programs={urgents} isLoggedIn={!!user} />
-
       {/* Welfare — 프로필 있으면 개인화 매칭 결과, 없으면 일반 */}
       <div className="bg-grey-50">
         <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
@@ -138,6 +135,11 @@ export default async function Home() {
           <CalendarPreview />
         </section>
       </div>
+
+      {/* Alert — 달력 바로 아래에 배치.
+          의도: 달력에서 전체 일정을 훑은 뒤 "그 중 지금 당장 마감 임박한 것" 리마인더로
+          자연스럽게 연결. 기존 Hero 바로 밑(상단) 위치는 첫인상이 긴급·자극적이었음. */}
+      <AlertStrip programs={urgents} isLoggedIn={!!user} />
 
       {/* Blog — 최근 가이드 글 (0건이면 숨김) */}
       {recentPosts.length > 0 && (
