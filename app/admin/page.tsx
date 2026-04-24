@@ -27,6 +27,22 @@ export const metadata: Metadata = {
 async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  // ━━ 진단 로그 (임시) ━━
+  // ADMIN_USER_IDS 환경변수가 프로덕션 배포에 로드됐는지,
+  // 로그인된 사용자가 allowlist 에 포함되는지 확인용. 개인정보 노출 안 되도록
+  // user_id 대신 boolean/길이만 찍음. 문제 진단 끝나면 이 블록 제거.
+  const envRaw = process.env.ADMIN_USER_IDS ?? "";
+  console.log("[admin/diag]", {
+    hasUser: !!user,
+    hasEnv: envRaw.trim().length > 0,
+    envLength: envRaw.length,
+    envEntryCount: envRaw.split(",").filter((s) => s.trim()).length,
+    userInList: user ? isAdminUser(user.id) : false,
+    // user_id 뒤 6자만 (전체 UUID 노출 방지). 기대값 '29cbd' 시작
+    userIdSuffix: user?.id?.slice(-6) ?? null,
+    // ENV 값의 뒤 6자 (같은 끝 6자 매치되는지 비교용)
+    envSuffix: envRaw.trim().slice(-6),
+  });
   if (!user) redirect("/login?next=/admin");
   if (!isAdminUser(user.id)) redirect("/");
   return user;
