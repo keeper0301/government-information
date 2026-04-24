@@ -88,6 +88,49 @@ export async function getTargetActions(
   );
 }
 
+// ━━━ 특정 어드민이 수행한 감사 로그 조회 ━━━
+// /admin/my-actions 페이지가 사용. 사장님 본인 회고용 ("내가 언제 뭐 했지?").
+// target_user_id 가 NULL (대상 사용자 삭제됨) 인 기록도 함께 돌려줌 — 수행 이력은 유지.
+export async function getActorActions(
+  actorId: string,
+  limit = 50,
+): Promise<AdminActionRecord[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("admin_actions")
+    .select("id, actor_id, target_user_id, action, details, created_at")
+    .eq("actor_id", actorId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.warn("[admin_actions.getActorActions] 조회 실패:", {
+      actorId,
+      message: error.message,
+    });
+    return [];
+  }
+  if (!data) return [];
+
+  return data.map(
+    (r: {
+      id: string;
+      actor_id: string | null;
+      target_user_id: string | null;
+      action: string;
+      details: Record<string, unknown> | null;
+      created_at: string;
+    }) => ({
+      id: r.id,
+      actorId: r.actor_id,
+      targetUserId: r.target_user_id,
+      action: r.action as AdminActionType,
+      details: r.details,
+      createdAt: r.created_at,
+    }),
+  );
+}
+
 // ━━━ 액션 타입 → 한글 라벨 ━━━
 // UI 표시용. 새 action 추가 시 여기도 매핑 추가.
 export const ACTION_LABELS: Record<AdminActionType, string> = {
