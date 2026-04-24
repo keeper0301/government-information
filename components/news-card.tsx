@@ -3,9 +3,12 @@
 // ============================================================
 // korea.kr 출처 뉴스 (공공누리 제1유형). 썸네일·카테고리 배지·부처·요약·날짜.
 // 썸네일은 korea.kr 절대경로 그대로 — 재호스팅 금지라 next/image 안 씀.
+//
+// 2026-04-24 shadcn Card 시맨틱 교체 — 비주얼 유지, 구조 정리.
 // ============================================================
 
 import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
 import { cleanDescription, formatKoreanDate } from "@/lib/utils";
 
 export type NewsCategory = "news" | "press" | "policy-doc";
@@ -40,71 +43,71 @@ export function NewsCard({ post }: { post: NewsCardData }) {
   const dateLabel = formatKoreanDate(post.published_at);
 
   return (
-    <Link
-      href={`/news/${post.slug}`}
-      className="block bg-white border border-grey-100 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow no-underline"
-    >
-      {/* 썸네일 — 있으면 이미지, 없으면 "텍스트 포스터" placeholder.
-          alt="" : 뉴스 제목이 바로 아래 카드 안에 있어 스크린리더 중복 방지.
-          next/image 미사용 이유: 공공누리 제1유형 재호스팅 금지 → Vercel 최적화
-          캐시를 거치지 않도록 <img> 로 외부 URL 직접 참조 (메모리 원칙).
-          placeholder 는 기존엔 카테고리 라벨만 가운데 있어 큰 빈 영역처럼 보였음.
-          제목 일부를 미리 노출해 빈 영역 느낌을 없앤 "텍스트 포스터" 스타일로 전환. */}
-      {post.thumbnail_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={post.thumbnail_url}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="w-full aspect-[16/9] object-cover bg-grey-100"
-        />
-      ) : (
-        <div
-          className={`w-full aspect-[16/9] flex flex-col justify-end px-5 py-4 ${categoryColor}`}
-          aria-hidden="true"
-        >
-          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70 mb-1">
-            {categoryLabel}
-          </div>
-          <div className="text-[14px] font-bold leading-[1.35] line-clamp-3 opacity-90">
-            {post.title}
-          </div>
-        </div>
-      )}
-
-      <div className="p-5 max-md:p-4">
-        {/* 배지: 카테고리 + 부처(있을 때만) */}
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span
-            className={`inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full ${categoryColor}`}
+    <Link href={`/news/${post.slug}`} className="block no-underline">
+      <Card className="bg-white border border-grey-100 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow ring-0 gap-0 py-0 h-full">
+        {/* 썸네일 — 있으면 이미지, 없으면 "텍스트 포스터" placeholder.
+            alt="" : 뉴스 제목이 바로 아래 카드 안에 있어 스크린리더 중복 방지.
+            next/image 미사용 이유: 공공누리 제1유형 재호스팅 금지 → Vercel 최적화
+            캐시를 거치지 않도록 <img> 로 외부 URL 직접 참조 (메모리 원칙).
+            placeholder 는 기존엔 카테고리 라벨만 가운데 있어 큰 빈 영역처럼 보였음.
+            제목 일부를 미리 노출해 빈 영역 느낌을 없앤 "텍스트 포스터" 스타일로 전환.
+            rounded-t-2xl 명시: Card 기본 *:img:first-child rounded-t-xl 덮어쓰기. */}
+        {post.thumbnail_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.thumbnail_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="w-full aspect-[16/9] object-cover bg-grey-100 rounded-t-2xl"
+          />
+        ) : (
+          <div
+            className={`w-full aspect-[16/9] flex flex-col justify-end px-5 py-4 rounded-t-2xl ${categoryColor}`}
+            aria-hidden="true"
           >
-            {categoryLabel}
-          </span>
-          {post.ministry && (
-            <span className="text-[13px] text-grey-600 truncate max-w-[180px]">
-              {post.ministry}
-            </span>
-          )}
-        </div>
-
-        {/* 제목 — 2줄 이상이면 생략. 카드 높이 통일 */}
-        <h2 className="text-[16px] font-bold text-grey-900 mb-2 leading-[1.4] tracking-[-0.3px] line-clamp-2">
-          {post.title}
-        </h2>
-
-        {/* 요약 — summary 가 비어있으면 아예 생략. cleanDescription 으로 HTML
-            엔티티(&nbsp; 등)·태그 정제해서 raw 노출 방지. line-clamp 에 삽입된
-            \n 은 CSS 가 자동으로 공백 처리. */}
-        {post.summary && (
-          <p className="text-[13px] text-grey-700 leading-[1.6] mb-3 line-clamp-2">
-            {cleanDescription(post.summary)}
-          </p>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70 mb-1">
+              {categoryLabel}
+            </div>
+            <div className="text-[14px] font-bold leading-[1.35] line-clamp-3 opacity-90">
+              {post.title}
+            </div>
+          </div>
         )}
 
-        {/* 발행일 */}
-        <div className="text-[13px] text-grey-600">{dateLabel}</div>
-      </div>
+        <CardContent className="p-5 max-md:p-4">
+          {/* 배지: 카테고리 + 부처(있을 때만) */}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span
+              className={`inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full ${categoryColor}`}
+            >
+              {categoryLabel}
+            </span>
+            {post.ministry && (
+              <span className="text-[13px] text-grey-600 truncate max-w-[180px]">
+                {post.ministry}
+              </span>
+            )}
+          </div>
+
+          {/* 제목 — 2줄 이상이면 생략. 카드 높이 통일 */}
+          <h2 className="text-[16px] font-bold text-grey-900 mb-2 leading-[1.4] tracking-[-0.3px] line-clamp-2">
+            {post.title}
+          </h2>
+
+          {/* 요약 — summary 가 비어있으면 아예 생략. cleanDescription 으로 HTML
+              엔티티(&nbsp; 등)·태그 정제해서 raw 노출 방지. line-clamp 에 삽입된
+              \n 은 CSS 가 자동으로 공백 처리. */}
+          {post.summary && (
+            <p className="text-[13px] text-grey-700 leading-[1.6] mb-3 line-clamp-2">
+              {cleanDescription(post.summary)}
+            </p>
+          )}
+
+          {/* 발행일 */}
+          <div className="text-[13px] text-grey-600">{dateLabel}</div>
+        </CardContent>
+      </Card>
     </Link>
   );
 }

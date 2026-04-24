@@ -20,6 +20,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // 사유 옵션 — value 는 GA4 Custom Dimension 으로 안정적 집계되도록 snake_case 로 고정.
 // 라벨 문구는 UX 필요에 따라 바꿔도 value 는 건드리지 말 것 (지표 히스토리 연속성).
@@ -41,15 +51,13 @@ export function WithdrawSection() {
   const [reasonDetail, setReasonDetail] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 2026-04-24 window.confirm → shadcn Dialog 교체. 접근성(focus trap·Escape
+  // 닫기·스크린리더 role=alertdialog) + 브랜드 일관성(키피오 톤). busy 중엔
+  // 다이얼로그가 닫히지 않도록 onOpenChange 에서 방지.
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleWithdraw() {
     if (!acknowledged) return;
-
-    // 30일 유예 안내. 최종 삭제 전 복구 가능함을 명시.
-    const confirmed = window.confirm(
-      "탈퇴를 요청하시겠어요?\n\n요청 후 30일간 유예돼요. 이 기간 안에 다시 로그인하시면 복구할 수 있고, 30일이 지나면 프로필·관심 분야·알림 설정·AI 사용 기록 등 모든 데이터가 영구 삭제돼요.",
-    );
-    if (!confirmed) return;
 
     setBusy(true);
     setError(null);
@@ -95,6 +103,7 @@ export function WithdrawSection() {
       const msg = err instanceof Error ? err.message : "처리 중 문제가 생겼어요.";
       setError(msg);
       setBusy(false);
+      setConfirmOpen(false); // 에러 시 다이얼로그 닫고 사용자가 메시지 확인
     }
     // 성공 시엔 busy 를 풀지 않음 — 화면 이동 중 재클릭 방지
   }
@@ -180,14 +189,57 @@ export function WithdrawSection() {
         </span>
       </label>
 
-      <button
-        type="button"
-        onClick={handleWithdraw}
-        disabled={!acknowledged || busy}
-        className="px-4 py-2 text-[13px] font-semibold rounded-md border border-red text-red bg-white hover:bg-red/5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          // busy 중엔 사용자가 바깥 클릭·Escape 로 닫지 못하게 — 요청 진행 보호
+          if (busy && !open) return;
+          setConfirmOpen(open);
+        }}
       >
-        {busy ? "처리 중..." : "회원 탈퇴 요청"}
-      </button>
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            disabled={!acknowledged || busy}
+            className="px-4 py-2 text-[13px] font-semibold rounded-md border border-red text-red bg-white hover:bg-red/5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {busy ? "처리 중..." : "회원 탈퇴 요청"}
+          </button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] font-bold text-grey-900">
+              탈퇴를 요청하시겠어요?
+            </DialogTitle>
+            <DialogDescription className="text-[14px] text-grey-700 leading-[1.6] pt-2">
+              요청 후 <b className="text-grey-900">30일간 유예</b>돼요. 이 기간 안에
+              다시 로그인하시면 바로 복구할 수 있어요. 30일이 지나면 프로필·관심
+              분야·알림 설정·AI 사용 기록 등 모든 개인 데이터가 영구 삭제돼요.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => setConfirmOpen(false)}
+              disabled={busy}
+              className="text-[14px]"
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              onClick={handleWithdraw}
+              disabled={busy}
+              className="text-[14px] bg-red text-white hover:bg-red/90"
+            >
+              {busy ? "처리 중..." : "네, 탈퇴 요청할게요"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

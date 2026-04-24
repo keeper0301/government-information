@@ -3,9 +3,15 @@
 // ============================================================
 // 디자인 토큰은 home-recommend-card.tsx 패턴 따름.
 // 카테고리 배지 + 제목 + 요약 + 날짜·읽기시간.
+//
+// 2026-04-24 shadcn Card 시맨틱 교체 — 비주얼 유지, 구조 정리.
+// Link 를 최외곽에 유지하고 내부를 Card 로 구성 (SEO navigation + 시각적 구조).
+// 카테고리는 Badge 로 교체.
 // ============================================================
 
 import Link from "next/link";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { formatKoreanDate } from "@/lib/utils";
 
 export type BlogCardData = {
@@ -23,41 +29,43 @@ export function BlogCard({ post }: { post: BlogCardData }) {
   const readingLabel = post.reading_time_min ? `${post.reading_time_min}분 읽기` : null;
 
   return (
-    <Link
-      href={`/blog/${post.slug}`}
-      className="block bg-white border border-grey-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow no-underline"
-    >
-      {/* 카테고리 배지 */}
-      {post.category && (
-        <div className="mb-3">
-          <span className="inline-block px-2.5 py-1 text-[12px] font-semibold rounded-full bg-blue-50 text-blue-700">
-            {post.category}
-          </span>
-        </div>
-      )}
-
-      {/* 제목 */}
-      <h2 className="text-[18px] font-extrabold text-grey-900 mb-2 leading-[1.4] tracking-[-0.3px] line-clamp-2">
-        {post.title}
-      </h2>
-
-      {/* 요약 */}
-      {post.meta_description && (
-        <p className="text-[14px] text-grey-700 leading-[1.6] mb-4 line-clamp-3">
-          {post.meta_description}
-        </p>
-      )}
-
-      {/* 메타: 날짜 + 읽기시간 */}
-      <div className="flex items-center gap-2 text-[13px] text-grey-600">
-        <span>{dateLabel}</span>
-        {readingLabel && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span>{readingLabel}</span>
-          </>
+    <Link href={`/blog/${post.slug}`} className="block no-underline">
+      <Card className="bg-white border border-grey-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow ring-0 gap-0 py-0 h-full">
+        {post.category && (
+          <CardHeader className="px-0 pb-0 mb-3 gap-0">
+            <Badge
+              variant="secondary"
+              className="bg-blue-50 text-blue-700 hover:bg-blue-50 rounded-full px-2.5 py-1 text-[12px] font-semibold w-fit"
+            >
+              {post.category}
+            </Badge>
+          </CardHeader>
         )}
-      </div>
+
+        <CardContent className="px-0 flex-1">
+          {/* 제목 */}
+          <h2 className="text-[18px] font-extrabold text-grey-900 mb-2 leading-[1.4] tracking-[-0.3px] line-clamp-2">
+            {post.title}
+          </h2>
+
+          {/* 요약 */}
+          {post.meta_description && (
+            <p className="text-[14px] text-grey-700 leading-[1.6] line-clamp-3">
+              {post.meta_description}
+            </p>
+          )}
+        </CardContent>
+
+        <CardFooter className="px-0 pt-4 pb-0 border-t-0 bg-transparent rounded-none text-[13px] text-grey-600 gap-2">
+          <span>{dateLabel}</span>
+          {readingLabel && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{readingLabel}</span>
+            </>
+          )}
+        </CardFooter>
+      </Card>
     </Link>
   );
 }
