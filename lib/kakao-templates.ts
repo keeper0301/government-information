@@ -39,9 +39,13 @@
 //  ───────────────────
 //
 //  ────── 버튼 ──────
-//  1) 웹링크 | 정책 자세히 보기 | URL: #{detail_url}
+//  1) 웹링크 | 정책 자세히 보기 | URL: https://www.keepioo.com#{detail_path}
 //  2) 웹링크 | 알림 설정 변경 | URL: https://www.keepioo.com/mypage/notifications
 //  ───────────────────
+//  · 버튼 URL 은 도메인(https://www.keepioo.com)을 템플릿에 고정하고
+//    경로만 변수로 주입 — 카카오 심사가 "완전 동적 URL" 보다 "도메인 고정 + path 변수"
+//    형태를 선호(피싱 방지). variables.detail_path 에는 `/welfare/{id}` 또는
+//    `/loan/{id}` 형태의 절대경로(선행 `/` 포함)를 전달.
 //
 //  ────── 심사 주의사항 ──────
 //  · 광고·홍보 문구 ✕ (할인·이벤트·혜택·무료 금지어 없음)
@@ -64,8 +68,12 @@ export type KakaoTemplateVariables = {
     title: string;
     /** 신청 마감일 (ISO date 또는 "상시") */
     deadline: string;
-    /** keepioo 내부 상세 페이지 절대 URL */
-    detail_url: string;
+    /**
+     * keepioo 내부 상세 페이지 경로(`/welfare/{id}` 또는 `/loan/{id}`).
+     * 선행 `/` 포함. 템플릿에 등록된 버튼 URL `https://www.keepioo.com#{detail_path}`
+     * 와 조립되어 최종 절대 URL 생성. 심사 통과율을 위해 도메인 고정 + path 변수 채택.
+     */
+    detail_path: string;
   };
 };
 

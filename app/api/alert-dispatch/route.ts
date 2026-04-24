@@ -171,12 +171,12 @@ async function runAlertDispatch(jobLabel: string) {
           }
         } else {
           for (const m of toSend) {
-            // 상세 URL — welfare/loan 테이블별로 keepioo 내부 상세 페이지 경로가 다름.
-            // 카카오 템플릿 버튼이 이 URL 을 그대로 받아 표시.
+            // 상세 경로 — welfare/loan 테이블별로 keepioo 내부 상세 페이지 경로가 다름.
+            // 카카오 템플릿 버튼은 도메인 고정(https://www.keepioo.com) + #{detail_path}
+            // 변수로 등록돼 있어 경로만 전달. 심사 통과율을 위한 선택.
             const detailPath = m.table === "welfare_programs"
               ? `/welfare/${m.id}`
               : `/loan/${m.id}`;
-            const detailUrl = `https://www.keepioo.com${detailPath}`;
 
             const result = await sendAlimtalk({
               phoneNumber: rule.phone_number!,
@@ -185,7 +185,7 @@ async function runAlertDispatch(jobLabel: string) {
                 rule_name: rule.name,
                 title: m.title,
                 deadline: m.apply_end ?? "상시",
-                detail_url: detailUrl,
+                detail_path: detailPath,
               },
             });
 

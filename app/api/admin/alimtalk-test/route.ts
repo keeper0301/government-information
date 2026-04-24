@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     rule_name: overrides.rule_name ?? "[테스트] 내 맞춤 알림",
     title: overrides.title ?? "[테스트] 청년 주거 지원 정책 2026",
     deadline: overrides.deadline ?? "2026-12-31",
-    detail_url: overrides.detail_url ?? "https://www.keepioo.com/mypage/notifications",
+    detail_path: overrides.detail_path ?? "/mypage/notifications",
   };
 
   // 4) 발송

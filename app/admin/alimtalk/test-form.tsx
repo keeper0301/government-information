@@ -21,7 +21,7 @@ export function AlimtalkTestForm() {
   const [ruleName, setRuleName] = useState("");
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [detailUrl, setDetailUrl] = useState("");
+  const [detailPath, setDetailPath] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ApiResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +43,7 @@ export function AlimtalkTestForm() {
       if (ruleName.trim()) variables.rule_name = ruleName.trim();
       if (title.trim()) variables.title = title.trim();
       if (deadline.trim()) variables.deadline = deadline.trim();
-      if (detailUrl.trim()) variables.detail_url = detailUrl.trim();
+      if (detailPath.trim()) variables.detail_path = detailPath.trim();
 
       const res = await fetch("/api/admin/alimtalk-test", {
         method: "POST",
@@ -100,10 +100,10 @@ export function AlimtalkTestForm() {
             placeholder="2026-12-31"
           />
           <Field
-            label="detail_url (기본값: https://www.keepioo.com/mypage/notifications)"
-            value={detailUrl}
-            onChange={setDetailUrl}
-            placeholder="https://www.keepioo.com/..."
+            label="detail_path (기본값: /mypage/notifications — 선행 / 포함한 경로만)"
+            value={detailPath}
+            onChange={setDetailPath}
+            placeholder="/welfare/abc123"
           />
         </div>
       </details>
