@@ -54,8 +54,14 @@ export default async function AdminBlogListPage({
     .range(offset, offset + PAGE_SIZE - 1);
 
   if (q.trim()) {
-    // title / slug 둘 중 한 쪽이라도 부분 매칭
-    query = query.or(`title.ilike.%${q.trim()}%,slug.ilike.%${q.trim()}%`);
+    // title / slug 둘 중 한 쪽이라도 부분 매칭.
+    // PostgREST or() 는 쉼표(,) 와 괄호(,)) 를 필드 구분자/그루핑으로 해석 →
+    // 사용자 입력에 섞여 있으면 쿼리 파서가 깨짐. ilike wildcard 역할인 % 도
+    // 입력으로 들어오면 의도와 달라지므로 함께 제거. 공백은 유지.
+    const safe = q.trim().replace(/[,()%]/g, "");
+    if (safe) {
+      query = query.or(`title.ilike.%${safe}%,slug.ilike.%${safe}%`);
+    }
   }
   if (status === "published") query = query.not("published_at", "is", null);
   else if (status === "draft") query = query.is("published_at", null);

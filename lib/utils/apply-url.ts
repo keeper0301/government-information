@@ -24,20 +24,16 @@ export function sanitizeApplyUrl(raw: string | null | undefined): string | null 
 
   // 공백 포함 — URL 에 설명문이 끼어들어간 경우
   // 예: "http://www.kinfa.or.kr (서금원 홈페이지 ...)"
-  // 예: "http://www.kinfa.or.kr%20(서금원%20...)" (percent-encoded 공백)
   if (/\s/.test(trimmed)) return null;
 
-  // percent-decoded 후 한글 포함 — 위와 같은 패턴
-  let decoded = trimmed;
-  try {
-    decoded = decodeURIComponent(trimmed);
-  } catch {
-    // malformed %-sequence — URL 자체가 깨진 것
-    return null;
-  }
-  if (/[가-힣]/.test(decoded)) return null;
+  // 원문(raw) 에 한글 포함 — URL 에 한국어 설명문이 통째로 끼어든 경우.
+  // 주의: decodeURIComponent 한 결과로 한글 체크하면 정상적으로 encode 된
+  // 쿼리 파라미터 (?keyword=%EC%B2%AD%EB%85%84 = '청년') 도 false positive
+  // 로 strip 됨 → raw 상태에서만 검사. percent-encoded 공백(%20)도 같이 방어.
+  if (/[가-힣]/.test(trimmed)) return null;
+  if (/%20/i.test(trimmed)) return null;
 
-  // URL 파싱 불가 → 문법 오류
+  // malformed percent-sequence 는 URL 생성자가 걸러냄
   try {
     new URL(trimmed);
   } catch {
