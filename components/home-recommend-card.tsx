@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ProgramRow } from "@/components/program-row";
 import type { DisplayProgram } from "@/lib/programs";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 const AGE_OPTIONS = ["10대", "20대", "30대", "40대", "50대", "60대 이상"];
 // 지역: Progressive Disclosure — 인기 4개를 기본, 나머지 14개는 확장 시
@@ -64,6 +65,13 @@ export function HomeRecommendCard({ initial }: Props) {
     if (!canSubmit) return;
     setLoading(true);
     setSearched(true);
+    // GA4 이벤트 — 어떤 조합이 많이 선택되는지 분포 파악
+    trackEvent(EVENTS.RECOMMEND_SUBMITTED, {
+      age_group: ageGroup,
+      region,
+      occupation,
+      program_type: toApiType(programType),
+    });
     try {
       const res = await fetch("/api/recommend", {
         method: "POST",

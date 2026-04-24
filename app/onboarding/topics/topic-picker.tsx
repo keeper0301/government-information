@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 type Props = {
   userId: string;
@@ -69,13 +70,15 @@ export function TopicPicker({
       setSaving(false);
       return;
     }
-    // 저장 성공 → 다음 페이지로
+    // 저장 성공 → GA4 이벤트 + 다음 페이지로
+    trackEvent(EVENTS.TOPIC_SAVED, { count: selected.length });
     router.replace(nextHref);
     router.refresh();
   }
 
   function handleSkip() {
     // 빈 배열 저장 안 함. 다음에 들어와도 다시 권유 가능.
+    trackEvent(EVENTS.ONBOARDING_SKIPPED);
     router.replace(nextHref);
   }
 

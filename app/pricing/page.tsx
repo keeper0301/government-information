@@ -10,6 +10,8 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTier, TIER_NAMES, TIER_PRICES, type Tier } from "@/lib/subscription";
+import { GaPageTracker } from "@/components/ga-page-tracker";
+import { CheckoutLink } from "./checkout-link";
 
 export const metadata: Metadata = {
   title: "요금제 | 정책알리미",
@@ -69,6 +71,8 @@ export default async function PricingPage() {
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
+      {/* GA4 pricing_viewed 이벤트 (전환 퍼널 분석) */}
+      <GaPageTracker eventName="pricing_viewed" />
       <div className="max-w-[1100px] mx-auto px-5">
         {/* 헤더 */}
         <div className="text-center mb-10 md:mb-14">
@@ -211,9 +215,14 @@ function CtaButton({ plan, isCurrent, isLoggedIn }: {
     : "bg-grey-900 text-white hover:bg-grey-800";
 
   return (
-    <a href={href} className={`${baseClass} ${buttonStyle}`}>
+    <CheckoutLink
+      href={href}
+      tier={plan.tier}
+      isLoggedIn={isLoggedIn}
+      className={`${baseClass} ${buttonStyle}`}
+    >
       7일 무료로 시작하기
-    </a>
+    </CheckoutLink>
   );
 }
 
