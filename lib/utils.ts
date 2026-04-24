@@ -325,3 +325,17 @@ export function extractDescription(content: string, maxLen = 160): string {
   if (plain.length <= maxLen) return plain;
   return plain.slice(0, maxLen).replace(/\s+\S*$/, "") + "…";
 }
+
+// ============================================================
+// cn — shadcn/ui 컴포넌트 클래스 머지 헬퍼
+// ============================================================
+// shadcn init (chore/shadcn-init 브랜치) 시 자동 추가됨.
+// components/ui/* 가 import { cn } from "@/lib/utils" 형태로 가져감.
+// keepioo 자체 유틸과 평화롭게 공존하기 위해 같은 파일 끝에 부착.
+// ============================================================
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}

@@ -10,6 +10,10 @@ import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import "./globals.css";
+// 주의: shadcn init 이 자동 주입한 Geist 폰트는 제거함.
+// keepioo 는 Editorial Masthead (Bodoni Moda + Nanum Myeongjo + Noto Serif) 가
+// 브랜드 정체성이라 sans-serif 폰트 강제 도입은 금지. shadcn 컴포넌트(ui/button 등)
+// 는 글로벌 폰트 의존도가 낮아 Editorial Masthead 와 공존 가능.
 
 export const metadata: Metadata = {
   title: "keepioo · 정책알리미 — 한국의 공공 지원제도 큐레이션",
