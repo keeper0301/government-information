@@ -181,9 +181,11 @@ export default async function CalendarPage() {
                       );
                     }
                     return (
+                      // 시작 이벤트 — ring-2 로 두껍게 해야 6px 작은 원에서도
+                      // "테두리 원" 이 "채움 원" 과 확실히 구별됨 (범례와 두께 통일)
                       <span
                         key={item.id}
-                        className={`w-[6px] h-[6px] rounded-full bg-white ring-1 ${ringColor}`}
+                        className={`w-[6px] h-[6px] rounded-full bg-white ring-2 ${ringColor}`}
                         title={`${item.title} — 시작`}
                       />
                     );
@@ -195,23 +197,53 @@ export default async function CalendarPage() {
         })}
       </div>
 
-      {/* Legend — 마감(채움) / 시작(테두리) × 복지/대출 */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-8 text-[12px] text-grey-700">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-blue-500" />
-          <span>복지 마감</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-white ring-1 ring-blue-500" />
-          <span>복지 시작</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-orange" />
-          <span>대출 마감</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-white ring-1 ring-orange" />
-          <span>대출 시작</span>
+      {/* Legend — 2×2 테이블로 재구성 (행=카테고리, 열=상태)
+          기존: 한 줄 4개 나열 → 축 구분 모호 + 6~8px 점이라 채움/테두리 차이 불분명
+          개선: 헤더로 축 명시 + 점 크기 ↑ + ring 두께 ↑ → 4종이 한눈에 구별됨 */}
+      <div className="mb-8 inline-block">
+        <div className="grid grid-cols-[auto_auto_auto] gap-x-8 gap-y-3 items-center border border-grey-200 rounded-lg p-4 bg-white">
+          {/* 헤더 행 — 상태 축 (마감 / 시작) */}
+          <div />
+          <div className="text-[11px] font-bold text-grey-500 tracking-wider">
+            <span aria-hidden="true">● </span>마감
+          </div>
+          <div className="text-[11px] font-bold text-grey-500 tracking-wider">
+            <span aria-hidden="true">○ </span>시작
+          </div>
+
+          {/* 복지 행 */}
+          <div className="text-[12px] font-bold text-grey-800 pr-2">복지</div>
+          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+            <span
+              className="w-3.5 h-3.5 rounded-full bg-blue-500 shrink-0"
+              aria-hidden="true"
+            />
+            <span>복지 마감</span>
+          </div>
+          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+            <span
+              className="w-3.5 h-3.5 rounded-full bg-white ring-2 ring-blue-500 shrink-0"
+              aria-hidden="true"
+            />
+            <span>복지 시작</span>
+          </div>
+
+          {/* 대출 행 */}
+          <div className="text-[12px] font-bold text-grey-800 pr-2">대출</div>
+          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+            <span
+              className="w-3.5 h-3.5 rounded-full bg-orange shrink-0"
+              aria-hidden="true"
+            />
+            <span>대출 마감</span>
+          </div>
+          <div className="flex items-center gap-2 text-[13px] text-grey-700">
+            <span
+              className="w-3.5 h-3.5 rounded-full bg-white ring-2 ring-orange shrink-0"
+              aria-hidden="true"
+            />
+            <span>대출 시작</span>
+          </div>
         </div>
       </div>
 
