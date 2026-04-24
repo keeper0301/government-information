@@ -1,22 +1,183 @@
+// ============================================================
+// /api/enrich — 상세 API 2단계 fetch (cron)
+// ============================================================
+// 목록 API 가 못 채우는 빈 필드 (eligibility·selection_criteria·
+// contact_info·detailed_content 등) 를 각 source 의 공식 Detail API 로 채움.
+// LLM 미사용 (enrich-llm 은 2026-04-24 폐기).
+//
+// 처리 흐름:
+//   1) welfare_programs / loan_programs 에서 후보 조회
+//      - last_detail_fetched_at NULL OR < 7일전  (성공 cooldown)
+//      - AND last_detail_failed_at NULL OR < 1일전  (실패 cooldown)
+//   2) DETAIL_FETCHERS 중 applies() 맞는 fetcher 로 fetch
+//   3) 성공: 필드 UPDATE + last_detail_fetched_at=now
+//      실패: last_detail_failed_at=now
+//   4) 실패율 50%+ 면 운영자 알림 (외부 API 장애 감지)
+//
+// Vercel Hobby 60초 한도: 배치 6건 * 4초 간격 = 24초, 응답 포함 60초 안전.
+// 분당 15회 API rate limit (data.go.kr 개발계정): 4초 간격 준수.
+// ============================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
+import { findFetcher, type RowIdentity, type DetailResult } from "@/lib/detail-fetchers";
+
+// Vercel maxDuration=60s / data.go.kr 분당 15회 rate limit 동시 고려:
+// 12회 × 4초 = 48초 + DB update + fetch 응답 변동 = 최대 ~58초 범위.
+// 보수적으로 12건 (이전 6 → 12 로 상향).
+const BATCH_SIZE = 12;
+const CALL_INTERVAL_MS = 4000;
+const COOLDOWN_OK_MS = 7 * 24 * 60 * 60 * 1000;  // 성공: 7일
+const COOLDOWN_FAIL_MS = 1 * 24 * 60 * 60 * 1000; // 실패: 1일
+
+type TableName = "welfare_programs" | "loan_programs";
+
+type Candidate = RowIdentity & {
+  table: TableName;
+  serv_id: string | null; // welfare 만 가진 legacy 컬럼 (bokjiro servId)
+};
+
+// welfare + loan 테이블에서 후보 row 조회.
+// source_id 는 신규, serv_id 는 과거 bokjiro collector 가 쓰던 컬럼 — 둘 중 하나만 있는 row 도 존재.
+async function pickCandidates(
+  supabase: ReturnType<typeof createAdminClient>,
+  limit: number,
+): Promise<Candidate[]> {
+  const okThreshold = new Date(Date.now() - COOLDOWN_OK_MS).toISOString();
+  const failThreshold = new Date(Date.now() - COOLDOWN_FAIL_MS).toISOString();
+
+  // welfare / loan 각각 별도 쿼리 — select 문자열을 동적으로 만들면 supabase-js 타입 추론이 깨짐
+  const [w, l] = await Promise.all([
+    supabase
+      .from("welfare_programs")
+      .select("id, source_code, source_id, source_url, serv_id")
+      .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
+      .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
+      .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
+      .limit(limit),
+    supabase
+      .from("loan_programs")
+      .select("id, source_code, source_id, source_url")
+      .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
+      .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
+      .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
+      .limit(limit),
+  ]);
+
+  const out: Candidate[] = [];
+  for (const r of w.data || []) {
+    out.push({
+      id: r.id,
+      source_code: r.source_code,
+      source_id: r.source_id ?? r.serv_id ?? null,
+      source_url: r.source_url,
+      serv_id: r.serv_id,
+      table: "welfare_programs",
+    });
+  }
+  for (const r of l.data || []) {
+    out.push({
+      id: r.id,
+      source_code: r.source_code,
+      source_id: r.source_id,
+      source_url: r.source_url,
+      serv_id: null,
+      table: "loan_programs",
+    });
+  }
+  // source_code 없는 row 는 fetcher 매칭 불가 → 여기서 제외하지 않고 아래에서 skip.
+  return out.slice(0, limit);
+}
+
+// 실제 fetch 1건. 성공/실패 여부와 함께 매칭된 fetcher 없는 경우는 skipped.
+async function enrichOne(
+  supabase: ReturnType<typeof createAdminClient>,
+  row: Candidate,
+): Promise<"ok" | "failed" | "skipped"> {
+  const fetcher = findFetcher(row);
+  if (!fetcher) {
+    // 처리 가능한 fetcher 없음. last_detail_fetched_at 을 찍어 재시도 루프 탈출.
+    // (failed 는 1일 쿨다운이라 계속 후보로 돌아옴 → 낭비)
+    await supabase
+      .from(row.table)
+      .update({ last_detail_fetched_at: new Date().toISOString() })
+      .eq("id", row.id);
+    return "skipped";
+  }
+
+  try {
+    const result = await fetcher.fetchDetail(row);
+    if (!result) {
+      // 응답은 왔지만 데이터 없음 — skipped 와 동일 처리
+      await supabase
+        .from(row.table)
+        .update({ last_detail_fetched_at: new Date().toISOString() })
+        .eq("id", row.id);
+      return "skipped";
+    }
+
+    // 채워진 필드만 UPDATE (기존 값이 있어도 Detail API 최신성이 더 높으므로 덮어씀)
+    const update: Record<string, string | null> = {
+      last_detail_fetched_at: new Date().toISOString(),
+    };
+    const assign = (key: keyof DetailResult, maxLen: number) => {
+      const v = result[key];
+      if (v) update[key] = v.substring(0, maxLen);
+    };
+    assign("eligibility", 3000);
+    assign("benefits", 3000);
+    assign("selection_criteria", 3000);
+    assign("apply_method", 2000);
+    assign("required_documents", 2000);
+    assign("contact_info", 2000);
+    assign("detailed_content", 6000);
+
+    const { error } = await supabase.from(row.table).update(update).eq("id", row.id);
+    if (error) throw new Error(`DB update 실패: ${error.message}`);
+    return "ok";
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[enrich-detail] ${row.table} ${row.id} (${row.source_code}):`, msg);
+    await supabase
+      .from(row.table)
+      .update({ last_detail_failed_at: new Date().toISOString() })
+      .eq("id", row.id);
+    return "failed";
+  }
+}
+
+async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
+  const candidates = await pickCandidates(supabase, BATCH_SIZE);
+  if (candidates.length === 0) {
+    return { ok: 0, failed: 0, skipped: 0, total: 0 };
+  }
+
+  let ok = 0, failed = 0, skipped = 0;
+  for (let i = 0; i < candidates.length; i++) {
+    const r = await enrichOne(supabase, candidates[i]);
+    if (r === "ok") ok++;
+    else if (r === "failed") failed++;
+    else skipped++;
+    // 마지막 건이 아니면 rate limit 준수
+    if (i < candidates.length - 1) {
+      await new Promise((res) => setTimeout(res, CALL_INTERVAL_MS));
+    }
+  }
+  return { ok, failed, skipped, total: candidates.length };
+}
 
 async function runEnrichAndRespond(jobLabel: string) {
   try {
     const supabase = createAdminClient();
     const result = await enrichBatch(supabase);
 
-    // 50% 이상 실패 시 알림 (외부 API quota 초과·서비스 다운 등 감지)
-    // P3-B dedupe 덕분에 같은 원인이면 24h 메일 1통만.
-    if (
-      result.total_candidates &&
-      result.total_candidates > 0 &&
-      (result.failed ?? 0) / result.total_candidates >= 0.5
-    ) {
+    // 처리 가능한 후보 중 50% 이상 fetch 실패 시 알림
+    const attempted = result.ok + result.failed;
+    if (attempted > 0 && result.failed / attempted >= 0.5) {
       await notifyCronFailure(
-        `${jobLabel} - 보강 실패율 ${result.failed}/${result.total_candidates}`,
-        `외부 API (data.go.kr NationalWelfareDetail) 응답 이상. quota 초과·서비스 다운 가능성.`,
+        `${jobLabel} - Detail API 실패율 ${result.failed}/${attempted}`,
+        `data.go.kr NationalWelfaredetailedV001 응답 이상. quota·서비스 장애 가능성.`,
       );
     }
 
@@ -28,113 +189,28 @@ async function runEnrichAndRespond(jobLabel: string) {
   }
 }
 
-const DATA_GO_KR_KEY = process.env.DATA_GO_KR_API_KEY || "";
-const DETAIL_API =
-  "https://apis.data.go.kr/B554287/NationalWelfareInformationsV001/NationalWelfareDetailV001";
-
-function parseXmlTag(block: string, tag: string): string | null {
-  const match = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
-  return match
-    ? match[1]
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/<[^>]*>/g, "")
-        .trim()
-    : null;
-}
-
-async function enrichOne(
-  supabase: ReturnType<typeof createAdminClient>,
-  row: { id: string; serv_id: string },
-) {
-  try {
-    const params = new URLSearchParams({
-      serviceKey: DATA_GO_KR_KEY,
-      servId: row.serv_id,
-    });
-    const res = await fetch(`${DETAIL_API}?${params}`, { cache: "no-store" });
-    if (!res.ok) return false;
-
-    const xml = await res.text();
-
-    const eligibility = parseXmlTag(xml, "tgtrDtlCn");
-    const selectionCriteria = parseXmlTag(xml, "slctCritCn");
-    const detailedContent = parseXmlTag(xml, "aplyDtlCn");
-    const applyMethod = parseXmlTag(xml, "aplWayContent");
-    const contactInfo = parseXmlTag(xml, "inqplCtadrList");
-    const requiredDocs = parseXmlTag(xml, "sbmsnDocCn");
-
-    const update: Record<string, string | null> = {
-      last_enriched_at: new Date().toISOString(),
-    };
-    if (eligibility) update.eligibility = eligibility.substring(0, 2000);
-    if (selectionCriteria) update.selection_criteria = selectionCriteria.substring(0, 2000);
-    if (detailedContent) update.detailed_content = detailedContent.substring(0, 5000);
-    if (applyMethod) update.apply_method = applyMethod.substring(0, 1000);
-    if (contactInfo) update.contact_info = contactInfo.substring(0, 1000);
-    if (requiredDocs) update.required_documents = requiredDocs.substring(0, 2000);
-
-    const { error } = await supabase
-      .from("welfare_programs")
-      .update(update)
-      .eq("id", row.id);
-
-    return !error;
-  } catch {
-    return false;
-  }
-}
-
-async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
-  if (!DATA_GO_KR_KEY) return { enriched: 0, error: "API key not set" };
-
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const { data: rows } = await supabase
-    .from("welfare_programs")
-    .select("id, serv_id")
-    .not("serv_id", "is", null)
-    .or(`last_enriched_at.is.null,last_enriched_at.lt.${sevenDaysAgo}`)
-    .limit(50);
-
-  if (!rows || rows.length === 0) return { enriched: 0, failed: 0, total_candidates: 0 };
-
-  let enriched = 0;
-  let failed = 0;
-  // 5개씩 병렬 처리
-  for (let i = 0; i < rows.length; i += 5) {
-    const batch = rows.slice(i, i + 5);
-    const results = await Promise.all(
-      batch.map((r) => enrichOne(supabase, r as { id: string; serv_id: string })),
-    );
-    enriched += results.filter(Boolean).length;
-    failed += results.filter((ok) => !ok).length;
-  }
-
-  return { enriched, failed, total_candidates: rows.length };
-}
-
-export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
+function checkAuth(request: NextRequest): NextResponse | null {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
   }
+  const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return null;
+}
+
+export async function POST(request: NextRequest) {
+  const fail = checkAuth(request);
+  if (fail) return fail;
   return runEnrichAndRespond("enrich (POST)");
 }
 
 export async function GET(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const fail = checkAuth(request);
+  if (fail) return fail;
   return runEnrichAndRespond("enrich (cron)");
 }
+
+export const maxDuration = 60;
