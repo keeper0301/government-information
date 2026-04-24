@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   recordConsent,
   PRIVACY_POLICY_VERSION,
@@ -65,6 +66,13 @@ export async function GET(request: Request) {
   }
 
   // 로그인 성공 → user_profiles 에 빈 프로필 보장 + 신규 사용자면 필수 동의 자동 기록
+  //
+  // ⚠️ admin client 로 처리하는 이유:
+  //   exchangeCodeForSession 직후 같은 요청 안에서는 세션 쿠키가 아직 반영되지 않아
+  //   SSR client 의 auth.uid() 가 null 로 평가됨. 그러면 user_profiles RLS
+  //   (auth.uid() = id) 때문에 insert 가 거부되는 타이밍 버그가 있음.
+  //   admin client 는 RLS 를 우회하므로 이 문제를 완전히 회피.
+  //
   // 1) 기존 프로필이 있는지 먼저 확인해서 '신규 사용자' 판정
   //    - 있음: 재로그인 — 동의 기록 생략
   //    - 없음: 첫 로그인 — 프로필 생성 + privacy_policy / terms 자동 기록
@@ -72,7 +80,8 @@ export async function GET(request: Request) {
   //    (실제 동의 UI 는 회원가입 폼에서, OAuth 는 로그인 페이지 안내로 대체)
   const user = data.user;
   if (user) {
-    const { data: existingProfile } = await supabase
+    const admin = createAdminClient();
+    const { data: existingProfile } = await admin
       .from("user_profiles")
       .select("id")
       .eq("id", user.id)
@@ -82,7 +91,7 @@ export async function GET(request: Request) {
 
     if (isNewUser) {
       // 프로필 행 생성 (동시 로그인 경쟁 방어 위해 upsert)
-      const { error: profileError } = await supabase
+      const { error: profileError } = await admin
         .from("user_profiles")
         .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
       if (profileError) {
@@ -136,8 +145,11 @@ export async function GET(request: Request) {
   // next 파라미터가 명시되지 않은 (= 기본값 "/") 신규 사용자는
   // 관심 분야 선택 권유 페이지로. 이미 골라뒀거나 명시 next 가 있으면 패스.
   // CEO 리뷰 Q2: 권유 (스킵 가능, 미선택 시 전체 알림).
+  //
+  // admin client 사용 — 위와 동일한 이유 (세션 쿠키 타이밍 문제 회피).
   if (user && next === "/") {
-    const { data: profile } = await supabase
+    const admin = createAdminClient();
+    const { data: profile } = await admin
       .from("user_profiles")
       .select("interests")
       .eq("id", user.id)

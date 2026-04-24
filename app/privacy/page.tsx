@@ -121,7 +121,7 @@ export default function PrivacyPage() {
         </Section>
 
         <Section title="10. 문의처">
-          <p>개인정보 관련 문의는 <a href="mailto:hello@keepioo.com" className="text-blue-500 underline">hello@keepioo.com</a> 으로 연락주세요. 영업일 기준 3일 이내 답변드립니다.</p>
+          <p>개인정보 관련 문의는 <a href="mailto:keeper0301@gmail.com" className="text-blue-500 underline">keeper0301@gmail.com</a> 으로 연락주세요. 영업일 기준 3일 이내 답변드립니다.</p>
         </Section>
       </div>
     </main>

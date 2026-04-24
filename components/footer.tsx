@@ -2,7 +2,7 @@ const footerLinks = [
   { label: "정책가이드", href: "/blog" },
   { label: "이용약관", href: "/terms" },
   { label: "개인정보처리방침", href: "/privacy" },
-  { label: "문의", href: "mailto:support@keepioo.com" },
+  { label: "문의", href: "mailto:keeper0301@gmail.com" },
 ];
 
 export function Footer() {
