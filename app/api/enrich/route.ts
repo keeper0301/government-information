@@ -46,11 +46,18 @@ async function pickCandidates(
   const okThreshold = new Date(Date.now() - COOLDOWN_OK_MS).toISOString();
   const failThreshold = new Date(Date.now() - COOLDOWN_FAIL_MS).toISOString();
 
-  // welfare / loan 각각 별도 쿼리 — select 문자열을 동적으로 만들면 supabase-js 타입 추론이 깨짐
+  // welfare / loan 각각 별도 쿼리 — select 문자열을 동적으로 만들면 supabase-js 타입 추론이 깨짐.
+  //
+  // 2026-04-25 naver-news-* 제외 — naver-news collector 가 welfare_programs 에 뉴스를
+  // 20000+ 건 저장해둔 상태라 nullsFirst 정렬 시 이 뉴스들이 먼저 뽑혀서 10건 전부
+  // skipped (applies 매칭 0건) → cron 실패 알림 반복. 근본 해결(뉴스를 news_posts 로
+  // 이전) 은 별개 작업, 여기서는 enrich 후보에서만 배제해 정상 후보(bokjiro/youthcenter)
+  // 가 뽑히도록 함.
   const [w, l] = await Promise.all([
     supabase
       .from("welfare_programs")
       .select("id, source_code, source_id, source_url, serv_id, raw_payload")
+      .not("source_code", "like", "naver-news-%")
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
