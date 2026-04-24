@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SearchBox } from "@/components/search-box";
 import { AlertStrip } from "@/components/alert-strip";
 import { ProgramList } from "@/components/program-list";
@@ -5,6 +6,7 @@ import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { AdSlot } from "@/components/ad-slot";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
+import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import {
   getTopWelfare,
   getTopLoans,
@@ -51,14 +53,24 @@ export default async function Home() {
     (initialProfile.age_group || initialProfile.region || initialProfile.occupation)
   );
 
-  // 4) 복지·대출 목록: 개인화 vs 일반 분기
-  const [welfare, loans] =
+  // 4) 복지·대출 목록: 개인화 vs 일반 분기 + 최근 블로그 3글 (병렬)
+  const [welfare, loans, recentPostsResult] = await Promise.all([
     hasProfile && initialProfile
-      ? await Promise.all([
-          getPersonalizedWelfare(initialProfile, 4),
-          getPersonalizedLoans(initialProfile, 3),
-        ])
-      : await Promise.all([getTopWelfare(4), getTopLoans(3)]);
+      ? getPersonalizedWelfare(initialProfile, 4)
+      : getTopWelfare(4),
+    hasProfile && initialProfile
+      ? getPersonalizedLoans(initialProfile, 3)
+      : getTopLoans(3),
+    supabase
+      .from("blog_posts")
+      .select(
+        "slug, title, meta_description, category, reading_time_min, published_at, cover_image",
+      )
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(3),
+  ]);
+  const recentPosts: BlogCardData[] = (recentPostsResult.data ?? []) as BlogCardData[];
 
   // 5) 섹션 제목도 상태에 따라 변경 (개인화 모드 사용자에게 명확히 인식시킴)
   const welfareTitle = hasProfile ? "나에게 맞는 복지 서비스" : "지금 신청 가능한 복지서비스";
@@ -127,10 +139,34 @@ export default async function Home() {
         </section>
       </div>
 
+      {/* Blog — 최근 가이드 글 (0건이면 숨김) */}
+      {recentPosts.length > 0 && (
+        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+          <div className="flex items-baseline justify-between mb-8">
+            <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+              정책 가이드 블로그
+            </h2>
+            <Link
+              href="/blog"
+              className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+            >
+              전체 보기 →
+            </Link>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {recentPosts.map((post) => (
+              <BlogCard key={post.slug} post={post} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Features */}
-      <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-        <FeatureGrid />
-      </section>
+      <div className="bg-grey-50">
+        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+          <FeatureGrid />
+        </section>
+      </div>
 
       {/* Ad */}
       <AdSlot />
