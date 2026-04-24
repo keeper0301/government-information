@@ -116,6 +116,20 @@ function decodeHtmlEntities(text: string): string {
   return current;
 }
 
+// ============================================================
+// stripHtmlTags — 태그만 제거해 평문을 돌려주는 가벼운 유틸
+// ============================================================
+// cleanDescription 은 정부 공고 본문용이라 줄바꿈·섹션 구분·라벨 삽입 같은
+// 구조화까지 해버려 blog meta_description 처럼 '한 줄 리드 문장' 에는 과함.
+// 이 함수는 태그 제거 + 엔티티 디코드 + 공백 정리까지만.
+// blog meta_description 에 <strong> 이 섞여 텍스트로 노출되는 사고 대응용.
+export function stripHtmlTags(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let text = decodeHtmlEntities(raw);
+  text = text.replace(/<[^>]+>/g, "");
+  return text.replace(/\s+/g, " ").trim();
+}
+
 export function cleanDescription(raw: string | null | undefined): string {
   if (!raw) return "";
   let text = raw;

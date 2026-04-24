@@ -328,6 +328,11 @@ export default async function AdminHomePage({
               desc="수집 현황·수동 trigger·카테고리별"
             />
             <ActionCard
+              href="/admin/blog"
+              title="블로그 글 관리"
+              desc="제목·도입부·본문·태그·발행 상태 수정"
+            />
+            <ActionCard
               href="/admin/enrich-detail"
               title="공고 상세 보강"
               desc="bokjiro·youthcenter Detail fetcher 즉시 실행"

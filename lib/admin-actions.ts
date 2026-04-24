@@ -18,7 +18,10 @@ export type AdminActionType =
   | "collect_news_manual"  // /api/collect-news 수동 트리거 (korea.kr RSS 즉시 수집)
   | "self_delete_requested" // 본인 탈퇴 요청 (pending_deletions insert, 30일 유예 시작)
   | "self_delete_restored"  // 유예 기간 내 복구 (pending_deletions row 삭제)
-  | "self_deleted";         // 최종 삭제 완료 — cron finalize 또는 즉시 삭제 요청 시. FK cascade 로 actor/target SET NULL
+  | "self_deleted"          // 최종 삭제 완료 — cron finalize 또는 즉시 삭제 요청 시. FK cascade 로 actor/target SET NULL
+  | "blog_edit"             // 블로그 글 수정 (title/meta/content/category/tags 등)
+  | "blog_publish"          // 미발행 → 발행 전환
+  | "blog_unpublish";       // 발행 → 미발행 전환 (임시 비공개)
 
 export type AdminActionRecord = {
   id: string;
@@ -218,4 +221,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   self_delete_requested: "본인 탈퇴 요청 (유예)",
   self_delete_restored: "본인 탈퇴 복구",
   self_deleted: "본인 탈퇴 최종 완료",
+  blog_edit: "블로그 글 수정",
+  blog_publish: "블로그 글 발행",
+  blog_unpublish: "블로그 글 비공개",
 };

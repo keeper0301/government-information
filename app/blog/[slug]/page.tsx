@@ -15,7 +15,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ArticleSchema, FAQSchema, BreadcrumbSchema } from "@/components/json-ld";
 import { GaPageTracker } from "@/components/ga-page-tracker";
-import { formatKoreanDate } from "@/lib/utils";
+import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 
@@ -202,10 +202,12 @@ export default async function BlogPostPage({
           {post.title}
         </h1>
 
-        {/* 요약 (도입부) */}
+        {/* 요약 (도입부) — meta_description 에 <strong> 같은 HTML 태그가
+            섞여 저장된 레거시 글이 있어 stripHtmlTags 로 평문화 후 노출.
+            태그는 안전하게 제거되고 강조는 어차피 도입부 1줄에 불필요. */}
         {post.meta_description && (
           <p className="text-[16px] md:text-[17px] text-grey-700 leading-[1.7] mb-8 pb-6 border-b border-grey-100">
-            {post.meta_description}
+            {stripHtmlTags(post.meta_description)}
           </p>
         )}
 
