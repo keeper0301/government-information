@@ -137,6 +137,53 @@ export async function getActorActions(
   );
 }
 
+// ━━━ 페이지네이션용 — 총 건수와 함께 반환 ━━━
+// /admin/my-actions 에서 페이지 이동용. 기존 getActorActions 와 병존 —
+// 반환 타입 다르므로 호출자가 필요에 맞춰 선택.
+// range(offset, offset+limit-1) + count:'exact' 로 한 쿼리에 처리.
+export async function getActorActionsPaged(
+  actorId: string,
+  { limit = 30, offset = 0 }: { limit?: number; offset?: number } = {},
+): Promise<{ records: AdminActionRecord[]; total: number }> {
+  const admin = createAdminClient();
+  const { data, error, count } = await admin
+    .from("admin_actions")
+    .select("id, actor_id, target_user_id, action, details, created_at", {
+      count: "exact",
+    })
+    .eq("actor_id", actorId)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.warn("[admin_actions.getActorActionsPaged] 조회 실패:", {
+      actorId,
+      message: error.message,
+    });
+    return { records: [], total: 0 };
+  }
+
+  const records = (data ?? []).map(
+    (r: {
+      id: string;
+      actor_id: string | null;
+      target_user_id: string | null;
+      action: string;
+      details: Record<string, unknown> | null;
+      created_at: string;
+    }) => ({
+      id: r.id,
+      actorId: r.actor_id,
+      targetUserId: r.target_user_id,
+      action: r.action as AdminActionType,
+      details: r.details,
+      createdAt: r.created_at,
+    }),
+  );
+
+  return { records, total: count ?? 0 };
+}
+
 // ━━━ 액션 타입 → 한글 라벨 ━━━
 // UI 표시용. 새 action 추가 시 여기도 매핑 추가.
 export const ACTION_LABELS: Record<AdminActionType, string> = {

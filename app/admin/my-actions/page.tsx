@@ -19,10 +19,16 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import {
-  getActorActions,
+  getActorActionsPaged,
   ACTION_LABELS,
   type AdminActionRecord,
 } from "@/lib/admin-actions";
+import { Pagination } from "@/components/pagination";
+
+// 페이지당 30건. 운영 초기엔 누적 건수 적어 체감 차이 없지만, 장기 운영 시
+// 수백 건 쌓이면 한 페이지 모두 렌더 부담 + SELECT 무게. 30 이면 모바일 2~3
+// 스크롤 길이.
+const PER_PAGE = 30;
 
 export const metadata: Metadata = {
   title: "내 수행 내역 | 어드민 | 정책알리미",
@@ -42,7 +48,11 @@ function getTargetHint(record: AdminActionRecord): string | null {
   return typeof email === "string" && email.length > 0 ? email : null;
 }
 
-export default async function MyActionsPage() {
+export default async function MyActionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -50,7 +60,21 @@ export default async function MyActionsPage() {
   if (!user) redirect("/login?next=/admin/my-actions");
   if (!isAdminUser(user.id)) redirect("/");
 
-  const actions = await getActorActions(user.id, 50);
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page || "1", 10));
+  const offset = (page - 1) * PER_PAGE;
+
+  const { records: actions, total } = await getActorActionsPaged(user.id, {
+    limit: PER_PAGE,
+    offset,
+  });
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  // 페이지네이션 URL 빌더 — 1페이지는 쿼리 없이 깨끗한 URL 유지
+  function buildUrl(overrides: Record<string, string>) {
+    const next = overrides.page ?? String(page);
+    return next === "1" ? "/admin/my-actions" : `/admin/my-actions?page=${next}`;
+  }
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -62,10 +86,11 @@ export default async function MyActionsPage() {
               ADMIN · 내 수행 내역
             </p>
             <h1 className="text-[22px] font-extrabold tracking-[-0.4px] text-grey-900">
-              최근 {actions.length}건
+              전체 {total.toLocaleString()}건
             </h1>
-            <p className="text-[12px] text-grey-600 mt-1">
+            <p className="text-[13px] text-grey-600 mt-1">
               감사 로그는 append-only — 수정·삭제 불가, 외부 신뢰 보증용
+              {totalPages > 1 && <> · {page} / {totalPages} 페이지</>}
             </p>
           </div>
           <Link href="/admin" className="text-[13px] text-blue-500 hover:underline">
@@ -131,8 +156,17 @@ export default async function MyActionsPage() {
           </div>
         )}
 
+        {/* 페이지네이션 — 1페이지일 때 자동 숨김 */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            buildUrl={buildUrl}
+          />
+        )}
+
         {/* 풋노트 */}
-        <p className="mt-8 text-[12px] text-grey-500 leading-[1.6]">
+        <p className="mt-8 text-[13px] text-grey-600 leading-[1.6]">
           액션 기록은 DB 트리거(018)로 UPDATE/DELETE/TRUNCATE 모두 차단됩니다.
           <br />
           수동 수정이 필요한 경우 임시 <code>DROP TRIGGER</code> → 수정 → 재생성 절차를 따르세요.
