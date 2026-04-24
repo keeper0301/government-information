@@ -8,8 +8,14 @@ import type { User } from "@supabase/supabase-js";
 // 로그인 상태에 따라 다른 UI를 보여주는 컴포넌트
 // - 로그인 안 됨: "로그인" 버튼 → /login 페이지로 이동
 // - 로그인 됨: 이메일 첫 글자 아바타 + 드롭다운(이메일 표시 + 로그아웃)
-// mobile=true 로 넘기면 햄버거 메뉴 안쪽 스타일로 렌더링됨
-export function UserMenu({ mobile = false }: { mobile?: boolean }) {
+// mobile=true 로 넘기면 햄버거 메뉴 안쪽 스타일로 렌더링됨.
+// onNavigate: mobile 모드에서 링크·로그아웃 선택 시 부모(Nav) 에 알려 햄버거 닫기용.
+type UserMenuProps = {
+  mobile?: boolean;
+  onNavigate?: () => void;
+};
+
+export function UserMenu({ mobile = false, onNavigate }: UserMenuProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +55,7 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
     const supabase = createClient();
     await supabase.auth.signOut();
     setOpen(false);
+    onNavigate?.();
     router.push("/");
     router.refresh();
   }
@@ -71,6 +78,7 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
       return (
         <a
           href="/login"
+          onClick={onNavigate}
           className="block px-4 py-3 text-[15px] font-semibold text-blue-500 no-underline"
         >
           로그인
@@ -99,12 +107,14 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
         </div>
         <a
           href="/mypage"
+          onClick={onNavigate}
           className="block px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg no-underline"
         >
           내 정보
         </a>
         <a
           href="/mypage/billing"
+          onClick={onNavigate}
           className="block px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg no-underline"
         >
           내 구독

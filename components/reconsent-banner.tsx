@@ -12,7 +12,7 @@
 // - /mypage·/admin·/login 등 특정 경로에서는 자동 숨김 (로그인/관리 플로우 방해 방지)
 // ============================================================
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 
 type Props = {
@@ -36,43 +36,51 @@ function labelOf(type: "privacy_policy" | "terms"): string {
   return type === "privacy_policy" ? "개인정보처리방침" : "이용약관";
 }
 
+// localStorage 의 스누즈 만료시각을 외부 store 로 구독해서 render 에서 바로 읽음.
+// (useEffect + setState 안티패턴을 피하기 위한 정석 패턴. SSR-safe · 크로스탭 동기화 덤.)
+function subscribeSnooze(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+function getSnoozeClient(): string | null {
+  try {
+    const until = localStorage.getItem(DISMISS_KEY);
+    // 만료 시각 지났으면 null 로 정규화 — 시간 경과에 따라 자동 재노출.
+    return until && new Date(until).getTime() > Date.now() ? until : null;
+  } catch {
+    return null;
+  }
+}
+function getSnoozeServer(): string | null {
+  // SSR 시엔 스누즈 없다고 가정 (localStorage 접근 불가).
+  // 초기 렌더 결과는 pathname·missing 조건으로 별도 가드됨.
+  return null;
+}
+
 export function ReconsentBanner({ missing }: Props) {
   const pathname = usePathname();
-  // SSR 시엔 숨김 (localStorage 접근 전). 클라이언트 마운트 후 조건 체크해서 표시.
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    // 이 경로는 배너 안 띄움
-    if (isHiddenPath(pathname)) {
-      setVisible(false);
-      return;
-    }
-    // 스누즈 만료 체크
-    try {
-      const until = localStorage.getItem(DISMISS_KEY);
-      if (until && new Date(until).getTime() > Date.now()) {
-        setVisible(false);
-        return;
-      }
-    } catch {
-      // localStorage 접근 실패 (사파리 프라이빗 등) → 그냥 노출
-    }
-    setVisible(true);
-  }, [pathname]);
+  const snoozedUntil = useSyncExternalStore(
+    subscribeSnooze,
+    getSnoozeClient,
+    getSnoozeServer,
+  );
 
   function handleDismiss() {
-    setVisible(false);
     try {
       const until = new Date(
         Date.now() + SNOOZE_HOURS * 60 * 60 * 1000,
       ).toISOString();
       localStorage.setItem(DISMISS_KEY, until);
+      // 같은 탭에서는 storage 이벤트 발생 안 함 → 수동 dispatch 로 store 갱신.
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: DISMISS_KEY, newValue: until }),
+      );
     } catch {
-      // localStorage 못 써도 세션 동안은 숨겨짐 (state 가 false)
+      // localStorage 못 써도 현재 화면엔 계속 배너 떠있음 (다음 방문 때 다시 판정).
     }
   }
 
-  if (!visible || missing.length === 0) return null;
+  if (snoozedUntil || isHiddenPath(pathname) || missing.length === 0) return null;
 
   // "개인정보처리방침·이용약관" 또는 "개인정보처리방침" 등
   const labelList = missing.map(labelOf).join("·");

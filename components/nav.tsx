@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./user-menu";
 
@@ -20,11 +20,6 @@ const items = [
 export function Nav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  // 페이지 이동 시 모바일 메뉴 닫기
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
 
   // 현재 경로와 메뉴 링크 비교
   function isActive(href: string) {
@@ -127,6 +122,7 @@ export function Nav() {
             <a
               key={item.href}
               href={item.href}
+              onClick={() => setMobileOpen(false)}
               aria-current={isActive(item.href) ? "page" : undefined}
               className={`block px-4 py-3 text-[15px] rounded-lg no-underline transition-colors ${
                 isActive(item.href)
@@ -137,8 +133,8 @@ export function Nav() {
               {item.label}
             </a>
           ))}
-          {/* 모바일용 로그인/로그아웃 영역 */}
-          <UserMenu mobile />
+          {/* 모바일용 로그인/로그아웃 영역 — 선택 시 햄버거 닫기 */}
+          <UserMenu mobile onNavigate={() => setMobileOpen(false)} />
         </div>
       )}
     </nav>
