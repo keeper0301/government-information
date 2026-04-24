@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserConsents } from "@/lib/consent";
 import { ProfileForm } from "./profile-form";
+import { ConsentsPanel } from "./consents-panel";
 
 export const metadata: Metadata = {
   title: "내 정보 — 정책알리미",
-  description: "나의 기본 정보를 관리하고 맞춤 알림을 정확하게 받으세요.",
+  description: "나의 기본 정보를 관리하고 동의 내역을 확인하세요.",
 };
+
+export const dynamic = "force-dynamic";
 
 // 내 정보 페이지 (서버 컴포넌트)
 // - 로그인 안 되어 있으면 /login?next=/mypage 로 보냄
@@ -23,12 +27,15 @@ export default async function MyPage() {
     redirect("/login?next=/mypage");
   }
 
-  // 본인 프로필 조회 (RLS가 본인 것만 허용)
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("age_group, region, occupation, interests")
-    .eq("id", user.id)
-    .maybeSingle();
+  // 본인 프로필 + 동의 현황 병렬 조회 (둘 다 페이지 렌더링에 필요)
+  const [{ data: profile }, consents] = await Promise.all([
+    supabase
+      .from("user_profiles")
+      .select("age_group, region, occupation, interests")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getUserConsents(user.id),
+  ]);
 
   return (
     <main className="max-w-[640px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
@@ -51,7 +58,7 @@ export default async function MyPage() {
         </div>
       </div>
 
-      {/* 실제 편집 가능한 폼 (클라이언트 컴포넌트) */}
+      {/* 프로필 편집 (나이·지역·직업·관심사) */}
       <ProfileForm
         initial={{
           age_group: profile?.age_group ?? null,
@@ -60,6 +67,24 @@ export default async function MyPage() {
           interests: profile?.interests ?? [],
         }}
       />
+
+      {/* 동의 관리 섹션 — 필수/선택 동의 현황과 토글 */}
+      <section className="mt-12 pt-8 border-t border-grey-100">
+        <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900 mb-2">
+          동의 관리
+        </h2>
+        <p className="text-[14px] text-grey-600 mb-6 leading-[1.6]">
+          이용약관·개인정보·마케팅 동의 내역을 확인하고 선택 동의를 관리할 수 있어요.
+        </p>
+
+        <ConsentsPanel initialConsents={consents} />
+
+        <p className="mt-6 text-[12px] text-grey-500 leading-[1.6]">
+          필수 동의(이용약관·개인정보처리방침)는 서비스 이용을 위해 철회할 수 없습니다.
+          <br />
+          철회를 원하시면 keeper0301@gmail.com 으로 탈퇴 문의를 주세요.
+        </p>
+      </section>
     </main>
   );
 }
