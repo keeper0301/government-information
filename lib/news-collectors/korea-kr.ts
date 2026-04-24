@@ -18,7 +18,11 @@
 //   3. dept_mss.xml  (중소벤처기업부) — 소상공인·창업·지원금
 //   4. dept_molit.xml (국토교통부)  — 주거·전세·월세
 //   5. dept_mogef.xml (성평등가족부) — 출산·육아·한부모
-//   6. expdoc.xml   (정책자료)     — 연감·백서·보고서 (카테고리: policy-doc)
+//   6. dept_moe.xml  (교육부)       — 학자금·장학금·학습 (2026-04-24 추가)
+//   7. dept_mafra.xml (농림축산식품부) — 농어민 지원 (2026-04-24 추가)
+//   8. dept_mcst.xml (문화체육관광부) — 문화바우처·관광지원 (2026-04-24 추가)
+//   9. dept_mois.xml (행정안전부)   — 지자체 지원·주민 복지 (2026-04-24 추가)
+//  10. expdoc.xml   (정책자료)     — 연감·백서·보고서 (카테고리: policy-doc)
 //
 // 제외: policy.xml (부처별과 중복 + 노이즈), pressrelease.xml (저품질)
 // ============================================================
@@ -70,6 +74,30 @@ const FEEDS: Feed[] = [
     category: "news",
     url: "https://www.korea.kr/rss/dept_mogef.xml",
     ministry: "성평등가족부",
+  },
+  {
+    code: "korea-kr-dept-moe",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_moe.xml",
+    ministry: "교육부",
+  },
+  {
+    code: "korea-kr-dept-mafra",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_mafra.xml",
+    ministry: "농림축산식품부",
+  },
+  {
+    code: "korea-kr-dept-mcst",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_mcst.xml",
+    ministry: "문화체육관광부",
+  },
+  {
+    code: "korea-kr-dept-mois",
+    category: "news",
+    url: "https://www.korea.kr/rss/dept_mois.xml",
+    ministry: "행정안전부",
   },
   {
     code: "korea-kr-expdoc",
