@@ -3,6 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardAction,
+  CardContent,
+} from "@/components/ui/card";
 
 const AGE_OPTIONS = ["10대", "20대", "30대", "40대", "50대", "60대 이상"];
 // 지역: Progressive Disclosure — 인기 4개를 기본, 나머지 14개는 확장 시
@@ -95,30 +103,33 @@ export function HomeRecommendCard({ initial }: Props) {
 
   return (
     <div className="w-full">
-      {/* 입력 카드 — 얇은 테두리 + 흰 배경 */}
-      <div className="bg-white border border-grey-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-        {/* 카드 내부 헤더 + 진행 카운터 */}
-        <div className="mb-5">
-          <div className="flex items-baseline justify-between mb-0.5">
-            <h2 className="text-[17px] font-bold tracking-[-0.3px] text-grey-900">
-              나에게 맞는 정책 찾기
-            </h2>
-            <span
-              className={`text-[12px] font-bold tabular-nums ${
-                completedCount === 3 ? "text-blue-500" : "text-grey-500"
-              }`}
-              aria-label={`${completedCount}개 중 3개 입력 완료`}
-            >
-              {completedCount}/3
-            </span>
-          </div>
-          <p className="text-[13px] text-grey-600 leading-[1.5]">
+      {/* shadcn Card 시맨틱 구조로 교체 (2026-04-24) — 브랜드 비주얼(흰 배경·
+          얇은 테두리·부드러운 그림자·큰 모서리·p-6)은 className 오버라이드로
+          100% 유지. 기본 shadcn 스타일(py-4 ring) 을 껐고, keepioo 톤 유지. */}
+      <Card className="bg-white border border-grey-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] ring-0 gap-0 py-0">
+        <CardHeader className="px-0 pb-0 mb-5">
+          <CardTitle className="text-[17px] font-bold tracking-[-0.3px] text-grey-900 leading-normal">
+            나에게 맞는 정책 찾기
+          </CardTitle>
+          <CardDescription className="text-[13px] text-grey-600 leading-[1.5]">
             3가지만 고르면 30초 안에 보여드려요
             {autoFilled && (
               <span className="text-blue-500 font-medium"> · 내 정보에서 불러왔어요</span>
             )}
-          </p>
-        </div>
+          </CardDescription>
+          {/* 진행 카운터 — CardAction 슬롯(우측 상단)에 배치. CardHeader grid
+              레이아웃이 자동 정렬. */}
+          <CardAction
+            className={`text-[12px] font-bold tabular-nums self-start ${
+              completedCount === 3 ? "text-blue-500" : "text-grey-500"
+            }`}
+            aria-label={`${completedCount}개 중 3개 입력 완료`}
+          >
+            {completedCount}/3
+          </CardAction>
+        </CardHeader>
+
+        <CardContent className="px-0">
 
         {/* 필터: 찾는 정보 (전체/복지/대출) — 기본 "전체" */}
         <Field label="찾는 정보">
@@ -198,7 +209,8 @@ export function HomeRecommendCard({ initial }: Props) {
             submitLabel
           )}
         </button>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
