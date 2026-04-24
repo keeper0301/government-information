@@ -32,6 +32,7 @@ import {
   ACTION_LABELS,
   type AdminActionRecord,
 } from "@/lib/admin-actions";
+import { DeleteUserButton } from "./delete-button";
 
 export const metadata: Metadata = {
   title: "사용자 상세 | 어드민 | 정책알리미",
@@ -92,6 +93,64 @@ async function resetAiQuotaToday(formData: FormData) {
   revalidatePath(`/admin/users/${userId}`);
 }
 
+// ━━ Server Action: 어드민 수동 사용자 탈퇴 처리 ━━
+// 사용 시나리오: "탈퇴 방법을 모르겠어요" / "로그인이 안 돼서 탈퇴 못 해요" 문의 대응.
+// admin.auth.admin.deleteUser(targetUserId) 로 auth.users 삭제 → CASCADE 로 연관 데이터 전부 제거.
+// 감사 로그는 삭제 전에 먼저 기록 — 삭제 후엔 target_user_id 가 NULL 로 되지만 action·actor 는 남음.
+// 어드민 본인 삭제는 절대 금지 (UI 에서도 숨기지만 action 에서도 재확인 — 이중 방어).
+async function deleteUserAsAdmin(formData: FormData) {
+  "use server";
+  const actor = await requireAdmin();
+
+  const targetUserId = String(formData.get("userId") ?? "").trim();
+  if (!targetUserId) return;
+
+  // 본인 삭제 차단 — 실수로 자기 계정 날리면 모든 관리 권한 잃음
+  if (targetUserId === actor.id) {
+    console.warn("[admin/delete-user] 어드민 본인 삭제 시도 차단", {
+      actorId: actor.id,
+    });
+    return;
+  }
+
+  const admin = createAdminClient();
+
+  // 대상 이메일을 details 에 기록 (삭제 후엔 auth.users 에서 조회 불가)
+  let targetEmail: string | null = null;
+  try {
+    const { data } = await admin.auth.admin.getUserById(targetUserId);
+    targetEmail = data?.user?.email ?? null;
+  } catch {
+    // 조회 실패는 무시 (details 만 비워서 진행)
+  }
+
+  // 감사 로그 먼저 — 삭제 순간에 target_user_id 는 SET NULL 되지만 action/actor/details 는 영구
+  try {
+    await logAdminAction({
+      actorId: actor.id,
+      targetUserId,
+      action: "manual_delete_user",
+      details: { email: targetEmail },
+    });
+  } catch (logErr) {
+    console.warn("[admin/delete-user] 감사 로그 실패:", logErr);
+  }
+
+  const { error: delErr } = await admin.auth.admin.deleteUser(targetUserId);
+  if (delErr) {
+    console.error("[admin/delete-user] auth.users 삭제 실패:", {
+      targetUserId,
+      message: delErr.message,
+    });
+    // 실패 시 사용자 상세 페이지 유지 (redirect 안 함)
+    revalidatePath(`/admin/users/${targetUserId}`);
+    return;
+  }
+
+  // 성공 — /admin 검색 페이지로 이동 (현재 페이지는 404 가 될 것)
+  redirect("/admin");
+}
+
 // NEXT_PUBLIC_SUPABASE_URL(https://{ref}.supabase.co) 에서 project ref 추출.
 // auth.users 대시보드 직링크 만들 때 사용.
 function getSupabaseProjectRef(): string | null {
@@ -118,8 +177,9 @@ export default async function AdminUserDetailPage({
 }: {
   params: Promise<{ userId: string }>;
 }) {
-  await requireAdmin();
+  const actor = await requireAdmin();
   const { userId } = await params;
+  const isSelf = actor.id === userId;
 
   const admin = createAdminClient();
 
@@ -339,6 +399,26 @@ export default async function AdminUserDetailPage({
           <Panel title="관리자 액션 로그 (최근 20건)">
             <AdminActionsRows actions={adminActions} />
           </Panel>
+
+          {/* 위험 작업 — 최하단 배치 (의도치 않은 접근 방지).
+              본인 계정이면 DeleteUserButton 이 내부에서 안내문만 표시. */}
+          <section className="bg-white border border-red/30 rounded-xl p-5 mt-5">
+            <h2 className="text-[14px] font-bold text-red mb-2">
+              ⚠️ 위험 작업
+            </h2>
+            <p className="text-[13px] text-grey-700 mb-4 leading-[1.6]">
+              이 사용자를 즉시 탈퇴 처리합니다. 프로필·구독·알림·AI 사용량·동의
+              기록 등 모든 관련 데이터가 영구 삭제되며 복구할 수 없어요.
+              <br />
+              문의 대응 시 <b>반드시 사용자 본인 확인 후</b> 진행하세요.
+            </p>
+            <DeleteUserButton
+              action={deleteUserAsAdmin}
+              userId={userId}
+              userEmail={u.email ?? null}
+              isSelf={isSelf}
+            />
+          </section>
 
         </div>
       </div>
