@@ -13,7 +13,9 @@ export const metadata: Metadata = {
 };
 
 const CATEGORIES = ["전체", "대출", "보증", "창업지원", "지원금", "소상공인지원"];
-const PER_PAGE = 10;
+// 페이지당 20건 — 기존 10건은 1312건이 132페이지로 쪼개져 사용자 탐색 부담이 큼.
+// 모바일에서도 한 화면에 5~6건이 보일 정도로 리스트 row 가 얇아 20건도 부담 적음.
+const PER_PAGE = 20;
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | undefined }>;

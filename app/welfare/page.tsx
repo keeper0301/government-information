@@ -13,7 +13,9 @@ export const metadata: Metadata = {
 };
 
 const CATEGORIES = ["전체", "주거", "취업", "양육", "의료", "소득"];
-const PER_PAGE = 10;
+// 페이지당 20건 — 기존 10건은 7122건이 713페이지로 쪼개져 사용자 탐색 부담이 큼.
+// loan/page.tsx 와 동일 수치로 통일.
+const PER_PAGE = 20;
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | undefined }>;
