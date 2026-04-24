@@ -134,13 +134,25 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/reset-password`);
   }
 
-  // ━━━ GA4 auth_event 쿼리 마커 ━━━
+  // ━━━ GA4 auth_event + auth_method 쿼리 마커 ━━━
   // /auth/callback 은 서버 route 라 gtag 직접 호출 불가.
-  // redirect URL 에 auth_event 쿼리를 실어 클라이언트(AuthEventTracker) 가
-  // useEffect 로 감지 후 trackEvent 호출, URL 에서 쿼리 제거.
+  // redirect URL 에 auth_event + auth_method 쿼리를 실어 클라이언트(AuthEventTracker) 가
+  // useEffect 로 감지 후 trackEvent 호출 + URL 에서 쿼리 제거.
   //
   // 위 블록의 isNewUser 그대로 재사용 (신규=signup, 기존=login).
+  //
+  // auth_method: Supabase user.app_metadata.provider 로 추출.
+  //   - "kakao" · "google" : OAuth 소셜 로그인
+  //   - "email"             : 매직링크 or 이메일+비밀번호 가입 확인
+  //   - undefined/null      : 추출 실패 → 전달 안 함
+  //
+  // 이메일+비밀번호 로그인은 callback 을 거치지 않음 (login/page.tsx 가 직접
+  // method: "email_password" 로 trackEvent). callback 을 거치는 "email" provider
+  // 는 매직링크 또는 가입 확인이라 "email_link" 로 구분해 넘김.
   const authEventParam = user ? (isNewUser ? "signup" : "login") : "";
+  const rawProvider = user?.app_metadata?.provider as string | undefined;
+  const authMethodParam =
+    rawProvider === "email" ? "email_link" : (rawProvider ?? "");
 
   // ━━━ 온보딩 분기 ━━━
   // next 파라미터가 명시되지 않은 (= 기본값 "/") 신규 사용자는
@@ -159,22 +171,24 @@ export async function GET(request: Request) {
       Array.isArray(profile?.interests) && profile!.interests!.length > 0;
     if (!hasInterests) {
       return NextResponse.redirect(
-        appendAuthEvent(`${origin}/onboarding/topics`, authEventParam),
+        appendAuthEvent(`${origin}/onboarding/topics`, authEventParam, authMethodParam),
       );
     }
   }
 
   // 정상 로그인 → 원래 가려던 페이지 또는 홈으로
   return NextResponse.redirect(
-    appendAuthEvent(`${origin}${next}`, authEventParam),
+    appendAuthEvent(`${origin}${next}`, authEventParam, authMethodParam),
   );
 }
 
-// redirect 대상 URL 에 auth_event 쿼리 덧붙이는 헬퍼.
-// 빈 문자열이면 원본 URL 그대로 (비밀번호 재설정 등 이벤트 대상 아닌 흐름).
-function appendAuthEvent(urlStr: string, event: string): string {
+// redirect 대상 URL 에 auth_event + auth_method 쿼리 덧붙이는 헬퍼.
+// event 가 빈 문자열이면 원본 URL 그대로 (비밀번호 재설정 등 이벤트 대상 아닌 흐름).
+// method 는 선택적 — 빈 문자열이면 auth_method 쿼리 생략.
+function appendAuthEvent(urlStr: string, event: string, method: string): string {
   if (!event) return urlStr;
   const u = new URL(urlStr);
   u.searchParams.set("auth_event", event);
+  if (method) u.searchParams.set("auth_method", method);
   return u.toString();
 }

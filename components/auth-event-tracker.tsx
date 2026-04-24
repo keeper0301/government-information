@@ -28,14 +28,22 @@ export function AuthEventTracker() {
     const event = searchParams.get("auth_event");
     if (event !== "signup" && event !== "login") return;
 
+    // auth_method 있으면 GA4 파라미터로 포함 (kakao/google/email_link).
+    // 없으면 파라미터 생략 (이메일+비번 로그인은 callback 거치지 않아 여기 안 들어옴).
+    const method = searchParams.get("auth_method");
+    const params: Record<string, string> = {};
+    if (method) params.method = method;
+
     trackEvent(
       event === "signup" ? EVENTS.SIGNUP_COMPLETED : EVENTS.LOGIN_COMPLETED,
+      Object.keys(params).length > 0 ? params : undefined,
     );
 
-    // URL 에서 auth_event 쿼리만 제거. 다른 쿼리 (next 등) 는 유지.
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("auth_event");
-    const rest = params.toString();
+    // URL 에서 auth_event · auth_method 쿼리 제거. 다른 쿼리 (next 등) 는 유지.
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("auth_event");
+    next.delete("auth_method");
+    const rest = next.toString();
     router.replace(rest ? `${pathname}?${rest}` : pathname, { scroll: false });
   }, [searchParams, router, pathname]);
 
