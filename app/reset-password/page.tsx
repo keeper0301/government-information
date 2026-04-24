@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { translateAuthError } from "@/lib/auth-errors";
+import { translateAuthError, classifyAuthError } from "@/lib/auth-errors";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 비밀번호 재설정 메일 링크 → /auth/callback?type=recovery → 여기로 도착
 // 이 시점에 Supabase 가 임시 세션을 만들어둔 상태이고
@@ -44,10 +45,18 @@ export default function ResetPasswordPage() {
     // 클라이언트 검증 (UX용)
     if (password.length < 8) {
       setError(translateAuthError("password should be at least"));
+      trackEvent(EVENTS.PASSWORD_RESET_FAILED, {
+        reason: "weak_password",
+        stage: "client",
+      });
       return;
     }
     if (password !== passwordConfirm) {
       setError(translateAuthError("passwords do not match"));
+      trackEvent(EVENTS.PASSWORD_RESET_FAILED, {
+        reason: "password_mismatch",
+        stage: "client",
+      });
       return;
     }
 
@@ -58,6 +67,10 @@ export default function ResetPasswordPage() {
 
     if (updateError) {
       setError(translateAuthError(updateError.message));
+      trackEvent(EVENTS.PASSWORD_RESET_FAILED, {
+        reason: classifyAuthError(updateError.message),
+        stage: "server",
+      });
       setSubmitting(false);
       return;
     }
@@ -65,6 +78,7 @@ export default function ResetPasswordPage() {
     // 성공 — 보안을 위해 모든 기기의 세션을 끊고 새 비번으로 다시 로그인하게 함
     // scope: 'global' 옵션으로 다른 디바이스/브라우저의 로그인 상태도 무효화
     // (비밀번호 분실 재설정의 핵심 의도 — 공격자가 세션 갖고 있어도 끊김)
+    trackEvent(EVENTS.PASSWORD_RESET_COMPLETED);
     await supabase.auth.signOut({ scope: "global" });
     router.push("/login?reset=success");
   }

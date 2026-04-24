@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { translateAuthError } from "@/lib/auth-errors";
+import { translateAuthError, classifyAuthError } from "@/lib/auth-errors";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 비밀번호를 잊은 사용자를 위한 페이지
 // - 이메일을 입력 받아 Supabase 가 재설정 링크를 메일로 보냄
@@ -38,10 +39,16 @@ export default function ForgotPasswordPage() {
     // (이메일 미존재 등은 Supabase 가 200 으로 처리하므로 보통 여기 안 들어옴)
     if (resetError && /network|failed to fetch/i.test(resetError.message)) {
       setError(translateAuthError(resetError.message));
+      trackEvent(EVENTS.PASSWORD_RESET_FAILED, {
+        reason: classifyAuthError(resetError.message),
+        stage: "request",
+      });
       return;
     }
 
-    // 그 외엔 항상 동일 안내 (이메일 존재 여부 노출 방지)
+    // 그 외엔 항상 동일 안내 (이메일 존재 여부 노출 방지).
+    // 이벤트도 발송 — 실제 메일 발송 여부와 무관하게 "요청 클릭" 퍼널 지표.
+    trackEvent(EVENTS.PASSWORD_RESET_REQUESTED);
     setSent(true);
   }
 

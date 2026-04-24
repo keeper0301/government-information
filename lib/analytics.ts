@@ -34,6 +34,10 @@ export const EVENTS = {
   SIGNUP_FAILED: "signup_failed",         // 가입 요청 실패 — reason 파라미터로 원인 세분
   LOGIN_COMPLETED: "login_completed",
   LOGIN_FAILED: "login_failed",           // 로그인 실패 — reason 파라미터 (wrong_password·user_not_found 등)
+  // 비밀번호 재설정 퍼널 (이탈 지점 추적)
+  PASSWORD_RESET_REQUESTED: "password_reset_requested", // /forgot-password 에서 메일 발송 요청
+  PASSWORD_RESET_COMPLETED: "password_reset_completed", // /reset-password 에서 새 비번 저장 완료
+  PASSWORD_RESET_FAILED: "password_reset_failed",       // 재설정 실패 — reason 파라미터
   // 계정 생명주기 (이탈 퍼널 분석)
   ACCOUNT_DELETED: "account_deleted",             // 최종 삭제 (30일 경과 cron 또는 즉시 요청)
   ACCOUNT_DELETION_BLOCKED: "account_deletion_blocked",
