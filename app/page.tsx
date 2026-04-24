@@ -192,28 +192,29 @@ export default async function Home() {
 
       {/* News — 최근 정책 소식 (korea.kr 큐레이션, 수집 0건이면 숨김).
           의도: 블로그(자체 가이드) → 뉴스(외부 정책 발표) 순으로 자연스러운
-          정보 소비 흐름. 뉴스는 발표 → 공고화 순서의 앞쪽을 담당. */}
+          정보 소비 흐름. 뉴스는 발표 → 공고화 순서의 앞쪽을 담당.
+          배경: 기존 bg-grey-50 회색 띠 제거 — 바로 위 블로그 섹션(크림)과
+          시각 리듬 통일. NewsCard 는 자체 흰 배경+그림자라 크림 위에서도
+          대비 충분. */}
       {recentNews.length > 0 && (
-        <div className="bg-grey-50">
-          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-            <div className="flex items-baseline justify-between mb-8">
-              <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-                최근 정책 소식
-              </h2>
-              <Link
-                href="/news"
-                className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-              >
-                전체 보기 →
-              </Link>
-            </div>
-            <div className="grid gap-5 md:grid-cols-3">
-              {recentNews.map((post) => (
-                <NewsCard key={post.slug} post={post} />
-              ))}
-            </div>
-          </section>
-        </div>
+        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+          <div className="flex items-baseline justify-between mb-8">
+            <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+              최근 정책 소식
+            </h2>
+            <Link
+              href="/news"
+              className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+            >
+              전체 보기 →
+            </Link>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {recentNews.map((post) => (
+              <NewsCard key={post.slug} post={post} />
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Features */}

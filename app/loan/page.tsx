@@ -180,15 +180,18 @@ export default async function LoanPage({ searchParams }: Props) {
         <div className="text-sm text-grey-600 mb-4">
           {count || 0}개의 프로그램
         </div>
-        <div className="flex flex-col">
-          {programs.length > 0 ? (
-            programs.map((p) => <ProgramRow key={p.id} program={p} />)
-          ) : (
-            <div className="py-20 text-center text-grey-600">
-              검색 결과가 없습니다.
-            </div>
-          )}
-        </div>
+        {/* row 들을 흰 카드로 감싸 크림 배경 대비 가독성 향상 (홈 ProgramList 와 동일 스타일) */}
+        {programs.length > 0 ? (
+          <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
+            {programs.map((p) => (
+              <ProgramRow key={p.id} program={p} />
+            ))}
+          </div>
+        ) : (
+          <div className="py-20 text-center text-grey-600 bg-white border border-grey-200 rounded-2xl">
+            검색 결과가 없습니다.
+          </div>
+        )}
       </section>
 
       {/* Ad */}

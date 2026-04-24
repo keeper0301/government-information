@@ -429,11 +429,11 @@ export default async function CalendarPage({
             </span>
           </div>
           {upcomingStarts.length > 0 ? (
-            <div className="flex flex-col">
+            <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
               {upcomingStarts.map((e) => renderEventRow(e, kstNow, month))}
             </div>
           ) : (
-            <div className="py-10 text-center text-[13px] text-grey-600 bg-grey-50 rounded-lg">
+            <div className="py-10 text-center text-[13px] text-grey-600 bg-white border border-grey-200 rounded-2xl">
               이번 달 남은 신규 시작이 없어요.
             </div>
           )}
@@ -450,11 +450,11 @@ export default async function CalendarPage({
             </span>
           </div>
           {upcomingEndings.length > 0 ? (
-            <div className="flex flex-col">
+            <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
               {upcomingEndings.map((e) => renderEventRow(e, kstNow, month))}
             </div>
           ) : (
-            <div className="py-10 text-center text-[13px] text-grey-600 bg-grey-50 rounded-lg">
+            <div className="py-10 text-center text-[13px] text-grey-600 bg-white border border-grey-200 rounded-2xl">
               이번 달 남은 마감 예정이 없어요.
             </div>
           )}
