@@ -1,13 +1,14 @@
 // ============================================================
-// /api/collect-news/[province] — 광역별 네이버 뉴스 수집 (cron)
+// /api/collect-news/[province] — 광역별 네이버 정책정보 수집 (cron)
 // ============================================================
 // vercel.json 의 17개 cron 이 각자 다른 province 코드로 호출.
-// 광역 1개 + 그 광역의 시군구 모두 처리 → news_posts upsert.
+// 광역 1개 + 그 광역의 시군구 모두 처리.
 //
-// 가장 큰 경기도 (32 단위 × 18 키워드 × 0.3s ≈ 173s) 도 maxDuration
-// 300s 안에 들어옴. 작은 광역 (세종 1단위 = 5s, 광주·대전 6단위 ≈ 32s).
+// 2026-04-24 사장님 결정: 결과를 news_posts 가 아니라 welfare_programs /
+// loan_programs 에 직접 저장. 사용자가 /welfare /loan 검색 시 잡히게
+// 하기 위함. 분기는 키워드 기반 (대출·보증·융자 → loan, 그 외 → welfare).
 //
-// 응답: { province, total, upserted, searchUnits, errors }
+// 응답: { province, total, welfare_upserted, loan_upserted, searchUnits, errors }
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
