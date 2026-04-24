@@ -25,7 +25,7 @@ export default async function Home() {
   // 1) 로그인 상태 + urgent 리스트 먼저 확보 (이 둘은 프로필 유무와 무관)
   const supabase = await createClient();
   const [urgents, userResult] = await Promise.all([
-    getUrgentPrograms(3),
+    getUrgentPrograms(30),
     supabase.auth.getUser(),
   ]);
 
