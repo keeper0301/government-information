@@ -148,7 +148,10 @@ async function runEnrichAndRespond(jobLabel: string) {
         )
         .not("description", "is", null)
         .or(`last_llm_enriched_at.is.null,last_llm_enriched_at.lt.${sevenDaysAgo}`)
-        .or("eligibility.is.null,benefits.is.null,apply_method.is.null")
+        // extractFieldsFromText 가 추출하는 모든 welfare 필드 포함
+        // (초반엔 eligibility 99.9% NULL 이라 어차피 전체 커버되지만,
+        // 핵심 필드 다 채워진 후 required_documents 만 NULL 인 row 가 영구 누락되는 걸 방지)
+        .or("eligibility.is.null,benefits.is.null,apply_method.is.null,required_documents.is.null")
         .order("last_llm_enriched_at", { ascending: true, nullsFirst: true })
         .limit(WELFARE_BATCH),
       supabase
@@ -158,7 +161,10 @@ async function runEnrichAndRespond(jobLabel: string) {
         )
         .not("description", "is", null)
         .or(`last_llm_enriched_at.is.null,last_llm_enriched_at.lt.${sevenDaysAgo}`)
-        .or("eligibility.is.null,loan_amount.is.null,apply_method.is.null")
+        // extractFieldsFromText 가 추출하는 모든 loan 필드 포함
+        // (interest_rate 72.9% · repayment_period 66.9% · required_documents 100% NULL →
+        // 누락 시 장기적으로 이 필드만 남은 row 가 영구 보강 안 됨)
+        .or("eligibility.is.null,loan_amount.is.null,interest_rate.is.null,repayment_period.is.null,apply_method.is.null,required_documents.is.null")
         .order("last_llm_enriched_at", { ascending: true, nullsFirst: true })
         .limit(LOAN_BATCH),
     ]);
