@@ -8,7 +8,7 @@
 // 실제 기록은 /api/consent 가 처리 (IP·UA 서버에서 추출).
 // ============================================================
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type ConsentType =
@@ -23,6 +23,12 @@ type ConsentStatus = {
   version: string;
   consentedAt: string;
   isActive: boolean;
+};
+
+// 필수 동의의 현재 시행 버전 (서버에서 주입)
+type CurrentVersions = {
+  privacy_policy: string;
+  terms: string;
 };
 
 // 표시용 메타 (라벨, 설명, 필수 여부)
@@ -66,8 +72,10 @@ const CONSENT_META: {
 
 export function ConsentsPanel({
   initialConsents,
+  currentVersions,
 }: {
   initialConsents: ConsentStatus[];
+  currentVersions: CurrentVersions;
 }) {
   const router = useRouter();
   // 현재 active 상태를 Map 으로 관리 (낙관적 업데이트)
@@ -82,14 +90,38 @@ export function ConsentsPanel({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // 동의 시점 표시용 맵 (있을 때만)
-  const consentedAtMap: Record<string, string> = {};
+  // 서버에서 refresh 된 initialConsents 로 로컬 state 동기화
+  // (지금 동의 버튼 누른 후 router.refresh() 로 새 데이터 들어왔을 때 반영)
+  useEffect(() => {
+    const next: Record<string, boolean> = {};
+    for (const c of initialConsents) {
+      next[c.consentType] = c.isActive;
+    }
+    setActive(next as Record<ConsentType, boolean>);
+  }, [initialConsents]);
+
+  // 기록 요약 맵 (active 인 동의의 version·consentedAt)
+  const recordMap: Record<string, { version: string; consentedAt: string }> = {};
   for (const c of initialConsents) {
-    if (c.isActive) consentedAtMap[c.consentType] = c.consentedAt;
+    if (c.isActive) {
+      recordMap[c.consentType] = {
+        version: c.version,
+        consentedAt: c.consentedAt,
+      };
+    }
+  }
+
+  // 필수 동의 중 "기록 없음" 또는 "구버전" 이면 재동의 필요로 판정
+  function needsAck(type: ConsentType, required: boolean): boolean {
+    if (!required) return false;
+    if (type !== "privacy_policy" && type !== "terms") return false;
+    const rec = recordMap[type];
+    if (!rec) return true; // 기록 없음
+    return rec.version < currentVersions[type]; // 구버전
   }
 
   async function handleToggle(type: ConsentType, required: boolean) {
-    if (required) return; // 필수는 토글 불가
+    if (required) return; // 필수는 토글 불가 (철회는 탈퇴 흐름)
     const currentlyActive = active[type] === true;
     const nextAction = currentlyActive ? "withdraw" : "record";
 
@@ -122,6 +154,32 @@ export function ConsentsPanel({
     }
   }
 
+  // 필수 동의 "지금 동의" 버튼용 — 기록 없거나 구버전 → 현재 버전으로 record
+  async function handleAck(type: ConsentType) {
+    setBusy(type);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "record", consentType: type }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "실패" }));
+        throw new Error(data.error || "실패");
+      }
+      setMessage("동의를 기록했어요.");
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "처리 중 문제가 생겼어요.";
+      setError(msg);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div>
       {/* 알림 메시지 */}
@@ -139,11 +197,14 @@ export function ConsentsPanel({
       <div className="space-y-3">
         {CONSENT_META.map(({ type, label, description, required }) => {
           const isOn = active[type] === true;
-          const consentedAt = consentedAtMap[type];
+          const needs = needsAck(type, required);
+          const consentedAt = recordMap[type]?.consentedAt;
           return (
             <div
               key={type}
-              className="flex items-start justify-between gap-4 p-4 border border-grey-200 rounded-lg"
+              className={`flex items-start justify-between gap-4 p-4 border rounded-lg ${
+                needs ? "border-red/40 bg-red/5" : "border-grey-200"
+              }`}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -163,18 +224,35 @@ export function ConsentsPanel({
                 <p className="text-[13px] text-grey-600 leading-[1.5] mb-1">
                   {description}
                 </p>
-                {consentedAt && (
-                  <p className="text-[12px] text-grey-500">
-                    {new Date(consentedAt).toLocaleDateString("ko-KR")} 동의
+                {needs ? (
+                  <p className="text-[12px] text-red font-medium">
+                    ⚠️ 최신 방침에 대한 동의 기록이 없어요. 확인해 주세요.
                   </p>
+                ) : (
+                  consentedAt && (
+                    <p className="text-[12px] text-grey-500">
+                      {new Date(consentedAt).toLocaleDateString("ko-KR")} 동의
+                    </p>
+                  )
                 )}
               </div>
 
-              {/* 토글 또는 고정 상태 표시 */}
+              {/* 필수 + 재동의 필요 → 지금 동의 버튼 / 필수 + 최신 → "동의" 표시 / 선택 → 토글 */}
               {required ? (
-                <div className="text-[13px] font-semibold text-grey-700 pt-1">
-                  동의
-                </div>
+                needs ? (
+                  <button
+                    type="button"
+                    onClick={() => handleAck(type)}
+                    disabled={busy === type}
+                    className="shrink-0 px-3 py-1.5 text-[13px] font-semibold text-white bg-red rounded-md border-none cursor-pointer hover:opacity-90 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    지금 동의
+                  </button>
+                ) : (
+                  <div className="text-[13px] font-semibold text-grey-700 pt-1">
+                    동의
+                  </div>
+                )
               ) : (
                 <button
                   type="button"

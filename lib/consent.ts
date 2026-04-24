@@ -133,3 +133,27 @@ export async function hasActiveConsent(
   if (minVersion && c.version < minVersion) return false;
   return true;
 }
+
+// ━━━ 재동의가 필요한지 체크 ━━━
+// 필수 동의(privacy_policy, terms) 중 active 가 아니거나 버전이 현재보다 낮으면 needs=true.
+// - 2026-04-24 이전 가입자 (consent_log 없음) → 둘 다 missing
+// - 이미 동의했지만 방침 개정 후 → missing 에 포함
+// 루트 layout 에서 호출해 배너 렌더 조건으로 사용.
+export async function needsReconsent(userId: string): Promise<{
+  needs: boolean;
+  missing: Array<"privacy_policy" | "terms">;
+}> {
+  const consents = await getUserConsents(userId);
+
+  const missing: Array<"privacy_policy" | "terms"> = [];
+
+  const p = consents.find(
+    (c) => c.consentType === "privacy_policy" && c.isActive,
+  );
+  if (!p || p.version < PRIVACY_POLICY_VERSION) missing.push("privacy_policy");
+
+  const t = consents.find((c) => c.consentType === "terms" && c.isActive);
+  if (!t || t.version < TERMS_VERSION) missing.push("terms");
+
+  return { needs: missing.length > 0, missing };
+}

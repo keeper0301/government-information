@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getUserConsents } from "@/lib/consent";
+import {
+  getUserConsents,
+  PRIVACY_POLICY_VERSION,
+  TERMS_VERSION,
+} from "@/lib/consent";
 import { ProfileForm } from "./profile-form";
 import { ConsentsPanel } from "./consents-panel";
 
@@ -77,7 +81,13 @@ export default async function MyPage() {
           이용약관·개인정보·마케팅 동의 내역을 확인하고 선택 동의를 관리할 수 있어요.
         </p>
 
-        <ConsentsPanel initialConsents={consents} />
+        <ConsentsPanel
+          initialConsents={consents}
+          currentVersions={{
+            privacy_policy: PRIVACY_POLICY_VERSION,
+            terms: TERMS_VERSION,
+          }}
+        />
 
         <p className="mt-6 text-[12px] text-grey-500 leading-[1.6]">
           필수 동의(이용약관·개인정보처리방침)는 서비스 이용을 위해 철회할 수 없습니다.

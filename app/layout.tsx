@@ -3,6 +3,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { ChatbotPanel } from "@/components/chatbot-panel";
+import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import "./globals.css";
 
@@ -78,6 +79,7 @@ export default function RootLayout({
           description="공공기관 데이터 기반 복지·대출 정보 안내 서비스"
         />
         <Nav />
+        <ReconsentBannerContainer />
         {children}
         <Footer />
         <ChatbotPanel />
