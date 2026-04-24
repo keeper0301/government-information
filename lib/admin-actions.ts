@@ -14,7 +14,8 @@ export type AdminActionType =
   | "update_tier"         // 구독 티어 수동 변경 (Phase 2)
   | "manual_alert_send"   // 수동 알림 재전송 (Phase 2)
   | "alimtalk_test"       // 어드민 테스트 발송 (대행사·템플릿 심사 후 검증)
-  | "enrich_detail_manual"; // /api/enrich 수동 트리거 (공고 빈 필드 채움 급할 때)
+  | "enrich_detail_manual" // /api/enrich 수동 트리거 (공고 빈 필드 채움 급할 때)
+  | "collect_news_manual"; // /api/collect-news 수동 트리거 (korea.kr RSS 즉시 수집)
 
 export type AdminActionRecord = {
   id: string;
@@ -142,4 +143,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   manual_alert_send: "수동 알림 전송",
   alimtalk_test: "알림톡 테스트 발송",
   enrich_detail_manual: "공고 상세 수동 보강",
+  collect_news_manual: "정책 뉴스 수동 수집",
 };

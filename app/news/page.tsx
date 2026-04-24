@@ -13,6 +13,7 @@ import {
   type NewsCategory,
 } from "@/components/news-card";
 import { Pagination } from "@/components/pagination";
+import { AdSlot } from "@/components/ad-slot";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -149,6 +150,16 @@ export default async function NewsIndexPage({ searchParams }: Props) {
             totalPages={totalPages}
             buildUrl={buildUrl}
           />
+        )}
+
+        {/* AdSense — 그리드·페이지네이션 아래·공공누리 출처 위.
+            목록 소비 마친 독자에게 자연 정지점. 연속 슬롯 배치는 AdSense
+            정책 위반 위험 → 페이지당 1개만. 라이선스 영역과 광고 구분 위해
+            공공누리 안내와 mt 간격. */}
+        {list.length > 0 && (
+          <div className="mt-10">
+            <AdSlot />
+          </div>
         )}
 
         {/* 공공누리 출처 표기 — KOGL-Type1 라이선스 의무. 페이지 하단에 명시. */}

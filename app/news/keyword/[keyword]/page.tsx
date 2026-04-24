@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { Pagination } from "@/components/pagination";
 import { RelatedPrograms } from "@/components/related-programs";
+import { AdSlot } from "@/components/ad-slot";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { findRelatedPrograms } from "@/lib/news-matching";
 
@@ -131,6 +132,13 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
         {/* 페이지네이션 */}
         {totalPages > 1 && (
           <Pagination currentPage={page} totalPages={totalPages} buildUrl={buildUrl} />
+        )}
+
+        {/* AdSense 슬롯 — 키워드별 뉴스 다 읽은 독자에게. 라이선스 안내 앞. */}
+        {list.length > 0 && (
+          <div className="mt-10">
+            <AdSlot />
+          </div>
         )}
 
         {/* 공공누리 출처 표기 */}

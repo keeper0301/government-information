@@ -137,6 +137,10 @@ export default async function AdminHomePage({
           <Link href="/admin/enrich-detail" className="text-blue-500 underline">
             공고 상세 보강
           </Link>
+          <span className="text-grey-300">·</span>
+          <Link href="/admin/news" className="text-blue-500 underline">
+            정책 뉴스 운영
+          </Link>
         </p>
       </div>
     </main>

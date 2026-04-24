@@ -6,11 +6,13 @@
 // Phase 2-B 에서 관련 공고 매칭 · JSON-LD · AdSense 추가 예정.
 // ============================================================
 
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ShareButton } from "@/components/share-button";
 import { RelatedPrograms } from "@/components/related-programs";
+import { AdSlot } from "@/components/ad-slot";
 import {
   NEWS_CATEGORY_LABEL,
   NEWS_CATEGORY_COLOR,
@@ -124,12 +126,12 @@ export default async function NewsDetailPage({ params }: Props) {
 
       {/* Breadcrumb */}
       <nav className="text-sm text-grey-700 mb-6">
-        <a
+        <Link
           href="/news"
           className="font-medium no-underline hover:text-blue-500 transition-colors"
         >
           정책 소식
-        </a>
+        </Link>
         <span className="mx-2 text-grey-600">&gt;</span>
         <span className="text-grey-900 font-medium">
           {post.title.length > 30
@@ -208,6 +210,13 @@ export default async function NewsDetailPage({ params }: Props) {
       {/* 공유 */}
       <div className="mb-8">
         <ShareButton />
+      </div>
+
+      {/* AdSense 슬롯 — 원문 CTA·공유 끝, 관련 공고 섹션 바로 위.
+          AdSense 정책상 "위치" 가 중요: 본문 전부 읽은 독자에게 자연스럽게 광고 →
+          키피오 USP 인 관련 공고 로 이어지는 흐름. 광고가 차단기 역할 안 하게 배치. */}
+      <div className="my-8 -mx-10 max-md:-mx-6">
+        <AdSlot />
       </div>
 
       {/* 관련 공고 — keepioo 의 진짜 차별점. 뉴스 읽고 바로 신청 가능한 공고로. */}
