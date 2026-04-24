@@ -7,6 +7,7 @@ import { FeatureGrid } from "@/components/feature-grid";
 import { AdSlot } from "@/components/ad-slot";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
+import { NewsCard, type NewsCardData } from "@/components/news-card";
 import {
   getTopWelfare,
   getTopLoans,
@@ -53,8 +54,8 @@ export default async function Home() {
     (initialProfile.age_group || initialProfile.region || initialProfile.occupation)
   );
 
-  // 4) 복지·대출 목록: 개인화 vs 일반 분기 + 최근 블로그 3글 (병렬)
-  const [welfare, loans, recentPostsResult] = await Promise.all([
+  // 4) 복지·대출 목록: 개인화 vs 일반 분기 + 최근 블로그 3글 + 최근 뉴스 3건 (병렬)
+  const [welfare, loans, recentPostsResult, recentNewsResult] = await Promise.all([
     hasProfile && initialProfile
       ? getPersonalizedWelfare(initialProfile, 4)
       : getTopWelfare(4),
@@ -69,8 +70,18 @@ export default async function Home() {
       .not("published_at", "is", null)
       .order("published_at", { ascending: false })
       .limit(3),
+    // 최근 정책 소식 3건 — 전체 카테고리(news/press/policy-doc) 최신순.
+    // 홈은 첫 인상이므로 키워드 필터 없이 최신만 노출 — /news 페이지에서 카테고리 탭으로 탐색.
+    supabase
+      .from("news_posts")
+      .select(
+        "slug, title, summary, category, ministry, thumbnail_url, published_at",
+      )
+      .order("published_at", { ascending: false })
+      .limit(3),
   ]);
   const recentPosts: BlogCardData[] = (recentPostsResult.data ?? []) as BlogCardData[];
+  const recentNews: NewsCardData[] = (recentNewsResult.data ?? []) as NewsCardData[];
 
   // 5) 섹션 제목도 상태에 따라 변경 (개인화 모드 사용자에게 명확히 인식시킴)
   const welfareTitle = hasProfile ? "나에게 맞는 복지 서비스" : "지금 신청 가능한 복지서비스";
@@ -161,6 +172,32 @@ export default async function Home() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* News — 최근 정책 소식 (korea.kr 큐레이션, 수집 0건이면 숨김).
+          의도: 블로그(자체 가이드) → 뉴스(외부 정책 발표) 순으로 자연스러운
+          정보 소비 흐름. 뉴스는 발표 → 공고화 순서의 앞쪽을 담당. */}
+      {recentNews.length > 0 && (
+        <div className="bg-grey-50">
+          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+            <div className="flex items-baseline justify-between mb-8">
+              <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+                최근 정책 소식
+              </h2>
+              <Link
+                href="/news"
+                className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+              >
+                전체 보기 →
+              </Link>
+            </div>
+            <div className="grid gap-5 md:grid-cols-3">
+              {recentNews.map((post) => (
+                <NewsCard key={post.slug} post={post} />
+              ))}
+            </div>
+          </section>
+        </div>
       )}
 
       {/* Features */}
