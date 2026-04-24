@@ -35,10 +35,17 @@ export default async function WelfarePage({ searchParams }: Props) {
   if (category !== "전체") query = query.eq("category", category);
   if (region !== "전체") query = query.eq("region", region);
   if (target !== "전체") query = query.ilike("target", `%${target}%`);
-  if (search)
-    query = query.or(
-      `title.ilike.%${search}%,description.ilike.%${search}%`,
-    );
+  if (search) {
+    // 공백 기준 토큰 AND 매칭 — loan/page.tsx 와 동일 로직 (multi-word 검색 대응).
+    const tokens = search
+      .trim()
+      .split(/\s+/)
+      .map((t) => t.replace(/[,()%:*]/g, ""))
+      .filter((t) => t.length > 0);
+    for (const token of tokens) {
+      query = query.or(`title.ilike.%${token}%,description.ilike.%${token}%`);
+    }
+  }
 
   const today = new Date().toISOString().split("T")[0];
   query = query

@@ -33,10 +33,21 @@ export default async function LoanPage({ searchParams }: Props) {
 
   if (category !== "전체") query = query.eq("category", category);
   if (target !== "전체") query = query.ilike("target", `%${target}%`);
-  if (search)
-    query = query.or(
-      `title.ilike.%${search}%,description.ilike.%${search}%`,
-    );
+  if (search) {
+    // 공백 기준 토큰 AND 매칭 — "대전 소상공인 경영위기" 같은 multi-word 가
+    // title "[대전] 소상공인 경영위기극복" 에 매칭되도록. 단일 substring ilike 는
+    // 괄호·공백 때문에 0건으로 빠졌음. 각 토큰은 title·description 중 한 곳에라도
+    // 있으면 통과(OR), 여러 토큰은 .or() 체이닝으로 AND 결합 (PostgREST 기본 동작).
+    // PostgREST 특수문자(,()*% : )는 쿼리 파싱을 깨뜨리므로 사전 제거.
+    const tokens = search
+      .trim()
+      .split(/\s+/)
+      .map((t) => t.replace(/[,()%:*]/g, ""))
+      .filter((t) => t.length > 0);
+    for (const token of tokens) {
+      query = query.or(`title.ilike.%${token}%,description.ilike.%${token}%`);
+    }
+  }
 
   const today = new Date().toISOString().split("T")[0];
   query = query
