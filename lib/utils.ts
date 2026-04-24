@@ -124,8 +124,13 @@ export function cleanDescription(raw: string | null | undefined): string {
   text = decodeHtmlEntities(text);
 
   // 2) 블록 태그 → 줄바꿈. 그 외 태그는 공백으로 제거.
+  //    <p> 는 문단 구분자라 \n\n 로 두 줄 띄움 — 정책브리핑 뉴스 본문에서
+  //    "앞으로 … 예정이다. 이에 아이를 … 기대된다." 같은 문장이 <p></p><p></p>
+  //    로 분리돼 오는데, 한 줄 \n 만 넣으면 filter·whitespace 정리 단계에서
+  //    붙어버려 한 덩어리처럼 렌더됐음. \n\n 이어야 문단 간격 살아남.
   text = text.replace(/<br\s*\/?\s*>/gi, "\n");
-  text = text.replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n");
+  text = text.replace(/<\/p>/gi, "\n\n");
+  text = text.replace(/<\/(div|li|h[1-6]|tr)>/gi, "\n");
   text = text.replace(/<li[^>]*>/gi, "• ");
   text = text.replace(/<[^>]+>/g, " ");
 
@@ -189,7 +194,6 @@ export function cleanDescription(raw: string | null | undefined): string {
         .replace(/[ \t]+/g, " ")
         .trim(),
     )
-    .filter((line) => line.length > 0)
     .join("\n");
 
   // 6) 3줄 이상 공백 줄은 2줄로 제한 (단락 간격 통일)
