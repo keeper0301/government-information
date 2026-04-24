@@ -155,7 +155,7 @@ export function SearchBox() {
                       index === activeIndex ? "bg-grey-50" : "bg-white hover:bg-grey-50"
                     }`}
                   >
-                    <SearchIcon className="w-4 h-4 text-grey-400 shrink-0" />
+                    <SearchIcon className="w-4 h-4 text-grey-500 shrink-0" />
                     <span className="text-sm font-medium text-grey-900 truncate flex-1">
                       {item.title}
                     </span>

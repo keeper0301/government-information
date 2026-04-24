@@ -145,7 +145,7 @@ export function AlertList() {
                     <span className="text-[15px] text-grey-600 truncate">
                       {program?.title || "프로그램 정보 없음"}
                     </span>
-                    <div className="text-[13px] text-grey-400 mt-1">
+                    <div className="text-[13px] text-grey-500 mt-1">
                       {sub.program_type === "welfare" ? "복지" : "대출"} · 해제됨
                     </div>
                   </div>

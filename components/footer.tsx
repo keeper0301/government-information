@@ -50,7 +50,7 @@ export function Footer() {
         </div>
       </div>
       <div
-        className="text-xs text-grey-400 leading-[1.7]"
+        className="text-xs text-grey-500 leading-[1.7]"
         style={{ fontFamily: "'EB Garamond', Georgia, serif", fontStyle: "italic" }}
       >
         <span style={{ color: "#3D2F22" }}>

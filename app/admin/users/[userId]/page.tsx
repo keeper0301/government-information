@@ -492,7 +492,7 @@ function ConsentsRows({ consents }: { consents: ConsentStatus[] }) {
                   <span className="text-grey-600 text-[12px]">{dateStr}</span>
                 </div>
               ) : (
-                <span className="text-grey-400">기록 없음</span>
+                <span className="text-grey-500">기록 없음</span>
               )}
             </div>
           </div>

@@ -61,7 +61,7 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
         {/* Page numbers */}
         {pages.map((p, i) =>
           p === "..." ? (
-            <span key={`dot-${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-grey-400">
+            <span key={`dot-${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-grey-500">
               ···
             </span>
           ) : (
@@ -100,7 +100,7 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
       </div>
 
       {/* Page info */}
-      <div className="text-center mt-3 text-xs text-grey-400">
+      <div className="text-center mt-3 text-xs text-grey-500">
         {currentPage} / {totalPages} 페이지
       </div>
     </section>

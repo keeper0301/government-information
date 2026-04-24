@@ -115,7 +115,7 @@ export default async function AdminHomePage({
         </form>
 
         {/* 풋노트 */}
-        <p className="mt-8 text-[12px] text-grey-400 leading-[1.6]">
+        <p className="mt-8 text-[12px] text-grey-500 leading-[1.6]">
           이 페이지는 운영자 전용입니다. 권한은 환경변수 <code>ADMIN_USER_IDS</code> 로 관리합니다.
           <br />
           검색 가능한 정보: 구독 상태 · AI 사용량 (지난 30일) · 알림 발송 이력 (지난 30일).

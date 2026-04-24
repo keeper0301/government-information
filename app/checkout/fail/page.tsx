@@ -47,7 +47,7 @@ export default async function CheckoutFailPage({ searchParams }: { searchParams:
           </h1>
           <p className="text-[14px] text-grey-700 leading-[1.6]">{friendly}</p>
           {code && (
-            <p className="text-[12px] text-grey-400 mt-2">에러 코드: {code}</p>
+            <p className="text-[12px] text-grey-500 mt-2">에러 코드: {code}</p>
           )}
         </div>
 
@@ -66,7 +66,7 @@ export default async function CheckoutFailPage({ searchParams }: { searchParams:
           </a>
         </div>
 
-        <p className="text-[12px] text-grey-400 text-center mt-8 leading-[1.6]">
+        <p className="text-[12px] text-grey-500 text-center mt-8 leading-[1.6]">
           계속 문제가 있다면 <a href="mailto:keeper0301@gmail.com" className="underline">고객센터</a>로 문의해주세요.
         </p>
       </div>

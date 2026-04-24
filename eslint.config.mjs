@@ -13,6 +13,33 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // ━━━ 접근성·WCAG AA 가드 ━━━
+    // text-grey-400 (#A9A08D, 대비 2.5:1) 은 WCAG AA 작은 본문(4.5:1)·큰 텍스트(3:1)
+    // 모두 미달. placeholder 전용으로만 허용.
+    // 본문·메타 텍스트는 text-grey-500+ (WCAG 통과) 사용.
+    //
+    // 정규식 (?<!:) 로 placeholder:text-grey-400 · group-hover:text-grey-400 같은
+    // pseudo-class prefix 는 예외. 장식(SVG 아이콘 색)이나 텍스트 의미 없는 dash 등
+    // 정당한 단독 사용은 // eslint-disable-next-line 로 suppress.
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "Literal[value=/(?<!:)(?<!\\w)text-grey-400(?!\\w)/]",
+          message:
+            "text-grey-400 은 WCAG AA 미달(대비 2.5:1). placeholder 전용이며 본문·메타는 text-grey-500+ 사용.",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/(?<!:)(?<!\\w)text-grey-400(?!\\w)/]",
+          message:
+            "text-grey-400 은 WCAG AA 미달(대비 2.5:1). placeholder 전용이며 본문·메타는 text-grey-500+ 사용.",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

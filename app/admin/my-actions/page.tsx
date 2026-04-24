@@ -114,10 +114,10 @@ export default async function MyActionsPage() {
                           </Link>
                         ) : hint ? (
                           <span className="text-grey-700" title="대상 사용자 이미 탈퇴됨">
-                            {hint} <span className="text-grey-400">(탈퇴)</span>
+                            {hint} <span className="text-grey-500">(탈퇴)</span>
                           </span>
                         ) : (
-                          <span className="text-grey-400">—</span>
+                          <span className="text-grey-500">—</span>
                         )}
                       </td>
                       <td className="py-2 text-grey-700 text-[12px] font-mono break-all">
