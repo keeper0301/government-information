@@ -44,16 +44,17 @@ export function ProfileForm({ initial }: { initial: Profile }) {
     return () => clearTimeout(t);
   }, [saved]);
 
-  // 폼이 바뀌면 성공 배지를 즉시 해제 → "저장됐어요 ✓" 상태에서
-  // 사용자가 다른 칩을 눌렀을 때 "이미 저장된 줄" 오인하지 않도록.
-  // 성공 배지가 뜬 동안에도 폼 변경 = 미저장 상태로 복귀.
-  useEffect(() => {
+  // 폼 변경 시 setForm + 성공 배지 즉시 해제를 한 번에 처리.
+  // "저장됐어요 ✓" 상태에서 다른 칩을 눌렀을 때 사용자가 "이미 저장된 줄" 오인하지
+  // 않도록 이벤트 핸들러에서 직접 해제 (derived-state effect 안티패턴 제거).
+  function updateForm(updater: (prev: Profile) => Profile) {
+    setForm(updater);
     setSaved(false);
-  }, [form]);
+  }
 
   // 관심사는 체크박스 다중 선택 → 토글 방식
   function toggleInterest(value: string) {
-    setForm((prev) => ({
+    updateForm((prev) => ({
       ...prev,
       interests: prev.interests.includes(value)
         ? prev.interests.filter((i) => i !== value)
@@ -95,7 +96,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         label="나이대"
         options={AGE_GROUPS}
         value={form.age_group}
-        onChange={(v) => setForm((p) => ({ ...p, age_group: v }))}
+        onChange={(v) => updateForm((p) => ({ ...p, age_group: v }))}
       />
 
       {/* 지역 */}
@@ -103,7 +104,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         label="거주 지역"
         options={REGIONS}
         value={form.region}
-        onChange={(v) => setForm((p) => ({ ...p, region: v }))}
+        onChange={(v) => updateForm((p) => ({ ...p, region: v }))}
       />
 
       {/* 직업 */}
@@ -111,7 +112,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         label="직업"
         options={OCCUPATIONS}
         value={form.occupation}
-        onChange={(v) => setForm((p) => ({ ...p, occupation: v }))}
+        onChange={(v) => updateForm((p) => ({ ...p, occupation: v }))}
       />
 
       {/* 관심사 (다중 선택) */}

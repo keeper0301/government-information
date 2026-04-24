@@ -1,36 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
 
-// 회원가입 직후 사용자가 보는 안내 페이지
+// 가입 확인 메일 안내 페이지 (Suspense wrapper).
+// useSearchParams 는 Next.js 16 prerender 에서 bail-out 유발 → Suspense 로 격리.
+export default function SignupSentPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupSentContent />
+    </Suspense>
+  );
+}
+
+// 실제 안내 컨텐츠 (useSearchParams 사용).
 // - "확인 메일을 보냈어요" 라고 알려주고
 // - 메일이 안 오면 다시 보낼 수 있는 버튼 제공
 // - 로그인 페이지로 가는 링크 제공
 //
-// 쿼리 파라미터로 ?email=xxx 가 들어옴 (이전 페이지에서 넘겨줌)
-// 직접 URL 입력으로 들어와 이메일이 없으면 /signup 으로 보냄 (사용자 혼란 방지)
-export default function SignupSentPage() {
+// 쿼리 파라미터로 ?email=xxx 가 들어옴 (이전 페이지에서 넘겨줌).
+// 직접 URL 입력으로 들어와 이메일이 없으면 /signup 으로 보냄 (사용자 혼란 방지).
+function SignupSentContent() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  // URL 의 email 파라미터를 첫 렌더에서 읽어 state 초기값으로 사용.
+  // useSearchParams 는 SSR·hydration 양쪽에서 동일한 URL 을 반환해 mismatch 없음.
+  const [email] = useState(() => searchParams.get("email") ?? "");
   // 다시 보내기 버튼 상태 (전송 중 / 전송 완료 / 에러)
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [error, setError] = useState("");
 
-  // URL 에서 이메일 읽기. 없으면 가입 페이지로 돌려보냄
-  // (이메일 없는 안내 페이지는 보일 이유가 없음 — 다시보내기 버튼도 못 씀)
+  // 이메일이 없으면 가입 페이지로 돌려보냄 (side effect 만, setState 없음).
+  // 이메일 없는 안내 페이지는 보일 이유가 없음 — 다시보내기 버튼도 못 씀.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const e = params.get("email");
-    if (e) {
-      setEmail(e);
-    } else {
+    if (!email) {
       router.replace("/signup");
     }
-  }, [router]);
+  }, [email, router]);
 
   // 확인 메일 다시 보내기
   // - Supabase 의 resend API: type='signup' 으로 가입 확인 메일을 재발송

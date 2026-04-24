@@ -1,18 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 
-// 로그인 페이지
+// 로그인 페이지 (Suspense wrapper).
+// useSearchParams 는 Next.js 16 의 prerender 경계에서 bail-out 유발 →
+// Suspense 경계로 감싸서 정적 렌더 부분과 격리.
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+// 실제 로그인 폼 컴포넌트 (useSearchParams 사용).
 // - 카카오/구글 소셜 로그인 버튼 (가장 간편)
 // - 이메일 + 비밀번호 로그인 (기본 모드)
 // - 이메일 매직링크 로그인 (비밀번호 없는 분을 위한 대안, 토글로 전환)
 // - 회원가입 / 비밀번호 분실 보조 링크
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // 이메일 폼 모드 — 'password' (기본) 또는 'magic' (메일 링크)
   const [mode, setMode] = useState<"password" | "magic">("password");
@@ -23,50 +35,51 @@ export default function LoginPage() {
 
   // 매직링크 전송 완료 표시
   const [magicSent, setMagicSent] = useState(false);
-  // 비밀번호 변경 직후 진입 시 보여줄 성공 알림 (?reset=success)
-  const [resetSuccess, setResetSuccess] = useState(false);
 
-  const [error, setError] = useState("");
   // 어떤 액션이 실행 중인지 (중복 클릭 방지)
   const [loading, setLoading] = useState<
     "kakao" | "google" | "password" | "magic" | null
   >(null);
 
-  // 로그인 성공 후 돌아갈 페이지 (?next=/xxx)
-  // 예: /alerts 에 접근하려다 로그인 페이지로 온 사용자는 로그인 후 /alerts 로 복귀
-  const [next, setNext] = useState("/");
+  // URL 쿼리는 마운트 시 1회만 읽어 state 초기값으로 사용 (useState lazy initializer).
+  // useSearchParams 는 SSR·hydration 양쪽에서 동일한 URL 을 읽어주므로 mismatch 없음.
+  // 이후 effect 에서 일회성 파라미터(error, reset)만 URL 에서 제거하고 next 는 유지.
 
-  // URL 쿼리 파라미터 읽기 (?next, ?error, ?reset=success)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const nextParam = params.get("next");
-    // 내부 경로만 허용 (외부 리다이렉트 방지)
-    // 콜백 라우트의 safeNext 와 동일 규칙으로 통일:
-    // - "/" 로 시작해야 (절대 경로)
-    // - "//" 또는 "/\\" 시작은 외부 사이트로 해석될 수 있어 차단
+  // 로그인 성공 후 돌아갈 페이지 (?next=/xxx).
+  // 내부 경로만 허용 (외부 리다이렉트 방지) — 콜백 라우트 safeNext 와 동일 규칙:
+  // - "/" 로 시작해야 (절대 경로)
+  // - "//" 또는 "/\\" 시작은 외부 사이트로 해석될 수 있어 차단
+  const next = useMemo(() => {
+    const nextParam = searchParams.get("next");
     if (
       nextParam &&
       nextParam.startsWith("/") &&
       !nextParam.startsWith("//") &&
       !nextParam.startsWith("/\\")
     ) {
-      setNext(nextParam);
+      return nextParam;
     }
-    // 콜백에서 넘어온 에러 메시지를 한국어로 번역해서 표시
-    const errMsg = params.get("error");
-    if (errMsg) {
-      setError(translateAuthError(errMsg));
-    }
-    // 비밀번호 변경 완료 후 진입 시 알림
-    if (params.get("reset") === "success") {
-      setResetSuccess(true);
-    }
-    // URL 에서 일회성 파라미터(error, reset)만 제거 (next 는 유지)
-    if (errMsg || params.get("reset")) {
-      const cleanParams = new URLSearchParams(window.location.search);
-      cleanParams.delete("error");
-      cleanParams.delete("reset");
-      const query = cleanParams.toString();
+    return "/";
+  }, [searchParams]);
+
+  // 콜백에서 넘어온 에러 메시지 (일회성 + form 제출 실패 시 덮어씀)
+  const [error, setError] = useState(() => {
+    const errMsg = searchParams.get("error");
+    return errMsg ? translateAuthError(errMsg) : "";
+  });
+  // 비밀번호 변경 직후 진입 시 보여줄 성공 알림 (?reset=success)
+  const [resetSuccess] = useState(
+    () => searchParams.get("reset") === "success"
+  );
+
+  // URL 에서 일회성 파라미터(error, reset)만 제거 — next 는 유지.
+  // setState 는 하지 않음 (initial state 는 이미 위에서 설정됨).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") || params.get("reset")) {
+      params.delete("error");
+      params.delete("reset");
+      const query = params.toString();
       window.history.replaceState(
         {},
         "",
