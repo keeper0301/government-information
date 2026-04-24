@@ -1,28 +1,28 @@
 {
   "crons": [
-    {
-      "path": "/api/collect",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/collect-news",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/enrich",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cleanup",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/alert-dispatch",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/finalize-deletions",
-      "schedule": "0 6 * * *"
-    }
+    { "path": "/api/collect-news", "schedule": "0 2 * * *" },
+    { "path": "/api/enrich", "schedule": "0 3 * * *" },
+    { "path": "/api/collect", "schedule": "0 4 * * *" },
+    { "path": "/api/cleanup", "schedule": "0 5 * * *" },
+    { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
+    { "path": "/api/alert-dispatch", "schedule": "0 7 * * *" },
+
+    { "path": "/api/collect-news/seoul", "schedule": "0 14 * * *" },
+    { "path": "/api/collect-news/busan", "schedule": "5 14 * * *" },
+    { "path": "/api/collect-news/daegu", "schedule": "10 14 * * *" },
+    { "path": "/api/collect-news/incheon", "schedule": "15 14 * * *" },
+    { "path": "/api/collect-news/gwangju", "schedule": "20 14 * * *" },
+    { "path": "/api/collect-news/daejeon", "schedule": "25 14 * * *" },
+    { "path": "/api/collect-news/ulsan", "schedule": "30 14 * * *" },
+    { "path": "/api/collect-news/sejong", "schedule": "35 14 * * *" },
+    { "path": "/api/collect-news/gyeonggi", "schedule": "40 14 * * *" },
+    { "path": "/api/collect-news/gangwon", "schedule": "45 14 * * *" },
+    { "path": "/api/collect-news/chungbuk", "schedule": "50 14 * * *" },
+    { "path": "/api/collect-news/chungnam", "schedule": "55 14 * * *" },
+    { "path": "/api/collect-news/jeonbuk", "schedule": "0 15 * * *" },
+    { "path": "/api/collect-news/jeonnam", "schedule": "5 15 * * *" },
+    { "path": "/api/collect-news/gyeongbuk", "schedule": "10 15 * * *" },
+    { "path": "/api/collect-news/gyeongnam", "schedule": "15 15 * * *" },
+    { "path": "/api/collect-news/jeju", "schedule": "20 15 * * *" }
   ]
 }

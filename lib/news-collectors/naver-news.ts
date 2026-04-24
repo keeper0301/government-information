@@ -1,5 +1,5 @@
 // ============================================================
-// 네이버 뉴스 검색 API — 지방 정책 뉴스 수집
+// 네이버 뉴스 검색 API — 전국 시군구 정책 뉴스 수집
 // ============================================================
 // keepioo 의 큰 빈틈: 지방 자치단체의 보편 지원금·민생회복지원금·시민
 // 대상 정책은 지역 언론 보도 → 시청 보도자료 → SNS 형태로 퍼지지만
@@ -7,10 +7,15 @@
 // 누락되는 경우가 많음. 예: 순천시 민생회복지원금 15만원 (2026-04-02
 // 발표·4-20 신청) 같은 일회성 보편 지급은 보건복지부 DB 미등록.
 //
-// 해결 전략: 네이버 뉴스 검색 API 로 "광역명 + keepioo 정책 키워드" 매트릭스
-// 검색 → 지방지·통신사 보도 자동 수집. 17개 광역 × 18개 키워드 = 306회/일,
-// 일일 무료 한도 25,000회 대비 1.2% 만 사용. 키워드는 시민 복지·일자리·주거·
-// 의료·양육·금융 전반을 커버 (혜택성·정책액션·대상층 분류).
+// 해결 전략: 네이버 뉴스 검색 API 로 "광역명 [시군구명] + keepioo 정책
+// 키워드" 매트릭스 검색 → 지방지·통신사 보도 자동 수집.
+// 17 광역 + 228 시군구 = 245 단위 × 18 키워드 = 4,410회/일,
+// 일일 무료 한도 25,000회 대비 17.6% 사용. 키워드는 시민 복지·일자리·
+// 주거·의료·양육·금융 전반 (혜택성·정책액션·대상층 분류).
+//
+// 처리 단위: 광역별로 cron 분리 (광역 1개 + 그 광역의 시군구 모두 처리).
+// 가장 큰 경기도 = 32 단위 × 18 × 0.3s ≈ 173s — Vercel maxDuration 300s
+// 안에 들어옴. 단일 cron 으로 245 × 18 = 4,410회 = ~22분 은 한계 초과.
 //
 // 저작권 안전 모드:
 //   - 본문 미저장 (body=null) — 언론사 저작권 침해 방지
@@ -28,40 +33,21 @@ import { extractBenefitTags } from "@/lib/tags/taxonomy";
 import { extractNewsKeywords } from "@/lib/news-keywords";
 import { cleanDescription } from "@/lib/utils";
 import { fetchWithTimeout } from "@/lib/collectors";
+import {
+  type ProvinceCode,
+  getProvinceByCode,
+  getSearchUnitsForProvince,
+} from "@/lib/regions";
 import { createHash } from "node:crypto";
 
 const CLIENT_ID = process.env.NAVER_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || "";
 const API = "https://openapi.naver.com/v1/search/news.json";
 
-// 17개 광역 — 네이버 검색에서 시군구까지 자동으로 포함되어 매칭됨.
-// 예: "전라남도 지원금" → 순천시·여수시·광양시 지원금 뉴스 모두 포함.
-const REGIONS = [
-  "서울특별시",
-  "부산광역시",
-  "대구광역시",
-  "인천광역시",
-  "광주광역시",
-  "대전광역시",
-  "울산광역시",
-  "세종특별자치시",
-  "경기도",
-  "강원특별자치도",
-  "충청북도",
-  "충청남도",
-  "전북특별자치도",
-  "전라남도",
-  "경상북도",
-  "경상남도",
-  "제주특별자치도",
-];
-
 // keepioo 사용자 니즈 전반 — 시민 복지·일자리·주거·의료·양육·금융 모두 커버.
-// 1차 검색 노이즈는 OK — collectRegion 안에서 extractNewsKeywords (26개 keepioo
-// 도메인 키워드) 2차 필터로 걸러짐. 그래서 검색 키워드는 광범위하게 잡아도 안전.
-//
-// 호출량: 17 광역 × 18 키워드 = 306회/일. 일 25,000회 한도의 1.2%.
-// 시간: ~90s 예상 (광역 순차 + 키워드 순차 0.3s/회).
+// 1차 검색 노이즈는 OK — 아래에서 extractNewsKeywords (26개 keepioo
+// 도메인 키워드) 2차 필터로 걸러짐. 그래서 검색 키워드는 광범위하게 잡아도
+// 노이즈 안 쌓임.
 const KEYWORDS = [
   // 혜택성 — 가장 강한 신호
   "지원금",
@@ -154,10 +140,11 @@ function deterministicSlug(title: string, sourceId: string): string {
   return `${base}-${sourceId.slice(0, 8)}`.slice(0, 120);
 }
 
-// 네이버 뉴스 검색 1회 — region + keyword 조합.
+// 네이버 뉴스 검색 1회 — searchUnit + keyword 조합.
+// searchUnit 예: "전라남도" 또는 "전라남도 순천시".
 // display=20 으로 충분 (sort=date 라 최신 20건이 곧 핵심 뉴스).
-async function searchOnce(region: string, keyword: string): Promise<NaverNewsItem[]> {
-  const query = `${region} ${keyword}`;
+async function searchOnce(searchUnit: string, keyword: string): Promise<NaverNewsItem[]> {
+  const query = `${searchUnit} ${keyword}`;
   const params = new URLSearchParams({
     query,
     display: "20",
@@ -172,186 +159,167 @@ async function searchOnce(region: string, keyword: string): Promise<NaverNewsIte
     },
   });
   if (!res.ok) {
-    throw new Error(`naver-news ${region}+${keyword} HTTP ${res.status}`);
+    throw new Error(`naver-news ${searchUnit}+${keyword} HTTP ${res.status}`);
   }
   const data = (await res.json()) as NaverApiResponse;
   return data.items ?? [];
 }
 
-// 1개 광역 × 5개 키워드 → 결과 합치고 중복 제거 후 표준 포맷 변환.
-async function collectRegion(region: string): Promise<CollectedNaverItem[]> {
+// 1개 광역(=cron 1회 처리 단위) 의 모든 검색 단위 × 모든 키워드 처리.
+// 검색 단위 = 광역명 + 그 광역의 모든 시군구 (lib/regions.ts).
+// 결과를 dedup (originallink 기준) 후 표준 포맷 변환.
+async function collectProvinceItems(
+  provinceCode: ProvinceCode,
+  provinceName: string,
+): Promise<CollectedNaverItem[]> {
   const seen = new Set<string>();
   const items: CollectedNaverItem[] = [];
+  const searchUnits = getSearchUnitsForProvince(provinceCode);
 
-  // 키워드는 순차 — 네이버 API 가 동일 IP 동시요청에 민감 (429 위험).
-  for (const keyword of KEYWORDS) {
-    let raw: NaverNewsItem[] = [];
-    try {
-      raw = await searchOnce(region, keyword);
-    } catch (err) {
-      console.error(`[naver-news] ${region}+${keyword} 실패:`, err);
-      continue;
-    }
+  // 검색 단위 × 키워드 모두 순차 — 네이버 API 동일 IP 동시요청에 민감 (429 위험).
+  for (const unit of searchUnits) {
+    for (const keyword of KEYWORDS) {
+      let raw: NaverNewsItem[] = [];
+      try {
+        raw = await searchOnce(unit, keyword);
+      } catch (err) {
+        console.error(`[naver-news] ${unit}+${keyword} 실패:`, err);
+        continue;
+      }
 
-    for (const r of raw) {
-      // dedup: originallink 가 빈 매체는 link 로 대체
-      const url = r.originallink || r.link;
-      if (!url || seen.has(url)) continue;
-      seen.add(url);
+      for (const r of raw) {
+        // dedup: originallink 가 빈 매체는 link 로 대체
+        const url = r.originallink || r.link;
+        if (!url || seen.has(url)) continue;
+        seen.add(url);
 
-      const title = stripNaverMarkup(r.title);
-      const description = stripNaverMarkup(r.description);
-      const cleaned = cleanDescription(description);
+        const title = stripNaverMarkup(r.title);
+        const description = stripNaverMarkup(r.description);
+        const cleaned = cleanDescription(description);
 
-      // keepioo 도메인 키워드 필터 — 정치인 발언·일반 행사 노이즈 차단.
-      // 검색 키워드(지원금 등)는 잡혀도 "○○ 의원, 지원금 폐지 비판" 같은
-      // 정치 기사는 본문 키워드(청년·소상공인 등) 안 맞으면 스킵.
-      const textBlob = [title, cleaned].filter(Boolean).join(" ");
-      const keywords = extractNewsKeywords([title, cleaned]);
-      if (keywords.length === 0) continue;
+        // keepioo 도메인 키워드 필터 — 정치인 발언·일반 행사 노이즈 차단.
+        // 검색 키워드(지원금 등)는 잡혀도 "○○ 의원, 지원금 폐지 비판" 같은
+        // 정치 기사는 본문 키워드(청년·소상공인 등) 안 맞으면 스킵.
+        const textBlob = [title, cleaned].filter(Boolean).join(" ");
+        const keywords = extractNewsKeywords([title, cleaned]);
+        if (keywords.length === 0) continue;
 
-      const benefit_tags = extractBenefitTags(textBlob);
-      const sourceId = hashSourceId(url);
-      const slug = deterministicSlug(title, sourceId);
+        const benefit_tags = extractBenefitTags(textBlob);
+        const sourceId = hashSourceId(url);
+        const slug = deterministicSlug(title, sourceId);
 
-      // pubDate 파싱: "Tue, 21 Apr 2026 15:30:00 +0900"
-      const pubDate = new Date(r.pubDate);
-      const published_at = Number.isNaN(pubDate.getTime())
-        ? new Date().toISOString()
-        : pubDate.toISOString();
+        // pubDate 파싱: "Tue, 21 Apr 2026 15:30:00 +0900"
+        const pubDate = new Date(r.pubDate);
+        const published_at = Number.isNaN(pubDate.getTime())
+          ? new Date().toISOString()
+          : pubDate.toISOString();
 
-      items.push({
-        source_code: `naver-news-${regionShortCode(region)}`,
-        source_id: sourceId,
-        source_url: url,
-        category: "news",
-        ministry: region, // 광역명을 ministry 자리에 — UI 에서 출처 표시용
-        title,
-        summary: cleaned.length > 0 ? cleaned.slice(0, 200) : null,
-        body: null,
-        thumbnail_url: null,
-        slug,
-        benefit_tags,
-        keywords,
-        published_at,
-      });
+        items.push({
+          source_code: `naver-news-${provinceCode}`,
+          source_id: sourceId,
+          source_url: url,
+          category: "news",
+          ministry: provinceName, // 광역명을 ministry 자리에 — UI 출처 표시용
+          title,
+          summary: cleaned.length > 0 ? cleaned.slice(0, 200) : null,
+          body: null,
+          thumbnail_url: null,
+          slug,
+          benefit_tags,
+          keywords,
+          published_at,
+        });
+      }
     }
   }
 
   return items;
 }
 
-// 광역명 → 짧은 source_code 식별자 ("전라남도" → "jeonnam")
-function regionShortCode(region: string): string {
-  const map: Record<string, string> = {
-    서울특별시: "seoul",
-    부산광역시: "busan",
-    대구광역시: "daegu",
-    인천광역시: "incheon",
-    광주광역시: "gwangju",
-    대전광역시: "daejeon",
-    울산광역시: "ulsan",
-    세종특별자치시: "sejong",
-    경기도: "gyeonggi",
-    강원특별자치도: "gangwon",
-    충청북도: "chungbuk",
-    충청남도: "chungnam",
-    전북특별자치도: "jeonbuk",
-    전라남도: "jeonnam",
-    경상북도: "gyeongbuk",
-    경상남도: "gyeongnam",
-    제주특별자치도: "jeju",
-  };
-  return map[region] ?? "unknown";
-}
-
-// 17개 광역 × 18개 키워드 = 306회 호출. 호출당 ~0.3초 추정 → 90-100초 예상.
-// Vercel Pro 300s maxDuration 안에 안전하게 들어감.
-export async function collectNaverNews(): Promise<{
+// 광역별 cron 의 핵심 진입점. /api/collect-news/[province]/route.ts 가 호출.
+// 결과: 그 광역의 광역명 + 모든 시군구를 검색해서 news_posts 에 upsert.
+export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Promise<{
+  province: string;
   total: number;
   upserted: number;
-  errors: number;
-  breakdown: Record<string, number>;
-  errorDetails: Record<string, string>;
+  searchUnits: number;
+  errors: string[];
 }> {
   if (!CLIENT_ID || !CLIENT_SECRET) {
     return {
+      province: provinceCode,
       total: 0,
       upserted: 0,
-      errors: 1,
-      breakdown: {},
-      errorDetails: {
-        config:
-          "NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 환경변수 미설정 — 네이버 개발자센터 가입 필요",
-      },
+      searchUnits: 0,
+      errors: [
+        "NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 환경변수 미설정 — 네이버 개발자센터 가입 필요",
+      ],
     };
   }
 
+  const province = getProvinceByCode(provinceCode);
+  if (!province) {
+    return {
+      province: provinceCode,
+      total: 0,
+      upserted: 0,
+      searchUnits: 0,
+      errors: [`unknown province code: ${provinceCode}`],
+    };
+  }
+
+  const errors: string[] = [];
+  const searchUnits = getSearchUnitsForProvince(provinceCode).length;
+
+  let items: CollectedNaverItem[] = [];
+  try {
+    items = await collectProvinceItems(provinceCode, province.name);
+  } catch (err) {
+    errors.push(err instanceof Error ? err.message : String(err));
+    return { province: province.name, total: 0, upserted: 0, searchUnits, errors };
+  }
+
+  const total = items.length;
+  if (total === 0) {
+    return { province: province.name, total: 0, upserted: 0, searchUnits, errors };
+  }
+
   const supabase = createAdminClient();
-  let total = 0;
-  let upserted = 0;
-  let errors = 0;
-  const breakdown: Record<string, number> = {};
-  const errorDetails: Record<string, string> = {};
+  const payload = items.map((it) => ({
+    source_code: it.source_code,
+    source_id: it.source_id,
+    source_url: it.source_url,
+    category: it.category,
+    ministry: it.ministry,
+    title: it.title,
+    summary: it.summary,
+    body: it.body,
+    thumbnail_url: it.thumbnail_url,
+    slug: it.slug,
+    benefit_tags: it.benefit_tags,
+    keywords: it.keywords,
+    published_at: it.published_at,
+    updated_at: new Date().toISOString(),
+  }));
 
-  // 광역도 순차 — 광역×키워드 병렬화하면 17×5=85건이 동시에 네이버로 가서
-  // burst rate-limit (분당 한도) 에 걸릴 위험. 한 광역 내부 키워드 5개도
-  // 순차이므로 전체는 순수 순차 ~25-30초 예상. maxDuration 300s 안에 여유.
-  for (const region of REGIONS) {
-    let items: CollectedNaverItem[] = [];
-    try {
-      items = await collectRegion(region);
-    } catch (err) {
-      errors++;
-      errorDetails[region] = err instanceof Error ? err.message : String(err);
-      continue;
-    }
+  // slug 충돌 = 같은 뉴스가 다른 시군구·광역 검색에 잡힌 경우 (예: "전국 정책",
+  // 또는 "전라남도" + "전라남도 순천시" 양쪽 검색에 같은 기사). 첫 광역 cron 이
+  // 가져간 ministry 유지 — ignoreDuplicates.
+  const { data, error } = await supabase
+    .from("news_posts")
+    .upsert(payload, { onConflict: "slug", ignoreDuplicates: true })
+    .select("id");
 
-    breakdown[region] = items.length;
-    total += items.length;
-
-    if (items.length === 0) continue;
-
-    const payload = items.map((it) => ({
-      source_code: it.source_code,
-      source_id: it.source_id,
-      source_url: it.source_url,
-      category: it.category,
-      ministry: it.ministry,
-      title: it.title,
-      summary: it.summary,
-      body: it.body,
-      thumbnail_url: it.thumbnail_url,
-      slug: it.slug,
-      benefit_tags: it.benefit_tags,
-      keywords: it.keywords,
-      published_at: it.published_at,
-      updated_at: new Date().toISOString(),
-    }));
-
-    // slug 충돌 = 같은 뉴스가 다른 광역 검색에 잡힌 경우 (예: "전국" 정책).
-    // 먼저 들어온 광역이 ministry 유지 — ignoreDuplicates.
-    const { data, error } = await supabase
-      .from("news_posts")
-      .upsert(payload, { onConflict: "slug", ignoreDuplicates: true })
-      .select("id");
-
-    if (error) {
-      errors++;
-      errorDetails[region] = `upsert: ${error.message}`;
-      continue;
-    }
-
-    upserted += data?.length ?? 0;
+  if (error) {
+    errors.push(`upsert: ${error.message}`);
+    return { province: province.name, total, upserted: 0, searchUnits, errors };
   }
 
-  return { total, upserted, errors, breakdown, errorDetails };
-}
-
-// (개발자 가드) 단일 광역만 빠르게 검증할 때.
-export async function collectNaverNewsForRegion(region: string) {
-  if (!REGIONS.includes(region)) {
-    throw new Error(`unknown region: ${region}`);
-  }
-  return collectRegion(region);
+  return {
+    province: province.name,
+    total,
+    upserted: data?.length ?? 0,
+    searchUnits,
+    errors,
+  };
 }
