@@ -1,13 +1,16 @@
 // ============================================================
-// korea.kr RSS 수집 — 정책뉴스·보도자료·전문자료
+// korea.kr RSS 수집 — 정책뉴스·전문자료
 // ============================================================
-// 3개 RSS 피드 를 매일 1회 fetch 후 news_posts 테이블에 upsert.
+// 2개 RSS 피드 를 매일 1회 fetch 후 news_posts 테이블에 upsert.
 // 공공누리 제1유형 (출처표시 + 상업이용·변형 허용) — license 컬럼에 기록.
 //
 // 소스별 특성:
 //   - policy.xml: 본문 HTML 풍부 (이미지·본문 포함). 메인 콘텐츠.
-//   - pressrelease.xml: 본문 짧음 ("첨부파일 참고"), 부처명 [KMOE] prefix.
 //   - expdoc.xml: 전문자료 (연감·백서·보고서). 본문은 목차 정도.
+//
+// 2026-04-24 제외: pressrelease.xml (보도자료) — 사용자 가치 낮음 판단 후
+// 수집 중단. DB 의 기존 press 건은 보존하되 UI 에서는 "전체/카테고리" 모두
+// 에서 숨김 (app/news/page.tsx 참조).
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -30,11 +33,7 @@ const FEEDS: Feed[] = [
     category: "news",
     url: "https://www.korea.kr/rss/policy.xml",
   },
-  {
-    code: "korea-kr-press",
-    category: "press",
-    url: "https://www.korea.kr/rss/pressrelease.xml",
-  },
+  // korea-kr-press 피드는 2026-04-24 수집 중단 (사용자 가치 낮음)
   {
     code: "korea-kr-expdoc",
     category: "policy-doc",

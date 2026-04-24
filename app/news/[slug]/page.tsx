@@ -33,11 +33,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("news_posts")
-    .select("title, summary, thumbnail_url")
+    .select("title, summary, thumbnail_url, category")
     .eq("slug", slug)
     .single();
 
-  if (!data) return { title: "정책 소식 — 정책알리미" };
+  // 2026-04-24 보도자료(press) 는 비노출 정책 — 404 와 동일 취급
+  if (!data || data.category === "press") return { title: "정책 소식 — 정책알리미" };
   // 썸네일 없는 뉴스는 사이트 기본 OG 이미지로 fallback — 카카오톡·페이스북 공유
   // 미리보기가 빈 회색 박스 안 나오게. 기본 OG 는 /opengraph-image (Next.js 자동).
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
@@ -70,7 +71,8 @@ export default async function NewsDetailPage({ params }: Props) {
     .eq("slug", slug)
     .single();
 
-  if (!post) notFound();
+  // 2026-04-24 보도자료(press) 는 비노출 정책 — 기존 URL 직접 접근해도 404
+  if (!post || post.category === "press") notFound();
 
   // 조회수 증가 (fire-and-forget) — 실패해도 상세 렌더에는 영향 없음
   supabase

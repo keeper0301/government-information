@@ -1,8 +1,11 @@
 // ============================================================
 // /news — 정책 소식 목록 (korea.kr 큐레이션, 공공누리 제1유형)
 // ============================================================
-// 카테고리 필터 (전체/정책뉴스/보도자료/정책자료) + 카드 그리드 + 페이지네이션.
+// 카테고리 필터 (전체/정책뉴스/정책자료) + 카드 그리드 + 페이지네이션.
 // 썸네일·요약·부처 배지 포함. 공공누리 출처 표기 하단 필수.
+//
+// 2026-04-24 보도자료(press) 비노출: 수집 중단(lib/news-collectors/korea-kr.ts)
+// + 기존 DB 건도 category != 'press' 로 모든 목록에서 제외.
 // ============================================================
 
 import type { Metadata } from "next";
@@ -18,21 +21,21 @@ import { AdSlot } from "@/components/ad-slot";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
-// 카테고리 필터 탭 — DB 값(news/press/policy-doc) 과 1:1 매칭
+// 카테고리 필터 탭 — DB 값(news/policy-doc) 과 1:1 매칭.
+// press(보도자료) 는 2026-04-24 부터 비노출.
 const CATEGORIES: { key: "all" | NewsCategory; label: string }[] = [
   { key: "all", label: "전체" },
   { key: "news", label: "정책뉴스" },
-  { key: "press", label: "보도자료" },
   { key: "policy-doc", label: "정책자료" },
 ];
 
-// URL 에서 들어온 카테고리 값이 유효한지 — 잘못된 값은 "전체" 로 fallback
-const VALID_CATEGORIES = new Set<string>(["news", "press", "policy-doc"]);
+// URL 에서 들어온 카테고리 값이 유효한지 — 잘못된 값 또는 press 는 "전체" 로 fallback
+const VALID_CATEGORIES = new Set<string>(["news", "policy-doc"]);
 
 export const metadata: Metadata = {
   title: "정책 소식 | 정책알리미",
   description:
-    "korea.kr 정책뉴스·보도자료·정책자료 큐레이션. 관심 정책 발표를 한눈에.",
+    "korea.kr 정책뉴스·정책자료 큐레이션. 관심 정책 발표를 한눈에.",
   alternates: { canonical: "/news" },
   openGraph: {
     title: "정책 소식 | 정책알리미",
@@ -63,6 +66,8 @@ export default async function NewsIndexPage({ searchParams }: Props) {
       "slug, title, summary, category, ministry, thumbnail_url, published_at",
       { count: "exact" },
     )
+    // 보도자료(press) 는 전역 비노출 (2026-04-24~)
+    .neq("category", "press")
     .order("published_at", { ascending: false });
 
   if (activeCategory !== "all") {
@@ -105,7 +110,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
             정책 소식
           </h1>
           <p className="text-[15px] md:text-[17px] text-grey-700 leading-[1.6]">
-            정부 부처의 최신 정책 발표·보도자료·정책자료를 모았어요.
+            정부 부처의 최신 정책 발표와 정책자료를 모았어요.
           </p>
         </header>
 
