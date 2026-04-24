@@ -26,11 +26,12 @@ const MIN_CONTENT_LENGTH = 1000;
 const MAX_CONTENT_LENGTH = 3000;
 
 // SEO — meta description 길이 가드 (검색 스니펫 잘림 방지)
-// 프롬프트 지시는 150~160자(목표 155). 실제 AI 출력엔 편차가 있어
-// 소프트 가드 범위 135~170자. 너무 엄격하면 false positive 로 발행 실패 증가.
-// 135자 미만·170자 초과 시에만 거절 → 다음 cron 재시도.
-const META_MIN_LENGTH = 135;
-const META_MAX_LENGTH = 170;
+// 프롬프트 지시는 150~160자(목표 155). 실제 Gemini 출력은 108~131자 폭 편차.
+// 너무 엄격하게 하한 잡으면 false positive 로 연속 발행 실패 (2026-04-24 노년·
+// 학생·교육 카테고리 108~109자로 거절된 사례) → 하한 95 로 완화.
+// 95자 미만·175자 초과 시에만 거절. 프롬프트 지시(155자) 는 유지해 점진적 개선.
+const META_MIN_LENGTH = 95;
+const META_MAX_LENGTH = 175;
 const VALID_CATEGORIES = new Set([
   "청년", "소상공인", "주거", "육아·가족", "노년", "학생·교육", "문화", "큐레이션",
 ]);
