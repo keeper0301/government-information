@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ProgramRow } from "@/components/program-row";
 import type { DisplayProgram } from "@/lib/programs";
 import { AGE_OPTIONS, REGION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/profile-options";
@@ -42,6 +43,7 @@ type Props = {
 // - "조건 변경" 버튼으로 폼 펼치기 → 추천받기 → 다시 접힘
 // - 결과 0건 시 "전국으로 확대해보기" 원클릭 폴백 제공
 export function RecommendForm({ initial, initialPrograms }: Props) {
+  const router = useRouter();
   const [ageGroup, setAgeGroup] = useState(
     pickMatching(initial?.age_group, AGE_OPTIONS),
   );
@@ -94,6 +96,15 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
       const data = await res.json();
       setPrograms(data.programs || []);
       setEditing(false); // 결과 받으면 폼 접기
+
+      // URL 쿼리도 현재 조건과 동기화 → 새로고침·링크 공유 시 같은 결과 재현
+      // router.replace 는 history 에 항목을 추가하지 않아 뒤로가기 흐름을 흐리지 않음
+      const params = new URLSearchParams();
+      params.set("age", eff.ageGroup);
+      params.set("region", eff.region);
+      params.set("occupation", eff.occupation);
+      if (eff.programType !== "all") params.set("type", eff.programType);
+      router.replace(`/recommend?${params.toString()}`, { scroll: false });
     } catch {
       setPrograms([]);
     } finally {
