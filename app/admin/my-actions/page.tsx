@@ -51,7 +51,7 @@ function getTargetHint(record: AdminActionRecord): string | null {
 export default async function MyActionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; from?: string; to?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -63,17 +63,31 @@ export default async function MyActionsPage({
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page || "1", 10));
   const offset = (page - 1) * PER_PAGE;
+  // YYYY-MM-DD 만 허용 (SQL injection 방지 + 파싱 단순화)
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  const from = params.from && dateRe.test(params.from) ? params.from : undefined;
+  const to = params.to && dateRe.test(params.to) ? params.to : undefined;
 
   const { records: actions, total } = await getActorActionsPaged(user.id, {
     limit: PER_PAGE,
     offset,
+    from,
+    to,
   });
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
-  // 페이지네이션 URL 빌더 — 1페이지는 쿼리 없이 깨끗한 URL 유지
+  // 페이지네이션 URL 빌더 — 기간 필터 유지하면서 page 만 바꿈
   function buildUrl(overrides: Record<string, string>) {
-    const next = overrides.page ?? String(page);
-    return next === "1" ? "/admin/my-actions" : `/admin/my-actions?page=${next}`;
+    const next: Record<string, string> = {
+      page: String(page),
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
+      ...overrides,
+    };
+    // 1페이지는 쿼리에서 제거 (깨끗한 URL)
+    if (next.page === "1") delete next.page;
+    const qs = new URLSearchParams(next).toString();
+    return qs ? `/admin/my-actions?${qs}` : "/admin/my-actions";
   }
 
   return (
@@ -97,6 +111,54 @@ export default async function MyActionsPage({
             ← 검색
           </Link>
         </div>
+
+        {/* 기간 필터 — GET 폼 으로 제출 → URL ?from=&to= 파라미터 주입.
+            비우고 제출하면 전체 기간. 1페이지로 리셋되도록 page input 생략. */}
+        <form
+          method="get"
+          action="/admin/my-actions"
+          className="mb-5 bg-white border border-grey-100 rounded-xl p-4 flex flex-wrap items-end gap-3"
+        >
+          <label className="text-[12px] text-grey-700">
+            <span className="block mb-1">시작일</span>
+            <input
+              type="date"
+              name="from"
+              defaultValue={from ?? ""}
+              className="px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+            />
+          </label>
+          <label className="text-[12px] text-grey-700">
+            <span className="block mb-1">종료일</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to ?? ""}
+              className="px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            className="min-h-[44px] px-4 text-[13px] font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+          >
+            적용
+          </button>
+          {(from || to) && (
+            <Link
+              href="/admin/my-actions"
+              className="min-h-[44px] px-4 inline-flex items-center text-[13px] font-semibold rounded-lg border border-grey-200 text-grey-700 hover:bg-grey-50 no-underline"
+            >
+              초기화
+            </Link>
+          )}
+          <span className="text-[12px] text-grey-600 ml-auto">
+            {from || to ? (
+              <>기간: {from || "전체"} ~ {to || "현재"}</>
+            ) : (
+              "전체 기간"
+            )}
+          </span>
+        </form>
 
         {/* 목록 */}
         {actions.length === 0 ? (

@@ -141,19 +141,40 @@ export async function getActorActions(
 // /admin/my-actions 에서 페이지 이동용. 기존 getActorActions 와 병존 —
 // 반환 타입 다르므로 호출자가 필요에 맞춰 선택.
 // range(offset, offset+limit-1) + count:'exact' 로 한 쿼리에 처리.
+// 2026-04-24: 기간 필터(from/to) 추가 — /admin/my-actions 에서 특정 기간
+// 회고 시 사용. YYYY-MM-DD 문자열 ISO 기준 포함·배타 (from <= ~ < to+1일).
 export async function getActorActionsPaged(
   actorId: string,
-  { limit = 30, offset = 0 }: { limit?: number; offset?: number } = {},
+  {
+    limit = 30,
+    offset = 0,
+    from,
+    to,
+  }: { limit?: number; offset?: number; from?: string; to?: string } = {},
 ): Promise<{ records: AdminActionRecord[]; total: number }> {
   const admin = createAdminClient();
-  const { data, error, count } = await admin
+  let query = admin
     .from("admin_actions")
     .select("id, actor_id, target_user_id, action, details, created_at", {
       count: "exact",
     })
     .eq("actor_id", actorId)
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .order("created_at", { ascending: false });
+
+  // 기간 필터 (ISO date YYYY-MM-DD). KST 기준 하루 단위.
+  // created_at 은 UTC timestamptz — 한국 사용자가 "4/20" 을 누르면 KST 4/20 00:00 ~ KST 4/21 00:00 조회.
+  if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    const fromKst = new Date(`${from}T00:00:00+09:00`).toISOString();
+    query = query.gte("created_at", fromKst);
+  }
+  if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    // to 는 배타 — "4/20 ~ 4/20" 이면 4/20 하루 전체 포함해야 하니 +1일
+    const toDate = new Date(`${to}T00:00:00+09:00`);
+    toDate.setDate(toDate.getDate() + 1);
+    query = query.lt("created_at", toDate.toISOString());
+  }
+
+  const { data, error, count } = await query.range(offset, offset + limit - 1);
 
   if (error) {
     console.warn("[admin_actions.getActorActionsPaged] 조회 실패:", {
