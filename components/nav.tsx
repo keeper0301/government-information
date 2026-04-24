@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./user-menu";
 
@@ -16,6 +17,7 @@ const items = [
   { label: "AI상담", href: "/consult" },
   { label: "알림센터", href: "/alerts" },
   { label: "요금제", href: "/pricing" },
+  { label: "도움말", href: "/help" },
 ];
 
 // isAdmin: layout.tsx 의 RootLayout 이 서버에서 isAdminUser() 로 판정해 prop 으로 전달.
@@ -37,7 +39,7 @@ export function Nav({ isAdmin = false }: NavProps) {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100">
       <div className="max-w-content mx-auto px-10 h-[58px] flex items-center justify-between max-md:px-5">
         {/* 로고 — Editorial Masthead (이탤릭 세리프 워드마크 + 버건디 dot) */}
-        <a
+        <Link
           href="/"
           aria-label="keepioo · 정책알리미 홈으로"
           className="flex items-center gap-2.5 no-underline"
@@ -70,7 +72,7 @@ export function Nav({ isAdmin = false }: NavProps) {
           >
             정책알리미
           </span>
-        </a>
+        </Link>
 
         {/* 데스크톱 메뉴 — lg (1024px) 부터 9개 항목 전부 나열 (md~lg 구간은 햄버거) */}
         <div className="hidden lg:flex items-center gap-0.5">
