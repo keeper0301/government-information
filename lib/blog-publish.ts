@@ -234,6 +234,21 @@ export async function publishOnePost(opts: {
     generated.category = category;
   }
 
+  // meta_description 은 평문만 허용 — BlogCard 에서 text 로 렌더되는데 HTML
+  // 태그가 포함되면 "<strong>190만 원</strong>" 이 카드에 그대로 노출됨.
+  // Gemini 가 프롬프트 지시에도 불구하고 가끔 <strong> 을 넣는 케이스 방지
+  // + 기존 저장 동안 누적된 품질 보정. 태그·다중 공백·앞뒤 공백 정리.
+  // 2026-04-24 버그: "기업에는 실습생 월 <strong>190만 원</strong>..." 노출 사례.
+  generated.meta_description = (generated.meta_description || "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  // title 도 같은 이유로 평문화 (실제 노출 사례는 아직 없지만 예방적 sanitize).
+  generated.title = (generated.title || "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
   // SEO 가드 — meta description 길이 체크 (2026-04-24 신규)
   // 150~160자 권장 범위를 크게 벗어나면 거절 → 검색 결과 스니펫 품질 보호.
   const metaLen = (generated.meta_description || "").length;
