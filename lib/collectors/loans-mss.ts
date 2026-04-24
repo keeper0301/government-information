@@ -27,6 +27,29 @@ function parseXmlTag(block: string, tag: string): string | null {
     .trim();
 }
 
+// <item> 블록의 모든 태그를 {태그명: 정제문자열} dict 로 — raw_payload 저장용.
+// mss data.go.kr API 가 별도 Detail 엔드포인트 없고 List 응답 필드도 공식 문서
+// 확인 불가라, List 응답 전체를 DB 에 보존해두면 Phase 2 에서 detail-fetcher 가
+// 추가 필드(예: 지원조건·모집분야·담당부서 등)를 raw_payload 에서 추출 가능.
+// 기존 549 row 는 재수집될 때 채워짐 (source_code+source_id upsert).
+function parseAllTags(block: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const regex = /<([a-zA-Z][\w-]*)>([\s\S]*?)<\/\1>/g;
+  let m;
+  while ((m = regex.exec(block)) !== null) {
+    const tag = m[1];
+    const raw = m[2]
+      .replace(/<!\[CDATA\[/g, "")
+      .replace(/\]\]>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (raw) result[tag] = raw;
+  }
+  return result;
+}
+
 function mapLoanCategory(text: string): string {
   if (/보증/.test(text)) return "보증";
   if (/지원금|보조/.test(text)) return "지원금";
@@ -100,6 +123,10 @@ const collector: Collector = {
           occupationTags: ["소상공인", "자영업자"],
           benefitTags: Array.from(new Set(["금융", ...extractBenefitTags(textBlob)])),
           householdTags: extractHouseholdTags(textBlob),
+          // Phase 1: 전체 XML 태그를 dict 로 보존 — Phase 2 에서 detail-fetcher 가
+          // 추가 필드(ex: 지원조건·모집분야·첨부파일) 추출 시 외부 API 재호출 없이
+          // DB 원본 파싱 가능 (youthcenter 와 동일 패턴, be3e5dc 참고).
+          rawPayload: parseAllTags(b),
         };
       }
     }
