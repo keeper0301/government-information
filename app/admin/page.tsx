@@ -133,6 +133,10 @@ export default async function AdminHomePage({
           <Link href="/admin/alimtalk" className="text-blue-500 underline">
             알림톡 운영
           </Link>
+          <span className="text-grey-300">·</span>
+          <Link href="/admin/enrich-detail" className="text-blue-500 underline">
+            공고 상세 보강
+          </Link>
         </p>
       </div>
     </main>
