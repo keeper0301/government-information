@@ -27,6 +27,12 @@ export type RowIdentity = {
   source_code: string | null;   // collector 의 sourceCode
   source_id: string | null;     // 원본 ID (bokjiro 의 servId 등)
   source_url: string | null;
+  /**
+   * 수집 시점의 List API 응답 원본 (JSONB).
+   * 일부 fetcher 는 외부 호출 대신 여기서 필드를 추출 — 예: youthcenter
+   * (공식 Detail API 미제공이므로 raw_payload 가 유일한 데이터 소스).
+   */
+  raw_payload?: Record<string, unknown> | null;
 };
 
 export type DetailFetcher = {
@@ -41,8 +47,9 @@ export type DetailFetcher = {
 
 // bokjiro detail fetcher
 import bokjiroDetail from "./bokjiro";
+import youthcenterDetail from "./youthcenter";
 
-export const DETAIL_FETCHERS: DetailFetcher[] = [bokjiroDetail];
+export const DETAIL_FETCHERS: DetailFetcher[] = [bokjiroDetail, youthcenterDetail];
 
 // row 에 대응하는 fetcher 찾기
 export function findFetcher(row: RowIdentity): DetailFetcher | null {

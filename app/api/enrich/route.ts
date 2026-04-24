@@ -50,14 +50,14 @@ async function pickCandidates(
   const [w, l] = await Promise.all([
     supabase
       .from("welfare_programs")
-      .select("id, source_code, source_id, source_url, serv_id")
+      .select("id, source_code, source_id, source_url, serv_id, raw_payload")
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
       .limit(limit),
     supabase
       .from("loan_programs")
-      .select("id, source_code, source_id, source_url")
+      .select("id, source_code, source_id, source_url, raw_payload")
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
@@ -71,6 +71,7 @@ async function pickCandidates(
       source_code: r.source_code,
       source_id: r.source_id ?? r.serv_id ?? null,
       source_url: r.source_url,
+      raw_payload: (r.raw_payload as Record<string, unknown> | null) ?? null,
       serv_id: r.serv_id,
       table: "welfare_programs",
     });
@@ -81,6 +82,7 @@ async function pickCandidates(
       source_code: r.source_code,
       source_id: r.source_id,
       source_url: r.source_url,
+      raw_payload: (r.raw_payload as Record<string, unknown> | null) ?? null,
       serv_id: null,
       table: "loan_programs",
     });
