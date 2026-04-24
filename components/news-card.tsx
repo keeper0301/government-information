@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cleanDescription, formatKoreanDate } from "@/lib/utils";
 
 export type NewsCategory = "news" | "press" | "policy-doc";
@@ -76,13 +77,15 @@ export function NewsCard({ post }: { post: NewsCardData }) {
         )}
 
         <CardContent className="p-5 max-md:p-4">
-          {/* 배지: 카테고리 + 부처(있을 때만) */}
+          {/* 배지: 카테고리 + 부처(있을 때만). shadcn Badge 로 일관성 확보,
+              기존 카테고리별 색상(NEWS_CATEGORY_COLOR)은 className 으로 유지. */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span
-              className={`inline-block px-2.5 py-0.5 text-[11px] font-semibold rounded-full ${categoryColor}`}
+            <Badge
+              variant="secondary"
+              className={`${categoryColor} hover:${categoryColor} rounded-full px-2.5 py-0.5 text-[11px] font-semibold border-0`}
             >
               {categoryLabel}
-            </span>
+            </Badge>
             {post.ministry && (
               <span className="text-[13px] text-grey-600 truncate max-w-[180px]">
                 {post.ministry}
