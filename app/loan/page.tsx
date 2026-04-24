@@ -136,9 +136,11 @@ export default async function LoanPage({ searchParams }: Props) {
           ))}
         </div>
 
-        {/* Target + Search */}
+        {/* Target + Search — 모바일(375px) 에서 FilterBar + 검색 박스(min-w-[200px])
+            가 한 줄에 못 들어가 우측 59px 오버플로. max-md:flex-wrap 으로 검색
+            박스가 다음 줄로 내려가게 허용. md+ 는 기존 한 줄 레이아웃 유지. */}
         <div className="flex gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0 max-md:flex-wrap">
             <Suspense fallback={null}>
               <FilterBar target={target} region={region} />
             </Suspense>

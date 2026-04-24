@@ -121,9 +121,12 @@ export default async function WelfarePage({ searchParams }: Props) {
           ))}
         </div>
 
-        {/* Region + Target + Search */}
+        {/* Region + Target + Search — 모바일에서는 FilterBar(광역·타겟 select 2개)
+            와 검색 박스가 한 줄에 다 못 들어가 우측이 59px 정도 뷰포트 밖으로
+            튀어나가는 오버플로가 있었음. max-md:flex-wrap 으로 모바일에서는
+            검색 박스가 다음 줄로 내려가게 허용. md+ 는 기존 동작 유지. */}
         <div className="flex gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0 max-md:flex-wrap">
             <Suspense fallback={null}>
               <FilterBar region={region} target={target} />
             </Suspense>
