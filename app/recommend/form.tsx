@@ -96,9 +96,10 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
           onRegionChange={setRegion}
           onOccupationChange={setOccupation}
           onSubmit={() => runSearch()}
-          // 초기 결과가 있고 필드가 유효할 때만 "취소" 로 결과로 돌아가기 가능
+          // 현재 결과가 있고 필드가 유효할 때 "취소" 로 결과로 돌아갈 수 있게 함.
+          // (초기 SSR 결과든 사용자가 수동 검색해서 받은 결과든 동일하게 탈출 경로 제공)
           onCancel={
-            hasInitialResults && hasValidInitial ? () => setEditing(false) : undefined
+            programs.length > 0 && hasValidInitial ? () => setEditing(false) : undefined
           }
           canSubmit={canSubmit}
           loading={loading}
@@ -121,7 +122,7 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
           <div>
             <h2 className="text-[20px] font-bold text-grey-900 mb-4">
               추천 결과{" "}
-              <span className="text-grey-500 font-medium text-[16px]">
+              <span className="text-grey-600 font-medium text-[16px]">
                 ({programs.length}건)
               </span>
             </h2>
@@ -141,7 +142,7 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
       ) : (
         // 첫 진입 + 프로필 미완비 안내
         !hasValidInitial && (
-          <div className="py-12 text-center text-grey-500 text-[14px]">
+          <div className="py-12 text-center text-grey-600 text-[14px]">
             나이대·지역·직업 3가지를 선택하고 추천을 받아보세요.
           </div>
         )
@@ -167,7 +168,7 @@ function SummaryChip({
   return (
     <div className="bg-white border border-grey-100 rounded-2xl p-4 mb-6 flex items-center justify-between gap-3 shadow-[0_1px_4px_rgba(0,0,0,0.03)] max-md:flex-col max-md:items-start">
       <div className="flex flex-wrap items-center gap-2 min-w-0">
-        <span className="text-[13px] font-semibold text-grey-500 mr-1 shrink-0">
+        <span className="text-[13px] font-semibold text-grey-600 mr-1 shrink-0">
           내 조건
         </span>
         <Chip>{ageGroup}</Chip>
@@ -319,7 +320,7 @@ function EmptyResult({
       <h3 className="text-[17px] font-bold text-grey-900 mb-2">
         조건에 맞는 공고를 찾지 못했어요
       </h3>
-      <p className="text-[14px] text-grey-500 mb-6 leading-[1.6]">
+      <p className="text-[14px] text-grey-600 mb-6 leading-[1.6]">
         해당 지역에 올라온 공고가 적을 수 있어요.
         <br />
         지역을 넓혀보거나 다른 조건으로 다시 시도해보세요.
