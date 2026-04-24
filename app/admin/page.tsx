@@ -121,13 +121,17 @@ export default async function AdminHomePage({
           검색 가능한 정보: 구독 상태 · AI 사용량 (지난 30일) · 알림 발송 이력 (지난 30일).
         </p>
 
-        <p className="mt-4 text-[12px] flex items-center gap-4">
+        <p className="mt-4 text-[12px] flex items-center gap-4 flex-wrap">
           <Link href="/" className="text-blue-500 underline">
             ← 홈으로
           </Link>
           <span className="text-grey-300">·</span>
           <Link href="/admin/my-actions" className="text-blue-500 underline">
             내 수행 내역 보기
+          </Link>
+          <span className="text-grey-300">·</span>
+          <Link href="/admin/alimtalk" className="text-blue-500 underline">
+            알림톡 운영
           </Link>
         </p>
       </div>
