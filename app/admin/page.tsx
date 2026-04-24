@@ -12,7 +12,7 @@
 // 권한:
 //   - 비로그인 → /login?next=/admin
 //   - 어드민 아니면 → /
-//   - ADMIN_USER_IDS 환경변수에 user_id 포함돼야 함 (lib/admin-auth.ts)
+//   - ADMIN_EMAILS 환경변수에 이메일 포함돼야 함 (lib/admin-auth.ts)
 // ============================================================
 
 import { redirect } from "next/navigation";
@@ -39,7 +39,7 @@ async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin");
-  if (!isAdminUser(user.id)) redirect("/");
+  if (!isAdminUser(user.email)) redirect("/");
   return user;
 }
 
@@ -80,6 +80,8 @@ async function get24hStats() {
     profilesCount,
     activeSubsCount,
     alertsSent,
+    alertsFailed,
+    alertsSkipped,
     newsCount,
     welfareCount,
     loanCount,
@@ -97,11 +99,22 @@ async function get24hStats() {
       .select("user_id", { count: "exact", head: true })
       .in("tier", ["basic", "pro"])
       .in("status", ["trialing", "active", "charging", "manual_grant"]),
-    // 알림 성공 발송
+    // 알림 발송 — status 3종 분리 카운트.
+    // 성공은 수치 자체가 의미, 실패·건너뜀은 운영 개입 신호 (템플릿 거절·동의 철회 등).
     admin
       .from("alert_deliveries")
       .select("id", { count: "exact", head: true })
       .eq("status", "sent")
+      .gte("created_at", since24hIso),
+    admin
+      .from("alert_deliveries")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "failed")
+      .gte("created_at", since24hIso),
+    admin
+      .from("alert_deliveries")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "skipped")
       .gte("created_at", since24hIso),
     // 뉴스 수집
     admin
@@ -130,6 +143,8 @@ async function get24hStats() {
     newUsers: profilesCount.count ?? 0,
     activeSubs: activeSubsCount.count ?? 0,
     alertsSent: alertsSent.count ?? 0,
+    alertsFailed: alertsFailed.count ?? 0,
+    alertsSkipped: alertsSkipped.count ?? 0,
     newsCollected: newsCount.count ?? 0,
     programsCollected: (welfareCount.count ?? 0) + (loanCount.count ?? 0),
     aiToday: aiTotal,
@@ -251,7 +266,12 @@ export default async function AdminHomePage({
               label="알림 발송 성공"
               value={stats.alertsSent}
               suffix="건"
-              hint="email + kakao (alert_deliveries status=sent)"
+              hint={
+                stats.alertsFailed > 0 || stats.alertsSkipped > 0
+                  ? `실패 ${stats.alertsFailed} · 건너뜀 ${stats.alertsSkipped}`
+                  : "email + kakao (alert_deliveries status=sent)"
+              }
+              tone={stats.alertsFailed > 0 ? "warn" : "neutral"}
             />
             <StatCard label="뉴스 수집" value={stats.newsCollected} suffix="건" />
             <StatCard
@@ -415,10 +435,10 @@ export default async function AdminHomePage({
         {/* 권한 안내 */}
         <p className="mt-10 text-[12px] text-grey-600 leading-[1.6]">
           이 페이지는 운영자 전용입니다. 권한은 Vercel 환경변수{" "}
-          <code>ADMIN_USER_IDS</code> (쉼표 구분 user_id 목록) 로 관리합니다.
+          <code>ADMIN_EMAILS</code> (쉼표 구분 이메일 목록, 대소문자 무시) 로 관리합니다.
           <br />
-          어드민 추가 시: Vercel Settings → Environment Variables → ADMIN_USER_IDS
-          에 user_id 추가 후 재배포.
+          어드민 추가 시: Vercel Settings → Environment Variables → ADMIN_EMAILS
+          에 이메일 추가 후 재배포.
         </p>
       </div>
     </main>
@@ -434,14 +454,19 @@ function StatCard({
   value,
   suffix,
   hint,
+  tone = "neutral",
 }: {
   label: string;
   value: number;
   suffix?: string;
   hint?: string;
+  /** warn: 실패·비정상이 있어 주의 필요 (알림 실패>0 등) */
+  tone?: "neutral" | "warn";
 }) {
+  const border = tone === "warn" ? "border-red/30 bg-red/5" : "border-grey-200 bg-white";
+  const hintColor = tone === "warn" ? "text-red font-semibold" : "text-grey-600";
   return (
-    <div className="bg-white rounded-lg border border-grey-200 p-4">
+    <div className={`rounded-lg border p-4 ${border}`}>
       <div className="text-[11px] font-semibold tracking-[0.1em] text-grey-600 uppercase mb-1">
         {label}
       </div>
@@ -449,7 +474,7 @@ function StatCard({
         {value.toLocaleString()}
         {suffix && <span className="text-[13px] font-semibold text-grey-600 ml-1">{suffix}</span>}
       </div>
-      {hint && <div className="text-[11px] text-grey-600 mt-1.5 leading-[1.4]">{hint}</div>}
+      {hint && <div className={`text-[11px] mt-1.5 leading-[1.4] ${hintColor}`}>{hint}</div>}
     </div>
   );
 }
