@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   NewsCard,
@@ -195,18 +196,18 @@ function EmptyState({ isAll }: { isAll: boolean }) {
         조금만 기다려 주세요.
       </p>
       <div className="flex justify-center gap-2 mt-5 flex-wrap">
-        <a
+        <Link
           href="/welfare"
           className="min-h-[44px] inline-flex items-center px-5 text-[14px] font-semibold rounded-xl bg-blue-500 text-white hover:bg-blue-600 no-underline"
         >
           복지정보 보기
-        </a>
-        <a
+        </Link>
+        <Link
           href="/loan"
           className="min-h-[44px] inline-flex items-center px-5 text-[14px] font-semibold rounded-xl bg-white border border-grey-200 text-grey-700 hover:bg-grey-50 no-underline"
         >
           대출정보 보기
-        </a>
+        </Link>
       </div>
     </div>
   );
