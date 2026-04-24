@@ -18,6 +18,7 @@ import {
 } from "@/components/news-card";
 import { Pagination } from "@/components/pagination";
 import { AdSlot } from "@/components/ad-slot";
+import { TOPIC_CATEGORIES } from "@/lib/news-collectors/korea-kr-topics";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -48,8 +49,11 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 type Props = {
-  searchParams: Promise<{ category?: string; page?: string }>;
+  searchParams: Promise<{ category?: string; topic?: string; page?: string }>;
 };
+
+// 유효 topic(주제 카테고리) 이름 집합 — URL 쿼리 임의값 차단
+const VALID_TOPICS = new Set(TOPIC_CATEGORIES.map((c) => c.name));
 
 export default async function NewsIndexPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -57,6 +61,8 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     params.category && VALID_CATEGORIES.has(params.category)
       ? params.category
       : "all";
+  const activeTopic =
+    params.topic && VALID_TOPICS.has(params.topic) ? params.topic : null;
   const page = Math.max(1, parseInt(params.page || "1", 10));
 
   const supabase = await createClient();
@@ -77,6 +83,11 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   if (activeCategory !== "all") {
     query = query.eq("category", activeCategory);
   }
+  // 주제 카테고리 필터 — topic_categories 배열에 해당 카테고리명이 있는 row 만.
+  // `cs` (contains) 는 PostgREST 의 @> 연산자에 매핑됨.
+  if (activeTopic) {
+    query = query.contains("topic_categories", [activeTopic]);
+  }
 
   const { data: posts, count } = await query.range(
     (page - 1) * PER_PAGE,
@@ -89,6 +100,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   function buildUrl(overrides: Record<string, string>) {
     const p = {
       category: activeCategory,
+      topic: activeTopic ?? "",
       page: String(page),
       ...overrides,
     };
@@ -105,6 +117,25 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     }`;
   }
 
+  // 주제 칩 URL — category 는 유지, topic 만 토글
+  function topicUrl(topicName: string | null): string {
+    const parts: string[] = [];
+    if (activeCategory !== "all") {
+      parts.push(`category=${encodeURIComponent(activeCategory)}`);
+    }
+    if (topicName) {
+      parts.push(`topic=${encodeURIComponent(topicName)}`);
+    }
+    return `/news${parts.length ? "?" + parts.join("&") : ""}`;
+  }
+
+  // 주제 칩을 축(대상별/주제별/핫이슈)별 그룹핑
+  const topicGroups = {
+    target: TOPIC_CATEGORIES.filter((c) => c.axis === "target"),
+    topic: TOPIC_CATEGORIES.filter((c) => c.axis === "topic"),
+    hot: TOPIC_CATEGORIES.filter((c) => c.axis === "hot"),
+  };
+
   return (
     <main className="min-h-screen bg-grey-50 pt-28 pb-20">
       <div className="max-w-content mx-auto px-10 max-md:px-6">
@@ -118,17 +149,24 @@ export default async function NewsIndexPage({ searchParams }: Props) {
           </p>
         </header>
 
-        {/* 카테고리 필터 탭 */}
+        {/* 발행 형식 탭 (전체 / 정책뉴스 / 정책자료) */}
         <nav
-          className="flex flex-wrap gap-2 mb-8"
-          aria-label="뉴스 카테고리 필터"
+          className="flex flex-wrap gap-2 mb-4"
+          aria-label="뉴스 발행 형식 필터"
         >
           {CATEGORIES.map((cat) => {
             const selected = activeCategory === cat.key;
+            // 탭 전환 시 topic 쿼리는 보존 — 사용자가 선택한 주제 카테고리를 유지
+            const href = (() => {
+              const parts: string[] = [];
+              if (cat.key !== "all") parts.push(`category=${cat.key}`);
+              if (activeTopic) parts.push(`topic=${encodeURIComponent(activeTopic)}`);
+              return `/news${parts.length ? "?" + parts.join("&") : ""}`;
+            })();
             return (
               <a
                 key={cat.key}
-                href={cat.key === "all" ? "/news" : `/news?category=${cat.key}`}
+                href={href}
                 aria-current={selected ? "page" : undefined}
                 className={`inline-flex items-center min-h-[44px] px-4 text-[14px] rounded-full no-underline transition-colors ${
                   selected
@@ -141,6 +179,30 @@ export default async function NewsIndexPage({ searchParams }: Props) {
             );
           })}
         </nav>
+
+        {/* 주제 카테고리 칩 — korea.kr 키워드 뉴스 15개. 대상별·주제별·핫이슈 3축
+            으로 묶어 축 사이 소제목 + 작은 칩으로 구분 (탭 중복 시각 방지). */}
+        <section
+          aria-label="뉴스 주제 필터"
+          className="mb-8 bg-white rounded-2xl border border-grey-100 p-5 md:p-6"
+        >
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <h2 className="text-[14px] font-bold text-grey-900 tracking-[-0.2px]">
+              주제로 찾기
+            </h2>
+            {activeTopic && (
+              <a
+                href={topicUrl(null)}
+                className="text-[13px] text-blue-600 hover:text-blue-700 no-underline"
+              >
+                필터 해제
+              </a>
+            )}
+          </div>
+          <TopicGroup label="대상별" topics={topicGroups.target} active={activeTopic} urlFn={topicUrl} />
+          <TopicGroup label="주제별" topics={topicGroups.topic} active={activeTopic} urlFn={topicUrl} />
+          <TopicGroup label="핫이슈" topics={topicGroups.hot} active={activeTopic} urlFn={topicUrl} />
+        </section>
 
         {/* 목록 */}
         {list.length === 0 ? (
@@ -187,6 +249,46 @@ export default async function NewsIndexPage({ searchParams }: Props) {
         </p>
       </div>
     </main>
+  );
+}
+
+// 주제 카테고리 한 축(대상별/주제별/핫이슈) 을 렌더하는 칩 행
+function TopicGroup({
+  label,
+  topics,
+  active,
+  urlFn,
+}: {
+  label: string;
+  topics: { id: string; name: string }[];
+  active: string | null;
+  urlFn: (name: string | null) => string;
+}) {
+  return (
+    <div className="flex items-start gap-3 mb-3 last:mb-0">
+      <div className="shrink-0 w-16 text-[12px] font-semibold text-grey-600 pt-1.5">
+        {label}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {topics.map((t) => {
+          const selected = active === t.name;
+          return (
+            <a
+              key={t.id}
+              href={urlFn(selected ? null : t.name)}
+              aria-current={selected ? "page" : undefined}
+              className={`inline-flex items-center min-h-[32px] px-3 text-[13px] rounded-full no-underline transition-colors ${
+                selected
+                  ? "bg-grey-900 text-white font-semibold"
+                  : "bg-grey-50 text-grey-700 border border-grey-100 hover:bg-grey-100"
+              }`}
+            >
+              {t.name}
+            </a>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

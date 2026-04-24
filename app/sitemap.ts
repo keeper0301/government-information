@@ -80,9 +80,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // 뉴스 주제 페이지 15개 — korea.kr 키워드 뉴스 분류 (대상별·주제별·핫이슈)
+  // 쿼리 파라미터 기반이라 정식 별도 라우트보다 SEO 힘은 약하지만 Google 은
+  // query-string URL 도 색인함. 각 주제별로 최신 뉴스 모음이 노출되어 long-tail
+  // 검색 대응.
+  const { TOPIC_CATEGORIES } = await import(
+    "@/lib/news-collectors/korea-kr-topics"
+  );
+  const topicPages: MetadataRoute.Sitemap = TOPIC_CATEGORIES.map((t) => ({
+    url: `${baseUrl}/news?topic=${encodeURIComponent(t.name)}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
+    priority: 0.6,
+  }));
+
   return [
     ...staticPages,
     ...keywordPages,
+    ...topicPages,
     ...welfarePages,
     ...loanPages,
     ...blogPages,
