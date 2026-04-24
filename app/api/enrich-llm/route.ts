@@ -52,16 +52,24 @@ type EnrichRow = {
 
 // 1건 보강: Gemini 호출 → DB update
 // 반환 true=성공, false=스킵 또는 실패
+//
+// 타임스탬프 정책 (019 마이그레이션):
+//   - 성공: last_llm_enriched_at = now, last_llm_failed_at = null (리셋)
+//     → 7일 cooldown. 쿼리 조건의 NULL 필드 체크와 조합으로 자동 스킵.
+//   - 실패·본문부족: last_llm_failed_at = now (last_llm_enriched_at 건드리지 않음)
+//     → 1일 cooldown. 일시 오류는 하루만 대기 후 재시도.
 async function enrichOne(
   supabase: AdminClient,
   table: "welfare_programs" | "loan_programs",
   row: EnrichRow,
 ): Promise<boolean> {
+  const now = new Date().toISOString();
+
   if (!row.description || row.description.length < MIN_DESCRIPTION_LEN) {
-    // 본문 부족 — 그래도 last_llm_enriched_at 은 찍어서 다음 주기까지 재시도 방지
+    // 본문 부족 — 실패 쪽으로 기록. 하루 후 재시도 (description 이 보강될 수도 있음)
     await supabase
       .from(table)
-      .update({ last_llm_enriched_at: new Date().toISOString() })
+      .update({ last_llm_failed_at: now })
       .eq("id", row.id);
     return false;
   }
@@ -75,8 +83,12 @@ async function enrichOne(
     // welfare 는 /api/enrich (data.go.kr 공식) 가 먼저 정확한 값을 넣어두기 때문에
     // 그 위에 LLM 재해석을 덮어쓰면 오히려 품질 저하 가능.
     // "채워진 필드는 보존 · 비어있는 필드만 LLM 으로 보강" 방향.
+    //
+    // 성공 시 last_llm_failed_at 을 null 로 리셋 — 이전 실패 cooldown 해제
+    // (이제 성공했으니 "실패 기록" 보존할 이유 없음, 다음 cycle 은 enriched_at 7일만 보면 됨).
     const update: Record<string, unknown> = {
-      last_llm_enriched_at: new Date().toISOString(),
+      last_llm_enriched_at: now,
+      last_llm_failed_at: null,
     };
     if (extracted.eligibility && !row.eligibility) {
       update.eligibility = extracted.eligibility;
@@ -106,16 +118,21 @@ async function enrichOne(
     const { error } = await supabase.from(table).update(update).eq("id", row.id);
     if (error) {
       console.error(`[enrich-llm] ${table} ${row.id} update 실패:`, error);
+      // DB update 자체 실패 → 실패 쿨다운으로 처리
+      await supabase
+        .from(table)
+        .update({ last_llm_failed_at: now })
+        .eq("id", row.id);
       return false;
     }
     return true;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[enrich-llm] ${table} ${row.id} Gemini 실패:`, msg);
-    // 실패해도 타임스탬프 찍어서 무한 재시도 방지
+    // Gemini 호출 실패 — 1일 cooldown 으로 기록. 일시 오류는 내일 다시 시도.
     await supabase
       .from(table)
-      .update({ last_llm_enriched_at: new Date().toISOString() })
+      .update({ last_llm_failed_at: now })
       .eq("id", row.id);
     return false;
   }
@@ -136,10 +153,13 @@ async function runEnrichAndRespond(jobLabel: string) {
 
     const supabase = createAdminClient();
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    // 후보: description 있음 + 핵심 필드 중 하나라도 NULL + 7일 내 보강 안 한 것
-    // PostgREST .or() 는 같은 쿼리 내 여러 번 호출하면 AND 결합 → 아래 2개 or 가
-    // 모두 만족하는 row 만 가져옴.
+    // 후보 조건 (PostgREST .or() 여러 번 호출 = AND 결합):
+    //   (1) description 있음 (not null)
+    //   (2) 성공 cooldown — last_llm_enriched_at 이 NULL 이거나 7일 이전
+    //   (3) 실패 cooldown — last_llm_failed_at 이 NULL 이거나 1일 이전
+    //   (4) 추출 대상 필드 중 하나라도 NULL (이미 다 채워진 row 제외)
     const [welfareRes, loanRes] = await Promise.all([
       supabase
         .from("welfare_programs")
@@ -148,6 +168,7 @@ async function runEnrichAndRespond(jobLabel: string) {
         )
         .not("description", "is", null)
         .or(`last_llm_enriched_at.is.null,last_llm_enriched_at.lt.${sevenDaysAgo}`)
+        .or(`last_llm_failed_at.is.null,last_llm_failed_at.lt.${oneDayAgo}`)
         // extractFieldsFromText 가 추출하는 모든 welfare 필드 포함
         // (초반엔 eligibility 99.9% NULL 이라 어차피 전체 커버되지만,
         // 핵심 필드 다 채워진 후 required_documents 만 NULL 인 row 가 영구 누락되는 걸 방지)
@@ -161,6 +182,7 @@ async function runEnrichAndRespond(jobLabel: string) {
         )
         .not("description", "is", null)
         .or(`last_llm_enriched_at.is.null,last_llm_enriched_at.lt.${sevenDaysAgo}`)
+        .or(`last_llm_failed_at.is.null,last_llm_failed_at.lt.${oneDayAgo}`)
         // extractFieldsFromText 가 추출하는 모든 loan 필드 포함
         // (interest_rate 72.9% · repayment_period 66.9% · required_documents 100% NULL →
         // 누락 시 장기적으로 이 필드만 남은 row 가 영구 보강 안 됨)
