@@ -1,31 +1,29 @@
 // ============================================================
 // 회원 탈퇴 API — /api/account/delete
 // ============================================================
-// POST 로 본인 계정 즉시 삭제. 모든 user_id FK 가 ON DELETE CASCADE 로
-// 걸려있어 auth.users 에서 삭제하면 user_profiles · user_alert_rules ·
-// alert_deliveries · subscriptions · subscription_events · ai_usage_log ·
-// consent_log 가 자동 연쇄 삭제됨.
+// 2026-04-24 Phase 2 Step 3: 즉시 삭제 → 30일 유예 soft delete 로 전환.
+//
+// 기본 동작 (body 없음 또는 { final: false }):
+//   1) pending_deletions 에 upsert (scheduled_delete_at = now + 30일)
+//   2) admin_actions.self_delete_requested 감사 로그
+//   3) signOut → 클라이언트 쿠키 해제. 다시 로그인 시 middleware 가
+//      /account/restore 로 리다이렉트.
+//
+// 즉시 최종 삭제 ({ final: true }):
+//   - 복구 페이지 "지금 영구 삭제" 버튼에서만 호출. pending_deletions row 가
+//     반드시 있어야 허용 (= 이미 유예 요청 상태여야 함).
+//   - admin_actions.self_deleted 기록 → auth.admin.deleteUser (CASCADE 로
+//     pending_deletions · 기타 모든 user_id FK 일괄 삭제)
 //
 // 차단 조건:
 //   - 비로그인 → 401
-//   - 활성 구독(trialing/active/charging/past_due) 보유 → 409
-//     (먼저 구독 취소 후 재시도 안내)
+//   - 활성 구독(trialing/active/charging/past_due) → 409
+//   - final=true 인데 pending_deletions row 없음 → 400
 //
-// Phase 1 MVP:
-//   - 구독 없는 사용자만 즉시 탈퇴
-//   - 탈퇴 사유 수집·유예 기간·로그 남기기는 추후 (Phase 2)
+// 30일 경과 후 자동 최종 삭제는 별도 cron (/api/finalize-deletions, Step 2c).
 //
-// 법적 주의:
-//   - 전자상거래법상 결제 기록 5년 보존 의무가 있지만, 토스 측 대시보드에
-//     결제 기록이 남아있고 현재는 테스트 키 단계라 즉시 cascade 삭제로 시작.
-//     라이브 결제 활성화 후에는 subscription_events 익명화 방식으로 재설계 필요.
-//
-// Phase 2 TODO:
-//   - 토스 빌링키 해지 API 호출. 현재는 구독 cancelled 상태 사용자 탈퇴 시
-//     DB 의 빌링키 레코드만 제거되고 토스 서버엔 잔존 가능. 자동결제는 cancelled
-//     라 안 나가지만 "완전 제거" 원칙상 Phase 2 에서 `/v1/billing/cancel` 같은
-//     토스 API 로 정리 필요.
-//   - 어드민 본인 탈퇴 시 추가 경고 (ADMIN_USER_IDS 에 남은 운영자 수 확인).
+// 법적 주의: 전자상거래법 결제 기록 5년 보존 의무 — 라이브 결제 활성화 후
+// subscription_events 익명화 방식으로 재설계 필요.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -33,7 +31,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
 
-// 탈퇴를 차단하는 구독 상태 — 청구/체험 진행 중이면 먼저 정리 필요
+// 유예 기간 — 30일. 사용자가 "실수 탈퇴" 로부터 복구할 충분한 창.
+const GRACE_DAYS = 30;
+
+// 탈퇴 차단 구독 상태 — 청구/체험 진행 중이면 먼저 구독 취소
 const BLOCKING_SUBSCRIPTION_STATUSES = [
   "trialing",
   "active",
@@ -52,7 +53,7 @@ const VALID_REASONS = new Set([
 ]);
 const REASON_DETAIL_MAX = 200;
 
-// 이메일 앞 2글자만 노출 + 도메인 유지 — 감사 로그에서 사용자 특정 어렵되 유형 파악은 가능
+// 이메일 앞 2글자 + 도메인만 노출 — 감사 로그 PII 최소화
 function maskEmail(email: string | null | undefined): string | null {
   if (!email) return null;
   const m = email.match(/^(.{1,2})(.*)(@.+)$/);
@@ -71,15 +72,18 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // 2) body 파싱 — 사유·자유 입력. 본문 없어도 탈퇴는 진행 (선택 항목).
+  // 2) body 파싱
   const body = await req.json().catch(() => ({}));
   const rawReason = typeof body?.reason === "string" ? body.reason : null;
   const reason = rawReason && VALID_REASONS.has(rawReason) ? rawReason : null;
   const rawDetail =
     typeof body?.reason_detail === "string" ? body.reason_detail : null;
-  const reasonDetail = rawDetail ? rawDetail.slice(0, REASON_DETAIL_MAX) : null;
+  const reasonDetail = rawDetail
+    ? rawDetail.trim().slice(0, REASON_DETAIL_MAX) || null
+    : null;
+  const final = body?.final === true;
 
-  // 3) 활성 구독 차단
+  // 3) 활성 구독 차단 (즉시/유예 공통 가드)
   const { data: sub } = await admin
     .from("subscriptions")
     .select("status")
@@ -96,45 +100,118 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4) 감사 로그 먼저 기록 — auth.users 삭제 후엔 actor/target FK 가 cascade 로 SET NULL.
-  // details JSONB 에 user_id·마스킹 email·사유를 명시 저장해 id 소실 후에도 집계 가능.
-  // 로그 기록 실패해도 탈퇴 자체는 진행 (사용자 요청 완결 우선, 로그 손실은 경고만).
+  // 4) final=true → 복구 페이지에서 "지금 영구 삭제" 요청. 유예 row 필수.
+  if (final) {
+    const { data: pending } = await admin
+      .from("pending_deletions")
+      .select("requested_at, reason, reason_detail")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!pending) {
+      return NextResponse.json(
+        {
+          error:
+            "탈퇴 요청 상태가 아니에요. 마이페이지에서 먼저 탈퇴를 요청해 주세요.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // 감사 로그 — 최종 삭제. 사유는 pending row 의 것을 그대로 이관.
+    try {
+      await logAdminAction({
+        actorId: user.id,
+        targetUserId: user.id,
+        action: "self_deleted",
+        details: {
+          user_id_at_deletion: user.id,
+          email_masked: maskEmail(user.email),
+          reason: pending.reason ?? "unspecified",
+          reason_detail: pending.reason_detail,
+          had_subscription: !!sub,
+          subscription_status_at_deletion: sub?.status ?? null,
+          finalize_source: "user_immediate",
+          requested_at: pending.requested_at,
+        },
+      });
+    } catch (logErr) {
+      console.warn("[api/account/delete] self_deleted 기록 실패:", logErr);
+    }
+
+    // auth.users 삭제 → CASCADE 로 pending_deletions·기타 모든 user_id FK 일괄 삭제
+    const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
+    if (delErr) {
+      console.error("[api/account/delete] auth.users 삭제 실패:", {
+        userId: user.id,
+        message: delErr.message,
+      });
+      return NextResponse.json(
+        { error: "탈퇴 처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요." },
+        { status: 500 },
+      );
+    }
+
+    await supabase.auth.signOut();
+    return NextResponse.json({ ok: true, final: true });
+  }
+
+  // 5) 기본 경로 — 30일 유예 soft delete.
+  //    이미 pending 상태여도 최신 사유로 갱신 (upsert). scheduled_delete_at 도 재설정.
+  const now = new Date();
+  const scheduledDeleteAt = new Date(
+    now.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000,
+  );
+
+  const { error: pendingErr } = await admin.from("pending_deletions").upsert({
+    user_id: user.id,
+    email: user.email ?? "",
+    requested_at: now.toISOString(),
+    scheduled_delete_at: scheduledDeleteAt.toISOString(),
+    reason,
+    reason_detail: reasonDetail,
+  });
+  if (pendingErr) {
+    console.error("[api/account/delete] pending_deletions upsert 실패:", {
+      userId: user.id,
+      message: pendingErr.message,
+    });
+    return NextResponse.json(
+      { error: "탈퇴 요청 처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요." },
+      { status: 500 },
+    );
+  }
+
+  // 6) 감사 로그 — 탈퇴 요청 시점 기록. 실패해도 요청 자체는 성공 처리 (fail-open).
   try {
     await logAdminAction({
       actorId: user.id,
       targetUserId: user.id,
-      action: "self_deleted",
+      action: "self_delete_requested",
       details: {
-        user_id_at_deletion: user.id,
         email_masked: maskEmail(user.email),
         reason: reason ?? "unspecified",
         reason_detail: reasonDetail,
         had_subscription: !!sub,
         subscription_status_at_deletion: sub?.status ?? null,
+        scheduled_delete_at: scheduledDeleteAt.toISOString(),
+        grace_days: GRACE_DAYS,
       },
     });
   } catch (logErr) {
-    console.warn("[api/account/delete] admin_actions self_deleted 기록 실패:", {
-      userId: user.id,
-      message: logErr instanceof Error ? logErr.message : String(logErr),
-    });
-  }
-
-  // 5) auth.users 삭제 → CASCADE 로 모든 관련 데이터 자동 삭제
-  const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
-  if (delErr) {
-    console.error("[api/account/delete] auth.users 삭제 실패:", {
-      userId: user.id,
-      message: delErr.message,
-    });
-    return NextResponse.json(
-      { error: "탈퇴 처리 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요." },
-      { status: 500 },
+    console.warn(
+      "[api/account/delete] self_delete_requested 기록 실패:",
+      logErr,
     );
   }
 
-  // 6) 현재 세션 쿠키 제거 — 클라이언트도 로그인 상태 해제
+  // 7) 세션 무효화 — 클라이언트 쿠키 제거. 다시 로그인 시 middleware 가
+  //    /account/restore 로 강제 리다이렉트. 30일 내 복구 창구 역할.
   await supabase.auth.signOut();
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    scheduled_delete_at: scheduledDeleteAt.toISOString(),
+    grace_days: GRACE_DAYS,
+  });
 }

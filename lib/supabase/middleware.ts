@@ -11,6 +11,24 @@ const PROTECTED_PATHS = ["/mypage", "/alerts", "/checkout"];
 //   세션이 만료된 채로 토스에서 돌아오는 경우에도 메시지가 표시되어야 함
 const PROTECTED_EXCEPTIONS = ["/checkout/fail"];
 
+// pending_deletions row 있는 사용자가 예외적으로 접근할 수 있는 경로.
+// 이 외 모든 경로는 /account/restore 로 강제 리다이렉트 (복구 or 즉시삭제 유도).
+// - /account/restore: 복구 페이지 자체
+// - /api/account/restore, /api/account/delete: 복구·즉시삭제 API (페이지에서 호출)
+// - /auth/*: 로그인 callback / signOut 처리는 통과시켜 상태 정리 허용
+const PENDING_ALLOWED_PREFIXES = [
+  "/account/restore",
+  "/api/account/restore",
+  "/api/account/delete",
+  "/auth/",
+];
+
+function isPendingAllowed(pathname: string): boolean {
+  return PENDING_ALLOWED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p),
+  );
+}
+
 // 모든 요청 전에 실행되는 미들웨어
 // 1) Supabase 세션 쿠키를 갱신해서 로그인 상태 유지
 // 2) 보호 경로에 미로그인 상태로 접근하면 로그인 페이지로 돌려보냄
@@ -61,6 +79,24 @@ export async function updateSession(request: NextRequest) {
     const originalPath = pathname + request.nextUrl.search;
     loginUrl.search = `?next=${encodeURIComponent(originalPath)}`;
     return NextResponse.redirect(loginUrl);
+  }
+
+  // 로그인 상태 + pending 탈퇴 요청 상태 → 복구 페이지 외 모든 경로 차단.
+  // RLS 가 SELECT 를 본인 row 로만 제한하므로 타인 상태는 노출 불가.
+  // PK 조회라 비용 낮음. allowed 경로는 페이지·API 정상 흐름 유지.
+  if (user && !isPendingAllowed(pathname)) {
+    const { data: pending } = await supabase
+      .from("pending_deletions")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (pending) {
+      const restoreUrl = request.nextUrl.clone();
+      restoreUrl.pathname = "/account/restore";
+      restoreUrl.search = "";
+      return NextResponse.redirect(restoreUrl);
+    }
   }
 
   return supabaseResponse;

@@ -45,9 +45,9 @@ export function WithdrawSection() {
   async function handleWithdraw() {
     if (!acknowledged) return;
 
-    // window.confirm 은 스타일링 제한 있지만 비개발자·모바일 호환성 좋음.
+    // 30일 유예 안내. 최종 삭제 전 복구 가능함을 명시.
     const confirmed = window.confirm(
-      "정말 탈퇴하시겠어요?\n\n탈퇴하시면 프로필·관심 분야·알림 설정·AI 사용 기록 등 모든 데이터가 영구 삭제되며 복구할 수 없어요.",
+      "탈퇴를 요청하시겠어요?\n\n요청 후 30일간 유예돼요. 이 기간 안에 다시 로그인하시면 복구할 수 있고, 30일이 지나면 프로필·관심 분야·알림 설정·AI 사용 기록 등 모든 데이터가 영구 삭제돼요.",
     );
     if (!confirmed) return;
 
@@ -60,8 +60,7 @@ export function WithdrawSection() {
       reason === "etc" ? reasonDetail.trim() : "";
 
     try {
-      // 사유는 서버에 body 로 같이 보냄 — 추후 admin_actions 감사 로그에 쓰기 위해
-      // 서버 사이드도 수신만 해두고, 이번 단계에선 저장 없이 GA4 로만 집계.
+      // 서버는 pending_deletions 에 upsert 후 signOut. 30일 후 cron 이 최종 삭제.
       const res = await fetch("/api/account/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,12 +80,13 @@ export function WithdrawSection() {
         throw new Error(data.error || "탈퇴 처리에 실패했어요.");
       }
 
-      // 탈퇴 완료 이벤트 — 사유 파라미터 포함. router.push 전에 호출
-      // (페이지 언마운트 후엔 gtag 레이스 가능).
-      // value 가 고정 사전이라 GA4 Custom Dimension 에 안전하게 enum 처리 가능.
-      trackEvent(EVENTS.ACCOUNT_DELETED, {
+      // 탈퇴 '요청' 이벤트 — 최종 삭제 아님. 최종은 cron 또는 복구 페이지의
+      // 즉시 삭제에서 별도 ACCOUNT_DELETED 로 집계. value 가 고정 사전이라
+      // GA4 Custom Dimension 에 안전하게 enum 처리 가능.
+      trackEvent(EVENTS.ACCOUNT_DELETE_REQUESTED, {
         reason: reason || "unspecified",
         has_detail: !!effectiveDetail,
+        grace_days: 30,
       });
 
       router.push("/");
@@ -103,8 +103,10 @@ export function WithdrawSection() {
     <section className="mt-12 pt-8 border-t border-grey-100">
       <h2 className="text-[17px] font-bold text-grey-900 mb-2">회원 탈퇴</h2>
       <p className="text-[13px] text-grey-600 mb-4 leading-[1.6]">
-        탈퇴하시면 프로필·관심 분야·알림 설정·AI 사용 기록 등 모든 개인 데이터가
-        즉시 삭제되며 복구할 수 없어요. 진행 중인 구독이 있다면 먼저{" "}
+        탈퇴 요청 후 <b className="text-grey-900">30일간 유예</b>돼요. 이 기간
+        안에 다시 로그인하시면 바로 복구할 수 있어요. 유예가 지나면 프로필·관심
+        분야·알림 설정·AI 사용 기록 등 모든 개인 데이터가 영구 삭제돼요.
+        진행 중인 구독이 있다면 먼저{" "}
         <b className="text-grey-900">결제·구독 페이지</b>에서 구독을 취소해
         주세요.
       </p>
@@ -174,7 +176,7 @@ export function WithdrawSection() {
           className="mt-1 cursor-pointer"
         />
         <span className="text-[13px] text-grey-700 leading-[1.5]">
-          모든 데이터가 영구 삭제되며 복구할 수 없음을 이해했어요.
+          30일 유예 후 모든 데이터가 영구 삭제됨을 이해했어요 (유예 기간 내 복구 가능).
         </span>
       </label>
 
@@ -184,7 +186,7 @@ export function WithdrawSection() {
         disabled={!acknowledged || busy}
         className="px-4 py-2 text-[13px] font-semibold rounded-md border border-red text-red bg-white hover:bg-red/5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
       >
-        {busy ? "처리 중..." : "회원 탈퇴"}
+        {busy ? "처리 중..." : "회원 탈퇴 요청"}
       </button>
     </section>
   );
