@@ -135,30 +135,142 @@ export async function getUrgentPrograms(limit = 3, daysAhead = 14): Promise<Disp
     .slice(0, limit);
 }
 
-// 인기 복지 프로그램 조회 (조회수 높은 순)
-export async function getPopularWelfare(limit = 20): Promise<DisplayProgram[]> {
-  const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
-  const { data } = await supabase
-    .from("welfare_programs")
-    .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("view_count", { ascending: false })
-    .limit(limit);
-  return (data || []).map(welfareToDisplay);
+// ============================================================
+// /popular 페이지용 — 스마트 랭킹 + 필터
+// ============================================================
+// 단순 view_count 정렬로는 마감 지난 공고도 포함되고, 마감 임박 공고가
+// 누적 조회수 부족으로 묻혀 사용자에게 도움 안 되는 문제 있었음.
+//
+// 해결:
+//   1) 마감 지난 공고 자동 제외 (apply_end < today)
+//   2) score = view_count × deadlineBoost 로 정렬
+//      - D-7 이내: ×1.5 (마감 임박 + 인기 = 진짜 핫)
+//      - D-30 이내: ×1.2 (곧 마감)
+//      - 그 외 (상시 포함): ×1.0
+//   3) category·region 필터 + sort=popular|deadline 옵션
+// ============================================================
+
+import { getRegionMatchPatterns } from "@/lib/regions";
+
+export type PopularSort = "popular" | "deadline";
+
+export type PopularFilter = {
+  programType: "welfare" | "loan";
+  category?: string;       // "전체" 또는 welfare/loan 카테고리 정확 일치
+  region?: string;          // "전국" 또는 짧은 이름 (전남·서울 등)
+  sort?: PopularSort;       // 기본 popular
+};
+
+type RowWithViewCount = WelfareProgram | LoanProgram;
+
+// 마감일 가중치 — 임박할수록 인기 부스트
+function deadlineBoost(dday: number | null): number {
+  if (dday === null) return 1.0;       // 상시
+  if (dday <= 7) return 1.5;
+  if (dday <= 30) return 1.2;
+  return 1.0;
 }
 
-// 인기 대출 프로그램 조회 (조회수 높은 순)
-export async function getPopularLoans(limit = 20): Promise<DisplayProgram[]> {
+export async function getPopularPrograms(
+  filter: PopularFilter,
+  limit = 20,
+): Promise<DisplayProgram[]> {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
-  const { data } = await supabase
-    .from("loan_programs")
+  const table = filter.programType === "welfare" ? "welfare_programs" : "loan_programs";
+
+  let query = supabase
+    .from(table)
     .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .or(`apply_end.gte.${today},apply_end.is.null`);
+
+  // 카테고리 필터 (정확 일치)
+  if (filter.category && filter.category !== "전체") {
+    query = query.eq("category", filter.category);
+  }
+
+  // 지역 필터 — welfare 는 region 컬럼, loan 은 title prefix 매칭
+  if (filter.region && filter.region !== "전국") {
+    const patterns = getRegionMatchPatterns(filter.region);
+    if (filter.programType === "welfare") {
+      const orConds = patterns.map((p) => `region.ilike.%${p}%`).join(",");
+      query = query.or(orConds);
+    } else {
+      // loan: 제목에 [전남% 또는 (전남% 패턴
+      const orConds = patterns.flatMap((p) => [
+        `title.ilike.%[${p}%`,
+        `title.ilike.%(${p}%`,
+      ]).join(",");
+      query = query.or(orConds);
+    }
+  }
+
+  // 정렬: deadline 은 SQL 단에서 마감순. popular 는 score 재정렬을 위해
+  // view_count 상위 limit*3 가져온 뒤 JS 사이드에서 boost 적용 후 재정렬.
+  if (filter.sort === "deadline") {
+    query = query.order("apply_end", { ascending: true, nullsFirst: false }).limit(limit);
+    const { data } = await query;
+    return (data || []).map(
+      filter.programType === "welfare"
+        ? welfareToDisplay
+        : loanToDisplay,
+    );
+  }
+
+  // sort === "popular" (기본)
+  query = query.order("view_count", { ascending: false }).limit(limit * 3);
+  const { data } = await query;
+  const rows = (data || []) as RowWithViewCount[];
+
+  // score 재정렬: view_count × 마감 가중치
+  const scored = rows.map((row) => {
+    const dday = calcDday(row.apply_end);
+    const score = (row.view_count ?? 0) * deadlineBoost(dday);
+    return { row, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored.slice(0, limit).map(({ row }) =>
+    filter.programType === "welfare"
+      ? welfareToDisplay(row as WelfareProgram)
+      : loanToDisplay(row as LoanProgram),
+  );
+}
+
+// 마감 7일 이내 + 조회수 상위 — /popular 상단 강조 섹션용
+export async function getDeadlineSoonPopular(
+  programType: "welfare" | "loan",
+  limit = 5,
+): Promise<DisplayProgram[]> {
+  const supabase = await createClient();
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const sevenDaysLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+    .toISOString().split("T")[0];
+  const table = programType === "welfare" ? "welfare_programs" : "loan_programs";
+
+  const { data } = await supabase
+    .from(table)
+    .select("*")
+    .gte("apply_end", todayStr)
+    .lte("apply_end", sevenDaysLater)
     .order("view_count", { ascending: false })
     .limit(limit);
-  return (data || []).map(loanToDisplay);
+
+  return (data || []).map(
+    programType === "welfare" ? welfareToDisplay : loanToDisplay,
+  );
+}
+
+// === 하위 호환 ===
+// 기존 호출부 (홈 등) 가 있을 수 있어 deprecated wrapper 유지.
+// 새 코드는 getPopularPrograms 사용 권장.
+export async function getPopularWelfare(limit = 20): Promise<DisplayProgram[]> {
+  return getPopularPrograms({ programType: "welfare" }, limit);
+}
+
+export async function getPopularLoans(limit = 20): Promise<DisplayProgram[]> {
+  return getPopularPrograms({ programType: "loan" }, limit);
 }
 
 // 홈·/recommend 의 맞춤 추천 로직은 lib/recommend.ts 의 getRecommendations 로
