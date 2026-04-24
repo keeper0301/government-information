@@ -220,12 +220,15 @@ export async function collectKoreaKr(): Promise<{
   upserted: number;
   errors: number;
   breakdown: Record<string, number>;
+  errorDetails: Record<string, string>;
 }> {
   const supabase = createAdminClient();
   let total = 0;
   let upserted = 0;
   let errors = 0;
   const breakdown: Record<string, number> = {};
+  // 실패 원인 디버깅용 — 각 feed.code → 실제 에러 메시지.
+  const errorDetails: Record<string, string> = {};
 
   // 모든 피드 병렬 fetch (실패·성공 독립)
   const fetchResults = await Promise.allSettled(
@@ -276,10 +279,16 @@ export async function collectKoreaKr(): Promise<{
     }),
   );
 
-  for (const ur of upsertResults) {
-    if (ur.status === "fulfilled") upserted += ur.value.upserted;
-    else errors++;
-  }
+  upsertResults.forEach((ur, idx) => {
+    const feed = FEEDS[idx];
+    if (ur.status === "fulfilled") {
+      upserted += ur.value.upserted;
+    } else {
+      errors++;
+      errorDetails[feed.code] =
+        ur.reason instanceof Error ? ur.reason.message : String(ur.reason);
+    }
+  });
 
-  return { total, upserted, errors, breakdown };
+  return { total, upserted, errors, breakdown, errorDetails };
 }
