@@ -1,21 +1,15 @@
 // ============================================================
 // 네이버 뉴스 검색 API — 전국 시군구 정책 정보 수집
 // ============================================================
-// 2026-04-24 사장님 결정: 네이버 뉴스 검색 결과는 "정책 발표 정보" 이므로
-// /news (뉴스 목록) 가 아니라 welfare_programs / loan_programs (사용자가
-// 신청 정보를 찾는 곳) 에 직접 저장한다.
+// 2026-04-25 저장 대상 변경: news_posts 로 일원화.
+// 이전(2026-04-24) 에는 welfare_programs / loan_programs 로 직접 저장했으나,
+// 신문 기사라 apply_*·target·benefits 가 비어 "프로그램" 처럼 취급하기
+// 어색했고, /welfare·/loan 목록에 뉴스가 섞여 공고 품질·detail-fetcher
+// 매칭에도 악영향 (전수 23000+ 건이 enrich skipped 원인).
 //
-// 이유: 사용자가 keepioo.com 에서 "순천 15만원" 검색 시 /welfare 에서
-// 잡혀야 함. 신문 기사는 발표 알림이긴 하지만, keepioo 사용자 입장에서는
-// "순천시민에게 15만원 지원금이 있다" 가 핵심 정보.
-//
-// 분기 규칙:
-//   - title 또는 summary 에 "대출·보증·융자·이차보전·융자금" → loan_programs
-//   - 그 외 (지원금·보조금·바우처·수당 등) → welfare_programs
-//
-// 한계 (사장님 인지):
-//   - 신문 기사라 신청기간(apply_end)·대상(target)·혜택(benefits) 등 NULL
-//   - 카드 클릭 → source_url (신문 원문) 로 외부 이동 → 시청 링크 따라가서 신청
+// 현재: 모두 news_posts (category='news') 로 통일. /news 목록과 같은
+// 수명주기로 관리. 기존 welfare/loan 에 쌓인 과거 수집분은 027 migration
+// 으로 news_posts 로 이전.
 //
 // 환경변수: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET (네이버 개발자센터 발급)
 // ============================================================
@@ -25,6 +19,7 @@ import { extractBenefitTags } from "@/lib/tags/taxonomy";
 import { extractNewsKeywords } from "@/lib/news-keywords";
 import { cleanDescription } from "@/lib/utils";
 import { fetchWithTimeout } from "@/lib/collectors";
+import { isNewsNoise } from "@/lib/news-filters";
 import {
   type ProvinceCode,
   getProvinceByCode,
@@ -127,18 +122,20 @@ type NaverApiResponse = {
   items: NaverNewsItem[];
 };
 
-// 표준화된 1건 — welfare 또는 loan 둘 중 한 곳에 INSERT.
+// 표준화된 1건 — news_posts 에 INSERT 할 payload 준비용.
+// news_posts 스키마 (021 migration) 기준 필드 매핑:
+//   title/summary/source_url/source_id/source_code/published_at 동일
+//   ministry = 광역명 (예: "전라남도")
+//   keywords = 도메인 키워드 (기존 extractNewsKeywords 결과)
+//   benefit_tags = 혜택 태그 (기존 taxonomy)
 type NormalizedItem = {
-  table: "welfare" | "loan";
   source_code: string;
   source_id: string;
   source_url: string;
-  source: string; // ministry (광역명)
+  ministry: string; // 광역명 (news_posts.ministry)
   title: string;
-  category: string;
-  description: string | null;
-  region: string;
-  region_tags: string[];
+  summary: string | null;
+  keywords: string[];
   benefit_tags: string[];
   published_at: string;
 };
@@ -217,17 +214,12 @@ async function collectProvinceItems(
         const newsKeywords = extractNewsKeywords([title, cleaned]);
         if (newsKeywords.length === 0) continue;
 
-        const sourceId = hashSourceId(url);
-        // 분기는 title 만 검사 (summary 노이즈 제거 → 정확도 ↑).
-        // 카테고리 매핑은 title+summary 합쳐서 (더 풍부한 신호).
-        const isLoan = classifyAsLoan(title);
-        const table: "welfare" | "loan" = isLoan ? "loan" : "welfare";
-        const category = isLoan ? mapLoanCategory(textBlob) : mapCategory(textBlob);
+        // 노이즈 필터 — 정치 인물·정당 / 대괄호 모음·일정 / 기업 CSR /
+        // 사건사고 / 정부 평가 5종. 매칭되면 welfare/loan 저장 안 함.
+        // 28,314건 전수조사 기준 약 19.7% 차단 → 진짜 정책만 보존.
+        if (isNewsNoise(title)) continue;
 
-        // region_tags 는 광역 1개만. taxonomy.extractRegionTags 는 정식 광역명
-        // ("전라남도") 을 못 받는 짧은 이름 enum 이라 미사용. 정확한 매칭은
-        // region 컬럼으로 충분.
-        const region_tags = [provinceName];
+        const sourceId = hashSourceId(url);
         const benefit_tags = extractBenefitTags(textBlob);
 
         const pubDate = new Date(r.pubDate);
@@ -236,16 +228,13 @@ async function collectProvinceItems(
           : pubDate.toISOString();
 
         items.push({
-          table,
           source_code: `naver-news-${provinceCode}`,
           source_id: sourceId,
           source_url: url,
-          source: provinceName, // "전라남도"
+          ministry: provinceName, // "전라남도" — news_posts.ministry
           title,
-          category,
-          description: cleaned.length > 0 ? cleaned.slice(0, 500) : null,
-          region: provinceName, // /welfare 의 region 필터와 매칭
-          region_tags,
+          summary: cleaned.length > 0 ? cleaned.slice(0, 500) : null,
+          keywords: newsKeywords,
           benefit_tags,
           published_at,
         });
@@ -256,12 +245,24 @@ async function collectProvinceItems(
   return items;
 }
 
-// 광역별 cron 진입점. welfare/loan 분기 후 각 테이블에 UPSERT.
+// URL 안전 + 결정론적 slug — title + sourceId 결합.
+// korea-kr 과 동일한 규칙 (한글 유지, 특수문자 제거, 60자 제한 후 sourceId 부착).
+function deterministicSlug(title: string, sourceId: string): string {
+  const base = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 60);
+  return `${base}-${sourceId}`.slice(0, 120);
+}
+
+// 광역별 cron 진입점. news_posts 로 UPSERT.
 export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Promise<{
   province: string;
   total: number;
-  welfare_upserted: number;
-  loan_upserted: number;
+  news_upserted: number;
   searchUnits: number;
   errors: string[];
 }> {
@@ -269,8 +270,7 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
     return {
       province: provinceCode,
       total: 0,
-      welfare_upserted: 0,
-      loan_upserted: 0,
+      news_upserted: 0,
       searchUnits: 0,
       errors: [
         "NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 환경변수 미설정 — 네이버 개발자센터 가입 필요",
@@ -283,8 +283,7 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
     return {
       province: provinceCode,
       total: 0,
-      welfare_upserted: 0,
-      loan_upserted: 0,
+      news_upserted: 0,
       searchUnits: 0,
       errors: [`unknown province code: ${provinceCode}`],
     };
@@ -301,8 +300,7 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
     return {
       province: province.name,
       total: 0,
-      welfare_upserted: 0,
-      loan_upserted: 0,
+      news_upserted: 0,
       searchUnits,
       errors,
     };
@@ -313,72 +311,56 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
     return {
       province: province.name,
       total: 0,
-      welfare_upserted: 0,
-      loan_upserted: 0,
+      news_upserted: 0,
       searchUnits,
       errors,
     };
   }
 
   const supabase = createAdminClient();
-  const welfareItems = items.filter((it) => it.table === "welfare");
-  const loanItems = items.filter((it) => it.table === "loan");
 
-  // welfare/loan 공통 payload 변환. apply_* 필드는 신문 기사라 NULL.
-  const toPayload = (it: NormalizedItem) => ({
+  // news_posts 용 payload 변환. korea.kr 수집분과 같은 스키마 사용.
+  // license='naver-news-api' — 공공누리(KOGL-Type1) 아님, 원 저작권 원 언론사.
+  const now = new Date().toISOString();
+  const payloads = items.map((it) => ({
     source_code: it.source_code,
     source_id: it.source_id,
-    title: it.title,
-    category: it.category,
-    description: it.description,
-    source: it.source,
     source_url: it.source_url,
-    region: it.region,
-    region_tags: it.region_tags,
+    license: "naver-news-api",
+    category: "news" as const,
+    ministry: it.ministry,
     benefit_tags: it.benefit_tags,
+    title: it.title,
+    summary: it.summary,
+    body: null,
+    thumbnail_url: null,
+    slug: deterministicSlug(it.title, it.source_id),
     published_at: it.published_at,
-    updated_at: new Date().toISOString(),
-  });
+    created_at: now,
+    updated_at: now,
+    view_count: 0,
+    keywords: it.keywords,
+    topic_categories: [] as string[],
+  }));
 
-  // welfare upsert
-  let welfare_upserted = 0;
-  if (welfareItems.length > 0) {
-    const { data, error } = await supabase
-      .from("welfare_programs")
-      .upsert(welfareItems.map(toPayload), {
-        onConflict: "source_code,source_id",
-        ignoreDuplicates: true,
-      })
-      .select("id");
-    if (error) {
-      errors.push(`welfare upsert: ${error.message}`);
-    } else {
-      welfare_upserted = data?.length ?? 0;
-    }
-  }
-
-  // loan upsert
-  let loan_upserted = 0;
-  if (loanItems.length > 0) {
-    const { data, error } = await supabase
-      .from("loan_programs")
-      .upsert(loanItems.map(toPayload), {
-        onConflict: "source_code,source_id",
-        ignoreDuplicates: true,
-      })
-      .select("id");
-    if (error) {
-      errors.push(`loan upsert: ${error.message}`);
-    } else {
-      loan_upserted = data?.length ?? 0;
-    }
+  let news_upserted = 0;
+  const { data, error } = await supabase
+    .from("news_posts")
+    .upsert(payloads, {
+      onConflict: "source_code,source_id",
+      ignoreDuplicates: true,
+    })
+    .select("id");
+  if (error) {
+    errors.push(`news_posts upsert: ${error.message}`);
+  } else {
+    news_upserted = data?.length ?? 0;
   }
 
   return {
     province: province.name,
     total,
-    welfare_upserted,
-    loan_upserted,
+    news_upserted,
     searchUnits,
     errors,
   };

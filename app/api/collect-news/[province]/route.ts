@@ -4,11 +4,10 @@
 // vercel.json 의 17개 cron 이 각자 다른 province 코드로 호출.
 // 광역 1개 + 그 광역의 시군구 모두 처리.
 //
-// 2026-04-24 사장님 결정: 결과를 news_posts 가 아니라 welfare_programs /
-// loan_programs 에 직접 저장. 사용자가 /welfare /loan 검색 시 잡히게
-// 하기 위함. 분기는 키워드 기반 (대출·보증·융자 → loan, 그 외 → welfare).
+// 2026-04-25 저장 대상 변경: news_posts 로 일원화 (이전 welfare/loan 저장
+// 설계는 enrich cron 후보 오염 + /welfare·/loan 에 뉴스 혼입 문제로 폐기).
 //
-// 응답: { province, total, welfare_upserted, loan_upserted, searchUnits, errors }
+// 응답: { province, total, news_upserted, searchUnits, errors }
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";

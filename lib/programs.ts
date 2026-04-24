@@ -21,6 +21,8 @@ export type DisplayProgram = {
   dday: number | null;
   icon: "house" | "briefcase" | "heart" | "medical" | "coin" | "store" | "shield";
   type: "welfare" | "loan";
+  sourceCode: string | null;
+  sourceUrl: string | null;
 };
 
 const categoryIconMap: Record<string, DisplayProgram["icon"]> = {
@@ -46,6 +48,8 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     dday: calcDday(w.apply_end),
     icon: categoryIconMap[w.category] || "house",
     type: "welfare",
+    sourceCode: w.source_code ?? null,
+    sourceUrl: w.source_url ?? null,
   };
 }
 
@@ -62,6 +66,8 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     dday: calcDday(l.apply_end),
     icon: categoryIconMap[l.category] || "coin",
     type: "loan",
+    sourceCode: l.source_code ?? null,
+    sourceUrl: l.source_url ?? null,
   };
 }
 
