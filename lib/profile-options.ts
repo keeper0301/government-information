@@ -70,3 +70,22 @@ export const AGE_KEYWORDS: Record<AgeOption, string[]> = {
   "50대": ["중장년", "중년"],
   "60대 이상": ["노인", "어르신", "고령"],
 };
+
+// REGION_OPTIONS (짧은 광역명) → 시군구 목록 매핑.
+// lib/regions.ts 의 DISTRICTS_BY_PROVINCE 가 정식 광역명("전라남도") 키라
+// /recommend 폼이 쓰는 짧은 이름("전남") 으로 변환해서 사용.
+// "전국" 은 시군구 없음 (전국 단위 = 시군구 무관).
+import {
+  DISTRICTS_BY_PROVINCE,
+  PROVINCES,
+  PROVINCE_SHORT_TO_FULL,
+} from "@/lib/regions";
+
+export function getDistrictsForRegion(region: string): string[] {
+  if (region === "전국" || !region) return [];
+  const fullName = PROVINCE_SHORT_TO_FULL[region];
+  if (!fullName) return [];
+  const province = PROVINCES.find((p) => p.name === fullName);
+  if (!province) return [];
+  return DISTRICTS_BY_PROVINCE[province.code] ?? [];
+}

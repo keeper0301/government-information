@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 type SearchParams = {
   age?: string;
   region?: string;
+  district?: string;
   occupation?: string;
   type?: string;
 };
@@ -42,18 +43,24 @@ export default async function RecommendPage({
 
   // 로그인 시 프로필 조회 (URL 쿼리가 없을 때 폴백)
   let profile:
-    | { age_group: string | null; region: string | null; occupation: string | null }
+    | {
+        age_group: string | null;
+        region: string | null;
+        district: string | null;
+        occupation: string | null;
+      }
     | null = null;
   if (user) {
     const { data } = await supabase
       .from("user_profiles")
-      .select("age_group, region, occupation")
+      .select("age_group, region, district, occupation")
       .eq("id", user.id)
       .maybeSingle();
     if (data) {
       profile = {
         age_group: data.age_group ?? null,
         region: data.region ?? null,
+        district: data.district ?? null,
         occupation: data.occupation ?? null,
       };
     }
@@ -62,6 +69,7 @@ export default async function RecommendPage({
   // URL 쿼리 우선, 없으면 프로필 값
   const candidateAge = params.age ?? profile?.age_group ?? null;
   const candidateRegion = params.region ?? profile?.region ?? null;
+  const candidateDistrict = params.district ?? profile?.district ?? null;
   const candidateOcc = params.occupation ?? profile?.occupation ?? null;
 
   // programType 파싱 — 잘못된 값은 "all" 로 폴백
@@ -74,6 +82,7 @@ export default async function RecommendPage({
   const initial = {
     age_group: candidateAge,
     region: candidateRegion,
+    district: candidateDistrict,
     occupation: candidateOcc,
     program_type: candidateType,
   };
@@ -94,6 +103,7 @@ export default async function RecommendPage({
     initialPrograms = await getRecommendations({
       ageGroup: candidateAge as AgeOption,
       region: candidateRegion as RegionOption,
+      district: candidateDistrict,
       occupation: candidateOcc as OccupationOption,
       programType: candidateType,
     });

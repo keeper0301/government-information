@@ -56,15 +56,28 @@ function extractTitlePrefix(title: string): string | null {
 //   2) DB region NULL + 제목 "[XX]" prefix → prefix 로 판단
 //   3) 제목·출처 본문에 타지역 명시 → 제외 (단 사용자 지역도 함께 있으면 유지)
 //   4) 판단 근거 없음 → 전국 대상으로 간주 (포함)
+//
+// 시군구 (district) 가 주어지면 매칭 우선순위 ↑:
+//   - region 컬럼·title·source 어디든 시군구명 포함 시 즉시 통과 + 매칭점수↑
+//   - 시군구가 안 잡히면 광역(userRegion) 으로 폴백
+//   - "순천시" 사용자가 "전라남도" 광역 데이터를 봐도 OK (광역 폴백)
 function regionMatches(
   title: string,
   source: string | null,
   region: string | null,
   userRegion: RegionOption,
+  userDistrict?: string | null,
 ): boolean {
   if (userRegion === "전국") return true;
 
   const userAliases = REGION_ALIASES[userRegion] ?? [userRegion];
+
+  // 0) 시군구 직접 매칭 — 가장 강한 신호. region·title·source 어디든 시군구명
+  //    포함되면 즉시 통과 (광역 매칭 검사 생략).
+  if (userDistrict && userDistrict.length >= 2) {
+    const haystack = `${region ?? ""} ${title} ${source ?? ""}`;
+    if (haystack.includes(userDistrict)) return true;
+  }
 
   // 1) DB region 명시된 경우가 가장 강한 신호
   if (region && region.trim().length > 0) {
@@ -98,6 +111,19 @@ function regionMatches(
   return true;
 }
 
+// 시군구 정확 매칭 가산점 — 같은 광역 안에서도 사용자가 자기 시군구 항목을
+// 위쪽에 보도록 함. regionMatches 가 true 일 때만 호출.
+function districtBonus(
+  title: string,
+  source: string | null,
+  region: string | null,
+  userDistrict?: string | null,
+): number {
+  if (!userDistrict || userDistrict.length < 2) return 0;
+  const haystack = `${region ?? ""} ${title} ${source ?? ""}`;
+  return haystack.includes(userDistrict) ? 5 : 0;
+}
+
 // 키워드 매칭 점수 계산
 // - 직업 매칭(가중치 2) + 나이 매칭(가중치 1)
 // - occMatched=true 여야 최종 결과에 포함 ("기타" 직업만 예외)
@@ -128,6 +154,7 @@ const CANDIDATE_LIMIT = 300;
 type RecommendParams = {
   ageGroup: AgeOption;
   region: RegionOption;
+  district?: string | null;
   occupation: OccupationOption;
   programType?: ProgramType;
   // 홈의 맞춤 섹션(복지 4 · 대출 3) 처럼 /recommend 페이지(20건) 외 용도에서 쓰라고
@@ -137,8 +164,16 @@ type RecommendParams = {
 
 // 추천 결과 계산 (API 라우트·서버 페이지·홈 맞춤 섹션 공용 진입점)
 // 반환: 매칭 점수 내림차순 정렬 (동점이면 view_count 순) 최대 limit 건
+// district 가 주어지면 그 시군구 항목이 가산점(+5) 으로 위쪽 정렬됨
 export async function getRecommendations(params: RecommendParams): Promise<DisplayProgram[]> {
-  const { ageGroup, region, occupation, programType = "all", limit = 20 } = params;
+  const {
+    ageGroup,
+    region,
+    district = null,
+    occupation,
+    programType = "all",
+    limit = 20,
+  } = params;
 
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
@@ -172,20 +207,28 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
   ]);
 
   const filteredWelfare = welfareData
-    .filter((w) => regionMatches(w.title, w.source, w.region, region))
-    .map((w) => ({
-      display: welfareToDisplay(w),
-      ...scoreProgram(w.target, w.description, ageKw, occKw),
-    }))
+    .filter((w) => regionMatches(w.title, w.source, w.region, region, district))
+    .map((w) => {
+      const s = scoreProgram(w.target, w.description, ageKw, occKw);
+      return {
+        display: welfareToDisplay(w),
+        score: s.score + districtBonus(w.title, w.source, w.region, district),
+        occMatched: s.occMatched,
+      };
+    })
     .filter((x) => !requireOccMatch || x.occMatched);
 
   // LoanProgram 에는 region 컬럼 없음 → null 전달, 제목·출처로 판단
   const filteredLoan = loanData
-    .filter((l) => regionMatches(l.title, l.source, null, region))
-    .map((l) => ({
-      display: loanToDisplay(l),
-      ...scoreProgram(l.target, l.description, ageKw, occKw),
-    }))
+    .filter((l) => regionMatches(l.title, l.source, null, region, district))
+    .map((l) => {
+      const s = scoreProgram(l.target, l.description, ageKw, occKw);
+      return {
+        display: loanToDisplay(l),
+        score: s.score + districtBonus(l.title, l.source, null, district),
+        occMatched: s.occMatched,
+      };
+    })
     .filter((x) => !requireOccMatch || x.occMatched);
 
   return [...filteredWelfare, ...filteredLoan]

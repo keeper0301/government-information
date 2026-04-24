@@ -7,6 +7,7 @@ import {
   AGE_OPTIONS,
   REGION_OPTIONS,
   OCCUPATION_OPTIONS,
+  getDistrictsForRegion,
 } from "@/lib/profile-options";
 
 // 프로필 선택지 (lib/profile-options.ts 단일 소스 import).
@@ -25,6 +26,7 @@ const INTERESTS = [
 type Profile = {
   age_group: string | null;
   region: string | null;
+  district: string | null;
   occupation: string | null;
   interests: string[];
 };
@@ -77,6 +79,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       id: user.id,
       age_group: form.age_group,
       region: form.region,
+      district: form.district,
       occupation: form.occupation,
       interests: form.interests,
     });
@@ -99,13 +102,36 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         onChange={(v) => updateForm((p) => ({ ...p, age_group: v }))}
       />
 
-      {/* 지역 */}
+      {/* 지역 — 광역 선택. 광역 바꾸면 시군구는 자동으로 reset (다른 광역의
+          시군구가 그대로 남아있으면 매칭 어색해짐). */}
       <ChipSelect
-        label="거주 지역"
+        label="거주 지역 (광역)"
         options={REGIONS}
         value={form.region}
-        onChange={(v) => updateForm((p) => ({ ...p, region: v }))}
+        onChange={(v) =>
+          updateForm((p) => {
+            const nextDistricts = getDistrictsForRegion(v);
+            const nextDistrict =
+              p.district && nextDistricts.includes(p.district) ? p.district : null;
+            return { ...p, region: v, district: nextDistrict };
+          })
+        }
       />
+
+      {/* 시군구 (광역 선택 후 노출) — "전체 (시군구 미지정)" 옵션 포함 */}
+      {form.region && getDistrictsForRegion(form.region).length > 0 && (
+        <ChipSelect
+          label="시·군·구 (선택)"
+          options={["전체", ...getDistrictsForRegion(form.region)]}
+          value={form.district ?? "전체"}
+          onChange={(v) =>
+            updateForm((p) => ({
+              ...p,
+              district: v === "전체" ? null : v,
+            }))
+          }
+        />
+      )}
 
       {/* 직업 */}
       <ChipSelect

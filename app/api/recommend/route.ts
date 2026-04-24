@@ -12,7 +12,13 @@ import {
 // 맞춤추천 API — 실제 매칭 로직은 lib/recommend.ts 에 위치.
 // 이 파일은 입력값 검증과 응답 변환만 담당 (서버 페이지와 로직 공유 목적).
 export async function POST(request: NextRequest) {
-  const { ageGroup, region, occupation, programType = "all" } = await request.json();
+  const {
+    ageGroup,
+    region,
+    district,
+    occupation,
+    programType = "all",
+  } = await request.json();
 
   // 입력값 검증
   if (!ageGroup || !region || !occupation) {
@@ -30,10 +36,18 @@ export async function POST(request: NextRequest) {
   if (!PROGRAM_TYPES.includes(programType as ProgramType)) {
     return NextResponse.json({ error: "올바른 정보 종류를 선택해주세요." }, { status: 400 });
   }
+  // district 는 optional. 임의 문자열 주입 막으려고 길이·형식만 가볍게 검증.
+  // 더 엄격한 화이트리스트 검증은 폼 UI 가 광역에 맞는 옵션만 노출하므로
+  // 서버는 길이만 체크하고 매칭 로직(regionMatches)에서 자연스럽게 무시됨.
+  const safeDistrict =
+    typeof district === "string" && district.length > 0 && district.length <= 20
+      ? district
+      : null;
 
   const programs = await getRecommendations({
     ageGroup: ageGroup as AgeOption,
     region: region as RegionOption,
+    district: safeDistrict,
     occupation: occupation as OccupationOption,
     programType: programType as ProgramType,
   });

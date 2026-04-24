@@ -36,7 +36,7 @@ export default async function MyPage() {
   const [{ data: profile }, consents] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("age_group, region, occupation, interests")
+      .select("age_group, region, district, occupation, interests")
       .eq("id", user.id)
       .maybeSingle(),
     getUserConsents(user.id),
@@ -68,6 +68,7 @@ export default async function MyPage() {
         initial={{
           age_group: profile?.age_group ?? null,
           region: profile?.region ?? null,
+          district: profile?.district ?? null,
           occupation: profile?.occupation ?? null,
           interests: profile?.interests ?? [],
         }}

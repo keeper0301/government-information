@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProgramRow } from "@/components/program-row";
 import type { DisplayProgram } from "@/lib/programs";
-import { AGE_OPTIONS, REGION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/profile-options";
+import {
+  AGE_OPTIONS,
+  REGION_OPTIONS,
+  OCCUPATION_OPTIONS,
+  getDistrictsForRegion,
+} from "@/lib/profile-options";
 import type { ProgramType } from "@/lib/recommend";
 
 // 정보 종류 탭 옵션 — UI 라벨 / API 값
@@ -30,6 +35,7 @@ type Props = {
   initial?: {
     age_group: string | null;
     region: string | null;
+    district: string | null;
     occupation: string | null;
     // 찾는 정보 종류 (복지/대출/전체). URL 쿼리 ?type=welfare 등으로 전달
     program_type?: ProgramType;
@@ -50,9 +56,23 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
   const [region, setRegion] = useState(
     pickMatching(initial?.region, REGION_OPTIONS),
   );
+  // 시군구 — 광역에 따라 옵션이 달라짐. 초기값은 prop 그대로 받되 광역 바꿀 때
+  // handleRegionChange 가 invalid district 를 reset. useEffect 안 써도 OK
+  // (광역은 사용자 액션으로만 바뀌고, 그때 handler 가 동기 처리).
+  const [district, setDistrict] = useState<string>(initial?.district ?? "");
+  const districts = useMemo(() => getDistrictsForRegion(region), [region]);
   const [occupation, setOccupation] = useState(
     pickMatching(initial?.occupation, OCCUPATION_OPTIONS),
   );
+
+  // 광역 변경 핸들러 — 시군구는 새 광역과 매칭 안 되면 reset.
+  function handleRegionChange(next: string) {
+    setRegion(next);
+    const nextDistricts = getDistrictsForRegion(next);
+    if (district && !nextDistricts.includes(district)) {
+      setDistrict("");
+    }
+  }
   const [programType, setProgramType] = useState<ProgramType>(
     initial?.program_type ?? "all",
   );
@@ -70,10 +90,15 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
   );
 
   // 재검색 수행 (override 로 특정 필드 값을 덮어씀 — "전국 확대" 폴백용)
-  async function runSearch(override?: { region?: string; programType?: ProgramType }) {
+  async function runSearch(override?: {
+    region?: string;
+    district?: string;
+    programType?: ProgramType;
+  }) {
     const eff = {
       ageGroup,
       region: override?.region ?? region,
+      district: override?.district ?? district,
       occupation,
       programType: override?.programType ?? programType,
     };
@@ -81,6 +106,9 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
 
     // override 로 바뀐 값은 UI state 에도 즉시 반영 (다음 렌더에 칩 업데이트)
     if (override?.region && override.region !== region) setRegion(override.region);
+    if (override?.district !== undefined && override.district !== district) {
+      setDistrict(override.district);
+    }
     if (override?.programType && override.programType !== programType) {
       setProgramType(override.programType);
     }
@@ -102,6 +130,7 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
       const params = new URLSearchParams();
       params.set("age", eff.ageGroup);
       params.set("region", eff.region);
+      if (eff.district) params.set("district", eff.district);
       params.set("occupation", eff.occupation);
       if (eff.programType !== "all") params.set("type", eff.programType);
       router.replace(`/recommend?${params.toString()}`, { scroll: false });
@@ -124,10 +153,13 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
         <EditPanel
           ageGroup={ageGroup}
           region={region}
+          district={district}
+          districts={districts}
           occupation={occupation}
           programType={programType}
           onAgeChange={setAgeGroup}
-          onRegionChange={setRegion}
+          onRegionChange={handleRegionChange}
+          onDistrictChange={setDistrict}
           onOccupationChange={setOccupation}
           onProgramTypeChange={setProgramType}
           onSubmit={() => runSearch()}
@@ -144,6 +176,7 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
         <SummaryChip
           ageGroup={ageGroup}
           region={region}
+          district={district}
           occupation={occupation}
           programType={programType}
           onEdit={() => setEditing(true)}
@@ -193,12 +226,14 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
 function SummaryChip({
   ageGroup,
   region,
+  district,
   occupation,
   programType,
   onEdit,
 }: {
   ageGroup: string;
   region: string;
+  district: string;
   occupation: string;
   programType: ProgramType;
   onEdit: () => void;
@@ -210,7 +245,8 @@ function SummaryChip({
           내 조건
         </span>
         <Chip>{ageGroup}</Chip>
-        <Chip>{region}</Chip>
+        {/* 시군구 있으면 "전남 순천시" 합쳐 한 칩, 없으면 광역만 */}
+        <Chip>{district ? `${region} ${district}` : region}</Chip>
         <Chip>{occupation}</Chip>
         {/* 정보 종류 — "전체"가 아닐 때만 칩으로 표시 (기본값 노이즈 제거) */}
         {programType !== "all" && (
@@ -247,10 +283,13 @@ function Chip({ children, accent }: { children: React.ReactNode; accent?: boolea
 function EditPanel({
   ageGroup,
   region,
+  district,
+  districts,
   occupation,
   programType,
   onAgeChange,
   onRegionChange,
+  onDistrictChange,
   onOccupationChange,
   onProgramTypeChange,
   onSubmit,
@@ -261,10 +300,13 @@ function EditPanel({
 }: {
   ageGroup: string;
   region: string;
+  district: string;
+  districts: string[];
   occupation: string;
   programType: ProgramType;
   onAgeChange: (v: string) => void;
   onRegionChange: (v: string) => void;
+  onDistrictChange: (v: string) => void;
   onOccupationChange: (v: string) => void;
   onProgramTypeChange: (v: ProgramType) => void;
   onSubmit: () => void;
@@ -303,7 +345,7 @@ function EditPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-5 max-md:grid-cols-1">
+      <div className="grid grid-cols-2 gap-4 mb-5 max-md:grid-cols-1">
         <Field label="나이대">
           <select
             value={ageGroup}
@@ -312,20 +354,6 @@ function EditPanel({
           >
             <option value="">선택하세요</option>
             {AGE_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="지역">
-          <select
-            value={region}
-            onChange={(e) => onRegionChange(e.target.value)}
-            className={selectClass}
-          >
-            <option value="">선택하세요</option>
-            {REGION_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>
@@ -342,6 +370,41 @@ function EditPanel({
             {OCCUPATION_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      {/* 지역 — 광역 + 시군구 (광역 선택 시 자동으로 시군구 옵션 노출) */}
+      <div className="grid grid-cols-2 gap-4 mb-5 max-md:grid-cols-1">
+        <Field label="광역">
+          <select
+            value={region}
+            onChange={(e) => onRegionChange(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">선택하세요</option>
+            {REGION_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="시·군·구 (선택)">
+          <select
+            value={district}
+            onChange={(e) => onDistrictChange(e.target.value)}
+            disabled={districts.length === 0}
+            className={`${selectClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <option value="">
+              {districts.length === 0 ? "광역 먼저 선택" : "전체 (시군구 미지정)"}
+            </option>
+            {districts.map((d) => (
+              <option key={d} value={d}>
+                {d}
               </option>
             ))}
           </select>
