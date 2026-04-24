@@ -51,26 +51,36 @@ export function currentMinAllowedYear(): number {
 // ============================================================
 
 // HTML 엔티티 디코드. 정부 공고에 자주 나오는 것만 커버 + 숫자 엔티티 범용 처리.
-function decodeHtmlEntities(text: string): string {
-  const named: Record<string, string> = {
-    "&nbsp;": " ",
-    "&amp;": "&",
-    "&lt;": "<",
-    "&gt;": ">",
-    "&quot;": '"',
-    "&apos;": "'",
-    "&middot;": "·",
-    "&hellip;": "…",
-    "&ndash;": "–",
-    "&mdash;": "—",
-    "&lsquo;": "'",
-    "&rsquo;": "'",
-    "&ldquo;": "“",
-    "&rdquo;": "”",
-  };
+//
+// 중요: 치환 순서
+//   - 다른 엔티티를 먼저 처리한 뒤 &amp; 를 맨 마지막에 처리해야 함.
+//   - 이유: 원문이 &amp;nbsp; 처럼 이중 인코딩된 경우 &amp; 를 먼저 &로 바꾸면
+//     &nbsp; 가 되는데, 이 pass 에선 이미 &nbsp; 치환이 지나갔기에 그대로 남음.
+//   - 순서를 뒤집거나 decodeOnce 를 반복(아래 cleanDescription 에서) 해서 해결.
+function decodeHtmlEntitiesOnce(text: string): string {
+  const named: Array<[string, string]> = [
+    // &amp; 를 제외한 나머지 먼저
+    ["&nbsp;", " "],
+    ["&lt;", "<"],
+    ["&gt;", ">"],
+    ["&quot;", '"'],
+    ["&apos;", "'"],
+    ["&middot;", "·"],
+    ["&hellip;", "…"],
+    ["&ndash;", "–"],
+    ["&mdash;", "—"],
+    ["&lsquo;", "'"],
+    ["&rsquo;", "'"],
+    ["&ldquo;", "“"],
+    ["&rdquo;", "”"],
+    // &amp; 는 맨 마지막 (아래 루프가 다시 돌아 이중 인코딩을 재처리)
+    ["&amp;", "&"],
+  ];
   let out = text;
-  for (const [entity, ch] of Object.entries(named)) {
-    out = out.split(entity).join(ch);
+  for (const [entity, ch] of named) {
+    if (out.includes(entity)) {
+      out = out.split(entity).join(ch);
+    }
   }
   // 숫자 엔티티 &#123; / 16진수 엔티티 &#x1F;
   out = out.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
@@ -92,6 +102,18 @@ function decodeHtmlEntities(text: string): string {
     }
   });
   return out;
+}
+
+// 이중(또는 그 이상) 인코딩된 엔티티까지 잡기 위해 변화가 없을 때까지 최대 3회 반복.
+// 예: "&amp;nbsp;" → "&nbsp;" (1회) → " " (2회)
+function decodeHtmlEntities(text: string): string {
+  let current = text;
+  for (let i = 0; i < 3; i++) {
+    const next = decodeHtmlEntitiesOnce(current);
+    if (next === current) break;
+    current = next;
+  }
+  return current;
 }
 
 export function cleanDescription(raw: string | null | undefined): string {
@@ -118,9 +140,16 @@ export function cleanDescription(raw: string | null | undefined): string {
   text = text.replace(/\s*([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮])\s*/g, "\n$1 ");
 
   // 5) 공백 정리 — 줄 단위로 처리해 줄바꿈 보존
+  //    NBSP 유니코드( ) · zero-width(​·‌·‍·﻿) 도
+  //    일반 공백으로 통일해야 trim 단계에서 제대로 정리됨.
   text = text
     .split("\n")
-    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .map((line) =>
+      line
+        .replace(/[ ​‌‍﻿]/g, " ")
+        .replace(/[ \t]+/g, " ")
+        .trim(),
+    )
     .filter((line) => line.length > 0)
     .join("\n");
 
