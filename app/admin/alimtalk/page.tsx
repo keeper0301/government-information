@@ -31,6 +31,29 @@ type DeliveryRow = {
   error: string | null;
 };
 
+// 최근 발송 로그 — 개별 건 추적 (집계만으론 "누구에게 언제 왜 실패" 못 봄).
+// channel='kakao' 최근 N건. user_id 는 /admin/users/[id] 로 연결해 즉시 상세.
+type DeliveryLogRow = {
+  id: string;
+  created_at: string;
+  sent_at: string | null;
+  user_id: string;
+  program_title: string | null;
+  status: "queued" | "sent" | "failed" | "skipped";
+  error: string | null;
+};
+
+async function getRecentDeliveries(limit = 20): Promise<DeliveryLogRow[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("alert_deliveries")
+    .select("id, created_at, sent_at, user_id, program_title, status, error")
+    .eq("channel", "kakao")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as DeliveryLogRow[];
+}
+
 // 24h 집계 — 필요한 컬럼만 조회해 가볍게. 운영 초기엔 수백 건 수준이라 인덱스 풀스캔 OK.
 async function collect24hStats(): Promise<{
   total: number;
@@ -150,7 +173,10 @@ export default async function AlimtalkAdminPage() {
   if (!user) redirect("/login?next=/admin/alimtalk");
   if (!isAdminUser(user.id)) redirect("/");
 
-  const stats = await collect24hStats();
+  const [stats, recentLogs] = await Promise.all([
+    collect24hStats(),
+    getRecentDeliveries(20),
+  ]);
   const { envs: envStatus, allSet: envsAllSet } = checkEnvStatus();
   const setCount = envStatus.filter((e) => e.present).length;
 
@@ -288,6 +314,69 @@ export default async function AlimtalkAdminPage() {
           )}
         </section>
 
+        {/* 최근 발송 로그 — 집계 카드로는 "누구에게 언제 왜 실패" 추적 불가.
+            최근 20건 개별 row 로 문의 대응 시 즉시 원인 파악 가능하게. */}
+        <section className="mb-8">
+          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+            최근 발송 로그 (최근 {recentLogs.length}건)
+          </h2>
+          {recentLogs.length === 0 ? (
+            <div className="rounded-lg border border-grey-200 bg-white p-4 text-[13px] text-grey-600">
+              최근 카카오 알림톡 발송 기록이 없어요.
+            </div>
+          ) : (
+            <div className="rounded-lg border border-grey-200 bg-white overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="text-left text-grey-600 border-b border-grey-200 bg-grey-50">
+                    <th className="py-2 px-3 font-medium whitespace-nowrap">시각</th>
+                    <th className="py-2 px-3 font-medium whitespace-nowrap">사용자</th>
+                    <th className="py-2 px-3 font-medium">정책</th>
+                    <th className="py-2 px-3 font-medium whitespace-nowrap">상태</th>
+                    <th className="py-2 px-3 font-medium">오류·비고</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentLogs.map((log) => (
+                    <tr
+                      key={log.id}
+                      className="border-b border-grey-100 last:border-b-0 align-top"
+                    >
+                      <td className="py-2 px-3 text-grey-600 text-[12px] whitespace-nowrap">
+                        {new Date(log.created_at).toLocaleString("ko-KR", {
+                          timeZone: "Asia/Seoul",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="py-2 px-3 text-[12px] whitespace-nowrap">
+                        <Link
+                          href={`/admin/users/${log.user_id}`}
+                          className="text-blue-500 hover:underline font-mono"
+                          title={log.user_id}
+                        >
+                          {log.user_id.slice(0, 8)}…
+                        </Link>
+                      </td>
+                      <td className="py-2 px-3 text-grey-900 break-all">
+                        {log.program_title ?? "—"}
+                      </td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <StatusBadge status={log.status} />
+                      </td>
+                      <td className="py-2 px-3 text-grey-600 text-[12px] break-all">
+                        {log.error ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
         {/* 테스트 발송 폼 */}
         <section className="mb-8">
           <h2 className="text-[18px] font-bold text-grey-900 mb-3">
@@ -332,5 +421,29 @@ function StatCard({
       <p className="text-[12px] font-semibold mb-1">{label}</p>
       <p className="text-[24px] font-extrabold tracking-[-0.5px]">{value}</p>
     </div>
+  );
+}
+
+// 발송 로그 row 의 status 를 뱃지로 — 한 눈에 성공/실패 구분.
+// 4개 상태 (queued/sent/failed/skipped) 중 현재는 주로 sent·failed·skipped 노출.
+function StatusBadge({ status }: { status: string }) {
+  const LABEL: Record<string, string> = {
+    sent: "성공",
+    failed: "실패",
+    skipped: "건너뜀",
+    queued: "대기",
+  };
+  const CLASS: Record<string, string> = {
+    sent: "bg-blue-50 text-blue-700",
+    failed: "bg-red/10 text-red",
+    skipped: "bg-yellow-50 text-yellow-800",
+    queued: "bg-grey-100 text-grey-700",
+  };
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md ${CLASS[status] ?? "bg-grey-100 text-grey-700"}`}
+    >
+      {LABEL[status] ?? status}
+    </span>
   );
 }
