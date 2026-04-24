@@ -27,10 +27,10 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // ━━━ 로그인 필수 (비용·남용 방어) ━━━
-  // 비로그인자는 챗봇 호출 자체 차단. 기존엔 통과시켰으나 악성 스크립트가
-  // 무한 호출해 Gemini 비용 유발 가능 → 로그인 유도가 가장 단순·안전.
-  // 가입 후엔 getUserTier → 무료/베이직 5회/일 · 프로 무제한 제한 적용.
+  // ━━━ 로그인 필수 (서버 부하·남용 방어) ━━━
+  // 비로그인자는 챗봇 호출 자체 차단. 악성 스크립트가 무한 호출 시 DB 과부하
+  // 가능 → 로그인 유도가 가장 단순·안전. 챗봇은 키워드 매칭 + Supabase 검색만
+  // 수행 (LLM 호출 없음). quota 는 사용 빈도 통계·향후 확장 대비.
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json(
