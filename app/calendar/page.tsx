@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export const revalidate = 600;
@@ -35,7 +36,9 @@ function shiftMonth(
 type SearchParams = { year?: string; month?: string };
 
 // 월 이동 네비게이션 지원 — ?year=YYYY&month=M 쿼리로 다른 달 조회.
-// 없으면 KST 기준 이번 달이 기본. 오늘 기준 ±24개월 바깥은 이번 달로 폴백.
+// 쿼리가 없으면 KST 기준 이번 달. 쿼리가 있는데 파싱 실패 / 허용 범위(±24개월)
+// 바깥이면 /calendar 로 302 리다이렉트 — silent fallback 이 아닌 canonical
+// URL 로 정리해야 SEO 중복 콘텐츠·공유 시 URL-화면 불일치가 생기지 않는다.
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -56,7 +59,11 @@ export default async function CalendarPage({
   const todayMonth = kstNow.getUTCMonth(); // 0-indexed
   const todayDay = kstNow.getUTCDate();
 
-  // 조회할 월 결정 — URL 쿼리 우선, 유효성 검사 통과 못하면 이번 달
+  // 쿼리 존재 여부 — 쿼리 자체가 없으면 리다이렉트 없이 이번 달 기본값 사용.
+  // 쿼리가 하나라도 있으면 "사용자가 특정 달을 지정한 것" 이므로 엄격 검증.
+  const hasQuery = params.year !== undefined || params.month !== undefined;
+
+  // 조회할 월 결정 — URL 쿼리 우선
   const parsedYear = params.year ? parseInt(params.year, 10) : NaN;
   const parsedMonth = params.month ? parseInt(params.month, 10) : NaN; // 1-based
   const hasValidParam =
@@ -69,16 +76,23 @@ export default async function CalendarPage({
 
   let year = todayYear;
   let month = todayMonth;
-  if (hasValidParam) {
+  if (hasQuery) {
+    // 쿼리가 있는데 유효하지 않으면 즉시 canonical 로 리다이렉트.
+    // (silent fallback 시 URL 은 ?year=2024... 그대로인데 화면은 이번 달이라
+    //  사용자가 URL 공유 시 혼란 + 검색엔진 관점에선 중복 콘텐츠)
+    if (!hasValidParam) {
+      redirect("/calendar");
+    }
     const candidateYear = parsedYear;
     const candidateMonth = parsedMonth - 1;
-    // 오늘 기준 ±24개월 바깥은 이탈 방지 차원에서 이번 달로 폴백
+    // 오늘 기준 ±24개월 바깥도 동일 — 서비스가 제공하지 않는 달이므로 리다이렉트
     const monthsDiff =
       (candidateYear - todayYear) * 12 + (candidateMonth - todayMonth);
-    if (monthsDiff >= -24 && monthsDiff <= 24) {
-      year = candidateYear;
-      month = candidateMonth;
+    if (monthsDiff < -24 || monthsDiff > 24) {
+      redirect("/calendar");
     }
+    year = candidateYear;
+    month = candidateMonth;
   }
 
   // 조회 월이 실제 "이번 달" 인지 (오늘 강조용)
