@@ -58,11 +58,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // News posts (korea.kr 수집) — slug 는 `{title-slug}-{newsId}` 형식이며 title
   // 부분에 한글 포함. XML sitemap 표준상 한글 URL 은 percent-encode 해야 함.
-  // 2026-04-24: 보도자료(press) 는 UI 비노출 정책에 맞춰 sitemap 에서도 제외.
+  // 2026-04-24: 보도자료(press) + keepioo 키워드 매칭 안 된 노이즈는 비노출.
   const { data: newsPosts } = await supabase
     .from("news_posts")
     .select("slug, updated_at")
-    .neq("category", "press");
+    .neq("category", "press")
+    .not("keywords", "eq", "{}");
   const newsPages: MetadataRoute.Sitemap = (newsPosts || []).map((n) => ({
     url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,
     lastModified: new Date(n.updated_at),

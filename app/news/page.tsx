@@ -68,6 +68,10 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     )
     // 보도자료(press) 는 전역 비노출 (2026-04-24~)
     .neq("category", "press")
+    // 2026-04-24 품질 필터: keepioo 키워드 매칭 안 된 뉴스는 노출 제외.
+    // 기존 DB 의 노이즈 건(베트남 수출·순방 등)도 자동으로 숨김.
+    // Supabase REST "not.eq.{}" = 빈 배열 아닌 것만 = 키워드 1개 이상 있는 것만.
+    .not("keywords", "eq", "{}")
     .order("published_at", { ascending: false });
 
   if (activeCategory !== "all") {

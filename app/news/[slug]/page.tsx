@@ -28,14 +28,29 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
+// 한글 slug 처리: Next.js 16 의 params.slug 가 percent-encoded 형태로 들어오면
+// DB 의 raw 한글 slug 와 매칭 실패 → 404. 반드시 decode 한 번 거쳐야 함.
+// CP949 등 비정상 인코딩(오래된 봇) 은 throw → null → notFound (500 대신 404).
+// blog/[slug]/page.tsx 와 동일 패턴. 2026-04-24 404 버그 수정으로 추가됨.
+function safeDecodeSlug(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecodeSlug(rawSlug);
+  if (!slug) return { title: "정책 소식 — 정책알리미" };
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("news_posts")
     .select("title, summary, thumbnail_url, category")
     .eq("slug", slug)
-    .single();
+    .maybeSingle();
 
   // 2026-04-24 보도자료(press) 는 비노출 정책 — 404 와 동일 취급
   if (!data || data.category === "press") return { title: "정책 소식 — 정책알리미" };
@@ -63,13 +78,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function NewsDetailPage({ params }: Props) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = safeDecodeSlug(rawSlug);
+  if (!slug) notFound();
+
   const supabase = await createClient();
   const { data: post } = await supabase
     .from("news_posts")
     .select("*")
     .eq("slug", slug)
-    .single();
+    .maybeSingle();
 
   // 2026-04-24 보도자료(press) 는 비노출 정책 — 기존 URL 직접 접근해도 404
   if (!post || post.category === "press") notFound();

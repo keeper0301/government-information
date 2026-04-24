@@ -144,6 +144,12 @@ async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
     const benefit_tags = extractBenefitTags(textBlob);
     const keywords = extractNewsKeywords([title, cleaned]);
 
+    // 2026-04-24 품질 필터: keepioo 사용자와 무관한 뉴스는 수집 제외.
+    // lib/news-keywords.ts 의 26개 keepioo 도메인 키워드(청년·소상공인·지원금·
+    // 연금 등)가 하나도 매칭 안 되면 스킵 — 베트남 수출·순방·석유가격 같은
+    // 시사 뉴스 노이즈 차단.
+    if (keywords.length === 0) continue;
+
     items.push({
       source_code: feed.code,
       source_id,
