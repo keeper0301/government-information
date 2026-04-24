@@ -123,6 +123,9 @@ async function enrichOne(
 
 // 후보 조회 + 순차 처리
 async function runEnrichAndRespond(jobLabel: string) {
+  // 시간 예산 측정은 함수 진입 시점부터 — 쿼리 지연도 예산에 포함시켜야
+  // Vercel 60초 한도와 일치 (쿼리 시간 빼먹고 나중에 초과하는 일 방지).
+  const startedAt = Date.now();
   try {
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
@@ -167,20 +170,25 @@ async function runEnrichAndRespond(jobLabel: string) {
     let failed = 0;
     let skippedByTime = 0;
 
-    // 순차 처리 — 호출 사이 4초 간격 (Gemini 분당 15회 제한)
-    // + 60초 한도 방어용 시간 예산 체크 — Gemini 응답이 예상보다 길어져도
-    // Vercel 이 함수를 강제 종료하기 전에 지금까지 결과를 깔끔히 반환.
-    const startedAt = Date.now();
+    // 순차 처리 — Gemini 분당 15회 제한 준수 (4초 간격)
+    // 대기 패턴: "호출 전 대기" (첫 호출은 대기 없음).
+    // 이전 패턴("호출 후 대기") 은 마지막 호출 뒤에도 4초 낭비 → 배치당 4초 손실.
+    let firstCall = true;
     const processRow = async (
       table: "welfare_programs" | "loan_programs",
       row: EnrichRow,
     ) => {
+      if (!firstCall) {
+        await new Promise((r) => setTimeout(r, RATE_LIMIT_DELAY_MS));
+      }
+      firstCall = false;
       const ok = await enrichOne(supabase, table, row);
       if (ok) enriched++;
       else failed++;
-      await new Promise((r) => setTimeout(r, RATE_LIMIT_DELAY_MS));
     };
 
+    // 시간 예산 체크 — 쿼리 시간 포함해 startedAt (함수 진입 시점) 대비.
+    // 초과 시 남은 row 는 skip 하고 지금까지 결과를 깔끔히 반환.
     for (const row of welfareRows) {
       if (Date.now() - startedAt > TIME_BUDGET_MS) {
         skippedByTime++;
