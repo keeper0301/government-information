@@ -10,12 +10,14 @@ import type { User } from "@supabase/supabase-js";
 // - 로그인 됨: 이메일 첫 글자 아바타 + 드롭다운(이메일 표시 + 로그아웃)
 // mobile=true 로 넘기면 햄버거 메뉴 안쪽 스타일로 렌더링됨.
 // onNavigate: mobile 모드에서 링크·로그아웃 선택 시 부모(Nav) 에 알려 햄버거 닫기용.
+// isAdmin: layout.tsx 에서 서버 판정한 어드민 여부 — 어드민 한정 메뉴 진입 링크 노출용.
 type UserMenuProps = {
   mobile?: boolean;
   onNavigate?: () => void;
+  isAdmin?: boolean;
 };
 
-export function UserMenu({ mobile = false, onNavigate }: UserMenuProps) {
+export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMenuProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,13 +100,22 @@ export function UserMenu({ mobile = false, onNavigate }: UserMenuProps) {
   // === 로그인 된 상태 === (이메일 첫 글자로 아바타 만들기)
   const initial = (user.email?.[0] || "U").toUpperCase();
 
-  // 모바일: 햄버거 메뉴 하단에 이메일·내 정보·로그아웃 순서로
+  // 모바일: 햄버거 메뉴 하단에 이메일·(어드민)·내 정보·로그아웃 순서로
   if (mobile) {
     return (
       <div className="border-t border-grey-100 mt-2 pt-2">
         <div className="px-4 py-2 text-[13px] text-grey-600 truncate">
           {user.email}
         </div>
+        {isAdmin && (
+          <a
+            href="/admin"
+            onClick={onNavigate}
+            className="block px-4 py-3 text-[15px] font-semibold text-burgundy hover:bg-grey-50 rounded-lg no-underline"
+          >
+            어드민 대시보드
+          </a>
+        )}
         <a
           href="/mypage"
           onClick={onNavigate}
@@ -144,6 +155,15 @@ export function UserMenu({ mobile = false, onNavigate }: UserMenuProps) {
           <div className="px-4 py-2 text-[13px] text-grey-600 truncate border-b border-grey-100">
             {user.email}
           </div>
+          {isAdmin && (
+            <a
+              href="/admin"
+              className="block px-4 py-2.5 text-[14px] font-semibold text-burgundy hover:bg-grey-50 no-underline border-b border-grey-100"
+              onClick={() => setOpen(false)}
+            >
+              어드민 대시보드
+            </a>
+          )}
           <a
             href="/mypage"
             className="block px-4 py-2.5 text-[14px] text-grey-700 hover:bg-grey-50 no-underline"

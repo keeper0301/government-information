@@ -7,6 +7,8 @@ import { ChatbotPanel } from "@/components/chatbot-panel";
 import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
+import { createClient } from "@/lib/supabase/server";
+import { isAdminUser } from "@/lib/admin-auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -59,11 +61,20 @@ export const viewport = {
   themeColor: "#0E0B08",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // 어드민 메뉴 노출 여부 — 서버에서 한 번 판정해 Nav 로 내려보냄.
+  // isAdmin 은 UI 노출용일 뿐, 실제 권한은 /admin 페이지에서 서버 가드로 재검증함.
+  // (클라이언트에서 isAdmin 을 조작해도 admin 페이지 진입 불가 — lib/admin-auth.ts)
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isAdmin = isAdminUser(user?.email);
+
   return (
     <html lang="ko">
       <head>
@@ -94,7 +105,7 @@ export default function RootLayout({
           url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
           description="공공기관 데이터 기반 복지·대출 정보 안내 서비스"
         />
-        <Nav />
+        <Nav isAdmin={isAdmin} />
         <ReconsentBannerContainer />
         {children}
         <Footer />

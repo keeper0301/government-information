@@ -18,7 +18,13 @@ const items = [
   { label: "요금제", href: "/pricing" },
 ];
 
-export function Nav() {
+// isAdmin: layout.tsx 의 RootLayout 이 서버에서 isAdminUser() 로 판정해 prop 으로 전달.
+// 어드민 한정 메뉴 노출 여부 결정. UI 노출용일 뿐 실제 권한은 /admin 서버 가드로 재검증.
+type NavProps = {
+  isAdmin?: boolean;
+};
+
+export function Nav({ isAdmin = false }: NavProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -84,7 +90,7 @@ export function Nav() {
           ))}
 
           {/* 로그인 상태에 따라 로그인 버튼 ↔ 내 계정 메뉴를 보여줌 */}
-          <UserMenu />
+          <UserMenu isAdmin={isAdmin} />
         </div>
 
         {/* 모바일·태블릿 햄버거 버튼 (lg 미만) */}
@@ -135,7 +141,7 @@ export function Nav() {
             </a>
           ))}
           {/* 모바일용 로그인/로그아웃 영역 — 선택 시 햄버거 닫기 */}
-          <UserMenu mobile onNavigate={() => setMobileOpen(false)} />
+          <UserMenu mobile isAdmin={isAdmin} onNavigate={() => setMobileOpen(false)} />
         </div>
       )}
     </nav>
