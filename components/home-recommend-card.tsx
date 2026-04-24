@@ -158,7 +158,7 @@ export function HomeRecommendCard({ initial }: Props) {
             <button
               type="button"
               onClick={() => setRegionExpanded(true)}
-              className="min-h-[36px] px-3 text-[13px] font-medium rounded-full border-none bg-transparent text-grey-600 hover:text-grey-700 hover:bg-grey-50 cursor-pointer transition-colors"
+              className="min-h-[44px] px-3 text-[13px] font-medium rounded-full border-none bg-transparent text-grey-600 hover:text-grey-700 hover:bg-grey-50 cursor-pointer transition-colors"
             >
               + 다른 지역 ({OTHER_REGIONS.length})
             </button>
@@ -258,7 +258,7 @@ function Chip({
       type="button"
       aria-pressed={selected}
       onClick={onClick}
-      className={`min-h-[36px] px-3.5 text-[13px] rounded-full border-none cursor-pointer transition-colors ${
+      className={`min-h-[44px] px-3.5 text-[13px] rounded-full border-none cursor-pointer transition-colors ${
         selected
           ? "bg-blue-500 text-white font-semibold"
           : "bg-grey-100 text-grey-800 font-medium hover:bg-grey-200"

@@ -101,7 +101,7 @@ export function ReconsentBanner({ missing }: Props) {
           type="button"
           onClick={handleDismiss}
           aria-label="배너 닫기"
-          className="shrink-0 w-8 h-8 grid place-items-center border-none bg-transparent cursor-pointer text-amber-800 hover:bg-amber-100 rounded-full"
+          className="shrink-0 w-11 h-11 grid place-items-center border-none bg-transparent cursor-pointer text-amber-800 hover:bg-amber-100 rounded-full"
         >
           <svg
             className="w-4 h-4"

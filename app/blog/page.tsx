@@ -80,7 +80,7 @@ export default async function BlogIndexPage({
               <a
                 key={cat.key}
                 href={cat.key === "all" ? "/blog" : `/blog?category=${encodeURIComponent(cat.key)}`}
-                className={`min-h-[36px] px-3.5 py-1.5 text-[13px] rounded-full no-underline transition-colors ${
+                className={`inline-flex items-center min-h-[44px] px-3.5 text-[13px] rounded-full no-underline transition-colors ${
                   selected
                     ? "bg-blue-500 text-white font-semibold"
                     : "bg-white text-grey-700 border border-grey-100 hover:bg-grey-50"

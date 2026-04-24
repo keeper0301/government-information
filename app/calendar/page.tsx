@@ -199,7 +199,7 @@ export default async function CalendarPage({
         <a
           href={`/calendar?year=${prevMonth.year}&month=${prevMonth.month}`}
           aria-label={`이전 달 (${prevMonth.year}년 ${prevMonth.month}월)`}
-          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
+          className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
         >
           <span aria-hidden="true">◀</span>
         </a>
@@ -224,7 +224,7 @@ export default async function CalendarPage({
         <a
           href={`/calendar?year=${nextMonth.year}&month=${nextMonth.month}`}
           aria-label={`다음 달 (${nextMonth.year}년 ${nextMonth.month}월)`}
-          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
+          className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-grey-700 hover:bg-grey-100 transition-colors no-underline text-[18px] font-bold"
         >
           <span aria-hidden="true">▶</span>
         </a>

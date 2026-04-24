@@ -43,7 +43,7 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
         {currentPage > 1 ? (
           <a
             href={buildUrl({ page: String(currentPage - 1) })}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-grey-600 hover:bg-grey-100 transition-colors no-underline"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-grey-600 hover:bg-grey-100 transition-colors no-underline"
             aria-label="이전 페이지"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -51,7 +51,7 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
             </svg>
           </a>
         ) : (
-          <span className="w-9 h-9 flex items-center justify-center rounded-lg text-grey-300">
+          <span className="w-11 h-11 flex items-center justify-center rounded-lg text-grey-300">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 12L6 8l4-4" />
             </svg>
@@ -61,14 +61,14 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
         {/* Page numbers */}
         {pages.map((p, i) =>
           p === "..." ? (
-            <span key={`dot-${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-grey-500">
+            <span key={`dot-${i}`} className="w-11 h-11 flex items-center justify-center text-sm text-grey-500">
               ···
             </span>
           ) : (
             <a
               key={p}
               href={buildUrl({ page: String(p) })}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium no-underline transition-colors ${
+              className={`w-11 h-11 flex items-center justify-center rounded-lg text-sm font-medium no-underline transition-colors ${
                 p === currentPage
                   ? "bg-blue-500 text-white"
                   : "text-grey-700 hover:bg-grey-100"
@@ -83,7 +83,7 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
         {currentPage < totalPages ? (
           <a
             href={buildUrl({ page: String(currentPage + 1) })}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-grey-600 hover:bg-grey-100 transition-colors no-underline"
+            className="w-11 h-11 flex items-center justify-center rounded-lg text-grey-600 hover:bg-grey-100 transition-colors no-underline"
             aria-label="다음 페이지"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -91,7 +91,7 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
             </svg>
           </a>
         ) : (
-          <span className="w-9 h-9 flex items-center justify-center rounded-lg text-grey-300">
+          <span className="w-11 h-11 flex items-center justify-center rounded-lg text-grey-300">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 4l4 4-4 4" />
             </svg>

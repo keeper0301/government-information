@@ -124,7 +124,7 @@ export function UserMenu({ mobile = false }: { mobile?: boolean }) {
     <div ref={menuRef} className="relative ml-3">
       <button
         onClick={() => setOpen(!open)}
-        className="w-9 h-9 rounded-full bg-blue-500 text-white text-sm font-semibold grid place-items-center border-none cursor-pointer hover:bg-blue-600 transition-colors"
+        className="w-11 h-11 rounded-full bg-blue-500 text-white text-sm font-semibold grid place-items-center border-none cursor-pointer hover:bg-blue-600 transition-colors"
         aria-label="내 계정 메뉴"
       >
         {initial}

@@ -94,7 +94,7 @@ export function Nav() {
         {/* 모바일·태블릿 햄버거 버튼 (lg 미만) */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="lg:hidden w-10 h-10 grid place-items-center border-none bg-transparent cursor-pointer"
+          className="lg:hidden w-11 h-11 grid place-items-center border-none bg-transparent cursor-pointer"
           aria-label={mobileOpen ? "메뉴 닫기" : "메뉴 열기"}
           aria-expanded={mobileOpen}
           aria-controls="mobile-menu"
