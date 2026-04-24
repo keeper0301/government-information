@@ -2,11 +2,11 @@
 // /admin/enrich-detail — 공고 상세 API 수동 보강 도구
 // ============================================================
 // 기본적으론 cron (매일 6회, 00/03/11/15/19/23 UTC) 이 자동 돌지만,
-// 사장님이 "지금 당장 더 채우고 싶다" 할 때 직접 버튼 눌러 12건 즉시 처리.
+// 사장님이 "지금 당장 더 채우고 싶다" 할 때 직접 버튼 눌러 10건 즉시 처리.
 //
 // 동작:
-//   - 상단 카드 3개: 전체 후보 / 채워진 것 / 남은 것 (bokjiro 기준)
-//   - [지금 12건 보강] 버튼 → server action → /api/enrich 자체 POST
+//   - 상단 카드 4개: 전체 / 채워짐 / 남음 / 실패 (bokjiro + local-welfare 기준)
+//   - [지금 10건 보강] 버튼 → server action → /api/enrich 자체 POST
 //   - 결과를 searchParams 로 받아 하단 배너로 표시
 //   - admin_actions 에 enrich_detail_manual 로 감사 로그 기록
 // ============================================================
@@ -33,22 +33,35 @@ async function requireAdmin() {
 }
 
 // 상태 카운트 조회. bokjiro 관련 (중앙 + 지자체 local-welfare) 만.
+// head:true + count:'exact' 로 row 데이터 전송 없이 count 만 받음 — 5912 row
+// 전체를 네트워크로 끌어오던 코드리뷰 지적 반영.
 async function getStats() {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("welfare_programs")
-    .select("source_code, last_detail_fetched_at, last_detail_failed_at, source_url", { count: "exact" })
-    .or("source_code.eq.bokjiro,source_code.eq.local-welfare");
+  const bokjiroCond = "source_code.eq.bokjiro,source_code.eq.local-welfare";
 
-  if (!data) return { total: 0, fetched: 0, pending: 0, failed: 0 };
+  const [total, fetched, failed] = await Promise.all([
+    admin
+      .from("welfare_programs")
+      .select("id", { count: "exact", head: true })
+      .or(bokjiroCond),
+    admin
+      .from("welfare_programs")
+      .select("id", { count: "exact", head: true })
+      .or(bokjiroCond)
+      .not("last_detail_fetched_at", "is", null),
+    admin
+      .from("welfare_programs")
+      .select("id", { count: "exact", head: true })
+      .or(bokjiroCond)
+      .not("last_detail_failed_at", "is", null)
+      .is("last_detail_fetched_at", null),
+  ]);
 
-  const total = data.length;
-  const fetched = data.filter((r) => r.last_detail_fetched_at !== null).length;
-  const failed = data.filter(
-    (r) => r.last_detail_failed_at !== null && r.last_detail_fetched_at === null,
-  ).length;
-  const pending = total - fetched - failed;
-  return { total, fetched, pending, failed };
+  const total_n = total.count ?? 0;
+  const fetched_n = fetched.count ?? 0;
+  const failed_n = failed.count ?? 0;
+  const pending_n = Math.max(0, total_n - fetched_n - failed_n);
+  return { total: total_n, fetched: fetched_n, pending: pending_n, failed: failed_n };
 }
 
 // 수동 trigger server action — self-POST 로 /api/enrich 호출
@@ -122,9 +135,9 @@ export default async function EnrichDetailPage({
             공고 상세 수동 보강
           </h1>
           <p className="text-[14px] text-grey-600 leading-[1.6]">
-            cron (매일 6회, 하루 72건) 이 자동 처리하지만, 지금 즉시 12건 추가
+            cron (매일 6회, 하루 60건) 이 자동 처리하지만, 지금 즉시 10건 추가
             처리가 필요할 때 쓰세요. data.go.kr 개발계정 일일 할당량 100회 중
-            cron 이 72회 사용하니 수동 trigger 는 하루 1~2회 정도 여유 있습니다.
+            cron 이 60회 사용하니 수동 trigger 는 하루 3~4회 정도 여유 있습니다.
           </p>
         </div>
 
@@ -168,11 +181,11 @@ export default async function EnrichDetailPage({
             type="submit"
             className="w-full py-3 bg-blue-500 text-white rounded-lg text-[15px] font-bold hover:bg-blue-600 transition-colors cursor-pointer"
           >
-            지금 12건 보강 실행
+            지금 10건 보강 실행
           </button>
         </form>
         <p className="mt-3 text-[12px] text-grey-600 leading-[1.6]">
-          * 한 번에 12건 × 4초 간격 = 약 48초 소요 (Vercel 60초 한도 준수).
+          * 한 번에 10건 × 4초 간격 = 약 40초 소요 (Vercel 60초 한도 안전).
           <br />
           * 성공 row 는 7일 cooldown, 실패 row 는 1일 cooldown 후 자동 재처리.
         </p>

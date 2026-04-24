@@ -14,8 +14,7 @@
 //      실패: last_detail_failed_at=now
 //   4) 실패율 50%+ 면 운영자 알림 (외부 API 장애 감지)
 //
-// Vercel Hobby 60초 한도: 배치 6건 * 4초 간격 = 24초, 응답 포함 60초 안전.
-// 분당 15회 API rate limit (data.go.kr 개발계정): 4초 간격 준수.
+// Vercel Hobby 60초 한도 + data.go.kr 분당 15회 rate limit 동시 고려.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -23,10 +22,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
 import { findFetcher, type RowIdentity, type DetailResult } from "@/lib/detail-fetchers";
 
-// Vercel maxDuration=60s / data.go.kr 분당 15회 rate limit 동시 고려:
-// 12회 × 4초 = 48초 + DB update + fetch 응답 변동 = 최대 ~58초 범위.
-// 보수적으로 12건 (이전 6 → 12 로 상향).
-const BATCH_SIZE = 12;
+// 10건 × 4초 interval = 36초 + fetch 응답 (~1~2s × 10) = ~50s → 60s 한도에 여유.
+// 최초엔 12 로 설정했으나 코드리뷰 결과 fetch 지연 누적 시 60s 초과 가능성
+// 발견 → 10 으로 하향 (BATCH_SIZE 의 실측 상한).
+const BATCH_SIZE = 10;
 const CALL_INTERVAL_MS = 4000;
 const COOLDOWN_OK_MS = 7 * 24 * 60 * 60 * 1000;  // 성공: 7일
 const COOLDOWN_FAIL_MS = 1 * 24 * 60 * 60 * 1000; // 실패: 1일
@@ -178,6 +177,13 @@ async function runEnrichAndRespond(jobLabel: string) {
       await notifyCronFailure(
         `${jobLabel} - Detail API 실패율 ${result.failed}/${attempted}`,
         `data.go.kr NationalWelfaredetailedV001 응답 이상. quota·서비스 장애 가능성.`,
+      );
+    }
+    // 전부 skipped 인 경우 — fetcher 누락 or applies 로직 깨짐. 운영 사각지대.
+    if (result.total > 0 && result.ok === 0 && result.failed === 0) {
+      await notifyCronFailure(
+        `${jobLabel} - 모든 후보 skipped (fetcher 매칭 0건)`,
+        `total=${result.total} skipped=${result.skipped}. DETAIL_FETCHERS applies() 점검 필요.`,
       );
     }
 
