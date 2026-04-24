@@ -49,6 +49,17 @@ export function HomeRecommendCard({ initial }: Props) {
   const autoFilled = Boolean(ageGroup || region || occupation);
   const visibleRegions = regionExpanded ? ALL_REGIONS : POPULAR_REGIONS;
 
+  // 3필드 중 몇 개 입력됐는지 — 진행 표시 + 버튼 라벨에 사용
+  const completedCount = [ageGroup, region, occupation].filter(Boolean).length;
+  const missingLabels = [
+    !ageGroup && "나이",
+    !region && "지역",
+    !occupation && "직업",
+  ].filter(Boolean) as string[];
+  const submitLabel = canSubmit
+    ? "내가 받을 수 있는 건 뭘까"
+    : `${missingLabels.join(" · ")} 골라주세요`;
+
   async function handleSubmit() {
     if (!canSubmit) return;
     setLoading(true);
@@ -75,11 +86,21 @@ export function HomeRecommendCard({ initial }: Props) {
     <div className="w-full">
       {/* 입력 카드 — 얇은 테두리 + 흰 배경 */}
       <div className="bg-white border border-grey-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
-        {/* 카드 내부 헤더 */}
+        {/* 카드 내부 헤더 + 진행 카운터 */}
         <div className="mb-5">
-          <h2 className="text-[17px] font-bold tracking-[-0.3px] text-grey-900 mb-0.5">
-            나에게 맞는 정책 찾기
-          </h2>
+          <div className="flex items-baseline justify-between mb-0.5">
+            <h2 className="text-[17px] font-bold tracking-[-0.3px] text-grey-900">
+              나에게 맞는 정책 찾기
+            </h2>
+            <span
+              className={`text-[12px] font-bold tabular-nums ${
+                completedCount === 3 ? "text-blue-500" : "text-grey-400"
+              }`}
+              aria-label={`${completedCount}개 중 3개 입력 완료`}
+            >
+              {completedCount}/3
+            </span>
+          </div>
           <p className="text-[13px] text-grey-500 leading-[1.5]">
             3가지만 고르면 30초 안에 보여드려요
             {autoFilled && !searched && (
@@ -88,20 +109,22 @@ export function HomeRecommendCard({ initial }: Props) {
           </p>
         </div>
 
-        {/* 필터: 찾는 정보 (전체/복지/대출) */}
+        {/* 필터: 찾는 정보 (전체/복지/대출) — 기본 "전체" 선택 상태라 번호 제외 */}
         <Field label="찾는 정보">
           {PROGRAM_TYPES.map((opt) => (
             <Chip key={opt} label={opt} selected={programType === opt} onClick={() => setProgramType(opt)} />
           ))}
         </Field>
-        <Field label="나이대">
+
+        {/* 질문 1: 나이 */}
+        <Field label="나이대" step={1} completed={!!ageGroup}>
           {AGE_OPTIONS.map((opt) => (
             <Chip key={opt} label={opt} selected={ageGroup === opt} onClick={() => setAgeGroup(opt)} />
           ))}
         </Field>
 
         {/* 질문 2: 지역 — Progressive Disclosure */}
-        <Field label="거주 지역">
+        <Field label="거주 지역" step={2} completed={!!region}>
           {visibleRegions.map((opt) => (
             <Chip key={opt} label={opt} selected={region === opt} onClick={() => setRegion(opt)} />
           ))}
@@ -117,7 +140,7 @@ export function HomeRecommendCard({ initial }: Props) {
         </Field>
 
         {/* 질문 3: 직업 */}
-        <Field label="하시는 일" last>
+        <Field label="하시는 일" step={3} completed={!!occupation} last>
           {OCCUPATION_OPTIONS.map((opt) => (
             <Chip key={opt} label={opt} selected={occupation === opt} onClick={() => setOccupation(opt)} />
           ))}
@@ -133,11 +156,13 @@ export function HomeRecommendCard({ initial }: Props) {
               : "bg-grey-100 text-grey-400 cursor-not-allowed"
           }`}
         >
-          {loading ? "지금 찾고 있어요" : (
+          {loading ? "지금 찾고 있어요" : canSubmit ? (
             <>
-              내가 받을 수 있는 건 뭘까
+              {submitLabel}
               <span className="transition-transform group-hover:translate-x-0.5">→</span>
             </>
+          ) : (
+            submitLabel
           )}
         </button>
       </div>
@@ -174,10 +199,38 @@ export function HomeRecommendCard({ initial }: Props) {
 }
 
 // 질문 블록 (라벨 + 칩 목록)
-function Field({ label, last, children }: { label: string; last?: boolean; children: React.ReactNode }) {
+// step: 있으면 라벨 앞에 번호 배지 표시 (진행감 부여).
+// completed: 해당 필드가 채워졌는지 — 배지 색상 파랑/회색 전환.
+function Field({
+  label,
+  step,
+  completed,
+  last,
+  children,
+}: {
+  label: string;
+  step?: number;
+  completed?: boolean;
+  last?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className={last ? "mb-5" : "mb-4"}>
-      <div className="text-[12px] font-semibold text-grey-500 mb-2 tracking-wide">{label}</div>
+      <div className="flex items-center gap-1.5 mb-2">
+        {step !== undefined && (
+          <span
+            aria-hidden="true"
+            className={`inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[10px] font-bold transition-colors ${
+              completed
+                ? "bg-blue-500 text-white"
+                : "bg-grey-100 text-grey-500"
+            }`}
+          >
+            {completed ? "✓" : step}
+          </span>
+        )}
+        <div className="text-[12px] font-semibold text-grey-500 tracking-wide">{label}</div>
+      </div>
       <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   );
