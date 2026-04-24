@@ -6,6 +6,7 @@ import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema } from "@/components/json-ld";
 import { SummaryItem } from "@/components/summary-item";
+import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate } from "@/lib/utils";
 import type { Metadata } from "next";
@@ -66,8 +67,14 @@ export default async function WelfareDetailPage({ params }: Props) {
     (f) => f.value && !isSubstantiallyDuplicate(f.value, program.description),
   );
 
-  // 데이터 풍부도 판단
-  const hasDetailedData = !!(program.detailed_content || program.selection_criteria || program.eligibility || program.contact_info);
+  // 데이터 빈약도 판정 — 본문 길이 + 핵심 정보 카드 채움 정도로 분류 (loan 과 동일).
+  const descLen = (program.description || "").length;
+  const sparseVariant: "very-sparse" | "sparse" | null =
+    filledSummary.length <= 1 && descLen <= 100
+      ? "very-sparse"
+      : filledSummary.length <= 1
+      ? "sparse"
+      : null;
 
   // 마감 판정 — apply_end 있고 오늘보다 이전이면 "마감됨"
   const today = new Date().toISOString().split("T")[0];
@@ -146,6 +153,15 @@ export default async function WelfareDetailPage({ params }: Props) {
         </p>
       )}
 
+      {/* 빈약 안내 박스 — 핵심 정보 카드 *위* 에 표시 (loan 과 동일 패턴). */}
+      {sparseVariant && (
+        <SparseDataNotice
+          sourceLink={sourceLink}
+          source={program.source}
+          variant={sparseVariant}
+        />
+      )}
+
       {/* 핵심 정보 카드 — 채워진 필드가 1개 이상일 때만 노출 */}
       {filledSummary.length > 0 && (
         <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
@@ -155,34 +171,6 @@ export default async function WelfareDetailPage({ params }: Props) {
               <SummaryItem key={f.label} label={f.label} value={f.value} />
             ))}
           </div>
-        </div>
-      )}
-
-      {/* 데이터 부족 안내 — 상세 필드가 거의 없으면 원문 CTA 를 크고 명확하게 */}
-      {!hasDetailedData && (
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-6 mb-8">
-          <div className="text-[15px] font-bold text-grey-900 mb-1">
-            자격·혜택 등 세부 정보는 원문에서 확인할 수 있어요
-          </div>
-          <p className="text-[13px] text-grey-700 leading-[1.6] mb-4">
-            이 공고는 요약 정보만 수집된 상태입니다. 정확한 신청 조건과 절차는
-            기관 원문 페이지에서 확인해 주세요.
-          </p>
-          {sourceLink ? (
-            <a
-              href={sourceLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-500 text-white text-[14px] font-semibold rounded-lg no-underline hover:bg-blue-600 transition-colors"
-            >
-              원문 페이지 열기
-              <span aria-hidden="true">↗</span>
-            </a>
-          ) : (
-            <span className="text-[13px] text-grey-600">
-              원문 링크가 수집되지 않았어요. 기관에 직접 문의해 주세요.
-            </span>
-          )}
         </div>
       )}
 
