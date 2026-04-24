@@ -89,11 +89,17 @@ const fetcher: DetailFetcher = {
   label: "복지로 Detail API",
   enabled: () => !!KEY,
 
-  // source_code 가 bokjiro 이고 source_id 가 WLF... 형식
+  // source_id 가 WLF... 형식이면서 (source_code='bokjiro' OR source_url 이 bokjiro.go.kr)
+  //
+  // 실측: welfare 6157건 중 source_code='bokjiro' 로 태깅된 건 393건뿐.
+  // 나머지 ~4500건은 legacy 로 serv_id(=source_id fallback) 만 있고 source_code NULL.
+  // URL 기반 2차 매칭 추가해서 legacy 도 커버.
   applies: (row: RowIdentity) => {
-    if (row.source_code !== "bokjiro") return false;
     if (!row.source_id) return false;
-    return /^WLF\d+$/.test(row.source_id);
+    if (!/^WLF\d+$/.test(row.source_id)) return false;
+    if (row.source_code === "bokjiro") return true;
+    if (row.source_url && row.source_url.includes("bokjiro.go.kr")) return true;
+    return false;
   },
 
   async fetchDetail(row: RowIdentity): Promise<DetailResult | null> {
