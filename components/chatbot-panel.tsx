@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { ChatIcon } from "./icons";
 import type { DisplayProgram } from "@/lib/programs";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 type Message = {
   role: "user" | "bot";
@@ -34,6 +35,8 @@ export function ChatbotPanel() {
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: msg }]);
     setLoading(true);
+    // GA4 이벤트 — AI 상담 사용 빈도 파악 (메시지 내용은 수집 X, 길이만)
+    trackEvent(EVENTS.AI_CHAT_SENT, { message_length: msg.length });
 
     try {
       const res = await fetch("/api/chatbot", {

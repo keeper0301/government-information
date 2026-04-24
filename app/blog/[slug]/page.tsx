@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ArticleSchema, FAQSchema } from "@/components/json-ld";
+import { GaPageTracker } from "@/components/ga-page-tracker";
 import { formatKoreanDate } from "@/lib/utils";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
@@ -145,6 +146,15 @@ export default async function BlogPostPage({
 
   return (
     <main className="min-h-screen bg-white pt-[80px] pb-20">
+      {/* GA4 blog_post_viewed — 카테고리·slug 로 어떤 글이 많이 읽히는지 집계 */}
+      <GaPageTracker
+        eventName="blog_post_viewed"
+        params={{
+          slug: post.slug,
+          category: post.category ?? "(uncategorized)",
+        }}
+      />
+
       {/* 구조화 데이터: Article */}
       <ArticleSchema
         title={post.title}
