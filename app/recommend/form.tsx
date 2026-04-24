@@ -4,6 +4,18 @@ import { useState } from "react";
 import { ProgramRow } from "@/components/program-row";
 import type { DisplayProgram } from "@/lib/programs";
 import { AGE_OPTIONS, REGION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/profile-options";
+import type { ProgramType } from "@/lib/recommend";
+
+// 정보 종류 탭 옵션 — UI 라벨 / API 값
+const PROGRAM_TYPE_TABS: { value: ProgramType; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "welfare", label: "복지정보" },
+  { value: "loan", label: "대출정보" },
+];
+
+function programTypeLabel(v: ProgramType): string {
+  return PROGRAM_TYPE_TABS.find((t) => t.value === v)?.label ?? "전체";
+}
 
 // 프로필 값이 폼 옵션 목록에 있을 때만 초기값으로 사용
 function pickMatching(value: string | null | undefined, options: readonly string[]): string {
@@ -12,11 +24,14 @@ function pickMatching(value: string | null | undefined, options: readonly string
 }
 
 type Props = {
-  // /mypage 에 저장된 프로필 (비로그인 / 프로필 없음 → null)
+  // /mypage 프로필 또는 URL 쿼리에서 파싱된 초기값
+  // (비로그인 · 프로필 없음 · URL 쿼리 없음 → null)
   initial?: {
     age_group: string | null;
     region: string | null;
     occupation: string | null;
+    // 찾는 정보 종류 (복지/대출/전체). URL 쿼리 ?type=welfare 등으로 전달
+    program_type?: ProgramType;
   } | null;
   // 서버에서 미리 계산한 추천 결과 (프로필 완비 시에만 존재)
   initialPrograms?: DisplayProgram[] | null;
@@ -36,6 +51,9 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
   const [occupation, setOccupation] = useState(
     pickMatching(initial?.occupation, OCCUPATION_OPTIONS),
   );
+  const [programType, setProgramType] = useState<ProgramType>(
+    initial?.program_type ?? "all",
+  );
   const [programs, setPrograms] = useState<DisplayProgram[]>(initialPrograms ?? []);
   const [loading, setLoading] = useState(false);
 
@@ -50,16 +68,20 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
   );
 
   // 재검색 수행 (override 로 특정 필드 값을 덮어씀 — "전국 확대" 폴백용)
-  async function runSearch(override?: { region?: string }) {
+  async function runSearch(override?: { region?: string; programType?: ProgramType }) {
     const eff = {
       ageGroup,
       region: override?.region ?? region,
       occupation,
+      programType: override?.programType ?? programType,
     };
     if (!eff.ageGroup || !eff.region || !eff.occupation) return;
 
     // override 로 바뀐 값은 UI state 에도 즉시 반영 (다음 렌더에 칩 업데이트)
     if (override?.region && override.region !== region) setRegion(override.region);
+    if (override?.programType && override.programType !== programType) {
+      setProgramType(override.programType);
+    }
 
     setLoading(true);
     setHasSearched(true);
@@ -92,9 +114,11 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
           ageGroup={ageGroup}
           region={region}
           occupation={occupation}
+          programType={programType}
           onAgeChange={setAgeGroup}
           onRegionChange={setRegion}
           onOccupationChange={setOccupation}
+          onProgramTypeChange={setProgramType}
           onSubmit={() => runSearch()}
           // 현재 결과가 있고 필드가 유효할 때 "취소" 로 결과로 돌아갈 수 있게 함.
           // (초기 SSR 결과든 사용자가 수동 검색해서 받은 결과든 동일하게 탈출 경로 제공)
@@ -110,6 +134,7 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
           ageGroup={ageGroup}
           region={region}
           occupation={occupation}
+          programType={programType}
           onEdit={() => setEditing(true)}
         />
       )}
@@ -158,11 +183,13 @@ function SummaryChip({
   ageGroup,
   region,
   occupation,
+  programType,
   onEdit,
 }: {
   ageGroup: string;
   region: string;
   occupation: string;
+  programType: ProgramType;
   onEdit: () => void;
 }) {
   return (
@@ -174,6 +201,10 @@ function SummaryChip({
         <Chip>{ageGroup}</Chip>
         <Chip>{region}</Chip>
         <Chip>{occupation}</Chip>
+        {/* 정보 종류 — "전체"가 아닐 때만 칩으로 표시 (기본값 노이즈 제거) */}
+        {programType !== "all" && (
+          <Chip accent>{programTypeLabel(programType)}</Chip>
+        )}
       </div>
       <button
         onClick={onEdit}
@@ -185,9 +216,15 @@ function SummaryChip({
   );
 }
 
-function Chip({ children }: { children: React.ReactNode }) {
+function Chip({ children, accent }: { children: React.ReactNode; accent?: boolean }) {
   return (
-    <span className="px-3 py-1.5 bg-grey-50 border border-grey-200 rounded-full text-[13px] font-semibold text-grey-800">
+    <span
+      className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border ${
+        accent
+          ? "bg-blue-50 border-blue-100 text-blue-700"
+          : "bg-grey-50 border-grey-200 text-grey-800"
+      }`}
+    >
       {children}
     </span>
   );
@@ -200,9 +237,11 @@ function EditPanel({
   ageGroup,
   region,
   occupation,
+  programType,
   onAgeChange,
   onRegionChange,
   onOccupationChange,
+  onProgramTypeChange,
   onSubmit,
   onCancel,
   canSubmit,
@@ -212,9 +251,11 @@ function EditPanel({
   ageGroup: string;
   region: string;
   occupation: string;
+  programType: ProgramType;
   onAgeChange: (v: string) => void;
   onRegionChange: (v: string) => void;
   onOccupationChange: (v: string) => void;
+  onProgramTypeChange: (v: ProgramType) => void;
   onSubmit: () => void;
   onCancel?: () => void;
   canSubmit: boolean;
@@ -223,6 +264,34 @@ function EditPanel({
 }) {
   return (
     <div className="bg-white border border-grey-100 rounded-2xl p-6 mb-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] max-md:p-5">
+      {/* 정보 종류 탭 — 복지·대출·전체 (홈 카드에서 URL 로 넘어온 선택이 초깃값) */}
+      <div className="mb-5">
+        <label className="block text-[13px] font-semibold text-grey-700 mb-2">
+          찾는 정보
+        </label>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="정보 종류">
+          {PROGRAM_TYPE_TABS.map((tab) => {
+            const active = programType === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onProgramTypeChange(tab.value)}
+                className={`px-4 py-2 rounded-full text-[13px] font-semibold border transition-colors cursor-pointer ${
+                  active
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-white text-grey-700 border-grey-200 hover:bg-grey-50"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-4 mb-5 max-md:grid-cols-1">
         <Field label="나이대">
           <select
