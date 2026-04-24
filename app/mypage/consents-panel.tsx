@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 type ConsentType =
   | "privacy_policy"
@@ -143,6 +144,10 @@ export function ConsentsPanel({
         throw new Error(data.error || "실패");
       }
       setMessage(currentlyActive ? "동의를 철회했어요." : "동의를 기록했어요.");
+      // 선택 동의 철회는 신뢰 이슈 신호 → 별도 이벤트로 추적 (카톡·마케팅 이탈 비율 등)
+      if (nextAction === "withdraw") {
+        trackEvent(EVENTS.CONSENT_WITHDRAWN, { consent_type: type });
+      }
       router.refresh(); // 서버 상태 동기화
     } catch (err) {
       // 롤백
@@ -171,6 +176,8 @@ export function ConsentsPanel({
         throw new Error(data.error || "실패");
       }
       setMessage("동의를 기록했어요.");
+      // 재동의 배너·빨강 카드 "지금 동의" 에서 왔을 때 — 방침 개정 후 회복율 측정
+      trackEvent(EVENTS.RECONSENT_ACKNOWLEDGED, { consent_type: type });
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "처리 중 문제가 생겼어요.";

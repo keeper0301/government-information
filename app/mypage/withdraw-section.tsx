@@ -14,6 +14,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 export function WithdrawSection() {
   const router = useRouter();
@@ -37,9 +38,18 @@ export function WithdrawSection() {
     try {
       const res = await fetch("/api/account/delete", { method: "POST" });
       if (!res.ok) {
+        // 409 = 활성 구독으로 차단 → 별도 이벤트로 분리 (취소→탈퇴 퍼널 추적용)
+        if (res.status === 409) {
+          trackEvent(EVENTS.ACCOUNT_DELETION_BLOCKED, {
+            reason: "active_subscription",
+          });
+        }
         const data = await res.json().catch(() => ({ error: "실패" }));
         throw new Error(data.error || "탈퇴 처리에 실패했어요.");
       }
+
+      // 탈퇴 완료 이벤트 (router.push 전에 호출 — 페이지 언마운트 후엔 gtag 레이스)
+      trackEvent(EVENTS.ACCOUNT_DELETED);
 
       // 탈퇴 완료 → 홈으로 이동.
       // router.refresh() 로 layout 의 user 상태까지 서버에서 다시 계산 → Nav 의 로그인 버튼 복귀.
