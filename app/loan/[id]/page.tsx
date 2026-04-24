@@ -8,7 +8,7 @@ import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema } from "@/components/json-ld";
 import { SummaryItem } from "@/components/summary-item";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
-import { cleanDescription } from "@/lib/utils";
+import { cleanDescription, isSubstantiallyDuplicate } from "@/lib/utils";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -57,7 +57,9 @@ export default async function LoanDetailPage({ params }: Props) {
   const sourceLink = program.source_url || program.apply_url;
   const related = await getRelatedPrograms("loan", program.category, program.id);
 
-  // 핵심 정보 필드 6종 — value 있는 것만 골라 표시
+  // 핵심 정보 필드 6종 — value 있고, 본문 description 과 사실상 같지 않은 것만 골라 표시.
+  // 실측: 대출 411건의 eligibility 가 100% description 복붙. 그대로 두면 본문이 두 번
+  // 노출돼 사용자가 "왜 같은 내용을 또 보여주지?" 하게 됨. 자동 중복 검사로 차단.
   const summaryFields: { label: string; value: string | null }[] = [
     { label: "자격 요건", value: program.eligibility },
     { label: "대출 한도", value: program.loan_amount },
@@ -66,7 +68,9 @@ export default async function LoanDetailPage({ params }: Props) {
     { label: "신청 기간", value: applyPeriod },
     { label: "신청 방법", value: program.apply_method },
   ];
-  const filledSummary = summaryFields.filter((f) => f.value);
+  const filledSummary = summaryFields.filter(
+    (f) => f.value && !isSubstantiallyDuplicate(f.value, program.description),
+  );
 
   const hasDetailedData = !!(program.detailed_content || program.eligibility || program.contact_info);
 

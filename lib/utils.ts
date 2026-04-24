@@ -129,11 +129,20 @@ export function cleanDescription(raw: string | null | undefined): string {
   text = text.replace(/<li[^>]*>/gi, "• ");
   text = text.replace(/<[^>]+>/g, " ");
 
-  // 3) 섹션 구분자 앞에 줄바꿈 — 정부 공고 관행상 ▶/◆/■/◎/※ 가 새 섹션 시작 신호
+  // 3) 섹션 구분자 앞에 줄바꿈 — 정부 공고 관행상 다음 기호들이 새 섹션 시작 신호
+  //    ▶/◆/■/◎/※ 외에도 지자체 공고에서 ☞/▷/▣/◇/□/○ 가 매우 빈번 (대출 1568건 중
+  //    18% 가 ☞ 포함). 모두 동일하게 두 줄 띄움 처리.
   text = text.replace(/\s*▶\s*/g, "\n\n▶ ");
   text = text.replace(/\s*◆\s*/g, "\n\n◆ ");
   text = text.replace(/\s*■\s*/g, "\n\n■ ");
   text = text.replace(/\s*◎\s*/g, "\n\n◎ ");
+  text = text.replace(/\s*☞\s*/g, "\n\n☞ ");
+  text = text.replace(/\s*▷\s*/g, "\n\n▷ ");
+  text = text.replace(/\s*▣\s*/g, "\n\n▣ ");
+  text = text.replace(/\s*◇\s*/g, "\n\n◇ ");
+  text = text.replace(/\s*□\s*/g, "\n\n□ ");
+  // ○ 는 본문 가운데에서 일반 구두점으로 쓰일 때가 있으므로 줄 시작 또는 공백 뒤에서만
+  text = text.replace(/(^|\s)○\s*/g, "$1\n\n○ ");
   text = text.replace(/\s*※\s*/g, "\n※ ");
 
   // 4) ①②③... 원문자 번호 앞에 줄바꿈 (목록 가독성)
@@ -187,6 +196,33 @@ export function cleanDescription(raw: string | null | undefined): string {
   text = text.replace(/\n{3,}/g, "\n\n");
 
   return text.trim();
+}
+
+// 핵심 정보 필드(eligibility · benefits 등)가 description 본문과 사실상 같은지 판정.
+// 데이터 실측: 대출 1568건 중 eligibility 채워진 411건 100% 가 description 과 완전 동일.
+// 핵심 정보 카드에 본문을 한 번 더 보여주는 건 가독성 저하 → 같으면 숨기는 게 맞음.
+//
+// 판정 기준 (둘 중 하나라도 참이면 중복):
+//   1) cleanDescription 처리 후 공백 정규화한 두 문자열이 정확히 같음
+//   2) 두 문자열 길이가 비슷하고(±10%) 한쪽이 다른 쪽의 앞 100자를 포함
+//      → 스크래퍼가 끝부분만 살짝 다르게 자른 케이스 대응
+export function isSubstantiallyDuplicate(
+  value: string | null | undefined,
+  description: string | null | undefined,
+): boolean {
+  if (!value || !description) return false;
+  const norm = (s: string) => cleanDescription(s).replace(/\s+/g, " ").trim();
+  const a = norm(value);
+  const b = norm(description);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  // 짧은 값(<50자) 은 부분일치로 판정하지 않음 — 정상적인 짧은 요약일 가능성
+  if (a.length < 50 || b.length < 50) return false;
+  // 길이 비슷 + 앞 100자 포함 → 사실상 같은 내용
+  const ratio = Math.min(a.length, b.length) / Math.max(a.length, b.length);
+  if (ratio < 0.7) return false;
+  const head = a.slice(0, 100);
+  return b.includes(head);
 }
 
 // ============================================================

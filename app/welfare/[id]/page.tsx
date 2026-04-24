@@ -7,7 +7,7 @@ import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema } from "@/components/json-ld";
 import { SummaryItem } from "@/components/summary-item";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
-import { cleanDescription } from "@/lib/utils";
+import { cleanDescription, isSubstantiallyDuplicate } from "@/lib/utils";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -54,14 +54,17 @@ export default async function WelfareDetailPage({ params }: Props) {
   const sourceLink = program.source_url || program.apply_url;
   const related = await getRelatedPrograms("welfare", program.category, program.id, program.region);
 
-  // 핵심 정보 4종 — value 있는 것만 표시
+  // 핵심 정보 4종 — value 있고, 본문 description 과 사실상 같지 않은 것만 표시.
+  // (대출과 달리 복지는 다른 데이터 소스라 중복 비율 0% 였지만, 동일 가드로 통일.)
   const summaryFields: { label: string; value: string | null }[] = [
     { label: "자격 요건", value: program.eligibility },
     { label: "혜택 내용", value: program.benefits },
     { label: "신청 기간", value: period },
     { label: "신청 방법", value: program.apply_method },
   ];
-  const filledSummary = summaryFields.filter((f) => f.value);
+  const filledSummary = summaryFields.filter(
+    (f) => f.value && !isSubstantiallyDuplicate(f.value, program.description),
+  );
 
   // 데이터 풍부도 판단
   const hasDetailedData = !!(program.detailed_content || program.selection_criteria || program.eligibility || program.contact_info);
