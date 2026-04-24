@@ -1,12 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
-import {
-  AGE_KEYWORDS,
-  OCCUPATION_KEYWORDS,
-  REGION_OPTIONS,
-  type AgeOption,
-  type OccupationOption,
-} from "@/lib/profile-options";
 export { calcDday } from "@/lib/utils";
 import { calcDday } from "@/lib/utils";
 
@@ -16,19 +9,6 @@ export type ProfileLite = {
   region: string | null;
   occupation: string | null;
 };
-
-// 프로필 → 검색 키워드 (title/target/description ILIKE 매칭용)
-function buildProfileKeywords(profile: ProfileLite): string[] {
-  const keywords: string[] = [];
-  if (profile.age_group && profile.age_group in AGE_KEYWORDS) {
-    keywords.push(...AGE_KEYWORDS[profile.age_group as AgeOption]);
-  }
-  if (profile.occupation && profile.occupation in OCCUPATION_KEYWORDS) {
-    keywords.push(...OCCUPATION_KEYWORDS[profile.occupation as OccupationOption]);
-  }
-  // 중복 제거 + 소문자 정규화
-  return [...new Set(keywords.map((k) => k.toLowerCase()))];
-}
 
 export type DisplayProgram = {
   id: string;
@@ -181,114 +161,11 @@ export async function getPopularLoans(limit = 20): Promise<DisplayProgram[]> {
   return (data || []).map(loanToDisplay);
 }
 
-/**
- * 프로필 기반 맞춤 복지 — 활성 정책 중 프로필 키워드 (연령·직업) 와
- * 지역이 가장 잘 매칭되는 top-K. 매칭 부족 시 조회수 상위로 채움.
- */
-export async function getPersonalizedWelfare(
-  profile: ProfileLite,
-  limit = 4,
-): Promise<DisplayProgram[]> {
-  const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
-  const keywords = buildProfileKeywords(profile);
-
-  // 후보 풀 — 활성 + 지역 (프로필 지역 + 전국·NULL)
-  let query = supabase
-    .from("welfare_programs")
-    .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("view_count", { ascending: false })
-    .limit(100);
-
-  // profile.region 은 사용자가 RLS 를 우회해 임의 값을 저장할 수 있으므로
-  // 서버에서 REGION_OPTIONS 화이트리스트 재검증 (PostgREST .or() interpolation
-  // injection 방지)
-  const validRegion =
-    profile.region && (REGION_OPTIONS as readonly string[]).includes(profile.region)
-      ? profile.region
-      : null;
-  if (validRegion && validRegion !== "전국") {
-    query = query.or(`region.eq.${validRegion},region.eq.전국,region.is.null`);
-  }
-
-  const { data } = await query;
-  const rows = data ?? [];
-
-  // 키워드 없음 (프로필 비어있음) 이면 지역 필터만으로 top-K
-  if (keywords.length === 0) {
-    return rows.slice(0, limit).map(welfareToDisplay);
-  }
-
-  // 키워드 점수 (title/target/description ILIKE)
-  const scored = rows.map((r) => {
-    const hay = `${r.title ?? ""} ${r.target ?? ""} ${r.description ?? ""}`.toLowerCase();
-    let score = 0;
-    for (const k of keywords) if (hay.includes(k)) score += 1;
-    return { row: r, score };
-  });
-
-  const matched = scored
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-
-  if (matched.length >= limit) {
-    return matched.map((s) => welfareToDisplay(s.row));
-  }
-
-  // 매칭 부족 → 조회수 상위로 보충 (중복 제외)
-  const matchedIds = new Set(matched.map((s) => s.row.id));
-  const fill = rows.filter((r) => !matchedIds.has(r.id)).slice(0, limit - matched.length);
-  return [...matched.map((s) => welfareToDisplay(s.row)), ...fill.map(welfareToDisplay)].slice(
-    0,
-    limit,
-  );
-}
-
-/**
- * 프로필 기반 맞춤 대출·지원금 — 직업 매칭이 핵심 (대출은 지역 기반보다
- * 자영업·창업 등 업종 필터링이 더 유효)
- */
-export async function getPersonalizedLoans(
-  profile: ProfileLite,
-  limit = 3,
-): Promise<DisplayProgram[]> {
-  const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
-  const keywords = buildProfileKeywords(profile);
-
-  const { data } = await supabase
-    .from("loan_programs")
-    .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("view_count", { ascending: false })
-    .limit(100);
-
-  const rows = data ?? [];
-  if (keywords.length === 0) return rows.slice(0, limit).map(loanToDisplay);
-
-  const scored = rows.map((r) => {
-    const hay = `${r.title ?? ""} ${r.target ?? ""} ${r.description ?? ""}`.toLowerCase();
-    let score = 0;
-    for (const k of keywords) if (hay.includes(k)) score += 1;
-    return { row: r, score };
-  });
-
-  const matched = scored
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-
-  if (matched.length >= limit) return matched.map((s) => loanToDisplay(s.row));
-
-  const matchedIds = new Set(matched.map((s) => s.row.id));
-  const fill = rows.filter((r) => !matchedIds.has(r.id)).slice(0, limit - matched.length);
-  return [...matched.map((s) => loanToDisplay(s.row)), ...fill.map(loanToDisplay)].slice(
-    0,
-    limit,
-  );
-}
+// 홈·/recommend 의 맞춤 추천 로직은 lib/recommend.ts 의 getRecommendations 로
+// 일원화됨. 이전 getPersonalizedWelfare · getPersonalizedLoans 는 지역 필터·직업
+// 필수 매칭이 누락돼 있어 홈에서 전남 사용자에게 광주·서울·대전·부산 공고가 뜨던
+// 회귀 원인. 제거 후 호출부(app/page.tsx) 는 getRecommendations({ programType, limit })
+// 로 교체.
 
 export async function getRelatedPrograms(
   type: "welfare" | "loan",

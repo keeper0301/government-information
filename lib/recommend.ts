@@ -130,12 +130,15 @@ type RecommendParams = {
   region: RegionOption;
   occupation: OccupationOption;
   programType?: ProgramType;
+  // 홈의 맞춤 섹션(복지 4 · 대출 3) 처럼 /recommend 페이지(20건) 외 용도에서 쓰라고
+  // 노출. 기본값 20 은 /recommend 페이지 기대치와 동일.
+  limit?: number;
 };
 
-// 추천 결과 계산 (API 라우트·서버 페이지 공용 진입점)
-// 반환: 매칭 점수 내림차순 정렬된 최대 20건
+// 추천 결과 계산 (API 라우트·서버 페이지·홈 맞춤 섹션 공용 진입점)
+// 반환: 매칭 점수 내림차순 정렬 (동점이면 view_count 순) 최대 limit 건
 export async function getRecommendations(params: RecommendParams): Promise<DisplayProgram[]> {
-  const { ageGroup, region, occupation, programType = "all" } = params;
+  const { ageGroup, region, occupation, programType = "all", limit = 20 } = params;
 
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
@@ -187,6 +190,6 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
 
   return [...filteredWelfare, ...filteredLoan]
     .sort((a, b) => b.score - a.score)
-    .slice(0, 20)
+    .slice(0, limit)
     .map((x) => x.display);
 }

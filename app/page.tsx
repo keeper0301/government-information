@@ -12,10 +12,14 @@ import {
   getTopWelfare,
   getTopLoans,
   getUrgentPrograms,
-  getPersonalizedWelfare,
-  getPersonalizedLoans,
   type ProfileLite,
 } from "@/lib/programs";
+import { getRecommendations } from "@/lib/recommend";
+import type {
+  AgeOption,
+  OccupationOption,
+  RegionOption,
+} from "@/lib/profile-options";
 import { createClient } from "@/lib/supabase/server";
 
 // 홈페이지는 로그인 사용자·비로그인 사용자마다 프로필 자동 채움이 달라서
@@ -55,12 +59,24 @@ export default async function Home() {
   );
 
   // 4) 복지·대출 목록: 개인화 vs 일반 분기 + 최근 블로그 3글 + 최근 뉴스 3건 (병렬)
+  //
+  // 개인화 모드는 /recommend 페이지와 동일한 getRecommendations 를 재사용 —
+  // REGION_ALIASES + 제목 prefix + 직업 필수 매칭으로 일관성 보장.
+  // 이전엔 lib/programs.ts 의 getPersonalized* 가 지역 필터조차 없어 전남 사용자에게
+  // 광주·서울·대전·부산 공고가 뜨는 회귀 발생 → 여기서 하나로 통일.
+  // ProfileLite 필드가 null 이면 /recommend 와 같은 기본값(전국·기타)로 fallback.
+  const recParams = initialProfile && {
+    ageGroup: (initialProfile.age_group ?? "30대") as AgeOption,
+    region: (initialProfile.region ?? "전국") as RegionOption,
+    occupation: (initialProfile.occupation ?? "기타") as OccupationOption,
+  };
+
   const [welfare, loans, recentPostsResult, recentNewsResult] = await Promise.all([
-    hasProfile && initialProfile
-      ? getPersonalizedWelfare(initialProfile, 4)
+    hasProfile && recParams
+      ? getRecommendations({ ...recParams, programType: "welfare", limit: 4 })
       : getTopWelfare(4),
-    hasProfile && initialProfile
-      ? getPersonalizedLoans(initialProfile, 3)
+    hasProfile && recParams
+      ? getRecommendations({ ...recParams, programType: "loan", limit: 3 })
       : getTopLoans(3),
     supabase
       .from("blog_posts")
