@@ -6,6 +6,7 @@ import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { FilterBar } from "./filter-bar";
 import { Pagination } from "@/components/pagination";
+import { getRegionMatchPatterns } from "@/lib/regions";
 
 export const metadata: Metadata = {
   title: "복지 정보 — 정책알리미",
@@ -35,7 +36,19 @@ export default async function WelfarePage({ searchParams }: Props) {
   let query = supabase.from("welfare_programs").select("*", { count: "exact" });
 
   if (category !== "전체") query = query.eq("category", category);
-  if (region !== "전체") query = query.eq("region", region);
+  if (region !== "전체") {
+    if (region === "전국") {
+      // "전국" 옵션: region 값이 "전국" 인 row + region NULL (전국 단위 정책) 모두.
+      query = query.or("region.eq.전국,region.is.null");
+    } else {
+      // UI 짧은 이름("전남") → DB 정식·짧은 이름 모두 후보로 ILIKE 매칭.
+      // 광역만 저장("전라남도") + 광역+시군구 저장("전라남도 순천시") + 짧은
+      // 이름 저장("전남") 어떤 형식이 와도 잡힘.
+      const patterns = getRegionMatchPatterns(region);
+      const orClause = patterns.map((p) => `region.ilike.%${p}%`).join(",");
+      query = query.or(orClause);
+    }
+  }
   if (target !== "전체") query = query.ilike("target", `%${target}%`);
   if (search) {
     // 공백 기준 토큰 AND 매칭 — loan/page.tsx 와 동일 로직 (multi-word 검색 대응).

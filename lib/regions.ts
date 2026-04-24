@@ -129,6 +129,43 @@ export function getSearchUnitsForProvince(code: ProvinceCode): string[] {
   ];
 }
 
+// 광역 짧은 이름 ↔ 정식 광역명 매핑 — UI 드롭다운(짧은 이름) 과
+// DB region 컬럼(정식 광역명) 의 형식 차이를 흡수.
+//
+// /welfare /loan 페이지의 region 필터가 "전남" 옵션 선택 시 DB region
+// "전라남도" 와 매칭되도록 하는 변환표. 보건복지부 LocalGovernmentWelfare
+// Informations 데이터는 ctpvNm = "전라남도" 형식으로 들어옴.
+//
+// "전남" 이 들어오면 ["전라남도", "전남"] 두 후보 모두로 ILIKE 매칭 →
+// 광역만 저장된 row + 광역+시군구 저장된 row + 짧은 이름 저장된 row 모두 잡힘.
+export const PROVINCE_SHORT_TO_FULL: Record<string, string> = {
+  서울: "서울특별시",
+  부산: "부산광역시",
+  대구: "대구광역시",
+  인천: "인천광역시",
+  광주: "광주광역시",
+  대전: "대전광역시",
+  울산: "울산광역시",
+  세종: "세종특별자치시",
+  경기: "경기도",
+  강원: "강원특별자치도",
+  충북: "충청북도",
+  충남: "충청남도",
+  전북: "전북특별자치도",
+  전남: "전라남도",
+  경북: "경상북도",
+  경남: "경상남도",
+  제주: "제주특별자치도",
+};
+
+// 짧은 이름 → ILIKE 매칭에 쓸 후보 배열. DB 에 다양한 형식이 섞여 있어도
+// 모두 잡도록 정식 이름 + 짧은 이름 둘 다 후보로 반환.
+export function getRegionMatchPatterns(shortName: string): string[] {
+  const full = PROVINCE_SHORT_TO_FULL[shortName];
+  if (!full) return [shortName];
+  return [full, shortName];
+}
+
 // 광역별 cron 시간 매핑 — vercel.json 의 schedule 과 일치 (UTC 기준).
 // 14:00 ~ 15:20, 5분 간격으로 분산 → 다른 cron (RSS 02:00, collect 04:00,
 // enrich 03:00, cleanup 05:00, finalize 06:00, alert 07:00) 과 충돌 없음.
