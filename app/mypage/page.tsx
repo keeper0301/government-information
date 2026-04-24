@@ -8,6 +8,7 @@ import {
 } from "@/lib/consent";
 import { ProfileForm } from "./profile-form";
 import { ConsentsPanel } from "./consents-panel";
+import { WithdrawSection } from "./withdraw-section";
 
 export const metadata: Metadata = {
   title: "내 정보 — 정책알리미",
@@ -92,9 +93,12 @@ export default async function MyPage() {
         <p className="mt-6 text-[12px] text-grey-500 leading-[1.6]">
           필수 동의(이용약관·개인정보처리방침)는 서비스 이용을 위해 철회할 수 없습니다.
           <br />
-          철회를 원하시면 keeper0301@gmail.com 으로 탈퇴 문의를 주세요.
+          철회를 원하시면 아래 <b>회원 탈퇴</b> 섹션에서 탈퇴를 진행해 주세요.
         </p>
       </section>
+
+      {/* 회원 탈퇴 섹션 — 최하단 배치 (의도치 않은 접근 방지) */}
+      <WithdrawSection />
     </main>
   );
 }
