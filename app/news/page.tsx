@@ -272,10 +272,22 @@ export default async function NewsIndexPage({ searchParams }: Props) {
           <div className="flex flex-wrap gap-1.5">
             {PROVINCES.map((p) => {
               const selected = activeProvince === p.code;
-              // 짧은 라벨 — UI 좁음 회피. "서울특별시" → "서울", 등.
-              const shortLabel = p.name
-                .replace(/특별시|광역시|특별자치시|특별자치도/, "")
-                .replace(/도$/, "");
+              // 짧은 라벨 — UI 좁음 회피. 표준 약칭 (전라남도→전남, 경상북도→경북)
+              // 을 쓰기 위해 도(道) 광역 6곳만 명시 매핑. 나머지는 접미사 제거.
+              // 예전엔 /도$/ 로 끝 '도' 만 날려서 "전라남" 같은 비대칭 약칭 생김.
+              const DO_SHORT: Record<string, string> = {
+                충청북도: "충북",
+                충청남도: "충남",
+                전라북도: "전북",
+                전라남도: "전남",
+                경상북도: "경북",
+                경상남도: "경남",
+              };
+              const shortLabel =
+                DO_SHORT[p.name] ||
+                p.name
+                  .replace(/특별시|광역시|특별자치시|특별자치도/, "")
+                  .replace(/도$/, "");
               return (
                 <a
                   key={p.code}
