@@ -105,12 +105,14 @@ async function deleteUserAsAdmin(formData: FormData) {
   const targetUserId = String(formData.get("userId") ?? "").trim();
   if (!targetUserId) return;
 
-  // 본인 삭제 차단 — 실수로 자기 계정 날리면 모든 관리 권한 잃음
+  // 본인 삭제 차단 — 실수로 자기 계정 날리면 모든 관리 권한 잃음.
+  // 기존엔 silent return 이라 form 강제 제출 시 사용자가 왜 안 되는지 몰랐음.
+  // 이제는 상세 페이지로 error 쿼리 포함해 돌려보내 안내 박스 노출.
   if (targetUserId === actor.id) {
     console.warn("[admin/delete-user] 어드민 본인 삭제 시도 차단", {
       actorId: actor.id,
     });
-    return;
+    redirect(`/admin/users/${targetUserId}?error=self_delete_forbidden`);
   }
 
   const admin = createAdminClient();
@@ -151,6 +153,179 @@ async function deleteUserAsAdmin(formData: FormData) {
   redirect("/admin");
 }
 
+// ━━ Server Action: 구독 티어 수동 변경 ━━
+// 사용 시나리오: "프로 결제가 승인됐는데 반영이 안 됐어요" / "체험 연장" 문의 대응.
+// free/basic/pro 3티어. tier 만 바꾸고 상태(status)·결제일은 건드리지 않음
+// (토스 결제 흐름과의 충돌 방지 — 실 결제 변경은 결제 플로우에서만).
+// 동일 티어로 재설정 시 no-op.
+async function updateUserTier(formData: FormData) {
+  "use server";
+  const actor = await requireAdmin();
+
+  const targetUserId = String(formData.get("userId") ?? "").trim();
+  const rawTier = String(formData.get("tier") ?? "").trim();
+  if (!targetUserId) return;
+
+  // 화이트리스트 — 타이피 변조·임의 값 주입 차단
+  const VALID_TIERS = new Set(["free", "basic", "pro"]);
+  if (!VALID_TIERS.has(rawTier)) return;
+  const newTier = rawTier as "free" | "basic" | "pro";
+
+  const admin = createAdminClient();
+
+  const { data: existing } = await admin
+    .from("subscriptions")
+    .select("tier, status")
+    .eq("user_id", targetUserId)
+    .maybeSingle();
+
+  const fromTier: "free" | "basic" | "pro" =
+    (existing?.tier as "free" | "basic" | "pro" | undefined) ?? "free";
+  if (fromTier === newTier) {
+    // 변화 없으면 조용히 끝냄 — 감사 로그 오염 방지
+    return;
+  }
+
+  if (existing) {
+    const { error } = await admin
+      .from("subscriptions")
+      .update({ tier: newTier, updated_at: new Date().toISOString() })
+      .eq("user_id", targetUserId);
+    if (error) {
+      console.error("[admin/update-tier] 기존 row update 실패:", {
+        targetUserId,
+        message: error.message,
+      });
+      return;
+    }
+  } else {
+    // 기존 row 없음 → 수동 부여. status='manual_grant' 로 결제 흐름과 구분.
+    const { error } = await admin.from("subscriptions").insert({
+      user_id: targetUserId,
+      tier: newTier,
+      status: "manual_grant",
+    });
+    if (error) {
+      console.error("[admin/update-tier] 신규 row insert 실패:", {
+        targetUserId,
+        message: error.message,
+      });
+      return;
+    }
+  }
+
+  try {
+    await logAdminAction({
+      actorId: actor.id,
+      targetUserId,
+      action: "update_tier",
+      details: {
+        from: fromTier,
+        to: newTier,
+        prev_status: existing?.status ?? null,
+      },
+    });
+  } catch (logErr) {
+    console.warn("[admin/update-tier] 감사 로그 실패:", logErr);
+  }
+
+  revalidatePath(`/admin/users/${targetUserId}`);
+}
+
+// ━━ Server Action: 수동 알림 재전송 ━━
+// 사용 시나리오: "알림이 안 왔어요" 문의 → 사용자의 활성 규칙 하나를 골라
+// 최근 30일 매칭 공고를 즉시 이메일로 재전송. 카카오 알림톡은 이번 단계에서 제외
+// (동의 체크·템플릿 변수 복잡도 대비 이메일 우선).
+//
+// 의도적으로 alert_deliveries 에는 기록하지 않음:
+//   - UNIQUE(rule, program, channel) 로 cron 중복 방지 목적이 본래 용도
+//   - 수동 재전송은 "사용자가 재요청한 예외" 라 cron 로직과 분리
+//   - 감사 추적은 admin_actions.manual_alert_send 로 일원화
+async function manualSendAlert(formData: FormData) {
+  "use server";
+  const actor = await requireAdmin();
+
+  const targetUserId = String(formData.get("userId") ?? "").trim();
+  const ruleId = String(formData.get("ruleId") ?? "").trim();
+  if (!targetUserId || !ruleId) return;
+
+  const admin = createAdminClient();
+
+  // 1) 규칙 조회 + 본인 소유 확인 (URL 조작 방어)
+  const { data: rule } = await admin
+    .from("user_alert_rules")
+    .select("*")
+    .eq("id", ruleId)
+    .eq("user_id", targetUserId)
+    .maybeSingle();
+  if (!rule || !rule.is_active) {
+    console.warn("[admin/manual-alert-send] 규칙 없음·비활성:", { ruleId });
+    return;
+  }
+
+  // 2) 대상 이메일 확보
+  const { data: authData } = await admin.auth.admin.getUserById(targetUserId);
+  const email = authData?.user?.email ?? null;
+  if (!email) {
+    console.warn("[admin/manual-alert-send] 이메일 없음:", { targetUserId });
+    return;
+  }
+
+  // 3) 매칭 공고 조회 — 최근 30일
+  const { findMatchingPrograms } = await import("@/lib/alerts/matching");
+  const { sendCustomAlertEmail } = await import("@/lib/email");
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const matches = await findMatchingPrograms(admin, rule, since, 10);
+
+  let sent = 0;
+  let errorMsg: string | null = null;
+
+  if (matches.length > 0) {
+    try {
+      const { error } = await sendCustomAlertEmail({
+        to: email,
+        ruleName: rule.name,
+        programs: matches.map((m) => ({
+          id: m.id,
+          title: m.title,
+          source: m.source,
+          applyUrl: m.apply_url,
+          applyEnd: m.apply_end,
+          table: m.table,
+        })),
+      });
+      if (error) {
+        errorMsg = String(error).slice(0, 200);
+      } else {
+        sent = matches.length;
+      }
+    } catch (sendErr) {
+      errorMsg =
+        sendErr instanceof Error ? sendErr.message.slice(0, 200) : "unknown";
+    }
+  }
+
+  try {
+    await logAdminAction({
+      actorId: actor.id,
+      targetUserId,
+      action: "manual_alert_send",
+      details: {
+        rule_id: ruleId,
+        rule_name: rule.name,
+        channels: rule.channels,
+        matches_count: matches.length,
+        email_sent: sent,
+        error: errorMsg,
+      },
+    });
+  } catch (logErr) {
+    console.warn("[admin/manual-alert-send] 감사 로그 실패:", logErr);
+  }
+
+  revalidatePath(`/admin/users/${targetUserId}`);
+}
+
 // NEXT_PUBLIC_SUPABASE_URL(https://{ref}.supabase.co) 에서 project ref 추출.
 // auth.users 대시보드 직링크 만들 때 사용.
 function getSupabaseProjectRef(): string | null {
@@ -174,12 +349,18 @@ function fmtDate(iso: string | null | undefined): string {
 
 export default async function AdminUserDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ userId: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const actor = await requireAdmin();
   const { userId } = await params;
+  const { error: errorCode } = await searchParams;
   const isSelf = actor.id === userId;
+
+  // server action 에서 self 삭제 차단된 경우 페이지 상단에 빨강 박스로 안내
+  const selfDeleteBlocked = errorCode === "self_delete_forbidden" && isSelf;
 
   const admin = createAdminClient();
 
@@ -189,10 +370,14 @@ export default async function AdminUserDetailPage({
   const u = authUser.user;
 
   // 2) 프로필 + 구독 + AI 사용량 + 알림 이력 (병렬)
-  const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // eslint-disable-next-line react-hooks/purity -- Server Component 에서 현재
+  // 시간 기준 쿼리 범위 계산. react-hooks/purity 룰이 server context 를 구별
+  // 못해 false positive (runtime 엔 서버에서 1회 평가되고 결과 캐싱됨).
+  const nowMs = Date.now();
+  const since30 = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
   const since30Date = since30.slice(0, 10);
   // 오늘(KST) — AI 쿼터 초기화 버튼 노출 조건 판정에 사용
-  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const kstNow = new Date(nowMs + 9 * 60 * 60 * 1000);
   const todayKst = kstNow.toISOString().slice(0, 10);
 
   const [
@@ -200,6 +385,7 @@ export default async function AdminUserDetailPage({
     { data: subscription },
     { data: aiUsage },
     { data: alertDeliveries },
+    { data: alertRules },
     consents,
     adminActions,
   ] = await Promise.all([
@@ -218,6 +404,11 @@ export default async function AdminUserDetailPage({
       .gte("created_at", since30)
       .order("created_at", { ascending: false })
       .limit(50),
+    admin
+      .from("user_alert_rules")
+      .select("id, name, is_active, channels, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
     getUserConsents(userId),
     getTargetActions(userId, 20),
   ]);
@@ -297,6 +488,36 @@ export default async function AdminUserDetailPage({
             <Row label="상태" value={subscription?.status} />
             <Row label="체험 종료" value={fmtDate(subscription?.trial_ends_at)} />
             <Row label="다음 결제" value={fmtDate(subscription?.current_period_end)} />
+
+            {/* 티어 수동 변경 — 문의 대응 (결제 반영 누락·체험 연장). 결제 흐름과
+                분리된 수동 부여 경로. 선택된 티어가 현재와 같으면 action 이 no-op. */}
+            <form
+              action={updateUserTier}
+              className="mt-4 pt-4 border-t border-grey-100 flex items-center gap-2 flex-wrap"
+            >
+              <input type="hidden" name="userId" value={userId} />
+              <label className="text-[12px] text-grey-600">
+                티어 변경:
+                <select
+                  name="tier"
+                  defaultValue={(subscription?.tier as string) ?? "free"}
+                  className="ml-2 px-2 py-1 text-[13px] border border-grey-300 rounded cursor-pointer"
+                >
+                  <option value="free">free</option>
+                  <option value="basic">basic</option>
+                  <option value="pro">pro</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="text-[12px] font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
+              >
+                적용
+              </button>
+              <span className="text-[11px] text-grey-600">
+                (현재와 동일 선택 시 변경 없음)
+              </span>
+            </form>
           </Panel>
 
           {/* 동의 현황 — 5종 (필수 2 + 선택 3) */}
@@ -395,17 +616,97 @@ export default async function AdminUserDetailPage({
             )}
           </Panel>
 
+          {/* 수동 알림 재전송 — 활성 규칙별 즉시 이메일 발송. 최근 30일 매칭 공고
+              상위 10건을 한 번의 이메일로 묶어 보냄. alert_deliveries 는 건드리지 않아
+              cron 중복 방지 UNIQUE 제약과 분리 (관리자 예외 경로). */}
+          <Panel title={`알림 규칙 (${(alertRules ?? []).length}개) — 수동 재전송`}>
+            {(alertRules ?? []).length === 0 ? (
+              <p className="text-[14px] text-grey-600 py-2">등록된 규칙이 없어요</p>
+            ) : (
+              <div className="space-y-2">
+                {(alertRules ?? []).map(
+                  (r: {
+                    id: string;
+                    name: string;
+                    is_active: boolean;
+                    channels: string[] | null;
+                  }) => (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between gap-3 py-2 border-b border-grey-100 last:border-b-0"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[13px] font-semibold text-grey-900 truncate">
+                            {r.name}
+                          </span>
+                          {!r.is_active && (
+                            <span className="text-[10px] bg-grey-100 text-grey-600 px-1.5 py-0.5 rounded">
+                              비활성
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-grey-600">
+                          채널: {(r.channels ?? []).join(", ") || "—"}
+                        </div>
+                      </div>
+                      {r.is_active ? (
+                        <form action={manualSendAlert}>
+                          <input type="hidden" name="userId" value={userId} />
+                          <input type="hidden" name="ruleId" value={r.id} />
+                          <button
+                            type="submit"
+                            className="text-[12px] font-semibold px-3 py-1.5 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer whitespace-nowrap"
+                          >
+                            지금 이메일 재전송
+                          </button>
+                        </form>
+                      ) : (
+                        <span className="text-[11px] text-grey-600 px-3">
+                          (활성 시에만 가능)
+                        </span>
+                      )}
+                    </div>
+                  ),
+                )}
+                <p className="text-[11px] text-grey-600 mt-2 leading-[1.5]">
+                  * 최근 30일 매칭 공고 상위 10건을 한 이메일로 묶어 발송해요.
+                  카카오 알림톡은 이번 경로에서 제외(수동 재전송은 이메일만).
+                  <br />* 감사 로그는 관리자 액션 로그 Panel 에 manual_alert_send 로 기록.
+                </p>
+              </div>
+            )}
+          </Panel>
+
           {/* 관리자 액션 로그 — 이 사용자 대상 최근 20건 */}
           <Panel title="관리자 액션 로그 (최근 20건)">
             <AdminActionsRows actions={adminActions} />
           </Panel>
 
           {/* 위험 작업 — 최하단 배치 (의도치 않은 접근 방지).
-              본인 계정이면 DeleteUserButton 이 내부에서 안내문만 표시. */}
+              본인 계정이면 DeleteUserButton 이 내부에서 안내문만 표시.
+              server action 차원의 self 차단이 발동한 경우 별도 안내 박스. */}
           <section className="bg-white border border-red/30 rounded-xl p-5 mt-5">
             <h2 className="text-[14px] font-bold text-red mb-2">
               ⚠️ 위험 작업
             </h2>
+            {selfDeleteBlocked && (
+              <div
+                role="alert"
+                className="mb-4 rounded-lg border border-red/30 bg-red/10 p-3 text-[13px] text-red leading-[1.6]"
+              >
+                <b>본인 계정은 이 페이지에서 탈퇴 처리할 수 없어요.</b>
+                <br />
+                운영 권한 손실을 막기 위한 안전장치입니다. 본인 탈퇴는{" "}
+                <Link
+                  href="/mypage"
+                  className="underline hover:text-red/80 no-underline"
+                >
+                  마이페이지
+                </Link>{" "}
+                최하단의 &quot;회원 탈퇴&quot; 섹션을 이용해 주세요.
+              </div>
+            )}
             <p className="text-[13px] text-grey-700 mb-4 leading-[1.6]">
               이 사용자를 즉시 탈퇴 처리합니다. 프로필·구독·알림·AI 사용량·동의
               기록 등 모든 관련 데이터가 영구 삭제되며 복구할 수 없어요.
