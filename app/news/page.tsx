@@ -183,14 +183,23 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   return (
     <main className="min-h-screen bg-grey-50 pt-28 pb-20">
       <div className="max-w-content mx-auto px-10 max-md:px-6">
-        {/* 헤더 */}
-        <header className="mb-8">
-          <h1 className="text-[28px] md:text-[36px] font-extrabold text-grey-900 tracking-[-0.6px] mb-3">
-            정책 소식
-          </h1>
-          <p className="text-[15px] md:text-[17px] text-grey-700 leading-[1.6]">
-            정부 부처의 최신 정책 발표와 정책자료를 모았어요.
-          </p>
+        {/* 헤더 — 우측에 정책 가이드 페이지로 가는 보조 링크. 짧은 뉴스만 보다가
+            깊이 있는 가이드 글로 자연 진입할 수 있게 (이전엔 푸터에만 노출됨). */}
+        <header className="mb-8 flex items-start justify-between gap-4 max-md:flex-col max-md:items-start">
+          <div>
+            <h1 className="text-[28px] md:text-[36px] font-extrabold text-grey-900 tracking-[-0.6px] mb-3">
+              정책 소식
+            </h1>
+            <p className="text-[15px] md:text-[17px] text-grey-700 leading-[1.6]">
+              정부 부처의 최신 정책 발표와 정책자료를 모았어요.
+            </p>
+          </div>
+          <Link
+            href="/blog"
+            className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-4 text-[14px] font-semibold rounded-full bg-white text-blue-600 border border-blue-100 hover:bg-blue-50 hover:border-blue-200 no-underline transition-colors max-md:self-stretch max-md:justify-center"
+          >
+            📖 정책 가이드 보기 →
+          </Link>
         </header>
 
         {/* 발행 형식 탭 (전체 / 정책뉴스 / 정책자료) */}

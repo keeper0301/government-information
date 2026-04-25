@@ -10,7 +10,6 @@
 // ============================================================
 
 const footerLinks = [
-  { label: "정책가이드", href: "/blog" },
   { label: "도움말", href: "/help" },
   { label: "이용약관", href: "/terms" },
   { label: "개인정보처리방침", href: "/privacy" },
