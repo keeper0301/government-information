@@ -84,7 +84,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
 
     const metaDescription = stripHtmlTags(metaRaw);
     // XSS 차단 — DB 저장 전 sanitize. <script>·on*·javascript: URL 등 제거.
-    const safeContent = sanitizeBlogHtml(content);
+    const safeContent = await sanitizeBlogHtml(content);
 
     const admin2 = createAdminClient();
     const { error: updateError } = await admin2

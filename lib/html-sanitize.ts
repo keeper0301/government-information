@@ -9,9 +9,12 @@
 // 위험 마크업이 섞일 수 있어 방어선 1줄 추가.
 //
 // 허용 태그: 워드프레스 클래식 에디터 + TipTap 출력 범위에 맞춤.
+//
+// 2026-04-25 버그픽스: isomorphic-dompurify → jsdom@29 → parse5(ESM only)
+// 체인이 webpack 의 require() 로 로드되며 "Error: require() of ES Module"
+// 발생 (admin/blog/[id] 페이지 500). top-level import 면 페이지 GET 로드만
+// 해도 평가됨. async dynamic import 로 호출 시점에만 로드해 회피.
 // ============================================================
-
-import DOMPurify from "isomorphic-dompurify";
 
 const ALLOWED_TAGS = [
   // 본문 구조
@@ -43,8 +46,12 @@ const ALLOWED_ATTR = [
 const ALLOWED_URI_REGEXP =
   /^(?:(?:https?|mailto|tel|ftp|sms):|\/|#|data:image\/(?:png|jpeg|gif|webp|svg\+xml);base64,)/i;
 
-export function sanitizeBlogHtml(html: string): string {
+export async function sanitizeBlogHtml(html: string): Promise<string> {
   if (!html) return "";
+  // dynamic import — webpack 의 require() 외부화가 jsdom 의 ESM-only deps
+  // (parse5, css-tree, @bramus/specificity) 를 require() 로 로드하다 실패하던
+  // 문제 회피. native ESM import 는 ESM 패키지를 정상 로드함.
+  const { default: DOMPurify } = await import("isomorphic-dompurify");
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
