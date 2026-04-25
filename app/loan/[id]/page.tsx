@@ -9,7 +9,7 @@ import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld"
 import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
-import { cleanDescription, isSubstantiallyDuplicate } from "@/lib/utils";
+import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink } from "@/lib/utils/apply-url";
 import type { Metadata } from "next";
 
@@ -157,17 +157,9 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* Description — HTML 엔티티·태그 제거 후 섹션 단위 줄바꿈 살려서 렌더.
-            whitespace-pre-wrap 이 cleanDescription 이 삽입한 \n 을 실제 줄바꿈으로 표시. */}
-        {program.description && (
-          <p className="text-[16px] font-medium text-grey-900 leading-[1.75] mb-10 max-w-[760px] max-md:text-[15px] whitespace-pre-wrap">
-            {cleanDescription(program.description)}
-          </p>
-        )}
-
-        {/* 빈약 안내 박스 — 핵심 정보 카드 *위* 에 표시. 사용자가 빈약한 카드 보고
-            답답해지기 전에 "원문에 더 풍부" 를 먼저 알리는 게 핵심.
-            normal 인 경우엔 노출 안 함. */}
+        {/* 빈약 안내 박스 — 카드가 비어 있을 때 "원문에 더 풍부" 안내 (카드 위 배치).
+            재구성 후에도 카드 바로 위 자리 유지 — 사용자가 빈 카드 보고 답답해지기 전에
+            맥락 제공. */}
         {sparseVariant && (
           <SparseDataNotice
             sourceLink={sourceLink}
@@ -176,10 +168,11 @@ export default async function LoanDetailPage({ params }: Props) {
           />
         )}
 
-        {/* 핵심 정보 카드 — 채워진 필드가 1개 이상일 때만 노출
-            (기존엔 NULL 필드에 "원문에서 확인하기" 5개 반복 → 무성의해 보임) */}
+        {/* 핵심 정보 카드 — 상세 페이지 최상단 (본문 description 위로 이동).
+            "내가 받을 수 있는가" 를 3초 안에 판단할 수 있도록 스크롤 없이 노출.
+            채워진 필드가 1개 이상일 때만 카드 자체를 렌더. */}
         {filledSummary.length > 0 && (
-          <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-4 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
             <h2 className="text-[17px] font-bold text-grey-900 mb-2 tracking-[-0.3px]">핵심 정보</h2>
             <div className="grid grid-cols-2 gap-x-10 max-md:grid-cols-1 divide-y divide-grey-100 md:divide-y-0">
               {filledSummary.map((f) => (
@@ -189,9 +182,33 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* 상세 정보 섹션들 — 모두 cleanDescription 으로 정제 후 렌더
-            (detailed_content · required_documents · contact_info 역시 스크래퍼가
-            HTML 엔티티 포함한 원문을 저장해두는 경우 많음) */}
+        {/* 출처 고지 — 핵심 정보 바로 아래로 이동 (사용자 요청).
+            "이 정보가 어디서 왔고 언제 갱신됐는지" 를 카드 직후 노출해 신뢰 맥락 제공. */}
+        <div className="bg-white border border-grey-200 rounded-xl px-6 py-4 mb-6">
+          <div className="text-[14px] font-semibold text-grey-900 mb-0.5">출처: {program.source}</div>
+          <div className="text-[13px] text-grey-700">
+            마지막 업데이트: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
+            {" · "}본 내용은 원문을 자동 수집한 것입니다.
+          </div>
+        </div>
+
+        {/* Description — 카드 아래로 이동 + stripCardDuplicates 로 카드와 중복되는
+            "라벨: 값" 라인 제거. 페이지 배경(크림) 과 구별되도록 흰 카드로 감싸
+            공고 본문 덩어리를 시각적으로 분리. 결과가 빈 문자열이면 블록 생략. */}
+        {(() => {
+          const cleaned = stripCardDuplicates(cleanDescription(program.description));
+          if (!cleaned) return null;
+          return (
+            <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+              <h2 className="text-[17px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">공고 내용</h2>
+              <p className="text-[16px] font-medium text-grey-800 leading-[1.8] max-md:text-[15px] whitespace-pre-wrap">
+                {cleaned}
+              </p>
+            </div>
+          );
+        })()}
+
+        {/* 상세 정보 섹션들 — detailed_content 등은 그대로. HTML 엔티티 정제 유지. */}
         {program.detailed_content && (
           <InfoSection title="상세 내용">
             {cleanDescription(program.detailed_content)}
@@ -210,17 +227,9 @@ export default async function LoanDetailPage({ params }: Props) {
           </InfoSection>
         )}
 
-        {/* 출처 안내 */}
-        <div className="bg-white border border-grey-200 rounded-xl px-6 py-5 mb-8">
-          <div className="text-[14px] font-semibold text-grey-900 mb-1">출처: {program.source}</div>
-          <div className="text-[13px] text-grey-700">
-            마지막 업데이트: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
-            {" · "}본 내용은 원문을 자동 수집한 것입니다.
-          </div>
-        </div>
-
-        {/* Action buttons — welfare 페이지와 동일한 3단 분기 (deep·홈페이지·null) */}
-        <div className="flex items-center gap-3 flex-wrap mb-4">
+        {/* Action buttons — 콘텐츠 전체(핵심 정보·본문·상세 섹션) 를 다 살펴본 뒤
+            "이제 신청하러 갈래?" 로 이어지는 최종 CTA. 3단 분기 유지. */}
+        <div className="flex items-center gap-3 flex-wrap mb-10 mt-6">
           {program.apply_url && isDeepLink(program.apply_url) ? (
             <a
               href={program.apply_url}

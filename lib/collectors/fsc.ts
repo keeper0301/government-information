@@ -171,6 +171,19 @@ const collector: Collector = {
 
         const occupationTags = extractOccupationTags(textBlob);
 
+        // eligibility / applyMethod — API 가 target·handler·contact 를 이미 내려주는데
+        // 기존엔 description 본문에만 합쳐두고 구조화 컬럼에는 안 넣었음. 결과적으로
+        // 상세 페이지 "핵심 정보" 카드의 자격 요건·신청 방법 칸이 300건 전부 비어
+        // 있었음. 여기서 두 컬럼을 채우면 다음 수집부터 카드가 자동으로 꽉 참.
+        const eligibility = target || null;
+        const applyMethod = handler
+          ? contact
+            ? `${handler} (문의: ${contact})`
+            : handler
+          : contact
+          ? `문의: ${contact}`
+          : null;
+
         const item: CollectedItem = {
           sourceCode: "fsc",
           sourceId,
@@ -179,6 +192,8 @@ const collector: Collector = {
           category: "금융",
           target: target || "서민·취약계층",
           description: description.substring(0, 1500),
+          eligibility,
+          applyMethod,
           applyUrl,
           source: agency,
           sourceUrl: applyUrl,

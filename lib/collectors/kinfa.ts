@@ -138,6 +138,18 @@ const collector: Collector = {
         const regionTags = extractRegionTags(textBlob);
         if (regionTags.length === 0) regionTags.push("전국");
 
+        // eligibility / applyMethod — fsc collector 와 동일 이유. API 가 이미
+        // target·handler·contact 를 내려주지만 기존엔 description 에만 들어가고
+        // 구조화 컬럼은 300건 전부 NULL 이었음. 여기서 채워주면 카드가 완성됨.
+        const eligibility = target || null;
+        const applyMethod = handler
+          ? contact
+            ? `${handler} (문의: ${contact})`
+            : handler
+          : contact
+          ? `문의: ${contact}`
+          : null;
+
         const item: CollectedItem = {
           sourceCode: "kinfa",
           sourceId,
@@ -146,6 +158,8 @@ const collector: Collector = {
           category: "금융",
           target: target || "서민·취약계층",
           description: description.substring(0, 1500),
+          eligibility,
+          applyMethod,
           applyUrl,
           source: agency,
           sourceUrl: applyUrl,

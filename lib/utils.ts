@@ -300,6 +300,46 @@ export function isSubstantiallyDuplicate(
 }
 
 // ============================================================
+// 본문 description 에서 카드와 중복되는 "라벨: 값" 라인 제거
+// ============================================================
+// fsc/kinfa collector 는 API 응답을 "지원대상: X\n\n대출한도: Y\n\n금리: Z…" 식으로
+// 조립해서 description 에 넣는다. 그런데 같은 필드가 "핵심 정보" 카드에도 표시되므로,
+// 사용자 입장에선 한 페이지에 같은 내용이 두 번 반복되어 답답함 (이미지 #8 사례).
+//
+// 이 함수는 description 을 \n\n 또는 \n 단위로 쪼개서, 카드에 이미 들어간 라벨을
+// 가진 블록은 제거하고, "상세조건" 같이 카드엔 없는 긴 설명 블록만 남긴다.
+// mss 등 구조화 안 된 description 은 블록 판별 실패 시 원문 그대로 반환 → 안전.
+// ============================================================
+const CARD_DUPLICATE_LABELS = [
+  "지원대상", "신청대상", "대상", "자격", "자격요건",
+  "대출한도", "지원금액", "혜택", "혜택내용",
+  "금리", "이자", "이자율",
+  "상환방식", "상환조건", "최대 대출기간", "대출기간", "상환기간",
+  "대출용도", "용도",
+  "취급기관", "문의", "연락처",
+  "모집기한", "신청기간", "접수기간", "지원기간",
+  "신청방법", "신청절차",
+];
+
+export function stripCardDuplicates(desc: string | null | undefined): string {
+  if (!desc) return "";
+  // \n\n 우선 split. 블록 1개밖에 없으면 \n 단일로 재시도.
+  let blocks = desc.split(/\n{2,}/);
+  if (blocks.length === 1) blocks = desc.split(/\n/);
+
+  const kept = blocks.filter((raw) => {
+    const b = raw.trim();
+    if (b.length === 0) return false;
+    // "라벨:" 또는 "라벨 :" 으로 시작하는 블록만 판별 대상
+    const m = b.match(/^([가-힣A-Za-z][가-힣A-Za-z ·]{0,14})\s*[:：]/);
+    if (!m) return true; // 라벨 없는 자유 텍스트 → 보존
+    const label = m[1].replace(/\s/g, "");
+    return !CARD_DUPLICATE_LABELS.some((k) => k.replace(/\s/g, "") === label);
+  });
+  return kept.join("\n\n").trim();
+}
+
+// ============================================================
 // 블로그 글 헬퍼
 // ============================================================
 

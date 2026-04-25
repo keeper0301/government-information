@@ -74,14 +74,67 @@ function str(raw: unknown): string | null {
   return isMeaningful(raw) ? raw.trim() : null;
 }
 
-// 지원대상 — mss raw_payload 의 12종 키 중 자격 요건 직접 매핑 필드 없음.
-// writerPosition 은 담당부서명이라 "대상" 으로 노출하면 의미 오해 (예:
-// "대상: 지역상권과") 발생. dataContents 자유 텍스트 패턴 추출은 불안정.
-// 일단 null 반환 — 향후 dataContents 정규식 추출 또는 수동 큐레이션 시 확장.
-// 시그니처에 _payload 매개변수를 남겨둔 건 향후 확장 시 호출 측 변경 0 보장.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function buildEligibility(_payload: MssItem): string | null {
-  return null;
+// ============================================================
+// dataContents 본문 정규식 섹션 추출 (Phase 3)
+// ============================================================
+// mss raw_payload 는 구조화된 eligibility/apply_method 필드를 안 내려줌.
+// 하지만 dataContents 본문은 정부 공고 정형 양식이라 "신청대상: ..." /
+// "▶ (지원대상) ..." 같은 섹션 헤더가 96%+ row 에서 일관되게 나타남.
+// prod row 3건 육안 검증: "신청대상 : " · "지원 대상:" · "▶ (지원대상)"
+// 3가지 변형이 섞여 있어 두 패턴 모두 커버.
+//
+// 경계 규칙: 섹션 본문은 다음 섹션 헤더 직전까지 잘라냄.
+// 다음 섹션 헤더 = (▶ · \n- · \n※) OR 다음 알려진 섹션명 (신청/지원/접수/
+// 문의/지원내용/지원대상 등) OR 문자열 끝.
+//
+// 오추출 방어:
+//  - 추출값 maxLen 넘으면 파싱 실패로 간주 → null (운영 상 이상치 차단)
+//  - trim + 연속 공백 1개로 정리 → UI 에서 엉킴 방지
+// ============================================================
+
+// 섹션 경계로 취급할 다음 섹션 헤더 토큰. ▶·- (하이픈)·※ 같은 장식 구분자와
+// 정부 공고에 자주 쓰이는 섹션명 단어 리스트. 둘 중 하나라도 매치되면
+// 이전 섹션 본문 종료.
+const SECTION_BOUNDARY =
+  "(?=\\n\\s*(?:[▶※]|-\\s|문의|접수|신청|지원|관련|자세한|공고|첨부))";
+
+// maxLen 은 공고 자격/방법 설명의 상식적 상한. 이보다 길면 잘못 뽑힌 것으로 간주.
+function extractSection(
+  body: string,
+  headers: string[],
+  maxLen: number,
+): string | null {
+  // 섹션 헤더 후보들을 OR 로 묶음. 공백 허용, 괄호 선택적 (▶ (지원대상) 케이스).
+  const headerAlt = headers.map((h) => h.replace(/\s/g, "\\s*")).join("|");
+  // ▶ \(? 접두가 있을 수도 없을 수도. 접미 \)? 도 동일.
+  // 헤더 뒤 구분자: : 또는 공백. 이후 내용을 lazy 매치로 경계까지.
+  const re = new RegExp(
+    `(?:▶\\s*)?\\(?\\s*(?:${headerAlt})\\s*\\)?\\s*[:：]\\s*([\\s\\S]*?)${SECTION_BOUNDARY}|` +
+      `▶\\s*\\(\\s*(?:${headerAlt})\\s*\\)\\s*([\\s\\S]*?)${SECTION_BOUNDARY}`,
+    "m",
+  );
+  const m = body.match(re);
+  if (!m) return null;
+  const raw = (m[1] ?? m[2] ?? "").replace(/\s+/g, " ").trim();
+  if (raw.length === 0) return null;
+  if (raw.length > maxLen) return null;
+  return raw;
+}
+
+// 자격 요건 — "신청대상" / "지원대상" / "신청 대상" / "지원 대상" 헤더 추출.
+// maxLen 500: 정부 공고 대상 설명은 통상 1~3줄. 이상 길면 다른 섹션 침범 의심.
+function buildEligibility(payload: MssItem): string | null {
+  const body = str(payload.dataContents);
+  if (!body) return null;
+  return extractSection(body, ["신청대상", "지원대상"], 500);
+}
+
+// 신청 방법 — "신청방법" / "신청 방법" 헤더 추출.
+// maxLen 300: URL 한 줄 + 간단한 안내 정도. 길면 지원내용·문의처 침범.
+function buildApplyMethod(payload: MssItem): string | null {
+  const body = str(payload.dataContents);
+  if (!body) return null;
+  return extractSection(body, ["신청방법"], 300);
 }
 
 // 담당부서 + 담당자명 + 전화 + 이메일 — 공공기관 공고 통일 양식.
@@ -149,14 +202,16 @@ const fetcher: DetailFetcher = {
     if (!payload) return null;
 
     const eligibility = buildEligibility(payload);
+    const applyMethod = buildApplyMethod(payload);
     const contact = buildContactInfo(payload);
     const detailed = buildDetailedContent(payload);
 
     // 추출 가능한 값이 하나도 없으면 null — enrich route 가 skipped 로 기록
-    if (!eligibility && !contact && !detailed) return null;
+    if (!eligibility && !applyMethod && !contact && !detailed) return null;
 
     return {
       eligibility,
+      apply_method: applyMethod,
       contact_info: contact,
       detailed_content: detailed,
     };

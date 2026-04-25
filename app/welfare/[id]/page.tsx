@@ -8,7 +8,7 @@ import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld"
 import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
-import { cleanDescription, isSubstantiallyDuplicate } from "@/lib/utils";
+import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink } from "@/lib/utils/apply-url";
 import type { Metadata } from "next";
 
@@ -153,15 +153,7 @@ export default async function WelfareDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Description — HTML 엔티티·태그 제거 후 섹션 단위 줄바꿈 살려서 렌더.
-          whitespace-pre-wrap 이 cleanDescription 이 삽입한 \n 을 실제 줄바꿈으로 표시. */}
-      {program.description && (
-        <p className="text-[16px] font-medium text-grey-900 leading-[1.75] mb-10 max-w-[760px] max-md:text-[15px] whitespace-pre-wrap">
-          {cleanDescription(program.description)}
-        </p>
-      )}
-
-      {/* 빈약 안내 박스 — 핵심 정보 카드 *위* 에 표시 (loan 과 동일 패턴). */}
+      {/* 빈약 안내 박스 — 카드 위 배치 유지 (loan 과 동일). */}
       {sparseVariant && (
         <SparseDataNotice
           sourceLink={sourceLink}
@@ -170,9 +162,10 @@ export default async function WelfareDetailPage({ params }: Props) {
         />
       )}
 
-      {/* 핵심 정보 카드 — 채워진 필드가 1개 이상일 때만 노출 */}
+      {/* 핵심 정보 카드 — 페이지 최상단 (description 위). 자격·혜택·기간·방법을 먼저 보여줘
+          "내가 받을 수 있는가" 판단을 즉시 가능케 함. */}
       {filledSummary.length > 0 && (
-        <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+        <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-4 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
           <h2 className="text-[17px] font-bold text-grey-900 mb-2 tracking-[-0.3px]">핵심 정보</h2>
           <div className="grid grid-cols-2 gap-x-10 max-md:grid-cols-1 divide-y divide-grey-100 md:divide-y-0">
             {filledSummary.map((f) => (
@@ -182,7 +175,30 @@ export default async function WelfareDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* 상세 정보 섹션들 — 모두 cleanDescription 으로 정제 후 렌더 */}
+      {/* 출처 고지 — 핵심 정보 바로 아래 (loan 과 동일). */}
+      <div className="bg-white border border-grey-200 rounded-xl px-6 py-4 mb-6">
+        <div className="text-[14px] font-semibold text-grey-900 mb-0.5">출처: {program.source}</div>
+        <div className="text-[13px] text-grey-700">
+          마지막 업데이트: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
+          {" · "}본 내용은 원문을 자동 수집한 것입니다.
+        </div>
+      </div>
+
+      {/* Description — 흰 카드로 감싸 배경과 구분. 카드 중복 라인 제거. 결과 비면 생략. */}
+      {(() => {
+        const cleaned = stripCardDuplicates(cleanDescription(program.description));
+        if (!cleaned) return null;
+        return (
+          <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+            <h2 className="text-[17px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">공고 내용</h2>
+            <p className="text-[16px] font-medium text-grey-800 leading-[1.8] max-md:text-[15px] whitespace-pre-wrap">
+              {cleaned}
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* 상세 정보 섹션들 — 그대로 유지 */}
       {program.detailed_content && (
         <InfoSection title="상세 내용">
           {cleanDescription(program.detailed_content)}
@@ -207,22 +223,8 @@ export default async function WelfareDetailPage({ params }: Props) {
         </InfoSection>
       )}
 
-      {/* 출처 안내 */}
-      <div className="bg-white border border-grey-200 rounded-xl px-6 py-5 mb-8">
-        <div className="text-[14px] font-semibold text-grey-900 mb-1">출처: {program.source}</div>
-        <div className="text-[13px] text-grey-700">
-          마지막 업데이트: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
-          {" · "}본 내용은 원문을 자동 수집한 것입니다.
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      {/* apply_url 상태별 3단 분기 —
-          (1) 직링크 (쿼리·path 있는 deep link) → '신청하기' (primary)
-          (2) 홈페이지·쿼리 없는 .do 등 비-deep → '{source} 홈페이지 방문' (secondary)
-              : 누르면 에러 나는 대신 사용자가 기관 홈페이지에서 직접 찾도록 유도
-          (3) null → Google 검색 fallback */}
-      <div className="flex gap-3 flex-wrap mb-4">
+      {/* Action buttons — 콘텐츠 전체를 본 뒤 최종 CTA. 3단 분기 유지. */}
+      <div className="flex gap-3 flex-wrap mb-10 mt-6">
         {program.apply_url && isDeepLink(program.apply_url) ? (
           <a
             href={program.apply_url}
