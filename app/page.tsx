@@ -9,7 +9,7 @@ import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePro
 import { HeroStats } from "@/components/hero-stats";
 import { RegionMap } from "@/components/region-map";
 import { HomeCTA } from "@/components/home-cta";
-import { WishForm } from "@/components/wish-form";
+import { FloatingWishWidget } from "@/components/wish-form-floating";
 import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
@@ -252,26 +252,10 @@ export default async function Home() {
         </div>
       </RevealOnScroll>
 
-      {/* [참여] WishForm — 사이드 작은 배너. 가로 전체 안 차지하고
-          좌측 설명 + 우측 컴팩트 폼 2단. 모바일은 자연스럽게 위아래 쌓임. */}
-      <RevealOnScroll>
-        <section className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8">
-          <div className="grid grid-cols-[1fr_360px] max-md:grid-cols-1 gap-8 max-md:gap-5 items-center">
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-blue-500 tracking-[0.18em] mb-3">
-                💌 사장님 의견 수집 중
-              </span>
-              <h2 className="text-[22px] max-md:text-[18px] font-extrabold text-grey-900 tracking-[-0.5px] leading-[1.3] mb-2">
-                받고 싶은 정부 혜택, 한 줄로 알려주세요
-              </h2>
-              <p className="text-[14px] text-grey-600 leading-[1.6]">
-                &ldquo;이런 정보가 keepioo 에 있으면 좋겠다&rdquo; — 사장님이 직접 읽고 다음 업데이트에 반영합니다.
-              </p>
-            </div>
-            <WishForm />
-          </div>
-        </section>
-      </RevealOnScroll>
+      {/* [참여] WishForm — 좌측 하단 floating 위젯으로 분리.
+          본문 섹션 차지 안 하고, 챗봇(우측 하단) 과 충돌 없이 좌측에 떠 있음.
+          닫기·24시간 숨기기 지원. */}
+      <FloatingWishWidget />
 
       {/* [행동] HomeCTA — 사용자가 가져갈 다음 행동 (추천 받기 + 알림 받기) */}
       <RevealOnScroll>
