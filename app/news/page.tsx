@@ -6,6 +6,12 @@
 //
 // 2026-04-24 보도자료(press) 비노출: 수집 중단(lib/news-collectors/korea-kr.ts)
 // + 기존 DB 건도 category != 'press' 로 모든 목록에서 제외.
+//
+// 2026-04-25 개인화 통합: welfare/loan 과 동일 패턴.
+//   - 로그인 + 프로필 채워짐 → "🌟 ○○님께 맞는 정책" 분리 섹션 (점수 ≥ 5, 상위 10건)
+//   - 로그인 + 빈 프로필 → EmptyProfilePrompt
+//   - 전체 리스트 매칭 항목 → ✨ MatchBadge
+//   - ministry 컬럼이 광역 단위("전라남도")일 때 region 매칭에 활용
 // ============================================================
 
 import type { Metadata } from "next";
@@ -22,6 +28,15 @@ import { PROVINCES } from "@/lib/regions";
 import { getNewsBenefitTagCounts } from "@/lib/category-counts";
 import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
 import { CategoryChipBar } from "@/components/category-chip-bar";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { scoreAndFilter } from "@/lib/personalization/filter";
+import {
+  PERSONAL_SECTION_MIN_SCORE,
+  PERSONAL_SECTION_MAX_ITEMS,
+} from "@/lib/personalization/types";
+import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
+import { MatchBadge } from "@/components/personalization/MatchBadge";
+import type { ScorableItem } from "@/lib/personalization/score";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -57,9 +72,10 @@ export const metadata: Metadata = {
   },
 };
 
-// 60s ISR — 네이버 뉴스 광역별 cron(매일 23:00~00:20 KST 5분 간격) 직후
-// 신규 뉴스가 빨리 노출되도록. welfare/loan 과 동일 정책.
-export const revalidate = 60;
+// 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
+// force-dynamic 없이 revalidate=60 을 쓰면 캐시된 첫 사용자의 프로필이
+// 다른 사용자에게도 노출되는 보안 문제가 생김.
+export const dynamic = "force-dynamic";
 
 type Props = {
   searchParams: Promise<{
@@ -72,6 +88,37 @@ type Props = {
 
 // BENEFIT_TAGS 단일 출처 — URL 쿼리 임의 값 차단
 const VALID_BENEFITS = new Set<string>(BENEFIT_TAGS);
+
+// news_posts 행 → ScorableItem 변환
+// welfare/loan 과 달리 news 는 ministry 컬럼이 광역 단위("전라남도")로 저장됨.
+// 이를 region 필드로 그대로 넘기면 score.ts 의 REGION_ALIASES 가 자동 매핑함.
+// 예: ministry = "전라남도" → score.ts aliases → 사용자 region "전남" 과 매칭.
+// apply_end 는 news 에 없음 (실시간 공고 개념이 아닌 단순 뉴스 콘텐츠).
+function newsToScorable(p: {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string | null;
+  body: string | null;
+  ministry: string | null;
+  benefit_tags: string[] | null;
+  published_at: string;
+  source_url: string | null;
+}): ScorableItem {
+  return {
+    id: p.id,
+    title: p.title,
+    // summary + body 합쳐서 haystack 풍성하게 — benefit_tags 키워드 매칭 정확도 향상
+    description: [p.summary, p.body].filter(Boolean).join(" "),
+    // ministry 가 "전라남도"처럼 광역명이면 region 매칭에 사용.
+    // "보건복지부" 같은 부처명이면 REGION_ALIASES 에 없어 매칭 안 됨 (정상 동작).
+    region: p.ministry,
+    district: null,     // news 는 district(시군구) 개념 없음
+    benefit_tags: p.benefit_tags ?? [],
+    apply_end: null,    // news 는 마감 개념 없음 (실시간 뉴스 콘텐츠)
+    source: p.source_url,
+  };
+}
 
 export default async function NewsIndexPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -89,41 +136,72 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page || "1", 10));
 
   const supabase = await createClient();
+
+  // ─── 공통 필터 빌더 ──────────────────────────────────────────────────────────
+  // 기존 query 와 점수 매칭용 풀 query 에 동일 필터를 중복 없이 적용
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function applyFilters(q: any): any {
+    // 보도자료(press) 는 전역 비노출 (2026-04-24~)
+    q = q.neq("category", "press");
+    // 품질 필터: keepioo 키워드 매칭 안 된 뉴스는 노출 제외
+    q = q.not("keywords", "eq", "{}");
+    if (activeCategory !== "all") q = q.eq("category", activeCategory);
+    if (activeBenefit) q = q.contains("benefit_tags", [activeBenefit]);
+    if (activeProvince) {
+      const provinceName = PROVINCE_BY_CODE[activeProvince];
+      if (provinceName) q = q.eq("ministry", provinceName);
+    }
+    return q;
+  }
+
+  // ─── 기존 페이지네이션 query ──────────────────────────────────────────────────
   let query = supabase
     .from("news_posts")
     .select(
-      "slug, title, summary, category, ministry, thumbnail_url, published_at",
+      "id, slug, title, summary, category, ministry, thumbnail_url, published_at, benefit_tags",
       { count: "exact" },
     )
-    // 보도자료(press) 는 전역 비노출 (2026-04-24~)
-    .neq("category", "press")
-    // 2026-04-24 품질 필터: keepioo 키워드 매칭 안 된 뉴스는 노출 제외.
-    // 기존 DB 의 노이즈 건(베트남 수출·순방 등)도 자동으로 숨김.
-    // Supabase REST "not.eq.{}" = 빈 배열 아닌 것만 = 키워드 1개 이상 있는 것만.
-    .not("keywords", "eq", "{}")
     .order("published_at", { ascending: false });
+  query = applyFilters(query);
 
-  if (activeCategory !== "all") {
-    query = query.eq("category", activeCategory);
-  }
-  // benefit_tags 필터 — BENEFIT_TAGS 14종 중 하나가 배열에 있는 row 만.
-  // `contains` = PostgREST @> 연산자 (배열 contains).
-  if (activeBenefit) {
-    query = query.contains("benefit_tags", [activeBenefit]);
-  }
-  // 광역 필터 — ministry 컬럼이 광역명인 row 만 (네이버 뉴스 광역별 수집분).
-  if (activeProvince) {
-    const provinceName = PROVINCE_BY_CODE[activeProvince];
-    if (provinceName) query = query.eq("ministry", provinceName);
-  }
+  // ─── 점수 매칭용 풀 query (limit 100) ────────────────────────────────────────
+  // 페이지네이션 없이 같은 필터 적용한 최신 100건 — 사용자 개인화 점수 계산용.
+  // category·thumbnail_url 도 함께 가져와서 분리 섹션 NewsCard 렌더에 바로 사용.
+  let poolQuery = supabase
+    .from("news_posts")
+    .select("id, slug, title, summary, body, category, ministry, thumbnail_url, benefit_tags, published_at, source_url")
+    .order("published_at", { ascending: false })
+    .limit(100);
+  poolQuery = applyFilters(poolQuery);
 
-  // 본 query 와 분야 카운트는 서로 독립 → 병렬로 라운드트립 절약
-  const [{ data: posts, count }, benefitCounts] = await Promise.all([
-    query.range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
-    getNewsBenefitTagCounts(supabase),
-  ]);
-  const list = (posts || []) as NewsCardData[];
+  // ─── 병렬 fetch ───────────────────────────────────────────────────────────────
+  // 본 query·분야 카운트·풀 query·사용자 프로필을 동시에 요청해 RTT 절약
+  const [{ data: posts, count }, benefitCounts, { data: poolData }, profile] =
+    await Promise.all([
+      query.range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
+      getNewsBenefitTagCounts(supabase),
+      poolQuery,
+      loadUserProfile(),
+    ]);
+
+  const list = (posts || []) as (NewsCardData & { id: string; benefit_tags: string[] | null })[];
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
+
+  // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
+  // profile 이 있고 비어있지 않을 때만 점수 계산 (비로그인·빈 프로필은 skip)
+  type ScoredNews = ReturnType<typeof scoreAndFilter<ScorableItem>>;
+  let personalSection: ScoredNews = [];
+
+  if (profile && !profile.isEmpty) {
+    const displayPool = (poolData || []).map(newsToScorable);
+    personalSection = scoreAndFilter(displayPool, profile.signals, {
+      minScore: PERSONAL_SECTION_MIN_SCORE,
+      limit: PERSONAL_SECTION_MAX_ITEMS,
+    });
+  }
+
+  // 분리 섹션에 노출된 id — 전체 리스트에서 MatchBadge 표시 대상 확정
+  const personalIds = new Set(personalSection.map((s) => s.item.id));
 
   // 페이지네이션 링크 생성 — 필터 유지하며 page 만 바꿈
   function buildUrl(overrides: Record<string, string>) {
@@ -284,7 +362,6 @@ export default async function NewsIndexPage({ searchParams }: Props) {
               const selected = activeProvince === p.code;
               // 짧은 라벨 — UI 좁음 회피. 표준 약칭 (전라남도→전남, 경상북도→경북)
               // 을 쓰기 위해 도(道) 광역 6곳만 명시 매핑. 나머지는 접미사 제거.
-              // 예전엔 /도$/ 로 끝 '도' 만 날려서 "전라남" 같은 비대칭 약칭 생김.
               const DO_SHORT: Record<string, string> = {
                 충청북도: "충북",
                 충청남도: "충남",
@@ -316,13 +393,72 @@ export default async function NewsIndexPage({ searchParams }: Props) {
           </div>
         </section>
 
+        {/* ─── 개인화 분리 섹션 ─────────────────────────────────────────────────── */}
+        {/* 위치: 필터 아래, 전체 리스트 위. welfare/loan 과 동일 UX. */}
+        {/* news 는 카드 그리드이므로 분리 섹션도 NewsCard 그리드 사용 — 디자인 일관성 */}
+        {profile && (
+          <section className="mb-8">
+            {/* 케이스 1: 프로필 채워져 있고 매칭 결과 있음 → 분리 섹션 */}
+            {!profile.isEmpty && personalSection.length > 0 && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 md:p-6">
+                {/* 섹션 헤더 */}
+                <h2 className="text-[15px] font-bold text-grey-900 mb-4">
+                  🌟 {profile.displayName}님께 맞는 정책
+                  <span className="ml-2 text-[12px] font-normal text-grey-500">
+                    프로필 기반 · {personalSection.length}건
+                  </span>
+                </h2>
+                {/* NewsCard 그리드 — welfare 처럼 emerald wrapper 안에 배치 */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {personalSection.map(({ item }) => {
+                    // ScorableItem id 로 poolData 에서 원본 row 를 찾아 NewsCard 에 넘김
+                    const poolRaw = (poolData || []).find((n) => n.id === item.id);
+                    if (!poolRaw) return null;
+                    // poolQuery 에 category·thumbnail_url 포함 → NewsCardData 직접 구성
+                    const cardData: NewsCardData = {
+                      slug: poolRaw.slug,
+                      title: poolRaw.title,
+                      summary: poolRaw.summary ?? null,
+                      category: (poolRaw.category ?? "news") as NewsCardData["category"],
+                      ministry: poolRaw.ministry ?? null,
+                      thumbnail_url: poolRaw.thumbnail_url ?? null,
+                      published_at: poolRaw.published_at,
+                    };
+                    return (
+                      <NewsCard key={item.id} post={cardData} />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 케이스 2: 로그인했지만 프로필 비어있음 → 온보딩 유도 배너 */}
+            {profile.isEmpty && (
+              <EmptyProfilePrompt />
+            )}
+
+            {/* 케이스 3: 프로필 있지만 매칭 결과 0건 → 아무것도 안 보임 (자연스러운 폴백) */}
+          </section>
+        )}
+        {/* 케이스 4: 비로그인 → profile === null → 아무것도 안 보임 */}
+
         {/* 목록 */}
         {list.length === 0 ? (
           <EmptyState isAll={activeCategory === "all"} />
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {list.map((post) => (
-              <NewsCard key={post.slug} post={post} />
+              // MatchBadge 를 카드 우측 상단에 absolute 로 겹쳐 표시.
+              // NewsCard 시그니처 무변경 — relative wrapper + absolute MatchBadge 패턴.
+              <div key={post.slug} className="relative">
+                <NewsCard post={post} />
+                {/* 분리 섹션에 노출된 항목 → ✨ 내 조건 배지 */}
+                {post.id && personalIds.has(post.id) && (
+                  <div className="absolute top-3 right-3 pointer-events-none">
+                    <MatchBadge />
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -338,8 +474,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
 
         {/* AdSense — 그리드·페이지네이션 아래·공공누리 출처 위.
             목록 소비 마친 독자에게 자연 정지점. 연속 슬롯 배치는 AdSense
-            정책 위반 위험 → 페이지당 1개만. 라이선스 영역과 광고 구분 위해
-            공공누리 안내와 mt 간격. */}
+            정책 위반 위험 → 페이지당 1개만. */}
         {list.length > 0 && (
           <div className="mt-10">
             <AdSlot />
