@@ -116,7 +116,7 @@ export function AlertList() {
                       </span>
                       {dday !== null && (
                         <span
-                          className={`shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                          className={`shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded ${
                             dday <= 7
                               ? "bg-[#FFEEEE] text-red"
                               : "bg-blue-50 text-blue-600"

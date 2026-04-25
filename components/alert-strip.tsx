@@ -33,9 +33,9 @@ export function AlertStrip({ programs, isLoggedIn = false }: Props) {
       tabIndex={isClone ? -1 : undefined}
       className="shrink-0 flex items-center gap-2 no-underline text-inherit hover:opacity-75 transition-opacity"
     >
-      {/* D-N 배지 — 사이트 전역 DdayLabel 과 동일 톤 */}
+      {/* D-N 배지 — 사이트 전역 DdayLabel 과 동일 톤 (12px·padding 통일) */}
       <span
-        className={`shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+        className={`shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded ${
           (p.dday ?? 99) <= 7
             ? "bg-[#FFEEEE] text-red"
             : "bg-blue-50 text-blue-600"

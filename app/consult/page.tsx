@@ -23,7 +23,7 @@ export default function ConsultPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "bot",
-      text: "안녕하세요! AI 정책 상담사입니다.\n\n궁금한 복지·대출 정보를 자유롭게 물어보세요.\n아래 추천 질문을 눌러보셔도 좋아요.",
+      text: "어떤 정책이 궁금하세요?\n\n복지·대출 관련해 자유롭게 물어보시면 맞는 정책을 찾아드릴게요.\n아래 추천 질문을 눌러보셔도 좋아요.",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -111,12 +111,15 @@ export default function ConsultPage() {
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
         AI 정책 상담
       </h1>
-      <p className="text-[15px] text-grey-600 mb-6">
-        나에게 맞는 복지·대출 정책을 대화로 찾아보세요
+      <p className="text-[15px] text-grey-700 leading-[1.6] mb-6">
+        나에게 맞는 복지·대출 정책을 대화로 찾아보세요.
       </p>
 
-      {/* 채팅 영역 */}
-      <div className="bg-white border border-grey-100 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex flex-col h-[calc(100vh-240px)] min-h-[400px]">
+      {/* 채팅 영역 — 빈 메시지 상태에서 너무 큰 공백을 만들지 않도록 max-h 로 상한.
+          이전 h-[calc(100vh-240px)] 는 첫 메시지 후 거대한 빈 영역을 만들어
+          시각적으로 "왜 이렇게 비었지?" 인상을 주었음. min-h 480 + max-h 720 으로
+          데스크톱 한 화면에 자연스럽게 맞추되 메시지가 늘면 내부 스크롤. */}
+      <div className="bg-white border border-grey-100 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex flex-col min-h-[480px] max-h-[720px]">
         {/* 메시지 목록 */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 max-md:px-4">
           {messages.map((msg, i) => (

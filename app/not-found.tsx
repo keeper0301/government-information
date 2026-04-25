@@ -28,8 +28,8 @@ const LINKS: { href: string; title: string; desc: string; emoji: string }[] = [
   },
   {
     href: "/welfare",
-    title: "복지 정보",
-    desc: "정부·지자체 복지서비스",
+    title: "복지 지원사업",
+    desc: "정부·지자체 복지 혜택",
     emoji: "💙",
   },
   {

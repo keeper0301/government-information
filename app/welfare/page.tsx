@@ -21,8 +21,8 @@ import type { WelfareProgram } from "@/lib/database.types";
 import type { ScorableItem } from "@/lib/personalization/score";
 
 export const metadata: Metadata = {
-  title: "복지 정보 — 정책알리미",
-  description: "공공기관에서 제공하는 복지 프로그램을 한눈에 확인하세요.",
+  title: "복지 지원사업 — 정책알리미",
+  description: "내가 받을 수 있는 정부·지자체 복지 혜택을 한곳에 모았어요.",
 };
 
 // 페이지당 20건 — 기존 10건은 7122건이 713페이지로 쪼개져 사용자 탐색 부담이 큼.
@@ -168,10 +168,10 @@ export default async function WelfarePage({ searchParams }: Props) {
       {/* Header */}
       <section className="max-w-content mx-auto px-10 mb-8 max-md:px-6">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
-          복지 정보
+          복지 지원사업
         </h1>
-        <p className="text-[15px] text-grey-600">
-          공공기관에서 제공하는 복지 프로그램을 한눈에 확인하세요.
+        <p className="text-[15px] text-grey-700 leading-[1.6]">
+          내가 받을 수 있는 정부·지자체 복지 혜택을 한곳에 모았어요.
         </p>
       </section>
 

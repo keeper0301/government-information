@@ -21,8 +21,8 @@ import type { LoanProgram } from "@/lib/database.types";
 import type { ScorableItem } from "@/lib/personalization/score";
 
 export const metadata: Metadata = {
-  title: "대출·지원금 정보 — 정책알리미",
-  description: "소상공인·자영업자를 위한 정부 대출 및 지원금 정보를 확인하세요.",
+  title: "소상공인 대출·지원금 — 정책알리미",
+  description: "소상공인·자영업자가 받을 수 있는 정부 대출과 지원금을 모았어요.",
 };
 
 // 페이지당 20건 — 기존 10건은 1312건이 132페이지로 쪼개져 사용자 탐색 부담이 큼.
@@ -197,10 +197,10 @@ export default async function LoanPage({ searchParams }: Props) {
       {/* Header */}
       <section className="max-w-content mx-auto px-10 mb-8 max-md:px-6">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
-          대출·지원금 정보
+          소상공인 대출·지원금
         </h1>
-        <p className="text-[15px] text-grey-600">
-          소상공인·자영업자를 위한 정부 대출 및 지원금 정보를 확인하세요.
+        <p className="text-[15px] text-grey-700 leading-[1.6]">
+          소상공인·자영업자가 받을 수 있는 정부 대출과 지원금을 모았어요.
         </p>
       </section>
 

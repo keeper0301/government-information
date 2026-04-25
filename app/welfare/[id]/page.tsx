@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
   const { data } = await supabase.from("welfare_programs").select("title, description").eq("id", id).single();
-  if (!data) return { title: "복지 정보 — 정책알리미" };
+  if (!data) return { title: "복지 지원사업 — 정책알리미" };
   return {
     title: `${data.title} — 정책알리미`,
     description: data.description || undefined,
@@ -106,7 +106,7 @@ export default async function WelfareDetailPage({ params }: Props) {
 
       {/* Breadcrumb */}
       <nav className="text-sm text-grey-700 mb-6">
-        <a href="/welfare" className="font-medium no-underline hover:text-blue-500 transition-colors">복지 정보</a>
+        <a href="/welfare" className="font-medium no-underline hover:text-blue-500 transition-colors">복지 지원사업</a>
         <span className="mx-2 text-grey-600">&gt;</span>
         <span className="text-grey-900 font-medium">{program.title.length > 30 ? program.title.substring(0, 30) + "..." : program.title}</span>
       </nav>

@@ -21,22 +21,24 @@ const iconMap = {
 };
 
 function DdayLabel({ dday }: { dday: number | null }) {
+  // 마감 정보는 사용자가 가장 먼저 봐야 할 시그널이라 12px·semibold 로 키움.
+  // 11px 은 한국어 본문 13~15px 와 너무 격차가 커서 노안·40·50대가 놓치기 쉬움.
   if (dday === null) {
     return (
-      <span className="shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-grey-100 text-grey-600">
+      <span className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-grey-100 text-grey-600">
         상시
       </span>
     );
   }
   if (dday <= 7) {
     return (
-      <span className="shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#FFEEEE] text-red">
+      <span className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-[#FFEEEE] text-red">
         D-{dday}
       </span>
     );
   }
   return (
-    <span className="shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+    <span className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600">
       D-{dday}
     </span>
   );

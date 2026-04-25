@@ -81,8 +81,9 @@ export function Footer() {
         </p>
       </div>
 
-      {/* 사업자 정보 — 전자상거래법 제13조 (신원정보) 표시 의무 */}
-      <div className="pt-6 border-t border-grey-100 text-[12px] text-grey-600 leading-[1.8]">
+      {/* 사업자 정보 — 전자상거래법 제13조 (신원정보) 표시 의무.
+          12px 는 한국어로 너무 작아 노안·40·50대 가독성 떨어짐 → 13px 로 키움. */}
+      <div className="pt-6 border-t border-grey-100 text-[13px] text-grey-600 leading-[1.8]">
         <div className="font-semibold text-grey-700 mb-1">사업자 정보</div>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           <span>

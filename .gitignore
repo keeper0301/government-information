@@ -58,3 +58,4 @@ tmp/
 
 # gstack 도구 메타데이터 (retros 등) — 로컬 전용
 .context/
+.design-audit/

@@ -266,7 +266,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
               정책 소식
             </h1>
             <p className="text-[15px] md:text-[17px] text-grey-700 leading-[1.6]">
-              정부 부처의 최신 정책 발표와 정책자료를 모았어요.
+              정부 부처의 최신 발표와 자료를 모았어요.
             </p>
           </div>
           <Link
@@ -317,7 +317,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
           className="mb-8 bg-white rounded-2xl border border-grey-100 p-5 md:p-6"
         >
           <div className="flex items-center justify-between gap-2 mb-4">
-            <h2 className="text-[14px] font-bold text-grey-900 tracking-[-0.2px]">
+            <h2 className="text-[17px] font-bold text-grey-900 tracking-[-0.4px]">
               분야로 찾기
             </h2>
             {activeBenefit && (
@@ -345,7 +345,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
           className="mb-8 bg-white rounded-2xl border border-grey-100 p-5 md:p-6"
         >
           <div className="flex items-center justify-between gap-2 mb-4">
-            <h2 className="text-[14px] font-bold text-grey-900 tracking-[-0.2px]">
+            <h2 className="text-[17px] font-bold text-grey-900 tracking-[-0.4px]">
               지역으로 찾기
             </h2>
             {activeProvince && (

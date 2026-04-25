@@ -350,7 +350,7 @@ export default async function CalendarPage({
                             }}
                           />
                         )}
-                        <span className="text-[11.5px] leading-[1.4] text-grey-800 group-hover:text-grey-900 font-medium truncate">
+                        <span className="text-[12.5px] leading-[1.4] text-grey-800 group-hover:text-grey-900 font-medium truncate">
                           {shortenCalendarTitle(item.title)}
                         </span>
                       </a>
