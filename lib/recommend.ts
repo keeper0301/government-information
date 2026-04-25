@@ -233,3 +233,80 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
     .slice(0, limit)
     .map((x) => x.display);
 }
+
+// ─────────────────────────────────────────────────────────────
+// 통합 추천 — /recommend 페이지의 "관련 뉴스 / 가이드" 섹션용
+// 사용자 연령·직업 → BENEFIT_TAGS 후보 추론 → news/blog 매칭.
+// 기존 getRecommendations 와 별도 흐름 (welfare/loan 만 점수화).
+// ─────────────────────────────────────────────────────────────
+import type { BenefitTag } from "@/lib/tags/taxonomy";
+
+function inferBenefitTagsFromProfile(
+  age: AgeOption | null,
+  occupation: OccupationOption | null,
+): BenefitTag[] {
+  const tags: BenefitTag[] = [];
+  // 연령별 관심 분야 — AGE_OPTIONS 와 일치 (10·20·30·40·50·60+)
+  if (age === "10대") tags.push("교육", "양육");
+  if (age === "20대") tags.push("주거", "취업", "교육", "창업");
+  if (age === "30대") tags.push("주거", "취업", "양육", "창업");
+  if (age === "40대") tags.push("양육", "교육", "의료", "주거");
+  if (age === "50대") tags.push("의료", "양육", "생계");
+  if (age === "60대 이상") tags.push("의료", "생계", "장례");
+
+  // 직업별 — OCCUPATION_OPTIONS 와 일치
+  if (occupation === "대학생") tags.push("교육", "취업", "주거");
+  if (occupation === "직장인") tags.push("주거", "양육", "의료");
+  if (occupation === "자영업자") tags.push("창업", "금융", "생계");
+  if (occupation === "공무원") tags.push("주거", "양육");
+  if (occupation === "구직자") tags.push("취업", "생계");
+  if (occupation === "주부") tags.push("양육", "의료");
+
+  if (tags.length === 0) tags.push("생계", "주거"); // 폴백
+  return Array.from(new Set(tags)).slice(0, 5);
+}
+
+/** /recommend 페이지의 "관련 정책 뉴스" 섹션. press 제외, 최신순. */
+export async function getRelatedNews(opts: {
+  age: AgeOption | null;
+  occupation: OccupationOption | null;
+  limit?: number;
+}) {
+  const supabase = await createClient();
+  const tags = inferBenefitTagsFromProfile(opts.age, opts.occupation);
+  const { data } = await supabase
+    .from("news_posts")
+    .select("slug, title, summary, ministry, published_at, category, thumbnail_url")
+    .neq("category", "press")
+    .overlaps("benefit_tags", tags)
+    .order("published_at", { ascending: false })
+    .limit(opts.limit ?? 6);
+  return data ?? [];
+}
+
+/** /recommend 페이지의 "함께 보면 좋은 가이드" 섹션. blog 인구통계 카테고리 매칭. */
+export async function getRelatedBlogs(opts: {
+  age: AgeOption | null;
+  occupation: OccupationOption | null;
+  limit?: number;
+}) {
+  const supabase = await createClient();
+  // blog 는 인구통계 축이라 직업·연령에 직접 매핑.
+  const candidates: string[] = [];
+  if (opts.age === "20대" || opts.age === "30대") candidates.push("청년");
+  if (opts.age === "60대 이상") candidates.push("노년");
+  if (opts.occupation === "자영업자") candidates.push("소상공인");
+  if (opts.occupation === "대학생") candidates.push("학생·교육");
+  if (candidates.length === 0) candidates.push("큐레이션");
+
+  const { data } = await supabase
+    .from("blog_posts")
+    .select(
+      "slug, title, meta_description, category, published_at, cover_image, reading_time_min",
+    )
+    .not("published_at", "is", null)
+    .in("category", candidates)
+    .order("published_at", { ascending: false })
+    .limit(opts.limit ?? 4);
+  return data ?? [];
+}
