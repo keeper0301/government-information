@@ -65,6 +65,13 @@ export async function checkHiddenNews(
   request: NextRequest,
   user: User | null,
 ): Promise<NextResponse | null> {
+  // 페이지 로드(GET) 만 검사. POST(Server Action)·HEAD·RSC prefetch 요청은
+  // middleware 가 반환하는 HTML 로 응답 프로토콜을 깨뜨려 client 에서
+  // "An unexpected response was received from the server" 에러가 남.
+  // (2026-04-25 toggleNewsHidden submit 직후 에러 페이지 재현 → 가드 추가)
+  if (request.method !== "GET") return null;
+  if (request.headers.has("rsc") || request.headers.has("next-action")) return null;
+
   const match = request.nextUrl.pathname.match(NEWS_SLUG_PATTERN);
   if (!match) return null;
 
