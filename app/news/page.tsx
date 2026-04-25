@@ -21,6 +21,7 @@ import { AdSlot } from "@/components/ad-slot";
 import { PROVINCES } from "@/lib/regions";
 import { getNewsBenefitTagCounts } from "@/lib/category-counts";
 import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
+import { CategoryChipBar } from "@/components/category-chip-bar";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -250,26 +251,12 @@ export default async function NewsIndexPage({ searchParams }: Props) {
               </a>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {benefitCounts.map((c) => {
-              const selected = activeBenefit === c.category;
-              return (
-                <a
-                  key={c.category}
-                  href={benefitUrl(selected ? null : c.category)}
-                  aria-current={selected ? "page" : undefined}
-                  className={`inline-flex items-center min-h-[32px] px-3 text-[13px] rounded-full no-underline transition-colors ${
-                    selected
-                      ? "bg-grey-900 text-white font-semibold"
-                      : "bg-grey-50 text-grey-700 border border-grey-100 hover:bg-grey-100"
-                  }`}
-                >
-                  {c.category}{" "}
-                  <span className="opacity-70 ml-1">({c.n.toLocaleString()})</span>
-                </a>
-              );
-            })}
-          </div>
+          <CategoryChipBar
+            variant="filter"
+            items={benefitCounts}
+            active={activeBenefit}
+            hrefFor={(c, selected) => benefitUrl(selected ? null : c)}
+          />
         </section>
 
         {/* 지역 필터 — 17 광역 칩. 네이버 뉴스 광역별 cron 수집분 만 잡힘

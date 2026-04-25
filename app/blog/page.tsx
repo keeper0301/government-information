@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { getBlogCategoryCounts } from "@/lib/category-counts";
+import { CategoryChipBar } from "@/components/category-chip-bar";
 
 export const metadata: Metadata = {
   title: "정책 가이드 블로그 | 정책알리미",
@@ -68,34 +69,15 @@ export default async function BlogIndexPage({
         </header>
 
         {/* 카테고리 필터 — DB 실측 기반. 빈 카테고리(글 0건) 자동 숨김 */}
-        <nav className="flex flex-wrap gap-2 mb-8" aria-label="카테고리 필터">
-          <a
-            href="/blog"
-            className={`inline-flex items-center min-h-[44px] px-3.5 text-[13px] rounded-full no-underline transition-colors ${
-              activeCategory === "all"
-                ? "bg-blue-500 text-white font-semibold"
-                : "bg-white text-grey-700 border border-grey-100 hover:bg-grey-50"
-            }`}
-          >
-            전체
-          </a>
-          {categoryCounts.map((c) => {
-            const selected = activeCategory === c.category;
-            return (
-              <a
-                key={c.category}
-                href={`/blog?category=${encodeURIComponent(c.category)}`}
-                className={`inline-flex items-center min-h-[44px] px-3.5 text-[13px] rounded-full no-underline transition-colors ${
-                  selected
-                    ? "bg-blue-500 text-white font-semibold"
-                    : "bg-white text-grey-700 border border-grey-100 hover:bg-grey-50"
-                }`}
-              >
-                {c.category}{" "}
-                <span className="opacity-70 ml-1">({c.n})</span>
-              </a>
-            );
-          })}
+        <nav className="mb-8" aria-label="카테고리 필터">
+          <CategoryChipBar
+            items={categoryCounts}
+            active={activeCategory === "all" ? null : activeCategory}
+            allHref="/blog"
+            hrefFor={(c) =>
+              c ? `/blog?category=${encodeURIComponent(c)}` : "/blog"
+            }
+          />
         </nav>
 
         {/* 글 목록 */}

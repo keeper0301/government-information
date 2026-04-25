@@ -8,6 +8,7 @@ import { FilterBar } from "./filter-bar";
 import { Pagination } from "@/components/pagination";
 import { getRegionMatchPatterns } from "@/lib/regions";
 import { getProgramCategoryCounts } from "@/lib/category-counts";
+import { CategoryChipBar } from "@/components/category-chip-bar";
 
 export const metadata: Metadata = {
   title: "복지 정보 — 정책알리미",
@@ -108,32 +109,13 @@ export default async function WelfarePage({ searchParams }: Props) {
       {/* Filters */}
       <section className="max-w-content mx-auto px-10 mb-6 max-md:px-6">
         {/* Category tabs — DB 실측 기반 동적. 빈 카테고리 자동 숨김 + 건수 표기 */}
-        <div className="flex gap-1.5 mb-4 flex-wrap">
-          {/* "전체" 칩은 항상 첫 자리 고정 */}
-          <a
-            href={buildUrl({ category: "전체", page: "1" })}
-            className={`px-4 py-2 max-md:py-2.5 max-md:inline-flex max-md:items-center max-md:min-h-[44px] text-sm font-medium rounded-full no-underline transition-colors ${
-              category === "전체"
-                ? "bg-blue-500 text-white"
-                : "bg-grey-50 text-grey-700 hover:bg-grey-100"
-            }`}
-          >
-            전체
-          </a>
-          {categoryCounts.map((c) => (
-            <a
-              key={c.category}
-              href={buildUrl({ category: c.category, page: "1" })}
-              className={`px-4 py-2 max-md:py-2.5 max-md:inline-flex max-md:items-center max-md:min-h-[44px] text-sm font-medium rounded-full no-underline transition-colors ${
-                category === c.category
-                  ? "bg-blue-500 text-white"
-                  : "bg-grey-50 text-grey-700 hover:bg-grey-100"
-              }`}
-            >
-              {c.category}{" "}
-              <span className="opacity-70">({c.n.toLocaleString()})</span>
-            </a>
-          ))}
+        <div className="mb-4">
+          <CategoryChipBar
+            items={categoryCounts}
+            active={category}
+            allHref={buildUrl({ category: "전체", page: "1" })}
+            hrefFor={(c) => buildUrl({ category: c ?? "전체", page: "1" })}
+          />
         </div>
 
         {/* Region + Target + Search — 모바일에서는 FilterBar(광역·타겟 select 2개)
