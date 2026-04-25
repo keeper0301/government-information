@@ -14,7 +14,6 @@
 // "전국" 대상 정책은 별도 카드로 표시.
 // ============================================================
 
-import { Suspense } from "react";
 import Link from "next/link";
 import { getWelfareRegionCounts } from "@/lib/home-stats";
 import { RegionMapSvg } from "./region-map-svg";
@@ -52,19 +51,8 @@ export async function RegionMap() {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm p-6 max-md:p-4">
-        {/* 실제 시·도 모양 SVG 지도 (client component, d3-geo 사용).
-            TopoJSON fetch 동안 회색 박스 skeleton — Geographies 가 Suspense-aware. */}
-        <Suspense
-          fallback={
-            <div
-              className="w-full mx-auto rounded-2xl bg-grey-50"
-              style={{ maxWidth: 720, aspectRatio: "800/760" }}
-              aria-label="지도 불러오는 중"
-            />
-          }
-        >
-          <RegionMapSvg counts={counts} />
-        </Suspense>
+        {/* 실제 시·도 모양 SVG 지도 (client component, d3-geo 사용) */}
+        <RegionMapSvg counts={counts} />
 
         {/* 전국 대상 — 지도와 별도 풀폭 카드 */}
         <Link
