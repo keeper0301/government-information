@@ -89,3 +89,26 @@ export function getDistrictsForRegion(region: string): string[] {
   if (!province) return [];
   return DISTRICTS_BY_PROVINCE[province.code] ?? [];
 }
+
+// 소득 구간 — 기준중위소득 비율 기반 단순화
+// 정확한 수치 입력 회피 (진입장벽), 정책 매칭에 충분한 해상도
+export const INCOME_OPTIONS = [
+  { value: 'low',      label: '기초생활보장 수준 (기준중위소득 50% 이하)' },
+  { value: 'mid_low',  label: '차상위 수준 (50~80%)' },
+  { value: 'mid',      label: '중위 (80~120%)' },
+  { value: 'mid_high', label: '중위 이상 (120~180%)' },
+  { value: 'high',     label: '고소득 (180% 초과)' },
+] as const;
+export type IncomeOption = typeof INCOME_OPTIONS[number]['value'];
+
+// 가구상태 — 다중 선택 가능 (한부모이자 다자녀 가능)
+// value 는 영문(DB 컬럼 일관성), label 은 한글
+export const HOUSEHOLD_OPTIONS = [
+  { value: 'single',           label: '1인가구' },
+  { value: 'married',          label: '신혼부부' },
+  { value: 'single_parent',    label: '한부모가정' },
+  { value: 'multi_child',      label: '다자녀가정' },
+  { value: 'disabled_family',  label: '장애인가구' },
+  { value: 'elderly_family',   label: '고령가구·독거노인' },
+] as const;
+export type HouseholdOption = typeof HOUSEHOLD_OPTIONS[number]['value'];
