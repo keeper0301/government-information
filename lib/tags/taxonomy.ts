@@ -145,8 +145,15 @@ export function extractOccupationTags(text: string | null | undefined): Occupati
 }
 
 // 혜택 분야 추출 (기존 mapWelfareCategory 확장)
+// FP_PATTERNS — 결합형 false positive 단어. 매칭 전 텍스트에서 제거.
+// "사유가/이유가" (이유+가), "군경유족" (참전유족), "전기차/전기철도" (vehicle 류) 등
+// 정책 맥락 아닌 단어로 잘못 매칭되는 것 사전 차단.
+const FP_PATTERNS_BENEFIT = /사유가|이유가|자유가|군경유족|경유하|경유함|을 경유|를 경유|로 경유|유가증권|유가물|전기차|전기자전거|전기철도|전기설비|전기공사|가스공사|가스안전|가스보일러|가스레인지/g;
+
 export function extractBenefitTags(text: string | null | undefined): BenefitTag[] {
   if (!text) return [];
+  // FP 제거 후 매칭 — 결합형 false positive 차단
+  text = text.replace(FP_PATTERNS_BENEFIT, " ");
   const found = new Set<BenefitTag>();
   if (/주거|임대|월세|주택|전세|보증금|공공임대|임차/.test(text)) found.add("주거");
   if (/의료|건강|병원|진료|건강검진|의료비|건강보험|치료/.test(text)) found.add("의료");
@@ -160,9 +167,9 @@ export function extractBenefitTags(text: string | null | undefined): BenefitTag[
   // "긴급지원"·"재난지원금"·"위기가구" 같은 표현이 정책명에 자주 나옴.
   // 이들은 모두 생계 지원 성격이라 별도 태그 X, 기존 "생계"에 합산.
   if (/생계|기초수급|차상위|생활비|긴급지원|긴급재난|긴급복지|위기가구|재난지원금|특별재난/.test(text)) found.add("생계");
-  // 2026-04-25 보강: 고유가·유가·기름값 — 유류세·유가환급·운송업 유류비 지원 등이
-  // "에너지" 정책 범주로 자주 나옴. 기존 "에너지" 태그에 흡수.
-  if (/에너지|전기|가스|난방|등유|연료|고유가|유가|유류|기름값|휘발유|경유/.test(text)) found.add("에너지");
+  // 2026-04-25 보강 v2: 정책 표현 폭넓게 + FP 단어는 위 FP_PATTERNS_BENEFIT 로 사전 제거.
+  // 전기료/난방/유류대 같이 실제 정책에 자주 쓰이는 합성어까지 흡수.
+  if (/에너지|전기료|전기비|전기세|전기요금|가스료|가스비|가스요금|난방비|난방료|난방 지원|연료비|등유 지원|등유 보조|고유가|국제유가|원유가|유류세|유류비|유류대|유류환급|기름값|석유가격|휘발유 (가격|값|보조|환급|지원|보전)|경유 (가격|값|보조|환급|지원|보전)/.test(text)) found.add("에너지");
   if (/교통|대중교통|버스|지하철|택시/.test(text)) found.add("교통");
   if (/장례|사망|장제/.test(text)) found.add("장례");
   if (/법률|변호|소송|조정/.test(text)) found.add("법률");

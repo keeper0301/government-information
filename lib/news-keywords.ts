@@ -59,19 +59,38 @@ const KEYWORD_PATTERNS: Array<{ label: string; re: RegExp }> = [
 
   // ━━━ Emergency·임시 (3) — 2026-04-25 추가. 핫토픽 트리거 ━━━
   // "고유가" 는 별도 라벨 (검색 의도가 명확). "에너지" 는 광범위 (전기·가스·난방 등).
-  // "긴급지원" 은 재난·위기 대응 정책 트리거 (금융위 긴급자금, 지자체 재난지원금 등).
-  { label: "고유가", re: /고유가|유가|유류비|휘발유|경유|기름값|석유가격/ },
-  { label: "에너지", re: /에너지요금|전기비|전기요금|가스비|난방비|등유|연료비/ },
+  // "긴급지원" 은 재난·위기 대응 정책 트리거.
+  //
+  // 2026-04-25 정밀화 v2: 정책 표현은 폭넓게 잡되, 명백한 false positive 단어는
+  // EXCLUDE 정규식으로 사전 제거. extractNewsKeywords() 가 매칭 전에 텍스트에서
+  // FP 단어를 빼고 검사. "사유가/이유가/자유가" (이유+가 결합), "군경유족" (참전유족),
+  // "유가증권/유가물" (금융 용어) 등 정책과 무관한 결합형 차단.
+  {
+    label: "고유가",
+    re: /고유가|국제유가|원유가|유류세|유류비|유류대|유류환급|유류 보조|유가 (상승|급등|폭등|환급|보조|지원|보전|대응)|기름값|석유가격|휘발유 (가격|값|보조|환급|지원|보전)|경유 (가격|값|보조|환급|지원|보전)/,
+  },
+  {
+    label: "에너지",
+    re: /에너지|전기료|전기비|전기세|전기요금|가스료|가스비|가스세|가스요금|난방비|난방료|연료비|등유 지원|등유 보조/,
+  },
   { label: "긴급지원", re: /긴급지원|긴급재난|긴급생계|긴급복지|위기가구|재난지원금|특별재난/ },
 ];
 
+// False positive 단어 집합 — 매칭 전에 텍스트에서 제거.
+// 이 단어들이 텍스트에 그대로 남아 있으면 키워드 정규식이 잘못 잡음.
+// 예: "사유가" 안의 "유가" 매칭 → "고유가" 태그 잘못 부착.
+const FP_PATTERNS = /사유가|이유가|자유가|행유가|소유가|연유가|군경유족|경유하|경유한|경유할|경유했|경유함|을 경유|를 경유|로 경유|유가증권|유가물|전기차|전기자전거|전기철도|전기설비|전기차량|전기공사|전기 안전|가스공사|가스안전|가스보일러|가스레인지|난방기구/g;
+
 // 제목 + 본문에서 키워드 추출. 중복 제거 + 표준 라벨.
+// FP_PATTERNS 단어는 매칭 전에 텍스트에서 제거 — 결합형 false positive 방지.
 export function extractNewsKeywords(texts: Array<string | null | undefined>): string[] {
   const blob = texts.filter(Boolean).join(" ");
   if (!blob) return [];
+  // FP 단어를 빈 문자열로 치환해서 정책 키워드 정규식이 오인하지 않게.
+  const cleaned = blob.replace(FP_PATTERNS, " ");
   const found = new Set<string>();
   for (const { label, re } of KEYWORD_PATTERNS) {
-    if (re.test(blob)) found.add(label);
+    if (re.test(cleaned)) found.add(label);
   }
   return Array.from(found);
 }
