@@ -104,9 +104,9 @@ export function HomeRecommendCard({ initial }: Props) {
   return (
     <div className="w-full">
       {/* HomeRecommendCard — 토스 TDS 풍 핵심 카드 (홈 hero 우측).
-          ring 제거 (토스는 ring 안 씀, background/그림자 차이로만 분리).
-          rounded-3xl(32px) + shadow-lg 단일 그림자로 떠있는 느낌만 표현. */}
-      <Card className="bg-white rounded-3xl p-6 shadow-lg gap-0 py-0">
+          rounded-3xl(32px) + shadow-lg + 매우 옅은 grey-100 ring 으로
+          흰 배경 위에서 카드 외곽 또렷하게. */}
+      <Card className="bg-white rounded-3xl p-6 shadow-lg ring-1 ring-grey-100 gap-0 py-0">
         <CardHeader className="px-0 pb-0 mb-5">
           <CardTitle className="text-[17px] font-bold tracking-[-0.3px] text-grey-900 leading-normal">
             나에게 맞는 정책 찾기
@@ -169,7 +169,7 @@ export function HomeRecommendCard({ initial }: Props) {
             <button
               type="button"
               onClick={() => setRegionExpanded(true)}
-              className="min-h-[44px] px-3 text-[13px] font-medium rounded-full border-none bg-transparent text-grey-600 hover:text-grey-700 hover:bg-grey-50 cursor-pointer transition-colors"
+              className="h-10 max-md:h-11 px-4 text-[14px] font-medium rounded-full border-0 bg-transparent text-grey-600 hover:text-grey-700 hover:bg-grey-50 cursor-pointer transition-all"
             >
               + 다른 지역 ({OTHER_REGIONS.length})
             </button>
@@ -255,7 +255,9 @@ function Field({
   );
 }
 
-// 단일 칩 (토글 버튼, aria-pressed 로 스크린리더에 선택 상태 전달)
+// 단일 칩 (토글 버튼, aria-pressed 로 스크린리더에 선택 상태 전달).
+// 데스크톱 h-10(40px) — 토스 풍 깔끔한 사이즈. 모바일은 h-11(44px) 으로
+// WCAG 터치 영역 권장(44x44) 충족. selected 칩에 미세한 blue glow.
 function Chip({
   label,
   selected,
@@ -270,10 +272,10 @@ function Chip({
       type="button"
       aria-pressed={selected}
       onClick={onClick}
-      className={`min-h-[44px] px-3.5 text-[13px] rounded-full border-none cursor-pointer transition-colors ${
+      className={`h-10 max-md:h-11 px-4 text-[14px] rounded-full border-0 cursor-pointer transition-all ${
         selected
-          ? "bg-blue-500 text-white font-semibold"
-          : "bg-grey-100 text-grey-800 font-medium hover:bg-grey-200"
+          ? "bg-blue-500 text-white font-semibold shadow-blue-glow"
+          : "bg-grey-100 text-grey-800 font-medium hover:bg-grey-200 active:bg-grey-300"
       }`}
     >
       {label}
