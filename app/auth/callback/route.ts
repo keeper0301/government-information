@@ -155,23 +155,28 @@ export async function GET(request: Request) {
     rawProvider === "email" ? "email_link" : (rawProvider ?? "");
 
   // ━━━ 온보딩 분기 ━━━
-  // next 파라미터가 명시되지 않은 (= 기본값 "/") 신규 사용자는
-  // 관심 분야 선택 권유 페이지로. 이미 골라뒀거나 명시 next 가 있으면 패스.
-  // CEO 리뷰 Q2: 권유 (스킵 가능, 미선택 시 전체 알림).
+  // next 파라미터가 명시되지 않은 (= 기본값 "/") 경우에만 온보딩 여부 확인.
+  // 명시적 next 가 있으면 사용자가 특정 페이지를 목적지로 로그인한 것이므로 방해 안 함.
+  //
+  // 판정 기준: user_profiles 행이 없거나 dismissed_onboarding_at 이 NULL
+  //   → 온보딩을 한 번도 완료(스킵 포함)하지 않은 사용자 → /onboarding 으로 우회.
   //
   // admin client 사용 — 위와 동일한 이유 (세션 쿠키 타이밍 문제 회피).
   if (user && next === "/") {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("user_profiles")
-      .select("interests")
+      .select("dismissed_onboarding_at")
       .eq("id", user.id)
       .maybeSingle();
-    const hasInterests =
-      Array.isArray(profile?.interests) && profile!.interests!.length > 0;
-    if (!hasInterests) {
+
+    // 프로필 행이 없거나 온보딩 완료 시각이 기록되지 않은 경우 → 첫 진입으로 판단
+    const hasCompletedOnboarding =
+      profile !== null && profile.dismissed_onboarding_at !== null;
+
+    if (!hasCompletedOnboarding) {
       return NextResponse.redirect(
-        appendAuthEvent(`${origin}/onboarding/topics`, authEventParam, authMethodParam),
+        appendAuthEvent(`${origin}/onboarding`, authEventParam, authMethodParam),
       );
     }
   }
