@@ -65,37 +65,19 @@ export function Nav({
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100">
       <div className="max-w-content mx-auto px-10 h-[58px] flex items-center justify-between max-md:px-5">
-        {/* 로고 — Editorial Masthead */}
+        {/* 로고 — 토스 풍 Pretendard 단어 마스트헤드.
+            "keepi" + 강조 "oo" (마지막 두 글자만 blue-500) — 사이트의 친근한
+            큐레이션·"keep" 의미를 살리면서 토스 가이드(단일 sans + 단어 강조)
+            패턴 따름. 부텍스트는 lg+ 에서만 옅은 grey 로 부가 표시. */}
         <Link
           href="/"
-          aria-label="keepioo · 정책알리미 홈으로"
-          className="flex items-center gap-2.5 no-underline"
-          style={{ fontFamily: "'Bodoni Moda', 'Didot', 'Playfair Display', Georgia, serif" }}
+          aria-label="keepioo 정책알리미 홈으로"
+          className="flex items-baseline gap-2.5 no-underline"
         >
-          <span
-            className="italic font-normal text-grey-900"
-            style={{ fontSize: "26px", letterSpacing: "-0.9px", lineHeight: 1 }}
-          >
-            keepioo
+          <span className="font-extrabold text-[26px] tracking-[-0.04em] leading-none text-grey-900">
+            keepi<span className="text-blue-500">oo</span>
           </span>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 6, height: 6, borderRadius: "50%",
-              background: "#8A2A2A", display: "inline-block", marginTop: 4,
-            }}
-          />
-          {/* 메뉴가 5개로 줄어 lg(1024) 부터 한글 부텍스트 노출 가능
-              (이전 11개 메뉴 시절엔 2xl 이상에서만 노출했던 제약 해제) */}
-          <span
-            className="hidden lg:inline-block text-grey-900"
-            style={{
-              fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
-              fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px",
-              borderLeft: "0.5px solid rgba(14,11,8,0.35)",
-              paddingLeft: "10px", marginLeft: "2px",
-            }}
-          >
+          <span className="hidden lg:inline-block text-[13px] font-semibold text-grey-500 tracking-[-0.01em] pl-2.5 border-l border-grey-200">
             정책알리미
           </span>
         </Link>
@@ -120,8 +102,7 @@ export function Nav({
                 {active && (
                   <span
                     aria-hidden="true"
-                    className="absolute left-3 right-3 xl:left-4 xl:right-4 bottom-1.5 h-[2px] rounded-full"
-                    style={{ background: "#8A2A2A" }}
+                    className="absolute left-3 right-3 xl:left-4 xl:right-4 bottom-1.5 h-[2px] rounded-full bg-blue-500"
                   />
                 )}
               </Link>
@@ -245,8 +226,7 @@ function MobileMenuItem({
         {active && (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
-            style={{ background: "#8A2A2A" }}
+            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-blue-500"
           />
         )}
       </a>

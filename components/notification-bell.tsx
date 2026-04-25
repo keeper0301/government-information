@@ -49,8 +49,7 @@ export function NotificationBell({ loggedIn, count }: Props) {
       {count > 0 && (
         <span
           aria-hidden="true"
-          className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 grid place-items-center rounded-full text-white text-[10px] font-bold leading-none"
-          style={{ background: "#8A2A2A" }}
+          className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 grid place-items-center rounded-full bg-blue-500 text-white text-[10px] font-bold leading-none"
         >
           {count > 99 ? "99+" : count}
         </span>

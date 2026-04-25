@@ -32,31 +32,12 @@ export function Footer() {
   return (
     <footer className="max-w-content mx-auto px-10 pt-12 pb-[60px] max-md:px-6 max-md:pt-10 max-md:pb-12">
       <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-4">
-        {/* Editorial Masthead 컴팩트 */}
-        <div className="flex items-center gap-2.5">
-          <span
-            className="italic text-grey-800"
-            style={{
-              fontFamily: "'Bodoni Moda', 'Didot', 'Playfair Display', Georgia, serif",
-              fontSize: "22px", fontWeight: 400, letterSpacing: "-0.7px",
-            }}
-          >
-            keepioo
+        {/* 푸터 마스트헤드 — 헤더와 동일한 토스 풍 단어 강조 (compact) */}
+        <div className="flex items-baseline gap-2.5">
+          <span className="font-extrabold text-[22px] tracking-[-0.04em] leading-none text-grey-800">
+            keepi<span className="text-blue-500">oo</span>
           </span>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 5, height: 5, borderRadius: "50%",
-              background: "#8A2A2A", display: "inline-block", marginTop: 4,
-            }}
-          />
-          <span
-            className="text-grey-800"
-            style={{
-              fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
-              fontSize: "12px", fontWeight: 700, letterSpacing: "1.5px",
-            }}
-          >
+          <span className="text-[12px] font-semibold text-grey-500 tracking-[-0.01em]">
             정책알리미
           </span>
         </div>
@@ -73,35 +54,32 @@ export function Footer() {
         </div>
       </div>
 
-      {/* 데이터 출처 + 공공누리 라이선스 */}
-      <div
-        className="text-[13px] text-grey-600 leading-[1.7] mb-6"
-        style={{ fontFamily: "'EB Garamond', Georgia, serif", fontStyle: "italic" }}
-      >
-        <span style={{ color: "#3D2F22" }}>
-          Curating Korea&apos;s public benefits since 2026.
-        </span>
-        <br />
-        <span className="not-italic font-sans">
+      {/* 데이터 출처 + 공공누리 라이선스 — Pretendard 단일 톤
+          (이전 EB Garamond italic catchline 폐기, 한국어 한 줄로 정체성 표현) */}
+      <div className="text-[13px] text-grey-600 leading-[1.7] mb-6">
+        <p className="text-grey-700 font-medium mb-2">
+          매일 새 정부 정책을 큐레이션해서 알려드려요.
+        </p>
+        <p>
           데이터 출처: 보조금24(행정안전부) · 복지로 · 기업마당 · 소상공인진흥공단
           · 온통청년 · 공공데이터포털
-          <br />
+        </p>
+        <p>
           본 서비스는 정보 안내 목적이며, 실제 신청은 각 기관 공식 사이트에서 진행됩니다.
-          <br />
-          {/* 공공누리 KOGL-Type1 의무 표기 — news_posts 에 저장된 korea.kr 뉴스 활용분 */}
-          <span className="text-grey-700">
-            정책 뉴스 섹션의 본문·썸네일은{" "}
-            <a
-              href="https://www.korea.kr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-grey-900"
-            >
-              정책브리핑(korea.kr)
-            </a>
-            의 자료를 공공누리 제1유형(KOGL-Type1, 출처표시·상업이용·변형 허용) 으로 활용합니다.
-          </span>
-        </span>
+        </p>
+        {/* 공공누리 KOGL-Type1 의무 표기 — news_posts 에 저장된 korea.kr 뉴스 활용분 */}
+        <p className="text-grey-700 mt-1">
+          정책 뉴스 섹션의 본문·썸네일은{" "}
+          <a
+            href="https://www.korea.kr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-grey-900"
+          >
+            정책브리핑(korea.kr)
+          </a>
+          의 자료를 공공누리 제1유형(KOGL-Type1, 출처표시·상업이용·변형 허용) 으로 활용합니다.
+        </p>
       </div>
 
       {/* 사업자 정보 — 전자상거래법 제13조 (신원정보) 표시 의무 */}

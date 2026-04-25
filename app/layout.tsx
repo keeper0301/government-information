@@ -10,10 +10,9 @@ import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import "./globals.css";
-// 주의: shadcn init 이 자동 주입한 Geist 폰트는 제거함.
-// keepioo 는 Editorial Masthead (Bodoni Moda + Nanum Myeongjo + Noto Serif) 가
-// 브랜드 정체성이라 sans-serif 폰트 강제 도입은 금지. shadcn 컴포넌트(ui/button 등)
-// 는 글로벌 폰트 의존도가 낮아 Editorial Masthead 와 공존 가능.
+// 폰트는 Pretendard Variable 단일 (globals.css 의 CDN import).
+// 2026-04-25 친근한 핀테크 톤 리뉴얼로 Editorial(Bodoni·EB Garamond·
+// Nanum Myeongjo) 폰트군은 폐기. 토스 TDS 처럼 단일 sans 가 일관됨.
 
 export const metadata: Metadata = {
   title: "keepioo · 정책알리미 — 한국의 공공 지원제도 큐레이션",
@@ -60,9 +59,9 @@ export const metadata: Metadata = {
   // Next.js 16: app/icon.svg / apple-icon.svg / manifest.ts 는 자동 감지.
 };
 
-// 테마 컬러 (브랜드 ink black) — 새 viewport export 경로
+// 테마 컬러 — 토스 grey900 (모바일 브라우저 상단 색)
 export const viewport = {
-  themeColor: "#0E0B08",
+  themeColor: "#191F28",
 };
 
 export default async function RootLayout({
@@ -102,13 +101,6 @@ export default async function RootLayout({
             crossOrigin="anonymous"
           />
         )}
-        {/* 브랜드 폰트 (Editorial Masthead 로고·헤더 전용) */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,700;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Nanum+Myeongjo:wght@400;700;800&display=swap"
-        />
       </head>
       <body>
         <WebSiteSchema

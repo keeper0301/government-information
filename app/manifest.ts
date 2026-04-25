@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "한국의 정부·지자체 공공 지원제도를 큐레이션해 이메일·알림톡으로 전달합니다.",
     start_url: "/",
     display: "standalone",
-    background_color: "#F5EEDC",
-    theme_color: "#0E0B08",
+    background_color: "#FFFFFF",
+    theme_color: "#191F28",
     lang: "ko-KR",
     icons: [
       {

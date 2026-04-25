@@ -1,22 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 48" width="260" height="48">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48" width="280" height="48">
   <!-- ═══════════════════════════════════════════════════════════════
-       keepioo Compact Lockup · Editorial
+       keepioo Compact Lockup · Pretendard (토스 TDS 풍)
        사용처: Nav bar (58px 높이), footer, 이메일 헤더.
-       Single rule + 이탤릭 워드마크 + 버건디 dot. 한글 부텍스트 inline.
+       헤더와 동일한 'keepi' + 'oo' 색 분리 + 부텍스트 정책알리미
        ═══════════════════════════════════════════════════════════════ -->
 
-  <!-- 이탤릭 세리프 'keepioo' — 주 워드마크 -->
-  <text x="0" y="30" font-family="'Bodoni Moda','Didot','Playfair Display',Georgia,serif"
-        font-size="30" font-weight="400" fill="#0E0B08"
-        letter-spacing="-1.2" font-style="italic">keepioo</text>
-
-  <!-- 버건디 dot — Masthead ornament 의 최소 표현 -->
-  <circle cx="142" cy="20" r="3.5" fill="#8A2A2A"/>
+  <text x="0" y="32"
+        font-family="'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif"
+        font-size="32" font-weight="800" letter-spacing="-1.2">
+    <tspan fill="#191F28">keepi</tspan><tspan fill="#3182F6">oo</tspan>
+  </text>
 
   <!-- 얇은 vertical divider -->
-  <line x1="156" y1="8" x2="156" y2="34" stroke="#0E0B08" stroke-width="0.6" opacity="0.4"/>
+  <line x1="158" y1="14" x2="158" y2="34" stroke="#E5E8EB" stroke-width="1"/>
 
   <!-- 한글 부텍스트 -->
-  <text x="168" y="28" font-family="'Nanum Myeongjo','Noto Serif KR',serif"
-        font-size="14" font-weight="700" fill="#0E0B08" letter-spacing="2.5">정책알리미</text>
+  <text x="170" y="30"
+        font-family="'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif"
+        font-size="13" font-weight="600" fill="#8B95A1" letter-spacing="-0.2">정책알리미</text>
 </svg>

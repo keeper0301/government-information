@@ -21,21 +21,22 @@ const buttonVariants = cva(
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
-      // 사이즈 — 핀테크 톤(통통한 버튼) default 를 h-10 으로 키움
+      // 사이즈 — 토스 TDS 풍 (통통하고 큼지막한 버튼)
+      // 기본 h-10·일반 h-11·큰 h-12·hero h-14 의 4단 + xs/sm 보조
       size: {
         default:
-          "h-10 gap-2 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
+          "h-10 gap-2 px-4 text-[14px] has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-8 gap-1.5 rounded-[min(var(--radius-md),12px)] px-3 text-[13px] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-11 gap-2 px-5 text-[15px] has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4",
-        // xl — Hero CTA 용 큼직한 버튼 (검색 확정·추천 받기 등)
-        xl: "h-12 gap-2 px-6 text-[15px] font-semibold has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5",
+        lg: "h-12 gap-2 px-5 text-[15px] font-semibold has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4",
+        // xl — 토스 메인 CTA 풍 큼직한 버튼 (Hero 검색·추천 받기·결제 등)
+        xl: "h-14 gap-2 px-7 text-[17px] font-bold rounded-2xl has-data-[icon=inline-end]:pr-6 has-data-[icon=inline-start]:pl-6",
         icon: "size-10",
         "icon-xs":
           "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
         "icon-sm":
           "size-8 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-11",
+        "icon-lg": "size-12",
       },
     },
     defaultVariants: {

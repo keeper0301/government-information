@@ -1,15 +1,17 @@
 import type { Config } from "tailwindcss";
 
 // ============================================================
-// keepioo 디자인 토큰 (2026-04-25 친근한 핀테크 톤 리뉴얼)
+// keepioo 디자인 토큰 — Toss Design System (TDS) 정확화
 // ============================================================
-// 변경 핵심:
-// 1. blue 팔레트: 기존 burgundy alias → 진짜 토스 풍 블루(#3182F6)
-//    → 코드 안 226곳의 bg-blue-* / text-blue-* 가 한 번에 자동 전환됨
-// 2. grey 팔레트: 따뜻한 brown tint → cool grey (토스 grey 와 동일 톤)
-// 3. cream / burgundy / sepia 별칭은 값만 새 톤에 매핑 (기존 사용처 안 깨지게)
-// 4. 모서리(borderRadius): 8 / 12 / 16 / 20 / 24 (둥글둥글하게)
-// 5. 그림자(boxShadow): 2 레이어로 "푹신함" 표현
+// 2026-04-25 토스 TDS 가이드 (https://tossmini-docs.toss.im/tds-mobile/foundation/)
+// 정확한 hex 값으로 재정렬. 단계 1~3 의 토스 풍 방향은 유지하되
+// 임의 추정값(Tailwind 기본 blue)을 토스 공식 팔레트로 교체.
+//
+// 핵심 통찰:
+// - Blue 50 = #e8f3ff (cool tone 더 강조)
+// - Grey 단계는 100% 토스와 동일
+// - Background 시맨틱: white / greyBackground(#f2f4f6) / floated / layered
+// - 카드 분리는 ring 보다 background 차이 + 그림자로
 // ============================================================
 
 const config: Config = {
@@ -22,33 +24,27 @@ const config: Config = {
     extend: {
       colors: {
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // Brand Primary — 토스 풍 블루 (Pop Blue)
+        // Brand Primary — 토스 공식 Blue (10단계 정확값)
+        // 출처: @toss/tds-colors 공식 팔레트
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 기존 코드의 `bg-blue-500` 등이 자동으로 새 블루로 전환됨.
-        // 이름이 `blue` 인 게 이번엔 의미와도 정합 (이전엔 burgundy 였음).
         blue: {
-          50:  "#EFF6FF",  // hover bg, 옅은 정보 띠
-          100: "#DBEAFE",  // 카드 highlight, 칩 배경
-          200: "#BFDBFE",  // 보조 강조
-          400: "#60A5FA",  // hover light
-          500: "#3182F6",  // ★ primary — CTA 버튼·로고 dot·링크
-          600: "#1B64DA",  // hover
-          700: "#1949B0",  // active
-          800: "#14397A",  // pressed
+          50:  "#E8F3FF",
+          100: "#C9E2FF",
+          200: "#90C2FF",
+          300: "#64A8FF",
+          400: "#4593FC",
+          500: "#3182F6",  // ★ primary
+          600: "#2272EB",
+          700: "#1B64DA",
+          800: "#1957C2",
+          900: "#194AA6",
         },
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // Neutral — Cool Grey (토스 grey 와 동일 단계)
+        // Neutral — 토스 공식 Grey (10단계 정확값)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // WCAG AA 대비 (흰 배경 #FFF 기준):
-        //   400 — 2.4:1  (placeholder/disabled 전용, 본문 금지)
-        //   500 — 4.5:1 ✅ (작은 본문 AA 통과)
-        //   600 — 6.0:1 ✅
-        //   700 — 8.7:1 ✅
-        //   800 — 12 :1 ✅
-        //   900 — 17 :1 ✅
         grey: {
           50:  "#F9FAFB",
-          100: "#F2F4F6",
+          100: "#F2F4F6",  // greyBackground (페이지 회색 배경)
           200: "#E5E8EB",
           300: "#D1D6DB",
           400: "#B0B8C1",
@@ -61,22 +57,22 @@ const config: Config = {
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // 별칭(legacy alias) — 기존 사용처 자동 전환용
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 의미는 옛 톤이지만 값만 새 톤에 매핑해서 코드가 안 깨지게.
-        // 차후 별도 작업으로 명칭 자체를 정리할 예정.
-        cream:    "#F9FAFB",  // (구) 페이퍼 크림 → 새 grey-50
-        burgundy: "#3182F6",  // (구) 버건디 → 새 blue-500
-        sepia:    "#4E5968",  // (구) 세피아 → 새 grey-700
+        cream:    "#F9FAFB",
+        burgundy: "#3182F6",
+        sepia:    "#4E5968",
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 상태 컬러 — 토스 풍으로 채도 살짝 ↑
+        // 상태 컬러 — 토스 공식 값 (Red/Orange/Green/Yellow/Purple/Teal)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        red:    "#F04452",  // 마감 임박, 에러
-        orange: "#FF9500",  // 주의, 경고
-        green:  "#2BA471",  // 성공, 진행 중
-        purple: "#8B5FBF",
+        red:    "#F04452",  // 토스 red500 — 마감 임박, 에러
+        orange: "#FE9800",  // 토스 orange500 — 주의, 경고
+        green:  "#03B26C",  // 토스 green500 — 성공, 진행 중
+        yellow: "#FFC342",  // 토스 yellow500 — 부가 정보
+        purple: "#A234C7",  // 토스 purple500 — 정책자료(NewsCard) 등
+        teal:   "#18A5A5",  // 토스 teal500 — 보조
       },
       fontFamily: {
-        // 본문·헤더·로고 모두 단일 Pretendard 로 통일
-        // (editorial serif 사용 정책은 globals.css 에서 폐기)
+        // 토스는 Toss Product Sans 사용 (배포 불가 폰트), 웹은 Pretendard 가
+        // 가장 가까운 대체. 본문·헤더·로고 모두 단일 Pretendard 통일.
         pretendard: [
           "Pretendard Variable",
           "Pretendard",
@@ -90,33 +86,41 @@ const config: Config = {
         ],
       },
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // Border Radius — 통통하게 (핀테크 톤의 핵심 1)
+      // Border Radius — 토스 풍 통통한 모서리
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 토스 패턴: 작은 칩 8/12, 일반 카드 16~20, 큰 카드 24~32, hero 32~48
       borderRadius: {
-        sm:  "8px",
-        md:  "12px",
-        lg:  "16px",
-        xl:  "20px",
-        "2xl": "24px",  // 큰 카드용 (BlogCard, NewsCard 등)
-        "3xl": "32px",  // Hero 박스, HomeRecommendCard
+        sm:   "8px",
+        md:   "12px",
+        lg:   "16px",
+        xl:   "20px",
+        "2xl": "24px",
+        "3xl": "32px",   // 큰 카드 (HomeRecommendCard, BlogCard)
+        "4xl": "40px",   // hero 박스, 매우 큰 카드
       },
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // Box Shadow — 2 레이어로 "푹신함" 표현 (핀테크 톤의 핵심 2)
+      // Box Shadow — 토스식 가벼운 그림자 (ring 대신 그림자로 분리)
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 기존 단일 레이어 0.04 알파 → 가까운 짧은 그림자 + 먼 긴 그림자 합성
-      // 으로 카드가 진짜 떠 있는 느낌을 줌.
+      // 토스는 매우 가벼운 그림자 + 큰 모서리 + 배경 톤 차이로 깊이 표현.
+      // 이전 단계1 의 2레이어 stripe 풍 → 토스 풍 단순한 single layer + 옵션
+      // 으로 재정렬. shadow-md 가 카드 기본, shadow-lg 가 hover/floated.
       boxShadow: {
-        sm: "0 1px 2px rgba(17, 24, 39, 0.04)",
+        sm:  "0 1px 2px rgba(17, 24, 39, 0.04)",
         DEFAULT:
-          "0 4px 12px rgba(17, 24, 39, 0.06), 0 1px 3px rgba(17, 24, 39, 0.05)",
+          "0 2px 8px rgba(17, 24, 39, 0.06)",
         md:
-          "0 4px 12px rgba(17, 24, 39, 0.06), 0 1px 3px rgba(17, 24, 39, 0.05)",
+          "0 4px 16px rgba(17, 24, 39, 0.06)",
         lg:
-          "0 8px 24px rgba(17, 24, 39, 0.08), 0 2px 6px rgba(17, 24, 39, 0.06)",
+          "0 8px 24px rgba(17, 24, 39, 0.08)",
         xl:
-          "0 16px 40px rgba(17, 24, 39, 0.10), 0 4px 8px rgba(17, 24, 39, 0.06)",
+          "0 16px 40px rgba(17, 24, 39, 0.10)",
         "2xl":
-          "0 24px 56px rgba(17, 24, 39, 0.12), 0 6px 12px rgba(17, 24, 39, 0.08)",
+          "0 24px 56px rgba(17, 24, 39, 0.12)",
+        // 토스 시그니처 blue glow — 주요 CTA 버튼용
+        "blue-glow":
+          "0 4px 14px rgba(49, 130, 246, 0.32)",
+        "blue-glow-lg":
+          "0 8px 24px rgba(49, 130, 246, 0.42)",
       },
       maxWidth: {
         content: "1140px",

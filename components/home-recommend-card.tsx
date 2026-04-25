@@ -103,10 +103,10 @@ export function HomeRecommendCard({ initial }: Props) {
 
   return (
     <div className="w-full">
-      {/* HomeRecommendCard — 핀테크 톤 핵심 카드 (홈 hero 우측).
-          rounded-3xl(32px) + shadow-lg + 옅은 blue ring 으로 페이지 안에서
-          가장 떠 있는 느낌. 다른 카드(BlogCard 등) 보다 한 단계 더 강조. */}
-      <Card className="bg-white border border-grey-100 rounded-3xl p-6 shadow-lg ring-1 ring-blue-100/70 gap-0 py-0">
+      {/* HomeRecommendCard — 토스 TDS 풍 핵심 카드 (홈 hero 우측).
+          ring 제거 (토스는 ring 안 씀, background/그림자 차이로만 분리).
+          rounded-3xl(32px) + shadow-lg 단일 그림자로 떠있는 느낌만 표현. */}
+      <Card className="bg-white border border-grey-100 rounded-3xl p-6 shadow-lg gap-0 py-0">
         <CardHeader className="px-0 pb-0 mb-5">
           <CardTitle className="text-[17px] font-bold tracking-[-0.3px] text-grey-900 leading-normal">
             나에게 맞는 정책 찾기
@@ -192,9 +192,9 @@ export function HomeRecommendCard({ initial }: Props) {
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || submitting}
-          className={`group w-full min-h-[52px] text-[15px] font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+          className={`group w-full min-h-[56px] text-[17px] font-bold rounded-2xl border-none cursor-pointer transition-all flex items-center justify-center gap-2 ${
             canSubmit && !submitting
-              ? "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_4px_14px_rgba(49,130,246,0.32)] hover:shadow-[0_6px_20px_rgba(49,130,246,0.42)] active:scale-[0.98]"
+              ? "bg-blue-500 text-white hover:bg-blue-600 shadow-blue-glow hover:shadow-blue-glow-lg active:scale-[0.98]"
               : "bg-grey-100 text-grey-500 cursor-not-allowed"
           }`}
         >

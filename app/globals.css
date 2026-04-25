@@ -14,34 +14,33 @@ html {
 }
 
 /* ============================================================
-   Body — 화이트 배경 + cool grey 텍스트 (친근한 핀테크 톤)
+   Body — 토스 TDS 풍 (white 배경 + cool grey 잉크 + 본문 line-height)
    ============================================================
-   기존 크림(#FAF8F4) 배경 → 흰색으로 교체.
-   카드와 본문 구분은 카드 그림자로 표현 (단계 3 에서 카드 톤도 갱신).
+   토스 기본 본문: Typography 5 = 17px / line 25.5 (1.5 배수).
+   페이지 배경 흰색 + 섹션별 grey-50/100 띠로 분리.
    ============================================================ */
 body {
   font-family: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", sans-serif;
-  color: #191F28;         /* 새 grey-900 (cool grey 잉크) */
-  background: #FFFFFF;    /* 흰색 — 섹션별 grey-50 띠는 페이지가 직접 wrap */
+  color: #191F28;             /* 토스 grey900 (cool grey 잉크) */
+  background: #FFFFFF;
+  line-height: 1.5;           /* 토스 기본 비율 (Typography 5: 17/25.5) */
 }
 
 /* ============================================================
    Typography — Pretendard 단일 (editorial serif 정책 폐기)
    ============================================================
-   사이트 전체를 Pretendard 하나로 통일.
-   위계는 weight · letter-spacing · size 만으로 표현.
-   editorial-italic / editorial-num / editorial-smallcaps 는 폐기됨
-   (단계 2 에서 잔여 사용처 — calendar / feature-grid — 픽스 예정).
+   토스는 weight · size · letter-spacing 만으로 위계 표현.
+   한글은 영문보다 더 타이트한 tracking 이 자연스러움 (-0.03em ~ -0.04em).
    ============================================================ */
 h1, h2, h3 {
-  color: #191F28;              /* 새 grey-900 */
-  letter-spacing: -0.025em;
+  color: #191F28;
+  letter-spacing: -0.03em;
 }
-h1 { letter-spacing: -0.04em;  font-weight: 800; }
-h2 { letter-spacing: -0.028em; font-weight: 800; }
-h3 { letter-spacing: -0.02em;  font-weight: 700; }
+h1 { letter-spacing: -0.04em;  font-weight: 800; }     /* Typography 1: 30/40 매우 큰 제목 */
+h2 { letter-spacing: -0.035em; font-weight: 800; }    /* Typography 2: 26/35 큰 제목 */
+h3 { letter-spacing: -0.025em; font-weight: 700; }    /* Typography 3: 22/31 일반 제목 */
 
 /* ============================================================
    Focus ring — 새 토스 블루
@@ -115,12 +114,12 @@ a:active {
   text-decoration: underline;
 }
 .blog-content blockquote {
-  border-left: 3px solid #3182F6;   /* (구) 버건디 → 새 blue */
+  border-left: 3px solid #3182F6;   /* 토스 blue500 */
   padding: 10px 16px;
   margin: 18px 0;
-  background: #EFF6FF;              /* (구) 옅은 핑크크림 → 새 blue-50 */
-  border-radius: 8px;
-  color: #4E5968;                   /* (구) sepia → 새 grey-700 */
+  background: #E8F3FF;              /* 토스 blue50 정확값 */
+  border-radius: 12px;
+  color: #4E5968;                   /* 토스 grey700 */
 }
 .blog-content table {
   width: 100%;
@@ -261,7 +260,7 @@ a:active {
   --muted-foreground: oklch(0.555 0.014 247);      /* 새 grey-500 */
   --accent: oklch(0.965 0.005 247);
   --accent-foreground: oklch(0.355 0.018 247);
-  --destructive: oklch(0.625 0.230 22);            /* 새 red #F04452 근사 */
+  --destructive: oklch(0.620 0.210 22);            /* 토스 red500 #F04452 정확값 */
   --border: oklch(0.91 0.005 247);                 /* 새 grey-200 #E5E8EB */
   --input: oklch(0.91 0.005 247);
   --ring: oklch(0.62 0.18 256);                    /* primary 와 동일 톤 */
