@@ -1,142 +1,146 @@
 // ============================================================
-// 사이트 루트 기본 OG 이미지 (1200 × 630)
+// 사이트 루트 기본 OG 이미지 (1200 × 630) — 토스 TDS 풍
 // ============================================================
-// Editorial Masthead 브랜드 톤을 OG에 이식. 블로그 글에는
-// app/blog/[slug]/opengraph-image.tsx 가 글별 이미지를 생성하므로
-// 이 이미지는 루트(/)·정적 페이지들의 기본값.
+// 흰 배경 + Pretendard 단일 + "keepi[oo]" 워드마크 색 분리 +
+// Hero 카피 노출. SNS 공유 (카톡·트위터·페북) 미리보기 카드.
 // ============================================================
 
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-export const runtime = "edge";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "keepioo · 정책알리미 — 한국의 공공 지원제도를 큐레이션합니다";
+export const alt = "keepioo · 정책알리미 — 숨겨진 정부 혜택, 30초 만에 찾아드릴게요";
+
+// Pretendard 폰트 — 모듈 스코프 캐시로 cold start 이후 디스크 I/O 1회만
+let fontDataPromise: Promise<Buffer> | null = null;
+function loadFontData(): Promise<Buffer> {
+  if (!fontDataPromise) {
+    fontDataPromise = readFile(
+      join(process.cwd(), "assets/Pretendard-Bold.woff"),
+    );
+  }
+  return fontDataPromise;
+}
 
 export default async function OpengraphImage() {
+  const fontData = await loadFontData();
+
   return new ImageResponse(
     (
       <div
         style={{
           width: "100%",
           height: "100%",
-          background:
-            "radial-gradient(ellipse at 50% 40%, #F5EEDC 0%, #E8DFC6 100%)",
+          background: "#FFFFFF",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          padding: "72px 80px",
-          fontFamily: "serif",
-          color: "#0E0B08",
+          padding: "88px 96px",
+          fontFamily: "Pretendard",
+          color: "#191F28",
           position: "relative",
         }}
       >
-        {/* 상단 이중 rule */}
+        {/* 상단: 워드마크 + 부텍스트 한 줄 */}
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            gap: 5,
-          }}
-        >
-          <div style={{ height: 1, background: "#0E0B08" }} />
-          <div style={{ height: 3, background: "#0E0B08" }} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 20,
-              letterSpacing: 8,
-              fontVariant: "small-caps",
-              color: "#3D2F22",
-              marginTop: 18,
-              textTransform: "uppercase",
-            }}
-          >
-            <span>EST · MMXXVI · SEOUL</span>
-            <span>NO · Ⅰ</span>
-          </div>
-        </div>
-
-        {/* 중앙 거대 이탤릭 워드마크 */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
+            alignItems: "baseline",
+            gap: 18,
           }}
         >
           <div
             style={{
-              fontSize: 240,
-              fontStyle: "italic",
-              fontWeight: 400,
-              letterSpacing: -10,
-              lineHeight: 1,
-              color: "#0E0B08",
+              fontSize: 52,
+              fontWeight: 800,
+              letterSpacing: -2,
+              display: "flex",
             }}
           >
-            keepioo
+            <span style={{ color: "#191F28" }}>keepi</span>
+            <span style={{ color: "#3182F6" }}>oo</span>
           </div>
           <div
             style={{
-              marginTop: 34,
-              display: "flex",
-              alignItems: "center",
-              gap: 18,
-              fontSize: 30,
-              color: "#0E0B08",
-              letterSpacing: 8,
-            }}
-          >
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                background: "#8A2A2A",
-                transform: "rotate(45deg)",
-              }}
-            />
-            <span>정 책 알 리 미</span>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                background: "#8A2A2A",
-                transform: "rotate(45deg)",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* 하단 이중 rule + 캡션 */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 5,
-          }}
-        >
-          <div style={{ height: 3, background: "#0E0B08" }} />
-          <div style={{ height: 1, background: "#0E0B08" }} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
               fontSize: 22,
-              fontStyle: "italic",
-              color: "#3D2F22",
-              marginTop: 18,
+              fontWeight: 700,
+              color: "#8B95A1",
+              letterSpacing: 0.5,
+              paddingLeft: 16,
+              borderLeft: "2px solid #E5E8EB",
+              alignSelf: "center",
             }}
           >
-            <span>Curating Korea&apos;s public benefits since 2026.</span>
-            <span style={{ color: "#8A2A2A", fontSize: 26 }}>♦</span>
+            정책알리미
           </div>
+        </div>
+
+        {/* 가운데: 큰 헤드라인 카피 (Hero 와 동일 톤) */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            marginTop: 40,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 96,
+              fontWeight: 800,
+              lineHeight: 1.2,
+              letterSpacing: -4,
+              color: "#191F28",
+              wordBreak: "keep-all",
+            }}
+          >
+            숨겨진 정부 혜택,
+          </div>
+          <div
+            style={{
+              fontSize: 96,
+              fontWeight: 800,
+              lineHeight: 1.2,
+              letterSpacing: -4,
+              color: "#191F28",
+              wordBreak: "keep-all",
+              marginTop: 8,
+            }}
+          >
+            30초 만에 찾아드릴게요
+          </div>
+        </div>
+
+        {/* 하단: 데이터 출처 + 도메인 */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: 24,
+            color: "#8B95A1",
+            fontWeight: 600,
+            paddingTop: 32,
+            borderTop: "1px solid #E5E8EB",
+          }}
+        >
+          <span>복지로 · 소상공인24 · 금융위원회 데이터</span>
+          <span style={{ color: "#3182F6" }}>keepioo.com</span>
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [
+        {
+          name: "Pretendard",
+          data: fontData,
+          style: "normal",
+          weight: 700,
+        },
+      ],
+    },
   );
 }

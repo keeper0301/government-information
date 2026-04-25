@@ -33,15 +33,15 @@ function loadFontData(): Promise<Buffer> {
   return fontDataPromise;
 }
 
-// 카테고리별 색상 (홈·블로그 인덱스 와 통일)
+// 카테고리별 색상 — 토스 TDS 공식 팔레트 정확값
 const CATEGORY_COLORS: Record<string, string> = {
-  청년: "#3182f6",
-  소상공인: "#7C3AED",
-  주거: "#059669",
-  "육아·가족": "#EC4899",
-  노년: "#F59E0B",
-  "학생·교육": "#06B6D4",
-  큐레이션: "#6B7280",
+  청년: "#3182F6",        // blue500
+  소상공인: "#A234C7",    // purple500
+  주거: "#03B26C",        // green500
+  "육아·가족": "#EC4899", // pink (토스 팔레트 외 — 카테고리 식별용 유지)
+  노년: "#FE9800",        // orange500
+  "학생·교육": "#18A5A5", // teal500
+  큐레이션: "#6B7684",    // grey600
 };
 
 // slug 한글 디코드 (Next.js 16 percent-encoded params 대응). 비정상 인코딩 (CP949 등)
@@ -75,7 +75,7 @@ export default async function Image({
 
   const title = post?.title || "정책알리미";
   const category = post?.category || "정책 가이드";
-  const color = CATEGORY_COLORS[category] || "#3182f6";
+  const color = CATEGORY_COLORS[category] || "#3182F6";
 
   // Pretendard 폰트 — 프로젝트 루트의 assets/ 에서 정적 로드
   // (이전엔 매 요청마다 jsdelivr CDN fetch → 외부 의존 제거 + 디스크 I/O 1회 캐시)
@@ -124,14 +124,14 @@ export default async function Image({
           {category}
         </div>
 
-        {/* 제목 — 줄바꿈은 satori 가 자동 처리 */}
+        {/* 제목 — 줄바꿈은 satori 가 자동 처리. 토스 풍 타이트 letter-spacing */}
         <div
           style={{
             fontSize: title.length > 35 ? 56 : 64,
             fontWeight: 800,
-            color: "#191f28",
-            lineHeight: 1.25,
-            letterSpacing: "-1.5px",
+            color: "#191F28",
+            lineHeight: 1.2,
+            letterSpacing: "-2px",
             flex: 1,
             display: "flex",
             alignItems: "center",
