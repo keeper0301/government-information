@@ -6,6 +6,7 @@ import {
   PRIVACY_POLICY_VERSION,
   TERMS_VERSION,
 } from "@/lib/consent";
+import type { IncomeOption, HouseholdOption } from "@/lib/profile-options";
 import { ProfileForm } from "./profile-form";
 import { ConsentsPanel } from "./consents-panel";
 import { WithdrawSection } from "./withdraw-section";
@@ -36,7 +37,7 @@ export default async function MyPage() {
   const [{ data: profile }, consents] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("age_group, region, district, occupation, interests")
+      .select("age_group, region, district, occupation, interests, income_level, household_types")
       .eq("id", user.id)
       .maybeSingle(),
     getUserConsents(user.id),
@@ -71,6 +72,8 @@ export default async function MyPage() {
           district: profile?.district ?? null,
           occupation: profile?.occupation ?? null,
           interests: profile?.interests ?? [],
+          income_level: (profile?.income_level ?? null) as IncomeOption | null,
+          household_types: (profile?.household_types ?? []) as HouseholdOption[],
         }}
       />
 

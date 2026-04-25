@@ -7,8 +7,13 @@ import {
   AGE_OPTIONS,
   REGION_OPTIONS,
   OCCUPATION_OPTIONS,
+  INCOME_OPTIONS,
+  HOUSEHOLD_OPTIONS,
   getDistrictsForRegion,
+  type IncomeOption,
+  type HouseholdOption,
 } from "@/lib/profile-options";
+import { syncProfileAutoRule } from "./actions";
 
 // 프로필 선택지 (lib/profile-options.ts 단일 소스 import).
 // 여기와 /recommend, /api/recommend 가 같은 옵션을 써야 프로필 매칭이 정상 작동.
@@ -21,7 +26,7 @@ const INTERESTS = [
 ];
 
 // 프로필 폼 (클라이언트 컴포넌트)
-// - 나이대·지역·직업·관심사(다중선택) 편집
+// - 나이대·지역·직업·관심사(다중선택)·소득수준·가구상태 편집
 // - 저장 버튼 누르면 user_profiles 에 upsert (RLS가 본인 것만 허용)
 type Profile = {
   age_group: string | null;
@@ -29,6 +34,8 @@ type Profile = {
   district: string | null;
   occupation: string | null;
   interests: string[];
+  income_level: IncomeOption | null;    // 소득 수준 (단일 선택, 선택사항)
+  household_types: HouseholdOption[];   // 가구 상태 (다중 선택, 민감정보)
 };
 
 export function ProfileForm({ initial }: { initial: Profile }) {
@@ -82,12 +89,18 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       district: form.district,
       occupation: form.occupation,
       interests: form.interests,
+      income_level: form.income_level,
+      household_types: form.household_types,
     });
     if (error) {
       setError("저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.");
     } else {
       setSaved(true);
       router.refresh();
+      // 자동 알림 규칙 동기화 (best-effort — 실패해도 폼 저장 성공은 유지)
+      syncProfileAutoRule(user.id).catch((e) => {
+        console.error('자동 알림 규칙 동기화 실패:', e);
+      });
     }
     setSaving(false);
   }
@@ -140,6 +153,75 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         value={form.occupation}
         onChange={(v) => updateForm((p) => ({ ...p, occupation: v }))}
       />
+
+      {/* 소득 수준 (단일 선택, 선택사항) */}
+      <section className="space-y-2">
+        <label className="text-sm font-medium">
+          소득 수준 <span className="text-xs text-zinc-500">(선택)</span>
+        </label>
+        <p className="text-xs text-zinc-500">
+          이 정보는 맞춤 추천에만 사용되며 외부에 제공되지 않습니다.
+        </p>
+        <div className="flex flex-col gap-2">
+          {INCOME_OPTIONS.map((opt) => (
+            <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="income_level"
+                value={opt.value}
+                checked={form.income_level === opt.value}
+                onChange={() => updateForm((p) => ({ ...p, income_level: opt.value }))}
+                className="mt-0.5"
+              />
+              <span className="text-sm">{opt.label}</span>
+            </label>
+          ))}
+          {/* 선택 안 함 버튼 — 라디오 전체 해제 */}
+          <button
+            type="button"
+            onClick={() => updateForm((p) => ({ ...p, income_level: null }))}
+            className="text-xs text-zinc-500 underline self-start"
+          >
+            선택 안 함
+          </button>
+        </div>
+      </section>
+
+      {/* 가구 상태 (다중 선택, 민감정보) */}
+      <section className="space-y-2">
+        <label className="text-sm font-medium">
+          가구 상태 <span className="text-xs text-zinc-500">(다중 선택 · 선택)</span>
+        </label>
+        <p className="text-xs text-zinc-500">
+          민감정보로 분류되며 맞춤 추천에만 사용됩니다.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {HOUSEHOLD_OPTIONS.map((opt) => {
+            const checked = form.household_types.includes(opt.value);
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() =>
+                  updateForm((p) => ({
+                    ...p,
+                    household_types: checked
+                      ? p.household_types.filter((v) => v !== opt.value)
+                      : [...p.household_types, opt.value],
+                  }))
+                }
+                className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                  checked
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white text-zinc-700 border-zinc-300 hover:border-emerald-400'
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* 관심사 (다중 선택) */}
       <div>
