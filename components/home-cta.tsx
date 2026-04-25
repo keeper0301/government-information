@@ -35,27 +35,29 @@ export function HomeCTA() {
             START NOW
           </p>
           <h2 className="text-[36px] max-md:text-[26px] font-extrabold text-white leading-[1.2] tracking-[-1.5px] mb-4">
-            받을 수 있는 혜택,
+            조건 맞는 정책,
             <br />
-            지금 30초 안에 확인하세요
+            매주 이메일로 알려드려요
           </h2>
           <p className="text-[16px] max-md:text-[14px] text-white/85 leading-[1.65] mb-10 max-md:mb-7 max-w-[480px] mx-auto">
-            매일 새로 추가되는 정부·지자체 지원 정책 중 내 조건에 맞는 것을
-            놓치지 않게, 이메일·알림톡으로 보내드려요.
+            한 번만 등록해두면 새 공고가 올라올 때마다 자동으로 매칭해드려요.
+            마감 임박 D-3 알림도 함께.
           </p>
 
+          {/* 회원가입을 1차 CTA 로 (매주 이메일 알림 가치 강조).
+              "먼저 둘러보기" 는 2차로 — 직진형 → 탐색형 흐름. */}
           <div className="flex items-center justify-center gap-3 max-md:flex-col max-md:gap-2">
             <Link
-              href="/policy"
+              href="/signup"
               className="inline-flex items-center justify-center h-14 px-8 max-md:w-full max-md:h-12 max-md:px-6 rounded-2xl bg-white text-blue-700 text-[16px] font-bold no-underline hover:bg-blue-50 active:scale-[0.98] transition-all shadow-md"
             >
-              지금 내 혜택 찾기 →
+              회원가입하고 알림 받기 →
             </Link>
             <Link
-              href="/signup"
+              href="/policy"
               className="inline-flex items-center justify-center h-14 px-8 max-md:w-full max-md:h-12 max-md:px-6 rounded-2xl bg-blue-700/30 text-white text-[16px] font-semibold no-underline hover:bg-blue-700/50 active:scale-[0.98] transition-all border border-white/30"
             >
-              알림 받기 (회원가입)
+              먼저 둘러보기
             </Link>
           </div>
         </div>
