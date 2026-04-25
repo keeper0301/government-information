@@ -45,7 +45,10 @@ function revalidateNewsRoutes(slug: string) {
 
 // 제목·slug·source_id 중 하나로 검색. service role 로 hidden 포함 전체 조회.
 // SQL injection 은 supabase-js 가 parameterized query 로 처리.
+// 호출자 (admin/news/page.tsx) 가 이미 requireAdmin() 으로 가드하지만,
+// 다른 모듈에서 import 됐을 때를 대비한 방어 심층화 (defense in depth).
 export async function searchNewsForAdmin(query: string): Promise<NewsSearchRow[]> {
+  await requireAdminUser();
   const q = query.trim();
   if (!q) return [];
 
@@ -73,7 +76,9 @@ export async function searchNewsForAdmin(query: string): Promise<NewsSearchRow[]
 }
 
 // 최근 숨긴 뉴스 10건 (실수 복구 fast path 용).
+// 호출자 가드와 별개로 서버 진입점에서 admin 재검증 (defense in depth).
 export async function getRecentlyHiddenNews(): Promise<NewsSearchRow[]> {
+  await requireAdminUser();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("news_posts")
