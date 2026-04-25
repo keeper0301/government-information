@@ -125,7 +125,7 @@ export default async function LoanPage({ searchParams }: Props) {
             <a
               key={c}
               href={buildUrl({ category: c, page: "1" })}
-              className={`px-4 py-2 text-sm font-medium rounded-full no-underline transition-colors ${
+              className={`px-4 py-2 max-md:py-2.5 max-md:inline-flex max-md:items-center max-md:min-h-[44px] text-sm font-medium rounded-full no-underline transition-colors ${
                 category === c
                   ? "bg-blue-500 text-white"
                   : "bg-grey-100 text-grey-700 hover:bg-grey-200"

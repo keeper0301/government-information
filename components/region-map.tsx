@@ -61,7 +61,7 @@ export async function RegionMap() {
         </h2>
         <Link
           href="/welfare"
-          className="text-sm font-medium text-grey-600 no-underline hover:text-blue-500 transition-colors"
+          className="text-sm font-medium text-grey-600 no-underline hover:text-blue-500 transition-colors max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-2 max-md:-mx-2"
         >
           복지 전체 보기
         </Link>

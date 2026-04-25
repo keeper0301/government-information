@@ -91,7 +91,7 @@ export async function CalendarPreview() {
         </h2>
         <a
           href="/calendar"
-          className="text-sm font-medium text-grey-600 no-underline hover:text-blue-500 transition-colors"
+          className="text-sm font-medium text-grey-600 no-underline hover:text-blue-500 transition-colors max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-2 max-md:-mx-2"
         >
           달력 전체보기
         </a>

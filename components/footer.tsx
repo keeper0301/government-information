@@ -41,12 +41,12 @@ export function Footer() {
             정책알리미
           </span>
         </div>
-        <div className="flex gap-5 flex-wrap">
+        <div className="flex gap-5 flex-wrap max-md:gap-x-5 max-md:gap-y-1 max-md:-mx-2">
           {footerLinks.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-[13px] text-grey-600 no-underline hover:text-grey-700 transition-colors"
+              className="text-[13px] text-grey-600 no-underline hover:text-grey-700 transition-colors max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-2"
             >
               {link.label}
             </a>

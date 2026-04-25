@@ -72,7 +72,7 @@ export function Nav({
         <Link
           href="/"
           aria-label="keepioo 정책알리미 홈으로"
-          className="flex items-baseline gap-2.5 no-underline"
+          className="flex items-baseline gap-2.5 no-underline max-md:py-2 max-md:-my-2"
         >
           <span className="font-extrabold text-[26px] tracking-[-0.04em] leading-none text-grey-900">
             keepi<span className="text-blue-500">oo</span>

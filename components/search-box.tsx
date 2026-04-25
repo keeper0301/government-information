@@ -235,7 +235,7 @@ export function SearchBox() {
             key={tag}
             type="button"
             onClick={() => handleTagClick(tag)}
-            className="text-[13px] font-semibold text-grey-700 bg-grey-100 border-0 px-3.5 py-1.5 rounded-full cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors"
+            className="text-[13px] font-semibold text-grey-700 bg-grey-100 border-0 px-3.5 py-1.5 max-md:px-4 max-md:py-3 rounded-full cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors"
           >
             {tag}
           </button>
