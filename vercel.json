@@ -19,6 +19,8 @@
     { "path": "/api/collect-news/jeonnam", "schedule": "5 15 * * *" },
     { "path": "/api/collect-news/gyeongbuk", "schedule": "10 15 * * *" },
     { "path": "/api/collect-news/gyeongnam", "schedule": "15 15 * * *" },
-    { "path": "/api/collect-news/jeju", "schedule": "20 15 * * *" }
+    { "path": "/api/collect-news/jeju", "schedule": "20 15 * * *" },
+
+    { "path": "/api/enrich-targeting", "schedule": "0 8 * * *" }
   ]
 }
