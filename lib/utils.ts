@@ -38,6 +38,20 @@ export function currentMinAllowedYear(): number {
   return new Date().getFullYear() - 1;
 }
 
+// 달력 셀에 제목을 짧게 표시하기 위한 헬퍼.
+// 좁은 셀에서도 사업명이 먼저 눈에 들어오게 앞쪽 연도·괄호를 제거.
+// 예) "2026년 청년 월세 특별지원" → "청년 월세 특별지원"
+//     "「2026년도」 창업"           → "창업"
+//
+// 사용처: app/calendar/page.tsx + components/calendar-preview.tsx
+// (이전엔 두 파일에 동일 정의 중복 → 여기로 통일).
+export function shortenCalendarTitle(title: string): string {
+  return title
+    .replace(/^\d{4}년도?\s*/g, "")
+    .replace(/^「|」/g, "")
+    .trim();
+}
+
 // ============================================================
 // 공고 본문(description) 정제 — HTML 엔티티·태그 해제 + 구조화
 // ============================================================

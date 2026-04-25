@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { shortenCalendarTitle } from "@/lib/utils";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -12,24 +13,24 @@ type CalendarEvent = {
   kind: "start" | "end";
 };
 
-// 달력 표시용으로 제목에서 연도·괄호 제거 (예: "2026년 청년 월세" → "청년 월세")
-function shortenTitle(title: string): string {
-  return title
-    .replace(/^\d{4}년도?\s*/g, "")
-    .replace(/^「|」/g, "")
-    .trim();
-}
-
 // 이번 달 신청 시작·마감 예정인 복지/대출 프로그램을 달력에 표시
 export async function CalendarPreview() {
   const supabase = await createClient();
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const today = now.getDate();
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // 한국 시간(KST, UTC+9) 기준으로 "오늘" 결정. /calendar 풀 페이지와 동일 패턴.
+  // Vercel 기본 타임존이 UTC 라 그대로 쓰면 KST 00:00~09:00 창에서 서버가
+  // "어제" 를 오늘로 판정 → 한국 사용자 달력과 하루(때론 한 달) 어긋남.
+  // now.getTime() 에 9h 를 더해 가상 KST 시점을 만든 뒤 UTC 메서드로 추출.
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const now = new Date();
+  const kstNow = new Date(now.getTime() + KST_OFFSET_MS);
+  const year = kstNow.getUTCFullYear();
+  const month = kstNow.getUTCMonth();
+  const today = kstNow.getUTCDate();
+
+  // 월의 첫 요일·일수 — Date.UTC 로 생성해 서버 로컬 타임존 영향 제거
+  const firstDay = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
   const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
@@ -155,7 +156,7 @@ export async function CalendarPreview() {
                           />
                         )}
                         <span className="text-[11.5px] leading-[1.4] text-grey-800 group-hover:text-grey-900 font-medium truncate">
-                          {shortenTitle(item.title)}
+                          {shortenCalendarTitle(item.title)}
                         </span>
                       </a>
                     );

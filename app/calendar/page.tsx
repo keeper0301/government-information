@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { shortenCalendarTitle } from "@/lib/utils";
 
 export const revalidate = 600;
 
@@ -350,7 +351,7 @@ export default async function CalendarPage({
                           />
                         )}
                         <span className="text-[11.5px] leading-[1.4] text-grey-800 group-hover:text-grey-900 font-medium truncate">
-                          {shortenTitle(item.title)}
+                          {shortenCalendarTitle(item.title)}
                         </span>
                       </a>
                     );
@@ -535,13 +536,3 @@ function renderEventRow(e: CalendarEvent, kstNow: Date, month0: number) {
   );
 }
 
-// 달력 셀에 제목을 짧게 표시하기 위한 헬퍼 — 홈 CalendarPreview 와 동일 규칙.
-// 예: "2026년 청년 월세 특별지원" → "청년 월세 특별지원"
-//     "「2026년도」 창업" → "창업"
-// 제목 앞의 연도/괄호를 제거해서 좁은 셀에서도 사업명이 먼저 눈에 들어오게 한다.
-function shortenTitle(title: string): string {
-  return title
-    .replace(/^\d{4}년도?\s*/g, "")
-    .replace(/^「|」/g, "")
-    .trim();
-}
