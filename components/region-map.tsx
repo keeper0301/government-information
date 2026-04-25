@@ -67,7 +67,7 @@ export async function RegionMap() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-md ring-1 ring-grey-100 p-6 max-md:p-4">
+      <div className="bg-white rounded-3xl shadow-sm p-6 max-md:p-4">
         {/* 5×4 grid — 지리 어림. 모바일도 5 col 유지하되 padding·텍스트 더 작게 */}
         <div className="grid grid-cols-5 gap-2 max-md:gap-1">
           {GRID.map((sido, i) =>

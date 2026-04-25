@@ -79,7 +79,7 @@ export default async function AdminWishesPage() {
       </div>
 
       {wishes.length === 0 ? (
-        <div className="bg-white rounded-2xl ring-1 ring-grey-100 p-10 text-center text-grey-600">
+        <div className="bg-white rounded-2xl shadow-sm p-10 text-center text-grey-600">
           아직 의견이 없어요. 홈 페이지의 의견 폼이 잘 노출되는지 확인해보세요.
           <div className="mt-3">
             <Link href="/" className="text-blue-500 font-semibold no-underline hover:underline">
@@ -92,7 +92,7 @@ export default async function AdminWishesPage() {
           {wishes.map((w) => (
             <article
               key={w.id}
-              className="bg-white rounded-2xl ring-1 ring-grey-100 p-5 max-md:p-4"
+              className="bg-white rounded-2xl shadow-sm p-5 max-md:p-4"
             >
               <p className="text-[15px] text-grey-900 leading-[1.6] whitespace-pre-wrap mb-3">
                 {w.wish}
@@ -130,7 +130,7 @@ export default async function AdminWishesPage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white rounded-2xl ring-1 ring-grey-100 px-5 py-4">
+    <div className="bg-white rounded-2xl shadow-sm px-5 py-4">
       <div className="text-[12px] font-medium text-grey-600 mb-1">{label}</div>
       <div className="text-[26px] font-extrabold tabular-nums text-blue-500">
         {value.toLocaleString()}

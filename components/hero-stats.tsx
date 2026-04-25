@@ -21,7 +21,7 @@ export async function HeroStats() {
 
   return (
     <section className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8">
-      <div className="grid grid-cols-3 gap-6 max-md:gap-3 bg-white rounded-3xl shadow-md ring-1 ring-grey-100 px-10 py-8 max-md:px-5 max-md:py-6">
+      <div className="grid grid-cols-3 gap-6 max-md:gap-3 bg-white rounded-3xl shadow-sm px-10 py-8 max-md:px-5 max-md:py-6">
         <Stat to={counts.news_total} label="정책 뉴스 큐레이션" />
         <Stat to={totalPrograms} label="진행 중 지원 공고" />
         <Stat to={sourceCount} label="공식 데이터 출처" suffix="개" />

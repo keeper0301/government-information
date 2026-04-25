@@ -30,7 +30,7 @@ export function FeatureGrid() {
       </div>
       <div className="space-y-6">
         {features.map((f) => (
-          <div key={f.num} className="flex items-start gap-6 p-6 bg-white rounded-3xl shadow-md max-md:flex-col max-md:gap-4">
+          <div key={f.num} className="flex items-start gap-6 p-6 bg-white rounded-3xl shadow-sm max-md:flex-col max-md:gap-4">
             {/* 번호 — Pretendard 큼직한 tabular-nums (편집물 italic 폐기) */}
             <div className="font-extrabold tabular-nums shrink-0 text-[44px] text-blue-500 w-[60px] leading-none mt-1">
               {f.num}
