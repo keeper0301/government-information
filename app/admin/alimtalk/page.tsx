@@ -184,7 +184,7 @@ export default async function AlimtalkAdminPage() {
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[820px] mx-auto px-5">
         <div className="mb-8">
-          <p className="text-[12px] text-burgundy font-semibold tracking-[0.2em] mb-3">
+          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
             ADMIN / ALIMTALK
           </p>
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">

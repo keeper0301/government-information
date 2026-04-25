@@ -233,7 +233,7 @@ export default async function CalendarPage({
         <a
           href={`/calendar?year=${prevMonth.year}&month=${prevMonth.month}`}
           aria-label={`이전 달 (${prevMonth.year}년 ${prevMonth.month}월)`}
-          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-600 hover:bg-grey-100 hover:text-burgundy transition-colors no-underline text-[14px]"
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-600 hover:bg-grey-100 hover:text-blue-500 transition-colors no-underline text-[14px]"
         >
           <span aria-hidden="true">◀</span>
         </a>
@@ -248,7 +248,7 @@ export default async function CalendarPage({
           {!isCurrentMonth && (
             <a
               href="/calendar"
-              className="text-[13px] font-semibold text-burgundy no-underline hover:underline"
+              className="text-[13px] font-semibold text-blue-500 no-underline hover:underline"
             >
               오늘로
             </a>
@@ -258,7 +258,7 @@ export default async function CalendarPage({
         <a
           href={`/calendar?year=${nextMonth.year}&month=${nextMonth.month}`}
           aria-label={`다음 달 (${nextMonth.year}년 ${nextMonth.month}월)`}
-          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-600 hover:bg-grey-100 hover:text-burgundy transition-colors no-underline text-[14px]"
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-grey-600 hover:bg-grey-100 hover:text-blue-500 transition-colors no-underline text-[14px]"
         >
           <span aria-hidden="true">▶</span>
         </a>

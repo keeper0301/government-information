@@ -130,7 +130,7 @@ export default async function EnrichDetailPage({
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[720px] mx-auto px-5">
         <div className="mb-8">
-          <p className="text-[12px] text-burgundy font-semibold tracking-[0.2em] mb-3">ADMIN</p>
+          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">ADMIN</p>
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
             공고 상세 수동 보강
           </h1>

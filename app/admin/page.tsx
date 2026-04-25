@@ -228,7 +228,7 @@ export default async function AdminHomePage({
       <div className="max-w-[980px] mx-auto px-5">
         {/* 헤더 */}
         <div className="mb-8">
-          <p className="text-[12px] text-burgundy font-semibold tracking-[0.2em] mb-3">
+          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
             ADMIN · 대시보드
           </p>
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">

@@ -96,7 +96,7 @@ export default async function MyActionsPage({
         {/* 헤더 */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <p className="text-[12px] text-burgundy font-semibold tracking-[0.2em] mb-2">
+            <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-2">
               ADMIN · 내 수행 내역
             </p>
             <h1 className="text-[22px] font-extrabold tracking-[-0.4px] text-grey-900">

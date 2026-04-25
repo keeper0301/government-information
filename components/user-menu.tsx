@@ -111,7 +111,7 @@ export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMe
           <a
             href="/admin"
             onClick={onNavigate}
-            className="block px-4 py-3 text-[15px] font-semibold text-burgundy hover:bg-grey-50 rounded-lg no-underline"
+            className="block px-4 py-3 text-[15px] font-semibold text-blue-500 hover:bg-grey-50 rounded-lg no-underline"
           >
             어드민 대시보드
           </a>
@@ -158,7 +158,7 @@ export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMe
           {isAdmin && (
             <a
               href="/admin"
-              className="block px-4 py-2.5 text-[14px] font-semibold text-burgundy hover:bg-grey-50 no-underline border-b border-grey-100"
+              className="block px-4 py-2.5 text-[14px] font-semibold text-blue-500 hover:bg-grey-50 no-underline border-b border-grey-100"
               onClick={() => setOpen(false)}
             >
               어드민 대시보드

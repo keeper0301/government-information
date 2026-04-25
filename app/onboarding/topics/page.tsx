@@ -73,7 +73,7 @@ export default async function OnboardingTopicsPage({
       <div className="max-w-[640px] mx-auto px-5">
         {/* 헤더 */}
         <div className="mb-10 md:mb-14">
-          <p className="text-[12px] text-burgundy font-semibold tracking-[0.2em] mb-3">
+          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
             STEP 1 / 1
           </p>
           <h1 className="text-[26px] md:text-[32px] font-extrabold tracking-[-0.6px] text-grey-900 mb-3 leading-[1.25]">
