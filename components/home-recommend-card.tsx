@@ -233,7 +233,7 @@ export function HomeRecommendCard({ initial }: Props) {
           className={`group w-full min-h-[56px] text-[17px] font-bold rounded-2xl border-none cursor-pointer transition-all flex items-center justify-center gap-2 ${
             canSubmit && !submitting
               ? "bg-blue-500 text-white hover:bg-blue-600 shadow-blue-glow hover:shadow-blue-glow-lg active:scale-[0.98]"
-              : "bg-grey-100 text-grey-500 cursor-not-allowed"
+              : "bg-grey-50 text-grey-500 cursor-not-allowed"
           }`}
         >
           {submitting ? (
@@ -313,7 +313,7 @@ function Chip({
       className={`h-10 max-md:h-11 px-4 text-[14px] rounded-full border-0 cursor-pointer transition-all ${
         selected
           ? "bg-blue-500 text-white font-semibold shadow-blue-glow"
-          : "bg-grey-100 text-grey-800 font-medium hover:bg-grey-200 active:bg-grey-300"
+          : "bg-grey-50 text-grey-700 font-medium hover:bg-grey-100 active:bg-grey-200"
       }`}
     >
       {label}
