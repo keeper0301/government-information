@@ -55,6 +55,13 @@ export type LoanProgram = {
   view_count: number;
   created_at: string;
   updated_at: string;
+  // 분류 통일 (031~035) — DB 에는 있는데 manual 타입에 누락돼 있던 컬럼
+  // welfare hot-fix(1cc2676) 와 동일 패턴으로 정정
+  benefit_tags: string[] | null;
+  age_tags: string[] | null;
+  occupation_tags: string[] | null;
+  household_tags: string[] | null;
+  region_tags: string[] | null;
 };
 
 export type AlarmSubscription = {
