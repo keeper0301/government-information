@@ -40,35 +40,32 @@ if (request.headers.has("rsc") || request.headers.has("next-action")) return nul
 
 ---
 
-## 이슈 2 — 복원 직후 `/news` 목록 즉시 재노출 안 됨 (OPEN)
+## 이슈 2 — 복원 직후 `/news` 목록 즉시 재노출 안 됨 (CLOSED — 오진단)
 
-### 증상
-- `/admin/news` 검색에서 "복원" 클릭 → DB 즉시 `is_hidden=false`, 감사 로그 정상
-- 그 직후 anon 으로 `/news` 목록을 fetch 하면 그 슬러그가 0건 (복원 전과 동일)
-- 직접 `/news/[slug]` URL 은 HTTP 200 정상 응답 → SEO·사용자 직접 접근에는 문제 없음
+### 최초 증상 (관찰)
+- `/admin/news` 검색에서 "복원" 클릭 직후 anon 으로 `/news` 첫 페이지를 fetch
+- 해당 슬러그가 결과에 안 보였음 → 처음엔 ISR 캐시 lag 로 추정
 
-### 근본 원인 (가설)
-`app/admin/news/actions.ts` 의 `toggleNewsHidden` 안에서 호출하는
-`revalidatePath("/news")` / `revalidatePath("/")` / `revalidatePath("/sitemap.xml")`
-가 Vercel Edge Cache 까지 즉시 무효화되지 않을 가능성. 다음 ISR 갱신 사이클 (최대 `revalidate=3600`) 또는 다음 cron 수집 사이클까지 stale HTML 이 served.
+### 실제 원인 (재조사)
+검증 대상 뉴스의 `published_at` 기준 순위가 **135번째** (4월 24일 발행, 4월 25일 새로 수집된 뉴스 134건에 밀림). `/news` 첫 페이지는 페이지네이션상 12~24건만 표시 → 원래부터 첫 페이지에 안 들어가는 위치. 검증 방법론 자체의 오류였음.
 
-다음 중 하나 또는 조합:
-- `revalidatePath` 가 Next.js Data Cache 만 무효화하고 Full Route Cache 까진 즉시 안 닿음
-- Vercel CDN edge node 별 propagation lag (지역별로 다른 응답 가능)
-- `/news` 페이지가 `force-dynamic` 이 아니어서 ISR 캐시 우선
+```sql
+with target as (
+  select published_at from news_posts where slug = '생활이-어려우세요-...148957664'
+)
+select count(*) from news_posts, target
+ where is_hidden = false and news_posts.published_at >= target.published_at;
+-- → 135
+```
 
-### 영향 평가
-- **사용자 영향**: 복원된 뉴스가 잠시 (몇 분 ~ 1시간) 목록에 안 보임. 직접 URL·관련 공고 매칭에서는 정상 노출.
-- **SEO 영향**: 없음 (HTML 자체는 200 + canonical 정상).
-- **운영 영향**: admin 본인이 "복원했는데 안 보이네?" 혼란 가능. 새로고침 또는 시간 경과로 해결됨.
+### 결론
+- `app/news/page.tsx` 의 `revalidate = 60` 은 이미 짧게 설정돼 있음 (확인됨)
+- `toggleNewsHidden` 의 `revalidatePath` 호출은 정상 작동 중
+- **수정 불요**
 
-### 후보 수정 방향 (선택)
-1. **(권장)** `app/news/page.tsx` 의 `revalidate` 를 3600 → 60 으로 낮춤 → 최대 1분 lag.
-2. `toggleNewsHidden` 에서 `revalidatePath("/news", "layout")` 까지 호출해 Full Route Cache 무효화 시도.
-3. 복원 시 `/admin/news?msg=restored` 안내 토스트에 "최대 1분 후 목록에 다시 표시돼요" 한 줄 추가 → UX 기대값 맞춤.
-
-### 우선순위
-중간. 모더레이션 사용 빈도 자체가 월 1~5건 (스펙 가정) 이라 사장님 혼란이 누적될 가능성은 낮음. 다만 1번 옵션은 1줄 변경이고 ROI 좋음.
+### 향후 동일 검증 시 권장
+- 발행일이 새로운 (오늘자) 뉴스로 테스트하거나
+- 직접 `/news/[slug]` URL 에 anon 접근해 200/410 만 확인 (목록 노출 여부는 별개)
 
 ---
 
