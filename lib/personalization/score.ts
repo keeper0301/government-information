@@ -15,6 +15,9 @@ export type ScorableItem = {
   benefit_tags?: string[] | null;
   apply_end?: string | null;
   source?: string | null;
+  // Phase 1.5: 정확 매칭 데이터 (extractTargeting 결과가 저장된 컬럼)
+  income_target_level?: 'low' | 'mid_low' | 'mid' | 'any' | null;
+  household_target_tags?: string[] | null;
 };
 
 // 광역시도 명칭 별칭 매핑 (DB에 저장된 정식 명칭 → 사용자 선택 짧은 명칭)
@@ -63,6 +66,28 @@ function regionMatches(programRegion: string | null | undefined, userRegion: str
   // 사용자 선택 짧은 명칭(예: '서울')의 모든 별칭 목록으로 정책 지역 검색
   const aliases = REGION_ALIASES[userRegion] ?? [userRegion];
   return aliases.some(a => programRegion.includes(a));
+}
+
+// 사용자 incomeLevel 이 정책 income_target_level 자격을 충족하는지 확인
+// 소득이 낮을수록 더 많은 정책 대상 — 예: low 사용자는 mid 정책도 신청 가능
+function matchesIncomeRequirement(
+  userLevel: UserSignals['incomeLevel'],
+  programLevel: 'low' | 'mid_low' | 'mid' | 'any' | null | undefined,
+): boolean {
+  if (!userLevel || !programLevel) return false;
+  // 'any' 는 모든 소득 수준 허용
+  if (programLevel === 'any') return true;
+  // 소득 수준 순서: low(0) < mid_low(1) < mid(2) < mid_high(3) < high(4)
+  const userOrder: Record<NonNullable<UserSignals['incomeLevel']>, number> = {
+    low: 0, mid_low: 1, mid: 2, mid_high: 3, high: 4,
+  };
+  // 정책 허용 수준 순서: low(0) < mid_low(1) < mid(2)
+  const programOrder: Record<'low' | 'mid_low' | 'mid', number> = {
+    low: 0, mid_low: 1, mid: 2,
+  };
+  // 사용자 소득 순서 <= 정책 허용 순서면 자격 충족
+  // 예: low(0) <= mid(2) → true, high(4) <= low(0) → false
+  return userOrder[userLevel] <= programOrder[programLevel];
 }
 
 // 마감일이 D-7 이내인지 확인 (긴박성 tiebreaker 가산점용)
@@ -129,19 +154,44 @@ export function scoreProgram<T extends ScorableItem>(
     }
   }
 
-  // ⑥ 소득 저소득 키워드 매칭: +2점
-  // 소득 수준이 low 또는 mid_low 인 경우에만 가산
-  if (user.incomeLevel === 'low' || user.incomeLevel === 'mid_low') {
+  // ⑥ 소득 — 정확 매칭 우선 (+4), 없으면 본문 키워드 fallback (+2, Phase 1)
+  if (program.income_target_level !== undefined && program.income_target_level !== null) {
+    // DB 에 정확 매칭 데이터가 있을 때: 자격 충족 여부로 판단
+    if (matchesIncomeRequirement(user.incomeLevel, program.income_target_level)) {
+      signals.push({
+        kind: 'income_target',
+        score: 4,
+        detail: program.income_target_level,
+      });
+    }
+    // 정확 매칭이 있는데 자격 미달이면 fallback 도 하지 않음 (자격 미달은 자격 미달)
+  } else if (user.incomeLevel === 'low' || user.incomeLevel === 'mid_low') {
+    // Phase 1 fallback: 정확 매칭 데이터 없을 때만 본문 키워드로 약한 가산
     if (INCOME_KEYWORDS_LOW.some(k => haystack.includes(k))) {
       signals.push({ kind: 'income_keyword', score: 2 });
     }
   }
 
-  // ⑦ 가구 유형 키워드 매칭: 각 유형당 +2점
-  for (const ht of user.householdTypes) {
-    const keywords = HOUSEHOLD_KEYWORDS[ht] ?? [];
-    if (keywords.some(k => haystack.includes(k))) {
-      signals.push({ kind: 'household_keyword', score: 2, detail: ht });
+  // ⑦ 가구상태 — 정확 매칭 우선 (+3 × 일치 수), 없으면 본문 키워드 fallback (+2, Phase 1)
+  if (program.household_target_tags && program.household_target_tags.length > 0) {
+    // DB 에 정확 매칭 데이터가 있을 때: 교집합으로 판단
+    const overlap = user.householdTypes.filter(ht =>
+      program.household_target_tags!.includes(ht),
+    );
+    if (overlap.length > 0) {
+      signals.push({
+        kind: 'household_target',
+        score: 3 * overlap.length,
+        detail: overlap.join(', '),
+      });
+    }
+  } else {
+    // Phase 1 fallback: 정확 매칭 데이터 없을 때만 본문 키워드로 약한 가산
+    for (const ht of user.householdTypes) {
+      const keywords = HOUSEHOLD_KEYWORDS[ht] ?? [];
+      if (keywords.some(k => haystack.includes(k))) {
+        signals.push({ kind: 'household_keyword', score: 2, detail: ht });
+      }
     }
   }
 

@@ -136,3 +136,82 @@ describe('scoreProgram', () => {
     expect(r.score).toBe(5);
   });
 });
+
+describe('scoreProgram — Phase 1.5 정확 매칭', () => {
+  it('income_target_level=low + 사용자 low → +4', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        income_target_level: 'low' as const },
+      { ...emptyUser, incomeLevel: 'low' },
+    );
+    expect(r.score).toBe(4);
+    expect(r.signals.find(s => s.kind === 'income_target')).toBeDefined();
+  });
+
+  it('income_target_level=mid + 사용자 low → +4 (low 가 mid 자격 충족)', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        income_target_level: 'mid' as const },
+      { ...emptyUser, incomeLevel: 'low' },
+    );
+    expect(r.score).toBe(4);
+  });
+
+  it('income_target_level=low + 사용자 high → 0 (자격 미달)', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        income_target_level: 'low' as const },
+      { ...emptyUser, incomeLevel: 'high' },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('income_target_level=any → 모든 사용자 +4', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        income_target_level: 'any' as const },
+      { ...emptyUser, incomeLevel: 'high' },
+    );
+    expect(r.score).toBe(4);
+  });
+
+  it('household_target_tags 1개 일치 → +3', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        household_target_tags: ['single_parent'] },
+      { ...emptyUser, householdTypes: ['single_parent'] },
+    );
+    expect(r.score).toBe(3);
+  });
+
+  it('household_target_tags 2개 일치 → +6', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        household_target_tags: ['single_parent', 'multi_child'] },
+      { ...emptyUser, householdTypes: ['single_parent', 'multi_child'] },
+    );
+    expect(r.score).toBe(6);
+  });
+
+  it('income_target_level=null + 본문에 "기초생활" → fallback +2 (Phase 1)', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        description: '기초생활보장 수급권자 대상',
+        income_target_level: null },
+      { ...emptyUser, incomeLevel: 'low' },
+    );
+    expect(r.score).toBe(2);
+    expect(r.signals.find(s => s.kind === 'income_keyword')).toBeDefined();
+  });
+
+  it('income_target_level 채워져 있고 자격 미달 → fallback 도 안 함', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: null, district: null, benefit_tags: [],
+        description: '기초생활 수급권자 대상',
+        income_target_level: 'low' as const },
+      { ...emptyUser, incomeLevel: 'high' },
+    );
+    // 정확 매칭이 있는데 high 는 자격 없음 → fallback 없이 0점
+    expect(r.score).toBe(0);
+  });
+});

@@ -22,7 +22,8 @@ export type UserSignals = {
 // 매칭 시그널 1개 — 점수에 기여한 이유와 점수를 함께 기록
 export type MatchSignal = {
   kind: 'region' | 'district' | 'benefit_tags' | 'occupation' | 'age'
-        | 'income_keyword' | 'household_keyword' | 'urgent_deadline';
+        | 'income_keyword' | 'household_keyword' | 'urgent_deadline'
+        | 'income_target' | 'household_target';  // Phase 1.5: 정확 매칭 시그널 추가
   score: number;   // 이 시그널이 기여한 점수
   detail?: string; // 부가 설명 (예: 어떤 태그가 일치했는지)
 };
