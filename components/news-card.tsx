@@ -45,14 +45,14 @@ export function NewsCard({ post }: { post: NewsCardData }) {
 
   return (
     <Link href={`/news/${post.slug}`} className="block no-underline">
-      <Card className="bg-white border border-grey-100 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow ring-0 gap-0 py-0 h-full">
+      <Card className="bg-white border border-grey-100 rounded-3xl overflow-hidden shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
         {/* 썸네일 — 있으면 이미지, 없으면 "텍스트 포스터" placeholder.
             alt="" : 뉴스 제목이 바로 아래 카드 안에 있어 스크린리더 중복 방지.
             next/image 미사용 이유: 공공누리 제1유형 재호스팅 금지 → Vercel 최적화
             캐시를 거치지 않도록 <img> 로 외부 URL 직접 참조 (메모리 원칙).
             placeholder 는 기존엔 카테고리 라벨만 가운데 있어 큰 빈 영역처럼 보였음.
             제목 일부를 미리 노출해 빈 영역 느낌을 없앤 "텍스트 포스터" 스타일로 전환.
-            rounded-t-2xl 명시: Card 기본 *:img:first-child rounded-t-xl 덮어쓰기. */}
+            rounded-t-3xl 명시: Card 기본 *:img:first-child rounded-t-xl 덮어쓰기. */}
         {post.thumbnail_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -60,11 +60,11 @@ export function NewsCard({ post }: { post: NewsCardData }) {
             alt=""
             loading="lazy"
             decoding="async"
-            className="w-full aspect-[16/9] object-cover bg-grey-100 rounded-t-2xl"
+            className="w-full aspect-[16/9] object-cover bg-grey-100 rounded-t-3xl"
           />
         ) : (
           <div
-            className={`w-full aspect-[16/9] flex flex-col justify-end px-5 py-4 rounded-t-2xl ${categoryColor}`}
+            className={`w-full aspect-[16/9] flex flex-col justify-end px-5 py-4 rounded-t-3xl ${categoryColor}`}
             aria-hidden="true"
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70 mb-1">

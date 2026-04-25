@@ -25,7 +25,7 @@ export function ProgramList({ title, programs, moreHref }: Props) {
       </div>
       {/* 목록 본체를 흰 카드로 감싸 크림 배경 대비 가독성 ↑.
           feature-grid 와 동일한 border + rounded 로 디자인 통일감. */}
-      <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
+      <div className="flex flex-col bg-white border border-grey-100 rounded-3xl px-6 md:px-8 py-2 shadow-md">
         {programs.map((p) => (
           <ProgramRow key={p.id} program={p} />
         ))}

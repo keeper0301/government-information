@@ -48,7 +48,7 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
   return (
     <a
       href={`/${program.type}/${program.id}`}
-      className="block py-5 border-b border-grey-200 last:border-b-0 cursor-pointer no-underline text-inherit transition-colors hover:bg-grey-100 hover:mx-[-12px] hover:px-3 hover:rounded-xl overflow-hidden"
+      className="block py-5 -mx-3 px-3 rounded-xl border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-colors hover:bg-grey-50"
     >
       {/* 데스크톱: 아이콘 + 제목/설명 + 금액 가로 배치 */}
       <div className="flex items-center gap-4">

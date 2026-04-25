@@ -30,7 +30,7 @@ export function BlogCard({ post }: { post: BlogCardData }) {
 
   return (
     <Link href={`/blog/${post.slug}`} className="block no-underline">
-      <Card className="bg-white border border-grey-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-shadow ring-0 gap-0 py-0 h-full">
+      <Card className="bg-white border border-grey-100 rounded-3xl p-6 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
         {post.category && (
           <CardHeader className="px-0 pb-0 mb-3 gap-0">
             <Badge

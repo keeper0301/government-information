@@ -103,10 +103,10 @@ export function HomeRecommendCard({ initial }: Props) {
 
   return (
     <div className="w-full">
-      {/* shadcn Card 시맨틱 구조로 교체 (2026-04-24) — 브랜드 비주얼(흰 배경·
-          얇은 테두리·부드러운 그림자·큰 모서리·p-6)은 className 오버라이드로
-          100% 유지. 기본 shadcn 스타일(py-4 ring) 을 껐고, keepioo 톤 유지. */}
-      <Card className="bg-white border border-grey-100 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] ring-0 gap-0 py-0">
+      {/* HomeRecommendCard — 핀테크 톤 핵심 카드 (홈 hero 우측).
+          rounded-3xl(32px) + shadow-lg + 옅은 blue ring 으로 페이지 안에서
+          가장 떠 있는 느낌. 다른 카드(BlogCard 등) 보다 한 단계 더 강조. */}
+      <Card className="bg-white border border-grey-100 rounded-3xl p-6 shadow-lg ring-1 ring-blue-100/70 gap-0 py-0">
         <CardHeader className="px-0 pb-0 mb-5">
           <CardTitle className="text-[17px] font-bold tracking-[-0.3px] text-grey-900 leading-normal">
             나에게 맞는 정책 찾기
@@ -194,7 +194,7 @@ export function HomeRecommendCard({ initial }: Props) {
           disabled={!canSubmit || submitting}
           className={`group w-full min-h-[52px] text-[15px] font-bold rounded-xl border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
             canSubmit && !submitting
-              ? "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_2px_8px_rgba(49,130,246,0.25)]"
+              ? "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_4px_14px_rgba(49,130,246,0.32)] hover:shadow-[0_6px_20px_rgba(49,130,246,0.42)] active:scale-[0.98]"
               : "bg-grey-100 text-grey-500 cursor-not-allowed"
           }`}
         >
