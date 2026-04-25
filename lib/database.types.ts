@@ -29,6 +29,10 @@ export type WelfareProgram = {
   occupation_tags: string[] | null;
   household_tags: string[] | null;
   region_tags: string[] | null;
+  // Phase 1.5: 본문 분석으로 채워지는 자격 컬럼 (043 마이그레이션)
+  income_target_level: 'low' | 'mid_low' | 'mid' | 'any' | null;
+  household_target_tags: string[] | null;
+  last_targeting_analyzed_at: string | null;
 };
 
 export type LoanProgram = {
@@ -62,6 +66,10 @@ export type LoanProgram = {
   occupation_tags: string[] | null;
   household_tags: string[] | null;
   region_tags: string[] | null;
+  // Phase 1.5: 본문 분석으로 채워지는 자격 컬럼 (043 마이그레이션)
+  income_target_level: 'low' | 'mid_low' | 'mid' | 'any' | null;
+  household_target_tags: string[] | null;
+  last_targeting_analyzed_at: string | null;
 };
 
 export type AlarmSubscription = {
