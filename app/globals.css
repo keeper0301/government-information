@@ -13,58 +13,47 @@ html {
   overflow-wrap: break-word;
 }
 
+/* ============================================================
+   Body — 화이트 배경 + cool grey 텍스트 (친근한 핀테크 톤)
+   ============================================================
+   기존 크림(#FAF8F4) 배경 → 흰색으로 교체.
+   카드와 본문 구분은 카드 그림자로 표현 (단계 3 에서 카드 톤도 갱신).
+   ============================================================ */
 body {
   font-family: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR",
     "Malgun Gothic", sans-serif;
-  color: #0E0B08;         /* 잉크 블랙 (로고 텍스트와 동일) */
-  background: #FAF8F4;    /* 거의 화이트에 가까운 아주 옅은 크림 — 편집물 톤 */
+  color: #191F28;         /* 새 grey-900 (cool grey 잉크) */
+  background: #FFFFFF;    /* 흰색 — 섹션별 grey-50 띠는 페이지가 직접 wrap */
 }
 
 /* ============================================================
-   Typography — 전면 Pretendard 통일 + 세리프 악센트
+   Typography — Pretendard 단일 (editorial serif 정책 폐기)
    ============================================================
-   사이트 전체를 Pretendard 하나로 통일 → 자연스럽고 이질감 없음.
-   위계는 weight · letter-spacing · size 로 만듦 (폰트 교체 X).
-
-   세리프는 "앵커 포인트" 에만 선택적 적용:
-   - 로고 (keepioo 이탤릭)
-   - editorial-italic 클래스 (catchline, 인용)
-   - editorial-num 클래스 (매거진 풍 숫자)
-   - editorial-smallcaps 클래스 (상단·하단 rule 메타)
+   사이트 전체를 Pretendard 하나로 통일.
+   위계는 weight · letter-spacing · size 만으로 표현.
+   editorial-italic / editorial-num / editorial-smallcaps 는 폐기됨
+   (단계 2 에서 잔여 사용처 — calendar / feature-grid — 픽스 예정).
    ============================================================ */
 h1, h2, h3 {
-  color: #0E0B08;              /* 잉크 블랙 */
-  letter-spacing: -0.025em;    /* 타이트 tracking 으로 밀도감 */
+  color: #191F28;              /* 새 grey-900 */
+  letter-spacing: -0.025em;
 }
-h1 { letter-spacing: -0.035em; font-weight: 800; }
+h1 { letter-spacing: -0.04em;  font-weight: 800; }
 h2 { letter-spacing: -0.028em; font-weight: 800; }
 h3 { letter-spacing: -0.02em;  font-weight: 700; }
 
-/* Editorial 악센트 유틸리티 — 특정 지점에 선택 적용 */
-.editorial-italic {
-  font-family: "EB Garamond", "Bodoni Moda", Georgia, serif;
-  font-style: italic;
-  letter-spacing: 0;
-}
-.editorial-num {
-  font-family: "EB Garamond", "Bodoni Moda", Georgia, serif;
-  font-variant-numeric: tabular-nums;
-  font-style: italic;
-  letter-spacing: 0;
-}
-.editorial-smallcaps {
-  font-family: "EB Garamond", Georgia, serif;
-  font-variant: small-caps;
-  letter-spacing: 0.22em;
-  font-weight: 500;
-}
-
+/* ============================================================
+   Focus ring — 새 토스 블루
+   ============================================================
+   접근성: 키보드 포커스 시 모든 인터랙티브 요소에 파란 ring.
+   기존 버건디 #8A2A2A → 새 blue-500 #3182F6
+   ============================================================ */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid #8A2A2A;  /* 버건디 focus ring */
+  outline: 2px solid #3182F6;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -81,11 +70,14 @@ a:active {
 
 /* ============================================================
    .blog-content — 블로그 본문 (dangerouslySetInnerHTML)
+   ============================================================
+   본문 자체 디자인은 단계 외(별도 시기)에 정리할 예정이지만,
+   하드코딩된 burgundy hex 만 새 blue 로 매핑해서 톤 충돌 방지.
    ============================================================ */
 .blog-content h2 {
   font-size: 22px;
   font-weight: 800;
-  color: #0E0B08;
+  color: #191F28;
   margin: 36px 0 14px;
   line-height: 1.4;
   letter-spacing: -0.3px;
@@ -93,7 +85,7 @@ a:active {
 .blog-content h3 {
   font-size: 18px;
   font-weight: 700;
-  color: #0E0B08;
+  color: #191F28;
   margin: 28px 0 10px;
   line-height: 1.4;
 }
@@ -116,19 +108,19 @@ a:active {
 }
 .blog-content strong {
   font-weight: 700;
-  color: #0E0B08;
+  color: #191F28;
 }
 .blog-content a {
-  color: #8A2A2A;
+  color: #3182F6;            /* (구) 버건디 → 새 blue */
   text-decoration: underline;
 }
 .blog-content blockquote {
-  border-left: 3px solid #8A2A2A;
+  border-left: 3px solid #3182F6;   /* (구) 버건디 → 새 blue */
   padding: 10px 16px;
   margin: 18px 0;
-  background: #FBF4F1;
-  border-radius: 4px;
-  color: #4C4538;
+  background: #EFF6FF;              /* (구) 옅은 핑크크림 → 새 blue-50 */
+  border-radius: 8px;
+  color: #4E5968;                   /* (구) sepia → 새 grey-700 */
 }
 .blog-content table {
   width: 100%;
@@ -138,16 +130,16 @@ a:active {
 }
 .blog-content table th,
 .blog-content table td {
-  border: 1px solid #e5e8eb;
+  border: 1px solid #E5E8EB;
   padding: 10px 12px;
   text-align: left;
 }
 .blog-content table th {
-  background: #f9fafb;
+  background: #F9FAFB;
   font-weight: 700;
 }
 .blog-content code {
-  background: #f4f5f7;
+  background: #F2F4F6;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.92em;
@@ -156,7 +148,7 @@ a:active {
 .blog-content hr {
   margin: 28px 0;
   border: none;
-  border-top: 1px solid #e5e8eb;
+  border-top: 1px solid #E5E8EB;
 }
 
 /* 가로 스크롤 컨테이너의 스크롤바 숨김 (AlertStrip 모바일 등)
@@ -246,44 +238,47 @@ a:active {
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ============================================================
+   :root — shadcn 디자인 변수 (라이트)
+   ============================================================
+   2026-04-25 친근한 핀테크 톤 리뉴얼:
+   - --primary: 토스 블루 #3182F6 (oklch 변환)
+   - --ring: 동일 블루로 통일
+   - --radius: 0.625rem → 0.875rem (둥글기 자연 키움)
+   ============================================================ */
 :root {
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.215 0.012 247);   /* 새 grey-900 #191F28 */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.215 0.012 247);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  /* keepioo 브랜드 컬러 매핑 (2026-04-24)
-     --primary: burgundy #8A2A2A (CTA 버튼·로고 점) → oklch 변환
-     --ring: blue #3182f6 (포커스 outline, 링크) → oklch 변환
-     기존 shadcn neutral 기본값(검은색) 을 브랜드에 맞춰 교체.
-     기존 custom 컴포넌트의 bg-burgundy / bg-blue-500 과 자연스럽게 매칭. */
-  --primary: oklch(0.39 0.13 24);
+  --popover-foreground: oklch(0.215 0.012 247);
+  --primary: oklch(0.62 0.18 256);        /* 토스 블루 #3182F6 */
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.60 0.20 254);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.39 0.13 24);
+  --secondary: oklch(0.965 0.005 247);    /* 새 grey-100 #F2F4F6 */
+  --secondary-foreground: oklch(0.355 0.018 247);  /* 새 grey-700 */
+  --muted: oklch(0.965 0.005 247);
+  --muted-foreground: oklch(0.555 0.014 247);      /* 새 grey-500 */
+  --accent: oklch(0.965 0.005 247);
+  --accent-foreground: oklch(0.355 0.018 247);
+  --destructive: oklch(0.625 0.230 22);            /* 새 red #F04452 근사 */
+  --border: oklch(0.91 0.005 247);                 /* 새 grey-200 #E5E8EB */
+  --input: oklch(0.91 0.005 247);
+  --ring: oklch(0.62 0.18 256);                    /* primary 와 동일 톤 */
+  --chart-1: oklch(0.62 0.18 256);
+  --chart-2: oklch(0.555 0.014 247);
+  --chart-3: oklch(0.41 0.018 247);
+  --chart-4: oklch(0.32 0.018 247);
+  --chart-5: oklch(0.215 0.012 247);
+  --radius: 0.875rem;                              /* 0.625 → 0.875 (둥글기 ↑) */
+  --sidebar: oklch(0.985 0.003 247);
+  --sidebar-foreground: oklch(0.215 0.012 247);
+  --sidebar-primary: oklch(0.62 0.18 256);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.60 0.20 254);
+  --sidebar-accent: oklch(0.965 0.005 247);
+  --sidebar-accent-foreground: oklch(0.355 0.018 247);
+  --sidebar-border: oklch(0.91 0.005 247);
+  --sidebar-ring: oklch(0.62 0.18 256);
 }
 
 .dark {
