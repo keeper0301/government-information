@@ -7,13 +7,12 @@ import { AdSlot } from "@/components/ad-slot";
 import { FilterBar } from "./filter-bar";
 import { Pagination } from "@/components/pagination";
 import { getRegionMatchPatterns } from "@/lib/regions";
+import { getProgramCategoryCounts } from "@/lib/category-counts";
 
 export const metadata: Metadata = {
   title: "복지 정보 — 정책알리미",
   description: "공공기관에서 제공하는 복지 프로그램을 한눈에 확인하세요.",
 };
-
-const CATEGORIES = ["전체", "주거", "취업", "양육", "의료", "소득"];
 // 페이지당 20건 — 기존 10건은 7122건이 713페이지로 쪼개져 사용자 탐색 부담이 큼.
 // loan/page.tsx 와 동일 수치로 통일.
 const PER_PAGE = 20;
@@ -36,6 +35,8 @@ export default async function WelfarePage({ searchParams }: Props) {
   const page = parseInt(params.page || "1", 10);
 
   const supabase = await createClient();
+  // 카테고리 칩 동적 노출용 — 활성 정책만 카운트, 빈 카테고리 자동 숨김
+  const categoryCounts = await getProgramCategoryCounts(supabase, "welfare_programs");
   let query = supabase.from("welfare_programs").select("*", { count: "exact" });
 
   if (category !== "전체") query = query.eq("category", category);
@@ -104,19 +105,31 @@ export default async function WelfarePage({ searchParams }: Props) {
 
       {/* Filters */}
       <section className="max-w-content mx-auto px-10 mb-6 max-md:px-6">
-        {/* Category tabs */}
+        {/* Category tabs — DB 실측 기반 동적. 빈 카테고리 자동 숨김 + 건수 표기 */}
         <div className="flex gap-1.5 mb-4 flex-wrap">
-          {CATEGORIES.map((c) => (
+          {/* "전체" 칩은 항상 첫 자리 고정 */}
+          <a
+            href={buildUrl({ category: "전체", page: "1" })}
+            className={`px-4 py-2 max-md:py-2.5 max-md:inline-flex max-md:items-center max-md:min-h-[44px] text-sm font-medium rounded-full no-underline transition-colors ${
+              category === "전체"
+                ? "bg-blue-500 text-white"
+                : "bg-grey-50 text-grey-700 hover:bg-grey-100"
+            }`}
+          >
+            전체
+          </a>
+          {categoryCounts.map((c) => (
             <a
-              key={c}
-              href={buildUrl({ category: c, page: "1" })}
+              key={c.category}
+              href={buildUrl({ category: c.category, page: "1" })}
               className={`px-4 py-2 max-md:py-2.5 max-md:inline-flex max-md:items-center max-md:min-h-[44px] text-sm font-medium rounded-full no-underline transition-colors ${
-                category === c
+                category === c.category
                   ? "bg-blue-500 text-white"
                   : "bg-grey-50 text-grey-700 hover:bg-grey-100"
               }`}
             >
-              {c}
+              {c.category}{" "}
+              <span className="opacity-70">({c.n.toLocaleString()})</span>
             </a>
           ))}
         </div>
