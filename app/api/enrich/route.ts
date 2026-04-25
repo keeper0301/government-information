@@ -53,6 +53,12 @@ async function pickCandidates(
   // skipped (applies 매칭 0건) → cron 실패 알림 반복. 근본 해결(뉴스를 news_posts 로
   // 이전) 은 별개 작업, 여기서는 enrich 후보에서만 배제해 정상 후보(bokjiro/youthcenter)
   // 가 뽑히도록 함.
+  //
+  // 2026-04-25 limit 분배 균등화 — 이전엔 welfare 와 loan 각각 limit 만큼 뽑은 뒤
+  // [...w, ...l].slice(0, limit) 로 잘라서 결과적으로 welfare 가 항상 우선 처리됨.
+  // 그 결과 loan_programs 의 mss row (raw_payload 채워져 fetcher 통과 가능) 가
+  // welfare 후보가 소진될 때까지 영원히 enrich 안 되는 편향 발생 → 절반씩 분배.
+  const halfLimit = Math.ceil(limit / 2);
   const [w, l] = await Promise.all([
     supabase
       .from("welfare_programs")
@@ -61,14 +67,14 @@ async function pickCandidates(
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
-      .limit(limit),
+      .limit(halfLimit),
     supabase
       .from("loan_programs")
       .select("id, source_code, source_id, source_url, raw_payload")
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
-      .limit(limit),
+      .limit(halfLimit),
   ]);
 
   const out: Candidate[] = [];
