@@ -79,6 +79,18 @@ export default async function RootLayout({
   } = await supabase.auth.getUser();
   const isAdmin = isAdminUser(user?.email);
 
+  // 헤더 종 아이콘 배지에 표시할 활성 알림 개수.
+  // 비로그인은 0 (Nav 안 NotificationBell 이 비노출 처리).
+  let alarmCount = 0;
+  if (user) {
+    const { count } = await supabase
+      .from("alarm_subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+    alarmCount = count ?? 0;
+  }
+
   return (
     <html lang="ko">
       <head>
@@ -109,7 +121,7 @@ export default async function RootLayout({
           url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
           description="공공기관 데이터 기반 복지·대출 정보 안내 서비스"
         />
-        <Nav isAdmin={isAdmin} />
+        <Nav isAdmin={isAdmin} loggedIn={!!user} alarmCount={alarmCount} />
         <ReconsentBannerContainer />
         {children}
         <Footer />

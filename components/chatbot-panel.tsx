@@ -22,12 +22,14 @@ export function ChatbotPanel() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // AI상담 페이지(/consult)에서는 FAB 챗봇을 숨김 (Hook 호출 뒤에 조건부 return)
-  if (pathname === "/consult") return null;
-
+  // 메시지 추가 시 자동 스크롤 — early return 전에 호출해야 React 의
+  // Rules of Hooks (모든 hook 은 항상 같은 순서로 호출) 를 준수.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // AI상담 페이지(/consult) 에서는 FAB 챗봇을 숨김 — 모든 hook 호출 뒤로 early return.
+  if (pathname === "/consult") return null;
 
   async function handleSend() {
     const msg = input.trim();

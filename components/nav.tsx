@@ -4,33 +4,60 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./user-menu";
+import { NotificationBell } from "./notification-bell";
 
-// 전체 메뉴 항목 (더보기 드롭다운 없이 데스크톱 한 줄에 모두 나열)
+// ============================================================
+// 헤더 메뉴 — 11개 → 5개로 축소
+// ============================================================
+// "정책" 메뉴는 /policy 둘러보기 허브로 진입한 뒤 4개 탭(맞춤추천/복지/
+// 대출/인기) 으로 분기. 모바일 햄버거에서는 정책 하위 4개를 들여쓰기로 펼쳐
+// 한 손가락 동선을 줄였다.
+// 알림센터·정책가이드·도움말·이용약관 은 헤더에서 빼고 모바일 햄버거 하단
+// "기타 메뉴" 영역과 푸터로만 노출 (헤더 가독성 우선).
+// ============================================================
 const items = [
-  { label: "복지정보", href: "/welfare" },
-  { label: "대출정보", href: "/loan" },
-  { label: "맞춤추천", href: "/recommend" },
-  { label: "인기정책", href: "/popular" },
-  { label: "정책소식", href: "/news" },
-  { label: "정책가이드", href: "/blog" },
+  {
+    label: "정책",
+    href: "/policy",
+    // 모바일 햄버거에서만 펼쳐 보여주는 하위 탭. 데스크톱은 평탄.
+    children: [
+      { label: "맞춤추천", href: "/policy" },
+      { label: "복지정보", href: "/welfare" },
+      { label: "대출정보", href: "/loan" },
+      { label: "인기정책", href: "/popular" },
+    ],
+  },
+  { label: "소식", href: "/news" },
   { label: "달력", href: "/calendar" },
   { label: "AI상담", href: "/consult" },
-  { label: "알림센터", href: "/alerts" },
   { label: "요금제", href: "/pricing" },
-  { label: "도움말", href: "/help" },
-];
+] as const;
 
-// isAdmin: layout.tsx 의 RootLayout 이 서버에서 isAdminUser() 로 판정해 prop 으로 전달.
-// 어드민 한정 메뉴 노출 여부 결정. UI 노출용일 뿐 실제 권한은 /admin 서버 가드로 재검증.
+// 모바일 햄버거 하단 "기타 메뉴" — 헤더에서 빠진 항목들의 마지막 진입점
+const mobileExtraItems = [
+  { label: "알림센터", href: "/alerts" },
+  { label: "정책가이드", href: "/blog" },
+  { label: "도움말", href: "/help" },
+  { label: "이용약관", href: "/terms" },
+] as const;
+
 type NavProps = {
+  // 어드민 메뉴 노출 여부 (UI 용 — 실권한은 /admin 서버 가드)
   isAdmin?: boolean;
+  // 로그인 여부 (NotificationBell 노출 판정)
+  loggedIn?: boolean;
+  // 활성 알림 개수 (종 아이콘 배지)
+  alarmCount?: number;
 };
 
-export function Nav({ isAdmin = false }: NavProps) {
+export function Nav({
+  isAdmin = false,
+  loggedIn = false,
+  alarmCount = 0,
+}: NavProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // 현재 경로와 메뉴 링크 비교
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
   }
@@ -38,7 +65,7 @@ export function Nav({ isAdmin = false }: NavProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100">
       <div className="max-w-content mx-auto px-10 h-[58px] flex items-center justify-between max-md:px-5">
-        {/* 로고 — Editorial Masthead (이탤릭 세리프 워드마크 + 버건디 dot) */}
+        {/* 로고 — Editorial Masthead */}
         <Link
           href="/"
           aria-label="keepioo · 정책알리미 홈으로"
@@ -51,19 +78,17 @@ export function Nav({ isAdmin = false }: NavProps) {
           >
             keepioo
           </span>
-          {/* 버건디 ornament */}
           <span
             aria-hidden="true"
             style={{
               width: 6, height: 6, borderRadius: "50%",
-              background: "#8A2A2A", display: "inline-block",
-              marginTop: 4,
+              background: "#8A2A2A", display: "inline-block", marginTop: 4,
             }}
           />
-          {/* 2xl 이상에서만 한글 부텍스트 노출 — 1024~1280 구간에 11개 메뉴
-              나열 공간 확보 (기존 xl 이상 노출은 1280~1536 구간 가독성 침해) */}
+          {/* 메뉴가 5개로 줄어 lg(1024) 부터 한글 부텍스트 노출 가능
+              (이전 11개 메뉴 시절엔 2xl 이상에서만 노출했던 제약 해제) */}
           <span
-            className="hidden 2xl:inline-block text-grey-900"
+            className="hidden lg:inline-block text-grey-900"
             style={{
               fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
               fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px",
@@ -75,20 +100,17 @@ export function Nav({ isAdmin = false }: NavProps) {
           </span>
         </Link>
 
-        {/* 데스크톱 메뉴 — lg (1024px) 부터 11개 항목 전부 나열 (md~lg 구간은 햄버거).
-            디자인 원칙:
-            · 14px (데스크톱 nav 표준) · font-medium · grey-700
-            · hover 는 배경 칩 대신 글자색만 진해짐 → 11개가 모여 있어도 덜 산만
-            · active 는 굵기 + 버건디 2px hairline (로고 dot 과 브랜드 연결) */}
+        {/* 데스크톱 메뉴 — lg(1024)부터 5개 항목 + 종 아이콘 + 계정.
+            메뉴 수가 절반 이하로 줄어 라벨 사이 padding 을 더 넉넉히 할 수 있다. */}
         <div className="hidden lg:flex items-center gap-1">
           {items.map((item) => {
             const active = isActive(item.href);
             return (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative px-2.5 xl:px-3 py-2.5 text-[14px] min-h-[44px] flex items-center transition-colors no-underline ${
+                className={`relative px-3 xl:px-4 py-2.5 text-[14px] min-h-[44px] flex items-center transition-colors no-underline ${
                   active
                     ? "font-semibold text-grey-900"
                     : "font-medium text-grey-700 hover:text-grey-900"
@@ -98,15 +120,18 @@ export function Nav({ isAdmin = false }: NavProps) {
                 {active && (
                   <span
                     aria-hidden="true"
-                    className="absolute left-2.5 right-2.5 xl:left-3 xl:right-3 bottom-1.5 h-[2px] rounded-full"
+                    className="absolute left-3 right-3 xl:left-4 xl:right-4 bottom-1.5 h-[2px] rounded-full"
                     style={{ background: "#8A2A2A" }}
                   />
                 )}
-              </a>
+              </Link>
             );
           })}
 
-          {/* 로그인 상태에 따라 로그인 버튼 ↔ 내 계정 메뉴를 보여줌 */}
+          {/* 알림 종 아이콘 — UserMenu 왼쪽 */}
+          <NotificationBell loggedIn={loggedIn} count={alarmCount} />
+
+          {/* 로그인/계정 메뉴 */}
           <UserMenu isAdmin={isAdmin} />
         </div>
 
@@ -139,40 +164,108 @@ export function Nav({ isAdmin = false }: NavProps) {
         </button>
       </div>
 
-      {/* 모바일·태블릿 메뉴 패널 (lg 미만) — 세로 나열은 공간 여유 있으므로
-          데스크톱과 달리 rounded bg 유지. active 표시는 버건디 좌측 bar 로
-          데스크톱 밑줄과 시각 일관성. */}
+      {/* 모바일·태블릿 메뉴 패널 (lg 미만)
+          - 5개 메인 메뉴 (정책은 하위 4개 탭 들여쓰기로 함께 노출 — 한 손가락 동선)
+          - 그 아래 알림센터·정책가이드·도움말·이용약관 작은 글씨 묶음
+          - 마지막에 로그인/내계정 영역 */}
       {mobileOpen && (
-        <div id="mobile-menu" className="lg:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1">
-          {items.map((item) => {
-            const active = isActive(item.href);
-            return (
+        <div
+          id="mobile-menu"
+          className="lg:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1"
+        >
+          {items.map((item) => (
+            <MobileMenuItem
+              key={item.href}
+              item={item}
+              isActive={isActive}
+              onNavigate={() => setMobileOpen(false)}
+            />
+          ))}
+
+          {/* 기타 메뉴 — 헤더에서 뺀 항목들의 마지막 진입점.
+              구분선 + 작은 글씨로 메인 메뉴와 시각 분리 */}
+          <div className="pt-3 mt-3 border-t border-grey-100">
+            <div className="px-5 pb-1.5 text-[11px] font-semibold tracking-[1px] text-grey-500 uppercase">
+              기타
+            </div>
+            {mobileExtraItems.map((extra) => (
               <a
-                key={item.href}
-                href={item.href}
+                key={extra.href}
+                href={extra.href}
                 onClick={() => setMobileOpen(false)}
-                aria-current={active ? "page" : undefined}
-                className={`relative block pl-5 pr-4 py-3 text-[15px] rounded-lg no-underline transition-colors ${
-                  active
-                    ? "font-semibold text-grey-900 bg-grey-50"
-                    : "text-grey-700 hover:bg-grey-50"
-                }`}
+                className="block pl-5 pr-4 py-2.5 text-[13px] rounded-lg no-underline text-grey-600 hover:bg-grey-50 transition-colors"
               >
-                {item.label}
-                {active && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
-                    style={{ background: "#8A2A2A" }}
-                  />
-                )}
+                {extra.label}
               </a>
-            );
-          })}
-          {/* 모바일용 로그인/로그아웃 영역 — 선택 시 햄버거 닫기 */}
+            ))}
+          </div>
+
+          {/* 로그인/내계정 영역 */}
           <UserMenu mobile isAdmin={isAdmin} onNavigate={() => setMobileOpen(false)} />
         </div>
       )}
     </nav>
+  );
+}
+
+// ============================================================
+// MobileMenuItem — 모바일 햄버거 한 줄
+// ============================================================
+// 일반 항목은 단순 a 태그, "정책" 처럼 children 이 있으면 그 아래에
+// 하위 4개 탭을 들여쓰기로 함께 렌더한다 (탭 전환을 위해 굳이 /policy
+// 진입할 필요 없게).
+// ============================================================
+type MenuItem = (typeof items)[number];
+
+function MobileMenuItem({
+  item,
+  isActive,
+  onNavigate,
+}: {
+  item: MenuItem;
+  isActive: (href: string) => boolean;
+  onNavigate: () => void;
+}) {
+  const active = isActive(item.href);
+  const hasChildren = "children" in item && item.children.length > 0;
+
+  return (
+    <div>
+      <a
+        href={item.href}
+        onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
+        className={`relative block pl-5 pr-4 py-3 text-[15px] rounded-lg no-underline transition-colors ${
+          active
+            ? "font-semibold text-grey-900 bg-grey-50"
+            : "text-grey-700 hover:bg-grey-50"
+        }`}
+      >
+        {item.label}
+        {active && (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full"
+            style={{ background: "#8A2A2A" }}
+          />
+        )}
+      </a>
+
+      {/* 하위 탭 (정책 메뉴 전용) — 들여쓰기 + 작은 글씨 */}
+      {hasChildren && (
+        <div className="ml-4 pl-4 border-l border-grey-100 space-y-0.5">
+          {item.children.map((child) => (
+            <a
+              key={child.href + child.label}
+              href={child.href}
+              onClick={onNavigate}
+              className="block pl-3 pr-4 py-2 text-[13px] text-grey-600 hover:text-grey-900 hover:bg-grey-50 rounded-lg no-underline transition-colors"
+            >
+              {child.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
