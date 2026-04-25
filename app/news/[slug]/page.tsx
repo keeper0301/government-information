@@ -21,7 +21,7 @@ import {
   NEWS_CATEGORY_COLOR,
   type NewsCategory,
 } from "@/components/news-card";
-import { cleanDescription, formatKoreanDate } from "@/lib/utils";
+import { cleanDescription, formatKoreanDate, paragraphizeNewsBody } from "@/lib/utils";
 import { findRelatedPrograms } from "@/lib/news-matching";
 import { HideNewsButton } from "./HideNewsButton";
 import { HiddenNewsNotice } from "./HiddenNewsNotice";
@@ -140,7 +140,14 @@ export default async function NewsDetailPage({ params }: Props) {
     NEWS_CATEGORY_COLOR[post.category as NewsCategory] ??
     "bg-grey-100 text-grey-700";
   const dateLabel = formatKoreanDate(post.published_at);
-  const cleanedBody = post.body ? cleanDescription(post.body) : null;
+  // RSS body 는 평문 한 덩어리로 저장돼 가독성이 매우 떨어짐.
+  // paragraphizeNewsBody 로 한국어 종결 어미 기준 자동 단락 분할.
+  const cleanedBody = post.body
+    ? paragraphizeNewsBody(cleanDescription(post.body))
+    : null;
+  const bodyParagraphs = cleanedBody
+    ? cleanedBody.split("\n\n").filter((p) => p.trim())
+    : [];
 
   // 관련 공고 매칭 — 뉴스 keywords 기반으로 welfare/loan 에서 현재 신청 가능한
   // 공고 최대 4건 추천. keepioo USP: 뉴스 읽고 → 바로 신청 가능한 공고로 연결.
@@ -267,10 +274,19 @@ export default async function NewsDetailPage({ params }: Props) {
         />
       )}
 
-      {/* 본문 — cleanDescription 으로 HTML 엔티티·태그 정제 후 whitespace-pre-wrap */}
-      {cleanedBody && (
-        <div className="text-[16px] text-grey-900 leading-[1.8] whitespace-pre-wrap mb-10 max-md:text-[15px]">
-          {cleanedBody}
+      {/* 본문 — cleanDescription + paragraphizeNewsBody 로 자동 단락 분할 후
+          단락별 <p> 렌더. RSS body 가 한 덩어리 평문이라 글자 벽 가독성 이슈 해소.
+          폰트는 본문 표준 17px / 모바일 16px, 줄간 1.85 (한국어 본문 권장치). */}
+      {bodyParagraphs.length > 0 && (
+        <div className="text-[17px] text-grey-900 leading-[1.85] tracking-[-0.1px] mb-10 max-md:text-[16px] max-md:leading-[1.8]">
+          {bodyParagraphs.map((para, idx) => (
+            <p
+              key={idx}
+              className="mb-5 last:mb-0 whitespace-pre-wrap break-keep"
+            >
+              {para}
+            </p>
+          ))}
         </div>
       )}
 

@@ -216,6 +216,62 @@ export function cleanDescription(raw: string | null | undefined): string {
   return text.trim();
 }
 
+// ============================================================
+// paragraphizeNewsBody — 정책 뉴스 본문 자동 단락 분할
+// ============================================================
+// 배경:
+//   korea.kr / 네이버 뉴스 RSS body 가 DB 에 저장될 때 cleanDescription
+//   거치면서 단락 구분(\n\n) 이 거의 사라진 한 덩어리 평문으로 남음
+//   (예: 1200자 한 덩어리 + 끝에 "문의:..." 한 줄). 사용자에게 그대로
+//   whitespace-pre-wrap 렌더 하면 글자 벽처럼 보여 가독성이 매우 떨어짐.
+//
+// 동작:
+//   1) 기존 \n 줄바꿈은 \n\n 으로 강화해 단락 break 로 사용 (예: "문의:..." 라인).
+//   2) 각 단락이 200자 이상이면 한국어 종결 어미 패턴으로 문장 분할 후
+//      120자 이상 누적되면 새 단락 시작.
+//   3) 종결 어미 매치 실패 시 일반 마침표·물음표·느낌표 + 공백으로 fallback.
+//
+// 결과는 \n\n 으로 단락 구분된 평문. 호출처는 split("\n\n") 후 <p> 로 렌더.
+// ============================================================
+export function paragraphizeNewsBody(text: string | null | undefined): string {
+  if (!text) return "";
+
+  // 1) 기존 \n 보존 + 강화 — 단일 줄바꿈도 단락 break 로 승격
+  const normalized = text.replace(/\n+/g, "\n\n");
+  const paragraphs = normalized.split(/\n\n/).filter((p) => p.trim());
+
+  // 한국어 뉴스에서 자주 나오는 종결 어미 — 이 뒤 공백 = 문장 종료
+  // lookbehind 로 패턴 보존하며 분할. 모든 패턴은 마침표(.) 포함.
+  const KOREAN_SENTENCE_END = /(?<=다\.|요\.|죠\.|니다\.|입니다\.|이다\.|것이다\.|예정이다\.|밝혔다\.|전했다\.|답했다\.|덧붙였다\.|설명했다\.|강조했다\.|당부했다\.|나타났다\.|있었다\.)\s+/;
+
+  const result: string[] = [];
+  const MIN_LEN = 120; // 한 단락 최소 길이 — 한국어 뉴스 단락 평균 200~300자
+
+  for (const para of paragraphs) {
+    if (para.length < 200) {
+      result.push(para);
+      continue;
+    }
+    // 종결 어미 분할 → 실패 시 일반 마침표 fallback
+    let sentences = para.split(KOREAN_SENTENCE_END).filter((s) => s.trim());
+    if (sentences.length <= 1) {
+      sentences = para.split(/(?<=[.!?])\s+/).filter((s) => s.trim());
+    }
+
+    let current = "";
+    for (const sent of sentences) {
+      current = current ? `${current} ${sent}` : sent;
+      if (current.length >= MIN_LEN) {
+        result.push(current);
+        current = "";
+      }
+    }
+    if (current) result.push(current);
+  }
+
+  return result.join("\n\n");
+}
+
 // 핵심 정보 필드(eligibility · benefits 등)가 description 본문과 사실상 같은지 판정.
 // 데이터 실측: 대출 1568건 중 eligibility 채워진 411건 100% 가 description 과 완전 동일.
 // 핵심 정보 카드에 본문을 한 번 더 보여주는 건 가독성 저하 → 같으면 숨기는 게 맞음.
