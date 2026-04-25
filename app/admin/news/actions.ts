@@ -178,9 +178,13 @@ export async function toggleNewsHidden(formData: FormData): Promise<void> {
 
   revalidateNewsRoutes(slug);
 
-  // /news/[slug] 의 HideNewsButton 에서도 호출하므로 returnTo 가 있으면 그곳으로
-  const returnTo = String(formData.get("returnTo") ?? "").trim();
-  if (returnTo && returnTo.startsWith("/")) {
+  // /news/[slug] 의 HideNewsButton 에서도 호출하므로 returnTo 가 있으면 그곳으로.
+  // next/navigation 의 redirect 는 path 를 HTTP Location 헤더에 그대로 넣어
+  // ASCII 외 문자(한글 slug)가 있으면 "TypeError: Invalid character" 로 throw → 500.
+  // returnTo 의 한글을 percent-encoding 으로 안전하게 변환 후 redirect.
+  const returnToRaw = String(formData.get("returnTo") ?? "").trim();
+  if (returnToRaw && returnToRaw.startsWith("/")) {
+    const returnTo = returnToRaw.replace(/[^\x00-\x7F]+/g, (s) => encodeURIComponent(s));
     redirect(returnTo);
   }
   redirect(`/admin/news?msg=${nextHidden ? "hidden" : "restored"}`);
