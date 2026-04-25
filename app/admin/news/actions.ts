@@ -178,14 +178,17 @@ export async function toggleNewsHidden(formData: FormData): Promise<void> {
 
   revalidateNewsRoutes(slug);
 
-  // /news/[slug] 의 HideNewsButton 에서도 호출하므로 returnTo 가 있으면 그곳으로.
-  // next/navigation 의 redirect 는 path 를 HTTP Location 헤더에 그대로 넣어
-  // ASCII 외 문자(한글 slug)가 있으면 "TypeError: Invalid character" 로 throw → 500.
-  // returnTo 의 한글을 percent-encoding 으로 안전하게 변환 후 redirect.
+  // returnTo 처리 — next/navigation 의 redirect() 는 한글 등 ASCII 외 문자가
+  // path 에 들어 있으면 내부적으로 TypeError 를 던진다 (encode 후에도 일부 경로
+  // 에서 다시 처리되며 throw). 안전을 위해 ASCII 만 허용:
+  //   - returnTo 가 / 로 시작하고 ASCII 만이면 그대로 redirect (예: /admin/news?q=...)
+  //   - 한글 등 포함된 returnTo (예: /news/생활이-...) 는 무시하고 ASCII fallback
+  //     /admin/news?msg=... 으로 보냄. 사장님은 검색 또는 "최근 숨긴 10건" 에서
+  //     한 클릭으로 다시 그 뉴스 상세 페이지로 진입 가능.
   const returnToRaw = String(formData.get("returnTo") ?? "").trim();
-  if (returnToRaw && returnToRaw.startsWith("/")) {
-    const returnTo = returnToRaw.replace(/[^\x00-\x7F]+/g, (s) => encodeURIComponent(s));
-    redirect(returnTo);
+  const isAsciiPath = (s: string) => /^[\x00-\x7F]+$/.test(s);
+  if (returnToRaw && returnToRaw.startsWith("/") && isAsciiPath(returnToRaw)) {
+    redirect(returnToRaw);
   }
   redirect(`/admin/news?msg=${nextHidden ? "hidden" : "restored"}`);
 }
