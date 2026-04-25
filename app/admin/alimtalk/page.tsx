@@ -54,6 +54,54 @@ async function getRecentDeliveries(limit = 20): Promise<DeliveryLogRow[]> {
   return (data ?? []) as DeliveryLogRow[];
 }
 
+// 최근 7일 일자별 sent/failed/skipped 집계 → sparkline 추세 시각화용.
+// 운영 초기엔 일 수십~수백 건 수준이라 인덱스 풀스캔 OK. 앱 메모리 그룹핑.
+type DailyBucket = {
+  date: string;       // YYYY-MM-DD (KST)
+  label: string;      // "4/26" 등 짧은 표기
+  sent: number;
+  failed: number;
+  skipped: number;
+};
+
+async function get7dDailyStats(): Promise<DailyBucket[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await admin
+    .from("alert_deliveries")
+    .select("status, created_at")
+    .eq("channel", "kakao")
+    .gte("created_at", since);
+
+  // 7일치 빈 버킷 생성 (오늘 KST 기준 거꾸로 6일 전까지)
+  const buckets = new Map<string, DailyBucket>();
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+    const kstStr = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }); // YYYY-MM-DD
+    const label = d.toLocaleDateString("ko-KR", {
+      timeZone: "Asia/Seoul",
+      month: "numeric",
+      day: "numeric",
+    });
+    buckets.set(kstStr, { date: kstStr, label, sent: 0, failed: 0, skipped: 0 });
+  }
+
+  for (const row of data ?? []) {
+    const r = row as { status: string; created_at: string };
+    const kstStr = new Date(r.created_at).toLocaleDateString("sv-SE", {
+      timeZone: "Asia/Seoul",
+    });
+    const bucket = buckets.get(kstStr);
+    if (!bucket) continue; // 7일 윈도우 밖
+    if (r.status === "sent") bucket.sent += 1;
+    else if (r.status === "failed") bucket.failed += 1;
+    else if (r.status === "skipped") bucket.skipped += 1;
+  }
+
+  return [...buckets.values()];
+}
+
 // 24h 집계 — 필요한 컬럼만 조회해 가볍게. 운영 초기엔 수백 건 수준이라 인덱스 풀스캔 OK.
 async function collect24hStats(): Promise<{
   total: number;
@@ -173,10 +221,17 @@ export default async function AlimtalkAdminPage() {
   if (!user) redirect("/login?next=/admin/alimtalk");
   if (!isAdminUser(user.email)) redirect("/");
 
-  const [stats, recentLogs] = await Promise.all([
+  const [stats, recentLogs, dailyStats] = await Promise.all([
     collect24hStats(),
     getRecentDeliveries(20),
+    get7dDailyStats(),
   ]);
+
+  // 7일 합산 실패율 (분모는 sent + failed, skipped 제외)
+  const total7d = dailyStats.reduce((s, d) => s + d.sent + d.failed, 0);
+  const failed7d = dailyStats.reduce((s, d) => s + d.failed, 0);
+  const failRate7d = total7d > 0 ? (failed7d / total7d) * 100 : 0;
+  const templateApprovedAt = process.env.KAKAO_TEMPLATE_APPROVED_AT?.trim() || null;
   const { envs: envStatus, allSet: envsAllSet } = checkEnvStatus();
   const setCount = envStatus.filter((e) => e.present).length;
 
@@ -259,6 +314,48 @@ export default async function AlimtalkAdminPage() {
                 값은 보안을 위해 화면에 노출되지 않고, 글자 수와 설정 여부만 표시됩니다.
               </>
             )}
+          </div>
+        </section>
+
+        {/* 템플릿 승인일 안내 — KAKAO_TEMPLATE_APPROVED_AT 환경변수 등록 시 노출 */}
+        {templateApprovedAt && (
+          <section className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4">
+            <p className="text-[13px] text-blue-900">
+              ✅ 카카오 알림톡 템플릿 <strong>POLICY_NEW</strong> 승인일:{" "}
+              <strong>{templateApprovedAt}</strong>
+              <span className="ml-2 text-[12px] text-blue-700">
+                (Vercel 환경변수 KAKAO_TEMPLATE_APPROVED_AT 로 관리)
+              </span>
+            </p>
+          </section>
+        )}
+
+        {/* 7일 실패율 추이 그래프 */}
+        <section className="mb-8">
+          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+            최근 7일 발송 추이
+          </h2>
+          <div className="rounded-lg border border-grey-200 bg-white p-4">
+            <div className="flex items-baseline justify-between mb-3">
+              <p className="text-[13px] text-grey-700">
+                일별 성공·실패 (skipped 제외)
+              </p>
+              <p
+                className={`text-[13px] font-semibold ${
+                  failRate7d >= 10
+                    ? "text-red"
+                    : failRate7d >= 5
+                    ? "text-yellow-700"
+                    : "text-blue-700"
+                }`}
+              >
+                7일 실패율 {failRate7d.toFixed(1)}%
+                <span className="ml-1 text-grey-500 font-normal">
+                  ({failed7d}/{total7d})
+                </span>
+              </p>
+            </div>
+            <DailyBarChart buckets={dailyStats} />
           </div>
         </section>
 
@@ -396,6 +493,112 @@ export default async function AlimtalkAdminPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+// 7일 일자별 sent/failed 누적 막대 그래프 — 외부 라이브러리 없이 inline SVG.
+// 가로 7칸, 각 칸에 sent(파란) + failed(빨간) 누적. 0건이면 회색 점선.
+function DailyBarChart({ buckets }: { buckets: DailyBucket[] }) {
+  const maxVal = Math.max(
+    1, // 0 으로 나누기 방지
+    ...buckets.map((b) => b.sent + b.failed),
+  );
+  const barW = 32; // 막대 너비
+  const gap = 12;
+  const chartH = 80;
+  const chartW = buckets.length * (barW + gap);
+
+  return (
+    <div className="overflow-x-auto">
+      <svg width={chartW} height={chartH + 36} aria-label="최근 7일 발송 추이">
+        {buckets.map((b, idx) => {
+          const x = idx * (barW + gap);
+          const total = b.sent + b.failed;
+          const sentH = total > 0 ? (b.sent / maxVal) * chartH : 0;
+          const failedH = total > 0 ? (b.failed / maxVal) * chartH : 0;
+
+          return (
+            <g key={b.date}>
+              {total === 0 ? (
+                // 데이터 없음 — 회색 점선 placeholder
+                <line
+                  x1={x + 2}
+                  y1={chartH - 1}
+                  x2={x + barW - 2}
+                  y2={chartH - 1}
+                  stroke="#d4d4d8"
+                  strokeWidth="1"
+                  strokeDasharray="3,3"
+                />
+              ) : (
+                <>
+                  {/* failed 위쪽 (빨강) */}
+                  {b.failed > 0 && (
+                    <rect
+                      x={x}
+                      y={chartH - sentH - failedH}
+                      width={barW}
+                      height={failedH}
+                      fill="#ef4444"
+                      rx="2"
+                    >
+                      <title>{`${b.label} — 실패 ${b.failed}건`}</title>
+                    </rect>
+                  )}
+                  {/* sent 아래쪽 (파랑) */}
+                  {b.sent > 0 && (
+                    <rect
+                      x={x}
+                      y={chartH - sentH}
+                      width={barW}
+                      height={sentH}
+                      fill="#3b82f6"
+                      rx="2"
+                    >
+                      <title>{`${b.label} — 성공 ${b.sent}건`}</title>
+                    </rect>
+                  )}
+                </>
+              )}
+              {/* x축 라벨 */}
+              <text
+                x={x + barW / 2}
+                y={chartH + 14}
+                textAnchor="middle"
+                fontSize="10"
+                fill="#71717a"
+              >
+                {b.label}
+              </text>
+              {/* 합계 숫자 */}
+              {total > 0 && (
+                <text
+                  x={x + barW / 2}
+                  y={chartH + 28}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="#3f3f46"
+                  fontWeight="600"
+                >
+                  {total}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {/* 범례 */}
+      <div className="mt-2 flex gap-4 text-[11px] text-grey-700">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-blue-500" />
+          성공
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-red" />
+          실패
+        </span>
+      </div>
+    </div>
   );
 }
 

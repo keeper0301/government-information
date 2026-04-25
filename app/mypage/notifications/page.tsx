@@ -55,6 +55,8 @@ export default async function NotificationsPage() {
 
   // 카카오 알림톡 수신 동의 상태 — 폼 UI 에서 채널 선택 전 안내하기 위해 서버에서 미리 조회.
   const kakaoConsented = await hasActiveConsent(user.id, "kakao_messaging");
+  // 템플릿 승인일 — Vercel 환경변수로 관리. 미설정 시 안내 노출 안 함.
+  const templateApprovedAt = process.env.KAKAO_TEMPLATE_APPROVED_AT?.trim() || null;
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
@@ -78,6 +80,7 @@ export default async function NotificationsPage() {
         tier={tier}
         existingRules={rules || []}
         kakaoConsented={kakaoConsented}
+        templateApprovedAt={templateApprovedAt}
       />
     </main>
   );

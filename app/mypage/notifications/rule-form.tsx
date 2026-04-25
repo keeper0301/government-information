@@ -38,9 +38,11 @@ type Props = {
   existingRules: Rule[];
   /** 카카오 알림톡 수신 동의 현재 상태 — 체크박스 활성화 조건 (tier + consent 둘 다 필요) */
   kakaoConsented: boolean;
+  /** 카카오 알림톡 템플릿 승인일 (서버에서 KAKAO_TEMPLATE_APPROVED_AT 환경변수로 주입) */
+  templateApprovedAt: string | null;
 };
 
-export function RuleForm({ tier, existingRules, kakaoConsented }: Props) {
+export function RuleForm({ tier, existingRules, kakaoConsented, templateApprovedAt }: Props) {
   const router = useRouter();
   const [name, setName] = useState("내 맞춤 알림");
   const [regions, setRegions] = useState<string[]>([]);
@@ -230,6 +232,11 @@ export function RuleForm({ tier, existingRules, kakaoConsented }: Props) {
                 {tier !== "pro" && <span className="ml-2 text-xs text-gray-500">(프로 플랜 전용)</span>}
                 {tier === "pro" && !kakaoConsented && (
                   <span className="ml-2 text-xs text-gray-500">(수신 동의 필요)</span>
+                )}
+                {templateApprovedAt && (
+                  <span className="ml-2 text-[11px] text-blue-600">
+                    ✓ {templateApprovedAt} 카카오 승인 완료
+                  </span>
                 )}
               </span>
             </label>

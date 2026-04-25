@@ -141,18 +141,21 @@ export async function GET(request: Request) {
   //
   // 위 블록의 isNewUser 그대로 재사용 (신규=signup, 기존=login).
   //
-  // auth_method: Supabase user.app_metadata.provider 로 추출.
+  // auth_method: Supabase user.app_metadata.provider + isNewUser 결합.
   //   - "kakao" · "google" : OAuth 소셜 로그인
-  //   - "email"             : 매직링크 or 이메일+비밀번호 가입 확인
+  //   - "email" + isNewUser=true  → "signup_email" (가입 확인 메일 클릭)
+  //   - "email" + isNewUser=false → "magic_link"   (재로그인용 매직링크)
   //   - undefined/null      : 추출 실패 → 전달 안 함
   //
   // 이메일+비밀번호 로그인은 callback 을 거치지 않음 (login/page.tsx 가 직접
-  // method: "email_password" 로 trackEvent). callback 을 거치는 "email" provider
-  // 는 매직링크 또는 가입 확인이라 "email_link" 로 구분해 넘김.
+  // method: "email_password" 로 trackEvent). 분석에서 가입 메일 vs 매직링크 구분이
+  // 가능해야 매직링크 사용률·가입 funnel 을 따로 볼 수 있음.
   const authEventParam = user ? (isNewUser ? "signup" : "login") : "";
   const rawProvider = user?.app_metadata?.provider as string | undefined;
   const authMethodParam =
-    rawProvider === "email" ? "email_link" : (rawProvider ?? "");
+    rawProvider === "email"
+      ? (isNewUser ? "signup_email" : "magic_link")
+      : (rawProvider ?? "");
 
   // ━━━ 온보딩 분기 ━━━
   // next 파라미터가 명시되지 않은 (= 기본값 "/") 경우에만 온보딩 여부 확인.

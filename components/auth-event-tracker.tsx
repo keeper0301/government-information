@@ -28,7 +28,10 @@ export function AuthEventTracker() {
     const event = searchParams.get("auth_event");
     if (event !== "signup" && event !== "login") return;
 
-    // auth_method 있으면 GA4 파라미터로 포함 (kakao/google/email_link).
+    // auth_method 있으면 GA4 파라미터로 포함.
+    //   - kakao / google: OAuth 소셜
+    //   - signup_email: 가입 확인 메일 클릭
+    //   - magic_link: 재로그인용 매직링크 클릭
     // 없으면 파라미터 생략 (이메일+비번 로그인은 callback 거치지 않아 여기 안 들어옴).
     const method = searchParams.get("auth_method");
     const params: Record<string, string> = {};
