@@ -33,12 +33,15 @@ async function requireAdminUser() {
 }
 
 // 공개 / 숨김 노출에 영향 가는 경로 일괄 revalidate.
-// /news 목록·상세·홈·sitemap 모두 ISR 캐시를 쓰므로, 즉시 반영하려면 명시적 무효화 필요.
+// 각 호출을 try/catch 로 감싸 한 path 가 잘못 매치돼도 server action 전체가
+// 500 으로 깨지지 않도록 함 (2026-04-25 실제 발생: revalidatePath('/sitemap.xml')
+// 이 next 의 file-route convention 을 인식 못 해 throw → 사장님 화면이 500 +
+// "페이지를 불러올 수 없어요" 표시. fix: sitemap.xml 호출 제거 + 안전망).
+// /sitemap.xml 은 자체 revalidate (60s) 에 맡김.
 function revalidateNewsRoutes(slug: string) {
-  revalidatePath("/news");
-  revalidatePath(`/news/${slug}`);
-  revalidatePath("/");
-  revalidatePath("/sitemap.xml");
+  try { revalidatePath("/news"); } catch (e) { console.warn("[moderation] revalidate /news 실패:", e); }
+  try { revalidatePath(`/news/${slug}`); } catch (e) { console.warn(`[moderation] revalidate /news/${slug} 실패:`, e); }
+  try { revalidatePath("/"); } catch (e) { console.warn("[moderation] revalidate / 실패:", e); }
 }
 
 // ─── 1) 검색 결과 / 최근 숨김 조회 (server component 에서 직접 호출) ───
