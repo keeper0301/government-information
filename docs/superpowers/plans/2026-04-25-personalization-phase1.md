@@ -12,6 +12,21 @@
 
 ---
 
+## 🔧 변경 로그 (실행 중 발견된 정정 사항)
+
+**2026-04-25 — DB 적용 후 실제 schema 확인 단계에서 발견:**
+
+| # | 결함 | 정정 내용 | 영향 task |
+|---|---|---|---|
+| 1 | `user_profiles.user_id` 컬럼 없음 (실제 PK 는 `id`, auth.users.id 직접 참조) | 모든 코드에서 `user_id` → `id`, `onConflict: 'user_id'` → `'id'` | Task 9, 10, 14 |
+| 2 | `user_profiles.display_name` 컬럼 없음 | `LoadedProfile.displayName` 은 `auth.users.user_metadata.full_name` → email 의 `@` 앞부분 → '회원' fallback 순으로 추출 | Task 9 |
+| 3 | spec §3-2 의 INTEREST 9개 라벨이 실제와 다름. 실제: 복지/대출/청년/출산·육아/창업/주거/교육/의료/고용 (`app/mypage/profile-form.tsx:20`) | INTEREST_TO_BENEFIT_TAGS 매핑을 실제 라벨 기준으로 정정. '복지'·'청년' 은 매핑 없음 (사장님 결정 — 너무 광범위/인구통계) | Task 6 (테스트 포함) |
+| 4 | 결함 3 정정 위해 신규 마이그레이션 042 필요 | `supabase/migrations/042_fix_interest_mapping.sql` 추가 (이미 적용 완료) | File Structure |
+
+영향받는 task 의 코드 블록은 아래 본문에서 직접 수정해 둠.
+
+---
+
 ## 목차
 
 - **Section A — 데이터 인프라** (Task 1–10): DB 마이그레이션 + 추천 엔진. 끝나면 deploy 가능 (UI 변화 없음, 회귀 0)
@@ -105,7 +120,8 @@ supabase/migrations/
   ├── 038_user_profile_extended.sql
   ├── 039_interest_to_benefit_trigger.sql
   ├── 040_alert_rule_auto_flag.sql
-  └── 041_profile_dismiss_tracking.sql
+  ├── 041_profile_dismiss_tracking.sql
+  └── 042_fix_interest_mapping.sql       # 변경 로그 #4 — 실제 INTEREST 라벨 기준 매핑 정정
 
 lib/personalization/
   ├── types.ts                  # UserSignals, ScoredItem, MatchSignal
@@ -434,7 +450,7 @@ git commit -m "feat(personalization): types.ts — UserSignals/ScoredItem/MatchS
 - Create: `lib/personalization/interest-mapping.ts`
 - Test: `__tests__/personalization/interest-mapping.test.ts`
 
-- [ ] **Step 1: 실패하는 테스트 먼저 작성 (TDD)**
+- [ ] **Step 1: 실패하는 테스트 먼저 작성 (TDD) — 정정된 INTEREST 9개 기준**
 
 ```ts
 // __tests__/personalization/interest-mapping.test.ts
@@ -452,12 +468,19 @@ describe('interestsToBenefitTags', () => {
 
   it('단일 interest → 매핑된 tag(s)', () => {
     expect(interestsToBenefitTags(['주거'])).toEqual(['주거']);
-    expect(interestsToBenefitTags(['취업/창업']).sort()).toEqual(['창업', '취업']);
-    expect(interestsToBenefitTags(['복지/생계']).sort()).toEqual(['금융', '생계']);
+    expect(interestsToBenefitTags(['고용'])).toEqual(['취업']);
+    expect(interestsToBenefitTags(['대출'])).toEqual(['금융']);
+    expect(interestsToBenefitTags(['출산·육아'])).toEqual(['양육']);
+  });
+
+  it('복지·청년 은 매핑 없음 (의도적)', () => {
+    expect(interestsToBenefitTags(['복지'])).toEqual([]);
+    expect(interestsToBenefitTags(['청년'])).toEqual([]);
+    expect(interestsToBenefitTags(['복지', '주거'])).toEqual(['주거']);
   });
 
   it('여러 interest → 중복 제거 후 합집합', () => {
-    const result = interestsToBenefitTags(['주거', '의료/건강', '주거']);
+    const result = interestsToBenefitTags(['주거', '의료', '주거']);
     expect(result.sort()).toEqual(['의료', '주거']);
   });
 
@@ -465,7 +488,7 @@ describe('interestsToBenefitTags', () => {
     expect(interestsToBenefitTags(['알수없음', '주거'])).toEqual(['주거']);
   });
 
-  it('9개 interests 모두 BENEFIT_TAGS 14종에서 가져옴', () => {
+  it('실제 마이페이지 INTERESTS 9개 모두 BENEFIT_TAGS 14종에서 가져옴 (또는 빈 배열)', () => {
     const validBenefits = ['주거','의료','양육','교육','문화','취업','창업',
                            '금융','생계','에너지','교통','장례','법률','기타'];
     for (const tags of Object.values(INTEREST_TO_BENEFIT_TAGS)) {
@@ -486,20 +509,27 @@ Expected: FAIL — 모듈 not found
 
 ```ts
 // lib/personalization/interest-mapping.ts
-// /mypage/profile-form 의 interests 9종 칩 → BENEFIT_TAGS 14종 매핑
-// DB 트리거(039) 와 반드시 동기화 — 둘 중 하나만 바뀌면 회귀
+// /mypage/profile-form 의 INTERESTS 9개 → BENEFIT_TAGS 14종 매핑
+// DB 트리거(039 + 042 patch) 와 반드시 동기화 — 둘 중 하나만 바뀌면 회귀
+//
+// 실제 라벨 (app/mypage/profile-form.tsx:20):
+//   복지 / 대출 / 청년 / 출산·육아 / 창업 / 주거 / 교육 / 의료 / 고용
+//
+// 매핑 결정 (사장님 결정 2026-04-25):
+// - 복지·청년: 매핑 없음 (복지는 너무 광범위, 청년은 인구통계 신호)
+// - 나머지 7개: 1:1 자연스러운 매핑
 import type { BenefitTag } from '@/lib/tags/taxonomy';
 
 export const INTEREST_TO_BENEFIT_TAGS: Record<string, BenefitTag[]> = {
   '주거':       ['주거'],
-  '의료/건강':  ['의료'],
-  '취업/창업':  ['취업', '창업'],
-  '양육/보육':  ['양육'],
+  '의료':       ['의료'],
+  '고용':       ['취업'],
+  '창업':       ['창업'],
   '교육':       ['교육'],
-  '복지/생계':  ['생계', '금융'],
-  '문화/여가':  ['문화'],
-  '교통':       ['교통'],
-  '법률/상담':  ['법률'],
+  '대출':       ['금융'],
+  '출산·육아':  ['양육'],
+  // '복지': 너무 광범위 → 매핑 없음
+  // '청년': 인구통계 신호 (BENEFIT_TAGS 가 아닌 ageTags 영역) → 매핑 없음
 };
 
 export function interestsToBenefitTags(interests: string[] | null): BenefitTag[] {
@@ -948,6 +978,10 @@ git commit -m "feat(personalization): filter.ts — minScore/limit 적용해 Sco
 // lib/personalization/load-profile.ts
 // 로그인 사용자의 프로필을 SSR 1회 요청당 1번만 조회 (React cache)
 // 페이지에서 PersonalizedSection + MatchBadge 가 동시에 호출해도 DB hit 1번
+//
+// 변경 로그 #1, #2 반영:
+// - user_profiles PK 는 user_id 가 아니라 id (auth.users.id 직접 참조)
+// - display_name 컬럼 없음 → auth.users.user_metadata.full_name → email 앞부분 → '회원'
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { UserSignals } from './types';
@@ -960,32 +994,47 @@ import type { BenefitTag } from '@/lib/tags/taxonomy';
 
 export type LoadedProfile = {
   userId: string;
-  displayName: string | null;
+  displayName: string;          // 항상 비어있지 않음 (fallback chain)
   signals: UserSignals;
   isEmpty: boolean;             // 모든 신호 필드가 비어있는지
   hasProfile: boolean;          // user_profiles row 자체가 존재하는지
   dismissedOnboardingAt: string | null;
 };
 
+function deriveDisplayName(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+}): string {
+  const meta = user.user_metadata;
+  const fullName = typeof meta?.full_name === 'string' ? meta.full_name.trim() : '';
+  if (fullName) return fullName;
+  const email = user.email ?? '';
+  const local = email.split('@')[0];
+  if (local) return local;
+  return '회원';
+}
+
 export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const displayName = deriveDisplayName(user);
+
   const { data: profile } = await supabase
     .from('user_profiles')
     .select(`
-      user_id, display_name, age_group, region, district, occupation,
+      id, age_group, region, district, occupation,
       interests, income_level, household_types, benefit_tags,
       dismissed_onboarding_at
     `)
-    .eq('user_id', user.id)
+    .eq('id', user.id)
     .maybeSingle();
 
   if (!profile) {
     return {
       userId: user.id,
-      displayName: null,
+      displayName,
       signals: {
         ageGroup: null, region: null, district: null, occupation: null,
         incomeLevel: null, householdTypes: [], benefitTags: [],
@@ -1013,7 +1062,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
 
   return {
     userId: user.id,
-    displayName: profile.display_name ?? null,
+    displayName,
     signals,
     isEmpty,
     hasProfile: true,
@@ -1563,8 +1612,9 @@ export async function saveOnboardingProfile(userId: string, state: OnboardingSta
   if (!user || user.id !== userId) throw new Error('Unauthorized');
 
   // upsert + dismissed_onboarding_at 도장
+  // 변경 로그 #1 — user_profiles PK 는 id (auth.users.id 직접 참조)
   await supabase.from('user_profiles').upsert({
-    user_id: userId,
+    id: userId,
     age_group: state.ageGroup,
     region: state.region,
     district: state.district,
@@ -1573,7 +1623,7 @@ export async function saveOnboardingProfile(userId: string, state: OnboardingSta
     income_level: state.incomeLevel,
     household_types: state.householdTypes,
     dismissed_onboarding_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
+  }, { onConflict: 'id' });
 
   // 자동 알림 규칙 동기화
   const { data: sub } = await supabase
