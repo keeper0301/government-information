@@ -38,18 +38,26 @@ const EMPTY_COUNTS: ProgramCounts = {
 // RPC 호출 timeout — 5초. cold start 정상 응답은 1~2초, 5초 초과면 hang 으로 간주.
 const RPC_TIMEOUT_MS = 5000;
 
-// Promise timeout helper — 정해진 시간 안에 끝나면 결과, 아니면 fallback 반환.
-// 주의: timeout 후에도 원본 promise 는 background 에서 계속 실행됨 (cancel 불가).
-// JS GC 가 처리하므로 leak 우려 없음.
+// Promise timeout + error-safe helper — timeout 또는 throw 둘 다 fallback 반환.
+// 2026-04-26 사고 후속: AuthUnknownError 등 throw 가 Promise.race 를 우회해
+// page SSR 자체 throw → Vercel function fail → 504. helper 에 try/catch 도 추가.
+//
+// 주의: timeout 후에도 원본 promise 는 background 진행 (cancel 불가).
+// JS GC 정리하므로 leak 우려 없음.
 async function withTimeout<T>(
   promise: PromiseLike<T>,
   ms: number,
   fallback: T,
 ): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+    ]);
+  } catch (e) {
+    console.error("[home-stats] withTimeout caught error, returning fallback", e);
+    return fallback;
+  }
 }
 
 // 누적·오늘·이번 주 신규 카운트. KST 기준.

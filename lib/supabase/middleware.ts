@@ -7,18 +7,27 @@ import { checkHiddenNews } from "@/lib/news-moderation/middleware-check";
 // timeout → 사이트 다운. 5초 timeout + safe fallback 으로 사고 재발 방지.
 const SUPABASE_TIMEOUT_MS = 5000;
 
-// Promise timeout helper — ms 안에 안 끝나면 fallback 반환.
-// 주의: timeout 후에도 원본 promise 는 background 에서 계속 진행 (cancel 불가).
-// JS GC 가 정리하므로 leak 우려 없음.
+// Promise timeout + error-safe helper — timeout 또는 throw 둘 다 fallback 반환.
+// 2026-04-26 SVG 사고 후속: AuthUnknownError 같은 throw 가 P1 의 Promise.race
+// 를 우회해 middleware 자체 throw → Vercel function fail → 504. 그래서 helper
+// 자체에 try/catch 도 추가. timeout 외에 어떤 에러도 fallback 으로 흘려 보냄.
+//
+// 주의: timeout 후에도 원본 promise 는 background 진행 (cancel 불가).
+// JS GC 정리하므로 leak 우려 없음.
 async function withTimeout<T>(
   promise: PromiseLike<T>,
   ms: number,
   fallback: T,
 ): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+    ]);
+  } catch (e) {
+    console.error("[middleware] withTimeout caught error, returning fallback", e);
+    return fallback;
+  }
 }
 
 // 로그인한 사용자만 볼 수 있는 경로 목록
