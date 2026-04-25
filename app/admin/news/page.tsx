@@ -341,7 +341,7 @@ function NewsModerationRow({
     <li className="bg-white border border-grey-200 rounded-lg p-3">
       <div className="flex items-start gap-2 mb-1.5">
         <span
-          className={`shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded ${
+          className={`shrink-0 text-[12px] font-bold px-2 py-0.5 rounded ${
             row.is_hidden
               ? "bg-red/10 text-red"
               : "bg-green/10 text-green"

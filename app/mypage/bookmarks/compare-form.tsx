@@ -142,14 +142,14 @@ function BookmarkRow({
           className="flex-1 min-w-0 no-underline block"
         >
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${typeColor}`}>
+            <span className={`text-[12px] font-semibold px-2 py-0.5 rounded ${typeColor}`}>
               {typeLabel}
             </span>
             {item.category && (
-              <span className="text-[11px] text-grey-600">· {item.category}</span>
+              <span className="text-[12px] text-grey-600">· {item.category}</span>
             )}
             {item.region && item.region !== "전국" && (
-              <span className="text-[11px] text-grey-600">· {item.region}</span>
+              <span className="text-[12px] text-grey-600">· {item.region}</span>
             )}
             <DdayBadge dday={dday} />
           </div>
@@ -163,29 +163,30 @@ function BookmarkRow({
 }
 
 function DdayBadge({ dday }: { dday: number | null }) {
+  // 사이트 전역 D-day 뱃지와 동일한 12px·px-2 톤. 마감 정보가 가장 작던 문제 해소.
   if (dday === null) {
     return (
-      <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-grey-100 text-grey-600">
+      <span className="text-[12px] font-semibold px-2 py-0.5 rounded bg-grey-100 text-grey-600">
         상시
       </span>
     );
   }
   if (dday < 0) {
     return (
-      <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-grey-100 text-grey-500">
+      <span className="text-[12px] font-semibold px-2 py-0.5 rounded bg-grey-100 text-grey-500">
         마감
       </span>
     );
   }
   if (dday <= 7) {
     return (
-      <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#FFEEEE] text-red">
+      <span className="text-[12px] font-semibold px-2 py-0.5 rounded bg-[#FFEEEE] text-red">
         D-{dday}
       </span>
     );
   }
   return (
-    <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+    <span className="text-[12px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600">
       D-{dday}
     </span>
   );

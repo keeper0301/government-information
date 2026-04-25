@@ -115,11 +115,11 @@ export default function ConsultPage() {
         나에게 맞는 복지·대출 정책을 대화로 찾아보세요.
       </p>
 
-      {/* 채팅 영역 — 빈 메시지 상태에서 너무 큰 공백을 만들지 않도록 max-h 로 상한.
-          이전 h-[calc(100vh-240px)] 는 첫 메시지 후 거대한 빈 영역을 만들어
-          시각적으로 "왜 이렇게 비었지?" 인상을 주었음. min-h 480 + max-h 720 으로
-          데스크톱 한 화면에 자연스럽게 맞추되 메시지가 늘면 내부 스크롤. */}
-      <div className="bg-white border border-grey-100 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex flex-col min-h-[480px] max-h-[720px]">
+      {/* 채팅 영역 — 빈 메시지 상태에서 너무 큰 공백을 만들지 않도록 max-h 상한.
+          이전 h-[calc(100vh-240px)] 는 첫 메시지 후 거대한 빈 영역을 만들었음.
+          max-h 를 viewport 비례로 두어 13인치 노트북(800px)에서도 잘리지 않게 함.
+          (220px 은 헤더 80 + h1·subtitle ~80 + 페이지 하단 여백 60 합산.) */}
+      <div className="bg-white border border-grey-100 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex flex-col min-h-[480px] max-h-[calc(100vh-220px)]">
         {/* 메시지 목록 */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 max-md:px-4">
           {messages.map((msg, i) => (
