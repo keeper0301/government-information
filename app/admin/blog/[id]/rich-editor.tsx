@@ -21,7 +21,7 @@
 //   - HTML 보기 토글 (raw HTML 보고 싶을 때)
 // ============================================================
 
-import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { useEditor, EditorContent, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Link } from "@tiptap/extension-link";
 import { Image } from "@tiptap/extension-image";
@@ -182,11 +182,38 @@ function Toolbar({
   onOpenLinkModal: () => void;
   onOpenImageModal: () => void;
 }) {
+  // 2026-04-25 버그픽스: useEditor 만으론 selection 변경 시 React 가 리렌더 안 함.
+  // 결과적으로 P / 1.목록 / 🔗링크 같은 active 표시가 stale 상태로 stuck.
+  // useEditorState 로 selector 구독해 selection·transaction 마다 리렌더.
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: e }) => {
+      if (!e) return null;
+      return {
+        isParagraph: e.isActive("paragraph"),
+        isH2: e.isActive("heading", { level: 2 }),
+        isH3: e.isActive("heading", { level: 3 }),
+        isBold: e.isActive("bold"),
+        isItalic: e.isActive("italic"),
+        isStrike: e.isActive("strike"),
+        isBulletList: e.isActive("bulletList"),
+        isOrderedList: e.isActive("orderedList"),
+        isLink: e.isActive("link"),
+        isCodeBlock: e.isActive("codeBlock"),
+        isTable: e.isActive("table"),
+        canUndo: e.can().undo(),
+        canRedo: e.can().redo(),
+      };
+    },
+  });
+
+  if (!state) return null;
+
   return (
     <div className="flex flex-wrap items-center gap-1 px-2 py-2 border-b border-grey-200 bg-grey-50">
       {/* 본문 스타일 */}
       <Btn
-        active={editor.isActive("paragraph")}
+        active={state.isParagraph}
         onClick={() => editor.chain().focus().setParagraph().run()}
         title="단락"
         disabled={showHtml}
@@ -194,7 +221,7 @@ function Toolbar({
         P
       </Btn>
       <Btn
-        active={editor.isActive("heading", { level: 2 })}
+        active={state.isH2}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         title="대제목 (H2)"
         disabled={showHtml}
@@ -202,7 +229,7 @@ function Toolbar({
         H2
       </Btn>
       <Btn
-        active={editor.isActive("heading", { level: 3 })}
+        active={state.isH3}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         title="중제목 (H3)"
         disabled={showHtml}
@@ -214,7 +241,7 @@ function Toolbar({
 
       {/* 강조 */}
       <Btn
-        active={editor.isActive("bold")}
+        active={state.isBold}
         onClick={() => editor.chain().focus().toggleBold().run()}
         title="굵게 (Ctrl+B)"
         disabled={showHtml}
@@ -222,7 +249,7 @@ function Toolbar({
         <b>B</b>
       </Btn>
       <Btn
-        active={editor.isActive("italic")}
+        active={state.isItalic}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         title="기울임 (Ctrl+I)"
         disabled={showHtml}
@@ -230,7 +257,7 @@ function Toolbar({
         <i>I</i>
       </Btn>
       <Btn
-        active={editor.isActive("strike")}
+        active={state.isStrike}
         onClick={() => editor.chain().focus().toggleStrike().run()}
         title="취소선"
         disabled={showHtml}
@@ -242,7 +269,7 @@ function Toolbar({
 
       {/* 목록 */}
       <Btn
-        active={editor.isActive("bulletList")}
+        active={state.isBulletList}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         title="글머리 목록"
         disabled={showHtml}
@@ -250,7 +277,7 @@ function Toolbar({
         • 목록
       </Btn>
       <Btn
-        active={editor.isActive("orderedList")}
+        active={state.isOrderedList}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         title="번호 목록"
         disabled={showHtml}
@@ -262,14 +289,14 @@ function Toolbar({
 
       {/* 링크 */}
       <Btn
-        active={editor.isActive("link")}
+        active={state.isLink}
         onClick={onOpenLinkModal}
         title="링크"
         disabled={showHtml}
       >
         🔗 링크
       </Btn>
-      {editor.isActive("link") && (
+      {state.isLink && (
         <Btn
           onClick={() => editor.chain().focus().unsetLink().run()}
           title="링크 제거"
@@ -291,7 +318,7 @@ function Toolbar({
       >
         ⊞ 표
       </Btn>
-      {editor.isActive("table") && (
+      {state.isTable && (
         <>
           <Btn
             onClick={() => editor.chain().focus().addColumnAfter().run()}
@@ -330,7 +357,7 @@ function Toolbar({
 
       {/* 코드 블록 */}
       <Btn
-        active={editor.isActive("codeBlock")}
+        active={state.isCodeBlock}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         title="코드 블록"
         disabled={showHtml}
@@ -344,14 +371,14 @@ function Toolbar({
       <Btn
         onClick={() => editor.chain().focus().undo().run()}
         title="실행 취소 (Ctrl+Z)"
-        disabled={showHtml || !editor.can().undo()}
+        disabled={showHtml || !state.canUndo}
       >
         ↶
       </Btn>
       <Btn
         onClick={() => editor.chain().focus().redo().run()}
         title="다시 실행 (Ctrl+Y)"
-        disabled={showHtml || !editor.can().redo()}
+        disabled={showHtml || !state.canRedo}
       >
         ↷
       </Btn>
