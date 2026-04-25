@@ -31,6 +31,10 @@ const ALLOWED_TAGS = [
   "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
   // 인라인 컨테이너
   "span", "div",
+  // 체크리스트 — TaskItem 이 li 안에 input + label 출력
+  "input", "label",
+  // 유튜브 임베드 — TipTap Youtube extension 이 div+iframe 출력
+  "iframe",
 ];
 
 const ALLOWED_ATTR = [
@@ -39,6 +43,11 @@ const ALLOWED_ATTR = [
   "class", "id",                                    // 일반
   "colspan", "rowspan",                             // table
   "title",                                          // a / abbr 등
+  "style",                                          // text-align / color (DOMPurify 가 위험 style 차단)
+  "type", "checked", "disabled",                    // task list 의 input
+  "data-checked", "data-type", "data-youtube-video", // TipTap 노드 태깅
+  "allowfullscreen", "frameborder",                 // iframe (youtube)
+  "align",                                          // 표 / 이미지 정렬 (legacy 호환)
 ];
 
 // URL 스킴 화이트리스트 — javascript:·data:text/html 등 차단.

@@ -1,7 +1,7 @@
 "use client";
 
 // ============================================================
-// RichEditor — 워드프레스 클래식 에디터 스타일 본문 편집기
+// RichEditor — 워드프레스 클래식 에디터 스타일 본문 편집기 (풀 기능)
 // ============================================================
 // TipTap 기반. 사장님이 raw HTML 안 보고 비주얼로 글 편집할 수 있게.
 //
@@ -9,19 +9,29 @@
 // initial 로 받은 HTML 을 set, 변경마다 hidden <input name="content"> 동기화 →
 // 부모 server action form 이 그대로 작동.
 //
-// 툴바:
-//   - 본문 스타일: H2 / H3 / 단락
-//   - 글자 강조: 굵게 / 기울임 / 취소선
-//   - 목록: 글머리표 / 번호
-//   - 링크: 추가 / 제거
-//   - 표: 3×3 삽입 / 행·열 추가·제거 / 표 제거
-//   - 이미지: URL 입력 → 삽입
-//   - 코드 블록 (HTML 일부 코드 보여줄 때)
-//   - 실행 취소 / 다시 실행
-//   - HTML 보기 토글 (raw HTML 보고 싶을 때)
+// 툴바 그룹:
+//   본문 스타일: 단락 / H2 / H3 / 인용
+//   강조: 굵게 / 기울임 / 밑줄 / 취소선 / 인라인 코드
+//   색상: 글자색 / 하이라이트 (각각 dropdown 팔레트)
+//   정렬: 왼쪽 / 가운데 / 오른쪽
+//   목록: 글머리 / 번호 / 체크리스트
+//   링크: 추가 / 제거
+//   미디어: 표 / 이미지 / 유튜브
+//   블록: 수평선 / 코드블록
+//   실행 취소 / 다시 실행
+//   HTML 보기 토글
+//
+// 보안: /blog/[slug] 가 dangerouslySetInnerHTML 로 본문 렌더하므로
+// lib/html-sanitize.ts 에서 mark / u / span style / input task / iframe youtube
+// 까지 화이트리스트 확장 필요.
 // ============================================================
 
-import { useEditor, EditorContent, useEditorState, type Editor } from "@tiptap/react";
+import {
+  useEditor,
+  EditorContent,
+  useEditorState,
+  type Editor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Link } from "@tiptap/extension-link";
 import { Image } from "@tiptap/extension-image";
@@ -29,6 +39,14 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
+import { Underline } from "@tiptap/extension-underline";
+import { Highlight } from "@tiptap/extension-highlight";
+import { TextAlign } from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
+import { Youtube } from "@tiptap/extension-youtube";
+import { TaskList } from "@tiptap/extension-task-list";
+import { TaskItem } from "@tiptap/extension-task-item";
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
@@ -36,6 +54,28 @@ type Props = {
   // form submit 시 함께 전송될 hidden input 의 name (기본 "content")
   name?: string;
 };
+
+// 글자색 팔레트 — null = unset(기본). 워드프레스 핵심 색상 8개.
+const TEXT_COLORS: { color: string | null; label: string }[] = [
+  { color: null, label: "기본" },
+  { color: "#111111", label: "검정" },
+  { color: "#6b7280", label: "회색" },
+  { color: "#dc2626", label: "빨강" },
+  { color: "#ea580c", label: "주황" },
+  { color: "#16a34a", label: "초록" },
+  { color: "#2563eb", label: "파랑" },
+  { color: "#9333ea", label: "보라" },
+];
+
+// 하이라이트(형광펜) 팔레트 — 파스텔 톤 (본문 위 강조용).
+const HIGHLIGHT_COLORS: { color: string | null; label: string }[] = [
+  { color: null, label: "끄기" },
+  { color: "#fef08a", label: "노랑" },
+  { color: "#bbf7d0", label: "연두" },
+  { color: "#fbcfe8", label: "분홍" },
+  { color: "#bae6fd", label: "하늘" },
+  { color: "#ddd6fe", label: "라벤더" },
+];
 
 export function RichEditor({ initialHtml, name = "content" }: Props) {
   // form submit 호환용 hidden input — editor 변경마다 value 동기화.
@@ -47,11 +87,12 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
     initial: "",
   });
   const [imageModal, setImageModal] = useState(false);
+  const [youtubeModal, setYoutubeModal] = useState(false);
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // 코드 블록은 별도, 여기선 inline code 만 허용
+        // 코드 블록은 별도 클래스, 인라인 code 는 starter-kit 기본 그대로
         codeBlock: { HTMLAttributes: { class: "rich-codeblock" } },
       }),
       Link.configure({
@@ -66,6 +107,23 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
       TableRow,
       TableHeader,
       TableCell,
+      Underline,
+      // multicolor: true 로 색상별 hex 보존 (default 는 1색만 토글).
+      Highlight.configure({ multicolor: true }),
+      // heading + paragraph 만 정렬 적용 (목록 정렬은 워드프레스에도 안 흔함).
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      // Color 는 TextStyle mark 에 의존 — 둘 다 등록해야 글자색 동작.
+      TextStyle,
+      Color,
+      // YouTube 임베드 — controls/allowFullscreen 기본 ON.
+      Youtube.configure({
+        controls: true,
+        nocookie: true, // 쿠키 없는 youtube-nocookie.com 사용 (개인정보)
+        HTMLAttributes: { class: "rich-youtube" },
+      }),
+      TaskList,
+      // 중첩 가능 (체크박스 안에 또 체크박스).
+      TaskItem.configure({ nested: true }),
     ],
     content: initialHtml,
     immediatelyRender: false, // SSR hydration 안전
@@ -113,6 +171,7 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
           setLinkModal({ open: true, initial: previous });
         }}
         onOpenImageModal={() => setImageModal(true)}
+        onOpenYoutubeModal={() => setYoutubeModal(true)}
       />
 
       {/* 본문 영역 — 비주얼 모드 / HTML 모드 토글 */}
@@ -162,6 +221,17 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
           }}
         />
       )}
+
+      {/* 유튜브 임베드 모달 */}
+      {youtubeModal && (
+        <YouTubeModal
+          onCancel={() => setYoutubeModal(false)}
+          onInsert={(url) => {
+            editor.chain().focus().setYoutubeVideo({ src: url }).run();
+            setYoutubeModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -175,16 +245,17 @@ function Toolbar({
   onToggleHtml,
   onOpenLinkModal,
   onOpenImageModal,
+  onOpenYoutubeModal,
 }: {
   editor: Editor;
   showHtml: boolean;
   onToggleHtml: () => void;
   onOpenLinkModal: () => void;
   onOpenImageModal: () => void;
+  onOpenYoutubeModal: () => void;
 }) {
-  // 2026-04-25 버그픽스: useEditor 만으론 selection 변경 시 React 가 리렌더 안 함.
-  // 결과적으로 P / 1.목록 / 🔗링크 같은 active 표시가 stale 상태로 stuck.
-  // useEditorState 로 selector 구독해 selection·transaction 마다 리렌더.
+  // useEditorState: selection·transaction 마다 selector 재실행 → React 리렌더.
+  // 이게 없으면 isActive 결과가 stale 하게 stuck (커서 이동에 반응 X).
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) => {
@@ -193,14 +264,25 @@ function Toolbar({
         isParagraph: e.isActive("paragraph"),
         isH2: e.isActive("heading", { level: 2 }),
         isH3: e.isActive("heading", { level: 3 }),
+        isBlockquote: e.isActive("blockquote"),
         isBold: e.isActive("bold"),
         isItalic: e.isActive("italic"),
+        isUnderline: e.isActive("underline"),
         isStrike: e.isActive("strike"),
+        isInlineCode: e.isActive("code"),
         isBulletList: e.isActive("bulletList"),
         isOrderedList: e.isActive("orderedList"),
+        isTaskList: e.isActive("taskList"),
         isLink: e.isActive("link"),
         isCodeBlock: e.isActive("codeBlock"),
         isTable: e.isActive("table"),
+        // 정렬은 active 자체보단 현재 attr 가 어떤지 비교
+        isAlignLeft: e.isActive({ textAlign: "left" }) || (!e.isActive({ textAlign: "center" }) && !e.isActive({ textAlign: "right" })),
+        isAlignCenter: e.isActive({ textAlign: "center" }),
+        isAlignRight: e.isActive({ textAlign: "right" }),
+        // 현재 선택 영역의 글자색·하이라이트색 (없으면 null)
+        currentColor: (e.getAttributes("textStyle").color as string) ?? null,
+        currentHighlight: (e.getAttributes("highlight").color as string) ?? null,
         canUndo: e.can().undo(),
         canRedo: e.can().redo(),
       };
@@ -211,7 +293,7 @@ function Toolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-1 px-2 py-2 border-b border-grey-200 bg-grey-50">
-      {/* 본문 스타일 */}
+      {/* ━━━ 본문 스타일 ━━━ */}
       <Btn
         active={state.isParagraph}
         onClick={() => editor.chain().focus().setParagraph().run()}
@@ -236,10 +318,18 @@ function Toolbar({
       >
         H3
       </Btn>
+      <Btn
+        active={state.isBlockquote}
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        title="인용"
+        disabled={showHtml}
+      >
+        ❝ 인용
+      </Btn>
 
       <Sep />
 
-      {/* 강조 */}
+      {/* ━━━ 강조 ━━━ */}
       <Btn
         active={state.isBold}
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -257,6 +347,14 @@ function Toolbar({
         <i>I</i>
       </Btn>
       <Btn
+        active={state.isUnderline}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        title="밑줄 (Ctrl+U)"
+        disabled={showHtml}
+      >
+        <u>U</u>
+      </Btn>
+      <Btn
         active={state.isStrike}
         onClick={() => editor.chain().focus().toggleStrike().run()}
         title="취소선"
@@ -264,10 +362,72 @@ function Toolbar({
       >
         <s>S</s>
       </Btn>
+      <Btn
+        active={state.isInlineCode}
+        onClick={() => editor.chain().focus().toggleCode().run()}
+        title="인라인 코드"
+        disabled={showHtml}
+      >
+        {"<>"}
+      </Btn>
 
       <Sep />
 
-      {/* 목록 */}
+      {/* ━━━ 색상 (글자색·하이라이트 dropdown) ━━━ */}
+      <ColorDropdown
+        label="🎨"
+        title="글자색"
+        currentColor={state.currentColor}
+        palette={TEXT_COLORS}
+        disabled={showHtml}
+        onPick={(color) => {
+          if (color === null) editor.chain().focus().unsetColor().run();
+          else editor.chain().focus().setColor(color).run();
+        }}
+      />
+      <ColorDropdown
+        label="🖍"
+        title="하이라이트"
+        currentColor={state.currentHighlight}
+        palette={HIGHLIGHT_COLORS}
+        disabled={showHtml}
+        onPick={(color) => {
+          if (color === null) editor.chain().focus().unsetHighlight().run();
+          else editor.chain().focus().setHighlight({ color }).run();
+        }}
+      />
+
+      <Sep />
+
+      {/* ━━━ 정렬 ━━━ */}
+      <Btn
+        active={state.isAlignLeft && !state.isAlignCenter && !state.isAlignRight}
+        onClick={() => editor.chain().focus().setTextAlign("left").run()}
+        title="왼쪽 정렬"
+        disabled={showHtml}
+      >
+        ⬅
+      </Btn>
+      <Btn
+        active={state.isAlignCenter}
+        onClick={() => editor.chain().focus().setTextAlign("center").run()}
+        title="가운데 정렬"
+        disabled={showHtml}
+      >
+        ↔
+      </Btn>
+      <Btn
+        active={state.isAlignRight}
+        onClick={() => editor.chain().focus().setTextAlign("right").run()}
+        title="오른쪽 정렬"
+        disabled={showHtml}
+      >
+        ➡
+      </Btn>
+
+      <Sep />
+
+      {/* ━━━ 목록 ━━━ */}
       <Btn
         active={state.isBulletList}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -284,10 +444,18 @@ function Toolbar({
       >
         1. 목록
       </Btn>
+      <Btn
+        active={state.isTaskList}
+        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        title="체크리스트"
+        disabled={showHtml}
+      >
+        ☑ 체크
+      </Btn>
 
       <Sep />
 
-      {/* 링크 */}
+      {/* ━━━ 링크 ━━━ */}
       <Btn
         active={state.isLink}
         onClick={onOpenLinkModal}
@@ -308,7 +476,7 @@ function Toolbar({
 
       <Sep />
 
-      {/* 표 */}
+      {/* ━━━ 미디어 ━━━ */}
       <Btn
         onClick={() =>
           editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
@@ -343,19 +511,31 @@ function Toolbar({
           </Btn>
         </>
       )}
-
-      <Sep />
-
-      {/* 이미지 — 파일 업로드 또는 URL */}
       <Btn
         onClick={onOpenImageModal}
-        title="이미지 업로드 또는 URL 삽입"
+        title="이미지 업로드 또는 URL"
         disabled={showHtml}
       >
         🖼 이미지
       </Btn>
+      <Btn
+        onClick={onOpenYoutubeModal}
+        title="유튜브 영상 임베드"
+        disabled={showHtml}
+      >
+        ▶ 유튜브
+      </Btn>
 
-      {/* 코드 블록 */}
+      <Sep />
+
+      {/* ━━━ 블록 ━━━ */}
+      <Btn
+        onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        title="수평선"
+        disabled={showHtml}
+      >
+        ─ 선
+      </Btn>
       <Btn
         active={state.isCodeBlock}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
@@ -367,7 +547,7 @@ function Toolbar({
 
       <Sep />
 
-      {/* 실행 취소 / 다시 실행 */}
+      {/* ━━━ 실행 취소 / 다시 ━━━ */}
       <Btn
         onClick={() => editor.chain().focus().undo().run()}
         title="실행 취소 (Ctrl+Z)"
@@ -429,6 +609,117 @@ function Btn({
 
 function Sep() {
   return <span className="mx-1 h-5 w-px bg-grey-300 inline-block" aria-hidden />;
+}
+
+// ─────────────────────────────────────────────────────────────
+// ColorDropdown — 글자색·하이라이트 공용 팔레트 popover
+// ─────────────────────────────────────────────────────────────
+// 작은 버튼 클릭 시 색상 그리드 popover 노출. 팔레트 항목 클릭 → onPick(color).
+// 바깥 클릭 또는 Esc 로 닫힘. 현재 색은 active 표시.
+// ─────────────────────────────────────────────────────────────
+function ColorDropdown({
+  label,
+  title,
+  currentColor,
+  palette,
+  disabled,
+  onPick,
+}: {
+  label: string;
+  title: string;
+  currentColor: string | null;
+  palette: { color: string | null; label: string }[];
+  disabled?: boolean;
+  onPick: (color: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // 바깥 클릭 + Esc 로 닫기
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // 현재 색이 팔레트에 있으면 active 인덱스로 표시
+  const activeIdx = palette.findIndex((p) => p.color === currentColor);
+
+  return (
+    <div className="relative" ref={ref}>
+      <Btn
+        active={open}
+        onClick={() => setOpen((v) => !v)}
+        title={title}
+        disabled={disabled}
+      >
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden>{label}</span>
+          {currentColor && (
+            <span
+              className="inline-block w-3 h-3 rounded-sm border border-grey-300"
+              style={{ background: currentColor }}
+              aria-hidden
+            />
+          )}
+        </span>
+      </Btn>
+      {open && (
+        <div
+          role="listbox"
+          aria-label={title}
+          className="absolute top-full left-0 mt-1 z-30 bg-white border border-grey-300 rounded-lg shadow-lg p-2 grid grid-cols-4 gap-1 w-[180px]"
+        >
+          {palette.map((p, idx) => (
+            <button
+              key={p.label}
+              type="button"
+              role="option"
+              aria-selected={idx === activeIdx}
+              onClick={() => {
+                onPick(p.color);
+                setOpen(false);
+              }}
+              title={p.label}
+              className={`relative h-8 rounded border text-[11px] font-medium transition-colors ${
+                idx === activeIdx
+                  ? "border-grey-900 ring-1 ring-grey-900"
+                  : "border-grey-200 hover:border-grey-400"
+              }`}
+              style={{
+                background: p.color ?? "#ffffff",
+                color: p.color === null ? "#374151" : isLightColor(p.color) ? "#111111" : "#ffffff",
+              }}
+            >
+              {p.color === null ? p.label : ""}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 단순 luminance 추정 — 팔레트 항목 라벨이 거의 안 보이지만 unset 셀(배경색 없음)
+// 텍스트 색상 결정용. #rrggbb 6자리 hex 만 처리.
+function isLightColor(hex: string): boolean {
+  const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return true;
+  const r = parseInt(m[1], 16);
+  const g = parseInt(m[2], 16);
+  const b = parseInt(m[3], 16);
+  // ITU-R BT.601 luminance approx
+  return r * 0.299 + g * 0.587 + b * 0.114 > 160;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -612,6 +903,63 @@ function ImageModal({
           </div>
         </div>
       )}
+    </ModalShell>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// 유튜브 모달 — 영상 URL 입력 → 임베드
+// ─────────────────────────────────────────────────────────────
+function YouTubeModal({
+  onCancel,
+  onInsert,
+}: {
+  onCancel: () => void;
+  onInsert: (url: string) => void;
+}) {
+  const [url, setUrl] = useState("");
+  const trimmed = url.trim();
+  // youtu.be / youtube.com 모두 지원. 유효성 간단 체크 — 자세한 파싱은 extension 위임.
+  const valid = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\//i.test(trimmed);
+
+  return (
+    <ModalShell title="유튜브 영상 임베드" onCancel={onCancel}>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+            유튜브 URL
+          </label>
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            autoFocus
+            className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+          />
+          <p className="mt-1 text-[12px] text-grey-500">
+            유튜브 영상 페이지 URL 또는 youtu.be 단축 링크. 쿠키 없는 모드로
+            자동 변환돼요 (개인정보 영향 0).
+          </p>
+        </div>
+        <div className="flex gap-2 justify-end pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-[14px] font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            disabled={!valid}
+            onClick={() => valid && onInsert(trimmed)}
+            className="px-4 py-2 text-[14px] font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            삽입
+          </button>
+        </div>
+      </div>
     </ModalShell>
   );
 }
