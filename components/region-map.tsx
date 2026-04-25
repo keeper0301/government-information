@@ -12,7 +12,7 @@
 // ============================================================
 
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getWelfareRegionCounts } from "@/lib/home-stats";
 
 // 5×4 grid — 한국 시·도 지리 어림 위치 (위→남, 좌→우).
 // null = 빈 칸. 16개 시·도 + 제주 1 = 17.
@@ -23,26 +23,13 @@ const GRID: (string | null)[] = [
   "광주", "전북", "전남", "경남", "부산",
 ];
 
-// PostgREST ilike prefix 매칭용 별칭 (DB 의 region 풀네임 → grid 표시명)
-const SIDO_PATTERNS: Record<string, string[]> = {
-  서울: ["서울"],
-  경기: ["경기"],
-  인천: ["인천"],
-  강원: ["강원"],
-  충북: ["충청북", "충북"],
-  충남: ["충청남", "충남"],
-  세종: ["세종"],
-  대전: ["대전"],
-  전북: ["전북", "전라북"],
-  전남: ["전라남", "전남"],
-  광주: ["광주"],
-  경북: ["경상북", "경북"],
-  경남: ["경상남", "경남"],
-  대구: ["대구"],
-  울산: ["울산"],
-  부산: ["부산"],
-  제주: ["제주"],
-};
+const SIDO_NAMES = [
+  "서울", "경기", "인천", "강원",
+  "충북", "충남", "세종", "대전",
+  "전북", "전남", "광주",
+  "경북", "경남", "대구", "울산", "부산",
+  "제주",
+];
 
 // 정책 수 → 색 강도 (5단계). max 기준 normalize.
 function intensityClass(count: number, max: number): string {
@@ -56,33 +43,14 @@ function intensityClass(count: number, max: number): string {
 }
 
 export async function RegionMap() {
-  const supabase = await createClient();
-
-  // 16개 시·도 + 제주 + 전국 = 18 query 병렬. count 만 head:true.
-  const sidoNames = Object.keys(SIDO_PATTERNS); // 17개
-  const sidoQueries = sidoNames.map((name) => {
-    const patterns = SIDO_PATTERNS[name];
-    // 첫 prefix 만 사용 — 정규화된 풀네임이라 한 번이면 충분 (성남시 등 시·군까지 포함)
-    return supabase
-      .from("welfare_programs")
-      .select("*", { count: "exact", head: true })
-      .ilike("region", `${patterns[0]}%`);
-  });
-  const nationwideQuery = supabase
-    .from("welfare_programs")
-    .select("*", { count: "exact", head: true })
-    .eq("region", "전국");
-
-  const [nationwideResult, ...sidoResults] = await Promise.all([
-    nationwideQuery,
-    ...sidoQueries,
-  ]);
-
+  // 단일 RPC 호출 (이전엔 18 queries 병렬 → 1 query). react cache 로
+  // 같은 요청 안 다른 호출자와 결과 공유.
+  const allCounts = await getWelfareRegionCounts();
   const counts: Record<string, number> = {};
-  sidoNames.forEach((name, i) => {
-    counts[name] = sidoResults[i].count ?? 0;
+  SIDO_NAMES.forEach((name) => {
+    counts[name] = allCounts[name] ?? 0;
   });
-  const nationwide = nationwideResult.count ?? 0;
+  const nationwide = allCounts["전국"] ?? 0;
   const max = Math.max(...Object.values(counts), 1);
 
   return (

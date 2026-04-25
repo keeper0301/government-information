@@ -86,7 +86,12 @@ export function WishForm() {
         한 줄도 좋아요. "이런 정보가 keepioo 에 있으면 좋겠다" — 사장님이 직접 읽고 다음 업데이트에 반영합니다.
       </p>
 
+      {/* sr-only label — 스크린리더 접근성 (시각적으로는 숨김, 보조 기술은 읽음) */}
+      <label htmlFor="wish-textarea" className="sr-only">
+        받고 싶은 정부 혜택 의견
+      </label>
       <textarea
+        id="wish-textarea"
         value={wish}
         onChange={(e) => setWish(e.target.value)}
         maxLength={500}
@@ -102,7 +107,11 @@ export function WishForm() {
         <span className="text-grey-400">최소 5자</span>
       </div>
 
+      <label htmlFor="wish-email" className="sr-only">
+        이메일 (선택)
+      </label>
       <input
+        id="wish-email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}

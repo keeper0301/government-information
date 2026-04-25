@@ -12,6 +12,7 @@ import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { getUrgentPrograms, type ProfileLite } from "@/lib/programs";
+import { getProgramCounts } from "@/lib/home-stats";
 import { createClient } from "@/lib/supabase/server";
 
 // 홈페이지는 로그인 사용자·비로그인 사용자마다 프로필 자동 채움이 달라서
@@ -44,27 +45,10 @@ export default async function Home() {
     }
   }
 
-  // 3) Hero 인디케이터용 — 오늘(KST) 신규 공고 카운트.
-  //    토스 전략 후킹: "오늘도 N건 새 공고" 같은 동적 메시지로 활동감 + 신뢰감.
-  //    오늘 0건이면 "이번 주 N건" fallback, 그것도 0 이면 정적 라벨로 폴백.
-  const kstNow = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
-  const todayKst = new Date(Date.UTC(
-    kstNow.getUTCFullYear(),
-    kstNow.getUTCMonth(),
-    kstNow.getUTCDate(),
-  ));
-  const todayKstISO = todayKst.toISOString();
-  const weekAgoKstISO = new Date(todayKst.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  // 4) 최근 블로그 3글 + 최근 뉴스 3건 + 신규 카운트 (병렬).
-  const [
-    recentPostsResult,
-    recentNewsResult,
-    todayWelfareResult,
-    todayLoanResult,
-    weekWelfareResult,
-    weekLoanResult,
-  ] = await Promise.all([
+  // 3) 최근 블로그 3글 + 최근 뉴스 3건 + 통합 stats RPC (병렬).
+  //    이전엔 4 count query 직접 호출 → 단일 RPC 통합 (lib/home-stats).
+  //    react cache 로 HeroStats 와 같은 RPC 결과 공유 → 1 RPC 만 실행.
+  const [recentPostsResult, recentNewsResult, programCounts] = await Promise.all([
     supabase
       .from("blog_posts")
       .select(
@@ -81,16 +65,13 @@ export default async function Home() {
       )
       .order("published_at", { ascending: false })
       .limit(3),
-    supabase.from("welfare_programs").select("*", { count: "exact", head: true }).gte("created_at", todayKstISO),
-    supabase.from("loan_programs").select("*", { count: "exact", head: true }).gte("created_at", todayKstISO),
-    supabase.from("welfare_programs").select("*", { count: "exact", head: true }).gte("created_at", weekAgoKstISO),
-    supabase.from("loan_programs").select("*", { count: "exact", head: true }).gte("created_at", weekAgoKstISO),
+    getProgramCounts(),
   ]);
   const recentPosts: BlogCardData[] = (recentPostsResult.data ?? []) as BlogCardData[];
   const recentNews: NewsCardData[] = (recentNewsResult.data ?? []) as NewsCardData[];
 
-  const todayNew = (todayWelfareResult.count ?? 0) + (todayLoanResult.count ?? 0);
-  const weekNew = (weekWelfareResult.count ?? 0) + (weekLoanResult.count ?? 0);
+  const todayNew = programCounts.today_new_welfare + programCounts.today_new_loan;
+  const weekNew = programCounts.week_new_welfare + programCounts.week_new_loan;
   // Hero 인디케이터 메시지 — 오늘 데이터 있으면 오늘, 없으면 이번 주, 둘 다 0이면 정적
   const heroIndicator =
     todayNew > 0
