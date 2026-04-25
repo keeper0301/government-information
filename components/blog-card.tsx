@@ -12,7 +12,7 @@
 import Link from "next/link";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatKoreanDate } from "@/lib/utils";
+import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
 
 export type BlogCardData = {
   slug: string;
@@ -48,10 +48,13 @@ export function BlogCard({ post }: { post: BlogCardData }) {
             {post.title}
           </h2>
 
-          {/* 요약 */}
+          {/* 요약 — meta_description 에 가끔 <strong> 같은 raw HTML 태그가 섞여
+              들어오는 사고가 있어 stripHtmlTags 로 엔티티·태그 정제.
+              meta_description 은 한 줄 리드 문장이라 cleanDescription(다단) 보다
+              stripHtmlTags(평문) 가 적합 (lib/utils.ts:125 주석). */}
           {post.meta_description && (
             <p className="text-[14px] text-grey-700 leading-[1.6] line-clamp-3">
-              {post.meta_description}
+              {stripHtmlTags(post.meta_description)}
             </p>
           )}
         </CardContent>

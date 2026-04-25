@@ -84,13 +84,19 @@ export async function generateMetadata({
   const ogImage =
     post.cover_image || `/blog/${encodeURIComponent(slug)}/opengraph-image`;
 
+  // meta description 도 stripHtmlTags 로 정제 — DB 에 가끔 <strong> 같은
+  // raw HTML 태그가 섞인 글이 있어, SEO 메타·OG·트위터 카드에 그대로 들어가면
+  // 검색결과에 "<strong>" 가 보이는 사고. UI 측에서 한 번 더 안전망.
+  // meta_description 은 한 줄 리드 문장이라 stripHtmlTags(평문) 가 적합.
+  const description = stripHtmlTags(post.meta_description) || undefined;
+
   return {
     title: `${post.title} | 정책알리미`,
-    description: post.meta_description || undefined,
+    description,
     alternates: { canonical: `/blog/${slug}` },
     openGraph: {
       title: post.title,
-      description: post.meta_description || undefined,
+      description,
       type: "article",
       url: `/blog/${slug}`,
       publishedTime: post.published_at || undefined,
@@ -101,7 +107,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: post.title,
-      description: post.meta_description || undefined,
+      description,
       images: [ogImage],
     },
   };
@@ -155,10 +161,10 @@ export default async function BlogPostPage({
         }}
       />
 
-      {/* 구조화 데이터: Article */}
+      {/* 구조화 데이터: Article — description 도 stripHtmlTags 로 정제 */}
       <ArticleSchema
         title={post.title}
-        description={post.meta_description || ""}
+        description={stripHtmlTags(post.meta_description) || ""}
         url={url}
         datePublished={post.published_at || post.updated_at}
         dateModified={post.updated_at}
