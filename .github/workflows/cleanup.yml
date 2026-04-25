@@ -2,7 +2,7 @@ name: 만료 정책 정리 (cleanup)
 
 # 05:00 UTC (한국 14:00) — 만료된 정책 삭제·보관
 # idempotent — 이미 정리된 데이터엔 영향 없음
-# Vercel cron 이 fallback 으로 남아있으나 GitHub Actions 가 주력
+# 2026-04-25: vercel.json 의 동일 cron 제거 → 본 yml 이 단일 trigger
 
 on:
   schedule:

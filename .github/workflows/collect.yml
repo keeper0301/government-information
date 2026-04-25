@@ -4,6 +4,8 @@ name: 정책 수집 (collect)
 # Vercel Hobby 60초 maxDuration 제약 우회:
 #   단일 호출로 15개 순차 실행하면 60초 초과 → matrix 로 병렬 분할 호출
 # 각 source 별 독립된 Vercel 함수 호출 → 60초 여유 ✓
+# 2026-04-25: vercel.json 의 동일 cron 제거 → 본 yml 이 단일 trigger
+#            (이중 trigger 로 data.go.kr quota 빨리 소진되던 문제 해결)
 
 on:
   schedule:

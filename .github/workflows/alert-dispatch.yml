@@ -2,7 +2,7 @@ name: 맞춤 정책 알림 발송 (alert-dispatch)
 
 # 07:00 UTC (한국 16:00) — 새 정책 중 사용자 규칙 매칭분을 이메일 발송
 # alert_deliveries unique 인덱스로 중복 발송 자동 차단
-# Vercel cron 이 fallback 으로 남아있으나 GitHub Actions 가 주력
+# 2026-04-25: vercel.json 의 동일 cron 제거 → 본 yml 이 단일 trigger
 
 on:
   schedule:

@@ -1,11 +1,7 @@
 {
   "crons": [
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
-    { "path": "/api/enrich", "schedule": "0 3 * * *" },
-    { "path": "/api/collect", "schedule": "0 4 * * *" },
-    { "path": "/api/cleanup", "schedule": "0 5 * * *" },
     { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
-    { "path": "/api/alert-dispatch", "schedule": "0 7 * * *" },
 
     { "path": "/api/collect-news/seoul", "schedule": "0 14 * * *" },
     { "path": "/api/collect-news/busan", "schedule": "5 14 * * *" },

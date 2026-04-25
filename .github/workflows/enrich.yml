@@ -2,7 +2,7 @@ name: 정책 상세 수집 (enrich)
 
 # 03:00 UTC (한국 12:00) — 정책 상세 페이지 스크래핑
 # idempotent — 이미 수집된 데이터는 덮어쓰기만 하므로 안전
-# Vercel cron 이 fallback 으로 남아있으나 GitHub Actions 가 주력
+# 2026-04-25: vercel.json 의 동일 cron 제거 → 본 yml 이 단일 trigger
 
 on:
   schedule:
