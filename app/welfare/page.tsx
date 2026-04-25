@@ -9,23 +9,53 @@ import { Pagination } from "@/components/pagination";
 import { getRegionMatchPatterns } from "@/lib/regions";
 import { getProgramCategoryCounts } from "@/lib/category-counts";
 import { CategoryChipBar } from "@/components/category-chip-bar";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { scoreAndFilter } from "@/lib/personalization/filter";
+import {
+  PERSONAL_SECTION_MIN_SCORE,
+  PERSONAL_SECTION_MAX_ITEMS,
+} from "@/lib/personalization/types";
+import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
+import { MatchBadge } from "@/components/personalization/MatchBadge";
+import type { WelfareProgram } from "@/lib/database.types";
+import type { ScorableItem } from "@/lib/personalization/score";
 
 export const metadata: Metadata = {
   title: "복지 정보 — 정책알리미",
   description: "공공기관에서 제공하는 복지 프로그램을 한눈에 확인하세요.",
 };
+
 // 페이지당 20건 — 기존 10건은 7122건이 713페이지로 쪼개져 사용자 탐색 부담이 큼.
 // loan/page.tsx 와 동일 수치로 통일.
 const PER_PAGE = 20;
+
+// 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
+// force-dynamic 없이 revalidate=60 을 쓰면 캐시된 첫 사용자의 프로필이
+// 다른 사용자에게도 노출되는 보안 문제가 생김.
+export const dynamic = "force-dynamic";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | undefined }>;
 };
 
-// 60s ISR — 운영 중 데이터/필터 fix 검증을 빠르게 보기 위함. 600s 였을 때
-// 지역 드롭다운 fix 후에도 옛 결과가 10분 살아있어 검증이 어려웠음.
-// keepioo 트래픽 규모에서 SSR 부하 미미.
-export const revalidate = 60;
+// WelfareProgram raw 행 → ScorableItem 변환
+// ScorableItem 은 id/title/description/region/district/benefit_tags/apply_end/source 만 필요
+// welfare_programs 에 district·benefit_tags 컬럼 없음 → null 처리 (optional 필드)
+function welfareToScorable(w: WelfareProgram): ScorableItem {
+  return {
+    id: w.id,
+    title: w.title,
+    // description + eligibility + detailed_content 합쳐서 haystack 풍성하게
+    description: [w.description, w.eligibility, w.detailed_content]
+      .filter(Boolean)
+      .join(" "),
+    region: w.region ?? null,
+    district: null,        // welfare_programs 에 district 컬럼 없음
+    benefit_tags: null,    // welfare_programs 에 benefit_tags 컬럼 없음
+    apply_end: w.apply_end ?? null,
+    source: w.source,
+  };
+}
 
 export default async function WelfarePage({ searchParams }: Props) {
   const params = await searchParams;
@@ -36,48 +66,82 @@ export default async function WelfarePage({ searchParams }: Props) {
   const page = parseInt(params.page || "1", 10);
 
   const supabase = await createClient();
-  let query = supabase.from("welfare_programs").select("*", { count: "exact" });
 
-  if (category !== "전체") query = query.eq("category", category);
-  if (region !== "전체") {
-    if (region === "전국") {
-      // "전국" 옵션: region 값이 "전국" 인 row + region NULL (전국 단위 정책) 모두.
-      query = query.or("region.eq.전국,region.is.null");
-    } else {
-      // UI 짧은 이름("전남") → DB 정식·짧은 이름 모두 후보로 ILIKE 매칭.
-      // 광역만 저장("전라남도") + 광역+시군구 저장("전라남도 순천시") + 짧은
-      // 이름 저장("전남") 어떤 형식이 와도 잡힘.
-      const patterns = getRegionMatchPatterns(region);
-      const orClause = patterns.map((p) => `region.ilike.%${p}%`).join(",");
-      query = query.or(orClause);
+  // ─── 공통 필터 빌더 ──────────────────────────────────────────────────────────
+  // 기존 query 와 점수 매칭용 풀 query 에 동일 필터를 중복 없이 적용하기 위한 함수
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function applyFilters(q: any): any {
+    if (category !== "전체") q = q.eq("category", category);
+    if (region !== "전체") {
+      if (region === "전국") {
+        q = q.or("region.eq.전국,region.is.null");
+      } else {
+        const patterns = getRegionMatchPatterns(region);
+        const orClause = patterns.map((p) => `region.ilike.%${p}%`).join(",");
+        q = q.or(orClause);
+      }
     }
-  }
-  if (target !== "전체") query = query.ilike("target", `%${target}%`);
-  if (search) {
-    // 공백 기준 토큰 AND 매칭 — loan/page.tsx 와 동일 로직 (multi-word 검색 대응).
-    const tokens = search
-      .trim()
-      .split(/\s+/)
-      .map((t) => t.replace(/[,()%:*]/g, ""))
-      .filter((t) => t.length > 0);
-    for (const token of tokens) {
-      query = query.or(`title.ilike.%${token}%,description.ilike.%${token}%`);
+    if (target !== "전체") q = q.ilike("target", `%${target}%`);
+    if (search) {
+      const tokens = search
+        .trim()
+        .split(/\s+/)
+        .map((t) => t.replace(/[,()%:*]/g, ""))
+        .filter((t) => t.length > 0);
+      for (const token of tokens) {
+        q = q.or(`title.ilike.%${token}%,description.ilike.%${token}%`);
+      }
     }
+    return q;
   }
 
   const today = new Date().toISOString().split("T")[0];
+
+  // ─── 기존 페이지네이션 query ──────────────────────────────────────────────────
+  let query = supabase.from("welfare_programs").select("*", { count: "exact" });
+  query = applyFilters(query);
   query = query
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
-  // 본 query 와 카테고리 카운트는 서로 독립 → 병렬로 라운드트립 절약
-  const [{ data, count }, categoryCounts] = await Promise.all([
-    query,
-    getProgramCategoryCounts(supabase, "welfare_programs"),
-  ]);
+  // ─── 점수 매칭용 풀 query (limit 100) ────────────────────────────────────────
+  // 페이지네이션 없이 같은 필터 적용한 상위 100건 — 사용자 개인화 점수 계산용
+  let poolQuery = supabase.from("welfare_programs").select("*");
+  poolQuery = applyFilters(poolQuery);
+  poolQuery = poolQuery
+    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .order("apply_end", { ascending: true, nullsFirst: false })
+    .limit(100);
+
+  // ─── 병렬 fetch ───────────────────────────────────────────────────────────────
+  // 본 query·카테고리 카운트·풀 query·사용자 프로필을 동시에 요청해 RTT 절약
+  const [{ data, count }, categoryCounts, { data: poolData }, profile] =
+    await Promise.all([
+      query,
+      getProgramCategoryCounts(supabase, "welfare_programs"),
+      poolQuery,
+      loadUserProfile(),
+    ]);
+
   const programs = (data || []).map(welfareToDisplay);
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
+
+  // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
+  // profile 이 있고 비어있지 않을 때만 점수 계산 (비로그인·빈 프로필은 skip)
+  type ScoredWelfare = ReturnType<typeof scoreAndFilter<ScorableItem>>;
+  let personalSection: ScoredWelfare = [];
+
+  if (profile && !profile.isEmpty) {
+    const displayPool = (poolData || []).map(welfareToScorable);
+    personalSection = scoreAndFilter(displayPool, profile.signals, {
+      minScore: PERSONAL_SECTION_MIN_SCORE,
+      limit: PERSONAL_SECTION_MAX_ITEMS,
+    });
+  }
+
+  // 분리 섹션에 노출된 id — 전체 리스트에서 MatchBadge 표시 대상 확정
+  const personalIds = new Set(personalSection.map((s) => s.item.id));
 
   function buildUrl(overrides: Record<string, string>) {
     const p = {
@@ -144,7 +208,7 @@ export default async function WelfarePage({ searchParams }: Props) {
                     검색
                   </button>
                 </div>
-                {/* Preserve current filters */}
+                {/* 현재 필터 값을 hidden input 으로 유지 */}
                 {category !== "전체" && (
                   <input type="hidden" name="category" value={category} />
                 )}
@@ -160,6 +224,50 @@ export default async function WelfarePage({ searchParams }: Props) {
         </div>
       </section>
 
+      {/* ─── 개인화 분리 섹션 ─────────────────────────────────────────────────── */}
+      {/* 위치: CategoryChipBar + 필터 바로 아래, 전체 리스트 위 */}
+      <section className="max-w-content mx-auto px-10 mb-6 max-md:px-6">
+        {profile && (
+          <>
+            {/* 케이스 1: 프로필 채워져 있고 매칭 결과 있음 → 분리 섹션 */}
+            {!profile.isEmpty && personalSection.length > 0 && (
+              <div className="mb-2 rounded-2xl border border-emerald-200 bg-emerald-50/40 px-6 md:px-8 py-4">
+                {/* 섹션 헤더 */}
+                <h2 className="text-[15px] font-bold text-grey-900 mb-3">
+                  🌟 {profile.displayName}님께 맞는 정책
+                  <span className="ml-2 text-[12px] font-normal text-grey-500">
+                    프로필 기반 · {personalSection.length}건
+                  </span>
+                </h2>
+                {/* row 스타일 그대로 — ProgramRow 재사용 */}
+                <div className="flex flex-col bg-white border border-emerald-100 rounded-xl px-6 md:px-8 py-2">
+                  {personalSection.map(({ item }) => {
+                    // ScorableItem → DisplayProgram 변환 (row 렌더용)
+                    // id 로 기존 programs 배열에서 찾거나, 없으면 poolData raw 에서 변환
+                    const poolRaw = (poolData || []).find((w) => w.id === item.id);
+                    if (!poolRaw) return null;
+                    return (
+                      <ProgramRow
+                        key={item.id}
+                        program={welfareToDisplay(poolRaw)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 케이스 2: 로그인했지만 프로필 비어있음 → 온보딩 유도 배너 */}
+            {profile.isEmpty && (
+              <EmptyProfilePrompt />
+            )}
+
+            {/* 케이스 3: 프로필 있지만 매칭 결과 0건 → 아무것도 안 보임 (자연스러운 폴백) */}
+          </>
+        )}
+        {/* 케이스 4: 비로그인 → profile === null → 아무것도 안 보임 */}
+      </section>
+
       {/* Results */}
       <section className="max-w-content mx-auto px-10 max-md:px-6">
         <div className="text-sm text-grey-600 mb-4">
@@ -169,7 +277,17 @@ export default async function WelfarePage({ searchParams }: Props) {
         {programs.length > 0 ? (
           <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
             {programs.map((p) => (
-              <ProgramRow key={p.id} program={p} />
+              // MatchBadge 를 ProgramRow 오른쪽 상단에 absolute 로 겹쳐 표시
+              // ProgramRow 시그니처 무변경 — relative wrapper 로만 배지 추가
+              <div key={p.id} className="relative">
+                <ProgramRow program={p} />
+                {/* 분리 섹션에 노출된 항목 → ✨ 내 조건 배지 */}
+                {personalIds.has(p.id) && (
+                  <div className="absolute top-4 right-0 pointer-events-none">
+                    <MatchBadge />
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         ) : (
