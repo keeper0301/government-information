@@ -8,7 +8,7 @@
 
 ---
 
-## 이슈 1 — server action 직후 client 일시 에러 (FIXED)
+## 이슈 1 — server action 직후 client 일시 에러 (FIXED — 5단계 진단 후 549e2f2 + 5251503 조합으로 해결)
 
 ### 증상
 - HideNewsButton 모달 → "숨김 확정" 클릭 → DB 업데이트·감사 로그 모두 정상
@@ -50,6 +50,23 @@ redirect(returnTo);
 가설 1·2 의 fix 도 자체로는 잘못된 방향이 아니라 robustness 향상이라 그대로 유지:
 - middleware: server action POST 와 RSC fetch 에서 410 HTML 응답 안 함
 - actions.ts: revalidatePath 호출들을 try/catch 로 감싸 일부 실패가 전체 server action 을 깨지 않도록
+
+### 가설 3·4 도 부분적이었음 — 진짜 원인은 두 곳
+**가설 3 (ca2a2af)**: redirect 의 한글 path → encode 도 throw → 다른 TypeError 발생
+**가설 4 (5251503)**: redirect 한글 path 자체를 차단하고 ASCII fallback 사용 → 그래도 다른 TypeError 발생
+**가설 5 (549e2f2 — 결정적)**: revalidatePath(`/news/한글-slug`) 가 try/catch 도 못 잡는 형태로 throw. 단일 path 대신 dynamic route 형태 `revalidatePath("/news/[slug]", "page")` 로 호출 → 한글이 path 에서 제거됨 → 정상
+
+### 최종 검증 결과 (6차 시도)
+- POST /news/[한글-slug] server action → 200 (500 사라짐) ✅
+- redirect 정상 → /admin/news?msg=hidden ✅
+- 녹색 안내 배너 + "최근 숨긴 10건" 에 즉시 표시 ✅
+- vercel runtime 500 로그 0건 ✅
+- DB 정상 업데이트, 감사 로그 기록 정상 ✅
+
+### UX 변경
+- /news/[한글-slug] 에서 토글 → /admin/news?msg=hidden 으로 redirect (returnTo 로 자기 자신 복귀 안 됨)
+- 사장님은 /admin/news 페이지의 "최근 숨긴 10건" 에서 한 클릭에 그 뉴스로 재진입 가능
+- 한글 slug 페이지에서 토글 후 자연 복귀 UX 는 next 16 redirect 의 한글 path 미지원 한계로 V2 후속 작업
 
 ---
 
