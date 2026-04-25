@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 import {
@@ -64,9 +64,46 @@ export function HomeRecommendCard({ initial }: Props) {
   // 라우팅 중 버튼 연타 방지용
   const [submitting, setSubmitting] = useState(false);
 
+  // 자동 데모 — 비로그인·미입력 사용자에게 첫 진입 시 5초 시연 후 reset.
+  // 토스 전략 "수·움직임·호기심" 의 호기심 유발. 사용자 인터랙션 시 즉시 정지.
+  const demoCancelledRef = useRef(false);
+  const demoTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const cancelDemo = () => {
+    demoCancelledRef.current = true;
+    demoTimeoutsRef.current.forEach(clearTimeout);
+    demoTimeoutsRef.current = [];
+  };
+
   const canSubmit = Boolean(ageGroup && region && occupation);
   const autoFilled = Boolean(ageGroup || region || occupation);
   const visibleRegions = regionExpanded ? ALL_REGIONS : POPULAR_REGIONS;
+
+  // 첫 마운트 시 데모 시작 (autoFilled false + 모션 감소 환경 아닌 경우)
+  useEffect(() => {
+    if (autoFilled) return;
+    if (typeof window !== "undefined") {
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) return;
+    }
+    const safeSet = (fn: () => void) => {
+      if (!demoCancelledRef.current) fn();
+    };
+    demoTimeoutsRef.current = [
+      setTimeout(() => safeSet(() => setAgeGroup("30대")), 1500),
+      setTimeout(() => safeSet(() => setRegion("서울")), 2700),
+      setTimeout(() => safeSet(() => setOccupation("직장인")), 3900),
+      setTimeout(() => safeSet(() => {
+        setAgeGroup("");
+        setRegion("");
+        setOccupation("");
+      }), 6000),
+    ];
+    return () => {
+      demoTimeoutsRef.current.forEach(clearTimeout);
+    };
+    // 마운트 시 한 번만 실행
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 3필드 중 몇 개 입력됐는지 — 진행 표시 + 버튼 라벨에 사용
   const completedCount = [ageGroup, region, occupation].filter(Boolean).length;
@@ -81,6 +118,7 @@ export function HomeRecommendCard({ initial }: Props) {
 
   function handleSubmit() {
     if (!canSubmit || submitting) return;
+    cancelDemo();
     setSubmitting(true);
 
     // GA4 이벤트 — 어떤 조합이 많이 선택되는지 분포 파악
@@ -138,7 +176,7 @@ export function HomeRecommendCard({ initial }: Props) {
               key={tab.value}
               label={tab.label}
               selected={programType === tab.value}
-              onClick={() => setProgramType(tab.value)}
+              onClick={() => { cancelDemo(); setProgramType(tab.value); }}
             />
           ))}
         </Field>
@@ -150,7 +188,7 @@ export function HomeRecommendCard({ initial }: Props) {
               key={opt}
               label={opt}
               selected={ageGroup === opt}
-              onClick={() => setAgeGroup(opt)}
+              onClick={() => { cancelDemo(); setAgeGroup(opt); }}
             />
           ))}
         </Field>
@@ -162,13 +200,13 @@ export function HomeRecommendCard({ initial }: Props) {
               key={opt}
               label={opt}
               selected={region === opt}
-              onClick={() => setRegion(opt)}
+              onClick={() => { cancelDemo(); setRegion(opt); }}
             />
           ))}
           {!regionExpanded && (
             <button
               type="button"
-              onClick={() => setRegionExpanded(true)}
+              onClick={() => { cancelDemo(); setRegionExpanded(true); }}
               className="h-10 max-md:h-11 px-4 text-[14px] font-medium rounded-full border-0 bg-transparent text-grey-600 hover:text-grey-700 hover:bg-grey-50 cursor-pointer transition-all"
             >
               + 다른 지역 ({OTHER_REGIONS.length})
@@ -183,7 +221,7 @@ export function HomeRecommendCard({ initial }: Props) {
               key={opt}
               label={opt}
               selected={occupation === opt}
-              onClick={() => setOccupation(opt)}
+              onClick={() => { cancelDemo(); setOccupation(opt); }}
             />
           ))}
         </Field>

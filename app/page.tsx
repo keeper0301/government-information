@@ -4,6 +4,8 @@ import { AlertStrip } from "@/components/alert-strip";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
+import { HeroStats } from "@/components/hero-stats";
+import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { getUrgentPrograms, type ProfileLite } from "@/lib/programs";
@@ -124,70 +126,86 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Calendar */}
-      <div className="bg-grey-50">
-        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-          <CalendarPreview />
-        </section>
-      </div>
+      {/* HeroStats — 토스 전략 "수의 힘" — 누적 정책뉴스·진행 공고·데이터 출처
+          큰 숫자 + 카운트업 애니메이션. Hero 직후라 첫 인상에 신뢰감 강조. */}
+      <RevealOnScroll>
+        <HeroStats />
+      </RevealOnScroll>
+
+      {/* Calendar — 스크롤 진입 시 fade-up */}
+      <RevealOnScroll>
+        <div className="bg-grey-50">
+          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+            <CalendarPreview />
+          </section>
+        </div>
+      </RevealOnScroll>
 
       {/* Alert — 달력 바로 아래에 배치.
           의도: 달력에서 전체 일정을 훑은 뒤 "그 중 지금 당장 마감 임박한 것" 리마인더로
           자연스럽게 연결. 기존 Hero 바로 밑(상단) 위치는 첫인상이 긴급·자극적이었음. */}
-      <AlertStrip programs={urgents} isLoggedIn={!!user} />
+      <RevealOnScroll>
+        <AlertStrip programs={urgents} isLoggedIn={!!user} />
+      </RevealOnScroll>
 
       {/* Blog — 최근 가이드 글 (0건이면 숨김) */}
       {recentPosts.length > 0 && (
-        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-          <div className="flex items-baseline justify-between mb-8">
-            <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-              정책 가이드 블로그
-            </h2>
-            <Link
-              href="/blog"
-              className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-            >
-              전체 보기 →
-            </Link>
-          </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {recentPosts.map((post) => (
-              <BlogCard key={post.slug} post={post} />
-            ))}
-          </div>
-        </section>
+        <RevealOnScroll>
+          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+            <div className="flex items-baseline justify-between mb-8">
+              <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+                정책 가이드 블로그
+              </h2>
+              <Link
+                href="/blog"
+                className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+              >
+                전체 보기 →
+              </Link>
+            </div>
+            <div className="grid gap-5 md:grid-cols-3">
+              {recentPosts.map((post) => (
+                <BlogCard key={post.slug} post={post} />
+              ))}
+            </div>
+          </section>
+        </RevealOnScroll>
       )}
 
       {/* News — 최근 정책 소식 (korea.kr 큐레이션, 수집 0건이면 숨김).
           의도: 블로그(자체 가이드) → 뉴스(외부 정책 발표) 순으로 자연스러운
           정보 소비 흐름. */}
       {recentNews.length > 0 && (
-        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-          <div className="flex items-baseline justify-between mb-8">
-            <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-              최근 정책 소식
-            </h2>
-            <Link
-              href="/news"
-              className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-            >
-              전체 보기 →
-            </Link>
-          </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {recentNews.map((post) => (
-              <NewsCard key={post.slug} post={post} />
-            ))}
-          </div>
-        </section>
+        <RevealOnScroll>
+          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+            <div className="flex items-baseline justify-between mb-8">
+              <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+                최근 정책 소식
+              </h2>
+              <Link
+                href="/news"
+                className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+              >
+                전체 보기 →
+              </Link>
+            </div>
+            <div className="grid gap-5 md:grid-cols-3">
+              {recentNews.map((post) => (
+                <NewsCard key={post.slug} post={post} />
+              ))}
+            </div>
+          </section>
+        </RevealOnScroll>
       )}
 
       {/* Features */}
-      <div className="bg-grey-50">
-        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-          <FeatureGrid />
-        </section>
-      </div>
+      <RevealOnScroll>
+        <div className="bg-grey-50">
+          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+            <FeatureGrid />
+          </section>
+        </div>
+      </RevealOnScroll>
     </main>
   );
 }
