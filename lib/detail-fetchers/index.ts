@@ -48,8 +48,13 @@ export type DetailFetcher = {
 // bokjiro detail fetcher
 import bokjiroDetail from "./bokjiro";
 import youthcenterDetail from "./youthcenter";
+import mssDetail from "./mss";
 
-export const DETAIL_FETCHERS: DetailFetcher[] = [bokjiroDetail, youthcenterDetail];
+export const DETAIL_FETCHERS: DetailFetcher[] = [
+  bokjiroDetail,
+  youthcenterDetail,
+  mssDetail,
+];
 
 // row 에 대응하는 fetcher 찾기
 export function findFetcher(row: RowIdentity): DetailFetcher | null {
