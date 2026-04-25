@@ -81,7 +81,15 @@ const collector: Collector = {
           pageNo: String(page),
           numOfRows: String(PER_PAGE),
         });
-        const res = await fetchWithTimeout(`${API}?${params}`);
+        // 2026-04-25: mss data.go.kr backend 가 User-Agent 없는 요청을 차단하기
+        // 시작 (응답 본문: "Error forwarding request to backend server").
+        // korea-kr 와 동일 UA 식별자로 통과시킴. 다른 data.go.kr collector
+        // (bokjiro/kinfa/fsc 등) 는 현재 UA 없이도 정상이라 mss 만 fix.
+        const res = await fetchWithTimeout(`${API}?${params}`, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 keepioo-bot (+https://www.keepioo.com)",
+          },
+        });
         if (!res.ok) break;
         xml = await res.text();
         if (xml.includes("Unauthorized") || xml.includes("SERVICE_KEY")) break;
