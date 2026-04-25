@@ -9,8 +9,9 @@ import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
 import type { ScorableItem } from '@/lib/personalization/score';
 
 // DB welfare_programs raw 행 → ScorableItem 변환
-// welfare_programs 에 benefit_tags·district 컬럼 없으므로 null 처리
-// (welfare/page.tsx 의 welfareToScorable 와 동일 패턴)
+// 정정 (2026-04-25 hot-fix): benefit_tags 컬럼은 실제 DB 에 있음 (031 분류 통일).
+// 이전엔 manual 타입에 누락돼 있어 null 처리했지만, 이제 그대로 활용해
+// 사용자 benefit_tags 와 교집합 +3 점/태그 매칭이 작동.
 function welfareRowToScorable(row: {
   id: string;
   title: string;
@@ -20,6 +21,7 @@ function welfareRowToScorable(row: {
   region: string | null;
   apply_end: string | null;
   source: string;
+  benefit_tags: string[] | null;
 }): ScorableItem {
   return {
     id: row.id,
@@ -29,8 +31,8 @@ function welfareRowToScorable(row: {
       .filter(Boolean)
       .join(' '),
     region: row.region,
-    district: null,      // welfare_programs 에 district 컬럼 없음
-    benefit_tags: null,  // welfare_programs 에 benefit_tags 컬럼 없음
+    district: null,      // welfare_programs 에 district 컬럼 없음 (광역만)
+    benefit_tags: row.benefit_tags ?? [],
     apply_end: row.apply_end,
     source: row.source,
   };
@@ -50,7 +52,7 @@ export async function HomeRecommendAuto() {
   const today = new Date().toISOString().slice(0, 10);
   const { data: pool } = await supabase
     .from('welfare_programs')
-    .select('id, title, description, eligibility, detailed_content, region, apply_end, source')
+    .select('id, title, description, eligibility, detailed_content, region, apply_end, source, benefit_tags')
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .order('apply_end', { ascending: true, nullsFirst: false })
     .limit(100);

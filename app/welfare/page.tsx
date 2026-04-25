@@ -40,7 +40,9 @@ type Props = {
 
 // WelfareProgram raw 행 → ScorableItem 변환
 // ScorableItem 은 id/title/description/region/district/benefit_tags/apply_end/source 만 필요
-// welfare_programs 에 district·benefit_tags 컬럼 없음 → null 처리 (optional 필드)
+// 정정 (2026-04-25 hot-fix): benefit_tags 컬럼은 실제 DB 에 있음 (031 분류 통일).
+// 이전엔 manual 타입 누락으로 null 처리했지만, 이제 그대로 활용해 사용자
+// benefit_tags 와 교집합 +3 점/태그 매칭이 작동.
 function welfareToScorable(w: WelfareProgram): ScorableItem {
   return {
     id: w.id,
@@ -50,8 +52,8 @@ function welfareToScorable(w: WelfareProgram): ScorableItem {
       .filter(Boolean)
       .join(" "),
     region: w.region ?? null,
-    district: null,        // welfare_programs 에 district 컬럼 없음
-    benefit_tags: null,    // welfare_programs 에 benefit_tags 컬럼 없음
+    district: null,                     // welfare_programs 에 district 컬럼 없음 (광역만)
+    benefit_tags: w.benefit_tags ?? [],
     apply_end: w.apply_end ?? null,
     source: w.source,
   };
