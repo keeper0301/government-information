@@ -109,23 +109,23 @@ a:active {
   pointer-events: none;
   z-index: 0;
   border-radius: 9999px;
-  background: radial-gradient(circle, rgba(49, 130, 246, 0.18) 0%, rgba(49, 130, 246, 0) 70%);
+  background: radial-gradient(circle, rgba(49, 130, 246, 0.22) 0%, rgba(49, 130, 246, 0) 70%);
   animation: hero-blob-float 24s ease-in-out infinite;
 }
 .hero-blob--a {
-  width: 640px;
-  height: 640px;
-  top: -120px;
-  right: -160px;
+  width: 720px;
+  height: 720px;
+  top: -160px;
+  right: -200px;
 }
 .hero-blob--b {
-  width: 480px;
-  height: 480px;
-  bottom: -200px;
-  left: -100px;
+  width: 560px;
+  height: 560px;
+  bottom: -220px;
+  left: -140px;
   animation-duration: 32s;
   animation-direction: reverse;
-  background: radial-gradient(circle, rgba(49, 130, 246, 0.10) 0%, rgba(49, 130, 246, 0) 70%);
+  background: radial-gradient(circle, rgba(49, 130, 246, 0.16) 0%, rgba(49, 130, 246, 0) 70%);
 }
 
 /* ============================================================

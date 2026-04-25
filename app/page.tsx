@@ -110,7 +110,11 @@ export default async function Home() {
       <section
         className="relative overflow-hidden pt-40 pb-[100px] max-md:pt-[120px] max-md:pb-[60px]"
         style={{
-          background: "linear-gradient(180deg, #F2F8FF 0%, #FFFFFF 85%)",
+          // 토스 blue-50 (#E8F3FF) 베이스 + 가운데 위쪽에 흰색 spotlight.
+          // 가장자리(좌·우·아래) 까지 옅은 blue 가 자연스럽게 흐르고,
+          // content 가운데는 흰색에 가까워 텍스트 가독성 유지.
+          background:
+            "radial-gradient(ellipse 90% 80% at 50% 25%, #FFFFFF 0%, #F0F7FF 55%, #E8F3FF 100%)",
         }}
       >
         {/* 배경 blob — 옅은 blue gradient 두 개가 천천히 떠다니며 활동감.
