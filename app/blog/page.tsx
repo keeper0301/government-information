@@ -9,6 +9,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
+import { getBlogCategoryCounts } from "@/lib/category-counts";
 
 export const metadata: Metadata = {
   title: "정책 가이드 블로그 | 정책알리미",
@@ -22,18 +23,6 @@ export const metadata: Metadata = {
   },
 };
 
-// 카테고리 표시용 (DB의 category 값과 매칭)
-const CATEGORIES = [
-  { key: "all", label: "전체" },
-  { key: "청년", label: "청년" },
-  { key: "소상공인", label: "소상공인" },
-  { key: "주거", label: "주거" },
-  { key: "육아·가족", label: "육아·가족" },
-  { key: "노년", label: "노년" },
-  { key: "학생·교육", label: "학생·교육" },
-  { key: "큐레이션", label: "큐레이션" },
-];
-
 type SearchParams = Promise<{ category?: string }>;
 
 export default async function BlogIndexPage({
@@ -45,6 +34,9 @@ export default async function BlogIndexPage({
   const activeCategory = category && category !== "all" ? category : "all";
 
   const supabase = await createClient();
+  // 카테고리 칩 동적 노출 — 빈 카테고리(주거/육아/큐레이션 등) 자동 숨김.
+  // 큐레이션 자동 발행이 누적되면 자동으로 다시 노출된다.
+  const categoryCounts = await getBlogCategoryCounts(supabase);
   let query = supabase
     .from("blog_posts")
     .select("slug, title, meta_description, category, reading_time_min, published_at, cover_image")
@@ -72,21 +64,32 @@ export default async function BlogIndexPage({
           </p>
         </header>
 
-        {/* 카테고리 필터 */}
+        {/* 카테고리 필터 — DB 실측 기반. 빈 카테고리(글 0건) 자동 숨김 */}
         <nav className="flex flex-wrap gap-2 mb-8" aria-label="카테고리 필터">
-          {CATEGORIES.map((cat) => {
-            const selected = activeCategory === cat.key;
+          <a
+            href="/blog"
+            className={`inline-flex items-center min-h-[44px] px-3.5 text-[13px] rounded-full no-underline transition-colors ${
+              activeCategory === "all"
+                ? "bg-blue-500 text-white font-semibold"
+                : "bg-white text-grey-700 border border-grey-100 hover:bg-grey-50"
+            }`}
+          >
+            전체
+          </a>
+          {categoryCounts.map((c) => {
+            const selected = activeCategory === c.category;
             return (
               <a
-                key={cat.key}
-                href={cat.key === "all" ? "/blog" : `/blog?category=${encodeURIComponent(cat.key)}`}
+                key={c.category}
+                href={`/blog?category=${encodeURIComponent(c.category)}`}
                 className={`inline-flex items-center min-h-[44px] px-3.5 text-[13px] rounded-full no-underline transition-colors ${
                   selected
                     ? "bg-blue-500 text-white font-semibold"
                     : "bg-white text-grey-700 border border-grey-100 hover:bg-grey-50"
                 }`}
               >
-                {cat.label}
+                {c.category}{" "}
+                <span className="opacity-70 ml-1">({c.n})</span>
               </a>
             );
           })}
