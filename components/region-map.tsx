@@ -1,47 +1,62 @@
 // ============================================================
-// RegionMap — 지역별 진행 중 정책 수 시각화 (한국 지도 풍 grid)
+// RegionMap — 지역별 진행 중 정책 수 시각화 (권역 그룹 카드)
 // ============================================================
 // 토스 전략: 첫 화면 강력 비주얼 + 호기심 자극.
-// 5x5 grid 로 16개 시·도 지리 어림 배치 + 제주 별도. 정책 수 많을수록
-// blue 진한 색 (heatmap). 클릭 시 /welfare?region=시도명 으로 이동해
-// 해당 지역 정책 필터링.
+// 6개 권역 (수도권/강원/충청권/영남권/호남권/제주) 박스 + 박스 안에 시·도
+// 카드 배치. 빈 공간 최소화 + 한국인에 익숙한 권역 구분 + 지리 어림 반영.
+// 정책 수 많을수록 blue 진한 색 (heatmap). 클릭 시 /welfare?region=시도명.
+//
+// Layout — 외곽 12-col grid 로 권역 폭 차등 (큰 권역 넓게):
+//   Row 1 — 수도권(7) | 강원(5)
+//   Row 2 — 충청권(5) | 영남권(7)
+//   Row 3 — 호남권(7) | 제주(5)
+//   하단 — 전국 대상 (full width)
+// 모바일은 1열 stack.
 //
 // 데이터: welfare_programs 만 region 컬럼 보유. loan_programs 는 X.
-// "전국" 대상 정책은 별도 카드로 표시 (모든 시·도에 합산하면 시각 의미
-// 약해짐 — 전국 1,579건이 가장 많아 다른 지역 색이 모두 옅어짐).
+// "전국" 대상 정책은 별도 카드 (모든 시·도에 합산하면 시각 의미 약해짐
+// — 전국 1,579건이 가장 많아 다른 지역 색이 모두 옅어짐).
 // ============================================================
 
 import Link from "next/link";
 import { getWelfareRegionCounts } from "@/lib/home-stats";
 
-// 5×5 grid — 한국 시·도 지리 어림 위치 (위→남, 좌→우).
-// 한반도는 남쪽으로 갈수록 좁아지므로 row 4·5 의 빈 칸으로 그 형태를 표현.
-// 전남은 row 5 (최남단), 전북은 row 4 — 전북 ↑ 전남 ↓ 실제 지리 반영.
-// null = 빈 칸. 16개 시·도 + 제주 1 = 17.
-const GRID: (string | null)[] = [
-  // Row 1 — 북부 (서울 중앙, 강원 동북)
-  null,    "서울",  "강원",  null,    null,
-  // Row 2 — 수도권 + 중북부 (인천 서해, 경기 중부, 충북 중동, 경북 동부)
-  "인천",  "경기",  "충북",  "경북",  null,
-  // Row 3 — 충청 + 영남 중부 (충남→세종→대전 서→동, 대구·울산 동부)
-  "충남",  "세종",  "대전",  "대구",  "울산",
-  // Row 4 — 한반도 좁아지는 허리 (전북 서, 경남·부산 동남해)
-  "전북",  null,    null,    "경남",  "부산",
-  // Row 5 — 호남 남부 (광주·전남 — 지도상 최남단 본토)
-  "광주",  "전남",  null,    null,    null,
+// 권역 정의 — sidos 순서는 권역 박스 안 grid 좌→우 (지리 어림 반영)
+type Region = {
+  name: string;
+  cols: 1 | 2 | 3;
+  sidos: string[];
+};
+
+const REGIONS: Region[] = [
+  // 수도권: 인천(서) → 서울 → 경기(동)
+  { name: "수도권", cols: 3, sidos: ["인천", "서울", "경기"] },
+  // 강원: 단일
+  { name: "강원", cols: 1, sidos: ["강원"] },
+  // 충청권 2x2: 위 [충남(서)·충북(동)], 아래 [세종(서)·대전(동)] — 4방위 어림
+  { name: "충청권", cols: 2, sidos: ["충남", "충북", "세종", "대전"] },
+  // 영남권 3 cols: 위 [경북·대구·울산], 아래 [경남·부산]
+  { name: "영남권", cols: 3, sidos: ["경북", "대구", "울산", "경남", "부산"] },
+  // 호남권 1 row: 광주·전북·전남 — 행정 순 (cols=3, 가로 한 줄)
+  { name: "호남권", cols: 3, sidos: ["광주", "전북", "전남"] },
+  // 제주: 단일
+  { name: "제주", cols: 1, sidos: ["제주"] },
 ];
 
-const SIDO_NAMES = [
-  "서울", "경기", "인천", "강원",
-  "충북", "충남", "세종", "대전",
-  "전북", "전남", "광주",
-  "경북", "경남", "대구", "울산", "부산",
-  "제주",
-];
+// Tailwind 동적 className 안전 매핑 (purge 시 누락 방지)
+const COLS_CLASS: Record<1 | 2 | 3, string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+};
+
+// 모든 시·도 이름 (counts 매핑용)
+const SIDO_NAMES = REGIONS.flatMap((r) => r.sidos);
 
 // 정책 수 → 색 강도 (5단계). max 기준 normalize.
+// count=0 은 bg-white — 권역 박스 (bg-grey-50) 와 시각 구분.
 function intensityClass(count: number, max: number): string {
-  if (count === 0) return "bg-grey-50 text-grey-400";
+  if (count === 0) return "bg-white text-grey-500";
   const ratio = count / max;
   if (ratio >= 0.7) return "bg-blue-500 text-white";
   if (ratio >= 0.45) return "bg-blue-400 text-white";
@@ -76,37 +91,81 @@ export async function RegionMap() {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm p-6 max-md:p-4">
-        {/* 5×4 grid — 지리 어림. 모바일도 5 col 유지하되 padding·텍스트 더 작게 */}
-        <div className="grid grid-cols-5 gap-2 max-md:gap-1">
-          {GRID.map((sido, i) =>
-            sido === null ? (
-              <div key={`empty-${i}`} aria-hidden="true" />
-            ) : (
-              <RegionCell key={sido} name={sido} count={counts[sido] ?? 0} max={max} />
-            ),
-          )}
+        {/* 6 권역 박스 — 12-col grid 로 권역별 폭 비율 차등.
+            큰 권역(수도권·영남·호남) col-span-7, 작은 권역(강원·충청·제주) col-span-5.
+            모바일은 1 col stack. */}
+        <div className="grid grid-cols-12 gap-3 max-md:gap-2">
+          {/* Row 1 — 수도권 | 강원 */}
+          <div className="col-span-7 max-md:col-span-12">
+            <RegionGroup region={REGIONS[0]} counts={counts} max={max} />
+          </div>
+          <div className="col-span-5 max-md:col-span-12">
+            <RegionGroup region={REGIONS[1]} counts={counts} max={max} />
+          </div>
+          {/* Row 2 — 충청권 | 영남권 */}
+          <div className="col-span-5 max-md:col-span-12">
+            <RegionGroup region={REGIONS[2]} counts={counts} max={max} />
+          </div>
+          <div className="col-span-7 max-md:col-span-12">
+            <RegionGroup region={REGIONS[3]} counts={counts} max={max} />
+          </div>
+          {/* Row 3 — 호남권 | 제주 */}
+          <div className="col-span-7 max-md:col-span-12">
+            <RegionGroup region={REGIONS[4]} counts={counts} max={max} />
+          </div>
+          <div className="col-span-5 max-md:col-span-12">
+            <RegionGroup region={REGIONS[5]} counts={counts} max={max} />
+          </div>
         </div>
 
-        {/* 제주 + 전국 별도 카드 (그리드 아래) */}
-        <div className="grid grid-cols-2 gap-3 mt-3 max-md:gap-2">
-          <RegionCell name="제주" count={counts["제주"] ?? 0} max={max} />
-          <Link
-            href="/welfare?region=전국"
-            className="block rounded-xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 max-md:py-3 px-4 text-center no-underline group"
-          >
-            <div className="text-[11px] font-medium text-grey-600 mb-0.5">전국 대상</div>
-            <div className="text-[18px] max-md:text-[16px] font-extrabold tabular-nums text-grey-900">
-              {nationwide.toLocaleString()}
-              <span className="text-[12px] font-medium text-grey-600 ml-0.5">건</span>
-            </div>
-          </Link>
-        </div>
+        {/* 전국 대상 — 별도 풀폭 카드 */}
+        <Link
+          href="/welfare?region=전국"
+          title={`전국 대상 — 진행 중 공고 ${nationwide.toLocaleString()}건`}
+          className="block mt-3 rounded-2xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 max-md:py-3 px-4 text-center no-underline"
+        >
+          <div className="text-[11px] font-medium text-grey-600 mb-0.5">전국 대상</div>
+          <div className="text-[18px] max-md:text-[16px] font-extrabold tabular-nums text-grey-900">
+            {nationwide.toLocaleString()}
+            <span className="text-[12px] font-medium text-grey-600 ml-0.5">건</span>
+          </div>
+        </Link>
       </div>
 
       <p className="text-[12px] text-grey-500 mt-3">
         ※ 시·군 단위 공고는 광역 시·도에 합산. 색이 진할수록 진행 중 공고가 많은 지역.
       </p>
     </section>
+  );
+}
+
+// 권역 박스 — 권역명 라벨 + 권역 안 시·도 카드 grid
+// h-full 로 같은 row 의 좌·우 박스 높이 맞춤 (CSS Grid 기본 stretch)
+function RegionGroup({
+  region,
+  counts,
+  max,
+}: {
+  region: Region;
+  counts: Record<string, number>;
+  max: number;
+}) {
+  return (
+    <div className="bg-grey-50 rounded-2xl p-4 max-md:p-3 h-full">
+      <div className="text-[11px] font-bold text-grey-500 mb-2 max-md:mb-1.5 px-1 tracking-[-0.01em]">
+        {region.name}
+      </div>
+      <div className={`grid ${COLS_CLASS[region.cols]} gap-2 max-md:gap-1.5`}>
+        {region.sidos.map((sido) => (
+          <RegionCell
+            key={sido}
+            name={sido}
+            count={counts[sido] ?? 0}
+            max={max}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
