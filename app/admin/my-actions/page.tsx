@@ -119,7 +119,7 @@ export default async function MyActionsPage({
           action="/admin/my-actions"
           className="mb-5 bg-white border border-grey-100 rounded-xl p-4 flex flex-wrap items-end gap-3"
         >
-          <label className="text-[12px] text-grey-700">
+          <label className="text-[13px] font-medium text-grey-700">
             <span className="block mb-1">시작일</span>
             <input
               type="date"
@@ -128,7 +128,7 @@ export default async function MyActionsPage({
               className="px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
             />
           </label>
-          <label className="text-[12px] text-grey-700">
+          <label className="text-[13px] font-medium text-grey-700">
             <span className="block mb-1">종료일</span>
             <input
               type="date"
@@ -151,7 +151,7 @@ export default async function MyActionsPage({
               초기화
             </Link>
           )}
-          <span className="text-[12px] text-grey-600 ml-auto">
+          <span className="text-[13px] text-grey-600 ml-auto">
             {from || to ? (
               <>기간: {from || "전체"} ~ {to || "현재"}</>
             ) : (

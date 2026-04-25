@@ -234,7 +234,7 @@ export default async function AdminHomePage({
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
             사이트 한눈에 보기
           </h1>
-          <p className="text-[13px] text-grey-600">
+          <p className="text-[14px] text-grey-700 leading-[1.6]">
             {actor.email ?? "운영자"} 로 로그인됨 · 최근 24시간 기준 지표
           </p>
         </div>
@@ -251,7 +251,7 @@ export default async function AdminHomePage({
 
         {/* 24h 지표 카드 6종 */}
         <section className="mb-8">
-          <h2 className="text-[14px] font-bold text-grey-900 mb-3">
+          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
             최근 24시간 운영 지표
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -291,7 +291,7 @@ export default async function AdminHomePage({
 
         {/* 사용자 조회 */}
         <section className="mb-8">
-          <h2 className="text-[14px] font-bold text-grey-900 mb-3">
+          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
             사용자 조회
           </h2>
           <form action={searchUser} className="flex gap-2 max-md:flex-col">
@@ -313,7 +313,7 @@ export default async function AdminHomePage({
 
         {/* 빠른 액션 그리드 */}
         <section className="mb-8">
-          <h2 className="text-[14px] font-bold text-grey-900 mb-3">
+          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
             관리 페이지
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -374,7 +374,7 @@ export default async function AdminHomePage({
                       <div className="text-[13px] font-semibold text-grey-900 truncate">
                         {u.email ?? "(이메일 없음)"}
                       </div>
-                      <div className="text-[11px] text-grey-600">
+                      <div className="text-[12px] text-grey-600 leading-[1.5]">
                         {[u.region, u.occupation].filter(Boolean).join(" · ") || "프로필 미작성"}
                         {" · "}
                         {fmtRelative(u.created_at)}
@@ -382,7 +382,7 @@ export default async function AdminHomePage({
                     </div>
                     <Link
                       href={`/admin/users/${u.id}`}
-                      className="text-[11px] text-blue-500 hover:underline whitespace-nowrap"
+                      className="text-[12px] font-medium text-blue-500 hover:underline whitespace-nowrap"
                     >
                       상세 →
                     </Link>
@@ -409,7 +409,7 @@ export default async function AdminHomePage({
                       <div className="text-[13px] font-semibold text-grey-900">
                         {ACTION_LABELS[a.action] ?? a.action}
                       </div>
-                      <div className="text-[11px] text-grey-600 truncate">
+                      <div className="text-[12px] text-grey-600 truncate leading-[1.5]">
                         {a.targetUserId ? (
                           <span className="font-mono">
                             {a.targetUserId.slice(0, 8)}…
@@ -424,7 +424,7 @@ export default async function AdminHomePage({
                     {a.targetUserId && (
                       <Link
                         href={`/admin/users/${a.targetUserId}`}
-                        className="text-[11px] text-blue-500 hover:underline whitespace-nowrap"
+                        className="text-[12px] font-medium text-blue-500 hover:underline whitespace-nowrap"
                       >
                         대상 →
                       </Link>
@@ -435,7 +435,7 @@ export default async function AdminHomePage({
             )}
             <Link
               href="/admin/my-actions"
-              className="block text-[12px] text-blue-500 hover:underline mt-3"
+              className="block text-[13px] font-medium text-blue-500 hover:underline mt-3"
             >
               전체 보기 →
             </Link>
@@ -443,7 +443,7 @@ export default async function AdminHomePage({
         </section>
 
         {/* 권한 안내 */}
-        <p className="mt-10 text-[12px] text-grey-600 leading-[1.6]">
+        <p className="mt-10 text-[13px] text-grey-600 leading-[1.7]">
           이 페이지는 운영자 전용입니다. 권한은 Vercel 환경변수{" "}
           <code>ADMIN_EMAILS</code> (쉼표 구분 이메일 목록, 대소문자 무시) 로 관리합니다.
           <br />
@@ -477,14 +477,14 @@ function StatCard({
   const hintColor = tone === "warn" ? "text-red font-semibold" : "text-grey-600";
   return (
     <div className={`rounded-lg border p-4 ${border}`}>
-      <div className="text-[11px] font-semibold tracking-[0.1em] text-grey-600 uppercase mb-1">
+      <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
         {label}
       </div>
       <div className="text-[24px] font-extrabold text-grey-900 leading-none">
         {value.toLocaleString()}
         {suffix && <span className="text-[13px] font-semibold text-grey-600 ml-1">{suffix}</span>}
       </div>
-      {hint && <div className={`text-[11px] mt-1.5 leading-[1.4] ${hintColor}`}>{hint}</div>}
+      {hint && <div className={`text-[12px] mt-1.5 leading-[1.45] ${hintColor}`}>{hint}</div>}
     </div>
   );
 }
@@ -503,11 +503,11 @@ function ActionCard({
       href={href}
       className="bg-white rounded-lg border border-grey-200 p-4 no-underline hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(49,130,246,0.08)] transition-all block"
     >
-      <div className="text-[14px] font-bold text-grey-900 mb-1 flex items-center gap-1.5">
+      <div className="text-[15px] font-bold text-grey-900 mb-1 flex items-center gap-1.5 tracking-[-0.2px]">
         {title}
-        <span className="text-blue-500 text-[13px]">→</span>
+        <span className="text-blue-500 text-[14px]">→</span>
       </div>
-      <div className="text-[12px] text-grey-600 leading-[1.5]">{desc}</div>
+      <div className="text-[13px] text-grey-600 leading-[1.55]">{desc}</div>
     </Link>
   );
 }
@@ -515,7 +515,7 @@ function ActionCard({
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-white border border-grey-200 rounded-lg p-5">
-      <h3 className="text-[13px] font-bold text-grey-900 mb-3">{title}</h3>
+      <h3 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h3>
       {children}
     </section>
   );

@@ -263,7 +263,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
             rows={3}
             className="w-full px-3 py-2 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500 leading-[1.6]"
           />
-          <p className="mt-1 text-[12px] text-grey-500">
+          <p className="mt-1.5 text-[13px] text-grey-600 leading-[1.6]">
             본문 상단 리드 문장이자 검색결과 설명문으로 사용됩니다. HTML 태그는
             저장 시 자동 제거됩니다 (평문 권장, 100~160자).
           </p>
@@ -317,7 +317,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
               내부에 hidden <input name="content"> 가 있어 form action 그대로 작동.
               우측 상단 "HTML" 버튼으로 raw HTML 직접 편집도 가능. */}
           <RichEditor initialHtml={post.content ?? ""} name="content" />
-          <p className="mt-1 text-[12px] text-grey-500">
+          <p className="mt-1.5 text-[13px] text-grey-600 leading-[1.6]">
             툴바로 제목·강조·목록·표·이미지 삽입. 우측 &quot;HTML&quot; 버튼으로 원본 편집 가능.
             저장 후 /blog 페이지가 자동 재생성됩니다.
           </p>

@@ -134,7 +134,7 @@ export default async function EnrichDetailPage({
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
             공고 상세 수동 보강
           </h1>
-          <p className="text-[14px] text-grey-600 leading-[1.6]">
+          <p className="text-[14px] text-grey-700 leading-[1.65]">
             cron (매일 6회, 하루 60건) 이 자동 처리하지만, 지금 즉시 10건 추가
             처리가 필요할 때 쓰세요. data.go.kr 개발계정 일일 할당량 100회 중
             cron 이 60회 사용하니 수동 trigger 는 하루 3~4회 정도 여유 있습니다.
@@ -184,14 +184,14 @@ export default async function EnrichDetailPage({
             지금 10건 보강 실행
           </button>
         </form>
-        <p className="mt-3 text-[12px] text-grey-600 leading-[1.6]">
+        <p className="mt-3 text-[13px] text-grey-600 leading-[1.65]">
           * 한 번에 10건 × 4초 간격 = 약 40초 소요 (Vercel 60초 한도 안전).
           <br />
           * 성공 row 는 7일 cooldown, 실패 row 는 1일 cooldown 후 자동 재처리.
         </p>
 
-        <p className="mt-8 text-[12px] flex items-center gap-4 flex-wrap">
-          <Link href="/admin" className="text-blue-500 underline">← 어드민 홈</Link>
+        <p className="mt-8 text-[13px] flex items-center gap-4 flex-wrap">
+          <Link href="/admin" className="text-blue-500 font-medium underline">← 어드민 홈</Link>
         </p>
       </div>
     </main>
@@ -211,11 +211,11 @@ function StatCard({
 }) {
   return (
     <div className="bg-white rounded-lg border border-grey-200 p-4">
-      <div className="text-[11px] font-semibold tracking-[0.1em] text-grey-600 uppercase mb-1">{label}</div>
+      <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">{label}</div>
       <div className={`text-[20px] font-extrabold ${danger ? "text-red" : "text-grey-900"}`}>
         {value}
       </div>
-      {hint && <div className="text-[11px] text-grey-600 mt-0.5">{hint}</div>}
+      {hint && <div className="text-[12px] text-grey-600 mt-0.5">{hint}</div>}
     </div>
   );
 }

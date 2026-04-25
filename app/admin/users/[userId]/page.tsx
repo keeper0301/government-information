@@ -437,7 +437,7 @@ export default async function AdminUserDetailPage({
             <h1 className="text-[22px] font-extrabold tracking-[-0.4px] text-grey-900">
               {u.email ?? "(이메일 없음)"}
             </h1>
-            <p className="text-[12px] text-grey-600 mt-1 font-mono">{u.id}</p>
+            <p className="text-[13px] text-grey-600 mt-1 font-mono">{u.id}</p>
           </div>
           <Link
             href="/admin"
@@ -496,7 +496,7 @@ export default async function AdminUserDetailPage({
               className="mt-4 pt-4 border-t border-grey-100 flex items-center gap-2 flex-wrap"
             >
               <input type="hidden" name="userId" value={userId} />
-              <label className="text-[12px] text-grey-600">
+              <label className="text-[13px] font-medium text-grey-700">
                 티어 변경:
                 <select
                   name="tier"
@@ -510,11 +510,11 @@ export default async function AdminUserDetailPage({
               </label>
               <button
                 type="submit"
-                className="text-[12px] font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
+                className="text-[13px] font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
               >
                 적용
               </button>
-              <span className="text-[11px] text-grey-600">
+              <span className="text-[12px] text-grey-600">
                 (현재와 동일 선택 시 변경 없음)
               </span>
             </form>
@@ -534,7 +534,7 @@ export default async function AdminUserDetailPage({
                 <input type="hidden" name="userId" value={userId} />
                 <button
                   type="submit"
-                  className="text-[12px] font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
+                  className="text-[13px] font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
                 >
                   오늘 AI 상담 사용 횟수 리셋 (
                   {todayUsage?.count ?? 0}회 → 0회)
@@ -637,16 +637,16 @@ export default async function AdminUserDetailPage({
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[13px] font-semibold text-grey-900 truncate">
+                          <span className="text-[14px] font-semibold text-grey-900 truncate">
                             {r.name}
                           </span>
                           {!r.is_active && (
-                            <span className="text-[10px] bg-grey-100 text-grey-600 px-1.5 py-0.5 rounded">
+                            <span className="text-[11px] bg-grey-100 text-grey-700 px-1.5 py-0.5 rounded font-medium">
                               비활성
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-grey-600">
+                        <div className="text-[12px] text-grey-600">
                           채널: {(r.channels ?? []).join(", ") || "—"}
                         </div>
                       </div>
@@ -656,20 +656,20 @@ export default async function AdminUserDetailPage({
                           <input type="hidden" name="ruleId" value={r.id} />
                           <button
                             type="submit"
-                            className="text-[12px] font-semibold px-3 py-1.5 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer whitespace-nowrap"
+                            className="text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer whitespace-nowrap"
                           >
                             지금 이메일 재전송
                           </button>
                         </form>
                       ) : (
-                        <span className="text-[11px] text-grey-600 px-3">
+                        <span className="text-[12px] text-grey-600 px-3">
                           (활성 시에만 가능)
                         </span>
                       )}
                     </div>
                   ),
                 )}
-                <p className="text-[11px] text-grey-600 mt-2 leading-[1.5]">
+                <p className="text-[12px] text-grey-600 mt-2 leading-[1.6]">
                   * 최근 30일 매칭 공고 상위 10건을 한 이메일로 묶어 발송해요.
                   카카오 알림톡은 이번 경로에서 제외(수동 재전송은 이메일만).
                   <br />* 감사 로그는 관리자 액션 로그 Panel 에 manual_alert_send 로 기록.
@@ -687,7 +687,7 @@ export default async function AdminUserDetailPage({
               본인 계정이면 DeleteUserButton 이 내부에서 안내문만 표시.
               server action 차원의 self 차단이 발동한 경우 별도 안내 박스. */}
           <section className="bg-white border border-red/30 rounded-xl p-5 mt-5">
-            <h2 className="text-[14px] font-bold text-red mb-2">
+            <h2 className="text-[16px] font-bold text-red mb-2 tracking-[-0.3px]">
               ⚠️ 위험 작업
             </h2>
             {selfDeleteBlocked && (
@@ -732,7 +732,7 @@ export default async function AdminUserDetailPage({
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-white border border-grey-100 rounded-xl p-5">
-      <h2 className="text-[14px] font-bold text-grey-900 mb-3">{title}</h2>
+      <h2 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h2>
       {children}
     </section>
   );

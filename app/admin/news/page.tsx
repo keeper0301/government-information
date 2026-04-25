@@ -158,7 +158,7 @@ export default async function AdminNewsPage({
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
             정책 뉴스 운영
           </h1>
-          <p className="text-[14px] text-grey-600 leading-[1.6]">
+          <p className="text-[14px] text-grey-700 leading-[1.65]">
             매일 KST 11:00 cron 이 korea.kr RSS 3개 피드를 자동 수집해요.
             수집 문제를 확인하거나 즉시 반영이 필요할 때 수동 실행할 수 있어요.
           </p>
@@ -176,13 +176,13 @@ export default async function AdminNewsPage({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
           <StatCard label="최근 24h 수집" value={`+${stats.last24h.toLocaleString()}건`} />
           <div className="bg-white rounded-lg border border-grey-200 p-4">
-            <div className="text-[11px] font-semibold tracking-[0.1em] text-grey-600 uppercase mb-1">
+            <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
               최신 발행
             </div>
-            <div className="text-[13px] font-semibold text-grey-900 truncate">
+            <div className="text-[14px] font-semibold text-grey-900 truncate">
               {stats.latestTitle ?? "—"}
             </div>
-            <div className="text-[11px] text-grey-600 mt-0.5">{latestLabel}</div>
+            <div className="text-[12px] text-grey-600 mt-0.5">{latestLabel}</div>
           </div>
         </div>
 
@@ -221,7 +221,7 @@ export default async function AdminNewsPage({
             지금 수집 실행
           </button>
         </form>
-        <p className="mt-3 text-[12px] text-grey-600 leading-[1.6]">
+        <p className="mt-3 text-[13px] text-grey-600 leading-[1.65]">
           * 3개 RSS 피드 합쳐 한 번 실행에 5~10초 소요. 중복은 source_id 기준 자동 병합돼요.
           <br />
           * 수집된 뉴스는 /news 에서 바로 확인할 수 있어요.
@@ -229,8 +229,8 @@ export default async function AdminNewsPage({
 
         {/* ─── 모더레이션 섹션 ─── */}
         <div className="mt-12 pt-8 border-t border-grey-200">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-1">콘텐츠 모더레이션</h2>
-          <p className="text-[12px] text-grey-600 leading-[1.6] mb-5">
+          <h2 className="text-[18px] font-bold text-grey-900 mb-1 tracking-[-0.3px]">콘텐츠 모더레이션</h2>
+          <p className="text-[13px] text-grey-600 leading-[1.65] mb-5">
             저작권 요청·오보·오해소지 등으로 단건 비공개가 필요할 때 사용해요.
             숨겨진 뉴스는 즉시 /news 목록·홈·sitemap 모두에서 사라지고, 직접 URL 로 들어오면 410 Gone 페이지를 보여줘요.
           </p>
@@ -267,11 +267,11 @@ export default async function AdminNewsPage({
           {/* 검색 결과 */}
           {query && (
             <div className="mb-8">
-              <p className="text-[12px] text-grey-600 mb-2">
+              <p className="text-[13px] text-grey-600 mb-2">
                 검색어 <span className="font-semibold text-grey-900">{query}</span> — 결과 {searchResults.length}건
               </p>
               {searchResults.length === 0 ? (
-                <p className="text-[13px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+                <p className="text-[14px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
                   일치하는 뉴스가 없어요.
                 </p>
               ) : (
@@ -286,9 +286,9 @@ export default async function AdminNewsPage({
 
           {/* 최근 숨긴 10건 — 실수 복구 fast path */}
           <div>
-            <h3 className="text-[14px] font-bold text-grey-900 mb-2">최근 숨긴 뉴스 10건</h3>
+            <h3 className="text-[15px] font-bold text-grey-900 mb-2 tracking-[-0.2px]">최근 숨긴 뉴스 10건</h3>
             {recentlyHidden.length === 0 ? (
-              <p className="text-[12px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+              <p className="text-[14px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
                 숨김 처리된 뉴스가 아직 없어요.
               </p>
             ) : (
@@ -301,10 +301,10 @@ export default async function AdminNewsPage({
           </div>
         </div>
 
-        <p className="mt-8 text-[12px] flex items-center gap-4 flex-wrap">
-          <Link href="/admin" className="text-blue-500 underline">← 어드민 홈</Link>
+        <p className="mt-8 text-[13px] flex items-center gap-4 flex-wrap">
+          <Link href="/admin" className="text-blue-500 font-medium underline">← 어드민 홈</Link>
           <span className="text-grey-300">·</span>
-          <Link href="/news" className="text-blue-500 underline">정책 소식 페이지 보기 ↗</Link>
+          <Link href="/news" className="text-blue-500 font-medium underline">정책 소식 페이지 보기 ↗</Link>
         </p>
       </div>
     </main>
@@ -356,7 +356,7 @@ function NewsModerationRow({
           {row.title}
         </Link>
       </div>
-      <div className="text-[11px] text-grey-600 mb-2">
+      <div className="text-[12px] text-grey-600 mb-2 leading-[1.5]">
         {row.ministry ?? "—"} · {dateLabel}
         {row.is_hidden && hiddenAtLabel && (
           <>
@@ -432,11 +432,11 @@ function StatCard({
 }) {
   return (
     <div className="bg-white rounded-lg border border-grey-200 p-4">
-      <div className="text-[11px] font-semibold tracking-[0.1em] text-grey-600 uppercase mb-1">
+      <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
         {label}
       </div>
       <div className="text-[20px] font-extrabold text-grey-900">{value}</div>
-      {hint && <div className="text-[11px] text-grey-600 mt-0.5">{hint}</div>}
+      {hint && <div className="text-[12px] text-grey-600 mt-0.5">{hint}</div>}
     </div>
   );
 }

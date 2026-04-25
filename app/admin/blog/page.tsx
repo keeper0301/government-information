@@ -102,7 +102,7 @@ export default async function AdminBlogListPage({
           ← 어드민 홈
         </Link>
       </div>
-      <p className="text-[14px] text-grey-600 mb-6">
+      <p className="text-[14px] text-grey-700 leading-[1.6] mb-6">
         블로그 글 {total.toLocaleString("ko-KR")} 건 · 최근 수정 순
       </p>
 
@@ -139,7 +139,7 @@ export default async function AdminBlogListPage({
       {/* 목록 테이블 */}
       {posts && posts.length > 0 ? (
         <div className="border border-grey-200 rounded-xl bg-white overflow-hidden">
-          <div className="grid grid-cols-[1fr_120px_100px_100px_80px] gap-3 items-center px-4 py-3 bg-grey-50 border-b border-grey-200 text-[12px] font-semibold text-grey-700">
+          <div className="grid grid-cols-[1fr_120px_100px_100px_80px] gap-3 items-center px-4 py-3 bg-grey-50 border-b border-grey-200 text-[13px] font-semibold text-grey-700">
             <div>제목</div>
             <div>카테고리</div>
             <div>상태</div>
@@ -158,7 +158,7 @@ export default async function AdminBlogListPage({
                 >
                   {p.title}
                 </Link>
-                <div className="text-[12px] text-grey-500 truncate">
+                <div className="text-[12px] text-grey-600 truncate mt-0.5">
                   /blog/{p.slug} · 수정 {new Date(p.updated_at).toLocaleString("ko-KR")}
                 </div>
               </div>

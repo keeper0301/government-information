@@ -97,7 +97,7 @@ export default async function AdminWishesPage() {
               <p className="text-[15px] text-grey-900 leading-[1.6] whitespace-pre-wrap mb-3">
                 {w.wish}
               </p>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-grey-500">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-grey-600">
                 <span className="font-medium text-grey-700">
                   {formatKoreanDate(w.created_at)}
                 </span>
@@ -118,7 +118,7 @@ export default async function AdminWishesPage() {
             </article>
           ))}
           {wishes.length === 200 && (
-            <p className="text-[12px] text-grey-500 text-center pt-4">
+            <p className="text-[13px] text-grey-600 text-center pt-4">
               최근 200개만 표시. 더 보려면 Supabase 대시보드에서 직접 조회.
             </p>
           )}
@@ -131,7 +131,7 @@ export default async function AdminWishesPage() {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm px-5 py-4">
-      <div className="text-[12px] font-medium text-grey-600 mb-1">{label}</div>
+      <div className="text-[13px] font-medium text-grey-700 mb-1">{label}</div>
       <div className="text-[26px] font-extrabold tabular-nums text-blue-500">
         {value.toLocaleString()}
         <span className="text-[14px] font-medium text-grey-600 ml-1">건</span>

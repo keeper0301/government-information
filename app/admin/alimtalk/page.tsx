@@ -245,7 +245,7 @@ export default async function AlimtalkAdminPage() {
           <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
             카카오 알림톡 운영
           </h1>
-          <p className="text-[14px] text-grey-600">
+          <p className="text-[14px] text-grey-700 leading-[1.6]">
             최근 24시간 발송 현황과 테스트 발송 도구.
           </p>
         </div>
@@ -253,7 +253,7 @@ export default async function AlimtalkAdminPage() {
         {/* 환경변수 설정 체크리스트 */}
         <section className="mb-6 rounded-lg border border-grey-200 bg-white p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[14px] font-bold text-grey-900">
+            <h2 className="text-[16px] font-bold text-grey-900 tracking-[-0.3px]">
               환경변수 설정 상태
             </h2>
             <span
@@ -287,7 +287,7 @@ export default async function AlimtalkAdminPage() {
           </ul>
 
           <div
-            className={`mt-4 rounded-lg border p-3 text-[12px] leading-[1.6] ${
+            className={`mt-4 rounded-lg border p-3 text-[13px] leading-[1.65] ${
               envsAllSet
                 ? "border-blue-200 bg-blue-50 text-blue-900"
                 : "border-yellow-300 bg-yellow-50 text-yellow-900"
@@ -323,7 +323,7 @@ export default async function AlimtalkAdminPage() {
             <p className="text-[13px] text-blue-900">
               ✅ 카카오 알림톡 템플릿 <strong>POLICY_NEW</strong> 승인일:{" "}
               <strong>{templateApprovedAt}</strong>
-              <span className="ml-2 text-[12px] text-blue-700">
+              <span className="ml-2 text-[13px] text-blue-700">
                 (Vercel 환경변수 KAKAO_TEMPLATE_APPROVED_AT 로 관리)
               </span>
             </p>
@@ -486,8 +486,8 @@ export default async function AlimtalkAdminPage() {
           <AlimtalkTestForm />
         </section>
 
-        <p className="mt-10 text-[12px] flex items-center gap-4">
-          <Link href="/admin" className="text-blue-500 underline">
+        <p className="mt-10 text-[13px] flex items-center gap-4">
+          <Link href="/admin" className="text-blue-500 font-medium underline">
             ← 어드민 홈
           </Link>
         </p>
@@ -588,7 +588,7 @@ function DailyBarChart({ buckets }: { buckets: DailyBucket[] }) {
         })}
       </svg>
       {/* 범례 */}
-      <div className="mt-2 flex gap-4 text-[11px] text-grey-700">
+      <div className="mt-2 flex gap-4 text-[12px] text-grey-700">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm bg-blue-500" />
           성공
@@ -621,7 +621,7 @@ function StatCard({
 
   return (
     <div className={`rounded-lg border p-4 ${toneClass}`}>
-      <p className="text-[12px] font-semibold mb-1">{label}</p>
+      <p className="text-[13px] font-semibold mb-1">{label}</p>
       <p className="text-[24px] font-extrabold tracking-[-0.5px]">{value}</p>
     </div>
   );
