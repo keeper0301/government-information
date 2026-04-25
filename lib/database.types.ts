@@ -78,7 +78,34 @@ export type UserProfile = {
   id: string;
   age_group: string | null;
   region: string | null;
+  district: string | null;
   occupation: string | null;
   interests: string[] | null;
+  // 마이그레이션 038: 맞춤형 추천을 위한 확장 컬럼
+  income_level: 'low' | 'mid_low' | 'mid' | 'mid_high' | 'high' | null;
+  household_types: string[] | null;  // ['single','married','single_parent','multi_child','disabled_family','elderly_family']
+  benefit_tags: string[] | null;     // 039 트리거가 interests 에서 자동 변환
+  // 마이그레이션 041: 온보딩 dismiss 추적
+  dismissed_onboarding_at: string | null;
   created_at: string;
+};
+
+// 마이그레이션 040: 자동 알림 규칙 추적 컬럼 추가
+export type UserAlertRule = {
+  id: string;
+  user_id: string;
+  name: string;
+  region_tags: string[] | null;
+  age_tags: string[] | null;
+  occupation_tags: string[] | null;
+  benefit_tags: string[] | null;
+  household_tags: string[] | null;
+  keyword: string | null;
+  channels: string[];
+  phone_number: string | null;
+  is_active: boolean;
+  is_auto_generated: boolean | null;
+  auto_rule_disabled_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
