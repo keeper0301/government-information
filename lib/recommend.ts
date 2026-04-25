@@ -15,6 +15,9 @@ import {
   type OccupationOption,
   type RegionOption,
 } from "@/lib/profile-options";
+import type { BenefitTag } from "@/lib/tags/taxonomy";
+import type { NewsCardData } from "@/components/news-card";
+import type { BlogCardData } from "@/components/blog-card";
 
 // programType: "all" (기본) / "welfare" (복지만) / "loan" (대출만)
 export const PROGRAM_TYPES = ["all", "welfare", "loan"] as const;
@@ -239,30 +242,38 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
 // 사용자 연령·직업 → BENEFIT_TAGS 후보 추론 → news/blog 매칭.
 // 기존 getRecommendations 와 별도 흐름 (welfare/loan 만 점수화).
 // ─────────────────────────────────────────────────────────────
-import type { BenefitTag } from "@/lib/tags/taxonomy";
+
+// 연령·직업 → BENEFIT_TAGS 후보 매핑 (lookup table).
+// Record<...> 라 옵션 추가 시 컴파일러가 누락을 잡아준다.
+const AGE_TO_BENEFIT_TAGS: Record<AgeOption, BenefitTag[]> = {
+  "10대": ["교육", "양육"],
+  "20대": ["주거", "취업", "교육", "창업"],
+  "30대": ["주거", "취업", "양육", "창업"],
+  "40대": ["양육", "교육", "의료", "주거"],
+  "50대": ["의료", "양육", "생계"],
+  "60대 이상": ["의료", "생계", "장례"],
+};
+
+const OCCUPATION_TO_BENEFIT_TAGS: Record<OccupationOption, BenefitTag[]> = {
+  "대학생": ["교육", "취업", "주거"],
+  "직장인": ["주거", "양육", "의료"],
+  "자영업자": ["창업", "금융", "생계"],
+  "공무원": ["주거", "양육"],
+  "구직자": ["취업", "생계"],
+  "주부": ["양육", "의료"],
+  "기타": [],
+};
 
 function inferBenefitTagsFromProfile(
   age: AgeOption | null,
   occupation: OccupationOption | null,
 ): BenefitTag[] {
-  const tags: BenefitTag[] = [];
-  // 연령별 관심 분야 — AGE_OPTIONS 와 일치 (10·20·30·40·50·60+)
-  if (age === "10대") tags.push("교육", "양육");
-  if (age === "20대") tags.push("주거", "취업", "교육", "창업");
-  if (age === "30대") tags.push("주거", "취업", "양육", "창업");
-  if (age === "40대") tags.push("양육", "교육", "의료", "주거");
-  if (age === "50대") tags.push("의료", "양육", "생계");
-  if (age === "60대 이상") tags.push("의료", "생계", "장례");
-
-  // 직업별 — OCCUPATION_OPTIONS 와 일치
-  if (occupation === "대학생") tags.push("교육", "취업", "주거");
-  if (occupation === "직장인") tags.push("주거", "양육", "의료");
-  if (occupation === "자영업자") tags.push("창업", "금융", "생계");
-  if (occupation === "공무원") tags.push("주거", "양육");
-  if (occupation === "구직자") tags.push("취업", "생계");
-  if (occupation === "주부") tags.push("양육", "의료");
-
-  if (tags.length === 0) tags.push("생계", "주거"); // 폴백
+  const tags = [
+    ...(age ? AGE_TO_BENEFIT_TAGS[age] : []),
+    ...(occupation ? OCCUPATION_TO_BENEFIT_TAGS[occupation] : []),
+  ];
+  // 둘 다 비었거나 "기타" 직업뿐이면 가장 보편적인 두 분야로 폴백
+  if (tags.length === 0) tags.push("생계", "주거");
   return Array.from(new Set(tags)).slice(0, 5);
 }
 
@@ -271,7 +282,7 @@ export async function getRelatedNews(opts: {
   age: AgeOption | null;
   occupation: OccupationOption | null;
   limit?: number;
-}) {
+}): Promise<NewsCardData[]> {
   const supabase = await createClient();
   const tags = inferBenefitTagsFromProfile(opts.age, opts.occupation);
   const { data } = await supabase
@@ -281,7 +292,8 @@ export async function getRelatedNews(opts: {
     .overlaps("benefit_tags", tags)
     .order("published_at", { ascending: false })
     .limit(opts.limit ?? 6);
-  return data ?? [];
+  // category 가 supabase 에선 string, NewsCardData 는 union — 한 번만 cast.
+  return (data ?? []) as NewsCardData[];
 }
 
 /** /recommend 페이지의 "함께 보면 좋은 가이드" 섹션. blog 인구통계 카테고리 매칭. */
@@ -289,7 +301,7 @@ export async function getRelatedBlogs(opts: {
   age: AgeOption | null;
   occupation: OccupationOption | null;
   limit?: number;
-}) {
+}): Promise<BlogCardData[]> {
   const supabase = await createClient();
   // blog 는 인구통계 축이라 직업·연령에 직접 매핑.
   const candidates: string[] = [];
@@ -308,5 +320,5 @@ export async function getRelatedBlogs(opts: {
     .in("category", candidates)
     .order("published_at", { ascending: false })
     .limit(opts.limit ?? 4);
-  return data ?? [];
+  return (data ?? []) as BlogCardData[];
 }

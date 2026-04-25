@@ -36,7 +36,6 @@ export default async function BlogIndexPage({
   const supabase = await createClient();
   // 카테고리 칩 동적 노출 — 빈 카테고리(주거/육아/큐레이션 등) 자동 숨김.
   // 큐레이션 자동 발행이 누적되면 자동으로 다시 노출된다.
-  const categoryCounts = await getBlogCategoryCounts(supabase);
   let query = supabase
     .from("blog_posts")
     .select("slug, title, meta_description, category, reading_time_min, published_at, cover_image")
@@ -48,7 +47,11 @@ export default async function BlogIndexPage({
     query = query.eq("category", activeCategory);
   }
 
-  const { data: posts } = await query;
+  // 본 query 와 카테고리 카운트는 서로 독립 → 병렬로 라운드트립 절약
+  const [{ data: posts }, categoryCounts] = await Promise.all([
+    query,
+    getBlogCategoryCounts(supabase),
+  ]);
   const list = (posts || []) as BlogCardData[];
 
   return (

@@ -20,6 +20,7 @@ import { Pagination } from "@/components/pagination";
 import { AdSlot } from "@/components/ad-slot";
 import { PROVINCES } from "@/lib/regions";
 import { getNewsBenefitTagCounts } from "@/lib/category-counts";
+import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -62,18 +63,14 @@ export const revalidate = 60;
 type Props = {
   searchParams: Promise<{
     category?: string;
-    topic?: string;   // deprecated. 무시됨 (2026-04-25 benefit 으로 교체)
     benefit?: string; // BENEFIT_TAGS 14종 중 하나
     province?: string;
     page?: string;
   }>;
 };
 
-// BENEFIT_TAGS 화이트리스트 — URL 쿼리 임의 값 차단
-const VALID_BENEFITS = new Set([
-  "주거", "의료", "양육", "교육", "문화", "취업", "창업",
-  "금융", "생계", "에너지", "교통", "장례", "법률", "기타",
-]);
+// BENEFIT_TAGS 단일 출처 — URL 쿼리 임의 값 차단
+const VALID_BENEFITS = new Set<string>(BENEFIT_TAGS);
 
 export default async function NewsIndexPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -91,8 +88,6 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page || "1", 10));
 
   const supabase = await createClient();
-  // 카테고리 칩 동적 노출용 (benefit_tags 14종 중 데이터 있는 것만)
-  const benefitCounts = await getNewsBenefitTagCounts(supabase);
   let query = supabase
     .from("news_posts")
     .select(
@@ -121,10 +116,11 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     if (provinceName) query = query.eq("ministry", provinceName);
   }
 
-  const { data: posts, count } = await query.range(
-    (page - 1) * PER_PAGE,
-    page * PER_PAGE - 1,
-  );
+  // 본 query 와 분야 카운트는 서로 독립 → 병렬로 라운드트립 절약
+  const [{ data: posts, count }, benefitCounts] = await Promise.all([
+    query.range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
+    getNewsBenefitTagCounts(supabase),
+  ]);
   const list = (posts || []) as NewsCardData[];
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
 

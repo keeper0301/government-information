@@ -35,8 +35,6 @@ export default async function WelfarePage({ searchParams }: Props) {
   const page = parseInt(params.page || "1", 10);
 
   const supabase = await createClient();
-  // 카테고리 칩 동적 노출용 — 활성 정책만 카운트, 빈 카테고리 자동 숨김
-  const categoryCounts = await getProgramCategoryCounts(supabase, "welfare_programs");
   let query = supabase.from("welfare_programs").select("*", { count: "exact" });
 
   if (category !== "전체") query = query.eq("category", category);
@@ -72,7 +70,11 @@ export default async function WelfarePage({ searchParams }: Props) {
     .order("apply_end", { ascending: true, nullsFirst: false })
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
-  const { data, count } = await query;
+  // 본 query 와 카테고리 카운트는 서로 독립 → 병렬로 라운드트립 절약
+  const [{ data, count }, categoryCounts] = await Promise.all([
+    query,
+    getProgramCategoryCounts(supabase, "welfare_programs"),
+  ]);
   const programs = (data || []).map(welfareToDisplay);
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
 

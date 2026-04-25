@@ -41,8 +41,6 @@ export default async function LoanPage({ searchParams }: Props) {
   const page = parseInt(params.page || "1", 10);
 
   const supabase = await createClient();
-  // 카테고리 칩 동적 노출용 — 빈 카테고리 자동 숨김 + 건수 표기
-  const categoryCounts = await getProgramCategoryCounts(supabase, "loan_programs");
   let query = supabase.from("loan_programs").select("*", { count: "exact" });
 
   if (category !== "전체") query = query.eq("category", category);
@@ -87,7 +85,11 @@ export default async function LoanPage({ searchParams }: Props) {
     .order("apply_end", { ascending: true, nullsFirst: false })
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
-  const { data, count } = await query;
+  // 본 query 와 카테고리 카운트는 서로 독립 → 병렬로 라운드트립 절약
+  const [{ data, count }, categoryCounts] = await Promise.all([
+    query,
+    getProgramCategoryCounts(supabase, "loan_programs"),
+  ]);
   const programs = (data || []).map(loanToDisplay);
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
 

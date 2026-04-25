@@ -111,7 +111,7 @@ export default async function RecommendPage({
   let relatedBlogs: BlogCardData[] = [];
 
   if (isValidAge && isValidRegion && isValidOcc) {
-    // 3개 병렬 — 추천 본체 + 통합 검색·추천 (관련 뉴스 / 가이드)
+    // 3 함수 모두 Supabase 라운드트립 → Promise.all 로 직렬 대기 절약
     const [programs, news, blogs] = await Promise.all([
       getRecommendations({
         ageGroup: candidateAge as AgeOption,
@@ -130,8 +130,8 @@ export default async function RecommendPage({
       }),
     ]);
     initialPrograms = programs;
-    relatedNews = news as NewsCardData[];
-    relatedBlogs = blogs as BlogCardData[];
+    relatedNews = news;
+    relatedBlogs = blogs;
   }
 
   return (
