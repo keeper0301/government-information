@@ -265,7 +265,7 @@ export default async function Home() {
                 받고 싶은 정부 혜택, 한 줄로 알려주세요
               </h2>
               <p className="text-[14px] text-grey-600 leading-[1.6]">
-                "이런 정보가 keepioo 에 있으면 좋겠다" — 사장님이 직접 읽고 다음 업데이트에 반영합니다.
+                &ldquo;이런 정보가 keepioo 에 있으면 좋겠다&rdquo; — 사장님이 직접 읽고 다음 업데이트에 반영합니다.
               </p>
             </div>
             <WishForm />

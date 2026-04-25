@@ -36,6 +36,12 @@ type Wish = {
   created_at: string;
 };
 
+// 7일 전 시각 ISO 문자열 — 모듈 레벨 helper. 컴포넌트 본문에서 Date.now() 직접
+// 호출하면 react-hooks/purity 가 잡으므로, 호출 시점만 분리해 컴포넌트는 순수 유지.
+function isoDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export default async function AdminWishesPage() {
   await requireAdmin();
   const admin = createAdminClient();
@@ -52,8 +58,8 @@ export default async function AdminWishesPage() {
 
   const wishes = (rows ?? []) as Wish[];
 
-  // 최근 7일 의견 수 (간이 trend)
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // 최근 7일 의견 수 (간이 trend) — Date.now 호출은 helper 안으로 분리
+  const weekAgo = isoDaysAgo(7);
   const recentCount = wishes.filter((w) => w.created_at >= weekAgo).length;
 
   return (

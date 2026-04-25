@@ -2,6 +2,7 @@
 // 로그인 + 프로필이 채워진 사용자에게 보여주는 자동 추천 카드 (서버 컴포넌트)
 // HomeRecommendCard (입력 폼) 와 같은 자리에 server-rendered
 // 'use client' 없음 — createClient 사용 가능
+import Link from "next/link";
 import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilter } from '@/lib/personalization/filter';
@@ -85,12 +86,12 @@ export async function HomeRecommendAuto() {
             {items.length}건
           </span>
         </h2>
-        <a
+        <Link
           href="/welfare"
           className="text-xs text-blue-500 hover:text-blue-600 underline"
         >
           전체 보기 →
-        </a>
+        </Link>
       </div>
 
       {/* 추천 정책 목록 — 각 항목은 /welfare/[id] 상세 링크 */}

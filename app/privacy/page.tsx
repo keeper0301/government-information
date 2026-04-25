@@ -29,7 +29,7 @@ export default function PrivacyPage() {
 
       <div className="text-[15px] text-grey-700 leading-[1.8] space-y-7">
         <Section title="1. 수집하는 개인정보 항목">
-          <p>정책알리미(이하 "서비스")는 회원가입·서비스 이용·문의 대응을 위해 다음 정보를 수집합니다.</p>
+          <p>정책알리미(이하 &ldquo;서비스&rdquo;)는 회원가입·서비스 이용·문의 대응을 위해 다음 정보를 수집합니다.</p>
           <ul className="list-disc pl-6 mt-2 space-y-1">
             <li><b>필수</b>: 이메일 주소, 비밀번호 또는 소셜 로그인 식별자</li>
             <li><b>선택</b>: 닉네임, 프로필 사진, 나이대, 거주 지역, 직업, 관심 분야</li>
@@ -114,7 +114,7 @@ export default function PrivacyPage() {
             <li>마이페이지에서 언제든 관심 분야·알림 채널·구독 상태를 수정할 수 있습니다.</li>
             <li>회원 탈퇴는 마이페이지 → 계정 설정에서 가능합니다. 탈퇴 즉시 모든 식별 정보 파기.</li>
             <li>카카오 / 구글 소셜 로그인의 연결 해제는 각 서비스의 설정에서 직접 가능합니다.</li>
-            <li>마케팅 수신 동의는 알림 메일 하단의 "수신 거부" 또는 마이페이지에서 철회 가능.</li>
+            <li>마케팅 수신 동의는 알림 메일 하단의 &ldquo;수신 거부&rdquo; 또는 마이페이지에서 철회 가능.</li>
           </ul>
         </Section>
 

@@ -15,7 +15,7 @@ export default function TermsPage() {
       <div className="text-[15px] text-grey-700 leading-[1.8] space-y-6">
         <section>
           <h2 className="text-[18px] font-bold text-grey-900 mb-3">제1조 (목적)</h2>
-          <p>이 약관은 정책알리미(이하 "서비스")의 이용에 관한 기본적인 사항을 규정합니다.</p>
+          <p>이 약관은 정책알리미(이하 &ldquo;서비스&rdquo;)의 이용에 관한 기본적인 사항을 규정합니다.</p>
         </section>
         <section>
           <h2 className="text-[18px] font-bold text-grey-900 mb-3">제2조 (서비스 내용)</h2>
