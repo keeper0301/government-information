@@ -6,6 +6,8 @@
 // 사용자에게 친절한 안내 + 재시도 링크 표시
 // ============================================================
 
+import Link from "next/link";
+
 type SearchParams = Promise<{
   code?: string;
   message?: string;
@@ -52,18 +54,18 @@ export default async function CheckoutFailPage({ searchParams }: { searchParams:
         </div>
 
         <div className="space-y-2.5">
-          <a
+          <Link
             href="/pricing"
             className="block w-full min-h-[52px] flex items-center justify-center text-[15px] font-bold rounded-xl bg-blue-500 text-white hover:bg-blue-600 no-underline"
           >
             다시 시도하기
-          </a>
-          <a
+          </Link>
+          <Link
             href="/"
             className="block w-full min-h-[44px] flex items-center justify-center text-[14px] font-medium rounded-xl text-grey-700 hover:bg-grey-100 no-underline"
           >
             홈으로 돌아가기
-          </a>
+          </Link>
         </div>
 
         <p className="text-[13px] text-grey-600 text-center mt-8 leading-[1.65]">

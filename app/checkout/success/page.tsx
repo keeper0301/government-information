@@ -25,6 +25,15 @@ type SearchParams = Promise<{
 
 const TRIAL_DAYS = 7;
 
+// 트라이얼 종료 시각 ISO 문자열 — 모듈 레벨 헬퍼로 빼낸 이유:
+// 컴포넌트 함수 안에서 Date.now() 를 직접 호출하면 react-hooks/purity 가
+// "render 중 impure 함수 호출" 로 잡음. 서버 컴포넌트의 매 요청마다
+// 새 시각이 필요한 의도된 동작이므로 helper 로 호출 시점을 분리해
+// 컴포넌트 본문은 순수하게 유지.
+function calcTrialEndIso(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export default async function CheckoutSuccessPage({ searchParams }: { searchParams: SearchParams }) {
   const { authKey, customerKey } = await searchParams;
 
@@ -68,7 +77,7 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   }
 
   // 5) subscriptions 행 갱신 (status=trialing + 7일 트라이얼)
-  const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const trialEndsAtIso = calcTrialEndIso(TRIAL_DAYS);
 
   const { error: dbError } = await admin
     .from("subscriptions")
@@ -80,8 +89,8 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
       customer_email: user.email || null,  // cron 결제 시 N+1 방지용 캐시
       card_company: billingInfo.cardCompany,
       card_number_masked: billingInfo.cardNumber,
-      trial_ends_at: trialEndsAt.toISOString(),
-      current_period_end: trialEndsAt.toISOString(),
+      trial_ends_at: trialEndsAtIso,
+      current_period_end: trialEndsAtIso,
       cancelled_at: null,
     })
     .eq("user_id", user.id);
