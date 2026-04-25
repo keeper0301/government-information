@@ -34,6 +34,7 @@
     "@tiptap/react": "^3.22.4",
     "@tiptap/starter-kit": "^3.22.4",
     "@tosspayments/payment-sdk": "^1.9.2",
+    "@vnedyalk0v/react19-simple-maps": "^2.0.7",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
