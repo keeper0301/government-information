@@ -1,24 +1,12 @@
 import Link from "next/link";
 import { SearchBox } from "@/components/search-box";
 import { AlertStrip } from "@/components/alert-strip";
-import { ProgramList } from "@/components/program-list";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
-import {
-  getTopWelfare,
-  getTopLoans,
-  getUrgentPrograms,
-  type ProfileLite,
-} from "@/lib/programs";
-import { getRecommendations } from "@/lib/recommend";
-import type {
-  AgeOption,
-  OccupationOption,
-  RegionOption,
-} from "@/lib/profile-options";
+import { getUrgentPrograms, type ProfileLite } from "@/lib/programs";
 import { createClient } from "@/lib/supabase/server";
 
 // 홈페이지는 로그인 사용자·비로그인 사용자마다 프로필 자동 채움이 달라서
@@ -33,7 +21,7 @@ export default async function Home() {
     supabase.auth.getUser(),
   ]);
 
-  // 2) 로그인 사용자면 프로필 조회 (홈카드 + 개인화 섹션 둘 다에 사용)
+  // 2) 로그인 사용자면 프로필 조회 (HomeRecommendCard 자동 채움용)
   const user = userResult.data.user;
   let initialProfile: ProfileLite | null = null;
   if (user) {
@@ -51,32 +39,10 @@ export default async function Home() {
     }
   }
 
-  // 3) 프로필 3필드 중 하나라도 있으면 개인화 모드
-  const hasProfile = !!(
-    initialProfile &&
-    (initialProfile.age_group || initialProfile.region || initialProfile.occupation)
-  );
-
-  // 4) 복지·대출 목록: 개인화 vs 일반 분기 + 최근 블로그 3글 + 최근 뉴스 3건 (병렬)
-  //
-  // 개인화 모드는 /recommend 페이지와 동일한 getRecommendations 를 재사용 —
-  // REGION_ALIASES + 제목 prefix + 직업 필수 매칭으로 일관성 보장.
-  // 이전엔 lib/programs.ts 의 getPersonalized* 가 지역 필터조차 없어 전남 사용자에게
-  // 광주·서울·대전·부산 공고가 뜨는 회귀 발생 → 여기서 하나로 통일.
-  // ProfileLite 필드가 null 이면 /recommend 와 같은 기본값(전국·기타)로 fallback.
-  const recParams = initialProfile && {
-    ageGroup: (initialProfile.age_group ?? "30대") as AgeOption,
-    region: (initialProfile.region ?? "전국") as RegionOption,
-    occupation: (initialProfile.occupation ?? "기타") as OccupationOption,
-  };
-
-  const [welfare, loans, recentPostsResult, recentNewsResult] = await Promise.all([
-    hasProfile && recParams
-      ? getRecommendations({ ...recParams, programType: "welfare", limit: 4 })
-      : getTopWelfare(4),
-    hasProfile && recParams
-      ? getRecommendations({ ...recParams, programType: "loan", limit: 3 })
-      : getTopLoans(3),
+  // 3) 최근 블로그 3글 + 최근 뉴스 3건 (병렬). 복지·대출 목록 섹션은 폐기 —
+  //    홈은 Hero + 추천카드 + 달력 + 마감임박 + 블로그 + 뉴스 + 기능안내
+  //    흐름으로 가벼워짐 (사장님 4-25 결정).
+  const [recentPostsResult, recentNewsResult] = await Promise.all([
     supabase
       .from("blog_posts")
       .select(
@@ -86,7 +52,6 @@ export default async function Home() {
       .order("published_at", { ascending: false })
       .limit(3),
     // 최근 정책 소식 3건 — 전체 카테고리(news/press/policy-doc) 최신순.
-    // 홈은 첫 인상이므로 키워드 필터 없이 최신만 노출 — /news 페이지에서 카테고리 탭으로 탐색.
     supabase
       .from("news_posts")
       .select(
@@ -97,10 +62,6 @@ export default async function Home() {
   ]);
   const recentPosts: BlogCardData[] = (recentPostsResult.data ?? []) as BlogCardData[];
   const recentNews: NewsCardData[] = (recentNewsResult.data ?? []) as NewsCardData[];
-
-  // 5) 섹션 제목도 상태에 따라 변경 (개인화 모드 사용자에게 명확히 인식시킴)
-  const welfareTitle = hasProfile ? "나에게 맞는 복지 서비스" : "지금 신청 가능한 복지서비스";
-  const loanTitle = hasProfile ? "나에게 맞는 대출·지원금" : "소상공인 대출·지원금";
 
   return (
     <main>
@@ -163,26 +124,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Welfare — 프로필 있으면 개인화 매칭 결과, 없으면 일반.
-          토스 풍: 페이지 배경 white 유지 + 카드 자체 shadow-md 로 분리감 표현.
-          (이전 bg-grey-50 wrapper 제거 — 시각 띠 너무 자주 끊겨 시선 분산) */}
-      <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-        <ProgramList
-          title={welfareTitle}
-          programs={welfare}
-          moreHref="/welfare"
-        />
-      </section>
-
-      {/* Loans — 프로필 있으면 개인화, 없으면 일반 */}
-      <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-        <ProgramList
-          title={loanTitle}
-          programs={loans}
-          moreHref="/loan"
-        />
-      </section>
-
       {/* Calendar */}
       <div className="bg-grey-50">
         <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
@@ -219,10 +160,7 @@ export default async function Home() {
 
       {/* News — 최근 정책 소식 (korea.kr 큐레이션, 수집 0건이면 숨김).
           의도: 블로그(자체 가이드) → 뉴스(외부 정책 발표) 순으로 자연스러운
-          정보 소비 흐름. 뉴스는 발표 → 공고화 순서의 앞쪽을 담당.
-          배경: 기존 bg-grey-50 회색 띠 제거 — 바로 위 블로그 섹션(크림)과
-          시각 리듬 통일. NewsCard 는 자체 흰 배경+그림자라 크림 위에서도
-          대비 충분. */}
+          정보 소비 흐름. */}
       {recentNews.length > 0 && (
         <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
           <div className="flex items-baseline justify-between mb-8">
