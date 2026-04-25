@@ -57,14 +57,49 @@ select:focus-visible {
   border-radius: 4px;
 }
 
+/* 버튼·링크 transition — transform 만 살짝 spring (토스 풍 cubic-bezier).
+   색·배경은 ease-out 으로 부드럽게. */
 button,
 a {
-  transition: transform 0.1s ease-out, background-color 0.15s ease-out, color 0.15s ease-out;
+  transition:
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.15s ease-out,
+    color 0.15s ease-out;
 }
 
 button:not(:disabled):active,
 a:active {
   transform: scale(0.98);
+}
+
+/* ============================================================
+   fade-up 진입 애니메이션 — Hero 등 첫 화면 요소용
+   ============================================================
+   8px 아래에서 페이드인. prefers-reduced-motion 환경에선 즉시 표시.
+   stagger 는 inline style 의 animation-delay 로 컨트롤.
+   ============================================================ */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    animation: none;
+  }
+  /* 모션 감소 환경에서도 transform 효과는 유지하되 시간만 단축 */
+  button,
+  a {
+    transition-duration: 0.05s;
+  }
 }
 
 /* ============================================================

@@ -108,26 +108,38 @@ export default async function Home() {
       {/* Hero — 데스크톱에서 좌: 카피·검색 / 우: 맞춤 추천 카드 (1024px 이상에서 2단) */}
       <section className="pt-40 pb-[100px] px-10 max-w-content mx-auto max-md:pt-[120px] max-md:pb-[60px] max-md:px-6">
         <div className="grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
-          {/* 왼쪽: 카피 + 검색 */}
+          {/* 왼쪽: 카피 + 검색 — fade-up stagger 60ms 간격으로 위에서 아래로
+              자연스럽게 등장. animationDelay 는 inline style 로 정확 제어. */}
           <div>
-            <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-6 before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-500 before:opacity-[0.55]">
+            <div
+              className="fade-up inline-flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-6 before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-500 before:opacity-[0.55]"
+              style={{ animationDelay: "0ms" }}
+            >
               실시간 공공데이터 연동
             </div>
-            <h1 className="text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]">
+            <h1
+              className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
+              style={{ animationDelay: "60ms" }}
+            >
               숨겨진 정부 혜택,
               <br />
               30초 만에 찾아드릴게요
             </h1>
-            <p className="text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-10 max-md:text-[15px]">
+            <p
+              className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-10 max-md:text-[15px]"
+              style={{ animationDelay: "120ms" }}
+            >
               복지로·소상공인24·금융위원회 데이터를
               <br />
               매일 자동으로 모아드려요.
             </p>
-            <SearchBox />
+            <div className="fade-up" style={{ animationDelay: "180ms" }}>
+              <SearchBox />
+            </div>
           </div>
 
           {/* 오른쪽: 맞춤 추천 카드 (데스크톱 전용 위치. 모바일에선 아래로 자연스럽게 스택) */}
-          <div className="lg:mt-14">
+          <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
             <HomeRecommendCard initial={initialProfile} />
           </div>
         </div>
