@@ -338,6 +338,11 @@ export default async function AdminHomePage({
               desc="bokjiro·youthcenter Detail fetcher 즉시 실행"
             />
             <ActionCard
+              href="/admin/targeting"
+              title="본문 분석 운영"
+              desc="Phase 1.5 income 분석 진행률 + 백필 trigger 안내"
+            />
+            <ActionCard
               href="/admin/my-actions"
               title="내 수행 내역"
               desc="감사 로그 페이지네이션 열람"
