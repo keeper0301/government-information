@@ -41,15 +41,19 @@ const collector: Collector = {
     const minYear = currentMinAllowedYear();
     const seen = new Set<string>();
 
+    // 2026-04-25 quota 절약: numOfRows 100→500 (페이지 수 1/5), max page 10→5.
+    // 호출 수: 10 카테고리 × 10 페이지 = 최대 100 → 10 × 5 = 최대 50 (실측 더 적음).
+    // data.go.kr B554287 namespace quota 를 같은 키 다른 endpoint 와 공유하므로
+    // bokjiro list 단독에서 quota 70% 점유하던 구조 완화.
     for (const code of CATEGORIES) {
-      for (let page = 1; page <= 10; page++) {
+      for (let page = 1; page <= 5; page++) {
         let xml: string;
         try {
           const params = new URLSearchParams({
             serviceKey: KEY,
             callTp: "L",
             pageNo: String(page),
-            numOfRows: "100",
+            numOfRows: "500",
             srchKeyCode: code,
           });
           const res = await fetchWithTimeout(`${API}?${params}`);
@@ -100,7 +104,7 @@ const collector: Collector = {
             householdTags: extractHouseholdTags(textBlob),
           };
         }
-        if (page * 100 >= apiTotal) break;
+        if (page * 500 >= apiTotal) break;
       }
     }
   },
