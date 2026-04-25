@@ -147,9 +147,9 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
                 <div>
                   <div className="font-semibold flex items-center gap-2">
                     {r.name}
-                    {!r.is_active && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">일시중지</span>}
+                    {!r.is_active && <span className="text-[12px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-medium">일시중지</span>}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-[13px] text-gray-600 mt-1 leading-[1.5]">
                     {[
                       r.region_tags.length > 0 && `지역: ${r.region_tags.join(",")}`,
                       r.age_tags.length > 0 && `연령: ${r.age_tags.join(",")}`,
@@ -234,14 +234,14 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
                   <span className="ml-2 text-xs text-gray-500">(수신 동의 필요)</span>
                 )}
                 {templateApprovedAt && (
-                  <span className="ml-2 text-[11px] text-blue-600">
+                  <span className="ml-2 text-[12px] text-blue-600">
                     ✓ {templateApprovedAt} 카카오 승인 완료
                   </span>
                 )}
               </span>
             </label>
             {tier === "pro" && !kakaoConsented && (
-              <p className="text-xs text-gray-600 ml-6">
+              <p className="text-[13px] text-gray-700 ml-6 leading-[1.6]">
                 카카오 알림톡을 받으려면 먼저{" "}
                 <Link href="/mypage#consents" className="text-blue-600 underline">
                   마이페이지 동의 관리

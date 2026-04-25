@@ -169,7 +169,7 @@ export function WithdrawSection() {
               placeholder="불편했던 점이나 바라는 점을 자유롭게 적어주세요."
               className="w-full px-3 py-2 text-[13px] border border-grey-200 rounded-lg outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(49,130,246,0.12)] placeholder:text-grey-400 leading-[1.5] resize-none"
             />
-            <div className="text-[11px] text-grey-600 text-right mt-1">
+            <div className="text-[12px] text-grey-600 text-right mt-1">
               {reasonDetail.length} / {DETAIL_MAX}
             </div>
           </div>

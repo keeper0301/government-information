@@ -134,7 +134,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
         />
 
         {/* 안내 */}
-        <p className="text-[12px] text-grey-600 text-center mt-5 leading-[1.6]">
+        <p className="text-[13px] text-grey-600 text-center mt-5 leading-[1.65]">
           카드 정보는 <b>토스페이먼츠에만</b> 저장되며, 정책알리미 서버에는 저장되지 않습니다.<br />
           결제 진행 시 <a href="/terms" className="underline">이용약관</a>과 <a href="/privacy" className="underline">개인정보처리방침</a>에 동의한 것으로 간주됩니다.
         </p>

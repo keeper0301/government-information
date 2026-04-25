@@ -35,7 +35,7 @@ export default async function HistoryPage() {
       <h1 className="text-2xl font-bold mb-6">알림 수신 이력</h1>
 
       {!deliveries || deliveries.length === 0 ? (
-        <div className="rounded-xl bg-gray-50 p-8 text-center text-gray-500">
+        <div className="rounded-xl bg-gray-50 p-8 text-center text-[14px] text-gray-700 leading-[1.6]">
           아직 발송된 알림이 없어요. 매일 오후 4시에 새 정책을 확인해서 발송됩니다.
         </div>
       ) : (
@@ -58,9 +58,9 @@ export default async function HistoryPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-semibold">{d.program_title || "(제목 없음)"}</div>
-                  <span className={`text-xs font-bold ${statusColor}`}>{statusLabel}</span>
+                  <span className={`text-[13px] font-bold ${statusColor}`}>{statusLabel}</span>
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-[13px] text-gray-600 mt-1">
                   {channelLabel} · {new Date(d.created_at).toLocaleString("ko-KR")}
                 </div>
               </Link>

@@ -57,7 +57,7 @@ export default async function MyPage() {
           온보딩 다시 하기
         </a>
       </div>
-      <p className="text-[15px] text-grey-600 mb-8 leading-[1.6]">
+      <p className="text-[15px] text-grey-700 mb-8 leading-[1.6]">
         기본 정보를 입력하면 맞춤추천과 알림이 더 정확해져요.
       </p>
 
@@ -91,7 +91,7 @@ export default async function MyPage() {
         <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900 mb-2">
           동의 관리
         </h2>
-        <p className="text-[14px] text-grey-600 mb-6 leading-[1.6]">
+        <p className="text-[14px] text-grey-700 mb-6 leading-[1.6]">
           이용약관·개인정보·마케팅 동의 내역을 확인하고 선택 동의를 관리할 수 있어요.
         </p>
 

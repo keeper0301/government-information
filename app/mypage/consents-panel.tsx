@@ -216,10 +216,10 @@ export function ConsentsPanel({
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span
-                    className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                    className={`text-[12px] font-semibold px-2 py-0.5 rounded ${
                       required
                         ? "bg-red/10 text-red"
-                        : "bg-grey-100 text-grey-600"
+                        : "bg-grey-100 text-grey-700"
                     }`}
                   >
                     {required ? "필수" : "선택"}

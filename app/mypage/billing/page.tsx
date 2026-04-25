@@ -136,7 +136,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
 
         {/* 결제 이력 */}
         <div className="bg-white rounded-2xl border border-grey-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-4">결제 이력</h2>
+          <h2 className="text-[18px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">결제 이력</h2>
           {!history || history.length === 0 ? (
             <p className="text-[14px] text-grey-600">아직 결제 이력이 없어요.</p>
           ) : (
@@ -206,7 +206,7 @@ function HistoryRow({ item }: { item: PaymentHistoryRow }) {
         <div className={`text-[14px] font-bold ${isFailed ? "text-red-500" : "text-grey-900"}`}>
           {item.amount.toLocaleString()}원
         </div>
-        <div className={`text-[11px] font-semibold ${isFailed ? "text-red-500" : "text-grey-600"}`}>
+        <div className={`text-[12px] font-semibold ${isFailed ? "text-red-500" : "text-grey-700"}`}>
           {isFailed ? "실패" : "결제 완료"}
         </div>
       </div>
