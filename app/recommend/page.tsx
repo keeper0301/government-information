@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getRecommendations, PROGRAM_TYPES, type ProgramType } from "@/lib/recommend";
+import {
+  getRecommendations,
+  getRelatedNews,
+  getRelatedBlogs,
+  PROGRAM_TYPES,
+  type ProgramType,
+} from "@/lib/recommend";
 import { AGE_OPTIONS, REGION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/profile-options";
 import type {
   AgeOption,
@@ -9,6 +15,8 @@ import type {
 } from "@/lib/profile-options";
 import type { DisplayProgram } from "@/lib/programs";
 import { RecommendForm } from "./form";
+import { NewsCard, type NewsCardData } from "@/components/news-card";
+import { BlogCard, type BlogCardData } from "@/components/blog-card";
 
 export const metadata: Metadata = {
   title: "맞춤추천 — 정책알리미",
@@ -99,14 +107,31 @@ export default async function RecommendPage({
     : false;
 
   let initialPrograms: DisplayProgram[] | null = null;
+  let relatedNews: NewsCardData[] = [];
+  let relatedBlogs: BlogCardData[] = [];
+
   if (isValidAge && isValidRegion && isValidOcc) {
-    initialPrograms = await getRecommendations({
-      ageGroup: candidateAge as AgeOption,
-      region: candidateRegion as RegionOption,
-      district: candidateDistrict,
-      occupation: candidateOcc as OccupationOption,
-      programType: candidateType,
-    });
+    // 3개 병렬 — 추천 본체 + 통합 검색·추천 (관련 뉴스 / 가이드)
+    const [programs, news, blogs] = await Promise.all([
+      getRecommendations({
+        ageGroup: candidateAge as AgeOption,
+        region: candidateRegion as RegionOption,
+        district: candidateDistrict,
+        occupation: candidateOcc as OccupationOption,
+        programType: candidateType,
+      }),
+      getRelatedNews({
+        age: candidateAge as AgeOption,
+        occupation: candidateOcc as OccupationOption,
+      }),
+      getRelatedBlogs({
+        age: candidateAge as AgeOption,
+        occupation: candidateOcc as OccupationOption,
+      }),
+    ]);
+    initialPrograms = programs;
+    relatedNews = news as NewsCardData[];
+    relatedBlogs = blogs as BlogCardData[];
   }
 
   return (
@@ -119,6 +144,34 @@ export default async function RecommendPage({
       </p>
 
       <RecommendForm initial={initial} initialPrograms={initialPrograms} />
+
+      {/* 관련 뉴스 — 사용자 조건에 맞는 BENEFIT_TAGS overlap 매칭 */}
+      {relatedNews.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-[22px] font-bold text-grey-900 mb-4">
+            관련 정책 뉴스
+          </h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {relatedNews.map((post) => (
+              <NewsCard key={post.slug} post={post} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 함께 보면 좋은 가이드 — blog 인구통계 카테고리 매칭 */}
+      {relatedBlogs.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-[22px] font-bold text-grey-900 mb-4">
+            함께 보면 좋은 가이드
+          </h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {relatedBlogs.map((post) => (
+              <BlogCard key={post.slug} post={post} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
