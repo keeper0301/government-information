@@ -5,6 +5,8 @@ import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
 import { HeroStats } from "@/components/hero-stats";
+import { RegionMap } from "@/components/region-map";
+import { HomeCTA } from "@/components/home-cta";
 import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
@@ -126,13 +128,23 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* HeroStats — 토스 전략 "수의 힘" — 누적 정책뉴스·진행 공고·데이터 출처
-          큰 숫자 + 카운트업 애니메이션. Hero 직후라 첫 인상에 신뢰감 강조. */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          내러티브 4단계: 문제(Hero 카피) → 해결(Hero+RecommendCard) →
+          증거(Stats+Map) → 도구(Calendar+Alert+Blog+News) → 방법(Features) →
+          행동(HomeCTA). 토스 "방문자 사로잡기" 전략 적용.
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+      {/* [증거 1] HeroStats — 누적 정책뉴스·진행 공고·데이터 출처 큰 숫자 + 카운트업 */}
       <RevealOnScroll>
         <HeroStats />
       </RevealOnScroll>
 
-      {/* Calendar — 스크롤 진입 시 fade-up */}
+      {/* [증거 2] RegionMap — 지역별 진행 중 정책 수 시각화 (한국 지도 풍 grid) */}
+      <RevealOnScroll>
+        <RegionMap />
+      </RevealOnScroll>
+
+      {/* [도구 1] Calendar — 이번 달 신청 일정 달력 */}
       <RevealOnScroll>
         <div className="bg-grey-50">
           <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
@@ -141,14 +153,12 @@ export default async function Home() {
         </div>
       </RevealOnScroll>
 
-      {/* Alert — 달력 바로 아래에 배치.
-          의도: 달력에서 전체 일정을 훑은 뒤 "그 중 지금 당장 마감 임박한 것" 리마인더로
-          자연스럽게 연결. 기존 Hero 바로 밑(상단) 위치는 첫인상이 긴급·자극적이었음. */}
+      {/* [도구 2] Alert — 마감 임박 마퀴 (달력에서 전체 → 그 중 지금 당장 액션 필요) */}
       <RevealOnScroll>
         <AlertStrip programs={urgents} isLoggedIn={!!user} />
       </RevealOnScroll>
 
-      {/* Blog — 최근 가이드 글 (0건이면 숨김) */}
+      {/* [도구 3] Blog — 정책 가이드 (자체 콘텐츠) */}
       {recentPosts.length > 0 && (
         <RevealOnScroll>
           <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
@@ -172,9 +182,7 @@ export default async function Home() {
         </RevealOnScroll>
       )}
 
-      {/* News — 최근 정책 소식 (korea.kr 큐레이션, 수집 0건이면 숨김).
-          의도: 블로그(자체 가이드) → 뉴스(외부 정책 발표) 순으로 자연스러운
-          정보 소비 흐름. */}
+      {/* [도구 4] News — 외부 정책 발표 큐레이션 (korea.kr 출처) */}
       {recentNews.length > 0 && (
         <RevealOnScroll>
           <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
@@ -198,13 +206,18 @@ export default async function Home() {
         </RevealOnScroll>
       )}
 
-      {/* Features */}
+      {/* [방법] FeatureGrid — 어떻게 작동? 3 STEPS (조건 입력 → 마감 알림 → 챗봇 안내) */}
       <RevealOnScroll>
         <div className="bg-grey-50">
           <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
             <FeatureGrid />
           </section>
         </div>
+      </RevealOnScroll>
+
+      {/* [행동] HomeCTA — 사용자가 가져갈 다음 행동 (추천 받기 + 알림 받기) */}
+      <RevealOnScroll>
+        <HomeCTA />
       </RevealOnScroll>
     </main>
   );
