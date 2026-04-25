@@ -1843,9 +1843,10 @@ export function StepIncome({
 'use client';
 import { HOUSEHOLD_OPTIONS, type HouseholdOption } from '@/lib/profile-options';
 
+// 변경 로그 #3 — 실제 마이페이지 INTERESTS (app/mypage/profile-form.tsx:20) 와 동일
 const INTEREST_LABELS = [
-  '주거', '의료/건강', '취업/창업', '양육/보육', '교육',
-  '복지/생계', '문화/여가', '교통', '법률/상담',
+  '복지', '대출', '청년', '출산·육아', '창업',
+  '주거', '교육', '의료', '고용',
 ] as const;
 
 export function StepInterests({
