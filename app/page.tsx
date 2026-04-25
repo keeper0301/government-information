@@ -104,16 +104,24 @@ export default async function Home() {
 
   return (
     <main>
-      {/* Hero — 데스크톱에서 좌: 카피·검색 / 우: 맞춤 추천 카드 (1024px 이상에서 2단) */}
-      <section className="relative pt-40 pb-[100px] px-10 max-w-content mx-auto max-md:pt-[120px] max-md:pb-[60px] max-md:px-6">
+      {/* Hero — 데스크톱에서 좌: 카피·검색 / 우: 맞춤 추천 카드 (1024px 이상에서 2단)
+          section 자체는 viewport 풀폭으로 두고 inner div 에서 max-w-content 적용.
+          이래야 배경 blob 이 좌우 끝까지 펼쳐져서 가장자리 흰색 띠가 안 생김. */}
+      <section
+        className="relative overflow-hidden pt-40 pb-[100px] max-md:pt-[120px] max-md:pb-[60px]"
+        style={{
+          background: "linear-gradient(180deg, #F2F8FF 0%, #FFFFFF 85%)",
+        }}
+      >
         {/* 배경 blob — 옅은 blue gradient 두 개가 천천히 떠다니며 활동감.
-            absolute + overflow-hidden + pointer-events-none 으로 content 영향 X. */}
+            section 풀폭 안에서 absolute pointer-events-none 으로 시각 효과만. */}
         <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="hero-blob hero-blob--a" />
           <div className="hero-blob hero-blob--b" />
         </div>
 
-        <div className="relative z-10 grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
+        {/* 안쪽 max-w-content — content 가운데 정렬 (1140px). z-10 으로 blob 위. */}
+        <div className="relative z-10 max-w-content mx-auto px-10 max-md:px-6 grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
           {/* 왼쪽: 카피 + 검색 — fade-up stagger 60ms 간격으로 위에서 아래로
               자연스럽게 등장. animationDelay 는 inline style 로 정확 제어. */}
           <div>
