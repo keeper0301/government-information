@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Suspense } from "react";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
@@ -92,17 +93,18 @@ export default async function RootLayout({
 
   return (
     <html lang="ko">
-      <head>
-        {/* AdSense 코드 — head 에 raw script 로 박아야 크롤러가 인식 */}
+      <body>
+        {/* AdSense — next/script 로 head 에 자동 주입 (조건부 raw <script> 가
+            <head> 안 빈 텍스트 노드를 만들어 hydration 에러 발생 → Script 사용) */}
         {process.env.NEXT_PUBLIC_ADSENSE_ID && (
-          <script
+          <Script
+            id="adsense-loader"
             async
+            strategy="afterInteractive"
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}`}
             crossOrigin="anonymous"
           />
         )}
-      </head>
-      <body>
         <WebSiteSchema
           name="정책알리미"
           url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
