@@ -20,9 +20,9 @@ export function FeatureGrid() {
   return (
     <div>
       <div className="mb-8">
-        {/* 섹션 overline (Editorial small caps meta) */}
-        <div className="editorial-smallcaps text-[10.5px] text-grey-600 mb-3">
-          — THREE STEPS
+        {/* 섹션 overline — Pretendard 굵은 대문자 + 와이드 tracking (핀테크 톤) */}
+        <div className="text-[11px] font-bold text-blue-500 tracking-[0.18em] mb-3">
+          THREE STEPS
         </div>
         <h2 className="text-[26px] font-bold tracking-[-0.8px] text-grey-900">
           이렇게 도와드려요
@@ -31,8 +31,8 @@ export function FeatureGrid() {
       <div className="space-y-6">
         {features.map((f) => (
           <div key={f.num} className="flex items-start gap-6 p-6 bg-white border border-grey-200 rounded-2xl max-md:flex-col max-md:gap-4">
-            {/* 번호 — EB Garamond italic (editorial-num) 로 매거진 느낌 */}
-            <div className="editorial-num shrink-0 text-[44px] text-blue-500 w-[60px] leading-none mt-1">
+            {/* 번호 — Pretendard 큼직한 tabular-nums (편집물 italic 폐기) */}
+            <div className="font-extrabold tabular-nums shrink-0 text-[44px] text-blue-500 w-[60px] leading-none mt-1">
               {f.num}
             </div>
             <div>

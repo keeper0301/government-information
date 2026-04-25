@@ -264,10 +264,10 @@ export default async function CalendarPage({
         </a>
       </nav>
 
-      {/* Calendar grid — 홈 `CalendarPreview` 와 동일한 매거진 톤
+      {/* Calendar grid — 홈 `CalendarPreview` 와 동일한 핀테크 톤
           · 흰 셀 + grey-200 hairline gap + rounded-xl 외곽
-          · 요일 헤더: tracking-[3px] 11px bold grey-600 (small caps 느낌)
-          · 숫자: editorial-num (EB Garamond italic) — 좌상단
+          · 요일 헤더: tracking-[3px] 11px bold grey-600 (대문자 라벨 느낌)
+          · 숫자: Pretendard tabular-nums (편집물 italic 폐기) — 좌상단
           · 이벤트: dot + 제목(truncate) 최대 2건, 나머지 +N
           · 모바일: 제목 숨김 + 복지/대출 dot 2개만 센터
           · 시작 vs 마감: 채움 dot = 마감 / 빈 ring dot = 시작 (정보 보존) */}
@@ -306,12 +306,12 @@ export default async function CalendarPage({
                 isToday ? "bg-blue-50" : "bg-white"
               }`}
             >
-              {/* 날짜 숫자 — editorial-num italic, 오늘은 굵고 크게 */}
+              {/* 날짜 숫자 — Pretendard tabular-nums, 오늘은 블루 강조 */}
               <div
-                className={`editorial-num leading-none mb-2 ${
+                className={`tabular-nums leading-none mb-2 ${
                   isToday
-                    ? "text-burgundy font-bold text-[22px]"
-                    : "text-grey-700 text-[17px]"
+                    ? "text-blue-700 font-bold text-[22px]"
+                    : "text-grey-700 font-semibold text-[17px]"
                 }`}
               >
                 {day}
@@ -353,7 +353,7 @@ export default async function CalendarPage({
                     );
                   })}
                   {items.length > 2 && (
-                    <div className="editorial-num text-[12px] text-grey-600 pl-[14px] max-md:hidden">
+                    <div className="tabular-nums font-semibold text-[12px] text-grey-600 pl-[14px] max-md:hidden">
                       +{items.length - 2}
                     </div>
                   )}
@@ -416,7 +416,7 @@ export default async function CalendarPage({
           <span
             aria-hidden="true"
             className="ml-2 w-[7px] h-[7px] rounded-full bg-white"
-            style={{ boxShadow: "inset 0 0 0 1.5px #6F6557" }}
+            style={{ boxShadow: "inset 0 0 0 1.5px #8B95A1" }}
           />
           <span>시작</span>
         </div>

@@ -71,7 +71,7 @@ export async function CalendarPreview() {
           달력 전체보기
         </a>
       </div>
-      {/* 매거진 달력: dot marker + editorial-num 숫자 + 요일 small caps */}
+      {/* 달력: dot marker + Pretendard tabular-nums 숫자 + 요일 라벨 (핀테크 톤) */}
       <div className="grid grid-cols-7 gap-px bg-grey-200 rounded-xl overflow-hidden border border-grey-200">
         {/* 요일 헤더 (small caps tracking) */}
         {DAYS.map((d) => (
@@ -99,12 +99,12 @@ export async function CalendarPreview() {
                 isToday ? "bg-blue-50" : "bg-white"
               }`}
             >
-              {/* 날짜 숫자 — 좌상단 + Editorial serif (editorial-num) */}
+              {/* 날짜 숫자 — 좌상단 + Pretendard tabular-nums (편집물 톤 폐기) */}
               <div
-                className={`editorial-num leading-none mb-2 ${
+                className={`tabular-nums leading-none mb-2 ${
                   isToday
                     ? "text-blue-700 font-bold text-[22px]"
-                    : "text-grey-700 text-[17px]"
+                    : "text-grey-700 font-semibold text-[17px]"
                 }`}
               >
                 {day}
@@ -133,7 +133,7 @@ export async function CalendarPreview() {
                     </a>
                   ))}
                   {items.length > 2 && (
-                    <div className="editorial-num text-[12px] text-grey-600 pl-[14px] max-md:hidden">
+                    <div className="tabular-nums font-semibold text-[12px] text-grey-600 pl-[14px] max-md:hidden">
                       +{items.length - 2}
                     </div>
                   )}

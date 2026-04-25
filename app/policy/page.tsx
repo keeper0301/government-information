@@ -78,7 +78,7 @@ export default async function PolicyPage({
                   : "text-grey-600 font-medium border-transparent hover:text-grey-900"
               }`}
               style={
-                active ? { borderBottomColor: "#8A2A2A" } : undefined
+                active ? { borderBottomColor: "#3182F6" } : undefined
               }
             >
               {t.label}
