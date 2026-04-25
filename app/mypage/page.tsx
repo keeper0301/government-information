@@ -45,9 +45,18 @@ export default async function MyPage() {
 
   return (
     <main className="max-w-[640px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
-      <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
-        내 정보
-      </h1>
+      <div className="flex items-baseline justify-between mb-2">
+        <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900">
+          내 정보
+        </h1>
+        {/* 관심사·프로필 재설정을 원하는 사용자를 위한 온보딩 재진입 링크 */}
+        <a
+          href="/onboarding"
+          className="text-xs text-emerald-700 underline hover:text-emerald-900"
+        >
+          온보딩 다시 하기
+        </a>
+      </div>
       <p className="text-[15px] text-grey-600 mb-8 leading-[1.6]">
         기본 정보를 입력하면 맞춤추천과 알림이 더 정확해져요.
       </p>
