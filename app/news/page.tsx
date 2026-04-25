@@ -18,8 +18,8 @@ import {
 } from "@/components/news-card";
 import { Pagination } from "@/components/pagination";
 import { AdSlot } from "@/components/ad-slot";
-import { TOPIC_CATEGORIES } from "@/lib/news-collectors/korea-kr-topics";
 import { PROVINCES } from "@/lib/regions";
+import { getNewsBenefitTagCounts } from "@/lib/category-counts";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -62,14 +62,18 @@ export const revalidate = 60;
 type Props = {
   searchParams: Promise<{
     category?: string;
-    topic?: string;
+    topic?: string;   // deprecated. 무시됨 (2026-04-25 benefit 으로 교체)
+    benefit?: string; // BENEFIT_TAGS 14종 중 하나
     province?: string;
     page?: string;
   }>;
 };
 
-// 유효 topic(주제 카테고리) 이름 집합 — URL 쿼리 임의값 차단
-const VALID_TOPICS = new Set(TOPIC_CATEGORIES.map((c) => c.name));
+// BENEFIT_TAGS 화이트리스트 — URL 쿼리 임의 값 차단
+const VALID_BENEFITS = new Set([
+  "주거", "의료", "양육", "교육", "문화", "취업", "창업",
+  "금융", "생계", "에너지", "교통", "장례", "법률", "기타",
+]);
 
 export default async function NewsIndexPage({ searchParams }: Props) {
   const params = await searchParams;
@@ -77,8 +81,9 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     params.category && VALID_CATEGORIES.has(params.category)
       ? params.category
       : "all";
-  const activeTopic =
-    params.topic && VALID_TOPICS.has(params.topic) ? params.topic : null;
+  // 신규 axis: benefit_tags. 기존 topic 은 deprecated (받아도 무시).
+  const activeBenefit =
+    params.benefit && VALID_BENEFITS.has(params.benefit) ? params.benefit : null;
   const activeProvince =
     params.province && VALID_PROVINCE_CODES.has(params.province)
       ? params.province
@@ -86,6 +91,8 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page || "1", 10));
 
   const supabase = await createClient();
+  // 카테고리 칩 동적 노출용 (benefit_tags 14종 중 데이터 있는 것만)
+  const benefitCounts = await getNewsBenefitTagCounts(supabase);
   let query = supabase
     .from("news_posts")
     .select(
@@ -103,10 +110,10 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   if (activeCategory !== "all") {
     query = query.eq("category", activeCategory);
   }
-  // 주제 카테고리 필터 — topic_categories 배열에 해당 카테고리명이 있는 row 만.
-  // `cs` (contains) 는 PostgREST 의 @> 연산자에 매핑됨.
-  if (activeTopic) {
-    query = query.contains("topic_categories", [activeTopic]);
+  // benefit_tags 필터 — BENEFIT_TAGS 14종 중 하나가 배열에 있는 row 만.
+  // `contains` = PostgREST @> 연산자 (배열 contains).
+  if (activeBenefit) {
+    query = query.contains("benefit_tags", [activeBenefit]);
   }
   // 광역 필터 — ministry 컬럼이 광역명인 row 만 (네이버 뉴스 광역별 수집분).
   if (activeProvince) {
@@ -125,7 +132,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   function buildUrl(overrides: Record<string, string>) {
     const p = {
       category: activeCategory,
-      topic: activeTopic ?? "",
+      benefit: activeBenefit ?? "",
       province: activeProvince ?? "",
       page: String(page),
       ...overrides,
@@ -143,8 +150,8 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     }`;
   }
 
-  // 주제 칩 URL — category·province 유지, topic 만 토글
-  function topicUrl(topicName: string | null): string {
+  // benefit 칩 URL — category·province 유지, benefit 만 토글
+  function benefitUrl(benefit: string | null): string {
     const parts: string[] = [];
     if (activeCategory !== "all") {
       parts.push(`category=${encodeURIComponent(activeCategory)}`);
@@ -152,33 +159,26 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     if (activeProvince) {
       parts.push(`province=${encodeURIComponent(activeProvince)}`);
     }
-    if (topicName) {
-      parts.push(`topic=${encodeURIComponent(topicName)}`);
+    if (benefit) {
+      parts.push(`benefit=${encodeURIComponent(benefit)}`);
     }
     return `/news${parts.length ? "?" + parts.join("&") : ""}`;
   }
 
-  // 광역 칩 URL — category·topic 유지, province 만 토글
+  // 광역 칩 URL — category·benefit 유지, province 만 토글
   function provinceUrl(code: string | null): string {
     const parts: string[] = [];
     if (activeCategory !== "all") {
       parts.push(`category=${encodeURIComponent(activeCategory)}`);
     }
-    if (activeTopic) {
-      parts.push(`topic=${encodeURIComponent(activeTopic)}`);
+    if (activeBenefit) {
+      parts.push(`benefit=${encodeURIComponent(activeBenefit)}`);
     }
     if (code) {
       parts.push(`province=${encodeURIComponent(code)}`);
     }
     return `/news${parts.length ? "?" + parts.join("&") : ""}`;
   }
-
-  // 주제 칩을 축(대상별/주제별/핫이슈)별 그룹핑
-  const topicGroups = {
-    target: TOPIC_CATEGORIES.filter((c) => c.axis === "target"),
-    topic: TOPIC_CATEGORIES.filter((c) => c.axis === "topic"),
-    hot: TOPIC_CATEGORIES.filter((c) => c.axis === "hot"),
-  };
 
   return (
     <main className="min-h-screen bg-grey-50 pt-28 pb-20">
@@ -209,11 +209,11 @@ export default async function NewsIndexPage({ searchParams }: Props) {
         >
           {CATEGORIES.map((cat) => {
             const selected = activeCategory === cat.key;
-            // 탭 전환 시 topic·province 쿼리 보존 — 사용자 선택 필터 유지
+            // 탭 전환 시 benefit·province 쿼리 보존 — 사용자 선택 필터 유지
             const href = (() => {
               const parts: string[] = [];
               if (cat.key !== "all") parts.push(`category=${cat.key}`);
-              if (activeTopic) parts.push(`topic=${encodeURIComponent(activeTopic)}`);
+              if (activeBenefit) parts.push(`benefit=${encodeURIComponent(activeBenefit)}`);
               if (activeProvince) parts.push(`province=${encodeURIComponent(activeProvince)}`);
               return `/news${parts.length ? "?" + parts.join("&") : ""}`;
             })();
@@ -234,28 +234,46 @@ export default async function NewsIndexPage({ searchParams }: Props) {
           })}
         </nav>
 
-        {/* 주제 카테고리 칩 — korea.kr 키워드 뉴스 15개. 대상별·주제별·핫이슈 3축
-            으로 묶어 축 사이 소제목 + 작은 칩으로 구분 (탭 중복 시각 방지). */}
+        {/* 분야 칩 — benefit_tags (BENEFIT_TAGS 14종) 기반.
+            기존 topic_categories 는 11295/11413 (99%) 가 NULL 이라 사실상 무력했음.
+            이제 사이트 전체 (welfare/loan/news) 가 같은 14종 축으로 통일됨. */}
         <section
-          aria-label="뉴스 주제 필터"
+          aria-label="뉴스 분야 필터"
           className="mb-8 bg-white rounded-2xl border border-grey-100 p-5 md:p-6"
         >
           <div className="flex items-center justify-between gap-2 mb-4">
             <h2 className="text-[14px] font-bold text-grey-900 tracking-[-0.2px]">
-              주제로 찾기
+              분야로 찾기
             </h2>
-            {activeTopic && (
+            {activeBenefit && (
               <a
-                href={topicUrl(null)}
+                href={benefitUrl(null)}
                 className="text-[13px] text-blue-600 hover:text-blue-700 no-underline"
               >
                 필터 해제
               </a>
             )}
           </div>
-          <TopicGroup label="대상별" topics={topicGroups.target} active={activeTopic} urlFn={topicUrl} />
-          <TopicGroup label="주제별" topics={topicGroups.topic} active={activeTopic} urlFn={topicUrl} />
-          <TopicGroup label="핫이슈" topics={topicGroups.hot} active={activeTopic} urlFn={topicUrl} />
+          <div className="flex flex-wrap gap-1.5">
+            {benefitCounts.map((c) => {
+              const selected = activeBenefit === c.category;
+              return (
+                <a
+                  key={c.category}
+                  href={benefitUrl(selected ? null : c.category)}
+                  aria-current={selected ? "page" : undefined}
+                  className={`inline-flex items-center min-h-[32px] px-3 text-[13px] rounded-full no-underline transition-colors ${
+                    selected
+                      ? "bg-grey-900 text-white font-semibold"
+                      : "bg-grey-50 text-grey-700 border border-grey-100 hover:bg-grey-100"
+                  }`}
+                >
+                  {c.category}{" "}
+                  <span className="opacity-70 ml-1">({c.n.toLocaleString()})</span>
+                </a>
+              );
+            })}
+          </div>
         </section>
 
         {/* 지역 필터 — 17 광역 칩. 네이버 뉴스 광역별 cron 수집분 만 잡힘
@@ -360,46 +378,6 @@ export default async function NewsIndexPage({ searchParams }: Props) {
         </p>
       </div>
     </main>
-  );
-}
-
-// 주제 카테고리 한 축(대상별/주제별/핫이슈) 을 렌더하는 칩 행
-function TopicGroup({
-  label,
-  topics,
-  active,
-  urlFn,
-}: {
-  label: string;
-  topics: { id: string; name: string }[];
-  active: string | null;
-  urlFn: (name: string | null) => string;
-}) {
-  return (
-    <div className="flex items-start gap-3 mb-3 last:mb-0">
-      <div className="shrink-0 w-16 text-[12px] font-semibold text-grey-600 pt-1.5">
-        {label}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {topics.map((t) => {
-          const selected = active === t.name;
-          return (
-            <a
-              key={t.id}
-              href={urlFn(selected ? null : t.name)}
-              aria-current={selected ? "page" : undefined}
-              className={`inline-flex items-center min-h-[32px] px-3 text-[13px] rounded-full no-underline transition-colors ${
-                selected
-                  ? "bg-grey-900 text-white font-semibold"
-                  : "bg-grey-50 text-grey-700 border border-grey-100 hover:bg-grey-100"
-              }`}
-            >
-              {t.name}
-            </a>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
