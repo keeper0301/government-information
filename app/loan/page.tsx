@@ -67,6 +67,9 @@ function loanToScorable(l: LoanProgram): ScorableItem {
     benefit_tags: l.benefit_tags ?? [],
     apply_end: l.apply_end ?? null,
     source: l.source,
+    // Phase 1.5: 소득 분위 + 가구 유형 신호 — 점수 계산에 활용
+    income_target_level: l.income_target_level,
+    household_target_tags: l.household_target_tags ?? [],
   };
 }
 

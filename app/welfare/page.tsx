@@ -56,6 +56,9 @@ function welfareToScorable(w: WelfareProgram): ScorableItem {
     benefit_tags: w.benefit_tags ?? [],
     apply_end: w.apply_end ?? null,
     source: w.source,
+    // Phase 1.5: 소득 분위 + 가구 유형 신호 — 점수 계산에 활용
+    income_target_level: w.income_target_level,
+    household_target_tags: w.household_target_tags ?? [],
   };
 }
 

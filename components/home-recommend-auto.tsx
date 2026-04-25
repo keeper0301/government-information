@@ -22,6 +22,9 @@ function welfareRowToScorable(row: {
   apply_end: string | null;
   source: string;
   benefit_tags: string[] | null;
+  // Phase 1.5: 소득 분위 + 가구 유형 — DB 043 마이그레이션으로 추가된 컬럼
+  income_target_level: 'low' | 'mid_low' | 'mid' | 'any' | null;
+  household_target_tags: string[] | null;
 }): ScorableItem {
   return {
     id: row.id,
@@ -35,6 +38,9 @@ function welfareRowToScorable(row: {
     benefit_tags: row.benefit_tags ?? [],
     apply_end: row.apply_end,
     source: row.source,
+    // Phase 1.5: 소득 분위 + 가구 유형 신호 — 점수 계산에 활용
+    income_target_level: row.income_target_level,
+    household_target_tags: row.household_target_tags ?? [],
   };
 }
 
@@ -52,7 +58,7 @@ export async function HomeRecommendAuto() {
   const today = new Date().toISOString().slice(0, 10);
   const { data: pool } = await supabase
     .from('welfare_programs')
-    .select('id, title, description, eligibility, detailed_content, region, apply_end, source, benefit_tags')
+    .select('id, title, description, eligibility, detailed_content, region, apply_end, source, benefit_tags, income_target_level, household_target_tags')
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .order('apply_end', { ascending: true, nullsFirst: false })
     .limit(100);
