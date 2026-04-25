@@ -322,7 +322,10 @@ export default async function CalendarPage({
                 <div className="flex flex-col gap-[4px]">
                   {items.slice(0, 2).map((item) => {
                     const isWelfare = item.type === "welfare";
-                    const baseColor = isWelfare ? "burgundy" : "#B87A2E";
+                    // 복지 = 토스 blue500, 대출 = 토스 orange500.
+                    // 이전엔 "burgundy" 문자열을 inline style 에 넘겨서
+                    // CSS 가 알 수 없는 named color 로 처리 → dot 안 보였던 버그.
+                    const baseColor = isWelfare ? "#3182F6" : "#FE9800";
                     return (
                       <a
                         key={item.id}
@@ -363,13 +366,13 @@ export default async function CalendarPage({
                     {items.some((it) => it.type === "welfare") && (
                       <span
                         aria-hidden="true"
-                        className="w-[6px] h-[6px] rounded-full bg-burgundy"
+                        className="w-[6px] h-[6px] rounded-full bg-blue-500"
                       />
                     )}
                     {items.some((it) => it.type === "loan") && (
                       <span
                         aria-hidden="true"
-                        className="w-[6px] h-[6px] rounded-full bg-[#B87A2E]"
+                        className="w-[6px] h-[6px] rounded-full bg-[#FE9800]"
                       />
                     )}
                   </div>
@@ -395,14 +398,14 @@ export default async function CalendarPage({
         <div className="flex items-center gap-1.5">
           <span
             aria-hidden="true"
-            className="w-[7px] h-[7px] rounded-full bg-burgundy"
+            className="w-[7px] h-[7px] rounded-full bg-blue-500"
           />
           <span>복지·수혜</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span
             aria-hidden="true"
-            className="w-[7px] h-[7px] rounded-full bg-[#B87A2E]"
+            className="w-[7px] h-[7px] rounded-full bg-[#FE9800]"
           />
           <span>대출·지원금</span>
         </div>

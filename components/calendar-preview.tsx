@@ -123,8 +123,8 @@ export async function CalendarPreview() {
                         aria-hidden="true"
                         className={`shrink-0 mt-[5px] w-[6px] h-[6px] rounded-full ${
                           item.type === "welfare"
-                            ? "bg-blue-500"            /* 버건디 dot */
-                            : "bg-[#B87A2E]"           /* 세피아 dot */
+                            ? "bg-blue-500"            /* 복지 dot — 토스 blue500 */
+                            : "bg-[#FE9800]"           /* 대출 dot — 토스 orange500 */
                         }`}
                       />
                       <span className="text-[11.5px] leading-[1.4] text-grey-800 group-hover:text-grey-900 font-medium truncate">
@@ -143,7 +143,7 @@ export async function CalendarPreview() {
                       <span className="w-[6px] h-[6px] rounded-full bg-blue-500" />
                     )}
                     {items.some((it) => it.type === "loan") && (
-                      <span className="w-[6px] h-[6px] rounded-full bg-[#B87A2E]" />
+                      <span className="w-[6px] h-[6px] rounded-full bg-[#FE9800]" />
                     )}
                   </div>
                 </div>
@@ -159,7 +159,7 @@ export async function CalendarPreview() {
           <span>복지·수혜</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-[7px] h-[7px] rounded-full bg-[#B87A2E]" aria-hidden="true" />
+          <span className="w-[7px] h-[7px] rounded-full bg-[#FE9800]" aria-hidden="true" />
           <span>대출·지원금</span>
         </div>
       </div>
