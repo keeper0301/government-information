@@ -100,7 +100,10 @@ async function fetchAll(): Promise<BizinfoItem[]> {
   url.searchParams.set("crtfcKey", KEY);
   url.searchParams.set("dataType", "json");
   url.searchParams.set("searchCnt", "0"); // 0 = 전체
-  url.searchParams.set("pageUnit", "500");
+  url.searchParams.set("pageUnit", "1500"); // 약 1400+건 한 번에
+  // 2026-04-25 spec 변경: pageIndex 필수.
+  // 미지정 시 {"reqErr":"페이지 번호를 입력해주세요."} 반환 → items 0건.
+  url.searchParams.set("pageIndex", "1");
 
   const res = await fetchWithTimeout(url.toString());
   if (!res.ok) throw new Error(`bizinfo HTTP ${res.status}`);
@@ -112,6 +115,10 @@ async function fetchAll(): Promise<BizinfoItem[]> {
   } catch {
     throw new Error(`bizinfo JSON 아님 (키 확인): ${text.substring(0, 200)}`);
   }
+
+  // bizinfo 가 spec 위반 시 {"reqErr":"..."} 형태 200 OK 로 반환 → 명시 throw
+  const reqErr = (parsed as { reqErr?: string })?.reqErr;
+  if (reqErr) throw new Error(`bizinfo reqErr: ${reqErr}`);
 
   // 응답 구조: { jsonArray: { item: [...] } } 또는 { item: [...] }
   const p = parsed as { jsonArray?: { item?: BizinfoItem[] }; item?: BizinfoItem[] };

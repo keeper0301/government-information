@@ -82,25 +82,39 @@ export type Collector = {
 // runOneCollector 가 result.error 세팅 → 운영자 알림.
 export async function fetchWithTimeout(
   url: string,
-  opts?: { timeoutMs?: number; headers?: Record<string, string> },
+  opts?: { timeoutMs?: number; headers?: Record<string, string>; retries?: number },
 ): Promise<Response> {
   const timeoutMs = opts?.timeoutMs ?? 20000;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      cache: "no-store",
-      ...(opts?.headers ? { headers: opts.headers } : {}),
-    });
-    if (res.status === 429) {
-      const body = await res.clone().text().catch(() => "");
-      throw new Error(`HTTP 429 quota exceeded: ${body.substring(0, 200)}`);
+  // 1회 재시도 기본 — Node.js native fetch 의 일시적 "fetch failed"
+  // (TCP reset / TLS handshake 실패 등) 흡수. 두 번째도 실패하면 throw.
+  const maxRetries = opts?.retries ?? 1;
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        cache: "no-store",
+        ...(opts?.headers ? { headers: opts.headers } : {}),
+      });
+      if (res.status === 429) {
+        const body = await res.clone().text().catch(() => "");
+        throw new Error(`HTTP 429 quota exceeded: ${body.substring(0, 200)}`);
+      }
+      return res;
+    } catch (err) {
+      lastErr = err;
+      // 재시도 전 짧은 대기 — 외부 서버 회복 시간 부여 (300ms × attempt)
+      if (attempt < maxRetries) {
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      }
+    } finally {
+      clearTimeout(t);
     }
-    return res;
-  } finally {
-    clearTimeout(t);
   }
+  throw lastErr;
 }
 
 // ============================================================
