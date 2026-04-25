@@ -45,7 +45,7 @@ export function NewsCard({ post }: { post: NewsCardData }) {
 
   return (
     <Link href={`/news/${post.slug}`} className="block no-underline">
-      <Card className="bg-white border border-grey-100 rounded-3xl overflow-hidden shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
+      <Card className="bg-white rounded-3xl overflow-hidden shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
         {/* 썸네일 — 있으면 이미지, 없으면 "텍스트 포스터" placeholder.
             alt="" : 뉴스 제목이 바로 아래 카드 안에 있어 스크린리더 중복 방지.
             next/image 미사용 이유: 공공누리 제1유형 재호스팅 금지 → Vercel 최적화

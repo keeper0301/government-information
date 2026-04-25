@@ -106,7 +106,7 @@ export function HomeRecommendCard({ initial }: Props) {
       {/* HomeRecommendCard — 토스 TDS 풍 핵심 카드 (홈 hero 우측).
           ring 제거 (토스는 ring 안 씀, background/그림자 차이로만 분리).
           rounded-3xl(32px) + shadow-lg 단일 그림자로 떠있는 느낌만 표현. */}
-      <Card className="bg-white border border-grey-100 rounded-3xl p-6 shadow-lg gap-0 py-0">
+      <Card className="bg-white rounded-3xl p-6 shadow-lg gap-0 py-0">
         <CardHeader className="px-0 pb-0 mb-5">
           <CardTitle className="text-[17px] font-bold tracking-[-0.3px] text-grey-900 leading-normal">
             나에게 맞는 정책 찾기
