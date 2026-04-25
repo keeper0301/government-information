@@ -100,8 +100,8 @@ export async function RegionMap() {
       </div>
 
       <div className="bg-white rounded-3xl shadow-md ring-1 ring-grey-100 p-6 max-md:p-4">
-        {/* 5×4 grid — 지리 어림. 모바일에서도 5 col 유지 (지도 형태 보존). */}
-        <div className="grid grid-cols-5 gap-2 max-md:gap-1.5">
+        {/* 5×4 grid — 지리 어림. 모바일도 5 col 유지하되 padding·텍스트 더 작게 */}
+        <div className="grid grid-cols-5 gap-2 max-md:gap-1">
           {GRID.map((sido, i) =>
             sido === null ? (
               <div key={`empty-${i}`} aria-hidden="true" />
@@ -113,13 +113,13 @@ export async function RegionMap() {
 
         {/* 제주 + 전국 별도 카드 (그리드 아래) */}
         <div className="grid grid-cols-2 gap-3 mt-3 max-md:gap-2">
-          <RegionCell name="제주" count={counts["제주"] ?? 0} max={max} fullWidth />
+          <RegionCell name="제주" count={counts["제주"] ?? 0} max={max} />
           <Link
             href="/welfare?region=전국"
-            className="block rounded-xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 px-4 text-center no-underline group"
+            className="block rounded-xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 max-md:py-3 px-4 text-center no-underline group"
           >
             <div className="text-[11px] font-medium text-grey-600 mb-0.5">전국 대상</div>
-            <div className="text-[18px] font-extrabold tabular-nums text-grey-900">
+            <div className="text-[18px] max-md:text-[16px] font-extrabold tabular-nums text-grey-900">
               {nationwide.toLocaleString()}
               <span className="text-[12px] font-medium text-grey-600 ml-0.5">건</span>
             </div>
@@ -135,28 +135,27 @@ export async function RegionMap() {
 }
 
 // 단일 시·도 박스 — 색 강도 + 지역명 + 카운트 + click 링크
+// 모바일: 좁은 width 대비 padding·텍스트 한 단계 작게 + 텍스트 ellipsis 방어
 function RegionCell({
   name,
   count,
   max,
-  fullWidth,
 }: {
   name: string;
   count: number;
   max: number;
-  fullWidth?: boolean;
 }) {
   const cls = intensityClass(count, max);
   return (
     <Link
       href={`/welfare?region=${encodeURIComponent(name)}`}
       title={`${name} — 진행 중 공고 ${count.toLocaleString()}건`}
-      className={`block rounded-xl px-2 py-3 text-center no-underline transition-all hover:scale-[1.04] hover:shadow-md ${cls} ${
-        fullWidth ? "" : ""
-      }`}
+      className={`block rounded-xl px-2 py-3 max-md:px-1 max-md:py-2 text-center no-underline transition-all hover:scale-[1.04] hover:shadow-md ${cls}`}
     >
-      <div className="text-[12px] font-bold tracking-[-0.01em] mb-0.5">{name}</div>
-      <div className="text-[14px] font-extrabold tabular-nums">
+      <div className="text-[12px] max-md:text-[10px] font-bold tracking-[-0.01em] mb-0.5">
+        {name}
+      </div>
+      <div className="text-[14px] max-md:text-[12px] font-extrabold tabular-nums">
         {count.toLocaleString()}
       </div>
     </Link>
