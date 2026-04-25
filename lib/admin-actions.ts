@@ -21,7 +21,9 @@ export type AdminActionType =
   | "self_deleted"          // 최종 삭제 완료 — cron finalize 또는 즉시 삭제 요청 시. FK cascade 로 actor/target SET NULL
   | "blog_edit"             // 블로그 글 수정 (title/meta/content/category/tags 등)
   | "blog_publish"          // 미발행 → 발행 전환
-  | "blog_unpublish";       // 발행 → 미발행 전환 (임시 비공개)
+  | "blog_unpublish"        // 발행 → 미발행 전환 (임시 비공개)
+  | "news_hide"             // 정책 뉴스 비공개 (저작권·오보 모더레이션)
+  | "news_unhide";          // 정책 뉴스 복원 (잘못 숨긴 경우 또는 사유 해소)
 
 export type AdminActionRecord = {
   id: string;
@@ -224,4 +226,6 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   blog_edit: "블로그 글 수정",
   blog_publish: "블로그 글 발행",
   blog_unpublish: "블로그 글 비공개",
+  news_hide: "정책 뉴스 비공개",
+  news_unhide: "정책 뉴스 복원",
 };

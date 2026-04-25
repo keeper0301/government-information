@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { checkHiddenNews } from "@/lib/news-moderation/middleware-check";
 
 // 로그인한 사용자만 볼 수 있는 경로 목록
 // 이 경로(자기 자신 + 모든 하위)에 미로그인 상태로 접근하면
@@ -60,6 +61,11 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // 정책 뉴스 모더레이션 — hidden 단건 사전 차단 (anon 만 410, admin 통과)
+  // /news/[slug] 가 아닌 요청엔 즉시 null 반환하므로 비용 거의 0.
+  const goneResponse = await checkHiddenNews(request, user);
+  if (goneResponse) return goneResponse;
 
   // 보호 경로 여부 확인 — 예외 경로면 보호 대상이 아님
   const { pathname } = request.nextUrl;

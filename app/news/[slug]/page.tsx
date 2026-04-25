@@ -8,6 +8,8 @@
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isAdminUser } from "@/lib/admin-auth";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ShareButton } from "@/components/share-button";
@@ -21,6 +23,9 @@ import {
 } from "@/components/news-card";
 import { cleanDescription, formatKoreanDate } from "@/lib/utils";
 import { findRelatedPrograms } from "@/lib/news-matching";
+import { HideNewsButton } from "./HideNewsButton";
+import { HiddenNewsNotice } from "./HiddenNewsNotice";
+import { AdminRestoreBanner } from "./AdminRestoreBanner";
 
 export const revalidate = 3600; // 상세는 갱신 적어 1시간 ISR
 
@@ -45,15 +50,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slug = safeDecodeSlug(rawSlug);
   if (!slug) return { title: "정책 소식 — 정책알리미" };
 
-  const supabase = await createClient();
-  const { data } = await supabase
+  // hidden 포함 모든 row 를 조회해야 metadata 단계에서도 노출 정책을 정확히 판단
+  // (anon RLS 로 createClient 를 쓰면 hidden 은 NULL 로 떨어져 404 와 구별 불가).
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("news_posts")
-    .select("title, summary, thumbnail_url, category")
+    .select("title, summary, thumbnail_url, category, is_hidden")
     .eq("slug", slug)
     .maybeSingle();
 
   // 2026-04-24 보도자료(press) 는 비노출 정책 — 404 와 동일 취급
   if (!data || data.category === "press") return { title: "정책 소식 — 정책알리미" };
+
+  // 모더레이션으로 비공개된 뉴스: 검색엔진 인덱스 제거 신호 noindex,nofollow
+  // + canonical 제거. status 는 200 이지만 robots 가 검색 결과에서 빼도록 함.
+  if (data.is_hidden) {
+    return {
+      title: "비공개 뉴스 — 정책알리미",
+      robots: { index: false, follow: false },
+    };
+  }
+
   // 썸네일 없는 뉴스는 사이트 기본 OG 이미지로 fallback — 카카오톡·페이스북 공유
   // 미리보기가 빈 회색 박스 안 나오게. 기본 OG 는 /opengraph-image (Next.js 자동).
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
@@ -82,7 +99,16 @@ export default async function NewsDetailPage({ params }: Props) {
   const slug = safeDecodeSlug(rawSlug);
   if (!slug) notFound();
 
-  const supabase = await createClient();
+  // 현재 로그인 사용자 (admin 여부 판별용 — hidden 페이지 분기·우상단 숨김 버튼)
+  const supabaseAuth = await createClient();
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
+  const isAdmin = isAdminUser(user?.email);
+
+  // 본문 조회는 service_role 로 — hidden 행도 받아와서 운영 화면용 분기를 일원화.
+  // 공개 노출은 아래 분기에서 isAdmin·is_hidden 조합으로 직접 결정.
+  const supabase = createAdminClient();
   const { data: post } = await supabase
     .from("news_posts")
     .select("*")
@@ -91,6 +117,12 @@ export default async function NewsDetailPage({ params }: Props) {
 
   // 2026-04-24 보도자료(press) 는 비노출 정책 — 기존 URL 직접 접근해도 404
   if (!post || post.category === "press") notFound();
+
+  // 모더레이션 비공개 — 일반 사용자에게는 검색 엔진 인덱싱 차단된 안내 페이지.
+  // admin 은 그대로 본문을 보고 상단 배너를 통해 복원 가능 (아래 일반 흐름 진행).
+  if (post.is_hidden && !isAdmin) {
+    return <HiddenNewsNotice />;
+  }
 
   // 조회수 증가 (fire-and-forget) — 실패해도 상세 렌더에는 영향 없음
   supabase
@@ -161,6 +193,23 @@ export default async function NewsDetailPage({ params }: Props) {
           { name: post.title, url: `${baseUrl}/news/${post.slug}` },
         ]}
       />
+
+      {/* admin 배너 — hidden 상태에서 admin 본인이 들어왔을 때만 노출.
+          일반 사용자에게는 위 분기에서 HiddenNotice 가 대신 그려진다. */}
+      {isAdmin && post.is_hidden && (
+        <AdminRestoreBanner
+          slug={post.slug}
+          hiddenAt={post.hidden_at ?? null}
+          hiddenReason={post.hidden_reason ?? null}
+        />
+      )}
+
+      {/* admin 전용 우상단 — 공개 상태 뉴스에 한해 빠른 숨김 버튼 노출 */}
+      {isAdmin && !post.is_hidden && (
+        <div className="flex justify-end mb-4">
+          <HideNewsButton slug={post.slug} />
+        </div>
+      )}
 
       {/* Breadcrumb */}
       <nav className="text-sm text-grey-700 mb-6">

@@ -17,6 +17,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
+import {
+  searchNewsForAdmin,
+  getRecentlyHiddenNews,
+  toggleNewsHidden,
+} from "./actions";
+import {
+  HIDE_REASON_CATEGORIES,
+  type NewsSearchRow,
+} from "./moderation-types";
 
 export const metadata: Metadata = {
   title: "정책 뉴스 운영 | 어드민",
@@ -102,11 +111,24 @@ async function triggerCollect(): Promise<void> {
 export default async function AdminNewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string; result?: string; error?: string }>;
+  searchParams: Promise<{
+    ok?: string;
+    result?: string;
+    error?: string;
+    msg?: string;
+    q?: string;
+  }>;
 }) {
   await requireAdmin();
   const params = await searchParams;
-  const stats = await getStats();
+
+  // 검색·최근 숨김 데이터를 통계와 함께 병렬 조회 — 모더레이션 즉시성 우선
+  const query = (params.q ?? "").trim();
+  const [stats, searchResults, recentlyHidden] = await Promise.all([
+    getStats(),
+    query ? searchNewsForAdmin(query) : Promise.resolve([] as NewsSearchRow[]),
+    getRecentlyHiddenNews(),
+  ]);
 
   let resultObj: Record<string, unknown> | null = null;
   if (params.result) {
@@ -205,6 +227,80 @@ export default async function AdminNewsPage({
           * 수집된 뉴스는 /news 에서 바로 확인할 수 있어요.
         </p>
 
+        {/* ─── 모더레이션 섹션 ─── */}
+        <div className="mt-12 pt-8 border-t border-grey-200">
+          <h2 className="text-[18px] font-bold text-grey-900 mb-1">콘텐츠 모더레이션</h2>
+          <p className="text-[12px] text-grey-600 leading-[1.6] mb-5">
+            저작권 요청·오보·오해소지 등으로 단건 비공개가 필요할 때 사용해요.
+            숨겨진 뉴스는 즉시 /news 목록·홈·sitemap 모두에서 사라지고, 직접 URL 로 들어오면 410 Gone 페이지를 보여줘요.
+          </p>
+
+          {/* 토글 결과 배너 */}
+          {params.msg === "hidden" && (
+            <div role="status" className="bg-green/10 border border-green/30 rounded-lg p-3 text-[13px] text-green mb-4">
+              ✅ 뉴스를 비공개로 전환했어요.
+            </div>
+          )}
+          {params.msg === "restored" && (
+            <div role="status" className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-[13px] text-grey-900 mb-4">
+              ✅ 뉴스를 다시 공개 상태로 복원했어요.
+            </div>
+          )}
+
+          {/* 검색 폼 — 제목·slug·source_id 중 하나로 찾기 */}
+          <form method="GET" action="/admin/news" className="flex gap-2 mb-4">
+            <input
+              type="text"
+              name="q"
+              defaultValue={query}
+              placeholder="제목 / slug / source_id"
+              className="flex-1 min-w-0 px-3 py-2.5 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              className="px-5 py-2.5 bg-grey-900 text-white text-[14px] font-semibold rounded-lg hover:bg-grey-800 transition-colors"
+            >
+              검색
+            </button>
+          </form>
+
+          {/* 검색 결과 */}
+          {query && (
+            <div className="mb-8">
+              <p className="text-[12px] text-grey-600 mb-2">
+                검색어 <span className="font-semibold text-grey-900">{query}</span> — 결과 {searchResults.length}건
+              </p>
+              {searchResults.length === 0 ? (
+                <p className="text-[13px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+                  일치하는 뉴스가 없어요.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {searchResults.map((row) => (
+                    <NewsModerationRow key={row.id} row={row} returnTo={`/admin/news?q=${encodeURIComponent(query)}`} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* 최근 숨긴 10건 — 실수 복구 fast path */}
+          <div>
+            <h3 className="text-[14px] font-bold text-grey-900 mb-2">최근 숨긴 뉴스 10건</h3>
+            {recentlyHidden.length === 0 ? (
+              <p className="text-[12px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+                숨김 처리된 뉴스가 아직 없어요.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {recentlyHidden.map((row) => (
+                  <NewsModerationRow key={row.id} row={row} returnTo="/admin/news" compact />
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
         <p className="mt-8 text-[12px] flex items-center gap-4 flex-wrap">
           <Link href="/admin" className="text-blue-500 underline">← 어드민 홈</Link>
           <span className="text-grey-300">·</span>
@@ -212,6 +308,116 @@ export default async function AdminNewsPage({
         </p>
       </div>
     </main>
+  );
+}
+
+// ─── 검색 결과 / 최근 숨김 1행 ───
+// hidden 상태면 "복원" 버튼만, 공개 상태면 사유 select + "숨김" 버튼.
+function NewsModerationRow({
+  row,
+  returnTo,
+  compact,
+}: {
+  row: NewsSearchRow;
+  returnTo: string;
+  compact?: boolean;
+}) {
+  const dateLabel = new Date(row.published_at).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const hiddenAtLabel = row.hidden_at
+    ? new Date(row.hidden_at).toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
+  return (
+    <li className="bg-white border border-grey-200 rounded-lg p-3">
+      <div className="flex items-start gap-2 mb-1.5">
+        <span
+          className={`shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded ${
+            row.is_hidden
+              ? "bg-red/10 text-red"
+              : "bg-green/10 text-green"
+          }`}
+        >
+          {row.is_hidden ? "숨김" : "공개"}
+        </span>
+        <Link
+          href={`/news/${row.slug}`}
+          className="flex-1 min-w-0 text-[14px] font-semibold text-grey-900 hover:text-blue-500 line-clamp-2 leading-snug no-underline"
+        >
+          {row.title}
+        </Link>
+      </div>
+      <div className="text-[11px] text-grey-600 mb-2">
+        {row.ministry ?? "—"} · {dateLabel}
+        {row.is_hidden && hiddenAtLabel && (
+          <>
+            <br />
+            <span className="text-grey-700">
+              숨긴 시각 {hiddenAtLabel}
+              {row.hidden_reason && ` — ${row.hidden_reason}`}
+            </span>
+          </>
+        )}
+      </div>
+
+      {row.is_hidden ? (
+        // 복원 폼 — 사유 입력 없이 한 클릭
+        <form action={toggleNewsHidden} className="flex justify-end">
+          <input type="hidden" name="slug" value={row.slug} />
+          <input type="hidden" name="hide" value="false" />
+          <input type="hidden" name="returnTo" value={returnTo} />
+          <button
+            type="submit"
+            className="px-3 py-1.5 bg-grey-100 text-grey-900 text-[12px] font-semibold rounded-md hover:bg-grey-200"
+          >
+            복원
+          </button>
+        </form>
+      ) : (
+        // 공개 상태 → 사유 선택 + 메모 + 숨김 버튼
+        <form action={toggleNewsHidden} className="flex flex-wrap gap-2 items-stretch">
+          <input type="hidden" name="slug" value={row.slug} />
+          <input type="hidden" name="hide" value="true" />
+          <input type="hidden" name="returnTo" value={returnTo} />
+          <select
+            name="reasonCategory"
+            required
+            defaultValue={HIDE_REASON_CATEGORIES[0]}
+            className="px-2 py-1.5 text-[12px] border border-grey-300 rounded-md bg-white"
+          >
+            {HIDE_REASON_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {!compact && (
+            <input
+              type="text"
+              name="note"
+              placeholder="메모 (요청자·일시 등)"
+              maxLength={200}
+              className="flex-1 min-w-0 px-2 py-1.5 text-[12px] border border-grey-300 rounded-md"
+            />
+          )}
+          <button
+            type="submit"
+            className="px-3 py-1.5 bg-red text-white text-[12px] font-semibold rounded-md hover:bg-red/90"
+          >
+            숨김
+          </button>
+        </form>
+      )}
+    </li>
   );
 }
 
