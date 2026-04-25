@@ -28,6 +28,7 @@
 // ============================================================
 
 import type { DetailFetcher, DetailResult, RowIdentity } from "./index";
+import { cleanDescription } from "@/lib/utils";
 
 // mss List API 응답의 한 항목. raw_payload 가 unknown shape JSONB 라 모든
 // 필드는 optional + unknown — str() 가 isMeaningful 로 정제 후 string 보장.
@@ -105,7 +106,14 @@ function buildContactInfo(p: MssItem): string | null {
 // 있으면 두 줄, 하나만 있으면 한 줄.
 function buildDetailedContent(p: MssItem): string | null {
   const sections: string[] = [];
-  const body = str(p.dataContents);
+  // dataContents 는 collector 의 parseAllTags 가 amp 정도만 풀고 그대로 보존해서
+  // &nbsp; 같은 HTML 엔티티가 남아 있음. cleanDescription 으로 엔티티·여분 공백 정리.
+  const body = (() => {
+    const raw = str(p.dataContents);
+    if (!raw) return null;
+    const cleaned = cleanDescription(raw);
+    return cleaned.length > 0 ? cleaned : null;
+  })();
   const fileName = str(p.fileName);
   const fileUrl = str(p.fileUrl);
   if (body) sections.push(`▸ 공고 내용\n${body}`);
