@@ -113,15 +113,15 @@ export default async function Home() {
             <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-6 before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-500 before:opacity-[0.55]">
               실시간 공공데이터 연동
             </div>
-            <h1 className="text-[48px] font-bold leading-[1.3] tracking-[-1.8px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]">
-              받을 수 있는 혜택,
+            <h1 className="text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]">
+              숨겨진 정부 혜택,
               <br />
-              놓치고 있지 않나요
+              30초 만에 찾아드릴게요
             </h1>
-            <p className="text-lg leading-[1.7] text-grey-600 max-w-[480px] tracking-[-0.2px] mb-10 max-md:text-base">
-              복지로·소상공인24·금융위원회 데이터를 한곳에 모았습니다.
+            <p className="text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-10 max-md:text-[15px]">
+              복지로·소상공인24·금융위원회 데이터를
               <br />
-              30초 만에 나에게 맞는 지원사업을 찾아보세요.
+              매일 자동으로 모아드려요.
             </p>
             <SearchBox />
           </div>
@@ -133,16 +133,16 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Welfare — 프로필 있으면 개인화 매칭 결과, 없으면 일반 */}
-      <div className="bg-grey-50">
-        <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-          <ProgramList
-            title={welfareTitle}
-            programs={welfare}
-            moreHref="/welfare"
-          />
-        </section>
-      </div>
+      {/* Welfare — 프로필 있으면 개인화 매칭 결과, 없으면 일반.
+          토스 풍: 페이지 배경 white 유지 + 카드 자체 shadow-md 로 분리감 표현.
+          (이전 bg-grey-50 wrapper 제거 — 시각 띠 너무 자주 끊겨 시선 분산) */}
+      <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+        <ProgramList
+          title={welfareTitle}
+          programs={welfare}
+          moreHref="/welfare"
+        />
+      </section>
 
       {/* Ad */}
       <AdSlot />

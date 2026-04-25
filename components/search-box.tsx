@@ -111,7 +111,7 @@ export function SearchBox() {
       {/* 검색 폼 */}
       <div className="relative" ref={dropdownRef}>
         <form onSubmit={handleSubmit}>
-          <div className="flex items-center gap-2.5 bg-white border-[1.5px] border-grey-200 rounded-lg p-1.5 pl-5 max-w-[560px] transition-all focus-within:border-blue-500 focus-within:shadow-[0_0_0_3px_rgba(49,130,246,0.12)]">
+          <div className="flex items-center gap-2.5 bg-white border-[1.5px] border-grey-200 rounded-2xl p-2 pl-6 max-w-[600px] transition-all focus-within:border-blue-500 focus-within:shadow-[0_0_0_4px_rgba(49,130,246,0.16)]">
             <input
               ref={inputRef}
               type="text"
@@ -125,11 +125,11 @@ export function SearchBox() {
               }}
               onKeyDown={handleKeyDown}
               placeholder="찾고 싶은 복지·대출 정보를 검색하세요"
-              className="flex-1 border-none outline-none bg-transparent text-base text-grey-900 font-pretendard min-w-0 placeholder:text-grey-400"
+              className="flex-1 border-none outline-none bg-transparent text-[17px] text-grey-900 font-pretendard min-w-0 placeholder:text-grey-400"
             />
             <button
               type="submit"
-              className="shrink-0 px-[22px] py-2.5 bg-blue-500 text-white border-none rounded-md text-[15px] font-semibold font-pretendard cursor-pointer hover:bg-blue-600 transition-colors"
+              className="shrink-0 h-11 px-6 bg-blue-500 text-white border-none rounded-xl text-[15px] font-bold font-pretendard cursor-pointer hover:bg-blue-600 active:scale-[0.98] transition-all shadow-blue-glow"
             >
               검색
             </button>
@@ -138,7 +138,7 @@ export function SearchBox() {
 
         {/* 자동완성 드롭다운 */}
         {showDropdown && (
-          <div className="absolute top-full left-0 right-0 max-w-[560px] mt-1.5 bg-white border border-grey-200 rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] z-50 overflow-hidden">
+          <div className="absolute top-full left-0 right-0 max-w-[600px] mt-2 bg-white border border-grey-100 rounded-2xl shadow-xl z-50 overflow-hidden">
             {loading ? (
               <div className="px-5 py-4 text-sm text-grey-600">검색 중...</div>
             ) : suggestions.length > 0 ? (
@@ -162,8 +162,8 @@ export function SearchBox() {
                     <span
                       className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                         item.type === "welfare"
-                          ? "bg-blue-50 text-blue-600"
-                          : "bg-[#FFF4E6] text-[#E8590C]"
+                          ? "bg-blue-50 text-blue-700"
+                          : "bg-[#FFF3E0] text-[#FB8800]"
                       }`}
                     >
                       {item.type === "welfare" ? "복지" : "대출"}
@@ -188,14 +188,14 @@ export function SearchBox() {
         )}
       </div>
 
-      {/* 키워드 칩 */}
-      <div className="flex gap-1.5 mt-3.5 flex-wrap">
+      {/* 키워드 칩 — 토스 풍 알약 (border 제거, hover 시 blue 톤으로 전환) */}
+      <div className="flex gap-2 mt-4 flex-wrap">
         {searchTags.map((tag) => (
           <button
             key={tag}
             type="button"
             onClick={() => handleTagClick(tag)}
-            className="text-[13px] font-medium text-grey-600 bg-grey-50 border border-grey-100 px-3 py-[5px] rounded-full cursor-pointer hover:bg-grey-100 hover:text-grey-800 transition-all"
+            className="text-[13px] font-semibold text-grey-700 bg-grey-100 border-0 px-3.5 py-1.5 rounded-full cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors"
           >
             {tag}
           </button>
