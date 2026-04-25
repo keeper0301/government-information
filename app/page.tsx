@@ -4,6 +4,8 @@ import { AlertStrip } from "@/components/alert-strip";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
+import { HomeRecommendAuto } from "@/components/home-recommend-auto";
+import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { HeroStats } from "@/components/hero-stats";
 import { RegionMap } from "@/components/region-map";
 import { HomeCTA } from "@/components/home-cta";
@@ -44,6 +46,13 @@ export default async function Home() {
       };
     }
   }
+
+  // 핵심 필드(나이대·지역·직업)가 하나도 없으면 "빈 프로필" 로 판단
+  // load-profile.ts 의 isEmpty 와 같은 기준 — 비로그인 시 null 이므로 항상 true
+  const isProfileEmpty =
+    !initialProfile?.age_group &&
+    !initialProfile?.region &&
+    !initialProfile?.occupation;
 
   // 3) 최근 블로그 3글 + 최근 뉴스 3건 + 통합 stats RPC (병렬).
   //    이전엔 4 count query 직접 호출 → 단일 RPC 통합 (lib/home-stats).
@@ -134,9 +143,24 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* 오른쪽: 맞춤 추천 카드 (데스크톱 전용 위치. 모바일에선 아래로 자연스럽게 스택) */}
+          {/* 오른쪽: 맞춤 추천 카드 (데스크톱 전용 위치. 모바일에선 아래로 자연스럽게 스택)
+              3가지 상태 분기:
+              - 비로그인: 기존 HomeRecommendCard 입력 폼
+              - 로그인 + 빈 프로필: EmptyProfilePrompt 프로필 입력 유도
+              - 로그인 + 프로필 있음: HomeRecommendAuto 자동 추천 카드 */}
           <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
-            <HomeRecommendCard initial={initialProfile} />
+            {user ? (
+              isProfileEmpty ? (
+                // 로그인했지만 프로필 미입력 — 프로필 작성 유도 메시지
+                <EmptyProfilePrompt />
+              ) : (
+                // 로그인 + 프로필 있음 — 자동 추천 카드 (server component)
+                <HomeRecommendAuto />
+              )
+            ) : (
+              // 비로그인 — 기존 입력 폼 그대로 (변화 없음)
+              <HomeRecommendCard initial={initialProfile} />
+            )}
           </div>
         </div>
       </section>
