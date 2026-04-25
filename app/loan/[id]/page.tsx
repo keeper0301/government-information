@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/ad-slot";
 import { AlarmButton } from "@/components/alarm-button";
 import { ShareButton } from "@/components/share-button";
+import { BookmarkButton } from "@/components/bookmark-button";
+import { isBookmarked } from "@/lib/bookmarks";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld";
@@ -49,6 +51,10 @@ export default async function LoanDetailPage({ params }: Props) {
   // 조회수 증가 (fire-and-forget)
   supabase.rpc("increment_view_count", { p_table_name: "loan_programs", p_row_id: id })
     .then(({ error }) => { if (error) console.error("view count error:", error); });
+
+  // 로그인 여부 + 북마크 상태 — BookmarkButton 초기 상태 hydration 용
+  const { data: { user } } = await supabase.auth.getUser();
+  const initialBookmarked = user ? await isBookmarked("loan", id) : false;
 
   const dday = calcDday(program.apply_end);
   const applyPeriod =
@@ -259,6 +265,12 @@ export default async function LoanDetailPage({ params }: Props) {
             </a>
           )}
           <AlarmButton programId={program.id} programType="loan" />
+          <BookmarkButton
+            programType="loan"
+            programId={program.id}
+            initialBookmarked={initialBookmarked}
+            isLoggedIn={!!user}
+          />
           <ShareButton />
         </div>
 

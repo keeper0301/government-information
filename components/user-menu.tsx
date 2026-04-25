@@ -124,6 +124,13 @@ export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMe
           내 정보
         </a>
         <a
+          href="/mypage/bookmarks"
+          onClick={onNavigate}
+          className="block px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg no-underline"
+        >
+          찜한 정책
+        </a>
+        <a
           href="/mypage/billing"
           onClick={onNavigate}
           className="block px-4 py-3 text-[15px] font-medium text-grey-700 hover:bg-grey-50 rounded-lg no-underline"
@@ -170,6 +177,13 @@ export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMe
             onClick={() => setOpen(false)}
           >
             내 정보
+          </a>
+          <a
+            href="/mypage/bookmarks"
+            className="block px-4 py-2.5 text-[14px] text-grey-700 hover:bg-grey-50 no-underline"
+            onClick={() => setOpen(false)}
+          >
+            찜한 정책
           </a>
           <a
             href="/mypage/billing"
