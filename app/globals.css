@@ -91,8 +91,62 @@ a:active {
 .fade-up {
   animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* ============================================================
+   Hero 배경 blob — 천천히 떠다니는 옅은 blue 그라디언트
+   ============================================================
+   첫 화면에 살아있는 인상 + 깊이감. content 뒤(z-index 0)에 깔리며
+   pointer-events 없이 시각 효과만. 24s 주기로 미세하게 움직임.
+   prefers-reduced-motion 환경에선 정지(정적 그라디언트만 남음).
+   ============================================================ */
+@keyframes hero-blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-30px, 40px) scale(1.06); }
+  66%      { transform: translate(20px, -30px) scale(0.94); }
+}
+.hero-blob {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(49, 130, 246, 0.18) 0%, rgba(49, 130, 246, 0) 70%);
+  animation: hero-blob-float 24s ease-in-out infinite;
+}
+.hero-blob--a {
+  width: 640px;
+  height: 640px;
+  top: -120px;
+  right: -160px;
+}
+.hero-blob--b {
+  width: 480px;
+  height: 480px;
+  bottom: -200px;
+  left: -100px;
+  animation-duration: 32s;
+  animation-direction: reverse;
+  background: radial-gradient(circle, rgba(49, 130, 246, 0.10) 0%, rgba(49, 130, 246, 0) 70%);
+}
+
+/* ============================================================
+   SearchBox placeholder fade — 키워드 회전 시 부드럽게 페이드
+   ============================================================
+   가짜 placeholder div 의 텍스트 교체 시 자연스럽게 보이도록.
+   ============================================================ */
+@keyframes placeholder-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.placeholder-fade {
+  animation: placeholder-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fade-up {
+  .fade-up,
+  .placeholder-fade {
+    animation: none;
+  }
+  .hero-blob {
     animation: none;
   }
   /* 모션 감소 환경에서도 transform 효과는 유지하되 시간만 단축 */

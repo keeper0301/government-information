@@ -4,7 +4,6 @@ import { AlertStrip } from "@/components/alert-strip";
 import { ProgramList } from "@/components/program-list";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
-import { AdSlot } from "@/components/ad-slot";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
@@ -106,8 +105,15 @@ export default async function Home() {
   return (
     <main>
       {/* Hero — 데스크톱에서 좌: 카피·검색 / 우: 맞춤 추천 카드 (1024px 이상에서 2단) */}
-      <section className="pt-40 pb-[100px] px-10 max-w-content mx-auto max-md:pt-[120px] max-md:pb-[60px] max-md:px-6">
-        <div className="grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
+      <section className="relative pt-40 pb-[100px] px-10 max-w-content mx-auto max-md:pt-[120px] max-md:pb-[60px] max-md:px-6">
+        {/* 배경 blob — 옅은 blue gradient 두 개가 천천히 떠다니며 활동감.
+            absolute + overflow-hidden + pointer-events-none 으로 content 영향 X. */}
+        <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="hero-blob hero-blob--a" />
+          <div className="hero-blob hero-blob--b" />
+        </div>
+
+        <div className="relative z-10 grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
           {/* 왼쪽: 카피 + 검색 — fade-up stagger 60ms 간격으로 위에서 아래로
               자연스럽게 등장. animationDelay 는 inline style 로 정확 제어. */}
           <div>
@@ -155,9 +161,6 @@ export default async function Home() {
           moreHref="/welfare"
         />
       </section>
-
-      {/* Ad */}
-      <AdSlot />
 
       {/* Loans — 프로필 있으면 개인화, 없으면 일반 */}
       <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
@@ -235,9 +238,6 @@ export default async function Home() {
           <FeatureGrid />
         </section>
       </div>
-
-      {/* Ad */}
-      <AdSlot />
     </main>
   );
 }

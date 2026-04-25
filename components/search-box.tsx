@@ -5,6 +5,19 @@ import { useRouter } from "next/navigation";
 import { SearchIcon } from "./icons";
 import { searchTags } from "@/lib/mock-data";
 
+// 검색박스 placeholder 자동 회전 — 사용자가 어떤 검색을 할 수 있는지
+// 학습시키며 첫 화면에 활동감을 줌. 사용자가 input 에 focus 하거나
+// 입력 시작하면 자동 정지 (방해 X).
+const PLACEHOLDER_KEYWORDS = [
+  "청년월세 지원",
+  "소상공인 대출",
+  "출산 지원금",
+  "기초생활 수급",
+  "노인 의료비",
+  "신혼부부 전세자금",
+  "학자금 대출",
+];
+
 // 자동완성 결과 타입
 type SuggestItem = {
   id: string;
@@ -22,6 +35,17 @@ export function SearchBox() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // placeholder 키워드 회전 — 3.2초 주기. focus·query 있으면 정지.
+  const [phIndex, setPhIndex] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  useEffect(() => {
+    if (isFocused || query) return;
+    const interval = setInterval(() => {
+      setPhIndex((i) => (i + 1) % PLACEHOLDER_KEYWORDS.length);
+    }, 3200);
+    return () => clearInterval(interval);
+  }, [isFocused, query]);
 
   // 검색 실행 (복지 페이지로 이동)
   const handleSearch = (searchQuery: string) => {
@@ -112,21 +136,37 @@ export function SearchBox() {
       <div className="relative" ref={dropdownRef}>
         <form onSubmit={handleSubmit}>
           <div className="flex items-center gap-2.5 bg-white border-[1.5px] border-grey-200 rounded-2xl p-2 pl-6 max-w-[600px] transition-all focus-within:border-blue-500 focus-within:shadow-[0_0_0_4px_rgba(49,130,246,0.16)]">
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setActiveIndex(-1);
-              }}
-              onFocus={() => {
-                if (suggestions.length > 0) setShowDropdown(true);
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="찾고 싶은 복지·대출 정보를 검색하세요"
-              className="flex-1 border-none outline-none bg-transparent text-[17px] text-grey-900 font-pretendard min-w-0 placeholder:text-grey-400"
-            />
+            {/* input + 가짜 placeholder div 오버레이 — placeholder 회전 시
+                fade 효과 주기 위해. native placeholder 는 transition 불가. */}
+            <div className="relative flex-1 min-w-0">
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setActiveIndex(-1);
+                }}
+                onFocus={() => {
+                  setIsFocused(true);
+                  if (suggestions.length > 0) setShowDropdown(true);
+                }}
+                onBlur={() => setIsFocused(false)}
+                onKeyDown={handleKeyDown}
+                className="w-full border-none outline-none bg-transparent text-[17px] text-grey-900 font-pretendard min-w-0"
+              />
+              {/* 가짜 placeholder — input 비고 focus 안된 상태일 때만 표시.
+                  key 가 phIndex 따라 변하므로 React 가 새로 mount 하면서
+                  .placeholder-fade 애니메이션 재생. */}
+              {!query && !isFocused && (
+                <div
+                  key={phIndex}
+                  className="placeholder-fade pointer-events-none absolute inset-y-0 left-0 flex items-center text-[17px] text-grey-400"
+                >
+                  예: {PLACEHOLDER_KEYWORDS[phIndex]}
+                </div>
+              )}
+            </div>
             <button
               type="submit"
               className="shrink-0 h-11 px-6 bg-blue-500 text-white border-none rounded-xl text-[15px] font-bold font-pretendard cursor-pointer hover:bg-blue-600 active:scale-[0.98] transition-all shadow-blue-glow"
