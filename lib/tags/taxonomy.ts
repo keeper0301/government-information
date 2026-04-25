@@ -156,8 +156,13 @@ export function extractBenefitTags(text: string | null | undefined): BenefitTag[
   if (/취업|일자리|고용|구직|직업훈련|인턴/.test(text)) found.add("취업");
   if (/창업|스타트업|벤처|기업가|사업 ?자금/.test(text)) found.add("창업");
   if (/대출|보증|금융|이자|저축|자금 지원/.test(text)) found.add("금융");
-  if (/생계|기초수급|차상위|생활비|긴급지원/.test(text)) found.add("생계");
-  if (/에너지|전기|가스|난방|등유|연료/.test(text)) found.add("에너지");
+  // 2026-04-25 보강: emergency·재난·위기 정책 흡수 (사용자 핫토픽 요청)
+  // "긴급지원"·"재난지원금"·"위기가구" 같은 표현이 정책명에 자주 나옴.
+  // 이들은 모두 생계 지원 성격이라 별도 태그 X, 기존 "생계"에 합산.
+  if (/생계|기초수급|차상위|생활비|긴급지원|긴급재난|긴급복지|위기가구|재난지원금|특별재난/.test(text)) found.add("생계");
+  // 2026-04-25 보강: 고유가·유가·기름값 — 유류세·유가환급·운송업 유류비 지원 등이
+  // "에너지" 정책 범주로 자주 나옴. 기존 "에너지" 태그에 흡수.
+  if (/에너지|전기|가스|난방|등유|연료|고유가|유가|유류|기름값|휘발유|경유/.test(text)) found.add("에너지");
   if (/교통|대중교통|버스|지하철|택시/.test(text)) found.add("교통");
   if (/장례|사망|장제/.test(text)) found.add("장례");
   if (/법률|변호|소송|조정/.test(text)) found.add("법률");
