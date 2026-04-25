@@ -7,6 +7,9 @@
 // d3-geo geoMercator projection 으로 한국 위치·축척 맞춤.
 // 각 시·도 path 에 헤드맵 색상 + 클릭 → /welfare?region= 이동 + hover 효과.
 // 라벨 (시·도명 + 카운트) 은 path 중심점(centroid) 위에 텍스트로.
+//
+// Fail-loud: TopoJSON 명칭이 NAME_MAP 에 없으면 빨간 경고 색 + console.warn.
+// 강원특별자치도(2023)·전북특별자치도(2024) 명칭 갱신 시 즉시 발견 가능.
 // ============================================================
 
 import {
@@ -22,8 +25,8 @@ import { useRouter } from "next/navigation";
 // public/topojson/korea-provinces.json (정적 자산, 빌드 시 public/ 그대로 서빙)
 const TOPO_URL = "/topojson/korea-provinces.json";
 
-// TopoJSON 풀네임 → 우리 짧은 이름 (counts 객체 key 와 일치시킴)
-// KOSTAT 2018 기준이라 강원특별자치도(2023)·전북특별자치도(2024) 신명칭 X
+// TopoJSON 풀네임 → 우리 짧은 이름 (counts 객체 key 와 일치시킴).
+// KOSTAT 2018 기준이라 강원도·전라북도 (특별자치도 reform 전) 명칭 사용.
 const NAME_MAP: Record<string, string> = {
   "서울특별시": "서울",
   "부산광역시": "부산",
@@ -44,9 +47,15 @@ const NAME_MAP: Record<string, string> = {
   "제주특별자치도": "제주",
 };
 
-// 정책 수 → fill 색 강도 (5단계). 기존 카드 안과 같은 색 팔레트 (grey/blue)
+// 광역시·세종 — path 면적 작음 → 라벨 폰트 작게 (path 안 들어가도록).
+// 8개: 서울·부산·대구·인천·광주·대전·울산·세종.
+const SMALL_SIDOS = new Set([
+  "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
+]);
+
+// 정책 수 → fill 색 강도 (5단계). 기존 카드 안과 같은 색 팔레트 (grey/blue).
 function intensityFill(count: number, max: number): string {
-  if (count === 0) return "#f8fafc"; // grey-50 살짝 어둡게 — 흰 배경과 구분
+  if (count === 0) return "#f8fafc"; // grey-50
   const ratio = count / max;
   if (ratio >= 0.7) return "#3b82f6"; // blue-500
   if (ratio >= 0.45) return "#60a5fa"; // blue-400
@@ -55,7 +64,7 @@ function intensityFill(count: number, max: number): string {
   return "#eff6ff"; // blue-50
 }
 
-// 라벨 텍스트 색 — fill 진할수록 흰색, 옅으면 진한 파랑
+// 라벨 텍스트 색 — fill 진할수록 흰색, 옅으면 진한 파랑.
 function intensityText(count: number, max: number): string {
   if (count === 0) return "#6b7280"; // grey-500
   const ratio = count / max;
@@ -63,13 +72,15 @@ function intensityText(count: number, max: number): string {
   return "#1e3a8a"; // blue-900
 }
 
+// 시·도별 라벨 폰트 사이즈 (SVG user units). 광역시·세종은 path 작아 폰트 작게.
+function labelFontSize(sido: string): { name: number; count: number } {
+  if (SMALL_SIDOS.has(sido)) return { name: 11, count: 13 };
+  return { name: 14, count: 17 };
+}
+
 export function RegionMapSvg({ counts }: { counts: Record<string, number> }) {
   const router = useRouter();
   const max = Math.max(...Object.values(counts), 1);
-
-  const handleClick = (sido: string) => {
-    router.push(`/welfare?region=${encodeURIComponent(sido)}`);
-  };
 
   return (
     <div className="w-full mx-auto" style={{ maxWidth: 720 }}>
@@ -90,7 +101,33 @@ export function RegionMapSvg({ counts }: { counts: Record<string, number> }) {
               {/* 1단계: 시·도 path (헤드맵 + 클릭) */}
               {geographies.map((geo) => {
                 const fullName = String(geo.properties?.name ?? "");
-                const sido = NAME_MAP[fullName] ?? fullName;
+                const sido = NAME_MAP[fullName];
+
+                // 매핑 누락 — fail-loud (개발 환경에서 console.warn, 화면에 빨간 경고)
+                if (!sido) {
+                  if (process.env.NODE_ENV !== "production") {
+                    console.warn(
+                      `[RegionMap] Unknown sido name from TopoJSON: "${fullName}". NAME_MAP 에 추가 필요.`,
+                    );
+                  }
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill="#fee2e2" // red-100
+                      stroke="#ffffff"
+                      strokeWidth={0.8}
+                      style={{
+                        default: { outline: "none", cursor: "not-allowed" },
+                        hover: { outline: "none" },
+                        pressed: { outline: "none" },
+                      }}
+                    >
+                      <title>{`${fullName} (지도 매핑 누락)`}</title>
+                    </Geography>
+                  );
+                }
+
                 const count = counts[sido] ?? 0;
                 const fill = intensityFill(count, max);
 
@@ -101,7 +138,11 @@ export function RegionMapSvg({ counts }: { counts: Record<string, number> }) {
                     fill={fill}
                     stroke="#ffffff"
                     strokeWidth={0.8}
-                    onClick={() => handleClick(sido)}
+                    onClick={() =>
+                      router.push(
+                        `/welfare?region=${encodeURIComponent(sido)}`,
+                      )
+                    }
                     style={{
                       default: { outline: "none" },
                       hover: {
@@ -117,14 +158,18 @@ export function RegionMapSvg({ counts }: { counts: Record<string, number> }) {
                 );
               })}
 
-              {/* 2단계: 라벨 (path 위 centroid 에 시·도명 + 카운트). pointerEvents:none 로 path 클릭 방해 X */}
+              {/* 2단계: 라벨 (centroid 위 시·도명 + 카운트). pointerEvents:none 로 path 클릭 방해 X */}
               {geographies.map((geo) => {
                 const fullName = String(geo.properties?.name ?? "");
-                const sido = NAME_MAP[fullName] ?? fullName;
+                const sido = NAME_MAP[fullName];
+                if (!sido) return null; // 매핑 누락 시 라벨 생략
+
                 const count = counts[sido] ?? 0;
                 const center = getGeographyCentroid(geo);
                 if (!center) return null; // centroid 계산 실패 시 라벨 생략
+
                 const textColor = intensityText(count, max);
+                const fs = labelFontSize(sido);
 
                 return (
                   <Marker key={`label-${geo.rsmKey}`} coordinates={center}>
@@ -140,14 +185,20 @@ export function RegionMapSvg({ counts }: { counts: Record<string, number> }) {
                       <tspan
                         x="0"
                         dy="-0.2em"
-                        style={{ fontSize: "10px", fontWeight: 700 }}
+                        style={{
+                          fontSize: `${fs.name}px`,
+                          fontWeight: 700,
+                        }}
                       >
                         {sido}
                       </tspan>
                       <tspan
                         x="0"
-                        dy="1.3em"
-                        style={{ fontSize: "11px", fontWeight: 800 }}
+                        dy="1.2em"
+                        style={{
+                          fontSize: `${fs.count}px`,
+                          fontWeight: 800,
+                        }}
                       >
                         {count.toLocaleString()}
                       </tspan>
