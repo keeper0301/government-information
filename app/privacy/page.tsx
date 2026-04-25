@@ -33,10 +33,26 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-6 mt-2 space-y-1">
             <li><b>필수</b>: 이메일 주소, 비밀번호 또는 소셜 로그인 식별자</li>
             <li><b>선택</b>: 닉네임, 프로필 사진, 나이대, 거주 지역, 직업, 관심 분야</li>
+            <li>
+              <b>선택 (맞춤 추천)</b>: 소득 수준, 가구 상태 — 상세 아래 참조
+              <ul className="list-disc pl-6 mt-1 space-y-1 text-[14px] text-grey-600">
+                <li>소득 수준 (선택, 5단계 구간 — 기준중위소득 비율): 50% 이하 / 50~100% / 100~150% / 150~200% / 200% 초과</li>
+                <li>가구 상태 (선택, 다중 선택 가능): 1인가구 / 신혼가구 / 한부모가구 / 다자녀가구 / 장애가구 / 고령가구</li>
+              </ul>
+            </li>
             <li><b>알림 수신</b>: 휴대폰 번호 (카카오 알림톡 또는 SMS 수신 동의 시)</li>
             <li><b>결제</b>: 카드 정보는 토스페이먼츠에 직접 저장되며 서비스는 빌링키만 보관</li>
             <li><b>자동 수집</b>: IP 주소, 쿠키, 접속 로그, 기기·브라우저 정보 (이용 분석·보안 목적)</li>
           </ul>
+          {/* 가구상태 민감정보 안내 박스 */}
+          <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-[13px] text-grey-700 leading-[1.7]">
+            <p className="font-semibold text-amber-800 mb-1">⚠ 가구 상태 민감정보 안내</p>
+            <p>
+              가구 상태 항목(한부모·장애가구 등)은 「개인정보 보호법」상 민감정보로 분류될 수 있습니다.
+              사용자의 명시적 입력 동의를 전제로 하며, 맞춤형 정책 추천 목적에만 사용됩니다.
+              외부 제공 없음. 회원 탈퇴 시 즉시 파기됩니다.
+            </p>
+          </div>
         </Section>
 
         <Section title="2. 수집 방법">
@@ -52,6 +68,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-6 space-y-1">
             <li>회원 식별·인증, 부정 이용 방지</li>
             <li>맞춤 정책 추천·매칭, 관심 분야 기반 알림 발송</li>
+            <li>소득 수준·가구 상태 기반 개인화 추천 — 외부 제공 없음, 회원 탈퇴 시 즉시 삭제</li>
             <li>마감 임박 정책 알림 (이메일·카카오 알림톡·SMS)</li>
             <li>유료 구독 결제 처리 및 정기결제 갱신</li>
             <li>고객 문의 대응 및 서비스 운영 안내</li>
