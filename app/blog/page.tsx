@@ -41,23 +41,43 @@ export const metadata: Metadata = {
   },
 };
 
+// blog category 를 BENEFIT_TAGS 14종으로 매핑.
+// blog 의 자체 분류 (청년/노년/학생·교육/소상공인) 가 BENEFIT_TAGS 와 라벨이 달라
+// 사용자 benefit_tags 와 직접 매칭이 0건이던 문제 해결.
+// 매핑 결정 근거 — 각 분류의 실질 수혜자 영역:
+const BLOG_CATEGORY_TO_BENEFIT_TAGS: Record<string, string[]> = {
+  "청년":     ["취업", "주거"],   // 청년 정책의 핵심 두 영역
+  "노년":     ["의료", "생계"],   // 노년 정책의 핵심
+  "학생·교육": ["교육"],
+  "소상공인": ["창업", "금융"],
+};
+
 // blog_posts 행을 점수 계산 가능한 ScorableItem 으로 변환
 // welfare/loan/news 와 달리 blog 는 지역·마감 신호가 없음.
-// category + tags 를 benefit_tags 배열로 합쳐서 score.ts 의 태그 매칭 활용.
+// category 를 BENEFIT_TAGS 로 매핑 + tags 합쳐서 score.ts 의 태그 매칭 활용.
 function blogToScorable(p: BlogCardData & { tags: string[] | null }): ScorableItem {
-  // category 와 tags 를 하나의 집합으로 합산 (중복 제거)
   const tagSet = new Set<string>();
-  if (p.category) tagSet.add(p.category);
+  // category 는 매핑 테이블 통해 BENEFIT_TAGS 로 변환 (raw category 는 사용자 매칭 안 됨)
+  if (p.category) {
+    const mapped = BLOG_CATEGORY_TO_BENEFIT_TAGS[p.category];
+    if (mapped) {
+      for (const tag of mapped) tagSet.add(tag);
+    } else {
+      // 매핑 안 된 새 category 는 raw 그대로 추가 (BENEFIT_TAGS 와 우연히 일치할 수 있음)
+      tagSet.add(p.category);
+    }
+  }
+  // tags 는 그대로 (이미 정확한 분류 라벨일 가능성)
   for (const t of p.tags ?? []) tagSet.add(t);
 
   return {
-    id: p.slug,                         // blog 는 slug 가 PK 역할
+    id: p.slug,
     title: p.title,
-    description: p.meta_description ?? "", // 키워드 매칭 haystack 용
-    region: null,                       // blog 는 지역 무관 → region 매칭 신호 0
+    description: p.meta_description ?? "",
+    region: null,
     district: null,
-    benefit_tags: Array.from(tagSet),   // category + tags 합산 배열
-    apply_end: null,                    // blog 는 마감 없음 → 임박 가산점 0
+    benefit_tags: Array.from(tagSet),
+    apply_end: null,
     source: null,
   };
 }
