@@ -20,7 +20,20 @@ const KEYWORD_MAP: Record<string, { table: "welfare_programs" | "loan_programs";
 };
 
 export async function POST(request: NextRequest) {
-  const { message } = await request.json();
+  const body = await request.json();
+  const { message, programId, programType } = body as {
+    message?: string;
+    programId?: string;
+    programType?: "welfare" | "loan";
+  };
+
+  // 신청 가이드 모드 — 메시지보다 우선 처리
+  // 사용자가 추천 카드의 "신청 가이드" 버튼을 누르면 클라이언트가 programId/programType 을 전송.
+  // 이 경우 키워드 검색 대신 해당 정책의 자격·서류·기간·문의처를 단계별로 안내.
+  if (programId && (programType === "welfare" || programType === "loan")) {
+    return await handleApplyGuide(programId, programType);
+  }
+
   if (!message || typeof message !== "string") {
     return NextResponse.json({ reply: "메시지를 입력해주세요.", programs: [] });
   }
@@ -109,7 +122,6 @@ export async function POST(request: NextRequest) {
   } else {
     // Fallback: full-text search
     const sanitized = message.replace(/[%_\\]/g, '\\$&');
-    const searchTerm = `%${sanitized}%`;
     const [{ data: w }, { data: l }] = await Promise.all([
       supabase.from("welfare_programs").select("*").or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`).limit(3),
       supabase.from("loan_programs").select("*").or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`).limit(3),
@@ -127,4 +139,120 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ reply, programs: unique.slice(0, 5) });
+}
+
+// ━━━ 신청 가이드 응답 생성 ━━━
+// 정책 한 건의 자격·혜택·기간·서류·신청·문의 정보를 단계별로 정리해 반환.
+// 누락된 필드는 자동으로 건너뛰고, 출처 페이지 링크는 항상 제공.
+async function handleApplyGuide(
+  programId: string,
+  programType: "welfare" | "loan",
+): Promise<NextResponse> {
+  const supabase = await createClient();
+  // 가이드는 비로그인도 허용 — 추천 카드를 본 흐름이라 안내가 자연스러움.
+  // quota 도 가이드는 차감 안 함 (LLM 호출 없는 단순 데이터 조회).
+
+  const table = programType === "welfare" ? "welfare_programs" : "loan_programs";
+  const { data: program } = await supabase
+    .from(table)
+    .select("*")
+    .eq("id", programId)
+    .maybeSingle();
+
+  if (!program) {
+    return NextResponse.json({
+      reply: "해당 정책 정보를 찾지 못했어요. 정책이 종료됐거나 ID 가 잘못된 것 같아요.",
+      programs: [],
+    });
+  }
+
+  // 단계별 안내 — 누락된 필드는 빠짐
+  const lines: string[] = [];
+  lines.push(`📋 ${program.title} 신청 가이드\n`);
+
+  // 1) 자격 요건
+  if (program.eligibility) {
+    lines.push("1️⃣ 자격 요건");
+    lines.push(program.eligibility.trim());
+    lines.push("");
+  }
+
+  // 2) 혜택 (welfare 만) / 한도·금리 (loan 만)
+  if (programType === "welfare" && program.benefits) {
+    lines.push("2️⃣ 혜택 내용");
+    lines.push(program.benefits.trim());
+    lines.push("");
+  } else if (programType === "loan") {
+    const loanDetails: string[] = [];
+    if (program.loan_amount) loanDetails.push(`· 한도: ${program.loan_amount}`);
+    if (program.interest_rate) loanDetails.push(`· 금리: ${program.interest_rate}`);
+    if (program.repayment_period) loanDetails.push(`· 상환: ${program.repayment_period}`);
+    if (loanDetails.length > 0) {
+      lines.push("2️⃣ 대출 조건");
+      lines.push(...loanDetails);
+      lines.push("");
+    }
+  }
+
+  // 3) 신청 기간 + D-day
+  const periodParts: string[] = [];
+  if (program.apply_start && program.apply_end) {
+    periodParts.push(`${program.apply_start} ~ ${program.apply_end}`);
+  } else if (program.apply_start) {
+    periodParts.push(`${program.apply_start} ~`);
+  } else if (program.apply_end) {
+    periodParts.push(`~ ${program.apply_end}`);
+  } else {
+    periodParts.push("상시");
+  }
+  if (program.apply_end) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(program.apply_end);
+    end.setHours(0, 0, 0, 0);
+    const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff < 0) periodParts.push("(이미 마감)");
+    else if (diff === 0) periodParts.push("(오늘 마감)");
+    else if (diff <= 7) periodParts.push(`(D-${diff} 마감 임박)`);
+    else periodParts.push(`(D-${diff})`);
+  }
+  lines.push("3️⃣ 신청 기간");
+  lines.push(periodParts.join(" "));
+  lines.push("");
+
+  // 4) 필요 서류
+  if (program.required_documents) {
+    lines.push("4️⃣ 필요 서류");
+    lines.push(program.required_documents.trim());
+    lines.push("");
+  }
+
+  // 5) 신청 방법
+  if (program.apply_method) {
+    lines.push("5️⃣ 신청 방법");
+    lines.push(program.apply_method.trim());
+    lines.push("");
+  }
+
+  // 6) 문의처
+  if (program.contact_info) {
+    lines.push("6️⃣ 문의처");
+    lines.push(program.contact_info.trim());
+    lines.push("");
+  }
+
+  // 7) 신청 링크
+  const applyUrl = program.apply_url || program.source_url;
+  if (applyUrl) {
+    lines.push(`🔗 신청·자세히 보기: ${applyUrl}`);
+  }
+
+  // 정확한 정보는 출처 사이트에서 다시 확인 — 면책 안내
+  lines.push("");
+  lines.push("※ 자세한 자격·서류 기준은 위 출처에서 다시 확인해 주세요.");
+
+  return NextResponse.json({
+    reply: lines.join("\n"),
+    programs: [], // 가이드 모드는 카드 추가 안 함
+  });
 }

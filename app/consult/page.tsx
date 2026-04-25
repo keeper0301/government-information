@@ -63,6 +63,40 @@ export default function ConsultPage() {
     }
   }
 
+  // 추천 카드 → 신청 가이드 — 해당 정책 ID 로 가이드 모드 호출
+  async function handleApplyGuide(program: DisplayProgram) {
+    if (loading) return;
+    // 사용자 메시지 추가 — 어떤 정책을 물었는지 남겨야 대화 흐름이 자연스러움
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", text: `"${program.title}" 신청 방법 알려줘` },
+    ]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          programId: program.id,
+          programType: program.type,
+        }),
+      });
+      const data = await res.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: data.reply, programs: data.programs },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: "신청 가이드를 불러오지 못했어요. 다시 시도해주세요." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // 엔터 키로 전송
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -104,18 +138,30 @@ export default function ConsultPage() {
                 {msg.programs && msg.programs.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {msg.programs.map((p) => (
-                      <a
+                      <div
                         key={p.id}
-                        href={`/${p.type}/${p.id}`}
-                        className="block bg-white rounded-xl p-3.5 no-underline text-inherit border border-grey-100 hover:border-blue-200 transition-colors"
+                        className="bg-white rounded-xl p-3.5 border border-grey-100 hover:border-blue-200 transition-colors"
                       >
-                        <div className="text-[14px] font-semibold text-grey-900 mb-1">
-                          {p.title}
-                        </div>
-                        <div className="text-[13px] text-grey-600">
-                          {p.amount} · {p.source}
-                        </div>
-                      </a>
+                        <a
+                          href={`/${p.type}/${p.id}`}
+                          className="block no-underline text-inherit mb-2"
+                        >
+                          <div className="text-[14px] font-semibold text-grey-900 mb-1">
+                            {p.title}
+                          </div>
+                          <div className="text-[13px] text-grey-600">
+                            {p.amount} · {p.source}
+                          </div>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyGuide(p)}
+                          disabled={loading}
+                          className="text-[12px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md border-none cursor-pointer disabled:opacity-50 disabled:cursor-default transition-colors"
+                        >
+                          📋 신청 가이드
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
