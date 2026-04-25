@@ -21,22 +21,35 @@
 [ERROR] [app/error] 렌더링 중 예외: Object
 ```
 
-### 근본 원인
-middleware `checkHiddenNews` 가 GET 페이지 로드 외 요청 — 특히 server action 직후 next router 가 보내는 RSC payload fetch 와 server action POST — 에 대해서도 `text/html` 410 응답을 반환했음. Next.js 16 의 client router 는 RSC payload 자리에 raw HTML 이 오면 응답 프로토콜 불일치로 즉시 throw → keepioo `app/error` 가 이를 받아 에러 페이지 렌더.
+### 진단 과정 (가설 → 반증 순)
 
-### 수정 (commit 1de4ae3)
-`lib/news-moderation/middleware-check.ts` 에 가드 2줄 추가:
-```ts
-if (request.method !== "GET") return null;
-if (request.headers.has("rsc") || request.headers.has("next-action")) return null;
+**가설 1**: middleware checkHiddenNews 가 server action POST·RSC payload fetch 까지 410 HTML 응답 → 응답 프로토콜 mismatch.
+- 시도: middleware 에 `if (request.method !== "GET") return null` + `request.headers.has("rsc")` 가드 (commit 1de4ae3)
+- 반증: 배포 후 재테스트 했지만 race 동일 발생. middleware 응답이 아니었음.
+
+**가설 2**: server action 의 revalidateNewsRoutes 안 `revalidatePath("/sitemap.xml")` 가 next 의 file-route convention 을 인식 못 해 throw → server action 500.
+- 시도: `/sitemap.xml` 호출 제거 + 나머지 호출 try/catch (commit 04fb34d)
+- 반증: 배포 후 재테스트, race 동일. supabase logs 깨끗, 다른 곳에서 throw.
+
+**가설 3 (CONFIRMED — Vercel runtime logs)**:
 ```
-- 첫 줄: server action POST 같은 비-GET 은 통과 (page.tsx 가 admin 분기로 정상 처리)
-- 둘째 줄: next router 의 RSC prefetch / server action invoke 헤더가 있는 요청도 통과
-- 일반 GET (시크릿 창 직접 접근, SEO 봇, 사용자 URL 입력) 만 410 처리 — anon 410 시그널은 그대로 유지
+POST /news/%EC%83%9D%ED%99%9C%EC%9D%B4-%EC...148957664 → 500 → TypeError: Invalid character
+```
+`next/navigation` 의 `redirect()` 는 받은 path 를 HTTP `Location` 헤더에 그대로 set. `/news/생활이-어려우세요-...` 처럼 ASCII 외 문자(한글)가 들어 있으면 HTTP/1.1 헤더 ASCII 제약 위반해 throw → server action 500 → client `NEXT_REDIRECT` 처리 실패 → app/error 가 에러 페이지 렌더.
 
-### 검증
-- 이 spec 작성 시점엔 미푸시 상태. 푸시 후 prod 에서 다시 토글 테스트 필요.
-- 회복 확인 후 본 이슈 CLOSE.
+### 최종 수정 (commit ca2a2af)
+`app/admin/news/actions.ts` 의 redirect 직전에 ASCII 외 문자만 percent-encode:
+```ts
+const returnTo = returnToRaw.replace(/[^\x00-\x7F]+/g, (s) => encodeURIComponent(s));
+redirect(returnTo);
+```
+- 이미 `%xx` 로 인코딩된 부분은 ASCII 라 그대로 보존 → 더블 encode 위험 없음
+- `/admin/news?msg=...` 같은 fallback 경로는 ASCII 라 영향 없음
+
+### 부수적으로 유지된 robustness 개선 (1de4ae3 + 04fb34d)
+가설 1·2 의 fix 도 자체로는 잘못된 방향이 아니라 robustness 향상이라 그대로 유지:
+- middleware: server action POST 와 RSC fetch 에서 410 HTML 응답 안 함
+- actions.ts: revalidatePath 호출들을 try/catch 로 감싸 일부 실패가 전체 server action 을 깨지 않도록
 
 ---
 
