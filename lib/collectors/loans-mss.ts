@@ -64,7 +64,14 @@ const collector: Collector = {
   async *fetch() {
     const minYear = currentMinAllowedYear();
     const PER_PAGE = 100;
-    let totalPages = 5;
+    // Phase 1 (66b97aa) 에서 parseAllTags 가 추가된 뒤 누적 데이터(656건) +
+    // 페이지당 무거운 정규식 처리로 5페이지 수집이 Vercel 60s maxDuration 을
+    // 초과 → HTTP 504 timeout 으로 24일 cron 부터 계속 실패.
+    // 4페이지 × 100 = 400건 cap 으로 60s 안에 들어오게 축소. 발행일 desc 정렬이라
+    // 잘리는 256건은 가장 오래된 종료 공고 → 운영 영향 미미.
+    // 초기 추정치도 4 로 맞춰 totalCount 헤더를 못 받았을 때 같은 cap 유지.
+    const PAGE_CAP = 4;
+    let totalPages = PAGE_CAP;
 
     for (let page = 1; page <= totalPages; page++) {
       let xml: string;
@@ -85,7 +92,7 @@ const collector: Collector = {
 
       if (page === 1) {
         const tm = xml.match(/<totalCount>(\d+)<\/totalCount>/);
-        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), 10);
+        if (tm) totalPages = Math.min(Math.ceil(parseInt(tm[1]) / PER_PAGE), PAGE_CAP);
       }
 
       const regex = /<item>([\s\S]*?)<\/item>/g;
