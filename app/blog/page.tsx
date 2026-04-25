@@ -4,6 +4,14 @@
 // 발행된 (published_at IS NOT NULL) 글만, 최신순.
 // 카테고리 필터 (?category=청년) 지원.
 // AdSense 승인용 — 사용자에게 가치 있는 정보성 글 모음.
+//
+// 2026-04-25 개인화 통합: welfare/loan/news 와 동일 패턴.
+//   - 로그인 + 프로필 채워짐 → "🌟 ○○님께 맞는 가이드" 분리 섹션 (점수 ≥ 3, 상위 6건)
+//   - 로그인 + 빈 프로필 → EmptyProfilePrompt
+//   - 전체 리스트 매칭 항목 → ✨ MatchBadge
+//   - blog 는 region/district/apply_end 신호 없음 → benefit_tags + 키워드만 사용
+//   - category + tags 합쳐서 benefit_tags 로 변환 (score.ts 그대로 활용)
+//   - minScore 3 (welfare 5 보다 낮음 — 매칭 신호가 적은 콘텐츠 특성)
 // ============================================================
 
 import type { Metadata } from "next";
@@ -11,6 +19,15 @@ import { createClient } from "@/lib/supabase/server";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { getBlogCategoryCounts } from "@/lib/category-counts";
 import { CategoryChipBar } from "@/components/category-chip-bar";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { scoreAndFilter } from "@/lib/personalization/filter";
+import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
+import { MatchBadge } from "@/components/personalization/MatchBadge";
+import type { ScorableItem } from "@/lib/personalization/score";
+
+// 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
+// force-dynamic 없이 캐시하면 첫 사용자 프로필이 다른 사람에게 노출되는 보안 문제 발생.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "정책 가이드 블로그 | 정책알리미",
@@ -24,6 +41,34 @@ export const metadata: Metadata = {
   },
 };
 
+// blog_posts 행을 점수 계산 가능한 ScorableItem 으로 변환
+// welfare/loan/news 와 달리 blog 는 지역·마감 신호가 없음.
+// category + tags 를 benefit_tags 배열로 합쳐서 score.ts 의 태그 매칭 활용.
+function blogToScorable(p: BlogCardData & { tags: string[] | null }): ScorableItem {
+  // category 와 tags 를 하나의 집합으로 합산 (중복 제거)
+  const tagSet = new Set<string>();
+  if (p.category) tagSet.add(p.category);
+  for (const t of p.tags ?? []) tagSet.add(t);
+
+  return {
+    id: p.slug,                         // blog 는 slug 가 PK 역할
+    title: p.title,
+    description: p.meta_description ?? "", // 키워드 매칭 haystack 용
+    region: null,                       // blog 는 지역 무관 → region 매칭 신호 0
+    district: null,
+    benefit_tags: Array.from(tagSet),   // category + tags 합산 배열
+    apply_end: null,                    // blog 는 마감 없음 → 임박 가산점 0
+    source: null,
+  };
+}
+
+// blog 의 개인화 점수 임계값 — welfare/loan 의 5 보다 낮게 설정.
+// 이유: region(+5/+5)·apply_end(+1) 신호가 없어 최대 점수 자체가 낮음.
+// benefit_tags 1개 매칭 = +3점이 사실상 가장 강한 신호.
+const BLOG_PERSONAL_MIN_SCORE = 3;
+// 분리 섹션 최대 건수 — welfare 10건보다 적게 (블로그는 콘텐츠라 압박감 줄임)
+const BLOG_PERSONAL_MAX_ITEMS = 6;
+
 type SearchParams = Promise<{ category?: string }>;
 
 export default async function BlogIndexPage({
@@ -35,11 +80,12 @@ export default async function BlogIndexPage({
   const activeCategory = category && category !== "all" ? category : "all";
 
   const supabase = await createClient();
-  // 카테고리 칩 동적 노출 — 빈 카테고리(주거/육아/큐레이션 등) 자동 숨김.
-  // 큐레이션 자동 발행이 누적되면 자동으로 다시 노출된다.
+
+  // ─── 기본 목록 query (카테고리 필터 포함) ───────────────────────────────────────
+  // tags 컬럼도 추가 — 개인화 점수 계산의 benefit_tags 소스로 사용
   let query = supabase
     .from("blog_posts")
-    .select("slug, title, meta_description, category, reading_time_min, published_at, cover_image")
+    .select("slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image")
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(50);
@@ -48,12 +94,50 @@ export default async function BlogIndexPage({
     query = query.eq("category", activeCategory);
   }
 
-  // 본 query 와 카테고리 카운트는 서로 독립 → 병렬로 라운드트립 절약
-  const [{ data: posts }, categoryCounts] = await Promise.all([
-    query,
-    getBlogCategoryCounts(supabase),
-  ]);
-  const list = (posts || []) as BlogCardData[];
+  // ─── 개인화 점수용 풀 query (필터 무관 최신 100건) ───────────────────────────────
+  // 카테고리 필터와 무관하게 전체에서 뽑아야 개인화 섹션이 필터에 제한받지 않음
+  const poolQuery = supabase
+    .from("blog_posts")
+    .select("slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image")
+    .not("published_at", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(100);
+
+  // 본 query·카테고리 카운트·풀 query·사용자 프로필을 병렬 요청 — RTT 절약
+  const [{ data: posts }, categoryCounts, { data: poolData }, profile] =
+    await Promise.all([
+      query,
+      getBlogCategoryCounts(supabase),
+      poolQuery,
+      loadUserProfile(),
+    ]);
+
+  // BlogCardData 로 사용할 목록 (tags 는 BlogCard 에서 불필요하므로 포함해도 무방)
+  const list = (posts || []) as (BlogCardData & { tags: string[] | null })[];
+
+  // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
+  // profile 이 있고 비어있지 않을 때만 점수 계산 (비로그인·빈 프로필은 skip)
+  type ScoredBlog = ReturnType<typeof scoreAndFilter<ScorableItem>>;
+  let personalSection: ScoredBlog = [];
+
+  if (profile && !profile.isEmpty) {
+    // poolData 를 ScorableItem 배열로 변환
+    const scorablePool = (poolData || []).map(
+      (p) => blogToScorable(p as BlogCardData & { tags: string[] | null })
+    );
+    personalSection = scoreAndFilter(scorablePool, profile.signals, {
+      minScore: BLOG_PERSONAL_MIN_SCORE,
+      limit: BLOG_PERSONAL_MAX_ITEMS,
+    });
+  }
+
+  // slug → 원본 BlogCardData 매핑 — 분리 섹션 렌더 시 원본 카드 데이터 복원용
+  const poolMap = new Map(
+    (poolData || []).map((p) => [p.slug, p as BlogCardData & { tags: string[] | null }])
+  );
+
+  // 분리 섹션에 노출된 slug 집합 — 전체 리스트에서 MatchBadge 표시 대상 확정
+  const personalIds = new Set(personalSection.map((s) => s.item.id));
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -80,13 +164,59 @@ export default async function BlogIndexPage({
           />
         </nav>
 
-        {/* 글 목록 */}
+        {/* ─── 개인화 분리 섹션 ────────────────────────────────────────────────── */}
+        {/* 위치: 카테고리 필터 아래, 전체 리스트 위. welfare/loan/news 와 동일 UX. */}
+        {profile && (
+          <section className="mb-8">
+            {/* 케이스 1: 프로필 채워져 있고 매칭 결과 있음 → 분리 섹션 */}
+            {!profile.isEmpty && personalSection.length > 0 && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 md:p-6">
+                {/* 섹션 헤더 */}
+                <h2 className="text-[15px] font-bold text-grey-900 mb-4">
+                  🌟 {profile.displayName}님께 맞는 가이드
+                  <span className="ml-2 text-[12px] font-normal text-grey-500">
+                    프로필 기반 · {personalSection.length}건
+                  </span>
+                </h2>
+                {/* BlogCard 그리드 — blog 기존 2열 디자인 유지 */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {personalSection.map(({ item }) => {
+                    // ScorableItem.id = slug → poolMap 에서 원본 BlogCardData 복원
+                    const original = poolMap.get(item.id);
+                    if (!original) return null;
+                    return <BlogCard key={item.id} post={original} />;
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 케이스 2: 로그인했지만 프로필 비어있음 → 온보딩 유도 배너 */}
+            {profile.isEmpty && (
+              <EmptyProfilePrompt />
+            )}
+
+            {/* 케이스 3: 프로필 있지만 매칭 결과 0건 → 아무것도 안 보임 (자연스러운 폴백) */}
+          </section>
+        )}
+        {/* 케이스 4: 비로그인 → profile === null → 아무것도 안 보임 */}
+
+        {/* ─── 전체 글 목록 ────────────────────────────────────────────────────── */}
         {list.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {list.map((post) => (
-              <BlogCard key={post.slug} post={post} />
+              // MatchBadge 를 카드 우측 상단에 absolute 로 겹쳐 표시.
+              // BlogCard 시그니처 무변경 — relative wrapper + absolute MatchBadge 패턴.
+              <div key={post.slug} className="relative">
+                <BlogCard post={post} />
+                {/* 분리 섹션에 노출된 항목 → ✨ 내 조건 배지 */}
+                {personalIds.has(post.slug) && (
+                  <div className="absolute top-3 right-3 pointer-events-none">
+                    <MatchBadge />
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
