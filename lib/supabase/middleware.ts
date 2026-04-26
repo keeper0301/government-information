@@ -2,6 +2,31 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { checkHiddenNews } from "@/lib/news-moderation/middleware-check";
 
+// 2026-04-26 SVG 사고 후속 — Supabase 외부 호출에 5초 timeout + try/catch.
+// Supabase 인스턴스 IO 한도 고갈 등으로 hang 시 middleware 자체가 30초 초과
+// → Vercel function timeout → 504 사이클. timeout + try/catch 안전망으로 차단.
+//
+// 직접 트리거: Pro Plan 가입했지만 NANO 인스턴스 그대로 → Disk IO Budget 고갈
+// → auth/db 호출이 매우 느려짐 → middleware hang. (사고 사후 MICRO 업그레이드)
+// memory: project_svg_map_504_incident_2026_04_26.md
+const SUPABASE_TIMEOUT_MS = 5000;
+
+async function withTimeout<T>(
+  promise: PromiseLike<T>,
+  ms: number,
+  fallback: T,
+): Promise<T> {
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+    ]);
+  } catch (e) {
+    console.error("[middleware] withTimeout caught error", e);
+    return fallback;
+  }
+}
+
 // 로그인한 사용자만 볼 수 있는 경로 목록
 // 이 경로(자기 자신 + 모든 하위)에 미로그인 상태로 접근하면
 // /login?next=<원래경로> 로 리다이렉트
@@ -57,14 +82,22 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 현재 사용자 확인 (Supabase 공식 가이드 권장 방식)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 현재 사용자 확인 (Supabase 공식 가이드 권장 방식).
+  // 5초 timeout — hang 시 user=null 처리 (사용자가 보호 경로 가면 로그인 페이지로).
+  const user = await withTimeout(
+    supabase.auth.getUser().then((r) => r.data?.user ?? null),
+    SUPABASE_TIMEOUT_MS,
+    null,
+  );
 
   // 정책 뉴스 모더레이션 — hidden 단건 사전 차단 (anon 만 410, admin 통과)
   // /news/[slug] 가 아닌 요청엔 즉시 null 반환하므로 비용 거의 0.
-  const goneResponse = await checkHiddenNews(request, user);
+  // timeout 시 차단 안 함 — hidden 뉴스 일시 노출 가능 (minor).
+  const goneResponse = await withTimeout(
+    checkHiddenNews(request, user),
+    SUPABASE_TIMEOUT_MS,
+    null,
+  );
   if (goneResponse) return goneResponse;
 
   // 보호 경로 여부 확인 — 예외 경로면 보호 대상이 아님
@@ -90,12 +123,18 @@ export async function updateSession(request: NextRequest) {
   // 로그인 상태 + pending 탈퇴 요청 상태 → 복구 페이지 외 모든 경로 차단.
   // RLS 가 SELECT 를 본인 row 로만 제한하므로 타인 상태는 노출 불가.
   // PK 조회라 비용 낮음. allowed 경로는 페이지·API 정상 흐름 유지.
+  // timeout 시 pending=null 처리 — 탈퇴 진행자 일시 통과 가능하나 RLS 보호.
   if (user && !isPendingAllowed(pathname)) {
-    const { data: pending } = await supabase
-      .from("pending_deletions")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const pending = await withTimeout(
+      supabase
+        .from("pending_deletions")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then((r) => r.data),
+      SUPABASE_TIMEOUT_MS,
+      null,
+    );
 
     if (pending) {
       const restoreUrl = request.nextUrl.clone();
