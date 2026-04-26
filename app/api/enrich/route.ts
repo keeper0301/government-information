@@ -190,9 +190,9 @@ async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
       else skipped++;
     } catch (err) {
       // QuotaExceededError → batch 즉시 중단. 남은 candidate 는 다음 cron 라운드에 처리.
-      // 실패 row 자체는 enrichOne 의 catch 가 이미 last_detail_failed_at 마킹 완료.
+      // enrichOne 이 quota 시 row 에 도장 안 찍으므로 failed 카운트도 증가시키지 않음.
+      // (도장 수와 카운트가 정합 — /admin/enrich-detail 표시 misalign 방지)
       if (err instanceof QuotaExceededError) {
-        failed++;
         quotaExceeded = true;
         break;
       }
