@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
+import type {
+  IncomeTargetLevel,
+  HouseholdTargetTag,
+} from "@/lib/personalization/targeting-extract";
 export { calcDday } from "@/lib/utils";
 import { calcDday } from "@/lib/utils";
 
@@ -23,6 +27,9 @@ export type DisplayProgram = {
   type: "welfare" | "loan";
   sourceCode: string | null;
   sourceUrl: string | null;
+  // Phase 1.5 본문 분석 결과 — 카드 자격 배지에 사용
+  incomeTargetLevel: IncomeTargetLevel | null;
+  householdTargetTags: HouseholdTargetTag[];
 };
 
 const categoryIconMap: Record<string, DisplayProgram["icon"]> = {
@@ -35,6 +42,24 @@ const categoryIconMap: Record<string, DisplayProgram["icon"]> = {
   "지원금": "store",
   "보증": "shield",
 };
+
+// household_target_tags 는 DB 에서 string[] 로 오므로 좁은 타입으로 변환.
+// 예상 외 값은 무시 (배지 컴포넌트도 동일 가드).
+const VALID_HOUSEHOLD_TAGS = new Set<HouseholdTargetTag>([
+  "single_parent",
+  "multi_child",
+  "married",
+  "disabled_family",
+  "elderly_family",
+  "single",
+]);
+
+function narrowHouseholdTags(tags: string[] | null): HouseholdTargetTag[] {
+  if (!tags) return [];
+  return tags.filter((t): t is HouseholdTargetTag =>
+    VALID_HOUSEHOLD_TAGS.has(t as HouseholdTargetTag),
+  );
+}
 
 export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
   return {
@@ -50,6 +75,8 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     type: "welfare",
     sourceCode: w.source_code ?? null,
     sourceUrl: w.source_url ?? null,
+    incomeTargetLevel: w.income_target_level ?? null,
+    householdTargetTags: narrowHouseholdTags(w.household_target_tags),
   };
 }
 
@@ -68,6 +95,8 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     type: "loan",
     sourceCode: l.source_code ?? null,
     sourceUrl: l.source_url ?? null,
+    incomeTargetLevel: l.income_target_level ?? null,
+    householdTargetTags: narrowHouseholdTags(l.household_target_tags),
   };
 }
 

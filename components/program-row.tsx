@@ -9,6 +9,7 @@ import {
 } from "./icons";
 import type { DisplayProgram } from "@/lib/programs";
 import { cleanDescription } from "@/lib/utils";
+import { EligibilityBadges } from "./personalization/EligibilityBadges";
 
 const iconMap = {
   house: HouseIcon,
@@ -89,6 +90,12 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
             </div>
             <DdayLabel dday={program.dday} />
           </div>
+          {/* Phase 1.5 본문 분석 결과 — 자격 배지 (소득 분위·가구 형태).
+              데이터 없는 카드는 컴포넌트가 null 반환해서 영역 자체 안 차지. */}
+          <EligibilityBadges
+            incomeTargetLevel={program.incomeTargetLevel}
+            householdTargetTags={program.householdTargetTags}
+          />
           {/* description 은 원문 그대로 저장돼 있어 &nbsp; · ☞ · <br> 등 raw 엔티티·
               섹션 기호가 노출되는 사례가 있음. 상세 페이지와 동일하게 cleanDescription
               으로 엔티티·태그 정리. truncate 한 줄이라 삽입된 \n 은 CSS 가 공백으로
