@@ -1,7 +1,11 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
-import { ELIGIBILITY_SLUGS } from "@/lib/eligibility/catalog";
+import {
+  CROSS_COMBINATIONS,
+  ELIGIBILITY_CATALOG,
+  ELIGIBILITY_SLUGS,
+} from "@/lib/eligibility/catalog";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -32,6 +36,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "daily" as const,
     priority: 0.8,
   }));
+
+  // 자격 복합 조합 페이지 — income × household 18 조합 중 매칭 ≥ 1 만 등록.
+  // 0건 페이지를 sitemap 에 노출하면 thin-content 로 SEO 마이너스.
+  // /eligibility 인덱스의 추천 카운트와 같은 로직 (welfare + loan 활성 정책의
+  // income/household 페어 분포 집계).
+  const today = new Date().toISOString().split("T")[0];
+  const [welfareTargeting, loanTargeting] = await Promise.all([
+    supabase
+      .from("welfare_programs")
+      .select("income_target_level, household_target_tags")
+      .or(`apply_end.gte.${today},apply_end.is.null`)
+      .not("income_target_level", "is", null),
+    supabase
+      .from("loan_programs")
+      .select("income_target_level, household_target_tags")
+      .or(`apply_end.gte.${today},apply_end.is.null`)
+      .not("income_target_level", "is", null),
+  ]);
+  const crossCountMap = new Map<string, number>();
+  for (const row of [
+    ...(welfareTargeting.data ?? []),
+    ...(loanTargeting.data ?? []),
+  ]) {
+    const income = row.income_target_level as string | null;
+    const tags = (row.household_target_tags ?? []) as string[];
+    if (!income) continue;
+    for (const tag of tags) {
+      const key = `${income}::${tag}`;
+      crossCountMap.set(key, (crossCountMap.get(key) ?? 0) + 1);
+    }
+  }
+  const crossPages: MetadataRoute.Sitemap = CROSS_COMBINATIONS
+    .filter(({ income, household }) => {
+      const key = `${ELIGIBILITY_CATALOG[income].dbKey}::${ELIGIBILITY_CATALOG[household].dbKey}`;
+      return (crossCountMap.get(key) ?? 0) >= 1;
+    })
+    .map(({ income, household }) => ({
+      url: `${baseUrl}/eligibility/cross/${income}/${household}`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    }));
 
   // Welfare programs
   const { data: welfare } = await supabase
@@ -108,6 +154,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...eligibilityPages,
+    ...crossPages,
     ...keywordPages,
     ...topicPages,
     ...welfarePages,

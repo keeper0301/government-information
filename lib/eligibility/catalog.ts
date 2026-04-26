@@ -140,3 +140,41 @@ export function getEligibilityCategory(
   if (!(slug in ELIGIBILITY_CATALOG)) return null;
   return ELIGIBILITY_CATALOG[slug as EligibilitySlug];
 }
+
+// ============================================================
+// 복합 매칭 (income × household)  — /eligibility/cross/[income]/[household]
+// ============================================================
+// 18 조합 페이지 + 추천 카드 + sitemap 모두 이 헬퍼들을 공유.
+// 각 페이지는 generateStaticParams 로 미리 빌드되므로 O(18) — 비용 부담 없음.
+
+// 카테고리 type 으로 필터링한 slug 리스트
+export const INCOME_SLUGS = ELIGIBILITY_SLUGS.filter(
+  (s) => ELIGIBILITY_CATALOG[s].type === 'income',
+);
+export const HOUSEHOLD_SLUGS = ELIGIBILITY_SLUGS.filter(
+  (s) => ELIGIBILITY_CATALOG[s].type === 'household',
+);
+
+// 모든 가능한 (income, household) 조합 — 18개
+export const CROSS_COMBINATIONS: ReadonlyArray<{
+  income: EligibilitySlug;
+  household: EligibilitySlug;
+}> = INCOME_SLUGS.flatMap((income) =>
+  HOUSEHOLD_SLUGS.map((household) => ({ income, household })),
+);
+
+// 조합의 합성 라벨 — "차상위 한부모 가구" / "기초수급 다자녀 가구" 같은 형태
+export function getCrossLabel(
+  income: EligibilityCategory,
+  household: EligibilityCategory,
+): string {
+  return `${income.shortLabel} ${household.label}`;
+}
+
+// 조합 설명 — SEO description / 헤더 본문 공용
+export function getCrossDescription(
+  income: EligibilityCategory,
+  household: EligibilityCategory,
+): string {
+  return `${income.shortLabel} 자격에 해당하는 ${household.label} 가구가 받을 수 있는 지원 정책을 모았어요. 두 조건 모두 만족하는 정책만 노출됩니다.`;
+}
