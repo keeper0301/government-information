@@ -343,6 +343,11 @@ export default async function AdminHomePage({
               desc="Phase 1.5 income 분석 진행률 + 백필 trigger 안내"
             />
             <ActionCard
+              href="/admin/business"
+              title="자영업자 wedge"
+              desc="business_profiles 입력 현황·필드 채움률·전환율"
+            />
+            <ActionCard
               href="/admin/my-actions"
               title="내 수행 내역"
               desc="감사 로그 페이지네이션 열람"
