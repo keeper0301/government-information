@@ -16,6 +16,7 @@ import type {
   OccupationOption,
 } from "@/lib/profile-options";
 import { ProgramRow } from "@/components/program-row";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 
 // 비로그인 또는 프로필 미완성 상태에서 보여줄 카드 (CTA 동일)
 function CallToActionCard({ title, message }: { title: string; message: string }) {
@@ -82,14 +83,19 @@ export async function RecommendTab() {
   }
 
   // 4. 프로필 완성 → 추천 결과 5개 미리보기
-  const all = await getRecommendations({
-    ageGroup: age as AgeOption,
-    region: region as RegionOption,
-    district: district,
-    occupation: occupation as OccupationOption,
-    programType: "all",
-  });
+  // 자영업자 자격 배지(✓/✗) 위해 businessProfile 동시 로드. React cache 라 비용 0.
+  const [all, fullProfile] = await Promise.all([
+    getRecommendations({
+      ageGroup: age as AgeOption,
+      region: region as RegionOption,
+      district: district,
+      occupation: occupation as OccupationOption,
+      programType: "all",
+    }),
+    loadUserProfile(),
+  ]);
   const programs = all.slice(0, 5);
+  const businessProfile = fullProfile?.signals.businessProfile ?? null;
 
   return (
     <section>
@@ -109,7 +115,7 @@ export async function RecommendTab() {
       {programs.length > 0 ? (
         <div className="bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2 mb-6">
           {programs.map((p) => (
-            <ProgramRow key={p.id} program={p} />
+            <ProgramRow key={p.id} program={p} businessProfile={businessProfile} />
           ))}
         </div>
       ) : (

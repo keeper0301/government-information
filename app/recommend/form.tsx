@@ -11,6 +11,7 @@ import {
   getDistrictsForRegion,
 } from "@/lib/profile-options";
 import type { ProgramType } from "@/lib/recommend";
+import type { BusinessProfile } from "@/lib/eligibility/business-match";
 
 // 정보 종류 탭 옵션 — UI 라벨 / API 값
 const PROGRAM_TYPE_TABS: { value: ProgramType; label: string }[] = [
@@ -42,13 +43,16 @@ type Props = {
   } | null;
   // 서버에서 미리 계산한 추천 결과 (프로필 완비 시에만 존재)
   initialPrograms?: DisplayProgram[] | null;
+  // 로그인 사용자의 "내 가게" 프로필 — ProgramRow 자영업자 자격 배지(✓/✗)용.
+  // 미입력 사용자는 null. plain object 라 RSC → client serialize 안전.
+  businessProfile?: BusinessProfile | null;
 };
 
 // 맞춤추천 폼 — 실용성 위주로 재구성
 // - 초기 결과 있으면 폼 접고 결과를 바로 보여줌 (사용자 클릭 불필요)
 // - "조건 변경" 버튼으로 폼 펼치기 → 추천받기 → 다시 접힘
 // - 결과 0건 시 "전국으로 확대해보기" 원클릭 폴백 제공
-export function RecommendForm({ initial, initialPrograms }: Props) {
+export function RecommendForm({ initial, initialPrograms, businessProfile }: Props) {
   const router = useRouter();
   const [ageGroup, setAgeGroup] = useState(
     pickMatching(initial?.age_group, AGE_OPTIONS),
@@ -200,7 +204,11 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
                 bg-white + border + rounded + 토스 토큰 shadow-sm 으로 행 경계 명확. */}
             <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2 shadow-sm">
               {programs.map((program) => (
-                <ProgramRow key={program.id} program={program} />
+                <ProgramRow
+                  key={program.id}
+                  program={program}
+                  businessProfile={businessProfile}
+                />
               ))}
             </div>
           </div>

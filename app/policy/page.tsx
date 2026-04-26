@@ -23,8 +23,11 @@ export const metadata: Metadata = {
     "맞춤추천·복지·대출·인기 정책을 한 화면에서 빠르게 둘러보고, 마음에 드는 분야를 깊이 탐색하세요.",
 };
 
-// 60초 ISR — 각 탭의 미리보기 5~10개라 부담 적음. 신규 공고·인기 변동 1분 내 반영
-export const revalidate = 60;
+// 사용자 자영업자 프로필(✓/✗ 배지) 노출을 위해 per-request SSR.
+// RecommendTab 은 이미 user 호출로 자동 dynamic 이지만, 다른 탭(welfare/loan/popular)
+// 도 ProgramRow 자격 배지를 일관되게 노출하도록 force-dynamic 명시.
+// /welfare /loan /popular 등 personalization 페이지와 동일 패턴.
+export const dynamic = "force-dynamic";
 
 const TABS = [
   { key: "recommend", label: "맞춤추천" },

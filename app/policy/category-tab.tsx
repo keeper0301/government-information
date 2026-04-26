@@ -9,6 +9,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getPopularWelfare, getPopularLoans } from "@/lib/programs";
 import { ProgramRow } from "@/components/program-row";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 
 type Variant = "welfare" | "loan";
 
@@ -31,16 +32,18 @@ export async function CategoryTab({ variant }: { variant: Variant }) {
   const config = CONFIG[variant];
   const supabase = await createClient();
 
-  // 미리보기 5건과 전체 카운트를 병렬로 조회
+  // 미리보기 5건 + 전체 카운트 + 사용자 프로필(자영업자 자격 배지) 병렬 조회.
   const today = new Date().toISOString().split("T")[0];
-  const [programs, countResult] = await Promise.all([
+  const [programs, countResult, profile] = await Promise.all([
     variant === "welfare" ? getPopularWelfare(5) : getPopularLoans(5),
     supabase
       .from(config.table)
       .select("*", { count: "exact", head: true })
       .or(`apply_end.gte.${today},apply_end.is.null`),
+    loadUserProfile(),
   ]);
   const total = countResult.count ?? 0;
+  const businessProfile = profile?.signals.businessProfile ?? null;
 
   return (
     <section>
@@ -59,7 +62,7 @@ export async function CategoryTab({ variant }: { variant: Variant }) {
       {programs.length > 0 ? (
         <div className="bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2 mb-6">
           {programs.map((p) => (
-            <ProgramRow key={p.id} program={p} />
+            <ProgramRow key={p.id} program={p} businessProfile={businessProfile} />
           ))}
         </div>
       ) : (

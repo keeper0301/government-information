@@ -17,6 +17,7 @@ import type { DisplayProgram } from "@/lib/programs";
 import { RecommendForm } from "./form";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 
 export const metadata: Metadata = {
   title: "맞춤추천 — 정책알리미",
@@ -49,30 +50,19 @@ export default async function RecommendPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 로그인 시 프로필 조회 (URL 쿼리가 없을 때 폴백)
-  let profile:
-    | {
-        age_group: string | null;
-        region: string | null;
-        district: string | null;
-        occupation: string | null;
+  // 로그인 시 프로필 + 자영업자 자격(businessProfile) 동시 조회.
+  // loadUserProfile() 은 React cache 라 같은 요청 내 중복 호출 비용 0.
+  // user_profiles + business_profiles 1 RTT 로 받아 RecommendForm 에 drilling.
+  const fullProfile = user ? await loadUserProfile() : null;
+  const profile = fullProfile?.hasProfile
+    ? {
+        age_group: fullProfile.signals.ageGroup,
+        region: fullProfile.signals.region,
+        district: fullProfile.signals.district,
+        occupation: fullProfile.signals.occupation,
       }
-    | null = null;
-  if (user) {
-    const { data } = await supabase
-      .from("user_profiles")
-      .select("age_group, region, district, occupation")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (data) {
-      profile = {
-        age_group: data.age_group ?? null,
-        region: data.region ?? null,
-        district: data.district ?? null,
-        occupation: data.occupation ?? null,
-      };
-    }
-  }
+    : null;
+  const businessProfile = fullProfile?.signals.businessProfile ?? null;
 
   // URL 쿼리 우선, 없으면 프로필 값
   const candidateAge = params.age ?? profile?.age_group ?? null;
@@ -143,7 +133,11 @@ export default async function RecommendPage({
         나의 조건에 맞는 정책을 찾아드립니다
       </p>
 
-      <RecommendForm initial={initial} initialPrograms={initialPrograms} />
+      <RecommendForm
+        initial={initial}
+        initialPrograms={initialPrograms}
+        businessProfile={businessProfile}
+      />
 
       {/* 관련 뉴스 — 사용자 조건에 맞는 BENEFIT_TAGS overlap 매칭 */}
       {relatedNews.length > 0 && (

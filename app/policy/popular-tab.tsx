@@ -8,13 +8,17 @@
 import Link from "next/link";
 import { getPopularWelfare, getPopularLoans } from "@/lib/programs";
 import { ProgramRow } from "@/components/program-row";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 
 export async function PopularTab() {
-  // 복지·대출 인기 5건씩 병렬 조회 (10건 두 섹션 노출)
-  const [popularWelfare, popularLoans] = await Promise.all([
+  // 복지·대출 인기 5건씩 + 사용자 프로필(자영업자 자격 배지) 병렬 조회.
+  // 비로그인 시 loadUserProfile null → 배지 미노출 (회귀 0).
+  const [popularWelfare, popularLoans, profile] = await Promise.all([
     getPopularWelfare(5),
     getPopularLoans(5),
+    loadUserProfile(),
   ]);
+  const businessProfile = profile?.signals.businessProfile ?? null;
 
   return (
     <section>
@@ -39,7 +43,7 @@ export async function PopularTab() {
         {popularWelfare.length > 0 ? (
           <div className="bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
             {popularWelfare.map((p) => (
-              <ProgramRow key={p.id} program={p} />
+              <ProgramRow key={p.id} program={p} businessProfile={businessProfile} />
             ))}
           </div>
         ) : (
@@ -57,7 +61,7 @@ export async function PopularTab() {
         {popularLoans.length > 0 ? (
           <div className="bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
             {popularLoans.map((p) => (
-              <ProgramRow key={p.id} program={p} />
+              <ProgramRow key={p.id} program={p} businessProfile={businessProfile} />
             ))}
           </div>
         ) : (

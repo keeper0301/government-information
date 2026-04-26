@@ -16,6 +16,7 @@ import Link from "next/link";
 import { getPopularPrograms, getDeadlineSoonPopular } from "@/lib/programs";
 import { ProgramRow } from "@/components/program-row";
 import { PROVINCE_SHORT_TO_FULL } from "@/lib/regions";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 
 export const metadata: Metadata = {
   title: "인기정책 — 정책알리미",
@@ -23,8 +24,11 @@ export const metadata: Metadata = {
     "지금 사람들이 가장 많이 보는 복지·대출 정책. 마감 임박은 별도로 강조.",
 };
 
-// 60초마다 자동 갱신 — 신규 인기 공고·마감 임박 변화 1분 내 반영
-export const revalidate = 60;
+// 사용자 자영업자 프로필(✓/✗ 배지) 노출 위해 per-request SSR.
+// 기존 revalidate=60 ISR 은 사용자별 분기가 없어 다른 사용자 프로필이
+// 캐시 hit 으로 노출되는 보안 회귀 위험이 있어 force-dynamic 으로 전환.
+// /welfare /loan 등 personalization 페이지와 동일 패턴.
+export const dynamic = "force-dynamic";
 
 type Tab = "welfare" | "loan";
 type Sort = "popular" | "deadline";
@@ -65,11 +69,15 @@ export default async function PopularPage({
   const region = params.region && params.region.trim() ? params.region : "전국";
   const sort: Sort = params.sort === "deadline" ? "deadline" : "popular";
 
-  // 두 섹션 데이터 병렬 조회
-  const [deadlineSoon, programs] = await Promise.all([
+  // 두 섹션 데이터 + 사용자 프로필(자영업자 자격 배지용) 병렬 조회.
+  // loadUserProfile() 비로그인 시 null 반환 → ProgramRow businessProfile 도 null
+  // → 배지 미노출 (기존 동작과 동일 회귀 0).
+  const [deadlineSoon, programs, profile] = await Promise.all([
     getDeadlineSoonPopular(tab, 5),
     getPopularPrograms({ programType: tab, category, region, sort }, 20),
+    loadUserProfile(),
   ]);
+  const businessProfile = profile?.signals.businessProfile ?? null;
 
   // URL 빌더 — 기본값으로 돌아가면 쿼리 제거 (깨끗한 URL)
   function buildUrl(overrides: Partial<SearchParams>): string {
@@ -118,7 +126,7 @@ export default async function PopularPage({
                   {i + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <ProgramRow program={p} />
+                  <ProgramRow program={p} businessProfile={businessProfile} />
                 </div>
               </div>
             ))}
@@ -248,7 +256,10 @@ export default async function PopularPage({
                   {index + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <ProgramRow program={program} />
+                  <ProgramRow
+                    program={program}
+                    businessProfile={businessProfile}
+                  />
                 </div>
               </div>
             ))}
