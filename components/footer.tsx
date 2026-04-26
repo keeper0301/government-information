@@ -19,11 +19,12 @@ const footerLinks = [
 
 // 사업자 정보 — 전자상거래 등에서의 소비자보호에 관한 법률 제13조 표시 의무.
 // 연락처 전화번호는 공개 시 개인정보 유출 리스크 있어 이메일로 단일화.
-// 주소는 라이브 결제 활성화 시 추가 검토 필요 (통신판매업 신고 기준).
+// 주소는 1인 운영 + 자택 주소 노출 우려로 미공개 (필요 시 사업자등록상태조회 링크).
 const BUSINESS_INFO = {
   name: "키피오",
   ceo: "최관철",
   regNo: "657-24-02265",
+  mailOrderNo: "2026-전남순천-7182",
   email: "keeper0301@gmail.com",
   service: "keepioo.com",
 };
@@ -96,6 +97,10 @@ export function Footer() {
           <span>
             사업자등록번호{" "}
             <strong className="text-grey-700">{BUSINESS_INFO.regNo}</strong>
+          </span>
+          <span>
+            통신판매번호{" "}
+            <strong className="text-grey-700">{BUSINESS_INFO.mailOrderNo}</strong>
           </span>
           <span>
             이메일{" "}
