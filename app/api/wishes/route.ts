@@ -8,7 +8,6 @@
 
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -75,9 +74,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // INSERT 는 anon RLS 정책 안에서 허용 — 일반 createClient 사용.
-  const supabase = await createClient();
-  const { error } = await supabase.from("user_wishes").insert({
+  // INSERT 도 service_role(admin) 클라이언트로 — RLS bypass.
+  // anon/auth 직접 INSERT 정책은 047 마이그레이션으로 제거됨 (PostgREST 우회 차단).
+  // 이 라우트의 길이 검증·rate limit 가드를 반드시 거치도록 잠금.
+  const { error } = await admin.from("user_wishes").insert({
     wish,
     email: email || null,
     ip_hash: ipHash,
