@@ -57,15 +57,135 @@ const HOUSEHOLD_KEYWORDS: Record<string, string[]> = {
   'single':           ['1인가구', '독거'],                     // 1인 가구
 };
 
-// 정책 지역이 사용자 지역과 매칭되는지 확인
-// "전국" 정책은 모든 지역 사용자에게 매칭됨
-function regionMatches(programRegion: string | null | undefined, userRegion: string): boolean {
-  if (!programRegion) return false;
-  // "전국" 키워드 포함 시 항상 매칭
-  if (programRegion.includes('전국')) return true;
-  // 사용자 선택 짧은 명칭(예: '서울')의 모든 별칭 목록으로 정책 지역 검색
+// 정책 지역 평가 결과
+// - national: 전국 정책 → +5
+// - region_district: 광역 + 시군구 정확 매칭 → +10 (광역 5 + 시군구 5)
+// - region_only: 광역만 매칭 (정책에 시군구 명시 없음) → +5
+// - district_mismatch: 같은 광역인데 다른 시군구 → 0 (영암군 정책에 순천시 사용자 매칭 차단)
+// - no_match: 다른 광역 또는 정보 없음 → 0
+type RegionMatchResult =
+  | { kind: 'national'; score: 5 }
+  | { kind: 'region_district'; score: 10 }
+  | { kind: 'region_only'; score: 5 }
+  | { kind: 'district_mismatch'; score: 0 }
+  | { kind: 'no_match'; score: 0 };
+
+// 정책 지역과 사용자 지역의 정합성을 평가.
+// welfare_programs.region 컬럼이 "전라남도 영암군" 같이 시군구를 포함한 한 문자열이라
+// 사용자 district 도 substring 으로 검출해서 같은 시군구인지·다른 시군구인지 구분.
+function evaluateRegion(
+  programRegion: string | null | undefined,
+  userRegion: string | null,
+  userDistrict: string | null,
+): RegionMatchResult {
+  if (!programRegion) return { kind: 'no_match', score: 0 };
+  // 사용자 region 미설정 → 어떤 매칭도 안 함 (기존 동작 유지: 빈 프로필은 추천 풀에 진입 못 함)
+  if (!userRegion) return { kind: 'no_match', score: 0 };
+  // "전국" 키워드 포함 시 사용자 광역 무관하게 매칭
+  if (programRegion.includes('전국')) return { kind: 'national', score: 5 };
+
+  // 사용자 광역 별칭이 정책 region 에 포함되는지
   const aliases = REGION_ALIASES[userRegion] ?? [userRegion];
-  return aliases.some(a => programRegion.includes(a));
+  const regionHit = aliases.some((a) => programRegion.includes(a));
+  if (!regionHit) return { kind: 'no_match', score: 0 };
+
+  // 사용자가 시군구 미선택 → 광역 매칭으로 충분
+  if (!userDistrict) return { kind: 'region_only', score: 5 };
+
+  // 정책 region 에 사용자 district 직접 포함 → 정확 매칭 (+10)
+  if (programRegion.includes(userDistrict)) {
+    return { kind: 'region_district', score: 10 };
+  }
+
+  // 정책 region 에서 광역 별칭 제거 후 남는 부분에 다른 시군구가 명시돼 있는지 검사.
+  // 별칭 길이 내림차순으로 strip 해야 "서울특별시" 가 "서울" 보다 먼저 제거되어
+  // "특별시" 잔재가 시군구로 잘못 인식되는 문제 방지.
+  // 예: "전라남도 영암군" → strip "전라남도" → "영암군" → /시|군|구/ 매칭 → 다른 시군구 명시.
+  // "전라남도" → strip → "" → 다른 시군구 명시 없음 → region_only.
+  const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
+  const stripped = sortedAliases
+    .reduce((s, a) => s.replace(a, ''), programRegion)
+    .trim();
+  const hasOtherDistrict = /\S(시|군|구)(\s|$)/.test(stripped);
+  if (hasOtherDistrict) {
+    // 같은 광역이지만 다른 시군구가 명시됨 → 사용자에게 부적합
+    return { kind: 'district_mismatch', score: 0 };
+  }
+
+  // 광역만 명시된 정책 (시군구 명시 없음) → 광역 매칭으로 처리
+  return { kind: 'region_only', score: 5 };
+}
+
+// ============================================================
+// Cohort 부적합 검출 — 정책 본문이 특정 인구 cohort 에만 의미 있는데
+// 사용자가 그 cohort 에 속하지 않으면 점수 자체를 0 으로 만들어서 추천 풀에서 제외.
+// (단순 가산점만으로는 "노인 보청기" 정책이 30대에게도 region 점수만으로 통과하는 문제 해결)
+// ============================================================
+
+// 노년층 cohort — 사용자가 60대 이상 ageGroup 이거나 elderly_family 가구일 때만 통과
+const ELDERLY_COHORT_KEYWORDS: RegExp[] = [
+  /노인(?!\s*돌봄)/, // "노인" (단 "노인 돌봄" 같은 양육자 정책 일부 회피)
+  /어르신/,
+  /경로(당|식|우대)/,
+  /고령자/,
+  /만\s*65세\s*이상/,
+  /실버\s*세대/,
+  /노년/,
+  /기초연금/,
+  /보청기/,
+  /틀니/,
+];
+
+// 결혼이주·다문화 cohort — 현재 프로필에 명시 시그널이 없어 일반 사용자에게는 부적합
+const MULTICULTURAL_COHORT_KEYWORDS: RegExp[] = [
+  /결혼이주여성/,
+  /다문화\s*가족/,
+  /다문화\s*가정/,
+  /결혼이민자/,
+];
+
+// 보호아동·시설양육 cohort — 사용자 가구에 자녀(single_parent / multi_child) 가 있을 때만 통과
+const CHILD_COHORT_KEYWORDS: RegExp[] = [
+  /보호아동/,
+  /아동복지시설/,
+  /가정위탁/,
+  /입양\s*가정/,
+];
+
+// 장애인 cohort — 사용자 가구에 disabled_family 가 있을 때만 통과
+const DISABILITY_COHORT_KEYWORDS: RegExp[] = [
+  /중증장애/,
+  /장애아동/,
+  /장애인\s*가구/,
+  /장애인\s*가족/,
+];
+
+// 정책 본문이 특정 cohort 전용인데 사용자가 그 cohort 에 안 속하면 true 반환.
+// true → score 0, signals=[] 로 강제 → filter 에서 minScore 못 넘음.
+function isCohortMismatch(haystack: string, user: UserSignals): boolean {
+  // 노년층 정책 — 60대 이상 또는 elderly_family 가구만 통과
+  if (ELDERLY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    const isElderlyUser =
+      user.ageGroup === '60대 이상' ||
+      user.householdTypes.includes('elderly_family');
+    if (!isElderlyUser) return true;
+  }
+  // 결혼이주·다문화 정책 — 현재 프로필 모델에서 매칭 시그널 없음 → 모든 일반 사용자 부적합
+  if (MULTICULTURAL_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    return true;
+  }
+  // 보호아동·시설양육 — 자녀 동반 가구만 통과 (한부모/다자녀)
+  if (CHILD_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    const isChildUser =
+      user.householdTypes.includes('single_parent') ||
+      user.householdTypes.includes('multi_child');
+    if (!isChildUser) return true;
+  }
+  // 장애인 정책 — disabled_family 가구만 통과
+  if (DISABILITY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    if (!user.householdTypes.includes('disabled_family')) return true;
+  }
+  return false;
 }
 
 // 사용자 incomeLevel 이 정책 income_target_level 자격을 충족하는지 확인
@@ -110,19 +230,30 @@ export function scoreProgram<T extends ScorableItem>(
   // 검색 대상 텍스트: 제목 + 설명 + 출처 합산
   const haystack = `${program.title ?? ''} ${program.description ?? ''} ${program.source ?? ''}`;
 
-  // ① 지역 광역 매칭: +5점
-  // 사용자 지역이 있고, "전국" 아닌 경우에만 지역 가산점 부여
-  // (전국 정책은 아래 regionMatches 에서 '전국' 키워드 감지해서 처리)
-  if (user.region && regionMatches(program.region, user.region)) {
-    signals.push({ kind: 'region', score: 5 });
+  // ⓪ Cohort 부적합 사전 차단 — 노인 정책에 30대, 결혼이주 정책에 일반인 등
+  // 점수 0 + 빈 시그널 반환 → filter 에서 minScore 못 넘게 함.
+  // (signals 만 비우면 region 만 매칭된 부적합 정책이 통과 가능 — score=0 으로 명시 차단)
+  if (isCohortMismatch(haystack, user)) {
+    return { item: program, score: 0, signals: [] };
   }
 
-  // ② 시군구 매칭: +5점 (광역 매칭이 있을 때만 추가 가산)
-  // 광역이 이미 매칭된 경우에만 시군구 추가 점수
-  if (user.district && program.district && program.district === user.district
-      && signals.some(s => s.kind === 'region')) {
+  // ① 지역 매칭 — 광역·시군구 정합성을 한 번에 평가.
+  // - 전국 정책: +5
+  // - 사용자 광역 + 정책 region 에 사용자 district substring 포함: +10
+  // - 사용자 광역 + 정책에 시군구 명시 없음: +5 (광역 only 정책)
+  // - 같은 광역인데 다른 시군구: 0 (영암군 정책에 순천시 사용자 차단)
+  // - 다른 광역: 0
+  // program.district 별도 컬럼은 사용 안 함 (welfare_programs 에 컬럼 자체가 없음).
+  const regionEval = evaluateRegion(program.region, user.region, user.district);
+  if (regionEval.kind === 'national') {
+    signals.push({ kind: 'region', score: 5 });
+  } else if (regionEval.kind === 'region_district') {
+    signals.push({ kind: 'region', score: 5 });
     signals.push({ kind: 'district', score: 5 });
+  } else if (regionEval.kind === 'region_only') {
+    signals.push({ kind: 'region', score: 5 });
   }
+  // district_mismatch / no_match 는 signal 추가 없음 (점수 0)
 
   // ③ 혜택 태그 교집합: 일치 1개당 +3점
   if (user.benefitTags.length && program.benefit_tags?.length) {

@@ -35,7 +35,10 @@ export type ScoredItem<T> = {
   signals: MatchSignal[];   // 점수에 기여한 시그널 목록 (투명성 확보용)
 };
 
-// '나만의 추천' 섹션 노출 최소 점수 — 이 점수 미만이면 노출하지 않음
-export const PERSONAL_SECTION_MIN_SCORE = 5;
+// '나만의 추천' 섹션 노출 최소 점수 — 이 점수 미만이면 노출하지 않음.
+// 8 = region(5) 단일 매칭만으로는 부족, 추가 시그널(태그 1+, 직업 + 소득 등) 필요.
+// region+district(10) 정확 매칭이거나 region(5)+benefit_tag(3) 조합부터 통과.
+// 이전엔 5 였지만 region 한 가지만 매칭된 부적합 정책이 통과해서 추천 품질 저하.
+export const PERSONAL_SECTION_MIN_SCORE = 8;
 // '나만의 추천' 섹션 최대 노출 항목 수
 export const PERSONAL_SECTION_MAX_ITEMS = 10;

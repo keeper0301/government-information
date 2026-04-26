@@ -20,12 +20,14 @@ const emptyUser: UserSignals = {
 };
 
 // 기본 정책 데이터 (기준점)
+// welfare_programs.region 은 광역+시군구를 한 문자열로 저장하므로 ("서울특별시 강남구")
+// district 별도 컬럼은 score 로직에서 사용하지 않음 (DB 에 컬럼 자체 없음).
 const baseProgram = {
   id: 'p1',
   title: '청년 주거 지원',
   description: '서울 강남구 청년 대상 주거비 지원',
-  region: '서울특별시',
-  district: '강남구',
+  region: '서울특별시 강남구',
+  district: null as string | null,
   benefit_tags: ['주거'] as string[],
   apply_end: null as string | null,
   source: null as string | null,
@@ -213,5 +215,166 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
     );
     // 정확 매칭이 있는데 high 는 자격 없음 → fallback 없이 0점
     expect(r.score).toBe(0);
+  });
+});
+
+describe('scoreProgram — 시군구 mismatch (Phase 1.6)', () => {
+  // 30대 자영업자 순천시 사용자가 영암군 정책에 매칭되던 버그 재현·차단
+  it('같은 광역인데 다른 시군구 명시 → region 점수 0', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도 영암군',
+        title: '영암군 이사비용 지원',
+        description: '주거 이전 비용 지원',
+        benefit_tags: [],
+      },
+      { ...emptyUser, region: '전남', district: '순천시' },
+    );
+    expect(r.score).toBe(0);
+    expect(r.signals.find((s) => s.kind === 'region')).toBeUndefined();
+  });
+
+  it('같은 시군구 정확 매칭 → +10', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도 순천시',
+        benefit_tags: [],
+        description: '순천시 청년 주거 지원',
+      },
+      { ...emptyUser, region: '전남', district: '순천시' },
+    );
+    expect(r.score).toBe(10);
+  });
+
+  it('광역만 명시된 정책 (시군구 명시 없음) → +5', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: '전라남도', benefit_tags: [], description: '전남 주민 대상' },
+      { ...emptyUser, region: '전남', district: '순천시' },
+    );
+    expect(r.score).toBe(5);
+  });
+
+  it('사용자 시군구 미선택 + 정책에 시군구 명시 → region_only +5', () => {
+    const r = scoreProgram(
+      { ...baseProgram, region: '전라남도 영암군', benefit_tags: [], description: '주거 지원' },
+      { ...emptyUser, region: '전남' /* district 없음 */ },
+    );
+    expect(r.score).toBe(5);
+  });
+
+  it('"서울특별시" 잔재가 다른 시군구로 오인되지 않아야 함 (긴 별칭 우선 strip)', () => {
+    // strip 순서가 잘못되면 "서울" 만 빠지고 "특별시" 가 시군구로 인식될 수 있음
+    const r = scoreProgram(
+      { ...baseProgram, region: '서울특별시', benefit_tags: [], description: '서울 시민 대상' },
+      { ...emptyUser, region: '서울', district: '강남구' },
+    );
+    // 광역 only 정책으로 판정 → +5
+    expect(r.score).toBe(5);
+  });
+});
+
+describe('scoreProgram — Cohort 부적합 차단 (Phase 1.6)', () => {
+  it('노인/어르신/보청기 정책 + 30대 사용자 → score 0', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도 나주시',
+        benefit_tags: [],
+        title: '나주시 노인 보청기 구입비 지원',
+        description: '만 65세 이상 어르신 대상',
+      },
+      { ...emptyUser, ageGroup: '30대', region: '전남', district: '나주시' },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('노인 정책 + 60대 이상 사용자 → 정상 점수', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도 나주시',
+        benefit_tags: [],
+        title: '어르신 틀니지원',
+        description: '경로우대 대상',
+      },
+      { ...emptyUser, ageGroup: '60대 이상', region: '전남', district: '나주시' },
+    );
+    // region_district +10, age 키워드("어르신") +1 → 11
+    expect(r.score).toBe(11);
+  });
+
+  it('결혼이주여성 정책 + 일반 사용자 → score 0', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도 완도군',
+        benefit_tags: [],
+        title: '결혼이주여성 행복정착금',
+        description: '다문화 가정 정착 지원',
+      },
+      { ...emptyUser, ageGroup: '30대', region: '전남' },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('보호아동 정책 + 자녀 동반 가구 아닌 사용자 → score 0', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: null,
+        benefit_tags: [],
+        title: '보호아동 생활안정 지원',
+        description: '아동복지시설 입소 아동 대상',
+      },
+      { ...emptyUser, householdTypes: ['married'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('보호아동 정책 + 한부모 가구 → cohort 매칭 통과', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: null,
+        benefit_tags: [],
+        title: '보호아동 양육비 지원',
+        description: '한부모 가정 양육비 지원',
+      },
+      { ...emptyUser, householdTypes: ['single_parent'] },
+    );
+    // 보호아동 cohort 통과 + household_keyword fallback (한부모) +2
+    expect(r.score).toBe(2);
+  });
+
+  it('중증장애 정책 + disabled_family 가구 아닌 사용자 → score 0', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: null,
+        benefit_tags: [],
+        title: '중증장애 의료비 지원',
+        description: '장애아동 가구 대상',
+      },
+      { ...emptyUser, householdTypes: ['married'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('장애인 정책 + disabled_family 가구 → cohort 매칭 통과', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: null,
+        benefit_tags: [],
+        title: '중증장애 의료비 지원',
+        description: '중증장애 가구 대상',
+        household_target_tags: ['disabled_family'],
+      },
+      { ...emptyUser, householdTypes: ['disabled_family'] },
+    );
+    // household_target +3
+    expect(r.score).toBe(3);
   });
 });
