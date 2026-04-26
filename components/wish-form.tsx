@@ -99,7 +99,7 @@ export function WishForm() {
         <span className={charCount > 500 ? "text-red font-semibold" : ""}>
           {charCount}/500
         </span>
-        <span className="text-grey-400">최소 5자</span>
+        <span>최소 5자</span>
       </div>
 
       <label htmlFor="wish-email" className="sr-only">

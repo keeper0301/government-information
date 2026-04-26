@@ -116,7 +116,7 @@ export default async function AdminWishesPage() {
                   </a>
                 )}
                 {w.ip_hash && (
-                  <span className="font-mono text-grey-400" title="익명화된 IP 해시">
+                  <span className="font-mono text-grey-500" title="익명화된 IP 해시">
                     {w.ip_hash.slice(0, 8)}…
                   </span>
                 )}
