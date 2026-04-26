@@ -126,12 +126,12 @@ async function runCleanup(dryRun: boolean): Promise<CleanupResult> {
   let blogsNullified = 0;
 
   if (allIds.length > 0) {
-    // user_bookmarks — 사용자 북마크 자동 정리 (UI 에서 "삭제된 정책" dangling 안 보이게)
+    // user_bookmarks — composite PK (user_id, program_id, program_type) 라 id 컬럼 X
     const { data: bm, error: bmErr } = await admin
       .from("user_bookmarks")
       .delete()
       .in("program_id", allIds)
-      .select("id");
+      .select("program_id");
     if (bmErr) throw new Error(`user_bookmarks 정리 실패: ${bmErr.message}`);
     bookmarksRemoved = bm?.length ?? 0;
 
@@ -140,7 +140,7 @@ async function runCleanup(dryRun: boolean): Promise<CleanupResult> {
       .from("alarm_subscriptions")
       .delete()
       .in("program_id", allIds)
-      .select("id");
+      .select("program_id");
     if (alErr) throw new Error(`alarm_subscriptions 정리 실패: ${alErr.message}`);
     alarmsRemoved = al?.length ?? 0;
 
@@ -149,7 +149,7 @@ async function runCleanup(dryRun: boolean): Promise<CleanupResult> {
       .from("alert_deliveries")
       .delete()
       .in("program_id", allIds)
-      .select("id");
+      .select("program_id");
     if (deErr) throw new Error(`alert_deliveries 정리 실패: ${deErr.message}`);
     deliveriesRemoved = de?.length ?? 0;
 
@@ -158,7 +158,7 @@ async function runCleanup(dryRun: boolean): Promise<CleanupResult> {
       .from("blog_posts")
       .update({ source_program_id: null })
       .in("source_program_id", allIds)
-      .select("id");
+      .select("source_program_id");
     if (bgErr) throw new Error(`blog_posts 정리 실패: ${bgErr.message}`);
     blogsNullified = bg?.length ?? 0;
   }
