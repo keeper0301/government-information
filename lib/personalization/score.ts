@@ -246,14 +246,25 @@ export function scoreProgram<T extends ScorableItem>(
   // program.district 별도 컬럼은 사용 안 함 (welfare_programs 에 컬럼 자체가 없음).
   const regionEval = evaluateRegion(program.region, user.region, user.district);
 
-  // ②-Gate: Regional gate — 사용자가 region 설정한 경우
+  // ②-Gate: Regional gate — 사용자가 region 설정 + 정책에 region 정보 있을 때만 적용
   // 정책 region 이 no_match(다른 광역) 또는 district_mismatch(같은 광역 다른 시군구)면
   // benefit_tags·age·occupation 등 다른 시그널 점수 무관하게 score 0 으로 강제 차단.
   //
   // 배경: minScore=8 인데 region 0점이어도 benefit_tags 교집합 (4태그 × 3점 = 12)
   // 만으로 minScore 통과 가능 → 사장님(전남 순천시) 화면에 전북·경남 정책 노출 사고.
-  // 사용자가 region 미설정인 경우는 게이트 미적용 (다른 시그널로 추천 가능해야 함).
-  if (user.region && (regionEval.kind === 'no_match' || regionEval.kind === 'district_mismatch')) {
+  //
+  // ⚠️ program.region 존재 체크 필수 — 게이트가 너무 넓으면 회귀:
+  //   - blog: region 컬럼 자체 없음 (카테고리 기반) → null → no_match → 게이트로 모두 차단됨
+  //   - news: ministry 가 부처명("복지부") 이면 광역 매칭 실패 → no_match → 모두 차단됨
+  // 따라서 정책에 region 정보가 있을 때(welfare/loan, 또는 광역인 ministry)만 gate 적용.
+  // region NULL 인 정책은 다른 시그널로 평가 (회귀 0).
+  //
+  // 사용자가 region 미설정인 경우도 게이트 미적용 (빈 프로필 추천 가능해야 함).
+  if (
+    user.region &&
+    program.region &&
+    (regionEval.kind === 'no_match' || regionEval.kind === 'district_mismatch')
+  ) {
     return { item: program, score: 0, signals: [] };
   }
 

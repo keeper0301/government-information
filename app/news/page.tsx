@@ -95,6 +95,12 @@ const VALID_BENEFITS = new Set<string>(BENEFIT_TAGS);
 // 이를 region 필드로 그대로 넘기면 score.ts 의 REGION_ALIASES 가 자동 매핑함.
 // 예: ministry = "전라남도" → score.ts aliases → 사용자 region "전남" 과 매칭.
 // apply_end 는 news 에 없음 (실시간 공고 개념이 아닌 단순 뉴스 콘텐츠).
+//
+// 2026-04-26 hot-fix-2: ministry 가 "보건복지부" 같은 부처명일 때 region 으로 넘기면
+// score.ts 의 regional gate 가 사장님(전남) 같은 region 사용자에게 부처 뉴스를 모두
+// 차단하는 회귀. 광역 정식명일 때만 region 으로 통과시키고 부처명은 null 처리.
+const PROVINCE_FULL_NAMES = new Set<string>(PROVINCES.map((p) => p.name));
+
 function newsToScorable(p: {
   id: string;
   slug: string;
@@ -106,14 +112,17 @@ function newsToScorable(p: {
   published_at: string;
   source_url: string | null;
 }): ScorableItem {
+  // ministry 가 광역 정식명("전라남도", "서울특별시" 등)일 때만 region 매칭에 사용.
+  // 부처명("보건복지부", "고용노동부")이면 null → regional gate 우회 → benefit_tags
+  // 매칭으로 평가됨.
+  const region = p.ministry && PROVINCE_FULL_NAMES.has(p.ministry) ? p.ministry : null;
+
   return {
     id: p.id,
     title: p.title,
     // summary + body 합쳐서 haystack 풍성하게 — benefit_tags 키워드 매칭 정확도 향상
     description: [p.summary, p.body].filter(Boolean).join(" "),
-    // ministry 가 "전라남도"처럼 광역명이면 region 매칭에 사용.
-    // "보건복지부" 같은 부처명이면 REGION_ALIASES 에 없어 매칭 안 됨 (정상 동작).
-    region: p.ministry,
+    region,
     district: null,     // news 는 district(시군구) 개념 없음
     benefit_tags: p.benefit_tags ?? [],
     apply_end: null,    // news 는 마감 개념 없음 (실시간 뉴스 콘텐츠)

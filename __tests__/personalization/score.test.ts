@@ -296,6 +296,21 @@ describe('scoreProgram — 시군구 mismatch (Phase 1.6)', () => {
     expect(r.score).toBe(3);
   });
 
+  // 2026-04-26 hot-fix-2: gate 가 너무 넓어서 발생한 회귀 가드
+  it('regional gate: program.region NULL → 게이트 미적용 (blog 카테고리 기반)', () => {
+    // blog 는 region 컬럼 없음 → ScorableItem.region=null. 사용자 region 설정해도
+    // benefit_tags 매칭으로 추천돼야 함 (게이트로 모두 차단되면 안 됨).
+    const r = scoreProgram(
+      { ...baseProgram, region: null, benefit_tags: ['취업'] },
+      { ...emptyUser, region: '전남', district: '순천시', benefitTags: ['취업'] },
+    );
+    expect(r.score).toBe(3);
+  });
+
+  // news 부처명 ministry 케이스는 데이터 layer (app/news/page.tsx) 에서 region=null 로
+  // 변환해 게이트 우회시킴 — 이 테스트는 score.ts 차원이 아니라 데이터 변환 책임을
+  // 명시. 부처명을 region 으로 그대로 넘기면 차단되는 건 의도된 동작 (page 가 책임).
+
   it('같은 시군구 정확 매칭 → +10', () => {
     const r = scoreProgram(
       {
