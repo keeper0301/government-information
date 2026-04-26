@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ArticleSchema, FAQSchema, BreadcrumbSchema } from "@/components/json-ld";
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
+import { getCategoryGradient, getCategoryGradientCss } from "@/lib/blog-cover";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 
@@ -150,6 +151,10 @@ export default async function BlogPostPage({
   const dateLabel = post.published_at ? formatKoreanDate(post.published_at) : "";
   const updatedLabel = formatKoreanDate(post.updated_at);
 
+  // 카테고리 그라디언트 — cover_image 없을 때 hero 배경에 사용 (BlogCard 와 일관)
+  const heroGradient = getCategoryGradientCss(post.category);
+  const heroLabel = getCategoryGradient(post.category).label;
+
   return (
     <main className="min-h-screen bg-white pt-[80px] pb-20">
       {/* GA4 blog_post_viewed — 카테고리·slug 로 어떤 글이 많이 읽히는지 집계 */}
@@ -184,6 +189,27 @@ export default async function BlogPostPage({
       />
 
       <article className="max-w-[720px] mx-auto px-5">
+        {/* Hero — cover_image 가 있으면 사진, 없으면 카테고리 그라디언트 + 라벨.
+            AdSense 검수자에게 시각 요소 부재 신호 회피 + 카테고리 식별성 */}
+        {post.cover_image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.cover_image}
+            alt=""
+            className="w-full aspect-[16/9] object-cover rounded-2xl mb-6"
+          />
+        ) : (
+          <div
+            className="w-full aspect-[16/9] rounded-2xl mb-6 flex items-center justify-center"
+            style={{ background: heroGradient }}
+            aria-hidden="true"
+          >
+            <span className="text-white/95 text-[36px] md:text-[44px] font-extrabold tracking-[-0.8px] drop-shadow">
+              {heroLabel}
+            </span>
+          </div>
+        )}
+
         {/* 카테고리 + 날짜 */}
         <div className="flex items-center gap-2 mb-3 text-[13px] text-grey-600">
           {post.category && (

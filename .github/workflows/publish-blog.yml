@@ -4,9 +4,10 @@ name: 블로그 자동 발행 (매일)
 # GitHub Actions 로 이전. 분 단위 정확도 + 배포와 무관한 스케줄링.
 #
 # 동작: 매일 06:00 UTC (한국 15:00) 에 keepioo.com 의 publish-blog 엔드포인트를
-# Bearer 토큰 인증으로 호출. 오늘·내일 카테고리 2글 발행 (step 분리로 60초 timeout 회피).
+# Bearer 토큰 인증으로 호출. 매일 3글 발행 (step 분리로 60초 timeout 회피).
 #
 # 2026-04-24 복구: 커밋 76ff8ab 에서 폐기됐다가 옵션 C (품질 가드 추가) 로 복원.
+# 2026-04-26 발행 빈도 증가: AdSense 검수 대비 자체 콘텐츠량 가속 (2글 → 3글).
 #
 # 필요한 GitHub Secret:
 #   CRON_SECRET — Vercel 환경변수와 동일한 값
@@ -56,6 +57,7 @@ jobs:
       - name: 2번째 글 발행 (내일 카테고리, offset=1)
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        continue-on-error: true
         run: |
           set -euo pipefail
           echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
@@ -67,7 +69,25 @@ jobs:
           cat /tmp/response2.json
           echo ""
           if [ "$http_status" -ne 200 ]; then
-            echo "::error::2번째 글 발행 실패 (HTTP $http_status)"
+            echo "::warning::2번째 글 발행 실패 (HTTP $http_status) — 3번째 시도 계속"
             exit 1
           fi
-          echo "== 2개 step 완료 =="
+
+      - name: 3번째 글 발행 (모레 카테고리, offset=2)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
+          http_status=$(curl -sS -o /tmp/response3.json -w "%{http_code}" \
+            --max-time 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.keepioo.com/api/publish-blog?count=1&offset=2")
+          echo "== HTTP $http_status =="
+          cat /tmp/response3.json
+          echo ""
+          if [ "$http_status" -ne 200 ]; then
+            echo "::error::3번째 글 발행 실패 (HTTP $http_status)"
+            exit 1
+          fi
+          echo "== 3개 step 완료 =="
