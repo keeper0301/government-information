@@ -14,6 +14,7 @@ import {
   type HouseholdOption,
 } from "@/lib/profile-options";
 import { syncProfileAutoRule } from "./actions";
+import { ChipSelect } from "./chip-select";
 
 // 프로필 선택지 (lib/profile-options.ts 단일 소스 import).
 // 여기와 /recommend, /api/recommend 가 같은 옵션을 써야 프로필 매칭이 정상 작동.
@@ -106,151 +107,173 @@ export function ProfileForm({ initial }: { initial: Profile }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 나이대 */}
-      <ChipSelect
-        label="나이대"
-        options={AGE_GROUPS}
-        value={form.age_group}
-        onChange={(v) => updateForm((p) => ({ ...p, age_group: v }))}
-      />
+    <div className="space-y-8">
+      <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
+        {/* ── 왼쪽: 기본 정보 ── */}
+        <section className="space-y-6">
+          <h2 className="text-[15px] font-semibold text-grey-900 pb-2 border-b border-grey-100">
+            기본 정보
+          </h2>
 
-      {/* 지역 — 광역 선택. 광역 바꾸면 시군구는 자동으로 reset (다른 광역의
-          시군구가 그대로 남아있으면 매칭 어색해짐). */}
-      <ChipSelect
-        label="거주 지역 (광역)"
-        options={REGIONS}
-        value={form.region}
-        onChange={(v) =>
-          updateForm((p) => {
-            const nextDistricts = getDistrictsForRegion(v);
-            const nextDistrict =
-              p.district && nextDistricts.includes(p.district) ? p.district : null;
-            return { ...p, region: v, district: nextDistrict };
-          })
-        }
-      />
+          <ChipSelect
+            label="나이대"
+            options={AGE_GROUPS}
+            value={form.age_group}
+            onChange={(v) => updateForm((p) => ({ ...p, age_group: v }))}
+          />
 
-      {/* 시군구 (광역 선택 후 노출) — "전체 (시군구 미지정)" 옵션 포함 */}
-      {form.region && getDistrictsForRegion(form.region).length > 0 && (
-        <ChipSelect
-          label="시·군·구 (선택)"
-          options={["전체", ...getDistrictsForRegion(form.region)]}
-          value={form.district ?? "전체"}
-          onChange={(v) =>
-            updateForm((p) => ({
-              ...p,
-              district: v === "전체" ? null : v,
-            }))
-          }
-        />
-      )}
+          {/* 거주 지역 — 광역 바꾸면 시군구 자동 reset (다른 광역 시군구가 남아있으면 매칭 어색) */}
+          <ChipSelect
+            label="거주 지역 (광역)"
+            options={REGIONS}
+            value={form.region}
+            onChange={(v) =>
+              updateForm((p) => {
+                const nextDistricts = getDistrictsForRegion(v);
+                const nextDistrict =
+                  p.district && nextDistricts.includes(p.district) ? p.district : null;
+                return { ...p, region: v, district: nextDistrict };
+              })
+            }
+          />
 
-      {/* 직업 */}
-      <ChipSelect
-        label="직업"
-        options={OCCUPATIONS}
-        value={form.occupation}
-        onChange={(v) => updateForm((p) => ({ ...p, occupation: v }))}
-      />
+          {/* 시·군·구 — 광역 선택 후에만 노출 ("전체 (시군구 미지정)" 옵션 포함) */}
+          {form.region && getDistrictsForRegion(form.region).length > 0 && (
+            <ChipSelect
+              label="시·군·구 (선택)"
+              options={["전체", ...getDistrictsForRegion(form.region)]}
+              value={form.district ?? "전체"}
+              onChange={(v) =>
+                updateForm((p) => ({
+                  ...p,
+                  district: v === "전체" ? null : v,
+                }))
+              }
+            />
+          )}
 
-      {/* 소득 수준 (단일 선택, 선택사항) */}
-      <section className="space-y-2">
-        <label className="text-sm font-medium">
-          소득 수준 <span className="text-xs text-zinc-500">(선택)</span>
-        </label>
-        <p className="text-xs text-zinc-500">
-          이 정보는 맞춤 추천에만 사용되며 외부에 제공되지 않습니다.
-        </p>
-        <div className="flex flex-col gap-2">
-          {INCOME_OPTIONS.map((opt) => (
-            <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="income_level"
-                value={opt.value}
-                checked={form.income_level === opt.value}
-                onChange={() => updateForm((p) => ({ ...p, income_level: opt.value }))}
-                className="mt-0.5"
-              />
-              <span className="text-sm">{opt.label}</span>
+          <ChipSelect
+            label="직업"
+            options={OCCUPATIONS}
+            value={form.occupation}
+            onChange={(v) => updateForm((p) => ({ ...p, occupation: v }))}
+          />
+        </section>
+
+        {/* ── 오른쪽: 맞춤 추천 정보 ── */}
+        <section className="space-y-6">
+          <h2 className="text-[15px] font-semibold text-grey-900 pb-2 border-b border-grey-100">
+            맞춤 추천 정보{" "}
+            <span className="text-xs font-normal text-grey-600">(선택)</span>
+          </h2>
+
+          {/* 소득 수준 (단일 선택, 선택사항) */}
+          <div className="space-y-2">
+            <label className="block text-[13px] font-semibold text-grey-700">
+              소득 수준
             </label>
-          ))}
-          {/* 선택 안 함 버튼 — 라디오 전체 해제 */}
-          <button
-            type="button"
-            onClick={() => updateForm((p) => ({ ...p, income_level: null }))}
-            className="text-xs text-zinc-500 underline self-start"
-          >
-            선택 안 함
-          </button>
-        </div>
-      </section>
-
-      {/* 가구 상태 (다중 선택, 민감정보) */}
-      <section className="space-y-2">
-        <label className="text-sm font-medium">
-          가구 상태 <span className="text-xs text-zinc-500">(다중 선택 · 선택)</span>
-        </label>
-        <p className="text-xs text-zinc-500">
-          민감정보로 분류되며 맞춤 추천에만 사용됩니다.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {HOUSEHOLD_OPTIONS.map((opt) => {
-            const checked = form.household_types.includes(opt.value);
-            return (
+            <p className="text-xs text-grey-600">
+              맞춤 추천에만 사용되며 외부에 제공되지 않습니다.
+            </p>
+            <div className="flex flex-col gap-2 pt-1">
+              {INCOME_OPTIONS.map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex items-start gap-2 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="income_level"
+                    value={opt.value}
+                    checked={form.income_level === opt.value}
+                    onChange={() =>
+                      updateForm((p) => ({ ...p, income_level: opt.value }))
+                    }
+                    className="mt-0.5"
+                  />
+                  <span className="text-sm">{opt.label}</span>
+                </label>
+              ))}
+              {/* 선택 안 함 — 라디오 전체 해제 */}
               <button
-                key={opt.value}
                 type="button"
                 onClick={() =>
-                  updateForm((p) => ({
-                    ...p,
-                    household_types: checked
-                      ? p.household_types.filter((v) => v !== opt.value)
-                      : [...p.household_types, opt.value],
-                  }))
+                  updateForm((p) => ({ ...p, income_level: null }))
                 }
-                className={`px-3 py-1.5 rounded-full text-sm border transition ${
-                  checked
-                    ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'bg-white text-zinc-700 border-zinc-300 hover:border-emerald-400'
-                }`}
+                className="text-xs text-grey-600 underline self-start"
               >
-                {opt.label}
+                선택 안 함
               </button>
-            );
-          })}
-        </div>
-      </section>
+            </div>
+          </div>
 
-      {/* 관심사 (다중 선택) */}
-      <div>
-        <label className="block text-[13px] font-semibold text-grey-700 mb-2">
-          관심 분야{" "}
-          <span className="text-grey-600 font-normal">(여러 개 선택 가능)</span>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {INTERESTS.map((item) => {
-            const selected = form.interests.includes(item);
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => toggleInterest(item)}
-                className={`px-3.5 py-2 rounded-full text-[14px] font-medium border transition-colors cursor-pointer ${
-                  selected
-                    ? "bg-blue-500 text-white border-blue-500"
-                    : "bg-white text-grey-700 border-grey-200 hover:bg-grey-50"
-                }`}
-              >
-                {item}
-              </button>
-            );
-          })}
-        </div>
+          {/* 가구 상태 (다중 선택, 민감정보) */}
+          <div className="space-y-2">
+            <label className="block text-[13px] font-semibold text-grey-700">
+              가구 상태{" "}
+              <span className="text-xs font-normal text-grey-600">(다중)</span>
+            </label>
+            <p className="text-xs text-grey-600">
+              민감정보로 분류되며 맞춤 추천에만 사용됩니다.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {HOUSEHOLD_OPTIONS.map((opt) => {
+                const checked = form.household_types.includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      updateForm((p) => ({
+                        ...p,
+                        household_types: checked
+                          ? p.household_types.filter((v) => v !== opt.value)
+                          : [...p.household_types, opt.value],
+                      }))
+                    }
+                    className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                      checked
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-white text-zinc-700 border-zinc-300 hover:border-emerald-400"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 관심 분야 (다중 선택) */}
+          <div>
+            <label className="block text-[13px] font-semibold text-grey-700 mb-2">
+              관심 분야{" "}
+              <span className="text-grey-600 font-normal">(여러 개)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {INTERESTS.map((item) => {
+                const selected = form.interests.includes(item);
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => toggleInterest(item)}
+                    className={`px-3.5 py-2 rounded-full text-[14px] font-medium border transition-colors cursor-pointer ${
+                      selected
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "bg-white text-grey-700 border-grey-200 hover:bg-grey-50"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
       </div>
 
-      {/* 에러 메시지 (실패는 지속 노출 — 사용자가 원인 확인할 시간 필요) */}
+      {/* 에러 메시지 — 사용자가 원인 확인할 시간 필요해서 지속 노출 */}
       {error && (
         <div className="bg-red/10 border border-red/30 rounded-lg p-3 text-sm text-red">
           {error}
@@ -262,9 +285,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         {saved ? "프로필이 저장됐어요" : ""}
       </span>
 
-      {/* 저장 버튼 — 3가지 상태(평상시 / 저장 중 / 저장 성공)
-          성공 상태는 1.8초 뒤 useEffect 타이머가 자동 해제 → 버튼이 원래대로 복귀.
-          성공 색은 브랜드 그린(#3F7D52)으로 성공을 명확히 시각화하되 톤은 유지 */}
+      {/* 저장 버튼 — 풀폭, 2컬럼 아래 (성공 상태는 1.8초 뒤 자동 복귀) */}
       <button
         onClick={handleSave}
         disabled={saving || saved}
@@ -280,42 +301,3 @@ export function ProfileForm({ initial }: { initial: Profile }) {
   );
 }
 
-// 공통: 단일 선택 칩 그룹 (나이·지역·직업에서 재사용)
-function ChipSelect({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: readonly string[];
-  value: string | null;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-[13px] font-semibold text-grey-700 mb-2">
-        {label}
-      </label>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => {
-          const selected = value === opt;
-          return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => onChange(opt)}
-              className={`px-3.5 py-2 rounded-full text-[14px] font-medium border transition-colors cursor-pointer ${
-                selected
-                  ? "bg-blue-500 text-white border-blue-500"
-                  : "bg-white text-grey-700 border-grey-200 hover:bg-grey-50"
-              }`}
-            >
-              {opt}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
