@@ -1,0 +1,33 @@
+-- ============================================================
+-- 053_drop_dead_indexes_v2 — 미사용 dead 인덱스 2개 추가 제거
+-- ============================================================
+-- Supabase advisor unused_index INFO 추가 정리 (2026-04-26 야간 헬스체크 후속).
+-- 052 이후 새로 잡힌 unused_index 8건 중 코드 사용 분석으로 진짜 dead 만 선별.
+--
+-- 1) idx_welfare_serv_id
+--    serv_id 는 legacy bokjiro collector 가 쓰던 컬럼. 신규 코드는 source_id
+--    통합 사용 (enrich/route.ts 의 r.source_id ?? r.serv_id ?? null fallback
+--    에서만 select 컬럼으로 등장, 실제 인덱스 조회 0).
+--
+-- 2) idx_loan_detail_failed_at
+--    enrich 후보 쿼리가 .or(IS NULL OR < threshold) 패턴이라 인덱스 효과 거의
+--    없음 (NULL 다수 + or 절). loan 쪽은 fail 0건이라 더더욱.
+--
+-- 보존 결정 (advisor unused 였지만 거짓양성):
+--   - idx_consent_type_version : lib/consent.ts 에서 사용 (트래픽 적어 통계 0)
+--   - idx_admin_actions_target_recent : 관리자 페이지 감사로그 표시
+--   - idx_payment_user : mypage/billing 결제 이력 (active 구독 0건)
+--   - idx_delivery_user_created : 사용자 알림 이력 + admin 모니터링
+--   - idx_news_keywords_gin : long-tail SEO 페이지 (신규)
+--   - idx_pending_deletions_scheduled : finalize-deletions cron (row 0)
+--
+-- welfare_duplicate_of_fk 무인덱스 FK 도 INFO 였지만 ON DELETE SET NULL +
+-- duplicate_of_id 채워진 row 0 이라 시급 X. dedup 활성화 시 인덱스 한 줄
+-- 추가하면 됨. 보존.
+--
+-- 효과: 인덱스 ~수백KB 회수 + autovacuum INSERT/UPDATE 비용 절감.
+-- 회귀 위험: 0 — 인덱스만 삭제, 컬럼·row 보존. 필요 시 CREATE INDEX 로 재생성.
+-- ============================================================
+
+DROP INDEX IF EXISTS public.idx_welfare_serv_id;
+DROP INDEX IF EXISTS public.idx_loan_detail_failed_at;
