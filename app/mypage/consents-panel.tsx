@@ -201,85 +201,153 @@ export function ConsentsPanel({
         </div>
       )}
 
-      <div className="space-y-3">
-        {CONSENT_META.map(({ type, label, description, required }) => {
-          const isOn = active[type] === true;
-          const needs = needsAck(type, required);
-          const consentedAt = recordMap[type]?.consentedAt;
-          return (
-            <div
-              key={type}
-              className={`flex items-start justify-between gap-4 p-4 border rounded-lg ${
-                needs ? "border-red/40 bg-red/5" : "border-grey-200"
-              }`}
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`text-[12px] font-semibold px-2 py-0.5 rounded ${
-                      required
-                        ? "bg-red/10 text-red"
-                        : "bg-grey-100 text-grey-700"
-                    }`}
-                  >
-                    {required ? "필수" : "선택"}
-                  </span>
-                  <span className="text-[15px] font-semibold text-grey-900">
-                    {label}
-                  </span>
-                </div>
-                <p className="text-[13px] text-grey-600 leading-[1.5] mb-1">
-                  {description}
-                </p>
-                {needs ? (
-                  <p className="text-[13px] text-red font-medium">
-                    ⚠️ 최신 방침에 대한 동의 기록이 없어요. 확인해 주세요.
-                  </p>
-                ) : (
-                  consentedAt && (
-                    <p className="text-[13px] text-grey-600">
-                      {new Date(consentedAt).toLocaleDateString("ko-KR")} 동의
-                    </p>
-                  )
-                )}
-              </div>
+      {/* 필수 / 선택 그룹으로 분리 — 사용자가 "이건 못 끄는 건가?" 헷갈리지 않도록 */}
+      <div className="space-y-8">
+        {/* ── 필수 동의 ── */}
+        <section>
+          <h3 className="text-[14px] font-semibold text-grey-900 mb-3 pb-2 border-b border-grey-100">
+            필수 동의{" "}
+            <span className="text-xs font-normal text-grey-600">
+              (철회는 회원 탈퇴로만 가능)
+            </span>
+          </h3>
+          <div className="space-y-2">
+            {CONSENT_META.filter((m) => m.required).map((meta) => (
+              <ConsentRow
+                key={meta.type}
+                meta={meta}
+                isOn={active[meta.type] === true}
+                needs={needsAck(meta.type, meta.required)}
+                consentedAt={recordMap[meta.type]?.consentedAt}
+                busy={busy === meta.type}
+                onAck={() => handleAck(meta.type)}
+                onToggle={() => handleToggle(meta.type, meta.required)}
+              />
+            ))}
+          </div>
+        </section>
 
-              {/* 필수 + 재동의 필요 → 지금 동의 버튼 / 필수 + 최신 → "동의" 표시 / 선택 → 토글 */}
-              {required ? (
-                needs ? (
-                  <button
-                    type="button"
-                    onClick={() => handleAck(type)}
-                    disabled={busy === type}
-                    className="shrink-0 px-3 py-1.5 text-[13px] font-semibold text-white bg-red rounded-md border-none cursor-pointer hover:opacity-90 disabled:opacity-50 whitespace-nowrap"
-                  >
-                    지금 동의
-                  </button>
-                ) : (
-                  <div className="text-[13px] font-semibold text-grey-700 pt-1">
-                    동의
-                  </div>
-                )
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleToggle(type, required)}
-                  disabled={busy === type}
-                  aria-pressed={isOn}
-                  className={`relative w-[46px] h-[26px] rounded-full transition-colors cursor-pointer border-none flex-shrink-0 mt-0.5 disabled:opacity-50 ${
-                    isOn ? "bg-blue-500" : "bg-grey-300"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-[3px] w-[20px] h-[20px] bg-white rounded-full transition-transform ${
-                      isOn ? "translate-x-[23px]" : "translate-x-[3px]"
-                    }`}
-                  />
-                </button>
-              )}
-            </div>
-          );
-        })}
+        {/* ── 선택 동의 ── */}
+        <section>
+          <h3 className="text-[14px] font-semibold text-grey-900 mb-3 pb-2 border-b border-grey-100">
+            선택 동의{" "}
+            <span className="text-xs font-normal text-grey-600">
+              (언제든 끄고 켤 수 있어요)
+            </span>
+          </h3>
+          <div className="space-y-2">
+            {CONSENT_META.filter((m) => !m.required).map((meta) => (
+              <ConsentRow
+                key={meta.type}
+                meta={meta}
+                isOn={active[meta.type] === true}
+                needs={false}
+                consentedAt={recordMap[meta.type]?.consentedAt}
+                busy={busy === meta.type}
+                onAck={() => handleAck(meta.type)}
+                onToggle={() => handleToggle(meta.type, meta.required)}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+// ConsentRow — 동의 1건 카드. 필수/선택 그룹 어디든 동일하게 사용.
+// 필수 + 최신 버전 → "동의완료" 배지
+// 필수 + 구버전·미기록 → 재동의 카드(빨강) + "지금 동의" 버튼
+// 선택 → 토글
+function ConsentRow({
+  meta,
+  isOn,
+  needs,
+  consentedAt,
+  busy,
+  onAck,
+  onToggle,
+}: {
+  meta: (typeof CONSENT_META)[number];
+  isOn: boolean;
+  needs: boolean;
+  consentedAt: string | undefined;
+  busy: boolean;
+  onAck: () => void;
+  onToggle: () => void;
+}) {
+  const dateLabel = consentedAt
+    ? new Date(consentedAt).toLocaleDateString("ko-KR")
+    : null;
+
+  return (
+    <div
+      className={`flex items-start justify-between gap-4 px-4 py-3 border rounded-lg bg-white ${
+        needs ? "border-red/40 bg-red/5" : "border-grey-200"
+      }`}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          {meta.required && (
+            <span aria-hidden className="text-[11px]">
+              🔒
+            </span>
+          )}
+          <span className="text-[14px] font-semibold text-grey-900">
+            {meta.label}
+          </span>
+          {dateLabel && !needs && (
+            <span className="ml-auto text-[11px] text-grey-600 whitespace-nowrap">
+              {dateLabel} 동의
+            </span>
+          )}
+        </div>
+        <p className="text-[12px] text-grey-700 leading-[1.5]">
+          {meta.description}
+        </p>
+        {needs && (
+          <p className="text-[12px] text-red font-medium mt-1">
+            ⚠️ 최신 방침에 대한 동의 기록이 없어요. 확인해 주세요.
+          </p>
+        )}
+      </div>
+
+      <div className="shrink-0 self-center">
+        {meta.required ? (
+          needs ? (
+            <button
+              type="button"
+              onClick={onAck}
+              disabled={busy}
+              className="px-3 py-1.5 text-[12px] font-semibold text-white bg-red rounded-md border-none cursor-pointer hover:opacity-90 disabled:opacity-50 whitespace-nowrap"
+            >
+              지금 동의
+            </button>
+          ) : (
+            <span className="text-[12px] font-medium text-emerald-700 px-2 py-1 bg-emerald-50 rounded whitespace-nowrap">
+              동의완료
+            </span>
+          )
+        ) : (
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={busy}
+            aria-pressed={isOn}
+            className={`relative w-[46px] h-[26px] rounded-full transition-colors cursor-pointer border-none disabled:opacity-50 ${
+              isOn ? "bg-blue-500" : "bg-grey-300"
+            }`}
+          >
+            <span
+              className={`absolute top-[3px] w-[20px] h-[20px] bg-white rounded-full transition-transform ${
+                isOn ? "translate-x-[23px]" : "translate-x-[3px]"
+              }`}
+            />
+            <span className="sr-only">
+              {meta.label} {isOn ? "끄기" : "켜기"}
+            </span>
+          </button>
+        )}
       </div>
     </div>
   );
