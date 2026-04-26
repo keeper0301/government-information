@@ -42,7 +42,7 @@ export default async function LoanDraftPage({ params }: Props) {
     supabase
       .from('loan_programs')
       .select(
-        'id, title, description, eligibility, benefits, apply_method, apply_url, category, source, benefit_tags',
+        'id, title, description, eligibility, apply_method, apply_url, category, source, benefit_tags',
       )
       .eq('id', id)
       .single(),

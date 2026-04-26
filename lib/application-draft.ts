@@ -226,10 +226,12 @@ function lookup(map: Record<string, string>, v: string | null): string {
 // ============================================================
 // 핵심 함수 — 신청서 초안 생성
 // ============================================================
+// benefits 필드는 현재 함수 본문에서 참조 0 — 후속 amount/benefit_summary 자동
+// 채움 작업 (matching.ts select 확장) 시 활용 예정. 그 전엔 type 에서 제거해
+// fetch 부담 0 (page 의 select 도 함께 정리).
 type ProgramForDraft = ProgramForClassify & {
   description: string | null;
   eligibility: string | null;
-  benefits: string | null;
   apply_method: string | null;
   apply_url: string | null;
 };

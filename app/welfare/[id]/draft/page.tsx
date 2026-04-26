@@ -44,7 +44,7 @@ export default async function WelfareDraftPage({ params }: Props) {
     supabase
       .from('welfare_programs')
       .select(
-        'id, title, description, eligibility, benefits, apply_method, apply_url, category, source, benefit_tags',
+        'id, title, description, eligibility, apply_method, apply_url, category, source, benefit_tags',
       )
       .eq('id', id)
       .single(),
