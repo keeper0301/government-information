@@ -20,7 +20,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
-import { findFetcher, type RowIdentity, type DetailResult } from "@/lib/detail-fetchers";
+import {
+  findFetcher,
+  FETCHABLE_WELFARE_SOURCES,
+  FETCHABLE_LOAN_SOURCES,
+  type RowIdentity,
+  type DetailResult,
+} from "@/lib/detail-fetchers";
 
 // 10건 × 4초 interval = 36초 + fetch 응답 (~1~2s × 10) = ~50s → 60s 한도에 여유.
 // 최초엔 12 로 설정했으나 코드리뷰 결과 fetch 지연 누적 시 60s 초과 가능성
@@ -48,11 +54,10 @@ async function pickCandidates(
 
   // welfare / loan 각각 별도 쿼리 — select 문자열을 동적으로 만들면 supabase-js 타입 추론이 깨짐.
   //
-  // 2026-04-25 naver-news-* 제외 — naver-news collector 가 welfare_programs 에 뉴스를
-  // 20000+ 건 저장해둔 상태라 nullsFirst 정렬 시 이 뉴스들이 먼저 뽑혀서 10건 전부
-  // skipped (applies 매칭 0건) → cron 실패 알림 반복. 근본 해결(뉴스를 news_posts 로
-  // 이전) 은 별개 작업, 여기서는 enrich 후보에서만 배제해 정상 후보(bokjiro/youthcenter)
-  // 가 뽑히도록 함.
+  // 2026-04-26 source_code 화이트리스트 (FETCHABLE_*_SOURCES) — fetcher 매칭
+  // 가능한 source 만 후보 큐에 진입. 이전엔 fetcher 없는 local-welfare 8580건
+  // 등 노이즈가 매 batch 후보를 점유해 bokjiro/mss 진행률 1~2%/일 수준.
+  // 화이트리스트로 noise 제거 후 진행률 5~10배 향상 예상.
   //
   // 2026-04-25 limit 분배 균등화 — 이전엔 welfare 와 loan 각각 limit 만큼 뽑은 뒤
   // [...w, ...l].slice(0, limit) 로 잘라서 결과적으로 welfare 가 항상 우선 처리됨.
@@ -63,7 +68,7 @@ async function pickCandidates(
     supabase
       .from("welfare_programs")
       .select("id, source_code, source_id, source_url, serv_id, raw_payload")
-      .not("source_code", "like", "naver-news-%")
+      .in("source_code", [...FETCHABLE_WELFARE_SOURCES])
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
@@ -71,6 +76,7 @@ async function pickCandidates(
     supabase
       .from("loan_programs")
       .select("id, source_code, source_id, source_url, raw_payload")
+      .in("source_code", [...FETCHABLE_LOAN_SOURCES])
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })

@@ -56,6 +56,17 @@ export const DETAIL_FETCHERS: DetailFetcher[] = [
   mssDetail,
 ];
 
+// 후보 큐 화이트리스트 — pickCandidates 가 이 source_code 만 후보로 뽑음.
+// 2026-04-26 진단: welfare 9,791건 (local-welfare 8580 / youth-v1 1168 / legacy 43)
+// 과 loan 915건 (legacy / fsc / kinfa / koreg-haedream) 은 fetcher 매칭 0건인데도
+// nullsFirst 정렬로 매 batch 후보 큐를 점유 → 진짜 fetchable 인 bokjiro/mss 가
+// 후순위로 밀려 시간당 1~2건만 진행. 화이트리스트로 노이즈 제거 → 진행률 5~10배.
+//
+// youth-v1 은 raw_payload·source_id 모두 NULL 이라 youthcenter fetcher 가
+// 처리 불가 (1168건 영구 skip). future youth-v2 collector 로 전환되면 추가.
+export const FETCHABLE_WELFARE_SOURCES = ["bokjiro", "youth-v2"] as const;
+export const FETCHABLE_LOAN_SOURCES = ["mss"] as const;
+
 // row 에 대응하는 fetcher 찾기
 export function findFetcher(row: RowIdentity): DetailFetcher | null {
   for (const f of DETAIL_FETCHERS) {
