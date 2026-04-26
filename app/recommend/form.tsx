@@ -195,7 +195,10 @@ export function RecommendForm({ initial, initialPrograms }: Props) {
                 ({programs.length}건)
               </span>
             </h2>
-            <div>
+            {/* welfare/loan/popular 와 동일한 카드형 wrapper —
+                흰 페이지 배경에 행이 묻히던 가독성 사고 (사장님 피드백) hot-fix.
+                bg-white + border + rounded + 토스 토큰 shadow-sm 으로 행 경계 명확. */}
+            <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2 shadow-sm">
               {programs.map((program) => (
                 <ProgramRow key={program.id} program={program} />
               ))}
