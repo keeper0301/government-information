@@ -33,11 +33,14 @@ export default async function MyPage() {
     redirect("/login?next=/mypage");
   }
 
-  // 이번 달 1일 0시 (KST 단순화) 부터 알림톡 발송 수 카운트.
+  // 이번 달 1일 KST 0시 부터 알림톡 발송 수 카운트.
+  // Vercel 서버는 UTC 라 단순 setHours(0) 하면 한국 사용자 기준 9시간 어긋남.
+  // KST = UTC+9 → "한국 4월 1일 0시" = "UTC 3월 31일 15시" 로 변환.
   // alert_deliveries.channel='kakao' + status='sent' 만 집계 (실제 도착한 건만).
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const monthStart = new Date(
+    Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), 1, -9, 0, 0)
+  );
 
   const [{ data: profile }, consents, { count: alertsThisMonth }] =
     await Promise.all([
@@ -117,7 +120,7 @@ export default async function MyPage() {
         accountSlot={
           <AccountTab
             email={email}
-            createdAt={user.created_at ?? new Date().toISOString()}
+            createdAt={user.created_at ?? null}
             provider={provider}
             alertsThisMonth={alertsThisMonth ?? 0}
           />

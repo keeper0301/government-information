@@ -282,8 +282,10 @@ function ConsentRow({
 
   return (
     <div
-      className={`flex items-start justify-between gap-4 px-4 py-3 border rounded-lg bg-white ${
-        needs ? "border-red/40 bg-red/5" : "border-grey-200"
+      className={`flex items-start justify-between gap-4 px-4 py-3 border rounded-lg ${
+        needs
+          ? "border-red/40 bg-red/5"
+          : "border-grey-200 bg-white"
       }`}
     >
       <div className="flex-1 min-w-0">

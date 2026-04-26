@@ -11,15 +11,19 @@ export function AccountTab({
   alertsThisMonth,
 }: {
   email: string;
-  createdAt: string; // ISO timestamp
+  createdAt: string | null; // ISO timestamp · null 이면 "(미상)"
   provider: string | null; // 'google' | 'kakao' 등
   alertsThisMonth: number;
 }) {
-  const joinedLabel = new Date(createdAt).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  // 가입 일자 — Supabase user.created_at 이 비어있는 비정상 케이스에 "오늘 가입"
+  // 처럼 잘못 표시되지 않도록 명시적 fallback.
+  const joinedLabel = createdAt
+    ? new Date(createdAt).toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "(미상)";
   const providerLabel = providerToLabel(provider, email);
 
   return (
@@ -78,7 +82,8 @@ function providerToLabel(provider: string | null, email: string): string {
     case "kakao":
       return `카카오 (${email})`;
     case "email":
-      return `이메일 (${email})`;
+      // email provider 자체가 이메일이라 라벨 중복 회피
+      return email || "이메일";
     default:
       return email || "(알 수 없음)";
   }
