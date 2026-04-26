@@ -9,6 +9,16 @@ import { previewMatchCount } from "@/lib/alerts/matching";
 import { requireTier } from "@/lib/subscription";
 import { hasActiveConsent } from "@/lib/consent";
 
+// Phase 1.5 income_target 화이트리스트 정규화 — DB CHECK 와 동일한 enum.
+// 잘못된 값이나 빈 문자열은 NULL 로 변환 (매칭 무관).
+const VALID_INCOME_TARGET = new Set(['low', 'mid_low', 'mid', 'any']);
+function normalizeIncomeTarget(
+  v: unknown,
+): 'low' | 'mid_low' | 'mid' | 'any' | null {
+  if (typeof v !== 'string' || !VALID_INCOME_TARGET.has(v)) return null;
+  return v as 'low' | 'mid_low' | 'mid' | 'any';
+}
+
 // 알림 규칙은 basic 이상만 (무료 사용자는 pricing 페이지로 유도)
 async function requireAuth() {
   const supabase = await createClient();
@@ -57,6 +67,7 @@ export async function POST(request: NextRequest) {
       occupation_tags: body.occupation_tags || [],
       benefit_tags: body.benefit_tags || [],
       household_tags: body.household_tags || [],
+      income_target: normalizeIncomeTarget(body.income_target),
       keyword: body.keyword || null,
     });
     return NextResponse.json(preview);
@@ -113,6 +124,7 @@ export async function POST(request: NextRequest) {
       occupation_tags: body.occupation_tags || [],
       benefit_tags: body.benefit_tags || [],
       household_tags: body.household_tags || [],
+      income_target: normalizeIncomeTarget(body.income_target),
       keyword: body.keyword?.substring(0, 100) || null,
       channels,
       phone_number: channels.includes("kakao") ? body.phone_number || null : null,

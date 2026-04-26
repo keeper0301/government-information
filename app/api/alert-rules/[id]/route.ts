@@ -72,6 +72,12 @@ export async function PATCH(
   if (Array.isArray(body.occupation_tags)) update.occupation_tags = body.occupation_tags;
   if (Array.isArray(body.benefit_tags)) update.benefit_tags = body.benefit_tags;
   if (Array.isArray(body.household_tags)) update.household_tags = body.household_tags;
+  // Phase 1.5 income 매칭 — 명시 키 있을 때만 갱신 (undefined 면 보존)
+  if ('income_target' in body) {
+    const v = body.income_target;
+    update.income_target =
+      typeof v === 'string' && ['low', 'mid_low', 'mid', 'any'].includes(v) ? v : null;
+  }
   if (typeof body.keyword === "string" || body.keyword === null) {
     update.keyword = body.keyword?.substring(0, 100) || null;
   }

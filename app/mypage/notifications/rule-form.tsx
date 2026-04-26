@@ -27,10 +27,28 @@ type Rule = {
   occupation_tags: string[];
   benefit_tags: string[];
   household_tags: string[];
+  // Phase 1.5 income 매칭 (054). null 이면 매칭 무관.
+  income_target: 'low' | 'mid_low' | 'mid' | 'any' | null;
   keyword: string | null;
   channels: string[];
   phone_number: string | null;
   is_active: boolean;
+};
+
+// 소득 매칭 옵션 — '' 이면 NULL 저장 (매칭 무관). any 는 정책 본문 '전 국민'
+// 키워드와 매칭이라 사용자 필터로는 의미 약함 → UI 제외.
+const INCOME_FILTER_OPTIONS = [
+  { value: '', label: '소득 무관 (모든 정책)' },
+  { value: 'low', label: '기초생활 (수급권자·의료급여 등)' },
+  { value: 'mid_low', label: '차상위 (중위소득 60~80%)' },
+  { value: 'mid', label: '중위소득 100~150%' },
+] as const;
+
+const INCOME_LABEL: Record<string, string> = {
+  low: '기초생활',
+  mid_low: '차상위',
+  mid: '중위소득',
+  any: '전 국민',
 };
 
 type Props = {
@@ -50,6 +68,7 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
   const [occupations, setOccupations] = useState<string[]>([]);
   const [benefits, setBenefits] = useState<string[]>([]);
   const [households, setHouseholds] = useState<string[]>([]);
+  const [incomeTarget, setIncomeTarget] = useState<string>(""); // '' = NULL
   const [keyword, setKeyword] = useState("");
   const [channels, setChannels] = useState<string[]>(["email"]);
   const [phone, setPhone] = useState("");
@@ -69,6 +88,7 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
     occupation_tags: occupations,
     benefit_tags: benefits,
     household_tags: households,
+    income_target: incomeTarget || null,
     keyword: keyword.trim() || null,
     channels,
     phone_number: channels.includes("kakao") ? phone.trim() : null,
@@ -156,6 +176,7 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
                       r.occupation_tags.length > 0 && `업종: ${r.occupation_tags.join(",")}`,
                       r.benefit_tags.length > 0 && `분야: ${r.benefit_tags.join(",")}`,
                       r.household_tags.length > 0 && `가구: ${r.household_tags.join(",")}`,
+                      r.income_target && `소득: ${INCOME_LABEL[r.income_target] ?? r.income_target}`,
                     ].filter(Boolean).join(" · ") || "모든 정책"}
                   </div>
                 </div>
@@ -196,6 +217,20 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
           onToggle={(v) => toggle(benefits, setBenefits, v)} />
         <TagGroup label="가구·개인 상태" tags={HOUSEHOLD_TAGS} selected={households}
           onToggle={(v) => toggle(households, setHouseholds, v)} />
+
+        {/* Phase 1.5 income 매칭 — 정책 본문에서 추출한 income_target_level 정확 매칭 */}
+        <label className="block mb-4">
+          <span className="text-sm font-semibold mb-1 block">소득 분위 (선택)</span>
+          <select
+            value={incomeTarget}
+            onChange={(e) => { setIncomeTarget(e.target.value); setPreview(null); }}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white"
+          >
+            {INCOME_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </label>
 
         <label className="block mb-4">
           <span className="text-sm font-semibold mb-1 block">추가 키워드 (선택)</span>

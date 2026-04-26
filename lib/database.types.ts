@@ -121,6 +121,8 @@ export type UserAlertRule = {
   occupation_tags: string[] | null;
   benefit_tags: string[] | null;
   household_tags: string[] | null;
+  // Phase 1.5 income 매칭 (054). NULL 이면 무관, 그 외엔 income_target_level 정확 매칭.
+  income_target: 'low' | 'mid_low' | 'mid' | 'any' | null;
   keyword: string | null;
   channels: string[];
   phone_number: string | null;

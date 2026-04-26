@@ -16,6 +16,8 @@ export type AlertRule = {
   occupation_tags: string[];
   benefit_tags: string[];
   household_tags: string[];
+  // Phase 1.5 income 매칭 (054 마이그레이션). null 이면 매칭 무관.
+  income_target: 'low' | 'mid_low' | 'mid' | 'any' | null;
   keyword: string | null;
   channels: string[];
   phone_number: string | null;
@@ -76,6 +78,11 @@ export async function findMatchingPrograms(
     if (rule.household_tags.length > 0) {
       query = query.overlaps("household_tags", rule.household_tags);
     }
+    // Phase 1.5 income 매칭 — rule.income_target 설정된 경우만 정책의
+    // income_target_level 과 정확 매칭 (extractTargeting 추출 결과).
+    if (rule.income_target) {
+      query = query.eq("income_target_level", rule.income_target);
+    }
     if (rule.keyword && rule.keyword.trim().length >= 2) {
       const k = rule.keyword.trim();
       query = query.or(`title.ilike.%${k}%,description.ilike.%${k}%`);
@@ -108,7 +115,7 @@ export async function findMatchingPrograms(
 export async function previewMatchCount(
   supabase: SupabaseClient,
   rule: Pick<AlertRule,
-    "region_tags" | "age_tags" | "occupation_tags" | "benefit_tags" | "household_tags" | "keyword">,
+    "region_tags" | "age_tags" | "occupation_tags" | "benefit_tags" | "household_tags" | "income_target" | "keyword">,
 ): Promise<{ total: number; samples: MatchedProgram[] }> {
   const samples: MatchedProgram[] = [];
   let total = 0;
@@ -129,6 +136,7 @@ export async function previewMatchCount(
     if (rule.occupation_tags.length > 0) query = query.overlaps("occupation_tags", rule.occupation_tags);
     if (rule.benefit_tags.length > 0) query = query.overlaps("benefit_tags", rule.benefit_tags);
     if (rule.household_tags.length > 0) query = query.overlaps("household_tags", rule.household_tags);
+    if (rule.income_target) query = query.eq("income_target_level", rule.income_target);
     if (rule.keyword && rule.keyword.trim().length >= 2) {
       const k = rule.keyword.trim();
       query = query.or(`title.ilike.%${k}%,description.ilike.%${k}%`);
