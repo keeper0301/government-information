@@ -50,6 +50,10 @@ export const EVENTS = {
   PROFILE_ENHANCE_BANNER_SHOWN: "profile_enhance_banner_shown",
   PROFILE_ENHANCE_BANNER_CLICKED: "profile_enhance_banner_clicked",
   PROFILE_ENHANCE_BANNER_DISMISSED: "profile_enhance_banner_dismissed",
+  // /quiz funnel — 익명 진단 후 가입 전환·공유 측정
+  QUIZ_SIGNUP_CLICKED: "quiz_signup_clicked",   // 결과 → 가입 버튼 클릭 (prefill 저장)
+  QUIZ_SHARE_CLICKED: "quiz_share_clicked",     // 결과 공유 버튼 클릭
+  QUIZ_PREFILL_APPLIED: "quiz_prefill_applied", // 온보딩에서 prefill 자동 채움 발생
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

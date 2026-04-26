@@ -24,7 +24,10 @@ import {
   type RegionOption,
   type OccupationOption,
   type IncomeOption,
+  type HouseholdOption,
 } from '@/lib/profile-options';
+import { QuizResultActions } from './quiz-result-actions';
+import type { QuizPrefill } from '@/lib/quiz-prefill';
 
 export const dynamic = 'force-dynamic';
 
@@ -331,6 +334,31 @@ function QuizResult({
   input: ResultInput;
   programs: Awaited<ReturnType<typeof welfareToDisplay>>[];
 }) {
+  // ───────────────────────────────────────────────
+  // 가입 funnel 용 prefill 객체 (회원가입 후 /onboarding 자동 채움)
+  // 이미 입력값이 화이트리스트 narrow 통과한 상태라 캐스팅 안전.
+  // ───────────────────────────────────────────────
+  const prefill: QuizPrefill = {
+    ageGroup: input.age as AgeOption,
+    region: input.region as RegionOption,
+    occupation: input.occupation as OccupationOption,
+    incomeLevel: (input.income as IncomeOption | null) ?? null,
+    householdTypes: input.householdTypes as HouseholdOption[],
+  };
+
+  // ───────────────────────────────────────────────
+  // 결과 공유용 path — 동일 답변이 같은 결과를 재현하도록 GET 쿼리로 인코딩
+  // ───────────────────────────────────────────────
+  const params = new URLSearchParams();
+  params.set('age', input.age);
+  params.set('region', input.region);
+  params.set('occupation', input.occupation);
+  if (input.income) params.set('income', input.income);
+  for (const h of input.householdTypes) {
+    params.append('household', h);
+  }
+  const sharePath = `/quiz?${params.toString()}`;
+
   return (
     <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:pt-24 max-md:px-6">
       <Link
@@ -351,23 +379,8 @@ function QuizResult({
             .join('·')}`}
       </p>
 
-      {/* 가입 유도 CTA — 결과 위쪽에 명확히 노출 */}
-      <div className="mb-6 p-5 bg-blue-50 border border-blue-200 rounded-2xl flex items-center gap-4 max-md:flex-col max-md:items-start">
-        <div className="flex-1">
-          <p className="text-[15px] font-semibold text-blue-900 mb-1">
-            새 정책이 나오면 카톡·이메일로 알려드릴까요?
-          </p>
-          <p className="text-[13px] text-blue-800 leading-[1.55]">
-            가입하면 본인 자격에 맞는 신규 정책을 매일 자동으로 받아볼 수 있어요. (무료)
-          </p>
-        </div>
-        <Link
-          href="/signup"
-          className="shrink-0 inline-flex items-center min-h-[44px] px-5 text-[14px] font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-xl no-underline"
-        >
-          무료 가입 →
-        </Link>
-      </div>
+      {/* 가입 CTA + 공유 — client component (prefill 저장 + Web Share / clipboard) */}
+      <QuizResultActions prefill={prefill} sharePath={sharePath} />
 
       {programs.length === 0 ? (
         <div className="bg-cream rounded-2xl p-10 text-center text-grey-700">

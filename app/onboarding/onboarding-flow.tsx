@@ -3,7 +3,9 @@
 // - 5단계 진행 표시줄 + 이전/건너뛰기/다음 버튼 관리
 // - 각 단계별 step 컴포넌트를 렌더링
 // - 마지막 단계에서 완료 → saveOnboardingProfile server action 호출 후 /mypage 이동
-import { useState } from 'react';
+// - prefill 처리: page.tsx 가 server 단에서 쿠키 읽어 initial 에 합쳐 전달.
+//   여기는 mount 시 쿠키만 정리 (재진입 시 prefill 재적용 방지)
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { StepAge } from './steps/step-age';
 import { StepRegion } from './steps/step-region';
@@ -15,6 +17,8 @@ import type {
   IncomeOption, HouseholdOption,
 } from '@/lib/profile-options';
 import { saveOnboardingProfile } from './actions';
+import { clearQuizPrefill } from '@/lib/quiz-prefill';
+import { trackEvent, EVENTS } from '@/lib/analytics';
 
 // 온보딩 상태 타입 (5단계에서 공유)
 export type OnboardingState = {
@@ -31,15 +35,36 @@ export type OnboardingState = {
 const TOTAL_STEPS = 5;
 
 export function OnboardingFlow({
-  userId, initial,
+  userId, initial, prefillApplied,
 }: {
   userId: string;
   initial: OnboardingState;
+  // page.tsx 가 쿠키 prefill 을 initial 에 적용했는지 여부
+  // - true: 쿠키 정리 + GA4 funnel 이벤트 발사
+  // - false: 일반 진입 (재진입 등) — 부작용 없음
+  prefillApplied: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<OnboardingState>(initial);
   const [saving, setSaving] = useState(false);
+
+  // ───────────────────────────────────────────────
+  // /quiz 쿠키 후처리 — prefill 적용된 경우에만 mount 시 1회.
+  // 1) 쿠키 정리: 재진입(또는 다른 사용자 로그인) 시 prefill 재사용 방지
+  // 2) GA4 funnel 이벤트: 쿼즈→가입→prefill 전환율 측정
+  // setState 호출 없는 effect 라 react-hooks/set-state-in-effect 룰 통과.
+  // ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!prefillApplied) return;
+    clearQuizPrefill();
+    trackEvent(EVENTS.QUIZ_PREFILL_APPLIED, {
+      age: initial.ageGroup ?? 'none',
+      region: initial.region ?? 'none',
+      has_income: initial.incomeLevel ? 'yes' : 'no',
+      has_household: initial.householdTypes.length > 0 ? 'yes' : 'no',
+    });
+  }, [prefillApplied, initial.ageGroup, initial.region, initial.incomeLevel, initial.householdTypes.length]);
 
   // 특정 키 값만 업데이트하는 헬퍼
   function update<K extends keyof OnboardingState>(key: K, value: OnboardingState[K]) {
