@@ -18,7 +18,7 @@ import {
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { LoanProgram } from "@/lib/database.types";
-import type { ScorableItem } from "@/lib/personalization/score";
+import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
 
 export const metadata: Metadata = {
   title: "소상공인 대출·지원금 — 정책알리미",
@@ -139,24 +139,43 @@ export default async function LoanPage({ searchParams }: Props) {
     .order("apply_end", { ascending: true, nullsFirst: false })
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
+  // 분리 섹션 pool 쿼리는 사용자 region 의존이라 profile 을 먼저 fetch (RTT +1).
+  // 사장님(전남, 자영업자) 케이스: default region="전체" + 마감 임박순 100건이
+  // 다른 광역 정책으로 가득 차 분리 섹션 0건. welfare 와 동일 hot-fix (2026-04-26).
+  // loan 은 region 컬럼이 없어 region_tags 배열 + title prefix 두 경로 모두 활용.
+  const profile = await loadUserProfile();
+
   // ─── 점수 매칭용 풀 query (limit 100) ────────────────────────────────────────
-  // 페이지네이션 없이 같은 필터 적용한 상위 100건 — 사용자 개인화 점수 계산용
+  // 페이지네이션 없이 같은 필터 적용한 상위 100건 — 사용자 개인화 점수 계산용.
+  // region 필터 == '전체' + 사용자 프로필 region 있으면 사용자 광역+전국 우선:
+  //   - region_tags 배열 contains: {전국} 또는 {사용자광역 별칭}
+  //   - title prefix: [광역 또는 (광역 (region_tags 누락된 row fallback)
+  // PostgREST .or() 안에 cs(contains)·ilike 혼합 가능 (콤마는 separator,
+  // {} 안 콤마는 array element). 사용자가 region 필터 직접 누르면 그 선택 그대로.
   let poolQuery = supabase.from("loan_programs").select("*");
   poolQuery = applyFilters(poolQuery);
+  if (region === "전체" && profile?.signals.region) {
+    const aliases = REGION_ALIASES[profile.signals.region] ?? [profile.signals.region];
+    const orParts: string[] = ["region_tags.cs.{전국}"];
+    for (const a of aliases) {
+      orParts.push(`region_tags.cs.{${a}}`);
+      orParts.push(`title.ilike.%[${a}%`);
+      orParts.push(`title.ilike.%(${a}%`);
+    }
+    poolQuery = poolQuery.or(orParts.join(","));
+  }
   poolQuery = poolQuery
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(100);
 
   // ─── 병렬 fetch ───────────────────────────────────────────────────────────────
-  // 본 query·카테고리 카운트·풀 query·사용자 프로필을 동시에 요청해 RTT 절약
-  const [{ data, count }, categoryCounts, { data: poolData }, profile] =
-    await Promise.all([
-      query,
-      getProgramCategoryCounts(supabase, "loan_programs"),
-      poolQuery,
-      loadUserProfile(),
-    ]);
+  // 본 query·카테고리 카운트·풀 query 를 동시에 요청해 RTT 절약 (profile 은 위에서 처리)
+  const [{ data, count }, categoryCounts, { data: poolData }] = await Promise.all([
+    query,
+    getProgramCategoryCounts(supabase, "loan_programs"),
+    poolQuery,
+  ]);
 
   const programs = (data || []).map(loanToDisplay);
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
