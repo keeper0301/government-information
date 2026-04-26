@@ -151,6 +151,10 @@ export function BusinessProfileForm({
           {BUSINESS_TYPE_OPTIONS.map((o) => (
             <label
               key={o.value}
+              // label 자체에 onClick 도 추가 — 자동화 도구 (chrome MCP 등) 의 synthetic
+              // click 이 input.onChange 를 못 깨우는 케이스 backup. native click 은
+              // input 의 onChange 가 정상 처리, 자동화는 label onClick 이 처리.
+              onClick={() => update('business_type', o.value)}
               className="flex items-center gap-2 px-4 py-2.5 bg-grey-50 hover:bg-grey-100 rounded-xl cursor-pointer min-h-[44px] flex-1"
             >
               <input
@@ -160,6 +164,13 @@ export function BusinessProfileForm({
                 checked={form.business_type === o.value}
                 onChange={() => update('business_type', o.value)}
                 className="w-4 h-4"
+                // input 자체 클릭도 update — onChange 만으론 react controlled radio
+                // 가 synthetic event 를 못 잡는 케이스 가드 (e.stopPropagation 필요 X
+                // — label 의 onClick 과 같은 핸들러라 더블 fire 도 결과 동일).
+                onClick={(e) => {
+                  e.stopPropagation();
+                  update('business_type', o.value);
+                }}
               />
               <span className="text-[14px] text-grey-900">{o.label}</span>
             </label>
