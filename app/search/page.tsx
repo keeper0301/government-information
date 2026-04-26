@@ -36,7 +36,14 @@ export default async function SearchPage({ searchParams }: Props) {
     );
   }
 
-  const data = await searchAll(trimmed);
+  // 영역별 limit 충분히 크게 — "모든 글" 검색 의도 충족.
+  // 자동완성(/api/search) 은 기본 limit (5건) 유지, 결과 페이지만 풍부하게.
+  const data = await searchAll(trimmed, {
+    welfareLimit: 100,
+    loanLimit: 100,
+    newsLimit: 50,
+    blogLimit: 30,
+  });
 
   return (
     <main className="max-w-[920px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
