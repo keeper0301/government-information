@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
+import { ELIGIBILITY_SLUGS } from "@/lib/eligibility/catalog";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -21,7 +22,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/pricing`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
     { url: `${baseUrl}/help`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/eligibility`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
   ];
+
+  // 자격 카테고리 페이지 — Phase 1.5 long-tail SEO (income·household 8 slug)
+  const eligibilityPages: MetadataRoute.Sitemap = ELIGIBILITY_SLUGS.map((slug) => ({
+    url: `${baseUrl}/eligibility/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
+    priority: 0.8,
+  }));
 
   // Welfare programs
   const { data: welfare } = await supabase
@@ -97,6 +107,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...eligibilityPages,
     ...keywordPages,
     ...topicPages,
     ...welfarePages,

@@ -1,38 +1,64 @@
 // components/personalization/EnhanceProfileBanner.tsx
 // "소득·가구 정보 입력하면 더 정확한 추천" 유도 배너 (홈 hero 다음 위치).
 //
-// 노출 조건 (server 에서 결정 후 client 에 prop 전달):
-//   - 로그인 + 프로필 있음
-//   - 온보딩 한 번 거침 (dismissed_onboarding_at !== null)
-//   - income_level + household_types 둘 다 미입력 (Phase 1.5 효과 0)
+// 노출 조건은 server (app/page.tsx) 에서 결정. 이 컴포넌트는 client 에서
+// dismiss 상태(localStorage 24h)만 관리.
 //
-// dismiss 는 24h localStorage 로 client 처리 (DB 영구 저장은 빈도 작아 가치 X).
+// useEffect+setState 안티패턴 회피 — useSyncExternalStore 로 localStorage
+// 만료 시각을 외부 store 처럼 구독 (SSR-safe + 크로스탭 동기화 덤).
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { trackEvent, EVENTS } from '@/lib/analytics';
 
 const STORAGE_KEY = 'enhance_profile_banner_dismissed_at';
 const SUPPRESS_MS = 24 * 60 * 60 * 1000; // 24h
 
-export function EnhanceProfileBanner() {
-  // SSR flash 방지 — 처음엔 hidden, useEffect 가 localStorage 확인 후 visible 결정.
-  // (조건 매칭 자체는 server 에서 끝났고, dismiss 만 client 에서 처리)
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
+// 외부 store: localStorage dismiss 시각이 SUPPRESS_MS 안이면 string, 아니면 null
+function subscribe(callback: () => void) {
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+}
+function getClientSnapshot(): string | null {
+  try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && Date.now() - Number(stored) < SUPPRESS_MS) return;
-    setVisible(true);
-    trackEvent(EVENTS.PROFILE_ENHANCE_BANNER_SHOWN);
-  }, []);
+    return stored && Date.now() - Number(stored) < SUPPRESS_MS ? stored : null;
+  } catch {
+    return null;
+  }
+}
+function getServerSnapshot(): string | null {
+  // SSR 시엔 dismiss 정보 없음 — 일단 hidden (visible 은 hydration 후 결정)
+  return Date.now().toString();
+}
+
+export function EnhanceProfileBanner() {
+  const dismissedAt = useSyncExternalStore(
+    subscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
+  const visible = dismissedAt === null;
+
+  // SHOWN 측정 — visible true 마운트 시 한 번 (setState 없는 effect 라 룰 위반 X)
+  useEffect(() => {
+    if (visible) trackEvent(EVENTS.PROFILE_ENHANCE_BANNER_SHOWN);
+  }, [visible]);
 
   if (!visible) return null;
 
   function dismiss() {
-    localStorage.setItem(STORAGE_KEY, String(Date.now()));
-    setVisible(false);
+    try {
+      const now = String(Date.now());
+      localStorage.setItem(STORAGE_KEY, now);
+      // 같은 탭에서는 storage 이벤트 발생 안 함 → 수동 dispatch
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: STORAGE_KEY, newValue: now }),
+      );
+    } catch {
+      // localStorage 못 써도 현재 화면엔 계속 떠있음 (다음 방문 때 재판정)
+    }
     trackEvent(EVENTS.PROFILE_ENHANCE_BANNER_DISMISSED);
   }
 
