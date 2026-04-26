@@ -268,6 +268,14 @@ export default async function WelfareDetailPage({ params }: Props) {
           isLoggedIn={!!user}
         />
         <ShareButton />
+        {/* Pro 신청서 초안 — 모든 사용자에게 노출, 비Pro 는 server 가드가 /pricing redirect.
+            ISR 유지 위해 tier 분기는 client/redirect 로 처리. */}
+        <Link
+          href={`/welfare/${program.id}/draft`}
+          className="px-6 py-3 bg-blue-50 text-blue-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-100 transition-colors inline-flex items-center gap-1.5"
+        >
+          📄 Pro 신청서 초안
+        </Link>
       </div>
 
       {/* Related Programs */}

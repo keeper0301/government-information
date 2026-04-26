@@ -273,6 +273,14 @@ export default async function LoanDetailPage({ params }: Props) {
             isLoggedIn={!!user}
           />
           <ShareButton />
+          {/* Pro 신청서 초안 — loan 은 자영업자 wedge 핵심 진입.
+              비Pro 는 server 가드가 /pricing 으로 redirect (ISR 유지). */}
+          <Link
+            href={`/loan/${program.id}/draft`}
+            className="px-6 py-3 bg-blue-50 text-blue-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-100 transition-colors inline-flex items-center gap-1.5"
+          >
+            📄 Pro 신청서 초안
+          </Link>
         </div>
 
         {/* Related Programs */}
