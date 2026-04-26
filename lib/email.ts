@@ -198,13 +198,22 @@ export async function notifyCronFailure(
     const now = new Date();
     const nowIso = now.toISOString();
 
-    // 기존 로그 조회
-    const { data: existing } = await supabase
+    // 기존 로그 조회 — signature 만으로 dedupe.
+    // 이전엔 eq("job_name", jobName) 도 추가했지만, jobName 에 분모(5/5, 5/6,
+    // 5/7, ...) 가 들어가면 매번 정확 매칭 실패 → 신규 row 생성 → 알림 폭주
+    // 사고 (2026-04-26~04-27 ~100건 inbox 폭주). signature 는 normalize(jobName)
+    // + normalize(errorMessage) 로 분모 N/N 으로 통일되니 signature 만으로 충분.
+    //
+    // limit(1) — 사고 이전에 jobName 별로 생성된 같은 signature row 가 여러 개
+    // 있을 수 있어 maybeSingle() 은 PGRST116 (multiple rows) 에러 위험. 가장
+    // 최근 row 1개만 가져와 update — 나머지는 cleanup SQL 로 정리하거나 자연 노화.
+    const { data: existings } = await supabase
       .from("cron_failure_log")
       .select("id, notified_at, occurrences")
-      .eq("job_name", jobName)
       .eq("signature", signature)
-      .maybeSingle();
+      .order("last_seen_at", { ascending: false })
+      .limit(1);
+    const existing = existings?.[0] ?? null;
 
     let shouldNotify: boolean;
     if (!existing) {
