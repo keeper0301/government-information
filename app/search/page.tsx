@@ -36,13 +36,15 @@ export default async function SearchPage({ searchParams }: Props) {
     );
   }
 
-  // 영역별 limit 충분히 크게 — "모든 글" 검색 의도 충족.
+  // 영역별 limit 사실상 무제한 — 사용자 요청 "사이트의 모든 글이 검색되게".
+  // welfare ~6200건, loan ~1600건, news ~수천건, blog ~수십~수백건 규모이므로
+  // 1000/1000/500/200 으로 두면 검색 매칭되는 거의 모든 글이 한 페이지에 노출됨.
   // 자동완성(/api/search) 은 기본 limit (5건) 유지, 결과 페이지만 풍부하게.
   const data = await searchAll(trimmed, {
-    welfareLimit: 100,
-    loanLimit: 100,
-    newsLimit: 50,
-    blogLimit: 30,
+    welfareLimit: 1000,
+    loanLimit: 1000,
+    newsLimit: 500,
+    blogLimit: 200,
   });
 
   return (
