@@ -46,6 +46,7 @@ data/
 scripts/
 .playwright-mcp/
 *.png
+!public/threads-og.png
 supabase/.temp/
 .gstack/
 
