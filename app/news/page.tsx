@@ -268,8 +268,8 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   return (
     <main className="min-h-screen bg-grey-50 pt-28 pb-20">
       <div className="max-w-content mx-auto px-10 max-md:px-6">
-        {/* 헤더 — 우측에 정책 가이드 페이지로 가는 보조 링크. 짧은 뉴스만 보다가
-            깊이 있는 가이드 글로 자연 진입할 수 있게 (이전엔 푸터에만 노출됨). */}
+        {/* 헤더 — 우측에 정책 블로그 페이지로 가는 보조 링크. 짧은 뉴스만 보다가
+            깊이 있는 블로그 글로 자연 진입할 수 있게 (이전엔 푸터에만 노출됨). */}
         <header className="mb-8 flex items-start justify-between gap-4 max-md:flex-col max-md:items-start">
           <div>
             <h1 className="text-[28px] md:text-[36px] font-extrabold text-grey-900 tracking-[-0.6px] mb-3">

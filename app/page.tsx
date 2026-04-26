@@ -195,13 +195,13 @@ export default async function Home() {
         <AlertStrip programs={urgents} isLoggedIn={!!user} />
       </RevealOnScroll>
 
-      {/* [도구 3] Blog — 정책 가이드 (자체 콘텐츠) */}
+      {/* [도구 3] Blog — 정책 블로그 (자체 콘텐츠) */}
       {recentPosts.length > 0 && (
         <RevealOnScroll>
           <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
             <div className="flex items-baseline justify-between mb-8">
               <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-                정책 가이드 블로그
+                정책 블로그
               </h2>
               <Link
                 href="/blog"

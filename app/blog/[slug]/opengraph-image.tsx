@@ -74,7 +74,7 @@ export default async function Image({
     : { data: null };
 
   const title = post?.title || "정책알리미";
-  const category = post?.category || "정책 가이드";
+  const category = post?.category || "정책 블로그";
   const color = CATEGORY_COLORS[category] || "#3182F6";
 
   // Pretendard 폰트 — 프로젝트 루트의 assets/ 에서 정적 로드

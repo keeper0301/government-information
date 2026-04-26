@@ -61,7 +61,7 @@ export async function GET() {
     link: `${baseUrl}/blog/${encodeURIComponent(b.slug)}`,
     pubDate: new Date(b.published_at!).toUTCString(),
     guid: `${baseUrl}/blog/${encodeURIComponent(b.slug)}`,
-    category: "정책가이드",
+    category: "정책 블로그",
   }));
 
   const items = [...newsItems, ...blogItems]

@@ -19,7 +19,7 @@
 - [정책소식](https://www.keepioo.com/news): 정부 부처 정책 발표·보도자료 뉴스.
 - [맞춤추천](https://www.keepioo.com/recommend): 프로필 기반 공고 매칭.
 - [인기정책](https://www.keepioo.com/popular): 조회수 기준 인기 공고.
-- [정책가이드 블로그](https://www.keepioo.com/blog): 신청 방법·조건 정리 글.
+- [정책 블로그](https://www.keepioo.com/blog): 신청 방법·조건 정리 글.
 - [일정 달력](https://www.keepioo.com/calendar): 마감·신규 시작 일정.
 - [요금제](https://www.keepioo.com/pricing): 무료·베이직·프로.
 

@@ -32,12 +32,12 @@ import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "정책 가이드 블로그 | 정책알리미",
+  title: "정책 블로그 | 정책알리미",
   description:
     "복지·대출·지원금 신청 방법을 쉽게 정리한 가이드. 매일 1개씩 새 글 발행. 마감 임박 정책 큐레이션부터 청년·소상공인·주거 카테고리까지.",
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: "정책 가이드 블로그 | 정책알리미",
+    title: "정책 블로그 | 정책알리미",
     description: "복지·대출·지원금 신청 방법 가이드",
     type: "website",
   },
@@ -189,7 +189,7 @@ export default async function BlogIndexPage({
         {/* 헤더 */}
         <header className="mb-8">
           <h1 className="text-[28px] md:text-[36px] font-extrabold text-grey-900 tracking-[-0.6px] mb-3">
-            정책 가이드 블로그
+            정책 블로그
           </h1>
           <p className="text-[15px] md:text-[17px] text-grey-700 leading-[1.6]">
             복지·대출·지원금 신청 방법을 쉽게 정리해드려요. 매일 1개씩 새 글 올라옵니다.
@@ -277,7 +277,7 @@ function EmptyState() {
         아직 발행된 글이 없어요
       </h2>
       <p className="text-[14px] text-grey-700 leading-[1.6]">
-        매일 1개씩 정책 가이드 글이 올라올 예정이에요.
+        매일 1개씩 정책 블로그 글이 올라올 예정이에요.
         <br />
         먼저 복지·대출 정보 페이지를 살펴보세요.
       </p>

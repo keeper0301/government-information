@@ -178,7 +178,7 @@ export default async function BlogPostPage({
       <BreadcrumbSchema
         items={[
           { name: "홈", url: SITE_URL },
-          { name: "정책가이드", url: `${SITE_URL}/blog` },
+          { name: "정책 블로그", url: `${SITE_URL}/blog` },
           { name: post.title, url },
         ]}
       />
