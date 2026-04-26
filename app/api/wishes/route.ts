@@ -58,37 +58,35 @@ export async function POST(request: Request) {
     .slice(0, 24);
   const userAgent = request.headers.get("user-agent")?.slice(0, 250) ?? null;
 
-  // Rate limit — 같은 ip_hash 가 1분 내 2회 이상이면 429.
-  // RLS 가 anon SELECT 막아 service_role(admin) 클라이언트 사용.
+  // Rate limit + INSERT 를 단일 RPC 로 처리 — TOCTOU race 차단 (049 마이그레이션).
+  // 함수 내부에서 count → INSERT 가 같은 트랜잭션이라 race window 가 ms 수준.
+  // 반환: 신규 row id (성공) 또는 NULL (rate limit 초과).
+  // service_role 만 EXECUTE 가능 (047 + 049 잠금).
   const admin = createAdminClient();
-  const windowStart = new Date(Date.now() - RATE_WINDOW_SEC * 1000).toISOString();
-  const { count: recentCount } = await admin
-    .from("user_wishes")
-    .select("id", { count: "exact", head: true })
-    .eq("ip_hash", ipHash)
-    .gte("created_at", windowStart);
-  if ((recentCount ?? 0) >= RATE_MAX) {
-    return NextResponse.json(
-      { error: "잠시 후 다시 시도해주세요. 1분에 최대 2번까지 보낼 수 있어요." },
-      { status: 429 },
-    );
-  }
-
-  // INSERT 도 service_role(admin) 클라이언트로 — RLS bypass.
-  // anon/auth 직접 INSERT 정책은 047 마이그레이션으로 제거됨 (PostgREST 우회 차단).
-  // 이 라우트의 길이 검증·rate limit 가드를 반드시 거치도록 잠금.
-  const { error } = await admin.from("user_wishes").insert({
-    wish,
-    email: email || null,
-    ip_hash: ipHash,
-    user_agent: userAgent,
-  });
+  const { data: insertedId, error } = await admin.rpc(
+    "insert_user_wish_with_rate_limit",
+    {
+      p_ip_hash: ipHash,
+      p_wish: wish,
+      p_email: email || null,
+      p_user_agent: userAgent,
+      p_window_sec: RATE_WINDOW_SEC,
+      p_max_count: RATE_MAX,
+    },
+  );
 
   if (error) {
     console.error("[api/wishes] insert error", error);
     return NextResponse.json(
       { error: "잠시 후 다시 시도해주세요." },
       { status: 500 },
+    );
+  }
+
+  if (insertedId === null) {
+    return NextResponse.json(
+      { error: "잠시 후 다시 시도해주세요. 1분에 최대 2번까지 보낼 수 있어요." },
+      { status: 429 },
     );
   }
 
