@@ -283,7 +283,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
             href="/blog"
             className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-4 text-[14px] font-semibold rounded-full bg-white text-blue-600 border border-blue-100 hover:bg-blue-50 hover:border-blue-200 no-underline transition-colors max-md:self-stretch max-md:justify-center"
           >
-            📖 정책 가이드 보기 →
+            📖 정책 블로그 →
           </Link>
         </header>
 
