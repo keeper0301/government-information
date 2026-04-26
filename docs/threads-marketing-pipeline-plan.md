@@ -73,9 +73,9 @@ config/marketing.json      # 시리즈별 활성/비활성 토글
 **왜:** 이 단계 없이는 코드를 짜도 못 돌림. 환경변수가 채워져야 다음 task 진행 가능.
 
 - [ ] **Step 1: 정책알리미 Supabase에서 read-only API 키 준비**
-  - Supabase 대시보드 → `mymhzftfnomgprorhlac` 프로젝트 → Settings → API
+  - Supabase 대시보드 → `fpnaptuhulcggournikc` 프로젝트(`government_infomation`) → Settings → API Keys → Legacy 탭
   - `anon (public)` 키 복사 (RLS로 보호되니 노출 OK)
-  - URL: `https://mymhzftfnomgprorhlac.supabase.co`
+  - URL: `https://fpnaptuhulcggournikc.supabase.co`
 
 - [ ] **Step 2: Threads API 토큰 발급**
   - `keepio_agent/scripts/get-threads-token.js` 이미 있음 → 실행해서 토큰 얻기
@@ -83,20 +83,20 @@ config/marketing.json      # 시리즈별 활성/비활성 토글
 
 - [ ] **Step 3: keepio_agent의 `.env`에 다음 추가**
   ```
-  # 정책알리미 DB
-  GOV_SUPABASE_URL=https://mymhzftfnomgprorhlac.supabase.co
-  GOV_SUPABASE_ANON_KEY=<위에서 복사한 키>
+  # 정책알리미 DB (정확한 프로젝트 ID는 government_infomation)
+  GOV_SUPABASE_URL=https://fpnaptuhulcggournikc.supabase.co
+  GOV_SUPABASE_ANON_KEY=<위에서 복사한 anon key>
 
-  # OpenAI (이미 있을 수도 있음)
+  # OpenAI (BlogFury에서 쓰던 것)
   OPENAI_API_KEY=<사장님 키>
 
-  # Threads
-  THREADS_ACCESS_TOKEN=<위에서 복사한 토큰>
+  # Threads (Phase 1A는 수동 발행이라 나중에 채워도 OK)
+  THREADS_ACCESS_TOKEN=<Meta Developer에서 발급>
   THREADS_USER_ID=<Meta Developer에서 확인>
 
-  # 텔레그램 (이미 있음 — 확인만)
-  TELEGRAM_BOT_TOKEN=<기존 키>
-  TELEGRAM_OWNER_CHAT_ID=<사장님 본인 chat_id>
+  # 텔레그램 (이미 있음 — 변수명만 통일)
+  TELEGRAM_BOT_TOKEN=<기존 키 그대로>
+  TELEGRAM_OWNER_CHAT_ID=<TELEGRAM_CHAT_ID 와 동일한 값>
   ```
 
 - [ ] **Step 4: `openai` 패키지 설치**
