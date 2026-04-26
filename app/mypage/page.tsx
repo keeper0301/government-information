@@ -9,7 +9,8 @@ import {
 import type { IncomeOption, HouseholdOption } from "@/lib/profile-options";
 import { ProfileForm } from "./profile-form";
 import { ConsentsPanel } from "./consents-panel";
-import { WithdrawSection } from "./withdraw-section";
+import { AccountTab } from "./account-tab";
+import { MypageTabs } from "./tabs";
 
 export const metadata: Metadata = {
   title: "내 정보 — 정책알리미",
@@ -18,11 +19,10 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-// 내 정보 페이지 (서버 컴포넌트)
-// - 로그인 안 되어 있으면 /login?next=/mypage 로 보냄
-// - 로그인 되어 있으면 user_profiles 에서 본인 프로필을 불러와 폼에 전달
-// (추가로 middleware 도 같은 경로를 보호하지만, 페이지에서도 한 번 더 확인해서
-//  예상치 못한 세션 만료 상황에서도 안전하게 처리)
+// 내 정보 페이지 — 서버 컴포넌트
+// 1. 로그인 가드 (middleware 와 이중 안전망)
+// 2. 프로필 / 동의 / 알림톡 발송 카운트를 병렬 조회
+// 3. 결과를 클라이언트 탭 셸(MypageTabs) 에 슬롯 prop 으로 전달
 export default async function MyPage() {
   const supabase = await createClient();
   const {
@@ -33,23 +33,41 @@ export default async function MyPage() {
     redirect("/login?next=/mypage");
   }
 
-  // 본인 프로필 + 동의 현황 병렬 조회 (둘 다 페이지 렌더링에 필요)
-  const [{ data: profile }, consents] = await Promise.all([
-    supabase
-      .from("user_profiles")
-      .select("age_group, region, district, occupation, interests, income_level, household_types")
-      .eq("id", user.id)
-      .maybeSingle(),
-    getUserConsents(user.id),
-  ]);
+  // 이번 달 1일 0시 (KST 단순화) 부터 알림톡 발송 수 카운트.
+  // alert_deliveries.channel='kakao' + status='sent' 만 집계 (실제 도착한 건만).
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [{ data: profile }, consents, { count: alertsThisMonth }] =
+    await Promise.all([
+      supabase
+        .from("user_profiles")
+        .select(
+          "age_group, region, district, occupation, interests, income_level, household_types"
+        )
+        .eq("id", user.id)
+        .maybeSingle(),
+      getUserConsents(user.id),
+      supabase
+        .from("alert_deliveries")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("channel", "kakao")
+        .eq("status", "sent")
+        .gte("created_at", monthStart.toISOString()),
+    ]);
+
+  const email = user.email || "";
+  const provider =
+    (user.app_metadata as { provider?: string } | null)?.provider ?? null;
 
   return (
-    <main className="max-w-[640px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+    <main className="max-w-[920px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
       <div className="flex items-baseline justify-between mb-2">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900">
           내 정보
         </h1>
-        {/* 관심사·프로필 재설정을 원하는 사용자를 위한 온보딩 재진입 링크 */}
         <a
           href="/onboarding"
           className="text-xs text-emerald-700 underline hover:text-emerald-900"
@@ -57,61 +75,54 @@ export default async function MyPage() {
           온보딩 다시 하기
         </a>
       </div>
+
+      {/* 이메일은 헤더 보조 영역의 작은 회색 텍스트로 강등 (수정 불가 → 입력 박스 불필요) */}
+      <p className="text-[13px] text-grey-600 mb-1">
+        📧 {email || "(이메일 미공개)"}
+      </p>
       <p className="text-[15px] text-grey-700 mb-8 leading-[1.6]">
         기본 정보를 입력하면 맞춤추천과 알림이 더 정확해져요.
       </p>
 
-      {/* 이메일은 수정 불가 (로그인 제공사에서 받아온 값) */}
-      <div className="mb-6">
-        <label className="block text-[13px] font-semibold text-grey-700 mb-2">
-          이메일
-        </label>
-        <div className="px-4 py-3 bg-grey-50 border border-grey-200 rounded-lg text-[15px] text-grey-700">
-          {user.email || (
-            <span className="text-grey-600">(이메일 미공개)</span>
-          )}
-        </div>
-      </div>
-
-      {/* 프로필 편집 (나이·지역·직업·관심사) */}
-      <ProfileForm
-        initial={{
-          age_group: profile?.age_group ?? null,
-          region: profile?.region ?? null,
-          district: profile?.district ?? null,
-          occupation: profile?.occupation ?? null,
-          interests: profile?.interests ?? [],
-          income_level: (profile?.income_level ?? null) as IncomeOption | null,
-          household_types: (profile?.household_types ?? []) as HouseholdOption[],
-        }}
+      <MypageTabs
+        profileSlot={
+          <ProfileForm
+            initial={{
+              age_group: profile?.age_group ?? null,
+              region: profile?.region ?? null,
+              district: profile?.district ?? null,
+              occupation: profile?.occupation ?? null,
+              interests: profile?.interests ?? [],
+              income_level: (profile?.income_level ?? null) as
+                | IncomeOption
+                | null,
+              household_types: (profile?.household_types ?? []) as HouseholdOption[],
+            }}
+          />
+        }
+        consentsSlot={
+          <section id="consents" className="scroll-mt-20">
+            <p className="text-[14px] text-grey-700 mb-6 leading-[1.6]">
+              이용약관·개인정보·마케팅 동의 내역을 확인하고 선택 동의를 관리할 수 있어요.
+            </p>
+            <ConsentsPanel
+              initialConsents={consents}
+              currentVersions={{
+                privacy_policy: PRIVACY_POLICY_VERSION,
+                terms: TERMS_VERSION,
+              }}
+            />
+          </section>
+        }
+        accountSlot={
+          <AccountTab
+            email={email}
+            createdAt={user.created_at ?? new Date().toISOString()}
+            provider={provider}
+            alertsThisMonth={alertsThisMonth ?? 0}
+          />
+        }
       />
-
-      {/* 동의 관리 섹션 — 필수/선택 동의 현황과 토글 */}
-      <section id="consents" className="mt-12 pt-8 border-t border-grey-100 scroll-mt-20">
-        <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900 mb-2">
-          동의 관리
-        </h2>
-        <p className="text-[14px] text-grey-700 mb-6 leading-[1.6]">
-          이용약관·개인정보·마케팅 동의 내역을 확인하고 선택 동의를 관리할 수 있어요.
-        </p>
-
-        <ConsentsPanel
-          initialConsents={consents}
-          currentVersions={{
-            privacy_policy: PRIVACY_POLICY_VERSION,
-            terms: TERMS_VERSION,
-          }}
-        />
-
-        <p className="mt-6 text-[13px] text-grey-600 leading-[1.6]">
-          필수 동의(이용약관·개인정보처리방침)는 서비스 이용을 위해 철회할 수 없습니다.
-          <br />
-          철회를 원하시면 아래 <b>회원 탈퇴</b> 섹션에서 탈퇴를 진행해 주세요.
-        </p>
-      </section>
-
-      {/* 회원 탈퇴 섹션 — 최하단 배치 (의도치 않은 접근 방지) */}
-      <WithdrawSection />
     </main>
   );
 }
