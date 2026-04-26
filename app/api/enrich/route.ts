@@ -41,12 +41,20 @@ const COOLDOWN_OK_MS = 7 * 24 * 60 * 60 * 1000;  // 성공: 7일
 // 7d 면 외부 회복 후에도 1주 안에 재시도. 사용자 영향 미미 (이미 7일 안에
 // 한 번은 시도하니 채움률 거의 동일).
 const COOLDOWN_FAIL_MS = 7 * 24 * 60 * 60 * 1000;
+// 영구 skip 임계값 (마이그레이션 058 — 진짜 근본 fix).
+// 연속 N 회 실패 도달 시 detail_permanently_skipped_at 도장 → picker 가 영구 제외.
+// 외부 API 회복 시 /admin/enrich-detail [영구 skip 해제] 로 일괄 reset.
+//   3 회: bokjiro 220건 1주일 내 자연 도장 완료 → 매주 1,720회 외부 호출 절감
+//   2 회로 너무 공격적이면 일시 장애 row 도 영구 skip → 데이터 누락 위험
+//   3 회면 외부 일시 장애(1d cooldown × 3 = 21일) 후에도 1번은 더 시도 → 안전
+const PERMANENT_SKIP_THRESHOLD = 3;
 
 type TableName = "welfare_programs" | "loan_programs";
 
 type Candidate = RowIdentity & {
   table: TableName;
   serv_id: string | null; // welfare 만 가진 legacy 컬럼 (bokjiro servId)
+  detail_failed_count: number; // 058: 영구 skip 카운터 (성공 시 0 reset)
 };
 
 // welfare + loan 테이블에서 후보 row 조회.
@@ -70,19 +78,23 @@ async function pickCandidates(
   // 그 결과 loan_programs 의 mss row (raw_payload 채워져 fetcher 통과 가능) 가
   // welfare 후보가 소진될 때까지 영원히 enrich 안 되는 편향 발생 → 절반씩 분배.
   const halfLimit = Math.ceil(limit / 2);
+  // 058: detail_permanently_skipped_at IS NULL 필터 — 영구 skip 도장 row 는 picker 단계에서 즉시 제외.
+  // detail_failed_count 도 select — enrichOne 실패 시 +1 후 임계값 체크에 사용.
   const [w, l] = await Promise.all([
     supabase
       .from("welfare_programs")
-      .select("id, source_code, source_id, source_url, serv_id, raw_payload")
+      .select("id, source_code, source_id, source_url, serv_id, raw_payload, detail_failed_count")
       .in("source_code", [...FETCHABLE_WELFARE_SOURCES])
+      .is("detail_permanently_skipped_at", null)
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
       .limit(halfLimit),
     supabase
       .from("loan_programs")
-      .select("id, source_code, source_id, source_url, raw_payload")
+      .select("id, source_code, source_id, source_url, raw_payload, detail_failed_count")
       .in("source_code", [...FETCHABLE_LOAN_SOURCES])
+      .is("detail_permanently_skipped_at", null)
       .or(`last_detail_fetched_at.is.null,last_detail_fetched_at.lt.${okThreshold}`)
       .or(`last_detail_failed_at.is.null,last_detail_failed_at.lt.${failThreshold}`)
       .order("last_detail_fetched_at", { ascending: true, nullsFirst: true })
@@ -109,6 +121,7 @@ async function pickCandidates(
       source_url: r.source_url,
       raw_payload: (r.raw_payload as Record<string, unknown> | null) ?? null,
       serv_id: r.serv_id,
+      detail_failed_count: r.detail_failed_count ?? 0,
       table: "welfare_programs",
     });
   }
@@ -120,6 +133,7 @@ async function pickCandidates(
       source_url: r.source_url,
       raw_payload: (r.raw_payload as Record<string, unknown> | null) ?? null,
       serv_id: null,
+      detail_failed_count: r.detail_failed_count ?? 0,
       table: "loan_programs",
     });
   }
@@ -155,8 +169,11 @@ async function enrichOne(
     }
 
     // 채워진 필드만 UPDATE (기존 값이 있어도 Detail API 최신성이 더 높으므로 덮어씀)
-    const update: Record<string, string | null> = {
+    // 058: 성공 시 detail_failed_count 0 으로 reset — 일시 장애 후 회복한 row 가
+    // 다음 한두 번 실패에 영구 skip 으로 떨어지지 않게 카운터 깨끗이.
+    const update: Record<string, string | number | null> = {
       last_detail_fetched_at: new Date().toISOString(),
+      detail_failed_count: 0,
     };
     const assign = (key: keyof DetailResult, maxLen: number) => {
       const v = result[key];
@@ -181,10 +198,20 @@ async function enrichOne(
     // cooldown 들어가 회복 후에도 재시도 늦어지고, 매일 quota 사고 시 같은 row 가
     // 영구 누적되어 done 늘지 않는 사이클 발생 (2026-04-26 ~04-27 320건 누적 사고).
     if (err instanceof QuotaExceededError) throw err;
-    // 일반 실패만 1일 cooldown 도장
+    // 일반 실패: 1일 cooldown 도장 + 058 영구 skip 카운터 +1.
+    // 임계값 도달 시 detail_permanently_skipped_at 동시 도장 → picker 가 다음 cron 부터 즉시 제외.
+    // detail_failed_count 는 candidate select 시점 값이라 동시성 위험 미미 (cron 1 batch 단위).
+    const newCount = (row.detail_failed_count ?? 0) + 1;
+    const failUpdate: Record<string, string | number | null> = {
+      last_detail_failed_at: new Date().toISOString(),
+      detail_failed_count: newCount,
+    };
+    if (newCount >= PERMANENT_SKIP_THRESHOLD) {
+      failUpdate.detail_permanently_skipped_at = new Date().toISOString();
+    }
     await supabase
       .from(row.table)
-      .update({ last_detail_failed_at: new Date().toISOString() })
+      .update(failUpdate)
       .eq("id", row.id);
     return "failed";
   }
