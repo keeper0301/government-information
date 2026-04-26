@@ -16,8 +16,6 @@ import { hasActiveConsent } from "@/lib/consent";
 
 export const maxDuration = 300; // 5분
 
-type UserEmailRow = { id: string; email: string | null };
-
 async function runAlertDispatch(jobLabel: string) {
   try {
     const supabase = createAdminClient();
@@ -34,8 +32,8 @@ async function runAlertDispatch(jobLabel: string) {
       return NextResponse.json({ dispatched: 0, note: "활성 규칙 없음" });
     }
 
-    // 2) 사용자 이메일 일괄 조회 (auth.users)
-    const userIds = Array.from(new Set(rules.map((r) => r.user_id)));
+    // 2) 사용자 이메일 일괄 조회 (auth.users) — listUsers 가 전체 페이지 반환하므로
+    // 별도 user_id 화이트리스트 dedupe 없이 emailByUserId map 만 구축.
     const { data: users } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
     const emailByUserId = new Map<string, string>();
     for (const u of users?.users || []) {

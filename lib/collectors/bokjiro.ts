@@ -2,7 +2,7 @@
 // 복지로 중앙 (국가 복지) - 기존 collect/route.ts 로직을 컬렉터로 이식
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,

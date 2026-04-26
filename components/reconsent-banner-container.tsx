@@ -21,12 +21,15 @@ export async function ReconsentBannerContainer() {
   // 비로그인이면 배너 자체 없음
   if (!user) return null;
 
-  // 필수 동의 상태 체크. 실패 시 조용히 null (배너가 안 뜨는 게 유저 입장에선 문제 없음)
+  // 필수 동의 상태 체크. 실패 시 조용히 null (배너가 안 뜨는 게 유저 입장에선 문제 없음).
+  // try/catch 안에서 JSX 를 직접 return 하면 React 비동기 렌더 에러를 catch 못 함 →
+  // ESLint react-hooks/error-boundaries 룰 위반. 결과만 변수에 담아 try/catch 밖에서 렌더.
+  let result: Awaited<ReturnType<typeof needsReconsent>>;
   try {
-    const { needs, missing } = await needsReconsent(user.id);
-    if (!needs) return null;
-    return <ReconsentBanner missing={missing} />;
+    result = await needsReconsent(user.id);
   } catch {
     return null;
   }
+  if (!result.needs) return null;
+  return <ReconsentBanner missing={result.missing} />;
 }

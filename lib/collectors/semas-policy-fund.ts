@@ -4,13 +4,12 @@
 // 소상공인시장진흥공단 정책자금 공지사항 스크래핑
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
   extractHouseholdTags,
-  extractOccupationTags,
   extractRegionTags,
 } from "@/lib/tags/taxonomy";
 import { isOutdatedByTitle, currentMinAllowedYear } from "@/lib/utils";

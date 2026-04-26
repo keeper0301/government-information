@@ -2,17 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { scoreProgram } from '@/lib/personalization/score';
 import type { UserSignals } from '@/lib/personalization/types';
 
-// 기본 사용자 프로필 (기준점)
-const baseUser: UserSignals = {
-  ageGroup: '30대',
-  region: '서울',
-  district: '강남구',
-  occupation: '직장인',
-  incomeLevel: 'mid_low',
-  householdTypes: ['single_parent'],
-  benefitTags: ['주거', '교육'],
-};
-
 // 빈 사용자 프로필 (아무 정보도 없는 상태)
 const emptyUser: UserSignals = {
   ageGroup: null, region: null, district: null, occupation: null,

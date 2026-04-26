@@ -44,7 +44,7 @@ async function requireAdminUser() {
 //
 // /sitemap.xml 은 next 의 file-route convention 을 revalidatePath 가 인식 못 해
 // throw → 호출 제외. sitemap 자체 revalidate (60s) 에 맡김.
-function revalidateNewsRoutes(_slug: string) {
+function revalidateNewsRoutes() {
   try { revalidatePath("/news"); } catch (e) { console.warn("[moderation] revalidate /news 실패:", e); }
   try { revalidatePath("/news/[slug]", "page"); } catch (e) { console.warn("[moderation] revalidate /news/[slug] 실패:", e); }
   try { revalidatePath("/"); } catch (e) { console.warn("[moderation] revalidate / 실패:", e); }
@@ -182,7 +182,7 @@ export async function toggleNewsHidden(formData: FormData): Promise<void> {
     console.warn("[admin/news toggleNewsHidden] 감사 로그 실패:", e);
   }
 
-  revalidateNewsRoutes(slug);
+  revalidateNewsRoutes();
 
   // returnTo 처리 — next/navigation 의 redirect() 는 한글 등 ASCII 외 문자가
   // path 에 들어 있으면 내부적으로 TypeError 를 던진다 (encode 후에도 일부 경로

@@ -5,14 +5,13 @@
 // HTML 스크래핑 — 공식 API 없음
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
   extractHouseholdTags,
   extractOccupationTags,
-  extractRegionTags,
 } from "@/lib/tags/taxonomy";
 import * as cheerio from "cheerio";
 

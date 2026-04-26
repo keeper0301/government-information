@@ -5,14 +5,13 @@
 // 보조금24 API 에 이미 많은 건강보험 혜택 포함되어 있어 보조 수단
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
   extractBenefitTags,
   extractHouseholdTags,
   extractOccupationTags,
-  extractRegionTags,
 } from "@/lib/tags/taxonomy";
 import { isOutdatedByTitle, currentMinAllowedYear } from "@/lib/utils";
 import * as cheerio from "cheerio";

@@ -21,10 +21,11 @@ export function RevealOnScroll({ children, delayMs = 0 }: Props) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // 모션 감소 환경 → 즉시 표시
+    // 모션 감소 환경 → 즉시 표시.
+    // setState 동기 호출은 effect cascading render 룰 위반이라 micro-task 로 schedule.
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) {
-      setVisible(true);
+      queueMicrotask(() => setVisible(true));
       return;
     }
     if (!ref.current) return;

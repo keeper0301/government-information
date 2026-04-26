@@ -5,7 +5,7 @@
 // data.go.kr 통합키 사용
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,

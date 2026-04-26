@@ -2,7 +2,7 @@
 // 소상공인 지원사업 (MSS) - 기존 collect/route.ts 이식
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,

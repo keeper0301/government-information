@@ -59,53 +59,9 @@ const KEYWORDS = [
   "민생회복",
 ];
 
-// loan 분기 — 강·약 신호 가중치 + title 우선 + 네거티브 키워드.
-//
-// 정확도 60-70% → 향상 전략:
-//   1) title 만 검사 (summary 노이즈 제거)
-//   2) STRONG (대출·융자·이차보전) = +2점, WEAK (보증재단 단순언급) = +1점
-//   3) NEGATIVE (지원금·보조금·바우처 등 명시적 welfare 단어) = -3점
-//   4) 합산 ≥ 1 이면 loan, 그 외는 welfare
-//
-// 예시:
-//   "[전남] 소상공인 융자금 신청" → 융자금(+2) → loan ✓
-//   "전남신용보증재단 지원금 안내" → 보증재단(+1) - 지원금(-3) = -2 → welfare ✓
-//   "민생회복지원금 신청" → 지원금(-3) → welfare ✓
-const LOAN_STRONG = /대출|융자|이차보전|융자금|보증부\s*월세|특례보증/;
-const LOAN_WEAK = /보증재단/;
-const LOAN_NEGATIVE = /지원금|보조금|바우처|장려금|수당|민생회복|모집|공모/;
-
-function classifyAsLoan(title: string): boolean {
-  let score = 0;
-  if (LOAN_STRONG.test(title)) score += 2;
-  if (LOAN_WEAK.test(title)) score += 1;
-  if (LOAN_NEGATIVE.test(title)) score -= 3;
-  return score >= 1;
-}
-
-// welfare 카테고리 자동 매핑 — local-welfare collector 와 동일 규칙.
-function mapCategory(text: string): string {
-  if (!text) return "소득";
-  if (/주거|임대|월세|주택/.test(text)) return "주거";
-  if (/취업|고용|일자리/.test(text)) return "취업";
-  if (/양육|보육|출산|임신|돌봄/.test(text)) return "양육";
-  if (/의료|건강|장애|치료/.test(text)) return "의료";
-  if (/교육|학자금|장학|학생/.test(text)) return "교육";
-  if (/문화|여가|바우처|관광/.test(text)) return "문화";
-  if (/소상공인|자영업|창업|중소기업/.test(text)) return "소상공인";
-  if (/농업|어업|임업|귀농|귀어|농민|어민/.test(text)) return "농업";
-  if (/재난|긴급|위기|이재민|민생회복/.test(text)) return "재난";
-  return "소득";
-}
-
-// loan 카테고리 — loan_programs.category 가 가질 수 있는 값.
-function mapLoanCategory(text: string): string {
-  if (/창업/.test(text)) return "창업지원";
-  if (/소상공인/.test(text)) return "소상공인지원";
-  if (/보증/.test(text)) return "보증";
-  if (/지원금|장려금/.test(text)) return "지원금";
-  return "대출";
-}
+// classifyAsLoan / mapCategory / mapLoanCategory 는 2026-04-25
+// "naver-news → news_posts only" 정책 변경(memory: project_naver_news_to_news_posts)
+// 으로 welfare/loan 분기 폐기되며 미사용. dead code 정리 (2026-04-26 헬스체크).
 
 type NaverNewsItem = {
   title: string;

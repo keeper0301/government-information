@@ -27,10 +27,11 @@ export function CountUp({ to, durationMs = 1400, suffix = "" }: Props) {
   const startedRef = useRef(false);
 
   useEffect(() => {
-    // 모션 감소 환경 → 즉시 결과 표시
+    // 모션 감소 환경 → 즉시 결과 표시.
+    // setState 동기 호출은 effect cascading render 룰 위반이라 micro-task 로 schedule.
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (mediaQuery.matches) {
-      setN(to);
+      queueMicrotask(() => setN(to));
       return;
     }
 

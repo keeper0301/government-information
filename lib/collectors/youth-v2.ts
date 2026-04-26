@@ -6,7 +6,7 @@
 // 기존의 /proxy/search API (최신 10건 한도) 를 대체
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,

@@ -18,7 +18,6 @@ import {
   extractOccupationTags,
   extractRegionTags,
   REGION_TAGS,
-  BENEFIT_TAGS,
   type RegionTag,
   type BenefitTag,
 } from "@/lib/tags/taxonomy";

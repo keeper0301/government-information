@@ -6,7 +6,7 @@
 // 모든 수집 항목은 창업 카테고리 → benefit_tags = ['창업']
 // ============================================================
 
-import type { Collector, CollectedItem } from "./index";
+import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
 import {
   extractAgeTags,
