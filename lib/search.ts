@@ -44,6 +44,18 @@ export type SearchResults = {
   total: number; // 4영역 전체 합계
 };
 
+// 영역 필터 — 사용자가 특정 영역만 보고 싶을 때 (?type=welfare,loan 등).
+// 빠진 영역은 query 자체를 skip + 빈 결과 + 카운트 0 반환 → DB 부담 ↓.
+export const SEARCH_TYPES = ["welfare", "loan", "news", "blog"] as const;
+export type SearchType = (typeof SEARCH_TYPES)[number];
+
+// 정렬 옵션 — 복지/대출 정책에만 적용. 뉴스·블로그는 최신순 고정.
+//   popular  : view_count 내림차순 (default — 인기 정책 우선)
+//   latest   : created_at 내림차순 (DB 인서트 시각, 최근 등록 정책 우선)
+//   deadline : apply_end 오름차순 nulls last (마감 임박 우선, NULL 은 끝으로)
+export const SEARCH_SORTS = ["popular", "latest", "deadline"] as const;
+export type SearchSort = (typeof SEARCH_SORTS)[number];
+
 const EMPTY: SearchResults = {
   welfare: [],
   welfareTotal: 0,
@@ -69,6 +81,9 @@ function tokenize(raw: string): string[] {
 // 각 영역(welfare/loan/news/blog) 동시 조회 (Promise.all 1 라운드트립).
 // includeCount=true 면 영역별 전체 매칭 건수도 반환 (limit 무관).
 // 자동완성은 includeCount 생략(false) → 빠르게.
+//
+// types 옵션 — 빠진 영역은 query 자체를 skip (빈 결과 + count 0).
+// sort 옵션 — 복지/대출 정책에만 적용 (뉴스·블로그는 최신순 고정).
 export async function searchAll(
   q: string,
   options: {
@@ -77,6 +92,8 @@ export async function searchAll(
     newsLimit?: number;
     blogLimit?: number;
     includeCount?: boolean;
+    types?: readonly SearchType[];
+    sort?: SearchSort;
   } = {},
 ): Promise<SearchResults> {
   if (!q || q.trim().length < 2) return EMPTY;
@@ -90,7 +107,16 @@ export async function searchAll(
     newsLimit = 8,
     blogLimit = 5,
     includeCount = false,
+    types,
+    sort = "popular",
   } = options;
+
+  // types 미지정 → 전체. 지정 → 화이트리스트 교집합 (잘못된 값 무시).
+  const activeTypes = new Set<SearchType>(
+    types ? types.filter((t) => SEARCH_TYPES.includes(t)) : SEARCH_TYPES,
+  );
+  // 모든 영역이 비활성이면 빈 결과 (잘못된 type 만 들어온 경우 방어)
+  if (activeTypes.size === 0) return EMPTY;
 
   const supabase = await createClient();
 
@@ -98,63 +124,85 @@ export async function searchAll(
   // 자동완성처럼 빠른 응답 필요한 경우엔 includeCount=false 로 카운트 생략.
   const countOption = includeCount ? { count: "exact" as const } : {};
 
-  // 각 테이블에 토큰 AND chain 적용. supabase-js .or() chain 누적 = AND.
-  let welfareQ = supabase
-    .from("welfare_programs")
-    .select("*", countOption);
-  let loanQ = supabase
-    .from("loan_programs")
-    .select("*", countOption);
-  let newsQ = supabase
-    .from("news_posts")
-    .select(
-      "slug, title, summary, category, ministry, thumbnail_url, published_at",
-      countOption,
-    )
-    // press 카테고리 제외 — 사이트 정책 (수집·노출 중단)
-    .neq("category", "press");
-  let blogQ = supabase
-    .from("blog_posts")
-    .select(
-      "slug, title, meta_description, category, published_at, cover_image, reading_time_min",
-      countOption,
-    )
-    .not("published_at", "is", null);
+  // 활성 영역만 query 작성. 비활성 영역은 EMPTY 결과로 즉시 fallback.
+  let welfareQ = activeTypes.has("welfare")
+    ? supabase.from("welfare_programs").select("*", countOption)
+    : null;
+  let loanQ = activeTypes.has("loan")
+    ? supabase.from("loan_programs").select("*", countOption)
+    : null;
+  let newsQ = activeTypes.has("news")
+    ? supabase
+        .from("news_posts")
+        .select(
+          "slug, title, summary, category, ministry, thumbnail_url, published_at",
+          countOption,
+        )
+        // press 카테고리 제외 — 사이트 정책 (수집·노출 중단)
+        .neq("category", "press")
+    : null;
+  let blogQ = activeTypes.has("blog")
+    ? supabase
+        .from("blog_posts")
+        .select(
+          "slug, title, meta_description, category, published_at, cover_image, reading_time_min",
+          countOption,
+        )
+        .not("published_at", "is", null)
+    : null;
 
   for (const t of tokens) {
-    welfareQ = welfareQ.or(
-      `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%`,
-    );
-    loanQ = loanQ.or(
-      `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%`,
-    );
-    newsQ = newsQ.or(`title.ilike.%${t}%,summary.ilike.%${t}%`);
-    blogQ = blogQ.or(`title.ilike.%${t}%,meta_description.ilike.%${t}%`);
+    if (welfareQ)
+      welfareQ = welfareQ.or(
+        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%`,
+      );
+    if (loanQ)
+      loanQ = loanQ.or(
+        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%`,
+      );
+    if (newsQ) newsQ = newsQ.or(`title.ilike.%${t}%,summary.ilike.%${t}%`);
+    if (blogQ)
+      blogQ = blogQ.or(`title.ilike.%${t}%,meta_description.ilike.%${t}%`);
   }
 
-  const [
-    { data: welfare, count: welfareTotal },
-    { data: loans, count: loanTotal },
-    { data: news, count: newsTotal },
-    { data: blogs, count: blogTotal },
-  ] = await Promise.all([
-    welfareQ.order("view_count", { ascending: false }).limit(welfareLimit),
-    loanQ.order("view_count", { ascending: false }).limit(loanLimit),
-    newsQ.order("published_at", { ascending: false }).limit(newsLimit),
-    blogQ.order("published_at", { ascending: false }).limit(blogLimit),
+  // 복지·대출 공통 정렬 — sort 분기. 뉴스·블로그는 최신순 고정.
+  // deadline 은 nullsFirst:false 로 NULL 마감일 (상시 모집 등) 을 뒤로.
+  const applyProgramSort = <T extends NonNullable<typeof welfareQ>>(qb: T): T => {
+    if (sort === "latest") {
+      return qb.order("created_at", { ascending: false }) as T;
+    }
+    if (sort === "deadline") {
+      return qb.order("apply_end", { ascending: true, nullsFirst: false }) as T;
+    }
+    return qb.order("view_count", { ascending: false }) as T;
+  };
+
+  const [welfareRes, loanRes, newsRes, blogRes] = await Promise.all([
+    welfareQ
+      ? applyProgramSort(welfareQ).limit(welfareLimit)
+      : Promise.resolve({ data: [], count: 0 } as const),
+    loanQ
+      ? applyProgramSort(loanQ).limit(loanLimit)
+      : Promise.resolve({ data: [], count: 0 } as const),
+    newsQ
+      ? newsQ.order("published_at", { ascending: false }).limit(newsLimit)
+      : Promise.resolve({ data: [], count: 0 } as const),
+    blogQ
+      ? blogQ.order("published_at", { ascending: false }).limit(blogLimit)
+      : Promise.resolve({ data: [], count: 0 } as const),
   ]);
 
-  const welfareDisplay = (welfare || []).map(welfareToDisplay);
-  const loanDisplay = (loans || []).map(loanToDisplay);
-  const newsList = (news || []) as NewsHit[];
-  const blogList = (blogs || []) as BlogHit[];
+  const welfareDisplay = (welfareRes.data || []).map(welfareToDisplay);
+  const loanDisplay = (loanRes.data || []).map(loanToDisplay);
+  const newsList = (newsRes.data || []) as NewsHit[];
+  const blogList = (blogRes.data || []) as BlogHit[];
 
   // includeCount=false 면 count 가 null/undefined → 표시용 0 으로 fallback.
   // 표시 측에서 includeCount 와 함께 계산되므로 0 이어도 사용자에게 잘못 안 보임.
-  const wTotal = welfareTotal ?? welfareDisplay.length;
-  const lTotal = loanTotal ?? loanDisplay.length;
-  const nTotal = newsTotal ?? newsList.length;
-  const bTotal = blogTotal ?? blogList.length;
+  const wTotal = welfareRes.count ?? welfareDisplay.length;
+  const lTotal = loanRes.count ?? loanDisplay.length;
+  const nTotal = newsRes.count ?? newsList.length;
+  const bTotal = blogRes.count ?? blogList.length;
 
   return {
     welfare: welfareDisplay,
