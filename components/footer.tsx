@@ -10,6 +10,7 @@
 // ============================================================
 
 const footerLinks = [
+  { label: "1분 진단", href: "/quiz" },
   { label: "서비스 소개", href: "/about" },
   { label: "도움말", href: "/help" },
   { label: "이용약관", href: "/terms" },

@@ -40,7 +40,9 @@ const items = [
 // 모바일 햄버거 하단 "기타 메뉴" — 헤더에서 빠진 항목들의 마지막 진입점.
 // 2026-04-25: "정책 블로그" 헤더 제거 — /news 헤더에 진입 버튼 있고 푸터에서도 제거됨,
 // 일관성 유지 위해 모바일 햄버거에서도 제거. 사용자는 /news → 정책 블로그 버튼으로 진입.
+// 2026-04-26: "1분 진단" (/quiz) 익명 funnel 추가.
 const mobileExtraItems = [
+  { label: "1분 진단", href: "/quiz" },
   { label: "알림센터", href: "/alerts" },
   { label: "도움말", href: "/help" },
   { label: "이용약관", href: "/terms" },
