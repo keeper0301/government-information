@@ -1,4 +1,13 @@
 {
+  "headers": [
+    {
+      "source": "/threads-og.png",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "Content-Disposition", "value": "" }
+      ]
+    }
+  ],
   "crons": [
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
     { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
