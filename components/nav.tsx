@@ -32,6 +32,9 @@ const items = [
   { label: "달력", href: "/calendar" },
   { label: "AI상담", href: "/consult" },
   { label: "요금제", href: "/pricing" },
+  // 검색 진입점 — 데스크톱 메뉴 마지막 + 모바일 햄버거에서도 노출.
+  // 이전엔 홈 화면에서만 검색 가능했음 → 다른 페이지에서도 진입 가능하게.
+  { label: "검색", href: "/search" },
 ] as const;
 
 // 모바일 햄버거 하단 "기타 메뉴" — 헤더에서 빠진 항목들의 마지막 진입점.

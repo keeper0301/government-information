@@ -27,16 +27,18 @@ export default async function SearchPage({ searchParams }: Props) {
   const { q = "" } = await searchParams;
   const trimmed = q.trim();
 
-  // 2글자 미만이면 안내만 표시 (검색 미실행)
+  // 2글자 미만이면 검색 폼만 표시 (검색 미실행).
+  // 헤더 메뉴 "검색" 클릭으로 q 없이 진입한 사용자에게 입력 폼 즉시 제공.
   if (trimmed.length < 2) {
     return (
       <main className="max-w-[920px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-3">
           검색
         </h1>
-        <p className="text-[15px] text-grey-700 leading-[1.6]">
-          검색어를 2글자 이상 입력해 주세요. 상단 검색창에서 다시 시도하실 수 있어요.
+        <p className="text-[15px] text-grey-700 leading-[1.6] mb-6">
+          복지·대출·정책뉴스·블로그를 한 번에 검색해보세요.
         </p>
+        <SearchInputForm initialQuery="" />
       </main>
     );
   }
@@ -54,13 +56,18 @@ export default async function SearchPage({ searchParams }: Props) {
   return (
     <main className="max-w-[920px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
       {/* 검색어 헤더 */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
           &lsquo;{trimmed}&rsquo; 검색 결과
         </h1>
         <p className="text-[14px] text-grey-600">
           전체 {data.total.toLocaleString("ko-KR")}건이 매칭됐어요.
         </p>
+      </div>
+
+      {/* 다시 검색 — 결과 페이지 안에서도 검색어 변경 가능 (현재 query prefill) */}
+      <div className="mb-8">
+        <SearchInputForm initialQuery={trimmed} />
       </div>
 
       {/* 결과 0건 — 친절한 빈 상태 */}
@@ -103,6 +110,33 @@ export default async function SearchPage({ searchParams }: Props) {
         </div>
       )}
     </main>
+  );
+}
+
+// 페이지 내부 검색 폼 — server form (JS 없어도 동작), 현재 검색어 prefill.
+// 사용자가 검색 결과 페이지에서 검색어를 빠르게 바꿀 수 있게.
+function SearchInputForm({ initialQuery }: { initialQuery: string }) {
+  return (
+    <form method="get" action="/search" className="w-full">
+      <div className="flex items-center gap-2 bg-white border-[1.5px] border-grey-200 rounded-2xl p-2 pl-5 max-w-[600px] focus-within:border-blue-500 focus-within:shadow-[0_0_0_4px_rgba(49,130,246,0.16)] transition-all">
+        <input
+          type="text"
+          name="q"
+          defaultValue={initialQuery}
+          placeholder="예: 청년 월세, 소상공인 대출"
+          required
+          minLength={2}
+          aria-label="검색어"
+          className="flex-1 min-w-0 border-none outline-none bg-transparent text-[16px] text-grey-900"
+        />
+        <button
+          type="submit"
+          className="shrink-0 h-10 px-5 bg-blue-500 text-white border-none rounded-xl text-[14px] font-bold cursor-pointer hover:bg-blue-600 transition-colors"
+        >
+          검색
+        </button>
+      </div>
+    </form>
   );
 }
 
