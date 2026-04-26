@@ -23,6 +23,8 @@
 
     { "path": "/api/enrich-targeting", "schedule": "0 8 * * *" },
 
-    { "path": "/api/cleanup-expired-programs", "schedule": "0 18 * * *" }
+    { "path": "/api/cleanup-expired-programs", "schedule": "0 18 * * *" },
+
+    { "path": "/api/enrich", "schedule": "*/15 * * * *" }
   ]
 }
