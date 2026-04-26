@@ -33,7 +33,9 @@ const SIDO_NAMES = [
 
 // 정책 수 → 색 강도 (5단계). max 기준 normalize.
 function intensityClass(count: number, max: number): string {
-  if (count === 0) return "bg-grey-50 text-grey-400";
+  // count=0 셀은 시각적으로 흐릿하게 — bg-grey-50 만으로도 충분히 비활성 인상.
+  // 텍스트는 grey-500 (대비 5.2:1, WCAG AA 통과). grey-400(2.5:1) 은 본문 미달.
+  if (count === 0) return "bg-grey-50 text-grey-500";
   const ratio = count / max;
   if (ratio >= 0.7) return "bg-blue-500 text-white";
   if (ratio >= 0.45) return "bg-blue-400 text-white";

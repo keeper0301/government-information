@@ -1,3 +1,7 @@
+// 이 파일 자체는 룰 정의 코드라 selector·message 안에 'text-grey-400' 문자열이
+// 포함될 수밖에 없음 → 자기 자신을 매칭하는 self-trigger false positive 발생.
+// 룰 정의 코드는 의도된 코드이므로 파일 전역 disable 로 처리.
+/* eslint-disable no-restricted-syntax */
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";

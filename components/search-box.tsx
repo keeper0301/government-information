@@ -158,10 +158,12 @@ export function SearchBox() {
               />
               {/* 가짜 placeholder — input 비고 focus 안된 상태일 때만 표시.
                   key 가 phIndex 따라 변하므로 React 가 새로 mount 하면서
-                  .placeholder-fade 애니메이션 재생. */}
+                  .placeholder-fade 애니메이션 재생.
+                  text-grey-400 은 정당한 placeholder 용도 (WCAG 룰 예외). */}
               {!query && !isFocused && (
                 <div
                   key={phIndex}
+                  // eslint-disable-next-line no-restricted-syntax
                   className="placeholder-fade pointer-events-none absolute inset-y-0 left-0 flex items-center text-[17px] text-grey-400"
                 >
                   예: {PLACEHOLDER_KEYWORDS[phIndex]}
