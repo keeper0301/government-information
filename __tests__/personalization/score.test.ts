@@ -235,6 +235,67 @@ describe('scoreProgram — 시군구 mismatch (Phase 1.6)', () => {
     expect(r.signals.find((s) => s.kind === 'region')).toBeUndefined();
   });
 
+  // 2026-04-26 hot-fix: regional gate 추가. region mismatch 면 다른 시그널
+  // 점수 무관하게 score=0. 아래 두 케이스가 회귀 가드.
+  it('regional gate: 다른 광역 + benefit_tags 4개 매칭 → score 0', () => {
+    // 사장님(전남 순천시)에게 전북 장수군 결혼축하금이 노출되던 실제 사고 재현
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전북특별자치도 장수군',
+        title: '결혼축하금 지원',
+        description: '인구증가 다양한 지원',
+        benefit_tags: ['양육', '교육', '취업', '금융'],
+      },
+      {
+        ...emptyUser,
+        region: '전남',
+        district: '순천시',
+        benefitTags: ['양육', '교육', '취업', '금융', '주거'],
+      },
+    );
+    // 게이트 없으면 +12 (benefit_tags 4개 × 3) → minScore=8 통과 사고.
+    // 게이트 적용 → 0
+    expect(r.score).toBe(0);
+    expect(r.signals).toEqual([]);
+  });
+
+  it('regional gate: 같은 광역 다른 시군구 + household_target 매칭 → score 0', () => {
+    // 영암군 신혼부부 정책이 순천시 사용자에게 household 매칭으로 통과되던 사고
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도 영암군',
+        title: '영암군 이사비용 지원',
+        description: '신혼부부 주거 이전 비용',
+        benefit_tags: ['주거', '금융'],
+        household_target_tags: ['married'],
+      },
+      {
+        ...emptyUser,
+        region: '전남',
+        district: '순천시',
+        householdTypes: ['married'],
+        benefitTags: ['주거', '금융'],
+      },
+    );
+    // 게이트 없으면 benefit(+6) + household_target(+3) = 9 → 통과 사고
+    expect(r.score).toBe(0);
+  });
+
+  it('regional gate: 사용자 region 미설정 → 게이트 미적용, 다른 시그널로 매칭 가능', () => {
+    // region 비워둔 사용자도 benefit_tags·age 등으로 추천 받을 수 있어야 함
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '경상남도 창원시',
+        benefit_tags: ['취업'],
+      },
+      { ...emptyUser, /* region 없음 */ benefitTags: ['취업'] },
+    );
+    expect(r.score).toBe(3);
+  });
+
   it('같은 시군구 정확 매칭 → +10', () => {
     const r = scoreProgram(
       {
