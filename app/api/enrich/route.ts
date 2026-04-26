@@ -35,7 +35,12 @@ import { QuotaExceededError } from "@/lib/detail-fetchers/bokjiro";
 const BATCH_SIZE = 10;
 const CALL_INTERVAL_MS = 4000;
 const COOLDOWN_OK_MS = 7 * 24 * 60 * 60 * 1000;  // 성공: 7일
-const COOLDOWN_FAIL_MS = 1 * 24 * 60 * 60 * 1000; // 실패: 1일
+// 실패 cooldown 1d → 7d 로 확장 (2026-04-27 사고 hot-fix).
+// 외부 API (bokjiro Detail) 가 invalid servId 에 일관 실패 응답 보내면
+// 1d cooldown 으론 매일 같은 row 재시도 → 무한 루프 + 알림 잠재 폭주.
+// 7d 면 외부 회복 후에도 1주 안에 재시도. 사용자 영향 미미 (이미 7일 안에
+// 한 번은 시도하니 채움률 거의 동일).
+const COOLDOWN_FAIL_MS = 7 * 24 * 60 * 60 * 1000;
 
 type TableName = "welfare_programs" | "loan_programs";
 
@@ -84,8 +89,19 @@ async function pickCandidates(
       .limit(halfLimit),
   ]);
 
+  // Picker 후처리 — fetcher 매칭 불가능한 row (source_id·raw_payload 둘 다 null)
+  // 를 picker 단계에서 제외. SQL .or() 안에 not.is.null 호환성 위험 회피 차원으로
+  // JS filter 채택. invalid row 가 batch 점유해 "모든 후보 skipped" 알림 폭주
+  // 차단 + 진짜 처리 가능한 row 가 batch 자리 차지.
+  // welfare: source_id (bokjiro) 또는 raw_payload (youth-v2) 둘 중 하나는 필요
+  // loan(mss): source_id 필수
+  const wRows = (w.data ?? []).filter(
+    (r) => (r.source_id ?? r.serv_id) != null || r.raw_payload != null,
+  );
+  const lRows = (l.data ?? []).filter((r) => r.source_id != null);
+
   const out: Candidate[] = [];
-  for (const r of w.data || []) {
+  for (const r of wRows) {
     out.push({
       id: r.id,
       source_code: r.source_code,
@@ -96,7 +112,7 @@ async function pickCandidates(
       table: "welfare_programs",
     });
   }
-  for (const r of l.data || []) {
+  for (const r of lRows) {
     out.push({
       id: r.id,
       source_code: r.source_code,
