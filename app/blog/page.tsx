@@ -25,6 +25,7 @@ import { scoreAndFilter } from "@/lib/personalization/filter";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { ScorableItem } from "@/lib/personalization/score";
+import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
 
 // 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
 // force-dynamic 없이 캐시하면 첫 사용자 프로필이 다른 사람에게 노출되는 보안 문제 발생.
@@ -152,8 +153,20 @@ export default async function BlogIndexPage({
   let personalSection: ScoredBlog = [];
 
   if (profile && !profile.isEmpty) {
-    // poolData 를 ScorableItem 배열로 변환
-    const scorablePool = (poolData || []).map(
+    // ① cohort 필터로 부적합 글 제거 (30대 자영업자에 청년·학생 글 노출되던 문제 해결).
+    //    score.ts 본문 기반 cohort 검사는 blog 짧은 description 으론 약해 별도 필터 적용.
+    const cohortFiltered = (poolData || []).filter((p) =>
+      isBlogCohortFit(
+        {
+          category: p.category,
+          title: p.title,
+          meta_description: p.meta_description,
+        },
+        profile.signals,
+      ),
+    );
+    // ② 점수 매칭 — cohort 통과 글만 대상
+    const scorablePool = cohortFiltered.map(
       (p) => blogToScorable(p as BlogCardData & { tags: string[] | null })
     );
     personalSection = scoreAndFilter(scorablePool, profile.signals, {
