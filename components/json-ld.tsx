@@ -30,18 +30,46 @@ type OrganizationSchemaProps = {
   name: string;
   url: string;
   description: string;
+  // 신뢰도·E-E-A-T 시그널을 위한 선택 필드. 모두 옵셔널이라 기존 호출처 무영향.
+  legalName?: string;          // 법인/사업자명 정식 표기
+  ceoName?: string;            // 대표자명 (founder)
+  taxId?: string;              // 사업자등록번호
+  email?: string;              // 고객 문의 이메일
+  foundingDate?: string;       // ISO 8601 (yyyy-mm-dd)
 };
 
-export function OrganizationSchema({ name, url, description }: OrganizationSchemaProps) {
-  const schema = {
+export function OrganizationSchema({
+  name,
+  url,
+  description,
+  legalName,
+  ceoName,
+  taxId,
+  email,
+  foundingDate,
+}: OrganizationSchemaProps) {
+  const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name,
     url,
     description,
     logo: `${url}/icon.png`,
-    sameAs: [],
+    inLanguage: "ko",
   };
+  if (legalName) schema.legalName = legalName;
+  if (ceoName) schema.founder = { "@type": "Person", name: ceoName };
+  if (taxId) schema.taxID = taxId;
+  if (email) {
+    schema.contactPoint = {
+      "@type": "ContactPoint",
+      email,
+      contactType: "customer support",
+      availableLanguage: ["Korean"],
+    };
+  }
+  if (foundingDate) schema.foundingDate = foundingDate;
+
   return (
     <script
       type="application/ld+json"

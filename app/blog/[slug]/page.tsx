@@ -11,6 +11,7 @@
 // ============================================================
 
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ArticleSchema, FAQSchema, BreadcrumbSchema } from "@/components/json-ld";
@@ -190,13 +191,18 @@ export default async function BlogPostPage({
 
       <article className="max-w-[720px] mx-auto px-5">
         {/* Hero — cover_image 가 있으면 사진, 없으면 카테고리 그라디언트 + 라벨.
-            AdSense 검수자에게 시각 요소 부재 신호 회피 + 카테고리 식별성 */}
+            AdSense 검수자에게 시각 요소 부재 신호 회피 + 카테고리 식별성.
+            상세 페이지 첫 화면이라 priority 부여 → LCP 개선. */}
         {post.cover_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={post.cover_image}
             alt=""
+            width={1200}
+            height={675}
             className="w-full aspect-[16/9] object-cover rounded-2xl mb-6"
+            priority
+            sizes="(max-width: 768px) 100vw, 720px"
+            unoptimized
           />
         ) : (
           <div

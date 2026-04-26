@@ -10,6 +10,7 @@
 // ============================================================
 
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
@@ -37,14 +38,18 @@ export function BlogCard({ post }: { post: BlogCardData }) {
   return (
     <Link href={`/blog/${post.slug}`} className="block no-underline">
       <Card className="bg-white rounded-3xl overflow-hidden shadow-none hover:[box-shadow:0_8px_24px_rgba(17,24,39,0.06)] hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
-        {/* 시각 요소 — cover_image 있으면 사용, 없으면 카테고리 그라디언트 fallback */}
+        {/* 시각 요소 — cover_image 있으면 사용, 없으면 카테고리 그라디언트 fallback.
+            cover_image 는 발행 시점에 우리 도메인의 OG endpoint 경로(/blog/{slug}/opengraph-image)
+            로 채워지므로 next/image 로 LCP 최적화·자동 srcset 적용. */}
         {post.cover_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={post.cover_image}
             alt=""
+            width={1200}
+            height={675}
             className="w-full aspect-[16/9] object-cover"
-            loading="lazy"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            unoptimized
           />
         ) : (
           <div

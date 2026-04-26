@@ -300,6 +300,11 @@ export async function publishOnePost(opts: {
   // DB 저장
   const admin = createAdminClient();
   const now = new Date().toISOString();
+  // cover_image — 우리 도메인의 OG endpoint 경로 저장. Next.js file convention 으로
+  // 자동 생성되는 PNG (1200×630) 가 BlogCard 카드·상세 hero·SNS 공유 카드에 모두
+  // 동일하게 사용됨. AdSense 검수자에게 "이미지 부재" 신호 회피의 영구 해결책.
+  // 외부 hosting 의존 없음 (별도 Storage 업로드 X) — Next.js ImageResponse 캐싱 활용.
+  const coverImage = `/blog/${encodeURIComponent(slug)}/opengraph-image`;
   const { error } = await admin.from("blog_posts").insert({
     slug,
     title: generated.title,
@@ -309,6 +314,7 @@ export async function publishOnePost(opts: {
     category: generated.category || category,
     faqs: generated.faqs,
     reading_time_min: reading,
+    cover_image: coverImage,
     published_at: now,
     source_program_id: picked.programId,
     source_program_type: picked.programType,

@@ -114,6 +114,10 @@ export default async function RootLayout({
           name="정책알리미"
           url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
           description="공공기관 데이터 기반 복지·대출 정보 안내 서비스"
+          legalName="키피오"
+          ceoName="최관철"
+          taxId="657-24-02265"
+          email="keeper0301@gmail.com"
         />
         <Nav isAdmin={isAdmin} loggedIn={!!user} alarmCount={alarmCount} />
         <ReconsentBannerContainer />
