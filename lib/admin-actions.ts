@@ -15,6 +15,7 @@ export type AdminActionType =
   | "manual_alert_send"   // 수동 알림 재전송 (Phase 2)
   | "alimtalk_test"       // 어드민 테스트 발송 (대행사·템플릿 심사 후 검증)
   | "enrich_detail_manual" // /api/enrich 수동 트리거 (공고 빈 필드 채움 급할 때)
+  | "enrich_detail_skip_reset" // 058: 영구 skip 도장 일괄 해제 (외부 API 회복 시)
   | "collect_news_manual"  // /api/collect-news 수동 트리거 (korea.kr RSS 즉시 수집)
   | "self_delete_requested" // 본인 탈퇴 요청 (pending_deletions insert, 30일 유예 시작)
   | "self_delete_restored"  // 유예 기간 내 복구 (pending_deletions row 삭제)
@@ -219,6 +220,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   manual_alert_send: "수동 알림 전송",
   alimtalk_test: "알림톡 테스트 발송",
   enrich_detail_manual: "공고 상세 수동 보강",
+  enrich_detail_skip_reset: "공고 영구 skip 해제",
   collect_news_manual: "정책 뉴스 수동 수집",
   self_delete_requested: "본인 탈퇴 요청 (유예)",
   self_delete_restored: "본인 탈퇴 복구",

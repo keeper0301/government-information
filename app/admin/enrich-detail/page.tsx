@@ -35,11 +35,14 @@ async function requireAdmin() {
 // 상태 카운트 조회. bokjiro 관련 (중앙 + 지자체 local-welfare) 만.
 // head:true + count:'exact' 로 row 데이터 전송 없이 count 만 받음 — 5912 row
 // 전체를 네트워크로 끌어오던 코드리뷰 지적 반영.
+//
+// 058: skipped (영구 skip 도장) 도 추가 — welfare + loan 양쪽 합산.
+// 영구 skip 카드는 reset 버튼 활성화 조건 + 사장님 운영 가시성 동시 충족.
 async function getStats() {
   const admin = createAdminClient();
   const bokjiroCond = "source_code.eq.bokjiro,source_code.eq.local-welfare";
 
-  const [total, fetched, failed] = await Promise.all([
+  const [total, fetched, failed, welfareSkipped, loanSkipped] = await Promise.all([
     admin
       .from("welfare_programs")
       .select("id", { count: "exact", head: true })
@@ -55,13 +58,28 @@ async function getStats() {
       .or(bokjiroCond)
       .not("last_detail_failed_at", "is", null)
       .is("last_detail_fetched_at", null),
+    admin
+      .from("welfare_programs")
+      .select("id", { count: "exact", head: true })
+      .not("detail_permanently_skipped_at", "is", null),
+    admin
+      .from("loan_programs")
+      .select("id", { count: "exact", head: true })
+      .not("detail_permanently_skipped_at", "is", null),
   ]);
 
   const total_n = total.count ?? 0;
   const fetched_n = fetched.count ?? 0;
   const failed_n = failed.count ?? 0;
+  const skipped_n = (welfareSkipped.count ?? 0) + (loanSkipped.count ?? 0);
   const pending_n = Math.max(0, total_n - fetched_n - failed_n);
-  return { total: total_n, fetched: fetched_n, pending: pending_n, failed: failed_n };
+  return {
+    total: total_n,
+    fetched: fetched_n,
+    pending: pending_n,
+    failed: failed_n,
+    skipped: skipped_n,
+  };
 }
 
 // 수동 trigger server action — self-POST 로 /api/enrich 호출
@@ -103,10 +121,75 @@ async function triggerEnrich(): Promise<void> {
   redirect(`/admin/enrich-detail?${qs}`);
 }
 
+// 058: 영구 skip 도장 일괄 해제. 외부 API 회복 시 사장님 1클릭 재시도 진입점.
+// detail_permanently_skipped_at 만 NULL 로 되돌리면 picker 가 다시 후보로 인식.
+// detail_failed_count·last_detail_failed_at 도 함께 reset 해서 7d cooldown 도 끊음
+// → 다음 cron 즉시 재시도 가능 (외부 회복 검증 워크플로 단순화).
+async function resetPermanentSkips(): Promise<void> {
+  "use server";
+  const user = await requireAdmin();
+  const admin = createAdminClient();
+
+  // 양쪽 테이블 동시 reset. .not + .select('id') count 로 영향 row 수 측정 후 update.
+  const [wRes, lRes] = await Promise.all([
+    admin
+      .from("welfare_programs")
+      .update({
+        detail_permanently_skipped_at: null,
+        detail_failed_count: 0,
+        last_detail_failed_at: null,
+      })
+      .not("detail_permanently_skipped_at", "is", null)
+      .select("id"),
+    admin
+      .from("loan_programs")
+      .update({
+        detail_permanently_skipped_at: null,
+        detail_failed_count: 0,
+        last_detail_failed_at: null,
+      })
+      .not("detail_permanently_skipped_at", "is", null)
+      .select("id"),
+  ]);
+
+  const welfareReset = wRes.data?.length ?? 0;
+  const loanReset = lRes.data?.length ?? 0;
+  const errorMsg = wRes.error?.message || lRes.error?.message || null;
+
+  try {
+    await logAdminAction({
+      actorId: user.id,
+      action: "enrich_detail_skip_reset",
+      details: {
+        welfare_reset: welfareReset,
+        loan_reset: loanReset,
+        error: errorMsg,
+      },
+    });
+  } catch {
+    // 감사 로그 실패해도 reset 결과는 사용자에게 표시
+  }
+
+  if (errorMsg) {
+    redirect(`/admin/enrich-detail?error=${encodeURIComponent(`reset 실패: ${errorMsg}`)}`);
+  }
+  const total = welfareReset + loanReset;
+  redirect(
+    `/admin/enrich-detail?reset=${total}&w=${welfareReset}&l=${loanReset}`,
+  );
+}
+
 export default async function EnrichDetailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ok?: string; result?: string; error?: string }>;
+  searchParams: Promise<{
+    ok?: string;
+    result?: string;
+    error?: string;
+    reset?: string;
+    w?: string;
+    l?: string;
+  }>;
 }) {
   await requireAdmin();
   const params = await searchParams;
@@ -122,6 +205,11 @@ export default async function EnrichDetailPage({
     }
   }
   const resultOk = params.ok === "1";
+
+  // 058 reset 결과 — ?reset=N&w=X&l=Y 로 도착
+  const resetTotal = params.reset ? Number(params.reset) : null;
+  const resetWelfare = params.w ? Number(params.w) : 0;
+  const resetLoan = params.l ? Number(params.l) : 0;
 
   const pct =
     stats.total > 0 ? Math.round((stats.fetched / stats.total) * 1000) / 10 : 0;
@@ -141,12 +229,18 @@ export default async function EnrichDetailPage({
           </p>
         </div>
 
-        {/* 상태 카드 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        {/* 상태 카드 (058: 영구 skip 카드 추가) */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
           <StatCard label="전체" value={stats.total.toLocaleString()} />
           <StatCard label="채워짐" value={stats.fetched.toLocaleString()} hint={`${pct}%`} />
           <StatCard label="남음" value={stats.pending.toLocaleString()} />
           <StatCard label="실패" value={stats.failed.toLocaleString()} danger />
+          <StatCard
+            label="영구 skip"
+            value={stats.skipped.toLocaleString()}
+            hint="3회 연속 실패"
+            danger={stats.skipped > 0}
+          />
         </div>
 
         {/* 에러 메시지 */}
@@ -175,6 +269,22 @@ export default async function EnrichDetailPage({
           </div>
         )}
 
+        {/* 058 reset 결과 배너 */}
+        {resetTotal !== null && (
+          <div
+            role="status"
+            className="rounded-lg p-4 mb-4 border bg-blue-50 border-blue-100 text-grey-900"
+          >
+            <div className="text-[14px] font-bold mb-1">
+              ✅ 영구 skip 해제 완료 — 총 {resetTotal.toLocaleString()}건
+            </div>
+            <div className="text-[13px] leading-[1.55] text-grey-700">
+              welfare {resetWelfare.toLocaleString()}건 · loan {resetLoan.toLocaleString()}건.
+              다음 cron (5분 이내) 부터 재시도 시작.
+            </div>
+          </div>
+        )}
+
         {/* 트리거 폼 */}
         <form action={triggerEnrich}>
           <button
@@ -187,8 +297,30 @@ export default async function EnrichDetailPage({
         <p className="mt-3 text-[13px] text-grey-600 leading-[1.65]">
           * 한 번에 10건 × 4초 간격 = 약 40초 소요 (Vercel 60초 한도 안전).
           <br />
-          * 성공 row 는 7일 cooldown, 실패 row 는 1일 cooldown 후 자동 재처리.
+          * 성공 row 는 7일 cooldown, 실패 row 는 7일 cooldown + 3회 도달 시 영구 skip.
         </p>
+
+        {/* 058 영구 skip 일괄 해제 — 외부 API 회복 시 재시도 진입점 */}
+        {stats.skipped > 0 && (
+          <div className="mt-8 pt-6 border-t border-grey-200">
+            <h2 className="text-[16px] font-bold text-grey-900 mb-2">
+              영구 skip 해제 ({stats.skipped.toLocaleString()}건)
+            </h2>
+            <p className="text-[13px] text-grey-700 leading-[1.65] mb-3">
+              외부 Detail API (예: bokjiro) 가 회복됐다는 확신이 들 때 누르세요.
+              detail_failed_count·last_detail_failed_at 까지 함께 reset 되어 다음 cron 부터
+              즉시 재시도합니다. 회복 안 됐다면 같은 row 가 3번 더 실패해서 다시 영구 skip 됩니다.
+            </p>
+            <form action={resetPermanentSkips}>
+              <button
+                type="submit"
+                className="w-full py-3 bg-red text-white rounded-lg text-[15px] font-bold hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                {stats.skipped.toLocaleString()}건 영구 skip 전부 해제
+              </button>
+            </form>
+          </div>
+        )}
 
         <p className="mt-8 text-[13px] flex items-center gap-4 flex-wrap">
           <Link href="/admin" className="text-blue-500 font-medium underline">← 어드민 홈</Link>
