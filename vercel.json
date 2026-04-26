@@ -25,6 +25,6 @@
 
     { "path": "/api/cleanup-expired-programs", "schedule": "0 18 * * *" },
 
-    { "path": "/api/enrich", "schedule": "*/15 * * * *" }
+    { "path": "/api/enrich", "schedule": "*/5 * * * *" }
   ]
 }
