@@ -6,6 +6,8 @@ import { FeatureGrid } from "@/components/feature-grid";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
+import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { HeroStats } from "@/components/hero-stats";
 import { RegionMap } from "@/components/region-map";
 import { HomeCTA } from "@/components/home-cta";
@@ -53,6 +55,17 @@ export default async function Home() {
     !initialProfile?.age_group &&
     !initialProfile?.region &&
     !initialProfile?.occupation;
+
+  // Phase 1.5 자격 정보 입력 유도 배너 노출 조건:
+  // 로그인 + 온보딩 거침 + income/household 둘 다 미입력 → Phase 1.5 효과 0 인 사용자
+  // (온보딩 안 거친 사용자는 EmptyProfilePrompt 가 처리)
+  const fullProfile = user ? await loadUserProfile() : null;
+  const showEnhanceBanner = Boolean(
+    fullProfile?.hasProfile &&
+      fullProfile.dismissedOnboardingAt !== null &&
+      !fullProfile.signals.incomeLevel &&
+      fullProfile.signals.householdTypes.length === 0,
+  );
 
   // 3) 최근 블로그 3글 + 최근 뉴스 3건 + 통합 stats RPC (병렬).
   //    이전엔 4 count query 직접 호출 → 단일 RPC 통합 (lib/home-stats).
@@ -164,6 +177,10 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
+          24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
+      {showEnhanceBanner && <EnhanceProfileBanner />}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           내러티브 4단계: 문제(Hero 카피) → 해결(Hero+RecommendCard) →

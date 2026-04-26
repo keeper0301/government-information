@@ -46,6 +46,10 @@ export const EVENTS = {
   // 동의 관리 (신뢰 신호)
   CONSENT_WITHDRAWN: "consent_withdrawn",
   RECONSENT_ACKNOWLEDGED: "reconsent_acknowledged",
+  // Phase 1.5 자격 정보 입력 유도 배너 (income/household 미입력자 대상)
+  PROFILE_ENHANCE_BANNER_SHOWN: "profile_enhance_banner_shown",
+  PROFILE_ENHANCE_BANNER_CLICKED: "profile_enhance_banner_clicked",
+  PROFILE_ENHANCE_BANNER_DISMISSED: "profile_enhance_banner_dismissed",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
