@@ -86,6 +86,7 @@ async function get24hStats() {
     welfareCount,
     loanCount,
     aiUsageRows,
+    cronAlertsNew,
   ] = await Promise.all([
     // 신규 가입 — user_profiles 기준. 온보딩 스킵 시 생성 안 될 수도 있어
     // 실사용자 대비 하회할 수 있지만, 실제 회원가입 퍼널 통과 사용자만 카운트.
@@ -132,6 +133,13 @@ async function get24hStats() {
       .gte("fetched_at", since24hIso),
     // AI 상담 — 오늘(KST) 전체 사용자 합산. 호출 1회당 count +1.
     admin.from("ai_usage_log").select("count").eq("date", kstToday),
+    // cron 실패 알림 — 24h 신규 메일 발송 건수 (notified_at 기준).
+    // dedupe 차단된 occurrences 누적은 /admin/cron-failures 에서 확인.
+    // 24h 신규 발송 3건 이상이면 KPI 카드 tone=warn — 폭주 패턴 조기 감지.
+    admin
+      .from("cron_failure_log")
+      .select("id", { count: "exact", head: true })
+      .gte("notified_at", since24hIso),
   ]);
 
   const aiTotal = (aiUsageRows.data ?? []).reduce(
@@ -148,6 +156,7 @@ async function get24hStats() {
     newsCollected: newsCount.count ?? 0,
     programsCollected: (welfareCount.count ?? 0) + (loanCount.count ?? 0),
     aiToday: aiTotal,
+    cronAlertsNew: cronAlertsNew.count ?? 0,
   };
 }
 
@@ -286,6 +295,17 @@ export default async function AdminHomePage({
               suffix="회"
               hint="ai_usage_log sum"
             />
+            <StatCard
+              label="cron 실패 알림"
+              value={stats.cronAlertsNew}
+              suffix="건"
+              hint={
+                stats.cronAlertsNew >= 3
+                  ? "폭주 의심 — /admin/cron-failures 점검"
+                  : "24h 신규 메일 발송 (occurrences 누적은 별도)"
+              }
+              tone={stats.cronAlertsNew >= 3 ? "warn" : "neutral"}
+            />
           </div>
         </section>
 
@@ -346,6 +366,11 @@ export default async function AdminHomePage({
               href="/admin/business"
               title="자영업자 wedge"
               desc="business_profiles 입력 현황·필드 채움률·전환율"
+            />
+            <ActionCard
+              href="/admin/cron-failures"
+              title="cron 실패 알림"
+              desc="24h 신규/누적·prefix 그룹·전체 목록"
             />
             <ActionCard
               href="/admin/my-actions"
