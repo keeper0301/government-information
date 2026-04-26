@@ -12,13 +12,25 @@ type SyncOptions = {
   tier: 'free' | 'basic' | 'pro';
 };
 
+// Phase 1.5 (054): 사용자 income_level → 알림 룰 income_target 매핑.
+// DB CHECK 는 'low/mid_low/mid/any' 만 허용. mid_high/high 는 정책 본문에
+// 해당 키워드 거의 없어 매칭 신호 약함 → null 처리 (income 무관).
+function incomeLevelToTarget(
+  level: UserSignals['incomeLevel'],
+): 'low' | 'mid_low' | 'mid' | null {
+  if (level === 'low' || level === 'mid_low' || level === 'mid') return level;
+  return null;
+}
+
 export async function syncAutoAlertRule(opts: SyncOptions): Promise<void> {
   const { userId, signals, tier } = opts;
 
   // 사용할 수 있는 신호가 하나도 없으면 전체 정책이 매칭 → 스팸 방지를 위해 건너뜀
+  // Phase 1.5: incomeLevel 도 신호로 인정 (income 만 입력해도 자동 룰 생성)
   const hasAnySignal =
     signals.region || signals.ageGroup || signals.occupation ||
-    signals.benefitTags.length > 0 || signals.householdTypes.length > 0;
+    signals.benefitTags.length > 0 || signals.householdTypes.length > 0 ||
+    incomeLevelToTarget(signals.incomeLevel) !== null;
   if (!hasAnySignal) return;
 
   const supabase = await createClient();
@@ -45,6 +57,7 @@ export async function syncAutoAlertRule(opts: SyncOptions): Promise<void> {
     occupation_tags: signals.occupation ? [signals.occupation] : [],
     benefit_tags: signals.benefitTags,
     household_tags: signals.householdTypes,
+    income_target: incomeLevelToTarget(signals.incomeLevel),
     channels,
     is_auto_generated: true,
     is_active: true,
@@ -60,6 +73,7 @@ export async function syncAutoAlertRule(opts: SyncOptions): Promise<void> {
         occupation_tags: payload.occupation_tags,
         benefit_tags: payload.benefit_tags,
         household_tags: payload.household_tags,
+        income_target: payload.income_target,
         channels: payload.channels,
       })
       .eq('id', existing.id);

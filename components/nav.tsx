@@ -26,6 +26,8 @@ const items = [
       { label: "복지정보", href: "/welfare" },
       { label: "대출정보", href: "/loan" },
       { label: "인기정책", href: "/popular" },
+      // Phase C: 자격별 정책 모음 (income·household 8 카테고리)
+      { label: "자격별 정책", href: "/eligibility" },
     ],
   },
   { label: "소식", href: "/news" },
