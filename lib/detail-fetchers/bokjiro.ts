@@ -20,6 +20,16 @@ import { fetchWithTimeout } from "@/lib/collectors";
 const API = "https://apis.data.go.kr/B554287/NationalWelfareInformationsV001/NationalWelfaredetailedV001";
 const KEY = process.env.DATA_GO_KR_API_KEY || "";
 
+// data.go.kr 일일 quota 소진 시 외부 API 가 HTTP 403 + "API token quota exceeded"
+// 본문을 반환. enrich route 가 이 특별 에러를 감지해서 batch 즉시 중단 + 알림 1회만
+// 발송하게 (24h 자정 KST 자동 회복까지 inbox 폭주 차단). 사고 2026-04-26 hot-fix.
+export class QuotaExceededError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QuotaExceededError";
+  }
+}
+
 // 단순 단일 태그 값 추출 (list collector 와 동일 패턴)
 function parseTag(xml: string, tag: string): string | null {
   const m = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
@@ -106,7 +116,17 @@ const fetcher: DetailFetcher = {
     if (!row.source_id) return null;
     const url = `${API}?serviceKey=${encodeURIComponent(KEY)}&servId=${encodeURIComponent(row.source_id)}`;
     const res = await fetchWithTimeout(url, { timeoutMs: 15000 });
-    if (!res.ok) throw new Error(`bokjiro-detail HTTP ${res.status}`);
+    if (!res.ok) {
+      // data.go.kr 일일 quota 초과 응답 (HTTP 403 + "API token quota exceeded" 본문)
+      // 시 특별 에러로 throw — enrich route 가 이를 감지해 batch 즉시 중단.
+      if (res.status === 403) {
+        const body = await res.text().catch(() => "");
+        if (/quota/i.test(body)) {
+          throw new QuotaExceededError(`bokjiro-detail quota exceeded (HTTP 403)`);
+        }
+      }
+      throw new Error(`bokjiro-detail HTTP ${res.status}`);
+    }
     const xml = await res.text();
 
     // 실패 응답 판정 — NO DATA FOUND / API not found / 에러코드

@@ -27,6 +27,7 @@ import {
   type RowIdentity,
   type DetailResult,
 } from "@/lib/detail-fetchers";
+import { QuotaExceededError } from "@/lib/detail-fetchers/bokjiro";
 
 // 10건 × 4초 interval = 36초 + fetch 응답 (~1~2s × 10) = ~50s → 60s 한도에 여유.
 // 최초엔 12 로 설정했으나 코드리뷰 결과 fetch 지연 누적 시 60s 초과 가능성
@@ -159,10 +160,13 @@ async function enrichOne(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[enrich-detail] ${row.table} ${row.id} (${row.source_code}):`, msg);
+    // 실패 마킹은 항상 (1일 cooldown 진입). QuotaExceededError 도 마찬가지 —
+    // 다만 호출자(enrichBatch) 가 batch 중단 시그널로 활용하도록 그대로 throw 전파.
     await supabase
       .from(row.table)
       .update({ last_detail_failed_at: new Date().toISOString() })
       .eq("id", row.id);
+    if (err instanceof QuotaExceededError) throw err;
     return "failed";
   }
 }
@@ -170,21 +174,33 @@ async function enrichOne(
 async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
   const candidates = await pickCandidates(supabase, BATCH_SIZE);
   if (candidates.length === 0) {
-    return { ok: 0, failed: 0, skipped: 0, total: 0 };
+    return { ok: 0, failed: 0, skipped: 0, total: 0, quotaExceeded: false };
   }
 
   let ok = 0, failed = 0, skipped = 0;
+  let quotaExceeded = false;
   for (let i = 0; i < candidates.length; i++) {
-    const r = await enrichOne(supabase, candidates[i]);
-    if (r === "ok") ok++;
-    else if (r === "failed") failed++;
-    else skipped++;
+    try {
+      const r = await enrichOne(supabase, candidates[i]);
+      if (r === "ok") ok++;
+      else if (r === "failed") failed++;
+      else skipped++;
+    } catch (err) {
+      // QuotaExceededError → batch 즉시 중단. 남은 candidate 는 다음 cron 라운드에 처리.
+      // 실패 row 자체는 enrichOne 의 catch 가 이미 last_detail_failed_at 마킹 완료.
+      if (err instanceof QuotaExceededError) {
+        failed++;
+        quotaExceeded = true;
+        break;
+      }
+      throw err;
+    }
     // 마지막 건이 아니면 rate limit 준수
     if (i < candidates.length - 1) {
       await new Promise((res) => setTimeout(res, CALL_INTERVAL_MS));
     }
   }
-  return { ok, failed, skipped, total: candidates.length };
+  return { ok, failed, skipped, total: candidates.length, quotaExceeded };
 }
 
 async function runEnrichAndRespond(jobLabel: string) {
@@ -192,13 +208,23 @@ async function runEnrichAndRespond(jobLabel: string) {
     const supabase = createAdminClient();
     const result = await enrichBatch(supabase);
 
-    // 처리 가능한 후보 중 50% 이상 fetch 실패 시 알림
-    const attempted = result.ok + result.failed;
-    if (attempted > 0 && result.failed / attempted >= 0.5) {
+    // quota 초과면 별도 단일 알림 — 24h dedupe 로 inbox 1건만 (자정 KST 자동 회복).
+    // 실패율 알림(아래)과 분리해서 quota 별도 signature 로 cron_failure_log 디바운스.
+    if (result.quotaExceeded) {
       await notifyCronFailure(
-        `${jobLabel} - Detail API 실패율 ${result.failed}/${attempted}`,
-        `data.go.kr NationalWelfaredetailedV001 응답 이상. quota·서비스 장애 가능성.`,
+        `${jobLabel} - data.go.kr quota 초과`,
+        `bokjiro Detail API 일일 quota 소진 (HTTP 403). 자정 KST 자동 회복 예상. 그동안 batch 즉시 중단.`,
       );
+    }
+    // 처리 가능한 후보 중 50% 이상 fetch 실패 시 알림 (quota 가 아닌 일반 실패만)
+    else {
+      const attempted = result.ok + result.failed;
+      if (attempted > 0 && result.failed / attempted >= 0.5) {
+        await notifyCronFailure(
+          `${jobLabel} - Detail API 실패율 ${result.failed}/${attempted}`,
+          `data.go.kr NationalWelfaredetailedV001 응답 이상. quota·서비스 장애 가능성.`,
+        );
+      }
     }
     // 전부 skipped 인 경우 — fetcher 누락 or applies 로직 깨짐. 운영 사각지대.
     if (result.total > 0 && result.ok === 0 && result.failed === 0) {

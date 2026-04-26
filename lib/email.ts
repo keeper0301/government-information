@@ -223,13 +223,13 @@ export async function sendCronFailureEmail({
 const NOTIFY_DEDUPE_HOURS = 24;
 
 function makeFailureSignature(jobName: string, errorMessage: string): string {
-  const normalized = errorMessage
-    .replace(/\d+/g, "N")        // 숫자 일반화 (timestamps, IDs, HTTP code 등)
-    .replace(/\s+/g, " ")
-    .trim()
-    .substring(0, 200);
+  // jobName 도 변동 숫자(예: "실패율 5/8") 일반화 — 매번 다른 signature 폭주 방지.
+  // 2026-04-26 사고: data.go.kr quota 초과 시 "5/7", "5/8", "5/9", "5/10" 등
+  // batch total 따라 jobName 이 변동되어 24h dedupe 가 작동 안 한 회귀 hot-fix.
+  const normalize = (s: string): string =>
+    s.replace(/\d+/g, "N").replace(/\s+/g, " ").trim().substring(0, 200);
   return createHash("sha1")
-    .update(`${jobName}::${normalized}`)
+    .update(`${normalize(jobName)}::${normalize(errorMessage)}`)
     .digest("hex");
 }
 
