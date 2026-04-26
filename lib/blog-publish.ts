@@ -73,11 +73,19 @@ export function getTodayCategory(now = new Date()): string {
 //   3) 아직 글로 발행 안 된 정책 (source_program_id 중복 X)
 //   4) 매칭 실패 시 그냥 마감 임박한 정책 아무거나
 // ============================================================
-export async function pickProgramForCategory(category: string): Promise<{
+// 베이스 함수 — 미사용 candidates 를 최대 maxCandidates 개 반환.
+// publishOnePost 의 품질 가드 retry loop 가 사용 (하나 throw 시 다음 시도).
+// ============================================================
+type PickedProgram = {
   ctx: ProgramContext;
   programId: string;
   programType: "welfare" | "loan";
-} | null> {
+};
+
+export async function pickProgramsForCategory(
+  category: string,
+  maxCandidates: number,
+): Promise<PickedProgram[]> {
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -93,15 +101,17 @@ export async function pickProgramForCategory(category: string): Promise<{
     else if (p.source_program_type === "loan" && p.source_program_id) usedLoan.add(p.source_program_id);
   }
 
+  const results: PickedProgram[] = [];
+
   // 큐레이션은 별도 처리 (마감 임박 정책 모음 형식).
   // loan 은 큐레이션 대상이 아님 (welfare 만) → usedLoan 전달 안 함.
   if (category === "큐레이션") {
-    return pickCurationProgram(admin, today, usedWelfare);
+    return pickCurationPrograms(admin, today, usedWelfare, maxCandidates);
   }
 
   // 일반 카테고리: 키워드 매칭
   const keywords = CATEGORY_KEYWORDS[category] || [];
-  if (keywords.length === 0) return null;
+  if (keywords.length === 0) return results;
 
   // 키워드를 title/target/description 에 포함하는 정책 (마감 임박순)
   // OR 검색을 위해 .or() 사용. description 까지 보면 매칭 폭이 넓어짐
@@ -127,12 +137,13 @@ export async function pickProgramForCategory(category: string): Promise<{
     .limit(30);
 
   for (const w of welfares || []) {
+    if (results.length >= maxCandidates) return results;
     if (!usedWelfare.has(w.id)) {
-      return {
+      results.push({
         programId: w.id,
         programType: "welfare",
         ctx: { type: "welfare", ...w },
-      };
+      });
     }
   }
 
@@ -147,29 +158,38 @@ export async function pickProgramForCategory(category: string): Promise<{
     .limit(30);
 
   for (const l of loans || []) {
+    if (results.length >= maxCandidates) return results;
     if (!usedLoan.has(l.id)) {
-      return {
+      results.push({
         programId: l.id,
         programType: "loan",
         ctx: { type: "loan", ...l },
-      };
+      });
     }
   }
 
   // 키워드 매칭 실패 시: 카테고리 무관 fallback 안 함
   // 잘못된 정책으로 카테고리 글 발행하면 SEO·UX 모두 나쁨
   // cron 다음날 재시도되니 발행 한 번 거르는 게 안전
-  return null;
+  return results;
+}
+
+// 기존 1건 반환 시그니처 — 외부 호출처 호환성 유지 (pickProgramsForCategory 의 wrapper)
+export async function pickProgramForCategory(category: string): Promise<PickedProgram | null> {
+  const list = await pickProgramsForCategory(category, 1);
+  return list[0] ?? null;
 }
 
 // 큐레이션 글: 일요일에 "이번주 마감 임박 정책" 모음 형식.
 // 단일 정책이 아니라 여러 개를 묶지만, 구현 단순화 위해 가장 임박한 정책 1개를
 // 메인으로 선택 (확장 시 여러 정책 모음으로 발전).
-async function pickCurationProgram(
+async function pickCurationPrograms(
   admin: ReturnType<typeof createAdminClient>,
   today: string,
   usedWelfare: Set<string>,
-) {
+  maxCandidates: number,
+): Promise<PickedProgram[]> {
+  const results: PickedProgram[] = [];
   // 큐레이션도 동일 — 활성 + 상시 정책 모두 포함, 최신순 우선
   const { data } = await admin
     .from("welfare_programs")
@@ -180,32 +200,81 @@ async function pickCurationProgram(
     .limit(20);
 
   for (const w of data || []) {
+    if (results.length >= maxCandidates) return results;
     if (!usedWelfare.has(w.id)) {
-      return {
+      results.push({
         programId: w.id,
-        programType: "welfare" as const,
-        ctx: { type: "welfare" as const, ...w },
-      };
+        programType: "welfare",
+        ctx: { type: "welfare", ...w },
+      });
     }
   }
-  return null;
+  return results;
 }
 
 // ============================================================
 // 글 1개 생성 + DB 저장
 // ============================================================
 // dryRun=true 면 DB 저장 안 하고 결과만 반환 (테스트용).
+//
+// 2026-04-26 retry loop: 단일 candidate 가 품질 가드(본문 길이·복붙·meta 길이) 로
+// throw 시 다음 candidate 로 자동 재시도 (최대 MAX_PUBLISH_ATTEMPTS 회).
+// LLM API 실패 같은 인프라 에러는 즉시 throw (무한 retry 방지).
+// 가속한 5글 발행에서 가드 누적 실패로 발행 글 수가 줄어드는 회귀 차단.
 // ============================================================
+const MAX_PUBLISH_ATTEMPTS = 3;
+
+// 품질 가드 throw 메시지에 포함되는 식별 문구 — 다음 candidate 로 retry 가능한 신호.
+// generateBlogPost 의 LLM API 에러나 DB 저장 실패는 여기 매치 안 됨 → 즉시 throw.
+function isQualityGuardError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("본문이 너무 짧음") ||
+    msg.includes("본문이 너무 김") ||
+    msg.includes("meta_description 길이 부적정") ||
+    msg.includes("본문이 원문 설명을 복붙") ||
+    msg.includes("메타 설명이 원문을 복붙")
+  );
+}
+
 export async function publishOnePost(opts: {
   category?: string;       // 명시 안 하면 오늘 요일 카테고리
   dryRun?: boolean;
 } = {}) {
   const category = opts.category || getTodayCategory();
-  const picked = await pickProgramForCategory(category);
-  if (!picked) {
+  const candidates = await pickProgramsForCategory(category, MAX_PUBLISH_ATTEMPTS);
+  if (candidates.length === 0) {
     throw new Error(`발행 가능한 정책을 못 찾았어요 (카테고리: ${category}). 모든 정책이 이미 글로 발행됐거나 매칭이 없어요.`);
   }
 
+  // 첫 candidate 부터 차례로 시도. 품질 가드 에러는 다음 candidate 로 retry.
+  // 인프라 에러(LLM API·DB)는 즉시 throw — retry 해도 같은 결과.
+  let lastQualityError: unknown = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const picked = candidates[i];
+    try {
+      return await publishWithCandidate(picked, category, opts);
+    } catch (err) {
+      if (isQualityGuardError(err)) {
+        lastQualityError = err;
+        // 다음 candidate 시도 (있으면)
+        continue;
+      }
+      // 인프라 에러 → 즉시 전파
+      throw err;
+    }
+  }
+  // 모든 candidate 가 품질 가드로 거절된 경우 마지막 에러 throw
+  throw lastQualityError ?? new Error(`모든 candidate (${candidates.length}건) 가 품질 가드로 거절됨. 카테고리: ${category}`);
+}
+
+// 1개 candidate 처리 — 기존 publishOnePost 의 picked 받은 이후 로직.
+// 품질 가드 에러는 throw — 호출자(publishOnePost) 가 잡아서 다음 candidate 시도.
+async function publishWithCandidate(
+  picked: PickedProgram,
+  category: string,
+  opts: { dryRun?: boolean },
+) {
   // AI 호출 (1회 retry — 일시적 5xx·timeout 대응)
   let generated;
   try {
