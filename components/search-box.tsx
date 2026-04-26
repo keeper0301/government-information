@@ -47,11 +47,12 @@ export function SearchBox() {
     return () => clearInterval(interval);
   }, [isFocused, query]);
 
-  // 검색 실행 (복지 페이지로 이동)
+  // 검색 실행 — 통합 검색 결과 페이지로 이동.
+  // (이전엔 /welfare 로만 가서 loan/news/blog 결과가 누락됐음)
   const handleSearch = (searchQuery: string) => {
     if (!searchQuery.trim()) return;
     setShowDropdown(false);
-    router.push(`/welfare?q=${encodeURIComponent(searchQuery.trim())}`);
+    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   // 폼 제출
