@@ -90,15 +90,21 @@ const BLOG_PERSONAL_MIN_SCORE = 3;
 // 분리 섹션 최대 건수 — welfare 10건보다 적게 (블로그는 콘텐츠라 압박감 줄임)
 const BLOG_PERSONAL_MAX_ITEMS = 6;
 
-type SearchParams = Promise<{ category?: string }>;
+type SearchParams = Promise<{ category?: string; q?: string }>;
 
 export default async function BlogIndexPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
-  const { category } = await searchParams;
+  const { category, q } = await searchParams;
   const activeCategory = category && category !== "all" ? category : "all";
+
+  // 통합 검색 ?q= 토큰 AND 매칭 (lib/search.ts 와 동일 패턴)
+  const queryRaw = (q ?? "").trim();
+  const queryTokens = queryRaw.length >= 2
+    ? queryRaw.replace(/[%_\\]/g, "\\$&").split(/\s+/).filter((t) => t.length > 0)
+    : [];
 
   const supabase = await createClient();
 
@@ -113,6 +119,10 @@ export default async function BlogIndexPage({
 
   if (activeCategory !== "all") {
     query = query.eq("category", activeCategory);
+  }
+  // 검색어 토큰 AND
+  for (const token of queryTokens) {
+    query = query.or(`title.ilike.%${token}%,meta_description.ilike.%${token}%`);
   }
 
   // ─── 개인화 점수용 풀 query (필터 무관 최신 100건) ───────────────────────────────

@@ -83,6 +83,7 @@ type Props = {
     benefit?: string; // BENEFIT_TAGS 14종 중 하나
     province?: string;
     page?: string;
+    q?: string; // 통합 검색에서 넘어왔을 때 적용
   }>;
 };
 
@@ -134,6 +135,11 @@ export default async function NewsIndexPage({ searchParams }: Props) {
       ? params.province
       : null;
   const page = Math.max(1, parseInt(params.page || "1", 10));
+  // 통합 검색에서 ?q= 로 넘어온 검색어 — 토큰 AND 매칭용 (lib/search.ts 와 동일 패턴)
+  const queryRaw = (params.q ?? "").trim();
+  const queryTokens = queryRaw.length >= 2
+    ? queryRaw.replace(/[%_\\]/g, "\\$&").split(/\s+/).filter((t) => t.length > 0)
+    : [];
 
   const supabase = await createClient();
 
@@ -150,6 +156,10 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     if (activeProvince) {
       const provinceName = PROVINCE_BY_CODE[activeProvince];
       if (provinceName) q = q.eq("ministry", provinceName);
+    }
+    // 검색어 토큰 AND — title/summary 둘 중 하나에 모든 토큰 포함된 행만
+    for (const token of queryTokens) {
+      q = q.or(`title.ilike.%${token}%,summary.ilike.%${token}%`);
     }
     return q;
   }

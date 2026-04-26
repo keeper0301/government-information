@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { searchAll } from "@/lib/search";
+import { searchAll, type NewsHit, type BlogHit } from "@/lib/search";
+import type { DisplayProgram } from "@/lib/programs";
 
 // /search?q=... — 통합 검색 결과 페이지
-// 복지·대출·정책뉴스·블로그 4개 영역을 한 화면에 표시.
-// 사용자가 SearchBox 에서 검색 제출하면 여기로 이동.
-// (이전엔 /welfare?q=... 로 가서 loan/news/blog 영역이 누락됐었음)
+// UX 설계:
+//   - 첫 화면: 영역별 20건 미리보기 (페이지 가벼움, 빠른 첫 인상)
+//   - 영역 헤더: 정확한 전체 매칭 건수 표시
+//   - 영역별 "전체 NNN건 보기 →" 큰 버튼 → 카테고리 페이지로 이동, 페이지네이션 활용
+//   - 결과 0건 영역 자동 숨김
 
 export const metadata: Metadata = {
   title: "검색 결과 — 정책알리미",
@@ -13,6 +16,8 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+const PREVIEW_LIMIT = 20;
 
 type Props = {
   searchParams: Promise<{ q?: string }>;
@@ -36,15 +41,14 @@ export default async function SearchPage({ searchParams }: Props) {
     );
   }
 
-  // 영역별 limit 사실상 무제한 — 사용자 요청 "사이트의 모든 글이 검색되게".
-  // welfare ~6200건, loan ~1600건, news ~수천건, blog ~수십~수백건 규모이므로
-  // 1000/1000/500/200 으로 두면 검색 매칭되는 거의 모든 글이 한 페이지에 노출됨.
-  // 자동완성(/api/search) 은 기본 limit (5건) 유지, 결과 페이지만 풍부하게.
+  // 영역별 미리보기 20건씩 + 정확 카운트.
+  // 카운트는 limit 무관 전체 매칭 건수 → "전체 NNN건 보기" 표시에 사용.
   const data = await searchAll(trimmed, {
-    welfareLimit: 1000,
-    loanLimit: 1000,
-    newsLimit: 500,
-    blogLimit: 200,
+    welfareLimit: PREVIEW_LIMIT,
+    loanLimit: PREVIEW_LIMIT,
+    newsLimit: PREVIEW_LIMIT,
+    blogLimit: PREVIEW_LIMIT,
+    includeCount: true,
   });
 
   return (
@@ -64,37 +68,36 @@ export default async function SearchPage({ searchParams }: Props) {
         <EmptyState query={trimmed} />
       ) : (
         <div className="space-y-12">
-          {/* 영역별 섹션 — 결과 있는 영역만 표시 */}
-          {data.welfare.length > 0 && (
+          {data.welfareTotal > 0 && (
             <ProgramSection
               title="복지"
-              count={data.welfare.length}
+              total={data.welfareTotal}
               items={data.welfare}
               moreHref={`/welfare?q=${encodeURIComponent(trimmed)}`}
               tone="blue"
             />
           )}
-          {data.loan.length > 0 && (
+          {data.loanTotal > 0 && (
             <ProgramSection
               title="대출·지원금"
-              count={data.loan.length}
+              total={data.loanTotal}
               items={data.loan}
               moreHref={`/loan?q=${encodeURIComponent(trimmed)}`}
               tone="orange"
             />
           )}
-          {data.news.length > 0 && (
+          {data.newsTotal > 0 && (
             <NewsSection
-              count={data.news.length}
+              total={data.newsTotal}
               items={data.news}
-              moreHref="/news"
+              moreHref={`/news?q=${encodeURIComponent(trimmed)}`}
             />
           )}
-          {data.blog.length > 0 && (
+          {data.blogTotal > 0 && (
             <BlogSection
-              count={data.blog.length}
+              total={data.blogTotal}
               items={data.blog}
-              moreHref="/blog"
+              moreHref={`/blog?q=${encodeURIComponent(trimmed)}`}
             />
           )}
         </div>
@@ -140,19 +143,67 @@ function EmptyState({ query }: { query: string }) {
   );
 }
 
-// 복지 / 대출 정책 영역
-type ProgramItem = Awaited<ReturnType<typeof searchAll>>["welfare"][number];
+// 영역 섹션 헤더 (제목 + 카운트 + 영역 페이지 링크)
+function SectionHeader({
+  title,
+  shown,
+  total,
+  moreHref,
+}: {
+  title: string;
+  shown: number;
+  total: number;
+  moreHref: string;
+}) {
+  const hasMore = total > shown;
+  return (
+    <div className="flex items-baseline justify-between mb-4 gap-3">
+      <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900">
+        {title}
+        <span className="ml-2 text-xs text-grey-500 font-normal">
+          {hasMore ? `${shown}건 미리보기 · 전체 ${total.toLocaleString("ko-KR")}건` : `${total}건`}
+        </span>
+      </h2>
+      {hasMore && (
+        <Link
+          href={moreHref}
+          className="shrink-0 text-[13px] text-blue-500 hover:text-blue-600 underline whitespace-nowrap"
+        >
+          전체 보기 →
+        </Link>
+      )}
+    </div>
+  );
+}
 
+// 영역 하단 "이 영역 전체 NNN건 보기" 큰 버튼 — 더 많은 결과 있을 때만 노출
+function MoreButton({ total, shown, href }: { total: number; shown: number; href: string }) {
+  if (total <= shown) return null;
+  const remaining = total - shown;
+  return (
+    <Link
+      href={href}
+      className="block mt-3 text-center px-5 py-3 rounded-lg bg-blue-50 text-blue-700 text-[14px] font-semibold hover:bg-blue-100 transition-colors no-underline"
+    >
+      이 영역 전체 {total.toLocaleString("ko-KR")}건 보기
+      <span className="text-[12px] font-normal opacity-80 ml-2">
+        ({remaining.toLocaleString("ko-KR")}건 더)
+      </span>
+    </Link>
+  );
+}
+
+// 복지 / 대출 정책 영역
 function ProgramSection({
   title,
-  count,
+  total,
   items,
   moreHref,
   tone,
 }: {
   title: string;
-  count: number;
-  items: ProgramItem[];
+  total: number;
+  items: DisplayProgram[];
   moreHref: string;
   tone: "blue" | "orange";
 }) {
@@ -163,20 +214,7 @@ function ProgramSection({
 
   return (
     <section>
-      <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900">
-          {title}
-          <span className="ml-2 text-xs text-grey-500 font-normal">
-            {count}건
-          </span>
-        </h2>
-        <Link
-          href={moreHref}
-          className="text-[13px] text-blue-500 hover:text-blue-600 underline"
-        >
-          전체 보기 →
-        </Link>
-      </div>
+      <SectionHeader title={title} shown={items.length} total={total} moreHref={moreHref} />
       <ul className="space-y-2">
         {items.map((it) => (
           <li key={`${it.type}-${it.id}`}>
@@ -184,69 +222,55 @@ function ProgramSection({
               href={`/${it.type}/${it.id}`}
               className="block px-4 py-3 rounded-lg border border-grey-100 bg-white hover:bg-grey-50 transition-colors no-underline"
             >
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}
-                    >
-                      {it.category}
-                    </span>
-                    {it.dday !== null && it.dday !== undefined && (
-                      <span className="text-[11px] text-grey-500">
-                        {it.dday < 0
-                          ? "마감"
-                          : it.dday === 0
-                          ? "오늘 마감"
-                          : `D-${it.dday}`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[15px] font-semibold text-grey-900 line-clamp-2 mb-1">
-                    {it.title}
-                  </div>
-                  {it.description && (
-                    <p className="text-[13px] text-grey-600 line-clamp-2 leading-[1.5]">
-                      {it.description}
-                    </p>
-                  )}
-                  <div className="text-[11px] text-grey-500 mt-1">
-                    출처: {it.source}
-                  </div>
-                </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}
+                >
+                  {it.category}
+                </span>
+                {it.dday !== null && it.dday !== undefined && (
+                  <span className="text-[11px] text-grey-500">
+                    {it.dday < 0
+                      ? "마감"
+                      : it.dday === 0
+                      ? "오늘 마감"
+                      : `D-${it.dday}`}
+                  </span>
+                )}
+              </div>
+              <div className="text-[15px] font-semibold text-grey-900 line-clamp-2 mb-1">
+                {it.title}
+              </div>
+              {it.description && (
+                <p className="text-[13px] text-grey-600 line-clamp-2 leading-[1.5]">
+                  {it.description}
+                </p>
+              )}
+              <div className="text-[11px] text-grey-500 mt-1">
+                출처: {it.source}
               </div>
             </Link>
           </li>
         ))}
       </ul>
+      <MoreButton total={total} shown={items.length} href={moreHref} />
     </section>
   );
 }
 
 // 정책 뉴스 영역
 function NewsSection({
-  count,
+  total,
   items,
   moreHref,
 }: {
-  count: number;
-  items: Awaited<ReturnType<typeof searchAll>>["news"];
+  total: number;
+  items: NewsHit[];
   moreHref: string;
 }) {
   return (
     <section>
-      <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900">
-          정책 뉴스
-          <span className="ml-2 text-xs text-grey-500 font-normal">{count}건</span>
-        </h2>
-        <Link
-          href={moreHref}
-          className="text-[13px] text-blue-500 hover:text-blue-600 underline"
-        >
-          전체 보기 →
-        </Link>
-      </div>
+      <SectionHeader title="정책 뉴스" shown={items.length} total={total} moreHref={moreHref} />
       <ul className="space-y-2">
         {items.map((it) => (
           <li key={it.slug}>
@@ -270,34 +294,24 @@ function NewsSection({
           </li>
         ))}
       </ul>
+      <MoreButton total={total} shown={items.length} href={moreHref} />
     </section>
   );
 }
 
 // 블로그 영역
 function BlogSection({
-  count,
+  total,
   items,
   moreHref,
 }: {
-  count: number;
-  items: Awaited<ReturnType<typeof searchAll>>["blog"];
+  total: number;
+  items: BlogHit[];
   moreHref: string;
 }) {
   return (
     <section>
-      <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-[20px] font-bold tracking-[-0.5px] text-grey-900">
-          블로그
-          <span className="ml-2 text-xs text-grey-500 font-normal">{count}건</span>
-        </h2>
-        <Link
-          href={moreHref}
-          className="text-[13px] text-blue-500 hover:text-blue-600 underline"
-        >
-          전체 보기 →
-        </Link>
-      </div>
+      <SectionHeader title="블로그" shown={items.length} total={total} moreHref={moreHref} />
       <ul className="space-y-2">
         {items.map((it) => (
           <li key={it.slug}>
@@ -321,6 +335,7 @@ function BlogSection({
           </li>
         ))}
       </ul>
+      <MoreButton total={total} shown={items.length} href={moreHref} />
     </section>
   );
 }
