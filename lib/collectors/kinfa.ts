@@ -129,10 +129,15 @@ const collector: Collector = {
         const interestRate = rate
           ? `${rate}%${rateType ? ` (${rateType})` : ""}`
           : null;
-        const applyUrl =
-          detailUrl && /^https?:\/\//.test(detailUrl)
-            ? detailUrl
-            : "https://www.kinfa.or.kr/financialProduct/peopleFinancial.do";
+        // rltsite (관련 사이트 URL) 가 비어있을 때 KINFA portal 메인 URL 로
+        // fallback 하면 모든 정책이 같은 portal 페이지로 가버려서 사용자가 정확한
+        // 정책 페이지를 찾지 못함 (2026-04-26 사용자 보고: "이 글과 원문 링크가
+        // 다르다"). source 는 "주택도시보증공사" 같은 정확한 운영 기관인데
+        // URL 은 KINFA portal 이라 mismatch 발생.
+        // 잘못된 URL 보다 null 이 안전 — UI 는 apply_url=null 일 때
+        // "원문 링크가 수집되지 않았어요" 안내 + Google 검색 fallback 으로 처리.
+        const applyUrl: string | null =
+          detailUrl && /^https?:\/\//.test(detailUrl) ? detailUrl : null;
 
         const textBlob = [title, target, purpose, description].join(" ");
         const regionTags = extractRegionTags(textBlob);

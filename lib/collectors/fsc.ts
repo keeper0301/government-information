@@ -160,9 +160,11 @@ const collector: Collector = {
 
         const loanAmount = limit || null;
         const interestRate = rate ? `${rate}${rateType ? ` (${rateType})` : ""}` : null;
-        const applyUrl = site && /^https?:\/\//.test(site)
-          ? site
-          : "https://www.kinfa.or.kr/financialProduct/peopleFinancial.do";
+        // site (관련 사이트 URL) 가 비어있을 때 KINFA portal fallback 은 안티패턴.
+        // source 와 무관한 URL 로 가게 되어 사용자가 정확한 정책 페이지를 못 찾음.
+        // null 이면 UI 에서 "원문 링크가 수집되지 않았어요" 안내 + Google 검색 fallback.
+        const applyUrl: string | null =
+          site && /^https?:\/\//.test(site) ? site : null;
 
         const textBlob = [fullTitle, target, purpose, description].join(" ");
 
