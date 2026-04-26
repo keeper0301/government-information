@@ -2,6 +2,7 @@
 // 정책 1건이 사용자 프로필에 얼마나 맞는지 점수 계산
 // spec §4-2 (Phase 1) 기준. 소득·가구상태는 본문 정규식 매칭으로 약한 가산점.
 import { AGE_KEYWORDS, OCCUPATION_KEYWORDS } from '@/lib/profile-options';
+import { evaluateBusinessMatch } from '@/lib/eligibility/business-match';
 import type { UserSignals, MatchSignal, ScoredItem } from './types';
 
 // 점수 계산 대상 아이템 형태 정의
@@ -350,7 +351,26 @@ export function scoreProgram<T extends ScorableItem>(
     }
   }
 
-  // ⑧ 마감 임박 tiebreaker: +1점 (다른 매칭이 있을 때만!)
+  // ⑧ Business 자격 매칭 (자영업자 wedge, Basic 핵심)
+  // 사용자가 business_profile 입력했을 때만 평가. 매출/직원/업종/사업자유형/창업N년 자동 매칭.
+  // - match     : +5 시그널 추가 (자격 명확 충족)
+  // - mismatch  : 강제 score 0 + signals=[] (regional gate 패턴 — 자격 명백 미달은 차단)
+  // - unknown   : 영향 없음 (정보 부족 시 다른 시그널로 평가)
+  //
+  // mismatch 강제 차단 안전성: matchBusinessProfile 이 보수적으로 판정
+  // (정책에 명확한 요구사항 + 사용자에 명확한 정보 + 명백한 초과인 경우만 mismatch).
+  // false positive 위험 최소화.
+  if (user.businessProfile) {
+    const businessMatch = evaluateBusinessMatch(haystack, user.businessProfile);
+    if (businessMatch === 'mismatch') {
+      return { item: program, score: 0, signals: [] };
+    }
+    if (businessMatch === 'match') {
+      signals.push({ kind: 'business_match', score: 5 });
+    }
+  }
+
+  // ⑨ 마감 임박 tiebreaker: +1점 (다른 매칭이 있을 때만!)
   // 스팸 방지: 아무 매칭 없는 정책이 마감 임박만으로 노출되지 않게
   if (signals.length > 0 && isUrgentDeadline(program.apply_end)) {
     signals.push({ kind: 'urgent_deadline', score: 1 });

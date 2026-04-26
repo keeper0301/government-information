@@ -46,9 +46,10 @@ export function EligibilityBadges({
 
   if (!showIncome && households.length === 0) return null;
 
+  // 자격 배지들 — 호출자가 wrap div 책임 (BusinessMatchBadge 와 같은 라인 통합용).
+  // Fragment 반환으로 inline 결합 가능.
   return (
-    // 자격 배지 라인 — 12px·연한 톤. 너무 두드러지면 카드 노이즈 ↑
-    <div className="flex flex-wrap gap-1 mt-1 mb-1">
+    <>
       {showIncome && (
         // 소득 분위 = amber 톤 (저소득 우대 의미)
         <span className="inline-flex items-center text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 leading-none">
@@ -64,6 +65,6 @@ export function EligibilityBadges({
           {HOUSEHOLD_LABEL[tag]}
         </span>
       ))}
-    </div>
+    </>
   );
 }

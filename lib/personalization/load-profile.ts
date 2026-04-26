@@ -6,10 +6,15 @@ import { createClient } from '@/lib/supabase/server';
 import type { UserSignals } from './types';
 import type {
   AgeOption,
+  BusinessEmployee,
+  BusinessIndustry,
+  BusinessRevenue,
+  BusinessType,
   OccupationOption,
   RegionOption,
 } from '@/lib/profile-options';
 import type { BenefitTag } from '@/lib/tags/taxonomy';
+import type { BusinessProfile } from '@/lib/eligibility/business-match';
 
 export type LoadedProfile = {
   userId: string;
@@ -43,18 +48,41 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
 
   const displayName = deriveDisplayName(user);
 
+  // user_profiles + business_profiles 동시 조회 (한 RTT, 자영업자 wedge 통합)
   // user_profiles.id = auth.users.id (직접 참조, user_id 아님)
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select(`
-      id, age_group, region, district, occupation,
-      interests, income_level, household_types, benefit_tags,
-      dismissed_onboarding_at
-    `)
-    .eq('id', user.id)
-    .maybeSingle();
+  const [{ data: profile }, { data: business }] = await Promise.all([
+    supabase
+      .from('user_profiles')
+      .select(`
+        id, age_group, region, district, occupation,
+        interests, income_level, household_types, benefit_tags,
+        dismissed_onboarding_at
+      `)
+      .eq('id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('business_profiles')
+      .select(
+        'industry, revenue_scale, employee_count, business_type, established_date, region, district',
+      )
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ]);
 
-  // 프로필 행이 아직 없는 경우 — 빈 signals 반환
+  // business_profiles → BusinessProfile (모든 필드 미입력이면 null 처리, 매칭 영향 X)
+  const businessProfile: BusinessProfile | null = business
+    ? {
+        industry: (business.industry ?? null) as BusinessIndustry | null,
+        revenue_scale: (business.revenue_scale ?? null) as BusinessRevenue | null,
+        employee_count: (business.employee_count ?? null) as BusinessEmployee | null,
+        business_type: (business.business_type ?? null) as BusinessType | null,
+        established_date: business.established_date ?? null,
+        region: business.region ?? null,
+        district: business.district ?? null,
+      }
+    : null;
+
+  // 프로필 행이 아직 없는 경우 — 빈 signals 반환 (단 businessProfile 은 있을 수 있음)
   if (!profile) {
     return {
       userId: user.id,
@@ -67,8 +95,9 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
         incomeLevel: null,
         householdTypes: [],
         benefitTags: [],
+        businessProfile,
       },
-      isEmpty: true,
+      isEmpty: !businessProfile,
       hasProfile: false,
       dismissedOnboardingAt: null,
     };
@@ -83,13 +112,15 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
     incomeLevel: (profile.income_level ?? null) as UserSignals['incomeLevel'],
     householdTypes: (profile.household_types ?? []) as string[],
     benefitTags: (profile.benefit_tags ?? []) as BenefitTag[],
+    businessProfile,
   };
 
   // 추천에 쓸 수 있는 신호가 하나도 없으면 isEmpty = true
+  // businessProfile 도 신호로 인정 (자영업자라 사장님 정보만 입력하고 일반 프로필 비워둘 수 있음)
   const isEmpty =
     !signals.ageGroup && !signals.region && !signals.occupation &&
     !signals.incomeLevel && signals.householdTypes.length === 0 &&
-    signals.benefitTags.length === 0;
+    signals.benefitTags.length === 0 && !signals.businessProfile;
 
   return {
     userId: user.id,

@@ -302,6 +302,7 @@ export default async function LoanPage({ searchParams }: Props) {
                       <ProgramRow
                         key={item.id}
                         program={loanToDisplay(poolRaw)}
+                        businessProfile={profile.signals.businessProfile}
                       />
                     );
                   })}
@@ -332,7 +333,10 @@ export default async function LoanPage({ searchParams }: Props) {
               // MatchBadge 를 ProgramRow 오른쪽 상단에 absolute 로 겹쳐 표시
               // ProgramRow 시그니처 무변경 — relative wrapper 로만 배지 추가
               <div key={p.id} className="relative">
-                <ProgramRow program={p} />
+                <ProgramRow
+                  program={p}
+                  businessProfile={profile?.signals.businessProfile}
+                />
                 {/* 분리 섹션에 노출된 항목 → ✨ 내 조건 배지 */}
                 {personalIds.has(p.id) && (
                   <div className="absolute top-4 right-0 pointer-events-none">

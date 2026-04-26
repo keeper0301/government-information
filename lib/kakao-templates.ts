@@ -66,8 +66,66 @@
 //  ────────────────────────────
 //
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//
+//  📝 POLICY_NEW_V3  —  v2 + 자영업자 자격 진단 wedge 통합 (사장님 케이뱅크 reference)
+//
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//
+//  템플릿 명칭: 정책알리미_신규정책알림_v3_자격진단
+//  메시지 유형: 기본형 (Basic)
+//  분류:        정보성
+//  카테고리:    서비스이용 > 기타
+//
+//  ────── 본문 ──────
+//  [keepioo] 새 맞춤 정책 알림
+//
+//  #{user_name}님,
+//  #{rule_name} 조건에 맞는 새 정책이 등록되었습니다.
+//
+//  ✅ 정책명: #{title}
+//  ✅ 사장님 자격: #{eligibility_status}
+//  ✅ 지원 금액: #{benefit_summary}
+//  ✅ 신청 마감: #{deadline}
+//
+//  자세한 신청 조건과 절차는 아래에서 확인하실 수 있습니다.
+//
+//  ※ 본 메시지는 고객님께서 keepioo 마이페이지에서 직접 등록하신 맞춤 알림
+//  조건과 사장님 가게 정보로 자동 매칭된 정책에 대해 발송되는 정보성
+//  메시지입니다. 수신을 원하지 않으실 경우 마이페이지 > 알림 설정에서
+//  언제든 해지 가능합니다.
+//  ───────────────────
+//
+//  ────── 변수 가이드 (Solapi 템플릿 등록 시 동일하게 입력) ──────
+//  · #{user_name}          : 사용자 이름 또는 닉네임 (예: "최관철")
+//  · #{rule_name}          : 알림 규칙 이름 (예: "소상공인 정책자금")
+//  · #{title}              : 정책 제목 (예: "고유가 피해 소상공인 지원금")
+//  · #{eligibility_status} : 자격 진단 결과 한 줄
+//                            예시: "✓ 자격 충족 (매출 5억 이하·5인 미만)"
+//                                  "확인 필요 (가게 정보 일부 미입력)"
+//                                  ※ 자격 미해당 정책은 발송 자체 안 됨
+//  · #{benefit_summary}    : 지원 금액 요약 (예: "최대 60만원")
+//  · #{deadline}           : 신청 마감 (예: "5월 31일까지 (D-30)")
+//  · #{detail_path}        : 상세 페이지 경로 (예: "/welfare/abc-123")
+//  ──────────────────────────────────────────────────────────
+//
+//  ────── 버튼 ──────
+//  1) 웹링크 | 자세히 보고 신청하기 | URL: https://www.keepioo.com#{detail_path}
+//  2) 웹링크 | 알림 설정 변경 | URL: https://www.keepioo.com/mypage/notifications
+//  ───────────────────
+//
+//  ────── 심사 대비 메모 ──────
+//  · v2 의 다발성 발송 고정 문구 그대로 유지 (반려 방지)
+//  · ✅ 이모지 4개 사용 — 카카오 알림톡은 ✅ ✓ 등 일반 유니코드 허용
+//    (BUT 광고성 이모지 🎁 ⭐ 🎉 등은 금지)
+//  · 사장님 자격 진단 결과는 항상 본문에 노출 → "내 알림 = 다 신청 가능" 신뢰 확보
+//  · 자격 미해당 정책은 alert-dispatch.ts 단계에서 사전 필터링되어 발송 안 됨
+//    (눈에 보이는 모든 알림이 자격 충족이라는 보장)
+//  · 케이뱅크 알림 reference (사장님 제공) 의 호명·이모지·자격·금액·마감 패턴 차용
+//  ────────────────────────────
+//
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export type KakaoTemplateCode = "POLICY_NEW";
+export type KakaoTemplateCode = "POLICY_NEW" | "POLICY_NEW_V3";
 
 // 템플릿별 변수 스키마 — 타입 안전성 (오타·누락 방지)
 export type KakaoTemplateVariables = {
@@ -85,6 +143,29 @@ export type KakaoTemplateVariables = {
      */
     detail_path: string;
   };
+  POLICY_NEW_V3: {
+    /** 사용자 이름 또는 닉네임 (예: "최관철") */
+    user_name: string;
+    /** 사용자가 등록한 알림 규칙 이름 (예: "소상공인 정책자금") */
+    rule_name: string;
+    /** 정책 제목 */
+    title: string;
+    /**
+     * 자격 진단 결과 한 줄. business_match.ts evaluateBusinessMatch 결과를
+     * 사람이 읽을 한국어로 풀어 전달. 예시:
+     *   "✓ 자격 충족 (매출 5억 이하·5인 미만)"
+     *   "✓ 자격 충족 (소상공인 대상)"
+     *   "확인 필요 (가게 정보 일부 미입력)"
+     * mismatch 정책은 alert-dispatch 에서 발송 자체 안 됨.
+     */
+    eligibility_status: string;
+    /** 지원 금액 요약 (예: "최대 60만원" / "이자 1.5% 우대") */
+    benefit_summary: string;
+    /** 신청 마감 (예: "5월 31일까지 (D-30)" / "상시 모집") */
+    deadline: string;
+    /** 상세 페이지 경로 (POLICY_NEW 와 동일 구조) */
+    detail_path: string;
+  };
 };
 
 // Solapi 에 등록된 실제 템플릿 ID 로 매핑.
@@ -94,6 +175,8 @@ export function getSolapiTemplateId(code: KakaoTemplateCode): string | null {
   switch (code) {
     case "POLICY_NEW":
       return process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW ?? null;
+    case "POLICY_NEW_V3":
+      return process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW_V3 ?? null;
     default:
       return null;
   }

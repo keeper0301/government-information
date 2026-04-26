@@ -6,6 +6,7 @@ import type {
   RegionOption,
 } from '@/lib/profile-options';
 import type { BenefitTag } from '@/lib/tags/taxonomy';
+import type { BusinessProfile } from '@/lib/eligibility/business-match';
 
 // 사용자 프로필에서 뽑아낸 시그널 (신호) 묶음
 // 추천 점수 계산의 입력값으로 사용
@@ -17,13 +18,15 @@ export type UserSignals = {
   incomeLevel: 'low' | 'mid_low' | 'mid' | 'mid_high' | 'high' | null; // 소득 수준
   householdTypes: string[];          // 가구 유형 목록 (예: ['single_parent'])
   benefitTags: BenefitTag[];        // 관심 혜택 태그 목록 (예: ['주거', '교육'])
+  businessProfile?: BusinessProfile | null; // 자영업자 자격 진단 wedge — 입력 안한 사용자는 null/undefined
 };
 
 // 매칭 시그널 1개 — 점수에 기여한 이유와 점수를 함께 기록
 export type MatchSignal = {
   kind: 'region' | 'district' | 'benefit_tags' | 'occupation' | 'age'
         | 'income_keyword' | 'household_keyword' | 'urgent_deadline'
-        | 'income_target' | 'household_target';  // Phase 1.5: 정확 매칭 시그널 추가
+        | 'income_target' | 'household_target'  // Phase 1.5: 정확 매칭 시그널
+        | 'business_match';                      // 자영업자 자격 정확 매칭 (Basic wedge)
   score: number;   // 이 시그널이 기여한 점수
   detail?: string; // 부가 설명 (예: 어떤 태그가 일치했는지)
 };

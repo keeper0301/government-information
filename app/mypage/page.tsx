@@ -42,24 +42,34 @@ export default async function MyPage() {
     Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), 1, -9, 0, 0)
   );
 
-  const [{ data: profile }, consents, { count: alertsThisMonth }] =
-    await Promise.all([
-      supabase
-        .from("user_profiles")
-        .select(
-          "age_group, region, district, occupation, interests, income_level, household_types"
-        )
-        .eq("id", user.id)
-        .maybeSingle(),
-      getUserConsents(user.id),
-      supabase
-        .from("alert_deliveries")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("channel", "kakao")
-        .eq("status", "sent")
-        .gte("created_at", monthStart.toISOString()),
-    ]);
+  const [
+    { data: profile },
+    consents,
+    { count: alertsThisMonth },
+    { data: businessProfile },
+  ] = await Promise.all([
+    supabase
+      .from("user_profiles")
+      .select(
+        "age_group, region, district, occupation, interests, income_level, household_types"
+      )
+      .eq("id", user.id)
+      .maybeSingle(),
+    getUserConsents(user.id),
+    supabase
+      .from("alert_deliveries")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("channel", "kakao")
+      .eq("status", "sent")
+      .gte("created_at", monthStart.toISOString()),
+    // 자영업자 자격 진단 wedge — business profile 입력 여부만 체크 (id 1 row 페이로드 최소)
+    supabase
+      .from("business_profiles")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   const email = user.email || "";
   const provider =
@@ -89,19 +99,48 @@ export default async function MyPage() {
 
       <MypageTabs
         profileSlot={
-          <ProfileForm
-            initial={{
-              age_group: profile?.age_group ?? null,
-              region: profile?.region ?? null,
-              district: profile?.district ?? null,
-              occupation: profile?.occupation ?? null,
-              interests: profile?.interests ?? [],
-              income_level: (profile?.income_level ?? null) as
-                | IncomeOption
-                | null,
-              household_types: (profile?.household_types ?? []) as HouseholdOption[],
-            }}
-          />
+          <div className="space-y-6">
+            {/* 자영업자 자격 진단 wedge 진입 카드 — Basic 핵심 가치.
+                business 정보 있으면 "수정", 없으면 "입력하기" 라벨로 분기. */}
+            <a
+              href="/mypage/business"
+              className="block bg-blue-50 border border-blue-200 rounded-2xl p-5 no-underline hover:bg-blue-100 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-4 max-md:flex-col max-md:items-start">
+                <div className="flex-1">
+                  <p className="text-[12px] font-semibold text-blue-700 mb-1 tracking-wide">
+                    🏪 자영업자/소상공인
+                  </p>
+                  <p className="text-[15px] font-bold text-blue-900 mb-1">
+                    {businessProfile
+                      ? "내 가게 정보 수정하기"
+                      : "내 가게 정보 입력하기"}
+                  </p>
+                  <p className="text-[13px] text-blue-800 leading-[1.55]">
+                    한 번 입력하면 모든 정책에 자격 ✓/✗ 자동 표시.
+                    카톡 알림에도 자격 한 줄이 함께 와요.
+                  </p>
+                </div>
+                <span className="shrink-0 inline-flex items-center min-h-[44px] px-4 text-[14px] font-semibold text-white bg-blue-500 rounded-xl">
+                  {businessProfile ? "수정 →" : "입력 →"}
+                </span>
+              </div>
+            </a>
+
+            <ProfileForm
+              initial={{
+                age_group: profile?.age_group ?? null,
+                region: profile?.region ?? null,
+                district: profile?.district ?? null,
+                occupation: profile?.occupation ?? null,
+                interests: profile?.interests ?? [],
+                income_level: (profile?.income_level ?? null) as
+                  | IncomeOption
+                  | null,
+                household_types: (profile?.household_types ?? []) as HouseholdOption[],
+              }}
+            />
+          </div>
         }
         consentsSlot={
           <section id="consents" className="scroll-mt-20">

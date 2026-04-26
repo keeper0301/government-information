@@ -10,6 +10,11 @@ import {
 import type { DisplayProgram } from "@/lib/programs";
 import { cleanDescription } from "@/lib/utils";
 import { EligibilityBadges } from "./personalization/EligibilityBadges";
+import { BusinessMatchBadge } from "./personalization/BusinessMatchBadge";
+import {
+  evaluateBusinessMatch,
+  type BusinessProfile,
+} from "@/lib/eligibility/business-match";
 
 const iconMap = {
   house: HouseIcon,
@@ -52,11 +57,29 @@ function DdayLabel({ dday }: { dday: number | null }) {
   );
 }
 
-export function ProgramRow({ program }: { program: DisplayProgram }) {
+export function ProgramRow({
+  program,
+  businessProfile,
+}: {
+  program: DisplayProgram;
+  // 자영업자 자격 진단 — 입력한 사용자만 prop 전달. 미입력 사용자는 undefined.
+  // server component 라 props drilling 채택 (React Context 미사용).
+  businessProfile?: BusinessProfile | null;
+}) {
   const Icon = iconMap[program.icon];
   // 마감 7일 이내면 좌측 액센트를 항상 빨강으로 — 긴박성 시각 신호.
   // 그 외엔 hover 시에만 blue 액센트 등장 (정적 상태 차분).
   const isUrgent = program.dday !== null && program.dday <= 7;
+
+  // 자격 진단 — businessProfile 있을 때만 평가 (없으면 null → 배지 미노출)
+  // server-side 평가라 React render 마다 호출되지만, evaluateBusinessMatch 는
+  // 정규식 + 단순 비교라 1ms 미만. 큰 부담 X.
+  const businessMatch = businessProfile
+    ? evaluateBusinessMatch(
+        `${program.title ?? ''} ${program.description ?? ''}`,
+        businessProfile,
+      )
+    : null;
 
   return (
     <a
@@ -90,12 +113,15 @@ export function ProgramRow({ program }: { program: DisplayProgram }) {
             </div>
             <DdayLabel dday={program.dday} />
           </div>
-          {/* Phase 1.5 본문 분석 결과 — 자격 배지 (소득 분위·가구 형태).
-              데이터 없는 카드는 컴포넌트가 null 반환해서 영역 자체 안 차지. */}
-          <EligibilityBadges
-            incomeTargetLevel={program.incomeTargetLevel}
-            householdTargetTags={program.householdTargetTags}
-          />
+          {/* 자격 배지 라인 — 자영업자 매칭이 가장 앞 (사용자 본인 자격 시그널이 가장 강함).
+              두 컴포넌트 모두 데이터 없으면 null 반환 → empty:hidden 으로 wrap 자체 숨김. */}
+          <div className="flex flex-wrap items-center gap-1 mt-1 mb-1 empty:hidden">
+            <BusinessMatchBadge match={businessMatch} />
+            <EligibilityBadges
+              incomeTargetLevel={program.incomeTargetLevel}
+              householdTargetTags={program.householdTargetTags}
+            />
+          </div>
           {/* description 은 원문 그대로 저장돼 있어 &nbsp; · ☞ · <br> 등 raw 엔티티·
               섹션 기호가 노출되는 사례가 있음. 상세 페이지와 동일하게 cleanDescription
               으로 엔티티·태그 정리. truncate 한 줄이라 삽입된 \n 은 CSS 가 공백으로

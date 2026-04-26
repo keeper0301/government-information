@@ -112,3 +112,52 @@ export const HOUSEHOLD_OPTIONS = [
   { value: 'elderly_family',   label: '고령가구·독거노인' },
 ] as const;
 export type HouseholdOption = typeof HOUSEHOLD_OPTIONS[number]['value'];
+
+// ============================================================
+// 자영업자 "내 가게" 프로필 옵션 (business_profiles 테이블 매핑)
+// ============================================================
+// Phase: 자영업자 자격 진단 wedge (Basic 핵심).
+// /mypage/business 입력 폼 + lib/eligibility/business-match.ts 매칭 함수
+// + score.ts business 시그널 모두 이 enum 공유.
+
+// 업종 — 정책 자격 키워드 매칭용
+// value 는 정책 본문 매칭 시 사용할 한국어 키워드 그룹과 1:1 대응
+export const BUSINESS_INDUSTRY_OPTIONS = [
+  { value: 'food',          label: '외식·요식업' },
+  { value: 'retail',        label: '소매·도소매' },
+  { value: 'manufacturing', label: '제조업' },
+  { value: 'service',       label: '서비스업' },
+  { value: 'it',            label: 'IT·콘텐츠' },
+  { value: 'other',         label: '기타' },
+] as const;
+export type BusinessIndustry = typeof BUSINESS_INDUSTRY_OPTIONS[number]['value'];
+
+// 매출 규모 — 소상공인/중소기업 자격 매칭의 핵심 키
+// 정부 정책 기준 (소상공인기본법): 매출 5억 이하·상시근로자 5인 이하 등
+export const BUSINESS_REVENUE_OPTIONS = [
+  { value: 'under_50m',  label: '5천만원 미만' },
+  { value: '50m_500m',   label: '5천만~5억원' },
+  { value: '500m_1b',    label: '5억~10억원' },
+  { value: '1b_10b',     label: '10억~100억원' },
+  { value: 'over_10b',   label: '100억원 이상' },
+] as const;
+export type BusinessRevenue = typeof BUSINESS_REVENUE_OPTIONS[number]['value'];
+
+// 상시근로자 수 (사장님 본인 제외) — 소상공인 vs 중소기업 분기점
+// 소상공인기본법: 광공업·운수업·건설업 10인 미만, 그 외 5인 미만
+export const BUSINESS_EMPLOYEE_OPTIONS = [
+  { value: 'none',     label: '없음 (1인 사업자)' },
+  { value: '1_4',      label: '1~4명' },
+  { value: '5_9',      label: '5~9명' },
+  { value: '10_49',    label: '10~49명' },
+  { value: '50_99',    label: '50~99명' },
+  { value: 'over_100', label: '100명 이상' },
+] as const;
+export type BusinessEmployee = typeof BUSINESS_EMPLOYEE_OPTIONS[number]['value'];
+
+// 사업자 유형 — 일부 정책은 "법인 사업자만" / "개인 사업자만" 자격 차등
+export const BUSINESS_TYPE_OPTIONS = [
+  { value: 'sole_proprietor', label: '개인 사업자' },
+  { value: 'corporation',     label: '법인 사업자' },
+] as const;
+export type BusinessType = typeof BUSINESS_TYPE_OPTIONS[number]['value'];
