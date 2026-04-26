@@ -36,7 +36,7 @@ import {
 } from "@/lib/personalization/types";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
-import type { ScorableItem } from "@/lib/personalization/score";
+import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -183,25 +183,44 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     .order("published_at", { ascending: false });
   query = applyFilters(query);
 
+  // 분리 섹션 pool 은 사용자 region 의존이라 profile 을 먼저 fetch (RTT +1 ~50ms).
+  // 사장님(전남) 케이스: pool 100건 중 다른 광역 ministry 가 79% 차지해 score.ts
+  // regional gate 로 차단 → 분리 섹션 0건. welfare/loan hot-fix 와 동일 원리.
+  const profile = await loadUserProfile();
+
   // ─── 점수 매칭용 풀 query (limit 100) ────────────────────────────────────────
   // 페이지네이션 없이 같은 필터 적용한 최신 100건 — 사용자 개인화 점수 계산용.
   // category·thumbnail_url 도 함께 가져와서 분리 섹션 NewsCard 렌더에 바로 사용.
+  // 사용자가 광역 필터 직접 누르지 않은 경우 (activeProvince=null) + 사용자 region
+  // 있으면 pool ministry 를 사용자 광역+부처명+null 로 좁힘 — 다른 광역 noise 차단.
   let poolQuery = supabase
     .from("news_posts")
     .select("id, slug, title, summary, body, category, ministry, thumbnail_url, benefit_tags, published_at, source_url")
     .order("published_at", { ascending: false })
     .limit(100);
   poolQuery = applyFilters(poolQuery);
+  if (!activeProvince && profile?.signals.region) {
+    const userAliases = REGION_ALIASES[profile.signals.region] ?? [profile.signals.region];
+    // 사용자 광역 별칭과 정확 일치하는 ministry 만 광역으로 식별, 그 외 광역명은 차단.
+    const otherProvinces = Array.from(PROVINCE_FULL_NAMES).filter(
+      (p) => !userAliases.includes(p),
+    );
+    // ministry IS NULL OR ministry NOT IN (사용자 광역 외 광역) →
+    // 사용자 광역 + 부처명 + ministry 미명시만 통과. NOT IN 은 NULL 매칭 안 하므로 OR 결합.
+    const orFilter = [
+      "ministry.is.null",
+      `ministry.not.in.(${otherProvinces.join(",")})`,
+    ].join(",");
+    poolQuery = poolQuery.or(orFilter);
+  }
 
   // ─── 병렬 fetch ───────────────────────────────────────────────────────────────
-  // 본 query·분야 카운트·풀 query·사용자 프로필을 동시에 요청해 RTT 절약
-  const [{ data: posts, count }, benefitCounts, { data: poolData }, profile] =
-    await Promise.all([
-      query.range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
-      getNewsBenefitTagCounts(supabase),
-      poolQuery,
-      loadUserProfile(),
-    ]);
+  // 본 query·분야 카운트·풀 query 를 동시에 요청해 RTT 절약 (profile 은 위에서 처리)
+  const [{ data: posts, count }, benefitCounts, { data: poolData }] = await Promise.all([
+    query.range((page - 1) * PER_PAGE, page * PER_PAGE - 1),
+    getNewsBenefitTagCounts(supabase),
+    poolQuery,
+  ]);
 
   const list = (posts || []) as (NewsCardData & { id: string; benefit_tags: string[] | null })[];
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
