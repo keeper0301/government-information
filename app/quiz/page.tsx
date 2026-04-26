@@ -28,6 +28,8 @@ import {
 } from '@/lib/profile-options';
 import { QuizResultActions } from './quiz-result-actions';
 import type { QuizPrefill } from '@/lib/quiz-prefill';
+import { loadUserProfile } from '@/lib/personalization/load-profile';
+import type { BusinessProfile } from '@/lib/eligibility/business-match';
 
 export const dynamic = 'force-dynamic';
 
@@ -189,7 +191,18 @@ export default async function QuizPage({
     return null;
   }).filter((p): p is NonNullable<typeof p> => p !== null);
 
-  return <QuizResult input={{ age: age!, region: region!, occupation: occupation!, income, householdTypes }} programs={displayPrograms} />;
+  // 로그인 사용자라면 business profile 도 함께 — 자격 배지 노출에 사용.
+  // 비로그인은 null. /quiz 가 force-dynamic 이라 fetch 부담 무관.
+  const loaded = await loadUserProfile();
+  const businessProfile = loaded?.signals.businessProfile ?? null;
+
+  return (
+    <QuizResult
+      input={{ age: age!, region: region!, occupation: occupation!, income, householdTypes }}
+      programs={displayPrograms}
+      businessProfile={businessProfile}
+    />
+  );
 }
 
 // ============================================================
@@ -330,9 +343,11 @@ type ResultInput = {
 function QuizResult({
   input,
   programs,
+  businessProfile,
 }: {
   input: ResultInput;
   programs: Awaited<ReturnType<typeof welfareToDisplay>>[];
+  businessProfile: BusinessProfile | null;
 }) {
   // ───────────────────────────────────────────────
   // 가입 funnel 용 prefill 객체 (회원가입 후 /onboarding 자동 채움)
@@ -389,7 +404,11 @@ function QuizResult({
       ) : (
         <div className="bg-white rounded-2xl shadow-sm px-4 py-2">
           {programs.map((p) => (
-            <ProgramRow key={`${p.type}-${p.id}`} program={p} />
+            <ProgramRow
+              key={`${p.type}-${p.id}`}
+              program={p}
+              businessProfile={businessProfile}
+            />
           ))}
         </div>
       )}
