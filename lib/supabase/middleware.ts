@@ -2,34 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { checkHiddenNews } from "@/lib/news-moderation/middleware-check";
 
-// 2026-04-26 SVG 지도 504 사고 후 middleware 안 모든 외부 호출에 timeout 적용.
-// Supabase auth/DB 호출이 hang 하면 middleware 30초 초과 → Vercel function
-// timeout → 사이트 다운. 5초 timeout + safe fallback 으로 사고 재발 방지.
-const SUPABASE_TIMEOUT_MS = 5000;
-
-// Promise timeout + error-safe helper — timeout 또는 throw 둘 다 fallback 반환.
-// 2026-04-26 SVG 사고 후속: AuthUnknownError 같은 throw 가 P1 의 Promise.race
-// 를 우회해 middleware 자체 throw → Vercel function fail → 504. 그래서 helper
-// 자체에 try/catch 도 추가. timeout 외에 어떤 에러도 fallback 으로 흘려 보냄.
-//
-// 주의: timeout 후에도 원본 promise 는 background 진행 (cancel 불가).
-// JS GC 정리하므로 leak 우려 없음.
-async function withTimeout<T>(
-  promise: PromiseLike<T>,
-  ms: number,
-  fallback: T,
-): Promise<T> {
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-    ]);
-  } catch (e) {
-    console.error("[middleware] withTimeout caught error, returning fallback", e);
-    return fallback;
-  }
-}
-
 // 로그인한 사용자만 볼 수 있는 경로 목록
 // 이 경로(자기 자신 + 모든 하위)에 미로그인 상태로 접근하면
 // /login?next=<원래경로> 로 리다이렉트
@@ -85,24 +57,14 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 현재 사용자 확인 (Supabase 공식 가이드 권장 방식).
-  // 5초 timeout — 정상 응답은 cold start 도 1~2초. timeout 시 비로그인 처리.
-  // 부작용: 일시 장애 시 사용자가 mypage 등 보호 경로 접근하면 로그인 페이지로
-  // 가지만, 504 사이트 다운보다 훨씬 안전.
-  const user = await withTimeout(
-    supabase.auth.getUser().then((r) => r.data?.user ?? null),
-    SUPABASE_TIMEOUT_MS,
-    null,
-  );
+  // 현재 사용자 확인 (Supabase 공식 가이드 권장 방식)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // 정책 뉴스 모더레이션 — hidden 단건 사전 차단 (anon 만 410, admin 통과)
   // /news/[slug] 가 아닌 요청엔 즉시 null 반환하므로 비용 거의 0.
-  // timeout 시 차단 안 함 — hidden 뉴스가 일시적으로 보일 수 있으나 minor.
-  const goneResponse = await withTimeout(
-    checkHiddenNews(request, user),
-    SUPABASE_TIMEOUT_MS,
-    null,
-  );
+  const goneResponse = await checkHiddenNews(request, user);
   if (goneResponse) return goneResponse;
 
   // 보호 경로 여부 확인 — 예외 경로면 보호 대상이 아님
@@ -128,19 +90,12 @@ export async function updateSession(request: NextRequest) {
   // 로그인 상태 + pending 탈퇴 요청 상태 → 복구 페이지 외 모든 경로 차단.
   // RLS 가 SELECT 를 본인 row 로만 제한하므로 타인 상태는 노출 불가.
   // PK 조회라 비용 낮음. allowed 경로는 페이지·API 정상 흐름 유지.
-  // timeout 시 pending=null 처리 — 탈퇴 진행자가 일시적으로 통과 가능하나
-  // RLS 로 본인 데이터만 보이므로 보안 영향 minor. 504 보다 안전.
   if (user && !isPendingAllowed(pathname)) {
-    const pending = await withTimeout(
-      supabase
-        .from("pending_deletions")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle()
-        .then((r) => r.data),
-      SUPABASE_TIMEOUT_MS,
-      null,
-    );
+    const { data: pending } = await supabase
+      .from("pending_deletions")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     if (pending) {
       const restoreUrl = request.nextUrl.clone();
