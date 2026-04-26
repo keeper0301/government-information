@@ -71,35 +71,6 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
   };
 }
 
-export async function getTopWelfare(limit = 4): Promise<DisplayProgram[]> {
-  const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
-  const { data } = await supabase
-    .from("welfare_programs")
-    .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(limit);
-  return (data || []).map(welfareToDisplay);
-}
-
-export async function getTopLoans(limit = 3): Promise<DisplayProgram[]> {
-  const supabase = await createClient();
-  const today = new Date().toISOString().split("T")[0];
-  const { data } = await supabase
-    .from("loan_programs")
-    .select("*")
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(limit);
-  return (data || []).map(loanToDisplay);
-}
-
-export async function getUrgentProgram(): Promise<DisplayProgram | null> {
-  const urgents = await getUrgentPrograms(1);
-  return urgents[0] ?? null;
-}
-
 /**
  * 마감 임박 N건 (복지 + 대출 통합, apply_end 오름차순)
  * 홈 상단 AlertStrip 에서 사용. 정보 밀도를 높이려 1건 → N건 노출.

@@ -2,15 +2,6 @@ type IconProps = {
   className?: string;
 };
 
-export function BellIcon({ className }: IconProps) {
-  return (
-    <svg className={className} viewBox="0 0 32 32" fill="none">
-      <path d="M16 5a7 7 0 00-7 7v5l-2 3h18l-2-3v-5a7 7 0 00-7-7z" fill="currentColor" />
-      <circle cx="16" cy="24" r="2" fill="currentColor" />
-    </svg>
-  );
-}
-
 export function HouseIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
