@@ -13,6 +13,44 @@ import { findMatchingPrograms, type AlertRule } from "@/lib/alerts/matching";
 import { getUserTier } from "@/lib/subscription";
 import { sendAlimtalk } from "@/lib/kakao-alimtalk";
 import { hasActiveConsent } from "@/lib/consent";
+import {
+  evaluateBusinessMatch,
+  type BusinessProfile,
+  type BusinessMatch,
+} from "@/lib/eligibility/business-match";
+import type {
+  BusinessIndustry,
+  BusinessRevenue,
+  BusinessEmployee,
+  BusinessType,
+} from "@/lib/profile-options";
+
+// POLICY_NEW v2 → v3 분기 — SOLAPI_TEMPLATE_ID_POLICY_NEW_V3 환경변수 등록되면 자동 v3.
+// v3 = 호명 + 자격 진단 한 줄 + 금액 + 마감 통합 (사장님 케이뱅크 reference 수준).
+function isV3Enabled(): boolean {
+  return !!process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW_V3;
+}
+
+// BusinessMatch → 카톡 본문에 들어갈 한국어 라벨
+function formatEligibilityStatus(match: BusinessMatch | null): string {
+  if (match === "match") return "✓ 자격 충족";
+  if (match === "mismatch") return "자격 미해당 (재확인 필요)";
+  // unknown 또는 business profile 없음
+  return "정책 페이지에서 확인";
+}
+
+// description 첫 80자를 benefit_summary 로 — 카톡은 본문 길이 제약 (1,000자) 라
+// 짧게. 더 정확한 amount 필드는 후속에 matching.ts 에서 select 추가 가능.
+function summarizeBenefit(description: string | null): string {
+  if (!description) return "정책 페이지에서 확인";
+  const cleaned = description
+    .replace(/&nbsp;/g, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleaned.length <= 80) return cleaned;
+  return cleaned.slice(0, 77) + "...";
+}
 
 export const maxDuration = 300; // 5분
 
@@ -34,10 +72,44 @@ async function runAlertDispatch(jobLabel: string) {
 
     // 2) 사용자 이메일 일괄 조회 (auth.users) — listUsers 가 전체 페이지 반환하므로
     // 별도 user_id 화이트리스트 dedupe 없이 emailByUserId map 만 구축.
+    // displayNameByUserId 도 같이 채움 — POLICY_NEW v3 의 user_name 변수.
     const { data: users } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
     const emailByUserId = new Map<string, string>();
+    const displayNameByUserId = new Map<string, string>();
     for (const u of users?.users || []) {
       if (u.id && u.email) emailByUserId.set(u.id, u.email);
+      if (u.id) {
+        const fullName = (u.user_metadata as { full_name?: string } | null)?.full_name?.trim();
+        const localPart = u.email?.split("@")[0]?.trim();
+        displayNameByUserId.set(u.id, fullName || localPart || "회원");
+      }
+    }
+
+    // business_profiles 캐시 — 같은 user 가 규칙 여러 개 들고 있어도 1회만 fetch
+    const v3Enabled = isV3Enabled();
+    const businessProfileCache = new Map<string, BusinessProfile | null>();
+    async function getBusinessProfile(userId: string): Promise<BusinessProfile | null> {
+      if (businessProfileCache.has(userId)) return businessProfileCache.get(userId)!;
+      const { data } = await supabase
+        .from("business_profiles")
+        .select(
+          "industry, revenue_scale, employee_count, business_type, established_date, region, district",
+        )
+        .eq("user_id", userId)
+        .maybeSingle();
+      const profile: BusinessProfile | null = data
+        ? {
+            industry: (data.industry ?? null) as BusinessIndustry | null,
+            revenue_scale: (data.revenue_scale ?? null) as BusinessRevenue | null,
+            employee_count: (data.employee_count ?? null) as BusinessEmployee | null,
+            business_type: (data.business_type ?? null) as BusinessType | null,
+            established_date: data.established_date ?? null,
+            region: data.region ?? null,
+            district: data.district ?? null,
+          }
+        : null;
+      businessProfileCache.set(userId, profile);
+      return profile;
     }
 
     let dispatchedEmail = 0;
@@ -45,6 +117,7 @@ async function runAlertDispatch(jobLabel: string) {
     let skipped = 0;
     let emailFailures = 0;
     let kakaoSkippedConsent = 0;
+    let totalKakaoSkippedMismatch = 0; // v3 자격 mismatch 사전 차단 카운트
     const emailFailureDetail: string[] = [];
 
     // 사용자별 kakao_messaging 동의 상태 캐시 — 같은 사용자가 규칙 여러 개 들고 있어도 1회만 조회.
@@ -150,7 +223,44 @@ async function runAlertDispatch(jobLabel: string) {
         // status='skipped', error='consent_missing' 으로 기록해 어드민에서 추적 가능.
         // 다음 cron 실행 시 사용자가 동의하면 자동으로 발송 재개됨.
         const consented = await getKakaoConsent(rule.user_id);
-        const toSend = matches.filter((m) => !alreadyKakao.has(`${m.table}:${m.id}`));
+        let toSend = matches.filter((m) => !alreadyKakao.has(`${m.table}:${m.id}`));
+
+        // v3: business profile 매칭 mismatch 인 정책은 발송 자체 차단.
+        // "내 자격에 안 맞는데 알림 옴" 신뢰 손상 방지 — wedge 핵심 가치.
+        // unknown 또는 business profile 없으면 그대로 발송 (기존 동작 보존).
+        let kakaoSkippedMismatch = 0;
+        let businessProfile: BusinessProfile | null = null;
+        if (v3Enabled && consented) {
+          businessProfile = await getBusinessProfile(rule.user_id);
+          if (businessProfile) {
+            const before = toSend.length;
+            toSend = toSend.filter((m) => {
+              const haystack = `${m.title} ${m.description ?? ""}`;
+              return evaluateBusinessMatch(haystack, businessProfile!) !== "mismatch";
+            });
+            kakaoSkippedMismatch = before - toSend.length;
+            // mismatch 차단 건도 alert_deliveries 에 status='skipped' 로 흔적 남김
+            // 어드민에서 추적 가능 + 같은 정책 다음 cron 에서 또 발송 시도 X (UNIQUE 방지)
+            const blocked = matches.filter((m) => {
+              if (alreadyKakao.has(`${m.table}:${m.id}`)) return false;
+              const haystack = `${m.title} ${m.description ?? ""}`;
+              return evaluateBusinessMatch(haystack, businessProfile!) === "mismatch";
+            });
+            for (const m of blocked) {
+              await supabase.from("alert_deliveries").insert({
+                rule_id: rule.id,
+                user_id: rule.user_id,
+                program_table: m.table,
+                program_id: m.id,
+                program_title: m.title,
+                channel: "kakao",
+                status: "skipped",
+                error: "business_mismatch",
+                sent_at: null,
+              });
+            }
+          }
+        }
 
         if (!consented) {
           for (const m of toSend) {
@@ -176,16 +286,39 @@ async function runAlertDispatch(jobLabel: string) {
               ? `/welfare/${m.id}`
               : `/loan/${m.id}`;
 
-            const result = await sendAlimtalk({
-              phoneNumber: rule.phone_number!,
-              templateCode: "POLICY_NEW",
-              variables: {
-                rule_name: rule.name,
-                title: m.title,
-                deadline: m.apply_end ?? "상시",
-                detail_path: detailPath,
-              },
-            });
+            // v3: business profile 매칭 결과를 한국어 라벨로 + benefit 요약 자동 생성
+            // v2 (기존): rule_name/title/deadline/detail_path 만
+            const result = v3Enabled
+              ? await sendAlimtalk({
+                  phoneNumber: rule.phone_number!,
+                  templateCode: "POLICY_NEW_V3",
+                  variables: {
+                    user_name: displayNameByUserId.get(rule.user_id) ?? "회원",
+                    rule_name: rule.name,
+                    title: m.title,
+                    eligibility_status: businessProfile
+                      ? formatEligibilityStatus(
+                          evaluateBusinessMatch(
+                            `${m.title} ${m.description ?? ""}`,
+                            businessProfile,
+                          ),
+                        )
+                      : "정책 페이지에서 확인",
+                    benefit_summary: summarizeBenefit(m.description),
+                    deadline: m.apply_end ?? "상시",
+                    detail_path: detailPath,
+                  },
+                })
+              : await sendAlimtalk({
+                  phoneNumber: rule.phone_number!,
+                  templateCode: "POLICY_NEW",
+                  variables: {
+                    rule_name: rule.name,
+                    title: m.title,
+                    deadline: m.apply_end ?? "상시",
+                    detail_path: detailPath,
+                  },
+                });
 
             // 결과 → alert_deliveries 행 (UNIQUE INDEX 가 중복 방지)
             let status: "sent" | "failed" | "skipped";
@@ -214,6 +347,10 @@ async function runAlertDispatch(jobLabel: string) {
             dispatchedKakao++;
           }
         }
+        // 응답 통계용 — mismatch 차단 카운트 누적 (response 에 추가)
+        if (kakaoSkippedMismatch > 0) {
+          totalKakaoSkippedMismatch += kakaoSkippedMismatch;
+        }
       }
     }
 
@@ -234,6 +371,8 @@ async function runAlertDispatch(jobLabel: string) {
       email_failures: emailFailures,
       queued_kakao: dispatchedKakao,
       kakao_skipped_consent: kakaoSkippedConsent,
+      kakao_skipped_mismatch: totalKakaoSkippedMismatch, // v3 자격 사전 차단
+      template_version: isV3Enabled() ? "v3" : "v2",
       skipped,
     });
   } catch (err) {
