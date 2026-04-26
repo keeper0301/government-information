@@ -21,6 +21,8 @@
     { "path": "/api/collect-news/gyeongnam", "schedule": "15 15 * * *" },
     { "path": "/api/collect-news/jeju", "schedule": "20 15 * * *" },
 
-    { "path": "/api/enrich-targeting", "schedule": "0 8 * * *" }
+    { "path": "/api/enrich-targeting", "schedule": "0 8 * * *" },
+
+    { "path": "/api/cleanup-expired-programs", "schedule": "0 18 * * *" }
   ]
 }
