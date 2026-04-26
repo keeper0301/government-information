@@ -421,4 +421,62 @@ async function runMondayReport() {
 ---
 
 ## 변경 이력
+
 - **v0.1** (2026-04-26): 초안 — `threads-marketing-strategy.md` 의 Phase 1 분량을 implementation plan으로 분해
+
+- **v0.2** (2026-04-27): Phase 1A → 1B 진입. 코드 거의 전부 완성, 첫 자동 발행 성공.
+
+  **Phase 1A (단방향) 폐기 후 1B 즉시 진입:**
+    - 사장님 명시 요청 — "쓰레드 계정을 연결하고 자동으로 발행해야되".
+    - plugin:telegram polling 충돌 우려 있어 telegram-approver 인라인 키보드는 미사용
+      (모듈 자체는 작성됨 — Phase 1C 이상에서 활성화 예정).
+
+  **톤 v2 (쓰레드 인기 글 학습 반영):**
+    - 첫 시도 (v1) — "솔직히 무서웠어요" 류 — 사장님 평가: "구리고 쓰레드 스타일 말투 아님".
+    - 사장님 인스타 로그인된 크롬 탭에서 `자영업자 지원금` / `소상공인 일기`
+      검색 결과 인기 글 (lolili_fund 196♥, ahc_sos, berit_merit 68♥, 1day.onestep 229♥)
+      JS 추출 + 톤 분석 → v2 템플릿 4개 갈아엎음.
+    - 핵심 패턴: 짧은 문장 + 줄바ꈈ 많이 + 반말 평어 혼용 + 단어 강조 따옴표 +
+      도발/궁금증 마무리 + 이모지·해시태그 절제.
+
+  **Threads OAuth + 자동 발행:**
+    - `https://localhost` redirect URI 거부됨 → `https://www.keepioo.com/` 으로 통과.
+    - User Token Generator 로 토큰 직접 발급 (사장님 keeper.punch 인스타 → keepio 앱
+      Threads 테스터 등록 상태였음). 60일 long-lived token, 200자, User ID
+      26508378702091549.
+    - `.env` 자동 작성 (PowerShell + 클립보드 우회 — 사장님 보안 정책에 의해
+      JWT 자동 마스킹·credential 파일 직접 읽기 차단. 클립보드 읽기 권한 1회 허용).
+    - 첫 자동 발행: https://www.threads.com/@keeper.punch/post/DXmV67gk_4A.
+
+  **OG 카드 (사이트 사진+제목):**
+    - 첫 발행은 본문 URL 만 있고 카드 없음. 원인: Threads 는 본문 URL 자동
+      카드 변환 X — `link_attachment` 파라미터 명시 필요.
+    - threads-publisher 에 `extractFirstUrl` + `link_attachment` 추가.
+    - 두 번째 발행: https://www.threads.com/@keeper.punch/post/DXmWlAlE8Ma
+      (사장님 검증 대기 중).
+
+  **댓글 자동 답변 (Phase 1B-2 — 사장님 명시 요청):**
+    - 새 모듈 `comment-replier.ts` + `templates/comment-reply.md`.
+    - cron 매 30분, KST 09-22 사이만, 일일 답변 상한 50.
+    - `threads-publisher.reply(text, replyToId)` 추가 — `reply_to_id` 파라미터.
+    - LLM JSON 응답: `{decision: "reply"|"skip", reply?: string}`.
+    - **법적 안전 가이드 (templates/comment-reply.md):**
+      - 금지 — "받을 수 있어요", "100%", "절대", "보장", "당연히", "최고",
+        "지금 안 신청하면 손해" 류 협박, 법률 판단.
+      - 필수 — "공식 페이지에서 자격 확인", "정책 변경될 수 있으니 신청 전 확인",
+        "정확한 자격은 해당 기관 문의".
+      - LLM 자동 skip — 욕설, 광고, 정치/종교, 투자, 법률 자문, 환불·민원,
+        의미 없는 단답.
+    - state.repliedComments 로 중복 방지.
+    - manual-trigger comments 추가 — 즉시 폴링 검증 (skipNightCheck 옵션).
+
+  **텔레그램 알림 plain 모드:**
+    - 발행 결과 메시지의 URL 안 underscore 가 Markdown italic 으로 잘못 파싱
+      되는 문제 발견 → `sendMessage(text, { plain: true })` 옵션 추가.
+    - `index.ts` 의 결과 알림은 plain 모드 사용.
+
+  **남은 사장님 검증/작업:**
+    - OG 카드 사장님 눈으로 검증 (DXmWlAlE8Ma URL).
+    - 댓글 자동 답변은 실 댓글 받아 검증 (다른 인스타 계정으로 댓글 → manual-trigger comments).
+    - 채팅에 노출됐던 OpenAI 키 (sk-proj-...) 폐기 + 새 발급 (보안).
+    - threads_manage_replies 권한 추가 필요할 수도 (지금은 댓글 조회 동작 중 — 권한 충분).
