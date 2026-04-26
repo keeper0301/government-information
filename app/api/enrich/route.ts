@@ -160,13 +160,16 @@ async function enrichOne(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[enrich-detail] ${row.table} ${row.id} (${row.source_code}):`, msg);
-    // 실패 마킹은 항상 (1일 cooldown 진입). QuotaExceededError 도 마찬가지 —
-    // 다만 호출자(enrichBatch) 가 batch 중단 시그널로 활용하도록 그대로 throw 전파.
+    // QuotaExceededError 는 외부 quota 사정 (자정 KST 회복) 이므로 row 책임 아님.
+    // 도장 찍지 않고 throw 만 → 다음 cron 에서 즉시 재시도. 도장 찍으면 1일
+    // cooldown 들어가 회복 후에도 재시도 늦어지고, 매일 quota 사고 시 같은 row 가
+    // 영구 누적되어 done 늘지 않는 사이클 발생 (2026-04-26 ~04-27 320건 누적 사고).
+    if (err instanceof QuotaExceededError) throw err;
+    // 일반 실패만 1일 cooldown 도장
     await supabase
       .from(row.table)
       .update({ last_detail_failed_at: new Date().toISOString() })
       .eq("id", row.id);
-    if (err instanceof QuotaExceededError) throw err;
     return "failed";
   }
 }
