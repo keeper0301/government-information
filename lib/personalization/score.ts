@@ -22,7 +22,8 @@ export type ScorableItem = {
 
 // 광역시도 명칭 별칭 매핑 (DB에 저장된 정식 명칭 → 사용자 선택 짧은 명칭)
 // 예: "서울특별시" → 사용자가 선택한 "서울"과 매칭되게 처리
-const REGION_ALIASES: Record<string, string[]> = {
+// HomeRecommendAuto 의 pool 쿼리도 같은 별칭을 .or(ilike) 로 사용해 일관성 확보.
+export const REGION_ALIASES: Record<string, string[]> = {
   '서울': ['서울특별시', '서울시', '서울'],
   '경기': ['경기도', '경기'],
   '인천': ['인천광역시', '인천시', '인천'],

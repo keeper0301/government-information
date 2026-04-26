@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilter } from '@/lib/personalization/filter';
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
-import type { ScorableItem } from '@/lib/personalization/score';
+import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
 
 // DB welfare_programs raw 행 → ScorableItem 변환
 // 정정 (2026-04-25 hot-fix): benefit_tags 컬럼은 실제 DB 에 있음 (031 분류 통일).
@@ -45,8 +45,25 @@ function welfareRowToScorable(row: {
   };
 }
 
-// 로그인 + 프로필 채워짐 → 활성 정책 100건 가져와 점수 매칭 → 상위 5건 렌더
-// 빈 프로필이거나 매칭 결과 0건이면 null (호출자에서 분기 처리)
+// pool 크기 — 사용자 광역+전국 풀에서 가져올 후보 수.
+// 100 일 때 사장님(전남 순천시) 케이스에서 마감 임박 100건이 다른 광역만으로
+// 채워져 매칭 0건 사고. 200 으로 확대하되 region 우선 필터로 효율 유지.
+const POOL_SIZE = 200;
+
+// 사용자 광역+전국만 매칭되도록 PostgREST .or() 패턴 빌드.
+// 예) 사용자 region="전남" → "region.ilike.%전국%,region.ilike.%전라남도%,region.ilike.%전남%"
+// REGION_ALIASES 와 같은 별칭을 사용해 score.ts 의 evaluateRegion 과 일관성 확보.
+function buildRegionOrFilter(userRegion: string | null): string | null {
+  if (!userRegion) return null;
+  const aliases = REGION_ALIASES[userRegion] ?? [userRegion];
+  // ilike 는 % wildcard 사용. 별칭과 "전국" 모두 OR 로 묶음.
+  // 일부 정책 region 이 "전국, 서울" 처럼 콤마 결합돼 있을 수 있어 substring 매칭 사용.
+  const clauses = ['region.ilike.%전국%', ...aliases.map((a) => `region.ilike.%${a}%`)];
+  return clauses.join(',');
+}
+
+// 로그인 + 프로필 채워짐 → region 우선 정책 200건 가져와 점수 매칭 → 상위 5건 렌더
+// 빈 프로필이거나 매칭 결과 0건이면 fallback 카드 (전체 정책 보기 CTA)
 export async function HomeRecommendAuto() {
   const profile = await loadUserProfile();
   // 빈 프로필이거나 로그인 안 된 경우 — 호출자에서 분기하지만 방어적 처리
@@ -54,15 +71,26 @@ export async function HomeRecommendAuto() {
 
   const supabase = await createClient();
 
-  // 마감이 지나지 않은 (또는 마감일 미지정) 활성 정책 100건 조회
-  // apply_end 오름차순 — 마감 임박 순으로 상위권에 배치
+  // 마감이 지나지 않은 (또는 마감일 미지정) 활성 정책 중
+  // 사용자 광역+전국만 추려 마감 임박순으로 가져옴.
+  // 사장님(전남 순천시) 케이스 hot-fix — 다른 광역 정책이 pool 100건을
+  // 거의 다 채워 매칭 0건 사고 차단.
   const today = new Date().toISOString().slice(0, 10);
-  const { data: pool } = await supabase
+  let query = supabase
     .from('welfare_programs')
     .select('id, title, description, eligibility, detailed_content, region, apply_end, source, benefit_tags, income_target_level, household_target_tags')
-    .or(`apply_end.gte.${today},apply_end.is.null`)
+    .or(`apply_end.gte.${today},apply_end.is.null`);
+
+  // region 설정된 사용자 → 사용자 광역+전국 우선 필터.
+  // region 미설정 사용자 → 전체 풀 (빈 프로필 추천 가능해야 함)
+  const regionOrFilter = buildRegionOrFilter(profile.signals.region);
+  if (regionOrFilter) {
+    query = query.or(regionOrFilter);
+  }
+
+  const { data: pool } = await query
     .order('apply_end', { ascending: true, nullsFirst: false })
-    .limit(100);
+    .limit(POOL_SIZE);
 
   // DB 결과를 점수 계산 가능한 형태로 변환
   const scorable = (pool ?? []).map(welfareRowToScorable);
@@ -73,8 +101,36 @@ export async function HomeRecommendAuto() {
     limit: 5,
   });
 
-  // 매칭 결과가 없으면 아무것도 안 보여줌
-  if (items.length === 0) return null;
+  // 매칭 결과 0건 → null 대신 fallback 카드 (hero 우측 빈 영역 사고 차단).
+  // 사장님 본인 화면에서 매일 보는 자리라 빈 영역은 즉각 UX 사고로 체감.
+  if (items.length === 0) {
+    return (
+      <section className="rounded-2xl border border-grey-200 bg-white p-5 sm:p-6 shadow-lg">
+        <h2 className="text-base sm:text-lg font-bold text-grey-900 mb-2">
+          🌟 {profile.displayName}님께 맞는 정책
+        </h2>
+        <p className="text-sm text-grey-600 leading-[1.55] mb-4">
+          지금은 마감 임박 정책 중 키퍼님 조건과 딱 맞는 게 적어요.
+          <br />
+          전체 정책에서 더 많은 정보를 확인해보세요.
+        </p>
+        <div className="flex flex-col gap-2">
+          <Link
+            href="/welfare"
+            className="inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 no-underline transition-colors min-h-[44px]"
+          >
+            복지 전체 정책 보기 →
+          </Link>
+          <Link
+            href="/recommend"
+            className="inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 no-underline transition-colors min-h-[44px]"
+          >
+            맞춤 조건 다시 검색
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-2xl border border-grey-200 bg-white p-5 sm:p-6 shadow-lg">
