@@ -41,6 +41,7 @@ function formatEligibilityStatus(match: BusinessMatch | null): string {
 
 // description 첫 80자를 benefit_summary 로 — 카톡은 본문 길이 제약 (1,000자) 라
 // 짧게. 더 정확한 amount 필드는 후속에 matching.ts 에서 select 추가 가능.
+// 80자 컷이 한국어 단어 중간에서 잘리지 않게 마지막 공백 위치까지 trim.
 function summarizeBenefit(description: string | null): string {
   if (!description) return "정책 페이지에서 확인";
   const cleaned = description
@@ -49,7 +50,13 @@ function summarizeBenefit(description: string | null): string {
     .replace(/\s+/g, " ")
     .trim();
   if (cleaned.length <= 80) return cleaned;
-  return cleaned.slice(0, 77) + "...";
+  // 77자 + "..." = 80자. 단 77번째 글자가 단어 중간이면 마지막 공백까지 잘라
+  // "...산림청 부산 시범사업 운영" 처럼 자연스러운 끝맺음 보장.
+  // 공백이 50자 이전이면 자연 단위 못 찾은 것 — 어쩔 수 없이 77자 컷.
+  const slice = cleaned.slice(0, 77);
+  const lastSpace = slice.lastIndexOf(" ");
+  const trimAt = lastSpace > 50 ? lastSpace : 77;
+  return slice.slice(0, trimAt).trimEnd() + "...";
 }
 
 export const maxDuration = 300; // 5분
@@ -228,24 +235,35 @@ async function runAlertDispatch(jobLabel: string) {
         // v3: business profile 매칭 mismatch 인 정책은 발송 자체 차단.
         // "내 자격에 안 맞는데 알림 옴" 신뢰 손상 방지 — wedge 핵심 가치.
         // unknown 또는 business profile 없으면 그대로 발송 (기존 동작 보존).
+        //
+        // 매칭 결과를 매핑으로 1번만 평가 후 재사용 — 이전엔 같은 정책에 대해
+        // (filter mismatch 차단 + filter blocked + v3 변수 채움) 3번 호출했음.
         let kakaoSkippedMismatch = 0;
         let businessProfile: BusinessProfile | null = null;
+        const matchByProgram = new Map<string, BusinessMatch>();
         if (v3Enabled && consented) {
           businessProfile = await getBusinessProfile(rule.user_id);
           if (businessProfile) {
-            const before = toSend.length;
-            toSend = toSend.filter((m) => {
+            // 모든 매칭 정책에 대해 1회만 evaluate
+            for (const m of matches) {
+              const key = `${m.table}:${m.id}`;
               const haystack = `${m.title} ${m.description ?? ""}`;
-              return evaluateBusinessMatch(haystack, businessProfile!) !== "mismatch";
-            });
+              matchByProgram.set(key, evaluateBusinessMatch(haystack, businessProfile));
+            }
+
+            const before = toSend.length;
+            toSend = toSend.filter(
+              (m) => matchByProgram.get(`${m.table}:${m.id}`) !== "mismatch",
+            );
             kakaoSkippedMismatch = before - toSend.length;
+
             // mismatch 차단 건도 alert_deliveries 에 status='skipped' 로 흔적 남김
             // 어드민에서 추적 가능 + 같은 정책 다음 cron 에서 또 발송 시도 X (UNIQUE 방지)
-            const blocked = matches.filter((m) => {
-              if (alreadyKakao.has(`${m.table}:${m.id}`)) return false;
-              const haystack = `${m.title} ${m.description ?? ""}`;
-              return evaluateBusinessMatch(haystack, businessProfile!) === "mismatch";
-            });
+            const blocked = matches.filter(
+              (m) =>
+                !alreadyKakao.has(`${m.table}:${m.id}`) &&
+                matchByProgram.get(`${m.table}:${m.id}`) === "mismatch",
+            );
             for (const m of blocked) {
               await supabase.from("alert_deliveries").insert({
                 rule_id: rule.id,
@@ -288,6 +306,7 @@ async function runAlertDispatch(jobLabel: string) {
 
             // v3: business profile 매칭 결과를 한국어 라벨로 + benefit 요약 자동 생성
             // v2 (기존): rule_name/title/deadline/detail_path 만
+            // matchByProgram Map 재사용 — 위에서 1번만 평가한 결과 사용 (재계산 X)
             const result = v3Enabled
               ? await sendAlimtalk({
                   phoneNumber: rule.phone_number!,
@@ -298,10 +317,7 @@ async function runAlertDispatch(jobLabel: string) {
                     title: m.title,
                     eligibility_status: businessProfile
                       ? formatEligibilityStatus(
-                          evaluateBusinessMatch(
-                            `${m.title} ${m.description ?? ""}`,
-                            businessProfile,
-                          ),
+                          matchByProgram.get(`${m.table}:${m.id}`) ?? null,
                         )
                       : "정책 페이지에서 확인",
                     benefit_summary: summarizeBenefit(m.description),
