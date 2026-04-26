@@ -18,7 +18,7 @@ import {
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { WelfareProgram } from "@/lib/database.types";
-import type { ScorableItem } from "@/lib/personalization/score";
+import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
 
 export const metadata: Metadata = {
   title: "복지 지원사업 — 정책알리미",
@@ -110,24 +110,35 @@ export default async function WelfarePage({ searchParams }: Props) {
     .order("apply_end", { ascending: true, nullsFirst: false })
     .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
+  // 분리 섹션 pool 쿼리는 사용자 region 의존이라 profile 을 먼저 fetch.
+  // 추가 RTT 1 (~50ms) 만큼만 비용 — 사장님 케이스(전남 순천시) 처럼 default
+  // region="전체" pool 100건이 다른 광역으로 가득 차 분리 섹션이 항상 0건이던
+  // 회귀 차단 (홈 hero hot-fix 와 동일 원리, 2026-04-26).
+  const profile = await loadUserProfile();
+
   // ─── 점수 매칭용 풀 query (limit 100) ────────────────────────────────────────
-  // 페이지네이션 없이 같은 필터 적용한 상위 100건 — 사용자 개인화 점수 계산용
+  // 페이지네이션 없이 같은 필터 적용한 상위 100건 — 사용자 개인화 점수 계산용.
+  // 사용자가 region 필터를 직접 누르면 그 선택 그대로 (자연스러움 보존).
+  // region="전체" + 사용자 프로필 region 있으면 사용자 광역+전국 우선 pool 로 좁힘.
   let poolQuery = supabase.from("welfare_programs").select("*");
   poolQuery = applyFilters(poolQuery);
+  if (region === "전체" && profile?.signals.region) {
+    const aliases = REGION_ALIASES[profile.signals.region] ?? [profile.signals.region];
+    const regionOr = ["region.ilike.%전국%", ...aliases.map((a) => `region.ilike.%${a}%`)].join(",");
+    poolQuery = poolQuery.or(regionOr);
+  }
   poolQuery = poolQuery
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })
     .limit(100);
 
   // ─── 병렬 fetch ───────────────────────────────────────────────────────────────
-  // 본 query·카테고리 카운트·풀 query·사용자 프로필을 동시에 요청해 RTT 절약
-  const [{ data, count }, categoryCounts, { data: poolData }, profile] =
-    await Promise.all([
-      query,
-      getProgramCategoryCounts(supabase, "welfare_programs"),
-      poolQuery,
-      loadUserProfile(),
-    ]);
+  // 본 query·카테고리 카운트·풀 query 를 동시에 요청해 RTT 절약 (profile 은 위에서 처리)
+  const [{ data, count }, categoryCounts, { data: poolData }] = await Promise.all([
+    query,
+    getProgramCategoryCounts(supabase, "welfare_programs"),
+    poolQuery,
+  ]);
 
   const programs = (data || []).map(welfareToDisplay);
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
