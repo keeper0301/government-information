@@ -6,7 +6,7 @@
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { cleanDescription } from "@/lib/utils";
+import { cleanDescription, stripHtmlTags } from "@/lib/utils";
 import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 
 // 수집한 정책 1건 — 컬렉터가 리턴하는 표준 포맷
@@ -246,8 +246,13 @@ function toRow(item: CollectedItem): Record<string, unknown> {
   const cleanedElig = cleanDescription(item.eligibility);
   const cleanedApply = cleanDescription(item.applyMethod);
 
+  // title 도 entity 디코드 + 태그 제거 + 공백 정리. cleanDescription 은 본문용
+  // (▶ 섹션 구분, 줄바꿈 강제) 이라 한 줄 title 에 과해 stripHtmlTags 사용.
+  // kinfa·legacy·korea-kr 등에서 &#40; / &amp; / &middot; 가 title 에 노출된 사고 차단.
+  const cleanedTitle = stripHtmlTags(item.title).substring(0, 200);
+
   const base: Record<string, unknown> = {
-    title: item.title.substring(0, 200),
+    title: cleanedTitle,
     category: item.category || (item.table === "loan" ? "대출" : "소득"),
     target: item.target ?? null,
     description: cleanedDesc ? cleanedDesc.substring(0, 2000) : null,
