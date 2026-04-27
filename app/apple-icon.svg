@@ -1,17 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
   <!-- iOS 홈스크린 아이콘 (Next.js 16 apple-icon convention)
-       토스 TDS 풍 — blue-500 둥근 배경 + 흰색 'k' 워드마크 첫 글자 -->
+       keepioo 'oo' 마크 — 1024 디자인과 동일 비율 (cx 1024→180=180/1024 축소).
+       하단 "정책알리미" 캡션 유지로 한국 사용자 즉각 식별. -->
 
   <rect width="180" height="180" rx="40" fill="#3182F6"/>
 
-  <!-- 메인 'k' Pretendard 800 흰색 -->
-  <text x="90" y="128" text-anchor="middle"
-        font-family="'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif"
-        font-size="120" font-weight="800"
-        fill="#FFFFFF" letter-spacing="-5">k</text>
+  <!-- 좌측 'o' 도넛 — cx 59 / r 27 (외곽), r 12 (내부 구멍) -->
+  <circle cx="59" cy="84" r="27" fill="white"/>
+  <circle cx="59" cy="84" r="12" fill="#3182F6"/>
 
-  <!-- 하단 작은 한글 캡션 -->
-  <text x="90" y="158" text-anchor="middle"
+  <!-- 우측 'o' 도넛 — 좌측 대칭 (cx 121) -->
+  <circle cx="121" cy="84" r="27" fill="white"/>
+  <circle cx="121" cy="84" r="12" fill="#3182F6"/>
+
+  <!-- 하단 작은 한글 캡션 — keepioo 정책알리미 정체성 강조 -->
+  <text x="90" y="148" text-anchor="middle"
         font-family="'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif"
-        font-size="11" font-weight="600" fill="#FFFFFF" opacity="0.8" letter-spacing="2">정책알리미</text>
+        font-size="16" font-weight="700" fill="white" opacity="0.9" letter-spacing="2">정책알리미</text>
 </svg>

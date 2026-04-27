@@ -1,12 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Next.js 자동 favicon — 토스 TDS 풍 'k' 마크
-       blue-500 둥근 배경 + 흰색 'k' (앱 아이콘 패턴, 작은 사이즈에서도 식별 ↑) -->
+  <!-- Next.js 자동 favicon — keepioo 'oo' 마크 (토스 TDS 풍)
+       blue-500 둥근 배경 + 흰 도넛 두 개 = 'oo' 트레이드마크.
+       1024×1024 앱 아이콘과 동일 디자인 비율 (cx 1024→64=1/16 축소). -->
 
   <rect width="64" height="64" rx="14" fill="#3182F6"/>
 
-  <!-- 'k' Pretendard 800 흰색 — 워드마크의 첫 글자 -->
-  <text x="32" y="46" text-anchor="middle"
-        font-family="'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif"
-        font-size="42" font-weight="800"
-        fill="#FFFFFF" letter-spacing="-2">k</text>
+  <!-- 좌측 'o' 도넛 -->
+  <circle cx="21" cy="32" r="9.5" fill="white"/>
+  <circle cx="21" cy="32" r="4.25" fill="#3182F6"/>
+
+  <!-- 우측 'o' 도넛 -->
+  <circle cx="43" cy="32" r="9.5" fill="white"/>
+  <circle cx="43" cy="32" r="4.25" fill="#3182F6"/>
 </svg>
