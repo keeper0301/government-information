@@ -77,13 +77,13 @@ export async function GET() {
       .from("consent_log")
       .select("*")
       .eq("user_id", userId)
-      .order("recorded_at", { ascending: false }),
+      .order("consented_at", { ascending: false }),
     admin.from("pending_deletions").select("*").eq("user_id", userId),
     admin
       .from("ai_usage_log")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+      .order("date", { ascending: false })
       .limit(HISTORY_ROW_LIMIT),
   ]);
 
