@@ -10,6 +10,7 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
+import { getGuides } from "@/lib/policy-guides";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -31,7 +32,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/help`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/eligibility`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    { url: `${baseUrl}/guides`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
   ];
+
+  // 정책 종합 가이드 (policy-bible 자산화) — 격주 발행, 영구 자산
+  const guides = await getGuides(200);
+  const guidePages: MetadataRoute.Sitemap = guides.map((g) => ({
+    url: `${baseUrl}/guides/${g.slug}`,
+    lastModified: new Date(g.updatedAt),
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
 
   // 자격 카테고리 페이지 — Phase 1.5 long-tail SEO (income·household 8 slug)
   const eligibilityPages: MetadataRoute.Sitemap = ELIGIBILITY_SLUGS.map((slug) => ({
@@ -169,5 +180,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...loanPages,
     ...blogPages,
     ...newsPages,
+    ...guidePages,
   ];
 }
