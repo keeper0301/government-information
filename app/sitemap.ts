@@ -6,6 +6,10 @@ import {
   ELIGIBILITY_CATALOG,
   ELIGIBILITY_SLUGS,
 } from "@/lib/eligibility/catalog";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -46,11 +50,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase
       .from("welfare_programs")
       .select("income_target_level, household_target_tags")
+      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
       .or(`apply_end.gte.${today},apply_end.is.null`)
       .not("income_target_level", "is", null),
     supabase
       .from("loan_programs")
       .select("income_target_level, household_target_tags")
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
       .or(`apply_end.gte.${today},apply_end.is.null`)
       .not("income_target_level", "is", null),
   ]);
@@ -82,7 +88,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Welfare programs
   const { data: welfare } = await supabase
     .from("welfare_programs")
-    .select("id, updated_at");
+    .select("id, updated_at")
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER);
   const welfarePages: MetadataRoute.Sitemap = (welfare || []).map((w) => ({
     url: `${baseUrl}/welfare/${w.id}`,
     lastModified: new Date(w.updated_at),
@@ -93,7 +100,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Loan programs
   const { data: loans } = await supabase
     .from("loan_programs")
-    .select("id, updated_at");
+    .select("id, updated_at")
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER);
   const loanPages: MetadataRoute.Sitemap = (loans || []).map((l) => ({
     url: `${baseUrl}/loan/${l.id}`,
     lastModified: new Date(l.updated_at),

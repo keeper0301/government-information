@@ -19,6 +19,10 @@ import {
   getEligibilityCategory,
   type EligibilitySlug,
 } from '@/lib/eligibility/catalog';
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from '@/lib/listing-sources';
 
 // 6시간 ISR — 단독 페이지와 동일 정책 (정책 추가/마감 빈도 고려)
 export const revalidate = 21600;
@@ -88,12 +92,14 @@ export default async function EligibilityCrossPage({
   const welfareQ = supabase
     .from('welfare_programs')
     .select('*')
+    .not('source_code', 'in', WELFARE_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .eq('income_target_level', incomeCategory.dbKey)
     .contains('household_target_tags', [householdCategory.dbKey]);
   const loanQ = supabase
     .from('loan_programs')
     .select('*')
+    .not('source_code', 'in', LOAN_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .eq('income_target_level', incomeCategory.dbKey)
     .contains('household_target_tags', [householdCategory.dbKey]);

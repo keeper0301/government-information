@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { welfareToDisplay, loanToDisplay, type DisplayProgram } from "@/lib/programs";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 import { checkAndConsumeAiQuota } from "@/lib/quota";
+
+// 챗봇 검색 결과에서 EXCLUDED 차단을 단일 helper 로 — 매 .from() 마다 분기 반복 회피
+function applyExcludedFilter<Q extends { not: (col: string, op: string, val: string) => Q }>(
+  query: Q,
+  table: "welfare_programs" | "loan_programs",
+): Q {
+  return query.not(
+    "source_code",
+    "in",
+    table === "welfare_programs" ? WELFARE_EXCLUDED_FILTER : LOAN_EXCLUDED_FILTER,
+  );
+}
 
 const KEYWORD_MAP: Record<string, { table: "welfare_programs" | "loan_programs"; field: string; value: string }[]> = {
   "청년": [{ table: "welfare_programs", field: "target", value: "%청년%" }, { table: "loan_programs", field: "target", value: "%청년%" }],
@@ -82,9 +98,8 @@ export async function POST(request: NextRequest) {
       matchedKeywords.push(keyword);
       for (const q of queries) {
         if (q.value.includes("%")) {
-          const { data } = await supabase
-            .from(q.table)
-            .select("*")
+          const baseQ = supabase.from(q.table).select("*");
+          const { data } = await applyExcludedFilter(baseQ, q.table)
             .ilike(q.field, q.value)
             .limit(3);
           if (data) {
@@ -94,9 +109,8 @@ export async function POST(request: NextRequest) {
             programs.push(...converted);
           }
         } else {
-          const { data } = await supabase
-            .from(q.table)
-            .select("*")
+          const baseQ = supabase.from(q.table).select("*");
+          const { data } = await applyExcludedFilter(baseQ, q.table)
             .eq(q.field, q.value)
             .limit(3);
           if (data) {
@@ -123,8 +137,18 @@ export async function POST(request: NextRequest) {
     // Fallback: full-text search
     const sanitized = message.replace(/[%_\\]/g, '\\$&');
     const [{ data: w }, { data: l }] = await Promise.all([
-      supabase.from("welfare_programs").select("*").or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`).limit(3),
-      supabase.from("loan_programs").select("*").or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`).limit(3),
+      supabase
+        .from("welfare_programs")
+        .select("*")
+        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+        .or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+        .limit(3),
+      supabase
+        .from("loan_programs")
+        .select("*")
+        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+        .or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+        .limit(3),
     ]);
     const fallback = [
       ...(w || []).map(welfareToDisplay),

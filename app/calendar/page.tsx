@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { shortenCalendarTitle } from "@/lib/utils";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 export const revalidate = 600;
 
@@ -123,10 +127,12 @@ export default async function CalendarPage({
     supabase
       .from("welfare_programs")
       .select("id, title, source, apply_start, apply_end")
+      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
       .or(dateFilter),
     supabase
       .from("loan_programs")
       .select("id, title, source, apply_start, apply_end")
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
       .or(dateFilter),
   ]);
 

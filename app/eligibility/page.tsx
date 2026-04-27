@@ -14,6 +14,10 @@ import {
   getCrossLabel,
   type EligibilitySlug,
 } from '@/lib/eligibility/catalog';
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from '@/lib/listing-sources';
 
 export const revalidate = 21600; // 6h ISR — 정책 추가/마감 추적 + 추천 조합 갱신
 
@@ -48,11 +52,13 @@ export default async function EligibilityIndexPage() {
     supabase
       .from('welfare_programs')
       .select('income_target_level, household_target_tags')
+      .not('source_code', 'in', WELFARE_EXCLUDED_FILTER)
       .or(`apply_end.gte.${today},apply_end.is.null`)
       .not('income_target_level', 'is', null),
     supabase
       .from('loan_programs')
       .select('income_target_level, household_target_tags')
+      .not('source_code', 'in', LOAN_EXCLUDED_FILTER)
       .or(`apply_end.gte.${today},apply_end.is.null`)
       .not('income_target_level', 'is', null),
   ]);

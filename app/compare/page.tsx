@@ -17,6 +17,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { calcDday } from "@/lib/programs";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 export const metadata: Metadata = {
   title: "정책 비교 — keepioo",
@@ -86,6 +90,7 @@ export default async function ComparePage({
       .select(
         "id, title, category, target, region, eligibility, benefits, apply_method, apply_start, apply_end, source",
       )
+      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
       .in("id", ids);
     programs = (data ?? []) as WelfareForCompare[];
   } else {
@@ -94,6 +99,7 @@ export default async function ComparePage({
       .select(
         "id, title, category, target, region, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_start, apply_end, source",
       )
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
       .in("id", ids);
     programs = (data ?? []) as LoanForCompare[];
   }

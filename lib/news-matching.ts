@@ -20,6 +20,10 @@
 import { createClient } from "@/lib/supabase/server";
 import type { DisplayProgram } from "@/lib/programs";
 import { welfareToDisplay, loanToDisplay } from "@/lib/programs";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 // 뉴스 keywords → 공고 target·description 검색 키워드 매핑
 // 뉴스 키워드가 공고 DB 에서 어떤 표현으로 나타나는지 정리
@@ -100,6 +104,7 @@ export async function findRelatedPrograms(params: {
     supabase
       .from("welfare_programs")
       .select("*")
+      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
       .or(orClauses)
       .or(`apply_end.is.null,apply_end.gte.${today}`)
       .order("created_at", { ascending: false })
@@ -107,6 +112,7 @@ export async function findRelatedPrograms(params: {
     supabase
       .from("loan_programs")
       .select("*")
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
       .or(orClauses)
       .or(`apply_end.is.null,apply_end.gte.${today}`)
       .order("created_at", { ascending: false })

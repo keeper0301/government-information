@@ -18,6 +18,10 @@ import {
   type ProgramContext,
 } from "@/lib/ai";
 import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 // AdSense 가이드 — 본문 길이 (한글 기준)
 // 1,000자 미만이면 "valuable inventory: low quality" 로 거절될 위험
@@ -130,6 +134,7 @@ export async function pickProgramsForCategory(
   const { data: welfares } = await admin
     .from("welfare_programs")
     .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
     .or(orFilter)
     .or(datePolicy)
     .order("published_at", { ascending: false, nullsFirst: false })
@@ -151,6 +156,7 @@ export async function pickProgramsForCategory(
   const { data: loans } = await admin
     .from("loan_programs")
     .select("id, title, category, target, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_url, apply_start, apply_end, source")
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
     .or(orFilter)
     .or(datePolicy)
     .order("published_at", { ascending: false, nullsFirst: false })
@@ -194,6 +200,7 @@ async function pickCurationPrograms(
   const { data } = await admin
     .from("welfare_programs")
     .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
     .or(`apply_end.is.null,apply_end.gte.${today}`)
     .order("published_at", { ascending: false, nullsFirst: false })
     .order("apply_end", { ascending: true, nullsFirst: false })

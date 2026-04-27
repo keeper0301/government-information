@@ -4,6 +4,10 @@ import type {
   IncomeTargetLevel,
   HouseholdTargetTag,
 } from "@/lib/personalization/targeting-extract";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 export { calcDday } from "@/lib/utils";
 import { calcDday } from "@/lib/utils";
 
@@ -118,6 +122,7 @@ export async function getUrgentPrograms(limit = 3, daysAhead = 14): Promise<Disp
     supabase
       .from("welfare_programs")
       .select("*")
+      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
       .gte("apply_end", todayStr)
       .lte("apply_end", futureStr)
       .order("apply_end", { ascending: true })
@@ -125,6 +130,7 @@ export async function getUrgentPrograms(limit = 3, daysAhead = 14): Promise<Disp
     supabase
       .from("loan_programs")
       .select("*")
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
       .gte("apply_end", todayStr)
       .lte("apply_end", futureStr)
       .order("apply_end", { ascending: true })
@@ -188,6 +194,11 @@ export async function getPopularPrograms(
   let query = supabase
     .from(table)
     .select("*")
+    .not(
+      "source_code",
+      "in",
+      filter.programType === "welfare" ? WELFARE_EXCLUDED_FILTER : LOAN_EXCLUDED_FILTER,
+    )
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   // 카테고리 필터 (정확 일치)
@@ -258,6 +269,11 @@ export async function getDeadlineSoonPopular(
   const { data } = await supabase
     .from(table)
     .select("*")
+    .not(
+      "source_code",
+      "in",
+      programType === "welfare" ? WELFARE_EXCLUDED_FILTER : LOAN_EXCLUDED_FILTER,
+    )
     .gte("apply_end", todayStr)
     .lte("apply_end", sevenDaysLater)
     .order("view_count", { ascending: false })
@@ -296,9 +312,11 @@ export async function getRelatedPrograms(
   const table = type === "welfare" ? "welfare_programs" : "loan_programs";
   const today = new Date().toISOString().split("T")[0];
 
+  const excludedFilter = type === "welfare" ? WELFARE_EXCLUDED_FILTER : LOAN_EXCLUDED_FILTER;
   let query = supabase
     .from(table)
     .select("*")
+    .not("source_code", "in", excludedFilter)
     .eq("category", category)
     .neq("id", excludeId)
     .or(`apply_end.gte.${today},apply_end.is.null`)
@@ -316,6 +334,7 @@ export async function getRelatedPrograms(
       const { data: fallback } = await supabase
         .from(table)
         .select("*")
+        .not("source_code", "in", excludedFilter)
         .eq("category", category)
         .neq("id", excludeId)
         .or(`apply_end.gte.${today},apply_end.is.null`)

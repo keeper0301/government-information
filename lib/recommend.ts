@@ -9,6 +9,10 @@ import { createClient } from "@/lib/supabase/server";
 import { welfareToDisplay, loanToDisplay, type DisplayProgram } from "@/lib/programs";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
 import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
+import {
   AGE_KEYWORDS,
   OCCUPATION_KEYWORDS,
   type AgeOption,
@@ -190,6 +194,7 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
       ? supabase
           .from("welfare_programs")
           .select("*")
+          .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
           .or(`apply_end.gte.${today},apply_end.is.null`)
           .order("view_count", { ascending: false })
           .limit(CANDIDATE_LIMIT)
@@ -199,6 +204,7 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
       ? supabase
           .from("loan_programs")
           .select("*")
+          .not("source_code", "in", LOAN_EXCLUDED_FILTER)
           .or(`apply_end.gte.${today},apply_end.is.null`)
           .order("view_count", { ascending: false })
           .limit(CANDIDATE_LIMIT)

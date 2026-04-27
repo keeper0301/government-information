@@ -13,6 +13,7 @@ import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink } from "@/lib/utils/apply-url";
+import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -24,7 +25,12 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.from("welfare_programs").select("title, description").eq("id", id).single();
+  const { data } = await supabase
+    .from("welfare_programs")
+    .select("title, description")
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+    .eq("id", id)
+    .single();
   if (!data) return { title: "복지 지원사업 — 정책알리미" };
   return {
     title: `${data.title} — 정책알리미`,
@@ -38,6 +44,7 @@ export default async function WelfareDetailPage({ params }: Props) {
   const { data: program } = await supabase
     .from("welfare_programs")
     .select("*")
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
     .eq("id", id)
     .single();
 

@@ -9,6 +9,10 @@ import {
   loanToDisplay,
   type DisplayProgram,
 } from "@/lib/programs";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 // 뉴스 1건의 검색 결과 표시용 슬림 타입 (페이지·자동완성 공통)
 export type NewsHit = {
@@ -125,11 +129,18 @@ export async function searchAll(
   const countOption = includeCount ? { count: "exact" as const } : {};
 
   // 활성 영역만 query 작성. 비활성 영역은 EMPTY 결과로 즉시 fallback.
+  // EXCLUDED listing source 는 검색 결과에서도 사전 차단 (stale 정책 빈 카드 방지)
   let welfareQ = activeTypes.has("welfare")
-    ? supabase.from("welfare_programs").select("*", countOption)
+    ? supabase
+        .from("welfare_programs")
+        .select("*", countOption)
+        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
     : null;
   let loanQ = activeTypes.has("loan")
-    ? supabase.from("loan_programs").select("*", countOption)
+    ? supabase
+        .from("loan_programs")
+        .select("*", countOption)
+        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
     : null;
   let newsQ = activeTypes.has("news")
     ? supabase

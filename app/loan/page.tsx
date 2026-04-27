@@ -19,6 +19,7 @@ import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePro
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { LoanProgram } from "@/lib/database.types";
 import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
+import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
 export const metadata: Metadata = {
   title: "소상공인 대출·지원금 — 정책알리미",
@@ -132,7 +133,10 @@ export default async function LoanPage({ searchParams }: Props) {
   const today = new Date().toISOString().split("T")[0];
 
   // ─── 기존 페이지네이션 query ──────────────────────────────────────────────────
-  let query = supabase.from("loan_programs").select("*", { count: "exact" });
+  let query = supabase
+    .from("loan_programs")
+    .select("*", { count: "exact" })
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER);
   query = applyFilters(query);
   query = query
     .or(`apply_end.gte.${today},apply_end.is.null`)
@@ -152,7 +156,10 @@ export default async function LoanPage({ searchParams }: Props) {
   //   - title prefix: [광역 또는 (광역 (region_tags 누락된 row fallback)
   // PostgREST .or() 안에 cs(contains)·ilike 혼합 가능 (콤마는 separator,
   // {} 안 콤마는 array element). 사용자가 region 필터 직접 누르면 그 선택 그대로.
-  let poolQuery = supabase.from("loan_programs").select("*");
+  let poolQuery = supabase
+    .from("loan_programs")
+    .select("*")
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER);
   poolQuery = applyFilters(poolQuery);
   if (region === "전체" && profile?.signals.region) {
     const aliases = REGION_ALIASES[profile.signals.region] ?? [profile.signals.region];

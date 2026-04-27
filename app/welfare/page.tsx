@@ -19,6 +19,7 @@ import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePro
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { WelfareProgram } from "@/lib/database.types";
 import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
+import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
 export const metadata: Metadata = {
   title: "복지 지원사업 — 정책알리미",
@@ -103,7 +104,10 @@ export default async function WelfarePage({ searchParams }: Props) {
   const today = new Date().toISOString().split("T")[0];
 
   // ─── 기존 페이지네이션 query ──────────────────────────────────────────────────
-  let query = supabase.from("welfare_programs").select("*", { count: "exact" });
+  let query = supabase
+    .from("welfare_programs")
+    .select("*", { count: "exact" })
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER);
   query = applyFilters(query);
   query = query
     .or(`apply_end.gte.${today},apply_end.is.null`)
@@ -120,7 +124,10 @@ export default async function WelfarePage({ searchParams }: Props) {
   // 페이지네이션 없이 같은 필터 적용한 상위 100건 — 사용자 개인화 점수 계산용.
   // 사용자가 region 필터를 직접 누르면 그 선택 그대로 (자연스러움 보존).
   // region="전체" + 사용자 프로필 region 있으면 사용자 광역+전국 우선 pool 로 좁힘.
-  let poolQuery = supabase.from("welfare_programs").select("*");
+  let poolQuery = supabase
+    .from("welfare_programs")
+    .select("*")
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER);
   poolQuery = applyFilters(poolQuery);
   if (region === "전체" && profile?.signals.region) {
     const aliases = REGION_ALIASES[profile.signals.region] ?? [profile.signals.region];

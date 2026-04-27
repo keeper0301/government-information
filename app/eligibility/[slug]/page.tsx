@@ -14,6 +14,10 @@ import {
   getEligibilityCategory,
   type EligibilitySlug,
 } from '@/lib/eligibility/catalog';
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from '@/lib/listing-sources';
 
 // 6시간 ISR — 정책 추가/마감 빈도 고려. revalidate-on-demand 까지 가지 않아도 충분.
 export const revalidate = 21600;
@@ -66,10 +70,12 @@ export default async function EligibilityCategoryPage({
   let welfareQ = supabase
     .from('welfare_programs')
     .select('*')
+    .not('source_code', 'in', WELFARE_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`);
   let loanQ = supabase
     .from('loan_programs')
     .select('*')
+    .not('source_code', 'in', LOAN_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   if (category.type === 'income') {

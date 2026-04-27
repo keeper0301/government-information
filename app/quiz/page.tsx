@@ -11,6 +11,10 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { ProgramRow } from '@/components/program-row';
 import { welfareToDisplay, loanToDisplay } from '@/lib/programs';
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from '@/lib/listing-sources';
 import { scoreAndFilter } from '@/lib/personalization/filter';
 import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
 import type { UserSignals } from '@/lib/personalization/types';
@@ -134,10 +138,12 @@ export default async function QuizPage({
   let welfareQ = supabase
     .from('welfare_programs')
     .select(COLUMNS)
+    .not('source_code', 'in', WELFARE_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`);
   let loanQ = supabase
     .from('loan_programs')
     .select(COLUMNS)
+    .not('source_code', 'in', LOAN_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   if (regionOrFilter) {

@@ -15,6 +15,7 @@ import type {
   BusinessEmployee,
   BusinessType,
 } from '@/lib/profile-options';
+import { LOAN_EXCLUDED_FILTER } from '@/lib/listing-sources';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,7 @@ export default async function LoanDraftPage({ params }: Props) {
       .select(
         'id, title, description, eligibility, apply_method, apply_url, category, source, benefit_tags',
       )
+      .not('source_code', 'in', LOAN_EXCLUDED_FILTER)
       .eq('id', id)
       .single(),
     supabase

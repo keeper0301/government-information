@@ -14,6 +14,7 @@ import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink } from "@/lib/utils/apply-url";
+import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -28,6 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { data } = await supabase
     .from("loan_programs")
     .select("title, description")
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
     .eq("id", id)
     .single();
 
@@ -44,6 +46,7 @@ export default async function LoanDetailPage({ params }: Props) {
   const { data: program } = await supabase
     .from("loan_programs")
     .select("*")
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
     .eq("id", id)
     .single();
 

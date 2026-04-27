@@ -8,6 +8,7 @@ import { loadUserProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilter } from '@/lib/personalization/filter';
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
 import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
+import { WELFARE_EXCLUDED_FILTER } from '@/lib/listing-sources';
 
 // DB welfare_programs raw 행 → ScorableItem 변환
 // 정정 (2026-04-25 hot-fix): benefit_tags 컬럼은 실제 DB 에 있음 (031 분류 통일).
@@ -79,6 +80,7 @@ export async function HomeRecommendAuto() {
   let query = supabase
     .from('welfare_programs')
     .select('id, title, description, eligibility, detailed_content, region, apply_end, source, benefit_tags, income_target_level, household_target_tags')
+    .not('source_code', 'in', WELFARE_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   // region 설정된 사용자 → 사용자 광역+전국 우선 필터.
