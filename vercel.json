@@ -36,6 +36,8 @@
 
     { "path": "/api/alert-dispatch", "schedule": "0 7 * * *" },
 
-    { "path": "/api/enrich", "schedule": "*/5 * * * *" }
+    { "path": "/api/enrich", "schedule": "*/5 * * * *" },
+
+    { "path": "/api/enrich-thumbnails", "schedule": "*/15 * * * *" }
   ]
 }
