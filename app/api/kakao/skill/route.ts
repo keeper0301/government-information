@@ -22,6 +22,13 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
+import {
+  KAKAO_QUICK_REPLIES,
+  buildListCardDescription,
+  getKstToday,
+  matchIntent,
+  safeEchoUtterance,
+} from "@/lib/kakao-skill";
 
 // 카카오 챗봇 타임아웃 5초 — Vercel 콜드스타트 + Supabase 쿼리 합쳐서 가드
 export const maxDuration = 5;
@@ -30,23 +37,8 @@ export const maxDuration = 5;
 // listCard 의 webLink 가 정상 작동 (사용자는 prod 도메인만 인지).
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 
-// KST 오늘 날짜 (YYYY-MM-DD) — apply_end 비교용.
-// new Date().toISOString() 은 UTC 기준이라, 한국 자정 직후 (KST 0~9시) 에는
-// today 가 KST 기준 어제로 잡혀 마감된 정책이 "마감 임박" 으로 잘못 노출되는 버그.
-// → UTC 에 +9h 더해 KST Date 생성 후 ISO 슬라이스.
-function getKstToday(): string {
-  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  return kstNow.toISOString().slice(0, 10);
-}
-
-// 모든 응답에 quickReplies 로 5개 의도 빠른 진입 노출
-const QUICK_REPLIES = [
-  { label: "복지", action: "message", messageText: "복지" },
-  { label: "대출", action: "message", messageText: "대출" },
-  { label: "청년", action: "message", messageText: "청년" },
-  { label: "사장님", action: "message", messageText: "사장님" },
-  { label: "1분 진단", action: "message", messageText: "1분 진단" },
-];
+// quickReplies 는 lib/kakao-skill.ts 에서 단일 소스. readonly tuple → 카카오 응답에 펼침.
+const QUICK_REPLIES = [...KAKAO_QUICK_REPLIES];
 
 // 카카오 i 오픈빌더 응답 형식 — simpleText
 function simpleTextResponse(text: string) {
@@ -72,23 +64,11 @@ function listCardResponse(
   moreUrl: string,
 ) {
   // listCard 아이템 최대 5개. title 36자, description 40자 제한.
-  const items = programs.slice(0, 5).map((p) => {
-    const target = p.target || "전체";
-    const ddayLabel =
-      p.dday == null
-        ? null
-        : p.dday < 0
-          ? "마감"
-          : p.dday === 0
-            ? "오늘 마감"
-            : `D-${p.dday}`;
-    const descParts = [target, ddayLabel].filter(Boolean);
-    return {
-      title: p.title.slice(0, 36),
-      description: descParts.join(" · ").slice(0, 40),
-      link: { web: `${BASE_URL}/${p.type}/${p.id}` },
-    };
-  });
+  const items = programs.slice(0, 5).map((p) => ({
+    title: p.title.slice(0, 36),
+    description: buildListCardDescription(p.target, p.dday),
+    link: { web: `${BASE_URL}/${p.type}/${p.id}` },
+  }));
 
   return NextResponse.json({
     version: "2.0",
@@ -113,46 +93,24 @@ function listCardResponse(
   });
 }
 
-// 사용자 발화 → 의도 분류
-// 5개 키워드 + 변형 매칭. 단순 includes 기반 (정규식 부담 회피).
-type Intent = "welfare" | "loan" | "quiz" | "youth" | "business" | null;
-function matchIntent(utterance: string): Intent {
-  const u = utterance.toLowerCase().replace(/\s+/g, "");
-
-  // 1분 진단 — 의도 우선순위 가장 높음 (사용자 자신을 알려준다는 시그널)
-  if (
-    u.includes("진단") ||
-    u.includes("추천") ||
-    u.includes("내게") ||
-    u.includes("나에게") ||
-    u.includes("맞춤") ||
-    u.includes("나한테")
-  ) {
-    return "quiz";
+export async function POST(request: NextRequest) {
+  // 핸들러 전체를 try/catch — supabase 일시 장애·매핑 throw 등 어떤 예외든
+  // 카카오는 5초 안에 200 응답을 못 받으면 사용자에게 "응답 없음" 노출.
+  // 안전한 simpleText 로 graceful degradation.
+  try {
+    return await handlePost(request);
+  } catch (err) {
+    console.error(JSON.stringify({
+      kind: "kakao-skill-error",
+      message: err instanceof Error ? err.message : String(err),
+    }));
+    return simpleTextResponse(
+      "일시적으로 응답이 어려워요.\n잠시 후 다시 시도해주세요.\n\n👉 https://www.keepioo.com",
+    );
   }
-
-  // 청년 — 대상 키워드 (loan/welfare 둘 다에서 검색)
-  if (u.includes("청년")) return "youth";
-
-  // 사장님·소상공인·자영업자
-  if (u.includes("사장") || u.includes("소상공인") || u.includes("자영업")) {
-    return "business";
-  }
-
-  // 대출·자금·지원금
-  if (u.includes("대출") || u.includes("자금") || u.includes("지원금")) {
-    return "loan";
-  }
-
-  // 복지·보조금·혜택
-  if (u.includes("복지") || u.includes("보조금") || u.includes("혜택")) {
-    return "welfare";
-  }
-
-  return null;
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   let body: { userRequest?: { utterance?: string } };
   try {
     body = await request.json();
@@ -304,7 +262,7 @@ export async function POST(request: NextRequest) {
   // 키워드 매칭 실패 → 사용자 발화로 정확한 추천 어려움 안내 + quiz 링크.
   // utterance echo 시 URL 패턴은 제거해 phishing 위험 최소화.
   log(0);
-  const safeUtterance = utterance.replace(/https?:\/\/\S+/gi, "").slice(0, 30).trim();
+  const safeUtterance = safeEchoUtterance(utterance);
   return simpleTextResponse(
     `'${safeUtterance || "해당"}' 관련 정책을\n바로 찾기는 어려워요.\n\nkeepioo 1분 진단으로\n맞춤 정책을 받아보시겠어요?\n\n👉 ${BASE_URL}/quiz\n\n또는 아래 빠른 답변을 눌러보세요.`,
   );
