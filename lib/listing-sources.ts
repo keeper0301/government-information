@@ -33,14 +33,3 @@ export const LOAN_LISTING_EXCLUDED_SOURCES = [
 /** PostgREST `not.in.(...)` 필터 값 — supabase-js 의 .not('source_code','in', X) 인자 */
 export const WELFARE_EXCLUDED_FILTER = `(${WELFARE_LISTING_EXCLUDED_SOURCES.join(",")})`;
 export const LOAN_EXCLUDED_FILTER = `(${LOAN_LISTING_EXCLUDED_SOURCES.join(",")})`;
-
-/** ID 기반 직접 접근 시 (예: /welfare/[id]) EXCLUDED 면 notFound 처리에 사용 */
-export function isExcludedWelfareSource(sourceCode: string | null | undefined): boolean {
-  if (!sourceCode) return false;
-  return (WELFARE_LISTING_EXCLUDED_SOURCES as readonly string[]).includes(sourceCode);
-}
-
-export function isExcludedLoanSource(sourceCode: string | null | undefined): boolean {
-  if (!sourceCode) return false;
-  return (LOAN_LISTING_EXCLUDED_SOURCES as readonly string[]).includes(sourceCode);
-}
