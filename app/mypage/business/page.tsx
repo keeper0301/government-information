@@ -5,6 +5,7 @@
 // 정보 수정은 자유 (예: 매출 변동·직원 변경 시 갱신).
 
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { BusinessProfileForm, type BusinessFormState } from './business-form';
@@ -48,6 +49,16 @@ export default async function BusinessProfilePage() {
 
   return (
     <main className="pt-28 pb-20 max-w-[640px] mx-auto px-10 max-md:pt-24 max-md:px-6">
+      {/* 뒤로가기 — /mypage 로 복귀. Link 사용으로 새로고침·직접 진입에도 안전.
+          모바일 터치 영역 44px 확보 (-mx-2 px-2 padding 으로 시각 정렬 유지). */}
+      <Link
+        href="/mypage"
+        className="inline-flex items-center gap-1 text-[13px] text-grey-600 hover:text-grey-900 mb-5 -mx-2 px-2 py-2 rounded-md hover:bg-grey-50 transition-colors no-underline"
+      >
+        <span aria-hidden="true" className="text-[15px]">←</span>
+        <span>마이페이지</span>
+      </Link>
+
       <p className="text-[13px] font-semibold text-blue-500 mb-3 tracking-wide">
         Basic · 자영업자 자격 진단
       </p>
