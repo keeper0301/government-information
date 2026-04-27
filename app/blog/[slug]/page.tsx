@@ -11,7 +11,6 @@
 // ============================================================
 
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ArticleSchema, FAQSchema, BreadcrumbSchema } from "@/components/json-ld";
@@ -190,31 +189,20 @@ export default async function BlogPostPage({
       />
 
       <article className="max-w-[720px] mx-auto px-5">
-        {/* Hero — cover_image 가 있으면 사진, 없으면 카테고리 그라디언트 + 라벨.
-            AdSense 검수자에게 시각 요소 부재 신호 회피 + 카테고리 식별성.
-            상세 페이지 첫 화면이라 priority 부여 → LCP 개선. */}
-        {post.cover_image ? (
-          <Image
-            src={post.cover_image}
-            alt=""
-            width={1200}
-            height={675}
-            className="w-full aspect-[16/9] object-cover rounded-2xl mb-6"
-            priority
-            sizes="(max-width: 768px) 100vw, 720px"
-            unoptimized
-          />
-        ) : (
-          <div
-            className="w-full aspect-[16/9] rounded-2xl mb-6 flex items-center justify-center"
-            style={{ background: heroGradient }}
-            aria-hidden="true"
-          >
-            <span className="text-white/95 text-[36px] md:text-[44px] font-extrabold tracking-[-0.8px] drop-shadow">
-              {heroLabel}
-            </span>
-          </div>
-        )}
+        {/* Hero — 항상 카테고리 그라디언트 + 라벨 1단어.
+            cover_image (OG endpoint URL) 를 쓰면 이미지 안 (제목·푸터) 과 본문 H1·
+            카테고리 칩이 같은 정보를 두 번 보여줘 부자연스러움.
+            cover_image 컬럼은 SNS 공유 meta tag (ogImage) 용으로 그대로 보존.
+            BlogCard 와 동일 정책으로 페이지 일관성 확보. */}
+        <div
+          className="w-full aspect-[16/9] rounded-2xl mb-6 flex items-center justify-center"
+          style={{ background: heroGradient }}
+          aria-hidden="true"
+        >
+          <span className="text-white/95 text-[36px] md:text-[44px] font-extrabold tracking-[-0.8px] drop-shadow">
+            {heroLabel}
+          </span>
+        </div>
 
         {/* 카테고리 + 날짜 */}
         <div className="flex items-center gap-2 mb-3 text-[13px] text-grey-600">

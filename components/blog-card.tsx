@@ -10,7 +10,6 @@
 // ============================================================
 
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
@@ -30,38 +29,25 @@ export function BlogCard({ post }: { post: BlogCardData }) {
   const dateLabel = post.published_at ? formatKoreanDate(post.published_at) : "발행 예정";
   const readingLabel = post.reading_time_min ? `${post.reading_time_min}분 읽기` : null;
 
-  // cover_image 없을 때 카테고리 색상 그라디언트 카드 fallback.
-  // AdSense 검수자에게 "이미지 부재" 시그널 회피 + 카테고리 식별성 강화.
+  // 시각 요소 — 항상 카테고리 그라디언트 + 라벨 1단어.
+  // cover_image (OG endpoint URL) 를 쓰면 이미지 안 (배지·제목·푸터) 과 카드
+  // 본문 (배지·제목·요약·날짜) 이 같은 정보를 두 번 보여줘 부자연스러움.
+  // cover_image 컬럼은 SNS 공유 meta tag (ogImage) 에 그대로 사용되므로 보존.
   const gradient = getCategoryGradient(post.category);
   const gradientCss = getCategoryGradientCss(post.category);
 
   return (
     <Link href={`/blog/${post.slug}`} className="block no-underline">
       <Card className="bg-white rounded-3xl overflow-hidden shadow-none hover:[box-shadow:0_8px_24px_rgba(17,24,39,0.06)] hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
-        {/* 시각 요소 — cover_image 있으면 사용, 없으면 카테고리 그라디언트 fallback.
-            cover_image 는 발행 시점에 우리 도메인의 OG endpoint 경로(/blog/{slug}/opengraph-image)
-            로 채워지므로 next/image 로 LCP 최적화·자동 srcset 적용. */}
-        {post.cover_image ? (
-          <Image
-            src={post.cover_image}
-            alt=""
-            width={1200}
-            height={675}
-            className="w-full aspect-[16/9] object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
-            unoptimized
-          />
-        ) : (
-          <div
-            className="w-full aspect-[16/9] flex items-center justify-center"
-            style={{ background: gradientCss }}
-            aria-hidden="true"
-          >
-            <span className="text-white/95 text-[24px] font-extrabold tracking-[-0.5px] drop-shadow-sm">
-              {gradient.label}
-            </span>
-          </div>
-        )}
+        <div
+          className="w-full aspect-[16/9] flex items-center justify-center"
+          style={{ background: gradientCss }}
+          aria-hidden="true"
+        >
+          <span className="text-white/95 text-[24px] font-extrabold tracking-[-0.5px] drop-shadow-sm">
+            {gradient.label}
+          </span>
+        </div>
 
         <div className="p-6">
         {post.category && (
