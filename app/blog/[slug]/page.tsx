@@ -91,15 +91,26 @@ export async function generateMetadata({
   // meta_description 은 한 줄 리드 문장이라 stripHtmlTags(평문) 가 적합.
   const description = stripHtmlTags(post.meta_description) || undefined;
 
+  // 네이버 검색 SEO — keywords (tags) + 한국어 locale + siteName 명시.
+  // 네이버 D.I.A 알고리즘이 사이트 전체 일관성 시그널로 사용.
+  // tags 는 blog 발행 prompt 가 한국어 키워드 4~6개 자동 생성.
+  const keywords = post.tags && post.tags.length > 0
+    ? post.tags.join(", ")
+    : undefined;
+
   return {
     title: `${post.title} | 정책알리미`,
     description,
+    keywords,
     alternates: { canonical: `/blog/${slug}` },
+    authors: [{ name: "정책알리미", url: "https://www.keepioo.com" }],
     openGraph: {
       title: post.title,
       description,
       type: "article",
       url: `/blog/${slug}`,
+      siteName: "정책알리미",
+      locale: "ko_KR",
       publishedTime: post.published_at || undefined,
       modifiedTime: post.updated_at,
       tags: post.tags || undefined,

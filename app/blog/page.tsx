@@ -34,12 +34,17 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "정책 블로그 | 정책알리미",
   description:
-    "복지·대출·지원금 신청 방법을 쉽게 정리한 가이드. 매일 1개씩 새 글 발행. 마감 임박 정책 큐레이션부터 청년·소상공인·주거 카테고리까지.",
+    "복지·대출·지원금 신청 방법을 쉽게 정리한 가이드. 매일 7글씩 새 글 발행. 마감 임박 정책 큐레이션부터 청년·소상공인·주거 카테고리까지.",
+  // 네이버 D.I.A 알고리즘 키워드 시그널 — 7개 카테고리 + 주요 영역
+  keywords: "복지, 대출, 지원금, 청년, 노년, 학생, 소상공인, 주거, 의료, 정책 신청, 정책 가이드",
   alternates: { canonical: "/blog" },
+  authors: [{ name: "정책알리미", url: "https://www.keepioo.com" }],
   openGraph: {
     title: "정책 블로그 | 정책알리미",
     description: "복지·대출·지원금 신청 방법 가이드",
     type: "website",
+    siteName: "정책알리미",
+    locale: "ko_KR",
   },
 };
 
