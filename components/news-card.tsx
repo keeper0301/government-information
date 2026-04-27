@@ -52,12 +52,12 @@ export function NewsCard({ post }: { post: NewsCardData }) {
   return (
     <Link href={`/news/${post.slug}`} className="block no-underline">
       <Card className="bg-white rounded-3xl overflow-hidden shadow-none hover:[box-shadow:0_8px_24px_rgba(17,24,39,0.06)] hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
-        {/* 썸네일 — 있으면 이미지, 없으면 "텍스트 포스터" placeholder.
+        {/* 썸네일 — 있으면 이미지, 없으면 카테고리 색상 그라디언트 placeholder.
             alt="" : 뉴스 제목이 바로 아래 카드 안에 있어 스크린리더 중복 방지.
             next/image 미사용 이유: 공공누리 제1유형 재호스팅 금지 → Vercel 최적화
             캐시를 거치지 않도록 <img> 로 외부 URL 직접 참조 (메모리 원칙).
-            placeholder 는 기존엔 카테고리 라벨만 가운데 있어 큰 빈 영역처럼 보였음.
-            제목 일부를 미리 노출해 빈 영역 느낌을 없앤 "텍스트 포스터" 스타일로 전환.
+            placeholder: 카드 메타 영역에 카테고리 배지·제목이 이미 노출되니
+            중복 회피하고 시각요소만 유지 (그라디언트 + 점·선 패턴).
             rounded-t-3xl 명시: Card 기본 *:img:first-child rounded-t-xl 덮어쓰기. */}
         {post.thumbnail_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -70,14 +70,14 @@ export function NewsCard({ post }: { post: NewsCardData }) {
           />
         ) : (
           <div
-            className={`w-full aspect-[16/9] flex flex-col justify-end px-5 py-4 rounded-t-3xl ${categoryColor}`}
+            className={`relative w-full aspect-[16/9] rounded-t-3xl overflow-hidden ${categoryColor}`}
             aria-hidden="true"
           >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-70 mb-1">
-              {categoryLabel}
-            </div>
-            <div className="text-[14px] font-bold leading-[1.35] line-clamp-3 opacity-90">
-              {post.title}
+            {/* 미니멀 패턴 — 우측 상단 동심원, 좌측 하단 점선 */}
+            <div className="absolute inset-0 opacity-40">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border-2 border-current" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border-2 border-current" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-current opacity-30" />
             </div>
           </div>
         )}
