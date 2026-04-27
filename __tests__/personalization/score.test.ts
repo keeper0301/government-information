@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scoreProgram } from '@/lib/personalization/score';
+import { scoreProgram, isProgramAllowedForUser } from '@/lib/personalization/score';
 import type { UserSignals } from '@/lib/personalization/types';
 
 // 빈 사용자 프로필 (아무 정보도 없는 상태)
@@ -648,5 +648,78 @@ describe('scoreProgram — Cohort 부적합 차단 (Phase 1.6)', () => {
     );
     // household_target +3
     expect(r.score).toBe(3);
+  });
+});
+
+// ============================================================
+// isProgramAllowedForUser — alert-dispatch cohort gate
+// ============================================================
+// 알림 발송 매칭에 score.ts 의 cohort gate 적용 (사장님 사고 후속).
+// 사용자가 마이페이지 "자녀 없음" 선택 시 산후조리 알림톡 발송 차단.
+describe('isProgramAllowedForUser', () => {
+  it('산후조리 정책 + hasChildren=false → 차단 (false 반환)', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '산후조리비용 지원', description: null },
+      { ...emptyUser, hasChildren: false },
+    );
+    expect(result).toBe(false);
+  });
+
+  it('산후조리 정책 + hasChildren=true → 통과', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '산후조리비용 지원', description: null },
+      { ...emptyUser, hasChildren: true },
+    );
+    expect(result).toBe(true);
+  });
+
+  it('산후조리 정책 + hasChildren=null (미입력) → 통과 (보수적)', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '산후조리비용 지원', description: null },
+      { ...emptyUser, hasChildren: null },
+    );
+    expect(result).toBe(true);
+  });
+
+  it('장애인 자립 정책 + householdTypes=[married] → 차단', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '장애인 자립지원',
+        household_target_tags: ['disabled_family'] },
+      { ...emptyUser, householdTypes: ['married'] },
+    );
+    expect(result).toBe(false);
+  });
+
+  it('결식아동급식 + householdTypes=[married] → 차단', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '결식아동 급식 지원', description: null },
+      { ...emptyUser, householdTypes: ['married'] },
+    );
+    expect(result).toBe(false);
+  });
+
+  it('통합사례관리 + incomeLevel=mid → 차단', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '희망복지지원단 통합사례관리', description: null },
+      { ...emptyUser, incomeLevel: 'mid' },
+    );
+    expect(result).toBe(false);
+  });
+
+  it('일반 정책 + 사장님 프로필 → 통과', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '소상공인 정책자금', description: '운영자금 지원' },
+      { ...emptyUser, householdTypes: ['married'], hasChildren: false, incomeLevel: 'mid' },
+    );
+    expect(result).toBe(true);
+  });
+
+  it('빈 프로필 사용자 + 어떤 cohort 정책 → 통과 (게이트 미적용)', () => {
+    const result = isProgramAllowedForUser(
+      { id: '1', title: '산후조리비용 지원',
+        household_target_tags: ['disabled_family'] },
+      { ...emptyUser }, // householdTypes=[], hasChildren=null
+    );
+    expect(result).toBe(true);
   });
 });

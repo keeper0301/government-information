@@ -32,6 +32,9 @@ export type MatchedProgram = {
   apply_end: string | null;
   published_at: string | null;
   description: string | null;
+  // cohort gate 적용용 — alert-dispatch 가 isProgramAllowedForUser 로 필터링.
+  // null 일 경우 score.ts gate 가 미적용 (정책 제한 없음으로 해석).
+  household_target_tags: string[] | null;
   table: "welfare_programs" | "loan_programs";
 };
 
@@ -54,7 +57,7 @@ export async function findMatchingPrograms(
     let query = supabase
       .from(table)
       .select(
-        "id, title, source, apply_url, apply_end, published_at, description",
+        "id, title, source, apply_url, apply_end, published_at, description, household_target_tags",
       )
       .gte("fetched_at", sinceIso)
       // duplicate_of_id 가 있으면 중복이므로 건너뛰기

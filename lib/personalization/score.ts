@@ -267,6 +267,48 @@ function isUrgentDeadline(applyEnd: string | null | undefined): boolean {
   return days >= 0 && days <= 7;
 }
 
+// ============================================================
+// alert-dispatch / matching pipeline 용 cohort gate 통합 함수
+// ============================================================
+// scoreProgram 의 점수 계산 부담 없이 cohort 차단 여부만 판단.
+// 알림톡·이메일 알림은 사용자가 명시 등록한 규칙 기반이라 점수·minScore
+// 무관하지만, cohort mismatch (장애인·결식아동·산후조리·기초수급자)
+// 는 명백히 부적합한 발송이라 차단해야 함.
+//
+// 반환: true=통과 (정책이 사용자에게 적합), false=차단
+//
+// 게이트 적용 (모두 mismatch 면 false 반환):
+//   1) Cohort 키워드 (노년/다문화/아동/장애/저소득/산후조리·영유아)
+//   2) household_target_tags 명시 시그널 mismatch
+//
+// region/age/income/business 매칭은 알림 영역에서는 무관 (사용자가
+// 직접 등록한 규칙이라 본인 의지). cohort gate 만 적용.
+export function isProgramAllowedForUser<T extends ScorableItem>(
+  program: T,
+  user: UserSignals,
+): boolean {
+  // 검색 대상 텍스트: 제목 + 설명 + 출처
+  const haystack = `${program.title ?? ''} ${program.description ?? ''} ${program.source ?? ''}`;
+
+  // 1) Cohort 키워드 차단 (노년/다문화/아동/장애/저소득/산후조리)
+  if (isCohortMismatch(haystack, user)) return false;
+
+  // 2) household_target_tags 명시 mismatch 차단 (regional gate 와 동일 패턴)
+  // 정책에 명시 + 사용자에 명시 + 교집합 0 → 차단
+  if (
+    program.household_target_tags &&
+    program.household_target_tags.length > 0 &&
+    user.householdTypes.length > 0
+  ) {
+    const overlap = user.householdTypes.filter(ht =>
+      program.household_target_tags!.includes(ht),
+    );
+    if (overlap.length === 0) return false;
+  }
+
+  return true;
+}
+
 // 정책 1건에 대해 사용자 프로필 적합도 점수 계산
 // 반환값: 원본 아이템 + 합산 점수 + 기여 시그널 목록
 export function scoreProgram<T extends ScorableItem>(

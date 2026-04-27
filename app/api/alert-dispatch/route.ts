@@ -19,11 +19,17 @@ import {
   type BusinessMatch,
 } from "@/lib/eligibility/business-match";
 import type {
+  AgeOption,
   BusinessIndustry,
   BusinessRevenue,
   BusinessEmployee,
   BusinessType,
+  OccupationOption,
+  RegionOption,
 } from "@/lib/profile-options";
+import { isProgramAllowedForUser } from "@/lib/personalization/score";
+import type { UserSignals } from "@/lib/personalization/types";
+import type { BenefitTag } from "@/lib/tags/taxonomy";
 
 // POLICY_NEW v2 → v3 분기 — SOLAPI_TEMPLATE_ID_POLICY_NEW_V3 환경변수 등록되면 자동 v3.
 // v3 = 호명 + 자격 진단 한 줄 + 금액 + 마감 통합 (사장님 케이뱅크 reference 수준).
@@ -92,6 +98,37 @@ async function runAlertDispatch(jobLabel: string) {
       }
     }
 
+    // user_profiles 캐시 — cohort gate 적용용 UserSignals 객체.
+    // 같은 user 가 규칙 여러 개 들고 있어도 1회만 fetch.
+    // 알림 발송 매칭에 score.ts 의 isProgramAllowedForUser 적용 (장애인·결식아동·
+    // 산후조리·기초수급자 cohort 차단). 사용자가 마이페이지에서 "자녀 없음"
+    // 선택하면 산후조리 알림톡 발송 안 됨 — 추천 노출과 일관성 보장.
+    const userSignalsCache = new Map<string, UserSignals>();
+    async function getUserSignals(userId: string, businessProfile: BusinessProfile | null): Promise<UserSignals> {
+      const cached = userSignalsCache.get(userId);
+      if (cached) return cached;
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select(
+          "age_group, region, district, occupation, income_level, household_types, benefit_tags, has_children",
+        )
+        .eq("id", userId)
+        .maybeSingle();
+      const signals: UserSignals = {
+        ageGroup: (profile?.age_group ?? null) as AgeOption | null,
+        region: (profile?.region ?? null) as RegionOption | null,
+        district: profile?.district ?? null,
+        occupation: (profile?.occupation ?? null) as OccupationOption | null,
+        incomeLevel: (profile?.income_level ?? null) as UserSignals["incomeLevel"],
+        householdTypes: (profile?.household_types ?? []) as string[],
+        benefitTags: (profile?.benefit_tags ?? []) as BenefitTag[],
+        hasChildren: (profile?.has_children ?? null) as boolean | null,
+        businessProfile,
+      };
+      userSignalsCache.set(userId, signals);
+      return signals;
+    }
+
     // business_profiles 캐시 — 같은 user 가 규칙 여러 개 들고 있어도 1회만 fetch
     const v3Enabled = isV3Enabled();
     const businessProfileCache = new Map<string, BusinessProfile | null>();
@@ -125,6 +162,7 @@ async function runAlertDispatch(jobLabel: string) {
     let emailFailures = 0;
     let kakaoSkippedConsent = 0;
     let totalKakaoSkippedMismatch = 0; // v3 자격 mismatch 사전 차단 카운트
+    let totalCohortGateBlocked = 0; // cohort gate (장애인·결식아동·산후조리·기초수급자) 차단 카운트
     const emailFailureDetail: string[] = [];
 
     // 사용자별 kakao_messaging 동의 상태 캐시 — 같은 사용자가 규칙 여러 개 들고 있어도 1회만 조회.
@@ -139,7 +177,33 @@ async function runAlertDispatch(jobLabel: string) {
     }
 
     for (const rule of rules as AlertRule[]) {
-      const matches = await findMatchingPrograms(supabase, rule, since, 20);
+      const rawMatches = await findMatchingPrograms(supabase, rule, since, 20);
+      if (rawMatches.length === 0) continue;
+
+      // ━━ cohort gate ━━
+      // 사장님 사고 (2026-04-28) 후속 — 추천 노출 매칭 (score.ts) 과
+      // 알림 발송 매칭이 분리돼 있어, 사장님이 마이페이지에서 "자녀 없음"
+      // 선택해도 카카오 알림톡으로 산후조리 정책이 발송되던 문제.
+      // findMatchingPrograms 결과를 isProgramAllowedForUser 로 2차 필터링
+      // → 장애인·결식아동·산후조리·기초수급자 cohort mismatch 알림 차단.
+      const businessProfileForGate = await getBusinessProfile(rule.user_id);
+      const userSignals = await getUserSignals(rule.user_id, businessProfileForGate);
+      const matches = rawMatches.filter((m) =>
+        isProgramAllowedForUser(
+          {
+            id: m.id,
+            title: m.title,
+            description: m.description,
+            source: m.source,
+            household_target_tags: m.household_target_tags,
+          },
+          userSignals,
+        ),
+      );
+      const blockedByCohort = rawMatches.length - matches.length;
+      if (blockedByCohort > 0) {
+        totalCohortGateBlocked += blockedByCohort;
+      }
       if (matches.length === 0) continue;
 
       // 이미 발송한 (rule_id, program) 조합 조회 — 중복 필터
@@ -394,6 +458,7 @@ async function runAlertDispatch(jobLabel: string) {
       queued_kakao: dispatchedKakao,
       kakao_skipped_consent: kakaoSkippedConsent,
       kakao_skipped_mismatch: totalKakaoSkippedMismatch, // v3 자격 사전 차단
+      cohort_gate_blocked: totalCohortGateBlocked, // 장애인·결식아동·산후조리·기초수급자 차단
       template_version: isV3Enabled() ? "v3" : "v2",
       skipped,
     });
