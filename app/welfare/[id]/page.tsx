@@ -198,26 +198,26 @@ export default async function WelfareDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Description — 흰 카드로 감싸 배경과 구분. 카드 중복 라인 제거. 결과 비면 생략. */}
+      {/* Description — InfoSection 통일 디자인. 카드 중복 라인 제거. 결과 비면 생략. */}
       {(() => {
         const cleaned = stripCardDuplicates(cleanDescription(program.description));
         if (!cleaned) return null;
         return (
-          <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-            <h2 className="text-[17px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">공고 내용</h2>
+          <InfoSection title="공고 내용">
             <p className="text-[16px] font-medium text-grey-800 leading-[1.8] max-md:text-[15px] whitespace-pre-wrap">
               {cleaned}
             </p>
-          </div>
+          </InfoSection>
         );
       })()}
 
-      {/* 상세 정보 섹션들 — 그대로 유지 */}
-      {program.detailed_content && (
-        <InfoSection title="상세 내용">
-          {cleanDescription(program.detailed_content)}
-        </InfoSection>
-      )}
+      {/* 상세 내용 — description 과 substantially 같으면 숨김 (사장님 캡쳐 사고). */}
+      {program.detailed_content &&
+        !isSubstantiallyDuplicate(program.detailed_content, program.description) && (
+          <InfoSection title="상세 내용">
+            {cleanDescription(program.detailed_content)}
+          </InfoSection>
+        )}
 
       {program.selection_criteria && (
         <InfoSection title="선정 기준">

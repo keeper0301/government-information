@@ -202,28 +202,26 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Description — 카드 아래로 이동 + stripCardDuplicates 로 카드와 중복되는
-            "라벨: 값" 라인 제거. 페이지 배경(크림) 과 구별되도록 흰 카드로 감싸
-            공고 본문 덩어리를 시각적으로 분리. 결과가 빈 문자열이면 블록 생략. */}
+        {/* Description — InfoSection 통일 디자인 + stripCardDuplicates 카드 중복 제거. */}
         {(() => {
           const cleaned = stripCardDuplicates(cleanDescription(program.description));
           if (!cleaned) return null;
           return (
-            <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-8 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-              <h2 className="text-[17px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">공고 내용</h2>
+            <InfoSection title="공고 내용">
               <p className="text-[16px] font-medium text-grey-800 leading-[1.8] max-md:text-[15px] whitespace-pre-wrap">
                 {cleaned}
               </p>
-            </div>
+            </InfoSection>
           );
         })()}
 
-        {/* 상세 정보 섹션들 — detailed_content 등은 그대로. HTML 엔티티 정제 유지. */}
-        {program.detailed_content && (
-          <InfoSection title="상세 내용">
-            {cleanDescription(program.detailed_content)}
-          </InfoSection>
-        )}
+        {/* 상세 내용 — description 과 substantially 같으면 숨김 (사장님 캡쳐 사고). */}
+        {program.detailed_content &&
+          !isSubstantiallyDuplicate(program.detailed_content, program.description) && (
+            <InfoSection title="상세 내용">
+              {cleanDescription(program.detailed_content)}
+            </InfoSection>
+          )}
 
         {program.required_documents && (
           <InfoSection title="필요 서류">
