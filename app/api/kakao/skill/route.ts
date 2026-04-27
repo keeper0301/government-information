@@ -26,7 +26,18 @@ import {
 // 카카오 챗봇 타임아웃 5초 — Vercel 콜드스타트 + Supabase 쿼리 합쳐서 가드
 export const maxDuration = 5;
 
-const BASE_URL = "https://www.keepioo.com";
+// BASE_URL — 운영 도메인. 프리뷰 배포·local 에서도 prod URL 보내야
+// listCard 의 webLink 가 정상 작동 (사용자는 prod 도메인만 인지).
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
+
+// KST 오늘 날짜 (YYYY-MM-DD) — apply_end 비교용.
+// new Date().toISOString() 은 UTC 기준이라, 한국 자정 직후 (KST 0~9시) 에는
+// today 가 KST 기준 어제로 잡혀 마감된 정책이 "마감 임박" 으로 잘못 노출되는 버그.
+// → UTC 에 +9h 더해 KST Date 생성 후 ISO 슬라이스.
+function getKstToday(): string {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return kstNow.toISOString().slice(0, 10);
+}
 
 // 모든 응답에 quickReplies 로 5개 의도 빠른 진입 노출
 const QUICK_REPLIES = [
@@ -160,10 +171,23 @@ export async function POST(request: NextRequest) {
 
   const intent = matchIntent(utterance);
   const supabase = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getKstToday();
+
+  // 운영 모니터링용 로그 — Vercel Functions 로그에서 의도별 호출 빈도·fallback
+  // 비율 등을 확인. fallback 이 많으면 발화 추가 또는 의도 추가 필요.
+  const log = (programsCount: number) => {
+    console.log(JSON.stringify({
+      kind: "kakao-skill",
+      intent: intent ?? "fallback",
+      utterance: utterance.slice(0, 60),
+      programsCount,
+      today,
+    }));
+  };
 
   // ━━━ 1분 진단 유도 ━━━
   if (intent === "quiz") {
+    log(0);
     return simpleTextResponse(
       `🎯 1분 진단으로 맞춤 정책 받기\n\n나이·지역·가구 상태만 입력하면\n수천 개 정책 중 나에게 맞는\n정책을 골라드려요.\n\n👉 ${BASE_URL}/quiz`,
     );
@@ -179,6 +203,7 @@ export async function POST(request: NextRequest) {
       .order("apply_end", { ascending: true })
       .limit(5);
     const programs = (data || []).map(welfareToDisplay);
+    log(programs.length);
     if (programs.length === 0) {
       return simpleTextResponse(
         "현재 마감 임박한 복지 정책이 없어요.\n잠시 후 다시 확인해주세요.",
@@ -201,6 +226,7 @@ export async function POST(request: NextRequest) {
       .order("apply_end", { ascending: true })
       .limit(5);
     const programs = (data || []).map(loanToDisplay);
+    log(programs.length);
     if (programs.length === 0) {
       return simpleTextResponse(
         "현재 마감 임박한 대출·지원금이 없어요.\n잠시 후 다시 확인해주세요.",
@@ -237,6 +263,7 @@ export async function POST(request: NextRequest) {
       ...(welfareRes.data || []).map(welfareToDisplay),
       ...(loanRes.data || []).map(loanToDisplay),
     ];
+    log(programs.length);
     if (programs.length === 0) {
       return simpleTextResponse(
         "청년 대상 정책을 찾지 못했어요.\n복지·대출 카테고리에서 직접 살펴보세요.",
@@ -260,6 +287,7 @@ export async function POST(request: NextRequest) {
       .order("apply_end", { ascending: true })
       .limit(5);
     const programs = (data || []).map(loanToDisplay);
+    log(programs.length);
     if (programs.length === 0) {
       return simpleTextResponse(
         "사장님 대상 정책을 찾지 못했어요.\n잠시 후 다시 확인해주세요.",
@@ -273,9 +301,12 @@ export async function POST(request: NextRequest) {
   }
 
   // ━━━ Fallback — 1분 진단 유도 (결정3=B) ━━━
-  // 키워드 매칭 실패 → 사용자 발화로 정확한 추천 어려움 안내 + quiz 링크
+  // 키워드 매칭 실패 → 사용자 발화로 정확한 추천 어려움 안내 + quiz 링크.
+  // utterance echo 시 URL 패턴은 제거해 phishing 위험 최소화.
+  log(0);
+  const safeUtterance = utterance.replace(/https?:\/\/\S+/gi, "").slice(0, 30).trim();
   return simpleTextResponse(
-    `'${utterance.slice(0, 30)}' 관련 정책을\n바로 찾기는 어려워요.\n\nkeepioo 1분 진단으로\n맞춤 정책을 받아보시겠어요?\n\n👉 ${BASE_URL}/quiz\n\n또는 아래 빠른 답변을 눌러보세요.`,
+    `'${safeUtterance || "해당"}' 관련 정책을\n바로 찾기는 어려워요.\n\nkeepioo 1분 진단으로\n맞춤 정책을 받아보시겠어요?\n\n👉 ${BASE_URL}/quiz\n\n또는 아래 빠른 답변을 눌러보세요.`,
   );
 }
 
