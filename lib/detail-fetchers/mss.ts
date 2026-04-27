@@ -32,7 +32,7 @@ import { cleanDescription } from "@/lib/utils";
 
 // mss List API 응답의 한 항목. raw_payload 가 unknown shape JSONB 라 모든
 // 필드는 optional + unknown — str() 가 isMeaningful 로 정제 후 string 보장.
-type MssItem = {
+export type MssItem = {
   itemId?: unknown;
   title?: unknown;
   viewUrl?: unknown;
@@ -131,10 +131,21 @@ function buildEligibility(payload: MssItem): string | null {
 
 // 신청 방법 — "신청방법" / "신청 방법" 헤더 추출.
 // maxLen 300: URL 한 줄 + 간단한 안내 정도. 길면 지원내용·문의처 침범.
-function buildApplyMethod(payload: MssItem): string | null {
+//
+// Phase 2 fallback: 본문 정규식 추출 실패 시 viewUrl(공고 페이지) 안내로 대체.
+// mss 본문 대다수가 placeholder ("공고합니다") 이고 실제 신청 절차는 첨부
+// PDF/HWPX 안에 있어, 본문 정규식 채움률 0.5% 한계. fallback 으로 사용자에게
+// 최소한 공고 페이지 진입 경로는 제공 (apply_method 카드 NULL 회피).
+export function buildApplyMethod(payload: MssItem): string | null {
   const body = str(payload.dataContents);
-  if (!body) return null;
-  return extractSection(body, ["신청방법"], 300);
+  const fromBody = body ? extractSection(body, ["신청방법"], 300) : null;
+  if (fromBody) return fromBody;
+
+  const viewUrl = str(payload.viewUrl);
+  if (viewUrl) {
+    return `자세한 신청 절차는 공고 페이지를 참고하세요.\n${viewUrl}`;
+  }
+  return null;
 }
 
 // 담당부서 + 담당자명 + 전화 + 이메일 — 공공기관 공고 통일 양식.
