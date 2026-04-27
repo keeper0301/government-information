@@ -24,6 +24,41 @@ export const PRIVACY_POLICY_VERSION = "2026-04-25";
 export const TERMS_VERSION = "2026-04-22";
 export const KAKAO_MESSAGING_VERSION = "2026-04-24";
 
+// ━━━ 광고성 정보 수신동의 정기 확인 (정보통신망법 제50조의8) ━━━
+// 광고성 정보 수신 동의는 매 2년마다 사용자에게 의사 확인 의무.
+// 미확인 사용자에게는 광고성 정보 발송 중단 + 처리 결과 통지.
+// keepioo 의 marketing / kakao_messaging 모두 광고성으로 분류될 가능성이 있어
+// 보수적으로 동일 정책 적용.
+export const MARKETING_CONSENT_VALID_DAYS = 365 * 2;
+
+// 만료 임박(60일 전) — 마이페이지에 노출하고 사용자에게 갱신 유도.
+export const MARKETING_CONSENT_EXPIRY_WARN_DAYS = 60;
+
+// 광고성 분류로 정기 확인 대상이 되는 동의 종류 — hasActiveConsent / 마이페이지
+// 패널 / 알림 발송 게이트에서 일관 적용.
+const REVALIDATION_REQUIRED: readonly ConsentType[] = [
+  "marketing",
+  "kakao_messaging",
+];
+
+function isRevalidationRequired(type: ConsentType): boolean {
+  return (REVALIDATION_REQUIRED as readonly string[]).includes(type);
+}
+
+// 동의 시각 + 2년 = 만료 시각. ISO 문자열 또는 null 반환.
+// 광고성 외 동의(privacy_policy / terms 등)는 만료 개념 X → null.
+function computeExpiresAt(
+  consentType: ConsentType,
+  consentedAt: string,
+): string | null {
+  if (!isRevalidationRequired(consentType)) return null;
+  const t = new Date(consentedAt).getTime();
+  if (Number.isNaN(t)) return null;
+  return new Date(
+    t + MARKETING_CONSENT_VALID_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+}
+
 export type ConsentType =
   | "privacy_policy"
   | "terms"
@@ -89,11 +124,16 @@ export async function withdrawConsent(
 
 // ━━━ 현재 동의 상태 조회 ━━━
 // user_latest_consent view 사용 — DISTINCT ON 으로 사용자 × 종류별 최신 1행.
+// expiresAt / isExpired: 광고성 동의(2년 만료) 정보를 응용 레이어에서 계산.
 export type ConsentStatus = {
   consentType: ConsentType;
   version: string;
   consentedAt: string;
   isActive: boolean;
+  /** 광고성 동의에만 채워짐(2년). 그 외엔 null. */
+  expiresAt: string | null;
+  /** 만료된 광고성 동의는 isExpired=true. 비광고성 동의는 항상 false. */
+  isExpired: boolean;
 };
 
 export async function getUserConsents(userId: string): Promise<ConsentStatus[]> {
@@ -105,22 +145,32 @@ export async function getUserConsents(userId: string): Promise<ConsentStatus[]> 
 
   if (error || !data) return [];
 
+  const now = Date.now();
   return data.map(
     (r: {
       consent_type: ConsentType;
       version: string;
       consented_at: string;
       is_active: boolean;
-    }) => ({
-      consentType: r.consent_type,
-      version: r.version,
-      consentedAt: r.consented_at,
-      isActive: r.is_active,
-    }),
+    }) => {
+      const expiresAt = computeExpiresAt(r.consent_type, r.consented_at);
+      const isExpired = expiresAt
+        ? new Date(expiresAt).getTime() < now
+        : false;
+      return {
+        consentType: r.consent_type,
+        version: r.version,
+        consentedAt: r.consented_at,
+        isActive: r.is_active,
+        expiresAt,
+        isExpired,
+      };
+    },
   );
 }
 
 // ━━━ 특정 동의가 현재 active 인가? (편의) ━━━
+// 만료된 광고성 동의는 자동으로 false → 알림톡·마케팅 메일 발송 게이트에서 차단.
 export async function hasActiveConsent(
   userId: string,
   consentType: ConsentType,
@@ -130,8 +180,41 @@ export async function hasActiveConsent(
   const consents = await getUserConsents(userId);
   const c = consents.find((x) => x.consentType === consentType);
   if (!c || !c.isActive) return false;
+  if (c.isExpired) return false; // 광고성 2년 만료 — 정보통신망법 제50조의8
   if (minVersion && c.version < minVersion) return false;
   return true;
+}
+
+// ━━━ 광고성 동의 만료 임박(60일 전) 또는 만료된 항목 조회 ━━━
+// 마이페이지·홈 배너에서 사용 — 사용자에게 갱신 유도.
+export type MarketingConsentExpiry = {
+  consentType: "marketing" | "kakao_messaging";
+  expiresAt: string;
+  daysLeft: number; // 음수면 이미 만료됨
+};
+
+export async function getMarketingConsentExpiry(
+  userId: string,
+): Promise<MarketingConsentExpiry[]> {
+  const consents = await getUserConsents(userId);
+  const now = Date.now();
+  const result: MarketingConsentExpiry[] = [];
+  for (const c of consents) {
+    if (!c.isActive || !c.expiresAt) continue;
+    if (c.consentType !== "marketing" && c.consentType !== "kakao_messaging")
+      continue;
+    const expMs = new Date(c.expiresAt).getTime();
+    const daysLeft = Math.floor((expMs - now) / (24 * 60 * 60 * 1000));
+    // 만료 임박 또는 이미 만료된 항목만 포함
+    if (daysLeft <= MARKETING_CONSENT_EXPIRY_WARN_DAYS) {
+      result.push({
+        consentType: c.consentType,
+        expiresAt: c.expiresAt,
+        daysLeft,
+      });
+    }
+  }
+  return result;
 }
 
 // ━━━ 재동의가 필요한지 체크 ━━━

@@ -53,6 +53,43 @@ export default function PrivacyPage() {
               외부 제공 없음. 회원 탈퇴 시 즉시 파기됩니다.
             </p>
           </div>
+          {/* 쿠키·자동수집장치 거부 안내 — 개인정보보호법 시행령 제15조 */}
+          <div className="mt-3 rounded-lg bg-grey-50 border border-grey-200 px-4 py-3 text-[13px] text-grey-700 leading-[1.7]">
+            <p className="font-semibold text-grey-900 mb-1">쿠키·자동수집장치 거부 방법</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                브라우저 쿠키 차단: Chrome <i>설정 → 개인정보 및 보안 → 쿠키 및 기타 사이트 데이터</i>
+                {" "}/ Safari <i>환경설정 → 개인정보 보호</i> 등에서 차단 가능
+              </li>
+              <li>
+                Google Analytics 거부:{" "}
+                <a
+                  href="https://tools.google.com/dlpage/gaoptout"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 underline"
+                >
+                  tools.google.com/dlpage/gaoptout
+                </a>
+                {" "}에서 옵트아웃 확장 프로그램 설치
+              </li>
+              <li>
+                Google 광고 맞춤화(AdSense) 차단:{" "}
+                <a
+                  href="https://adssettings.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 underline"
+                >
+                  adssettings.google.com
+                </a>
+                {" "}에서 광고 개인 최적화 끄기
+              </li>
+            </ul>
+            <p className="mt-2 text-grey-600">
+              쿠키 저장을 거부할 경우 일부 맞춤형 서비스 이용에 제한이 있을 수 있습니다.
+            </p>
+          </div>
         </Section>
 
         <Section title="2. 수집 방법">
@@ -137,8 +174,70 @@ export default function PrivacyPage() {
           <p className="mt-2 text-[13px] text-grey-600">현재 버전: <b>{PRIVACY_POLICY_VERSION}</b></p>
         </Section>
 
-        <Section title="10. 문의처">
-          <p>개인정보 관련 문의는 <a href="mailto:keeper0301@gmail.com" className="text-blue-500 underline">keeper0301@gmail.com</a> 으로 연락주세요. 영업일 기준 3일 이내 답변드립니다.</p>
+        <Section title="10. 개인정보보호책임자 및 문의처">
+          <p>
+            「개인정보 보호법」 제31조에 따라 개인정보 처리에 관한 업무를
+            총괄해서 책임지는 개인정보보호책임자를 다음과 같이 지정합니다.
+          </p>
+          <table className="w-full mt-3 text-[14px] border border-grey-200">
+            <tbody>
+              <tr>
+                <td className="p-2 border-b border-grey-100 align-top font-medium text-grey-900 w-[140px]">
+                  개인정보보호책임자
+                </td>
+                <td className="p-2 border-b border-grey-100">최관철 (대표)</td>
+              </tr>
+              <tr>
+                <td className="p-2 border-b border-grey-100 align-top font-medium text-grey-900">
+                  연락처
+                </td>
+                <td className="p-2 border-b border-grey-100">
+                  <a
+                    href="mailto:keeper0301@gmail.com"
+                    className="text-blue-500 underline"
+                  >
+                    keeper0301@gmail.com
+                  </a>
+                </td>
+              </tr>
+              <tr>
+                <td className="p-2 align-top font-medium text-grey-900">
+                  답변 시한
+                </td>
+                <td className="p-2">영업일 기준 3일 이내</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="mt-3 text-[13px] text-grey-600 leading-[1.7]">
+            개인정보 침해로 인한 신고·상담이 필요한 경우 아래 기관에 문의하실 수 있습니다.
+          </p>
+          <ul className="list-disc pl-6 mt-1 text-[13px] text-grey-600 space-y-1">
+            <li>
+              개인정보침해신고센터:{" "}
+              <a
+                href="https://privacy.kisa.or.kr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 underline"
+              >
+                privacy.kisa.or.kr
+              </a>{" "}
+              / 국번없이 118
+            </li>
+            <li>
+              개인정보분쟁조정위원회:{" "}
+              <a
+                href="https://www.kopico.go.kr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 underline"
+              >
+                kopico.go.kr
+              </a>{" "}
+              / 1833-6972
+            </li>
+            <li>대검찰청 사이버수사과: 1301 / 경찰청 사이버안전국: 182</li>
+          </ul>
         </Section>
       </div>
     </main>

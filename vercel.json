@@ -34,6 +34,8 @@
 
     { "path": "/api/cleanup-expired-programs", "schedule": "0 18 * * *" },
 
+    { "path": "/api/alert-dispatch", "schedule": "0 7 * * *" },
+
     { "path": "/api/enrich", "schedule": "*/5 * * * *" }
   ]
 }

@@ -24,6 +24,10 @@ type ConsentStatus = {
   version: string;
   consentedAt: string;
   isActive: boolean;
+  /** 광고성 동의(marketing/kakao_messaging) 만 채워짐. 정보통신망법 제50조의8 — 2년 후 만료. */
+  expiresAt: string | null;
+  /** 광고성 동의가 2년 지났으면 true → 발송 자동 차단. */
+  isExpired: boolean;
 };
 
 // 필수 동의의 현재 시행 버전 (서버에서 주입)
@@ -101,13 +105,23 @@ export function ConsentsPanel({
     setActive(next as Record<ConsentType, boolean>);
   }, [initialConsents]);
 
-  // 기록 요약 맵 (active 인 동의의 version·consentedAt)
-  const recordMap: Record<string, { version: string; consentedAt: string }> = {};
+  // 기록 요약 맵 (active 인 동의의 version·consentedAt + 광고성 만료 정보)
+  const recordMap: Record<
+    string,
+    {
+      version: string;
+      consentedAt: string;
+      expiresAt: string | null;
+      isExpired: boolean;
+    }
+  > = {};
   for (const c of initialConsents) {
     if (c.isActive) {
       recordMap[c.consentType] = {
         version: c.version,
         consentedAt: c.consentedAt,
+        expiresAt: c.expiresAt,
+        isExpired: c.isExpired,
       };
     }
   }
@@ -219,6 +233,8 @@ export function ConsentsPanel({
                 isOn={active[meta.type] === true}
                 needs={needsAck(meta.type, meta.required)}
                 consentedAt={recordMap[meta.type]?.consentedAt}
+                expiresAt={recordMap[meta.type]?.expiresAt ?? null}
+                isExpired={recordMap[meta.type]?.isExpired ?? false}
                 busy={busy === meta.type}
                 onAck={() => handleAck(meta.type)}
                 onToggle={() => handleToggle(meta.type, meta.required)}
@@ -232,7 +248,7 @@ export function ConsentsPanel({
           <h3 className="text-[14px] font-semibold text-grey-900 mb-3 pb-2 border-b border-grey-100">
             선택 동의{" "}
             <span className="text-xs font-normal text-grey-600">
-              (언제든 끄고 켤 수 있어요)
+              (언제든 끄고 켤 수 있어요 · 광고성 동의는 2년마다 갱신)
             </span>
           </h3>
           <div className="space-y-2">
@@ -243,6 +259,8 @@ export function ConsentsPanel({
                 isOn={active[meta.type] === true}
                 needs={false}
                 consentedAt={recordMap[meta.type]?.consentedAt}
+                expiresAt={recordMap[meta.type]?.expiresAt ?? null}
+                isExpired={recordMap[meta.type]?.isExpired ?? false}
                 busy={busy === meta.type}
                 onAck={() => handleAck(meta.type)}
                 onToggle={() => handleToggle(meta.type, meta.required)}
@@ -264,6 +282,8 @@ function ConsentRow({
   isOn,
   needs,
   consentedAt,
+  expiresAt,
+  isExpired,
   busy,
   onAck,
   onToggle,
@@ -272,6 +292,8 @@ function ConsentRow({
   isOn: boolean;
   needs: boolean;
   consentedAt: string | undefined;
+  expiresAt: string | null;
+  isExpired: boolean;
   busy: boolean;
   onAck: () => void;
   onToggle: () => void;
@@ -280,12 +302,35 @@ function ConsentRow({
     ? new Date(consentedAt).toLocaleDateString("ko-KR")
     : null;
 
+  // 광고성 동의 만료 임박(60일 내) 또는 이미 만료된 항목 — 정보통신망법 제50조의8.
+  // 만료 시 발송 자동 차단 → 사용자에게 갱신 유도 안내 노출.
+  let expiryNotice: { tone: "warn" | "expired"; text: string } | null = null;
+  if (isOn && expiresAt) {
+    const daysLeft = Math.floor(
+      (new Date(expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+    );
+    if (isExpired || daysLeft <= 0) {
+      expiryNotice = {
+        tone: "expired",
+        text: "광고성 동의가 만료되어 발송이 중단됐어요. 다시 켜면 갱신돼요.",
+      };
+    } else if (daysLeft <= 60) {
+      const expDate = new Date(expiresAt).toLocaleDateString("ko-KR");
+      expiryNotice = {
+        tone: "warn",
+        text: `광고성 동의 유효기간이 ${expDate}에 만료돼요 (D-${daysLeft}). 만료되면 발송이 멈추고, 다시 켜면 자동 갱신돼요.`,
+      };
+    }
+  }
+
   return (
     <div
       className={`flex items-start justify-between gap-4 px-4 py-3 border rounded-lg ${
         needs
           ? "border-red/40 bg-red/5"
-          : "border-grey-200 bg-white"
+          : expiryNotice?.tone === "expired"
+            ? "border-amber-300 bg-amber-50/40"
+            : "border-grey-200 bg-white"
       }`}
     >
       <div className="flex-1 min-w-0">
@@ -310,6 +355,17 @@ function ConsentRow({
         {needs && (
           <p className="text-[12px] text-red font-medium mt-1">
             ⚠️ 최신 방침에 대한 동의 기록이 없어요. 확인해 주세요.
+          </p>
+        )}
+        {expiryNotice && (
+          <p
+            className={`text-[12px] font-medium mt-1 ${
+              expiryNotice.tone === "expired"
+                ? "text-amber-800"
+                : "text-grey-700"
+            }`}
+          >
+            ⏰ {expiryNotice.text}
           </p>
         )}
       </div>

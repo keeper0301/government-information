@@ -34,6 +34,7 @@ export type AlimtalkPayload = {
 export type AlimtalkResult =
   | { ok: true; messageId: string; provider: string }
   | { ok: false; reason: "skipped_no_provider"; error?: undefined }
+  | { ok: false; reason: "skipped_quiet_hours"; error: string }
   | { ok: false; reason: "invalid_phone"; error: string }
   | { ok: false; reason: "rate_limited"; error: string; retryAfterSec?: number }
   | { ok: false; reason: "blocked_by_user"; error: string }
@@ -47,6 +48,24 @@ function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (!PHONE_RE.test(digits)) return null;
   return digits;
+}
+
+// 야간 시간대 차단 — 정보통신망법 제50조의5(야간 광고 전송 제한).
+// 정보성 알림(정책 통지)도 사용자 수면 방해를 막기 위해 동일 시간대에 차단.
+// 21:00 ~ 익일 08:00 KST 는 발송 자체 불가 — 다음날 정상 시간대에 cron 재실행 시 자동 발송.
+// KST = UTC+9 고정 (한국은 서머타임 미실시).
+function isQuietHoursKst(now: Date = new Date()): boolean {
+  // UTC 기준 분 → KST 분으로 변환
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const kstMinutes = (utcMinutes + 9 * 60) % (24 * 60);
+  const kstHour = Math.floor(kstMinutes / 60);
+  // 21시 이후(21~23) 또는 8시 이전(0~7) = 야간
+  return kstHour >= 21 || kstHour < 8;
+}
+
+// 외부에서 같은 규칙으로 검사할 수 있게 export — alert-dispatch cron 시작점에서 1회 가드 가능.
+export function isAlimtalkQuietHours(now: Date = new Date()): boolean {
+  return isQuietHoursKst(now);
 }
 
 // ============================================================
@@ -63,13 +82,24 @@ export async function sendAlimtalk(payload: AlimtalkPayload): Promise<AlimtalkRe
     };
   }
 
-  // 2) 발송 대행사 미설정 → 즉시 skipped (CI·dev 환경에서 빌드 안 깨짐)
+  // 2) 야간 시간대(KST 21:00~08:00) 차단 — 정보통신망법 제50조의5.
+  // 미래에 광고성 분류로 재심사될 가능성 + 사용자 수면 방해 방지 목적의
+  // 보수적 가드. 발송 자체를 막아 alert_deliveries 에 status='skipped' 로 기록.
+  if (isQuietHoursKst()) {
+    return {
+      ok: false,
+      reason: "skipped_quiet_hours",
+      error: "야간(KST 21:00~08:00) 발송 차단 — 다음 정상 시간대에 자동 재시도",
+    };
+  }
+
+  // 3) 발송 대행사 미설정 → 즉시 skipped (CI·dev 환경에서 빌드 안 깨짐)
   const provider = process.env.KAKAO_ALIMTALK_PROVIDER;
   if (!provider) {
     return { ok: false, reason: "skipped_no_provider" };
   }
 
-  // 3) 실제 발송 대행사로 위임
+  // 4) 실제 발송 대행사로 위임
   return sendAlimtalkLive({ ...payload, phoneNumber: phone }, provider);
 }
 

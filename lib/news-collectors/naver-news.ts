@@ -84,11 +84,13 @@ type NaverApiResponse = {
 //   ministry = 광역명 (예: "전라남도")
 //   keywords = 도메인 키워드 (기존 extractNewsKeywords 결과)
 //   benefit_tags = 혜택 태그 (기존 taxonomy)
+//   source_outlet = 원 언론사 도메인 (마이그레이션 060) — 저작권법 제37조 출처 명시
 type NormalizedItem = {
   source_code: string;
   source_id: string;
   source_url: string;
   ministry: string; // 광역명 (news_posts.ministry)
+  source_outlet: string | null; // 예: "donga.com" — 네이버 약관·저작권법 출처 의무
   title: string;
   summary: string | null;
   keywords: string[];
@@ -112,6 +114,23 @@ function stripNaverMarkup(s: string): string {
 // originallink → 16자 hash. UNIQUE (source_code, source_id) 충돌 방지.
 function hashSourceId(originallink: string): string {
   return createHash("sha1").update(originallink).digest("hex").slice(0, 16);
+}
+
+// 네이버 originallink/link → 원 언론사 도메인 추출.
+// "https://www.donga.com/news/..." → "donga.com"
+// "https://news.naver.com/..." → "naver.com" (네이버 자체 — 원문 미상으로 기록)
+// 도메인을 그대로 저장 — UI 에서 사용자가 클릭 시 원문 확인 가능, 저작권법
+// 제37조(출처 명시) + 네이버 OpenAPI 약관(원본 출처 표시) 의무 충족.
+function extractOutletFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    let host = u.hostname.toLowerCase();
+    // www., news. 같은 흔한 prefix 제거 — "www.donga.com" → "donga.com"
+    host = host.replace(/^(?:www|news|m)\./, "");
+    return host || null;
+  } catch {
+    return null;
+  }
 }
 
 // 네이버 뉴스 검색 1회 (searchUnit + keyword).
@@ -188,6 +207,7 @@ async function collectProvinceItems(
           source_id: sourceId,
           source_url: url,
           ministry: provinceName, // "전라남도" — news_posts.ministry
+          source_outlet: extractOutletFromUrl(url),
           title,
           summary: cleaned.length > 0 ? cleaned.slice(0, 500) : null,
           keywords: newsKeywords,
@@ -288,6 +308,7 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
     source_code: it.source_code,
     source_id: it.source_id,
     source_url: it.source_url,
+    source_outlet: it.source_outlet, // 마이그레이션 060 — 저작권법 출처 명시
     license: "naver-news-api",
     category: "news" as const,
     ministry: it.ministry,

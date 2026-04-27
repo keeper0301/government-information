@@ -60,7 +60,7 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
   const { data: posts, count } = await supabase
     .from("news_posts")
     .select(
-      "slug, title, summary, category, ministry, thumbnail_url, published_at",
+      "slug, title, summary, category, ministry, source_outlet, thumbnail_url, published_at",
       { count: "exact" },
     )
     .contains("keywords", [decoded])

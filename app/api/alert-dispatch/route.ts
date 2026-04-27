@@ -344,6 +344,12 @@ async function runAlertDispatch(jobLabel: string) {
             } else if (result.reason === "skipped_no_provider") {
               status = "skipped";
               errorMsg = "kakao_provider_not_configured";
+            } else if (result.reason === "skipped_quiet_hours") {
+              // 야간 차단(KST 21:00~08:00) — 정보통신망법 제50조의5.
+              // skipped 로 기록해 다음 cron(주간) 에서 UNIQUE 충돌 없이 재시도 가능하도록
+              // sent_at 은 null 유지. error 컬럼에 사유 명시해 어드민 추적.
+              status = "skipped";
+              errorMsg = "quiet_hours_kst";
             } else {
               status = "failed";
               errorMsg = `${result.reason}: ${result.error ?? ""}`.slice(0, 500);

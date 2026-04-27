@@ -177,7 +177,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   let query = supabase
     .from("news_posts")
     .select(
-      "id, slug, title, summary, category, ministry, thumbnail_url, published_at, benefit_tags",
+      "id, slug, title, summary, category, ministry, source_outlet, thumbnail_url, published_at, benefit_tags",
       { count: "exact" },
     )
     .order("published_at", { ascending: false });
@@ -195,7 +195,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   // 있으면 pool ministry 를 사용자 광역+부처명+null 로 좁힘 — 다른 광역 noise 차단.
   let poolQuery = supabase
     .from("news_posts")
-    .select("id, slug, title, summary, body, category, ministry, thumbnail_url, benefit_tags, published_at, source_url")
+    .select("id, slug, title, summary, body, category, ministry, source_outlet, thumbnail_url, benefit_tags, published_at, source_url")
     .order("published_at", { ascending: false })
     .limit(100);
   poolQuery = applyFilters(poolQuery);
@@ -459,6 +459,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
                       summary: poolRaw.summary ?? null,
                       category: (poolRaw.category ?? "news") as NewsCardData["category"],
                       ministry: poolRaw.ministry ?? null,
+                      source_outlet: poolRaw.source_outlet ?? null,
                       thumbnail_url: poolRaw.thumbnail_url ?? null,
                       published_at: poolRaw.published_at,
                     };

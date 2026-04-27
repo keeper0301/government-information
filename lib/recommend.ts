@@ -293,7 +293,7 @@ export async function getRelatedNews(opts: {
   const tags = inferBenefitTagsFromProfile(opts.age, opts.occupation);
   const { data } = await supabase
     .from("news_posts")
-    .select("slug, title, summary, ministry, published_at, category, thumbnail_url")
+    .select("slug, title, summary, ministry, source_outlet, published_at, category, thumbnail_url")
     .neq("category", "press")
     .overlaps("benefit_tags", tags)
     .order("published_at", { ascending: false })

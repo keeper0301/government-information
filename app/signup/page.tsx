@@ -20,20 +20,25 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  // 동의 체크박스 — 약관·방침은 필수, 마케팅은 선택
+  // 동의 체크박스 — 약관·방침·만14세 확인은 필수, 마케팅은 선택
+  // agreeAge: 「개인정보 보호법」 제22조의2 — 만 14세 미만 아동 보호.
+  // 처리방침에 "가입을 받지 않는다"고 적었어도 실제 차단 코드가 있어야 유효.
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeAge, setAgreeAge] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
   // 폼 제출 중인지 (중복 클릭 방지)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   // 전체 동의 체크박스 상태 계산 + 토글
-  const allChecked = agreeTerms && agreePrivacy && agreeMarketing;
+  const allChecked =
+    agreeTerms && agreePrivacy && agreeAge && agreeMarketing;
   function toggleAll() {
     const next = !allChecked;
     setAgreeTerms(next);
     setAgreePrivacy(next);
+    setAgreeAge(next);
     setAgreeMarketing(next);
   }
 
@@ -57,6 +62,13 @@ export default function SignupPage() {
     if (!agreeTerms || !agreePrivacy) {
       setError("이용약관과 개인정보처리방침에 동의해주세요.");
       trackEvent(EVENTS.SIGNUP_FAILED, { reason: "consent_required", stage: "client" });
+      return;
+    }
+    // 만 14세 미만 차단 — 「개인정보 보호법」 제22조의2.
+    // 체크박스 미동의 = 만 14세 미만 가능성 → 가입 거부.
+    if (!agreeAge) {
+      setError("만 14세 미만은 회원가입이 제한됩니다. 만 14세 이상임을 확인해주세요.");
+      trackEvent(EVENTS.SIGNUP_FAILED, { reason: "under_age", stage: "client" });
       return;
     }
 
@@ -178,6 +190,12 @@ export default function SignupPage() {
               label="개인정보처리방침 동의"
               required
               linkHref="/privacy"
+            />
+            <ConsentCheckbox
+              checked={agreeAge}
+              onChange={setAgreeAge}
+              label="만 14세 이상입니다"
+              required
             />
             <ConsentCheckbox
               checked={agreeMarketing}

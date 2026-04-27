@@ -21,6 +21,8 @@ const footerLinks = [
 // 사업자 정보 — 전자상거래 등에서의 소비자보호에 관한 법률 제13조 표시 의무.
 // 연락처 전화번호는 공개 시 개인정보 유출 리스크 있어 이메일로 단일화.
 // 주소는 1인 운영 + 자택 주소 노출 우려로 미공개 (필요 시 사업자등록상태조회 링크).
+// host: 전상법 제13조 1항 — 호스팅서비스 제공자 표시 의무.
+// dpo: 개인정보보호법 제31조 — 개인정보보호책임자 표시 의무.
 const BUSINESS_INFO = {
   name: "키피오",
   ceo: "최관철",
@@ -28,6 +30,8 @@ const BUSINESS_INFO = {
   mailOrderNo: "2026-전남순천-7182",
   email: "keeper0301@gmail.com",
   service: "keepioo.com",
+  host: "Vercel Inc.",
+  dpo: "최관철",
 };
 
 export function Footer() {
@@ -111,6 +115,22 @@ export function Footer() {
             >
               {BUSINESS_INFO.email}
             </a>
+          </span>
+          <span>
+            호스팅서비스 제공자{" "}
+            <strong className="text-grey-700">{BUSINESS_INFO.host}</strong>
+          </span>
+          <span>
+            개인정보보호책임자{" "}
+            <strong className="text-grey-700">{BUSINESS_INFO.dpo}</strong>{" "}
+            (
+            <a
+              href={`mailto:${BUSINESS_INFO.email}`}
+              className="text-grey-700 hover:text-grey-900 underline"
+            >
+              {BUSINESS_INFO.email}
+            </a>
+            )
           </span>
         </div>
         <div className="mt-3 text-grey-600">

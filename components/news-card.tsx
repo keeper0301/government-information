@@ -20,6 +20,12 @@ export type NewsCardData = {
   summary: string | null;
   category: NewsCategory;
   ministry: string | null;
+  /**
+   * 원 언론사 도메인. 네이버 검색 수집분에만 채워짐 (예: "donga.com").
+   * korea.kr 공공누리 수집분은 null — ministry 가 발신처 역할.
+   * 저작권법 제37조 출처 명시 의무 충족용.
+   */
+  source_outlet: string | null;
   thumbnail_url: string | null;
   published_at: string;
 };
@@ -77,8 +83,10 @@ export function NewsCard({ post }: { post: NewsCardData }) {
         )}
 
         <CardContent className="p-5 max-md:p-4">
-          {/* 배지: 카테고리 + 부처(있을 때만). shadcn Badge 로 일관성 확보,
-              기존 카테고리별 색상(NEWS_CATEGORY_COLOR)은 className 으로 유지. */}
+          {/* 배지: 카테고리 + 부처(있을 때만) + 원 언론사(네이버 검색 수집분).
+              shadcn Badge 로 일관성 확보, 기존 카테고리별 색상은 className 으로 유지.
+              source_outlet 은 저작권법 제37조 출처 명시 — 네이버 검색 결과의
+              원 언론사 도메인을 카드 단계에서 노출해 사용자가 출처를 인지하게 함. */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Badge
               variant="secondary"
@@ -89,6 +97,11 @@ export function NewsCard({ post }: { post: NewsCardData }) {
             {post.ministry && (
               <span className="text-[13px] text-grey-600 truncate max-w-[180px]">
                 {post.ministry}
+              </span>
+            )}
+            {post.source_outlet && (
+              <span className="text-[12px] text-grey-500 truncate max-w-[160px]">
+                · 출처 {post.source_outlet}
               </span>
             )}
           </div>

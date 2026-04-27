@@ -235,7 +235,8 @@ export default async function NewsDetailPage({ params }: Props) {
         </span>
       </nav>
 
-      {/* 배지: 카테고리 + 부처 */}
+      {/* 배지: 카테고리 + 부처 + 원 언론사(네이버 검색 수집분).
+          저작권법 제37조(출처 명시) — 원 언론사 도메인을 시각적으로 노출. */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span
           className={`text-[13px] font-semibold px-2.5 py-1 rounded-md ${categoryColor}`}
@@ -245,6 +246,11 @@ export default async function NewsDetailPage({ params }: Props) {
         {post.ministry && (
           <span className="text-[13px] font-semibold px-2.5 py-1 rounded-md bg-grey-100 text-grey-700">
             {post.ministry}
+          </span>
+        )}
+        {post.source_outlet && (
+          <span className="text-[13px] font-semibold px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-100">
+            출처: {post.source_outlet}
           </span>
         )}
       </div>
@@ -291,22 +297,36 @@ export default async function NewsDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* 원문 CTA — AdSense "original value" 정책상 전문 복사 노출보다 원문 유도가 안전 */}
+      {/* 원문 CTA — license 별 분기.
+          - 공공누리(KOGL-Type1): 정책브리핑 안내 + "korea.kr 에서 보기"
+          - 네이버 검색(naver-news-api): 원 언론사 안내 + 도메인 노출
+          저작권법 제37조(출처 명시) + 네이버 OpenAPI 약관 준수. */}
       <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-6 mb-8">
         <div className="text-[15px] font-bold text-grey-900 mb-2">
           원문 보기 · 자세한 정보
         </div>
-        <p className="text-[13px] text-grey-700 leading-[1.6] mb-4">
-          이 뉴스는 공공누리 제1유형으로 개방된 정책브리핑(korea.kr) 자료를
-          활용했어요. 사진·영상·첨부파일 등 전체 자료는 원문에서 확인할 수 있어요.
-        </p>
+        {post.license === "naver-news-api" ? (
+          <p className="text-[13px] text-grey-700 leading-[1.6] mb-4">
+            이 기사는 네이버 뉴스 검색을 통해 수집된{" "}
+            <b>{post.source_outlet ?? "원 언론사"}</b> 의 자료입니다. 원문 저작권은
+            해당 언론사에 있으며, 본문 일부는 keepioo 가 정책 키워드를 추출하기
+            위해 가공·요약했어요. 사진·영상 등 전체 내용은 원문에서 확인하세요.
+          </p>
+        ) : (
+          <p className="text-[13px] text-grey-700 leading-[1.6] mb-4">
+            이 뉴스는 공공누리 제1유형으로 개방된 정책브리핑(korea.kr) 자료를
+            활용했어요. 사진·영상·첨부파일 등 전체 자료는 원문에서 확인할 수 있어요.
+          </p>
+        )}
         <a
           href={post.source_url}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 min-h-[44px] px-5 bg-blue-500 text-white text-[14px] font-semibold rounded-lg no-underline hover:bg-blue-600"
         >
-          korea.kr 에서 보기
+          {post.license === "naver-news-api"
+            ? `${post.source_outlet ?? "원문"} 에서 보기`
+            : "korea.kr 에서 보기"}
           <span aria-hidden="true">↗</span>
         </a>
       </div>
@@ -330,19 +350,37 @@ export default async function NewsDetailPage({ params }: Props) {
         hint="지금 신청 가능한 공고 중 이 뉴스의 키워드와 연결된 것들이에요."
       />
 
-      {/* 라이선스 표기 — KOGL-Type1 의무 */}
-      <p className="text-[12px] text-grey-600 leading-[1.6] text-center pt-8 border-t border-grey-100">
-        본 자료는 공공누리 제1유형 (KOGL-Type1) 으로 개방된{" "}
-        <a
-          href={post.source_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-grey-700 underline hover:text-grey-900"
-        >
-          정책브리핑(korea.kr)
-        </a>
-        의 자료를 활용합니다. 출처표시 · 상업이용·변형 허용.
-      </p>
+      {/* 라이선스 표기 — license 별 분기.
+          - KOGL-Type1: 공공누리 의무 표기 (출처표시·상업이용·변형 허용)
+          - naver-news-api: 네이버 약관·저작권법 출처 명시 (원 언론사 + 네이버 검색) */}
+      {post.license === "naver-news-api" ? (
+        <p className="text-[12px] text-grey-600 leading-[1.6] text-center pt-8 border-t border-grey-100">
+          본 기사는 네이버 뉴스 검색 API 를 통해 수집된{" "}
+          <a
+            href={post.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-grey-700 underline hover:text-grey-900"
+          >
+            {post.source_outlet ?? "원 언론사"}
+          </a>
+          의 자료입니다. 원문 저작권은 해당 언론사에 있으며, 인용은 저작권법 제28조
+          정당 범위 내에서 출처를 명시하여 이루어집니다.
+        </p>
+      ) : (
+        <p className="text-[12px] text-grey-600 leading-[1.6] text-center pt-8 border-t border-grey-100">
+          본 자료는 공공누리 제1유형 (KOGL-Type1) 으로 개방된{" "}
+          <a
+            href={post.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-grey-700 underline hover:text-grey-900"
+          >
+            정책브리핑(korea.kr)
+          </a>
+          의 자료를 활용합니다. 출처표시 · 상업이용·변형 허용.
+        </p>
+      )}
     </main>
   );
 }

@@ -83,7 +83,7 @@ export default async function Home() {
     supabase
       .from("news_posts")
       .select(
-        "slug, title, summary, category, ministry, thumbnail_url, published_at",
+        "slug, title, summary, category, ministry, source_outlet, thumbnail_url, published_at",
       )
       .order("published_at", { ascending: false })
       .limit(3),
