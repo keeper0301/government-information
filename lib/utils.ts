@@ -87,6 +87,20 @@ function decodeHtmlEntitiesOnce(text: string): string {
     ["&rsquo;", "'"],
     ["&ldquo;", "“"],
     ["&rdquo;", "”"],
+    // 정부 보도자료에 자주 등장하는 추가 entity (2026-04-28 회귀 가드)
+    ["&rarr;", "→"],
+    ["&larr;", "←"],
+    ["&uarr;", "↑"],
+    ["&darr;", "↓"],
+    ["&bull;", "•"],
+    ["&sim;", "~"],
+    ["&times;", "×"],
+    ["&divide;", "÷"],
+    ["&plusmn;", "±"],
+    ["&trade;", "™"],
+    ["&copy;", "©"],
+    ["&reg;", "®"],
+    ["&deg;", "°"],
     // &amp; 는 맨 마지막 (아래 루프가 다시 돌아 이중 인코딩을 재처리)
     ["&amp;", "&"],
   ];

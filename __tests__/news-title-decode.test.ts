@@ -59,4 +59,21 @@ describe("뉴스 title HTML entity 디코드", () => {
   it("script 태그 제거 (방어)", () => {
     expect(stripHtmlTags('<script>alert(1)</script>제목')).toBe("alert(1)제목");
   });
+
+  // ━━━ 정부 보도자료 추가 entity (2026-04-28 회귀 가드) ━━━
+  it("&rarr; → →", () => {
+    expect(stripHtmlTags("신청 &rarr; 심사")).toBe("신청 → 심사");
+  });
+  it("&bull; → •", () => {
+    expect(stripHtmlTags("&bull; 항목 1")).toBe("• 항목 1");
+  });
+  it("&sim; → ~", () => {
+    expect(stripHtmlTags("9시&sim;18시")).toBe("9시~18시");
+  });
+  it("&times; → ×", () => {
+    expect(stripHtmlTags("100&times;200")).toBe("100×200");
+  });
+  it("&deg; → °", () => {
+    expect(stripHtmlTags("25&deg;C")).toBe("25°C");
+  });
 });
