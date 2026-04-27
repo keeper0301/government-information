@@ -3,7 +3,7 @@ name: 블로그 자동 발행 (매일)
 # Vercel Hobby cron 의 ±59분 윈도우 + 배포 충돌 이슈를 피하기 위해
 # GitHub Actions 로 이전. 분 단위 정확도 + 배포와 무관한 스케줄링.
 #
-# 동작: 매일 06:00 UTC (한국 15:00) 에 keepioo.com 의 publish-blog 엔드포인트를
+# 동작: 매일 06:07 UTC (한국 15:07 부근) 에 keepioo.com 의 publish-blog 엔드포인트를
 # Bearer 토큰 인증으로 호출. 매일 5글 발행 (step 분리로 60초 timeout 회피).
 #
 # 2026-04-24 복구: 커밋 76ff8ab 에서 폐기됐다가 옵션 C (품질 가드 추가) 로 복원.
@@ -11,14 +11,18 @@ name: 블로그 자동 발행 (매일)
 # 2026-04-26 추가 가속: AdSense 거부 사유 1순위(콘텐츠 부족) 선제 대응 (3글 → 5글).
 #   요일 카테고리 7개(일~토) 중 5개를 매일 순회. 같은 주에는 카테고리 중복 없음.
 #   한 달 ~150글 페이스로 목표 도메인 신뢰도 가속.
+# 2026-04-27 정시 회피: 0 6 → 7 6 (15:07 KST). GitHub 공식 best practice — 정시
+#   트리거는 트래픽 몰림으로 지연/스킵 흔함 (GitHub schedule 은 best-effort).
+#   2026-04-27 16:27 KST 기준 오늘 schedule run 이 아예 안 돌아 24h 결손 사고.
+#   분 단위만 분산해 대기열 회피. 사장님 인지 시각 변화는 미미.
 #
 # 필요한 GitHub Secret:
 #   CRON_SECRET — Vercel 환경변수와 동일한 값
 
 on:
   schedule:
-    # 06:00 UTC = 한국 15:00
-    - cron: "0 6 * * *"
+    # 06:07 UTC = 한국 15:07 부근. 정시(00분) 회피로 GitHub 트래픽 대기열 risk ↓
+    - cron: "7 6 * * *"
   # Actions 탭에서 수동 실행 가능 (테스트·긴급 발행용)
   workflow_dispatch:
 
