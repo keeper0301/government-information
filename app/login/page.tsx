@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError, classifyAuthError } from "@/lib/auth-errors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import { SocialLoginButtons } from "@/components/social-login-buttons";
 
 // 로그인 페이지 (Suspense wrapper).
 // useSearchParams 는 Next.js 16 의 prerender 경계에서 bail-out 유발 →
@@ -36,10 +37,8 @@ function LoginForm() {
   // 매직링크 전송 완료 표시
   const [magicSent, setMagicSent] = useState(false);
 
-  // 어떤 액션이 실행 중인지 (중복 클릭 방지)
-  const [loading, setLoading] = useState<
-    "kakao" | "google" | "password" | "magic" | null
-  >(null);
+  // 이메일 액션 실행 중 표시 (소셜은 SocialLoginButtons 내부에서 처리)
+  const [loading, setLoading] = useState<"password" | "magic" | null>(null);
 
   // URL 쿼리는 마운트 시 1회만 읽어 state 초기값으로 사용 (useState lazy initializer).
   // useSearchParams 는 SSR·hydration 양쪽에서 동일한 URL 을 읽어주므로 mismatch 없음.
@@ -96,32 +95,6 @@ function LoginForm() {
       });
     }
   }, []);
-
-  // 카카오/구글 소셜 로그인 시작
-  // Supabase가 OAuth 인증 URL로 사용자를 보내고, 인증이 끝나면 /auth/callback 으로 돌아옴
-  async function handleSocialLogin(provider: "kakao" | "google") {
-    setError("");
-    setLoading(provider);
-    const supabase = createClient();
-    // 콜백 URL에 next 를 붙여서 로그인 후 원래 페이지로 복귀시킴
-    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: callbackUrl },
-    });
-    // 성공 시엔 자동으로 리다이렉트되므로 여기 아래 코드는 실패 시에만 실행됨.
-    // provider_disabled·network 등 OAuth 초기화 단계 실패만 잡힘
-    // (사용자가 OAuth 창에서 취소한 경우는 /auth/callback 이 error 쿼리로 돌려보냄).
-    if (error) {
-      setError(translateAuthError(error.message));
-      trackEvent(EVENTS.LOGIN_FAILED, {
-        reason: classifyAuthError(error.message),
-        method: provider,
-        stage: "init",
-      });
-      setLoading(null);
-    }
-  }
 
   // 이메일 + 비밀번호 로그인
   async function handlePasswordSubmit(e: React.FormEvent) {
@@ -200,51 +173,11 @@ function LoginForm() {
         </div>
       )}
 
-      {/* 카카오 로그인 버튼 (공식 노랑 #FEE500) */}
-      <button
-        type="button"
-        onClick={() => handleSocialLogin("kakao")}
-        disabled={loading !== null}
-        className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] text-black/85 rounded-lg text-[15px] font-semibold font-pretendard cursor-pointer hover:brightness-95 transition-all disabled:opacity-50 mb-3"
-      >
-        {/* 카카오 말풍선 로고 */}
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path
-            d="M10 3C5.58 3 2 5.76 2 9.17c0 2.19 1.47 4.11 3.68 5.19-.16.58-.58 2.11-.66 2.44-.1.41.15.4.31.29.13-.09 2.03-1.38 2.85-1.94.59.09 1.2.14 1.82.14 4.42 0 8-2.76 8-6.17S14.42 3 10 3z"
-            fill="currentColor"
-          />
-        </svg>
-        {loading === "kakao" ? "연결 중..." : "카카오로 계속하기"}
-      </button>
+      {/* 소셜 로그인 4종 — 카카오 메인 + 구글·네이버·페이스북 원형.
+          애플은 1단계 미포함 (Apple Developer Program 유료 $99/년 결정 후 추가). */}
+      <SocialLoginButtons next={next} onError={setError} />
+      <div className="mb-6" />
 
-      {/* 구글 로그인 버튼 (공식 흰색 + 테두리) */}
-      <button
-        type="button"
-        onClick={() => handleSocialLogin("google")}
-        disabled={loading !== null}
-        className="w-full flex items-center justify-center gap-2 py-3 bg-white text-[#1F1F1F] border border-[#747775] rounded-lg text-[15px] font-semibold font-pretendard cursor-pointer hover:bg-grey-50 transition-all disabled:opacity-50 mb-6"
-      >
-        {/* 구글 G 로고 (공식 4색) */}
-        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-          <path
-            fill="#4285F4"
-            d="M19.6 10.23c0-.68-.06-1.36-.19-2.02H10v3.83h5.38c-.23 1.24-.94 2.29-2 2.99v2.49h3.23c1.9-1.75 2.99-4.32 2.99-7.29z"
-          />
-          <path
-            fill="#34A853"
-            d="M10 20c2.7 0 4.97-.9 6.62-2.43l-3.23-2.49c-.9.6-2.05.96-3.39.96-2.6 0-4.81-1.75-5.59-4.11H1.08v2.57C2.73 17.75 6.12 20 10 20z"
-          />
-          <path
-            fill="#FBBC05"
-            d="M4.41 11.93c-.21-.6-.32-1.25-.32-1.93s.12-1.32.32-1.93V5.5H1.08A9.98 9.98 0 0 0 0 10c0 1.62.39 3.14 1.08 4.5l3.33-2.57z"
-          />
-          <path
-            fill="#EA4335"
-            d="M10 3.96c1.47 0 2.78.5 3.82 1.49l2.86-2.86C14.97.99 12.7 0 10 0 6.12 0 2.73 2.25 1.08 5.5l3.33 2.57C5.19 5.71 7.4 3.96 10 3.96z"
-          />
-        </svg>
-        {loading === "google" ? "연결 중..." : "Google로 계속하기"}
-      </button>
 
       {/* 동의 안내 — 신규 사용자는 로그인/가입 완료 시 약관·방침 동의로 간주
           (실제 consent_log 기록은 /auth/callback 에서 신규 사용자 판정 후 자동) */}
