@@ -47,7 +47,8 @@ function isRevalidationRequired(type: ConsentType): boolean {
 
 // 동의 시각 + 2년 = 만료 시각. ISO 문자열 또는 null 반환.
 // 광고성 외 동의(privacy_policy / terms 등)는 만료 개념 X → null.
-function computeExpiresAt(
+// 단위 테스트 가능하도록 export — 광고성 동의 만료 회귀 가드.
+export function computeExpiresAt(
   consentType: ConsentType,
   consentedAt: string,
 ): string | null {
@@ -57,6 +58,19 @@ function computeExpiresAt(
   return new Date(
     t + MARKETING_CONSENT_VALID_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString();
+}
+
+// 만료까지 남은 일수 — 광고성 동의 60일 임박 안내·자동 만료 처리에 사용.
+// expiresAt 이 null 이면 null (만료 개념 없는 동의).
+// 음수면 이미 만료됨.
+export function computeDaysLeft(
+  expiresAt: string | null,
+  now: Date = new Date(),
+): number | null {
+  if (!expiresAt) return null;
+  const expMs = new Date(expiresAt).getTime();
+  if (Number.isNaN(expMs)) return null;
+  return Math.floor((expMs - now.getTime()) / (24 * 60 * 60 * 1000));
 }
 
 export type ConsentType =
@@ -199,12 +213,13 @@ export async function getMarketingConsentExpiry(
   const consents = await getUserConsents(userId);
   const now = Date.now();
   const result: MarketingConsentExpiry[] = [];
+  const nowDate = new Date(now);
   for (const c of consents) {
     if (!c.isActive || !c.expiresAt) continue;
     if (c.consentType !== "marketing" && c.consentType !== "kakao_messaging")
       continue;
-    const expMs = new Date(c.expiresAt).getTime();
-    const daysLeft = Math.floor((expMs - now) / (24 * 60 * 60 * 1000));
+    const daysLeft = computeDaysLeft(c.expiresAt, nowDate);
+    if (daysLeft == null) continue;
     // 만료 임박 또는 이미 만료된 항목만 포함
     if (daysLeft <= MARKETING_CONSENT_EXPIRY_WARN_DAYS) {
       result.push({
