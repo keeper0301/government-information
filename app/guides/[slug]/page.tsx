@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGuideBySlug, getRelatedGuides } from "@/lib/policy-guides";
+import { safeJsonLd } from "@/lib/json-ld-safe";
 
 export const revalidate = 60;
 
@@ -124,7 +125,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
     <main className="container mx-auto max-w-3xl px-4 py-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
       <Link href="/guides" className="text-sm text-gray-500 hover:underline">
