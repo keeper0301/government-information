@@ -30,7 +30,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractBenefitTags } from "@/lib/tags/taxonomy";
 import { extractNewsKeywords } from "@/lib/news-keywords";
-import { cleanDescription } from "@/lib/utils";
+import { cleanDescription, stripHtmlTags } from "@/lib/utils";
 import { fetchWithTimeout } from "@/lib/collectors";
 
 type FeedCategory = "news" | "press" | "policy-doc";
@@ -199,7 +199,12 @@ async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
   let m;
   while ((m = regex.exec(xml)) !== null) {
     const block = m[1];
-    const rawTitle = parseTag(block, "title") ?? "";
+    // RSS title 은 HTML entity 가 인코딩된 채 들어옴 (&middot; / &quot; / &#xFF65; 등).
+    // description 은 cleanDescription() 으로 정제하지만 title 은 그동안 누락 — 사용자 화면에
+    // 「온&middot;오프라인」 처럼 노출되던 사고. stripHtmlTags 가 entity 디코드 + 태그 제거
+    // + 공백 정리까지 한 줄 title 에 안전 적용.
+    const titleRaw = parseTag(block, "title") ?? "";
+    const rawTitle = stripHtmlTags(titleRaw);
     const link = parseTag(block, "link") ?? "";
     const descRaw = parseTag(block, "description") ?? "";
     const pubDate = parseTag(block, "pubDate");
