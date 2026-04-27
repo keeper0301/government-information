@@ -340,6 +340,19 @@ export function scoreProgram<T extends ScorableItem>(
         score: 3 * overlap.length,
         detail: overlap.join(', '),
       });
+    } else if (user.householdTypes.length > 0) {
+      // ⑦-Gate: Household gate — 정책이 disabled_family/single_parent 같은 명시
+      // household 시그널을 가졌는데 사용자 가구가 그에 해당 안 하면 강제 차단.
+      // 사장님(household_types=[married]) 화면에 disabled_family 정책이 region+benefit
+      // 점수만으로 통과되던 사고 — regional gate 와 동일 패턴.
+      //
+      // 게이트 조건:
+      //   1) 정책에 household_target_tags 명시 (NULL 아님 + 빈 배열 아님)
+      //   2) 사용자에 householdTypes 명시 (NULL 아님 + 빈 배열 아님)
+      //   3) 교집합 0건 — 정책이 요구하는 가구상태에 사용자가 해당 안 함
+      //
+      // user.householdTypes 가 빈 배열인 경우는 게이트 안 함 (빈 프로필 추천 가능)
+      return { item: program, score: 0, signals: [] };
     }
   } else {
     // Phase 1 fallback: 정확 매칭 데이터 없을 때만 본문 키워드로 약한 가산

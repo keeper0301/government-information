@@ -184,6 +184,66 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
     expect(r.score).toBe(6);
   });
 
+  // ⑦-Gate: Household mismatch gate (2026-04-28 사장님 사고 회귀 가드)
+  // 정책이 disabled_family 명시 + 사용자 [married] → benefit/region 점수 무관 강제 차단
+  it('household_target_tags=[disabled_family] + 사용자 [married] → 강제 0 (mismatch gate)', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        benefit_tags: ['주거', '의료', '취업'], // 사용자와 다수 일치 (12점)
+        household_target_tags: ['disabled_family'] },
+      { ...emptyUser,
+        region: '전남',
+        householdTypes: ['married'],
+        benefitTags: ['주거', '의료', '취업', '교육'] },
+    );
+    expect(r.score).toBe(0);
+    expect(r.signals).toEqual([]);
+  });
+
+  it('household_target_tags=[multi_child] + 사용자 [married] → 강제 0', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '경남 창원시',
+        benefit_tags: ['양육', '금융'],
+        household_target_tags: ['multi_child'] },
+      { ...emptyUser,
+        region: '전남',
+        district: '순천시',
+        householdTypes: ['married'],
+        benefitTags: ['양육', '금융'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('household_target_tags 명시 + 사용자 householdTypes 빈 배열 → 게이트 적용 안 함 (빈 프로필 보존)', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        benefit_tags: ['주거'],
+        household_target_tags: ['disabled_family'] },
+      { ...emptyUser,
+        region: '전남',
+        householdTypes: [], // 빈 배열 — 빈 프로필 사용자
+        benefitTags: ['주거'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('household_target_tags=[] (빈 배열) → 게이트 적용 안 함 (정책 제한 없음)', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        benefit_tags: ['주거'],
+        household_target_tags: [] },
+      { ...emptyUser,
+        region: '전남',
+        householdTypes: ['married'],
+        benefitTags: ['주거'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
   it('income_target_level=null + 본문에 "기초생활" → fallback +2 (Phase 1)', () => {
     const r = scoreProgram(
       { ...baseProgram, region: null, district: null, benefit_tags: [],
