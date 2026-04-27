@@ -157,6 +157,23 @@ const CHILD_COHORT_KEYWORDS: RegExp[] = [
   /방학중\s*급식/,   // 방학중 급식 — 자녀 동반 가구만 의미
 ];
 
+// 산후조리·영유아 cohort — has_children=true 사용자만 통과.
+// 사장님(married, 자녀 정보 없음) 화면에 산후조리비용 정책이 benefit_tags
+// 일치만으로 노출되던 사고 차단. 사용자가 has_children NULL(미입력) 또는
+// false 일 때 차단. 마이페이지/온보딩에서 자녀 유무 입력 시 명시 시그널.
+const POSTPARTUM_INFANT_COHORT_KEYWORDS: RegExp[] = [
+  /산후조리/,
+  /산모/,
+  /임산부/,
+  /임신/,
+  /출산\s*가정/,
+  /출산\s*축하금/,
+  /출산\s*지원금/,
+  /영유아/,
+  /신생아(?!\s*수)/, // "신생아 수" 같은 통계 용어 회피
+  /돌봄\s*도우미/, // 산모·신생아 건강관리지원사업
+];
+
 // 기초수급·차상위·저소득 cohort — income_level 이 low/mid_low 가 아니면 부적합.
 // 일반 mid/mid_high/high 사용자에게 "기초생활수급자 통합사례관리" 같은 정책이
 // region+benefit 점수만으로 통과되던 사고 차단.
@@ -207,6 +224,14 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
     const isLowIncome =
       user.incomeLevel === 'low' || user.incomeLevel === 'mid_low';
     if (!isLowIncome) return true;
+  }
+  // 산후조리·영유아 cohort — has_children=true 만 통과.
+  // NULL(미입력) 사용자는 게이트 미적용 (보수적 — 빈 프로필 추천 보존).
+  // false(자녀 없음 명시) 또는 hasChildren 시그널 없는 사용자에게 차단.
+  if (POSTPARTUM_INFANT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    if (user.hasChildren === false) return true;
+    // hasChildren === null 은 미입력 → 게이트 미적용. true 만 통과 의미는 아님.
+    // 즉 입력 안 한 사용자에겐 그대로 노출 (입력 유도 UX 가 동시에 동작).
   }
   return false;
 }

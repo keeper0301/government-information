@@ -168,6 +168,7 @@ export default async function QuizPage({
     incomeLevel: income,
     householdTypes,
     benefitTags: [], // quiz 는 관심 태그 안 받음 (5문항 단순화)
+    hasChildren: null, // quiz 는 자녀 유무 안 받음 (NULL → cohort gate 미적용)
   };
 
   const welfareScored = scoreAndFilter(

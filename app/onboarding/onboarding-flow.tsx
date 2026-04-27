@@ -28,6 +28,7 @@ export type OnboardingState = {
   occupation: OccupationOption | null;
   incomeLevel: IncomeOption | null;
   householdTypes: HouseholdOption[];
+  hasChildren: boolean | null; // 자녀 유무 (산후조리·아동 cohort) — 마이페이지에서 단순 라디오, 온보딩은 옵션
   interests: string[];
 };
 

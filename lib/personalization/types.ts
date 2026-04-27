@@ -18,6 +18,7 @@ export type UserSignals = {
   incomeLevel: 'low' | 'mid_low' | 'mid' | 'mid_high' | 'high' | null; // 소득 수준
   householdTypes: string[];          // 가구 유형 목록 (예: ['single_parent'])
   benefitTags: BenefitTag[];        // 관심 혜택 태그 목록 (예: ['주거', '교육'])
+  hasChildren: boolean | null;       // 자녀 유무 (산후조리·영유아 cohort 매칭). NULL=미입력 → 게이트 미적용.
   businessProfile?: BusinessProfile | null; // 자영업자 자격 진단 wedge — 입력 안한 사용자는 null/undefined
 };
 

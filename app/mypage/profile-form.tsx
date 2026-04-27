@@ -37,6 +37,7 @@ type Profile = {
   interests: string[];
   income_level: IncomeOption | null;    // 소득 수준 (단일 선택, 선택사항)
   household_types: HouseholdOption[];   // 가구 상태 (다중 선택, 민감정보)
+  has_children: boolean | null;          // 자녀 유무 (산후조리·아동 cohort 매칭, 선택사항)
 };
 
 export function ProfileForm({ initial }: { initial: Profile }) {
@@ -92,6 +93,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       interests: form.interests,
       income_level: form.income_level,
       household_types: form.household_types,
+      has_children: form.has_children,
     });
     if (error) {
       setError("저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.");
@@ -201,6 +203,47 @@ export function ProfileForm({ initial }: { initial: Profile }) {
                   updateForm((p) => ({ ...p, income_level: null }))
                 }
                 className="text-xs text-grey-600 underline self-start"
+              >
+                선택 안 함
+              </button>
+            </div>
+          </div>
+
+          {/* 자녀 유무 (라디오, 산후조리·아동 cohort 매칭) */}
+          <div className="space-y-2">
+            <label className="block text-[13px] font-semibold text-grey-700">
+              자녀 유무
+            </label>
+            <p className="text-xs text-grey-600">
+              산후조리·영유아·아동 정책 추천에 사용됩니다.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[
+                { value: true, label: "있음" },
+                { value: false, label: "없음" },
+              ].map((opt) => {
+                const checked = form.has_children === opt.value;
+                return (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() =>
+                      updateForm((p) => ({ ...p, has_children: opt.value }))
+                    }
+                    className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                      checked
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-white text-zinc-700 border-zinc-300 hover:border-emerald-400"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => updateForm((p) => ({ ...p, has_children: null }))}
+                className="text-xs text-grey-600 underline self-center"
               >
                 선택 안 함
               </button>

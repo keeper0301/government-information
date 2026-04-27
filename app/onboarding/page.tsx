@@ -24,7 +24,7 @@ export default async function OnboardingPage() {
   // 기존 프로필 로드 (없으면 maybeSingle → null)
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('age_group, region, district, occupation, interests, income_level, household_types')
+    .select('age_group, region, district, occupation, interests, income_level, household_types, has_children')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -37,6 +37,7 @@ export default async function OnboardingPage() {
     interests: profile?.interests ?? [],
     incomeLevel: (profile?.income_level ?? null) as IncomeOption | null,
     householdTypes: (profile?.household_types ?? []) as HouseholdOption[],
+    hasChildren: (profile?.has_children ?? null) as boolean | null,
   };
 
   // /quiz 가입 funnel 쿠키 — 빈 필드만 채움 (DB 값이 있으면 보존)

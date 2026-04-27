@@ -55,7 +55,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
       .from('user_profiles')
       .select(`
         id, age_group, region, district, occupation,
-        interests, income_level, household_types, benefit_tags,
+        interests, income_level, household_types, benefit_tags, has_children,
         dismissed_onboarding_at
       `)
       .eq('id', user.id)
@@ -95,6 +95,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
         incomeLevel: null,
         householdTypes: [],
         benefitTags: [],
+        hasChildren: null,
         businessProfile,
       },
       isEmpty: !businessProfile,
@@ -112,6 +113,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
     incomeLevel: (profile.income_level ?? null) as UserSignals['incomeLevel'],
     householdTypes: (profile.household_types ?? []) as string[],
     benefitTags: (profile.benefit_tags ?? []) as BenefitTag[],
+    hasChildren: (profile.has_children ?? null) as boolean | null,
     businessProfile,
   };
 

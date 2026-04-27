@@ -13,6 +13,7 @@ const sajangnim: CohortUserSignals = {
   incomeLevel: null,
   householdTypes: [],
   benefitTags: ["주거", "취업", "창업", "금융", "교육", "생계", "의료"],
+  hasChildren: null,
 };
 
 // 청년 사용자 — 25세 대학생 서울
@@ -24,6 +25,7 @@ const youngStudent: CohortUserSignals = {
   incomeLevel: null,
   householdTypes: [],
   benefitTags: ["주거", "취업"],
+  hasChildren: null,
 };
 
 // 노년 사용자 — 65세 전남
@@ -35,6 +37,7 @@ const elderly: CohortUserSignals = {
   incomeLevel: null,
   householdTypes: ["elderly_family"],
   benefitTags: ["의료", "생계"],
+  hasChildren: null,
 };
 
 // 30대 다자녀 자영업자 (자녀 학생 정책 관심 있을 수 있음)
@@ -46,6 +49,7 @@ const multiChildParent: CohortUserSignals = {
   incomeLevel: "mid",
   householdTypes: ["multi_child"],
   benefitTags: ["교육", "주거"],
+  hasChildren: true,
 };
 
 describe("isBlogCohortFit", () => {

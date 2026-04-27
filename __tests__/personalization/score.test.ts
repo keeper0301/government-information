@@ -5,7 +5,7 @@ import type { UserSignals } from '@/lib/personalization/types';
 // 빈 사용자 프로필 (아무 정보도 없는 상태)
 const emptyUser: UserSignals = {
   ageGroup: null, region: null, district: null, occupation: null,
-  incomeLevel: null, householdTypes: [], benefitTags: [],
+  incomeLevel: null, householdTypes: [], benefitTags: [], hasChildren: null,
 };
 
 // 기본 정책 데이터 (기준점)
@@ -311,6 +311,82 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
         region: '전남',
         incomeLevel: 'mid',
         benefitTags: ['주거', '의료'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  // 산후조리·영유아 cohort gate (2026-04-28 사장님 사고 후속)
+  it('산후조리 정책 + hasChildren=false → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전남 순천시',
+        title: '산후조리비용 지원',
+        benefit_tags: ['의료', '양육', '금융'] },
+      { ...emptyUser,
+        region: '전남',
+        district: '순천시',
+        householdTypes: ['married'],
+        benefitTags: ['의료', '양육', '금융'],
+        hasChildren: false },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('산후조리 정책 + hasChildren=true → 통과', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전남 순천시',
+        title: '산후조리비용 지원',
+        benefit_tags: ['의료', '양육'] },
+      { ...emptyUser,
+        region: '전남',
+        district: '순천시',
+        householdTypes: ['married'],
+        benefitTags: ['의료', '양육'],
+        hasChildren: true },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('산후조리 정책 + hasChildren=null (미입력) → 통과 (보수적, 입력 유도용)', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전남 순천시',
+        title: '산후조리비용 지원',
+        benefit_tags: ['의료', '양육'] },
+      { ...emptyUser,
+        region: '전남',
+        district: '순천시',
+        benefitTags: ['의료', '양육'],
+        hasChildren: null },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('영유아 정책 + hasChildren=false → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        title: '영유아 보육료 지원',
+        benefit_tags: ['양육'] },
+      { ...emptyUser,
+        region: '전남',
+        benefitTags: ['양육'],
+        hasChildren: false },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('출산축하금 정책 + hasChildren=false → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        title: '출산축하금 지원',
+        benefit_tags: ['양육', '금융'] },
+      { ...emptyUser,
+        region: '전남',
+        benefitTags: ['양육', '금융'],
+        hasChildren: false },
     );
     expect(r.score).toBe(0);
   });

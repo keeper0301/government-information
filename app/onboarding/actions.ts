@@ -47,6 +47,7 @@ export async function saveOnboardingProfile(userId: string, state: OnboardingSta
       incomeLevel: state.incomeLevel,
       householdTypes: state.householdTypes,
       benefitTags: interestsToBenefitTags(state.interests),
+      hasChildren: state.hasChildren ?? null,
     },
   });
 }
