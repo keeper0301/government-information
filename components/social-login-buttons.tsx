@@ -23,11 +23,12 @@ import { createClient } from "@/lib/supabase/client";
 import { translateAuthError, classifyAuthError } from "@/lib/auth-errors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 
-// 활성/비활성 표시 — 향후 페북·네이버 활성 시 enable 만 true 로 바꿈
+// 활성/비활성 표시 — 향후 네이버 활성 시 enabled 만 true 로 바꿈
+// 2026-04-27 Facebook 활성화 (Supabase auth.facebook 등록 완료, keepio 정책알리미 앱 ID 26781325754856837)
 const PROVIDER_STATUS = {
   kakao: { enabled: true, label: "카카오로 계속하기" },
   google: { enabled: true, label: "Google" },
-  facebook: { enabled: false, label: "Facebook" },
+  facebook: { enabled: true, label: "Facebook" },
   naver: { enabled: false, label: "네이버" },
 } as const;
 
