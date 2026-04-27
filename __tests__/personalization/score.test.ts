@@ -244,6 +244,77 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
     expect(r.score).toBeGreaterThan(0);
   });
 
+  // ⓪ Cohort 차단 추가 (2026-04-28 사장님 사고 회귀 가드)
+  it('결식아동급식 정책 + [married] 사용자 → cohort 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전남',
+        title: '결식아동 급식 지원',
+        benefit_tags: ['양육'] },
+      { ...emptyUser,
+        region: '전남',
+        householdTypes: ['married'],
+        benefitTags: ['양육'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('아동급식 + single_parent 사용자 → 통과', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전남',
+        title: '학기중 아동급식 지원',
+        benefit_tags: ['양육'] },
+      { ...emptyUser,
+        region: '전남',
+        householdTypes: ['single_parent'],
+        benefitTags: ['양육'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('통합사례관리 정책 + mid 사용자 → cohort 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        title: '희망복지지원단 통합사례관리사업',
+        benefit_tags: ['주거', '의료', '취업'] },
+      { ...emptyUser,
+        region: '전남',
+        incomeLevel: 'mid',
+        benefitTags: ['주거', '의료', '취업'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('통합사례관리 정책 + low 사용자 → 통과', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        title: '희망복지지원단 통합사례관리사업',
+        benefit_tags: ['주거'] },
+      { ...emptyUser,
+        region: '전남',
+        incomeLevel: 'low',
+        benefitTags: ['주거'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('기초수급자 정책 + mid 사용자 → cohort 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        description: '기초생활수급자 대상 지원',
+        benefit_tags: ['주거', '의료'] },
+      { ...emptyUser,
+        region: '전남',
+        incomeLevel: 'mid',
+        benefitTags: ['주거', '의료'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
   it('income_target_level=null + 본문에 "기초생활" → fallback +2 (Phase 1)', () => {
     const r = scoreProgram(
       { ...baseProgram, region: null, district: null, benefit_tags: [],

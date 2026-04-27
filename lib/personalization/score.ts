@@ -152,6 +152,21 @@ const CHILD_COHORT_KEYWORDS: RegExp[] = [
   /아동복지시설/,
   /가정위탁/,
   /입양\s*가정/,
+  /결식아동/,        // 결식 위기 아동 — 자녀 동반 가구만 의미
+  /아동급식/,        // 아동 급식지원 — 자녀 동반 가구만 의미
+  /방학중\s*급식/,   // 방학중 급식 — 자녀 동반 가구만 의미
+];
+
+// 기초수급·차상위·저소득 cohort — income_level 이 low/mid_low 가 아니면 부적합.
+// 일반 mid/mid_high/high 사용자에게 "기초생활수급자 통합사례관리" 같은 정책이
+// region+benefit 점수만으로 통과되던 사고 차단.
+const LOW_INCOME_ONLY_COHORT_KEYWORDS: RegExp[] = [
+  /기초생활수급자/,
+  /기초수급자/,
+  /차상위계층(?!\s*및\s*일반)/,  // "차상위계층" 단독 — "차상위계층 및 일반" 류는 통과
+  /통합사례관리/,                 // 희망복지지원단 통합사례관리 — 위기가구 대상
+  /위기가구/,
+  /빈곤가정/,
 ];
 
 // 장애인 cohort — 사용자 가구에 disabled_family 가 있을 때만 통과
@@ -186,6 +201,12 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   // 장애인 정책 — disabled_family 가구만 통과
   if (DISABILITY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     if (!user.householdTypes.includes('disabled_family')) return true;
+  }
+  // 기초수급·차상위·저소득 cohort — low/mid_low 만 통과
+  if (LOW_INCOME_ONLY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    const isLowIncome =
+      user.incomeLevel === 'low' || user.incomeLevel === 'mid_low';
+    if (!isLowIncome) return true;
   }
   return false;
 }
