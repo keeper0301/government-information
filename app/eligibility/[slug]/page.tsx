@@ -18,6 +18,7 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from '@/lib/listing-sources';
+import { safeJsonLd } from '@/lib/json-ld-safe';
 
 // 6시간 ISR — 정책 추가/마감 빈도 고려. revalidate-on-demand 까지 가지 않아도 충분.
 export const revalidate = 21600;
@@ -133,7 +134,7 @@ export default async function EligibilityCategoryPage({
     <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:pt-24 max-md:px-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       {/* breadcrumb */}
       <nav className="mb-4 text-[13px] text-grey-600">

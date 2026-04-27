@@ -10,6 +10,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { safeJsonLd } from "@/lib/json-ld-safe";
 
 export const metadata: Metadata = {
   title: "도움말 (자주 묻는 질문) | 정책알리미",
@@ -261,7 +262,7 @@ export default function HelpPage() {
     <main className="min-h-screen bg-grey-50 pt-28 pb-20">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
 
       <div className="max-w-[760px] mx-auto px-10 max-md:px-6">

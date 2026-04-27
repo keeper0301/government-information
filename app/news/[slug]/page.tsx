@@ -23,6 +23,7 @@ import {
 } from "@/components/news-card";
 import { cleanDescription, formatKoreanDate, paragraphizeNewsBody } from "@/lib/utils";
 import { findRelatedPrograms } from "@/lib/news-matching";
+import { safeJsonLd } from "@/lib/json-ld-safe";
 import { HideNewsButton } from "./HideNewsButton";
 import { HiddenNewsNotice } from "./HiddenNewsNotice";
 import { AdminRestoreBanner } from "./AdminRestoreBanner";
@@ -191,7 +192,7 @@ export default async function NewsDetailPage({ params }: Props) {
       {/* JSON-LD NewsArticle schema */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <BreadcrumbSchema
         items={[
