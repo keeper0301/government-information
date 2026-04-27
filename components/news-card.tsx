@@ -8,11 +8,19 @@
 // ============================================================
 
 import Link from "next/link";
+import { Newspaper, Megaphone, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cleanDescription, formatKoreanDate } from "@/lib/utils";
 
 export type NewsCategory = "news" | "press" | "policy-doc";
+
+// 카테고리별 아이콘 — thumbnail fallback 시 시각 요소
+const NEWS_CATEGORY_ICON: Record<NewsCategory, typeof Newspaper> = {
+  news: Newspaper,
+  press: Megaphone,
+  "policy-doc": FileText,
+};
 
 export type NewsCardData = {
   slug: string;
@@ -70,15 +78,25 @@ export function NewsCard({ post }: { post: NewsCardData }) {
           />
         ) : (
           <div
-            className={`relative w-full aspect-[16/9] rounded-t-3xl overflow-hidden ${categoryColor}`}
+            className={`relative w-full aspect-[16/9] rounded-t-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br ${
+              post.category === "news"
+                ? "from-blue-50 to-blue-100"
+                : post.category === "press"
+                  ? "from-amber-50 to-amber-100"
+                  : "from-purple-50 to-purple-100"
+            }`}
             aria-hidden="true"
           >
-            {/* 미니멀 패턴 — 우측 상단 동심원, 좌측 하단 점선 */}
-            <div className="absolute inset-0 opacity-40">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border-2 border-current" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border-2 border-current" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-current opacity-30" />
-            </div>
+            {(() => {
+              const Icon = NEWS_CATEGORY_ICON[post.category];
+              const iconColor =
+                post.category === "news"
+                  ? "text-blue-400/60"
+                  : post.category === "press"
+                    ? "text-amber-500/60"
+                    : "text-purple-400/60";
+              return <Icon className={`w-14 h-14 ${iconColor}`} strokeWidth={1.5} />;
+            })()}
           </div>
         )}
 
