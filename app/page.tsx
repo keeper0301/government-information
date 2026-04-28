@@ -7,7 +7,7 @@ import { SearchBox } from "@/components/search-box";
 import { AlertStrip } from "@/components/alert-strip";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
-import { HomeRecommendCard } from "@/components/home-recommend-card";
+import { QuizInlineWizard } from "@/components/quiz-inline-wizard";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
 import { HomeTargetCards } from "@/components/home-target-cards";
 import { HomeValueProps } from "@/components/home-value-props";
@@ -220,8 +220,8 @@ export default async function Home() {
                 <HomeRecommendAuto />
               )
             ) : (
-              // 비로그인 — 기존 입력 폼 그대로 (변화 없음)
-              <HomeRecommendCard initial={initialProfile} />
+              // 비로그인 — AI 진단 wizard (Phase 3, 5문항 익명, 가입 funnel)
+              <QuizInlineWizard />
             )}
           </div>
         </div>

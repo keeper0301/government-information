@@ -23,6 +23,9 @@ export const EVENTS = {
   ONBOARDING_STEP_BASIC_COMPLETED: "onboarding_step_basic_completed",
   ONBOARDING_STEP_ELIGIBILITY_COMPLETED: "onboarding_step_eligibility_completed",
   ONBOARDING_STEP_INTERESTS_COMPLETED: "onboarding_step_interests_completed",
+  // AI 진단 인라인 wizard (2026-04-28 Phase 3, 홈 Hero 우측 임베드)
+  QUIZ_INLINE_STARTED: "quiz_inline_started",
+  QUIZ_INLINE_COMPLETED: "quiz_inline_completed",
   // 추천
   RECOMMEND_SUBMITTED: "recommend_submitted",
   // 결제 / 구독
