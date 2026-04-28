@@ -13,23 +13,32 @@
 // path param. 한글 광역명 그대로 path 에 못 쓰니 매핑 필요.
 // ============================================================
 
+// 권역별 + 북에서 남 통상 순서로 정렬 (사용자 친화 — 자기 지역 빠른 찾기).
+// 수도권 → 강원 → 충청 → 호남 → 영남 → 제주.
+// (이전 행정안전부 표준 = 특별/광역시 → 도 순. 사장님 결정으로 권역별 변경)
 export const PROVINCES = [
+  // 수도권
   { code: "seoul", name: "서울특별시" },
-  { code: "busan", name: "부산광역시" },
-  { code: "daegu", name: "대구광역시" },
   { code: "incheon", name: "인천광역시" },
-  { code: "gwangju", name: "광주광역시" },
-  { code: "daejeon", name: "대전광역시" },
-  { code: "ulsan", name: "울산광역시" },
-  { code: "sejong", name: "세종특별자치시" },
   { code: "gyeonggi", name: "경기도" },
+  // 강원
   { code: "gangwon", name: "강원특별자치도" },
+  // 충청
+  { code: "daejeon", name: "대전광역시" },
+  { code: "sejong", name: "세종특별자치시" },
   { code: "chungbuk", name: "충청북도" },
   { code: "chungnam", name: "충청남도" },
+  // 호남
+  { code: "gwangju", name: "광주광역시" },
   { code: "jeonbuk", name: "전북특별자치도" },
   { code: "jeonnam", name: "전라남도" },
+  // 영남
+  { code: "busan", name: "부산광역시" },
+  { code: "daegu", name: "대구광역시" },
+  { code: "ulsan", name: "울산광역시" },
   { code: "gyeongbuk", name: "경상북도" },
   { code: "gyeongnam", name: "경상남도" },
+  // 제주
   { code: "jeju", name: "제주특별자치도" },
 ] as const;
 

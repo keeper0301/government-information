@@ -30,6 +30,7 @@ import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
 import { CategoryChipBar } from "@/components/category-chip-bar";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { scoreAndFilter } from "@/lib/personalization/filter";
+import { dedupeBySimilarity } from "@/lib/personalization/dedupe";
 import {
   PERSONAL_SECTION_MIN_SCORE,
   PERSONAL_SECTION_MAX_ITEMS,
@@ -232,10 +233,16 @@ export default async function NewsIndexPage({ searchParams }: Props) {
 
   if (profile && !profile.isEmpty) {
     const displayPool = (poolData || []).map(newsToScorable);
-    personalSection = scoreAndFilter(displayPool, profile.signals, {
+    // 사고 (2026-04-28): 같은 행사 다른 출처 뉴스가 4개 중복 노출 → dedupe 후처리.
+    // limit 2배로 score 후 비슷 제목 dedupe → 다시 정확 limit 자르기.
+    const scored = scoreAndFilter(displayPool, profile.signals, {
       minScore: PERSONAL_SECTION_MIN_SCORE,
-      limit: PERSONAL_SECTION_MAX_ITEMS,
+      limit: PERSONAL_SECTION_MAX_ITEMS * 2,
     });
+    personalSection = dedupeBySimilarity(scored, (s) => s.item.title).slice(
+      0,
+      PERSONAL_SECTION_MAX_ITEMS,
+    );
   }
 
   // 분리 섹션에 노출된 id — 전체 리스트에서 MatchBadge 표시 대상 확정
