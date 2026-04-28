@@ -94,10 +94,7 @@ const TARGETS: {
 
 export function HomeTargetCards() {
   return (
-    <section
-      className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8"
-      aria-labelledby="target-cards-title"
-    >
+    <section aria-labelledby="target-cards-title">
       <h2
         id="target-cards-title"
         className="text-[20px] md:text-[24px] font-extrabold text-grey-900 tracking-[-0.5px] mb-2"
@@ -107,7 +104,10 @@ export function HomeTargetCards() {
       <p className="text-[14px] text-grey-600 mb-6">
         대상을 누르면 해당 정책이 모인 페이지로 바로 이동해요.
       </p>
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
+      {/* 사이드 배너 row 안 grid: 모바일 3 cols (두 줄), 데스크톱도 3 cols (두 줄)
+          → 좌측 cell 너비 한정에서 카드 너비 충분히 확보. 6 cols 한 줄은
+          HomePopularPicks 사이드 배너 row 안에서 카드 너무 좁아짐. */}
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
         {TARGETS.map((t) => {
           const Icon = t.icon;
           return (

@@ -91,14 +91,13 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
   const picks = await getPopularPicks();
   if (picks.length === 0) return null;
 
-  // 사이드 배너 박스 — max-w-[420px], 우측 정렬, 카드 콤팩트.
-  // 모바일은 width 100% (centered), 데스크톱은 우측에 작게 노출.
+  // 사이드 배너 박스 — page.tsx 의 grid row 안에서 우측 cell 차지.
+  // 모바일은 stack (HomeTargetCards 아래), 데스크톱은 grid 우측.
   return (
-    <section className="max-w-content mx-auto px-10 max-md:px-6 py-8 max-md:py-6">
-      <aside
-        className="ml-auto max-w-[420px] w-full rounded-2xl bg-white border border-grey-200 p-4 max-md:p-3"
-        aria-labelledby="popular-picks-title"
-      >
+    <aside
+      className="w-full rounded-2xl bg-white border border-grey-200 p-4 max-md:p-3"
+      aria-labelledby="popular-picks-title"
+    >
         <div className="flex items-baseline justify-between mb-3">
           <h2
             id="popular-picks-title"
@@ -166,7 +165,6 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
             <span className="text-blue-500 text-[13px] font-bold">→</span>
           </TrackedLink>
         )}
-      </aside>
-    </section>
+    </aside>
   );
 }

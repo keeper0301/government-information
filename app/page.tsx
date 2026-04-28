@@ -213,15 +213,17 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* [발견] 대상별 빠른 진입 카드 6종 — 외부 LLM 평가 후속 (2026-04-28).
-          첫 화면에서 사용자가 자기 상황에 맞는 정책으로 즉시 이동.
-          청년·신혼부부·부모·소상공인·저소득·1인가구. */}
-      <HomeTargetCards />
-
-      {/* [발견] 인기 정책 TOP 5 — 비로그인 사용자도 즉시 콘텐츠 노출
-          (2026-04-28 hot-fix). view_count 기반. 비로그인 시 회원가입 CTA prompt. */}
+      {/* [발견] 대상별 카드 6종 + 인기 정책 사이드 배너 grid row (2026-04-28).
+          - 데스크톱 lg+: 좌측 카드 6종 (3 cols × 2 줄) + 우측 사이드 배너 400px
+          - 모바일: 자연 stack (카드 위, 배너 아래)
+          첫 화면 fold 안에 양쪽 다 노출 + 좌측 공간 어색 X. */}
       <RevealOnScroll>
-        <HomePopularPicks isLoggedIn={!!user} />
+        <section className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8">
+          <div className="grid gap-8 lg:grid-cols-[1fr_400px] items-start">
+            <HomeTargetCards />
+            <HomePopularPicks isLoggedIn={!!user} />
+          </div>
+        </section>
       </RevealOnScroll>
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
