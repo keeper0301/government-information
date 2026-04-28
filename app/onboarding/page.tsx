@@ -24,7 +24,7 @@ export default async function OnboardingPage() {
   // 기존 프로필 로드 (없으면 maybeSingle → null)
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('age_group, region, district, occupation, interests, income_level, household_types, has_children')
+    .select('age_group, region, district, occupation, interests, income_level, household_types, has_children, merit_status')
     .eq('id', user.id)
     .maybeSingle();
 
