@@ -363,3 +363,52 @@ export async function sendHealthAlertEmail(
 
   return error ? { ok: false, error: error.message } : { ok: true };
 }
+
+// ============================================================
+// 온보딩 미완 환영 이메일 (가입 후 24h~48h 미온보딩 사용자 1회 발송)
+// ============================================================
+
+export async function sendOnboardingReminderEmail({
+  to,
+}: {
+  to: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const subject = "[keepioo] 1분만 더! 맞춤 정책 받아보세요";
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+      <h1 style="color: #191F28; font-size: 22px; margin-bottom: 16px;">
+        👋 keepioo 가입을 환영해요!
+      </h1>
+      <p style="font-size: 15px; color: #4E5968; line-height: 1.65;">
+        가입 후 1분만 더 시간 내주시면 — 본인 자격에 맞는 정책만 골라 자동 알림으로 보내드려요.
+      </p>
+      <ul style="font-size: 14px; color: #4E5968; line-height: 1.6; padding-left: 20px;">
+        <li>지역·연령·직업 등 5문항 (1분)</li>
+        <li>매일 매칭 정책 1건 + 이메일 알림</li>
+        <li>마감 임박 정책 자동 안내</li>
+      </ul>
+      <a href="https://www.keepioo.com/onboarding"
+         style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #3182F6; color: #fff; text-decoration: none; border-radius: 12px; font-weight: 600;">
+        1분 만에 시작하기 →
+      </a>
+      <p style="font-size: 12px; color: #8B95A1; margin-top: 32px; line-height: 1.5;">
+        이 메일은 keepioo 가입 후 프로필 미작성 사용자에게 1회 발송되는 안내 메일입니다.
+        수신을 원하지 않으시면 <a href="https://www.keepioo.com/mypage" style="color: #6B7684;">마이페이지</a> 에서 계정을 삭제하실 수 있습니다.
+      </p>
+    </div>
+  `;
+
+  const text = `keepioo 가입을 환영해요!\n\n가입 후 1분만 더 시간 내주시면 — 본인 자격에 맞는 정책만 골라 자동 알림으로 보내드려요.\n\n1분 만에 시작하기: https://www.keepioo.com/onboarding\n\n이 메일은 keepioo 가입 후 프로필 미작성 사용자에게 1회 발송되는 안내 메일입니다.`;
+
+  const resend = getResend();
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject,
+    html,
+    text,
+  });
+
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
