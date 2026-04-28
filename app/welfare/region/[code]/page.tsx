@@ -37,6 +37,7 @@ export async function generateStaticParams() {
 }
 
 export const dynamic = "force-static";
+export const dynamicParams = false; // 17 광역 외 code 는 자동 404 (SEO 위 빈 페이지 색인 차단)
 export const revalidate = 3600; // 1시간 ISR — region 페이지는 신규 정책 즉시성보다 SEO 안정성 우선
 
 interface PageProps {

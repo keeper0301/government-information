@@ -77,6 +77,7 @@ export async function generateStaticParams() {
 }
 
 export const dynamic = "force-static";
+export const dynamicParams = false; // generateStaticParams 외 slug 는 자동 404 (SEO 위 빈 페이지 색인 차단)
 export const revalidate = 600; // 10분 ISR (블로그 매일 7글 발행 즉시 반영)
 
 interface PageProps {
