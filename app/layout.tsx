@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   applicationName: "keepioo",
   authors: [{ name: "keepioo" }],
   openGraph: {
+    // url 명시 — metadataBase 만으로는 일부 크롤러가 og:url 을 인식 못 함.
+    // 카카오톡·페이스북 공유 시 정식 canonical 표기 안정성 ↑.
+    url: "/",
     title: "keepioo · 정책알리미",
     description:
       "한국의 공공 지원제도를 큐레이션해 이메일·알림톡으로 전달합니다.",
