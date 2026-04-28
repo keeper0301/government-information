@@ -51,7 +51,7 @@ export default async function MyPage() {
     supabase
       .from("user_profiles")
       .select(
-        "age_group, region, district, occupation, interests, income_level, household_types, has_children"
+        "age_group, region, district, occupation, interests, income_level, household_types, has_children, merit_status"
       )
       .eq("id", user.id)
       .maybeSingle(),
@@ -139,6 +139,7 @@ export default async function MyPage() {
                   | null,
                 household_types: (profile?.household_types ?? []) as HouseholdOption[],
                 has_children: (profile?.has_children ?? null) as boolean | null,
+                merit_status: (profile?.merit_status ?? null) as "merit" | "none" | null,
               }}
             />
           </div>

@@ -48,6 +48,7 @@ export async function saveOnboardingProfile(userId: string, state: OnboardingSta
       householdTypes: state.householdTypes,
       benefitTags: interestsToBenefitTags(state.interests),
       hasChildren: state.hasChildren ?? null,
+      merit: null, // 온보딩 단계 추가 안 함 — 마이페이지에서만 입력
     },
   });
 }

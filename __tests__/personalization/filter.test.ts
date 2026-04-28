@@ -6,7 +6,7 @@ import type { UserSignals } from '@/lib/personalization/types';
 const user: UserSignals = {
   ageGroup: '30대', region: '서울', district: null,
   occupation: '직장인', incomeLevel: null, householdTypes: [],
-  benefitTags: ['주거'], hasChildren: null,
+  benefitTags: ['주거'], hasChildren: null, merit: null,
 };
 
 // 테스트용 정책 목록 (서울 주거, 부산 의료, 전국 취업, 서울 양육)
@@ -45,6 +45,7 @@ describe('scoreAndFilter', () => {
     const r = scoreAndFilter(programs, {
       ageGroup: null, region: null, district: null, occupation: null,
       incomeLevel: null, householdTypes: [], benefitTags: [], hasChildren: null,
+      merit: null,
     }, { minScore: 5, limit: 10 });
     // 아무 매칭도 없으므로 모두 0점 → minScore 5 미만 → 빈 배열
     expect(r).toEqual([]);

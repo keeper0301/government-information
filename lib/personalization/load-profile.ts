@@ -56,7 +56,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
       .select(`
         id, age_group, region, district, occupation,
         interests, income_level, household_types, benefit_tags, has_children,
-        dismissed_onboarding_at
+        merit_status, dismissed_onboarding_at
       `)
       .eq('id', user.id)
       .maybeSingle(),
@@ -96,6 +96,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
         householdTypes: [],
         benefitTags: [],
         hasChildren: null,
+        merit: null,
         businessProfile,
       },
       isEmpty: !businessProfile,
@@ -114,6 +115,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
     householdTypes: (profile.household_types ?? []) as string[],
     benefitTags: (profile.benefit_tags ?? []) as BenefitTag[],
     hasChildren: (profile.has_children ?? null) as boolean | null,
+    merit: (profile.merit_status ?? null) as 'merit' | 'none' | null,
     businessProfile,
   };
 

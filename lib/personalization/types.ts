@@ -19,6 +19,7 @@ export type UserSignals = {
   householdTypes: string[];          // 가구 유형 목록 (예: ['single_parent'])
   benefitTags: BenefitTag[];        // 관심 혜택 태그 목록 (예: ['주거', '교육'])
   hasChildren: boolean | null;       // 자녀 유무 (산후조리·영유아 cohort 매칭). NULL=미입력 → 게이트 미적용.
+  merit: 'merit' | 'none' | null;    // 보훈 가족 (NATIONAL_MERIT cohort 매칭). NULL/none=차단, merit=통과.
   businessProfile?: BusinessProfile | null; // 자영업자 자격 진단 wedge — 입력 안한 사용자는 null/undefined
 };
 

@@ -169,6 +169,7 @@ export default async function QuizPage({
     householdTypes,
     benefitTags: [], // quiz 는 관심 태그 안 받음 (5문항 단순화)
     hasChildren: null, // quiz 는 자녀 유무 안 받음 (NULL → cohort gate 미적용)
+    merit: null, // quiz 는 보훈 시그널 안 받음 (NATIONAL_MERIT 게이트 차단 유지)
   };
 
   const welfareScored = scoreAndFilter(

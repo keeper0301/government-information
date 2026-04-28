@@ -110,7 +110,7 @@ async function runAlertDispatch(jobLabel: string) {
       const { data: profile } = await supabase
         .from("user_profiles")
         .select(
-          "age_group, region, district, occupation, income_level, household_types, benefit_tags, has_children",
+          "age_group, region, district, occupation, income_level, household_types, benefit_tags, has_children, merit_status",
         )
         .eq("id", userId)
         .maybeSingle();
@@ -123,6 +123,7 @@ async function runAlertDispatch(jobLabel: string) {
         householdTypes: (profile?.household_types ?? []) as string[],
         benefitTags: (profile?.benefit_tags ?? []) as BenefitTag[],
         hasChildren: (profile?.has_children ?? null) as boolean | null,
+        merit: (profile?.merit_status ?? null) as 'merit' | 'none' | null,
         businessProfile,
       };
       userSignalsCache.set(userId, signals);

@@ -9,9 +9,11 @@ import {
   OCCUPATION_OPTIONS,
   INCOME_OPTIONS,
   HOUSEHOLD_OPTIONS,
+  MERIT_OPTIONS,
   getDistrictsForRegion,
   type IncomeOption,
   type HouseholdOption,
+  type MeritOption,
 } from "@/lib/profile-options";
 import { syncProfileAutoRule } from "./actions";
 import { ChipSelect } from "./chip-select";
@@ -38,6 +40,7 @@ type Profile = {
   income_level: IncomeOption | null;    // 소득 수준 (단일 선택, 선택사항)
   household_types: HouseholdOption[];   // 가구 상태 (다중 선택, 민감정보)
   has_children: boolean | null;          // 자녀 유무 (산후조리·아동 cohort 매칭, 선택사항)
+  merit_status: MeritOption | null;      // 보훈 가족 (NATIONAL_MERIT cohort 매칭, 선택사항·민감정보)
 };
 
 export function ProfileForm({ initial }: { initial: Profile }) {
@@ -94,6 +97,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       income_level: form.income_level,
       household_types: form.household_types,
       has_children: form.has_children,
+      merit_status: form.merit_status,
     });
     if (error) {
       setError("저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.");
@@ -243,6 +247,45 @@ export function ProfileForm({ initial }: { initial: Profile }) {
               <button
                 type="button"
                 onClick={() => updateForm((p) => ({ ...p, has_children: null }))}
+                className="text-xs text-grey-600 underline self-center"
+              >
+                선택 안 함
+              </button>
+            </div>
+          </div>
+
+          {/* 보훈 가족 (라디오, NATIONAL_MERIT cohort 매칭, 민감정보) */}
+          <div className="space-y-2">
+            <label className="block text-[13px] font-semibold text-grey-700">
+              보훈 가족 여부{" "}
+              <span className="text-xs font-normal text-grey-600">(선택)</span>
+            </label>
+            <p className="text-xs text-grey-600">
+              민감정보로 분류되며 국가유공자·보훈대상자 전용 정책 추천에만 사용됩니다.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {MERIT_OPTIONS.map((opt) => {
+                const checked = form.merit_status === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      updateForm((p) => ({ ...p, merit_status: opt.value }))
+                    }
+                    className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                      checked
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-white text-zinc-700 border-zinc-300 hover:border-emerald-400"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => updateForm((p) => ({ ...p, merit_status: null }))}
                 className="text-xs text-grey-600 underline self-center"
               >
                 선택 안 함

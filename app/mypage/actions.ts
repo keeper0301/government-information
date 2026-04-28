@@ -25,7 +25,7 @@ export async function syncProfileAutoRule(userId: string): Promise<void> {
   const [profileRes, subRes] = await Promise.all([
     supabase
       .from('user_profiles')
-      .select('age_group, region, district, occupation, income_level, household_types, benefit_tags, has_children')
+      .select('age_group, region, district, occupation, income_level, household_types, benefit_tags, has_children, merit_status')
       .eq('id', userId)
       .maybeSingle(),
     supabase
@@ -52,6 +52,7 @@ export async function syncProfileAutoRule(userId: string): Promise<void> {
     householdTypes: (profile.household_types ?? []) as string[],
     benefitTags: (profile.benefit_tags ?? []) as UserSignals['benefitTags'],
     hasChildren: (profile.has_children ?? null) as boolean | null,
+    merit: (profile.merit_status ?? null) as 'merit' | 'none' | null,
   };
 
   // 자동 알림 규칙 동기화 (기존 규칙 갱신 or 신규 생성)

@@ -5,7 +5,7 @@ import type { UserSignals } from '@/lib/personalization/types';
 // 빈 사용자 프로필 (아무 정보도 없는 상태)
 const emptyUser: UserSignals = {
   ageGroup: null, region: null, district: null, occupation: null,
-  incomeLevel: null, householdTypes: [], benefitTags: [], hasChildren: null,
+  incomeLevel: null, householdTypes: [], benefitTags: [], hasChildren: null, merit: null,
 };
 
 // 기본 정책 데이터 (기준점)
@@ -410,7 +410,7 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
     expect(r.score).toBe(0);
   });
 
-  it('보훈대상자 정책 + 직장인 → 차단', () => {
+  it('보훈대상자 정책 + 직장인 (merit=null) → 차단', () => {
     const r = scoreProgram(
       { ...baseProgram,
         title: '보훈대상자 의료비 지원',
@@ -420,6 +420,37 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
       { ...emptyUser,
         region: '서울',
         occupation: '직장인',
+        benefitTags: ['의료'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  // 2026-04-28 마이그레이션 064 — merit 시그널 도입 후 통과 케이스
+  it('국가유공자 정책 + merit=merit 사용자 → 통과', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '교통시설 이용지원(국가유공자)',
+        region: '전국',
+        description: '국가유공자 교통권 보장',
+        benefit_tags: ['교통'] },
+      { ...emptyUser,
+        region: '전남',
+        merit: 'merit',
+        benefitTags: ['교통'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('보훈대상자 정책 + merit=none 명시 사용자 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '보훈대상자 의료비 지원',
+        region: '전국',
+        description: '보훈대상자 본인부담금 지원',
+        benefit_tags: ['의료'] },
+      { ...emptyUser,
+        region: '서울',
+        merit: 'none',
         benefitTags: ['의료'] },
     );
     expect(r.score).toBe(0);

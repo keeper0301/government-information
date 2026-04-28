@@ -258,10 +258,11 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
       user.hasChildren === true;
     if (!isChildUser) return true;
   }
-  // 보훈·국가유공자 — 현재 프로필 모델에 보훈 시그널 0 → 모든 일반 사용자 차단.
-  // 추후 user.merit 같은 시그널 도입 시 통과 조건 완화 가능.
+  // 보훈·국가유공자 — 마이그레이션 064 (2026-04-28) 의 merit 시그널 활용.
+  // user.merit === 'merit' (본인 또는 유족) 만 통과. NULL/'none' 은 차단.
+  // 기존 사용자 모두 NULL 이라 회귀 0 (NATIONAL_MERIT 정책 그대로 차단).
   if (NATIONAL_MERIT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    return true;
+    if (user.merit !== 'merit') return true;
   }
   // 농어민 — occupation === '농어민' 만 통과 (2026-04-28 OccupationOption 에 추가).
   // 일반 사용자(대학생·직장인·자영업자 등) 에게 농어민 전용 정책 차단.

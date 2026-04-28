@@ -117,6 +117,16 @@ export const HOUSEHOLD_OPTIONS = [
 ] as const;
 export type HouseholdOption = typeof HOUSEHOLD_OPTIONS[number]['value'];
 
+// 보훈 가족 — 마이그레이션 064 (2026-04-28).
+// 국가유공자·보훈대상자·애국지사·참전유공자 등 NATIONAL_MERIT_COHORT 정책의
+// 정확 매칭용. 'merit' (본인 또는 유족) 만 cohort 게이트 통과.
+// NULL/'none' 사용자에게는 보훈 전용 정책이 추천 섹션에 노출되지 않음.
+export const MERIT_OPTIONS = [
+  { value: 'merit', label: '보훈 가족 (본인 또는 유족)' },
+  { value: 'none',  label: '해당 없음' },
+] as const;
+export type MeritOption = typeof MERIT_OPTIONS[number]['value'];
+
 // ============================================================
 // 자영업자 "내 가게" 프로필 옵션 (business_profiles 테이블 매핑)
 // ============================================================
