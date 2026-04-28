@@ -176,7 +176,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
 
   // ─── 기존 페이지네이션 query ──────────────────────────────────────────────────
   let query = supabase
-    .from("news_posts")
+    .from("news_posts_deduped" as "news_posts")
     .select(
       "id, slug, title, summary, category, ministry, source_outlet, thumbnail_url, published_at, benefit_tags",
       { count: "exact" },
@@ -195,7 +195,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   // 사용자가 광역 필터 직접 누르지 않은 경우 (activeProvince=null) + 사용자 region
   // 있으면 pool ministry 를 사용자 광역+부처명+null 로 좁힘 — 다른 광역 noise 차단.
   let poolQuery = supabase
-    .from("news_posts")
+    .from("news_posts_deduped" as "news_posts")
     .select("id, slug, title, summary, body, category, ministry, source_outlet, thumbnail_url, benefit_tags, published_at, source_url")
     .order("published_at", { ascending: false })
     .limit(100);
