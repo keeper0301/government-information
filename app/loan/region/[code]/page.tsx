@@ -20,7 +20,13 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProgramRow } from "@/components/program-row";
 import { loanToDisplay } from "@/lib/programs";
-import { PROVINCES, getProvinceByCode, getRegionMatchPatterns } from "@/lib/regions";
+import {
+  PROVINCES,
+  PROVINCE_CODE_TO_SHORT,
+  getProvinceByCode,
+  getRegionMatchPatterns,
+  type ProvinceCode,
+} from "@/lib/regions";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
 // 17 광역 SSG 빌드 (Next.js 16 패턴)
@@ -35,14 +41,6 @@ interface PageProps {
   params: Promise<{ code: string }>;
 }
 
-const PROVINCE_SHORT_BY_CODE: Record<string, string> = {
-  seoul: "서울", busan: "부산", daegu: "대구", incheon: "인천",
-  gwangju: "광주", daejeon: "대전", ulsan: "울산", sejong: "세종",
-  gyeonggi: "경기", gangwon: "강원", chungbuk: "충북", chungnam: "충남",
-  jeonbuk: "전북", jeonnam: "전남", gyeongbuk: "경북", gyeongnam: "경남",
-  jeju: "제주",
-};
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { code } = await params;
   const province = getProvinceByCode(code);
@@ -51,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "광역을 찾을 수 없어요 | 정책알리미" };
   }
 
-  const shortName = PROVINCE_SHORT_BY_CODE[code] ?? province.name;
+  const shortName = PROVINCE_CODE_TO_SHORT[code as ProvinceCode] ?? province.name;
   const title = `${province.name} 소상공인 대출·지원금 가이드`;
   const description = `${province.name} 소상공인·자영업자가 받을 수 있는 정부 대출과 지원금을 한곳에서 확인하세요. 자격·금리·한도 정리.`;
 
@@ -79,7 +77,7 @@ export default async function LoanRegionPage({ params }: PageProps) {
   const province = getProvinceByCode(code);
   if (!province) notFound();
 
-  const shortName = PROVINCE_SHORT_BY_CODE[code] ?? province.name;
+  const shortName = PROVINCE_CODE_TO_SHORT[code as ProvinceCode] ?? province.name;
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
 

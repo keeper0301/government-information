@@ -166,6 +166,30 @@ export function getRegionMatchPatterns(shortName: string): string[] {
   return [full, shortName];
 }
 
+// 광역 영문 코드 → 짧은 한글 이름. PROVINCE_SHORT_TO_FULL 의 역방향.
+// /welfare/region/[code]·/loan/region/[code] 페이지가 path param 의 영문
+// 코드(jeonnam)를 DB ilike 매칭에 잘 잡히는 짧은 이름(전남)으로 변환할 때 사용.
+// 짧은 이름 매핑이 없으면 정식 광역명(getProvinceByCode 결과)으로 fallback.
+export const PROVINCE_CODE_TO_SHORT: Record<ProvinceCode, string> = {
+  seoul: "서울",
+  busan: "부산",
+  daegu: "대구",
+  incheon: "인천",
+  gwangju: "광주",
+  daejeon: "대전",
+  ulsan: "울산",
+  sejong: "세종",
+  gyeonggi: "경기",
+  gangwon: "강원",
+  chungbuk: "충북",
+  chungnam: "충남",
+  jeonbuk: "전북",
+  jeonnam: "전남",
+  gyeongbuk: "경북",
+  gyeongnam: "경남",
+  jeju: "제주",
+};
+
 // 광역별 cron 시간 매핑 — vercel.json 의 schedule 과 일치 (UTC 기준).
 // 14:00 ~ 15:20, 5분 간격으로 분산 → 다른 cron (RSS 02:00, collect 04:00,
 // enrich 03:00, cleanup 05:00, finalize 06:00, alert 07:00) 과 충돌 없음.

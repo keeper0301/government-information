@@ -33,7 +33,7 @@ export async function getSummaryKpi(): Promise<SummaryKpi> {
     admin
       .from("subscriptions")
       .select("tier")
-      .in("status", ACTIVE_STATUSES as unknown as string[])
+      .in("status", [...ACTIVE_STATUSES])
       .in("tier", ["basic", "pro"]),
   ]);
 
