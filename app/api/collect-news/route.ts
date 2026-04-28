@@ -26,11 +26,18 @@ async function run(jobLabel: string) {
   try {
     const rss = await collectKoreaKr();
 
-    // 전건 실패만 알림 (에러 일부는 정상 범주 — 특정 feed 일시 장애 가능)
-    if (rss.errors >= 3 || (rss.total === 0 && rss.errors > 0)) {
+    // 실패율 기반 임계치 — 외부 RSS feed 일과성 장애 (3% 정도) 는 노이즈로
+    // 매일 알림 시 사장님 짜증 + 진짜 사고 알아채기 어려움.
+    // 기준: (a) 전건 실패 (total=0 + errors>0) 또는 (b) 실패율 50% 이상.
+    // 8/267 (3%) 같은 부분 실패는 무시 — 정상 수집 충분.
+    const totalAttempts = rss.total + rss.errors;
+    const failureRate = totalAttempts > 0 ? rss.errors / totalAttempts : 0;
+    const isCriticalFailure =
+      (rss.total === 0 && rss.errors > 0) || failureRate >= 0.5;
+    if (isCriticalFailure) {
       await notifyCronFailure(
         `${jobLabel} - korea.kr RSS 수집 이슈`,
-        `errors=${rss.errors} / total=${rss.total}`,
+        `errors=${rss.errors} / total=${rss.total} (실패율 ${(failureRate * 100).toFixed(0)}%)`,
       );
     }
 
