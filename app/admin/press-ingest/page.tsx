@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import {
   getPressIngestCandidates,
+  getPressIngestKpi,
   type PressIngestCandidate,
 } from "@/lib/press-ingest/filter";
 import { PressClassifyAction } from "./classify-action";
@@ -85,6 +86,37 @@ const MINISTRY_SHORT: Record<string, string> = {
   제주특별자치도: "제주",
 };
 
+// KPI 카드 — 4 카드 grid, tone 별 색상
+function KpiCard({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: string;
+  tone: "ok" | "muted" | "warn";
+  hint?: string;
+}) {
+  const cls =
+    tone === "ok"
+      ? "border-blue-200 bg-blue-50 text-blue-900"
+      : tone === "warn"
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-grey-200 bg-grey-50 text-grey-700";
+  return (
+    <div className={`rounded-lg border p-3 ${cls}`}>
+      <p className="text-[11px] font-semibold mb-0.5 tracking-[0.04em] uppercase">
+        {label}
+      </p>
+      <p className="text-[18px] font-extrabold tracking-[-0.3px] leading-tight">
+        {value}
+      </p>
+      {hint && <p className="text-[10px] mt-1 leading-[1.4]">{hint}</p>}
+    </div>
+  );
+}
+
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString("ko-KR", {
     timeZone: "Asia/Seoul",
@@ -114,7 +146,12 @@ export default async function PressIngestPage({
     return [24, 48, 168].includes(n) ? n : 24;
   })();
 
-  const candidates = await getPressIngestCandidates(hours, 100);
+  const [candidates, kpi] = await Promise.all([
+    getPressIngestCandidates(hours, 100),
+    getPressIngestKpi(),
+  ]);
+  // ANTHROPIC_API_KEY 설정 여부 — server side 검증 (값 노출 X)
+  const llmEnabled = !!process.env.ANTHROPIC_API_KEY;
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -132,6 +169,38 @@ export default async function PressIngestPage({
             우측 버튼 → 수동 등록 폼으로 이동.
           </p>
         </div>
+
+        {/* KPI 카드 (Step 3 가시화) */}
+        <section className="mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KpiCard
+            label="24h 후보"
+            value={`${kpi.candidates_24h}건`}
+            tone={kpi.candidates_24h > 0 ? "ok" : "muted"}
+            hint="광역도청 보도자료 매칭"
+          />
+          <KpiCard
+            label="24h 등록 (manual)"
+            value={`${kpi.manual_registered_24h}건`}
+            tone={kpi.manual_registered_24h > 0 ? "ok" : "muted"}
+            hint="사장님 수동 등록"
+          />
+          <KpiCard
+            label="24h LLM 호출"
+            value={`${kpi.llm_classify_24h}건`}
+            tone={kpi.llm_classify_24h > 0 ? "ok" : "muted"}
+            hint={`Anthropic Haiku · ~$${(kpi.llm_classify_24h * 0.003).toFixed(2)}`}
+          />
+          <KpiCard
+            label="LLM 활성"
+            value={llmEnabled ? "✓ 켜짐" : "✗ 미설정"}
+            tone={llmEnabled ? "ok" : "warn"}
+            hint={
+              llmEnabled
+                ? "ANTHROPIC_API_KEY OK"
+                : "Vercel env 등록 필요"
+            }
+          />
+        </section>
 
         {/* 안내 + 기간 토글 */}
         <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
@@ -266,6 +335,12 @@ export default async function PressIngestPage({
         <p className="mt-8 text-[13px] flex items-center gap-4">
           <Link href="/admin" className="text-blue-500 font-medium underline">
             ← 어드민 홈
+          </Link>
+          <Link
+            href="/admin/my-actions?q=정책%20수동%20등록"
+            className="text-blue-500 font-medium underline"
+          >
+            등록 내역 →
           </Link>
           <Link
             href="/admin/welfare/new"

@@ -89,3 +89,55 @@ export async function getPressIngestCandidates(
 
   return (data ?? []) as PressIngestCandidate[];
 }
+
+// 운영 KPI — Step 3 가시화용
+// (24h 후보 / 24h manual_admin 등록 / 24h LLM 호출)
+export type PressIngestKpi = {
+  candidates_24h: number;
+  manual_registered_24h: number;
+  llm_classify_24h: number;
+};
+
+export async function getPressIngestKpi(): Promise<PressIngestKpi> {
+  const admin = createAdminClient();
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [candidatesRes, registeredRes, classifyRes] = await Promise.all([
+    // 24h 후보 — 같은 필터 로직, count only (head:true)
+    (() => {
+      const titleOrFilter = POLICY_SIGNAL_KEYWORDS.map(
+        (k) => `title.ilike.%${k}%`,
+      ).join(",");
+      const summaryOrFilter = POLICY_SIGNAL_KEYWORDS.map(
+        (k) => `summary.ilike.%${k}%`,
+      ).join(",");
+      return admin
+        .from("news_posts")
+        .select("id", { count: "exact", head: true })
+        .gte("published_at", since24h)
+        .in("ministry", REGIONAL_MINISTRIES)
+        .or(`${titleOrFilter},${summaryOrFilter}`);
+    })(),
+    // 24h 사장님 수동 등록 — admin_actions.manual_program_create 중
+    // details.kind != 'press_classify' (LLM 호출만 한 경우 제외)
+    admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "manual_program_create")
+      .gte("created_at", since24h)
+      .not("details->>kind", "eq", "press_classify"),
+    // 24h LLM 호출 — admin_actions.manual_program_create 중 details.kind = 'press_classify'
+    admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "manual_program_create")
+      .gte("created_at", since24h)
+      .eq("details->>kind", "press_classify"),
+  ]);
+
+  return {
+    candidates_24h: candidatesRes.count ?? 0,
+    manual_registered_24h: registeredRes.count ?? 0,
+    llm_classify_24h: classifyRes.count ?? 0,
+  };
+}
