@@ -32,6 +32,7 @@ import {
   getDailyRevenueEstimated,
   getRecentPayments,
   getAuthUserEmailMap,
+  getAuthUsersCached,
 } from "@/lib/admin-stats";
 import { Sparkline } from "@/components/admin/sparkline";
 import { TIER_NAMES } from "@/lib/subscription";
@@ -169,34 +170,41 @@ async function get24hStats() {
   };
 }
 
-// 최근 가입 사용자 5건 — user_profiles 기준 (실제 프로필 작성 완료자).
-// 이메일은 getAuthUserEmailMap (react cache) 에서 lookup → N+1 (5 × getUserById) 제거.
+// 최근 가입 사용자 5건 — auth.users 기준 (가입 즉시 표시, 온보딩 미완 사용자 포함).
+// 사고 (2026-04-28): user_profiles 기준이라 가입 후 온보딩 미완 사용자 (untillthen0807)
+// 가 카드에 안 보임 → 가입자 추적 누락. auth.users 기준으로 변경 + user_profiles
+// region/occupation 은 lookup 으로 표시 (있으면).
 async function getRecentSignups(limit = 5) {
   const admin = createAdminClient();
-  const [profilesResult, emailMap] = await Promise.all([
+  const [users, profilesResult] = await Promise.all([
+    getAuthUsersCached(),
     admin
       .from("user_profiles")
-      .select("id, created_at, region, occupation")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    getAuthUserEmailMap(),
+      .select("id, region, occupation"),
   ]);
 
-  const data = profilesResult.data;
-  if (!data || data.length === 0) return [];
+  const profileMap = new Map(
+    (profilesResult.data ?? []).map(
+      (p: { id: string; region: string | null; occupation: string | null }) => [p.id, p],
+    ),
+  );
 
-  return (data as {
-    id: string;
-    created_at: string;
-    region: string | null;
-    occupation: string | null;
-  }[]).map((p) => ({
-    id: p.id,
-    email: emailMap.get(p.id) ?? null,
-    created_at: p.created_at,
-    region: p.region,
-    occupation: p.occupation,
-  }));
+  // auth.users 를 created_at 내림차순 정렬 후 limit
+  const recent = [...users]
+    .filter((u) => u.created_at) // null 안전
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
+    .slice(0, limit);
+
+  return recent.map((u) => {
+    const profile = profileMap.get(u.id);
+    return {
+      id: u.id,
+      email: u.email ?? null,
+      created_at: u.created_at ?? "",
+      region: profile?.region ?? null,
+      occupation: profile?.occupation ?? null,
+    };
+  });
 }
 
 // "방금 전", "5분 전", "3시간 전" 같은 상대 시각 포맷 — 대시보드 가독성용
