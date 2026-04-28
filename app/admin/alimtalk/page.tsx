@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { AlimtalkTestForm } from "./test-form";
+import { AlimtalkPreviewCard } from "./preview-card";
 
 export const metadata: Metadata = {
   title: "알림톡 운영 | 어드민",
@@ -472,6 +473,18 @@ export default async function AlimtalkAdminPage() {
               </table>
             </div>
           )}
+        </section>
+
+        {/* 카톡 카드 미리보기 — 사용자가 받게 될 알림 사전 시각 확인 (#8) */}
+        <section className="mb-8">
+          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+            카톡 카드 미리보기
+          </h2>
+          <p className="text-[13px] text-grey-600 mb-4 leading-[1.6]">
+            POLICY_NEW (v2) · POLICY_NEW_V3 양 템플릿. 변수 입력 → 사용자가 카카오톡으로
+            받을 카드 즉시 시각화. 발송 안 함 — 디자인 검토·심사 반려 대비.
+          </p>
+          <AlimtalkPreviewCard />
         </section>
 
         {/* 테스트 발송 폼 */}
