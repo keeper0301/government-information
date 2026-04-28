@@ -146,7 +146,12 @@ const MULTICULTURAL_COHORT_KEYWORDS: RegExp[] = [
   /결혼이민자/,
 ];
 
-// 보호아동·시설양육 cohort — 사용자 가구에 자녀(single_parent / multi_child) 가 있을 때만 통과
+// 보호아동·시설양육 cohort — 사용자 가구에 자녀(single_parent / multi_child) 가
+// 있거나 has_children=true 일 때만 통과.
+//
+// 2026-04-28 사장님 화면 사고 후속:
+//   "농촌유학 지원사업" — 자녀 동반 농촌 이주 가족만 대상.
+//   사장님(married, has_children NULL) 에게 노출되던 사고 차단.
 const CHILD_COHORT_KEYWORDS: RegExp[] = [
   /보호아동/,
   /아동복지시설/,
@@ -155,6 +160,37 @@ const CHILD_COHORT_KEYWORDS: RegExp[] = [
   /결식아동/,        // 결식 위기 아동 — 자녀 동반 가구만 의미
   /아동급식/,        // 아동 급식지원 — 자녀 동반 가구만 의미
   /방학중\s*급식/,   // 방학중 급식 — 자녀 동반 가구만 의미
+  /농촌\s*유학/,     // 농촌유학 — 학령기 자녀 동반 농촌 이주 가족 대상
+];
+
+// 보훈·국가유공자 cohort — 사용자 프로필에 보훈 시그널 0 이라 모든 일반 사용자 부적합.
+// 2026-04-28 사장님 화면 사고: "교통시설 이용지원(애국지사·국가유공자)" 노출.
+// 사장님 자영업자 + 보훈 무관 → 매칭 자체가 부적합.
+//
+// 추후 user.merit 같은 시그널 도입 시 게이트 통과 조건 완화 가능.
+const NATIONAL_MERIT_COHORT_KEYWORDS: RegExp[] = [
+  /국가유공자/,
+  /보훈\s*대상자/,
+  /보훈가족/,
+  /애국지사/,
+  /참전유공자/,
+  /상이군경/,
+  /순국선열/,
+  /5\.18\s*민주유공자/,
+];
+
+// 농어민 cohort — 사용자 occupation 이 "농어민" 일 때만 통과.
+// 2026-04-28 사장님 화면 사고: "영암군 농어민 공익수당" 자영업자에게 노출.
+// 농민·어민·축산농가 등 명시 키워드는 다른 직업군에 부적합.
+const FARMER_COHORT_KEYWORDS: RegExp[] = [
+  /농어민/,
+  /농민\s*수당/,    // "농민수당" 단독 — 농민 직군 전용
+  /어민\s*수당/,
+  /농업인\s*수당/,
+  /어업인\s*수당/,
+  /축산\s*농가/,
+  /농가\s*경영/,
+  /수산업\s*경영/,
 ];
 
 // 산후조리·영유아 cohort — has_children=true 사용자만 통과.
@@ -213,12 +249,26 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   if (MULTICULTURAL_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     return true;
   }
-  // 보호아동·시설양육 — 자녀 동반 가구만 통과 (한부모/다자녀)
+  // 보호아동·시설양육·농촌유학 — 자녀 동반 가구만 통과
+  // (single_parent/multi_child household OR has_children=true)
   if (CHILD_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     const isChildUser =
       user.householdTypes.includes('single_parent') ||
-      user.householdTypes.includes('multi_child');
+      user.householdTypes.includes('multi_child') ||
+      user.hasChildren === true;
     if (!isChildUser) return true;
+  }
+  // 보훈·국가유공자 — 현재 프로필 모델에 보훈 시그널 0 → 모든 일반 사용자 차단.
+  // 추후 user.merit 같은 시그널 도입 시 통과 조건 완화 가능.
+  if (NATIONAL_MERIT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    return true;
+  }
+  // 농어민 — 사용자 OccupationOption 에 '농어민' 시그널이 없음 (profile-options
+  // 7종: 대학생·직장인·자영업자·공무원·구직자·주부·기타). 따라서 모든 일반
+  // 사용자 차단 (NATIONAL_MERIT 와 동일 패턴).
+  // 추후 OccupationOption 에 '농어민' 추가 시 통과 조건 완화.
+  if (FARMER_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    return true;
   }
   // 장애인 정책 — disabled_family 가구만 통과
   if (DISABILITY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {

@@ -363,6 +363,101 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
     expect(r.score).toBeGreaterThan(0);
   });
 
+  // 2026-04-28 사장님 화면 사고 후속 — 농촌유학 차단 (자녀 시그널 없음)
+  it('농촌유학 정책 + has_children=NULL 사용자 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '농촌유학 지원사업',
+        region: '전라남도',
+        description: '농촌 유학 가구 주거비 등 유학경비 지원',
+        benefit_tags: ['교육', '주거'] },
+      { ...emptyUser,
+        region: '전남',
+        householdTypes: ['married'],
+        benefitTags: ['교육', '주거'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('농촌유학 정책 + has_children=true 사용자 → 통과', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '농촌유학 지원사업',
+        region: '전라남도',
+        description: '농촌 유학 가구 주거비 등',
+        benefit_tags: ['교육'] },
+      { ...emptyUser,
+        region: '전남',
+        hasChildren: true,
+        benefitTags: ['교육'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  // 2026-04-28 사장님 화면 사고 — 보훈 cohort 차단 (모든 일반 사용자)
+  it('국가유공자 교통시설 이용지원 + 일반 사용자 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '교통시설 이용지원(버스,내항여객선,KTX등)',
+        region: '전국',
+        description: '애국지사 및 국가유공상이자 등의 교통권 보장',
+        benefit_tags: ['교통'] },
+      { ...emptyUser,
+        region: '전남',
+        occupation: '자영업자',
+        benefitTags: ['교통'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('보훈대상자 정책 + 직장인 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '보훈대상자 의료비 지원',
+        region: '전국',
+        description: '보훈대상자 본인부담금 지원',
+        benefit_tags: ['의료'] },
+      { ...emptyUser,
+        region: '서울',
+        occupation: '직장인',
+        benefitTags: ['의료'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  // 2026-04-28 사장님 화면 사고 — 농어민 cohort 차단 (자영업자에게)
+  it('영암군 농어민 공익수당 + 자영업자 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '영암군 농어민 공익수당',
+        region: '전라남도 영암군',
+        description: '농민과 어민의 삶의 질 향상',
+        benefit_tags: ['생계'] },
+      { ...emptyUser,
+        region: '전남',
+        occupation: '자영업자',
+        benefitTags: ['생계'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  // 농어민 시그널 자체가 OccupationOption 에 없어 모든 일반 사용자 차단.
+  // 추후 OccupationOption 에 '농어민' 추가 시 통과 테스트 신설.
+  it('농민수당 정책 + 직장인 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '농민수당 지급',
+        region: '전라남도',
+        description: '농가 경영 안정',
+        benefit_tags: ['생계'] },
+      { ...emptyUser,
+        region: '전남',
+        occupation: '직장인',
+        benefitTags: ['생계'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
   // 산후조리·영유아 cohort gate (2026-04-28 사장님 사고 후속)
   it('산후조리 정책 + hasChildren=false → 차단', () => {
     const r = scoreProgram(
