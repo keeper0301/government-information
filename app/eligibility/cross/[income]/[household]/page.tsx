@@ -27,6 +27,7 @@ import { safeJsonLd } from '@/lib/json-ld-safe';
 
 // 6시간 ISR — 단독 페이지와 동일 정책 (정책 추가/마감 빈도 고려)
 export const revalidate = 21600;
+export const dynamicParams = false; // generateStaticParams 외 조합은 자동 404 (SEO 위 빈 페이지 색인 차단)
 
 const BASE_URL = 'https://www.keepioo.com';
 const LIST_LIMIT = 50;

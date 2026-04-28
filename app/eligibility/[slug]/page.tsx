@@ -22,6 +22,7 @@ import { safeJsonLd } from '@/lib/json-ld-safe';
 
 // 6시간 ISR — 정책 추가/마감 빈도 고려. revalidate-on-demand 까지 가지 않아도 충분.
 export const revalidate = 21600;
+export const dynamicParams = false; // generateStaticParams 외 slug 는 자동 404 (SEO 위 빈 페이지 색인 차단)
 
 export async function generateStaticParams() {
   return ELIGIBILITY_SLUGS.map((slug) => ({ slug }));

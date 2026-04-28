@@ -22,6 +22,7 @@ import { findRelatedPrograms } from "@/lib/news-matching";
 
 const PER_PAGE = 18;
 export const revalidate = 600; // 10분 ISR
+export const dynamicParams = false; // VALID_KEYWORDS 외는 자동 404 (SEO 위 빈 페이지 색인 차단)
 
 type Props = {
   params: Promise<{ keyword: string }>;
