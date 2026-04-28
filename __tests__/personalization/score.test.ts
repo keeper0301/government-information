@@ -315,6 +315,54 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
     expect(r.score).toBe(0);
   });
 
+  // 2026-04-28 사장님 화면 사고: "기초생활보장수급자및복지시설생활자위문" 노출
+  // 정규식 /기초생활수급자/ 가 "기초생활보장수급자" 사이 "보장" 때문에 매칭 안 됨.
+  it('기초생활보장수급자 정책 (보장 끼움) + mid 사용자 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '기초생활보장수급자및복지시설생활자위문',
+        region: '전라남도 순천시',
+        description: '생활이 어려운 저소득층 및 사회복지시설 위문',
+        benefit_tags: ['생계', '의료'] },
+      { ...emptyUser,
+        region: '전남',
+        district: '순천시',
+        incomeLevel: 'mid',
+        benefitTags: ['생계', '의료'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('기초생활 보장 수급자 (공백 변형) + mid 사용자 → 차단', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        region: '전국',
+        description: '기초생활 보장 수급자 대상 지원',
+        benefit_tags: ['주거'] },
+      { ...emptyUser,
+        region: '전남',
+        incomeLevel: 'mid',
+        benefitTags: ['주거'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  // 회귀 가드 — low 사용자는 그대로 통과해야 함 (gate 가 mid 만 차단)
+  it('기초생활보장수급자 정책 + low 사용자 → 통과 (점수 > 0)', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '기초생활보장수급자 위문',
+        region: '전국',
+        description: '저소득층 위문',
+        benefit_tags: ['생계'] },
+      { ...emptyUser,
+        region: '전남',
+        incomeLevel: 'low',
+        benefitTags: ['생계'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
   // 산후조리·영유아 cohort gate (2026-04-28 사장님 사고 후속)
   it('산후조리 정책 + hasChildren=false → 차단', () => {
     const r = scoreProgram(
