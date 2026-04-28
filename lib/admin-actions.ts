@@ -24,7 +24,8 @@ export type AdminActionType =
   | "blog_publish"          // 미발행 → 발행 전환
   | "blog_unpublish"        // 발행 → 미발행 전환 (임시 비공개)
   | "news_hide"             // 정책 뉴스 비공개 (저작권·오보 모더레이션)
-  | "news_unhide";          // 정책 뉴스 복원 (잘못 숨긴 경우 또는 사유 해소)
+  | "news_unhide"           // 정책 뉴스 복원 (잘못 숨긴 경우 또는 사유 해소)
+  | "manual_cron_trigger";  // /admin/cron-trigger 수동 cron 실행 (Phase 5)
 
 export type AdminActionRecord = {
   id: string;
@@ -230,4 +231,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   blog_unpublish: "블로그 글 비공개",
   news_hide: "정책 뉴스 비공개",
   news_unhide: "정책 뉴스 복원",
+  manual_cron_trigger: "Cron 수동 실행",
 };

@@ -403,6 +403,11 @@ export default async function AdminHomePage({
               desc="cohort funnel + 콘텐츠 TOP + 사용자 분포"
             />
             <ActionCard
+              href="/admin/cron-trigger"
+              title="⚡ Cron 수동 실행"
+              desc="모든 cron 한 페이지 manual trigger (8 일반 + 17 광역)"
+            />
+            <ActionCard
               href="/admin/alimtalk"
               title="알림톡 운영"
               desc="24h 발송 집계·환경변수·테스트 발송"
