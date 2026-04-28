@@ -60,3 +60,7 @@ tmp/
 # gstack 도구 메타데이터 (retros 등) — 로컬 전용
 .context/
 .design-audit/
+
+# 로컬 lighthouse 측정 결과 (Phase 1 Core Web Vitals 검증용, 약 3MB JSON)
+.lighthouse-results/
+.lighthouse-results-baseline/
