@@ -31,7 +31,6 @@ import {
   getDailySignups,
   getDailyRevenueEstimated,
   getRecentPayments,
-  getAuthUserEmailMap,
   getAuthUsersCached,
 } from "@/lib/admin-stats";
 import { Sparkline } from "@/components/admin/sparkline";
