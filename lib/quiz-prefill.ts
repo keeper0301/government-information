@@ -31,6 +31,8 @@ const TTL_SECONDS = 60 * 60; // 1시간
 export type QuizPrefill = {
   ageGroup: AgeOption | null;
   region: RegionOption | null;
+  district?: string | null;         // 신규 optional — 시·군·구 (Phase 3 wizard).
+                                    // 기존 /quiz 결과 → /signup 흐름 호출처 호환 유지.
   occupation: OccupationOption | null;
   incomeLevel: IncomeOption | null;
   householdTypes: HouseholdOption[];
@@ -63,6 +65,7 @@ export function parseQuizPrefill(raw: unknown): QuizPrefill | null {
   const result: QuizPrefill = {
     ageGroup: pickEnum(obj.ageGroup, AGE_OPTIONS),
     region: pickEnum(obj.region, REGION_OPTIONS),
+    district: typeof obj.district === 'string' ? obj.district : null,
     occupation: pickEnum(obj.occupation, OCCUPATION_OPTIONS),
     incomeLevel: pickEnum<IncomeOption>(obj.incomeLevel, incomeAllowed),
     householdTypes: pickHouseholds(obj.householdTypes),
@@ -71,6 +74,7 @@ export function parseQuizPrefill(raw: unknown): QuizPrefill | null {
   const empty =
     !result.ageGroup &&
     !result.region &&
+    !result.district &&
     !result.occupation &&
     !result.incomeLevel &&
     result.householdTypes.length === 0;
