@@ -9,6 +9,7 @@ import { HomeTargetCards } from "@/components/home-target-cards";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
 import { HomeJsonLd } from "@/components/home-jsonld";
+import { BlogCategoryChips } from "@/components/blog-category-chips";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
@@ -31,7 +32,9 @@ export default async function Home() {
   // 1) 로그인 상태 + urgent 리스트 먼저 확보 (이 둘은 프로필 유무와 무관)
   const supabase = await createClient();
   const [urgents, userResult] = await Promise.all([
-    getUrgentPrograms(30),
+    // 마퀴 회전이라 12건이면 충분 (이전 30건 → 시각 부담 ↓ + 마퀴 더 천천히 읽힘).
+    // /calendar 전체보기 CTA 가 우측에 항상 노출되므로 발견성 회귀 0.
+    getUrgentPrograms(12),
     supabase.auth.getUser(),
   ]);
 
@@ -259,7 +262,7 @@ export default async function Home() {
       {recentPosts.length > 0 && (
         <RevealOnScroll>
           <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-            <div className="flex items-baseline justify-between mb-8">
+            <div className="flex items-baseline justify-between mb-6">
               <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
                 정책 블로그
               </h2>
@@ -270,6 +273,8 @@ export default async function Home() {
                 전체 보기 →
               </Link>
             </div>
+            {/* 카테고리 chip 7종 — /blog/category long-tail SEO 동선 (87efc65 연계) */}
+            <BlogCategoryChips />
             <div className="grid gap-5 md:grid-cols-3">
               {recentPosts.map((post) => (
                 <BlogCard key={post.slug} post={post} />
