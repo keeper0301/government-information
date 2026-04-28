@@ -24,9 +24,15 @@ import { computeDedupeHash, loadRecentDedupeHashes, hasJaccardMatch } from "@/li
 import {
   type ProvinceCode,
   getProvinceByCode,
-  getSearchUnitsForProvince,
 } from "@/lib/regions";
 import { createHash } from "node:crypto";
+
+// 검색 결과를 published_at 기준 N일 이내만 통과시킴.
+// 2026-04-29 hot-fix: 시군 검색 폐기 후에도 옛 뉴스(2024~2025) 가 대량 잡혀
+// 노이즈가 됨. 60일 이내만 keepioo 의 "정책 새 소식" 가치에 부합.
+// 60일은 광역 보도자료 → 사용자 알림 도달까지의 여유 + 시즌성 정책 (예: 명절·
+// 학기 시작) 1~2개월 전 발표 cycle 흡수.
+const FRESHNESS_DAYS = 60;
 
 const CLIENT_ID = process.env.NAVER_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || "";
@@ -157,76 +163,83 @@ async function searchOnce(searchUnit: string, keyword: string): Promise<NaverNew
   return data.items ?? [];
 }
 
-// 1광역의 모든 검색 단위 × 키워드 처리 + 표준화.
-// 시군 (구체) 먼저, 광역 (포괄) 나중 — seen Set 덕에 시군 검색에서 잡힌
-// 뉴스가 광역 검색에서 skip 되어 ministry 가 시군 단위로 보존됨.
+// 1광역의 검색 단위 × 키워드 처리 + 표준화.
+// 2026-04-29 hot-fix: 시군 검색 폐기.
+//   배경: fd8f21b (2026-04-28) 가 시군 unit 검색을 추가했으나, 진단 결과
+//   keepioo 키워드 필터 (extractNewsKeywords) 통과한 시군 ministry row 0건이고,
+//   대신 광역 검색에서 잡힌 row 만 ministry='광역' 으로 저장됨.
+//   결과: 시군 검색은 ① 결과에 기여 0 ② API 쿼터·시간 낭비 N배
+//        ③ 검색 다양성으로 옛 뉴스 (2024~2025) 까지 대량 잡혀 60배 폭증
+//        ④ 1회 cron 에 광역당 ~870건 → 24h 14,852건 (평소 ~150건 의 ~100배).
+//   시군 발표 뉴스 매칭이 필요하면 press-ingest 의 광역 ILIKE 매칭 (fd8f21b
+//   의 다른 부분, 유지) 으로 별도 처리. naver-news 자체는 광역만 검색해
+//   평소 페이스 (~80건/광역/일) 로 회귀.
 async function collectProvinceItems(
   provinceCode: ProvinceCode,
   provinceName: string,
 ): Promise<NormalizedItem[]> {
   const seen = new Set<string>();
   const items: NormalizedItem[] = [];
-  const searchUnits = getSearchUnitsForProvince(provinceCode);
-  // 광역명 자체는 첫 원소로 들어옴 (lib/regions.ts).
-  // 시군 먼저 처리 → 시군 발표 뉴스는 ministry='전라남도 순천시' 보존.
-  // 광역 발표 뉴스는 마지막에 잡혀 ministry='전라남도' 저장.
-  const orderedUnits = [
-    ...searchUnits.filter((u) => u !== provinceName),
-    provinceName,
-  ];
 
-  for (const unit of orderedUnits) {
-    for (const keyword of KEYWORDS) {
-      let raw: NaverNewsItem[] = [];
-      try {
-        raw = await searchOnce(unit, keyword);
-      } catch (err) {
-        console.error(`[naver-news] ${unit}+${keyword} 실패:`, err);
+  // 신선도 필터 — published_at 가 60일 보다 오래되면 skip.
+  // 옛 뉴스가 사용자 알림 가치 낮음 + sitemap 부담만 가중.
+  const freshnessCutoff = new Date(
+    Date.now() - FRESHNESS_DAYS * 24 * 60 * 60 * 1000,
+  );
+
+  for (const keyword of KEYWORDS) {
+    let raw: NaverNewsItem[] = [];
+    try {
+      raw = await searchOnce(provinceName, keyword);
+    } catch (err) {
+      console.error(`[naver-news] ${provinceName}+${keyword} 실패:`, err);
+      continue;
+    }
+
+    for (const r of raw) {
+      const url = r.originallink || r.link;
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+
+      const title = stripNaverMarkup(r.title);
+      const description = stripNaverMarkup(r.description);
+      const cleaned = cleanDescription(description);
+
+      // keepioo 도메인 키워드 2차 필터.
+      const textBlob = [title, cleaned].filter(Boolean).join(" ");
+      const newsKeywords = extractNewsKeywords([title, cleaned]);
+      if (newsKeywords.length === 0) continue;
+
+      // 노이즈 필터 — 정치 인물·정당 / 대괄호 모음·일정 / 기업 CSR /
+      // 사건사고 / 정부 평가 5종. 매칭되면 welfare/loan 저장 안 함.
+      // 28,314건 전수조사 기준 약 19.7% 차단 → 진짜 정책만 보존.
+      if (isNewsNoise(title)) continue;
+
+      const pubDate = new Date(r.pubDate);
+      const published_at = Number.isNaN(pubDate.getTime())
+        ? new Date().toISOString()
+        : pubDate.toISOString();
+
+      // 신선도 — pubDate 가 cutoff 이전이면 skip (2024~2025 옛 뉴스 차단).
+      if (!Number.isNaN(pubDate.getTime()) && pubDate < freshnessCutoff) {
         continue;
       }
 
-      for (const r of raw) {
-        const url = r.originallink || r.link;
-        if (!url || seen.has(url)) continue;
-        seen.add(url);
+      const sourceId = hashSourceId(url);
+      const benefit_tags = extractBenefitTags(textBlob);
 
-        const title = stripNaverMarkup(r.title);
-        const description = stripNaverMarkup(r.description);
-        const cleaned = cleanDescription(description);
-
-        // keepioo 도메인 키워드 2차 필터.
-        const textBlob = [title, cleaned].filter(Boolean).join(" ");
-        const newsKeywords = extractNewsKeywords([title, cleaned]);
-        if (newsKeywords.length === 0) continue;
-
-        // 노이즈 필터 — 정치 인물·정당 / 대괄호 모음·일정 / 기업 CSR /
-        // 사건사고 / 정부 평가 5종. 매칭되면 welfare/loan 저장 안 함.
-        // 28,314건 전수조사 기준 약 19.7% 차단 → 진짜 정책만 보존.
-        if (isNewsNoise(title)) continue;
-
-        const sourceId = hashSourceId(url);
-        const benefit_tags = extractBenefitTags(textBlob);
-
-        const pubDate = new Date(r.pubDate);
-        const published_at = Number.isNaN(pubDate.getTime())
-          ? new Date().toISOString()
-          : pubDate.toISOString();
-
-        items.push({
-          source_code: `naver-news-${provinceCode}`,
-          source_id: sourceId,
-          source_url: url,
-          // ministry = 검색 unit 그대로 — '전라남도' 또는 '전라남도 순천시'.
-          // 시군 발표 뉴스는 시군명까지 포함해 region 매칭·press-ingest 정확도 ↑.
-          ministry: unit,
-          source_outlet: extractOutletFromUrl(url),
-          title,
-          summary: cleaned.length > 0 ? cleaned.slice(0, 500) : null,
-          keywords: newsKeywords,
-          benefit_tags,
-          published_at,
-        });
-      }
+      items.push({
+        source_code: `naver-news-${provinceCode}`,
+        source_id: sourceId,
+        source_url: url,
+        ministry: provinceName,
+        source_outlet: extractOutletFromUrl(url),
+        title,
+        summary: cleaned.length > 0 ? cleaned.slice(0, 500) : null,
+        keywords: newsKeywords,
+        benefit_tags,
+        published_at,
+      });
     }
   }
 
@@ -290,7 +303,8 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
   }
 
   const errors: string[] = [];
-  const searchUnits = getSearchUnitsForProvince(provinceCode).length;
+  // 2026-04-29 hot-fix 후 광역 unit 1개만 검색.
+  const searchUnits = 1;
 
   let items: NormalizedItem[] = [];
   try {
