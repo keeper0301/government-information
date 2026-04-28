@@ -152,17 +152,19 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
           ))}
         </ol>
 
-        {/* 비로그인 시 회원가입 CTA — 작은 풀 너비 푸터 */}
+        {/* 비로그인 시 회원가입 CTA — 작은 풀 너비 푸터.
+            TrackedLink 로 GA4 측정 (비로그인 funnel 직격, 사이드 배너 효과 추적). */}
         {!isLoggedIn && (
-          <Link
+          <TrackedLink
             href="/signup"
+            event={EVENTS.HOME_POPULAR_SIGNUP_CTA}
             className="mt-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors no-underline border border-blue-100"
           >
             <span className="text-[12px] font-bold text-blue-700">
               회원가입하면 알림 받기
             </span>
             <span className="text-blue-500 text-[13px] font-bold">→</span>
-          </Link>
+          </TrackedLink>
         )}
       </aside>
     </section>

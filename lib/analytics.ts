@@ -61,6 +61,7 @@ export const EVENTS = {
   HOME_POPULAR_CLICKED: "home_popular_clicked",             // 인기 정책 TOP 5 클릭
   HOME_REGION_CARD_CLICKED: "home_region_card_clicked",     // 지역별 카드 17개
   HOME_VALUE_PROPS_SHOWN: "home_value_props_shown",         // 가치 카드 노출 (페이지뷰 보조)
+  HOME_POPULAR_SIGNUP_CTA: "home_popular_signup_cta",       // 인기 정책 사이드 배너 끝 회원가입 CTA 클릭
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
