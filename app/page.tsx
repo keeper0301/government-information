@@ -1,4 +1,8 @@
 import Link from "next/link";
+// next/dynamic 을 nextDynamic 으로 alias — 페이지 하단의
+// `export const dynamic = "force-dynamic"` (Next.js segment config) 와 이름 충돌 방지.
+import nextDynamic from "next/dynamic";
+import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
 import { AlertStrip } from "@/components/alert-strip";
 import { CalendarPreview } from "@/components/calendar-preview";
@@ -16,13 +20,22 @@ import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { HeroStats } from "@/components/hero-stats";
 import { RegionMap } from "@/components/region-map";
 import { HomeCTA } from "@/components/home-cta";
-import { FloatingWishWidget } from "@/components/wish-form-floating";
 import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { getUrgentPrograms, type ProfileLite } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
 import { createClient } from "@/lib/supabase/server";
+
+// FloatingWishWidget — 좌측 하단 floating 위젯, 즉시 노출 불필요.
+// nextDynamic 으로 청크 분리 → 메인 번들 가벼움.
+const FloatingWishWidget = nextDynamic(
+  () =>
+    import("@/components/wish-form-floating").then((m) => ({
+      default: m.FloatingWishWidget,
+    })),
+  { loading: () => null },
+);
 
 // 홈페이지는 로그인 사용자·비로그인 사용자마다 프로필 자동 채움이 달라서
 // ISR 대신 요청마다 렌더링 (매 요청 ~수십ms, 성능 영향 미미)

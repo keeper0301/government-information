@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
-import { ChatbotPanel } from "@/components/chatbot-panel";
 import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import "./globals.css";
+
+// ChatbotPanel — 우측 하단 floating 위젯, 즉시 노출 불필요.
+// next/dynamic 으로 별도 청크 분리 → 메인 번들 가벼움 → TBT 감축.
+// SSR 유지 (loading: () => null) — SEO 영향 없음, 첫 paint 비차단.
+const ChatbotPanel = dynamic(
+  () => import("@/components/chatbot-panel").then((m) => ({ default: m.ChatbotPanel })),
+  { loading: () => null },
+);
 // 폰트는 Pretendard Variable 단일 (globals.css 의 CDN import).
 // 2026-04-25 친근한 핀테크 톤 리뉴얼로 Editorial(Bodoni·EB Garamond·
 // Nanum Myeongjo) 폰트군은 폐기. 토스 TDS 처럼 단일 sans 가 일관됨.
