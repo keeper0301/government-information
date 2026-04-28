@@ -83,6 +83,7 @@
 //  #{rule_name} 조건에 맞는 새 정책이 등록되었습니다.
 //
 //  ✅ 정책명: #{title}
+//  ✅ 발표일: #{announced_at}
 //  ✅ 사장님 자격: #{eligibility_status}
 //  ✅ 지원 금액: #{benefit_summary}
 //  ✅ 신청 마감: #{deadline}
@@ -99,6 +100,8 @@
 //  · #{user_name}          : 사용자 이름 또는 닉네임 (예: "최관철")
 //  · #{rule_name}          : 알림 규칙 이름 (예: "소상공인 정책자금")
 //  · #{title}              : 정책 제목 (예: "고유가 피해 소상공인 지원금")
+//  · #{announced_at}       : 정책 발표일 (예: "4월 28일") — 캐시노트 reference 차용
+//                            published_at 없으면 "최근" fallback
 //  · #{eligibility_status} : 자격 진단 결과 한 줄
 //                            예시: "✓ 자격 충족 (매출 5억 이하·5인 미만)"
 //                                  "확인 필요 (가게 정보 일부 미입력)"
@@ -173,6 +176,12 @@ export type KakaoTemplateVariables = {
     rule_name: string;
     /** 정책 제목 */
     title: string;
+    /**
+     * 정책 발표일 (예: "4월 28일"). MatchedProgram.published_at 을
+     * "M월 D일" 한국어 포맷으로 변환. 누락 시 "최근" fallback.
+     * 캐시노트 알림톡 reference 차용 — 신선도 신호.
+     */
+    announced_at: string;
     /**
      * 자격 진단 결과 한 줄. business_match.ts evaluateBusinessMatch 결과를
      * 사람이 읽을 한국어로 풀어 전달. 예시:

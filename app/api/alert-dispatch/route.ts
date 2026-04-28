@@ -372,6 +372,16 @@ async function runAlertDispatch(jobLabel: string) {
             // v3: business profile 매칭 결과를 한국어 라벨로 + benefit 요약 자동 생성
             // v2 (기존): rule_name/title/deadline/detail_path 만
             // matchByProgram Map 재사용 — 위에서 1번만 평가한 결과 사용 (재계산 X)
+            // 발표일 — published_at 을 "M월 D일" 한국어 포맷, 없으면 "최근" fallback
+            const announcedAt = m.published_at
+              ? (() => {
+                  const d = new Date(m.published_at);
+                  return Number.isNaN(d.getTime())
+                    ? "최근"
+                    : `${d.getMonth() + 1}월 ${d.getDate()}일`;
+                })()
+              : "최근";
+
             const result = v3Enabled
               ? await sendAlimtalk({
                   phoneNumber: rule.phone_number!,
@@ -380,6 +390,7 @@ async function runAlertDispatch(jobLabel: string) {
                     user_name: displayNameByUserId.get(rule.user_id) ?? "회원",
                     rule_name: rule.name,
                     title: m.title,
+                    announced_at: announcedAt,
                     eligibility_status: businessProfile
                       ? formatEligibilityStatus(
                           matchByProgram.get(`${m.table}:${m.id}`) ?? null,
