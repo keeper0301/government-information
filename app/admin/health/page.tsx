@@ -11,6 +11,13 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { getHealthSnapshot, type HealthCheckItem } from "@/lib/admin-health";
+// Phase 6 — 임계치 alert + 30일 추세 차트 추가
+import { getHealthSignals, checkThresholds } from "@/lib/health-check";
+import { getAdminTrends } from "@/lib/admin-trends";
+import {
+  SimpleBarChart,
+  SimpleLineChart,
+} from "@/components/admin/trend-charts";
 
 export const metadata: Metadata = {
   title: "헬스 대시보드 | 어드민",
@@ -31,7 +38,13 @@ async function requireAdmin() {
 
 export default async function AdminHealthPage() {
   await requireAdmin();
-  const snap = await getHealthSnapshot();
+  // Phase 6 — 기존 health snapshot + 신규 임계치 신호·30일 추세 병렬 fetch
+  const [snap, signals, trends] = await Promise.all([
+    getHealthSnapshot(),
+    getHealthSignals(),
+    getAdminTrends(),
+  ]);
+  const thresholdAlerts = checkThresholds(signals);
 
   // 이상 신호 카운트 — 페이지 상단 요약
   const allItems = [...snap.db, ...snap.cron, ...snap.env, ...snap.users];
@@ -57,6 +70,23 @@ export default async function AdminHealthPage() {
         {/* 이상 신호 요약 배너 */}
         <SummaryBanner errorCount={errorCount} warnCount={warnCount} />
 
+        {/* Phase 6 — 임계치 alert (가입 0·결제 실패·cron 연속 실패) */}
+        {thresholdAlerts.length > 0 && (
+          <section className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-5">
+            <h2 className="text-[15px] font-bold text-red-900 mb-3">
+              ⚠️ 임계치 {thresholdAlerts.length}건 초과
+            </h2>
+            <ul className="text-[13px] text-red-800 space-y-1">
+              {thresholdAlerts.map((a) => (
+                <li key={a.key}>• {a.message}</li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-red-700 mt-3">
+              매일 09:00 KST cron `/api/cron/health-alert` 가 같은 임계치 점검 후 사장님 이메일 발송.
+            </p>
+          </section>
+        )}
+
         {/* DB 헬스 */}
         <Section title="📊 DB 콘텐츠" items={snap.db} />
 
@@ -68,6 +98,43 @@ export default async function AdminHealthPage() {
 
         {/* 환경변수 */}
         <Section title="🔐 환경변수" items={snap.env} />
+
+        {/* Phase 6 — 30일 추세 차트 (DAU·구독·콘텐츠) */}
+        <section className="mt-10 pt-8 border-t border-grey-200">
+          <h2 className="text-[16px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">
+            📈 30일 추세
+          </h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="bg-white rounded-2xl border border-grey-100 p-4">
+              <SimpleLineChart title="DAU (일별 로그인)" data={trends.dau} />
+            </div>
+            <div className="bg-white rounded-2xl border border-grey-100 p-4">
+              <SimpleBarChart
+                title="구독 신규 / 취소"
+                series={[
+                  { label: "신규", color: "#3182F6", data: trends.subscriptionsNew },
+                  { label: "취소", color: "#F04452", data: trends.subscriptionsCancelled },
+                ]}
+              />
+            </div>
+            <div className="bg-white rounded-2xl border border-grey-100 p-4">
+              <SimpleBarChart
+                title="블로그 발행"
+                series={[
+                  { label: "blog", color: "#03B26C", data: trends.blogPublished },
+                ]}
+              />
+            </div>
+            <div className="bg-white rounded-2xl border border-grey-100 p-4">
+              <SimpleBarChart
+                title="뉴스 수집"
+                series={[
+                  { label: "news", color: "#A234C7", data: trends.newsCollected },
+                ]}
+              />
+            </div>
+          </div>
+        </section>
 
         {/* 빠른 액션 */}
         <section className="mt-10 pt-8 border-t border-grey-200">
