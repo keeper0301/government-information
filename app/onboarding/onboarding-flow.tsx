@@ -32,8 +32,11 @@ export type OnboardingState = {
   interests: string[];
 };
 
-// 총 단계 수
-const TOTAL_STEPS = 5;
+// 총 단계 수 (2026-04-28 Phase 2: 5단계 → 3단계 합치기 — 사용자 부담 ↓)
+//   1: 기본 (Age + Region)
+//   2: 자격 (Occupation + Income)
+//   3: 관심 (Interests + Household — StepInterests 가 두 가지 모두 처리)
+const TOTAL_STEPS = 3;
 
 export function OnboardingFlow({
   userId, initial, prefillApplied,
@@ -83,6 +86,11 @@ export function OnboardingFlow({
 
   // 다음 단계로 이동 (마지막이면 완료)
   function next() {
+    // GA4 funnel — 단계별 진입 측정 (3단계 합치기 후 신규 이벤트)
+    if (step === 1) trackEvent(EVENTS.ONBOARDING_STEP_BASIC_COMPLETED, {});
+    else if (step === 2) trackEvent(EVENTS.ONBOARDING_STEP_ELIGIBILITY_COMPLETED, {});
+    else if (step === 3) trackEvent(EVENTS.ONBOARDING_STEP_INTERESTS_COMPLETED, {});
+
     if (step < TOTAL_STEPS) setStep((s) => s + 1);
     else finish();
   }
@@ -110,24 +118,39 @@ export function OnboardingFlow({
         <p className="text-xs text-zinc-500">{step}/{TOTAL_STEPS}</p>
       </div>
 
-      {/* 단계별 step 컴포넌트 */}
+      {/* 단계별 step 컴포넌트 — 5단계 → 3단계 묶음 (2026-04-28 Phase 2).
+          한 단계 안에 2 컴포넌트가 들어가는 경우 section + 구분선으로 시각 위계 */}
       {step === 1 && (
-        <StepAge value={state.ageGroup} onChange={(v) => update('ageGroup', v)} />
+        <div className="space-y-8">
+          <section>
+            <h3 className="text-[18px] font-bold text-grey-900 mb-3">연령대</h3>
+            <StepAge value={state.ageGroup} onChange={(v) => update('ageGroup', v)} />
+          </section>
+          <hr className="border-grey-100" />
+          <section>
+            <h3 className="text-[18px] font-bold text-grey-900 mb-3">지역</h3>
+            <StepRegion
+              region={state.region}
+              district={state.district}
+              onChange={(r, d) => { update('region', r); update('district', d); }}
+            />
+          </section>
+        </div>
       )}
       {step === 2 && (
-        <StepRegion
-          region={state.region}
-          district={state.district}
-          onChange={(r, d) => { update('region', r); update('district', d); }}
-        />
+        <div className="space-y-8">
+          <section>
+            <h3 className="text-[18px] font-bold text-grey-900 mb-3">직업</h3>
+            <StepOccupation value={state.occupation} onChange={(v) => update('occupation', v)} />
+          </section>
+          <hr className="border-grey-100" />
+          <section>
+            <h3 className="text-[18px] font-bold text-grey-900 mb-3">소득 (선택)</h3>
+            <StepIncome value={state.incomeLevel} onChange={(v) => update('incomeLevel', v)} />
+          </section>
+        </div>
       )}
       {step === 3 && (
-        <StepOccupation value={state.occupation} onChange={(v) => update('occupation', v)} />
-      )}
-      {step === 4 && (
-        <StepIncome value={state.incomeLevel} onChange={(v) => update('incomeLevel', v)} />
-      )}
-      {step === 5 && (
         <StepInterests
           interests={state.interests}
           householdTypes={state.householdTypes}

@@ -19,6 +19,10 @@ export const EVENTS = {
   // 온보딩
   TOPIC_SAVED: "topic_saved",
   ONBOARDING_SKIPPED: "onboarding_skipped",
+  // 온보딩 5→3 단계 합치기 후 신규 funnel 이벤트 (2026-04-28 Phase 2)
+  ONBOARDING_STEP_BASIC_COMPLETED: "onboarding_step_basic_completed",
+  ONBOARDING_STEP_ELIGIBILITY_COMPLETED: "onboarding_step_eligibility_completed",
+  ONBOARDING_STEP_INTERESTS_COMPLETED: "onboarding_step_interests_completed",
   // 추천
   RECOMMEND_SUBMITTED: "recommend_submitted",
   // 결제 / 구독
