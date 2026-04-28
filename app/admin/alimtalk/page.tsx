@@ -103,6 +103,80 @@ async function get7dDailyStats(): Promise<DailyBucket[]> {
   return [...buckets.values()];
 }
 
+// 채널별 분포 (24h) — 카카오 통과 전엔 email/kakao 둘 다 0건일 가능성. 카카오
+// 통과 후 즉시 가시화 가능하게 인프라만 미리 만들어둠.
+type ChannelBucket = {
+  channel: string;
+  total: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+};
+async function getChannelDistribution24h(): Promise<ChannelBucket[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await admin
+    .from("alert_deliveries")
+    .select("channel, status")
+    .gte("created_at", since);
+
+  // CHECK constraint: channel IN ('email','kakao'). 새 채널 추가되면 자동 노출
+  const buckets = new Map<string, ChannelBucket>();
+  for (const row of (data ?? []) as { channel: string; status: string }[]) {
+    let b = buckets.get(row.channel);
+    if (!b) {
+      b = { channel: row.channel, total: 0, sent: 0, failed: 0, skipped: 0 };
+      buckets.set(row.channel, b);
+    }
+    b.total += 1;
+    if (row.status === "sent") b.sent += 1;
+    else if (row.status === "failed") b.failed += 1;
+    else if (row.status === "skipped") b.skipped += 1;
+  }
+  return [...buckets.values()].sort((a, b) => b.total - a.total);
+}
+
+// 시간대별 24h 추세 (1시간 단위, KST). 발송 몰리는 시각대 식별.
+type HourlyBucket = {
+  hour: number; // 0~23 (KST)
+  label: string; // "14시"
+  total: number;
+};
+async function getHourlyDelivery24h(): Promise<HourlyBucket[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await admin
+    .from("alert_deliveries")
+    .select("created_at")
+    .gte("created_at", since);
+
+  // 24개 시간 버킷 (현재 KST 시각 기준 거꾸로 23시간 전까지)
+  const buckets = new Map<string, HourlyBucket>();
+  const now = new Date();
+  for (let i = 23; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+    const kstHour = parseInt(
+      d.toLocaleString("en-US", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false }),
+      10,
+    );
+    const kstDate = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+    const key = `${kstDate}-${kstHour}`;
+    buckets.set(key, { hour: kstHour, label: `${kstHour}시`, total: 0 });
+  }
+  for (const row of (data ?? []) as { created_at: string }[]) {
+    const d = new Date(row.created_at);
+    const kstHour = parseInt(
+      d.toLocaleString("en-US", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false }),
+      10,
+    );
+    const kstDate = d.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+    const key = `${kstDate}-${kstHour}`;
+    const b = buckets.get(key);
+    if (b) b.total += 1;
+  }
+  return [...buckets.values()];
+}
+
 // 24h 집계 — 필요한 컬럼만 조회해 가볍게. 운영 초기엔 수백 건 수준이라 인덱스 풀스캔 OK.
 async function collect24hStats(): Promise<{
   total: number;
@@ -222,11 +296,15 @@ export default async function AlimtalkAdminPage() {
   if (!user) redirect("/login?next=/admin/alimtalk");
   if (!isAdminUser(user.email)) redirect("/");
 
-  const [stats, recentLogs, dailyStats] = await Promise.all([
+  const [stats, recentLogs, dailyStats, channelStats, hourlyStats] = await Promise.all([
     collect24hStats(),
     getRecentDeliveries(20),
     get7dDailyStats(),
+    getChannelDistribution24h(),
+    getHourlyDelivery24h(),
   ]);
+  // 24h 시간대별 차트의 max — chart 정규화에 사용
+  const hourlyMax = Math.max(1, ...hourlyStats.map((b) => b.total));
 
   // 7일 합산 실패율 (분모는 sent + failed, skipped 제외)
   const total7d = dailyStats.reduce((s, d) => s + d.sent + d.failed, 0);
@@ -360,10 +438,56 @@ export default async function AlimtalkAdminPage() {
           </div>
         </section>
 
+        {/* 채널별 분포 + 시간대별 추세 (D — 알림톡 통계 강화) */}
+        <section className="mb-8">
+          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+            전체 채널 24시간 분포·시간대 추세
+          </h2>
+          <p className="text-[13px] text-grey-600 mb-4 leading-[1.6]">
+            email + kakao 합산. 카카오 v2 통과 후 양 채널 비교 가시화 + 발송 몰리는 시각대 식별.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* 채널 분포 카드 */}
+            <div className="rounded-lg border border-grey-200 bg-white p-4">
+              <p className="text-[13px] font-semibold text-grey-800 mb-3">
+                채널별 (24h)
+              </p>
+              {channelStats.length === 0 ? (
+                <p className="text-[12px] text-grey-600">발송 시도 없음.</p>
+              ) : (
+                <ul className="space-y-2 text-[13px]">
+                  {channelStats.map((c) => (
+                    <li
+                      key={c.channel}
+                      className="flex items-baseline justify-between gap-3"
+                    >
+                      <span className="text-grey-900 font-mono uppercase">
+                        {c.channel}
+                      </span>
+                      <span className="text-grey-700 text-[12px]">
+                        총 <strong className="text-grey-900">{c.total}</strong> ·
+                        성공 {c.sent} · 실패 {c.failed} · 건너뜀 {c.skipped}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* 시간대별 추세 (24h, KST) */}
+            <div className="rounded-lg border border-grey-200 bg-white p-4">
+              <p className="text-[13px] font-semibold text-grey-800 mb-3">
+                시간대별 (24h, KST)
+              </p>
+              <HourlyBarChart buckets={hourlyStats} max={hourlyMax} />
+            </div>
+          </div>
+        </section>
+
         {/* 24h 집계 카드 */}
         <section className="mb-8">
           <h2 className="text-[18px] font-bold text-grey-900 mb-3">
-            최근 24시간 발송 현황
+            카카오 24시간 발송 현황
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -512,6 +636,78 @@ export default async function AlimtalkAdminPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+// 24시간 시간대별 막대 — 1시간 1칸. 발송 몰리는 시각대 식별용.
+// 0건이면 회색 점선. 막대 색은 grey-700 (단조롭게, 시각 부담 ↓).
+function HourlyBarChart({
+  buckets,
+  max,
+}: {
+  buckets: HourlyBucket[];
+  max: number;
+}) {
+  const barW = 12;
+  const gap = 2;
+  const chartH = 60;
+  const chartW = buckets.length * (barW + gap);
+
+  return (
+    <div className="overflow-x-auto">
+      <svg
+        width={chartW}
+        height={chartH + 28}
+        aria-label="최근 24시간 시간대별 발송 추세"
+      >
+        {buckets.map((b, idx) => {
+          const x = idx * (barW + gap);
+          const h = b.total > 0 ? (b.total / max) * chartH : 0;
+          // 4시간마다 라벨 표시 (가독성)
+          const showLabel = idx % 4 === 0 || idx === buckets.length - 1;
+          return (
+            <g key={`${idx}-${b.hour}`}>
+              {b.total === 0 ? (
+                <line
+                  x1={x + 1}
+                  y1={chartH - 1}
+                  x2={x + barW - 1}
+                  y2={chartH - 1}
+                  stroke="#d4d4d8"
+                  strokeWidth="1"
+                  strokeDasharray="2,2"
+                />
+              ) : (
+                <rect
+                  x={x}
+                  y={chartH - h}
+                  width={barW}
+                  height={h}
+                  fill="#3f3f46"
+                  rx="1"
+                >
+                  <title>{`${b.label} — ${b.total}건`}</title>
+                </rect>
+              )}
+              {showLabel && (
+                <text
+                  x={x + barW / 2}
+                  y={chartH + 14}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="#71717a"
+                >
+                  {b.hour}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      <p className="mt-1 text-[11px] text-grey-600">
+        ※ 시각은 KST 기준. 막대 위 hover 시 정확 건수.
+      </p>
+    </div>
   );
 }
 
