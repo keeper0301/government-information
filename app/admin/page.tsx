@@ -408,6 +408,11 @@ export default async function AdminHomePage({
               desc="모든 cron 한 페이지 manual trigger (8 일반 + 17 광역)"
             />
             <ActionCard
+              href="/api/admin/export-users"
+              title="📥 사용자 CSV 다운로드"
+              desc="auth.users + user_profiles 통합 CSV (이메일 마스킹)"
+            />
+            <ActionCard
               href="/admin/alimtalk"
               title="알림톡 운영"
               desc="24h 발송 집계·환경변수·테스트 발송"
