@@ -10,7 +10,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// 광역도 ministry 17개 — REGION_TAGS 의 풀네임
+// 광역도 ministry 17개 — REGION_TAGS 의 풀네임 (정확 매칭용)
 const REGIONAL_MINISTRIES = [
   "서울특별시",
   "부산광역시",
@@ -32,6 +32,12 @@ const REGIONAL_MINISTRIES = [
   "경상남도",
   "제주특별자치도",
 ];
+
+// 광역 prefix 패턴 — naver-news 가 ministry='전라남도 순천시' 같은 시군 단위로
+// 저장한 row 도 매칭. PostgREST or() 에서 ILIKE 패턴 사용.
+const PROVINCE_ILIKE_PATTERNS = REGIONAL_MINISTRIES.map(
+  (m) => `ministry.ilike.${m}%`,
+).join(",");
 
 // 신청 가능 신호 키워드 — title/summary 에 있으면 정책일 가능성 ↑
 // PostgREST or() 에서 ILIKE 패턴으로 사용
@@ -77,7 +83,8 @@ export async function getPressIngestCandidates(
     .from("news_posts")
     .select("id, title, summary, ministry, source_outlet, published_at, slug")
     .gte("published_at", since)
-    .in("ministry", REGIONAL_MINISTRIES)
+    // 광역 + 시군 (광역 prefix) 동시 매칭 — '전라남도' 또는 '전라남도 순천시'
+    .or(PROVINCE_ILIKE_PATTERNS)
     .or(`${titleOrFilter},${summaryOrFilter}`)
     .order("published_at", { ascending: false })
     .limit(limit);
@@ -116,7 +123,7 @@ export async function getPressIngestKpi(): Promise<PressIngestKpi> {
         .from("news_posts")
         .select("id", { count: "exact", head: true })
         .gte("published_at", since24h)
-        .in("ministry", REGIONAL_MINISTRIES)
+        .or(PROVINCE_ILIKE_PATTERNS)
         .or(`${titleOrFilter},${summaryOrFilter}`);
     })(),
     // 24h 사장님 수동 등록 — admin_actions.manual_program_create 중

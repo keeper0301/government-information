@@ -158,6 +158,8 @@ async function searchOnce(searchUnit: string, keyword: string): Promise<NaverNew
 }
 
 // 1광역의 모든 검색 단위 × 키워드 처리 + 표준화.
+// 시군 (구체) 먼저, 광역 (포괄) 나중 — seen Set 덕에 시군 검색에서 잡힌
+// 뉴스가 광역 검색에서 skip 되어 ministry 가 시군 단위로 보존됨.
 async function collectProvinceItems(
   provinceCode: ProvinceCode,
   provinceName: string,
@@ -165,8 +167,15 @@ async function collectProvinceItems(
   const seen = new Set<string>();
   const items: NormalizedItem[] = [];
   const searchUnits = getSearchUnitsForProvince(provinceCode);
+  // 광역명 자체는 첫 원소로 들어옴 (lib/regions.ts).
+  // 시군 먼저 처리 → 시군 발표 뉴스는 ministry='전라남도 순천시' 보존.
+  // 광역 발표 뉴스는 마지막에 잡혀 ministry='전라남도' 저장.
+  const orderedUnits = [
+    ...searchUnits.filter((u) => u !== provinceName),
+    provinceName,
+  ];
 
-  for (const unit of searchUnits) {
+  for (const unit of orderedUnits) {
     for (const keyword of KEYWORDS) {
       let raw: NaverNewsItem[] = [];
       try {
@@ -207,7 +216,9 @@ async function collectProvinceItems(
           source_code: `naver-news-${provinceCode}`,
           source_id: sourceId,
           source_url: url,
-          ministry: provinceName, // "전라남도" — news_posts.ministry
+          // ministry = 검색 unit 그대로 — '전라남도' 또는 '전라남도 순천시'.
+          // 시군 발표 뉴스는 시군명까지 포함해 region 매칭·press-ingest 정확도 ↑.
+          ministry: unit,
           source_outlet: extractOutletFromUrl(url),
           title,
           summary: cleaned.length > 0 ? cleaned.slice(0, 500) : null,
