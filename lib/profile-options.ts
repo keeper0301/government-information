@@ -36,6 +36,8 @@ export const REGION_OPTIONS = [
 ] as const;
 
 // 표준 직업 옵션 (이전 "자영업" / "학생" / "무직" 같은 별칭은 전부 여기로 통일)
+// 2026-04-28 "농어민" 추가 — 영암군 농어민 공익수당 같은 농어민 전용 정책이
+// 일반 사용자에게 노출되던 사고 후속. 농어민 사용자 가입 시 정확 매칭 가능.
 export const OCCUPATION_OPTIONS = [
   "대학생",
   "직장인",
@@ -43,6 +45,7 @@ export const OCCUPATION_OPTIONS = [
   "공무원",
   "구직자",
   "주부",
+  "농어민",
   "기타",
 ] as const;
 
@@ -58,6 +61,7 @@ export const OCCUPATION_KEYWORDS: Record<OccupationOption, string[]> = {
   "공무원": ["공무원", "관공서"],
   "구직자": ["구직", "실업", "취업"],
   "주부": ["가정", "양육", "출산"],
+  "농어민": ["농어민", "농민", "어민", "농업인", "어업인", "축산농가"],
   "기타": [],
 };
 

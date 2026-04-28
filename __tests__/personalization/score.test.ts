@@ -441,8 +441,6 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
     expect(r.score).toBe(0);
   });
 
-  // 농어민 시그널 자체가 OccupationOption 에 없어 모든 일반 사용자 차단.
-  // 추후 OccupationOption 에 '농어민' 추가 시 통과 테스트 신설.
   it('농민수당 정책 + 직장인 → 차단', () => {
     const r = scoreProgram(
       { ...baseProgram,
@@ -456,6 +454,22 @@ describe('scoreProgram — Phase 1.5 정확 매칭', () => {
         benefitTags: ['생계'] },
     );
     expect(r.score).toBe(0);
+  });
+
+  // 2026-04-28 OCCUPATION_OPTIONS 에 '농어민' 추가 후 — 농어민 본인은 통과
+  it('영암군 농어민 공익수당 + 농어민 직군 → 통과', () => {
+    const r = scoreProgram(
+      { ...baseProgram,
+        title: '영암군 농어민 공익수당',
+        region: '전라남도 영암군',
+        description: '농민과 어민의 삶의 질 향상',
+        benefit_tags: ['생계'] },
+      { ...emptyUser,
+        region: '전남',
+        occupation: '농어민',
+        benefitTags: ['생계'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
   });
 
   // 산후조리·영유아 cohort gate (2026-04-28 사장님 사고 후속)

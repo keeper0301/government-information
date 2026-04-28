@@ -267,6 +267,7 @@ const OCCUPATION_TO_BENEFIT_TAGS: Record<OccupationOption, BenefitTag[]> = {
   "공무원": ["주거", "양육"],
   "구직자": ["취업", "생계"],
   "주부": ["양육", "의료"],
+  "농어민": ["생계", "금융", "창업"],
   "기타": [],
 };
 

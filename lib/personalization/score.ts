@@ -263,12 +263,10 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   if (NATIONAL_MERIT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     return true;
   }
-  // 농어민 — 사용자 OccupationOption 에 '농어민' 시그널이 없음 (profile-options
-  // 7종: 대학생·직장인·자영업자·공무원·구직자·주부·기타). 따라서 모든 일반
-  // 사용자 차단 (NATIONAL_MERIT 와 동일 패턴).
-  // 추후 OccupationOption 에 '농어민' 추가 시 통과 조건 완화.
+  // 농어민 — occupation === '농어민' 만 통과 (2026-04-28 OccupationOption 에 추가).
+  // 일반 사용자(대학생·직장인·자영업자 등) 에게 농어민 전용 정책 차단.
   if (FARMER_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    return true;
+    if (user.occupation !== '농어민') return true;
   }
   // 장애인 정책 — disabled_family 가구만 통과
   if (DISABILITY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
