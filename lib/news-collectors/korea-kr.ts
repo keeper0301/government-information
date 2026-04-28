@@ -32,6 +32,7 @@ import { extractBenefitTags } from "@/lib/tags/taxonomy";
 import { extractNewsKeywords } from "@/lib/news-keywords";
 import { cleanDescription, stripHtmlTags } from "@/lib/utils";
 import { fetchWithTimeout } from "@/lib/collectors";
+import { computeDedupeHash, loadRecentDedupeHashes, hasJaccardMatch } from "@/lib/news-dedupe";
 
 type FeedCategory = "news" | "press" | "policy-doc";
 
@@ -267,6 +268,8 @@ async function fetchFeed(feed: Feed): Promise<KoreaKrItem[]> {
 export async function collectKoreaKr(): Promise<{
   total: number;
   upserted: number;
+  skippedDup: number;
+  skippedBatchDup: number;
   errors: number;
   breakdown: Record<string, number>;
   errorDetails: Record<string, string>;
@@ -274,6 +277,8 @@ export async function collectKoreaKr(): Promise<{
   const supabase = createAdminClient();
   let total = 0;
   let upserted = 0;
+  let skippedDup = 0;
+  let skippedBatchDup = 0;
   let errors = 0;
   const breakdown: Record<string, number> = {};
   // 실패 원인 디버깅용 — 각 feed.code → 실제 에러 메시지.
@@ -296,24 +301,56 @@ export async function collectKoreaKr(): Promise<{
       const items = fr.value.items;
       breakdown[feed.code] = items.length;
       total += items.length;
-      if (items.length === 0) return { upserted: 0 };
+      if (items.length === 0) return { upserted: 0, skipped_dup: 0, skipped_batch_dup: 0 };
 
-      const payload = items.map((it) => ({
-        source_code: it.source_code,
-        source_id: it.source_id,
-        source_url: it.source_url,
-        category: it.category,
-        ministry: it.ministry,
-        title: it.title,
-        summary: it.summary,
-        body: it.body,
-        thumbnail_url: it.thumbnail_url,
-        slug: it.slug,
-        benefit_tags: it.benefit_tags,
-        keywords: it.keywords,
-        published_at: it.published_at,
-        updated_at: new Date().toISOString(),
-      }));
+      // Phase 5 — 7일 window dedupe_hash 1회 fetch (이 feed 내에서만)
+      const recentHashes = await loadRecentDedupeHashes(supabase);
+      const seenInBatch = new Set<string>();
+      let feed_skipped_dup = 0;
+      let feed_skipped_batch_dup = 0;
+
+      const payload = items
+        .map((it) => ({
+          source_code: it.source_code,
+          source_id: it.source_id,
+          source_url: it.source_url,
+          category: it.category,
+          ministry: it.ministry,
+          title: it.title,
+          summary: it.summary,
+          body: it.body,
+          thumbnail_url: it.thumbnail_url,
+          slug: it.slug,
+          benefit_tags: it.benefit_tags,
+          keywords: it.keywords,
+          published_at: it.published_at,
+          updated_at: new Date().toISOString(),
+          dedupe_hash: computeDedupeHash(it.title),
+        }))
+        .filter((p) => {
+          // hash 못 만들면 (제목 빈) 그냥 통과 (안전)
+          if (!p.dedupe_hash) return true;
+          // batch 내 자기들끼리 같은 hash → 첫 1개만 통과
+          if (seenInBatch.has(p.dedupe_hash)) {
+            feed_skipped_batch_dup++;
+            return false;
+          }
+          // 7일 window DB 매칭 (Jaccard 0.6+)
+          if (hasJaccardMatch(p.dedupe_hash, recentHashes)) {
+            feed_skipped_dup++;
+            return false;
+          }
+          seenInBatch.add(p.dedupe_hash);
+          return true;
+        });
+
+      if (payload.length === 0) {
+        return {
+          upserted: 0,
+          skipped_dup: feed_skipped_dup,
+          skipped_batch_dup: feed_skipped_batch_dup,
+        };
+      }
 
       // slug 는 DB 에 unique constraint 가 있음. 부처별 RSS 는 동일 뉴스가
       // 여러 부처에 동시 노출되는 케이스가 있음 (예: 복지부+성평등가족부 공동
@@ -329,7 +366,11 @@ export async function collectKoreaKr(): Promise<{
         console.error(`[news:${feed.code}] upsert 실패:`, error.message);
         throw new Error(`upsert: ${error.message}`);
       }
-      return { upserted: data?.length ?? 0 };
+      return {
+        upserted: data?.length ?? 0,
+        skipped_dup: feed_skipped_dup,
+        skipped_batch_dup: feed_skipped_batch_dup,
+      };
     }),
   );
 
@@ -337,6 +378,8 @@ export async function collectKoreaKr(): Promise<{
     const feed = FEEDS[idx];
     if (ur.status === "fulfilled") {
       upserted += ur.value.upserted;
+      skippedDup += ur.value.skipped_dup;
+      skippedBatchDup += ur.value.skipped_batch_dup;
     } else {
       errors++;
       errorDetails[feed.code] =
@@ -344,5 +387,5 @@ export async function collectKoreaKr(): Promise<{
     }
   });
 
-  return { total, upserted, errors, breakdown, errorDetails };
+  return { total, upserted, skippedDup, skippedBatchDup, errors, breakdown, errorDetails };
 }

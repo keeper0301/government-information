@@ -20,6 +20,7 @@ import { extractNewsKeywords } from "@/lib/news-keywords";
 import { cleanDescription } from "@/lib/utils";
 import { fetchWithTimeout } from "@/lib/collectors";
 import { isNewsNoise } from "@/lib/news-filters";
+import { computeDedupeHash, loadRecentDedupeHashes, hasJaccardMatch } from "@/lib/news-dedupe";
 import {
   type ProvinceCode,
   getProvinceByCode,
@@ -245,6 +246,8 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
   province: string;
   total: number;
   news_upserted: number;
+  skippedDup: number;
+  skippedBatchDup: number;
   searchUnits: number;
   errors: string[];
 }> {
@@ -253,6 +256,8 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
       province: provinceCode,
       total: 0,
       news_upserted: 0,
+      skippedDup: 0,
+      skippedBatchDup: 0,
       searchUnits: 0,
       errors: [
         "NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 환경변수 미설정 — 네이버 개발자센터 가입 필요",
@@ -266,6 +271,8 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
       province: provinceCode,
       total: 0,
       news_upserted: 0,
+      skippedDup: 0,
+      skippedBatchDup: 0,
       searchUnits: 0,
       errors: [`unknown province code: ${provinceCode}`],
     };
@@ -283,6 +290,8 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
       province: province.name,
       total: 0,
       news_upserted: 0,
+      skippedDup: 0,
+      skippedBatchDup: 0,
       searchUnits,
       errors,
     };
@@ -294,6 +303,8 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
       province: province.name,
       total: 0,
       news_upserted: 0,
+      skippedDup: 0,
+      skippedBatchDup: 0,
       searchUnits,
       errors,
     };
@@ -304,46 +315,72 @@ export async function collectNaverNewsByProvince(provinceCode: ProvinceCode): Pr
   // news_posts 용 payload 변환. korea.kr 수집분과 같은 스키마 사용.
   // license='naver-news-api' — 공공누리(KOGL-Type1) 아님, 원 저작권 원 언론사.
   const now = new Date().toISOString();
-  const payloads = items.map((it) => ({
-    source_code: it.source_code,
-    source_id: it.source_id,
-    source_url: it.source_url,
-    source_outlet: it.source_outlet, // 마이그레이션 060 — 저작권법 출처 명시
-    license: "naver-news-api",
-    category: "news" as const,
-    ministry: it.ministry,
-    benefit_tags: it.benefit_tags,
-    title: it.title,
-    summary: it.summary,
-    body: null,
-    thumbnail_url: null,
-    slug: deterministicSlug(it.title, provinceCode, it.source_id),
-    published_at: it.published_at,
-    created_at: now,
-    updated_at: now,
-    view_count: 0,
-    keywords: it.keywords,
-    topic_categories: [] as string[],
-  }));
+
+  // Phase 5 — 7일 window dedupe_hash 1회 fetch (광역별 cron)
+  const recentHashes = await loadRecentDedupeHashes(supabase);
+  const seenInBatch = new Set<string>();
+  let skippedDup = 0;
+  let skippedBatchDup = 0;
+
+  const payloads = items
+    .map((it) => ({
+      source_code: it.source_code,
+      source_id: it.source_id,
+      source_url: it.source_url,
+      source_outlet: it.source_outlet, // 마이그레이션 060 — 저작권법 출처 명시
+      license: "naver-news-api",
+      category: "news" as const,
+      ministry: it.ministry,
+      benefit_tags: it.benefit_tags,
+      title: it.title,
+      summary: it.summary,
+      body: null,
+      thumbnail_url: null,
+      slug: deterministicSlug(it.title, provinceCode, it.source_id),
+      published_at: it.published_at,
+      created_at: now,
+      updated_at: now,
+      view_count: 0,
+      keywords: it.keywords,
+      topic_categories: [] as string[],
+      dedupe_hash: computeDedupeHash(it.title),
+    }))
+    .filter((p) => {
+      if (!p.dedupe_hash) return true;
+      if (seenInBatch.has(p.dedupe_hash)) {
+        skippedBatchDup++;
+        return false;
+      }
+      if (hasJaccardMatch(p.dedupe_hash, recentHashes)) {
+        skippedDup++;
+        return false;
+      }
+      seenInBatch.add(p.dedupe_hash);
+      return true;
+    });
 
   let news_upserted = 0;
-  const { data, error } = await supabase
-    .from("news_posts")
-    .upsert(payloads, {
-      onConflict: "source_code,source_id",
-      ignoreDuplicates: true,
-    })
-    .select("id");
-  if (error) {
-    errors.push(`news_posts upsert: ${error.message}`);
-  } else {
-    news_upserted = data?.length ?? 0;
+  if (payloads.length > 0) {
+    const { data, error } = await supabase
+      .from("news_posts")
+      .upsert(payloads, {
+        onConflict: "source_code,source_id",
+        ignoreDuplicates: true,
+      })
+      .select("id");
+    if (error) {
+      errors.push(`news_posts upsert: ${error.message}`);
+    } else {
+      news_upserted = data?.length ?? 0;
+    }
   }
 
   return {
     province: province.name,
     total,
     news_upserted,
+    skippedDup,
+    skippedBatchDup,
     searchUnits,
     errors,
   };

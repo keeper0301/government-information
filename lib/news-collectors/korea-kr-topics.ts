@@ -22,6 +22,7 @@ import { fetchWithTimeout } from "@/lib/collectors";
 import { cleanDescription } from "@/lib/utils";
 import { extractNewsKeywords } from "@/lib/news-keywords";
 import { extractBenefitTags } from "@/lib/tags/taxonomy";
+import { computeDedupeHash, loadRecentDedupeHashes, hasJaccardMatch } from "@/lib/news-dedupe";
 
 type CategoryAxis = "target" | "topic" | "hot";
 
@@ -163,6 +164,8 @@ export async function collectKoreaKrTopics(): Promise<{
   fetched: number;
   inserted: number;
   updated: number;
+  skippedDup: number;
+  skippedBatchDup: number;
   errors: number;
   breakdown: Record<string, number>;
 }> {
@@ -205,6 +208,8 @@ export async function collectKoreaKrTopics(): Promise<{
       fetched: 0,
       inserted: 0,
       updated: 0,
+      skippedDup: 0,
+      skippedBatchDup: 0,
       errors,
       breakdown,
     };
@@ -254,6 +259,12 @@ export async function collectKoreaKrTopics(): Promise<{
   //    을 가지므로 신규 수집 뉴스의 날짜 정확도는 아쉬운 면이 있음.
   //    (korea.kr 키워드 뉴스 페이지는 카드 HTML 에 날짜 노출이 없음)
   const nowIso = new Date().toISOString();
+  // Phase 5 — 7일 window dedupe_hash 1회 fetch (신규 row 후보 비교용)
+  const recentHashes = await loadRecentDedupeHashes(supabase);
+  const seenInBatch = new Set<string>();
+  let skippedDup = 0;
+  let skippedBatchDup = 0;
+
   const payload = newIds
     .map((id) => {
       const item = newsIdToItem.get(id);
@@ -276,9 +287,23 @@ export async function collectKoreaKrTopics(): Promise<{
         topic_categories: topics,
         published_at: nowIso,
         updated_at: nowIso,
+        dedupe_hash: computeDedupeHash(item.title),
       };
     })
-    .filter((v): v is NonNullable<typeof v> => v !== null);
+    .filter((v): v is NonNullable<typeof v> => v !== null)
+    .filter((p) => {
+      if (!p.dedupe_hash) return true;
+      if (seenInBatch.has(p.dedupe_hash)) {
+        skippedBatchDup++;
+        return false;
+      }
+      if (hasJaccardMatch(p.dedupe_hash, recentHashes)) {
+        skippedDup++;
+        return false;
+      }
+      seenInBatch.add(p.dedupe_hash);
+      return true;
+    });
 
   let inserted = 0;
   if (payload.length > 0) {
@@ -294,6 +319,8 @@ export async function collectKoreaKrTopics(): Promise<{
     fetched: allIds.length,
     inserted,
     updated,
+    skippedDup,
+    skippedBatchDup,
     errors,
     breakdown,
   };
