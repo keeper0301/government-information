@@ -444,6 +444,11 @@ export default async function AdminHomePage({
               desc="정책 ID → 매칭 rule·사용자 수·샘플 5명"
             />
             <ActionCard
+              href="/admin/welfare/new"
+              title="➕ 복지 정책 수동 등록"
+              desc="자동 수집 외 광역 자체 사업 직접 추가 (#7)"
+            />
+            <ActionCard
               href="/admin/news"
               title="정책 뉴스 운영"
               desc="수집 현황·수동 trigger·카테고리별"

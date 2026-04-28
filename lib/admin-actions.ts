@@ -26,7 +26,8 @@ export type AdminActionType =
   | "news_hide"             // 정책 뉴스 비공개 (저작권·오보 모더레이션)
   | "news_unhide"           // 정책 뉴스 복원 (잘못 숨긴 경우 또는 사유 해소)
   | "manual_cron_trigger"  // /admin/cron-trigger 수동 cron 실행 (Phase 5)
-  | "csv_export";          // /api/admin/export-users CSV 다운로드 (Phase 6 #9)
+  | "csv_export"           // /api/admin/export-users CSV 다운로드 (Phase 6 #9)
+  | "manual_program_create"; // /admin/welfare/new · /admin/loan/new 수동 정책 등록 (#7)
 
 export type AdminActionRecord = {
   id: string;
@@ -277,4 +278,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   news_unhide: "정책 뉴스 복원",
   manual_cron_trigger: "Cron 수동 실행",
   csv_export: "CSV 내보내기",
+  manual_program_create: "정책 수동 등록",
 };
