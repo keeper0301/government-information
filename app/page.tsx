@@ -196,8 +196,10 @@ export default async function Home() {
               - 비로그인: HomeRecommendCard 입력 폼
               - 로그인 + 빈 프로필: EmptyProfilePrompt 프로필 입력 유도
               - 로그인 + 프로필 있음: HomeRecommendAuto 자동 추천 카드
-              아래에 HomePopularPicks 인기 정책 사이드 배너 stack (Hero 우측 활용). */}
-          <div className="fade-up lg:mt-14 flex flex-col gap-4" style={{ animationDelay: "240ms" }}>
+              아래에 HomePopularPicks 인기 정책 사이드 배너 stack (Hero 우측 활용).
+              lg:mt-14 제거 — 인기 정책까지 stack 되면 우측 column 길어져서
+              좌측 카피와 시작점 정렬하는 게 시각 균형. */}
+          <div className="fade-up flex flex-col gap-4" style={{ animationDelay: "240ms" }}>
             {user ? (
               isProfileEmpty ? (
                 // 로그인했지만 프로필 미입력 — 프로필 작성 유도 메시지
