@@ -15,7 +15,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const NEWS_DEDUPE_THRESHOLD = 0.6;
 export const NEWS_DEDUPE_WINDOW_DAYS = 7;
-const RECENT_HASHES_LIMIT = 2000;
+// 7일 window hash 가 11,500+ 인 경우 (사장님 사이트 누적 기준) silent cap 막기 위해
+// 5000 까지 확장. hash string ~200B × 5k = ~1MB 라 메모리 무리 없음.
+// order published_at DESC — limit 도달 시 "최신 5,000건" 결정성 보장.
+const RECENT_HASHES_LIMIT = 5000;
 
 /**
  * 제목을 dedupe_hash 로 변환.
@@ -66,6 +69,7 @@ export async function loadRecentDedupeHashes(
     .select("dedupe_hash")
     .gte("published_at", sinceIso)
     .not("dedupe_hash", "is", null)
+    .order("published_at", { ascending: false })
     .limit(RECENT_HASHES_LIMIT);
   return (data ?? [])
     .map((r: { dedupe_hash: string | null }) => r.dedupe_hash)

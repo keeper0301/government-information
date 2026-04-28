@@ -27,8 +27,10 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
+  // default 200 — Vercel 60s timeout 안전 (1 row UPDATE ~30~80ms × 200 = 6~16초).
+  // limit 1000+ 은 timeout 위험. 사장님이 큰 batch 원하면 query string 으로 명시.
   const limit = Math.min(
-    Math.max(Number(url.searchParams.get("limit") ?? "1000"), 1),
+    Math.max(Number(url.searchParams.get("limit") ?? "200"), 1),
     2000,
   );
 
