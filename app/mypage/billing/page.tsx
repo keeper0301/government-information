@@ -15,6 +15,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TIER_NAMES, TIER_PRICES, type Tier } from "@/lib/subscription";
+import { GaPageTracker } from "@/components/ga-page-tracker";
+import { EVENTS } from "@/lib/analytics";
 import { CancelButton } from "./cancel-button";
 
 type SearchParams = Promise<{ already?: string; welcome?: string }>;
@@ -80,10 +82,15 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
 
         {/* 환영 안내 (방금 가입 완료 → /checkout/success 에서 redirect) */}
         {welcome === "1" && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 text-[13px] text-blue-700 leading-[1.6]">
-            <b>{tierName} 구독이 시작되었어요!</b><br />
-            7일 무료체험이 진행 중이며, 등록한 카드는 체험 종료 후 자동 결제됩니다.
-          </div>
+          <>
+            {/* Phase 4 — 결제 funnel 단계 측정 (success 페이지가 redirect 라 여기서 발사) */}
+            <GaPageTracker eventName={EVENTS.CHECKOUT_COMPLETED} params={{ tier_name: tierName }} />
+            <GaPageTracker eventName={EVENTS.SUBSCRIPTION_ACTIVE} params={{ tier_name: tierName }} />
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 text-[13px] text-blue-700 leading-[1.6]">
+              <b>{tierName} 구독이 시작되었어요!</b><br />
+              7일 무료체험이 진행 중이며, 등록한 카드는 체험 종료 후 자동 결제됩니다.
+            </div>
+          </>
         )}
 
         {/* "이미 구독중" 안내 (pricing 에서 redirect 된 경우) */}

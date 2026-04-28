@@ -24,12 +24,14 @@ export function CheckoutLink({ href, tier, isLoggedIn, className, children }: Pr
     <a
       href={href}
       className={className}
-      onClick={() =>
+      onClick={() => {
+        // Phase 4 — 결제 funnel 단계별 측정 (PLAN_SELECTED 가 더 일찍의 의도)
+        trackEvent(EVENTS.PRICING_PLAN_SELECTED, { plan: tier });
         trackEvent(EVENTS.CHECKOUT_STARTED, {
           tier,
           is_logged_in: isLoggedIn,
-        })
-      }
+        });
+      }}
     >
       {children}
     </a>

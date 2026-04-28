@@ -7,6 +7,8 @@
 // ============================================================
 
 import Link from "next/link";
+import { GaPageTracker } from "@/components/ga-page-tracker";
+import { EVENTS } from "@/lib/analytics";
 
 type SearchParams = Promise<{
   code?: string;
@@ -35,6 +37,8 @@ export default async function CheckoutFailPage({ searchParams }: { searchParams:
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
+      {/* Phase 4 — 결제 실패 funnel 측정 (reason 파라미터로 사유 분석) */}
+      <GaPageTracker eventName={EVENTS.CHECKOUT_FAILED} params={{ reason: code ?? "unknown" }} />
       <div className="max-w-[480px] mx-auto px-5">
         <div className="text-center mb-6">
           <div className="w-[64px] h-[64px] mx-auto rounded-full bg-red-50 grid place-items-center mb-4">

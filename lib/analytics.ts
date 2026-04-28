@@ -31,6 +31,12 @@ export const EVENTS = {
   // 결제 / 구독
   PRICING_VIEWED: "pricing_viewed",
   CHECKOUT_STARTED: "checkout_started",
+  // 결제·구독 funnel 보강 (2026-04-28 Phase 4)
+  PRICING_PLAN_SELECTED: "pricing_plan_selected",   // 가격표 플랜 클릭 (plan 파라미터)
+  CHECKOUT_COMPLETED: "checkout_completed",          // 토스 결제 성공 (success 페이지)
+  CHECKOUT_FAILED: "checkout_failed",                // 토스 결제 실패 (reason 파라미터)
+  SUBSCRIPTION_ACTIVE: "subscription_active",        // 빌링키 + 첫 청구 성공
+  SUBSCRIPTION_CANCELLED: "subscription_cancelled",  // 사용자 취소
   // AI 상담
   AI_CHAT_SENT: "ai_chat_sent",
   // 블로그

@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 export function CancelButton({ tierName }: { tierName: string }) {
   const router = useRouter();
@@ -25,7 +26,8 @@ export function CancelButton({ tierName }: { tierName: string }) {
       if (!res.ok) {
         throw new Error(data.error || "해지에 실패했습니다.");
       }
-      // 성공: 페이지 새로고침해서 새 상태 표시
+      // 성공: GA4 이벤트 발사 + 페이지 새로고침해서 새 상태 표시
+      trackEvent(EVENTS.SUBSCRIPTION_CANCELLED, { tier_name: tierName });
       router.refresh();
       setConfirming(false);
     } catch (err) {
