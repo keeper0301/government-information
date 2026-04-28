@@ -138,7 +138,7 @@ export async function getRecentPayments(limit = 5): Promise<RecentPayment[]> {
   const { data } = await admin
     .from("subscriptions")
     .select("id, user_id, tier, status, customer_email, created_at")
-    .in("status", ACTIVE_STATUSES as unknown as string[])
+    .in("status", [...ACTIVE_STATUSES])
     .in("tier", ["basic", "pro"])
     .order("created_at", { ascending: false })
     .limit(limit);
