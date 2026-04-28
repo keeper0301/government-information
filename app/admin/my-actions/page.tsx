@@ -51,7 +51,7 @@ function getTargetHint(record: AdminActionRecord): string | null {
 export default async function MyActionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ page?: string; from?: string; to?: string; q?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -67,21 +67,28 @@ export default async function MyActionsPage({
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
   const from = params.from && dateRe.test(params.from) ? params.from : undefined;
   const to = params.to && dateRe.test(params.to) ? params.to : undefined;
+  // 검색어 — 100자 cap (URL 길이 가드 + 비현실적 입력 차단)
+  const q =
+    params.q && params.q.trim().length > 0
+      ? params.q.trim().slice(0, 100)
+      : undefined;
 
   const { records: actions, total } = await getActorActionsPaged(user.id, {
     limit: PER_PAGE,
     offset,
     from,
     to,
+    q,
   });
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
-  // 페이지네이션 URL 빌더 — 기간 필터 유지하면서 page 만 바꿈
+  // 페이지네이션 URL 빌더 — 기간·검색어 필터 유지하면서 page 만 바꿈
   function buildUrl(overrides: Record<string, string>) {
     const next: Record<string, string> = {
       page: String(page),
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
+      ...(q ? { q } : {}),
       ...overrides,
     };
     // 1페이지는 쿼리에서 제거 (깨끗한 URL)
@@ -112,13 +119,26 @@ export default async function MyActionsPage({
           </Link>
         </div>
 
-        {/* 기간 필터 — GET 폼 으로 제출 → URL ?from=&to= 파라미터 주입.
-            비우고 제출하면 전체 기간. 1페이지로 리셋되도록 page input 생략. */}
+        {/* 검색·기간 필터 — GET 폼 으로 제출 → URL ?q=&from=&to= 파라미터 주입.
+            비우고 제출하면 전체. 1페이지로 리셋되도록 page input 생략.
+            q: 라벨(예: "탈퇴", "블로그") · enum 영문(예: "delete") · 사용자
+            UUID 정확 매칭 모두 지원. 한 검색 박스로 통합 처리. */}
         <form
           method="get"
           action="/admin/my-actions"
           className="mb-5 bg-white border border-grey-100 rounded-xl p-4 flex flex-wrap items-end gap-3"
         >
+          <label className="text-[13px] font-medium text-grey-700 flex-1 min-w-[200px]">
+            <span className="block mb-1">검색</span>
+            <input
+              type="text"
+              name="q"
+              defaultValue={q ?? ""}
+              placeholder="라벨 / 영문 enum / 사용자 UUID"
+              maxLength={100}
+              className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+            />
+          </label>
           <label className="text-[13px] font-medium text-grey-700">
             <span className="block mb-1">시작일</span>
             <input
@@ -143,7 +163,7 @@ export default async function MyActionsPage({
           >
             적용
           </button>
-          {(from || to) && (
+          {(from || to || q) && (
             <Link
               href="/admin/my-actions"
               className="min-h-[44px] px-4 inline-flex items-center text-[13px] font-semibold rounded-lg border border-grey-200 text-grey-700 hover:bg-grey-50 no-underline"
@@ -152,6 +172,7 @@ export default async function MyActionsPage({
             </Link>
           )}
           <span className="text-[13px] text-grey-600 ml-auto">
+            {q && <>검색어: <strong className="text-grey-900">{q}</strong> · </>}
             {from || to ? (
               <>기간: {from || "전체"} ~ {to || "현재"}</>
             ) : (

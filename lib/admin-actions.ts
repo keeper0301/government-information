@@ -151,6 +151,9 @@ export async function getActorActions(
 // range(offset, offset+limit-1) + count:'exact' 로 한 쿼리에 처리.
 // 2026-04-24: 기간 필터(from/to) 추가 — /admin/my-actions 에서 특정 기간
 // 회고 시 사용. YYYY-MM-DD 문자열 ISO 기준 포함·배타 (from <= ~ < to+1일).
+// 2026-04-29: 검색어(q) 추가 — 한국어 라벨 매칭(예: "탈퇴" → manual_delete_user/
+// self_delete_requested/self_delete_restored/self_deleted), 영어 enum ILIKE,
+// UUID 형식이면 target_user_id 정확 매칭. 매칭 결과 없으면 빈 배열 반환.
 export async function getActorActionsPaged(
   actorId: string,
   {
@@ -158,7 +161,8 @@ export async function getActorActionsPaged(
     offset = 0,
     from,
     to,
-  }: { limit?: number; offset?: number; from?: string; to?: string } = {},
+    q,
+  }: { limit?: number; offset?: number; from?: string; to?: string; q?: string } = {},
 ): Promise<{ records: AdminActionRecord[]; total: number }> {
   const admin = createAdminClient();
   let query = admin
@@ -180,6 +184,45 @@ export async function getActorActionsPaged(
     const toDate = new Date(`${to}T00:00:00+09:00`);
     toDate.setDate(toDate.getDate() + 1);
     query = query.lt("created_at", toDate.toISOString());
+  }
+
+  // 검색어 필터 — q 가 비어있지 않으면 OR 조건 결합
+  if (q && q.trim().length > 0) {
+    const term = q.trim();
+    // 1) 한국어 라벨 매칭: ACTION_LABELS 에서 라벨에 term 포함된 enum 키 모음
+    const labelMatchedActions = (
+      Object.entries(ACTION_LABELS) as [AdminActionType, string][]
+    )
+      .filter(([, label]) => label.includes(term))
+      .map(([key]) => key);
+
+    // 2) UUID 형식이면 target_user_id 정확 매칭 (사용자 추적용)
+    const uuidRe =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidMatch = uuidRe.test(term) ? term : null;
+
+    // 3) 영어 enum ILIKE — PostgREST 의 ilike 는 % 메타문자만, term 에 % 들어있으면 그대로 통과
+    //    (사용자가 의도적 wildcard 쓰면 그대로 활용)
+    const ilikeTerm = term.replace(/[,()]/g, ""); // PostgREST or() 구분자 충돌 방지
+
+    // OR 절 조립
+    const orParts: string[] = [];
+    if (labelMatchedActions.length > 0) {
+      orParts.push(`action.in.(${labelMatchedActions.join(",")})`);
+    }
+    if (ilikeTerm.length > 0) {
+      orParts.push(`action.ilike.%${ilikeTerm}%`);
+    }
+    if (uuidMatch) {
+      orParts.push(`target_user_id.eq.${uuidMatch}`);
+    }
+
+    if (orParts.length > 0) {
+      query = query.or(orParts.join(","));
+    } else {
+      // 매칭 가능한 조건 자체가 없으면 빈 결과 (정상 분기)
+      return { records: [], total: 0 };
+    }
   }
 
   const { data, error, count } = await query.range(offset, offset + limit - 1);
