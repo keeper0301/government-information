@@ -3,6 +3,8 @@
 // 모든 결과는 30일 fill-zero 처리 (값 없는 날도 0 표시 → 차트 빈 칸 X).
 
 import { createAdminClient } from "@/lib/supabase/admin";
+// W1 fix — getAuthUsersCached 로 listUsers round trip 공유.
+import { getAuthUsersCached } from "@/lib/admin-stats";
 
 export type DailyPoint = {
   date: string; // YYYY-MM-DD (KST 기준)
@@ -67,12 +69,10 @@ export async function getAdminTrends(): Promise<AdminTrends> {
   ).toISOString();
 
   // DAU — auth.users.last_sign_in_at 일별 distinct
-  const { data: usersResp } = await sb.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
+  // W1 fix: getAuthUsersCached 사용해 같은 페이지 내 round trip 공유
+  const allUsers = await getAuthUsersCached();
   const dauMap = new Map<string, Set<string>>();
-  for (const u of usersResp?.users ?? []) {
+  for (const u of allUsers) {
     if (!u.last_sign_in_at || u.last_sign_in_at < since30Iso) continue;
     const date = toKstDate(u.last_sign_in_at);
     const set = dauMap.get(date) ?? new Set();

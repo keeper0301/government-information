@@ -5,6 +5,10 @@
 //   - app/admin/health/page.tsx (실시간 헬스 신호 4 카드 표시)
 
 import { createAdminClient } from "@/lib/supabase/admin";
+// W1 fix (Phase 6 후속) — listUsers 중복 호출 회피.
+// 같은 요청 안에서 lib/admin-health 등이 getAuthUsersCached 를 이미 호출했다면
+// react cache 가 결과 공유 → round trip 1회.
+import { getAuthUsersCached } from "@/lib/admin-stats";
 
 export type HealthSignals = {
   // 24h 신규 가입 수
@@ -36,12 +40,9 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // auth.users 신규 가입 (24h) — admin api 사용
-  const { data: usersResp } = await sb.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-  const allUsers = usersResp?.users ?? [];
+  // auth.users 24h 신규·7d 활성 — getAuthUsersCached 로 round trip 공유.
+  // /admin/health 페이지가 lib/admin-health 와 함께 호출해도 listUsers 1회만.
+  const allUsers = await getAuthUsersCached();
   const signups24h = allUsers.filter(
     (u) => u.created_at && u.created_at >= since24Iso,
   ).length;
