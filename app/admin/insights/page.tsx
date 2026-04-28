@@ -70,7 +70,7 @@ export default async function AdminInsightsPage() {
         <section className="bg-white rounded-lg border border-grey-200 p-5 mb-8">
           <dl className="grid grid-cols-3 gap-3">
             <div>
-              <dt className="text-[12px] text-grey-500">신규 구독 시도 (24h)</dt>
+              <dt className="text-[12px] text-grey-500">신규 결제 의도 (첫 진입, 24h)</dt>
               <dd className="text-[24px] font-extrabold text-grey-900 tabular-nums mt-1">
                 {data.subscriptionPulse.newAttempts24h.toLocaleString()}
               </dd>
@@ -95,8 +95,9 @@ export default async function AdminInsightsPage() {
             </div>
           </dl>
           <p className="text-[12px] text-grey-500 mt-3 leading-[1.5]">
-            매출 신호 한눈에. 신규 0 / 해지 1 이상이면 매출 위험 신호 — 카카오 알림·결제 이벤트
-            funnel 점검 필요.
+            * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점 (첫 /checkout 진입). 재시도는
+            기존 행 갱신이라 안 잡힘. 활성 = trial 포함 basic/pro 결제 중. 해지 1 이상이면
+            카카오 알림·결제 funnel 점검 필요.
           </p>
         </section>
 
