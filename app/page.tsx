@@ -191,12 +191,13 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* 오른쪽: 맞춤 추천 카드 (데스크톱 전용 위치. 모바일에선 아래로 자연스럽게 스택)
+          {/* 오른쪽: 맞춤 추천 카드 + 인기 정책 stack (데스크톱 전용 위치. 모바일은 아래 자연 스택)
               3가지 상태 분기:
-              - 비로그인: 기존 HomeRecommendCard 입력 폼
+              - 비로그인: HomeRecommendCard 입력 폼
               - 로그인 + 빈 프로필: EmptyProfilePrompt 프로필 입력 유도
-              - 로그인 + 프로필 있음: HomeRecommendAuto 자동 추천 카드 */}
-          <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
+              - 로그인 + 프로필 있음: HomeRecommendAuto 자동 추천 카드
+              아래에 HomePopularPicks 인기 정책 사이드 배너 stack (Hero 우측 활용). */}
+          <div className="fade-up lg:mt-14 flex flex-col gap-4" style={{ animationDelay: "240ms" }}>
             {user ? (
               isProfileEmpty ? (
                 // 로그인했지만 프로필 미입력 — 프로필 작성 유도 메시지
@@ -209,22 +210,15 @@ export default async function Home() {
               // 비로그인 — 기존 입력 폼 그대로 (변화 없음)
               <HomeRecommendCard initial={initialProfile} />
             )}
+            {/* 인기 정책 TOP 5 — 추천 카드 아래 stack (사이드 배너 위치 활용) */}
+            <HomePopularPicks isLoggedIn={!!user} />
           </div>
         </div>
       </section>
 
-      {/* [발견] 대상별 카드 6종 + 인기 정책 사이드 배너 grid row (2026-04-28).
-          - 데스크톱 lg+: 좌측 카드 6종 (3 cols × 2 줄) + 우측 사이드 배너 400px
-          - 모바일: 자연 stack (카드 위, 배너 아래)
-          첫 화면 fold 안에 양쪽 다 노출 + 좌측 공간 어색 X. */}
-      <RevealOnScroll>
-        <section className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8">
-          <div className="grid gap-8 lg:grid-cols-[1fr_400px] items-start">
-            <HomeTargetCards />
-            <HomePopularPicks isLoggedIn={!!user} />
-          </div>
-        </section>
-      </RevealOnScroll>
+      {/* [발견] 대상별 빠른 진입 카드 6종 — 풀폭 한 줄 (모바일 3 cols 두 줄).
+          인기 정책 TOP 5 가 Hero 우측 column 으로 이동했으므로 사이드 배너 row 해체. */}
+      <HomeTargetCards />
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
