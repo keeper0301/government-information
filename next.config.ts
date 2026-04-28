@@ -14,9 +14,44 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["jsdom", "isomorphic-dompurify"],
 
   // 보안 헤더 — 외부 LLM 평가에서 HSTS 만 있고 나머지 부재 지적.
-  // CSP 는 AdSense·GA·Toss 등 외부 스크립트가 많아 너무 엄격하게 잡으면 사이트
-  // 깨짐 위험 → 별도 검토 후 도입. 우선 4종부터.
   async headers() {
+    // Content-Security-Policy — 외부 스크립트(AdSense·GA·Toss) 도메인 명시.
+    // 가장 관대한 정책으로 enforce — 사이트 깨짐 위험 최소화.
+    // unsafe-inline·unsafe-eval 허용: Next.js 의 inline script/style + _next/ chunks
+    // 가 필요. 점진적으로 nonce 또는 hash 도입해 강화 가능.
+    //
+    // 외부 도메인 화이트리스트:
+    //   - AdSense: pagead2.googlesyndication.com·googleads.g.doubleclick.net·googleadservices.com
+    //   - GA4: googletagmanager.com·google-analytics.com
+    //   - Toss: js.tosspayments.com·api.tosspayments.com
+    //   - Supabase: *.supabase.co (DB·Auth·Storage·realtime)
+    //   - Pretendard CDN: cdn.jsdelivr.net (globals.css 의 woff)
+    //   - 이미지·뉴스 썸네일: data:·https:·blob: 모두 허용 (외부 출처 다양)
+    //   - 폰트: data:·cdn.jsdelivr.net
+    //
+    // 깨짐 시 즉시 롤백 가능 — Vercel Deployments 에서 이전 commit Promote.
+    const csp = [
+      "default-src 'self'",
+      // script: self + AdSense + GA + Toss + unsafe-inline·eval (Next.js)
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.googleadservices.com https://*.googletagmanager.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://js.tosspayments.com",
+      // style: self + 인라인 스타일 (Tailwind JIT, animation inline)
+      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+      // 이미지: 모든 https + data: + blob: (뉴스 썸네일 출처 다양)
+      "img-src 'self' data: blob: https:",
+      // 폰트: self + data + Pretendard CDN
+      "font-src 'self' data: https://cdn.jsdelivr.net",
+      // XHR/fetch: Supabase + GA + Toss + AdSense beacon
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://api.tosspayments.com https://pagead2.googlesyndication.com https://*.googlesyndication.com",
+      // iframe: Toss 결제 + AdSense (광고는 iframe 으로 렌더)
+      "frame-src 'self' https://*.tosspayments.com https://googleads.g.doubleclick.net https://*.googlesyndication.com",
+      // 임베드 차단 — clickjacking 방어 (X-Frame-Options 와 중복이지만 모던 브라우저는 frame-ancestors 우선)
+      "frame-ancestors 'none'",
+      // 플러그인·base href·form action 잠금
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; ");
+
     return [
       {
         source: "/:path*",
@@ -32,6 +67,8 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
+          // CSP — 외부 스크립트 화이트리스트 + 인라인 허용 (Next.js 호환)
+          { key: "Content-Security-Policy", value: csp },
         ],
       },
     ];
