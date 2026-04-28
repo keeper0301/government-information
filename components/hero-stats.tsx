@@ -12,19 +12,24 @@
 import { CountUp } from "./count-up";
 import { getProgramCounts } from "@/lib/home-stats";
 
+// 광역 시·도 17개 (region 페이지 17 광역 동일) — 커버리지 시그널
+const PROVINCE_COUNT = 17;
+// 정부 데이터 출처 — footer 와 동일 6개 정적
+const SOURCE_COUNT = 6;
+
 export async function HeroStats() {
   const counts = await getProgramCounts();
   const totalPrograms = counts.welfare_total + counts.loan_total;
 
-  // 정부 데이터 출처 — footer 와 동일 6개 정적
-  const sourceCount = 6;
-
   return (
     <section className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8">
-      <div className="grid grid-cols-3 gap-6 max-md:gap-3 bg-white rounded-3xl shadow-sm px-10 py-8 max-md:px-5 max-md:py-6">
+      {/* 4 카드 — 데이터 신뢰 시그널. 사용자 카운트는 의도적으로 제외
+          (활성 사용자 부족 단계라 노출 시 신뢰 ↓ 위험. 데이터·커버리지 강조). */}
+      <div className="grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-3 bg-white rounded-3xl shadow-sm px-8 py-8 max-md:px-5 max-md:py-6">
         <Stat to={counts.news_total} label="정책 뉴스 큐레이션" />
         <Stat to={totalPrograms} label="진행 중 지원 공고" />
-        <Stat to={sourceCount} label="공식 데이터 출처" suffix="개" />
+        <Stat to={PROVINCE_COUNT} label="광역 시·도 커버" suffix="개" />
+        <Stat to={SOURCE_COUNT} label="공식 데이터 출처" suffix="개" />
       </div>
     </section>
   );
@@ -34,7 +39,7 @@ export async function HeroStats() {
 function Stat({ to, label, suffix }: { to: number; label: string; suffix?: string }) {
   return (
     <div className="text-center">
-      <div className="text-[40px] max-md:text-[26px] font-extrabold text-blue-500 leading-none mb-2 tracking-[-0.04em]">
+      <div className="text-[36px] max-md:text-[24px] font-extrabold text-blue-500 leading-none mb-2 tracking-[-0.04em]">
         <CountUp to={to} suffix={suffix} />
       </div>
       <div className="text-[13px] max-md:text-[11px] font-medium text-grey-600 tracking-[-0.01em]">

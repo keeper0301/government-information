@@ -6,6 +6,8 @@ import { FeatureGrid } from "@/components/feature-grid";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
 import { HomeTargetCards } from "@/components/home-target-cards";
+import { HomeValueProps } from "@/components/home-value-props";
+import { HomePopularPicks } from "@/components/home-popular-picks";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
@@ -145,13 +147,18 @@ export default async function Home() {
               30초 만에 찾아드릴게요
             </h1>
             <p
-              className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-8 max-md:text-[15px]"
+              className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-6 max-md:text-[15px]"
               style={{ animationDelay: "120ms" }}
             >
               청년·소상공인·부모·신혼부부 정책을 한곳에 모아
               <br />
               이메일·알림톡으로 마감 전에 알려드려요.
             </p>
+            {/* [발견] 회원가입 가치 카드 3종 — 24h 가입 0건 직격타 (2026-04-28).
+                Hero 카피 바로 아래 inline chip 으로 가치 명시. */}
+            <div className="fade-up" style={{ animationDelay: "150ms" }}>
+              <HomeValueProps />
+            </div>
             {/* 메인 CTA — 외부 LLM 평가 후속 (2026-04-28).
                 "1분 진단" 단일 메인 + SearchBox 보조. /quiz 가 익명 5문항 진단 */}
             <div
@@ -203,6 +210,12 @@ export default async function Home() {
           첫 화면에서 사용자가 자기 상황에 맞는 정책으로 즉시 이동.
           청년·신혼부부·부모·소상공인·저소득·1인가구. */}
       <HomeTargetCards />
+
+      {/* [발견] 인기 정책 TOP 5 — 비로그인 사용자도 즉시 콘텐츠 노출
+          (2026-04-28 hot-fix). view_count 기반. 비로그인 시 회원가입 CTA prompt. */}
+      <RevealOnScroll>
+        <HomePopularPicks isLoggedIn={!!user} />
+      </RevealOnScroll>
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
