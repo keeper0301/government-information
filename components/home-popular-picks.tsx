@@ -121,7 +121,7 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
                 href={`/${p.kind}/${p.id}`}
                 event={EVENTS.HOME_POPULAR_CLICKED}
                 params={{ kind: p.kind, rank: i + 1 }}
-                className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-grey-50 transition-colors no-underline group"
+                className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-grey-50 transition-colors no-underline group"
               >
                 {/* 순위 배지 — TOP 3 만 강조, 작게 */}
                 <span
@@ -134,16 +134,16 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
                   {i + 1}
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[13px] font-semibold text-grey-900 truncate group-hover:text-blue-600 transition-colors">
+                  <span className="block text-[13px] font-semibold text-grey-900 line-clamp-2 leading-[1.4] group-hover:text-blue-600 transition-colors">
                     {p.title}
                   </span>
-                  <span className="block text-[11px] text-grey-600 mt-0.5">
-                    <span className="inline-block px-1 py-px rounded bg-grey-100 text-[10px] font-semibold text-grey-700 mr-1.5 align-middle">
+                  <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[11px] text-grey-600 mt-1">
+                    <span className="inline-block px-1 py-px rounded bg-grey-100 text-[10px] font-semibold text-grey-700">
                       {p.kind === "welfare" ? "복지" : "대출"}
                     </span>
-                    {formatDeadline(p.apply_end)}
-                    <span className="text-grey-400 mx-1">·</span>
-                    조회 {p.view_count.toLocaleString()}
+                    <span>{formatDeadline(p.apply_end)}</span>
+                    <span className="text-grey-400">·</span>
+                    <span>조회 {p.view_count.toLocaleString()}</span>
                   </span>
                 </span>
               </TrackedLink>

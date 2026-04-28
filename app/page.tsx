@@ -222,7 +222,7 @@ export default async function Home() {
             - overlap 조건: (vw - 324) < (vw/2 + 570) → vw < 1788
             → 1800px 안전 round. FHD 1920px 이상 노출. */}
       <div
-        className="hidden min-[1800px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-160px)] overflow-y-auto"
+        className="hidden min-[1800px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-hidden"
         aria-label="인기 정책 사이드 배너"
       >
         <HomePopularPicks isLoggedIn={!!user} />
