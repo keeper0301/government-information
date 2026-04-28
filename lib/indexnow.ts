@@ -24,7 +24,7 @@
 const INDEXNOW_TIMEOUT_MS = 5000;
 
 export type IndexNowResult =
-  | { ok: true; submitted: number; provider: "naver" | "bing" | "indexnow.org" }
+  | { ok: true; submitted: number; provider: "naver" | "indexnow.org" }
   | { ok: false; reason: "skipped_no_key" }
   | { ok: false; reason: "http_error"; status: number; error: string }
   | { ok: false; reason: "network_error"; error: string };
