@@ -316,3 +316,50 @@ export async function sendReceiptEmail({
 
   return { data, error };
 }
+
+// ============================================================
+// Phase 6 — 운영 health-alert 사장님 이메일
+// ============================================================
+// /api/cron/health-alert (매일 09:00 KST) 가 임계치 위반 시 호출.
+// 이미 정의된 ADMIN_EMAIL 재사용.
+
+import type { ThresholdAlert } from "@/lib/health-check";
+
+export async function sendHealthAlertEmail(
+  alerts: ThresholdAlert[],
+  signals: { signups24h: number; active7d: number; cronFailures24h: number },
+): Promise<{ ok: boolean; error?: string }> {
+  if (alerts.length === 0) return { ok: true };
+
+  const subject = `[keepioo 운영] ${alerts.length}건 임계치 초과`;
+  const itemsHtml = alerts
+    .map((a) => `<li style="margin-bottom: 6px;">${escapeHtml(a.message)}</li>`)
+    .join("");
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #d93636; font-size: 18px; margin-bottom: 12px;">⚠️ 운영 임계치 ${alerts.length}건 초과</h2>
+      <ul style="font-size: 14px; color: #191f28; line-height: 1.6; padding-left: 20px;">${itemsHtml}</ul>
+      <div style="margin-top: 20px; padding: 12px 16px; background: #f9fafb; border-radius: 8px; font-size: 13px; color: #4e5968;">
+        <strong>현재 신호</strong><br />
+        24h 신규 가입: ${signals.signups24h}<br />
+        7d 활성 사용자: ${signals.active7d}<br />
+        24h cron 실패: ${signals.cronFailures24h}
+      </div>
+      <a href="https://www.keepioo.com/admin/health" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #3182f6; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;">
+        /admin/health 종합 대시보드 →
+      </a>
+    </div>
+  `;
+  const text = `${subject}\n\n${alerts.map((a) => `- ${a.message}`).join("\n")}\n\n현재 신호: 24h 가입 ${signals.signups24h} / 7d 활성 ${signals.active7d} / 24h cron 실패 ${signals.cronFailures24h}\n\n/admin/health → https://www.keepioo.com/admin/health`;
+
+  const resend = getResend();
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    subject,
+    html,
+    text,
+  });
+
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
