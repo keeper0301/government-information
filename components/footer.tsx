@@ -10,6 +10,7 @@
 //   6. 저작권
 // ============================================================
 
+import Link from "next/link";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
 
 const footerLinks = [
@@ -52,15 +53,24 @@ export async function Footer() {
           </span>
         </div>
         <div className="flex gap-5 flex-wrap max-md:gap-x-5 max-md:gap-y-1 max-md:-mx-2">
-          {footerLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="text-[13px] text-grey-600 no-underline hover:text-grey-700 transition-colors max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-2"
-            >
-              {link.label}
-            </a>
-          ))}
+          {footerLinks.map((link) => {
+            // mailto: / tel: / 외부 URL 은 a 태그, 내부 라우팅은 next/link
+            const isExternal =
+              link.href.startsWith("mailto:") ||
+              link.href.startsWith("tel:") ||
+              link.href.startsWith("http");
+            const className =
+              "text-[13px] text-grey-600 no-underline hover:text-grey-700 transition-colors max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-2";
+            return isExternal ? (
+              <a key={link.label} href={link.href} className={className}>
+                {link.label}
+              </a>
+            ) : (
+              <Link key={link.label} href={link.href} className={className}>
+                {link.label}
+              </Link>
+            );
+          })}
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { DisplayProgram } from "@/lib/programs";
 
 type Props = {
@@ -25,12 +26,16 @@ export function AlertStrip({ programs, isLoggedIn = false }: Props) {
   const durationSec = Math.max(visible.length * 4, 20);
 
   // 각 공고를 하나의 카드로 렌더링 (원본용/복제본용에서 재사용)
+  // Link (next/link) 사용 — 클라이언트 사이드 navigation + prefetch 활용.
+  // 이전 <a> 태그는 full page reload 였음.
   const renderCard = (p: DisplayProgram, idx: number, isClone = false) => (
-    <a
+    <Link
       key={`${isClone ? "clone" : "orig"}-${p.id}-${idx}`}
       href={`/${p.type}/${p.id}`}
       aria-hidden={isClone ? true : undefined}
       tabIndex={isClone ? -1 : undefined}
+      // 복제본은 prefetch 비활성 (스크롤 시 같은 카드 미리보기 중복 회피)
+      prefetch={isClone ? false : undefined}
       className="shrink-0 flex items-center gap-2 no-underline text-inherit hover:opacity-75 transition-opacity"
     >
       {/* D-N 배지 — 사이트 전역 DdayLabel 과 동일 톤 (12px·padding 통일) */}
@@ -46,7 +51,7 @@ export function AlertStrip({ programs, isLoggedIn = false }: Props) {
       <span className="text-[14px] font-medium text-grey-900 truncate max-w-[260px] max-md:max-w-[200px]">
         {p.title}
       </span>
-    </a>
+    </Link>
   );
 
   return (
@@ -92,12 +97,12 @@ export function AlertStrip({ programs, isLoggedIn = false }: Props) {
         </div>
 
         {/* 우측 CTA */}
-        <a
+        <Link
           href={ctaHref}
           className="shrink-0 text-[13px] font-semibold text-blue-700 no-underline hover:text-blue-800 transition-colors whitespace-nowrap"
         >
           {ctaLabel} →
-        </a>
+        </Link>
       </div>
     </div>
   );
