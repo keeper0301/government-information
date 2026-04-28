@@ -35,13 +35,36 @@ const CATEGORIES = [
   "창업",
 ] as const;
 
-export default async function NewWelfareProgramPage() {
+export default async function NewWelfareProgramPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    title?: string;
+    source?: string;
+    source_url?: string;
+    description?: string;
+    region?: string;
+    news_id?: string;
+  }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin/welfare/new");
   if (!isAdminUser(user.email)) redirect("/");
+
+  // URL 쿼리 prefill — /admin/press-ingest 에서 '복지 →' 버튼 클릭 시 자동 채움
+  // 길이 cap 으로 비정상 prefill 차단 (server action 에서도 동일 cap 적용)
+  const params = await searchParams;
+  const prefill = {
+    title: (params.title ?? "").slice(0, 500),
+    source: (params.source ?? "").slice(0, 200),
+    source_url: (params.source_url ?? "").slice(0, 1000),
+    description: (params.description ?? "").slice(0, 10000),
+    region: (params.region ?? "").slice(0, 200),
+  };
+  const hasPrefill = Object.values(prefill).some((v) => v.length > 0);
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -68,6 +91,15 @@ export default async function NewWelfareProgramPage() {
           에 해당 키워드를 명시적으로 포함시키세요.
         </div>
 
+        {/* Prefill 안내 — press-ingest 에서 자동 채워온 경우 */}
+        {hasPrefill && (
+          <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-[13px] text-emerald-900 leading-[1.6]">
+            ✓ <strong>광역 보도자료 자동 채움</strong> — 출처 보도자료에서
+            제목·기관·출처 URL·요약을 가져왔습니다. 검토 후 자격·신청 방법·
+            마감일을 보강하고 등록하세요.
+          </div>
+        )}
+
         <form action={createWelfareProgram} className="space-y-6">
           {/* ━━━ 필수 카드 ━━━ */}
           <section className="bg-white rounded-xl border border-grey-200 p-5">
@@ -75,8 +107,8 @@ export default async function NewWelfareProgramPage() {
               필수 정보
             </h2>
             <div className="space-y-4">
-              <Field label="정책명 (title) *" name="title" required maxLength={500} placeholder="예: 전남도 고유가 피해지원금" />
-              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전라남도청" />
+              <Field label="정책명 (title) *" name="title" required maxLength={500} placeholder="예: 전남도 고유가 피해지원금" defaultValue={prefill.title} />
+              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전라남도청" defaultValue={prefill.source} />
               <Field label="신청 URL (apply_url) *" name="apply_url" required type="url" placeholder="https://www.jeonnam.go.kr/..." />
 
               <label className="block">
@@ -107,6 +139,7 @@ export default async function NewWelfareProgramPage() {
                 maxLength={10000}
                 rows={6}
                 placeholder="정책 내용을 자세히 작성. 자동 분류는 이 텍스트에서 키워드를 인식하므로 지역명·연령대·혜택 종류를 자연스럽게 포함시키세요."
+                defaultValue={prefill.description}
               />
             </div>
           </section>
@@ -158,8 +191,8 @@ export default async function NewWelfareProgramPage() {
               <Field label="신청 마감 (YYYY-MM-DD)" name="apply_end" type="date" />
             </div>
             <div className="mt-4 space-y-4">
-              <Field label="출처 URL (source_url)" name="source_url" type="url" placeholder="원문 또는 보도자료 URL" />
-              <Field label="지역 (region, 자유 텍스트)" name="region" maxLength={200} placeholder="예: 전라남도" />
+              <Field label="출처 URL (source_url)" name="source_url" type="url" placeholder="원문 또는 보도자료 URL" defaultValue={prefill.source_url} />
+              <Field label="지역 (region, 자유 텍스트)" name="region" maxLength={200} placeholder="예: 전라남도" defaultValue={prefill.region} />
             </div>
           </section>
 
@@ -195,6 +228,7 @@ function Field({
   required,
   maxLength,
   placeholder,
+  defaultValue,
 }: {
   label: string;
   name: string;
@@ -202,6 +236,7 @@ function Field({
   required?: boolean;
   maxLength?: number;
   placeholder?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="block">
@@ -214,6 +249,7 @@ function Field({
         required={required}
         maxLength={maxLength}
         placeholder={placeholder}
+        defaultValue={defaultValue || undefined}
         className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
       />
     </label>
@@ -227,6 +263,7 @@ function Textarea({
   maxLength,
   rows = 3,
   placeholder,
+  defaultValue,
 }: {
   label: string;
   name: string;
@@ -234,6 +271,7 @@ function Textarea({
   maxLength?: number;
   rows?: number;
   placeholder?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="block">
@@ -246,6 +284,7 @@ function Textarea({
         maxLength={maxLength}
         rows={rows}
         placeholder={placeholder}
+        defaultValue={defaultValue || undefined}
         className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none leading-[1.6] resize-y"
       />
     </label>

@@ -30,13 +30,32 @@ const CATEGORIES = [
   "기타",
 ] as const;
 
-export default async function NewLoanProgramPage() {
+export default async function NewLoanProgramPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    title?: string;
+    source?: string;
+    source_url?: string;
+    description?: string;
+    news_id?: string;
+  }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin/loan/new");
   if (!isAdminUser(user.email)) redirect("/");
+
+  const params = await searchParams;
+  const prefill = {
+    title: (params.title ?? "").slice(0, 500),
+    source: (params.source ?? "").slice(0, 200),
+    source_url: (params.source_url ?? "").slice(0, 1000),
+    description: (params.description ?? "").slice(0, 10000),
+  };
+  const hasPrefill = Object.values(prefill).some((v) => v.length > 0);
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -60,12 +79,20 @@ export default async function NewLoanProgramPage() {
           넣어주세요 — 매칭 태그가 자동 인식됩니다.
         </div>
 
+        {hasPrefill && (
+          <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-[13px] text-emerald-900 leading-[1.6]">
+            ✓ <strong>광역 보도자료 자동 채움</strong> — 출처 보도자료에서
+            제목·기관·출처 URL·요약을 가져왔습니다. 검토 후 대출 한도·이자율·
+            상환기간·신청 방법·마감일을 보강하고 등록하세요.
+          </div>
+        )}
+
         <form action={createLoanProgram} className="space-y-6">
           <section className="bg-white rounded-xl border border-grey-200 p-5">
             <h2 className="text-[15px] font-bold text-grey-900 mb-4">필수 정보</h2>
             <div className="space-y-4">
-              <Field label="정책명 (title) *" name="title" required maxLength={500} placeholder="예: 전남 소상공인 긴급 운영자금" />
-              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전라남도청" />
+              <Field label="정책명 (title) *" name="title" required maxLength={500} placeholder="예: 전남 소상공인 긴급 운영자금" defaultValue={prefill.title} />
+              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전라남도청" defaultValue={prefill.source} />
               <Field label="신청 URL (apply_url) *" name="apply_url" required type="url" />
 
               <label className="block">
@@ -96,6 +123,7 @@ export default async function NewLoanProgramPage() {
                 maxLength={10000}
                 rows={6}
                 placeholder="대출·자금 사업 상세. 자동 분류용으로 지역명·연령·업종 키워드 자연 포함."
+                defaultValue={prefill.description}
               />
             </div>
           </section>
@@ -133,7 +161,7 @@ export default async function NewLoanProgramPage() {
               <Field label="신청 마감 (YYYY-MM-DD)" name="apply_end" type="date" />
             </div>
             <div className="mt-4">
-              <Field label="출처 URL (source_url)" name="source_url" type="url" placeholder="원문 URL" />
+              <Field label="출처 URL (source_url)" name="source_url" type="url" placeholder="원문 URL" defaultValue={prefill.source_url} />
             </div>
           </section>
 
@@ -167,6 +195,7 @@ function Field({
   required,
   maxLength,
   placeholder,
+  defaultValue,
 }: {
   label: string;
   name: string;
@@ -174,6 +203,7 @@ function Field({
   required?: boolean;
   maxLength?: number;
   placeholder?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="block">
@@ -186,6 +216,7 @@ function Field({
         required={required}
         maxLength={maxLength}
         placeholder={placeholder}
+        defaultValue={defaultValue || undefined}
         className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
       />
     </label>
@@ -199,6 +230,7 @@ function Textarea({
   maxLength,
   rows = 3,
   placeholder,
+  defaultValue,
 }: {
   label: string;
   name: string;
@@ -206,6 +238,7 @@ function Textarea({
   maxLength?: number;
   rows?: number;
   placeholder?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="block">
@@ -218,6 +251,7 @@ function Textarea({
         maxLength={maxLength}
         rows={rows}
         placeholder={placeholder}
+        defaultValue={defaultValue || undefined}
         className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none leading-[1.6] resize-y"
       />
     </label>

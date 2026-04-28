@@ -13,7 +13,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
-import { getPressIngestCandidates } from "@/lib/press-ingest/filter";
+import {
+  getPressIngestCandidates,
+  type PressIngestCandidate,
+} from "@/lib/press-ingest/filter";
 
 export const metadata: Metadata = {
   title: "광역 보도자료 정책 후보 | 어드민",
@@ -21,6 +24,42 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+// 광역 ministry 풀네임 → 사람 읽기 source 값 (등록 폼 prefill 용)
+// 예: '전라남도' → '전라남도청', '경기도' → '경기도청'
+function ministryToSource(ministry: string | null): string {
+  if (!ministry) return "";
+  // 특별시·광역시·자치시·도 → "...청" 으로 통일
+  if (ministry.endsWith("시") || ministry.endsWith("도"))
+    return `${ministry}청`;
+  return ministry;
+}
+
+// ministry → region 자유 텍스트 prefill (welfare 만 사용)
+function ministryToRegion(ministry: string | null): string {
+  return ministry ?? "";
+}
+
+// 등록 폼 prefill URL 생성 — title/source/source_url/description 자동 채움
+// news_id 도 포함해 추후 추적 가능. URLSearchParams 가 자동 encode.
+function buildPrefillUrl(
+  base: string,
+  c: PressIngestCandidate,
+  withRegion: boolean,
+): string {
+  const qs = new URLSearchParams();
+  qs.set("title", c.title);
+  qs.set("source", ministryToSource(c.ministry));
+  // source_url 은 보도자료 자체 페이지 (/news/{slug}) 또는 외부 출처
+  qs.set(
+    "source_url",
+    `https://www.keepioo.com/news/${encodeURIComponent(c.slug)}`,
+  );
+  if (c.summary) qs.set("description", c.summary);
+  if (withRegion) qs.set("region", ministryToRegion(c.ministry));
+  qs.set("news_id", c.id);
+  return `${base}?${qs.toString()}`;
+}
 
 // ministry 풀네임 → 짧은 라벨 (테이블 가독성)
 const MINISTRY_SHORT: Record<string, string> = {
@@ -185,13 +224,13 @@ export default async function PressIngestPage({
                     <td className="py-2 px-3 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
                         <Link
-                          href="/admin/welfare/new"
+                          href={buildPrefillUrl("/admin/welfare/new", c, true)}
                           className="text-[11px] text-blue-500 hover:text-blue-700 font-semibold no-underline whitespace-nowrap"
                         >
                           복지 →
                         </Link>
                         <Link
-                          href="/admin/loan/new"
+                          href={buildPrefillUrl("/admin/loan/new", c, false)}
                           className="text-[11px] text-orange-500 hover:text-orange-700 font-semibold no-underline whitespace-nowrap"
                         >
                           대출 →
