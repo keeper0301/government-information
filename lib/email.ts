@@ -16,7 +16,7 @@ function getResend(): Resend {
 }
 
 // 발신자 (모든 메일 공통)
-const FROM_ADDRESS = "정책알리미 <onboarding@resend.dev>";
+const FROM_ADDRESS = "정책알리미 <noreply@keepioo.com>";
 
 // ============================================================
 // 맞춤 정책 다이제스트 알림 (신규)
@@ -67,6 +67,7 @@ export async function sendCustomAlertEmail({
   const { data, error } = await getResend().emails.send({
     from: FROM_ADDRESS,
     to: [to],
+    replyTo: ADMIN_EMAIL,
     subject: `[키피오] ${safeRule} · 새 맞춤 정책 ${programs.length}건`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
@@ -286,6 +287,7 @@ export async function sendReceiptEmail({
   const { data, error } = await getResend().emails.send({
     from: FROM_ADDRESS,
     to: [to],
+    replyTo: ADMIN_EMAIL,
     subject: `[정책알리미] ${tierName} 구독료 ${amountStr}원 결제 완료`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
@@ -405,6 +407,7 @@ export async function sendOnboardingReminderEmail({
   const { error } = await resend.emails.send({
     from: FROM_ADDRESS,
     to,
+    replyTo: ADMIN_EMAIL,
     subject,
     html,
     text,
