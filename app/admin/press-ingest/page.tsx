@@ -17,6 +17,7 @@ import {
   getPressIngestCandidates,
   type PressIngestCandidate,
 } from "@/lib/press-ingest/filter";
+import { PressClassifyAction } from "./classify-action";
 
 export const metadata: Metadata = {
   title: "광역 보도자료 정책 후보 | 어드민",
@@ -221,7 +222,7 @@ export default async function PressIngestPage({
                     <td className="py-2 px-3 text-grey-600 text-[11px] whitespace-nowrap">
                       {c.source_outlet ?? "—"}
                     </td>
-                    <td className="py-2 px-3 whitespace-nowrap">
+                    <td className="py-2 px-3 whitespace-nowrap align-top">
                       <div className="flex flex-col gap-1">
                         <Link
                           href={buildPrefillUrl("/admin/welfare/new", c, true)}
@@ -235,6 +236,19 @@ export default async function PressIngestPage({
                         >
                           대출 →
                         </Link>
+                        <PressClassifyAction
+                          newsId={c.id}
+                          fallbackWelfareUrl={buildPrefillUrl(
+                            "/admin/welfare/new",
+                            c,
+                            true,
+                          )}
+                          fallbackLoanUrl={buildPrefillUrl(
+                            "/admin/loan/new",
+                            c,
+                            false,
+                          )}
+                        />
                       </div>
                     </td>
                   </tr>

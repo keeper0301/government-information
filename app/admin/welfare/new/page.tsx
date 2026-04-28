@@ -39,12 +39,22 @@ export default async function NewWelfareProgramPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    // press-ingest 기본 prefill
     title?: string;
     source?: string;
     source_url?: string;
     description?: string;
     region?: string;
     news_id?: string;
+    // press-ingest LLM 분류 결과 추가 prefill
+    target?: string;
+    eligibility?: string;
+    benefits?: string;
+    apply_method?: string;
+    apply_url?: string;
+    apply_start?: string;
+    apply_end?: string;
+    category?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -54,8 +64,8 @@ export default async function NewWelfareProgramPage({
   if (!user) redirect("/login?next=/admin/welfare/new");
   if (!isAdminUser(user.email)) redirect("/");
 
-  // URL 쿼리 prefill — /admin/press-ingest 에서 '복지 →' 버튼 클릭 시 자동 채움
-  // 길이 cap 으로 비정상 prefill 차단 (server action 에서도 동일 cap 적용)
+  // URL 쿼리 prefill — /admin/press-ingest 에서 '복지 →' 또는 '🤖 AI 분류' 결과
+  // 자동 채움. 길이 cap 으로 비정상 prefill 차단 (server action 에서도 동일 cap).
   const params = await searchParams;
   const prefill = {
     title: (params.title ?? "").slice(0, 500),
@@ -63,8 +73,21 @@ export default async function NewWelfareProgramPage({
     source_url: (params.source_url ?? "").slice(0, 1000),
     description: (params.description ?? "").slice(0, 10000),
     region: (params.region ?? "").slice(0, 200),
+    target: (params.target ?? "").slice(0, 1000),
+    eligibility: (params.eligibility ?? "").slice(0, 5000),
+    benefits: (params.benefits ?? "").slice(0, 2000),
+    apply_method: (params.apply_method ?? "").slice(0, 2000),
+    apply_url: (params.apply_url ?? "").slice(0, 1000),
+    apply_start: /^\d{4}-\d{2}-\d{2}$/.test(params.apply_start ?? "")
+      ? (params.apply_start as string)
+      : "",
+    apply_end: /^\d{4}-\d{2}-\d{2}$/.test(params.apply_end ?? "")
+      ? (params.apply_end as string)
+      : "",
+    category: (params.category ?? "").slice(0, 50),
   };
   const hasPrefill = Object.values(prefill).some((v) => v.length > 0);
+  // 카테고리 prefill 시 select 의 defaultValue 로 사용 (CATEGORIES 목록 외는 무시)
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -109,7 +132,7 @@ export default async function NewWelfareProgramPage({
             <div className="space-y-4">
               <Field label="정책명 (title) *" name="title" required maxLength={500} placeholder="예: 전남도 고유가 피해지원금" defaultValue={prefill.title} />
               <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전라남도청" defaultValue={prefill.source} />
-              <Field label="신청 URL (apply_url) *" name="apply_url" required type="url" placeholder="https://www.jeonnam.go.kr/..." />
+              <Field label="신청 URL (apply_url) *" name="apply_url" required type="url" placeholder="https://www.jeonnam.go.kr/..." defaultValue={prefill.apply_url} />
 
               <label className="block">
                 <span className="block text-[13px] font-medium text-grey-700 mb-1">
@@ -118,7 +141,11 @@ export default async function NewWelfareProgramPage({
                 <select
                   name="category"
                   required
-                  defaultValue=""
+                  defaultValue={
+                    (CATEGORIES as readonly string[]).includes(prefill.category)
+                      ? prefill.category
+                      : ""
+                  }
                   className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
                 >
                   <option value="" disabled>
@@ -156,6 +183,7 @@ export default async function NewWelfareProgramPage({
                 maxLength={1000}
                 rows={2}
                 placeholder="예: 전남도 거주 자영업자·소상공인"
+                defaultValue={prefill.target}
               />
               <Textarea
                 label="지원 자격 (eligibility)"
@@ -163,6 +191,7 @@ export default async function NewWelfareProgramPage({
                 maxLength={5000}
                 rows={3}
                 placeholder="자격 조건 상세"
+                defaultValue={prefill.eligibility}
               />
               <Textarea
                 label="혜택 내용 (benefits)"
@@ -170,6 +199,7 @@ export default async function NewWelfareProgramPage({
                 maxLength={2000}
                 rows={2}
                 placeholder="예: 1인 최대 50만원"
+                defaultValue={prefill.benefits}
               />
               <Textarea
                 label="신청 방법 (apply_method)"
@@ -177,6 +207,7 @@ export default async function NewWelfareProgramPage({
                 maxLength={2000}
                 rows={2}
                 placeholder="예: 주민센터 방문 신청 또는 정부24"
+                defaultValue={prefill.apply_method}
               />
             </div>
           </section>
@@ -187,8 +218,8 @@ export default async function NewWelfareProgramPage({
               기간·출처 (선택)
             </h2>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="신청 시작 (YYYY-MM-DD)" name="apply_start" type="date" />
-              <Field label="신청 마감 (YYYY-MM-DD)" name="apply_end" type="date" />
+              <Field label="신청 시작 (YYYY-MM-DD)" name="apply_start" type="date" defaultValue={prefill.apply_start} />
+              <Field label="신청 마감 (YYYY-MM-DD)" name="apply_end" type="date" defaultValue={prefill.apply_end} />
             </div>
             <div className="mt-4 space-y-4">
               <Field label="출처 URL (source_url)" name="source_url" type="url" placeholder="원문 또는 보도자료 URL" defaultValue={prefill.source_url} />
