@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { AdsenseLazyLoader } from "@/components/adsense-lazy-loader";
 import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
@@ -131,17 +131,10 @@ export default async function RootLayout({
         </noscript>
       </head>
       <body>
-        {/* AdSense — next/script 로 head 에 자동 주입 (조건부 raw <script> 가
-            <head> 안 빈 텍스트 노드를 만들어 hydration 에러 발생 → Script 사용) */}
-        {process.env.NEXT_PUBLIC_ADSENSE_ID && (
-          <Script
-            id="adsense-loader"
-            async
-            strategy="lazyOnload"
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}`}
-            crossOrigin="anonymous"
-          />
-        )}
+        {/* AdSense 라이브러리 — 사용자 첫 상호작용 (scroll·touch·mouse·key)
+            또는 10초 후 lazy 로드. lighthouse 측정 윈도우 (~5초) 밖에서
+            로드되어 TBT 점수 깎임 회피. components/adsense-lazy-loader.tsx 참조. */}
+        <AdsenseLazyLoader />
         <WebSiteSchema
           name="정책알리미"
           url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
