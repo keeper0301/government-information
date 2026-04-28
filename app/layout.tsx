@@ -96,6 +96,32 @@ export default async function RootLayout({
 
   return (
     <html lang="ko">
+      <head>
+        {/* Pretendard 폰트 preload — globals.css @import 제거 후 직접 link.
+            @import 는 CSS parser 차단이라 폰트 다운로드 시작이 늦어짐.
+            <link rel="preload"> + media swap 패턴으로 비차단 + 빠른 적용. */}
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
+        <link
+          rel="preload"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+          as="style"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+          media="print"
+          // React 가 onLoad 를 함수로 강제하지만 HTML 표준은 string 도 허용
+          // — DOM attribute 직접 주입을 위해 cast.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          {...({ onLoad: "this.media='all'" } as any)}
+        />
+        <noscript>
+          <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+          />
+        </noscript>
+      </head>
       <body>
         {/* AdSense — next/script 로 head 에 자동 주입 (조건부 raw <script> 가
             <head> 안 빈 텍스트 노드를 만들어 hydration 에러 발생 → Script 사용) */}
