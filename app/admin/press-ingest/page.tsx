@@ -170,13 +170,19 @@ export default async function PressIngestPage({
           </p>
         </div>
 
-        {/* KPI 카드 (Step 3 가시화) */}
-        <section className="mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* KPI 카드 (Step 3 가시화 + 자동 ingest) */}
+        <section className="mb-5 grid grid-cols-2 md:grid-cols-5 gap-3">
           <KpiCard
             label="24h 후보"
             value={`${kpi.candidates_24h}건`}
             tone={kpi.candidates_24h > 0 ? "ok" : "muted"}
             hint="광역도청 보도자료 매칭"
+          />
+          <KpiCard
+            label="24h 자동 ingest"
+            value={`${kpi.auto_ingested_24h}건`}
+            tone={kpi.auto_ingested_24h > 0 ? "ok" : "muted"}
+            hint="cron 01:30 KST"
           />
           <KpiCard
             label="24h 등록 (manual)"
@@ -205,9 +211,9 @@ export default async function PressIngestPage({
         {/* 안내 + 기간 토글 */}
         <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[12px] text-blue-900 leading-[1.55] flex-1 min-w-[280px]">
-            💡 자동 분류 (LLM) 도입 전 단계. 사장님이 직접 보면서 정책 발견 →
-            수동 등록. /admin/welfare/new 또는 /admin/loan/new 로 이동 후
-            본문 복사 + 추가 정보 입력.
+            💡 자동 ingest cron 매일 01:30 KST 실행 (LLM 분류 + 자동 INSERT,
+            cap 30 후보 / 10 INSERT). 누락된 정책은 직접 '🤖 AI 분류' 또는
+            '복지/대출 →' 버튼으로 수동 등록 가능.
           </div>
           <div className="inline-flex rounded-lg border border-grey-200 bg-white overflow-hidden">
             {[

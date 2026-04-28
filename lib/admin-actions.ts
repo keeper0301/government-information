@@ -27,7 +27,8 @@ export type AdminActionType =
   | "news_unhide"           // 정책 뉴스 복원 (잘못 숨긴 경우 또는 사유 해소)
   | "manual_cron_trigger"  // /admin/cron-trigger 수동 cron 실행 (Phase 5)
   | "csv_export"           // /api/admin/export-users CSV 다운로드 (Phase 6 #9)
-  | "manual_program_create"; // /admin/welfare/new · /admin/loan/new 수동 정책 등록 (#7)
+  | "manual_program_create" // /admin/welfare/new · /admin/loan/new 수동 정책 등록 (#7)
+  | "auto_press_ingest";    // /api/cron/press-ingest cron 자동 등록 (광역 보도자료 → welfare/loan)
 
 export type AdminActionRecord = {
   id: string;
@@ -39,10 +40,11 @@ export type AdminActionRecord = {
 };
 
 // ━━━ 액션 기록 ━━━
-// 서버 컴포넌트 / server action 에서만 호출. 실패는 throw (감사 로그 손실이
-// 상위 작업을 막으면 안 되는 경우엔 호출자가 try/catch).
+// 서버 컴포넌트 / server action / cron 에서 호출. 실패는 throw (감사 로그
+// 손실이 상위 작업을 막으면 안 되는 경우엔 호출자가 try/catch).
+// actorId=null 은 system actor (cron 자동 작업) — FK ON DELETE SET NULL 와 일관.
 export async function logAdminAction(input: {
-  actorId: string;
+  actorId: string | null;
   targetUserId?: string | null;
   action: AdminActionType;
   details?: Record<string, unknown> | null;
@@ -279,4 +281,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   manual_cron_trigger: "Cron 수동 실행",
   csv_export: "CSV 내보내기",
   manual_program_create: "정책 수동 등록",
+  auto_press_ingest: "정책 자동 등록 (cron)",
 };

@@ -42,6 +42,8 @@
 
     { "path": "/api/enrich-thumbnails", "schedule": "*/5 * * * *" },
 
-    { "path": "/api/indexnow-submit-recent", "schedule": "30 7 * * *" }
+    { "path": "/api/indexnow-submit-recent", "schedule": "30 7 * * *" },
+
+    { "path": "/api/cron/press-ingest", "schedule": "30 16 * * *" }
   ]
 }

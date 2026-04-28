@@ -96,13 +96,14 @@ export type PressIngestKpi = {
   candidates_24h: number;
   manual_registered_24h: number;
   llm_classify_24h: number;
+  auto_ingested_24h: number;
 };
 
 export async function getPressIngestKpi(): Promise<PressIngestKpi> {
   const admin = createAdminClient();
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [candidatesRes, registeredRes, classifyRes] = await Promise.all([
+  const [candidatesRes, registeredRes, classifyRes, autoIngestRes] = await Promise.all([
     // 24h 후보 — 같은 필터 로직, count only (head:true)
     (() => {
       const titleOrFilter = POLICY_SIGNAL_KEYWORDS.map(
@@ -133,11 +134,18 @@ export async function getPressIngestKpi(): Promise<PressIngestKpi> {
       .eq("action", "manual_program_create")
       .gte("created_at", since24h)
       .eq("details->>kind", "press_classify"),
+    // 24h 자동 ingest — admin_actions.auto_press_ingest
+    admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "auto_press_ingest")
+      .gte("created_at", since24h),
   ]);
 
   return {
     candidates_24h: candidatesRes.count ?? 0,
     manual_registered_24h: registeredRes.count ?? 0,
     llm_classify_24h: classifyRes.count ?? 0,
+    auto_ingested_24h: autoIngestRes.count ?? 0,
   };
 }
