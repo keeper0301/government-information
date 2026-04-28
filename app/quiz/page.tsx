@@ -114,6 +114,9 @@ export default async function QuizPage({
 
   const age = pickStr(sp.age, AGE_OPTIONS);
   const region = pickStr(sp.region, REGION_OPTIONS);
+  // district 는 광역별 list 가 다양해 화이트리스트 검증 X — raw string 받아 매칭에 활용.
+  // (Phase 3 wizard 가 query 로 보냄, getDistrictsForRegion 으로 제한된 값만 보냄)
+  const district = typeof sp.district === 'string' ? sp.district : null;
   const occupation = pickStr(sp.occupation, OCCUPATION_OPTIONS);
   const income = pickStr(
     sp.income,
@@ -163,7 +166,7 @@ export default async function QuizPage({
   const signals: UserSignals = {
     ageGroup: age as AgeOption,
     region: region as RegionOption,
-    district: null,
+    district,
     occupation: occupation as OccupationOption,
     incomeLevel: income,
     householdTypes,
@@ -206,7 +209,7 @@ export default async function QuizPage({
 
   return (
     <QuizResult
-      input={{ age: age!, region: region!, occupation: occupation!, income, householdTypes }}
+      input={{ age: age!, region: region!, district, occupation: occupation!, income, householdTypes }}
       programs={displayPrograms}
       businessProfile={businessProfile}
     />
@@ -343,6 +346,7 @@ function FormSelect({
 type ResultInput = {
   age: string;
   region: string;
+  district: string | null;
   occupation: string;
   income: string | null;
   householdTypes: string[];
@@ -364,6 +368,7 @@ function QuizResult({
   const prefill: QuizPrefill = {
     ageGroup: input.age as AgeOption,
     region: input.region as RegionOption,
+    district: input.district,
     occupation: input.occupation as OccupationOption,
     incomeLevel: (input.income as IncomeOption | null) ?? null,
     householdTypes: input.householdTypes as HouseholdOption[],
@@ -375,6 +380,7 @@ function QuizResult({
   const params = new URLSearchParams();
   params.set('age', input.age);
   params.set('region', input.region);
+  if (input.district) params.set('district', input.district);
   params.set('occupation', input.occupation);
   if (input.income) params.set('income', input.income);
   for (const h of input.householdTypes) {
