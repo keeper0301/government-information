@@ -11,7 +11,7 @@
   "crons": [
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
     { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/health-alert", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/health-alert", "schedule": "5 0 * * *" },
 
     { "path": "/api/collect-news/seoul", "schedule": "0 14 * * *" },
     { "path": "/api/collect-news/busan", "schedule": "5 14 * * *" },

@@ -14,7 +14,7 @@ const ALLOWED_PATHS = new Set<string>([
   "/api/collect-news",
   "/api/cron/health-alert",
   "/api/alert-dispatch",
-  "/api/cleanup",
+  "/api/cleanup-expired-programs",
   "/api/finalize-deletions",
   "/api/enrich",
   "/api/billing/charge",

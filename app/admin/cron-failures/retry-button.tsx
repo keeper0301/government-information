@@ -10,7 +10,7 @@ const PREFIX_TO_PATH: Record<string, string> = {
   enrich: "/api/enrich",
   alert: "/api/alert-dispatch",
   finalize: "/api/finalize-deletions",
-  cleanup: "/api/cleanup",
+  cleanup: "/api/cleanup-expired-programs",
   billing: "/api/billing/charge",
   health: "/api/cron/health-alert",
 };
