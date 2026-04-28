@@ -7,21 +7,24 @@
 //   3) 추출 성공 → thumbnail_url 갱신, 실패 → 표식 컬럼 update (재시도 안 함)
 //
 // 운영 안정 원칙:
-//   - BATCH = 10 — Vercel 60초 maxDuration 안전 (10개 × 5초 timeout = 50초 + DB)
-//   - Promise.allSettled — 1건 실패해도 나머지 진행
+//   - BATCH = 50 — fetchOgImage 5초 병렬(Promise.allSettled) + DB update 병렬
+//                  최대 ~10초 내 완료. Vercel 60초 maxDuration 충분 마진
+//   - Promise.allSettled — 1건 실패해도 나머지 진행 (fetch + DB update 양쪽)
 //   - 영구 skip 컬럼 (thumbnail_fetch_failed_at) — bokjiro 058 패턴 유지
 //   - 7d cooldown 후 재시도 (외부 사이트 일시 장애 회복 가능성)
 //
-// cron 등록 (vercel.json): "*/15 * * * *" 매 15분 (한 시간 40건 백필)
-//   7,200건 ÷ 40건/h = 180시간 ≈ 7~8일 백필 완료 예상
+// cron 등록 (vercel.json): "*/5 * * * *" 매 5분 (한 시간 600건 백필)
+//   광역 17개 collect-news cron 추가 후 신규 ~9,120건/일 유입 가속 대응:
+//   - 처리 속도 14,400건/일 (잉여 5,280건/일)
+//   - pending 22K → 약 4~5일 백필 완료 예상
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchOgImage } from "@/lib/og-image";
 
-const BATCH = 10; // 한 cron 당 처리 row 수
-const PROCESS_TIMEOUT_MS = 50_000; // 전체 처리 50초 안전 마진
+const BATCH = 50; // 한 cron 당 처리 row 수 (5분 cron + 9,120/일 유입 대응)
+const PROCESS_TIMEOUT_MS = 40_000; // fetch 단계 상한 (DB update 병렬 ~5s + 마진 → 60s 안전)
 
 export const maxDuration = 60;
 
@@ -70,19 +73,17 @@ async function runEnrichThumbnails() {
   let skipped = 0;
   const nowIso = new Date().toISOString();
 
-  // 결과별 update — 성공/실패 분리 처리
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
+  // 결과별 update 를 병렬 처리 — sequential N×100ms → 병렬로 단축
+  // BATCH=50 기준 sequential 5~10초 → 병렬 200~500ms 수준
+  const updateOps = results.map(async (r, i) => {
     const row = rows[i];
     if (r.status === "rejected") {
       // 절대 발생하지 않아야 함 (fetchOgImage 가 throw 안 함). 방어용.
-      failed++;
-      continue;
+      return { kind: "failed" as const };
     }
     const { ogImage, skipReason } = r.value;
     if (skipReason === "process_timeout") {
-      skipped++;
-      continue;
+      return { kind: "skipped" as const };
     }
     if (ogImage) {
       const { error: updateErr } = await supabase
@@ -92,19 +93,26 @@ async function runEnrichThumbnails() {
           thumbnail_fetch_failed_at: null, // 성공 시 reset
         })
         .eq("id", row.id);
-      if (updateErr) {
-        failed++;
-      } else {
-        upserted++;
-      }
-    } else {
-      // 추출 실패 — 영구 표식 (7일 후 재시도)
-      await supabase
-        .from("news_posts")
-        .update({ thumbnail_fetch_failed_at: nowIso })
-        .eq("id", row.id);
-      failed++;
+      return updateErr ? { kind: "failed" as const } : { kind: "upserted" as const };
     }
+    // 추출 실패 — 영구 표식 (7일 후 재시도)
+    await supabase
+      .from("news_posts")
+      .update({ thumbnail_fetch_failed_at: nowIso })
+      .eq("id", row.id);
+    return { kind: "failed" as const };
+  });
+
+  const updateResults = await Promise.allSettled(updateOps);
+  for (const ur of updateResults) {
+    if (ur.status === "rejected") {
+      // DB update reject 는 fetch 단계와 별개 — 안전 카운트
+      failed++;
+      continue;
+    }
+    if (ur.value.kind === "upserted") upserted++;
+    else if (ur.value.kind === "skipped") skipped++;
+    else failed++;
   }
 
   return NextResponse.json({
