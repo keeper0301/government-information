@@ -223,7 +223,11 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     poolQuery,
   ]);
 
-  const list = (posts || []) as (NewsCardData & { id: string; benefit_tags: string[] | null })[];
+  // 사고 (2026-04-28): 같은 행사·정책에 대한 다른 출처 뉴스가 list 전체
+  // (개인화 섹션 외) 에도 중복 노출. dedupe 후처리로 같은 페이지 내 중복 제거.
+  // 페이지네이션 count 는 그대로 — 페이지마다 약간 row 줄어들 수 있지만 UX OK.
+  const rawList = (posts || []) as (NewsCardData & { id: string; benefit_tags: string[] | null })[];
+  const list = dedupeBySimilarity(rawList, (item) => item.title);
   const totalPages = Math.ceil((count || 0) / PER_PAGE);
 
   // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
