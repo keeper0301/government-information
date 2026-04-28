@@ -214,11 +214,15 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 인기 정책 TOP 5 — viewport 1500px+ fixed sticky sidebar.
+      {/* 인기 정책 TOP 5 — viewport 1800px+ fixed sticky sidebar.
           큰 모니터 우측 빈 공간 (max-w-content 1140px 외부) 활용.
-          모바일·중간 화면(<1500px) 은 overlap 위험으로 hidden — 본 콘텐츠 흐름 우선. */}
+          breakpoint 1800px 계산:
+            - main 우측 끝 = vw/2 + 570 (max-w-content centered)
+            - sidebar 좌측 끝 = vw - 24 - 300 = vw - 324
+            - overlap 조건: (vw - 324) < (vw/2 + 570) → vw < 1788
+            → 1800px 안전 round. FHD 1920px 이상 노출. */}
       <div
-        className="hidden min-[1500px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-160px)] overflow-y-auto"
+        className="hidden min-[1800px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-160px)] overflow-y-auto"
         aria-label="인기 정책 사이드 배너"
       >
         <HomePopularPicks isLoggedIn={!!user} />
