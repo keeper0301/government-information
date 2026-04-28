@@ -133,6 +133,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // Blog 카테고리 페이지 7개 — SEO long-tail (네이버 D.I.A path-based URL 우대)
+  // /blog/category/청년·노년·학생·교육·육아·가족·주거·소상공인·건강·복지
+  const blogCategories = [
+    "청년", "노년", "학생·교육", "육아·가족",
+    "주거", "소상공인", "건강·복지",
+  ];
+  const blogCategoryPages: MetadataRoute.Sitemap = blogCategories.map((c) => ({
+    url: `${baseUrl}/blog/category/${encodeURIComponent(c)}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
+    priority: 0.7,
+  }));
+
   // News posts (korea.kr 수집) — slug 는 `{title-slug}-{newsId}` 형식이며 title
   // 부분에 한글 포함. XML sitemap 표준상 한글 URL 은 percent-encode 해야 함.
   // 2026-04-24: 보도자료(press) + keepioo 키워드 매칭 안 된 노이즈는 비노출.
@@ -179,6 +192,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...welfarePages,
     ...loanPages,
     ...blogPages,
+    ...blogCategoryPages,
     ...newsPages,
     ...guidePages,
   ];
