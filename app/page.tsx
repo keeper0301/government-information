@@ -25,6 +25,7 @@ import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { getUrgentPrograms, type ProfileLite } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
+import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
 import { createClient } from "@/lib/supabase/server";
 
 // FloatingWishWidget — 좌측 하단 floating 위젯, 즉시 노출 불필요.
@@ -42,13 +43,16 @@ const FloatingWishWidget = nextDynamic(
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  // 1) 로그인 상태 + urgent 리스트 먼저 확보 (이 둘은 프로필 유무와 무관)
+  // 1) 로그인 상태 + urgent 리스트 + 데이터 freshness 먼저 확보
+  //    (셋 다 프로필 유무와 무관, 병렬 fetch)
   const supabase = await createClient();
-  const [urgents, userResult] = await Promise.all([
+  const [urgents, userResult, freshness] = await Promise.all([
     // 마퀴 회전이라 12건이면 충분 (이전 30건 → 시각 부담 ↓ + 마퀴 더 천천히 읽힘).
     // /calendar 전체보기 CTA 가 우측에 항상 노출되므로 발견성 회귀 0.
     getUrgentPrograms(12),
     supabase.auth.getUser(),
+    // 데이터 신선도 — Hero indicator 에 통합 노출 (footer 외 첫 화면 신뢰 시그널)
+    getDataFreshness(),
   ]);
 
   // 2) 로그인 사용자면 프로필 조회 (HomeRecommendCard 자동 채움용)
@@ -121,6 +125,11 @@ export default async function Home() {
       : weekNew > 0
       ? `이번 주 ${weekNew.toLocaleString()}건 새 공고 등록`
       : "실시간 공공데이터 연동";
+  // 데이터 freshness 보조 라벨 — 갱신 시각이 너무 오래되면 (24h+) 미노출 (오히려 신뢰 ↓ 위험)
+  const freshnessSuffix =
+    freshness.minutes_ago !== null && freshness.minutes_ago < 24 * 60
+      ? formatFreshness(freshness.minutes_ago)
+      : null;
 
   return (
     <main>
@@ -156,7 +165,12 @@ export default async function Home() {
               className="fade-up inline-flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-6 before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-500 before:opacity-[0.55]"
               style={{ animationDelay: "0ms" }}
             >
-              {heroIndicator}
+              <span>{heroIndicator}</span>
+              {freshnessSuffix && (
+                <span className="text-grey-500 font-normal hidden sm:inline">
+                  · {freshnessSuffix}
+                </span>
+              )}
             </div>
             <h1
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
