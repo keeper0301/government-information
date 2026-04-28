@@ -10,21 +10,12 @@
 // ============================================================
 
 import Link from "next/link";
-
-const CATEGORIES = [
-  "청년",
-  "노년",
-  "학생·교육",
-  "육아·가족",
-  "주거",
-  "소상공인",
-  "건강·복지",
-] as const;
+import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 
 export function BlogCategoryChips() {
   return (
     <div className="flex flex-wrap gap-2 mb-6">
-      {CATEGORIES.map((c) => (
+      {BLOG_CATEGORIES.map((c) => (
         <Link
           key={c}
           href={`/blog/category/${encodeURIComponent(c)}`}

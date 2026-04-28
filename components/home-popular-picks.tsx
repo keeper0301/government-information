@@ -68,15 +68,23 @@ async function getPopularPicks(): Promise<PopularPick[]> {
     .slice(0, LIMIT);
 }
 
-// 마감일 → 사람 읽기 쉬운 D-X 문자열
+// 마감일 → 사람 읽기 쉬운 D-X 문자열 (KST 기준)
+// Vercel UTC 환경에서 KST 00:00~09:00 창 D-X 1일 어긋남 방지 — calendar-preview 동일 패턴.
 function formatDeadline(apply_end: string | null): string {
   if (!apply_end) return "상시 모집";
-  const today = new Date();
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const todayKst = new Date(Date.now() + KST_OFFSET_MS);
+  const todayY = todayKst.getUTCFullYear();
+  const todayM = todayKst.getUTCMonth();
+  const todayD = todayKst.getUTCDate();
+  const today = new Date(Date.UTC(todayY, todayM, todayD));
   const end = new Date(apply_end);
-  const days = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "오늘 마감";
+  const endUtc = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+  const days = Math.round((endUtc.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (days < 0) return "마감";
+  if (days === 0) return "오늘 마감";
   if (days <= 7) return `D-${days}`;
-  return `${end.getMonth() + 1}월 ${end.getDate()}일 마감`;
+  return `${endUtc.getUTCMonth() + 1}월 ${endUtc.getUTCDate()}일 마감`;
 }
 
 export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) {

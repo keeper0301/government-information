@@ -24,19 +24,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
-
-// 7 카테고리 — publish-blog 의 요일 카테고리와 일치 (한 달 ~210글 발행)
-// generateStaticParams 가 SSG, generateMetadata 가 메타 태그.
-const VALID_CATEGORIES = [
-  "청년", "노년", "학생·교육", "육아·가족",
-  "주거", "소상공인", "건강·복지",
-] as const;
-
-type ValidCategory = typeof VALID_CATEGORIES[number];
-
-function isValidCategory(c: string): c is ValidCategory {
-  return (VALID_CATEGORIES as readonly string[]).includes(c);
-}
+import {
+  BLOG_CATEGORIES as VALID_CATEGORIES,
+  isValidBlogCategory as isValidCategory,
+  type BlogCategory as ValidCategory,
+} from "@/lib/blog-categories";
 
 // 카테고리별 SEO 메타 — 네이버 키워드 시그널 강화용 자연스러운 한글 문구.
 // 짧은 카테고리 라벨 보다 "청년 정책 가이드" 같은 검색 친화적 phrasing.
