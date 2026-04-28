@@ -26,6 +26,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { getUserConsents, type ConsentStatus } from "@/lib/consent";
+import { getUserTimeline, type TimelineEvent } from "@/lib/user-timeline";
 import {
   getTargetActions,
   logAdminAction,
@@ -388,6 +389,7 @@ export default async function AdminUserDetailPage({
     { data: alertRules },
     consents,
     adminActions,
+    timeline,
   ] = await Promise.all([
     admin.from("user_profiles").select("*").eq("id", userId).maybeSingle(),
     admin.from("subscriptions").select("*").eq("user_id", userId).maybeSingle(),
@@ -411,6 +413,7 @@ export default async function AdminUserDetailPage({
       .order("created_at", { ascending: false }),
     getUserConsents(userId),
     getTargetActions(userId, 20),
+    getUserTimeline(userId, 30),
   ]);
 
   const projectRef = getSupabaseProjectRef();
@@ -683,6 +686,11 @@ export default async function AdminUserDetailPage({
             <AdminActionsRows actions={adminActions} />
           </Panel>
 
+          {/* 사용자 행동 timeline — admin_actions + alert_deliveries + consent_log 통합 */}
+          <Panel title={`행동 timeline (최근 ${timeline.length}건)`}>
+            <UserTimeline events={timeline} />
+          </Panel>
+
           {/* 위험 작업 — 최하단 배치 (의도치 않은 접근 방지).
               본인 계정이면 DeleteUserButton 이 내부에서 안내문만 표시.
               server action 차원의 self 차단이 발동한 경우 별도 안내 박스. */}
@@ -735,6 +743,64 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
       <h2 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h2>
       {children}
     </section>
+  );
+}
+
+// 사용자 행동 timeline — 시간순 (최신 먼저)
+function UserTimeline({ events }: { events: TimelineEvent[] }) {
+  if (events.length === 0) {
+    return (
+      <p className="text-[13px] text-grey-600 py-2">기록된 활동이 없어요.</p>
+    );
+  }
+  const dot = {
+    ok: "bg-green",
+    warn: "bg-amber-500",
+    error: "bg-red",
+    info: "bg-grey-400",
+  } as const;
+  const kindLabel = {
+    admin: "👤",
+    alert: "📨",
+    consent: "✓",
+  } as const;
+  return (
+    <ol className="space-y-2">
+      {events.map((ev) => (
+        <li
+          key={ev.id}
+          className="flex items-start gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
+        >
+          <span
+            className={`flex-shrink-0 mt-1.5 inline-block w-1.5 h-1.5 rounded-full ${dot[ev.status ?? "info"]}`}
+            aria-hidden="true"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-semibold text-grey-900 leading-[1.4]">
+              <span className="mr-1.5" aria-hidden="true">
+                {kindLabel[ev.kind]}
+              </span>
+              {ev.summary}
+            </div>
+            {ev.detail && (
+              <div className="text-[12px] text-grey-600 mt-0.5 truncate">
+                {ev.detail}
+              </div>
+            )}
+            <div className="text-[11px] text-grey-500 mt-0.5">
+              {new Date(ev.ts).toLocaleString("ko-KR", {
+                timeZone: "Asia/Seoul",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
