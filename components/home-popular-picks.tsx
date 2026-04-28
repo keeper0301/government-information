@@ -91,80 +91,80 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
   const picks = await getPopularPicks();
   if (picks.length === 0) return null;
 
+  // 사이드 배너 박스 — max-w-[420px], 우측 정렬, 카드 콤팩트.
+  // 모바일은 width 100% (centered), 데스크톱은 우측에 작게 노출.
   return (
-    <section className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8">
-      <div className="flex items-baseline justify-between mb-5">
-        <h2 className="text-[22px] md:text-[26px] font-extrabold text-grey-900 tracking-[-0.5px] inline-flex items-center gap-2">
-          <Flame className="w-6 h-6 text-orange-500" aria-hidden="true" />
-          지금 가장 많이 본 정책 TOP {picks.length}
-        </h2>
-        <Link
-          href="/welfare?sort=popular"
-          className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-        >
-          전체 보기 →
-        </Link>
-      </div>
+    <section className="max-w-content mx-auto px-10 max-md:px-6 py-8 max-md:py-6">
+      <aside
+        className="ml-auto max-w-[420px] w-full rounded-2xl bg-white border border-grey-200 p-4 max-md:p-3"
+        aria-labelledby="popular-picks-title"
+      >
+        <div className="flex items-baseline justify-between mb-3">
+          <h2
+            id="popular-picks-title"
+            className="text-[15px] font-extrabold text-grey-900 tracking-[-0.3px] inline-flex items-center gap-1.5"
+          >
+            <Flame className="w-4 h-4 text-orange-500" aria-hidden="true" />
+            인기 정책 TOP {picks.length}
+          </h2>
+          <Link
+            href="/welfare?sort=popular"
+            className="text-[12px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+          >
+            전체 →
+          </Link>
+        </div>
 
-      <ol className="grid gap-3">
-        {picks.map((p, i) => (
-          <li key={`${p.kind}-${p.id}`}>
-            <TrackedLink
-              href={`/${p.kind}/${p.id}`}
-              event={EVENTS.HOME_POPULAR_CLICKED}
-              params={{ kind: p.kind, rank: i + 1 }}
-              className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-white border border-grey-200 hover:border-blue-400 hover:shadow-sm transition-all no-underline group"
-            >
-              {/* 순위 배지 — TOP 3 만 강조 */}
-              <span
-                className={`flex-shrink-0 w-8 h-8 rounded-full inline-flex items-center justify-center text-[14px] font-extrabold ${
-                  i < 3
-                    ? "bg-orange-50 text-orange-600"
-                    : "bg-grey-50 text-grey-500"
-                }`}
+        <ol className="grid gap-1.5">
+          {picks.map((p, i) => (
+            <li key={`${p.kind}-${p.id}`}>
+              <TrackedLink
+                href={`/${p.kind}/${p.id}`}
+                event={EVENTS.HOME_POPULAR_CLICKED}
+                params={{ kind: p.kind, rank: i + 1 }}
+                className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-grey-50 transition-colors no-underline group"
               >
-                {i + 1}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[15px] font-semibold text-grey-900 truncate group-hover:text-blue-600 transition-colors">
-                  {p.title}
+                {/* 순위 배지 — TOP 3 만 강조, 작게 */}
+                <span
+                  className={`flex-shrink-0 w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] font-extrabold ${
+                    i < 3
+                      ? "bg-orange-50 text-orange-600"
+                      : "bg-grey-50 text-grey-500"
+                  }`}
+                >
+                  {i + 1}
                 </span>
-                <span className="block text-[13px] text-grey-600 mt-0.5">
-                  <span className="inline-block px-1.5 py-0.5 rounded bg-grey-100 text-[11px] font-semibold text-grey-700 mr-2 align-middle">
-                    {p.kind === "welfare" ? "복지" : "대출"}
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13px] font-semibold text-grey-900 truncate group-hover:text-blue-600 transition-colors">
+                    {p.title}
                   </span>
-                  {formatDeadline(p.apply_end)}
-                  <span className="text-grey-400 mx-1.5">·</span>
-                  조회 {p.view_count.toLocaleString()}회
+                  <span className="block text-[11px] text-grey-600 mt-0.5">
+                    <span className="inline-block px-1 py-px rounded bg-grey-100 text-[10px] font-semibold text-grey-700 mr-1.5 align-middle">
+                      {p.kind === "welfare" ? "복지" : "대출"}
+                    </span>
+                    {formatDeadline(p.apply_end)}
+                    <span className="text-grey-400 mx-1">·</span>
+                    조회 {p.view_count.toLocaleString()}
+                  </span>
                 </span>
-              </span>
-            </TrackedLink>
-          </li>
-        ))}
+              </TrackedLink>
+            </li>
+          ))}
+        </ol>
 
-        {/* 비로그인 시 회원가입 CTA — 인기 카드 끝에 자연스럽게 prompt */}
+        {/* 비로그인 시 회원가입 CTA — 작은 풀 너비 푸터 */}
         {!isLoggedIn && (
-          <li>
-            <Link
-              href="/signup"
-              className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors no-underline"
-            >
-              <span className="flex-shrink-0 w-8 h-8 rounded-full inline-flex items-center justify-center bg-blue-500 text-white text-[16px]">
-                +
-              </span>
-              <span className="flex-1">
-                <span className="block text-[15px] font-bold text-blue-700">
-                  회원가입하면 내 조건에 맞는 정책 알림 받아요
-                </span>
-                <span className="block text-[13px] text-blue-600 mt-0.5">
-                  무료 · 마감 7일 전 이메일 자동 발송
-                </span>
-              </span>
-              <span className="text-blue-500 text-[18px] font-bold">→</span>
-            </Link>
-          </li>
+          <Link
+            href="/signup"
+            className="mt-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors no-underline border border-blue-100"
+          >
+            <span className="text-[12px] font-bold text-blue-700">
+              회원가입하면 알림 받기
+            </span>
+            <span className="text-blue-500 text-[13px] font-bold">→</span>
+          </Link>
         )}
-      </ol>
+      </aside>
     </section>
   );
 }
