@@ -11,7 +11,7 @@ import { join } from "node:path";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "keepioo · 정책알리미 — 숨겨진 정부 혜택, 30초 만에 찾아드릴게요";
+export const alt = "keepioo · 정책알리미 — 내 조건에 맞는 정부 지원, 30초 만에 찾아드릴게요";
 
 // Pretendard 폰트 — 모듈 스코프 캐시로 cold start 이후 디스크 I/O 1회만
 let fontDataPromise: Promise<Buffer> | null = null;
@@ -88,7 +88,7 @@ export default async function OpengraphImage() {
         >
           <div
             style={{
-              fontSize: 96,
+              fontSize: 88,
               fontWeight: 800,
               lineHeight: 1.2,
               letterSpacing: -4,
@@ -96,11 +96,11 @@ export default async function OpengraphImage() {
               wordBreak: "keep-all",
             }}
           >
-            숨겨진 정부 혜택,
+            내 조건에 맞는 정부 지원,
           </div>
           <div
             style={{
-              fontSize: 96,
+              fontSize: 88,
               fontWeight: 800,
               lineHeight: 1.2,
               letterSpacing: -4,

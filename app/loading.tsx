@@ -27,12 +27,12 @@ export default function Loading() {
         {/* 사이트 정체성 — 크롤러가 fallback 만 읽어도 무엇을 하는 사이트인지
             인식할 수 있도록 핵심 카피 노출. h1 으로 SEO 가중치 부여 */}
         <h1 className="text-[24px] font-extrabold tracking-[-0.5px] text-grey-900 mb-3">
-          숨겨진 정부 혜택, 30초 만에 찾아드릴게요
+          내 조건에 맞는 정부 지원, 30초 만에
         </h1>
         <p className="text-[14px] text-grey-700 leading-[1.6] mb-8">
-          보조금24·복지로·기업마당·온통청년 데이터를 한곳에 모아
+          청년·소상공인·부모·신혼부부 정책을 한곳에 모아
           <br className="max-md:hidden" />
-          내 조건에 맞는 새 정부·지자체 정책을 알려드립니다.
+          이메일·알림톡으로 마감 전에 알려드려요.
         </p>
 
         {/* 토스 풍 spinner — 16px 굵은 ring + blue-500 강조 + 부드러운 회전 */}

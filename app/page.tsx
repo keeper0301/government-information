@@ -140,19 +140,39 @@ export default async function Home() {
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
               style={{ animationDelay: "60ms" }}
             >
-              숨겨진 정부 혜택,
+              내 조건에 맞는 정부 지원,
               <br />
               30초 만에 찾아드릴게요
             </h1>
             <p
-              className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-10 max-md:text-[15px]"
+              className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-8 max-md:text-[15px]"
               style={{ animationDelay: "120ms" }}
             >
-              복지로·소상공인24·금융위원회 데이터를
+              청년·소상공인·부모·신혼부부 정책을 한곳에 모아
               <br />
-              매일 자동으로 모아드려요.
+              이메일·알림톡으로 마감 전에 알려드려요.
             </p>
-            <div className="fade-up" style={{ animationDelay: "180ms" }}>
+            {/* 메인 CTA — 외부 LLM 평가 후속 (2026-04-28).
+                "1분 진단" 단일 메인 + SearchBox 보조. /quiz 가 익명 5문항 진단 */}
+            <div
+              className="fade-up flex items-center gap-3 mb-6 max-md:flex-col max-md:items-stretch"
+              style={{ animationDelay: "180ms" }}
+            >
+              <Link
+                href="/quiz"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-blue-500 text-white text-[15px] font-bold hover:bg-blue-600 transition-colors no-underline shadow-[0_4px_12px_rgba(49,130,246,0.25)] min-h-[48px]"
+              >
+                내 정책 1분 진단
+                <span aria-hidden="true">→</span>
+              </Link>
+              <Link
+                href="/welfare"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-white text-grey-900 text-[15px] font-semibold hover:bg-grey-50 transition-colors no-underline border border-grey-200 min-h-[48px]"
+              >
+                정책 둘러보기
+              </Link>
+            </div>
+            <div className="fade-up" style={{ animationDelay: "240ms" }}>
               <SearchBox />
             </div>
           </div>
