@@ -254,87 +254,106 @@ export default async function Home() {
           행동(HomeCTA). 토스 "방문자 사로잡기" 전략 적용.
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
+      {/* below-the-fold 8 섹션 — Suspense streaming.
+          server component 들의 fetch 가 끝날 때까지 placeholder 노출 →
+          HTML chunk 단위로 streaming → 첫 chunk(above-the-fold) 가 빨리 도착.
+          placeholder 높이는 실제 컴포넌트 평균 높이로 맞춰 CLS 회귀 방지. */}
+
       {/* [증거 1] HeroStats — 누적 정책뉴스·진행 공고·데이터 출처 큰 숫자 + 카운트업 */}
       <RevealOnScroll>
-        <HeroStats />
+        <Suspense fallback={<div className="h-[280px]" aria-hidden />}>
+          <HeroStats />
+        </Suspense>
       </RevealOnScroll>
 
       {/* [증거 2] RegionMap — 지역별 진행 중 정책 수 시각화 (한국 지도 풍 grid) */}
       <RevealOnScroll>
-        <RegionMap />
+        <Suspense fallback={<div className="h-[600px]" aria-hidden />}>
+          <RegionMap />
+        </Suspense>
       </RevealOnScroll>
 
       {/* [도구 1] Calendar — 이번 달 신청 일정 달력 */}
       <RevealOnScroll>
-        <div className="bg-grey-50">
-          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-            <CalendarPreview />
-          </section>
-        </div>
+        <Suspense fallback={<div className="h-[480px] bg-grey-50" aria-hidden />}>
+          <div className="bg-grey-50">
+            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+              <CalendarPreview />
+            </section>
+          </div>
+        </Suspense>
       </RevealOnScroll>
 
       {/* [도구 2] Alert — 마감 임박 마퀴 (달력에서 전체 → 그 중 지금 당장 액션 필요) */}
       <RevealOnScroll>
-        <AlertStrip programs={urgents} isLoggedIn={!!user} />
+        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
+          <AlertStrip programs={urgents} isLoggedIn={!!user} />
+        </Suspense>
       </RevealOnScroll>
 
       {/* [도구 3] Blog — 정책 블로그 (자체 콘텐츠) */}
       {recentPosts.length > 0 && (
         <RevealOnScroll>
-          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-            <div className="flex items-baseline justify-between mb-6">
-              <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-                정책 블로그
-              </h2>
-              <Link
-                href="/blog"
-                className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-              >
-                전체 보기 →
-              </Link>
-            </div>
-            {/* 카테고리 chip 7종 — /blog/category long-tail SEO 동선 (87efc65 연계) */}
-            <BlogCategoryChips />
-            <div className="grid gap-5 md:grid-cols-3">
-              {recentPosts.map((post) => (
-                <BlogCard key={post.slug} post={post} />
-              ))}
-            </div>
-          </section>
+          <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
+            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+              <div className="flex items-baseline justify-between mb-6">
+                <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+                  정책 블로그
+                </h2>
+                <Link
+                  href="/blog"
+                  className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+                >
+                  전체 보기 →
+                </Link>
+              </div>
+              {/* 카테고리 chip 7종 — /blog/category long-tail SEO 동선 (87efc65 연계) */}
+              <BlogCategoryChips />
+              <div className="grid gap-5 md:grid-cols-3">
+                {recentPosts.map((post) => (
+                  <BlogCard key={post.slug} post={post} />
+                ))}
+              </div>
+            </section>
+          </Suspense>
         </RevealOnScroll>
       )}
 
       {/* [도구 4] News — 외부 정책 발표 큐레이션 (korea.kr 출처) */}
       {recentNews.length > 0 && (
         <RevealOnScroll>
-          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-            <div className="flex items-baseline justify-between mb-8">
-              <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-                최근 정책 소식
-              </h2>
-              <Link
-                href="/news"
-                className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-              >
-                전체 보기 →
-              </Link>
-            </div>
-            <div className="grid gap-5 md:grid-cols-3">
-              {recentNews.map((post) => (
-                <NewsCard key={post.slug} post={post} />
-              ))}
-            </div>
-          </section>
+          <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
+            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+              <div className="flex items-baseline justify-between mb-8">
+                <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+                  최근 정책 소식
+                </h2>
+                <Link
+                  href="/news"
+                  className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+                >
+                  전체 보기 →
+                </Link>
+              </div>
+              <div className="grid gap-5 md:grid-cols-3">
+                {recentNews.map((post) => (
+                  <NewsCard key={post.slug} post={post} />
+                ))}
+              </div>
+            </section>
+          </Suspense>
         </RevealOnScroll>
       )}
 
       {/* [방법] FeatureGrid — 어떻게 작동? 3 STEPS (조건 입력 → 마감 알림 → 챗봇 안내) */}
       <RevealOnScroll>
-        <div className="bg-grey-50">
-          <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-            <FeatureGrid />
-          </section>
-        </div>
+        <Suspense fallback={<div className="h-[400px] bg-grey-50" aria-hidden />}>
+          <div className="bg-grey-50">
+            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+              <FeatureGrid />
+            </section>
+          </div>
+        </Suspense>
       </RevealOnScroll>
 
       {/* [참여] WishForm — 좌측 하단 floating 위젯으로 분리.
@@ -344,7 +363,9 @@ export default async function Home() {
 
       {/* [행동] HomeCTA — 사용자가 가져갈 다음 행동 (추천 받기 + 알림 받기) */}
       <RevealOnScroll>
-        <HomeCTA />
+        <Suspense fallback={<div className="h-[280px]" aria-hidden />}>
+          <HomeCTA />
+        </Suspense>
       </RevealOnScroll>
     </main>
   );
