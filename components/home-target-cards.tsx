@@ -35,7 +35,9 @@ const TARGETS: {
   fg: string;
 }[] = [
   {
-    href: "/welfare?target=%EC%B2%AD%EB%85%84",
+    // age=청년 (age_tags ARRAY contains) — 2026-04-28 fix: target ilike 24건
+    // → age_tags contains 정확 매칭 (welfare/page.tsx 의 ALLOWED_AGES 처리).
+    href: "/welfare?age=%EC%B2%AD%EB%85%84",
     label: "청년",
     desc: "20·30대 정책",
     icon: Sparkles,
@@ -51,7 +53,9 @@ const TARGETS: {
     fg: "text-pink-600",
   },
   {
-    href: "/welfare?target=%EC%9C%A1%EC%95%84",
+    // category=양육 (DB 정확 매칭 1,053건) — 2026-04-28 fix: target=육아 0건 사고.
+    // welfare 의 category 컬럼이 옛 분류 (생계·의료·양육·교육·취업·주거·문화·창업).
+    href: "/welfare?category=%EC%96%91%EC%9C%A1",
     label: "부모·육아",
     desc: "출산·양육비",
     icon: Baby,

@@ -63,11 +63,21 @@ function welfareToScorable(w: WelfareProgram): ScorableItem {
   };
 }
 
+// age 매개변수 화이트리스트 — URL query 임의 값 차단 (PostgREST contains 에 들어감).
+// AGE_TAGS (lib/tags/taxonomy.ts) 의 분류값과 일치 — 영유아·학생·청년·중장년·노년·전연령.
+// 홈 대상별 카드 (HomeTargetCards) 의 청년 entry 가 정확 매칭하기 위해 추가 (2026-04-28).
+const ALLOWED_AGES = new Set([
+  "영유아", "학생", "청년", "중장년", "노년", "전연령",
+]);
+
 export default async function WelfarePage({ searchParams }: Props) {
   const params = await searchParams;
   const category = params.category || "전체";
   const region = params.region || "전체";
   const target = params.target || "전체";
+  // age — age_tags ARRAY 컬럼 contains 매칭. 화이트리스트로 SQL injection 차단.
+  const rawAge = params.age || "";
+  const age = ALLOWED_AGES.has(rawAge) ? rawAge : null;
   const search = params.q || "";
   const page = parseInt(params.page || "1", 10);
 
@@ -88,6 +98,9 @@ export default async function WelfarePage({ searchParams }: Props) {
       }
     }
     if (target !== "전체") q = q.ilike("target", `%${target}%`);
+    // age 필터 — age_tags ARRAY contains. PostgREST 의 cs 연산자 사용.
+    // 정확 매칭 (target ilike 의 free-text 24건 vs age_tags contains 수백 건).
+    if (age) q = q.contains("age_tags", [age]);
     if (search) {
       const tokens = search
         .trim()
@@ -171,6 +184,7 @@ export default async function WelfarePage({ searchParams }: Props) {
       category,
       region,
       target,
+      age: age ?? "",
       q: search,
       page: String(page),
       ...overrides,
