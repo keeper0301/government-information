@@ -17,7 +17,11 @@ import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
 import {
   HIDE_REASON_CATEGORIES,
+  NEWS_CATEGORY_FILTERS,
+  NEWS_HIDDEN_FILTERS,
   type HideReasonCategory,
+  type NewsCategoryFilter,
+  type NewsHiddenFilter,
   type NewsSearchRow,
 } from "./moderation-types";
 
@@ -82,6 +86,58 @@ export async function searchNewsForAdmin(query: string): Promise<NewsSearchRow[]
     return [];
   }
   return (data ?? []) as NewsSearchRow[];
+}
+
+// 전체 뉴스 목록 (페이지네이션 + 카테고리·숨김 필터).
+// 검색어 없이 사장님이 "최근에 어떤 뉴스가 들어왔지" 확인할 때 사용.
+// 매일 RSS 가 누적되므로 limit 없이 select 하면 점점 무거워짐 → 30/페이지 + count exact.
+export async function listNewsForAdmin(args: {
+  category?: NewsCategoryFilter;
+  hidden?: NewsHiddenFilter;
+  limit?: number;
+  offset?: number;
+}): Promise<{ rows: NewsSearchRow[]; total: number }> {
+  await requireAdminUser();
+  const admin = createAdminClient();
+
+  const limit = Math.min(Math.max(args.limit ?? 30, 1), 100); // 1~100 cap
+  const offset = Math.max(args.offset ?? 0, 0);
+
+  // 화이트리스트 검증 — URL 조작으로 임의 enum 들어오는 거 차단
+  const category = NEWS_CATEGORY_FILTERS.includes(args.category as NewsCategoryFilter)
+    ? (args.category as NewsCategoryFilter)
+    : "all";
+  const hidden = NEWS_HIDDEN_FILTERS.includes(args.hidden as NewsHiddenFilter)
+    ? (args.hidden as NewsHiddenFilter)
+    : "all";
+
+  let query = admin
+    .from("news_posts")
+    .select(
+      "id, slug, title, ministry, category, published_at, is_hidden, hidden_at, hidden_reason",
+      { count: "exact" },
+    )
+    .order("published_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (category !== "all") {
+    query = query.eq("category", category);
+  }
+  if (hidden === "visible") {
+    query = query.eq("is_hidden", false);
+  } else if (hidden === "hidden") {
+    query = query.eq("is_hidden", true);
+  }
+
+  const { data, error, count } = await query;
+  if (error) {
+    console.warn("[admin/news listNewsForAdmin] 실패:", error.message);
+    return { rows: [], total: 0 };
+  }
+  return {
+    rows: (data ?? []) as NewsSearchRow[],
+    total: count ?? 0,
+  };
 }
 
 // 최근 숨긴 뉴스 10건 (실수 복구 fast path 용).

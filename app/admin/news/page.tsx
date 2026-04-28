@@ -20,12 +20,24 @@ import { logAdminAction } from "@/lib/admin-actions";
 import {
   searchNewsForAdmin,
   getRecentlyHiddenNews,
+  listNewsForAdmin,
   toggleNewsHidden,
 } from "./actions";
 import {
   HIDE_REASON_CATEGORIES,
+  NEWS_CATEGORY_FILTERS,
+  NEWS_CATEGORY_LABELS,
+  NEWS_HIDDEN_FILTERS,
+  NEWS_HIDDEN_LABELS,
+  type NewsCategoryFilter,
+  type NewsHiddenFilter,
   type NewsSearchRow,
 } from "./moderation-types";
+import { Pagination } from "@/components/pagination";
+
+// 전체 목록 섹션 한 페이지 표시 건수.
+// 30 = 모바일에서 2~3 스크롤. /admin/my-actions 와 동일 정책으로 통일.
+const LIST_PER_PAGE = 30;
 
 export const metadata: Metadata = {
   title: "정책 뉴스 운영 | 어드민",
@@ -117,18 +129,69 @@ export default async function AdminNewsPage({
     error?: string;
     msg?: string;
     q?: string;
+    cat?: string;
+    hidden?: string;
+    page?: string;
   }>;
 }) {
   await requireAdmin();
   const params = await searchParams;
 
-  // 검색·최근 숨김 데이터를 통계와 함께 병렬 조회 — 모더레이션 즉시성 우선
+  // 모드 구분 — 검색어가 있으면 검색 모드, 아니면 전체 목록 모드.
+  // 두 섹션을 동시에 보여주면 화면이 길어지고 사장님이 어디서 결과를 보는지
+  // 헷갈리므로, 한 번에 한 모드만 활성화한다.
   const query = (params.q ?? "").trim();
-  const [stats, searchResults, recentlyHidden] = await Promise.all([
+  const isSearchMode = query.length > 0;
+
+  // 전체 목록 모드 — 화이트리스트 검증 후 listNewsForAdmin 인자로.
+  // 검증은 actions.ts 안에서도 한 번 더 함 (defense in depth).
+  const categoryFilter: NewsCategoryFilter = NEWS_CATEGORY_FILTERS.includes(
+    params.cat as NewsCategoryFilter,
+  )
+    ? (params.cat as NewsCategoryFilter)
+    : "all";
+  const hiddenFilter: NewsHiddenFilter = NEWS_HIDDEN_FILTERS.includes(
+    params.hidden as NewsHiddenFilter,
+  )
+    ? (params.hidden as NewsHiddenFilter)
+    : "all";
+  const page = Math.max(1, parseInt(params.page || "1", 10));
+  const offset = (page - 1) * LIST_PER_PAGE;
+
+  // 검색·전체 목록·최근 숨김 데이터를 통계와 함께 병렬 조회 — 모더레이션 즉시성 우선.
+  // isSearchMode 분기로 불필요한 DB 호출 0 (검색 모드면 list 안 부름, 그 외엔 search 안 부름).
+  const [stats, searchResults, listResult, recentlyHidden] = await Promise.all([
     getStats(),
-    query ? searchNewsForAdmin(query) : Promise.resolve([] as NewsSearchRow[]),
+    isSearchMode
+      ? searchNewsForAdmin(query)
+      : Promise.resolve([] as NewsSearchRow[]),
+    isSearchMode
+      ? Promise.resolve({ rows: [] as NewsSearchRow[], total: 0 })
+      : listNewsForAdmin({
+          category: categoryFilter,
+          hidden: hiddenFilter,
+          limit: LIST_PER_PAGE,
+          offset,
+        }),
     getRecentlyHiddenNews(),
   ]);
+  const totalListPages = Math.max(1, Math.ceil(listResult.total / LIST_PER_PAGE));
+
+  // 페이지네이션 URL 빌더 — cat·hidden 필터 유지하며 page 만 교체.
+  // 1페이지·all 필터는 쿼리에서 제거 (깨끗한 URL).
+  function buildListUrl(overrides: Record<string, string>) {
+    const next: Record<string, string> = {
+      ...(categoryFilter !== "all" ? { cat: categoryFilter } : {}),
+      ...(hiddenFilter !== "all" ? { hidden: hiddenFilter } : {}),
+      ...(page !== 1 ? { page: String(page) } : {}),
+      ...overrides,
+    };
+    if (next.page === "1") delete next.page;
+    if (next.cat === "all") delete next.cat;
+    if (next.hidden === "all") delete next.hidden;
+    const qs = new URLSearchParams(next).toString();
+    return qs ? `/admin/news?${qs}` : "/admin/news";
+  }
 
   let resultObj: Record<string, unknown> | null = null;
   if (params.result) {
@@ -247,7 +310,8 @@ export default async function AdminNewsPage({
             </div>
           )}
 
-          {/* 검색 폼 — 제목·slug·source_id 중 하나로 찾기 */}
+          {/* 검색 폼 — 제목·slug·source_id 중 하나로 찾기.
+              cat/hidden/page 필터를 같이 들고 가지 않게 q 만 전송한다 (모드 분리). */}
           <form method="GET" action="/admin/news" className="flex gap-2 mb-4">
             <input
               type="text"
@@ -264,8 +328,9 @@ export default async function AdminNewsPage({
             </button>
           </form>
 
-          {/* 검색 결과 */}
-          {query && (
+          {/* 검색 모드 — 결과만 표시, 전체 목록 섹션은 hide.
+              사장님 멘탈 모델: "특정 뉴스 찾기" 와 "둘러보기" 가 분리. */}
+          {isSearchMode && (
             <div className="mb-8">
               <p className="text-[13px] text-grey-600 mb-2">
                 검색어 <span className="font-semibold text-grey-900">{query}</span> — 결과 {searchResults.length}건
@@ -284,7 +349,100 @@ export default async function AdminNewsPage({
             </div>
           )}
 
-          {/* 최근 숨긴 10건 — 실수 복구 fast path */}
+          {/* 전체 목록 모드 — 검색어 없을 때만. 카테고리·숨김 필터 + 페이지네이션. */}
+          {!isSearchMode && (
+            <div className="mb-8">
+              <h3 className="text-[15px] font-bold text-grey-900 mb-2 tracking-[-0.2px]">
+                전체 뉴스 목록 ({listResult.total.toLocaleString()}건)
+              </h3>
+              <p className="text-[13px] text-grey-600 mb-3 leading-[1.6]">
+                최근 발행순으로 30건씩 보여줘요. 카테고리·노출 상태로 좁혀 볼 수 있어요.
+              </p>
+
+              {/* 필터 폼 — GET 으로 ?cat=&hidden= 주입.
+                  필터 변경 시 1페이지로 리셋되도록 page input 생략. */}
+              <form
+                method="GET"
+                action="/admin/news"
+                className="bg-grey-50 border border-grey-200 rounded-lg p-3 mb-4 flex flex-wrap gap-2 items-center"
+              >
+                <label className="text-[12px] font-medium text-grey-700">
+                  <span className="sr-only">카테고리</span>
+                  <select
+                    name="cat"
+                    defaultValue={categoryFilter}
+                    className="px-2 py-1.5 text-[13px] border border-grey-300 rounded-md bg-white"
+                  >
+                    {NEWS_CATEGORY_FILTERS.map((c) => (
+                      <option key={c} value={c}>
+                        {NEWS_CATEGORY_LABELS[c]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-[12px] font-medium text-grey-700">
+                  <span className="sr-only">노출 상태</span>
+                  <select
+                    name="hidden"
+                    defaultValue={hiddenFilter}
+                    className="px-2 py-1.5 text-[13px] border border-grey-300 rounded-md bg-white"
+                  >
+                    {NEWS_HIDDEN_FILTERS.map((h) => (
+                      <option key={h} value={h}>
+                        {NEWS_HIDDEN_LABELS[h]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="submit"
+                  className="min-h-[36px] px-3 text-[13px] font-semibold rounded-md bg-blue-500 text-white hover:bg-blue-600"
+                >
+                  적용
+                </button>
+                {(categoryFilter !== "all" || hiddenFilter !== "all") && (
+                  <Link
+                    href="/admin/news"
+                    className="min-h-[36px] px-3 inline-flex items-center text-[13px] font-semibold rounded-md border border-grey-300 text-grey-700 hover:bg-white no-underline"
+                  >
+                    초기화
+                  </Link>
+                )}
+                <span className="text-[12px] text-grey-600 ml-auto">
+                  {totalListPages > 1 && <>{page} / {totalListPages} 페이지</>}
+                </span>
+              </form>
+
+              {/* 목록 — 검색 결과와 같은 NewsModerationRow 재사용.
+                  returnTo 에 현재 필터·페이지를 그대로 담아 토글 후 같은 위치로 복귀. */}
+              {listResult.rows.length === 0 ? (
+                <p className="text-[14px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+                  조건에 맞는 뉴스가 없어요.
+                </p>
+              ) : (
+                <>
+                  <ul className="space-y-2">
+                    {listResult.rows.map((row) => (
+                      <NewsModerationRow
+                        key={row.id}
+                        row={row}
+                        returnTo={buildListUrl({})}
+                      />
+                    ))}
+                  </ul>
+                  {totalListPages > 1 && (
+                    <Pagination
+                      currentPage={page}
+                      totalPages={totalListPages}
+                      buildUrl={buildListUrl}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 최근 숨긴 10건 — 실수 복구 fast path. 모드와 무관하게 항상 노출. */}
           <div>
             <h3 className="text-[15px] font-bold text-grey-900 mb-2 tracking-[-0.2px]">최근 숨긴 뉴스 10건</h3>
             {recentlyHidden.length === 0 ? (
