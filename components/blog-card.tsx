@@ -72,13 +72,13 @@ export function BlogCard({ post }: { post: BlogCardData }) {
               meta_description 은 한 줄 리드 문장이라 cleanDescription(다단) 보다
               stripHtmlTags(평문) 가 적합 (lib/utils.ts:125 주석). */}
           {post.meta_description && (
-            <p className="text-[14px] text-grey-700 leading-[1.6] line-clamp-3">
+            <p className="text-[14px] max-md:text-[15px] text-grey-700 leading-[1.6] max-md:leading-[1.65] line-clamp-3">
               {stripHtmlTags(post.meta_description)}
             </p>
           )}
         </CardContent>
 
-        <CardFooter className="px-0 pt-4 pb-0 border-t-0 bg-transparent rounded-none text-[13px] text-grey-600 gap-2">
+        <CardFooter className="px-0 pt-4 pb-0 border-t-0 bg-transparent rounded-none text-[13px] max-md:text-[14px] text-grey-600 gap-2">
           <span>{dateLabel}</span>
           {readingLabel && (
             <>

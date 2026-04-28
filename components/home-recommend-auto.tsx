@@ -111,7 +111,7 @@ export async function HomeRecommendAuto() {
         <h2 className="text-base sm:text-lg font-bold text-grey-900 mb-2">
           🌟 {profile.displayName}님께 맞는 정책
         </h2>
-        <p className="text-sm text-grey-600 leading-[1.55] mb-4">
+        <p className="text-sm max-md:text-[15px] text-grey-600 leading-[1.55] max-md:leading-[1.65] mb-4">
           지금은 마감 임박 정책 중 키퍼님 조건과 딱 맞는 게 적어요.
           <br />
           전체 정책에서 더 많은 정보를 확인해보세요.
@@ -140,13 +140,13 @@ export async function HomeRecommendAuto() {
       <div className="flex items-end justify-between mb-4">
         <h2 className="text-base sm:text-lg font-bold text-grey-900">
           🌟 {profile.displayName}님께 맞는 정책
-          <span className="ml-2 text-xs text-grey-500 font-normal">
+          <span className="ml-2 text-xs max-md:text-[13px] text-grey-500 font-normal">
             {items.length}건
           </span>
         </h2>
         <Link
           href="/welfare"
-          className="text-xs text-blue-500 hover:text-blue-600 underline"
+          className="text-xs max-md:text-[13px] text-blue-500 hover:text-blue-600 underline"
         >
           전체 보기 →
         </Link>
@@ -161,12 +161,12 @@ export async function HomeRecommendAuto() {
               className="block py-2 px-3 rounded-lg hover:bg-grey-50 transition"
             >
               {/* 정책 제목 — 2줄 초과 시 말줄임표 */}
-              <div className="text-sm font-medium text-grey-900 line-clamp-2">
+              <div className="text-sm max-md:text-[15px] font-medium text-grey-900 line-clamp-2">
                 {item.title}
               </div>
               {/* 마감일이 있는 경우만 표시 */}
               {item.apply_end && (
-                <div className="text-xs text-grey-500 mt-1">
+                <div className="text-xs max-md:text-[13px] text-grey-500 mt-1">
                   마감 {item.apply_end}
                 </div>
               )}

@@ -113,12 +113,12 @@ export function NewsCard({ post }: { post: NewsCardData }) {
               {categoryLabel}
             </Badge>
             {post.ministry && (
-              <span className="text-[13px] text-grey-600 truncate max-w-[180px]">
+              <span className="text-[13px] max-md:text-[14px] text-grey-600 truncate max-w-[180px]">
                 {post.ministry}
               </span>
             )}
             {post.source_outlet && (
-              <span className="text-[12px] text-grey-500 truncate max-w-[160px]">
+              <span className="text-[12px] max-md:text-[13px] text-grey-500 truncate max-w-[160px]">
                 · 출처 {post.source_outlet}
               </span>
             )}
@@ -133,13 +133,13 @@ export function NewsCard({ post }: { post: NewsCardData }) {
               엔티티(&nbsp; 등)·태그 정제해서 raw 노출 방지. line-clamp 에 삽입된
               \n 은 CSS 가 자동으로 공백 처리. */}
           {post.summary && (
-            <p className="text-[13px] text-grey-700 leading-[1.6] mb-3 line-clamp-2">
+            <p className="text-[13px] max-md:text-[15px] text-grey-700 leading-[1.6] max-md:leading-[1.65] mb-3 line-clamp-2">
               {cleanDescription(post.summary)}
             </p>
           )}
 
           {/* 발행일 */}
-          <div className="text-[13px] text-grey-600">{dateLabel}</div>
+          <div className="text-[13px] max-md:text-[14px] text-grey-600">{dateLabel}</div>
         </CardContent>
       </Card>
     </Link>

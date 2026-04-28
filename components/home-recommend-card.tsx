@@ -149,7 +149,7 @@ export function HomeRecommendCard({ initial }: Props) {
           <CardTitle className="text-[17px] font-bold tracking-[-0.3px] text-grey-900 leading-normal">
             나에게 맞는 정책 찾기
           </CardTitle>
-          <CardDescription className="text-[13px] text-grey-600 leading-[1.5]">
+          <CardDescription className="text-[13px] max-md:text-[15px] text-grey-600 leading-[1.5] max-md:leading-[1.65]">
             3가지만 고르면 30초 안에 보여드려요
             {autoFilled && (
               <span className="text-blue-500 font-medium"> · 내 정보에서 불러왔어요</span>
