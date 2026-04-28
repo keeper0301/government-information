@@ -11,6 +11,7 @@ import {
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
 import { getGuides } from "@/lib/policy-guides";
+import { PROVINCES } from "@/lib/regions";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -108,6 +109,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // Welfare 광역별 SEO 페이지 17개 — path-based long-tail.
+  // 17 광역 모두 활성 정책 ≥100건 보유 (실측 2026-04-28) — thin-content 위험 0.
+  const welfareRegionPages: MetadataRoute.Sitemap = PROVINCES.map((p) => ({
+    url: `${baseUrl}/welfare/region/${p.code}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
+    priority: 0.7,
+  }));
+
   // Loan programs
   const { data: loans } = await supabase
     .from("loan_programs")
@@ -117,6 +127,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${baseUrl}/loan/${l.id}`,
     lastModified: new Date(l.updated_at),
     changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
+  // Loan 광역별 SEO 페이지 17개 — path-based long-tail.
+  // 17 광역 모두 활성 정책 ≥3건 보유 (세종 3건이 최소, 실측 2026-04-28).
+  const loanRegionPages: MetadataRoute.Sitemap = PROVINCES.map((p) => ({
+    url: `${baseUrl}/loan/region/${p.code}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
     priority: 0.7,
   }));
 
@@ -190,7 +209,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...keywordPages,
     ...topicPages,
     ...welfarePages,
+    ...welfareRegionPages,
     ...loanPages,
+    ...loanRegionPages,
     ...blogPages,
     ...blogCategoryPages,
     ...newsPages,
