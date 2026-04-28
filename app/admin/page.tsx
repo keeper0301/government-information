@@ -31,6 +31,7 @@ import {
   getDailySignups,
   getDailyRevenueEstimated,
   getRecentPayments,
+  getAuthUserEmailMap,
 } from "@/lib/admin-stats";
 import { Sparkline } from "@/components/admin/sparkline";
 import { TIER_NAMES } from "@/lib/subscription";
@@ -168,46 +169,34 @@ async function get24hStats() {
   };
 }
 
-// 최근 가입 사용자 5건 — user_profiles 기준 (실제 프로필 작성 완료자)
+// 최근 가입 사용자 5건 — user_profiles 기준 (실제 프로필 작성 완료자).
+// 이메일은 getAuthUserEmailMap (react cache) 에서 lookup → N+1 (5 × getUserById) 제거.
 async function getRecentSignups(limit = 5) {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("user_profiles")
-    .select("id, created_at, region, occupation")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const [profilesResult, emailMap] = await Promise.all([
+    admin
+      .from("user_profiles")
+      .select("id, created_at, region, occupation")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    getAuthUserEmailMap(),
+  ]);
+
+  const data = profilesResult.data;
   if (!data || data.length === 0) return [];
 
-  // 이메일은 auth.users 에서 각각 조회 (5건이라 N+1 감수)
-  const results: {
-    id: string;
-    email: string | null;
-    created_at: string;
-    region: string | null;
-    occupation: string | null;
-  }[] = [];
-  for (const p of data as {
+  return (data as {
     id: string;
     created_at: string;
     region: string | null;
     occupation: string | null;
-  }[]) {
-    let email: string | null = null;
-    try {
-      const { data: auth } = await admin.auth.admin.getUserById(p.id);
-      email = auth?.user?.email ?? null;
-    } catch {
-      // 이미 삭제된 사용자일 수 있음
-    }
-    results.push({
-      id: p.id,
-      email,
-      created_at: p.created_at,
-      region: p.region,
-      occupation: p.occupation,
-    });
-  }
-  return results;
+  }[]).map((p) => ({
+    id: p.id,
+    email: emailMap.get(p.id) ?? null,
+    created_at: p.created_at,
+    region: p.region,
+    occupation: p.occupation,
+  }));
 }
 
 // "방금 전", "5분 전", "3시간 전" 같은 상대 시각 포맷 — 대시보드 가독성용
