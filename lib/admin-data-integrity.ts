@@ -8,7 +8,7 @@
 //   1. user_profiles orphan — auth.users 에 없는 user_id 의 profile
 //   2. subscriptions orphan — auth.users 에 없는 user_id 의 구독
 //   3. user_alert_rules orphan — auth.users 에 없는 user_id 의 규칙
-//   4. pending_deletions overdue — expires_at < now() 인데 still pending
+//   4. pending_deletions overdue — scheduled_delete_at < now() 인데 still pending
 //      (cron /api/finalize-deletions 실패 신호)
 //
 // 비용: getAuthUsersCached (react cache 라 페이지 1회 fetch) + 3 SELECT user_id
@@ -39,7 +39,7 @@ export const getDataIntegritySnapshot = cache(
       admin
         .from("pending_deletions")
         .select("user_id", { count: "exact", head: true })
-        .lt("expires_at", new Date().toISOString()),
+        .lt("scheduled_delete_at", new Date().toISOString()),
     ]);
 
     // auth.users.id Set — 비교 키
