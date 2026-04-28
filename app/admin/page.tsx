@@ -393,6 +393,11 @@ export default async function AdminHomePage({
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <ActionCard
+              href="/admin/health"
+              title="🩺 헬스 대시보드"
+              desc="DB·cron·환경변수·활성 사용자 한눈에 (매일 첫 페이지)"
+            />
+            <ActionCard
               href="/admin/alimtalk"
               title="알림톡 운영"
               desc="24h 발송 집계·환경변수·테스트 발송"
