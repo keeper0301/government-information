@@ -19,6 +19,33 @@ const PLACEHOLDER_KEYWORDS = [
   "학자금 대출",
 ];
 
+// 최근 검색 (localStorage) — focus 시 query 비어있으면 드롭다운에 노출.
+// max 5건, 가장 최근이 위. private mode 등 차단 시 안전 fallback (try/catch).
+const RECENT_KEY = "keepioo:recent-searches";
+const MAX_RECENT = 5;
+
+function loadRecent(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === "string").slice(0, MAX_RECENT)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecent(list: string[]) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+  } catch {
+    /* private mode 등 — 무시 */
+  }
+}
+
 // 자동완성 결과 타입
 type SuggestItem = {
   id: string;
@@ -34,8 +61,14 @@ export function SearchBox() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [recent, setRecent] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // mount 시 localStorage 의 최근 검색 5건 로드.
+  useEffect(() => {
+    setRecent(loadRecent());
+  }, []);
 
   // placeholder 키워드 회전 — 3.2초 주기. focus·query 있으면 정지.
   const [phIndex, setPhIndex] = useState(0);
@@ -50,14 +83,19 @@ export function SearchBox() {
 
   // 검색 실행 — 통합 검색 결과 페이지로 이동.
   // (이전엔 /welfare 로만 가서 loan/news/blog 결과가 누락됐음)
-  const handleSearch = (searchQuery: string, source: "submit" | "chip" = "submit") => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = (searchQuery: string, source: "submit" | "chip" | "recent" = "submit") => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
     setShowDropdown(false);
     trackEvent(EVENTS.HOME_SEARCH_SUBMITTED, {
-      query_length: searchQuery.trim().length,
+      query_length: trimmed.length,
       source,
     });
-    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    // 최근 검색 자동 추가 — 중복 제거 후 가장 위로.
+    const next = [trimmed, ...recent.filter((q) => q !== trimmed)].slice(0, MAX_RECENT);
+    saveRecent(next);
+    setRecent(next);
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   };
 
   // 폼 제출
@@ -156,7 +194,10 @@ export function SearchBox() {
                 }}
                 onFocus={() => {
                   setIsFocused(true);
-                  if (suggestions.length > 0) setShowDropdown(true);
+                  // 자동완성 결과 또는 최근 검색이 있으면 드롭다운 노출
+                  if (suggestions.length > 0 || (!query && recent.length > 0)) {
+                    setShowDropdown(true);
+                  }
                 }}
                 onBlur={() => setIsFocused(false)}
                 onKeyDown={handleKeyDown}
@@ -190,6 +231,52 @@ export function SearchBox() {
           <div className="absolute top-full left-0 right-0 max-w-[600px] mt-2 bg-white border border-grey-100 rounded-2xl shadow-xl z-50 overflow-hidden">
             {loading ? (
               <div className="px-5 py-4 text-sm text-grey-600">검색 중...</div>
+            ) : !query && recent.length > 0 ? (
+              <div>
+                <div className="flex items-center justify-between px-5 py-2 text-xs text-grey-500 border-b border-grey-100">
+                  <span className="font-semibold">최근 검색</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      saveRecent([]);
+                      setRecent([]);
+                    }}
+                    className="text-grey-500 hover:text-grey-700 underline cursor-pointer border-none bg-transparent"
+                  >
+                    전체 삭제
+                  </button>
+                </div>
+                {recent.map((q) => (
+                  <div
+                    key={q}
+                    className="flex items-center hover:bg-grey-50 transition-colors"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery(q);
+                        handleSearch(q, "recent");
+                      }}
+                      className="flex-1 text-left px-5 py-3 flex items-center gap-3 cursor-pointer border-none bg-transparent"
+                    >
+                      <SearchIcon className="w-4 h-4 text-grey-400 shrink-0" />
+                      <span className="text-sm text-grey-800 truncate">{q}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = recent.filter((x) => x !== q);
+                        saveRecent(next);
+                        setRecent(next);
+                      }}
+                      aria-label={`${q} 검색어 삭제`}
+                      className="px-3 py-3 text-grey-400 hover:text-grey-700 cursor-pointer border-none bg-transparent text-lg leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             ) : suggestions.length > 0 ? (
               <>
                 {suggestions.map((item, index) => (
