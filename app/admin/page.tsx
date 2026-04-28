@@ -267,6 +267,20 @@ export default async function AdminHomePage({
           </div>
         )}
 
+        {/* Phase 6 — 운영 종합 대시보드 CTA */}
+        <Link
+          href="/admin/health"
+          className="block bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-6 hover:bg-blue-100 no-underline transition-colors"
+        >
+          <p className="text-[12px] text-blue-700 font-semibold mb-1">PHASE 6 NEW</p>
+          <h2 className="text-[18px] font-bold text-blue-900 mb-1">
+            🩺 운영 health 종합 대시보드 →
+          </h2>
+          <p className="text-[13px] text-blue-800">
+            헬스 신호·30일 추세·임계치 알림·빠른 링크 한 페이지에서.
+          </p>
+        </Link>
+
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {/* 누적 KPI 카드 4종 — 비즈 한눈 보기 */}
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
