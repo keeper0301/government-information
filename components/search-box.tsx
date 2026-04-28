@@ -8,7 +8,8 @@ import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 검색박스 placeholder 자동 회전 — 사용자가 어떤 검색을 할 수 있는지
 // 학습시키며 첫 화면에 활동감을 줌. 사용자가 input 에 focus 하거나
-// 입력 시작하면 자동 정지 (방해 X).
+// 입력 시작하면 자동 정지 (방해 X). 14종으로 다양 영역 노출 (welfare 9 +
+// loan 3 + 건강·창업 등 2) — 사용자가 "이런 것도 있구나" 학습 효과 ↑.
 const PLACEHOLDER_KEYWORDS = [
   "청년월세 지원",
   "소상공인 대출",
@@ -17,6 +18,13 @@ const PLACEHOLDER_KEYWORDS = [
   "노인 의료비",
   "신혼부부 전세자금",
   "학자금 대출",
+  "양육수당",
+  "청년도약계좌",
+  "창업지원금",
+  "한부모 가족 지원",
+  "장애인 활동지원",
+  "건강검진 무료",
+  "취업장려금",
 ];
 
 // 최근 검색 (localStorage) — focus 시 query 비어있으면 드롭다운에 노출.

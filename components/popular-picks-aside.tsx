@@ -18,17 +18,13 @@ import Link from "next/link";
 import { Flame, X } from "lucide-react";
 import { TrackedLink } from "./tracked-link";
 import { EVENTS, trackEvent } from "@/lib/analytics";
+import type { PopularPick } from "@/lib/popular-picks";
+
+// 단일 truth source — lib/popular-picks.ts 의 PopularPick 타입 재export
+export type { PopularPick };
 
 const SNOOZE_KEY = "home-popular-snooze";
 const SNOOZE_HOURS = 24;
-
-export type PopularPick = {
-  id: string;
-  title: string;
-  view_count: number;
-  apply_end: string | null;
-  kind: "welfare" | "loan";
-};
 
 // 마감일 → 사람 읽기 쉬운 D-X 문자열 (KST 기준)
 function formatDeadline(apply_end: string | null): string {

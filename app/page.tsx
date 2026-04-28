@@ -12,6 +12,7 @@ import { HomeRecommendAuto } from "@/components/home-recommend-auto";
 import { HomeTargetCards } from "@/components/home-target-cards";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
+import { PopularPicksRow } from "@/components/popular-picks-row";
 import { HomeJsonLd } from "@/components/home-jsonld";
 import { BlogCategoryChips } from "@/components/blog-category-chips";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
@@ -26,6 +27,7 @@ import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { getUrgentPrograms, type ProfileLite } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
+import { getPopularPicks } from "@/lib/popular-picks";
 import { createClient } from "@/lib/supabase/server";
 
 // FloatingWishWidget — 좌측 하단 floating 위젯, 즉시 노출 불필요.
@@ -46,13 +48,16 @@ export default async function Home() {
   // 1) 로그인 상태 + urgent 리스트 + 데이터 freshness 먼저 확보
   //    (셋 다 프로필 유무와 무관, 병렬 fetch)
   const supabase = await createClient();
-  const [urgents, userResult, freshness] = await Promise.all([
+  const [urgents, userResult, freshness, popularPicks] = await Promise.all([
     // 마퀴 회전이라 12건이면 충분 (이전 30건 → 시각 부담 ↓ + 마퀴 더 천천히 읽힘).
     // /calendar 전체보기 CTA 가 우측에 항상 노출되므로 발견성 회귀 0.
     getUrgentPrograms(12),
     supabase.auth.getUser(),
     // 데이터 신선도 — Hero indicator 에 통합 노출 (footer 외 첫 화면 신뢰 시그널)
     getDataFreshness(),
+    // 인기 정책 5건 — 1800px+ sidebar (HomePopularPicks) 와 일반 섹션
+    // (PopularPicksRow) 양쪽에서 react cache 로 round trip 공유
+    getPopularPicks(5),
   ]);
 
   // 2) 로그인 사용자면 프로필 조회 (HomeRecommendCard 자동 채움용)
@@ -302,6 +307,15 @@ export default async function Home() {
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
           <AlertStrip programs={urgents} isLoggedIn={!!user} />
+        </Suspense>
+      </RevealOnScroll>
+
+      {/* [도구 2.5] PopularPicksRow — 일반 viewport 인기 정책 노출 (1800px+ sidebar 와 분리).
+          AlertStrip(마감 임박) 다음에 자연 흐름: "지금 마감 임박 → 지금 인기있는 정책".
+          react cache 라 sidebar 와 동일 fetch 결과 공유 (round trip 추가 0). */}
+      <RevealOnScroll>
+        <Suspense fallback={<div className="h-[260px]" aria-hidden />}>
+          <PopularPicksRow picks={popularPicks} />
         </Suspense>
       </RevealOnScroll>
 
