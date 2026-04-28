@@ -449,6 +449,11 @@ export default async function AdminHomePage({
               desc="자동 수집 외 광역 자체 사업 직접 추가 (#7)"
             />
             <ActionCard
+              href="/admin/loan/new"
+              title="➕ 대출·정책자금 수동 등록"
+              desc="자동 수집 외 광역 정책자금 직접 추가"
+            />
+            <ActionCard
               href="/admin/news"
               title="정책 뉴스 운영"
               desc="수집 현황·수동 trigger·카테고리별"
