@@ -5,6 +5,7 @@ import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { HomeRecommendCard } from "@/components/home-recommend-card";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
+import { HomeTargetCards } from "@/components/home-target-cards";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
@@ -177,6 +178,11 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* [발견] 대상별 빠른 진입 카드 6종 — 외부 LLM 평가 후속 (2026-04-28).
+          첫 화면에서 사용자가 자기 상황에 맞는 정책으로 즉시 이동.
+          청년·신혼부부·부모·소상공인·저소득·1인가구. */}
+      <HomeTargetCards />
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
