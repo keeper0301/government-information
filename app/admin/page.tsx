@@ -454,6 +454,11 @@ export default async function AdminHomePage({
               desc="자동 수집 외 광역 정책자금 직접 추가"
             />
             <ActionCard
+              href="/admin/press-ingest"
+              title="🗞️ 광역 보도자료 후보"
+              desc="17 광역도청 발표 신청 신호 매칭 row (L1 필터, LLM 미사용)"
+            />
+            <ActionCard
               href="/admin/news"
               title="정책 뉴스 운영"
               desc="수집 현황·수동 trigger·카테고리별"
