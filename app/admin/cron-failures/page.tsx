@@ -21,6 +21,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { CronRetryButton } from "./retry-button";
 import { isAdminUser } from "@/lib/admin-auth";
 
 export const metadata: Metadata = {
@@ -193,8 +194,11 @@ export default async function CronFailuresPage() {
                   className="bg-white rounded-lg border border-grey-200 p-4"
                 >
                   <div className="flex items-baseline justify-between mb-1">
-                    <div className="text-[14px] font-bold text-grey-900 font-mono">
-                      {g.prefix}
+                    <div className="flex items-center gap-2">
+                      <div className="text-[14px] font-bold text-grey-900 font-mono">
+                        {g.prefix}
+                      </div>
+                      <CronRetryButton prefix={g.prefix} />
                     </div>
                     <div className="text-[12px] text-grey-600">
                       {g.rows}종 · {fmtRelative(g.newest)}
