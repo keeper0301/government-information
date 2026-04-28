@@ -14,6 +14,8 @@ import { getHealthSnapshot, type HealthCheckItem } from "@/lib/admin-health";
 // Phase 6 — 임계치 alert + 30일 추세 차트 추가
 import { getHealthSignals, checkThresholds } from "@/lib/health-check";
 import { getAdminTrends } from "@/lib/admin-trends";
+// Phase 6 후속 #13 — 데이터 일관성 모니터링 (orphan FK / 만료 cron)
+import { getDataIntegritySnapshot } from "@/lib/admin-data-integrity";
 import {
   SimpleBarChart,
   SimpleLineChart,
@@ -38,16 +40,23 @@ async function requireAdmin() {
 
 export default async function AdminHealthPage() {
   await requireAdmin();
-  // Phase 6 — 기존 health snapshot + 신규 임계치 신호·30일 추세 병렬 fetch
-  const [snap, signals, trends] = await Promise.all([
+  // Phase 6 — 기존 health snapshot + 신규 임계치 신호·30일 추세 + 데이터 일관성 병렬 fetch
+  const [snap, signals, trends, integrity] = await Promise.all([
     getHealthSnapshot(),
     getHealthSignals(),
     getAdminTrends(),
+    getDataIntegritySnapshot(),
   ]);
   const thresholdAlerts = checkThresholds(signals);
 
-  // 이상 신호 카운트 — 페이지 상단 요약
-  const allItems = [...snap.db, ...snap.cron, ...snap.env, ...snap.users];
+  // 이상 신호 카운트 — 페이지 상단 요약 (integrity 도 합산)
+  const allItems = [
+    ...snap.db,
+    ...snap.cron,
+    ...snap.env,
+    ...snap.users,
+    ...integrity,
+  ];
   const errorCount = allItems.filter((i) => i.status === "error").length;
   const warnCount = allItems.filter((i) => i.status === "warn").length;
 
@@ -98,6 +107,9 @@ export default async function AdminHealthPage() {
 
         {/* 환경변수 */}
         <Section title="🔐 환경변수" items={snap.env} />
+
+        {/* 데이터 일관성 (#13) — orphan FK · 만료 cron 미처리 */}
+        <Section title="🔗 데이터 일관성" items={integrity} />
 
         {/* Phase 6 — 30일 추세 차트 (DAU·구독·콘텐츠) */}
         <section className="mt-10 pt-8 border-t border-grey-200">
