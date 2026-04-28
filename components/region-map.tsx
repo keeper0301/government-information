@@ -13,6 +13,8 @@
 
 import Link from "next/link";
 import { getWelfareRegionCounts } from "@/lib/home-stats";
+import { TrackedLink } from "./tracked-link";
+import { EVENTS } from "@/lib/analytics";
 
 // 5×4 grid — 한국 시·도 지리 어림 위치 (위→남, 좌→우).
 // null = 빈 칸. 16개 시·도 + 제주 1 = 17.
@@ -84,8 +86,10 @@ export async function RegionMap() {
         {/* 제주 + 전국 별도 카드 (그리드 아래) */}
         <div className="grid grid-cols-2 gap-3 mt-3 max-md:gap-2">
           <RegionCell name="제주" count={counts["제주"] ?? 0} max={max} />
-          <Link
+          <TrackedLink
             href="/welfare?region=전국"
+            event={EVENTS.HOME_REGION_CARD_CLICKED}
+            params={{ region: "전국" }}
             className="block rounded-xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 max-md:py-3 px-4 text-center no-underline group"
           >
             <div className="text-[11px] font-medium text-grey-600 mb-0.5">전국 대상</div>
@@ -93,7 +97,7 @@ export async function RegionMap() {
               {nationwide.toLocaleString()}
               <span className="text-[12px] font-medium text-grey-600 ml-0.5">건</span>
             </div>
-          </Link>
+          </TrackedLink>
         </div>
       </div>
 
@@ -117,8 +121,10 @@ function RegionCell({
 }) {
   const cls = intensityClass(count, max);
   return (
-    <Link
+    <TrackedLink
       href={`/welfare?region=${encodeURIComponent(name)}`}
+      event={EVENTS.HOME_REGION_CARD_CLICKED}
+      params={{ region: name }}
       title={`${name} — 진행 중 공고 ${count.toLocaleString()}건`}
       className={`block rounded-xl px-2 py-3 max-md:px-1 max-md:py-2 text-center no-underline transition-all hover:scale-[1.04] hover:shadow-md ${cls}`}
     >
@@ -128,6 +134,6 @@ function RegionCell({
       <div className="text-[14px] max-md:text-[12px] font-extrabold tabular-nums">
         {count.toLocaleString()}
       </div>
-    </Link>
+    </TrackedLink>
   );
 }

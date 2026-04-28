@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SearchIcon } from "./icons";
 import { searchTags } from "@/lib/mock-data";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // 검색박스 placeholder 자동 회전 — 사용자가 어떤 검색을 할 수 있는지
 // 학습시키며 첫 화면에 활동감을 줌. 사용자가 input 에 focus 하거나
@@ -49,22 +50,27 @@ export function SearchBox() {
 
   // 검색 실행 — 통합 검색 결과 페이지로 이동.
   // (이전엔 /welfare 로만 가서 loan/news/blog 결과가 누락됐음)
-  const handleSearch = (searchQuery: string) => {
+  const handleSearch = (searchQuery: string, source: "submit" | "chip" = "submit") => {
     if (!searchQuery.trim()) return;
     setShowDropdown(false);
+    trackEvent(EVENTS.HOME_SEARCH_SUBMITTED, {
+      query_length: searchQuery.trim().length,
+      source,
+    });
     router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   // 폼 제출
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSearch(query);
+    handleSearch(query, "submit");
   };
 
-  // 키워드 칩 클릭
+  // 키워드 칩 클릭 — chip 별 클릭률 측정 (어떤 키워드가 인기인지)
   const handleTagClick = (tag: string) => {
+    trackEvent(EVENTS.HOME_SEARCH_CHIP_CLICKED, { keyword: tag });
     setQuery(tag);
-    handleSearch(tag);
+    handleSearch(tag, "chip");
   };
 
   // 자동완성 API 호출 (디바운스 300ms)

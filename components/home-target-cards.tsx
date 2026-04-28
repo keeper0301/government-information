@@ -13,9 +13,13 @@
 //   - 1인가구 → /eligibility/single (household_target_tags)
 //
 // 각 카드는 BigKpi 처럼 큰 아이콘 + 라벨. 클릭 시 즉시 해당 영역.
+// GA4 이벤트: HOME_TARGET_CARD_CLICKED { label } — 어떤 카드가 인기인지 측정.
 // ============================================================
 
+"use client";
+
 import Link from "next/link";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 import {
   Sparkles,
   Heart,
@@ -110,6 +114,7 @@ export function HomeTargetCards() {
             <Link
               key={t.label}
               href={t.href}
+              onClick={() => trackEvent(EVENTS.HOME_TARGET_CARD_CLICKED, { label: t.label })}
               className="group flex flex-col items-center gap-2 rounded-2xl bg-white border border-grey-200 p-4 md:p-5 no-underline hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(49,130,246,0.08)] transition-all"
             >
               <div

@@ -54,6 +54,13 @@ export const EVENTS = {
   QUIZ_SIGNUP_CLICKED: "quiz_signup_clicked",   // 결과 → 가입 버튼 클릭 (prefill 저장)
   QUIZ_SHARE_CLICKED: "quiz_share_clicked",     // 결과 공유 버튼 클릭
   QUIZ_PREFILL_APPLIED: "quiz_prefill_applied", // 온보딩에서 prefill 자동 채움 발생
+  // 홈 인터랙션 funnel (2026-04-28 — 어디서 사용자가 어디로 이동하는지)
+  HOME_SEARCH_CHIP_CLICKED: "home_search_chip_clicked",     // Hero chip 6종 클릭
+  HOME_SEARCH_SUBMITTED: "home_search_submitted",           // 검색 폼 제출
+  HOME_TARGET_CARD_CLICKED: "home_target_card_clicked",     // 대상별 카드 6종 (b617f42)
+  HOME_POPULAR_CLICKED: "home_popular_clicked",             // 인기 정책 TOP 5 클릭
+  HOME_REGION_CARD_CLICKED: "home_region_card_clicked",     // 지역별 카드 17개
+  HOME_VALUE_PROPS_SHOWN: "home_value_props_shown",         // 가치 카드 노출 (페이지뷰 보조)
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

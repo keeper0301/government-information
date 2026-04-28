@@ -21,6 +21,8 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
+import { TrackedLink } from "./tracked-link";
+import { EVENTS } from "@/lib/analytics";
 
 const LIMIT = 5;
 
@@ -99,8 +101,10 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
       <ol className="grid gap-3">
         {picks.map((p, i) => (
           <li key={`${p.kind}-${p.id}`}>
-            <Link
+            <TrackedLink
               href={`/${p.kind}/${p.id}`}
+              event={EVENTS.HOME_POPULAR_CLICKED}
+              params={{ kind: p.kind, rank: i + 1 }}
               className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-white border border-grey-200 hover:border-blue-400 hover:shadow-sm transition-all no-underline group"
             >
               {/* 순위 배지 — TOP 3 만 강조 */}
@@ -126,7 +130,7 @@ export async function HomePopularPicks({ isLoggedIn }: { isLoggedIn: boolean }) 
                   조회 {p.view_count.toLocaleString()}회
                 </span>
               </span>
-            </Link>
+            </TrackedLink>
           </li>
         ))}
 

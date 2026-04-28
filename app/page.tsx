@@ -8,6 +8,7 @@ import { HomeRecommendAuto } from "@/components/home-recommend-auto";
 import { HomeTargetCards } from "@/components/home-target-cards";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
+import { HomeJsonLd } from "@/components/home-jsonld";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
@@ -107,6 +108,9 @@ export default async function Home() {
 
   return (
     <main>
+      {/* SEO 리치 카드 — BreadcrumbList + FAQPage (Google "사이트에서 묻는 질문" 펼침 카드 후보).
+          홈 페이지 한 번만 출력, 다른 페이지는 각자 페이지 단위 JSON-LD. */}
+      <HomeJsonLd />
       {/* Hero — 데스크톱에서 좌: 카피·검색 / 우: 맞춤 추천 카드 (1024px 이상에서 2단)
           section 자체는 viewport 풀폭으로 두고 inner div 에서 max-w-content 적용.
           이래야 배경 blob 이 좌우 끝까지 펼쳐져서 가장자리 흰색 띠가 안 생김. */}
