@@ -40,6 +40,21 @@ export function AdsenseLazyLoader() {
       s.async = true;
       s.crossOrigin = "anonymous";
       s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_ID}`;
+      // 자동 광고 (Auto Ads) — Google 이 페이지 빈 공간에 광고 자동 삽입.
+      // AdSense 콘솔에서 자동 광고 ON 후 효과 시작. 미승인 사이트는 광고 안 채워짐.
+      // 수동 슬롯 (ad-slot.tsx placeholder) 은 보존 — 향후 추가 시 그대로 사용.
+      s.onload = () => {
+        try {
+          const w = window as unknown as { adsbygoogle: Array<Record<string, unknown>> };
+          w.adsbygoogle = w.adsbygoogle || [];
+          w.adsbygoogle.push({
+            google_ad_client: ADSENSE_ID,
+            enable_page_level_ads: true,
+          });
+        } catch {
+          /* 자동 광고 활성 실패 — 무시 */
+        }
+      };
       document.head.appendChild(s);
     };
 
