@@ -26,6 +26,14 @@ import {
   getActorActionsPaged,
   ACTION_LABELS,
 } from "@/lib/admin-actions";
+import {
+  getSummaryKpi,
+  getDailySignups,
+  getDailyRevenueEstimated,
+  getRecentPayments,
+} from "@/lib/admin-stats";
+import { Sparkline } from "@/components/admin/sparkline";
+import { TIER_NAMES } from "@/lib/subscription";
 
 export const metadata: Metadata = {
   title: "어드민 대시보드 | 정책알리미",
@@ -226,10 +234,22 @@ export default async function AdminHomePage({
   const params = await searchParams;
   const error = params.error;
 
-  const [stats, recentSignups, myActions] = await Promise.all([
+  const [
+    stats,
+    recentSignups,
+    myActions,
+    kpi,
+    dailySignups,
+    dailyRevenue,
+    recentPayments,
+  ] = await Promise.all([
     get24hStats(),
     getRecentSignups(5),
     getActorActionsPaged(actor.id, { limit: 5, offset: 0 }),
+    getSummaryKpi(),
+    getDailySignups(30),
+    getDailyRevenueEstimated(30),
+    getRecentPayments(5),
   ]);
 
   return (
@@ -257,6 +277,52 @@ export default async function AdminHomePage({
             {error}
           </div>
         )}
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* 누적 KPI 카드 4종 — 비즈 한눈 보기 */}
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section className="mb-6">
+          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+            관리자 요약
+          </h2>
+          <p className="text-[13px] text-grey-600 mb-3">
+            베타 운영 지표를 한눈에 볼 수 있어요. 환불 대기는 시스템 미구현 (항상 0).
+            매출은 활성 구독 × tier 가격 추정 (라이브 결제 활성화 후 실제 결제로 교체 예정).
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <BigKpiCard label="총 사용자" value={`${kpi.totalUsers.toLocaleString()}명`} />
+            <BigKpiCard label="활성 구독" value={`${kpi.activeSubscriptions.toLocaleString()}건`} />
+            <BigKpiCard label="환불 대기" value={`${kpi.refundPending.toLocaleString()}건`} />
+            <BigKpiCard
+              label="이번 달 매출 (추정)"
+              value={`₩${kpi.monthRevenueEstimated.toLocaleString()}`}
+            />
+          </div>
+        </section>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* 30일 차트 2종 — 매출 추이 + 신규 가입 추이 */}
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+          <div className="bg-white border border-grey-200 rounded-lg p-5">
+            <h3 className="text-[15px] font-bold text-grey-900 tracking-[-0.2px]">
+              일별 매출 추이 (추정)
+            </h3>
+            <p className="text-[12px] text-grey-600 mb-3">
+              지난 30일 (KST 일자 기준, 신규 구독 시점 매출)
+            </p>
+            <Sparkline data={dailyRevenue} unit="원" stroke="#10B981" />
+          </div>
+          <div className="bg-white border border-grey-200 rounded-lg p-5">
+            <h3 className="text-[15px] font-bold text-grey-900 tracking-[-0.2px]">
+              일별 신규 가입
+            </h3>
+            <p className="text-[12px] text-grey-600 mb-3">
+              지난 30일 (KST 일자 기준, auth.users)
+            </p>
+            <Sparkline data={dailySignups} unit="명" stroke="#3182F6" />
+          </div>
+        </section>
 
         {/* 24h 지표 카드 6종 */}
         <section className="mb-8">
@@ -422,6 +488,43 @@ export default async function AdminHomePage({
             )}
           </Panel>
 
+          {/* 최근 결제 5건 */}
+          <Panel title={`최근 결제 ${recentPayments.length}건`}>
+            {recentPayments.length === 0 ? (
+              <p className="text-[13px] text-grey-600 py-2">
+                결제 이력이 아직 없어요.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {recentPayments.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold text-grey-900 truncate">
+                        {p.email ?? "(이메일 없음)"}
+                      </div>
+                      <div className="text-[12px] text-grey-600 leading-[1.5]">
+                        {TIER_NAMES[p.tier as "basic" | "pro"] ?? p.tier}
+                        {" · "}
+                        ₩{p.amount.toLocaleString()}
+                        {" · "}
+                        {fmtRelative(p.createdAt)}
+                      </div>
+                    </div>
+                    <Link
+                      href={`/admin/users/${p.userId}`}
+                      className="text-[12px] font-medium text-blue-500 hover:underline whitespace-nowrap"
+                    >
+                      상세 →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
           {/* 내 최근 관리자 액션 5건 */}
           <Panel title={`내 최근 관리자 액션 ${myActions.records.length}건`}>
             {myActions.records.length === 0 ? (
@@ -488,6 +591,18 @@ export default async function AdminHomePage({
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 작은 컴포넌트
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// 누적 KPI 카드 — StatCard 보다 큰 숫자 + 라벨 위에 배치 (캡쳐 톤)
+function BigKpiCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-grey-200 bg-white p-5">
+      <div className="text-[13px] font-medium text-grey-600 mb-2">{label}</div>
+      <div className="text-[28px] font-extrabold text-grey-900 leading-none tracking-[-0.5px]">
+        {value}
+      </div>
+    </div>
+  );
+}
 
 function StatCard({
   label,
