@@ -63,6 +63,43 @@ export default async function AdminInsightsPage() {
           <FunnelCard title="최근 30일 cohort" funnel={data.funnel30d} />
         </div>
 
+        {/* Phase 4 — 24h 결제 신호 (매출 직결, 작은 변화도 즉시 가시화) */}
+        <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          💳 24h 결제 신호
+        </h2>
+        <section className="bg-white rounded-lg border border-grey-200 p-5 mb-8">
+          <dl className="grid grid-cols-3 gap-3">
+            <div>
+              <dt className="text-[12px] text-grey-500">신규 구독 시도 (24h)</dt>
+              <dd className="text-[24px] font-extrabold text-grey-900 tabular-nums mt-1">
+                {data.subscriptionPulse.newAttempts24h.toLocaleString()}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[12px] text-grey-500">활성 구독 (전체)</dt>
+              <dd className="text-[24px] font-extrabold text-blue-600 tabular-nums mt-1">
+                {data.subscriptionPulse.activeTotal.toLocaleString()}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[12px] text-grey-500">사용자 해지 (24h)</dt>
+              <dd
+                className={`text-[24px] font-extrabold tabular-nums mt-1 ${
+                  data.subscriptionPulse.cancelled24h > 0
+                    ? "text-red-500"
+                    : "text-grey-900"
+                }`}
+              >
+                {data.subscriptionPulse.cancelled24h.toLocaleString()}
+              </dd>
+            </div>
+          </dl>
+          <p className="text-[12px] text-grey-500 mt-3 leading-[1.5]">
+            매출 신호 한눈에. 신규 0 / 해지 1 이상이면 매출 위험 신호 — 카카오 알림·결제 이벤트
+            funnel 점검 필요.
+          </p>
+        </section>
+
         {/* 콘텐츠 효과 */}
         <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
           🔥 콘텐츠 TOP (view_count 기준)

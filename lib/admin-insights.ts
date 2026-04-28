@@ -33,9 +33,16 @@ export type DistributionItem = {
   count: number;
 };
 
+export type SubscriptionPulse = {
+  newAttempts24h: number;     // 24시간 신규 구독 시도 (created_at 기준)
+  cancelled24h: number;       // 24시간 사용자 해지 (cancelled_at 기준)
+  activeTotal: number;        // 현재 활성 (basic/pro + trialing/active/charging/manual_grant)
+};
+
 export type AdminInsights = {
   funnelAll: CohortFunnel;            // 전체 누적
   funnel30d: CohortFunnel;            // 최근 30일 cohort
+  subscriptionPulse: SubscriptionPulse; // Phase 4 — 24h 결제 신호
   topWelfare: TopContentItem[];
   topLoan: TopContentItem[];
   topBlog: TopContentItem[];
@@ -111,6 +118,35 @@ async function calcFunnel(
   };
 }
 
+// Phase 4 — 24h 결제 신호 카드. 매출 직결 작은 변화 (1건 신규/해지) 즉시 가시화.
+async function calcSubscriptionPulse(): Promise<SubscriptionPulse> {
+  const admin = createAdminClient();
+  const since24Iso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [newAttemptsRes, cancelledRes, activeRes] = await Promise.all([
+    admin
+      .from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", since24Iso)
+      .in("tier", ["basic", "pro"]),
+    admin
+      .from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .gte("cancelled_at", since24Iso),
+    admin
+      .from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["trialing", "active", "charging", "manual_grant"])
+      .in("tier", ["basic", "pro"]),
+  ]);
+
+  return {
+    newAttempts24h: newAttemptsRes.count ?? 0,
+    cancelled24h: cancelledRes.count ?? 0,
+    activeTotal: activeRes.count ?? 0,
+  };
+}
+
 export const getAdminInsights = cache(async (): Promise<AdminInsights> => {
   const admin = createAdminClient();
   const since30Ms = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -126,6 +162,7 @@ export const getAdminInsights = cache(async (): Promise<AdminInsights> => {
   const [
     funnelAll,
     funnel30d,
+    subscriptionPulse,
     topWelfareRes,
     topLoanRes,
     topBlogRes,
@@ -133,6 +170,7 @@ export const getAdminInsights = cache(async (): Promise<AdminInsights> => {
   ] = await Promise.all([
     calcFunnel(allIds, null),
     calcFunnel(cohort30Ids, since30Ms),
+    calcSubscriptionPulse(),
     admin
       .from("welfare_programs")
       .select("id, title, view_count")
@@ -219,6 +257,7 @@ export const getAdminInsights = cache(async (): Promise<AdminInsights> => {
   return {
     funnelAll,
     funnel30d,
+    subscriptionPulse,
     topWelfare,
     topLoan,
     topBlog,
