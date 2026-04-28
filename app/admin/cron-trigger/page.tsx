@@ -52,7 +52,9 @@ async function triggerCron(formData: FormData): Promise<void> {
   "use server";
   const user = await requireAdmin();
   const path = String(formData.get("path") ?? "");
-  if (!path.startsWith("/api/")) {
+  // path validation 강화 — /api/[a-z0-9-/]+ 만 허용 (query·fragment·.. 차단).
+  // SSRF·path traversal 방어 (admin 권한 갖고 있어도 안전 마진).
+  if (!/^\/api\/[a-z0-9\-/]+$/i.test(path)) {
     redirect("/admin/cron-trigger?error=" + encodeURIComponent("잘못된 path"));
   }
 

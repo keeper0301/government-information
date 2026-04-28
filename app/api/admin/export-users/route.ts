@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminAction } from "@/lib/admin-actions";
 
 // 이메일 마스킹 — local 1글자 + 별표 + 도메인 1글자 + 별표
 function maskEmail(email: string | null | undefined): string {
@@ -108,10 +109,11 @@ export async function GET(request: NextRequest) {
   // BOM + UTF-8 — 엑셀 한글 깨짐 방지
   const csv = "﻿" + rows.join("\r\n");
 
-  // 감사 로그 (best-effort, 실패해도 다운로드 응답)
+  // 감사 로그 (best-effort, 실패해도 다운로드 응답).
+  // logAdminAction 헬퍼 사용 — append-only trigger·타입 안전·다른 admin 액션과 일관.
   try {
-    await admin.from("admin_actions").insert({
-      actor_id: user.id,
+    await logAdminAction({
+      actorId: user.id,
       action: "csv_export",
       details: { kind: "users", count: rows.length - 1 },
     });
