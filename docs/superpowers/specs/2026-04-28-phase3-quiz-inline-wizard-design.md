@@ -38,23 +38,24 @@
 | step | 질문 | 옵션 | 형태 |
 |---|---|---|---|
 | 1 | 연령대 | 6 옵션 (20대 미만 ~ 60대+) | 단일 선택 |
-| 2 | 지역 | 17 광역만 (district 생략) | 단일 선택 |
+| 2 | 지역 + 시·군·구 | 17 광역 + 광역별 district list | 단일 선택 (region 선택 후 district 자동 노출) |
 | 3 | 직업 | 5~6 옵션 | 단일 선택 |
 | 4 | 소득 | 5 옵션 (포함: "잘 모름" → skip) | 단일 선택 |
 | 5 | 가구 상태 | 6 옵션 | 다중 선택 (skip 가능) |
 
-district 생략 이유: 인라인 카드 공간 ↓, 정밀 매칭은 /quiz 결과 후 회원가입에서.
+**step 2 동작**: region 단일 선택 → 카드 안에서 즉시 district list 노출 (스크롤 가능 grid). district 도 단일 선택 (광역 자체 = "전체" 옵션 가능). 패턴은 `app/onboarding/steps/step-region.tsx` 재사용. 정밀 매칭으로 지자체 정책 결과 풀.
 
 ### 3.2 동작
 
-- **답 선택 즉시 자동 다음** (1~4 단계 — 단일 선택)
+- **답 선택 즉시 자동 다음** (1·3·4 단계 — 단일 선택, 즉시 next)
+- **2단계 (지역+district)**: region 선택해도 즉시 다음 X — district 노출 → district 선택 후 자동 next (또는 "전체" 옵션 클릭)
 - **5단계만 "결과 보기" 버튼** (다중 선택 끝났다 신호 필요)
 - **진행 표시줄** (얇은 blue bar, 1/5 ~ 5/5)
 - **"← 이전" 버튼** (실수 시, 1단계에선 disabled)
 - **"건너뛰기"** (소득·가구 단계만 — 답 없이도 next)
 - **마지막 답 후**:
   1. `setQuizPrefill(answers)` 쿠키 저장 (가입 시 prefill 활용)
-  2. `router.push('/quiz?age=...&region=...&occupation=...&income=...&household=...')` (서버 매칭 결과)
+  2. `router.push('/quiz?age=...&region=...&district=...&occupation=...&income=...&household=...')` (서버 매칭 결과). district 가 빈 값이면 query 에서 생략.
 
 ### 3.3 시각
 
@@ -98,6 +99,7 @@ import {
 type Answers = {
   age: AgeOption | null;
   region: RegionOption | null;
+  district: string | null;     // step 2 의 region 선택 후 노출되는 시·군·구
   occupation: OccupationOption | null;
   income: IncomeOption | null;
   household: HouseholdOption[];
@@ -115,7 +117,7 @@ export function QuizInlineWizard() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState<Answers>({
-    age: null, region: null, occupation: null, income: null, household: [],
+    age: null, region: null, district: null, occupation: null, income: null, household: [],
   });
   const [started, setStarted] = useState(false);
 
