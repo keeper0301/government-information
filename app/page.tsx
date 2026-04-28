@@ -191,15 +191,13 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* 오른쪽: 맞춤 추천 카드 + 인기 정책 stack (데스크톱 전용 위치. 모바일은 아래 자연 스택)
+          {/* 오른쪽: 맞춤 추천 카드 (데스크톱 전용 위치. 모바일에선 아래로 자연 스택)
               3가지 상태 분기:
               - 비로그인: HomeRecommendCard 입력 폼
               - 로그인 + 빈 프로필: EmptyProfilePrompt 프로필 입력 유도
               - 로그인 + 프로필 있음: HomeRecommendAuto 자동 추천 카드
-              아래에 HomePopularPicks 인기 정책 사이드 배너 stack (Hero 우측 활용).
-              lg:mt-14 제거 — 인기 정책까지 stack 되면 우측 column 길어져서
-              좌측 카피와 시작점 정렬하는 게 시각 균형. */}
-          <div className="fade-up flex flex-col gap-4" style={{ animationDelay: "240ms" }}>
+              인기 정책 TOP 5 는 viewport 1500px+ 에서 fixed sticky sidebar 로 이동. */}
+          <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
             {user ? (
               isProfileEmpty ? (
                 // 로그인했지만 프로필 미입력 — 프로필 작성 유도 메시지
@@ -212,14 +210,21 @@ export default async function Home() {
               // 비로그인 — 기존 입력 폼 그대로 (변화 없음)
               <HomeRecommendCard initial={initialProfile} />
             )}
-            {/* 인기 정책 TOP 5 — 추천 카드 아래 stack (사이드 배너 위치 활용) */}
-            <HomePopularPicks isLoggedIn={!!user} />
           </div>
         </div>
       </section>
 
-      {/* [발견] 대상별 빠른 진입 카드 6종 — 풀폭 한 줄 (모바일 3 cols 두 줄).
-          인기 정책 TOP 5 가 Hero 우측 column 으로 이동했으므로 사이드 배너 row 해체. */}
+      {/* 인기 정책 TOP 5 — viewport 1500px+ fixed sticky sidebar.
+          큰 모니터 우측 빈 공간 (max-w-content 1140px 외부) 활용.
+          모바일·중간 화면(<1500px) 은 overlap 위험으로 hidden — 본 콘텐츠 흐름 우선. */}
+      <div
+        className="hidden min-[1500px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-160px)] overflow-y-auto"
+        aria-label="인기 정책 사이드 배너"
+      >
+        <HomePopularPicks isLoggedIn={!!user} />
+      </div>
+
+      {/* [발견] 대상별 빠른 진입 카드 6종 — 풀폭 한 줄 (모바일 3 cols 두 줄). */}
       <HomeTargetCards />
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
