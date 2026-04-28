@@ -38,6 +38,8 @@
 
     { "path": "/api/enrich", "schedule": "*/5 * * * *" },
 
-    { "path": "/api/enrich-thumbnails", "schedule": "*/15 * * * *" }
+    { "path": "/api/enrich-thumbnails", "schedule": "*/15 * * * *" },
+
+    { "path": "/api/indexnow-submit-recent", "schedule": "30 7 * * *" }
   ]
 }
