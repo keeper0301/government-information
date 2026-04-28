@@ -3,11 +3,14 @@
 // ============================================================
 // 구성 (위→아래):
 //   1. 마스트헤드 + 주요 링크 (도움말·이용약관·개인정보처리방침·문의)
-//   2. 데이터 출처 안내 (정부 공공데이터)
-//   3. 공공누리 라이선스 (정책 뉴스 korea.kr 활용분 — KOGL-Type1 의무 표기)
-//   4. 사업자 정보 (전자상거래법 제13조 기본 표시 의무)
-//   5. 저작권
+//   2. 데이터 신선도 (마지막 갱신 시각) — 활성 운영 시그널
+//   3. 데이터 출처 안내 (정부 공공데이터)
+//   4. 공공누리 라이선스 (정책 뉴스 korea.kr 활용분 — KOGL-Type1 의무 표기)
+//   5. 사업자 정보 (전자상거래법 제13조 기본 표시 의무)
+//   6. 저작권
 // ============================================================
+
+import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
 
 const footerLinks = [
   { label: "1분 진단", href: "/quiz" },
@@ -34,7 +37,8 @@ const BUSINESS_INFO = {
   dpo: "최관철",
 };
 
-export function Footer() {
+export async function Footer() {
+  const freshness = await getDataFreshness();
   return (
     <footer className="max-w-content mx-auto px-10 pt-12 pb-[60px] max-md:px-6 max-md:pt-10 max-md:pb-12">
       <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-4">
@@ -58,6 +62,12 @@ export function Footer() {
             </a>
           ))}
         </div>
+      </div>
+
+      {/* 데이터 신선도 — 활성 운영 시그널 (AdSense·검색 봇·사용자 신뢰 모두 ↑) */}
+      <div className="inline-flex items-center gap-1.5 text-[12px] text-grey-600 mb-4 px-2.5 py-1 rounded-full bg-grey-50 border border-grey-100">
+        <span aria-hidden="true" className="w-[6px] h-[6px] rounded-full bg-emerald-500 animate-pulse" />
+        <span>📡 데이터 {formatFreshness(freshness.minutes_ago)}</span>
       </div>
 
       {/* 데이터 출처 + 공공누리 라이선스 — Pretendard 단일 톤
