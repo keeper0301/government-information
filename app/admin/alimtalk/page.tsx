@@ -500,6 +500,12 @@ export default async function AlimtalkAdminPage() {
         </section>
 
         <p className="mt-10 text-[13px] flex items-center gap-4">
+          <Link
+            href="/admin/alert-simulator"
+            className="text-blue-500 font-medium underline"
+          >
+            발송 대상 시뮬레이션 →
+          </Link>
           <Link href="/admin" className="text-blue-500 font-medium underline">
             ← 어드민 홈
           </Link>

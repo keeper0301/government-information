@@ -439,6 +439,11 @@ export default async function AdminHomePage({
               desc="24h 발송 집계·환경변수·테스트 발송"
             />
             <ActionCard
+              href="/admin/alert-simulator"
+              title="📡 발송 대상 시뮬레이션"
+              desc="정책 ID → 매칭 rule·사용자 수·샘플 5명"
+            />
+            <ActionCard
               href="/admin/news"
               title="정책 뉴스 운영"
               desc="수집 현황·수동 trigger·카테고리별"
