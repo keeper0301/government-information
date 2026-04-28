@@ -398,6 +398,11 @@ export default async function AdminHomePage({
               desc="DB·cron·환경변수·활성 사용자 한눈에 (매일 첫 페이지)"
             />
             <ActionCard
+              href="/admin/insights"
+              title="📈 데이터 인사이트"
+              desc="cohort funnel + 콘텐츠 TOP + 사용자 분포"
+            />
+            <ActionCard
               href="/admin/alimtalk"
               title="알림톡 운영"
               desc="24h 발송 집계·환경변수·테스트 발송"
