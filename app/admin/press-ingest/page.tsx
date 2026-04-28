@@ -64,7 +64,7 @@ function buildPrefillUrl(
 }
 
 // ministry 풀네임 → 짧은 라벨 (테이블 가독성)
-const MINISTRY_SHORT: Record<string, string> = {
+const PROVINCE_SHORT: Record<string, string> = {
   서울특별시: "서울",
   부산광역시: "부산",
   대구광역시: "대구",
@@ -85,6 +85,22 @@ const MINISTRY_SHORT: Record<string, string> = {
   경상남도: "경남",
   제주특별자치도: "제주",
 };
+
+// ministry='전라남도' 또는 '전라남도 순천시' → 광역 짧은 라벨 + 시군명 분리
+function shortenMinistry(ministry: string | null): {
+  province: string;
+  district: string | null;
+} {
+  if (!ministry) return { province: "—", district: null };
+  // 가장 긴 광역명 prefix 매칭
+  for (const [full, short] of Object.entries(PROVINCE_SHORT)) {
+    if (ministry === full) return { province: short, district: null };
+    if (ministry.startsWith(full + " ")) {
+      return { province: short, district: ministry.slice(full.length + 1) };
+    }
+  }
+  return { province: ministry, district: null };
+}
 
 // KPI 카드 — 4 카드 grid, tone 별 색상
 function KpiCard({
@@ -276,9 +292,21 @@ export default async function PressIngestPage({
                       {fmtDate(c.published_at)}
                     </td>
                     <td className="py-2 px-3 text-[12px] whitespace-nowrap">
-                      <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">
-                        {MINISTRY_SHORT[c.ministry ?? ""] ?? c.ministry ?? "—"}
-                      </span>
+                      {(() => {
+                        const m = shortenMinistry(c.ministry);
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold w-fit">
+                              {m.province}
+                            </span>
+                            {m.district && (
+                              <span className="text-[10px] text-grey-700 font-medium">
+                                {m.district}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="py-2 px-3">
                       <Link
