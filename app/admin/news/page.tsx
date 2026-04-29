@@ -23,6 +23,8 @@ import {
   listNewsForAdmin,
   toggleNewsHidden,
 } from "./actions";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   HIDE_REASON_CATEGORIES,
   NEWS_CATEGORY_FILTERS,
@@ -216,16 +218,12 @@ export default async function AdminNewsPage({
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[720px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">ADMIN</p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            정책 뉴스 운영
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.65]">
-            매일 KST 11:00 cron 이 korea.kr RSS 3개 피드를 자동 수집해요.
-            수집 문제를 확인하거나 즉시 반영이 필요할 때 수동 실행할 수 있어요.
-          </p>
-        </div>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 컨텐츠 발행"
+          title="정책 뉴스 운영"
+          description="매일 KST 11:00 cron 이 korea.kr RSS 3개 피드를 자동 수집해요. 수집 문제를 확인하거나 즉시 반영이 필요할 때 수동 실행할 수 있어요."
+        />
 
         {/* 상태 카드 4개 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">

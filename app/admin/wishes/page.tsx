@@ -13,6 +13,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { formatKoreanDate } from "@/lib/utils";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "사용자 의견 | 어드민",
@@ -64,19 +66,12 @@ export default async function AdminWishesPage() {
 
   return (
     <main className="max-w-[920px] mx-auto px-5 pt-32 pb-20">
-      <div className="mb-8">
-        <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-          ADMIN · 사용자 의견
-        </p>
-        <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-          받고 싶은 정책 의견
-        </h1>
-        <p className="text-[14px] text-grey-600 leading-[1.6]">
-          홈 페이지의 의견 수집 폼으로 들어온 글입니다. 사용자 IP 는 sha256
-          hash 로만 저장돼 익명성 보장. 같은 ip_hash 가 반복되면 동일 사용자
-          여러 번 제출.
-        </p>
-      </div>
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 사용자"
+        title="받고 싶은 정책 의견"
+        description="홈 페이지의 의견 수집 폼으로 들어온 글입니다. 사용자 IP 는 sha256 hash 로만 저장돼 익명성 보장. 같은 ip_hash 가 반복되면 동일 사용자 여러 번 제출."
+      />
 
       {/* 통계 띠 */}
       <div className="grid grid-cols-2 gap-3 mb-8">

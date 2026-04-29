@@ -15,6 +15,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "본문 분석 운영 | 어드민",
@@ -104,18 +106,12 @@ export default async function TargetingAdminPage() {
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[980px] mx-auto px-5">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · PHASE 1.5
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            본문 분석 운영
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            welfare/loan 공고 본문에서 소득 분위·나이·가구 등 targeting 필드를 추출하는 cron 현황
-          </p>
-        </div>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 지표·분석"
+          title="본문 분석 운영"
+          description="welfare/loan 공고 본문에서 소득 분위·나이·가구 등 targeting 필드를 추출하는 cron 현황"
+        />
 
         {/* 진행률 카드 — 테이블별 */}
         <section className="mb-8 space-y-4">

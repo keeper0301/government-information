@@ -24,6 +24,8 @@ import {
   type RuleMatch,
 } from "@/lib/alerts/reverse-match";
 import { getAuthUserEmailMap } from "@/lib/admin-stats";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "알림 발송 시뮬레이션 | 어드민",
@@ -117,17 +119,12 @@ export default async function AlertSimulatorPage({
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[820px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · 알림 발송 시뮬레이션
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            정책 → 발송 대상 미리보기
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            정책 ID 입력 → 등록 시 알림 받을 사용자 수·샘플 가시화. 발송 안 함.
-          </p>
-        </div>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 알림 발송"
+          title="정책 → 발송 대상 미리보기"
+          description="정책 ID 입력 → 등록 시 알림 받을 사용자 수·샘플 가시화. 발송 안 함."
+        />
 
         {/* 입력 폼 — GET method 로 URL 쿼리 주입 */}
         <form

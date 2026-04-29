@@ -34,6 +34,8 @@ import {
   type AdminActionRecord,
 } from "@/lib/admin-actions";
 import { DeleteUserButton } from "./delete-button";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "사용자 상세 | 어드민 | 정책알리미",
@@ -431,24 +433,14 @@ export default async function AdminUserDetailPage({
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[860px] mx-auto px-5">
-        {/* 헤더 */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-2">
-              ADMIN · 사용자 상세
-            </p>
-            <h1 className="text-[22px] font-extrabold tracking-[-0.4px] text-grey-900">
-              {u.email ?? "(이메일 없음)"}
-            </h1>
-            <p className="text-[13px] text-grey-600 mt-1 font-mono">{u.id}</p>
-          </div>
-          <Link
-            href="/admin"
-            className="text-[13px] text-blue-500 hover:underline"
-          >
-            ← 검색
-          </Link>
-        </div>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 사용자"
+          title={u.email ?? "(이메일 없음)"}
+          description={
+            <span className="font-mono text-[13px]">{u.id}</span>
+          }
+        />
 
         {/* 패널 그리드 */}
         <div className="space-y-5">

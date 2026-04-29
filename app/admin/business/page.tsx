@@ -18,6 +18,8 @@ import {
   BUSINESS_INDUSTRY_OPTIONS,
   BUSINESS_TYPE_OPTIONS,
 } from "@/lib/profile-options";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "자영업자 wedge | 어드민",
@@ -182,18 +184,12 @@ export default async function BusinessAdminPage() {
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[980px] mx-auto px-5">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · 자영업자 WEDGE
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            자영업자 자격 진단 dogfood
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            business_profiles 테이블 입력 현황과 wedge 효과 측정 (마이그레이션 055)
-          </p>
-        </div>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 지표·분석"
+          title="자영업자 자격 진단 dogfood"
+          description="business_profiles 테이블 입력 현황과 wedge 효과 측정 (마이그레이션 055)"
+        />
 
         {/* KPI 카드 4종 */}
         <section className="mb-8">

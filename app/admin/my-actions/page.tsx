@@ -23,6 +23,8 @@ import {
   ACTION_LABELS,
   type AdminActionRecord,
 } from "@/lib/admin-actions";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Pagination } from "@/components/pagination";
 
 // 페이지당 30건. 운영 초기엔 누적 건수 적어 체감 차이 없지만, 장기 운영 시
@@ -100,24 +102,17 @@ export default async function MyActionsPage({
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[860px] mx-auto px-5">
-        {/* 헤더 */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-2">
-              ADMIN · 내 수행 내역
-            </p>
-            <h1 className="text-[22px] font-extrabold tracking-[-0.4px] text-grey-900">
-              전체 {total.toLocaleString()}건
-            </h1>
-            <p className="text-[13px] text-grey-600 mt-1">
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 운영 상태"
+          title={`내 수행 내역 — 전체 ${total.toLocaleString()}건`}
+          description={
+            <>
               감사 로그는 append-only — 수정·삭제 불가, 외부 신뢰 보증용
               {totalPages > 1 && <> · {page} / {totalPages} 페이지</>}
-            </p>
-          </div>
-          <Link href="/admin" className="text-[13px] text-blue-500 hover:underline">
-            ← 검색
-          </Link>
-        </div>
+            </>
+          }
+        />
 
         {/* 검색·기간 필터 — GET 폼 으로 제출 → URL ?q=&from=&to= 파라미터 주입.
             비우고 제출하면 전체. 1페이지로 리셋되도록 page input 생략.

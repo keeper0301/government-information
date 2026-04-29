@@ -14,6 +14,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 const BATCH_LIMIT = 200;
 const DELAY_MS = 1000; // 호출 사이 대기 — DB 부하 회피
@@ -132,17 +134,12 @@ export default function BackfillRunnerPage() {
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[640px] mx-auto px-5">
-        <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-          ADMIN · 백필 RUNNER
-        </p>
-        <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-3">
-          news_posts dedupe_hash 백필
-        </h1>
-        <p className="text-[14px] text-grey-700 leading-[1.6] mb-6">
-          마이그레이션 065 후 기존 row 의 dedupe_hash 가 NULL. 1번 클릭으로
-          자동 반복 호출 (회당 {BATCH_LIMIT} row, 1초 대기) 해서 끝까지 채워요.
-          remaining 0 되면 자동 정지.
-        </p>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 컨텐츠 발행"
+          title="news_posts dedupe_hash 백필"
+          description={`마이그레이션 065 후 기존 row 의 dedupe_hash 가 NULL. 1번 클릭으로 자동 반복 호출 (회당 ${BATCH_LIMIT} row, 1초 대기) 해서 끝까지 채워요. remaining 0 되면 자동 정지.`}
+        />
 
         {/* 시작·중단 버튼 */}
         <div className="flex items-center gap-3 mb-8">

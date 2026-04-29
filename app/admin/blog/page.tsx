@@ -12,6 +12,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "블로그 관리 | 어드민",
@@ -91,20 +93,12 @@ export default async function AdminBlogListPage({
 
   return (
     <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-[28px] font-bold tracking-[-0.5px] text-grey-900">
-          블로그 관리
-        </h1>
-        <Link
-          href="/admin"
-          className="text-[13px] text-blue-600 hover:text-blue-700 no-underline"
-        >
-          ← 어드민 홈
-        </Link>
-      </div>
-      <p className="text-[14px] text-grey-700 leading-[1.6] mb-6">
-        블로그 글 {total.toLocaleString("ko-KR")} 건 · 최근 수정 순
-      </p>
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 컨텐츠 발행"
+        title="블로그 관리"
+        description={`블로그 글 ${total.toLocaleString("ko-KR")} 건 · 최근 수정 순`}
+      />
 
       {/* 검색 + 필터 — GET form 으로 URL 쿼리 제어 (SSR 친화적) */}
       <form

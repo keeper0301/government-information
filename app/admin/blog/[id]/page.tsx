@@ -27,6 +27,8 @@ import { logAdminAction } from "@/lib/admin-actions";
 import { stripHtmlTags } from "@/lib/utils";
 import { sanitizeBlogHtml } from "@/lib/html-sanitize";
 import { RichEditor } from "./rich-editor";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "블로그 글 편집 | 어드민",
@@ -162,17 +164,11 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
 
   return (
     <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-[28px] font-bold tracking-[-0.5px] text-grey-900">
-          블로그 글 편집
-        </h1>
-        <Link
-          href="/admin/blog"
-          className="text-[13px] text-blue-600 hover:text-blue-700 no-underline"
-        >
-          ← 목록으로
-        </Link>
-      </div>
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 컨텐츠 발행"
+        title="블로그 글 편집"
+      />
       <div className="flex flex-wrap items-center gap-2 mb-6 text-[13px] text-grey-600">
         <Link
           href={`/blog/${post.slug}`}

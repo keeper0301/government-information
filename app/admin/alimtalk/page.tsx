@@ -19,6 +19,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { AlimtalkTestForm } from "./test-form";
 import { AlimtalkPreviewCard } from "./preview-card";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "알림톡 운영 | 어드민",
@@ -317,17 +319,12 @@ export default async function AlimtalkAdminPage() {
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[820px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN / ALIMTALK
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            카카오 알림톡 운영
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            최근 24시간 발송 현황과 테스트 발송 도구.
-          </p>
-        </div>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 알림 발송"
+          title="카카오 알림톡 운영"
+          description="최근 24시간 발송 현황과 테스트 발송 도구."
+        />
 
         {/* 환경변수 설정 체크리스트 */}
         <section className="mb-6 rounded-lg border border-grey-200 bg-white p-4">

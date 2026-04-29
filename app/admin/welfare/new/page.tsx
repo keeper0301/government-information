@@ -15,6 +15,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { createWelfareProgram } from "./actions";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "복지 정책 수동 등록 | 어드민",
@@ -92,19 +94,12 @@ export default async function NewWelfareProgramPage({
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[820px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · 정책 수동 등록
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            복지 정책 직접 추가
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            자동 수집이 못 잡는 광역 자체 사업 (예: 전남도 고유가 피해지원금) 을
-            여기서 직접 추가합니다. 매칭 태그 (지역·연령·혜택·가구) 는 본문
-            텍스트에서 자동 추출됩니다.
-          </p>
-        </div>
+        {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+        <AdminPageHeader
+          kicker="ADMIN · 컨텐츠 발행"
+          title="복지 정책 직접 추가"
+          description="자동 수집이 못 잡는 광역 자체 사업 (예: 전남도 고유가 피해지원금) 을 여기서 직접 추가합니다. 매칭 태그 (지역·연령·혜택·가구) 는 본문 텍스트에서 자동 추출됩니다."
+        />
 
         {/* 안내 박스 */}
         <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-[13px] text-blue-900 leading-[1.6]">
