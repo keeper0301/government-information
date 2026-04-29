@@ -23,6 +23,13 @@ export const maxDuration = 300;
 
 const VALID_CODES: Set<string> = new Set(PROVINCES.map((p) => p.code));
 
+// 광역 1회 cron 실행에서 INSERT 가 이 임계를 초과하면 폭주 의심으로 알림.
+// 평소 페이스 ~80건/광역/일 (4-25~4-27 데이터 기준). 500 = 평소의 6배+.
+// 2026-04-29 14k 폭주 사고 trigger: fd8f21b 시군 검색 추가 → 1광역당 1935건 INSERT.
+// 자동 감지 못 해 24h 후 사장님 헬스체크에서 발견. 본 임계는 같은 사고 재발 시
+// 첫 cron 직후 1분 내 감지 + cron_failure_log + 사장님 inbox.
+const SURGE_THRESHOLD_PER_PROVINCE = 500;
+
 async function run(provinceCode: string, jobLabel: string) {
   if (!VALID_CODES.has(provinceCode)) {
     return NextResponse.json(
@@ -40,6 +47,19 @@ async function run(provinceCode: string, jobLabel: string) {
       await notifyCronFailure(
         `${jobLabel} - ${provinceName} 네이버 수집 0건`,
         result.errors.join(" / "),
+      );
+    }
+
+    // 폭주 감지 — INSERT 가 임계 초과 시 사장님에게 즉시 알림.
+    // 같은 광역+같은 임계는 cron_failure_log 의 signature 기반 cooldown 으로
+    // 24h 내 중복 발송 차단됨 (lib/email).
+    if (result.news_upserted > SURGE_THRESHOLD_PER_PROVINCE) {
+      const provinceName = getProvinceByCode(provinceCode)?.name ?? provinceCode;
+      await notifyCronFailure(
+        `${jobLabel} - ${provinceName} 폭주 감지 (${result.news_upserted}건)`,
+        `평소 ~80건/광역/일 페이스 의 ${Math.round(result.news_upserted / 80)}배. ` +
+          `INSERT cap·키워드 필터·신선도 컷오프 우회됐는지 점검 필요. ` +
+          `total=${result.total} skippedDup=${result.skippedDup} skippedBatchDup=${result.skippedBatchDup}`,
       );
     }
 
