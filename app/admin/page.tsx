@@ -23,7 +23,6 @@
 // ============================================================
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -79,14 +78,13 @@ async function searchUser(formData: FormData) {
     redirect(`/admin?error=${encodeURIComponent("일치하는 사용자 없음: " + raw)}`);
   }
   redirect(`/admin/users/${found.id}`);
-  revalidatePath("/admin");
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 24시간 지표 — 4 KPI 만 추출 (가입·구독·자동등록·cron실패)
+// 24시간 지표 — 4 KPI (가입·구독·자동등록·cron실패)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 슬림화 후 4 카드만 표시하지만 함수 자체는 점진 마이그레이션 안전 마진으로
-// 기존 8 항목 모두 fetch 유지. 후속 plan 에서 필요 시 4 항목으로 정리.
+// 슬림화 결과 4 항목만 fetch. 알림 발송·뉴스·공고·AI 등 다른 KPI 는
+// 사이드바 그룹 페이지 (/admin/alimtalk, /admin/insights 등) 에 자체 노출.
 async function get24hStats() {
   const admin = createAdminClient();
   const since24hIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
