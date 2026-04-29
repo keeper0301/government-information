@@ -131,14 +131,20 @@ export default async function BlogIndexPage({
     query = query.or(`title.ilike.%${token}%,meta_description.ilike.%${token}%`);
   }
 
-  // ─── 개인화 점수용 풀 query (필터 무관 최신 100건) ───────────────────────────────
-  // 카테고리 필터와 무관하게 전체에서 뽑아야 개인화 섹션이 필터에 제한받지 않음
-  const poolQuery = supabase
+  // ─── 개인화 점수용 풀 query ──────────────────────────────────────────────────
+  // 2026-04-29 사장님 사고 fix: 카테고리 필터 활성 시 추천 풀도 같은 카테고리로 좁힘.
+  // 사장님 멘탈 모델 — "소상공인" 필터 클릭 시 추천도 소상공인 글 안에서.
+  // 이전엔 카테고리 무관 전체 풀이라 "소상공인 (1)" 필터에서 "주거" 카테고리 글이
+  // 추천에 떠 사용자 혼란.
+  let poolQuery = supabase
     .from("blog_posts")
     .select("slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image")
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(100);
+  if (activeCategory !== "all") {
+    poolQuery = poolQuery.eq("category", activeCategory);
+  }
 
   // 본 query·카테고리 카운트·풀 query·사용자 프로필을 병렬 요청 — RTT 절약
   const [{ data: posts }, categoryCounts, { data: poolData }, profile] =
@@ -166,6 +172,9 @@ export default async function BlogIndexPage({
           category: p.category,
           title: p.title,
           meta_description: p.meta_description,
+          // 2026-04-29 사장님 사고 fix — tags 에 "경기도" 등 광역명 들어 있어도
+          // cohort region 필터가 차단할 수 있게 tags 까지 전달.
+          tags: p.tags,
         },
         profile.signals,
       ),

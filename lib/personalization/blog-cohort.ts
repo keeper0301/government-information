@@ -49,6 +49,9 @@ export type BlogCohortInput = {
   category: string | null;
   title: string;
   meta_description?: string | null;
+  // 2026-04-29 사장님 사고 — title/meta_description 에 광역명 없어도 tags 에
+  // "경기도" 들어 있어 cohort 차단 못 한 케이스. tags 까지 검사 대상으로 포함.
+  tags?: string[] | null;
 };
 
 // 사용자 프로필 시그널 — LoadedProfile.signals 형태 그대로
@@ -129,8 +132,10 @@ export function isBlogCohortFit(
     // "소상공인" 또는 그 외 카테고리는 cohort 차단 안 함 (occupation/benefit_tags 매칭에 위임)
   }
 
-  // 2) 제목·설명의 광역시도 매칭 — 사용자 광역 외 다른 광역 명시되면 차단
-  const text = `${post.title ?? ""} ${post.meta_description ?? ""}`;
+  // 2) 제목·설명·tags 의 광역시도 매칭 — 사용자 광역 외 다른 광역 명시되면 차단
+  // tags 에 "경기도" 같은 광역명 직접 들어 있는 케이스도 잡기 위해 합쳐서 검사.
+  const tagsText = (post.tags ?? []).join(" ");
+  const text = `${post.title ?? ""} ${post.meta_description ?? ""} ${tagsText}`;
   if (!passesRegionFilter(text, user.region)) return false;
 
   return true;
