@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const VERIFY_TOKEN = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
 const APP_SECRET = process.env.INSTAGRAM_APP_SECRET;
@@ -42,24 +42,38 @@ export async function GET(req: NextRequest) {
 /**
  * Meta comment webhook payload — POST 으로 댓글 정보 도착.
  *
- * APP_SECRET 가 있으면 HMAC sha256 서명 검증 (defense in depth).
- * 검증 통과한 페이로드는 로그로 출력. phase 2 에서 keepio_agent 또는 supabase
- * 로 forward 하는 로직 추가.
+ * APP_SECRET 가 미설정이면 503 fail-closed (이전엔 검증 우회로 누구나 임의
+ * POST 가능 → 로그/Sentry 폭주 + phase 2 forward 시작 시 prompt injection
+ * 위험). HMAC sha256 서명 검증 통과한 페이로드만 로그.
+ *
+ * payload 통째로 console.log 하던 것은 PII 누출 위험 → object 키 + length
+ * 만 출력 (phase 2 forward 시 supabase 에 sanitize 후 INSERT 예정).
  */
 export async function POST(req: NextRequest) {
+  // APP_SECRET 없으면 fail-closed (phase 2 forward 전 보안 hygiene 필수)
+  if (!APP_SECRET) {
+    return new NextResponse("Webhook not configured", { status: 503 });
+  }
+
   const rawBody = await req.text();
 
-  if (APP_SECRET) {
-    const sig = req.headers.get("x-hub-signature-256");
-    if (!sig) {
-      return new NextResponse("Bad signature", { status: 403 });
-    }
-    const expected =
-      "sha256=" +
-      createHmac("sha256", APP_SECRET).update(rawBody).digest("hex");
-    if (sig !== expected) {
-      return new NextResponse("Bad signature", { status: 403 });
-    }
+  const sig = req.headers.get("x-hub-signature-256");
+  if (!sig) {
+    return new NextResponse("Bad signature", { status: 403 });
+  }
+  const expected =
+    "sha256=" +
+    createHmac("sha256", APP_SECRET).update(rawBody).digest("hex");
+
+  // timingSafeEqual 로 timing attack 방어. byte length 다르면 즉시 reject.
+  // (Buffer.byteLength 비교 — string.length 는 비-ASCII 시 byte 수와 다름)
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length) {
+    return new NextResponse("Bad signature", { status: 403 });
+  }
+  if (!timingSafeEqual(sigBuf, expectedBuf)) {
+    return new NextResponse("Bad signature", { status: 403 });
   }
 
   let payload: unknown;
@@ -69,7 +83,13 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Bad JSON", { status: 400 });
   }
 
-  console.log("[instagram-webhook] received:", JSON.stringify(payload));
+  // payload 통째 로그 X — 키 + body length 만 (phase 2 에서 sanitize 후 INSERT)
+  const keys =
+    payload && typeof payload === "object" ? Object.keys(payload) : [];
+  console.log(
+    "[instagram-webhook] received:",
+    JSON.stringify({ keys, bodyLength: rawBody.length }),
+  );
 
   return new NextResponse("OK", { status: 200 });
 }

@@ -51,14 +51,19 @@ async function run() {
 
   const candidateIds = candidates.map((u) => u.id);
 
-  // user_profiles 미완 + onboarding_reminders 없는 사용자만 필터
-  const [profilesData, remindersData] = await Promise.all([
+  // user_profiles 미완 + onboarding_reminders 없는 + pending_deletions 없는
+  // 사용자만 필터 (30일 유예 탈퇴 사용자에게 환영 메일 가면 안 됨)
+  const [profilesData, remindersData, deletionsData] = await Promise.all([
     admin
       .from("user_profiles")
       .select("id, age_group, region, occupation")
       .in("id", candidateIds),
     admin
       .from("onboarding_reminders")
+      .select("user_id")
+      .in("user_id", candidateIds),
+    admin
+      .from("pending_deletions")
       .select("user_id")
       .in("user_id", candidateIds),
   ]);
@@ -78,12 +83,20 @@ async function run() {
   const remindedIds = new Set(
     (remindersData.data ?? []).map((r: { user_id: string }) => r.user_id),
   );
+  const pendingDeletionIds = new Set(
+    (deletionsData.data ?? []).map((r: { user_id: string }) => r.user_id),
+  );
 
   const targets = candidates.filter(
-    (u) => !filledProfileIds.has(u.id) && !remindedIds.has(u.id),
+    (u) =>
+      !filledProfileIds.has(u.id) &&
+      !remindedIds.has(u.id) &&
+      !pendingDeletionIds.has(u.id),
   );
 
   // INSERT 먼저 → race condition 안전. INSERT 성공 후에만 발송.
+  // 발송 실패 시 INSERT row 를 삭제해 다음 cron 에 재시도 가능하게 보정
+  // (이전엔 Resend 1초 장애만 발생해도 그 사용자 환영메일 영영 못 받음).
   let sent = 0;
   let failed = 0;
   for (const u of targets) {
@@ -95,8 +108,23 @@ async function run() {
       continue;
     }
     const result = await sendOnboardingReminderEmail({ to: u.email! });
-    if (result.ok) sent++;
-    else failed++;
+    if (result.ok) {
+      sent++;
+    } else {
+      failed++;
+      // 발송 실패 → INSERT 보정 (best-effort, 보정 자체 실패해도 cron 은 정상)
+      const { error: deleteError } = await admin
+        .from("onboarding_reminders")
+        .delete()
+        .eq("user_id", u.id);
+      if (deleteError) {
+        console.error(
+          "[onboarding-reminder] dedup row 보정 실패",
+          u.id,
+          deleteError.message,
+        );
+      }
+    }
   }
 
   return NextResponse.json({

@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 // 실행 가능한 cron path 화이트리스트 — 임의 path 호출 차단.
+// vercel.json 의 cron 등록 path 와 일치 유지 (새 cron 추가 시 여기도 추가).
 const ALLOWED_PATHS = new Set<string>([
   "/api/collect-news",
   "/api/cron/health-alert",
@@ -18,7 +19,16 @@ const ALLOWED_PATHS = new Set<string>([
   "/api/finalize-deletions",
   "/api/enrich",
   "/api/billing/charge",
+  // Phase 5/6 신규 cron 4종 — 빠지면 /admin/cron-failures retry 버튼 400 리턴
+  "/api/dedupe-detect",
+  "/api/cron/press-ingest",
+  "/api/cron/onboarding-reminder",
+  "/api/cron/weekly-digest",
 ]);
+
+// host header injection 방어를 위한 base URL — request.url 의 host 가
+// proxy header 로 spoof 될 수 있어 신뢰할 수 있는 NEXT_PUBLIC_SITE_URL fallback.
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.keepioo.com";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -48,8 +58,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // internal fetch — same-origin, server side
-  const url = new URL(cronPath, request.url);
+  // internal fetch — host header injection 방어로 BASE_URL 사용 (request.url 신뢰 X)
+  const url = new URL(cronPath, BASE_URL);
   const start = Date.now();
   let res: Response;
   try {

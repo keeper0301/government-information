@@ -29,8 +29,18 @@ function getClientSnapshot(): string | null {
   }
 }
 function getServerSnapshot(): string | null {
-  // SSR 시엔 dismiss 정보 없음 — 일단 hidden (visible 은 hydration 후 결정)
-  return Date.now().toString();
+  // SSR 단계에선 localStorage 접근 불가 → null 리턴 (= "안 닫힌 상태" 의미).
+  // server 가 banner 를 visible=true 로 SSR → hydration 후 client snapshot 으로
+  // 갱신되며 24h 안 dismiss 한 사용자에겐 잠깐 깜빡 후 사라짐.
+  //
+  // CRITICAL: Date.now().toString() 같은 nondeterministic 값 절대 금지.
+  // useSyncExternalStore 는 server snapshot 이 매 호출 동일해야 React 19 의
+  // strict hydration check 통과. nondeterministic 시 hydration 폭발 →
+  // 같은 페이지의 RevealOnScroll useEffect 들이 영영 안 돌아 opacity-0 영구 고정.
+  // (2026-04-29 사고: 사장님 본인 (로그인+온보딩 완료+income/household 미입력)
+  //  화면에서 홈 below-the-fold 8 섹션 텅 빔 — 이 한 줄이 root cause).
+  // reconsent-banner.tsx, wish-form-floating.tsx 동일 패턴 (return null) 참고.
+  return null;
 }
 
 export function EnhanceProfileBanner() {
