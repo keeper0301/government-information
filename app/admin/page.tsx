@@ -96,6 +96,7 @@ async function get24hStats() {
     loanCount,
     aiUsageRows,
     cronAlertsNew,
+    autoIngested,
   ] = await Promise.all([
     // 신규 가입 — user_profiles 기준. 온보딩 스킵 시 생성 안 될 수도 있어
     // 실사용자 대비 하회할 수 있지만, 실제 회원가입 퍼널 통과 사용자만 카운트.
@@ -149,6 +150,13 @@ async function get24hStats() {
       .from("cron_failure_log")
       .select("id", { count: "exact", head: true })
       .gte("notified_at", since24hIso),
+    // press-ingest 자동 등록 — 24h cron 작동 + 안전 가드 통과 정책 수.
+    // 매일 01:30 KST 자동 cron 결과. 0건이면 "안전 가드에 모두 막힘" 또는 cron skip.
+    admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "auto_press_ingest")
+      .gte("created_at", since24hIso),
   ]);
 
   const aiTotal = (aiUsageRows.data ?? []).reduce(
@@ -166,6 +174,7 @@ async function get24hStats() {
     programsCollected: (welfareCount.count ?? 0) + (loanCount.count ?? 0),
     aiToday: aiTotal,
     cronAlertsNew: cronAlertsNew.count ?? 0,
+    autoIngested: autoIngested.count ?? 0,
   };
 }
 
@@ -381,6 +390,12 @@ export default async function AdminHomePage({
                   : "24h 신규 메일 발송 (occurrences 누적은 별도)"
               }
               tone={stats.cronAlertsNew >= 3 ? "warn" : "neutral"}
+            />
+            <StatCard
+              label="자동 등록 (cron)"
+              value={stats.autoIngested}
+              suffix="건"
+              hint="press-ingest 매일 01:30 KST · welfare/loan 자동 INSERT"
             />
           </div>
         </section>
