@@ -153,7 +153,10 @@ export default async function CronTriggerPage({
           </h1>
           <p className="text-[14px] text-grey-700 leading-[1.6]">
             평소엔 vercel cron 자동. 즉시 반영 필요 시 여기서 수동 trigger.
-            모든 실행은 admin_actions.manual_cron_trigger 에 감사 기록.
+            <br />
+            <strong className="text-grey-900">[실행 ↗] 클릭 시 새 탭에서 진행</strong> — 원래 탭 유지하며 여러 cron 동시 실행 가능. LLM 분류 cron 은 60~90초 소요.
+            <br />
+            모든 실행은 admin_actions.manual_cron_trigger 에 감사 기록 + 아래 "최근 실행 5건" 섹션에 자동 갱신.
           </p>
         </div>
 
@@ -262,6 +265,7 @@ export default async function CronTriggerPage({
             <form
               key={code}
               action={triggerCron}
+              target="_blank"
               className="flex"
             >
               <input type="hidden" name="path" value={`/api/collect-news/${code}`} />
@@ -290,8 +294,11 @@ function CronRow({
 }: {
   cron: { path: string; label: string; schedule: string; desc: string };
 }) {
+  // target="_blank" — 새 탭에서 cron 실행 + 결과 표시.
+  // 원래 탭은 그대로 유지되어 여러 cron 동시 실행 + 진행 상황 비교 가능.
+  // LLM 호출 등 60~90초 걸리는 cron 도 사장님이 다른 작업 자유롭게 가능.
   return (
-    <form action={triggerCron} className="flex items-center gap-3 bg-white border border-grey-200 rounded-lg p-3">
+    <form action={triggerCron} target="_blank" className="flex items-center gap-3 bg-white border border-grey-200 rounded-lg p-3">
       <input type="hidden" name="path" value={cron.path} />
       <div className="flex-1 min-w-0">
         <div className="text-[14px] font-bold text-grey-900">{cron.label}</div>
@@ -307,7 +314,7 @@ function CronRow({
         type="submit"
         className="shrink-0 px-3 py-2 bg-blue-500 text-white text-[12px] font-semibold rounded-md hover:bg-blue-600 transition-colors cursor-pointer"
       >
-        실행
+        실행 ↗
       </button>
     </form>
   );
