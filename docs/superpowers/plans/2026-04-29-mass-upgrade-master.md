@@ -26,12 +26,13 @@
 
 이유: 메모리 모든 곳에 "트래픽 부족" 운영 이슈. AdSense 승인 가능성 ↑.
 
-### Phase 3: 데이터 품질 (10h)
-- **B1** kstartup·bizinfo detail fetcher 추가 (3h)
-- **B3** 외부 출처 중복 정책 dedupe 강화 (2h)
-- **B2** LLM (Haiku) 정책 가이드 시리즈 자동 생성 (5h)
+### ✅ Phase 3: 데이터 품질 (완료 2026-04-29, 4 commit `34a5f2d`~`857ceb1`)
+- **B1** kstartup·bizinfo collector ✅ (이미 prod 운영 중 → 단위 테스트 39 case 보강으로 적응)
+- **B3** welfare/loan 중복 정책 dedupe ✅ (알고리즘 + cron + admin 검수 + 사용자 노출 차단)
+- **B2** LLM 가이드 자동 생성 — keepio_agent 중복 위험으로 **Phase 3 제외**, 후속 검토
 
 이유: 트래픽 들어왔을 때 콘텐츠 풍부도 = 체류 시간·전환 ↑.
+DDL 0 — 기존 duplicate_of_id 컬럼 (007/046) 활용.
 
 ### Phase 4: 사용자 가치 — 재방문 trigger (12~13h)
 - **C2** 마이페이지 활성화 (즐겨찾기·알림 history·신청 트래킹) (5~6h)
