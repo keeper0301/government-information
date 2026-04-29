@@ -30,7 +30,9 @@ export function Sidebar({ onItemClick }: Props) {
   return (
     <nav
       aria-label="어드민 메뉴"
-      className="bg-grey-50 border-r border-grey-200 py-6 h-full overflow-y-auto"
+      // scrollbar 시각만 숨김 (기능 보존) — 작은 화면에선 스크롤은 동작.
+      // Firefox: scrollbar-width:none / WebKit: ::-webkit-scrollbar hidden
+      className="bg-grey-50 border-r border-grey-200 py-6 h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {/* 브랜드 */}
       <div className="px-6 pb-4 mb-3 border-b border-grey-200">

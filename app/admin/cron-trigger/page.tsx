@@ -145,11 +145,19 @@ export default async function CronTriggerPage({
 
   return (
     <div className="max-w-[860px]">
-      {/* 표준 헤더 슬롯 — F4 마이그레이션. description 길어서 string 으로 압축. */}
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 + ReactNode description 복원 (review 결과). */}
       <AdminPageHeader
         kicker="ADMIN · 운영 상태"
         title="Cron 수동 실행"
-        description="평소엔 vercel cron 자동. 즉시 반영 필요 시 여기서 수동 trigger. [실행 ↗] 클릭 시 새 탭에서 진행 — 원래 탭 유지하며 여러 cron 동시 실행 가능. LLM 분류 cron 은 60~90초 소요. 모든 실행은 admin_actions.manual_cron_trigger 에 감사 기록 + 아래 ‘최근 실행 5건’ 섹션에 자동 갱신."
+        description={
+          <>
+            평소엔 vercel cron 자동. 즉시 반영 필요 시 여기서 수동 trigger.
+            <br />
+            <strong className="text-grey-900">[실행 ↗] 클릭 시 새 탭에서 진행</strong> — 원래 탭 유지하며 여러 cron 동시 실행 가능. LLM 분류 cron 은 60~90초 소요.
+            <br />
+            모든 실행은 admin_actions.manual_cron_trigger 에 감사 기록 + 아래 &ldquo;최근 실행 5건&rdquo; 섹션에 자동 갱신.
+          </>
+        }
       />
 
       {/* 에러 — 빨강 강조 */}

@@ -10,13 +10,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getPressIngestKpi } from "@/lib/press-ingest/filter";
 
 export type DashboardAlert = {
-  key: "cron_failure" | "press_ingest_backlog" | "deletions_overdue" | "advisor_warn";
+  key:
+    | "cron_failure"
+    | "press_ingest_backlog"
+    | "deletions_overdue"
+    | "advisor_warn"
+    | "system_error"; // F3 review 후속 — Promise.allSettled 한 RPC 실패 시 알림
   label: string;
   count: number;
   href: string;
 };
 
 const PRESS_INGEST_BACKLOG_THRESHOLD = 30;
+const ADVISOR_FETCH_TIMEOUT_MS = 5000; // F5 review 후속 — Supabase API timeout 가드
 
 // ─── advisor cache ───
 // Supabase Management API 호출은 비용이 큼 (외부 fetch + rate limit).
@@ -40,22 +46,26 @@ async function getAdvisorWarnCount(): Promise<number> {
   const projectRef = process.env.SUPABASE_PROJECT_REF;
 
   // 환경변수 미설정 — fetch 자체 skip (dev 안내 포함)
+  // F5 review 후속: cache stamp 안 함 → 사장님이 env 추가하면 다음 요청에서 즉시 활성.
+  // 이전엔 24h 동안 0 으로 stamp 되어 env 추가해도 24h 무시됐음.
   if (!token || !projectRef) {
-    if (!advisorCache) {
-      // 최초 1회만 안내 (cache stamp 후 재안내 방지)
-      console.warn(
-        "[dashboard-alerts] SUPABASE_PERSONAL_ACCESS_TOKEN / SUPABASE_PROJECT_REF 미설정 — advisor 신호 skip",
-      );
-    }
-    advisorCache = { fetchedAt: Date.now(), warnCount: 0 };
+    console.warn(
+      "[dashboard-alerts] SUPABASE_PERSONAL_ACCESS_TOKEN / SUPABASE_PROJECT_REF 미설정 — advisor 신호 skip",
+    );
     return 0;
   }
 
+  // F5 review 후속: AbortController 5초 timeout — 외부 API 응답 안 와도 페이지 hang 방지.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ADVISOR_FETCH_TIMEOUT_MS);
+
   try {
+    // F5 review 후속: projectRef 직접 치환 (`/_/` 슬러그 의존 X — 사장님 다중 프로젝트 시 안전)
     const res = await fetch(
       `https://api.supabase.com/v1/projects/${projectRef}/advisors/security`,
-      { headers: { Authorization: `Bearer ${token}` } },
+      { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal },
     );
+    clearTimeout(timeoutId);
     if (!res.ok) {
       console.warn("[dashboard-alerts] advisor fetch HTTP", res.status);
       // 실패 시에도 cache stamp — 5초마다 재시도 폭주 방지
@@ -71,7 +81,13 @@ async function getAdvisorWarnCount(): Promise<number> {
     advisorCache = { fetchedAt: Date.now(), warnCount };
     return warnCount;
   } catch (e) {
-    console.warn("[dashboard-alerts] advisor fetch error:", e);
+    clearTimeout(timeoutId);
+    // AbortError 도 동일 graceful degrade — page render 진행
+    const isAbort = e instanceof Error && e.name === "AbortError";
+    console.warn(
+      `[dashboard-alerts] advisor fetch ${isAbort ? "timeout" : "error"}:`,
+      e,
+    );
     advisorCache = { fetchedAt: Date.now(), warnCount: 0 };
     return 0;
   }
@@ -100,6 +116,22 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   const [cronSettled, pressSettled, deletionsSettled] = results;
 
   const alerts: DashboardAlert[] = [];
+
+  // F3 review 후속 — silent failure 차단:
+  // 모든 RPC rejected 면 사장님이 "alert 시스템 자체 오류" 인지 가능하게 fallback chip.
+  // partial (한 두 개만 rejected) 면 살아있는 신호로 충분 → fallback 안 띄움.
+  const allRejected =
+    cronSettled.status === "rejected" &&
+    pressSettled.status === "rejected" &&
+    deletionsSettled.status === "rejected";
+  if (allRejected) {
+    alerts.push({
+      key: "system_error",
+      label: "alert 시스템 오류 (로그 확인)",
+      count: 1,
+      href: "/admin/cron-failures",
+    });
+  }
 
   // cron 실패 알림 — fulfilled 만 평가, rejected 면 console.warn 후 skip
   if (cronSettled.status === "fulfilled" && (cronSettled.value.count ?? 0) >= 1) {

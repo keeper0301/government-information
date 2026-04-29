@@ -4,12 +4,18 @@
 // ============================================================
 // 각 admin sub page 가 점진 마이그레이션 시 사용. 1차 plan 에서는
 // 메인 대시보드 (/admin) 만 도입. 후속 plan 에서 다른 페이지로 확장.
+//
+// 2026-04-29 description prop 을 string | ReactNode 로 확장:
+//  · cron-trigger 처럼 줄바꿈·강조 (<br>·<strong>) 가 있는 본문은 ReactNode 로
+//    원본 시각 보존. plain string 은 자동으로 <p> 한 줄에 렌더 (기존 동작).
 // ============================================================
+
+import type { ReactNode } from "react";
 
 type Props = {
   kicker?: string;
   title: string;
-  description?: string;
+  description?: string | ReactNode;
 };
 
 export function AdminPageHeader({
@@ -17,6 +23,8 @@ export function AdminPageHeader({
   title,
   description,
 }: Props) {
+  // string 이면 단일 <p> 로 감싸 가독성 보존, ReactNode (JSX) 면 그대로 렌더
+  const isString = typeof description === "string";
   return (
     <div className="mb-8">
       <p className="text-[12px] text-blue-500 font-bold tracking-[0.18em] mb-2 uppercase">
@@ -26,9 +34,15 @@ export function AdminPageHeader({
         {title}
       </h1>
       {description && (
-        <p className="text-[14px] md:text-[15px] text-grey-700 leading-[1.6] max-w-2xl">
-          {description}
-        </p>
+        isString ? (
+          <p className="text-[14px] md:text-[15px] text-grey-700 leading-[1.6] max-w-2xl">
+            {description}
+          </p>
+        ) : (
+          <div className="text-[14px] md:text-[15px] text-grey-700 leading-[1.6] max-w-2xl">
+            {description}
+          </div>
+        )
       )}
     </div>
   );
