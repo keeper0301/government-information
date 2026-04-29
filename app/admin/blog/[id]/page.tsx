@@ -170,6 +170,14 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
         title="블로그 글 편집"
       />
       <div className="flex flex-wrap items-center gap-2 mb-6 text-[13px] text-grey-600">
+        {/* breadcrumb — 사이드바 클릭 없이 즉시 목록 복귀 (상세→목록 이동 빈도 ↑) */}
+        <Link
+          href="/admin/blog"
+          className="text-blue-600 hover:text-blue-700 no-underline"
+        >
+          ← 블로그 목록
+        </Link>
+        <span>·</span>
         <Link
           href={`/blog/${post.slug}`}
           target="_blank"
