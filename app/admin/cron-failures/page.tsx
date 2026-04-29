@@ -23,6 +23,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CronRetryButton } from "./retry-button";
 import { isAdminUser } from "@/lib/admin-auth";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "cron 실패 알림 | 어드민",
@@ -130,169 +132,159 @@ export default async function CronFailuresPage() {
   const loudestPrefix = prefixGroups[0]?.prefix ?? "—";
 
   return (
-    <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <div className="max-w-[980px] mx-auto px-5">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · cron
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            cron 실패 알림 (24시간)
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.65]">
-            cron_failure_log 24h 활동 — 신규 알림·누적 발생·prefix 그룹·전체 목록.
-            폭주 패턴 (같은 prefix 가 occurrences 가 비정상적으로 큼) 또는 신규
-            jobName 출현을 빠르게 발견하기 위함입니다.
-          </p>
+    <div className="max-w-[980px]">
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 운영 상태"
+        title="cron 실패 알림 (24시간)"
+        description="cron_failure_log 24h 활동 — 신규 알림·누적 발생·prefix 그룹·전체 목록. 폭주 패턴 (같은 prefix 가 occurrences 가 비정상적으로 큼) 또는 신규 jobName 출현을 빠르게 발견하기 위함입니다."
+      />
+
+      {/* KPI 카드 4종 */}
+      <section className="mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard
+            label="신규 알림"
+            value={newAlerts}
+            suffix="건"
+            hint="first==notified (신규 발생)"
+            tone={newAlerts >= 3 ? "warn" : "neutral"}
+          />
+          <StatCard
+            label="누적 발생"
+            value={totalOccurrences}
+            suffix="회"
+            hint="occurrences 합 (dedupe 차단된 발생 포함)"
+          />
+          <StatCard
+            label="활성 알림 종류"
+            value={activeKinds}
+            suffix="종"
+            hint="24h 안 last_seen 된 row 수"
+          />
+          <StatCard
+            label="가장 시끄러운 prefix"
+            value={loudestPrefix}
+            hint={`occurrences ${prefixGroups[0]?.occurrences ?? 0}회`}
+          />
         </div>
+      </section>
 
-        {/* KPI 카드 4종 */}
-        <section className="mb-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard
-              label="신규 알림"
-              value={newAlerts}
-              suffix="건"
-              hint="first==notified (신규 발생)"
-              tone={newAlerts >= 3 ? "warn" : "neutral"}
-            />
-            <StatCard
-              label="누적 발생"
-              value={totalOccurrences}
-              suffix="회"
-              hint="occurrences 합 (dedupe 차단된 발생 포함)"
-            />
-            <StatCard
-              label="활성 알림 종류"
-              value={activeKinds}
-              suffix="종"
-              hint="24h 안 last_seen 된 row 수"
-            />
-            <StatCard
-              label="가장 시끄러운 prefix"
-              value={loudestPrefix}
-              hint={`occurrences ${prefixGroups[0]?.occurrences ?? 0}회`}
-            />
-          </div>
-        </section>
-
-        {/* prefix 그룹 */}
-        <section className="mb-8">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-            prefix 그룹 ({prefixGroups.length}개)
-          </h2>
-          {prefixGroups.length === 0 ? (
-            <p className="text-[13px] text-grey-600 py-4">
-              최근 24시간 알림이 없습니다. 평온한 운영 상태 ✅
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {prefixGroups.map((g) => (
-                <div
-                  key={g.prefix}
-                  className="bg-white rounded-lg border border-grey-200 p-4"
-                >
-                  <div className="flex items-baseline justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <div className="text-[14px] font-bold text-grey-900 font-mono">
-                        {g.prefix}
-                      </div>
-                      <CronRetryButton prefix={g.prefix} />
+      {/* prefix 그룹 */}
+      <section className="mb-8">
+        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          prefix 그룹 ({prefixGroups.length}개)
+        </h2>
+        {prefixGroups.length === 0 ? (
+          <p className="text-[13px] text-grey-600 py-4">
+            최근 24시간 알림이 없습니다. 평온한 운영 상태 ✅
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {prefixGroups.map((g) => (
+              <div
+                key={g.prefix}
+                className="bg-white rounded-lg border border-grey-200 p-4"
+              >
+                <div className="flex items-baseline justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-[14px] font-bold text-grey-900 font-mono">
+                      {g.prefix}
                     </div>
-                    <div className="text-[12px] text-grey-600">
-                      {g.rows}종 · {fmtRelative(g.newest)}
-                    </div>
+                    <CronRetryButton prefix={g.prefix} />
                   </div>
-                  <div className="text-[20px] font-extrabold text-grey-900 leading-none">
-                    {g.occurrences.toLocaleString()}
-                    <span className="text-[13px] font-semibold text-grey-600 ml-1">
-                      회
-                    </span>
+                  <div className="text-[12px] text-grey-600">
+                    {g.rows}종 · {fmtRelative(g.newest)}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+                <div className="text-[20px] font-extrabold text-grey-900 leading-none">
+                  {g.occurrences.toLocaleString()}
+                  <span className="text-[13px] font-semibold text-grey-600 ml-1">
+                    회
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
-        {/* 전체 알림 목록 */}
-        <section className="mb-8">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-            최근 알림 ({rows.length}건)
-          </h2>
-          {rows.length === 0 ? (
-            <p className="text-[13px] text-grey-600 py-4">표시할 알림이 없습니다.</p>
-          ) : (
-            <div className="bg-white rounded-lg border border-grey-200 overflow-hidden">
-              <ul>
-                {rows.map((r) => {
-                  const isNew = r.first_seen_at === r.notified_at;
-                  return (
-                    <li
-                      key={r.id}
-                      className="px-4 py-3 border-b border-grey-100 last:border-b-0"
-                    >
-                      <div className="flex items-baseline justify-between gap-3 mb-1">
-                        <div className="text-[13px] font-semibold text-grey-900 truncate min-w-0 flex-1">
-                          {isNew && (
-                            <span className="inline-block bg-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 align-middle">
-                              NEW
-                            </span>
-                          )}
-                          {r.job_name}
-                        </div>
-                        <div className="text-[12px] text-grey-600 whitespace-nowrap">
-                          {fmtRelative(r.notified_at)}
-                        </div>
+      {/* 전체 알림 목록 */}
+      <section className="mb-8">
+        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          최근 알림 ({rows.length}건)
+        </h2>
+        {rows.length === 0 ? (
+          <p className="text-[13px] text-grey-600 py-4">표시할 알림이 없습니다.</p>
+        ) : (
+          <div className="bg-white rounded-lg border border-grey-200 overflow-hidden">
+            <ul>
+              {rows.map((r) => {
+                const isNew = r.first_seen_at === r.notified_at;
+                return (
+                  <li
+                    key={r.id}
+                    className="px-4 py-3 border-b border-grey-100 last:border-b-0"
+                  >
+                    <div className="flex items-baseline justify-between gap-3 mb-1">
+                      <div className="text-[13px] font-semibold text-grey-900 truncate min-w-0 flex-1">
+                        {isNew && (
+                          <span className="inline-block bg-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 align-middle">
+                            NEW
+                          </span>
+                        )}
+                        {r.job_name}
                       </div>
-                      <div className="text-[12px] text-grey-700 leading-[1.55] break-words">
-                        {r.error_message}
+                      <div className="text-[12px] text-grey-600 whitespace-nowrap">
+                        {fmtRelative(r.notified_at)}
                       </div>
-                      <div className="text-[11px] text-grey-600 mt-1 leading-[1.5]">
-                        occurrences <strong>{r.occurrences}</strong> · first{" "}
-                        {fmtKst(r.first_seen_at)} · last {fmtKst(r.last_seen_at)}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </section>
+                    </div>
+                    <div className="text-[12px] text-grey-700 leading-[1.55] break-words">
+                      {r.error_message}
+                    </div>
+                    <div className="text-[11px] text-grey-600 mt-1 leading-[1.5]">
+                      occurrences <strong>{r.occurrences}</strong> · first{" "}
+                      {fmtKst(r.first_seen_at)} · last {fmtKst(r.last_seen_at)}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </section>
 
-        {/* 운영 메모 */}
-        <section className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 text-[13px] text-grey-800 leading-[1.7]">
-          <p className="font-bold mb-1.5">운영 가이드</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>
-              <strong>NEW</strong> 배지 = first_seen_at == notified_at — 처음 발생해
-              메일이 발송된 알림. 같은 signature 라도 24h 후 다시 발송될 때마다 NEW.
-            </li>
-            <li>
-              <strong>occurrences</strong> 가 1보다 크면 dedupe 가 정상 작동하는
-              증거 — 메일은 1번만 갔지만 실제 실패는 N번 누적된 상태.
-            </li>
-            <li>
-              같은 prefix 의 jobName 변형이 갑자기 5개+ 늘면 makeFailureSignature
-              normalize 누락 의심 (2026-04-27 사고 패턴).
-            </li>
-          </ul>
-        </section>
+      {/* 운영 메모 */}
+      <section className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 text-[13px] text-grey-800 leading-[1.7]">
+        <p className="font-bold mb-1.5">운영 가이드</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            <strong>NEW</strong> 배지 = first_seen_at == notified_at — 처음 발생해
+            메일이 발송된 알림. 같은 signature 라도 24h 후 다시 발송될 때마다 NEW.
+          </li>
+          <li>
+            <strong>occurrences</strong> 가 1보다 크면 dedupe 가 정상 작동하는
+            증거 — 메일은 1번만 갔지만 실제 실패는 N번 누적된 상태.
+          </li>
+          <li>
+            같은 prefix 의 jobName 변형이 갑자기 5개+ 늘면 makeFailureSignature
+            normalize 누락 의심 (2026-04-27 사고 패턴).
+          </li>
+        </ul>
+      </section>
 
-        <p className="text-[13px] flex items-center gap-4 flex-wrap">
-          <Link href="/admin" className="text-blue-500 font-medium underline">
-            ← 어드민 홈
-          </Link>
-          <Link
-            href="/admin/enrich-detail"
-            className="text-blue-500 font-medium underline"
-          >
-            공고 상세 보강 →
-          </Link>
-        </p>
-      </div>
-    </main>
+      <p className="text-[13px] flex items-center gap-4 flex-wrap">
+        <Link href="/admin" className="text-blue-500 font-medium underline">
+          ← 어드민 홈
+        </Link>
+        <Link
+          href="/admin/enrich-detail"
+          className="text-blue-500 font-medium underline"
+        >
+          공고 상세 보강 →
+        </Link>
+      </p>
+    </div>
   );
 }
 
