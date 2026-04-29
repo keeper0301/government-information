@@ -1,20 +1,26 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import type { Tier } from "@/lib/subscription";
+import { TierBadge } from "@/components/tier-badge";
 import { WithdrawDialog } from "./withdraw-dialog";
 
 // 계정 탭 — 상단 "내 계정 요약" 카드 + 내 정보 다운로드 + 하단 위험 영역(탈퇴)
 // 요약 정보는 서버 컴포넌트에서 prop 으로 받는다 (가입일·로그인 방식·이번 달 알림톡 발송 수).
+// tier 도 prop 으로 받아 헤더에 TierBadge 로 시각화 (Phase 6 E1 — Pro 차별화 가시성).
 export function AccountTab({
   email,
   createdAt,
   provider,
   alertsThisMonth,
+  tier,
 }: {
   email: string;
   createdAt: string | null; // ISO timestamp · null 이면 "(미상)"
   provider: string | null; // 'google' | 'kakao' 등
   alertsThisMonth: number;
+  tier: Tier;
 }) {
   // 가입 일자 — Supabase user.created_at 이 비어있는 비정상 케이스에 "오늘 가입"
   // 처럼 잘못 표시되지 않도록 명시적 fallback.
@@ -31,9 +37,23 @@ export function AccountTab({
     <div className="space-y-10">
       {/* 계정 요약 카드 */}
       <section>
-        <h2 className="text-[15px] font-semibold text-grey-900 pb-2 mb-4 border-b border-grey-100">
-          계정 요약
-        </h2>
+        <div className="flex items-center justify-between pb-2 mb-4 border-b border-grey-100">
+          <h2 className="text-[15px] font-semibold text-grey-900">
+            계정 요약
+          </h2>
+          {/* Phase 6 E1 — 현재 티어를 한눈에 보여주는 배지 */}
+          <div className="flex items-center gap-2">
+            <TierBadge tier={tier} size="md" />
+            {tier !== "pro" && (
+              <Link
+                href="/pricing?from=mypage"
+                className="text-[12px] text-amber-700 underline hover:text-amber-800"
+              >
+                업그레이드
+              </Link>
+            )}
+          </div>
+        </div>
         <dl className="rounded-lg border border-grey-200 bg-white divide-y divide-grey-100">
           <SummaryRow label="가입 일자" value={joinedLabel} />
           <SummaryRow label="로그인 방식" value={providerLabel} />

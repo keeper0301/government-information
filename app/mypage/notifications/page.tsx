@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTier, TIER_NAMES } from "@/lib/subscription";
 import { hasActiveConsent } from "@/lib/consent";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import { RuleForm } from "./rule-form";
 
 export const metadata: Metadata = {
@@ -75,6 +76,12 @@ export default async function NotificationsPage() {
           </>
         )}
       </p>
+
+      {/* Phase 6 E1 — Basic 사용자에게 Pro 업그레이드 권유 (카톡·SMS 무제한 + AI 상담).
+          Free 사용자는 위쪽 분기에서 이미 별도 안내 화면으로 빠지므로 여기엔 안 옴. */}
+      {tier === "basic" && (
+        <UpgradeCta currentTier="basic" source="notifications" />
+      )}
 
       <RuleForm
         tier={tier}

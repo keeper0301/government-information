@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getUserTier } from "@/lib/subscription";
 import {
   getUserConsents,
   PRIVACY_POLICY_VERSION,
@@ -60,6 +61,7 @@ export default async function MyPage() {
     { data: businessProfile },
     referralCode,
     referralStats,
+    tier,
   ] = await Promise.all([
     supabase
       .from("user_profiles")
@@ -86,6 +88,8 @@ export default async function MyPage() {
     getOrCreateCode(adminForReferral, user.id),
     // 추천 통계 — RLS 본인 SELECT 허용이라 SSR client 도 가능하나, admin 으로 통일
     getReferralStats(adminForReferral, user.id),
+    // Phase 6 E1 — 현재 구독 티어 (계정 탭 헤더 배지에 사용)
+    getUserTier(user.id),
   ]);
 
   const email = user.email || "";
@@ -189,6 +193,7 @@ export default async function MyPage() {
             createdAt={user.created_at ?? null}
             provider={provider}
             alertsThisMonth={alertsThisMonth ?? 0}
+            tier={tier}
           />
         }
       />

@@ -37,6 +37,14 @@ export const EVENTS = {
   CHECKOUT_FAILED: "checkout_failed",                // 토스 결제 실패 (reason 파라미터)
   SUBSCRIPTION_ACTIVE: "subscription_active",        // 빌링키 + 첫 청구 성공
   SUBSCRIPTION_CANCELLED: "subscription_cancelled",  // 사용자 취소
+  // Phase 6 E1 — Pro 차별화 가시성 (마이페이지·알림 등에서의 업그레이드 유도 funnel)
+  // source: 'mypage' | 'notifications' | 'search' | 'alerts' 등 — 어느 페이지에서 눌렀는지
+  // current_tier·target_tier 함께 보내 Free→Basic / Basic→Pro 전환율 분리 측정
+  UPGRADE_CTA_CLICKED: "upgrade_cta_clicked",
+  // 요금제 카드 자체 클릭 (호버·진입 측정용 — 클릭 직전 단계). PRICING_PLAN_SELECTED 와 의미는
+  // 비슷하지만 PRICING_PLAN_SELECTED 는 "결제 의지를 가진 클릭" (CTA 누름) 만 보고,
+  // PRICING_CARD_CLICKED 는 카드 자체 호버/진입을 분리해 보고 싶을 때 사용.
+  PRICING_CARD_CLICKED: "pricing_card_clicked",
   // AI 상담
   AI_CHAT_SENT: "ai_chat_sent",
   // 블로그
