@@ -16,6 +16,8 @@ import {
   type TopContentItem,
   type DistributionItem,
 } from "@/lib/admin-insights";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "인사이트 | 어드민",
@@ -39,96 +41,88 @@ export default async function AdminInsightsPage() {
   const data = await getAdminInsights();
 
   return (
-    <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <div className="max-w-[980px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · 인사이트
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            데이터 인사이트
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            cohort funnel + 콘텐츠 효과 + 사용자 분포 통합. 어디서 이탈,
-            어떤 콘텐츠가 인기, 어떤 사용자가 가입하는지.
-          </p>
-        </div>
+    <div className="max-w-[980px]">
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 지표·분석"
+        title="데이터 인사이트"
+        description="cohort funnel + 콘텐츠 효과 + 사용자 분포 통합. 어디서 이탈, 어떤 콘텐츠가 인기, 어떤 사용자가 가입하는지."
+      />
 
-        {/* Cohort funnel */}
-        <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-          🎯 Cohort Funnel
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <FunnelCard title="전체 누적" funnel={data.funnelAll} />
-          <FunnelCard title="최근 30일 cohort" funnel={data.funnel30d} />
-        </div>
-
-        {/* Phase 4 — 24h 결제 신호 (매출 직결, 작은 변화도 즉시 가시화) */}
-        <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-          💳 24h 결제 신호
-        </h2>
-        <section className="bg-white rounded-lg border border-grey-200 p-5 mb-8">
-          <dl className="grid grid-cols-3 gap-3">
-            <div>
-              <dt className="text-[12px] text-grey-500">신규 결제 의도 (첫 진입, 24h)</dt>
-              <dd className="text-[24px] font-extrabold text-grey-900 tabular-nums mt-1">
-                {data.subscriptionPulse.newAttempts24h.toLocaleString()}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[12px] text-grey-500">활성 구독 (전체)</dt>
-              <dd className="text-[24px] font-extrabold text-blue-600 tabular-nums mt-1">
-                {data.subscriptionPulse.activeTotal.toLocaleString()}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[12px] text-grey-500">사용자 해지 (24h)</dt>
-              <dd
-                className={`text-[24px] font-extrabold tabular-nums mt-1 ${
-                  data.subscriptionPulse.cancelled24h > 0
-                    ? "text-red-500"
-                    : "text-grey-900"
-                }`}
-              >
-                {data.subscriptionPulse.cancelled24h.toLocaleString()}
-              </dd>
-            </div>
-          </dl>
-          <p className="text-[12px] text-grey-500 mt-3 leading-[1.5]">
-            * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점 (첫 /checkout 진입). 재시도는
-            기존 행 갱신이라 안 잡힘. 활성 = trial 포함 basic/pro 결제 중. 해지 1 이상이면
-            카카오 알림·결제 funnel 점검 필요.
-          </p>
-        </section>
-
-        {/* 콘텐츠 효과 */}
-        <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-          🔥 콘텐츠 TOP (view_count 기준)
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <TopList title="복지" items={data.topWelfare} />
-          <TopList title="대출" items={data.topLoan} />
-          <TopList title="블로그" items={data.topBlog} />
-        </div>
-
-        {/* 사용자 분포 */}
-        <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-          👥 사용자 분포 (user_profiles 기준)
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <DistList title="지역" items={data.regionDist} />
-          <DistList title="직업" items={data.occupationDist} />
-          <DistList title="소득" items={data.incomeDist} />
-          <DistList title="관심 분야 (benefit_tags)" items={data.benefitTagsDist} />
-        </div>
-
-        <p className="mt-10 text-[13px]">
-          <Link href="/admin" className="text-blue-500 font-medium underline">
-            ← 어드민 홈
-          </Link>
-        </p>
+      {/* Cohort funnel */}
+      <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        🎯 Cohort Funnel
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <FunnelCard title="전체 누적" funnel={data.funnelAll} />
+        <FunnelCard title="최근 30일 cohort" funnel={data.funnel30d} />
       </div>
-    </main>
+
+      {/* Phase 4 — 24h 결제 신호 (매출 직결, 작은 변화도 즉시 가시화) */}
+      <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        💳 24h 결제 신호
+      </h2>
+      <section className="bg-white rounded-lg border border-grey-200 p-5 mb-8">
+        <dl className="grid grid-cols-3 gap-3">
+          <div>
+            <dt className="text-[12px] text-grey-500">신규 결제 의도 (첫 진입, 24h)</dt>
+            <dd className="text-[24px] font-extrabold text-grey-900 tabular-nums mt-1">
+              {data.subscriptionPulse.newAttempts24h.toLocaleString()}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[12px] text-grey-500">활성 구독 (전체)</dt>
+            <dd className="text-[24px] font-extrabold text-blue-600 tabular-nums mt-1">
+              {data.subscriptionPulse.activeTotal.toLocaleString()}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[12px] text-grey-500">사용자 해지 (24h)</dt>
+            <dd
+              className={`text-[24px] font-extrabold tabular-nums mt-1 ${
+                data.subscriptionPulse.cancelled24h > 0
+                  ? "text-red-500"
+                  : "text-grey-900"
+              }`}
+            >
+              {data.subscriptionPulse.cancelled24h.toLocaleString()}
+            </dd>
+          </div>
+        </dl>
+        <p className="text-[12px] text-grey-500 mt-3 leading-[1.5]">
+          * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점 (첫 /checkout 진입). 재시도는
+          기존 행 갱신이라 안 잡힘. 활성 = trial 포함 basic/pro 결제 중. 해지 1 이상이면
+          카카오 알림·결제 funnel 점검 필요.
+        </p>
+      </section>
+
+      {/* 콘텐츠 효과 */}
+      <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        🔥 콘텐츠 TOP (view_count 기준)
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <TopList title="복지" items={data.topWelfare} />
+        <TopList title="대출" items={data.topLoan} />
+        <TopList title="블로그" items={data.topBlog} />
+      </div>
+
+      {/* 사용자 분포 */}
+      <h2 className="text-[18px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        👥 사용자 분포 (user_profiles 기준)
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <DistList title="지역" items={data.regionDist} />
+        <DistList title="직업" items={data.occupationDist} />
+        <DistList title="소득" items={data.incomeDist} />
+        <DistList title="관심 분야 (benefit_tags)" items={data.benefitTagsDist} />
+      </div>
+
+      <p className="mt-10 text-[13px]">
+        <Link href="/admin" className="text-blue-500 font-medium underline">
+          ← 어드민 홈
+        </Link>
+      </p>
+    </div>
   );
 }
 
