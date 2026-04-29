@@ -218,8 +218,15 @@ export async function redeemReferral(
 // 만료된 행   → current_period_end=now()+7d, status='trialing'
 // 활성 행     → current_period_end += 7d (이미 expires 가 미래면 거기에서 +7d)
 //
+// 누적 상한 가드 (수익 잠식 방지):
+//   referral 가 cap 10명 도달하면 70일 Pro 즉시 부여 가능 → 결제 갱신 안 해도 영구 Pro 위험.
+//   한 번에 최대 30일 까지만 누적 (now + 30d 가 천장). 초과 누적은 자연 만료 후 또 받기.
+//
 // 반환: 적용된 ISO timestamp (referrals.reward_applied_at 에 기록)
 // ──────────────────────────────────────────────────────────
+
+// 누적 상한 — 한 번에 최대 30일 까지만 Pro 연장 (referral 무한 누적 차단)
+export const REFERRAL_REWARD_MAX_FUTURE_DAYS = 30;
 async function applyProReward(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adminClient: SupabaseClient<any, any, any>,
@@ -254,7 +261,10 @@ async function applyProReward(
     ? new Date(existing.current_period_end as string).getTime()
     : 0;
   const baseTime = currentEnd > now.getTime() ? currentEnd : now.getTime();
-  const newEnd = new Date(baseTime + sevenDaysMs).toISOString();
+  // 누적 상한 — now + 30일 천장. 초과 누적은 자연 만료 후 또 받기 (수익 잠식 방지).
+  const maxFutureMs = REFERRAL_REWARD_MAX_FUTURE_DAYS * 24 * 60 * 60 * 1000;
+  const ceilingTime = now.getTime() + maxFutureMs;
+  const newEnd = new Date(Math.min(baseTime + sevenDaysMs, ceilingTime)).toISOString();
 
   // tier 가 free 면 pro 로 승격, status 가 cancelled/free 면 trialing 으로 복구.
   // 이미 active/pro 인 경우 tier·status 는 그대로 유지.

@@ -300,11 +300,11 @@ describe("redeemReferral 보상 (Pro 1주 연장)", () => {
     expect(capture.referralsUpdate?.referred_id).toBe("user-B");
   });
 
-  it("기존 subscriptions current_period_end 미래 → 7일 누적 연장", async () => {
+  it("기존 subscriptions current_period_end 미래 → 7일 누적 연장 (천장 미도달)", async () => {
     const capture: StubOptions["capture"] = {};
-    // 30일 뒤 만료 예정인 active pro 구독자
+    // 7일 뒤 만료 예정인 active pro 구독자 — 14일 누적 후에도 30일 천장 안 걸림
     const futureEnd = new Date(
-      Date.now() + 30 * 24 * 60 * 60 * 1000,
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
     ).toISOString();
     const supabase = makeStub({
       referralsByCode: { id: "r1", referrer_id: "user-A" },
@@ -321,7 +321,7 @@ describe("redeemReferral 보상 (Pro 1주 연장)", () => {
     const result = await redeemReferral(supabase, "ABC234", "user-B");
     expect(result.ok).toBe(true);
     expect(capture.subscriptionsUpdate).toBeDefined();
-    // current_period_end 가 기존 + 7일로 갱신
+    // current_period_end 가 기존 + 7일로 갱신 (총 14일, 30일 천장 미만)
     const newEnd = new Date(
       capture.subscriptionsUpdate?.current_period_end as string,
     ).getTime();
@@ -331,6 +331,36 @@ describe("redeemReferral 보상 (Pro 1주 연장)", () => {
     // tier·status 는 이미 pro/active 라 변경 없음 (updates 객체에 없음)
     expect(capture.subscriptionsUpdate?.tier).toBeUndefined();
     expect(capture.subscriptionsUpdate?.status).toBeUndefined();
+  });
+
+  it("천장 가드 — 기존 만료가 28일 뒤면 +7일 = 35일 → 30일로 cap", async () => {
+    const capture: StubOptions["capture"] = {};
+    // 28일 뒤 만료 (28+7=35일이지만 30일 천장)
+    const futureEnd = new Date(
+      Date.now() + 28 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const supabase = makeStub({
+      referralsByCode: { id: "r1", referrer_id: "user-A" },
+      referralsByReferred: null,
+      referralsCompletedCount: 5,
+      subscriptionExisting: {
+        id: "sub-1",
+        tier: "pro",
+        status: "active",
+        current_period_end: futureEnd,
+      },
+      capture,
+    });
+    const result = await redeemReferral(supabase, "ABC234", "user-B");
+    expect(result.ok).toBe(true);
+    // current_period_end 가 now + 30일 (천장) 이하여야 함
+    const newEnd = new Date(
+      capture.subscriptionsUpdate?.current_period_end as string,
+    ).getTime();
+    const ceiling = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    // 천장과 정확히 같거나 1초 이하 차이 (테스트 실행 시간 보정)
+    expect(ceiling - newEnd).toBeLessThanOrEqual(1000);
+    expect(ceiling - newEnd).toBeGreaterThanOrEqual(0);
   });
 });
 
