@@ -32,6 +32,11 @@ const ADVISOR_FETCH_TIMEOUT_MS = 5000; // F5 review 후속 — Supabase API time
 let advisorCache: { fetchedAt: number; warnCount: number } | null = null;
 const ADVISOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 
+// env 미설정 안내 — 1시간 1회로 제한 (매 요청 stderr 폭주 차단).
+// review 후속 (I1): cache stamp 제거 후 매 요청 console.warn 가능성 → mute.
+let advisorEnvWarnedAt = 0;
+const ADVISOR_ENV_WARN_INTERVAL_MS = 60 * 60 * 1000; // 1시간
+
 /**
  * Supabase advisor security 의 WARN 레벨 카운트 조회.
  * 환경변수 미설정 시 graceful degrade — 0 반환 (alert 미노출).
@@ -45,13 +50,16 @@ async function getAdvisorWarnCount(): Promise<number> {
   const token = process.env.SUPABASE_PERSONAL_ACCESS_TOKEN;
   const projectRef = process.env.SUPABASE_PROJECT_REF;
 
-  // 환경변수 미설정 — fetch 자체 skip (dev 안내 포함)
+  // 환경변수 미설정 — fetch 자체 skip
   // F5 review 후속: cache stamp 안 함 → 사장님이 env 추가하면 다음 요청에서 즉시 활성.
-  // 이전엔 24h 동안 0 으로 stamp 되어 env 추가해도 24h 무시됐음.
+  // I1 review 후속: warn 은 1시간 1회만 (매 요청 폭주 차단).
   if (!token || !projectRef) {
-    console.warn(
-      "[dashboard-alerts] SUPABASE_PERSONAL_ACCESS_TOKEN / SUPABASE_PROJECT_REF 미설정 — advisor 신호 skip",
-    );
+    if (Date.now() - advisorEnvWarnedAt > ADVISOR_ENV_WARN_INTERVAL_MS) {
+      console.warn(
+        "[dashboard-alerts] SUPABASE_PERSONAL_ACCESS_TOKEN / SUPABASE_PROJECT_REF 미설정 — advisor 신호 skip",
+      );
+      advisorEnvWarnedAt = Date.now();
+    }
     return 0;
   }
 
