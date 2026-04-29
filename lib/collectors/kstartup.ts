@@ -23,7 +23,9 @@ const KEY = process.env.DATA_GO_KR_API_KEY || "";
 const PER_PAGE = 100;
 const MAX_PAGES = 20;
 
-function parseXmlTag(block: string, tag: string): string | null {
+// XML 한 블록에서 특정 태그 추출 + CDATA/HTML 엔티티/잔존 태그 정리
+// 단위 테스트에서 직접 호출하기 위해 export. 컬렉터 내부에서만 쓰여 외부 영향 없음.
+export function parseXmlTag(block: string, tag: string): string | null {
   const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
   if (!m) return null;
   return m[1]
@@ -36,7 +38,9 @@ function parseXmlTag(block: string, tag: string): string | null {
     .trim();
 }
 
-function fmtDate(raw: string | null): string | null {
+// 다양한 날짜 표기 ("YYYY-MM-DD", "YYYY.MM.DD", "YYYYMMDD") → ISO YYYY-MM-DD
+// 단위 테스트에서 직접 호출하기 위해 export.
+export function fmtDate(raw: string | null): string | null {
   if (!raw) return null;
   const m = raw.match(/(\d{4})[-.]?(\d{2})[-.]?(\d{2})/);
   return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
