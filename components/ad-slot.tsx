@@ -1,8 +1,9 @@
 // AdSense in-feed 슬롯 — env 미설정 시 placeholder, 설정 시 진짜 광고.
 //
-// 환경변수 2종 (NEXT_PUBLIC_ 접두 → 빌드 타임 inline. 클라이언트 번들에 포함):
-//   NEXT_PUBLIC_ADSENSE_ID         publisher ID, ca-pub-... (AdsenseLazyLoader 와 동일 변수 — 통일)
-//   NEXT_PUBLIC_ADSENSE_SLOT_INFEED in-feed 슬롯 ID (사장님 외부 액션, AdSense 콘솔에서 발급)
+// 환경변수 3종 (NEXT_PUBLIC_ 접두 → 빌드 타임 inline. 클라이언트 번들에 포함):
+//   NEXT_PUBLIC_ADSENSE_ID            publisher ID, ca-pub-... (AdsenseLazyLoader 와 동일 변수 — 통일)
+//   NEXT_PUBLIC_ADSENSE_SLOT_INFEED   in-feed 슬롯 ID (사장님 외부 액션, AdSense 콘솔에서 발급)
+//   NEXT_PUBLIC_ADSENSE_LAYOUT_INFEED in-feed 레이아웃 키 (예: -fb+5w+4e-db+86, AdSense 콘솔 발급)
 //
 // 동작 흐름:
 //   1. AdsenseLazyLoader 가 사용자 상호작용 또는 10초 후 adsbygoogle.js 라이브러리 로드.
@@ -18,6 +19,7 @@ import { useEffect } from "react";
 
 const PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
 const SLOT_INFEED = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
+const LAYOUT_INFEED = process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_INFEED;
 
 // adsbygoogle 전역 타입 — AdsenseLazyLoader 가 주입하는 큐 배열.
 // any 회피 위해 최소 형태만 선언.
@@ -68,6 +70,7 @@ export function AdSlot({ format = "fluid" }: AdSlotProps) {
         className="adsbygoogle block"
         style={{ display: "block" }}
         data-ad-format={format}
+        data-ad-layout-key={LAYOUT_INFEED}
         data-ad-client={PUBLISHER_ID}
         data-ad-slot={SLOT_INFEED}
       />
