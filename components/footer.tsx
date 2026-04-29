@@ -12,6 +12,7 @@
 
 import Link from "next/link";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
+import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
 
 const footerLinks = [
   { label: "1분 진단", href: "/quiz" },
@@ -68,6 +69,30 @@ export async function Footer() {
             ) : (
               <Link key={link.label} href={link.href} className={className}>
                 {link.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 카테고리별 정책 — /c/[slug] hub 4종 진입점 (Phase 2 A2 SEO).
+          푸터에 두는 이유: 내부 링크 SEO + 사용자 발견성 확보, 헤더 5개 메인 메뉴는
+          이미 빡빡해 추가 시 가독성 저하. */}
+      <div className="mb-6">
+        <div className="text-[12px] font-semibold tracking-[1px] text-grey-500 uppercase mb-2">
+          카테고리별 정책
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {CATEGORY_SLUGS.map((slug) => {
+            const hub = CATEGORY_HUBS[slug];
+            return (
+              <Link
+                key={slug}
+                href={`/c/${slug}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-grey-200 text-[13px] text-grey-700 hover:border-blue-400 hover:text-blue-600 no-underline transition-colors"
+              >
+                <span aria-hidden="true">{hub.emoji}</span>
+                {hub.label}
               </Link>
             );
           })}

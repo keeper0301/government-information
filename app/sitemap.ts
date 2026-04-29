@@ -13,6 +13,7 @@ import {
 import { getGuides } from "@/lib/policy-guides";
 import { PROVINCES } from "@/lib/regions";
 import { AGE_SLUGS, getAgeCounts } from "@/lib/age-targeting";
+import { CATEGORY_SLUGS } from "@/lib/category-hubs";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -97,6 +98,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
+
+  // 카테고리 hub 4종 — /c/[slug] (Phase 2 A2, youth/senior/business/housing).
+  // 4 hub 모두 SSG + benefit/age/occupation 세 축 매칭이라 thin-content 위험 낮음.
+  const hubPages: MetadataRoute.Sitemap = CATEGORY_SLUGS.map((slug) => ({
+    url: `${baseUrl}/c/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
 
   // 연령 long-tail 페이지 — 5 age × welfare/loan = 10 페이지.
   // 카운트 ≥ 5 만 sitemap 등록 (thin-content 방지). 카운트 0~4 인 age 는
@@ -232,6 +242,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...hubPages,
     ...eligibilityPages,
     ...crossPages,
     ...agePages,
