@@ -24,7 +24,9 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   const nowIso = new Date().toISOString();
 
   // 병렬 fetch — 외부 RPC 3회 (각 head:true count exact)
-  const [cronRes, pressKpi, deletionsRes] = await Promise.all([
+  // 한 RPC 실패 시 다른 신호 보존 (partial result 패턴)
+  // 예: getPressIngestKpi() 가 throw 해도 cron / deletions 신호는 그대로 노출
+  const results = await Promise.allSettled([
     admin
       .from("cron_failure_log")
       .select("id", { count: "exact", head: true })
@@ -36,33 +38,47 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
       .lt("scheduled_delete_at", nowIso),
   ]);
 
+  const [cronSettled, pressSettled, deletionsSettled] = results;
+
   const alerts: DashboardAlert[] = [];
 
-  if ((cronRes.count ?? 0) >= 1) {
+  // cron 실패 알림 — fulfilled 만 평가, rejected 면 console.warn 후 skip
+  if (cronSettled.status === "fulfilled" && (cronSettled.value.count ?? 0) >= 1) {
     alerts.push({
       key: "cron_failure",
       label: "cron 실패 알림",
-      count: cronRes.count ?? 0,
+      count: cronSettled.value.count ?? 0,
       href: "/admin/cron-failures",
     });
+  } else if (cronSettled.status === "rejected") {
+    console.warn("[dashboard-alerts] cron_failure_log fetch 실패:", cronSettled.reason);
   }
 
-  if (pressKpi.candidates_24h >= PRESS_INGEST_BACKLOG_THRESHOLD) {
+  // press-ingest 광역 보도자료 후보 적체
+  if (
+    pressSettled.status === "fulfilled" &&
+    pressSettled.value.candidates_24h >= PRESS_INGEST_BACKLOG_THRESHOLD
+  ) {
     alerts.push({
       key: "press_ingest_backlog",
       label: "광역 보도자료 후보 적체",
-      count: pressKpi.candidates_24h,
+      count: pressSettled.value.candidates_24h,
       href: "/admin/press-ingest",
     });
+  } else if (pressSettled.status === "rejected") {
+    console.warn("[dashboard-alerts] getPressIngestKpi 실패:", pressSettled.reason);
   }
 
-  if ((deletionsRes.count ?? 0) >= 1) {
+  // 만료 탈퇴 미처리
+  if (deletionsSettled.status === "fulfilled" && (deletionsSettled.value.count ?? 0) >= 1) {
     alerts.push({
       key: "deletions_overdue",
       label: "만료 탈퇴 미처리",
-      count: deletionsRes.count ?? 0,
+      count: deletionsSettled.value.count ?? 0,
       href: "/admin#user-search",
     });
+  } else if (deletionsSettled.status === "rejected") {
+    console.warn("[dashboard-alerts] pending_deletions fetch 실패:", deletionsSettled.reason);
   }
 
   return alerts;
