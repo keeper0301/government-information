@@ -20,6 +20,8 @@ import {
   SimpleBarChart,
   SimpleLineChart,
 } from "@/components/admin/trend-charts";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "헬스 대시보드 | 어드민",
@@ -61,109 +63,101 @@ export default async function AdminHealthPage() {
   const warnCount = allItems.filter((i) => i.status === "warn").length;
 
   return (
-    <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <div className="max-w-[980px] mx-auto px-5">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · 헬스 대시보드
+    <div className="max-w-[980px]">
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 운영 상태"
+        title="사이트 헬스 한눈에"
+        description="매일 첫 페이지로 — 이상 신호 즉시 가시화. DB·cron·환경변수·사용자 한 곳에."
+      />
+
+      {/* 이상 신호 요약 배너 */}
+      <SummaryBanner errorCount={errorCount} warnCount={warnCount} />
+
+      {/* Phase 6 — 임계치 alert (가입 0·결제 실패·cron 연속 실패) */}
+      {thresholdAlerts.length > 0 && (
+        <section className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-5">
+          <h2 className="text-[15px] font-bold text-red-900 mb-3">
+            ⚠️ 임계치 {thresholdAlerts.length}건 초과
+          </h2>
+          <ul className="text-[13px] text-red-800 space-y-1">
+            {thresholdAlerts.map((a) => (
+              <li key={a.key}>• {a.message}</li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-red-700 mt-3">
+            매일 09:00 KST cron `/api/cron/health-alert` 가 같은 임계치 점검 후 사장님 이메일 발송.
           </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            사이트 헬스 한눈에
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            매일 첫 페이지로 — 이상 신호 즉시 가시화. DB·cron·환경변수·사용자 한 곳에.
-          </p>
+        </section>
+      )}
+
+      {/* DB 헬스 */}
+      <Section title="📊 DB 콘텐츠" items={snap.db} />
+
+      {/* Cron 헬스 */}
+      <Section title="⏰ Cron 헬스" items={snap.cron} />
+
+      {/* 사용자 헬스 */}
+      <Section title="👥 사용자 활동" items={snap.users} />
+
+      {/* 환경변수 */}
+      <Section title="🔐 환경변수" items={snap.env} />
+
+      {/* 데이터 일관성 (#13) — orphan FK · 만료 cron 미처리 */}
+      <Section title="🔗 데이터 일관성" items={integrity} />
+
+      {/* Phase 6 — 30일 추세 차트 (DAU·구독·콘텐츠) */}
+      <section className="mt-10 pt-8 border-t border-grey-200">
+        <h2 className="text-[16px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">
+          📈 30일 추세
+        </h2>
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="bg-white rounded-2xl border border-grey-100 p-4">
+            <SimpleLineChart title="DAU (일별 로그인)" data={trends.dau} />
+          </div>
+          <div className="bg-white rounded-2xl border border-grey-100 p-4">
+            <SimpleBarChart
+              title="구독 신규 / 취소"
+              series={[
+                { label: "신규", color: "#3182F6", data: trends.subscriptionsNew },
+                { label: "취소", color: "#F04452", data: trends.subscriptionsCancelled },
+              ]}
+            />
+          </div>
+          <div className="bg-white rounded-2xl border border-grey-100 p-4">
+            <SimpleBarChart
+              title="블로그 발행"
+              series={[
+                { label: "blog", color: "#03B26C", data: trends.blogPublished },
+              ]}
+            />
+          </div>
+          <div className="bg-white rounded-2xl border border-grey-100 p-4">
+            <SimpleBarChart
+              title="뉴스 수집"
+              series={[
+                { label: "news", color: "#A234C7", data: trends.newsCollected },
+              ]}
+            />
+          </div>
         </div>
+      </section>
 
-        {/* 이상 신호 요약 배너 */}
-        <SummaryBanner errorCount={errorCount} warnCount={warnCount} />
-
-        {/* Phase 6 — 임계치 alert (가입 0·결제 실패·cron 연속 실패) */}
-        {thresholdAlerts.length > 0 && (
-          <section className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-5">
-            <h2 className="text-[15px] font-bold text-red-900 mb-3">
-              ⚠️ 임계치 {thresholdAlerts.length}건 초과
-            </h2>
-            <ul className="text-[13px] text-red-800 space-y-1">
-              {thresholdAlerts.map((a) => (
-                <li key={a.key}>• {a.message}</li>
-              ))}
-            </ul>
-            <p className="text-[11px] text-red-700 mt-3">
-              매일 09:00 KST cron `/api/cron/health-alert` 가 같은 임계치 점검 후 사장님 이메일 발송.
-            </p>
-          </section>
-        )}
-
-        {/* DB 헬스 */}
-        <Section title="📊 DB 콘텐츠" items={snap.db} />
-
-        {/* Cron 헬스 */}
-        <Section title="⏰ Cron 헬스" items={snap.cron} />
-
-        {/* 사용자 헬스 */}
-        <Section title="👥 사용자 활동" items={snap.users} />
-
-        {/* 환경변수 */}
-        <Section title="🔐 환경변수" items={snap.env} />
-
-        {/* 데이터 일관성 (#13) — orphan FK · 만료 cron 미처리 */}
-        <Section title="🔗 데이터 일관성" items={integrity} />
-
-        {/* Phase 6 — 30일 추세 차트 (DAU·구독·콘텐츠) */}
-        <section className="mt-10 pt-8 border-t border-grey-200">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">
-            📈 30일 추세
-          </h2>
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="bg-white rounded-2xl border border-grey-100 p-4">
-              <SimpleLineChart title="DAU (일별 로그인)" data={trends.dau} />
-            </div>
-            <div className="bg-white rounded-2xl border border-grey-100 p-4">
-              <SimpleBarChart
-                title="구독 신규 / 취소"
-                series={[
-                  { label: "신규", color: "#3182F6", data: trends.subscriptionsNew },
-                  { label: "취소", color: "#F04452", data: trends.subscriptionsCancelled },
-                ]}
-              />
-            </div>
-            <div className="bg-white rounded-2xl border border-grey-100 p-4">
-              <SimpleBarChart
-                title="블로그 발행"
-                series={[
-                  { label: "blog", color: "#03B26C", data: trends.blogPublished },
-                ]}
-              />
-            </div>
-            <div className="bg-white rounded-2xl border border-grey-100 p-4">
-              <SimpleBarChart
-                title="뉴스 수집"
-                series={[
-                  { label: "news", color: "#A234C7", data: trends.newsCollected },
-                ]}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* 빠른 액션 */}
-        <section className="mt-10 pt-8 border-t border-grey-200">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-            진단 페이지
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <DiagLink href="/admin/cron-failures" label="cron 실패 로그" />
-            <DiagLink href="/admin/alimtalk" label="알림톡 운영" />
-            <DiagLink href="/admin/news" label="뉴스 수집 점검" />
-            <DiagLink href="/admin/enrich-detail" label="공고 상세 보강" />
-            <DiagLink href="/admin/targeting" label="본문 분석 진행률" />
-            <DiagLink href="/admin" label="← 어드민 홈" />
-          </div>
-        </section>
-      </div>
-    </main>
+      {/* 빠른 액션 */}
+      <section className="mt-10 pt-8 border-t border-grey-200">
+        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          진단 페이지
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <DiagLink href="/admin/cron-failures" label="cron 실패 로그" />
+          <DiagLink href="/admin/alimtalk" label="알림톡 운영" />
+          <DiagLink href="/admin/news" label="뉴스 수집 점검" />
+          <DiagLink href="/admin/enrich-detail" label="공고 상세 보강" />
+          <DiagLink href="/admin/targeting" label="본문 분석 진행률" />
+          <DiagLink href="/admin" label="← 어드민 홈" />
+        </div>
+      </section>
+    </div>
   );
 }
 
