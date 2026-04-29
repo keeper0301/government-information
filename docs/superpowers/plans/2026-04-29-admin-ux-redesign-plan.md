@@ -15,7 +15,7 @@
 ## File Structure
 
 ### 신규 (6개)
-- `lib/admin/menu.ts` — 그룹 5 + 페이지 19 메타데이터 단일 source + 활성 매칭 헬퍼
+- `lib/admin/menu.ts` — 그룹 5 + 페이지 18 메타데이터 단일 source + 활성 매칭 헬퍼
 - `lib/admin/__tests__/menu.test.ts` — vitest 단위 테스트
 - `lib/admin/dashboard-alerts.ts` — "지금 처리 필요" 3 신호 fetch (cron 실패·press-ingest 적체·만료 탈퇴)
 - `components/admin/sidebar.tsx` — 클라이언트 컴포넌트, 사이드바 메뉴 렌더 + 활성 highlight
@@ -64,9 +64,9 @@ describe("ADMIN_MENU 구조", () => {
     expect(ADMIN_MENU.map((g) => g.number)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("총 페이지 메뉴 항목 19개", () => {
+  it("총 페이지 메뉴 항목 18개", () => {
     const total = ADMIN_MENU.reduce((s, g) => s + g.items.length, 0);
-    expect(total).toBe(19);
+    expect(total).toBe(18);
   });
 
   it("href 중복 없음", () => {
@@ -123,7 +123,7 @@ Expected: FAIL — `Cannot find module '../menu'`
 ```typescript
 // lib/admin/menu.ts
 // ============================================================
-// 어드민 사이드바 메뉴 단일 source of truth (5 그룹 / 페이지 19)
+// 어드민 사이드바 메뉴 단일 source of truth (5 그룹 / 페이지 18)
 // ============================================================
 // 그룹 순서 = 사장님 운영 우선순위 (운영점검 → 컨텐츠 → 알림 → 지표 → 사용자).
 // 새 admin 페이지 추가 시 여기에만 추가하면 사이드바·활성 매칭 자동 반영.
