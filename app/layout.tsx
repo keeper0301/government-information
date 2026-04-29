@@ -7,6 +7,7 @@ import { Footer } from "@/components/footer";
 import { AdsenseLazyLoader } from "@/components/adsense-lazy-loader";
 import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
+import { PWARegister } from "@/components/pwa-register";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
@@ -154,6 +155,9 @@ export default async function RootLayout({
         {children}
         <Footer />
         <ChatbotPanel />
+        {/* PWA service worker 등록 — offline 캐싱 + 향후 push 알림 listener.
+            client only, 시각 출력 없음, dev 모드(localhost)는 자동 skip. */}
+        <PWARegister />
         {/* OAuth/매직링크 callback 의 ?auth_event 쿼리를 GA4 로 전송.
             useSearchParams 사용하므로 Suspense 경계로 감싸 정적 렌더 영향 방지. */}
         <Suspense fallback={null}>
