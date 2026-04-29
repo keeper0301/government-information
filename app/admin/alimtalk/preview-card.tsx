@@ -131,7 +131,7 @@ export function AlimtalkPreviewCard() {
               key={t}
               type="button"
               onClick={() => setTemplate(t)}
-              className={`px-3 py-2 text-[12px] font-semibold transition-colors ${
+              className={`px-3 py-2 text-xs font-semibold transition-colors ${
                 template === t
                   ? "bg-blue-500 text-white"
                   : "bg-white text-grey-700 hover:bg-grey-50"
@@ -144,11 +144,11 @@ export function AlimtalkPreviewCard() {
 
         <div className="rounded-lg border border-grey-200 bg-white p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[13px] font-bold text-grey-900">변수 입력</p>
+            <p className="text-sm font-bold text-grey-900">변수 입력</p>
             <button
               type="button"
               onClick={resetToDefaults}
-              className="text-[11px] text-blue-500 hover:underline"
+              className="text-xs text-blue-500 hover:underline"
             >
               샘플로 초기화
             </button>
@@ -158,18 +158,18 @@ export function AlimtalkPreviewCard() {
             {VAR_META[template].map((meta) => (
               <label key={meta.key} className="block">
                 <div className="flex items-baseline justify-between mb-0.5">
-                  <code className="text-[11px] text-grey-700 font-mono">
+                  <code className="text-xs text-grey-700 font-mono">
                     {meta.label}
                   </code>
                   {meta.hint && (
-                    <span className="text-[10px] text-grey-500">{meta.hint}</span>
+                    <span className="text-xs text-grey-500">{meta.hint}</span>
                   )}
                 </div>
                 <input
                   type="text"
                   value={currentVars[meta.key] ?? ""}
                   onChange={(e) => updateVar(meta.key, e.target.value)}
-                  className="w-full px-2.5 py-1.5 border border-grey-200 rounded text-[12px] text-grey-900 focus:border-blue-500 outline-none"
+                  className="w-full px-2.5 py-1.5 border border-grey-200 rounded text-xs text-grey-900 focus:border-blue-500 outline-none"
                 />
               </label>
             ))}
@@ -177,7 +177,7 @@ export function AlimtalkPreviewCard() {
 
           {/* 글자 수 게이지 — 카카오 1,000자 제한 */}
           <div
-            className={`mt-3 text-[11px] ${
+            className={`mt-3 text-xs ${
               overLimit ? "text-red font-semibold" : "text-grey-600"
             }`}
           >
@@ -189,14 +189,14 @@ export function AlimtalkPreviewCard() {
 
       {/* 우: 카톡 카드 시각화 */}
       <div>
-        <p className="text-[13px] font-bold text-grey-900 mb-3">카톡 카드 미리보기</p>
+        <p className="text-sm font-bold text-grey-900 mb-3">카톡 카드 미리보기</p>
         <div className="bg-[#abc1d1] rounded-2xl p-4 max-w-[400px] min-h-[300px]">
           {/* 발송자 채널 헤더 — 카카오톡 채널 알림은 채널 이름이 상단에 표시 */}
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center text-[12px] font-bold text-black">
+            <div className="w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center text-xs font-bold text-black">
               ke
             </div>
-            <p className="text-[12px] font-semibold text-white drop-shadow-sm">
+            <p className="text-xs font-semibold text-white drop-shadow-sm">
               keepioo
             </p>
           </div>
@@ -205,14 +205,14 @@ export function AlimtalkPreviewCard() {
           <div className="bg-white rounded-xl overflow-hidden shadow-sm">
             {/* 알림톡 헤더 라벨 (노란색 띠) */}
             <div className="bg-yellow-300 px-3 py-1.5">
-              <p className="text-[11px] font-bold text-black tracking-tight">
+              <p className="text-xs font-bold text-black tracking-tight">
                 알림톡 도착
               </p>
             </div>
 
             {/* 본문 영역 — whitespace-pre-line 으로 \n 줄바꿈 보존 */}
             <div className="p-4">
-              <p className="text-[13px] text-grey-900 leading-[1.55] whitespace-pre-line break-keep">
+              <p className="text-sm text-grey-900 leading-[1.55] whitespace-pre-line break-keep">
                 {body}
               </p>
             </div>
@@ -223,7 +223,7 @@ export function AlimtalkPreviewCard() {
                 href={detailUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="block py-2.5 text-center text-[13px] font-semibold text-grey-900 hover:bg-grey-50 transition-colors no-underline"
+                className="block py-2.5 text-center text-sm font-semibold text-grey-900 hover:bg-grey-50 transition-colors no-underline"
               >
                 {BUTTON_LABEL_PRIMARY[template]}
               </a>
@@ -231,7 +231,7 @@ export function AlimtalkPreviewCard() {
                 href="https://www.keepioo.com/mypage/notifications"
                 target="_blank"
                 rel="noreferrer"
-                className="block py-2.5 text-center text-[13px] font-semibold text-grey-700 border-t border-grey-100 hover:bg-grey-50 transition-colors no-underline"
+                className="block py-2.5 text-center text-sm font-semibold text-grey-700 border-t border-grey-100 hover:bg-grey-50 transition-colors no-underline"
               >
                 알림 설정 변경
               </a>
@@ -239,13 +239,13 @@ export function AlimtalkPreviewCard() {
           </div>
 
           {/* 시각/시간 (카톡 채널 알림 메타) */}
-          <p className="text-[10px] text-white/80 mt-2 text-right drop-shadow-sm">
+          <p className="text-xs text-white/80 mt-2 text-right drop-shadow-sm">
             샘플 — 실제 발송 시각 표기 자리
           </p>
         </div>
 
         {/* 보조 정보 */}
-        <div className="mt-3 rounded-lg border border-grey-200 bg-grey-50 p-3 text-[11px] text-grey-700 leading-[1.6]">
+        <div className="mt-3 rounded-lg border border-grey-200 bg-grey-50 p-3 text-xs text-grey-700 leading-[1.6]">
           <p className="mb-1">
             <strong className="text-grey-900">버튼 1 URL:</strong>{" "}
             <code className="text-blue-700 font-mono break-all">{detailUrl}</code>

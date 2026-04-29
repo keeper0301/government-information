@@ -123,7 +123,7 @@ export default async function MyActionsPage({
           action="/admin/my-actions"
           className="mb-5 bg-white border border-grey-100 rounded-xl p-4 flex flex-wrap items-end gap-3"
         >
-          <label className="text-[13px] font-medium text-grey-700 flex-1 min-w-[200px]">
+          <label className="text-sm font-medium text-grey-700 flex-1 min-w-[200px]">
             <span className="block mb-1">검색</span>
             <input
               type="text"
@@ -131,42 +131,42 @@ export default async function MyActionsPage({
               defaultValue={q ?? ""}
               placeholder="라벨 / 영문 enum / 사용자 UUID"
               maxLength={100}
-              className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-grey-200 rounded-lg text-sm text-grey-900 focus:border-blue-500 outline-none"
             />
           </label>
-          <label className="text-[13px] font-medium text-grey-700">
+          <label className="text-sm font-medium text-grey-700">
             <span className="block mb-1">시작일</span>
             <input
               type="date"
               name="from"
               defaultValue={from ?? ""}
-              className="px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+              className="px-3 py-2 border border-grey-200 rounded-lg text-sm text-grey-900 focus:border-blue-500 outline-none"
             />
           </label>
-          <label className="text-[13px] font-medium text-grey-700">
+          <label className="text-sm font-medium text-grey-700">
             <span className="block mb-1">종료일</span>
             <input
               type="date"
               name="to"
               defaultValue={to ?? ""}
-              className="px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+              className="px-3 py-2 border border-grey-200 rounded-lg text-sm text-grey-900 focus:border-blue-500 outline-none"
             />
           </label>
           <button
             type="submit"
-            className="min-h-[44px] px-4 text-[13px] font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+            className="min-h-[44px] px-4 text-sm font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600"
           >
             적용
           </button>
           {(from || to || q) && (
             <Link
               href="/admin/my-actions"
-              className="min-h-[44px] px-4 inline-flex items-center text-[13px] font-semibold rounded-lg border border-grey-200 text-grey-700 hover:bg-grey-50 no-underline"
+              className="min-h-[44px] px-4 inline-flex items-center text-sm font-semibold rounded-lg border border-grey-200 text-grey-700 hover:bg-grey-50 no-underline"
             >
               초기화
             </Link>
           )}
-          <span className="text-[13px] text-grey-600 ml-auto">
+          <span className="text-sm text-grey-600 ml-auto">
             {q && <>검색어: <strong className="text-grey-900">{q}</strong> · </>}
             {from || to ? (
               <>기간: {from || "전체"} ~ {to || "현재"}</>
@@ -178,12 +178,12 @@ export default async function MyActionsPage({
 
         {/* 목록 */}
         {actions.length === 0 ? (
-          <div className="bg-white border border-grey-100 rounded-xl p-10 text-center text-[14px] text-grey-600">
+          <div className="bg-white border border-grey-100 rounded-xl p-10 text-center text-sm text-grey-600">
             수행 기록 없음
           </div>
         ) : (
           <div className="bg-white border border-grey-100 rounded-xl p-5">
-            <table className="w-full text-[13px]">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-grey-600 border-b border-grey-200">
                   <th className="py-2 font-medium w-[160px]">시각</th>
@@ -200,13 +200,13 @@ export default async function MyActionsPage({
                       key={a.id}
                       className="border-b border-grey-100 last:border-b-0 align-top"
                     >
-                      <td className="py-2 text-grey-600 text-[12px] whitespace-nowrap">
+                      <td className="py-2 text-grey-600 text-xs whitespace-nowrap">
                         {fmtDate(a.createdAt)}
                       </td>
                       <td className="py-2 font-medium text-grey-900">
                         {ACTION_LABELS[a.action] ?? a.action}
                       </td>
-                      <td className="py-2 text-[12px]">
+                      <td className="py-2 text-xs">
                         {a.targetUserId ? (
                           <Link
                             href={`/admin/users/${a.targetUserId}`}
@@ -223,7 +223,7 @@ export default async function MyActionsPage({
                           <span className="text-grey-500">—</span>
                         )}
                       </td>
-                      <td className="py-2 text-grey-700 text-[12px] font-mono break-all">
+                      <td className="py-2 text-grey-700 text-xs font-mono break-all">
                         {a.details ? JSON.stringify(a.details) : "—"}
                       </td>
                     </tr>
@@ -244,7 +244,7 @@ export default async function MyActionsPage({
         )}
 
         {/* 풋노트 */}
-        <p className="mt-8 text-[13px] text-grey-600 leading-[1.6]">
+        <p className="mt-8 text-sm text-grey-600 leading-[1.6]">
           액션 기록은 DB 트리거(018)로 UPDATE/DELETE/TRUNCATE 모두 차단됩니다.
           <br />
           수동 수정이 필요한 경우 임시 <code>DROP TRIGGER</code> → 수정 → 재생성 절차를 따르세요.

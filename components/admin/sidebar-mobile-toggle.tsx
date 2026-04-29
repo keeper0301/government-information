@@ -97,7 +97,7 @@ export function SidebarMobileToggle() {
         aria-label="메뉴 열기"
         aria-expanded={isOpen}
         aria-controls="admin-mobile-drawer"
-        className="md:hidden fixed top-3 left-3 z-40 w-11 h-11 bg-white border border-grey-200 rounded-lg flex items-center justify-center text-[20px] cursor-pointer shadow-sm"
+        className="md:hidden fixed top-3 left-3 z-40 w-11 h-11 bg-white border border-grey-200 rounded-lg flex items-center justify-center text-xl cursor-pointer shadow-sm"
       >
         ☰
       </button>
@@ -130,7 +130,7 @@ export function SidebarMobileToggle() {
           type="button"
           onClick={() => setIsOpen(false)}
           aria-label="메뉴 닫기"
-          className="absolute top-3 right-3 z-10 w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-[18px] cursor-pointer"
+          className="absolute top-3 right-3 z-10 w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-lg cursor-pointer"
         >
           ×
         </button>

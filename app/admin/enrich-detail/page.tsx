@@ -249,7 +249,7 @@ export default async function EnrichDetailPage({
 
       {/* 에러 — 빨강 강조 */}
       {params.error && (
-        <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-[14px] text-red mb-4">
+        <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-sm text-red mb-4">
           ❌ {params.error}
         </div>
       )}
@@ -266,28 +266,28 @@ export default async function EnrichDetailPage({
         >
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
-              <div className="text-[18px] font-extrabold mb-1">
+              <div className="text-lg font-extrabold mb-1">
                 {resultOk ? "✅ 보강 실행 완료" : "❌ 보강 실행 실패"}
               </div>
-              <div className="text-[13px] text-grey-700">
+              <div className="text-sm text-grey-700">
                 /api/enrich · 약 40초 소요
               </div>
-              <div className="text-[12px] text-grey-600 mt-1">
+              <div className="text-xs text-grey-600 mt-1">
                 {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
               </div>
             </div>
             <Link
               href="/admin/enrich-detail"
-              className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
+              className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-xs font-semibold text-grey-700 hover:bg-grey-50 no-underline"
             >
               닫기
             </Link>
           </div>
           <details className="mt-3">
-            <summary className="cursor-pointer text-[12px] font-semibold text-grey-700 hover:text-grey-900">
+            <summary className="cursor-pointer text-xs font-semibold text-grey-700 hover:text-grey-900">
               ▼ 자세히 (JSON 결과)
             </summary>
-            <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
+            <pre className="text-xs leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
               {JSON.stringify(resultObj, null, 2)}
             </pre>
           </details>
@@ -302,19 +302,19 @@ export default async function EnrichDetailPage({
         >
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
-              <div className="text-[18px] font-extrabold mb-1">
+              <div className="text-lg font-extrabold mb-1">
                 ✅ 영구 skip 해제 완료 — 총 {resetTotal.toLocaleString()}건
               </div>
-              <div className="text-[13px] text-grey-700">
+              <div className="text-sm text-grey-700">
                 welfare {resetWelfare.toLocaleString()}건 · loan {resetLoan.toLocaleString()}건 · 다음 cron (5분 이내) 부터 재시도 시작
               </div>
-              <div className="text-[12px] text-grey-600 mt-1">
+              <div className="text-xs text-grey-600 mt-1">
                 {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
               </div>
             </div>
             <Link
               href="/admin/enrich-detail"
-              className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
+              className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-xs font-semibold text-grey-700 hover:bg-grey-50 no-underline"
             >
               닫기
             </Link>
@@ -326,12 +326,12 @@ export default async function EnrichDetailPage({
       <form action={triggerEnrich} target="_blank">
         <button
           type="submit"
-          className="w-full py-3 bg-blue-500 text-white rounded-lg text-[15px] font-bold hover:bg-blue-600 transition-colors cursor-pointer"
+          className="w-full py-3 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors cursor-pointer"
         >
           지금 10건 보강 실행 ↗
         </button>
       </form>
-      <p className="mt-3 text-[13px] text-grey-600 leading-[1.65]">
+      <p className="mt-3 text-sm text-grey-600 leading-[1.65]">
         * 한 번에 10건 × 4초 간격 = 약 40초 소요 (Vercel 60초 한도 안전).
         <br />
         * 성공 row 는 7일 cooldown, 실패 row 는 7일 cooldown + 3회 도달 시 영구 skip.
@@ -340,10 +340,10 @@ export default async function EnrichDetailPage({
       {/* 058 영구 skip 일괄 해제 — 외부 API 회복 시 재시도 진입점 */}
       {stats.skipped > 0 && (
         <div className="mt-8 pt-6 border-t border-grey-200">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-2">
+          <h2 className="text-base font-bold text-grey-900 mb-2">
             영구 skip 해제 ({stats.skipped.toLocaleString()}건)
           </h2>
-          <p className="text-[13px] text-grey-700 leading-[1.65] mb-3">
+          <p className="text-sm text-grey-700 leading-[1.65] mb-3">
             외부 Detail API (예: bokjiro) 가 회복됐다는 확신이 들 때 누르세요.
             detail_failed_count·last_detail_failed_at 까지 함께 reset 되어 다음 cron 부터
             즉시 재시도합니다. 회복 안 됐다면 같은 row 가 3번 더 실패해서 다시 영구 skip 됩니다.
@@ -351,7 +351,7 @@ export default async function EnrichDetailPage({
           <form action={resetPermanentSkips} target="_blank">
             <button
               type="submit"
-              className="w-full py-3 bg-red text-white rounded-lg text-[15px] font-bold hover:opacity-90 transition-opacity cursor-pointer"
+              className="w-full py-3 bg-red text-white rounded-lg text-sm font-bold hover:opacity-90 transition-opacity cursor-pointer"
             >
               {stats.skipped.toLocaleString()}건 영구 skip 전부 해제 ↗
             </button>
@@ -359,7 +359,7 @@ export default async function EnrichDetailPage({
         </div>
       )}
 
-      <p className="mt-8 text-[13px] flex items-center gap-4 flex-wrap">
+      <p className="mt-8 text-sm flex items-center gap-4 flex-wrap">
         <Link href="/admin" className="text-blue-500 font-medium underline">← 어드민 홈</Link>
       </p>
     </div>
@@ -379,11 +379,11 @@ function StatCard({
 }) {
   return (
     <div className="bg-white rounded-lg border border-grey-200 p-4">
-      <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">{label}</div>
-      <div className={`text-[20px] font-extrabold ${danger ? "text-red" : "text-grey-900"}`}>
+      <div className="text-xs font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">{label}</div>
+      <div className={`text-xl font-extrabold ${danger ? "text-red" : "text-grey-900"}`}>
         {value}
       </div>
-      {hint && <div className="text-[12px] text-grey-600 mt-0.5">{hint}</div>}
+      {hint && <div className="text-xs text-grey-600 mt-0.5">{hint}</div>}
     </div>
   );
 }

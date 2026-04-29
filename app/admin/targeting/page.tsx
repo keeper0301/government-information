@@ -115,7 +115,7 @@ export default async function TargetingAdminPage() {
 
         {/* 진행률 카드 — 테이블별 */}
         <section className="mb-8 space-y-4">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">분석 진행률</h2>
+          <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">분석 진행률</h2>
           {Object.entries(stats).map(([table, s]) => {
             // 전체 대비 분석 완료 비율 (0으로 나누기 방지)
             const pct = s.total > 0 ? Math.round((s.analyzed / s.total) * 100) : 0;
@@ -132,12 +132,12 @@ export default async function TargetingAdminPage() {
                 key={table}
                 className="bg-white rounded-lg border border-grey-200 p-5"
               >
-                <h3 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+                <h3 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">
                   {TABLE_LABELS[table] ?? table}
                 </h3>
 
                 {/* 분석 완료 숫자 + 비율 */}
-                <p className="text-[13px] text-grey-700 mb-2">
+                <p className="text-sm text-grey-700 mb-2">
                   분석 완료:{" "}
                   <span className="font-semibold">
                     {s.analyzed.toLocaleString()}
@@ -157,7 +157,7 @@ export default async function TargetingAdminPage() {
                 </div>
 
                 {/* income_target_level 분포 */}
-                <div className="text-[13px] text-grey-600 bg-grey-50 rounded-md px-3 py-2 border border-grey-100 leading-[1.5]">
+                <div className="text-sm text-grey-600 bg-grey-50 rounded-md px-3 py-2 border border-grey-100 leading-[1.5]">
                   <span className="font-semibold text-grey-700">income 분포 </span>
                   <span className="ml-1">
                     low <strong>{s.income.low.toLocaleString()}</strong>
@@ -179,26 +179,26 @@ export default async function TargetingAdminPage() {
 
         {/* 백필 trigger 안내 */}
         <section className="border-2 border-emerald-300 rounded-xl p-5 bg-emerald-50/30 mb-8">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-2 tracking-[-0.3px]">
+          <h2 className="text-base font-bold text-grey-900 mb-2 tracking-[-0.3px]">
             백필 batch trigger
           </h2>
-          <p className="text-[14px] text-grey-700 mb-1 leading-[1.6]">
+          <p className="text-sm text-grey-700 mb-1 leading-[1.6]">
             한 번 호출에 최대 1,000건 처리합니다. 미분석 공고가 남아 있으면 반복 호출하세요.
           </p>
-          <p className="text-[13px] text-grey-600 mb-3 leading-[1.6]">
+          <p className="text-sm text-grey-600 mb-3 leading-[1.6]">
             cron이 매일 08:00 UTC에 자동 실행되지만, 즉시 백필이 필요할 때 아래 명령어를 사용하세요.
           </p>
 
           {/* curl 명령어 코드 블록 */}
-          <code className="block text-[12px] text-zinc-800 bg-white px-4 py-3 rounded-lg border border-zinc-200 font-mono break-all leading-relaxed">
+          <code className="block text-xs text-zinc-800 bg-white px-4 py-3 rounded-lg border border-zinc-200 font-mono break-all leading-relaxed">
             curl -H &quot;Authorization: Bearer $CRON_SECRET&quot; \<br />
             &nbsp;&nbsp;&quot;https://keepioo.com/api/enrich-targeting?backfill=1&amp;batch=1000&quot;
           </code>
 
-          <p className="text-[13px] text-zinc-600 mt-3 leading-[1.6]">
+          <p className="text-sm text-zinc-600 mt-3 leading-[1.6]">
             ⚠️ 브라우저 클릭으로는 Bearer 헤더 첨부 불가 — curl 또는 cron 자동 실행(08:00 UTC)을 사용하세요.
           </p>
-          <p className="text-[13px] text-zinc-600 mt-1 leading-[1.6]">
+          <p className="text-sm text-zinc-600 mt-1 leading-[1.6]">
             $CRON_SECRET 는 Vercel 환경변수 CRON_SECRET 값. 로컬에서는{" "}
             <code className="bg-white px-1 py-0.5 rounded border border-zinc-200">
               CRON_SECRET=xxx curl ...
@@ -210,7 +210,7 @@ export default async function TargetingAdminPage() {
         {/* 어드민 허브로 돌아가기 */}
         <Link
           href="/admin"
-          className="text-[13px] font-medium text-blue-500 hover:underline"
+          className="text-sm font-medium text-blue-500 hover:underline"
         >
           ← 어드민 허브로
         </Link>

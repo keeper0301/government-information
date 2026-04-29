@@ -162,7 +162,7 @@ export default async function CronTriggerPage({
 
       {/* 에러 — 빨강 강조 */}
       {params.error && (
-        <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-[14px] text-red mb-4">
+        <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-sm text-red mb-4">
           ❌ {params.error}
         </div>
       )}
@@ -180,29 +180,29 @@ export default async function CronTriggerPage({
         >
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
-              <div className="text-[18px] font-extrabold mb-1">
+              <div className="text-lg font-extrabold mb-1">
                 {params.ok === "1" ? "✅ 실행 완료" : "❌ 실행 실패"}
               </div>
-              <div className="text-[13px] font-mono text-grey-700">
+              <div className="text-sm font-mono text-grey-700">
                 {params.path}
               </div>
-              <div className="text-[12px] text-grey-600 mt-1">
+              <div className="text-xs text-grey-600 mt-1">
                 {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
               </div>
             </div>
             <Link
               href="/admin/cron-trigger"
-              className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
+              className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-xs font-semibold text-grey-700 hover:bg-grey-50 no-underline"
             >
               닫기
             </Link>
           </div>
           {/* 자세히 — 기본 접힘. summary 가 한 줄 요약 표시. */}
           <details className="mt-3">
-            <summary className="cursor-pointer text-[12px] font-semibold text-grey-700 hover:text-grey-900">
+            <summary className="cursor-pointer text-xs font-semibold text-grey-700 hover:text-grey-900">
               ▼ 자세히 (JSON 결과)
             </summary>
-            <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
+            <pre className="text-xs leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
               {JSON.stringify(resultObj, null, 2)}
             </pre>
           </details>
@@ -213,7 +213,7 @@ export default async function CronTriggerPage({
           결과 배너를 못 봐도 여기 새 row 가 떠 있으면 trigger 작동 확인 가능. */}
       {recentRuns.length > 0 && (
         <div className="bg-white border border-grey-200 rounded-lg p-4 mb-6">
-          <div className="text-[13px] font-bold text-grey-900 mb-2">
+          <div className="text-sm font-bold text-grey-900 mb-2">
             최근 실행 {recentRuns.length}건
           </div>
           <ul className="space-y-1.5">
@@ -229,7 +229,7 @@ export default async function CronTriggerPage({
               return (
                 <li
                   key={r.id}
-                  className="flex items-center gap-2 text-[12px] font-mono"
+                  className="flex items-center gap-2 text-xs font-mono"
                 >
                   <span className={r.ok ? "text-green" : "text-red"}>
                     {r.ok ? "✅" : "❌"}
@@ -244,7 +244,7 @@ export default async function CronTriggerPage({
       )}
 
       {/* 일반 cron 8종 */}
-      <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+      <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
         일반 Cron
       </h2>
       <div className="grid grid-cols-1 gap-2 mb-8">
@@ -254,10 +254,10 @@ export default async function CronTriggerPage({
       </div>
 
       {/* 광역 collect-news 17 */}
-      <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+      <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
         광역 뉴스 수집 (17 시·도)
       </h2>
-      <p className="text-[13px] text-grey-600 mb-3">
+      <p className="text-sm text-grey-600 mb-3">
         매일 14:00~15:20 KST 5분 간격 자동 수집. 즉시 반영 필요 시 클릭.
       </p>
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8">
@@ -271,7 +271,7 @@ export default async function CronTriggerPage({
             <input type="hidden" name="path" value={`/api/collect-news/${code}`} />
             <button
               type="submit"
-              className="w-full px-2 py-2 bg-white border border-grey-200 rounded-lg text-[12px] font-semibold text-grey-900 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
+              className="w-full px-2 py-2 bg-white border border-grey-200 rounded-lg text-xs font-semibold text-grey-900 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
             >
               {code}
             </button>
@@ -279,7 +279,7 @@ export default async function CronTriggerPage({
         ))}
       </div>
 
-      <p className="mt-10 text-[13px]">
+      <p className="mt-10 text-sm">
         <Link href="/admin" className="text-blue-500 font-medium underline">
           ← 어드민 홈
         </Link>
@@ -300,8 +300,8 @@ function CronRow({
     <form action={triggerCron} target="_blank" className="flex items-center gap-3 bg-white border border-grey-200 rounded-lg p-3">
       <input type="hidden" name="path" value={cron.path} />
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-bold text-grey-900">{cron.label}</div>
-        <div className="text-[12px] text-grey-600 leading-[1.5]">
+        <div className="text-sm font-bold text-grey-900">{cron.label}</div>
+        <div className="text-xs text-grey-600 leading-[1.5]">
           <code className="text-grey-700">{cron.path}</code>
           <span className="text-grey-400 mx-1.5">·</span>
           {cron.schedule}
@@ -311,7 +311,7 @@ function CronRow({
       </div>
       <button
         type="submit"
-        className="shrink-0 px-3 py-2 bg-blue-500 text-white text-[12px] font-semibold rounded-md hover:bg-blue-600 transition-colors cursor-pointer"
+        className="shrink-0 px-3 py-2 bg-blue-500 text-white text-xs font-semibold rounded-md hover:bg-blue-600 transition-colors cursor-pointer"
       >
         실행 ↗
       </button>

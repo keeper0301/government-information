@@ -36,10 +36,10 @@ export function Sidebar({ onItemClick }: Props) {
     >
       {/* 브랜드 */}
       <div className="px-6 pb-4 mb-3 border-b border-grey-200">
-        <div className="text-[18px] font-extrabold tracking-[-0.03em] text-grey-900">
+        <div className="text-lg font-extrabold tracking-[-0.03em] text-grey-900">
           keepioo
         </div>
-        <div className="text-[11px] text-grey-500 mt-1 tracking-[0.1em] font-bold">
+        <div className="text-xs text-grey-500 mt-1 tracking-[0.1em] font-bold">
           ADMIN
         </div>
       </div>
@@ -50,18 +50,18 @@ export function Sidebar({ onItemClick }: Props) {
         onClick={onItemClick}
         className={
           isDashboardActive
-            ? "flex items-center gap-2.5 px-6 py-3.5 text-[14px] font-bold bg-blue-50 border-l-[3px] border-blue-500 text-blue-500 pl-[21px] no-underline"
-            : "flex items-center gap-2.5 px-6 py-3.5 text-[14px] font-bold text-grey-700 hover:bg-grey-100 no-underline"
+            ? "flex items-center gap-2.5 px-6 py-3.5 text-sm font-bold bg-blue-50 border-l-[3px] border-blue-500 text-blue-500 pl-[21px] no-underline"
+            : "flex items-center gap-2.5 px-6 py-3.5 text-sm font-bold text-grey-700 hover:bg-grey-100 no-underline"
         }
       >
-        <span className="text-[18px]">🏠</span>
+        <span className="text-lg">🏠</span>
         대시보드
       </Link>
 
       {/* 그룹 5개 */}
       {ADMIN_MENU.map((group) => (
         <div key={group.number}>
-          <div className="px-6 pt-5 pb-2 text-[10px] tracking-[0.12em] uppercase font-bold text-grey-500">
+          <div className="px-6 pt-5 pb-2 text-xs tracking-[0.12em] uppercase font-bold text-grey-500">
             {group.number}. {group.title}
           </div>
           {group.items.map((item) => {
@@ -76,8 +76,8 @@ export function Sidebar({ onItemClick }: Props) {
                 onClick={onItemClick}
                 className={
                   isActive
-                    ? "flex items-center gap-2.5 py-3 text-[14px] font-bold bg-blue-50 border-l-[3px] border-blue-500 text-blue-500 pl-[33px] pr-6 no-underline"
-                    : "flex items-center gap-2.5 py-3 pl-9 pr-6 text-[14px] text-grey-700 hover:bg-grey-100 no-underline"
+                    ? "flex items-center gap-2.5 py-3 text-sm font-bold bg-blue-50 border-l-[3px] border-blue-500 text-blue-500 pl-[33px] pr-6 no-underline"
+                    : "flex items-center gap-2.5 py-3 pl-9 pr-6 text-sm text-grey-700 hover:bg-grey-100 no-underline"
                 }
               >
                 <span>{item.icon}</span>

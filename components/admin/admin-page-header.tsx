@@ -27,19 +27,21 @@ export function AdminPageHeader({
   const isString = typeof description === "string";
   return (
     <div className="mb-8">
-      <p className="text-[12px] text-blue-500 font-bold tracking-[0.18em] mb-2 uppercase">
+      <p className="text-xs text-blue-500 font-bold tracking-[0.18em] mb-2 uppercase">
         {kicker}
       </p>
+      {/* H1 사이즈는 표준 토큰 예외 보존 — 18 sub page 의 KPI/카운터 (text-2xl) 와
+          위계 충돌 방지. Tailwind 표준에 26px/32px 가 없어 arbitrary 유지. */}
       <h1 className="text-[26px] md:text-[32px] font-extrabold tracking-[-0.04em] text-grey-900 mb-2">
         {title}
       </h1>
       {description && (
         isString ? (
-          <p className="text-[14px] md:text-[15px] text-grey-700 leading-[1.6] max-w-2xl">
+          <p className="text-sm text-grey-700 leading-[1.6] max-w-2xl">
             {description}
           </p>
         ) : (
-          <div className="text-[14px] md:text-[15px] text-grey-700 leading-[1.6] max-w-2xl">
+          <div className="text-sm text-grey-700 leading-[1.6] max-w-2xl">
             {description}
           </div>
         )

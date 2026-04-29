@@ -73,7 +73,7 @@ export default async function AdminBlogListPage({
   if (error) {
     return (
       <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
-        <h1 className="text-[28px] font-bold text-grey-900 mb-4">블로그 관리</h1>
+        <h1 className="text-3xl font-bold text-grey-900 mb-4">블로그 관리</h1>
         <p className="text-red-600">조회 실패: {error.message}</p>
       </main>
     );
@@ -111,12 +111,12 @@ export default async function AdminBlogListPage({
           name="q"
           defaultValue={q}
           placeholder="제목 · slug 검색"
-          className="flex-1 min-w-[200px] h-10 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
+          className="flex-1 min-w-[200px] h-10 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
         />
         <select
           name="status"
           defaultValue={status}
-          className="h-10 px-3 text-[14px] border border-grey-300 rounded-lg bg-white"
+          className="h-10 px-3 text-sm border border-grey-300 rounded-lg bg-white"
         >
           <option value="all">전체 상태</option>
           <option value="published">발행</option>
@@ -124,7 +124,7 @@ export default async function AdminBlogListPage({
         </select>
         <button
           type="submit"
-          className="h-10 px-4 text-[14px] font-semibold text-white bg-grey-900 rounded-lg hover:bg-grey-800"
+          className="h-10 px-4 text-sm font-semibold text-white bg-grey-900 rounded-lg hover:bg-grey-800"
         >
           검색
         </button>
@@ -133,7 +133,7 @@ export default async function AdminBlogListPage({
       {/* 목록 테이블 */}
       {posts && posts.length > 0 ? (
         <div className="border border-grey-200 rounded-xl bg-white overflow-hidden">
-          <div className="grid grid-cols-[1fr_120px_100px_100px_80px] gap-3 items-center px-4 py-3 bg-grey-50 border-b border-grey-200 text-[13px] font-semibold text-grey-700">
+          <div className="grid grid-cols-[1fr_120px_100px_100px_80px] gap-3 items-center px-4 py-3 bg-grey-50 border-b border-grey-200 text-sm font-semibold text-grey-700">
             <div>제목</div>
             <div>카테고리</div>
             <div>상태</div>
@@ -148,33 +148,33 @@ export default async function AdminBlogListPage({
               <div className="min-w-0">
                 <Link
                   href={`/admin/blog/${p.id}`}
-                  className="text-[14px] text-grey-900 font-medium hover:underline no-underline block truncate"
+                  className="text-sm text-grey-900 font-medium hover:underline no-underline block truncate"
                 >
                   {p.title}
                 </Link>
-                <div className="text-[12px] text-grey-600 truncate mt-0.5">
+                <div className="text-xs text-grey-600 truncate mt-0.5">
                   /blog/{p.slug} · 수정 {new Date(p.updated_at).toLocaleString("ko-KR")}
                 </div>
               </div>
-              <div className="text-[13px] text-grey-700">{p.category || "—"}</div>
+              <div className="text-sm text-grey-700">{p.category || "—"}</div>
               <div>
                 {p.published_at ? (
-                  <span className="inline-block px-2 py-0.5 text-[12px] font-semibold text-emerald-700 bg-emerald-50 rounded">
+                  <span className="inline-block px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded">
                     발행
                   </span>
                 ) : (
-                  <span className="inline-block px-2 py-0.5 text-[12px] font-semibold text-amber-700 bg-amber-50 rounded">
+                  <span className="inline-block px-2 py-0.5 text-xs font-semibold text-amber-700 bg-amber-50 rounded">
                     미발행
                   </span>
                 )}
               </div>
-              <div className="text-[13px] text-grey-700 text-right">
+              <div className="text-sm text-grey-700 text-right">
                 {(p.view_count ?? 0).toLocaleString("ko-KR")}
               </div>
               <div className="text-right">
                 <Link
                   href={`/admin/blog/${p.id}`}
-                  className="inline-block px-3 py-1 text-[12px] font-semibold text-blue-700 bg-blue-50 rounded hover:bg-blue-100 no-underline"
+                  className="inline-block px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-50 rounded hover:bg-blue-100 no-underline"
                 >
                   수정
                 </Link>
@@ -183,7 +183,7 @@ export default async function AdminBlogListPage({
           ))}
         </div>
       ) : (
-        <div className="border border-grey-200 rounded-xl bg-white p-8 text-center text-[14px] text-grey-600">
+        <div className="border border-grey-200 rounded-xl bg-white p-8 text-center text-sm text-grey-600">
           조건에 맞는 글이 없습니다.
         </div>
       )}
@@ -194,18 +194,18 @@ export default async function AdminBlogListPage({
           {page > 1 && (
             <Link
               href={buildHref({ page: page - 1 })}
-              className="px-3 py-1.5 text-[13px] border border-grey-300 rounded-lg no-underline hover:bg-grey-50"
+              className="px-3 py-1.5 text-sm border border-grey-300 rounded-lg no-underline hover:bg-grey-50"
             >
               이전
             </Link>
           )}
-          <span className="text-[13px] text-grey-600">
+          <span className="text-sm text-grey-600">
             {page} / {totalPages}
           </span>
           {page < totalPages && (
             <Link
               href={buildHref({ page: page + 1 })}
-              className="px-3 py-1.5 text-[13px] border border-grey-300 rounded-lg no-underline hover:bg-grey-50"
+              className="px-3 py-1.5 text-sm border border-grey-300 rounded-lg no-underline hover:bg-grey-50"
             >
               다음
             </Link>

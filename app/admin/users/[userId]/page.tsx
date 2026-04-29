@@ -438,7 +438,7 @@ export default async function AdminUserDetailPage({
           kicker="ADMIN · 사용자"
           title={u.email ?? "(이메일 없음)"}
           description={
-            <span className="font-mono text-[13px]">{u.id}</span>
+            <span className="font-mono text-sm">{u.id}</span>
           }
         />
 
@@ -456,7 +456,7 @@ export default async function AdminUserDetailPage({
               value={u.app_metadata?.providers ? fmt(u.app_metadata.providers) : "—"}
             />
             {projectRef && (
-              <div className="mt-3 pt-3 border-t border-grey-100 text-[13px]">
+              <div className="mt-3 pt-3 border-t border-grey-100 text-sm">
                 <a
                   href={`https://supabase.com/dashboard/project/${projectRef}/auth/users`}
                   target="_blank"
@@ -491,12 +491,12 @@ export default async function AdminUserDetailPage({
               className="mt-4 pt-4 border-t border-grey-100 flex items-center gap-2 flex-wrap"
             >
               <input type="hidden" name="userId" value={userId} />
-              <label className="text-[13px] font-medium text-grey-700">
+              <label className="text-sm font-medium text-grey-700">
                 티어 변경:
                 <select
                   name="tier"
                   defaultValue={(subscription?.tier as string) ?? "free"}
-                  className="ml-2 px-2 py-1 text-[13px] border border-grey-300 rounded cursor-pointer"
+                  className="ml-2 px-2 py-1 text-sm border border-grey-300 rounded cursor-pointer"
                 >
                   <option value="free">free</option>
                   <option value="basic">basic</option>
@@ -505,11 +505,11 @@ export default async function AdminUserDetailPage({
               </label>
               <button
                 type="submit"
-                className="text-[13px] font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
+                className="text-sm font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
               >
                 적용
               </button>
-              <span className="text-[12px] text-grey-600">
+              <span className="text-xs text-grey-600">
                 (현재와 동일 선택 시 변경 없음)
               </span>
             </form>
@@ -529,7 +529,7 @@ export default async function AdminUserDetailPage({
                 <input type="hidden" name="userId" value={userId} />
                 <button
                   type="submit"
-                  className="text-[13px] font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
+                  className="text-sm font-semibold px-3 py-1.5 rounded-md border border-grey-300 bg-white text-grey-700 hover:bg-grey-50 cursor-pointer"
                 >
                   오늘 AI 상담 사용 횟수 리셋 (
                   {todayUsage?.count ?? 0}회 → 0회)
@@ -537,9 +537,9 @@ export default async function AdminUserDetailPage({
               </form>
             )}
             {(aiUsage ?? []).length === 0 ? (
-              <p className="text-[14px] text-grey-600 py-2">사용 기록 없음</p>
+              <p className="text-sm text-grey-600 py-2">사용 기록 없음</p>
             ) : (
-              <table className="w-full text-[13px]">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-grey-600 border-b border-grey-200">
                     <th className="py-2 font-medium">날짜</th>
@@ -556,7 +556,7 @@ export default async function AdminUserDetailPage({
                       >
                         <td className="py-2">{r.date}</td>
                         <td className="py-2 text-right font-mono">{r.count}</td>
-                        <td className="py-2 text-right text-grey-600 text-[12px]">
+                        <td className="py-2 text-right text-grey-600 text-xs">
                           {fmtDate(r.updated_at)}
                         </td>
                       </tr>
@@ -570,9 +570,9 @@ export default async function AdminUserDetailPage({
           {/* 알림 이력 */}
           <Panel title={`알림 발송 이력 (지난 30일, 최대 50건)`}>
             {(alertDeliveries ?? []).length === 0 ? (
-              <p className="text-[14px] text-grey-600 py-2">발송 이력 없음</p>
+              <p className="text-sm text-grey-600 py-2">발송 이력 없음</p>
             ) : (
-              <table className="w-full text-[13px]">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-grey-600 border-b border-grey-200">
                     <th className="py-2 font-medium">시각</th>
@@ -595,11 +595,11 @@ export default async function AdminUserDetailPage({
                         key={d.id}
                         className="border-b border-grey-100 last:border-b-0"
                       >
-                        <td className="py-2 text-grey-600 text-[12px]">
+                        <td className="py-2 text-grey-600 text-xs">
                           {fmtDate(d.created_at)}
                         </td>
                         <td className="py-2">{fmt(d.channel)}</td>
-                        <td className="py-2 font-mono text-[12px]">
+                        <td className="py-2 font-mono text-xs">
                           {fmt(d.program_id)}
                         </td>
                         <td className="py-2">{fmt(d.status ?? d.result)}</td>
@@ -616,7 +616,7 @@ export default async function AdminUserDetailPage({
               cron 중복 방지 UNIQUE 제약과 분리 (관리자 예외 경로). */}
           <Panel title={`알림 규칙 (${(alertRules ?? []).length}개) — 수동 재전송`}>
             {(alertRules ?? []).length === 0 ? (
-              <p className="text-[14px] text-grey-600 py-2">등록된 규칙이 없어요</p>
+              <p className="text-sm text-grey-600 py-2">등록된 규칙이 없어요</p>
             ) : (
               <div className="space-y-2">
                 {(alertRules ?? []).map(
@@ -632,16 +632,16 @@ export default async function AdminUserDetailPage({
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-[14px] font-semibold text-grey-900 truncate">
+                          <span className="text-sm font-semibold text-grey-900 truncate">
                             {r.name}
                           </span>
                           {!r.is_active && (
-                            <span className="text-[11px] bg-grey-100 text-grey-700 px-1.5 py-0.5 rounded font-medium">
+                            <span className="text-xs bg-grey-100 text-grey-700 px-1.5 py-0.5 rounded font-medium">
                               비활성
                             </span>
                           )}
                         </div>
-                        <div className="text-[12px] text-grey-600">
+                        <div className="text-xs text-grey-600">
                           채널: {(r.channels ?? []).join(", ") || "—"}
                         </div>
                       </div>
@@ -651,20 +651,20 @@ export default async function AdminUserDetailPage({
                           <input type="hidden" name="ruleId" value={r.id} />
                           <button
                             type="submit"
-                            className="text-[13px] font-semibold px-3 py-1.5 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer whitespace-nowrap"
+                            className="text-sm font-semibold px-3 py-1.5 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer whitespace-nowrap"
                           >
                             지금 이메일 재전송
                           </button>
                         </form>
                       ) : (
-                        <span className="text-[12px] text-grey-600 px-3">
+                        <span className="text-xs text-grey-600 px-3">
                           (활성 시에만 가능)
                         </span>
                       )}
                     </div>
                   ),
                 )}
-                <p className="text-[12px] text-grey-600 mt-2 leading-[1.6]">
+                <p className="text-xs text-grey-600 mt-2 leading-[1.6]">
                   * 최근 30일 매칭 공고 상위 10건을 한 이메일로 묶어 발송해요.
                   카카오 알림톡은 이번 경로에서 제외(수동 재전송은 이메일만).
                   <br />* 감사 로그는 관리자 액션 로그 Panel 에 manual_alert_send 로 기록.
@@ -687,13 +687,13 @@ export default async function AdminUserDetailPage({
               본인 계정이면 DeleteUserButton 이 내부에서 안내문만 표시.
               server action 차원의 self 차단이 발동한 경우 별도 안내 박스. */}
           <section className="bg-white border border-red/30 rounded-xl p-5 mt-5">
-            <h2 className="text-[16px] font-bold text-red mb-2 tracking-[-0.3px]">
+            <h2 className="text-base font-bold text-red mb-2 tracking-[-0.3px]">
               ⚠️ 위험 작업
             </h2>
             {selfDeleteBlocked && (
               <div
                 role="alert"
-                className="mb-4 rounded-lg border border-red/30 bg-red/10 p-3 text-[13px] text-red leading-[1.6]"
+                className="mb-4 rounded-lg border border-red/30 bg-red/10 p-3 text-sm text-red leading-[1.6]"
               >
                 <b>본인 계정은 이 페이지에서 탈퇴 처리할 수 없어요.</b>
                 <br />
@@ -707,7 +707,7 @@ export default async function AdminUserDetailPage({
                 최하단의 &quot;회원 탈퇴&quot; 섹션을 이용해 주세요.
               </div>
             )}
-            <p className="text-[13px] text-grey-700 mb-4 leading-[1.6]">
+            <p className="text-sm text-grey-700 mb-4 leading-[1.6]">
               이 사용자를 즉시 탈퇴 처리합니다. 프로필·구독·알림·AI 사용량·동의
               기록 등 모든 관련 데이터가 영구 삭제되며 복구할 수 없어요.
               <br />
@@ -732,7 +732,7 @@ export default async function AdminUserDetailPage({
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-white border border-grey-100 rounded-xl p-5">
-      <h2 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h2>
+      <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h2>
       {children}
     </section>
   );
@@ -742,7 +742,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 function UserTimeline({ events }: { events: TimelineEvent[] }) {
   if (events.length === 0) {
     return (
-      <p className="text-[13px] text-grey-600 py-2">기록된 활동이 없어요.</p>
+      <p className="text-sm text-grey-600 py-2">기록된 활동이 없어요.</p>
     );
   }
   const dot = {
@@ -768,18 +768,18 @@ function UserTimeline({ events }: { events: TimelineEvent[] }) {
             aria-hidden="true"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-semibold text-grey-900 leading-[1.4]">
+            <div className="text-sm font-semibold text-grey-900 leading-[1.4]">
               <span className="mr-1.5" aria-hidden="true">
                 {kindLabel[ev.kind]}
               </span>
               {ev.summary}
             </div>
             {ev.detail && (
-              <div className="text-[12px] text-grey-600 mt-0.5 truncate">
+              <div className="text-xs text-grey-600 mt-0.5 truncate">
                 {ev.detail}
               </div>
             )}
-            <div className="text-[11px] text-grey-500 mt-0.5">
+            <div className="text-xs text-grey-500 mt-0.5">
               {new Date(ev.ts).toLocaleString("ko-KR", {
                 timeZone: "Asia/Seoul",
                 year: "numeric",
@@ -799,8 +799,8 @@ function UserTimeline({ events }: { events: TimelineEvent[] }) {
 function Row({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="flex items-start gap-4 py-2 border-b border-grey-100 last:border-b-0">
-      <div className="w-[120px] flex-shrink-0 text-[13px] text-grey-600">{label}</div>
-      <div className="flex-1 text-[14px] text-grey-900 break-all">
+      <div className="w-[120px] flex-shrink-0 text-sm text-grey-600">{label}</div>
+      <div className="flex-1 text-sm text-grey-900 break-all">
         {typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}
       </div>
     </div>
@@ -830,14 +830,14 @@ function ConsentsRows({ consents }: { consents: ConsentStatus[] }) {
         return (
           <div
             key={type}
-            className="flex items-center gap-3 py-2 border-b border-grey-100 last:border-b-0 text-[13px]"
+            className="flex items-center gap-3 py-2 border-b border-grey-100 last:border-b-0 text-sm"
           >
             <div className="w-[140px] flex-shrink-0 text-grey-700">{label}</div>
             <div className="flex-1">
               {c ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span
-                    className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                    className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                       c.isActive
                         ? "bg-blue-50 text-blue-600"
                         : "bg-grey-100 text-grey-600"
@@ -845,10 +845,10 @@ function ConsentsRows({ consents }: { consents: ConsentStatus[] }) {
                   >
                     {c.isActive ? "active" : "withdrawn"}
                   </span>
-                  <span className="text-grey-600 font-mono text-[12px]">
+                  <span className="text-grey-600 font-mono text-xs">
                     v{c.version}
                   </span>
-                  <span className="text-grey-600 text-[12px]">{dateStr}</span>
+                  <span className="text-grey-600 text-xs">{dateStr}</span>
                 </div>
               ) : (
                 <span className="text-grey-500">기록 없음</span>
@@ -865,11 +865,11 @@ function ConsentsRows({ consents }: { consents: ConsentStatus[] }) {
 // 빈 배열이면 "기록 없음" 안내.
 function AdminActionsRows({ actions }: { actions: AdminActionRecord[] }) {
   if (actions.length === 0) {
-    return <p className="text-[14px] text-grey-600 py-2">관리 액션 기록 없음</p>;
+    return <p className="text-sm text-grey-600 py-2">관리 액션 기록 없음</p>;
   }
 
   return (
-    <table className="w-full text-[13px]">
+    <table className="w-full text-sm">
       <thead>
         <tr className="text-left text-grey-600 border-b border-grey-200">
           <th className="py-2 font-medium">시각</th>
@@ -883,13 +883,13 @@ function AdminActionsRows({ actions }: { actions: AdminActionRecord[] }) {
             key={a.id}
             className="border-b border-grey-100 last:border-b-0 align-top"
           >
-            <td className="py-2 text-grey-600 text-[12px] whitespace-nowrap">
+            <td className="py-2 text-grey-600 text-xs whitespace-nowrap">
               {fmtDate(a.createdAt)}
             </td>
             <td className="py-2 font-medium text-grey-900">
               {ACTION_LABELS[a.action] ?? a.action}
             </td>
-            <td className="py-2 text-grey-700 text-[12px] font-mono break-all">
+            <td className="py-2 text-grey-700 text-xs font-mono break-all">
               {a.details ? JSON.stringify(a.details) : "—"}
             </td>
           </tr>

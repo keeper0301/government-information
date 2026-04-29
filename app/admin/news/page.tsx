@@ -237,13 +237,13 @@ export default async function AdminNewsPage({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
           <StatCard label="최근 24h 수집" value={`+${stats.last24h.toLocaleString()}건`} />
           <div className="bg-white rounded-lg border border-grey-200 p-4">
-            <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
+            <div className="text-xs font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
               최신 발행
             </div>
-            <div className="text-[14px] font-semibold text-grey-900 truncate">
+            <div className="text-sm font-semibold text-grey-900 truncate">
               {stats.latestTitle ?? "—"}
             </div>
-            <div className="text-[12px] text-grey-600 mt-0.5">{latestLabel}</div>
+            <div className="text-xs text-grey-600 mt-0.5">{latestLabel}</div>
           </div>
         </div>
 
@@ -264,10 +264,10 @@ export default async function AdminNewsPage({
                 : "bg-red/10 border-red/30 text-red"
             }`}
           >
-            <div className="text-[14px] font-bold mb-1">
+            <div className="text-sm font-bold mb-1">
               {resultOk ? "✅ 수집 완료" : "❌ 수집 실패"}
             </div>
-            <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words">
+            <pre className="text-xs leading-[1.5] whitespace-pre-wrap break-words">
               {JSON.stringify(resultObj, null, 2)}
             </pre>
           </div>
@@ -277,12 +277,12 @@ export default async function AdminNewsPage({
         <form action={triggerCollect}>
           <button
             type="submit"
-            className="w-full py-3 bg-blue-500 text-white rounded-lg text-[15px] font-bold hover:bg-blue-600 transition-colors cursor-pointer"
+            className="w-full py-3 bg-blue-500 text-white rounded-lg text-base font-bold hover:bg-blue-600 transition-colors cursor-pointer"
           >
             지금 수집 실행
           </button>
         </form>
-        <p className="mt-3 text-[13px] text-grey-600 leading-[1.65]">
+        <p className="mt-3 text-sm text-grey-600 leading-[1.65]">
           * 3개 RSS 피드 합쳐 한 번 실행에 5~10초 소요. 중복은 source_id 기준 자동 병합돼요.
           <br />
           * 수집된 뉴스는 /news 에서 바로 확인할 수 있어요.
@@ -290,20 +290,20 @@ export default async function AdminNewsPage({
 
         {/* ─── 모더레이션 섹션 ─── */}
         <div className="mt-12 pt-8 border-t border-grey-200">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-1 tracking-[-0.3px]">콘텐츠 모더레이션</h2>
-          <p className="text-[13px] text-grey-600 leading-[1.65] mb-5">
+          <h2 className="text-lg font-bold text-grey-900 mb-1 tracking-[-0.3px]">콘텐츠 모더레이션</h2>
+          <p className="text-sm text-grey-600 leading-[1.65] mb-5">
             저작권 요청·오보·오해소지 등으로 단건 비공개가 필요할 때 사용해요.
             숨겨진 뉴스는 즉시 /news 목록·홈·sitemap 모두에서 사라지고, 직접 URL 로 들어오면 410 Gone 페이지를 보여줘요.
           </p>
 
           {/* 토글 결과 배너 */}
           {params.msg === "hidden" && (
-            <div role="status" className="bg-green/10 border border-green/30 rounded-lg p-3 text-[13px] text-green mb-4">
+            <div role="status" className="bg-green/10 border border-green/30 rounded-lg p-3 text-sm text-green mb-4">
               ✅ 뉴스를 비공개로 전환했어요.
             </div>
           )}
           {params.msg === "restored" && (
-            <div role="status" className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-[13px] text-grey-900 mb-4">
+            <div role="status" className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm text-grey-900 mb-4">
               ✅ 뉴스를 다시 공개 상태로 복원했어요.
             </div>
           )}
@@ -316,11 +316,11 @@ export default async function AdminNewsPage({
               name="q"
               defaultValue={query}
               placeholder="제목 / slug / source_id"
-              className="flex-1 min-w-0 px-3 py-2.5 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+              className="flex-1 min-w-0 px-3 py-2.5 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
             />
             <button
               type="submit"
-              className="px-5 py-2.5 bg-grey-900 text-white text-[14px] font-semibold rounded-lg hover:bg-grey-800 transition-colors"
+              className="px-5 py-2.5 bg-grey-900 text-white text-sm font-semibold rounded-lg hover:bg-grey-800 transition-colors"
             >
               검색
             </button>
@@ -330,11 +330,11 @@ export default async function AdminNewsPage({
               사장님 멘탈 모델: "특정 뉴스 찾기" 와 "둘러보기" 가 분리. */}
           {isSearchMode && (
             <div className="mb-8">
-              <p className="text-[13px] text-grey-600 mb-2">
+              <p className="text-sm text-grey-600 mb-2">
                 검색어 <span className="font-semibold text-grey-900">{query}</span> — 결과 {searchResults.length}건
               </p>
               {searchResults.length === 0 ? (
-                <p className="text-[14px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+                <p className="text-sm text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
                   일치하는 뉴스가 없어요.
                 </p>
               ) : (
@@ -350,10 +350,10 @@ export default async function AdminNewsPage({
           {/* 전체 목록 모드 — 검색어 없을 때만. 카테고리·숨김 필터 + 페이지네이션. */}
           {!isSearchMode && (
             <div className="mb-8">
-              <h3 className="text-[15px] font-bold text-grey-900 mb-2 tracking-[-0.2px]">
+              <h3 className="text-sm font-bold text-grey-900 mb-2 tracking-[-0.2px]">
                 전체 뉴스 목록 ({listResult.total.toLocaleString()}건)
               </h3>
-              <p className="text-[13px] text-grey-600 mb-3 leading-[1.6]">
+              <p className="text-sm text-grey-600 mb-3 leading-[1.6]">
                 최근 발행순으로 30건씩 보여줘요. 카테고리·노출 상태로 좁혀 볼 수 있어요.
               </p>
 
@@ -364,12 +364,12 @@ export default async function AdminNewsPage({
                 action="/admin/news"
                 className="bg-grey-50 border border-grey-200 rounded-lg p-3 mb-4 flex flex-wrap gap-2 items-center"
               >
-                <label className="text-[12px] font-medium text-grey-700">
+                <label className="text-xs font-medium text-grey-700">
                   <span className="sr-only">카테고리</span>
                   <select
                     name="cat"
                     defaultValue={categoryFilter}
-                    className="px-2 py-1.5 text-[13px] border border-grey-300 rounded-md bg-white"
+                    className="px-2 py-1.5 text-sm border border-grey-300 rounded-md bg-white"
                   >
                     {NEWS_CATEGORY_FILTERS.map((c) => (
                       <option key={c} value={c}>
@@ -378,12 +378,12 @@ export default async function AdminNewsPage({
                     ))}
                   </select>
                 </label>
-                <label className="text-[12px] font-medium text-grey-700">
+                <label className="text-xs font-medium text-grey-700">
                   <span className="sr-only">노출 상태</span>
                   <select
                     name="hidden"
                     defaultValue={hiddenFilter}
-                    className="px-2 py-1.5 text-[13px] border border-grey-300 rounded-md bg-white"
+                    className="px-2 py-1.5 text-sm border border-grey-300 rounded-md bg-white"
                   >
                     {NEWS_HIDDEN_FILTERS.map((h) => (
                       <option key={h} value={h}>
@@ -394,19 +394,19 @@ export default async function AdminNewsPage({
                 </label>
                 <button
                   type="submit"
-                  className="min-h-[36px] px-3 text-[13px] font-semibold rounded-md bg-blue-500 text-white hover:bg-blue-600"
+                  className="min-h-[36px] px-3 text-sm font-semibold rounded-md bg-blue-500 text-white hover:bg-blue-600"
                 >
                   적용
                 </button>
                 {(categoryFilter !== "all" || hiddenFilter !== "all") && (
                   <Link
                     href="/admin/news"
-                    className="min-h-[36px] px-3 inline-flex items-center text-[13px] font-semibold rounded-md border border-grey-300 text-grey-700 hover:bg-white no-underline"
+                    className="min-h-[36px] px-3 inline-flex items-center text-sm font-semibold rounded-md border border-grey-300 text-grey-700 hover:bg-white no-underline"
                   >
                     초기화
                   </Link>
                 )}
-                <span className="text-[12px] text-grey-600 ml-auto">
+                <span className="text-xs text-grey-600 ml-auto">
                   {totalListPages > 1 && <>{page} / {totalListPages} 페이지</>}
                 </span>
               </form>
@@ -414,7 +414,7 @@ export default async function AdminNewsPage({
               {/* 목록 — 검색 결과와 같은 NewsModerationRow 재사용.
                   returnTo 에 현재 필터·페이지를 그대로 담아 토글 후 같은 위치로 복귀. */}
               {listResult.rows.length === 0 ? (
-                <p className="text-[14px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+                <p className="text-sm text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
                   조건에 맞는 뉴스가 없어요.
                 </p>
               ) : (
@@ -442,9 +442,9 @@ export default async function AdminNewsPage({
 
           {/* 최근 숨긴 10건 — 실수 복구 fast path. 모드와 무관하게 항상 노출. */}
           <div>
-            <h3 className="text-[15px] font-bold text-grey-900 mb-2 tracking-[-0.2px]">최근 숨긴 뉴스 10건</h3>
+            <h3 className="text-sm font-bold text-grey-900 mb-2 tracking-[-0.2px]">최근 숨긴 뉴스 10건</h3>
             {recentlyHidden.length === 0 ? (
-              <p className="text-[14px] text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
+              <p className="text-sm text-grey-700 bg-grey-50 rounded-lg px-3 py-3">
                 숨김 처리된 뉴스가 아직 없어요.
               </p>
             ) : (
@@ -457,7 +457,7 @@ export default async function AdminNewsPage({
           </div>
         </div>
 
-        <p className="mt-8 text-[13px] flex items-center gap-4 flex-wrap">
+        <p className="mt-8 text-sm flex items-center gap-4 flex-wrap">
           <Link href="/admin" className="text-blue-500 font-medium underline">← 어드민 홈</Link>
           <span className="text-grey-300">·</span>
           <Link href="/news" className="text-blue-500 font-medium underline">정책 소식 페이지 보기 ↗</Link>
@@ -497,7 +497,7 @@ function NewsModerationRow({
     <li className="bg-white border border-grey-200 rounded-lg p-3">
       <div className="flex items-start gap-2 mb-1.5">
         <span
-          className={`shrink-0 text-[12px] font-bold px-2 py-0.5 rounded ${
+          className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded ${
             row.is_hidden
               ? "bg-red/10 text-red"
               : "bg-green/10 text-green"
@@ -507,12 +507,12 @@ function NewsModerationRow({
         </span>
         <Link
           href={`/news/${row.slug}`}
-          className="flex-1 min-w-0 text-[14px] font-semibold text-grey-900 hover:text-blue-500 line-clamp-2 leading-snug no-underline"
+          className="flex-1 min-w-0 text-sm font-semibold text-grey-900 hover:text-blue-500 line-clamp-2 leading-snug no-underline"
         >
           {row.title}
         </Link>
       </div>
-      <div className="text-[12px] text-grey-600 mb-2 leading-[1.5]">
+      <div className="text-xs text-grey-600 mb-2 leading-[1.5]">
         {row.ministry ?? "—"} · {dateLabel}
         {row.is_hidden && hiddenAtLabel && (
           <>
@@ -533,7 +533,7 @@ function NewsModerationRow({
           <input type="hidden" name="returnTo" value={returnTo} />
           <button
             type="submit"
-            className="px-3 py-1.5 bg-grey-100 text-grey-900 text-[12px] font-semibold rounded-md hover:bg-grey-200"
+            className="px-3 py-1.5 bg-grey-100 text-grey-900 text-xs font-semibold rounded-md hover:bg-grey-200"
           >
             복원
           </button>
@@ -548,7 +548,7 @@ function NewsModerationRow({
             name="reasonCategory"
             required
             defaultValue={HIDE_REASON_CATEGORIES[0]}
-            className="px-2 py-1.5 text-[12px] border border-grey-300 rounded-md bg-white"
+            className="px-2 py-1.5 text-xs border border-grey-300 rounded-md bg-white"
           >
             {HIDE_REASON_CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -562,12 +562,12 @@ function NewsModerationRow({
               name="note"
               placeholder="메모 (요청자·일시 등)"
               maxLength={200}
-              className="flex-1 min-w-0 px-2 py-1.5 text-[12px] border border-grey-300 rounded-md"
+              className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-grey-300 rounded-md"
             />
           )}
           <button
             type="submit"
-            className="px-3 py-1.5 bg-red text-white text-[12px] font-semibold rounded-md hover:bg-red/90"
+            className="px-3 py-1.5 bg-red text-white text-xs font-semibold rounded-md hover:bg-red/90"
           >
             숨김
           </button>
@@ -588,11 +588,11 @@ function StatCard({
 }) {
   return (
     <div className="bg-white rounded-lg border border-grey-200 p-4">
-      <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
+      <div className="text-xs font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
         {label}
       </div>
-      <div className="text-[20px] font-extrabold text-grey-900">{value}</div>
-      {hint && <div className="text-[12px] text-grey-600 mt-0.5">{hint}</div>}
+      <div className="text-xl font-extrabold text-grey-900">{value}</div>
+      {hint && <div className="text-xs text-grey-600 mt-0.5">{hint}</div>}
     </div>
   );
 }

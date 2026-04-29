@@ -28,7 +28,7 @@ export function DeleteUserButton({ action, userId, userEmail, isSelf }: Props) {
   // 어드민 본인 계정이면 이 UI 자체를 숨김 (server action 에서도 재확인)
   if (isSelf) {
     return (
-      <p className="text-[13px] text-grey-600 leading-[1.6]">
+      <p className="text-sm text-grey-600 leading-[1.6]">
         본인 계정이므로 이 페이지에서는 탈퇴 처리할 수 없어요. 본인 탈퇴는
         마이페이지 최하단의 &quot;회원 탈퇴&quot; 섹션을 이용해 주세요.
       </p>
@@ -55,7 +55,7 @@ export function DeleteUserButton({ action, userId, userEmail, isSelf }: Props) {
           onChange={(e) => setAcknowledged(e.target.checked)}
           className="mt-1 cursor-pointer"
         />
-        <span className="text-[13px] text-grey-700 leading-[1.5]">
+        <span className="text-sm text-grey-700 leading-[1.5]">
           이 사용자의 모든 데이터가 영구 삭제되며 복구할 수 없음을 이해했어요.
         </span>
       </label>
@@ -63,7 +63,7 @@ export function DeleteUserButton({ action, userId, userEmail, isSelf }: Props) {
       <button
         type="submit"
         disabled={!acknowledged}
-        className="px-4 py-2 text-[13px] font-semibold rounded-md border border-red text-red bg-white hover:bg-red/5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+        className="px-4 py-2 text-sm font-semibold rounded-md border border-red text-red bg-white hover:bg-red/5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
       >
         이 사용자 탈퇴 처리
       </button>

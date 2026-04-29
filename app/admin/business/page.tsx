@@ -193,7 +193,7 @@ export default async function BusinessAdminPage() {
 
         {/* KPI 카드 4종 */}
         <section className="mb-8">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
             wedge 진입 지표
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -211,21 +211,21 @@ export default async function BusinessAdminPage() {
 
         {/* 필드 입력률 */}
         <section className="mb-8">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
             필드 입력률
           </h2>
           <div className="bg-white border border-grey-200 rounded-lg p-5">
             {stats.total === 0 ? (
-              <p className="text-[13px] text-grey-600">아직 입력된 데이터가 없어요.</p>
+              <p className="text-sm text-grey-600">아직 입력된 데이터가 없어요.</p>
             ) : (
               <ul className="space-y-3">
                 {Object.entries(stats.fields).map(([field, pct]) => (
                   <li key={field}>
                     <div className="flex items-baseline justify-between mb-1">
-                      <span className="text-[13px] font-semibold text-grey-700">
+                      <span className="text-sm font-semibold text-grey-700">
                         {FIELD_LABEL[field] ?? field}
                       </span>
-                      <span className="text-[13px] font-bold text-grey-900">{pct}%</span>
+                      <span className="text-sm font-bold text-grey-900">{pct}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-grey-100 rounded-full overflow-hidden">
                       <div
@@ -248,12 +248,12 @@ export default async function BusinessAdminPage() {
 
         {/* 최근 입력자 5건 */}
         <section className="mb-8">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
             최근 입력자 {stats.recent.length}명
           </h2>
           <div className="bg-white border border-grey-200 rounded-lg p-5">
             {stats.recent.length === 0 ? (
-              <p className="text-[13px] text-grey-600">아직 입력자가 없어요.</p>
+              <p className="text-sm text-grey-600">아직 입력자가 없어요.</p>
             ) : (
               <ul className="space-y-2">
                 {stats.recent.map((r) => (
@@ -262,10 +262,10 @@ export default async function BusinessAdminPage() {
                     className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="text-[13px] font-semibold text-grey-900 truncate">
+                      <div className="text-sm font-semibold text-grey-900 truncate">
                         {maskEmail(emails[r.user_id])}
                       </div>
-                      <div className="text-[12px] text-grey-600 leading-[1.5]">
+                      <div className="text-xs text-grey-600 leading-[1.5]">
                         {[
                           INDUSTRY_LABEL[r.industry ?? ""] ?? null,
                           TYPE_LABEL[r.business_type ?? ""] ?? null,
@@ -279,7 +279,7 @@ export default async function BusinessAdminPage() {
                     </div>
                     <Link
                       href={`/admin/users/${r.user_id}`}
-                      className="text-[12px] font-medium text-blue-500 hover:underline whitespace-nowrap"
+                      className="text-xs font-medium text-blue-500 hover:underline whitespace-nowrap"
                     >
                       상세 →
                     </Link>
@@ -293,7 +293,7 @@ export default async function BusinessAdminPage() {
         {/* 어드민 허브로 돌아가기 */}
         <Link
           href="/admin"
-          className="text-[13px] font-medium text-blue-500 hover:underline"
+          className="text-sm font-medium text-blue-500 hover:underline"
         >
           ← 어드민 허브로
         </Link>
@@ -326,16 +326,16 @@ function StatCard({
 }) {
   return (
     <div className="rounded-lg border border-grey-200 bg-white p-4">
-      <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
+      <div className="text-xs font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
         {label}
       </div>
-      <div className="text-[24px] font-extrabold text-grey-900 leading-none">
+      <div className="text-2xl font-extrabold text-grey-900 leading-none">
         {value.toLocaleString()}
         {suffix && (
-          <span className="text-[13px] font-semibold text-grey-600 ml-1">{suffix}</span>
+          <span className="text-sm font-semibold text-grey-600 ml-1">{suffix}</span>
         )}
       </div>
-      {hint && <div className="text-[12px] mt-1.5 leading-[1.45] text-grey-600">{hint}</div>}
+      {hint && <div className="text-xs mt-1.5 leading-[1.45] text-grey-600">{hint}</div>}
     </div>
   );
 }
@@ -357,9 +357,9 @@ function DistPanel({
 
   return (
     <section className="bg-white border border-grey-200 rounded-lg p-5">
-      <h3 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h3>
+      <h3 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h3>
       {entries.length === 0 ? (
-        <p className="text-[13px] text-grey-600">아직 데이터 없음</p>
+        <p className="text-sm text-grey-600">아직 데이터 없음</p>
       ) : (
         <ul className="space-y-2">
           {entries.map(([key, n]) => {
@@ -368,8 +368,8 @@ function DistPanel({
             return (
               <li key={key}>
                 <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-[13px] text-grey-700">{label}</span>
-                  <span className="text-[13px] font-bold text-grey-900">
+                  <span className="text-sm text-grey-700">{label}</span>
+                  <span className="text-sm font-bold text-grey-900">
                     {n.toLocaleString()}명
                   </span>
                 </div>

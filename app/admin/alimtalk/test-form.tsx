@@ -77,7 +77,7 @@ export function AlimtalkTestForm() {
       />
 
       <details className="rounded-lg border border-grey-200 bg-white p-3">
-        <summary className="cursor-pointer text-[13px] font-semibold text-grey-700">
+        <summary className="cursor-pointer text-sm font-semibold text-grey-700">
           템플릿 변수 override (선택)
         </summary>
         <div className="mt-3 space-y-2">
@@ -111,7 +111,7 @@ export function AlimtalkTestForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 bg-blue-500 text-white rounded-lg text-[15px] font-bold hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-3 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? "발송 중…" : "테스트 발송"}
       </button>
@@ -119,7 +119,7 @@ export function AlimtalkTestForm() {
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-red/30 bg-red/5 p-3 text-[13px] text-red"
+          className="rounded-lg border border-red/30 bg-red/5 p-3 text-sm text-red"
         >
           {error}
         </div>
@@ -145,7 +145,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-[12px] font-semibold text-grey-700 mb-1">
+      <span className="block text-xs font-semibold text-grey-700 mb-1">
         {label}
       </span>
       <input
@@ -154,7 +154,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[14px] focus:border-blue-500 focus:outline-none"
+        className="w-full px-3 py-2 border border-grey-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none"
       />
     </label>
   );
@@ -166,14 +166,14 @@ function ResultPanel({ result }: { result: ApiResult }) {
     return (
       <div
         role="status"
-        className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-[13px] text-blue-900"
+        className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"
       >
         <p className="font-semibold mb-1">✅ 발송 성공</p>
         <p>provider: <code>{result.provider}</code></p>
         {result.messageId && (
           <p>messageId: <code className="break-all">{result.messageId}</code></p>
         )}
-        <p className="mt-2 text-[12px] text-blue-700">
+        <p className="mt-2 text-xs text-blue-700">
           몇 초 이내로 카카오톡 알림톡이 도착합니다. 미도착 시 카카오톡 설정의
           ‘메시지 수신 차단’ 여부를 먼저 확인해 주세요.
         </p>
@@ -196,7 +196,7 @@ function ResultPanel({ result }: { result: ApiResult }) {
   return (
     <div
       role="alert"
-      className="rounded-lg border border-red/30 bg-red/5 p-4 text-[13px] text-red"
+      className="rounded-lg border border-red/30 bg-red/5 p-4 text-sm text-red"
     >
       <p className="font-semibold mb-1">❌ 발송 실패</p>
       <p>
@@ -208,7 +208,7 @@ function ResultPanel({ result }: { result: ApiResult }) {
         </p>
       )}
       {reasonExplain[result.reason] && (
-        <p className="mt-2 text-[12px] leading-[1.6]">
+        <p className="mt-2 text-xs leading-[1.6]">
           {reasonExplain[result.reason]}
         </p>
       )}

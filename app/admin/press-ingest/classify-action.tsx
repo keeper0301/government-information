@@ -95,18 +95,18 @@ export function PressClassifyAction({
         <button
           type="button"
           onClick={classify}
-          className="text-[11px] text-purple-600 hover:text-purple-800 font-semibold whitespace-nowrap text-left"
+          className="text-xs text-purple-600 hover:text-purple-800 font-semibold whitespace-nowrap text-left"
         >
           🤖 AI 분류
         </button>
       )}
       {loading && (
-        <span className="text-[11px] text-grey-600 whitespace-nowrap">
+        <span className="text-xs text-grey-600 whitespace-nowrap">
           분류 중…
         </span>
       )}
       {error && (
-        <div className="text-[10px] text-red leading-[1.3] max-w-[140px] break-words">
+        <div className="text-xs text-red leading-[1.3] max-w-[140px] break-words">
           {error.includes("ANTHROPIC_API_KEY")
             ? "API 키 미설정"
             : error.slice(0, 60)}
@@ -123,7 +123,7 @@ export function PressClassifyAction({
         </div>
       )}
       {result && (
-        <div className="text-[10px] leading-[1.4] max-w-[180px]">
+        <div className="text-xs leading-[1.4] max-w-[180px]">
           <div className="font-semibold mb-1">
             {result.is_policy ? "✓ 정책" : "✗ 비정책"} ·{" "}
             <span className="uppercase">{result.program_type}</span>
@@ -161,7 +161,7 @@ export function PressClassifyAction({
           <button
             type="button"
             onClick={() => setResult(null)}
-            className="mt-1 text-grey-500 underline text-[10px]"
+            className="mt-1 text-grey-500 underline text-xs"
           >
             취소
           </button>

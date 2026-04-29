@@ -102,7 +102,7 @@ export default async function NewWelfareProgramPage({
         />
 
         {/* 안내 박스 */}
-        <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-[13px] text-blue-900 leading-[1.6]">
+        <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 leading-[1.6]">
           💡 <strong>팁</strong>: title · description · target · eligibility
           텍스트에서 지역명 (전남·서울 등) · 연령 (청년·노년 등) · 혜택 (주거·
           에너지·교통 등) 키워드를 자동 인식합니다. 매칭이 잘 안 되면 description
@@ -111,7 +111,7 @@ export default async function NewWelfareProgramPage({
 
         {/* Prefill 안내 — press-ingest 에서 자동 채워온 경우 */}
         {hasPrefill && (
-          <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-[13px] text-emerald-900 leading-[1.6]">
+          <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 leading-[1.6]">
             ✓ <strong>광역 보도자료 자동 채움</strong> — 출처 보도자료에서
             제목·기관·출처 URL·요약을 가져왔습니다. 검토 후 자격·신청 방법·
             마감일을 보강하고 등록하세요.
@@ -121,7 +121,7 @@ export default async function NewWelfareProgramPage({
         <form action={createWelfareProgram} className="space-y-6">
           {/* ━━━ 필수 카드 ━━━ */}
           <section className="bg-white rounded-xl border border-grey-200 p-5">
-            <h2 className="text-[15px] font-bold text-grey-900 mb-4">
+            <h2 className="text-sm font-bold text-grey-900 mb-4">
               필수 정보
             </h2>
             <div className="space-y-4">
@@ -130,7 +130,7 @@ export default async function NewWelfareProgramPage({
               <Field label="신청 URL (apply_url) *" name="apply_url" required type="url" placeholder="https://www.jeonnam.go.kr/..." defaultValue={prefill.apply_url} />
 
               <label className="block">
-                <span className="block text-[13px] font-medium text-grey-700 mb-1">
+                <span className="block text-sm font-medium text-grey-700 mb-1">
                   카테고리 (category) *
                 </span>
                 <select
@@ -141,7 +141,7 @@ export default async function NewWelfareProgramPage({
                       ? prefill.category
                       : ""
                   }
-                  className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-grey-200 rounded-lg text-sm text-grey-900 focus:border-blue-500 outline-none"
                 >
                   <option value="" disabled>
                     선택…
@@ -168,7 +168,7 @@ export default async function NewWelfareProgramPage({
 
           {/* ━━━ 본문·자격 카드 ━━━ */}
           <section className="bg-white rounded-xl border border-grey-200 p-5">
-            <h2 className="text-[15px] font-bold text-grey-900 mb-4">
+            <h2 className="text-sm font-bold text-grey-900 mb-4">
               본문 (선택)
             </h2>
             <div className="space-y-4">
@@ -209,7 +209,7 @@ export default async function NewWelfareProgramPage({
 
           {/* ━━━ 기간·출처 카드 ━━━ */}
           <section className="bg-white rounded-xl border border-grey-200 p-5">
-            <h2 className="text-[15px] font-bold text-grey-900 mb-4">
+            <h2 className="text-sm font-bold text-grey-900 mb-4">
               기간·출처 (선택)
             </h2>
             <div className="grid grid-cols-2 gap-4">
@@ -226,17 +226,17 @@ export default async function NewWelfareProgramPage({
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              className="min-h-[48px] px-6 text-[14px] font-bold rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+              className="min-h-[48px] px-6 text-sm font-bold rounded-lg bg-blue-500 text-white hover:bg-blue-600"
             >
               등록 + 자동 분류
             </button>
             <Link
               href="/admin"
-              className="min-h-[48px] px-6 inline-flex items-center text-[14px] font-semibold rounded-lg border border-grey-200 text-grey-700 hover:bg-grey-50 no-underline"
+              className="min-h-[48px] px-6 inline-flex items-center text-sm font-semibold rounded-lg border border-grey-200 text-grey-700 hover:bg-grey-50 no-underline"
             >
               취소
             </Link>
-            <span className="ml-auto text-[12px] text-grey-600">
+            <span className="ml-auto text-xs text-grey-600">
               source_code=<code>manual_admin</code> 으로 저장 + 감사 로그 기록
             </span>
           </div>
@@ -266,7 +266,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-[13px] font-medium text-grey-700 mb-1">
+      <span className="block text-sm font-medium text-grey-700 mb-1">
         {label}
       </span>
       <input
@@ -276,7 +276,7 @@ function Field({
         maxLength={maxLength}
         placeholder={placeholder}
         defaultValue={defaultValue || undefined}
-        className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none"
+        className="w-full px-3 py-2 border border-grey-200 rounded-lg text-base text-grey-900 focus:border-blue-500 outline-none"
       />
     </label>
   );
@@ -301,7 +301,7 @@ function Textarea({
 }) {
   return (
     <label className="block">
-      <span className="block text-[13px] font-medium text-grey-700 mb-1">
+      <span className="block text-sm font-medium text-grey-700 mb-1">
         {label}
       </span>
       <textarea
@@ -311,7 +311,7 @@ function Textarea({
         rows={rows}
         placeholder={placeholder}
         defaultValue={defaultValue || undefined}
-        className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none leading-[1.6] resize-y"
+        className="w-full px-3 py-2 border border-grey-200 rounded-lg text-base text-grey-900 focus:border-blue-500 outline-none leading-[1.6] resize-y"
       />
     </label>
   );

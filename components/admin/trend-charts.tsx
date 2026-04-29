@@ -22,7 +22,7 @@ export function SimpleBarChart({
 }) {
   if (series.length === 0 || series[0].data.length === 0) {
     return (
-      <div className="text-[12px] text-grey-500">
+      <div className="text-xs text-grey-500">
         데이터 없음 (30일 모두 0)
       </div>
     );
@@ -38,8 +38,8 @@ export function SimpleBarChart({
   return (
     <section>
       <div className="flex items-baseline justify-between mb-2">
-        <h3 className="text-[14px] font-semibold text-grey-800">{title}</h3>
-        <div className="flex gap-3 text-[11px] text-grey-600">
+        <h3 className="text-sm font-semibold text-grey-800">{title}</h3>
+        <div className="flex gap-3 text-xs text-grey-600">
           {series.map((s) => (
             <span key={s.label} className="inline-flex items-center gap-1">
               <span
@@ -69,7 +69,7 @@ export function SimpleBarChart({
           )),
         )}
       </svg>
-      <div className="flex justify-between text-[10px] text-grey-500 mt-1">
+      <div className="flex justify-between text-xs text-grey-500 mt-1">
         <span>{series[0].data[0]?.date.slice(5)}</span>
         <span>최대 {max.toLocaleString()}</span>
         <span>{series[0].data[series[0].data.length - 1]?.date.slice(5)}</span>
@@ -91,7 +91,7 @@ export function SimpleLineChart({
   color?: string;
 }) {
   if (data.length === 0) {
-    return <div className="text-[12px] text-grey-500">데이터 없음</div>;
+    return <div className="text-xs text-grey-500">데이터 없음</div>;
   }
   const max = Math.max(1, ...data.map((d) => d.value));
   const chartHeight = 80;
@@ -106,8 +106,8 @@ export function SimpleLineChart({
   return (
     <section>
       <div className="flex items-baseline justify-between mb-2">
-        <h3 className="text-[14px] font-semibold text-grey-800">{title}</h3>
-        <span className="text-[11px] text-grey-600">최대 {max}</span>
+        <h3 className="text-sm font-semibold text-grey-800">{title}</h3>
+        <span className="text-xs text-grey-600">최대 {max}</span>
       </div>
       <svg
         viewBox={`0 0 100 ${chartHeight}`}
@@ -122,7 +122,7 @@ export function SimpleLineChart({
           vectorEffect="non-scaling-stroke"
         />
       </svg>
-      <div className="flex justify-between text-[10px] text-grey-500 mt-1">
+      <div className="flex justify-between text-xs text-grey-500 mt-1">
         <span>{data[0]?.date.slice(5)}</span>
         <span>{data[data.length - 1]?.date.slice(5)}</span>
       </div>

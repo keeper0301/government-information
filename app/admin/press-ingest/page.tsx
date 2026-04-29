@@ -126,13 +126,13 @@ function KpiCard({
         : "border-grey-200 bg-grey-50 text-grey-700";
   return (
     <div className={`rounded-lg border p-3 ${cls}`}>
-      <p className="text-[11px] font-semibold mb-0.5 tracking-[0.04em] uppercase">
+      <p className="text-xs font-semibold mb-0.5 tracking-[0.04em] uppercase">
         {label}
       </p>
-      <p className="text-[18px] font-extrabold tracking-[-0.3px] leading-tight">
+      <p className="text-lg font-extrabold tracking-[-0.3px] leading-tight">
         {value}
       </p>
-      {hint && <p className="text-[10px] mt-1 leading-[1.4]">{hint}</p>}
+      {hint && <p className="text-xs mt-1 leading-[1.4]">{hint}</p>}
     </div>
   );
 }
@@ -226,7 +226,7 @@ export default async function PressIngestPage({
 
       {/* 7일 자동 등록 추세 — 일별 막대 7개. cron 작동·정책 발굴 페이스 한눈에. */}
       <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
-        <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+        <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">
           7일 자동 등록 추세
         </h2>
         <div className="flex items-end gap-2 h-[72px]">
@@ -235,7 +235,7 @@ export default async function PressIngestPage({
             const isToday = d.day === autoTrend[autoTrend.length - 1]?.day;
             return (
               <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                <div className="text-[11px] font-semibold text-grey-700 tabular-nums">
+                <div className="text-xs font-semibold text-grey-700 tabular-nums">
                   {d.count}
                 </div>
                 <div
@@ -253,7 +253,7 @@ export default async function PressIngestPage({
           {autoTrend.map((d) => (
             <div
               key={d.day}
-              className="flex-1 text-center text-[10px] text-grey-600 tabular-nums"
+              className="flex-1 text-center text-xs text-grey-600 tabular-nums"
             >
               {d.day.replace(/^\d{4}\.\s*/, "").replace(/\.$/, "")}
             </div>
@@ -263,11 +263,11 @@ export default async function PressIngestPage({
 
       {/* 최근 자동 등록 5건 — 사장님이 "정말 자동으로 들어왔나" 즉시 확인. */}
       <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
-        <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+        <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">
           최근 자동 등록 정책 5건
         </h2>
         {recentAuto.length === 0 ? (
-          <p className="text-[12px] text-grey-600 leading-[1.5]">
+          <p className="text-xs text-grey-600 leading-[1.5]">
             아직 자동 등록된 정책이 없어요. 매일 01:30 KST cron 이 실행하면
             안전 가드 통과한 정책이 여기 노출됩니다.
           </p>
@@ -276,10 +276,10 @@ export default async function PressIngestPage({
             {recentAuto.map((r) => (
               <li
                 key={`${r.table}-${r.id}`}
-                className="flex items-center gap-2 text-[12px]"
+                className="flex items-center gap-2 text-xs"
               >
                 <span
-                  className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                  className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold ${
                     r.table === "welfare"
                       ? "bg-blue-50 text-blue-700"
                       : "bg-orange-50 text-orange-700"
@@ -288,7 +288,7 @@ export default async function PressIngestPage({
                   {r.table === "welfare" ? "복지" : "대출"}
                 </span>
                 {r.category && (
-                  <span className="shrink-0 text-grey-600 text-[11px]">
+                  <span className="shrink-0 text-grey-600 text-xs">
                     {r.category}
                   </span>
                 )}
@@ -303,7 +303,7 @@ export default async function PressIngestPage({
                 >
                   {r.title}
                 </Link>
-                <span className="shrink-0 text-grey-500 text-[11px]">
+                <span className="shrink-0 text-grey-500 text-xs">
                   {fmtDate(r.createdAt)}
                 </span>
               </li>
@@ -314,7 +314,7 @@ export default async function PressIngestPage({
 
       {/* 안내 + 기간 토글 */}
       <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
-        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[12px] text-blue-900 leading-[1.55] flex-1 min-w-[280px]">
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900 leading-[1.55] flex-1 min-w-[280px]">
           💡 자동 ingest cron 매일 01:30 KST 실행 (LLM 분류 + 자동 INSERT,
           cap 30 후보 / 10 INSERT). 누락된 정책은 직접 '🤖 AI 분류' 또는
           '복지/대출 →' 버튼으로 수동 등록 가능.
@@ -332,7 +332,7 @@ export default async function PressIngestPage({
                   ? "/admin/press-ingest"
                   : `/admin/press-ingest?hours=${opt.value}`
               }
-              className={`px-4 py-2 text-[12px] font-semibold no-underline transition-colors ${
+              className={`px-4 py-2 text-xs font-semibold no-underline transition-colors ${
                 hours === opt.value
                   ? "bg-blue-500 text-white"
                   : "text-grey-700 hover:bg-grey-50"
@@ -346,13 +346,13 @@ export default async function PressIngestPage({
 
       {/* 후보 테이블 */}
       {candidates.length === 0 ? (
-        <div className="rounded-lg border border-grey-200 bg-white p-10 text-center text-[14px] text-grey-600">
+        <div className="rounded-lg border border-grey-200 bg-white p-10 text-center text-sm text-grey-600">
           후보 없음 — 광역도청 신청 신호 키워드 매칭 보도자료가 이 기간에
           없습니다.
         </div>
       ) : (
         <div className="rounded-lg border border-grey-200 bg-white overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-grey-600 border-b border-grey-200 bg-grey-50">
                 <th className="py-2 px-3 font-medium whitespace-nowrap">
@@ -376,10 +376,10 @@ export default async function PressIngestPage({
                   key={c.id}
                   className="border-b border-grey-100 last:border-b-0 align-top"
                 >
-                  <td className="py-2 px-3 text-grey-600 text-[12px] whitespace-nowrap">
+                  <td className="py-2 px-3 text-grey-600 text-xs whitespace-nowrap">
                     {fmtDate(c.published_at)}
                   </td>
-                  <td className="py-2 px-3 text-[12px] whitespace-nowrap">
+                  <td className="py-2 px-3 text-xs whitespace-nowrap">
                     {(() => {
                       const m = shortenMinistry(c.ministry);
                       return (
@@ -388,7 +388,7 @@ export default async function PressIngestPage({
                             {m.province}
                           </span>
                           {m.district && (
-                            <span className="text-[10px] text-grey-700 font-medium">
+                            <span className="text-xs text-grey-700 font-medium">
                               {m.district}
                             </span>
                           )}
@@ -405,25 +405,25 @@ export default async function PressIngestPage({
                       {c.title}
                     </Link>
                     {c.summary && (
-                      <p className="text-[11px] text-grey-600 mt-0.5 line-clamp-2 leading-[1.4]">
+                      <p className="text-xs text-grey-600 mt-0.5 line-clamp-2 leading-[1.4]">
                         {c.summary}
                       </p>
                     )}
                   </td>
-                  <td className="py-2 px-3 text-grey-600 text-[11px] whitespace-nowrap">
+                  <td className="py-2 px-3 text-grey-600 text-xs whitespace-nowrap">
                     {c.source_outlet ?? "—"}
                   </td>
                   <td className="py-2 px-3 whitespace-nowrap align-top">
                     <div className="flex flex-col gap-1">
                       <Link
                         href={buildPrefillUrl("/admin/welfare/new", c, true)}
-                        className="text-[11px] text-blue-500 hover:text-blue-700 font-semibold no-underline whitespace-nowrap"
+                        className="text-xs text-blue-500 hover:text-blue-700 font-semibold no-underline whitespace-nowrap"
                       >
                         복지 →
                       </Link>
                       <Link
                         href={buildPrefillUrl("/admin/loan/new", c, false)}
-                        className="text-[11px] text-orange-500 hover:text-orange-700 font-semibold no-underline whitespace-nowrap"
+                        className="text-xs text-orange-500 hover:text-orange-700 font-semibold no-underline whitespace-nowrap"
                       >
                         대출 →
                       </Link>
@@ -449,12 +449,12 @@ export default async function PressIngestPage({
         </div>
       )}
 
-      <p className="mt-6 text-[12px] text-grey-600">
+      <p className="mt-6 text-xs text-grey-600">
         전체 {candidates.length}건 (최대 100건). L2 (LLM 자동 분류) 도입 시
         이 페이지에서 후보가 자동 등록 후 confirm 단계로 변경 예정.
       </p>
 
-      <p className="mt-8 text-[13px] flex items-center gap-4">
+      <p className="mt-8 text-sm flex items-center gap-4">
         <Link href="/admin" className="text-blue-500 font-medium underline">
           ← 어드민 홈
         </Link>

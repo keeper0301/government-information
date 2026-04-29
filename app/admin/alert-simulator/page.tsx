@@ -132,18 +132,18 @@ export default async function AlertSimulatorPage({
           action="/admin/alert-simulator"
           className="mb-6 bg-white border border-grey-200 rounded-xl p-4 flex flex-wrap items-end gap-3"
         >
-          <label className="text-[13px] font-medium text-grey-700">
+          <label className="text-sm font-medium text-grey-700">
             <span className="block mb-1">대상 테이블</span>
             <select
               name="simTable"
               defaultValue={simTable ?? "welfare"}
-              className="px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none min-h-[40px]"
+              className="px-3 py-2 border border-grey-200 rounded-lg text-sm text-grey-900 focus:border-blue-500 outline-none min-h-[40px]"
             >
               <option value="welfare">welfare_programs</option>
               <option value="loan">loan_programs</option>
             </select>
           </label>
-          <label className="text-[13px] font-medium text-grey-700 flex-1 min-w-[280px]">
+          <label className="text-sm font-medium text-grey-700 flex-1 min-w-[280px]">
             <span className="block mb-1">정책 ID (UUID)</span>
             <input
               type="text"
@@ -151,12 +151,12 @@ export default async function AlertSimulatorPage({
               defaultValue={simProgramId ?? ""}
               placeholder="00000000-0000-0000-0000-000000000000"
               maxLength={36}
-              className="w-full px-3 py-2 border border-grey-200 rounded-lg text-[13px] text-grey-900 focus:border-blue-500 outline-none font-mono"
+              className="w-full px-3 py-2 border border-grey-200 rounded-lg text-sm text-grey-900 focus:border-blue-500 outline-none font-mono"
             />
           </label>
           <button
             type="submit"
-            className="min-h-[44px] px-4 text-[13px] font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+            className="min-h-[44px] px-4 text-sm font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600"
           >
             시뮬레이션
           </button>
@@ -164,17 +164,17 @@ export default async function AlertSimulatorPage({
 
         {/* 입력 안내 — 둘 다 비어있을 때 */}
         {(!simTable || !simProgramId) && (
-          <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-[13px] text-blue-900 leading-[1.6]">
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 leading-[1.6]">
             정책 ID 를 입력하고 <strong>시뮬레이션</strong> 을 누르면 매칭되는
             사용자 수·샘플이 노출됩니다. ID 는 정책 상세 페이지 URL 의 UUID 부분
-            (<code className="text-[12px] bg-white px-1 rounded">/welfare/{`{id}`}</code> 또는
-            <code className="text-[12px] bg-white px-1 rounded ml-1">/loan/{`{id}`}</code>) 입니다.
+            (<code className="text-xs bg-white px-1 rounded">/welfare/{`{id}`}</code> 또는
+            <code className="text-xs bg-white px-1 rounded ml-1">/loan/{`{id}`}</code>) 입니다.
           </div>
         )}
 
         {/* 정책 못 찾음 */}
         {simTable && simProgramId && !program && (
-          <div className="rounded-lg border border-red/30 bg-red/5 p-4 text-[13px] text-red leading-[1.6]">
+          <div className="rounded-lg border border-red/30 bg-red/5 p-4 text-sm text-red leading-[1.6]">
             ❌ 해당 ID 의 정책을 찾을 수 없습니다. UUID 형식 + 테이블 (
             {simTable}) 을 다시 확인해 주세요.
           </div>
@@ -185,13 +185,13 @@ export default async function AlertSimulatorPage({
           <>
             {/* 정책 정보 카드 */}
             <section className="mb-6 rounded-xl border border-grey-200 bg-white p-5">
-              <h2 className="text-[16px] font-bold text-grey-900 mb-2">
+              <h2 className="text-base font-bold text-grey-900 mb-2">
                 대상 정책
               </h2>
-              <p className="text-[15px] font-semibold text-grey-900 mb-3 break-all">
+              <p className="text-sm font-semibold text-grey-900 mb-3 break-all">
                 {program.title}
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-[12px]">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                 <TagRow label="region" tags={program.region_tags} />
                 <TagRow label="age" tags={program.age_tags} />
                 <TagRow label="occupation" tags={program.occupation_tags} />
@@ -225,16 +225,16 @@ export default async function AlertSimulatorPage({
 
             {/* 샘플 5명 */}
             <section className="mb-8">
-              <h2 className="text-[16px] font-bold text-grey-900 mb-3">
+              <h2 className="text-base font-bold text-grey-900 mb-3">
                 샘플 (최대 5명)
               </h2>
               {samples.length === 0 ? (
-                <div className="rounded-lg border border-grey-200 bg-white p-4 text-[13px] text-grey-600">
+                <div className="rounded-lg border border-grey-200 bg-white p-4 text-sm text-grey-600">
                   매칭되는 active rule 없음.
                 </div>
               ) : (
                 <div className="rounded-lg border border-grey-200 bg-white overflow-x-auto">
-                  <table className="w-full text-[13px]">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-grey-600 border-b border-grey-200 bg-grey-50">
                         <th className="py-2 px-3 font-medium whitespace-nowrap">
@@ -259,7 +259,7 @@ export default async function AlertSimulatorPage({
                             {maskEmail(userEmailMap.get(m.rule.user_id))}
                             <Link
                               href={`/admin/users/${m.rule.user_id}`}
-                              className="ml-2 text-blue-500 hover:underline font-mono text-[11px]"
+                              className="ml-2 text-blue-500 hover:underline font-mono text-xs"
                               title={m.rule.user_id}
                             >
                               {m.rule.user_id.slice(0, 8)}…
@@ -281,7 +281,7 @@ export default async function AlertSimulatorPage({
                 </div>
               )}
               {matches.length > samples.length && (
-                <p className="mt-2 text-[12px] text-grey-600">
+                <p className="mt-2 text-xs text-grey-600">
                   · 외 {matches.length - samples.length}건 추가 매칭 (전체 발송 대상은 위
                   KPI 참조).
                 </p>
@@ -289,7 +289,7 @@ export default async function AlertSimulatorPage({
             </section>
 
             {/* 안내 */}
-            <div className="rounded-lg border border-grey-200 bg-grey-50 p-4 text-[12px] text-grey-700 leading-[1.6]">
+            <div className="rounded-lg border border-grey-200 bg-grey-50 p-4 text-xs text-grey-700 leading-[1.6]">
               ※ 시뮬레이션 결과는 <strong>현재 active rule 기준</strong> 입니다.
               실제 발송 시점에는 alert-dispatch 의 cohort gate (income/household
               매칭) 가 한 번 더 적용되어 매칭 사용자 수가 줄어들 수 있습니다.
@@ -298,7 +298,7 @@ export default async function AlertSimulatorPage({
           </>
         )}
 
-        <p className="mt-10 text-[13px] flex items-center gap-4">
+        <p className="mt-10 text-sm flex items-center gap-4">
           <Link href="/admin" className="text-blue-500 font-medium underline">
             ← 어드민 홈
           </Link>
@@ -323,7 +323,7 @@ function TagRow({
 }) {
   return (
     <div className="bg-grey-50 rounded p-2">
-      <p className="text-[10px] text-grey-600 font-mono mb-0.5">{label}</p>
+      <p className="text-xs text-grey-600 font-mono mb-0.5">{label}</p>
       <p className="text-grey-900 break-all leading-[1.4]">
         {tags.length === 0 ? (
           <span className="text-grey-500">{emptyHint ?? "(없음)"}</span>
@@ -350,8 +350,8 @@ function Kpi({
       : "border-grey-200 bg-grey-50 text-grey-700";
   return (
     <div className={`rounded-lg border p-4 ${cls}`}>
-      <p className="text-[12px] font-semibold mb-1">{label}</p>
-      <p className="text-[22px] font-extrabold tracking-[-0.5px]">{value}</p>
+      <p className="text-xs font-semibold mb-1">{label}</p>
+      <p className="text-2xl font-extrabold tracking-[-0.5px]">{value}</p>
     </div>
   );
 }

@@ -329,11 +329,11 @@ export default async function AlimtalkAdminPage() {
         {/* 환경변수 설정 체크리스트 */}
         <section className="mb-6 rounded-lg border border-grey-200 bg-white p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[16px] font-bold text-grey-900 tracking-[-0.3px]">
+            <h2 className="text-base font-bold text-grey-900 tracking-[-0.3px]">
               환경변수 설정 상태
             </h2>
             <span
-              className={`text-[12px] font-semibold px-2 py-0.5 rounded ${
+              className={`text-xs font-semibold px-2 py-0.5 rounded ${
                 envsAllSet
                   ? "bg-blue-50 text-blue-700"
                   : "bg-yellow-50 text-yellow-800"
@@ -343,7 +343,7 @@ export default async function AlimtalkAdminPage() {
             </span>
           </div>
 
-          <ul className="space-y-1.5 text-[13px]">
+          <ul className="space-y-1.5 text-sm">
             {envStatus.map((e) => (
               <li
                 key={e.name}
@@ -355,7 +355,7 @@ export default async function AlimtalkAdminPage() {
                   </span>
                   <code className="text-grey-800 break-all">{e.name}</code>
                 </div>
-                <span className={`shrink-0 text-[12px] ${e.present ? "text-grey-700" : "text-yellow-800"}`}>
+                <span className={`shrink-0 text-xs ${e.present ? "text-grey-700" : "text-yellow-800"}`}>
                   {e.displayValue ?? "미설정"}
                 </span>
               </li>
@@ -363,7 +363,7 @@ export default async function AlimtalkAdminPage() {
           </ul>
 
           <div
-            className={`mt-4 rounded-lg border p-3 text-[13px] leading-[1.65] ${
+            className={`mt-4 rounded-lg border p-3 text-sm leading-[1.65] ${
               envsAllSet
                 ? "border-blue-200 bg-blue-50 text-blue-900"
                 : "border-yellow-300 bg-yellow-50 text-yellow-900"
@@ -396,10 +396,10 @@ export default async function AlimtalkAdminPage() {
         {/* 템플릿 승인일 안내 — KAKAO_TEMPLATE_APPROVED_AT 환경변수 등록 시 노출 */}
         {templateApprovedAt && (
           <section className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4">
-            <p className="text-[13px] text-blue-900">
+            <p className="text-sm text-blue-900">
               ✅ 카카오 알림톡 템플릿 <strong>POLICY_NEW</strong> 승인일:{" "}
               <strong>{templateApprovedAt}</strong>
-              <span className="ml-2 text-[13px] text-blue-700">
+              <span className="ml-2 text-sm text-blue-700">
                 (Vercel 환경변수 KAKAO_TEMPLATE_APPROVED_AT 로 관리)
               </span>
             </p>
@@ -408,16 +408,16 @@ export default async function AlimtalkAdminPage() {
 
         {/* 7일 실패율 추이 그래프 */}
         <section className="mb-8">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+          <h2 className="text-lg font-bold text-grey-900 mb-3">
             최근 7일 발송 추이
           </h2>
           <div className="rounded-lg border border-grey-200 bg-white p-4">
             <div className="flex items-baseline justify-between mb-3">
-              <p className="text-[13px] text-grey-700">
+              <p className="text-sm text-grey-700">
                 일별 성공·실패 (skipped 제외)
               </p>
               <p
-                className={`text-[13px] font-semibold ${
+                className={`text-sm font-semibold ${
                   failRate7d >= 10
                     ? "text-red"
                     : failRate7d >= 5
@@ -437,22 +437,22 @@ export default async function AlimtalkAdminPage() {
 
         {/* 채널별 분포 + 시간대별 추세 (D — 알림톡 통계 강화) */}
         <section className="mb-8">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+          <h2 className="text-lg font-bold text-grey-900 mb-3">
             전체 채널 24시간 분포·시간대 추세
           </h2>
-          <p className="text-[13px] text-grey-600 mb-4 leading-[1.6]">
+          <p className="text-sm text-grey-600 mb-4 leading-[1.6]">
             email + kakao 합산. 카카오 v2 통과 후 양 채널 비교 가시화 + 발송 몰리는 시각대 식별.
           </p>
           <div className="grid gap-4 md:grid-cols-2">
             {/* 채널 분포 카드 */}
             <div className="rounded-lg border border-grey-200 bg-white p-4">
-              <p className="text-[13px] font-semibold text-grey-800 mb-3">
+              <p className="text-sm font-semibold text-grey-800 mb-3">
                 채널별 (24h)
               </p>
               {channelStats.length === 0 ? (
-                <p className="text-[12px] text-grey-600">발송 시도 없음.</p>
+                <p className="text-xs text-grey-600">발송 시도 없음.</p>
               ) : (
-                <ul className="space-y-2 text-[13px]">
+                <ul className="space-y-2 text-sm">
                   {channelStats.map((c) => (
                     <li
                       key={c.channel}
@@ -461,7 +461,7 @@ export default async function AlimtalkAdminPage() {
                       <span className="text-grey-900 font-mono uppercase">
                         {c.channel}
                       </span>
-                      <span className="text-grey-700 text-[12px]">
+                      <span className="text-grey-700 text-xs">
                         총 <strong className="text-grey-900">{c.total}</strong> ·
                         성공 {c.sent} · 실패 {c.failed} · 건너뜀 {c.skipped}
                       </span>
@@ -473,7 +473,7 @@ export default async function AlimtalkAdminPage() {
 
             {/* 시간대별 추세 (24h, KST) */}
             <div className="rounded-lg border border-grey-200 bg-white p-4">
-              <p className="text-[13px] font-semibold text-grey-800 mb-3">
+              <p className="text-sm font-semibold text-grey-800 mb-3">
                 시간대별 (24h, KST)
               </p>
               <HourlyBarChart buckets={hourlyStats} max={hourlyMax} />
@@ -483,7 +483,7 @@ export default async function AlimtalkAdminPage() {
 
         {/* 24h 집계 카드 */}
         <section className="mb-8">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+          <h2 className="text-lg font-bold text-grey-900 mb-3">
             카카오 24시간 발송 현황
           </h2>
 
@@ -496,10 +496,10 @@ export default async function AlimtalkAdminPage() {
 
           {stats.skippedBreakdown.length > 0 && (
             <div className="mt-4 rounded-lg border border-grey-200 bg-white p-4">
-              <p className="text-[13px] font-semibold text-grey-800 mb-2">
+              <p className="text-sm font-semibold text-grey-800 mb-2">
                 건너뜀 사유
               </p>
-              <ul className="text-[13px] text-grey-700 space-y-1">
+              <ul className="text-sm text-grey-700 space-y-1">
                 {stats.skippedBreakdown.map((r) => (
                   <li key={r.reason} className="flex justify-between">
                     <span>{REASON_LABELS[r.reason] ?? r.reason}</span>
@@ -512,10 +512,10 @@ export default async function AlimtalkAdminPage() {
 
           {stats.failedBreakdown.length > 0 && (
             <div className="mt-3 rounded-lg border border-grey-200 bg-white p-4">
-              <p className="text-[13px] font-semibold text-grey-800 mb-2">
+              <p className="text-sm font-semibold text-grey-800 mb-2">
                 실패 원인 Top 5
               </p>
-              <ul className="text-[13px] text-grey-700 space-y-1">
+              <ul className="text-sm text-grey-700 space-y-1">
                 {stats.failedBreakdown.map((r) => (
                   <li key={r.reason} className="flex justify-between">
                     <span>{REASON_LABELS[r.reason] ?? r.reason}</span>
@@ -527,7 +527,7 @@ export default async function AlimtalkAdminPage() {
           )}
 
           {stats.total === 0 && (
-            <p className="mt-4 text-[13px] text-grey-600">
+            <p className="mt-4 text-sm text-grey-600">
               최근 24시간 동안 카카오 알림톡 발송 시도가 없습니다.
             </p>
           )}
@@ -536,16 +536,16 @@ export default async function AlimtalkAdminPage() {
         {/* 최근 발송 로그 — 집계 카드로는 "누구에게 언제 왜 실패" 추적 불가.
             최근 20건 개별 row 로 문의 대응 시 즉시 원인 파악 가능하게. */}
         <section className="mb-8">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+          <h2 className="text-lg font-bold text-grey-900 mb-3">
             최근 발송 로그 (최근 {recentLogs.length}건)
           </h2>
           {recentLogs.length === 0 ? (
-            <div className="rounded-lg border border-grey-200 bg-white p-4 text-[13px] text-grey-600">
+            <div className="rounded-lg border border-grey-200 bg-white p-4 text-sm text-grey-600">
               최근 카카오 알림톡 발송 기록이 없어요.
             </div>
           ) : (
             <div className="rounded-lg border border-grey-200 bg-white overflow-x-auto">
-              <table className="w-full text-[13px]">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-grey-600 border-b border-grey-200 bg-grey-50">
                     <th className="py-2 px-3 font-medium whitespace-nowrap">시각</th>
@@ -561,7 +561,7 @@ export default async function AlimtalkAdminPage() {
                       key={log.id}
                       className="border-b border-grey-100 last:border-b-0 align-top"
                     >
-                      <td className="py-2 px-3 text-grey-600 text-[12px] whitespace-nowrap">
+                      <td className="py-2 px-3 text-grey-600 text-xs whitespace-nowrap">
                         {new Date(log.created_at).toLocaleString("ko-KR", {
                           timeZone: "Asia/Seoul",
                           month: "2-digit",
@@ -570,7 +570,7 @@ export default async function AlimtalkAdminPage() {
                           minute: "2-digit",
                         })}
                       </td>
-                      <td className="py-2 px-3 text-[12px] whitespace-nowrap">
+                      <td className="py-2 px-3 text-xs whitespace-nowrap">
                         <Link
                           href={`/admin/users/${log.user_id}`}
                           className="text-blue-500 hover:underline font-mono"
@@ -585,7 +585,7 @@ export default async function AlimtalkAdminPage() {
                       <td className="py-2 px-3 whitespace-nowrap">
                         <StatusBadge status={log.status} />
                       </td>
-                      <td className="py-2 px-3 text-grey-600 text-[12px] break-all">
+                      <td className="py-2 px-3 text-grey-600 text-xs break-all">
                         {log.error ?? "—"}
                       </td>
                     </tr>
@@ -598,10 +598,10 @@ export default async function AlimtalkAdminPage() {
 
         {/* 카톡 카드 미리보기 — 사용자가 받게 될 알림 사전 시각 확인 (#8) */}
         <section className="mb-8">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+          <h2 className="text-lg font-bold text-grey-900 mb-3">
             카톡 카드 미리보기
           </h2>
-          <p className="text-[13px] text-grey-600 mb-4 leading-[1.6]">
+          <p className="text-sm text-grey-600 mb-4 leading-[1.6]">
             POLICY_NEW (v2) · POLICY_NEW_V3 양 템플릿. 변수 입력 → 사용자가 카카오톡으로
             받을 카드 즉시 시각화. 발송 안 함 — 디자인 검토·심사 반려 대비.
           </p>
@@ -610,17 +610,17 @@ export default async function AlimtalkAdminPage() {
 
         {/* 테스트 발송 폼 */}
         <section className="mb-8">
-          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+          <h2 className="text-lg font-bold text-grey-900 mb-3">
             테스트 발송
           </h2>
-          <p className="text-[13px] text-grey-600 mb-4 leading-[1.6]">
+          <p className="text-sm text-grey-600 mb-4 leading-[1.6]">
             POLICY_NEW 템플릿으로 즉시 발송합니다. 본인 번호 입력 후 카카오톡으로
             실제 수신되는지 확인하세요. 결과(성공/실패 사유)는 아래에 바로 표시됩니다.
           </p>
           <AlimtalkTestForm />
         </section>
 
-        <p className="mt-10 text-[13px] flex items-center gap-4">
+        <p className="mt-10 text-sm flex items-center gap-4">
           <Link
             href="/admin/alert-simulator"
             className="text-blue-500 font-medium underline"
@@ -701,7 +701,7 @@ function HourlyBarChart({
           );
         })}
       </svg>
-      <p className="mt-1 text-[11px] text-grey-600">
+      <p className="mt-1 text-xs text-grey-600">
         ※ 시각은 KST 기준. 막대 위 hover 시 정확 건수.
       </p>
     </div>
@@ -800,7 +800,7 @@ function DailyBarChart({ buckets }: { buckets: DailyBucket[] }) {
         })}
       </svg>
       {/* 범례 */}
-      <div className="mt-2 flex gap-4 text-[12px] text-grey-700">
+      <div className="mt-2 flex gap-4 text-xs text-grey-700">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm bg-blue-500" />
           성공
@@ -833,8 +833,8 @@ function StatCard({
 
   return (
     <div className={`rounded-lg border p-4 ${toneClass}`}>
-      <p className="text-[13px] font-semibold mb-1">{label}</p>
-      <p className="text-[24px] font-extrabold tracking-[-0.5px]">{value}</p>
+      <p className="text-sm font-semibold mb-1">{label}</p>
+      <p className="text-2xl font-extrabold tracking-[-0.5px]">{value}</p>
     </div>
   );
 }
@@ -856,7 +856,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span
-      className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md ${CLASS[status] ?? "bg-grey-100 text-grey-700"}`}
+      className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-md ${CLASS[status] ?? "bg-grey-100 text-grey-700"}`}
     >
       {LABEL[status] ?? status}
     </span>

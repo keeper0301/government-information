@@ -147,7 +147,7 @@ export default function BackfillRunnerPage() {
             <button
               type="button"
               onClick={start}
-              className="px-6 py-3 rounded-xl bg-blue-500 text-white font-bold text-[15px] hover:bg-blue-600 cursor-pointer border-none"
+              className="px-6 py-3 rounded-xl bg-blue-500 text-white font-bold text-sm hover:bg-blue-600 cursor-pointer border-none"
             >
               {state === "done" ? "다시 시작" : "백필 시작"}
             </button>
@@ -155,12 +155,12 @@ export default function BackfillRunnerPage() {
             <button
               type="button"
               onClick={stop}
-              className="px-6 py-3 rounded-xl bg-red-500 text-white font-bold text-[15px] hover:bg-red-600 cursor-pointer border-none"
+              className="px-6 py-3 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 cursor-pointer border-none"
             >
               중단
             </button>
           )}
-          <span className="text-[13px] text-grey-600">
+          <span className="text-sm text-grey-600">
             상태:{" "}
             <b
               className={`${
@@ -188,12 +188,12 @@ export default function BackfillRunnerPage() {
 
         {/* 진행률 카드 */}
         <section className="bg-white rounded-2xl border border-grey-200 p-5 mb-5">
-          <h2 className="text-[16px] font-bold text-grey-900 mb-4">진행 상황</h2>
+          <h2 className="text-base font-bold text-grey-900 mb-4">진행 상황</h2>
 
           {/* progress bar */}
           {totalEstimated && totalEstimated > 0 && (
             <div className="mb-4">
-              <div className="flex items-center justify-between text-[13px] text-grey-700 mb-1">
+              <div className="flex items-center justify-between text-sm text-grey-700 mb-1">
                 <span>전체 진행률</span>
                 <span className="tabular-nums font-semibold">{progressPct}%</span>
               </div>
@@ -206,25 +206,25 @@ export default function BackfillRunnerPage() {
             </div>
           )}
 
-          <dl className="grid grid-cols-2 gap-3 text-[14px]">
+          <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <dt className="text-grey-500 text-[12px]">백필 완료 (누적)</dt>
+              <dt className="text-grey-500 text-xs">백필 완료 (누적)</dt>
               <dd className="text-grey-900 font-bold tabular-nums">
                 {totalUpdated.toLocaleString()}
               </dd>
             </div>
             <div>
-              <dt className="text-grey-500 text-[12px]">남은 NULL</dt>
+              <dt className="text-grey-500 text-xs">남은 NULL</dt>
               <dd className="text-grey-900 font-bold tabular-nums">
                 {remaining !== null ? remaining.toLocaleString() : "—"}
               </dd>
             </div>
             <div>
-              <dt className="text-grey-500 text-[12px]">호출 횟수</dt>
+              <dt className="text-grey-500 text-xs">호출 횟수</dt>
               <dd className="text-grey-900 font-bold tabular-nums">{calls}</dd>
             </div>
             <div>
-              <dt className="text-grey-500 text-[12px]">실패 누적</dt>
+              <dt className="text-grey-500 text-xs">실패 누적</dt>
               <dd
                 className={`font-bold tabular-nums ${
                   totalFailed > 0 ? "text-red-500" : "text-grey-900"
@@ -235,7 +235,7 @@ export default function BackfillRunnerPage() {
             </div>
             {state === "running" && etaSec > 0 && (
               <div className="col-span-2">
-                <dt className="text-grey-500 text-[12px]">예상 남은 시간</dt>
+                <dt className="text-grey-500 text-xs">예상 남은 시간</dt>
                 <dd className="text-grey-900 font-bold tabular-nums">
                   {etaSec >= 60
                     ? `${Math.floor(etaSec / 60)}분 ${etaSec % 60}초`
@@ -248,18 +248,18 @@ export default function BackfillRunnerPage() {
 
         {/* 에러 표시 */}
         {errorMsg && (
-          <section className="bg-red-50 border border-red-200 rounded-xl p-4 text-[13px] text-red-800 leading-[1.55]">
+          <section className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800 leading-[1.55]">
             <b>에러 발생</b>: {errorMsg}
           </section>
         )}
 
         {state === "done" && (
-          <section className="bg-green-50 border border-green-200 rounded-xl p-4 text-[13px] text-green-900 leading-[1.55]">
+          <section className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-900 leading-[1.55]">
             ✅ 백필 완료. /news 접속 시 dedupe view 가 정상 작동.
           </section>
         )}
 
-        <p className="mt-10 text-[12px] text-grey-500 leading-[1.5]">
+        <p className="mt-10 text-xs text-grey-500 leading-[1.5]">
           이 페이지는 backfill-dedupe API 를 자동 반복 호출합니다. 브라우저 탭을
           닫으면 중단되니, 완료까지 (~1~5분) 탭을 열어두세요.
         </p>

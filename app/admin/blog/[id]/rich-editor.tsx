@@ -153,7 +153,7 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
 
   if (!editor) {
     return (
-      <div className="border border-grey-300 rounded-lg p-4 text-[13px] text-grey-500">
+      <div className="border border-grey-300 rounded-lg p-4 text-sm text-grey-500">
         에디터 불러오는 중...
       </div>
     );
@@ -183,7 +183,7 @@ export function RichEditor({ initialHtml, name = "content" }: Props) {
             if (hiddenRef.current) hiddenRef.current.value = e.target.value;
           }}
           rows={28}
-          className="w-full px-4 py-4 text-[13px] font-mono border-0 focus:outline-none leading-[1.6] resize-y"
+          className="w-full px-4 py-4 text-sm font-mono border-0 focus:outline-none leading-[1.6] resize-y"
           style={{ tabSize: 2 }}
         />
       ) : (
@@ -596,7 +596,7 @@ function Btn({
       onClick={onClick}
       title={title}
       disabled={disabled}
-      className={`min-h-[32px] px-2.5 text-[13px] font-medium rounded border cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+      className={`min-h-[32px] px-2.5 text-sm font-medium rounded border cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
         active
           ? "bg-grey-900 text-white border-grey-900"
           : "bg-white text-grey-800 border-grey-300 hover:bg-grey-100"
@@ -691,7 +691,7 @@ function ColorDropdown({
                 setOpen(false);
               }}
               title={p.label}
-              className={`relative h-8 rounded border text-[11px] font-medium transition-colors ${
+              className={`relative h-8 rounded border text-xs font-medium transition-colors ${
                 idx === activeIdx
                   ? "border-grey-900 ring-1 ring-grey-900"
                   : "border-grey-200 hover:border-grey-400"
@@ -739,7 +739,7 @@ function LinkModal({
     <ModalShell title="링크" onCancel={onCancel}>
       <div className="space-y-3">
         <div>
-          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+          <label className="block text-sm font-semibold text-grey-700 mb-1.5">
             URL
           </label>
           <input
@@ -748,9 +748,9 @@ function LinkModal({
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
             autoFocus
-            className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+            className="w-full h-11 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
           />
-          <p className="mt-1 text-[12px] text-grey-500">
+          <p className="mt-1 text-xs text-grey-500">
             비워두고 적용하면 기존 링크가 제거됩니다.
           </p>
         </div>
@@ -758,14 +758,14 @@ function LinkModal({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-[14px] font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
+            className="px-4 py-2 text-sm font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
           >
             취소
           </button>
           <button
             type="button"
             onClick={() => onSubmit(url.trim() === "https://" ? "" : url.trim())}
-            className="px-4 py-2 text-[14px] font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer"
+            className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer"
           >
             적용
           </button>
@@ -830,7 +830,7 @@ function ImageModal({
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-[14px] font-semibold border-b-2 cursor-pointer ${
+            className={`px-4 py-2 text-sm font-semibold border-b-2 cursor-pointer ${
               tab === t.key
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-grey-600 hover:text-grey-800"
@@ -848,26 +848,26 @@ function ImageModal({
             accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={handleFileChange}
             disabled={uploading}
-            className="block w-full text-[13px] text-grey-700
+            className="block w-full text-sm text-grey-700
               file:mr-3 file:px-4 file:py-2 file:border-0 file:rounded-lg
               file:bg-blue-500 file:text-white file:font-semibold
               file:cursor-pointer file:hover:bg-blue-600
               disabled:opacity-50"
           />
-          <p className="text-[12px] text-grey-500">
+          <p className="text-xs text-grey-500">
             JPEG / PNG / WebP / GIF, 최대 5MB. 업로드 즉시 본문에 삽입됩니다.
           </p>
           {uploading && (
-            <p className="text-[13px] text-blue-600">업로드 중...</p>
+            <p className="text-sm text-blue-600">업로드 중...</p>
           )}
           {error && (
-            <p className="text-[13px] text-red-600">⚠ {error}</p>
+            <p className="text-sm text-red-600">⚠ {error}</p>
           )}
         </div>
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+            <label className="block text-sm font-semibold text-grey-700 mb-1.5">
               이미지 URL
             </label>
             <input
@@ -876,9 +876,9 @@ function ImageModal({
               onChange={(e) => setExternalUrl(e.target.value)}
               placeholder="https://..."
               autoFocus
-              className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+              className="w-full h-11 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
             />
-            <p className="mt-1 text-[12px] text-grey-500">
+            <p className="mt-1 text-xs text-grey-500">
               외부 호스팅 이미지의 직접 링크 (https://). korea.kr 썸네일·imgur 등.
             </p>
           </div>
@@ -886,7 +886,7 @@ function ImageModal({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-[14px] font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
             >
               취소
             </button>
@@ -896,7 +896,7 @@ function ImageModal({
                 const trimmed = externalUrl.trim();
                 if (trimmed && trimmed !== "https://") onInsert(trimmed);
               }}
-              className="px-4 py-2 text-[14px] font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer"
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer"
             >
               삽입
             </button>
@@ -926,7 +926,7 @@ function YouTubeModal({
     <ModalShell title="유튜브 영상 임베드" onCancel={onCancel}>
       <div className="space-y-3">
         <div>
-          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+          <label className="block text-sm font-semibold text-grey-700 mb-1.5">
             유튜브 URL
           </label>
           <input
@@ -935,9 +935,9 @@ function YouTubeModal({
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://www.youtube.com/watch?v=..."
             autoFocus
-            className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
+            className="w-full h-11 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-blue-500"
           />
-          <p className="mt-1 text-[12px] text-grey-500">
+          <p className="mt-1 text-xs text-grey-500">
             유튜브 영상 페이지 URL 또는 youtu.be 단축 링크. 쿠키 없는 모드로
             자동 변환돼요 (개인정보 영향 0).
           </p>
@@ -946,7 +946,7 @@ function YouTubeModal({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-[14px] font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
+            className="px-4 py-2 text-sm font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 cursor-pointer"
           >
             취소
           </button>
@@ -954,7 +954,7 @@ function YouTubeModal({
             type="button"
             disabled={!valid}
             onClick={() => valid && onInsert(trimmed)}
-            className="px-4 py-2 text-[14px] font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             삽입
           </button>
@@ -997,7 +997,7 @@ function ModalShell({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3 border-b border-grey-200">
-          <h3 className="text-[15px] font-bold text-grey-900">{title}</h3>
+          <h3 className="text-sm font-bold text-grey-900">{title}</h3>
           <button
             type="button"
             onClick={onCancel}

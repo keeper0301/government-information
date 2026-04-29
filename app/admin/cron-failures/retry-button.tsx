@@ -53,13 +53,13 @@ export function CronRetryButton({ prefix }: { prefix: string }) {
         type="button"
         onClick={retry}
         disabled={state === "running"}
-        className="px-3 py-1.5 text-[12px] font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer border-none disabled:opacity-50"
+        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer border-none disabled:opacity-50"
       >
         {state === "running" ? "실행 중..." : "재실행"}
       </button>
       {msg && (
         <span
-          className={`text-[11px] ${state === "ok" ? "text-green-700" : "text-red-700"}`}
+          className={`text-xs ${state === "ok" ? "text-green-700" : "text-red-700"}`}
         >
           {msg}
         </span>

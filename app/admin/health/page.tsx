@@ -77,15 +77,15 @@ export default async function AdminHealthPage() {
       {/* Phase 6 — 임계치 alert (가입 0·결제 실패·cron 연속 실패) */}
       {thresholdAlerts.length > 0 && (
         <section className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-5">
-          <h2 className="text-[15px] font-bold text-red-900 mb-3">
+          <h2 className="text-sm font-bold text-red-900 mb-3">
             ⚠️ 임계치 {thresholdAlerts.length}건 초과
           </h2>
-          <ul className="text-[13px] text-red-800 space-y-1">
+          <ul className="text-sm text-red-800 space-y-1">
             {thresholdAlerts.map((a) => (
               <li key={a.key}>• {a.message}</li>
             ))}
           </ul>
-          <p className="text-[11px] text-red-700 mt-3">
+          <p className="text-xs text-red-700 mt-3">
             매일 09:00 KST cron `/api/cron/health-alert` 가 같은 임계치 점검 후 사장님 이메일 발송.
           </p>
         </section>
@@ -108,7 +108,7 @@ export default async function AdminHealthPage() {
 
       {/* Phase 6 — 30일 추세 차트 (DAU·구독·콘텐츠) */}
       <section className="mt-10 pt-8 border-t border-grey-200">
-        <h2 className="text-[16px] font-bold text-grey-900 mb-4 tracking-[-0.3px]">
+        <h2 className="text-base font-bold text-grey-900 mb-4 tracking-[-0.3px]">
           📈 30일 추세
         </h2>
         <div className="grid gap-5 md:grid-cols-2">
@@ -145,7 +145,7 @@ export default async function AdminHealthPage() {
 
       {/* 빠른 액션 */}
       <section className="mt-10 pt-8 border-t border-grey-200">
-        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
           진단 페이지
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -171,8 +171,8 @@ function SummaryBanner({
   if (errorCount === 0 && warnCount === 0) {
     return (
       <div className="rounded-lg border bg-green/10 border-green/30 p-4 mb-6">
-        <p className="text-[14px] font-bold text-green">✅ 모두 정상</p>
-        <p className="text-[12px] text-grey-700 mt-1">
+        <p className="text-sm font-bold text-green">✅ 모두 정상</p>
+        <p className="text-xs text-grey-700 mt-1">
           이상 신호 없음. 운영 안정 상태.
         </p>
       </div>
@@ -187,13 +187,13 @@ function SummaryBanner({
       }`}
     >
       <p
-        className={`text-[14px] font-bold ${
+        className={`text-sm font-bold ${
           errorCount > 0 ? "text-red" : "text-amber-700"
         }`}
       >
         {errorCount > 0 ? "❌" : "⚠️"} 이상 신호 {errorCount + warnCount}건
       </p>
-      <p className="text-[12px] text-grey-700 mt-1">
+      <p className="text-xs text-grey-700 mt-1">
         오류 {errorCount}건 · 주의 {warnCount}건. 아래 항목 확인.
       </p>
     </div>
@@ -210,7 +210,7 @@ function Section({
   if (items.length === 0) return null;
   return (
     <section className="mb-6">
-      <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+      <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
         {title}
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -242,15 +242,15 @@ function ItemCard({ item }: { item: HealthCheckItem }) {
           className={`inline-block w-1.5 h-1.5 rounded-full ${dot[item.status]}`}
           aria-hidden="true"
         />
-        <div className="text-[12px] font-semibold tracking-[0.04em] text-grey-700 truncate">
+        <div className="text-xs font-semibold tracking-[0.04em] text-grey-700 truncate">
           {item.label}
         </div>
       </div>
-      <div className="text-[16px] font-extrabold leading-tight tracking-[-0.2px]">
+      <div className="text-base font-extrabold leading-tight tracking-[-0.2px]">
         {item.value}
       </div>
       {item.hint && (
-        <div className="text-[11px] mt-1 leading-[1.4] text-grey-600">
+        <div className="text-xs mt-1 leading-[1.4] text-grey-600">
           {item.hint}
         </div>
       )}
@@ -262,7 +262,7 @@ function DiagLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="block bg-white rounded-lg border border-grey-200 p-3 text-[13px] font-semibold text-grey-900 hover:border-blue-300 hover:text-blue-600 no-underline transition-colors"
+      className="block bg-white rounded-lg border border-grey-200 p-3 text-sm font-semibold text-grey-900 hover:border-blue-300 hover:text-blue-600 no-underline transition-colors"
     >
       {label} →
     </Link>

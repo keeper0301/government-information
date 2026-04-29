@@ -32,7 +32,7 @@ export function Sparkline({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-[13px] text-grey-500"
+        className="flex items-center justify-center text-sm text-grey-500"
         style={{ height }}
       >
         {emptyText}

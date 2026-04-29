@@ -169,7 +169,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
         kicker="ADMIN · 컨텐츠 발행"
         title="블로그 글 편집"
       />
-      <div className="flex flex-wrap items-center gap-2 mb-6 text-[13px] text-grey-600">
+      <div className="flex flex-wrap items-center gap-2 mb-6 text-sm text-grey-600">
         {/* breadcrumb — 사이드바 클릭 없이 즉시 목록 복귀 (상세→목록 이동 빈도 ↑) */}
         <Link
           href="/admin/blog"
@@ -199,12 +199,12 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
 
       {/* 성공/에러 배너 */}
       {saved && (
-        <div className="mb-5 px-4 py-3 text-[14px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg">
+        <div className="mb-5 px-4 py-3 text-sm font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg">
           ✓ 저장되었습니다. 페이지 재생성도 요청했어요.
         </div>
       )}
       {errorMsg && (
-        <div className="mb-5 px-4 py-3 text-[14px] font-medium text-red-800 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mb-5 px-4 py-3 text-sm font-medium text-red-800 bg-red-50 border border-red-200 rounded-lg">
           ⚠ {errorMsg}
         </div>
       )}
@@ -212,18 +212,18 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
       {/* 발행 상태 패널 */}
       <div className="mb-6 px-5 py-4 border border-grey-200 rounded-xl bg-white flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-[13px] text-grey-500 mb-1">현재 상태</div>
+          <div className="text-sm text-grey-500 mb-1">현재 상태</div>
           <div className="flex items-center gap-2">
             {isPublished ? (
-              <span className="inline-block px-2.5 py-1 text-[13px] font-semibold text-emerald-700 bg-emerald-50 rounded">
+              <span className="inline-block px-2.5 py-1 text-sm font-semibold text-emerald-700 bg-emerald-50 rounded">
                 발행됨
               </span>
             ) : (
-              <span className="inline-block px-2.5 py-1 text-[13px] font-semibold text-amber-700 bg-amber-50 rounded">
+              <span className="inline-block px-2.5 py-1 text-sm font-semibold text-amber-700 bg-amber-50 rounded">
                 미발행 (임시 보관)
               </span>
             )}
-            <span className="text-[13px] text-grey-600">
+            <span className="text-sm text-grey-600">
               {isPublished
                 ? "공개 상태입니다. 비공개로 돌리면 /blog 목록·sitemap 에서 제외됩니다."
                 : "아직 공개되지 않았습니다. 발행하면 /blog 에 즉시 노출."}
@@ -233,7 +233,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
         <form action={togglePublish}>
           <button
             type="submit"
-            className={`px-4 py-2 text-[14px] font-semibold rounded-lg text-white ${
+            className={`px-4 py-2 text-sm font-semibold rounded-lg text-white ${
               isPublished ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
             }`}
           >
@@ -245,7 +245,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
       {/* 편집 폼 */}
       <form action={saveBlogPost} className="space-y-5">
         <div>
-          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+          <label className="block text-sm font-semibold text-grey-700 mb-1.5">
             제목 <span className="text-red-600">*</span>
           </label>
           <input
@@ -253,21 +253,21 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
             name="title"
             defaultValue={post.title}
             required
-            className="w-full h-11 px-3 text-[15px] border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
+            className="w-full h-11 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
           />
         </div>
 
         <div>
-          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+          <label className="block text-sm font-semibold text-grey-700 mb-1.5">
             도입부 (meta description)
           </label>
           <textarea
             name="meta_description"
             defaultValue={post.meta_description ?? ""}
             rows={3}
-            className="w-full px-3 py-2 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500 leading-[1.6]"
+            className="w-full px-3 py-2 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500 leading-[1.6]"
           />
-          <p className="mt-1.5 text-[13px] text-grey-600 leading-[1.6]">
+          <p className="mt-1.5 text-sm text-grey-600 leading-[1.6]">
             본문 상단 리드 문장이자 검색결과 설명문으로 사용됩니다. HTML 태그는
             저장 시 자동 제거됩니다 (평문 권장, 100~160자).
           </p>
@@ -275,7 +275,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+            <label className="block text-sm font-semibold text-grey-700 mb-1.5">
               카테고리
             </label>
             <input
@@ -283,11 +283,11 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
               name="category"
               defaultValue={post.category ?? ""}
               placeholder="예: 청년 · 노년 · 주거 · 자영업"
-              className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
+              className="w-full h-11 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
             />
           </div>
           <div>
-            <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+            <label className="block text-sm font-semibold text-grey-700 mb-1.5">
               태그 (쉼표 구분)
             </label>
             <input
@@ -295,13 +295,13 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
               name="tags"
               defaultValue={tagsString}
               placeholder="예: 청년취업, 코업, 부산"
-              className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
+              className="w-full h-11 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+          <label className="block text-sm font-semibold text-grey-700 mb-1.5">
             커버 이미지 URL
           </label>
           <input
@@ -309,19 +309,19 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
             name="cover_image"
             defaultValue={post.cover_image ?? ""}
             placeholder="https://..."
-            className="w-full h-11 px-3 text-[14px] border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
+            className="w-full h-11 px-3 text-sm border border-grey-300 rounded-lg focus:outline-none focus:border-grey-500"
           />
         </div>
 
         <div>
-          <label className="block text-[13px] font-semibold text-grey-700 mb-1.5">
+          <label className="block text-sm font-semibold text-grey-700 mb-1.5">
             본문
           </label>
           {/* 워드프레스 클래식 에디터 스타일 비주얼 에디터.
               내부에 hidden <input name="content"> 가 있어 form action 그대로 작동.
               우측 상단 "HTML" 버튼으로 raw HTML 직접 편집도 가능. */}
           <RichEditor initialHtml={post.content ?? ""} name="content" />
-          <p className="mt-1.5 text-[13px] text-grey-600 leading-[1.6]">
+          <p className="mt-1.5 text-sm text-grey-600 leading-[1.6]">
             툴바로 제목·강조·목록·표·이미지 삽입. 우측 &quot;HTML&quot; 버튼으로 원본 편집 가능.
             저장 후 /blog 페이지가 자동 재생성됩니다.
           </p>
@@ -330,13 +330,13 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
         <div className="flex items-center gap-3 pt-2">
           <button
             type="submit"
-            className="px-6 py-2.5 text-[14px] font-semibold text-white bg-grey-900 rounded-lg hover:bg-grey-800"
+            className="px-6 py-2.5 text-sm font-semibold text-white bg-grey-900 rounded-lg hover:bg-grey-800"
           >
             변경사항 저장
           </button>
           <Link
             href="/admin/blog"
-            className="px-6 py-2.5 text-[14px] font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 no-underline"
+            className="px-6 py-2.5 text-sm font-medium text-grey-700 border border-grey-300 rounded-lg hover:bg-grey-50 no-underline"
           >
             취소
           </Link>

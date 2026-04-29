@@ -172,11 +172,11 @@ export default async function CronFailuresPage() {
 
       {/* prefix 그룹 */}
       <section className="mb-8">
-        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
           prefix 그룹 ({prefixGroups.length}개)
         </h2>
         {prefixGroups.length === 0 ? (
-          <p className="text-[13px] text-grey-600 py-4">
+          <p className="text-sm text-grey-600 py-4">
             최근 24시간 알림이 없습니다. 평온한 운영 상태 ✅
           </p>
         ) : (
@@ -188,18 +188,18 @@ export default async function CronFailuresPage() {
               >
                 <div className="flex items-baseline justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <div className="text-[14px] font-bold text-grey-900 font-mono">
+                    <div className="text-sm font-bold text-grey-900 font-mono">
                       {g.prefix}
                     </div>
                     <CronRetryButton prefix={g.prefix} />
                   </div>
-                  <div className="text-[12px] text-grey-600">
+                  <div className="text-xs text-grey-600">
                     {g.rows}종 · {fmtRelative(g.newest)}
                   </div>
                 </div>
-                <div className="text-[20px] font-extrabold text-grey-900 leading-none">
+                <div className="text-xl font-extrabold text-grey-900 leading-none">
                   {g.occurrences.toLocaleString()}
-                  <span className="text-[13px] font-semibold text-grey-600 ml-1">
+                  <span className="text-sm font-semibold text-grey-600 ml-1">
                     회
                   </span>
                 </div>
@@ -211,11 +211,11 @@ export default async function CronFailuresPage() {
 
       {/* 전체 알림 목록 */}
       <section className="mb-8">
-        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        <h2 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.3px]">
           최근 알림 ({rows.length}건)
         </h2>
         {rows.length === 0 ? (
-          <p className="text-[13px] text-grey-600 py-4">표시할 알림이 없습니다.</p>
+          <p className="text-sm text-grey-600 py-4">표시할 알림이 없습니다.</p>
         ) : (
           <div className="bg-white rounded-lg border border-grey-200 overflow-hidden">
             <ul>
@@ -227,22 +227,22 @@ export default async function CronFailuresPage() {
                     className="px-4 py-3 border-b border-grey-100 last:border-b-0"
                   >
                     <div className="flex items-baseline justify-between gap-3 mb-1">
-                      <div className="text-[13px] font-semibold text-grey-900 truncate min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-grey-900 truncate min-w-0 flex-1">
                         {isNew && (
-                          <span className="inline-block bg-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5 align-middle">
+                          <span className="inline-block bg-red text-white text-xs font-bold px-1.5 py-0.5 rounded mr-1.5 align-middle">
                             NEW
                           </span>
                         )}
                         {r.job_name}
                       </div>
-                      <div className="text-[12px] text-grey-600 whitespace-nowrap">
+                      <div className="text-xs text-grey-600 whitespace-nowrap">
                         {fmtRelative(r.notified_at)}
                       </div>
                     </div>
-                    <div className="text-[12px] text-grey-700 leading-[1.55] break-words">
+                    <div className="text-xs text-grey-700 leading-[1.55] break-words">
                       {r.error_message}
                     </div>
-                    <div className="text-[11px] text-grey-600 mt-1 leading-[1.5]">
+                    <div className="text-xs text-grey-600 mt-1 leading-[1.5]">
                       occurrences <strong>{r.occurrences}</strong> · first{" "}
                       {fmtKst(r.first_seen_at)} · last {fmtKst(r.last_seen_at)}
                     </div>
@@ -255,7 +255,7 @@ export default async function CronFailuresPage() {
       </section>
 
       {/* 운영 메모 */}
-      <section className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 text-[13px] text-grey-800 leading-[1.7]">
+      <section className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 text-sm text-grey-800 leading-[1.7]">
         <p className="font-bold mb-1.5">운영 가이드</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>
@@ -273,7 +273,7 @@ export default async function CronFailuresPage() {
         </ul>
       </section>
 
-      <p className="text-[13px] flex items-center gap-4 flex-wrap">
+      <p className="text-sm flex items-center gap-4 flex-wrap">
         <Link href="/admin" className="text-blue-500 font-medium underline">
           ← 어드민 홈
         </Link>
@@ -308,19 +308,19 @@ function StatCard({
   const display = typeof value === "number" ? value.toLocaleString() : value;
   return (
     <div className={`rounded-lg border p-4 ${border}`}>
-      <div className="text-[12px] font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
+      <div className="text-xs font-semibold tracking-[0.08em] text-grey-700 uppercase mb-1">
         {label}
       </div>
-      <div className="text-[22px] font-extrabold text-grey-900 leading-none">
+      <div className="text-2xl font-extrabold text-grey-900 leading-none">
         {display}
         {suffix && (
-          <span className="text-[13px] font-semibold text-grey-600 ml-1">
+          <span className="text-sm font-semibold text-grey-600 ml-1">
             {suffix}
           </span>
         )}
       </div>
       {hint && (
-        <div className={`text-[12px] mt-1.5 leading-[1.45] ${hintColor}`}>
+        <div className={`text-xs mt-1.5 leading-[1.45] ${hintColor}`}>
           {hint}
         </div>
       )}
