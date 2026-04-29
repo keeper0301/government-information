@@ -1,0 +1,33 @@
+# PR 또는 master push 시 자동 검증 — vitest + tsc 만 실행.
+# Vercel 이 prod build 를 자체 처리하므로 next build 는 의도적으로 제외 (시간·비용 절감).
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    name: vitest + tsc
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node 20 설치 + npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: 의존성 설치 (lockfile 기준)
+        run: npm ci
+
+      - name: TypeScript 타입체크
+        run: npx tsc --noEmit
+
+      - name: vitest 단위 테스트
+        run: npx vitest run

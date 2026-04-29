@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ci": "tsc --noEmit && vitest run"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
