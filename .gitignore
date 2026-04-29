@@ -64,3 +64,6 @@ tmp/
 # 로컬 lighthouse 측정 결과 (Phase 1 Core Web Vitals 검증용, 약 3MB JSON)
 .lighthouse-results/
 .lighthouse-results-baseline/
+
+# Sentry CLI 토큰 캐시 (절대 커밋 금지)
+.sentryclirc

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   // OG 이미지 라우트가 process.cwd() 로 폰트를 읽어 — 자동 추적 누락 대비
@@ -75,4 +76,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry build-time wrap — source map 업로드 + tunneling 등 활성화
+// 환경변수(SENTRY_ORG·SENTRY_PROJECT·SENTRY_AUTH_TOKEN) 미등록 상태에서도
+// 빌드 자체는 깨지지 않음 (Sentry CLI 단계가 noop 으로 동작).
+// silent: CI 환경에서만 로그 출력, 로컬 dev 는 조용하게.
+// tunnelRoute: /monitoring 으로 Sentry 요청을 우회 → adblocker 회피.
+// sourcemaps.deleteSourcemapsAfterUpload: 업로드 후 prod 번들에서 .map 삭제 →
+//   public 에 sourcemap 노출 차단 (v10 표준, 구 hideSourceMaps 대체).
+export default withSentryConfig(nextConfig, {
+  silent: !process.env.CI,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  tunnelRoute: "/monitoring",
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+});
