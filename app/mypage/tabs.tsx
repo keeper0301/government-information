@@ -11,7 +11,7 @@ import { hashToTab, normalizeTab, type MypageTab } from "./anchor-utils";
 // - legacy #consents 앵커는 마운트 시 1회 감지해서 ?tab=consents 로 자동 변환
 //   (기존 외부 링크 호환 — spec 2-2 절)
 //
-// 2026-04-29 Phase 5 A3: referral 탭 추가 (4 탭 → 5 탭 — 추천 코드 발급/공유/통계)
+// 2026-04-29 Phase 5 A3: referral 탭 추가 (3 탭 → 4 탭 — 추천 코드 발급/공유/통계)
 export function MypageTabs({
   profileSlot,
   consentsSlot,

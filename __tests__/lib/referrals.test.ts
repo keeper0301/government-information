@@ -1,7 +1,7 @@
 // ============================================================
 // __tests__/lib/referrals.test.ts — Phase 5 A3 referral 단위 테스트
 // ============================================================
-// supabase chain 을 stub. 8 case:
+// supabase chain 을 stub. 9 case:
 //   1. generateReferralCode 길이·character set
 //   2. getOrCreateCode 신규 발급
 //   3. getOrCreateCode 기존 pending 재사용
@@ -9,7 +9,7 @@
 //   5. redeemReferral 이미 redeem 한 사용자 차단
 //   6. redeemReferral cap 10명 도달 차단
 //   7. redeemReferral 신규 subscription 생성 (행 없음 → +7일)
-//   8. redeemReferral 기존 expires_at += 7일 누적
+//   8. redeemReferral 기존 active 사용자 보호 (status·tier 변경 X, current_period_end 만 +7일)
 //   9. getReferralStats pending/completed/total 카운트
 // ============================================================
 
