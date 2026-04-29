@@ -13,11 +13,12 @@
 
 ## Phase 개요 (전체 약 43~46h, 6 phase)
 
-### Phase 1: 운영 안전망 (3h, 가장 먼저)
-- **D1** Sentry 에러 모니터링 (2h)
-- **D2** GitHub Actions CI 자동화 — vitest + tsc on PR/push (1h)
+### ✅ Phase 1: 운영 안전망 (완료 2026-04-29, 4 commit `e5f653a`~`4bb6a0c`)
+- **D1** Sentry 에러 모니터링 (2h) ✅
+- **D2** GitHub Actions CI 자동화 — vitest + tsc on PR/push (1h) ✅
 
 이유: 후속 phase 에서 사고 발생 시 즉시 인지. 모든 phase 공통 인프라.
+사장님 외부 액션 대기: Vercel env 5종 (`SENTRY_DSN` 등) 등록.
 
 ### Phase 2: 트래픽 유입 1 — SEO 확장 (5h)
 - **A1** SEO long-tail 페이지 확장 (지역×연령×혜택 조합) (2~3h)
