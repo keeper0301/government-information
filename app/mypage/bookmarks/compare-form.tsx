@@ -50,32 +50,42 @@ export function CompareForm({ items }: Props) {
   return (
     <div>
       {/* 선택 안내 + 비교 버튼 — 페이지 상단 sticky 형태 */}
-      <div className="sticky top-[60px] z-10 -mx-5 px-5 py-3 bg-white border-b border-grey-100 mb-4 flex items-center justify-between">
-        <p className="text-[13px] text-grey-700">
-          {count === 0
-            ? "비교할 정책 2~3개를 체크하세요."
-            : !sameType
-            ? "복지·대출은 함께 비교할 수 없어요."
-            : count > 3
-            ? "최대 3개까지 비교 가능"
-            : `${count}개 선택됨${count < 2 ? " (2개 이상 필요)" : ""}`}
-        </p>
-        {canCompare ? (
-          <Link
-            href={compareHref}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white text-[13px] font-semibold no-underline hover:bg-blue-700"
-          >
-            비교하기 ({count})
-          </Link>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="rounded-lg bg-grey-200 px-4 py-2 text-grey-500 text-[13px] font-semibold cursor-not-allowed"
-          >
-            비교하기
-          </button>
-        )}
+      <div className="sticky top-[60px] z-10 -mx-5 px-5 py-3 bg-white border-b border-grey-100 mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            {/* 메인 안내문 — 현재 상태에 맞춰 1줄 */}
+            <p className="text-[13px] font-semibold text-grey-900 truncate">
+              {count === 0
+                ? "비교할 정책 2~3개를 체크하세요"
+                : !sameType
+                ? "복지·대출은 함께 비교할 수 없어요"
+                : count < 2
+                ? `${count}개 선택됨 — 2개 이상 골라야 비교돼요`
+                : `${count}개 선택됨, 최대 3개`}
+            </p>
+            {/* 보조 안내 — 활성 조건 명시 */}
+            <p className="text-[11px] text-grey-500 mt-0.5">
+              같은 종류(복지끼리 또는 대출끼리) 2~3개 선택 시 비교 가능
+            </p>
+          </div>
+          {canCompare ? (
+            <Link
+              href={compareHref}
+              className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-white text-[13px] font-semibold no-underline hover:bg-blue-700"
+            >
+              비교하기 ({count})
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="shrink-0 rounded-lg bg-grey-200 px-4 py-2 text-grey-500 text-[13px] font-semibold cursor-not-allowed"
+              aria-label="비교하기 — 같은 종류 2~3개 선택 시 활성"
+            >
+              비교하기
+            </button>
+          )}
+        </div>
       </div>
 
       <ul className="divide-y divide-grey-200 border border-grey-200 rounded-2xl bg-white overflow-hidden">

@@ -21,6 +21,11 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
+import { getMyBookmarks } from "@/lib/bookmarks";
+import {
+  buildSuggestions,
+  type SuggestPair,
+} from "@/lib/compare-suggestions";
 
 export const metadata: Metadata = {
   title: "정책 비교 — keepioo",
@@ -78,7 +83,18 @@ export default async function ComparePage({
   const ids = idsRaw.filter((id) => uuidRe.test(id)).slice(0, 3);
 
   if (ids.length < 2) {
-    return <CompareEmpty />;
+    // 빈 진입 — 로그인 사용자라면 즐겨찾기에서 자동 페어 추천 시도.
+    // (URL 에 type/ids 가 명시된 경우는 이 분기로 안 옴 → 기존 동작 유지)
+    const bookmarks = await getMyBookmarks();
+    const suggestions = buildSuggestions(
+      bookmarks.map((b) => ({
+        id: b.programId,
+        type: b.programType,
+        title: b.title,
+        category: b.category,
+      })),
+    );
+    return <CompareEmpty suggestions={suggestions} />;
   }
 
   const supabase = await createClient();
@@ -137,7 +153,7 @@ export default async function ComparePage({
   );
 }
 
-function CompareEmpty() {
+function CompareEmpty({ suggestions = [] }: { suggestions?: SuggestPair[] }) {
   return (
     <main className="max-w-content mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
       <h1 className="text-[28px] font-bold tracking-[-0.6px] text-grey-900 mb-2">
@@ -146,6 +162,47 @@ function CompareEmpty() {
       <p className="text-[14px] text-grey-700 mb-6">
         URL 에 비교할 정책 ID 가 부족해요. 정책 상세 페이지의 <strong>비교에 추가</strong> 버튼으로 2~3개를 골라 주세요.
       </p>
+
+      {/* 즐겨찾기 기반 자동 추천 — 1 페어 이상일 때만 노출 */}
+      {suggestions.length > 0 && (
+        <section className="mt-6 mb-8">
+          <h2 className="text-[18px] font-bold text-grey-900 mb-3">
+            내 즐겨찾기 추천 비교
+          </h2>
+          <p className="text-[13px] text-grey-600 mb-4">
+            북마크한 정책 중 같은 분야 묶음을 자동으로 골라봤어요. 카드를 누르면 바로 비교돼요.
+          </p>
+          <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1">
+            {suggestions.map((pair) => (
+              <Link
+                key={`${pair.type}-${pair.category}-${pair.ids.join(",")}`}
+                href={`/compare?type=${pair.type}&ids=${pair.ids.join(",")}`}
+                className="block rounded-xl border border-grey-200 bg-white p-4 no-underline hover:border-blue-600 hover:shadow-sm transition"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span
+                    className={`text-[12px] font-semibold px-2 py-0.5 rounded ${
+                      pair.type === "welfare"
+                        ? "bg-blue-50 text-blue-600"
+                        : "bg-green/10 text-green"
+                    }`}
+                  >
+                    {pair.type === "welfare" ? "복지" : "대출"}
+                  </span>
+                  <span className="text-[13px] font-semibold text-grey-900">
+                    {pair.category}
+                  </span>
+                </div>
+                <p className="text-[13px] text-grey-700">{pair.reason}</p>
+                <p className="text-[12px] text-blue-600 mt-2">
+                  바로 비교하기 →
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="flex gap-3">
         <Link
           href="/welfare"
