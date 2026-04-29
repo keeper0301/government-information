@@ -10,6 +10,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // monitoring: Sentry tunnelRoute (next.config.ts withSentryConfig) — Sentry SDK 가
+    // /monitoring/* 로 envelope POST 를 보내며, matcher 에 두면 매 호출마다 Supabase
+    // updateSession 가 실행돼 NANO Disk IO 사고 (2026-04-26) 재발 위험 → 명시 제외.
+    "/((?!_next/static|_next/image|favicon.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
