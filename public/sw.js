@@ -54,10 +54,14 @@ self.addEventListener("fetch", (event) => {
   if (!event.request.url.startsWith(self.location.origin)) return;
 
   // API/RSC 데이터는 캐시 제외 — stale 데이터 위험
+  // 인증 영역 (/mypage·/admin) HTML 도 제외 — 본인 단말 재방문 시 옛 본인
+  // 데이터 노출 가드 (두 영역은 force-dynamic 으로 SSR 매번 fresh 가 정상)
   const url = new URL(event.request.url);
   if (
     url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_next/data/")
+    url.pathname.startsWith("/_next/data/") ||
+    url.pathname.startsWith("/mypage") ||
+    url.pathname.startsWith("/admin")
   ) {
     return;
   }
