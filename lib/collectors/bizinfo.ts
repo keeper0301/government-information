@@ -26,7 +26,8 @@ import { isOutdatedByTitle, currentMinAllowedYear } from "@/lib/utils";
 const API_URL = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do";
 const KEY = process.env.BIZINFO_API_KEY || "";
 
-type BizinfoItem = {
+// 단위 테스트가 classifyTable 호출 시 mock item 타입으로 사용. 외부 영향 없음.
+export type BizinfoItem = {
   title?: string;
   link?: string;
   pblancId?: string;       // 공고 ID (우리 sourceId 로 사용)
@@ -49,14 +50,16 @@ type BizinfoItem = {
 };
 
 // pubDate "2022-09-02 15:38:29" → ISO 형식
-function parsePubDate(raw: string | undefined | null): string | null {
+// 단위 테스트에서 직접 호출하기 위해 export. 컬렉터 내부에서만 쓰여 외부 영향 없음.
+export function parsePubDate(raw: string | undefined | null): string | null {
   if (!raw) return null;
   const m = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
 }
 
 // 신청기간 "20220727 ~ 20220930" → {start, end}
-function parsePeriod(raw: string | undefined | null): { start: string | null; end: string | null } {
+// 단위 테스트에서 직접 호출하기 위해 export.
+export function parsePeriod(raw: string | undefined | null): { start: string | null; end: string | null } {
   if (!raw) return { start: null, end: null };
   const matches = raw.match(/(\d{8})/g);
   if (!matches || matches.length === 0) return { start: null, end: null };
@@ -66,7 +69,8 @@ function parsePeriod(raw: string | undefined | null): { start: string | null; en
 }
 
 // hashTags 파싱 + 표준 태그 매핑
-function parseHashTags(hashStr: string | undefined | null) {
+// 단위 테스트에서 직접 호출하기 위해 export.
+export function parseHashTags(hashStr: string | undefined | null) {
   const regionTags: RegionTag[] = [];
   const benefitTags: BenefitTag[] = [];
   if (!hashStr) return { regionTags, benefitTags };
@@ -86,7 +90,8 @@ function parseHashTags(hashStr: string | undefined | null) {
 }
 
 // 분야(lcategory) → welfare/loan 분류
-function classifyTable(item: BizinfoItem): "welfare" | "loan" {
+// 단위 테스트에서 직접 호출하기 위해 export.
+export function classifyTable(item: BizinfoItem): "welfare" | "loan" {
   const cat = item.lcategory || item.pldirSportRealmLclasCodeNm || "";
   if (/금융/.test(cat)) return "loan";
   const text = `${item.title} ${item.bsnsSumryCn}`;
