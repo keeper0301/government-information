@@ -16,6 +16,8 @@ import { isAdminUser } from "@/lib/admin-auth";
 import {
   getPressIngestCandidates,
   getPressIngestKpi,
+  getAutoIngestTrend,
+  getRecentAutoIngestRows,
   type PressIngestCandidate,
 } from "@/lib/press-ingest/filter";
 import { PressClassifyAction } from "./classify-action";
@@ -162,10 +164,14 @@ export default async function PressIngestPage({
     return [24, 48, 168].includes(n) ? n : 24;
   })();
 
-  const [candidates, kpi] = await Promise.all([
+  const [candidates, kpi, autoTrend, recentAuto] = await Promise.all([
     getPressIngestCandidates(hours, 100),
     getPressIngestKpi(),
+    getAutoIngestTrend(7),
+    getRecentAutoIngestRows(5),
   ]);
+  // 7일 추세 max — 막대 길이 정규화 용
+  const trendMax = Math.max(1, ...autoTrend.map((d) => d.count));
   // ANTHROPIC_API_KEY 설정 여부 — server side 검증 (값 노출 X)
   const llmEnabled = !!process.env.ANTHROPIC_API_KEY;
 
@@ -222,6 +228,94 @@ export default async function PressIngestPage({
                 : "Vercel env 등록 필요"
             }
           />
+        </section>
+
+        {/* 7일 자동 등록 추세 — 일별 막대 7개. cron 작동·정책 발굴 페이스 한눈에. */}
+        <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
+          <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+            7일 자동 등록 추세
+          </h2>
+          <div className="flex items-end gap-2 h-[72px]">
+            {autoTrend.map((d) => {
+              const heightPct = d.count === 0 ? 4 : Math.max(8, Math.round((d.count / trendMax) * 100));
+              const isToday = d.day === autoTrend[autoTrend.length - 1]?.day;
+              return (
+                <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="text-[11px] font-semibold text-grey-700 tabular-nums">
+                    {d.count}
+                  </div>
+                  <div
+                    className={`w-full rounded-t ${
+                      d.count > 0 ? (isToday ? "bg-blue-500" : "bg-blue-300") : "bg-grey-200"
+                    }`}
+                    style={{ height: `${heightPct}%` }}
+                    aria-label={`${d.day} ${d.count}건`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-2 mt-1.5">
+            {autoTrend.map((d) => (
+              <div
+                key={d.day}
+                className="flex-1 text-center text-[10px] text-grey-600 tabular-nums"
+              >
+                {d.day.replace(/^\d{4}\.\s*/, "").replace(/\.$/, "")}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 최근 자동 등록 5건 — 사장님이 "정말 자동으로 들어왔나" 즉시 확인. */}
+        <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
+          <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+            최근 자동 등록 정책 5건
+          </h2>
+          {recentAuto.length === 0 ? (
+            <p className="text-[12px] text-grey-600 leading-[1.5]">
+              아직 자동 등록된 정책이 없어요. 매일 01:30 KST cron 이 실행하면
+              안전 가드 통과한 정책이 여기 노출됩니다.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {recentAuto.map((r) => (
+                <li
+                  key={`${r.table}-${r.id}`}
+                  className="flex items-center gap-2 text-[12px]"
+                >
+                  <span
+                    className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      r.table === "welfare"
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-orange-50 text-orange-700"
+                    }`}
+                  >
+                    {r.table === "welfare" ? "복지" : "대출"}
+                  </span>
+                  {r.category && (
+                    <span className="shrink-0 text-grey-600 text-[11px]">
+                      {r.category}
+                    </span>
+                  )}
+                  <Link
+                    href={
+                      r.table === "welfare"
+                        ? `/welfare/${r.id}`
+                        : `/loan/${r.id}`
+                    }
+                    target="_blank"
+                    className="flex-1 truncate text-grey-900 font-medium hover:text-blue-600 hover:underline"
+                  >
+                    {r.title}
+                  </Link>
+                  <span className="shrink-0 text-grey-500 text-[11px]">
+                    {fmtDate(r.createdAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {/* 안내 + 기간 토글 */}

@@ -156,3 +156,111 @@ export async function getPressIngestKpi(): Promise<PressIngestKpi> {
     auto_ingested_24h: autoIngestRes.count ?? 0,
   };
 }
+
+// ─── 7일 자동 등록 추세 (일별 카운트) ───
+// "오늘 자동 등록 작동했나?" 한눈에 + 추세 시각화.
+
+export type AutoIngestDay = {
+  day: string; // 'YYYY-MM-DD' (KST 기준)
+  count: number;
+};
+
+export async function getAutoIngestTrend(days: number = 7): Promise<AutoIngestDay[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await admin
+    .from("admin_actions")
+    .select("created_at")
+    .eq("action", "auto_press_ingest")
+    .gte("created_at", since);
+
+  if (error || !data) {
+    console.warn("[press-ingest:trend] 조회 실패:", error?.message);
+    return [];
+  }
+
+  // 최근 N일을 KST 기준으로 day key 생성 → 카운트 0 인 날도 표시.
+  const byDay = new Map<string, number>();
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const key = d.toLocaleDateString("ko-KR", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    byDay.set(key, 0);
+  }
+  for (const row of data) {
+    const key = new Date(row.created_at).toLocaleDateString("ko-KR", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    if (byDay.has(key)) {
+      byDay.set(key, (byDay.get(key) ?? 0) + 1);
+    }
+  }
+  return Array.from(byDay, ([day, count]) => ({ day, count }));
+}
+
+// ─── 최근 자동 등록된 정책 N건 (welfare + loan 통합) ───
+// 사장님이 "정말 자동으로 들어왔는지" 한눈에 확인. 사이트 detail 직링.
+
+export type RecentAutoRow = {
+  id: string;
+  table: "welfare" | "loan";
+  title: string;
+  region: string | null;
+  category: string | null;
+  createdAt: string;
+};
+
+export async function getRecentAutoIngestRows(limit: number = 5): Promise<RecentAutoRow[]> {
+  const admin = createAdminClient();
+
+  // welfare + loan 양쪽 fetch 후 시간순 merge — 양 테이블이 작아 N+1 비용 무시 가능.
+  const [welfareRes, loanRes] = await Promise.all([
+    admin
+      .from("welfare_programs")
+      .select("id, title, region, category, created_at")
+      .eq("source_code", "auto_press_ingest")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+    admin
+      .from("loan_programs")
+      .select("id, title, category, created_at")
+      .eq("source_code", "auto_press_ingest")
+      .order("created_at", { ascending: false })
+      .limit(limit),
+  ]);
+
+  const merged: RecentAutoRow[] = [];
+  for (const r of welfareRes.data ?? []) {
+    merged.push({
+      id: r.id,
+      table: "welfare",
+      title: r.title,
+      region: r.region,
+      category: r.category,
+      createdAt: r.created_at,
+    });
+  }
+  for (const r of loanRes.data ?? []) {
+    merged.push({
+      id: r.id,
+      table: "loan",
+      title: r.title,
+      region: null,
+      category: r.category,
+      createdAt: r.created_at,
+    });
+  }
+
+  return merged
+    .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+    .slice(0, limit);
+}
