@@ -12,11 +12,11 @@ describe("ADMIN_MENU 구조", () => {
     expect(ADMIN_MENU.map((g) => g.number)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("총 페이지 메뉴 항목 18개", () => {
-    // 그룹별 합계: 5 (운영) + 6 (컨텐츠) + 2 (알림) + 3 (지표) + 2 (사용자) = 18
-    // plan 문서 "페이지 19" 는 단순 합계 오류 — spec design 의 그룹별 카운트와 일치하도록 18 로 검증
+  it("총 페이지 메뉴 항목 19개", () => {
+    // 그룹별 합계: 6 (운영, +dedupe) + 6 (컨텐츠) + 2 (알림) + 3 (지표) + 2 (사용자) = 19
+    // 2026-04-29 Phase 3 B3: /admin/dedupe 추가 → 운영 그룹 5→6, 총 18→19.
     const total = ADMIN_MENU.reduce((s, g) => s + g.items.length, 0);
-    expect(total).toBe(18);
+    expect(total).toBe(19);
   });
 
   it("href 중복 없음", () => {

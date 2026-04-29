@@ -27,6 +27,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
       { href: "/admin/health", label: "헬스 대시보드", icon: "📊" },
       { href: "/admin/cron-trigger", label: "cron 수동 실행", icon: "⚙️" },
       { href: "/admin/cron-failures", label: "cron 실패 알림", icon: "🚨" },
+      { href: "/admin/dedupe", label: "중복 정책 dedupe", icon: "🔁" },
       { href: "/admin/my-actions", label: "내 감사 로그", icon: "📋" },
       { href: "/admin/enrich-detail", label: "공고 detail 보강", icon: "🔧" },
     ],

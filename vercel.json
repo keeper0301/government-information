@@ -44,6 +44,8 @@
 
     { "path": "/api/indexnow-submit-recent", "schedule": "30 7 * * *" },
 
-    { "path": "/api/cron/press-ingest", "schedule": "30 16 * * *" }
+    { "path": "/api/cron/press-ingest", "schedule": "30 16 * * *" },
+
+    { "path": "/api/dedupe-detect", "schedule": "0 17 * * *" }
   ]
 }

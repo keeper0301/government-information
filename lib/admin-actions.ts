@@ -28,7 +28,9 @@ export type AdminActionType =
   | "manual_cron_trigger"  // /admin/cron-trigger 수동 cron 실행 (Phase 5)
   | "csv_export"           // /api/admin/export-users CSV 다운로드 (Phase 6 #9)
   | "manual_program_create" // /admin/welfare/new · /admin/loan/new 수동 정책 등록 (#7)
-  | "auto_press_ingest";    // /api/cron/press-ingest cron 자동 등록 (광역 보도자료 → welfare/loan)
+  | "auto_press_ingest"     // /api/cron/press-ingest cron 자동 등록 (광역 보도자료 → welfare/loan)
+  | "dedupe_confirm"        // Phase 3 B3 — /admin/dedupe 에서 중복 후보 확정 (duplicate_of_id 유지)
+  | "dedupe_reject";        // Phase 3 B3 — 잘못 잡힌 후보 reset (duplicate_of_id NULL)
 
 export type AdminActionRecord = {
   id: string;
@@ -282,4 +284,6 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   csv_export: "CSV 내보내기",
   manual_program_create: "정책 수동 등록",
   auto_press_ingest: "정책 자동 등록 (cron)",
+  dedupe_confirm: "중복 후보 확정",
+  dedupe_reject: "중복 후보 해제",
 };
