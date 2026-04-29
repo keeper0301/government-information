@@ -109,3 +109,6 @@ export async function GET(request: NextRequest) {
     stats,
   });
 }
+
+// /admin/cron-trigger 의 self-POST 호환 (cron 자동 호출은 GET 으로 들어옴).
+export const POST = GET;

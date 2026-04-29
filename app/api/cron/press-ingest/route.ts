@@ -30,6 +30,9 @@ async function authorize(request: Request) {
   return null;
 }
 
+// POST = GET alias.
+// /admin/cron-trigger 가 self-POST 로 호출하기 때문에 POST 핸들러 필요.
+// vercel cron 자동 호출은 GET 으로 들어와 양쪽 모두 동일 로직 실행.
 export async function GET(request: Request) {
   const authErr = await authorize(request);
   if (authErr) return authErr;
@@ -51,3 +54,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
+// /admin/cron-trigger 의 self-POST 호환.
+export const POST = GET;
