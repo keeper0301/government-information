@@ -19,14 +19,14 @@ export function AdminPageHeader({
 }: Props) {
   return (
     <div className="mb-8">
-      <p className="text-[12px] text-[#3182F6] font-bold tracking-[0.18em] mb-2 uppercase">
+      <p className="text-[12px] text-blue-500 font-bold tracking-[0.18em] mb-2 uppercase">
         {kicker}
       </p>
-      <h1 className="text-[26px] md:text-[32px] font-extrabold tracking-[-0.04em] text-[#191F28] mb-2">
+      <h1 className="text-[26px] md:text-[32px] font-extrabold tracking-[-0.04em] text-grey-900 mb-2">
         {title}
       </h1>
       {description && (
-        <p className="text-[14px] md:text-[15px] text-[#4E5968] leading-[1.6] max-w-2xl">
+        <p className="text-[14px] md:text-[15px] text-grey-700 leading-[1.6] max-w-2xl">
           {description}
         </p>
       )}

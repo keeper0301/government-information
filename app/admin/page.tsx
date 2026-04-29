@@ -214,7 +214,7 @@ export default async function AdminHomePage({
       {error && (
         <div
           role="alert"
-          className="bg-[#FFF5F5] border border-[#FCC] rounded-xl p-3 text-[13px] text-[#E11D48] mb-4"
+          className="bg-red/10 border border-red/30 rounded-xl p-3 text-[13px] text-red mb-4"
         >
           {error}
         </div>
@@ -223,8 +223,8 @@ export default async function AdminHomePage({
       {/* 2. ⚠️ 지금 처리 필요 — alerts.length > 0 시만 */}
       {alerts.length > 0 && (
         <section className="mb-6">
-          <div className="bg-[#FFF5F5] border border-[#FCC] rounded-xl p-4">
-            <h2 className="text-[14px] font-bold text-[#191F28] mb-3 flex items-center gap-2">
+          <div className="bg-red/10 border border-red/30 rounded-xl p-4">
+            <h2 className="text-[14px] font-bold text-grey-900 mb-3 flex items-center gap-2">
               <span aria-hidden>⚠️</span>
               지금 처리 필요
             </h2>
@@ -233,13 +233,13 @@ export default async function AdminHomePage({
                 <Link
                   key={a.key}
                   href={a.href}
-                  className="inline-flex items-center gap-1.5 bg-white border border-[#FCC] rounded-full px-3 py-1.5 text-[13px] font-semibold text-[#191F28] hover:border-[#E11D48] hover:bg-[#FFF5F5] no-underline transition-colors"
+                  className="inline-flex items-center gap-1.5 bg-white border border-red/30 rounded-full px-3 py-1.5 text-[13px] font-semibold text-grey-900 hover:border-red hover:bg-red/10 no-underline transition-colors"
                 >
                   <span>{a.label}</span>
-                  <span className="text-[#E11D48] font-extrabold">
+                  <span className="text-red font-extrabold">
                     {a.count.toLocaleString()}
                   </span>
-                  <span className="text-[#4E5968]">→</span>
+                  <span className="text-grey-700">→</span>
                 </Link>
               ))}
             </div>
@@ -249,7 +249,7 @@ export default async function AdminHomePage({
 
       {/* 3. 24h KPI 카드 4개 */}
       <section className="mb-8">
-        <h2 className="text-[15px] font-bold text-[#191F28] mb-3 tracking-[-0.02em]">
+        <h2 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.02em]">
           최근 24시간
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -287,22 +287,24 @@ export default async function AdminHomePage({
 
       {/* 4. 30일 추세 차트 2종 */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-        <div className="bg-white border border-[#E5E8EB] rounded-xl p-5">
-          <h3 className="text-[15px] font-bold text-[#191F28] tracking-[-0.02em]">
+        <div className="bg-white border border-grey-200 rounded-xl p-5">
+          <h3 className="text-[15px] font-bold text-grey-900 tracking-[-0.02em]">
             일별 신규 가입
           </h3>
-          <p className="text-[12px] text-[#4E5968] mb-3">
+          <p className="text-[12px] text-grey-700 mb-3">
             지난 30일 (KST 일자 기준, auth.users)
           </p>
+          {/* Sparkline stroke 은 SVG attribute 라 Tailwind 클래스 적용 불가 → hex 유지 */}
           <Sparkline data={dailySignups} unit="명" stroke="#3182F6" />
         </div>
-        <div className="bg-white border border-[#E5E8EB] rounded-xl p-5">
-          <h3 className="text-[15px] font-bold text-[#191F28] tracking-[-0.02em]">
+        <div className="bg-white border border-grey-200 rounded-xl p-5">
+          <h3 className="text-[15px] font-bold text-grey-900 tracking-[-0.02em]">
             일별 매출 추이 (추정)
           </h3>
-          <p className="text-[12px] text-[#4E5968] mb-3">
+          <p className="text-[12px] text-grey-700 mb-3">
             지난 30일 (신규 구독 시점 매출 추정)
           </p>
+          {/* Sparkline stroke 은 SVG attribute 라 Tailwind 클래스 적용 불가 → hex 유지 */}
           <Sparkline data={dailyRevenue} unit="원" stroke="#10B981" />
         </div>
       </section>
@@ -312,7 +314,7 @@ export default async function AdminHomePage({
         {/* 좌: 최근 가입자 */}
         <Panel title={`최근 가입자 ${recentSignups.length}명`}>
           {recentSignups.length === 0 ? (
-            <p className="text-[13px] text-[#4E5968] py-2">
+            <p className="text-[13px] text-grey-700 py-2">
               최근 가입자가 없어요.
             </p>
           ) : (
@@ -320,13 +322,13 @@ export default async function AdminHomePage({
               {recentSignups.map((u) => (
                 <li
                   key={u.id}
-                  className="flex items-center justify-between gap-3 pb-2 border-b border-[#F2F4F6] last:border-b-0 last:pb-0"
+                  className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-semibold text-[#191F28] truncate">
+                    <div className="text-[13px] font-semibold text-grey-900 truncate">
                       {u.email ?? "(이메일 없음)"}
                     </div>
-                    <div className="text-[12px] text-[#4E5968] leading-[1.5]">
+                    <div className="text-[12px] text-grey-700 leading-[1.5]">
                       {[u.region, u.occupation].filter(Boolean).join(" · ") || "프로필 미작성"}
                       {" · "}
                       {fmtRelative(u.created_at)}
@@ -334,7 +336,7 @@ export default async function AdminHomePage({
                   </div>
                   <Link
                     href={`/admin/users/${u.id}`}
-                    className="text-[12px] font-medium text-[#3182F6] hover:underline whitespace-nowrap"
+                    className="text-[12px] font-medium text-blue-500 hover:underline whitespace-nowrap"
                   >
                     상세 →
                   </Link>
@@ -347,7 +349,7 @@ export default async function AdminHomePage({
         {/* 우: 내 최근 관리자 액션 */}
         <Panel title={`내 최근 관리자 액션 ${myActions.records.length}건`}>
           {myActions.records.length === 0 ? (
-            <p className="text-[13px] text-[#4E5968] py-2">
+            <p className="text-[13px] text-grey-700 py-2">
               최근 수행한 관리 작업이 없어요.
             </p>
           ) : (
@@ -355,13 +357,13 @@ export default async function AdminHomePage({
               {myActions.records.map((a) => (
                 <li
                   key={a.id}
-                  className="flex items-center justify-between gap-3 pb-2 border-b border-[#F2F4F6] last:border-b-0 last:pb-0"
+                  className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-semibold text-[#191F28]">
+                    <div className="text-[13px] font-semibold text-grey-900">
                       {ACTION_LABELS[a.action] ?? a.action}
                     </div>
-                    <div className="text-[12px] text-[#4E5968] truncate leading-[1.5]">
+                    <div className="text-[12px] text-grey-700 truncate leading-[1.5]">
                       {a.targetUserId ? (
                         <span className="font-mono">
                           {a.targetUserId.slice(0, 8)}…
@@ -376,7 +378,7 @@ export default async function AdminHomePage({
                   {a.targetUserId && (
                     <Link
                       href={`/admin/users/${a.targetUserId}`}
-                      className="text-[12px] font-medium text-[#3182F6] hover:underline whitespace-nowrap"
+                      className="text-[12px] font-medium text-blue-500 hover:underline whitespace-nowrap"
                     >
                       대상 →
                     </Link>
@@ -387,7 +389,7 @@ export default async function AdminHomePage({
           )}
           <Link
             href="/admin/my-actions"
-            className="block text-[13px] font-medium text-[#3182F6] hover:underline mt-3"
+            className="block text-[13px] font-medium text-blue-500 hover:underline mt-3"
           >
             전체 보기 →
           </Link>
@@ -396,10 +398,10 @@ export default async function AdminHomePage({
 
       {/* 6. 사용자 조회 — 사이드바 메뉴 link 대상 (#user-search) */}
       <section id="user-search" className="mb-6 scroll-mt-20">
-        <h2 className="text-[15px] font-bold text-[#191F28] mb-3 tracking-[-0.02em]">
+        <h2 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.02em]">
           사용자 조회
         </h2>
-        <p className="text-[13px] text-[#4E5968] mb-3 leading-[1.6]">
+        <p className="text-[13px] text-grey-700 mb-3 leading-[1.6]">
           이메일 또는 UUID 로 사용자 상세 페이지로 즉시 이동합니다.
         </p>
         <form action={searchUser} className="flex gap-2 max-md:flex-col">
@@ -408,11 +410,11 @@ export default async function AdminHomePage({
             name="query"
             required
             placeholder="이메일 또는 UUID (예: user@example.com 또는 7e25d1c8-...)"
-            className="flex-1 px-4 py-3 border border-[#E5E8EB] rounded-xl text-[14px] focus:border-[#3182F6] focus:outline-none bg-white"
+            className="flex-1 px-4 py-3 border border-grey-200 rounded-xl text-[14px] focus:border-blue-500 focus:outline-none bg-white"
           />
           <button
             type="submit"
-            className="px-5 py-3 bg-[#3182F6] text-white rounded-xl text-[14px] font-bold hover:bg-[#2272E5] transition-colors cursor-pointer whitespace-nowrap"
+            className="px-5 py-3 bg-blue-500 text-white rounded-xl text-[14px] font-bold hover:bg-blue-600 transition-colors cursor-pointer whitespace-nowrap"
           >
             조회
           </button>
@@ -420,9 +422,9 @@ export default async function AdminHomePage({
       </section>
 
       {/* 권한 안내 */}
-      <p className="mt-10 text-[13px] text-[#4E5968] leading-[1.7]">
+      <p className="mt-10 text-[13px] text-grey-700 leading-[1.7]">
         이 페이지는 운영자 전용입니다. 권한은 Vercel 환경변수{" "}
-        <code className="bg-[#F2F4F6] px-1 py-0.5 rounded text-[12px]">ADMIN_EMAILS</code> 로 관리합니다.
+        <code className="bg-grey-100 px-1 py-0.5 rounded text-[12px]">ADMIN_EMAILS</code> 로 관리합니다.
       </p>
     </div>
   );
@@ -449,18 +451,18 @@ function KpiCard({
 }) {
   const isWarn = tone === "warn";
   const border = isWarn
-    ? "border-[#FCC] bg-[#FFF5F5]"
-    : "border-[#E5E8EB] bg-white";
-  const hintColor = isWarn ? "text-[#E11D48] font-semibold" : "text-[#4E5968]";
+    ? "border-red/30 bg-red/10"
+    : "border-grey-200 bg-white";
+  const hintColor = isWarn ? "text-red font-semibold" : "text-grey-700";
   return (
     <div className={`rounded-xl border p-4 ${border}`}>
-      <div className="text-[12px] font-semibold tracking-[0.06em] text-[#4E5968] uppercase mb-1.5">
+      <div className="text-[12px] font-semibold tracking-[0.06em] text-grey-700 uppercase mb-1.5">
         {label}
       </div>
-      <div className="text-[24px] font-extrabold text-[#191F28] leading-none tracking-[-0.02em]">
+      <div className="text-[24px] font-extrabold text-grey-900 leading-none tracking-[-0.02em]">
         {value.toLocaleString()}
         {suffix && (
-          <span className="text-[13px] font-semibold text-[#4E5968] ml-1">
+          <span className="text-[13px] font-semibold text-grey-700 ml-1">
             {suffix}
           </span>
         )}
@@ -483,8 +485,8 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white border border-[#E5E8EB] rounded-xl p-5">
-      <h3 className="text-[15px] font-bold text-[#191F28] mb-3 tracking-[-0.02em]">
+    <section className="bg-white border border-grey-200 rounded-xl p-5">
+      <h3 className="text-[15px] font-bold text-grey-900 mb-3 tracking-[-0.02em]">
         {title}
       </h3>
       {children}

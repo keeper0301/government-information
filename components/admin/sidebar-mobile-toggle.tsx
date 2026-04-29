@@ -42,7 +42,7 @@ export function SidebarMobileToggle() {
         onClick={() => setIsOpen(true)}
         aria-label="메뉴 열기"
         aria-expanded={isOpen}
-        className="md:hidden fixed top-3 left-3 z-40 w-11 h-11 bg-white border border-[#E5E8EB] rounded-lg flex items-center justify-center text-[20px] cursor-pointer shadow-sm"
+        className="md:hidden fixed top-3 left-3 z-40 w-11 h-11 bg-white border border-grey-200 rounded-lg flex items-center justify-center text-[20px] cursor-pointer shadow-sm"
       >
         ☰
       </button>
@@ -61,7 +61,7 @@ export function SidebarMobileToggle() {
         role="dialog"
         aria-label="어드민 메뉴"
         aria-modal={isOpen}
-        className={`md:hidden fixed top-0 left-0 bottom-0 w-[78%] max-w-[300px] z-50 bg-[#F7F8FA] shadow-[4px_0_16px_rgba(0,0,0,0.06)] transition-transform duration-200 ${
+        className={`md:hidden fixed top-0 left-0 bottom-0 w-[78%] max-w-[300px] z-50 bg-grey-50 shadow-[4px_0_16px_rgba(0,0,0,0.06)] transition-transform duration-200 ${
           isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
       >
@@ -70,7 +70,7 @@ export function SidebarMobileToggle() {
           type="button"
           onClick={() => setIsOpen(false)}
           aria-label="메뉴 닫기"
-          className="absolute top-3 right-3 z-10 w-10 h-10 bg-[#3182F6] text-white rounded-lg flex items-center justify-center text-[18px] cursor-pointer"
+          className="absolute top-3 right-3 z-10 w-10 h-10 bg-blue-500 text-white rounded-lg flex items-center justify-center text-[18px] cursor-pointer"
         >
           ×
         </button>
