@@ -12,6 +12,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "Cron 수동 실행 | 어드민",
@@ -142,150 +144,139 @@ export default async function CronTriggerPage({
   const recentRuns = await getRecentRuns(5);
 
   return (
-    <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <div className="max-w-[860px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            Cron 수동 실행
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            평소엔 vercel cron 자동. 즉시 반영 필요 시 여기서 수동 trigger.
-            <br />
-            <strong className="text-grey-900">[실행 ↗] 클릭 시 새 탭에서 진행</strong> — 원래 탭 유지하며 여러 cron 동시 실행 가능. LLM 분류 cron 은 60~90초 소요.
-            <br />
-            모든 실행은 admin_actions.manual_cron_trigger 에 감사 기록 + 아래 "최근 실행 5건" 섹션에 자동 갱신.
-          </p>
+    <div className="max-w-[860px]">
+      {/* 표준 헤더 슬롯 — F4 마이그레이션. description 길어서 string 으로 압축. */}
+      <AdminPageHeader
+        kicker="ADMIN · 운영 상태"
+        title="Cron 수동 실행"
+        description="평소엔 vercel cron 자동. 즉시 반영 필요 시 여기서 수동 trigger. [실행 ↗] 클릭 시 새 탭에서 진행 — 원래 탭 유지하며 여러 cron 동시 실행 가능. LLM 분류 cron 은 60~90초 소요. 모든 실행은 admin_actions.manual_cron_trigger 에 감사 기록 + 아래 ‘최근 실행 5건’ 섹션에 자동 갱신."
+      />
+
+      {/* 에러 — 빨강 강조 */}
+      {params.error && (
+        <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-[14px] text-red mb-4">
+          ❌ {params.error}
         </div>
+      )}
 
-        {/* 에러 — 빨강 강조 */}
-        {params.error && (
-          <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-[14px] text-red mb-4">
-            ❌ {params.error}
-          </div>
-        )}
-
-        {/* 실행 결과 — 강한 시각·timestamp·자세히 토글·닫기 버튼.
-            redirect 후 페이지 맨 위에 큰 배너로 노출 → 사장님이 못 알아챌 일 0. */}
-        {resultObj && (
-          <div
-            role="status"
-            className={`rounded-xl p-5 mb-6 border-2 shadow-sm ${
-              params.ok === "1"
-                ? "bg-green/10 border-green text-grey-900"
-                : "bg-red/10 border-red text-red"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div>
-                <div className="text-[18px] font-extrabold mb-1">
-                  {params.ok === "1" ? "✅ 실행 완료" : "❌ 실행 실패"}
-                </div>
-                <div className="text-[13px] font-mono text-grey-700">
-                  {params.path}
-                </div>
-                <div className="text-[12px] text-grey-600 mt-1">
-                  {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
-                </div>
+      {/* 실행 결과 — 강한 시각·timestamp·자세히 토글·닫기 버튼.
+          redirect 후 페이지 맨 위에 큰 배너로 노출 → 사장님이 못 알아챌 일 0. */}
+      {resultObj && (
+        <div
+          role="status"
+          className={`rounded-xl p-5 mb-6 border-2 shadow-sm ${
+            params.ok === "1"
+              ? "bg-green/10 border-green text-grey-900"
+              : "bg-red/10 border-red text-red"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <div className="text-[18px] font-extrabold mb-1">
+                {params.ok === "1" ? "✅ 실행 완료" : "❌ 실행 실패"}
               </div>
-              <Link
-                href="/admin/cron-trigger"
-                className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
-              >
-                닫기
-              </Link>
+              <div className="text-[13px] font-mono text-grey-700">
+                {params.path}
+              </div>
+              <div className="text-[12px] text-grey-600 mt-1">
+                {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+              </div>
             </div>
-            {/* 자세히 — 기본 접힘. summary 가 한 줄 요약 표시. */}
-            <details className="mt-3">
-              <summary className="cursor-pointer text-[12px] font-semibold text-grey-700 hover:text-grey-900">
-                ▼ 자세히 (JSON 결과)
-              </summary>
-              <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
-                {JSON.stringify(resultObj, null, 2)}
-              </pre>
-            </details>
-          </div>
-        )}
-
-        {/* 최근 실행 5건 — "방금 누른 게 됐나?" 한눈에 확인.
-            결과 배너를 못 봐도 여기 새 row 가 떠 있으면 trigger 작동 확인 가능. */}
-        {recentRuns.length > 0 && (
-          <div className="bg-white border border-grey-200 rounded-lg p-4 mb-6">
-            <div className="text-[13px] font-bold text-grey-900 mb-2">
-              최근 실행 {recentRuns.length}건
-            </div>
-            <ul className="space-y-1.5">
-              {recentRuns.map((r) => {
-                const t = new Date(r.createdAt);
-                const ago = Math.max(0, Math.floor((Date.now() - t.getTime()) / 1000));
-                const agoLabel =
-                  ago < 60
-                    ? `${ago}초 전`
-                    : ago < 3600
-                    ? `${Math.floor(ago / 60)}분 전`
-                    : `${Math.floor(ago / 3600)}시간 전`;
-                return (
-                  <li
-                    key={r.id}
-                    className="flex items-center gap-2 text-[12px] font-mono"
-                  >
-                    <span className={r.ok ? "text-green" : "text-red"}>
-                      {r.ok ? "✅" : "❌"}
-                    </span>
-                    <span className="flex-1 truncate text-grey-800">{r.path}</span>
-                    <span className="shrink-0 text-grey-500">{agoLabel}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
-        {/* 일반 cron 8종 */}
-        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-          일반 Cron
-        </h2>
-        <div className="grid grid-cols-1 gap-2 mb-8">
-          {CRON_LIST.map((c) => (
-            <CronRow key={c.path} cron={c} />
-          ))}
-        </div>
-
-        {/* 광역 collect-news 17 */}
-        <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
-          광역 뉴스 수집 (17 시·도)
-        </h2>
-        <p className="text-[13px] text-grey-600 mb-3">
-          매일 14:00~15:20 KST 5분 간격 자동 수집. 즉시 반영 필요 시 클릭.
-        </p>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8">
-          {PROVINCE_CRONS.map((code) => (
-            <form
-              key={code}
-              action={triggerCron}
-              target="_blank"
-              className="flex"
+            <Link
+              href="/admin/cron-trigger"
+              className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
             >
-              <input type="hidden" name="path" value={`/api/collect-news/${code}`} />
-              <button
-                type="submit"
-                className="w-full px-2 py-2 bg-white border border-grey-200 rounded-lg text-[12px] font-semibold text-grey-900 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
-              >
-                {code}
-              </button>
-            </form>
-          ))}
+              닫기
+            </Link>
+          </div>
+          {/* 자세히 — 기본 접힘. summary 가 한 줄 요약 표시. */}
+          <details className="mt-3">
+            <summary className="cursor-pointer text-[12px] font-semibold text-grey-700 hover:text-grey-900">
+              ▼ 자세히 (JSON 결과)
+            </summary>
+            <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
+              {JSON.stringify(resultObj, null, 2)}
+            </pre>
+          </details>
         </div>
+      )}
 
-        <p className="mt-10 text-[13px]">
-          <Link href="/admin" className="text-blue-500 font-medium underline">
-            ← 어드민 홈
-          </Link>
-        </p>
+      {/* 최근 실행 5건 — "방금 누른 게 됐나?" 한눈에 확인.
+          결과 배너를 못 봐도 여기 새 row 가 떠 있으면 trigger 작동 확인 가능. */}
+      {recentRuns.length > 0 && (
+        <div className="bg-white border border-grey-200 rounded-lg p-4 mb-6">
+          <div className="text-[13px] font-bold text-grey-900 mb-2">
+            최근 실행 {recentRuns.length}건
+          </div>
+          <ul className="space-y-1.5">
+            {recentRuns.map((r) => {
+              const t = new Date(r.createdAt);
+              const ago = Math.max(0, Math.floor((Date.now() - t.getTime()) / 1000));
+              const agoLabel =
+                ago < 60
+                  ? `${ago}초 전`
+                  : ago < 3600
+                  ? `${Math.floor(ago / 60)}분 전`
+                  : `${Math.floor(ago / 3600)}시간 전`;
+              return (
+                <li
+                  key={r.id}
+                  className="flex items-center gap-2 text-[12px] font-mono"
+                >
+                  <span className={r.ok ? "text-green" : "text-red"}>
+                    {r.ok ? "✅" : "❌"}
+                  </span>
+                  <span className="flex-1 truncate text-grey-800">{r.path}</span>
+                  <span className="shrink-0 text-grey-500">{agoLabel}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* 일반 cron 8종 */}
+      <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        일반 Cron
+      </h2>
+      <div className="grid grid-cols-1 gap-2 mb-8">
+        {CRON_LIST.map((c) => (
+          <CronRow key={c.path} cron={c} />
+        ))}
       </div>
-    </main>
+
+      {/* 광역 collect-news 17 */}
+      <h2 className="text-[16px] font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        광역 뉴스 수집 (17 시·도)
+      </h2>
+      <p className="text-[13px] text-grey-600 mb-3">
+        매일 14:00~15:20 KST 5분 간격 자동 수집. 즉시 반영 필요 시 클릭.
+      </p>
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8">
+        {PROVINCE_CRONS.map((code) => (
+          <form
+            key={code}
+            action={triggerCron}
+            target="_blank"
+            className="flex"
+          >
+            <input type="hidden" name="path" value={`/api/collect-news/${code}`} />
+            <button
+              type="submit"
+              className="w-full px-2 py-2 bg-white border border-grey-200 rounded-lg text-[12px] font-semibold text-grey-900 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
+            >
+              {code}
+            </button>
+          </form>
+        ))}
+      </div>
+
+      <p className="mt-10 text-[13px]">
+        <Link href="/admin" className="text-blue-500 font-medium underline">
+          ← 어드민 홈
+        </Link>
+      </p>
+    </div>
   );
 }
 
