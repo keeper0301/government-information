@@ -7,6 +7,10 @@ import {
   PRIVACY_POLICY_VERSION,
   TERMS_VERSION,
 } from "@/lib/consent";
+import { redeemReferral } from "@/lib/referrals";
+
+// Phase 5 A3 — 추천 코드 쿠키 (middleware 가 ?ref=CODE 감지 시 30일 저장)
+const REFERRAL_COOKIE = "kp_ref";
 
 // OAuth 콜백 라우트
 // 소셜 로그인(카카오·구글) 또는 이메일 매직링크 인증이 끝나면
@@ -91,6 +95,29 @@ export async function GET(request: Request) {
         console.error("[auth/callback] 프로필 생성 실패:", profileError.message);
       }
 
+      // Phase 5 A3 — 추천 코드 redeem (신규 가입자에 한해 1회)
+      // middleware 가 ?ref=CODE 진입 시 저장한 kp_ref 쿠키 lookup.
+      // 실패해도 가입 자체는 정상 진행 (graceful — 항상 결과 객체만 반환).
+      const refCookie = request.headers
+        .get("cookie")
+        ?.split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith(`${REFERRAL_COOKIE}=`));
+      const refCode = refCookie?.split("=")[1]?.trim();
+
+      if (refCode) {
+        try {
+          const result = await redeemReferral(admin, refCode, user.id);
+          if (!result.ok) {
+            console.warn(
+              `[auth/callback] referral redeem 실패: code=${refCode} reason=${result.reason}`,
+            );
+          }
+        } catch (err) {
+          console.error("[auth/callback] referral redeem 예외:", err);
+        }
+      }
+
       // 필수 동의 자동 기록 — 실패해도 로그인은 성공시킴
       // (개인정보처리방침·이용약관 은 "로그인/가입 완료" = 동의 로 간주)
       const ip = getClientIp(request);
@@ -132,6 +159,24 @@ export async function GET(request: Request) {
   // (이때 세션은 임시로 만들어진 상태이고, 새 비번을 저장하면 정상 세션이 됨)
   if (authType === "recovery") {
     return NextResponse.redirect(`${origin}/reset-password`);
+  }
+
+  // Phase 5 A3 — 추천 쿠키 정리. 신규 가입자라면 redeem 시도가 끝났으므로
+  // 어떤 결과든 더 이상 보유할 필요 없음. 기존 사용자라면 가입 흐름이 아니라
+  // 또 다른 ?ref 진입 가능성도 있어 그대로 두는 편이 안전 (그쪽이 가입하면
+  // 그때 쿠키 redeem). 함수 헬퍼로 만들어 redirect 시 set-cookie 추가.
+  function withReferralCleanup(redirectUrl: string): NextResponse {
+    const res = NextResponse.redirect(redirectUrl);
+    if (isNewUser) {
+      res.cookies.set(REFERRAL_COOKIE, "", {
+        maxAge: 0,
+        path: "/",
+        sameSite: "lax",
+        httpOnly: true,
+        secure: true,
+      });
+    }
+    return res;
   }
 
   // ━━━ GA4 auth_event + auth_method 쿼리 마커 ━━━
@@ -178,14 +223,14 @@ export async function GET(request: Request) {
       profile !== null && profile.dismissed_onboarding_at !== null;
 
     if (!hasCompletedOnboarding) {
-      return NextResponse.redirect(
+      return withReferralCleanup(
         appendAuthEvent(`${origin}/onboarding`, authEventParam, authMethodParam),
       );
     }
   }
 
   // 정상 로그인 → 원래 가려던 페이지 또는 홈으로
-  return NextResponse.redirect(
+  return withReferralCleanup(
     appendAuthEvent(`${origin}${next}`, authEventParam, authMethodParam),
   );
 }

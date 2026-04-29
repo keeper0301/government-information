@@ -55,11 +55,33 @@ function isPendingAllowed(pathname: string): boolean {
   );
 }
 
+// Phase 5 A3 — 추천 코드 쿠키 (?ref=CODE 진입 시 30일 저장)
+// 가입 callback 에서 이 쿠키를 읽어 redeemReferral 호출.
+// 6자리 base32 만 허용 (다른 값은 무시 — 임의 데이터 저장 차단).
+const REFERRAL_COOKIE = "kp_ref";
+const REFERRAL_COOKIE_MAX_AGE_S = 30 * 24 * 60 * 60; // 30일
+const REFERRAL_CODE_PATTERN = /^[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6}$/;
+
 // 모든 요청 전에 실행되는 미들웨어
 // 1) Supabase 세션 쿠키를 갱신해서 로그인 상태 유지
 // 2) 보호 경로에 미로그인 상태로 접근하면 로그인 페이지로 돌려보냄
+// 3) ?ref=CODE 쿼리 있으면 추천 코드 30일 쿠키 저장 (가입 callback 에서 사용)
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  // Phase 5 A3 — ?ref=CODE 감지 → 30일 쿠키 저장.
+  // 형식 검증된 코드만 저장 → 임의 값 주입 차단. SameSite=Lax (외부 링크 진입 허용).
+  // 기존 쿠키가 있어도 덮어씀 (가장 최근 추천인 우선 정책).
+  const refCode = request.nextUrl.searchParams.get("ref");
+  if (refCode && REFERRAL_CODE_PATTERN.test(refCode.toUpperCase())) {
+    supabaseResponse.cookies.set(REFERRAL_COOKIE, refCode.toUpperCase(), {
+      maxAge: REFERRAL_COOKIE_MAX_AGE_S,
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+      secure: true,
+    });
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

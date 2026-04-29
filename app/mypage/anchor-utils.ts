@@ -1,9 +1,10 @@
 // 마이페이지 탭 식별자 — page.tsx 의 Tabs value 와 1:1 매칭
-export type MypageTab = "profile" | "consents" | "account";
+export type MypageTab = "profile" | "consents" | "referral" | "account";
 
 export const VALID_TABS: readonly MypageTab[] = [
   "profile",
   "consents",
+  "referral",
   "account",
 ] as const;
 
@@ -12,6 +13,7 @@ export const VALID_TABS: readonly MypageTab[] = [
 const HASH_TO_TAB: Record<string, MypageTab> = {
   profile: "profile",
   consents: "consents",
+  referral: "referral",
   account: "account",
 };
 

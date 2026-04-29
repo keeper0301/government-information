@@ -10,13 +10,17 @@ import { hashToTab, normalizeTab, type MypageTab } from "./anchor-utils";
 // - URL ?tab=... 쿼리로 상태 유지 (새로고침·딥링크 안전)
 // - legacy #consents 앵커는 마운트 시 1회 감지해서 ?tab=consents 로 자동 변환
 //   (기존 외부 링크 호환 — spec 2-2 절)
+//
+// 2026-04-29 Phase 5 A3: referral 탭 추가 (4 탭 → 5 탭 — 추천 코드 발급/공유/통계)
 export function MypageTabs({
   profileSlot,
   consentsSlot,
+  referralSlot,
   accountSlot,
 }: {
   profileSlot: React.ReactNode;
   consentsSlot: React.ReactNode;
+  referralSlot: React.ReactNode;
   accountSlot: React.ReactNode;
 }) {
   const router = useRouter();
@@ -57,9 +61,11 @@ export function MypageTabs({
 
   return (
     <Tabs value={current} onValueChange={handleChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-8 h-11">
+      {/* 4 탭 → 모바일 가독성 위해 grid-cols-4. 라벨은 짧게. */}
+      <TabsList className="grid w-full grid-cols-4 mb-8 h-11">
         <TabsTrigger value="profile">프로필</TabsTrigger>
-        <TabsTrigger value="consents">동의 관리</TabsTrigger>
+        <TabsTrigger value="consents">동의</TabsTrigger>
+        <TabsTrigger value="referral">추천</TabsTrigger>
         <TabsTrigger value="account">계정</TabsTrigger>
       </TabsList>
 
@@ -68,6 +74,9 @@ export function MypageTabs({
       </TabsContent>
       <TabsContent value="consents" className="focus-visible:outline-none">
         {consentsSlot}
+      </TabsContent>
+      <TabsContent value="referral" className="focus-visible:outline-none">
+        {referralSlot}
       </TabsContent>
       <TabsContent value="account" className="focus-visible:outline-none">
         {accountSlot}

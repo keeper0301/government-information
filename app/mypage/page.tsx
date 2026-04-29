@@ -1,15 +1,22 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getUserConsents,
   PRIVACY_POLICY_VERSION,
   TERMS_VERSION,
 } from "@/lib/consent";
 import type { IncomeOption, HouseholdOption } from "@/lib/profile-options";
+import {
+  getOrCreateCode,
+  getReferralStats,
+  REFERRAL_REWARD_CAP,
+} from "@/lib/referrals";
 import { ProfileForm } from "./profile-form";
 import { ConsentsPanel } from "./consents-panel";
 import { AccountTab } from "./account-tab";
+import { ReferralTab } from "./referral-tab";
 import { MypageTabs } from "./tabs";
 
 export const metadata: Metadata = {
@@ -42,11 +49,17 @@ export default async function MyPage() {
     Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), 1, -9, 0, 0)
   );
 
+  // referral 데이터는 admin client 필수 (INSERT/UPDATE 차단된 RLS).
+  // Promise.all 안에서 함께 병렬화 — 페이지 추가 지연 0ms.
+  const adminForReferral = createAdminClient();
+
   const [
     { data: profile },
     consents,
     { count: alertsThisMonth },
     { data: businessProfile },
+    referralCode,
+    referralStats,
   ] = await Promise.all([
     supabase
       .from("user_profiles")
@@ -69,6 +82,10 @@ export default async function MyPage() {
       .select("user_id")
       .eq("user_id", user.id)
       .maybeSingle(),
+    // Phase 5 A3 — 추천 코드 발급/재사용 (admin client 필수)
+    getOrCreateCode(adminForReferral, user.id),
+    // 추천 통계 — RLS 본인 SELECT 허용이라 SSR client 도 가능하나, admin 으로 통일
+    getReferralStats(adminForReferral, user.id),
   ]);
 
   const email = user.email || "";
@@ -157,6 +174,14 @@ export default async function MyPage() {
               }}
             />
           </section>
+        }
+        referralSlot={
+          <ReferralTab
+            code={referralCode}
+            shareUrl={`https://www.keepioo.com/?ref=${referralCode}`}
+            stats={referralStats}
+            capLimit={REFERRAL_REWARD_CAP}
+          />
         }
         accountSlot={
           <AccountTab
