@@ -8,11 +8,16 @@ on:
   pull_request:
     branches: [master]
 
+# read-only 만 필요 — supply chain 방어 (3rd party action 이 무단 push 못 하도록)
+permissions:
+  contents: read
+
 jobs:
   test:
     name: vitest + tsc
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 정상 run 약 1~2분 (cache hit) — 5분이면 hang 방어 충분, 기존 workflow 와 통일
+    timeout-minutes: 5
     steps:
       - name: 코드 체크아웃
         uses: actions/checkout@v4
@@ -26,8 +31,6 @@ jobs:
       - name: 의존성 설치 (lockfile 기준)
         run: npm ci
 
-      - name: TypeScript 타입체크
-        run: npx tsc --noEmit
-
-      - name: vitest 단위 테스트
-        run: npx vitest run
+      # 로컬 'npm run ci' 와 동일 명령 — drift 0
+      - name: 로컬과 동일 검증 (tsc + vitest)
+        run: npm run ci
