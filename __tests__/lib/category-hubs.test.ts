@@ -8,9 +8,11 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  buildHubOrClause,
   CATEGORY_HUBS,
   CATEGORY_SLUGS,
   getCategoryHub,
+  type CategoryHub,
 } from "@/lib/category-hubs";
 
 describe("category-hubs", () => {
@@ -58,5 +60,49 @@ describe("category-hubs", () => {
   it("housing 은 주거 단일 benefit 으로 좁게 매칭", () => {
     const housing = CATEGORY_HUBS.housing;
     expect(housing.benefitTags).toEqual(["주거"]);
+  });
+});
+
+describe("buildHubOrClause — PostgREST or-clause 빌더", () => {
+  // hub-like 테스트 픽스처 (필수 필드만)
+  function fakeHub(overrides: Partial<CategoryHub>): CategoryHub {
+    return {
+      slug: "youth",
+      emoji: "🌱",
+      label: "테스트",
+      shortLabel: "테스트",
+      hero: "hero",
+      description: "desc",
+      benefitTags: [],
+      ageTags: [],
+      occupationTags: [],
+      ...overrides,
+    };
+  }
+
+  it("3 축 모두 비어있으면 null (over-recall 가드)", () => {
+    expect(buildHubOrClause(fakeHub({}))).toBeNull();
+  });
+
+  it("benefitTags 만 있을 때 benefit_tags.ov 단일 조건", () => {
+    const clause = buildHubOrClause(fakeHub({ benefitTags: ["주거"] }));
+    expect(clause).toBe("benefit_tags.ov.{주거}");
+  });
+
+  it("세 축 모두 정의된 경우 콤마로 합집합", () => {
+    const clause = buildHubOrClause(
+      fakeHub({
+        benefitTags: ["창업", "금융"],
+        ageTags: ["청년"],
+        occupationTags: ["소상공인"],
+      }),
+    );
+    expect(clause).toBe(
+      "benefit_tags.ov.{창업,금융},age_tags.ov.{청년},occupation_tags.ov.{소상공인}",
+    );
+  });
+
+  it("실제 housing hub 는 benefit 단일축만", () => {
+    expect(buildHubOrClause(CATEGORY_HUBS.housing)).toBe("benefit_tags.ov.{주거}");
   });
 });

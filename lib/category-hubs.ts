@@ -104,3 +104,27 @@ export const CATEGORY_SLUGS = Object.keys(CATEGORY_HUBS) as CategorySlug[];
 export function getCategoryHub(slug: string): CategoryHub | null {
   return (CATEGORY_HUBS as Record<string, CategoryHub>)[slug] ?? null;
 }
+
+// ============================================================
+// PostgREST or-clause 빌더 — 세 축 (benefit/age/occupation) 합집합
+// ============================================================
+// hub 의 정의된 축들에 대해 `column.ov.{값1,값2,...}` 조건을 콤마로 합쳐
+// 한 번의 .or() 호출로 던지기 위한 string. 빈 배열 축은 조건에서 제외해
+// over-recall (모든 row 매칭) 방지.
+//
+// 모든 축이 빈 배열이면 null 반환 → 호출부가 .or() 자체를 skip 해야
+// PostgREST 신택스 에러 회피.
+// ============================================================
+export function buildHubOrClause(hub: CategoryHub): string | null {
+  const conds: string[] = [];
+  if (hub.benefitTags.length > 0) {
+    conds.push(`benefit_tags.ov.{${hub.benefitTags.join(",")}}`);
+  }
+  if (hub.ageTags.length > 0) {
+    conds.push(`age_tags.ov.{${hub.ageTags.join(",")}}`);
+  }
+  if (hub.occupationTags.length > 0) {
+    conds.push(`occupation_tags.ov.{${hub.occupationTags.join(",")}}`);
+  }
+  return conds.length > 0 ? conds.join(",") : null;
+}

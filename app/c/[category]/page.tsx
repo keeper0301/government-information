@@ -28,6 +28,7 @@ import {
 } from "@/lib/listing-sources";
 import { getGuides } from "@/lib/policy-guides";
 import {
+  buildHubOrClause,
   CATEGORY_HUBS,
   CATEGORY_SLUGS,
   getCategoryHub,
@@ -82,25 +83,6 @@ const BLOG_LIMIT = 3;
 
 // ============================================================
 // PostgREST or-clause 작성 헬퍼
-// ============================================================
-// 세 축 (benefit_tags / age_tags / occupation_tags) 중 정의된 축들에 대해
-// `.ov.{값1,값2,...}` 조건을 합쳐 or() 한 번에 던진다.
-// 빈 배열 축은 조건에서 제외 (over-recall 방지).
-// ============================================================
-function buildHubOrClause(hub: CategoryHub): string | null {
-  const conds: string[] = [];
-  if (hub.benefitTags.length > 0) {
-    conds.push(`benefit_tags.ov.{${hub.benefitTags.join(",")}}`);
-  }
-  if (hub.ageTags.length > 0) {
-    conds.push(`age_tags.ov.{${hub.ageTags.join(",")}}`);
-  }
-  if (hub.occupationTags.length > 0) {
-    conds.push(`occupation_tags.ov.{${hub.occupationTags.join(",")}}`);
-  }
-  return conds.length > 0 ? conds.join(",") : null;
-}
-
 export default async function CategoryHubPage({ params }: PageProps) {
   const { category } = await params;
   const hub = getCategoryHub(category);
@@ -117,9 +99,13 @@ export default async function CategoryHubPage({ params }: PageProps) {
   //   - 활성 정책 (apply_end >= today OR null)
   //   - source_code 제외 필터 (stale 데이터 차단)
   //   - or-clause 매칭 (benefit/age/occupation 세 축 합집합)
-  //   - apply_end 오름차순 → 5건 (한 번에 가져와 마감 임박/추천 분리)
+  //   - apply_end 오름차순 → 20건 fetch (한 번에 가져와 마감 임박 5 + 추천 5
+  //     클라이언트 분배. 20 = 충분한 분배 풀 — 5건 분리 후에도 여유 보장)
   //
   // PostgREST 에서 .or() 안에 빈 인자 넣으면 신택스 에러 → orClause null 가드.
+  //
+  // 한 query 에 .or() 두 번 호출 — supabase-js 가 두 .or() 를 자동으로 AND 결합.
+  // 의도: (apply_end 활성) AND (세 축 매칭). 별도 .filter() 분리보다 간결.
   // ============================================================
   const [welfareRes, loanRes, guidesAll, blogRes] = await Promise.all([
     (async () => {
