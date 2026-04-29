@@ -1,7 +1,7 @@
 // AdSense in-feed 슬롯 — env 미설정 시 placeholder, 설정 시 진짜 광고.
 //
 // 환경변수 2종 (NEXT_PUBLIC_ 접두 → 빌드 타임 inline. 클라이언트 번들에 포함):
-//   NEXT_PUBLIC_ADSENSE_CLIENT     publisher ID, ca-pub-...
+//   NEXT_PUBLIC_ADSENSE_ID         publisher ID, ca-pub-... (AdsenseLazyLoader 와 동일 변수 — 통일)
 //   NEXT_PUBLIC_ADSENSE_SLOT_INFEED in-feed 슬롯 ID (사장님 외부 액션, AdSense 콘솔에서 발급)
 //
 // 동작 흐름:
@@ -16,7 +16,7 @@
 "use client";
 import { useEffect } from "react";
 
-const PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+const PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
 const SLOT_INFEED = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
 
 // adsbygoogle 전역 타입 — AdsenseLazyLoader 가 주입하는 큐 배열.
