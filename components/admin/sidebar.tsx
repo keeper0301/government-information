@@ -44,6 +44,26 @@ export function Sidebar({ onItemClick }: Props) {
         </div>
       </div>
 
+      {/* 빠른 검색 (CmdK) trigger — input 처럼 보이지만 클릭 시 모달 호출.
+          실제 검색은 CmdKPalette 컴포넌트에서 처리 (Ctrl/Cmd+K 동일 동작). */}
+      <button
+        type="button"
+        onClick={() => {
+          // 사이드바 (client) → CmdK (client) 직접 import 시 순환·생명주기 복잡.
+          // 윈도우 커스텀 이벤트로 결합도 낮춰 호출.
+          window.dispatchEvent(new Event("cmdk:open"));
+          // 모바일 drawer 열려있을 경우 같이 닫음
+          if (onItemClick) onItemClick();
+        }}
+        className="mx-4 mb-4 flex items-center gap-2 w-[calc(100%-2rem)] px-3 py-2 text-sm text-grey-500 bg-white border border-grey-200 rounded-lg hover:border-blue-300 hover:text-grey-700"
+      >
+        <span aria-hidden>🔍</span>
+        <span className="flex-1 text-left">페이지 검색</span>
+        <kbd className="text-xs text-grey-400 px-1.5 py-0.5 border border-grey-200 rounded bg-grey-50">
+          Ctrl K
+        </kbd>
+      </button>
+
       {/* 메인 대시보드 */}
       <Link
         href="/admin"

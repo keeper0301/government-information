@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { Sidebar } from "@/components/admin/sidebar";
 import { SidebarMobileToggle } from "@/components/admin/sidebar-mobile-toggle";
+import { CmdKPalette } from "@/components/admin/cmdk-palette";
 
 export default async function AdminLayout({
   children,
@@ -41,6 +42,9 @@ export default async function AdminLayout({
       <main className="flex-1 min-w-0 px-4 md:px-7 xl:px-12 py-6 md:py-10 max-md:pt-16">
         {children}
       </main>
+
+      {/* 명령 팔레트 — Ctrl/Cmd+K 로 어디서든 호출 (client component) */}
+      <CmdKPalette />
     </div>
   );
 }
