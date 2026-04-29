@@ -113,6 +113,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
         .from("welfare_programs")
         .select("*")
         .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+        .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
         .or(`apply_end.gte.${today},apply_end.is.null`);
       if (orClause) q = q.or(orClause);
       return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
@@ -122,6 +123,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
         .from("loan_programs")
         .select("*")
         .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+        .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
         .or(`apply_end.gte.${today},apply_end.is.null`);
       if (orClause) q = q.or(orClause);
       return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);

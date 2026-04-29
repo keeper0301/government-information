@@ -34,6 +34,8 @@ interface DetectResult {
   newCount: number;       // 신규 윈도우 안 row 수
   activeCount: number;    // 활성 row 수 (비교 대상)
   matched: number;        // duplicate_of_id 신규 저장 수
+  // score 분포 — 사장님이 첫 1주일 reject 비율 보고 임계값 조정 판단용
+  scoreBuckets: { range_0_7_to_0_8: number; range_0_8_to_0_9: number; range_0_9_plus: number };
 }
 
 // ─── 한 테이블 dedupe 수행 ───────────────────────────────
@@ -70,16 +72,16 @@ async function detectInTable(
   const news = (newRows ?? []) as DedupeRow[];
   const actives = (activeRows ?? []) as DedupeRow[];
 
+  const emptyBuckets = { range_0_7_to_0_8: 0, range_0_8_to_0_9: 0, range_0_9_plus: 0 };
   if (news.length === 0 || actives.length === 0) {
-    return { table, newCount: news.length, activeCount: actives.length, matched: 0 };
+    return { table, newCount: news.length, activeCount: actives.length, matched: 0, scoreBuckets: emptyBuckets };
   }
 
-  let matched = 0;
-
-  // 신규 row 1건 vs 모든 활성 — best score 후보 선택 후 duplicate_of_id 업데이트.
-  // O(N×M) 이지만 신규 7일 window × 활성 (수천) 이라 실행 시간 60s 안 충분.
-  // 최악의 경우 N=2000 × M=20000 = 4천만 비교 → 정규화 cost 가 크면 위험하지만
-  // 정규화 결과는 row 별로 같으니 inner loop 에서 매번 정규화 호출돼도 microsec 단위.
+  // 1차 — 매칭 페어 수집 (DB write 없음, 순수 inner loop). O(N×M).
+  // 신규 7일 × 활성 (수천) — 정규화 결과 row 별로 microsec.
+  // matched 페어를 일괄 모은 뒤 batch update 로 처리해 직렬 await 의 60s 한도 부담 회피.
+  const matches: Array<{ newId: string; bestId: string; score: number }> = [];
+  const buckets = { ...emptyBuckets };
   for (const newRow of news) {
     let best: { id: string; score: number } | null = null;
     for (const act of actives) {
@@ -89,19 +91,38 @@ async function detectInTable(
       }
     }
     if (best) {
-      const { error: updErr } = await admin
-        .from(table)
-        .update({ duplicate_of_id: best.id })
-        .eq("id", newRow.id);
-      if (updErr) {
+      matches.push({ newId: newRow.id, bestId: best.id, score: best.score });
+      // score 분포 집계 (운영 모니터링)
+      if (best.score >= 0.9) buckets.range_0_9_plus++;
+      else if (best.score >= 0.8) buckets.range_0_8_to_0_9++;
+      else buckets.range_0_7_to_0_8++;
+    }
+  }
+
+  // 2차 — Promise batch (10건씩) update. 직렬 await 대비 약 10배 throughput.
+  const BATCH_SIZE = 10;
+  let matched = 0;
+  for (let i = 0; i < matches.length; i += BATCH_SIZE) {
+    const batch = matches.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(({ newId, bestId }) =>
+        admin
+          .from(table)
+          .update({ duplicate_of_id: bestId })
+          .eq("id", newId),
+      ),
+    );
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
+      if (r.error) {
         // 단건 실패는 cron 전체를 막지 않음 — 다음 라운드 재시도 가능
         console.warn(
-          `[dedupe-detect] ${table} ${newRow.id} update 실패:`,
-          updErr.message,
+          `[dedupe-detect] ${table} ${batch[j].newId} update 실패:`,
+          r.error.message,
         );
-        continue;
+      } else {
+        matched++;
       }
-      matched++;
     }
   }
 
@@ -110,6 +131,7 @@ async function detectInTable(
     newCount: news.length,
     activeCount: actives.length,
     matched,
+    scoreBuckets: buckets,
   };
 }
 

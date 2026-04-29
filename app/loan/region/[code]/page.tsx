@@ -101,6 +101,7 @@ export default async function LoanRegionPage({ params }: PageProps) {
     .from("loan_programs")
     .select("*", { count: "exact" })
     .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+    .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
     .or(orClause)
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })

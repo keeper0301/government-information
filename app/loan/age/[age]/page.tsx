@@ -95,6 +95,7 @@ export default async function LoanAgePage({ params }: PageProps) {
     .from("loan_programs")
     .select("*", { count: "exact" })
     .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+    .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   if (conditions.length > 0) {

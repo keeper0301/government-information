@@ -120,6 +120,9 @@ export default async function AdminDedupePage({
   ]);
 
   const totalCount = welfareRows.length + loanRows.length;
+  // 200건 cap 도달 인지 — loadCandidates 의 .limit(200) 로 잘렸을 가능성 알림.
+  // 둘 중 하나라도 200 이면 추가 후보가 인지되지 않은 채 묻힐 위험이 있음.
+  const capReached = welfareRows.length === 200 || loanRows.length === 200;
 
   return (
     <div className="max-w-[980px]">
@@ -128,6 +131,13 @@ export default async function AdminDedupePage({
         title="중복 정책 후보 검토"
         description={`매일 02:00 KST 자동 탐지 — 같은 정책이 여러 출처에서 들어오면 자동으로 후보를 잡아줘요. 사장님이 검토 후 확정/해제. 임계값 ${(DEDUPE_THRESHOLD * 100).toFixed(0)}% 이상만 후보로 잡습니다.`}
       />
+
+      {/* 200건 cap 도달 배너 — 추가 후보 누락 인지 (Phase 3 B3 hot-fix) */}
+      {capReached && (
+        <div className="mb-6 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-900">
+          ⚠️ 200건 표시 한도 도달. 추가 후보가 누락됐을 수 있어요. 일부 confirm/reject 후 다시 새로고침해주세요.
+        </div>
+      )}
 
       {/* 알림 메시지 */}
       {okMsg && (

@@ -120,7 +120,8 @@ export default async function WelfarePage({ searchParams }: Props) {
   let query = supabase
     .from("welfare_programs")
     .select("*", { count: "exact" })
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER);
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+    .is("duplicate_of_id", null); // 중복 정책 (Phase 3 B3) 사용자 노출 차단
   query = applyFilters(query);
   query = query
     .or(`apply_end.gte.${today},apply_end.is.null`)
@@ -140,7 +141,8 @@ export default async function WelfarePage({ searchParams }: Props) {
   let poolQuery = supabase
     .from("welfare_programs")
     .select("*")
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER);
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+    .is("duplicate_of_id", null); // 중복 정책 (Phase 3 B3) 사용자 노출 차단
   poolQuery = applyFilters(poolQuery);
   if (region === "전체" && profile?.signals.region) {
     const aliases = REGION_ALIASES[profile.signals.region] ?? [profile.signals.region];
