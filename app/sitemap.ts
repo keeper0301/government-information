@@ -12,6 +12,7 @@ import {
 } from "@/lib/listing-sources";
 import { getGuides } from "@/lib/policy-guides";
 import { PROVINCES } from "@/lib/regions";
+import { AGE_SLUGS, getAgeCounts } from "@/lib/age-targeting";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -96,6 +97,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
+
+  // 연령 long-tail 페이지 — 5 age × welfare/loan = 10 페이지.
+  // 카운트 ≥ 5 만 sitemap 등록 (thin-content 방지). 카운트 0~4 인 age 는
+  // 페이지 자체는 살아있지만 sitemap 미노출 → 색인 압박 약화.
+  const [welfareAgeCounts, loanAgeCounts] = await Promise.all([
+    getAgeCounts(supabase, "welfare_programs", WELFARE_EXCLUDED_FILTER),
+    getAgeCounts(supabase, "loan_programs", LOAN_EXCLUDED_FILTER),
+  ]);
+  const agePages: MetadataRoute.Sitemap = [];
+  for (const slug of AGE_SLUGS) {
+    if ((welfareAgeCounts.get(slug) ?? 0) >= 5) {
+      agePages.push({
+        url: `${baseUrl}/welfare/age/${slug}`,
+        lastModified: new Date(),
+        changeFrequency: "daily",
+        priority: 0.75,
+      });
+    }
+    if ((loanAgeCounts.get(slug) ?? 0) >= 5) {
+      agePages.push({
+        url: `${baseUrl}/loan/age/${slug}`,
+        lastModified: new Date(),
+        changeFrequency: "daily",
+        priority: 0.75,
+      });
+    }
+  }
 
   // Welfare programs
   const { data: welfare } = await supabase
@@ -206,6 +234,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticPages,
     ...eligibilityPages,
     ...crossPages,
+    ...agePages,
     ...keywordPages,
     ...topicPages,
     ...welfarePages,
