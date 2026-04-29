@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
 
@@ -39,7 +40,36 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/alert-dispatch", label: "알림 발송", schedule: "매일 07시 UTC", desc: "이메일·카카오톡 (KST 16시)" },
   { path: "/api/finalize-deletions", label: "30일 유예 탈퇴 최종", schedule: "매일 06시 UTC", desc: "pending_deletions 만료분" },
   { path: "/api/indexnow-submit-recent", label: "IndexNow 제출", schedule: "매일 07:30 UTC", desc: "Bing/Yandex SEO" },
+  { path: "/api/cron/press-ingest", label: "광역 보도자료 자동 ingest", schedule: "매일 16:30 UTC", desc: "Anthropic Haiku · welfare/loan 자동 등록" },
 ];
+
+// 최근 실행 fetch — 사장님이 "방금 누른 게 됐나?" 한눈에 확인.
+type RecentRun = {
+  id: string;
+  path: string;
+  ok: boolean;
+  createdAt: string;
+};
+
+async function getRecentRuns(limit = 5): Promise<RecentRun[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("admin_actions")
+    .select("id, details, created_at")
+    .eq("action", "manual_cron_trigger")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data.map((r) => {
+    const details = (r.details ?? {}) as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      path: typeof details.path === "string" ? details.path : "—",
+      ok: details.ok === true,
+      createdAt: r.created_at,
+    };
+  });
+}
 
 // 광역별 collect-news 17 (vercel.json 14:00~15:20 KST 5분 간격)
 const PROVINCE_CRONS = [
@@ -109,6 +139,8 @@ export default async function CronTriggerPage({
     }
   }
 
+  const recentRuns = await getRecentRuns(5);
+
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[860px] mx-auto px-5">
@@ -125,27 +157,86 @@ export default async function CronTriggerPage({
           </p>
         </div>
 
-        {/* 에러·결과 */}
+        {/* 에러 — 빨강 강조 */}
         {params.error && (
-          <div role="alert" className="bg-red/10 border border-red/30 rounded-lg p-3 text-[13px] text-red mb-4">
-            {params.error}
+          <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-[14px] text-red mb-4">
+            ❌ {params.error}
           </div>
         )}
+
+        {/* 실행 결과 — 강한 시각·timestamp·자세히 토글·닫기 버튼.
+            redirect 후 페이지 맨 위에 큰 배너로 노출 → 사장님이 못 알아챌 일 0. */}
         {resultObj && (
           <div
             role="status"
-            className={`rounded-lg p-4 mb-6 border ${
+            className={`rounded-xl p-5 mb-6 border-2 shadow-sm ${
               params.ok === "1"
-                ? "bg-blue-50 border-blue-100 text-grey-900"
-                : "bg-red/10 border-red/30 text-red"
+                ? "bg-green/10 border-green text-grey-900"
+                : "bg-red/10 border-red text-red"
             }`}
           >
-            <div className="text-[14px] font-bold mb-1">
-              {params.ok === "1" ? "✅" : "❌"} {params.path}
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div>
+                <div className="text-[18px] font-extrabold mb-1">
+                  {params.ok === "1" ? "✅ 실행 완료" : "❌ 실행 실패"}
+                </div>
+                <div className="text-[13px] font-mono text-grey-700">
+                  {params.path}
+                </div>
+                <div className="text-[12px] text-grey-600 mt-1">
+                  {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                </div>
+              </div>
+              <Link
+                href="/admin/cron-trigger"
+                className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
+              >
+                닫기
+              </Link>
             </div>
-            <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words">
-              {JSON.stringify(resultObj, null, 2)}
-            </pre>
+            {/* 자세히 — 기본 접힘. summary 가 한 줄 요약 표시. */}
+            <details className="mt-3">
+              <summary className="cursor-pointer text-[12px] font-semibold text-grey-700 hover:text-grey-900">
+                ▼ 자세히 (JSON 결과)
+              </summary>
+              <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
+                {JSON.stringify(resultObj, null, 2)}
+              </pre>
+            </details>
+          </div>
+        )}
+
+        {/* 최근 실행 5건 — "방금 누른 게 됐나?" 한눈에 확인.
+            결과 배너를 못 봐도 여기 새 row 가 떠 있으면 trigger 작동 확인 가능. */}
+        {recentRuns.length > 0 && (
+          <div className="bg-white border border-grey-200 rounded-lg p-4 mb-6">
+            <div className="text-[13px] font-bold text-grey-900 mb-2">
+              최근 실행 {recentRuns.length}건
+            </div>
+            <ul className="space-y-1.5">
+              {recentRuns.map((r) => {
+                const t = new Date(r.createdAt);
+                const ago = Math.max(0, Math.floor((Date.now() - t.getTime()) / 1000));
+                const agoLabel =
+                  ago < 60
+                    ? `${ago}초 전`
+                    : ago < 3600
+                    ? `${Math.floor(ago / 60)}분 전`
+                    : `${Math.floor(ago / 3600)}시간 전`;
+                return (
+                  <li
+                    key={r.id}
+                    className="flex items-center gap-2 text-[12px] font-mono"
+                  >
+                    <span className={r.ok ? "text-green" : "text-red"}>
+                      {r.ok ? "✅" : "❌"}
+                    </span>
+                    <span className="flex-1 truncate text-grey-800">{r.path}</span>
+                    <span className="shrink-0 text-grey-500">{agoLabel}</span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
 
