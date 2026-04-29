@@ -21,6 +21,8 @@ import {
   type PressIngestCandidate,
 } from "@/lib/press-ingest/filter";
 import { PressClassifyAction } from "./classify-action";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "광역 보도자료 정책 후보 | 어드민",
@@ -176,314 +178,305 @@ export default async function PressIngestPage({
   const llmEnabled = !!process.env.ANTHROPIC_API_KEY;
 
   return (
-    <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <div className="max-w-[980px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">
-            ADMIN · 광역 보도자료 정책 후보
-          </p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            {hours === 168 ? "최근 7일" : `최근 ${hours}시간`} 광역 보도자료
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.6]">
-            17개 광역도청 발표 보도자료 중 신청 신호 키워드 (지원금·보조금·
-            바우처·수당·환급·모집·신청·접수) 매칭 row. 본인 판단으로 정책이면
-            우측 버튼 → 수동 등록 폼으로 이동.
-          </p>
-        </div>
+    <div className="max-w-[980px]">
+      {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 컨텐츠 발행"
+        title={`${hours === 168 ? "최근 7일" : `최근 ${hours}시간`} 광역 보도자료`}
+        description="17개 광역도청 발표 보도자료 중 신청 신호 키워드 (지원금·보조금·바우처·수당·환급·모집·신청·접수) 매칭 row. 본인 판단으로 정책이면 우측 버튼 → 수동 등록 폼으로 이동."
+      />
 
-        {/* KPI 카드 (Step 3 가시화 + 자동 ingest) */}
-        <section className="mb-5 grid grid-cols-2 md:grid-cols-5 gap-3">
-          <KpiCard
-            label="24h 후보"
-            value={`${kpi.candidates_24h}건`}
-            tone={kpi.candidates_24h > 0 ? "ok" : "muted"}
-            hint="광역도청 보도자료 매칭"
-          />
-          <KpiCard
-            label="24h 자동 ingest"
-            value={`${kpi.auto_ingested_24h}건`}
-            tone={kpi.auto_ingested_24h > 0 ? "ok" : "muted"}
-            hint="cron 01:30 KST"
-          />
-          <KpiCard
-            label="24h 등록 (manual)"
-            value={`${kpi.manual_registered_24h}건`}
-            tone={kpi.manual_registered_24h > 0 ? "ok" : "muted"}
-            hint="사장님 수동 등록"
-          />
-          <KpiCard
-            label="24h LLM 호출"
-            value={`${kpi.llm_classify_24h}건`}
-            tone={kpi.llm_classify_24h > 0 ? "ok" : "muted"}
-            hint={`Anthropic Haiku · ~$${(kpi.llm_classify_24h * 0.003).toFixed(2)}`}
-          />
-          <KpiCard
-            label="LLM 활성"
-            value={llmEnabled ? "✓ 켜짐" : "✗ 미설정"}
-            tone={llmEnabled ? "ok" : "warn"}
-            hint={
-              llmEnabled
-                ? "ANTHROPIC_API_KEY OK"
-                : "Vercel env 등록 필요"
-            }
-          />
-        </section>
+      {/* KPI 카드 (Step 3 가시화 + 자동 ingest) */}
+      <section className="mb-5 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <KpiCard
+          label="24h 후보"
+          value={`${kpi.candidates_24h}건`}
+          tone={kpi.candidates_24h > 0 ? "ok" : "muted"}
+          hint="광역도청 보도자료 매칭"
+        />
+        <KpiCard
+          label="24h 자동 ingest"
+          value={`${kpi.auto_ingested_24h}건`}
+          tone={kpi.auto_ingested_24h > 0 ? "ok" : "muted"}
+          hint="cron 01:30 KST"
+        />
+        <KpiCard
+          label="24h 등록 (manual)"
+          value={`${kpi.manual_registered_24h}건`}
+          tone={kpi.manual_registered_24h > 0 ? "ok" : "muted"}
+          hint="사장님 수동 등록"
+        />
+        <KpiCard
+          label="24h LLM 호출"
+          value={`${kpi.llm_classify_24h}건`}
+          tone={kpi.llm_classify_24h > 0 ? "ok" : "muted"}
+          hint={`Anthropic Haiku · ~$${(kpi.llm_classify_24h * 0.003).toFixed(2)}`}
+        />
+        <KpiCard
+          label="LLM 활성"
+          value={llmEnabled ? "✓ 켜짐" : "✗ 미설정"}
+          tone={llmEnabled ? "ok" : "warn"}
+          hint={
+            llmEnabled
+              ? "ANTHROPIC_API_KEY OK"
+              : "Vercel env 등록 필요"
+          }
+        />
+      </section>
 
-        {/* 7일 자동 등록 추세 — 일별 막대 7개. cron 작동·정책 발굴 페이스 한눈에. */}
-        <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
-          <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
-            7일 자동 등록 추세
-          </h2>
-          <div className="flex items-end gap-2 h-[72px]">
-            {autoTrend.map((d) => {
-              const heightPct = d.count === 0 ? 4 : Math.max(8, Math.round((d.count / trendMax) * 100));
-              const isToday = d.day === autoTrend[autoTrend.length - 1]?.day;
-              return (
-                <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="text-[11px] font-semibold text-grey-700 tabular-nums">
-                    {d.count}
-                  </div>
-                  <div
-                    className={`w-full rounded-t ${
-                      d.count > 0 ? (isToday ? "bg-blue-500" : "bg-blue-300") : "bg-grey-200"
-                    }`}
-                    style={{ height: `${heightPct}%` }}
-                    aria-label={`${d.day} ${d.count}건`}
-                  />
+      {/* 7일 자동 등록 추세 — 일별 막대 7개. cron 작동·정책 발굴 페이스 한눈에. */}
+      <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
+        <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+          7일 자동 등록 추세
+        </h2>
+        <div className="flex items-end gap-2 h-[72px]">
+          {autoTrend.map((d) => {
+            const heightPct = d.count === 0 ? 4 : Math.max(8, Math.round((d.count / trendMax) * 100));
+            const isToday = d.day === autoTrend[autoTrend.length - 1]?.day;
+            return (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <div className="text-[11px] font-semibold text-grey-700 tabular-nums">
+                  {d.count}
                 </div>
-              );
-            })}
-          </div>
-          <div className="flex gap-2 mt-1.5">
-            {autoTrend.map((d) => (
-              <div
-                key={d.day}
-                className="flex-1 text-center text-[10px] text-grey-600 tabular-nums"
-              >
-                {d.day.replace(/^\d{4}\.\s*/, "").replace(/\.$/, "")}
+                <div
+                  className={`w-full rounded-t ${
+                    d.count > 0 ? (isToday ? "bg-blue-500" : "bg-blue-300") : "bg-grey-200"
+                  }`}
+                  style={{ height: `${heightPct}%` }}
+                  aria-label={`${d.day} ${d.count}건`}
+                />
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 최근 자동 등록 5건 — 사장님이 "정말 자동으로 들어왔나" 즉시 확인. */}
-        <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
-          <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
-            최근 자동 등록 정책 5건
-          </h2>
-          {recentAuto.length === 0 ? (
-            <p className="text-[12px] text-grey-600 leading-[1.5]">
-              아직 자동 등록된 정책이 없어요. 매일 01:30 KST cron 이 실행하면
-              안전 가드 통과한 정책이 여기 노출됩니다.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {recentAuto.map((r) => (
-                <li
-                  key={`${r.table}-${r.id}`}
-                  className="flex items-center gap-2 text-[12px]"
-                >
-                  <span
-                    className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                      r.table === "welfare"
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-orange-50 text-orange-700"
-                    }`}
-                  >
-                    {r.table === "welfare" ? "복지" : "대출"}
-                  </span>
-                  {r.category && (
-                    <span className="shrink-0 text-grey-600 text-[11px]">
-                      {r.category}
-                    </span>
-                  )}
-                  <Link
-                    href={
-                      r.table === "welfare"
-                        ? `/welfare/${r.id}`
-                        : `/loan/${r.id}`
-                    }
-                    target="_blank"
-                    className="flex-1 truncate text-grey-900 font-medium hover:text-blue-600 hover:underline"
-                  >
-                    {r.title}
-                  </Link>
-                  <span className="shrink-0 text-grey-500 text-[11px]">
-                    {fmtDate(r.createdAt)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* 안내 + 기간 토글 */}
-        <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
-          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[12px] text-blue-900 leading-[1.55] flex-1 min-w-[280px]">
-            💡 자동 ingest cron 매일 01:30 KST 실행 (LLM 분류 + 자동 INSERT,
-            cap 30 후보 / 10 INSERT). 누락된 정책은 직접 '🤖 AI 분류' 또는
-            '복지/대출 →' 버튼으로 수동 등록 가능.
-          </div>
-          <div className="inline-flex rounded-lg border border-grey-200 bg-white overflow-hidden">
-            {[
-              { value: 24, label: "24h" },
-              { value: 48, label: "48h" },
-              { value: 168, label: "7일" },
-            ].map((opt) => (
-              <Link
-                key={opt.value}
-                href={
-                  opt.value === 24
-                    ? "/admin/press-ingest"
-                    : `/admin/press-ingest?hours=${opt.value}`
-                }
-                className={`px-4 py-2 text-[12px] font-semibold no-underline transition-colors ${
-                  hours === opt.value
-                    ? "bg-blue-500 text-white"
-                    : "text-grey-700 hover:bg-grey-50"
-                }`}
-              >
-                {opt.label}
-              </Link>
-            ))}
-          </div>
+            );
+          })}
         </div>
+        <div className="flex gap-2 mt-1.5">
+          {autoTrend.map((d) => (
+            <div
+              key={d.day}
+              className="flex-1 text-center text-[10px] text-grey-600 tabular-nums"
+            >
+              {d.day.replace(/^\d{4}\.\s*/, "").replace(/\.$/, "")}
+            </div>
+          ))}
+        </div>
+      </section>
 
-        {/* 후보 테이블 */}
-        {candidates.length === 0 ? (
-          <div className="rounded-lg border border-grey-200 bg-white p-10 text-center text-[14px] text-grey-600">
-            후보 없음 — 광역도청 신청 신호 키워드 매칭 보도자료가 이 기간에
-            없습니다.
-          </div>
+      {/* 최근 자동 등록 5건 — 사장님이 "정말 자동으로 들어왔나" 즉시 확인. */}
+      <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
+        <h2 className="text-[14px] font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+          최근 자동 등록 정책 5건
+        </h2>
+        {recentAuto.length === 0 ? (
+          <p className="text-[12px] text-grey-600 leading-[1.5]">
+            아직 자동 등록된 정책이 없어요. 매일 01:30 KST cron 이 실행하면
+            안전 가드 통과한 정책이 여기 노출됩니다.
+          </p>
         ) : (
-          <div className="rounded-lg border border-grey-200 bg-white overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="text-left text-grey-600 border-b border-grey-200 bg-grey-50">
-                  <th className="py-2 px-3 font-medium whitespace-nowrap">
-                    발표
-                  </th>
-                  <th className="py-2 px-3 font-medium whitespace-nowrap">
-                    광역
-                  </th>
-                  <th className="py-2 px-3 font-medium">제목</th>
-                  <th className="py-2 px-3 font-medium whitespace-nowrap">
-                    출처
-                  </th>
-                  <th className="py-2 px-3 font-medium whitespace-nowrap">
-                    등록
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-grey-100 last:border-b-0 align-top"
-                  >
-                    <td className="py-2 px-3 text-grey-600 text-[12px] whitespace-nowrap">
-                      {fmtDate(c.published_at)}
-                    </td>
-                    <td className="py-2 px-3 text-[12px] whitespace-nowrap">
-                      {(() => {
-                        const m = shortenMinistry(c.ministry);
-                        return (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold w-fit">
-                              {m.province}
-                            </span>
-                            {m.district && (
-                              <span className="text-[10px] text-grey-700 font-medium">
-                                {m.district}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="py-2 px-3">
-                      <Link
-                        href={`/news/${c.slug}`}
-                        target="_blank"
-                        className="text-grey-900 font-medium hover:text-blue-600 hover:underline"
-                      >
-                        {c.title}
-                      </Link>
-                      {c.summary && (
-                        <p className="text-[11px] text-grey-600 mt-0.5 line-clamp-2 leading-[1.4]">
-                          {c.summary}
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 text-grey-600 text-[11px] whitespace-nowrap">
-                      {c.source_outlet ?? "—"}
-                    </td>
-                    <td className="py-2 px-3 whitespace-nowrap align-top">
-                      <div className="flex flex-col gap-1">
-                        <Link
-                          href={buildPrefillUrl("/admin/welfare/new", c, true)}
-                          className="text-[11px] text-blue-500 hover:text-blue-700 font-semibold no-underline whitespace-nowrap"
-                        >
-                          복지 →
-                        </Link>
-                        <Link
-                          href={buildPrefillUrl("/admin/loan/new", c, false)}
-                          className="text-[11px] text-orange-500 hover:text-orange-700 font-semibold no-underline whitespace-nowrap"
-                        >
-                          대출 →
-                        </Link>
-                        <PressClassifyAction
-                          newsId={c.id}
-                          fallbackWelfareUrl={buildPrefillUrl(
-                            "/admin/welfare/new",
-                            c,
-                            true,
-                          )}
-                          fallbackLoanUrl={buildPrefillUrl(
-                            "/admin/loan/new",
-                            c,
-                            false,
-                          )}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="space-y-2">
+            {recentAuto.map((r) => (
+              <li
+                key={`${r.table}-${r.id}`}
+                className="flex items-center gap-2 text-[12px]"
+              >
+                <span
+                  className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    r.table === "welfare"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-orange-50 text-orange-700"
+                  }`}
+                >
+                  {r.table === "welfare" ? "복지" : "대출"}
+                </span>
+                {r.category && (
+                  <span className="shrink-0 text-grey-600 text-[11px]">
+                    {r.category}
+                  </span>
+                )}
+                <Link
+                  href={
+                    r.table === "welfare"
+                      ? `/welfare/${r.id}`
+                      : `/loan/${r.id}`
+                  }
+                  target="_blank"
+                  className="flex-1 truncate text-grey-900 font-medium hover:text-blue-600 hover:underline"
+                >
+                  {r.title}
+                </Link>
+                <span className="shrink-0 text-grey-500 text-[11px]">
+                  {fmtDate(r.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
+      </section>
 
-        <p className="mt-6 text-[12px] text-grey-600">
-          전체 {candidates.length}건 (최대 100건). L2 (LLM 자동 분류) 도입 시
-          이 페이지에서 후보가 자동 등록 후 confirm 단계로 변경 예정.
-        </p>
-
-        <p className="mt-8 text-[13px] flex items-center gap-4">
-          <Link href="/admin" className="text-blue-500 font-medium underline">
-            ← 어드민 홈
-          </Link>
-          <Link
-            href="/admin/my-actions?q=정책%20수동%20등록"
-            className="text-blue-500 font-medium underline"
-          >
-            등록 내역 →
-          </Link>
-          <Link
-            href="/admin/welfare/new"
-            className="text-blue-500 font-medium underline"
-          >
-            복지 정책 등록
-          </Link>
-          <Link
-            href="/admin/loan/new"
-            className="text-blue-500 font-medium underline"
-          >
-            대출 정책 등록
-          </Link>
-        </p>
+      {/* 안내 + 기간 토글 */}
+      <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-[12px] text-blue-900 leading-[1.55] flex-1 min-w-[280px]">
+          💡 자동 ingest cron 매일 01:30 KST 실행 (LLM 분류 + 자동 INSERT,
+          cap 30 후보 / 10 INSERT). 누락된 정책은 직접 '🤖 AI 분류' 또는
+          '복지/대출 →' 버튼으로 수동 등록 가능.
+        </div>
+        <div className="inline-flex rounded-lg border border-grey-200 bg-white overflow-hidden">
+          {[
+            { value: 24, label: "24h" },
+            { value: 48, label: "48h" },
+            { value: 168, label: "7일" },
+          ].map((opt) => (
+            <Link
+              key={opt.value}
+              href={
+                opt.value === 24
+                  ? "/admin/press-ingest"
+                  : `/admin/press-ingest?hours=${opt.value}`
+              }
+              className={`px-4 py-2 text-[12px] font-semibold no-underline transition-colors ${
+                hours === opt.value
+                  ? "bg-blue-500 text-white"
+                  : "text-grey-700 hover:bg-grey-50"
+              }`}
+            >
+              {opt.label}
+            </Link>
+          ))}
+        </div>
       </div>
-    </main>
+
+      {/* 후보 테이블 */}
+      {candidates.length === 0 ? (
+        <div className="rounded-lg border border-grey-200 bg-white p-10 text-center text-[14px] text-grey-600">
+          후보 없음 — 광역도청 신청 신호 키워드 매칭 보도자료가 이 기간에
+          없습니다.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-grey-200 bg-white overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="text-left text-grey-600 border-b border-grey-200 bg-grey-50">
+                <th className="py-2 px-3 font-medium whitespace-nowrap">
+                  발표
+                </th>
+                <th className="py-2 px-3 font-medium whitespace-nowrap">
+                  광역
+                </th>
+                <th className="py-2 px-3 font-medium">제목</th>
+                <th className="py-2 px-3 font-medium whitespace-nowrap">
+                  출처
+                </th>
+                <th className="py-2 px-3 font-medium whitespace-nowrap">
+                  등록
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {candidates.map((c) => (
+                <tr
+                  key={c.id}
+                  className="border-b border-grey-100 last:border-b-0 align-top"
+                >
+                  <td className="py-2 px-3 text-grey-600 text-[12px] whitespace-nowrap">
+                    {fmtDate(c.published_at)}
+                  </td>
+                  <td className="py-2 px-3 text-[12px] whitespace-nowrap">
+                    {(() => {
+                      const m = shortenMinistry(c.ministry);
+                      return (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold w-fit">
+                            {m.province}
+                          </span>
+                          {m.district && (
+                            <span className="text-[10px] text-grey-700 font-medium">
+                              {m.district}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="py-2 px-3">
+                    <Link
+                      href={`/news/${c.slug}`}
+                      target="_blank"
+                      className="text-grey-900 font-medium hover:text-blue-600 hover:underline"
+                    >
+                      {c.title}
+                    </Link>
+                    {c.summary && (
+                      <p className="text-[11px] text-grey-600 mt-0.5 line-clamp-2 leading-[1.4]">
+                        {c.summary}
+                      </p>
+                    )}
+                  </td>
+                  <td className="py-2 px-3 text-grey-600 text-[11px] whitespace-nowrap">
+                    {c.source_outlet ?? "—"}
+                  </td>
+                  <td className="py-2 px-3 whitespace-nowrap align-top">
+                    <div className="flex flex-col gap-1">
+                      <Link
+                        href={buildPrefillUrl("/admin/welfare/new", c, true)}
+                        className="text-[11px] text-blue-500 hover:text-blue-700 font-semibold no-underline whitespace-nowrap"
+                      >
+                        복지 →
+                      </Link>
+                      <Link
+                        href={buildPrefillUrl("/admin/loan/new", c, false)}
+                        className="text-[11px] text-orange-500 hover:text-orange-700 font-semibold no-underline whitespace-nowrap"
+                      >
+                        대출 →
+                      </Link>
+                      <PressClassifyAction
+                        newsId={c.id}
+                        fallbackWelfareUrl={buildPrefillUrl(
+                          "/admin/welfare/new",
+                          c,
+                          true,
+                        )}
+                        fallbackLoanUrl={buildPrefillUrl(
+                          "/admin/loan/new",
+                          c,
+                          false,
+                        )}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="mt-6 text-[12px] text-grey-600">
+        전체 {candidates.length}건 (최대 100건). L2 (LLM 자동 분류) 도입 시
+        이 페이지에서 후보가 자동 등록 후 confirm 단계로 변경 예정.
+      </p>
+
+      <p className="mt-8 text-[13px] flex items-center gap-4">
+        <Link href="/admin" className="text-blue-500 font-medium underline">
+          ← 어드민 홈
+        </Link>
+        <Link
+          href="/admin/my-actions?q=정책%20수동%20등록"
+          className="text-blue-500 font-medium underline"
+        >
+          등록 내역 →
+        </Link>
+        <Link
+          href="/admin/welfare/new"
+          className="text-blue-500 font-medium underline"
+        >
+          복지 정책 등록
+        </Link>
+        <Link
+          href="/admin/loan/new"
+          className="text-blue-500 font-medium underline"
+        >
+          대출 정책 등록
+        </Link>
+      </p>
+    </div>
   );
 }
