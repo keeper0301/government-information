@@ -28,9 +28,18 @@ export interface DigestRecipient {
 // 한번에 추천할 hot 정책 개수 — 카드 5개가 메일 한 화면에 깔끔히 들어감.
 export const HOT_PROGRAMS_LIMIT = 5;
 
+// welfare/loan 균형 quota — welfare 가 항상 신규가 더 많아 자연 cut 시
+// loan 0건이 되는 사고 방지. welfare 3 + loan 2 = 5건 명시 quota.
+const WELFARE_QUOTA = 3;
+const LOAN_QUOTA = 2;
+
 // 최근 N일 신규 → "이번 주" 의미. cron 이 매주 월요일 도는 동안
 // 지난 주 정책 + 주말 신규까지 자연스럽게 포함하기 위해 7일 윈도우.
 const WINDOW_DAYS = 7;
+
+// auth.users 단일 페이지 cap — 1000명 초과 시 silent 누락 차단용 임계.
+// keepioo 현 규모는 안전. 추후 1만 넘어가면 페이지네이션 추가 필요.
+const LIST_USERS_PAGE_SIZE = 1000;
 
 // ============================================================
 // hot 정책 5건 로드 — welfare/loan 통합 최신순.
@@ -50,41 +59,58 @@ export async function loadHotPrograms(
   ).toISOString();
   const today = new Date().toISOString().slice(0, 10);
 
+  // welfare/loan 별도 fetch — 각자 quota 만큼만 우선 채움. 한쪽이 quota 미달이면
+  // 다른쪽에서 부족분 채우기 (총합 limit 보장).
+  const welfareRows = await fetchHot(supabase, "welfare_programs", sinceIso, today, limit);
+  const loanRows = await fetchHot(supabase, "loan_programs", sinceIso, today, limit);
+
   const results: WeeklyDigestProgram[] = [];
-
-  for (const table of ["welfare_programs", "loan_programs"] as const) {
-    const { data, error } = await supabase
-      .from(table)
-      .select("id, title, source, apply_end, created_at")
-      .gte("created_at", sinceIso)
-      .is("duplicate_of_id", null)
-      // 활성 — 마감 안 지났거나 상시
-      .or(`apply_end.is.null,apply_end.gte.${today}`)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error(`[digest:weekly] ${table} hot 정책 조회 실패:`, error);
-      continue;
-    }
-
-    const type = table === "welfare_programs" ? "welfare" : "loan";
-    for (const row of data || []) {
-      results.push({
-        id: row.id as string,
-        type,
-        title: row.title as string,
-        source: (row.source as string | null) ?? null,
-        apply_end: (row.apply_end as string | null) ?? null,
-      });
+  // 1차: welfare quota + loan quota
+  results.push(...welfareRows.slice(0, WELFARE_QUOTA));
+  results.push(...loanRows.slice(0, LOAN_QUOTA));
+  // 2차: 한쪽이 quota 미달이면 다른쪽에서 부족분 채움
+  if (results.length < limit) {
+    const usedW = Math.min(welfareRows.length, WELFARE_QUOTA);
+    const usedL = Math.min(loanRows.length, LOAN_QUOTA);
+    const remaining = limit - results.length;
+    if (welfareRows.length > usedW) {
+      results.push(...welfareRows.slice(usedW, usedW + remaining));
+    } else if (loanRows.length > usedL) {
+      results.push(...loanRows.slice(usedL, usedL + remaining));
     }
   }
-
-  // welfare 와 loan 각각 created_at 최신순으로 받았으므로, 통합 후 앞쪽 limit 건만 컷.
-  // 정확히 통합 최신순으로 섞으려면 created_at 도 응답에 포함시켜 정렬해야 하지만,
-  // 1차 버전은 welfare/loan 가 균형 있게 노출되도록 자연 순서 유지 — 사용자 입장에선
-  // "복지 + 대출 골고루" 가 오히려 자연스러움.
   return results.slice(0, limit);
+}
+
+// 단일 테이블 hot 정책 fetch — loadHotPrograms 의 inner helper.
+async function fetchHot(
+  supabase: SupabaseClient,
+  table: "welfare_programs" | "loan_programs",
+  sinceIso: string,
+  today: string,
+  limit: number,
+): Promise<WeeklyDigestProgram[]> {
+  const { data, error } = await supabase
+    .from(table)
+    .select("id, title, source, apply_end, created_at")
+    .gte("created_at", sinceIso)
+    .is("duplicate_of_id", null)
+    .or(`apply_end.is.null,apply_end.gte.${today}`)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error(`[digest:weekly] ${table} hot 정책 조회 실패:`, error);
+    return [];
+  }
+  const type = table === "welfare_programs" ? "welfare" : "loan";
+  return (data || []).map((row) => ({
+    id: row.id as string,
+    type,
+    title: row.title as string,
+    source: (row.source as string | null) ?? null,
+    apply_end: (row.apply_end as string | null) ?? null,
+  }));
 }
 
 // ============================================================
@@ -144,8 +170,15 @@ export async function loadRecipients(
   // 추후 1만 넘어가면 페이지네이션 추가 필요.
   const { data: usersResp } = await authAdmin.auth.admin.listUsers({
     page: 1,
-    perPage: 1000,
+    perPage: LIST_USERS_PAGE_SIZE,
   });
+  // 1000명 cap 도달 — silent 누락 차단용 경고. 다음 페이지 누락 가능.
+  // cron 응답 로그 + Vercel 콘솔에서 확인 후 페이지네이션 추가 결정.
+  if ((usersResp?.users ?? []).length >= LIST_USERS_PAGE_SIZE) {
+    console.warn(
+      `[digest:weekly] auth.users 가 ${LIST_USERS_PAGE_SIZE} 도달 — 페이지네이션 추가 필요 (다음 페이지 사용자 발송 누락 가능)`,
+    );
+  }
 
   const recipients: DigestRecipient[] = [];
   for (const u of usersResp?.users ?? []) {
