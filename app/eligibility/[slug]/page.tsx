@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ProgramRow } from '@/components/program-row';
+import { AdSlot } from '@/components/ad-slot';
 import { welfareToDisplay, loanToDisplay } from '@/lib/programs';
 import {
   ELIGIBILITY_SLUGS,
@@ -183,6 +184,14 @@ export default async function EligibilityCategoryPage({
           {programs.map((program) => (
             <ProgramRow key={`${program.type}-${program.id}`} program={program} />
           ))}
+        </div>
+      )}
+
+      {/* [E2 광고] AdSense in-feed — 정책 list 다음, "다른 자격 카테고리" CTA 위.
+          long-tail SEO 진입자의 정책 탐색을 다 끝낸 시점이라 광고 친화적 위치. */}
+      {programs.length > 0 && (
+        <div className="mt-8">
+          <AdSlot />
         </div>
       )}
 

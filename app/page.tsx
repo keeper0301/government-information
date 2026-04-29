@@ -14,6 +14,7 @@ import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
 import { PopularPicksRow } from "@/components/popular-picks-row";
 import { HomeJsonLd } from "@/components/home-jsonld";
+import { AdSlot } from "@/components/ad-slot";
 import { BlogCategoryChips } from "@/components/blog-category-chips";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
@@ -318,6 +319,11 @@ export default async function Home() {
           <PopularPicksRow picks={popularPicks} />
         </Suspense>
       </RevealOnScroll>
+
+      {/* [E2 광고] AdSense in-feed — 인기 정책 다음, Blog 섹션 앞.
+          홈 above-the-fold 와 Hero 침범 없고, "콘텐츠 사이" 자연 위치 (CLS 안전).
+          env 미설정 시 자동으로 옅은 placeholder 만 렌더. */}
+      <AdSlot />
 
       {/* [도구 3] Blog — 정책 블로그 (자체 콘텐츠) */}
       {recentPosts.length > 0 && (

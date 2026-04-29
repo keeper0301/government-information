@@ -21,6 +21,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProgramRow } from "@/components/program-row";
+import { AdSlot } from "@/components/ad-slot";
 import { welfareToDisplay, loanToDisplay } from "@/lib/programs";
 import {
   WELFARE_EXCLUDED_FILTER,
@@ -284,6 +285,14 @@ export default async function CategoryHubPage({ params }: PageProps) {
             >
               전체 복지 정책 보기 →
             </Link>
+          </div>
+        )}
+
+        {/* [E2 광고] AdSense in-feed — 마감 임박 정책 (사용자 핵심 가치) 다음,
+            관련 가이드/블로그 (보조 콘텐츠) 사이. 자연 흐름 끊지 않는 위치. */}
+        {(recommended.length > 0 || deadlineSoon.length > 0) && (
+          <div className="mb-10">
+            <AdSlot />
           </div>
         )}
 

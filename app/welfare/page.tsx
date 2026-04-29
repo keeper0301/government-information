@@ -316,18 +316,28 @@ export default async function WelfarePage({ searchParams }: Props) {
         {/* row 들을 흰 카드로 감싸 크림 배경 대비 가독성 향상 (홈 ProgramList 와 동일 스타일) */}
         {programs.length > 0 ? (
           <div className="flex flex-col bg-white border border-grey-200 rounded-2xl px-6 md:px-8 py-2">
-            {programs.map((p) => (
+            {programs.map((p, idx) => (
               // MatchBadge 를 ProgramRow 오른쪽 상단에 absolute 로 겹쳐 표시
               // ProgramRow 시그니처 무변경 — relative wrapper 로만 배지 추가
-              <div key={p.id} className="relative">
-                <ProgramRow
-                  program={p}
-                  businessProfile={profile?.signals.businessProfile}
-                />
-                {/* 분리 섹션에 노출된 항목 → ✨ 내 조건 배지 */}
-                {personalIds.has(p.id) && (
-                  <div className="absolute top-4 right-0 pointer-events-none">
-                    <MatchBadge />
+              <div key={p.id} className="contents">
+                <div className="relative">
+                  <ProgramRow
+                    program={p}
+                    businessProfile={profile?.signals.businessProfile}
+                  />
+                  {/* 분리 섹션에 노출된 항목 → ✨ 내 조건 배지 */}
+                  {personalIds.has(p.id) && (
+                    <div className="absolute top-4 right-0 pointer-events-none">
+                      <MatchBadge />
+                    </div>
+                  )}
+                </div>
+                {/* [E2 광고] in-feed — page=1 의 5번째 row 다음에만 1회.
+                    이탈률 우려로 페이지 2+ 는 skip. AdSlot 자체가 max-w-content
+                    로 자기 가로폭 처리 → row list 흐름 자연스럽게 끊고 다음 row 로 이어짐. */}
+                {idx === 4 && page === 1 && (
+                  <div className="-mx-6 md:-mx-8 my-1">
+                    <AdSlot />
                   </div>
                 )}
               </div>
@@ -340,7 +350,7 @@ export default async function WelfarePage({ searchParams }: Props) {
         )}
       </section>
 
-      {/* Ad */}
+      {/* Ad — 리스트 끝 추가 슬롯 (스크롤 끝 도달한 사용자 대상). page 무관 노출. */}
       {programs.length > 0 && (
         <div className="mt-8">
           <AdSlot />
