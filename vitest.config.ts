@@ -11,7 +11,12 @@ export default defineConfig({
   test: {
     // 브라우저 환경 시뮬레이션 (React 컴포넌트 테스트 가능)
     environment: 'jsdom',
-    // 테스트 파일 위치
-    include: ['__tests__/**/*.test.ts', '__tests__/**/*.test.tsx'],
+    // 테스트 파일 위치 (루트 __tests__ + lib/ 하위 모듈별 __tests__ 모두 탐색)
+    include: [
+      '__tests__/**/*.test.ts',
+      '__tests__/**/*.test.tsx',
+      'lib/**/__tests__/**/*.test.ts',
+      'lib/**/__tests__/**/*.test.tsx',
+    ],
   },
 });
