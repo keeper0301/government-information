@@ -48,9 +48,10 @@ DDL 0 — 기존 duplicate_of_id 컬럼 (007/046) 활용.
 
 이유: 자체 마케팅 채널 확보. SEO 기반 트래픽과 시너지.
 
-### Phase 6: 수익화 (6h)
-- **E1** Pro 플랜 차별화 강화 (즉시 알림·수동 등록·고급 진단 등) (4h)
-- **E2** AdSense 페이지별 manual 슬롯 최적화 (2h)
+### ✅ Phase 6: 수익화 (완료 2026-04-29, 3 commit `4fd170f`~`59f4336`) — **6 phase 마감**
+- **E1** Pro 차별화 가시성 (TierBadge + Free→Pro CTA + GA4 결제 funnel) ✅
+- **E2** AdSense in-feed 5위치 + env 통일 critical fix ✅
+- AI 신청서 (LLM) 은 keepio_agent 중복 위험으로 보류
 
 이유: 트래픽·재방문 들어왔으면 monetize.
 
