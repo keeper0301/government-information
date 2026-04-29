@@ -18,6 +18,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
+// admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
 export const metadata: Metadata = {
   title: "공고 상세 보강 | 어드민",
@@ -215,21 +217,23 @@ export default async function EnrichDetailPage({
     stats.total > 0 ? Math.round((stats.fetched / stats.total) * 1000) / 10 : 0;
 
   return (
-    <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <div className="max-w-[720px] mx-auto px-5">
-        <div className="mb-8">
-          <p className="text-[12px] text-blue-500 font-semibold tracking-[0.2em] mb-3">ADMIN</p>
-          <h1 className="text-[26px] font-extrabold tracking-[-0.6px] text-grey-900 mb-2">
-            공고 상세 수동 보강
-          </h1>
-          <p className="text-[14px] text-grey-700 leading-[1.65]">
+    <div className="max-w-[720px]">
+      {/* 표준 헤더 슬롯 — F4 후속 마이그레이션 */}
+      <AdminPageHeader
+        kicker="ADMIN · 운영 상태"
+        title="공고 상세 수동 보강"
+        description={
+          <>
             cron (매일 6회, 하루 60건) 이 자동 처리하지만, 지금 즉시 10건 추가
-            처리가 필요할 때 쓰세요. data.go.kr 개발계정 일일 할당량 100회 중
-            cron 이 60회 사용하니 수동 trigger 는 하루 3~4회 정도 여유 있습니다.
-          </p>
-        </div>
+            처리가 필요할 때 쓰세요.
+            <br />
+            <strong className="text-grey-900">[지금 10건 보강 실행 ↗] 클릭 시 새 탭에서 진행</strong> — 약 40초 소요.
+            data.go.kr 개발계정 일일 할당량 100회 중 cron 이 60회 사용하니 수동 trigger 는 하루 3~4회 여유.
+          </>
+        }
+      />
 
-        {/* 상태 카드 (058: 영구 skip 카드 추가) */}
+      {/* 상태 카드 (058: 영구 skip 카드 추가) */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
           <StatCard label="전체" value={stats.total.toLocaleString()} />
           <StatCard label="채워짐" value={stats.fetched.toLocaleString()} hint={`${pct}%`} />
@@ -243,55 +247,88 @@ export default async function EnrichDetailPage({
           />
         </div>
 
-        {/* 에러 메시지 */}
+        {/* 에러 — 빨강 강조 */}
         {params.error && (
-          <div role="alert" className="bg-red/10 border border-red/30 rounded-lg p-3 text-sm text-red mb-4">
-            {params.error}
+          <div role="alert" className="bg-red/10 border-2 border-red rounded-lg p-4 text-[14px] text-red mb-4">
+            ❌ {params.error}
           </div>
         )}
 
-        {/* 결과 배너 */}
+        {/* 실행 결과 — 강한 시각·timestamp·자세히 토글·닫기 버튼 (cron-trigger 패턴) */}
         {resultObj && (
           <div
             role="status"
-            className={`rounded-lg p-4 mb-4 border ${
+            className={`rounded-xl p-5 mb-6 border-2 shadow-sm ${
               resultOk
-                ? "bg-blue-50 border-blue-100 text-grey-900"
-                : "bg-red/10 border-red/30 text-red"
+                ? "bg-green/10 border-green text-grey-900"
+                : "bg-red/10 border-red text-red"
             }`}
           >
-            <div className="text-[14px] font-bold mb-1">
-              {resultOk ? "✅ 보강 실행 완료" : "❌ 보강 실행 실패"}
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div>
+                <div className="text-[18px] font-extrabold mb-1">
+                  {resultOk ? "✅ 보강 실행 완료" : "❌ 보강 실행 실패"}
+                </div>
+                <div className="text-[13px] text-grey-700">
+                  /api/enrich · 약 40초 소요
+                </div>
+                <div className="text-[12px] text-grey-600 mt-1">
+                  {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                </div>
+              </div>
+              <Link
+                href="/admin/enrich-detail"
+                className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
+              >
+                닫기
+              </Link>
             </div>
-            <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words">
-              {JSON.stringify(resultObj, null, 2)}
-            </pre>
+            <details className="mt-3">
+              <summary className="cursor-pointer text-[12px] font-semibold text-grey-700 hover:text-grey-900">
+                ▼ 자세히 (JSON 결과)
+              </summary>
+              <pre className="text-[12px] leading-[1.5] whitespace-pre-wrap break-words mt-2 p-3 bg-white rounded border border-grey-200 max-h-[400px] overflow-auto">
+                {JSON.stringify(resultObj, null, 2)}
+              </pre>
+            </details>
           </div>
         )}
 
-        {/* 058 reset 결과 배너 */}
+        {/* 058 reset 결과 — 동일 강조 패턴 + 닫기 */}
         {resetTotal !== null && (
           <div
             role="status"
-            className="rounded-lg p-4 mb-4 border bg-blue-50 border-blue-100 text-grey-900"
+            className="rounded-xl p-5 mb-6 border-2 border-green bg-green/10 text-grey-900 shadow-sm"
           >
-            <div className="text-[14px] font-bold mb-1">
-              ✅ 영구 skip 해제 완료 — 총 {resetTotal.toLocaleString()}건
-            </div>
-            <div className="text-[13px] leading-[1.55] text-grey-700">
-              welfare {resetWelfare.toLocaleString()}건 · loan {resetLoan.toLocaleString()}건.
-              다음 cron (5분 이내) 부터 재시도 시작.
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div>
+                <div className="text-[18px] font-extrabold mb-1">
+                  ✅ 영구 skip 해제 완료 — 총 {resetTotal.toLocaleString()}건
+                </div>
+                <div className="text-[13px] text-grey-700">
+                  welfare {resetWelfare.toLocaleString()}건 · loan {resetLoan.toLocaleString()}건 · 다음 cron (5분 이내) 부터 재시도 시작
+                </div>
+                <div className="text-[12px] text-grey-600 mt-1">
+                  {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                </div>
+              </div>
+              <Link
+                href="/admin/enrich-detail"
+                className="shrink-0 px-3 py-1.5 bg-white border border-grey-300 rounded-md text-[12px] font-semibold text-grey-700 hover:bg-grey-50 no-underline"
+              >
+                닫기
+              </Link>
             </div>
           </div>
         )}
 
-        {/* 트리거 폼 */}
-        <form action={triggerEnrich}>
+        {/* 트리거 폼 — target="_blank": 40초 소요라 새 탭 진행이 자연스러움 (cron-trigger 와 일관) */}
+        <form action={triggerEnrich} target="_blank">
           <button
             type="submit"
             className="w-full py-3 bg-blue-500 text-white rounded-lg text-[15px] font-bold hover:bg-blue-600 transition-colors cursor-pointer"
           >
-            지금 10건 보강 실행
+            지금 10건 보강 실행 ↗
           </button>
         </form>
         <p className="mt-3 text-[13px] text-grey-600 leading-[1.65]">
@@ -311,12 +348,12 @@ export default async function EnrichDetailPage({
               detail_failed_count·last_detail_failed_at 까지 함께 reset 되어 다음 cron 부터
               즉시 재시도합니다. 회복 안 됐다면 같은 row 가 3번 더 실패해서 다시 영구 skip 됩니다.
             </p>
-            <form action={resetPermanentSkips}>
+            <form action={resetPermanentSkips} target="_blank">
               <button
                 type="submit"
                 className="w-full py-3 bg-red text-white rounded-lg text-[15px] font-bold hover:opacity-90 transition-opacity cursor-pointer"
               >
-                {stats.skipped.toLocaleString()}건 영구 skip 전부 해제
+                {stats.skipped.toLocaleString()}건 영구 skip 전부 해제 ↗
               </button>
             </form>
           </div>
@@ -325,8 +362,7 @@ export default async function EnrichDetailPage({
         <p className="mt-8 text-[13px] flex items-center gap-4 flex-wrap">
           <Link href="/admin" className="text-blue-500 font-medium underline">← 어드민 홈</Link>
         </p>
-      </div>
-    </main>
+    </div>
   );
 }
 
