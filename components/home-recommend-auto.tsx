@@ -138,10 +138,10 @@ export async function HomeRecommendAuto() {
         <h2 className="text-base sm:text-lg font-bold text-grey-900 mb-2">
           🌟 {profile.displayName}님께 맞는 정책
         </h2>
-        <p className="text-sm max-md:text-[15px] text-grey-600 leading-[1.55] max-md:leading-[1.65] mb-4">
-          지금은 마감 임박 정책 중 키퍼님 조건과 딱 맞는 게 적어요.
+        <p className="text-sm max-md:text-[15px] text-grey-600 leading-[1.6] mb-4">
+          지금은 마이페이지 조건에 맞는 새 정책이 적어요.
           <br />
-          전체 정책에서 더 많은 정보를 확인해보세요.
+          소득·가구 정보를 보완하면 더 정확하게 걸러드릴게요.
         </p>
         <div className="flex flex-col gap-2">
           <Link
@@ -178,28 +178,42 @@ export async function HomeRecommendAuto() {
           전체 보기 →
         </Link>
       </div>
+      <p className="mb-4 text-[13px] leading-[1.5] text-grey-600">
+        마이페이지의 지역·소득·가구 정보를 기준으로 부적합한 정책을 걸러냈어요.
+      </p>
 
       {/* 추천 정책 목록 — 각 항목은 /welfare/[id] 상세 링크 */}
       <ul className="space-y-2.5">
-        {items.map(({ item }) => (
-          <li key={item.id}>
-            <a
-              href={`/welfare/${item.id}`}
-              className="block py-2 px-3 rounded-lg hover:bg-grey-50 transition"
-            >
-              {/* 정책 제목 — 2줄 초과 시 말줄임표 */}
-              <div className="text-sm max-md:text-[15px] font-medium text-grey-900 line-clamp-2">
-                {item.title}
-              </div>
-              {/* 마감일이 있는 경우만 표시 */}
-              {item.apply_end && (
-                <div className="text-xs max-md:text-[13px] text-grey-500 mt-1">
-                  마감 {item.apply_end}
+        {items.map(({ item, signals }) => {
+          const reasons = getHomeMatchReasonLabels(signals, 4);
+          return (
+            <li key={item.id}>
+              <Link
+                href={`/welfare/${item.id}`}
+                className="block py-2.5 px-3 rounded-xl hover:bg-grey-50 transition no-underline"
+              >
+                <div className="text-sm max-md:text-[15px] font-semibold text-grey-900 line-clamp-2">
+                  {item.title}
                 </div>
-              )}
-            </a>
-          </li>
-        ))}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {reasons.map((reason) => (
+                    <span
+                      key={reason}
+                      className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"
+                    >
+                      {reason}
+                    </span>
+                  ))}
+                  {item.apply_end && (
+                    <span className="text-[11px] font-medium text-grey-500">
+                      마감 {item.apply_end}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
