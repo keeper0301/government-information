@@ -1,5 +1,15 @@
 import { getDataFreshness } from "@/lib/data-freshness";
-import { getProgramCounts } from "@/lib/home-stats";
+import { getProgramCounts, type ProgramCounts } from "@/lib/home-stats";
+
+const EMPTY_COUNTS: ProgramCounts = {
+  news_total: 0,
+  welfare_total: 0,
+  loan_total: 0,
+  today_new_welfare: 0,
+  today_new_loan: 0,
+  week_new_welfare: 0,
+  week_new_loan: 0,
+};
 
 export function buildFreshnessLabel(minutesAgo: number | null): string {
   if (minutesAgo === null) return "수집 상태 확인 중";
@@ -8,13 +18,33 @@ export function buildFreshnessLabel(minutesAgo: number | null): string {
   return `${hours}시간 전 업데이트`;
 }
 
+export function buildTrustStripData(
+  countsResult: PromiseSettledResult<ProgramCounts>,
+  freshnessResult: PromiseSettledResult<{ minutes_ago: number | null }>,
+) {
+  const counts =
+    countsResult.status === "fulfilled" ? countsResult.value : EMPTY_COUNTS;
+  const minutesAgo =
+    freshnessResult.status === "fulfilled"
+      ? freshnessResult.value.minutes_ago
+      : null;
+
+  return {
+    todayNew: counts.today_new_welfare + counts.today_new_loan,
+    weekNew: counts.week_new_welfare + counts.week_new_loan,
+    freshnessLabel: buildFreshnessLabel(minutesAgo),
+  };
+}
+
 export async function HomeTrustStrip() {
-  const [counts, freshness] = await Promise.all([
+  const [countsResult, freshnessResult] = await Promise.allSettled([
     getProgramCounts(),
     getDataFreshness(),
   ]);
-  const todayNew = counts.today_new_welfare + counts.today_new_loan;
-  const weekNew = counts.week_new_welfare + counts.week_new_loan;
+  const { todayNew, weekNew, freshnessLabel } = buildTrustStripData(
+    countsResult,
+    freshnessResult,
+  );
 
   return (
     <section className="max-w-content mx-auto px-10 py-10 max-md:px-6">
@@ -29,7 +59,7 @@ export async function HomeTrustStrip() {
             수집 → 조건 필터링 → 알림 발송
           </div>
           <div className="mt-1 text-[13px] text-grey-600">
-            {buildFreshnessLabel(freshness.minutes_ago)}
+            {freshnessLabel}
           </div>
         </div>
       </div>
