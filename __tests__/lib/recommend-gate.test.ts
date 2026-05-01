@@ -3,6 +3,10 @@ import {
   isRecommendLoanEligible,
   isRecommendWelfareEligible,
 } from "@/lib/recommend";
+import {
+  isProgramAllowedForUser,
+  scoreProgram,
+} from "@/lib/personalization/score";
 import type { LoanProgram, WelfareProgram } from "@/lib/database.types";
 import type { UserSignals } from "@/lib/personalization/types";
 
@@ -177,6 +181,25 @@ describe("recommend cohort gate", () => {
     });
 
     expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+  });
+
+  it("blocks cohort-only targets even when title and description look broad", () => {
+    const program = {
+      id: "target-only-disaster",
+      title: "생활안정 지원",
+      target: "재해 이재민",
+      description: "생활안정을 위한 현금 지원",
+      source: "전라남도",
+      benefit_tags: ["생계"],
+    };
+
+    expect(isProgramAllowedForUser(program, baseUser)).toBe(false);
+    expect(
+      scoreProgram(program, {
+        ...baseUser,
+        benefitTags: ["생계"],
+      }).score,
+    ).toBe(0);
   });
 
   it("blocks child-care services when profile explicitly has no children", () => {

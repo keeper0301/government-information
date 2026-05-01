@@ -10,7 +10,10 @@ import type { UserSignals, MatchSignal, ScoredItem } from './types';
 export type ScorableItem = {
   id: string;
   title: string;
+  target?: string | null;
   description?: string | null;
+  eligibility?: string | null;
+  detailed_content?: string | null;
   region?: string | null;
   district?: string | null;
   benefit_tags?: string[] | null;
@@ -20,6 +23,19 @@ export type ScorableItem = {
   income_target_level?: 'low' | 'mid_low' | 'mid' | 'any' | null;
   household_target_tags?: string[] | null;
 };
+
+function buildProgramText(program: ScorableItem): string {
+  return [
+    program.title,
+    program.target,
+    program.description,
+    program.eligibility,
+    program.detailed_content,
+    program.source,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
 
 // 광역시도 명칭 별칭 매핑 (DB에 저장된 정식 명칭 → 사용자 선택 짧은 명칭)
 // 예: "서울특별시" → 사용자가 선택한 "서울"과 매칭되게 처리
@@ -424,7 +440,7 @@ export function isProgramAllowedForUser<T extends ScorableItem>(
   user: UserSignals,
 ): boolean {
   // 검색 대상 텍스트: 제목 + 설명 + 출처
-  const haystack = `${program.title ?? ''} ${program.description ?? ''} ${program.source ?? ''}`;
+  const haystack = buildProgramText(program);
 
   // 1) Cohort 키워드 차단 (노년/다문화/아동/장애/저소득/산후조리)
   if (isCohortMismatch(haystack, user)) return false;
@@ -459,7 +475,7 @@ export function scoreProgram<T extends ScorableItem>(
   const signals: MatchSignal[] = [];
 
   // 검색 대상 텍스트: 제목 + 설명 + 출처 합산
-  const haystack = `${program.title ?? ''} ${program.description ?? ''} ${program.source ?? ''}`;
+  const haystack = buildProgramText(program);
 
   // ⓪ Cohort 부적합 사전 차단 — 노인 정책에 30대, 결혼이주 정책에 일반인 등
   // 점수 0 + 빈 시그널 반환 → filter 에서 minScore 못 넘게 함.
