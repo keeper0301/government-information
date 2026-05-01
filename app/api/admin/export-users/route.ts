@@ -9,7 +9,7 @@
 // admin 권한 가드 + admin_actions.csv_export 감사 로그.
 // ============================================================
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -37,7 +37,7 @@ function csvCell(v: string | null | undefined): string {
   return s;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   // 권한 가드
   const supabase = await createClient();
   const {

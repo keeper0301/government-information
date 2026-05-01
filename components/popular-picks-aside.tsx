@@ -150,7 +150,7 @@ export function PopularPicksAside({
                     {p.kind === "welfare" ? "복지" : "대출"}
                   </span>
                   <span>{formatDeadline(p.apply_end)}</span>
-                  <span className="text-grey-400">·</span>
+                  <span className="text-grey-500">·</span>
                   <span>조회 {p.view_count.toLocaleString()}</span>
                 </span>
               </span>

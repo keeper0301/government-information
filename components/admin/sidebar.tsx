@@ -59,7 +59,7 @@ export function Sidebar({ onItemClick }: Props) {
       >
         <span aria-hidden>🔍</span>
         <span className="flex-1 text-left">페이지 검색</span>
-        <kbd className="text-xs text-grey-400 px-1.5 py-0.5 border border-grey-200 rounded bg-grey-50">
+        <kbd className="text-xs text-grey-500 px-1.5 py-0.5 border border-grey-200 rounded bg-grey-50">
           Ctrl K
         </kbd>
       </button>

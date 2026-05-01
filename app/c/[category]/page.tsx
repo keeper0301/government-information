@@ -33,7 +33,6 @@ import {
   CATEGORY_HUBS,
   CATEGORY_SLUGS,
   getCategoryHub,
-  type CategoryHub,
 } from "@/lib/category-hubs";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
 

@@ -267,7 +267,7 @@ export function SearchBox() {
                       }}
                       className="flex-1 text-left px-5 py-3 flex items-center gap-3 cursor-pointer border-none bg-transparent"
                     >
-                      <SearchIcon className="w-4 h-4 text-grey-400 shrink-0" />
+                      <SearchIcon className="w-4 h-4 text-grey-500 shrink-0" />
                       <span className="text-sm text-grey-800 truncate">{q}</span>
                     </button>
                     <button
@@ -278,7 +278,7 @@ export function SearchBox() {
                         setRecent(next);
                       }}
                       aria-label={`${q} 검색어 삭제`}
-                      className="px-3 py-3 text-grey-400 hover:text-grey-700 cursor-pointer border-none bg-transparent text-lg leading-none"
+                      className="px-3 py-3 text-grey-500 hover:text-grey-700 cursor-pointer border-none bg-transparent text-lg leading-none"
                     >
                       ×
                     </button>

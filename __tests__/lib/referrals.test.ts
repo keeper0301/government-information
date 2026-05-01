@@ -77,7 +77,7 @@ function makeStub(opts: StubOptions) {
         }
         return builder;
       },
-      eq(col: string, _val: unknown) {
+      eq(col: string) {
         if (col === "referrer_id" && !isCount && queryKind === "unknown") {
           queryKind = "pending"; // 가능성 1 (다음 .is 가 referred_id 면 확정)
         } else if (col === "code") {
@@ -90,7 +90,7 @@ function makeStub(opts: StubOptions) {
         }
         return builder;
       },
-      is(col: string, _val: unknown) {
+      is(col: string) {
         if (col === "referred_id") {
           // by_code 와 pending 둘 다 .is('referred_id', null) 사용
           // queryKind 가 by_code 면 그대로 두고, pending 이면 그대로 둠.
@@ -138,7 +138,7 @@ function makeStub(opts: StubOptions) {
       update(payload: Record<string, unknown>) {
         cap.referralsUpdate = payload;
         return {
-          eq: (_col: string, _val: unknown) => Promise.resolve({ error: null }),
+          eq: () => Promise.resolve({ error: null }),
         };
       },
     };
@@ -166,7 +166,7 @@ function makeStub(opts: StubOptions) {
       update(payload: Record<string, unknown>) {
         cap.subscriptionsUpdate = payload;
         return {
-          eq: (_col: string, _val: unknown) => Promise.resolve({ error: null }),
+          eq: () => Promise.resolve({ error: null }),
         };
       },
     };

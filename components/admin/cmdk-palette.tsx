@@ -150,7 +150,7 @@ export function CmdKPalette() {
       <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
         {/* 검색 input */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-grey-100">
-          <span aria-hidden className="text-grey-400">🔍</span>
+          <span aria-hidden className="text-grey-500">🔍</span>
           <input
             ref={inputRef}
             type="text"
@@ -192,7 +192,7 @@ export function CmdKPalette() {
                   <span className="flex-1 text-sm font-semibold">
                     {it.label}
                   </span>
-                  <span className="text-xs text-grey-400">{it.group}</span>
+                  <span className="text-xs text-grey-500">{it.group}</span>
                 </button>
               </li>
             ))

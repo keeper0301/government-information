@@ -309,9 +309,9 @@ function CronRow({
         <div className="text-sm font-bold text-grey-900">{cron.label}</div>
         <div className="text-xs text-grey-600 leading-[1.5]">
           <code className="text-grey-700">{cron.path}</code>
-          <span className="text-grey-400 mx-1.5">·</span>
+          <span className="text-grey-500 mx-1.5">·</span>
           {cron.schedule}
-          <span className="text-grey-400 mx-1.5">·</span>
+          <span className="text-grey-500 mx-1.5">·</span>
           {cron.desc}
         </div>
       </div>
