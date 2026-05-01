@@ -24,6 +24,55 @@ export interface DedupeRow {
   benefit_tags: string[] | null;
 }
 
+export type DedupeTableName = "welfare_programs" | "loan_programs";
+
+export type DedupeDbRow = {
+  id: string;
+  source_code: string | null;
+  title: string | null;
+  region?: string | null;
+  region_tags?: string[] | null;
+  apply_end: string | null;
+  benefit_tags: string[] | null;
+};
+
+export type DedupeCandidateDbRow = DedupeDbRow & {
+  duplicate_of_id: string | null;
+};
+
+export function getDedupeSelectColumns(
+  table: DedupeTableName,
+  options: { includeDuplicateOfId?: boolean } = {},
+): string {
+  const regionColumn = table === "loan_programs" ? "region_tags" : "region";
+  const columns = ["id", "source_code", "title", regionColumn, "apply_end", "benefit_tags"];
+  if (options.includeDuplicateOfId) columns.push("duplicate_of_id");
+  return columns.join(", ");
+}
+
+function extractLoanRegion(title: string | null, regionTags?: string[] | null): string | null {
+  if (regionTags && regionTags.length > 0) return regionTags.join(" ");
+  const m = title?.match(/[\[\(]([^\]\)]+)/);
+  return m ? m[1].trim() : null;
+}
+
+export function normalizeDedupeDbRow(
+  table: DedupeTableName,
+  row: DedupeDbRow,
+): DedupeRow {
+  return {
+    id: row.id,
+    source_code: row.source_code,
+    title: row.title,
+    region:
+      table === "loan_programs"
+        ? extractLoanRegion(row.title, row.region_tags)
+        : row.region ?? null,
+    apply_end: row.apply_end,
+    benefit_tags: row.benefit_tags ?? [],
+  };
+}
+
 // ─── 매칭 결과 ─────────────────────────────────────────────
 export interface DedupeMatch {
   baseId: string;        // 신규 row id (duplicate_of_id 채울 row)

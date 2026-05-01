@@ -17,7 +17,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
 import {
   detectDuplicateScore,
+  getDedupeSelectColumns,
+  normalizeDedupeDbRow,
+  type DedupeDbRow,
   type DedupeRow,
+  type DedupeTableName,
 } from "@/lib/dedupe/welfare-loan";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +31,7 @@ export const maxDuration = 60;
 // 일시 cron 누락 시 catch-up 차원에서 7일 안전 마진).
 const NEW_ROW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-type TableName = "welfare_programs" | "loan_programs";
+type TableName = DedupeTableName;
 
 interface DetectResult {
   table: TableName;
@@ -50,7 +54,7 @@ async function detectInTable(
   // 최근 7일 안에 들어온 것만.
   const { data: newRows, error: newErr } = await admin
     .from(table)
-    .select("id, source_code, title, region, apply_end, benefit_tags")
+    .select(getDedupeSelectColumns(table))
     .is("duplicate_of_id", null)
     .gte("created_at", sinceIso);
 
@@ -62,15 +66,19 @@ async function detectInTable(
   // 있어 detectDuplicateScore 가 같은 id 를 자기참조로 거름.
   const { data: activeRows, error: actErr } = await admin
     .from(table)
-    .select("id, source_code, title, region, apply_end, benefit_tags")
+    .select(getDedupeSelectColumns(table))
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   if (actErr) {
     throw new Error(`${table} 활성 조회 실패: ${actErr.message}`);
   }
 
-  const news = (newRows ?? []) as DedupeRow[];
-  const actives = (activeRows ?? []) as DedupeRow[];
+  const news: DedupeRow[] = ((newRows ?? []) as unknown as DedupeDbRow[]).map((row) =>
+    normalizeDedupeDbRow(table, row),
+  );
+  const actives: DedupeRow[] = ((activeRows ?? []) as unknown as DedupeDbRow[]).map((row) =>
+    normalizeDedupeDbRow(table, row),
+  );
 
   const emptyBuckets = { range_0_7_to_0_8: 0, range_0_8_to_0_9: 0, range_0_9_plus: 0 };
   if (news.length === 0 || actives.length === 0) {

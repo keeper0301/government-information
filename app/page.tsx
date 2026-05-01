@@ -25,7 +25,7 @@ import { HomeCTA } from "@/components/home-cta";
 import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
-import { getUrgentPrograms, type ProfileLite } from "@/lib/programs";
+import { getUrgentPrograms } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
 import { getPopularPicks } from "@/lib/popular-picks";
@@ -45,97 +45,139 @@ const FloatingWishWidget = nextDynamic(
 // ISR 대신 요청마다 렌더링 (매 요청 ~수십ms, 성능 영향 미미)
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  // 1) 로그인 상태 + urgent 리스트 + 데이터 freshness 먼저 확보
-  //    (셋 다 프로필 유무와 무관, 병렬 fetch)
-  const supabase = await createClient();
-  const [urgents, userResult, freshness, popularPicks] = await Promise.all([
-    // 마퀴 회전이라 12건이면 충분 (이전 30건 → 시각 부담 ↓ + 마퀴 더 천천히 읽힘).
-    // /calendar 전체보기 CTA 가 우측에 항상 노출되므로 발견성 회귀 0.
-    getUrgentPrograms(12),
-    supabase.auth.getUser(),
-    // 데이터 신선도 — Hero indicator 에 통합 노출 (footer 외 첫 화면 신뢰 시그널)
-    getDataFreshness(),
-    // 인기 정책 5건 — 1800px+ sidebar (HomePopularPicks) 와 일반 섹션
-    // (PopularPicksRow) 양쪽에서 react cache 로 round trip 공유
-    getPopularPicks(5),
-  ]);
-
-  // 2) 로그인 사용자면 프로필 조회 (HomeRecommendCard 자동 채움용)
-  const user = userResult.data.user;
-  let initialProfile: ProfileLite | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("age_group, region, occupation")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (profile) {
-      initialProfile = {
-        age_group: profile.age_group ?? null,
-        region: profile.region ?? null,
-        occupation: profile.occupation ?? null,
-      };
-    }
-  }
-
-  // 핵심 필드(나이대·지역·직업)가 하나도 없으면 "빈 프로필" 로 판단
-  // load-profile.ts 의 isEmpty 와 같은 기준 — 비로그인 시 null 이므로 항상 true
-  const isProfileEmpty =
-    !initialProfile?.age_group &&
-    !initialProfile?.region &&
-    !initialProfile?.occupation;
-
-  // Phase 1.5 자격 정보 입력 유도 배너 노출 조건:
-  // 로그인 + 온보딩 거침 + income/household 둘 다 미입력 → Phase 1.5 효과 0 인 사용자
-  // (온보딩 안 거친 사용자는 EmptyProfilePrompt 가 처리)
-  const fullProfile = user ? await loadUserProfile() : null;
-  const showEnhanceBanner = Boolean(
-    fullProfile?.hasProfile &&
-      fullProfile.dismissedOnboardingAt !== null &&
-      !fullProfile.signals.incomeLevel &&
-      fullProfile.signals.householdTypes.length === 0,
-  );
-
-  // 3) 최근 블로그 3글 + 최근 뉴스 3건 + 통합 stats RPC (병렬).
-  //    이전엔 4 count query 직접 호출 → 단일 RPC 통합 (lib/home-stats).
-  //    react cache 로 HeroStats 와 같은 RPC 결과 공유 → 1 RPC 만 실행.
-  const [recentPostsResult, recentNewsResult, programCounts] = await Promise.all([
-    supabase
-      .from("blog_posts")
-      .select(
-        "slug, title, meta_description, category, reading_time_min, published_at, cover_image",
-      )
-      .not("published_at", "is", null)
-      .order("published_at", { ascending: false })
-      .limit(3),
-    // 최근 정책 소식 3건 — 전체 카테고리(news/press/policy-doc) 최신순.
-    supabase
-      .from("news_posts")
-      .select(
-        "slug, title, summary, category, ministry, source_outlet, thumbnail_url, published_at",
-      )
-      .order("published_at", { ascending: false })
-      .limit(3),
+async function HeroIndicator() {
+  const [programCounts, freshness] = await Promise.all([
     getProgramCounts(),
+    getDataFreshness(),
   ]);
-  const recentPosts: BlogCardData[] = (recentPostsResult.data ?? []) as BlogCardData[];
-  const recentNews: NewsCardData[] = (recentNewsResult.data ?? []) as NewsCardData[];
-
   const todayNew = programCounts.today_new_welfare + programCounts.today_new_loan;
   const weekNew = programCounts.week_new_welfare + programCounts.week_new_loan;
-  // Hero 인디케이터 메시지 — 오늘 데이터 있으면 오늘, 없으면 이번 주, 둘 다 0이면 정적
   const heroIndicator =
     todayNew > 0
       ? `오늘 ${todayNew.toLocaleString()}건 새 공고 추가됐어요`
       : weekNew > 0
       ? `이번 주 ${weekNew.toLocaleString()}건 새 공고 등록`
       : "실시간 공공데이터 연동";
-  // 데이터 freshness 보조 라벨 — 갱신 시각이 너무 오래되면 (24h+) 미노출 (오히려 신뢰 ↓ 위험)
   const freshnessSuffix =
     freshness.minutes_ago !== null && freshness.minutes_ago < 24 * 60
       ? formatFreshness(freshness.minutes_ago)
       : null;
+
+  return (
+    <>
+      <span>{heroIndicator}</span>
+      {freshnessSuffix && (
+        <span className="text-grey-500 font-normal hidden sm:inline">
+          · {freshnessSuffix}
+        </span>
+      )}
+    </>
+  );
+}
+
+async function AlertStripSection({ isLoggedIn }: { isLoggedIn: boolean }) {
+  const urgents = await getUrgentPrograms(12);
+  return <AlertStrip programs={urgents} isLoggedIn={isLoggedIn} />;
+}
+
+async function PopularPicksRowSection() {
+  const popularPicks = await getPopularPicks(5);
+  return <PopularPicksRow picks={popularPicks} />;
+}
+
+async function RecentBlogSection() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("blog_posts")
+    .select(
+      "slug, title, meta_description, category, reading_time_min, published_at, cover_image",
+    )
+    .not("published_at", "is", null)
+    .order("published_at", { ascending: false })
+    .limit(3);
+  const recentPosts: BlogCardData[] = (data ?? []) as BlogCardData[];
+
+  if (recentPosts.length === 0) return null;
+
+  return (
+    <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+      <div className="flex items-baseline justify-between mb-6">
+        <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+          정책 블로그
+        </h2>
+        <Link
+          href="/blog"
+          className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+        >
+          전체 보기 →
+        </Link>
+      </div>
+      {/* 카테고리 chip 7종 — /blog/category long-tail SEO 동선 (87efc65 연계) */}
+      <BlogCategoryChips />
+      <div className="grid gap-5 md:grid-cols-3">
+        {recentPosts.map((post) => (
+          <BlogCard key={post.slug} post={post} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+async function RecentNewsSection() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("news_posts")
+    .select(
+      "slug, title, summary, category, ministry, source_outlet, thumbnail_url, published_at",
+    )
+    .order("published_at", { ascending: false })
+    .limit(3);
+  const recentNews: NewsCardData[] = (data ?? []) as NewsCardData[];
+
+  if (recentNews.length === 0) return null;
+
+  return (
+    <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+      <div className="flex items-baseline justify-between mb-8">
+        <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
+          최근 정책 소식
+        </h2>
+        <Link
+          href="/news"
+          className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
+        >
+          전체 보기 →
+        </Link>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        {recentNews.map((post) => (
+          <NewsCard key={post.slug} post={post} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default async function Home() {
+  // 1) 첫 화면 사용자 분기에 필요한 인증/프로필만 먼저 확보.
+  //    아래쪽 콘텐츠 데이터는 각 Suspense 섹션 안에서 별도 스트리밍.
+  const supabase = await createClient();
+  const userResult = await supabase.auth.getUser();
+
+  // 2) 로그인 사용자면 cached 프로필 조회 결과로 빈 프로필 여부와 Phase 1.5 배너를 함께 판단.
+  const user = userResult.data.user;
+  const fullProfile = user ? await loadUserProfile() : null;
+  const isProfileEmpty = !fullProfile || fullProfile.isEmpty;
+
+  // Phase 1.5 자격 정보 입력 유도 배너 노출 조건:
+  // 로그인 + 온보딩 거침 + income/household 둘 다 미입력 → Phase 1.5 효과 0 인 사용자
+  // (온보딩 안 거친 사용자는 EmptyProfilePrompt 가 처리)
+  const showEnhanceBanner = Boolean(
+    fullProfile?.hasProfile &&
+      fullProfile.dismissedOnboardingAt !== null &&
+      !fullProfile.signals.incomeLevel &&
+      fullProfile.signals.householdTypes.length === 0,
+  );
 
   return (
     <main>
@@ -171,12 +213,9 @@ export default async function Home() {
               className="fade-up inline-flex items-center gap-1.5 text-sm font-semibold text-blue-500 mb-6 before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-500 before:opacity-[0.55]"
               style={{ animationDelay: "0ms" }}
             >
-              <span>{heroIndicator}</span>
-              {freshnessSuffix && (
-                <span className="text-grey-500 font-normal hidden sm:inline">
-                  · {freshnessSuffix}
-                </span>
-              )}
+              <Suspense fallback={<span>실시간 공공데이터 연동</span>}>
+                <HeroIndicator />
+              </Suspense>
             </div>
             <h1
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
@@ -258,7 +297,9 @@ export default async function Home() {
         className="hidden min-[1800px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-hidden"
         aria-label="인기 정책 사이드 배너"
       >
-        <HomePopularPicks isLoggedIn={!!user} />
+        <Suspense fallback={null}>
+          <HomePopularPicks isLoggedIn={!!user} />
+        </Suspense>
       </div>
 
       {/* [발견] 대상별 빠른 진입 카드 6종 — 풀폭 한 줄 (모바일 3 cols 두 줄). */}
@@ -307,7 +348,7 @@ export default async function Home() {
       {/* [도구 2] Alert — 마감 임박 마퀴 (달력에서 전체 → 그 중 지금 당장 액션 필요) */}
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
-          <AlertStrip programs={urgents} isLoggedIn={!!user} />
+          <AlertStripSection isLoggedIn={!!user} />
         </Suspense>
       </RevealOnScroll>
 
@@ -316,7 +357,7 @@ export default async function Home() {
           react cache 라 sidebar 와 동일 fetch 결과 공유 (round trip 추가 0). */}
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[260px]" aria-hidden />}>
-          <PopularPicksRow picks={popularPicks} />
+          <PopularPicksRowSection />
         </Suspense>
       </RevealOnScroll>
 
@@ -326,58 +367,18 @@ export default async function Home() {
       <AdSlot />
 
       {/* [도구 3] Blog — 정책 블로그 (자체 콘텐츠) */}
-      {recentPosts.length > 0 && (
-        <RevealOnScroll>
-          <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
-            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-              <div className="flex items-baseline justify-between mb-6">
-                <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-                  정책 블로그
-                </h2>
-                <Link
-                  href="/blog"
-                  className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-                >
-                  전체 보기 →
-                </Link>
-              </div>
-              {/* 카테고리 chip 7종 — /blog/category long-tail SEO 동선 (87efc65 연계) */}
-              <BlogCategoryChips />
-              <div className="grid gap-5 md:grid-cols-3">
-                {recentPosts.map((post) => (
-                  <BlogCard key={post.slug} post={post} />
-                ))}
-              </div>
-            </section>
-          </Suspense>
-        </RevealOnScroll>
-      )}
+      <RevealOnScroll>
+        <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
+          <RecentBlogSection />
+        </Suspense>
+      </RevealOnScroll>
 
       {/* [도구 4] News — 외부 정책 발표 큐레이션 (korea.kr 출처) */}
-      {recentNews.length > 0 && (
-        <RevealOnScroll>
-          <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
-            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
-              <div className="flex items-baseline justify-between mb-8">
-                <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
-                  최근 정책 소식
-                </h2>
-                <Link
-                  href="/news"
-                  className="text-[14px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
-                >
-                  전체 보기 →
-                </Link>
-              </div>
-              <div className="grid gap-5 md:grid-cols-3">
-                {recentNews.map((post) => (
-                  <NewsCard key={post.slug} post={post} />
-                ))}
-              </div>
-            </section>
-          </Suspense>
-        </RevealOnScroll>
-      )}
+      <RevealOnScroll>
+        <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
+          <RecentNewsSection />
+        </Suspense>
+      </RevealOnScroll>
 
       {/* [방법] FeatureGrid — 어떻게 작동? 3 STEPS (조건 입력 → 마감 알림 → 챗봇 안내) */}
       <RevealOnScroll>

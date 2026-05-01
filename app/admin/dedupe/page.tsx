@@ -20,7 +20,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { DEDUPE_THRESHOLD } from "@/lib/dedupe/welfare-loan";
+import {
+  DEDUPE_THRESHOLD,
+  getDedupeSelectColumns,
+  normalizeDedupeDbRow,
+  type DedupeCandidateDbRow,
+  type DedupeDbRow,
+} from "@/lib/dedupe/welfare-loan";
 import { confirmDuplicate, rejectDuplicate } from "./actions";
 
 export const metadata: Metadata = {
@@ -62,7 +68,7 @@ async function loadCandidates(
   const admin = createAdminClient();
   const { data: bases, error: baseErr } = await admin
     .from(table)
-    .select("id, source_code, title, region, apply_end, duplicate_of_id")
+    .select(getDedupeSelectColumns(table, { includeDuplicateOfId: true }))
     .not("duplicate_of_id", "is", null)
     .order("updated_at", { ascending: false })
     .limit(200);
@@ -71,15 +77,16 @@ async function loadCandidates(
     console.warn(`[admin/dedupe] ${table} base 조회 실패:`, baseErr.message);
     return [];
   }
-  if (!bases || bases.length === 0) return [];
+  const baseRows = (bases ?? []) as unknown as DedupeCandidateDbRow[];
+  if (baseRows.length === 0) return [];
 
   const candidateIds = Array.from(
-    new Set(bases.map((b) => b.duplicate_of_id).filter(Boolean)),
+    new Set(baseRows.map((b) => b.duplicate_of_id).filter(Boolean)),
   ) as string[];
 
   const { data: candidates, error: candErr } = await admin
     .from(table)
-    .select("id, source_code, title, region, apply_end")
+    .select(getDedupeSelectColumns(table))
     .in("id", candidateIds);
 
   if (candErr) {
@@ -87,19 +94,13 @@ async function loadCandidates(
   }
 
   const candidateMap = new Map<string, ProgramSummary>();
-  for (const c of candidates ?? []) {
-    candidateMap.set(c.id, c as ProgramSummary);
+  for (const c of (candidates ?? []) as unknown as DedupeDbRow[]) {
+    candidateMap.set(c.id, normalizeDedupeDbRow(table, c));
   }
 
-  return bases.map((b) => ({
+  return baseRows.map((b) => ({
     table,
-    base: {
-      id: b.id,
-      source_code: b.source_code,
-      title: b.title,
-      region: b.region,
-      apply_end: b.apply_end,
-    },
+    base: normalizeDedupeDbRow(table, b),
     candidate: b.duplicate_of_id ? candidateMap.get(b.duplicate_of_id) ?? null : null,
   }));
 }

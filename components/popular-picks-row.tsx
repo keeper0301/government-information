@@ -9,6 +9,7 @@
 // ============================================================
 
 import { Flame } from "lucide-react";
+import Link from "next/link";
 import { TrackedLink } from "./tracked-link";
 import { EVENTS } from "@/lib/analytics";
 import type { PopularPick } from "@/lib/popular-picks";
@@ -50,12 +51,12 @@ export function PopularPicksRow({ picks }: { picks: PopularPick[] }) {
           <Flame className="w-5 h-5 text-orange-500" aria-hidden="true" />
           지금 인기있는 정책
         </h2>
-        <a
+        <Link
           href="/welfare?sort=popular"
           className="text-[13px] font-semibold text-blue-500 hover:text-blue-600 no-underline"
         >
           전체 →
-        </a>
+        </Link>
       </div>
       {/* 5 카드 가로 그리드 — 데스크톱 5cols / 태블릿 3cols / 모바일 2cols */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">

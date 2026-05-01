@@ -14,6 +14,8 @@
 
 import { describe, it, expect } from "vitest";
 import {
+  getDedupeSelectColumns,
+  normalizeDedupeDbRow,
   normalizeTitle,
   titleSimilarity,
   regionMatch,
@@ -23,6 +25,50 @@ import {
   DEDUPE_THRESHOLD,
   type DedupeRow,
 } from "@/lib/dedupe/welfare-loan";
+
+describe("dedupe DB row normalization", () => {
+  it("loan_programs select 는 존재하지 않는 region 컬럼 대신 region_tags 를 조회", () => {
+    expect(getDedupeSelectColumns("loan_programs")).toBe(
+      "id, source_code, title, region_tags, apply_end, benefit_tags",
+    );
+    expect(getDedupeSelectColumns("loan_programs", { includeDuplicateOfId: true })).toBe(
+      "id, source_code, title, region_tags, apply_end, benefit_tags, duplicate_of_id",
+    );
+  });
+
+  it("loan_programs row 는 region_tags 를 dedupe region 문자열로 정규화", () => {
+    expect(
+      normalizeDedupeDbRow("loan_programs", {
+        id: "loan-A",
+        source_code: "mss",
+        title: "[전남] 소상공인 정책자금",
+        region_tags: ["전국", "전남"],
+        apply_end: "2026-12-31",
+        benefit_tags: ["금융"],
+      }),
+    ).toEqual({
+      id: "loan-A",
+      source_code: "mss",
+      title: "[전남] 소상공인 정책자금",
+      region: "전국 전남",
+      apply_end: "2026-12-31",
+      benefit_tags: ["금융"],
+    });
+  });
+
+  it("loan_programs row 에 region_tags 가 없으면 제목 prefix 에서 지역을 추출", () => {
+    expect(
+      normalizeDedupeDbRow("loan_programs", {
+        id: "loan-B",
+        source_code: "mss",
+        title: "(전라남도) 경영안정자금",
+        region_tags: [],
+        apply_end: null,
+        benefit_tags: [],
+      }).region,
+    ).toBe("전라남도");
+  });
+});
 
 // ──────────────────────────────────────────────────────────
 // 1) normalizeTitle
