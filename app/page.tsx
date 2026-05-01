@@ -314,11 +314,11 @@ export default async function Home() {
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           내러티브 4단계: 문제(Hero 카피) → 해결(Hero+RecommendCard) →
-          증거(Stats+Map) → 도구(Calendar+Alert+Blog+News) → 방법(Features) →
+          탐색(Hub) → 증거(Stats) → 도구(Calendar+Blog+News) → 방법(Features) →
           행동(HomeCTA). 토스 "방문자 사로잡기" 전략 적용.
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
-      {/* below-the-fold 8 섹션 — Suspense streaming.
+      {/* below-the-fold 섹션 — Suspense streaming.
           server component 들의 fetch 가 끝날 때까지 placeholder 노출 →
           HTML chunk 단위로 streaming → 첫 chunk(above-the-fold) 가 빨리 도착.
           placeholder 높이는 실제 컴포넌트 평균 높이로 맞춰 CLS 회귀 방지. */}
