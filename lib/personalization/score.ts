@@ -156,6 +156,10 @@ const CHILD_COHORT_KEYWORDS: RegExp[] = [
   /보호아동/,
   /보호종료아동/,
   /자립준비청년/,
+  /청소년\s*치료\s*재활/,
+  /청소년치료재활센터/,
+  /치료재활센터/,
+  /정서[·\s]*행동/,
   /아동복지시설/,
   /가정위탁/,
   /입양\s*가정/,
@@ -244,6 +248,20 @@ const DISABILITY_COHORT_KEYWORDS: RegExp[] = [
   /장애인\s*가족/,
 ];
 
+// 정신질환·정신재활 등 민감 질환 전용 정책은 현재 마이페이지에 명시 동의/상태 입력
+// 모델이 없다. 의료 관심 태그만으로 추천하면 사용자가 "내 정보와 무관한 민감 정책"으로
+// 체감하므로, 별도 프로필 신호가 생기기 전까지 일반 추천/알림에서 기본 차단한다.
+const SENSITIVE_MENTAL_HEALTH_COHORT_KEYWORDS: RegExp[] = [
+  /정신\s*질환/,
+  /정신질환자/,
+  /조현병/,
+  /정신건강복지센터/,
+  /정신\s*재활/,
+  /정신재활/,
+  /정신\s*치료/,
+  /응급\s*입원/,
+];
+
 // 출소·보호관찰·법무보호 cohort — 현재 프로필 모델에는 이 민감 cohort를 명시적으로
 // 선택하는 입력이 없다. 따라서 일반 추천/알림에서는 기본 차단한다.
 const JUSTICE_REENTRY_COHORT_KEYWORDS: RegExp[] = [
@@ -294,6 +312,10 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   // 장애인 정책 — disabled_family 가구만 통과
   if (DISABILITY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     if (!user.householdTypes.includes('disabled_family')) return true;
+  }
+  // 정신질환·정신재활 전용 정책은 별도 명시 프로필 축이 생기기 전까지 일반 추천에서 차단
+  if (SENSITIVE_MENTAL_HEALTH_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    return true;
   }
   // 출소·보호관찰·법무보호 정책은 별도 명시 동의/프로필 축이 생기기 전까지 일반 추천에서 차단
   if (JUSTICE_REENTRY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {

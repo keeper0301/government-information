@@ -120,6 +120,18 @@ describe("recommend cohort gate", () => {
     expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
   });
 
+  it("blocks sensitive mental-health-only welfare from general recommendations", () => {
+    const program = makeWelfare({
+      title: "정신질환자 치료비 지원 사업",
+      target: "조현병 등 정신질환 발병 초기 환자",
+      description:
+        "정신질환 발병 초기에 집중적인 치료를 유도하고 응급상황 입원 및 퇴원 후에도 치료비를 지원합니다.",
+      source: "보건복지부",
+    });
+
+    expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+  });
+
   it("blocks protected-youth-only welfare when mypage profile has no child signal", () => {
     const program = makeWelfare({
       title: "자립준비청년 자립수당 지급",

@@ -7,16 +7,11 @@
 // ============================================================
 
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { getRecommendations } from "@/lib/recommend";
 import { AGE_OPTIONS, REGION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/profile-options";
-import type {
-  AgeOption,
-  RegionOption,
-  OccupationOption,
-} from "@/lib/profile-options";
 import { ProgramRow } from "@/components/program-row";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { buildRecommendationParamsFromSignals } from "@/lib/recommendation-params";
 
 // 비로그인 또는 프로필 미완성 상태에서 보여줄 카드 (CTA 동일)
 function CallToActionCard({ title, message }: { title: string; message: string }) {
@@ -36,13 +31,10 @@ function CallToActionCard({ title, message }: { title: string; message: string }
 }
 
 export async function RecommendTab() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const fullProfile = await loadUserProfile();
 
   // 1. 비로그인
-  if (!user) {
+  if (!fullProfile) {
     return (
       <CallToActionCard
         title="나에게 맞는 정책을 찾아드려요"
@@ -51,17 +43,10 @@ export async function RecommendTab() {
     );
   }
 
-  // 2. 로그인 — 프로필 조회
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("age_group, region, district, occupation")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const age = profile?.age_group ?? null;
-  const region = profile?.region ?? null;
-  const district = profile?.district ?? null;
-  const occupation = profile?.occupation ?? null;
+  const age = fullProfile.signals.ageGroup;
+  const region = fullProfile.signals.region;
+  const district = fullProfile.signals.district;
+  const occupation = fullProfile.signals.occupation;
 
   // 3필드 모두 옵션 목록의 유효한 값일 때만 추천 실행 (recommend/page.tsx 와 동일 검증)
   const isValidAge = age ? (AGE_OPTIONS as readonly string[]).includes(age) : false;
@@ -83,17 +68,20 @@ export async function RecommendTab() {
   }
 
   // 4. 프로필 완성 → 추천 결과 5개 미리보기
-  // 자영업자 자격 배지(✓/✗) 위해 businessProfile 동시 로드. React cache 라 비용 0.
-  const [all, fullProfile] = await Promise.all([
-    getRecommendations({
-      ageGroup: age as AgeOption,
-      region: region as RegionOption,
-      district: district,
-      occupation: occupation as OccupationOption,
-      programType: "all",
-    }),
-    loadUserProfile(),
-  ]);
+  const recommendParams = buildRecommendationParamsFromSignals(
+    fullProfile.signals,
+    { programType: "all" },
+  );
+  if (!recommendParams) {
+    return (
+      <CallToActionCard
+        title="프로필을 완성하면 맞춤추천이 시작돼요"
+        message="나이·지역·직업 3가지만 입력하면 됩니다. 한 번 입력하면 다음부터는 자동으로 추천돼요."
+      />
+    );
+  }
+
+  const all = await getRecommendations(recommendParams);
   const programs = all.slice(0, 5);
   const businessProfile = fullProfile?.signals.businessProfile ?? null;
 
