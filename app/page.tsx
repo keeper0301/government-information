@@ -8,8 +8,8 @@ import { AlertStrip } from "@/components/alert-strip";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { QuizInlineWizard } from "@/components/quiz-inline-wizard";
+import { HomeDiscoveryHub } from "@/components/home-discovery-hub";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
-import { HomeTargetCards } from "@/components/home-target-cards";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
 import { PopularPicksRow } from "@/components/popular-picks-row";
@@ -302,8 +302,11 @@ export default async function Home() {
         </Suspense>
       </div>
 
-      {/* [발견] 대상별 빠른 진입 카드 6종 — 풀폭 한 줄 (모바일 3 cols 두 줄). */}
-      <HomeTargetCards />
+      <HomeDiscoveryHub
+        regionMap={<RegionMap />}
+        alertStrip={<AlertStripSection isLoggedIn={!!user} />}
+        popularPicks={<PopularPicksRowSection />}
+      />
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
@@ -327,13 +330,6 @@ export default async function Home() {
         </Suspense>
       </RevealOnScroll>
 
-      {/* [증거 2] RegionMap — 지역별 진행 중 정책 수 시각화 (한국 지도 풍 grid) */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[600px]" aria-hidden />}>
-          <RegionMap />
-        </Suspense>
-      </RevealOnScroll>
-
       {/* [도구 1] Calendar — 이번 달 신청 일정 달력 */}
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[480px] bg-grey-50" aria-hidden />}>
@@ -342,22 +338,6 @@ export default async function Home() {
               <CalendarPreview />
             </section>
           </div>
-        </Suspense>
-      </RevealOnScroll>
-
-      {/* [도구 2] Alert — 마감 임박 마퀴 (달력에서 전체 → 그 중 지금 당장 액션 필요) */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
-          <AlertStripSection isLoggedIn={!!user} />
-        </Suspense>
-      </RevealOnScroll>
-
-      {/* [도구 2.5] PopularPicksRow — 일반 viewport 인기 정책 노출 (1800px+ sidebar 와 분리).
-          AlertStrip(마감 임박) 다음에 자연 흐름: "지금 마감 임박 → 지금 인기있는 정책".
-          react cache 라 sidebar 와 동일 fetch 결과 공유 (round trip 추가 0). */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[260px]" aria-hidden />}>
-          <PopularPicksRowSection />
         </Suspense>
       </RevealOnScroll>
 
