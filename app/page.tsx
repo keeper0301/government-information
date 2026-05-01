@@ -47,10 +47,21 @@ const FloatingWishWidget = nextDynamic(
 export const dynamic = "force-dynamic";
 
 async function HeroIndicator() {
-  const [programCounts, freshness] = await Promise.all([
+  const [programCountsResult, freshnessResult] = await Promise.allSettled([
     getProgramCounts(),
     getDataFreshness(),
   ]);
+  const programCounts =
+    programCountsResult.status === "fulfilled"
+      ? programCountsResult.value
+      : {
+          today_new_welfare: 0,
+          today_new_loan: 0,
+          week_new_welfare: 0,
+          week_new_loan: 0,
+        };
+  const freshness =
+    freshnessResult.status === "fulfilled" ? freshnessResult.value : null;
   const todayNew = programCounts.today_new_welfare + programCounts.today_new_loan;
   const weekNew = programCounts.week_new_welfare + programCounts.week_new_loan;
   const heroIndicator =
@@ -60,7 +71,9 @@ async function HeroIndicator() {
       ? `이번 주 ${weekNew.toLocaleString()}건 새 공고 등록`
       : "실시간 공공데이터 연동";
   const freshnessSuffix =
-    freshness.minutes_ago !== null && freshness.minutes_ago < 24 * 60
+    freshness?.minutes_ago !== null &&
+    freshness?.minutes_ago !== undefined &&
+    freshness.minutes_ago < 24 * 60
       ? formatFreshness(freshness.minutes_ago)
       : null;
 
@@ -162,12 +175,10 @@ async function RecentNewsSection() {
 export default async function Home() {
   // 1) 첫 화면 사용자 분기에 필요한 인증/프로필만 먼저 확보.
   //    아래쪽 콘텐츠 데이터는 각 Suspense 섹션 안에서 별도 스트리밍.
-  const supabase = await createClient();
-  const userResult = await supabase.auth.getUser();
+  const fullProfile = await loadUserProfile();
+  const isLoggedIn = fullProfile !== null;
 
   // 2) 로그인 사용자면 cached 프로필 조회 결과로 빈 프로필 여부와 Phase 1.5 배너를 함께 판단.
-  const user = userResult.data.user;
-  const fullProfile = user ? await loadUserProfile() : null;
   const isProfileEmpty = !fullProfile || fullProfile.isEmpty;
 
   // Phase 1.5 자격 정보 입력 유도 배너 노출 조건:
@@ -246,10 +257,10 @@ export default async function Home() {
               style={{ animationDelay: "180ms" }}
             >
               <Link
-                href={user ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}
+                href={isLoggedIn ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-blue-500 text-white text-[15px] font-bold hover:bg-blue-600 transition-colors no-underline shadow-[0_4px_12px_rgba(49,130,246,0.25)] min-h-[48px]"
               >
-                {user ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
+                {isLoggedIn ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
                 <span aria-hidden="true">→</span>
               </Link>
               <Link
@@ -271,13 +282,13 @@ export default async function Home() {
               - 로그인 + 프로필 있음: HomeRecommendAuto 자동 추천 카드
               인기 정책 TOP 5 는 viewport 1500px+ 에서 fixed sticky sidebar 로 이동. */}
           <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
-            {user ? (
+            {isLoggedIn ? (
               isProfileEmpty ? (
                 // 로그인했지만 프로필 미입력 — 프로필 작성 유도 메시지
                 <EmptyProfilePrompt />
               ) : (
                 // 로그인 + 프로필 있음 — 자동 추천 카드 (server component)
-                <HomeRecommendAuto />
+                <HomeRecommendAuto profile={fullProfile} />
               )
             ) : (
               // 비로그인 — AI 진단 wizard (Phase 3, 5문항 익명, 가입 funnel)
@@ -299,13 +310,13 @@ export default async function Home() {
         aria-label="인기 정책 사이드 배너"
       >
         <Suspense fallback={null}>
-          <HomePopularPicks isLoggedIn={!!user} />
+          <HomePopularPicks isLoggedIn={isLoggedIn} />
         </Suspense>
       </div>
 
       <HomeDiscoveryHub
         regionMap={<RegionMap />}
-        alertStrip={<AlertStripSection isLoggedIn={!!user} />}
+        alertStrip={<AlertStripSection isLoggedIn={isLoggedIn} />}
         popularPicks={<PopularPicksRowSection />}
       />
 

@@ -4,7 +4,7 @@
 // 'use client' 없음 — createClient 사용 가능
 import Link from "next/link";
 import { createClient } from '@/lib/supabase/server';
-import { loadUserProfile } from '@/lib/personalization/load-profile';
+import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilter } from '@/lib/personalization/filter';
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
 import type { MatchSignal } from '@/lib/personalization/types';
@@ -92,8 +92,12 @@ function buildRegionOrFilter(userRegion: string | null): string | null {
 
 // 로그인 + 프로필 채워짐 → region 우선 정책 200건 가져와 점수 매칭 → 상위 5건 렌더
 // 빈 프로필이거나 매칭 결과 0건이면 fallback 카드 (전체 정책 보기 CTA)
-export async function HomeRecommendAuto() {
-  const profile = await loadUserProfile();
+export async function HomeRecommendAuto({
+  profile: initialProfile,
+}: {
+  profile?: LoadedProfile | null;
+} = {}) {
+  const profile = initialProfile ?? (await loadUserProfile());
   // 빈 프로필이거나 로그인 안 된 경우 — 호출자에서 분기하지만 방어적 처리
   if (!profile || profile.isEmpty) return null;
 
