@@ -282,20 +282,9 @@ async function publishWithCandidate(
   category: string,
   opts: { dryRun?: boolean },
 ) {
-  // AI 호출 (1회 retry — 일시적 5xx·timeout 대응)
-  let generated;
-  try {
-    generated = await generateBlogPost(picked.ctx);
-  } catch (firstErr) {
-    // 한 번 더 시도 (Gemini 일시 오류는 흔함)
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    try {
-      generated = await generateBlogPost(picked.ctx);
-    } catch {
-      // 두 번째도 실패하면 첫 에러 던짐
-      throw firstErr;
-    }
-  }
+  // AI 호출. Vercel Hobby 60초 함수 한도 때문에 인프로세스 재시도는 하지 않는다.
+  // 일시 오류·timeout 재시도는 GitHub Actions 의 HTTP 재시도 레이어에서 처리한다.
+  const generated = await generateBlogPost(picked.ctx);
 
   // AI 응답 검증 (AdSense 정책 + 데이터 무결성)
   const plainLen = generated.content.replace(/<[^>]+>/g, "").trim().length;

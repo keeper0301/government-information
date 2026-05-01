@@ -17,6 +17,8 @@
 
 import { GoogleGenAI } from "@google/genai";
 
+const GEMINI_REQUEST_TIMEOUT_MS = 45_000;
+
 // 빌드 시점에는 API 키 없어도 통과하도록 lazy init (lib/email.ts 동일 패턴)
 let _ai: GoogleGenAI | null = null;
 function getAI(): GoogleGenAI {
@@ -25,7 +27,13 @@ function getAI(): GoogleGenAI {
   if (!key) {
     throw new Error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
   }
-  _ai = new GoogleGenAI({ apiKey: key });
+  _ai = new GoogleGenAI({
+    apiKey: key,
+    httpOptions: {
+      timeout: GEMINI_REQUEST_TIMEOUT_MS,
+      retryOptions: { attempts: 1 },
+    },
+  });
   return _ai;
 }
 
@@ -256,6 +264,10 @@ ${programInfo}
       responseMimeType: "application/json",
       // JSON 응답 강제. schema 는 텍스트 지시로도 충분
       temperature: 0.7,
+      thinkingConfig: {
+        thinkingBudget: 0,
+        includeThoughts: false,
+      },
       // 본문 2,300자 + faqs 5개 + meta + tags ≈ 4,200~5,200 토큰. 안전 마진으로 7168.
       // 길이 제어는 instruction + MAX_CONTENT_LENGTH 검증 두 단계로 처리 (여기는 절대 상한)
       maxOutputTokens: 7168,

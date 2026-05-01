@@ -4,18 +4,13 @@ name: 블로그 자동 발행 (매일)
 # GitHub Actions 로 이전. 분 단위 정확도 + 배포와 무관한 스케줄링.
 #
 # 동작: 매일 06:07 UTC (한국 15:07 부근) 에 keepioo.com 의 publish-blog 엔드포인트를
-# Bearer 토큰 인증으로 호출. 매일 7글 발행 (step 분리로 60초 timeout 회피).
+# Bearer 토큰 인증으로 호출. 매일 7글 발행 (요청 분리로 60초 timeout 회피).
 #
-# 2026-04-24 복구: 커밋 76ff8ab 에서 폐기됐다가 옵션 C (품질 가드 추가) 로 복원.
-# 2026-04-26 발행 빈도 증가: AdSense 검수 대비 자체 콘텐츠량 가속 (2글 → 3글).
-# 2026-04-26 추가 가속: AdSense 거부 사유 1순위(콘텐츠 부족) 선제 대응 (3글 → 5글).
-# 2026-04-27 정시 회피: 0 6 → 7 6 (15:07 KST). GitHub 공식 best practice — 정시
-#   트리거는 트래픽 몰림으로 지연/스킵 흔함 (GitHub schedule 은 best-effort).
-#   2026-04-27 16:27 KST 기준 오늘 schedule run 이 아예 안 돌아 24h 결손 사고.
-#   분 단위만 분산해 대기열 회피. 사장님 인지 시각 변화는 미미.
 # 2026-04-28 추가 가속 (5글 → 7글): 활성 사용자 4명 + 트래픽 매우 적은 상태,
 #   AdSense 승인이 가장 큰 레버. 요일 카테고리 7개(일~토) 모두 매일 순회.
 #   한 달 ~210글 페이스. 같은 주 카테고리 중복 없음 (offset 0~6 = 7개 모두).
+# 2026-05-01 안정화: Gemini/Vercel timeout 이 일부 offset 에서 발생해도 전체가
+#   실패로 표시되지 않도록 HTTP 재시도 + 성공 건수 기반 판정으로 변경.
 #
 # 필요한 GitHub Secret:
 #   CRON_SECRET — Vercel 환경변수와 동일한 값
@@ -31,147 +26,91 @@ jobs:
   publish:
     name: keepioo.com 블로그 발행
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     # 핵심 설계: Vercel Hobby 의 60초 maxDuration 한도 때문에 하나의 HTTP 요청에서
-    # count=2 병렬 실행하면 2번째 글이 timeout 에 걸려 504. 각 step 을 독립 호출로
-    # 분리해서 각 step 이 자신만의 60초 윈도우를 사용하도록.
-    # continue-on-error 로 1번째 실패해도 2번째 시도.
+    # 여러 글을 발행하지 않고 offset 별로 독립 호출한다. 각 호출은 HTTP 레이어에서
+    # 1회 재시도하고, 7개 중 1개 이상 성공하면 workflow 는 성공으로 본다.
 
     steps:
-      - name: 1번째 글 발행 (오늘 카테고리)
+      - name: 7개 카테고리 글 발행
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        continue-on-error: true
         run: |
           set -euo pipefail
+
           if [ -z "${CRON_SECRET:-}" ]; then
             echo "::error::CRON_SECRET 시크릿이 설정되지 않음."
             exit 1
           fi
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
-          http_status=$(curl -sS -o /tmp/response1.json -w "%{http_code}" \
-            --max-time 120 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/publish-blog?count=1")
-          echo "== HTTP $http_status =="
-          cat /tmp/response1.json
-          echo ""
-          if [ "$http_status" -ne 200 ]; then
-            echo "::warning::1번째 글 발행 실패 (HTTP $http_status) — 2번째 시도 계속"
+
+          success_count=0
+          failure_count=0
+          base_url="https://www.keepioo.com/api/publish-blog?count=1"
+
+          publish_one() {
+            local index="$1"
+            local offset="$2"
+            local label="$3"
+            local url="$base_url"
+            local attempt
+            local http_status
+            local response_file
+
+            if [ "$offset" -gt 0 ]; then
+              url="${url}&offset=${offset}"
+            fi
+
+            for attempt in 1 2; do
+              response_file="/tmp/publish-blog-${index}-${attempt}.json"
+              echo "== ${index}번째 글 발행 (${label}) / attempt ${attempt} / UTC $(date -u '+%Y-%m-%d %H:%M:%S') =="
+              http_status=$(curl -sS -o "$response_file" -w "%{http_code}" \
+                --max-time 70 \
+                --retry 1 \
+                --retry-delay 5 \
+                --retry-all-errors \
+                -H "Authorization: Bearer ${CRON_SECRET}" \
+                "$url") || http_status="000"
+              echo "== HTTP $http_status =="
+              cat "$response_file" || true
+              echo ""
+
+              if [ "$http_status" -eq 200 ]; then
+                success_count=$((success_count + 1))
+                echo "### ${index}번째 글: 성공 (${label})" >> "$GITHUB_STEP_SUMMARY"
+                return 0
+              fi
+
+              if [ "$attempt" -lt 2 ]; then
+                echo "::warning::${index}번째 글 발행 실패 (HTTP $http_status) — 10초 후 재시도"
+                sleep 10
+              fi
+            done
+
+            failure_count=$((failure_count + 1))
+            echo "::warning::${index}번째 글 발행 최종 실패 (HTTP $http_status)"
+            echo "### ${index}번째 글: 실패 (${label}, HTTP $http_status)" >> "$GITHUB_STEP_SUMMARY"
+            return 0
+          }
+
+          publish_one 1 0 "오늘 카테고리"
+          publish_one 2 1 "내일 카테고리"
+          publish_one 3 2 "모레 카테고리"
+          publish_one 4 3 "3일 후 카테고리"
+          publish_one 5 4 "4일 후 카테고리"
+          publish_one 6 5 "5일 후 카테고리"
+          publish_one 7 6 "6일 후 카테고리"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "성공: ${success_count}건 / 실패: ${failure_count}건" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$success_count" -eq 0 ]; then
+            echo "::error::블로그 발행이 모두 실패했습니다."
             exit 1
           fi
 
-      - name: 2번째 글 발행 (내일 카테고리, offset=1)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
-          http_status=$(curl -sS -o /tmp/response2.json -w "%{http_code}" \
-            --max-time 120 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/publish-blog?count=1&offset=1")
-          echo "== HTTP $http_status =="
-          cat /tmp/response2.json
-          echo ""
-          if [ "$http_status" -ne 200 ]; then
-            echo "::warning::2번째 글 발행 실패 (HTTP $http_status) — 3번째 시도 계속"
-            exit 1
+          if [ "$failure_count" -gt 0 ]; then
+            echo "::warning::일부 글 발행 실패: 성공 ${success_count}건, 실패 ${failure_count}건"
           fi
 
-      - name: 3번째 글 발행 (모레 카테고리, offset=2)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
-          http_status=$(curl -sS -o /tmp/response3.json -w "%{http_code}" \
-            --max-time 120 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/publish-blog?count=1&offset=2")
-          echo "== HTTP $http_status =="
-          cat /tmp/response3.json
-          echo ""
-          if [ "$http_status" -ne 200 ]; then
-            echo "::warning::3번째 글 발행 실패 (HTTP $http_status) — 4번째 시도 계속"
-            exit 1
-          fi
-
-      - name: 4번째 글 발행 (3일 후 카테고리, offset=3)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
-          http_status=$(curl -sS -o /tmp/response4.json -w "%{http_code}" \
-            --max-time 120 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/publish-blog?count=1&offset=3")
-          echo "== HTTP $http_status =="
-          cat /tmp/response4.json
-          echo ""
-          if [ "$http_status" -ne 200 ]; then
-            echo "::warning::4번째 글 발행 실패 (HTTP $http_status) — 5번째 시도 계속"
-            exit 1
-          fi
-
-      - name: 5번째 글 발행 (4일 후 카테고리, offset=4)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
-          http_status=$(curl -sS -o /tmp/response5.json -w "%{http_code}" \
-            --max-time 120 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/publish-blog?count=1&offset=4")
-          echo "== HTTP $http_status =="
-          cat /tmp/response5.json
-          echo ""
-          if [ "$http_status" -ne 200 ]; then
-            echo "::warning::5번째 글 발행 실패 (HTTP $http_status) — 6번째 시도 계속"
-            exit 1
-          fi
-
-      - name: 6번째 글 발행 (5일 후 카테고리, offset=5)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
-          http_status=$(curl -sS -o /tmp/response6.json -w "%{http_code}" \
-            --max-time 120 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/publish-blog?count=1&offset=5")
-          echo "== HTTP $http_status =="
-          cat /tmp/response6.json
-          echo ""
-          if [ "$http_status" -ne 200 ]; then
-            echo "::warning::6번째 글 발행 실패 (HTTP $http_status) — 7번째 시도 계속"
-            exit 1
-          fi
-
-      - name: 7번째 글 발행 (6일 후 카테고리, offset=6)
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          set -euo pipefail
-          echo "== 요청 시각 (UTC): $(date -u '+%Y-%m-%d %H:%M:%S') =="
-          http_status=$(curl -sS -o /tmp/response7.json -w "%{http_code}" \
-            --max-time 120 \
-            -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.keepioo.com/api/publish-blog?count=1&offset=6")
-          echo "== HTTP $http_status =="
-          cat /tmp/response7.json
-          echo ""
-          if [ "$http_status" -ne 200 ]; then
-            echo "::error::7번째 글 발행 실패 (HTTP $http_status)"
-            exit 1
-          fi
-          echo "== 7개 step 완료 =="
+          echo "== 블로그 발행 완료: 성공 ${success_count}건 / 실패 ${failure_count}건 =="
