@@ -14,6 +14,7 @@ import { getHealthSnapshot, type HealthCheckItem } from "@/lib/admin-health";
 // Phase 6 — 임계치 alert + 30일 추세 차트 추가
 import { getHealthSignals, checkThresholds } from "@/lib/health-check";
 import { getAdminTrends } from "@/lib/admin-trends";
+import { getFunnelHealthSnapshot } from "@/lib/funnel-health";
 // Phase 6 후속 #13 — 데이터 일관성 모니터링 (orphan FK / 만료 cron)
 import { getDataIntegritySnapshot } from "@/lib/admin-data-integrity";
 import {
@@ -43,11 +44,12 @@ async function requireAdmin() {
 export default async function AdminHealthPage() {
   await requireAdmin();
   // Phase 6 — 기존 health snapshot + 신규 임계치 신호·30일 추세 + 데이터 일관성 병렬 fetch
-  const [snap, signals, trends, integrity] = await Promise.all([
+  const [snap, signals, trends, integrity, funnel] = await Promise.all([
     getHealthSnapshot(),
     getHealthSignals(),
     getAdminTrends(),
     getDataIntegritySnapshot(),
+    getFunnelHealthSnapshot(),
   ]);
   const thresholdAlerts = checkThresholds(signals);
 
@@ -73,6 +75,8 @@ export default async function AdminHealthPage() {
 
       {/* 이상 신호 요약 배너 */}
       <SummaryBanner errorCount={errorCount} warnCount={warnCount} />
+
+      <FunnelHealthSection snapshot={funnel} />
 
       {/* Phase 6 — 임계치 alert (가입 0·결제 실패·cron 연속 실패) */}
       {thresholdAlerts.length > 0 && (
@@ -196,6 +200,72 @@ function SummaryBanner({
       <p className="text-xs text-grey-700 mt-1">
         오류 {errorCount}건 · 주의 {warnCount}건. 아래 항목 확인.
       </p>
+    </div>
+  );
+}
+
+function FunnelHealthSection({
+  snapshot,
+}: {
+  snapshot: Awaited<ReturnType<typeof getFunnelHealthSnapshot>>;
+}) {
+  const summaryTone =
+    snapshot.summary.tone === "warn"
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : "border-green/30 bg-green/5 text-green";
+
+  return (
+    <section className="mb-6">
+      <div className={`rounded-xl border p-4 mb-3 ${summaryTone}`}>
+        <h2 className="text-sm font-bold mb-1">가입 funnel</h2>
+        <p className="text-xs leading-[1.5]">{snapshot.summary.message}</p>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {snapshot.metrics.map((metric) => (
+          <FunnelMetricCard key={metric.key} metric={metric} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FunnelMetricCard({
+  metric,
+}: {
+  metric: Awaited<
+    ReturnType<typeof getFunnelHealthSnapshot>
+  >["metrics"][number];
+}) {
+  const colors = {
+    ok: "border-green/30 bg-green/5",
+    warn: "border-amber-200 bg-amber-50",
+    info: "border-grey-200 bg-white",
+  } as const;
+  const valueText =
+    metric.key === "active_7d"
+      ? `${metric.value7d.toLocaleString()}명`
+      : `${metric.value24h.toLocaleString()}건`;
+
+  return (
+    <div className={`rounded-lg border p-3 ${colors[metric.tone]}`}>
+      <div className="text-xs font-semibold tracking-[0.04em] text-grey-700 truncate">
+        {metric.label}
+      </div>
+      <div className="text-base font-extrabold leading-tight tracking-[-0.2px] mt-1 text-grey-900">
+        {valueText}
+      </div>
+      <div className="text-xs mt-1 leading-[1.4] text-grey-600">
+        7d {metric.value7d.toLocaleString()}
+        {metric.key === "active_7d" ? "명" : "건"} · {metric.hint}
+      </div>
+      {metric.conversionLabel && (
+        <div className="text-xs mt-2 font-semibold text-grey-800">
+          {metric.conversionLabel}:{" "}
+          {metric.conversionRate === null
+            ? "모수 없음"
+            : `${metric.conversionRate}%`}
+        </div>
+      )}
     </div>
   );
 }
