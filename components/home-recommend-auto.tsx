@@ -7,8 +7,34 @@ import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilter } from '@/lib/personalization/filter';
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
+import type { MatchSignal } from '@/lib/personalization/types';
 import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
 import { WELFARE_EXCLUDED_FILTER } from '@/lib/listing-sources';
+
+const HOME_MATCH_REASON_LABELS: Partial<Record<MatchSignal["kind"], string>> = {
+  region: "지역",
+  district: "지역",
+  benefit_tags: "관심분야",
+  occupation: "직업",
+  age: "연령",
+  income_keyword: "소득",
+  income_target: "소득",
+  household_keyword: "가구",
+  household_target: "가구",
+  urgent_deadline: "마감임박",
+  business_match: "사업자",
+};
+
+export function getHomeMatchReasonLabels(signals: MatchSignal[], limit = 5): string[] {
+  const labels: string[] = [];
+  for (const signal of signals) {
+    const label = HOME_MATCH_REASON_LABELS[signal.kind];
+    if (!label || labels.includes(label)) continue;
+    labels.push(label);
+    if (labels.length >= limit) break;
+  }
+  return labels;
+}
 
 // DB welfare_programs raw 행 → ScorableItem 변환
 // 정정 (2026-04-25 hot-fix): benefit_tags 컬럼은 실제 DB 에 있음 (031 분류 통일).
