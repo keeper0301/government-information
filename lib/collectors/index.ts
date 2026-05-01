@@ -82,12 +82,18 @@ export type Collector = {
 // runOneCollector 가 result.error 세팅 → 운영자 알림.
 export async function fetchWithTimeout(
   url: string,
-  opts?: { timeoutMs?: number; headers?: Record<string, string>; retries?: number },
+  opts?: {
+    timeoutMs?: number;
+    headers?: Record<string, string>;
+    retries?: number;
+    retryDelayMs?: number;
+  },
 ): Promise<Response> {
   const timeoutMs = opts?.timeoutMs ?? 20000;
   // 1회 재시도 기본 — Node.js native fetch 의 일시적 "fetch failed"
   // (TCP reset / TLS handshake 실패 등) 흡수. 두 번째도 실패하면 throw.
   const maxRetries = opts?.retries ?? 1;
+  const retryDelayMs = opts?.retryDelayMs ?? 300;
 
   let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -106,9 +112,9 @@ export async function fetchWithTimeout(
       return res;
     } catch (err) {
       lastErr = err;
-      // 재시도 전 짧은 대기 — 외부 서버 회복 시간 부여 (300ms × attempt)
+      // 재시도 전 짧은 대기 — 외부 서버 회복 시간 부여 (기본 300ms × attempt)
       if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, retryDelayMs * (attempt + 1)));
       }
     } finally {
       clearTimeout(t);

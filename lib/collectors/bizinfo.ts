@@ -121,8 +121,9 @@ async function fetchAll(): Promise<BizinfoItem[]> {
   url.searchParams.set("pageIndex", "1");
 
   const res = await fetchWithTimeout(url.toString(), {
-    timeoutMs: 25000,
-    retries: 2,
+    timeoutMs: 30000,
+    retries: 4,
+    retryDelayMs: 1000,
     headers: {
       "User-Agent": "Mozilla/5.0 keepioo-bot (+https://www.keepioo.com)",
     },
