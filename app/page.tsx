@@ -222,17 +222,17 @@ export default async function Home() {
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
               style={{ animationDelay: "60ms" }}
             >
-              내 조건에 맞는 정부 지원,
+              내 조건에 맞는 정책만
               <br />
-              30초 만에 찾아드릴게요
+              먼저 보여드릴게요
             </h1>
             <p
               className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-6 max-md:text-[15px]"
               style={{ animationDelay: "120ms" }}
             >
-              청년·소상공인·부모·신혼부부 정책을 한곳에 모아
+              지역·소득·가구·직업 정보를 기준으로 맞지 않는 정책은 줄이고,
               <br />
-              이메일·알림톡으로 마감 전에 알려드려요.
+              마감 전에 확인해야 할 지원사업을 먼저 보여드려요.
             </p>
             {/* [발견] 회원가입 가치 카드 3종 — 24h 가입 0건 직격타 (2026-04-28).
                 Hero 카피 바로 아래 inline chip 으로 가치 명시. */}
@@ -246,10 +246,10 @@ export default async function Home() {
               style={{ animationDelay: "180ms" }}
             >
               <Link
-                href="/quiz"
+                href={user ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-blue-500 text-white text-[15px] font-bold hover:bg-blue-600 transition-colors no-underline shadow-[0_4px_12px_rgba(49,130,246,0.25)] min-h-[48px]"
               >
-                내 정책 1분 진단
+                {user ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
                 <span aria-hidden="true">→</span>
               </Link>
               <Link
