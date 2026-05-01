@@ -9,6 +9,7 @@ import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { QuizInlineWizard } from "@/components/quiz-inline-wizard";
 import { HomeDiscoveryHub } from "@/components/home-discovery-hub";
+import { HomeTrustStrip } from "@/components/home-trust-strip";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
@@ -307,6 +308,12 @@ export default async function Home() {
         alertStrip={<AlertStripSection isLoggedIn={!!user} />}
         popularPicks={<PopularPicksRowSection />}
       />
+
+      <RevealOnScroll>
+        <Suspense fallback={<div className="h-[150px]" aria-hidden />}>
+          <HomeTrustStrip />
+        </Suspense>
+      </RevealOnScroll>
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
