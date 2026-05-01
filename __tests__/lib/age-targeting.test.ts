@@ -48,7 +48,7 @@ describe("getAgeCounts 매칭 로직 (NULL/range/household)", () => {
       from: () => ({
         select: () => ({
           not: () => ({
-            or: () => ({ data: rows }),
+            or: () => Promise.resolve({ data: rows }),
           }),
         }),
       }),
