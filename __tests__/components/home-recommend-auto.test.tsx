@@ -1,0 +1,77 @@
+import { describe, expect, it } from "vitest";
+import { getHomeMatchReasonLabels } from "@/components/home-recommend-auto";
+import { scoreProgram, type ScorableItem } from "@/lib/personalization/score";
+import type { MatchSignal, UserSignals } from "@/lib/personalization/types";
+
+describe("getHomeMatchReasonLabels", () => {
+  it("maps scoring signals to compact Korean reason labels", () => {
+    const signals: MatchSignal[] = [
+      { kind: "region", score: 5 },
+      { kind: "income_target", score: 4, detail: "low" },
+      { kind: "household_target", score: 3, detail: "single_parent" },
+      { kind: "benefit_tags", score: 3, detail: "의료" },
+      { kind: "urgent_deadline", score: 1 },
+    ];
+
+    expect(getHomeMatchReasonLabels(signals)).toEqual([
+      "지역",
+      "소득",
+      "가구",
+      "관심분야",
+      "마감임박",
+    ]);
+  });
+
+  it("deduplicates labels and caps the visible reasons", () => {
+    const signals: MatchSignal[] = [
+      { kind: "region", score: 5 },
+      { kind: "district", score: 5 },
+      { kind: "benefit_tags", score: 3, detail: "주거" },
+      { kind: "benefit_tags", score: 3, detail: "의료" },
+      { kind: "occupation", score: 2 },
+      { kind: "age", score: 1 },
+    ];
+
+    expect(getHomeMatchReasonLabels(signals)).toEqual([
+      "지역",
+      "관심분야",
+      "직업",
+      "연령",
+    ]);
+    expect(getHomeMatchReasonLabels(signals, 2)).toEqual([
+      "지역",
+      "관심분야",
+    ]);
+    expect(getHomeMatchReasonLabels(signals, 0)).toEqual([]);
+  });
+});
+
+describe("homepage personalized preview scoring safety", () => {
+  it("does not let income-mismatched policies pass by interest tags alone", () => {
+    const user: UserSignals = {
+      ageGroup: null,
+      region: null,
+      district: null,
+      occupation: null,
+      incomeLevel: "high",
+      householdTypes: [],
+      benefitTags: ["의료"] as UserSignals["benefitTags"],
+      hasChildren: null,
+      merit: null,
+      businessProfile: null,
+    };
+    const item: ScorableItem = {
+      id: "medical-aid",
+      title: "의료급여(요양비)",
+      description: "의료급여 수급권자에게 의료비를 지원합니다.",
+      region: null,
+      benefit_tags: ["의료"],
+      source: "보건복지부",
+      apply_end: null,
+      income_target_level: null,
+      household_target_tags: [],
+    };
+
+    expect(scoreProgram(item, user).score).toBe(0);
+  });
+});

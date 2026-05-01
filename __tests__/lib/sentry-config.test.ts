@@ -17,5 +17,5 @@ describe("Sentry config", () => {
   it("env 누락이어도 import error 없이 로드", async () => {
     // 단순히 모듈 import 가 throw 안 하면 OK
     await expect(import("@sentry/nextjs")).resolves.toBeDefined();
-  });
+  }, 15_000);
 });

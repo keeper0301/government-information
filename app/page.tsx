@@ -8,8 +8,9 @@ import { AlertStrip } from "@/components/alert-strip";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { FeatureGrid } from "@/components/feature-grid";
 import { QuizInlineWizard } from "@/components/quiz-inline-wizard";
+import { HomeDiscoveryHub } from "@/components/home-discovery-hub";
+import { HomeTrustStrip } from "@/components/home-trust-strip";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
-import { HomeTargetCards } from "@/components/home-target-cards";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
 import { PopularPicksRow } from "@/components/popular-picks-row";
@@ -221,17 +222,17 @@ export default async function Home() {
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
               style={{ animationDelay: "60ms" }}
             >
-              내 조건에 맞는 정부 지원,
+              내 조건에 맞는 정책만
               <br />
-              30초 만에 찾아드릴게요
+              먼저 보여드릴게요
             </h1>
             <p
               className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-6 max-md:text-[15px]"
               style={{ animationDelay: "120ms" }}
             >
-              청년·소상공인·부모·신혼부부 정책을 한곳에 모아
+              지역·소득·가구·직업 정보를 기준으로 맞지 않는 정책은 줄이고,
               <br />
-              이메일·알림톡으로 마감 전에 알려드려요.
+              마감 전에 확인해야 할 지원사업을 먼저 보여드려요.
             </p>
             {/* [발견] 회원가입 가치 카드 3종 — 24h 가입 0건 직격타 (2026-04-28).
                 Hero 카피 바로 아래 inline chip 으로 가치 명시. */}
@@ -245,10 +246,10 @@ export default async function Home() {
               style={{ animationDelay: "180ms" }}
             >
               <Link
-                href="/quiz"
+                href={user ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-blue-500 text-white text-[15px] font-bold hover:bg-blue-600 transition-colors no-underline shadow-[0_4px_12px_rgba(49,130,246,0.25)] min-h-[48px]"
               >
-                내 정책 1분 진단
+                {user ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
                 <span aria-hidden="true">→</span>
               </Link>
               <Link
@@ -302,8 +303,17 @@ export default async function Home() {
         </Suspense>
       </div>
 
-      {/* [발견] 대상별 빠른 진입 카드 6종 — 풀폭 한 줄 (모바일 3 cols 두 줄). */}
-      <HomeTargetCards />
+      <HomeDiscoveryHub
+        regionMap={<RegionMap />}
+        alertStrip={<AlertStripSection isLoggedIn={!!user} />}
+        popularPicks={<PopularPicksRowSection />}
+      />
+
+      <RevealOnScroll>
+        <Suspense fallback={<div className="h-[150px]" aria-hidden />}>
+          <HomeTrustStrip />
+        </Suspense>
+      </RevealOnScroll>
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
@@ -311,11 +321,11 @@ export default async function Home() {
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           내러티브 4단계: 문제(Hero 카피) → 해결(Hero+RecommendCard) →
-          증거(Stats+Map) → 도구(Calendar+Alert+Blog+News) → 방법(Features) →
+          탐색(Hub) → 증거(Stats) → 도구(Calendar+Blog+News) → 방법(Features) →
           행동(HomeCTA). 토스 "방문자 사로잡기" 전략 적용.
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
-      {/* below-the-fold 8 섹션 — Suspense streaming.
+      {/* below-the-fold 섹션 — Suspense streaming.
           server component 들의 fetch 가 끝날 때까지 placeholder 노출 →
           HTML chunk 단위로 streaming → 첫 chunk(above-the-fold) 가 빨리 도착.
           placeholder 높이는 실제 컴포넌트 평균 높이로 맞춰 CLS 회귀 방지. */}
@@ -327,13 +337,6 @@ export default async function Home() {
         </Suspense>
       </RevealOnScroll>
 
-      {/* [증거 2] RegionMap — 지역별 진행 중 정책 수 시각화 (한국 지도 풍 grid) */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[600px]" aria-hidden />}>
-          <RegionMap />
-        </Suspense>
-      </RevealOnScroll>
-
       {/* [도구 1] Calendar — 이번 달 신청 일정 달력 */}
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[480px] bg-grey-50" aria-hidden />}>
@@ -342,22 +345,6 @@ export default async function Home() {
               <CalendarPreview />
             </section>
           </div>
-        </Suspense>
-      </RevealOnScroll>
-
-      {/* [도구 2] Alert — 마감 임박 마퀴 (달력에서 전체 → 그 중 지금 당장 액션 필요) */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
-          <AlertStripSection isLoggedIn={!!user} />
-        </Suspense>
-      </RevealOnScroll>
-
-      {/* [도구 2.5] PopularPicksRow — 일반 viewport 인기 정책 노출 (1800px+ sidebar 와 분리).
-          AlertStrip(마감 임박) 다음에 자연 흐름: "지금 마감 임박 → 지금 인기있는 정책".
-          react cache 라 sidebar 와 동일 fetch 결과 공유 (round trip 추가 0). */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[260px]" aria-hidden />}>
-          <PopularPicksRowSection />
         </Suspense>
       </RevealOnScroll>
 
