@@ -160,6 +160,10 @@ const CHILD_COHORT_KEYWORDS: RegExp[] = [
   /청소년치료재활센터/,
   /치료재활센터/,
   /정서[·\s]*행동/,
+  /아이돌봄/,
+  /12세\s*이하\s*자녀/,
+  /육아\s*도우미/,
+  /양육\s*공백/,
   /아동복지시설/,
   /가정위탁/,
   /입양\s*가정/,
@@ -194,6 +198,11 @@ const FARMER_COHORT_KEYWORDS: RegExp[] = [
   /어민\s*수당/,
   /농업인\s*수당/,
   /어업인\s*수당/,
+  /농업\s*후계/,
+  /농업\s*후계인력/,
+  /농업인\s*자녀/,
+  /후계\s*농업/,
+  /청년창업농/,
   /축산\s*농가/,
   /농가\s*경영/,
   /수산업\s*경영/,
@@ -232,6 +241,9 @@ const LOW_INCOME_ONLY_COHORT_KEYWORDS: RegExp[] = [
   /생계급여/,
   /주거급여/,
   /교육급여/,
+  /교육복지우선지원/,
+  /취약계층\s*학생/,
+  /취약계층(?!\s*및\s*일반)/,
   /차상위계층(?!\s*및\s*일반)/,  // "차상위계층" 단독 — "차상위계층 및 일반" 류는 통과
   /통합사례관리/,                 // 희망복지지원단 통합사례관리 — 위기가구 대상
   /위기가구/,
@@ -273,6 +285,16 @@ const JUSTICE_REENTRY_COHORT_KEYWORDS: RegExp[] = [
   /갱생보호/,
   /교정시설/,
   /소년원/,
+];
+
+// 재해·이재민 cohort — 현재 프로필 모델에는 재난 피해 여부 입력이 없다.
+// 지역이 맞아도 당사자 상태가 없으면 일반 추천에서는 제외한다.
+const DISASTER_VICTIM_COHORT_KEYWORDS: RegExp[] = [
+  /재해\s*이재민/,
+  /재해이재민/,
+  /이재민/,
+  /재난\s*피해/,
+  /긴급\s*구호/,
 ];
 
 // 정책 본문이 특정 cohort 전용인데 사용자가 그 cohort 에 안 속하면 true 반환.
@@ -319,6 +341,10 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   }
   // 출소·보호관찰·법무보호 정책은 별도 명시 동의/프로필 축이 생기기 전까지 일반 추천에서 차단
   if (JUSTICE_REENTRY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    return true;
+  }
+  // 재해이재민·재난피해자 전용 정책은 별도 피해 상태 입력이 없으므로 일반 추천에서 차단
+  if (DISASTER_VICTIM_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     return true;
   }
   // 기초수급·차상위·저소득 cohort — low/mid_low 만 통과
