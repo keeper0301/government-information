@@ -49,6 +49,17 @@ export type BizinfoItem = {
   pblancUrl?: string;      // 공고 URL
 };
 
+export function extractBizinfoItems(parsed: unknown): BizinfoItem[] {
+  const p = parsed as {
+    jsonArray?: BizinfoItem[] | { item?: BizinfoItem[] };
+    item?: BizinfoItem[];
+  };
+  if (Array.isArray(p.jsonArray)) return p.jsonArray;
+  if (Array.isArray(p.jsonArray?.item)) return p.jsonArray.item;
+  if (Array.isArray(p.item)) return p.item;
+  return [];
+}
+
 // pubDate "2022-09-02 15:38:29" → ISO 형식
 // 단위 테스트에서 직접 호출하기 위해 export. 컬렉터 내부에서만 쓰여 외부 영향 없음.
 export function parsePubDate(raw: string | undefined | null): string | null {
@@ -109,7 +120,13 @@ async function fetchAll(): Promise<BizinfoItem[]> {
   // 미지정 시 {"reqErr":"페이지 번호를 입력해주세요."} 반환 → items 0건.
   url.searchParams.set("pageIndex", "1");
 
-  const res = await fetchWithTimeout(url.toString());
+  const res = await fetchWithTimeout(url.toString(), {
+    timeoutMs: 25000,
+    retries: 2,
+    headers: {
+      "User-Agent": "Mozilla/5.0 keepioo-bot (+https://www.keepioo.com)",
+    },
+  });
   if (!res.ok) throw new Error(`bizinfo HTTP ${res.status}`);
 
   const text = await res.text();
@@ -124,10 +141,8 @@ async function fetchAll(): Promise<BizinfoItem[]> {
   const reqErr = (parsed as { reqErr?: string })?.reqErr;
   if (reqErr) throw new Error(`bizinfo reqErr: ${reqErr}`);
 
-  // 응답 구조: { jsonArray: { item: [...] } } 또는 { item: [...] }
-  const p = parsed as { jsonArray?: { item?: BizinfoItem[] }; item?: BizinfoItem[] };
-  const items = p.jsonArray?.item || p.item || [];
-  return items;
+  // 응답 구조: 현재 { jsonArray: [...] }, 과거 { jsonArray: { item: [...] } } 또는 { item: [...] }
+  return extractBizinfoItems(parsed);
 }
 
 const collector: Collector = {

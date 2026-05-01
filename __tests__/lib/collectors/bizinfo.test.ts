@@ -19,6 +19,7 @@ import {
   parsePubDate,
   parsePeriod,
   parseHashTags,
+  extractBizinfoItems,
   classifyTable,
   type BizinfoItem,
 } from "@/lib/collectors/bizinfo";
@@ -119,6 +120,29 @@ describe("bizinfo parseHashTags", () => {
     const r = parseHashTags("금융 창업");
     expect(r.benefitTags).toContain("금융");
     expect(r.benefitTags).toContain("창업");
+  });
+});
+
+// ──────────────────────────────────────────────────────────
+// extractBizinfoItems
+// ──────────────────────────────────────────────────────────
+describe("bizinfo extractBizinfoItems", () => {
+  it("현재 API 형태인 { jsonArray: [...] } 배열 응답을 items 로 읽는다", () => {
+    const item: BizinfoItem = {
+      pblancId: "A-1",
+      pblancNm: "지원사업",
+    };
+
+    expect(extractBizinfoItems({ jsonArray: [item] })).toEqual([item]);
+  });
+
+  it("기존 { jsonArray: { item: [...] } } 형태도 계속 지원한다", () => {
+    const item: BizinfoItem = {
+      pblancId: "A-2",
+      pblancNm: "지원사업 2",
+    };
+
+    expect(extractBizinfoItems({ jsonArray: { item: [item] } })).toEqual([item]);
   });
 });
 
