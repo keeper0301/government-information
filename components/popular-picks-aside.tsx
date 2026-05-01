@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Flame, X } from "lucide-react";
 import { TrackedLink } from "./tracked-link";
@@ -25,6 +25,23 @@ export type { PopularPick };
 
 const SNOOZE_KEY = "home-popular-snooze";
 const SNOOZE_HOURS = 24;
+
+function subscribeToSnoozeChange() {
+  return () => {};
+}
+
+function getSnoozeSnapshot(): boolean {
+  try {
+    const snooze = localStorage.getItem(SNOOZE_KEY);
+    return !!snooze && Date.now() < Number(snooze);
+  } catch {
+    return false;
+  }
+}
+
+function getServerSnoozeSnapshot(): boolean {
+  return false;
+}
 
 // 마감일 → 사람 읽기 쉬운 D-X 문자열 (KST 기준)
 function formatDeadline(apply_end: string | null): string {
@@ -53,18 +70,13 @@ export function PopularPicksAside({
 }) {
   // SSR 시 보이게, hydration 후 localStorage 검사 → snooze 면 hidden.
   // 잠깐 flicker 가능하지만 모달·배너 표준 패턴 (reconsent-banner 와 동일).
-  const [hidden, setHidden] = useState(false);
-
-  useEffect(() => {
-    try {
-      const snooze = localStorage.getItem(SNOOZE_KEY);
-      if (snooze && Date.now() < Number(snooze)) {
-        setHidden(true);
-      }
-    } catch {
-      // localStorage 비활성/private mode 등 예외 — 그냥 노출 (안전)
-    }
-  }, []);
+  const snoozed = useSyncExternalStore(
+    subscribeToSnoozeChange,
+    getSnoozeSnapshot,
+    getServerSnoozeSnapshot,
+  );
+  const [dismissed, setDismissed] = useState(false);
+  const hidden = dismissed || snoozed;
 
   if (hidden) return null;
 
@@ -76,7 +88,7 @@ export function PopularPicksAside({
       // localStorage 실패해도 state 만으로 hidden — 같은 페이지 안에선 안 보임
     }
     trackEvent(EVENTS.HOME_POPULAR_DISMISSED, { snooze_hours: SNOOZE_HOURS });
-    setHidden(true);
+    setDismissed(true);
   };
 
   return (

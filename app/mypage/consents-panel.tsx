@@ -94,6 +94,7 @@ export function ConsentsPanel({
   const [busy, setBusy] = useState<ConsentType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [nowMs] = useState(() => Date.now());
 
   // 서버에서 refresh 된 initialConsents 로 로컬 state 동기화
   // (지금 동의 버튼 누른 후 router.refresh() 로 새 데이터 들어왔을 때 반영)
@@ -235,6 +236,7 @@ export function ConsentsPanel({
                 consentedAt={recordMap[meta.type]?.consentedAt}
                 expiresAt={recordMap[meta.type]?.expiresAt ?? null}
                 isExpired={recordMap[meta.type]?.isExpired ?? false}
+                nowMs={nowMs}
                 busy={busy === meta.type}
                 onAck={() => handleAck(meta.type)}
                 onToggle={() => handleToggle(meta.type, meta.required)}
@@ -261,6 +263,7 @@ export function ConsentsPanel({
                 consentedAt={recordMap[meta.type]?.consentedAt}
                 expiresAt={recordMap[meta.type]?.expiresAt ?? null}
                 isExpired={recordMap[meta.type]?.isExpired ?? false}
+                nowMs={nowMs}
                 busy={busy === meta.type}
                 onAck={() => handleAck(meta.type)}
                 onToggle={() => handleToggle(meta.type, meta.required)}
@@ -284,6 +287,7 @@ function ConsentRow({
   consentedAt,
   expiresAt,
   isExpired,
+  nowMs,
   busy,
   onAck,
   onToggle,
@@ -294,6 +298,7 @@ function ConsentRow({
   consentedAt: string | undefined;
   expiresAt: string | null;
   isExpired: boolean;
+  nowMs: number;
   busy: boolean;
   onAck: () => void;
   onToggle: () => void;
@@ -307,7 +312,7 @@ function ConsentRow({
   let expiryNotice: { tone: "warn" | "expired"; text: string } | null = null;
   if (isOn && expiresAt) {
     const daysLeft = Math.floor(
-      (new Date(expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+      (new Date(expiresAt).getTime() - nowMs) / (24 * 60 * 60 * 1000),
     );
     if (isExpired || daysLeft <= 0) {
       expiryNotice = {

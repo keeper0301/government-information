@@ -51,6 +51,7 @@ type RecentRun = {
   path: string;
   ok: boolean;
   createdAt: string;
+  ageSeconds: number;
 };
 
 async function getRecentRuns(limit = 5): Promise<RecentRun[]> {
@@ -62,13 +63,19 @@ async function getRecentRuns(limit = 5): Promise<RecentRun[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
+  const nowMs = Date.now();
   return data.map((r) => {
     const details = (r.details ?? {}) as Record<string, unknown>;
+    const createdAt = r.created_at;
     return {
       id: String(r.id),
       path: typeof details.path === "string" ? details.path : "—",
       ok: details.ok === true,
-      createdAt: r.created_at,
+      createdAt,
+      ageSeconds: Math.max(
+        0,
+        Math.floor((nowMs - new Date(createdAt).getTime()) / 1000),
+      ),
     };
   });
 }
@@ -218,8 +225,7 @@ export default async function CronTriggerPage({
           </div>
           <ul className="space-y-1.5">
             {recentRuns.map((r) => {
-              const t = new Date(r.createdAt);
-              const ago = Math.max(0, Math.floor((Date.now() - t.getTime()) / 1000));
+              const ago = r.ageSeconds;
               const agoLabel =
                 ago < 60
                   ? `${ago}초 전`

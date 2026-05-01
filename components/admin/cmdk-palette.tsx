@@ -46,6 +46,13 @@ export function CmdKPalette() {
   // 검색 데이터는 한 번만 빌드 (ADMIN_MENU 정적)
   const allItems = useMemo(() => buildSearchItems(), []);
 
+  const openPalette = useCallback(() => {
+    setQuery("");
+    setHighlight(0);
+    setOpen(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
+
   // 부분 매칭 — query 비어있으면 전체 표시 (사이드바 대용 빠른 보기)
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -63,7 +70,8 @@ export function CmdKPalette() {
       // e.repeat 무시: 키 길게 눌러서 setOpen 이 폭주하지 않도록 첫 누름만 처리.
       if (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey) && !e.repeat) {
         e.preventDefault();
-        setOpen((v) => !v);
+        if (open) setOpen(false);
+        else openPalette();
         return;
       }
       // ESC — modal 닫음 (modal 외 영역에선 무시)
@@ -74,7 +82,7 @@ export function CmdKPalette() {
     }
     // 사이드바 등 다른 client 컴포넌트가 모달을 열고 싶을 때 dispatch 하는 커스텀 이벤트
     function onExternalOpen() {
-      setOpen(true);
+      openPalette();
     }
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("cmdk:open", onExternalOpen);
@@ -82,7 +90,7 @@ export function CmdKPalette() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("cmdk:open", onExternalOpen);
     };
-  }, [open]);
+  }, [open, openPalette]);
 
   // modal 열린 동안 body scroll lock — 뒤 문서가 휠로 움직이지 않도록.
   // CmdK 가 사라지면 원복.
@@ -94,20 +102,6 @@ export function CmdKPalette() {
       document.body.style.overflow = prev;
     };
   }, [open]);
-
-  // modal 열릴 때 input focus + 상태 초기화
-  useEffect(() => {
-    if (open) {
-      setQuery("");
-      setHighlight(0);
-      inputRef.current?.focus();
-    }
-  }, [open]);
-
-  // query 변하면 highlight 리셋 (첫 결과 가리키도록)
-  useEffect(() => {
-    setHighlight(0);
-  }, [query]);
 
   // 선택 → 이동 + 닫기
   const navigate = useCallback(
@@ -161,7 +155,10 @@ export function CmdKPalette() {
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setHighlight(0);
+            }}
             onKeyDown={onInputKey}
             placeholder="페이지 검색 — 예: 헬스, 알림톡, 블로그"
             className="flex-1 outline-none text-base text-grey-900 placeholder:text-grey-400"

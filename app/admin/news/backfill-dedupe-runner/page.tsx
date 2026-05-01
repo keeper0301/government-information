@@ -37,7 +37,7 @@ export default function BackfillRunnerPage() {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [calls, setCalls] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
 
   // 정지 신호 (state 갱신 비동기라 ref 로 즉시 반영)
   const stopRef = useRef(false);
@@ -50,7 +50,6 @@ export default function BackfillRunnerPage() {
       : 0;
 
   // ETA — 평균 회당 시간 × 남은 호출 수
-  const elapsedMs = startedAt ? Date.now() - startedAt : 0;
   const avgPerCallMs = calls > 0 ? elapsedMs / calls : 0;
   const remainingCalls =
     remaining !== null ? Math.ceil(remaining / BATCH_LIMIT) : 0;
@@ -64,7 +63,8 @@ export default function BackfillRunnerPage() {
     setRemaining(null);
     setCalls(0);
     setErrorMsg(null);
-    setStartedAt(Date.now());
+    setElapsedMs(0);
+    const runStartedAt = Date.now();
 
     while (!stopRef.current) {
       let res: Response;
@@ -96,6 +96,7 @@ export default function BackfillRunnerPage() {
       setTotalFailed((p) => p + (data.failed ?? 0));
       setRemaining(data.remaining ?? 0);
       setCalls((p) => p + 1);
+      setElapsedMs(Date.now() - runStartedAt);
 
       // 완료 — remaining 0 또는 첫 호출에서 0 row 도착
       if ((data.remaining ?? 0) === 0) {

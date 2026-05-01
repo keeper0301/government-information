@@ -72,6 +72,22 @@ export const AGE_CATALOG: Record<AgeSlug, AgeCategory> = {
 
 export const AGE_SLUGS = Object.keys(AGE_CATALOG) as AgeSlug[];
 
+type AgeCountQuery = {
+  select: (columns: string) => {
+    not: (
+      column: string,
+      operator: string,
+      value: string,
+    ) => {
+      or: (
+        filter: string,
+      ) => PromiseLike<{
+        data: unknown;
+      }>;
+    };
+  };
+};
+
 export function getAgeCategory(slug: string): AgeCategory | null {
   return (AGE_CATALOG as Record<string, AgeCategory>)[slug] ?? null;
 }
@@ -80,7 +96,7 @@ export function getAgeCategory(slug: string): AgeCategory | null {
 // thin-content 가드용 (≥5 만 sitemap 등록). 비매칭 source_code 제외 + 마감 안 지난 것만.
 export async function getAgeCounts(
   // supabase client 타입을 좁게 잡으면 server·anon 양쪽 호환됨
-  supabase: { from: (t: string) => any },
+  supabase: { from: (t: string) => AgeCountQuery },
   table: "welfare_programs" | "loan_programs",
   excludedFilter: string,
 ): Promise<Map<AgeSlug, number>> {

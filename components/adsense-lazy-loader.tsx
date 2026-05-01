@@ -23,7 +23,6 @@ export function AdsenseLazyLoader() {
     if (typeof window === "undefined") return;
 
     let loaded = false;
-    let fallbackTimer: number | undefined;
 
     const cleanup = () => {
       TRIGGER_EVENTS.forEach((evt) =>
@@ -59,12 +58,11 @@ export function AdsenseLazyLoader() {
     };
 
     const onUserAction = () => load();
+    const fallbackTimer = window.setTimeout(load, FALLBACK_TIMEOUT_MS);
 
     TRIGGER_EVENTS.forEach((evt) =>
       window.addEventListener(evt, onUserAction, { passive: true, once: true }),
     );
-    fallbackTimer = window.setTimeout(load, FALLBACK_TIMEOUT_MS);
-
     return cleanup;
   }, []);
 
