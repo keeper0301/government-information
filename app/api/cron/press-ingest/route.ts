@@ -1,10 +1,9 @@
 // app/api/cron/press-ingest/route.ts
-// 매일 09:00 KST cron — 광역도 보도자료 자동 ingest.
-// 24h 후보 fetch → LLM 분류 → 가드 통과 시 welfare/loan 자동 INSERT.
+// 매일 09:00 KST cron — 광역도 보도자료 L2 자동 분류.
+// 24h 후보 fetch → LLM 분류 → press_ingest_candidates confirm 큐 저장.
 //
-// 안전 가드: 후보 cap 30 / INSERT cap 10 / is_policy=true / apply_url 존재 /
-// 화이트리스트 카테고리 / 중복 source_id skip / source_code='auto_press_ingest'
-// 기록 + admin_actions 감사.
+// 안전 가드: 후보 cap 30 / news_id UNIQUE / confirm 전 welfare·loan INSERT 없음 /
+// 비정책·unsure·분류 실패도 큐에 기록해 반복 LLM 비용 차단.
 //
 // vercel.json crons: { "path": "/api/cron/press-ingest", "schedule": "5 0 * * *" }
 // (UTC 00:05 = KST 09:05, 정시 회피)

@@ -116,7 +116,7 @@ async function get24hStats() {
     admin
       .from("admin_actions")
       .select("id", { count: "exact", head: true })
-      .eq("action", "auto_press_ingest")
+      .eq("action", "press_l2_confirm")
       .gte("created_at", since24hIso),
   ]);
 

@@ -29,6 +29,9 @@ export type AdminActionType =
   | "csv_export"           // /api/admin/export-users CSV 다운로드 (Phase 6 #9)
   | "manual_program_create" // /admin/welfare/new · /admin/loan/new 수동 정책 등록 (#7)
   | "auto_press_ingest"     // /api/cron/press-ingest cron 자동 등록 (광역 보도자료 → welfare/loan)
+  | "press_l2_classify"     // /api/cron/press-ingest L2 분류 후보 저장
+  | "press_l2_confirm"      // /admin/press-ingest L2 후보 승인 후 정책 등록
+  | "press_l2_reject"       // /admin/press-ingest L2 후보 해제
   | "dedupe_confirm"        // Phase 3 B3 — /admin/dedupe 에서 중복 후보 확정 (duplicate_of_id 유지)
   | "dedupe_reject";        // Phase 3 B3 — 잘못 잡힌 후보 reset (duplicate_of_id NULL)
 
@@ -284,6 +287,9 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   csv_export: "CSV 내보내기",
   manual_program_create: "정책 수동 등록",
   auto_press_ingest: "정책 자동 등록 (cron)",
+  press_l2_classify: "보도자료 L2 분류",
+  press_l2_confirm: "보도자료 L2 후보 승인",
+  press_l2_reject: "보도자료 L2 후보 해제",
   dedupe_confirm: "중복 후보 확정",
   dedupe_reject: "중복 후보 해제",
 };

@@ -103,14 +103,20 @@ export type PressIngestKpi = {
   candidates_24h: number;
   manual_registered_24h: number;
   llm_classify_24h: number;
-  auto_ingested_24h: number;
+  l2_pending: number;
 };
 
 export async function getPressIngestKpi(): Promise<PressIngestKpi> {
   const admin = createAdminClient();
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [candidatesRes, registeredRes, classifyRes, autoIngestRes] = await Promise.all([
+  const [
+    candidatesRes,
+    registeredRes,
+    manualClassifyRes,
+    l2ClassifyRes,
+    pendingRes,
+  ] = await Promise.all([
     // 24h 후보 — 같은 필터 로직, count only (head:true)
     (() => {
       const titleOrFilter = POLICY_SIGNAL_KEYWORDS.map(
@@ -134,26 +140,31 @@ export async function getPressIngestKpi(): Promise<PressIngestKpi> {
       .eq("action", "manual_program_create")
       .gte("created_at", since24h)
       .not("details->>kind", "eq", "press_classify"),
-    // 24h LLM 호출 — admin_actions.manual_program_create 중 details.kind = 'press_classify'
+    // 24h 수동 AI 분류
     admin
       .from("admin_actions")
       .select("id", { count: "exact", head: true })
       .eq("action", "manual_program_create")
       .gte("created_at", since24h)
       .eq("details->>kind", "press_classify"),
-    // 24h 자동 ingest — admin_actions.auto_press_ingest
+    // 24h cron L2 분류
     admin
       .from("admin_actions")
       .select("id", { count: "exact", head: true })
-      .eq("action", "auto_press_ingest")
+      .eq("action", "press_l2_classify")
       .gte("created_at", since24h),
+    // 현재 confirm 대기 L2 후보
+    admin
+      .from("press_ingest_candidates")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
   ]);
 
   return {
     candidates_24h: candidatesRes.count ?? 0,
     manual_registered_24h: registeredRes.count ?? 0,
-    llm_classify_24h: classifyRes.count ?? 0,
-    auto_ingested_24h: autoIngestRes.count ?? 0,
+    llm_classify_24h: (manualClassifyRes.count ?? 0) + (l2ClassifyRes.count ?? 0),
+    l2_pending: pendingRes.count ?? 0,
   };
 }
 
@@ -172,7 +183,7 @@ export async function getAutoIngestTrend(days: number = 7): Promise<AutoIngestDa
   const { data, error } = await admin
     .from("admin_actions")
     .select("created_at")
-    .eq("action", "auto_press_ingest")
+    .eq("action", "press_l2_confirm")
     .gte("created_at", since);
 
   if (error || !data) {
@@ -207,7 +218,7 @@ export async function getAutoIngestTrend(days: number = 7): Promise<AutoIngestDa
   return Array.from(byDay, ([day, count]) => ({ day, count }));
 }
 
-// ─── 최근 자동 등록된 정책 N건 (welfare + loan 통합) ───
+// ─── 최근 L2 승인 등록된 정책 N건 (welfare + loan 통합) ───
 // 사장님이 "정말 자동으로 들어왔는지" 한눈에 확인. 사이트 detail 직링.
 
 export type RecentAutoRow = {
@@ -227,13 +238,13 @@ export async function getRecentAutoIngestRows(limit: number = 5): Promise<Recent
     admin
       .from("welfare_programs")
       .select("id, title, region, category, created_at")
-      .eq("source_code", "auto_press_ingest")
+      .eq("source_code", "press_l2_confirm")
       .order("created_at", { ascending: false })
       .limit(limit),
     admin
       .from("loan_programs")
       .select("id, title, category, created_at")
-      .eq("source_code", "auto_press_ingest")
+      .eq("source_code", "press_l2_confirm")
       .order("created_at", { ascending: false })
       .limit(limit),
   ]);

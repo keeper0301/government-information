@@ -1,11 +1,8 @@
 // ============================================================
-// /admin/press-ingest — 광역 보도자료 정책 후보 (L1 필터, LLM 미사용)
+// /admin/press-ingest — 광역 보도자료 정책 후보 + L2 confirm 큐
 // ============================================================
-// news_posts 24h 광역도 ministry 보도자료 중 신청 신호 매칭 row 노출.
-// 사장님이 본인 판단으로 정책 → /admin/welfare/new 또는 /admin/loan/new
-// 등록.
-//
-// L2 (LLM 자동 분류) 도입은 운영 패턴 본 후 진행 (spec 참조).
+// news_posts L1 후보와 LLM 이 자동 분류해 둔 L2 confirm 후보를 함께 노출.
+// L2 는 confirm 전까지 welfare/loan 에 INSERT 되지 않는다.
 // ============================================================
 
 import { redirect } from "next/navigation";
@@ -20,7 +17,15 @@ import {
   getRecentAutoIngestRows,
   type PressIngestCandidate,
 } from "@/lib/press-ingest/filter";
+import {
+  listPressCandidates,
+  type PressCandidateListRow,
+} from "@/lib/press-ingest/candidates";
 import { PressClassifyAction } from "./classify-action";
+import {
+  confirmPressCandidateAction,
+  rejectPressCandidateAction,
+} from "./actions";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
@@ -150,7 +155,7 @@ function fmtDate(iso: string): string {
 export default async function PressIngestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ hours?: string }>;
+  searchParams: Promise<{ hours?: string; ok?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -166,8 +171,9 @@ export default async function PressIngestPage({
     return [24, 48, 168].includes(n) ? n : 24;
   })();
 
-  const [candidates, kpi, autoTrend, recentAuto] = await Promise.all([
+  const [candidates, l2Candidates, kpi, autoTrend, recentAuto] = await Promise.all([
     getPressIngestCandidates(hours, 100),
+    listPressCandidates(100),
     getPressIngestKpi(),
     getAutoIngestTrend(7),
     getRecentAutoIngestRows(5),
@@ -183,8 +189,14 @@ export default async function PressIngestPage({
       <AdminPageHeader
         kicker="ADMIN · 컨텐츠 발행"
         title={`${hours === 168 ? "최근 7일" : `최근 ${hours}시간`} 광역 보도자료`}
-        description="17개 광역도청 발표 보도자료 중 신청 신호 키워드 (지원금·보조금·바우처·수당·환급·모집·신청·접수) 매칭 row. 본인 판단으로 정책이면 우측 버튼 → 수동 등록 폼으로 이동."
+        description="17개 광역도청 보도자료를 L1 키워드로 찾고, L2 LLM 분류 결과는 confirm 큐에서 승인 후에만 정책으로 등록합니다."
       />
+
+      {params.ok && (
+        <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm font-semibold text-blue-900">
+          {params.ok}
+        </div>
+      )}
 
       {/* KPI 카드 (Step 3 가시화 + 자동 ingest) */}
       <section className="mb-5 grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -195,10 +207,10 @@ export default async function PressIngestPage({
           hint="광역도청 보도자료 매칭"
         />
         <KpiCard
-          label="24h 자동 ingest"
-          value={`${kpi.auto_ingested_24h}건`}
-          tone={kpi.auto_ingested_24h > 0 ? "ok" : "muted"}
-          hint="cron 01:30 KST"
+          label="L2 승인 대기"
+          value={`${kpi.l2_pending}건`}
+          tone={kpi.l2_pending > 0 ? "warn" : "muted"}
+          hint="confirm 필요"
         />
         <KpiCard
           label="24h 등록 (manual)"
@@ -210,7 +222,7 @@ export default async function PressIngestPage({
           label="24h LLM 호출"
           value={`${kpi.llm_classify_24h}건`}
           tone={kpi.llm_classify_24h > 0 ? "ok" : "muted"}
-          hint={`Anthropic Haiku · ~$${(kpi.llm_classify_24h * 0.003).toFixed(2)}`}
+          hint={`수동+cron · ~$${(kpi.llm_classify_24h * 0.003).toFixed(2)}`}
         />
         <KpiCard
           label="LLM 활성"
@@ -224,10 +236,10 @@ export default async function PressIngestPage({
         />
       </section>
 
-      {/* 7일 자동 등록 추세 — 일별 막대 7개. cron 작동·정책 발굴 페이스 한눈에. */}
+      {/* 7일 L2 승인 등록 추세 — 일별 막대 7개. 정책 발굴 페이스 한눈에. */}
       <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
         <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">
-          7일 자동 등록 추세
+          7일 L2 승인 등록 추세
         </h2>
         <div className="flex items-end gap-2 h-[72px]">
           {autoTrend.map((d) => {
@@ -261,15 +273,15 @@ export default async function PressIngestPage({
         </div>
       </section>
 
-      {/* 최근 자동 등록 5건 — 사장님이 "정말 자동으로 들어왔나" 즉시 확인. */}
+      {/* 최근 L2 승인 등록 5건 */}
       <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
         <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">
-          최근 자동 등록 정책 5건
+          최근 L2 승인 정책 5건
         </h2>
         {recentAuto.length === 0 ? (
           <p className="text-xs text-grey-600 leading-[1.5]">
-            아직 자동 등록된 정책이 없어요. 매일 01:30 KST cron 이 실행하면
-            안전 가드 통과한 정책이 여기 노출됩니다.
+            아직 L2 승인으로 등록된 정책이 없어요. confirm 큐에서 승인하면
+            여기 노출됩니다.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -315,9 +327,9 @@ export default async function PressIngestPage({
       {/* 안내 + 기간 토글 */}
       <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
         <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900 leading-[1.55] flex-1 min-w-[280px]">
-          💡 자동 ingest cron 매일 01:30 KST 실행 (LLM 분류 + 자동 INSERT,
-          cap 30 후보 / 10 INSERT). 누락된 정책은 직접 '🤖 AI 분류' 또는
-          '복지/대출 →' 버튼으로 수동 등록 가능.
+          💡 자동 ingest cron 매일 01:30 KST 실행 (LLM 분류 + confirm 후보 저장,
+          cap 30 후보). L2 후보를 승인하면 정책으로 등록됩니다. 누락된 정책은 직접 &apos;🤖 AI 분류&apos; 또는
+          &apos;복지/대출 →&apos; 버튼으로 수동 등록 가능.
         </div>
         <div className="inline-flex rounded-lg border border-grey-200 bg-white overflow-hidden">
           {[
@@ -343,6 +355,29 @@ export default async function PressIngestPage({
           ))}
         </div>
       </div>
+
+      <section className="mb-7">
+        <div className="flex items-baseline justify-between gap-3 mb-3">
+          <h2 className="text-base font-bold text-grey-900 tracking-[-0.2px]">
+            L2 confirm 후보 ({l2Candidates.length}건)
+          </h2>
+          <span className="text-xs text-grey-600">
+            LLM 분류 완료 · 승인 전 사용자 노출 없음
+          </span>
+        </div>
+        {l2Candidates.length === 0 ? (
+          <div className="rounded-lg border border-grey-200 bg-white p-5 text-sm text-grey-600">
+            confirm 대기 후보가 없습니다. cron 실행 후 정책성 있는 보도자료가
+            있으면 여기에 쌓입니다.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3">
+            {l2Candidates.map((candidate) => (
+              <L2CandidateCard key={candidate.id} candidate={candidate} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* 후보 테이블 */}
       {candidates.length === 0 ? (
@@ -450,8 +485,8 @@ export default async function PressIngestPage({
       )}
 
       <p className="mt-6 text-xs text-grey-600">
-        전체 {candidates.length}건 (최대 100건). L2 (LLM 자동 분류) 도입 시
-        이 페이지에서 후보가 자동 등록 후 confirm 단계로 변경 예정.
+        L1 전체 {candidates.length}건 (최대 100건). L2 cron 이 자동 분류한
+        정책 후보는 위 confirm 큐에 먼저 쌓이고, 승인 후에만 등록됩니다.
       </p>
 
       <p className="mt-8 text-sm flex items-center gap-4">
@@ -478,5 +513,86 @@ export default async function PressIngestPage({
         </Link>
       </p>
     </div>
+  );
+}
+
+function L2CandidateCard({ candidate }: { candidate: PressCandidateListRow }) {
+  const payload = candidate.classified_payload;
+  const isLoan = candidate.program_type === "loan";
+  return (
+    <article className="rounded-lg border border-grey-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span
+              className={`px-2 py-0.5 rounded text-xs font-bold ${
+                isLoan ? "bg-orange-50 text-orange-700" : "bg-blue-50 text-blue-700"
+              }`}
+            >
+              {isLoan ? "대출 후보" : "복지 후보"}
+            </span>
+            {candidate.category && (
+              <span className="text-xs text-grey-600 font-semibold">
+                {candidate.category}
+              </span>
+            )}
+            <span className="text-xs text-grey-500">
+              {fmtDate(candidate.classified_at)}
+            </span>
+          </div>
+          <Link
+            href={`/news/${candidate.news.slug || candidate.news_id}`}
+            target="_blank"
+            className="block text-base font-bold text-grey-900 hover:text-blue-600 hover:underline"
+          >
+            {candidate.title}
+          </Link>
+          <dl className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-xs leading-[1.45]">
+            <div>
+              <dt className="font-semibold text-grey-700">대상</dt>
+              <dd className="text-grey-600 line-clamp-2">{payload.target || "—"}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-grey-700">혜택</dt>
+              <dd className="text-grey-600 line-clamp-2">{payload.benefits || "—"}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-grey-700">신청</dt>
+              <dd className="text-grey-600 line-clamp-2">{payload.apply_method || "—"}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-grey-700">마감</dt>
+              <dd className="text-grey-600">{payload.apply_end || "상시/미상"}</dd>
+            </div>
+          </dl>
+          {!payload.apply_url && (
+            <p className="mt-3 text-xs font-semibold text-amber-700">
+              신청 URL 이 없어 승인 전 원문 확인이 필요합니다.
+            </p>
+          )}
+        </div>
+        <div className="shrink-0 flex flex-col gap-2">
+          <form action={confirmPressCandidateAction}>
+            <input type="hidden" name="candidate_id" value={candidate.id} />
+            <button
+              type="submit"
+              disabled={!payload.apply_url}
+              className="w-full rounded-md bg-blue-500 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-grey-300"
+            >
+              승인 등록
+            </button>
+          </form>
+          <form action={rejectPressCandidateAction}>
+            <input type="hidden" name="candidate_id" value={candidate.id} />
+            <button
+              type="submit"
+              className="w-full rounded-md border border-grey-200 px-3 py-2 text-xs font-bold text-grey-700 hover:bg-grey-50"
+            >
+              후보 해제
+            </button>
+          </form>
+        </div>
+      </div>
+    </article>
   );
 }
