@@ -11,7 +11,7 @@ import type { MatchSignal } from '@/lib/personalization/types';
 import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
 import { WELFARE_EXCLUDED_FILTER } from '@/lib/listing-sources';
 
-const HOME_MATCH_REASON_LABELS: Partial<Record<MatchSignal["kind"], string>> = {
+const HOME_MATCH_REASON_LABELS: Record<MatchSignal["kind"], string> = {
   region: "지역",
   district: "지역",
   benefit_tags: "관심분야",
@@ -26,6 +26,7 @@ const HOME_MATCH_REASON_LABELS: Partial<Record<MatchSignal["kind"], string>> = {
 };
 
 export function getHomeMatchReasonLabels(signals: MatchSignal[], limit = 5): string[] {
+  if (limit <= 0) return [];
   const labels: string[] = [];
   for (const signal of signals) {
     const label = HOME_MATCH_REASON_LABELS[signal.kind];

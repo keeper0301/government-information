@@ -37,5 +37,10 @@ describe("getHomeMatchReasonLabels", () => {
       "직업",
       "연령",
     ]);
+    expect(getHomeMatchReasonLabels(signals, 2)).toEqual([
+      "지역",
+      "관심분야",
+    ]);
+    expect(getHomeMatchReasonLabels(signals, 0)).toEqual([]);
   });
 });
