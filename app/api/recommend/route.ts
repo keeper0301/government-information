@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRecommendations, PROGRAM_TYPES, type ProgramType } from "@/lib/recommend";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 import {
   AGE_KEYWORDS,
   OCCUPATION_KEYWORDS,
@@ -44,11 +45,18 @@ export async function POST(request: NextRequest) {
       ? district
       : null;
 
+  const fullProfile = await loadUserProfile();
   const programs = await getRecommendations({
     ageGroup: ageGroup as AgeOption,
     region: region as RegionOption,
     district: safeDistrict,
     occupation: occupation as OccupationOption,
+    incomeLevel: fullProfile?.signals.incomeLevel ?? null,
+    householdTypes: fullProfile?.signals.householdTypes ?? [],
+    benefitTags: fullProfile?.signals.benefitTags ?? [],
+    hasChildren: fullProfile?.signals.hasChildren ?? null,
+    merit: fullProfile?.signals.merit ?? null,
+    businessProfile: fullProfile?.signals.businessProfile ?? null,
     programType: programType as ProgramType,
   });
 

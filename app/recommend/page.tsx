@@ -108,6 +108,12 @@ export default async function RecommendPage({
         region: candidateRegion as RegionOption,
         district: candidateDistrict,
         occupation: candidateOcc as OccupationOption,
+        incomeLevel: fullProfile?.signals.incomeLevel ?? null,
+        householdTypes: fullProfile?.signals.householdTypes ?? [],
+        benefitTags: fullProfile?.signals.benefitTags ?? [],
+        hasChildren: fullProfile?.signals.hasChildren ?? null,
+        merit: fullProfile?.signals.merit ?? null,
+        businessProfile,
         programType: candidateType,
       }),
       getRelatedNews({

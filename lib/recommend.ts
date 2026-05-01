@@ -19,6 +19,8 @@ import {
   type OccupationOption,
   type RegionOption,
 } from "@/lib/profile-options";
+import { isProgramAllowedForUser } from "@/lib/personalization/score";
+import type { UserSignals } from "@/lib/personalization/types";
 import type { BenefitTag } from "@/lib/tags/taxonomy";
 import type { NewsCardData } from "@/components/news-card";
 import type { BlogCardData } from "@/components/blog-card";
@@ -131,7 +133,7 @@ function districtBonus(
 // 키워드 매칭 점수 계산
 // - 직업 매칭(가중치 2) + 나이 매칭(가중치 1)
 // - occMatched=true 여야 최종 결과에 포함 ("기타" 직업만 예외)
-function scoreProgram(
+function scoreKeywordMatch(
   target: string | null | undefined,
   description: string | null | undefined,
   ageKw: string[],
@@ -160,11 +162,92 @@ type RecommendParams = {
   region: RegionOption;
   district?: string | null;
   occupation: OccupationOption;
+  incomeLevel?: UserSignals["incomeLevel"];
+  householdTypes?: string[];
+  benefitTags?: BenefitTag[];
+  hasChildren?: boolean | null;
+  merit?: UserSignals["merit"];
+  businessProfile?: UserSignals["businessProfile"];
   programType?: ProgramType;
   // 홈의 맞춤 섹션(복지 4 · 대출 3) 처럼 /recommend 페이지(20건) 외 용도에서 쓰라고
   // 노출. 기본값 20 은 /recommend 페이지 기대치와 동일.
   limit?: number;
 };
+
+function buildRecommendUserSignals(params: RecommendParams): UserSignals {
+  return {
+    ageGroup: params.ageGroup,
+    region: params.region,
+    district: params.district ?? null,
+    occupation: params.occupation,
+    incomeLevel: params.incomeLevel ?? null,
+    householdTypes: params.householdTypes ?? [],
+    benefitTags: params.benefitTags ?? [],
+    hasChildren: params.hasChildren ?? null,
+    merit: params.merit ?? null,
+    businessProfile: params.businessProfile ?? null,
+  };
+}
+
+function welfareGateItem(w: WelfareProgram) {
+  return {
+    id: w.id,
+    title: w.title,
+    description: [
+      w.target,
+      w.description,
+      w.eligibility,
+      w.benefits,
+      w.selection_criteria,
+      w.detailed_content,
+    ]
+      .filter(Boolean)
+      .join(" "),
+    region: w.region,
+    benefit_tags: w.benefit_tags,
+    apply_end: w.apply_end,
+    source: w.source,
+    income_target_level: w.income_target_level,
+    household_target_tags: w.household_target_tags,
+  };
+}
+
+function loanGateItem(l: LoanProgram) {
+  return {
+    id: l.id,
+    title: l.title,
+    description: [
+      l.target,
+      l.description,
+      l.eligibility,
+      l.loan_amount,
+      l.required_documents,
+      l.detailed_content,
+    ]
+      .filter(Boolean)
+      .join(" "),
+    region: null,
+    benefit_tags: l.benefit_tags,
+    apply_end: l.apply_end,
+    source: l.source,
+    income_target_level: l.income_target_level,
+    household_target_tags: l.household_target_tags,
+  };
+}
+
+export function isRecommendWelfareEligible(
+  program: WelfareProgram,
+  user: UserSignals,
+): boolean {
+  return isProgramAllowedForUser(welfareGateItem(program), user);
+}
+
+export function isRecommendLoanEligible(
+  program: LoanProgram,
+  user: UserSignals,
+): boolean {
+  return isProgramAllowedForUser(loanGateItem(program), user);
+}
 
 // 추천 결과 계산 (API 라우트·서버 페이지·홈 맞춤 섹션 공용 진입점)
 // 반환: 매칭 점수 내림차순 정렬 (동점이면 view_count 순) 최대 limit 건
@@ -181,6 +264,7 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
 
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
+  const userSignals = buildRecommendUserSignals(params);
 
   const ageKw = AGE_KEYWORDS[ageGroup] ?? [];
   const occKw = OCCUPATION_KEYWORDS[occupation] ?? [];
@@ -214,8 +298,9 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
 
   const filteredWelfare = welfareData
     .filter((w) => regionMatches(w.title, w.source, w.region, region))
+    .filter((w) => isRecommendWelfareEligible(w, userSignals))
     .map((w) => {
-      const s = scoreProgram(w.target, w.description, ageKw, occKw);
+      const s = scoreKeywordMatch(w.target, w.description, ageKw, occKw);
       return {
         display: welfareToDisplay(w),
         score: s.score + districtBonus(w.title, w.source, w.region, district),
@@ -227,8 +312,9 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
   // LoanProgram 에는 region 컬럼 없음 → null 전달, 제목·출처로 판단
   const filteredLoan = loanData
     .filter((l) => regionMatches(l.title, l.source, null, region))
+    .filter((l) => isRecommendLoanEligible(l, userSignals))
     .map((l) => {
-      const s = scoreProgram(l.target, l.description, ageKw, occKw);
+      const s = scoreKeywordMatch(l.target, l.description, ageKw, occKw);
       return {
         display: loanToDisplay(l),
         score: s.score + districtBonus(l.title, l.source, null, district),

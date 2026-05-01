@@ -154,6 +154,8 @@ const MULTICULTURAL_COHORT_KEYWORDS: RegExp[] = [
 //   사장님(married, has_children NULL) 에게 노출되던 사고 차단.
 const CHILD_COHORT_KEYWORDS: RegExp[] = [
   /보호아동/,
+  /보호종료아동/,
+  /자립준비청년/,
   /아동복지시설/,
   /가정위탁/,
   /입양\s*가정/,
@@ -229,10 +231,25 @@ const LOW_INCOME_ONLY_COHORT_KEYWORDS: RegExp[] = [
 
 // 장애인 cohort — 사용자 가구에 disabled_family 가 있을 때만 통과
 const DISABILITY_COHORT_KEYWORDS: RegExp[] = [
+  /장애인/,
+  /장애\s*가구/,
   /중증장애/,
   /장애아동/,
   /장애인\s*가구/,
   /장애인\s*가족/,
+];
+
+// 출소·보호관찰·법무보호 cohort — 현재 프로필 모델에는 이 민감 cohort를 명시적으로
+// 선택하는 입력이 없다. 따라서 일반 추천/알림에서는 기본 차단한다.
+const JUSTICE_REENTRY_COHORT_KEYWORDS: RegExp[] = [
+  /출소/,
+  /출소자/,
+  /출소\s*\(?예정\)?자/,
+  /보호관찰/,
+  /법무보호/,
+  /갱생보호/,
+  /교정시설/,
+  /소년원/,
 ];
 
 // 정책 본문이 특정 cohort 전용인데 사용자가 그 cohort 에 안 속하면 true 반환.
@@ -272,6 +289,10 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   // 장애인 정책 — disabled_family 가구만 통과
   if (DISABILITY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     if (!user.householdTypes.includes('disabled_family')) return true;
+  }
+  // 출소·보호관찰·법무보호 정책은 별도 명시 동의/프로필 축이 생기기 전까지 일반 추천에서 차단
+  if (JUSTICE_REENTRY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    return true;
   }
   // 기초수급·차상위·저소득 cohort — low/mid_low 만 통과
   if (LOW_INCOME_ONLY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
