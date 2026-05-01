@@ -223,6 +223,11 @@ const POSTPARTUM_INFANT_COHORT_KEYWORDS: RegExp[] = [
 const LOW_INCOME_ONLY_COHORT_KEYWORDS: RegExp[] = [
   /기초생활(\s*보장)?\s*수급자/, // 기초생활수급자, 기초생활보장수급자, 기초생활 보장 수급자
   /기초수급자/,
+  /의료급여/,
+  /의료급여\s*수급권자/,
+  /생계급여/,
+  /주거급여/,
+  /교육급여/,
   /차상위계층(?!\s*및\s*일반)/,  // "차상위계층" 단독 — "차상위계층 및 일반" 류는 통과
   /통합사례관리/,                 // 희망복지지원단 통합사례관리 — 위기가구 대상
   /위기가구/,
@@ -333,6 +338,14 @@ function matchesIncomeRequirement(
   return userOrder[userLevel] <= programOrder[programLevel];
 }
 
+function hasIncomeTargetMismatch(
+  userLevel: UserSignals['incomeLevel'],
+  programLevel: 'low' | 'mid_low' | 'mid' | 'any' | null | undefined,
+): boolean {
+  if (!userLevel || !programLevel) return false;
+  return !matchesIncomeRequirement(userLevel, programLevel);
+}
+
 // 마감일이 D-7 이내인지 확인 (긴박성 tiebreaker 가산점용)
 function isUrgentDeadline(applyEnd: string | null | undefined): boolean {
   if (!applyEnd) return false;
@@ -368,6 +381,11 @@ export function isProgramAllowedForUser<T extends ScorableItem>(
   // 1) Cohort 키워드 차단 (노년/다문화/아동/장애/저소득/산후조리)
   if (isCohortMismatch(haystack, user)) return false;
 
+  // DB에 명시된 소득 조건은 사용자가 소득구분을 입력한 경우 자격 gate 로도 적용한다.
+  if (hasIncomeTargetMismatch(user.incomeLevel, program.income_target_level)) {
+    return false;
+  }
+
   // 2) household_target_tags 명시 mismatch 차단 (regional gate 와 동일 패턴)
   // 정책에 명시 + 사용자에 명시 + 교집합 0 → 차단
   if (
@@ -399,6 +417,11 @@ export function scoreProgram<T extends ScorableItem>(
   // 점수 0 + 빈 시그널 반환 → filter 에서 minScore 못 넘게 함.
   // (signals 만 비우면 region 만 매칭된 부적합 정책이 통과 가능 — score=0 으로 명시 차단)
   if (isCohortMismatch(haystack, user)) {
+    return { item: program, score: 0, signals: [] };
+  }
+
+  // DB에 명시된 소득 조건이 맞지 않으면 관심태그/지역 점수만으로 통과시키지 않는다.
+  if (hasIncomeTargetMismatch(user.incomeLevel, program.income_target_level)) {
     return { item: program, score: 0, signals: [] };
   }
 
