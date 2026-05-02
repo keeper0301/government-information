@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getHomeMatchReasonLabels } from "@/components/home-recommend-auto";
+import {
+  getHomeMatchReasonLabels,
+  getProfileCompletionSummary,
+  getRecommendationConfidenceLabel,
+} from "@/components/home-recommend-auto";
 import { scoreProgram, type ScorableItem } from "@/lib/personalization/score";
 import type { MatchSignal, UserSignals } from "@/lib/personalization/types";
 
@@ -43,6 +47,72 @@ describe("getHomeMatchReasonLabels", () => {
       "관심분야",
     ]);
     expect(getHomeMatchReasonLabels(signals, 0)).toEqual([]);
+  });
+});
+
+describe("getProfileCompletionSummary", () => {
+  const baseSignals: UserSignals = {
+    ageGroup: null,
+    region: null,
+    district: null,
+    occupation: null,
+    incomeLevel: null,
+    householdTypes: [],
+    benefitTags: [],
+    hasChildren: null,
+    merit: null,
+    businessProfile: null,
+  };
+
+  it("summarizes missing profile fields for homepage trust UI", () => {
+    const summary = getProfileCompletionSummary({
+      ...baseSignals,
+      ageGroup: "30대",
+      region: "전남",
+      occupation: "자영업자",
+    });
+
+    expect(summary).toEqual({
+      completed: 3,
+      total: 6,
+      percent: 50,
+      missingLabels: ["소득", "가구", "관심분야"],
+    });
+  });
+
+  it("counts child status as household context", () => {
+    const summary = getProfileCompletionSummary({
+      ...baseSignals,
+      hasChildren: false,
+    });
+
+    expect(summary.completed).toBe(1);
+    expect(summary.missingLabels).not.toContain("가구");
+  });
+});
+
+describe("getRecommendationConfidenceLabel", () => {
+  it("labels recommendations by amount of matching evidence", () => {
+    expect(
+      getRecommendationConfidenceLabel([
+        { kind: "region", score: 5 },
+        { kind: "district", score: 5 },
+        { kind: "income_target", score: 4 },
+        { kind: "household_target", score: 3 },
+        { kind: "benefit_tags", score: 3 },
+      ]),
+    ).toBe("매우 적합");
+
+    expect(
+      getRecommendationConfidenceLabel([
+        { kind: "region", score: 5 },
+        { kind: "occupation", score: 2 },
+      ]),
+    ).toBe("적합");
+
+    expect(getRecommendationConfidenceLabel([{ kind: "region", score: 5 }])).toBe(
+      "확인 필요",
+    );
   });
 });
 

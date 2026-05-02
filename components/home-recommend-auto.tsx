@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilter } from '@/lib/personalization/filter';
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
-import type { MatchSignal } from '@/lib/personalization/types';
+import type { MatchSignal, UserSignals } from '@/lib/personalization/types';
 import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
 import { WELFARE_EXCLUDED_FILTER } from '@/lib/listing-sources';
 
@@ -35,6 +35,53 @@ export function getHomeMatchReasonLabels(signals: MatchSignal[], limit = 5): str
     if (labels.length >= limit) break;
   }
   return labels;
+}
+
+type ProfileCompletionField = {
+  key: string;
+  label: string;
+  completed: boolean;
+};
+
+export type ProfileCompletionSummary = {
+  completed: number;
+  total: number;
+  percent: number;
+  missingLabels: string[];
+};
+
+export function getProfileCompletionSummary(
+  signals: UserSignals,
+): ProfileCompletionSummary {
+  const fields: ProfileCompletionField[] = [
+    { key: 'age', label: '나이', completed: Boolean(signals.ageGroup) },
+    { key: 'region', label: '지역', completed: Boolean(signals.region) },
+    { key: 'occupation', label: '직업', completed: Boolean(signals.occupation) },
+    { key: 'income', label: '소득', completed: Boolean(signals.incomeLevel) },
+    {
+      key: 'household',
+      label: '가구',
+      completed: signals.householdTypes.length > 0 || signals.hasChildren !== null,
+    },
+    { key: 'interests', label: '관심분야', completed: signals.benefitTags.length > 0 },
+  ];
+  const completed = fields.filter((field) => field.completed).length;
+
+  return {
+    completed,
+    total: fields.length,
+    percent: Math.round((completed / fields.length) * 100),
+    missingLabels: fields
+      .filter((field) => !field.completed)
+      .map((field) => field.label),
+  };
+}
+
+export function getRecommendationConfidenceLabel(signals: MatchSignal[]): string {
+  const reasons = getHomeMatchReasonLabels(signals, 10);
+  if (reasons.length >= 4) return '매우 적합';
+  if (reasons.length >= 2) return '적합';
+  return '확인 필요';
 }
 
 // DB welfare_programs raw 행 → ScorableItem 변환
@@ -137,11 +184,13 @@ export async function HomeRecommendAuto({
   // 매칭 결과 0건 → null 대신 fallback 카드 (hero 우측 빈 영역 사고 차단).
   // 사장님 본인 화면에서 매일 보는 자리라 빈 영역은 즉각 UX 사고로 체감.
   if (items.length === 0) {
+    const profileSummary = getProfileCompletionSummary(profile.signals);
     return (
       <section className="rounded-2xl border border-grey-200 bg-white p-5 sm:p-6 shadow-lg">
         <h2 className="text-base sm:text-lg font-bold text-grey-900 mb-2">
           🌟 {profile.displayName}님께 맞는 정책
         </h2>
+        <ProfileTrustStrip summary={profileSummary} />
         <p className="text-sm max-md:text-[15px] text-grey-600 leading-[1.6] mb-4">
           지금은 마이페이지 조건에 맞는 새 정책이 적어요.
           <br />
@@ -165,6 +214,8 @@ export async function HomeRecommendAuto({
     );
   }
 
+  const profileSummary = getProfileCompletionSummary(profile.signals);
+
   return (
     <section className="rounded-2xl border border-grey-200 bg-white p-5 sm:p-6 shadow-lg">
       {/* 제목 행: 왼쪽에 "님께 맞는 정책" + 건수, 오른쪽에 "전체 보기" 링크 */}
@@ -185,11 +236,13 @@ export async function HomeRecommendAuto({
       <p className="mb-4 text-[13px] leading-[1.5] text-grey-600">
         마이페이지의 지역·소득·가구 정보를 기준으로 부적합한 정책을 걸러냈어요.
       </p>
+      <ProfileTrustStrip summary={profileSummary} />
 
       {/* 추천 정책 목록 — 각 항목은 /welfare/[id] 상세 링크 */}
       <ul className="space-y-2.5">
         {items.map(({ item, signals }) => {
           const reasons = getHomeMatchReasonLabels(signals, 4);
+          const confidence = getRecommendationConfidenceLabel(signals);
           return (
             <li key={item.id}>
               <Link
@@ -200,6 +253,9 @@ export async function HomeRecommendAuto({
                   {item.title}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                    {confidence}
+                  </span>
                   {reasons.map((reason) => (
                     <span
                       key={reason}
@@ -220,5 +276,41 @@ export async function HomeRecommendAuto({
         })}
       </ul>
     </section>
+  );
+}
+
+function ProfileTrustStrip({ summary }: { summary: ProfileCompletionSummary }) {
+  return (
+    <div className="mb-4 rounded-xl border border-grey-100 bg-grey-50 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[12px] font-semibold text-grey-700">
+          추천 정확도 정보
+        </span>
+        <span className="text-[12px] font-bold text-grey-900">
+          프로필 {summary.percent}%
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+        <div
+          className="h-full rounded-full bg-blue-500"
+          style={{ width: `${summary.percent}%` }}
+        />
+      </div>
+      {summary.missingLabels.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-medium text-grey-500">
+            더 정확하게:
+          </span>
+          {summary.missingLabels.slice(0, 3).map((label) => (
+            <span
+              key={label}
+              className="rounded-full border border-grey-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-grey-700"
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
