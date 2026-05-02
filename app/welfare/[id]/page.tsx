@@ -14,6 +14,7 @@ import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink } from "@/lib/utils/apply-url";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -57,6 +58,7 @@ export default async function WelfareDetailPage({ params }: Props) {
   // 로그인 여부 + 북마크 상태 — BookmarkButton 초기 상태 hydration 용
   const { data: { user } } = await supabase.auth.getUser();
   const initialBookmarked = user ? await isBookmarked("welfare", id) : false;
+  const profile = user ? await loadUserProfile() : null;
 
   const dday = calcDday(program.apply_end);
   const period = program.apply_start && program.apply_end
@@ -68,7 +70,14 @@ export default async function WelfareDetailPage({ params }: Props) {
     : null;
 
   const sourceLink = program.source_url || program.apply_url;
-  const related = await getRelatedPrograms("welfare", program.category, program.id, program.region);
+  const related = await getRelatedPrograms(
+    "welfare",
+    program.category,
+    program.id,
+    program.region,
+    4,
+    profile?.signals ?? null,
+  );
 
   // 핵심 정보 4종 — value 있고, 본문 description 과 사실상 같지 않은 것만 표시.
   // (대출과 달리 복지는 다른 데이터 소스라 중복 비율 0% 였지만, 동일 가드로 통일.)

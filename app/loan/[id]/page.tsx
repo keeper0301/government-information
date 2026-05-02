@@ -15,6 +15,7 @@ import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink } from "@/lib/utils/apply-url";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
+import { loadUserProfile } from "@/lib/personalization/load-profile";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -59,6 +60,7 @@ export default async function LoanDetailPage({ params }: Props) {
   // 로그인 여부 + 북마크 상태 — BookmarkButton 초기 상태 hydration 용
   const { data: { user } } = await supabase.auth.getUser();
   const initialBookmarked = user ? await isBookmarked("loan", id) : false;
+  const profile = user ? await loadUserProfile() : null;
 
   const dday = calcDday(program.apply_end);
   const applyPeriod =
@@ -67,7 +69,14 @@ export default async function LoanDetailPage({ params }: Props) {
       : null;
 
   const sourceLink = program.source_url || program.apply_url;
-  const related = await getRelatedPrograms("loan", program.category, program.id);
+  const related = await getRelatedPrograms(
+    "loan",
+    program.category,
+    program.id,
+    undefined,
+    4,
+    profile?.signals ?? null,
+  );
 
   // 핵심 정보 필드 6종 — value 있고, 본문 description 과 사실상 같지 않은 것만 골라 표시.
   // 실측: 대출 411건의 eligibility 가 100% description 복붙. 그대로 두면 본문이 두 번

@@ -163,6 +163,11 @@ export async function getUrgentPrograms(limit = 3, daysAhead = 14): Promise<Disp
 // ============================================================
 
 import { getRegionMatchPatterns } from "@/lib/regions";
+import {
+  isProgramAllowedForUser,
+  type ScorableItem,
+} from "@/lib/personalization/score";
+import type { UserSignals } from "@/lib/personalization/types";
 
 export type PopularSort = "popular" | "deadline";
 
@@ -174,6 +179,7 @@ export type PopularFilter = {
 };
 
 type RowWithViewCount = WelfareProgram | LoanProgram;
+type ProgramRow = WelfareProgram | LoanProgram;
 
 // 마감일 가중치 — 임박할수록 인기 부스트
 function deadlineBoost(dday: number | null): number {
@@ -307,10 +313,19 @@ export async function getRelatedPrograms(
   excludeId: string,
   region?: string | null,
   limit = 4,
+  userSignals?: UserSignals | null,
 ): Promise<DisplayProgram[]> {
   const supabase = await createClient();
   const table = type === "welfare" ? "welfare_programs" : "loan_programs";
   const today = new Date().toISOString().split("T")[0];
+  const queryLimit = userSignals ? limit * 4 : limit;
+
+  const filterForUser = (rows: ProgramRow[]): ProgramRow[] => {
+    if (!userSignals) return rows;
+    return rows
+      .filter((row) => isProgramAllowedForUser(programRowToScorable(row), userSignals))
+      .slice(0, limit);
+  };
 
   const excludedFilter = type === "welfare" ? WELFARE_EXCLUDED_FILTER : LOAN_EXCLUDED_FILTER;
   let query = supabase
@@ -321,7 +336,7 @@ export async function getRelatedPrograms(
     .neq("id", excludeId)
     .or(`apply_end.gte.${today},apply_end.is.null`)
     .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(limit);
+    .limit(queryLimit);
 
   if (region && region !== "전국" && type === "welfare") {
     query = query.eq("region", region);
@@ -339,11 +354,41 @@ export async function getRelatedPrograms(
         .neq("id", excludeId)
         .or(`apply_end.gte.${today},apply_end.is.null`)
         .order("apply_end", { ascending: true, nullsFirst: false })
-        .limit(limit);
-      return (fallback || []).map(type === "welfare" ? welfareToDisplay : loanToDisplay);
+        .limit(queryLimit);
+      return filterForUser((fallback || []) as ProgramRow[]).map((row) =>
+        programRowToDisplay(row, type),
+      );
     }
     return [];
   }
 
-  return data.map(type === "welfare" ? welfareToDisplay : loanToDisplay);
+  return filterForUser(data as ProgramRow[]).map((row) =>
+    programRowToDisplay(row, type),
+  );
+}
+
+function programRowToScorable(row: ProgramRow): ScorableItem {
+  return {
+    id: row.id,
+    title: row.title,
+    target: row.target,
+    description: row.description,
+    eligibility: row.eligibility,
+    detailed_content: row.detailed_content,
+    region: "region" in row ? row.region : null,
+    benefit_tags: row.benefit_tags,
+    apply_end: row.apply_end,
+    source: row.source,
+    income_target_level: row.income_target_level,
+    household_target_tags: row.household_target_tags,
+  };
+}
+
+function programRowToDisplay(
+  row: ProgramRow,
+  type: "welfare" | "loan",
+): DisplayProgram {
+  return type === "welfare"
+    ? welfareToDisplay(row as WelfareProgram)
+    : loanToDisplay(row as LoanProgram);
 }
