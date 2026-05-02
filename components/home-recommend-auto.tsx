@@ -245,6 +245,7 @@ export async function HomeRecommendAuto({
 
   const profileSummary = getProfileCompletionSummary(profile.signals);
   const groupedItems = groupHomeRecommendationsByConfidence(items);
+  const likelyItems = getHighConfidenceHomeRecommendations(items);
 
   return (
     <section className="rounded-2xl border border-grey-200 bg-white p-5 sm:p-6 shadow-lg">
@@ -253,7 +254,7 @@ export async function HomeRecommendAuto({
         <h2 className="text-base sm:text-lg font-bold text-grey-900">
           🌟 {profile.displayName}님께 맞는 정책
           <span className="ml-2 text-xs max-md:text-[13px] text-grey-500 font-normal">
-            {items.length}건
+            {likelyItems.length}건
           </span>
         </h2>
         <Link
@@ -270,15 +271,23 @@ export async function HomeRecommendAuto({
 
       <HomeRecommendationList
         title="받을 가능성 높음"
-        items={groupedItems.likely}
+        items={likelyItems}
       />
-      <HomeRecommendationList
-        title="조건 확인 필요"
-        items={groupedItems.needsReview}
-        muted
-      />
+      {likelyItems.length === 0 && groupedItems.needsReview.length > 0 && (
+        <div className="rounded-xl border border-dashed border-grey-200 bg-grey-50 px-3 py-3 text-sm leading-[1.6] text-grey-600">
+          마이페이지 조건만으로 바로 추천할 만큼 확실한 정책은 아직 없어요.
+          <br />
+          조건 확인이 필요한 후보는 전체 목록에서 직접 비교해 주세요.
+        </div>
+      )}
     </section>
   );
+}
+
+export function getHighConfidenceHomeRecommendations<T extends { signals: MatchSignal[] }>(
+  items: T[],
+): T[] {
+  return groupHomeRecommendationsByConfidence(items).likely;
 }
 
 type HomeRecommendationItem = {

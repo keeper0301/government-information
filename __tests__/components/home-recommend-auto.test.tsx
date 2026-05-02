@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getHomeMatchReasonLabels,
+  getHighConfidenceHomeRecommendations,
   getProfileCompletionSummary,
   getRecommendationConfidenceLabel,
   groupHomeRecommendationsByConfidence,
@@ -151,6 +152,31 @@ describe("groupHomeRecommendationsByConfidence", () => {
       likely: [strong],
       needsReview: [weakInterestMatch, needsReview],
     });
+  });
+});
+
+describe("getHighConfidenceHomeRecommendations", () => {
+  it("keeps weak profile matches out of the homepage preview", () => {
+    const strong = {
+      item: { id: "strong" },
+      signals: [
+        { kind: "region", score: 5 },
+        { kind: "income_target", score: 4 },
+      ] satisfies MatchSignal[],
+    };
+    const needsReview = {
+      item: { id: "needs-review" },
+      signals: [
+        { kind: "region", score: 5 },
+        { kind: "benefit_tags", score: 3 },
+        { kind: "age", score: 1 },
+      ] satisfies MatchSignal[],
+    };
+
+    expect(getHighConfidenceHomeRecommendations([needsReview])).toEqual([]);
+    expect(getHighConfidenceHomeRecommendations([needsReview, strong])).toEqual([
+      strong,
+    ]);
   });
 });
 
