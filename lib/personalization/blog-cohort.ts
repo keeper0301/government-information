@@ -15,6 +15,12 @@
 // 매핑이 BENEFIT_TAGS 만 보고 연령 cohort·지역 명시를 무시한 게 원인.
 // ============================================================
 import type { LoadedProfile } from "./load-profile";
+import {
+  DISTRICTS_BY_PROVINCE,
+  PROVINCES,
+  PROVINCE_SHORT_TO_FULL,
+  type ProvinceCode,
+} from "@/lib/regions";
 
 // 사용자 region 외 다른 광역시도 명칭 (제목·설명에 명시되면 차단 후보)
 // REGION_OPTIONS 에서 "전국" 제외한 17개 광역
@@ -113,6 +119,38 @@ function passesRegionFilter(
   return true;
 }
 
+function getProvinceCodeForRegion(userRegion: string | null): ProvinceCode | null {
+  if (!userRegion || userRegion === "전국") return null;
+
+  const fullName = PROVINCE_SHORT_TO_FULL[userRegion] ?? userRegion;
+  const province = PROVINCES.find((p) =>
+    p.name === fullName ||
+    p.name.includes(userRegion) ||
+    fullName.includes(p.name)
+  );
+
+  return province?.code ?? null;
+}
+
+function passesDistrictFilter(
+  text: string,
+  userRegion: string | null,
+  userDistrict: string | null,
+): boolean {
+  if (!userRegion || userRegion === "전국" || !userDistrict) return true;
+  if (text.includes(userDistrict)) return true;
+
+  const provinceCode = getProvinceCodeForRegion(userRegion);
+  if (!provinceCode) return true;
+
+  const districts = DISTRICTS_BY_PROVINCE[provinceCode] ?? [];
+  const otherDistrictMentioned = districts.some(
+    (district) => district !== userDistrict && text.includes(district),
+  );
+
+  return !otherDistrictMentioned;
+}
+
 // 메인 필터 — true 면 사용자에게 노출, false 면 제외
 export function isBlogCohortFit(
   post: BlogCohortInput,
@@ -137,6 +175,7 @@ export function isBlogCohortFit(
   const tagsText = (post.tags ?? []).join(" ");
   const text = `${post.title ?? ""} ${post.meta_description ?? ""} ${tagsText}`;
   if (!passesRegionFilter(text, user.region)) return false;
+  if (!passesDistrictFilter(text, user.region, user.district)) return false;
 
   return true;
 }

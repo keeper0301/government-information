@@ -79,6 +79,14 @@ export function getProfileCompletionSummary(
 
 export function getRecommendationConfidenceLabel(signals: MatchSignal[]): string {
   const reasons = getHomeMatchReasonLabels(signals, 10);
+  const hasQualificationSignal = signals.some((signal) =>
+    signal.kind === 'income_target' ||
+    signal.kind === 'household_target' ||
+    signal.kind === 'occupation' ||
+    signal.kind === 'business_match'
+  );
+
+  if (!hasQualificationSignal) return '확인 필요';
   if (reasons.length >= 4) return '매우 적합';
   if (reasons.length >= 2) return '적합';
   return '확인 필요';

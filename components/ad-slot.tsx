@@ -1,57 +1,80 @@
-// AdSense in-feed 슬롯 — env 미설정 시 placeholder, 설정 시 진짜 광고.
-//
-// 환경변수 3종 (NEXT_PUBLIC_ 접두 → 빌드 타임 inline. 클라이언트 번들에 포함):
-//   NEXT_PUBLIC_ADSENSE_ID            publisher ID, ca-pub-... (AdsenseLazyLoader 와 동일 변수 — 통일)
-//   NEXT_PUBLIC_ADSENSE_SLOT_INFEED   in-feed 슬롯 ID (사장님 외부 액션, AdSense 콘솔에서 발급)
-//   NEXT_PUBLIC_ADSENSE_LAYOUT_INFEED in-feed 레이아웃 키 (예: -fb+5w+4e-db+86, AdSense 콘솔 발급)
-//
-// 동작 흐름:
-//   1. AdsenseLazyLoader 가 사용자 상호작용 또는 10초 후 adsbygoogle.js 라이브러리 로드.
-//      (자동광고 활성도 함께)
-//   2. 본 컴포넌트 mount 시 window.adsbygoogle.push({}) 로 in-feed 슬롯 채움 요청.
-//      라이브러리가 아직 안 로드돼도 push 큐에 쌓여 있다가 로드되는 즉시 처리.
-//   3. env 둘 중 하나라도 없으면 placeholder div 만 렌더 — 개발/preview/AdSense 미승인 단계 안전.
-//
-// 사용처: 5개 위치 (홈·hub·eligibility·welfare·loan) in-feed 카드 그리드 사이.
-
 "use client";
-import { useEffect } from "react";
+
+import { useEffect, useRef, useState } from "react";
 
 const PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
 const SLOT_INFEED = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
 const LAYOUT_INFEED = process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_INFEED;
+const EMPTY_SLOT_FALLBACK_MS = 15000;
 
-// adsbygoogle 전역 타입 — AdsenseLazyLoader 가 주입하는 큐 배열.
-// any 회피 위해 최소 형태만 선언.
 type AdsByGoogle = Array<Record<string, unknown>>;
+export type AdRenderState = "pending" | "filled" | "empty";
 
 interface AdSlotProps {
   /**
    * AdSense ad-format.
-   * - "fluid": in-feed (콘텐츠 사이 자연스럽게 끼워짐, 권장)
-   * - "auto":  responsive 일반 배너
+   * - "fluid": in-feed
+   * - "auto": responsive banner
    */
   format?: "fluid" | "auto";
 }
 
+export function getAdRenderState(node: Element): AdRenderState {
+  const status = node.getAttribute("data-ad-status");
+  if (status === "unfilled") return "empty";
+  if (status === "filled" || node.querySelector("iframe")) return "filled";
+  return "pending";
+}
+
 export function AdSlot({ format = "fluid" }: AdSlotProps) {
+  const adRef = useRef<HTMLModElement | null>(null);
+  const [renderState, setRenderState] = useState<AdRenderState>("pending");
+
   useEffect(() => {
-    // env 미설정 시 push 안 함 (placeholder 분기에서 일찍 return 하지만 안전 보강)
     if (!PUBLISHER_ID || !SLOT_INFEED) return;
     if (typeof window === "undefined") return;
+
+    let observer: MutationObserver | null = null;
+    let fallbackTimer: number | null = null;
+
+    const updateRenderState = () => {
+      const node = adRef.current;
+      if (!node) return;
+
+      setRenderState(getAdRenderState(node));
+    };
 
     try {
       const w = window as unknown as { adsbygoogle?: AdsByGoogle };
       w.adsbygoogle = w.adsbygoogle ?? [];
       w.adsbygoogle.push({});
     } catch (err) {
-      // push 실패는 광고 노출에만 영향 (서비스 동작 무관) → warn 으로만 남김
-      console.warn("[AdSlot] adsbygoogle.push 실패:", err);
+      console.warn("[AdSlot] adsbygoogle.push failed:", err);
+      window.setTimeout(() => setRenderState("empty"), 0);
     }
+
+    const node = adRef.current;
+    if (node) {
+      observer = new MutationObserver(updateRenderState);
+      observer.observe(node, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    // AdsenseLazyLoader can wait 10s before loading on idle pages.
+    // Keep the fallback later than that so valid ads are not collapsed early.
+    fallbackTimer = window.setTimeout(() => {
+      setRenderState((current) => (current === "pending" ? "empty" : current));
+    }, EMPTY_SLOT_FALLBACK_MS);
+
+    return () => {
+      observer?.disconnect();
+      if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
+    };
   }, []);
 
-  // env 미설정 → placeholder (개발/preview 환경 + AdSense 미승인 단계 안전).
-  // 시각적으로 "광고가 들어갈 자리" 만 알려주는 옅은 placeholder.
   if (!PUBLISHER_ID || !SLOT_INFEED) {
     return (
       <div className="max-w-content mx-auto px-10 max-md:px-6">
@@ -62,11 +85,16 @@ export function AdSlot({ format = "fluid" }: AdSlotProps) {
     );
   }
 
-  // 진짜 AdSense in-feed 슬롯 — adsbygoogle.js 가 ins 태그를 자동 채움.
-  // display:block 은 AdSense 가 요구하는 필수 스타일.
   return (
-    <div className="max-w-content mx-auto px-10 max-md:px-6 my-4">
+    <div
+      className={
+        renderState === "empty"
+          ? "hidden"
+          : "max-w-content mx-auto px-10 max-md:px-6 my-4"
+      }
+    >
       <ins
+        ref={adRef}
         className="adsbygoogle block"
         style={{ display: "block" }}
         data-ad-format={format}

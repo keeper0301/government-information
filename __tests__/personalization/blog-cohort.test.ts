@@ -179,7 +179,7 @@ describe("isBlogCohortFit", () => {
         category: "소상공인",
         title: "2026년 전남 영암군 소상공인 지원",
       };
-      expect(isBlogCohortFit(post, sajangnim)).toBe(true);
+      expect(isBlogCohortFit(post, sajangnim)).toBe(false);
     });
 
     it("전국 정책 (광역 명시 없음) → 통과", () => {

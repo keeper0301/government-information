@@ -111,6 +111,14 @@ describe("getRecommendationConfidenceLabel", () => {
       ]),
     ).toBe("적합");
 
+    expect(
+      getRecommendationConfidenceLabel([
+        { kind: "region", score: 5 },
+        { kind: "benefit_tags", score: 3 },
+        { kind: "age", score: 1 },
+      ]),
+    ).toBe("확인 필요");
+
     expect(getRecommendationConfidenceLabel([{ kind: "region", score: 5 }])).toBe(
       "확인 필요",
     );
@@ -126,14 +134,22 @@ describe("groupHomeRecommendationsByConfidence", () => {
         { kind: "income_target", score: 4 },
       ] satisfies MatchSignal[],
     };
+    const weakInterestMatch = {
+      item: { id: "weak-interest" },
+      signals: [
+        { kind: "region", score: 5 },
+        { kind: "benefit_tags", score: 3 },
+        { kind: "age", score: 1 },
+      ] satisfies MatchSignal[],
+    };
     const needsReview = {
       item: { id: "review" },
       signals: [{ kind: "region", score: 5 }] satisfies MatchSignal[],
     };
 
-    expect(groupHomeRecommendationsByConfidence([strong, needsReview])).toEqual({
+    expect(groupHomeRecommendationsByConfidence([strong, weakInterestMatch, needsReview])).toEqual({
       likely: [strong],
-      needsReview: [needsReview],
+      needsReview: [weakInterestMatch, needsReview],
     });
   });
 });

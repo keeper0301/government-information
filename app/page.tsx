@@ -13,7 +13,6 @@ import { HomeTrustStrip } from "@/components/home-trust-strip";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
-import { PopularPicksRow } from "@/components/popular-picks-row";
 import { HomeJsonLd } from "@/components/home-jsonld";
 import { AdSlot } from "@/components/ad-slot";
 import { BlogCategoryChips } from "@/components/blog-category-chips";
@@ -29,7 +28,6 @@ import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { getUrgentPrograms } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
-import { getPopularPicks } from "@/lib/popular-picks";
 import { createClient } from "@/lib/supabase/server";
 
 // FloatingWishWidget — 좌측 하단 floating 위젯, 즉시 노출 불필요.
@@ -92,11 +90,6 @@ async function HeroIndicator() {
 async function AlertStripSection({ isLoggedIn }: { isLoggedIn: boolean }) {
   const urgents = await getUrgentPrograms(12);
   return <AlertStrip programs={urgents} isLoggedIn={isLoggedIn} />;
-}
-
-async function PopularPicksRowSection() {
-  const popularPicks = await getPopularPicks(5);
-  return <PopularPicksRow picks={popularPicks} />;
 }
 
 async function RecentBlogSection() {
@@ -316,8 +309,6 @@ export default async function Home() {
 
       <HomeDiscoveryHub
         regionMap={<RegionMap />}
-        alertStrip={<AlertStripSection isLoggedIn={isLoggedIn} />}
-        popularPicks={<PopularPicksRowSection />}
       />
 
       <RevealOnScroll>
@@ -356,6 +347,12 @@ export default async function Home() {
               <CalendarPreview />
             </section>
           </div>
+        </Suspense>
+      </RevealOnScroll>
+
+      <RevealOnScroll>
+        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
+          <AlertStripSection isLoggedIn={isLoggedIn} />
         </Suspense>
       </RevealOnScroll>
 

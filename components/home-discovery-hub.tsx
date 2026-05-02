@@ -4,12 +4,8 @@ import { RevealOnScroll } from "@/components/reveal-on-scroll";
 
 export function HomeDiscoveryHub({
   regionMap,
-  alertStrip,
-  popularPicks,
 }: {
   regionMap: ReactNode;
-  alertStrip: ReactNode;
-  popularPicks: ReactNode;
 }) {
   return (
     <section aria-labelledby="home-discovery-title" className="bg-white">
@@ -38,17 +34,6 @@ export function HomeDiscoveryHub({
         </Suspense>
       </RevealOnScroll>
 
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
-          {alertStrip}
-        </Suspense>
-      </RevealOnScroll>
-
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[260px]" aria-hidden />}>
-          {popularPicks}
-        </Suspense>
-      </RevealOnScroll>
     </section>
   );
 }

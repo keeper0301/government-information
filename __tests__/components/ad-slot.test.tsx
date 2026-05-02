@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { AdSlot } from "@/components/ad-slot";
+import { AdSlot, getAdRenderState } from "@/components/ad-slot";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -50,5 +50,25 @@ describe("AdSlot", () => {
       });
     }).not.toThrow();
     expect(container.textContent).toContain("광고");
+  });
+});
+
+describe("getAdRenderState", () => {
+  it("AdSense unfilled state collapses the slot", () => {
+    const ins = document.createElement("ins");
+    ins.setAttribute("data-ad-status", "unfilled");
+
+    expect(getAdRenderState(ins)).toBe("empty");
+  });
+
+  it("AdSense filled state keeps the slot visible", () => {
+    const filled = document.createElement("ins");
+    filled.setAttribute("data-ad-status", "filled");
+
+    const withFrame = document.createElement("ins");
+    withFrame.appendChild(document.createElement("iframe"));
+
+    expect(getAdRenderState(filled)).toBe("filled");
+    expect(getAdRenderState(withFrame)).toBe("filled");
   });
 });
