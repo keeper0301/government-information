@@ -118,11 +118,6 @@ export default async function RootLayout({
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-          media="print"
-          // React 가 onLoad 를 함수로 강제하지만 HTML 표준은 string 도 허용
-          // — DOM attribute 직접 주입을 위해 cast.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          {...({ onLoad: "this.media='all'" } as any)}
         />
         <noscript>
           <link
