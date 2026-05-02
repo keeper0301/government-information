@@ -339,6 +339,12 @@ export default async function Home() {
         </Suspense>
       </RevealOnScroll>
 
+      <RevealOnScroll>
+        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
+          <AlertStripSection isLoggedIn={isLoggedIn} />
+        </Suspense>
+      </RevealOnScroll>
+
       {/* [도구 1] Calendar — 이번 달 신청 일정 달력 */}
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[480px] bg-grey-50" aria-hidden />}>
@@ -347,12 +353,6 @@ export default async function Home() {
               <CalendarPreview />
             </section>
           </div>
-        </Suspense>
-      </RevealOnScroll>
-
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
-          <AlertStripSection isLoggedIn={isLoggedIn} />
         </Suspense>
       </RevealOnScroll>
 

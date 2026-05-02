@@ -177,6 +177,9 @@ describe("getHighConfidenceHomeRecommendations", () => {
     expect(getHighConfidenceHomeRecommendations([needsReview, strong])).toEqual([
       strong,
     ]);
+    expect(getHighConfidenceHomeRecommendations([strong, { ...strong, item: { id: "second" } }], 1)).toEqual([
+      strong,
+    ]);
   });
 });
 
