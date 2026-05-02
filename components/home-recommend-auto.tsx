@@ -84,6 +84,27 @@ export function getRecommendationConfidenceLabel(signals: MatchSignal[]): string
   return '확인 필요';
 }
 
+export type HomeRecommendationGroups<T> = {
+  likely: T[];
+  needsReview: T[];
+};
+
+export function groupHomeRecommendationsByConfidence<T extends { signals: MatchSignal[] }>(
+  items: T[],
+): HomeRecommendationGroups<T> {
+  return items.reduce<HomeRecommendationGroups<T>>(
+    (groups, item) => {
+      if (getRecommendationConfidenceLabel(item.signals) === '확인 필요') {
+        groups.needsReview.push(item);
+      } else {
+        groups.likely.push(item);
+      }
+      return groups;
+    },
+    { likely: [], needsReview: [] },
+  );
+}
+
 // DB welfare_programs raw 행 → ScorableItem 변환
 // 정정 (2026-04-25 hot-fix): benefit_tags 컬럼은 실제 DB 에 있음 (031 분류 통일).
 // 이전엔 manual 타입에 누락돼 있어 null 처리했지만, 이제 그대로 활용해
@@ -215,6 +236,7 @@ export async function HomeRecommendAuto({
   }
 
   const profileSummary = getProfileCompletionSummary(profile.signals);
+  const groupedItems = groupHomeRecommendationsByConfidence(items);
 
   return (
     <section className="rounded-2xl border border-grey-200 bg-white p-5 sm:p-6 shadow-lg">
@@ -238,7 +260,39 @@ export async function HomeRecommendAuto({
       </p>
       <ProfileTrustStrip summary={profileSummary} />
 
-      {/* 추천 정책 목록 — 각 항목은 /welfare/[id] 상세 링크 */}
+      <HomeRecommendationList
+        title="받을 가능성 높음"
+        items={groupedItems.likely}
+      />
+      <HomeRecommendationList
+        title="조건 확인 필요"
+        items={groupedItems.needsReview}
+        muted
+      />
+    </section>
+  );
+}
+
+type HomeRecommendationItem = {
+  item: ScorableItem;
+  score: number;
+  signals: MatchSignal[];
+};
+
+function HomeRecommendationList({
+  title,
+  items,
+  muted = false,
+}: {
+  title: string;
+  items: HomeRecommendationItem[];
+  muted?: boolean;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className={muted ? "mt-4" : ""}>
+      <div className="mb-2 text-[12px] font-bold text-grey-700">{title}</div>
       <ul className="space-y-2.5">
         {items.map(({ item, signals }) => {
           const reasons = getHomeMatchReasonLabels(signals, 4);
@@ -247,13 +301,21 @@ export async function HomeRecommendAuto({
             <li key={item.id}>
               <Link
                 href={`/welfare/${item.id}`}
-                className="block py-2.5 px-3 rounded-xl hover:bg-grey-50 transition no-underline"
+                className={`block rounded-xl px-3 py-2.5 no-underline transition hover:bg-grey-50 ${
+                  muted ? "border border-dashed border-grey-200" : ""
+                }`}
               >
                 <div className="text-sm max-md:text-[15px] font-semibold text-grey-900 line-clamp-2">
                   {item.title}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+                      muted
+                        ? "border-amber-100 bg-amber-50 text-amber-700"
+                        : "border-blue-100 bg-blue-50 text-blue-700"
+                    }`}
+                  >
                     {confidence}
                   </span>
                   {reasons.map((reason) => (
@@ -275,7 +337,7 @@ export async function HomeRecommendAuto({
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }
 

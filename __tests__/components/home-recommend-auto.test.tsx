@@ -3,6 +3,7 @@ import {
   getHomeMatchReasonLabels,
   getProfileCompletionSummary,
   getRecommendationConfidenceLabel,
+  groupHomeRecommendationsByConfidence,
 } from "@/components/home-recommend-auto";
 import { scoreProgram, type ScorableItem } from "@/lib/personalization/score";
 import type { MatchSignal, UserSignals } from "@/lib/personalization/types";
@@ -113,6 +114,27 @@ describe("getRecommendationConfidenceLabel", () => {
     expect(getRecommendationConfidenceLabel([{ kind: "region", score: 5 }])).toBe(
       "확인 필요",
     );
+  });
+});
+
+describe("groupHomeRecommendationsByConfidence", () => {
+  it("separates strong recommendations from items that need source confirmation", () => {
+    const strong = {
+      item: { id: "strong" },
+      signals: [
+        { kind: "region", score: 5 },
+        { kind: "income_target", score: 4 },
+      ] satisfies MatchSignal[],
+    };
+    const needsReview = {
+      item: { id: "review" },
+      signals: [{ kind: "region", score: 5 }] satisfies MatchSignal[],
+    };
+
+    expect(groupHomeRecommendationsByConfidence([strong, needsReview])).toEqual({
+      likely: [strong],
+      needsReview: [needsReview],
+    });
   });
 });
 
