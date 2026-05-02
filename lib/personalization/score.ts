@@ -313,6 +313,56 @@ const DISASTER_VICTIM_COHORT_KEYWORDS: RegExp[] = [
   /긴급\s*구호/,
 ];
 
+// 학생 전용 대출/장학 정책은 직업이 대학생으로 명시된 사용자에게만 노출한다.
+const STUDENT_COHORT_KEYWORDS: RegExp[] = [
+  /학자금\s*대출/,
+  /학자금대출/,
+  /학점은행제\s*학습자/,
+  /대학\(원\)생/,
+  /대학생/,
+];
+
+// 결혼/신혼부부 전용 정책은 married 가구 신호가 있을 때만 노출한다.
+const NEWLYWED_COHORT_KEYWORDS: RegExp[] = [
+  /청년부부/,
+  /결혼\s*축하금/,
+  /결혼\s*초기/,
+  /신혼부부/,
+  /신혼\s*부부/,
+];
+
+// 근로자 전용 상병/산재 정책은 직장인 신호가 있을 때만 노출한다.
+const WORKER_COHORT_KEYWORDS: RegExp[] = [
+  /상병수당/,
+  /산재보험급여/,
+  /산재\s*보험\s*급여/,
+  /업무상\s*사유/,
+  /근로자의\s*업무상/,
+  /근로자(?!\s*및\s*일반)/,
+];
+
+// 실업자/퇴직자 전용 보험 정책은 구직자 신호가 있을 때만 노출한다.
+const JOB_SEEKER_COHORT_KEYWORDS: RegExp[] = [
+  /임의계속가입제도/,
+  /임의계속보험료/,
+  /실업자/,
+  /퇴직자/,
+];
+
+// 고혈압/당뇨 등 질환 보유자 전용 정책은 현재 프로필 모델에 질환 입력이 없어 일반 추천에서 제외한다.
+const CHRONIC_DISEASE_COHORT_KEYWORDS: RegExp[] = [
+  /고혈압/,
+  /당뇨병/,
+  /만성\s*질환/,
+  /지속치료율/,
+];
+
+// 대상포진 예방접종은 통상 고령/저소득 조건이 붙어, 해당 신호가 없으면 일반 추천에서 제외한다.
+const SHINGLES_VACCINATION_COHORT_KEYWORDS: RegExp[] = [
+  /대상포진\s*예방접종/,
+  /대상포진/,
+];
+
 // 정책 본문이 특정 cohort 전용인데 사용자가 그 cohort 에 안 속하면 true 반환.
 // true → score 0, signals=[] 로 강제 → filter 에서 minScore 못 넘음.
 function isCohortMismatch(haystack: string, user: UserSignals): boolean {
@@ -362,6 +412,35 @@ function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   // 재해이재민·재난피해자 전용 정책은 별도 피해 상태 입력이 없으므로 일반 추천에서 차단
   if (DISASTER_VICTIM_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     return true;
+  }
+  // 학생 전용 교육 대출/학습자 정책은 대학생 프로필만 통과
+  if (STUDENT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    if (user.occupation !== '대학생') return true;
+  }
+  // 청년부부/신혼부부 전용 정책은 married 가구 신호만 통과
+  if (NEWLYWED_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    if (!user.householdTypes.includes('married')) return true;
+  }
+  // 근로자 전용 상병/산재 정책은 직장인 프로필만 통과
+  if (WORKER_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    if (user.occupation !== '직장인') return true;
+  }
+  // 실업자/퇴직자 전용 보험 정책은 구직자 프로필만 통과
+  if (JOB_SEEKER_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    if (user.occupation !== '구직자') return true;
+  }
+  // 질환 보유자 전용 정책은 현재 프로필에 질환 입력이 없으므로 일반 추천에서 제외
+  if (CHRONIC_DISEASE_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    return true;
+  }
+  // 대상포진 예방접종은 고령/저소득/노인가구 신호가 없으면 제외
+  if (SHINGLES_VACCINATION_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
+    const isEligible =
+      user.ageGroup === '60대 이상' ||
+      user.incomeLevel === 'low' ||
+      user.incomeLevel === 'mid_low' ||
+      user.householdTypes.includes('elderly_family');
+    if (!isEligible) return true;
   }
   // 기초수급·차상위·저소득 cohort — low/mid_low 만 통과
   if (LOW_INCOME_ONLY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {

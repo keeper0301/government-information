@@ -225,6 +225,118 @@ describe("recommend cohort gate", () => {
     ).toBe(true);
   });
 
+  it("blocks student-only education loans unless occupation is student", () => {
+    const program = makeWelfare({
+      title: "일반 상환 학자금대출",
+      target: "대학(원)생 및 학점은행제 학습자",
+      description: "학자금이 필요한 대학생에게 저리로 학자금대출을 지원합니다.",
+      source: "교육부",
+    });
+
+    expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+    expect(
+      isRecommendWelfareEligible(program, {
+        ...baseUser,
+        occupation: "대학생",
+      }),
+    ).toBe(true);
+  });
+
+  it("blocks newlywed couple benefits unless household type is married", () => {
+    const program = makeWelfare({
+      title: "전라남도 청년부부 결혼축하금 지원사업",
+      target: "도내 거주 중인 청년부부",
+      description: "청년층의 결혼 초기 경제적 부담 완화 및 안정적인 지역 정착을 지원합니다.",
+      source: "전라남도",
+    });
+
+    expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+    expect(
+      isRecommendWelfareEligible(program, {
+        ...baseUser,
+        householdTypes: ["married"],
+      }),
+    ).toBe(true);
+  });
+
+  it("blocks worker-only sickness and industrial accident benefits unless occupation is worker", () => {
+    const programs = [
+      makeWelfare({
+        title: "한국형 상병수당 시범사업",
+        target: "근로자",
+        description: "근로자가 업무 외 질병·부상으로 경제활동이 어려운 경우 소득을 보전합니다.",
+        source: "보건복지부",
+      }),
+      makeWelfare({
+        title: "요양급여(보조기)-산재보험급여",
+        target: "근로자",
+        description: "근로자의 업무상 사유에 의한 부상 및 질병에 대한 재활보조기구 비용을 지급합니다.",
+        source: "고용노동부",
+      }),
+    ];
+
+    for (const program of programs) {
+      expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+      expect(
+        isRecommendWelfareEligible(program, {
+          ...baseUser,
+          occupation: "직장인",
+        }),
+      ).toBe(true);
+    }
+  });
+
+  it("blocks unemployment continuation insurance unless occupation is job seeker", () => {
+    const program = makeWelfare({
+      title: "건강보험 임의계속가입제도",
+      target: "실업자",
+      description: "실업자에 대한 경제적 부담을 완화하고자 임의계속보험료를 지원합니다.",
+      source: "보건복지부",
+    });
+
+    expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+    expect(
+      isRecommendWelfareEligible(program, {
+        ...baseUser,
+        occupation: "구직자",
+      }),
+    ).toBe(true);
+  });
+
+  it("blocks chronic-disease-only benefits from general recommendations", () => {
+    const program = makeWelfare({
+      title: "고혈압·당뇨병 등록관리사업",
+      target: "고혈압, 당뇨병 환자",
+      description: "고혈압·당뇨병 환자의 지속치료율 향상 및 자기관리 역량을 지원합니다.",
+      source: "질병관리청",
+    });
+
+    expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+  });
+
+  it("blocks shingles vaccination unless profile has an elderly or low-income signal", () => {
+    const program = makeWelfare({
+      title: "순천시 대상포진 예방접종 지원사업",
+      target: "대상포진 예방접종 대상자",
+      description: "대상포진 예방접종 비용을 지원합니다.",
+      source: "전라남도 순천시",
+    });
+
+    expect(isRecommendWelfareEligible(program, baseUser)).toBe(false);
+    expect(
+      isRecommendWelfareEligible(program, {
+        ...baseUser,
+        ageGroup: "60대 이상",
+      }),
+    ).toBe(true);
+    expect(
+      isRecommendWelfareEligible(program, {
+        ...baseUser,
+        incomeLevel: "low",
+      }),
+    ).toBe(true);
+  });
+
   it("blocks protected-youth-only welfare when mypage profile has no child signal", () => {
     const program = makeWelfare({
       title: "자립준비청년 자립수당 지급",
