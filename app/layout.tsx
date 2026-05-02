@@ -108,7 +108,8 @@ export default async function RootLayout({
       <head>
         {/* Pretendard 폰트 preload — globals.css @import 제거 후 직접 link.
             @import 는 CSS parser 차단이라 폰트 다운로드 시작이 늦어짐.
-            <link rel="preload"> + media swap 패턴으로 비차단 + 빠른 적용. */}
+            React Server Component 에서 문자열 onLoad 를 주입하지 않고,
+            preload + stylesheet 조합으로 런타임 오류 없이 빠르게 적용. */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link
           rel="preload"
