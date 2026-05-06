@@ -225,11 +225,27 @@ export function matchBusinessProfile(
   return matchedAtLeastOne ? 'match' : 'unknown';
 }
 
+// 사업자 정책 시그널 — 정책 본문이 자영업자/소상공인/사업자 대상인지 판단.
+// 일반 복지 정책에 우연히 등장하는 매출/직원 키워드로 사업자 mismatch 가
+// 잘못 적용되는 사고 (loan 53건 차단, 진단 도구 측정) 차단.
+//
+// 보수적 화이트리스트: 명확한 사업자 정책 키워드만 포함.
+// (예: 일반 복지 정책의 "기초수급자 매출 5천만원 이하" 가 우연히 매출 키워드로
+// 추출되어도, 본문에 사업자 시그널 없으면 unknown 으로 fallback.)
+//
+// "기업 지원" 은 lookbehind 로 "사회적기업/예비사회적기업" 제외 — 사회적기업
+// 정책은 사회복지 영역에 자주 등장하고 매출 기준 우연 매칭 시 false positive 위험.
+const BUSINESS_POLICY_SIGNAL =
+  /소상공인|창업|자영업|개인사업|법인사업|중소기업|상공인|(?<!사회적|예비)기업\s*지원|벤처|사업자\s*등록/;
+
 // 한 번에: 정책 본문 → 사용자 매칭 결과
 export function evaluateBusinessMatch(
   policyText: string,
   profile: BusinessProfile,
 ): BusinessMatch {
+  // 정책이 사업자 정책 아니면 unknown — 일반 정책의 우연한 매출/직원 키워드
+  // 매칭으로 사업자 사용자가 차단되는 false positive 방지
+  if (!BUSINESS_POLICY_SIGNAL.test(policyText)) return 'unknown';
   const requirements = extractPolicyRequirements(policyText);
   return matchBusinessProfile(profile, requirements);
 }

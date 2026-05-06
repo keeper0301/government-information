@@ -264,4 +264,65 @@ describe('evaluateBusinessMatch', () => {
       }),
     ).toBe('unknown');
   });
+
+  // 2026-05-06: 일반 복지 정책에 우연히 매출/직원 키워드가 등장해도
+  // 사업자 시그널 (소상공인/창업/사업자/기업/벤처/자영업 등) 없으면 unknown.
+  // 이전에는 매출 키워드만으로 mismatch 판정 → 자영업 사용자가 일반 복지 정책에서
+  // 차단되는 false positive 가 발생 (loan 53건 차단, 진단 도구 측정).
+  it('일반 복지 정책에 매출 키워드만 있어도 사업자 시그널 없으면 unknown', () => {
+    expect(
+      evaluateBusinessMatch(
+        '저소득 가구 지원금 — 가구 매출 5천만원 이하 대상',
+        {
+          ...EMPTY_PROFILE,
+          revenue_scale: '500m_1b', // 5-10억 사장님
+        },
+      ),
+    ).toBe('unknown');
+  });
+
+  it('일반 정책에 직원 키워드만 있어도 사업자 시그널 없으면 unknown', () => {
+    expect(
+      evaluateBusinessMatch(
+        '한부모 가정 지원 — 가구원 5인 이하',
+        {
+          ...EMPTY_PROFILE,
+          employee_count: 'over_100',
+        },
+      ),
+    ).toBe('unknown');
+  });
+
+  it('소상공인 정책 + 매출/직원 명시 → 정상 mismatch (회귀 방지)', () => {
+    expect(
+      evaluateBusinessMatch('소상공인 매출 5억 이하 융자', {
+        ...EMPTY_PROFILE,
+        revenue_scale: '1b_10b',
+      }),
+    ).toBe('mismatch');
+  });
+
+  it('자영업자/창업 키워드 정책 → 정상 평가', () => {
+    expect(
+      evaluateBusinessMatch('자영업자 창업 자금 지원', {
+        ...EMPTY_PROFILE,
+        revenue_scale: '50m_500m',
+        employee_count: '1_4',
+      }),
+    ).toBe('unknown'); // 명시 요구사항 없으면 unknown (BUSINESS_POLICY_SIGNAL 통과 + matchBusinessProfile 의 hasAnyRequirement 분기)
+  });
+
+  // 사회적기업/예비사회적기업 정책 — 사회복지 영역이라 매출 기준 우연 매칭
+  // false positive 차단 (lookbehind 로 BUSINESS_POLICY_SIGNAL 에서 제외)
+  it('사회적기업 정책 + 매출 키워드 → unknown (false positive 차단)', () => {
+    expect(
+      evaluateBusinessMatch(
+        '사회적기업 지원사업 — 취약계층 고용 매출 5억 이하',
+        {
+          ...EMPTY_PROFILE,
+          revenue_scale: '1b_10b',
+        },
+      ),
+    ).toBe('unknown');
+  });
 });
