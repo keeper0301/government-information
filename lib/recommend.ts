@@ -418,9 +418,13 @@ export async function getRelatedNews(opts: {
     limit,
   });
   if (scored.length === 0) {
-    // fallback: SQL 레벨에 이미 benefit_tags overlaps 가 적용돼 있어 인구통계
-    // 매칭은 보존됨. region/cohort gate 만 못 통과한 케이스라 최신 N건 노출.
-    return pool.slice(0, limit);
+    // fallback: SQL 레벨에 이미 benefit_tags overlaps 적용. 다만 raw pool 그대로
+    // 노출하면 cohort gate (장애인·노인·산재 등) 우회 사고. cohort 안전 fallback —
+    // isProgramAllowedForUser 통과한 뉴스만. 0건이면 빈 섹션 (cohort 위반보다 정직).
+    const allowed = pool.filter((p) =>
+      isProgramAllowedForUser(newsRowToScorable(p), opts.signals),
+    );
+    return allowed.slice(0, limit);
   }
   const idSet = new Set(scored.map((s) => s.item.id));
   return pool.filter((p) => idSet.has(p.id)).slice(0, limit);
@@ -487,8 +491,13 @@ export async function getRelatedBlogs(opts: {
     return pool.filter((p) => slugSet.has(p.slug)).slice(0, limit);
   }
 
-  // ③ fallback — 인구통계 카테고리 매칭
+  // ③ fallback — 인구통계 카테고리 매칭 + cohort gate 통과 (cohort 위반 차단)
   return pool
-    .filter((p) => p.category && candidates.includes(p.category))
+    .filter(
+      (p) =>
+        p.category &&
+        candidates.includes(p.category) &&
+        isProgramAllowedForUser(blogRowToScorable(p), opts.signals),
+    )
     .slice(0, limit);
 }

@@ -9,7 +9,7 @@
 // ============================================================
 
 import { createClient } from "@/lib/supabase/server";
-import { type ScorableItem } from "./score";
+import { isProgramAllowedForUser, type ScorableItem } from "./score";
 import { scoreAndFilter } from "./filter";
 import { isBlogCohortFit } from "./blog-cohort";
 import { PERSONAL_SECTION_MIN_SCORE } from "./types";
@@ -142,7 +142,16 @@ export async function getPersonalizedRecentBlogs(
     limit,
   });
 
-  if (scored.length === 0) return pool.slice(0, limit);
+  // 매칭 0건 fallback — 기존엔 raw pool 최신순이라 60대 화면에 청년 글, 부산
+  // 화면에 서울 글 같은 cohort 위반 노출 사고. 이번부터 score.ts cohort gate
+  // (isProgramAllowedForUser) 통과한 글만 fallback.
+  if (scored.length === 0) {
+    const allowed = pool.filter((p) =>
+      isProgramAllowedForUser(blogRowToScorable(p), profile.signals),
+    );
+    // allowed 도 0건이면 빈 섹션 (cohort 위반 노출보다 빈 섹션이 정직)
+    return allowed.slice(0, limit);
+  }
 
   const slugSet = new Set(scored.map((s) => s.item.id));
   return pool.filter((p) => slugSet.has(p.slug)).slice(0, limit);
@@ -184,7 +193,13 @@ export async function getPersonalizedRecentNews(
     limit,
   });
 
-  if (scored.length === 0) return pool.slice(0, limit);
+  // 매칭 0건 fallback — cohort gate 통과한 뉴스만 (cohort 위반 노출 사고 방지)
+  if (scored.length === 0) {
+    const allowed = pool.filter((p) =>
+      isProgramAllowedForUser(newsRowToScorable(p), profile.signals),
+    );
+    return allowed.slice(0, limit);
+  }
 
   const idSet = new Set(scored.map((s) => s.item.id));
   return pool.filter((p) => idSet.has(p.id)).slice(0, limit);
