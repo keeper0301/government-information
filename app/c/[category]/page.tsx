@@ -22,6 +22,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
+import { CohortCtaBanner } from "@/components/cohort-cta-banner";
 import { welfareToDisplay, loanToDisplay } from "@/lib/programs";
 import {
   WELFARE_EXCLUDED_FILTER,
@@ -240,9 +241,17 @@ export default async function CategoryHubPage({ params }: PageProps) {
             {hub.hero}
           </p>
           <p className="mt-3 text-[13px] text-grey-600">
-            현재 {hub.shortLabel} 매칭 정책 {allPrograms.length}건 (복지 {welfareRows.length} · 대출 {loanRows.length})
+            현재 {hub.shortLabel} 매칭 정책 {allPrograms.length}건 (복지 {welfareRows.length} · 대출 {loanRows.length}) · 매일 갱신
           </p>
         </header>
+
+        {/* 가입 CTA — Hero 직후 강한 배너 (광고 도달 트래픽 conversion).
+            Phase 2026-05-06: cohort hub 에 명시 가입 유도 부재로 광고 ROI 낮던 사고 fix. */}
+        <CohortCtaBanner
+          shortLabel={hub.shortLabel}
+          emoji={hub.emoji}
+          variant="primary"
+        />
 
         {/* 추천 정책 5건 */}
         {recommended.length > 0 && (
@@ -285,6 +294,16 @@ export default async function CategoryHubPage({ params }: PageProps) {
               전체 복지 정책 보기 →
             </Link>
           </div>
+        )}
+
+        {/* mid-page 가입 CTA — 마감 임박 직후 가장 자연스러운 conversion 지점.
+            "이 정책 놓치지 마세요" 메시지로 가입 유도. */}
+        {deadlineSoon.length > 0 && (
+          <CohortCtaBanner
+            shortLabel={hub.shortLabel}
+            emoji={hub.emoji}
+            variant="secondary"
+          />
         )}
 
         {/* [E2 광고] AdSense in-feed — 마감 임박 정책 (사용자 핵심 가치) 다음,
