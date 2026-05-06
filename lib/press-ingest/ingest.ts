@@ -1,10 +1,11 @@
 // ============================================================
 // 광역 보도자료 → L2 confirm 후보 자동 분류 (cron)
 // ============================================================
-// 매일 09:00 KST cron 이 호출. 후보 fetch → LLM 분류 → confirm 큐 저장.
+// 매일 KST 10:30 / 15:30 / 19:30 cron 3회 호출 (vercel.json UTC 기준).
+// 후보 fetch → LLM 분류 → confirm 큐 저장.
 //
 // 안전 가드:
-//   - 24h 후보 cap (CANDIDATE_LIMIT)
+//   - 24h 후보 cap (BASE_CAP/BOOSTED_CAP, decideCap 동적 결정)
 //   - news_id UNIQUE 후보 큐로 반복 LLM 비용 방지
 //   - is_policy=false / unsure / classify error 도 큐에 기록해 재분류 루프 차단
 //   - confirm 전 welfare/loan INSERT 없음
@@ -24,7 +25,21 @@ import {
   upsertPressCandidate,
 } from "./candidates";
 
-const CANDIDATE_LIMIT = 30; // 24h 후보 cap (LLM 비용 통제)
+// 광역 보도자료 후보 cap — 적체 감지 시 동적 상향
+// BASE_CAP × cron 3회/일 = 90건/일 capacity
+// BOOSTED_CAP × 3회 = 150건/일 capacity (적체 spike 흡수)
+// timeout margin: BOOSTED_CAP × 5초 = 250초 < maxDuration 300초
+export const BASE_CAP = 30;
+export const BOOSTED_CAP = 50;
+const PROBE_LIMIT = 200; // cap 결정용 probe limit (실제 처리는 cap 만큼만)
+
+/**
+ * 후보 수에 따라 처리 cap 을 결정.
+ * pure function — decideCap(N) 만 단위 테스트.
+ */
+export function decideCap(probedCount: number): number {
+  return probedCount > BASE_CAP ? BOOSTED_CAP : BASE_CAP;
+}
 
 export type IngestResult = {
   candidates: number; // 후보 N건
@@ -50,8 +65,11 @@ export async function runAutoIngest(): Promise<IngestResult> {
     errors: [],
   };
 
-  // 1) 24h 후보 fetch (cap)
-  const candidates = await getPressIngestCandidates(24, CANDIDATE_LIMIT);
+  // 1) 24h 후보 fetch — PROBE_LIMIT 까지 (cap 결정용)
+  // 후보 수가 BASE_CAP 초과면 BOOSTED_CAP 으로 동적 상향
+  const probed = await getPressIngestCandidates(24, PROBE_LIMIT);
+  const cap = decideCap(probed.length);
+  const candidates = probed.slice(0, cap);
   result.candidates = candidates.length;
 
   // 2) 각 후보별 LLM 분류 + 후보 큐 저장 (순차 — Anthropic rate limit 보호)

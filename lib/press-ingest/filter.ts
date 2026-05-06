@@ -99,8 +99,14 @@ export async function getPressIngestCandidates(
 
 // 운영 KPI — Step 3 가시화용
 // (24h 후보 / 24h manual_admin 등록 / 24h LLM 호출)
+//
+// candidates_24h: 24h 동안 광역+키워드 매칭된 raw 후보 수 (KPI 카드 "24h 후보")
+// unclassified_24h: 그 중 press_ingest_candidates 에 아직 안 들어간 = L2 분류 대기
+//   → dashboard 적체 알림은 이걸 기준으로 (자동화 후에도 raw count 가 줄지 않는
+//     문제를 우회. cron 이 분류한 row 는 unclassified 에서 빠짐)
 export type PressIngestKpi = {
   candidates_24h: number;
+  unclassified_24h: number;
   manual_registered_24h: number;
   llm_classify_24h: number;
   l2_pending: number;
@@ -117,7 +123,8 @@ export async function getPressIngestKpi(): Promise<PressIngestKpi> {
     l2ClassifyRes,
     pendingRes,
   ] = await Promise.all([
-    // 24h 후보 — 같은 필터 로직, count only (head:true)
+    // 24h 후보 ids fetch — candidates_24h count + unclassified_24h 차집합 양쪽 사용
+    // limit 500 안전 cap (24h 광역 발행이 그 이상 되면 정상 X, 추가 fetch 도 차단)
     (() => {
       const titleOrFilter = POLICY_SIGNAL_KEYWORDS.map(
         (k) => `title.ilike.%${k}%`,
@@ -127,10 +134,11 @@ export async function getPressIngestKpi(): Promise<PressIngestKpi> {
       ).join(",");
       return admin
         .from("news_posts")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .gte("published_at", since24h)
         .or(PROVINCE_ILIKE_PATTERNS)
-        .or(`${titleOrFilter},${summaryOrFilter}`);
+        .or(`${titleOrFilter},${summaryOrFilter}`)
+        .limit(500);
     })(),
     // 24h 사장님 수동 등록 — admin_actions.manual_program_create 중
     // details.kind != 'press_classify' (LLM 호출만 한 경우 제외)
@@ -160,8 +168,39 @@ export async function getPressIngestKpi(): Promise<PressIngestKpi> {
       .eq("status", "pending"),
   ]);
 
+  // 24h 후보 ids 추출 (candidatesRes.data 는 [{id}, ...])
+  const candidateIds = (
+    (candidatesRes.data ?? []) as { id: string }[]
+  ).map((p) => p.id);
+  const candidates_24h = candidateIds.length;
+
+  // unclassified_24h — press_ingest_candidates 에 안 들어간 ids 만 카운트
+  // candidateIds 가 비면 IN 조회 skip (PostgREST 빈 IN 거부 회피)
+  let unclassified_24h = candidates_24h;
+  if (candidateIds.length > 0) {
+    const { data: classified, error: classifiedErr } = await admin
+      .from("press_ingest_candidates")
+      .select("news_id")
+      .in("news_id", candidateIds);
+    if (classifiedErr) {
+      // graceful degrade — fallback 은 raw count (자동화 전 동작과 동일)
+      console.warn(
+        "[press-ingest:kpi] press_ingest_candidates IN 조회 실패:",
+        classifiedErr.message,
+      );
+    } else {
+      const classifiedSet = new Set(
+        (classified ?? []).map((c) => c.news_id as string),
+      );
+      unclassified_24h = candidateIds.filter(
+        (id) => !classifiedSet.has(id),
+      ).length;
+    }
+  }
+
   return {
-    candidates_24h: candidatesRes.count ?? 0,
+    candidates_24h,
+    unclassified_24h,
     manual_registered_24h: registeredRes.count ?? 0,
     llm_classify_24h: (manualClassifyRes.count ?? 0) + (l2ClassifyRes.count ?? 0),
     l2_pending: pendingRes.count ?? 0,

@@ -1,18 +1,17 @@
 // app/api/cron/press-ingest/route.ts
-// 매일 09:00 KST cron — 광역도 보도자료 L2 자동 분류.
+// 매일 KST 10:30 / 15:30 / 19:30 cron 3회 — 광역도 보도자료 L2 자동 분류.
 // 24h 후보 fetch → LLM 분류 → press_ingest_candidates confirm 큐 저장.
 //
-// 안전 가드: 후보 cap 30 / news_id UNIQUE / confirm 전 welfare·loan INSERT 없음 /
-// 비정책·unsure·분류 실패도 큐에 기록해 반복 LLM 비용 차단.
+// 안전 가드: 동적 cap (평소 30 / 적체 시 50, decideCap) / news_id UNIQUE /
+// confirm 전 welfare·loan INSERT 없음 / 비정책·unsure·분류 실패도 큐에 기록.
 //
-// vercel.json crons: { "path": "/api/cron/press-ingest", "schedule": "5 0 * * *" }
-// (UTC 00:05 = KST 09:05, 정시 회피)
+// vercel.json crons: 30 1/6/10 * * * UTC (= KST 10:30/15:30/19:30, 정시 회피)
 
 import { NextResponse } from "next/server";
 import { runAutoIngest } from "@/lib/press-ingest/ingest";
 
 export const dynamic = "force-dynamic";
-// LLM 호출 직렬화 + 외부 API 응답 시간 — 후보 30건 × 5s = 150s 가능
+// BOOSTED cap 50 × ~5s = 250s < maxDuration 300s (안전 margin 50s)
 export const maxDuration = 300;
 
 async function authorize(request: Request) {

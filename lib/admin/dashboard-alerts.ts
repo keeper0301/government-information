@@ -154,14 +154,16 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   }
 
   // press-ingest 광역 보도자료 후보 적체
+  // unclassified_24h 기준 — cron 이 분류한 row 는 카운트에서 빠지므로
+  // 자동화가 따라가는 한 알림은 안 뜸. 30+ = 진짜 적체 신호.
   if (
     pressSettled.status === "fulfilled" &&
-    pressSettled.value.candidates_24h >= PRESS_INGEST_BACKLOG_THRESHOLD
+    pressSettled.value.unclassified_24h >= PRESS_INGEST_BACKLOG_THRESHOLD
   ) {
     alerts.push({
       key: "press_ingest_backlog",
       label: "광역 보도자료 후보 적체",
-      count: pressSettled.value.candidates_24h,
+      count: pressSettled.value.unclassified_24h,
       href: "/admin/press-ingest",
     });
   } else if (pressSettled.status === "rejected") {
