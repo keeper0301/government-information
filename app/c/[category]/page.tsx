@@ -208,6 +208,25 @@ export default async function CategoryHubPage({ params }: PageProps) {
     },
   };
 
+  // ============================================================
+  // FAQPage JSON-LD — Google 검색 rich card + AdSense 콘텐츠 깊이 신호
+  // hub.faq 가 있을 때만 (4 cohort 모두 채워져 있음)
+  // ============================================================
+  const faqJsonLd = hub.faq && hub.faq.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: hub.faq.map((item) => ({
+          "@type": "Question",
+          name: item.q,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: item.a,
+          },
+        })),
+      }
+    : null;
+
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <script
@@ -216,6 +235,14 @@ export default async function CategoryHubPage({ params }: PageProps) {
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
         }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+      )}
 
       <div className="max-w-[1200px] mx-auto px-5">
         {/* 브레드크럼 */}
@@ -359,6 +386,35 @@ export default async function CategoryHubPage({ params }: PageProps) {
                 </Link>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* 자주 묻는 질문 — 콘텐츠 깊이 (AdSense 검수) + FAQPage rich card SEO */}
+        {hub.faq && hub.faq.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-[20px] font-bold text-grey-900 mb-4">
+              {hub.shortLabel} 자주 묻는 질문
+            </h2>
+            <div className="bg-white border border-grey-200 rounded-2xl divide-y divide-grey-100">
+              {hub.faq.map((item, idx) => (
+                <details key={idx} className="group p-5">
+                  <summary className="cursor-pointer list-none flex items-start justify-between gap-3">
+                    <span className="text-[15px] font-semibold text-grey-900 leading-[1.5]">
+                      {item.q}
+                    </span>
+                    <span className="text-grey-400 text-[18px] leading-none mt-0.5 group-open:rotate-180 transition-transform">
+                      ⌃
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-[14px] text-grey-700 leading-[1.7]">
+                    {item.a}
+                  </p>
+                </details>
+              ))}
+            </div>
+            <p className="mt-3 text-[12px] text-grey-500">
+              * 본 답변은 일반적 안내입니다. 실제 자격·금액·신청 절차는 각 정책의 원문 사이트에서 최종 확인하세요.
+            </p>
           </section>
         )}
 
