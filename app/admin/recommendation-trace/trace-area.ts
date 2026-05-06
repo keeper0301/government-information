@@ -14,7 +14,7 @@ import {
   type TraceSummary,
 } from "@/lib/personalization/diagnostic";
 import type { UserSignals } from "@/lib/personalization/types";
-import type { ScorableItem } from "@/lib/personalization/score";
+import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
 import {
   newsRowToScorable,
   blogRowToScorable,
@@ -23,6 +23,10 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
+import { PROVINCES } from "@/lib/regions";
+
+// news ministry 가 광역 정식명일 때만 region 으로 식별 — app/news/page.tsx 와 동일
+const PROVINCE_FULL_NAMES_LIST = PROVINCES.map((p) => p.name);
 
 export type AreaName = "welfare" | "loan" | "news" | "blog";
 
@@ -46,16 +50,24 @@ export async function traceWelfare(user: UserSignals): Promise<AreaResult> {
     const supabase = await createClient();
     const today = new Date().toISOString().split("T")[0];
     // production app/welfare/page.tsx 의 pool query 와 동일한 필터·정렬 적용
-    // (마감 필터 + duplicate_of_id 제외 + source_code 제외) — 진단 결과가
-    // 실제 노출 pool 과 일치해야 의미 있음. 단 region 필터는 무시
-    // (regional_gate 검증이 진단 핵심이므로 raw pool 측정).
-    const { data, error } = await supabase
+    // 사용자 광역 우선 pool — 사용자 region 있으면 사용자 광역+전국 ilike OR
+    // (production 사용자 경험과 정합. 진단 결과가 실제 노출률 반영.)
+    let q = supabase
       .from("welfare_programs")
       .select(
         "id, title, target, description, eligibility, region, benefit_tags, apply_end, source, income_target_level, household_target_tags",
       )
       .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-      .is("duplicate_of_id", null)
+      .is("duplicate_of_id", null);
+    if (user.region) {
+      const aliases = REGION_ALIASES[user.region] ?? [user.region];
+      const regionOr = [
+        "region.ilike.%전국%",
+        ...aliases.map((a) => `region.ilike.%${a}%`),
+      ].join(",");
+      q = q.or(regionOr);
+    }
+    const { data, error } = await q
       .or(`apply_end.gte.${today},apply_end.is.null`)
       .order("apply_end", { ascending: true, nullsFirst: false })
       .limit(POOL_LIMIT);
@@ -78,13 +90,25 @@ export async function traceLoan(user: UserSignals): Promise<AreaResult> {
     const supabase = await createClient();
     const today = new Date().toISOString().split("T")[0];
     // production app/loan/page.tsx 의 pool query 와 동일한 필터·정렬 적용
-    const { data, error } = await supabase
+    // 사용자 광역 우선: region_tags 또는 title prefix 매칭
+    let q = supabase
       .from("loan_programs")
       .select(
         "id, title, target, description, eligibility, region_tags, benefit_tags, apply_end, source, income_target_level, household_target_tags",
       )
       .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-      .is("duplicate_of_id", null)
+      .is("duplicate_of_id", null);
+    if (user.region) {
+      const aliases = REGION_ALIASES[user.region] ?? [user.region];
+      const orParts: string[] = ["region_tags.cs.{전국}"];
+      for (const a of aliases) {
+        orParts.push(`region_tags.cs.{${a}}`);
+        orParts.push(`title.ilike.%[${a}%`);
+        orParts.push(`title.ilike.%(${a}%`);
+      }
+      q = q.or(orParts.join(","));
+    }
+    const { data, error } = await q
       .or(`apply_end.gte.${today},apply_end.is.null`)
       .order("apply_end", { ascending: true, nullsFirst: false })
       .limit(POOL_LIMIT);
@@ -132,11 +156,27 @@ export async function traceLoan(user: UserSignals): Promise<AreaResult> {
 export async function traceNews(user: UserSignals): Promise<AreaResult> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    // production app/news/page.tsx 의 pool query 와 동일한 필터 적용
+    // 사용자 광역 우선: ministry IS NULL OR ministry NOT IN (다른 광역)
+    let q = supabase
       .from("news_posts_deduped" as "news_posts")
       .select(
         "id, slug, title, summary, body, ministry, benefit_tags, published_at",
       )
+      .neq("category", "press")
+      .not("keywords", "eq", "{}");
+    if (user.region) {
+      const userAliases = REGION_ALIASES[user.region] ?? [user.region];
+      const otherProvinces = PROVINCE_FULL_NAMES_LIST.filter(
+        (p) => !userAliases.includes(p),
+      );
+      const orFilter = [
+        "ministry.is.null",
+        `ministry.not.in.(${otherProvinces.join(",")})`,
+      ].join(",");
+      q = q.or(orFilter);
+    }
+    const { data, error } = await q
       .order("published_at", { ascending: false })
       .limit(POOL_LIMIT);
     if (error) throw error;
