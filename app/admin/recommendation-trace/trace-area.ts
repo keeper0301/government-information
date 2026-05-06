@@ -253,5 +253,6 @@ function emptySummary(): TraceSummary {
       { bucket: "4-7", count: 0 },
       { bucket: "8+", count: 0 },
     ],
+    cohortBreakdown: [],
   };
 }

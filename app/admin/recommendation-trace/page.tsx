@@ -23,7 +23,7 @@ import {
 import { PersonaForm } from "./persona-form";
 import { findPersona, type PersonaId } from "./personas";
 import type { UserSignals } from "@/lib/personalization/types";
-import type { BlockReason } from "@/lib/personalization/diagnostic";
+import type { BlockReason, CohortKind } from "@/lib/personalization/diagnostic";
 
 export const metadata: Metadata = {
   title: "추천 진단 | 어드민",
@@ -48,6 +48,27 @@ const BLOCK_REASON_LABEL: Record<BlockReason, string> = {
   household_gate: "가구 mismatch",
   business_mismatch: "사업자 자격 미달",
   income_gate: "소득 미달",
+};
+
+// cohort 별 사람이 읽기 쉬운 라벨 — UI 의 cohort breakdown 카드에서 사용
+const COHORT_LABEL: Record<CohortKind, string> = {
+  elderly: "노년 (60+/elderly_family)",
+  multicultural: "다문화·결혼이민자",
+  child: "보호아동·자녀동반",
+  national_merit: "보훈·국가유공자",
+  farmer: "농어민",
+  disability: "장애인 가구",
+  sensitive_mental_health: "정신질환·정신재활",
+  justice_reentry: "출소·법무보호",
+  disaster_victim: "재해이재민",
+  student: "대학생 학자금",
+  newlywed: "신혼·청년부부",
+  worker: "근로자 산재·상병",
+  job_seeker: "구직자·실업자",
+  chronic_disease: "만성질환",
+  shingles_vaccination: "대상포진 예방접종",
+  low_income_only: "기초수급·차상위",
+  postpartum_infant: "산후조리·영유아",
 };
 
 export default async function RecommendationTracePage({
@@ -243,31 +264,53 @@ function AreaCard({ result }: { result: AreaResult }) {
       </div>
 
       {cohortBlocked.length > 0 && (
-        <details className="mb-2">
-          <summary className="text-xs font-semibold text-amber-700 cursor-pointer">
-            cohort 차단 {cohortBlocked.length}건 (false positive 의심)
-          </summary>
-          <ul className="mt-1 space-y-1 text-xs">
-            {cohortBlocked.slice(0, 5).map((t) => (
+        <div className="mb-2">
+          <p className="text-xs font-semibold text-amber-700 mb-1">
+            cohort 차단 {cohortBlocked.length}건 — gate 별 분포 (false positive
+            의심)
+          </p>
+          <ul className="space-y-1 text-xs">
+            {summary.cohortBreakdown.map((b) => (
               <li
-                key={t.programId}
-                className="rounded bg-amber-50 border border-amber-100 p-2"
+                key={b.kind}
+                className="rounded border border-amber-100 bg-amber-50"
               >
-                <p className="font-semibold text-grey-900">{t.programTitle}</p>
-                {t.excerptForCohort && (
-                  <p className="mt-0.5 text-grey-600 leading-snug">
-                    {t.excerptForCohort}
-                  </p>
-                )}
+                <details>
+                  <summary className="flex justify-between cursor-pointer p-2">
+                    <span className="text-grey-800">
+                      {COHORT_LABEL[b.kind]}
+                    </span>
+                    <span className="font-semibold text-amber-900 tabular-nums">
+                      {b.count}건
+                    </span>
+                  </summary>
+                  <ul className="px-2 pb-2 space-y-1 border-t border-amber-100 pt-2">
+                    {cohortBlocked
+                      .filter((t) => t.cohortKind === b.kind)
+                      .slice(0, 5)
+                      .map((t) => (
+                        <li key={t.programId} className="text-xs">
+                          <p className="font-semibold text-grey-900">
+                            {t.programTitle}
+                          </p>
+                          {t.excerptForCohort && (
+                            <p className="mt-0.5 text-grey-600 leading-snug">
+                              {t.excerptForCohort}
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    {b.count > 5 && (
+                      <li className="text-grey-500 text-xs">
+                        ... 외 {b.count - 5}건
+                      </li>
+                    )}
+                  </ul>
+                </details>
               </li>
             ))}
-            {cohortBlocked.length > 5 && (
-              <li className="text-grey-500">
-                ... 외 {cohortBlocked.length - 5}건
-              </li>
-            )}
           </ul>
-        </details>
+        </div>
       )}
 
       {otherBlocked.length > 0 && (

@@ -9,13 +9,17 @@
 
 import {
   scoreProgram,
-  isCohortMismatch,
+  detectCohortMismatch,
   buildProgramText,
   REGION_ALIASES,
   type ScorableItem,
+  type CohortKind,
 } from "./score";
 import { evaluateBusinessMatch } from "@/lib/eligibility/business-match";
 import type { UserSignals, MatchSignal } from "./types";
+
+// score.ts 의 CohortKind 를 진단 도구 외부에서도 쓸 수 있게 re-export
+export type { CohortKind };
 
 export type BlockReason =
   | "shown"             // score >= minScore, 노출됨
@@ -38,6 +42,9 @@ export type ScoreTrace = {
   programBenefitTags: string[];
   // cohort_mismatch 일 때만 ~120자 발췌 (false positive 의심 시 사장님 추적용)
   excerptForCohort: string | null;
+  // cohort_mismatch 일 때만 어떤 cohort gate 가 트리거됐는지 (16 종 중 하나)
+  // 옵션 B (cohort gate 재설계) 의 우선순위 결정용
+  cohortKind: CohortKind | null;
 };
 
 export type TraceSummary = {
@@ -45,6 +52,9 @@ export type TraceSummary = {
   shown: number;
   blocked: Record<BlockReason, number>;
   scoreDistribution: { bucket: string; count: number }[];
+  // cohort_mismatch 분포 — 어떤 cohort gate 가 가장 자주 트리거됐는지
+  // 0 인 cohort 는 생략. 정렬: 카운트 내림차순.
+  cohortBreakdown: { kind: CohortKind; count: number }[];
 };
 
 const SCORE_BUCKETS: { label: string; test: (score: number) => boolean }[] = [
@@ -72,8 +82,9 @@ export function traceScore<T extends ScorableItem>(
 ): ScoreTrace {
   const haystack = buildProgramText(program);
 
-  // ⓪ Cohort mismatch 사전 판별
-  if (isCohortMismatch(haystack, user)) {
+  // ⓪ Cohort mismatch 사전 판별 — 어떤 cohort 인지도 함께 식별
+  const cohortKind = detectCohortMismatch(haystack, user);
+  if (cohortKind !== null) {
     return {
       programId: program.id,
       programTitle: program.title,
@@ -84,6 +95,7 @@ export function traceScore<T extends ScorableItem>(
       programHouseholdTags: program.household_target_tags ?? null,
       programBenefitTags: program.benefit_tags ?? [],
       excerptForCohort: extractCohortExcerpt(haystack),
+      cohortKind,
     };
   }
 
@@ -145,6 +157,7 @@ export function traceScore<T extends ScorableItem>(
     programHouseholdTags: program.household_target_tags ?? null,
     programBenefitTags: program.benefit_tags ?? [],
     excerptForCohort: null,
+    cohortKind: null,
   };
 }
 
@@ -162,6 +175,7 @@ function makeBlocked<T extends ScorableItem>(
     programHouseholdTags: program.household_target_tags ?? null,
     programBenefitTags: program.benefit_tags ?? [],
     excerptForCohort: null,
+    cohortKind: null,
   };
 }
 
@@ -199,7 +213,7 @@ function extractCohortExcerpt(haystack: string): string {
 }
 
 /**
- * trace 배열을 받아 차단 사유별 합계 + 점수 분포 4 bucket 반환.
+ * trace 배열을 받아 차단 사유별 합계 + 점수 분포 4 bucket + cohort breakdown 반환.
  */
 export function summarizeTrace(traces: ScoreTrace[]): TraceSummary {
   const blocked: Record<BlockReason, number> = {
@@ -213,8 +227,14 @@ export function summarizeTrace(traces: ScoreTrace[]): TraceSummary {
     income_gate: 0,
   };
 
+  // cohort 별 차단 카운트 — cohort_mismatch 인 trace 만 집계
+  const cohortCounts = new Map<CohortKind, number>();
+
   for (const t of traces) {
     blocked[t.blockReason] = (blocked[t.blockReason] ?? 0) + 1;
+    if (t.cohortKind !== null) {
+      cohortCounts.set(t.cohortKind, (cohortCounts.get(t.cohortKind) ?? 0) + 1);
+    }
   }
 
   const shown = blocked.shown;
@@ -225,10 +245,16 @@ export function summarizeTrace(traces: ScoreTrace[]): TraceSummary {
     count: traces.filter((t) => b.test(t.score)).length,
   }));
 
+  // 카운트 내림차순 정렬 — false positive 큰 cohort 가 위로
+  const cohortBreakdown = Array.from(cohortCounts.entries())
+    .map(([kind, count]) => ({ kind, count }))
+    .sort((a, b) => b.count - a.count);
+
   return {
     total: traces.length,
     shown,
     blocked: blockedOnly,
     scoreDistribution,
+    cohortBreakdown,
   };
 }

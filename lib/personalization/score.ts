@@ -363,19 +363,47 @@ const SHINGLES_VACCINATION_COHORT_KEYWORDS: RegExp[] = [
   /대상포진/,
 ];
 
-// 정책 본문이 특정 cohort 전용인데 사용자가 그 cohort 에 안 속하면 true 반환.
-// true → score 0, signals=[] 로 강제 → filter 에서 minScore 못 넘음.
-export function isCohortMismatch(haystack: string, user: UserSignals): boolean {
+// cohort gate 분류 — 어떤 정규식 그룹이 차단을 트리거했는지 식별용.
+// 진단 도구 (/admin/recommendation-trace) 에서 false positive 큰 cohort
+// 를 데이터 기반으로 선별할 때 사용.
+export type CohortKind =
+  | 'elderly'
+  | 'multicultural'
+  | 'child'
+  | 'national_merit'
+  | 'farmer'
+  | 'disability'
+  | 'sensitive_mental_health'
+  | 'justice_reentry'
+  | 'disaster_victim'
+  | 'student'
+  | 'newlywed'
+  | 'worker'
+  | 'job_seeker'
+  | 'chronic_disease'
+  | 'shingles_vaccination'
+  | 'low_income_only'
+  | 'postpartum_infant';
+
+// detectCohortMismatch — 어떤 cohort gate 가 차단을 트리거했는지 반환.
+// 통과 시 null. isCohortMismatch 는 이 함수 결과로 단순 분기.
+//
+// 분기 순서는 기존 isCohortMismatch 와 100% 동일 (snapshot 회귀 0 보장).
+// 첫 매칭 발견 즉시 해당 CohortKind 반환 → 후순위 cohort 평가 스킵.
+export function detectCohortMismatch(
+  haystack: string,
+  user: UserSignals,
+): CohortKind | null {
   // 노년층 정책 — 60대 이상 또는 elderly_family 가구만 통과
   if (ELDERLY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     const isElderlyUser =
       user.ageGroup === '60대 이상' ||
       user.householdTypes.includes('elderly_family');
-    if (!isElderlyUser) return true;
+    if (!isElderlyUser) return 'elderly';
   }
   // 결혼이주·다문화 정책 — 현재 프로필 모델에서 매칭 시그널 없음 → 모든 일반 사용자 부적합
   if (MULTICULTURAL_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    return true;
+    return 'multicultural';
   }
   // 보호아동·시설양육·농촌유학 — 자녀 동반 가구만 통과
   // (single_parent/multi_child household OR has_children=true)
@@ -384,54 +412,54 @@ export function isCohortMismatch(haystack: string, user: UserSignals): boolean {
       user.householdTypes.includes('single_parent') ||
       user.householdTypes.includes('multi_child') ||
       user.hasChildren === true;
-    if (!isChildUser) return true;
+    if (!isChildUser) return 'child';
   }
   // 보훈·국가유공자 — 마이그레이션 064 (2026-04-28) 의 merit 시그널 활용.
   // user.merit === 'merit' (본인 또는 유족) 만 통과. NULL/'none' 은 차단.
   // 기존 사용자 모두 NULL 이라 회귀 0 (NATIONAL_MERIT 정책 그대로 차단).
   if (NATIONAL_MERIT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (user.merit !== 'merit') return true;
+    if (user.merit !== 'merit') return 'national_merit';
   }
   // 농어민 — occupation === '농어민' 만 통과 (2026-04-28 OccupationOption 에 추가).
   // 일반 사용자(대학생·직장인·자영업자 등) 에게 농어민 전용 정책 차단.
   if (FARMER_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (user.occupation !== '농어민') return true;
+    if (user.occupation !== '농어민') return 'farmer';
   }
   // 장애인 정책 — disabled_family 가구만 통과
   if (DISABILITY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (!user.householdTypes.includes('disabled_family')) return true;
+    if (!user.householdTypes.includes('disabled_family')) return 'disability';
   }
   // 정신질환·정신재활 전용 정책은 별도 명시 프로필 축이 생기기 전까지 일반 추천에서 차단
   if (SENSITIVE_MENTAL_HEALTH_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    return true;
+    return 'sensitive_mental_health';
   }
   // 출소·보호관찰·법무보호 정책은 별도 명시 동의/프로필 축이 생기기 전까지 일반 추천에서 차단
   if (JUSTICE_REENTRY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    return true;
+    return 'justice_reentry';
   }
   // 재해이재민·재난피해자 전용 정책은 별도 피해 상태 입력이 없으므로 일반 추천에서 차단
   if (DISASTER_VICTIM_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    return true;
+    return 'disaster_victim';
   }
   // 학생 전용 교육 대출/학습자 정책은 대학생 프로필만 통과
   if (STUDENT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (user.occupation !== '대학생') return true;
+    if (user.occupation !== '대학생') return 'student';
   }
   // 청년부부/신혼부부 전용 정책은 married 가구 신호만 통과
   if (NEWLYWED_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (!user.householdTypes.includes('married')) return true;
+    if (!user.householdTypes.includes('married')) return 'newlywed';
   }
   // 근로자 전용 상병/산재 정책은 직장인 프로필만 통과
   if (WORKER_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (user.occupation !== '직장인') return true;
+    if (user.occupation !== '직장인') return 'worker';
   }
   // 실업자/퇴직자 전용 보험 정책은 구직자 프로필만 통과
   if (JOB_SEEKER_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (user.occupation !== '구직자') return true;
+    if (user.occupation !== '구직자') return 'job_seeker';
   }
   // 질환 보유자 전용 정책은 현재 프로필에 질환 입력이 없으므로 일반 추천에서 제외
   if (CHRONIC_DISEASE_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    return true;
+    return 'chronic_disease';
   }
   // 대상포진 예방접종은 고령/저소득/노인가구 신호가 없으면 제외
   if (SHINGLES_VACCINATION_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
@@ -440,23 +468,31 @@ export function isCohortMismatch(haystack: string, user: UserSignals): boolean {
       user.incomeLevel === 'low' ||
       user.incomeLevel === 'mid_low' ||
       user.householdTypes.includes('elderly_family');
-    if (!isEligible) return true;
+    if (!isEligible) return 'shingles_vaccination';
   }
   // 기초수급·차상위·저소득 cohort — low/mid_low 만 통과
   if (LOW_INCOME_ONLY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     const isLowIncome =
       user.incomeLevel === 'low' || user.incomeLevel === 'mid_low';
-    if (!isLowIncome) return true;
+    if (!isLowIncome) return 'low_income_only';
   }
   // 산후조리·영유아 cohort — has_children=true 만 통과.
   // NULL(미입력) 사용자는 게이트 미적용 (보수적 — 빈 프로필 추천 보존).
   // false(자녀 없음 명시) 또는 hasChildren 시그널 없는 사용자에게 차단.
   if (POSTPARTUM_INFANT_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
-    if (user.hasChildren === false) return true;
+    if (user.hasChildren === false) return 'postpartum_infant';
     // hasChildren === null 은 미입력 → 게이트 미적용. true 만 통과 의미는 아님.
     // 즉 입력 안 한 사용자에겐 그대로 노출 (입력 유도 UX 가 동시에 동작).
   }
-  return false;
+  return null;
+}
+
+// 정책 본문이 특정 cohort 전용인데 사용자가 그 cohort 에 안 속하면 true 반환.
+// true → score 0, signals=[] 로 강제 → filter 에서 minScore 못 넘음.
+//
+// detectCohortMismatch 결과로 단순 분기 — 동작 100% 동일.
+export function isCohortMismatch(haystack: string, user: UserSignals): boolean {
+  return detectCohortMismatch(haystack, user) !== null;
 }
 
 // 사용자 incomeLevel 이 정책 income_target_level 자격을 충족하는지 확인

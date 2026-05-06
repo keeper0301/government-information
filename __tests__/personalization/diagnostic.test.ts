@@ -127,6 +127,7 @@ describe("summarizeTrace", () => {
       programHouseholdTags: null,
       programBenefitTags: [],
       excerptForCohort: null,
+      cohortKind: i < 30 ? null : "elderly",
     }));
     const s = summarizeTrace(traces);
     expect(s.total).toBe(100);
@@ -147,6 +148,7 @@ describe("summarizeTrace", () => {
       programHouseholdTags: null,
       programBenefitTags: [],
       excerptForCohort: null,
+      cohortKind: null,
     }));
     const s = summarizeTrace(traces);
     const bucketSum = s.scoreDistribution.reduce((a, b) => a + b.count, 0);
