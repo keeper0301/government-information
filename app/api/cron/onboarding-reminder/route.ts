@@ -56,7 +56,7 @@ async function run() {
   const [profilesData, remindersData, deletionsData] = await Promise.all([
     admin
       .from("user_profiles")
-      .select("id, age_group, region, occupation")
+      .select("id, age_group, region, occupation, income_level")
       .in("id", candidateIds),
     admin
       .from("onboarding_reminders")
@@ -68,7 +68,11 @@ async function run() {
       .in("user_id", candidateIds),
   ]);
 
-  // user_profiles row 가 있고 1개 필드라도 채워져 있으면 "온보딩 완료" 로 간주
+  // 2026-05-06 정의 일관화 — funnel-health.ts 의 COMPLETED_PROFILE_FILTER 와 동일.
+  // 4 핵심 필드 (age_group, region, occupation, income_level) 모두 채워야 "온보딩 완료".
+  // 기존 "1개 필드라도 채우면 완료" 는 너무 관대 — 미완성 사용자가 retention nudge
+  // 못 받던 사고. 가입자 5명 중 3명 프로필 row 있고 완성 1명 = 미완성 사용자에게도
+  // 환영 메일이 안 가던 상황 해소.
   const filledProfileIds = new Set(
     (profilesData.data ?? [])
       .filter(
@@ -76,7 +80,9 @@ async function run() {
           age_group: string | null;
           region: string | null;
           occupation: string | null;
-        }) => p.age_group || p.region || p.occupation,
+          income_level: string | null;
+        }) =>
+          p.age_group && p.region && p.occupation && p.income_level,
       )
       .map((p: { id: string }) => p.id),
   );
