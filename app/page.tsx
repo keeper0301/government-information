@@ -18,17 +18,20 @@ import { AdSlot } from "@/components/ad-slot";
 import { BlogCategoryChips } from "@/components/blog-category-chips";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
-import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { loadUserProfile, type LoadedProfile } from "@/lib/personalization/load-profile";
+import {
+  getPersonalizedRecentBlogs,
+  getPersonalizedRecentNews,
+} from "@/lib/personalization/home-recent";
 import { HeroStats } from "@/components/hero-stats";
 import { RegionMap } from "@/components/region-map";
 import { HomeCTA } from "@/components/home-cta";
 import { RevealOnScroll } from "@/components/reveal-on-scroll";
-import { BlogCard, type BlogCardData } from "@/components/blog-card";
-import { NewsCard, type NewsCardData } from "@/components/news-card";
+import { BlogCard } from "@/components/blog-card";
+import { NewsCard } from "@/components/news-card";
 import { getUrgentPrograms } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
-import { createClient } from "@/lib/supabase/server";
 
 // FloatingWishWidget — 좌측 하단 floating 위젯, 즉시 노출 불필요.
 // nextDynamic 으로 청크 분리 → 메인 번들 가벼움.
@@ -92,17 +95,13 @@ async function AlertStripSection({ isLoggedIn }: { isLoggedIn: boolean }) {
   return <AlertStrip programs={urgents} isLoggedIn={isLoggedIn} />;
 }
 
-async function RecentBlogSection() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("blog_posts")
-    .select(
-      "slug, title, meta_description, category, reading_time_min, published_at, cover_image",
-    )
-    .not("published_at", "is", null)
-    .order("published_at", { ascending: false })
-    .limit(3);
-  const recentPosts: BlogCardData[] = (data ?? []) as BlogCardData[];
+async function RecentBlogSection({
+  profile,
+}: {
+  profile: LoadedProfile | null;
+}) {
+  // pool 100 fetch + score 적용 (사용자 입력 반영). 빈 프로필·매칭 0건이면 최신 3건 fallback.
+  const recentPosts = await getPersonalizedRecentBlogs(profile, 3);
 
   if (recentPosts.length === 0) return null;
 
@@ -130,16 +129,13 @@ async function RecentBlogSection() {
   );
 }
 
-async function RecentNewsSection() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("news_posts")
-    .select(
-      "slug, title, summary, category, ministry, source_outlet, thumbnail_url, published_at",
-    )
-    .order("published_at", { ascending: false })
-    .limit(3);
-  const recentNews: NewsCardData[] = (data ?? []) as NewsCardData[];
+async function RecentNewsSection({
+  profile,
+}: {
+  profile: LoadedProfile | null;
+}) {
+  // pool 100 fetch + score 적용 (사용자 입력 반영). 빈 프로필·매칭 0건이면 최신 3건 fallback.
+  const recentNews = await getPersonalizedRecentNews(profile, 3);
 
   if (recentNews.length === 0) return null;
 
@@ -364,14 +360,14 @@ export default async function Home() {
       {/* [도구 3] Blog — 정책 블로그 (자체 콘텐츠) */}
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
-          <RecentBlogSection />
+          <RecentBlogSection profile={fullProfile} />
         </Suspense>
       </RevealOnScroll>
 
       {/* [도구 4] News — 외부 정책 발표 큐레이션 (korea.kr 출처) */}
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
-          <RecentNewsSection />
+          <RecentNewsSection profile={fullProfile} />
         </Suspense>
       </RevealOnScroll>
 

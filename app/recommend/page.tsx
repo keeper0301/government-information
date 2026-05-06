@@ -101,6 +101,21 @@ export default async function RecommendPage({
   let relatedBlogs: BlogCardData[] = [];
 
   if (isValidAge && isValidRegion && isValidOcc) {
+    // signals — quiz 입력 + 로그인 프로필 합성 (region/income/household/cohort
+    // 게이트 적용용). getRelatedNews/getRelatedBlogs 둘 다 같은 signals 사용.
+    const relatedSignals = {
+      ageGroup: candidateAge as AgeOption,
+      region: candidateRegion as RegionOption,
+      district: candidateDistrict,
+      occupation: candidateOcc as OccupationOption,
+      incomeLevel: fullProfile?.signals.incomeLevel ?? null,
+      householdTypes: fullProfile?.signals.householdTypes ?? [],
+      benefitTags: fullProfile?.signals.benefitTags ?? [],
+      hasChildren: fullProfile?.signals.hasChildren ?? null,
+      merit: fullProfile?.signals.merit ?? null,
+      businessProfile,
+    };
+
     // 3 함수 모두 Supabase 라운드트립 → Promise.all 로 직렬 대기 절약
     const [programs, news, blogs] = await Promise.all([
       getRecommendations({
@@ -119,10 +134,13 @@ export default async function RecommendPage({
       getRelatedNews({
         age: candidateAge as AgeOption,
         occupation: candidateOcc as OccupationOption,
+        // signals — quiz 입력 + 로그인 프로필 합성 (region/income/household/cohort 게이트 적용용)
+        signals: relatedSignals,
       }),
       getRelatedBlogs({
         age: candidateAge as AgeOption,
         occupation: candidateOcc as OccupationOption,
+        signals: relatedSignals,
       }),
     ]);
     initialPrograms = programs;

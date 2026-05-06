@@ -20,6 +20,12 @@ import {
   type RegionOption,
 } from "@/lib/profile-options";
 import { isProgramAllowedForUser } from "@/lib/personalization/score";
+import { scoreAndFilter } from "@/lib/personalization/filter";
+import {
+  blogRowToScorable,
+  newsRowToScorable,
+} from "@/lib/personalization/home-recent";
+import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
 import type { UserSignals } from "@/lib/personalization/types";
 import type { BenefitTag } from "@/lib/tags/taxonomy";
 import type { NewsCardData } from "@/components/news-card";
@@ -370,33 +376,71 @@ function inferBenefitTagsFromProfile(
   return Array.from(new Set(tags)).slice(0, 5);
 }
 
-/** /recommend 페이지의 "관련 정책 뉴스" 섹션. press 제외, 최신순. */
+/** /recommend 페이지의 "관련 정책 뉴스" 섹션.
+ *
+ * 2026-05-06 fix: 기존엔 age+occupation 만으로 benefit_tags overlaps 한 뒤 최신순
+ * 자르기 → region/income/household/cohort 우회 → 다른 광역 정책 노출 사고.
+ * 이번부터 pool 100 fetch + scoreAndFilter (regional/cohort gate 적용) 후
+ * 매칭 0건이면 fallback 최신순으로 안전하게 떨어짐.
+ */
 export async function getRelatedNews(opts: {
   age: AgeOption | null;
   occupation: OccupationOption | null;
+  signals: UserSignals;
   limit?: number;
 }): Promise<NewsCardData[]> {
   const supabase = await createClient();
   const tags = inferBenefitTagsFromProfile(opts.age, opts.occupation);
+  const limit = opts.limit ?? 6;
+  // pool 100 fetch — score 후 자르기 위해 overlaps 그대로 + limit 100
+  // body 도 함께 fetch — app/news/page.tsx 와 동일 수준으로 키워드 매칭 정확도 유지
   const { data } = await supabase
     .from("news_posts")
-    .select("slug, title, summary, ministry, source_outlet, published_at, category, thumbnail_url")
+    .select(
+      "id, slug, title, summary, body, ministry, source_outlet, published_at, category, thumbnail_url, benefit_tags",
+    )
     .neq("category", "press")
     .overlaps("benefit_tags", tags)
     .order("published_at", { ascending: false })
-    .limit(opts.limit ?? 6);
-  // category 가 supabase 에선 string, NewsCardData 는 union — 한 번만 cast.
-  return (data ?? []) as NewsCardData[];
+    .limit(100);
+
+  if (!data || data.length === 0) return [];
+  const pool = data as (NewsCardData & {
+    id: string;
+    body: string | null;
+    benefit_tags: string[] | null;
+  })[];
+
+  const scorablePool = pool.map(newsRowToScorable);
+  const scored = scoreAndFilter(scorablePool, opts.signals, {
+    minScore: 8,
+    limit,
+  });
+  if (scored.length === 0) {
+    // fallback: SQL 레벨에 이미 benefit_tags overlaps 가 적용돼 있어 인구통계
+    // 매칭은 보존됨. region/cohort gate 만 못 통과한 케이스라 최신 N건 노출.
+    return pool.slice(0, limit);
+  }
+  const idSet = new Set(scored.map((s) => s.item.id));
+  return pool.filter((p) => idSet.has(p.id)).slice(0, limit);
 }
 
-/** /recommend 페이지의 "함께 보면 좋은 가이드" 섹션. blog 인구통계 카테고리 매칭. */
+/** /recommend 페이지의 "함께 보면 좋은 가이드" 섹션.
+ *
+ * 2026-05-06 fix: 기존엔 인구통계 카테고리 (청년/노년/소상공인/학생·교육) 매칭만
+ * → cohort/region/benefit_tags gate 우회. 이번부터 cohort 필터 + scoreAndFilter
+ * (blog minScore 3) 적용. 매칭 0건이면 인구통계 카테고리 매칭 fallback.
+ */
 export async function getRelatedBlogs(opts: {
   age: AgeOption | null;
   occupation: OccupationOption | null;
+  signals: UserSignals;
   limit?: number;
 }): Promise<BlogCardData[]> {
   const supabase = await createClient();
-  // blog 는 인구통계 축이라 직업·연령에 직접 매핑.
+  const limit = opts.limit ?? 4;
+
+  // blog 는 인구통계 축이라 직업·연령에 직접 매핑 — fallback 후보 카테고리
   const candidates: string[] = [];
   if (opts.age === "20대" || opts.age === "30대") candidates.push("청년");
   if (opts.age === "60대 이상") candidates.push("노년");
@@ -404,14 +448,46 @@ export async function getRelatedBlogs(opts: {
   if (opts.occupation === "대학생") candidates.push("학생·교육");
   if (candidates.length === 0) candidates.push("큐레이션");
 
+  // pool 100 fetch — 모든 published 글 최신순 (cohort + score 가 좁혀줌)
   const { data } = await supabase
     .from("blog_posts")
     .select(
-      "slug, title, meta_description, category, published_at, cover_image, reading_time_min",
+      "slug, title, meta_description, category, tags, published_at, cover_image, reading_time_min",
     )
     .not("published_at", "is", null)
-    .in("category", candidates)
     .order("published_at", { ascending: false })
-    .limit(opts.limit ?? 4);
-  return (data ?? []) as BlogCardData[];
+    .limit(100);
+
+  if (!data || data.length === 0) return [];
+  const pool = data as (BlogCardData & { tags: string[] | null })[];
+
+  // ① cohort 필터 (30대 자영업자에 청년·학생 글 노출되던 사고 방지)
+  const cohortFiltered = pool.filter((p) =>
+    isBlogCohortFit(
+      {
+        category: p.category,
+        title: p.title,
+        meta_description: p.meta_description,
+        tags: p.tags,
+      },
+      opts.signals,
+    ),
+  );
+
+  // ② score 매칭
+  const scorablePool = cohortFiltered.map(blogRowToScorable);
+  const scored = scoreAndFilter(scorablePool, opts.signals, {
+    minScore: 3,
+    limit,
+  });
+
+  if (scored.length > 0) {
+    const slugSet = new Set(scored.map((s) => s.item.id));
+    return pool.filter((p) => slugSet.has(p.slug)).slice(0, limit);
+  }
+
+  // ③ fallback — 인구통계 카테고리 매칭
+  return pool
+    .filter((p) => p.category && candidates.includes(p.category))
+    .slice(0, limit);
 }
