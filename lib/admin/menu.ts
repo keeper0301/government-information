@@ -59,6 +59,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
       { href: "/admin/insights", label: "사용자 funnel", icon: "📈" },
       { href: "/admin/targeting", label: "본문 targeting 분석", icon: "🎯" },
       { href: "/admin/business", label: "자영업자 자격 진단", icon: "🏪" },
+      { href: "/admin/recommendation-trace", label: "추천 진단", icon: "🔍" },
     ],
   },
   {

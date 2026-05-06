@@ -24,7 +24,7 @@ export type ScorableItem = {
   household_target_tags?: string[] | null;
 };
 
-function buildProgramText(program: ScorableItem): string {
+export function buildProgramText(program: ScorableItem): string {
   return [
     program.title,
     program.target,
@@ -365,7 +365,7 @@ const SHINGLES_VACCINATION_COHORT_KEYWORDS: RegExp[] = [
 
 // 정책 본문이 특정 cohort 전용인데 사용자가 그 cohort 에 안 속하면 true 반환.
 // true → score 0, signals=[] 로 강제 → filter 에서 minScore 못 넘음.
-function isCohortMismatch(haystack: string, user: UserSignals): boolean {
+export function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   // 노년층 정책 — 60대 이상 또는 elderly_family 가구만 통과
   if (ELDERLY_COHORT_KEYWORDS.some((re) => re.test(haystack))) {
     const isElderlyUser =
