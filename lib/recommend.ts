@@ -26,6 +26,7 @@ import {
   newsRowToScorable,
 } from "@/lib/personalization/home-recent";
 import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
+import { PERSONAL_SECTION_MIN_SCORE } from "@/lib/personalization/types";
 import type { UserSignals } from "@/lib/personalization/types";
 import type { BenefitTag } from "@/lib/tags/taxonomy";
 import type { NewsCardData } from "@/components/news-card";
@@ -413,7 +414,7 @@ export async function getRelatedNews(opts: {
 
   const scorablePool = pool.map(newsRowToScorable);
   const scored = scoreAndFilter(scorablePool, opts.signals, {
-    minScore: 8,
+    minScore: PERSONAL_SECTION_MIN_SCORE,
     limit,
   });
   if (scored.length === 0) {

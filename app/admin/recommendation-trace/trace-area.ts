@@ -15,6 +15,7 @@ import {
 } from "@/lib/personalization/diagnostic";
 import type { UserSignals } from "@/lib/personalization/types";
 import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
+import { PERSONAL_SECTION_MIN_SCORE } from "@/lib/personalization/types";
 import {
   newsRowToScorable,
   blogRowToScorable,
@@ -38,10 +39,11 @@ export type AreaResult = {
 };
 
 const POOL_LIMIT = 100;
+// production 페이지의 minScore 와 동일 유지 (welfare/loan/news 통일, blog 별도)
 const MIN_SCORES: Record<AreaName, number> = {
-  welfare: 8,
-  loan: 8,
-  news: 8,
+  welfare: PERSONAL_SECTION_MIN_SCORE,
+  loan: PERSONAL_SECTION_MIN_SCORE,
+  news: PERSONAL_SECTION_MIN_SCORE,
   blog: 3,
 };
 

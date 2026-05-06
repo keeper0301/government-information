@@ -41,9 +41,12 @@ export type ScoredItem<T> = {
 };
 
 // '나만의 추천' 섹션 노출 최소 점수 — 이 점수 미만이면 노출하지 않음.
-// 8 = region(5) 단일 매칭만으로는 부족, 추가 시그널(태그 1+, 직업 + 소득 등) 필요.
-// region+district(10) 정확 매칭이거나 region(5)+benefit_tag(3) 조합부터 통과.
-// 이전엔 5 였지만 region 한 가지만 매칭된 부적합 정책이 통과해서 추천 품질 저하.
-export const PERSONAL_SECTION_MIN_SCORE = 8;
+// 6 = region(5)+age(1) 또는 region(5)+occupation(1) 같은 약한 2 신호 매칭부터 통과.
+// 이전엔 8 (region 한 가지로는 부족, 강한 2 신호 필요) 이었으나 진단 도구
+// (commit 05027a4) 측정 결과 평균 노출률 welfare 2.8% / loan 4% / news 1.7% 로
+// 사용자가 사실상 추천 0건 보는 상태. below_min_score 차단 다수가 점수 5-7
+// 부분 매칭이라 경계 미달로 차단됨 — 노출률 ↑ 위해 6 으로 완화.
+// region 한 가지(5점) 만으로는 여전히 부족 — 다른 시그널 1점 이상 필요.
+export const PERSONAL_SECTION_MIN_SCORE = 6;
 // '나만의 추천' 섹션 최대 노출 항목 수
 export const PERSONAL_SECTION_MAX_ITEMS = 10;

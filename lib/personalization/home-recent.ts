@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { type ScorableItem } from "./score";
 import { scoreAndFilter } from "./filter";
 import { isBlogCohortFit } from "./blog-cohort";
+import { PERSONAL_SECTION_MIN_SCORE } from "./types";
 import { PROVINCES } from "@/lib/regions";
 import type { BlogCardData } from "@/components/blog-card";
 import type { NewsCardData } from "@/components/news-card";
@@ -29,9 +30,11 @@ const BLOG_CATEGORY_TO_BENEFIT_TAGS: Record<string, string[]> = {
 
 const PROVINCE_FULL_NAMES = new Set<string>(PROVINCES.map((p) => p.name));
 
-// blog/news minScore 는 각 페이지의 personalization 임계값과 동일 유지
+// blog/news minScore — production 페이지의 임계값과 일관 유지.
+// blog 는 region/apply_end 신호 없어 점수 자체가 낮음 → 3 별도 유지.
+// news 는 PERSONAL_SECTION_MIN_SCORE 로 통일 (welfare/loan/news 일관성).
 const HOME_BLOG_MIN_SCORE = 3;
-const HOME_NEWS_MIN_SCORE = 8;
+const HOME_NEWS_MIN_SCORE = PERSONAL_SECTION_MIN_SCORE;
 
 const POOL_LIMIT = 100;
 
