@@ -73,6 +73,37 @@ async function fetchProgram(
   return data as ProgramTagsForMatch & { id: string };
 }
 
+// 빠른 선택 — 최근 등록된 welfare/loan 각 5건. UUID 직접 입력 부담 ↓.
+type RecentItem = { id: string; title: string };
+async function fetchRecentPrograms(): Promise<{
+  welfare: RecentItem[];
+  loan: RecentItem[];
+}> {
+  const admin = createAdminClient();
+  const [w, l] = await Promise.all([
+    admin
+      .from("welfare_programs")
+      .select("id, title")
+      .order("created_at", { ascending: false })
+      .limit(5),
+    admin
+      .from("loan_programs")
+      .select("id, title")
+      .order("created_at", { ascending: false })
+      .limit(5),
+  ]);
+  return {
+    welfare: ((w.data ?? []) as RecentItem[]).map((d) => ({
+      id: d.id,
+      title: d.title ?? "(제목 없음)",
+    })),
+    loan: ((l.data ?? []) as RecentItem[]).map((d) => ({
+      id: d.id,
+      title: d.title ?? "(제목 없음)",
+    })),
+  };
+}
+
 export default async function AlertSimulatorPage({
   searchParams,
 }: {
@@ -116,6 +147,9 @@ export default async function AlertSimulatorPage({
   // 샘플 5명 — rule 이름·이메일·매칭 차원 라벨
   const samples = matches.slice(0, 5);
 
+  // 빠른 선택용 최근 정책 — 입력 부담 ↓ (UUID 직접 복붙 X)
+  const recent = await fetchRecentPrograms();
+
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       <div className="max-w-[820px] mx-auto px-5">
@@ -125,6 +159,52 @@ export default async function AlertSimulatorPage({
           title="정책 → 발송 대상 미리보기"
           description="정책 ID 입력 → 등록 시 알림 받을 사용자 수·샘플 가시화. 발송 안 함."
         />
+
+        {/* 빠른 선택 — 최근 welfare/loan 각 5건. 클릭만으로 UUID 자동 입력 + 즉시 시뮬레이션. */}
+        {(recent.welfare.length > 0 || recent.loan.length > 0) && (
+          <section className="mb-4 bg-white border border-grey-200 rounded-xl p-4">
+            <h2 className="text-sm font-bold text-grey-900 mb-2">
+              빠른 선택 (최근 등록)
+            </h2>
+            <p className="text-xs text-grey-600 mb-3 leading-[1.5]">
+              UUID 입력 없이 클릭만으로 시뮬레이션. 정책 등록 직후 발송 대상 즉시 확인할 때 사용.
+            </p>
+            {recent.welfare.length > 0 && (
+              <div className="mb-2">
+                <p className="text-xs font-mono text-grey-500 mb-1">welfare</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {recent.welfare.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/admin/alert-simulator?simTable=welfare&simProgramId=${p.id}`}
+                      className="px-2.5 py-1.5 text-xs rounded-md border border-grey-200 bg-grey-50 text-grey-800 hover:border-blue-400 hover:text-blue-600 hover:bg-white max-w-[260px] truncate"
+                      title={p.title}
+                    >
+                      {p.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            {recent.loan.length > 0 && (
+              <div>
+                <p className="text-xs font-mono text-grey-500 mb-1">loan</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {recent.loan.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/admin/alert-simulator?simTable=loan&simProgramId=${p.id}`}
+                      className="px-2.5 py-1.5 text-xs rounded-md border border-grey-200 bg-grey-50 text-grey-800 hover:border-blue-400 hover:text-blue-600 hover:bg-white max-w-[260px] truncate"
+                      title={p.title}
+                    >
+                      {p.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* 입력 폼 — GET method 로 URL 쿼리 주입 */}
         <form
