@@ -44,6 +44,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
       { href: "/admin/blog", label: "블로그 목록", icon: "✍️" },
       { href: "/admin/naver-blog", label: "네이버 블로그 큐", icon: "🟢" },
       { href: "/admin/wordpress", label: "워드프레스 자동 발행", icon: "🌐" },
+      { href: "/admin/instagram", label: "인스타 카드뉴스", icon: "📸" },
     ],
   },
   {
