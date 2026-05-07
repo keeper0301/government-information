@@ -23,8 +23,11 @@ import {
   buildCandidateUpsert,
   buildFailedCandidateUpsert,
   getExistingPressCandidate,
+  newsSourceUrl,
   upsertPressCandidate,
 } from "./candidates";
+// 4 layer apply_url fallback — apply_url null 사례 자동 채움 (자동 confirm 률 ↑)
+import { resolveApplyUrl } from "./url-fallback";
 
 // 광역 보도자료 후보 cap — 적체 감지 시 동적 상향
 // BASE_CAP × cron 3회/일 = 90건/일 capacity
@@ -101,12 +104,27 @@ export async function runAutoIngest(): Promise<IngestResult> {
         .select("body")
         .eq("id", c.id)
         .maybeSingle();
+      const bodyText = (full as { body: string | null } | null)?.body ?? null;
       const classified = await classifyPressNews({
         title: c.title,
         summary: c.summary,
-        body: (full as { body: string | null } | null)?.body ?? null,
+        body: bodyText,
       });
       result.classified += 1;
+
+      // 4 layer apply_url fallback — LLM apply_url 이 null/missing 이어도 본문/광역 매핑/source_url
+      // 으로 자동 채움. 정부 도메인 화이트리스트로 광고·외부 사이트 차단.
+      // is_policy=true 일 때만 fallback (아니면 INSERT 안 들어가니 무의미)
+      if (classified.is_policy) {
+        const fallback = resolveApplyUrl({
+          llmApplyUrl: classified.apply_url,
+          bodyUrls: classified.body_urls ?? [],
+          body: bodyText,
+          ministry: c.ministry,
+          sourceUrl: newsSourceUrl({ id: c.id, slug: c.slug }),
+        });
+        classified.apply_url = fallback.url;
+      }
 
       const upsert = buildCandidateUpsert({ newsId: c.id, result: classified });
       await upsertPressCandidate(upsert);

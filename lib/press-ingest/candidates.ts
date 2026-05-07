@@ -88,7 +88,7 @@ function ministryToSource(ministry: string | null): string {
   return ministry ? `${ministry}청` : "광역 보도자료";
 }
 
-function newsSourceUrl(news: { id: string; slug: string | null }): string {
+export function newsSourceUrl(news: { id: string; slug: string | null }): string {
   return `https://www.keepioo.com/news/${encodeURIComponent(news.slug || news.id)}`;
 }
 
