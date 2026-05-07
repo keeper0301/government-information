@@ -8,6 +8,8 @@ import {
   extractRegionTags,
 } from "@/lib/tags/taxonomy";
 import type { ClassifyResult } from "./classify";
+// 4 layer apply_url fallback — autoConfirm 단계에서 기존 pending 도 자동 채움.
+import { resolveApplyUrl } from "./url-fallback";
 
 export type PressCandidateStatus =
   | "pending"
@@ -401,34 +403,52 @@ export async function confirmPressCandidate(
 }
 
 export type AutoConfirmResult = {
-  /** apply_url 있어 자동 승인된 후보 수 */
+  /** 자동 승인된 후보 수 (fallback 으로 url 채워 INSERT 성공) */
   confirmed: number;
-  /** apply_url 없어 자동 승인 보류 — pending 으로 남아 사장님 수동 검토 대상 */
+  /** 4 layer fallback 으로 url 채운 후보 수 (확인 통계용) */
+  fallback_filled: number;
+  /** apply_url 없어 자동 승인 보류 — fallback 후에도 url 0 인 사례 (이론상 거의 0) */
   skipped_no_url: number;
   /** confirm 도중 실패한 후보별 에러 (DB / RLS / payload 검증 등) */
   errors: { candidate_id: string; message: string }[];
 };
 
+type AutoConfirmRow = {
+  id: string;
+  classified_payload: ClassifyResult;
+  news_posts: {
+    id: string;
+    slug: string | null;
+    ministry: string | null;
+    body: string | null;
+  };
+};
+
 /**
- * pending + welfare/loan + apply_url 있는 후보를 일괄 자동 승인.
+ * pending + welfare/loan 후보를 일괄 자동 승인.
  *
  * 사용 위치: cron (`runAutoIngest` 끝) — KST 10:30/15:30/19:30 자동 처리.
  * cap 만큼만 처리해 갑작스런 데이터 변화/캐시 폭주를 방지하고,
  * 적체된 pending 큐를 점진적으로 해소한다 (오래된 것부터).
  *
- * 가드 (옵션 C — 안전 자동 승인):
- *  - apply_url 없는 후보는 skipped_no_url 카운트만, pending 유지 → 사장님 수동 검토
- *  - program_type=unsure/not_policy 는 애초에 skipped 라 자동 승인 대상에서 제외
+ * 가드:
+ *  - apply_url null/empty → 4 layer fallback (LLM body_urls / 본문 정규식 / 광역 매핑 / source_url)
+ *    으로 자동 채우고 classified_payload jsonb update 후 confirm.
+ *    → 사장님 수동 검토 부담 거의 0. fallback url 화이트리스트로 광고·외부 사이트 차단.
+ *  - program_type=unsure/not_policy 는 애초에 skipped 라 자동 승인 대상에서 제외.
  *  - actorId=null 로 confirmPressCandidate 호출 → confirmed_by=NULL + admin_actions actor=null
- *    (system 자동 승인 출처 명확히 기록 — 추후 감사·롤백 시 수동 vs 자동 구분)
+ *    (system 자동 승인 출처 명확히 기록 — 추후 감사·롤백 시 수동 vs 자동 구분).
  */
 export async function autoConfirmPendingPressCandidates({
   limit = 50,
 }: { limit?: number } = {}): Promise<AutoConfirmResult> {
   const admin = createAdminClient();
+  // news_posts 의 body·ministry 도 같이 select — fallback chain 입력으로 사용.
   const { data, error } = await admin
     .from("press_ingest_candidates")
-    .select("id, classified_payload")
+    .select(
+      "id, classified_payload, news_posts!inner(id, slug, ministry, body)",
+    )
     .eq("status", "pending")
     .in("program_type", ["welfare", "loan"])
     .order("classified_at", { ascending: true })
@@ -438,18 +458,56 @@ export async function autoConfirmPendingPressCandidates({
   }
   const result: AutoConfirmResult = {
     confirmed: 0,
+    fallback_filled: 0,
     skipped_no_url: 0,
     errors: [],
   };
-  for (const row of (data ?? []) as Array<{
-    id: string;
-    classified_payload: ClassifyResult;
-  }>) {
-    const applyUrl = row.classified_payload?.apply_url;
+  for (const row of ((data ?? []) as unknown as AutoConfirmRow[])) {
+    let applyUrl = row.classified_payload?.apply_url ?? null;
+
+    // apply_url 없으면 4 layer fallback 적용 + classified_payload jsonb update.
+    // confirmPressCandidate 가 candidate fetch 시 갱신된 payload 를 쓰므로 INSERT payload 의
+    // apply_url 도 새 url 로 채워짐.
     if (!applyUrl) {
+      const fallback = resolveApplyUrl({
+        llmApplyUrl: null,
+        bodyUrls: row.classified_payload?.body_urls ?? [],
+        body: row.news_posts.body,
+        ministry: row.news_posts.ministry,
+        sourceUrl: newsSourceUrl({
+          id: row.news_posts.id,
+          slug: row.news_posts.slug,
+        }),
+      });
+      applyUrl = fallback.url;
+
+      const updatedPayload: ClassifyResult = {
+        ...row.classified_payload,
+        apply_url: applyUrl,
+      };
+      const { error: updateErr } = await admin
+        .from("press_ingest_candidates")
+        .update({
+          classified_payload: updatedPayload,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+      if (updateErr) {
+        result.errors.push({
+          candidate_id: row.id,
+          message: `payload update: ${updateErr.message.slice(0, 300)}`,
+        });
+        continue;
+      }
+      result.fallback_filled += 1;
+    }
+
+    if (!applyUrl) {
+      // Layer 5 source_url 까지 항상 url 채워지므로 여기는 도달 거의 X (방어적)
       result.skipped_no_url += 1;
       continue;
     }
+
     try {
       await confirmPressCandidate(row.id, null);
       result.confirmed += 1;

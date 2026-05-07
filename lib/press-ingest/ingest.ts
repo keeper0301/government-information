@@ -60,7 +60,9 @@ export type IngestResult = {
   skipped_classify_error: number;
   /** 자동 승인 — apply_url 있어 즉시 welfare/loan 등록된 후보 수 */
   auto_confirmed: number;
-  /** 자동 승인 보류 — apply_url 없어 사장님 수동 검토 대상으로 남은 후보 수 */
+  /** 자동 승인 중 4 layer fallback 으로 url 채운 후보 수 (분포 확인용) */
+  auto_fallback_filled: number;
+  /** 자동 승인 보류 — fallback 후에도 url 0 인 사례 (이론상 거의 0) */
   auto_skipped_no_url: number;
   errors: string[];
 };
@@ -76,6 +78,7 @@ export async function runAutoIngest(): Promise<IngestResult> {
     skipped_existing: 0,
     skipped_classify_error: 0,
     auto_confirmed: 0,
+    auto_fallback_filled: 0,
     auto_skipped_no_url: 0,
     errors: [],
   };
@@ -172,6 +175,7 @@ export async function runAutoIngest(): Promise<IngestResult> {
   try {
     const auto = await autoConfirmPendingPressCandidates({ limit: AUTO_CONFIRM_CAP });
     result.auto_confirmed = auto.confirmed;
+    result.auto_fallback_filled = auto.fallback_filled;
     result.auto_skipped_no_url = auto.skipped_no_url;
     if (auto.errors.length > 0) {
       result.errors.push(
