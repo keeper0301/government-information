@@ -22,6 +22,8 @@ export type HealthCheckItem = {
   value: string;
   status: "ok" | "warn" | "error" | "info";
   hint?: string;
+  // 사장님이 카드 클릭 시 곧장 이동할 진단 페이지. ok 상태 항목은 보통 비움.
+  href?: string;
 };
 
 export type HealthSnapshot = {
@@ -177,13 +179,18 @@ export const getHealthSnapshot = cache(async (): Promise<HealthSnapshot> => {
         label: "cron 실패 24h",
         value: `${cron24h.count ?? 0}건`,
         status: (cron24h.count ?? 0) === 0 ? "ok" : (cron24h.count ?? 0) >= 3 ? "error" : "warn",
-        hint: (cron24h.count ?? 0) >= 3 ? "/admin/cron-failures 점검" : undefined,
+        hint: (cron24h.count ?? 0) >= 3 ? "최근 실패 모음 + 일괄 재시도" : undefined,
+        // 실패 1건 이상이면 한 번에 cron-failures 로 이동. 0건 이면 link 생략.
+        href: (cron24h.count ?? 0) > 0 ? "/admin/cron-failures" : undefined,
       },
       {
         label: "blog 24h 발행",
         value: `${blog24h.count ?? 0}글`,
         status: (blog24h.count ?? 0) >= 5 ? "ok" : (blog24h.count ?? 0) >= 1 ? "warn" : "error",
-        hint: (blog24h.count ?? 0) === 0 ? "publish-blog cron 점검 필요" : undefined,
+        // blog 발행은 GitHub Actions (06:00 UTC) 가 담당 — vercel cron 아님.
+        // 0 글 이어도 cron-trigger 에는 publish-blog entry 가 없어 헛 클릭 → /admin/blog 진입이 정확.
+        hint: (blog24h.count ?? 0) === 0 ? "GitHub Actions publish-blog 점검 (/admin/blog)" : undefined,
+        href: "/admin/blog",
       },
     ],
     content: [],

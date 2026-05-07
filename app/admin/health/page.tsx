@@ -305,8 +305,10 @@ function ItemCard({ item }: { item: HealthCheckItem }) {
     error: "bg-red",
     info: "bg-grey-400",
   } as const;
-  return (
-    <div className={`rounded-lg border p-3 ${colors[item.status]}`}>
+
+  // 카드 본체 — href 유무에 무관한 공통 레이아웃.
+  const body = (
+    <>
       <div className="flex items-center gap-1.5 mb-1">
         <span
           className={`inline-block w-1.5 h-1.5 rounded-full ${dot[item.status]}`}
@@ -315,6 +317,14 @@ function ItemCard({ item }: { item: HealthCheckItem }) {
         <div className="text-xs font-semibold tracking-[0.04em] text-grey-700 truncate">
           {item.label}
         </div>
+        {item.href && (
+          <span
+            className="ml-auto text-xs text-grey-500 group-hover:text-blue-600"
+            aria-hidden="true"
+          >
+            →
+          </span>
+        )}
       </div>
       <div className="text-base font-extrabold leading-tight tracking-[-0.2px]">
         {item.value}
@@ -324,6 +334,24 @@ function ItemCard({ item }: { item: HealthCheckItem }) {
           {item.hint}
         </div>
       )}
+    </>
+  );
+
+  // href 있는 항목 — Link 로 감싸 클릭 시 진단 페이지 즉시 이동.
+  // 사장님이 health 페이지에서 이상 신호 카드 클릭만으로 처리 도구 진입 가능.
+  if (item.href) {
+    return (
+      <Link
+        href={item.href}
+        className={`group block rounded-lg border p-3 no-underline hover:border-blue-400 hover:shadow-sm transition-all ${colors[item.status]}`}
+      >
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <div className={`rounded-lg border p-3 ${colors[item.status]}`}>
+      {body}
     </div>
   );
 }
