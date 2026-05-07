@@ -19,6 +19,7 @@ import {
 } from "@/lib/ai";
 import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
 import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
+import { publishToWordPress } from "@/lib/wordpress/publisher";
 import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
@@ -401,6 +402,21 @@ async function publishWithCandidate(
       await enqueueNaverBlog(inserted.id);
     } catch (e) {
       console.warn(`[blog-publish] naver enqueue 실패 (블로그 발행은 성공): ${(e as Error).message}`);
+    }
+
+    // 워드프레스 자동 발행 — 환경변수 설정 시 즉시 발행, 실패해도 핵심 경로 영향 0.
+    // 발행 결과 (성공·실패 모두) 는 publisher 가 wordpress_publish_log 에 기록.
+    try {
+      await publishToWordPress(inserted.id, {
+        slug,
+        title: generated.title,
+        meta_description: generated.meta_description,
+        content: generated.content,
+        tags: generated.tags ?? null,
+        category: generated.category || category,
+      });
+    } catch (e) {
+      console.warn(`[blog-publish] wordpress 발행 실패 (블로그 발행은 성공): ${(e as Error).message}`);
     }
   }
 
