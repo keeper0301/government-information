@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
+import { logAdminAction } from "@/lib/admin-actions";
 import {
   detectDuplicateScore,
   getDedupeSelectColumns,
@@ -23,6 +24,10 @@ import {
   type DedupeRow,
   type DedupeTableName,
 } from "@/lib/dedupe/welfare-loan";
+
+// score ≥ 0.95 (거의 동일 정책) 자동 confirm — 사장님 검수 큐에서 자동 빠짐.
+// 0.95 미만은 false positive 위험으로 사장님 검수 큐 (기존 동작).
+const AUTO_CONFIRM_SCORE_THRESHOLD = 0.95;
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -38,6 +43,8 @@ interface DetectResult {
   newCount: number;       // 신규 윈도우 안 row 수
   activeCount: number;    // 활성 row 수 (비교 대상)
   matched: number;        // duplicate_of_id 신규 저장 수
+  /** score ≥ 0.95 자동 confirm 된 페어 수 — 사장님 검수 큐에서 자동 빠짐 */
+  autoConfirmed: number;
   // score 분포 — 사장님이 첫 1주일 reject 비율 보고 임계값 조정 판단용
   scoreBuckets: { range_0_7_to_0_8: number; range_0_8_to_0_9: number; range_0_9_plus: number };
 }
@@ -82,7 +89,14 @@ async function detectInTable(
 
   const emptyBuckets = { range_0_7_to_0_8: 0, range_0_8_to_0_9: 0, range_0_9_plus: 0 };
   if (news.length === 0 || actives.length === 0) {
-    return { table, newCount: news.length, activeCount: actives.length, matched: 0, scoreBuckets: emptyBuckets };
+    return {
+      table,
+      newCount: news.length,
+      activeCount: actives.length,
+      matched: 0,
+      autoConfirmed: 0,
+      scoreBuckets: emptyBuckets,
+    };
   }
 
   // 1차 — 매칭 페어 수집 (DB write 없음, 순수 inner loop). O(N×M).
@@ -108,17 +122,23 @@ async function detectInTable(
   }
 
   // 2차 — Promise batch (10건씩) update. 직렬 await 대비 약 10배 throughput.
+  // score ≥ 0.95 (거의 동일) 페어는 dedupe_auto_confirmed_at 동시 채워서 사장님 검수 큐에서 자동 제외.
   const BATCH_SIZE = 10;
   let matched = 0;
+  let autoConfirmed = 0;
+  const now = new Date().toISOString();
+  const autoConfirmedPairs: Array<{ newId: string; bestId: string; score: number }> = [];
+
   for (let i = 0; i < matches.length; i += BATCH_SIZE) {
     const batch = matches.slice(i, i + BATCH_SIZE);
     const results = await Promise.all(
-      batch.map(({ newId, bestId }) =>
-        admin
-          .from(table)
-          .update({ duplicate_of_id: bestId })
-          .eq("id", newId),
-      ),
+      batch.map(({ newId, bestId, score }) => {
+        const updatePayload: Record<string, unknown> = { duplicate_of_id: bestId };
+        if (score >= AUTO_CONFIRM_SCORE_THRESHOLD) {
+          updatePayload.dedupe_auto_confirmed_at = now;
+        }
+        return admin.from(table).update(updatePayload).eq("id", newId);
+      }),
     );
     for (let j = 0; j < results.length; j++) {
       const r = results[j];
@@ -130,7 +150,30 @@ async function detectInTable(
         );
       } else {
         matched++;
+        if (batch[j].score >= AUTO_CONFIRM_SCORE_THRESHOLD) {
+          autoConfirmed++;
+          autoConfirmedPairs.push(batch[j]);
+        }
       }
+    }
+  }
+
+  // 자동 confirm 된 페어를 admin_actions 에 일괄 audit 기록 (사장님 추적용).
+  // 감사 로그 실패는 dedupe 자체 영향 없게 try/catch 격리.
+  for (const pair of autoConfirmedPairs) {
+    try {
+      await logAdminAction({
+        actorId: null, // system
+        action: "dedupe_auto_confirm",
+        details: {
+          table,
+          duplicate_id: pair.newId,
+          original_id: pair.bestId,
+          score: pair.score,
+        },
+      });
+    } catch {
+      // 감사 로그 실패는 무시
     }
   }
 
@@ -139,6 +182,7 @@ async function detectInTable(
     newCount: news.length,
     activeCount: actives.length,
     matched,
+    autoConfirmed,
     scoreBuckets: buckets,
   };
 }

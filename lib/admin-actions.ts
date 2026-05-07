@@ -26,6 +26,7 @@ export type AdminActionType =
   | "news_hide"             // 정책 뉴스 비공개 (저작권·오보 모더레이션)
   | "news_unhide"           // 정책 뉴스 복원 (잘못 숨긴 경우 또는 사유 해소)
   | "news_auto_hide"        // LLM 자동 분류로 광고성·저작권 의심 자동 숨김 (system actor=null)
+  | "dedupe_auto_confirm"   // dedupe-detect cron 이 score ≥ 0.95 자동 confirm (system actor=null)
   | "manual_cron_trigger"  // /admin/cron-trigger 수동 cron 실행 (Phase 5)
   | "csv_export"           // /api/admin/export-users CSV 다운로드 (Phase 6 #9)
   | "manual_program_create" // /admin/welfare/new · /admin/loan/new 수동 정책 등록 (#7)
@@ -285,6 +286,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   news_hide: "정책 뉴스 비공개",
   news_unhide: "정책 뉴스 복원",
   news_auto_hide: "정책 뉴스 자동 숨김 (LLM)",
+  dedupe_auto_confirm: "중복 정책 자동 확정 (score ≥ 0.95)",
   manual_cron_trigger: "Cron 수동 실행",
   csv_export: "CSV 내보내기",
   manual_program_create: "정책 수동 등록",

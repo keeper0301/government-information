@@ -70,6 +70,9 @@ async function loadCandidates(
     .from(table)
     .select(getDedupeSelectColumns(table, { includeDuplicateOfId: true }))
     .not("duplicate_of_id", "is", null)
+    // 074: score ≥ 0.95 자동 confirm 된 페어는 검수 큐에서 자동 제외
+    // (사장님 검수 부담 감소). 잘못 자동 confirm 된 경우 admin_actions 에서 추적 가능.
+    .is("dedupe_auto_confirmed_at", null)
     .order("updated_at", { ascending: false })
     .limit(200);
 
