@@ -220,7 +220,8 @@ sub-project N 시작
 ## 7. 진행 현황
 
 - [x] #1 어드민 인벤토리 — 산출물: `docs/admin-inventory-2026-05.md` (2026-05-07)
-- [ ] #2 다이제스트 강화
+- [x] Quick Win #1/5 — `/admin/cron-failures` 일괄 재시도 버튼 (commit `aa2c342`)
+- [x] #2 다이제스트 강화 — daily-digest 6→10 KPI + 검토 큐 통합 (2026-05-07)
 - [ ] #4 통합 알림
 - [ ] #6 안전망
 - [ ] #5 cron 자동화
@@ -232,6 +233,13 @@ sub-project N 시작
 - 자동화 불가능 (창작·조회): 14건
 - 1순위 자동화 후보: `/admin/press-ingest` (#3 으로 진행) + `/admin/cron-trigger` (#5 로 진행)
 - Quick Win 5건: `/admin/cron-trigger` 일괄 재시도 버튼 등 1시간 안에 완료 가능
+
+### #2 핵심 변경
+
+- 신규 4 KPI: wordpress 발행 24h · cron 실패 24h (`last_seen_at` 정확) · dedupe 검토 큐 · 네이버 큐
+- 검토 필요 큐 ≥ 1 일 때만 어드민 link 노출 (사장님 진입 동기 명확)
+- cron 실패 ≥ 1 일 때 link 가 `/admin/cron-failures` 우선
+- 1 query 실패해도 SMS 발송 보장 (각 query 에 try/catch + 0 fallback)
 
 ## 8. 위험·운영 메모
 

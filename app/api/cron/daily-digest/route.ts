@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import {
   collectDailyDigest,
   formatDigestMessage,
+  reviewQueueTotal,
 } from "@/lib/notifications/daily-digest";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 
@@ -34,17 +35,30 @@ async function authorize(request: Request) {
 async function run(): Promise<NextResponse> {
   const data = await collectDailyDigest();
   const message = formatDigestMessage(data);
+  const reviewTotal = reviewQueueTotal(data);
+
+  // 검토 필요 ≥ 1 → 어드민 link 노출. 0 이면 link 생략 (SMS 깔끔, 사장님 어드민 진입 X).
+  // cron 실패 1+ 도 진입 동기 → cron-failures 페이지 link.
+  const link =
+    data.cronFailures24h > 0
+      ? "keepioo.com/admin/cron-failures"
+      : reviewTotal > 0
+        ? "keepioo.com/admin"
+        : "";
 
   // SMS 발송 — 환경변수 (SOLAPI_OPS_FROM_PHONE/TO_PHONE) 미설정 시 skipped
   const sms = await sendOpsAlertSms({
     subject: "",
     message,
+    link,
   });
 
   return NextResponse.json({
     ok: true,
     data,
     message,
+    reviewTotal,
+    link,
     sms,
   });
 }

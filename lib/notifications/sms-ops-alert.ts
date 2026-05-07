@@ -68,8 +68,11 @@ export async function sendOpsAlertSms({
 
   // 본문 — 제목 + 메시지 (한 줄로 압축, SMS 가독성 우선)
   // 90자 초과 시 Solapi 가 자동으로 LMS 로 전환 (요금 약 30원)
-  const linkLine = link ?? "keepioo.com/admin/health";
-  const body = `${subject}\n${message}\n\n→ ${linkLine}`.slice(0, 1900);
+  // link 가 빈 문자열이면 link line 자체 skip (사장님 진입 동기 없을 때 SMS 깔끔)
+  const useLink = link !== undefined ? link : "keepioo.com/admin/health";
+  const subjectLine = subject ? `${subject}\n` : "";
+  const linkSuffix = useLink ? `\n\n→ ${useLink}` : "";
+  const body = `${subjectLine}${message}${linkSuffix}`.slice(0, 1900);
 
   // HMAC-SHA256 — lib/kakao-alimtalk.ts 와 동일 규칙
   const date = new Date().toISOString();
