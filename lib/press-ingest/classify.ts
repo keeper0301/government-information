@@ -26,8 +26,14 @@ export type ClassifyResult = {
   benefits: string;
   /** 어떻게 신청 */
   apply_method: string;
-  /** 신청 URL (보도자료에 명시) — null 가능 */
+  /** 신청 URL (보도자료에 명시) — null 가능. fallback 적용 전 LLM 직접 응답. */
   apply_url: string | null;
+  /**
+   * 본문에서 발견된 모든 url 목록 (자동 fallback 용).
+   * apply_url 이 null 이어도 본문에 정부 도메인 url 이 있으면 자동 confirm 가능하도록 LLM 이 같이 추출.
+   * url-fallback 모듈에서 화이트리스트 (`*.go.kr`/`*.gov.kr`/`*.or.kr`/`*.re.kr`) 우선 선택.
+   */
+  body_urls?: string[];
   /** 신청 시작 YYYY-MM-DD — null 가능 */
   apply_start: string | null;
   /** 신청 마감 YYYY-MM-DD — null 가능 */
@@ -58,7 +64,8 @@ JSON 형식 (다른 말 없이 JSON 만 출력):
   "eligibility": "자격 상세 (여러 줄 가능)",
   "benefits": "무엇을 받는가 (한 줄)",
   "apply_method": "어떻게 신청하는가",
-  "apply_url": "보도자료에 명시된 신청 URL 또는 null",
+  "apply_url": "신청·접수 페이지 URL (본문에서 가장 신청에 가까운 url 선택, 없으면 null)",
+  "body_urls": ["본문에 등장한 모든 http/https URL 을 빠짐없이 배열로. 신청·문의·홈페이지·첨부 모두 포함. 없으면 빈 배열"],
   "apply_start": "YYYY-MM-DD 또는 null",
   "apply_end": "YYYY-MM-DD 또는 null",
   "category": "welfare 면 생계|의료|양육|교육|취업|주거|문화|창업 중 하나, loan 면 정책자금|창업자금|소상공인|생계자금|주거자금|농어업|기타 중 하나",
@@ -67,7 +74,15 @@ JSON 형식 (다른 말 없이 JSON 만 출력):
   "repayment_period": "상환 기간 (loan 일 때만)"
 }
 
-is_policy=false 인 경우 나머지 필드는 빈 문자열 또는 null.
+apply_url 추출 규칙 (자동 confirm 률 ↑ 핵심):
+1. "신청 바로가기"/"접수"/"신청서 다운로드" 같은 직접 신청 url 1순위
+2. 정책 사업 공식 안내 페이지 url (예: 시청 복지사업 페이지) 2순위
+3. 광역도청 메인 페이지 (예: seoul.go.kr) 3순위
+4. 위 모두 없으면 null
+
+body_urls 는 apply_url 과 별개 — 본문에 있는 모든 url 을 누락 없이 포함 (자동 fallback 매칭에 사용).
+
+is_policy=false 인 경우 나머지 필드는 빈 문자열 또는 null (단 body_urls 는 빈 배열).
 
 ──────── 보도자료 ────────
 [제목]
@@ -143,6 +158,11 @@ export async function classifyPressNews(input: {
   }
 
   // 결과 보정 — 빈 string vs null 정규화
+  // body_urls 는 LLM 이 string 단일 또는 누락 가능 → 항상 string[] 로 정규화
+  const bodyUrls = Array.isArray(parsed.body_urls)
+    ? parsed.body_urls.filter((u): u is string => typeof u === "string" && !!u)
+    : [];
+
   return {
     is_policy: !!parsed.is_policy,
     program_type: ["welfare", "loan", "unsure"].includes(parsed.program_type)
@@ -154,6 +174,7 @@ export async function classifyPressNews(input: {
     benefits: parsed.benefits || "",
     apply_method: parsed.apply_method || "",
     apply_url: parsed.apply_url || null,
+    body_urls: bodyUrls,
     apply_start: parsed.apply_start || null,
     apply_end: parsed.apply_end || null,
     category: parsed.category || "",
