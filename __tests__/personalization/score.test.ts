@@ -29,6 +29,84 @@ describe('scoreProgram', () => {
     expect(r.signals).toEqual([]);
   });
 
+  // 2026-05-07 사고 회귀 방지: program.region NULL 이고 title 에 다른 광역 시군구 명시
+  // 시 사장님 화면에 노출되는 사고 ("2025 속초시 출연 소상공인 협약보증" 사례).
+  it('region NULL + title 에 다른 광역 시군구 명시 → 강제 차단', () => {
+    const sokchoProgram = {
+      ...baseProgram,
+      title: '2025 속초시 출연 소상공인 협약보증(변경)',
+      region: null,
+      benefit_tags: ['창업'],
+    };
+    // 사장님 (전남 순천) 프로필 — benefit_tags 매칭 점수만으로 통과 시도하지만 차단돼야 함
+    const user: UserSignals = {
+      ...emptyUser,
+      region: '전남',
+      district: '순천시',
+      benefitTags: ['창업'],
+      occupation: '자영업자',
+    };
+    const r = scoreProgram(sokchoProgram, user);
+    expect(r.score).toBe(0);
+    expect(r.signals).toEqual([]);
+  });
+
+  it('region "전국" + title 에 다른 광역 시군구 명시 → 강제 차단', () => {
+    // region 이 "전국" 으로 잘못 저장된 시나리오 — evaluateRegion 은 national(+5) 로 처리하지만
+    // title 에 다른 시군구 있으니 안전망이 차단해야 함.
+    const r = scoreProgram(
+      { ...baseProgram, title: '강원 양양군 청년 주거', region: '전국', benefit_tags: ['주거'] },
+      { ...emptyUser, region: '전남', benefitTags: ['주거'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('사용자 광역의 시군구가 title 에 있으면 차단 안 함 (자기 지역)', () => {
+    // 사장님 = 전남, 정책 title 에 "순천시" 명시 → conflict 아님 (자기 광역 시군구)
+    const r = scoreProgram(
+      { ...baseProgram, title: '순천시 청년 정책', region: '전라남도 순천시', benefit_tags: ['청년'] },
+      { ...emptyUser, region: '전남', district: '순천시' },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('전국 정책 (title 에 시군구 명시 없음) → 정상 매칭', () => {
+    // title "재도전특별자금" 같은 일반 정책명 — 광역/시군구 없음 → 차단되면 안 됨
+    const r = scoreProgram(
+      { ...baseProgram, title: '재도전특별자금', region: '전국', benefit_tags: ['창업'] },
+      { ...emptyUser, region: '전남', benefitTags: ['창업'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+    expect(r.signals.find(s => s.kind === 'region')?.score).toBe(5);
+  });
+
+  // 동명 시군구 회귀 방지 (강서구 서울/부산, 고성군 강원/경남 등)
+  it('서울 사용자 + 서울 강서구 정책 → 차단 안 함 (강서구 부산도 존재하지만 자기 지역)', () => {
+    const r = scoreProgram(
+      { ...baseProgram, title: '강서구 청년 주거 지원', region: '서울특별시 강서구', benefit_tags: ['주거'] },
+      { ...emptyUser, region: '서울', district: '강서구', benefitTags: ['주거'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('전남 사용자 + title "동구" 정책 (region NULL) → 차단 안 함 (동구는 6개 광역 동명)', () => {
+    // 동구는 너무 많은 광역에 있어 단독 키워드로 차단하면 false positive 위험 큼
+    const r = scoreProgram(
+      { ...baseProgram, title: '동구 교육 정책', region: null, benefit_tags: ['교육'] },
+      { ...emptyUser, region: '전남', benefitTags: ['교육'] },
+    );
+    // 동구 단독으로는 차단 안 됨 → benefit_tags 매칭 점수만이라도 0 보다 커야 함
+    expect(r.score).toBeGreaterThan(0);
+  });
+
+  it('경남 사용자 + 강원 고성군 정책 → 차단 안 함 (고성군 경남도 동명)', () => {
+    const r = scoreProgram(
+      { ...baseProgram, title: '고성군 양육 지원', region: null, benefit_tags: ['양육'] },
+      { ...emptyUser, region: '경남', benefitTags: ['양육'] },
+    );
+    expect(r.score).toBeGreaterThan(0);
+  });
+
   it('지역 광역만 매칭 → +5', () => {
     const r = scoreProgram(baseProgram, { ...emptyUser, region: '서울' });
     expect(r.score).toBe(5);

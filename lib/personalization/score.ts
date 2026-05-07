@@ -3,6 +3,7 @@
 // spec §4-2 (Phase 1) 기준. 소득·가구상태는 본문 정규식 매칭으로 약한 가산점.
 import { AGE_KEYWORDS, OCCUPATION_KEYWORDS } from '@/lib/profile-options';
 import { evaluateBusinessMatch } from '@/lib/eligibility/business-match';
+import { PROVINCES, DISTRICTS_BY_PROVINCE } from '@/lib/regions';
 import type { UserSignals, MatchSignal, ScoredItem } from './types';
 
 // 점수 계산 대상 아이템 형태 정의
@@ -35,6 +36,100 @@ export function buildProgramText(program: ScorableItem): string {
   ]
     .filter(Boolean)
     .join(' ');
+}
+
+// 사용자 region 짧은 키 ('전남') → PROVINCES 의 ProvinceCode ('jeonnam') 매핑.
+// REGION_ALIASES 의 키를 lib/regions.ts 의 PROVINCES.name 과 매칭해서 결정.
+// 같은 매핑이 score.ts 안 여러 함수에서 재사용되므로 캐시.
+const _provinceCodeByUserRegion = new Map<string, string | null>();
+function findProvinceCodeForUserRegion(userRegion: string): string | null {
+  if (_provinceCodeByUserRegion.has(userRegion)) {
+    return _provinceCodeByUserRegion.get(userRegion)!;
+  }
+  const aliases = REGION_ALIASES[userRegion] ?? [userRegion];
+  let matched: string | null = null;
+  for (const province of PROVINCES) {
+    if (aliases.some((a) => province.name.includes(a) || a.includes(province.name))) {
+      matched = province.code;
+      break;
+    }
+  }
+  _provinceCodeByUserRegion.set(userRegion, matched);
+  return matched;
+}
+
+// 사용자 region 외 다른 광역명 + 다른 광역의 시군구 (동명 시군구 제외) set.
+// 정책 title 에 이 키워드 중 하나라도 포함돼 있으면 "다른 지역 정책" 으로 간주 → 추천 차단.
+//
+// 사고 (2026-05-07): 사장님(전남 순천) 화면에 "2025 속초시 출연 소상공인 협약보증" 표시.
+// 정책 region 컬럼이 NULL 또는 잘못 저장돼 evaluateRegion 의 gate 우회 → benefit_tags
+// 다른 시그널 합산만으로 minScore 통과. title 에 "속초시" 명시되어 있어도 못 잡음.
+//
+// hot-fix: title 에 다른 광역의 시군구·광역명이 명시되면 region 정보 무시하고 강제 차단.
+//
+// **중요한 회귀 방지**: 동명 시군구 (강서구 서울/부산, 동구·중구·서구·남구·북구 다수, 고성군 강원/경남
+// 등) 는 conflict set 에서 제외. 사용자 광역에도 같은 이름 시군구가 있으면 그 키워드 단독으로는
+// 차단 안 함. 트레이드오프: 진짜 다른 광역의 동명 시군구 정책은 못 잡지만(false negative),
+// 자기 광역 정책이 잘못 차단되는 회귀(false positive)는 0 — 자기 지역 정책 차단이 더 큰 사고.
+const _conflictKeywordsByUserRegion = new Map<string, Set<string>>();
+function getConflictingRegionKeywords(userRegion: string): Set<string> {
+  const cached = _conflictKeywordsByUserRegion.get(userRegion);
+  if (cached) return cached;
+
+  const userProvinceCode = findProvinceCodeForUserRegion(userRegion);
+  const userDistricts = new Set<string>(
+    userProvinceCode
+      ? (DISTRICTS_BY_PROVINCE[userProvinceCode as keyof typeof DISTRICTS_BY_PROVINCE] ?? [])
+      : [],
+  );
+
+  // 동명 시군구 검출용 — 한국 전역에서 2개 이상 광역에 등장하는 시군구 이름.
+  // 사용자 광역 외에 여러 광역에 등장하는 이름은 단독으로는 conflict 처리하지 않음.
+  const districtCounts = new Map<string, number>();
+  for (const province of PROVINCES) {
+    for (const district of DISTRICTS_BY_PROVINCE[province.code] ?? []) {
+      districtCounts.set(district, (districtCounts.get(district) ?? 0) + 1);
+    }
+  }
+
+  const result = new Set<string>();
+
+  for (const province of PROVINCES) {
+    const isUserProvince = province.code === userProvinceCode;
+    if (isUserProvince) continue; // 사용자 광역·그 시군구는 conflict 아님
+
+    // 다른 광역의 정식 명칭 (예: "강원특별자치도", "전라북도") — 길고 명확해서 false positive ↓
+    result.add(province.name);
+
+    // 다른 광역의 시군구 — 동명·자기 광역 중복은 제외
+    const districts = DISTRICTS_BY_PROVINCE[province.code] ?? [];
+    for (const district of districts) {
+      // 사용자 광역에 같은 이름 시군구 있으면 단독 키워드로 차단 안 함 (회귀 방지)
+      if (userDistricts.has(district)) continue;
+      // 한국 전역에서 동명 시군구 (강서구·동구·중구·고성군 등) 도 단독 차단 안 함
+      // — 광역 한정자 없이 단순 substring 매칭은 false positive 위험
+      if ((districtCounts.get(district) ?? 0) > 1) continue;
+      result.add(district);
+    }
+  }
+
+  _conflictKeywordsByUserRegion.set(userRegion, result);
+  return result;
+}
+
+/**
+ * 정책 title 에 사용자 광역과 다른 광역/시군구가 명시되어 있는지 검사.
+ * true 면 추천에서 강제 차단해야 함 (region 컬럼 데이터 오류 안전망).
+ *
+ * 같은 광역 내 다른 시군구 (예: 사장님 순천시 + 영암군 정책) 는 evaluateRegion 의
+ * district_mismatch 가 이미 잡으므로 여기서 추가로 처리 안 함.
+ */
+export function hasConflictingRegionInTitle(title: string, userRegion: string): boolean {
+  const conflicts = getConflictingRegionKeywords(userRegion);
+  for (const keyword of conflicts) {
+    if (title.includes(keyword)) return true;
+  }
+  return false;
 }
 
 // 광역시도 명칭 별칭 매핑 (DB에 저장된 정식 명칭 → 사용자 선택 짧은 명칭)
@@ -646,6 +741,16 @@ export function scoreProgram<T extends ScorableItem>(
     program.region &&
     (regionEval.kind === 'no_match' || regionEval.kind === 'district_mismatch')
   ) {
+    return { item: program, score: 0, signals: [] };
+  }
+
+  // ②-Gate (보강, 2026-05-07): title 기반 다른 광역/시군구 충돌 검출.
+  // 위 gate 는 program.region 이 NULL/잘못된 값이면 우회됨. 사고 사례:
+  //   - 정책 title "2025 속초시 출연 소상공인 협약보증" + program.region=NULL/"전국"
+  //   - 사장님(전남 순천) 화면에 노출됨 ("지역" 배지까지 ✓ 매칭으로 표시)
+  // hot-fix: title 에 사용자 광역 외 다른 광역명·다른 광역의 시군구가 명시돼 있으면
+  // region 정보 무관하게 강제 차단. region 컬럼 데이터 오류에 대한 안전망.
+  if (user.region && hasConflictingRegionInTitle(program.title, user.region)) {
     return { item: program, score: 0, signals: [] };
   }
 
