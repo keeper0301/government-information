@@ -18,6 +18,7 @@ import {
   type ProgramContext,
 } from "@/lib/ai";
 import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
+import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
@@ -370,23 +371,37 @@ async function publishWithCandidate(
   // 동일하게 사용됨. AdSense 검수자에게 "이미지 부재" 신호 회피의 영구 해결책.
   // 외부 hosting 의존 없음 (별도 Storage 업로드 X) — Next.js ImageResponse 캐싱 활용.
   const coverImage = `/blog/${encodeURIComponent(slug)}/opengraph-image`;
-  const { error } = await admin.from("blog_posts").insert({
-    slug,
-    title: generated.title,
-    content: generated.content,
-    meta_description: generated.meta_description,
-    tags: generated.tags,
-    category: generated.category || category,
-    faqs: generated.faqs,
-    reading_time_min: reading,
-    cover_image: coverImage,
-    published_at: now,
-    source_program_id: picked.programId,
-    source_program_type: picked.programType,
-  });
+  const { data: inserted, error } = await admin
+    .from("blog_posts")
+    .insert({
+      slug,
+      title: generated.title,
+      content: generated.content,
+      meta_description: generated.meta_description,
+      tags: generated.tags,
+      category: generated.category || category,
+      faqs: generated.faqs,
+      reading_time_min: reading,
+      cover_image: coverImage,
+      published_at: now,
+      source_program_id: picked.programId,
+      source_program_type: picked.programType,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     throw new Error(`DB 저장 실패: ${error.message}`);
+  }
+
+  // 네이버 블로그 발행 큐에 자동 enqueue — 실패해도 블로그 발행 자체는 성공으로
+  // 처리 (백링크용 부가 작업이 핵심 경로를 막지 않게). UNIQUE 위반은 정상 무시.
+  if (inserted?.id) {
+    try {
+      await enqueueNaverBlog(inserted.id);
+    } catch (e) {
+      console.warn(`[blog-publish] naver enqueue 실패 (블로그 발행은 성공): ${(e as Error).message}`);
+    }
   }
 
   return {
