@@ -99,7 +99,10 @@ export async function generateMetadata({
     : undefined;
 
   return {
-    title: `${post.title} | 정책알리미`,
+    // CTR hot-fix: title 끝 " | 정책알리미" brand 군더더기 제거.
+    // Google 검색결과는 약 50자에서 잘리므로, brand 가 차지하던 7자를 컨텐츠로 전환.
+    // siteName 은 openGraph 에 보존 — Google 이 자체적으로 사이트명을 제목 옆에 표시.
+    title: post.title,
     description,
     keywords,
     alternates: { canonical: `/blog/${slug}` },

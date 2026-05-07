@@ -38,15 +38,24 @@ export async function generateMetadata({
   const category = getEligibilityCategory(slug);
   if (!category) return { title: '자격 카테고리 없음' };
 
-  const title = `${category.label} 지원 정책 모음 — keepioo`;
+  // CTR hot-fix: 정형 표현 "지원 정책 모음 — keepioo" 제거,
+  // 연도 + 자격·금액·마감 한눈 hook 추가. brand 는 openGraph siteName 에 보존
+  // (Google 이 자체적으로 사이트명 표시). examples 키워드 1개를 description 첫 문장에
+  // 끌어와 검색 의도와 정확 매칭 + snippet 첫 12자 hook 강화.
+  const year = new Date().getFullYear();
+  const exampleHook = category.examples[0] ?? category.shortLabel;
+  const title = `${year}년 ${category.label} 지원 정책 — 자격·금액·마감 한눈에`;
+  const description = `${exampleHook} 자격으로 받을 수 있는 ${category.label} 지원 정책을 모았어요. 신청 자격, 지원 금액, 신청 마감일을 한 페이지에서 비교하고 1분 자격 진단으로 받을 수 있는지 즉시 확인하세요.`;
   return {
     title,
-    description: category.description,
+    description,
     alternates: { canonical: `https://www.keepioo.com/eligibility/${slug}` },
     openGraph: {
       title,
-      description: category.description,
+      description,
       url: `https://www.keepioo.com/eligibility/${slug}`,
+      siteName: '정책알리미',
+      locale: 'ko_KR',
     },
   };
 }
