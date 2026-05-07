@@ -12,6 +12,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getPressAutoConfirmStats } from "@/lib/press-ingest/filter";
 
 export type DigestData = {
   // 기존 6 KPI
@@ -26,6 +27,9 @@ export type DigestData = {
   cronFailures24h: number;       // cron_failure_log notified_at 24h
   dedupePending: number;         // welfare+loan 자동 confirm 안 된 dedupe 검토 큐
   naverBlogPending: number;      // naver_blog_queue status='pending'
+  // 광역 보도자료 4 layer fallback chain 운영 가시성 (2026-05-08)
+  // 광역 매핑 의존도 — pressAutoConfirmed 0 이면 0%. 80% 이상 시 LLM 추출률 ↓ 신호.
+  pressProvincePct: number;
 };
 
 /**
@@ -171,6 +175,15 @@ export async function collectDailyDigest(): Promise<DigestData> {
   const newPolicies24h = welfareNew + loanNew + newsNew;
   const dedupePending = welfareDedupe + loanDedupe;
 
+  // 광역 매핑 의존도 — 별도 fetch (3 query). 실패 시 0% fallback (SMS 정상 발송).
+  const pressStats = await getPressAutoConfirmStats().catch((e) => {
+    console.warn(
+      "[daily-digest] press auto-confirm stats fetch 실패 (0 fallback):",
+      e instanceof Error ? e.message : String(e),
+    );
+    return { auto_confirmed_24h: 0, auto_confirmed_7d: 0, province_dependency_pct: 0 };
+  });
+
   return {
     signups24h,
     newPolicies24h,
@@ -182,6 +195,7 @@ export async function collectDailyDigest(): Promise<DigestData> {
     cronFailures24h,
     dedupePending,
     naverBlogPending,
+    pressProvincePct: pressStats.province_dependency_pct,
   };
 }
 
@@ -201,11 +215,20 @@ export function formatDigestMessage(data: DigestData): string {
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
 
+  // 광역 매핑 의존도 라벨 — 자동 confirm 0 이면 표시 안 함 (의미 X), 1+ 면 짧게.
+  // 80%+ 면 ⚠ 마크 (LLM prompt 재검토 신호).
+  const provinceMark =
+    data.pressAutoConfirmed24h === 0
+      ? ""
+      : data.pressProvincePct >= 80
+        ? `(광역${data.pressProvincePct}%⚠)`
+        : `(광역${data.pressProvincePct}%)`;
+
   const lines: string[] = [
     `[keepioo ${mm}/${dd}]`,
     `가입 ${data.signups24h} · 활성 ${data.active7d}`,
     `신규 정책 ${data.newPolicies24h} · 워드 ${data.wordpressPublished24h}`,
-    `자동: 보도 ${data.pressAutoConfirmed24h} · 뉴스hide ${data.newsAutoHidden24h} · dedupe ${data.dedupeAutoConfirmed24h}`,
+    `자동: 보도 ${data.pressAutoConfirmed24h}${provinceMark} · 뉴스hide ${data.newsAutoHidden24h} · dedupe ${data.dedupeAutoConfirmed24h}`,
   ];
 
   // 검토 필요 큐 — 1건 이상일 때만 노출 (사장님 진입 동기 명확)

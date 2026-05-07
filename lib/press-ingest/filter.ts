@@ -257,6 +257,68 @@ export async function getAutoIngestTrend(days: number = 7): Promise<AutoIngestDa
   return Array.from(byDay, ([day, count]) => ({ day, count }));
 }
 
+// ─── 자동 confirm 운영 통계 (Layer 의존도) ───
+// /admin/press-ingest 페이지 KPI 카드 + daily-digest SMS 에 노출.
+
+import { PROVINCE_DEFAULT_URLS } from "./province-default-urls";
+
+export type PressAutoConfirmStats = {
+  /** 24시간 자동 등록 건수 (admin_actions actor_id IS NULL) */
+  auto_confirmed_24h: number;
+  /** 7일 자동 등록 건수 */
+  auto_confirmed_7d: number;
+  /** 광역 매핑 fallback 의존도 (%) — 7일 confirmed 후보의 apply_url 중 PROVINCE_DEFAULT_URLS 일치 비율.
+   *  높으면 LLM 추출률이 낮다는 신호 → prompt 재검토 또는 광역 sub-path 정밀화 필요. */
+  province_dependency_pct: number;
+};
+
+export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats> {
+  const admin = createAdminClient();
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [conf24, conf7d, recent7d] = await Promise.all([
+    admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "press_l2_confirm")
+      .is("actor_id", null)
+      .gte("created_at", since24h),
+    admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "press_l2_confirm")
+      .is("actor_id", null)
+      .gte("created_at", since7d),
+    admin
+      .from("press_ingest_candidates")
+      .select("classified_payload")
+      .eq("status", "confirmed")
+      .is("confirmed_by", null)
+      .gte("confirmed_at", since7d),
+  ]);
+
+  // 광역 매핑 의존도 — apply_url 이 PROVINCE_DEFAULT_URLS 의 value 와 정확히 일치하는 비율
+  const provinceUrls = new Set(Object.values(PROVINCE_DEFAULT_URLS));
+  const recent = (recent7d.data ?? []) as Array<{
+    classified_payload: { apply_url?: string | null } | null;
+  }>;
+  const total = recent.length;
+  let provinceCount = 0;
+  for (const r of recent) {
+    const url = r.classified_payload?.apply_url;
+    if (url && provinceUrls.has(url)) provinceCount += 1;
+  }
+  const province_dependency_pct =
+    total === 0 ? 0 : Math.round((provinceCount / total) * 100);
+
+  return {
+    auto_confirmed_24h: conf24.count ?? 0,
+    auto_confirmed_7d: conf7d.count ?? 0,
+    province_dependency_pct,
+  };
+}
+
 // ─── 최근 L2 승인 등록된 정책 N건 (welfare + loan 통합) ───
 // 사장님이 "정말 자동으로 들어왔는지" 한눈에 확인. 사이트 detail 직링.
 

@@ -16,6 +16,7 @@ const ZERO: DigestData = {
   cronFailures24h: 0,
   dedupePending: 0,
   naverBlogPending: 0,
+  pressProvincePct: 0,
 };
 
 describe("formatDigestMessage", () => {
@@ -82,6 +83,33 @@ describe("formatDigestMessage", () => {
   it("link 는 메시지에 포함 안 됨 (link 결정은 cron 라우터 책임)", () => {
     const message = formatDigestMessage(ZERO);
     expect(message).not.toContain("keepioo.com");
+  });
+
+  it("press 자동 등록 0 — 광역 의존도 라벨 미포함 (의미 X)", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      pressProvincePct: 70, // 의미 없는 값이지만 노출 X 검증
+    });
+    expect(message).not.toContain("광역");
+  });
+
+  it("press 자동 등록 1+ · 광역 의존도 < 80% — (광역 N%) 표기", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      pressAutoConfirmed24h: 30,
+      pressProvincePct: 65,
+    });
+    expect(message).toContain("보도 30(광역65%)");
+    expect(message).not.toContain("⚠");
+  });
+
+  it("press 자동 등록 1+ · 광역 의존도 80%+ — ⚠ 마크 (LLM 추출률 ↓ 신호)", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      pressAutoConfirmed24h: 50,
+      pressProvincePct: 95,
+    });
+    expect(message).toContain("보도 50(광역95%⚠)");
   });
 });
 

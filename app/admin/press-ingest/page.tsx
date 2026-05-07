@@ -15,6 +15,7 @@ import {
   getPressIngestKpi,
   getAutoIngestTrend,
   getRecentAutoIngestRows,
+  getPressAutoConfirmStats,
   type PressIngestCandidate,
 } from "@/lib/press-ingest/filter";
 import {
@@ -171,13 +172,15 @@ export default async function PressIngestPage({
     return [24, 48, 168].includes(n) ? n : 24;
   })();
 
-  const [candidates, l2Candidates, kpi, autoTrend, recentAuto] = await Promise.all([
-    getPressIngestCandidates(hours, 100),
-    listPressCandidates(100),
-    getPressIngestKpi(),
-    getAutoIngestTrend(7),
-    getRecentAutoIngestRows(5),
-  ]);
+  const [candidates, l2Candidates, kpi, autoTrend, recentAuto, autoStats] =
+    await Promise.all([
+      getPressIngestCandidates(hours, 100),
+      listPressCandidates(100),
+      getPressIngestKpi(),
+      getAutoIngestTrend(7),
+      getRecentAutoIngestRows(5),
+      getPressAutoConfirmStats(),
+    ]);
   // 7일 추세 max — 막대 길이 정규화 용
   const trendMax = Math.max(1, ...autoTrend.map((d) => d.count));
   // ANTHROPIC_API_KEY 설정 여부 — server side 검증 (값 노출 X)
@@ -232,6 +235,39 @@ export default async function PressIngestPage({
             llmEnabled
               ? "ANTHROPIC_API_KEY OK"
               : "Vercel env 등록 필요"
+          }
+        />
+      </section>
+
+      {/* 자동 confirm 운영 통계 — 4 layer fallback chain 도입 후 효과 가시화.
+          광역 매핑 의존도가 너무 높으면 (>80%) LLM prompt 재검토 또는 sub-path 정밀화 신호. */}
+      <section className="mb-5 grid grid-cols-3 gap-3">
+        <KpiCard
+          label="24h 자동 등록"
+          value={`${autoStats.auto_confirmed_24h}건`}
+          tone={autoStats.auto_confirmed_24h > 0 ? "ok" : "muted"}
+          hint="cron 자동 confirm (사장님 무관여)"
+        />
+        <KpiCard
+          label="7일 자동 등록"
+          value={`${autoStats.auto_confirmed_7d}건`}
+          tone={autoStats.auto_confirmed_7d > 0 ? "ok" : "muted"}
+          hint="누적 자동화 기여도"
+        />
+        <KpiCard
+          label="광역 매핑 의존도"
+          value={`${autoStats.province_dependency_pct}%`}
+          tone={
+            autoStats.province_dependency_pct >= 80
+              ? "warn"
+              : autoStats.province_dependency_pct > 0
+                ? "ok"
+                : "muted"
+          }
+          hint={
+            autoStats.province_dependency_pct >= 80
+              ? "LLM 추출률 ↓ — prompt 재검토 신호"
+              : "Layer 4 fallback 비율"
           }
         />
       </section>
