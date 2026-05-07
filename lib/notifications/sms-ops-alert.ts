@@ -50,9 +50,12 @@ function normalizePhone(raw: string | undefined): string | null {
 export async function sendOpsAlertSms({
   subject,
   message,
+  link,
 }: {
   subject: string;
   message: string;
+  /** SMS 본문 끝 링크 (사장님 즉시 처리 진입점). 미지정 시 admin/health 기본값. */
+  link?: string;
 }): Promise<OpsAlertSmsResult> {
   const apiKey = process.env.SOLAPI_API_KEY;
   const apiSecret = process.env.SOLAPI_API_SECRET;
@@ -65,7 +68,8 @@ export async function sendOpsAlertSms({
 
   // 본문 — 제목 + 메시지 (한 줄로 압축, SMS 가독성 우선)
   // 90자 초과 시 Solapi 가 자동으로 LMS 로 전환 (요금 약 30원)
-  const body = `${subject}\n${message}\n\n→ keepioo.com/admin/health`.slice(0, 1900);
+  const linkLine = link ?? "keepioo.com/admin/health";
+  const body = `${subject}\n${message}\n\n→ ${linkLine}`.slice(0, 1900);
 
   // HMAC-SHA256 — lib/kakao-alimtalk.ts 와 동일 규칙
   const date = new Date().toISOString();

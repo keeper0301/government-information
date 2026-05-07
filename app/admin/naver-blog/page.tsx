@@ -32,6 +32,7 @@ import {
   markNaverSkippedAction,
 } from "./actions";
 import { CopyButton } from "./copy-button";
+import { CopyPromptButton } from "./copy-prompt-button";
 
 export const metadata: Metadata = {
   title: "네이버 블로그 큐 | 어드민",
@@ -95,6 +96,13 @@ export default async function AdminNaverBlogPage() {
         <h2 className="text-base font-semibold text-grey-900 mb-3">
           📋 발행 대기 ({pending.length}건)
         </h2>
+
+        {/* 일괄 발행 명령 복사 — 클로드한테 한 번에 부탁 */}
+        <CopyPromptButton
+          ids={pending.map((row) => row.id)}
+          titles={pending.map((row) => row.payload.title)}
+        />
+
         {pending.length === 0 ? (
           <div className="rounded-lg border border-grey-200 bg-grey-50 p-6 text-center text-sm text-grey-600">
             대기 중인 글이 없어요. 매일 새 블로그 자동 발행 후 자동으로 큐에 추가됩니다.
