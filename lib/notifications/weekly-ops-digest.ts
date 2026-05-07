@@ -1,0 +1,317 @@
+// ============================================================
+// 사장님 weekly-ops 이메일 다이제스트 — 7일 trend
+// ============================================================
+// 매주 화요일 KST 09:00 cron (사용자용 weekly-digest 가 월요일이라 충돌 회피).
+// 사장님 본인 ADMIN_EMAIL 한 통. SMS daily-digest 의 7일 누계 + trend 시각화.
+//
+// 어드민 자동화 마스터 #4 (2026-05-07).
+// ============================================================
+
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export type WeeklyOpsData = {
+  // 7일 누계
+  signups7d: number;
+  newPolicies7d: number;
+  active7d: number;
+  pressAutoConfirmed7d: number;
+  newsAutoHidden7d: number;
+  dedupeAutoConfirmed7d: number;
+  wordpressPublished7d: number;
+  cronFailures7d: number;
+  // 현재 시점 검토 큐 (지금 시점)
+  dedupePending: number;
+  naverBlogPending: number;
+};
+
+/**
+ * 7일 윈도우 운영 KPI 수집. daily-digest 의 24h 패턴 그대로 7d 윈도우.
+ * 1 query 실패해도 다른 KPI 보존 (try/catch + 0 fallback).
+ */
+export async function collectWeeklyOpsDigest(): Promise<WeeklyOpsData> {
+  const admin = createAdminClient();
+  const since7d = new Date(
+    Date.now() - 7 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  async function safe<T extends { count: number | null }>(
+    builder: PromiseLike<T>,
+  ): Promise<number> {
+    try {
+      const r = await builder;
+      return r.count ?? 0;
+    } catch (e) {
+      console.warn(
+        `[weekly-ops-digest] query 실패 (0 fallback):`,
+        e instanceof Error ? e.message : String(e),
+      );
+      return 0;
+    }
+  }
+
+  const [
+    signups,
+    welfareNew,
+    loanNew,
+    newsNew,
+    active,
+    pressAuto,
+    newsAutoHide,
+    dedupeAuto,
+    wpPub,
+    cronFail,
+    welfareDedupe,
+    loanDedupe,
+    naverBlog,
+  ] = await Promise.all([
+    safe(
+      admin
+        .from("user_profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("created_at", since7d),
+    ),
+    safe(
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", since7d),
+    ),
+    safe(
+      admin
+        .from("loan_programs")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", since7d),
+    ),
+    safe(
+      admin
+        .from("news_posts")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", since7d),
+    ),
+    safe(
+      admin
+        .from("user_profiles")
+        .select("user_id", { count: "exact", head: true })
+        .gte("updated_at", since7d),
+    ),
+    safe(
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "press_l2_confirm")
+        .is("actor_id", null)
+        .gte("created_at", since7d),
+    ),
+    safe(
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "news_auto_hide")
+        .is("actor_id", null)
+        .gte("created_at", since7d),
+    ),
+    safe(
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "dedupe_auto_confirm")
+        .is("actor_id", null)
+        .gte("created_at", since7d),
+    ),
+    safe(
+      admin
+        .from("wordpress_publish_log")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published")
+        .gte("published_at", since7d),
+    ),
+    safe(
+      admin
+        .from("cron_failure_log")
+        .select("id", { count: "exact", head: true })
+        .gte("last_seen_at", since7d),
+    ),
+    safe(
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "exact", head: true })
+        .not("duplicate_of_id", "is", null)
+        .is("dedupe_auto_confirmed_at", null),
+    ),
+    safe(
+      admin
+        .from("loan_programs")
+        .select("id", { count: "exact", head: true })
+        .not("duplicate_of_id", "is", null)
+        .is("dedupe_auto_confirmed_at", null),
+    ),
+    safe(
+      admin
+        .from("naver_blog_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+    ),
+  ]);
+
+  return {
+    signups7d: signups,
+    newPolicies7d: welfareNew + loanNew + newsNew,
+    active7d: active,
+    pressAutoConfirmed7d: pressAuto,
+    newsAutoHidden7d: newsAutoHide,
+    dedupeAutoConfirmed7d: dedupeAuto,
+    wordpressPublished7d: wpPub,
+    cronFailures7d: cronFail,
+    dedupePending: welfareDedupe + loanDedupe,
+    naverBlogPending: naverBlog,
+  };
+}
+
+/**
+ * 자동 처리 절감 시간 추정 — 사장님 가시화용.
+ * 각 처리 1건당 평균 30초 가정 (보수적).
+ */
+export function estimateTimeSaved(data: WeeklyOpsData): number {
+  const totalAuto =
+    data.pressAutoConfirmed7d +
+    data.newsAutoHidden7d +
+    data.dedupeAutoConfirmed7d;
+  return Math.round((totalAuto * 30) / 60); // 분 단위
+}
+
+/**
+ * 사장님 weekly-ops 이메일 HTML 본문.
+ * 토스 디자인 시스템 색상 (#3182F6 brand, #4E5968 secondary, #F9FAFB bg).
+ */
+export function buildWeeklyOpsHtml(data: WeeklyOpsData): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const date = new Date();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const subject = `[keepioo 운영] ${mm}/${dd} 주간 다이제스트`;
+  const timeSavedMin = estimateTimeSaved(data);
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; max-width: 640px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #191F28; font-size: 20px; margin-bottom: 16px;">📊 keepioo 주간 다이제스트</h2>
+      <p style="font-size: 14px; color: #4E5968; line-height: 1.6;">
+        지난 7일 운영 핵심 지표 + 사장님 검토 필요 항목.
+      </p>
+
+      <h3 style="color: #191F28; font-size: 15px; margin-top: 24px; margin-bottom: 12px;">📈 7일 누계</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">신규 가입</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.signups7d}명</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">7일 활성 (signup+update)</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.active7d}명</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">신규 정책 (welfare+loan+news)</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.newPolicies7d}건</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">워드프레스 자동 발행</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.wordpressPublished7d}건</td>
+        </tr>
+      </table>
+
+      <h3 style="color: #191F28; font-size: 15px; margin-top: 24px; margin-bottom: 12px;">🤖 자동 처리</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">광역 보도자료 자동 confirm</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.pressAutoConfirmed7d}건</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">뉴스 자동 hide</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.newsAutoHidden7d}건</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">중복 정책 자동 confirm</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.dedupeAutoConfirmed7d}건</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #2B8A3E; font-weight: 600;">≈ 사장님 절감 시간</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #2B8A3E;">${timeSavedMin}분</td>
+        </tr>
+      </table>
+
+      ${
+        data.dedupePending + data.naverBlogPending > 0
+          ? `
+      <h3 style="color: #D93636; font-size: 15px; margin-top: 24px; margin-bottom: 12px;">⏳ 사장님 검토 대기</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        ${
+          data.dedupePending > 0
+            ? `
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">중복 정책 검토</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #D93636;">
+            <a href="https://www.keepioo.com/admin/dedupe" style="color: #D93636; text-decoration: underline;">${data.dedupePending}건 →</a>
+          </td>
+        </tr>`
+            : ""
+        }
+        ${
+          data.naverBlogPending > 0
+            ? `
+        <tr>
+          <td style="padding: 8px 0; color: #4E5968;">네이버 블로그 큐</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #D93636;">
+            <a href="https://www.keepioo.com/admin/naver-blog" style="color: #D93636; text-decoration: underline;">${data.naverBlogPending}건 →</a>
+          </td>
+        </tr>`
+            : ""
+        }
+      </table>`
+          : `<p style="font-size: 14px; color: #2B8A3E; margin-top: 24px;">✅ 검토 대기 항목 없음 — 자동화 정상</p>`
+      }
+
+      ${
+        data.cronFailures7d > 0
+          ? `
+      <p style="margin-top: 24px; padding: 12px 16px; background: #FFF5F5; border-left: 3px solid #D93636; border-radius: 4px; font-size: 13px; color: #4E5968;">
+        ⚠️ 7일 cron 실패 ${data.cronFailures7d}건 발생.
+        <a href="https://www.keepioo.com/admin/cron-failures" style="color: #D93636; font-weight: 600; text-decoration: underline;">확인 →</a>
+      </p>`
+          : ""
+      }
+
+      <a href="https://www.keepioo.com/admin"
+         style="display: inline-block; margin-top: 24px; padding: 12px 24px; background: #3182F6; color: #fff; text-decoration: none; border-radius: 12px; font-weight: 600;">
+        /admin 종합 대시보드 →
+      </a>
+    </div>
+  `;
+
+  const text = [
+    subject,
+    "",
+    "[7일 누계]",
+    `신규 가입: ${data.signups7d}명`,
+    `활성: ${data.active7d}명`,
+    `신규 정책: ${data.newPolicies7d}건`,
+    `워드프레스 발행: ${data.wordpressPublished7d}건`,
+    "",
+    "[자동 처리]",
+    `보도자료 confirm: ${data.pressAutoConfirmed7d}건`,
+    `뉴스 hide: ${data.newsAutoHidden7d}건`,
+    `dedupe confirm: ${data.dedupeAutoConfirmed7d}건`,
+    `≈ 절감 시간: ${timeSavedMin}분`,
+    "",
+    "[검토 대기]",
+    `dedupe: ${data.dedupePending}건`,
+    `네이버 블로그: ${data.naverBlogPending}건`,
+    "",
+    `cron 실패 7일: ${data.cronFailures7d}건`,
+    "",
+    "/admin → https://www.keepioo.com/admin",
+  ].join("\n");
+
+  return { subject, html, text };
+}

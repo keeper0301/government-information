@@ -222,7 +222,7 @@ sub-project N 시작
 - [x] #1 어드민 인벤토리 — 산출물: `docs/admin-inventory-2026-05.md` (2026-05-07)
 - [x] Quick Win #1/5 — `/admin/cron-failures` 일괄 재시도 버튼 (commit `aa2c342`)
 - [x] #2 다이제스트 강화 — daily-digest 6→10 KPI + 검토 큐 통합 (2026-05-07)
-- [ ] #4 통합 알림
+- [x] #4 통합 알림 — dashboard-alerts 에 dedupe·naver-blog 추가 + weekly-ops 이메일 cron (2026-05-07)
 - [ ] #6 안전망
 - [ ] #5 cron 자동화
 - [ ] #3 임계 낮추기

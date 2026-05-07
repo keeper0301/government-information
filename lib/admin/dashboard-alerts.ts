@@ -15,13 +15,18 @@ export type DashboardAlert = {
     | "press_ingest_backlog"
     | "deletions_overdue"
     | "advisor_warn"
-    | "system_error"; // F3 review 후속 — Promise.allSettled 한 RPC 실패 시 알림
+    | "system_error" // F3 review 후속 — Promise.allSettled 한 RPC 실패 시 알림
+    // 어드민 자동화 #4 (2026-05-07) — 사장님 검토 큐 통합 표시
+    | "dedupe_pending"
+    | "naver_blog_pending";
   label: string;
   count: number;
   href: string;
 };
 
 const PRESS_INGEST_BACKLOG_THRESHOLD = 30;
+// 검토 큐 임계 — 1 부터 알림 (사장님 처리 대기 즉시 가시화)
+const REVIEW_QUEUE_THRESHOLD = 1;
 const ADVISOR_FETCH_TIMEOUT_MS = 5000; // F5 review 후속 — Supabase API timeout 가드
 
 // ─── advisor cache ───
@@ -106,22 +111,48 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const nowIso = new Date().toISOString();
 
-  // 병렬 fetch — 외부 RPC 3회 (각 head:true count exact)
+  // 병렬 fetch — 외부 RPC 5회 (각 head:true count exact)
   // 한 RPC 실패 시 다른 신호 보존 (partial result 패턴)
   // 예: getPressIngestKpi() 가 throw 해도 cron / deletions 신호는 그대로 노출
+  // 어드민 자동화 #4 (2026-05-07): cron_failure 의 notified_at → last_seen_at
+  // (notified_at 은 dedupe cooldown 으로 부정확 — daily-digest 와 일관성).
+  // dedupe·naver-blog 검토 큐 추가 — 사장님 메인 대시보드에서 한 곳 인지.
   const results = await Promise.allSettled([
     admin
       .from("cron_failure_log")
       .select("id", { count: "exact", head: true })
-      .gte("notified_at", since24h),
+      .gte("last_seen_at", since24h),
     getPressIngestKpi(),
     admin
       .from("pending_deletions")
       .select("user_id", { count: "exact", head: true })
       .lt("scheduled_delete_at", nowIso),
+    // dedupe 검토 큐 — welfare + loan 의 자동 confirm 안 된 row 합산
+    Promise.all([
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "exact", head: true })
+        .not("duplicate_of_id", "is", null)
+        .is("dedupe_auto_confirmed_at", null),
+      admin
+        .from("loan_programs")
+        .select("id", { count: "exact", head: true })
+        .not("duplicate_of_id", "is", null)
+        .is("dedupe_auto_confirmed_at", null),
+    ]).then(([w, l]) => ({ count: (w.count ?? 0) + (l.count ?? 0) })),
+    admin
+      .from("naver_blog_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
   ]);
 
-  const [cronSettled, pressSettled, deletionsSettled] = results;
+  const [
+    cronSettled,
+    pressSettled,
+    deletionsSettled,
+    dedupeSettled,
+    naverBlogSettled,
+  ] = results;
 
   const alerts: DashboardAlert[] = [];
 
@@ -131,7 +162,9 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   const allRejected =
     cronSettled.status === "rejected" &&
     pressSettled.status === "rejected" &&
-    deletionsSettled.status === "rejected";
+    deletionsSettled.status === "rejected" &&
+    dedupeSettled.status === "rejected" &&
+    naverBlogSettled.status === "rejected";
   if (allRejected) {
     alerts.push({
       key: "system_error",
@@ -180,6 +213,36 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
     });
   } else if (deletionsSettled.status === "rejected") {
     console.warn("[dashboard-alerts] pending_deletions fetch 실패:", deletionsSettled.reason);
+  }
+
+  // dedupe 검토 큐 — welfare+loan 자동 confirm 안 된 row (사장님 검토 대기)
+  if (
+    dedupeSettled.status === "fulfilled" &&
+    dedupeSettled.value.count >= REVIEW_QUEUE_THRESHOLD
+  ) {
+    alerts.push({
+      key: "dedupe_pending",
+      label: "중복 정책 검토 대기",
+      count: dedupeSettled.value.count,
+      href: "/admin/dedupe",
+    });
+  } else if (dedupeSettled.status === "rejected") {
+    console.warn("[dashboard-alerts] dedupe pending fetch 실패:", dedupeSettled.reason);
+  }
+
+  // 네이버 블로그 큐 (사장님 PC 켤 때 일괄 발행 대기)
+  if (
+    naverBlogSettled.status === "fulfilled" &&
+    (naverBlogSettled.value.count ?? 0) >= REVIEW_QUEUE_THRESHOLD
+  ) {
+    alerts.push({
+      key: "naver_blog_pending",
+      label: "네이버 블로그 발행 대기",
+      count: naverBlogSettled.value.count ?? 0,
+      href: "/admin/naver-blog",
+    });
+  } else if (naverBlogSettled.status === "rejected") {
+    console.warn("[dashboard-alerts] naver_blog_queue fetch 실패:", naverBlogSettled.reason);
   }
 
   // Supabase advisor 보안 경고 (24h cache, graceful degrade)
