@@ -7,6 +7,7 @@ import { Resend } from "resend";
 import {
   collectWeeklyOpsDigest,
   buildWeeklyOpsHtml,
+  fetchAutoConfirmSample,
 } from "@/lib/notifications/weekly-ops-digest";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +31,12 @@ async function authorize(request: Request) {
 }
 
 async function run(): Promise<NextResponse> {
-  const data = await collectWeeklyOpsDigest();
-  const { subject, html, text } = buildWeeklyOpsHtml(data);
+  // KPI + audit 샘플 병렬 fetch
+  const [data, auditSample] = await Promise.all([
+    collectWeeklyOpsDigest(),
+    fetchAutoConfirmSample(),
+  ]);
+  const { subject, html, text } = buildWeeklyOpsHtml(data, auditSample);
 
   // RESEND_API_KEY 미설정 시 graceful skip — build/dev 보호
   const apiKey = process.env.RESEND_API_KEY;

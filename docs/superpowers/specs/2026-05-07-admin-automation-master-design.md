@@ -223,7 +223,7 @@ sub-project N 시작
 - [x] Quick Win #1/5 — `/admin/cron-failures` 일괄 재시도 버튼 (commit `aa2c342`)
 - [x] #2 다이제스트 강화 — daily-digest 6→10 KPI + 검토 큐 통합 (2026-05-07)
 - [x] #4 통합 알림 — dashboard-alerts 에 dedupe·naver-blog 추가 + weekly-ops 이메일 cron (2026-05-07)
-- [ ] #6 안전망
+- [x] #6 안전망 — auto-confirm 무작위 샘플 5건 weekly-ops 통합 (DDL 0, 2026-05-07)
 - [ ] #5 cron 자동화
 - [ ] #3 임계 낮추기
 

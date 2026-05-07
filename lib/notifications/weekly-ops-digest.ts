@@ -1,13 +1,26 @@
 // ============================================================
-// 사장님 weekly-ops 이메일 다이제스트 — 7일 trend
+// 사장님 weekly-ops 이메일 다이제스트 — 7일 trend + auto-confirm 안전망
 // ============================================================
 // 매주 화요일 KST 09:00 cron (사용자용 weekly-digest 가 월요일이라 충돌 회피).
 // 사장님 본인 ADMIN_EMAIL 한 통. SMS daily-digest 의 7일 누계 + trend 시각화.
 //
-// 어드민 자동화 마스터 #4 (2026-05-07).
+// 어드민 자동화 마스터 #4 (통합 알림) + #6 (안전망) 통합 (2026-05-07).
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+
+/**
+ * #6 안전망 — 자동 confirm 무작위 샘플 5건.
+ * 매주 7일 자동 처리 (사장님 사후 검토 안 함) 중 무작위 5건을 이메일에 노출 →
+ * 사장님이 임계 낮춤 (#3) 후 오판단 패턴을 조기 발견하는 안전망.
+ *
+ * DDL 없이 admin_actions 활용 — actor_id IS NULL 인 자동 처리만.
+ */
+export type AutoConfirmSample = {
+  action: string;
+  createdAt: string;
+  details: Record<string, unknown>;
+};
 
 export type WeeklyOpsData = {
   // 7일 누계
@@ -168,6 +181,59 @@ export async function collectWeeklyOpsDigest(): Promise<WeeklyOpsData> {
 }
 
 /**
+ * #6 안전망 — 7일 자동 처리 중 무작위 5건 샘플.
+ *
+ * 흐름:
+ *   1) admin_actions 의 actor_id IS NULL (자동 처리) 7d 50건 fetch
+ *   2) JS 단 무작위 셔플 후 5건 추출
+ *   3) weekly-ops 이메일에 노출 → 사장님이 무작위 검증 (오판단 조기 발견)
+ *
+ * ORDER BY RANDOM() 은 큰 테이블에 비효율 → 50건 fetch 후 in-memory shuffle.
+ * 50건 미만이면 fetch 한 만큼만 (자동 처리가 적은 주는 5건 안 될 수 있음).
+ */
+export async function fetchAutoConfirmSample(): Promise<AutoConfirmSample[]> {
+  const admin = createAdminClient();
+  const since7d = new Date(
+    Date.now() - 7 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  try {
+    const { data, error } = await admin
+      .from("admin_actions")
+      .select("action, created_at, details")
+      .in("action", [
+        "dedupe_auto_confirm",
+        "press_l2_confirm",
+        "news_auto_hide",
+      ])
+      .is("actor_id", null)
+      .gte("created_at", since7d)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error || !data || data.length === 0) return [];
+
+    // in-memory 셔플 — Fisher-Yates 변형
+    const shuffled = [...data];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, 5).map((row) => ({
+      action: String(row.action ?? ""),
+      createdAt: String(row.created_at ?? ""),
+      details: (row.details ?? {}) as Record<string, unknown>,
+    }));
+  } catch (e) {
+    console.warn(
+      `[weekly-ops-digest] auto-confirm sample 실패:`,
+      e instanceof Error ? e.message : String(e),
+    );
+    return [];
+  }
+}
+
+/**
  * 자동 처리 절감 시간 추정 — 사장님 가시화용.
  * 각 처리 1건당 평균 30초 가정 (보수적).
  */
@@ -182,8 +248,13 @@ export function estimateTimeSaved(data: WeeklyOpsData): number {
 /**
  * 사장님 weekly-ops 이메일 HTML 본문.
  * 토스 디자인 시스템 색상 (#3182F6 brand, #4E5968 secondary, #F9FAFB bg).
+ *
+ * #6 안전망: auditSample 인자로 받아 무작위 5건 노출. 빈 배열이면 audit 섹션 skip.
  */
-export function buildWeeklyOpsHtml(data: WeeklyOpsData): {
+export function buildWeeklyOpsHtml(
+  data: WeeklyOpsData,
+  auditSample: AutoConfirmSample[] = [],
+): {
   subject: string;
   html: string;
   text: string;
@@ -282,6 +353,29 @@ export function buildWeeklyOpsHtml(data: WeeklyOpsData): {
           : ""
       }
 
+      ${
+        auditSample.length > 0
+          ? `
+      <h3 style="color: #191F28; font-size: 15px; margin-top: 24px; margin-bottom: 8px;">🔍 자동 처리 무작위 샘플 (안전망)</h3>
+      <p style="font-size: 12px; color: #4E5968; margin: 0 0 12px;">
+        지난 7일 자동 처리 중 무작위 ${auditSample.length}건. 오판단 조기 발견용 — 한 번 훑어보시고 이상하면 어드민에서 확인.
+      </p>
+      <ul style="font-size: 12px; color: #4E5968; line-height: 1.6; padding-left: 18px; margin: 0;">
+        ${auditSample
+          .map((s) => {
+            const date = new Date(s.createdAt).toLocaleDateString("ko-KR", {
+              timeZone: "Asia/Seoul",
+              month: "2-digit",
+              day: "2-digit",
+            });
+            const detailSnippet = JSON.stringify(s.details).slice(0, 80);
+            return `<li><strong>${escapeHtml(s.action)}</strong> · ${date} · <code style="font-size: 11px; color: #6B7684;">${escapeHtml(detailSnippet)}</code></li>`;
+          })
+          .join("")}
+      </ul>`
+          : ""
+      }
+
       <a href="https://www.keepioo.com/admin"
          style="display: inline-block; margin-top: 24px; padding: 12px 24px; background: #3182F6; color: #fff; text-decoration: none; border-radius: 12px; font-weight: 600;">
         /admin 종합 대시보드 →
@@ -314,4 +408,15 @@ export function buildWeeklyOpsHtml(data: WeeklyOpsData): {
   ].join("\n");
 
   return { subject, html, text };
+}
+
+// 이메일 본문 HTML 안에 admin_actions.details 삽입 — XSS 방어 (admin LLM 결과
+// 가 들어올 수 있음).
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
