@@ -7,6 +7,7 @@
 
 import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
+import { inferRegionFromTitle } from "@/lib/regions";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -100,7 +101,7 @@ const collector: Collector = {
           applyEnd: fmtDate(parseXmlTag(b, "pbancEndDt")),
           source: "중소벤처기업부",
           sourceUrl: applyUrl,
-          region: regionTags[0] || "전국",
+          region: regionTags[0] || inferRegionFromTitle(title) || "전국",
           publishedAt,
           regionTags,
           ageTags: extractAgeTags(textBlob),

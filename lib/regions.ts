@@ -199,6 +199,58 @@ export const PROVINCE_CODE_TO_SHORT: Record<ProvinceCode, string> = {
   jeju: "제주",
 };
 
+// ============================================================
+// title 기반 region 추출 — collectors 의 "전국" fallback 대체용
+// ============================================================
+// 사고 (2026-05-07): 사장님(전남 순천) 화면에 "2025 속초시 출연 소상공인 협약보증" 노출.
+// 원인 — kinfa·fsc·bizinfo·smes·youth-v2·kstartup·gov24·loans-mss 등 다수 collector 가
+// `region: area || "전국"` 패턴 사용. API 응답에서 area 비면 "전국" 으로 저장 → title 에
+// "속초시" 명시되어도 region="전국" 으로 모든 사용자 매칭. score.ts 의 hot-fix (74a254d)
+// 는 안전망이고, 이 함수가 root cause 해소: collector 가 area 없을 때 title 에서
+// 광역 추출 시도 → 실패 시 "전국" fallback (현재 동작 유지).
+//
+// 추출 규칙 (우선순위):
+//  1) title 에 PROVINCES 정식 광역명 ("강원특별자치도", "전라남도" 등) 직접 포함
+//  2) title 에 광역의 고유 시군구명 (동명 시군구 제외) 포함
+//  3) 모두 실패 → null
+//
+// 동명 시군구 (강서구 서울/부산, 동구·중구 다수, 고성군 강원/경남 등) 는 모호하므로
+// null 반환 — collector 는 기존 fallback ("전국") 유지.
+export function inferRegionFromTitle(title: string): string | null {
+  if (!title) return null;
+
+  // 1) 정식 광역명 직접 매칭 (가장 명확한 신호)
+  for (const province of PROVINCES) {
+    if (title.includes(province.name)) return province.name;
+  }
+
+  // 2) 고유 시군구명 매칭 — 동명 시군구는 제외
+  // 캐시: 모듈 로드 시 1회만 build (PROVINCES/DISTRICTS_BY_PROVINCE 가 정적 const).
+  for (const [district, provinceName] of UNIQUE_DISTRICT_TO_PROVINCE) {
+    if (title.includes(district)) return provinceName;
+  }
+
+  return null;
+}
+
+// 동명 시군구 검출용 — 한국 전역에서 1개 광역에만 있는 시군구만 (광역명 매핑).
+// inferRegionFromTitle 에서 사용. lazy build 대신 모듈 로드 시 1회 build.
+const UNIQUE_DISTRICT_TO_PROVINCE = (() => {
+  const counts = new Map<string, number>();
+  const firstMatch = new Map<string, string>(); // district → 첫 광역명
+  for (const province of PROVINCES) {
+    for (const district of DISTRICTS_BY_PROVINCE[province.code] ?? []) {
+      counts.set(district, (counts.get(district) ?? 0) + 1);
+      if (!firstMatch.has(district)) firstMatch.set(district, province.name);
+    }
+  }
+  const result = new Map<string, string>();
+  for (const [district, count] of counts) {
+    if (count === 1) result.set(district, firstMatch.get(district)!);
+  }
+  return result;
+})();
+
 // 광역별 cron 시간 매핑 — vercel.json 의 schedule 과 일치 (UTC 기준).
 // 14:00 ~ 15:20, 5분 간격으로 분산 → 다른 cron (RSS 02:00, collect 04:00,
 // enrich 03:00, cleanup 05:00, finalize 06:00, alert 07:00) 과 충돌 없음.

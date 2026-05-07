@@ -8,6 +8,7 @@
 
 import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
+import { inferRegionFromTitle } from "@/lib/regions";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -136,7 +137,7 @@ const collector: Collector = {
         }
 
         const { start, end } = parseYouthPeriod(it.rqutPrdCn);
-        const region = (it.stdg_nm || "").split(",")[0] || "전국";
+        const region = (it.stdg_nm || "").split(",")[0] || inferRegionFromTitle(title) || "전국";
         const textBlob = [title, it.polyItcnCn, it.sporCn, it.ageInfo, it.stdg_nm]
           .filter(Boolean)
           .join(" ");

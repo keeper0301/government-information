@@ -25,6 +25,7 @@
 
 import type { Collector, CollectedItem } from "./index";
 import { fetchWithTimeout } from "./index";
+import { inferRegionFromTitle } from "@/lib/regions";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -168,7 +169,10 @@ const collector: Collector = {
           applyUrl,
           source: agency,
           sourceUrl: applyUrl,
-          region: area || "전국",
+          // area 비어있을 때 title 에서 광역 추출 시도 → 실패 시 "전국" 유지.
+          // 사고 (2026-05-07): "2025 속초시 출연 소상공인 협약보증" 가 area="" → "전국"
+          // 으로 저장되어 사장님(전남) 화면 노출. inferRegionFromTitle 이 같은 사고 차단.
+          region: area || inferRegionFromTitle(title) || "전국",
           loanAmount,
           interestRate,
           repaymentPeriod: maxTerm ? `${maxTerm}년` : repay || null,

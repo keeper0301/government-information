@@ -25,6 +25,7 @@
 
 import type { Collector, CollectedItem } from "./index";
 import { fetchWithTimeout } from "./index";
+import { inferRegionFromTitle } from "@/lib/regions";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -199,7 +200,7 @@ const collector: Collector = {
           applyUrl,
           source: agency,
           sourceUrl: applyUrl,
-          region: area || "전국",
+          region: area || inferRegionFromTitle(title) || "전국",
           loanAmount,
           interestRate,
           repaymentPeriod: maxTerm || repay || null,

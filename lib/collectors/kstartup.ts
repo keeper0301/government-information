@@ -8,6 +8,7 @@
 
 import type { Collector } from "./index";
 import { fetchWithTimeout } from "./index";
+import { inferRegionFromTitle } from "@/lib/regions";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -92,7 +93,7 @@ const collector: Collector = {
         );
         if (lastFetchedAt && publishedAt && new Date(publishedAt) < lastFetchedAt) continue;
 
-        const region = parseXmlTag(b, "supportRegion") || "전국";
+        const region = parseXmlTag(b, "supportRegion") || inferRegionFromTitle(title) || "전국";
         const summary = parseXmlTag(b, "pbancCtnt") || parseXmlTag(b, "bizEnyy");
         const target = parseXmlTag(b, "aplyTrgtCtnt") || parseXmlTag(b, "aplyTrgt");
         const applyUrl = parseXmlTag(b, "detlPgUrl") || parseXmlTag(b, "biz_gdnc_url");
