@@ -19,6 +19,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getPressIngestCandidates } from "./filter";
 import { classifyPressNews } from "./classify";
 import {
+  autoConfirmPendingPressCandidates,
   buildCandidateUpsert,
   buildFailedCandidateUpsert,
   getExistingPressCandidate,
@@ -32,6 +33,11 @@ import {
 export const BASE_CAP = 30;
 export const BOOSTED_CAP = 50;
 const PROBE_LIMIT = 200; // cap 결정용 probe limit (실제 처리는 cap 만큼만)
+
+// 자동 승인 cap — cron 당 최대 자동 confirm 건수
+// 적체 큐가 있어도 한 번에 폭주하지 않도록 점진 해소.
+// 50 × cron 3회/일 = 150건/일 자동 승인 가능 → 적체 100~150건도 1일 안에 해소.
+export const AUTO_CONFIRM_CAP = 50;
 
 /**
  * 후보 수에 따라 처리 cap 을 결정.
@@ -49,6 +55,10 @@ export type IngestResult = {
   queued_failed: number;
   skipped_existing: number;
   skipped_classify_error: number;
+  /** 자동 승인 — apply_url 있어 즉시 welfare/loan 등록된 후보 수 */
+  auto_confirmed: number;
+  /** 자동 승인 보류 — apply_url 없어 사장님 수동 검토 대상으로 남은 후보 수 */
+  auto_skipped_no_url: number;
   errors: string[];
 };
 
@@ -62,6 +72,8 @@ export async function runAutoIngest(): Promise<IngestResult> {
     queued_failed: 0,
     skipped_existing: 0,
     skipped_classify_error: 0,
+    auto_confirmed: 0,
+    auto_skipped_no_url: 0,
     errors: [],
   };
 
@@ -134,6 +146,22 @@ export async function runAutoIngest(): Promise<IngestResult> {
         result.errors.push(`[${c.id}] failed-save: ${(saveErr as Error).message}`);
       }
     }
+  }
+
+  // 3) 자동 승인 — pending + apply_url 있는 후보를 cap 만큼 일괄 등록.
+  // 적체 큐도 cron 마다 점진적으로 해소. apply_url 없는 후보는 사장님 수동 검토 대상으로 pending 유지.
+  // confirm 도중 일부 실패해도 ingest 전체는 실패 처리하지 않음 (errors 에 누적).
+  try {
+    const auto = await autoConfirmPendingPressCandidates({ limit: AUTO_CONFIRM_CAP });
+    result.auto_confirmed = auto.confirmed;
+    result.auto_skipped_no_url = auto.skipped_no_url;
+    if (auto.errors.length > 0) {
+      result.errors.push(
+        ...auto.errors.map((e) => `[${e.candidate_id}] auto-confirm: ${e.message}`),
+      );
+    }
+  } catch (e) {
+    result.errors.push(`auto-confirm: ${(e as Error).message}`);
   }
 
   return result;

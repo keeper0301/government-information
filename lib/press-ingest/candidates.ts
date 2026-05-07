@@ -330,7 +330,7 @@ export async function getPressCandidateForConfirm(
 
 export async function confirmPressCandidate(
   candidateId: string,
-  actorId: string,
+  actorId: string | null,
 ): Promise<{ table: "welfare_programs" | "loan_programs"; id: string }> {
   const candidate = await getPressCandidateForConfirm(candidateId);
   if (!candidate) throw new Error("후보를 찾을 수 없습니다.");
@@ -398,6 +398,69 @@ export async function confirmPressCandidate(
   });
 
   return { table, id: data.id as string };
+}
+
+export type AutoConfirmResult = {
+  /** apply_url 있어 자동 승인된 후보 수 */
+  confirmed: number;
+  /** apply_url 없어 자동 승인 보류 — pending 으로 남아 사장님 수동 검토 대상 */
+  skipped_no_url: number;
+  /** confirm 도중 실패한 후보별 에러 (DB / RLS / payload 검증 등) */
+  errors: { candidate_id: string; message: string }[];
+};
+
+/**
+ * pending + welfare/loan + apply_url 있는 후보를 일괄 자동 승인.
+ *
+ * 사용 위치: cron (`runAutoIngest` 끝) — KST 10:30/15:30/19:30 자동 처리.
+ * cap 만큼만 처리해 갑작스런 데이터 변화/캐시 폭주를 방지하고,
+ * 적체된 pending 큐를 점진적으로 해소한다 (오래된 것부터).
+ *
+ * 가드 (옵션 C — 안전 자동 승인):
+ *  - apply_url 없는 후보는 skipped_no_url 카운트만, pending 유지 → 사장님 수동 검토
+ *  - program_type=unsure/not_policy 는 애초에 skipped 라 자동 승인 대상에서 제외
+ *  - actorId=null 로 confirmPressCandidate 호출 → confirmed_by=NULL + admin_actions actor=null
+ *    (system 자동 승인 출처 명확히 기록 — 추후 감사·롤백 시 수동 vs 자동 구분)
+ */
+export async function autoConfirmPendingPressCandidates({
+  limit = 50,
+}: { limit?: number } = {}): Promise<AutoConfirmResult> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("press_ingest_candidates")
+    .select("id, classified_payload")
+    .eq("status", "pending")
+    .in("program_type", ["welfare", "loan"])
+    .order("classified_at", { ascending: true })
+    .limit(limit);
+  if (error) {
+    throw new Error(`자동 승인 후보 조회 실패: ${error.message}`);
+  }
+  const result: AutoConfirmResult = {
+    confirmed: 0,
+    skipped_no_url: 0,
+    errors: [],
+  };
+  for (const row of (data ?? []) as Array<{
+    id: string;
+    classified_payload: ClassifyResult;
+  }>) {
+    const applyUrl = row.classified_payload?.apply_url;
+    if (!applyUrl) {
+      result.skipped_no_url += 1;
+      continue;
+    }
+    try {
+      await confirmPressCandidate(row.id, null);
+      result.confirmed += 1;
+    } catch (e) {
+      result.errors.push({
+        candidate_id: row.id,
+        message: (e as Error).message.slice(0, 300),
+      });
+    }
+  }
+  return result;
 }
 
 export async function rejectPressCandidate(

@@ -327,10 +327,12 @@ export default async function PressIngestPage({
       {/* 안내 + 기간 토글 */}
       <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
         <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900 leading-[1.55] flex-1 min-w-[280px]">
-          💡 자동 ingest cron 매일 KST 10:30 · 15:30 · 19:30 실행 (LLM 분류 +
-          confirm 후보 저장, 평소 cap 30 / 적체 감지 시 cap 50 동적). L2
-          후보를 승인하면 정책으로 등록됩니다. 누락된 정책은 직접 &apos;🤖 AI 분류&apos;
-          또는 &apos;복지/대출 →&apos; 버튼으로 수동 등록 가능.
+          💡 자동 ingest cron 매일 KST 10:30 · 15:30 · 19:30 실행 (LLM 분류 + confirm
+          후보 저장, 평소 cap 30 / 적체 감지 시 cap 50 동적). <strong>같은
+          cron 끝에 자동 승인까지 진행</strong> — apply_url 있는 후보는 즉시 정책으로
+          등록됩니다 (cap 50/cron). 신청 URL 이 없는 후보는 사장님이 직접 승인 전 원문
+          확인이 필요합니다. 누락된 정책은 직접 &apos;🤖 AI 분류&apos; 또는 &apos;복지/대출 →&apos;
+          버튼으로 수동 등록 가능.
         </div>
         <div className="inline-flex rounded-lg border border-grey-200 bg-white overflow-hidden">
           {[
