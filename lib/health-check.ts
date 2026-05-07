@@ -13,8 +13,13 @@ import { getAuthUsersCached } from "@/lib/admin-stats";
 export type HealthSignals = {
   // 24h 신규 가입 수
   signups24h: number;
-  // 7d 활성 사용자 수 (last_sign_in_at >= 7d ago)
+  // 7d 활성 사용자 수 (last_sign_in_at >= 7d ago) — funnel-health 분석 카드와 호환
   active7d: number;
+  // 7d 활성 (확장) — last_sign_in_at OR created_at 7d 내 unique 사용자.
+  // keepioo 같은 검색·읽기 위주 서비스에서는 가입 후 메일 확인만 하고 다시 로그인
+  // 안 하는 사용자가 많아, signin 만으로 활성을 정의하면 false positive 발생 가능.
+  // 임계치 점검 (low_activity alert) 은 이 값 기준으로 판정해 false positive 줄임.
+  active7dAny: number;
   // 24h 결제 실패·해지 (subscriptions.cancelled_at 24h)
   failed24h: number;
   // 24h cron 실패 알림 건수 (cron_failure_log notified_at)
@@ -46,8 +51,16 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const signups24h = allUsers.filter(
     (u) => u.created_at && u.created_at >= since24Iso,
   ).length;
+  // 좁은 활성 정의 — 분석 카드와 호환 유지 (funnel-health 와 동일 의미)
   const active7d = allUsers.filter(
     (u) => u.last_sign_in_at && u.last_sign_in_at >= since7dIso,
+  ).length;
+  // 확장 활성 — signin OR 7d 내 가입. 임계치 점검 false positive 방지용.
+  // 가입 직후 메일 확인만 하고 재로그인 안 하는 사용자도 활성으로 인정해 alert 톤 다운.
+  const active7dAny = allUsers.filter(
+    (u) =>
+      (u.last_sign_in_at && u.last_sign_in_at >= since7dIso) ||
+      (u.created_at && u.created_at >= since7dIso),
   ).length;
 
   // 결제 실패 — subscriptions cancelled_at 24h
@@ -75,6 +88,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   return {
     signups24h,
     active7d,
+    active7dAny,
     failed24h,
     cronFailures24h,
     deliveryFailures24h,
@@ -85,11 +99,13 @@ export async function getHealthSignals(): Promise<HealthSignals> {
 export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   const alerts: ThresholdAlert[] = [];
 
-  // 가입 활성도 — 둘 다 충족만 알림 (false positive 방지)
-  if (s.signups24h === 0 && s.active7d < ACTIVE_7D_FLOOR) {
+  // 가입 활성도 — active7dAny (signin OR 7d 내 가입) 기준으로 false positive 방지.
+  // 둘 다 충족 (24h 가입 0 AND 7d 신규 가입·로그인 모두 floor 미만) 일 때만 alert →
+  // 사장님 본인 1명만 로그인하는 운영 초기 패턴은 정상 신호로 처리됨.
+  if (s.signups24h === 0 && s.active7dAny < ACTIVE_7D_FLOOR) {
     alerts.push({
       key: "low_activity",
-      message: `24h 신규 가입 0 + 7d 활성 ${s.active7d}명 (< ${ACTIVE_7D_FLOOR}). 가입 funnel 점검 필요.`,
+      message: `24h 신규 가입 0 + 7d 활성(가입+로그인) ${s.active7dAny}명 (< ${ACTIVE_7D_FLOOR}). 가입 funnel 점검 필요.`,
     });
   }
 

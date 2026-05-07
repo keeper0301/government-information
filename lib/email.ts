@@ -329,10 +329,18 @@ import type { ThresholdAlert } from "@/lib/health-check";
 
 export async function sendHealthAlertEmail(
   alerts: ThresholdAlert[],
-  signals: { signups24h: number; active7d: number; cronFailures24h: number },
+  signals: {
+    signups24h: number;
+    active7d: number;
+    /** 확장 활성 (signin OR 7d 내 가입). 없으면 active7d 폴백. */
+    active7dAny?: number;
+    cronFailures24h: number;
+  },
 ): Promise<{ ok: boolean; error?: string }> {
   if (alerts.length === 0) return { ok: true };
 
+  // alert 메시지가 active7dAny 기준이라 본문 박스도 두 값 함께 보여 정합성 유지
+  const activeAny = signals.active7dAny ?? signals.active7d;
   const subject = `[keepioo 운영] ${alerts.length}건 임계치 초과`;
   const itemsHtml = alerts
     .map((a) => `<li style="margin-bottom: 6px;">${escapeHtml(a.message)}</li>`)
@@ -344,7 +352,8 @@ export async function sendHealthAlertEmail(
       <div style="margin-top: 20px; padding: 12px 16px; background: #f9fafb; border-radius: 8px; font-size: 13px; color: #4e5968;">
         <strong>현재 신호</strong><br />
         24h 신규 가입: ${signals.signups24h}<br />
-        7d 활성 사용자: ${signals.active7d}<br />
+        7d 활성(가입+로그인): ${activeAny}<br />
+        7d 활성(로그인 기준): ${signals.active7d}<br />
         24h cron 실패: ${signals.cronFailures24h}
       </div>
       <a href="https://www.keepioo.com/admin/health" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background: #3182f6; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;">
@@ -352,7 +361,7 @@ export async function sendHealthAlertEmail(
       </a>
     </div>
   `;
-  const text = `${subject}\n\n${alerts.map((a) => `- ${a.message}`).join("\n")}\n\n현재 신호: 24h 가입 ${signals.signups24h} / 7d 활성 ${signals.active7d} / 24h cron 실패 ${signals.cronFailures24h}\n\n/admin/health → https://www.keepioo.com/admin/health`;
+  const text = `${subject}\n\n${alerts.map((a) => `- ${a.message}`).join("\n")}\n\n현재 신호: 24h 가입 ${signals.signups24h} / 7d 활성(가입+로그인) ${activeAny} / 7d 활성(로그인) ${signals.active7d} / 24h cron 실패 ${signals.cronFailures24h}\n\n/admin/health → https://www.keepioo.com/admin/health`;
 
   const resend = getResend();
   const { error } = await resend.emails.send({

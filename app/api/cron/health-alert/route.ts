@@ -40,6 +40,7 @@ async function run() {
   const result = await sendHealthAlertEmail(alerts, {
     signups24h: signals.signups24h,
     active7d: signals.active7d,
+    active7dAny: signals.active7dAny,
     cronFailures24h: signals.cronFailures24h,
   });
 
