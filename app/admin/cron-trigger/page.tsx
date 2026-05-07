@@ -33,16 +33,28 @@ async function requireAdmin() {
 }
 
 // vercel.json 의 cron 목록과 일치 — 새 cron 추가 시 여기도 갱신.
+// 카테고리 그룹: 사장님 알림 (SMS/이메일) → 시스템 자동화 → 보강·분석 cron 순.
 const CRON_LIST: { path: string; label: string; schedule: string; desc: string }[] = [
+  // 사장님 알림 — 직접 SMS/이메일 받는 cron. 즉시 검증 위해 자주 사용.
+  { path: "/api/cron/daily-digest", label: "일일 KPI SMS (사장님)", schedule: "매일 08시 KST", desc: "어제 KPI · 검토 큐 · cron 실패 요약" },
+  { path: "/api/cron/weekly-ops-digest", label: "주간 운영 이메일 (사장님)", schedule: "매주 화 09시 KST", desc: "7일 KPI + 자동 처리 + 절감 시간 + 검토 대기" },
+  { path: "/api/cron/health-alert", label: "사이트 헬스 알림", schedule: "매일 09:05 KST", desc: "Sentry · cron 실패 · 응답 시간" },
+  { path: "/api/cron/naver-queue-alert", label: "네이버 블로그 큐 알림", schedule: "매일 09:10 KST", desc: "발행 대기 큐 SMS" },
+  { path: "/api/cron/weekly-digest", label: "주간 다이제스트 (사용자)", schedule: "매주 월 09시 KST", desc: "Pro 사용자 주간 발송" },
+  { path: "/api/cron/onboarding-reminder", label: "가입 환영 이메일", schedule: "매일 11:05 KST", desc: "24~48h 미온보딩 1회 발송" },
+  // 시스템 자동화 — 데이터 수집/정리.
   { path: "/api/collect-news", label: "뉴스 수집 (korea.kr)", schedule: "매일 02시 UTC", desc: "korea.kr RSS 3개" },
+  { path: "/api/cron/news-classify", label: "뉴스 자동 분류 (LLM)", schedule: "매일 11:30/14:30/17:30 KST", desc: "Claude Haiku 분류" },
+  { path: "/api/dedupe-detect", label: "중복 정책 자동 탐지", schedule: "매일 02시 KST", desc: "임계 0.95 자동 confirm + LLM 2차" },
+  { path: "/api/cron/press-ingest", label: "광역 보도자료 자동 ingest", schedule: "매일 10:30/15:30/19:30 KST", desc: "Anthropic Haiku · welfare/loan 자동 등록" },
+  { path: "/api/alert-dispatch", label: "알림 발송", schedule: "매일 07시 UTC", desc: "이메일·카카오톡 (KST 16시)" },
+  { path: "/api/cleanup-expired-programs", label: "만료 정책 정리", schedule: "매일 18시 UTC", desc: "apply_end < today 비활성화" },
+  { path: "/api/finalize-deletions", label: "30일 유예 탈퇴 최종", schedule: "매일 06시 UTC", desc: "pending_deletions 만료분" },
+  { path: "/api/indexnow-submit-recent", label: "IndexNow 제출", schedule: "매일 07:30 UTC", desc: "Bing/Yandex SEO" },
+  // 보강·분석 — 자주 도는 background 작업.
   { path: "/api/enrich", label: "공고 detail 보강", schedule: "매 5분", desc: "bokjiro·youthcenter·mss" },
   { path: "/api/enrich-thumbnails", label: "naver-news og:image", schedule: "매 5분", desc: "BATCH 50" },
   { path: "/api/enrich-targeting", label: "본문 targeting 분석", schedule: "매일 08시 UTC", desc: "Phase 1.5 income/household 백필" },
-  { path: "/api/cleanup-expired-programs", label: "만료 정책 정리", schedule: "매일 18시 UTC", desc: "apply_end < today 비활성화" },
-  { path: "/api/alert-dispatch", label: "알림 발송", schedule: "매일 07시 UTC", desc: "이메일·카카오톡 (KST 16시)" },
-  { path: "/api/finalize-deletions", label: "30일 유예 탈퇴 최종", schedule: "매일 06시 UTC", desc: "pending_deletions 만료분" },
-  { path: "/api/indexnow-submit-recent", label: "IndexNow 제출", schedule: "매일 07:30 UTC", desc: "Bing/Yandex SEO" },
-  { path: "/api/cron/press-ingest", label: "광역 보도자료 자동 ingest", schedule: "매일 16:30 UTC", desc: "Anthropic Haiku · welfare/loan 자동 등록" },
 ];
 
 // 최근 실행 fetch — 사장님이 "방금 누른 게 됐나?" 한눈에 확인.
