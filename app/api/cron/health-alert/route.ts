@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { getHealthSignals, checkThresholds } from "@/lib/health-check";
 import { sendHealthAlertEmail } from "@/lib/email";
+import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -44,11 +45,28 @@ async function run() {
     cronFailures24h: signals.cronFailures24h,
   });
 
+  // 즉시 알림 — SMS 발송 (사장님 휴대폰 푸시처럼 즉시 인지).
+  // 환경변수 미설정 시 skipped (운영 단계 보호). 실패해도 email 발송은 유지.
+  let smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> | null = null;
+  try {
+    smsResult = await sendOpsAlertSms({
+      subject: `[keepioo 운영] ${alerts.length}건 임계치 초과`,
+      message: alerts.map((a) => `- ${a.message}`).join("\n"),
+    });
+  } catch (e) {
+    smsResult = {
+      ok: false,
+      reason: "network_error",
+      error: (e as Error).message,
+    };
+  }
+
   return NextResponse.json({
     ok: result.ok,
     sent: result.ok,
     alerts,
     signals,
+    sms: smsResult,
     error: result.error,
   });
 }
