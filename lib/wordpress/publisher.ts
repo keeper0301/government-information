@@ -16,13 +16,20 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToWordPress, type BlogPostForWordPress } from "./format";
+import { fetchOrCreateCategoryIds, fetchOrCreateTagIds } from "./terms";
+
+// 워드프레스 REST API timeout — 15초.
+// cron maxDuration (Vercel 60초) 안에 안전 마진 확보 + 일시 응답 지연이
+// 핵심 발행 경로 (네이버 큐 enqueue 등) 를 막지 않도록.
+const WORDPRESS_TIMEOUT_MS = 15_000;
 
 export type PublishResult =
   | { ok: true; wpPostId: number; wpPostUrl: string }
   | { ok: false; reason: "skipped_no_credentials"; error?: undefined }
   | { ok: false; reason: "skipped_invalid_url"; error: string }
   | { ok: false; reason: "api_error"; error: string }
-  | { ok: false; reason: "network_error"; error: string };
+  | { ok: false; reason: "network_error"; error: string }
+  | { ok: false; reason: "timeout"; error: string };
 
 /**
  * keepioo 블로그 → 워드프레스 즉시 발행 + 결과 DB 기록.
@@ -62,9 +69,20 @@ export async function publishToWordPress(
   const authHeader =
     "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64");
 
-  // 4) 변환 + REST API 호출
+  // 4) 변환
   const payload = convertToWordPress(post);
 
+  // 4-1) 카테고리·태그 slug → 워드프레스 ID 매핑 (정수 ID 만 받는 REST API 사양).
+  // lookup 실패해도 빈 배열로 폴백 → 발행 자체는 진행 (Uncategorized 분류).
+  const apiBase = postsEndpoint.replace(/\/posts$/, "");
+  const [categoryIds, tagIds] = await Promise.all([
+    fetchOrCreateCategoryIds(payload.categories, apiBase, authHeader),
+    fetchOrCreateTagIds(payload.tags, apiBase, authHeader),
+  ]);
+
+  // 5) timeout — 15초 후 abort. 워드프레스 응답 지연이 cron 함수 전체를 막지 않도록.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), WORDPRESS_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch(postsEndpoint, {
@@ -79,14 +97,23 @@ export async function publishToWordPress(
         status: payload.status,
         content: payload.content,
         excerpt: payload.excerpt,
-        // 카테고리·태그는 wordpress.com 의 slug 기반 자동 생성됨 (없으면 새로 만들어짐)
-        // 정밀 매핑 필요 시 카테고리 ID 사전 fetch 후 매핑하는 로직으로 확장
+        // 워드프레스 REST API 는 categories/tags 정수 ID 배열만 받음 (slug X).
+        // terms.ts 가 사전 lookup·미존재 시 자동 생성 후 ID 반환.
+        categories: categoryIds,
+        tags: tagIds,
       }),
+      signal: ctrl.signal,
     });
   } catch (e) {
-    const message = (e as Error).message;
-    await logFailure(blogPostId, `network: ${message}`);
-    return { ok: false, reason: "network_error", error: message };
+    // e 가 Error 가 아닌 경우 (string·undefined 등) 대비 — instanceof 가드.
+    const err = e instanceof Error ? e : new Error(String(e));
+    const isAbort = err.name === "AbortError" || err.name === "TimeoutError";
+    await logFailure(blogPostId, isAbort ? `timeout ${WORDPRESS_TIMEOUT_MS}ms` : `network: ${err.message}`);
+    return isAbort
+      ? { ok: false, reason: "timeout", error: `${WORDPRESS_TIMEOUT_MS}ms 초과` }
+      : { ok: false, reason: "network_error", error: err.message };
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok) {

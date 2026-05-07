@@ -76,13 +76,12 @@ export async function submitToIndexNow(
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), INDEXNOW_TIMEOUT_MS);
       try {
+        // Host 헤더는 fetch 가 URL 에서 자동 설정 — 수동 지정하면 Node 환경에서
+        // 충돌 가능 ("forbidden header"). 검색엔진 봇 검증 측면에서도 자동 설정이 정답.
         const res = await fetch(target.url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json; charset=utf-8",
-            Host: target.url.includes("naver.com")
-              ? "searchadvisor.naver.com"
-              : "api.indexnow.org",
           },
           body: JSON.stringify(payload),
           signal: ctrl.signal,
