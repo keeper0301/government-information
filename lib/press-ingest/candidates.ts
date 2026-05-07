@@ -402,11 +402,21 @@ export async function confirmPressCandidate(
   return { table, id: data.id as string };
 }
 
+export type AutoConfirmLayerBreakdown = {
+  llm: number;
+  body_urls: number;
+  body_regex: number;
+  province: number;
+  source_url: number;
+};
+
 export type AutoConfirmResult = {
   /** 자동 승인된 후보 수 (fallback 으로 url 채워 INSERT 성공) */
   confirmed: number;
   /** 4 layer fallback 으로 url 채운 후보 수 (확인 통계용) */
   fallback_filled: number;
+  /** Layer 별 회수 분포 — 운영 가시성 (사장님이 광역 매핑 의존도 확인 가능). LLM 직접 응답이 0 이면 prompt 재검토 신호. */
+  layer_breakdown: AutoConfirmLayerBreakdown;
   /** apply_url 없어 자동 승인 보류 — fallback 후에도 url 0 인 사례 (이론상 거의 0) */
   skipped_no_url: number;
   /** confirm 도중 실패한 후보별 에러 (DB / RLS / payload 검증 등) */
@@ -459,6 +469,13 @@ export async function autoConfirmPendingPressCandidates({
   const result: AutoConfirmResult = {
     confirmed: 0,
     fallback_filled: 0,
+    layer_breakdown: {
+      llm: 0,
+      body_urls: 0,
+      body_regex: 0,
+      province: 0,
+      source_url: 0,
+    },
     skipped_no_url: 0,
     errors: [],
   };
@@ -500,6 +517,10 @@ export async function autoConfirmPendingPressCandidates({
         continue;
       }
       result.fallback_filled += 1;
+      result.layer_breakdown[fallback.source] += 1;
+    } else {
+      // LLM 이 직접 apply_url 응답 — Layer 1 통계
+      result.layer_breakdown.llm += 1;
     }
 
     if (!applyUrl) {

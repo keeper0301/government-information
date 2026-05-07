@@ -25,6 +25,7 @@ import {
   getExistingPressCandidate,
   newsSourceUrl,
   upsertPressCandidate,
+  type AutoConfirmLayerBreakdown,
 } from "./candidates";
 // 4 layer apply_url fallback — apply_url null 사례 자동 채움 (자동 confirm 률 ↑)
 import { resolveApplyUrl } from "./url-fallback";
@@ -62,6 +63,8 @@ export type IngestResult = {
   auto_confirmed: number;
   /** 자동 승인 중 4 layer fallback 으로 url 채운 후보 수 (분포 확인용) */
   auto_fallback_filled: number;
+  /** Layer 별 회수 분포 — 운영 가시성 (사장님 광역 매핑 의존도 확인) */
+  auto_layer_breakdown: AutoConfirmLayerBreakdown;
   /** 자동 승인 보류 — fallback 후에도 url 0 인 사례 (이론상 거의 0) */
   auto_skipped_no_url: number;
   errors: string[];
@@ -79,6 +82,13 @@ export async function runAutoIngest(): Promise<IngestResult> {
     skipped_classify_error: 0,
     auto_confirmed: 0,
     auto_fallback_filled: 0,
+    auto_layer_breakdown: {
+      llm: 0,
+      body_urls: 0,
+      body_regex: 0,
+      province: 0,
+      source_url: 0,
+    },
     auto_skipped_no_url: 0,
     errors: [],
   };
@@ -176,6 +186,7 @@ export async function runAutoIngest(): Promise<IngestResult> {
     const auto = await autoConfirmPendingPressCandidates({ limit: AUTO_CONFIRM_CAP });
     result.auto_confirmed = auto.confirmed;
     result.auto_fallback_filled = auto.fallback_filled;
+    result.auto_layer_breakdown = auto.layer_breakdown;
     result.auto_skipped_no_url = auto.skipped_no_url;
     if (auto.errors.length > 0) {
       result.errors.push(
