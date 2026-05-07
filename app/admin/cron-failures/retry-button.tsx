@@ -5,7 +5,9 @@
 
 import { useState } from "react";
 
-const PREFIX_TO_PATH: Record<string, string> = {
+// prefix → cron path 매핑. cron_failure_log 의 job_name 첫 단어와 일치.
+// 새 cron 추가 시 이 매핑 + cron-retry route.ts 의 ALLOWED_PATHS 둘 다 갱신.
+export const PREFIX_TO_PATH: Record<string, string> = {
   collect: "/api/collect-news",
   enrich: "/api/enrich",
   alert: "/api/alert-dispatch",
@@ -13,6 +15,17 @@ const PREFIX_TO_PATH: Record<string, string> = {
   cleanup: "/api/cleanup-expired-programs",
   billing: "/api/billing/charge",
   health: "/api/cron/health-alert",
+  // 어드민 자동화 마스터 #1 인벤토리 후 추가 (2026-05-07)
+  dedupe: "/api/dedupe-detect",
+  press: "/api/cron/press-ingest",
+  onboarding: "/api/cron/onboarding-reminder",
+  weekly: "/api/cron/weekly-digest",
+  daily: "/api/cron/daily-digest",
+  news: "/api/cron/news-classify",
+  naver: "/api/cron/naver-queue-alert",
+  indexnow: "/api/indexnow-submit-recent",
+  targeting: "/api/enrich-targeting",
+  thumbnails: "/api/enrich-thumbnails",
 };
 
 export function CronRetryButton({ prefix }: { prefix: string }) {

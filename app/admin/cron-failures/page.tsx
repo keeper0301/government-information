@@ -22,6 +22,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CronRetryButton } from "./retry-button";
+import { RetryAllButton } from "./retry-all-button";
 import { isAdminUser } from "@/lib/admin-auth";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -169,6 +170,11 @@ export default async function CronFailuresPage() {
           />
         </div>
       </section>
+
+      {/* Quick Win — 모든 prefix 한 번에 재시도 */}
+      {prefixGroups.length > 0 && (
+        <RetryAllButton prefixes={prefixGroups.map((g) => g.prefix)} />
+      )}
 
       {/* prefix 그룹 */}
       <section className="mb-8">

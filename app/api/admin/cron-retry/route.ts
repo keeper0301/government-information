@@ -24,6 +24,13 @@ const ALLOWED_PATHS = new Set<string>([
   "/api/cron/press-ingest",
   "/api/cron/onboarding-reminder",
   "/api/cron/weekly-digest",
+  // 어드민 자동화 마스터 #1 인벤토리 후 추가 (2026-05-07)
+  "/api/cron/daily-digest",
+  "/api/cron/news-classify",
+  "/api/cron/naver-queue-alert",
+  "/api/enrich-targeting",
+  "/api/enrich-thumbnails",
+  "/api/indexnow-submit-recent",
 ]);
 
 // host header injection 방어를 위한 base URL — request.url 의 host 가
