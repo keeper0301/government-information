@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { republishLatestBlogAction } from "./actions";
 
 export const metadata: Metadata = {
   title: "워드프레스 자동 발행 | 어드민",
@@ -151,6 +152,22 @@ export default async function AdminWordPressPage() {
             </a>
           </p>
         </div>
+      )}
+
+      {/* 검증용 — 최신 글 재발행 트리거 (환경변수 등록 직후 즉시 검증에 사용) */}
+      {hasCredentials && (
+        <form action={republishLatestBlogAction} className="mb-5">
+          <button
+            type="submit"
+            className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            🚀 최신 글 워드프레스 재발행 (검증용)
+          </button>
+          <p className="mt-2 text-xs text-grey-500">
+            keepioo 최신 발행 글 1건을 워드프레스에 즉시 재발행 시도. wordpress_publish_log 의 기존 row 삭제 후 호출.
+            결과는 아래 통계 카드·발행 이력에 즉시 반영됩니다.
+          </p>
+        </form>
       )}
 
       {/* 통계 카드 4개 */}
