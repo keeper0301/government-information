@@ -224,8 +224,8 @@ sub-project N 시작
 - [x] #2 다이제스트 강화 — daily-digest 6→10 KPI + 검토 큐 통합 (2026-05-07)
 - [x] #4 통합 알림 — dashboard-alerts 에 dedupe·naver-blog 추가 + weekly-ops 이메일 cron (2026-05-07)
 - [x] #6 안전망 — auto-confirm 무작위 샘플 5건 weekly-ops 통합 (DDL 0, 2026-05-07)
-- [ ] #5 cron 자동화
-- [ ] #3 임계 낮추기
+- [x] #5 cron 자동화 + Quick Win — targeting "지금 실행" 버튼 (2026-05-07). 기존 cron 인프라 충분이라 추가 cron 0
+- [ ] #3 임계 낮추기 — 위험 中-高, 사장님 1주 모니터링 부담. 별도 명시 승인 후 진행
 
 ### #1 핵심 발견
 

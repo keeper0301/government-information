@@ -17,6 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { TargetingRunNowButton } from "./run-now-button";
 
 export const metadata: Metadata = {
   title: "본문 분석 운영 | 어드민",
@@ -189,15 +190,23 @@ export default async function TargetingAdminPage() {
             cron이 매일 08:00 UTC에 자동 실행되지만, 즉시 백필이 필요할 때 아래 명령어를 사용하세요.
           </p>
 
-          {/* curl 명령어 코드 블록 */}
-          <code className="block text-xs text-zinc-800 bg-white px-4 py-3 rounded-lg border border-zinc-200 font-mono break-all leading-relaxed">
-            curl -H &quot;Authorization: Bearer $CRON_SECRET&quot; \<br />
-            &nbsp;&nbsp;&quot;https://keepioo.com/api/enrich-targeting?backfill=1&amp;batch=1000&quot;
-          </code>
+          {/* 어드민 자동화 #5 (2026-05-07) — 한 클릭 실행 버튼.
+              cron-retry endpoint 가 server-side 에서 CRON_SECRET 첨부 → 사장님이
+              터미널 안 켜도 됨. 기존 curl 명령어는 fallback 으로 보존. */}
+          <TargetingRunNowButton />
 
-          <p className="text-sm text-zinc-600 mt-3 leading-[1.6]">
-            ⚠️ 브라우저 클릭으로는 Bearer 헤더 첨부 불가 — curl 또는 cron 자동 실행(08:00 UTC)을 사용하세요.
-          </p>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs text-grey-600 hover:text-grey-800">
+              curl 명령어로 실행하기 (옛 방식, fallback)
+            </summary>
+            <code className="block mt-2 text-xs text-zinc-800 bg-white px-4 py-3 rounded-lg border border-zinc-200 font-mono break-all leading-relaxed">
+              curl -H &quot;Authorization: Bearer $CRON_SECRET&quot; \<br />
+              &nbsp;&nbsp;&quot;https://keepioo.com/api/enrich-targeting?backfill=1&amp;batch=1000&quot;
+            </code>
+            <p className="text-xs text-zinc-600 mt-2 leading-[1.6]">
+              ⚠️ 브라우저 직접 호출 안 됨 — 위 「⚡ 지금 실행」 버튼 사용 권장.
+            </p>
+          </details>
           <p className="text-sm text-zinc-600 mt-1 leading-[1.6]">
             $CRON_SECRET 는 Vercel 환경변수 CRON_SECRET 값. 로컬에서는{" "}
             <code className="bg-white px-1 py-0.5 rounded border border-zinc-200">
