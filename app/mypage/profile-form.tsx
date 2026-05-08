@@ -98,6 +98,9 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       household_types: form.household_types,
       has_children: form.has_children,
       merit_status: form.merit_status,
+      // 마이페이지에서 프로필 적극 입력하는 사용자는 온보딩 완료로 간주.
+      // 누락되면 다음 로그인 시 auth/callback 이 /onboarding 으로 강제 redirect.
+      dismissed_onboarding_at: new Date().toISOString(),
     });
     if (error) {
       setError("저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.");
