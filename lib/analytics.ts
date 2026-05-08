@@ -84,6 +84,10 @@ export const EVENTS = {
   HOME_VALUE_PROPS_SHOWN: "home_value_props_shown",         // 가치 카드 노출 (페이지뷰 보조)
   HOME_POPULAR_SIGNUP_CTA: "home_popular_signup_cta",       // 인기 정책 사이드 배너 끝 회원가입 CTA 클릭
   HOME_POPULAR_DISMISSED: "home_popular_dismissed",         // 인기 정책 사이드 배너 닫기 (사용자 피로도 측정)
+  // /search 페이지 사용 패턴 (B-2 점검 — 빈 결과율·인기 키워드 측정 시작)
+  // params: query, type_filter (welfare/loan/news/blog/all), sort, total_count,
+  //         has_results (0/1), welfare_count, loan_count, news_count, blog_count
+  SEARCH_RESULTS_SHOWN: "search_results_shown",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

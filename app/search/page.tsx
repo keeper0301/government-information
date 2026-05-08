@@ -10,6 +10,7 @@ import {
   type SearchSort,
 } from "@/lib/search";
 import type { DisplayProgram } from "@/lib/programs";
+import { SearchTracker } from "@/components/search-tracker";
 
 // /search?q=... — 통합 검색 결과 페이지
 // UX 설계:
@@ -150,6 +151,18 @@ export default async function SearchPage({ searchParams }: Props) {
           activeSort={activeSort}
         />
       )}
+
+      {/* GA4 search_results_shown — 빈 결과율·인기 키워드·영역별 분포 측정 */}
+      <SearchTracker
+        query={trimmed}
+        typeFilter={activeTypes.length === 0 ? "all" : activeTypes.join(",")}
+        sort={activeSort}
+        total={data.total}
+        welfareTotal={data.welfareTotal}
+        loanTotal={data.loanTotal}
+        newsTotal={data.newsTotal}
+        blogTotal={data.blogTotal}
+      />
 
       {/* 결과 0건 — 친절한 빈 상태 + 검색 팁 */}
       {data.total === 0 ? (
