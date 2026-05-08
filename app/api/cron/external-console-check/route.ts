@@ -19,6 +19,8 @@
 
 import { NextResponse } from "next/server";
 import { checkSiteAvailability } from "@/lib/external-console/site-availability";
+import { checkKakao } from "@/lib/external-console/kakao";
+import { checkToss } from "@/lib/external-console/toss";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 
@@ -43,8 +45,10 @@ async function run() {
   // 모든 점검 병렬 실행 — 한 console 실패가 다른 점검 막지 않게 settled.
   const checks: Array<Promise<ConsoleCheckResult>> = [
     checkSiteAvailability(),
+    checkKakao(),
+    checkToss(),
     // 다음 통합 시 여기에 추가:
-    // checkAdSense(), checkKakao(), checkToss(), checkGa4()
+    // checkAdSense(), checkGa4()
   ];
   const settled = await Promise.allSettled(checks);
 

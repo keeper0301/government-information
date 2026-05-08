@@ -133,10 +133,11 @@ DEDUPE_AUTO_CONFIRM_THRESHOLD=0.88 Vercel env 자동 등록 + Redeploy.
 - `__tests__/lib/site-availability.test.ts` — 7 unit test PASS
 
 **현재 점검 가능 (즉시 가동)**:
-- 5 페이지 HEAD 요청 — 홈·welfare·loan·news·blog
-- 응답 시간 ≥3초 → `site_slow` alert
-- 5xx·timeout·DNS 실패 → `site_down` alert
+- **사이트 가용성** — 5 페이지 HEAD (홈·welfare·loan·news·blog) → `site_down` / `site_slow`
+- **카카오 (Solapi)** — `/messages/v4/list` API 24h 통계 → `kakao_high_failure` (≥10%) / `kakao_pending_stuck` (≥10건)
+- **토스** — DB subscriptions 24h funnel → `toss_high_churn` (해지 ≥ 활성 10%)
 - 정상 → SMS 안 옴 (noise 0)
+- env 미설정 시 자동 skip (Solapi/토스 모두 graceful degradation)
 
 ### 다음 console 통합 가이드 (사장님 외부 액션 동반)
 
