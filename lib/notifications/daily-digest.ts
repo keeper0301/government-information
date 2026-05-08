@@ -33,6 +33,13 @@ export type DigestData = {
   // spec A A3 안전망 — 24h dedupe 자동 confirm 무작위 1건 (사장님 즉시 인지, 7일→24h 지연 단축)
   // null = 24h 자동 confirm 없음 (점진 도입 W0 단계). title 30자 cap.
   dedupeRandomSample: { title: string; table: "welfare_programs" | "loan_programs" } | null;
+  // Task 9 (2026-05-08) — 자동 등록·회수·low 큐 가시성. SMS 1줄 통합.
+  /** 24h 자동 등록된 정책 수 (welfare + loan 합산) */
+  autoConfirm24h: number;
+  /** 24h 회수된 정책 수 (admin_actions.press_l2_auto_revoke) */
+  autoRevoke24h: number;
+  /** 현재 low 큐 적체 (참고용 — health-alert 가 별도로 임계 점검) */
+  pressLowTierBacklog: number;
 };
 
 /**
@@ -80,6 +87,12 @@ export async function collectDailyDigest(): Promise<DigestData> {
     welfareDedupe,
     loanDedupe,
     naverBlogPending,
+    // Task 9 (2026-05-08) — 자동 등록·회수·low 큐 3 query 병렬 통합.
+    // DDL 077 미적용 prod 에선 auto_confirmed_at 컬럼 부재 → safe() 가 0 fallback.
+    welfareAutoConfirm24h,
+    loanAutoConfirm24h,
+    autoRevoke24h,
+    pressLowTierBacklog,
   ] = await Promise.all([
     safe(
       admin
@@ -173,10 +186,42 @@ export async function collectDailyDigest(): Promise<DigestData> {
         .select("id", { count: "exact", head: true })
         .eq("status", "pending"),
     ),
+    // Task 9 — 24h 자동 등록 (welfare). DDL 077 미적용 시 컬럼 부재 → safe 가 0 반환.
+    safe(
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "exact", head: true })
+        .gte("auto_confirmed_at", since24h),
+    ),
+    // Task 9 — 24h 자동 등록 (loan).
+    safe(
+      admin
+        .from("loan_programs")
+        .select("id", { count: "exact", head: true })
+        .gte("auto_confirmed_at", since24h),
+    ),
+    // Task 9 — 24h 자동 회수. action enum press_l2_auto_revoke 는 Task 3 에서 추가됨.
+    safe(
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "press_l2_auto_revoke")
+        .gte("created_at", since24h),
+    ),
+    // Task 9 — 현재 low 큐 적체 (참고용 — health-alert 가 별도로 임계 점검).
+    safe(
+      admin
+        .from("press_ingest_candidates")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .eq("confidence_tier", "low"),
+    ),
   ]);
 
   const newPolicies24h = welfareNew + loanNew + newsNew;
   const dedupePending = welfareDedupe + loanDedupe;
+  // Task 9 — welfare + loan 자동 등록 합산
+  const autoConfirm24h = welfareAutoConfirm24h + loanAutoConfirm24h;
 
   // 광역 매핑 의존도 — 별도 fetch (3 query). 실패 시 0% fallback (SMS 정상 발송).
   const pressStats = await getPressAutoConfirmStats().catch((e) => {
@@ -211,6 +256,10 @@ export async function collectDailyDigest(): Promise<DigestData> {
     naverBlogPending,
     pressProvincePct: pressStats.province_dependency_pct,
     dedupeRandomSample,
+    // Task 9 — 자동 등록·회수·low 큐 가시성 (SMS 1줄 통합)
+    autoConfirm24h,
+    autoRevoke24h,
+    pressLowTierBacklog,
   };
 }
 
@@ -286,6 +335,18 @@ export function formatDigestMessage(data: DigestData): string {
     `신규 정책 ${data.newPolicies24h} · 워드 ${data.wordpressPublished24h}`,
     `자동: 보도 ${data.pressAutoConfirmed24h}${provinceMark} · 뉴스hide ${data.newsAutoHidden24h} · dedupe ${data.dedupeAutoConfirmed24h}`,
   ];
+
+  // Task 9 (2026-05-08) — AI 자동 등록·회수 가시성. 자동 처리 라인 바로 다음에 이어 붙임.
+  // 평소 (자동 등록·회수 모두 0) 이면 line 자체 skip → SMS 압축 (90자 LMS 전환 방지).
+  // low 큐도 0 이면 부분 생략 (선택적 노출).
+  if (data.autoConfirm24h > 0 || data.autoRevoke24h > 0) {
+    const lowTail = data.pressLowTierBacklog > 0
+      ? ` / low 큐 ${data.pressLowTierBacklog}`
+      : "";
+    lines.push(
+      `AI 자동 등록 ${data.autoConfirm24h}건 / 회수 ${data.autoRevoke24h}건${lowTail}`,
+    );
+  }
 
   // 검토 필요 큐 — 1건 이상일 때만 노출 (사장님 진입 동기 명확)
   const reviewTotal = reviewQueueTotal(data);

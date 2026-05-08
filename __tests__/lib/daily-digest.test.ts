@@ -18,6 +18,10 @@ const ZERO: DigestData = {
   naverBlogPending: 0,
   pressProvincePct: 0,
   dedupeRandomSample: null,
+  // Task 9 (2026-05-08) — 자동 등록·회수·low 큐 가시성
+  autoConfirm24h: 0,
+  autoRevoke24h: 0,
+  pressLowTierBacklog: 0,
 };
 
 describe("formatDigestMessage", () => {
@@ -127,6 +131,61 @@ describe("formatDigestMessage", () => {
       },
     });
     expect(message).toContain("샘플 dedupe 검수: 청년 주거 안정 지원금");
+  });
+
+  // Task 9 (2026-05-08) — AI 자동 등록·회수 가시성 라인
+  it("Task 9 — 자동 등록·회수 모두 0 — AI 자동 등록 라인 미포함 (SMS 압축)", () => {
+    const message = formatDigestMessage(ZERO);
+    expect(message).not.toContain("AI 자동 등록");
+  });
+
+  it("Task 9 — 자동 등록 ≥1 — AI 자동 등록 라인 포함", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      autoConfirm24h: 7,
+      autoRevoke24h: 0,
+    });
+    expect(message).toContain("AI 자동 등록 7건 / 회수 0건");
+  });
+
+  it("Task 9 — 자동 회수 ≥1 (등록 0) — 라인 포함 (회수만으로도 노출)", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      autoConfirm24h: 0,
+      autoRevoke24h: 2,
+    });
+    expect(message).toContain("AI 자동 등록 0건 / 회수 2건");
+  });
+
+  it("Task 9 — low 큐 0 — low 큐 표기 부분 생략 (선택적 노출)", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      autoConfirm24h: 5,
+      autoRevoke24h: 1,
+      pressLowTierBacklog: 0,
+    });
+    expect(message).toContain("AI 자동 등록 5건 / 회수 1건");
+    expect(message).not.toContain("low 큐");
+  });
+
+  it("Task 9 — low 큐 ≥1 + 자동 등록 ≥1 — low 큐 표기 포함", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      autoConfirm24h: 5,
+      autoRevoke24h: 1,
+      pressLowTierBacklog: 12,
+    });
+    expect(message).toContain("AI 자동 등록 5건 / 회수 1건 / low 큐 12");
+  });
+
+  it("Task 9 — low 큐 ≥1 만 있고 등록·회수 0 — 라인 자체 미포함 (low 큐 단독으로는 SMS 노출 X)", () => {
+    // low 큐 임계 점검은 health-alert 책임 — daily-digest 는 자동 등록·회수 트리거에만 부착.
+    const message = formatDigestMessage({
+      ...ZERO,
+      pressLowTierBacklog: 50,
+    });
+    expect(message).not.toContain("AI 자동 등록");
+    expect(message).not.toContain("low 큐");
   });
 });
 
