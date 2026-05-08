@@ -6,7 +6,10 @@
 // is_policy=false 로 skipped 되는 후보는 자동 confirm 대상에서 제외 → null.
 // ============================================================
 import { describe, it, expect } from "vitest";
-import { buildCandidateUpsert } from "@/lib/press-ingest/candidates";
+import {
+  buildCandidateUpsert,
+  shouldAutoConfirm,
+} from "@/lib/press-ingest/candidates";
 import type { ClassifyResult } from "@/lib/press-ingest/classify";
 
 // 기본 정책 결과 fixture — 테스트 별로 confidence/program_type/is_policy 등만 override
@@ -64,5 +67,43 @@ describe("buildCandidateUpsert — confidence_tier 보존", () => {
     });
     expect(upsert.status).toBe("skipped");
     expect(upsert.confidence_tier).toBeNull();
+  });
+});
+
+// Task 4 — autoConfirm 단계의 tier filter 분기.
+// AUTO_CONFIRM_TIER_FLOOR env 기반으로 high/mid/low 중 어디부터 자동 confirm 할지 결정.
+// default 'mid' (high+mid 자동 confirm, low 는 사장님 검토 큐로 유지) — 운영 보수적 기본값.
+describe("shouldAutoConfirm — tier 분기 + AUTO_CONFIRM_TIER_FLOOR env", () => {
+  it("default floor='mid' → high/mid 자동, low pending", () => {
+    delete process.env.AUTO_CONFIRM_TIER_FLOOR;
+    expect(shouldAutoConfirm("high")).toBe(true);
+    expect(shouldAutoConfirm("mid")).toBe(true);
+    expect(shouldAutoConfirm("low")).toBe(false);
+  });
+
+  it("floor='high' → high 만 자동", () => {
+    process.env.AUTO_CONFIRM_TIER_FLOOR = "high";
+    expect(shouldAutoConfirm("high")).toBe(true);
+    expect(shouldAutoConfirm("mid")).toBe(false);
+    expect(shouldAutoConfirm("low")).toBe(false);
+  });
+
+  it("floor='low' → 모두 자동 (적극 모드)", () => {
+    process.env.AUTO_CONFIRM_TIER_FLOOR = "low";
+    expect(shouldAutoConfirm("high")).toBe(true);
+    expect(shouldAutoConfirm("mid")).toBe(true);
+    expect(shouldAutoConfirm("low")).toBe(true);
+  });
+
+  it("invalid floor 값 → default 'mid' fallback", () => {
+    process.env.AUTO_CONFIRM_TIER_FLOOR = "extreme";
+    expect(shouldAutoConfirm("high")).toBe(true);
+    expect(shouldAutoConfirm("mid")).toBe(true);
+    expect(shouldAutoConfirm("low")).toBe(false);
+  });
+
+  it("confidence_tier=null (legacy 후보) → 자동 confirm X (보수적)", () => {
+    delete process.env.AUTO_CONFIRM_TIER_FLOOR;
+    expect(shouldAutoConfirm(null)).toBe(false);
   });
 });

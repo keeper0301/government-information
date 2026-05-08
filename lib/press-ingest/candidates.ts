@@ -182,6 +182,29 @@ export function buildFailedCandidateUpsert({
   };
 }
 
+// Task 4 — tier 비교 우선순위. 숫자가 클수록 신뢰도 높음.
+// AUTO_CONFIRM_TIER_FLOOR 가 'mid' 면 tier rank >= 2 (high·mid) 만 자동 confirm.
+const TIER_RANK = { high: 3, mid: 2, low: 1 } as const;
+
+/**
+ * AUTO_CONFIRM_TIER_FLOOR env 기반 자동 confirm 분기.
+ * - default 'mid' (high+mid 자동 confirm, low 는 사장님 검토 큐로 유지)
+ * - invalid 값 (예: 'extreme') → 'mid' fallback (보수적 운영)
+ * - tier=null (legacy 후보 또는 신뢰도 측정 불가) → false (자동 confirm X)
+ *
+ * 호출처: autoConfirmPendingPressCandidates (cron) 의 row 별 분기.
+ */
+export function shouldAutoConfirm(tier: "high" | "mid" | "low" | null): boolean {
+  if (tier === null) return false;
+  const raw = process.env.AUTO_CONFIRM_TIER_FLOOR ?? "mid";
+  const floor = (["high", "mid", "low"] as const).includes(
+    raw as "high" | "mid" | "low",
+  )
+    ? (raw as "high" | "mid" | "low")
+    : "mid";
+  return TIER_RANK[tier] >= TIER_RANK[floor];
+}
+
 function requirePending(candidate: PressCandidateForConfirm, expected: "welfare" | "loan") {
   if (candidate.status !== "pending") {
     throw new Error("pending 후보만 확정할 수 있습니다.");
@@ -207,9 +230,16 @@ function extractTags(result: ClassifyResult) {
   };
 }
 
-export function buildWelfareInsertPayload(candidate: PressCandidateForConfirm) {
+// Task 4 — auto_confirm_tier / auto_confirmed_at 메타를 INSERT payload 에 동봉.
+// options.autoConfirmTier 가 'high' / 'mid' 면 자동 등록 마킹, null 이면 사장님 수동 confirm 으로 간주.
+// DDL 077 의 welfare_programs / loan_programs 컬럼이 이 두 필드를 받는다.
+export function buildWelfareInsertPayload(
+  candidate: PressCandidateForConfirm,
+  options?: { autoConfirmTier?: "high" | "mid" | null },
+) {
   requirePending(candidate, "welfare");
   const result = candidate.classified_payload;
+  const autoTier = options?.autoConfirmTier ?? null;
   return {
     title: result.title,
     category: candidate.category || result.category,
@@ -226,13 +256,19 @@ export function buildWelfareInsertPayload(candidate: PressCandidateForConfirm) {
     region: candidate.news.ministry,
     source_code: SOURCE_CODE,
     source_id: candidate.news_id,
+    auto_confirm_tier: autoTier,
+    auto_confirmed_at: autoTier ? new Date().toISOString() : null,
     ...extractTags(result),
   };
 }
 
-export function buildLoanInsertPayload(candidate: PressCandidateForConfirm) {
+export function buildLoanInsertPayload(
+  candidate: PressCandidateForConfirm,
+  options?: { autoConfirmTier?: "high" | "mid" | null },
+) {
   requirePending(candidate, "loan");
   const result = candidate.classified_payload;
+  const autoTier = options?.autoConfirmTier ?? null;
   return {
     title: result.title,
     category: candidate.category || result.category,
@@ -250,6 +286,8 @@ export function buildLoanInsertPayload(candidate: PressCandidateForConfirm) {
     source_url: newsSourceUrl(candidate.news),
     source_code: SOURCE_CODE,
     source_id: candidate.news_id,
+    auto_confirm_tier: autoTier,
+    auto_confirmed_at: autoTier ? new Date().toISOString() : null,
     ...extractTags(result),
   };
 }
@@ -346,6 +384,7 @@ export async function getPressCandidateForConfirm(
 export async function confirmPressCandidate(
   candidateId: string,
   actorId: string | null,
+  options?: { autoConfirmTier?: "high" | "mid" | null },
 ): Promise<{ table: "welfare_programs" | "loan_programs"; id: string }> {
   const candidate = await getPressCandidateForConfirm(candidateId);
   if (!candidate) throw new Error("후보를 찾을 수 없습니다.");
@@ -354,8 +393,8 @@ export async function confirmPressCandidate(
     candidate.program_type === "welfare" ? "welfare_programs" : "loan_programs";
   const payload =
     candidate.program_type === "welfare"
-      ? buildWelfareInsertPayload(candidate)
-      : buildLoanInsertPayload(candidate);
+      ? buildWelfareInsertPayload(candidate, options)
+      : buildLoanInsertPayload(candidate, options);
   const now = new Date().toISOString();
 
   const { error: claimError } = await admin
@@ -439,6 +478,8 @@ export type AutoConfirmResult = {
 type AutoConfirmRow = {
   id: string;
   classified_payload: ClassifyResult;
+  // Task 4 — tier filter 분기 입력. shouldAutoConfirm 으로 floor 비교.
+  confidence_tier: "high" | "mid" | "low" | null;
   news_posts: {
     id: string;
     slug: string | null;
@@ -466,11 +507,12 @@ export async function autoConfirmPendingPressCandidates({
   limit = 50,
 }: { limit?: number } = {}): Promise<AutoConfirmResult> {
   const admin = createAdminClient();
-  // news_posts 의 body·ministry 도 같이 select — fallback chain 입력으로 사용.
+  // news_posts 의 body·ministry + 후보의 confidence_tier 까지 select.
+  // tier 분기 (Task 4) + fallback chain 입력 (Task 2 직전 작업) 둘 다 필요.
   const { data, error } = await admin
     .from("press_ingest_candidates")
     .select(
-      "id, classified_payload, news_posts!inner(id, slug, ministry, body)",
+      "id, classified_payload, confidence_tier, news_posts!inner(id, slug, ministry, body)",
     )
     .eq("status", "pending")
     .in("program_type", ["welfare", "loan"])
@@ -493,6 +535,17 @@ export async function autoConfirmPendingPressCandidates({
     errors: [],
   };
   for (const row of ((data ?? []) as unknown as AutoConfirmRow[])) {
+    // Task 4 — 신뢰도 tier 분기. floor 미만 (default: low) 은 pending 큐에 유지해
+    // 사장님이 /admin/press-ingest 에서 직접 검토하도록 한다.
+    // tier=null (legacy 후보) 은 항상 보수적으로 자동 confirm 제외.
+    const tier = (row.confidence_tier ?? null) as
+      | "high"
+      | "mid"
+      | "low"
+      | null;
+    if (!shouldAutoConfirm(tier)) {
+      continue;
+    }
     let applyUrl = row.classified_payload?.apply_url ?? null;
 
     // apply_url 없으면 4 layer fallback 적용 + classified_payload jsonb update.
@@ -543,7 +596,13 @@ export async function autoConfirmPendingPressCandidates({
     }
 
     try {
-      await confirmPressCandidate(row.id, null);
+      // 자동 confirm 메타 (auto_confirm_tier / auto_confirmed_at) 동봉.
+      // shouldAutoConfirm 통과 시 tier 는 항상 high/mid (low 는 floor 기본값에서 제외).
+      // floor='low' 운영 시에도 low 가 들어올 수 있으나 buildXInsertPayload 의
+      // autoConfirmTier 타입이 'high' | 'mid' | null 이라 low 는 null 로 마킹.
+      await confirmPressCandidate(row.id, null, {
+        autoConfirmTier: tier === "high" || tier === "mid" ? tier : null,
+      });
       result.confirmed += 1;
     } catch (e) {
       result.errors.push({
