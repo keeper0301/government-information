@@ -74,13 +74,36 @@ JSON 형식 (다른 말 없이 JSON 만 출력):
   "repayment_period": "상환 기간 (loan 일 때만)"
 }
 
-apply_url 추출 규칙 (자동 confirm 률 ↑ 핵심):
-1. "신청 바로가기"/"접수"/"신청서 다운로드" 같은 직접 신청 url 1순위
-2. 정책 사업 공식 안내 페이지 url (예: 시청 복지사업 페이지) 2순위
-3. 광역도청 메인 페이지 (예: seoul.go.kr) 3순위
-4. 위 모두 없으면 null
+apply_url 추출 규칙 (Layer 1 회수율 핵심 — 보수적 null 응답 ↓):
+1. **본문에 등장한 *.go.kr / *.gov.kr / *.or.kr URL 중 신청·정책·사업·공고·지원·복지 의미** 가진 것 1순위
+2. 직접 "신청 바로가기"/"접수" 라벨 url 도 같은 1순위
+3. 광역도청 sub-page (예: welfare.seoul.go.kr / gg.go.kr/business) — 정책 안내 의미면 적극 추출
+4. 광역도청 메인 페이지 (예: seoul.go.kr) — 본문에 명시된 경우 추출
+5. 위 어디에도 해당 안 되고 본문에 정부 도메인 url 자체가 없으면 null
 
-body_urls 는 apply_url 과 별개 — 본문에 있는 모든 url 을 누락 없이 포함 (자동 fallback 매칭에 사용).
+핵심: "안전하게 null 보내기" 보다 "본문에 정부 도메인 url 1개라도 있으면 그 중 가장 신청 의미에 가까운 것" 선택.
+
+body_urls 는 apply_url 과 별개 — 본문에 등장하는 모든 http/https URL 을 누락 없이 배열로 (정부·외부·첨부 모두 포함).
+
+──────── 예시 (few-shot) ────────
+
+[제목] 전남도, 2026 청년 주거안정 지원금 신청 시작
+[본문 발췌] ...만 19~39세 전남 거주 청년 대상으로 자세한 내용은
+https://welfare.jeonnam.go.kr/youth-housing 에서 확인 후 신청하세요...
+→ apply_url: "https://welfare.jeonnam.go.kr/youth-housing"
+→ body_urls: ["https://welfare.jeonnam.go.kr/youth-housing"]
+
+[제목] 경기도, 2026 소상공인 정책자금 모집
+[본문 발췌] ...경기도청 (https://www.gg.go.kr) 정책자금 안내 페이지에서
+신청 방법 및 지원 한도를 확인할 수 있습니다...
+→ apply_url: "https://www.gg.go.kr"
+→ body_urls: ["https://www.gg.go.kr"]
+
+[제목] 충남도, 청년 정책 박람회 개최
+[본문 발췌] ...10월 15일 천안 KTX 역 인근 충남도청에서 박람회 개최...
+→ apply_url: null  (이벤트·행사 안내라 신청 정책 X. is_policy=false 로도 분류 가능)
+→ body_urls: []
+※ 박람회·행사·발표회는 신청 정책이 아니므로 null 정확. 단 "박람회 후 정책 모집 시작" 같은 보도면 모집 url 추출.
 
 is_policy=false 인 경우 나머지 필드는 빈 문자열 또는 null (단 body_urls 는 빈 배열).
 
@@ -95,8 +118,9 @@ is_policy=false 인 경우 나머지 필드는 빈 문자열 또는 null (단 bo
 {BODY}
 ──────────────────────────`;
 
-// 호출자 입력 길이 cap — 본문 너무 길면 토큰 비용 폭주
-const MAX_BODY_CHARS = 4000;
+// 호출자 입력 길이 cap — 본문 너무 길면 토큰 비용 폭주.
+// spec B 옵션 A — 4000 → 6000 확대 (본문 후반부의 신청 안내 url 회수). 비용 +20% (~+$1.6/월).
+const MAX_BODY_CHARS = 6000;
 
 export async function classifyPressNews(input: {
   title: string;
