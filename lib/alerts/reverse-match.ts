@@ -133,12 +133,46 @@ export async function findMatchingRulesForProgram(
     return [];
   }
 
+  return collectMatches((data ?? []) as AlertRule[], program);
+}
+
+// 정책 N건 일괄 매칭 — user_alert_rules 1회 fetch 로 빠른 선택 카드의
+// "N명 매칭" 배지를 N+1 호출 없이 계산. 같은 fetch 결과를 여러 정책에 재사용.
+export async function findMatchingRulesForPrograms(
+  supabase: SupabaseClient,
+  programs: Array<ProgramTagsForMatch & { id: string }>,
+): Promise<Map<string, RuleMatch[]>> {
+  const result = new Map<string, RuleMatch[]>();
+  if (programs.length === 0) return result;
+
+  const { data, error } = await supabase
+    .from("user_alert_rules")
+    .select(
+      "id, user_id, name, region_tags, age_tags, occupation_tags, benefit_tags, household_tags, income_target, keyword, channels, phone_number, is_active",
+    )
+    .eq("is_active", true);
+
+  if (error) {
+    console.error("[alerts:reverse-match] 규칙 조회 실패 (batch):", error);
+    return result;
+  }
+
+  const rules = (data ?? []) as AlertRule[];
+  for (const program of programs) {
+    result.set(program.id, collectMatches(rules, program));
+  }
+  return result;
+}
+
+// 공통 매칭 루프 — fetch 결과를 받아 정책에 매칭되는 rule 만 추림.
+function collectMatches(
+  rules: AlertRule[],
+  program: ProgramTagsForMatch,
+): RuleMatch[] {
   const matches: RuleMatch[] = [];
-  for (const rule of (data ?? []) as AlertRule[]) {
-    const result = matchProgramAgainstRule(program, rule);
-    if (result.matched) {
-      matches.push({ rule, reasons: result.reasons });
-    }
+  for (const rule of rules) {
+    const r = matchProgramAgainstRule(program, rule);
+    if (r.matched) matches.push({ rule, reasons: r.reasons });
   }
   return matches;
 }

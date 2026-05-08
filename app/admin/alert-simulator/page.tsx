@@ -20,6 +20,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import {
   findMatchingRulesForProgram,
+  findMatchingRulesForPrograms,
   type ProgramTagsForMatch,
   type RuleMatch,
 } from "@/lib/alerts/reverse-match";
@@ -74,7 +75,21 @@ async function fetchProgram(
 }
 
 // 빠른 선택 — 최근 등록된 welfare/loan 각 5건. UUID 직접 입력 부담 ↓.
-type RecentItem = { id: string; title: string };
+// 카드별 매칭 사용자 수 미리 표시 — 사장님이 클릭 전 어느 정책이 발송 대상
+// 많은지 가시화. user_alert_rules 1회 fetch + batch 매칭.
+type RecentItem = {
+  id: string;
+  title: string;
+  uniqueUserCount: number;
+};
+
+// 매칭 cohort gate 컬럼 — fetchRecentPrograms 의 select 와 reverse-match 의
+// ProgramTagsForMatch 에 모두 필요한 8 컬럼 단일 source.
+const PROGRAM_MATCH_COLUMNS =
+  "id, title, description, region_tags, age_tags, occupation_tags, benefit_tags, household_target_tags, income_target_level";
+
+type ProgramRow = ProgramTagsForMatch & { id: string };
+
 async function fetchRecentPrograms(): Promise<{
   welfare: RecentItem[];
   loan: RecentItem[];
@@ -83,24 +98,38 @@ async function fetchRecentPrograms(): Promise<{
   const [w, l] = await Promise.all([
     admin
       .from("welfare_programs")
-      .select("id, title")
+      .select(PROGRAM_MATCH_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(5),
     admin
       .from("loan_programs")
-      .select("id, title")
+      .select(PROGRAM_MATCH_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
+
+  const welfareRows = (w.data ?? []) as ProgramRow[];
+  const loanRows = (l.data ?? []) as ProgramRow[];
+
+  // 한 번 fetch 한 user_alert_rules 로 10건 일괄 매칭 (N+1 회피)
+  const matchMap = await findMatchingRulesForPrograms(admin, [
+    ...welfareRows,
+    ...loanRows,
+  ]);
+
+  const toItem = (p: ProgramRow): RecentItem => {
+    const matches = matchMap.get(p.id) ?? [];
+    const uniqueUserCount = new Set(matches.map((m) => m.rule.user_id)).size;
+    return {
+      id: p.id,
+      title: p.title ?? "(제목 없음)",
+      uniqueUserCount,
+    };
+  };
+
   return {
-    welfare: ((w.data ?? []) as RecentItem[]).map((d) => ({
-      id: d.id,
-      title: d.title ?? "(제목 없음)",
-    })),
-    loan: ((l.data ?? []) as RecentItem[]).map((d) => ({
-      id: d.id,
-      title: d.title ?? "(제목 없음)",
-    })),
+    welfare: welfareRows.map(toItem),
+    loan: loanRows.map(toItem),
   };
 }
 
@@ -174,14 +203,7 @@ export default async function AlertSimulatorPage({
                 <p className="text-xs font-mono text-grey-500 mb-1">welfare</p>
                 <div className="flex flex-wrap gap-1.5">
                   {recent.welfare.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/admin/alert-simulator?simTable=welfare&simProgramId=${p.id}`}
-                      className="px-2.5 py-1.5 text-xs rounded-md border border-grey-200 bg-grey-50 text-grey-800 hover:border-blue-400 hover:text-blue-600 hover:bg-white max-w-[260px] truncate"
-                      title={p.title}
-                    >
-                      {p.title}
-                    </Link>
+                    <RecentLink key={p.id} table="welfare" item={p} />
                   ))}
                 </div>
               </div>
@@ -191,14 +213,7 @@ export default async function AlertSimulatorPage({
                 <p className="text-xs font-mono text-grey-500 mb-1">loan</p>
                 <div className="flex flex-wrap gap-1.5">
                   {recent.loan.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/admin/alert-simulator?simTable=loan&simProgramId=${p.id}`}
-                      className="px-2.5 py-1.5 text-xs rounded-md border border-grey-200 bg-grey-50 text-grey-800 hover:border-blue-400 hover:text-blue-600 hover:bg-white max-w-[260px] truncate"
-                      title={p.title}
-                    >
-                      {p.title}
-                    </Link>
+                    <RecentLink key={p.id} table="loan" item={p} />
                   ))}
                 </div>
               </div>
@@ -388,6 +403,35 @@ export default async function AlertSimulatorPage({
         </p>
       </div>
     </main>
+  );
+}
+
+// 빠른 선택 카드 — 클릭 한 번으로 시뮬레이션 + 매칭 사용자 수 미리 표시.
+// 0명은 grey-500 fade, 1+ 명은 blue-600 강조 — 사장님이 "발송 영향 큰 정책"
+// 즉시 식별. 5+ 명은 굵게 (눈에 띔).
+function RecentLink({
+  table,
+  item,
+}: {
+  table: "welfare" | "loan";
+  item: { id: string; title: string; uniqueUserCount: number };
+}) {
+  const { uniqueUserCount: count } = item;
+  const badgeCls =
+    count === 0
+      ? "text-grey-500"
+      : count >= 5
+        ? "text-blue-600 font-bold"
+        : "text-blue-600";
+  return (
+    <Link
+      href={`/admin/alert-simulator?simTable=${table}&simProgramId=${item.id}`}
+      className="px-2.5 py-1.5 text-xs rounded-md border border-grey-200 bg-grey-50 text-grey-800 hover:border-blue-400 hover:text-blue-600 hover:bg-white max-w-[260px] inline-flex items-center gap-1.5"
+      title={item.title}
+    >
+      <span className="truncate">{item.title}</span>
+      <span className={`whitespace-nowrap ${badgeCls}`}>· {count}명</span>
+    </Link>
   );
 }
 
