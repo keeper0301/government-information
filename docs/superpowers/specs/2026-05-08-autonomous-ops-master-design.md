@@ -245,7 +245,46 @@ DEDUPE_AUTO_CONFIRM_THRESHOLD=0.88 Vercel env 자동 등록 + Redeploy.
 
 🥉 — Phase 2 다음. AdSense 1단계만 먼저 해도 큰 가치.
 
-## Phase 4: AI 챗봇 CS 1차 응대
+## Phase 4: AI 챗봇 CS 1차 응대 — ✅ Phase 4-A 완료
+
+**상태**: 인프라 + intent 분류 + 큐 + admin 페이지 완료. RAG·SMS reminder 는 Phase 4-B/4-C 별도.
+
+**완료된 코드** (commit pending):
+- `supabase/migrations/076_support_tickets.sql` — 큐 테이블 (id·intent·status·auto_response·reply 등)
+- `lib/support/intent.ts` — Claude Haiku 분류 + 9 intent + AUTO_REPLIES 매핑 + canAutoReply
+- `app/api/support/submit/route.ts` — POST 접수 → 분류 → 큐 insert → 자동 응답
+- `app/admin/support/page.tsx` — KPI 5종 + 답변 대기 큐 + 최근 30건 + 답변 폼
+- `app/admin/support/reply-form.tsx` + `actions.ts` — 사장님 답변 server action
+- `lib/admin/menu.ts` — 사이드 메뉴 "고객 문의 큐" 추가
+- `__tests__/lib/support-intent.test.ts` — 12 unit test
+
+**9 intent 분류**:
+- `refund_request` (사장님 큐) / `refund_policy_question` (자동)
+- `account_recovery` (자동) / `account_delete` (자동)
+- `bug_report` (사장님 큐) / `feature_request` (사장님 큐)
+- `policy_question` (RAG 별도) / `pricing_question` (자동)
+- `other` (사장님 큐)
+
+**자동 응답 가능 (confidence ≥ 0.7)**: 환불 정책 / 계정 복구 / 탈퇴 / 요금제 — 정해진 메시지 매핑.
+**사장님 큐 (confidence < 0.7 또는 매핑 없음)**: status='open' 으로 /admin/support 표시.
+
+### Phase 4-B: RAG 정책 검색 (다음 sub-spec)
+
+`policy_question` intent 시 자동 정책 검색 답변. 작업:
+- welfare/loan/news 임베딩 — pgvector 또는 외부 (선택)
+- 사용자 query → 임베딩 매칭 top 3 → Claude 가 자연어 요약 + 매칭 url 첨부
+- /api/support/submit 가 RAG 결과를 auto_response 에 채움
+
+### Phase 4-C: SMS reminder cron (다음 sub-spec)
+
+24h 무답변 ticket → 사장님 SMS. 작업:
+- `/api/cron/support-reminder` 매일 KST 09:00 호출 (또는 health-alert 통합)
+- support_tickets where status='open' AND created_at < now()-24h AND reminder_sent_at IS NULL
+- SMS 발송 + reminder_sent_at update (중복 발송 방지)
+
+### chatbot-panel 통합 (선택, 다음 spec)
+
+기존 `components/chatbot-panel.tsx` 가 LLM 챗봇이라면 / 없으면 신규. /api/support/submit 호출하는 폼 컴포넌트 신설하면 사용자 진입점 자연.
 
 ### 의도
 

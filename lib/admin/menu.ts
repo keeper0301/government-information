@@ -54,6 +54,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     items: [
       { href: "/admin/alimtalk", label: "카카오톡 발송", icon: "📤" },
       { href: "/admin/alert-simulator", label: "알림 시뮬레이터", icon: "🧪" },
+      { href: "/admin/support", label: "고객 문의 큐", icon: "💬" },
     ],
   },
   {
