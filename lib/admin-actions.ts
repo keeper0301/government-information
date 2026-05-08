@@ -37,7 +37,9 @@ export type AdminActionType =
   | "press_l2_reject"       // /admin/press-ingest L2 후보 해제
   | "dedupe_confirm"        // Phase 3 B3 — /admin/dedupe 에서 중복 후보 확정 (duplicate_of_id 유지)
   | "dedupe_reject"         // Phase 3 B3 — 잘못 잡힌 후보 reset (duplicate_of_id NULL)
-  | "health_alert_run";     // Phase 1 — /api/cron/health-alert 매일 09:00 KST 실행 흔적 (alert 0 도 기록 → cron 노쇼 진단 가능)
+  | "health_alert_run"      // Phase 1 — /api/cron/health-alert 매일 09:00 KST 실행 흔적 (alert 0 도 기록 → cron 노쇼 진단 가능)
+  | "press_l2_auto_revoke"  // 자동 등록 정책 회수 (is_hidden=true) — 자동 confirm 후 사장님 검토에서 부적합 판단
+  | "press_l2_auto_restore"; // 잘못 회수한 정책 복원 (is_hidden=false)
 
 export type AdminActionRecord = {
   id: string;
@@ -300,4 +302,6 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   dedupe_confirm: "중복 후보 확정",
   dedupe_reject: "중복 후보 해제",
   health_alert_run: "헬스 알림 cron 실행",
+  press_l2_auto_revoke: "자동 등록 정책 회수",
+  press_l2_auto_restore: "자동 등록 정책 복원",
 };

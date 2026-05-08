@@ -16,7 +16,8 @@ export type PressCandidateStatus =
   | "confirmed"
   | "rejected"
   | "skipped"
-  | "failed";
+  | "failed"
+  | "revoked"; // 자동 등록 후 사장님이 회수한 상태 (is_hidden=true 와 한 쌍)
 
 export type PressCandidateProgramType =
   | "welfare"
@@ -35,6 +36,9 @@ export type PressCandidateUpsert = {
   error_message?: string | null;
   classified_at: string;
   updated_at: string;
+  // Task 3 — LLM 분류 신뢰도 보존. autoConfirm 단계에서 임계 미만은 사장님 검토 큐로 보낸다.
+  // is_policy=false (skipped) 후보는 자동 confirm 대상이 아니므로 null.
+  confidence_tier: "high" | "mid" | "low" | null;
 };
 
 type PressCandidateDbUpsert = Omit<PressCandidateUpsert, "classified_payload"> & {
@@ -98,12 +102,16 @@ function classifyStatus(result: ClassifyResult): {
   status: PressCandidateStatus;
   programType: PressCandidateProgramType;
   skipReason: string | null;
+  // Task 3 — autoConfirm 단계에서 tier filter 분기 입력으로 사용.
+  // welfare/loan pending 만 LLM confidence 보존, 그 외 (skipped) 는 null.
+  confidenceTier: "high" | "mid" | "low" | null;
 } {
   if (!result.is_policy) {
     return {
       status: "skipped",
       programType: "not_policy",
       skipReason: "not_policy",
+      confidenceTier: null,
     };
   }
   if (result.program_type === "welfare" || result.program_type === "loan") {
@@ -111,12 +119,14 @@ function classifyStatus(result: ClassifyResult): {
       status: "pending",
       programType: result.program_type,
       skipReason: null,
+      confidenceTier: result.confidence,
     };
   }
   return {
     status: "skipped",
     programType: "unsure",
     skipReason: "program_type_unsure",
+    confidenceTier: null,
   };
 }
 
@@ -127,7 +137,7 @@ export function buildCandidateUpsert({
   newsId: string;
   result: ClassifyResult;
 }): PressCandidateUpsert {
-  const { status, programType, skipReason } = classifyStatus(result);
+  const { status, programType, skipReason, confidenceTier } = classifyStatus(result);
   const now = new Date().toISOString();
   return {
     news_id: newsId,
@@ -140,6 +150,7 @@ export function buildCandidateUpsert({
     error_message: null,
     classified_at: now,
     updated_at: now,
+    confidence_tier: confidenceTier,
   };
 }
 
@@ -166,6 +177,8 @@ export function buildFailedCandidateUpsert({
     error_message: error.slice(0, 1000),
     classified_at: now,
     updated_at: now,
+    // 분류 실패 자체로는 신뢰도 측정 불가 → null. 자동 confirm 대상에서도 자연 제외.
+    confidence_tier: null,
   };
 }
 
