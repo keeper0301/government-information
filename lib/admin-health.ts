@@ -66,6 +66,7 @@ export const getHealthSnapshot = cache(async (): Promise<HealthSnapshot> => {
     loanLatest,
     newsLatest,
     users,
+    lastHealthAlertRun,
   ] = await Promise.all([
     admin.from("welfare_programs").select("id", { count: "exact", head: true }),
     admin.from("loan_programs").select("id", { count: "exact", head: true }),
@@ -101,6 +102,14 @@ export const getHealthSnapshot = cache(async (): Promise<HealthSnapshot> => {
       .limit(1)
       .maybeSingle(),
     getAuthUsersCached(),
+    // Phase 1 자동 진단 cron 자체의 노쇼 진단 — health_alert_run audit 마지막 흔적
+    admin
+      .from("admin_actions")
+      .select("created_at, details")
+      .eq("action", "health_alert_run")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   // 활성 사용자 카운트 — last_sign_in_at 기준
@@ -183,6 +192,9 @@ export const getHealthSnapshot = cache(async (): Promise<HealthSnapshot> => {
         // 실패 1건 이상이면 한 번에 cron-failures 로 이동. 0건 이면 link 생략.
         href: (cron24h.count ?? 0) > 0 ? "/admin/cron-failures" : undefined,
       },
+      // Phase 1 자동 진단 cron 자체의 노쇼 진단 — health_alert_run audit 마지막 흔적.
+      // 흔적 자체가 없으면 (운영 초기) info, 24h 안 흔적 ok, 24~36h warn, 36h+ error.
+      buildHealthAlertRunItem(lastHealthAlertRun.data),
       {
         label: "blog 24h 발행",
         value: `${blog24h.count ?? 0}글`,
@@ -220,3 +232,48 @@ export const getHealthSnapshot = cache(async (): Promise<HealthSnapshot> => {
     ],
   };
 });
+
+// ━━━ Phase 1 자동 진단 cron 자체의 노쇼 진단 카드 ━━━
+// admin_actions.health_alert_run audit 마지막 흔적을 보고 cron 자체의 노쇼 판정.
+// 매일 09:00 KST 가 정상 패턴이라 24h 안에 1건은 항상 있어야 함.
+// 흔적의 details 에 alertKeys 가 있으면 hint 로 노출 → 사장님이 health 페이지에서 즉시 어떤 alert 가 떴는지 인지.
+function buildHealthAlertRunItem(
+  row: { created_at: string; details: unknown } | null,
+): HealthCheckItem {
+  if (!row) {
+    return {
+      label: "헬스 cron 마지막 실행",
+      value: "흔적 없음",
+      status: "info",
+      hint: "보강 commit 후 다음 09:00 KST 부터 기록",
+      href: "/admin/cron-trigger",
+    };
+  }
+  const ageMs = Date.now() - new Date(row.created_at).getTime();
+  const ageH = Math.floor(ageMs / 3600000);
+  const status: HealthCheckItem["status"] =
+    ageH < 24 ? "ok" : ageH < 36 ? "warn" : "error";
+  // details.alertKeys 안전 추출 — JSONB 가 null/string/array 등 다른 타입으로 들어와도 안전.
+  // typeof object && !null 가드로 캐스팅 거짓말 방지.
+  const details =
+    row.details && typeof row.details === "object" && !Array.isArray(row.details)
+      ? (row.details as { alertKeys?: unknown; alertsCount?: unknown })
+      : null;
+  const alertKeys = Array.isArray(details?.alertKeys)
+    ? (details!.alertKeys as string[])
+    : [];
+  const alertsCount = typeof details?.alertsCount === "number" ? details.alertsCount : 0;
+  const hint =
+    alertsCount === 0
+      ? "정상 (alert 0)"
+      : `최근 alert ${alertsCount}건 — ${alertKeys.slice(0, 3).join(", ")}`;
+  const value = ageH < 1 ? "방금 전" : ageH < 24 ? `${ageH}시간 전` : `${Math.floor(ageH / 24)}일 전`;
+  return {
+    label: "헬스 cron 마지막 실행",
+    value,
+    status,
+    hint,
+    // 노쇼 시 사장님이 1클릭으로 수동 트리거 가능
+    href: status === "ok" ? undefined : "/admin/cron-trigger",
+  };
+}

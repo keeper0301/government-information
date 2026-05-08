@@ -52,7 +52,9 @@ export type ThresholdAlert = {
 const CRON_FAIL_ALERT_THRESHOLD = Number(
   process.env.CRON_FAIL_ALERT_THRESHOLD ?? "3",
 );
-const ACTIVE_7D_FLOOR = 5;
+// 운영 초기 (사장님 본인만 로그인) 단계에서 매일 발화하면 noise →
+// LOW_ACTIVITY_FLOOR env 로 1분 rollback 가능. 0 으로 두면 alert 자체 끄기 효과.
+const ACTIVE_7D_FLOOR = Number(process.env.LOW_ACTIVITY_FLOOR ?? "5");
 // Phase 1 자동 진단 임계치 — env 로 1분 toggle 가능 (위험 0).
 // 정상 운영 baseline 보다 약간 여유 — false positive 톤 다운.
 const NEWS_BACKLOG_FLOOR = Number(
@@ -183,6 +185,8 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     alerts.push({
       key: "low_activity",
       message: `24h 신규 가입 0 + 7d 활성(가입+로그인) ${s.active7dAny}명 (< ${ACTIVE_7D_FLOOR}). 가입 funnel 점검 필요.`,
+      recommendation:
+        "/admin/insights funnel 카드 + sitemap 등록 상태 + AdSense/SEO 트래픽 점검 (Phase 5 marketing cron 가동 확인)",
     });
   }
 
@@ -191,6 +195,8 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     alerts.push({
       key: "payment_fail",
       message: `24h 사용자 해지 ${s.failed24h}건. /admin/insights 확인.`,
+      recommendation:
+        "/admin/insights subscriptions 카드 + 토스 콘솔 거래 내역 (해지 사유 카테고리화 → 다음 phase 개선 우선순위)",
     });
   }
 

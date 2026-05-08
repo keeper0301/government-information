@@ -90,6 +90,130 @@ describe("checkThresholds — 다른 임계치", () => {
   });
 });
 
+describe("checkThresholds — 정상 신호 (cron 노쇼 진단)", () => {
+  it("모든 신호 정상 → 빈 배열 반환 (cron 본문이 alert 0 흐름 진입)", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      // 모든 Phase 1 신호도 정상
+      newsBacklogTotal: 100,
+      pressPending: 5,
+      pressLastClassifyHours: 6,
+      enrichPermanentSkip: 50,
+    });
+    expect(alerts).toEqual([]);
+  });
+});
+
+describe("checkThresholds — boundary precision", () => {
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("press_pending = 9 → 발화 안 함 (정확히 floor 미만)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressPending: 9 });
+    expect(alerts.find((a) => a.key === "press_pending")).toBeUndefined();
+  });
+
+  it("press_pending = 10 → 발화 (정확히 floor 도달)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressPending: 10 });
+    expect(alerts.find((a) => a.key === "press_pending")).toBeDefined();
+  });
+
+  it("enrich_stuck = 99 → 발화 안 함, 100 → 발화 (boundary)", () => {
+    const a99 = checkThresholds({ ...ACTIVE, enrichPermanentSkip: 99 });
+    const a100 = checkThresholds({ ...ACTIVE, enrichPermanentSkip: 100 });
+    expect(a99.find((x) => x.key === "enrich_stuck")).toBeUndefined();
+    expect(a100.find((x) => x.key === "enrich_stuck")).toBeDefined();
+  });
+
+  it("press_no_show = 999 (admin_actions 흔적 자체가 없는 운영 초기) → 발화", () => {
+    // health-check.ts 가 흔적 없을 때 999 fallback — 매번 발화하는 운영 초기 패턴 방지
+    // 검증용. 실제 운영 시 false positive 면 PRESS_NO_SHOW_ALERT_HOURS env 로 조정.
+    const alerts = checkThresholds({ ...ACTIVE, pressLastClassifyHours: 999 });
+    expect(alerts.find((a) => a.key === "press_no_show")).toBeDefined();
+  });
+});
+
+describe("checkThresholds — recommendation 일관성", () => {
+  // 사장님 SMS 보고 즉시 hot-fix 액션 → 모든 alert 가 recommendation 1줄 가져야 함.
+  // 새 alert 추가 시 recommendation 누락 방지.
+  it("alert 발화하는 모든 종류가 recommendation 1줄 보유 (사장님 즉시 액션)", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      // 의도적으로 모두 임계 초과
+      signups24h: 0,
+      active7dAny: 0,
+      failed24h: 1,
+      cronFailures24h: 5,
+      newsBacklogTotal: 5000,
+      pressPending: 50,
+      pressLastClassifyHours: 100,
+      enrichPermanentSkip: 500,
+    });
+    // 7 alert key 모두 발화
+    expect(alerts).toHaveLength(7);
+    for (const a of alerts) {
+      expect(a.recommendation).toBeTruthy();
+      expect(a.recommendation!.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("low_activity recommendation 에 funnel 진단 진입점 포함", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 0,
+      active7dAny: 0,
+    });
+    const a = alerts.find((x) => x.key === "low_activity");
+    expect(a?.recommendation).toContain("/admin/insights");
+  });
+
+  it("payment_fail recommendation 에 토스 콘솔 안내 포함", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      failed24h: 2,
+    });
+    const a = alerts.find((x) => x.key === "payment_fail");
+    expect(a?.recommendation).toContain("토스");
+  });
+});
+
+describe("checkThresholds — multi-alert 시나리오", () => {
+  // 실제 운영 사고 — 여러 임계치 동시 초과. SMS 1통에 다 묶여 발송.
+  it("news_backlog + press_no_show + enrich_stuck 동시 초과 → 3건 alert 동시 반환", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      newsBacklogTotal: 14781, // 메모리에 적힌 실제 backlog 시나리오
+      pressLastClassifyHours: 36,
+      enrichPermanentSkip: 200,
+    });
+    const keys = alerts.map((a) => a.key);
+    expect(keys).toContain("news_backlog");
+    expect(keys).toContain("press_no_show");
+    expect(keys).toContain("enrich_stuck");
+    expect(alerts).toHaveLength(3);
+  });
+
+  it("low_activity + 다른 alert 동시 발화 — 둘 다 SMS 에 노출", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 0,
+      active7dAny: 1,
+      newsBacklogTotal: 2000,
+    });
+    expect(alerts.find((a) => a.key === "low_activity")).toBeDefined();
+    expect(alerts.find((a) => a.key === "news_backlog")).toBeDefined();
+  });
+});
+
 describe("checkThresholds — Phase 1 자동 진단", () => {
   // 트래픽 부족 가드 차단 위해 signups·active 채워서 다른 alert 만 검증
   const ACTIVE: HealthSignals = {
