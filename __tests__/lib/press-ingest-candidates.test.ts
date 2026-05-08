@@ -19,6 +19,7 @@ const policyResult: ClassifyResult = {
   apply_start: "2026-05-01",
   apply_end: "2026-05-31",
   category: "주거",
+  confidence: "high",
 };
 
 describe("press ingest L2 candidate mapping", () => {

@@ -45,6 +45,16 @@ export type ClassifyResult = {
   loan_amount?: string;
   interest_rate?: string;
   repayment_period?: string;
+  /**
+   * LLM 분류 신뢰도 — high/mid/low 3단.
+   * - high: 신청 자격·금액·기간 모두 명시 + 확실한 정책 사업
+   * - mid: 일부 정보 누락 또는 modal verb ("지원할 예정")
+   * - low: 본문이 짧거나 광고·이벤트 가능성 → 사장님 검토 큐
+   *
+   * AUTO_CONFIRM_TIER_FLOOR env (default 'mid') 가 자동 confirm 임계.
+   * LLM 응답 누락·invalid 시 'low' fallback (보수적).
+   */
+  confidence: "high" | "mid" | "low";
 };
 
 const PROMPT_TEMPLATE = `다음 광역도청 보도자료에서 일반 사용자가 직접 신청 가능한
@@ -71,8 +81,14 @@ JSON 형식 (다른 말 없이 JSON 만 출력):
   "category": "welfare 면 생계|의료|양육|교육|취업|주거|문화|창업 중 하나, loan 면 정책자금|창업자금|소상공인|생계자금|주거자금|농어업|기타 중 하나",
   "loan_amount": "대출 한도 (loan 일 때만, 예: '최대 5,000만원')",
   "interest_rate": "이자율 (loan 일 때만, 예: '연 2.0% 고정')",
-  "repayment_period": "상환 기간 (loan 일 때만)"
+  "repayment_period": "상환 기간 (loan 일 때만)",
+  "confidence": "high|mid|low (분류 신뢰도)"
 }
+
+confidence 판단 기준:
+- high: 보도자료에 신청 자격·지원 금액·신청 기간이 모두 명시되고, "정책 사업" 임이 확실
+- mid: 일부 정보 누락 또는 "지원할 예정"·"검토 중" 같은 modal verb 가 사용됨
+- low: 본문이 짧거나 행사·이벤트·광고 가능성이 있어 사람 검토 필요
 
 apply_url 추출 규칙 (Layer 1 회수율 핵심 — 보수적 null 응답 ↓):
 1. **본문에 등장한 *.go.kr / *.gov.kr / *.or.kr URL 중 신청·정책·사업·공고·지원·복지 의미** 가진 것 1순위
@@ -187,6 +203,20 @@ export async function classifyPressNews(input: {
     ? parsed.body_urls.filter((u): u is string => typeof u === "string" && !!u)
     : [];
 
+  // confidence 정규화 — LLM 이 누락하거나 invalid (예: 'very-high') 응답하면
+  // 보수적으로 'low' 로 fallback. 잘못된 값을 자동 confirm 임계 통과시키지 않기 위함.
+  const allowedConfidence: ReadonlyArray<"high" | "mid" | "low"> = [
+    "high",
+    "mid",
+    "low",
+  ];
+  const rawConfidence = (parsed as { confidence?: unknown }).confidence;
+  const confidence: "high" | "mid" | "low" =
+    typeof rawConfidence === "string" &&
+    (allowedConfidence as readonly string[]).includes(rawConfidence)
+      ? (rawConfidence as "high" | "mid" | "low")
+      : "low";
+
   return {
     is_policy: !!parsed.is_policy,
     program_type: ["welfare", "loan", "unsure"].includes(parsed.program_type)
@@ -205,5 +235,6 @@ export async function classifyPressNews(input: {
     loan_amount: parsed.loan_amount,
     interest_rate: parsed.interest_rate,
     repayment_period: parsed.repayment_period,
+    confidence,
   };
 }
