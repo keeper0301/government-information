@@ -31,6 +31,10 @@ export async function revokeAction(candidateId: string) {
   const user = await requireAdmin();
   const result = await revokeAutoConfirmed({ candidateId, actorId: user.id });
   revalidatePath("/admin/auto-confirmed");
+  // user detail 페이지도 즉시 갱신 — RLS 가 차단해 notFound 트리거하도록
+  // (page.tsx 의 revalidate=3600 ISR 캐시 stale 방지)
+  const slug = result.table === "welfare_programs" ? "welfare" : "loan";
+  revalidatePath(`/${slug}/${result.programId}`);
   return result;
 }
 
@@ -39,6 +43,9 @@ export async function restoreAction(candidateId: string) {
   const user = await requireAdmin();
   const result = await restoreAutoConfirmed({ candidateId, actorId: user.id });
   revalidatePath("/admin/auto-confirmed");
+  // user detail 페이지도 즉시 갱신 — 복원된 row 가 ISR 캐시 stale 로 안 보이는 사고 방지
+  const slug = result.table === "welfare_programs" ? "welfare" : "loan";
+  revalidatePath(`/${slug}/${result.programId}`);
   return result;
 }
 
@@ -46,15 +53,29 @@ export async function restoreAction(candidateId: string) {
 // 한 건 실패해도 나머지 진행 (per-row try/catch). UI 는 결과 배열로 부분 실패 표시 가능.
 export async function bulkRevokeAction(candidateIds: string[]) {
   const user = await requireAdmin();
-  const results: { id: string; ok: boolean; error?: string }[] = [];
+  const results: {
+    id: string;
+    ok: boolean;
+    error?: string;
+    table?: "welfare_programs" | "loan_programs";
+    programId?: string;
+  }[] = [];
   for (const id of candidateIds) {
     try {
-      await revokeAutoConfirmed({ candidateId: id, actorId: user.id });
-      results.push({ id, ok: true });
+      const r = await revokeAutoConfirmed({ candidateId: id, actorId: user.id });
+      results.push({ id, ok: true, table: r.table, programId: r.programId });
     } catch (e) {
       results.push({ id, ok: false, error: (e as Error).message });
     }
   }
   revalidatePath("/admin/auto-confirmed");
+  // 회수 성공한 row 들의 user detail 페이지도 revalidate
+  // (per-row revalidate 보다 한 loop 끝에 모아 호출하는게 효율적)
+  for (const r of results) {
+    if (r.ok && r.table && r.programId) {
+      const slug = r.table === "welfare_programs" ? "welfare" : "loan";
+      revalidatePath(`/${slug}/${r.programId}`);
+    }
+  }
   return results;
 }
