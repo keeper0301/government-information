@@ -788,6 +788,126 @@ export async function restoreAutoConfirmed({
   return { table, programId };
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// /admin/auto-confirmed 페이지용 — 자동 등록 정책 목록 (회수 포함)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LLM 신뢰도 high·mid 로 자동 등록된 welfare/loan 정책을 N일 윈도우로 모은다.
+// is_hidden=true 인 회수된 row 도 포함 (사장님이 잘못 회수했을 때 복원 가능).
+// 페이지에서 후보 단위로 회수/복원 액션을 호출하므로 candidate_id 매핑 포함.
+
+export type AutoConfirmedRow = {
+  candidate_id: string;
+  table: "welfare_programs" | "loan_programs";
+  program_id: string;
+  title: string;
+  // welfare 는 region, loan 은 source 를 동일 슬롯으로 노출 (UI 가독성 통일)
+  ministry: string | null;
+  auto_confirm_tier: "high" | "mid";
+  auto_confirmed_at: string;
+  is_hidden: boolean;
+  revoked_at: string | null;
+};
+
+/**
+ * /admin/auto-confirmed 페이지용 fetcher.
+ * 최근 sinceDays 안에 auto_confirmed_at 마킹된 welfare/loan row 조회 (회수 포함).
+ * candidate_id 는 confirmed_program_id 로 역매핑 — 회수/복원 액션이 candidate 단위라 필수.
+ */
+export async function listAutoConfirmedPolicies({
+  sinceDays,
+}: { sinceDays: number }): Promise<AutoConfirmedRow[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+
+  const [welfare, loan] = await Promise.all([
+    admin
+      .from("welfare_programs")
+      .select(
+        "id, title, region, auto_confirm_tier, auto_confirmed_at, is_hidden, revoked_at",
+      )
+      .gte("auto_confirmed_at", since)
+      .order("auto_confirmed_at", { ascending: false }),
+    admin
+      .from("loan_programs")
+      .select(
+        "id, title, source, auto_confirm_tier, auto_confirmed_at, is_hidden, revoked_at",
+      )
+      .gte("auto_confirmed_at", since)
+      .order("auto_confirmed_at", { ascending: false }),
+  ]);
+
+  const programIds = [
+    ...((welfare.data ?? []) as Array<{ id: string }>).map((r) => r.id),
+    ...((loan.data ?? []) as Array<{ id: string }>).map((r) => r.id),
+  ];
+  if (programIds.length === 0) return [];
+
+  // candidate 역매핑 — confirmed_program_id 가 unique 라 1:1 안전
+  const { data: candidates } = await admin
+    .from("press_ingest_candidates")
+    .select("id, confirmed_program_id, confirmed_program_table")
+    .in("confirmed_program_id", programIds);
+
+  const candByProgramId = new Map<string, string>();
+  for (const c of (candidates ?? []) as Array<{
+    id: string;
+    confirmed_program_id: string | null;
+  }>) {
+    if (c.confirmed_program_id) candByProgramId.set(c.confirmed_program_id, c.id);
+  }
+
+  const rows: AutoConfirmedRow[] = [];
+  for (const w of (welfare.data ?? []) as Array<{
+    id: string;
+    title: string;
+    region: string | null;
+    auto_confirm_tier: string;
+    auto_confirmed_at: string;
+    is_hidden: boolean;
+    revoked_at: string | null;
+  }>) {
+    const cid = candByProgramId.get(w.id);
+    if (!cid) continue;
+    rows.push({
+      candidate_id: cid,
+      table: "welfare_programs",
+      program_id: w.id,
+      title: w.title,
+      ministry: w.region ?? null,
+      auto_confirm_tier: w.auto_confirm_tier as "high" | "mid",
+      auto_confirmed_at: w.auto_confirmed_at,
+      is_hidden: w.is_hidden,
+      revoked_at: w.revoked_at,
+    });
+  }
+  for (const l of (loan.data ?? []) as Array<{
+    id: string;
+    title: string;
+    source: string | null;
+    auto_confirm_tier: string;
+    auto_confirmed_at: string;
+    is_hidden: boolean;
+    revoked_at: string | null;
+  }>) {
+    const cid = candByProgramId.get(l.id);
+    if (!cid) continue;
+    rows.push({
+      candidate_id: cid,
+      table: "loan_programs",
+      program_id: l.id,
+      title: l.title,
+      ministry: l.source ?? null,
+      auto_confirm_tier: l.auto_confirm_tier as "high" | "mid",
+      auto_confirmed_at: l.auto_confirmed_at,
+      is_hidden: l.is_hidden,
+      revoked_at: l.revoked_at,
+    });
+  }
+  // 두 테이블 합친 후 최신순 정렬 (table 별 order 가 합쳐지면 깨짐)
+  rows.sort((a, b) => b.auto_confirmed_at.localeCompare(a.auto_confirmed_at));
+  return rows;
+}
+
 export async function rejectPressCandidate(
   candidateId: string,
   actorId: string,

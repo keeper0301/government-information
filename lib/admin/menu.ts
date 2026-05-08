@@ -38,6 +38,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     title: "컨텐츠 발행",
     items: [
       { href: "/admin/press-ingest", label: "광역 보도자료 후보", icon: "🤖" },
+      { href: "/admin/auto-confirmed", label: "AI 자동 등록 검수", icon: "🤖" },
       { href: "/admin/welfare/new", label: "복지 정책 신규", icon: "➕" },
       { href: "/admin/loan/new", label: "대출 정책 신규", icon: "➕" },
       { href: "/admin/news", label: "뉴스 모더레이션", icon: "📰" },
