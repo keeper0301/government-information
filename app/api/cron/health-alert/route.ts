@@ -47,11 +47,18 @@ async function run() {
 
   // 즉시 알림 — SMS 발송 (사장님 휴대폰 푸시처럼 즉시 인지).
   // 환경변수 미설정 시 skipped (운영 단계 보호). 실패해도 email 발송은 유지.
+  // Phase 1 자동 진단 — alert 마다 recommendation 1줄 함께 노출 → 사장님이
+  // SMS 만 봐도 즉시 hot-fix 액션 결정 가능. SMS 길이 한도 (Solapi LMS 2000자) 안에서만.
   let smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> | null = null;
   try {
     smsResult = await sendOpsAlertSms({
       subject: `[keepioo 운영] ${alerts.length}건 임계치 초과`,
-      message: alerts.map((a) => `- ${a.message}`).join("\n"),
+      message: alerts
+        .map((a) => {
+          const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
+          return `- ${a.message}${rec}`;
+        })
+        .join("\n"),
     });
   } catch (e) {
     smsResult = {

@@ -26,17 +26,47 @@ export type HealthSignals = {
   cronFailures24h: number;
   // 24h 알림 발송 실패 (alert_deliveries status = 'failed')
   deliveryFailures24h: number;
+  // ─── Phase 1 자동 진단 (2026-05-08 추가) ───
+  // 자동화 적체·노쇼 신호 — 사고 자동 진단 cron 이 매일 점검
+  newsBacklogTotal: number;        // news_posts classified_at NULL + visible — cron cap timeout 신호
+  pressPending: number;            // press_ingest_candidates status='pending' — 사장님 검토 큐
+  pressLastClassifyHours: number;  // 마지막 press_l2_classify 흔적 시간차 — cron 노쇼 신호 (Vercel cron path bug 등)
+  enrichPermanentSkip: number;     // enrich detail_permanently_skipped_at 누적 — 외부 API 일관 실패 신호
 };
 
 export type ThresholdAlert = {
-  key: "low_activity" | "payment_fail" | "cron_fail";
+  key:
+    | "low_activity"
+    | "payment_fail"
+    | "cron_fail"
+    | "news_backlog"
+    | "press_pending"
+    | "press_no_show"
+    | "enrich_stuck";
   message: string;
+  // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
+  // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
+  recommendation?: string;
 };
 
 const CRON_FAIL_ALERT_THRESHOLD = Number(
   process.env.CRON_FAIL_ALERT_THRESHOLD ?? "3",
 );
 const ACTIVE_7D_FLOOR = 5;
+// Phase 1 자동 진단 임계치 — env 로 1분 toggle 가능 (위험 0).
+// 정상 운영 baseline 보다 약간 여유 — false positive 톤 다운.
+const NEWS_BACKLOG_FLOOR = Number(
+  process.env.NEWS_BACKLOG_ALERT_FLOOR ?? "1000",
+);
+const PRESS_PENDING_FLOOR = Number(
+  process.env.PRESS_PENDING_ALERT_FLOOR ?? "10",
+);
+const PRESS_NO_SHOW_HOURS = Number(
+  process.env.PRESS_NO_SHOW_ALERT_HOURS ?? "36",
+);
+const ENRICH_PERMANENT_SKIP_FLOOR = Number(
+  process.env.ENRICH_PERMANENT_SKIP_FLOOR ?? "100",
+);
 
 export async function getHealthSignals(): Promise<HealthSignals> {
   const sb = createAdminClient();
@@ -85,6 +115,49 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     .gte("created_at", since24Iso);
   const deliveryFailures24h = delCount ?? 0;
 
+  // ─── Phase 1 자동 진단 (2026-05-08) ───────────────────────
+  // news 미분류 backlog — cron cap timeout 또는 cron 노쇼 신호
+  const { count: newsBacklogCount } = await sb
+    .from("news_posts")
+    .select("*", { count: "exact", head: true })
+    .is("classified_at", null)
+    .eq("is_hidden", false);
+  const newsBacklogTotal = newsBacklogCount ?? 0;
+
+  // press_ingest_candidates 검토 큐 — 4 layer fallback 후 정상 0~5
+  const { count: pressPendingCount } = await sb
+    .from("press_ingest_candidates")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
+  const pressPending = pressPendingCount ?? 0;
+
+  // 마지막 press_l2_classify 흔적 시간차 — cron 노쇼 진단
+  const { data: lastPress } = await sb
+    .from("admin_actions")
+    .select("created_at")
+    .eq("action", "press_l2_classify")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const pressLastClassifyHours = lastPress?.created_at
+    ? Math.round(
+        (Date.now() - new Date(lastPress.created_at).getTime()) / 3600000,
+      )
+    : 999; // 흔적 자체가 없으면 큰 값 (반드시 alert)
+
+  // enrich 영구 skip 누적 — 외부 API 일관 실패 신호 (welfare + loan 합산)
+  const [welfSkip, loanSkip] = await Promise.all([
+    sb
+      .from("welfare_programs")
+      .select("*", { count: "exact", head: true })
+      .not("detail_permanently_skipped_at", "is", null),
+    sb
+      .from("loan_programs")
+      .select("*", { count: "exact", head: true })
+      .not("detail_permanently_skipped_at", "is", null),
+  ]);
+  const enrichPermanentSkip = (welfSkip.count ?? 0) + (loanSkip.count ?? 0);
+
   return {
     signups24h,
     active7d,
@@ -92,6 +165,10 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     failed24h,
     cronFailures24h,
     deliveryFailures24h,
+    newsBacklogTotal,
+    pressPending,
+    pressLastClassifyHours,
+    enrichPermanentSkip,
   };
 }
 
@@ -121,7 +198,48 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   if (s.cronFailures24h >= CRON_FAIL_ALERT_THRESHOLD) {
     alerts.push({
       key: "cron_fail",
-      message: `24h cron 실패 알림 ${s.cronFailures24h}건 (임계치 ${CRON_FAIL_ALERT_THRESHOLD}). /admin/cron-failures 확인.`,
+      message: `24h cron 실패 알림 ${s.cronFailures24h}건 (임계치 ${CRON_FAIL_ALERT_THRESHOLD}).`,
+      recommendation: "/admin/cron-failures 에서 cron 별 실패 패턴 확인 + 일괄 재시도",
+    });
+  }
+
+  // Phase 1 자동 진단 — news 미분류 backlog (cron timeout / cap 부족 신호)
+  if (s.newsBacklogTotal >= NEWS_BACKLOG_FLOOR) {
+    alerts.push({
+      key: "news_backlog",
+      message: `news 미분류 backlog ${s.newsBacklogTotal.toLocaleString()}건 (임계 ${NEWS_BACKLOG_FLOOR}+).`,
+      recommendation:
+        "/admin/cron-trigger 에서 news-classify 수동 실행 또는 news_classify_run audit 의 duration_ms 확인 (timeout 추정 시 maxDuration 상향)",
+    });
+  }
+
+  // 광역 보도자료 검토 큐 적체 — 4 layer fallback 후에도 사장님 검토 대기
+  if (s.pressPending >= PRESS_PENDING_FLOOR) {
+    alerts.push({
+      key: "press_pending",
+      message: `press_ingest_candidates pending ${s.pressPending}건 (임계 ${PRESS_PENDING_FLOOR}+).`,
+      recommendation:
+        "/admin/press-ingest 검토 또는 LLM apply_url 추출 정확도 점검 (자동 confirm 률 하락 신호)",
+    });
+  }
+
+  // press_l2_classify 흔적 노쇼 — Vercel cron path bug 또는 ANTHROPIC_API_KEY 만료
+  if (s.pressLastClassifyHours >= PRESS_NO_SHOW_HOURS) {
+    alerts.push({
+      key: "press_no_show",
+      message: `press_l2_classify 마지막 ${s.pressLastClassifyHours}h 전 (임계 ${PRESS_NO_SHOW_HOURS}h+).`,
+      recommendation:
+        "/admin/cron-trigger 에서 press-ingest 수동 실행 + ANTHROPIC_API_KEY · vercel.json schedule 확인",
+    });
+  }
+
+  // enrich detail-fetcher 영구 skip 폭증 — 외부 API 일관 실패
+  if (s.enrichPermanentSkip >= ENRICH_PERMANENT_SKIP_FLOOR) {
+    alerts.push({
+      key: "enrich_stuck",
+      message: `enrich 영구 skip 누적 ${s.enrichPermanentSkip}건 (임계 ${ENRICH_PERMANENT_SKIP_FLOOR}+).`,
+      recommendation:
+        "/admin/enrich-detail 에서 일괄 해제 검토 (외부 API 회복 시) 또는 collector 점검",
     });
   }
 

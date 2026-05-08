@@ -8,6 +8,11 @@ const BASE_SIGNALS: HealthSignals = {
   failed24h: 0,
   cronFailures24h: 0,
   deliveryFailures24h: 0,
+  // Phase 1 자동 진단 baseline — 모두 정상 (alert 발송 안 됨)
+  newsBacklogTotal: 0,
+  pressPending: 0,
+  pressLastClassifyHours: 1,
+  enrichPermanentSkip: 0,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -82,5 +87,52 @@ describe("checkThresholds — 다른 임계치", () => {
       cronFailures24h: 3,
     });
     expect(alerts.find((a) => a.key === "cron_fail")).toBeDefined();
+  });
+});
+
+describe("checkThresholds — Phase 1 자동 진단", () => {
+  // 트래픽 부족 가드 차단 위해 signups·active 채워서 다른 alert 만 검증
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("news 미분류 backlog 1000+ → news_backlog alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, newsBacklogTotal: 1000 });
+    const a = alerts.find((x) => x.key === "news_backlog");
+    expect(a).toBeDefined();
+    expect(a?.recommendation).toContain("news_classify_run");
+  });
+
+  it("news backlog 1000 미만이면 alert 안 발송", () => {
+    const alerts = checkThresholds({ ...ACTIVE, newsBacklogTotal: 999 });
+    expect(alerts.find((a) => a.key === "news_backlog")).toBeUndefined();
+  });
+
+  it("press_ingest_candidates pending 10+ → press_pending alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressPending: 10 });
+    const a = alerts.find((x) => x.key === "press_pending");
+    expect(a).toBeDefined();
+    expect(a?.recommendation).toContain("/admin/press-ingest");
+  });
+
+  it("press_l2_classify 36h 노쇼 → press_no_show alert", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressLastClassifyHours: 36 });
+    const a = alerts.find((x) => x.key === "press_no_show");
+    expect(a).toBeDefined();
+    expect(a?.recommendation).toContain("ANTHROPIC_API_KEY");
+  });
+
+  it("press_l2_classify 35h 이내면 alert 안 발송", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressLastClassifyHours: 35 });
+    expect(alerts.find((a) => a.key === "press_no_show")).toBeUndefined();
+  });
+
+  it("enrich 영구 skip 100+ → enrich_stuck alert", () => {
+    const alerts = checkThresholds({ ...ACTIVE, enrichPermanentSkip: 100 });
+    const a = alerts.find((x) => x.key === "enrich_stuck");
+    expect(a).toBeDefined();
+    expect(a?.recommendation).toContain("/admin/enrich-detail");
   });
 });
