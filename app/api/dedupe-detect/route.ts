@@ -25,9 +25,23 @@ import {
   type DedupeTableName,
 } from "@/lib/dedupe/welfare-loan";
 
-// score ≥ 0.95 (거의 동일 정책) 자동 confirm — 사장님 검수 큐에서 자동 빠짐.
+// score ≥ 임계 (거의 동일 정책) 자동 confirm — 사장님 검수 큐에서 자동 빠짐.
+// 환경변수 DEDUPE_AUTO_CONFIRM_THRESHOLD 로 1분 안에 toggle 가능 (spec A A1).
+// default 0.95 — 점진 도입 (W1 0.92 → W2 0.88 → W3 0.86 → W4 0.85) 시 env 만 변경.
 // 0.95 미만은 false positive 위험으로 사장님 검수 큐 (기존 동작).
-const AUTO_CONFIRM_SCORE_THRESHOLD = 0.95;
+const AUTO_CONFIRM_SCORE_THRESHOLD = (() => {
+  const raw = process.env.DEDUPE_AUTO_CONFIRM_THRESHOLD;
+  if (!raw) return 0.95;
+  const parsed = parseFloat(raw);
+  // 잘못된 env 값 (NaN·범위 외) → safe default 0.95 + 로그
+  if (Number.isNaN(parsed) || parsed < 0.5 || parsed > 1.0) {
+    console.warn(
+      `[dedupe-detect] DEDUPE_AUTO_CONFIRM_THRESHOLD invalid (${raw}), fallback 0.95`,
+    );
+    return 0.95;
+  }
+  return parsed;
+})();
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
