@@ -35,6 +35,20 @@ export type WeeklyOpsData = {
   // 현재 시점 검토 큐 (지금 시점)
   dedupePending: number;
   naverBlogPending: number;
+  // Task 10 (2026-05-08) — 주간 자동 등록·회수율·tier 분포 가시성.
+  // mid 회수율 5% 초과 시 AUTO_CONFIRM_TIER_FLOOR=high 안전 모드 전환 신호.
+  /** 7일 자동 등록 합계 (welfare + loan, high + mid) */
+  weekAutoConfirm: number;
+  /** 7일 자동 회수 (admin_actions.press_l2_auto_revoke) */
+  weekAutoRevoke: number;
+  /** 회수율 % (0~100, 정수). 자동 등록 0 이면 0 */
+  weekRevokeRate: number;
+  /** 7일 high tier 자동 등록 (welfare + loan) */
+  weekHighCount: number;
+  /** 7일 mid tier 자동 등록 (welfare + loan) */
+  weekMidCount: number;
+  /** mid 회수율 % — 5% 초과 시 경고 (사장님 hot-fix 신호) */
+  weekMidRevokeRate: number;
 };
 
 /**
@@ -76,6 +90,13 @@ export async function collectWeeklyOpsDigest(): Promise<WeeklyOpsData> {
     welfareDedupe,
     loanDedupe,
     naverBlog,
+    // Task 10 (2026-05-08) — 7d 자동 등록 (welfare/loan × high/mid) + 7d 회수.
+    // DDL 077 미적용 prod 에선 auto_confirm_tier 컬럼 부재 → safe() 가 0 fallback.
+    welfareHighWeek,
+    welfareMidWeek,
+    loanHighWeek,
+    loanMidWeek,
+    autoRevokeWeek,
   ] = await Promise.all([
     safe(
       admin
@@ -164,7 +185,80 @@ export async function collectWeeklyOpsDigest(): Promise<WeeklyOpsData> {
         .select("id", { count: "exact", head: true })
         .eq("status", "pending"),
     ),
+    // Task 10 — 7d high tier 자동 등록 (welfare).
+    safe(
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "exact", head: true })
+        .eq("auto_confirm_tier", "high")
+        .gte("auto_confirmed_at", since7d),
+    ),
+    // Task 10 — 7d mid tier 자동 등록 (welfare).
+    safe(
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "exact", head: true })
+        .eq("auto_confirm_tier", "mid")
+        .gte("auto_confirmed_at", since7d),
+    ),
+    // Task 10 — 7d high tier 자동 등록 (loan).
+    safe(
+      admin
+        .from("loan_programs")
+        .select("id", { count: "exact", head: true })
+        .eq("auto_confirm_tier", "high")
+        .gte("auto_confirmed_at", since7d),
+    ),
+    // Task 10 — 7d mid tier 자동 등록 (loan).
+    safe(
+      admin
+        .from("loan_programs")
+        .select("id", { count: "exact", head: true })
+        .eq("auto_confirm_tier", "mid")
+        .gte("auto_confirmed_at", since7d),
+    ),
+    // Task 10 — 7d 자동 회수 (action enum press_l2_auto_revoke 는 Task 3 에서 추가됨).
+    safe(
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "press_l2_auto_revoke")
+        .gte("created_at", since7d),
+    ),
   ]);
+
+  // Task 10 — 7d mid 회수율 산출용 details JSONB 조회 (count 가 아니므로 별도 try/catch).
+  // press_l2_auto_revoke audit details 안의 auto_confirm_tier='mid' 만 카운트.
+  let midRevokeCount = 0;
+  try {
+    const { data: revokeMidRows } = await admin
+      .from("admin_actions")
+      .select("details")
+      .eq("action", "press_l2_auto_revoke")
+      .gte("created_at", since7d);
+    midRevokeCount = (revokeMidRows ?? []).filter(
+      (r) =>
+        (r as { details?: { auto_confirm_tier?: string } | null }).details
+          ?.auto_confirm_tier === "mid",
+    ).length;
+  } catch (e) {
+    console.warn(
+      `[weekly-ops-digest] mid 회수율 details fetch 실패 (0 fallback):`,
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+
+  // Task 10 — high·mid·전체 자동 등록 합산 + 회수율 % 계산.
+  const weekHighCount = welfareHighWeek + loanHighWeek;
+  const weekMidCount = welfareMidWeek + loanMidWeek;
+  const weekAutoConfirm = weekHighCount + weekMidCount;
+  const weekAutoRevoke = autoRevokeWeek;
+  const weekRevokeRate =
+    weekAutoConfirm > 0
+      ? Math.round((weekAutoRevoke / weekAutoConfirm) * 100)
+      : 0;
+  const weekMidRevokeRate =
+    weekMidCount > 0 ? Math.round((midRevokeCount / weekMidCount) * 100) : 0;
 
   return {
     signups7d: signups,
@@ -177,6 +271,13 @@ export async function collectWeeklyOpsDigest(): Promise<WeeklyOpsData> {
     cronFailures7d: cronFail,
     dedupePending: welfareDedupe + loanDedupe,
     naverBlogPending: naverBlog,
+    // Task 10 — 자동 등록·회수율·tier 분포
+    weekAutoConfirm,
+    weekAutoRevoke,
+    weekRevokeRate,
+    weekHighCount,
+    weekMidCount,
+    weekMidRevokeRate,
   };
 }
 
@@ -312,6 +413,26 @@ export function buildWeeklyOpsHtml(
         </tr>
       </table>
 
+      <h3 style="color: #191F28; font-size: 15px; margin-top: 24px; margin-bottom: 12px;">🧠 AI 자동 등록 (주간)</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <tr style="border-bottom: 1px solid #E5E8EB;">
+          <td style="padding: 8px 0; color: #4E5968;">자동 등록</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.weekAutoConfirm}건 <span style="color:#6B7684; font-weight:400;">(high ${data.weekHighCount} / mid ${data.weekMidCount})</span></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #4E5968;">회수</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #191F28;">${data.weekAutoRevoke}건 — 회수율 ${data.weekRevokeRate}%</td>
+        </tr>
+      </table>
+      ${
+        data.weekMidRevokeRate > 5
+          ? `
+      <p style="margin-top: 12px; padding: 12px 16px; background: #FFF5F5; border-left: 3px solid #D93636; border-radius: 4px; font-size: 13px; color: #4E5968;">
+        ⚠️ <strong style="color: #D93636;">mid 회수율 ${data.weekMidRevokeRate}% (>5%)</strong> — <code style="font-size: 12px; background: #F2F4F6; padding: 2px 6px; border-radius: 4px;">AUTO_CONFIRM_TIER_FLOOR=high</code> 안전 모드 전환 검토.
+      </p>`
+          : ""
+      }
+
       ${
         data.dedupePending + data.naverBlogPending > 0
           ? `
@@ -397,6 +518,16 @@ export function buildWeeklyOpsHtml(
     `뉴스 hide: ${data.newsAutoHidden7d}건`,
     `dedupe confirm: ${data.dedupeAutoConfirmed7d}건`,
     `≈ 절감 시간: ${timeSavedMin}분`,
+    "",
+    "[AI 자동 등록 (주간)]",
+    `- 자동 등록 ${data.weekAutoConfirm}건 (high ${data.weekHighCount} / mid ${data.weekMidCount})`,
+    `- 회수 ${data.weekAutoRevoke}건 — 회수율 ${data.weekRevokeRate}%`,
+    ...(data.weekMidRevokeRate > 5
+      ? [
+          "",
+          `[!] mid 회수율 ${data.weekMidRevokeRate}% (>5%) — AUTO_CONFIRM_TIER_FLOOR=high 검토`,
+        ]
+      : []),
     "",
     "[검토 대기]",
     `dedupe: ${data.dedupePending}건`,
