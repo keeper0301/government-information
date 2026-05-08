@@ -32,6 +32,12 @@ export type HealthSignals = {
   pressPending: number;            // press_ingest_candidates status='pending' — 사장님 검토 큐
   pressLastClassifyHours: number;  // 마지막 press_l2_classify 흔적 시간차 — cron 노쇼 신호 (Vercel cron path bug 등)
   enrichPermanentSkip: number;     // enrich detail_permanently_skipped_at 누적 — 외부 API 일관 실패 신호
+  /**
+   * press_ingest_candidates 의 confidence_tier='low' + status='pending' 큐 적체.
+   * 적극 모드 (high+mid 자동) 채택 후 평소엔 거의 0. 10+ = LLM 신뢰도 하락 신호.
+   * PRESS_LOW_TIER_FLOOR env 로 1줄 toggle.
+   */
+  pressLowTierBacklog: number;
 };
 
 export type ThresholdAlert = {
@@ -42,6 +48,7 @@ export type ThresholdAlert = {
     | "news_backlog"
     | "press_pending"
     | "press_no_show"
+    | "press_low_tier"
     | "enrich_stuck";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
@@ -69,6 +76,10 @@ const PRESS_NO_SHOW_HOURS = Number(
 const ENRICH_PERMANENT_SKIP_FLOOR = Number(
   process.env.ENRICH_PERMANENT_SKIP_FLOOR ?? "100",
 );
+// Task 8 (2026-05-08) — low tier 큐 적체 임계.
+// 적극 모드 (high+mid 자동) 채택 후 평소엔 거의 0 이어야 함.
+// 10+ 누적 = LLM 신뢰도 하락 신호 → 사장님 검토 또는 일시 적극화 검토.
+const PRESS_LOW_TIER_FLOOR = Number(process.env.PRESS_LOW_TIER_FLOOR ?? "10");
 
 export async function getHealthSignals(): Promise<HealthSignals> {
   const sb = createAdminClient();
@@ -133,6 +144,15 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     .eq("status", "pending");
   const pressPending = pressPendingCount ?? 0;
 
+  // Task 8 — low tier (LLM 저신뢰도) 큐 적체.
+  // DDL 077 적용 전이면 confidence_tier 컬럼 자체가 없으니 0 반환 (정상 동작).
+  const { count: lowTierCount } = await sb
+    .from("press_ingest_candidates")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending")
+    .eq("confidence_tier", "low");
+  const pressLowTierBacklog = lowTierCount ?? 0;
+
   // 마지막 press_l2_classify 흔적 시간차 — cron 노쇼 진단
   const { data: lastPress } = await sb
     .from("admin_actions")
@@ -171,6 +191,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     pressPending,
     pressLastClassifyHours,
     enrichPermanentSkip,
+    pressLowTierBacklog,
   };
 }
 
@@ -236,6 +257,16 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `press_l2_classify 마지막 ${s.pressLastClassifyHours}h 전 (임계 ${PRESS_NO_SHOW_HOURS}h+).`,
       recommendation:
         "/admin/cron-trigger 에서 press-ingest 수동 실행 + ANTHROPIC_API_KEY · vercel.json schedule 확인",
+    });
+  }
+
+  // Task 8 — LLM 신뢰도 'low' 큐 적체 (적극 모드 후에도 사장님 검토 필요한 잔여 큐)
+  if (s.pressLowTierBacklog >= PRESS_LOW_TIER_FLOOR) {
+    alerts.push({
+      key: "press_low_tier",
+      message: `LLM 신뢰도 'low' 큐 ${s.pressLowTierBacklog}건 (임계 ${PRESS_LOW_TIER_FLOOR}+).`,
+      recommendation:
+        "/admin/press-ingest 검토 또는 AUTO_CONFIRM_TIER_FLOOR=low 로 일시 적극화 (위험 감수)",
     });
   }
 

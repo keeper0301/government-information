@@ -13,6 +13,8 @@ const BASE_SIGNALS: HealthSignals = {
   pressPending: 0,
   pressLastClassifyHours: 1,
   enrichPermanentSkip: 0,
+  // Task 8 (2026-05-08) — low tier 큐 baseline 정상 (적극 모드에서는 거의 0)
+  pressLowTierBacklog: 0,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -153,9 +155,11 @@ describe("checkThresholds — recommendation 일관성", () => {
       pressPending: 50,
       pressLastClassifyHours: 100,
       enrichPermanentSkip: 500,
+      // Task 8 추가: low tier 큐도 임계 초과
+      pressLowTierBacklog: 50,
     });
-    // 7 alert key 모두 발화
-    expect(alerts).toHaveLength(7);
+    // 8 alert key 모두 발화
+    expect(alerts).toHaveLength(8);
     for (const a of alerts) {
       expect(a.recommendation).toBeTruthy();
       expect(a.recommendation!.length).toBeGreaterThan(10);
@@ -258,5 +262,26 @@ describe("checkThresholds — Phase 1 자동 진단", () => {
     const a = alerts.find((x) => x.key === "enrich_stuck");
     expect(a).toBeDefined();
     expect(a?.recommendation).toContain("/admin/enrich-detail");
+  });
+});
+
+describe("checkThresholds — Phase 1 추가: press_low_tier_backlog", () => {
+  // 트래픽 부족 가드 차단 위해 signups·active 채워서 low tier alert 만 검증
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("low tier 큐 10+ → press_low_tier alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 10 });
+    const a = alerts.find((x) => x.key === "press_low_tier");
+    expect(a).toBeDefined();
+    expect(a?.recommendation).toContain("AUTO_CONFIRM_TIER_FLOOR");
+  });
+
+  it("low tier 9 → 발화 안 함 (boundary)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 9 });
+    expect(alerts.find((a) => a.key === "press_low_tier")).toBeUndefined();
   });
 });
