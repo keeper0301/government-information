@@ -1,5 +1,5 @@
 // ============================================================
-// 어드민 사이드바 메뉴 단일 source of truth (5 그룹 / 페이지 18)
+// 어드민 사이드바 메뉴 단일 source of truth (5 그룹 / 페이지 24)
 // ============================================================
 // 그룹 순서 = 사장님 운영 우선순위 (운영점검 → 컨텐츠 → 알림 → 지표 → 사용자).
 // 새 admin 페이지 추가 시 여기에만 추가하면 사이드바·활성 매칭 자동 반영.
@@ -25,6 +25,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     title: "운영 상태",
     items: [
       { href: "/admin/health", label: "헬스 대시보드", icon: "📊" },
+      { href: "/admin/ops-monitor", label: "운영 모니터링", icon: "📡" },
       { href: "/admin/cron-trigger", label: "cron 수동 실행", icon: "⚙️" },
       { href: "/admin/cron-failures", label: "cron 실패 알림", icon: "🚨" },
       { href: "/admin/dedupe", label: "중복 정책 dedupe", icon: "🔁" },

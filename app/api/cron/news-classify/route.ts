@@ -26,7 +26,8 @@ export const maxDuration = 300;
 // spec A B1 — 30 → 100 확대. 24h 미분류 backlog 269건 → ~50 이하 capacity.
 // Anthropic Haiku 비용: 30→100 = 월 +$19. cap 100 × cron 3회/일 = 300건/일 capacity.
 // timeout: 100 × 2~3초 ≈ 200~300초 < maxDuration 300초 (margin 0).
-const CAP_PER_CRON = 100;
+// export — /admin/ops-monitor 가 표시값 동기화.
+export const CAP_PER_CRON = 100;
 
 async function authorize(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
