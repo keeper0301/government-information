@@ -15,6 +15,9 @@ import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from 
 import { isDeepLink } from "@/lib/utils/apply-url";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { isAdminUser } from "@/lib/admin-auth";
+import { findCandidateByProgramId } from "@/lib/press-ingest/candidates";
+import { AutoConfirmBadge } from "@/components/admin/auto-confirm-badge";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -59,6 +62,14 @@ export default async function WelfareDetailPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   const initialBookmarked = user ? await isBookmarked("welfare", id) : false;
   const profile = user ? await loadUserProfile() : null;
+
+  // admin 분기 — 자동 등록 정책의 경우 회수/복원 배지 노출 (일반 사용자엔 X).
+  // DDL 077 미적용 환경에서는 program.auto_confirm_tier 가 undefined 라 자연 분기됨.
+  const isAdmin = !!user && isAdminUser(user.email);
+  const candidateInfo =
+    isAdmin && program.auto_confirm_tier
+      ? await findCandidateByProgramId({ table: "welfare_programs", programId: id })
+      : null;
 
   const dday = calcDday(program.apply_end);
   const period = program.apply_start && program.apply_end
@@ -127,6 +138,18 @@ export default async function WelfareDetailPage({ params }: Props) {
         <span className="mx-2 text-grey-600">&gt;</span>
         <span className="text-grey-900 font-medium">{program.title.length > 30 ? program.title.substring(0, 30) + "..." : program.title}</span>
       </nav>
+
+      {/* admin 전용 자동 등록 배지 — 일반 사용자 렌더 0 (SEO/UX 영향 0) */}
+      {isAdmin && program.auto_confirm_tier && (
+        <div className="mb-4">
+          <AutoConfirmBadge
+            candidateId={candidateInfo?.candidateId ?? null}
+            tier={program.auto_confirm_tier as "high" | "mid"}
+            isHidden={!!program.is_hidden}
+            autoConfirmedAt={program.auto_confirmed_at ?? null}
+          />
+        </div>
+      )}
 
       {/* Badges */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">

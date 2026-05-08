@@ -908,6 +908,29 @@ export async function listAutoConfirmedPolicies({
   return rows;
 }
 
+/**
+ * 정책 ID 로 자동 등록 candidate 찾음. /welfare/[id]·/loan/[id] 의 admin 배지에서 사용.
+ * candidate 가 confirmed/revoked 상태가 아니면 (예: pending/rejected) 배지 노출 안 함.
+ * 회수 후 status='revoked' 도 포함해 admin 이 복원 버튼 볼 수 있도록 함.
+ */
+export async function findCandidateByProgramId({
+  table,
+  programId,
+}: {
+  table: "welfare_programs" | "loan_programs";
+  programId: string;
+}): Promise<{ candidateId: string } | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("press_ingest_candidates")
+    .select("id")
+    .eq("confirmed_program_table", table)
+    .eq("confirmed_program_id", programId)
+    .in("status", ["confirmed", "revoked"])
+    .maybeSingle();
+  return data ? { candidateId: data.id as string } : null;
+}
+
 export async function rejectPressCandidate(
   candidateId: string,
   actorId: string,
