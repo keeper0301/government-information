@@ -120,7 +120,69 @@ DEDUPE_AUTO_CONFIRM_THRESHOLD=0.88 Vercel env 자동 등록 + Redeploy.
 
 🥈 — Phase 3 보다 먼저. SMS 양방향 1회 가입만 하면 큰 가치.
 
-## Phase 3: 외부 콘솔 자동 점검
+## Phase 3: 외부 콘솔 자동 점검 — ✅ 인프라 + 사이트 가용성 완료
+
+**상태**: 인프라 + 사이트 가용성 점검 (즉시 가능, 외부 의존 0) 완료. AdSense·카카오·토스·GA4 통합은 사장님 OAuth·API key 외부 액션 후 별도 commit.
+
+**완료된 코드**:
+- `lib/external-console/types.ts` — ConsoleCheckResult / ConsoleAlert 공통 타입
+- `lib/external-console/site-availability.ts` — 5 페이지 HEAD 점검 + 응답 시간 측정
+- `app/api/cron/external-console-check/route.ts` — 통합 cron (Promise.allSettled 패턴 — 한 console 실패가 다른 점검 막지 않음)
+- `vercel.json` — cron 등록 (매일 KST 09:30)
+- `app/admin/cron-trigger/page.tsx` — UI 라벨
+- `__tests__/lib/site-availability.test.ts` — 7 unit test PASS
+
+**현재 점검 가능 (즉시 가동)**:
+- 5 페이지 HEAD 요청 — 홈·welfare·loan·news·blog
+- 응답 시간 ≥3초 → `site_slow` alert
+- 5xx·timeout·DNS 실패 → `site_down` alert
+- 정상 → SMS 안 옴 (noise 0)
+
+### 다음 console 통합 가이드 (사장님 외부 액션 동반)
+
+**공통 패턴**:
+1. `lib/external-console/<name>.ts` 신설 — `async function check<Name>(): Promise<ConsoleCheckResult>` export
+2. `app/api/cron/external-console-check/route.ts` 의 `checks` 배열에 추가
+3. 점검에 필요한 env Vercel 등록 (사장님)
+
+#### 1단계 우선: AdSense
+
+**옵션 A — Google AdSense Management API (권장, OAuth refresh token)**
+- 사장님 외부 액션:
+  1. Google Cloud Console → AdSense Management API 활성화
+  2. OAuth 2.0 클라이언트 ID 생성 (Web application)
+  3. https://developers.google.com/oauthplayground 에서 scope `https://www.googleapis.com/auth/adsense.readonly` 으로 refresh token 발급
+  4. Vercel env: `GOOGLE_ADSENSE_CLIENT_ID` / `GOOGLE_ADSENSE_CLIENT_SECRET` / `GOOGLE_ADSENSE_REFRESH_TOKEN`
+- 코드: refresh token → access token 교환 → `accounts.list` + `accounts.adclients.list` + `accounts.reports.generate` 호출
+- 점검 항목: 승인 상태, 자동 광고 활성, 24h 노출/클릭/추정 수익
+
+**옵션 B — chrome 자동화 (대안, OAuth 못 쓸 때)**
+- GitHub Actions runner + Playwright + 사장님 cookies (GitHub Secret 으로 base64 저장)
+- 부담 ↑, 깨지기 쉬움. 옵션 A 가 안 되는 경우만.
+
+#### 2단계: 카카오 비즈
+
+- 카카오 비즈 Open API 미공개 영역 — chrome 자동화 또는 Solapi 자체 API (이미 발송용으로 가입됨, 통계 endpoint 활용)
+- Solapi `/messages/v4/list` API 로 24h 발송 통계·실패율 fetch (간단)
+- 카카오 알림톡 템플릿 심사 상태는 Solapi 또는 카카오 비즈 콘솔 chrome 자동화 필요
+
+#### 3단계: 토스 가맹점
+
+- 토스 결제 API 의 거래 조회 endpoint 로 24h 결제 통계
+- env: `TOSS_SECRET_KEY` (이미 결제용으로 등록)
+- 정산 추세·webhook 도달 여부
+
+#### 4단계: GA4
+
+- Google Analytics Data API + service account 또는 OAuth refresh token
+- 24h 핵심 funnel 이벤트 카운트 (signup_completed, checkout_completed, search_results_shown 등)
+- 전환 이벤트 정의 누락 점검
+
+### 안전 가드
+- Promise.allSettled — 한 console 실패가 다른 점검 막지 않음
+- 점검 자체 실패 (네트워크·인증 만료) 도 별도 alert 으로 처리 (`checker_error`)
+- 정상 시 SMS 안 보냄 — sleeping noise 0
+- 모든 점검 결과 NextResponse JSON 반환 (수동 trigger 시 즉시 진단 가능)
 
 ### 의도
 

@@ -38,7 +38,8 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   // 사장님 알림 — 직접 SMS/이메일 받는 cron. 즉시 검증 위해 자주 사용.
   { path: "/api/cron/daily-digest", label: "일일 KPI SMS (사장님)", schedule: "매일 08시 KST", desc: "어제 KPI · 검토 큐 · cron 실패 요약" },
   { path: "/api/cron/weekly-ops-digest", label: "주간 운영 이메일 (사장님)", schedule: "매주 화 09시 KST", desc: "7일 KPI + 자동 처리 + 절감 시간 + 검토 대기" },
-  { path: "/api/cron/health-alert", label: "사이트 헬스 알림", schedule: "매일 09:05 KST", desc: "Sentry · cron 실패 · 응답 시간" },
+  { path: "/api/cron/health-alert", label: "사이트 헬스 알림", schedule: "매일 09:05 KST", desc: "Sentry · cron 실패 · news backlog · press 노쇼 · enrich skip" },
+  { path: "/api/cron/external-console-check", label: "외부 console 자동 점검", schedule: "매일 09:30 KST", desc: "사이트 가용성·응답 시간 · 차후 AdSense·카카오·토스·GA4 통합" },
   { path: "/api/cron/naver-queue-alert", label: "네이버 블로그 큐 알림", schedule: "매일 09:10 KST", desc: "발행 대기 큐 SMS" },
   { path: "/api/cron/weekly-digest", label: "주간 다이제스트 (사용자)", schedule: "매주 월 09시 KST", desc: "Pro 사용자 주간 발송" },
   { path: "/api/cron/onboarding-reminder", label: "가입 환영 이메일", schedule: "매일 11:05 KST", desc: "24~48h 미온보딩 1회 발송" },
