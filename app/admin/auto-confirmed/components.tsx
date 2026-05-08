@@ -138,7 +138,7 @@ export function AutoConfirmedList({
                   )}
                 </div>
                 <Link
-                  href={`/admin/${
+                  href={`/${
                     r.table === "welfare_programs" ? "welfare" : "loan"
                   }/${r.program_id}`}
                   className="text-sm font-semibold text-grey-900 hover:underline truncate block"
