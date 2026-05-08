@@ -182,6 +182,104 @@ export async function pickProgramsForCategory(
   return results;
 }
 
+// ============================================================
+// Phase 5-A SEO long-tail — 사장님 입력 키워드 1개로 매칭 정책 검색.
+// 매주 부족한 검색어 (예: "60대 부산 노인 의료비 지원") 를 직접 입력하면
+// 자동으로 매칭 정책 후보 + 블로그 글 생성. category 는 키워드 → 추정.
+// ============================================================
+export async function pickProgramsForKeyword(
+  keyword: string,
+  maxCandidates: number,
+): Promise<PickedProgram[]> {
+  const raw = keyword.trim();
+  if (raw.length < 2) return [];
+
+  // PostgREST `or` 파라미터는 `,` `(` `)` `:` 를 구분자로 사용. 사장님 입력에
+  // 우연히 들어가면 query 분해 오류 → 매칭 0 보고. 공백으로 안전 치환.
+  // ILIKE 의 `%`/`_` 도 wildcard 라 의도 외 매칭 폭 발생 — 같이 정리.
+  const k = raw.replace(/[,():%_]/g, " ").replace(/\s+/g, " ").trim();
+  if (k.length < 2) return [];
+
+  const admin = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: published } = await admin
+    .from("blog_posts")
+    .select("source_program_id, source_program_type")
+    .not("source_program_id", "is", null);
+  const usedWelfare = new Set<string>();
+  const usedLoan = new Set<string>();
+  for (const p of published || []) {
+    if (p.source_program_type === "welfare" && p.source_program_id) usedWelfare.add(p.source_program_id);
+    else if (p.source_program_type === "loan" && p.source_program_id) usedLoan.add(p.source_program_id);
+  }
+
+  const orFilter = [
+    `title.ilike.%${k}%`,
+    `target.ilike.%${k}%`,
+    `description.ilike.%${k}%`,
+  ].join(",");
+  const datePolicy = `apply_end.is.null,apply_end.gte.${today}`;
+
+  const results: PickedProgram[] = [];
+
+  const { data: welfares } = await admin
+    .from("welfare_programs")
+    .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+    .or(orFilter)
+    .or(datePolicy)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("apply_end", { ascending: true, nullsFirst: false })
+    .limit(20);
+
+  for (const w of welfares || []) {
+    if (results.length >= maxCandidates) return results;
+    if (!usedWelfare.has(w.id)) {
+      results.push({
+        programId: w.id,
+        programType: "welfare",
+        ctx: { type: "welfare", ...w },
+      });
+    }
+  }
+
+  const { data: loans } = await admin
+    .from("loan_programs")
+    .select("id, title, category, target, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_url, apply_start, apply_end, source")
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+    .or(orFilter)
+    .or(datePolicy)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("apply_end", { ascending: true, nullsFirst: false })
+    .limit(20);
+
+  for (const l of loans || []) {
+    if (results.length >= maxCandidates) return results;
+    if (!usedLoan.has(l.id)) {
+      results.push({
+        programId: l.id,
+        programType: "loan",
+        ctx: { type: "loan", ...l },
+      });
+    }
+  }
+
+  return results;
+}
+
+// keyword → category 추정. CATEGORY_KEYWORDS 의 reverse lookup.
+// 매칭 안 되면 "큐레이션" (안전 default — 다양한 정책 묶음 표제 가능).
+export function inferCategoryFromKeyword(keyword: string): string {
+  const lower = keyword.toLowerCase();
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((k) => lower.includes(k))) {
+      return category;
+    }
+  }
+  return "큐레이션";
+}
+
 // 기존 1건 반환 시그니처 — 외부 호출처 호환성 유지 (pickProgramsForCategory 의 wrapper)
 export async function pickProgramForCategory(category: string): Promise<PickedProgram | null> {
   const list = await pickProgramsForCategory(category, 1);
@@ -275,6 +373,40 @@ export async function publishOnePost(opts: {
   }
   // 모든 candidate 가 품질 가드로 거절된 경우 마지막 에러 throw
   throw lastQualityError ?? new Error(`모든 candidate (${candidates.length}건) 가 품질 가드로 거절됨. 카테고리: ${category}`);
+}
+
+// Phase 5-A SEO long-tail — 키워드 1개 → 매칭 정책 → 블로그 글 자동 생성.
+// publishOnePost 와 동일 패턴 (publishWithCandidate 재활용 + 품질 가드 retry).
+// category 는 인자 우선, 없으면 keyword 에서 추정.
+export async function publishKeywordPost(opts: {
+  keyword: string;
+  category?: string;
+  dryRun?: boolean;
+}) {
+  const candidates = await pickProgramsForKeyword(opts.keyword, MAX_PUBLISH_ATTEMPTS);
+  if (candidates.length === 0) {
+    throw new Error(
+      `키워드 "${opts.keyword}" 매칭 정책 없음. 더 일반적 단어로 시도하거나 정책 등록 후 재시도.`,
+    );
+  }
+  const category = opts.category || inferCategoryFromKeyword(opts.keyword);
+
+  let lastQualityError: unknown = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const picked = candidates[i];
+    try {
+      return await publishWithCandidate(picked, category, opts);
+    } catch (err) {
+      if (isQualityGuardError(err)) {
+        lastQualityError = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastQualityError ?? new Error(
+    `키워드 "${opts.keyword}" candidate ${candidates.length}건 모두 품질 가드 거절됨.`,
+  );
 }
 
 // 1개 candidate 처리 — 기존 publishOnePost 의 picked 받은 이후 로직.

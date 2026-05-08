@@ -318,7 +318,57 @@ DEDUPE_AUTO_CONFIRM_THRESHOLD=0.88 Vercel env 자동 등록 + Redeploy.
 
 4번 — 트래픽 확보 후 의미 있어짐. 현재 24h 가입 0이라 우선순위 ↓.
 
-## Phase 5: 마케팅 자동화
+## Phase 5: 마케팅 자동화 — ✅ Phase 5-A SEO long-tail 구현
+
+**상태**: 5-A SEO long-tail (사장님 입력 기반 자동 글 생성) 구현. 5-B (SNS 자동 게시) / 5-C (외부 글쓰기 확장) spec.
+
+### Phase 5-A 완료된 코드
+
+- `lib/blog-publish.ts` — pickProgramsForKeyword + publishKeywordPost + inferCategoryFromKeyword 추가
+  - 기존 publishWithCandidate (Claude 호출 + 품질 가드 + DB insert + naver-blog 큐 + WordPress) 그대로 재활용
+  - keyword → 매칭 정책 검색 → top 3 candidate → 품질 가드 retry loop
+- `app/admin/long-tail/page.tsx` + `long-tail-form.tsx` + `actions.ts` — 사장님 입력 폼 + 7d 발행 목록
+- `lib/admin/menu.ts` — "long-tail SEO 글 생성" 메뉴 추가 (콘텐츠 그룹)
+
+**사장님 사용 흐름**:
+1. /admin/long-tail 접속
+2. 부족한 검색어 입력 (예: "60대 부산 노인 의료비 지원")
+3. 카테고리 자동 추정 또는 명시 선택
+4. "글 생성" 클릭 → Claude 가 매칭 정책 + SEO 본문 작성 → blog_posts insert (10~20초)
+5. /blog/[slug] 즉시 노출 + sitemap + IndexNow 자동
+6. 매주 5~10개 입력만 하면 long-tail 트래픽 가속
+
+**기존 publishOnePost (요일 카테고리) 와 차이**:
+- 카테고리 (요일) ↔ 키워드 (사장님 입력) 진입점만 다름
+- 본문 생성·품질 가드·DB insert·외부 발행은 모두 동일 (DRY)
+- 다음 cron 자동 발행 (KST 15:07) 과 충돌 없음 (source_program_id 중복 방지)
+
+### Phase 5-B: SNS 자동 게시 (다음 sub-spec)
+
+매주 신규 발행 블로그 글을 트위터·인스타·페이스북·스레드 자동 게시.
+
+**사장님 외부 액션**:
+- 각 SNS 플랫폼 OAuth 앱 등록 + access_token 발급 (4종)
+- Vercel env: TWITTER_ACCESS_TOKEN / INSTAGRAM_TOKEN / FACEBOOK_TOKEN / THREADS_TOKEN
+
+**구현 항목**:
+- `lib/sns/twitter.ts` / `instagram.ts` / `facebook.ts` / `threads.ts` — 플랫폼별 publish
+- `app/api/cron/sns-publish-weekly/route.ts` — 매주 일 22:00 cron (블로그 발행 후)
+- `sns_publish_log` 테이블 (마이그레이션 신규) — 중복 방지 + 통계
+- 카드 자동 생성: blog_posts.cover_image + Claude 캡션 + 해시태그
+
+### Phase 5-C: 외부 글쓰기 확장 (다음 sub-spec)
+
+이미 가동 중인 워드프레스 자동 발행 외 다른 플랫폼 확장.
+
+**대상 플랫폼**:
+- 티스토리 (OAuth + Open API) — 한국 SEO 영향 큼
+- 브런치 (인증 어려움 — 우선순위 낮음)
+
+**구현 항목**:
+- `lib/external-publish/tistory.ts` — Open API 통합
+- 기존 `lib/wordpress/publisher.ts` 패턴 재활용
+- blog_publish.ts 의 publishWithCandidate 끝에 외부 발행 호출 추가
 
 ### 의도
 
