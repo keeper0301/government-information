@@ -706,7 +706,12 @@ export async function revokeAutoConfirmed({
     .from("press_ingest_candidates")
     .update({ status: "revoked", updated_at: revoke.updated_at })
     .eq("id", candidateId);
-  if (candErr) throw new Error(`후보 상태 갱신 실패: ${candErr.message}`);
+  if (candErr) {
+    // candidate update 실패 — welfare/loan 의 hidden 토글 rollback
+    // (idempotent retry 위해 — 다음 회수 시 status 가드 통과 가능하도록)
+    await admin.from(table).update(buildRestorePayload()).eq("id", programId);
+    throw new Error(`후보 상태 갱신 실패: ${candErr.message}`);
+  }
 
   // audit
   await logAdminAction({
@@ -737,7 +742,9 @@ export async function restoreAutoConfirmed({
 
   const { data, error } = await admin
     .from("press_ingest_candidates")
-    .select("id, status, confirmed_program_table, confirmed_program_id")
+    .select(
+      "id, status, confirmed_program_table, confirmed_program_id, confidence_tier",
+    )
     .eq("id", candidateId)
     .maybeSingle();
   if (error) throw new Error(`복원 후보 조회 실패: ${error.message}`);
@@ -760,12 +767,22 @@ export async function restoreAutoConfirmed({
     .from("press_ingest_candidates")
     .update({ status: "confirmed", updated_at: restore.updated_at })
     .eq("id", candidateId);
-  if (candErr) throw new Error(`후보 상태 갱신 실패: ${candErr.message}`);
+  if (candErr) {
+    // candidate update 실패 — welfare/loan 을 다시 hidden 으로 rollback
+    // (idempotent retry 위해 — 다음 복원 시 status 가드 통과 가능하도록)
+    await admin.from(table).update(buildRevokePayload({ actorId })).eq("id", programId);
+    throw new Error(`후보 상태 갱신 실패: ${candErr.message}`);
+  }
 
   await logAdminAction({
     actorId,
     action: "press_l2_auto_restore",
-    details: { candidate_id: candidateId, table, program_id: programId },
+    details: {
+      candidate_id: candidateId,
+      table,
+      program_id: programId,
+      auto_confirm_tier: data.confidence_tier,
+    },
   });
 
   return { table, programId };
