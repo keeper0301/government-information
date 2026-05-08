@@ -17,6 +17,7 @@ const ZERO: DigestData = {
   dedupePending: 0,
   naverBlogPending: 0,
   pressProvincePct: 0,
+  dedupeRandomSample: null,
 };
 
 describe("formatDigestMessage", () => {
@@ -110,6 +111,22 @@ describe("formatDigestMessage", () => {
       pressProvincePct: 95,
     });
     expect(message).toContain("보도 50(광역95%⚠)");
+  });
+
+  it("dedupe 무작위 샘플 null — 라인 미포함 (점진 도입 W0 정상)", () => {
+    const message = formatDigestMessage(ZERO);
+    expect(message).not.toContain("샘플 dedupe");
+  });
+
+  it("dedupe 무작위 샘플 1건 — 라인 포함 (사장님 1 click 안전망)", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      dedupeRandomSample: {
+        title: "청년 주거 안정 지원금",
+        table: "welfare_programs",
+      },
+    });
+    expect(message).toContain("샘플 dedupe 검수: 청년 주거 안정 지원금");
   });
 });
 

@@ -30,6 +30,9 @@ export type DigestData = {
   // 광역 보도자료 4 layer fallback chain 운영 가시성 (2026-05-08)
   // 광역 매핑 의존도 — pressAutoConfirmed 0 이면 0%. 80% 이상 시 LLM 추출률 ↓ 신호.
   pressProvincePct: number;
+  // spec A A3 안전망 — 24h dedupe 자동 confirm 무작위 1건 (사장님 즉시 인지, 7일→24h 지연 단축)
+  // null = 24h 자동 confirm 없음 (점진 도입 W0 단계). title 30자 cap.
+  dedupeRandomSample: { title: string; table: "welfare_programs" | "loan_programs" } | null;
 };
 
 /**
@@ -184,6 +187,17 @@ export async function collectDailyDigest(): Promise<DigestData> {
     return { auto_confirmed_24h: 0, auto_confirmed_7d: 0, province_dependency_pct: 0 };
   });
 
+  // spec A A3 — dedupe 무작위 샘플 1건 (안전망 보강)
+  // 24h 자동 confirm 모두 fetch 후 JS random pick. 정책 title 도 같이 (table+duplicate_id 로 join 대신 2 query).
+  // fetch 실패 시 null fallback (SMS 정상 발송).
+  const dedupeRandomSample = await pickDedupeRandomSample(admin, since24h).catch((e) => {
+    console.warn(
+      "[daily-digest] dedupe random sample fetch 실패 (null fallback):",
+      e instanceof Error ? e.message : String(e),
+    );
+    return null;
+  });
+
   return {
     signups24h,
     newPolicies24h,
@@ -196,7 +210,49 @@ export async function collectDailyDigest(): Promise<DigestData> {
     dedupePending,
     naverBlogPending,
     pressProvincePct: pressStats.province_dependency_pct,
+    dedupeRandomSample,
   };
+}
+
+// 24h dedupe 자동 confirm 액션 들 fetch → random pick 1건 → 정책 title 추가 fetch
+async function pickDedupeRandomSample(
+  admin: ReturnType<typeof createAdminClient>,
+  since24h: string,
+): Promise<DigestData["dedupeRandomSample"]> {
+  const { data, error } = await admin
+    .from("admin_actions")
+    .select("details")
+    .eq("action", "dedupe_auto_confirm")
+    .is("actor_id", null)
+    .gte("created_at", since24h)
+    // 자동 confirm 폭증 시 (W2~W4) 50건 cap 에 잘려도 최근 24h 균등 sample pool 보장.
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error || !data || data.length === 0) return null;
+
+  // JS random pick — PostgREST 의 ORDER BY random() 미지원 우회
+  const pick = data[Math.floor(Math.random() * data.length)] as {
+    details: { table?: string; duplicate_id?: string } | null;
+  };
+  const table = pick.details?.table;
+  const duplicateId = pick.details?.duplicate_id;
+  if (
+    !duplicateId ||
+    (table !== "welfare_programs" && table !== "loan_programs")
+  ) {
+    return null;
+  }
+
+  const { data: program } = await admin
+    .from(table)
+    .select("title")
+    .eq("id", duplicateId)
+    .maybeSingle();
+  if (!program) return null;
+
+  const rawTitle = (program as { title: string }).title ?? "(제목 없음)";
+  const title = rawTitle.length > 30 ? rawTitle.slice(0, 30) + "…" : rawTitle;
+  return { title, table };
 }
 
 /**
@@ -242,6 +298,12 @@ export function formatDigestMessage(data: DigestData): string {
   // cron 실패 — 1건 이상일 때만 노출 (정상 운영 시 SMS 깔끔)
   if (data.cronFailures24h > 0) {
     lines.push(`⚠️ cron 실패 ${data.cronFailures24h}건`);
+  }
+
+  // spec A A3 안전망 — 24h dedupe 자동 confirm 무작위 1건 (있을 때만)
+  // 사장님이 매일 1 click 으로 자동 처리 정확도 sanity check. 잘못된 confirm 발견 시 즉시 임계 rollback.
+  if (data.dedupeRandomSample) {
+    lines.push(`샘플 dedupe 검수: ${data.dedupeRandomSample.title}`);
   }
 
   return lines.join("\n");
