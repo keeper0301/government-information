@@ -53,6 +53,8 @@ type ClassifyResult = {
 };
 
 async function run(): Promise<NextResponse> {
+  // duration_ms 측정 — cap 미달 처리 (timeout 추정) 진단용
+  const startMs = Date.now();
   const result: ClassifyResult = {
     fetched: 0,
     classified: 0,
@@ -152,7 +154,28 @@ async function run(): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.json({ ok: true, ...result });
+  // cron run 통계 audit — 매 실행마다 1건. cap 미달 (fetched < CAP_PER_CRON) +
+  // 짧은 duration 이면 backlog 소진, 긴 duration 이면 LLM timeout 추정.
+  const durationMs = Date.now() - startMs;
+  try {
+    await logAdminAction({
+      actorId: null, // system
+      action: "news_classify_run",
+      details: {
+        cap: CAP_PER_CRON,
+        fetched: result.fetched,
+        classified: result.classified,
+        auto_hidden: result.auto_hidden,
+        kept: result.kept,
+        failed: result.failed,
+        duration_ms: durationMs,
+      },
+    });
+  } catch {
+    // audit 실패는 cron 자체 실패 아님 (조용히 무시)
+  }
+
+  return NextResponse.json({ ok: true, duration_ms: durationMs, ...result });
 }
 
 export async function GET(request: Request) {

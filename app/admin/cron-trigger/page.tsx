@@ -44,7 +44,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/cron/onboarding-reminder", label: "가입 환영 이메일", schedule: "매일 11:05 KST", desc: "24~48h 미온보딩 1회 발송" },
   // 시스템 자동화 — 데이터 수집/정리.
   { path: "/api/collect-news", label: "뉴스 수집 (korea.kr)", schedule: "매일 02시 UTC", desc: "korea.kr RSS 3개" },
-  { path: "/api/cron/news-classify", label: "뉴스 자동 분류 (LLM)", schedule: "매일 11:30/14:30/17:30 KST", desc: "Claude Haiku 분류" },
+  { path: "/api/cron/news-classify", label: "뉴스 자동 분류 (LLM)", schedule: "매일 10:30/12:30/14:30/16:30/18:30/20:30 KST", desc: "Claude Haiku 분류 · 6회/일 (cap 100)" },
   { path: "/api/dedupe-detect", label: "중복 정책 자동 탐지", schedule: "매일 02시 KST", desc: "임계 0.95 자동 confirm + LLM 2차" },
   { path: "/api/cron/press-ingest", label: "광역 보도자료 자동 ingest", schedule: "매일 10:30/15:30/19:30 KST", desc: "Anthropic Haiku · welfare/loan 자동 등록" },
   { path: "/api/alert-dispatch", label: "알림 발송", schedule: "매일 07시 UTC", desc: "이메일·카카오톡 (KST 16시)" },
