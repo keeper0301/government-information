@@ -42,7 +42,42 @@
 - `PRESS_NO_SHOW_ALERT_HOURS` (default 36)
 - `ENRICH_PERMANENT_SKIP_FLOOR` (default 100)
 
-## Phase 2: SMS 결정 위임 (Solapi 양방향)
+## Phase 2: SMS 결정 위임 (Solapi 양방향) — ✅ 코드 골격 완료
+
+**상태**: 마이그레이션·라이브러리·webhook·unit test 모두 작성. **prod 활성화는 사장님 외부 액션 + 명시 승인 후**.
+
+**완료된 코드** (commit pending):
+- `supabase/migrations/075_decision_pending.sql` — 추적 테이블 (id·kind·prompt·context·decision·sender_phone 등)
+- `lib/sms/decision-router.ts` — registerDecision / handleSmsReply / parseDecisionReply / isAllowedSender + DECISION_HANDLERS 매핑 (5 kind)
+- `app/api/webhook/solapi-receive/route.ts` — HMAC-SHA256 서명 검증 + 화이트리스트 + handleSmsReply 호출
+- `__tests__/lib/decision-router.test.ts` — 11 unit test (parse·whitelist·정규화)
+
+**활성화 단계** (사장님 액션):
+
+1. **prod DDL apply** (명시 승인 필요): `supabase/migrations/075_decision_pending.sql` apply
+2. **Solapi 양방향 가입** ($1/월): Solapi 콘솔 → "양방향 SMS" 활성화
+3. **수신 webhook URL 등록**: `https://www.keepioo.com/api/webhook/solapi-receive`
+4. **Vercel env 3종 등록**:
+   - `SOLAPI_WEBHOOK_SECRET` — Solapi 콘솔에서 발급한 webhook secret (HMAC 검증)
+   - `SMS_DECISION_ALLOWED_FROM` — 사장님 휴대폰 번호 (csv 다중 가능)
+   - 기존 `SOLAPI_API_KEY` / `SOLAPI_API_SECRET` 는 발송용으로 이미 등록됨
+5. **테스트 시나리오**:
+   - admin 페이지 또는 테스트 endpoint 에서 `registerDecision({ kind: 'dedupe_threshold_w2', prompt: '테스트', context: {} })` 호출
+   - 사장님 휴대폰 SMS 수신 → "1" 답장
+   - decision_pending row 갱신 + DECISION_HANDLERS 액션 result 확인
+
+### DECISION_KINDS (현재 5종, 확장 가능)
+- `dedupe_threshold_w2` / `_w3` / `_w4` — dedupe 점진 도입 임계 변경
+- `spec_c_baseline_start` — welfare LLM 매칭 spec C 진입 (₩200K + 월 ₩30K)
+- `news_cap_increase` — news cap 변경 (timeout audit 결과 기반)
+
+**새 결정 추가 패턴**: `DECISION_KINDS` const 에 kind 추가 + `DECISION_HANDLERS` 에 액션 핸들러 등록 (approve 시만 호출). 위험 액션 (DDL·prod 데이터 변경) 은 spec 별도, 여기선 환경변수 toggle 같은 안전 액션만.
+
+### 안전 가드
+- **발신번호 화이트리스트**: env 미설정 시 모든 요청 reject (안전 default)
+- **24h 만료**: DB level `expires_at` + cleanup cron 별도 (Phase 2.1 후속)
+- **잘못된 답장 (1/2/3 외)**: 무시 (재발송 없음, 로그만)
+- **HMAC-SHA256 timing-safe 검증**: timing attack 차단
 
 ### 의도
 
