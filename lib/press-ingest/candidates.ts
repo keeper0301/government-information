@@ -614,6 +614,163 @@ export async function autoConfirmPendingPressCandidates({
   return result;
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 자동 등록된 정책 회수 / 복원
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LLM 신뢰도 high/mid 자동 등록된 정책 중 사장님이 잘못 분류 발견 시 1클릭 회수.
+// is_hidden=true 로 사용자 노출 즉시 차단 (RLS USING (is_hidden=false)).
+// FK·즐겨찾기 유지 — 데이터 손실 0. 사장님 의도와 system 의도 구분 위해 actorId audit.
+
+export type RevokePayload = {
+  is_hidden: true;
+  revoked_at: string;
+  revoked_by: string | null;
+  updated_at: string;
+};
+
+/**
+ * 자동 등록 정책 회수 시 welfare/loan row UPDATE 에 사용할 payload.
+ * pure function — 시점·actor 만 받아 객체 반환. DB 호출 X.
+ */
+export function buildRevokePayload({ actorId }: { actorId: string | null }): RevokePayload {
+  const now = new Date().toISOString();
+  return {
+    is_hidden: true,
+    revoked_at: now,
+    revoked_by: actorId,
+    updated_at: now,
+  };
+}
+
+export type RestorePayload = {
+  is_hidden: false;
+  revoked_at: null;
+  revoked_by: null;
+  updated_at: string;
+};
+
+/**
+ * 잘못 회수한 정책 복원 — is_hidden=false + 회수 audit clear.
+ */
+export function buildRestorePayload(): RestorePayload {
+  return {
+    is_hidden: false,
+    revoked_at: null,
+    revoked_by: null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * 자동 등록된 정책 회수 — welfare/loan row 의 is_hidden=true + revoked_at/by 토글.
+ * candidate status='revoked' 로 이동 + admin_actions.press_l2_auto_revoke audit.
+ *
+ * actorId=null 이면 system 회수 (예: cron 자동 회수, 미래 가능). 사장님 회수는 actorId=auth user.
+ */
+export async function revokeAutoConfirmed({
+  candidateId,
+  actorId,
+}: {
+  candidateId: string;
+  actorId: string | null;
+}): Promise<{ table: "welfare_programs" | "loan_programs"; programId: string }> {
+  const admin = createAdminClient();
+
+  // candidate 조회 — confirmed_program_table·confirmed_program_id 로 정확히 row 찾음
+  const { data, error } = await admin
+    .from("press_ingest_candidates")
+    .select(
+      "id, status, confirmed_program_table, confirmed_program_id, confidence_tier",
+    )
+    .eq("id", candidateId)
+    .maybeSingle();
+  if (error) throw new Error(`회수 후보 조회 실패: ${error.message}`);
+  if (!data) throw new Error("후보를 찾을 수 없습니다.");
+  if (data.status !== "confirmed") {
+    throw new Error(`회수는 confirmed 상태만 가능합니다 (현재: ${data.status}).`);
+  }
+  if (!data.confirmed_program_table || !data.confirmed_program_id) {
+    throw new Error("등록된 정책 정보가 없는 후보입니다.");
+  }
+
+  const table = data.confirmed_program_table as "welfare_programs" | "loan_programs";
+  const programId = data.confirmed_program_id as string;
+
+  // welfare/loan row toggle
+  const revoke = buildRevokePayload({ actorId });
+  const { error: hideErr } = await admin.from(table).update(revoke).eq("id", programId);
+  if (hideErr) throw new Error(`정책 hidden 토글 실패: ${hideErr.message}`);
+
+  // candidate status → 'revoked'
+  const { error: candErr } = await admin
+    .from("press_ingest_candidates")
+    .update({ status: "revoked", updated_at: revoke.updated_at })
+    .eq("id", candidateId);
+  if (candErr) throw new Error(`후보 상태 갱신 실패: ${candErr.message}`);
+
+  // audit
+  await logAdminAction({
+    actorId,
+    action: "press_l2_auto_revoke",
+    details: {
+      candidate_id: candidateId,
+      table,
+      program_id: programId,
+      auto_confirm_tier: data.confidence_tier,
+    },
+  });
+
+  return { table, programId };
+}
+
+/**
+ * 잘못 회수한 정책 복원 — is_hidden=false + revoked_at/by null + candidate status='confirmed'.
+ */
+export async function restoreAutoConfirmed({
+  candidateId,
+  actorId,
+}: {
+  candidateId: string;
+  actorId: string | null;
+}): Promise<{ table: "welfare_programs" | "loan_programs"; programId: string }> {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("press_ingest_candidates")
+    .select("id, status, confirmed_program_table, confirmed_program_id")
+    .eq("id", candidateId)
+    .maybeSingle();
+  if (error) throw new Error(`복원 후보 조회 실패: ${error.message}`);
+  if (!data) throw new Error("후보를 찾을 수 없습니다.");
+  if (data.status !== "revoked") {
+    throw new Error(`복원은 revoked 상태만 가능합니다 (현재: ${data.status}).`);
+  }
+  if (!data.confirmed_program_table || !data.confirmed_program_id) {
+    throw new Error("등록된 정책 정보가 없는 후보입니다.");
+  }
+
+  const table = data.confirmed_program_table as "welfare_programs" | "loan_programs";
+  const programId = data.confirmed_program_id as string;
+  const restore = buildRestorePayload();
+
+  const { error: hideErr } = await admin.from(table).update(restore).eq("id", programId);
+  if (hideErr) throw new Error(`정책 복원 토글 실패: ${hideErr.message}`);
+
+  const { error: candErr } = await admin
+    .from("press_ingest_candidates")
+    .update({ status: "confirmed", updated_at: restore.updated_at })
+    .eq("id", candidateId);
+  if (candErr) throw new Error(`후보 상태 갱신 실패: ${candErr.message}`);
+
+  await logAdminAction({
+    actorId,
+    action: "press_l2_auto_restore",
+    details: { candidate_id: candidateId, table, program_id: programId },
+  });
+
+  return { table, programId };
+}
+
 export async function rejectPressCandidate(
   candidateId: string,
   actorId: string,
