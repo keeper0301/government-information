@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { dispatchCommand } from "@/lib/telegram/commands";
+import { getRole, loadRoleSets } from "@/lib/telegram/permissions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -71,9 +72,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "no_text_message" });
   }
 
-  // 화이트리스트 — 사장님 본인 chat_id 만 허용. TELEGRAM_CHAT_ID env 활용.
-  const allowed = (process.env.TELEGRAM_CHAT_ID ?? "").split(",").map((s) => s.trim());
-  if (!allowed.includes(String(chatId))) {
+  // RBAC 화이트리스트 — owner / staff / dev 3 role 합집합.
+  // backward compat: 기존 TELEGRAM_CHAT_ID 는 owner 로 자동 매핑 (loadRoleSets 안에서).
+  const sets = loadRoleSets();
+  const role = getRole(chatId, sets);
+  if (!role) {
     // 등록 안 된 사용자의 메시지는 silently drop. 봇이 응답 X = 사칭 인지 어렵게.
     return NextResponse.json({ ok: true, skipped: "not_whitelisted" });
   }
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET ?? "";
   let reply: string;
   try {
-    reply = await dispatchCommand({ chatId, text, cronSecret });
+    reply = await dispatchCommand({ chatId, text, cronSecret, role });
   } catch (e) {
     reply = `❌ 명령 처리 실패: ${(e as Error).message.slice(0, 80)}`;
   }

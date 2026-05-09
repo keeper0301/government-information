@@ -41,11 +41,14 @@ import {
   publishIndexnowCommand,
 } from "@/lib/telegram/admin/content";
 import { helpText } from "@/lib/telegram/admin/help";
+import { canExecute, denyMessage, type Role } from "@/lib/telegram/permissions";
 
 export interface CommandContext {
   chatId: number;
   text: string;
   cronSecret: string;
+  /** RBAC role — webhook receive 가 getRole 로 결정해 전달 */
+  role: Role;
 }
 
 export async function dispatchCommand(ctx: CommandContext): Promise<string> {
@@ -56,6 +59,11 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
   const [head, ...rest] = trimmed.slice(1).split(/\s+/);
   const name = head?.toLowerCase() ?? "";
   const args = rest.join(" ").trim();
+
+  // RBAC — 명령 실행 권한 체크. matrix 에 없는 명령은 owner 만.
+  if (!canExecute(ctx.role, name)) {
+    return denyMessage(ctx.role, name);
+  }
 
   switch (name) {
     case "help":
