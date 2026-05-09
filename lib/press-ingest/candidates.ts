@@ -931,9 +931,10 @@ export async function findCandidateByProgramId({
   return data ? { candidateId: data.id as string } : null;
 }
 
+// actorId=null 은 system/텔레그램 봇 출처 — admin_actions.actor_id 가 nullable.
 export async function rejectPressCandidate(
   candidateId: string,
-  actorId: string,
+  actorId: string | null,
 ): Promise<void> {
   const admin = createAdminClient();
   const now = new Date().toISOString();

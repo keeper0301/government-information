@@ -40,7 +40,10 @@ async function authorize(request: NextRequest) {
 
 async function sendBackToTelegram(chatId: number, text: string): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return;
+  if (!token) {
+    console.warn("[telegram-receive] TELEGRAM_BOT_TOKEN 미설정 — 응답 발송 스킵");
+    return;
+  }
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
