@@ -113,11 +113,18 @@ async function phase3(): Promise<PhaseStatus> {
     process.env.ADSENSE_CLIENT_SECRET &&
     process.env.ADSENSE_REFRESH_TOKEN
   );
+  const ga4Env = !!(
+    process.env.GA4_PROPERTY_ID &&
+    process.env.GA4_CLIENT_ID &&
+    process.env.GA4_CLIENT_SECRET &&
+    process.env.GA4_REFRESH_TOKEN
+  );
   const integrations = [
     "사이트",
     kakaoEnv ? "카카오" : null,
     tossEnv ? "토스" : null,
     adsenseEnv ? "AdSense" : null,
+    ga4Env ? "GA4" : null,
   ].filter(Boolean);
   const pending: string[] = [];
   if (!kakaoEnv) pending.push("Solapi 환경변수 SOLAPI_API_KEY 등록 (카카오 통계 점검)");
@@ -126,7 +133,11 @@ async function phase3(): Promise<PhaseStatus> {
       "AdSense OAuth 발급 → Vercel env 3종 (ADSENSE_CLIENT_ID/SECRET/REFRESH_TOKEN). 가이드: docs/external-actions/adsense-oauth-guide.md",
     );
   }
-  pending.push("GA4 service account + Analytics Data API 발급 (다음 통합)");
+  if (!ga4Env) {
+    pending.push(
+      "GA4 OAuth 발급 → Vercel env 4종 (GA4_PROPERTY_ID/CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN). 가이드: docs/external-actions/ga4-oauth-guide.md",
+    );
+  }
   return {
     phase: 3,
     title: "외부 콘솔 자동 점검",

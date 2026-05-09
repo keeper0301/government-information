@@ -22,6 +22,7 @@ import { checkSiteAvailability } from "@/lib/external-console/site-availability"
 import { checkKakao } from "@/lib/external-console/kakao";
 import { checkToss } from "@/lib/external-console/toss";
 import { checkAdsense } from "@/lib/external-console/adsense";
+import { checkGa4 } from "@/lib/external-console/ga4";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 
@@ -49,8 +50,7 @@ async function run() {
     checkKakao(),
     checkToss(),
     checkAdsense(),
-    // 다음 통합 시 여기에 추가:
-    // checkGa4()
+    checkGa4(),
   ];
   const settled = await Promise.allSettled(checks);
 
