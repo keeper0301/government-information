@@ -1,8 +1,7 @@
 // ============================================================
-// 뉴스 자동 모더레이션 분류 (OpenAI gpt-4o-mini)
+// 뉴스 자동 모더레이션 분류 (gpt-4o-mini via lib/llm/text)
 // ============================================================
 // /api/cron/news-classify 가 cron 6회/일 호출. 미분류 뉴스를 LLM 으로 판별.
-// SDK 미설치, fetch 직접. JSON mode (response_format) 강제 — 파싱 안전.
 //
 // 판별 영역 (3개):
 //   1) advertorial — 광고성 글 (할인·이벤트·쿠폰 등 명시적 마케팅) → 자동 hide
@@ -10,11 +9,9 @@
 //   3) confidence — 0.7 이상만 자동 hide 적용
 //
 // 비용: gpt-4o-mini ~$0.0004/건 (Haiku 4.5 의 ~1/7). 일 1,200건 = 월 ~$15.
-// 환경변수 OPENAI_API_KEY (2026-05-09 Anthropic 크레딧 소진 사고 후 OpenAI 전환).
 // ============================================================
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = "gpt-4o-mini";
+import { callLLM, parseJSONResponse } from "@/lib/llm/text";
 
 export type NewsClassifyResult = {
   /** 광고성 단정 — 즉시 자동 hide */
@@ -62,60 +59,12 @@ export async function classifyNewsForModeration(input: {
   source: string | null;
   body: string | null;
 }): Promise<NewsClassifyResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY 환경변수 누락");
-  }
-
   const prompt = PROMPT_TEMPLATE.replace("{TITLE}", input.title || "(제목 없음)")
     .replace("{SOURCE}", input.source || "(출처 미상)")
     .replace("{BODY}", (input.body ?? "(본문 없음)").slice(0, 1500));
 
-  const res = await fetch(OPENAI_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 300,
-      // JSON mode — content 가 보장된 JSON 문자열로 옴. 정규식 추출 불필요.
-      response_format: { type: "json_object" },
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`OpenAI API 오류 ${res.status}: ${errText.slice(0, 300)}`);
-  }
-
-  const json: unknown = await res.json().catch(() => ({}));
-  const text = extractMessageText(json);
-  if (!text) throw new Error("OpenAI 응답에서 텍스트 추출 실패");
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch (e) {
-    throw new Error(`JSON 파싱 실패: ${(e as Error).message}`);
-  }
-
-  return validateResult(parsed);
-}
-
-// OpenAI Chat Completion 응답: { choices: [{ message: { content: "..." } }] }
-function extractMessageText(json: unknown): string | null {
-  if (!json || typeof json !== "object") return null;
-  const choices = (json as Record<string, unknown>).choices;
-  if (!Array.isArray(choices) || choices.length === 0) return null;
-  const first = choices[0];
-  if (!first || typeof first !== "object") return null;
-  const message = (first as Record<string, unknown>).message;
-  if (!message || typeof message !== "object") return null;
-  const content = (message as Record<string, unknown>).content;
-  return typeof content === "string" ? content : null;
+  const text = await callLLM({ prompt, maxTokens: 300, jsonMode: true });
+  return validateResult(parseJSONResponse(text));
 }
 
 function validateResult(parsed: unknown): NewsClassifyResult {
