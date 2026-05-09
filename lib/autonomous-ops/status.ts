@@ -108,22 +108,34 @@ async function phase3(): Promise<PhaseStatus> {
   const checks = await countAction24h("external_console_check");
   const kakaoEnv = !!process.env.SOLAPI_API_KEY;
   const tossEnv = !!process.env.TOSS_SECRET_KEY;
+  const adsenseEnv = !!(
+    process.env.ADSENSE_CLIENT_ID &&
+    process.env.ADSENSE_CLIENT_SECRET &&
+    process.env.ADSENSE_REFRESH_TOKEN
+  );
+  const integrations = [
+    "사이트",
+    kakaoEnv ? "카카오" : null,
+    tossEnv ? "토스" : null,
+    adsenseEnv ? "AdSense" : null,
+  ].filter(Boolean);
+  const pending: string[] = [];
+  if (!kakaoEnv) pending.push("Solapi 환경변수 SOLAPI_API_KEY 등록 (카카오 통계 점검)");
+  if (!adsenseEnv) {
+    pending.push(
+      "AdSense OAuth 발급 → Vercel env 3종 (ADSENSE_CLIENT_ID/SECRET/REFRESH_TOKEN). 가이드: docs/external-actions/adsense-oauth-guide.md",
+    );
+  }
+  pending.push("GA4 service account + Analytics Data API 발급 (다음 통합)");
   return {
     phase: 3,
     title: "외부 콘솔 자동 점검",
     active: true, // 사이트 가용성은 env 무관
     metrics: [
       { label: "24h check 실행", value: `${checks}회` },
-      {
-        label: "통합 console",
-        value: `사이트${kakaoEnv ? "+카카오" : ""}${tossEnv ? "+토스" : ""}`,
-      },
+      { label: "통합 console", value: integrations.join("+") },
     ],
-    pendingActions: [
-      ...(kakaoEnv ? [] : ["Solapi 환경변수 SOLAPI_API_KEY 등록 (카카오 통계 점검)"]),
-      "AdSense Google API OAuth + refresh token 발급 (다음 통합)",
-      "GA4 service account + Analytics Data API 발급 (다음 통합)",
-    ],
+    pendingActions: pending,
   };
 }
 
