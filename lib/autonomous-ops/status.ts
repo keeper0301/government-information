@@ -19,29 +19,34 @@ export type PhaseStatus = {
   pendingActions: string[];
 };
 
-const HOUR_24 = "1 day";
+const MS_PER_DAY = 24 * 3600_000;
+const since24h = () => new Date(Date.now() - MS_PER_DAY).toISOString();
 
-// 24h 안 admin_actions 카운트 (action 별)
+// estimated count — 큰 테이블에서 exact 는 느림. hub 표시용 어림수면 충분.
+// graceful: 미실재 action 또는 RPC 에러 시 0 반환.
 async function countAction24h(action: string): Promise<number> {
-  const admin = createAdminClient();
-  const { count } = await admin
-    .from("admin_actions")
-    .select("*", { count: "exact", head: true })
-    .eq("action", action)
-    .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString());
-  return count ?? 0;
+  try {
+    const admin = createAdminClient();
+    const { count, error } = await admin
+      .from("admin_actions")
+      .select("*", { count: "estimated", head: true })
+      .eq("action", action)
+      .gte("created_at", since24h());
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 // 테이블 row 카운트 (graceful — 미적용 DDL 시 0)
-async function countTable(table: string, sinceHours = 24): Promise<number> {
+async function countTable(table: string): Promise<number> {
   try {
     const admin = createAdminClient();
-    const since = new Date(Date.now() - sinceHours * 3600_000).toISOString();
     const { count, error } = await admin
       .from(table)
-      // any cast — graceful 미적용 DDL 시 error 반환
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", since);
+      .select("*", { count: "estimated", head: true })
+      .gte("created_at", since24h());
     if (error) return 0;
     return count ?? 0;
   } catch {
@@ -65,13 +70,12 @@ async function phase1(): Promise<PhaseStatus> {
 
 async function phase2(): Promise<PhaseStatus> {
   const inserts = await countTable("decision_pending");
-  // DDL 075 미적용 시 inserts=0 + 외부 액션 안내
-  const ddlApplied = inserts >= 0; // 항상 true (table 자체 존재 확인은 별도)
+  // active 결정은 env 단독 (DDL 적용 자체는 countTable graceful 0 으로 흡수)
   const solapiActive = !!process.env.SOLAPI_WEBHOOK_SECRET;
   return {
     phase: 2,
     title: "SMS 결정 위임",
-    active: ddlApplied && solapiActive,
+    active: solapiActive,
     metrics: [
       { label: "24h decision 큐", value: `${inserts}건` },
       { label: "Solapi webhook env", value: solapiActive ? "✓ 설정" : "✗ 미설정" },
@@ -79,9 +83,9 @@ async function phase2(): Promise<PhaseStatus> {
     pendingActions: solapiActive
       ? []
       : [
-          "DDL 075 (decision_pending) prod apply (명시 승인)",
+          "운영DB에 075번 마이그레이션 적용 (사장님 승인 필요)",
           "Solapi 양방향 SMS 가입 + webhook URL 등록",
-          "Vercel env: SOLAPI_WEBHOOK_SECRET / SMS_DECISION_ALLOWED_FROM",
+          "Vercel 환경변수 SOLAPI_WEBHOOK_SECRET / SMS_DECISION_ALLOWED_FROM 등록 후 재배포",
         ],
   };
 }
@@ -102,19 +106,20 @@ async function phase3(): Promise<PhaseStatus> {
       },
     ],
     pendingActions: [
-      ...(kakaoEnv ? [] : ["Solapi env (SOLAPI_API_KEY) — 카카오 통계 점검 위해"]),
-      "AdSense Google API OAuth + refresh token (Phase 3 다음 통합)",
-      "GA4 service account + Analytics Data API (Phase 3 다음 통합)",
+      ...(kakaoEnv ? [] : ["Solapi 환경변수 SOLAPI_API_KEY 등록 (카카오 통계 점검)"]),
+      "AdSense Google API OAuth + refresh token 발급 (다음 통합)",
+      "GA4 service account + Analytics Data API 발급 (다음 통합)",
     ],
   };
 }
 
 async function phase4(): Promise<PhaseStatus> {
   const tickets = await countTable("support_tickets");
+  // tickets > 0 이면 DDL 076 적용 + 큐 활용 중. 0 일 때만 가이드 표시.
   return {
     phase: 4,
     title: "AI 챗봇 CS",
-    active: tickets >= 0, // table 존재 확인 graceful
+    active: tickets > 0,
     metrics: [
       { label: "24h 신규 문의", value: `${tickets}건` },
       { label: "intent 분류", value: "9종 + 자동 응답 4매핑" },
@@ -122,7 +127,10 @@ async function phase4(): Promise<PhaseStatus> {
     pendingActions:
       tickets > 0
         ? []
-        : ["DDL 076 (support_tickets) prod apply (미적용 시 0건)"],
+        : [
+            "운영DB에 076번 마이그레이션 적용 (사장님 승인 필요)",
+            "/admin/support 접속 → 빈 큐 확인 → 가동 검증",
+          ],
   };
 }
 
@@ -142,8 +150,8 @@ async function phase5(): Promise<PhaseStatus> {
     pendingActions:
       snsRuns === 0
         ? [
-            "Twitter / Facebook / Instagram / Threads OAuth × 4 등록",
-            "티스토리 OAuth (Phase 5-C)",
+            "Twitter / Facebook / Instagram / Threads 외부 앱 OAuth × 4 발급",
+            "티스토리 OAuth 발급 (외부 자동 글쓰기 확장)",
           ]
         : [],
   };
