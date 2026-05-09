@@ -41,10 +41,11 @@ function validateTable(raw: string): TableName {
   return raw as TableName;
 }
 
-// ─── 1) 중복 확정 (duplicate_of_id 유지 + 감사 로그) ────────
-// duplicate_of_id 는 cron 이 이미 채웠으므로 DB 변경 없이 감사 로그만 남기는
-// "확정" 의미. 추후 정책 노출 로직이 duplicate_of_id IS NOT NULL 인 row 를
-// 자동으로 가린다면, confirm 자체로는 보이는 상태가 그대로 유지됨.
+// ─── 1) 중복 확정 (duplicate_of_id 유지 + 검수 큐 제외 마킹 + 감사 로그) ─
+// duplicate_of_id 는 cron 이 이미 채웠으므로 그 link 는 유지 (정책 노출 차단 의도).
+// dedupe_auto_confirmed_at 컬럼은 "검수 끝났음" 마커 — 페이지 query 가 IS NULL 로
+// 큐를 걸러내므로 confirm 후에도 같은 row 가 다시 노출되지 않게 채움.
+// (cron 자동 confirm 과 같은 컬럼 사용 — 두 경로 동작 일치.)
 export async function confirmDuplicate(formData: FormData): Promise<void> {
   const user = await requireAdminUser();
   const baseId = String(formData.get("baseId") ?? "").trim();
@@ -72,6 +73,18 @@ export async function confirmDuplicate(formData: FormData): Promise<void> {
     redirect(
       "/admin/dedupe?error=" +
         encodeURIComponent("후보 정보가 변경되었어요 — 새로고침"),
+    );
+  }
+
+  // 검수 큐에서 빼기 (duplicate_of_id 는 그대로 유지)
+  const { error: markErr } = await admin
+    .from(table)
+    .update({ dedupe_auto_confirmed_at: new Date().toISOString() })
+    .eq("id", baseId);
+  if (markErr) {
+    redirect(
+      "/admin/dedupe?error=" +
+        encodeURIComponent("검수 큐 제외 실패: " + markErr.message),
     );
   }
 

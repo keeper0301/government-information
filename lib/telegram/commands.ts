@@ -24,6 +24,11 @@ import {
   statusCommand,
   triggerCommand,
 } from "@/lib/telegram/admin/operate";
+import {
+  dedupeListCommand,
+  dedupeConfirmCommand,
+  dedupeRejectCommand,
+} from "@/lib/telegram/admin/dedupe";
 
 export interface CommandContext {
   chatId: number;
@@ -55,6 +60,8 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
       return restoreCommand(args);
     case "press":
       return pressDispatch(args);
+    case "dedupe":
+      return dedupeDispatch(args);
     case "news":
       return newsListCommand();
     case "health":
@@ -88,6 +95,21 @@ async function pressDispatch(args: string): Promise<string> {
   }
 }
 
+// /dedupe — list / confirm {baseId} / reject {baseId}
+async function dedupeDispatch(args: string): Promise<string> {
+  if (!args) return dedupeListCommand();
+  const [sub, ...rest] = args.split(/\s+/);
+  const baseId = rest.join(" ").trim();
+  switch ((sub ?? "").toLowerCase()) {
+    case "confirm":
+      return dedupeConfirmCommand(baseId);
+    case "reject":
+      return dedupeRejectCommand(baseId);
+    default:
+      return "사용법: /dedupe | /dedupe confirm {baseId} | /dedupe reject {baseId}";
+  }
+}
+
 function helpText(): string {
   return [
     "[keepioo 봇 명령]",
@@ -100,6 +122,9 @@ function helpText(): string {
     "/press — pending press 후보 5개",
     "/press confirm {uuid} — 자동 등록",
     "/press dismiss {uuid} — 후보 폐기",
+    "/dedupe — pending 중복 후보 5개",
+    "/dedupe confirm {baseId} — 중복 확정 (audit 기록)",
+    "/dedupe reject {baseId} — 오탐 해제 (link 제거)",
     "/news — 분류 대기 뉴스 5개",
     "/health — 사이트 헬스 요약",
     "/user {이메일|UUID} — 사용자 lookup",
