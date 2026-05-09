@@ -1,5 +1,5 @@
 // 미분류 뉴스 자동 모더레이션 cron (6회/일 KST 10:30~20:30 매 2시간).
-// LLM (Claude Haiku) 으로 광고성·저작권 의심 자동 판별 → confidence 0.7+ 자동 hide.
+// LLM (OpenAI gpt-4o-mini) 으로 광고성·저작권 의심 자동 판별 → confidence 0.7+ 자동 hide.
 // 안전: cap 200 + 동시 5 batch + classified_at 채워진 글 재분류 안 됨.
 // oldest-first (ASC) — 14k backlog 우선 흡수, 신규 ~245/일 < 1,200/일 수용량.
 
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 600;
 
 // spec opt-C — 100 → 200 확대 + 동시 5 병렬화. 14k backlog 14일 해소 목표.
-// Anthropic Haiku 비용: cron 6회 × 200건 = 1,200건/일 ≈ 월 ~$108.
+// gpt-4o-mini 비용: cron 6회 × 200건 = 1,200건/일 ≈ 월 ~$15 (Haiku 의 ~1/7).
 // timeout: 200 × ~3초 ÷ 동시 5 ≈ 120초 < maxDuration 600초 (5x margin).
 // export — /admin/ops-monitor 가 표시값 동기화.
 export const CAP_PER_CRON = 200;

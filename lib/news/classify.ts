@@ -1,21 +1,20 @@
 // ============================================================
-// 뉴스 자동 모더레이션 분류 (Anthropic Claude Haiku)
+// 뉴스 자동 모더레이션 분류 (OpenAI gpt-4o-mini)
 // ============================================================
-// /api/cron/news-classify 가 매시간 호출. 미분류 뉴스를 LLM 으로 판별.
-// press-ingest/classify.ts 와 동일 패턴 (SDK 미설치, fetch 직접).
+// /api/cron/news-classify 가 cron 6회/일 호출. 미분류 뉴스를 LLM 으로 판별.
+// SDK 미설치, fetch 직접. JSON mode (response_format) 강제 — 파싱 안전.
 //
 // 판별 영역 (3개):
-//   1) advertorial — 광고성 글 (할인·이벤트·쿠폰 등 명시적 마케팅)
-//      → 자동 hide
-//   2) copyright_risk — 저작권 위반 의심 (특정 매체 전문 복붙·번역)
-//      → 자동 hide
-//   3) topic — 사용자 검색에 도움될 카테고리 (이번 단계는 hide 결정만)
+//   1) advertorial — 광고성 글 (할인·이벤트·쿠폰 등 명시적 마케팅) → 자동 hide
+//   2) copyright_risk — 저작권 위반 의심 (특정 매체 전문 복붙·번역) → 자동 hide
+//   3) confidence — 0.7 이상만 자동 hide 적용
 //
-// 비용: Haiku 4.5 ~$0.003/건. 일 30~100건 = 월 ~$10. ANTHROPIC_API_KEY 활용.
+// 비용: gpt-4o-mini ~$0.0004/건 (Haiku 4.5 의 ~1/7). 일 1,200건 = 월 ~$15.
+// 환경변수 OPENAI_API_KEY (2026-05-09 Anthropic 크레딧 소진 사고 후 OpenAI 전환).
 // ============================================================
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-haiku-4-5-20251001";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const MODEL = "gpt-4o-mini";
 
 export type NewsClassifyResult = {
   /** 광고성 단정 — 즉시 자동 hide */
@@ -63,45 +62,42 @@ export async function classifyNewsForModeration(input: {
   source: string | null;
   body: string | null;
 }): Promise<NewsClassifyResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY 환경변수 누락");
+    throw new Error("OPENAI_API_KEY 환경변수 누락");
   }
 
   const prompt = PROMPT_TEMPLATE.replace("{TITLE}", input.title || "(제목 없음)")
     .replace("{SOURCE}", input.source || "(출처 미상)")
     .replace("{BODY}", (input.body ?? "(본문 없음)").slice(0, 1500));
 
-  const res = await fetch(ANTHROPIC_API_URL, {
+  const res = await fetch(OPENAI_API_URL, {
     method: "POST",
     headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 300,
+      // JSON mode — content 가 보장된 JSON 문자열로 옴. 정규식 추출 불필요.
+      response_format: { type: "json_object" },
       messages: [{ role: "user", content: prompt }],
     }),
   });
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
-    throw new Error(`Anthropic API 오류 ${res.status}: ${errText.slice(0, 300)}`);
+    throw new Error(`OpenAI API 오류 ${res.status}: ${errText.slice(0, 300)}`);
   }
 
   const json: unknown = await res.json().catch(() => ({}));
   const text = extractMessageText(json);
-  if (!text) throw new Error("Anthropic 응답에서 텍스트 추출 실패");
-
-  // JSON 추출 — Claude 가 가끔 앞뒤에 설명 붙임. 첫 { ... } 만 파싱.
-  const jsonMatch = text.match(/\{[\s\S]*?\}/);
-  if (!jsonMatch) throw new Error(`JSON 형식 응답 아님: ${text.slice(0, 200)}`);
+  if (!text) throw new Error("OpenAI 응답에서 텍스트 추출 실패");
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(jsonMatch[0]);
+    parsed = JSON.parse(text);
   } catch (e) {
     throw new Error(`JSON 파싱 실패: ${(e as Error).message}`);
   }
@@ -109,14 +105,17 @@ export async function classifyNewsForModeration(input: {
   return validateResult(parsed);
 }
 
+// OpenAI Chat Completion 응답: { choices: [{ message: { content: "..." } }] }
 function extractMessageText(json: unknown): string | null {
   if (!json || typeof json !== "object") return null;
-  const content = (json as Record<string, unknown>).content;
-  if (!Array.isArray(content) || content.length === 0) return null;
-  const first = content[0];
+  const choices = (json as Record<string, unknown>).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return null;
+  const first = choices[0];
   if (!first || typeof first !== "object") return null;
-  const text = (first as Record<string, unknown>).text;
-  return typeof text === "string" ? text : null;
+  const message = (first as Record<string, unknown>).message;
+  if (!message || typeof message !== "object") return null;
+  const content = (message as Record<string, unknown>).content;
+  return typeof content === "string" ? content : null;
 }
 
 function validateResult(parsed: unknown): NewsClassifyResult {
