@@ -44,7 +44,10 @@ export type AdminActionType =
   | "category_backfill_run"      // A4 — 카테고리 누락 정책 LLM 자동 보강 (cron 1회 실행 통계)
   | "blog_quality_flag"          // A1 — 블로그 글 LLM 품질 평가 score ≤ 2 사장님 검수 큐 표시
   | "nps_invite_sent"            // C3 — 가입 7일 후 NPS 설문 메일 발송 (중복 방지 audit)
-  | "sns_publish_run";           // C1 — blog 1건 SNS 4종 자동 게시 결과 (channel별 ok/reason)
+  | "sns_publish_run"            // C1 — blog 1건 SNS 4종 자동 게시 결과 (channel별 ok/reason)
+  | "cron_retry_run"             // 가-A1 — failed cron 자동 1회 재시도 audit (job별 retry status)
+  | "vercel_deploy_failed"       // 가-A2 — Vercel deployment 실패 webhook 수신 (사장님 텔레그램 알림)
+  | "llm_usage_summary";         // 가-A3 — 24h LLM 호출 cron audit 합산 통계
 
 export type AdminActionRecord = {
   id: string;
@@ -314,4 +317,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   blog_quality_flag: "블로그 글 검수 필요 표시",
   nps_invite_sent: "NPS 설문 초대 발송",
   sns_publish_run: "SNS 자동 게시 실행",
+  cron_retry_run: "Cron 자동 재시도 실행",
+  vercel_deploy_failed: "Vercel deploy 실패 알림",
+  llm_usage_summary: "LLM 사용량 일일 요약",
 };

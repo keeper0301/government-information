@@ -1,10 +1,17 @@
 // ============================================================
 // 텔레그램 봇 명령 dispatcher — 사장님이 chat 으로 keepioo 운영 제어.
 // ============================================================
-// 첫 iteration: 단순 read-only + 수동 trigger.
+// /test /status /trigger + /revoke {id} /restore {id}.
 // env 변경 (dedupe / tier toggle) 은 Vercel PAT 필요 — 다음 iteration.
 
+import {
+  revokeAutoConfirmed,
+  restoreAutoConfirmed,
+} from "@/lib/press-ingest/candidates";
+
 const SITE_BASE = "https://www.keepioo.com";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // 화이트리스트로 등록 가능한 cron 명. 잘못된 path 호출 차단.
 const ALLOWED_TRIGGERS = [
@@ -50,6 +57,10 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
       return statusCommand(ctx.cronSecret);
     case "trigger":
       return triggerCommand(args, ctx.cronSecret);
+    case "revoke":
+      return revokeCommand(args);
+    case "restore":
+      return restoreCommand(args);
     default:
       return `알 수 없는 명령: /${name}\n\n${helpText()}`;
   }
@@ -63,10 +74,40 @@ function helpText(): string {
     "/test — 봇 살아있는지 확인",
     "/status — 24h+7d 자동 등록·회수 통계",
     "/trigger {cron-name} — 수동 cron 실행 (예: /trigger press-ingest)",
+    "/revoke {candidate_uuid} — 자동 등록 정책 회수",
+    "/restore {candidate_uuid} — 회수된 정책 복원",
+    "",
+    "candidate_uuid 는 /admin/auto-confirmed 페이지에서 확인",
     "",
     "사용 가능 cron:",
     ...ALLOWED_TRIGGERS.map((t) => `  · ${t}`),
   ].join("\n");
+}
+
+async function revokeCommand(args: string): Promise<string> {
+  const id = args.trim();
+  if (!UUID_RE.test(id)) {
+    return `❌ candidate_uuid 형식 오류\n사용법: /revoke {uuid}\n예: /revoke 12345678-1234-1234-1234-123456789abc`;
+  }
+  try {
+    const result = await revokeAutoConfirmed({ candidateId: id, actorId: null });
+    return `✅ 회수 완료\ntable: ${result.table}\nprogram_id: ${result.programId}`;
+  } catch (e) {
+    return `❌ 회수 실패: ${(e as Error).message.slice(0, 200)}`;
+  }
+}
+
+async function restoreCommand(args: string): Promise<string> {
+  const id = args.trim();
+  if (!UUID_RE.test(id)) {
+    return `❌ candidate_uuid 형식 오류\n사용법: /restore {uuid}\n예: /restore 12345678-1234-1234-1234-123456789abc`;
+  }
+  try {
+    const result = await restoreAutoConfirmed({ candidateId: id, actorId: null });
+    return `✅ 복원 완료\ntable: ${result.table}\nprogram_id: ${result.programId}`;
+  } catch (e) {
+    return `❌ 복원 실패: ${(e as Error).message.slice(0, 200)}`;
+  }
 }
 
 async function statusCommand(cronSecret: string): Promise<string> {
