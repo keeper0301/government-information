@@ -102,6 +102,21 @@ export async function GET(request: Request) {
       .is("classified_at", null).eq("is_hidden", false)),
   ]);
 
+  // low 의 사장님 검수 결과 7d (튜닝 핵심) — confirm/reject 비율로 LLM 보수성 판단
+  const [lowConfirmed7d, lowRejected7d] = await Promise.all([
+    safe(admin.from("press_ingest_candidates").select("id", { count: "exact", head: true })
+      .eq("confidence_tier", "low").eq("status", "confirmed").gte("created_at", since7d)),
+    safe(admin.from("press_ingest_candidates").select("id", { count: "exact", head: true })
+      .eq("confidence_tier", "low").eq("status", "rejected").gte("created_at", since7d)),
+  ]);
+  const lowDecided7d = lowConfirmed7d + lowRejected7d;
+  const lowConfirmRate7d = lowDecided7d > 0 ? Math.round((lowConfirmed7d / lowDecided7d) * 100) : 0;
+  // > 50%: LLM 너무 보수적 (low 도 자동 confirm 가능). < 30%: LLM 정확 (현 상태 유지).
+  const lowConfirmRateHint =
+    lowDecided7d < 5 ? "데이터 부족" :
+    lowConfirmRate7d > 50 ? "LLM 보수적 — AUTO_CONFIRM_TIER_FLOOR=low 검토" :
+    lowConfirmRate7d < 30 ? "LLM 정확 — 현 상태 유지" : "관찰 중";
+
   const midRevokeRateWarning = midRevokeRate7d > 5;
 
   return NextResponse.json({
@@ -120,5 +135,10 @@ export async function GET(request: Request) {
     pressLowTierBacklog: lowQueue,
     pressPending,
     newsBacklog,
+    // low tier 의 사장님 검수 결과 (1주차 튜닝 데이터)
+    lowConfirmed7d,
+    lowRejected7d,
+    lowConfirmRate7d,
+    lowConfirmRateHint,
   });
 }
