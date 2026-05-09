@@ -14,6 +14,18 @@ const nextConfig: NextConfig = {
   // isomorphic-dompurify 는 내부에서 jsdom 을 사용 (lib/html-sanitize.ts).
   serverExternalPackages: ["jsdom", "isomorphic-dompurify"],
 
+  // IndexNow 표준 — 검색엔진 봇이 root path 의 {key}.txt 를 GET 해 키 검증.
+  // /api/indexnow-key 로 rewrite 해 동일 키 응답 (api 라우트가 INDEXNOW_KEY env 반환).
+  // 정규식: 32~128자 hex 만 — robots.txt·sitemap.xml 등 다른 root 파일과 안전 분리.
+  async rewrites() {
+    return [
+      {
+        source: "/:key([a-f0-9]{32,128}).txt",
+        destination: "/api/indexnow-key",
+      },
+    ];
+  },
+
   // 보안 헤더 — 외부 LLM 평가에서 HSTS 만 있고 나머지 부재 지적.
   async headers() {
     // Content-Security-Policy — 외부 스크립트(AdSense·GA·Toss) 도메인 명시.

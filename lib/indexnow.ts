@@ -55,7 +55,9 @@ export async function submitToIndexNow(
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
-  const keyLocation = `${baseUrl}/api/indexnow-key`;
+  // IndexNow 표준 path: /{key}.txt (root). next.config.ts rewrite 로 /api/indexnow-key 매핑.
+  // 비표준 path (/api/indexnow-key 직접) 은 indexnow.org 가 422 거부 — 표준 강제.
+  const keyLocation = `${baseUrl}/${key}.txt`;
 
   const payload = {
     host,
