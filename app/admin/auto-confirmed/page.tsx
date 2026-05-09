@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ days?: string }>;
+  searchParams: Promise<{ days?: string; revoked?: string }>;
 }) {
   // 1) 권한 가드 — 비로그인 → /login, 비관리자 → 홈
   const supabase = await createClient();
@@ -38,6 +38,9 @@ export default async function Page({
   // 2) 윈도우 필터 — 1·3·7·30 일 만 허용 (정수 clamp)
   const params = await searchParams;
   const days = Math.max(1, Math.min(30, Number(params.days ?? "3")));
+  // user detail 페이지에서 회수 직후 redirect 시 query 로 candidate id 전달.
+  // 사장님이 "방금 회수" 인지 + 잘못 회수했으면 즉시 복원 가능하게 강조.
+  const justRevokedId = typeof params.revoked === "string" ? params.revoked : null;
 
   // 3) 자동 등록 정책 목록 조회 (회수 포함)
   const rows = await listAutoConfirmedPolicies({ sinceDays: days });
@@ -49,6 +52,11 @@ export default async function Page({
         title="자동 등록 정책 검수"
         description="LLM 신뢰도 high·mid 로 자동 등록된 정책. 잘못된 분류 1클릭 회수 + 복원."
       />
+      {justRevokedId && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>회수 완료</strong> — 잘못 회수하셨다면 아래 목록에서 빨간색 처리된 항목을 찾아 &quot;복원&quot; 버튼을 누르세요.
+        </div>
+      )}
       <AutoConfirmedList rows={rows} days={days} />
     </div>
   );

@@ -8,16 +8,15 @@
 // 회수/복원 버튼은 server action 호출 — server action 자체가 requireAdmin
 // 가드를 가지므로 UI 분기는 노출 통제만 책임 (defense in depth).
 //
-// UX 한계 (의도된 동작):
-//   회수 직후 같은 user detail 페이지를 새로고침하면 RLS USING(is_hidden=false)
-//   때문에 row 가 안 보여 404 가 나타남. 즉 user detail 에서 회수 후 "복원"
-//   버튼을 누를 기회가 없음. 사장님이 잘못 회수한 경우 /admin/auto-confirmed
-//   대시보드로 가서 복원하면 됨 (그쪽엔 admin client = service_role 우회).
-//   여기 "복원" 버튼은 isHidden=true 후보가 (예: /admin/auto-confirmed
-//   → 사용자 페이지 직접 진입) 도달했을 때 노출되는 안전망.
+// UX 흐름 (Task B 보강):
+//   회수 직후 RLS USING(is_hidden=false) 가 row 차단 → 같은 user detail 새로고침
+//   시 404. 따라서 회수 성공 후 자동으로 /admin/auto-confirmed 로 redirect 해서
+//   사장님이 검수 페이지에서 복원 버튼으로 다시 살릴 수 있게 함.
+//   복원 성공 시는 router.refresh() 로 같은 페이지 즉시 갱신.
 // ============================================================
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { revokeAction, restoreAction } from "@/app/admin/auto-confirmed/actions";
 
 export function AutoConfirmBadge({
@@ -35,6 +34,7 @@ export function AutoConfirmBadge({
   // 자동 등록 시각 — 사장님이 언제 등록됐는지 한눈에 확인
   autoConfirmedAt: string | null;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   // candidate 매핑 또는 자동 등록 메타가 없으면 일반 사용자처럼 안 보이게.
   // 수동 등록 정책의 경우 auto_confirm_tier=null 이라 자연 분기됨.
@@ -72,6 +72,8 @@ export function AutoConfirmBadge({
                   confirm("이 정책을 복원합니다 (사용자에게 다시 노출)?")
                 ) {
                   await restoreAction(candidateId);
+                  // 같은 페이지 즉시 갱신 — RLS 통과 후 row 다시 보임
+                  router.refresh();
                 }
               })
             }
@@ -88,6 +90,9 @@ export function AutoConfirmBadge({
             startTransition(async () => {
               if (confirm("이 정책을 회수합니다 (사용자 노출 즉시 차단)?")) {
                 await revokeAction(candidateId);
+                // 회수 후 같은 user detail 은 RLS 차단으로 404 — 검수 페이지로 이동.
+                // ?revoked=program_id 로 query 전달하면 검수 페이지 banner 가능.
+                router.push(`/admin/auto-confirmed?revoked=${candidateId}`);
               }
             })
           }
