@@ -1,4 +1,4 @@
-// 미분류 뉴스 자동 모더레이션 cron (6회/일 KST 1:30~11:30 매 2시간).
+// 미분류 뉴스 자동 모더레이션 cron (6회/일 KST 10:30~20:30 매 2시간).
 // LLM (Claude Haiku) 으로 광고성·저작권 의심 자동 판별 → confidence 0.7+ 자동 hide.
 // 안전: cap 200 + 동시 5 batch + classified_at 채워진 글 재분류 안 됨.
 // oldest-first (ASC) — 14k backlog 우선 흡수, 신규 ~245/일 < 1,200/일 수용량.
