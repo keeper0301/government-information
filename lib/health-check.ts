@@ -250,13 +250,13 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     });
   }
 
-  // press_l2_classify 흔적 노쇼 — Vercel cron path bug 또는 ANTHROPIC_API_KEY 만료
+  // press_l2_classify 흔적 노쇼 — Vercel cron path bug 또는 OPENAI_API_KEY 만료
   if (s.pressLastClassifyHours >= PRESS_NO_SHOW_HOURS) {
     alerts.push({
       key: "press_no_show",
       message: `press_l2_classify 마지막 ${s.pressLastClassifyHours}h 전 (임계 ${PRESS_NO_SHOW_HOURS}h+).`,
       recommendation:
-        "/admin/cron-trigger 에서 press-ingest 수동 실행 + ANTHROPIC_API_KEY · vercel.json schedule 확인",
+        "/admin/cron-trigger 에서 press-ingest 수동 실행 + OPENAI_API_KEY · vercel.json schedule 확인",
     });
   }
 

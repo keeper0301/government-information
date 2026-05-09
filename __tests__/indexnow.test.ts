@@ -82,7 +82,10 @@ describe("submitToIndexNow", () => {
     const body = JSON.parse(calls[0][1]!.body as string);
     expect(body.host).toBe("www.keepioo.com");
     expect(body.key).toBe(process.env.INDEXNOW_KEY);
-    expect(body.keyLocation).toBe("https://www.keepioo.com/api/indexnow-key");
+    // commit a77a1e2 — IndexNow 표준 root path /{key}.txt 매핑
+    expect(body.keyLocation).toBe(
+      `https://www.keepioo.com/${process.env.INDEXNOW_KEY}.txt`,
+    );
     expect(body.urlList).toEqual(["https://www.keepioo.com/blog/test"]);
   });
 

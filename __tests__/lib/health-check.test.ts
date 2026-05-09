@@ -249,7 +249,7 @@ describe("checkThresholds — Phase 1 자동 진단", () => {
     const alerts = checkThresholds({ ...ACTIVE, pressLastClassifyHours: 36 });
     const a = alerts.find((x) => x.key === "press_no_show");
     expect(a).toBeDefined();
-    expect(a?.recommendation).toContain("ANTHROPIC_API_KEY");
+    expect(a?.recommendation).toContain("OPENAI_API_KEY");
   });
 
   it("press_l2_classify 35h 이내면 alert 안 발송", () => {
