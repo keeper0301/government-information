@@ -29,6 +29,11 @@ import {
   dedupeConfirmCommand,
   dedupeRejectCommand,
 } from "@/lib/telegram/admin/dedupe";
+import {
+  envListCommand,
+  envSetCommand,
+  redeployCommand,
+} from "@/lib/telegram/admin/vercel";
 
 export interface CommandContext {
   chatId: number;
@@ -62,6 +67,10 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
       return pressDispatch(args);
     case "dedupe":
       return dedupeDispatch(args);
+    case "env":
+      return envDispatch(args);
+    case "redeploy":
+      return redeployCommand();
     case "news":
       return newsListCommand();
     case "health":
@@ -110,6 +119,19 @@ async function dedupeDispatch(args: string): Promise<string> {
   }
 }
 
+// /env — 화이트리스트 list / set {KEY} {VALUE}
+async function envDispatch(args: string): Promise<string> {
+  if (!args) return envListCommand();
+  const [sub, ...rest] = args.split(/\s+/);
+  const setArgs = rest.join(" ").trim();
+  switch ((sub ?? "").toLowerCase()) {
+    case "set":
+      return envSetCommand(setArgs);
+    default:
+      return "사용법: /env | /env set {KEY} {값}";
+  }
+}
+
 function helpText(): string {
   return [
     "[keepioo 봇 명령]",
@@ -135,6 +157,11 @@ function helpText(): string {
     "── 자동 등록 회수 ──",
     "/revoke {uuid} — 자동 등록 정책 회수",
     "/restore {uuid} — 회수된 정책 복원",
+    "",
+    "── 사이트 조작 (Vercel) ──",
+    "/env — 운영 toggle env 현재 값",
+    "/env set {KEY} {값} — env 변경 (화이트리스트만)",
+    "/redeploy — production 즉시 재배포",
     "",
     "사용 가능 cron:",
     ...ALLOWED_TRIGGERS.map((t) => `  · ${t}`),
