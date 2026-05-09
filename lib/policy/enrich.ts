@@ -1,8 +1,10 @@
 // ============================================================
-// 다 묶음 — 정책 본문 자동 풍부화 (키워드 + 한 줄 요약).
+// 다 묶음 — 정책 본문 자동 풍부화 (키워드 + 한 줄 요약, gpt-4o-mini).
 // ============================================================
 // LLM 1회 호출에 두 정보 동시 추출 — 비용 절약.
-// ~$0.003/건. 매일 30건 = ~$0.1/일.
+// ~$0.0004/건 (Haiku 의 ~1/7). 매일 30건 = ~$0.01/일.
+
+import { callLLM, parseJSONResponse } from "@/lib/llm/text";
 
 export interface PolicyEnrichInput {
   title: string;
@@ -22,9 +24,6 @@ const EMPTY: PolicyEnrichResult = { keywords: [], summaryShort: "" };
 export async function enrichPolicy(
   input: PolicyEnrichInput,
 ): Promise<PolicyEnrichResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return EMPTY;
-
   const text = [
     `제목: ${input.title}`,
     input.target ? `대상: ${input.target.slice(0, 200)}` : "",
@@ -53,49 +52,22 @@ JSON 만 반환:
 정책 정보:
 ${text}`;
 
-  let res: Response;
+  let parsed: { keywords?: unknown; summary_short?: unknown };
   try {
-    res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    const responseText = await callLLM({ prompt, maxTokens: 400, jsonMode: true });
+    parsed = parseJSONResponse(responseText);
   } catch {
     return EMPTY;
   }
-  if (!res.ok) return EMPTY;
 
-  const data = (await res.json().catch(() => null)) as
-    | { content?: Array<{ type: string; text: string }> }
-    | null;
-  const responseText = data?.content?.find((c) => c.type === "text")?.text ?? "";
-  const match = responseText.match(/\{[\s\S]*\}/);
-  if (!match) return EMPTY;
-
-  try {
-    const parsed = JSON.parse(match[0]) as {
-      keywords?: unknown;
-      summary_short?: unknown;
-    };
-    const keywords = Array.isArray(parsed.keywords)
-      ? parsed.keywords
-          .filter((k): k is string => typeof k === "string" && k.length >= 1)
-          .slice(0, 15)
-      : [];
-    const summaryShort =
-      typeof parsed.summary_short === "string"
-        ? parsed.summary_short.slice(0, 100)
-        : "";
-    return { keywords, summaryShort };
-  } catch {
-    return EMPTY;
-  }
+  const keywords = Array.isArray(parsed.keywords)
+    ? parsed.keywords
+        .filter((k): k is string => typeof k === "string" && k.length >= 1)
+        .slice(0, 15)
+    : [];
+  const summaryShort =
+    typeof parsed.summary_short === "string"
+      ? parsed.summary_short.slice(0, 100)
+      : "";
+  return { keywords, summaryShort };
 }

@@ -1,7 +1,9 @@
 // ============================================================
 // 사용자 문의 intent 분류 (Phase 4 CS 1차 응대)
 // ============================================================
-// 사용자 메시지 → intent + confidence + reason. Claude Haiku 1회 호출.
+// 사용자 메시지 → intent + confidence + reason. gpt-4o-mini 1회 호출.
+
+import { callLLM } from "@/lib/llm/text";
 //
 // 자동 응답 가능 intent (정해진 응답 메시지 매핑):
 //   - refund_policy_question, account_recovery, account_delete,
@@ -72,18 +74,13 @@ export interface ClassificationResult {
   reason: string;
 }
 
-// Claude Haiku 호출 — Anthropic Messages API.
-// ANTHROPIC_API_KEY 미설정 시 default { intent: "other", confidence: 0 } 반환
+// gpt-4o-mini 호출 (lib/llm/text 추상화).
+// OPENAI_API_KEY 미설정·API 오류 시 default { intent: "other", confidence: 0 } 반환
 // (graceful degradation — 사장님 큐 직행).
 export async function classifySupportIntent(
   message: string,
   subject?: string,
 ): Promise<ClassificationResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return { intent: "other", confidence: 0, reason: "ANTHROPIC_API_KEY missing" };
-  }
-
   const userInput = [subject ? `제목: ${subject}` : "", `본문: ${message}`]
     .filter(Boolean)
     .join("\n");
@@ -104,49 +101,22 @@ export async function classifySupportIntent(
 JSON 만 반환하세요:
 { "intent": "...", "confidence": 0.85, "reason": "한 줄 요약" }
 
-confidence 는 0~1, 애매하면 0.5 이하로.`;
+confidence 는 0~1, 애매하면 0.5 이하로.
 
-  const body = {
-    // 다른 lib (lib/news/classify.ts, lib/press-ingest/classify.ts) 와 동일 dated id
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 200,
-    messages: [
-      { role: "user", content: `${prompt}\n\n사용자 문의:\n${userInput}` },
-    ],
-  };
+사용자 문의:
+${userInput}`;
 
-  let res: Response;
+  let text: string;
   try {
-    res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    text = await callLLM({ prompt, maxTokens: 200, jsonMode: true });
   } catch (e) {
     return {
       intent: "other",
       confidence: 0,
-      reason: `API call failed: ${(e as Error).message.slice(0, 80)}`,
+      reason: (e as Error).message.slice(0, 80),
     };
   }
 
-  if (!res.ok) {
-    return {
-      intent: "other",
-      confidence: 0,
-      reason: `HTTP ${res.status}`,
-    };
-  }
-
-  const data = (await res.json().catch(() => null)) as {
-    content?: Array<{ type: string; text: string }>;
-  } | null;
-
-  const text = data?.content?.find((c) => c.type === "text")?.text ?? "";
   return parseClassificationResponse(text);
 }
 

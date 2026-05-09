@@ -1,9 +1,11 @@
 // ============================================================
-// A1 — 블로그 발행 자동 품질 검수 (Claude Haiku 1~5점 평가).
+// A1 — 블로그 발행 자동 품질 검수 (gpt-4o-mini 1~5점 평가).
 // ============================================================
 // 자동 발행된 블로그 글에 대해 LLM 이 광고성·오류·가독성을 평가.
 // score ≤ 2 → admin_review_required=true. 사장님 /admin/blog 검수 큐.
-// 비용: ~$0.005/글. 매일 10~30글 가정 → ~$0.1/일.
+// 비용: ~$0.0007/글 (Haiku 의 ~1/7). 매일 10~30글 → ~$0.02/일.
+
+import { callLLM, parseJSONResponse } from "@/lib/llm/text";
 
 export interface BlogQualityResult {
   score: number; // 1~5 (1=잘못, 5=우수)
@@ -21,9 +23,6 @@ export async function evaluateBlogQuality(post: {
   title: string;
   content: string;
 }): Promise<BlogQualityResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { ...NEUTRAL, reason: "ANTHROPIC_API_KEY missing" };
-
   const prompt = `다음 블로그 글의 품질을 1~5 점으로 평가하세요.
 
 평가 기준:
@@ -41,50 +40,22 @@ JSON 만 반환:
 본문 (앞 2000자):
 ${post.content.slice(0, 2000)}`;
 
-  let res: Response;
+  let parsed: { score?: number; reason?: string };
   try {
-    res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 150,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    const text = await callLLM({ prompt, maxTokens: 150, jsonMode: true });
+    parsed = parseJSONResponse<{ score?: number; reason?: string }>(text);
   } catch (e) {
-    return { ...NEUTRAL, reason: `network: ${(e as Error).message.slice(0, 60)}` };
+    return { ...NEUTRAL, reason: (e as Error).message.slice(0, 80) };
   }
 
-  if (!res.ok) return { ...NEUTRAL, reason: `http_${res.status}` };
-
-  const data = (await res.json().catch(() => null)) as
-    | { content?: Array<{ type: string; text: string }> }
-    | null;
-  const text = data?.content?.find((c) => c.type === "text")?.text ?? "";
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return { ...NEUTRAL, reason: "no_json" };
-
-  try {
-    const parsed = JSON.parse(match[0]) as {
-      score?: number;
-      reason?: string;
-    };
-    const rawScore =
-      typeof parsed.score === "number" && Number.isInteger(parsed.score)
-        ? parsed.score
-        : 3;
-    const score = Math.max(1, Math.min(5, rawScore));
-    return {
-      score,
-      needsReview: score <= 2,
-      reason: (parsed.reason || "").slice(0, 200),
-    };
-  } catch {
-    return { ...NEUTRAL, reason: "json_parse_failed" };
-  }
+  const rawScore =
+    typeof parsed.score === "number" && Number.isInteger(parsed.score)
+      ? parsed.score
+      : 3;
+  const score = Math.max(1, Math.min(5, rawScore));
+  return {
+    score,
+    needsReview: score <= 2,
+    reason: (parsed.reason || "").slice(0, 200),
+  };
 }
