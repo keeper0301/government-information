@@ -39,7 +39,11 @@ export type AdminActionType =
   | "dedupe_reject"         // Phase 3 B3 — 잘못 잡힌 후보 reset (duplicate_of_id NULL)
   | "health_alert_run"      // Phase 1 — /api/cron/health-alert 매일 09:00 KST 실행 흔적 (alert 0 도 기록 → cron 노쇼 진단 가능)
   | "press_l2_auto_revoke"  // 자동 등록 정책 회수 (is_hidden=true) — 자동 confirm 후 사장님 검토에서 부적합 판단
-  | "press_l2_auto_restore"; // 잘못 회수한 정책 복원 (is_hidden=false)
+  | "press_l2_auto_restore" // 잘못 회수한 정책 복원 (is_hidden=false)
+  | "cancellation_followup_sent" // A2 — 결제 해지 사용자에게 자동 재가입 안내 메일 발송 (중복 방지 audit)
+  | "category_backfill_run"      // A4 — 카테고리 누락 정책 LLM 자동 보강 (cron 1회 실행 통계)
+  | "blog_quality_flag"          // A1 — 블로그 글 LLM 품질 평가 score ≤ 2 사장님 검수 큐 표시
+  | "nps_invite_sent";           // C3 — 가입 7일 후 NPS 설문 메일 발송 (중복 방지 audit)
 
 export type AdminActionRecord = {
   id: string;
@@ -304,4 +308,8 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   health_alert_run: "헬스 알림 cron 실행",
   press_l2_auto_revoke: "자동 등록 정책 회수",
   press_l2_auto_restore: "자동 등록 정책 복원",
+  cancellation_followup_sent: "해지 사용자 재가입 안내 발송",
+  category_backfill_run: "카테고리 자동 보강 cron 실행",
+  blog_quality_flag: "블로그 글 검수 필요 표시",
+  nps_invite_sent: "NPS 설문 초대 발송",
 };

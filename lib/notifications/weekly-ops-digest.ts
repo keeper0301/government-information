@@ -227,23 +227,53 @@ export async function collectWeeklyOpsDigest(): Promise<WeeklyOpsData> {
     ),
   ]);
 
-  // Task 10 — 7d mid 회수율 산출용 details JSONB 조회 (count 가 아니므로 별도 try/catch).
-  // press_l2_auto_revoke audit details 안의 auto_confirm_tier='mid' 만 카운트.
+  // Task A5 (2026-05-09) — Cohort 정합 mid 회수율.
+  // 기존 (Task 10) 은 분자 = 7d 안 회수, 분모 = 7d 안 등록 — cohort 어긋남.
+  // 정합: 분자 = 7d 안 등록된 mid 의 program_id 중 회수된 것, 분모 = 7d 안 등록된 mid.
+  // 회수 시점 윈도는 등록보다 길게 (등록 후 며칠 뒤 회수 가능) — 14d 안 회수 모두 포함.
   let midRevokeCount = 0;
   try {
-    const { data: revokeMidRows } = await admin
+    // 7d 안 등록된 mid 의 program_id set (welfare + loan)
+    const since14d = new Date(
+      Date.now() - 14 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const [welfMidIds, loanMidIds] = await Promise.all([
+      admin
+        .from("welfare_programs")
+        .select("id")
+        .eq("auto_confirm_tier", "mid")
+        .gte("auto_confirmed_at", since7d),
+      admin
+        .from("loan_programs")
+        .select("id")
+        .eq("auto_confirm_tier", "mid")
+        .gte("auto_confirmed_at", since7d),
+    ]);
+    const midProgramIds = new Set<string>([
+      ...((welfMidIds.data ?? []) as Array<{ id: string }>).map((r) => r.id),
+      ...((loanMidIds.data ?? []) as Array<{ id: string }>).map((r) => r.id),
+    ]);
+    // 14d 안 회수 audit 중 program_id 가 위 set 에 포함된 것 (cohort 정합)
+    const { data: revokeRows } = await admin
       .from("admin_actions")
       .select("details")
       .eq("action", "press_l2_auto_revoke")
-      .gte("created_at", since7d);
-    midRevokeCount = (revokeMidRows ?? []).filter(
-      (r) =>
-        (r as { details?: { auto_confirm_tier?: string } | null }).details
-          ?.auto_confirm_tier === "mid",
-    ).length;
+      .gte("created_at", since14d);
+    midRevokeCount = (revokeRows ?? []).filter((r) => {
+      const details = (
+        r as {
+          details?: {
+            auto_confirm_tier?: string;
+            program_id?: string;
+          } | null;
+        }
+      ).details;
+      if (!details || details.auto_confirm_tier !== "mid") return false;
+      return !!details.program_id && midProgramIds.has(details.program_id);
+    }).length;
   } catch (e) {
     console.warn(
-      `[weekly-ops-digest] mid 회수율 details fetch 실패 (0 fallback):`,
+      `[weekly-ops-digest] cohort mid 회수율 fetch 실패 (0 fallback):`,
       e instanceof Error ? e.message : String(e),
     );
   }
