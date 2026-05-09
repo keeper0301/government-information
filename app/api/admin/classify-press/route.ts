@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "보도자료 not found" }, { status: 404 });
   }
 
-  // LLM 호출 — ANTHROPIC_API_KEY 미설정 시 throw 캐치
+  // LLM 호출 — OPENAI_API_KEY 미설정 시 throw 캐치
   let result;
   try {
     result = await classifyPressNews({
@@ -68,8 +68,8 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     const msg = (e as Error).message;
-    // ANTHROPIC_API_KEY 미설정은 503 (서비스 미준비), 그 외는 502 (외부 API 실패)
-    const status = msg.includes("ANTHROPIC_API_KEY") ? 503 : 502;
+    // OPENAI_API_KEY 미설정은 503 (서비스 미준비), 그 외는 502 (외부 API 실패)
+    const status = msg.includes("OPENAI_API_KEY") ? 503 : 502;
     return NextResponse.json({ error: msg }, { status });
   }
 

@@ -1,15 +1,11 @@
 // ============================================================
-// 광역 보도자료 → 정책 분류 (Anthropic Claude Haiku, fetch 직접 호출)
+// 광역 보도자료 → 정책 분류 (gpt-4o-mini via lib/llm/text)
 // ============================================================
-// SDK 미설치 — Anthropic Messages API 를 fetch 로 직접 호출.
-// 사장님이 trigger 만 호출 (자동 호출 X — 비용 통제).
-//
-// 환경변수 ANTHROPIC_API_KEY 미설정 시 throw → API route 가 503 반환.
-// 비용: Haiku 4.5 ~$0.80 input / $4 output per 1M tok. 1건당 ~$0.003 추정.
+// 사장님이 trigger 만 호출 (자동 cron + 수동 모두). callLLM throw → 503.
+// 비용: gpt-4o-mini ~$0.0004/건 (Haiku 의 ~1/7).
 // ============================================================
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-haiku-4-5-20251001";
+import { callLLM, parseJSONResponse } from "@/lib/llm/text";
 
 export type ClassifyResult = {
   /** 사용자가 직접 신청 가능한 정책 사업인가? false 면 나머지 필드 의미 X */
@@ -143,59 +139,14 @@ export async function classifyPressNews(input: {
   summary: string | null;
   body: string | null;
 }): Promise<ClassifyResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY 미설정 — Vercel 환경변수에 등록 필요");
-  }
-
   const truncatedBody = (input.body ?? "").slice(0, MAX_BODY_CHARS);
   const prompt = PROMPT_TEMPLATE.replace("{TITLE}", input.title)
     .replace("{SUMMARY}", input.summary ?? "(요약 없음)")
     .replace("{BODY}", truncatedBody || "(본문 없음)");
 
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`Anthropic API 호출 실패 (${res.status}): ${errText.slice(0, 200)}`);
-  }
-
-  const data = (await res.json()) as {
-    content: { type: string; text: string }[];
-  };
-  const text = data.content?.[0]?.text;
-  if (!text) {
-    throw new Error("Anthropic 응답 비어있음");
-  }
-
-  // JSON 추출 — 모델이 코드블록 ```json 포함할 수도 있어 첫 { ~ 마지막 } 만 추출
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error(`JSON 파싱 실패: ${text.slice(0, 200)}`);
-  }
-  const jsonStr = text.slice(start, end + 1);
-
-  let parsed: ClassifyResult;
-  try {
-    parsed = JSON.parse(jsonStr) as ClassifyResult;
-  } catch (e) {
-    throw new Error(
-      `JSON.parse 실패: ${(e as Error).message} — ${jsonStr.slice(0, 200)}`,
-    );
-  }
+  // jsonMode true → response_format json_object 강제. JSON 추출 정규식 불필요.
+  const text = await callLLM({ prompt, maxTokens: 1500, jsonMode: true });
+  const parsed = parseJSONResponse<ClassifyResult>(text);
 
   // 결과 보정 — 빈 string vs null 정규화
   // body_urls 는 LLM 이 string 단일 또는 누락 가능 → 항상 string[] 로 정규화

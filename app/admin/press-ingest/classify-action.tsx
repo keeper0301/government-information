@@ -9,7 +9,7 @@
 //   3. 사장님이 '복지 등록 폼' 또는 '대출 등록 폼' 클릭 → prefill URL 로 navigation
 //
 // 자동 INSERT X — 사장님이 검토 후 등록 폼에서 confirm.
-// ANTHROPIC_API_KEY 미설정 시 503 → 사용자에게 안내.
+// OPENAI_API_KEY 미설정 시 503 → 사용자에게 안내.
 // ============================================================
 
 import { useState } from "react";
@@ -107,7 +107,7 @@ export function PressClassifyAction({
       )}
       {error && (
         <div className="text-xs text-red leading-[1.3] max-w-[140px] break-words">
-          {error.includes("ANTHROPIC_API_KEY")
+          {error.includes("OPENAI_API_KEY")
             ? "API 키 미설정"
             : error.slice(0, 60)}
           <button

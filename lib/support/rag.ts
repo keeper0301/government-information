@@ -3,10 +3,11 @@
 // ============================================================
 // 1. 사용자 질문에서 keyword 추출 (불용어 제거)
 // 2. welfare/loan 의 title·description ILIKE OR 검색 (단순 패턴, 추후 FTS·embeddings 가능)
-// 3. Claude Haiku 가 top 30 개 중 가장 관련 있는 1~3 개 선택 + 한국어 답변 생성
+// 3. gpt-4o-mini 가 top 30 개 중 가장 관련 있는 1~3 개 선택 + 한국어 답변 생성
 // 4. 답변 신뢰도 낮으면 (정책 미발견·LLM 미응답) "사장님 답변 대기" fallback
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { callLLM } from "@/lib/llm/text";
 
 // 한국어 불용어 — 의문문 패턴 위주. 너무 많으면 성능 저하.
 const STOPWORDS = new Set([
@@ -98,11 +99,10 @@ export async function generatePolicyAnswer(
   question: string,
   matches: PolicyMatch[],
 ): Promise<{ answer: string; cited: PolicyMatch[] }> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
   const FALLBACK =
     "검색하신 정책에 정확히 매칭되는 데이터를 찾지 못했어요. 사장님이 직접 검토 후 24시간 이내 답변드릴게요.";
 
-  if (!apiKey || matches.length === 0) {
+  if (matches.length === 0) {
     return { answer: FALLBACK, cited: [] };
   }
 
@@ -131,31 +131,13 @@ ${programsText}
 
 답변:`;
 
-  let res: Response;
+  // jsonMode 안 씀 — free text 답변 (200자 내 한국어 존댓말)
+  let text: string;
   try {
-    res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    text = (await callLLM({ prompt, maxTokens: 400 })).trim();
   } catch {
     return { answer: FALLBACK, cited: [] };
   }
-
-  if (!res.ok) return { answer: FALLBACK, cited: [] };
-
-  const data = (await res.json().catch(() => null)) as
-    | { content?: Array<{ type: string; text: string }> }
-    | null;
-  const text = data?.content?.find((c) => c.type === "text")?.text?.trim();
   if (!text) return { answer: FALLBACK, cited: [] };
 
   return { answer: text, cited: programs.slice(0, 3) };

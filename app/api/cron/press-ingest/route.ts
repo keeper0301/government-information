@@ -35,10 +35,10 @@ export async function GET(request: Request) {
   const authErr = await authorize(request);
   if (authErr) return authErr;
 
-  // ANTHROPIC_API_KEY 미설정 시 조용히 종료 (사장님 미등록 상태)
-  if (!process.env.ANTHROPIC_API_KEY) {
+  // OPENAI_API_KEY 미설정 시 조용히 종료 (사장님 미등록 상태)
+  if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({
-      skipped: "ANTHROPIC_API_KEY not configured",
+      skipped: "OPENAI_API_KEY not configured",
     });
   }
 

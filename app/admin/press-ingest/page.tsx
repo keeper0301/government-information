@@ -183,8 +183,8 @@ export default async function PressIngestPage({
     ]);
   // 7일 추세 max — 막대 길이 정규화 용
   const trendMax = Math.max(1, ...autoTrend.map((d) => d.count));
-  // ANTHROPIC_API_KEY 설정 여부 — server side 검증 (값 노출 X)
-  const llmEnabled = !!process.env.ANTHROPIC_API_KEY;
+  // OPENAI_API_KEY 설정 여부 — server side 검증 (값 노출 X)
+  const llmEnabled = !!process.env.OPENAI_API_KEY;
 
   return (
     <div className="max-w-[980px]">
@@ -233,7 +233,7 @@ export default async function PressIngestPage({
           tone={llmEnabled ? "ok" : "warn"}
           hint={
             llmEnabled
-              ? "ANTHROPIC_API_KEY OK"
+              ? "OpenAI 키 OK"
               : "Vercel env 등록 필요"
           }
         />

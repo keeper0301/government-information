@@ -7,21 +7,23 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// fetch mock — Anthropic API 호출 가로채기
+// fetch mock — OpenAI Chat Completion 호출 가로채기
 const fetchMock = vi.fn();
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
-  vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+  vi.stubEnv("OPENAI_API_KEY", "test-key");
 });
 
 import { classifyPressNews } from "@/lib/press-ingest/classify";
 
-// LLM 응답을 흉내내는 헬퍼 — Anthropic Messages API 응답 형식과 동일
+// LLM 응답을 흉내내는 헬퍼 — OpenAI Chat Completion 응답 형식
 function mockLlmResponse(json: Record<string, unknown>) {
   fetchMock.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ content: [{ type: "text", text: JSON.stringify(json) }] }),
+    json: async () => ({
+      choices: [{ message: { content: JSON.stringify(json) } }],
+    }),
   });
 }
 
