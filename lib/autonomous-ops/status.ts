@@ -54,6 +54,17 @@ async function countTable(table: string): Promise<number> {
   }
 }
 
+// 테이블 존재 여부 (미적용 DDL 시 false). limit(0) 으로 row 안 fetch, error 만 확인.
+async function tableExists(table: string): Promise<boolean> {
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.from(table).select("id").limit(0);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 async function phase1(): Promise<PhaseStatus> {
   const runs = await countAction24h("health_alert_run");
   return {
@@ -69,24 +80,27 @@ async function phase1(): Promise<PhaseStatus> {
 }
 
 async function phase2(): Promise<PhaseStatus> {
-  const inserts = await countTable("decision_pending");
-  // active 결정은 env 단독 (DDL 적용 자체는 countTable graceful 0 으로 흡수)
+  const [inserts, ddlApplied] = await Promise.all([
+    countTable("decision_pending"),
+    tableExists("decision_pending"),
+  ]);
   const solapiActive = !!process.env.SOLAPI_WEBHOOK_SECRET;
+  const pending: string[] = [];
+  if (!ddlApplied) pending.push("운영DB에 075번 마이그레이션 적용 (사장님 승인 필요)");
+  if (!solapiActive) {
+    pending.push("Solapi 양방향 SMS 가입 + webhook URL 등록");
+    pending.push("Vercel 환경변수 SOLAPI_WEBHOOK_SECRET / SMS_DECISION_ALLOWED_FROM 등록 후 재배포");
+  }
   return {
     phase: 2,
     title: "SMS 결정 위임",
-    active: solapiActive,
+    active: ddlApplied && solapiActive,
     metrics: [
       { label: "24h decision 큐", value: `${inserts}건` },
+      { label: "DB 테이블", value: ddlApplied ? "✓ 적용됨" : "✗ 미적용" },
       { label: "Solapi webhook env", value: solapiActive ? "✓ 설정" : "✗ 미설정" },
     ],
-    pendingActions: solapiActive
-      ? []
-      : [
-          "운영DB에 075번 마이그레이션 적용 (사장님 승인 필요)",
-          "Solapi 양방향 SMS 가입 + webhook URL 등록",
-          "Vercel 환경변수 SOLAPI_WEBHOOK_SECRET / SMS_DECISION_ALLOWED_FROM 등록 후 재배포",
-        ],
+    pendingActions: pending,
   };
 }
 
@@ -114,23 +128,23 @@ async function phase3(): Promise<PhaseStatus> {
 }
 
 async function phase4(): Promise<PhaseStatus> {
-  const tickets = await countTable("support_tickets");
-  // tickets > 0 이면 DDL 076 적용 + 큐 활용 중. 0 일 때만 가이드 표시.
+  const [tickets, ddlApplied] = await Promise.all([
+    countTable("support_tickets"),
+    tableExists("support_tickets"),
+  ]);
+  // DDL 적용 = active. 큐 활용 (tickets > 0) 은 자연 누적.
   return {
     phase: 4,
     title: "AI 챗봇 CS",
-    active: tickets > 0,
+    active: ddlApplied,
     metrics: [
       { label: "24h 신규 문의", value: `${tickets}건` },
+      { label: "DB 테이블", value: ddlApplied ? "✓ 적용됨" : "✗ 미적용" },
       { label: "intent 분류", value: "9종 + 자동 응답 4매핑" },
     ],
-    pendingActions:
-      tickets > 0
-        ? []
-        : [
-            "운영DB에 076번 마이그레이션 적용 (사장님 승인 필요)",
-            "/admin/support 접속 → 빈 큐 확인 → 가동 검증",
-          ],
+    pendingActions: ddlApplied
+      ? []
+      : ["운영DB에 076번 마이그레이션 적용 (사장님 승인 필요)"],
   };
 }
 
