@@ -122,14 +122,15 @@ export function ProgramRow({
               householdTargetTags={program.householdTargetTags}
             />
           </div>
-          {/* description 은 원문 그대로 저장돼 있어 &nbsp; · ☞ · <br> 등 raw 엔티티·
+          {/* 다 묶음 (DDL 081) — summaryShort (LLM 한 줄 요약) 우선 표시.
+              description 은 원문 그대로 저장돼 있어 &nbsp; · ☞ · <br> 등 raw 엔티티·
               섹션 기호가 노출되는 사례가 있음. 상세 페이지와 동일하게 cleanDescription
               으로 엔티티·태그 정리. truncate 한 줄이라 삽입된 \n 은 CSS 가 공백으로
               합쳐 한 줄로 렌더됨 (ellipsis 위치만 자연스러워짐).
               본문 색·크기는 grey-900·15px 유지 — 사장님 "글자가 잘 안 보여"
               피드백 대응으로 약화하지 않음. */}
           <div className="text-[15px] text-grey-900 leading-[1.55] truncate">
-            {cleanDescription(program.description)}
+            {program.summaryShort || cleanDescription(program.description)}
           </div>
         </div>
         {/* 데스크톱에서만 오른쪽에 금액·출처 표시. 출처는 작은 회색 칩으로

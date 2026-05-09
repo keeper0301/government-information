@@ -34,6 +34,8 @@ export type DisplayProgram = {
   // Phase 1.5 본문 분석 결과 — 카드 자격 배지에 사용
   incomeTargetLevel: IncomeTargetLevel | null;
   householdTargetTags: HouseholdTargetTag[];
+  // 다 묶음 (DDL 081) — LLM 자동 추출 한 줄 요약 (30~50자). 카드 description fallback 으로 사용.
+  summaryShort: string | null;
 };
 
 const categoryIconMap: Record<string, DisplayProgram["icon"]> = {
@@ -81,6 +83,9 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     sourceUrl: w.source_url ?? null,
     incomeTargetLevel: w.income_target_level ?? null,
     householdTargetTags: narrowHouseholdTags(w.household_target_tags),
+    // database.types 가 081 컬럼 자동 반영 안 했어도 cast 로 안전 추출.
+    summaryShort:
+      (w as { summary_short?: string | null }).summary_short ?? null,
   };
 }
 
@@ -101,6 +106,8 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     sourceUrl: l.source_url ?? null,
     incomeTargetLevel: l.income_target_level ?? null,
     householdTargetTags: narrowHouseholdTags(l.household_target_tags),
+    summaryShort:
+      (l as { summary_short?: string | null }).summary_short ?? null,
   };
 }
 

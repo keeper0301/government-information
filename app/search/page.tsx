@@ -470,9 +470,10 @@ function ProgramSection({
               <div className="text-[15px] font-semibold text-grey-900 line-clamp-2 mb-1">
                 {it.title}
               </div>
-              {it.description && (
+              {/* 다 묶음 — summaryShort (LLM 한 줄) 우선 표시, 없으면 description fallback */}
+              {(it.summaryShort || it.description) && (
                 <p className="text-[13px] text-grey-600 line-clamp-2 leading-[1.5]">
-                  {it.description}
+                  {it.summaryShort || it.description}
                 </p>
               )}
               <div className="text-[11px] text-grey-500 mt-1">

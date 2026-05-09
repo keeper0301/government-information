@@ -163,13 +163,17 @@ export async function searchAll(
     : null;
 
   for (const t of tokens) {
+    // 다 묶음 (DDL 081) — keywords (text[]) + summary_short (LLM 추출) 매칭 추가.
+    // keywords.cs.{token} = array contains element. token 안 {/}/, 는 array literal 충돌 → 제거.
+    // summary_short.ilike — LLM 한 줄 요약 안 키워드 fuzzy 매칭.
+    const safeT = t.replace(/[{},]/g, "");
     if (welfareQ)
       welfareQ = welfareQ.or(
-        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%`,
+        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%,summary_short.ilike.%${t}%,keywords.cs.{${safeT}}`,
       );
     if (loanQ)
       loanQ = loanQ.or(
-        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%`,
+        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%,summary_short.ilike.%${t}%,keywords.cs.{${safeT}}`,
       );
     if (newsQ) newsQ = newsQ.or(`title.ilike.%${t}%,summary.ilike.%${t}%`);
     if (blogQ)
