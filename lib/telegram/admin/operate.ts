@@ -7,6 +7,7 @@
 import {
   revokeAutoConfirmed,
   restoreAutoConfirmed,
+  listAutoConfirmedPolicies,
 } from "@/lib/press-ingest/candidates";
 import { isUuid, SITE_BASE } from "./utils";
 
@@ -41,6 +42,28 @@ export async function revokeCommand(args: string): Promise<string> {
   } catch (e) {
     return `❌ 회수 실패: ${(e as Error).message.slice(0, 200)}`;
   }
+}
+
+// /recent — 24h 자동 등록 정책 5개 (revoke 명령 prefill).
+// 미회수 + tier 무관 최신순. 모바일에서 잘못된 자동 등록을 즉시 회수 가능.
+export async function recentCommand(): Promise<string> {
+  const rows = await listAutoConfirmedPolicies({ sinceDays: 1 });
+  if (rows.length === 0) return "✅ 24h 안 자동 등록 0건";
+  const top = rows.slice(0, 5);
+  const lines = [`[24h 자동 등록 — ${rows.length}건 중 최신 5]`, ""];
+  for (let i = 0; i < top.length; i++) {
+    const r = top[i];
+    const isRevoked = r.revoked_at !== null;
+    const flag = isRevoked
+      ? "↩️ 이미 회수"
+      : r.is_hidden
+        ? "👁️ 가려짐"
+        : `[${r.auto_confirm_tier}]`;
+    const t = r.table === "welfare_programs" ? "w" : "l";
+    lines.push(`${i + 1}. ${flag} (${t}) ${(r.title ?? "").slice(0, 35)}`);
+    if (!isRevoked) lines.push(`   /revoke ${r.candidate_id}`);
+  }
+  return lines.join("\n");
 }
 
 export async function restoreCommand(args: string): Promise<string> {

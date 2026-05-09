@@ -16,12 +16,14 @@ import {
   statsCommand,
   adminLinksCommand,
 } from "@/lib/telegram/admin/info";
+import { queueCommand } from "@/lib/telegram/admin/queue";
 import { userLookupCommand } from "@/lib/telegram/admin/user";
 import {
   revokeCommand,
   restoreCommand,
   statusCommand,
   triggerCommand,
+  recentCommand,
 } from "@/lib/telegram/admin/operate";
 import {
   dedupeListCommand,
@@ -78,6 +80,10 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
       return redeployCommand();
     case "publish":
       return publishDispatch(args, ctx.cronSecret);
+    case "recent":
+      return recentCommand();
+    case "queue":
+      return queueCommand();
     case "news":
       return newsListCommand();
     case "health":
