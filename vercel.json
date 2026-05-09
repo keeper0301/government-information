@@ -53,6 +53,8 @@
 
     { "path": "/api/dedupe-detect", "schedule": "0 17 * * *" },
 
-    { "path": "/api/cron/external-console-check", "schedule": "30 0 * * *" }
+    { "path": "/api/cron/external-console-check", "schedule": "30 0 * * *" },
+
+    { "path": "/api/cron/support-reminder", "schedule": "15 0 * * *" }
   ]
 }

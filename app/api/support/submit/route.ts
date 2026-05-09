@@ -18,6 +18,15 @@ import {
   canAutoReply,
   AUTO_REPLIES,
 } from "@/lib/support/intent";
+// Phase 4-B 추가
+import {
+  checkRateLimit,
+  getClientIp,
+  ANON_LIMIT_PER_MINUTE,
+  USER_LIMIT_PER_MINUTE,
+} from "@/lib/support/rate-limit";
+import { searchPolicies, generatePolicyAnswer } from "@/lib/support/rag";
+import { sendSupportReply } from "@/lib/support/notify-user";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -74,13 +83,42 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // ─── Phase 4-B rate limit ───────────────────────────────
+  // 익명 = IP 기준 분당 5회, 로그인 = user_id 기준 분당 30회.
+  // DB 실패 시 fail-open (가용성 우선).
+  const bucket = user
+    ? `support:user:${user.id}`
+    : `support:anon:${getClientIp(req)}`;
+  const limit = user ? USER_LIMIT_PER_MINUTE : ANON_LIMIT_PER_MINUTE;
+  const rl = await checkRateLimit({ bucket, limit });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited", retry_after_sec: rl.retryAfterSec },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rl.retryAfterSec) },
+      },
+    );
+  }
+
   // intent 분류 — Claude Haiku 1회. 실패해도 row 는 insert (사장님 큐 직행).
   const classification = await classifySupportIntent(message, subject);
 
-  // 자동 응답 매칭
-  const autoReply = canAutoReply(classification.intent, classification.confidence)
-    ? (AUTO_REPLIES[classification.intent] ?? null)
-    : null;
+  // ─── 자동 응답 결정 ──────────────────────────────────────
+  // 1. policy_question + confidence ≥ 0.7 → RAG (welfare/loan 검색 + LLM 요약)
+  // 2. 그 외 자동 응답 가능 intent → 정해진 AUTO_REPLIES 매핑
+  // 3. 둘 다 X → 사장님 큐 (status='open')
+  let autoReply: string | null = null;
+  if (
+    classification.intent === "policy_question" &&
+    classification.confidence >= 0.7
+  ) {
+    const matches = await searchPolicies(message);
+    const { answer } = await generatePolicyAnswer(message, matches);
+    autoReply = answer;
+  } else if (canAutoReply(classification.intent, classification.confidence)) {
+    autoReply = AUTO_REPLIES[classification.intent] ?? null;
+  }
 
   const admin = createAdminClient();
   const { data: inserted, error: insertError } = await admin
@@ -105,6 +143,19 @@ export async function POST(req: NextRequest) {
       { error: "insert_failed", detail: insertError?.message },
       { status: 500 },
     );
+  }
+
+  // ─── Phase 4-B 사용자 자동 응답 메일 (best-effort) ─────────
+  // contactEmail 있고 autoReply 채워졌을 때 즉시 발송. 실패해도 ticket 은 유지.
+  if (autoReply && contactEmail) {
+    sendSupportReply({
+      email: contactEmail,
+      ticketId: inserted.id,
+      subject: subject || null,
+      reply: autoReply,
+    }).catch((e) => {
+      console.warn("[support/submit] 자동 응답 메일 발송 실패:", e);
+    });
   }
 
   return NextResponse.json({
