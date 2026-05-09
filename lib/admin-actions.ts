@@ -43,7 +43,8 @@ export type AdminActionType =
   | "cancellation_followup_sent" // A2 — 결제 해지 사용자에게 자동 재가입 안내 메일 발송 (중복 방지 audit)
   | "category_backfill_run"      // A4 — 카테고리 누락 정책 LLM 자동 보강 (cron 1회 실행 통계)
   | "blog_quality_flag"          // A1 — 블로그 글 LLM 품질 평가 score ≤ 2 사장님 검수 큐 표시
-  | "nps_invite_sent";           // C3 — 가입 7일 후 NPS 설문 메일 발송 (중복 방지 audit)
+  | "nps_invite_sent"            // C3 — 가입 7일 후 NPS 설문 메일 발송 (중복 방지 audit)
+  | "sns_publish_run";           // C1 — blog 1건 SNS 4종 자동 게시 결과 (channel별 ok/reason)
 
 export type AdminActionRecord = {
   id: string;
@@ -312,4 +313,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   category_backfill_run: "카테고리 자동 보강 cron 실행",
   blog_quality_flag: "블로그 글 검수 필요 표시",
   nps_invite_sent: "NPS 설문 초대 발송",
+  sns_publish_run: "SNS 자동 게시 실행",
 };

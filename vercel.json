@@ -60,6 +60,7 @@
     { "path": "/api/cron/category-backfill", "schedule": "0 18 * * *" },
     { "path": "/api/cron/blog-quality-check", "schedule": "0 22 * * *" },
     { "path": "/api/cron/nps-invite", "schedule": "0 1 * * *" },
-    { "path": "/api/cron/sentry-daily-summary", "schedule": "45 0 * * *" }
+    { "path": "/api/cron/sentry-daily-summary", "schedule": "45 0 * * *" },
+    { "path": "/api/cron/sns-publish-blog", "schedule": "0 2 * * *" }
   ]
 }
