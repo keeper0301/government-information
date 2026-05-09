@@ -18,7 +18,6 @@ import {
 } from "@/lib/telegram/admin/info";
 import { userLookupCommand } from "@/lib/telegram/admin/user";
 import {
-  ALLOWED_TRIGGERS,
   revokeCommand,
   restoreCommand,
   statusCommand,
@@ -34,6 +33,12 @@ import {
   envSetCommand,
   redeployCommand,
 } from "@/lib/telegram/admin/vercel";
+import {
+  publishBlogCommand,
+  publishPreviewCommand,
+  publishIndexnowCommand,
+} from "@/lib/telegram/admin/content";
+import { helpText } from "@/lib/telegram/admin/help";
 
 export interface CommandContext {
   chatId: number;
@@ -71,6 +76,8 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
       return envDispatch(args);
     case "redeploy":
       return redeployCommand();
+    case "publish":
+      return publishDispatch(args, ctx.cronSecret);
     case "news":
       return newsListCommand();
     case "health":
@@ -132,38 +139,30 @@ async function envDispatch(args: string): Promise<string> {
   }
 }
 
-function helpText(): string {
-  return [
-    "[keepioo 봇 명령]",
-    "",
-    "── 기본 ──",
-    "/help · /test · /status",
-    "/trigger {cron-name} — 수동 cron 실행",
-    "",
-    "── 어드민 원격 ──",
-    "/press — pending press 후보 5개",
-    "/press confirm {uuid} — 자동 등록",
-    "/press dismiss {uuid} — 후보 폐기",
-    "/dedupe — pending 중복 후보 5개",
-    "/dedupe confirm {baseId} — 중복 확정 (audit 기록)",
-    "/dedupe reject {baseId} — 오탐 해제 (link 제거)",
-    "/news — 분류 대기 뉴스 5개",
-    "/health — 사이트 헬스 요약",
-    "/user {이메일|UUID} — 사용자 lookup",
-    "/today — 24h KPI",
-    "/stats [welfare|loan|all] — enrich 진행률",
-    "/admin — 어드민 빠른 링크",
-    "",
-    "── 자동 등록 회수 ──",
-    "/revoke {uuid} — 자동 등록 정책 회수",
-    "/restore {uuid} — 회수된 정책 복원",
-    "",
-    "── 사이트 조작 (Vercel) ──",
-    "/env — 운영 toggle env 현재 값",
-    "/env set {KEY} {값} — env 변경 (화이트리스트만)",
-    "/redeploy — production 즉시 재배포",
-    "",
-    "사용 가능 cron:",
-    ...ALLOWED_TRIGGERS.map((t) => `  · ${t}`),
-  ].join("\n");
+// /publish — blog [카테고리] / preview [카테고리] / indexnow
+async function publishDispatch(
+  args: string,
+  cronSecret: string,
+): Promise<string> {
+  if (!args) {
+    return [
+      "사용법:",
+      "/publish blog [카테고리] — 즉시 발행",
+      "/publish preview [카테고리] — 미리보기 (DB 저장 안 함)",
+      "/publish indexnow — 색인 ping",
+    ].join("\n");
+  }
+  const [sub, ...rest] = args.split(/\s+/);
+  const subArgs = rest.join(" ").trim();
+  switch ((sub ?? "").toLowerCase()) {
+    case "blog":
+      return publishBlogCommand(subArgs, cronSecret);
+    case "preview":
+      return publishPreviewCommand(subArgs, cronSecret);
+    case "indexnow":
+      return publishIndexnowCommand(cronSecret);
+    default:
+      return `❌ 알 수 없는 sub: ${sub}\n/publish blog | preview | indexnow`;
+  }
 }
+
