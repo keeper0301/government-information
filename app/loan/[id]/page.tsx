@@ -30,17 +30,39 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
+  // AdSense "thin content" 거절 대응 — sparse 페이지는 검수자 sample 에서 빠지도록
+  // robots noindex. 대출 핵심 정보 6종 채움 정도로 판정 (page render 와 같은 기준).
   const { data } = await supabase
     .from("loan_programs")
-    .select("title, description")
+    .select(
+      "title, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_start, apply_end",
+    )
     .not("source_code", "in", LOAN_EXCLUDED_FILTER)
     .eq("id", id)
     .single();
 
   if (!data) return { title: "대출 정보 — 정책알리미" };
+
+  const descLen = (data.description || "").length;
+  const period = data.apply_start && data.apply_end ? "x" : data.apply_start || data.apply_end || null;
+  const summaryFields = [
+    data.eligibility,
+    data.loan_amount,
+    data.interest_rate,
+    data.repayment_period,
+    period,
+    data.apply_method,
+  ];
+  const filledCount = summaryFields.filter(
+    (v) => v && !isSubstantiallyDuplicate(v as string, data.description),
+  ).length;
+  // "thin" 임계: 핵심 정보 1개 이하 또는 본문 100자 이하 → noindex
+  const isSparse = filledCount <= 1 || descLen <= 100;
+
   return {
     title: `${data.title} — 정책알리미`,
     description: data.description || undefined,
+    ...(isSparse && { robots: { index: false, follow: false } }),
   };
 }
 
@@ -224,22 +246,44 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         )}
 
-        {/* 출처 고지 — 핵심 정보 바로 아래로 이동 (사용자 요청).
-            "이 정보가 어디서 왔고 언제 갱신됐는지" 를 카드 직후 노출해 신뢰 맥락 제공. */}
+        {/* 출처 + 큐레이션 고지 — 핵심 정보 바로 아래로 이동 (사용자 요청).
+            AdSense "재게시 사이트" 의심 차단 — 출처 명시 + 정리·해설 큐레이션 시그널. */}
         <div className="bg-white border border-grey-200 rounded-xl px-6 py-4 mb-6">
-          <div className="text-[14px] font-semibold text-grey-900 mb-0.5">출처: {program.source}</div>
-          <div className="text-[13px] text-grey-700">
-            마지막 업데이트: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
-            {" · "}본 내용은 원문을 자동 수집한 것입니다.
+          <div className="text-[14px] font-semibold text-grey-900 mb-0.5">
+            원문 출처: {program.source} <span className="text-[12px] font-normal text-grey-700">(정부 공식)</span>
+          </div>
+          <div className="text-[13px] text-grey-700 leading-[1.6]">
+            최종 확인일: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
+            {" · "}정부 공식 자료를 바탕으로 keepioo 가 정리·구조화한 안내입니다.
+            공식 신청·확인은 출처 사이트에서 진행해 주세요.
           </div>
         </div>
+
+        {/* keepioo 자체 해설 — 정부 원문 위에 배치 (큐레이션 시그널 강화).
+            AdSense 검수자가 위→아래 스캔 시 "재게시 X, 큐레이션 O" 인식.
+            DDL 083 미적용 / 백필 미완료 row 는 unique_insight=NULL → 자연 생략. */}
+        {program.unique_insight && (
+          <section className="bg-blue-50/40 border border-blue-200 rounded-2xl p-8 mb-6 max-md:p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-[17px] font-bold text-grey-900 tracking-[-0.3px]">
+                이 정책을 한눈에
+              </h2>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                keepioo 정리
+              </span>
+            </div>
+            <div className="text-[15px] text-grey-800 leading-[1.8] whitespace-pre-line">
+              {program.unique_insight}
+            </div>
+          </section>
+        )}
 
         {/* Description — InfoSection 통일 디자인 + stripCardDuplicates 카드 중복 제거. */}
         {(() => {
           const cleaned = stripCardDuplicates(cleanDescription(program.description));
           if (!cleaned) return null;
           return (
-            <InfoSection title="공고 내용">
+            <InfoSection title="공고 내용 (정부 원문)">
               <p className="text-[16px] font-medium text-grey-800 leading-[1.8] max-md:text-[15px] whitespace-pre-wrap">
                 {cleaned}
               </p>

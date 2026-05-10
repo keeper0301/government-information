@@ -76,12 +76,53 @@ export type GeneratedPost = {
   faqs: { question: string; answer: string }[]; // 3~5개 FAQ
 };
 
-// 시스템 지침 — 모든 글에 동일 적용
+// ─── 페르소나 rotation (2026-05-10 AdSense "thin/scaled content" 거절 대응) ───
+// 모든 글이 동일 시스템 prompt 로 생성되면 검수자에게 "AI 자동 대량 생산" 으로 보임.
+// 발행마다 4 페르소나 중 무작위 선택 — 어조·강조점에 자연스러운 다양성 확보.
+// 페르소나는 "글의 목적·구조·분량" 같은 본문 룰을 바꾸지 않음 (오직 어조만).
+
+type BlogPersona = {
+  id: string;       // log·debug 용
+  intro: string;    // SYSTEM_INSTRUCTION 첫 줄 (작가 정체성)
+  emphasis: string; // 페르소나 강조점 한 줄
+};
+
+const BLOG_PERSONAS: BlogPersona[] = [
+  {
+    id: "guide",
+    intro: "당신은 정부 복지·대출 정책을 일반 시민에게 쉽게 풀어 설명하는 한국 콘텐츠 작가입니다.",
+    emphasis: "친근하고 명확한 설명에 강점. 어려운 행정 용어는 한 번 더 풀어 적으세요.",
+  },
+  {
+    id: "social_worker",
+    intro: "당신은 동주민센터·복지관 현장에서 오래 일해 온 사회복지사 시각으로 정부 정책을 풀어 주는 한국 작가입니다.",
+    emphasis: "신청 현장에서 자주 묻는 질문, 놓치기 쉬운 함정, 서류 준비 팁에 강점이 있습니다.",
+  },
+  {
+    id: "fact_checker",
+    intro: "당신은 공공 데이터를 꼼꼼히 검증해 정리하는 정책 팩트체커 한국 작가입니다.",
+    emphasis: "구체 숫자·기간·자격 조건을 한 번 더 확인해 표로 정리하고, 공식 출처를 명확히 짚어 주세요.",
+  },
+  {
+    id: "experienced_user",
+    intro: "당신은 본인과 가족이 여러 정부 지원금을 직접 신청·이용해 본 경험을 바탕으로 글을 풀어 주는 한국 작가입니다.",
+    emphasis: "신청서 작성·심사 대기·실제 수령 같은 사용자 흐름 시각으로 서술. 단, 가짜 개인 사례는 절대 만들지 말고 일반화된 표현을 쓰세요.",
+  },
+];
+
+function pickBlogPersona(): BlogPersona {
+  return BLOG_PERSONAS[Math.floor(Math.random() * BLOG_PERSONAS.length)];
+}
+
+function buildSystemInstruction(persona: BlogPersona): string {
+  return `${persona.intro}\n${persona.emphasis}\n\n${SYSTEM_INSTRUCTION_BODY}`;
+}
+
+// 시스템 지침 본문 — 모든 페르소나 공통 (글의 목적·구조·분량·AdSense 룰)
 // 2026-04-24 P1 개선: SEO(meta 길이·내부링크·H3)·GEO(정의 문장·질문형 H2·
 // 숫자 강조)·AdSense(E-E-A-T) 축을 모두 충족하도록 강화.
-const SYSTEM_INSTRUCTION = `당신은 정부 복지·대출 정책을 일반 시민에게 쉽게 설명하는 한국 콘텐츠 작가입니다.
-
-## 글의 목적
+// 2026-05-10: 페르소나 rotation 도입으로 첫 줄 "당신은..." 은 동적 주입.
+const SYSTEM_INSTRUCTION_BODY = `## 글의 목적
 - Google AdSense 승인 가능한 양질의 정보성 가이드
 - 검색엔진(SEO) 과 AI 검색엔진(ChatGPT·Perplexity·Gemini 등 GEO) 모두에 최적화
 - 사용자가 실제 정책을 신청하는 데 도움이 되는 실용적 내용
@@ -268,14 +309,19 @@ ${programInfo}
 - tags 는 3~6개, 실제 검색어 기반 (정책명 약어·대상·연도·관련 개념)
 - FAQ 5개, 사용자가 실제 검색할 법한 질문 (나이·소득·중복 수령·취소·마감 등)`;
 
+  // 페르소나 무작위 선택 (4종) — "AI 자동 대량 생산" 시그널 분산. AdSense 검수자 sample 시
+  // 표현·어조 다양성 확보. 2026-05-10 거절 ("가치 별로 없는 콘텐츠") 대응.
+  const persona = pickBlogPersona();
+
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: userPrompt,
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: buildSystemInstruction(persona),
       responseMimeType: "application/json",
-      // JSON 응답 강제. schema 는 텍스트 지시로도 충분
-      temperature: 0.7,
+      // JSON 응답 강제. schema 는 텍스트 지시로도 충분.
+      // 0.7 → 0.85: 페르소나 rotation 과 함께 표현 다양성 추가 (정확도는 prompt 룰이 담보).
+      temperature: 0.85,
       thinkingConfig: {
         thinkingBudget: 0,
         includeThoughts: false,
