@@ -45,6 +45,9 @@ export interface CategoryHub {
   /** 자주 묻는 질문 4-5건. FAQPage JSON-LD + UI 노출.
    *  콘텐츠 깊이 (AdSense 검수 + SEO rich card) 신호. */
   faq?: FaqItem[];
+  /** 운영자 큐레이션 노트 5~6줄. AdSense "재게시 X, 운영자 직접 정리" 시그널.
+   *  Hero 다음에 파란 박스 노출 (welfare 상세 unique_insight 와 같은 디자인). */
+  curatorNote?: string;
 }
 
 export const CATEGORY_HUBS: Record<CategorySlug, CategoryHub> = {
@@ -61,6 +64,8 @@ export const CATEGORY_HUBS: Record<CategorySlug, CategoryHub> = {
     ageTags: ["청년"],
     occupationTags: [],
     blogCategory: "청년",
+    curatorNote:
+      "청년 정책은 매년 30개 가까이 새로 나오지만 정작 본인이 받을 수 있는 게 뭔지 모르고 지나치는 경우가 많습니다. keepioo 를 운영하면서 청년수당·청년 월세 지원·청년 창업자금 세 종류만 알아도 월 50만 원 이상은 받을 수 있는 청년 분들이 의외로 많다는 걸 자주 봅니다. 자격이 까다로워 보여도 신청은 무료이니, 일단 1분 자격 진단부터 해보시고 마감 임박 정책은 따로 챙겨두세요.",
     faq: [
       {
         q: "청년 정책은 보통 몇 살까지 받을 수 있나요?",
@@ -93,6 +98,8 @@ export const CATEGORY_HUBS: Record<CategorySlug, CategoryHub> = {
     ageTags: ["노년"],
     occupationTags: [],
     blogCategory: "노년",
+    curatorNote:
+      "65세 이상 어르신 정책은 기초연금·노인장기요양·치매치료비 같은 큰 항목 외에도 잘 알려지지 않은 작은 지원이 많습니다. 보청기 지원·임플란트 건강보험 적용·노인 인공관절 수술비 같은 건 부모님 세대가 모르고 자비로 해결하시는 경우가 흔합니다. 자녀 분이 keepioo 에서 한 번 정리해 부모님께 알려드리면 큰 도움이 됩니다. 신청 대부분이 거주지 주민센터 방문이라 어렵지 않으니 마감 전에 챙겨두세요.",
     faq: [
       {
         q: "기초연금은 누가 받을 수 있나요?",
@@ -125,6 +132,8 @@ export const CATEGORY_HUBS: Record<CategorySlug, CategoryHub> = {
     ageTags: [],
     occupationTags: ["소상공인", "자영업자", "창업자"],
     blogCategory: "소상공인",
+    curatorNote:
+      "자영업·소상공인 정책은 '정책자금 (대출)' 만 떠올리기 쉽지만, 사실 폐업 컨설팅·재기지원·디지털 전환 바우처 같은 비용 절감형 지원이 더 큰 도움이 되는 경우도 많습니다. 매출이 떨어진 시기에 신청 가능한 경영안정자금은 1~3% 저금리라 시중 대출에서 갈아타는 것만으로도 월 부담을 크게 줄일 수 있습니다. keepioo 에서는 자격 조건을 한눈에 보기 쉽게 정리해두었으니 본인 업종에 맞는 카테고리부터 살펴보세요.",
     faq: [
       {
         q: "소상공인 정책자금은 어떤 종류가 있나요?",
@@ -157,6 +166,8 @@ export const CATEGORY_HUBS: Record<CategorySlug, CategoryHub> = {
     ageTags: [],
     occupationTags: [],
     blogCategory: "주거",
+    curatorNote:
+      "주거 지원은 청년 월세 지원·주거급여·LH 임대주택·HF 보증 네 갈래로 나뉘는데, 본인 상황에 맞는 게 무엇인지 헷갈려서 신청을 미루는 분이 많습니다. 일반적으로 보증금 부담이 적은 1인 가구는 청년 월세 지원부터 시작하고, 가족 구성원이 늘어나면 매입임대·전세임대로 단계 이동하는 흐름이 자연스럽습니다. 모집 공고가 매년 정해진 시기에만 열리니 keepioo 알림으로 마감 임박 정책을 미리 챙겨두세요.",
     faq: [
       {
         q: "주거급여는 누가 받을 수 있나요?",

@@ -6,6 +6,7 @@ import {
   type DeploymentRow,
 } from "@/lib/external-console/vercel";
 import { buildSupabaseAlerts } from "@/lib/external-console/supabase";
+import { buildSearchConsoleAlerts } from "@/lib/external-console/search-console";
 
 // ─── 카카오 (Solapi) ───────────────────────────────────────
 describe("buildKakaoAlerts", () => {
@@ -278,5 +279,56 @@ describe("buildSupabaseAlerts", () => {
     expect(kpis.project_name).toBe("keepioo");
     expect(kpis.project_region).toBe("ap-northeast-2");
     expect(kpis.advisor_warn).toBe(2);
+  });
+});
+
+// ─── Search Console ──────────────────────────────────────────
+describe("buildSearchConsoleAlerts", () => {
+  it("정상 (clicks > 0, CTR 정상) → alert 0", () => {
+    const { alerts, kpis } = buildSearchConsoleAlerts({
+      clicks: 50, impressions: 1000, ctr: 0.05, position: 5.2,
+    });
+    expect(alerts).toHaveLength(0);
+    expect(kpis.clicks).toBe(50);
+    expect(kpis.avg_position).toBe(5.2);
+  });
+
+  it("clicks 0 → sc_no_clicks alert (색인 사고 의심)", () => {
+    const { alerts } = buildSearchConsoleAlerts({
+      clicks: 0, impressions: 500, ctr: 0, position: 10,
+    });
+    const a = alerts.find((x) => x.key === "sc_no_clicks");
+    expect(a).toBeDefined();
+    expect(a?.recommendation).toContain("색인");
+  });
+
+  it("저 CTR (impressions ≥ 100, CTR < 0.5%) → sc_low_ctr alert", () => {
+    const { alerts } = buildSearchConsoleAlerts({
+      clicks: 1, impressions: 500, ctr: 0.002, position: 8,
+    });
+    expect(alerts.find((a) => a.key === "sc_low_ctr")).toBeDefined();
+  });
+
+  it("저 CTR 인데 노출 < 100 → 표본 부족, alert 안 함", () => {
+    const { alerts } = buildSearchConsoleAlerts({
+      clicks: 0, impressions: 50, ctr: 0, position: 8,
+    });
+    // clicks 0 alert 는 발생하지만 sc_low_ctr 은 안 발생
+    expect(alerts.find((a) => a.key === "sc_low_ctr")).toBeUndefined();
+  });
+
+  it("CTR 정확히 0.5% (경계) → alert 안 함 (< 0.5% 만)", () => {
+    const { alerts } = buildSearchConsoleAlerts({
+      clicks: 5, impressions: 1000, ctr: 0.005, position: 5,
+    });
+    expect(alerts.find((a) => a.key === "sc_low_ctr")).toBeUndefined();
+  });
+
+  it("kpi 정확 (CTR·position 소수점 cap)", () => {
+    const { kpis } = buildSearchConsoleAlerts({
+      clicks: 100, impressions: 5000, ctr: 0.0234567, position: 5.234567,
+    });
+    expect(kpis.ctr).toBe(0.0235);
+    expect(kpis.avg_position).toBe(5.23);
   });
 });

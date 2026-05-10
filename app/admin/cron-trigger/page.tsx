@@ -43,6 +43,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/cron/naver-queue-alert", label: "네이버 블로그 큐 알림", schedule: "매일 09:10 KST", desc: "발행 대기 큐 SMS" },
   { path: "/api/cron/weekly-digest", label: "주간 다이제스트 (사용자)", schedule: "매주 월 09시 KST", desc: "Pro 사용자 주간 발송" },
   { path: "/api/cron/onboarding-reminder", label: "가입 환영 이메일", schedule: "매일 11:05 KST", desc: "24~48h 미온보딩 1회 발송" },
+  { path: "/api/cron/support-reminder", label: "CS 미답변 24h SMS", schedule: "매일 09:15 KST", desc: "support_tickets status=open 24h+ SMS · 1회 발송 후 reminder_sent_at 마킹" },
   // 시스템 자동화 — 데이터 수집/정리.
   { path: "/api/collect-news", label: "뉴스 수집 (korea.kr)", schedule: "매일 02시 UTC", desc: "korea.kr RSS 3개" },
   { path: "/api/cron/news-classify", label: "뉴스 자동 분류 (LLM)", schedule: "매일 10:30/12:30/14:30/16:30/18:30/20:30 KST", desc: "Claude Haiku 분류 · 6회/일 (cap 100)" },

@@ -12,6 +12,7 @@
 //   - ga4      (Google Analytics Data API + OAuth)
 //   - vercel   (Vercel REST API, env: VERCEL_TOKEN — prod 등록됨)
 //   - supabase (Management API + advisor security, env: SUPABASE_PERSONAL_ACCESS_TOKEN)
+//   - search_console (Search Analytics API, env: SC_SITE_URL/CLIENT_ID/SECRET/REFRESH_TOKEN)
 //
 // 새 console 추가 패턴: lib/external-console/<name>.ts 에 ConsoleCheckResult 반환
 // 함수 작성 → 본 cron 의 checks 배열에 추가. SMS·이메일 통합은 기존 로직 재활용.
@@ -25,6 +26,7 @@ import { checkAdsense } from "@/lib/external-console/adsense";
 import { checkGa4 } from "@/lib/external-console/ga4";
 import { checkVercel } from "@/lib/external-console/vercel";
 import { checkSupabase } from "@/lib/external-console/supabase";
+import { checkSearchConsole } from "@/lib/external-console/search-console";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 
@@ -55,6 +57,7 @@ async function run() {
     checkGa4(),
     checkVercel(),
     checkSupabase(),
+    checkSearchConsole(),
   ];
   const settled = await Promise.allSettled(checks);
 

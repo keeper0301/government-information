@@ -280,6 +280,24 @@ export default async function CategoryHubPage({ params }: PageProps) {
           variant="primary"
         />
 
+        {/* 운영자 큐레이션 노트 — AdSense "재게시 X, 운영자 직접 큐레이션" 시그널.
+            welfare 상세 unique_insight 박스와 같은 디자인 (파란 카드 + 배지) — 일관성. */}
+        {hub.curatorNote && (
+          <section className="bg-blue-50/40 border border-blue-200 rounded-2xl p-7 mb-8 max-md:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-[17px] font-bold text-grey-900 tracking-[-0.3px]">
+                운영자 시각 — 이 카테고리에서 챙길 점
+              </h2>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                keepioo 큐레이션
+              </span>
+            </div>
+            <p className="text-[15px] text-grey-800 leading-[1.8]">
+              {hub.curatorNote}
+            </p>
+          </section>
+        )}
+
         {/* 추천 정책 5건 */}
         {recommended.length > 0 && (
           <section className="mb-10">

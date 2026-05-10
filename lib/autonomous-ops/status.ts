@@ -6,6 +6,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getInsightProgress } from "./insight-progress";
 
 export type PhaseMetric = { label: string; value: string };
 export type PhaseStatus = {
@@ -105,7 +106,10 @@ async function phase2(): Promise<PhaseStatus> {
 }
 
 async function phase3(): Promise<PhaseStatus> {
-  const checks = await countAction24h("external_console_check");
+  const [checks, insight] = await Promise.all([
+    countAction24h("external_console_check"),
+    getInsightProgress(),
+  ]);
   const env = (...keys: string[]) => keys.every((k) => !!process.env[k]);
   // 콘솔별 [라벨, 활성, 미설정 시 안내] — 추가 console 은 이 표만 갱신.
   const cons: [string, boolean, string | null][] = [
@@ -128,6 +132,11 @@ async function phase3(): Promise<PhaseStatus> {
       env("SUPABASE_PERSONAL_ACCESS_TOKEN"),
       "Supabase Personal Access Token 발급 → Vercel env SUPABASE_PERSONAL_ACCESS_TOKEN 등록 (Management API 점검)",
     ],
+    [
+      "Search Console",
+      env("SC_SITE_URL", "SC_CLIENT_ID", "SC_CLIENT_SECRET", "SC_REFRESH_TOKEN"),
+      "Search Console OAuth 발급 → Vercel env 4종 (SC_SITE_URL/CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN). 가이드: docs/external-actions/search-console-oauth-guide.md",
+    ],
   ];
   const integrations = cons.filter(([, ok]) => ok).map(([l]) => l);
   const pending = cons
@@ -140,6 +149,10 @@ async function phase3(): Promise<PhaseStatus> {
     metrics: [
       { label: "24h check 실행", value: `${checks}회` },
       { label: "통합 console", value: integrations.join("+") },
+      {
+        label: "정책 해설 진행률",
+        value: `${insight.welfare.filled + insight.loan.filled}/${insight.welfare.total + insight.loan.total} (${insight.pct}%)`,
+      },
     ],
     pendingActions: pending,
   };
