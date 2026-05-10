@@ -367,5 +367,13 @@ export function formatDigestMessage(data: DigestData): string {
     lines.push(`샘플 dedupe 검수: ${data.dedupeRandomSample.title}`);
   }
 
+  // AdSense 검토 요청 reminder — 1주 노출 (KST 2026-05-17 ~ 05-24)
+  // 5/10 거절 대응 4 영역 fix (commit 65f15be) + DDL 083 백필 누적 ~840건 시점.
+  // 사장님이 어느 날 진행하셔도 SMS 가 매일 일깨움. 5/24 지나면 자동 사라짐.
+  const kstISO = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  if (kstISO >= "2026-05-17" && kstISO <= "2026-05-24") {
+    lines.push("📌 AdSense 검토 요청 시점 — adsense.google.com → keepioo.com → ☑ 수정함 → 검토 요청");
+  }
+
   return lines.join("\n");
 }
