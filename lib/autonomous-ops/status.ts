@@ -106,42 +106,37 @@ async function phase2(): Promise<PhaseStatus> {
 
 async function phase3(): Promise<PhaseStatus> {
   const checks = await countAction24h("external_console_check");
-  const kakaoEnv = !!process.env.SOLAPI_API_KEY;
-  const tossEnv = !!process.env.TOSS_SECRET_KEY;
-  const adsenseEnv = !!(
-    process.env.ADSENSE_CLIENT_ID &&
-    process.env.ADSENSE_CLIENT_SECRET &&
-    process.env.ADSENSE_REFRESH_TOKEN
-  );
-  const ga4Env = !!(
-    process.env.GA4_PROPERTY_ID &&
-    process.env.GA4_CLIENT_ID &&
-    process.env.GA4_CLIENT_SECRET &&
-    process.env.GA4_REFRESH_TOKEN
-  );
-  const integrations = [
-    "사이트",
-    kakaoEnv ? "카카오" : null,
-    tossEnv ? "토스" : null,
-    adsenseEnv ? "AdSense" : null,
-    ga4Env ? "GA4" : null,
-  ].filter(Boolean);
-  const pending: string[] = [];
-  if (!kakaoEnv) pending.push("Solapi 환경변수 SOLAPI_API_KEY 등록 (카카오 통계 점검)");
-  if (!adsenseEnv) {
-    pending.push(
+  const env = (...keys: string[]) => keys.every((k) => !!process.env[k]);
+  // 콘솔별 [라벨, 활성, 미설정 시 안내] — 추가 console 은 이 표만 갱신.
+  const cons: [string, boolean, string | null][] = [
+    ["사이트", true, null],
+    ["카카오", env("SOLAPI_API_KEY"), "Solapi 환경변수 SOLAPI_API_KEY 등록 (카카오 통계 점검)"],
+    ["토스", env("TOSS_SECRET_KEY"), null],
+    [
+      "AdSense",
+      env("ADSENSE_CLIENT_ID", "ADSENSE_CLIENT_SECRET", "ADSENSE_REFRESH_TOKEN"),
       "AdSense OAuth 발급 → Vercel env 3종 (ADSENSE_CLIENT_ID/SECRET/REFRESH_TOKEN). 가이드: docs/external-actions/adsense-oauth-guide.md",
-    );
-  }
-  if (!ga4Env) {
-    pending.push(
+    ],
+    [
+      "GA4",
+      env("GA4_PROPERTY_ID", "GA4_CLIENT_ID", "GA4_CLIENT_SECRET", "GA4_REFRESH_TOKEN"),
       "GA4 OAuth 발급 → Vercel env 4종 (GA4_PROPERTY_ID/CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN). 가이드: docs/external-actions/ga4-oauth-guide.md",
-    );
-  }
+    ],
+    ["Vercel", env("VERCEL_TOKEN"), null], // 봇 등록 후 자동 가동 (텔레그램 RBAC commit 9f1659f)
+    [
+      "Supabase",
+      env("SUPABASE_PERSONAL_ACCESS_TOKEN"),
+      "Supabase Personal Access Token 발급 → Vercel env SUPABASE_PERSONAL_ACCESS_TOKEN 등록 (Management API 점검)",
+    ],
+  ];
+  const integrations = cons.filter(([, ok]) => ok).map(([l]) => l);
+  const pending = cons
+    .filter(([, ok, hint]) => !ok && hint)
+    .map(([, , hint]) => hint as string);
   return {
     phase: 3,
     title: "외부 콘솔 자동 점검",
-    active: true, // 사이트 가용성은 env 무관
+    active: true,
     metrics: [
       { label: "24h check 실행", value: `${checks}회` },
       { label: "통합 console", value: integrations.join("+") },

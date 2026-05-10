@@ -4,17 +4,17 @@
 // 매일 KST 09:30 cron 이 외부 시스템 점검 → 이상 시만 SMS.
 // vercel.json: { "path": "/api/cron/external-console-check", "schedule": "30 0 * * *" }
 //
-// 현재 통합:
+// 현재 통합 (env 미설정 시 graceful skip):
 //   - site-availability (즉시 가능, 외부 의존 0)
-//
-// 다음 통합 (사장님 외부 액션 후):
-//   - adsense (Google AdSense Management API + OAuth refresh token)
-//   - kakao (카카오 비즈 콘솔 API or chrome 자동화)
-//   - toss (토스 결제 API)
-//   - ga4 (Google Analytics Data API + OAuth)
+//   - kakao    (Solapi 발송 통계, env: SOLAPI_API_KEY/SECRET)
+//   - toss     (DB subscriptions funnel, env: TOSS_SECRET_KEY ping)
+//   - adsense  (AdSense Management API + OAuth refresh token)
+//   - ga4      (Google Analytics Data API + OAuth)
+//   - vercel   (Vercel REST API, env: VERCEL_TOKEN — prod 등록됨)
+//   - supabase (Management API + advisor security, env: SUPABASE_PERSONAL_ACCESS_TOKEN)
 //
 // 새 console 추가 패턴: lib/external-console/<name>.ts 에 ConsoleCheckResult 반환
-// 함수 작성 → 본 cron 의 Promise.all 에 추가. SMS·이메일 통합은 기존 로직 재활용.
+// 함수 작성 → 본 cron 의 checks 배열에 추가. SMS·이메일 통합은 기존 로직 재활용.
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -23,6 +23,8 @@ import { checkKakao } from "@/lib/external-console/kakao";
 import { checkToss } from "@/lib/external-console/toss";
 import { checkAdsense } from "@/lib/external-console/adsense";
 import { checkGa4 } from "@/lib/external-console/ga4";
+import { checkVercel } from "@/lib/external-console/vercel";
+import { checkSupabase } from "@/lib/external-console/supabase";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 
@@ -51,6 +53,8 @@ async function run() {
     checkToss(),
     checkAdsense(),
     checkGa4(),
+    checkVercel(),
+    checkSupabase(),
   ];
   const settled = await Promise.allSettled(checks);
 
