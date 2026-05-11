@@ -135,17 +135,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Welfare programs
+  // Welfare programs — unique_insight 보유 페이지는 priority 0.7 → 0.85 (큐레이션 시그널 우선).
+  // unique_insight_at 만 select → row 당 transfer 최소 (text 본문 미수신).
+  // lastModified 는 더 최근 시점 사용 — 백필 진행 시 검색엔진 "신규 갱신" 인식 강화.
   const { data: welfare } = await supabase
     .from("welfare_programs")
-    .select("id, updated_at")
+    .select("id, updated_at, unique_insight_at")
     .not("source_code", "in", WELFARE_EXCLUDED_FILTER);
-  const welfarePages: MetadataRoute.Sitemap = (welfare || []).map((w) => ({
-    url: `${baseUrl}/welfare/${w.id}`,
-    lastModified: new Date(w.updated_at),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+  const welfarePages: MetadataRoute.Sitemap = (welfare || []).map((w) => {
+    const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at ?? null;
+    const hasInsight = !!insightAt;
+    const lastModSrc = hasInsight && insightAt && new Date(insightAt) > new Date(w.updated_at)
+      ? insightAt
+      : w.updated_at;
+    return {
+      url: `${baseUrl}/welfare/${w.id}`,
+      lastModified: new Date(lastModSrc),
+      changeFrequency: "weekly" as const,
+      priority: hasInsight ? 0.85 : 0.7,
+    };
+  });
 
   // Welfare 광역별 SEO 페이지 17개 — path-based long-tail.
   // 17 광역 모두 활성 정책 ≥100건 보유 (실측 2026-04-28) — thin-content 위험 0.
@@ -156,17 +165,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // Loan programs
+  // Loan programs — welfare 와 동일 패턴 (unique_insight 보유 시 priority 0.85 + lastMod 갱신).
   const { data: loans } = await supabase
     .from("loan_programs")
-    .select("id, updated_at")
+    .select("id, updated_at, unique_insight_at")
     .not("source_code", "in", LOAN_EXCLUDED_FILTER);
-  const loanPages: MetadataRoute.Sitemap = (loans || []).map((l) => ({
-    url: `${baseUrl}/loan/${l.id}`,
-    lastModified: new Date(l.updated_at),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+  const loanPages: MetadataRoute.Sitemap = (loans || []).map((l) => {
+    const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at ?? null;
+    const hasInsight = !!insightAt;
+    const lastModSrc = hasInsight && insightAt && new Date(insightAt) > new Date(l.updated_at)
+      ? insightAt
+      : l.updated_at;
+    return {
+      url: `${baseUrl}/loan/${l.id}`,
+      lastModified: new Date(lastModSrc),
+      changeFrequency: "weekly" as const,
+      priority: hasInsight ? 0.85 : 0.7,
+    };
+  });
 
   // Loan 광역별 SEO 페이지 17개 — path-based long-tail.
   // 17 광역 모두 활성 정책 ≥3건 보유 (세종 3건이 최소, 실측 2026-04-28).
