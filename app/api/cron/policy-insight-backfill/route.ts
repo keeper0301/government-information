@@ -72,12 +72,15 @@ async function backfillTable(
     updated: 0,
   };
 
-  // unique_insight NULL 인 row 만 (partial index 활용). updated_at 최신순 — 사용자 노출 우선.
+  // unique_insight NULL 인 row 만 (partial index 활용).
+  // 우선순위: view_count DESC (인기 정책 — 검수자 hit 확률 ↑) → published_at DESC (cold start 는 최신 우선).
+  // welfare_programs / loan_programs 둘 다 view_count + published_at 보유 (2026-05-11 확인).
   const { data: rows, error } = await admin
     .from(table)
     .select("id, title, source, description")
     .is("unique_insight", null)
-    .order("updated_at", { ascending: false })
+    .order("view_count", { ascending: false, nullsFirst: false })
+    .order("published_at", { ascending: false, nullsFirst: false })
     .limit(limit);
 
   if (error) {
