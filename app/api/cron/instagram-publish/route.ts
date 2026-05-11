@@ -12,15 +12,14 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { publishCarousel } from "@/lib/instagram/publish";
 import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
-// 2026-05-12: jitter (max 90s) + container polling (max 30s) + 5 Graph API
-// 호출 + retry → 최대 ~150s. Vercel Pro 한도 300s.
+// 2026-05-12: jitter (max 90s) + container polling (max 60s) + 5 Graph API
+// 호출 + retry → 최대 ~180s. Vercel Pro 한도 300s.
 export const maxDuration = 300;
 
 function siteUrl(): string {
@@ -79,7 +78,9 @@ export async function GET(request: Request) {
     });
   }
 
-  const supabase = await createClient();
+  // 모든 UPDATE 는 admin client 사용 (RLS 우회 — anon 으로 UPDATE 하면 row 0개
+  // 영향이라 attempt_count 가 0 으로 영구 고정 → 3회 가드 무효화 + 무한 retry).
+  // 2026-05-12 사고: 같은 글에 4번 시도하고도 카운트 안 올라간 사례 확인.
 
   // 2) 일 cap — KST 자정 이후 발행 카운트 + ramp-up
   //    KST 자정 = UTC 15:00 (전날 15:00 UTC ~ 오늘 15:00 UTC = KST 00:00 ~ 24:00)
@@ -126,7 +127,7 @@ export async function GET(request: Request) {
   await new Promise((r) => setTimeout(r, jitterMs));
 
   // 발행 대기 글 1건 (가장 오래된 것 먼저 — FIFO)
-  const { data: post, error: queryErr } = await supabase
+  const { data: post, error: queryErr } = await admin
     .from("blog_posts")
     .select("id, slug, title, meta_description, category, tags, instagram_attempt_count")
     .not("published_at", "is", null)
@@ -156,7 +157,7 @@ export async function GET(request: Request) {
   ];
 
   // attempt_count 먼저 증가 (실패해도 무한 retry 방지)
-  await supabase
+  await admin
     .from("blog_posts")
     .update({ instagram_attempt_count: (post.instagram_attempt_count ?? 0) + 1 })
     .eq("id", post.id);
@@ -175,7 +176,7 @@ export async function GET(request: Request) {
   );
 
   if (result.ok) {
-    await supabase
+    await admin
       .from("blog_posts")
       .update({
         instagram_published_at: new Date().toISOString(),
@@ -204,7 +205,7 @@ export async function GET(request: Request) {
   }
 
   // 실패 — error 저장. 3회 실패 시 health-alert 가 자동 감지
-  await supabase
+  await admin
     .from("blog_posts")
     .update({ instagram_error: result.error.slice(0, 500) })
     .eq("id", post.id);
