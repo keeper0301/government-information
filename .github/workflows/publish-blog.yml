@@ -3,15 +3,16 @@ name: 블로그 자동 발행 (매일)
 # Vercel Hobby cron 의 ±59분 윈도우 + 배포 충돌 이슈를 피하기 위해
 # GitHub Actions 로 이전. 분 단위 정확도 + 배포와 무관한 스케줄링.
 #
-# 동작: 매일 06:07 UTC (한국 15:07 부근) 에 keepioo.com 의 publish-blog 엔드포인트를
-# Bearer 토큰 인증으로 호출. 매일 7글 발행 (요청 분리로 60초 timeout 회피).
+# 동작: 매일 2회 (06:07 UTC = 한국 15:07, 22:07 UTC = 한국 07:07) 에
+# keepioo.com 의 publish-blog 엔드포인트를 Bearer 토큰 인증으로 호출.
+# 각 호출 7글 발행 시도 (요청 분리로 60초 timeout 회피).
 #
-# 2026-04-28 추가 가속 (5글 → 7글): 활성 사용자 4명 + 트래픽 매우 적은 상태,
-#   AdSense 승인이 가장 큰 레버. 요일 카테고리 7개(일~토) 모두 매일 순회.
-#   한 달 ~210글 페이스. offset 0~6 = 오늘부터 6일 후 카테고리 모두 → 매일
-#   7카테고리 1글씩 발행 (서로 다른 source_program 으로 중복 title/slug 0 보장).
-# 2026-05-01 안정화: Gemini/Vercel timeout 이 일부 offset 에서 발생해도 전체가
-#   실패로 표시되지 않도록 HTTP 재시도 + 성공 건수 기반 판정으로 변경.
+# 2026-04-28 5글 → 7글 가속: AdSense 승인이 가장 큰 레버.
+# 2026-05-01 안정화: HTTP 재시도 + 성공 건수 기반 판정.
+# 2026-05-11 일 2회 가속 (AdSense 보강): cron 1개 추가 (22:07 UTC = KST 07:07).
+#   publishOnePost 가 source_program_id 중복 가드 (lib/blog-publish.ts) 보유 →
+#   2회 호출 시 이미 발행된 source 는 자동 skip, 새 source 만 발행.
+#   trafficked 사용 시점 (검색·출근 KST 09 + 점심 KST 15) 분산 배치.
 #
 # 필요한 GitHub Secret:
 #   CRON_SECRET — Vercel 환경변수와 동일한 값
@@ -20,6 +21,8 @@ on:
   schedule:
     # 06:07 UTC = 한국 15:07 부근. 정시(00분) 회피로 GitHub 트래픽 대기열 risk ↓
     - cron: "7 6 * * *"
+    # 22:07 UTC = 한국 07:07 부근. KST 출근 시간대 검색 노출 + 시간 분산.
+    - cron: "7 22 * * *"
   # Actions 탭에서 수동 실행 가능 (테스트·긴급 발행용)
   workflow_dispatch:
 
