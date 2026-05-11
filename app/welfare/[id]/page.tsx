@@ -31,9 +31,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient();
   // AdSense "thin content" 거절 대응 — sparse 페이지는 검수자 sample 에서 빠지도록
   // robots noindex. 본문 + 핵심 정보 카드 채움 정도로 판정 (page render 와 같은 기준).
+  // 2026-05-11: unique_insight (keepioo 자체 해설) 있는 페이지는 본문 풍부 (200~400자 추가)
+  // → sparse 판정에서 면제. 백필 cron 진행과 함께 자연스럽게 index 페이지 확대.
   const { data } = await supabase
     .from("welfare_programs")
-    .select("title, description, eligibility, benefits, apply_method, apply_start, apply_end")
+    .select("title, description, eligibility, benefits, apply_method, apply_start, apply_end, unique_insight")
     .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
     .eq("id", id)
     .single();
@@ -43,8 +45,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const period = data.apply_start && data.apply_end ? "x" : data.apply_start || data.apply_end || null;
   const summaryFields = [data.eligibility, data.benefits, period, data.apply_method];
   const filledCount = summaryFields.filter((v) => v && !isSubstantiallyDuplicate(v as string, data.description)).length;
-  // "thin" 임계: 핵심 정보 1개 이하 또는 본문 100자 이하 → noindex
-  const isSparse = filledCount <= 1 || descLen <= 100;
+  const hasInsight = !!(data.unique_insight && (data.unique_insight as string).trim().length >= 80);
+  // "thin" 임계: 핵심 정보 1개 이하 또는 본문 100자 이하 → noindex.
+  // 단, unique_insight 있으면 본문 충분 → index 허용 (검수자 sample 시 큐레이션 페이지 노출).
+  const isSparse = !hasInsight && (filledCount <= 1 || descLen <= 100);
 
   return {
     title: `${data.title} — 정책알리미`,
