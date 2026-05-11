@@ -65,6 +65,6 @@
     { "path": "/api/cron/llm-usage-summary", "schedule": "50 0 * * *" },
     { "path": "/api/cron/failed-cron-retry", "schedule": "22 * * * *" },
     { "path": "/api/cron/policy-enrich", "schedule": "30 18 * * *" },
-    { "path": "/api/cron/policy-insight-backfill", "schedule": "0 0 * * *" }
+    { "path": "/api/cron/policy-insight-backfill", "schedule": "0 0,6,12,18 * * *" }
   ]
 }

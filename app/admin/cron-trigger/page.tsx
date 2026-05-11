@@ -57,7 +57,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/enrich", label: "공고 detail 보강", schedule: "매 5분", desc: "bokjiro·youthcenter·mss" },
   { path: "/api/enrich-thumbnails", label: "naver-news og:image", schedule: "매 5분", desc: "BATCH 50" },
   { path: "/api/enrich-targeting", label: "본문 targeting 분석", schedule: "매일 08시 UTC", desc: "Phase 1.5 income/household 백필" },
-  { path: "/api/cron/policy-insight-backfill", label: "정책 자체 해설 백필", schedule: "매일 09시 KST", desc: "AdSense 큐레이션 시그널 — gpt-4o-mini · 일 100건" },
+  { path: "/api/cron/policy-insight-backfill", label: "정책 자체 해설 백필", schedule: "4회/일 (09·15·21·03시 KST)", desc: "AdSense 큐레이션 시그널 — gpt-4o-mini · 일 400건" },
 ];
 
 // 최근 실행 fetch — 사장님이 "방금 누른 게 됐나?" 한눈에 확인.

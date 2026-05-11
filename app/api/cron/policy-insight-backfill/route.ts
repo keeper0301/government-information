@@ -4,8 +4,9 @@
 // 2026-05-10 AdSense "thin/scaled content" 거절 대응. 정부 원문(description) 외에
 // keepioo 자체 5~7줄 해설을 unique_insight 컬럼에 자동 저장.
 //
-// 매일 KST 09:00 cron — welfare 50 + loan 50 = 일 100건.
-// LLM: gpt-4o-mini (callLLM 추상화). 정책당 ~400 토큰 = 월 비용 약 $3 추정.
+// cron 4회/일 (KST 09:00, 15:00, 21:00, 03:00) — welfare 50 + loan 50 × 4 = 일 400건.
+// LLM: gpt-4o-mini (callLLM 추상화). 정책당 ~400 토큰 = 월 비용 약 $12 추정.
+// AdSense 재신청 시점 (5/24) 가속화 위해 1회/일 → 4회/일 (2026-05-11).
 //
 // graceful: OPENAI_API_KEY 미설정 / DDL 083 미적용 시 안전 skip.
 // description < 50자 (sparse) 정책은 백필 안 함 — 해설 만들어도 thin.
