@@ -1,7 +1,7 @@
 // ============================================================
 // /admin/instagram — 인스타그램 카드뉴스 자동 생성
 // ============================================================
-// keepioo 자동 발행 블로그 → 정사각형 1080×1080 카드 3장 자동 생성.
+// keepioo 자동 발행 블로그 → 1080×1350 (4:5 portrait) 카드 3장 자동 생성.
 // 인스타 자체 게시는 Meta API 복잡도 + 사장님 비즈니스 계정 필요로 반자동.
 //
 // 사장님 흐름 (5분/글):
@@ -268,7 +268,7 @@ export default async function AdminInstagramPage({
                       <img
                         src={`/api/instagram-card/${encodeURIComponent(post.slug)}/${idx}`}
                         alt={`카드 ${idx}`}
-                        className="w-full aspect-square rounded border border-grey-200 group-hover:border-blue-400 transition-colors"
+                        className="w-full aspect-[4/5] rounded border border-grey-200 group-hover:border-blue-400 transition-colors"
                         loading="lazy"
                       />
                       <p className="text-[11px] text-grey-600 mt-1 text-center">

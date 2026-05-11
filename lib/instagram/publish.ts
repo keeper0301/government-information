@@ -18,7 +18,7 @@ import { buildInstagramCaption, type CaptionInput } from "./caption";
 const API_BASE = "https://graph.instagram.com/v22.0";
 
 export type PublishInput = CaptionInput & {
-  /** /api/instagram-card 가 만드는 1080×1080 카드 3장의 public URL */
+  /** /api/instagram-card 가 만드는 1080×1350 (4:5) 카드 3장의 public URL */
   cardUrls: [string, string, string];
 };
 

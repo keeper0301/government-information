@@ -1,15 +1,18 @@
 // ============================================================
 // 인스타그램 카드뉴스 자동 생성
 // ============================================================
-// /api/instagram-card/{slug}/{index} → 1080×1080 PNG.
+// /api/instagram-card/{slug}/{index} → 1080×1350 PNG (4:5 portrait).
 // index 1·2·3 = 표지·자격금액·신청방법 (3 카드 구조).
 //
 // 사용처:
 //   /admin/instagram 페이지의 미리보기 + 다운로드.
-//   사장님이 ZIP 다운로드 → 인스타 멀티이미지 게시.
+//   /api/cron/instagram-publish 가 carousel 자동 발행에 사용.
 //
-// 디자인 (인스타 가독성 최적화):
-//   - 1080×1080 정사각형 (인스타 권장)
+// 디자인 (인스타 2026 가독성·노출 최적화):
+//   - 1080×1350 (4:5 portrait) — 인스타 공식 carousel 권장 ratio
+//     · 피드에서 1:1 square 대비 ~25% 더 큰 vertical 공간 → engagement ↑
+//     · 프로필 grid (3:4) 에서 약간 trim 되지만 핵심 콘텐츠 가운데에 배치돼 안전
+//     · carousel 첫 슬라이드 ratio 가 전체 결정 → 모든 카드 동일 사이즈 필수
 //   - 큰 글씨 (모바일 화면 작은 글자 안 보임)
 //   - 카테고리별 색상 (블로그 OG 와 동일 팔레트)
 //   - 하단 keepioo 브랜드 + URL
@@ -82,7 +85,8 @@ export async function GET(
   const category = post.category || "정책";
   const color = CATEGORY_COLORS[category] || "#3182F6";
   const fontData = await loadFontData();
-  const size = { width: 1080, height: 1080 };
+  // 1080×1350 (4:5 portrait) — 2026 인스타 carousel 공식 권장 ratio
+  const size = { width: 1080, height: 1350 };
 
   // 카드별 다른 layout 으로 생성 (3 카드 동시 보이는 일관된 시리즈 디자인)
   const cardElement =

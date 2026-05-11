@@ -148,7 +148,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending", message: "발행 대기 글 없음" });
   }
 
-  // 카드 3장 public URL (api/instagram-card 가 만드는 1080×1080)
+  // 카드 3장 public URL (api/instagram-card 가 만드는 1080×1350, 4:5 portrait)
   const base = siteUrl();
   const cardUrls: [string, string, string] = [
     `${base}/api/instagram-card/${encodeURIComponent(post.slug)}/1`,
