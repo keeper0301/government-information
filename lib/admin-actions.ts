@@ -323,4 +323,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   cron_retry_run: "Cron 자동 재시도 실행",
   vercel_deploy_failed: "Vercel deploy 실패 알림",
   llm_usage_summary: "LLM 사용량 일일 요약",
+  instagram_publish_success: "인스타 자동 발행 성공",
+  instagram_publish_fail: "인스타 자동 발행 실패",
+  instagram_token_refresh: "인스타 토큰 갱신",
 };
