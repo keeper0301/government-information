@@ -84,6 +84,35 @@ async function createCarouselContainer(
 }
 
 /**
+ * Container status polling — Instagram 권장. carousel container 생성 직후
+ * publish 호출하면 IN_PROGRESS 상태라 "Media ID is not available" 실패.
+ * status_code 가 FINISHED 될 때까지 polling (최대 30초, 2초 간격).
+ */
+async function waitForContainerReady(
+  containerId: string,
+  token: string,
+): Promise<void> {
+  const url = `${API_BASE}/${containerId}?fields=status_code&access_token=${token}`;
+  const start = Date.now();
+  const TIMEOUT_MS = 30_000;
+  const POLL_MS = 2_000;
+
+  while (Date.now() - start < TIMEOUT_MS) {
+    const res = await fetch(url);
+    const json = (await res.json()) as {
+      status_code?: string;
+      error?: { message: string };
+    };
+    if (json.status_code === "FINISHED") return;
+    if (json.status_code === "ERROR" || json.status_code === "EXPIRED") {
+      throw new Error(`container 상태 ${json.status_code}`);
+    }
+    await new Promise((r) => setTimeout(r, POLL_MS));
+  }
+  throw new Error(`container ready timeout 30s (마지막 polling)`);
+}
+
+/**
  * 최종 게시 — carousel container 를 진짜 인스타 피드에 노출.
  */
 async function publishContainer(
@@ -149,6 +178,10 @@ export async function publishCarousel(
       token,
       userId,
     );
+
+    // 4.5. container 처리 완료 대기 (FINISHED 까지 polling, 최대 30초)
+    // 이걸 안 하면 publish 시 "Media ID is not available" 에러.
+    await waitForContainerReady(carouselId, token);
 
     // 5. 최종 게시
     const mediaId = await publishContainer(carouselId, token, userId);
