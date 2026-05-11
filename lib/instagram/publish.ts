@@ -8,9 +8,9 @@
 //   4.   carousel container 생성 (media_type=CAROUSEL, children=[c1,c2,c3])
 //   5.   media_publish (carousel container → 실제 게시)
 //
-// 권한 (Vercel env):
-//   INSTAGRAM_ACCESS_TOKEN — Long-Lived (60일, cron 자동 refresh)
-//   INSTAGRAM_USER_ID      — @keepioo Business 계정의 numeric ID
+// Credentials (instagram_oauth_tokens 테이블 — OAuth flow Phase 2 이후):
+//   access_token — Long-Lived (60일, refresh cron 자동 연장)
+//   ig_user_id   — Instagram Business Account ID
 // ============================================================
 
 import { buildInstagramCaption, type CaptionInput } from "./caption";
@@ -22,23 +22,16 @@ export type PublishInput = CaptionInput & {
   cardUrls: [string, string, string];
 };
 
+export type PublishCreds = {
+  /** long-lived Instagram User access token */
+  token: string;
+  /** Instagram Business Account ID */
+  userId: string;
+};
+
 export type PublishResult =
   | { ok: true; mediaId: string; permalink: string | null }
   | { ok: false; error: string };
-
-/**
- * 환경변수 확인 — token/id 없으면 즉시 실패.
- */
-function getCreds() {
-  const token = process.env.INSTAGRAM_ACCESS_TOKEN;
-  const userId = process.env.INSTAGRAM_USER_ID;
-  if (!token || !userId) {
-    throw new Error(
-      "INSTAGRAM_ACCESS_TOKEN 또는 INSTAGRAM_USER_ID 누락 — Vercel env 확인",
-    );
-  }
-  return { token, userId };
-}
 
 /**
  * 1 카드의 media container 생성. is_carousel_item=true 로 carousel 자식 등록.
@@ -136,9 +129,10 @@ async function getPermalink(
  */
 export async function publishCarousel(
   input: PublishInput,
+  creds: PublishCreds,
 ): Promise<PublishResult> {
   try {
-    const { token, userId } = getCreds();
+    const { token, userId } = creds;
     const caption = buildInstagramCaption(input);
 
     // 1~3. 카드별 container 생성 (sequential — 동시 호출 시 rate limit 위험)

@@ -143,3 +143,81 @@ export async function getInstagramUserInfo(
 
   return (await res.json()) as { id: string; username: string };
 }
+
+// ============================================================
+// DB 연동 — instagram_oauth_tokens 에서 valid token 로드
+// ============================================================
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+type TokenRow = {
+  ig_user_id: string;
+  access_token: string;
+  expires_at: string;
+  username: string | null;
+};
+
+/** 만료 7일 이내면 즉시 refresh (60일 연장). */
+const REFRESH_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * DB 에서 활성 token 로드. 만료 임박이면 즉시 refresh 후 반환.
+ * single row 또는 multi-account 모두 지원 (현재는 첫 row).
+ * token 미저장이면 null.
+ */
+export async function loadValidToken(
+  admin: SupabaseClient,
+): Promise<{ token: string; userId: string; username: string | null } | null> {
+  const { data: row, error } = await admin
+    .from("instagram_oauth_tokens")
+    .select("ig_user_id, access_token, expires_at, username")
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<TokenRow>();
+
+  if (error || !row) return null;
+
+  const expiresMs = new Date(row.expires_at).getTime();
+  const remainingMs = expiresMs - Date.now();
+
+  // 이미 만료됨 — refresh 불가 (만료 후엔 OAuth flow 재진행 필요)
+  if (remainingMs <= 0) {
+    return null;
+  }
+
+  // 임박 → refresh
+  if (remainingMs < REFRESH_THRESHOLD_MS) {
+    try {
+      const refreshed = await refreshLongLivedToken(row.access_token);
+      const newExpiresAt = new Date(
+        Date.now() + refreshed.expiresIn * 1000,
+      ).toISOString();
+      await admin
+        .from("instagram_oauth_tokens")
+        .update({
+          access_token: refreshed.accessToken,
+          expires_at: newExpiresAt,
+          refreshed_at: new Date().toISOString(),
+        })
+        .eq("ig_user_id", row.ig_user_id);
+
+      return {
+        token: refreshed.accessToken,
+        userId: row.ig_user_id,
+        username: row.username,
+      };
+    } catch (e) {
+      // refresh 실패해도 기존 token 으로 fallback (아직 valid)
+      console.warn(
+        "[instagram-oauth] refresh 실패, 기존 token 사용:",
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+
+  return {
+    token: row.access_token,
+    userId: row.ig_user_id,
+    username: row.username,
+  };
+}

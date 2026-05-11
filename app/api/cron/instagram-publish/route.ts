@@ -13,7 +13,9 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { publishCarousel } from "@/lib/instagram/publish";
+import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
@@ -33,11 +35,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // env 미설정 시 graceful skip (token 발급 전 cron 가동 시 매 5분 audit 폭주 방지)
-  if (!process.env.INSTAGRAM_ACCESS_TOKEN || !process.env.INSTAGRAM_USER_ID) {
+  // OAuth flow 미연결 시 graceful skip (instagram_oauth_tokens 빈 테이블 — cron 매 5분 audit 폭주 방지)
+  // 만료 임박 token 은 loadValidToken 내부에서 자동 refresh.
+  const admin = createAdminClient();
+  const creds = await loadValidToken(admin);
+  if (!creds) {
     return NextResponse.json({
       status: "not_configured",
-      message: "INSTAGRAM_ACCESS_TOKEN 또는 INSTAGRAM_USER_ID 미설정 — cron skip",
+      message:
+        "instagram_oauth_tokens 비어있거나 모든 token 만료 — /admin/instagram 에서 OAuth 연결 필요",
     });
   }
 
@@ -79,15 +85,18 @@ export async function GET(request: Request) {
     .update({ instagram_attempt_count: (post.instagram_attempt_count ?? 0) + 1 })
     .eq("id", post.id);
 
-  // 발행 시도
-  const result = await publishCarousel({
-    title: post.title,
-    meta_description: post.meta_description,
-    category: post.category,
-    tags: post.tags,
-    detailUrl: `${base}/blog/${post.slug}`,
-    cardUrls,
-  });
+  // 발행 시도 (OAuth flow 로 발급받은 long-lived token 사용)
+  const result = await publishCarousel(
+    {
+      title: post.title,
+      meta_description: post.meta_description,
+      category: post.category,
+      tags: post.tags,
+      detailUrl: `${base}/blog/${post.slug}`,
+      cardUrls,
+    },
+    { token: creds.token, userId: creds.userId },
+  );
 
   if (result.ok) {
     await supabase
