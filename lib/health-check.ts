@@ -38,6 +38,12 @@ export type HealthSignals = {
    * PRESS_LOW_TIER_FLOOR env 로 1줄 toggle.
    */
   pressLowTierBacklog: number;
+  /**
+   * Instagram OAuth token 가장 임박한 만료까지 일수.
+   * null = instagram_oauth_tokens 테이블 빈 상태 (OAuth 미연결 — 알림 X).
+   * 0 ≤ N ≤ 7 일 때 alert (60일 long-lived token refresh 가 못 일어남).
+   */
+  instagramTokenExpiresInDays: number | null;
 };
 
 export type ThresholdAlert = {
@@ -49,7 +55,8 @@ export type ThresholdAlert = {
     | "press_pending"
     | "press_no_show"
     | "press_low_tier"
-    | "enrich_stuck";
+    | "enrich_stuck"
+    | "instagram_token_expiring";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -180,6 +187,20 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   ]);
   const enrichPermanentSkip = (welfSkip.count ?? 0) + (loanSkip.count ?? 0);
 
+  // Instagram OAuth token 만료 임박 — 가장 임박한 1건 (multi-account 대비)
+  // 테이블 빈 상태면 row 없음 → null (OAuth 미연결 — 알림 X)
+  const { data: ig } = await sb
+    .from("instagram_oauth_tokens")
+    .select("expires_at")
+    .order("expires_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<{ expires_at: string }>();
+  const instagramTokenExpiresInDays = ig?.expires_at
+    ? Math.floor(
+        (new Date(ig.expires_at).getTime() - Date.now()) / 86_400_000,
+      )
+    : null;
+
   return {
     signups24h,
     active7d,
@@ -192,6 +213,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     pressLastClassifyHours,
     enrichPermanentSkip,
     pressLowTierBacklog,
+    instagramTokenExpiresInDays,
   };
 }
 
@@ -277,6 +299,23 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `enrich 영구 skip 누적 ${s.enrichPermanentSkip}건 (임계 ${ENRICH_PERMANENT_SKIP_FLOOR}+).`,
       recommendation:
         "/admin/enrich-detail 에서 일괄 해제 검토 (외부 API 회복 시) 또는 collector 점검",
+    });
+  }
+
+  // Instagram OAuth token 만료 임박 — 7일 이내 (long-lived token refresh 못 일어남)
+  // null = OAuth 미연결 (테이블 빈 상태) → alert 안 함 (사장님 의식적 결정)
+  if (
+    s.instagramTokenExpiresInDays !== null &&
+    s.instagramTokenExpiresInDays <= 7
+  ) {
+    const isExpired = s.instagramTokenExpiresInDays < 0;
+    alerts.push({
+      key: "instagram_token_expiring",
+      message: isExpired
+        ? `Instagram OAuth token 이미 만료 (${Math.abs(s.instagramTokenExpiresInDays)}일 전). 자동 발행 중단됨.`
+        : `Instagram OAuth token 만료 ${s.instagramTokenExpiresInDays}일 남음 (≤ 7일). 자동 refresh 임박.`,
+      recommendation:
+        "/admin/instagram 페이지에서 '재연결' 버튼 클릭 → 새 60일 token 발급. loadValidToken 의 inline refresh 가 자동 작동하지만 실패 시 사장님 수동 재연결 필요.",
     });
   }
 

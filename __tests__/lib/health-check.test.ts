@@ -15,6 +15,8 @@ const BASE_SIGNALS: HealthSignals = {
   enrichPermanentSkip: 0,
   // Task 8 (2026-05-08) — low tier 큐 baseline 정상 (적극 모드에서는 거의 0)
   pressLowTierBacklog: 0,
+  // 2026-05-12 — null = OAuth 미연결 (alert X). 만료 임박 케이스는 별도 테스트에서.
+  instagramTokenExpiresInDays: null,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
