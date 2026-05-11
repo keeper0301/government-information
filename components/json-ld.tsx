@@ -117,6 +117,8 @@ type ArticleSchemaProps = {
 export function ArticleSchema({ title, description, url, datePublished, dateModified, tags }: ArticleSchemaProps) {
   // 2026-05-11 강화: author/publisher 에 url + logo 추가 → Google rich snippet 자격 충족.
   // author 가 about 페이지 link 보유 → 검수자가 운영자 신원 직접 확인 가능 (E-E-A-T).
+  // 2026-05-11 통일: NEXT_PUBLIC_SITE_URL 환경변수 사용 — 다른 파일 (layout/sitemap/robots) 과 일관.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
   const schema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -128,15 +130,15 @@ export function ArticleSchema({ title, description, url, datePublished, dateModi
     author: {
       "@type": "Organization",
       name: "정책알리미",
-      url: "https://www.keepioo.com/about",
+      url: `${siteUrl}/about`,
     },
     publisher: {
       "@type": "Organization",
       name: "정책알리미 (keepioo)",
-      url: "https://www.keepioo.com",
+      url: siteUrl,
       logo: {
         "@type": "ImageObject",
-        url: "https://www.keepioo.com/logo.svg",
+        url: `${siteUrl}/logo.svg`,
       },
     },
     keywords: tags?.join(", "),
