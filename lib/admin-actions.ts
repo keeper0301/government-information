@@ -47,7 +47,10 @@ export type AdminActionType =
   | "sns_publish_run"            // C1 — blog 1건 SNS 4종 자동 게시 결과 (channel별 ok/reason)
   | "cron_retry_run"             // 가-A1 — failed cron 자동 1회 재시도 audit (job별 retry status)
   | "vercel_deploy_failed"       // 가-A2 — Vercel deployment 실패 webhook 수신 (사장님 텔레그램 알림)
-  | "llm_usage_summary";         // 가-A3 — 24h LLM 호출 cron audit 합산 통계
+  | "llm_usage_summary"          // 가-A3 — 24h LLM 호출 cron audit 합산 통계
+  | "instagram_publish_success"  // 인스타 carousel 자동 발행 성공 (media_id + permalink 저장)
+  | "instagram_publish_fail"     // 인스타 발행 실패 (3회 누적 시 health-alert 트리거)
+  | "instagram_token_refresh";   // 매월 1일 long-lived token 갱신 cron 결과
 
 export type AdminActionRecord = {
   id: string;

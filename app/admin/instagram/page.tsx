@@ -51,42 +51,80 @@ type RecentPost = {
   category: string | null;
   tags: string[] | null;
   published_at: string;
+  instagram_published_at: string | null;
+  instagram_media_id: string | null;
+  instagram_error: string | null;
+  instagram_attempt_count: number;
 };
 
 async function loadRecentPosts(): Promise<RecentPost[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("blog_posts")
-    .select("id, slug, title, meta_description, category, tags, published_at")
+    .select(
+      "id, slug, title, meta_description, category, tags, published_at, instagram_published_at, instagram_media_id, instagram_error, instagram_attempt_count",
+    )
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(20);
   return (data ?? []) as RecentPost[];
 }
 
+/** 자동 발행 통계 — 최근 30일 발행 글 기준 */
+async function loadInstaStats() {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await admin
+    .from("blog_posts")
+    .select("instagram_published_at, instagram_error, instagram_attempt_count")
+    .not("published_at", "is", null)
+    .gte("published_at", since);
+  const rows = (data ?? []) as Array<{
+    instagram_published_at: string | null;
+    instagram_error: string | null;
+    instagram_attempt_count: number;
+  }>;
+  return {
+    total: rows.length,
+    published: rows.filter((r) => r.instagram_published_at !== null).length,
+    pending: rows.filter(
+      (r) => r.instagram_published_at === null && r.instagram_attempt_count < 3,
+    ).length,
+    failed: rows.filter(
+      (r) => r.instagram_published_at === null && r.instagram_attempt_count >= 3,
+    ).length,
+  };
+}
+
 export default async function AdminInstagramPage() {
   await requireAdmin();
-  const posts = await loadRecentPosts();
+  const [posts, stats] = await Promise.all([
+    loadRecentPosts(),
+    loadInstaStats(),
+  ]);
 
   return (
     <div className="max-w-[980px]">
       <AdminPageHeader
         kicker="ADMIN · 마케팅"
         title="인스타 카드뉴스"
-        description="keepioo 블로그 글을 1080×1080 인스타 카드 3장으로 자동 변환 — 백링크·해시태그 노출"
+        description="블로그 발행 시 인스타 carousel 자동 게시 (5분 cron) — 카드 3장 + 캡션 + 해시태그"
       />
 
-      {/* 사용 가이드 */}
+      {/* 자동 발행 상태 — 30일 기준 */}
+      <div className="mb-6 grid grid-cols-4 gap-3">
+        <StatCard label="최근 30일 블로그" value={stats.total} accent="grey" />
+        <StatCard label="✅ 인스타 발행됨" value={stats.published} accent="green" />
+        <StatCard label="⏳ 대기 중" value={stats.pending} accent="blue" />
+        <StatCard label="❌ 실패 (3회 시도)" value={stats.failed} accent="red" />
+      </div>
+
+      {/* 운영 안내 */}
       <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-xs text-blue-900 leading-[1.7]">
-        💡 <strong>사용법</strong>:
-        <ol className="mt-2 list-decimal pl-5 space-y-1">
-          <li>아래 정책 1편 선택 → 카드 3장 미리보기 확인 (표지·정보·CTA)</li>
-          <li>각 카드 이미지 우클릭 → <strong>「이미지 저장」</strong> (3개 모두)</li>
-          <li><strong>「캡션 복사」</strong> 버튼 클릭</li>
-          <li>인스타 앱 → <strong>멀티이미지 게시</strong> (3장 함께 업로드) → 캡션 paste → 게시</li>
-        </ol>
-        <p className="mt-3">
-          <strong>📌 사장님 인스타 프로필 link in bio 1회 설정</strong>:{" "}
+        🤖 <strong>자동 발행</strong>: blog_posts 새 글 발행 시 5분 안에 인스타 carousel 자동 게시.
+        Meta Graph API 사용 (Long-Lived Token 60일 만료, 매월 1일 cron 자동 refresh).
+        <p className="mt-2">
+          <strong>📌 인스타 프로필 link in bio 1회 설정</strong>:{" "}
           <code className="text-[11px] bg-white px-1 py-0.5 rounded">{getLinkInBioText()}</code>
         </p>
       </div>
@@ -117,7 +155,14 @@ export default async function AdminInstagramPage() {
                     </h3>
                     <p className="text-xs text-grey-500 mt-1">
                       {post.category ?? "—"} · {formatDate(post.published_at)}
+                      {" · "}
+                      <PublishStatusBadge post={post} />
                     </p>
+                    {post.instagram_error && (
+                      <p className="mt-1 text-[11px] text-red-600 truncate">
+                        에러: {post.instagram_error}
+                      </p>
+                    )}
                   </div>
                   <CopyCaption caption={caption} />
                 </div>
@@ -170,4 +215,57 @@ function formatDate(iso: string): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: "grey" | "green" | "blue" | "red";
+}) {
+  const accentClass = {
+    grey: "border-grey-200 bg-white",
+    green: "border-green-200 bg-green-50",
+    blue: "border-blue-200 bg-blue-50",
+    red: "border-red-200 bg-red-50",
+  }[accent];
+  return (
+    <div className={`rounded-lg border ${accentClass} p-3`}>
+      <p className="text-[11px] text-grey-600">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-grey-900">{value}</p>
+    </div>
+  );
+}
+
+function PublishStatusBadge({
+  post,
+}: {
+  post: {
+    instagram_published_at: string | null;
+    instagram_media_id: string | null;
+    instagram_attempt_count: number;
+  };
+}) {
+  if (post.instagram_published_at) {
+    return (
+      <span className="inline-flex items-center rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-800">
+        ✅ 인스타 발행됨
+      </span>
+    );
+  }
+  if (post.instagram_attempt_count >= 3) {
+    return (
+      <span className="inline-flex items-center rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-800">
+        ❌ 발행 실패 ({post.instagram_attempt_count}회)
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-800">
+      ⏳ 발행 대기 ({post.instagram_attempt_count}/3)
+    </span>
+  );
 }
