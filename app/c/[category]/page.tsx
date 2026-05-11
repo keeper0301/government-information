@@ -382,8 +382,13 @@ export default async function CategoryHubPage({ params }: PageProps) {
                   href={`/${p.type}/${p.id}`}
                   className="block bg-white border border-grey-200 rounded-2xl p-5 hover:border-blue-400 transition-colors no-underline"
                 >
-                  <div className="text-[12px] text-grey-500 mb-1">
-                    {p.type === "welfare" ? "복지" : "대출"}
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[12px] text-grey-500">
+                      {p.type === "welfare" ? "복지" : "대출"}
+                    </span>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                      keepioo 정리
+                    </span>
                   </div>
                   <div className="text-[15px] font-semibold text-grey-900 leading-[1.4] mb-2">
                     {p.title}
