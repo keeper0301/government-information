@@ -35,6 +35,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // ━━━ 인스타 정지 예방 안전책 (2026-05-12 추가) ━━━
+
+  // 1) 시간대 제한 — KST 09~22 만 발행 (밤 시간 spam 의심 회피)
+  const kstHour = (new Date().getUTCHours() + 9) % 24;
+  if (kstHour < 9 || kstHour >= 22) {
+    return NextResponse.json({
+      status: "outside_hours",
+      kstHour,
+      message: "KST 09~22 만 발행 (인스타 정지 예방)",
+    });
+  }
+
   // OAuth flow 미연결 시 graceful skip (instagram_oauth_tokens 빈 테이블 — cron 매 5분 audit 폭주 방지)
   // 만료 임박 token 은 loadValidToken 내부에서 자동 refresh.
   const admin = createAdminClient();
@@ -48,6 +60,49 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createClient();
+
+  // 2) 일 cap — KST 자정 이후 발행 카운트 + ramp-up
+  //    KST 자정 = UTC 15:00 (전날 15:00 UTC ~ 오늘 15:00 UTC = KST 00:00 ~ 24:00)
+  const nowUtc = new Date();
+  const kstMidnight = new Date(nowUtc);
+  kstMidnight.setUTCHours(15, 0, 0, 0);
+  if (nowUtc.getUTCHours() < 15) {
+    kstMidnight.setUTCDate(kstMidnight.getUTCDate() - 1);
+  }
+
+  // 첫 인스타 발행 — ramp-up 판정 기준
+  const { data: firstPub } = await admin
+    .from("blog_posts")
+    .select("instagram_published_at")
+    .not("instagram_published_at", "is", null)
+    .order("instagram_published_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const isNewAccount =
+    !firstPub?.instagram_published_at ||
+    Date.now() - new Date(firstPub.instagram_published_at).getTime() <
+      7 * 86_400_000;
+  const dailyCap = isNewAccount ? 5 : 14; // 첫 7일 5건/일, 이후 14건/일
+
+  const { count: todayCount } = await admin
+    .from("blog_posts")
+    .select("id", { count: "exact", head: true })
+    .gte("instagram_published_at", kstMidnight.toISOString());
+
+  if ((todayCount ?? 0) >= dailyCap) {
+    return NextResponse.json({
+      status: "daily_cap_reached",
+      todayCount,
+      dailyCap,
+      isNewAccount,
+      message: `오늘 발행 cap (${dailyCap}건) 도달 — 인스타 정지 예방`,
+    });
+  }
+
+  // 3) Jitter — random 0~90초 sleep (cron 정각 동시 호출 spike 회피, 봇 패턴 회피)
+  const jitterMs = Math.floor(Math.random() * 90_000);
+  await new Promise((r) => setTimeout(r, jitterMs));
 
   // 발행 대기 글 1건 (가장 오래된 것 먼저 — FIFO)
   const { data: post, error: queryErr } = await supabase
