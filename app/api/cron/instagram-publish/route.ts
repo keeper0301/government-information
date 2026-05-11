@@ -54,8 +54,10 @@ export async function GET(request: Request) {
   }
 
   // 1) 시간대 제한 — KST 09~22 만 발행 (밤 시간 spam 의심 회피)
+  //    INSTAGRAM_BYPASS_HOUR_CHECK=true 면 일시 우회 (사장님 시범 발행용)
+  const bypassHourCheck = process.env.INSTAGRAM_BYPASS_HOUR_CHECK === "true";
   const kstHour = (new Date().getUTCHours() + 9) % 24;
-  if (kstHour < 9 || kstHour >= 22) {
+  if (!bypassHourCheck && (kstHour < 9 || kstHour >= 22)) {
     await logSkip("outside_hours", { kstHour });
     return NextResponse.json({
       status: "outside_hours",
