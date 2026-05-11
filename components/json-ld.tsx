@@ -138,7 +138,9 @@ export function ArticleSchema({ title, description, url, datePublished, dateModi
       url: siteUrl,
       logo: {
         "@type": "ImageObject",
-        url: `${siteUrl}/logo.svg`,
+        url: `${siteUrl}/api/og-logo`,
+        width: 600,
+        height: 600,
       },
     },
     keywords: tags?.join(", "),
