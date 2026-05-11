@@ -107,6 +107,50 @@ export default async function AdminHealthPage() {
       {/* 환경변수 */}
       <Section title="🔐 환경변수" items={snap.env} />
 
+      {/* 인스타 자동 발행 OAuth 상태 — 2026-05-12 추가 */}
+      <section className="mb-8 bg-white border border-grey-200 rounded-2xl p-5">
+        <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          📸 인스타 자동 발행 OAuth
+        </h2>
+        {signals.instagramTokenExpiresInDays === null ? (
+          <div className="text-sm text-grey-600">
+            ⚠️ OAuth 미연결 —{" "}
+            <Link
+              href="/admin/instagram"
+              className="text-blue-600 underline underline-offset-2"
+            >
+              /admin/instagram
+            </Link>{" "}
+            에서 연결 (cron graceful skip 중)
+          </div>
+        ) : signals.instagramTokenExpiresInDays < 0 ? (
+          <div className="text-sm text-red-700 font-semibold">
+            ❌ 토큰 이미 만료 ({Math.abs(signals.instagramTokenExpiresInDays)}일
+            전) — 자동 발행 중단됨. 재연결 필요.
+          </div>
+        ) : signals.instagramTokenExpiresInDays <= 7 ? (
+          <div className="text-sm text-orange-700">
+            ⚠️ 토큰 만료 {signals.instagramTokenExpiresInDays}일 남음 (자동
+            refresh 임박)
+          </div>
+        ) : (
+          <div className="text-sm text-grey-700">
+            ✅ 정상 (토큰 만료까지 {signals.instagramTokenExpiresInDays}일)
+          </div>
+        )}
+        <p className="text-xs text-grey-500 mt-2 leading-relaxed">
+          매시 정각 cron (KST 09~22, 첫 7일 5건 → 이후 14건/일). 만료 7일 전
+          자동 refresh. 발행 결과는{" "}
+          <Link
+            href="/admin/instagram"
+            className="text-blue-600 underline underline-offset-2"
+          >
+            /admin/instagram
+          </Link>
+          .
+        </p>
+      </section>
+
       {/* 데이터 일관성 (#13) — orphan FK · 만료 cron 미처리 */}
       <Section title="🔗 데이터 일관성" items={integrity} />
 

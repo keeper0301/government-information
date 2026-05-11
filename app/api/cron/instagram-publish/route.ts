@@ -39,9 +39,24 @@ export async function GET(request: Request) {
 
   // ━━━ 인스타 정지 예방 안전책 (2026-05-12 추가) ━━━
 
+  // skip 사유 audit — outside_hours / daily_cap_reached / not_configured.
+  // 사장님 매일 점검 시 "오늘 cron 가동했는데 왜 발행 안 됐지?" 진단 흔적.
+  async function logSkip(reason: string, extra: Record<string, unknown>) {
+    try {
+      await logAdminAction({
+        actorId: null,
+        action: "instagram_publish_skipped",
+        details: { reason, ...extra },
+      });
+    } catch {
+      // audit 실패는 cron 본체 응답 유지 (운영 안전)
+    }
+  }
+
   // 1) 시간대 제한 — KST 09~22 만 발행 (밤 시간 spam 의심 회피)
   const kstHour = (new Date().getUTCHours() + 9) % 24;
   if (kstHour < 9 || kstHour >= 22) {
+    await logSkip("outside_hours", { kstHour });
     return NextResponse.json({
       status: "outside_hours",
       kstHour,
@@ -54,6 +69,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const creds = await loadValidToken(admin);
   if (!creds) {
+    await logSkip("not_configured", {});
     return NextResponse.json({
       status: "not_configured",
       message:
@@ -93,6 +109,7 @@ export async function GET(request: Request) {
     .gte("instagram_published_at", kstMidnight.toISOString());
 
   if ((todayCount ?? 0) >= dailyCap) {
+    await logSkip("daily_cap_reached", { todayCount, dailyCap, isNewAccount });
     return NextResponse.json({
       status: "daily_cap_reached",
       todayCount,

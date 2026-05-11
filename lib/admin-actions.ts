@@ -50,7 +50,8 @@ export type AdminActionType =
   | "llm_usage_summary"          // 가-A3 — 24h LLM 호출 cron audit 합산 통계
   | "instagram_publish_success"  // 인스타 carousel 자동 발행 성공 (media_id + permalink 저장)
   | "instagram_publish_fail"     // 인스타 발행 실패 (3회 누적 시 health-alert 트리거)
-  | "instagram_token_refresh";   // 매월 1일 long-lived token 갱신 cron 결과
+  | "instagram_token_refresh"    // 매월 1일 long-lived token 갱신 cron 결과
+  | "instagram_publish_skipped"; // 2026-05-12 — 정지 예방 안전책으로 cron skip (outside_hours, daily_cap_reached, not_configured)
 
 export type AdminActionRecord = {
   id: string;
@@ -326,4 +327,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   instagram_publish_success: "인스타 자동 발행 성공",
   instagram_publish_fail: "인스타 자동 발행 실패",
   instagram_token_refresh: "인스타 토큰 갱신",
+  instagram_publish_skipped: "인스타 발행 cron skip (안전책)",
 };

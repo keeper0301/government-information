@@ -38,6 +38,8 @@ async function logHealthAlertRun(details: {
   pressPending: number;
   pressLastClassifyHours: number;
   enrichPermanentSkip: number;
+  // 2026-05-12 추가 — 인스타 token 만료 임박 / 미연결 / 정상 진단성 흔적
+  instagramTokenExpiresInDays: number | null;
   smsOk: boolean | null;
   smsReason?: string;
   emailOk: boolean;
@@ -69,6 +71,7 @@ async function run() {
       pressPending: signals.pressPending,
       pressLastClassifyHours: signals.pressLastClassifyHours,
       enrichPermanentSkip: signals.enrichPermanentSkip,
+      instagramTokenExpiresInDays: signals.instagramTokenExpiresInDays,
       smsOk: null,
       emailOk: true,
     });
@@ -120,6 +123,7 @@ async function run() {
     pressPending: signals.pressPending,
     pressLastClassifyHours: signals.pressLastClassifyHours,
     enrichPermanentSkip: signals.enrichPermanentSkip,
+    instagramTokenExpiresInDays: signals.instagramTokenExpiresInDays,
     smsOk: smsResult?.ok ?? null,
     smsReason: smsResult?.ok ? undefined : smsResult?.reason,
     emailOk: result.ok,
