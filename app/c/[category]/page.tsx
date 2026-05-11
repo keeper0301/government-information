@@ -81,6 +81,8 @@ const RECOMMEND_LIMIT = 5;
 const DEADLINE_LIMIT = 5;
 const GUIDE_LIMIT = 3;
 const BLOG_LIMIT = 3;
+const INSIGHT_LIMIT = 3;  // 카테고리별 keepioo 인사이트 노출 수 (AdSense 큐레이션 시그널)
+const INSIGHT_SNIPPET_LEN = 130; // unique_insight 발췌 길이 (1~2줄)
 
 // ============================================================
 // PostgREST or-clause 작성 헬퍼
@@ -108,7 +110,9 @@ export default async function CategoryHubPage({ params }: PageProps) {
   // 한 query 에 .or() 두 번 호출 — supabase-js 가 두 .or() 를 자동으로 AND 결합.
   // 의도: (apply_end 활성) AND (세 축 매칭). 별도 .filter() 분리보다 간결.
   // ============================================================
-  const [welfareRes, loanRes, guidesAll, blogRes] = await Promise.all([
+  // 인사이트 발췌 fetch — unique_insight 보유 + hub 매칭 정책, view_count 인기순.
+  // 백필 초기 (welfare 0.44%, loan 10%) 라 매칭 0~3건 가변. graceful: data 없으면 섹션 자체 안 보임.
+  const [welfareRes, loanRes, guidesAll, blogRes, insightWelfareRes, insightLoanRes] = await Promise.all([
     (async () => {
       let q = supabase
         .from("welfare_programs")
@@ -142,6 +146,26 @@ export default async function CategoryHubPage({ params }: PageProps) {
           .order("published_at", { ascending: false })
           .limit(BLOG_LIMIT)
       : Promise.resolve({ data: [] }),
+    (async () => {
+      let q = supabase
+        .from("welfare_programs")
+        .select("id, title, unique_insight, view_count")
+        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+        .is("duplicate_of_id", null)
+        .not("unique_insight", "is", null);
+      if (orClause) q = q.or(orClause);
+      return q.order("view_count", { ascending: false, nullsFirst: false }).limit(INSIGHT_LIMIT);
+    })(),
+    (async () => {
+      let q = supabase
+        .from("loan_programs")
+        .select("id, title, unique_insight, view_count")
+        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+        .is("duplicate_of_id", null)
+        .not("unique_insight", "is", null);
+      if (orClause) q = q.or(orClause);
+      return q.order("view_count", { ascending: false, nullsFirst: false }).limit(INSIGHT_LIMIT);
+    })(),
   ]);
 
   const welfareRows = (welfareRes.data ?? []) as WelfareProgram[];
@@ -180,6 +204,47 @@ export default async function CategoryHubPage({ params }: PageProps) {
     category: string | null;
     published_at: string | null;
   }>;
+
+  // ============================================================
+  // 인사이트 발췌 — welfare + loan unique_insight 통합 view_count 인기순 3건
+  // ============================================================
+  // 백필 진행 (cron 4회/일 일 400건) 따라 자연스럽게 채워짐. 0건이면 섹션 안 보임.
+  // 발췌 ~130자 (마침표/줄바꿈 자연 잘림) — 한눈에 큐레이션 시그널.
+  type InsightProgram = {
+    type: "welfare" | "loan";
+    id: string;
+    title: string;
+    unique_insight: string;
+    view_count: number | null;
+  };
+  const insightWelfareRows = (insightWelfareRes.data ?? []) as Array<{
+    id: string;
+    title: string;
+    unique_insight: string | null;
+    view_count: number | null;
+  }>;
+  const insightLoanRows = (insightLoanRes.data ?? []) as Array<{
+    id: string;
+    title: string;
+    unique_insight: string | null;
+    view_count: number | null;
+  }>;
+  const insightPrograms: InsightProgram[] = [
+    ...insightWelfareRows.map((r) => ({ type: "welfare" as const, ...r, unique_insight: r.unique_insight ?? "" })),
+    ...insightLoanRows.map((r) => ({ type: "loan" as const, ...r, unique_insight: r.unique_insight ?? "" })),
+  ]
+    .filter((r) => r.unique_insight.trim().length >= 80)
+    .sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))
+    .slice(0, INSIGHT_LIMIT);
+
+  // 발췌 만들기 — 마침표/줄바꿈 우선 잘림, 그래도 길면 ... 추가
+  function snippetOf(text: string, maxLen: number): string {
+    const flat = text.trim().replace(/\s+/g, " ");
+    if (flat.length <= maxLen) return flat;
+    const slice = flat.slice(0, maxLen);
+    const lastBreak = Math.max(slice.lastIndexOf("."), slice.lastIndexOf("。"), slice.lastIndexOf("?"));
+    return (lastBreak > maxLen * 0.5 ? slice.slice(0, lastBreak + 1) : slice) + "…";
+  }
 
   // ============================================================
   // CollectionPage JSON-LD — 검색 리치 카드 시그널
@@ -295,6 +360,40 @@ export default async function CategoryHubPage({ params }: PageProps) {
             <p className="text-[15px] text-grey-800 leading-[1.8]">
               {hub.curatorNote}
             </p>
+          </section>
+        )}
+
+        {/* 인사이트 정책 발췌 — unique_insight 보유 정책 view_count 인기순 N건.
+            AdSense 검수자 sample 시 "큐레이션 X 재게시" 시그널 강화. 0건이면 섹션 자체 안 보임. */}
+        {insightPrograms.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-[20px] font-bold text-grey-900">
+                이 카테고리 인사이트 정책
+              </h2>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                keepioo 정리
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {insightPrograms.map((p) => (
+                <Link
+                  key={`${p.type}-${p.id}`}
+                  href={`/${p.type}/${p.id}`}
+                  className="block bg-white border border-grey-200 rounded-2xl p-5 hover:border-blue-400 transition-colors no-underline"
+                >
+                  <div className="text-[12px] text-grey-500 mb-1">
+                    {p.type === "welfare" ? "복지" : "대출"}
+                  </div>
+                  <div className="text-[15px] font-semibold text-grey-900 leading-[1.4] mb-2">
+                    {p.title}
+                  </div>
+                  <div className="text-[13px] text-grey-700 leading-[1.6]">
+                    {snippetOf(p.unique_insight, INSIGHT_SNIPPET_LEN)}
+                  </div>
+                </Link>
+              ))}
+            </div>
           </section>
         )}
 
