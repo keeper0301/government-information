@@ -19,7 +19,9 @@ import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// 2026-05-12: jitter (max 90s) + container polling (max 30s) + 5 Graph API
+// 호출 + retry → 최대 ~150s. Vercel Pro 한도 300s.
+export const maxDuration = 300;
 
 function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.keepioo.com";
