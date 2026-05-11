@@ -135,18 +135,29 @@ function renderCoverCard(title: string, category: string, color: string) {
         {category}
       </div>
 
-      {/* 큰 제목 — 인스타 모바일 가독성 최우선 */}
+      {/* 큰 제목 — 인스타 모바일 가독성 최우선
+          fontSize 세분화 (50자+ 긴 제목도 안 잘림) + wordBreak break-word
+          (Satori 한국어 keep-all 미지원으로 한 단어 처리 → 좌측 잘림 사고 해소) */}
       <div
         style={{
-          fontSize: title.length > 30 ? 80 : 96,
+          fontSize:
+            title.length > 50
+              ? 52
+              : title.length > 40
+                ? 60
+                : title.length > 30
+                  ? 72
+                  : 88,
           fontWeight: 800,
           color: "#191F28",
-          lineHeight: 1.2,
-          letterSpacing: "-3px",
+          lineHeight: 1.25,
+          letterSpacing: "-2px",
           flex: 1,
+          width: "100%",
+          maxWidth: "100%",
           display: "flex",
           alignItems: "center",
-          wordBreak: "keep-all",
+          wordBreak: "break-word",
         }}
       >
         {title}
@@ -209,15 +220,24 @@ function renderInfoCard(
 
       <div
         style={{
-          fontSize: text.length > 100 ? 56 : 64,
+          fontSize:
+            text.length > 200
+              ? 36
+              : text.length > 150
+                ? 44
+                : text.length > 100
+                  ? 52
+                  : 60,
           fontWeight: 800,
           color: "#FFFFFF",
           lineHeight: 1.4,
-          letterSpacing: "-2px",
+          letterSpacing: "-1.5px",
           flex: 1,
+          width: "100%",
+          maxWidth: "100%",
           display: "flex",
           alignItems: "center",
-          wordBreak: "keep-all",
+          wordBreak: "break-word",
         }}
       >
         {text}
