@@ -70,6 +70,43 @@ async function loadRecentPosts(): Promise<RecentPost[]> {
   return (data ?? []) as RecentPost[];
 }
 
+type OAuthStatus =
+  | { connected: false }
+  | {
+      connected: true;
+      username: string | null;
+      expiresAt: string;
+      daysLeft: number;
+    };
+
+/** Instagram OAuth 연결 상태 — instagram_oauth_tokens 의 가장 최근 row */
+async function loadOAuthStatus(): Promise<OAuthStatus> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("instagram_oauth_tokens")
+    .select("username, expires_at")
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ username: string | null; expires_at: string }>();
+
+  if (!data) return { connected: false };
+
+  const expiresMs = new Date(data.expires_at).getTime();
+  const daysLeft = Math.max(0, Math.floor((expiresMs - Date.now()) / 86400000));
+
+  // 이미 만료 — 미연결로 표시
+  if (daysLeft === 0 && expiresMs <= Date.now()) {
+    return { connected: false };
+  }
+
+  return {
+    connected: true,
+    username: data.username,
+    expiresAt: data.expires_at,
+    daysLeft,
+  };
+}
+
 /** 자동 발행 통계 — 최근 30일 발행 글 기준 */
 async function loadInstaStats() {
   const admin = createAdminClient();
@@ -96,11 +133,20 @@ async function loadInstaStats() {
   };
 }
 
-export default async function AdminInstagramPage() {
+export default async function AdminInstagramPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   await requireAdmin();
-  const [posts, stats] = await Promise.all([
+  const params = await searchParams;
+  const oauthSuccess = params.oauth === "success" ? params.user : null;
+  const oauthError = params.oauth_error ?? null;
+
+  const [posts, stats, oauth] = await Promise.all([
     loadRecentPosts(),
     loadInstaStats(),
+    loadOAuthStatus(),
   ]);
 
   return (
@@ -110,6 +156,47 @@ export default async function AdminInstagramPage() {
         title="인스타 카드뉴스"
         description="블로그 발행 시 인스타 carousel 자동 게시 (5분 cron) — 카드 3장 + 캡션 + 해시태그"
       />
+
+      {/* OAuth 연결 결과 inline alert */}
+      {oauthSuccess && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+          ✅ <strong>@{oauthSuccess}</strong> 계정으로 인스타 연결 완료. 5분 안에 자동 발행 cron 가동.
+        </div>
+      )}
+      {oauthError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          ❌ 인스타 연결 실패: <code className="text-xs bg-white px-1 py-0.5 rounded">{oauthError}</code>
+        </div>
+      )}
+
+      {/* OAuth 연결 상태 카드 */}
+      <div className="mb-6 rounded-xl border border-grey-200 bg-white p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-xs font-semibold text-grey-500 tracking-wider uppercase mb-1">
+              Instagram OAuth 연결
+            </div>
+            {oauth.connected ? (
+              <div className="text-sm text-grey-900">
+                ✅ <strong>@{oauth.username ?? "(unknown)"}</strong> 계정 연결됨
+                <span className="ml-2 text-xs text-grey-500">
+                  · 토큰 만료까지 {oauth.daysLeft}일 (만료 7일 전 자동 갱신)
+                </span>
+              </div>
+            ) : (
+              <div className="text-sm text-grey-700">
+                ⚠️ 인스타 계정 미연결 — 아래 버튼 클릭으로 OAuth 시작
+              </div>
+            )}
+          </div>
+          <a
+            href="/api/instagram/oauth/start"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
+          >
+            {oauth.connected ? "재연결" : "인스타 연결"}
+          </a>
+        </div>
+      </div>
 
       {/* 자동 발행 상태 — 30일 기준 */}
       <div className="mb-6 grid grid-cols-4 gap-3">
