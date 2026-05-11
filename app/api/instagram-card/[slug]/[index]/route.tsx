@@ -256,9 +256,10 @@ function renderCtaCard(title: string, color: string) {
         position: "relative",
       }}
     >
-      {/* 좌측 컬러 바 */}
+      {/* 좌측 컬러 바 — Satori 요구: 모든 div 에 display 명시 */}
       <div
         style={{
+          display: "flex",
           position: "absolute",
           left: 0,
           top: 0,
@@ -270,6 +271,7 @@ function renderCtaCard(title: string, color: string) {
 
       <div
         style={{
+          display: "flex",
           fontSize: 56,
           fontWeight: 800,
           color: "#191F28",
@@ -284,6 +286,7 @@ function renderCtaCard(title: string, color: string) {
 
       <div
         style={{
+          display: "flex",
           fontSize: 96,
           fontWeight: 800,
           color: color,
@@ -296,8 +299,11 @@ function renderCtaCard(title: string, color: string) {
         keepioo.com
       </div>
 
+      {/* 2줄 구성 — Satori 는 <br /> 미지원, flex-direction:column 으로 2개 div 분리 */}
       <div
         style={{
+          display: "flex",
+          flexDirection: "column",
           fontSize: 44,
           fontWeight: 700,
           color: "#4E5968",
@@ -307,9 +313,8 @@ function renderCtaCard(title: string, color: string) {
           wordBreak: "keep-all",
         }}
       >
-        🔍 1분 자격 진단으로
-        <br />
-        받을 수 있는 정책 즉시 확인
+        <div style={{ display: "flex" }}>🔍 1분 자격 진단으로</div>
+        <div style={{ display: "flex" }}>받을 수 있는 정책 즉시 확인</div>
       </div>
 
       <div
