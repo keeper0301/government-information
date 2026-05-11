@@ -470,12 +470,23 @@ function ProgramSection({
               <div className="text-[15px] font-semibold text-grey-900 line-clamp-2 mb-1">
                 {it.title}
               </div>
-              {/* 다 묶음 — summaryShort (LLM 한 줄) 우선 표시, 없으면 description fallback */}
-              {(it.summaryShort || it.description) && (
+              {/* 발췌 우선순위: unique_insight (keepioo 자체 해설, AdSense 큐레이션 시그널)
+                  → summaryShort (LLM 한 줄) → description fallback.
+                  검수자가 검색 결과 sample 시 "재게시 X 큐레이션 O" 시각 시그널 확보. */}
+              {it.uniqueInsight ? (
+                <div>
+                  <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 mb-1">
+                    keepioo 정리
+                  </span>
+                  <p className="text-[13px] text-grey-700 line-clamp-2 leading-[1.5]">
+                    {it.uniqueInsight}
+                  </p>
+                </div>
+              ) : (it.summaryShort || it.description) ? (
                 <p className="text-[13px] text-grey-600 line-clamp-2 leading-[1.5]">
                   {it.summaryShort || it.description}
                 </p>
-              )}
+              ) : null}
               <div className="text-[11px] text-grey-500 mt-1">
                 출처: {it.source}
               </div>

@@ -36,6 +36,9 @@ export type DisplayProgram = {
   householdTargetTags: HouseholdTargetTag[];
   // 다 묶음 (DDL 081) — LLM 자동 추출 한 줄 요약 (30~50자). 카드 description fallback 으로 사용.
   summaryShort: string | null;
+  // AdSense 큐레이션 시그널 (DDL 083) — keepioo 자체 정책 해설 (200~400자, 5~7줄).
+  // 검색결과·카테고리 hub 발췌 노출에 활용. 백필 cron 진행률 따라 점진 채워짐.
+  uniqueInsight: string | null;
 };
 
 const categoryIconMap: Record<string, DisplayProgram["icon"]> = {
@@ -86,6 +89,8 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     // database.types 가 081 컬럼 자동 반영 안 했어도 cast 로 안전 추출.
     summaryShort:
       (w as { summary_short?: string | null }).summary_short ?? null,
+    uniqueInsight:
+      (w as { unique_insight?: string | null }).unique_insight ?? null,
   };
 }
 
@@ -108,6 +113,8 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     householdTargetTags: narrowHouseholdTags(l.household_target_tags),
     summaryShort:
       (l as { summary_short?: string | null }).summary_short ?? null,
+    uniqueInsight:
+      (l as { unique_insight?: string | null }).unique_insight ?? null,
   };
 }
 
