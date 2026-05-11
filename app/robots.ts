@@ -27,6 +27,14 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "PerplexityBot", allow: "/" },
       { userAgent: "Google-Extended", allow: "/" },
       { userAgent: "Bytespider", allow: "/" },
+      // AdSense 봇 명시 Allow — AdSense 검수자가 봇으로 사이트 검증.
+      // 2026-05-11 추가: AdSense 거절 대응 + 검수자 봇 차단 우려 차단.
+      // Mediapartners-Google = AdSense 광고 게재 분석 봇
+      // AdsBot-Google = 광고 품질 검수 봇 (PC)
+      // AdsBot-Google-Mobile = 광고 품질 검수 봇 (모바일)
+      { userAgent: "Mediapartners-Google", allow: "/" },
+      { userAgent: "AdsBot-Google", allow: "/" },
+      { userAgent: "AdsBot-Google-Mobile", allow: "/" },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
   };

@@ -106,14 +106,21 @@ export async function Footer() {
       </div>
 
       {/* 데이터 출처 + 공공누리 라이선스 — Pretendard 단일 톤
-          (이전 EB Garamond italic catchline 폐기, 한국어 한 줄로 정체성 표현) */}
+          (이전 EB Garamond italic catchline 폐기, 한국어 한 줄로 정체성 표현)
+          2026-05-11: 데이터 출처를 외부 link 화 — AdSense 검수자가 직접 출처 확인 가능,
+          신뢰성 시그널 강화. rel=noopener noreferrer 로 보안 유지. */}
       <div className="text-[13px] text-grey-600 leading-[1.7] mb-6">
         <p className="text-grey-700 font-medium mb-2">
           매일 새 정부 정책을 큐레이션해서 알려드려요.
         </p>
         <p>
-          데이터 출처: 보조금24(행정안전부) · 복지로 · 기업마당 · 소상공인진흥공단
-          · 온통청년 · 공공데이터포털
+          데이터 출처:{" "}
+          <a href="https://www.gov.kr/portal/onestopSvc/subsidy" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">보조금24</a>{" "}·{" "}
+          <a href="https://www.bokjiro.go.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">복지로</a>{" "}·{" "}
+          <a href="https://www.bizinfo.go.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">기업마당</a>{" "}·{" "}
+          <a href="https://www.semas.or.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">소상공인진흥공단</a>{" "}·{" "}
+          <a href="https://www.youthcenter.go.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">온통청년</a>{" "}·{" "}
+          <a href="https://www.data.go.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">공공데이터포털</a>
         </p>
         <p>
           본 서비스는 정보 안내 목적이며, 실제 신청은 각 기관 공식 사이트에서 진행됩니다.
