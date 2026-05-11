@@ -122,15 +122,23 @@ export function ProgramRow({
               householdTargetTags={program.householdTargetTags}
             />
           </div>
-          {/* 다 묶음 (DDL 081) — summaryShort (LLM 한 줄 요약) 우선 표시.
-              description 은 원문 그대로 저장돼 있어 &nbsp; · ☞ · <br> 등 raw 엔티티·
-              섹션 기호가 노출되는 사례가 있음. 상세 페이지와 동일하게 cleanDescription
-              으로 엔티티·태그 정리. truncate 한 줄이라 삽입된 \n 은 CSS 가 공백으로
-              합쳐 한 줄로 렌더됨 (ellipsis 위치만 자연스러워짐).
-              본문 색·크기는 grey-900·15px 유지 — 사장님 "글자가 잘 안 보여"
-              피드백 대응으로 약화하지 않음. */}
+          {/* 본문 우선순위 (AdSense 큐레이션 시그널):
+              1순위 uniqueInsight 첫 줄 (DDL 083, keepioo 자체 해설 — "이 정책은 ~~" 한 줄 정의)
+              2순위 summaryShort (DDL 081, LLM 한 줄 요약 30~50자)
+              3순위 description (원문 — cleanDescription 으로 엔티티·태그 정리)
+              uniqueInsight 있을 때 "keepioo 정리" 배지를 인라인 노출 — 검수자가
+              welfare/loan 목록 카드 sample 시 매 카드에 큐레이션 시그널 보이도록.
+              본문 색·크기 grey-900·15px 유지 — 사장님 "글자가 잘 안 보여" 룰 준수.
+              truncate 한 줄이라 \n 공백 처리 + inline-block 배지가 첫 자리 차지. */}
           <div className="text-[15px] text-grey-900 leading-[1.55] truncate">
-            {program.summaryShort || cleanDescription(program.description)}
+            {program.uniqueInsight && (
+              <span className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 mr-1.5 align-middle">
+                keepioo 정리
+              </span>
+            )}
+            {program.uniqueInsight?.split("\n")[0]?.trim() ||
+              program.summaryShort ||
+              cleanDescription(program.description)}
           </div>
         </div>
         {/* 데스크톱에서만 오른쪽에 금액·출처 표시. 출처는 작은 회색 칩으로
