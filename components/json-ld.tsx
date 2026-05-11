@@ -56,7 +56,7 @@ export function OrganizationSchema({
     name,
     url,
     description,
-    logo: `${url}/icon.png`,
+    logo: `${url}/api/og-logo`,
     inLanguage: "ko",
   };
   if (legalName) schema.legalName = legalName;
