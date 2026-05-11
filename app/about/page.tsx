@@ -7,6 +7,7 @@
 // ============================================================
 import type { Metadata } from "next";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "정책알리미 소개 | keepioo.com",
@@ -24,9 +25,100 @@ export const metadata: Metadata = {
 // ISR — 소개 페이지는 갱신 드물어 1일 캐시
 export const revalidate = 86400;
 
-export default function AboutPage() {
+// 운영 통계 — 매일 갱신되는 실 카운트 (welfare/loan 활성 + 블로그 발행 + 정책 뉴스)
+// graceful: 한 fetch 실패해도 0 으로 표시 (페이지 자체는 살아있음).
+async function loadOpsStats() {
+  try {
+    const supabase = await createClient();
+    const today = new Date().toISOString().split("T")[0];
+    const [welfare, loan, blog, news] = await Promise.all([
+      supabase
+        .from("welfare_programs")
+        .select("*", { count: "estimated", head: true })
+        .is("duplicate_of_id", null)
+        .or(`apply_end.gte.${today},apply_end.is.null`),
+      supabase
+        .from("loan_programs")
+        .select("*", { count: "estimated", head: true })
+        .is("duplicate_of_id", null)
+        .or(`apply_end.gte.${today},apply_end.is.null`),
+      supabase
+        .from("blog_posts")
+        .select("*", { count: "estimated", head: true })
+        .not("published_at", "is", null),
+      supabase
+        .from("news_posts")
+        .select("*", { count: "estimated", head: true })
+        .not("published_at", "is", null),
+    ]);
+    return {
+      welfare: welfare.count ?? 0,
+      loan: loan.count ?? 0,
+      blog: blog.count ?? 0,
+      news: news.count ?? 0,
+    };
+  } catch {
+    return { welfare: 0, loan: 0, blog: 0, news: 0 };
+  }
+}
+
+export default async function AboutPage() {
+  const stats = await loadOpsStats();
+  const totalPolicies = stats.welfare + stats.loan;
+
+  // Person JSON-LD — Google E-E-A-T "운영자 신원" 시그널.
+  // AdSense / 검색엔진이 sitebehind 사람 인식 → 신뢰도 ↑↑.
+  const personJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "최관철",
+    alternateName: "keepioo",
+    jobTitle: "정책알리미 운영자 (1인 사업자)",
+    email: "keeper0301@gmail.com",
+    worksFor: {
+      "@type": "Organization",
+      name: "키피오 (keepioo)",
+      url: "https://www.keepioo.com",
+    },
+    sameAs: ["https://www.keepioo.com/about"],
+    knowsAbout: ["정부 복지 정책", "정부 대출 지원", "정부 지원금", "공공 데이터 큐레이션"],
+  };
+
+  // AboutPage JSON-LD — schema.org/AboutPage 명시. 검색엔진이 "이 페이지는 소개 페이지" 인식.
+  const aboutPageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    name: "정책알리미 소개",
+    description:
+      "정책알리미는 정부 복지·대출·지원금 정책을 한곳에 모아 누구나 쉽게 받을 수 있도록 돕는 서비스입니다.",
+    url: "https://www.keepioo.com/about",
+    inLanguage: "ko-KR",
+    mainEntity: {
+      "@type": "Organization",
+      name: "키피오 (keepioo)",
+      url: "https://www.keepioo.com",
+      founder: { "@type": "Person", name: "최관철" },
+      foundingDate: "2026-04",
+    },
+  };
+
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
+      {/* JSON-LD: Person (운영자 신원) + AboutPage (페이지 분류).
+          AdSense E-E-A-T 시그널 + 검색엔진 sitebehind 사람 인식. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(personJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(aboutPageJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+
       <div className="max-w-[720px] mx-auto px-5">
         {/* 헤더 */}
         <header className="mb-10">
@@ -37,6 +129,24 @@ export default function AboutPage() {
             누구나 받을 수 있는 정부 정책을 놓치지 않도록 도와드려요.
           </p>
         </header>
+
+        {/* 운영자 동기 — 사장님 개인 스토리. AdSense "왜 이 사이트를 만들었나"
+            E-E-A-T 경험(Experience) 시그널. 검수자가 사이트 진정성 인식. */}
+        <Section title="왜 만들었나요">
+          <p>
+            정부 정책은 항상 누군가에게 절실합니다. 하지만 "내가 받을 수 있는
+            정책이 있는데도 몰라서 놓쳤다" 는 사연을 너무 자주 봤습니다.
+            정책 정보가 부처별·지자체별 사이트에 흩어져 있고, 신청 마감일이
+            지난 뒤에야 알게 되는 일이 반복됩니다.
+          </p>
+          <p className="mt-3">
+            정책알리미는 이 격차를 줄이려고 만들었습니다. 정부가 공개한 정책
+            데이터를 한곳에 모으고, 사용자의 나이·지역·가구·소득에 맞춰
+            "내가 받을 수 있는 정책" 만 추려서 보여드립니다. 글 하나하나에
+            정책 원문 링크를 함께 두어, 사용자가 직접 확인하고 신청할 수 있게
+            합니다.
+          </p>
+        </Section>
 
         {/* 미션 */}
         <Section title="우리가 만들고 싶은 것">
@@ -90,7 +200,8 @@ export default function AboutPage() {
           </p>
         </Section>
 
-        {/* 누적 신호 — AdSense 검수자에게 운영 활동 흔적 노출 */}
+        {/* 누적 신호 — AdSense 검수자에게 운영 활동 흔적 노출.
+            동적 카운트 (DB 실 카운트) — ISR 1일 갱신으로 매일 정확 숫자 노출. */}
         <Section title="지금 정책알리미는">
           <p>
             매일 정부·지자체 정책을 자동 수집·검증·분류해 사용자에게 전달합니다.
@@ -98,17 +209,23 @@ export default function AboutPage() {
           </p>
           <ul className="mt-3 space-y-2 text-grey-700">
             <li>
-              <b className="text-grey-900">정책 큐레이션</b>: 복지·대출·지원금
-              11,000+ 건을 매일 점검 (마감 지난 정책 자동 정리)
+              <b className="text-grey-900">정책 큐레이션</b>: 활성 복지·대출·
+              지원금 <b className="text-blue-700">{totalPolicies.toLocaleString("ko-KR")}건</b>
+              {" "}(복지 {stats.welfare.toLocaleString("ko-KR")}건 · 대출
+              {" "}{stats.loan.toLocaleString("ko-KR")}건) 을 매일 점검 (마감 지난
+              정책 자동 정리)
             </li>
             <li>
-              <b className="text-grey-900">정책 가이드 발행</b>: 7개 카테고리
-              (청년·노년·학생·교육·육아·가족·주거·소상공인·건강·복지) 매일 자동
-              발행 — 한 달 약 200편 페이스
+              <b className="text-grey-900">정책 가이드 발행</b>: 누적
+              {" "}<b className="text-blue-700">{stats.blog.toLocaleString("ko-KR")}편</b>
+              {" "}(7개 카테고리: 청년·노년·학생·교육·육아·가족·주거·소상공인·
+              건강·복지). 매일 14편 자동 발행 — 한 달 약 420편 페이스
             </li>
             <li>
               <b className="text-grey-900">정책 소식 수집</b>: 17개 광역
-              지자체의 보도자료를 매일 RSS·공식 페이지에서 자동 수집·분류
+              지자체의 보도자료 누적
+              {" "}<b className="text-blue-700">{stats.news.toLocaleString("ko-KR")}건</b>
+              {" "}— 매일 RSS·공식 페이지에서 자동 수집·분류
             </li>
             <li>
               <b className="text-grey-900">맞춤 추천 + 알림</b>: 가입한
