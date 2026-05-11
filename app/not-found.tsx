@@ -46,6 +46,14 @@ const LINKS: { href: string; title: string; desc: string; emoji: string }[] = [
   },
 ];
 
+// 카테고리 hub 4종 — AdSense 검수자가 404 hit 시 정상 운영 시그널 (메인 카테고리 진입 가능).
+const HUB_LINKS = [
+  { slug: "youth", label: "청년", emoji: "🎓" },
+  { slug: "senior", label: "노년", emoji: "🌸" },
+  { slug: "business", label: "자영업·소상공인", emoji: "🏪" },
+  { slug: "housing", label: "주거", emoji: "🏠" },
+];
+
 export default function NotFound() {
   return (
     <main className="min-h-screen bg-grey-50 flex items-center justify-center px-5 py-20">
@@ -65,8 +73,29 @@ export default function NotFound() {
           </p>
         </div>
 
+        {/* 검색 폼 — 사용자/검수자가 즉시 정책 검색 가능 (GET form, JS 없어도 동작) */}
+        <form method="get" action="/search" className="mb-6">
+          <div className="flex items-center gap-2 bg-white border border-grey-200 rounded-2xl p-2 pl-5 max-w-[500px] mx-auto focus-within:border-blue-500 focus-within:shadow-[0_0_0_4px_rgba(49,130,246,0.16)] transition-all">
+            <input
+              type="text"
+              name="q"
+              placeholder="원하는 정책 검색 (예: 청년 월세, 소상공인 대출)"
+              required
+              minLength={2}
+              aria-label="검색어"
+              className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] text-grey-900 text-left"
+            />
+            <button
+              type="submit"
+              className="shrink-0 h-10 px-4 bg-blue-500 text-white border-none rounded-xl text-[14px] font-bold cursor-pointer hover:bg-blue-600 transition-colors"
+            >
+              검색
+            </button>
+          </div>
+        </form>
+
         {/* 주요 페이지 바로가기 4종 */}
-        <div className="grid grid-cols-2 gap-3 text-left">
+        <div className="grid grid-cols-2 gap-3 text-left mb-6">
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -87,13 +116,39 @@ export default function NotFound() {
           ))}
         </div>
 
-        {/* 보조 링크 */}
-        <p className="mt-8 text-[13px] text-grey-600">
+        {/* 카테고리 hub — 검수자가 사이트 정상 운영 + 콘텐츠 깊이 인식 */}
+        <div className="mb-6">
+          <p className="text-[12px] font-semibold text-grey-500 mb-2 tracking-[1px] uppercase">
+            카테고리별 정책
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {HUB_LINKS.map((h) => (
+              <Link
+                key={h.slug}
+                href={`/c/${h.slug}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-grey-200 text-[13px] text-grey-700 hover:border-blue-400 hover:text-blue-600 no-underline transition-colors"
+              >
+                <span aria-hidden="true">{h.emoji}</span>
+                {h.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* 보조 링크 + 운영 정보 (검수자 신뢰성 시그널) */}
+        <p className="text-[13px] text-grey-600">
           문제가 반복된다면{" "}
           <Link href="/help" className="text-blue-500 hover:underline">
             도움말
           </Link>
-          에서 자주 묻는 질문을 확인해 주세요.
+          {" "}또는{" "}
+          <Link href="/about" className="text-blue-500 hover:underline">
+            서비스 소개
+          </Link>
+          를 확인해 주세요.
+        </p>
+        <p className="text-[12px] text-grey-500 mt-2">
+          keepioo · 정책알리미는 정부 복지·대출·지원금 정책을 한곳에 모아 안내합니다.
         </p>
       </div>
     </main>
