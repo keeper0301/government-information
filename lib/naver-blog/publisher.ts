@@ -48,13 +48,8 @@ const CONFIRM_PUBLISH_BUTTONS = [
   '//button[contains(@class,"confirm_btn")]',
 ];
 
-// 임시 저장 글 복원 모달 dismiss — 사고 (2026-05-12) 재발 방지
-const RESTORE_MODAL_DISMISS = [
-  'button:has-text("취소")',
-  'button:has-text("닫기")',
-  'button:has-text("아니오")',
-  'button:has-text("새로 작성")',
-];
+// 임시 저장 글 복원 모달 dismiss — [role="dialog"] 안에서만 (다른 SE3 "취소" 버튼 misclick 회피).
+const RESTORE_MODAL_DISMISS_PATTERN = /취소|닫기|아니오|새로 작성/;
 
 export type PublishOptions = {
   /** 네이버 글쓰기 페이지 제목 — 평문 */
@@ -161,21 +156,23 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
     // 7) mainFrame 진입 (SE3 의 mainFrame 안에 추가 iframe 없음 — 단일 frame)
     const mainFrame = page.frameLocator("#mainFrame");
 
-    // 8) 임시 저장 글 복원 모달 자동 dismiss — 사고 (2026-05-12) 재발 방지.
-    //    SE3 가 localStorage 임시 글 있으면 "이어서 작성?" 모달 띄움.
-    //    자동 복원 시 새 글 위에 덧붙어 잘못된 글 발행 위험.
-    for (const sel of RESTORE_MODAL_DISMISS) {
-      try {
-        const loc = mainFrame.locator(sel).first();
-        if (await waitVisible(page, "#mainFrame", 500)) {
-          if (await loc.isVisible().catch(() => false)) {
-            await loc.click({ timeout: 2000 });
-            debug.modal_dismissed = sel;
-            await page.waitForTimeout(1500);
-            break;
-          }
-        }
-      } catch {}
+    // 8) 임시 저장 글 복원 모달 자동 dismiss — [role="dialog"] 안에서만.
+    //    다른 SE3 "취소" 텍스트 버튼 (글 작성 취소 등) misclick 회피.
+    //    모달 안 떠 있으면 skip (Ctrl+A+Delete clear 만으로 충분).
+    try {
+      const dialogCancel = mainFrame
+        .locator('[role="dialog"] button')
+        .filter({ hasText: RESTORE_MODAL_DISMISS_PATTERN })
+        .first();
+      if (await dialogCancel.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await dialogCancel.click({ timeout: 2000 });
+        debug.modal_dismissed = true;
+        await page.waitForTimeout(1500);
+      } else {
+        debug.modal_dismissed = false;
+      }
+    } catch {
+      debug.modal_dismissed = false;
     }
 
     // 9) 제목 입력 — Ctrl+A + Delete 로 clear 후 type (임시 글 자동 복원 대비)
@@ -195,7 +192,9 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
     }
     await page.waitForTimeout(500);
 
-    // 10) 본문 입력 — clear 후 clipboard paste
+    // 10) 본문 입력 — clear 후 clipboard HTML paste.
+    //     text/plain 만 보내면 SE3 가 <p>·<h3> 태그 그대로 텍스트로 표시 (2026-05-12 사고).
+    //     text/html + text/plain 둘 다 ClipboardItem 으로 set → SE3 가 HTML 인식.
     try {
       const bodyLoc = mainFrame.locator(SE3_BODY).first();
       await bodyLoc.waitFor({ state: "visible", timeout: 10000 });
@@ -205,9 +204,15 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
       await page.waitForTimeout(200);
       await page.keyboard.press("Delete");
       await page.waitForTimeout(300);
-      await page.evaluate((html) => navigator.clipboard.writeText(html), opts.bodyHtml);
+      await page.evaluate((html) => {
+        const htmlBlob = new Blob([html], { type: "text/html" });
+        const plainBlob = new Blob([html.replace(/<[^>]+>/g, "")], { type: "text/plain" });
+        return navigator.clipboard.write([
+          new ClipboardItem({ "text/html": htmlBlob, "text/plain": plainBlob }),
+        ]);
+      }, opts.bodyHtml);
       await page.keyboard.press("Control+V");
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(2500);
       debug.body = "input_ok";
     } catch (err) {
       return failResult(debug, "body_input_failed", String(err));
