@@ -12,7 +12,7 @@ describe("ADMIN_MENU 구조", () => {
     expect(ADMIN_MENU.map((g) => g.number)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("총 페이지 메뉴 항목 28개", () => {
+  it("총 페이지 메뉴 항목 29개", () => {
     // 2026-04-29 Phase 3 B3: /admin/dedupe 추가 → 운영 그룹 5→6, 총 18→19.
     // 2026-05-06: /admin/recommendation-trace 추가 → 지표 그룹 3→4, 총 19→20.
     // 2026-05-07: /admin/naver-blog, /admin/wordpress, /admin/instagram 추가 → 컨텐츠 그룹 6→9, 총 20→23.
@@ -20,8 +20,9 @@ describe("ADMIN_MENU 구조", () => {
     // 2026-05-08 후속: ops-monitor 외 추가 페이지 누적 (Phase 4-A 큐, Phase 5-A long-tail) 23→26.
     // 2026-05-09: /admin/auto-confirmed 추가 (B안 신뢰도 tier) → 컨텐츠 그룹 9→10, 총 26→27.
     // 2026-05-10: /admin/autonomous 추가 (자율 운영 마스터 hub) → 운영 상태 그룹 7→8, 총 27→28.
+    // 2026-05-12: /admin/naver-blog/cookies 추가 (Phase 2-B RPA session vault) → 컨텐츠 그룹 10→11, 총 28→29.
     const total = ADMIN_MENU.reduce((s, g) => s + g.items.length, 0);
-    expect(total).toBe(28);
+    expect(total).toBe(29);
   });
 
   it("href 중복 없음", () => {
