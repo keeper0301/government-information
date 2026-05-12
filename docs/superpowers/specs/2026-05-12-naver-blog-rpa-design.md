@@ -210,7 +210,7 @@ if (await otp.isVisible({ timeout: 1000 }).catch(() => false)) {
 ## 마이그레이션·환경변수 plan
 
 ```sql
--- 마이그레이션 088 (다음 세션)
+-- 마이그레이션 087 (다음 세션)
 CREATE TABLE naver_session_cookies (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   cookies jsonb NOT NULL,  -- Playwright addCookies 형식 그대로
@@ -266,7 +266,7 @@ Vercel env:
 다음 세션이 진행할 작업 (이 순서로):
 1. **이 spec 의 보안 회전 5종 + cookies 사장님 액션 확인** (안 됐으면 가장 먼저)
 2. **Phase 2-A** `lib/naver-blog/format.ts` 확장 + naver SmartEditor HTML 출력 테스트
-3. **Phase 2-B** 마이그레이션 088 + naver_session_cookies 테이블 + 어드민 업로드 UI
+3. **Phase 2-B** 마이그레이션 087 + naver_session_cookies 테이블 + 어드민 업로드 UI
 4. **Phase 2-C** Playwright 매뉴얼 1건 발행 검증 (사장님 PC local 또는 dev 환경)
 5. Phase 3 는 Phase 2 검증 끝난 후 별도 세션
 
