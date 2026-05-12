@@ -28,16 +28,32 @@ const HUMAN_UA =
 const NAVER_WRITE_URL = "https://blog.naver.com/GoBlogWrite.naver";
 const NAVER_HOME_URL = "https://www.naver.com";
 
-// SE3 selector — spec 의 BublBot 정찰 결과 기반. 깨질 가능성 있음.
-const SE3_TITLE = "span.se-fs32.__se-node";
-const SE3_BODY = "p.se-text-paragraph";
+// SE3 selector — 2026-05-12 실측 진단 결과 반영.
+// span.se-fs32.__se-node 는 width=0 hidden placeholder 였음. 실 input 은 p.se-text-paragraph.
+// 제목·본문은 .se-section-documentTitle / .se-section-text 로 명확히 구분.
+const SE3_TITLE = ".se-section-documentTitle p.se-text-paragraph";
+const SE3_BODY = ".se-section-text p.se-text-paragraph";
 
-// 저장 4중 fallback (가장 안정 → 최종)
-const SAVE_BUTTONS = [
-  '//button[@data-click-area="tpb.save"]',
-  "button.save_btn__bzc5B",
-  '//button[contains(@class,"save_btn")]',
-  '//button[.//span[text()="저장"]]',
+// 발행 — tpb.save 는 임시 저장 (글 안 게시). tpb.publish 가 발행 모달 열기.
+const MAIN_PUBLISH_BUTTONS = [
+  'button[data-click-area="tpb.publish"]',
+  "button.publish_btn__m9KHH",
+  '//button[contains(@class,"publish_btn")]',
+];
+
+// 발행 모달의 confirm 버튼 — tpb*i.publish (data-click-area)
+const CONFIRM_PUBLISH_BUTTONS = [
+  'button[data-click-area="tpb*i.publish"]',
+  "button.confirm_btn__WEaBq",
+  '//button[contains(@class,"confirm_btn")]',
+];
+
+// 임시 저장 글 복원 모달 dismiss — 사고 (2026-05-12) 재발 방지
+const RESTORE_MODAL_DISMISS = [
+  'button:has-text("취소")',
+  'button:has-text("닫기")',
+  'button:has-text("아니오")',
+  'button:has-text("새로 작성")',
 ];
 
 export type PublishOptions = {
@@ -117,6 +133,11 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
 
     const page = await context.newPage();
 
+    // beforeunload dialog 자동 accept — 임시 글 있을 때 navigate 시 confirm 뜸
+    page.on("dialog", async (d) => {
+      await d.accept().catch(() => undefined);
+    });
+
     // 4) 세션 검증 — naver.com 진입 후 로그인 표시 (실패 시 cookies 만료)
     await page.goto(NAVER_HOME_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
     const loginLinkVisible = await waitVisible(page, 'a[href*="nidlogin.login"]', 2000);
@@ -137,65 +158,82 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
       return failResult(debug, blocker, `${blocker} 감지 — manual 개입 필요`);
     }
 
-    // 7) mainFrame 진입
+    // 7) mainFrame 진입 (SE3 의 mainFrame 안에 추가 iframe 없음 — 단일 frame)
     const mainFrame = page.frameLocator("#mainFrame");
-    const innerFrame = mainFrame.frameLocator("iframe");
 
-    // 진단: frame 갯수 + mainFrame URL + body text 일부
-    const allFrames = page.frames();
-    debug.total_frames = allFrames.length;
-    debug.frame_urls = allFrames.map((f) => f.url()).slice(0, 5);
-    debug.mainframe_body_text = await mainFrame
-      .locator("body")
-      .innerText({ timeout: 5000 })
-      .then((t) => t.slice(0, 300))
-      .catch((e) => `err: ${e instanceof Error ? e.message : String(e)}`);
+    // 8) 임시 저장 글 복원 모달 자동 dismiss — 사고 (2026-05-12) 재발 방지.
+    //    SE3 가 localStorage 임시 글 있으면 "이어서 작성?" 모달 띄움.
+    //    자동 복원 시 새 글 위에 덧붙어 잘못된 글 발행 위험.
+    for (const sel of RESTORE_MODAL_DISMISS) {
+      try {
+        const loc = mainFrame.locator(sel).first();
+        if (await waitVisible(page, "#mainFrame", 500)) {
+          if (await loc.isVisible().catch(() => false)) {
+            await loc.click({ timeout: 2000 });
+            debug.modal_dismissed = sel;
+            await page.waitForTimeout(1500);
+            break;
+          }
+        }
+      } catch {}
+    }
 
-    // 8) 제목 입력
+    // 9) 제목 입력 — Ctrl+A + Delete 로 clear 후 type (임시 글 자동 복원 대비)
     try {
-      await mainFrame.locator(SE3_TITLE).first().waitFor({ timeout: 30000 });
-      await mainFrame.locator(SE3_TITLE).first().click();
+      const titleLoc = mainFrame.locator(SE3_TITLE).first();
+      await titleLoc.waitFor({ state: "visible", timeout: 30000 });
+      await titleLoc.click();
       await page.waitForTimeout(500);
-      await innerFrame.locator("body").press("Control+a");
-      await innerFrame.locator("body").type(opts.title, { delay: 20 });
+      await page.keyboard.press("Control+A");
+      await page.waitForTimeout(200);
+      await page.keyboard.press("Delete");
+      await page.waitForTimeout(300);
+      await page.keyboard.type(opts.title, { delay: 20 });
       debug.title = "input_ok";
     } catch (err) {
       return failResult(debug, "title_input_failed", String(err));
     }
+    await page.waitForTimeout(500);
 
-    // 9) 본문 입력 — clipboard 경유 HTML paste (newContext 에서 권한 이미 grant)
+    // 10) 본문 입력 — clear 후 clipboard paste
     try {
-      await mainFrame.locator(SE3_BODY).first().waitFor({ timeout: 10000 });
-      await mainFrame.locator(SE3_BODY).first().click();
+      const bodyLoc = mainFrame.locator(SE3_BODY).first();
+      await bodyLoc.waitFor({ state: "visible", timeout: 10000 });
+      await bodyLoc.click();
+      await page.waitForTimeout(500);
+      await page.keyboard.press("Control+A");
+      await page.waitForTimeout(200);
+      await page.keyboard.press("Delete");
       await page.waitForTimeout(300);
       await page.evaluate((html) => navigator.clipboard.writeText(html), opts.bodyHtml);
-      await innerFrame.locator("body").press("Control+v");
-      await page.waitForTimeout(1500);
+      await page.keyboard.press("Control+V");
+      await page.waitForTimeout(2000);
       debug.body = "input_ok";
     } catch (err) {
       return failResult(debug, "body_input_failed", String(err));
     }
 
-    // 10) dry-run — 발행 직전까지만 가고 종료
+    // 11) dry-run — 발행 직전까지만 가고 종료
     if (opts.dryRun === true) {
       debug.dryRun_finished = true;
       return { ok: true, naverUrl: null, details: debug };
     }
 
-    // 11) 저장·발행 — 4중 fallback (selector 가 mainFrame 안에 있음 — 2026-05-12 검증)
-    const clicked = await clickInFrame(mainFrame, page, SAVE_BUTTONS);
-    if (!clicked) {
-      return failResult(debug, "save_button_missing", "저장 버튼 4종 모두 못 찾음");
+    // 12) 발행 1단계 — tpb.publish 메인 버튼 click → 발행 옵션 모달 열림.
+    //     (tpb.save 는 임시 저장 — 글 안 게시. 이번 사고 (2026-05-12) 의 잘못된 경로.)
+    const mainPublish = await clickInFrame(mainFrame, page, MAIN_PUBLISH_BUTTONS);
+    if (!mainPublish) {
+      return failResult(debug, "save_button_missing", "발행 메인 버튼 (tpb.publish) 못 찾음");
     }
-    debug.save_button = clicked;
-    await page.waitForTimeout(2000);
+    debug.main_publish = mainPublish;
+    await page.waitForTimeout(2500);
 
-    // 12) 발행 모달 — "발행" 또는 "확인" 버튼 click (popup_btn). 모달도 mainFrame 안.
-    const publishOk = await clickPublishModal(mainFrame, page);
-    if (!publishOk) {
-      return failResult(debug, "publish_failed", "발행 모달 확인 버튼 click 실패");
+    // 13) 발행 2단계 — 모달의 confirm 버튼 (tpb*i.publish)
+    const confirmed = await clickInFrame(mainFrame, page, CONFIRM_PUBLISH_BUTTONS);
+    if (!confirmed) {
+      return failResult(debug, "publish_failed", "발행 모달 confirm 버튼 (tpb*i.publish) click 실패");
     }
-    debug.publish_modal = "clicked";
+    debug.publish_modal = confirmed;
     await page.waitForTimeout(5000);
 
     // 13) URL 캡처 (m.site.naver.com 단축 또는 blog.naver.com)
@@ -276,17 +314,6 @@ async function clickInFrame(
     }
   }
   return null;
-}
-
-async function clickPublishModal(frame: FrameLocator, page: Page): Promise<boolean> {
-  // 모달 발행 버튼 — class·text 두 패턴. mainFrame 안.
-  const candidates = [
-    "button.popup_btn__P5_Hf",
-    '//button[contains(@class,"popup_btn")]',
-    '//button[.//span[text()="발행"]]',
-    '//button[.//span[text()="확인"]]',
-  ];
-  return (await clickInFrame(frame, page, candidates)) !== null;
 }
 
 function failResult(
