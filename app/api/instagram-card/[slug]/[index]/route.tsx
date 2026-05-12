@@ -122,6 +122,20 @@ function renderCoverCard(title: string, category: string, color: string) {
         position: "relative",
       }}
     >
+      {/* 좌측 컬러 바 — carousel 시리즈 톤 통일 (cover/cta 동일 width 16)
+          padding 90 안에 16 라 카드 너비 1.5% 의 subtle accent line */}
+      <div
+        style={{
+          display: "flex",
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 16,
+          height: "100%",
+          background: color,
+        }}
+      />
+
       {/* 상단 카테고리 라벨 */}
       <div
         style={{
@@ -141,7 +155,8 @@ function renderCoverCard(title: string, category: string, color: string) {
 
       {/* 큰 제목 — 인스타 모바일 가독성 최우선
           line-height 1.45·letter-spacing -0.5px (2026-05-12 가독성 개선:
-          이전 1.25·-2px 가 한글 빽빽해 보임 → 칸띄움 ↑) */}
+          이전 1.25·-2px 가 한글 빽빽해 보임 → 칸띄움 ↑)
+          fontSize 임계 5단계: 50자+/40자+/30자+/15자+/그 이하 (짧은 제목 sparse 방지) */}
       <div
         style={{
           fontSize:
@@ -151,7 +166,9 @@ function renderCoverCard(title: string, category: string, color: string) {
                 ? 60
                 : title.length > 30
                   ? 72
-                  : 88,
+                  : title.length > 15
+                    ? 88
+                    : 100,
           fontWeight: 800,
           color: "#191F28",
           lineHeight: 1.45,
@@ -194,6 +211,17 @@ function renderInfoCard(
 ) {
   const text = description ?? title;
 
+  // 배경색 밝기 판정 — light 배경 (노년 #FE9800·학생·교육 #18A5A5) 위
+  // 흰 글씨는 WCAG contrast fail (2.3:1·3.2:1) → 다크 텍스트로 분기.
+  // YIQ luminance 공식 (0~255) — threshold 130 으로 두 카테고리 정확히 분리.
+  const isLightBg = (() => {
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 > 130;
+  })();
+  const bodyColor = isLightBg ? "#191F28" : "#FFFFFF";
+
   return (
     <div
       style={{
@@ -223,7 +251,8 @@ function renderInfoCard(
       </div>
 
       {/* description 본문 — line-height 1.65·letter-spacing -0.3px
-          (2026-05-12: 카드 2 빽빽 가독성 사고 → 한글 본문 호흡감 ↑) */}
+          (2026-05-12: 카드 2 빽빽 가독성 사고 → 한글 본문 호흡감 ↑)
+          색상은 isLightBg 분기 (노년·학생 카테고리는 다크 텍스트) */}
       <div
         style={{
           fontSize:
@@ -235,7 +264,7 @@ function renderInfoCard(
                   ? 52
                   : 60,
           fontWeight: 800,
-          color: "#FFFFFF",
+          color: bodyColor,
           lineHeight: 1.65,
           letterSpacing: "-0.3px",
           flex: 1,
@@ -253,7 +282,7 @@ function renderInfoCard(
         style={{
           display: "flex",
           fontSize: 32,
-          color: "#FFFFFF",
+          color: bodyColor,
           opacity: 0.9,
           fontWeight: 700,
           marginTop: 40,
@@ -283,14 +312,14 @@ function renderCtaCard(title: string, color: string) {
         position: "relative",
       }}
     >
-      {/* 좌측 컬러 바 — Satori 요구: 모든 div 에 display 명시 */}
+      {/* 좌측 컬러 바 — cover 카드와 동일 width 16 (carousel 톤 통일) */}
       <div
         style={{
           display: "flex",
           position: "absolute",
           left: 0,
           top: 0,
-          width: 24,
+          width: 16,
           height: "100%",
           background: color,
         }}
