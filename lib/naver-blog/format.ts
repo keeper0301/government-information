@@ -236,9 +236,10 @@ export function convertToNaverBlogHtml(
   post: BlogPostForNaver & { cover_image?: string | null },
 ): NaverBlogHtmlPayload {
   const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
-  // cover_image 가 relative path (/blog/xxx/opengraph-image) 일 수 있어 절대 URL 변환.
-  // SE3 paste 시 외부 이미지 자동 download 하려면 https:// 절대 URL 필요.
-  const coverImageUrl = post.cover_image
+  // cover_image — SE3 가 외부 이미지 검증 실패 시 alert 띄워 publish 가로막음 (2026-05-12 사고).
+  // 다음 세션에 SE3 사진 도구 자동화로 별도 fix. 일단 비활성 (NAVER_ENABLE_COVER=true 옵트인).
+  const enableCover = process.env.NAVER_ENABLE_COVER === "true";
+  const coverImageUrl = enableCover && post.cover_image
     ? (post.cover_image.startsWith("http") ? post.cover_image : `${BASE_URL}${post.cover_image}`)
     : null;
 
