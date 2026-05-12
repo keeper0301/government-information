@@ -184,3 +184,123 @@ function decodeBasicEntities(s: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'");
 }
+
+// ============================================================
+// Phase 2-A — RPA 자동 발행용 SE3 호환 HTML 변환
+// ============================================================
+// Playwright 가 네이버 SmartEditor 의 내부 iframe contenteditable 영역에
+// HTML 직접 paste 하는 용도. plain text (위 convertToNaverBlog) 와 별개로
+// HTML 구조 유지하면서 SE3 가 깔끔하게 파싱하는 형태로 출력.
+//
+// SE3 호환 규칙 (실측 + 공개 문서 기반):
+//  - 인라인 스타일 (style="...") 은 SE3 자체 스타일로 덮어쓰기 됨 → 안 씀
+//  - 표준 태그 (p, h3, ul, ol, li, a, strong, em) 만 사용
+//  - <h3> 는 SE3 에서 소제목 단락으로 인식 (별도 글자크기 자동 설정)
+//  - <table> 은 SE3 가 표 도구로 받으므로 그대로
+//  - <p> 사이 빈 단락은 SE3 가 자동으로 정리
+//
+// Phase 3 cron 흐름:
+//   1. convertToNaverBlogHtml(post) 호출 → SE3 HTML 문자열
+//   2. clipboard 에 set (page.evaluate(navigator.clipboard.writeText))
+//   3. SE3 본문 영역 클릭 → Ctrl+V
+//   4. SE3 가 HTML paste 받아 자체 단락 구조로 파싱
+// ============================================================
+
+export type NaverBlogHtmlPayload = {
+  /** 네이버 글쓰기 페이지의 "제목" 필드 — plain text 그대로 */
+  title: string;
+  /** SE3 contenteditable 에 paste 할 HTML */
+  bodyHtml: string;
+  /** keepioo 백링크 (footer 에 포함되지만 별도 노출용) */
+  backlinkUrl: string;
+};
+
+/**
+ * keepioo blog → 네이버 SE3 contenteditable 에 paste 할 HTML.
+ *
+ * 호출 측 (Phase 3 cron / Playwright):
+ *   const payload = convertToNaverBlogHtml(post)
+ *   await page.evaluate((html) => navigator.clipboard.writeText(html), payload.bodyHtml)
+ *   await frame.locator('p.se-text-paragraph').click()
+ *   await frame.locator('body').press('Control+v')
+ */
+export function convertToNaverBlogHtml(
+  post: BlogPostForNaver,
+): NaverBlogHtmlPayload {
+  const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
+
+  // 도입부 — meta_description 이 있으면 단락 1개로
+  const introHtml = post.meta_description
+    ? `<p>${escapeHtml(post.meta_description.trim())}</p>\n`
+    : "";
+
+  // 본문 — keepioo HTML 을 SE3 호환 HTML 로 정리
+  const bodyContentHtml = sanitizeForSe3(post.content);
+
+  // 백링크 footer (SEO 신호 + 가독성 — plain text 버전과 동일 구조)
+  const footerHtml = [
+    `<p>──────────────────────</p>`,
+    `<p>📌 더 자세한 자격·금액·신청 방법</p>`,
+    `<p><a href="${escapeAttr(backlinkUrl)}">${escapeHtml(backlinkUrl)}</a></p>`,
+    `<p>&nbsp;</p>`,
+    `<p>정책알리미 keepioo 에서는 매일 새 정부 정책을 자동으로 정리해 드려요.</p>`,
+    `<p>1분 자격 진단으로 사장님이 받을 수 있는 정책을 즉시 확인할 수 있어요.</p>`,
+    `<p><a href="${escapeAttr(BASE_URL)}/recommend">${escapeHtml(BASE_URL + "/recommend")}</a></p>`,
+    `<p>──────────────────────</p>`,
+  ].join("\n");
+
+  const bodyHtml = (introHtml + bodyContentHtml + "\n" + footerHtml).trim();
+
+  return {
+    title: post.title,
+    bodyHtml,
+    backlinkUrl,
+  };
+}
+
+/**
+ * keepioo HTML 본문 → SE3 호환 HTML.
+ * - inline style 제거 (SE3 자체 스타일 덮어쓰기 회피)
+ * - 허용 태그만 유지 (보수적 whitelist)
+ * - 빈 단락 normalize
+ */
+function sanitizeForSe3(html: string): string {
+  let result = html;
+
+  // 1) inline style·class 속성 제거 (SE3 가 자체 스타일 자동 적용)
+  result = result.replace(/\s+(?:style|class|id)=["'][^"']*["']/gi, "");
+
+  // 2) script·style 태그 제거 (안전)
+  result = result.replace(/<script[\s\S]*?<\/script>/gi, "");
+  result = result.replace(/<style[\s\S]*?<\/style>/gi, "");
+
+  // 3) 허용 외 태그 stripping — keepioo blog HTML 패턴 기준
+  //    허용: p, h2, h3, h4, ul, ol, li, a, strong, em, b, i, br, table, tr, td, th, thead, tbody
+  //    그 외 (div, span 등) 는 tag 만 제거, 내용 유지
+  const ALLOW = /^(?:p|h[234]|ul|ol|li|a|strong|em|b|i|br|table|tr|t[hd]|thead|tbody)$/i;
+  result = result.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (m, tag) => {
+    if (ALLOW.test(tag)) return m;
+    return ""; // 비허용 태그 제거
+  });
+
+  // 4) <h2> 는 SE3 에서 너무 큰 글씨 → <h3> 로 격하 (소제목 통일)
+  result = result.replace(/<h2(\s[^>]*)?>/gi, "<h3>").replace(/<\/h2>/gi, "</h3>");
+
+  // 5) 빈 단락 normalize — 3 이상 연속 빈 줄 → 2개
+  result = result.replace(/(\s*<p>\s*<\/p>\s*){3,}/gi, "<p>&nbsp;</p>\n<p>&nbsp;</p>");
+
+  return result.trim();
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
