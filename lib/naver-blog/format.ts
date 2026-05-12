@@ -32,6 +32,8 @@ export type BlogPostForNaver = {
   meta_description: string | null;
   /** 카테고리 (예: 청년, 소상공인) — 네이버 블로그 카테고리 매칭 안내용 */
   category: string | null;
+  /** 대표 이미지 URL — 네이버 본문 첫 단락에 자동 첨부 (썸네일도 자동 선정됨) */
+  cover_image?: string | null;
 };
 
 export type NaverBlogPayload = {
@@ -213,80 +215,138 @@ export type NaverBlogHtmlPayload = {
   bodyHtml: string;
   /** keepioo 백링크 (footer 에 포함되지만 별도 노출용) */
   backlinkUrl: string;
+  /** 썸네일·본문 head 이미지로 사용할 URL (없으면 null) */
+  coverImageUrl: string | null;
 };
 
 /**
  * keepioo blog → 네이버 SE3 contenteditable 에 paste 할 HTML.
  *
- * 호출 측 (Phase 3 cron / Playwright):
- *   const payload = convertToNaverBlogHtml(post)
- *   await page.evaluate((html) => navigator.clipboard.writeText(html), payload.bodyHtml)
- *   await frame.locator('p.se-text-paragraph').click()
- *   await frame.locator('body').press('Control+v')
+ * 2026-05-12 강화 — SE3 paste 한계 회피:
+ *   - SE3 가 paste 시 <h3>·<table>·<ul> 를 일반 paragraph 로 변환해버림
+ *   - 시각적 강조 보존 위해 강제 변환:
+ *     <h3> → <p><strong>📌 ...</strong></p>
+ *     <table> 행 → <p><strong>라벨</strong>: 값</p>
+ *     <ul><li> → <p>• 항목</p>
+ *     <ol><li> → <p>1. 항목</p>
+ *   - 도입부 hook 단락 추가 + 끝 CTA 강조
+ *   - cover_image 있으면 첫 단락에 <img> 삽입 (SE3 가 외부 URL 자동 download)
  */
 export function convertToNaverBlogHtml(
-  post: BlogPostForNaver,
+  post: BlogPostForNaver & { cover_image?: string | null },
 ): NaverBlogHtmlPayload {
   const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
+  // cover_image 가 relative path (/blog/xxx/opengraph-image) 일 수 있어 절대 URL 변환.
+  // SE3 paste 시 외부 이미지 자동 download 하려면 https:// 절대 URL 필요.
+  const coverImageUrl = post.cover_image
+    ? (post.cover_image.startsWith("http") ? post.cover_image : `${BASE_URL}${post.cover_image}`)
+    : null;
 
-  // 도입부 — meta_description 이 있으면 단락 1개로
-  const introHtml = post.meta_description
-    ? `<p>${escapeHtml(post.meta_description.trim())}</p>\n`
+  // 1) 도입부 hook — meta_description 으로 강한 동기 부여
+  const hookHtml = post.meta_description
+    ? `<p><strong>${escapeHtml(post.meta_description.trim())}</strong></p>\n<p>&nbsp;</p>\n`
     : "";
 
-  // 본문 — keepioo HTML 을 SE3 호환 HTML 로 정리
-  const bodyContentHtml = sanitizeForSe3(post.content);
+  // 2) cover image — SE3 paste 시 외부 이미지 URL 자동 download (보장 없음, fallback 텍스트)
+  const coverHtml = coverImageUrl
+    ? `<p><img src="${escapeAttr(coverImageUrl)}" alt="${escapeAttr(post.title)}" /></p>\n<p>&nbsp;</p>\n`
+    : "";
 
-  // 백링크 footer (SEO 신호 + 가독성 — plain text 버전과 동일 구조)
-  const footerHtml = [
-    `<p>──────────────────────</p>`,
-    `<p>📌 더 자세한 자격·금액·신청 방법</p>`,
+  // 3) 본문 — SE3 안전 형식으로 변환
+  const bodyContentHtml = transformForSe3(post.content);
+
+  // 4) CTA — 행동 유도 강조
+  const ctaHtml = [
+    `<p>&nbsp;</p>`,
+    `<p><strong>━━━━━━━━━━━━━━━━━━</strong></p>`,
+    `<p><strong>👉 나도 받을 수 있을까? 1분 진단</strong></p>`,
+    `<p><a href="${escapeAttr(BASE_URL)}/recommend">${escapeHtml(BASE_URL + "/recommend")}</a></p>`,
+    `<p>&nbsp;</p>`,
+    `<p><strong>📌 더 자세한 자격·금액·신청 방법</strong></p>`,
     `<p><a href="${escapeAttr(backlinkUrl)}">${escapeHtml(backlinkUrl)}</a></p>`,
     `<p>&nbsp;</p>`,
-    `<p>정책알리미 keepioo 에서는 매일 새 정부 정책을 자동으로 정리해 드려요.</p>`,
-    `<p>1분 자격 진단으로 사장님이 받을 수 있는 정책을 즉시 확인할 수 있어요.</p>`,
-    `<p><a href="${escapeAttr(BASE_URL)}/recommend">${escapeHtml(BASE_URL + "/recommend")}</a></p>`,
-    `<p>──────────────────────</p>`,
+    `<p>정책알리미 keepioo 는 매일 새 정부 정책을 자동으로 정리해 드려요.</p>`,
+    `<p>아래 댓글로 사장님이 궁금한 정책 알려주세요. 분석해서 답변드릴게요.</p>`,
+    `<p><strong>━━━━━━━━━━━━━━━━━━</strong></p>`,
   ].join("\n");
 
-  const bodyHtml = (introHtml + bodyContentHtml + "\n" + footerHtml).trim();
+  const bodyHtml = (coverHtml + hookHtml + bodyContentHtml + "\n" + ctaHtml).trim();
 
   return {
     title: post.title,
     bodyHtml,
     backlinkUrl,
+    coverImageUrl,
   };
 }
 
 /**
- * keepioo HTML 본문 → SE3 호환 HTML.
- * - inline style 제거 (SE3 자체 스타일 덮어쓰기 회피)
- * - 허용 태그만 유지 (보수적 whitelist)
- * - 빈 단락 normalize
+ * keepioo HTML → SE3 paste-safe HTML.
+ * SE3 가 paste 시 <h3>·<table>·<ul> 등 무시하는 한계를 우회:
+ * 모두 <p> 단락 + emoji/strong 으로 강제 변환해 시각적 강조 보존.
  */
-function sanitizeForSe3(html: string): string {
+function transformForSe3(html: string): string {
   let result = html;
 
-  // 1) inline style·class 속성 제거 (SE3 가 자체 스타일 자동 적용)
-  result = result.replace(/\s+(?:style|class|id)=["'][^"']*["']/gi, "");
-
-  // 2) script·style 태그 제거 (안전)
+  // 1) script·style 제거
   result = result.replace(/<script[\s\S]*?<\/script>/gi, "");
   result = result.replace(/<style[\s\S]*?<\/style>/gi, "");
 
-  // 3) 허용 외 태그 stripping — keepioo blog HTML 패턴 기준
-  //    허용: p, h2, h3, h4, ul, ol, li, a, strong, em, b, i, br, table, tr, td, th, thead, tbody
-  //    그 외 (div, span 등) 는 tag 만 제거, 내용 유지
-  const ALLOW = /^(?:p|h[234]|ul|ol|li|a|strong|em|b|i|br|table|tr|t[hd]|thead|tbody)$/i;
-  result = result.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (m, tag) => {
-    if (ALLOW.test(tag)) return m;
-    return ""; // 비허용 태그 제거
+  // 2) inline style·class·id 제거 (SE3 가 자체 스타일 적용)
+  result = result.replace(/\s+(?:style|class|id)=["'][^"']*["']/gi, "");
+
+  // 3) <h2>·<h3>·<h4> → <p><strong>📌 ...</strong></p> + 빈 줄.
+  //    SE3 가 paste 시 h3 무시하지만 strong + emoji 는 보존 → 시각 강조 OK.
+  for (const lvl of ["h2", "h3", "h4"] as const) {
+    const re = new RegExp(`<${lvl}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${lvl}>`, "gi");
+    result = result.replace(re, (_, inner: string) => {
+      const cleaned = stripTags(inner).trim();
+      return `<p>&nbsp;</p>\n<p><strong>📌 ${cleaned}</strong></p>\n`;
+    });
+  }
+
+  // 4) <table> → 행별 "라벨: 값" 단락 (SE3 가 table 무시 회피)
+  result = result.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, inner: string) => {
+    const rows: string[] = [];
+    const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let rm: RegExpExecArray | null;
+    while ((rm = rowRe.exec(inner)) !== null) {
+      const cells = [...rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((m) =>
+        stripTags(m[1]).trim(),
+      ).filter(Boolean);
+      if (cells.length === 2) {
+        rows.push(`<p><strong>${escapeHtml(cells[0])}</strong>: ${escapeHtml(cells[1])}</p>`);
+      } else if (cells.length > 0) {
+        rows.push(`<p>${cells.map(escapeHtml).join(" · ")}</p>`);
+      }
+    }
+    return "\n" + rows.join("\n") + "\n";
   });
 
-  // 4) <h2> 는 SE3 에서 너무 큰 글씨 → <h3> 로 격하 (소제목 통일)
-  result = result.replace(/<h2(\s[^>]*)?>/gi, "<h3>").replace(/<\/h2>/gi, "</h3>");
+  // 5) <ul><li> → <p>• 항목</p> 단락. SE3 가 ul 받지 않아서.
+  result = result.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_, inner: string) => {
+    const items = [...inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map(
+      (m) => `<p>• ${stripTags(m[1]).trim()}</p>`,
+    );
+    return "\n" + items.join("\n") + "\n";
+  });
 
-  // 5) 빈 단락 normalize — 3 이상 연속 빈 줄 → 2개
+  // 6) <ol><li> → <p>1. 항목</p> 번호 단락
+  result = result.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, inner: string) => {
+    const items = [...inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map(
+      (m, idx) => `<p>${idx + 1}. ${stripTags(m[1]).trim()}</p>`,
+    );
+    return "\n" + items.join("\n") + "\n";
+  });
+
+  // 7) 허용 외 태그 stripping — 안전 whitelist
+  const ALLOW = /^(?:p|a|strong|em|b|i|br|img)$/i;
+  result = result.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (m, tag) => {
+    if (ALLOW.test(tag)) return m;
+    return "";
+  });
+
+  // 8) 빈 단락 normalize
   result = result.replace(/(\s*<p>\s*<\/p>\s*){3,}/gi, "<p>&nbsp;</p>\n<p>&nbsp;</p>");
 
   return result.trim();

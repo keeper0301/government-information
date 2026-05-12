@@ -133,10 +133,10 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     );
   });
 
-  it("도입부 (meta_description) 첫 <p> 로 들어간다", () => {
+  it("도입부 (meta_description) hook 단락 으로 들어간다 (강조)", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(
-      "<p>만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.</p>",
+      "<p><strong>만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.</strong></p>",
     );
   });
 
@@ -147,17 +147,18 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).not.toMatch(/\sid=/);
   });
 
-  it("h2 는 h3 로 격하 (소제목 통일)", () => {
+  it("h2/h3 는 <p><strong>📌 ...</strong></p> 으로 강제 변환 (SE3 paste 한계 우회)", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<h3>신청 대상</h3>");
+    expect(out.bodyHtml).toContain("<p><strong>📌 신청 대상</strong></p>");
     expect(out.bodyHtml).not.toContain("<h2>");
-    expect(out.bodyHtml).not.toContain("<h2 ");
+    expect(out.bodyHtml).not.toContain("<h3>");
   });
 
-  it("ul/li 구조 유지 (SE3 가 리스트 도구로 인식)", () => {
+  it("ul/li 는 <p>• 항목</p> 단락으로 변환 (SE3 가 ul 무시)", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<ul>");
-    expect(out.bodyHtml).toContain("<li>월 20만원</li>");
+    expect(out.bodyHtml).toContain("<p>• 월 20만원</p>");
+    expect(out.bodyHtml).not.toContain("<ul>");
+    expect(out.bodyHtml).not.toContain("<li>");
   });
 
   it("a 태그 + href 유지 (네이버 자동 링크화)", () => {
