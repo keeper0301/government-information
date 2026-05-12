@@ -133,10 +133,15 @@ export function parseAndValidateCookies(raw: string): NaverCookie[] {
 
 /**
  * cookies 의 가장 빠른 만료 시점 (unix seconds) → ISO string.
- * expires 없는 cookies (session cookies) 는 무시.
+ * 핵심 인증 cookies (NID_AUT/SES/JST) 만 기준 — 추적 cookies (SRT5/30 등) 는
+ * 분 단위로 자주 만료되지만 발행 동작에 영향 없음. 인스타 health alert 폭주 사고 회피.
  */
+const AUTH_COOKIES = new Set(["NID_AUT", "NID_SES", "NID_JST", "BUC", "NNB"]);
 export function minExpiresIso(cookies: NaverCookie[]): string | null {
-  const expiries = cookies.map((c) => c.expires).filter((e): e is number => typeof e === "number" && e > 0);
+  const expiries = cookies
+    .filter((c) => AUTH_COOKIES.has(c.name))
+    .map((c) => c.expires)
+    .filter((e): e is number => typeof e === "number" && e > 0);
   if (expiries.length === 0) return null;
   return new Date(Math.min(...expiries) * 1000).toISOString();
 }

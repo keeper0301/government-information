@@ -16,6 +16,7 @@ import {
   chromium as playwright,
   type Browser,
   type BrowserContext,
+  type FrameLocator,
   type Page,
 } from "playwright-core";
 import type { NaverCookie } from "./cookies-vault";
@@ -169,16 +170,16 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
       return { ok: true, naverUrl: null, details: debug };
     }
 
-    // 11) 저장·발행 — 4중 fallback
-    const clicked = await clickWithFallback(page, SAVE_BUTTONS);
+    // 11) 저장·발행 — 4중 fallback (selector 가 mainFrame 안에 있음 — 2026-05-12 검증)
+    const clicked = await clickInFrame(mainFrame, page, SAVE_BUTTONS);
     if (!clicked) {
       return failResult(debug, "save_button_missing", "저장 버튼 4종 모두 못 찾음");
     }
     debug.save_button = clicked;
     await page.waitForTimeout(2000);
 
-    // 12) 발행 모달 — "발행" 또는 "확인" 버튼 click (popup_btn)
-    const publishOk = await clickPublishModal(page);
+    // 12) 발행 모달 — "발행" 또는 "확인" 버튼 click (popup_btn). 모달도 mainFrame 안.
+    const publishOk = await clickPublishModal(mainFrame, page);
     if (!publishOk) {
       return failResult(debug, "publish_failed", "발행 모달 확인 버튼 click 실패");
     }
@@ -236,12 +237,26 @@ async function detectBlocker(page: Page): Promise<"captcha_detected" | "2fa_dete
   return null;
 }
 
-async function clickWithFallback(page: Page, selectors: string[]): Promise<string | null> {
+/**
+ * mainFrame 안에서 selector 4중 fallback click. publisher.ts 의 SE3 자동화는
+ * 저장·발행 모달이 mainFrame 안에 있음 (page 직접 X — 2026-05-12 검증).
+ */
+async function clickInFrame(
+  frame: FrameLocator,
+  page: Page,
+  selectors: string[],
+): Promise<string | null> {
   for (const sel of selectors) {
     try {
       const target = sel.startsWith("//") ? `xpath=${sel}` : sel;
-      if (await waitVisible(page, target, 3000)) {
-        await page.locator(target).first().click({ timeout: 5000 });
+      const loc = frame.locator(target).first();
+      if (
+        await loc
+          .waitFor({ state: "visible", timeout: 3000 })
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        await loc.click({ timeout: 5000 });
         return sel;
       }
     } catch {
@@ -251,15 +266,15 @@ async function clickWithFallback(page: Page, selectors: string[]): Promise<strin
   return null;
 }
 
-async function clickPublishModal(page: Page): Promise<boolean> {
-  // 모달 발행 버튼 — class·text 두 패턴
+async function clickPublishModal(frame: FrameLocator, page: Page): Promise<boolean> {
+  // 모달 발행 버튼 — class·text 두 패턴. mainFrame 안.
   const candidates = [
     "button.popup_btn__P5_Hf",
     '//button[contains(@class,"popup_btn")]',
     '//button[.//span[text()="발행"]]',
     '//button[.//span[text()="확인"]]',
   ];
-  return (await clickWithFallback(page, candidates)) !== null;
+  return (await clickInFrame(frame, page, candidates)) !== null;
 }
 
 function failResult(
