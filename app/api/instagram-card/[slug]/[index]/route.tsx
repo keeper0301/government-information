@@ -117,7 +117,7 @@ function renderCoverCard(title: string, category: string, color: string) {
         width: "100%",
         height: "100%",
         background: "#FFFFFF",
-        padding: "100px 80px",
+        padding: "120px 90px",
         fontFamily: "Pretendard",
         position: "relative",
       }}
@@ -133,15 +133,15 @@ function renderCoverCard(title: string, category: string, color: string) {
           fontSize: 36,
           fontWeight: 800,
           borderRadius: 999,
-          marginBottom: 60,
+          marginBottom: 80,
         }}
       >
         {category}
       </div>
 
       {/* 큰 제목 — 인스타 모바일 가독성 최우선
-          fontSize 세분화 (50자+ 긴 제목도 안 잘림) + wordBreak break-word
-          (Satori 한국어 keep-all 미지원으로 한 단어 처리 → 좌측 잘림 사고 해소) */}
+          line-height 1.45·letter-spacing -0.5px (2026-05-12 가독성 개선:
+          이전 1.25·-2px 가 한글 빽빽해 보임 → 칸띄움 ↑) */}
       <div
         style={{
           fontSize:
@@ -154,8 +154,8 @@ function renderCoverCard(title: string, category: string, color: string) {
                   : 88,
           fontWeight: 800,
           color: "#191F28",
-          lineHeight: 1.25,
-          letterSpacing: "-2px",
+          lineHeight: 1.45,
+          letterSpacing: "-0.5px",
           flex: 1,
           width: "100%",
           maxWidth: "100%",
@@ -175,7 +175,7 @@ function renderCoverCard(title: string, category: string, color: string) {
           fontSize: 36,
           color: color,
           fontWeight: 800,
-          marginTop: 40,
+          marginTop: 60,
         }}
       >
         @ keepioo · 정책알리미
@@ -202,7 +202,7 @@ function renderInfoCard(
         width: "100%",
         height: "100%",
         background: color,
-        padding: "100px 80px",
+        padding: "120px 90px",
         fontFamily: "Pretendard",
       }}
     >
@@ -216,12 +216,14 @@ function renderInfoCard(
           fontSize: 32,
           fontWeight: 800,
           borderRadius: 999,
-          marginBottom: 40,
+          marginBottom: 60,
         }}
       >
         💡 핵심 정보
       </div>
 
+      {/* description 본문 — line-height 1.65·letter-spacing -0.3px
+          (2026-05-12: 카드 2 빽빽 가독성 사고 → 한글 본문 호흡감 ↑) */}
       <div
         style={{
           fontSize:
@@ -234,8 +236,8 @@ function renderInfoCard(
                   : 60,
           fontWeight: 800,
           color: "#FFFFFF",
-          lineHeight: 1.4,
-          letterSpacing: "-1.5px",
+          lineHeight: 1.65,
+          letterSpacing: "-0.3px",
           flex: 1,
           width: "100%",
           maxWidth: "100%",
@@ -254,6 +256,7 @@ function renderInfoCard(
           color: "#FFFFFF",
           opacity: 0.9,
           fontWeight: 700,
+          marginTop: 40,
         }}
       >
         @ keepioo · 정책알리미
@@ -275,7 +278,7 @@ function renderCtaCard(title: string, color: string) {
         width: "100%",
         height: "100%",
         background: "#FFFFFF",
-        padding: "100px 80px",
+        padding: "120px 90px",
         fontFamily: "Pretendard",
         position: "relative",
       }}
@@ -293,15 +296,16 @@ function renderCtaCard(title: string, color: string) {
         }}
       />
 
+      {/* 안내 문구 — line-height·letter-spacing 완화 (2026-05-12 가독성 ↑) */}
       <div
         style={{
           display: "flex",
           fontSize: 56,
           fontWeight: 800,
           color: "#191F28",
-          lineHeight: 1.3,
-          letterSpacing: "-2px",
-          marginBottom: 40,
+          lineHeight: 1.5,
+          letterSpacing: "-0.5px",
+          marginBottom: 60,
           wordBreak: "keep-all",
         }}
       >
@@ -314,16 +318,16 @@ function renderCtaCard(title: string, color: string) {
           fontSize: 96,
           fontWeight: 800,
           color: color,
-          lineHeight: 1.1,
-          letterSpacing: "-3px",
-          marginBottom: 60,
+          lineHeight: 1.2,
+          letterSpacing: "-1px",
+          marginBottom: 80,
           wordBreak: "keep-all",
         }}
       >
         keepioo.com
       </div>
 
-      {/* 2줄 구성 — Satori 는 <br /> 미지원, flex-direction:column 으로 2개 div 분리 */}
+      {/* 2줄 구성 — line-height 1.65 로 호흡감 ↑ */}
       <div
         style={{
           display: "flex",
@@ -331,14 +335,16 @@ function renderCtaCard(title: string, color: string) {
           fontSize: 44,
           fontWeight: 700,
           color: "#4E5968",
-          lineHeight: 1.4,
-          letterSpacing: "-1px",
+          lineHeight: 1.65,
+          letterSpacing: "-0.3px",
           flex: 1,
           wordBreak: "keep-all",
         }}
       >
         <div style={{ display: "flex" }}>🔍 1분 자격 진단으로</div>
-        <div style={{ display: "flex" }}>받을 수 있는 정책 즉시 확인</div>
+        <div style={{ display: "flex", marginTop: 12 }}>
+          받을 수 있는 정책 즉시 확인
+        </div>
       </div>
 
       <div
