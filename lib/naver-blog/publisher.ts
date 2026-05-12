@@ -127,7 +127,9 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
 
     // 5) 글쓰기 페이지 진입
     await page.goto(NAVER_WRITE_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.waitForTimeout(3000); // SE3 iframe load 대기
+    await page.waitForTimeout(5000); // SE3 iframe load 대기 (Vercel chromium 환경 보수적)
+    debug.url_after_goto = page.url();
+    debug.page_title = await page.title().catch(() => "n/a");
 
     // 6) 캡차·2FA 감지 → abort
     const blocker = await detectBlocker(page);
@@ -139,9 +141,19 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
     const mainFrame = page.frameLocator("#mainFrame");
     const innerFrame = mainFrame.frameLocator("iframe");
 
+    // 진단: frame 갯수 + mainFrame URL + body text 일부
+    const allFrames = page.frames();
+    debug.total_frames = allFrames.length;
+    debug.frame_urls = allFrames.map((f) => f.url()).slice(0, 5);
+    debug.mainframe_body_text = await mainFrame
+      .locator("body")
+      .innerText({ timeout: 5000 })
+      .then((t) => t.slice(0, 300))
+      .catch((e) => `err: ${e instanceof Error ? e.message : String(e)}`);
+
     // 8) 제목 입력
     try {
-      await mainFrame.locator(SE3_TITLE).first().waitFor({ timeout: 15000 });
+      await mainFrame.locator(SE3_TITLE).first().waitFor({ timeout: 30000 });
       await mainFrame.locator(SE3_TITLE).first().click();
       await page.waitForTimeout(500);
       await innerFrame.locator("body").press("Control+a");
