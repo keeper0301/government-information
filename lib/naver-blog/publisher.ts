@@ -41,11 +41,14 @@ const MAIN_PUBLISH_BUTTONS = [
   '//button[contains(@class,"publish_btn")]',
 ];
 
-// 발행 모달의 confirm 버튼 — tpb*i.publish (data-click-area)
+// 발행 모달의 confirm 버튼 — tpb*i.publish (layer_publish 컨테이너 안).
+// 모달 안 scope 으로 정확 click + scroll into view (timing 안전).
 const CONFIRM_PUBLISH_BUTTONS = [
+  '[class*="layer_publish"] button[data-click-area="tpb*i.publish"]',
   'button[data-click-area="tpb*i.publish"]',
+  '[class*="layer_publish"] button.confirm_btn__WEaBq',
   "button.confirm_btn__WEaBq",
-  '//button[contains(@class,"confirm_btn")]',
+  '//div[contains(@class,"layer_publish")]//button[contains(@class,"confirm_btn")]',
 ];
 
 // SE3 "작성 중인 글이 있습니다" 임시 글 복원 모달 — 정확한 selector (2026-05-12 진단).
@@ -228,7 +231,13 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
       return failResult(debug, "save_button_missing", "발행 메인 버튼 (tpb.publish) 못 찾음");
     }
     debug.main_publish = mainPublish;
-    await page.waitForTimeout(2500);
+    // 발행 옵션 모달 (layer_publish) 열림 대기 — timing 안전 (2026-05-12 fix)
+    await mainFrame
+      .locator('[class*="layer_publish"]')
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 })
+      .catch(() => undefined);
+    await page.waitForTimeout(2000);
 
     // 13) 발행 2단계 — 모달의 confirm 버튼 (tpb*i.publish)
     const confirmed = await clickInFrame(mainFrame, page, CONFIRM_PUBLISH_BUTTONS);
@@ -304,11 +313,13 @@ async function clickInFrame(
       const loc = frame.locator(target).first();
       if (
         await loc
-          .waitFor({ state: "visible", timeout: 3000 })
+          .waitFor({ state: "visible", timeout: 8000 })
           .then(() => true)
           .catch(() => false)
       ) {
-        await loc.click({ timeout: 5000 });
+        await loc.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => undefined);
+        await page.waitForTimeout(500);
+        await loc.click({ timeout: 5000, force: true });
         return sel;
       }
     } catch {
