@@ -40,6 +40,8 @@ async function logHealthAlertRun(details: {
   enrichPermanentSkip: number;
   // 2026-05-12 추가 — 인스타 token 만료 임박 / 미연결 / 정상 진단성 흔적
   instagramTokenExpiresInDays: number | null;
+  // 2026-05-12 추가 — 네이버 RPA cookies 만료 임박 / 미연결 진단성 흔적
+  naverCookiesExpiresInDays: number | null;
   smsOk: boolean | null;
   smsReason?: string;
   emailOk: boolean;
@@ -72,6 +74,7 @@ async function run() {
       pressLastClassifyHours: signals.pressLastClassifyHours,
       enrichPermanentSkip: signals.enrichPermanentSkip,
       instagramTokenExpiresInDays: signals.instagramTokenExpiresInDays,
+      naverCookiesExpiresInDays: signals.naverCookiesExpiresInDays,
       smsOk: null,
       emailOk: true,
     });
@@ -124,6 +127,7 @@ async function run() {
     pressLastClassifyHours: signals.pressLastClassifyHours,
     enrichPermanentSkip: signals.enrichPermanentSkip,
     instagramTokenExpiresInDays: signals.instagramTokenExpiresInDays,
+    naverCookiesExpiresInDays: signals.naverCookiesExpiresInDays,
     smsOk: smsResult?.ok ?? null,
     smsReason: smsResult?.ok ? undefined : smsResult?.reason,
     emailOk: result.ok,

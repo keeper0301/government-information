@@ -53,7 +53,8 @@ export type AdminActionType =
   | "instagram_token_refresh"    // 매월 1일 long-lived token 갱신 cron 결과
   | "instagram_publish_skipped"  // 2026-05-12 — 정지 예방 안전책으로 cron skip (outside_hours, daily_cap_reached, not_configured, disabled)
   | "instagram_attempt_count_update_failed" // 2026-05-12 — cron UPDATE attempt_count 가 row 0 영향이면 audit (RLS/권한/eq match 진단용)
-  | "naver_cookies_uploaded";    // 2026-05-12 — Phase 2-B 사장님 Chrome export cookies 업로드 audit
+  | "naver_cookies_uploaded"     // 2026-05-12 — Phase 2-B 사장님 Chrome export cookies 업로드 audit
+  | "naver_manual_test";         // 2026-05-12 — Phase 2-C 사장님 manual-test 페이지에서 dry-run/실제 발행 trigger audit
 
 export type AdminActionRecord = {
   id: string;
@@ -332,4 +333,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   instagram_publish_skipped: "인스타 발행 cron skip (안전책)",
   instagram_attempt_count_update_failed: "인스타 attempt_count UPDATE 실패 (진단)",
   naver_cookies_uploaded: "네이버 세션 cookies 업로드",
+  naver_manual_test: "네이버 RPA 매뉴얼 검증",
 };

@@ -151,6 +151,50 @@ export default async function AdminHealthPage() {
         </p>
       </section>
 
+      {/* 네이버 RPA cookies 상태 — 2026-05-12 추가 */}
+      <section className="mb-8 bg-white border border-grey-200 rounded-2xl p-5">
+        <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+          🟢 네이버 RPA cookies
+        </h2>
+        {signals.naverCookiesExpiresInDays === null ? (
+          <div className="text-sm text-grey-600">
+            ⚠️ cookies 미업로드 —{" "}
+            <Link
+              href="/admin/naver-blog/cookies"
+              className="text-blue-600 underline underline-offset-2"
+            >
+              /admin/naver-blog/cookies
+            </Link>{" "}
+            에서 업로드 (cron graceful skip 중)
+          </div>
+        ) : signals.naverCookiesExpiresInDays < 0 ? (
+          <div className="text-sm text-red-700 font-semibold">
+            ❌ cookies 이미 만료 ({Math.abs(signals.naverCookiesExpiresInDays)}일
+            전) — 자동 발행 중단됨. 재업로드 필요.
+          </div>
+        ) : signals.naverCookiesExpiresInDays <= 7 ? (
+          <div className="text-sm text-orange-700">
+            ⚠️ cookies 만료 {signals.naverCookiesExpiresInDays}일 남음 — Chrome
+            재로그인 후 재업로드 권장
+          </div>
+        ) : (
+          <div className="text-sm text-grey-700">
+            ✅ 정상 (cookies 만료까지 {signals.naverCookiesExpiresInDays}일)
+          </div>
+        )}
+        <p className="text-xs text-grey-500 mt-2 leading-relaxed">
+          매 3시간 cron (KST 09:30~21:30, 첫 7일 3건 → 이후 7건/일). 자동
+          refresh 불가 — 사장님 수동 cookies export 필요. 검증·발행은{" "}
+          <Link
+            href="/admin/naver-blog/manual-test"
+            className="text-blue-600 underline underline-offset-2"
+          >
+            /admin/naver-blog/manual-test
+          </Link>
+          .
+        </p>
+      </section>
+
       {/* 데이터 일관성 (#13) — orphan FK · 만료 cron 미처리 */}
       <Section title="🔗 데이터 일관성" items={integrity} />
 

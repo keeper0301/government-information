@@ -17,6 +17,8 @@ const BASE_SIGNALS: HealthSignals = {
   pressLowTierBacklog: 0,
   // 2026-05-12 — null = OAuth 미연결 (alert X). 만료 임박 케이스는 별도 테스트에서.
   instagramTokenExpiresInDays: null,
+  // 2026-05-12 — null = 네이버 cookies 미업로드 (alert X). 만료 임박 케이스는 별도 테스트.
+  naverCookiesExpiresInDays: null,
 };
 
 describe("checkThresholds — low_activity 가드", () => {

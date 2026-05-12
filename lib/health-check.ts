@@ -44,6 +44,12 @@ export type HealthSignals = {
    * 0 ≤ N ≤ 7 일 때 alert (60일 long-lived token refresh 가 못 일어남).
    */
   instagramTokenExpiresInDays: number | null;
+  /**
+   * 네이버 RPA 세션 cookies 가장 빠른 만료까지 일수.
+   * null = naver_session_cookies 테이블 비었거나 expires_min 없음 (미연결 — 알림 X).
+   * 0 ≤ N ≤ 7 일 때 alert (수동 cookies 재발급 못 일어나면 cron 막힘).
+   */
+  naverCookiesExpiresInDays: number | null;
 };
 
 export type ThresholdAlert = {
@@ -56,7 +62,8 @@ export type ThresholdAlert = {
     | "press_no_show"
     | "press_low_tier"
     | "enrich_stuck"
-    | "instagram_token_expiring";
+    | "instagram_token_expiring"
+    | "naver_cookies_expiring";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -201,6 +208,19 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       )
     : null;
 
+  // 네이버 RPA cookies 만료 임박 — active row 의 expires_min 기준
+  // 테이블 빈 상태면 row 없음 → null (cookies 미업로드 — 알림 X)
+  const { data: nv } = await sb
+    .from("naver_session_cookies")
+    .select("expires_min")
+    .eq("active", true)
+    .order("uploaded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ expires_min: string | null }>();
+  const naverCookiesExpiresInDays = nv?.expires_min
+    ? Math.floor((new Date(nv.expires_min).getTime() - Date.now()) / 86_400_000)
+    : null;
+
   return {
     signups24h,
     active7d,
@@ -214,6 +234,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     enrichPermanentSkip,
     pressLowTierBacklog,
     instagramTokenExpiresInDays,
+    naverCookiesExpiresInDays,
   };
 }
 
@@ -316,6 +337,23 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
         : `Instagram OAuth token 만료 ${s.instagramTokenExpiresInDays}일 남음 (≤ 7일). 자동 refresh 임박.`,
       recommendation:
         "/admin/instagram 페이지에서 '재연결' 버튼 클릭 → 새 60일 token 발급. loadValidToken 의 inline refresh 가 자동 작동하지만 실패 시 사장님 수동 재연결 필요.",
+    });
+  }
+
+  // 네이버 RPA cookies 만료 임박 — 7일 이내. 자동 refresh 불가 (사장님 manual cookies export 필요).
+  // null = cookies 미업로드 (Phase 2-B 사장님 액션 안 됨) → alert 안 함.
+  if (
+    s.naverCookiesExpiresInDays !== null &&
+    s.naverCookiesExpiresInDays <= 7
+  ) {
+    const isExpired = s.naverCookiesExpiresInDays < 0;
+    alerts.push({
+      key: "naver_cookies_expiring",
+      message: isExpired
+        ? `네이버 RPA cookies 이미 만료 (${Math.abs(s.naverCookiesExpiresInDays)}일 전). 자동 발행 중단됨.`
+        : `네이버 RPA cookies 만료 ${s.naverCookiesExpiresInDays}일 남음 (≤ 7일). 사장님 cookies 재발급 필요.`,
+      recommendation:
+        "사장님 Chrome 으로 naver.com 재로그인 → F12 DevTools 에서 cookies 재 export → /admin/naver-blog/cookies 에 업로드.",
     });
   }
 

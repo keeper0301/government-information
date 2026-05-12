@@ -77,7 +77,7 @@ export default async function AdminNaverBlogPage() {
 
       {/* 사용 가이드 */}
       <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900 leading-[1.55]">
-        💡 <strong>사용법</strong>: 각 카드의 「전체 복사」 → 새 탭에서{" "}
+        💡 <strong>수동 발행</strong>: 각 카드의 「전체 복사」 → 새 탭에서{" "}
         <a
           href="https://blog.naver.com/GoBlogWrite.naver"
           target="_blank"
@@ -88,7 +88,15 @@ export default async function AdminNaverBlogPage() {
         </a>{" "}
         접속 → 제목·본문 붙여넣기 → 발행. 발행 후 「발행 완료」 클릭하면 큐에서 빠집니다.
         <br />
-        <strong>자동 입력</strong>을 원하시면 채팅창에서 클로드에게 「naver-blog 큐 ID xxx 자동 발행해줘」라고 말씀하시면 됩니다.
+        <strong>🤖 RPA 자동 발행</strong>:{" "}
+        <a href="/admin/naver-blog/cookies" className="underline font-semibold">
+          cookies 업로드
+        </a>{" "}
+        →{" "}
+        <a href="/admin/naver-blog/manual-test" className="underline font-semibold">
+          manual-test (Phase 2-C 검증)
+        </a>{" "}
+        → Vercel env <code>NAVER_CRON_DISABLED=false</code> 로 cron 활성화.
       </div>
 
       {/* 대기 큐 */}

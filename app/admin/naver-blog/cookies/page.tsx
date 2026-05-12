@@ -43,10 +43,12 @@ export default async function NaverCookiesPage() {
     loadError = err instanceof Error ? err.message : String(err);
   }
 
-  // 만료 임박 D-N 계산
+  // 만료 임박 D-N 계산 — server component 이라 매 req render = 안전한 시점에 호출.
+  // eslint-disable-next-line react-hooks/purity -- async server component 안의 시간 계산
+  const nowMs = Date.now();
   let daysUntilExpiry: number | null = null;
   if (active?.expiresMin) {
-    const ms = new Date(active.expiresMin).getTime() - Date.now();
+    const ms = new Date(active.expiresMin).getTime() - nowMs;
     daysUntilExpiry = Math.floor(ms / (1000 * 60 * 60 * 24));
   }
 
