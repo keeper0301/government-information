@@ -43,15 +43,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // ?dry_run=1 & ?force=1 — 운영자 manual 검증용 (CRON_SECRET Bearer 필요).
+  // dry_run: publisher 의 마지막 발행 click 만 skip (selector·iframe·cookies 검증).
+  // force:   NAVER_CRON_DISABLED·시간대·일 cap 무시 (검증용). 단 캡차/2FA 감지 + cookies 만료 검사는 유지.
+  const url = new URL(request.url);
+  const dryRun = url.searchParams.get("dry_run") === "1";
+  const force = url.searchParams.get("force") === "1";
+
   // 0) Kill switch — 검증 끝나기 전까지 NAVER_CRON_DISABLED=true 로 시작
-  if (process.env.NAVER_CRON_DISABLED === "true") {
+  if (!force && process.env.NAVER_CRON_DISABLED === "true") {
     await skip("disabled", {});
     return NextResponse.json({ status: "disabled", message: "NAVER_CRON_DISABLED=true" });
   }
 
   // 1) 시간대 — KST 09~22 만 (밤·새벽 발행 = 봇 의심)
   const kstHour = getKstHour();
-  if (kstHour < 9 || kstHour >= 22) {
+  if (!force && (kstHour < 9 || kstHour >= 22)) {
     await skip("outside_hours", { kstHour });
     return NextResponse.json({ status: "outside_hours", kstHour });
   }
@@ -82,7 +89,7 @@ export async function GET(request: Request) {
   const todayCount = await countTodaySuccess();
   const isNewAccount = await isNewAccountWindow();
   const dailyCap = isNewAccount ? 3 : 7;
-  if (todayCount >= dailyCap) {
+  if (!force && todayCount >= dailyCap) {
     await skip("daily_cap_reached", { todayCount, dailyCap, isNewAccount });
     return NextResponse.json({
       status: "daily_cap_reached",
@@ -92,9 +99,12 @@ export async function GET(request: Request) {
     });
   }
 
-  // 4) Jitter — 0~120s (cron 정각 동시 호출 spike 회피, 봇 패턴 회피)
-  const jitterMs = Math.floor(Math.random() * 120_000);
-  await new Promise((r) => setTimeout(r, jitterMs));
+  // 4) Jitter — 0~120s (cron 정각 동시 호출 spike 회피, 봇 패턴 회피).
+  // dry-run/force 검증 시에는 즉시 응답이 필요해서 jitter skip.
+  const jitterMs = force || dryRun ? 0 : Math.floor(Math.random() * 120_000);
+  if (jitterMs > 0) {
+    await new Promise((r) => setTimeout(r, jitterMs));
+  }
 
   // 5) pending 큐에서 1건 pull (FIFO)
   const admin = createAdminClient();
@@ -124,21 +134,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending_queue" });
   }
 
-  // 6) attempt_count 증가 — .select() 로 영향 row 검증 (인스타 사고 패턴)
-  const expected = (row.attempt_count ?? 0) + 1;
-  const updateRes = await admin
-    .from("naver_blog_queue")
-    .update({ attempt_count: expected })
-    .eq("id", row.id)
-    .select("id, attempt_count");
-  if (updateRes.error || !updateRes.data || updateRes.data.length === 0) {
-    await logPublishAudit({
-      postId: row.blog_post_id,
-      result: "fail",
-      errorMessage: `attempt_count update 실패: ${updateRes.error?.message ?? "rows=0"}`,
-      details: { queue_id: row.id, expected, rows_affected: updateRes.data?.length ?? 0 },
-    });
-    return NextResponse.json({ error: "attempt update 실패" }, { status: 500 });
+  // 6) attempt_count 증가 — .select() 로 영향 row 검증 (인스타 사고 패턴).
+  // dry-run 시 attempt_count 안 올림 (검증인데 큐 cap 줄이지 않음).
+  if (!dryRun) {
+    const expected = (row.attempt_count ?? 0) + 1;
+    const updateRes = await admin
+      .from("naver_blog_queue")
+      .update({ attempt_count: expected })
+      .eq("id", row.id)
+      .select("id, attempt_count");
+    if (updateRes.error || !updateRes.data || updateRes.data.length === 0) {
+      await logPublishAudit({
+        postId: row.blog_post_id,
+        result: "fail",
+        errorMessage: `attempt_count update 실패: ${updateRes.error?.message ?? "rows=0"}`,
+        details: { queue_id: row.id, expected, rows_affected: updateRes.data?.length ?? 0 },
+      });
+      return NextResponse.json({ error: "attempt update 실패" }, { status: 500 });
+    }
   }
 
   // 7) Playwright 발행
@@ -149,31 +162,36 @@ export async function GET(request: Request) {
     title: payload.title,
     bodyHtml: payload.bodyHtml,
     cookies: cookies.cookies,
-    dryRun: false,
+    dryRun,
   });
 
   if (result.ok) {
-    await admin
-      .from("naver_blog_queue")
-      .update({
-        status: "published",
-        published_at: new Date().toISOString(),
-        naver_url: result.naverUrl,
-        last_error: null,
-      })
-      .eq("id", row.id);
+    // dry-run 일 때는 큐 status·publish 변경 X (검증인데 큐 빼지 않음).
+    if (!dryRun) {
+      await admin
+        .from("naver_blog_queue")
+        .update({
+          status: "published",
+          published_at: new Date().toISOString(),
+          naver_url: result.naverUrl,
+          last_error: null,
+        })
+        .eq("id", row.id);
+    }
 
     await logPublishAudit({
       postId: row.blog_post_id,
-      result: "success",
+      result: dryRun ? "skipped" : "success",
       naverUrl: result.naverUrl,
-      details: { ...result.details, queue_id: row.id, jitterMs, kstHour },
+      skipReason: dryRun ? null : null,
+      details: { ...result.details, queue_id: row.id, jitterMs, kstHour, dry_run: dryRun, force },
     });
 
     return NextResponse.json({
-      status: "published",
+      status: dryRun ? "dry_run_ok" : "published",
       queueId: row.id,
       naverUrl: result.naverUrl,
+      details: result.details,
     });
   }
 
