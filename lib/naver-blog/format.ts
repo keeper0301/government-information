@@ -248,9 +248,11 @@ export function convertToNaverBlogHtml(
     ? `<p><strong>${escapeHtml(post.meta_description.trim())}</strong></p>\n<p>&nbsp;</p>\n`
     : "";
 
-  // 2) cover image — SE3 paste 시 외부 이미지 URL 자동 download (보장 없음, fallback 텍스트)
+  // 2) cover image — HTML <img> paste 는 SE3 가 외부 fetch 실패 시 alert 띄움 (2026-05-12 사고).
+  //    runner.mjs 가 본문 paste 후 별도로 base64 image paste (SE3 자동 upload).
+  //    여기서는 본문 HTML 에 안 넣고 빈 단락만 (이미지 자리 확보).
   const coverHtml = coverImageUrl
-    ? `<p><img src="${escapeAttr(coverImageUrl)}" alt="${escapeAttr(post.title)}" /></p>\n<p>&nbsp;</p>\n`
+    ? `<p>&nbsp;</p>\n<p>&nbsp;</p>\n` // 이미지 paste 자리 — runner 가 첫 단락 앞에 paste
     : "";
 
   // 3) 본문 — SE3 안전 형식으로 변환
