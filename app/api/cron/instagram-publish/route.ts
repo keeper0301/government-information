@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
   // ━━━ 인스타 정지 예방 안전책 (2026-05-12 추가) ━━━
 
-  // skip 사유 audit — outside_hours / daily_cap_reached / not_configured.
+  // skip 사유 audit — outside_hours / daily_cap_reached / not_configured / disabled.
   // 사장님 매일 점검 시 "오늘 cron 가동했는데 왜 발행 안 됐지?" 진단 흔적.
   async function logSkip(reason: string, extra: Record<string, unknown>) {
     try {
@@ -50,6 +50,18 @@ export async function GET(request: Request) {
     } catch {
       // audit 실패는 cron 본체 응답 유지 (운영 안전)
     }
+  }
+
+  // 0) Kill switch — INSTAGRAM_CRON_DISABLED=true 면 즉시 skip
+  //    rate limit·정지 위험 비상 정지 용. vercel.json schedule 안 건드리고
+  //    env 만으로 켜고/끄기 (사장님 비개발자 운영 편의)
+  if (process.env.INSTAGRAM_CRON_DISABLED === "true") {
+    await logSkip("disabled", {});
+    return NextResponse.json({
+      status: "disabled",
+      message:
+        "INSTAGRAM_CRON_DISABLED=true — cron 일시 정지 중. 재가동: Vercel env 제거 + Redeploy",
+    });
   }
 
   // 1) 시간대 제한 — KST 09~22 만 발행 (밤 시간 spam 의심 회피)
@@ -157,10 +169,27 @@ export async function GET(request: Request) {
   ];
 
   // attempt_count 먼저 증가 (실패해도 무한 retry 방지)
-  await admin
+  // .select() 로 실제 update 된 row 가져와서 검증 — row 0개 영향이면 audit.
+  // 2026-05-12 사고: 8회 fail 후에도 attempt_count=0 — 진짜 원인 추적용.
+  const expectedAttempt = (post.instagram_attempt_count ?? 0) + 1;
+  const updateRes = await admin
     .from("blog_posts")
-    .update({ instagram_attempt_count: (post.instagram_attempt_count ?? 0) + 1 })
-    .eq("id", post.id);
+    .update({ instagram_attempt_count: expectedAttempt })
+    .eq("id", post.id)
+    .select("id, instagram_attempt_count");
+  if (updateRes.error || !updateRes.data || updateRes.data.length === 0) {
+    await logAdminAction({
+      actorId: null,
+      action: "instagram_attempt_count_update_failed",
+      details: {
+        post_id: post.id,
+        slug: post.slug,
+        expected: expectedAttempt,
+        error: updateRes.error?.message ?? null,
+        rows_affected: updateRes.data?.length ?? 0,
+      },
+    });
+  }
 
   // 발행 시도 (OAuth flow 로 발급받은 long-lived token 사용)
   const result = await publishCarousel(

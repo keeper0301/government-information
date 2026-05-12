@@ -51,7 +51,8 @@ export type AdminActionType =
   | "instagram_publish_success"  // 인스타 carousel 자동 발행 성공 (media_id + permalink 저장)
   | "instagram_publish_fail"     // 인스타 발행 실패 (3회 누적 시 health-alert 트리거)
   | "instagram_token_refresh"    // 매월 1일 long-lived token 갱신 cron 결과
-  | "instagram_publish_skipped"; // 2026-05-12 — 정지 예방 안전책으로 cron skip (outside_hours, daily_cap_reached, not_configured)
+  | "instagram_publish_skipped"  // 2026-05-12 — 정지 예방 안전책으로 cron skip (outside_hours, daily_cap_reached, not_configured, disabled)
+  | "instagram_attempt_count_update_failed"; // 2026-05-12 — cron UPDATE attempt_count 가 row 0 영향이면 audit (RLS/권한/eq match 진단용)
 
 export type AdminActionRecord = {
   id: string;
@@ -328,4 +329,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   instagram_publish_fail: "인스타 자동 발행 실패",
   instagram_token_refresh: "인스타 토큰 갱신",
   instagram_publish_skipped: "인스타 발행 cron skip (안전책)",
+  instagram_attempt_count_update_failed: "인스타 attempt_count UPDATE 실패 (진단)",
 };
