@@ -1,5 +1,5 @@
 // ============================================================
-// 인스타 자동 발행 cron — 5분마다 발행 대기 글 1건 처리
+// 인스타 자동 발행 cron — 매시간 정각 1회 발행 대기 글 1건 처리
 // ============================================================
 // 발행 후보:
 //   blog_posts.published_at IS NOT NULL          (실제 발행됨)
@@ -8,7 +8,8 @@
 //
 // 1 cron 1건만 처리 (Graph API rate limit 안전 마진 + 실패 시 다른 글로 전파 방지).
 //
-// vercel.json: { "path": "/api/cron/instagram-publish", "schedule": "*/5 * * * *" }
+// vercel.json: { "path": "/api/cron/instagram-publish", "schedule": "0 * * * *" }
+// 매시간 정각 (UTC) 1회 fire. 새 글 평균 발행 대기 ~30분.
 // ============================================================
 
 import { NextResponse } from "next/server";
