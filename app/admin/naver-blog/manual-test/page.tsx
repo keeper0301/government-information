@@ -1,7 +1,11 @@
 // ============================================================
 // /admin/naver-blog/manual-test — Phase 2-C 사장님 검증 페이지
 // ============================================================
-// cookies upload 후 cron 활성화 전에 1건 manual 검증.
+// ⚠️ DEPRECATED (2026-05-13) — Vercel chromium IP 차단으로 작동 X.
+// 사장님 PC 의 scripts/naver-publish-runner.mjs --dry-run 으로 대체.
+// 코드 유지는 향후 OpenAPI 전환 시 UI 참고용.
+//
+// 원래 흐름: cookies upload 후 cron 활성화 전 1건 manual 검증.
 // dry-run = 발행 직전까지만 (selector·iframe·cookies 검증) → 안전.
 // ============================================================
 

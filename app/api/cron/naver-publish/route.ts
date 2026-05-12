@@ -1,6 +1,11 @@
 // ============================================================
 // 네이버 블로그 자동 발행 cron — RPA Playwright
 // ============================================================
+// ⚠️ DEPRECATED (2026-05-13) — vercel.json schedule 제거됨.
+// Vercel chromium IP 차단으로 publisher.ts 가 작동 안 함. 실제 사용은
+// scripts/naver-publish-runner.mjs (사장님 PC) 만. 이 route 는 향후 OpenAPI
+// 또는 다른 환경 전환 시 참고용 + ?dry_run=1 manual test 용도로만 유지.
+// ============================================================
 // 흐름:
 //   1) kill switch + 시간대 (KST 09~22) + cookies 존재
 //   2) 일 cap 검사 (audit 기반) — 신규 7일 3건, 그 이후 7건

@@ -1,14 +1,21 @@
 // ============================================================
 // 네이버 블로그 RPA — Playwright 자동 발행
 // ============================================================
-// SmartEditor (SE3) 자동화. mainFrame + 내부 iframe 2단계 진입 → 제목·본문
-// 입력 → 4중 fallback 저장 → 2단계 발행 → URL 캡처.
+// ⚠️ DEPRECATED (2026-05-13) — Vercel 환경에서 사용 불가.
 //
-// Vercel serverless 가동:
+// Vercel chromium 의 데이터센터 IP 라 네이버가 cookies 발급 IP (사장님 집) 와
+// 다른 IP 감지 → 강제 로그아웃 (2026-05-12 검증). 이 파일은 향후 다른 RPA
+// 환경 (사장님 PC self-hosted) 또는 OpenAPI 전환 시 참고용으로만 유지.
+//
+// 실제 사용 코드: scripts/naver-publish-runner.mjs (사장님 PC local, gitignore).
+//   - 단일 코드. selector·step·HTML 변환·escape 모두 inline.
+//   - publisher.ts 와 코드 중복 절대 X — fix 는 runner.mjs 만.
+//
+// Vercel serverless 가동 (deprecated):
 //   - playwright-core (chromium 바이너리 X)
 //   - @sparticuz/chromium (Linux serverless 용 50MB chromium)
 //
-// fragile point: 네이버 UI 변경 시 selector 깨짐. selector 모니터링 cron 별도.
+// fragile point: 네이버 UI 변경 시 selector 깨짐.
 // ============================================================
 
 import chromium from "@sparticuz/chromium";
