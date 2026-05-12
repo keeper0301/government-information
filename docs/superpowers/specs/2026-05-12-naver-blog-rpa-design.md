@@ -3,6 +3,22 @@
 작성일: 2026-05-12
 상태: Phase 1 (정찰 + 설계) 완료. Phase 2~4 다음 세션 시작 예정.
 
+> ## ⚖️ Legal / IP Boundary (필독)
+>
+> 이 spec 의 selector·iframe 구조·메서드명은 **네이버 SmartEditor (SE3) 의 공개 DOM** 입니다. 누구나 Chrome DevTools 로 직접 관찰 가능한 외부 인터페이스. BublBot 가 사용하는 것과 동일하지만 네이버 자체의 공개 구조.
+>
+> **추출 X·복제 X**:
+> - BublBot 의 컴파일된 binary (라이센스 보호된 IP)
+> - BublBot 고유 알고리즘 (정지 회피 timing, fallback chain 순서 등 영업비밀)
+> - BublBot 의 사유 코드 그대로 keepioo 에 복붙
+>
+> **참고 OK·재구현 OK**:
+> - 네이버 공식 SmartEditor DOM (`p.se-text-paragraph` 등)
+> - 표준 안티봇 패턴 (Stack Overflow·MDN 공개 자료)
+> - cookies 형식 (Playwright·Selenium 공식 docs)
+>
+> 추출된 정보는 **공개 DOM 정찰 결과**. keepioo 구현 시 사장님 PC 의 Chrome DevTools 로 직접 검증 + 독자 selector 매핑. BublBot 의 정확한 fallback chain·timing 은 trial-error 로 own discovery.
+
 ## 배경
 
 사장님 keepioo blog_posts 가 워드프레스 (info.keeper0301.com / blogfury.com 등) 으로는 자동 발행 중이지만 **네이버 블로그**는 미연동. 네이버는 한국 SEO 점유율 큰 채널이라 추가 트래픽 유입 필요.
@@ -126,29 +142,70 @@ cron 가동 전 1건 manual test:
 // 0) Kill switch
 if (process.env.NAVER_CRON_DISABLED === "true") skip
 
+// 0.5) Dry-run 모드 (회귀 테스트·UI 변경 감지)
+const dryRun = process.env.NAVER_DRY_RUN === "true"
+// dryRun=true 면 발행 직전 step (글 작성 완료) 까지만 가고
+// 마지막 "발행" click 만 skip. 다른 모든 selector·iframe 검증 가능
+
 // 1) 시간대 (KST 09~22 만)
 const kstHour = ...
 if (kstHour < 9 || kstHour >= 22) skip
 
-// 2) 일 cap (신규 운영 보수적)
-const todayCount = ...
+// 2) 일 cap — naver_publish_audit 테이블에서 조회 (인스타 사고 교훈)
+const { count: todayCount } = await admin
+  .from("naver_publish_audit")
+  .select("id", { count: "exact", head: true })
+  .eq("result", "success")
+  .gte("attempted_at", kstMidnight.toISOString())
 if (todayCount >= 3) skip  // 신규 7일: 3건/일, 그 이후 7건/일
 
 // 3) Jitter (0~120s sleep)
 await new Promise(r => setTimeout(r, Math.random() * 120_000))
 
 // 4) Ramp-up (첫 발행 시점부터 7일까지 보수적 cap)
+
+// 5) 캡차·2FA fallback — selector 감지 시 즉시 abort
+const captcha = await page.locator('img[src*="captcha"], #captcha, .recaptcha').first()
+if (await captcha.isVisible({ timeout: 1000 }).catch(() => false)) {
+  await logAudit("skipped", { reason: "captcha_detected", needs_relogin: true })
+  // 텔레그램 push: "사장님 manual 로그인 + cookies 재발급 필요"
+  await sendTelegramAlert("⚠️ 네이버 캡차 감지. /admin/naver-blog/cookies 에서 재로그인.")
+  await browser.close()
+  return
+}
+
+// 동일하게 2FA (휴대폰 인증) selector 도 감지
+const otp = await page.locator('text=인증번호, input[name*="otp"]').first()
+if (await otp.isVisible({ timeout: 1000 }).catch(() => false)) {
+  await logAudit("skipped", { reason: "2fa_detected" })
+  await sendTelegramAlert("⚠️ 네이버 2FA 감지. 사장님 manual 인증 필요.")
+  return
+}
 ```
 
-인스타 사고 (8회 fail + rate limit) 교훈 적용. attempt_count update audit (`.select()` 검증) 도 동일 패턴.
+인스타 사고 (8회 fail + rate limit) 교훈 적용. attempt_count update audit (`.select()` 검증) 도 동일 패턴. **모든 attempt 가 `naver_publish_audit` row 1개로 logging — 추후 진단·rate limit cap 계산의 single source of truth**.
 
 ## Phase 4 — 어드민 UI + 모니터링
 
-- `/admin/naver-blog/cookies` — 세션 cookies 업로드 페이지 (사장님이 BublBot 의 naver-session.json drop)
-- `/admin/naver-blog/manual-test` — cron 수동 trigger + 실시간 결과
-- `/admin/health` 카드 — 24h 발행/실패/skip 카운트
-- health-alert cron — 만료 임박 cookies 알림 (텔레그램 push)
+- `/admin/naver-blog/cookies` — 세션 cookies 업로드 페이지 (3-step 매뉴얼 포함, 아래 참고)
+- `/admin/naver-blog/manual-test` — cron 수동 trigger + 실시간 결과 + dry-run toggle
+- `/admin/health` 카드 — 24h 발행/실패/skip 카운트 (`naver_publish_audit` query)
+- **selector 변경 모니터링 cron** — SE3 selector 4종 (제목 `span.se-fs32`, 본문 `p.se-text-paragraph`, 저장 4중 fallback) 의 element 존재 여부 일 1회 health check. 1개라도 사라지면 alert
+- health-alert cron — 만료 임박 cookies 알림 (`naver_session_cookies.expires_min` 임박 시 텔레그램 push)
 - `instagram_publish_skipped`·`_fail` 와 동일 패턴의 `naver_publish_*` audit 추가
+
+### 사장님 친화 — cookies 재발급 3-step 매뉴얼 (어드민 UI 에 캡처 포함)
+
+`/admin/naver-blog/cookies` 페이지 상단에 다음 매뉴얼 표시:
+
+```
+1️⃣ Chrome 으로 naver.com 로그인 (사장님 평소 사용 Chrome 그대로)
+2️⃣ F12 (DevTools) → Application 탭 → Cookies → https://www.naver.com 선택
+3️⃣ 모든 cookies 선택 → 우클릭 "Copy as JSON" (또는 export 확장 사용)
+4️⃣ 어드민 페이지의 "Cookies JSON" 박스에 붙여넣기 → "저장" click
+```
+
+비개발자 친화 캡처 (3장) + "막히면 텔레그램 봇 `/help cookies` 문의" 안내.
 
 ## 마이그레이션·환경변수 plan
 
@@ -162,12 +219,34 @@ CREATE TABLE naver_session_cookies (
   active boolean DEFAULT true,
   expires_min timestamptz  -- 가장 빨리 만료되는 cookie 시점
 );
--- service_role 만 read·write. RLS 켜고 policy 0개
+
+-- RLS 명시 (Supabase advisor "RLS enabled with no policies" 의도된 회피)
+-- service_role 은 default 로 RLS BYPASS. policy 0개 = anon/authenticated 완전 차단
+-- (선례: keepioo 의 naver_blog_queue·instagram_oauth_tokens 동일 패턴)
+ALTER TABLE naver_session_cookies ENABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE naver_session_cookies IS
+  'service_role 전용. RLS 켜고 policy 0개 (anon/authenticated 차단). service_role 은 default BYPASS.';
 
 -- naver_blog_queue 확장 (이미 존재)
 ALTER TABLE naver_blog_queue
   ADD COLUMN attempt_count int NOT NULL DEFAULT 0,
   ADD COLUMN last_error text;
+
+-- 일일 cap audit 테이블 (인스타 attempt_count audit 사고 패턴 반영)
+-- naver_publish_audit 가 매 발행 시도마다 row 1개. todayCount 는 여기서 query
+CREATE TABLE naver_publish_audit (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id uuid REFERENCES blog_posts(id),
+  attempted_at timestamptz DEFAULT now(),
+  result text NOT NULL,  -- 'success' | 'fail' | 'skipped'
+  error_message text,
+  naver_url text,  -- 성공 시 m.site.naver.com/... 단축링크
+  kst_hour int,  -- 시간대 보안 검증용
+  details jsonb
+);
+ALTER TABLE naver_publish_audit ENABLE ROW LEVEL SECURITY;
+CREATE INDEX naver_publish_audit_attempted_at_idx ON naver_publish_audit (attempted_at DESC);
 ```
 
 Vercel env:
