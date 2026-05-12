@@ -48,8 +48,9 @@ const CONFIRM_PUBLISH_BUTTONS = [
   '//button[contains(@class,"confirm_btn")]',
 ];
 
-// 임시 저장 글 복원 모달 dismiss — [role="dialog"] 안에서만 (다른 SE3 "취소" 버튼 misclick 회피).
-const RESTORE_MODAL_DISMISS_PATTERN = /취소|닫기|아니오|새로 작성/;
+// SE3 "작성 중인 글이 있습니다" 임시 글 복원 모달 — 정확한 selector (2026-05-12 진단).
+// .se-popup-alert 안의 .se-popup-button-cancel 클릭으로 dismiss.
+const RESTORE_MODAL_CANCEL = ".se-popup-alert .se-popup-button-cancel";
 
 export type PublishOptions = {
   /** 네이버 글쓰기 페이지 제목 — 평문 */
@@ -156,23 +157,19 @@ export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishR
     // 7) mainFrame 진입 (SE3 의 mainFrame 안에 추가 iframe 없음 — 단일 frame)
     const mainFrame = page.frameLocator("#mainFrame");
 
-    // 8) 임시 저장 글 복원 모달 자동 dismiss — [role="dialog"] 안에서만.
-    //    다른 SE3 "취소" 텍스트 버튼 (글 작성 취소 등) misclick 회피.
-    //    모달 안 떠 있으면 skip (Ctrl+A+Delete clear 만으로 충분).
+    // 8) "작성 중인 글이 있습니다. 이어서 작성?" 임시 글 복원 모달 dismiss.
+    //    이 alert 안 닫으면 dim 이 publish 버튼 click 가로막음 (2026-05-12 진단).
     try {
-      const dialogCancel = mainFrame
-        .locator('[role="dialog"] button')
-        .filter({ hasText: RESTORE_MODAL_DISMISS_PATTERN })
-        .first();
-      if (await dialogCancel.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await dialogCancel.click({ timeout: 2000 });
-        debug.modal_dismissed = true;
+      const cancelBtn = mainFrame.locator(RESTORE_MODAL_CANCEL).first();
+      if (await cancelBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await cancelBtn.click({ timeout: 2000, force: true });
+        debug.restore_modal_dismissed = true;
         await page.waitForTimeout(1500);
       } else {
-        debug.modal_dismissed = false;
+        debug.restore_modal_dismissed = false;
       }
     } catch {
-      debug.modal_dismissed = false;
+      debug.restore_modal_dismissed = false;
     }
 
     // 9) 제목 입력 — Ctrl+A + Delete 로 clear 후 type (임시 글 자동 복원 대비)
