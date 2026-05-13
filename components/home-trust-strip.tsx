@@ -47,7 +47,7 @@ export async function HomeTrustStrip() {
   );
 
   return (
-    <section className="max-w-content mx-auto px-10 py-10 max-md:px-6">
+    <section className="max-w-content mx-auto px-6 lg:px-10 py-10">
       <div className="grid gap-4 rounded-2xl border border-grey-200 bg-white p-5 shadow-sm md:grid-cols-[1fr_1fr_1.2fr] md:p-6">
         <TrustMetric label="오늘 신규 정책" value={`${todayNew.toLocaleString()}건`} />
         <TrustMetric label="이번 주 신규 정책" value={`${weekNew.toLocaleString()}건`} />

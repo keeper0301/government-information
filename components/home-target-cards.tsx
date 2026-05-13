@@ -95,7 +95,7 @@ const TARGETS: {
 export function HomeTargetCards() {
   return (
     <section
-      className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8"
+      className="max-w-content mx-auto px-6 lg:px-10 py-8 lg:py-12"
       aria-labelledby="target-cards-title"
     >
       <h2
@@ -107,9 +107,9 @@ export function HomeTargetCards() {
       <p className="text-[14px] text-grey-600 mb-6">
         대상을 누르면 해당 정책이 모인 페이지로 바로 이동해요.
       </p>
-      {/* 풀폭 한 줄 6 cards (모바일 3 cols 두 줄). 인기 정책 TOP 5 가
-          Hero 우측으로 이동했으므로 카드 row 가 풀폭 차지 — 좌우 공간 balanced. */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
+      {/* 풀폭 6 cards. 모바일 3 cols · 폴드7 메인·태블릿(md~lg) 4 cols · lg+ 6 cols.
+          기존 md:grid-cols-6 은 폴드7 메인(884) 에서 카드당 ~130px 좁음 → md 단계 추가. */}
+      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
         {TARGETS.map((t) => {
           const Icon = t.icon;
           return (

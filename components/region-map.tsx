@@ -58,7 +58,7 @@ export async function RegionMap() {
   const max = Math.max(...Object.values(counts), 1);
 
   return (
-    <section className="max-w-content mx-auto px-10 max-md:px-6 py-16 max-md:py-10">
+    <section className="max-w-content mx-auto px-6 lg:px-10 py-10 lg:py-16">
       <div className="flex items-baseline justify-between mb-6 max-md:flex-col max-md:items-start max-md:gap-2">
         <h2 className="text-[26px] font-bold tracking-[-0.8px] text-grey-900">
           지역별 진행 중 지원 공고

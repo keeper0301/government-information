@@ -55,7 +55,7 @@ export function AlertStrip({ programs, isLoggedIn = false }: Props) {
   );
 
   return (
-    <div className="max-w-content mx-auto px-10 max-md:px-6">
+    <div className="max-w-content mx-auto px-6 lg:px-10">
       <div className="flex items-center gap-4 border-b border-grey-100 py-[14px] max-md:py-3 max-md:gap-2">
         {/* 좌측 라벨 — 데스크톱 */}
         <div className="shrink-0 flex items-center gap-1.5 text-[13px] font-bold text-grey-900 max-md:hidden">

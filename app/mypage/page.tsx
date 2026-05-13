@@ -97,7 +97,7 @@ export default async function MyPage() {
     (user.app_metadata as { provider?: string } | null)?.provider ?? null;
 
   return (
-    <main className="max-w-[920px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+    <main className="max-w-[920px] mx-auto px-5 lg:px-10 pt-[80px] pb-20">
       <div className="flex items-baseline justify-between mb-2">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900">
           내 정보

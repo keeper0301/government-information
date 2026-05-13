@@ -55,7 +55,7 @@ export default async function PolicyPage({
   const tab: Tab = isValidTab(params.tab) ? params.tab : "recommend";
 
   return (
-    <main className="max-w-content mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+    <main className="max-w-content mx-auto px-5 lg:px-10 pt-[80px] pb-20">
       {/* 헤더 */}
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
         정책 둘러보기

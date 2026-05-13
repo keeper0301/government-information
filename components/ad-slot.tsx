@@ -77,7 +77,7 @@ export function AdSlot({ format = "fluid" }: AdSlotProps) {
 
   if (!PUBLISHER_ID || !SLOT_INFEED) {
     return (
-      <div className="max-w-content mx-auto px-10 max-md:px-6">
+      <div className="max-w-content mx-auto px-6 lg:px-10">
         <div className="border-t border-b border-grey-100 py-4 text-center text-xs text-grey-500">
           광고
         </div>
@@ -90,7 +90,7 @@ export function AdSlot({ format = "fluid" }: AdSlotProps) {
       className={
         renderState === "empty"
           ? "hidden"
-          : "max-w-content mx-auto px-10 max-md:px-6 my-4"
+          : "max-w-content mx-auto px-6 lg:px-10 my-4"
       }
     >
       <ins

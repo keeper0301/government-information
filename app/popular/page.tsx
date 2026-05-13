@@ -99,7 +99,7 @@ export default async function PopularPage({
   }
 
   return (
-    <main className="max-w-content mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+    <main className="max-w-content mx-auto px-5 lg:px-10 pt-[80px] pb-20">
       {/* 헤더 */}
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
         인기정책

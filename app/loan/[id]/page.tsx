@@ -162,7 +162,7 @@ export default async function LoanDetailPage({ params }: Props) {
           { name: program.title, url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}/loan/${program.id}` },
         ]}
       />
-      <section className="max-w-content mx-auto px-10 max-md:px-6">
+      <section className="max-w-content mx-auto px-6 lg:px-10">
         {/* Breadcrumb */}
         <nav className="text-sm text-grey-700 mb-6">
           <Link href="/loan" className="font-medium no-underline hover:text-blue-500 transition-colors">대출·지원금</Link>

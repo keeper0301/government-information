@@ -14,9 +14,9 @@ import Link from "next/link";
 
 export function HomeCTA() {
   return (
-    <section className="max-w-content mx-auto px-10 max-md:px-6 py-20 max-md:py-12">
+    <section className="max-w-content mx-auto px-6 lg:px-10 py-12 lg:py-20">
       <div
-        className="relative overflow-hidden rounded-3xl px-12 py-16 max-md:px-7 max-md:py-12"
+        className="relative overflow-hidden rounded-3xl px-7 lg:px-12 py-12 lg:py-16"
         style={{
           // 사이트 hero 와 동일 계열 옅은 블루. 강한 임팩트 대신
           // 자연스러운 톤으로 페이지 끝까지 사이트 분위기 유지.

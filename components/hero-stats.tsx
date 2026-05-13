@@ -22,10 +22,11 @@ export async function HeroStats() {
   const totalPrograms = counts.welfare_total + counts.loan_total;
 
   return (
-    <section className="max-w-content mx-auto px-10 max-md:px-6 py-12 max-md:py-8">
+    <section className="max-w-content mx-auto px-6 lg:px-10 py-8 lg:py-12">
       {/* 4 카드 — 데이터 신뢰 시그널. 사용자 카운트는 의도적으로 제외
-          (활성 사용자 부족 단계라 노출 시 신뢰 ↓ 위험. 데이터·커버리지 강조). */}
-      <div className="grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-3 bg-white rounded-3xl shadow-sm px-8 py-8 max-md:px-5 max-md:py-6">
+          (활성 사용자 부족 단계라 노출 시 신뢰 ↓ 위험. 데이터·커버리지 강조).
+          모바일 2x2 · 폴드7 메인·태블릿(md~lg) 도 2x2 (4열은 폭 부족) · lg+ 부터 4열. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 bg-white rounded-3xl shadow-sm px-5 lg:px-8 py-6 lg:py-8">
         <Stat to={counts.news_total} label="정책 뉴스 큐레이션" />
         <Stat to={totalPrograms} label="진행 중 지원 공고" />
         <Stat to={PROVINCE_COUNT} label="광역 시·도 커버" suffix="개" />

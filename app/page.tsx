@@ -106,7 +106,7 @@ async function RecentBlogSection({
   if (recentPosts.length === 0) return null;
 
   return (
-    <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+    <section className="py-[60px] px-6 max-w-content mx-auto lg:py-20 lg:px-10">
       <div className="flex items-baseline justify-between mb-6">
         <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
           정책 블로그
@@ -140,7 +140,7 @@ async function RecentNewsSection({
   if (recentNews.length === 0) return null;
 
   return (
-    <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+    <section className="py-[60px] px-6 max-w-content mx-auto lg:py-20 lg:px-10">
       <div className="flex items-baseline justify-between mb-8">
         <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.5px]">
           최근 정책 소식
@@ -206,7 +206,7 @@ export default async function Home() {
         </div>
 
         {/* 안쪽 max-w-content — content 가운데 정렬 (1140px). z-10 으로 blob 위. */}
-        <div className="relative z-10 max-w-content mx-auto px-10 max-md:px-6 grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
+        <div className="relative z-10 max-w-content mx-auto px-6 lg:px-10 grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
           {/* 왼쪽: 카피 + 검색 — fade-up stagger 60ms 간격으로 위에서 아래로
               자연스럽게 등장. animationDelay 는 inline style 로 정확 제어. */}
           <div>
@@ -345,7 +345,7 @@ export default async function Home() {
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[480px] bg-grey-50" aria-hidden />}>
           <div className="bg-grey-50">
-            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+            <section className="py-[60px] px-6 max-w-content mx-auto lg:py-20 lg:px-10">
               <CalendarPreview />
             </section>
           </div>
@@ -375,7 +375,7 @@ export default async function Home() {
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[400px] bg-grey-50" aria-hidden />}>
           <div className="bg-grey-50">
-            <section className="py-20 px-10 max-w-content mx-auto max-md:py-[60px] max-md:px-6">
+            <section className="py-[60px] px-6 max-w-content mx-auto lg:py-20 lg:px-10">
               <FeatureGrid />
             </section>
           </div>

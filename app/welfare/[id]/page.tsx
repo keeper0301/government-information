@@ -131,7 +131,7 @@ export default async function WelfareDetailPage({ params }: Props) {
   const isClosed = !!(program.apply_end && program.apply_end < today);
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
+    <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       <GovernmentServiceSchema
         name={program.title}
         description={program.description || ""}

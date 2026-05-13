@@ -9,7 +9,7 @@ export function HomeDiscoveryHub({
 }) {
   return (
     <section aria-labelledby="home-discovery-title" className="bg-white">
-      <div className="max-w-content mx-auto px-10 pt-16 max-md:px-6 max-md:pt-12">
+      <div className="max-w-content mx-auto px-6 lg:px-10 pt-12 lg:pt-16">
         <div className="mb-8">
           <p className="text-[13px] font-bold text-blue-500 mb-2">
             정책 탐색 허브

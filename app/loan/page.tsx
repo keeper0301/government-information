@@ -223,7 +223,7 @@ export default async function LoanPage({ searchParams }: Props) {
   return (
     <main className="pt-28 pb-20">
       {/* Header */}
-      <section className="max-w-content mx-auto px-10 mb-8 max-md:px-6">
+      <section className="max-w-content mx-auto px-6 lg:px-10 mb-8">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
           소상공인 대출·지원금
         </h1>
@@ -233,7 +233,7 @@ export default async function LoanPage({ searchParams }: Props) {
       </section>
 
       {/* Filters */}
-      <section className="max-w-content mx-auto px-10 mb-6 max-md:px-6">
+      <section className="max-w-content mx-auto px-6 lg:px-10 mb-6">
         {/* Category tabs — DB 실측 기반 동적. 빈 카테고리 자동 숨김 + 건수 표기 */}
         <div className="mb-4">
           <CategoryChipBar
@@ -287,7 +287,7 @@ export default async function LoanPage({ searchParams }: Props) {
 
       {/* ─── 개인화 분리 섹션 ─────────────────────────────────────────────────── */}
       {/* 위치: CategoryChipBar + 필터 바로 아래, 전체 리스트 위 */}
-      <section className="max-w-content mx-auto px-10 mb-6 max-md:px-6">
+      <section className="max-w-content mx-auto px-6 lg:px-10 mb-6">
         {profile && (
           <>
             {/* 케이스 1: 프로필 채워져 있고 매칭 결과 있음 → 분리 섹션 */}
@@ -331,7 +331,7 @@ export default async function LoanPage({ searchParams }: Props) {
       </section>
 
       {/* Results */}
-      <section className="max-w-content mx-auto px-10 max-md:px-6">
+      <section className="max-w-content mx-auto px-6 lg:px-10">
         <div className="text-sm text-grey-600 mb-4">
           {count || 0}개의 프로그램
         </div>
