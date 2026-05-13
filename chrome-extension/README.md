@@ -1,23 +1,36 @@
 # Keepioo Naver Publisher — Chrome Extension
 
-사장님 평소 Chrome 에 설치하는 자동 발행 Extension (Manifest V3).
+24시간 가동 본체 PC 의 평소 Chrome 에 설치하는 자동 발행 Extension (Manifest V3).
 playwright RPA 대체 — cookies 만료 문제 영구 해결 + naver 정지 위험 ↓.
 
-## 설치 (1회만)
+## 빠른 설치 (본체 PC, 권장)
 
-1. Chrome 주소창에 `chrome://extensions/` 입력
-2. 우상단 **"개발자 모드"** 토글 켜기
-3. 좌상단 **"압축해제된 확장 프로그램 로드"** 클릭
-4. `C:\Users\cgc09\projects\government-information\chrome-extension\` 폴더 선택
-5. 권한 승인 (cookies / tabs / alarms 등) — naver 자동 발행에 필요
+PowerShell 한 줄로 끝. 본체 PC 에서 PowerShell 열고 아래 실행:
 
-## 초기 설정 (1회)
+```powershell
+iwr https://raw.githubusercontent.com/keeper0301/government-information/master/chrome-extension/setup-desktop.ps1 -UseBasicParsing -OutFile $env:TEMP\keepioo-setup.ps1; & $env:TEMP\keepioo-setup.ps1
+```
 
-1. Chrome 우상단 Extension 아이콘 (퍼즐 모양) → "Keepioo Naver Publisher" 핀 고정
-2. 아이콘 클릭 → popup 열림
-3. **KEEPIOO_SECRET** 입력란에 사장님께 받은 Vercel 의 `NAVER_EXTENSION_SECRET` 값 입력 → **저장**
+자동 처리:
+1. github repo clone (또는 pull) → `%USERPROFILE%\keepioo\government-information\`
+2. NAVER_EXTENSION_SECRET 32 바이트 신규 생성
+3. `chrome-extension\local-secret.txt` 작성 (popup.js 가 자동 로드, gitignored)
+4. Vercel env 페이지 열기 + SECRET 클립보드 복사 (수동 1회 Save)
+5. 빈 commit push 로 Vercel 재배포 trigger
+6. `chrome://extensions/` 열기 + 폴더 경로 클립보드 복사
+
+사장님 manual (3회 클릭):
+- Vercel UI 에서 `NAVER_EXTENSION_SECRET` 값 Ctrl+V + Save
+- chrome://extensions/ 에서 개발자 모드 ON + 압축해제 로드
+- popup 아이콘 핀 고정 + 🧪 Dry-run 클릭 (검증)
+
+## 수동 설치 (다른 PC 또는 setup-desktop.ps1 실패 시)
+
+1. repo clone: `git clone https://github.com/keeper0301/government-information.git`
+2. `chrome://extensions/` → 우상단 **"개발자 모드"** ON → 좌상단 **"압축해제된 확장 프로그램 로드"** → `chrome-extension\` 폴더 선택
+3. Extension popup 핀 고정 → 클릭 → `KEEPIOO_SECRET` 입력란에 Vercel 의 `NAVER_EXTENSION_SECRET` 값 입력 → 저장
 4. **🧪 Dry-run** 클릭 → 결과 확인 (네이버 블로그에 실 발행 X)
-5. 정상 작동 확인 후 자동 발행 활성화 — Chrome 만 켜져 있으면 됨
+5. 정상 작동 확인 후 가동 시작
 
 ## 자동 발행 schedule
 

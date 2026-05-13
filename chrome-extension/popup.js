@@ -7,12 +7,38 @@ function setStatus(msg) {
   statusEl.textContent = msg;
 }
 
-// 기존 저장된 secret 표시 (마스크)
-chrome.storage.local.get(["keepioo_secret"]).then(({ keepioo_secret }) => {
-  if (keepioo_secret) {
-    secretEl.placeholder = `저장됨 (${keepioo_secret.slice(0, 4)}...${keepioo_secret.slice(-2)})`;
+// ────────────────────────────────────────────────────────────
+// 자동 부트스트랩 — extension 폴더의 local-secret.txt 가 있으면 한 번만 chrome.storage 로 옮김.
+// setup-desktop.ps1 가 만들어주는 파일. 사장님 manual 입력 없이 popup 첫 open 에서 가동.
+// ────────────────────────────────────────────────────────────
+async function autoBootstrapSecret() {
+  try {
+    const url = chrome.runtime.getURL("local-secret.txt");
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const txt = (await r.text()).trim();
+    // 사장님이 직접 secret 입력했으면 (다름) 덮어쓰기 안 함 — 사장님 의도 우선
+    const { keepioo_secret } = await chrome.storage.local.get(["keepioo_secret"]);
+    if (keepioo_secret) return keepioo_secret;
+    if (!txt) return null;
+    await chrome.storage.local.set({ keepioo_secret: txt });
+    return txt;
+  } catch {
+    return null;
   }
-});
+}
+
+// 초기 상태 표시 — auto-bootstrap 우선, 없으면 기존 storage 값
+(async () => {
+  const auto = await autoBootstrapSecret();
+  const secret = auto ?? (await chrome.storage.local.get(["keepioo_secret"])).keepioo_secret;
+  if (secret) {
+    secretEl.placeholder = `저장됨 (${secret.slice(0, 4)}...${secret.slice(-2)})`;
+    if (auto) {
+      setStatus(`✅ local-secret.txt 자동 로드됨 (${secret.slice(0, 4)}...${secret.slice(-2)})\n바로 🧪 Dry-run 가능.`);
+    }
+  }
+})();
 
 document.getElementById("save-secret").addEventListener("click", async () => {
   const v = secretEl.value.trim();

@@ -1,0 +1,3 @@
+# setup-desktop.ps1 가 본체 PC 에 만드는 secret 파일.
+# 평문 NAVER_EXTENSION_SECRET 포함 — 절대 git push 금지.
+local-secret.txt
