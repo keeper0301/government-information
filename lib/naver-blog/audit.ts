@@ -35,6 +35,10 @@ export const AUDIT_SAFE_KEYS = new Set([
   "fail_screenshot", "errorMessage", "error",
   "todayCount", "dailyCap", "isNewAccount", "expiresMin",
   "bodyLength", "force",
+  // C-NEW-1/2 debug keys
+  "clipboard_write_ok", "clipboard_write_error",
+  "body_paste_method", "body_after_dispatch", "body_after_insertHTML",
+  "insertHTML_error", "has_focus",
 ]);
 
 export function pickAuditDetails(d: Record<string, unknown> | null | undefined): Record<string, unknown> | null {

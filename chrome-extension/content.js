@@ -88,31 +88,38 @@ async function publishToSe3(payload, dryRun) {
     }
   }
 
-  // 4. 본문 입력 — clear + HTML clipboard paste.
-  //    cover image 가 본문 앞에 삽입된 상태라서 본문은 그 뒤에 추가.
-  //    cursor 가 cover image 다음 위치 (또는 본문 영역 click) 로 이동.
+  // 4. 본문 입력 — pasteHtml 3중 fallback (C-NEW-1)
   debug.stage = "body";
   const bodyEl = await waitFor(mfDoc, SE3_BODY, 10000);
   if (!bodyEl) throw new Error("본문 영역 못 찾음");
+  // focus 명시 — minimized window 의 hasFocus=false 우회 (C-NEW-2)
+  mainFrame.contentWindow?.focus?.();
   bodyEl.click();
   await sleep(500);
-  // selectAll + Delete 가 본문만 지우는지 cover 도 지우는지 — SE3 동작 확인 필요.
-  // cover 있으면 selectAll skip (보존). 없으면 selectAll Delete.
+  debug.has_focus = mfDoc.hasFocus();
+  // cover 없을 때만 selectAll (cover 있으면 cover 까지 지워질 위험)
   if (!payload.coverImageUrl) {
     await selectAllDelete(mfDoc, mainFrame);
+  } else {
+    // cover 뒤에 본문 추가 — cursor 를 본문 영역 끝으로
+    bodyEl.focus?.();
   }
-  await pasteHtml(bodyEl, payload.bodyHtml);
-  await sleep(2500);
+  await pasteHtml(bodyEl, payload.bodyHtml, debug);
+  await sleep(2000);
   debug.body = "ok";
 
-  // dry-run: 본문 길이 + confirm 버튼 visible 검증 (W1)
+  // 본문 길이 정확 측정 — 본문 전체 section text 합산 (W-NEW-1 fix)
+  const allBodyText = Array.from(mfDoc.querySelectorAll(".se-section-text .se-text-paragraph"))
+    .map(el => el.textContent ?? "")
+    .join("");
+  debug.bodyLength = allBodyText.length;
+
+  // dry-run: 본문 길이 + confirm 버튼 visible 검증 (W1·W-NEW-1)
   if (dryRun) {
     debug.stage = "dry_run_verify";
-    // 본문 길이 검증 — paste 가 silent fail 했으면 짧음
-    const pastedText = bodyEl.parentElement?.textContent?.trim() ?? "";
-    debug.bodyLength = pastedText.length;
-    if (pastedText.length < 50) {
-      throw new Error(`dry-run fail: 본문 paste 실패 의심 (length=${pastedText.length})`);
+    // 정확한 본문 길이 — 위에서 이미 측정. 임계 200 (W-NEW-1 권고)
+    if (debug.bodyLength < 200) {
+      throw new Error(`dry-run fail: 본문 paste 실패 의심 (length=${debug.bodyLength}, expected≥200)`);
     }
     const mainPub = mfDoc.querySelector('button[data-click-area="tpb.publish"]');
     if (!mainPub || !isVisible(mainPub)) throw new Error("publish 메인 버튼 visible X");
@@ -211,22 +218,54 @@ async function typeText(mfDoc, text) {
 }
 
 /**
- * pasteHtml — ClipboardEvent dispatch 패턴 (W1 fix).
- * execCommand("paste") 가 chrome.alarms 발화 invisible context 에서 silent fail
- * → 직접 ClipboardEvent 만들어 dispatch. DataTransfer 에 text/html + text/plain 둘 다.
+ * pasteHtml — 3중 fallback (C-NEW-1 fix).
+ *   1. navigator.clipboard.write + ClipboardEvent dispatch (Chromium isTrusted=false 면 silent)
+ *   2. execCommand("insertHTML", false, html) — user activation 없어도 일부 SE3 핸들러 받음
+ *   3. textContent 검증 → 본문 안 들어가면 throw
+ *
+ * 호출 측이 catch 후 debug.body_paste_method 로 어느 path 통과했는지 추적.
  */
-async function pasteHtml(targetEl, html) {
-  // clipboard 에도 set (네이버 SE3 가 ClipboardEvent 외에 navigator.clipboard 도 읽음)
+async function pasteHtml(targetEl, html, debug) {
+  const beforeLen = (targetEl?.textContent ?? "").length;
+
+  // 1단계 — navigator.clipboard.write + ClipboardEvent dispatch
+  let clipboardWriteOk = false;
   try {
     const htmlBlob = new Blob([html], { type: "text/html" });
     const plainBlob = new Blob([html.replace(/<[^>]+>/g, "")], { type: "text/plain" });
     await navigator.clipboard.write([
       new ClipboardItem({ "text/html": htmlBlob, "text/plain": plainBlob }),
     ]);
-  } catch {}
+    clipboardWriteOk = true;
+  } catch (e) {
+    debug.clipboard_write_error = String(e?.message ?? e).slice(0, 100);
+  }
+  debug.clipboard_write_ok = clipboardWriteOk;
 
-  // ClipboardEvent 직접 dispatch — paste handler 발화
   await dispatchPasteEvent(targetEl, { html, text: html.replace(/<[^>]+>/g, "") });
+  await sleep(800);
+
+  // 검증 — paste 후 본문 길이
+  let afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+  debug.body_after_dispatch = afterLen;
+
+  // 2단계 — fallback: execCommand("insertHTML")
+  if (afterLen - beforeLen < 100) {
+    try {
+      const mfDoc = targetEl.ownerDocument;
+      const win = mfDoc.defaultView;
+      win.focus?.();
+      mfDoc.execCommand("insertHTML", false, html);
+      await sleep(800);
+      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      debug.body_paste_method = "insertHTML_fallback";
+      debug.body_after_insertHTML = afterLen;
+    } catch (e) {
+      debug.insertHTML_error = String(e?.message ?? e).slice(0, 100);
+    }
+  } else {
+    debug.body_paste_method = "clipboard_dispatch";
+  }
 }
 
 async function dispatchPasteEvent(targetEl, { html, text, imageBlob }) {

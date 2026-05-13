@@ -236,12 +236,14 @@ export function convertToNaverBlogHtml(
   post: BlogPostForNaver & { cover_image?: string | null },
 ): NaverBlogHtmlPayload {
   const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
-  // cover_image — SE3 가 외부 이미지 검증 실패 시 alert 띄워 publish 가로막음 (2026-05-12 사고).
-  // 다음 세션에 SE3 사진 도구 자동화로 별도 fix. 일단 비활성 (NAVER_ENABLE_COVER=true 옵트인).
-  const enableCover = process.env.NAVER_ENABLE_COVER === "true";
-  const coverImageUrl = enableCover && post.cover_image
-    ? (post.cover_image.startsWith("http") ? post.cover_image : `${BASE_URL}${post.cover_image}`)
-    : null;
+  // cover_image — 네이버 블로그 전용 1080×1080 정방형 (2026-05-13 신규).
+  // /api/naver-thumbnail/{slug} = 카테고리 컬러 + 큰 제목 + hook + 키핍 브랜드.
+  // 이전 cover_image (1200×630 OG) 는 16:9 라 네이버 검색 결과 위아래 잘림.
+  // NAVER_DISABLE_COVER=true 로 비활성 가능 (debug fallback).
+  const disableCover = process.env.NAVER_DISABLE_COVER === "true";
+  const coverImageUrl = disableCover
+    ? null
+    : `${BASE_URL}/api/naver-thumbnail/${encodeURIComponent(post.slug)}`;
 
   // 1) 도입부 hook — meta_description 으로 강한 동기 부여
   const hookHtml = post.meta_description
