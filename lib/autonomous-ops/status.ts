@@ -9,6 +9,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getInsightProgress } from "./insight-progress";
 
 export type PhaseMetric = { label: string; value: string };
+// pendingAction — url 옵셔널. 있으면 hub 에서 link 로 표시되어 클릭 1회로 portal 진입.
+export type PendingAction = { text: string; url?: string };
 export type PhaseStatus = {
   phase: 1 | 2 | 3 | 4 | 5;
   title: string;
@@ -17,7 +19,7 @@ export type PhaseStatus = {
   /** 24h 활동 요약 — 카드 1줄씩 표시 */
   metrics: PhaseMetric[];
   /** 사장님이 처리해야 할 외부 액션 (없으면 빈 배열) */
-  pendingActions: string[];
+  pendingActions: PendingAction[];
 };
 
 const MS_PER_DAY = 24 * 3600_000;
@@ -86,11 +88,18 @@ async function phase2(): Promise<PhaseStatus> {
     tableExists("decision_pending"),
   ]);
   const solapiActive = !!process.env.SOLAPI_WEBHOOK_SECRET;
-  const pending: string[] = [];
-  if (!ddlApplied) pending.push("운영DB에 075번 마이그레이션 적용 (사장님 승인 필요)");
+  const pending: PendingAction[] = [];
+  if (!ddlApplied)
+    pending.push({ text: "운영DB에 075번 마이그레이션 적용 (사장님 승인 필요)" });
   if (!solapiActive) {
-    pending.push("Solapi 양방향 SMS 가입 + webhook URL 등록");
-    pending.push("Vercel 환경변수 SOLAPI_WEBHOOK_SECRET / SMS_DECISION_ALLOWED_FROM 등록 후 재배포");
+    pending.push({
+      text: "Solapi 양방향 SMS 가입 + webhook URL 등록",
+      url: "https://console.solapi.com/develop/webhook",
+    });
+    pending.push({
+      text: "Vercel 환경변수 SOLAPI_WEBHOOK_SECRET / SMS_DECISION_ALLOWED_FROM 등록 후 재배포",
+      url: "https://vercel.com/keeper0301-8938s-projects/government-information/settings/environment-variables",
+    });
   }
   return {
     phase: 2,
@@ -139,9 +148,20 @@ async function phase3(): Promise<PhaseStatus> {
     ],
   ];
   const integrations = cons.filter(([, ok]) => ok).map(([l]) => l);
-  const pending = cons
+  // 외부 콘솔별 OAuth/API key 발급 portal URL — 사장님 hub 클릭 1회로 진입.
+  const consoleUrls: Record<string, string> = {
+    카카오: "https://console.solapi.com/develop/api-keys",
+    AdSense: "https://console.cloud.google.com/auth/clients",
+    GA4: "https://console.cloud.google.com/auth/clients",
+    Supabase: "https://supabase.com/dashboard/account/tokens",
+    "Search Console": "https://console.cloud.google.com/auth/clients",
+  };
+  const pending: PendingAction[] = cons
     .filter(([, ok, hint]) => !ok && hint)
-    .map(([, , hint]) => hint as string);
+    .map(([label, , hint]) => ({
+      text: hint as string,
+      url: consoleUrls[label],
+    }));
   return {
     phase: 3,
     title: "외부 콘솔 자동 점검",
@@ -175,7 +195,7 @@ async function phase4(): Promise<PhaseStatus> {
     ],
     pendingActions: ddlApplied
       ? []
-      : ["운영DB에 076번 마이그레이션 적용 (사장님 승인 필요)"],
+      : [{ text: "운영DB에 076번 마이그레이션 적용 (사장님 승인 필요)" }],
   };
 }
 
@@ -204,22 +224,32 @@ async function phase5(): Promise<PhaseStatus> {
   const naverRuns = await naverExtSuccess24h();
   const naverEnvSet = !!process.env.NAVER_EXTENSION_SECRET;
 
-  const pendingActions: string[] = [];
+  const pendingActions: PendingAction[] = [];
   if (snsRuns === 0) {
-    pendingActions.push(
-      "Twitter / Facebook / Instagram / Threads 외부 앱 OAuth × 4 발급",
-    );
-    pendingActions.push("티스토리 OAuth 발급 (외부 자동 글쓰기 확장)");
+    // SNS 4종 — 각각 다른 portal. Twitter 만 link, 나머지는 가이드 위주.
+    pendingActions.push({
+      text: "Twitter 개발자 앱 등록 + OAuth 발급",
+      url: "https://developer.x.com/en/portal/dashboard",
+    });
+    pendingActions.push({
+      text: "Meta (Facebook / Instagram / Threads) 개발자 앱 등록 + OAuth 발급",
+      url: "https://developers.facebook.com/apps/",
+    });
+    pendingActions.push({
+      text: "티스토리 OAuth 발급 (외부 자동 글쓰기 확장)",
+      url: "https://www.tistory.com/guide/api/manage/register",
+    });
   }
   // naver Extension 셋업 상태 자동 감지 (codex P1 fix — env 없는 케이스도 안내).
   if (!naverEnvSet) {
-    pendingActions.push(
-      "Vercel env NAVER_EXTENSION_SECRET 등록 → setup-desktop.ps1 실행 (chrome-extension/README.md 빠른 설치)",
-    );
+    pendingActions.push({
+      text: "Vercel env NAVER_EXTENSION_SECRET 등록 → setup-desktop.ps1 실행 (chrome-extension/README.md 빠른 설치)",
+      url: "https://vercel.com/keeper0301-8938s-projects/government-information/settings/environment-variables",
+    });
   } else if (naverRuns === 0) {
-    pendingActions.push(
-      "본체 PC 의 PowerShell 에서 setup-desktop.ps1 실행 → Chrome Extension 설치 → 🧪 Dry-run (chrome-extension/README.md 참고)",
-    );
+    pendingActions.push({
+      text: "본체 PC 의 PowerShell 에서 setup-desktop.ps1 실행 → Chrome Extension 설치 → 🧪 Dry-run (chrome-extension/README.md 참고)",
+    });
   }
 
   return {

@@ -66,6 +66,7 @@
     { "path": "/api/cron/failed-cron-retry", "schedule": "22 * * * *" },
     { "path": "/api/cron/policy-enrich", "schedule": "30 18 * * *" },
     { "path": "/api/cron/policy-insight-backfill", "schedule": "0 0,6,12,18 * * *" },
+    { "path": "/api/cron/policy-url-check", "schedule": "0 19 * * 0" },
 
     { "path": "/api/cron/instagram-publish", "schedule": "0 * * * *" },
     { "path": "/api/cron/instagram-token-refresh", "schedule": "0 0 1 * *" }

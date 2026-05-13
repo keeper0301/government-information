@@ -101,7 +101,20 @@ function PhaseCard({ status }: { status: PhaseStatus }) {
           </div>
           <ol className="text-xs text-grey-800 list-decimal pl-4 space-y-0.5">
             {status.pendingActions.map((a, i) => (
-              <li key={i}>{a}</li>
+              <li key={i}>
+                {a.url ? (
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {a.text} ↗
+                  </a>
+                ) : (
+                  a.text
+                )}
+              </li>
             ))}
           </ol>
         </div>
