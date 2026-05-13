@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logPublishAudit, type AuditSkipReason } from "@/lib/naver-blog/audit";
+import { logPublishAudit, pickAuditDetails, type AuditSkipReason } from "@/lib/naver-blog/audit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
@@ -22,20 +22,11 @@ type Body = {
   details?: Record<string, unknown> | null;
 };
 
-// audit details 안전 whitelist (cookies·secret 안 흘림)
-const SAFE_KEYS = new Set([
-  "stage", "title", "body", "restore_modal_dismissed",
-  "cover_pasted", "cover_failed", "main_publish", "confirm_publish",
-  "url_captured", "kstHour", "queueId",
-]);
+// audit details — lib/naver-blog/audit.ts 의 AUDIT_SAFE_KEYS single source 사용 (W3 fix)
 function sanitizeDetails(d: Record<string, unknown> | null | undefined) {
-  if (!d) return null;
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(d)) {
-    if (SAFE_KEYS.has(k)) out[k] = v;
-  }
-  out.runner = "chrome-extension";
-  return out;
+  const picked = pickAuditDetails(d ?? null);
+  if (picked) picked.runner = "chrome-extension";
+  return picked;
 }
 
 export async function POST(request: Request) {

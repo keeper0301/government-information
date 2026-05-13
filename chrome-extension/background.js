@@ -8,7 +8,7 @@
 //   3) chrome.tabs.sendMessage — content.js 에 publish payload 전달
 //   4) 결과 받고 → keepioo /api/naver-extension/published 보고 → tab close
 //
-// 보안: chrome.storage.sync 에 KEEPIOO_SECRET (사장님 1회 popup 에서 입력).
+// 보안: chrome.storage.local 에 KEEPIOO_SECRET (사장님 1회 popup 에서 입력).
 // ============================================================
 
 const KEEPIOO_BASE = "https://www.keepioo.com";
@@ -24,6 +24,7 @@ const SCHEDULES = [
 ];
 
 // 다음 KST hh:mm 의 epoch ms
+// 한국은 DST (서머타임) 없음 → UTC+9 고정. 단순 9*3600s offset 사용 안전.
 function nextKstFire(hour, minute) {
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 3600_000);
@@ -73,7 +74,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 async function getSecret() {
-  const { keepioo_secret } = await chrome.storage.sync.get(["keepioo_secret"]);
+  const { keepioo_secret } = await chrome.storage.local.get(["keepioo_secret"]);
   if (!keepioo_secret) throw new Error("KEEPIOO_SECRET 미설정 — popup 에서 입력 필요");
   return keepioo_secret;
 }
@@ -95,16 +96,23 @@ async function runPublishOnce(dryRun = false) {
     return { skipped: next.status };
   }
 
-  // 2. invisible tab 으로 글쓰기 페이지 열기
-  const tab = await chrome.tabs.create({
+  // 2. minimized window 로 글쓰기 페이지 열기.
+  //    invisible tab (active:false) 은 document.visibilityState='hidden' → naver 봇 탐지 위험.
+  //    minimized window 는 visibility='visible' 유지 + 사장님 화면 안 가림.
+  const win = await chrome.windows.create({
     url: "https://blog.naver.com/GoBlogWrite.naver",
-    active: false,
+    focused: false,
+    state: "minimized",
+    width: 1280,
+    height: 900,
   });
+  const tab = win.tabs?.[0];
+  if (!tab) throw new Error("window.tabs[0] 없음");
 
   // 3. tab 로드 대기 (max 30s)
   const ready = await waitForTabReady(tab.id, 30000);
   if (!ready) {
-    await chrome.tabs.remove(tab.id).catch(() => undefined);
+    await chrome.windows.remove(win.id).catch(() => undefined);
     throw new Error("글쓰기 페이지 로드 timeout");
   }
   // content.js inject 대기 (manifest 의 document_idle)
@@ -119,7 +127,7 @@ async function runPublishOnce(dryRun = false) {
       dryRun,
     });
   } catch (e) {
-    await chrome.tabs.remove(tab.id).catch(() => undefined);
+    await chrome.windows.remove(win.id).catch(() => undefined);
     throw new Error(`content.js 메시지 fail: ${e?.message ?? e}`);
   }
 
@@ -151,8 +159,8 @@ async function runPublishOnce(dryRun = false) {
     });
   }
 
-  // 6. tab close (사장님 작업 방해 X)
-  await chrome.tabs.remove(tab.id).catch(() => undefined);
+  // 6. window close (사장님 작업 방해 X)
+  await chrome.windows.remove(win.id).catch(() => undefined);
   return result;
 }
 

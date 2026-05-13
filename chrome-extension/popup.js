@@ -8,7 +8,7 @@ function setStatus(msg) {
 }
 
 // 기존 저장된 secret 표시 (마스크)
-chrome.storage.sync.get(["keepioo_secret"]).then(({ keepioo_secret }) => {
+chrome.storage.local.get(["keepioo_secret"]).then(({ keepioo_secret }) => {
   if (keepioo_secret) {
     secretEl.placeholder = `저장됨 (${keepioo_secret.slice(0, 4)}...${keepioo_secret.slice(-2)})`;
   }
@@ -17,7 +17,7 @@ chrome.storage.sync.get(["keepioo_secret"]).then(({ keepioo_secret }) => {
 document.getElementById("save-secret").addEventListener("click", async () => {
   const v = secretEl.value.trim();
   if (!v) { setStatus("❌ secret 입력 필요"); return; }
-  await chrome.storage.sync.set({ keepioo_secret: v });
+  await chrome.storage.local.set({ keepioo_secret: v });
   setStatus(`✅ 저장 완료 (${v.slice(0, 4)}...${v.slice(-2)})`);
   secretEl.value = "";
 });

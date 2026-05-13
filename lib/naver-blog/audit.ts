@@ -17,7 +17,34 @@ export type AuditSkipReason =
   | "captcha_detected"
   | "2fa_detected"
   | "no_pending_queue"
-  | "cookies_expired";
+  | "cookies_expired"
+  | "dry_run";
+
+/**
+ * audit.details 의 안전 key whitelist — cookies·민감 정보 흘림 회피.
+ * Extension·runner.mjs·publisher.ts 모두 이 set 사용 (single source of truth — W3 fix).
+ */
+export const AUDIT_SAFE_KEYS = new Set([
+  "runner", "stage", "kstHour", "queue_id", "queueId", "url", "fail_url",
+  "title", "body", "restore_modal_dismissed", "modal_dismissed",
+  "main_publish", "confirm_publish", "url_captured",
+  "cover_pasted", "cover_failed", "cover_clipboard", "cover_error",
+  "help_close_clicked", "help_sidebar_visible_after_close",
+  "help_sidebar_dump", "help_panels_hidden",
+  "dry_run_complete", "dry_run_confirm_visible",
+  "fail_screenshot", "errorMessage", "error",
+  "todayCount", "dailyCap", "isNewAccount", "expiresMin",
+  "bodyLength", "force",
+]);
+
+export function pickAuditDetails(d: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
+  if (!d || typeof d !== "object") return null;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(d)) {
+    if (AUDIT_SAFE_KEYS.has(k)) out[k] = v;
+  }
+  return out;
+}
 
 export type AuditInsert = {
   postId: string | null;

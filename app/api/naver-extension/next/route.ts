@@ -74,11 +74,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending" });
   }
 
-  // attempt_count 증가
-  await admin
-    .from("naver_blog_queue")
-    .update({ attempt_count: (row.attempt_count ?? 0) + 1 })
-    .eq("id", row.id);
+  // attempt_count 증가 — dry-run (force=1) 시 skip (큐 cap 소진 회피, I3 fix)
+  if (!force) {
+    await admin
+      .from("naver_blog_queue")
+      .update({ attempt_count: (row.attempt_count ?? 0) + 1 })
+      .eq("id", row.id);
+  }
 
   // SE3 호환 HTML 변환
   const blogPostRaw = row.blog_post as unknown;
