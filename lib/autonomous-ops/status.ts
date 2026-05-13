@@ -179,10 +179,49 @@ async function phase4(): Promise<PhaseStatus> {
   };
 }
 
+// naver Extension 24h success count (사장님 본체 PC Chrome Extension)
+// `naver_publish_audit` 테이블에 result='success' 인 24h row.
+// pendingActions 분기에 쓰이므로 exact count (codex P2 fix). 24h × 5/day = max 5 row 라 부담 0.
+async function naverExtSuccess24h(): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const { count, error } = await admin
+      .from("naver_publish_audit")
+      .select("id", { count: "exact", head: true })
+      .eq("result", "success")
+      .gte("attempted_at", since24h());
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 async function phase5(): Promise<PhaseStatus> {
   const blogs = await countAction24h("blog_publish_run");
   const longTail = await countAction24h("long_tail_seo_run");
   const snsRuns = await countAction24h("sns_publish_run");
+  const naverRuns = await naverExtSuccess24h();
+  const naverEnvSet = !!process.env.NAVER_EXTENSION_SECRET;
+
+  const pendingActions: string[] = [];
+  if (snsRuns === 0) {
+    pendingActions.push(
+      "Twitter / Facebook / Instagram / Threads 외부 앱 OAuth × 4 발급",
+    );
+    pendingActions.push("티스토리 OAuth 발급 (외부 자동 글쓰기 확장)");
+  }
+  // naver Extension 셋업 상태 자동 감지 (codex P1 fix — env 없는 케이스도 안내).
+  if (!naverEnvSet) {
+    pendingActions.push(
+      "Vercel env NAVER_EXTENSION_SECRET 등록 → setup-desktop.ps1 실행 (chrome-extension/README.md 빠른 설치)",
+    );
+  } else if (naverRuns === 0) {
+    pendingActions.push(
+      "본체 PC 의 PowerShell 에서 setup-desktop.ps1 실행 → Chrome Extension 설치 → 🧪 Dry-run (chrome-extension/README.md 참고)",
+    );
+  }
+
   return {
     phase: 5,
     title: "마케팅 자동화",
@@ -191,14 +230,12 @@ async function phase5(): Promise<PhaseStatus> {
       { label: "24h 자동 블로그", value: `${blogs}건` },
       { label: "24h SEO long-tail", value: `${longTail}건` },
       { label: "24h SNS 게시", value: `${snsRuns}건` },
+      {
+        label: "24h naver 블로그",
+        value: `${naverRuns}건${naverEnvSet ? "" : " (env 미설정)"}`,
+      },
     ],
-    pendingActions:
-      snsRuns === 0
-        ? [
-            "Twitter / Facebook / Instagram / Threads 외부 앱 OAuth × 4 발급",
-            "티스토리 OAuth 발급 (외부 자동 글쓰기 확장)",
-          ]
-        : [],
+    pendingActions,
   };
 }
 

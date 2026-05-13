@@ -3,26 +3,60 @@
 24시간 가동 본체 PC 의 평소 Chrome 에 설치하는 자동 발행 Extension (Manifest V3).
 playwright RPA 대체 — cookies 만료 문제 영구 해결 + naver 정지 위험 ↓.
 
-## 빠른 설치 (본체 PC, 권장)
+## 빠른 설치 (본체 PC, 권장) — 단계별 체크리스트
 
-PowerShell 한 줄로 끝. 본체 PC 에서 PowerShell 열고 아래 실행:
+### 사전 준비 (본체 PC 에 한 번만)
+
+- [ ] Chrome 설치 (https://www.google.com/chrome)
+- [ ] git 설치 (https://git-scm.com — 설치 시 기본 옵션 OK)
+- [ ] Chrome 에서 naver.com 로그인 상태 유지 (Extension 이 이 cookies 재사용)
+- [ ] Vercel 콘솔 keepioo 프로젝트에 접근 권한 (브라우저에서 vercel.com 로그인된 상태)
+
+### 1 단계 — PowerShell 한 줄 실행
+
+본체 PC 에서 **PowerShell** 검색해서 열고, 아래 한 줄을 그대로 붙여넣고 Enter:
 
 ```powershell
 iwr https://raw.githubusercontent.com/keeper0301/government-information/master/chrome-extension/setup-desktop.ps1 -UseBasicParsing -OutFile $env:TEMP\keepioo-setup.ps1; & $env:TEMP\keepioo-setup.ps1
 ```
 
-자동 처리:
+스크립트가 자동으로 처리하는 6 단계:
 1. github repo clone (또는 pull) → `%USERPROFILE%\keepioo\government-information\`
 2. NAVER_EXTENSION_SECRET 32 바이트 신규 생성
 3. `chrome-extension\local-secret.txt` 작성 (popup.js 가 자동 로드, gitignored)
-4. Vercel env 페이지 열기 + SECRET 클립보드 복사 (수동 1회 Save)
+4. Chrome 으로 Vercel env 페이지 열기 + SECRET 을 클립보드 복사
 5. 빈 commit push 로 Vercel 재배포 trigger
 6. `chrome://extensions/` 열기 + 폴더 경로 클립보드 복사
 
-사장님 manual (3회 클릭):
-- Vercel UI 에서 `NAVER_EXTENSION_SECRET` 값 Ctrl+V + Save
-- chrome://extensions/ 에서 개발자 모드 ON + 압축해제 로드
-- popup 아이콘 핀 고정 + 🧪 Dry-run 클릭 (검증)
+스크립트가 진행 중 **두 번** 멈추고 Enter 대기:
+- **첫 번째 대기**: Vercel env 페이지에서 사장님이 직접 NAVER_EXTENSION_SECRET 갱신·Save → Enter
+- (재배포 자동) → 두 번째 대기 없음
+
+### 2 단계 — 사장님 manual (3회 클릭만)
+
+**a) Vercel UI** (스크립트가 열어준 탭):
+- [ ] `NAVER_EXTENSION_SECRET` 항목 옆 ⋮ → **Edit**
+- [ ] Value 입력란에 **Ctrl+V** (클립보드에 SECRET 이미 복사됨)
+- [ ] **Sensitive** 체크 **ON** (보안 권장)
+- [ ] **Save** 클릭
+- [ ] PowerShell 으로 돌아가 **Enter** (스크립트가 재배포 trigger)
+
+**b) chrome://extensions/** (스크립트가 열어준 탭):
+- [ ] 우상단 **개발자 모드** 토글 **ON**
+- [ ] 좌상단 **압축해제된 확장 프로그램 로드** 클릭
+- [ ] 파일 다이얼로그에서 **Ctrl+L** → **Ctrl+V** (클립보드의 폴더 경로) → **Enter**
+- [ ] Extension 카드가 나타나면 우상단 🧩 퍼즐 아이콘 → "Keepioo Naver Publisher" 옆 📌 클릭 (핀 고정)
+
+**c) Extension popup** (핀 고정한 아이콘 클릭):
+- [ ] popup 열림 → 상단 status 박스에 `✅ local-secret.txt 자동 로드됨` 표시 확인
+- [ ] **🧪 Dry-run (실 발행 X)** 클릭 → 약 60초 대기
+- [ ] 결과 박스에 `✅ dry-run OK` + debug JSON 표시되면 **셋업 성공**
+
+### 3 단계 — 검증
+
+- [ ] 사이트 어드민 (https://www.keepioo.com/admin/autonomous) 접속
+- [ ] Phase 5 카드 의 "24h naver 블로그" metric 확인 (다음 cron fire 후 1+ 표시)
+- [ ] 가동 schedule: KST 09:30 / 12:30 / 15:30 / 18:30 / 21:30 (Chrome 가동 중일 때만)
 
 ## 수동 설치 (다른 PC 또는 setup-desktop.ps1 실패 시)
 
