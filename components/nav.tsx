@@ -16,10 +16,14 @@ import { NotificationBell } from "./notification-bell";
 // "기타 메뉴" 영역과 푸터로만 노출 (헤더 가독성 우선).
 // 정책 블로그는 /news 헤더 버튼으로 일원화 (2026-04-25).
 // ============================================================
+// `priority: "core"` 는 md(768)+ 부터 항상 노출 — 폴드7 메인·태블릿 가로에서
+// desktop nav 가 보이도록. `priority: "extra"` 는 lg(1024)+ 에서만 노출.
+// 핵심 4개 = 정책·소식·달력·검색. 나머지 (AI상담·요금제) 는 lg+ 한정.
 const items = [
   {
     label: "정책",
     href: "/policy",
+    priority: "core",
     // 모바일 햄버거에서만 펼쳐 보여주는 하위 탭. 데스크톱은 평탄.
     children: [
       { label: "맞춤추천", href: "/policy" },
@@ -30,13 +34,13 @@ const items = [
       { label: "자격별 정책", href: "/eligibility" },
     ],
   },
-  { label: "소식", href: "/news" },
-  { label: "달력", href: "/calendar" },
-  { label: "AI상담", href: "/consult" },
-  { label: "요금제", href: "/pricing" },
+  { label: "소식", href: "/news", priority: "core" },
+  { label: "달력", href: "/calendar", priority: "core" },
+  { label: "AI상담", href: "/consult", priority: "extra" },
+  { label: "요금제", href: "/pricing", priority: "extra" },
   // 검색 진입점 — 데스크톱 메뉴 마지막 + 모바일 햄버거에서도 노출.
   // 이전엔 홈 화면에서만 검색 가능했음 → 다른 페이지에서도 진입 가능하게.
-  { label: "검색", href: "/search" },
+  { label: "검색", href: "/search", priority: "core" },
 ] as const;
 
 // 모바일 햄버거 하단 "기타 메뉴" — 헤더에서 빠진 항목들의 마지막 진입점.
@@ -73,7 +77,7 @@ export function Nav({
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100">
-      <div className="max-w-content mx-auto px-10 h-[58px] flex items-center justify-between max-md:px-5">
+      <div className="max-w-content mx-auto px-5 md:px-6 lg:px-10 h-[58px] flex items-center justify-between">
         {/* 로고 — 토스 풍 Pretendard 단어 마스트헤드.
             "keepi" + 강조 "oo" (마지막 두 글자만 blue-500) — 사이트의 친근한
             큐레이션·"keep" 의미를 살리면서 토스 가이드(단일 sans + 단어 강조)
@@ -91,17 +95,21 @@ export function Nav({
           </span>
         </Link>
 
-        {/* 데스크톱 메뉴 — lg(1024)부터 5개 항목 + 종 아이콘 + 계정.
-            메뉴 수가 절반 이하로 줄어 라벨 사이 padding 을 더 넉넉히 할 수 있다. */}
-        <div className="hidden lg:flex items-center gap-1">
+        {/* 데스크톱 메뉴 — md(768)부터 core 4개 항목 노출, lg(1024)+ 에서 extra 2개 추가.
+            폴드7 메인(~884) · 태블릿 가로(1024) · 태블릿 세로(768) 모두 desktop nav 활성.
+            라벨 padding 은 md(좁음) px-2 → lg px-3 → xl px-4 단계적 확대. */}
+        <div className="hidden md:flex items-center gap-0.5 lg:gap-1">
           {items.map((item) => {
             const active = isActive(item.href);
+            // extra 항목은 lg(1024)+ 에서만 보임. md~lg 사이는 hidden.
+            const visibilityClass =
+              item.priority === "extra" ? "hidden lg:flex" : "flex";
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`relative px-3 xl:px-4 py-2.5 text-[14px] min-h-[44px] flex items-center transition-colors no-underline ${
+                className={`relative px-2 lg:px-3 xl:px-4 py-2.5 text-[13px] lg:text-[14px] min-h-[44px] items-center transition-colors no-underline ${visibilityClass} ${
                   active
                     ? "font-semibold text-grey-900"
                     : "font-medium text-grey-700 hover:text-grey-900"
@@ -111,12 +119,24 @@ export function Nav({
                 {active && (
                   <span
                     aria-hidden="true"
-                    className="absolute left-3 right-3 xl:left-4 xl:right-4 bottom-1.5 h-[2px] rounded-full bg-blue-500"
+                    className="absolute left-2 right-2 lg:left-3 lg:right-3 xl:left-4 xl:right-4 bottom-1.5 h-[2px] rounded-full bg-blue-500"
                   />
                 )}
               </Link>
             );
           })}
+
+          {/* admin 사장님 전용 quick link — 데스크톱 nav 우측 끝, 종 아이콘 직전.
+              아바타 클릭 → dropdown 단계 생략. 한눈에 어드민 진입 가능. */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="ml-1 px-2 lg:px-3 py-2 text-[13px] lg:text-[14px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg no-underline transition-colors min-h-[44px] flex items-center"
+              aria-label="어드민 대시보드"
+            >
+              🛠
+            </Link>
+          )}
 
           {/* 알림 종 아이콘 — UserMenu 왼쪽 */}
           <NotificationBell loggedIn={loggedIn} count={alarmCount} />
@@ -125,10 +145,10 @@ export function Nav({
           <UserMenu isAdmin={isAdmin} />
         </div>
 
-        {/* 모바일·태블릿 햄버거 버튼 (lg 미만) */}
+        {/* 모바일 햄버거 버튼 (md 미만 — 폰만 햄버거) */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="lg:hidden w-11 h-11 grid place-items-center border-none bg-transparent cursor-pointer"
+          className="md:hidden w-11 h-11 grid place-items-center border-none bg-transparent cursor-pointer"
           aria-label={mobileOpen ? "메뉴 닫기" : "메뉴 열기"}
           aria-expanded={mobileOpen}
           aria-controls="mobile-menu"
@@ -154,15 +174,27 @@ export function Nav({
         </button>
       </div>
 
-      {/* 모바일·태블릿 메뉴 패널 (lg 미만)
+      {/* 모바일 메뉴 패널 (md 미만 — 폰만)
+          - admin 사장님: 메뉴 맨 위 어드민 quick link (스크롤 없이 즉시 진입)
           - 5개 메인 메뉴 (정책은 하위 4개 탭 들여쓰기로 함께 노출 — 한 손가락 동선)
           - 그 아래 알림센터·도움말·이용약관 작은 글씨 묶음
           - 마지막에 로그인/내계정 영역 */}
       {mobileOpen && (
         <div
           id="mobile-menu"
-          className="lg:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1"
+          className="md:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1"
         >
+          {/* 어드민 quick link — 햄버거 메뉴 가장 위. 폴드7 메인·태블릿에서 스크롤 없이 즉시 보임.
+              실제 권한은 /admin 서버 가드, 여기는 UI 한정. */}
+          {isAdmin && (
+            <a
+              href="/admin"
+              onClick={() => setMobileOpen(false)}
+              className="block pl-5 pr-4 py-3 mb-2 text-[15px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg no-underline transition-colors border border-blue-200"
+            >
+              🛠 어드민 대시보드
+            </a>
+          )}
           {items.map((item) => (
             <MobileMenuItem
               key={item.href}
