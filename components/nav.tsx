@@ -76,8 +76,11 @@ export function Nav({
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100">
-      <div className="max-w-content mx-auto px-5 md:px-6 lg:px-10 h-[58px] flex items-center justify-between">
+    <nav
+      aria-label="주요 메뉴"
+      className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-[20px] backdrop-saturate-[180%] border-b border-grey-100"
+    >
+      <div className="max-w-content mx-auto px-5 lg:px-10 h-[58px] flex items-center justify-between">
         {/* 로고 — 토스 풍 Pretendard 단어 마스트헤드.
             "keepi" + 강조 "oo" (마지막 두 글자만 blue-500) — 사이트의 친근한
             큐레이션·"keep" 의미를 살리면서 토스 가이드(단일 sans + 단어 강조)
@@ -127,11 +130,12 @@ export function Nav({
           })}
 
           {/* admin 사장님 전용 quick link — 데스크톱 nav 우측 끝, 종 아이콘 직전.
-              아바타 클릭 → dropdown 단계 생략. 한눈에 어드민 진입 가능. */}
+              아바타 클릭 → dropdown 단계 생략. 한눈에 어드민 진입 가능.
+              min-w-11 + justify-center: WCAG 44×44 touch target 보장 (codex P1-2 fix). */}
           {isAdmin && (
             <Link
               href="/admin"
-              className="ml-1 px-2 lg:px-3 py-2 text-[13px] lg:text-[14px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg no-underline transition-colors min-h-[44px] flex items-center"
+              className="ml-1 px-2 lg:px-3 py-2 text-[13px] lg:text-[14px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg no-underline transition-colors min-h-[44px] min-w-11 flex items-center justify-center"
               aria-label="어드민 대시보드"
             >
               🛠
@@ -141,8 +145,9 @@ export function Nav({
           {/* 알림 종 아이콘 — UserMenu 왼쪽 */}
           <NotificationBell loggedIn={loggedIn} count={alarmCount} />
 
-          {/* 로그인/계정 메뉴 */}
-          <UserMenu isAdmin={isAdmin} />
+          {/* 로그인/계정 메뉴 — admin link 는 nav 의 🛠 quick link 가 이미 가시화하므로
+              dropdown 안의 admin 메뉴는 hide (codex P2-3 fix, 중복 제거). */}
+          <UserMenu isAdmin={isAdmin} showAdminLink={false} />
         </div>
 
         {/* 모바일 햄버거 버튼 (md 미만 — 폰만 햄버거) */}
@@ -182,7 +187,11 @@ export function Nav({
       {mobileOpen && (
         <div
           id="mobile-menu"
-          className="md:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1"
+          /* 짧은 viewport (모바일 Safari·Fold cover) 에서 어드민·정책 children·UserMenu 까지
+             세로로 길어져 화면 밖 잘림 사고 차단 — codex P1-1 fix.
+             dvh 단위로 모바일 brower URL bar 변화 추적, overscroll-contain 으로
+             body scroll chaining 방지. */
+          className="md:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1 max-h-[calc(100dvh-58px)] overflow-y-auto overscroll-contain"
         >
           {/* 어드민 quick link — 햄버거 메뉴 가장 위. 폴드7 메인·태블릿에서 스크롤 없이 즉시 보임.
               실제 권한은 /admin 서버 가드, 여기는 UI 한정. */}
@@ -222,8 +231,14 @@ export function Nav({
             ))}
           </div>
 
-          {/* 로그인/내계정 영역 */}
-          <UserMenu mobile isAdmin={isAdmin} onNavigate={() => setMobileOpen(false)} />
+          {/* 로그인/내계정 영역 — admin link 는 햄버거 최상단 🛠 박스가 이미 가시화하므로
+              UserMenu mobile dropdown 안의 admin 메뉴는 hide (codex P2-3 fix, 중복 제거). */}
+          <UserMenu
+            mobile
+            isAdmin={isAdmin}
+            showAdminLink={false}
+            onNavigate={() => setMobileOpen(false)}
+          />
         </div>
       )}
     </nav>

@@ -11,13 +11,21 @@ import type { User } from "@supabase/supabase-js";
 // mobile=true 로 넘기면 햄버거 메뉴 안쪽 스타일로 렌더링됨.
 // onNavigate: mobile 모드에서 링크·로그아웃 선택 시 부모(Nav) 에 알려 햄버거 닫기용.
 // isAdmin: layout.tsx 에서 서버 판정한 어드민 여부 — 어드민 한정 메뉴 진입 링크 노출용.
+// showAdminLink: nav 가 별도의 🛠 quick link 를 이미 노출하는 경우 false 로 전달 →
+//   dropdown 안의 어드민 메뉴 중복 제거 (codex P2-3 fix). default true (구 호출자 호환).
 type UserMenuProps = {
   mobile?: boolean;
   onNavigate?: () => void;
   isAdmin?: boolean;
+  showAdminLink?: boolean;
 };
 
-export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMenuProps) {
+export function UserMenu({
+  mobile = false,
+  onNavigate,
+  isAdmin = false,
+  showAdminLink = true,
+}: UserMenuProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,7 +115,7 @@ export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMe
         <div className="px-4 py-2 text-[13px] text-grey-600 truncate">
           {user.email}
         </div>
-        {isAdmin && (
+        {isAdmin && showAdminLink && (
           <a
             href="/admin"
             onClick={onNavigate}
@@ -162,7 +170,7 @@ export function UserMenu({ mobile = false, onNavigate, isAdmin = false }: UserMe
           <div className="px-4 py-2 text-[13px] text-grey-600 truncate border-b border-grey-100">
             {user.email}
           </div>
-          {isAdmin && (
+          {isAdmin && showAdminLink && (
             <a
               href="/admin"
               className="block px-4 py-2.5 text-[14px] font-semibold text-blue-500 hover:bg-grey-50 no-underline border-b border-grey-100"
