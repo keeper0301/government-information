@@ -34,11 +34,5 @@
     "128": "icons/icon128.png"
   },
 
-  "content_scripts": [
-    {
-      "matches": ["https://blog.naver.com/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ]
+  "_comment_content_scripts": "scripting.executeScript 사용 — manifest content_scripts 와 중복 inject 시 listener 2번 등록 충돌 (C-1 fix). 명시 inject 만 신뢰."
 }

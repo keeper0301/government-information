@@ -73,6 +73,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false;
 });
 
+/**
+ * fail audit 보고 (W-1 fix) — 사고 시 keepioo published API 에 result='fail' 기록.
+ * 매번 catch 분기에서 호출. 실패해도 throw 안 함 (cleanup 우선).
+ */
+async function reportFail(secret, next, errorMessage) {
+  try {
+    await fetch(`${KEEPIOO_BASE}/api/naver-extension/published`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        queueId: next?.queueId,
+        blogPostId: next?.blogPostId,
+        result: "fail",
+        errorMessage: String(errorMessage ?? "unknown").slice(0, 500),
+      }),
+    });
+  } catch (e) {
+    console.warn("[keepioo-naver] reportFail error:", e?.message);
+  }
+}
+
 async function getSecret() {
   const { keepioo_secret } = await chrome.storage.local.get(["keepioo_secret"]);
   if (!keepioo_secret) throw new Error("KEEPIOO_SECRET 미설정 — popup 에서 입력 필요");
@@ -113,6 +134,15 @@ async function runPublishOnce(dryRun = false) {
     await chrome.windows.remove(win.id).catch(() => undefined);
     throw new Error("글쓰기 페이지 로드 timeout");
   }
+  // tab.url 검증 — cookies 만료 시 naver 로그인 페이지로 redirect (C-2 fix).
+  // blog.naver.com 외 페이지면 cookies 만료. content.js inject 의미 X.
+  const finalTab = await chrome.tabs.get(tab.id);
+  if (!finalTab.url || !finalTab.url.includes("blog.naver.com")) {
+    await chrome.windows.remove(win.id).catch(() => undefined);
+    // fail audit 보고 (W-1 fix)
+    await reportFail(secret, next, `cookies 만료 의심: redirect to ${finalTab.url?.slice(0, 100)}`);
+    throw new Error(`cookies 만료 — naver 로그인 redirect (${finalTab.url?.slice(0, 60)})`);
+  }
 
   // 4. content.js 강제 inject — manifest content_scripts 가 background window 에서
   //    안정적이지 못한 사고 (Receiving end does not exist) → executeScript 로 직접 inject.
@@ -144,6 +174,8 @@ async function runPublishOnce(dryRun = false) {
     } catch (e) {
       if (attempt === 3) {
         await chrome.windows.remove(win.id).catch(() => undefined);
+        // fail audit 보고 (W-1 fix) — throw 전 audit 남김
+        await reportFail(secret, next, `sendMessage fail x3: ${e?.message ?? e}`);
         throw new Error(`content.js 메시지 fail (3 attempts): ${e?.message ?? e}`);
       }
       console.warn(`[keepioo-naver] sendMessage attempt ${attempt} fail, retry...`);
@@ -151,7 +183,7 @@ async function runPublishOnce(dryRun = false) {
     }
   }
 
-  // 5. 결과 keepioo 보고
+  // 7. 결과 keepioo 보고
   if (result?.ok) {
     const r = result.result;
     await fetch(`${KEEPIOO_BASE}/api/naver-extension/published`, {
@@ -179,7 +211,7 @@ async function runPublishOnce(dryRun = false) {
     });
   }
 
-  // 6. window close (사장님 작업 방해 X)
+  // 8. window close (사장님 작업 방해 X)
   await chrome.windows.remove(win.id).catch(() => undefined);
   return result;
 }
