@@ -56,6 +56,12 @@ export type HealthSignals = {
    * 사이트 핵심 가치 = "오늘 새 정책" 이라 이게 0 이면 사장님 즉시 알아야 함.
    */
   policyInflow24h: number;
+  /**
+   * /api/collect (GitHub Actions collect.yml KST 13:00) 마지막 실행 시간차 (hours).
+   * 36h+ = cron 노쇼 (GitHub Actions secret 만료·workflow disabled 등).
+   * collect_run audit 흔적 없음 → 999 (반드시 alert).
+   */
+  collectLastRunHours: number;
 };
 
 export type ThresholdAlert = {
@@ -70,7 +76,8 @@ export type ThresholdAlert = {
     | "enrich_stuck"
     | "instagram_token_expiring"
     | "naver_cookies_expiring"
-    | "policy_inflow_zero";
+    | "policy_inflow_zero"
+    | "collect_no_show";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -105,6 +112,12 @@ const PRESS_LOW_TIER_FLOOR = Number(process.env.PRESS_LOW_TIER_FLOOR ?? "10");
 // 정상 운영 일평균 ~50건 이상. 0건 = 수집 cron 사고 (즉시 알림).
 // 1 = 적어도 1건은 들어와야 정상. 환경변수로 1분 toggle.
 const POLICY_INFLOW_FLOOR = Number(process.env.POLICY_INFLOW_FLOOR ?? "1");
+// 2026-05-14 추가 — /api/collect (GitHub Actions collect.yml) 노쇼 임계.
+// 매일 KST 13:00 가동. 36h+ 흔적 없으면 GitHub Actions secret 만료 또는
+// workflow disabled 사고. press_no_show 와 동일 패턴.
+const COLLECT_NO_SHOW_HOURS = Number(
+  process.env.COLLECT_NO_SHOW_ALERT_HOURS ?? "36",
+);
 
 export async function getHealthSignals(): Promise<HealthSignals> {
   const sb = createAdminClient();
@@ -232,6 +245,21 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     ? Math.floor((new Date(nv.expires_min).getTime() - Date.now()) / 86_400_000)
     : null;
 
+  // 2026-05-14 — /api/collect (GitHub Actions collect.yml KST 13:00) 노쇼 진단.
+  // collect_run audit 흔적 시간차. 흔적 없으면 999 (반드시 alert).
+  const { data: lastCollect } = await sb
+    .from("admin_actions")
+    .select("created_at")
+    .eq("action", "collect_run")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const collectLastRunHours = lastCollect?.created_at
+    ? Math.round(
+        (Date.now() - new Date(lastCollect.created_at).getTime()) / 3600000,
+      )
+    : 999;
+
   // 2026-05-14 — 24h 자동 등록 정책 inflow.
   // 자동 cron 사고만 정확히 잡기 위해 auto_confirm_tier IS NOT NULL 인 row 만 카운트
   // (subagent Warning 4 fix). 수동 어드민 등록은 noise 라 제외.
@@ -265,6 +293,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     instagramTokenExpiresInDays,
     naverCookiesExpiresInDays,
     policyInflow24h,
+    collectLastRunHours,
   };
 }
 
@@ -400,6 +429,17 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   const kstDayOfWeek = kstNow.getUTCDay(); // 0=Sun 6=Sat
   const isWeekend = kstDayOfWeek === 0 || kstDayOfWeek === 6;
   const pressNoShowFiring = s.pressLastClassifyHours >= PRESS_NO_SHOW_HOURS;
+  // 2026-05-14 — /api/collect (GitHub Actions collect.yml) 노쇼 자동 감지.
+  // 매일 KST 13:00 가동. 36h+ 흔적 없으면 GitHub Actions 사고 (secret 만료·workflow disabled).
+  if (s.collectLastRunHours >= COLLECT_NO_SHOW_HOURS) {
+    alerts.push({
+      key: "collect_no_show",
+      message: `/api/collect 마지막 ${s.collectLastRunHours}h 전 (임계 ${COLLECT_NO_SHOW_HOURS}h+, GitHub Actions collect.yml).`,
+      recommendation:
+        "GitHub Actions 의 collect.yml workflow 최근 실행 결과 + secret (CRON_SECRET·DATA_GO_KR_API_KEY) 만료 확인. 수동 trigger: gh workflow run collect.yml",
+    });
+  }
+
   if (!isWeekend && !pressNoShowFiring && s.policyInflow24h < POLICY_INFLOW_FLOOR) {
     alerts.push({
       key: "policy_inflow_zero",

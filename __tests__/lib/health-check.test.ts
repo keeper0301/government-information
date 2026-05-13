@@ -21,6 +21,8 @@ const BASE_SIGNALS: HealthSignals = {
   naverCookiesExpiresInDays: null,
   // 2026-05-14 — baseline 5건 (정상, alert X). 0건 케이스는 별도 테스트.
   policyInflow24h: 5,
+  // 2026-05-14 — baseline 1h (방금 실행됨, alert X). 36h+ 케이스는 별도 테스트.
+  collectLastRunHours: 1,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -381,5 +383,31 @@ describe("checkThresholds — 2026-05-14: policy_inflow_zero", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("checkThresholds — 2026-05-14: collect_no_show", () => {
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("collectLastRunHours 36+ → collect_no_show alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, collectLastRunHours: 40 });
+    const a = alerts.find((x) => x.key === "collect_no_show");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("collect");
+    expect(a?.recommendation).toContain("collect.yml");
+  });
+
+  it("collectLastRunHours 35 → 발화 안 함 (boundary)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, collectLastRunHours: 35 });
+    expect(alerts.find((a) => a.key === "collect_no_show")).toBeUndefined();
+  });
+
+  it("collectLastRunHours 999 (흔적 없음) → 반드시 alert", () => {
+    const alerts = checkThresholds({ ...ACTIVE, collectLastRunHours: 999 });
+    expect(alerts.find((a) => a.key === "collect_no_show")).toBeDefined();
   });
 });
