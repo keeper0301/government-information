@@ -151,7 +151,7 @@ export default async function EligibilityCrossPage({
   };
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:pt-24 max-md:px-6">
+    <main className="pt-24 lg:pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}

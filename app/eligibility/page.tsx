@@ -97,7 +97,7 @@ export default async function EligibilityIndexPage() {
     .slice(0, RECOMMEND_MAX);
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:pt-24 max-md:px-6">
+    <main className="pt-24 lg:pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       <h1 className="text-[32px] font-extrabold tracking-[-1px] text-grey-900 mb-3 max-md:text-[26px]">
         자격별 정책 모음
       </h1>

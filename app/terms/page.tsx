@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
+    <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">이용약관</h1>
       <p className="text-[13px] text-grey-600 mb-8">
         시행일자: {TERMS_VERSION} · 운영자: 키피오 (사업자등록번호 657-24-02265 · 통신판매번호 2026-전남순천-7182)

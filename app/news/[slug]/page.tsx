@@ -188,7 +188,7 @@ export default async function NewsDetailPage({ params }: Props) {
   };
 
   return (
-    <main className="pt-28 pb-20 max-w-[760px] mx-auto px-10 max-md:px-6">
+    <main className="pt-28 pb-20 max-w-[760px] mx-auto px-6 lg:px-10">
       {/* JSON-LD NewsArticle schema */}
       <script
         type="application/ld+json"

@@ -128,7 +128,7 @@ export default async function ComparePage({
     .filter((p): p is WelfareForCompare | LoanForCompare => p !== undefined);
 
   return (
-    <main className="max-w-content mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+    <main className="max-w-content mx-auto px-5 lg:px-10 pt-[80px] pb-20">
       <Link href={`/${type}`} className="text-sm text-blue-600 hover:underline">
         ← {type === "welfare" ? "복지" : "대출"} 목록
       </Link>
@@ -155,7 +155,7 @@ export default async function ComparePage({
 
 function CompareEmpty({ suggestions = [] }: { suggestions?: SuggestPair[] }) {
   return (
-    <main className="max-w-content mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+    <main className="max-w-content mx-auto px-5 lg:px-10 pt-[80px] pb-20">
       <h1 className="text-[28px] font-bold tracking-[-0.6px] text-grey-900 mb-2">
         정책 비교
       </h1>

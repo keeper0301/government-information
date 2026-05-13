@@ -265,7 +265,7 @@ export default function HelpPage() {
         dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
 
-      <div className="max-w-[760px] mx-auto px-10 max-md:px-6">
+      <div className="max-w-[760px] mx-auto px-6 lg:px-10">
         {/* 헤더 */}
         <header className="mb-10">
           <p className="text-[13px] font-semibold text-blue-500 tracking-[0.15em] mb-3">

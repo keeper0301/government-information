@@ -77,7 +77,7 @@ export function EnhanceProfileBanner() {
   }
 
   return (
-    <div className="max-w-content mx-auto px-10 max-md:px-6 mt-8 max-md:mt-6">
+    <div className="max-w-content mx-auto px-6 lg:px-10 mt-8 max-md:mt-6">
       <div className="flex items-center gap-3 px-5 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
         <span aria-hidden="true" className="text-[18px]">📝</span>
         <p className="flex-1 text-[14px] text-amber-900 leading-[1.5]">

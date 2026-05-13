@@ -49,7 +49,7 @@ export function Pagination({ currentPage, totalPages, buildUrl }: Props) {
   const hasNext = currentPage < totalPages;
 
   return (
-    <section className="max-w-content mx-auto px-10 mt-10 mb-4 max-md:px-6">
+    <section className="max-w-content mx-auto px-6 lg:px-10 mt-10 mb-4">
       <ShadcnPagination>
         <PaginationContent>
           {/* 이전 — 첫 페이지면 aria-disabled + 회색 + 클릭 차단.

@@ -29,7 +29,7 @@ export function ApplicationDraftView({
   programId: string;
 }) {
   return (
-    <main className="pt-24 pb-20 max-w-[760px] mx-auto px-10 max-md:px-5 print:pt-0 print:max-w-full print:px-0">
+    <main className="pt-24 pb-20 max-w-[760px] mx-auto px-5 lg:px-10 print:pt-0 print:max-w-full print:px-0">
       {/* 화면 전용 헤더 — print 시 숨김 */}
       <div className="mb-6 print:hidden">
         <Link

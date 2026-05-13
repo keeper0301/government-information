@@ -106,7 +106,7 @@ export default function ConsultPage() {
   }
 
   return (
-    <main className="max-w-content mx-auto px-10 pt-[80px] pb-10 max-md:px-5">
+    <main className="max-w-content mx-auto px-5 lg:px-10 pt-[80px] pb-10">
       {/* 페이지 제목 */}
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
         AI 정책 상담

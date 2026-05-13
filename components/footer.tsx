@@ -42,7 +42,7 @@ const BUSINESS_INFO = {
 export async function Footer() {
   const freshness = await getDataFreshness();
   return (
-    <footer className="max-w-content mx-auto px-10 pt-12 pb-[60px] max-md:px-6 max-md:pt-10 max-md:pb-12">
+    <footer className="max-w-content mx-auto px-6 lg:px-10 pt-10 lg:pt-12 pb-12 lg:pb-[60px]">
       <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-4">
         {/* 푸터 마스트헤드 — 헤더와 동일한 토스 풍 단어 강조 (compact) */}
         <div className="flex items-baseline gap-2.5">

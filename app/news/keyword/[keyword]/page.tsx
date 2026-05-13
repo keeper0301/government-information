@@ -98,7 +98,7 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
           { name: `#${decoded}`, url: `${baseUrl}/news/keyword/${encodeURIComponent(decoded)}` },
         ]}
       />
-      <div className="max-w-content mx-auto px-10 max-md:px-6">
+      <div className="max-w-content mx-auto px-6 lg:px-10">
         {/* Breadcrumb */}
         <nav className="text-sm text-grey-700 mb-6">
           <Link href="/news" className="font-medium no-underline hover:text-blue-500 transition-colors">

@@ -40,7 +40,7 @@ export function PopularPicksRow({ picks }: { picks: PopularPick[] }) {
   if (picks.length === 0) return null;
   return (
     <section
-      className="max-w-content mx-auto px-10 max-md:px-6 py-10 max-md:py-7"
+      className="max-w-content mx-auto px-6 lg:px-10 py-10 max-md:py-7"
       aria-labelledby="popular-row-title"
     >
       <div className="flex items-baseline justify-between mb-4">

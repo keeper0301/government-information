@@ -60,7 +60,7 @@ export default async function RestorePage() {
   // 렌더 시점에 계산·표시. 여기 server 에선 정적인 요청/예정 시각만 노출.
 
   return (
-    <main className="pt-28 pb-20 px-10 max-w-[560px] mx-auto max-md:px-6">
+    <main className="pt-28 pb-20 px-6 lg:px-10 max-w-[560px] mx-auto">
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-3">
         탈퇴 요청 확인
       </h1>

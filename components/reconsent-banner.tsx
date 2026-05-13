@@ -91,7 +91,7 @@ export function ReconsentBanner({ missing }: Props) {
       aria-live="polite"
       className="sticky top-[58px] z-40 bg-amber-50 border-b border-amber-200"
     >
-      <div className="max-w-content mx-auto px-10 py-3 max-md:px-5 flex items-center gap-4 max-md:gap-3">
+      <div className="max-w-content mx-auto px-5 lg:px-10 py-3 flex items-center gap-4 max-md:gap-3">
         <span aria-hidden="true" className="text-[16px]">
           📋
         </span>

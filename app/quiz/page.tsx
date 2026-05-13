@@ -221,7 +221,7 @@ export default async function QuizPage({
 // ============================================================
 function QuizForm() {
   return (
-    <main className="pt-28 pb-20 max-w-[640px] mx-auto px-10 max-md:pt-24 max-md:px-6">
+    <main className="pt-24 lg:pt-28 pb-20 max-w-[640px] mx-auto px-6 lg:px-10">
       <p className="text-[13px] font-semibold text-blue-500 mb-3 tracking-wide">
         1분 진단 · 회원가입 불필요
       </p>
@@ -389,7 +389,7 @@ function QuizResult({
   const sharePath = `/quiz?${params.toString()}`;
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:pt-24 max-md:px-6">
+    <main className="pt-24 lg:pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       <Link
         href="/quiz"
         className="inline-flex items-center text-[13px] text-grey-600 hover:text-grey-900 no-underline mb-3"

@@ -98,7 +98,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="pt-40 pb-20 px-10 max-w-[400px] mx-auto max-md:px-6">
+    <main className="pt-40 pb-20 px-6 lg:px-10 max-w-[400px] mx-auto">
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-3">
         새 비밀번호 설정
       </h1>

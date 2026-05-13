@@ -13,7 +13,7 @@ import Link from "next/link";
 
 export function HiddenNewsNotice() {
   return (
-    <main className="pt-28 pb-20 max-w-[560px] mx-auto px-10 max-md:px-6 text-center">
+    <main className="pt-28 pb-20 max-w-[560px] mx-auto px-6 lg:px-10 text-center">
       <p className="text-[13px] font-semibold tracking-[0.15em] text-grey-600 uppercase mb-3">
         NOT AVAILABLE
       </p>

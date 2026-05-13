@@ -95,7 +95,7 @@ export default async function SearchPage({ searchParams }: Props) {
   // 헤더 메뉴 "검색" 클릭으로 q 없이 진입한 사용자에게 입력 폼 즉시 제공.
   if (trimmed.length < 2) {
     return (
-      <main className="max-w-[920px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+      <main className="max-w-[920px] mx-auto px-5 lg:px-10 pt-[80px] pb-20">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-3">
           검색
         </h1>
@@ -120,7 +120,7 @@ export default async function SearchPage({ searchParams }: Props) {
   });
 
   return (
-    <main className="max-w-[920px] mx-auto px-10 pt-[80px] pb-20 max-md:px-5">
+    <main className="max-w-[920px] mx-auto px-5 lg:px-10 pt-[80px] pb-20">
       {/* 검색어 헤더 */}
       <div className="mb-6">
         <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">

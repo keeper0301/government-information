@@ -48,7 +48,7 @@ export default async function BusinessProfilePage() {
   };
 
   return (
-    <main className="pt-28 pb-20 max-w-[640px] mx-auto px-10 max-md:pt-24 max-md:px-6">
+    <main className="pt-24 lg:pt-28 pb-20 max-w-[640px] mx-auto px-6 lg:px-10">
       {/* 뒤로가기 — /mypage 로 복귀. Link 사용으로 새로고침·직접 진입에도 안전.
           모바일 터치 영역 44px 확보 (-mx-2 px-2 padding 으로 시각 정렬 유지). */}
       <Link

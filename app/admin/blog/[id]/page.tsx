@@ -163,7 +163,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
   const isPublished = !!post.published_at;
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
+    <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
       <AdminPageHeader
         kicker="ADMIN · 컨텐츠 발행"

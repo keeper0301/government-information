@@ -72,7 +72,7 @@ export default async function AdminBlogListPage({
 
   if (error) {
     return (
-      <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
+      <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
         <h1 className="text-3xl font-bold text-grey-900 mb-4">블로그 관리</h1>
         <p className="text-red-600">조회 실패: {error.message}</p>
       </main>
@@ -92,7 +92,7 @@ export default async function AdminBlogListPage({
   }
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
+    <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       {/* 표준 헤더 슬롯 — F4 마이그레이션 */}
       <AdminPageHeader
         kicker="ADMIN · 컨텐츠 발행"

@@ -221,7 +221,7 @@ export default async function CalendarPage({
   const monthName = `${year}년 ${month + 1}월`;
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-10 max-md:px-6">
+    <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
         신청 일정 달력
       </h1>
