@@ -61,7 +61,16 @@ $repoUrl  = "https://github.com/keeper0301/government-information.git"
 
 if (Test-Path (Join-Path $repoPath ".git")) {
     Step "1a" "기존 repo pull → $repoPath"
-    # --ff-only — 충돌·rebase 사고 회피 (reviewer I-7). 실패 시 사장님이 수동 정리.
+    # branch/remote 검증 (P2 codex fix) — 잘못된 fork·다른 branch 에 commit/push 차단
+    $currentBranch = (git -C $repoPath rev-parse --abbrev-ref HEAD 2>$null).Trim()
+    $currentRemote = (git -C $repoPath remote get-url origin 2>$null).Trim()
+    if ($currentBranch -ne "master") {
+        Die "현재 branch: $currentBranch (expected: master). 사장님 작업 충돌 위험 → 수동으로 master checkout 후 재실행."
+    }
+    if ($currentRemote -notmatch "keeper0301/government-information") {
+        Die "잘못된 remote: $currentRemote (expected: keeper0301/government-information). 다른 fork 의심 → 수동 확인 후 재실행."
+    }
+    # --ff-only — 충돌·rebase 사고 회피 (reviewer I-7)
     git -C $repoPath pull --ff-only
     if ($LASTEXITCODE -ne 0) {
         Die "git pull --ff-only 실패. $repoPath 에 local commit 있을 수 있음. 수동 정리 후 재실행."
@@ -117,20 +126,27 @@ if (-not $rotate) {
 } else {
 Section "3. Vercel env 업데이트"
 
-Set-Clipboard -Value $secret
-Write-Host "  📋 클립보드에 신규 SECRET 복사됨." -ForegroundColor Yellow
-Write-Host ""
-Write-Host "  Vercel 페이지가 곧 열립니다. 다음 순서로 진행:" -ForegroundColor Yellow
-Write-Host "    [1] NAVER_EXTENSION_SECRET 항목 옆 ⋮ → Edit" -ForegroundColor White
-Write-Host "    [2] Value 입력란에 Ctrl+V (클립보드 붙여넣기)" -ForegroundColor White
-Write-Host "    [3] 'Sensitive' 체크는 OFF 권장 (다음 재설치 시 pull 가능)" -ForegroundColor White
-Write-Host "    [4] Save 클릭" -ForegroundColor White
-Write-Host ""
+# secret 클립보드 노출 try/finally — Ctrl+C / 에러 종료에도 즉시 정리 (P1 codex fix)
+try {
+    Set-Clipboard -Value $secret
+    Write-Host "  📋 클립보드에 신규 SECRET 복사됨." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Vercel 페이지가 곧 열립니다. 다음 순서로 진행:" -ForegroundColor Yellow
+    Write-Host "    [1] NAVER_EXTENSION_SECRET 항목 옆 ⋮ → Edit" -ForegroundColor White
+    Write-Host "    [2] Value 입력란에 Ctrl+V (클립보드 붙여넣기)" -ForegroundColor White
+    Write-Host "    [3] 'Sensitive' 체크는 ON 권장 (보안). 재설치 시 setup-desktop.ps1 가 새 SECRET 회전으로 처리." -ForegroundColor White
+    Write-Host "    [4] Save 클릭" -ForegroundColor White
+    Write-Host ""
 
-Start-Process $chromeExe "https://vercel.com/keeper0301-8938s-projects/government-information/settings/environment-variables"
+    Start-Process $chromeExe "https://vercel.com/keeper0301-8938s-projects/government-information/settings/environment-variables"
 
-Write-Host ""
-$null = Read-Host "  완료했으면 Enter 키"
+    Write-Host ""
+    $null = Read-Host "  완료했으면 Enter 키"
+} finally {
+    # 즉시 클립보드 비움 — Vercel 작업 끝나면 secret 더 이상 필요 X
+    Set-Clipboard -Value " "
+    Write-Host "  🔒 클립보드 정리 (secret 잔존 차단)." -ForegroundColor DarkGray
+}
 
 # ────────────────────────────────────────────────────────────
 # 4. Vercel 재배포 trigger — 빈 commit push
@@ -141,11 +157,13 @@ Push-Location $repoPath
 try {
     git commit --allow-empty -m "chore(naver-extension): NAVER_EXTENSION_SECRET 회전 — Vercel redeploy trigger" | Out-Null
     if ($LASTEXITCODE -eq 0) {
-        git push origin master 2>&1 | Out-Null
+        # `-c credential.helper=` (P1 codex fix) — GIT_TERMINAL_PROMPT 만으로는 GCM
+        # browser popup 차단 못 함. helper 무력화로 캐시 없을 시 즉시 실패.
+        git -c credential.helper= push origin master 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Ok "빈 commit push 완료 — Vercel auto-deploy 시작 (대략 1~2분)"
         } else {
-            Warn "git push 실패 (credentials/네트워크). Vercel 대시보드에서 수동 Redeploy 권장."
+            Warn "git push 실패 (credentials 캐시 없음/네트워크). Vercel 대시보드에서 수동 Redeploy 권장."
         }
     } else {
         Warn "git commit 실패. Vercel 대시보드에서 수동 Redeploy 권장."
@@ -181,7 +199,7 @@ Write-Host ""
 Write-Host "  📅 자동 발행 schedule: 매일 KST 09:30 / 12:30 / 15:30 / 18:30 / 21:30" -ForegroundColor Cyan
 Write-Host "  (Chrome 가동 중일 때만. PC 24/7 가동 + Chrome 백그라운드 모드 권장)" -ForegroundColor Cyan
 
-# 클립보드 cleanup — secret 잔존 위험 차단 (reviewer W-3)
+# 마지막 클립보드 정리 — Section 5 의 폴더 경로 잔존 차단
 Set-Clipboard -Value " "
 Write-Host ""
-Write-Host "  🔒 클립보드 초기화 완료 (secret 잔존 방지)." -ForegroundColor DarkGray
+Write-Host "  🔒 클립보드 초기화 완료." -ForegroundColor DarkGray

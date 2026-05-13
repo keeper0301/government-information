@@ -8,33 +8,38 @@ function setStatus(msg) {
 }
 
 // ────────────────────────────────────────────────────────────
-// 자동 부트스트랩 — extension 폴더의 local-secret.txt 가 있으면 한 번만 chrome.storage 로 옮김.
+// 자동 부트스트랩 — extension 폴더의 local-secret.txt 가 source of truth.
 // setup-desktop.ps1 가 만들어주는 파일. 사장님 manual 입력 없이 popup 첫 open 에서 가동.
+//
+// 정책 (P1 fix — codex review):
+//   - local-secret.txt 가 있고 내용이 있으면: 항상 storage 와 동기화 (rotation 대응)
+//   - local-secret.txt 가 없거나 비어있으면: storage 값 유지 (manual 설치 경로 보호)
 // ────────────────────────────────────────────────────────────
 async function autoBootstrapSecret() {
   try {
     const url = chrome.runtime.getURL("local-secret.txt");
     const r = await fetch(url);
-    if (!r.ok) return null;
-    const txt = (await r.text()).trim();
-    // 사장님이 직접 secret 입력했으면 (다름) 덮어쓰기 안 함 — 사장님 의도 우선
     const { keepioo_secret } = await chrome.storage.local.get(["keepioo_secret"]);
-    if (keepioo_secret) return keepioo_secret;
-    if (!txt) return null;
-    await chrome.storage.local.set({ keepioo_secret: txt });
-    return txt;
+    if (!r.ok) return { source: keepioo_secret ? "storage" : "none", value: keepioo_secret ?? null };
+    const txt = (await r.text()).trim();
+    if (!txt) return { source: keepioo_secret ? "storage" : "none", value: keepioo_secret ?? null };
+    // local-secret.txt 가 진실원 — storage 와 다르면 덮어씀 (회전 시 stale 401 사고 차단)
+    if (keepioo_secret !== txt) {
+      await chrome.storage.local.set({ keepioo_secret: txt });
+    }
+    return { source: "file", value: txt };
   } catch {
-    return null;
+    return { source: "none", value: null };
   }
 }
 
-// 초기 상태 표시 — auto-bootstrap 우선, 없으면 기존 storage 값
+// 초기 상태 표시 — auto-bootstrap 결과의 source 로 분기 (P1 fix: 거짓 status 차단)
 (async () => {
-  const auto = await autoBootstrapSecret();
-  const secret = auto ?? (await chrome.storage.local.get(["keepioo_secret"])).keepioo_secret;
+  const result = await autoBootstrapSecret();
+  const secret = result.value;
   if (secret) {
     secretEl.placeholder = `저장됨 (${secret.slice(0, 4)}...${secret.slice(-2)})`;
-    if (auto) {
+    if (result.source === "file") {
       setStatus(`✅ local-secret.txt 자동 로드됨 (${secret.slice(0, 4)}...${secret.slice(-2)})\n바로 🧪 Dry-run 가능.`);
     }
   }
