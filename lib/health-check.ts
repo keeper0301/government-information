@@ -232,17 +232,21 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     ? Math.floor((new Date(nv.expires_min).getTime() - Date.now()) / 86_400_000)
     : null;
 
-  // 2026-05-14 — 24h 정책 inflow (welfare + loan created_at 합산).
-  // 0건이면 수집 cron 사고 → 사이트 핵심 가치 (오늘 새 정책) 깨짐.
+  // 2026-05-14 — 24h 자동 등록 정책 inflow.
+  // 자동 cron 사고만 정확히 잡기 위해 auto_confirm_tier IS NOT NULL 인 row 만 카운트
+  // (subagent Warning 4 fix). 수동 어드민 등록은 noise 라 제외.
+  // 077 마이그레이션 적용 후 컬럼 존재. 077 이전이면 query 실패 → 0 fallback.
   const [welfNew, loanNew] = await Promise.all([
     sb
       .from("welfare_programs")
       .select("*", { count: "exact", head: true })
-      .gte("created_at", since24Iso),
+      .gte("created_at", since24Iso)
+      .not("auto_confirm_tier", "is", null),
     sb
       .from("loan_programs")
       .select("*", { count: "exact", head: true })
-      .gte("created_at", since24Iso),
+      .gte("created_at", since24Iso)
+      .not("auto_confirm_tier", "is", null),
   ]);
   const policyInflow24h = (welfNew.count ?? 0) + (loanNew.count ?? 0);
 
@@ -383,21 +387,23 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     });
   }
 
-  // 2026-05-14 — 정책 inflow 0건 (수집 cron 사고 즉시 감지).
-  // 사이트 핵심 가치 = "오늘 새 정책" 이 0 이면 사장님 즉시 알아야 함.
-  // welfare_programs/loan_programs 는 /api/cron/press-ingest (광역 보도자료) +
-  // 사장님 어드민 수동 등록이 채움. /api/collect (data.go.kr API) 는 현재
-  // 자동 cron 등록 없음 — manual trigger 만. subagent review 발견.
+  // 2026-05-14 — 자동 등록 정책 inflow 0건 (수집 cron 사고 즉시 감지).
+  // 자동 cron 사고만 정확히 잡기 — auto_confirm_tier IS NOT NULL row 만 카운트.
+  // 사장님 어드민 수동 등록 (auto_confirm_tier NULL) 은 noise 라 제외.
   //
   // 주말 (토/일 KST) skip — 광역 보도자료 출처 사이트 휴재로 자연 0건 가능.
-  // 평일 만 alert → SMS noise 폭주 차단 (subagent Critical-2 fix).
+  // 평일 만 alert (subagent Critical-2 fix).
+  //
+  // press_no_show 와 중복 발화 단일화 — press_no_show 가 이미 발화 중이면
+  // 같은 사고 (press-ingest cron 노쇼) 라 SMS 1통으로 압축 (subagent Warning-3 fix).
   const kstNow = new Date(Date.now() + 9 * 3600_000);
   const kstDayOfWeek = kstNow.getUTCDay(); // 0=Sun 6=Sat
   const isWeekend = kstDayOfWeek === 0 || kstDayOfWeek === 6;
-  if (!isWeekend && s.policyInflow24h < POLICY_INFLOW_FLOOR) {
+  const pressNoShowFiring = s.pressLastClassifyHours >= PRESS_NO_SHOW_HOURS;
+  if (!isWeekend && !pressNoShowFiring && s.policyInflow24h < POLICY_INFLOW_FLOOR) {
     alerts.push({
       key: "policy_inflow_zero",
-      message: `24h 신규 정책 inflow ${s.policyInflow24h}건 (임계 ${POLICY_INFLOW_FLOOR}+, 평일). 수집 cron 사고 의심.`,
+      message: `24h 자동 등록 정책 inflow ${s.policyInflow24h}건 (임계 ${POLICY_INFLOW_FLOOR}+, 평일, 수동 등록 제외). 수집 cron 사고 의심.`,
       recommendation:
         "/admin/cron-trigger 에서 press-ingest 수동 실행 + admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인. POLICY_INFLOW_FLOOR=0 으로 1분 비활성 가능.",
     });

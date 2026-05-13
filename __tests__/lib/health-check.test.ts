@@ -313,8 +313,27 @@ describe("checkThresholds — 2026-05-14: policy_inflow_zero", () => {
       const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 0 });
       const a = alerts.find((x) => x.key === "policy_inflow_zero");
       expect(a).toBeDefined();
-      expect(a?.message).toContain("0건");
+      expect(a?.message).toContain("자동 등록");
+      expect(a?.message).toContain("수동 등록 제외");
       expect(a?.recommendation).toContain("press-ingest");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("평일 + inflow 0 + press_no_show 동시 → policy_inflow_zero skip (중복 단일화)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      // pressLastClassifyHours >= 36 → press_no_show 발화 중
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        policyInflow24h: 0,
+        pressLastClassifyHours: 40,
+      });
+      // press_no_show 는 발화, policy_inflow_zero 는 SMS noise 차단 위해 skip
+      expect(alerts.find((a) => a.key === "press_no_show")).toBeDefined();
+      expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
     } finally {
       vi.useRealTimers();
     }
