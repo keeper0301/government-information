@@ -385,15 +385,21 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
 
   // 2026-05-14 — 정책 inflow 0건 (수집 cron 사고 즉시 감지).
   // 사이트 핵심 가치 = "오늘 새 정책" 이 0 이면 사장님 즉시 알아야 함.
-  // welfare_programs/loan_programs 는 /api/collect (data.go.kr API) 와
-  // /api/cron/press-ingest (광역 보도자료) 가 채움. collect-news 는 news_posts
-  // 전용이라 무관 (codex P1 fix).
-  if (s.policyInflow24h < POLICY_INFLOW_FLOOR) {
+  // welfare_programs/loan_programs 는 /api/cron/press-ingest (광역 보도자료) +
+  // 사장님 어드민 수동 등록이 채움. /api/collect (data.go.kr API) 는 현재
+  // 자동 cron 등록 없음 — manual trigger 만. subagent review 발견.
+  //
+  // 주말 (토/일 KST) skip — 광역 보도자료 출처 사이트 휴재로 자연 0건 가능.
+  // 평일 만 alert → SMS noise 폭주 차단 (subagent Critical-2 fix).
+  const kstNow = new Date(Date.now() + 9 * 3600_000);
+  const kstDayOfWeek = kstNow.getUTCDay(); // 0=Sun 6=Sat
+  const isWeekend = kstDayOfWeek === 0 || kstDayOfWeek === 6;
+  if (!isWeekend && s.policyInflow24h < POLICY_INFLOW_FLOOR) {
     alerts.push({
       key: "policy_inflow_zero",
-      message: `24h 신규 정책 inflow ${s.policyInflow24h}건 (임계 ${POLICY_INFLOW_FLOOR}+). 수집 cron 사고 의심.`,
+      message: `24h 신규 정책 inflow ${s.policyInflow24h}건 (임계 ${POLICY_INFLOW_FLOOR}+, 평일). 수집 cron 사고 의심.`,
       recommendation:
-        "/admin/cron-trigger 에서 press-ingest 수동 실행 + admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인 + /api/collect data.go.kr API quota·외부 API 다운 여부 점검.",
+        "/admin/cron-trigger 에서 press-ingest 수동 실행 + admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인. POLICY_INFLOW_FLOOR=0 으로 1분 비활성 가능.",
     });
   }
 

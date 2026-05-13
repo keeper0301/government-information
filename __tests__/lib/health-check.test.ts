@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { checkThresholds, type HealthSignals } from "@/lib/health-check";
 
 const BASE_SIGNALS: HealthSignals = {
@@ -300,21 +300,67 @@ describe("checkThresholds — 2026-05-14: policy_inflow_zero", () => {
     active7dAny: 10,
   };
 
-  it("24h 정책 inflow 0 → policy_inflow_zero alert + recommendation", () => {
-    const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 0 });
-    const a = alerts.find((x) => x.key === "policy_inflow_zero");
-    expect(a).toBeDefined();
-    expect(a?.message).toContain("0건");
-    expect(a?.recommendation).toContain("press-ingest");
+  // KST 변환 = Date.now() + 9h. fake time 의 UTC 자체가 평일이어야 KST 도 평일.
+  // 정오 (UTC 03:00) 으로 fix — KST 12:00, day-boundary 사고 회피.
+  const KST_WEDNESDAY = new Date("2026-05-13T03:00:00Z"); // KST 수요일 12:00
+  const KST_SATURDAY = new Date("2026-05-16T03:00:00Z"); // KST 토요일 12:00
+  const KST_SUNDAY = new Date("2026-05-17T03:00:00Z"); // KST 일요일 12:00
+
+  it("평일 + inflow 0 → policy_inflow_zero alert + recommendation", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 0 });
+      const a = alerts.find((x) => x.key === "policy_inflow_zero");
+      expect(a).toBeDefined();
+      expect(a?.message).toContain("0건");
+      expect(a?.recommendation).toContain("press-ingest");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it("24h 정책 inflow 1 → 발화 안 함 (boundary, POLICY_INFLOW_FLOOR=1 기본)", () => {
-    const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 1 });
-    expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
+  it("평일 + inflow 1 → 발화 안 함 (boundary, POLICY_INFLOW_FLOOR=1 기본)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 1 });
+      expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it("24h 정책 inflow 50 → 발화 안 함 (정상 운영)", () => {
-    const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 50 });
-    expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
+  it("평일 + inflow 50 → 발화 안 함 (정상 운영)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 50 });
+      expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("토요일 + inflow 0 → 발화 안 함 (주말 skip — SMS noise 차단)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_SATURDAY);
+    try {
+      const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 0 });
+      expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("일요일 + inflow 0 → 발화 안 함 (주말 skip)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_SUNDAY);
+    try {
+      const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 0 });
+      expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
