@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Keepioo Naver Blog Auto Publish",
+  "version": "1.0.0",
+  "description": "keepioo blog 큐의 글을 사장님 네이버 블로그에 자동 발행 (KST 09:30 ~ 21:30, 5회/일).",
+
+  "permissions": [
+    "alarms",
+    "storage",
+    "tabs",
+    "cookies",
+    "clipboardRead",
+    "clipboardWrite"
+  ],
+
+  "host_permissions": [
+    "https://*.naver.com/*",
+    "https://www.keepioo.com/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Keepioo Naver Publisher"
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://blog.naver.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Keepioo Naver Publisher</title>
+  <style>
+    body { font-family: -apple-system, system-ui, "Malgun Gothic", sans-serif; width: 320px; padding: 16px; font-size: 14px; }
+    h2 { margin: 0 0 12px; font-size: 16px; }
+    .section { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+    .section:last-child { border-bottom: none; }
+    label { display: block; margin-bottom: 6px; font-size: 12px; color: #666; }
+    input[type=password] { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    button { width: 100%; padding: 8px 12px; margin-top: 6px; cursor: pointer; border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; font-size: 13px; }
+    button.primary { background: #03c75a; color: white; border-color: #03c75a; }
+    button.danger { background: #fff0f0; color: #c00; border-color: #fcc; }
+    .status { margin-top: 10px; padding: 8px; background: #f9f9f9; border-radius: 4px; font-size: 12px; color: #555; min-height: 30px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+    .small { font-size: 11px; color: #999; }
+  </style>
+</head>
+<body>
+  <h2>Keepioo Naver Publisher</h2>
+
+  <div class="section">
+    <label for="secret">KEEPIOO_SECRET (한 번만 입력)</label>
+    <input type="password" id="secret" placeholder="••••••••" />
+    <button id="save-secret">저장</button>
+    <div class="small">사장님께 받은 NAVER_EXTENSION_SECRET. chrome.storage.sync 에 안전 저장.</div>
+  </div>
+
+  <div class="section">
+    <button id="manual-dry-run" class="primary">🧪 Dry-run (실 발행 X)</button>
+    <button id="manual-publish" class="danger">🚀 실 발행 1건</button>
+    <div class="small">매일 KST 09:30 / 12:30 / 15:30 / 18:30 / 21:30 자동 발행 (Chrome 가동 중).</div>
+  </div>
+
+  <div class="section">
+    <div id="status" class="status">대기 중...</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
