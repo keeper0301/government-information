@@ -8,6 +8,7 @@
     "alarms",
     "storage",
     "tabs",
+    "scripting",
     "clipboardRead",
     "clipboardWrite"
   ],

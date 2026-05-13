@@ -96,15 +96,13 @@ async function runPublishOnce(dryRun = false) {
     return { skipped: next.status };
   }
 
-  // 2. minimized window 로 글쓰기 페이지 열기.
-  //    invisible tab (active:false) 은 document.visibilityState='hidden' → naver 봇 탐지 위험.
-  //    minimized window 는 visibility='visible' 유지 + 사장님 화면 안 가림.
+  // 2. background window 로 글쓰기 페이지 열기 (focused:false).
+  //    visibility='visible' 유지 (naver 봇 탐지 회피).
+  //    minimize 는 inject 후로 미룸 — 즉시 minimize 하면 content.js inject 가
+  //    abort 될 가능성 (Could not establish connection 사고).
   const win = await chrome.windows.create({
     url: "https://blog.naver.com/GoBlogWrite.naver",
     focused: false,
-    state: "minimized",
-    width: 1280,
-    height: 900,
   });
   const tab = win.tabs?.[0];
   if (!tab) throw new Error("window.tabs[0] 없음");
@@ -115,20 +113,42 @@ async function runPublishOnce(dryRun = false) {
     await chrome.windows.remove(win.id).catch(() => undefined);
     throw new Error("글쓰기 페이지 로드 timeout");
   }
-  // content.js inject 대기 (manifest 의 document_idle)
-  await new Promise((r) => setTimeout(r, 3000));
 
-  // 4. content.js 에 publish 명령
-  let result;
+  // 4. content.js 강제 inject — manifest content_scripts 가 background window 에서
+  //    안정적이지 못한 사고 (Receiving end does not exist) → executeScript 로 직접 inject.
   try {
-    result = await chrome.tabs.sendMessage(tab.id, {
-      type: "naver-publish",
-      payload: next,
-      dryRun,
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"],
     });
+    console.log("[keepioo-naver] content.js executeScript injected");
   } catch (e) {
-    await chrome.windows.remove(win.id).catch(() => undefined);
-    throw new Error(`content.js 메시지 fail: ${e?.message ?? e}`);
+    console.warn("[keepioo-naver] executeScript fail:", e?.message);
+  }
+  // listener 등록 대기
+  await new Promise((r) => setTimeout(r, 2000));
+
+  // 5. minimize — content.js inject 끝난 후 (사장님 작업 방해 ↓)
+  await chrome.windows.update(win.id, { state: "minimized" }).catch(() => undefined);
+
+  // 6. content.js 에 publish 명령 — retry 패턴
+  let result;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      result = await chrome.tabs.sendMessage(tab.id, {
+        type: "naver-publish",
+        payload: next,
+        dryRun,
+      });
+      break;
+    } catch (e) {
+      if (attempt === 3) {
+        await chrome.windows.remove(win.id).catch(() => undefined);
+        throw new Error(`content.js 메시지 fail (3 attempts): ${e?.message ?? e}`);
+      }
+      console.warn(`[keepioo-naver] sendMessage attempt ${attempt} fail, retry...`);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
   }
 
   // 5. 결과 keepioo 보고
