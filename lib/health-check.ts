@@ -50,6 +50,12 @@ export type HealthSignals = {
    * 0 ≤ N ≤ 7 일 때 alert (수동 cookies 재발급 못 일어나면 cron 막힘).
    */
   naverCookiesExpiresInDays: number | null;
+  /**
+   * 24h 안 신규 정책 inflow (welfare_programs + loan_programs created_at 합산).
+   * 0건 = 수집 cron 사고 (collect-news/welfare/loan API 다운 또는 cron 노쇼).
+   * 사이트 핵심 가치 = "오늘 새 정책" 이라 이게 0 이면 사장님 즉시 알아야 함.
+   */
+  policyInflow24h: number;
 };
 
 export type ThresholdAlert = {
@@ -63,7 +69,8 @@ export type ThresholdAlert = {
     | "press_low_tier"
     | "enrich_stuck"
     | "instagram_token_expiring"
-    | "naver_cookies_expiring";
+    | "naver_cookies_expiring"
+    | "policy_inflow_zero";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -94,6 +101,10 @@ const ENRICH_PERMANENT_SKIP_FLOOR = Number(
 // 적극 모드 (high+mid 자동) 채택 후 평소엔 거의 0 이어야 함.
 // 10+ 누적 = LLM 신뢰도 하락 신호 → 사장님 검토 또는 일시 적극화 검토.
 const PRESS_LOW_TIER_FLOOR = Number(process.env.PRESS_LOW_TIER_FLOOR ?? "10");
+// 2026-05-14 추가 — welfare + loan 24h inflow 임계.
+// 정상 운영 일평균 ~50건 이상. 0건 = 수집 cron 사고 (즉시 알림).
+// 1 = 적어도 1건은 들어와야 정상. 환경변수로 1분 toggle.
+const POLICY_INFLOW_FLOOR = Number(process.env.POLICY_INFLOW_FLOOR ?? "1");
 
 export async function getHealthSignals(): Promise<HealthSignals> {
   const sb = createAdminClient();
@@ -221,6 +232,20 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     ? Math.floor((new Date(nv.expires_min).getTime() - Date.now()) / 86_400_000)
     : null;
 
+  // 2026-05-14 — 24h 정책 inflow (welfare + loan created_at 합산).
+  // 0건이면 수집 cron 사고 → 사이트 핵심 가치 (오늘 새 정책) 깨짐.
+  const [welfNew, loanNew] = await Promise.all([
+    sb
+      .from("welfare_programs")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", since24Iso),
+    sb
+      .from("loan_programs")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", since24Iso),
+  ]);
+  const policyInflow24h = (welfNew.count ?? 0) + (loanNew.count ?? 0);
+
   return {
     signups24h,
     active7d,
@@ -235,6 +260,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     pressLowTierBacklog,
     instagramTokenExpiresInDays,
     naverCookiesExpiresInDays,
+    policyInflow24h,
   };
 }
 
@@ -354,6 +380,20 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
         : `네이버 RPA cookies 만료 ${s.naverCookiesExpiresInDays}일 남음 (≤ 7일). 사장님 cookies 재발급 필요.`,
       recommendation:
         "사장님 Chrome 으로 naver.com 재로그인 → F12 DevTools 에서 cookies 재 export → /admin/naver-blog/cookies 에 업로드.",
+    });
+  }
+
+  // 2026-05-14 — 정책 inflow 0건 (수집 cron 사고 즉시 감지).
+  // 사이트 핵심 가치 = "오늘 새 정책" 이 0 이면 사장님 즉시 알아야 함.
+  // welfare_programs/loan_programs 는 /api/collect (data.go.kr API) 와
+  // /api/cron/press-ingest (광역 보도자료) 가 채움. collect-news 는 news_posts
+  // 전용이라 무관 (codex P1 fix).
+  if (s.policyInflow24h < POLICY_INFLOW_FLOOR) {
+    alerts.push({
+      key: "policy_inflow_zero",
+      message: `24h 신규 정책 inflow ${s.policyInflow24h}건 (임계 ${POLICY_INFLOW_FLOOR}+). 수집 cron 사고 의심.`,
+      recommendation:
+        "/admin/cron-trigger 에서 press-ingest 수동 실행 + admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인 + /api/collect data.go.kr API quota·외부 API 다운 여부 점검.",
     });
   }
 

@@ -19,6 +19,8 @@ const BASE_SIGNALS: HealthSignals = {
   instagramTokenExpiresInDays: null,
   // 2026-05-12 — null = 네이버 cookies 미업로드 (alert X). 만료 임박 케이스는 별도 테스트.
   naverCookiesExpiresInDays: null,
+  // 2026-05-14 — baseline 5건 (정상, alert X). 0건 케이스는 별도 테스트.
+  policyInflow24h: 5,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -287,5 +289,32 @@ describe("checkThresholds — Phase 1 추가: press_low_tier_backlog", () => {
   it("low tier 9 → 발화 안 함 (boundary)", () => {
     const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 9 });
     expect(alerts.find((a) => a.key === "press_low_tier")).toBeUndefined();
+  });
+});
+
+describe("checkThresholds — 2026-05-14: policy_inflow_zero", () => {
+  // 트래픽 가드 차단 위해 signups·active 채움. policy inflow alert 만 검증.
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("24h 정책 inflow 0 → policy_inflow_zero alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 0 });
+    const a = alerts.find((x) => x.key === "policy_inflow_zero");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("0건");
+    expect(a?.recommendation).toContain("press-ingest");
+  });
+
+  it("24h 정책 inflow 1 → 발화 안 함 (boundary, POLICY_INFLOW_FLOOR=1 기본)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 1 });
+    expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
+  });
+
+  it("24h 정책 inflow 50 → 발화 안 함 (정상 운영)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 50 });
+    expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeUndefined();
   });
 });
