@@ -405,7 +405,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "policy_inflow_zero",
       message: `24h 자동 등록 정책 inflow ${s.policyInflow24h}건 (임계 ${POLICY_INFLOW_FLOOR}+, 평일, 수동 등록 제외). 수집 cron 사고 의심.`,
       recommendation:
-        "/admin/cron-trigger 에서 press-ingest 수동 실행 + admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인. POLICY_INFLOW_FLOOR=0 으로 1분 비활성 가능.",
+        "1) /admin/cron-trigger 에서 press-ingest 수동 실행 2) GitHub Actions `collect.yml` workflow 최근 실행 결과 확인 (KST 13:00 자동 — data.go.kr quota 진단 포함) 3) admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인. POLICY_INFLOW_FLOOR=0 으로 1분 비활성 가능.",
     });
   }
 

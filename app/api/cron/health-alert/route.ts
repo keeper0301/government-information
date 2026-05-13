@@ -8,6 +8,10 @@ import { getHealthSignals, checkThresholds } from "@/lib/health-check";
 import { sendHealthAlertEmail } from "@/lib/email";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 import { logAdminAction } from "@/lib/admin-actions";
+import {
+  getRecentlyFiredAlertKeys,
+  filterAlertsByCooldown,
+} from "@/lib/alerts/cooldown";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -32,6 +36,11 @@ async function authorize(request: Request) {
 async function logHealthAlertRun(details: {
   alertsCount: number;
   alertKeys: string[];
+  // 2026-05-14 추가 — 실제 SMS 발송된 key 만. cooldown filter 가 이 필드만 봐야
+  // cooldown 영구 mute 사고 차단 (codex P1 fix).
+  smsAlertKeys?: string[];
+  suppressedByCooldown?: string[];
+  cooldownAllSuppressed?: boolean;
   signups24h: number;
   active7dAny: number;
   newsBacklogTotal: number;
@@ -86,6 +95,14 @@ async function run() {
     });
   }
 
+  // cooldown — 같은 alert key 가 72h 안 발화됐으면 SMS skip (subagent Critical-2 fix).
+  // audit 은 항상 기록, SMS 만 필터링. ALERT_COOLDOWN_HOURS=0 으로 비활성 가능.
+  const recentlyFired = await getRecentlyFiredAlertKeys();
+  const { smsAlerts, suppressedKeys } = filterAlertsByCooldown(
+    alerts,
+    recentlyFired,
+  );
+
   const result = await sendHealthAlertEmail(alerts, {
     signups24h: signals.signups24h,
     active7d: signals.active7d,
@@ -97,29 +114,44 @@ async function run() {
   // 환경변수 미설정 시 skipped (운영 단계 보호). 실패해도 email 발송은 유지.
   // Phase 1 자동 진단 — alert 마다 recommendation 1줄 함께 노출 → 사장님이
   // SMS 만 봐도 즉시 hot-fix 액션 결정 가능. SMS 길이 한도 (Solapi LMS 2000자) 안에서만.
+  // smsAlerts 가 비어있으면 SMS skip — 모든 alert 가 cooldown 으로 suppress.
   let smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> | null = null;
-  try {
-    smsResult = await sendOpsAlertSms({
-      subject: `[keepioo 운영] ${alerts.length}건 임계치 초과`,
-      message: alerts
-        .map((a) => {
-          const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
-          return `- ${a.message}${rec}`;
-        })
-        .join("\n"),
-    });
-  } catch (e) {
-    smsResult = {
-      ok: false,
-      reason: "network_error",
-      error: (e as Error).message,
-    };
+  let cooldownAllSuppressed = false;
+  if (smsAlerts.length > 0) {
+    try {
+      smsResult = await sendOpsAlertSms({
+        subject: `[keepioo 운영] ${smsAlerts.length}건 임계치 초과${
+          suppressedKeys.length > 0
+            ? ` (${suppressedKeys.length}건 cooldown)`
+            : ""
+        }`,
+        message: smsAlerts
+          .map((a) => {
+            const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
+            return `- ${a.message}${rec}`;
+          })
+          .join("\n"),
+      });
+    } catch (e) {
+      smsResult = {
+        ok: false,
+        reason: "network_error",
+        error: (e as Error).message,
+      };
+    }
+  } else {
+    // 모든 alert 가 cooldown 으로 suppress — SMS 발송 skip. smsResult=null 유지.
+    cooldownAllSuppressed = true;
   }
 
   // alert 발화 시 audit — 사장님 SMS 발송 여부 + alert 종류 기록
+  // smsAlertKeys 별도 — cooldown filter 가 이 필드만 봐서 영구 mute 차단 (codex P1).
   await logHealthAlertRun({
     alertsCount: alerts.length,
     alertKeys: alerts.map((a) => a.key),
+    smsAlertKeys: smsAlerts.map((a) => a.key),
+    suppressedByCooldown: suppressedKeys,
+    cooldownAllSuppressed,
     signups24h: signals.signups24h,
     active7dAny: signals.active7dAny,
     newsBacklogTotal: signals.newsBacklogTotal,
@@ -128,8 +160,12 @@ async function run() {
     enrichPermanentSkip: signals.enrichPermanentSkip,
     instagramTokenExpiresInDays: signals.instagramTokenExpiresInDays,
     naverCookiesExpiresInDays: signals.naverCookiesExpiresInDays,
-    smsOk: smsResult?.ok ?? null,
-    smsReason: smsResult?.ok ? undefined : smsResult?.reason,
+    smsOk: cooldownAllSuppressed ? null : (smsResult?.ok ?? null),
+    smsReason: cooldownAllSuppressed
+      ? "cooldown_all_suppressed"
+      : smsResult?.ok
+        ? undefined
+        : smsResult?.reason,
     emailOk: result.ok,
   });
 
@@ -137,6 +173,9 @@ async function run() {
     ok: result.ok,
     sent: result.ok,
     alerts,
+    smsAlerts: smsAlerts.map((a) => a.key),
+    suppressedByCooldown: suppressedKeys,
+    cooldownAllSuppressed,
     signals,
     sms: smsResult,
     error: result.error,
