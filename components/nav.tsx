@@ -75,6 +75,10 @@ export function Nav({
     return pathname === href || pathname.startsWith(href + "/");
   }
 
+  // admin link 의 active 상태 — desktop · mobile 양쪽 동일값. render 마다 IIFE 호출
+  // 회피 (codex P2). isAdmin 으로 short-circuit.
+  const adminActive = isAdmin && isActive("/admin");
+
   return (
     <nav
       aria-label="주요 메뉴"
@@ -131,14 +135,22 @@ export function Nav({
 
           {/* admin 사장님 전용 quick link — 데스크톱 nav 우측 끝, 종 아이콘 직전.
               아바타 클릭 → dropdown 단계 생략. 한눈에 어드민 진입 가능.
-              min-w-11 + justify-center: WCAG 44×44 touch target 보장 (codex P1-2 fix). */}
+              - min-w-11 + justify-center: WCAG 44×44 touch target 보장 (codex P1-2)
+              - md 좁은 가로 (~884) 에서 이모지만, lg+ 에서 "어드민" 라벨 병기 (P3 polish)
+              - /admin 진입 시 solid blue 로 active 표시 (P3 polish) */}
           {isAdmin && (
             <Link
               href="/admin"
-              className="ml-1 px-2 lg:px-3 py-2 text-[13px] lg:text-[14px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg no-underline transition-colors min-h-[44px] min-w-11 flex items-center justify-center"
+              aria-current={adminActive ? "page" : undefined}
+              className={`ml-1 px-2 lg:px-3 py-2 text-[13px] lg:text-[14px] font-bold rounded-lg no-underline transition-colors min-h-[44px] min-w-11 flex items-center justify-center gap-1 ${
+                adminActive
+                  ? "text-white bg-blue-500 hover:bg-blue-600"
+                  : "text-blue-700 bg-blue-50 hover:bg-blue-100"
+              }`}
               aria-label="어드민 대시보드"
             >
-              🛠
+              <span aria-hidden="true">🛠</span>
+              <span className="hidden lg:inline">어드민</span>
             </Link>
           )}
 
@@ -194,14 +206,21 @@ export function Nav({
           className="md:hidden bg-white border-t border-grey-100 px-5 py-4 space-y-1 max-h-[calc(100dvh-58px)] overflow-y-auto overscroll-contain"
         >
           {/* 어드민 quick link — 햄버거 메뉴 가장 위. 폴드7 메인·태블릿에서 스크롤 없이 즉시 보임.
-              실제 권한은 /admin 서버 가드, 여기는 UI 한정. */}
+              실제 권한은 /admin 서버 가드, 여기는 UI 한정.
+              /admin 진입 시 solid blue 로 active 표시 (P3 polish).
+              hover 시 border 가 background 와 동색 → border-blue-700 으로 차별 (codex P2). */}
           {isAdmin && (
             <a
               href="/admin"
+              aria-current={adminActive ? "page" : undefined}
               onClick={() => setMobileOpen(false)}
-              className="block pl-5 pr-4 py-3 mb-2 text-[15px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg no-underline transition-colors border border-blue-200"
+              className={`block pl-5 pr-4 py-3 mb-2 text-[15px] font-bold rounded-lg no-underline transition-colors border ${
+                adminActive
+                  ? "text-white bg-blue-500 hover:bg-blue-600 border-blue-700"
+                  : "text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200"
+              }`}
             >
-              🛠 어드민 대시보드
+              <span aria-hidden="true">🛠</span> 어드민 대시보드
             </a>
           )}
           {items.map((item) => (
