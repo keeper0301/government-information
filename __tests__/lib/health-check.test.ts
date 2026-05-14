@@ -320,8 +320,8 @@ describe("checkThresholds — 2026-05-14: policy_inflow_zero", () => {
       const alerts = checkThresholds({ ...ACTIVE, policyInflow24h: 0 });
       const a = alerts.find((x) => x.key === "policy_inflow_zero");
       expect(a).toBeDefined();
-      expect(a?.message).toContain("자동 등록");
-      expect(a?.message).toContain("수동 등록 제외");
+      expect(a?.message).toContain("정책 inflow");
+      expect(a?.message).toContain("collector + press-ingest 합산");
       expect(a?.recommendation).toContain("press-ingest");
     } finally {
       vi.useRealTimers();

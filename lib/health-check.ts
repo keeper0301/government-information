@@ -51,26 +51,27 @@ export type HealthSignals = {
    */
   naverCookiesExpiresInDays: number | null;
   /**
-   * 24h 안 신규 정책 inflow (welfare_programs + loan_programs created_at 합산).
-   * 0건 = 수집 cron 사고 (collect-news/welfare/loan API 다운 또는 cron 노쇼).
+   * 24h 안 신규 정책 inflow (welfare_programs + loan_programs 합산).
+   * source_code IS NOT NULL — collector + press-ingest 양쪽 path 모두 카운트, manual 만 제외.
+   * 0건 = 수집 cron 사고 (collector / press-ingest / GitHub Actions 노쇼).
    * 사이트 핵심 가치 = "오늘 새 정책" 이라 이게 0 이면 사장님 즉시 알아야 함.
-   * 호환성 유지 (기존 policy_inflow_zero 임계치) — welfare + loan 합산.
    */
   policyInflow24h: number;
   /**
-   * 24h 안 welfare_programs 신규 inflow (auto_confirm_tier IS NOT NULL 만).
+   * 24h 안 welfare_programs 신규 inflow (source_code IS NOT NULL).
    * 합산이 통과해도 welfare 단독 노쇼 진단 가능 — message 정보 강화용.
    */
   welfareInflow24h: number;
   /**
-   * 24h 안 loan_programs 신규 inflow (auto_confirm_tier IS NOT NULL 만).
-   * 합산이 통과해도 loan 단독 노쇼 진단 가능 — loan_inflow_zero 임계 사용.
-   * 데이터 기반 발견 (2026-05-14): welfare 7 + loan 0 = 합산 7 → 임계 통과 → loan 사고 가려짐.
+   * 24h 안 loan_programs 신규 inflow (source_code IS NOT NULL — collector + press 합산).
+   * 데이터 기반 fix (2026-05-14 후속): 직전 commit 의 auto_confirm_tier 가드는 collector path
+   * (mss·kinfa·fsc 등 99건) 를 모두 무시하던 결함 → loan_inflow_zero false positive 보장.
+   * 새 source_code 가드는 collector + press-ingest 모두 카운트, manual 만 제외.
    */
   loanInflow24h: number;
   /**
-   * loan_programs 마지막 created_at 시간차 (hours).
-   * 48h+ = loan 수집 cron 사고 (kinfa 등 loan-only 출처 노쇼).
+   * loan_programs 마지막 created_at 시간차 (hours, source_code IS NOT NULL).
+   * 48h+ = loan 수집 cron 사고 (collector + press-ingest 양쪽 path 모두 노쇼).
    * 흔적 없으면 999 (반드시 alert).
    */
   loanLastInflowHours: number;
@@ -304,28 +305,37 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       )
     : 999;
 
-  // 2026-05-14 — 24h 자동 등록 정책 inflow.
-  // 자동 cron 사고만 정확히 잡기 위해 auto_confirm_tier IS NOT NULL 인 row 만 카운트
-  // (subagent Warning 4 fix). 수동 어드민 등록은 noise 라 제외.
-  // 077 마이그레이션은 이미 prod 적용 (memory: project_press_ingest_confidence_tier_2026_05_09).
-  // 2026-05-14 — welfare/loan 분리 노출 (데이터 기반 사고: loan 단독 노쇼가 합산에 가려짐).
+  // 2026-05-14 — 24h 정책 inflow (welfare/loan 분리).
+  //
+  // 데이터 기반 fix (2026-05-14 후속 #2 진단):
+  //   직전 commit 09569f0 의 `auto_confirm_tier IS NOT NULL` 가드는 press-ingest path
+  //   (광역 보도자료 → LLM 분류 → confirm) 만 카운트. **collector path** (mss·kinfa·fsc·
+  //   bizinfo 등 vercel cron / GitHub Actions) 가 INSERT 한 row 는 auto_confirm_tier 가
+  //   NULL 로 모두 무시됐음.
+  //
+  //   실제 데이터: 5/14 mss 99건 INSERT (loan_programs) 됐는데 query 결과 0 →
+  //   loan_inflow_zero false positive 발화 보장. press-ingest 는 loan 거의 0건이라 사실상
+  //   loan inflow 가 항상 0 으로 보였음.
+  //
+  //   manual_program_create (사장님 admin/manual) 는 빈도 거의 0 + manual 도 0 이면 사고
+  //   진단에 도움 → 모든 INSERT 합산. source_code IS NOT NULL (collector·press-ingest)
+  //   가드만 유지.
   const [welfNew, loanNew, lastLoan] = await Promise.all([
     sb
       .from("welfare_programs")
       .select("*", { count: "exact", head: true })
       .gte("created_at", since24Iso)
-      .not("auto_confirm_tier", "is", null),
+      .not("source_code", "is", null),
     sb
       .from("loan_programs")
       .select("*", { count: "exact", head: true })
       .gte("created_at", since24Iso)
-      .not("auto_confirm_tier", "is", null),
-    // loan 마지막 inflow 시각 (auto 만 — 수동 등록 noise 제외).
-    // 흔적 자체 없는 운영 초기 (077 이전) → 999 fallback.
+      .not("source_code", "is", null),
+    // loan 마지막 inflow 시각 (collector + press-ingest 양쪽 — manual 제외).
     sb
       .from("loan_programs")
       .select("created_at")
-      .not("auto_confirm_tier", "is", null)
+      .not("source_code", "is", null)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -526,9 +536,9 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   if (!isWeekend && !pressNoShowFiring && s.policyInflow24h < POLICY_INFLOW_FLOOR) {
     alerts.push({
       key: "policy_inflow_zero",
-      message: `24h 자동 등록 정책 inflow ${s.policyInflow24h}건 (welfare ${s.welfareInflow24h} + loan ${s.loanInflow24h}, 임계 ${POLICY_INFLOW_FLOOR}+, 평일, 수동 등록 제외). 수집 cron 사고 의심.`,
+      message: `24h 정책 inflow ${s.policyInflow24h}건 (welfare ${s.welfareInflow24h} + loan ${s.loanInflow24h}, 임계 ${POLICY_INFLOW_FLOOR}+, collector + press-ingest 합산). 수집 cron 사고 의심.`,
       recommendation:
-        "1) /admin/cron-trigger 에서 press-ingest 수동 실행 2) GitHub Actions `collect.yml` workflow 최근 실행 결과 확인 (KST 13:00 자동 — data.go.kr quota 진단 포함) 3) admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인. POLICY_INFLOW_FLOOR=0 으로 1분 비활성 가능.",
+        "1) /admin/cron-trigger 에서 press-ingest 수동 실행 2) GitHub Actions `collect.yml` workflow 최근 실행 결과 확인 (KST 13:00 자동 — data.go.kr quota 진단 포함) 3) admin_actions 의 collect_run / press_ingest_run 24h 흔적 확인. POLICY_INFLOW_FLOOR=0 으로 1분 비활성 가능.",
     });
   }
 
