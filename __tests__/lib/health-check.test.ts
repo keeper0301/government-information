@@ -171,8 +171,8 @@ describe("checkThresholds — recommendation 일관성", () => {
       // Task 8 추가: low tier 큐도 임계 초과
       pressLowTierBacklog: 50,
     });
-    // 8 alert key 모두 발화
-    expect(alerts).toHaveLength(8);
+    // 최소 8 alert key — 신규 임계 추가 시 silent regression 방지 (subagent Warning-4 fix)
+    expect(alerts.length).toBeGreaterThanOrEqual(8);
     for (const a of alerts) {
       expect(a.recommendation).toBeTruthy();
       expect(a.recommendation!.length).toBeGreaterThan(10);

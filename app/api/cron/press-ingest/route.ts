@@ -36,8 +36,20 @@ export async function GET(request: Request) {
   const authErr = await authorize(request);
   if (authErr) return authErr;
 
-  // OPENAI_API_KEY 미설정 시 조용히 종료 (사장님 미등록 상태)
+  // OPENAI_API_KEY 미설정 시 조용히 종료 (사장님 미등록 상태).
+  // 2026-05-14 — skipped 분기에도 audit (subagent Warning-3 fix):
+  // 사장님이 OPENAI 키 회수·만료한 사고에서 cron 가동 흔적 자체가 admin_actions 에 없으면
+  // press_no_show 36h 후 발화에만 의존 — false positive 차단 의도와 부분 충돌.
   if (!process.env.OPENAI_API_KEY) {
+    try {
+      await logAdminAction({
+        actorId: null,
+        action: "press_ingest_run",
+        details: { skipped: "OPENAI_API_KEY not configured" },
+      });
+    } catch {
+      // audit 실패는 무시 (운영 안전성)
+    }
     return NextResponse.json({
       skipped: "OPENAI_API_KEY not configured",
     });

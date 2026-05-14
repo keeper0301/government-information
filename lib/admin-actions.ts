@@ -58,7 +58,8 @@ export type AdminActionType =
   | "policy_url_check_run"       // 2026-05-14 — 주 1회 정책 source URL 404 감지 cron 실행 (checked/dead/ok 통계)
   | "collect_run"                // 2026-05-14 — /api/collect GitHub Actions 가동 흔적 (totalCollected/sources/failedCount 통계, health-alert collect_no_show 진단)
   | "press_ingest_run"           // 2026-05-14 — /api/cron/press-ingest 진입 흔적 (cron 가동 자체 추적, press_l2_classify 가 처리한 만큼만 쌓이는 false positive 차단)
-  | "alert_dispatch_run";        // 2026-05-14 — /api/alert-dispatch 진입 흔적 (alert_deliveries 가 매칭 0건 시 row 안 쌓여 cron 가동 추적 불가능했음)
+  | "alert_dispatch_run"         // 2026-05-14 — /api/alert-dispatch 진입 흔적 (alert_deliveries 가 매칭 0건 시 row 안 쌓여 cron 가동 추적 불가능했음)
+  | "external_console_check_run"; // 2026-05-14 — /api/cron/external-console-check 진입 흔적 (balance·KPI 등 vercel logs 만 있어 사장님 가시성 0이던 사고)
 
 export type AdminActionRecord = {
   id: string;
@@ -342,4 +343,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   collect_run: "정책 수집 cron 실행",
   press_ingest_run: "press-ingest cron 진입 흔적",
   alert_dispatch_run: "alert-dispatch cron 진입 흔적",
+  external_console_check_run: "외부 콘솔 점검 cron 진입 흔적",
 };

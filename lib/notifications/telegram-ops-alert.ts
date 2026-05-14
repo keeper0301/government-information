@@ -15,22 +15,29 @@
 // ============================================================
 
 export type OpsAlertTelegramResult =
-  | { ok: true; messageId: number | null }
+  | { ok: true; messageId: number | null; sent: number; failed: number }
   | { ok: false; reason: "skipped_no_credentials"; error?: undefined }
-  | { ok: false; reason: "api_error"; error: string }
+  | { ok: false; reason: "api_error"; error: string; sent?: number; failed?: number }
   | { ok: false; reason: "network_error"; error: string };
 
-function pickOwnerChatId(): string | null {
-  // 신 표기 우선 (CSV 첫 값)
+// 2026-05-14 — multi-owner 발송 (subagent Critical-2 fix).
+// TELEGRAM_OWNER_CHAT_IDS = "100,200,300" CSV 노트북·본체PC·Mac multi-device 의도.
+// 첫 1명만 받으면 1차 device 다운 시 메타 안전책 무력 → 모든 owner 합집합에 발송.
+// lib/telegram/permissions.ts 의 owner Set 시맨틱과 일관.
+function pickAllOwnerChatIds(): string[] {
+  const set = new Set<string>();
+  // 신 표기 (CSV 다중)
   const owners = process.env.TELEGRAM_OWNER_CHAT_IDS;
   if (owners) {
-    const first = owners.split(",").map((s) => s.trim()).find(Boolean);
-    if (first) return first;
+    for (const id of owners.split(",")) {
+      const trimmed = id.trim();
+      if (trimmed) set.add(trimmed);
+    }
   }
-  // backward compat
+  // backward compat — 단일 chat id
   const legacy = process.env.TELEGRAM_CHAT_ID;
-  if (legacy && legacy.trim()) return legacy.trim();
-  return null;
+  if (legacy && legacy.trim()) set.add(legacy.trim());
+  return Array.from(set);
 }
 
 /**
@@ -49,9 +56,9 @@ export async function sendOpsAlertTelegram({
   message: string;
 }): Promise<OpsAlertTelegramResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = pickOwnerChatId();
+  const chatIds = pickAllOwnerChatIds();
 
-  if (!token || !chatId) {
+  if (!token || chatIds.length === 0) {
     return { ok: false, reason: "skipped_no_credentials" };
   }
 
@@ -59,35 +66,55 @@ export async function sendOpsAlertTelegram({
   const subjectLine = subject ? `${subject}\n\n` : "";
   const text = `${subjectLine}${message}`.slice(0, 4000);
 
-  let res: Response;
-  try {
-    res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        // disable_web_page_preview 로 텔레그램 자동 preview 차단 (alert 본문 가독성)
-        disable_web_page_preview: true,
+  // 모든 owner 에 병렬 발송 (Promise.allSettled — 한 owner 실패해도 다른 owner 진행).
+  const results = await Promise.allSettled(
+    chatIds.map((chatId) =>
+      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          disable_web_page_preview: true,
+        }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`http_${res.status}: ${body}`.slice(0, 300));
+        }
+        const json: unknown = await res.json().catch(() => ({}));
+        return extractMessageId(json);
       }),
-    });
-  } catch (e) {
-    return { ok: false, reason: "network_error", error: (e as Error).message };
+    ),
+  );
+
+  let sent = 0;
+  let failed = 0;
+  let firstMessageId: number | null = null;
+  let firstError = "";
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      sent++;
+      if (firstMessageId === null) firstMessageId = r.value;
+    } else {
+      failed++;
+      if (!firstError) firstError = (r.reason as Error).message ?? "unknown";
+    }
   }
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    return {
-      ok: false,
-      reason: "api_error",
-      error: `http_${res.status}: ${body}`.slice(0, 300),
-    };
+  // 1명이라도 도달하면 ok=true (메타 안전책 — multi-device 합집합).
+  if (sent > 0) {
+    return { ok: true, messageId: firstMessageId, sent, failed };
   }
-
-  // 텔레그램 응답 — { ok: true, result: { message_id: N, ... } }
-  const json: unknown = await res.json().catch(() => ({}));
-  const messageId = extractMessageId(json);
-  return { ok: true, messageId };
+  // 전부 실패 시 first error 노출
+  const isNetwork = firstError.toLowerCase().includes("fetch") || firstError.toLowerCase().includes("network");
+  return {
+    ok: false,
+    reason: isNetwork ? "network_error" : "api_error",
+    error: firstError.slice(0, 300),
+    sent,
+    failed,
+  };
 }
 
 function extractMessageId(json: unknown): number | null {

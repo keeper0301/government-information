@@ -30,6 +30,7 @@ import { checkSearchConsole } from "@/lib/external-console/search-console";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
 import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
+import { logAdminAction } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -114,6 +115,39 @@ async function run() {
         error: (e as Error).message,
       };
     }
+  }
+
+  // 2026-05-14 — 사장님 가시성 audit (subagent Critical-1).
+  // 핵심 KPI (balance_total/balance_cash/balance_point/site availability/vercel deploy 등) 가
+  // 지금까지 vercel function logs 에만 있어 admin_actions 영구 저장 0 → autonomous hub metric 무력했음.
+  // collect_run / press_ingest_run / alert_dispatch_run 패턴 일관 미러.
+  // alerts/results/SMS/텔레그램 결과 모두 압축 — 사장님이 admin_actions query 만으로 진단 가능.
+  try {
+    await logAdminAction({
+      actorId: null,
+      action: "external_console_check_run",
+      details: {
+        checked: results.length,
+        alerts_total: totalAlerts.length,
+        alert_keys: totalAlerts.map((a) => a.key),
+        // 각 console 별 alert·KPI 요약 (전체 KPI 본문은 details json 통째로 저장)
+        results_summary: results.map((r) => ({
+          console: r.console,
+          alerts_count: r.alerts.length,
+          alert_keys: r.alerts.map((a) => a.key),
+          kpis: r.kpis,
+          error: r.error,
+        })),
+        sms_ok: smsResult?.ok ?? null,
+        sms_reason: smsResult?.ok === false ? smsResult.reason : undefined,
+        telegram_ok: telegramResult?.ok ?? null,
+        telegram_reason:
+          telegramResult?.ok === false ? telegramResult.reason : undefined,
+      },
+    });
+  } catch (e) {
+    console.warn("[external-console-check] audit 실패:", (e as Error).message);
+    // audit 실패는 응답 유지 (운영 안전성)
   }
 
   return NextResponse.json({

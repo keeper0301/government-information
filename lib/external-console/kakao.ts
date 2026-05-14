@@ -104,9 +104,16 @@ async function fetchSolapiBalance(): Promise<SolapiBalance> {
 // 2026-05-14 — 임계 5000 → 10000 (subagent Warning-3 fix).
 // 1만원 = SMS ~220건 = 4~5일 buffer. cron 24h 1회 → 한 cron 사이 5000원→0원 추락 방지.
 // 사장님 충전 시간 (주말 포함 2~3일) 확보 + 텔레그램 fallback 으로 alert 자체 도달 보장.
-const SOLAPI_BALANCE_FLOOR = Number(
+//
+// NaN 가드 (subagent Warning-1 fix): env typo (예: "1ee04") 시 Number=NaN →
+// `usable >= NaN` = false → null 리턴 → 잔액 0 사고도 alert 0. 5/14 사고 재발 방지 본분 위반.
+// Number.isFinite 검증 후 fallback 10000.
+const SOLAPI_BALANCE_FLOOR_RAW = Number(
   process.env.SOLAPI_BALANCE_ALERT_FLOOR ?? "10000",
 );
+const SOLAPI_BALANCE_FLOOR = Number.isFinite(SOLAPI_BALANCE_FLOOR_RAW)
+  ? SOLAPI_BALANCE_FLOOR_RAW
+  : 10000;
 export function buildKakaoBalanceAlert(
   balance: SolapiBalance,
 ): ConsoleAlert | null {
