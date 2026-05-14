@@ -196,6 +196,16 @@ export async function GET(request: Request) {
     });
   }
 
+  // 카드 endpoint cold start warmup (2026-05-14 review 정리)
+  // Instagram 이 image_url fetch 시 cold start 응답 못 받으면 "Media ID is not available"
+  // / container ERROR 사고 가능 (5/11~5/12 첫 발행 fail 추정 원인).
+  // 첫 카드 GET 1회로 Pretendard font + Supabase query 캐시 활성화 → 세 카드 모두 warm.
+  try {
+    await fetch(cardUrls[0], { method: "GET", cache: "no-store" });
+  } catch {
+    // warmup 실패는 무시 (best-effort — 발행 본체는 계속 진행)
+  }
+
   // 발행 시도 (OAuth flow 로 발급받은 long-lived token 사용)
   const result = await publishCarousel(
     {

@@ -41,6 +41,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "육아·가족": "#EC4899", // pink (토스 팔레트 외 — 카테고리 식별용 유지)
   노년: "#FE9800",        // orange500
   "학생·교육": "#18A5A5", // teal500
+  문화: "#EAB308",        // gold — 문화재 톤 (2026-05-14 review 정리)
   큐레이션: "#6B7684",    // grey600
 };
 

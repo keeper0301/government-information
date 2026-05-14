@@ -15,7 +15,9 @@
 
 import { buildInstagramCaption, type CaptionInput } from "./caption";
 
-const API_BASE = "https://graph.instagram.com/v22.0";
+// v23.0 — oauth.ts:133 getInstagramUserInfo 와 통일 (2026-05-14 review 정리).
+// Instagram Graph API 는 매년 한 version 씩 deprecate. 최신 사용 권장.
+const API_BASE = "https://graph.instagram.com/v23.0";
 
 export type PublishInput = CaptionInput & {
   /** /api/instagram-card 가 만드는 1080×1350 (4:5) 카드 3장의 public URL */

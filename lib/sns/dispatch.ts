@@ -1,22 +1,23 @@
 // ============================================================
-// C1 — SNS 4종 통합 dispatch (Twitter·Facebook·Instagram·Threads).
+// C1 — SNS 3종 통합 dispatch (Twitter·Facebook·Threads).
 // ============================================================
-// blog post 1건 받아 4 채널 publish (env 설정된 것만 실제 발송).
+// blog post 1건 받아 3 채널 publish (env 설정된 것만 실제 발송).
 // 결과는 채널별 ok/reason 객체 배열. partial 실패 허용.
+//
+// 인스타는 별도 cron (/api/cron/instagram-publish) 가 DB-based OAuth token + carousel
+// 발행으로 처리. dispatch 에 포함 X (2026-05-14 review 정리).
 
 import { publishTweet } from "./twitter";
 import { publishFacebookPost } from "./facebook";
-import { publishInstagramPost } from "./instagram";
 import { publishThreadsPost } from "./threads";
 
 export interface BlogPostShare {
   title: string;
   slug: string;
   description?: string | null;
-  cover_image?: string | null; // 인스타 게시에 필수 — 없으면 인스타만 skip
 }
 
-export type SnsChannel = "twitter" | "facebook" | "instagram" | "threads";
+export type SnsChannel = "twitter" | "facebook" | "threads";
 
 export interface SnsDispatchResult {
   channel: SnsChannel;
@@ -36,7 +37,6 @@ export async function dispatchBlogToSns(
   const desc = post.description?.slice(0, 100) ?? "";
   const tweetText = `${title.slice(0, 200)}\n\n${url}`.slice(0, 280);
   const fbMessage = `${title}\n\n${desc}`.slice(0, 500);
-  const igCaption = `${title}\n\n${desc}\n\n자세히: ${url}`.slice(0, 2200);
   const threadsText = `${title.slice(0, 350)}\n\n${url}`.slice(0, 500);
 
   const tasks: Array<Promise<SnsDispatchResult>> = [
@@ -59,29 +59,6 @@ export async function dispatchBlogToSns(
       reason: r.ok ? undefined : r.reason,
     })),
   ];
-
-  // 인스타는 cover_image 필수
-  if (post.cover_image) {
-    tasks.push(
-      publishInstagramPost({
-        imageUrl: post.cover_image,
-        caption: igCaption,
-      }).then((r) => ({
-        channel: "instagram" as SnsChannel,
-        ok: r.ok,
-        id: r.ok ? r.id : undefined,
-        reason: r.ok ? undefined : r.reason,
-      })),
-    );
-  } else {
-    tasks.push(
-      Promise.resolve({
-        channel: "instagram" as SnsChannel,
-        ok: false,
-        reason: "no_cover_image",
-      }),
-    );
-  }
 
   return Promise.all(tasks);
 }

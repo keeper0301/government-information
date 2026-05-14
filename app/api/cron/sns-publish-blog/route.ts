@@ -1,9 +1,12 @@
 // ============================================================
-// C1 — 매일 KST 11:00 24h 발행 blog 자동 SNS 4종 게시 cron.
+// C1 — 매일 KST 11:00 24h 발행 blog 자동 SNS 3종 게시 cron.
 // ============================================================
 // 24h 안 published_at + admin_actions.sns_publish_run 미실행 글에 대해
-// dispatchBlogToSns (Twitter / Facebook / Instagram / Threads) 호출.
+// dispatchBlogToSns (Twitter / Facebook / Threads) 호출.
 // SNS env 미설정 시 graceful skip (ok:false / reason:'skipped_no_credentials').
+//
+// 인스타는 별도 cron (/api/cron/instagram-publish) 이 DB-based OAuth + carousel
+// 카드 3장 발행으로 처리. 여기 포함 X (2026-05-14 review 정리).
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -34,7 +37,6 @@ interface BlogPostRow {
   title: string;
   slug: string;
   description: string | null;
-  cover_image: string | null;
 }
 
 async function run() {
@@ -44,7 +46,7 @@ async function run() {
   // 24h 발행 + admin_review_required=false (낮은 점수 글은 SNS 게시 X — A1 결합)
   const { data: posts, error } = await admin
     .from("blog_posts")
-    .select("id, title, slug, description, cover_image")
+    .select("id, title, slug, description")
     .gte("published_at", since24h)
     .eq("admin_review_required", false)
     .limit(BATCH_LIMIT);
@@ -81,7 +83,6 @@ async function run() {
       title: p.title,
       slug: p.slug,
       description: p.description,
-      cover_image: p.cover_image,
     });
     processedResults.push({ id: p.id, results });
 

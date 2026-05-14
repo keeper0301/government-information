@@ -34,6 +34,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "육아·가족": "#EC4899",
   노년: "#FE9800",
   "학생·교육": "#18A5A5",
+  문화: "#EAB308", // gold — 문화재 톤, 다른 카테고리와 차별 (2026-05-14 review 정리)
   큐레이션: "#6B7684",
 };
 
