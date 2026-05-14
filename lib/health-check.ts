@@ -54,8 +54,26 @@ export type HealthSignals = {
    * 24h 안 신규 정책 inflow (welfare_programs + loan_programs created_at 합산).
    * 0건 = 수집 cron 사고 (collect-news/welfare/loan API 다운 또는 cron 노쇼).
    * 사이트 핵심 가치 = "오늘 새 정책" 이라 이게 0 이면 사장님 즉시 알아야 함.
+   * 호환성 유지 (기존 policy_inflow_zero 임계치) — welfare + loan 합산.
    */
   policyInflow24h: number;
+  /**
+   * 24h 안 welfare_programs 신규 inflow (auto_confirm_tier IS NOT NULL 만).
+   * 합산이 통과해도 welfare 단독 노쇼 진단 가능 — message 정보 강화용.
+   */
+  welfareInflow24h: number;
+  /**
+   * 24h 안 loan_programs 신규 inflow (auto_confirm_tier IS NOT NULL 만).
+   * 합산이 통과해도 loan 단독 노쇼 진단 가능 — loan_inflow_zero 임계 사용.
+   * 데이터 기반 발견 (2026-05-14): welfare 7 + loan 0 = 합산 7 → 임계 통과 → loan 사고 가려짐.
+   */
+  loanInflow24h: number;
+  /**
+   * loan_programs 마지막 created_at 시간차 (hours).
+   * 48h+ = loan 수집 cron 사고 (kinfa 등 loan-only 출처 노쇼).
+   * 흔적 없으면 999 (반드시 alert).
+   */
+  loanLastInflowHours: number;
   /**
    * /api/collect (GitHub Actions collect.yml KST 13:00) 마지막 실행 시간차 (hours).
    * 36h+ = cron 노쇼 (GitHub Actions secret 만료·workflow disabled 등).
@@ -78,7 +96,8 @@ export type ThresholdAlert = {
     | "naver_cookies_expiring"
     | "policy_inflow_zero"
     | "collect_no_show"
-    | "delivery_fail";
+    | "delivery_fail"
+    | "loan_inflow_zero";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -126,6 +145,13 @@ const COLLECT_NO_SHOW_HOURS = Number(
 // CRON_FAIL 의 3 보다 buffer 1 단계 위 (subagent Warning-1 fix). 1주 모니터링 권장.
 const DELIVERY_FAIL_THRESHOLD = Number(
   process.env.DELIVERY_FAIL_ALERT_THRESHOLD ?? "5",
+);
+// 2026-05-14 추가 — loan_programs 단독 노쇼 임계 (hours).
+// 데이터 기반 발견: 합산 (welfare + loan) 임계는 welfare 7 + loan 0 = 7 통과로 loan 사고 가려짐.
+// loan 30d 평균 ~16건/일이지만 일별 분산 큼 → 48h 보수 baseline (1주 모니터링 후 조정).
+// welfare 가 정상 (>=1) 일 때만 발화 (둘 다 0 이면 policy_inflow_zero 가 우선 잡음 → 단일화).
+const LOAN_INFLOW_ZERO_HOURS = Number(
+  process.env.LOAN_INFLOW_ZERO_ALERT_HOURS ?? "48",
 );
 
 export async function getHealthSignals(): Promise<HealthSignals> {
@@ -272,8 +298,9 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   // 2026-05-14 — 24h 자동 등록 정책 inflow.
   // 자동 cron 사고만 정확히 잡기 위해 auto_confirm_tier IS NOT NULL 인 row 만 카운트
   // (subagent Warning 4 fix). 수동 어드민 등록은 noise 라 제외.
-  // 077 마이그레이션 적용 후 컬럼 존재. 077 이전이면 query 실패 → 0 fallback.
-  const [welfNew, loanNew] = await Promise.all([
+  // 077 마이그레이션은 이미 prod 적용 (memory: project_press_ingest_confidence_tier_2026_05_09).
+  // 2026-05-14 — welfare/loan 분리 노출 (데이터 기반 사고: loan 단독 노쇼가 합산에 가려짐).
+  const [welfNew, loanNew, lastLoan] = await Promise.all([
     sb
       .from("welfare_programs")
       .select("*", { count: "exact", head: true })
@@ -284,8 +311,24 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       .select("*", { count: "exact", head: true })
       .gte("created_at", since24Iso)
       .not("auto_confirm_tier", "is", null),
+    // loan 마지막 inflow 시각 (auto 만 — 수동 등록 noise 제외).
+    // 흔적 자체 없는 운영 초기 (077 이전) → 999 fallback.
+    sb
+      .from("loan_programs")
+      .select("created_at")
+      .not("auto_confirm_tier", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
-  const policyInflow24h = (welfNew.count ?? 0) + (loanNew.count ?? 0);
+  const welfareInflow24h = welfNew.count ?? 0;
+  const loanInflow24h = loanNew.count ?? 0;
+  const policyInflow24h = welfareInflow24h + loanInflow24h;
+  const loanLastInflowHours = lastLoan.data?.created_at
+    ? Math.round(
+        (Date.now() - new Date(lastLoan.data.created_at).getTime()) / 3600000,
+      )
+    : 999;
 
   return {
     signups24h,
@@ -302,6 +345,9 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     instagramTokenExpiresInDays,
     naverCookiesExpiresInDays,
     policyInflow24h,
+    welfareInflow24h,
+    loanInflow24h,
+    loanLastInflowHours,
     collectLastRunHours,
   };
 }
@@ -471,9 +517,32 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   if (!isWeekend && !pressNoShowFiring && s.policyInflow24h < POLICY_INFLOW_FLOOR) {
     alerts.push({
       key: "policy_inflow_zero",
-      message: `24h 자동 등록 정책 inflow ${s.policyInflow24h}건 (임계 ${POLICY_INFLOW_FLOOR}+, 평일, 수동 등록 제외). 수집 cron 사고 의심.`,
+      message: `24h 자동 등록 정책 inflow ${s.policyInflow24h}건 (welfare ${s.welfareInflow24h} + loan ${s.loanInflow24h}, 임계 ${POLICY_INFLOW_FLOOR}+, 평일, 수동 등록 제외). 수집 cron 사고 의심.`,
       recommendation:
         "1) /admin/cron-trigger 에서 press-ingest 수동 실행 2) GitHub Actions `collect.yml` workflow 최근 실행 결과 확인 (KST 13:00 자동 — data.go.kr quota 진단 포함) 3) admin_actions 의 auto_press_ingest / press_l2_classify 24h 흔적 확인. POLICY_INFLOW_FLOOR=0 으로 1분 비활성 가능.",
+    });
+  }
+
+  // 2026-05-14 — loan 단독 노쇼 (welfare 가 합산을 마스킹하는 사고 방지).
+  // 데이터 기반 발견 (5/14): welfare 7 + loan 0 = 합산 7 → 임계 통과 → loan 사고 가려짐.
+  // welfare 가 정상 (>=1) 일 때만 발화 — 둘 다 0 이면 policy_inflow_zero 가 우선 잡음 (단일화).
+  // 평일 + welfare 정상 + loan last inflow >= 48h 동시 충족 시 발화.
+  // 임계 48h — loan 일별 분산이 커서 24h 는 false positive 위험 (kinfa 같은 출처 휴재 가능).
+  //
+  // 의도적 공존 (subagent Improvement-3): press_no_show 와 다른 진단 layer.
+  // - press_no_show: 광역 보도자료 cron (vercel cron) 노쇼
+  // - loan_inflow_zero: loan-only 출처 (collect.yml workflow_dispatch 가능) 노쇼
+  // 동시 발화 시 사장님 SMS 2건 — 다른 진단 출발점이라 진단 가속에 도움.
+  if (
+    !isWeekend &&
+    s.welfareInflow24h >= 1 &&
+    s.loanLastInflowHours >= LOAN_INFLOW_ZERO_HOURS
+  ) {
+    alerts.push({
+      key: "loan_inflow_zero",
+      message: `loan 단독 노쇼 — 마지막 ${s.loanLastInflowHours}h 전 (임계 ${LOAN_INFLOW_ZERO_HOURS}h+, welfare ${s.welfareInflow24h}건은 정상). loan-only 출처 (kinfa 등) cron 사고 의심.`,
+      recommendation:
+        "GitHub Actions `collect.yml` workflow_dispatch 로 kinfa·smes·sbiz24·semas-policy-fund 재실행 + data.go.kr quota / 출처 사이트 형식 변경 진단. LOAN_INFLOW_ZERO_ALERT_HOURS env 로 1분 toggle.",
     });
   }
 

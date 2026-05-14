@@ -21,6 +21,11 @@ const BASE_SIGNALS: HealthSignals = {
   naverCookiesExpiresInDays: null,
   // 2026-05-14 — baseline 5건 (정상, alert X). 0건 케이스는 별도 테스트.
   policyInflow24h: 5,
+  // 2026-05-14 — welfare/loan 분리 baseline (정상, alert X).
+  welfareInflow24h: 3,
+  loanInflow24h: 2,
+  // 2026-05-14 — loan 마지막 inflow 1h 전 (정상, alert X). 48h+ 케이스 별도 테스트.
+  loanLastInflowHours: 1,
   // 2026-05-14 — baseline 1h (방금 실행됨, alert X). 36h+ 케이스는 별도 테스트.
   collectLastRunHours: 1,
 };
@@ -444,5 +449,132 @@ describe("checkThresholds — 2026-05-14: delivery_fail (메타 사고)", () => 
   it("deliveryFailures24h 0 (정상 운영) → 발화 안 함", () => {
     const alerts = checkThresholds({ ...ACTIVE, deliveryFailures24h: 0 });
     expect(alerts.find((a) => a.key === "delivery_fail")).toBeUndefined();
+  });
+});
+
+describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () => {
+  // 데이터 기반 발견 (5/14): welfare 7 + loan 0 = 합산 7 → policy_inflow_zero 임계 통과
+  // → loan 사고 가려짐. loan-only 출처 (kinfa 등) 노쇼 진단 사각지대였음.
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  // 평일 (KST 수요일 12:00)
+  const KST_WEDNESDAY = new Date("2026-05-13T03:00:00Z");
+  const KST_SATURDAY = new Date("2026-05-16T03:00:00Z");
+
+  it("평일 + welfare 정상 + loan 48h 노쇼 → loan_inflow_zero alert + recommendation", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        welfareInflow24h: 7, // 정상
+        loanInflow24h: 0,
+        loanLastInflowHours: 48, // boundary 도달
+        // policyInflow24h 는 합산 7 — policy_inflow_zero 안 발화
+        policyInflow24h: 7,
+      });
+      const a = alerts.find((x) => x.key === "loan_inflow_zero");
+      expect(a).toBeDefined();
+      expect(a?.message).toContain("loan 단독 노쇼");
+      expect(a?.message).toContain("welfare 7건은 정상");
+      expect(a?.recommendation).toContain("kinfa");
+      expect(a?.recommendation).toContain("collect.yml");
+      // policy_inflow_zero 는 합산 통과로 발화 안 함 (단일화 확인)
+      expect(alerts.find((x) => x.key === "policy_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("평일 + loan 47h → 발화 안 함 (boundary 미달)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        welfareInflow24h: 7,
+        loanInflow24h: 0,
+        loanLastInflowHours: 47,
+        policyInflow24h: 7,
+      });
+      expect(alerts.find((a) => a.key === "loan_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("welfare 0 + loan 0 동시 → policy_inflow_zero 가 우선 (loan_inflow_zero 단일화)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        welfareInflow24h: 0, // 함께 노쇼 — 둘 다 사고 = policy_inflow_zero
+        loanInflow24h: 0,
+        loanLastInflowHours: 100,
+        policyInflow24h: 0,
+      });
+      // welfare 가 0 이면 (welfare 정상 조건 충족 X) loan_inflow_zero 발화 안 함
+      expect(alerts.find((a) => a.key === "loan_inflow_zero")).toBeUndefined();
+      // 대신 policy_inflow_zero 가 합산 0 으로 잡음
+      expect(alerts.find((a) => a.key === "policy_inflow_zero")).toBeDefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("주말 + welfare 정상 + loan 48h → 발화 안 함 (주말 skip 일관)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_SATURDAY);
+    try {
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        welfareInflow24h: 7,
+        loanInflow24h: 0,
+        loanLastInflowHours: 48,
+        policyInflow24h: 7,
+      });
+      expect(alerts.find((a) => a.key === "loan_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("welfare 1 (boundary) + loan 48h → 발화 (welfare 정상 boundary 검증)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        welfareInflow24h: 1, // 정확히 boundary (>= 1)
+        loanInflow24h: 0,
+        loanLastInflowHours: 48,
+        policyInflow24h: 1,
+      });
+      expect(alerts.find((a) => a.key === "loan_inflow_zero")).toBeDefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("loanLastInflowHours 999 (흔적 없음 운영 초기) → welfare 정상 시 발화", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        welfareInflow24h: 5,
+        loanInflow24h: 0,
+        loanLastInflowHours: 999,
+        policyInflow24h: 5,
+      });
+      expect(alerts.find((a) => a.key === "loan_inflow_zero")).toBeDefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
