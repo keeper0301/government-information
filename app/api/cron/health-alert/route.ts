@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { getHealthSignals, checkThresholds } from "@/lib/health-check";
 import { sendHealthAlertEmail } from "@/lib/email";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 import { logAdminAction } from "@/lib/admin-actions";
 import {
   getRecentlyFiredAlertKeys,
@@ -53,6 +54,12 @@ async function logHealthAlertRun(details: {
   naverCookiesExpiresInDays: number | null;
   smsOk: boolean | null;
   smsReason?: string;
+  // 2026-05-14 추가 — SMS 실패 진단 정보 (api_error 의 구체 error 메시지).
+  // 5/9 11:11 부터 SMS 5일 다운 사고 진단 시 reason="api_error" 만 있어 무력했음.
+  smsError?: string;
+  // 2026-05-14 추가 — 텔레그램 fallback 발송 결과 (SMS 다운 시 메타 안전책).
+  telegramOk?: boolean | null;
+  telegramReason?: string;
   emailOk: boolean;
 }) {
   try {
@@ -116,22 +123,21 @@ async function run() {
   // SMS 만 봐도 즉시 hot-fix 액션 결정 가능. SMS 길이 한도 (Solapi LMS 2000자) 안에서만.
   // smsAlerts 가 비어있으면 SMS skip — 모든 alert 가 cooldown 으로 suppress.
   let smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> | null = null;
+  let telegramResult: Awaited<ReturnType<typeof sendOpsAlertTelegram>> | null = null;
   let cooldownAllSuppressed = false;
   if (smsAlerts.length > 0) {
+    const subject = `[keepioo 운영] ${smsAlerts.length}건 임계치 초과${
+      suppressedKeys.length > 0 ? ` (${suppressedKeys.length}건 cooldown)` : ""
+    }`;
+    const message = smsAlerts
+      .map((a) => {
+        const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
+        return `- ${a.message}${rec}`;
+      })
+      .join("\n");
+
     try {
-      smsResult = await sendOpsAlertSms({
-        subject: `[keepioo 운영] ${smsAlerts.length}건 임계치 초과${
-          suppressedKeys.length > 0
-            ? ` (${suppressedKeys.length}건 cooldown)`
-            : ""
-        }`,
-        message: smsAlerts
-          .map((a) => {
-            const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
-            return `- ${a.message}${rec}`;
-          })
-          .join("\n"),
-      });
+      smsResult = await sendOpsAlertSms({ subject, message });
     } catch (e) {
       smsResult = {
         ok: false,
@@ -139,8 +145,22 @@ async function run() {
         error: (e as Error).message,
       };
     }
+
+    // 2026-05-14 — 텔레그램 fallback (메타 안전책).
+    // 사고 (5/9~5/14): SMS 5일 연속 api_error → 사장님 alert 채널 단절. 이메일만 도달.
+    // 텔레그램 봇은 이미 가동 중 (Phase 1~5 완료) → SMS 다운 시에도 도달 보장.
+    // SMS 성공해도 텔레그램은 보냄 (이중 안전, 사장님 양쪽 인지) — 비용 0 (텔레그램 무료).
+    try {
+      telegramResult = await sendOpsAlertTelegram({ subject, message });
+    } catch (e) {
+      telegramResult = {
+        ok: false,
+        reason: "network_error",
+        error: (e as Error).message,
+      };
+    }
   } else {
-    // 모든 alert 가 cooldown 으로 suppress — SMS 발송 skip. smsResult=null 유지.
+    // 모든 alert 가 cooldown 으로 suppress — SMS·텔레그램 발송 skip.
     cooldownAllSuppressed = true;
   }
 
@@ -166,6 +186,18 @@ async function run() {
       : smsResult?.ok
         ? undefined
         : smsResult?.reason,
+    // 2026-05-14 — SMS 실패 진단 정보 (api_error 의 구체 메시지) audit 보존.
+    // 5/9 사고 (api_error 5일 지속) 진단 가속.
+    smsError: !cooldownAllSuppressed && smsResult && !smsResult.ok && smsResult.reason !== "skipped_no_credentials"
+      ? smsResult.error
+      : undefined,
+    // 2026-05-14 — 텔레그램 fallback 결과 audit (메타 안전책 가시성).
+    telegramOk: cooldownAllSuppressed ? null : (telegramResult?.ok ?? null),
+    telegramReason: cooldownAllSuppressed
+      ? "cooldown_all_suppressed"
+      : telegramResult?.ok
+        ? undefined
+        : telegramResult?.reason,
     emailOk: result.ok,
   });
 
@@ -178,6 +210,7 @@ async function run() {
     cooldownAllSuppressed,
     signals,
     sms: smsResult,
+    telegram: telegramResult,
     error: result.error,
   });
 }
