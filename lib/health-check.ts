@@ -76,6 +76,16 @@ export type HealthSignals = {
    */
   loanLastInflowHours: number;
   /**
+   * naver_publish_audit 24h 시도 통계 (codex 권장 spec).
+   * fail_rate ≥ 90% AND attempts ≥ FLOOR AND eligible_pending > 0 시 발화.
+   * eligible_pending = 발행 가능한 큐 (status='pending' AND attempt_count < 3) — 0 이면
+   * 큐 자체가 비어 발송 시도 안 한 것 (정상). pending 있는데 거의 다 fail = 진짜 사고.
+   * 5/13 사고 baseline: attempts 1,734 + fail 1,734 + success 0 + pending 68 → 발화 보장.
+   */
+  naverPublishAttempts24h: number;
+  naverPublishFails24h: number;
+  naverPublishEligiblePending: number;
+  /**
    * /api/collect (GitHub Actions collect.yml KST 13:00) 마지막 실행 시간차 (hours).
    * 36h+ = cron 노쇼 (GitHub Actions secret 만료·workflow disabled 등).
    * collect_run audit 흔적 없음 → 999 (반드시 alert).
@@ -98,7 +108,8 @@ export type ThresholdAlert = {
     | "policy_inflow_zero"
     | "collect_no_show"
     | "delivery_fail"
-    | "loan_inflow_zero";
+    | "loan_inflow_zero"
+    | "naver_publish_failure";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -160,6 +171,23 @@ const DELIVERY_FAIL_THRESHOLD = Number(
 const LOAN_INFLOW_ZERO_HOURS = Number(
   process.env.LOAN_INFLOW_ZERO_ALERT_HOURS ?? "48",
 );
+// 2026-05-14 추가 — 네이버 publish 실패율 임계 (codex 권장 spec).
+// 5/13 사고: 24h 1,734건 시도 중 1,734건 fail (성공률 0.06%) — Vercel Playwright IP 차단 +
+// legacy runner 잔존 가동 패턴. cookies 정상이라 cookies_expiring 임계로 못 잡음.
+// 발화 조건: attempts >= FLOOR AND fail_rate >= 0.9 AND eligible_pending > 0.
+// 셋 다 충족 시만 — false positive 차단 (PC 미가동 = attempts 0, 큐 비어있음 = pending 0).
+const NAVER_PUBLISH_FAIL_FLOOR = Number(
+  process.env.NAVER_PUBLISH_FAIL_FLOOR ?? "20",
+);
+const NAVER_PUBLISH_FAIL_RATE = Number(
+  process.env.NAVER_PUBLISH_FAIL_RATE ?? "0.9",
+);
+const NAVER_PUBLISH_FAIL_FLOOR_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_FLOOR)
+  ? NAVER_PUBLISH_FAIL_FLOOR
+  : 20;
+const NAVER_PUBLISH_FAIL_RATE_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_RATE)
+  ? NAVER_PUBLISH_FAIL_RATE
+  : 0.9;
 
 export async function getHealthSignals(): Promise<HealthSignals> {
   const sb = createAdminClient();
@@ -349,6 +377,29 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       )
     : 999;
 
+  // 2026-05-14 — 네이버 publish 24h 통계 + eligible pending (codex 권장 spec).
+  // 발행 가능한 큐가 있는데 시도가 거의 다 fail = 진짜 사고. 셋 다 충족 시만 발화.
+  const [naverAtt, naverFails, naverPending] = await Promise.all([
+    sb
+      .from("naver_publish_audit")
+      .select("*", { count: "exact", head: true })
+      .gte("attempted_at", since24Iso)
+      .in("result", ["success", "fail"]),
+    sb
+      .from("naver_publish_audit")
+      .select("*", { count: "exact", head: true })
+      .gte("attempted_at", since24Iso)
+      .eq("result", "fail"),
+    sb
+      .from("naver_blog_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("attempt_count", 3),
+  ]);
+  const naverPublishAttempts24h = naverAtt.count ?? 0;
+  const naverPublishFails24h = naverFails.count ?? 0;
+  const naverPublishEligiblePending = naverPending.count ?? 0;
+
   return {
     signups24h,
     active7d,
@@ -367,6 +418,9 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     welfareInflow24h,
     loanInflow24h,
     loanLastInflowHours,
+    naverPublishAttempts24h,
+    naverPublishFails24h,
+    naverPublishEligiblePending,
     collectLastRunHours,
   };
 }
@@ -562,6 +616,28 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `loan 단독 노쇼 — 마지막 ${s.loanLastInflowHours}h 전 (임계 ${LOAN_INFLOW_ZERO_HOURS}h+, welfare ${s.welfareInflow24h}건은 정상). loan-only 출처 (kinfa 등) cron 사고 의심.`,
       recommendation:
         "GitHub Actions `collect.yml` workflow_dispatch 로 kinfa·smes·sbiz24·semas-policy-fund 재실행 + data.go.kr quota / 출처 사이트 형식 변경 진단. LOAN_INFLOW_ZERO_ALERT_HOURS env 로 1분 toggle.",
+    });
+  }
+
+  // 2026-05-14 — 네이버 publish 실패율 임계 (codex 권장 spec).
+  // 셋 다 충족 시만: attempts >= FLOOR (표본) AND fail_rate >= 0.9 (사고 강도)
+  // AND eligible_pending > 0 (큐 있음 — 정상 운영 가정).
+  // PC 미가동 = attempts 0 → 발화 X (false positive 차단).
+  // 큐 비어있음 = pending 0 → 발화 X (정상).
+  if (
+    s.naverPublishAttempts24h >= NAVER_PUBLISH_FAIL_FLOOR_SAFE &&
+    s.naverPublishFails24h / Math.max(s.naverPublishAttempts24h, 1) >=
+      NAVER_PUBLISH_FAIL_RATE_SAFE &&
+    s.naverPublishEligiblePending > 0
+  ) {
+    const failRate = Math.round(
+      (s.naverPublishFails24h / s.naverPublishAttempts24h) * 100,
+    );
+    alerts.push({
+      key: "naver_publish_failure",
+      message: `네이버 publish 24h 실패율 ${failRate}% (${s.naverPublishFails24h}/${s.naverPublishAttempts24h}, pending ${s.naverPublishEligiblePending}건). Playwright IP 차단 또는 legacy runner 잔존 가동 의심.`,
+      recommendation:
+        "/admin/naver-blog 의 audit details->>'runner' 분포 확인. legacy-cron-playwright 다수면 NAVER_PLAYWRIGHT_ENABLED 미설정 확인. local-playwright 다수면 사장님 노트북 runner.mjs 종료. Chrome Extension pivot 정상 가동 시 runner='chrome-extension' 으로 잡힘.",
     });
   }
 

@@ -55,6 +55,19 @@ export async function GET(request: Request) {
   const dryRun = url.searchParams.get("dry_run") === "1";
   const force = url.searchParams.get("force") === "1";
 
+  // 2026-05-14 — DEPRECATED gate (codex 권장).
+  // Vercel chromium IP 차단 사고 (5/12) 후 vercel.json schedule 제거 + Extension pivot.
+  // 그러나 endpoint 자체는 살아있어 외부에서 호출 시 (또는 사장님 노트북 잔존 runner 가
+  // 이 endpoint 호출 시) 매번 Playwright launch 시도 → ERR_INSUFFICIENT_RESOURCES fail
+  // 누적 (5/13 24h 1,734건). NAVER_PLAYWRIGHT_ENABLED=true 명시 안 됐으면 차단.
+  if (!force && process.env.NAVER_PLAYWRIGHT_ENABLED !== "true") {
+    await skip("disabled", { reason: "deprecated_legacy_playwright" });
+    return NextResponse.json({
+      status: "disabled",
+      message: "DEPRECATED — Extension pivot 후 legacy. NAVER_PLAYWRIGHT_ENABLED=true 명시 시만 가동.",
+    });
+  }
+
   // 0) Kill switch — 검증 끝나기 전까지 NAVER_CRON_DISABLED=true 로 시작
   if (!force && process.env.NAVER_CRON_DISABLED === "true") {
     await skip("disabled", {});

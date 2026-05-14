@@ -26,6 +26,10 @@ const BASE_SIGNALS: HealthSignals = {
   loanInflow24h: 2,
   // 2026-05-14 — loan 마지막 inflow 1h 전 (정상, alert X). 48h+ 케이스 별도 테스트.
   loanLastInflowHours: 1,
+  // 2026-05-14 — 네이버 publish baseline (정상, alert X). 사고 케이스 별도 테스트.
+  naverPublishAttempts24h: 5,
+  naverPublishFails24h: 0,
+  naverPublishEligiblePending: 10,
   // 2026-05-14 — baseline 1h (방금 실행됨, alert X). 36h+ 케이스는 별도 테스트.
   collectLastRunHours: 1,
 };
@@ -550,7 +554,7 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
     try {
       const alerts = checkThresholds({
         ...ACTIVE,
-        welfareInflow24h: 1, // 정확히 boundary (>= 1)
+        welfareInflow24h: 1,
         loanInflow24h: 0,
         loanLastInflowHours: 48,
         policyInflow24h: 1,
@@ -576,5 +580,68 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("checkThresholds — 2026-05-14: naver_publish_failure (codex spec)", () => {
+  // 5/13 사고 baseline: attempts 1,734 / fails 1,734 / pending 68 → 발화 보장.
+  // 셋 다 충족 시만 발화: attempts >= 20 AND fail_rate >= 0.9 AND pending > 0
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("attempts 20 + fails 19 (95%) + pending 10 → naver_publish_failure 발화", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      naverPublishAttempts24h: 20,
+      naverPublishFails24h: 19,
+      naverPublishEligiblePending: 10,
+    });
+    const a = alerts.find((x) => x.key === "naver_publish_failure");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("95%");
+    expect(a?.recommendation).toContain("runner");
+  });
+
+  it("attempts 19 (FLOOR 미달) → 발화 안 함 (표본 부족 가드)", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      naverPublishAttempts24h: 19,
+      naverPublishFails24h: 19,
+      naverPublishEligiblePending: 10,
+    });
+    expect(alerts.find((a) => a.key === "naver_publish_failure")).toBeUndefined();
+  });
+
+  it("fail_rate 0.85 (90% 미달) → 발화 안 함 (강도 가드)", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      naverPublishAttempts24h: 100,
+      naverPublishFails24h: 85,
+      naverPublishEligiblePending: 10,
+    });
+    expect(alerts.find((a) => a.key === "naver_publish_failure")).toBeUndefined();
+  });
+
+  it("eligible_pending 0 → 발화 안 함 (큐 비어있음 = 정상)", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      naverPublishAttempts24h: 100,
+      naverPublishFails24h: 100,
+      naverPublishEligiblePending: 0,
+    });
+    expect(alerts.find((a) => a.key === "naver_publish_failure")).toBeUndefined();
+  });
+
+  it("attempts 0 (PC 미가동) → 발화 안 함 (false positive 차단)", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      naverPublishAttempts24h: 0,
+      naverPublishFails24h: 0,
+      naverPublishEligiblePending: 50,
+    });
+    expect(alerts.find((a) => a.key === "naver_publish_failure")).toBeUndefined();
   });
 });

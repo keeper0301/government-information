@@ -62,10 +62,21 @@ export type AuditInsert = {
 /**
  * audit row 1건 추가. cron 의 모든 시도 (success / fail / skipped) 가 호출.
  * 호출 실패해도 cron 자체는 계속 — 단지 logging.
+ *
+ * 2026-05-14 — codex 권장 (사고 진단 source 분리):
+ * details.runner 명시 안 됐으면 'legacy-cron-playwright' default. cron route 만 이 함수
+ * 호출 (Chrome Extension 은 /api/naver-extension/published 별도 endpoint, runner.mjs 는
+ * sb fetch 직접). 5/13 24h 1,734건 fail 모두 runner=null 이라 source 추적 불가능했음.
  */
 export async function logPublishAudit(input: AuditInsert): Promise<void> {
   const admin = createAdminClient();
   const kstHour = getKstHour();
+
+  // details.runner 가 없으면 default 채움 — 호출자 (cron route) source 명시.
+  const enrichedDetails =
+    input.details && "runner" in input.details
+      ? input.details
+      : { runner: "legacy-cron-playwright", ...(input.details ?? {}) };
 
   const { error } = await admin.from("naver_publish_audit").insert({
     post_id: input.postId,
@@ -74,7 +85,7 @@ export async function logPublishAudit(input: AuditInsert): Promise<void> {
     naver_url: input.naverUrl ?? null,
     skip_reason: input.skipReason ?? null,
     kst_hour: kstHour,
-    details: input.details ?? null,
+    details: enrichedDetails,
   });
 
   if (error) {
