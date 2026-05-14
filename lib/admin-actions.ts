@@ -64,7 +64,9 @@ export type AdminActionType =
   | "weekly_ops_digest_run"      // 2026-05-14 — /api/cron/weekly-ops-digest 매주 KST 09:00 사장님 운영 보고 가동 흔적
   | "sentry_daily_summary_run"   // 2026-05-14 — /api/cron/sentry-daily-summary 매일 KST 09:45 텔레그램 발송 가동 흔적
   | "onboarding_reminder_run"    // 2026-05-14 — /api/cron/onboarding-reminder 매일 KST 11:05 가입 24h~48h 환영 메일 가동 흔적
-  | "policy_enrich_run";         // 2026-05-14 — /api/cron/policy-enrich 매일 KST 03:30 키워드/요약 enrich 가동 흔적
+  | "policy_enrich_run"          // 2026-05-14 — /api/cron/policy-enrich 매일 KST 03:30 키워드/요약 enrich 가동 흔적
+  | "weekly_digest_run"          // 2026-05-14 — /api/cron/weekly-digest 매주 월 KST 09:00 사용자 주간 다이제스트 가동 흔적
+  | "support_reminder_run";      // 2026-05-14 — /api/cron/support-reminder 매일 KST 09:15 미답변 ticket SMS reminder 가동 흔적
 
 export type AdminActionRecord = {
   id: string;
@@ -354,4 +356,6 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   sentry_daily_summary_run: "Sentry 일일 요약 cron 가동",
   onboarding_reminder_run: "온보딩 reminder cron 가동",
   policy_enrich_run: "정책 키워드/요약 enrich cron 가동",
+  weekly_digest_run: "사용자 주간 다이제스트 cron 가동",
+  support_reminder_run: "CS 미답변 ticket reminder cron 가동",
 };

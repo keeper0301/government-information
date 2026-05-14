@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -42,6 +43,9 @@ async function run() {
     .limit(20);
 
   if (error) {
+    await auditCronRun("support_reminder_run", {
+      error: `query_failed: ${error.message}`,
+    });
     return NextResponse.json(
       { ok: false, error: `query_failed: ${error.message}` },
       { status: 500 },
@@ -50,6 +54,11 @@ async function run() {
 
   const tickets = stale ?? [];
   if (tickets.length === 0) {
+    // 2026-05-14 — 빈손 분기 audit (cron 가동 흔적 보장)
+    await auditCronRun("support_reminder_run", {
+      stale_tickets: 0,
+      sent: false,
+    });
     return NextResponse.json({ ok: true, sent: false, count: 0, message: "정상 — 미답변 ticket 없음" });
   }
 
@@ -73,6 +82,13 @@ async function run() {
       .update({ reminder_sent_at: new Date().toISOString() })
       .in("id", ids);
   }
+
+  // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+  await auditCronRun("support_reminder_run", {
+    stale_tickets: tickets.length,
+    sent: smsResult.ok,
+    sms_reason: smsResult.ok === false ? smsResult.reason : undefined,
+  });
 
   return NextResponse.json({
     ok: smsResult.ok,

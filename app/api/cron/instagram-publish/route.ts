@@ -151,6 +151,8 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (queryErr) {
+    // 2026-05-14 — DB query 실패 분기 audit (cron 가시성 강화)
+    await logSkip("query_failed", { error: queryErr.message.slice(0, 200) });
     return NextResponse.json(
       { error: "DB query 실패", detail: queryErr.message },
       { status: 500 },
@@ -158,6 +160,8 @@ export async function GET(request: Request) {
   }
 
   if (!post) {
+    // 2026-05-14 — no_pending 분기 audit (정상 가동 흔적 보장)
+    await logSkip("no_pending", {});
     return NextResponse.json({ status: "no_pending", message: "발행 대기 글 없음" });
   }
 

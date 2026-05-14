@@ -14,6 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
 import { sendWeeklyDigestEmail } from "@/lib/email/weekly-digest";
 import { loadHotPrograms, loadRecipients } from "@/lib/digest/weekly";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 // 사용자 수가 늘어도 1회 발송이라 5분 한도면 충분 (Resend 1통당 ~수백 ms).
 export const maxDuration = 300;
@@ -50,6 +51,12 @@ async function run() {
 
     // hot 정책 0건이면 발송 스킵 — 빈 메일 보내면 사용자 신뢰 손상.
     if (programs.length === 0) {
+      // 2026-05-14 — 빈손 분기 audit (cron 가동 흔적 보장)
+      await auditCronRun("weekly_digest_run", {
+        recipients: recipients.length,
+        programs: 0,
+        skipped: "no_hot_programs",
+      });
       return NextResponse.json({
         ok: true,
         recipients: recipients.length,
@@ -61,6 +68,12 @@ async function run() {
     }
 
     if (recipients.length === 0) {
+      // 2026-05-14 — 빈손 분기 audit
+      await auditCronRun("weekly_digest_run", {
+        recipients: 0,
+        programs: programs.length,
+        skipped: "no_recipients",
+      });
       return NextResponse.json({
         ok: true,
         recipients: 0,
@@ -117,6 +130,14 @@ async function run() {
       );
     }
 
+    // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+    await auditCronRun("weekly_digest_run", {
+      recipients: recipients.length,
+      programs: programs.length,
+      sent,
+      failed,
+    });
+
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
@@ -128,6 +149,8 @@ async function run() {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await notifyCronFailure(jobLabel, message);
+    // 실패 분기 audit
+    await auditCronRun("weekly_digest_run", { error: message });
     return NextResponse.json(
       { error: "주간 다이제스트 발송 실패", detail: message },
       { status: 500 },
