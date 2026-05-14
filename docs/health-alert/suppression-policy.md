@@ -10,9 +10,11 @@
 
 | 발화 시 우선 alert | suppress 대상 | 가드 위치 | 사유 |
 |---|---|---|---|
-| `press_no_show` (press cron 노쇼) | `policy_inflow_zero` | `lib/health-check.ts:447` | press cron 노쇼면 정책 inflow 0 은 같은 사고의 결과 |
-| `policy_inflow_zero` (welfare+loan 합산 0) | `loan_inflow_zero` | `lib/health-check.ts:546-549` | welfare 도 0 이면 합산 사고가 우선. welfare>=1 가드 |
-| `solapi_balance_low` (잔액 부족) | `kakao_high_failure` | `lib/external-console/kakao.ts:271-275` | 잔액 0 → 모든 발송 실패. 잔액 alert 가 진단 출발점 |
+| `press_no_show` (press cron 노쇼) | `policy_inflow_zero` | `lib/health-check.ts` `checkThresholds()` 안 `policy_inflow_zero` 분기의 `pressNoShowFiring` 가드 | press cron 노쇼면 정책 inflow 0 은 같은 사고의 결과 |
+| `policy_inflow_zero` (welfare+loan 합산 0) | `loan_inflow_zero` | `lib/health-check.ts` `checkThresholds()` 안 `loan_inflow_zero` 분기의 `welfareInflow24h >= 1` 가드 | welfare 도 0 이면 합산 사고가 우선 |
+| `solapi_balance_low` (잔액 부족) | `kakao_high_failure` | `lib/external-console/kakao.ts` `checkKakao()` 안 `solapi_balance_low` push 직전 `filter((a) => a.key !== "kakao_high_failure")` | 잔액 0 → 모든 발송 실패. 잔액 alert 가 진단 출발점 |
+
+> **함수명+key 인용 사용 이유**: 라인 번호는 stale 위험 (commit 마다 변동). 함수명·alert key 는 grep 1번으로 확정. 미래 작업자가 docs vs 코드 sync 검증 빠름.
 
 ---
 

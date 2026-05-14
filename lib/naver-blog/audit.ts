@@ -64,19 +64,24 @@ export type AuditInsert = {
  * 호출 실패해도 cron 자체는 계속 — 단지 logging.
  *
  * 2026-05-14 — codex 권장 (사고 진단 source 분리):
- * details.runner 명시 안 됐으면 'legacy-cron-playwright' default. cron route 만 이 함수
- * 호출 (Chrome Extension 은 /api/naver-extension/published 별도 endpoint, runner.mjs 는
- * sb fetch 직접). 5/13 24h 1,734건 fail 모두 runner=null 이라 source 추적 불가능했음.
+ * details.runner 명시 안 됐으면 'unknown' default (subagent W5 fix — 오라벨 차단).
+ * 미래 신규 호출자가 runner 명시 안 하면 'unknown' 로 잡혀 dashboard 에서 비율 모니터링
+ * 가능. 'legacy-cron-playwright' 거짓 default 는 사고 진단 source 분리 의도와 모순됐음.
+ *
+ * 현재 호출자: app/api/cron/naver-publish/route.ts (legacy cron — runner 명시 안 함 → unknown).
+ * 향후 호출자는 details.runner 명시 권장.
+ * - Chrome Extension: /api/naver-extension/published 별도 endpoint (runner='chrome-extension')
+ * - runner.mjs: sb fetch 직접 (runner='local-playwright')
  */
 export async function logPublishAudit(input: AuditInsert): Promise<void> {
   const admin = createAdminClient();
   const kstHour = getKstHour();
 
-  // details.runner 가 없으면 default 채움 — 호출자 (cron route) source 명시.
+  // details.runner 가 없으면 default 채움 — 호출자 source 명시 강제.
   const enrichedDetails =
     input.details && "runner" in input.details
       ? input.details
-      : { runner: "legacy-cron-playwright", ...(input.details ?? {}) };
+      : { runner: "unknown", ...(input.details ?? {}) };
 
   const { error } = await admin.from("naver_publish_audit").insert({
     post_id: input.postId,

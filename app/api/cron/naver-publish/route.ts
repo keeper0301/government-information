@@ -52,14 +52,22 @@ export async function GET(request: Request) {
   // dry_run: publisher 의 마지막 발행 click 만 skip (selector·iframe·cookies 검증).
   // force:   NAVER_CRON_DISABLED·시간대·일 cap 무시 (검증용). 단 캡차/2FA 감지 + cookies 만료 검사는 유지.
   const url = new URL(request.url);
-  const dryRun = url.searchParams.get("dry_run") === "1";
-  const force = url.searchParams.get("force") === "1";
+  const forceRaw = url.searchParams.get("force") === "1";
+  // 2026-05-14 — subagent W4 fix: ?force=1 사용 시 dry_run 자동 강제.
+  // DEPRECATED endpoint 라 force 가 NAVER_PLAYWRIGHT_ENABLED gate 까지 우회하지만,
+  // 실제 발행은 차단해야 사장님 manual 검증 시 의도치 않은 prod publish 사고 방지.
+  // 명시적으로 ?dry_run=0 이어도 force=1 이면 dry_run=true 로 덮어씀.
+  const force = forceRaw;
+  const dryRun = forceRaw ? true : url.searchParams.get("dry_run") === "1";
 
   // 2026-05-14 — DEPRECATED gate (codex 권장).
   // Vercel chromium IP 차단 사고 (5/12) 후 vercel.json schedule 제거 + Extension pivot.
   // 그러나 endpoint 자체는 살아있어 외부에서 호출 시 (또는 사장님 노트북 잔존 runner 가
   // 이 endpoint 호출 시) 매번 Playwright launch 시도 → ERR_INSUFFICIENT_RESOURCES fail
   // 누적 (5/13 24h 1,734건). NAVER_PLAYWRIGHT_ENABLED=true 명시 안 됐으면 차단.
+  //
+  // ?force=1 우회 가능 — 단 위에서 dry_run 자동 강제로 실제 publish 안 됨.
+  // CRON_SECRET Bearer 필수라 외부 공격 면역.
   if (!force && process.env.NAVER_PLAYWRIGHT_ENABLED !== "true") {
     await skip("disabled", { reason: "deprecated_legacy_playwright" });
     return NextResponse.json({

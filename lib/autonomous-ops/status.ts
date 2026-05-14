@@ -69,14 +69,51 @@ async function tableExists(table: string): Promise<boolean> {
 }
 
 async function phase1(): Promise<PhaseStatus> {
-  const runs = await countAction24h("health_alert_run");
+  // 2026-05-14 — 9 cron audit 가시성 확장 (subagent Improvement-1).
+  // health_alert_run 외 신규 5 cron audit 도 hub 카드에 노출. 사장님 1번 클릭으로
+  // 운영 cron 가동 자체 확인 가능 (admin_actions query 직접 안 해도 됨).
+  const [
+    healthRuns,
+    dailyDigest,
+    weeklyOpsDigest,
+    sentryDaily,
+    onboardingReminder,
+    policyEnrich,
+  ] = await Promise.all([
+    countAction24h("health_alert_run"),
+    countAction24h("daily_digest_run"),
+    countAction24h("weekly_ops_digest_run"),
+    countAction24h("sentry_daily_summary_run"),
+    countAction24h("onboarding_reminder_run"),
+    countAction24h("policy_enrich_run"),
+  ]);
   return {
     phase: 1,
     title: "사고 자동 진단",
     active: true, // env default 로 항상 가동
     metrics: [
-      { label: "24h cron 실행", value: `${runs}회 (정상 1)` },
-      { label: "임계치", value: "news/press/enrich 4종" },
+      { label: "24h health-alert", value: `${healthRuns}회 (정상 1)` },
+      {
+        label: "24h daily-digest",
+        value: `${dailyDigest}회 (정상 1, KST 08:00)`,
+      },
+      {
+        label: "24h sentry-summary",
+        value: `${sentryDaily}회 (정상 1, KST 09:45)`,
+      },
+      {
+        label: "24h onboarding-reminder",
+        value: `${onboardingReminder}회 (정상 1, KST 11:05)`,
+      },
+      {
+        label: "24h policy-enrich",
+        value: `${policyEnrich}회 (정상 1, KST 03:30)`,
+      },
+      {
+        label: "24h weekly-ops-digest",
+        value: `${weeklyOpsDigest}회 (주 1, 화 KST 09:00)`,
+      },
+      { label: "임계치", value: "16종 (#16 = naver_publish_failure)" },
     ],
     pendingActions: [],
   };

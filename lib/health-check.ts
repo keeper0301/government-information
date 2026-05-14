@@ -78,8 +78,14 @@ export type HealthSignals = {
   /**
    * naver_publish_audit 24h 시도 통계 (codex 권장 spec).
    * fail_rate ≥ 90% AND attempts ≥ FLOOR AND eligible_pending > 0 시 발화.
-   * eligible_pending = 발행 가능한 큐 (status='pending' AND attempt_count < 3) — 0 이면
-   * 큐 자체가 비어 발송 시도 안 한 것 (정상). pending 있는데 거의 다 fail = 진짜 사고.
+   *
+   * - attempts = result IN ('success', 'fail') 만 카운트 — 실 시도. 'skipped' (시간대·daily_cap·
+   *   no_cookies·disabled·dry_run·outside_hours 등) 는 시도 자체 안 한 것이라 제외.
+   *   사장님 PC 미가동 = attempts 0 (false positive 차단).
+   * - fails = result='fail' 만 카운트.
+   * - eligible_pending = 발행 가능한 큐 (status='pending' AND attempt_count < 3) — 0 이면
+   *   큐 자체가 비어 발송 시도 안 한 것 (정상). pending 있는데 거의 다 fail = 진짜 사고.
+   *
    * 5/13 사고 baseline: attempts 1,734 + fail 1,734 + success 0 + pending 68 → 발화 보장.
    */
   naverPublishAttempts24h: number;
@@ -563,9 +569,10 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     });
   }
 
-  // 2026-05-14 — 자동 등록 정책 inflow 0건 (수집 cron 사고 즉시 감지).
-  // 자동 cron 사고만 정확히 잡기 — auto_confirm_tier IS NOT NULL row 만 카운트.
-  // 사장님 어드민 수동 등록 (auto_confirm_tier NULL) 은 noise 라 제외.
+  // 2026-05-14 — 정책 inflow 0건 (수집 cron 사고 즉시 감지).
+  // collector + press-ingest 합산 카운트 (source_code IS NOT NULL).
+  // manual_program_create (admin 수동 등록 — source_code NULL) 만 noise 라 제외.
+  // 직전 commit 0dc39d4 fix — auto_confirm_tier 가드는 collector path 99건/일 무시.
   //
   // 주말 (토/일 KST) skip — 광역 보도자료 출처 사이트 휴재로 자연 0건 가능.
   // 평일 만 alert (subagent Critical-2 fix).
