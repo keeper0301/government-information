@@ -57,7 +57,8 @@ export type AdminActionType =
   | "naver_manual_test"          // 2026-05-12 — Phase 2-C 사장님 manual-test 페이지에서 dry-run/실제 발행 trigger audit
   | "policy_url_check_run"       // 2026-05-14 — 주 1회 정책 source URL 404 감지 cron 실행 (checked/dead/ok 통계)
   | "collect_run"                // 2026-05-14 — /api/collect GitHub Actions 가동 흔적 (totalCollected/sources/failedCount 통계, health-alert collect_no_show 진단)
-  | "press_ingest_run";          // 2026-05-14 — /api/cron/press-ingest 진입 흔적 (cron 가동 자체 추적, press_l2_classify 가 처리한 만큼만 쌓이는 false positive 차단)
+  | "press_ingest_run"           // 2026-05-14 — /api/cron/press-ingest 진입 흔적 (cron 가동 자체 추적, press_l2_classify 가 처리한 만큼만 쌓이는 false positive 차단)
+  | "alert_dispatch_run";        // 2026-05-14 — /api/alert-dispatch 진입 흔적 (alert_deliveries 가 매칭 0건 시 row 안 쌓여 cron 가동 추적 불가능했음)
 
 export type AdminActionRecord = {
   id: string;
@@ -340,4 +341,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   policy_url_check_run: "정책 source URL 404 감지 cron",
   collect_run: "정책 수집 cron 실행",
   press_ingest_run: "press-ingest cron 진입 흔적",
+  alert_dispatch_run: "alert-dispatch cron 진입 흔적",
 };
