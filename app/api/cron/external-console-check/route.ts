@@ -29,6 +29,7 @@ import { checkSupabase } from "@/lib/external-console/supabase";
 import { checkSearchConsole } from "@/lib/external-console/search-console";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -79,20 +80,35 @@ async function run() {
 
   const totalAlerts = results.flatMap((r) => r.alerts);
 
-  // 이상 1건 이상이면 SMS 발송. 정상이면 SMS 안 보냄 (noise 0).
+  // 이상 1건 이상이면 SMS + 텔레그램 둘 다 발송 (이중 안전).
+  // 2026-05-14 — 텔레그램 fallback 추가 (subagent Critical-1):
+  // 본 cron 이 solapi_balance_low alert 잡아도 SMS 자체가 잔액 의존 →
+  // 잔액 0 사고 시 alert 단절. 텔레그램은 무관 (Telegram Bot API).
+  // health-alert (commit f6ad1ef) 와 동일 패턴.
   let smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> | null = null;
+  let telegramResult: Awaited<ReturnType<typeof sendOpsAlertTelegram>> | null = null;
   if (totalAlerts.length > 0) {
     const lines = totalAlerts.map((a) => {
       const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
       return `- [${a.key}] ${a.message}${rec}`;
     });
+    const subject = `[keepioo 외부 점검] ${totalAlerts.length}건 이상`;
+    const message = lines.join("\n");
+
     try {
-      smsResult = await sendOpsAlertSms({
-        subject: `[keepioo 외부 점검] ${totalAlerts.length}건 이상`,
-        message: lines.join("\n"),
-      });
+      smsResult = await sendOpsAlertSms({ subject, message });
     } catch (e) {
       smsResult = {
+        ok: false,
+        reason: "network_error",
+        error: (e as Error).message,
+      };
+    }
+
+    try {
+      telegramResult = await sendOpsAlertTelegram({ subject, message });
+    } catch (e) {
+      telegramResult = {
         ok: false,
         reason: "network_error",
         error: (e as Error).message,
@@ -106,6 +122,7 @@ async function run() {
     alerts: totalAlerts.length,
     results,
     sms: smsResult,
+    telegram: telegramResult,
   });
 }
 

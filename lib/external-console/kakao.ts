@@ -59,6 +59,68 @@ function buildAuthHeader(): string | null {
   return `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`;
 }
 
+// 2026-05-14 — Solapi 잔액 조회 응답.
+// docs.solapi.com/api-reference/cash/getBalance
+// SMS 1건 ~45원 (LMS 90자 미만 SMS 단가 + 알림톡 ~17원).
+// 잔액 0 사고 (5/9~5/14): SMS 5일 다운 — 사전 경고가 메타 안전성 핵심.
+export interface SolapiBalance {
+  balance: number; // 보유 현금 잔액 (원)
+  point: number;   // 보유 포인트 (원)
+}
+
+// 잔액 조회 fetch — 단일 호출 (pagination 없음).
+async function fetchSolapiBalance(): Promise<SolapiBalance> {
+  const auth = buildAuthHeader();
+  if (!auth) throw new Error("SOLAPI credentials missing");
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10_000);
+  try {
+    const res = await fetch(`${SOLAPI_BASE}/cash/v1/balance`, {
+      method: "GET",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) {
+      throw new Error(
+        `Solapi balance ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      );
+    }
+    const data = (await res.json()) as { balance?: number; point?: number };
+    return {
+      balance: typeof data.balance === "number" ? data.balance : 0,
+      point: typeof data.point === "number" ? data.point : 0,
+    };
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+// pure function — 잔액 → alert (또는 null). buildKakaoAlerts 와 분리해 단위 테스트 용이.
+// 잔액 + 포인트 합산 < SOLAPI_BALANCE_ALERT_FLOOR 면 alert.
+// 2026-05-14 — 임계 5000 → 10000 (subagent Warning-3 fix).
+// 1만원 = SMS ~220건 = 4~5일 buffer. cron 24h 1회 → 한 cron 사이 5000원→0원 추락 방지.
+// 사장님 충전 시간 (주말 포함 2~3일) 확보 + 텔레그램 fallback 으로 alert 자체 도달 보장.
+const SOLAPI_BALANCE_FLOOR = Number(
+  process.env.SOLAPI_BALANCE_ALERT_FLOOR ?? "10000",
+);
+export function buildKakaoBalanceAlert(
+  balance: SolapiBalance,
+): ConsoleAlert | null {
+  const usable = balance.balance + balance.point;
+  if (usable >= SOLAPI_BALANCE_FLOOR) return null;
+  // SMS 본문 압축 (subagent Improvement-3): SMS 90byte 초과 시 LMS 단가 4배 → 잔액 더 빨리 소진 역효과.
+  return {
+    key: "solapi_balance_low",
+    message: `Solapi 잔액 ${usable.toLocaleString()}원 — SMS ${Math.floor(usable / 45)}건 후 단절 (임계 ${SOLAPI_BALANCE_FLOOR.toLocaleString()}+).`,
+    recommendation:
+      "console.solapi.com/cash/charge 충전 (1만=220건). SOLAPI_BALANCE_ALERT_FLOOR env 로 1분 toggle.",
+  };
+}
+
 // 24h 발송 통계 fetch — pagination 한 번만 (limit 500 으로 거의 다 잡힘).
 // 정상 운영 발송량 (사장님 SMS·user 알림톡) 일일 ~수십~수백 건이라 1 페이지 충분.
 async function fetchRecentMessages(): Promise<SolapiMessageRow[]> {
@@ -173,25 +235,52 @@ export async function checkKakao(): Promise<ConsoleCheckResult> {
     };
   }
 
-  let messages: SolapiMessageRow[];
-  try {
-    messages = await fetchRecentMessages();
-  } catch (e) {
+  // 발송 통계 + 잔액 병렬 fetch (라운드트립 1).
+  // 잔액 fetch 실패해도 message 통계는 표시 — 부분 결과 우선.
+  const [messagesResult, balanceResult] = await Promise.allSettled([
+    fetchRecentMessages(),
+    fetchSolapiBalance(),
+  ]);
+
+  if (messagesResult.status === "rejected") {
     return {
       console: "kakao",
       alerts: [
         {
           key: "kakao_fetch_failed",
-          message: `Solapi list API 호출 실패: ${(e as Error).message.slice(0, 120)}`,
+          message: `Solapi list API 호출 실패: ${(messagesResult.reason as Error).message.slice(0, 120)}`,
           recommendation: "SOLAPI_API_KEY/SECRET 만료·Solapi 장애 확인",
         },
       ],
       kpis: {},
-      error: (e as Error).message,
+      error: (messagesResult.reason as Error).message,
     };
   }
 
-  const { alerts, kpis } = buildKakaoAlerts(messages);
+  const { alerts, kpis } = buildKakaoAlerts(messagesResult.value);
+
+  // 잔액 alert 추가 (메타 안전책 — 5/9~5/14 잔액 0 사고 재발 방지).
+  // 잔액 fetch 자체가 실패하면 KPI 에 fetch_error 만 기록 (alert 추가 안 함, message 통계는 유지).
+  if (balanceResult.status === "fulfilled") {
+    const balance = balanceResult.value;
+    kpis.balance_total = balance.balance + balance.point;
+    kpis.balance_cash = balance.balance;
+    kpis.balance_point = balance.point;
+    const balanceAlert = buildKakaoBalanceAlert(balance);
+    if (balanceAlert) {
+      // 단일화 (subagent Warning-1): solapi_balance_low 가 발화하면 kakao_high_failure 는
+      // 같은 사고의 결과 (잔액 부족 → 모든 발송 실패) 라 SMS noise 압축. 잔액 alert 우선.
+      const filtered = alerts.filter((a) => a.key !== "kakao_high_failure");
+      filtered.push(balanceAlert);
+      return { console: "kakao", alerts: filtered, kpis };
+    }
+  } else {
+    kpis.balance_fetch_error = (balanceResult.reason as Error).message.slice(
+      0,
+      200,
+    );
+  }
+
   return { console: "kakao", alerts, kpis };
 }
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildKakaoAlerts, type SolapiMessageRow } from "@/lib/external-console/kakao";
+import {
+  buildKakaoAlerts,
+  buildKakaoBalanceAlert,
+  type SolapiMessageRow,
+} from "@/lib/external-console/kakao";
 import { buildTossAlerts } from "@/lib/external-console/toss";
 import {
   buildVercelAlerts,
@@ -67,6 +71,39 @@ describe("buildKakaoAlerts", () => {
       ...failed(2, "4002"),
     ]);
     expect(kpis.failed_codes).toEqual({ "4001": 3, "4002": 2 });
+  });
+});
+
+// ─── Solapi 잔액 (메타 안전책) ─────────────────────────────
+// 5/9~5/14 사고: 잔액 0 → SMS 5일 다운. 사전 경고 임계 1만원 (subagent Warning-3 fix).
+// 1만원 = SMS ~220건 = 4~5일 buffer (한 cron 사이 1만원→0원 추락 방지).
+describe("buildKakaoBalanceAlert", () => {
+  it("잔액 10000+ → null (정상, alert X)", () => {
+    const alert = buildKakaoBalanceAlert({ balance: 10000, point: 0 });
+    expect(alert).toBeNull();
+  });
+
+  it("잔액 9999 → solapi_balance_low alert (boundary 미달)", () => {
+    const alert = buildKakaoBalanceAlert({ balance: 9999, point: 0 });
+    expect(alert).not.toBeNull();
+    expect(alert?.key).toBe("solapi_balance_low");
+    expect(alert?.message).toContain("9,999원");
+    // SMS 1건 ~45원 — 9999/45 = 222건 buffer 명시
+    expect(alert?.message).toContain("222건");
+  });
+
+  it("잔액 0 + 포인트 17 (5/14 실제 사고 데이터) → alert 발화", () => {
+    const alert = buildKakaoBalanceAlert({ balance: 0, point: 17 });
+    expect(alert).not.toBeNull();
+    expect(alert?.message).toContain("17원");
+    // 17/45 = 0.37 → 0건 = 채널 단절 임박 (실제 5/9~5/14 사고)
+    expect(alert?.message).toContain("0건 후 단절");
+    expect(alert?.recommendation).toContain("console.solapi.com");
+  });
+
+  it("현금 + 포인트 합산 10000 정확 도달 → alert X (boundary)", () => {
+    const alert = buildKakaoBalanceAlert({ balance: 8000, point: 2000 });
+    expect(alert).toBeNull();
   });
 });
 
