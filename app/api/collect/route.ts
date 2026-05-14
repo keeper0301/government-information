@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
-import { logAdminAction } from "@/lib/admin-actions";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import {
   getAllCollectors,
   runOneCollector,
@@ -56,21 +56,13 @@ async function runCollectAndRespond(jobLabel: string, sourceFilter?: string[]) {
 
     // admin_actions audit — health-alert 의 collect_no_show 진단용 흔적.
     // GitHub Actions collect.yml 매일 KST 13:00 가동. vercel.json 에 없어
-    // 흔적 자동 인지 어렵던 사고 차단 (2026-05-14 학습 #11). 실패해도 응답 유지.
-    try {
-      await logAdminAction({
-        actorId: null,
-        action: "collect_run",
-        details: {
-          job: jobLabel,
-          total: totalCollected,
-          sources: Object.keys(results),
-          failed_count: failedSources.length,
-        },
-      });
-    } catch (e) {
-      console.warn("[collect] audit fail:", (e as Error).message);
-    }
+    // 흔적 자동 인지 어렵던 사고 차단 (2026-05-14 학습 #11).
+    await auditCronRun("collect_run", {
+      job: jobLabel,
+      total: totalCollected,
+      sources: Object.keys(results),
+      failed_count: failedSources.length,
+    });
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),

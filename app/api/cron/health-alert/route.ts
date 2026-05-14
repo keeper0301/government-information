@@ -6,8 +6,7 @@
 import { NextResponse } from "next/server";
 import { getHealthSignals, checkThresholds } from "@/lib/health-check";
 import { sendHealthAlertEmail } from "@/lib/email";
-import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
-import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
+import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
 import { logAdminAction } from "@/lib/admin-actions";
 import {
   getRecentlyFiredAlertKeys,
@@ -122,8 +121,10 @@ async function run() {
   // Phase 1 자동 진단 — alert 마다 recommendation 1줄 함께 노출 → 사장님이
   // SMS 만 봐도 즉시 hot-fix 액션 결정 가능. SMS 길이 한도 (Solapi LMS 2000자) 안에서만.
   // smsAlerts 가 비어있으면 SMS skip — 모든 alert 가 cooldown 으로 suppress.
-  let smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> | null = null;
-  let telegramResult: Awaited<ReturnType<typeof sendOpsAlertTelegram>> | null = null;
+  // 2026-05-14 — sendOpsAlertMultichannel helper 로 SMS + 텔레그램 단일 진입점.
+  // 메타 안전책 (5/9~5/14 SMS 5일 다운 사고) — 잔액 0 시 텔레그램 fallback 자동.
+  // 새 채널 추가 시 helper 1줄만 수정.
+  let multi: Awaited<ReturnType<typeof sendOpsAlertMultichannel>> | null = null;
   let cooldownAllSuppressed = false;
   if (smsAlerts.length > 0) {
     const subject = `[keepioo 운영] ${smsAlerts.length}건 임계치 초과${
@@ -135,34 +136,13 @@ async function run() {
         return `- ${a.message}${rec}`;
       })
       .join("\n");
-
-    try {
-      smsResult = await sendOpsAlertSms({ subject, message });
-    } catch (e) {
-      smsResult = {
-        ok: false,
-        reason: "network_error",
-        error: (e as Error).message,
-      };
-    }
-
-    // 2026-05-14 — 텔레그램 fallback (메타 안전책).
-    // 사고 (5/9~5/14): SMS 5일 연속 api_error → 사장님 alert 채널 단절. 이메일만 도달.
-    // 텔레그램 봇은 이미 가동 중 (Phase 1~5 완료) → SMS 다운 시에도 도달 보장.
-    // SMS 성공해도 텔레그램은 보냄 (이중 안전, 사장님 양쪽 인지) — 비용 0 (텔레그램 무료).
-    try {
-      telegramResult = await sendOpsAlertTelegram({ subject, message });
-    } catch (e) {
-      telegramResult = {
-        ok: false,
-        reason: "network_error",
-        error: (e as Error).message,
-      };
-    }
+    multi = await sendOpsAlertMultichannel({ subject, message });
   } else {
-    // 모든 alert 가 cooldown 으로 suppress — SMS·텔레그램 발송 skip.
+    // 모든 alert 가 cooldown 으로 suppress — 발송 skip.
     cooldownAllSuppressed = true;
   }
+  const smsResult = multi?.sms ?? null;
+  const telegramResult = multi?.telegram ?? null;
 
   // alert 발화 시 audit — 사장님 SMS 발송 여부 + alert 종류 기록
   // smsAlertKeys 별도 — cooldown filter 가 이 필드만 봐서 영구 mute 차단 (codex P1).

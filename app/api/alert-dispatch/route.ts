@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure, sendCustomAlertEmail } from "@/lib/email";
-import { logAdminAction } from "@/lib/admin-actions";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { findMatchingPrograms, type AlertRule } from "@/lib/alerts/matching";
 import { getUserTier } from "@/lib/subscription";
 import { sendAlimtalk } from "@/lib/kakao-alimtalk";
@@ -82,15 +82,10 @@ async function runAlertDispatch(jobLabel: string) {
     if (rulesErr) throw rulesErr;
     if (!rules || rules.length === 0) {
       // 2026-05-14 — 빈손이어도 cron 가동 흔적 audit (press_ingest_run 패턴 미러)
-      try {
-        await logAdminAction({
-          actorId: null,
-          action: "alert_dispatch_run",
-          details: { rules: 0, note: "활성 규칙 없음" },
-        });
-      } catch {
-        // audit 실패는 무시 (운영 안전성)
-      }
+      await auditCronRun("alert_dispatch_run", {
+        rules: 0,
+        note: "활성 규칙 없음",
+      });
       return NextResponse.json({ dispatched: 0, note: "활성 규칙 없음" });
     }
 
@@ -476,25 +471,17 @@ async function runAlertDispatch(jobLabel: string) {
     // 2026-05-14 — cron 가동 흔적 audit (가동 1회 1건 보장).
     // alert_deliveries 는 매칭 0건이거나 cohort_gate 차단되면 row 안 쌓여 cron 추적 불가능.
     // alert_dispatch_run 으로 cron 가동 자체 추적 (press_ingest_run / collect_run 패턴 동일).
-    try {
-      await logAdminAction({
-        actorId: null,
-        action: "alert_dispatch_run",
-        details: {
-          rules: rules.length,
-          dispatched_email: dispatchedEmail,
-          email_failures: emailFailures,
-          queued_kakao: dispatchedKakao,
-          kakao_skipped_consent: kakaoSkippedConsent,
-          kakao_skipped_mismatch: totalKakaoSkippedMismatch,
-          cohort_gate_blocked: totalCohortGateBlocked,
-          template_version: isV3Enabled() ? "v3" : "v2",
-          skipped,
-        },
-      });
-    } catch {
-      // audit 실패는 무시 (운영 안전성)
-    }
+    await auditCronRun("alert_dispatch_run", {
+      rules: rules.length,
+      dispatched_email: dispatchedEmail,
+      email_failures: emailFailures,
+      queued_kakao: dispatchedKakao,
+      kakao_skipped_consent: kakaoSkippedConsent,
+      kakao_skipped_mismatch: totalKakaoSkippedMismatch,
+      cohort_gate_blocked: totalCohortGateBlocked,
+      template_version: isV3Enabled() ? "v3" : "v2",
+      skipped,
+    });
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),
@@ -512,15 +499,7 @@ async function runAlertDispatch(jobLabel: string) {
     const message = err instanceof Error ? err.message : String(err);
     await notifyCronFailure(jobLabel, message);
     // 실패해도 진입 흔적 audit
-    try {
-      await logAdminAction({
-        actorId: null,
-        action: "alert_dispatch_run",
-        details: { error: message },
-      });
-    } catch {
-      // audit 실패는 무시
-    }
+    await auditCronRun("alert_dispatch_run", { error: message });
     return NextResponse.json({ error: "발송 실패", detail: message }, { status: 500 });
   }
 }

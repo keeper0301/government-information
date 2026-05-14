@@ -28,9 +28,8 @@ import { checkVercel } from "@/lib/external-console/vercel";
 import { checkSupabase } from "@/lib/external-console/supabase";
 import { checkSearchConsole } from "@/lib/external-console/search-console";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
-import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
-import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
-import { logAdminAction } from "@/lib/admin-actions";
+import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -82,12 +81,9 @@ async function run() {
   const totalAlerts = results.flatMap((r) => r.alerts);
 
   // 이상 1건 이상이면 SMS + 텔레그램 둘 다 발송 (이중 안전).
-  // 2026-05-14 — 텔레그램 fallback 추가 (subagent Critical-1):
-  // 본 cron 이 solapi_balance_low alert 잡아도 SMS 자체가 잔액 의존 →
-  // 잔액 0 사고 시 alert 단절. 텔레그램은 무관 (Telegram Bot API).
-  // health-alert (commit f6ad1ef) 와 동일 패턴.
-  let smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> | null = null;
-  let telegramResult: Awaited<ReturnType<typeof sendOpsAlertTelegram>> | null = null;
+  // 2026-05-14 — sendOpsAlertMultichannel helper 로 단일 진입점 (Improvement-2 fix).
+  // 잔액 0 사고 시 SMS 단절돼도 텔레그램으로 도달 보장.
+  let multi: Awaited<ReturnType<typeof sendOpsAlertMultichannel>> | null = null;
   if (totalAlerts.length > 0) {
     const lines = totalAlerts.map((a) => {
       const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
@@ -95,60 +91,34 @@ async function run() {
     });
     const subject = `[keepioo 외부 점검] ${totalAlerts.length}건 이상`;
     const message = lines.join("\n");
-
-    try {
-      smsResult = await sendOpsAlertSms({ subject, message });
-    } catch (e) {
-      smsResult = {
-        ok: false,
-        reason: "network_error",
-        error: (e as Error).message,
-      };
-    }
-
-    try {
-      telegramResult = await sendOpsAlertTelegram({ subject, message });
-    } catch (e) {
-      telegramResult = {
-        ok: false,
-        reason: "network_error",
-        error: (e as Error).message,
-      };
-    }
+    multi = await sendOpsAlertMultichannel({ subject, message });
   }
+  const smsResult = multi?.sms ?? null;
+  const telegramResult = multi?.telegram ?? null;
 
   // 2026-05-14 — 사장님 가시성 audit (subagent Critical-1).
   // 핵심 KPI (balance_total/balance_cash/balance_point/site availability/vercel deploy 등) 가
   // 지금까지 vercel function logs 에만 있어 admin_actions 영구 저장 0 → autonomous hub metric 무력했음.
   // collect_run / press_ingest_run / alert_dispatch_run 패턴 일관 미러.
   // alerts/results/SMS/텔레그램 결과 모두 압축 — 사장님이 admin_actions query 만으로 진단 가능.
-  try {
-    await logAdminAction({
-      actorId: null,
-      action: "external_console_check_run",
-      details: {
-        checked: results.length,
-        alerts_total: totalAlerts.length,
-        alert_keys: totalAlerts.map((a) => a.key),
-        // 각 console 별 alert·KPI 요약 (전체 KPI 본문은 details json 통째로 저장)
-        results_summary: results.map((r) => ({
-          console: r.console,
-          alerts_count: r.alerts.length,
-          alert_keys: r.alerts.map((a) => a.key),
-          kpis: r.kpis,
-          error: r.error,
-        })),
-        sms_ok: smsResult?.ok ?? null,
-        sms_reason: smsResult?.ok === false ? smsResult.reason : undefined,
-        telegram_ok: telegramResult?.ok ?? null,
-        telegram_reason:
-          telegramResult?.ok === false ? telegramResult.reason : undefined,
-      },
-    });
-  } catch (e) {
-    console.warn("[external-console-check] audit 실패:", (e as Error).message);
-    // audit 실패는 응답 유지 (운영 안전성)
-  }
+  await auditCronRun("external_console_check_run", {
+    checked: results.length,
+    alerts_total: totalAlerts.length,
+    alert_keys: totalAlerts.map((a) => a.key),
+    // 각 console 별 alert·KPI 요약 (전체 KPI 본문은 details json 통째로 저장)
+    results_summary: results.map((r) => ({
+      console: r.console,
+      alerts_count: r.alerts.length,
+      alert_keys: r.alerts.map((a) => a.key),
+      kpis: r.kpis,
+      error: r.error,
+    })),
+    sms_ok: smsResult?.ok ?? null,
+    sms_reason: smsResult?.ok === false ? smsResult.reason : undefined,
+    telegram_ok: telegramResult?.ok ?? null,
+    telegram_reason:
+      telegramResult?.ok === false ? telegramResult.reason : undefined,
+  });
 
   return NextResponse.json({
     ok: true,
