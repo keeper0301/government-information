@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { fetchSentryDailySummary } from "@/lib/sentry/daily-summary";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -27,6 +28,10 @@ async function authorize(request: Request) {
 async function run() {
   const summary = await fetchSentryDailySummary();
   if (!summary.ok) {
+    // 2026-05-14 — skipped 분기에도 audit (cron 가동 흔적 보장)
+    await auditCronRun("sentry_daily_summary_run", {
+      skipped: summary.reason,
+    });
     return NextResponse.json({
       ok: false,
       reason: summary.reason,
@@ -52,6 +57,13 @@ async function run() {
     string,
     unknown
   >;
+
+  // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+  await auditCronRun("sentry_daily_summary_run", {
+    total_issues: summary.total,
+    new_issues: summary.issues.length,
+    telegram_ok: tgRes.ok,
+  });
 
   return NextResponse.json({
     ok: tgRes.ok,

@@ -14,6 +14,7 @@ import {
   reviewQueueTotal,
 } from "@/lib/notifications/daily-digest";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -51,6 +52,15 @@ async function run(): Promise<NextResponse> {
     subject: "",
     message,
     link,
+  });
+
+  // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+  await auditCronRun("daily_digest_run", {
+    review_queue_total: reviewTotal,
+    cron_failures_24h: data.cronFailures24h,
+    sms_ok: sms?.ok ?? null,
+    sms_reason: sms?.ok === false ? sms.reason : undefined,
+    has_link: link.length > 0,
   });
 
   return NextResponse.json({

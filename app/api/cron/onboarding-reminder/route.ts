@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUsersCached } from "@/lib/admin-stats";
 import { sendOnboardingReminderEmail } from "@/lib/email";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -46,6 +47,11 @@ async function run() {
   );
 
   if (candidates.length === 0) {
+    // 2026-05-14 — 빈손 분기 audit (cron 가동 흔적 보장)
+    await auditCronRun("onboarding_reminder_run", {
+      candidates: 0,
+      note: "no_candidates_in_24_48h_window",
+    });
     return NextResponse.json({ ok: true, sent: 0, total: 0 });
   }
 
@@ -132,6 +138,14 @@ async function run() {
       }
     }
   }
+
+  // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+  await auditCronRun("onboarding_reminder_run", {
+    candidates: candidates.length,
+    targets: targets.length,
+    sent,
+    failed,
+  });
 
   return NextResponse.json({
     ok: true,

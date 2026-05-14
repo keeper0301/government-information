@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enrichPolicy } from "@/lib/policy/enrich";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -91,12 +92,24 @@ async function run() {
     processTable(admin, "welfare_programs"),
     processTable(admin, "loan_programs"),
   ]);
+  const durationMs = Date.now() - start;
+
+  // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+  await auditCronRun("policy_enrich_run", {
+    welfare_enriched: welfare.enriched,
+    welfare_failed: welfare.failed,
+    welfare_skipped: welfare.skipped,
+    loan_enriched: loan.enriched,
+    loan_failed: loan.failed,
+    loan_skipped: loan.skipped,
+    duration_ms: durationMs,
+  });
 
   return NextResponse.json({
     ok: true,
     welfare,
     loan,
-    duration_ms: Date.now() - start,
+    duration_ms: durationMs,
   });
 }
 

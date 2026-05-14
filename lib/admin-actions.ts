@@ -59,7 +59,12 @@ export type AdminActionType =
   | "collect_run"                // 2026-05-14 — /api/collect GitHub Actions 가동 흔적 (totalCollected/sources/failedCount 통계, health-alert collect_no_show 진단)
   | "press_ingest_run"           // 2026-05-14 — /api/cron/press-ingest 진입 흔적 (cron 가동 자체 추적, press_l2_classify 가 처리한 만큼만 쌓이는 false positive 차단)
   | "alert_dispatch_run"         // 2026-05-14 — /api/alert-dispatch 진입 흔적 (alert_deliveries 가 매칭 0건 시 row 안 쌓여 cron 가동 추적 불가능했음)
-  | "external_console_check_run"; // 2026-05-14 — /api/cron/external-console-check 진입 흔적 (balance·KPI 등 vercel logs 만 있어 사장님 가시성 0이던 사고)
+  | "external_console_check_run" // 2026-05-14 — /api/cron/external-console-check 진입 흔적 (balance·KPI 등 vercel logs 만 있어 사장님 가시성 0이던 사고)
+  | "daily_digest_run"           // 2026-05-14 — /api/cron/daily-digest 매일 KST 08:00 사장님 KPI SMS 가동 흔적
+  | "weekly_ops_digest_run"      // 2026-05-14 — /api/cron/weekly-ops-digest 매주 KST 09:00 사장님 운영 보고 가동 흔적
+  | "sentry_daily_summary_run"   // 2026-05-14 — /api/cron/sentry-daily-summary 매일 KST 09:45 텔레그램 발송 가동 흔적
+  | "onboarding_reminder_run"    // 2026-05-14 — /api/cron/onboarding-reminder 매일 KST 11:05 가입 24h~48h 환영 메일 가동 흔적
+  | "policy_enrich_run";         // 2026-05-14 — /api/cron/policy-enrich 매일 KST 03:30 키워드/요약 enrich 가동 흔적
 
 export type AdminActionRecord = {
   id: string;
@@ -344,4 +349,9 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   press_ingest_run: "press-ingest cron 진입 흔적",
   alert_dispatch_run: "alert-dispatch cron 진입 흔적",
   external_console_check_run: "외부 콘솔 점검 cron 진입 흔적",
+  daily_digest_run: "사장님 일일 KPI SMS cron 가동",
+  weekly_ops_digest_run: "사장님 주간 운영 보고 cron 가동",
+  sentry_daily_summary_run: "Sentry 일일 요약 cron 가동",
+  onboarding_reminder_run: "온보딩 reminder cron 가동",
+  policy_enrich_run: "정책 키워드/요약 enrich cron 가동",
 };

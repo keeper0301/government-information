@@ -9,6 +9,7 @@ import {
   buildWeeklyOpsHtml,
   fetchAutoConfirmSample,
 } from "@/lib/notifications/weekly-ops-digest";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -41,6 +42,10 @@ async function run(): Promise<NextResponse> {
   // RESEND_API_KEY 미설정 시 graceful skip — build/dev 보호
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
+    // 2026-05-14 — skipped 분기에도 audit (cron 가동 흔적 보장)
+    await auditCronRun("weekly_ops_digest_run", {
+      skipped: "RESEND_API_KEY not configured",
+    });
     return NextResponse.json({
       ok: true,
       sent: false,
@@ -59,20 +64,30 @@ async function run(): Promise<NextResponse> {
       text,
     });
     if (error) {
+      // 2026-05-14 — 실패 분기 audit
+      await auditCronRun("weekly_ops_digest_run", {
+        sent: false,
+        error: error.message,
+      });
       return NextResponse.json(
         { ok: false, sent: false, data, error: error.message },
         { status: 500 },
       );
     }
+    // 2026-05-14 — 정상 분기 audit (사장님께 가는 주간 보고 가동 추적)
+    await auditCronRun("weekly_ops_digest_run", {
+      sent: true,
+      subject,
+    });
     return NextResponse.json({ ok: true, sent: true, data, subject });
   } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await auditCronRun("weekly_ops_digest_run", {
+      sent: false,
+      error: message,
+    });
     return NextResponse.json(
-      {
-        ok: false,
-        sent: false,
-        data,
-        error: e instanceof Error ? e.message : String(e),
-      },
+      { ok: false, sent: false, data, error: message },
       { status: 500 },
     );
   }
