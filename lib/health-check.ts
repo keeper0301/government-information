@@ -226,11 +226,14 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     .eq("confidence_tier", "low");
   const pressLowTierBacklog = lowTierCount ?? 0;
 
-  // 마지막 press_l2_classify 흔적 시간차 — cron 노쇼 진단
+  // 마지막 press cron 흔적 시간차 — 노쇼 진단.
+  // 2026-05-14 — press_l2_classify 는 후보 처리한 만큼만 row 쌓여 false positive 위험
+  // (06:30/10:30 cron 이 빈손으로 끝나면 row 안 쌓임). press_ingest_run 은 cron 가동 자체
+  // 추적 (직전 commit 추가). 둘 중 하나만 있어도 cron 정상 가동으로 판정.
   const { data: lastPress } = await sb
     .from("admin_actions")
     .select("created_at")
-    .eq("action", "press_l2_classify")
+    .in("action", ["press_l2_classify", "press_ingest_run"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

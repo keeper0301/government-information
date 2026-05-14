@@ -9,6 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { runAutoIngest } from "@/lib/press-ingest/ingest";
+import { logAdminAction } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
 // BOOSTED cap 50 × ~5s = 250s < maxDuration 300s (안전 margin 50s)
@@ -45,10 +46,42 @@ export async function GET(request: Request) {
   try {
     const result = await runAutoIngest();
     console.log("[cron/press-ingest] 결과:", result);
+    // 2026-05-14 — cron 가동 흔적 audit (빈손이어도 1건 보장).
+    // press_l2_classify 는 후보 처리할 때만 row 쌓여 false positive (가동했지만 row 0)
+    // 위험 있었음 → press_ingest_run 으로 cron 가동 자체 추적.
+    // 데이터 발견: hour list cron (30 1,6,10) 매일 3회 예정인데 admin_actions 1회/일만
+    // = 06:30/10:30 cron 이 빈손으로 끝나서 추적 불가능했던 사고.
+    try {
+      await logAdminAction({
+        actorId: null,
+        action: "press_ingest_run",
+        details: {
+          candidates: result.candidates,
+          classified: result.classified,
+          queued_pending: result.queued_pending,
+          auto_confirmed: result.auto_confirmed,
+          skipped_existing: result.skipped_existing,
+          errors_count: result.errors.length,
+        },
+      });
+    } catch (auditErr) {
+      console.error("[cron/press-ingest] audit 실패:", auditErr);
+      // audit 실패해도 응답 유지 (운영 안전성)
+    }
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     const msg = (e as Error).message;
     console.error("[cron/press-ingest] 실패:", msg);
+    // 실패해도 진입 흔적 audit (cron 가동 자체 추적)
+    try {
+      await logAdminAction({
+        actorId: null,
+        action: "press_ingest_run",
+        details: { error: msg },
+      });
+    } catch {
+      // audit 실패는 무시
+    }
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
