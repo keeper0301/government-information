@@ -112,8 +112,14 @@ const CRON_FAIL_ALERT_THRESHOLD = Number(
 const ACTIVE_7D_FLOOR = Number(process.env.LOW_ACTIVITY_FLOOR ?? "5");
 // Phase 1 자동 진단 임계치 — env 로 1분 toggle 가능 (위험 0).
 // 정상 운영 baseline 보다 약간 여유 — false positive 톤 다운.
+//
+// 2026-05-14 — 1000 → 5000 (데이터 기반 fix).
+// 진단: 5/9 cron 가동 시작 (cap 200 × 6 cron = 1200/일) 이후 14k backlog 해소 중.
+// 신규 inflow ~270/일, 처리 ~1180/일 = net 감소 ~900/일. 12일 후 0 도달 추세.
+// 임계 1000 으로는 12일 매일 false positive alert. 5000 = 정상 적체 흡수 12일 안 발화 +
+// 그 후 cron 노쇼·OPENAI 다운 등 진짜 사고 시 (5000 도달까지 ~18일 누적) 알림.
 const NEWS_BACKLOG_FLOOR = Number(
-  process.env.NEWS_BACKLOG_ALERT_FLOOR ?? "1000",
+  process.env.NEWS_BACKLOG_ALERT_FLOOR ?? "5000",
 );
 const PRESS_PENDING_FLOOR = Number(
   process.env.PRESS_PENDING_ALERT_FLOOR ?? "10",

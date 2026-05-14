@@ -224,7 +224,7 @@ describe("checkThresholds — multi-alert 시나리오", () => {
       ...BASE_SIGNALS,
       signups24h: 0,
       active7dAny: 1,
-      newsBacklogTotal: 2000,
+      newsBacklogTotal: 6000, // 5000 floor 초과 (2026-05-14 fix)
     });
     expect(alerts.find((a) => a.key === "low_activity")).toBeDefined();
     expect(alerts.find((a) => a.key === "news_backlog")).toBeDefined();
@@ -239,15 +239,15 @@ describe("checkThresholds — Phase 1 자동 진단", () => {
     active7dAny: 10,
   };
 
-  it("news 미분류 backlog 1000+ → news_backlog alert + recommendation", () => {
-    const alerts = checkThresholds({ ...ACTIVE, newsBacklogTotal: 1000 });
+  it("news 미분류 backlog 5000+ → news_backlog alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, newsBacklogTotal: 5000 });
     const a = alerts.find((x) => x.key === "news_backlog");
     expect(a).toBeDefined();
     expect(a?.recommendation).toContain("news_classify_run");
   });
 
-  it("news backlog 1000 미만이면 alert 안 발송", () => {
-    const alerts = checkThresholds({ ...ACTIVE, newsBacklogTotal: 999 });
+  it("news backlog 5000 미만이면 alert 안 발송 (적체 흡수 중 false positive 차단)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, newsBacklogTotal: 4999 });
     expect(alerts.find((a) => a.key === "news_backlog")).toBeUndefined();
   });
 
