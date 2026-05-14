@@ -411,3 +411,38 @@ describe("checkThresholds — 2026-05-14: collect_no_show", () => {
     expect(alerts.find((a) => a.key === "collect_no_show")).toBeDefined();
   });
 });
+
+describe("checkThresholds — 2026-05-14: delivery_fail (메타 사고)", () => {
+  // 12개 임계치 다 정상이어도 alert 자체가 사장님께 안 가면 무용지물.
+  // alert_deliveries status='failed' 누적 = SMS·이메일 인프라 사고 자동 감지.
+  // 임계 5 (subagent Warning-1 fix — alert-dispatch retry 없음, buffer 1단계 위)
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("deliveryFailures24h 5+ → delivery_fail alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, deliveryFailures24h: 5 });
+    const a = alerts.find((x) => x.key === "delivery_fail");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("알림 발송 실패 5건");
+    // recommendation 에 실제 진단 UI (/admin/alimtalk) 진입점 포함 (subagent Critical-1 fix)
+    expect(a?.recommendation).toContain("/admin/alimtalk");
+    // 외부 콘솔 진단 진입점 (Solapi·Resend) 도 포함
+    expect(a?.recommendation).toContain("Solapi");
+    expect(a?.recommendation).toContain("Resend");
+    // 의도적 공존 안내 (kakao_high_failure 와 동시 발화 가능 — subagent Critical-2 fix)
+    expect(a?.recommendation).toContain("kakao_high_failure");
+  });
+
+  it("deliveryFailures24h 4 → 발화 안 함 (boundary, 기본 임계 5)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, deliveryFailures24h: 4 });
+    expect(alerts.find((a) => a.key === "delivery_fail")).toBeUndefined();
+  });
+
+  it("deliveryFailures24h 0 (정상 운영) → 발화 안 함", () => {
+    const alerts = checkThresholds({ ...ACTIVE, deliveryFailures24h: 0 });
+    expect(alerts.find((a) => a.key === "delivery_fail")).toBeUndefined();
+  });
+});

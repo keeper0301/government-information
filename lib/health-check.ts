@@ -77,7 +77,8 @@ export type ThresholdAlert = {
     | "instagram_token_expiring"
     | "naver_cookies_expiring"
     | "policy_inflow_zero"
-    | "collect_no_show";
+    | "collect_no_show"
+    | "delivery_fail";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -117,6 +118,14 @@ const POLICY_INFLOW_FLOOR = Number(process.env.POLICY_INFLOW_FLOOR ?? "1");
 // workflow disabled 사고. press_no_show 와 동일 패턴.
 const COLLECT_NO_SHOW_HOURS = Number(
   process.env.COLLECT_NO_SHOW_ALERT_HOURS ?? "36",
+);
+// 2026-05-14 추가 — alert_deliveries status='failed' 24h 임계.
+// 메타 사고 (alert 자체가 사장님께 안 가는 사고) 자동 감지.
+// 12개 임계치 다 정상이어도 SMS·이메일 발송이 실패 누적되면 운영 신호 단절.
+// 기본 5 — alert-dispatch 에 retry 메커니즘이 없어 일시 5xx 도 누적되므로
+// CRON_FAIL 의 3 보다 buffer 1 단계 위 (subagent Warning-1 fix). 1주 모니터링 권장.
+const DELIVERY_FAIL_THRESHOLD = Number(
+  process.env.DELIVERY_FAIL_ALERT_THRESHOLD ?? "5",
 );
 
 export async function getHealthSignals(): Promise<HealthSignals> {
@@ -329,6 +338,25 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "cron_fail",
       message: `24h cron 실패 알림 ${s.cronFailures24h}건 (임계치 ${CRON_FAIL_ALERT_THRESHOLD}).`,
       recommendation: "/admin/cron-failures 에서 cron 별 실패 패턴 확인 + 일괄 재시도",
+    });
+  }
+
+  // 2026-05-14 — alert_deliveries status='failed' 24h 누적 (메타 사고 자동 감지).
+  // cron 자체는 성공했는데 정작 SMS·이메일 발송이 실패한 케이스.
+  // 12개 임계치가 다 정상이어도 alert 가 사장님께 안 가면 무용지물 → "alert 에 대한 alert".
+  // Solapi 잔액 0·이메일 도메인 reputation 하락·OPENAI/카카오 API 다운 등 즉시 진단.
+  //
+  // 의도적 공존 (subagent Critical-2): kakao_high_failure (external-console-check cron, KST 09:30,
+  // Solapi /messages/v4/list 24h 통계 ≥10% 실패율) 와 다른 진단 layer.
+  // - kakao_high_failure: Solapi 외부 API 직접 통계 (실시간 외부 사고)
+  // - delivery_fail: alert_deliveries DB 누적 패턴 (내부 발송 결과 적체)
+  // 카카오 사고 시 SMS 2건 가능하지만 동일 사고의 두 view 라 사장님 진단 가속에 도움 (단일화 X).
+  if (s.deliveryFailures24h >= DELIVERY_FAIL_THRESHOLD) {
+    alerts.push({
+      key: "delivery_fail",
+      message: `24h 알림 발송 실패 ${s.deliveryFailures24h}건 (임계 ${DELIVERY_FAIL_THRESHOLD}+, alert_deliveries status=failed).`,
+      recommendation:
+        "/admin/alimtalk 에서 24h 실패 코드·사유 breakdown 확인 + Solapi 콘솔 잔액·Resend 도메인 reputation 점검 (kakao_high_failure 와 동시 발화 가능 — 같은 사고의 두 view)",
     });
   }
 
