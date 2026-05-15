@@ -1,0 +1,289 @@
+// ============================================================
+// 자율 개선 스캔 — 운영 신호를 개선 과제로 변환.
+// ============================================================
+// 목표:
+//  - 기존 audit/admin 테이블을 읽어 "무엇을 개선해야 하는지" 매일 자동 도출
+//  - 위험한 자동 수정은 하지 않고, admin_actions 에 근거와 권장 액션을 남김
+//  - /admin/autonomous 와 weekly/daily 운영 루틴에서 추적 가능한 신호 제공
+// ============================================================
+
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export type ImprovementArea =
+  | "content_quality"
+  | "instagram"
+  | "naver_blog"
+  | "cron_reliability"
+  | "policy_insight"
+  | "customer_support"
+  | "growth";
+
+export type ImprovementSeverity = "high" | "medium" | "low";
+
+export type ImprovementRecommendation = {
+  area: ImprovementArea;
+  severity: ImprovementSeverity;
+  title: string;
+  evidence: string;
+  action: string;
+};
+
+export type ImprovementSnapshot = {
+  blogQualityFlags24h: number;
+  instagramFailures24h: number;
+  instagramSkips24h: number;
+  naverPendingQueue: number;
+  naverSuccess24h: number;
+  cronFailures24h: number;
+  supportOpenOver24h: number;
+  policyInsightPct: number;
+  snsRuns24h: number;
+  blogPublishRuns24h: number;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const since24h = () => new Date(Date.now() - DAY_MS).toISOString();
+
+type CountResult = {
+  count: number | null;
+  error: unknown;
+};
+
+type CountQuery = PromiseLike<CountResult> & {
+  eq(column: string, value: unknown): CountQuery;
+  gte(column: string, value: string): CountQuery;
+  lt(column: string, value: string): CountQuery;
+};
+
+async function countAdminAction(action: string): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const { count, error } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", action)
+      .gte("created_at", since24h());
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function countTableWhere(
+  table: string,
+  build: (query: CountQuery) => PromiseLike<CountResult>,
+): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const query = admin
+      .from(table)
+      .select("id", { count: "exact", head: true }) as unknown as CountQuery;
+    const res = await build(query);
+    if (res.error) return 0;
+    return res.count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function getPolicyInsightPct(): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const [welfareFilled, welfareTotal, loanFilled, loanTotal] = await Promise.all([
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "estimated", head: true })
+        .not("unique_insight", "is", null),
+      admin
+        .from("welfare_programs")
+        .select("id", { count: "estimated", head: true }),
+      admin
+        .from("loan_programs")
+        .select("id", { count: "estimated", head: true })
+        .not("unique_insight", "is", null),
+      admin
+        .from("loan_programs")
+        .select("id", { count: "estimated", head: true }),
+    ]);
+    if (
+      welfareFilled.error ||
+      welfareTotal.error ||
+      loanFilled.error ||
+      loanTotal.error
+    ) {
+      return 0;
+    }
+    const filled = (welfareFilled.count ?? 0) + (loanFilled.count ?? 0);
+    const total = (welfareTotal.count ?? 0) + (loanTotal.count ?? 0);
+    return total > 0 ? Math.round((filled / total) * 100) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot> {
+  const [
+    blogQualityFlags24h,
+    instagramFailures24h,
+    instagramSkips24h,
+    naverPendingQueue,
+    naverSuccess24h,
+    cronFailures24h,
+    supportOpenOver24h,
+    policyInsightPct,
+    snsRuns24h,
+    blogPublishRuns24h,
+  ] = await Promise.all([
+    countAdminAction("blog_quality_flag"),
+    countAdminAction("instagram_publish_fail"),
+    countAdminAction("instagram_publish_skipped"),
+    countTableWhere("naver_blog_queue", (q) => q.eq("status", "pending")),
+    countTableWhere("naver_publish_audit", (q) =>
+      q.eq("result", "success").gte("attempted_at", since24h()),
+    ),
+    countTableWhere("cron_failure_log", (q) => q.gte("last_seen_at", since24h())),
+    countTableWhere("support_tickets", (q) =>
+      q.eq("status", "open").lt("created_at", since24h()),
+    ),
+    getPolicyInsightPct(),
+    countAdminAction("sns_publish_run"),
+    countAdminAction("blog_publish_run"),
+  ]);
+
+  return {
+    blogQualityFlags24h,
+    instagramFailures24h,
+    instagramSkips24h,
+    naverPendingQueue,
+    naverSuccess24h,
+    cronFailures24h,
+    supportOpenOver24h,
+    policyInsightPct,
+    snsRuns24h,
+    blogPublishRuns24h,
+  };
+}
+
+export function buildImprovementRecommendations(
+  s: ImprovementSnapshot,
+): ImprovementRecommendation[] {
+  const recs: ImprovementRecommendation[] = [];
+
+  if (s.blogQualityFlags24h >= 3) {
+    recs.push({
+      area: "content_quality",
+      severity: "high",
+      title: "블로그 품질 경고가 많습니다",
+      evidence: `24시간 품질 경고 ${s.blogQualityFlags24h}건`,
+      action:
+        "발행 프롬프트에 대상·지원금·마감·신청 링크 검증 문장을 강화하고, score 2 이하 글은 자동 외부 발행 전 보류하세요.",
+    });
+  } else if (s.blogQualityFlags24h > 0) {
+    recs.push({
+      area: "content_quality",
+      severity: "medium",
+      title: "일부 글은 검수 큐를 확인해야 합니다",
+      evidence: `24시간 품질 경고 ${s.blogQualityFlags24h}건`,
+      action:
+        "/admin/blog 에서 경고 글의 제목·도입부·CTA를 보강하고 같은 패턴을 다음 발행 프롬프트에 반영하세요.",
+    });
+  }
+
+  if (s.instagramFailures24h >= 3) {
+    recs.push({
+      area: "instagram",
+      severity: "high",
+      title: "인스타그램 발행 실패가 누적됐습니다",
+      evidence: `24시간 실패 ${s.instagramFailures24h}건`,
+      action:
+        "OAuth 토큰, 카드 이미지 URL 3장, Graph API 컨테이너 생성 로그를 확인하고 실패 글은 attempt 3회 전 재시도하세요.",
+    });
+  } else if (s.instagramSkips24h >= 6 && s.snsRuns24h === 0) {
+    recs.push({
+      area: "instagram",
+      severity: "medium",
+      title: "인스타그램 발행이 계속 스킵되고 있습니다",
+      evidence: `24시간 skip ${s.instagramSkips24h}건, SNS 발행 ${s.snsRuns24h}건`,
+      action:
+        "/admin/instagram 에서 OAuth 연결 상태와 시간대·일일 cap 조건을 확인하세요.",
+    });
+  }
+
+  if (s.naverPendingQueue >= 20 && s.naverSuccess24h === 0) {
+    recs.push({
+      area: "naver_blog",
+      severity: "high",
+      title: "네이버 블로그 큐가 쌓였지만 성공 발행이 없습니다",
+      evidence: `대기 ${s.naverPendingQueue}건, 24시간 성공 ${s.naverSuccess24h}건`,
+      action:
+        "본체 PC Chrome Extension dry-run 후 실제 발행을 재개하고, cookies 만료·캡차·2FA 여부를 확인하세요.",
+    });
+  } else if (s.naverPendingQueue >= 10) {
+    recs.push({
+      area: "naver_blog",
+      severity: "medium",
+      title: "네이버 블로그 발행 대기열을 줄여야 합니다",
+      evidence: `대기 ${s.naverPendingQueue}건`,
+      action:
+        "일일 cap 안에서 extension 실행 빈도를 늘리거나 오래된 정책 글부터 우선 발행하세요.",
+    });
+  }
+
+  if (s.cronFailures24h > 0) {
+    recs.push({
+      area: "cron_reliability",
+      severity: "high",
+      title: "최근 cron 실패가 있습니다",
+      evidence: `24시간 cron 실패 ${s.cronFailures24h}건`,
+      action:
+        "/admin/cron-failures 에서 실패 job을 확인하고 failed-cron-retry 결과와 Vercel function 로그를 대조하세요.",
+    });
+  }
+
+  if (s.policyInsightPct > 0 && s.policyInsightPct < 80) {
+    recs.push({
+      area: "policy_insight",
+      severity: "medium",
+      title: "정책 해설 커버리지가 낮습니다",
+      evidence: `unique_insight 채움률 ${s.policyInsightPct}%`,
+      action:
+        "policy-insight-backfill cron 결과를 확인하고 OpenAI 키·DDL 적용 상태를 점검해 thin content 위험을 낮추세요.",
+    });
+  }
+
+  if (s.supportOpenOver24h > 0) {
+    recs.push({
+      area: "customer_support",
+      severity: "medium",
+      title: "24시간 넘은 미답변 문의가 있습니다",
+      evidence: `미답변 ${s.supportOpenOver24h}건`,
+      action:
+        "/admin/support 에서 답변하고, 반복되는 문의는 자동 응답 매핑 또는 RAG 답변으로 승격하세요.",
+    });
+  }
+
+  if (s.blogPublishRuns24h > 0 && s.snsRuns24h === 0) {
+    recs.push({
+      area: "growth",
+      severity: "low",
+      title: "블로그 발행 대비 SNS 확산 흔적이 없습니다",
+      evidence: `블로그 발행 ${s.blogPublishRuns24h}건, SNS 발행 ${s.snsRuns24h}건`,
+      action:
+        "sns-publish-blog cron 설정과 플랫폼 토큰을 확인해 새 글이 네이버·인스타 외 채널에도 재활용되게 하세요.",
+    });
+  }
+
+  if (recs.length === 0) {
+    recs.push({
+      area: "growth",
+      severity: "low",
+      title: "큰 개선 경고는 없습니다",
+      evidence: "24시간 핵심 운영 신호가 임계치 안에 있습니다",
+      action:
+        "다음 개선은 검색 유입이 낮은 카테고리의 long-tail 키워드 글 생성과 정책 해설 커버리지 확장입니다.",
+    });
+  }
+
+  return recs;
+}
