@@ -75,6 +75,8 @@
 
     { "path": "/api/cron/instagram-publish", "schedule": "0 * * * *" },
 
-    { "path": "/api/cron/popularity-snapshot", "schedule": "0 18 * * *" }
+    { "path": "/api/cron/popularity-snapshot", "schedule": "0 18 * * *" },
+
+    { "path": "/api/cron/sns-publish-popular-policy", "schedule": "0 1 * * 1" }
   ]
 }
