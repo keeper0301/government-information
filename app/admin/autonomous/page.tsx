@@ -41,6 +41,10 @@ import {
   getSnsPublishStats,
   type SnsPublishStats,
 } from "@/lib/analytics/sns-publish-stats";
+import {
+  getSnsEnvStatus,
+  type SnsEnvStatus,
+} from "@/lib/analytics/sns-env-status";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -77,6 +81,7 @@ export default async function AdminAutonomousPage() {
     topPrograms,
     popularityTrend,
     snsStats,
+    snsEnvStatus,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -86,6 +91,7 @@ export default async function AdminAutonomousPage() {
     getTopProgramsByEvents(30, 5),
     getPopularityTrend(3),
     getSnsPublishStats(30),
+    getSnsEnvStatus(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -107,7 +113,7 @@ export default async function AdminAutonomousPage() {
 
       <PopularityTrendCard trend={popularityTrend} />
 
-      <SnsPublishCard stats={snsStats} />
+      <SnsPublishCard stats={snsStats} envStatus={snsEnvStatus} />
 
       <PendingActionsPanel actions={pendingActions} />
 
@@ -520,17 +526,28 @@ function PopularityTrendCard({ trend }: { trend: ProgramTrend[] }) {
 // B 2차 — SNS 발행 현황 30일 (Twitter/Facebook/Threads/Instagram).
 // 채널별 ok/fail + 가장 빈번한 fail 사유 1건 표시.
 // 발행 0건 시 "발행 데이터 없음" 안내 (env 미설정 또는 cron 첫 가동 전).
-function SnsPublishCard({ stats }: { stats: SnsPublishStats }) {
+function SnsPublishCard({
+  stats,
+  envStatus,
+}: {
+  stats: SnsPublishStats;
+  envStatus: SnsEnvStatus[];
+}) {
+  const notReadyChannels = envStatus.filter((e) => !e.ready);
+
   if (stats.totalPosts === 0 && stats.channels.length === 0) {
     return (
       <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
         <div className="text-[11px] font-semibold text-grey-600 mb-1">
           SNS 발행 현황
         </div>
-        <p className="text-sm text-grey-700">
+        <p className="text-sm text-grey-700 mb-3">
           최근 {stats.windowDays}일 발행 데이터 없음. SNS env 미설정 또는 cron
           첫 가동 대기 중.
         </p>
+        {notReadyChannels.length > 0 && (
+          <SnsEnvGuide notReady={notReadyChannels} />
+        )}
       </section>
     );
   }
@@ -545,6 +562,11 @@ function SnsPublishCard({ stats }: { stats: SnsPublishStats }) {
           최근 {stats.windowDays}일 · 정책+blog {stats.totalPosts}건 발행 시도
         </h2>
       </header>
+      {notReadyChannels.length > 0 && (
+        <div className="mb-3">
+          <SnsEnvGuide notReady={notReadyChannels} />
+        </div>
+      )}
       <ul className="space-y-2">
         {stats.channels.map((c) => {
           const total = c.ok + c.fail;
@@ -583,6 +605,31 @@ function SnsPublishCard({ stats }: { stats: SnsPublishStats }) {
         })}
       </ul>
     </section>
+  );
+}
+
+// B 3차 — env 미설정 채널 가이드. 사장님 비개발자라 1줄 setup 안내.
+function SnsEnvGuide({ notReady }: { notReady: SnsEnvStatus[] }) {
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+      <div className="text-xs font-semibold text-amber-900 mb-2">
+        ⚠️ 미설정 채널 {notReady.length}건 — Vercel env 추가 시 자동 가동
+      </div>
+      <ul className="space-y-1.5 text-xs text-grey-800">
+        {notReady.map((e) => (
+          <li key={e.channel}>
+            <span className="font-medium capitalize">{e.channel}</span>
+            <span className="text-grey-500"> · 부족: </span>
+            <code className="text-amber-800 bg-amber-100 px-1 rounded text-[10px]">
+              {e.missing.join(", ")}
+            </code>
+            <div className="text-[11px] text-grey-600 mt-0.5 pl-2">
+              → {e.setupGuide}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
