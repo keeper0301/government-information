@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
       readingTime: result.reading,
       sourceProgramId: result.sourceProgramId,
       sourceProgramType: result.sourceProgramType,
+      qualityReview: result.qualityReview,
+      externalPublishHeld: result.externalPublishHeld,
       url: result.dryRun ? null : `/blog/${result.slug}`,
       // dryRun 일 때만 본문·FAQ·meta 도 응답에 포함 (검토용)
       ...(result.dryRun && {
@@ -128,6 +130,8 @@ export async function GET(request: NextRequest) {
         slug: s.value.slug,
         title: s.value.generated.title,
         url: `/blog/${s.value.slug}`,
+        qualityReview: s.value.qualityReview,
+        externalPublishHeld: s.value.externalPublishHeld,
       };
     }
     return {

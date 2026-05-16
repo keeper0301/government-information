@@ -22,7 +22,7 @@ import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
 import { getRecentBlogTrendHints } from "@/lib/blog/trend-learning";
-import { evaluateBlogQuality } from "@/lib/blog/quality-check";
+import { evaluateBlogQuality, type BlogQualityResult } from "@/lib/blog/quality-check";
 import { logAdminAction } from "@/lib/admin-actions";
 import {
   WELFARE_EXCLUDED_FILTER,
@@ -505,6 +505,8 @@ async function publishWithCandidate(
       reading,
       sourceProgramId: picked.programId,
       sourceProgramType: picked.programType,
+      qualityReview: null,
+      externalPublishHeld: false,
     };
   }
 
@@ -540,11 +542,13 @@ async function publishWithCandidate(
   }
 
   let qualityApproved = true;
+  let qualityReview: BlogQualityResult | null = null;
   if (inserted?.id) {
     const quality = await evaluateBlogQuality({
       title: generated.title,
       content: generated.content,
     });
+    qualityReview = quality;
     qualityApproved = !quality.needsReview;
 
     const { error: qualityUpdateErr } = await admin
@@ -617,5 +621,7 @@ async function publishWithCandidate(
     reading,
     sourceProgramId: picked.programId,
     sourceProgramType: picked.programType,
+    qualityReview,
+    externalPublishHeld: Boolean(inserted?.id && !qualityApproved),
   };
 }

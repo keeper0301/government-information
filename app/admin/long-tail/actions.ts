@@ -15,7 +15,14 @@ interface SubmitInput {
 
 export async function submitLongTailKeyword(
   input: SubmitInput,
-): Promise<{ ok: boolean; error?: string; slug?: string; title?: string }> {
+): Promise<{
+  ok: boolean;
+  error?: string;
+  slug?: string;
+  title?: string;
+  externalPublishHeld?: boolean;
+  qualityReviewScore?: number | null;
+}> {
   const keyword = (input.keyword ?? "").trim();
   if (keyword.length < 2 || keyword.length > 80) {
     return { ok: false, error: "키워드는 2~80자 사이여야 합니다." };
@@ -43,6 +50,8 @@ export async function submitLongTailKeyword(
           category: result.generated.category,
           slug: result.slug,
           title: result.generated.title,
+          qualityReviewScore: result.qualityReview?.score ?? null,
+          externalPublishHeld: result.externalPublishHeld,
         },
       });
     } catch {
@@ -53,6 +62,8 @@ export async function submitLongTailKeyword(
       ok: true,
       slug: result.slug,
       title: result.generated.title,
+      externalPublishHeld: result.externalPublishHeld,
+      qualityReviewScore: result.qualityReview?.score ?? null,
     };
   } catch (err) {
     return {
