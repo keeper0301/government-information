@@ -1,0 +1,106 @@
+// ============================================================
+// /api/events/track — 사용자 click event 기록
+// ============================================================
+// Phase A 클릭 분석 (migration 093). 클라이언트 component 가 사용자 액션
+// 발생 시 호출 → user_events INSERT.
+//
+// 인증: 누구나 호출 가능 (user_id NULL 가능 — 익명 추적).
+// 보호: rate limit (IP 당 1초 1건) — 외부 abuse 차단.
+//
+// POST body:
+//   { event_type, program_id?, program_table?, source_page? }
+// ============================================================
+
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 10;
+
+const VALID_EVENT_TYPES = new Set([
+  "program_view",
+  "apply_click",
+  "recommend_click",
+  "home_recommend_click",
+]);
+
+const VALID_PROGRAM_TABLES = new Set([
+  "welfare_programs",
+  "loan_programs",
+  "news_posts",
+]);
+
+// 메모리 IP rate limit — Vercel function 한 instance 안에서만 작동.
+// distributed rate limit 은 Phase E-B 별도 (Redis 등).
+const recentByIp = new Map<string, number>();
+const RATE_LIMIT_MS = 1000;
+
+function pickIp(req: Request): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+export async function POST(req: Request) {
+  const ip = pickIp(req);
+  const now = Date.now();
+  const last = recentByIp.get(ip) ?? 0;
+  if (now - last < RATE_LIMIT_MS) {
+    return NextResponse.json({ error: "rate_limit" }, { status: 429 });
+  }
+  recentByIp.set(ip, now);
+
+  // 메모리 누수 방지 — 한 시간 지난 entry 제거 (간단한 best-effort)
+  if (recentByIp.size > 10000) {
+    const cutoff = now - 60 * 60 * 1000;
+    for (const [k, v] of recentByIp) {
+      if (v < cutoff) recentByIp.delete(k);
+    }
+  }
+
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const eventType = String(body.event_type ?? "");
+  if (!VALID_EVENT_TYPES.has(eventType)) {
+    return NextResponse.json({ error: "invalid_event_type" }, { status: 400 });
+  }
+
+  const programTable = body.program_table
+    ? String(body.program_table)
+    : null;
+  if (programTable && !VALID_PROGRAM_TABLES.has(programTable)) {
+    return NextResponse.json({ error: "invalid_program_table" }, { status: 400 });
+  }
+
+  // user_id — 로그인 시 fetch, 익명이면 null
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // INSERT — admin client (RLS 우회, anon INSERT 차단 보호)
+  const admin = createAdminClient();
+  const { error } = await admin.from("user_events").insert({
+    user_id: user?.id ?? null,
+    event_type: eventType,
+    program_id: typeof body.program_id === "string" ? body.program_id : null,
+    program_table: programTable,
+    source_page:
+      typeof body.source_page === "string"
+        ? body.source_page.slice(0, 200)
+        : null,
+    user_agent: (req.headers.get("user-agent") ?? "").slice(0, 200),
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
