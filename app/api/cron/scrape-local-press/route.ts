@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scrapeSuncheonAndInsert } from "@/lib/scraping/local-press/suncheon";
+import { scrapeGwangjuAndInsert } from "@/lib/scraping/local-press/gwangju";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -32,9 +33,11 @@ async function authorize(request: Request) {
   return null;
 }
 
-// 시·군 collector 목록 — Phase B 확장 시 여기에 추가
+// 시·군 collector 목록 — Phase B 확장 시 여기에 추가.
+// 각 collector 는 admin client + limit 받아 ScrapeResult 반환.
 const COLLECTORS = [
   { city: "순천시", fn: scrapeSuncheonAndInsert },
+  { city: "광주광역시", fn: scrapeGwangjuAndInsert },
 ];
 
 async function runScrape() {
