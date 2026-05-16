@@ -208,6 +208,8 @@ export function RecommendForm({ initial, initialPrograms, businessProfile }: Pro
                   key={program.id}
                   program={program}
                   businessProfile={businessProfile}
+                  trackingEventType="recommend_click"
+                  trackingSourcePage="/recommend"
                 />
               ))}
             </div>

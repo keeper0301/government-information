@@ -1,3 +1,5 @@
+"use client";
+
 import {
   HouseIcon,
   BriefcaseIcon,
@@ -15,6 +17,7 @@ import {
   evaluateBusinessMatch,
   type BusinessProfile,
 } from "@/lib/eligibility/business-match";
+import { trackEvent } from "@/lib/analytics/track-client";
 
 const iconMap = {
   house: HouseIcon,
@@ -60,11 +63,15 @@ function DdayLabel({ dday }: { dday: number | null }) {
 export function ProgramRow({
   program,
   businessProfile,
+  trackingEventType,
+  trackingSourcePage,
 }: {
   program: DisplayProgram;
   // 자영업자 자격 진단 — 입력한 사용자만 prop 전달. 미입력 사용자는 undefined.
-  // server component 라 props drilling 채택 (React Context 미사용).
   businessProfile?: BusinessProfile | null;
+  // Phase A click 분석 — recommend 결과 등에서 사용. 없으면 추적 X.
+  trackingEventType?: "recommend_click" | "home_recommend_click";
+  trackingSourcePage?: string;
 }) {
   const Icon = iconMap[program.icon];
   // 마감 7일 이내면 좌측 액센트를 항상 빨강으로 — 긴박성 시각 신호.
@@ -81,9 +88,22 @@ export function ProgramRow({
       )
     : null;
 
+  // Phase A — trackingEventType 전달된 경우 click 시 자동 event 기록
+  function onClick() {
+    if (!trackingEventType) return;
+    trackEvent({
+      event_type: trackingEventType,
+      program_id: program.id,
+      program_table:
+        program.type === "welfare" ? "welfare_programs" : "loan_programs",
+      source_page: trackingSourcePage,
+    });
+  }
+
   return (
     <a
       href={`/${program.type}/${program.id}`}
+      onClick={trackingEventType ? onClick : undefined}
       className="group relative block py-6 -mx-4 px-4 rounded-2xl border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-all duration-150 hover:bg-grey-50 hover:translate-x-[1px]"
     >
       {/* 좌측 액센트 막대 — 평소 투명, hover 시 blue-500 등장.
