@@ -11,12 +11,14 @@ export interface BlogQualityResult {
   score: number; // 1~5 (1=잘못, 5=우수)
   needsReview: boolean; // score <= 2
   reason: string;
+  improvements: string[];
 }
 
 const NEUTRAL: BlogQualityResult = {
   score: 3,
   needsReview: false,
   reason: "skipped",
+  improvements: [],
 };
 
 export function getSeasonalMarketingFocus(now = new Date()): string {
@@ -67,7 +69,7 @@ export function buildBlogQualityPrompt(
 - 본문 첫 화면에서 핵심 조건을 빠르게 이해할 수 있는가
 
 JSON 만 반환:
-{ "score": 1~5 정수, "reason": "한 줄 근거 (한국어)" }
+{ "score": 1~5 정수, "reason": "한 줄 근거 (한국어)", "improvements": ["수정 포인트 1", "수정 포인트 2"] }
 
 제목: ${post.title}
 
@@ -81,7 +83,7 @@ export async function evaluateBlogQuality(post: {
 }): Promise<BlogQualityResult> {
   const prompt = buildBlogQualityPrompt(post);
 
-  let parsed: { score?: number; reason?: string };
+  let parsed: { score?: number; reason?: string; improvements?: unknown };
   try {
     const text = await callLLM({ prompt, maxTokens: 220, jsonMode: true });
     parsed = parseJSONResponse<{ score?: number; reason?: string }>(text);
@@ -98,5 +100,16 @@ export async function evaluateBlogQuality(post: {
     score,
     needsReview: score <= 2,
     reason: (parsed.reason || "").slice(0, 200),
+    improvements: normalizeImprovements(parsed.improvements),
   };
+}
+
+function normalizeImprovements(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((item) => item.slice(0, 120));
 }

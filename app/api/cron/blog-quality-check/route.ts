@@ -87,6 +87,7 @@ async function run() {
             title: p.title.slice(0, 80),
             score: result.score,
             reason: result.reason,
+            improvements: result.improvements,
           },
         });
       } catch (auditErr) {
