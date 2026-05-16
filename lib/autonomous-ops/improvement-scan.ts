@@ -448,6 +448,26 @@ function toRecommendation(value: unknown): ImprovementRecommendation | null {
   };
 }
 
+// admin_actions row → ImprovementScanRun 파싱 (getLatestImprovementScan +
+// getPreviousImprovementScan 공유). null 반환 케이스: details 가 object 아님.
+export function parseImprovementScanRow(
+  row: { details: unknown; created_at: string | null },
+): ImprovementScanRun | null {
+  if (!isRecord(row.details)) return null;
+  const rawRecommendations = row.details.recommendations;
+  const recommendations = Array.isArray(rawRecommendations)
+    ? rawRecommendations
+        .map(toRecommendation)
+        .filter((r): r is ImprovementRecommendation => r !== null)
+    : [];
+  return {
+    createdAt: String(row.created_at ?? ""),
+    highestSeverity: toSeverity(row.details.highestSeverity),
+    snapshot: toSnapshot(row.details.snapshot),
+    recommendations,
+  };
+}
+
 export async function getLatestImprovementScan(): Promise<ImprovementScanRun | null> {
   try {
     const admin = createAdminClient();
@@ -458,19 +478,27 @@ export async function getLatestImprovementScan(): Promise<ImprovementScanRun | n
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error || !data || !isRecord(data.details)) return null;
-    const rawRecommendations = data.details.recommendations;
-    const recommendations = Array.isArray(rawRecommendations)
-      ? rawRecommendations
-          .map(toRecommendation)
-          .filter((r): r is ImprovementRecommendation => r !== null)
-      : [];
-    return {
-      createdAt: String(data.created_at ?? ""),
-      highestSeverity: toSeverity(data.details.highestSeverity),
-      snapshot: toSnapshot(data.details.snapshot),
-      recommendations,
-    };
+    if (error || !data) return null;
+    return parseImprovementScanRow(data);
+  } catch {
+    return null;
+  }
+}
+
+// 두 번째 최근 scan — getLatestImprovementScan 의 hub UI 가 "어제 vs 오늘"
+// 추세 비교에 사용. cron 이 매일 KST 10:20 실행이라 두 번째 row ≈ 어제.
+// 데이터 부족 (가동 1일차) 시 null 반환.
+export async function getPreviousImprovementScan(): Promise<ImprovementScanRun | null> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("admin_actions")
+      .select("details, created_at")
+      .eq("action", "autonomous_improvement_scan_run")
+      .order("created_at", { ascending: false })
+      .range(1, 1); // 0-indexed: row 1 = 두 번째 최근
+    if (error || !data || data.length === 0) return null;
+    return parseImprovementScanRow(data[0]);
   } catch {
     return null;
   }

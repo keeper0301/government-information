@@ -18,10 +18,18 @@ import {
 } from "@/lib/autonomous-ops/status";
 import {
   getLatestImprovementScan,
+  getPreviousImprovementScan,
   type ImprovementRecommendation,
   type ImprovementScanRun,
 } from "@/lib/autonomous-ops/improvement-scan";
 import { parseActionSegments } from "@/lib/autonomous-ops/improvement-actions";
+
+// severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
+const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
 
 export const metadata: Metadata = {
   title: "자율 운영 마스터 | 어드민",
@@ -42,9 +50,10 @@ async function requireAdmin() {
 
 export default async function AdminAutonomousPage() {
   await requireAdmin();
-  const [phases, improvementScan] = await Promise.all([
+  const [phases, improvementScan, previousScan] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
+    getPreviousImprovementScan(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -58,7 +67,7 @@ export default async function AdminAutonomousPage() {
         description={`5 Phase 중 ${activeCount}개 가동 · 외부 액션 ${pendingActions.length}건 대기. 매일 1번 점검 권장.`}
       />
 
-      <ImprovementPanel scan={improvementScan} />
+      <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
 
       <PendingActionsPanel actions={pendingActions} />
 
@@ -77,7 +86,13 @@ export default async function AdminAutonomousPage() {
   );
 }
 
-function ImprovementPanel({ scan }: { scan: ImprovementScanRun | null }) {
+function ImprovementPanel({
+  scan,
+  previousScan,
+}: {
+  scan: ImprovementScanRun | null;
+  previousScan: ImprovementScanRun | null;
+}) {
   if (!scan) {
     return (
       <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
@@ -104,6 +119,18 @@ function ImprovementPanel({ scan }: { scan: ImprovementScanRun | null }) {
         ? "주의"
         : "정상";
 
+  // 어제 vs 오늘 추세 — 사장님이 사고 추가/개선 한 눈에 인식.
+  // previousScan null = 가동 1일차 (데이터 부족).
+  const trend = previousScan
+    ? {
+        prevCount: previousScan.recommendations.length,
+        diff: scan.recommendations.length - previousScan.recommendations.length,
+        severityChange:
+          previousScan.highestSeverity !== scan.highestSeverity,
+        prevSeverity: previousScan.highestSeverity,
+      }
+    : null;
+
   return (
     <section className={`mb-4 rounded-lg border p-4 ${tone}`}>
       <header className="flex items-center justify-between gap-3 mb-3">
@@ -112,6 +139,37 @@ function ImprovementPanel({ scan }: { scan: ImprovementScanRun | null }) {
             자동 개선 스캔
           </div>
           <h2 className="text-base font-semibold">오늘 반영할 개선 과제</h2>
+          {trend && (
+            <p className="text-[11px] text-grey-700 mt-1">
+              어제 {trend.prevCount}건 → 오늘 {scan.recommendations.length}건{" "}
+              <span
+                className={
+                  trend.diff > 0
+                    ? "text-red-700 font-semibold"
+                    : trend.diff < 0
+                      ? "text-green-700 font-semibold"
+                      : "text-grey-600"
+                }
+              >
+                ({trend.diff > 0 ? "+" : ""}
+                {trend.diff})
+              </span>
+              {trend.severityChange && (
+                <span
+                  className={
+                    // severity rank: high(0) < medium(1) < low(2). rank ↑ = 개선.
+                    SEVERITY_RANK[scan.highestSeverity] >
+                    SEVERITY_RANK[trend.prevSeverity]
+                      ? "text-green-700 font-semibold"
+                      : "text-red-700 font-semibold"
+                  }
+                >
+                  {" · severity "}
+                  {trend.prevSeverity} → {scan.highestSeverity}
+                </span>
+              )}
+            </p>
+          )}
         </div>
         <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-grey-800">
           {label}

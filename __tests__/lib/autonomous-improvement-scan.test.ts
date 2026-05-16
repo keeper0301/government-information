@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildImprovementRecommendations,
+  parseImprovementScanRow,
   type ImprovementSnapshot,
 } from "@/lib/autonomous-ops/improvement-scan";
 
@@ -149,5 +150,92 @@ describe("buildImprovementRecommendations", () => {
     const recs = buildImprovementRecommendations(base);
     expect(recs).toHaveLength(1);
     expect(recs[0].severity).toBe("low");
+  });
+});
+
+// ── parseImprovementScanRow (getLatest + getPrevious 공유 헬퍼) ────
+describe("parseImprovementScanRow", () => {
+  it("정상 row → ImprovementScanRun 반환", () => {
+    const row = {
+      created_at: "2026-05-16T10:20:00Z",
+      details: {
+        highestSeverity: "high",
+        snapshot: {
+          blogQualityFlags24h: 3,
+          instagramFailures24h: 0,
+          instagramSkips24h: 0,
+          naverPendingQueue: 0,
+          naverSuccess24h: 0,
+          cronFailures24h: 0,
+          supportOpenOver24h: 0,
+          policyInsightPct: 100,
+          snsRuns24h: 1,
+          blogPublishRuns24h: 0,
+          qualityImprovementHints: [],
+          externalQualityPending: 0,
+        },
+        recommendations: [
+          {
+            area: "content_quality",
+            severity: "high",
+            title: "블로그 품질 경고가 많습니다",
+            evidence: "24시간 품질 경고 3건",
+            action: "/admin/blog 에서 확인",
+          },
+        ],
+      },
+    };
+    const parsed = parseImprovementScanRow(row);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.createdAt).toBe("2026-05-16T10:20:00Z");
+    expect(parsed?.highestSeverity).toBe("high");
+    expect(parsed?.recommendations).toHaveLength(1);
+  });
+
+  it("details 가 object 아니면 null", () => {
+    expect(
+      parseImprovementScanRow({
+        created_at: "2026-05-16T10:20:00Z",
+        details: null,
+      }),
+    ).toBeNull();
+    expect(
+      parseImprovementScanRow({
+        created_at: "2026-05-16T10:20:00Z",
+        details: "string-not-object",
+      }),
+    ).toBeNull();
+  });
+
+  it("recommendations 가 array 아니면 빈 배열", () => {
+    const parsed = parseImprovementScanRow({
+      created_at: "2026-05-16T10:20:00Z",
+      details: {
+        highestSeverity: "low",
+        snapshot: {},
+        recommendations: "not-array",
+      },
+    });
+    expect(parsed?.recommendations).toEqual([]);
+  });
+
+  it("created_at 이 null 이면 빈 문자열 fallback", () => {
+    const parsed = parseImprovementScanRow({
+      created_at: null,
+      details: { highestSeverity: "low", snapshot: {}, recommendations: [] },
+    });
+    expect(parsed?.createdAt).toBe("");
+  });
+
+  it("highestSeverity 가 잘못된 값이면 'low' fallback", () => {
+    const parsed = parseImprovementScanRow({
+      created_at: "2026-05-16T10:20:00Z",
+      details: {
+        highestSeverity: "critical", // 잘못된 값
+        snapshot: {},
+        recommendations: [],
+      },
+    });
+    expect(parsed?.highestSeverity).toBe("low");
   });
 });
