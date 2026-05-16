@@ -270,6 +270,18 @@ export type PressAutoConfirmStats = {
   /** 광역 매핑 fallback 의존도 (%) — 7일 confirmed 후보의 apply_url 중 PROVINCE_DEFAULT_URLS 일치 비율.
    *  높으면 LLM 추출률이 낮다는 신호 → prompt 재검토 또는 광역 sub-path 정밀화 필요. */
   province_dependency_pct: number;
+  /** LOW tier 사장님 검수 7일 confirmed (사고 가이드: tier 튜닝 결정 input) */
+  low_confirmed_7d: number;
+  /** LOW tier 사장님 검수 7일 rejected */
+  low_rejected_7d: number;
+  /** LOW confirmRate (decided 중 confirmed %) — < 30% LLM 정확 / > 50% LLM 보수적 */
+  low_confirm_rate_7d: number;
+  /** lowConfirmRate 해석 힌트 (4 enum) — UI/SMS 자동 안내 */
+  low_confirm_rate_hint:
+    | "데이터 부족"
+    | "LLM 정확 — 현 상태 유지"
+    | "관찰 중"
+    | "LLM 보수적 — AUTO_CONFIRM_TIER_FLOOR=low 검토";
 };
 
 export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats> {
@@ -277,7 +289,7 @@ export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats>
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [conf24, conf7d, recent7d] = await Promise.all([
+  const [conf24, conf7d, recent7d, lowConfirmed, lowRejected] = await Promise.all([
     admin
       .from("admin_actions")
       .select("id", { count: "exact", head: true })
@@ -296,6 +308,19 @@ export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats>
       .eq("status", "confirmed")
       .is("confirmed_by", null)
       .gte("confirmed_at", since7d),
+    // LOW tier 사장님 검수 7d — tier 튜닝 결정 input
+    admin
+      .from("press_ingest_candidates")
+      .select("id", { count: "exact", head: true })
+      .eq("confidence_tier", "low")
+      .eq("status", "confirmed")
+      .gte("created_at", since7d),
+    admin
+      .from("press_ingest_candidates")
+      .select("id", { count: "exact", head: true })
+      .eq("confidence_tier", "low")
+      .eq("status", "rejected")
+      .gte("created_at", since7d),
   ]);
 
   // 광역 매핑 의존도 — apply_url 이 PROVINCE_DEFAULT_URLS 의 value 와 정확히 일치하는 비율
@@ -312,10 +337,30 @@ export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats>
   const province_dependency_pct =
     total === 0 ? 0 : Math.round((provinceCount / total) * 100);
 
+  // LOW tier 검수 결과 — 메모리 가이드 (project_press_tier_1week_monitoring_2026_05_10):
+  // < 30% LLM 정확 / 30~50% 관찰 / > 50% LLM 보수적 (AUTO_CONFIRM_TIER_FLOOR=low)
+  const low_confirmed_7d = lowConfirmed.count ?? 0;
+  const low_rejected_7d = lowRejected.count ?? 0;
+  const lowDecided7d = low_confirmed_7d + low_rejected_7d;
+  const low_confirm_rate_7d =
+    lowDecided7d > 0 ? Math.round((low_confirmed_7d / lowDecided7d) * 100) : 0;
+  const low_confirm_rate_hint: PressAutoConfirmStats["low_confirm_rate_hint"] =
+    lowDecided7d < 5
+      ? "데이터 부족"
+      : low_confirm_rate_7d > 50
+        ? "LLM 보수적 — AUTO_CONFIRM_TIER_FLOOR=low 검토"
+        : low_confirm_rate_7d < 30
+          ? "LLM 정확 — 현 상태 유지"
+          : "관찰 중";
+
   return {
     auto_confirmed_24h: conf24.count ?? 0,
     auto_confirmed_7d: conf7d.count ?? 0,
     province_dependency_pct,
+    low_confirmed_7d,
+    low_rejected_7d,
+    low_confirm_rate_7d,
+    low_confirm_rate_hint,
   };
 }
 

@@ -277,6 +277,55 @@ export default async function PressIngestPage({
         />
       </section>
 
+      {/* LOW tier 검수 진행 — AUTO_CONFIRM_TIER_FLOOR 튜닝 결정 데이터 (2026-05-16 추가).
+          7일 LOW 검수 confirm 률 보고 LLM 보수성 판단. 5건 미만이면 "데이터 부족" → 더 검수. */}
+      <section className="mb-5 grid grid-cols-3 gap-3">
+        <KpiCard
+          label="7일 LOW 검수"
+          value={`${autoStats.low_confirmed_7d + autoStats.low_rejected_7d}건`}
+          tone={
+            autoStats.low_confirmed_7d + autoStats.low_rejected_7d >= 5
+              ? "ok"
+              : "muted"
+          }
+          hint={`confirmed ${autoStats.low_confirmed_7d} / rejected ${autoStats.low_rejected_7d}`}
+        />
+        <KpiCard
+          label="LOW confirm 률"
+          value={
+            autoStats.low_confirmed_7d + autoStats.low_rejected_7d > 0
+              ? `${autoStats.low_confirm_rate_7d}%`
+              : "—"
+          }
+          tone={
+            autoStats.low_confirm_rate_hint === "LLM 보수적 — AUTO_CONFIRM_TIER_FLOOR=low 검토"
+              ? "warn"
+              : autoStats.low_confirm_rate_hint === "LLM 정확 — 현 상태 유지"
+                ? "ok"
+                : "muted"
+          }
+          hint="자동 confirm 가능 비율"
+        />
+        <KpiCard
+          label="튜닝 결정"
+          value={autoStats.low_confirm_rate_hint.split(" — ")[0]}
+          tone={
+            autoStats.low_confirm_rate_hint.startsWith("LLM 보수적")
+              ? "warn"
+              : autoStats.low_confirm_rate_hint.startsWith("LLM 정확")
+                ? "ok"
+                : "muted"
+          }
+          hint={
+            autoStats.low_confirm_rate_hint.includes("AUTO_CONFIRM_TIER_FLOOR")
+              ? "Vercel env 변경 검토"
+              : autoStats.low_confirm_rate_hint === "데이터 부족"
+                ? "사장님 LOW 5건+ 검수 필요"
+                : "현 상태 OK"
+          }
+        />
+      </section>
+
       {/* 7일 L2 승인 등록 추세 — 일별 막대 7개. 정책 발굴 페이스 한눈에. */}
       <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
         <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">
