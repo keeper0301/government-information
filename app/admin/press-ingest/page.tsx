@@ -555,9 +555,38 @@ export default async function PressIngestPage({
   );
 }
 
+// LLM confidence_tier → 사장님 검수 우선순위 시각 배지 (2026-05-16).
+// LOW 19건 검수 가속 + sample 늘려 AUTO_CONFIRM_TIER_FLOOR 튜닝 결정 가능.
+function TierBadge({ tier }: { tier: "high" | "mid" | "low" | null }) {
+  if (!tier) return null;
+  const cls =
+    tier === "high"
+      ? "bg-green-50 text-green-700"
+      : tier === "mid"
+        ? "bg-yellow-50 text-yellow-700"
+        : "bg-orange-50 text-orange-700";
+  const label = tier === "high" ? "높음" : tier === "mid" ? "중간" : "낮음";
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-bold ${cls}`}>
+      신뢰도 {label}
+    </span>
+  );
+}
+
+// apply_url 의 host 만 추출 (광역 메인 vs 구체 페이지 시각 식별).
+function urlHost(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+}
+
 function L2CandidateCard({ candidate }: { candidate: PressCandidateListRow }) {
   const payload = candidate.classified_payload;
   const isLoan = candidate.program_type === "loan";
+  const host = urlHost(payload.apply_url);
   return (
     <article className="rounded-lg border border-grey-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
@@ -570,6 +599,7 @@ function L2CandidateCard({ candidate }: { candidate: PressCandidateListRow }) {
             >
               {isLoan ? "대출 후보" : "복지 후보"}
             </span>
+            <TierBadge tier={candidate.confidence_tier} />
             {candidate.category && (
               <span className="text-xs text-grey-600 font-semibold">
                 {candidate.category}
@@ -603,6 +633,26 @@ function L2CandidateCard({ candidate }: { candidate: PressCandidateListRow }) {
               <dt className="font-semibold text-grey-700">마감</dt>
               <dd className="text-grey-600">{payload.apply_end || "상시/미상"}</dd>
             </div>
+            {payload.apply_url && (
+              <div className="md:col-span-2">
+                <dt className="font-semibold text-grey-700">신청 URL</dt>
+                <dd className="text-grey-600 break-all">
+                  <a
+                    href={payload.apply_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {host ?? payload.apply_url.slice(0, 80)}
+                  </a>
+                  {host && (
+                    <span className="text-grey-500 ml-1.5">
+                      ({payload.apply_url.length}자)
+                    </span>
+                  )}
+                </dd>
+              </div>
+            )}
           </dl>
           {!payload.apply_url && (
             <p className="mt-3 text-xs font-semibold text-amber-700">

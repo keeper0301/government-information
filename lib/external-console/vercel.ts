@@ -175,4 +175,3 @@ export async function checkVercel(): Promise<ConsoleCheckResult> {
   }
 }
 
-export type { DeploymentRow };

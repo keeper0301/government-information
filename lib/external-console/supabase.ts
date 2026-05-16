@@ -197,4 +197,4 @@ export async function checkSupabase(): Promise<ConsoleCheckResult> {
   }
 }
 
-export type { SupabaseProject, AdvisorLint };
+export type { AdvisorLint };
