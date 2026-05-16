@@ -31,6 +31,11 @@ import {
   formatRollbackAlerts,
 } from "@/lib/monitoring/auto-fix-rollback";
 import {
+  revertAlertToPr,
+  formatRevertResults,
+  isRevertEnabled,
+} from "@/lib/monitoring/auto-fix-revert";
+import {
   collectRevenueTrend,
   formatRevenueTrend,
 } from "@/lib/monitoring/adsense-revenue-trend";
@@ -84,6 +89,12 @@ export async function GET(request: Request) {
     const rollbackAlerts = await analyzeRollback(report);
     const rollbackSummary = formatRollbackAlerts(rollbackAlerts);
 
+    // D-4 step 5 — rollback alert 별 자동 revert PR (env D4_AUTO_FIX_REVERT_ENABLED 일 때만)
+    const revertResults = isRevertEnabled()
+      ? await Promise.all(rollbackAlerts.map((a) => revertAlertToPr(a)))
+      : [];
+    const revertSummary = formatRevertResults(revertResults);
+
     // Phase D 매출 추세 — AdSense 7일 추세 + ↓ alert
     const revenueTrend = await collectRevenueTrend(7);
     const revenueSummary = "\n\n" + formatRevenueTrend(revenueTrend);
@@ -94,6 +105,7 @@ export async function GET(request: Request) {
       autoFixLlmSummary +
       commitSummary +
       rollbackSummary +
+      revertSummary +
       revenueSummary;
 
     // 텔레그램 알림 — 사고 있으면 즉시, 사고 0 도 매주 1회 정상 보고 (사장님 운영 가시화)
@@ -132,6 +144,17 @@ export async function GET(request: Request) {
       d4_step3_prs: commitResults
         .filter((r): r is Extract<typeof r, { prUrl: string }> => "prUrl" in r)
         .map((r) => ({ pr: r.prNumber, branch: r.branch, domain: r.domain })),
+      // step 5 revert 위해 currentRegex / proposedRegex 도 보존
+      d4_step3_prs_detailed: commitResults
+        .filter((r): r is Extract<typeof r, { prUrl: string }> => "prUrl" in r)
+        .map((r) => ({
+          pr: r.prNumber,
+          branch: r.branch,
+          domain: r.domain,
+          filePath: r.filePath,
+          currentRegex: r.currentRegex,
+          proposedRegex: r.proposedRegex,
+        })),
       d4_step3_errors: commitResults
         .filter((r): r is Extract<typeof r, { error: string }> => "error" in r)
         .map((r) => ({ error: r.error })),
@@ -140,6 +163,16 @@ export async function GET(request: Request) {
         domain: a.domain,
         reason: a.reason,
       })),
+      d4_step5_revert_prs: revertResults
+        .filter((r) => r.revertPrNumber)
+        .map((r) => ({
+          original_pr: r.rollbackAlert.prNumber,
+          revert_pr: r.revertPrNumber,
+          domain: r.rollbackAlert.domain,
+        })),
+      d4_step5_revert_errors: revertResults
+        .filter((r) => r.error)
+        .map((r) => ({ pr: r.rollbackAlert.prNumber, error: r.error })),
       adsense_revenue_7d: revenueTrend.total7d,
       adsense_revenue_currency: revenueTrend.currency,
       adsense_revenue_alerts: revenueTrend.alerts.length,

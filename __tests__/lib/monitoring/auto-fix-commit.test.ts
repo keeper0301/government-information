@@ -105,6 +105,9 @@ describe("commitRegexProposal", () => {
       branch: expect.stringContaining("auto-fix/"),
       prUrl: expect.stringContaining("/pull/42"),
       prNumber: 42,
+      // step 5 revert 위해 보존 (step 3 audit + step 5 swap)
+      currentRegex: 'class="content"',
+      proposedRegex: 'class="new_content"',
     });
   });
 
@@ -131,6 +134,8 @@ describe("formatCommitResults", () => {
         branch: "auto-fix/2026-05-16-suncheon",
         prUrl: "https://github.com/keeper0301/government-information/pull/42",
         prNumber: 42,
+        currentRegex: "old",
+        proposedRegex: "new",
       },
     ];
     const txt = formatCommitResults(results);

@@ -22,6 +22,9 @@ export type CommitProposalResult = {
   branch: string;
   prUrl: string;
   prNumber: number;
+  // step 5 revert 위해 보존 — 신규 regex 가 prod 사고 시 currentRegex 로 swap
+  currentRegex: string;
+  proposedRegex: string;
 } | {
   error: string;
 };
@@ -142,6 +145,8 @@ ${proposal.reason}
       branch: branchName,
       prUrl: pr.url,
       prNumber: pr.number,
+      currentRegex: proposal.currentRegex,
+      proposedRegex: proposal.proposedRegex,
     };
   } catch (e) {
     return { error: (e as Error).message };
