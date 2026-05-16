@@ -37,6 +37,10 @@ import {
   getPopularityTrend,
   type ProgramTrend,
 } from "@/lib/analytics/popularity-trend";
+import {
+  getSnsPublishStats,
+  type SnsPublishStats,
+} from "@/lib/analytics/sns-publish-stats";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -72,6 +76,7 @@ export default async function AdminAutonomousPage() {
     eventStats24h,
     topPrograms,
     popularityTrend,
+    snsStats,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -80,6 +85,7 @@ export default async function AdminAutonomousPage() {
     getEventTypeStats24h(),
     getTopProgramsByEvents(30, 5),
     getPopularityTrend(3),
+    getSnsPublishStats(30),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -100,6 +106,8 @@ export default async function AdminAutonomousPage() {
       <ClickStatsCard stats={eventStats24h} top={topPrograms} />
 
       <PopularityTrendCard trend={popularityTrend} />
+
+      <SnsPublishCard stats={snsStats} />
 
       <PendingActionsPanel actions={pendingActions} />
 
@@ -501,6 +509,75 @@ function PopularityTrendCard({ trend }: { trend: ProgramTrend[] }) {
                   points={points}
                 />
               </svg>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+// B 2차 — SNS 발행 현황 30일 (Twitter/Facebook/Threads/Instagram).
+// 채널별 ok/fail + 가장 빈번한 fail 사유 1건 표시.
+// 발행 0건 시 "발행 데이터 없음" 안내 (env 미설정 또는 cron 첫 가동 전).
+function SnsPublishCard({ stats }: { stats: SnsPublishStats }) {
+  if (stats.totalPosts === 0 && stats.channels.length === 0) {
+    return (
+      <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          SNS 발행 현황
+        </div>
+        <p className="text-sm text-grey-700">
+          최근 {stats.windowDays}일 발행 데이터 없음. SNS env 미설정 또는 cron
+          첫 가동 대기 중.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mb-4 rounded-lg border border-sky-200 bg-sky-50/40 p-4">
+      <header className="mb-3">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          SNS 발행 현황
+        </div>
+        <h2 className="text-sm font-semibold text-grey-900">
+          최근 {stats.windowDays}일 · 정책+blog {stats.totalPosts}건 발행 시도
+        </h2>
+      </header>
+      <ul className="space-y-2">
+        {stats.channels.map((c) => {
+          const total = c.ok + c.fail;
+          const successRate = total > 0 ? Math.round((c.ok / total) * 100) : 0;
+          const isHealthy = c.ok > 0 && successRate >= 80;
+          return (
+            <li
+              key={c.channel}
+              className="flex items-center justify-between gap-3 text-sm"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${isHealthy ? "bg-emerald-500" : "bg-amber-500"}`}
+                  aria-hidden
+                />
+                <span className="font-medium text-grey-900 capitalize">
+                  {c.channel}
+                </span>
+              </div>
+              <div className="text-xs text-grey-700">
+                <span className="text-emerald-700">{c.ok}</span>
+                <span className="text-grey-400 mx-1">/</span>
+                <span className="text-grey-500">{total}</span>
+                <span className="text-grey-500 ml-1">({successRate}%)</span>
+                {c.topFailReason && c.fail > 0 && (
+                  <span
+                    className="text-amber-700 ml-2"
+                    title={`가장 빈번한 fail 사유 ${c.fail}건`}
+                  >
+                    · {c.topFailReason}
+                  </span>
+                )}
+              </div>
             </li>
           );
         })}

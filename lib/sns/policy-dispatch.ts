@@ -29,6 +29,9 @@ export interface SnsDispatchResult {
 
 const SITE_BASE = "https://www.keepioo.com";
 
+// B 2차: 캡션 prefix 단일 source — 마케팅 톤 변경 시 한 군데만 수정 (review L4)
+const POPULARITY_CAPTION_PREFIX = "🔥 이번 주 인기 정책";
+
 // 캡션 빌더 — 정책 URL + 마감일 + 지역 정보.
 // 사용자 즉시 매력적인 정보 (가장 끌리는 부분) 우선 노출.
 function buildCaption(post: PolicyShare): {
@@ -43,18 +46,18 @@ function buildCaption(post: PolicyShare): {
   const endPart = post.apply_end ? ` (마감 ${post.apply_end})` : "";
 
   // Twitter — 280자
-  const tweet = `🔥 이번 주 인기 정책\n\n${regionPart}${post.title}${endPart}\n\n${url}`
+  const tweet = `${POPULARITY_CAPTION_PREFIX}\n\n${regionPart}${post.title}${endPart}\n\n${url}`
     .slice(0, 280);
 
   // Facebook — 500자 (link 별도)
   const facebook =
-    `🔥 이번 주 인기 정책\n\n${regionPart}${post.title}${endPart}\n\n자세히 보기 ↓`.slice(
+    `${POPULARITY_CAPTION_PREFIX}\n\n${regionPart}${post.title}${endPart}\n\n자세히 보기 ↓`.slice(
       0,
       500,
     );
 
   // Threads — 500자
-  const threads = `🔥 이번 주 인기 정책\n\n${regionPart}${post.title}${endPart}\n\n${url}`
+  const threads = `${POPULARITY_CAPTION_PREFIX}\n\n${regionPart}${post.title}${endPart}\n\n${url}`
     .slice(0, 500);
 
   return { tweet, facebook, threads, url };
