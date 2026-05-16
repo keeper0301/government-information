@@ -54,6 +54,14 @@ export type ImprovementScanRun = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const since24h = () => new Date(Date.now() - DAY_MS).toISOString();
 
+// buildImprovementRecommendations 의 stable sort 기준.
+// 사장님 hub 의 ImprovementPanel 이 첫 4건만 표시 → high 우선 보장.
+const SEVERITY_RANK: Record<ImprovementSeverity, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
 type CountResult = {
   count: number | null;
   error: unknown;
@@ -353,6 +361,14 @@ export function buildImprovementRecommendations(
         "다음 개선은 검색 유입이 낮은 카테고리의 long-tail 키워드 글 생성과 정책 해설 커버리지 확장입니다.",
     });
   }
+
+  // severity 정렬 — 사장님 hub 의 ImprovementPanel 이 첫 4건만 표시하므로
+  // high 가 항상 앞에 와야 함. 같은 severity 안에서는 원래 순서 유지
+  // (Array.sort 가 ES2019+ stable).
+  recs.sort(
+    (a, b) =>
+      SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
+  );
 
   return recs;
 }

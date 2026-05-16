@@ -107,4 +107,47 @@ describe("buildImprovementRecommendations", () => {
       }),
     );
   });
+
+  // ── severity 정렬 검증 ──────────────────────────────────────
+  // ImprovementPanel 이 첫 4건만 표시. high 가 항상 앞에 와야
+  // 사장님이 우선순위 액션을 놓치지 않음.
+
+  it("high·medium·low 가 섞이면 severity 순으로 정렬", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      blogQualityFlags24h: 3, // content_quality high
+      naverPendingQueue: 15, // naver_blog medium
+      blogPublishRuns24h: 2, // growth low
+      snsRuns24h: 0,
+    });
+    // high · medium · low 순서 보장
+    const severities = recs.map((r) => r.severity);
+    const highIdx = severities.indexOf("high");
+    const mediumIdx = severities.indexOf("medium");
+    const lowIdx = severities.indexOf("low");
+    expect(highIdx).toBeGreaterThanOrEqual(0);
+    expect(mediumIdx).toBeGreaterThan(highIdx);
+    expect(lowIdx).toBeGreaterThan(mediumIdx);
+  });
+
+  it("같은 severity 안에서는 원래 코드 순서 유지 (stable sort)", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      naverPendingQueue: 20, // naver_blog high
+      naverSuccess24h: 0,
+      cronFailures24h: 1, // cron_reliability high
+    });
+    // 두 high 모두 존재 + buildImprovementRecommendations 코드 순서가 naver → cron
+    const highs = recs.filter((r) => r.severity === "high");
+    expect(highs.length).toBeGreaterThanOrEqual(2);
+    const naverIdx = highs.findIndex((r) => r.area === "naver_blog");
+    const cronIdx = highs.findIndex((r) => r.area === "cron_reliability");
+    expect(naverIdx).toBeLessThan(cronIdx);
+  });
+
+  it("recommendations 가 1건일 때도 정렬 정상 동작", () => {
+    const recs = buildImprovementRecommendations(base);
+    expect(recs).toHaveLength(1);
+    expect(recs[0].severity).toBe("low");
+  });
 });

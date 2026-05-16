@@ -124,6 +124,13 @@ function ImprovementPanel({ scan }: { scan: ImprovementScanRun | null }) {
         ))}
       </ol>
 
+      {scan.recommendations.length > 4 && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          외 {scan.recommendations.length - 4}건 더 있습니다 (severity 낮은
+          순으로 숨김). 위 4건 처리 후 자동 갱신.
+        </p>
+      )}
+
       <p className="mt-3 text-[11px] text-grey-600">
         최근 실행:{" "}
         {new Date(scan.createdAt).toLocaleString("ko-KR", {
