@@ -26,6 +26,10 @@ import {
   formatCommitResults,
   isCommitEnabled,
 } from "@/lib/monitoring/auto-fix-commit";
+import {
+  analyzeRollback,
+  formatRollbackAlerts,
+} from "@/lib/monitoring/auto-fix-rollback";
 import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -72,7 +76,11 @@ export async function GET(request: Request) {
       : [];
     const commitSummary = formatCommitResults(commitResults);
 
-    const message = baseMessage + autoFixSummary + autoFixLlmSummary + commitSummary;
+    // D-4 step 4 — 직전 주 PR 후 사고 재발 감지 → rollback 권고
+    const rollbackAlerts = await analyzeRollback(report);
+    const rollbackSummary = formatRollbackAlerts(rollbackAlerts);
+
+    const message = baseMessage + autoFixSummary + autoFixLlmSummary + commitSummary + rollbackSummary;
 
     // 텔레그램 알림 — 사고 있으면 즉시, 사고 0 도 매주 1회 정상 보고 (사장님 운영 가시화)
     const telegram = await sendOpsAlertTelegram({
@@ -113,6 +121,11 @@ export async function GET(request: Request) {
       d4_step3_errors: commitResults
         .filter((r): r is Extract<typeof r, { error: string }> => "error" in r)
         .map((r) => ({ error: r.error })),
+      d4_step4_rollback_alerts: rollbackAlerts.map((a) => ({
+        pr: a.prNumber,
+        domain: a.domain,
+        reason: a.reason,
+      })),
       report, // 다음 주 비교용 전체 snapshot
     });
 
