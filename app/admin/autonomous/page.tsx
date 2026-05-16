@@ -19,6 +19,7 @@ import {
   type ImprovementRecommendation,
   type ImprovementScanRun,
 } from "@/lib/autonomous-ops/improvement-scan";
+import { parseActionSegments } from "@/lib/autonomous-ops/improvement-actions";
 
 export const metadata: Metadata = {
   title: "자율 운영 마스터 | 어드민",
@@ -134,6 +135,9 @@ function ImprovementPanel({ scan }: { scan: ImprovementScanRun | null }) {
 function ImprovementItem({ item }: { item: ImprovementRecommendation }) {
   const severity =
     item.severity === "high" ? "text-red-700" : item.severity === "medium" ? "text-amber-700" : "text-green-700";
+  // action 텍스트에서 /admin/* 경로 자동 추출 → 클릭 link 변환.
+  // 경로 없는 텍스트는 그대로 plain text.
+  const segments = parseActionSegments(item.action);
   return (
     <li className="rounded border border-white/70 bg-white px-3 py-2 text-sm">
       <div className={`text-[11px] font-semibold ${severity}`}>
@@ -141,7 +145,21 @@ function ImprovementItem({ item }: { item: ImprovementRecommendation }) {
       </div>
       <div className="font-medium text-grey-900">{item.title}</div>
       <div className="text-xs text-grey-600">{item.evidence}</div>
-      <div className="mt-1 text-xs text-grey-800">{item.action}</div>
+      <div className="mt-1 text-xs text-grey-800">
+        {segments.map((seg, i) =>
+          seg.type === "link" ? (
+            <a
+              key={i}
+              href={seg.href}
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              {seg.label}
+            </a>
+          ) : (
+            <span key={i}>{seg.value}</span>
+          ),
+        )}
+      </div>
     </li>
   );
 }
