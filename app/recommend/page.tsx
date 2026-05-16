@@ -148,14 +148,35 @@ export default async function RecommendPage({
     relatedBlogs = blogs;
   }
 
+  // ?district= 쿼리로 진입한 경우 (홈/마이페이지의 "내 지역 정책" link)
+  // 헤더 라벨링 명시 — 사장님 시각 "내 지역 정책" 컨텍스트 가속.
+  const districtMode = !!params.district;
+
   return (
     <main className="max-w-content mx-auto px-5 lg:px-10 pt-[80px] pb-20">
-      <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
-        맞춤추천
-      </h1>
-      <p className="text-[15px] text-grey-600 mb-8">
-        나의 조건에 맞는 정책을 찾아드립니다
-      </p>
+      {districtMode ? (
+        <div className="mb-8 rounded-2xl border border-blue-200 bg-blue-50/40 px-5 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600 mb-1">
+            내 지역 정책
+          </p>
+          <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-1">
+            🏛️ {candidateRegion ?? ""} {params.district}
+          </h1>
+          <p className="text-[14px] text-grey-700">
+            거주지 시·군 정확 매칭 정책. 매일 새 보도자료에서 자동 수집되며
+            마감 임박 순으로 표시됩니다.
+          </p>
+        </div>
+      ) : (
+        <>
+          <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
+            맞춤추천
+          </h1>
+          <p className="text-[15px] text-grey-600 mb-8">
+            나의 조건에 맞는 정책을 찾아드립니다
+          </p>
+        </>
+      )}
 
       <RecommendForm
         initial={initial}
