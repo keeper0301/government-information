@@ -23,6 +23,10 @@ import {
   type ImprovementScanRun,
 } from "@/lib/autonomous-ops/improvement-scan";
 import { parseActionSegments } from "@/lib/autonomous-ops/improvement-actions";
+import {
+  collectRevenueDailySeries,
+  type DailyRevenue,
+} from "@/lib/monitoring/adsense-revenue-trend";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -50,10 +54,11 @@ async function requireAdmin() {
 
 export default async function AdminAutonomousPage() {
   await requireAdmin();
-  const [phases, improvementScan, previousScan] = await Promise.all([
+  const [phases, improvementScan, previousScan, revenueSeries] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
     getPreviousImprovementScan(),
+    collectRevenueDailySeries(30),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -68,6 +73,8 @@ export default async function AdminAutonomousPage() {
       />
 
       <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
+
+      <RevenueChartCard series={revenueSeries} />
 
       <PendingActionsPanel actions={pendingActions} />
 
@@ -228,6 +235,72 @@ function ImprovementItem({ item }: { item: ImprovementRecommendation }) {
         )}
       </div>
     </li>
+  );
+}
+
+// AdSense 30일 매출 카드 — 단순 SVG sparkline + 합계·평균.
+// 데이터 0건 시 "매출 데이터 없음" 안내 (env 미설정·cron 미가동 모두 graceful).
+function RevenueChartCard({ series }: { series: DailyRevenue[] }) {
+  if (series.length === 0) {
+    return (
+      <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          AdSense 매출
+        </div>
+        <p className="text-sm text-grey-700">
+          매출 데이터 없음. external-console-check cron 가동 또는 ADSENSE_*
+          env 등록 후 표시됩니다.
+        </p>
+      </section>
+    );
+  }
+
+  const total = series.reduce((s, d) => s + d.earnings, 0);
+  const avg = total / series.length;
+  const max = Math.max(...series.map((d) => d.earnings), 0.01);
+  const currency = series[0]?.currency ?? "USD";
+
+  // SVG sparkline — 200 × 40px
+  const W = 240;
+  const H = 50;
+  const points = series
+    .map((d, i) => {
+      const x = (i / Math.max(1, series.length - 1)) * W;
+      const y = H - (d.earnings / max) * H;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <section className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+      <header className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold text-grey-600 mb-1">
+            AdSense {series.length}일 매출
+          </div>
+          <h2 className="text-base font-semibold">
+            {currency} {total.toFixed(2)}
+          </h2>
+          <p className="text-xs text-grey-700 mt-1">
+            평균 {avg.toFixed(2)}/일 · 최대 {max.toFixed(2)}
+          </p>
+        </div>
+        <svg
+          width={W}
+          height={H}
+          viewBox={`0 0 ${W} ${H}`}
+          className="overflow-visible"
+          aria-label="AdSense 매출 sparkline"
+        >
+          <polyline
+            fill="none"
+            stroke="#059669"
+            strokeWidth="1.5"
+            points={points}
+          />
+        </svg>
+      </header>
+    </section>
   );
 }
 

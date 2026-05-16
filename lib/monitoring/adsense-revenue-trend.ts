@@ -51,6 +51,40 @@ function extractAdsenseRevenue(
   return { earnings, currency };
 }
 
+// 직전 N일 모든 일별 매출 (autonomous hub 30일 차트 등).
+// total7d/vsPrev7d 와 별개 — 단순 일별 데이터 list 반환.
+export async function collectRevenueDailySeries(
+  days = 30,
+): Promise<DailyRevenue[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - days * 24 * 3600_000).toISOString();
+  const { data } = await admin
+    .from("admin_actions")
+    .select("details, created_at")
+    .eq("action", "external_console_check_run")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(days * 3);
+
+  const daily: DailyRevenue[] = [];
+  const seenDates = new Set<string>();
+
+  for (const row of (data ?? []) as AuditRow[]) {
+    const revenue = extractAdsenseRevenue(row);
+    if (!revenue) continue;
+    const date = (row.created_at ?? "").slice(0, 10);
+    if (!date || seenDates.has(date)) continue;
+    seenDates.add(date);
+    daily.push({
+      date,
+      earnings: revenue.earnings,
+      currency: revenue.currency,
+    });
+  }
+  daily.sort((a, b) => a.date.localeCompare(b.date));
+  return daily;
+}
+
 // 직전 N일 audit fetch + 일별 매출 추출.
 export async function collectRevenueTrend(
   days = 7,
