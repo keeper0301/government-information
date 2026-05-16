@@ -208,9 +208,24 @@ function evaluateRegion(
   const regionHit = programRegion ? aliases.some((a) => programRegion.includes(a)) : false;
 
   // ── district 정확 매칭 (programDistrict 컬럼) ──────────────────
+  // 동명 시·군 사고 (중구·동구·서구·남구·북구·고성군 — 광역 다수) 차단 위해
+  // district 정확 매칭이라도 광역 검증 같이.
+  //  - program.region 명시 + 사용자 광역 일치 → 정확 (+10)
+  //  - program.region 명시 + 사용자 광역 불일치 → no_match (차단)
+  //  - program.region NULL → 광역 모호 — district 가 unique 한 시·군이면 안전,
+  //    그렇지 않으면 위험. 단순화: region NULL 이면 정확 매칭 거부 (다음 단계로).
   if (userDistrict && programDistrict && userDistrict === programDistrict) {
-    // 광역도 함께 일치하면 region_district. 광역 정보 없으면 그래도 정확 매칭이라 region_district.
-    return { kind: 'region_district', score: 10 };
+    if (programRegion && regionHit) {
+      return { kind: 'region_district', score: 10 };
+    }
+    if (!programRegion) {
+      // 광역 정보 없음 — district 단독 정확 매칭은 동명 시·군 사고 risk.
+      // 일반 region substring 매칭 단계로 진행하면 어차피 no_match (region NULL).
+      // 안전한 fallback: no_match.
+      return { kind: 'no_match', score: 0 };
+    }
+    // programRegion 있지만 사용자 광역과 불일치 — district 동명이지만 다른 광역
+    return { kind: 'no_match', score: 0 };
   }
 
   // 광역 매칭 실패 (programDistrict 도 다른 시·군이면 다른 광역의 정책일 가능성)

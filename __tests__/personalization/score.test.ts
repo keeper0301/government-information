@@ -1006,8 +1006,10 @@ describe('scoreProgram — district 컬럼 정확 매칭 (migration 090)', () =>
     expect(r.score).toBe(10);
   });
 
-  it('program.district === user.district + region NULL → 정확 매칭 우선 (+10)', () => {
-    // district 컬럼만 있고 region NULL 인 케이스 — 정확 매칭이라 통과
+  it('program.district === user.district + region NULL → no_match (동명 시·군 사고 차단)', () => {
+    // 광역 검증 logic 추가 후: region NULL 인 row 의 district 정확 매칭은
+    // 동명 시·군 (중구·동구 등 다수 광역) 사고 risk 라 안전 fallback (no_match).
+    // 사장님 47건 welfare 는 모두 region = "전라남도" 라 영향 없음.
     const r = scoreProgram(
       {
         ...baseProgram,
@@ -1017,7 +1019,22 @@ describe('scoreProgram — district 컬럼 정확 매칭 (migration 090)', () =>
       },
       { ...emptyUser, region: '전남', district: '순천시' },
     );
-    expect(r.score).toBe(10);
+    expect(r.score).toBe(0);
+  });
+
+  it('program.district === user.district + 다른 광역 region → no_match (동명 시·군 차단)', () => {
+    // 부산 사용자가 "전라남도 + district=중구" row 매칭 시도 → 차단
+    // (전남에 중구 없지만 백필 사고로 district=중구 인 row 가 있을 수 있음)
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도',
+        district: '중구',
+        benefit_tags: [],
+      },
+      { ...emptyUser, region: '부산', district: '중구' },
+    );
+    expect(r.score).toBe(0);
   });
 
   it('program.district 다른 시·군 (같은 광역) → district_mismatch (score 0)', () => {
