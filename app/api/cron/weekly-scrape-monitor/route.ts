@@ -48,12 +48,15 @@ export async function GET(request: Request) {
       message,
     });
 
+    // D-3 학습 — report 전체 audit 보존 (다음 주 비교용)
     await auditCronRun("weekly_scrape_monitor_run", {
       alerts_count: report.alerts.length,
-      scrape_cron_runs: report.scrapeCronRuns,
-      cities_count: report.cities.length,
+      recommendations_count: report.recommendations.length,
+      repeating_alerts: report.trend.repeatingAlerts.length,
       sajang_suncheon_welfare: report.districtMatching.sajangSuncheonWelfare,
+      sajang_delta: report.trend.sajangSuncheonDelta,
       telegram_sent: telegram.ok,
+      report, // 다음 주 비교용 전체 snapshot
     });
 
     return NextResponse.json({

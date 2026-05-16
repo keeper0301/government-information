@@ -42,7 +42,57 @@ export type WeeklyMonitorReport = {
     sajangSuncheonWelfare: number; // 사장님 거주지 매칭 추이
   };
   alerts: string[]; // 사장님께 알릴 사고 list
+  // D-2: 권장 fix — 사고별 안전한 조정값 안내. 사장님 1 클릭 결정 가속.
+  recommendations: Array<{
+    severity: "high" | "medium" | "low";
+    title: string;
+    suggestion: string; // 권장 action (구체)
+    autoApplicable: boolean; // 코드 변경 없이 적용 가능한지
+  }>;
+  // D-3: 직전 주 대비 학습 — 사고 재발 인식
+  trend: {
+    lastWeekAlerts: number; // 직전 cron audit 의 alerts 수
+    repeatingAlerts: string[]; // 2주 연속 같은 사고
+    sajangSuncheonDelta: number | null; // 사장님 거주지 매칭 갯수 변동 (이전 대비)
+  };
 };
+
+// 직전 cron audit row — 학습 비교용
+type PreviousMonitorRun = {
+  alerts: string[];
+  sajangSuncheonWelfare: number;
+} | null;
+
+async function loadPreviousMonitorRun(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<PreviousMonitorRun> {
+  const { data } = await admin
+    .from("admin_actions")
+    .select("details")
+    .eq("action", "weekly_scrape_monitor_run")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data || !data.details || typeof data.details !== "object") return null;
+  const d = data.details as Record<string, unknown>;
+  const report = d.report;
+  if (!report || typeof report !== "object") {
+    // fallback — 옛 format (alerts 직접 저장)
+    const alerts = Array.isArray(d.alerts) ? (d.alerts as string[]) : [];
+    return {
+      alerts,
+      sajangSuncheonWelfare: Number(d.sajang_suncheon_welfare ?? 0),
+    };
+  }
+  const r = report as Record<string, unknown>;
+  return {
+    alerts: Array.isArray(r.alerts) ? (r.alerts as string[]) : [],
+    sajangSuncheonWelfare: Number(
+      (r.districtMatching as { sajangSuncheonWelfare?: number } | undefined)
+        ?.sajangSuncheonWelfare ?? 0,
+    ),
+  };
+}
 
 const SCRAPE_ACTION = "local_press_scrape";
 const SCRAPE_CRON_ACTION = "local_press_scrape_run";
@@ -172,6 +222,67 @@ export async function collectWeeklyMonitor(): Promise<WeeklyMonitorReport> {
     );
   }
 
+  // 6) D-2: 권장 fix recommendations
+  const recommendations: WeeklyMonitorReport["recommendations"] = [];
+  if (scrapeMissingDays >= 2) {
+    recommendations.push({
+      severity: "high",
+      title: "scrape cron 누락",
+      suggestion: "Vercel cron 가동 상태 확인 + 재배포. /admin/cron-failures 에서 재시도 가능",
+      autoApplicable: false,
+    });
+  }
+  for (const city of cities) {
+    if (city.siteBlockedSuspect) {
+      recommendations.push({
+        severity: "high",
+        title: `${city.city} 사이트 차단 의심`,
+        suggestion: "시청 사이트 URL/구조 변경 가능. User-Agent 또는 lib/scraping/local-press/* 점검 권장",
+        autoApplicable: false,
+      });
+    } else if (city.skippedRate > 0.5 && city.cronInserted + city.cronSkipped >= 10) {
+      recommendations.push({
+        severity: "medium",
+        title: `${city.city} parse 실패 비율 ${Math.round(city.skippedRate * 100)}%`,
+        suggestion: "parser regex (parseDetailBody) HTML 패턴 변경 점검. 1건 직접 fetch + diff 필요",
+        autoApplicable: false,
+      });
+    }
+  }
+  if ((pressIngestRuns ?? 0) < 15) {
+    recommendations.push({
+      severity: "high",
+      title: "press_ingest cron 노쇼",
+      suggestion: "/api/cron/press-ingest 가동 확인 + ANTHROPIC_API_KEY / OPENAI_API_KEY env 점검",
+      autoApplicable: false,
+    });
+  }
+  if (recommendations.length === 0) {
+    recommendations.push({
+      severity: "low",
+      title: "운영 안정",
+      suggestion: "다음 단계 — 다른 시·군 collector 추가 또는 Phase D-4 parser 자동 fix 검토",
+      autoApplicable: true,
+    });
+  }
+
+  // 7) D-3: 학습 — 직전 cron audit 비교
+  const previous = await loadPreviousMonitorRun(admin);
+  const repeatingAlerts: string[] = [];
+  if (previous) {
+    for (const alert of alerts) {
+      // alert 핵심 키워드 (도시명 또는 종류) 가 직전과 일치하는지
+      const alertKey = alert.replace(/\d+/g, "N").slice(0, 30);
+      const repeated = previous.alerts.some(
+        (a) => a.replace(/\d+/g, "N").slice(0, 30) === alertKey,
+      );
+      if (repeated) repeatingAlerts.push(alert);
+    }
+  }
+  const sajangDelta = previous
+    ? (sajangSuncheonWelfare ?? 0) - previous.sajangSuncheonWelfare
+    : null;
+
   return {
     rangeStart,
     rangeEnd,
@@ -187,6 +298,12 @@ export async function collectWeeklyMonitor(): Promise<WeeklyMonitorReport> {
       sajangSuncheonWelfare: sajangSuncheonWelfare ?? 0,
     },
     alerts,
+    recommendations,
+    trend: {
+      lastWeekAlerts: previous?.alerts.length ?? 0,
+      repeatingAlerts,
+      sajangSuncheonDelta: sajangDelta,
+    },
   };
 }
 
@@ -229,7 +346,37 @@ export function formatWeeklyReport(report: WeeklyMonitorReport): string {
   lines.push(
     `  loan: ${dm.loanWithDistrict}건 분류 / ${dm.loanNullDistrict}건 NULL`,
   );
-  lines.push(`  사장님 거주지 (순천시 welfare): ${dm.sajangSuncheonWelfare}건`);
+  const deltaStr =
+    report.trend.sajangSuncheonDelta === null
+      ? ""
+      : report.trend.sajangSuncheonDelta > 0
+        ? ` (+${report.trend.sajangSuncheonDelta} ↑)`
+        : report.trend.sajangSuncheonDelta < 0
+          ? ` (${report.trend.sajangSuncheonDelta} ↓)`
+          : " (변동 0)";
+  lines.push(
+    `  사장님 거주지 (순천시 welfare): ${dm.sajangSuncheonWelfare}건${deltaStr}`,
+  );
+  lines.push("");
+
+  // 학습 — 직전 주 대비 패턴 (재발 사고)
+  if (report.trend.repeatingAlerts.length > 0) {
+    lines.push("🔁 2주 연속 같은 사고:");
+    for (const a of report.trend.repeatingAlerts) {
+      lines.push(`  ${a}`);
+    }
+    lines.push("");
+  }
+
+  // 권장 fix
+  if (report.recommendations.length > 0) {
+    lines.push("💡 권장 조치:");
+    for (const r of report.recommendations.slice(0, 4)) {
+      const icon =
+        r.severity === "high" ? "🔴" : r.severity === "medium" ? "🟡" : "🟢";
+      lines.push(`  ${icon} ${r.title}: ${r.suggestion}`);
+    }
+  }
 
   return lines.join("\n");
 }
