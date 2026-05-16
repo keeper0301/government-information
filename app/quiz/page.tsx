@@ -15,7 +15,7 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from '@/lib/listing-sources';
-import { scoreAndFilter } from '@/lib/personalization/filter';
+import { scoreAndFilterWithPopularity } from '@/lib/personalization/filter';
 import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
 import type { UserSignals } from '@/lib/personalization/types';
 import {
@@ -177,16 +177,19 @@ export default async function QuizPage({
     merit: null, // quiz 는 보훈 시그널 안 받음 (NATIONAL_MERIT 게이트 차단 유지)
   };
 
-  const welfareScored = scoreAndFilter(
-    (welfareRes.data ?? []).map(rowToScorable),
-    signals,
-    { minScore: QUIZ_MIN_SCORE, limit: QUIZ_LIMIT },
-  );
-  const loanScored = scoreAndFilter(
-    (loanRes.data ?? []).map(rowToScorable),
-    signals,
-    { minScore: QUIZ_MIN_SCORE, limit: QUIZ_LIMIT },
-  );
+  // A 9차: popularity boost 적용 — quiz 진단 결과에도 click 누적 정책 상단 노출
+  const [welfareScored, loanScored] = await Promise.all([
+    scoreAndFilterWithPopularity(
+      (welfareRes.data ?? []).map(rowToScorable),
+      signals,
+      { minScore: QUIZ_MIN_SCORE, limit: QUIZ_LIMIT },
+    ),
+    scoreAndFilterWithPopularity(
+      (loanRes.data ?? []).map(rowToScorable),
+      signals,
+      { minScore: QUIZ_MIN_SCORE, limit: QUIZ_LIMIT },
+    ),
+  ]);
 
   // welfare/loan 합산 후 점수 내림차순 top QUIZ_LIMIT
   const combined = [...welfareScored, ...loanScored]

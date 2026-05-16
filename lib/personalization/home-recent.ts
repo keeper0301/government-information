@@ -10,7 +10,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isProgramAllowedForUser, type ScorableItem } from "./score";
-import { scoreAndFilter } from "./filter";
+import { scoreAndFilterWithPopularity } from "./filter";
 import { isBlogCohortFit } from "./blog-cohort";
 import { PERSONAL_SECTION_MIN_SCORE } from "./types";
 import { PROVINCES } from "@/lib/regions";
@@ -137,7 +137,8 @@ export async function getPersonalizedRecentBlogs(
   );
 
   const scorablePool = cohortFiltered.map(blogRowToScorable);
-  const scored = scoreAndFilter(scorablePool, profile.signals, {
+  // A 9차: popularity boost (blog slug 이라 hit=0 — 향후 호환용 옵트인)
+  const scored = await scoreAndFilterWithPopularity(scorablePool, profile.signals, {
     minScore: HOME_BLOG_MIN_SCORE,
     limit,
   });
@@ -188,7 +189,8 @@ export async function getPersonalizedRecentNews(
   }
 
   const scorablePool = pool.map(newsRowToScorable);
-  const scored = scoreAndFilter(scorablePool, profile.signals, {
+  // A 9차: popularity boost — news_posts.id UUID 라 user_events 와 매칭
+  const scored = await scoreAndFilterWithPopularity(scorablePool, profile.signals, {
     minScore: HOME_NEWS_MIN_SCORE,
     limit,
   });

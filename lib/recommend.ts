@@ -20,7 +20,7 @@ import {
   type RegionOption,
 } from "@/lib/profile-options";
 import { isProgramAllowedForUser } from "@/lib/personalization/score";
-import { scoreAndFilter } from "@/lib/personalization/filter";
+import { scoreAndFilterWithPopularity } from "@/lib/personalization/filter";
 import {
   blogRowToScorable,
   newsRowToScorable,
@@ -413,7 +413,8 @@ export async function getRelatedNews(opts: {
   })[];
 
   const scorablePool = pool.map(newsRowToScorable);
-  const scored = scoreAndFilter(scorablePool, opts.signals, {
+  // A 9차: popularity boost — /recommend 페이지 관련 뉴스에도 click 누적 가산
+  const scored = await scoreAndFilterWithPopularity(scorablePool, opts.signals, {
     minScore: PERSONAL_SECTION_MIN_SCORE,
     limit,
   });
@@ -479,9 +480,9 @@ export async function getRelatedBlogs(opts: {
     ),
   );
 
-  // ② score 매칭
+  // ② score 매칭 — A 9차: popularity boost (blog slug 이라 hit=0, 호환 옵트인)
   const scorablePool = cohortFiltered.map(blogRowToScorable);
-  const scored = scoreAndFilter(scorablePool, opts.signals, {
+  const scored = await scoreAndFilterWithPopularity(scorablePool, opts.signals, {
     minScore: 3,
     limit,
   });
