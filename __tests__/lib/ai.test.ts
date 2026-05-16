@@ -100,4 +100,26 @@ describe("generateBlogPost", () => {
     expect(params.contents).toContain("공식 신청 링크 확인 문구 추가");
     expect(params.contents).toContain("같은 문제가 다시 나오지 않게");
   });
+
+  it("feeds internal trend hints into the generation prompt", async () => {
+    const { generateBlogPost } = await import("@/lib/ai");
+
+    await generateBlogPost({
+      type: "welfare",
+      title: "청년 월세 지원",
+      description: "청년에게 월세를 지원하는 정책",
+      trendLearningHints: [
+        "최근 반응 카테고리: 청년(8), 주거(4)",
+        "최근 반응 태그: 월세(5), 청년(4)",
+      ],
+    });
+
+    const params = mockState.generateContentParams as {
+      contents?: string;
+    };
+    expect(params.contents).toContain("[최근 사이트 반응 트렌드]");
+    expect(params.contents).toContain("최근 반응 카테고리: 청년(8), 주거(4)");
+    expect(params.contents).toContain("keepioo 내부 조회수·카테고리·태그 기반");
+    expect(params.contents).toContain("자연스럽게 맞는 키워드·표현만 반영");
+  });
 });

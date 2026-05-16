@@ -67,6 +67,8 @@ export type ProgramContext = {
   region?: string | null;
   /** 최근 품질 검수에서 반복 지적된 개선 포인트 */
   qualityLearningHints?: string[];
+  /** 최근 내부 성과 데이터에서 나온 카테고리·태그·제목 트렌드 */
+  trendLearningHints?: string[];
 };
 
 export type GeneratedPost = {
@@ -280,12 +282,23 @@ export async function generateBlogPost(
           .map((hint, idx) => `${idx + 1}. ${hint}`)
           .join("\n")}\n- 위 지적은 최근 자동 품질 검수에서 나온 반복 개선점입니다. 이번 글에서는 같은 문제가 다시 나오지 않게 작성하세요.\n`
       : "";
+  const trendHints = (ctx.trendLearningHints ?? [])
+    .map((hint) => hint.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  const trendBlock =
+    trendHints.length > 0
+      ? `\n[최근 사이트 반응 트렌드]\n${trendHints
+          .map((hint, idx) => `${idx + 1}. ${hint}`)
+          .join("\n")}\n- 위 신호는 keepioo 내부 조회수·카테고리·태그 기반입니다. 억지로 끼워 넣지 말고, 이번 정책과 자연스럽게 맞는 키워드·표현만 반영하세요.\n`
+      : "";
 
   const userPrompt = `다음 정책에 대한 AdSense 승인용 블로그 글을 작성해줘. JSON 형식으로만 출력.
 
 [정책 데이터]
 ${programInfo}
 ${learningBlock}
+${trendBlock}
 
 [현재 마케팅 컨텍스트]
 - 기준 시점: ${currentYear}년 ${currentMonth}월
