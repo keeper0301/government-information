@@ -31,6 +31,7 @@ const ALLOWED_PATHS = new Set<string>([
   "/api/enrich-targeting",
   "/api/enrich-thumbnails",
   "/api/indexnow-submit-recent",
+  "/api/cron/scrape-local-press",
 ]);
 
 // host header injection 방어를 위한 base URL — request.url 의 host 가

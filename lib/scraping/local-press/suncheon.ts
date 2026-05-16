@@ -113,3 +113,66 @@ export async function fetchSuncheonRecent(
 
   return items;
 }
+
+// 사장님 거주지 (전남 순천) 시·군 신규 source 식별자.
+// press_ingest 가 ministry.startsWith("전라남도") 로 광역 매핑 +
+// extractDistrictFromFields 로 district 자동 추출.
+export const SUNCHEON_MINISTRY = "전라남도 순천시";
+export const SUNCHEON_SOURCE_OUTLET = "순천시청";
+
+export type ScrapeResult = {
+  city: string;
+  fetched: number;
+  inserted: number;
+  skipped: number;
+  errors: string[];
+};
+
+// fetchSuncheonRecent + news_posts INSERT 묶음. admin endpoint 와 cron endpoint
+// 양쪽에서 공유. supabase admin client 를 받아 직접 INSERT (auth 책임은 caller).
+export async function scrapeSuncheonAndInsert(
+  admin: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
+  limit = 10,
+): Promise<ScrapeResult> {
+  const items = await fetchSuncheonRecent(limit);
+  const now = new Date().toISOString();
+
+  let inserted = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const item of items) {
+    if (!item.body) {
+      skipped += 1;
+      continue;
+    }
+    const { error } = await admin.from("news_posts").insert({
+      title: item.title.slice(0, 500),
+      summary: item.body.slice(0, 500),
+      body: item.body.slice(0, 20000),
+      source_url: item.sourceUrl,
+      source_outlet: SUNCHEON_SOURCE_OUTLET,
+      ministry: SUNCHEON_MINISTRY,
+      published_at: now,
+      classified_at: null,
+    });
+    if (error) {
+      // UNIQUE 위반 = 이미 수집된 row
+      if (error.code === "23505") {
+        skipped += 1;
+      } else {
+        errors.push(`seq=${item.seq}: ${error.message}`);
+      }
+    } else {
+      inserted += 1;
+    }
+  }
+
+  return {
+    city: "순천시",
+    fetched: items.length,
+    inserted,
+    skipped,
+    errors: errors.slice(0, 3),
+  };
+}
