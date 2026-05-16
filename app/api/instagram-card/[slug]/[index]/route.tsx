@@ -23,6 +23,11 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import {
+  preserveSemanticChunks,
+  tokenizeSemantic,
+  splitSentences,
+} from "@/lib/instagram/card-text";
 
 export const runtime = "nodejs";
 
@@ -230,82 +235,8 @@ function renderCoverCard(title: string, category: string, color: string) {
   );
 }
 
-/**
- * 의미 단위 (semantic chunk) 줄바꿈 방지 — 2026-05-16 사장님 신고:
- * "최대 300만원" 이 "최대 300" / "만원" 으로 줄바꿈되면 한 눈에 인식 X.
- * 숫자/금액 같은 의미 단위는 한 줄에 같이 보여야 가독성 ↑.
- *
- * NBSP ( ) 는 CSS 에서 줄바꿈 안 일어남 (Satori 도 동일).
- *
- * 룰:
- *  1) "20만 원" 같이 단위 사이 공백 → "20만원" 통일
- *  2) 강조 부사 + 숫자 ("최대 300", "월 20") → 묶음
- *  3) 숫자 + 한글 단위 ("24 개월", "5 명") → 묶음
- *
- * "3월 30일" 의 "월 30" 같이 부사 아닌 위치 매칭 방지 위해
- * 부사 룰에 negative lookbehind (?<![가-힣\d]) 사용.
- */
-function preserveSemanticChunks(text: string): string {
-  // "20만 원" / "20 만 원" → "20만원" 통일만. nowrap chunk 는 tokenizeSemantic 에서.
-  return text
-    .replace(/(\d+(?:\.\d+)?)\s*만\s*원/gu, "$1만원")
-    .replace(/(\d+(?:\.\d+)?)\s*억\s*원/gu, "$1억원");
-}
-
-/**
- * 문장을 의미 단위 atomic chunk 로 split — flex item 으로 렌더링하면 각 chunk
- * 가 atomic block 이라 wrap 시 chunk 단위 줄바꿈. 한 chunk 안에서는 break X.
- *
- * Satori 가 NBSP (\u00A0) / Word Joiner (\u2060) 를 무시하는 사고 (2026-05-16
- * 사장님 신고) 근본 해소.
- *
- * 룰:
- *  1) 어절 (공백) 단위 split
- *  2) 강조 부사 ("최대") 다음에 숫자 어절 ("300만원") 오면 합쳐서 한 chunk
- *  3) "최대 300만원" / "월 20만원" / "약 5명" 같이 의미 단위 보존
- */
-function tokenizeSemantic(text: string): string[] {
-  const ADVERBS =
-    /^(최대|최소|총|약|평균|매월|매일|매년|매주|연간|월간|주간|분기별|월|일|주|연)$/u;
-  const NUMERIC_START = /^\d/u;
-  const tokens = text.split(/\s+/u).filter(Boolean);
-  const merged: string[] = [];
-  for (const t of tokens) {
-    const prev = merged[merged.length - 1];
-    if (prev && ADVERBS.test(prev) && NUMERIC_START.test(t)) {
-      merged[merged.length - 1] = `${prev} ${t}`;
-    } else {
-      merged.push(t);
-    }
-  }
-  // orphan 결합 — 마지막 token 이 3 글자 이하 (예: "복지", "방법", "조성") 면
-  // 이전 token 과 합쳐서 한 chunk. 긴 title 의 마지막 단어가 외롭게 한 줄
-  // 차지하는 사고 (2026-05-16 광주 광산구 카드 1) 방지.
-  if (merged.length >= 2) {
-    const last = merged[merged.length - 1];
-    if (last.length <= 3 && !NUMERIC_START.test(last)) {
-      merged[merged.length - 2] = `${merged[merged.length - 2]} ${last}`;
-      merged.pop();
-    }
-  }
-  return merged;
-}
-/**
- * meta_description 을 문장별로 분리 — 카드 2 가독성 fix (2026-05-16).
- * 한국어 종결형 (~다·~요·~까?) + 영어 .!? 모두 cover. max 문장 cap 으로
- * 매우 긴 description 도 카드 안에 안전하게 들어감.
- *
- * Note: split 정규식의 \s+ 는 NBSP 미포함 (실제로 [ \t\n] 만 매칭) — 안전.
- * 단, 명시적으로 [ \t]+ 사용해서 NBSP 안 잘리는 것 보장.
- */
-function splitSentences(text: string, max: number): string[] {
-  const parts = text
-    .split(/(?<=[다요까])\.[ \t]+|(?<=[.!?])[ \t]+/u)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return [text.trim()];
-  return parts.slice(0, max);
-}
+// 카드 텍스트 처리 (preserveSemanticChunks·tokenizeSemantic·splitSentences)
+// 는 lib/instagram/card-text 로 분리 (단위 테스트 가능).
 
 /**
  * 카드 2: 핵심 정보 — meta_description 큰 글씨로 (자격·금액·마감 hook).
