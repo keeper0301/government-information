@@ -68,7 +68,9 @@ export function categoryBadgeTextColor(hex: string): "#FFFFFF" | "#191F28" {
 // = 2.0:1, 문화 #EAB308 + white = 1.86:1 미달이라 darker shade 로 분기.
 // 나머지 6 카테고리는 brand color 그대로 (이미 ≥ 3:1 충족).
 // 2026-05-16 contrast 도메인 마지막 잠재 사고 fix.
-const BRAND_COLOR_ON_WHITE_VARIANT: Record<string, string> = {
+// export — invariant test 가 keys 가 CATEGORY_COLORS 의 hex 와 일치하는지 검증.
+// (오타 또는 옛 hex 잔존 시 fail-fast)
+export const BRAND_COLOR_ON_WHITE_VARIANT: Record<string, string> = {
   "#FE9800": "#B45309", // 노년: amber-500 → amber-700. white bg 위 5.04:1 (AA Normal).
   "#EAB308": "#92400E", // 문화: yellow-500 → amber-800. white bg 위 7.13:1 (AAA).
 };

@@ -17,7 +17,9 @@ import { getCategoryColor } from "@/lib/instagram/card-colors";
 
 // 그라디언트 끝 색 (from 보다 어두운 톤). from 은 카테고리 brand color 라
 // 별도 정의 X — 여기엔 to 만.
-const CATEGORY_GRADIENT_TO: Record<string, string> = {
+// export — invariant test 가 keys 가 CATEGORY_COLORS 와 일치하는지 검증.
+// (새 카테고리 추가 시 to 누락 fail-fast)
+export const CATEGORY_GRADIENT_TO: Record<string, string> = {
   청년: "#1B64DA",        // toss blue darker
   소상공인: "#7B1FA2",    // purple darker
   주거: "#065F46",        // emerald-800 (from emerald-700 #047857)

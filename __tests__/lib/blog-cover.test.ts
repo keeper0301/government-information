@@ -15,6 +15,7 @@ import { describe, it, expect } from "vitest";
 import {
   getCategoryGradient,
   getCategoryGradientCss,
+  CATEGORY_GRADIENT_TO,
 } from "@/lib/blog-cover";
 import { CATEGORY_COLORS } from "@/lib/instagram/card-colors";
 
@@ -102,6 +103,26 @@ describe("DEFAULT_GRADIENT fallback", () => {
     const g = getCategoryGradient("");
     expect(g.label).toBe("정책 블로그");
   });
+});
+
+// ── invariant: CATEGORY_GRADIENT_TO keys ⟷ CATEGORY_COLORS keys ─
+describe("CATEGORY_GRADIENT_TO keys 가 CATEGORY_COLORS keys 와 일치", () => {
+  // 새 카테고리 추가 시 CATEGORY_COLORS 에만 추가하고 CATEGORY_GRADIENT_TO 누락 시
+  // 그라디언트가 DEFAULT_GRADIENT (toss blue) 로 fallback — 시각 사고.
+  // test 가 fail-fast 차단.
+  it("두 표의 keys 가 동일 집합", () => {
+    const colorKeys = Object.keys(CATEGORY_COLORS).sort();
+    const gradientKeys = Object.keys(CATEGORY_GRADIENT_TO).sort();
+    expect(gradientKeys).toEqual(colorKeys);
+  });
+
+  it.each(Object.keys(CATEGORY_COLORS))(
+    "'%s' 카테고리가 CATEGORY_GRADIENT_TO 에도 정의",
+    (cat) => {
+      expect(CATEGORY_GRADIENT_TO[cat]).toBeDefined();
+      expect(CATEGORY_GRADIENT_TO[cat]).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    },
+  );
 });
 
 // ── getCategoryGradientCss ─────────────────────────────────

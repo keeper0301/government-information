@@ -14,6 +14,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CATEGORY_COLORS,
+  BRAND_COLOR_ON_WHITE_VARIANT,
   getCategoryColor,
   isLightBg,
   categoryTextColor,
@@ -289,5 +290,28 @@ describe("white bg 위 categoryColorOnWhite contrast ≥ 3:1 (WCAG AA Large)", (
     // 기존 #EAB308 + white = 1.86:1 → amber-800 #92400E + white ≈ 7.13:1 (AAA).
     const c = contrast("#92400E", "#FFFFFF");
     expect(c).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// ── invariant: BRAND_COLOR_ON_WHITE_VARIANT keys ⟷ CATEGORY_COLORS values ──
+describe("BRAND_COLOR_ON_WHITE_VARIANT keys 가 CATEGORY_COLORS 의 hex 와 일치", () => {
+  // 새 카테고리 추가 시 brand color 가 white bg 위 contrast 미달이면
+  // BRAND_COLOR_ON_WHITE_VARIANT 에 추가해야 하는데, 오타·옛 hex 잔존 시 분기
+  // 안 됨. test 가 fail-fast.
+  it.each(Object.keys(BRAND_COLOR_ON_WHITE_VARIANT))(
+    "variant key '%s' 가 CATEGORY_COLORS 의 어느 카테고리 색과 일치",
+    (variantKey) => {
+      const allBrandHex = Object.values(CATEGORY_COLORS);
+      expect(allBrandHex).toContain(variantKey);
+    },
+  );
+
+  it("variant keys 가 모두 white bg 위 contrast < 3:1 인 색만 (분기 의미)", () => {
+    // 충분히 어두운 brand color (학생·교육 #0F766E 등) 가 variant 에 잘못 들어가면
+    // 같은 색 분기로 의미 없음. 미달 색만 와야 함.
+    for (const key of Object.keys(BRAND_COLOR_ON_WHITE_VARIANT)) {
+      const c = contrast(key, "#FFFFFF");
+      expect(c).toBeLessThan(3.0);
+    }
   });
 });
