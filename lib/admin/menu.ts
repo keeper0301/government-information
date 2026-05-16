@@ -50,6 +50,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
       { href: "/admin/naver-blog/cookies", label: "네이버 세션 cookies", icon: "🍪" },
       { href: "/admin/wordpress", label: "워드프레스 자동 발행", icon: "🌐" },
       { href: "/admin/instagram", label: "인스타 카드뉴스", icon: "📸" },
+      { href: "/admin/instagram/preview-categories", label: "인스타 카테고리 검증", icon: "🎨" },
     ],
   },
   {
