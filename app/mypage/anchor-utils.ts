@@ -1,8 +1,10 @@
 // 마이페이지 탭 식별자 — page.tsx 의 Tabs value 와 1:1 매칭
-export type MypageTab = "profile" | "consents" | "referral" | "account";
+// 2026-05-16: "local" 신규 — Phase C 사장님 거주지 정책 별도 탭
+export type MypageTab = "profile" | "consents" | "referral" | "account" | "local";
 
 export const VALID_TABS: readonly MypageTab[] = [
   "profile",
+  "local",
   "consents",
   "referral",
   "account",
@@ -12,6 +14,7 @@ export const VALID_TABS: readonly MypageTab[] = [
 // 외부 링크 호환을 위해 #consents 같은 legacy 앵커도 받아준다.
 const HASH_TO_TAB: Record<string, MypageTab> = {
   profile: "profile",
+  local: "local",
   consents: "consents",
   referral: "referral",
   account: "account",

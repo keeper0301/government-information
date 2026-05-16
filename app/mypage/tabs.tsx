@@ -14,11 +14,13 @@ import { hashToTab, normalizeTab, type MypageTab } from "./anchor-utils";
 // 2026-04-29 Phase 5 A3: referral 탭 추가 (3 탭 → 4 탭 — 추천 코드 발급/공유/통계)
 export function MypageTabs({
   profileSlot,
+  localSlot,
   consentsSlot,
   referralSlot,
   accountSlot,
 }: {
   profileSlot: React.ReactNode;
+  localSlot: React.ReactNode;
   consentsSlot: React.ReactNode;
   referralSlot: React.ReactNode;
   accountSlot: React.ReactNode;
@@ -61,9 +63,10 @@ export function MypageTabs({
 
   return (
     <Tabs value={current} onValueChange={handleChange} className="w-full">
-      {/* 4 탭 → 모바일 가독성 위해 grid-cols-4. 라벨은 짧게. */}
-      <TabsList className="grid w-full grid-cols-4 mb-8 h-11">
+      {/* 5 탭 → 모바일 가독성 위해 grid-cols-5. 라벨은 짧게. */}
+      <TabsList className="grid w-full grid-cols-5 mb-8 h-11">
         <TabsTrigger value="profile">프로필</TabsTrigger>
+        <TabsTrigger value="local">내 지역</TabsTrigger>
         <TabsTrigger value="consents">동의</TabsTrigger>
         <TabsTrigger value="referral">추천</TabsTrigger>
         <TabsTrigger value="account">계정</TabsTrigger>
@@ -71,6 +74,9 @@ export function MypageTabs({
 
       <TabsContent value="profile" className="focus-visible:outline-none">
         {profileSlot}
+      </TabsContent>
+      <TabsContent value="local" className="focus-visible:outline-none">
+        {localSlot}
       </TabsContent>
       <TabsContent value="consents" className="focus-visible:outline-none">
         {consentsSlot}

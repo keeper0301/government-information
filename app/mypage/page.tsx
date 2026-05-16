@@ -19,6 +19,7 @@ import { ConsentsPanel } from "./consents-panel";
 import { AccountTab } from "./account-tab";
 import { ReferralTab } from "./referral-tab";
 import { MypageTabs } from "./tabs";
+import { HomeLocalRecommend } from "@/components/home-local-recommend";
 
 export const metadata: Metadata = {
   title: "내 정보 — 정책알리미",
@@ -164,6 +165,47 @@ export default async function MyPage() {
               }}
             />
           </div>
+        }
+        localSlot={
+          <section className="space-y-4">
+            {profile?.region && profile?.district ? (
+              <>
+                <p className="text-[14px] text-grey-700 leading-[1.6]">
+                  거주지 ({profile.region} {profile.district}) 매칭 정책을 한
+                  화면에서 확인해요. 새 정책은 매일 자동으로 업데이트돼요.
+                </p>
+                <HomeLocalRecommend
+                  signals={{
+                    ageGroup: null,
+                    region: profile.region,
+                    district: profile.district,
+                    occupation: null,
+                    incomeLevel: null,
+                    householdTypes: [],
+                    benefitTags: [],
+                    hasChildren: null,
+                    merit: null,
+                    businessProfile: null,
+                  }}
+                />
+              </>
+            ) : (
+              <div className="rounded-2xl border border-grey-200 bg-grey-50 px-6 py-8 text-center">
+                <p className="text-[15px] font-semibold text-grey-900 mb-2">
+                  거주지를 입력하면 내 지역 정책이 자동 노출돼요
+                </p>
+                <p className="text-[13px] text-grey-600 mb-4 leading-[1.6]">
+                  프로필 탭에서 지역·시군구를 선택하면 즉시 매칭 정책이 표시됩니다.
+                </p>
+                <a
+                  href="/mypage?tab=profile"
+                  className="inline-flex items-center justify-center min-h-[44px] px-5 text-sm font-semibold text-white bg-blue-500 rounded-lg hover:bg-blue-600 no-underline"
+                >
+                  프로필 입력하기 →
+                </a>
+              </div>
+            )}
+          </section>
         }
         consentsSlot={
           <section id="consents" className="scroll-mt-20">
