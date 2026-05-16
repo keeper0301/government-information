@@ -112,7 +112,8 @@ describe("press ingest confirm payloads", () => {
       interest_rate: "연 2%",
       repayment_period: "5년",
     });
-    expect(payload).not.toHaveProperty("region");
+    // migration 090 후 loan_programs.region 도 신설 — extractor 가 자동 추출
+    expect(payload.region).toBe("전라남도");
     expect(payload.region_tags).toContain("전남");
   });
 });

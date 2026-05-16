@@ -1,0 +1,32 @@
+-- ============================================================
+-- 091 (rollback example, apply 금지)
+-- ============================================================
+-- migration 090 (district 컬럼 신설) 의 reference rollback 절차.
+-- 실제 apply 안 함 — 향후 사고 시 사장님 명시 승인 후 .sql 로 rename + apply.
+--
+-- rollback 시점:
+--   - 사장님 거주지 spec 폐기 결정 시
+--   - district 컬럼이 사고 원인일 때 (현재 사고 없음)
+--   - Phase B 외부 수집 후 더 나은 schema 로 재설계 시
+--
+-- 안전성:
+--   - NULLable 컬럼 + partial index → DROP 안전
+--   - score.ts 의 4번째 인자 optional → 컬럼 없어도 호환
+--   - 데이터 손실 발생 — district='순천시' 47건 등 매칭 정보 사라짐
+-- ============================================================
+
+-- 1. partial index 먼저 DROP (의존성 안전)
+DROP INDEX IF EXISTS welfare_programs_district_idx;
+DROP INDEX IF EXISTS loan_programs_region_idx;
+DROP INDEX IF EXISTS loan_programs_district_idx;
+
+-- 2. 컬럼 DROP
+ALTER TABLE welfare_programs DROP COLUMN IF EXISTS district;
+ALTER TABLE loan_programs DROP COLUMN IF EXISTS region;
+ALTER TABLE loan_programs DROP COLUMN IF EXISTS district;
+
+-- 3. 후속 작업 (apply 후 별도)
+--    - lib/database.types.ts 의 district / region 필드 제거
+--    - lib/personalization/score.ts 의 programDistrict 인자 제거
+--    - app/welfare /loan /quiz /admin/recommendation-trace 의 district 참조 제거
+--    - lib/region/district-extractor.ts 와 __tests__/lib/region/ 제거 (선택)

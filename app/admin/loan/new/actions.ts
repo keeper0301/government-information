@@ -20,6 +20,7 @@ import {
   extractBenefitTags,
   extractHouseholdTags,
 } from "@/lib/tags/taxonomy";
+import { extractDistrictFromFields } from "@/lib/region/district-extractor";
 
 function asStr(v: FormDataEntryValue | null, max = 5000): string | null {
   if (typeof v !== "string") return null;
@@ -71,6 +72,10 @@ export async function createLoanProgram(formData: FormData) {
   const occupation_tags = extractOccupationTags(matchText);
   const benefit_tags = extractBenefitTags(matchText);
   const household_target_tags = extractHouseholdTags(matchText);
+  // 광역·시·군·구 자동 추출 (migration 090) — 사장님 거주지 정확 매칭용
+  const districtMatch = extractDistrictFromFields(title, description, target, eligibility);
+  const region = districtMatch?.provinceName ?? null;
+  const district = districtMatch?.district ?? null;
 
   const source_code = "manual_admin";
   const source_id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -95,6 +100,8 @@ export async function createLoanProgram(formData: FormData) {
       source_url,
       source_code,
       source_id,
+      region,
+      district,
       region_tags,
       age_tags,
       occupation_tags,

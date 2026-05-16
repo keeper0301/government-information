@@ -23,6 +23,7 @@ import {
   extractBenefitTags,
   extractHouseholdTags,
 } from "@/lib/tags/taxonomy";
+import { extractDistrictFromFields } from "@/lib/region/district-extractor";
 
 // 폼 입력 검증 — 빈 문자열 → null 변환, 길이 cap
 function asStr(v: FormDataEntryValue | null, max = 5000): string | null {
@@ -78,6 +79,9 @@ export async function createWelfareProgram(formData: FormData) {
   const occupation_tags = extractOccupationTags(matchText);
   const benefit_tags = extractBenefitTags(matchText);
   const household_target_tags = extractHouseholdTags(matchText);
+  // 시·군·구 자동 추출 (migration 090) — 사장님 거주지 정확 매칭용
+  const districtMatch = extractDistrictFromFields(title, description, target, eligibility, region);
+  const district = districtMatch?.district ?? null;
 
   // 고유 source_id — timestamp + random (collision 방지)
   const source_code = "manual_admin";
@@ -100,6 +104,7 @@ export async function createWelfareProgram(formData: FormData) {
       source,
       source_url,
       region,
+      district,
       source_code,
       source_id,
       region_tags,

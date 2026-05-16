@@ -8,6 +8,11 @@ import {
   extractRegionTags,
 } from "@/lib/tags/taxonomy";
 import type { ClassifyResult } from "./classify";
+import {
+  detectProvince,
+  extractDistrictFromFields,
+} from "@/lib/region/district-extractor";
+import { PROVINCES } from "@/lib/regions";
 // 4 layer apply_url fallback — autoConfirm 단계에서 기존 pending 도 자동 채움.
 import { resolveApplyUrl } from "./url-fallback";
 
@@ -242,6 +247,14 @@ export function buildWelfareInsertPayload(
   requirePending(candidate, "welfare");
   const result = candidate.classified_payload;
   const autoTier = options?.autoConfirmTier ?? null;
+  // 시·군·구 자동 추출 (migration 090, 2026-05-16) — 사장님 거주지 정확 매칭용
+  const districtMatch = extractDistrictFromFields(
+    result.title,
+    result.eligibility,
+    result.benefits,
+    result.target,
+    candidate.news.ministry,
+  );
   return {
     title: result.title,
     category: candidate.category || result.category,
@@ -256,6 +269,7 @@ export function buildWelfareInsertPayload(
     source: ministryToSource(candidate.news.ministry),
     source_url: newsSourceUrl(candidate.news),
     region: candidate.news.ministry,
+    district: districtMatch?.district ?? null,
     source_code: SOURCE_CODE,
     source_id: candidate.news_id,
     auto_confirm_tier: autoTier,
@@ -271,6 +285,24 @@ export function buildLoanInsertPayload(
   requirePending(candidate, "loan");
   const result = candidate.classified_payload;
   const autoTier = options?.autoConfirmTier ?? null;
+  // loan 은 region 도 추출 (migration 090 신설). 시·군 매칭이 없어도 광역만
+  // 별도 detectProvince 로 추출 — extractor 가 시·군 없으면 null 반환하기 때문.
+  const districtMatch = extractDistrictFromFields(
+    result.title,
+    result.eligibility,
+    result.target,
+    candidate.news.ministry,
+  );
+  const provinceCode =
+    districtMatch?.province ??
+    detectProvince(
+      [result.title, result.eligibility, result.target, candidate.news.ministry]
+        .filter((s): s is string => !!s)
+        .join(" "),
+    );
+  const provinceName =
+    districtMatch?.provinceName ??
+    (provinceCode ? PROVINCES.find((p) => p.code === provinceCode)?.name ?? null : null);
   return {
     title: result.title,
     category: candidate.category || result.category,
@@ -286,6 +318,8 @@ export function buildLoanInsertPayload(
     apply_end: result.apply_end,
     source: ministryToSource(candidate.news.ministry),
     source_url: newsSourceUrl(candidate.news),
+    region: provinceName,
+    district: districtMatch?.district ?? null,
     source_code: SOURCE_CODE,
     source_id: candidate.news_id,
     auto_confirm_tier: autoTier,
