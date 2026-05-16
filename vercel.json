@@ -53,6 +53,8 @@
 
     { "path": "/api/cron/scrape-local-press", "schedule": "0 0 * * *" },
 
+    { "path": "/api/cron/weekly-scrape-monitor", "schedule": "30 0 * * 1" },
+
     { "path": "/api/dedupe-detect", "schedule": "0 17 * * *" },
 
     { "path": "/api/cron/external-console-check", "schedule": "30 0 * * *" },
