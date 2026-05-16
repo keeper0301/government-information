@@ -61,3 +61,18 @@ export function categoryTextColor(hex: string): "#FFFFFF" | "#191F28" {
 export function categoryBadgeTextColor(hex: string): "#FFFFFF" | "#191F28" {
   return yiqLuminance(hex) > 150 ? "#191F28" : "#FFFFFF";
 }
+
+// 흰 배경 위에 카테고리 brand color 로 텍스트를 표시할 때 안전한 색.
+// 카드 1 footer brand, 카드 2 핵심정보 pill, 카드 3 keepioo.com 대형 텍스트
+// 와 footer 등이 모두 white bg 위 category color text. 노년 #FE9800 + white
+// = 2.0:1, 문화 #EAB308 + white = 1.86:1 미달이라 darker shade 로 분기.
+// 나머지 6 카테고리는 brand color 그대로 (이미 ≥ 3:1 충족).
+// 2026-05-16 contrast 도메인 마지막 잠재 사고 fix.
+const BRAND_COLOR_ON_WHITE_VARIANT: Record<string, string> = {
+  "#FE9800": "#B45309", // 노년: amber-500 → amber-700. white bg 위 5.04:1 (AA Normal).
+  "#EAB308": "#92400E", // 문화: yellow-500 → amber-800. white bg 위 7.13:1 (AAA).
+};
+
+export function categoryColorOnWhite(hex: string): string {
+  return BRAND_COLOR_ON_WHITE_VARIANT[hex] ?? hex;
+}

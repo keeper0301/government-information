@@ -32,6 +32,7 @@ import {
   getCategoryColor,
   categoryTextColor,
   categoryBadgeTextColor,
+  categoryColorOnWhite,
 } from "@/lib/instagram/card-colors";
 
 export const runtime = "nodejs";
@@ -211,13 +212,15 @@ function renderCoverCard(title: string, category: string, color: string) {
         </div>
       </div>
 
-      {/* 하단 브랜드 — 3 카드 통일 (fontSize 30·weight 700) */}
+      {/* 하단 브랜드 — 3 카드 통일 (fontSize 30·weight 700).
+          white 배경 위 카테고리 brand color text 라 노년·문화 contrast 미달
+          → categoryColorOnWhite 로 darker shade 분기 (2026-05-16 fix). */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           fontSize: 30,
-          color: color,
+          color: categoryColorOnWhite(color),
           fontWeight: 700,
           marginTop: 60,
           letterSpacing: "0",
@@ -273,13 +276,15 @@ function renderInfoCard(
         fontFamily: "Pretendard",
       }}
     >
+      {/* 💡 핵심 정보 pill — white bg + category color text. 노년·문화는
+          contrast 미달이라 darker shade 분기 (2026-05-16 fix). */}
       <div
         style={{
           display: "flex",
           alignSelf: "flex-start",
           padding: "14px 30px",
           background: "#FFFFFF",
-          color: color,
+          color: categoryColorOnWhite(color),
           fontSize: 30,
           fontWeight: 700,
           borderRadius: 999,
@@ -412,13 +417,15 @@ function renderCtaCard(title: string, color: string) {
           ✅ 자세한 자격·금액·신청 방법은
         </div>
 
-        {/* keepioo.com — 영문이라 letterSpacing -0.5px 정도는 typography 느낌 */}
+        {/* keepioo.com — 영문이라 letterSpacing -0.5px 정도는 typography 느낌.
+            fontSize 92 라도 노년·문화는 white bg + brand color = 1.86~2.0:1
+            미달이라 categoryColorOnWhite 분기 (2026-05-16 fix). */}
         <div
           style={{
             display: "flex",
             fontSize: 92,
             fontWeight: 700,
-            color: color,
+            color: categoryColorOnWhite(color),
             lineHeight: 1.2,
             letterSpacing: "-0.5px",
             wordBreak: "keep-all",
@@ -447,12 +454,13 @@ function renderCtaCard(title: string, color: string) {
         </div>
       </div>
 
-      {/* 하단 brand — 3 카드 통일 (fontSize 30·weight 700) */}
+      {/* 하단 brand — 3 카드 통일 (fontSize 30·weight 700).
+          white bg 위 brand color → categoryColorOnWhite 분기 (2026-05-16 fix). */}
       <div
         style={{
           display: "flex",
           fontSize: 30,
-          color: color,
+          color: categoryColorOnWhite(color),
           fontWeight: 700,
           letterSpacing: "0",
         }}

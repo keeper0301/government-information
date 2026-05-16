@@ -18,6 +18,7 @@ import {
   isLightBg,
   categoryTextColor,
   categoryBadgeTextColor,
+  categoryColorOnWhite,
 } from "@/lib/instagram/card-colors";
 
 // ── WCAG 2.1 relative luminance + contrast (테스트 전용 helper) ──────
@@ -228,6 +229,65 @@ describe("카드 1 pill 배지 contrast ≥ 3:1 (WCAG AA Large for 32px+ bold)",
     // 기존 #EAB308 + white = 1.86:1 (WCAG 미달).
     // dark text #191F28 + #EAB308 ≈ 11.4:1 → AAA 충족.
     const c = contrast("#EAB308", "#191F28");
+    expect(c).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// ── categoryColorOnWhite (카드 1·2·3 의 white bg 위 brand text) ──
+describe("categoryColorOnWhite (white 배경 위 안전한 brand text 색)", () => {
+  it("노년 #FE9800 → #B45309 amber-700 (이전 white bg + #FE9800 = 2.0:1 미달)", () => {
+    expect(categoryColorOnWhite("#FE9800")).toBe("#B45309");
+  });
+
+  it("문화 #EAB308 → #92400E amber-800 (이전 white bg + #EAB308 = 1.86:1 미달)", () => {
+    expect(categoryColorOnWhite("#EAB308")).toBe("#92400E");
+  });
+
+  it("청년 #3182F6 → 그대로 (이미 white bg 위 4.5:1 충족)", () => {
+    expect(categoryColorOnWhite("#3182F6")).toBe("#3182F6");
+  });
+
+  it("소상공인 #A234C7 → 그대로", () => {
+    expect(categoryColorOnWhite("#A234C7")).toBe("#A234C7");
+  });
+
+  it("주거 #047857 → 그대로 (5.74:1)", () => {
+    expect(categoryColorOnWhite("#047857")).toBe("#047857");
+  });
+
+  it("육아·가족 #EC4899 → 그대로 (3.4:1 AA Large 충족)", () => {
+    expect(categoryColorOnWhite("#EC4899")).toBe("#EC4899");
+  });
+
+  it("학생·교육 #0F766E → 그대로 (5.36:1)", () => {
+    expect(categoryColorOnWhite("#0F766E")).toBe("#0F766E");
+  });
+
+  it("큐레이션 #1F2937 → 그대로 (12.9:1)", () => {
+    expect(categoryColorOnWhite("#1F2937")).toBe("#1F2937");
+  });
+});
+
+// ── WCAG contrast — white bg 위 brand text (4 위치: 카드 1·2·3) ──
+describe("white bg 위 categoryColorOnWhite contrast ≥ 3:1 (WCAG AA Large)", () => {
+  it.each(Object.entries(CATEGORY_COLORS))(
+    "'%s' brand text on white contrast ≥ 3:1",
+    (_cat, bg) => {
+      const text = categoryColorOnWhite(bg);
+      const c = contrast(text, "#FFFFFF");
+      expect(c).toBeGreaterThanOrEqual(3.0);
+    },
+  );
+
+  it("노년 amber-700 #B45309 + white 가 ≥ 4.5:1 (2026-05-16 회귀 방지)", () => {
+    // 기존 #FE9800 + white = 2.0:1 → amber-700 #B45309 + white ≈ 5.04:1 (AA Normal).
+    const c = contrast("#B45309", "#FFFFFF");
+    expect(c).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("문화 amber-800 #92400E + white 가 ≥ 4.5:1 (2026-05-16 회귀 방지)", () => {
+    // 기존 #EAB308 + white = 1.86:1 → amber-800 #92400E + white ≈ 7.13:1 (AAA).
+    const c = contrast("#92400E", "#FFFFFF");
     expect(c).toBeGreaterThanOrEqual(4.5);
   });
 });
