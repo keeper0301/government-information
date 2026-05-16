@@ -118,6 +118,26 @@ function buildSystemInstruction(persona: BlogPersona): string {
   return `${persona.intro}\n${persona.emphasis}\n\n${SYSTEM_INSTRUCTION_BODY}`;
 }
 
+export function getContentSeasonalFocus(now = new Date()): string {
+  const month = now.getMonth() + 1;
+  if (month <= 2) {
+    return "연초 신규 모집, 예산 확정, 청년·소상공인 지원금 탐색";
+  }
+  if (month <= 4) {
+    return "입학·취업·이사철, 주거비·교육비·청년 취업 지원";
+  }
+  if (month <= 6) {
+    return "상반기 마감 전 신청, 근로장려·육아·운영자금 점검";
+  }
+  if (month <= 8) {
+    return "여름방학·휴가철, 문화·교육·에너지 비용 절감";
+  }
+  if (month <= 10) {
+    return "하반기 채용·창업·주거 안정, 예산 소진 전 신청";
+  }
+  return "연말 마감, 다음 해 제도 변경, 미신청 지원금 최종 점검";
+}
+
 // 시스템 지침 본문 — 모든 페르소나 공통 (글의 목적·구조·분량·AdSense 룰)
 // 2026-04-24 P1 개선: SEO(meta 길이·내부링크·H3)·GEO(정의 문장·질문형 H2·
 // 숫자 강조)·AdSense(E-E-A-T) 축을 모두 충족하도록 강화.
@@ -220,6 +240,10 @@ export async function generateBlogPost(
   ctx: ProgramContext,
 ): Promise<GeneratedPost> {
   const ai = getAI();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const seasonalFocus = getContentSeasonalFocus(now);
 
   // 정책 데이터를 프롬프트에 인라인
   const programInfo = JSON.stringify(
@@ -250,10 +274,18 @@ export async function generateBlogPost(
 [정책 데이터]
 ${programInfo}
 
+[현재 마케팅 컨텍스트]
+- 기준 시점: ${currentYear}년 ${currentMonth}월
+- 시즌/트렌드 힌트: ${seasonalFocus}
+- 이 글은 keepioo 블로그 본문뿐 아니라 네이버 블로그와 인스타그램 카드/캡션으로 자동 재활용됩니다.
+- 따라서 첫 화면에서 대상·금액·마감·신청 액션을 바로 이해할 수 있어야 합니다.
+- 인스타그램 재활용을 위해 저장/검색/프로필 링크 CTA로 이어질 수 있는 짧은 핵심 문장을 포함하세요.
+- 네이버 블로그 재활용을 위해 공식 신청 경로, 변동 가능성, 제출 서류 확인 포인트를 명확히 쓰세요.
+
 [추가 지시 — SEO · GEO · AdSense 최적화]
 
 ## 제목 (title) — SEO + CTR 핵심
-- 올해 연도(${new Date().getFullYear()}년) 자연스럽게 포함
+- 올해 연도(${currentYear}년) 자연스럽게 포함
 - **길이 30~48자** (Google 검색결과 표시 약 50자에서 잘리므로 짧게)
 - 검색 의도 키워드(누가·무엇·얼마) 1개 이상 포함
 - **첫 5~10자에 가장 강력한 hook** — 구체 숫자(금액·연령·소득) 또는 핵심 대상 명시.

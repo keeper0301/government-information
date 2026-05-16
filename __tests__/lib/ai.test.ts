@@ -61,4 +61,24 @@ describe("generateBlogPost", () => {
       },
     });
   });
+
+  it("adds current marketing context for Naver and Instagram reuse", async () => {
+    const { generateBlogPost } = await import("@/lib/ai");
+
+    await generateBlogPost({
+      type: "welfare",
+      title: "청년 월세 지원",
+      description: "청년에게 월세를 지원하는 정책",
+      apply_end: "2026-06-30",
+    });
+
+    const params = mockState.generateContentParams as {
+      contents?: string;
+    };
+    expect(params.contents).toContain("[현재 마케팅 컨텍스트]");
+    expect(params.contents).toContain("네이버 블로그와 인스타그램 카드/캡션");
+    expect(params.contents).toContain("대상·금액·마감·신청 액션");
+    expect(params.contents).toContain("저장/검색/프로필 링크 CTA");
+    expect(params.contents).toContain("제출 서류 확인 포인트");
+  });
 });
