@@ -27,6 +27,12 @@ import {
   collectRevenueDailySeries,
   type DailyRevenue,
 } from "@/lib/monitoring/adsense-revenue-trend";
+import {
+  getEventTypeStats24h,
+  getTopProgramsByEvents,
+  type EventTypeStats,
+  type TopProgram,
+} from "@/lib/analytics/click-aggregation";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -54,11 +60,20 @@ async function requireAdmin() {
 
 export default async function AdminAutonomousPage() {
   await requireAdmin();
-  const [phases, improvementScan, previousScan, revenueSeries] = await Promise.all([
+  const [
+    phases,
+    improvementScan,
+    previousScan,
+    revenueSeries,
+    eventStats24h,
+    topPrograms,
+  ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
     getPreviousImprovementScan(),
     collectRevenueDailySeries(30),
+    getEventTypeStats24h(),
+    getTopProgramsByEvents(30, 5),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -75,6 +90,8 @@ export default async function AdminAutonomousPage() {
       <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
 
       <RevenueChartCard series={revenueSeries} />
+
+      <ClickStatsCard stats={eventStats24h} top={topPrograms} />
 
       <PendingActionsPanel actions={pendingActions} />
 
@@ -300,6 +317,90 @@ function RevenueChartCard({ series }: { series: DailyRevenue[] }) {
           />
         </svg>
       </header>
+    </section>
+  );
+}
+
+// Phase A — 24h 클릭 event 합계 + 30일 인기 정책 top 5.
+// 사용자 활동 가시화 + 추천 정확도 학습 시그널.
+const EVENT_LABEL: Record<string, string> = {
+  program_view: "정책 상세 진입",
+  apply_click: "신청 버튼 클릭",
+  recommend_click: "/recommend 카드 클릭",
+  home_recommend_click: "홈 추천 카드 클릭",
+};
+
+function ClickStatsCard({
+  stats,
+  top,
+}: {
+  stats: EventTypeStats[];
+  top: TopProgram[];
+}) {
+  if (stats.length === 0 && top.length === 0) {
+    return (
+      <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          사용자 클릭 분석
+        </div>
+        <p className="text-sm text-grey-700">
+          아직 click 데이터 없음. /api/events/track endpoint 가 사용자 액션
+          기록 시작. 30일 누적 후 추천 정확도 학습.
+        </p>
+      </section>
+    );
+  }
+  const total24h = stats.reduce((s, e) => s + e.count, 0);
+  return (
+    <section className="mb-4 rounded-lg border border-violet-200 bg-violet-50/40 p-4">
+      <header className="mb-3">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          사용자 클릭 분석 (Phase A)
+        </div>
+        <h2 className="text-base font-semibold">
+          24h 총 {total24h.toLocaleString()}건
+        </h2>
+      </header>
+      {stats.length > 0 && (
+        <ul className="grid grid-cols-2 gap-2 text-sm mb-3">
+          {stats.slice(0, 4).map((s) => (
+            <li
+              key={s.event_type}
+              className="rounded border border-grey-200 bg-white px-2 py-1"
+            >
+              <div className="text-[11px] text-grey-600">
+                {EVENT_LABEL[s.event_type] ?? s.event_type}
+              </div>
+              <div className="font-medium">{s.count.toLocaleString()}건</div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {top.length > 0 && (
+        <div className="rounded border border-grey-200 bg-white p-2">
+          <div className="text-[11px] font-semibold text-grey-700 mb-1">
+            30일 인기 정책 top {top.length} (view + apply×5)
+          </div>
+          <ol className="text-xs text-grey-800 list-decimal pl-4 space-y-0.5">
+            {top.map((t, i) => (
+              <li key={i}>
+                <a
+                  href={`/${t.programTable === "welfare_programs" ? "welfare" : "loan"}/${t.programId}`}
+                  className="text-blue-600 hover:text-blue-800 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t.programTable === "welfare_programs" ? "복지" : "정책자금"} #
+                  {t.programId.slice(0, 8)}
+                </a>
+                <span className="text-grey-500 ml-1">
+                  · view {t.viewCount} / apply {t.applyClickCount}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </section>
   );
 }
