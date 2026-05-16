@@ -81,4 +81,23 @@ describe("generateBlogPost", () => {
     expect(params.contents).toContain("저장/검색/프로필 링크 CTA");
     expect(params.contents).toContain("제출 서류 확인 포인트");
   });
+
+  it("feeds recent quality-review learning hints into the generation prompt", async () => {
+    const { generateBlogPost } = await import("@/lib/ai");
+
+    await generateBlogPost({
+      type: "welfare",
+      title: "청년 월세 지원",
+      description: "청년에게 월세를 지원하는 정책",
+      qualityLearningHints: ["신청 기간을 첫 단락에 추가", "공식 신청 링크 확인 문구 추가"],
+    });
+
+    const params = mockState.generateContentParams as {
+      contents?: string;
+    };
+    expect(params.contents).toContain("[최근 품질 검수 학습]");
+    expect(params.contents).toContain("신청 기간을 첫 단락에 추가");
+    expect(params.contents).toContain("공식 신청 링크 확인 문구 추가");
+    expect(params.contents).toContain("같은 문제가 다시 나오지 않게");
+  });
 });

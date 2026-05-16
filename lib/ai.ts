@@ -65,6 +65,8 @@ export type ProgramContext = {
   apply_end?: string | null;
   source?: string | null;       // 데이터 출처 (예: 복지로)
   region?: string | null;
+  /** 최근 품질 검수에서 반복 지적된 개선 포인트 */
+  qualityLearningHints?: string[];
 };
 
 export type GeneratedPost = {
@@ -268,11 +270,22 @@ export async function generateBlogPost(
     null,
     2,
   );
+  const learningHints = (ctx.qualityLearningHints ?? [])
+    .map((hint) => hint.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  const learningBlock =
+    learningHints.length > 0
+      ? `\n[최근 품질 검수 학습]\n${learningHints
+          .map((hint, idx) => `${idx + 1}. ${hint}`)
+          .join("\n")}\n- 위 지적은 최근 자동 품질 검수에서 나온 반복 개선점입니다. 이번 글에서는 같은 문제가 다시 나오지 않게 작성하세요.\n`
+      : "";
 
   const userPrompt = `다음 정책에 대한 AdSense 승인용 블로그 글을 작성해줘. JSON 형식으로만 출력.
 
 [정책 데이터]
 ${programInfo}
+${learningBlock}
 
 [현재 마케팅 컨텍스트]
 - 기준 시점: ${currentYear}년 ${currentMonth}월

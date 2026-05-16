@@ -8,6 +8,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
 
 export type ImprovementArea =
   | "content_quality"
@@ -76,35 +77,6 @@ async function countAdminAction(action: string): Promise<number> {
     return count ?? 0;
   } catch {
     return 0;
-  }
-}
-
-async function getRecentQualityImprovementHints(): Promise<string[]> {
-  try {
-    const admin = createAdminClient();
-    const { data, error } = await admin
-      .from("admin_actions")
-      .select("details")
-      .eq("action", "blog_quality_flag")
-      .gte("created_at", since24h())
-      .order("created_at", { ascending: false })
-      .limit(10);
-    if (error || !data) return [];
-    const hints: string[] = [];
-    for (const row of data as Array<{ details?: unknown }>) {
-      if (!isRecord(row.details)) continue;
-      const raw = row.details.improvements;
-      if (!Array.isArray(raw)) continue;
-      for (const item of raw) {
-        if (typeof item !== "string") continue;
-        const text = item.trim();
-        if (text.length > 0) hints.push(text.slice(0, 120));
-        if (hints.length >= 5) return [...new Set(hints)];
-      }
-    }
-    return [...new Set(hints)];
-  } catch {
-    return [];
   }
 }
 
@@ -218,7 +190,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     getPolicyInsightPct(),
     countAdminAction("sns_publish_run"),
     countAdminAction("blog_publish_run"),
-    getRecentQualityImprovementHints(),
+    getRecentQualityImprovementHints({ lookbackMs: DAY_MS }),
     countExternalQualityPending(),
   ]);
 
