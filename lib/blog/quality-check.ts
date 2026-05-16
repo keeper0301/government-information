@@ -77,10 +77,13 @@ JSON 만 반환:
 ${post.content.slice(0, 2400)}`;
 }
 
-export async function evaluateBlogQuality(post: {
-  title: string;
-  content: string;
-}): Promise<BlogQualityResult> {
+export async function evaluateBlogQuality(
+  post: {
+    title: string;
+    content: string;
+  },
+  opts: { failClosed?: boolean } = {},
+): Promise<BlogQualityResult> {
   const prompt = buildBlogQualityPrompt(post);
 
   let parsed: { score?: number; reason?: string; improvements?: unknown };
@@ -88,6 +91,16 @@ export async function evaluateBlogQuality(post: {
     const text = await callLLM({ prompt, maxTokens: 220, jsonMode: true });
     parsed = parseJSONResponse<{ score?: number; reason?: string }>(text);
   } catch (e) {
+    if (opts.failClosed) {
+      return {
+        score: 2,
+        needsReview: true,
+        reason: `품질 검수 실패: ${(e as Error).message.slice(0, 80)}`,
+        improvements: [
+          "품질 검수 LLM 호출을 재시도한 뒤 외부 채널 발행 여부를 판단하세요.",
+        ],
+      };
+    }
     return { ...NEUTRAL, reason: (e as Error).message.slice(0, 80) };
   }
 

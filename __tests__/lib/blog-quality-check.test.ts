@@ -75,6 +75,36 @@ describe("buildBlogQualityPrompt", () => {
 });
 
 describe("evaluateBlogQuality", () => {
+  it("기본 검수 모드는 LLM 실패 시 발행 파이프라인을 막지 않는다", async () => {
+    vi.mocked(callLLM).mockRejectedValueOnce(new Error("temporary llm outage"));
+
+    const result = await evaluateBlogQuality({
+      title: "청년 월세 지원",
+      content: "<p>본문</p>",
+    });
+
+    expect(result.score).toBe(3);
+    expect(result.needsReview).toBe(false);
+    expect(result.reason).toContain("temporary llm outage");
+  });
+
+  it("외부 발행 직전 검수는 LLM 실패 시 fail-closed 로 보류한다", async () => {
+    vi.mocked(callLLM).mockRejectedValueOnce(new Error("temporary llm outage"));
+
+    const result = await evaluateBlogQuality(
+      {
+        title: "청년 월세 지원",
+        content: "<p>본문</p>",
+      },
+      { failClosed: true },
+    );
+
+    expect(result.score).toBe(2);
+    expect(result.needsReview).toBe(true);
+    expect(result.reason).toContain("품질 검수 실패");
+    expect(result.improvements[0]).toContain("재시도");
+  });
+
   it("LLM 개선 포인트를 최대 3개까지 정규화한다", async () => {
     vi.mocked(callLLM).mockResolvedValueOnce(
       JSON.stringify({

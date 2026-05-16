@@ -544,10 +544,15 @@ async function publishWithCandidate(
   let qualityApproved = true;
   let qualityReview: BlogQualityResult | null = null;
   if (inserted?.id) {
-    const quality = await evaluateBlogQuality({
-      title: generated.title,
-      content: generated.content,
-    });
+    const quality = await evaluateBlogQuality(
+      {
+        title: generated.title,
+        content: generated.content,
+      },
+      {
+        failClosed: true,
+      },
+    );
     qualityReview = quality;
     qualityApproved = !quality.needsReview;
 
