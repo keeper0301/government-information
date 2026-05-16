@@ -14,6 +14,11 @@ import {
   getAllPhaseStatuses,
   type PhaseStatus,
 } from "@/lib/autonomous-ops/status";
+import {
+  getLatestImprovementScan,
+  type ImprovementRecommendation,
+  type ImprovementScanRun,
+} from "@/lib/autonomous-ops/improvement-scan";
 
 export const metadata: Metadata = {
   title: "자율 운영 마스터 | 어드민",
@@ -34,7 +39,10 @@ async function requireAdmin() {
 
 export default async function AdminAutonomousPage() {
   await requireAdmin();
-  const phases = await getAllPhaseStatuses();
+  const [phases, improvementScan] = await Promise.all([
+    getAllPhaseStatuses(),
+    getLatestImprovementScan(),
+  ]);
   const activeCount = phases.filter((p) => p.active).length;
   const pendingCount = phases.reduce(
     (sum, p) => sum + p.pendingActions.length,
@@ -49,6 +57,8 @@ export default async function AdminAutonomousPage() {
         description={`5 Phase 중 ${activeCount}개 가동 · 외부 액션 ${pendingCount}건 대기. 매일 1번 점검 권장.`}
       />
 
+      <ImprovementPanel scan={improvementScan} />
+
       <div className="space-y-3">
         {phases.map((p) => (
           <PhaseCard key={p.phase} status={p} />
@@ -61,6 +71,78 @@ export default async function AdminAutonomousPage() {
         Phase 진행 메모리: <code>memory/project_keepioo_autonomous_ops_master_2026_05_08.md</code>
       </p>
     </div>
+  );
+}
+
+function ImprovementPanel({ scan }: { scan: ImprovementScanRun | null }) {
+  if (!scan) {
+    return (
+      <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          자동 개선 스캔
+        </div>
+        <p className="text-sm text-grey-800">
+          아직 실행 기록이 없습니다. 다음 KST 10:20 cron 이후 개선 과제가 표시됩니다.
+        </p>
+      </section>
+    );
+  }
+
+  const tone =
+    scan.highestSeverity === "high"
+      ? "border-red-200 bg-red-50/50"
+      : scan.highestSeverity === "medium"
+        ? "border-amber-200 bg-amber-50/50"
+        : "border-green-200 bg-green-50/40";
+  const label =
+    scan.highestSeverity === "high"
+      ? "긴급"
+      : scan.highestSeverity === "medium"
+        ? "주의"
+        : "정상";
+
+  return (
+    <section className={`mb-4 rounded-lg border p-4 ${tone}`}>
+      <header className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <div className="text-[11px] font-semibold text-grey-600 mb-1">
+            자동 개선 스캔
+          </div>
+          <h2 className="text-base font-semibold">오늘 반영할 개선 과제</h2>
+        </div>
+        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-grey-800">
+          {label}
+        </span>
+      </header>
+
+      <ol className="space-y-2">
+        {scan.recommendations.slice(0, 4).map((r, i) => (
+          <ImprovementItem key={`${r.area}-${i}`} item={r} />
+        ))}
+      </ol>
+
+      <p className="mt-3 text-[11px] text-grey-600">
+        최근 실행:{" "}
+        {new Date(scan.createdAt).toLocaleString("ko-KR", {
+          timeZone: "Asia/Seoul",
+        })}
+      </p>
+    </section>
+  );
+}
+
+function ImprovementItem({ item }: { item: ImprovementRecommendation }) {
+  const severity =
+    item.severity === "high" ? "text-red-700" : item.severity === "medium" ? "text-amber-700" : "text-green-700";
+  return (
+    <li className="rounded border border-white/70 bg-white px-3 py-2 text-sm">
+      <div className={`text-[11px] font-semibold ${severity}`}>
+        {item.severity.toUpperCase()} · {item.area}
+      </div>
+      <div className="font-medium text-grey-900">{item.title}</div>
+      <div className="text-xs text-grey-600">{item.evidence}</div>
+      <div className="mt-1 text-xs text-grey-800">{item.action}</div>
+    </li>
   );
 }
 

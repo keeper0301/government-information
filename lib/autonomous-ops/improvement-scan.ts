@@ -41,6 +41,13 @@ export type ImprovementSnapshot = {
   blogPublishRuns24h: number;
 };
 
+export type ImprovementScanRun = {
+  createdAt: string;
+  highestSeverity: ImprovementSeverity;
+  snapshot: ImprovementSnapshot;
+  recommendations: ImprovementRecommendation[];
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const since24h = () => new Date(Date.now() - DAY_MS).toISOString();
 
@@ -286,4 +293,97 @@ export function buildImprovementRecommendations(
   }
 
   return recs;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function toSeverity(value: unknown): ImprovementSeverity {
+  return value === "high" || value === "medium" || value === "low"
+    ? value
+    : "low";
+}
+
+function toSnapshot(value: unknown): ImprovementSnapshot {
+  const fallback: ImprovementSnapshot = {
+    blogQualityFlags24h: 0,
+    instagramFailures24h: 0,
+    instagramSkips24h: 0,
+    naverPendingQueue: 0,
+    naverSuccess24h: 0,
+    cronFailures24h: 0,
+    supportOpenOver24h: 0,
+    policyInsightPct: 0,
+    snsRuns24h: 0,
+    blogPublishRuns24h: 0,
+  };
+  if (!isRecord(value)) return fallback;
+  return Object.fromEntries(
+    Object.entries(fallback).map(([key, defaultValue]) => {
+      const raw = value[key];
+      return [key, typeof raw === "number" ? raw : defaultValue];
+    }),
+  ) as ImprovementSnapshot;
+}
+
+function toRecommendation(value: unknown): ImprovementRecommendation | null {
+  if (!isRecord(value)) return null;
+  const area = value.area;
+  const title = value.title;
+  const evidence = value.evidence;
+  const action = value.action;
+  if (
+    area !== "content_quality" &&
+    area !== "instagram" &&
+    area !== "naver_blog" &&
+    area !== "cron_reliability" &&
+    area !== "policy_insight" &&
+    area !== "customer_support" &&
+    area !== "growth"
+  ) {
+    return null;
+  }
+  if (
+    typeof title !== "string" ||
+    typeof evidence !== "string" ||
+    typeof action !== "string"
+  ) {
+    return null;
+  }
+  return {
+    area,
+    severity: toSeverity(value.severity),
+    title,
+    evidence,
+    action,
+  };
+}
+
+export async function getLatestImprovementScan(): Promise<ImprovementScanRun | null> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("admin_actions")
+      .select("details, created_at")
+      .eq("action", "autonomous_improvement_scan_run")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data || !isRecord(data.details)) return null;
+    const rawRecommendations = data.details.recommendations;
+    const recommendations = Array.isArray(rawRecommendations)
+      ? rawRecommendations
+          .map(toRecommendation)
+          .filter((r): r is ImprovementRecommendation => r !== null)
+      : [];
+    return {
+      createdAt: String(data.created_at ?? ""),
+      highestSeverity: toSeverity(data.details.highestSeverity),
+      snapshot: toSnapshot(data.details.snapshot),
+      recommendations,
+    };
+  } catch {
+    return null;
+  }
 }
