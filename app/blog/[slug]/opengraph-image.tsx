@@ -16,11 +16,19 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
+import {
+  getCategoryColor,
+  categoryBadgeTextColor,
+} from "@/lib/instagram/card-colors";
 
 // Next.js 메타데이터 설정
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "정책알리미 블로그 글";
+
+// 카테고리 색상 표는 lib/instagram/card-colors 에서 공유 (인스타 카드와 일관).
+// 폴더명이 인스타지만 OG·네이버 썸네일 등 이미지 생성 공용 표.
+// Dead code 2 경로 anti-pattern 차단 (2026-05-16 cleanup).
 
 // Pretendard 폰트 데이터 — 모듈 스코프 캐시로 cold start 이후 디스크 I/O 1회만
 let fontDataPromise: Promise<Buffer> | null = null;
@@ -32,18 +40,6 @@ function loadFontData(): Promise<Buffer> {
   }
   return fontDataPromise;
 }
-
-// 카테고리별 색상 — 토스 TDS 공식 팔레트 정확값
-const CATEGORY_COLORS: Record<string, string> = {
-  청년: "#3182F6",        // blue500
-  소상공인: "#A234C7",    // purple500
-  주거: "#03B26C",        // green500
-  "육아·가족": "#EC4899", // pink (토스 팔레트 외 — 카테고리 식별용 유지)
-  노년: "#FE9800",        // orange500
-  "학생·교육": "#18A5A5", // teal500
-  문화: "#EAB308",        // gold — 문화재 톤 (2026-05-14 review 정리)
-  큐레이션: "#6B7684",    // grey600
-};
 
 // slug 한글 디코드 (Next.js 16 percent-encoded params 대응). 비정상 인코딩 (CP949 등)
 // 으로 throw 되면 null → fallback 이미지 사용 (500 대신 "정책알리미" 기본 이미지)
@@ -76,7 +72,7 @@ export default async function Image({
 
   const title = post?.title || "정책알리미";
   const category = post?.category || "정책 블로그";
-  const color = CATEGORY_COLORS[category] || "#3182F6";
+  const color = getCategoryColor(category);
 
   // Pretendard 폰트 — 프로젝트 루트의 assets/ 에서 정적 로드
   // (이전엔 매 요청마다 jsdelivr CDN fetch → 외부 의존 제거 + 디스크 I/O 1회 캐시)
@@ -108,14 +104,15 @@ export default async function Image({
           }}
         />
 
-        {/* 카테고리 라벨 */}
+        {/* 카테고리 라벨 — 노년·문화 + white text 미달이라 categoryBadgeTextColor
+            분기 (2026-05-16 fix). 인스타 카드 1 과 같은 패턴. */}
         <div
           style={{
             display: "flex",
             alignSelf: "flex-start",
             padding: "12px 28px",
             background: color,
-            color: "#ffffff",
+            color: categoryBadgeTextColor(color),
             fontSize: 28,
             fontWeight: 700,
             borderRadius: 999,

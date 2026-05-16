@@ -19,20 +19,16 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import {
+  getCategoryColor,
+  categoryBadgeTextColor,
+} from "@/lib/instagram/card-colors";
+
+// 카테고리 색상 표는 lib/instagram/card-colors 에서 공유 (인스타 카드와 일관).
+// 폴더명이 인스타지만 OG·네이버 썸네일 등 이미지 생성 공용 표.
+// Dead code 2 경로 anti-pattern 차단 (2026-05-16 cleanup).
 
 export const runtime = "nodejs";
-
-// 카테고리 색상 — blog OG / instagram-card 와 일관성
-const CATEGORY_COLORS: Record<string, string> = {
-  청년: "#3182F6",
-  소상공인: "#A234C7",
-  주거: "#03B26C",
-  "육아·가족": "#EC4899",
-  노년: "#FE9800",
-  "학생·교육": "#18A5A5",
-  문화: "#EAB308", // gold — 문화재 톤 (2026-05-14 review 정리)
-  큐레이션: "#6B7684",
-};
 
 let fontDataPromise: Promise<Buffer> | null = null;
 function loadFontData(): Promise<Buffer> {
@@ -72,7 +68,7 @@ export async function GET(
   }
 
   const category = post.category || "정책";
-  const color = CATEGORY_COLORS[category] || "#3182F6";
+  const color = getCategoryColor(category);
   const fontData = await loadFontData();
   // 1080×1080 (1:1 square) — 네이버 블로그 썸네일 최적 (검색 결과 SEO 기준)
   const size = { width: 1080, height: 1080 };
@@ -107,14 +103,15 @@ export async function GET(
           }}
         />
 
-        {/* 상단 카테고리 라벨 */}
+        {/* 상단 카테고리 라벨 — 노년·문화 + white text 미달 (인스타 카드 1 과
+            같은 패턴) 이라 categoryBadgeTextColor 분기 (2026-05-16 fix). */}
         <div
           style={{
             display: "flex",
             alignSelf: "flex-start",
             padding: "16px 36px",
             background: color,
-            color: "#FFFFFF",
+            color: categoryBadgeTextColor(color),
             fontSize: 36,
             fontWeight: 800,
             borderRadius: 999,
