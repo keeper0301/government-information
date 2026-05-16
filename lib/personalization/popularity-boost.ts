@@ -26,6 +26,7 @@ type PopularityCache = {
 let _cache: PopularityCache | null = null;
 let _inflight: Promise<PopularityCache["byProgramId"]> | null = null;
 const TTL_MS = 5 * 60 * 1000; // 5분
+const NEGATIVE_TTL_MS = 30 * 1000; // A 11차: DB error 시 30초 빈 cache — 폭주 차단 + 자가치유
 
 const VIEW_WEIGHT = 0.5;
 const APPLY_WEIGHT = 2;
@@ -54,10 +55,13 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
         .limit(10000);
 
       // A 10차: DB 에러 시 page 500 차단 — 빈 Map 반환 (boost no-op 으로 fallback)
-      // popularity boost 는 부가 기능이라 page 가 죽으면 본업 (추천) 까지 영향. 안전성 우선.
+      // A 11차: 빈 Map 도 negative cache (30초) 로 저장 — DB 5분 다운 시 매 호출
+      // 재시도로 query 폭주 사고 차단. 30초 후 자동 자가치유.
       if (error) {
         console.error("[popularity-boost] DB error:", error.message);
-        return new Map<string, PopularityEntry>();
+        const emptyMap = new Map<string, PopularityEntry>();
+        _cache = { expiresAt: Date.now() + NEGATIVE_TTL_MS, byProgramId: emptyMap };
+        return emptyMap;
       }
 
       const byProgramId = new Map<string, PopularityEntry>();
@@ -86,8 +90,11 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
       return byProgramId;
     } catch (err) {
       // A 10차: 네트워크·예외 발생 시 빈 Map — caller 의 await 가 throw 하지 않도록 보장
+      // A 11차: 예외 시도 negative cache (30초) — 폭주 차단
       console.error("[popularity-boost] unexpected error:", err);
-      return new Map<string, PopularityEntry>();
+      const emptyMap = new Map<string, PopularityEntry>();
+      _cache = { expiresAt: Date.now() + NEGATIVE_TTL_MS, byProgramId: emptyMap };
+      return emptyMap;
     } finally {
       _inflight = null;
     }

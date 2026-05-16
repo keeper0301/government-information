@@ -62,6 +62,16 @@ async function loadTopPopularItems(): Promise<PopularItem[]> {
     }>).map((r) => ({ ...r, table: "loan_programs" as const })),
   ];
 
+  // A 11차: RLS soft-hide 추적 — popularity 가 잡은 id 중 anon RLS 로 가려진 건
+  // (press-ingest pending_low 등) 모니터링. 일정 비율 이상이면 운영 점검 신호.
+  const expectedCount = welfareIds.length + loanIds.length;
+  if (items.length < expectedCount) {
+    const hiddenCount = expectedCount - items.length;
+    console.warn(
+      `[top-popular-fallback] RLS soft-hide ${hiddenCount}/${expectedCount} 건 — id 추출 후 anon SELECT 에서 가려짐`,
+    );
+  }
+
   // popularity score 순서 보존 — welfareTop/loanTop 의 id 순서 그대로 정렬
   const orderMap = new Map<string, number>();
   welfareTop.forEach((t, i) => orderMap.set(t.id, i));

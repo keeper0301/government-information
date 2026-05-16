@@ -214,6 +214,52 @@ describe("getTopPopularPrograms (A 10차)", () => {
   });
 });
 
+describe("negative cache (A 11차)", () => {
+  beforeEach(() => {
+    _resetPopularityCache();
+    vi.clearAllMocks();
+  });
+
+  it("DB error 시 cache 저장 → 두 번째 호출은 재시도 안 함", async () => {
+    let queryCount = 0;
+    vi.mocked(supabase.createAdminClient).mockReturnValue({
+      from: () => ({
+        select: () => ({
+          gte: () => ({
+            not: () => ({
+              in: () => ({
+                limit: () => {
+                  queryCount += 1;
+                  return Promise.resolve({
+                    data: null,
+                    error: { message: "DB down" },
+                  });
+                },
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof supabase.createAdminClient>);
+
+    // 두 번 호출 → 1번만 DB hit (negative cache 작동)
+    await getProgramPopularityScore("p1");
+    await getProgramPopularityScore("p2");
+    expect(queryCount).toBe(1);
+  });
+
+  it("예외 throw 시도 negative cache 작동", async () => {
+    let createCount = 0;
+    vi.mocked(supabase.createAdminClient).mockImplementation(() => {
+      createCount += 1;
+      throw new Error("connection refused");
+    });
+    await getProgramPopularityScore("p1");
+    await getProgramPopularityScore("p2");
+    expect(createCount).toBe(1); // 두 번째 호출은 cache 에서 막힘
+  });
+});
+
 describe("강건성 (A 10차)", () => {
   beforeEach(() => {
     _resetPopularityCache();
