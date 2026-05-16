@@ -70,7 +70,8 @@ export type AdminActionType =
   | "autonomous_improvement_scan_run" // 2026-05-16 — 운영 신호 기반 자동 개선 과제 도출 cron
   | "local_press_scrape"              // 2026-05-16 — Phase B 시·군 보도자료 수집 (순천시청 첫 시범)
   | "local_press_scrape_run"          // 2026-05-16 — Phase B 매일 KST 09:00 cron 가동 흔적
-  | "weekly_scrape_monitor_run";      // 2026-05-16 — Phase D-1 매주 월 KST 09:30 진단 cron
+  | "weekly_scrape_monitor_run"       // 2026-05-16 — Phase D-1 매주 월 KST 09:30 진단 cron
+  | "popularity_snapshot_run";        // 2026-05-17 — A 12차 매일 KST 03:00 popularity 30일 추세 누적
 
 export type AdminActionRecord = {
   id: string;
@@ -366,4 +367,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   local_press_scrape: "시·군 보도자료 수집",
   local_press_scrape_run: "시·군 보도자료 cron 가동",
   weekly_scrape_monitor_run: "1주 수집 진단 cron",
+  popularity_snapshot_run: "popularity 30일 추세 snapshot cron",
 };

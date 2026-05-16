@@ -1,0 +1,130 @@
+// ============================================================
+// /api/cron/popularity-snapshot — 매일 popularity 누적 (A 12차)
+// ============================================================
+// 매일 KST 03:00 (UTC 18:00 전일) — user_events 30일 popularity 계산 →
+// popularity_snapshots 테이블에 그날의 score/views/applies 행 누적.
+//
+// autonomous hub PopularityTrendCard 가 이 테이블을 읽어 30일 추세 시각화.
+// 30일 이상 데이터는 cleanup (테이블 무한 증가 차단).
+// ============================================================
+
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import { POPULARITY_WEIGHTS } from "@/lib/personalization/popularity-boost";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+// A 12차: popularity-boost.ts 와 단일 source — silent mismatch 차단
+const { VIEW_WEIGHT, APPLY_WEIGHT, MAX_BOOST } = POPULARITY_WEIGHTS;
+
+async function authorize(request: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return NextResponse.json(
+      { error: "CRON_SECRET not configured" },
+      { status: 500 },
+    );
+  }
+  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  return null;
+}
+
+async function run() {
+  const admin = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+
+  // 1) 직전 30일 user_events 집계 — popularity-boost.ts 와 동일 로직
+  const { data: events, error: eventErr } = await admin
+    .from("user_events")
+    .select("program_id, program_table, event_type")
+    .gte("created_at", since)
+    .not("program_id", "is", null)
+    .in("event_type", ["program_view", "apply_click"])
+    .limit(20000);
+
+  if (eventErr) {
+    return { success: false, error: eventErr.message, inserted: 0, cleaned: 0 };
+  }
+
+  // program_id 별 집계
+  const agg = new Map<
+    string,
+    { program_table: string; views: number; applies: number; score: number }
+  >();
+  for (const row of (events ?? []) as Array<{
+    program_id: string;
+    program_table: string | null;
+    event_type: string;
+  }>) {
+    if (!row.program_id || !row.program_table) continue;
+    const entry = agg.get(row.program_id) ?? {
+      program_table: row.program_table,
+      views: 0,
+      applies: 0,
+      score: 0,
+    };
+    if (row.event_type === "program_view") entry.views += 1;
+    if (row.event_type === "apply_click") entry.applies += 1;
+    entry.score = Math.min(
+      MAX_BOOST,
+      entry.views * VIEW_WEIGHT + entry.applies * APPLY_WEIGHT,
+    );
+    agg.set(row.program_id, entry);
+  }
+
+  // 2) snapshot insert — UNIQUE(snapshot_date, program_id) 로 중복 차단.
+  // 같은 날 재실행 시 ON CONFLICT DO UPDATE 패턴으로 최신값 덮어쓰기.
+  const rows = [...agg.entries()].map(([program_id, e]) => ({
+    snapshot_date: today,
+    program_id,
+    program_table: e.program_table,
+    score: e.score,
+    views: e.views,
+    applies: e.applies,
+  }));
+
+  let inserted = 0;
+  if (rows.length > 0) {
+    const { error: insertErr } = await admin
+      .from("popularity_snapshots")
+      .upsert(rows, { onConflict: "snapshot_date,program_id" });
+    if (insertErr) {
+      return {
+        success: false,
+        error: insertErr.message,
+        inserted: 0,
+        cleaned: 0,
+      };
+    }
+    inserted = rows.length;
+  }
+
+  // 3) 30일 이상 cleanup — 테이블 무한 증가 차단
+  const cutoff = new Date(Date.now() - 31 * 24 * 3600_000)
+    .toISOString()
+    .slice(0, 10);
+  const { count: cleaned } = await admin
+    .from("popularity_snapshots")
+    .delete({ count: "exact" })
+    .lt("snapshot_date", cutoff);
+
+  return { success: true, inserted, cleaned: cleaned ?? 0 };
+}
+
+export async function GET(request: Request) {
+  const unauth = await authorize(request);
+  if (unauth) return unauth;
+  const result = await run();
+  await auditCronRun("popularity_snapshot_run", {
+    success: result.success,
+    inserted: result.inserted,
+    cleaned: result.cleaned,
+    error: result.success ? undefined : result.error,
+  });
+  return NextResponse.json(result, { status: result.success ? 200 : 500 });
+}

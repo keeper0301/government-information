@@ -33,6 +33,10 @@ import {
   type EventTypeStats,
   type TopProgram,
 } from "@/lib/analytics/click-aggregation";
+import {
+  getPopularityTrend,
+  type ProgramTrend,
+} from "@/lib/analytics/popularity-trend";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -67,6 +71,7 @@ export default async function AdminAutonomousPage() {
     revenueSeries,
     eventStats24h,
     topPrograms,
+    popularityTrend,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -74,6 +79,7 @@ export default async function AdminAutonomousPage() {
     collectRevenueDailySeries(30),
     getEventTypeStats24h(),
     getTopProgramsByEvents(30, 5),
+    getPopularityTrend(3),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -92,6 +98,8 @@ export default async function AdminAutonomousPage() {
       <RevenueChartCard series={revenueSeries} />
 
       <ClickStatsCard stats={eventStats24h} top={topPrograms} />
+
+      <PopularityTrendCard trend={popularityTrend} />
 
       <PendingActionsPanel actions={pendingActions} />
 
@@ -401,6 +409,102 @@ function ClickStatsCard({
           </ol>
         </div>
       )}
+    </section>
+  );
+}
+
+// Phase A 12차 — 30일 popularity 추세 sparkline.
+// popularity_snapshots 가 매일 KST 03:00 cron 으로 누적. snapshot 0 건이면
+// "데이터 누적 중" 안내 (cron 처음 가동 시 graceful).
+function PopularityTrendCard({ trend }: { trend: ProgramTrend[] }) {
+  if (trend.length === 0) {
+    return (
+      <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          인기 정책 추세
+        </div>
+        <p className="text-sm text-grey-700">
+          데이터 누적 중. /api/cron/popularity-snapshot 첫 실행 후 30일 추세 표시됩니다.
+        </p>
+      </section>
+    );
+  }
+
+  // 차트 W × H — RevenueChartCard 와 동일 비율
+  const W = 240;
+  const H = 50;
+
+  return (
+    <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
+      <header className="mb-3">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          30일 인기 정책 추세
+        </div>
+        <h2 className="text-sm font-semibold text-grey-900">
+          누적 score top {trend.length} · 매일 KST 03:00 갱신
+        </h2>
+      </header>
+      <ul className="space-y-3">
+        {trend.map((t) => {
+          const max = Math.max(...t.series.map((p) => p.score), 0.5);
+          const points = t.series
+            .map((p, i) => {
+              const x =
+                t.series.length > 1
+                  ? (i / (t.series.length - 1)) * W
+                  : W / 2;
+              const y = H - (p.score / max) * H;
+              return `${x.toFixed(1)},${y.toFixed(1)}`;
+            })
+            .join(" ");
+          const href =
+            t.program_table === "welfare_programs"
+              ? `/welfare/${t.program_id}`
+              : t.program_table === "loan_programs"
+                ? `/loan/${t.program_id}`
+                : `/news/${t.program_id}`;
+          const label =
+            t.program_table === "welfare_programs"
+              ? "복지"
+              : t.program_table === "loan_programs"
+                ? "정책자금"
+                : "뉴스";
+          return (
+            <li
+              key={t.program_id}
+              className="flex items-center gap-3 justify-between"
+            >
+              <div className="flex-1 min-w-0">
+                <a
+                  href={href}
+                  className="text-sm font-medium text-blue-700 hover:underline line-clamp-1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t.title ?? `#${t.program_id.slice(0, 8)}`}
+                </a>
+                <p className="text-[11px] text-grey-600 mt-0.5">
+                  {label} · 현재 score {t.latest_score.toFixed(1)} · {t.series.length}일
+                </p>
+              </div>
+              <svg
+                width={W}
+                height={H}
+                viewBox={`0 0 ${W} ${H}`}
+                className="flex-shrink-0"
+                aria-label={`${t.title} 추세`}
+              >
+                <polyline
+                  fill="none"
+                  stroke="#d97706"
+                  strokeWidth="1.5"
+                  points={points}
+                />
+              </svg>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
