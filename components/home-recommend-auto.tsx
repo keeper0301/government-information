@@ -6,7 +6,7 @@ import Link from "next/link";
 import { RecommendLinkTracker } from "@/components/analytics/recommend-link-tracker";
 import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-profile';
-import { scoreAndFilter } from '@/lib/personalization/filter';
+import { scoreAndFilterWithPopularity } from '@/lib/personalization/filter';
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
 import type { MatchSignal, UserSignals } from '@/lib/personalization/types';
 import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
@@ -289,8 +289,9 @@ export async function HomeRecommendAuto({
     ...(loanPool ?? []).map(loanRowToScorable),
   ];
 
-  // 점수 매칭: minScore 이상인 항목만 → 점수 내림차순 → 상위 5건
-  const items = scoreAndFilter(scorable, profile.signals, {
+  // 점수 매칭: minScore 이상인 항목만 → popularity boost (30일 click) → 점수 내림차순 → 상위 5건
+  // Phase A 6차 — 인기 정책 (view·apply event 누적) 이 동일 score 시 상단 노출
+  const items = await scoreAndFilterWithPopularity(scorable, profile.signals, {
     minScore: PERSONAL_SECTION_MIN_SCORE,
     limit: HOME_RECOMMENDATION_CANDIDATE_LIMIT,
   });

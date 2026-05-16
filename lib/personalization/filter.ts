@@ -2,6 +2,7 @@
 // 정책 목록 전체를 점수 계산 후 minScore/limit 로 필터링해 반환
 // scoreProgram 을 내부적으로 사용하며, 호출자는 이 함수만 쓰면 됨
 import { scoreProgram, type ScorableItem } from './score';
+import { applyPopularityBoost } from './popularity-boost';
 import type { UserSignals, ScoredItem } from './types';
 
 // 필터링 옵션
@@ -22,4 +23,24 @@ export function scoreAndFilter<T extends ScorableItem>(
     .filter(s => s.score >= options.minScore) // minScore 미만 제거
     .sort((a, b) => b.score - a.score)        // 점수 내림차순 정렬
     .slice(0, options.limit);                 // 최대 limit 개만 반환
+}
+
+// ============================================================
+// popularity boost 옵트인 (Phase A 6차)
+// ============================================================
+// scoreAndFilter 와 동일 + user_events 30일 click 가중치 가산.
+// async 라 server component 전용. 홈·추천 페이지 등 핵심 자리만 사용.
+// ============================================================
+export async function scoreAndFilterWithPopularity<T extends ScorableItem>(
+  programs: T[],
+  user: UserSignals,
+  options: FilterOptions,
+): Promise<ScoredItem<T>[]> {
+  // 1차: 일반 score 후 minScore 필터링 (DB fetch 양 최소화)
+  const scored = programs
+    .map(p => scoreProgram(p, user))
+    .filter(s => s.score >= options.minScore);
+  // 2차: popularity boost 적용 + 재정렬
+  const boosted = await applyPopularityBoost(scored);
+  return boosted.slice(0, options.limit) as ScoredItem<T>[];
 }
