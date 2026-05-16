@@ -44,6 +44,25 @@ export type WordPressPayload = {
 const KEEPIOO_BASE = "https://www.keepioo.com";
 
 /**
+ * keepioo 카테고리 → 워드프레스 카테고리 slug 매핑.
+ * 워드프레스에 사전 등록되어 있어야 함 (사장님 1회 설정).
+ * 매핑 안 된 카테고리는 "정책" fallback (기본 카테고리).
+ *
+ * export — invariant test 가 keys 가 CATEGORY_COLORS 와 일치하는지 검증.
+ * 새 카테고리 추가 시 매핑 누락 → 워드프레스 "정책" silent fallback 차단.
+ */
+export const WORDPRESS_CATEGORY_MAP: Record<string, string> = {
+  청년: "청년",
+  소상공인: "소상공인",
+  주거: "주거",
+  "육아·가족": "육아가족",
+  노년: "노년",
+  "학생·교육": "교육",
+  문화: "문화",
+  큐레이션: "큐레이션",
+};
+
+/**
  * keepioo 블로그 → 워드프레스 REST API payload 변환.
  * HTML 본문 끝에 keepioo 백링크 footer 자동 삽입 (SEO + 도메인 권위 핵심).
  */
@@ -80,21 +99,6 @@ export function convertToWordPress(post: BlogPostForWordPress): WordPressPayload
   };
 }
 
-/**
- * keepioo 카테고리 → 워드프레스 카테고리 slug 매핑.
- * 워드프레스에 사전 등록되어 있어야 함 (사장님 1회 설정).
- * 매핑 안 된 카테고리는 "정책" fallback (기본 카테고리).
- */
 function mapCategory(keepiooCategory: string): string {
-  const mapping: Record<string, string> = {
-    청년: "청년",
-    소상공인: "소상공인",
-    주거: "주거",
-    "육아·가족": "육아가족",
-    노년: "노년",
-    "학생·교육": "교육",
-    문화: "문화",
-    큐레이션: "큐레이션",
-  };
-  return mapping[keepiooCategory] ?? "정책";
+  return WORDPRESS_CATEGORY_MAP[keepiooCategory] ?? "정책";
 }
