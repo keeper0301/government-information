@@ -187,7 +187,27 @@ function renderCoverCard(title: string, category: string, color: string) {
           wordBreak: "keep-all",
         }}
       >
-        {title}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            width: "100%",
+            alignItems: "baseline",
+          }}
+        >
+          {tokenizeSemantic(title).map((t, j, arr) => (
+            <div
+              key={j}
+              style={{
+                display: "flex",
+                marginRight: j === arr.length - 1 ? 0 : "0.32em",
+                marginBottom: "0.32em",
+              }}
+            >
+              {t}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 하단 브랜드 — 3 카드 통일 (fontSize 30·weight 700) */}
@@ -209,13 +229,66 @@ function renderCoverCard(title: string, category: string, color: string) {
 }
 
 /**
+ * 의미 단위 (semantic chunk) 줄바꿈 방지 — 2026-05-16 사장님 신고:
+ * "최대 300만원" 이 "최대 300" / "만원" 으로 줄바꿈되면 한 눈에 인식 X.
+ * 숫자/금액 같은 의미 단위는 한 줄에 같이 보여야 가독성 ↑.
+ *
+ * NBSP ( ) 는 CSS 에서 줄바꿈 안 일어남 (Satori 도 동일).
+ *
+ * 룰:
+ *  1) "20만 원" 같이 단위 사이 공백 → "20만원" 통일
+ *  2) 강조 부사 + 숫자 ("최대 300", "월 20") → 묶음
+ *  3) 숫자 + 한글 단위 ("24 개월", "5 명") → 묶음
+ *
+ * "3월 30일" 의 "월 30" 같이 부사 아닌 위치 매칭 방지 위해
+ * 부사 룰에 negative lookbehind (?<![가-힣\d]) 사용.
+ */
+function preserveSemanticChunks(text: string): string {
+  // "20만 원" / "20 만 원" → "20만원" 통일만. nowrap chunk 는 tokenizeSemantic 에서.
+  return text
+    .replace(/(\d+(?:\.\d+)?)\s*만\s*원/gu, "$1만원")
+    .replace(/(\d+(?:\.\d+)?)\s*억\s*원/gu, "$1억원");
+}
+
+/**
+ * 문장을 의미 단위 atomic chunk 로 split — flex item 으로 렌더링하면 각 chunk
+ * 가 atomic block 이라 wrap 시 chunk 단위 줄바꿈. 한 chunk 안에서는 break X.
+ *
+ * Satori 가 NBSP (\u00A0) / Word Joiner (\u2060) 를 무시하는 사고 (2026-05-16
+ * 사장님 신고) 근본 해소.
+ *
+ * 룰:
+ *  1) 어절 (공백) 단위 split
+ *  2) 강조 부사 ("최대") 다음에 숫자 어절 ("300만원") 오면 합쳐서 한 chunk
+ *  3) "최대 300만원" / "월 20만원" / "약 5명" 같이 의미 단위 보존
+ */
+function tokenizeSemantic(text: string): string[] {
+  const ADVERBS =
+    /^(최대|최소|총|약|평균|매월|매일|매년|매주|연간|월간|주간|분기별|월|일|주|연)$/u;
+  const NUMERIC_START = /^\d/u;
+  const tokens = text.split(/\s+/u).filter(Boolean);
+  const merged: string[] = [];
+  for (const t of tokens) {
+    const prev = merged[merged.length - 1];
+    if (prev && ADVERBS.test(prev) && NUMERIC_START.test(t)) {
+      merged[merged.length - 1] = `${prev} ${t}`;
+    } else {
+      merged.push(t);
+    }
+  }
+  return merged;
+}
+/**
  * meta_description 을 문장별로 분리 — 카드 2 가독성 fix (2026-05-16).
  * 한국어 종결형 (~다·~요·~까?) + 영어 .!? 모두 cover. max 문장 cap 으로
  * 매우 긴 description 도 카드 안에 안전하게 들어감.
+ *
+ * Note: split 정규식의 \s+ 는 NBSP 미포함 (실제로 [ \t\n] 만 매칭) — 안전.
+ * 단, 명시적으로 [ \t]+ 사용해서 NBSP 안 잘리는 것 보장.
  */
 function splitSentences(text: string, max: number): string[] {
   const parts = text
-    .split(/(?<=[다요까])\.\s+|(?<=[.!?])\s+/u)
+    .split(/(?<=[다요까])\.[ \t]+|(?<=[.!?])[ \t]+/u)
     .map((s) => s.trim())
     .filter(Boolean);
   if (parts.length === 0) return [text.trim()];
@@ -237,7 +310,7 @@ function renderInfoCard(
   color: string,
 ) {
   const text = description ?? title;
-  const sentences = splitSentences(text, 3);
+  const sentences = splitSentences(text, 3).map(preserveSemanticChunks);
   const longest = Math.max(...sentences.map((s) => s.length));
 
   // fontSize 임계 — 가장 긴 한 문장 길이 기준 (전체 길이 X)
@@ -297,27 +370,41 @@ function renderInfoCard(
           justifyContent: "center",
         }}
       >
-        {sentences.map((sentence, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              fontSize: i === 0 ? headFontSize : bodyFontSize,
-              // Pretendard-Bold.woff 는 700 만 로딩 — 800 지정 시 fake-bold 로
-              // 글자 두꺼워지면서 한글 빽빽함 (2026-05-16 사장님 가독성 신고).
-              fontWeight: 700,
-              color: bodyColor,
-              // 한글 가독성: line-height 1.7 (줄간 호흡감) + letter-spacing 0
-              // (음수 자간은 한글에서 답답). wordBreak keep-all 로 어절 안 자름.
-              lineHeight: 1.7,
-              letterSpacing: "0",
-              opacity: i === 0 ? 1 : 0.92,
-              wordBreak: "keep-all",
-            }}
-          >
-            {sentence}
-          </div>
-        ))}
+        {sentences.map((sentence, i) => {
+          const fontSize = i === 0 ? headFontSize : bodyFontSize;
+          const tokens = tokenizeSemantic(sentence);
+          // 각 token 이 atomic flex item — 한 chunk 안에서는 wrap X.
+          // flex-wrap: wrap 으로 chunk 단위 자연 줄바꿈.
+          // 의미 단위 ("최대 300만원") 가 절대 분리 안 됨 (2026-05-16 사장님 신고 fix).
+          return (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                fontSize,
+                fontWeight: 700,
+                color: bodyColor,
+                opacity: i === 0 ? 1 : 0.92,
+                width: "100%",
+              }}
+            >
+              {tokens.map((t, j) => (
+                <div
+                  key={j}
+                  style={{
+                    display: "flex",
+                    marginRight: j === tokens.length - 1 ? 0 : "0.32em",
+                    marginBottom: "0.4em",
+                    letterSpacing: "0",
+                  }}
+                >
+                  {t}
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
 
       <div
