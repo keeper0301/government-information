@@ -82,6 +82,32 @@ describe("applyPopularityBoost", () => {
     expect(out[0].item.id).toBe("p2");
     expect(out[1].item.id).toBe("p1");
   });
+
+  it("boost 적용 시 signals 에 popularity kind push (A 7차)", async () => {
+    mockEvents([
+      { program_id: "p1", event_type: "apply_click" },
+      { program_id: "p1", event_type: "program_view" },
+    ]);
+    const input = [{ item: { id: "p1" }, score: 5, signals: [] }];
+    const out = await applyPopularityBoost(input);
+    expect(out[0].signals.length).toBe(1);
+    expect(out[0].signals[0]).toEqual({
+      kind: "popularity",
+      score: 2.5, // 2 (apply) + 0.5 (view)
+      detail: "view 1·apply 1",
+    });
+  });
+
+  it("popularity 데이터 없는 항목은 signals 변경 X", async () => {
+    mockEvents([{ program_id: "p1", event_type: "apply_click" }]);
+    const input = [
+      { item: { id: "p1" }, score: 5, signals: [] },
+      { item: { id: "p2" }, score: 5, signals: [] }, // event 없음
+    ];
+    const out = await applyPopularityBoost(input);
+    const p2 = out.find((x) => x.item.id === "p2")!;
+    expect(p2.signals.length).toBe(0);
+  });
 });
 
 describe("getProgramPopularityScore", () => {

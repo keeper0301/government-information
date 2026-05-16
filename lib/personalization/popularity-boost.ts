@@ -9,6 +9,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { MatchSignal } from "./types";
 
 type PopularityEntry = { score: number; views: number; applies: number };
 
@@ -66,16 +67,27 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
 
 // score 결과 list 에 popularity boost 적용. order 유지.
 // caller — score.ts 의 scoreAndFilter 결과를 받아 boost 후 재정렬.
+// A 7차: signals 배열에도 popularity 시그널 push (UI 배지 노출용).
 export async function applyPopularityBoost<T extends { id: string }>(
-  items: Array<{ item: T; score: number; signals: unknown[] }>,
-): Promise<Array<{ item: T; score: number; signals: unknown[] }>> {
+  items: Array<{ item: T; score: number; signals: MatchSignal[] }>,
+): Promise<Array<{ item: T; score: number; signals: MatchSignal[] }>> {
   const popMap = await loadPopularitySet();
   if (popMap.size === 0) return items;
-  // boost 적용 + 점수 재정렬
+  // boost 적용 + signals 에 popularity 추가 + 점수 재정렬
   return items
     .map((s) => {
       const pop = popMap.get(s.item.id);
-      return pop ? { ...s, score: s.score + pop.score } : s;
+      if (!pop) return s;
+      const popularitySignal: MatchSignal = {
+        kind: "popularity",
+        score: pop.score,
+        detail: `view ${pop.views}·apply ${pop.applies}`,
+      };
+      return {
+        ...s,
+        score: s.score + pop.score,
+        signals: [...s.signals, popularitySignal],
+      };
     })
     .sort((a, b) => b.score - a.score);
 }

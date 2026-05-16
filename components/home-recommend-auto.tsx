@@ -24,6 +24,7 @@ const HOME_MATCH_REASON_LABELS: Record<MatchSignal["kind"], string> = {
   household_target: "가구",
   urgent_deadline: "마감임박",
   business_match: "사업자",
+  popularity: "🔥 인기",
 };
 
 export function getHomeMatchReasonLabels(signals: MatchSignal[], limit = 5): string[] {

@@ -28,7 +28,8 @@ export type MatchSignal = {
   kind: 'region' | 'district' | 'benefit_tags' | 'occupation' | 'age'
         | 'income_keyword' | 'household_keyword' | 'urgent_deadline'
         | 'income_target' | 'household_target'  // Phase 1.5: 정확 매칭 시그널
-        | 'business_match';                      // 자영업자 자격 정확 매칭 (Basic wedge)
+        | 'business_match'                       // 자영업자 자격 정확 매칭 (Basic wedge)
+        | 'popularity';                          // A 7차: 30일 click 데이터 누적 (인기 정책)
   score: number;   // 이 시그널이 기여한 점수
   detail?: string; // 부가 설명 (예: 어떤 태그가 일치했는지)
 };
