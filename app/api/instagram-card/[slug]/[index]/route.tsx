@@ -31,6 +31,7 @@ import {
 import {
   getCategoryColor,
   categoryTextColor,
+  categoryBadgeTextColor,
 } from "@/lib/instagram/card-colors";
 
 export const runtime = "nodejs";
@@ -134,14 +135,16 @@ function renderCoverCard(title: string, category: string, color: string) {
         }}
       />
 
-      {/* 상단 카테고리 라벨 */}
+      {/* 상단 카테고리 라벨 — 노년 #FE9800·문화 #EAB308 처럼 매우 밝은 배경
+          위에 white text 가 WCAG contrast 미달 (2.0/1.86:1). YIQ > 150
+          분기로 dark text 자동 적용 (2026-05-16 fix). */}
       <div
         style={{
           display: "flex",
           alignSelf: "flex-start",
           padding: "14px 32px",
           background: color,
-          color: "#FFFFFF",
+          color: categoryBadgeTextColor(color),
           fontSize: 32,
           fontWeight: 700,
           borderRadius: 999,

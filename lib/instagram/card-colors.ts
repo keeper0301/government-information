@@ -32,17 +32,32 @@ export function getCategoryColor(category: string | null | undefined): string {
   return CATEGORY_COLORS[category] ?? CATEGORY_COLORS["청년"];
 }
 
-// 배경색이 밝은지 (YIQ luminance > 130) 판정.
-// 노년 #FE9800, 문화 #EAB308 처럼 밝은 배경 위에 white text 면 contrast 미달.
-export function isLightBg(hex: string): boolean {
+// YIQ luminance 0~255 계산 (NTSC 표준). 분기 threshold 가 두 곳에서
+// 다르게 쓰여서 별도 helper 로 추출 (130: 카드 2 body / 150: 카드 1 배지).
+function yiqLuminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 130;
+  return (r * 299 + g * 587 + b * 114) / 1000;
 }
 
-// 배경색 위에 올릴 본문 텍스트 색상 — 카드 2 (info card) 에서 사용.
-// light bg → dark text (#191F28), dark bg → white text.
+// 배경색이 밝은지 (YIQ > 130) 판정. 노년 #FE9800, 문화 #EAB308 처럼 밝은
+// 배경 위에 white text 면 카드 2 body (fontSize 38+) 가독성 미달.
+export function isLightBg(hex: string): boolean {
+  return yiqLuminance(hex) > 130;
+}
+
+// 카드 2 본문 (info card body) 텍스트 색 — light bg → dark, dark bg → white.
 export function categoryTextColor(hex: string): "#FFFFFF" | "#191F28" {
   return isLightBg(hex) ? "#191F28" : "#FFFFFF";
+}
+
+// 카드 1·3 의 카테고리 pill 배지 텍스트 색 — fontSize 32 bold pill 이라
+// 카드 2 body 보다 시각 emphasis 가 dominant. YIQ threshold 150 으로 더
+// 엄격히 (노년 165·문화 176 만 dark). 육아·가족 130.3 은 기존 white 유지
+// (배지 contrast 3.4:1 — AA Large 충족).
+// 2026-05-16 노년 #FE9800 + white = 2.0:1, 문화 #EAB308 + white = 1.86:1
+// 미달 잠재 사고 fix.
+export function categoryBadgeTextColor(hex: string): "#FFFFFF" | "#191F28" {
+  return yiqLuminance(hex) > 150 ? "#191F28" : "#FFFFFF";
 }

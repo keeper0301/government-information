@@ -17,6 +17,7 @@ import {
   getCategoryColor,
   isLightBg,
   categoryTextColor,
+  categoryBadgeTextColor,
 } from "@/lib/instagram/card-colors";
 
 // ── WCAG 2.1 relative luminance + contrast (테스트 전용 helper) ──────
@@ -165,5 +166,68 @@ describe("카드 2 body contrast ≥ 3:1 (WCAG AA Large for 18px+ bold)", () => 
   it("큐레이션 #1F2937 + white 가 ≥ 7:1 (AAA, 2026-05-16 v10 회귀 방지)", () => {
     const c = contrast("#1F2937", "#FFFFFF");
     expect(c).toBeGreaterThanOrEqual(7.0);
+  });
+});
+
+// ── categoryBadgeTextColor (카드 1·3 pill 배지) ──────────────
+describe("categoryBadgeTextColor (카드 1 pill 배지 분기, YIQ > 150)", () => {
+  it("노년 #FE9800 → dark (YIQ 165, 이전 white = 2.0:1 미달)", () => {
+    expect(categoryBadgeTextColor("#FE9800")).toBe("#191F28");
+  });
+
+  it("문화 #EAB308 → dark (YIQ 176, 이전 white = 1.86:1 미달)", () => {
+    expect(categoryBadgeTextColor("#EAB308")).toBe("#191F28");
+  });
+
+  it("육아·가족 #EC4899 → white 유지 (YIQ 130.3 < 150, contrast 3.4:1 AA Large)", () => {
+    // 카드 2 body 분기 (threshold 130) 에서는 dark 지만, 카드 1 배지에서는
+    // fontSize 32 bold pill 의 시각 emphasis 가 dominant 라 white 유지가 의도.
+    expect(categoryBadgeTextColor("#EC4899")).toBe("#FFFFFF");
+  });
+
+  it("청년 #3182F6 → white (YIQ 119)", () => {
+    expect(categoryBadgeTextColor("#3182F6")).toBe("#FFFFFF");
+  });
+
+  it("소상공인 #A234C7 → white (YIQ 102)", () => {
+    expect(categoryBadgeTextColor("#A234C7")).toBe("#FFFFFF");
+  });
+
+  it("주거 #047857 → white (YIQ 81)", () => {
+    expect(categoryBadgeTextColor("#047857")).toBe("#FFFFFF");
+  });
+
+  it("학생·교육 #0F766E → white (YIQ 86)", () => {
+    expect(categoryBadgeTextColor("#0F766E")).toBe("#FFFFFF");
+  });
+
+  it("큐레이션 #1F2937 → white (YIQ 40)", () => {
+    expect(categoryBadgeTextColor("#1F2937")).toBe("#FFFFFF");
+  });
+});
+
+// ── WCAG contrast — 카드 1·3 pill 배지 ───────────────────────
+describe("카드 1 pill 배지 contrast ≥ 3:1 (WCAG AA Large for 32px+ bold)", () => {
+  it.each(Object.entries(CATEGORY_COLORS))(
+    "'%s' bg '%s' + 분기된 badge text contrast ≥ 3:1",
+    (_cat, bg) => {
+      const text = categoryBadgeTextColor(bg);
+      const c = contrast(bg, text);
+      expect(c).toBeGreaterThanOrEqual(3.0);
+    },
+  );
+
+  it("노년 #FE9800 + dark text 가 ≥ 4.5:1 (2026-05-16 잠재 사고 회귀 방지)", () => {
+    // 기존 #FE9800 + white = 2.0:1 (WCAG 미달).
+    // dark text #191F28 + #FE9800 ≈ 9.6:1 → AAA 충족.
+    const c = contrast("#FE9800", "#191F28");
+    expect(c).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("문화 #EAB308 + dark text 가 ≥ 4.5:1 (2026-05-16 잠재 사고 회귀 방지)", () => {
+    // 기존 #EAB308 + white = 1.86:1 (WCAG 미달).
+    // dark text #191F28 + #EAB308 ≈ 11.4:1 → AAA 충족.
+    const c = contrast("#EAB308", "#191F28");
+    expect(c).toBeGreaterThanOrEqual(4.5);
   });
 });
