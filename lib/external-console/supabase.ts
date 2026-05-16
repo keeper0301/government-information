@@ -39,7 +39,7 @@ type ProjectStatus =
   | "RESTORE_FAILED"
   | string;
 
-interface SupabaseProject {
+export interface SupabaseProject {
   id?: string;
   name?: string;
   status?: ProjectStatus;

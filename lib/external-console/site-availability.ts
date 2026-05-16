@@ -25,7 +25,7 @@ const TARGETS = [
 const RESPONSE_TIME_THRESHOLD_MS = 3000; // 3초 이상 → 느림 alert
 const FETCH_TIMEOUT_MS = 8000; // 8초 timeout (Vercel 응답 보통 ~수백ms)
 
-interface CheckOneResult {
+export interface CheckOneResult {
   path: string;
   label: string;
   ok: boolean;

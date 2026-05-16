@@ -31,7 +31,7 @@ type DeployState =
   | "QUEUED"
   | string;
 
-interface DeploymentRow {
+export interface DeploymentRow {
   uid: string;
   state?: DeployState;
   createdAt?: number;
