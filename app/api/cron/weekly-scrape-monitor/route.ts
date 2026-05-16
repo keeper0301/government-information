@@ -12,6 +12,11 @@ import {
   collectWeeklyMonitor,
   formatWeeklyReport,
 } from "@/lib/monitoring/weekly-scrape-monitor";
+import {
+  analyzeForAutoFix,
+  formatAutoFixSummary,
+  isAutoFixEnabled,
+} from "@/lib/monitoring/auto-fix";
 import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -38,7 +43,12 @@ export async function GET(request: Request) {
 
   try {
     const report = await collectWeeklyMonitor();
-    const message = formatWeeklyReport(report);
+    const baseMessage = formatWeeklyReport(report);
+
+    // D-4 step 1 — auto-fix 분석 (dry-run, 실제 변경 X)
+    const autoFixAttempts = analyzeForAutoFix(report);
+    const autoFixSummary = formatAutoFixSummary(autoFixAttempts);
+    const message = baseMessage + autoFixSummary;
 
     // 텔레그램 알림 — 사고 있으면 즉시, 사고 0 도 매주 1회 정상 보고 (사장님 운영 가시화)
     const telegram = await sendOpsAlertTelegram({
@@ -56,12 +66,20 @@ export async function GET(request: Request) {
       sajang_suncheon_welfare: report.districtMatching.sajangSuncheonWelfare,
       sajang_delta: report.trend.sajangSuncheonDelta,
       telegram_sent: telegram.ok,
+      d4_auto_fix_enabled: isAutoFixEnabled(),
+      d4_auto_fix_attempts: autoFixAttempts.length,
+      d4_auto_fix_results: autoFixAttempts.map((a) => ({
+        trigger: a.trigger,
+        action: a.action,
+        status: a.status,
+      })),
       report, // 다음 주 비교용 전체 snapshot
     });
 
     return NextResponse.json({
       ok: true,
       report,
+      auto_fix_attempts: autoFixAttempts,
       telegram_sent: telegram.ok,
     });
   } catch (e) {
