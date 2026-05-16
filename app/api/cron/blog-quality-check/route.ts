@@ -9,6 +9,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { evaluateBlogQuality } from "@/lib/blog/quality-check";
 import { logAdminAction } from "@/lib/admin-actions";
+import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
+import { publishToWordPress } from "@/lib/wordpress/publisher";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -31,8 +33,12 @@ async function authorize(request: Request) {
 
 interface BlogPost {
   id: string;
+  slug: string;
   title: string;
   content: string;
+  meta_description: string | null;
+  tags: string[] | null;
+  category: string | null;
 }
 
 function mergeCandidates(...groups: BlogPost[][]): BlogPost[] {
@@ -45,6 +51,40 @@ function mergeCandidates(...groups: BlogPost[][]): BlogPost[] {
   return Array.from(map.values()).slice(0, BATCH_LIMIT);
 }
 
+async function releaseApprovedPostToExternalChannels(post: BlogPost) {
+  try {
+    await enqueueNaverBlog(post.id);
+  } catch (e) {
+    console.warn(
+      `[blog-quality-check] naver enqueue 실패 (quality pass): ${(e as Error).message}`,
+    );
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("wordpress_publish_log")
+      .select("status")
+      .eq("blog_post_id", post.id)
+      .eq("status", "published")
+      .maybeSingle();
+    if (data) return;
+
+    await publishToWordPress(post.id, {
+      slug: post.slug,
+      title: post.title,
+      meta_description: post.meta_description,
+      content: post.content,
+      tags: post.tags,
+      category: post.category,
+    });
+  } catch (e) {
+    console.warn(
+      `[blog-quality-check] wordpress release 실패 (quality pass): ${(e as Error).message}`,
+    );
+  }
+}
+
 async function run() {
   const admin = createAdminClient();
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -52,7 +92,7 @@ async function run() {
   // 24h 발행 + 미검수 글 fetch
   const { data: recentPosts, error } = await admin
     .from("blog_posts")
-    .select("id, title, content")
+    .select("id, slug, title, content, meta_description, tags, category")
     .gte("published_at", since24h)
     .is("admin_reviewed_at", null)
     .limit(BATCH_LIMIT);
@@ -69,7 +109,7 @@ async function run() {
   const [instagramPending, naverPending] = await Promise.all([
     admin
       .from("blog_posts")
-      .select("id, title, content")
+      .select("id, slug, title, content, meta_description, tags, category")
       .not("published_at", "is", null)
       .is("instagram_published_at", null)
       .is("admin_reviewed_at", null)
@@ -77,7 +117,7 @@ async function run() {
     admin
       .from("naver_blog_queue")
       .select(
-        "blog_post:blog_posts!inner(id, title, content, admin_reviewed_at)",
+        "blog_post:blog_posts!inner(id, slug, title, content, meta_description, tags, category, admin_reviewed_at)",
       )
       .eq("status", "pending")
       .is("blog_post.admin_reviewed_at", null)
@@ -103,13 +143,19 @@ async function run() {
   );
   let evaluated = 0;
   let flagged = 0;
+  let releasedExternal = 0;
   let scoreSum = 0;
 
   for (const p of list) {
-    const result = await evaluateBlogQuality({
-      title: p.title,
-      content: p.content ?? "",
-    });
+    const result = await evaluateBlogQuality(
+      {
+        title: p.title,
+        content: p.content ?? "",
+      },
+      {
+        failClosed: true,
+      },
+    );
     evaluated += 1;
     scoreSum += result.score;
 
@@ -139,6 +185,9 @@ async function run() {
       } catch (auditErr) {
         console.warn("[blog-quality-check] audit 실패:", auditErr);
       }
+    } else if (!updateErr) {
+      await releaseApprovedPostToExternalChannels(p);
+      releasedExternal += 1;
     }
   }
 
@@ -148,6 +197,7 @@ async function run() {
     ok: true,
     evaluated,
     flagged,
+    releasedExternal,
     avgScore,
   });
 }
