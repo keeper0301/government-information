@@ -989,3 +989,76 @@ describe('isProgramAllowedForUser', () => {
     expect(result).toBe(true);
   });
 });
+
+// ── district 컬럼 정확 매칭 (migration 090 후) ─────────────
+describe('scoreProgram — district 컬럼 정확 매칭 (migration 090)', () => {
+  it('program.district === user.district → region_district (+10)', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도', // 광역만 있어도 OK
+        district: '순천시', // 컬럼 정확 매칭
+        benefit_tags: [],
+      },
+      { ...emptyUser, region: '전남', district: '순천시' },
+    );
+    // region_district +10 만 (benefit_tags 매칭 없음, 다른 시그널 없음)
+    expect(r.score).toBe(10);
+  });
+
+  it('program.district === user.district + region NULL → 정확 매칭 우선 (+10)', () => {
+    // district 컬럼만 있고 region NULL 인 케이스 — 정확 매칭이라 통과
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: null,
+        district: '순천시',
+        benefit_tags: [],
+      },
+      { ...emptyUser, region: '전남', district: '순천시' },
+    );
+    expect(r.score).toBe(10);
+  });
+
+  it('program.district 다른 시·군 (같은 광역) → district_mismatch (score 0)', () => {
+    // 영암군 정책에 순천시 사용자 → 차단
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도',
+        district: '영암군',
+        benefit_tags: ['주거'], // 다른 시그널 매칭해도 차단
+      },
+      { ...emptyUser, region: '전남', district: '순천시', benefitTags: ['주거'] },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('program.district NULL + region substring 매칭 (fallback)', () => {
+    // district 컬럼이 NULL 이라도 기존 region substring 매칭이 작동
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도 순천시', // substring 으로 매칭
+        district: null,
+        benefit_tags: [],
+      },
+      { ...emptyUser, region: '전남', district: '순천시' },
+    );
+    expect(r.score).toBe(10);
+  });
+
+  it('user.district NULL + program.district 있음 → region_only (+5)', () => {
+    // 사용자가 시·군 미설정이면 정확 매칭 안 됨. 광역만 매칭.
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도',
+        district: '순천시',
+        benefit_tags: [],
+      },
+      { ...emptyUser, region: '전남', district: null },
+    );
+    expect(r.score).toBe(5);
+  });
+});

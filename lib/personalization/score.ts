@@ -186,27 +186,46 @@ type RegionMatchResult =
 // 정책 지역과 사용자 지역의 정합성을 평가.
 // welfare_programs.region 컬럼이 "전라남도 영암군" 같이 시군구를 포함한 한 문자열이라
 // 사용자 district 도 substring 으로 검출해서 같은 시군구인지·다른 시군구인지 구분.
+//
+// 2026-05-16 — programDistrict 인자 신설 (migration 090).
+//   - district 컬럼이 자동 추출되어 있으면 substring 매칭보다 정확.
+//   - userDistrict === programDistrict → region_district (+10) 즉시 반환.
+//   - 기존 substring 매칭은 fallback (district 컬럼 NULL 인 row).
 function evaluateRegion(
   programRegion: string | null | undefined,
   userRegion: string | null,
   userDistrict: string | null,
+  programDistrict?: string | null,
 ): RegionMatchResult {
-  if (!programRegion) return { kind: 'no_match', score: 0 };
+  if (!programRegion && !programDistrict) return { kind: 'no_match', score: 0 };
   // 사용자 region 미설정 → 어떤 매칭도 안 함 (기존 동작 유지: 빈 프로필은 추천 풀에 진입 못 함)
   if (!userRegion) return { kind: 'no_match', score: 0 };
   // "전국" 키워드 포함 시 사용자 광역 무관하게 매칭
-  if (programRegion.includes('전국')) return { kind: 'national', score: 5 };
+  if (programRegion && programRegion.includes('전국')) return { kind: 'national', score: 5 };
 
-  // 사용자 광역 별칭이 정책 region 에 포함되는지
+  // 사용자 광역 별칭이 정책 region 에 포함되는지 (district 컬럼이 우선이지만 region 도 같이 검증)
   const aliases = REGION_ALIASES[userRegion] ?? [userRegion];
-  const regionHit = aliases.some((a) => programRegion.includes(a));
+  const regionHit = programRegion ? aliases.some((a) => programRegion.includes(a)) : false;
+
+  // ── district 정확 매칭 (programDistrict 컬럼) ──────────────────
+  if (userDistrict && programDistrict && userDistrict === programDistrict) {
+    // 광역도 함께 일치하면 region_district. 광역 정보 없으면 그래도 정확 매칭이라 region_district.
+    return { kind: 'region_district', score: 10 };
+  }
+
+  // 광역 매칭 실패 (programDistrict 도 다른 시·군이면 다른 광역의 정책일 가능성)
   if (!regionHit) return { kind: 'no_match', score: 0 };
 
   // 사용자가 시군구 미선택 → 광역 매칭으로 충분
   if (!userDistrict) return { kind: 'region_only', score: 5 };
 
-  // 정책 region 에 사용자 district 직접 포함 → 정확 매칭 (+10)
-  if (programRegion.includes(userDistrict)) {
+  // programDistrict 가 명시되어 있는데 사용자와 다름 → 다른 시·군 정책
+  if (programDistrict && programDistrict !== userDistrict) {
+    return { kind: 'district_mismatch', score: 0 };
+  }
+
+  // 정책 region 에 사용자 district 직접 포함 → 정확 매칭 (+10) (기존 fallback)
+  if (programRegion && programRegion.includes(userDistrict)) {
     return { kind: 'region_district', score: 10 };
   }
 
@@ -215,14 +234,17 @@ function evaluateRegion(
   // "특별시" 잔재가 시군구로 잘못 인식되는 문제 방지.
   // 예: "전라남도 영암군" → strip "전라남도" → "영암군" → /시|군|구/ 매칭 → 다른 시군구 명시.
   // "전라남도" → strip → "" → 다른 시군구 명시 없음 → region_only.
-  const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
-  const stripped = sortedAliases
-    .reduce((s, a) => s.replace(a, ''), programRegion)
-    .trim();
-  const hasOtherDistrict = /\S(시|군|구)(\s|$)/.test(stripped);
-  if (hasOtherDistrict) {
-    // 같은 광역이지만 다른 시군구가 명시됨 → 사용자에게 부적합
-    return { kind: 'district_mismatch', score: 0 };
+  // programRegion 이 null 인 케이스는 위에서 regionHit false → no_match 로 이미 return.
+  if (programRegion) {
+    const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
+    const stripped = sortedAliases
+      .reduce((s, a) => s.replace(a, ''), programRegion)
+      .trim();
+    const hasOtherDistrict = /\S(시|군|구)(\s|$)/.test(stripped);
+    if (hasOtherDistrict) {
+      // 같은 광역이지만 다른 시군구가 명시됨 → 사용자에게 부적합
+      return { kind: 'district_mismatch', score: 0 };
+    }
   }
 
   // 광역만 명시된 정책 (시군구 명시 없음) → 광역 매칭으로 처리
@@ -715,12 +737,17 @@ export function scoreProgram<T extends ScorableItem>(
 
   // ① 지역 매칭 — 광역·시군구 정합성을 한 번에 평가.
   // - 전국 정책: +5
-  // - 사용자 광역 + 정책 region 에 사용자 district substring 포함: +10
+  // - district 컬럼 정확 매칭 (migration 090 후): +10 (가장 정확)
+  // - 사용자 광역 + 정책 region 에 사용자 district substring 포함: +10 (fallback)
   // - 사용자 광역 + 정책에 시군구 명시 없음: +5 (광역 only 정책)
   // - 같은 광역인데 다른 시군구: 0 (영암군 정책에 순천시 사용자 차단)
   // - 다른 광역: 0
-  // program.district 별도 컬럼은 사용 안 함 (welfare_programs 에 컬럼 자체가 없음).
-  const regionEval = evaluateRegion(program.region, user.region, user.district);
+  const regionEval = evaluateRegion(
+    program.region,
+    user.region,
+    user.district,
+    program.district,
+  );
 
   // ②-Gate: Regional gate — 사용자가 region 설정 + 정책에 region 정보 있을 때만 적용
   // 정책 region 이 no_match(다른 광역) 또는 district_mismatch(같은 광역 다른 시군구)면
