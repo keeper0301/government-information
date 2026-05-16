@@ -53,6 +53,8 @@ export async function syncAutoAlertRule(opts: SyncOptions): Promise<void> {
     user_id: userId,
     name: '내 조건 맞춤 알림',
     region_tags: signals.region ? [signals.region] : [],
+    // migration 092 (2026-05-17) — 거주지 시·군 정확 매칭. NULL 이면 광역만 매칭.
+    district: signals.district ?? null,
     age_tags: signals.ageGroup ? [signals.ageGroup] : [],
     occupation_tags: signals.occupation ? [signals.occupation] : [],
     benefit_tags: signals.benefitTags,
@@ -69,6 +71,7 @@ export async function syncAutoAlertRule(opts: SyncOptions): Promise<void> {
       .from('user_alert_rules')
       .update({
         region_tags: payload.region_tags,
+        district: payload.district,
         age_tags: payload.age_tags,
         occupation_tags: payload.occupation_tags,
         benefit_tags: payload.benefit_tags,

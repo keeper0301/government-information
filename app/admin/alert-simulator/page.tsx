@@ -65,7 +65,7 @@ async function fetchProgram(
   const { data, error } = await admin
     .from(tableName)
     .select(
-      "id, title, description, region_tags, age_tags, occupation_tags, benefit_tags, household_target_tags, income_target_level",
+      "id, title, description, region_tags, district, age_tags, occupation_tags, benefit_tags, household_target_tags, income_target_level",
     )
     .eq("id", id)
     .maybeSingle();
@@ -86,7 +86,7 @@ type RecentItem = {
 // 매칭 cohort gate 컬럼 — fetchRecentPrograms 의 select 와 reverse-match 의
 // ProgramTagsForMatch 에 모두 필요한 8 컬럼 단일 source.
 const PROGRAM_MATCH_COLUMNS =
-  "id, title, description, region_tags, age_tags, occupation_tags, benefit_tags, household_target_tags, income_target_level";
+  "id, title, description, region_tags, district, age_tags, occupation_tags, benefit_tags, household_target_tags, income_target_level";
 
 type ProgramRow = ProgramTagsForMatch & { id: string };
 

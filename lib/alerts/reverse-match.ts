@@ -16,6 +16,8 @@ import type { AlertRule } from "./matching";
 // 매칭 입력 — welfare/loan_programs 의 매칭 관련 컬럼 발췌
 export type ProgramTagsForMatch = {
   region_tags: string[];
+  // migration 090 (2026-05-16) — 시·군 단위. null = 광역/전국 정책.
+  district: string | null;
   age_tags: string[];
   occupation_tags: string[];
   benefit_tags: string[];
@@ -55,6 +57,17 @@ function matchProgramAgainstRule(
       return { matched: false, reasons: [] };
     }
     reasons.push("region");
+  }
+  // migration 092 (2026-05-17) — 사용자 거주지 시·군 정확 매칭.
+  // rule.district 있을 때만 검사: program.district 가 동일하거나 NULL (광역 정책 OK).
+  // 다른 시·군 정책은 차단 (예: 영암군 정책에 순천시 사용자 매칭 X).
+  if (rule.district) {
+    if (program.district !== null && program.district !== rule.district) {
+      return { matched: false, reasons: [] };
+    }
+    if (program.district === rule.district) {
+      reasons.push("district");
+    }
   }
   if (rule.age_tags.length > 0) {
     if (!arrayOverlap(rule.age_tags, program.age_tags)) {
@@ -124,7 +137,7 @@ export async function findMatchingRulesForProgram(
   const { data, error } = await supabase
     .from("user_alert_rules")
     .select(
-      "id, user_id, name, region_tags, age_tags, occupation_tags, benefit_tags, household_tags, income_target, keyword, channels, phone_number, is_active",
+      "id, user_id, name, region_tags, district, age_tags, occupation_tags, benefit_tags, household_tags, income_target, keyword, channels, phone_number, is_active",
     )
     .eq("is_active", true);
 
@@ -148,7 +161,7 @@ export async function findMatchingRulesForPrograms(
   const { data, error } = await supabase
     .from("user_alert_rules")
     .select(
-      "id, user_id, name, region_tags, age_tags, occupation_tags, benefit_tags, household_tags, income_target, keyword, channels, phone_number, is_active",
+      "id, user_id, name, region_tags, district, age_tags, occupation_tags, benefit_tags, household_tags, income_target, keyword, channels, phone_number, is_active",
     )
     .eq("is_active", true);
 

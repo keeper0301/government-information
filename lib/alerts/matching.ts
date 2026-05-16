@@ -12,6 +12,8 @@ export type AlertRule = {
   user_id: string;
   name: string;
   region_tags: string[];
+  // migration 092 (2026-05-17) — 거주지 시·군 정확 매칭. NULL 이면 광역만 매칭.
+  district: string | null;
   age_tags: string[];
   occupation_tags: string[];
   benefit_tags: string[];
@@ -35,6 +37,8 @@ export type MatchedProgram = {
   // cohort gate 적용용 — alert-dispatch 가 isProgramAllowedForUser 로 필터링.
   // null 일 경우 score.ts gate 가 미적용 (정책 제한 없음으로 해석).
   household_target_tags: string[] | null;
+  // migration 092 — 거주지 정확 매칭 시그널 (district 매칭 +1)
+  district: string | null;
   table: "welfare_programs" | "loan_programs";
 };
 
@@ -57,13 +61,20 @@ export async function findMatchingPrograms(
     let query = supabase
       .from(table)
       .select(
-        "id, title, source, apply_url, apply_end, published_at, description, household_target_tags",
+        "id, title, source, apply_url, apply_end, published_at, description, household_target_tags, district",
       )
       .gte("fetched_at", sinceIso)
       // duplicate_of_id 가 있으면 중복이므로 건너뛰기
       .is("duplicate_of_id", null)
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(limit);
+
+    // migration 092 (2026-05-17) — 사용자 거주지 시·군 매칭 우선.
+    // rule.district 설정 시 program.district 정확 매칭 row 만 + 광역 단위 (district NULL)
+    // 도 같이 (전국·광역 정책 노출 유지). OR 조합.
+    if (rule.district) {
+      query = query.or(`district.eq.${rule.district},district.is.null`);
+    }
 
     // 배열 교집합 — 비어있으면 생략
     if (rule.region_tags.length > 0) {
