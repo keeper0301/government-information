@@ -40,6 +40,7 @@ function makeWelfare(overrides: Partial<WelfareProgram>): WelfareProgram {
     source_url: null,
     source_code: null,
     region: null,
+    district: null, // migration 090
     serv_id: null,
     detailed_content: null,
     selection_criteria: null,
@@ -79,6 +80,8 @@ function makeLoan(overrides: Partial<LoanProgram>): LoanProgram {
     source: "중소벤처기업부",
     source_url: null,
     source_code: null,
+    region: null, // migration 090
+    district: null, // migration 090
     detailed_content: null,
     required_documents: null,
     contact_info: null,

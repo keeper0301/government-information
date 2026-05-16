@@ -57,7 +57,7 @@ export async function traceWelfare(user: UserSignals): Promise<AreaResult> {
     let q = supabase
       .from("welfare_programs")
       .select(
-        "id, title, target, description, eligibility, region, benefit_tags, apply_end, source, income_target_level, household_target_tags",
+        "id, title, target, description, eligibility, region, district, benefit_tags, apply_end, source, income_target_level, household_target_tags",
       )
       .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
       .is("duplicate_of_id", null);
@@ -96,7 +96,7 @@ export async function traceLoan(user: UserSignals): Promise<AreaResult> {
     let q = supabase
       .from("loan_programs")
       .select(
-        "id, title, target, description, eligibility, region_tags, benefit_tags, apply_end, source, income_target_level, household_target_tags",
+        "id, title, target, description, eligibility, region_tags, district, region, benefit_tags, apply_end, source, income_target_level, household_target_tags",
       )
       .not("source_code", "in", LOAN_EXCLUDED_FILTER)
       .is("duplicate_of_id", null);
@@ -122,21 +122,24 @@ export async function traceLoan(user: UserSignals): Promise<AreaResult> {
       description: string | null;
       eligibility: string | null;
       region_tags: string[] | null;
+      region: string | null;
+      district: string | null;
       benefit_tags: string[] | null;
       apply_end: string | null;
       source: string | null;
       income_target_level: ScorableItem["income_target_level"];
       household_target_tags: string[] | null;
     }>;
-    // loan 은 region 컬럼 없음 → region_tags 첫 항목을 region 으로 (단순화)
+    // loan: region 컬럼 신설 (migration 090) — 비어있으면 region_tags 첫 항목 fallback.
+    // district 컬럼도 신설 — Phase A 백필 적용분 (extractor 자동 추출).
     const pool: ScorableItem[] = rows.map((r) => ({
       id: r.id,
       title: r.title,
       target: r.target,
       description: r.description,
       eligibility: r.eligibility,
-      region: r.region_tags?.[0] ?? null,
-      district: null,
+      region: r.region ?? r.region_tags?.[0] ?? null,
+      district: r.district ?? null,
       benefit_tags: r.benefit_tags,
       apply_end: r.apply_end,
       source: r.source,

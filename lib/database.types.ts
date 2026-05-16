@@ -14,6 +14,9 @@ export type WelfareProgram = {
   source_url: string | null;
   source_code: string | null;
   region: string | null;
+  // 시·군·구 단위 (migration 090, 2026-05-16) — 사장님 거주지 정확 매칭용.
+  // title/content 에서 자동 추출. NULL = 광역/전국 정책.
+  district: string | null;
   serv_id: string | null;
   detailed_content: string | null;
   selection_criteria: string | null;
@@ -52,6 +55,10 @@ export type LoanProgram = {
   source: string;
   source_url: string | null;
   source_code: string | null;
+  // 광역·시·군·구 단위 (migration 090, 2026-05-16) — 사장님 거주지 정확 매칭용.
+  // loan_programs 는 원래 region 도 없어서 둘 다 신설.
+  region: string | null;
+  district: string | null;
   detailed_content: string | null;
   required_documents: string | null;
   contact_info: string | null;

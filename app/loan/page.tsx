@@ -41,17 +41,18 @@ type Props = {
 
 // LoanProgram raw 행 → ScorableItem 변환
 // ScorableItem 은 id/title/description/region/district/benefit_tags/apply_end/source 만 필요
-// loan_programs 에는 region 컬럼이 없으므로 아래 우선순위로 region 문자열 추출:
-//   1순위: region_tags 배열 join (031 분류 통일 후 58% 채워짐)
-//   2순위: title 에서 [XX] 또는 (XX 형식 prefix 추출 (fallback)
+// loan_programs.region 컬럼은 migration 090 신설 — 우선순위:
+//   1순위: region 컬럼 (extractor 백필분)
+//   2순위: region_tags 배열 join (031 분류 통일 후 58% 채워짐)
+//   3순위: title 에서 [XX] 또는 (XX 형식 prefix 추출 (fallback)
 function loanToScorable(l: LoanProgram): ScorableItem {
-  // region 문자열 생성 — region_tags 배열이 있으면 join, 없으면 title prefix 파싱
+  // region 문자열 생성 — 컬럼 우선, region_tags fallback, title prefix 최후
   let regionStr: string | null = null;
-  if (l.region_tags && l.region_tags.length > 0) {
-    // 배열의 모든 광역명을 한 string 에 넣어 regionMatches 의 includes 매칭 활용
+  if (l.region) {
+    regionStr = l.region;
+  } else if (l.region_tags && l.region_tags.length > 0) {
     regionStr = l.region_tags.join(" ");
   } else {
-    // fallback: title 에서 [XX] 또는 (XX 형식 광역명 추출
     const m = l.title.match(/[\[\(]([^\]\)]+)/);
     if (m) regionStr = m[1].trim();
   }
@@ -64,7 +65,8 @@ function loanToScorable(l: LoanProgram): ScorableItem {
       .filter(Boolean)
       .join(" "),
     region: regionStr,
-    district: null,         // loan_programs 에 district 컬럼 없음
+    // migration 090 후 district 컬럼 활용 — 사장님 (전남 순천) 정확 매칭 +10.
+    district: l.district ?? null,
     benefit_tags: l.benefit_tags ?? [],
     apply_end: l.apply_end ?? null,
     source: l.source,

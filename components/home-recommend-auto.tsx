@@ -128,6 +128,8 @@ function welfareRowToScorable(row: {
   eligibility: string | null;
   detailed_content: string | null;
   region: string | null;
+  // migration 090 (2026-05-16) — 사장님 거주지 정확 매칭용 시·군 컬럼
+  district: string | null;
   apply_end: string | null;
   source: string;
   benefit_tags: string[] | null;
@@ -144,7 +146,7 @@ function welfareRowToScorable(row: {
       .filter(Boolean)
       .join(' '),
     region: row.region,
-    district: null,      // welfare_programs 에 district 컬럼 없음 (광역만)
+    district: row.district ?? null,
     benefit_tags: row.benefit_tags ?? [],
     apply_end: row.apply_end,
     source: row.source,
@@ -160,17 +162,22 @@ function loanRowToScorable(row: {
   description: string | null;
   eligibility: string | null;
   detailed_content: string | null;
+  region: string | null;
   region_tags: string[] | null;
+  // migration 090 (2026-05-16) — 사장님 거주지 정확 매칭용 시·군 컬럼
+  district: string | null;
   apply_end: string | null;
   source: string;
   benefit_tags: string[] | null;
   income_target_level: 'low' | 'mid_low' | 'mid' | 'any' | null;
   household_target_tags: string[] | null;
 }): HomeScorableItem {
-  let region: string | null = null;
-  if (row.region_tags && row.region_tags.length > 0) {
+  // region: migration 090 컬럼 → region_tags → title prefix 순
+  let region: string | null = row.region;
+  if (!region && row.region_tags && row.region_tags.length > 0) {
     region = row.region_tags.join(' ');
-  } else {
+  }
+  if (!region) {
     const match = row.title.match(/[\[\(]([^\]\)]+)/);
     if (match) region = match[1].trim();
   }
@@ -183,7 +190,7 @@ function loanRowToScorable(row: {
       .filter(Boolean)
       .join(' '),
     region,
-    district: null,
+    district: row.district ?? null,
     benefit_tags: row.benefit_tags ?? [],
     apply_end: row.apply_end,
     source: row.source,
@@ -243,13 +250,13 @@ export async function HomeRecommendAuto({
   const today = new Date().toISOString().slice(0, 10);
   let welfareQuery = supabase
     .from('welfare_programs')
-    .select('id, title, description, eligibility, detailed_content, region, apply_end, source, benefit_tags, income_target_level, household_target_tags')
+    .select('id, title, description, eligibility, detailed_content, region, district, apply_end, source, benefit_tags, income_target_level, household_target_tags')
     .not('source_code', 'in', WELFARE_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   let loanQuery = supabase
     .from('loan_programs')
-    .select('id, title, description, eligibility, detailed_content, region_tags, apply_end, source, benefit_tags, income_target_level, household_target_tags')
+    .select('id, title, description, eligibility, detailed_content, region, region_tags, district, apply_end, source, benefit_tags, income_target_level, household_target_tags')
     .not('source_code', 'in', LOAN_EXCLUDED_FILTER)
     .is('duplicate_of_id', null)
     .or(`apply_end.gte.${today},apply_end.is.null`);

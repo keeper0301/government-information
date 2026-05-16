@@ -316,15 +316,15 @@ export async function getRecommendations(params: RecommendParams): Promise<Displ
     })
     .filter((x) => !requireOccMatch || x.occMatched);
 
-  // LoanProgram 에는 region 컬럼 없음 → null 전달, 제목·출처로 판단
+  // LoanProgram.region 컬럼 신설 (migration 090) — 있으면 활용, 없으면 title/source 만으로 판단
   const filteredLoan = loanData
-    .filter((l) => regionMatches(l.title, l.source, null, region))
+    .filter((l) => regionMatches(l.title, l.source, l.region, region))
     .filter((l) => isRecommendLoanEligible(l, userSignals))
     .map((l) => {
       const s = scoreKeywordMatch(l.target, l.description, ageKw, occKw);
       return {
         display: loanToDisplay(l),
-        score: s.score + districtBonus(l.title, l.source, null, district),
+        score: s.score + districtBonus(l.title, l.source, l.region, district),
         occMatched: s.occMatched,
       };
     })

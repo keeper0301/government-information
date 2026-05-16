@@ -53,7 +53,8 @@ function welfareToScorable(w: WelfareProgram): ScorableItem {
       .filter(Boolean)
       .join(" "),
     region: w.region ?? null,
-    district: null,                     // welfare_programs 에 district 컬럼 없음 (광역만)
+    // migration 090 후 district 컬럼 활용 — 사장님 (전남 순천) 정확 매칭 +10.
+    district: w.district ?? null,
     benefit_tags: w.benefit_tags ?? [],
     apply_end: w.apply_end ?? null,
     source: w.source,
