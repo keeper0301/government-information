@@ -66,6 +66,7 @@ export type PressCandidateListRow = PressCandidateForConfirm & {
   classified_at: string;
   created_at: string;
   updated_at: string;
+  confidence_tier: "high" | "mid" | "low" | null;
 };
 
 type PressCandidateDbRow = {
@@ -81,6 +82,7 @@ type PressCandidateDbRow = {
   classified_at?: string;
   created_at?: string;
   updated_at?: string;
+  confidence_tier?: "high" | "mid" | "low" | null;
   news_posts: {
     id: string;
     ministry: string | null;
@@ -316,14 +318,19 @@ export async function upsertPressCandidate(input: PressCandidateDbUpsert): Promi
 
 export async function listPressCandidates(
   limit = 100,
+  opts?: { tier?: "low" | "mid" | "high" },
 ): Promise<PressCandidateListRow[]> {
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from("press_ingest_candidates")
     .select(
-      "id, news_id, status, program_type, title, category, classified_payload, skip_reason, error_message, classified_at, created_at, updated_at, news_posts!inner(id, ministry, slug)",
+      "id, news_id, status, program_type, title, category, classified_payload, skip_reason, error_message, classified_at, created_at, updated_at, confidence_tier, news_posts!inner(id, ministry, slug)",
     )
-    .eq("status", "pending")
+    .eq("status", "pending");
+  if (opts?.tier) {
+    query = query.eq("confidence_tier", opts.tier);
+  }
+  const { data, error } = await query
     .order("classified_at", { ascending: false })
     .limit(limit);
   if (error) {
@@ -343,6 +350,7 @@ export async function listPressCandidates(
     classified_at: row.classified_at ?? "",
     created_at: row.created_at ?? "",
     updated_at: row.updated_at ?? "",
+    confidence_tier: row.confidence_tier ?? null,
     news: {
       id: row.news_posts.id,
       ministry: row.news_posts.ministry,

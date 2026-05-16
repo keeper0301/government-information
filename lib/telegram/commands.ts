@@ -6,6 +6,7 @@
 
 import {
   pressListCommand,
+  pressLowListCommand,
   pressConfirmCommand,
   pressDismissCommand,
 } from "@/lib/telegram/admin/press";
@@ -109,19 +110,21 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
   }
 }
 
-// /press 는 sub-command 필수 (/press, /press confirm {uuid}, /press dismiss {uuid})
+// /press 는 sub-command 필수 (/press, /press low, /press confirm {uuid}, /press dismiss {uuid})
 async function pressDispatch(args: string): Promise<string> {
   if (!args) return pressListCommand();
   const [sub, ...rest] = args.split(/\s+/);
   const uuid = rest.join(" ").trim();
   switch ((sub ?? "").toLowerCase()) {
+    case "low":
+      return pressLowListCommand();
     case "confirm":
       return pressConfirmCommand(uuid);
     case "dismiss":
     case "reject":
       return pressDismissCommand(uuid);
     default:
-      return "사용법: /press | /press confirm {uuid} | /press dismiss {uuid}";
+      return "사용법: /press | /press low | /press confirm {uuid} | /press dismiss {uuid}";
   }
 }
 

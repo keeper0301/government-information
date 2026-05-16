@@ -23,6 +23,29 @@ export async function pressListCommand(): Promise<string> {
   ].join("\n");
 }
 
+// /press low — low tier pending 만 list. apply_url + apply_method 함께 표시해서
+// 사장님 모바일 검수 가속 (tier 1주차 sample 부족 사고 대응 — 2026-05-16).
+export async function pressLowListCommand(): Promise<string> {
+  const rows = await listPressCandidates(5, { tier: "low" });
+  if (rows.length === 0) return "✅ pending LOW 후보 없음";
+  return [
+    `[press LOW pending — ${rows.length}건]`,
+    "",
+    ...rows.map((r, i) => {
+      const payload = r.classified_payload;
+      const url = (payload?.apply_url ?? "").slice(0, 80) || "(url 없음)";
+      const method = (payload?.apply_method ?? "(미상)").slice(0, 60);
+      return [
+        `${i + 1}. ${(r.title ?? "").slice(0, 40)}`,
+        `   📎 ${url}`,
+        `   📋 ${method}`,
+        `   /press confirm ${r.id}`,
+        `   /press dismiss ${r.id}`,
+      ].join("\n");
+    }),
+  ].join("\n");
+}
+
 // /press confirm {uuid}
 export async function pressConfirmCommand(uuid: string): Promise<string> {
   if (!isUuid(uuid)) return uuidUsage("/press confirm");

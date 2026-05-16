@@ -16,6 +16,7 @@ export function helpText(): string {
     "── 어드민 원격 ──",
     "/queue — backlog 한 화면 (news·press·dedupe)",
     "/press — pending press 후보 5개",
+    "/press low — LOW tier 만 (apply_url·신청법 표시, 모바일 검수 가속)",
     "/press confirm {uuid} — 자동 등록",
     "/press dismiss {uuid} — 후보 폐기",
     "/dedupe — pending 중복 후보 5개",
