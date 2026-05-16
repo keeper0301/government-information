@@ -169,9 +169,25 @@ function ImprovementItem({ item }: { item: ImprovementRecommendation }) {
 }
 
 // 5 phase 의 pendingActions 를 한 카드에 통합. 사장님이 외부 액션 우선순위
-// 한 화면 확인. 액션 0건이면 카드 자체 숨김 (noise 0).
+// 한 화면 확인. 액션 0건이면 positive banner 표시 (사장님 매일 안심 신호).
 function PendingActionsPanel({ actions }: { actions: AggregatedPendingAction[] }) {
-  if (actions.length === 0) return null;
+  if (actions.length === 0) {
+    return (
+      <section className="mb-4 rounded-lg border border-green-200 bg-green-50/40 p-4">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          외부 액션 통합
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+            ✓ 모든 외부 액션 완료
+          </span>
+          <span className="text-xs text-grey-700">
+            5 Phase 모두 가동 중. 외부 입력 대기 0건.
+          </span>
+        </div>
+      </section>
+    );
+  }
   return (
     <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
       <header className="mb-3 flex items-center justify-between gap-3">
