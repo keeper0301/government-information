@@ -11,6 +11,7 @@ import { QuizInlineWizard } from "@/components/quiz-inline-wizard";
 import { HomeDiscoveryHub } from "@/components/home-discovery-hub";
 import { HomeTrustStrip } from "@/components/home-trust-strip";
 import { HomeRecommendAuto } from "@/components/home-recommend-auto";
+import { HomeLocalRecommend } from "@/components/home-local-recommend";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
 import { HomeJsonLd } from "@/components/home-jsonld";
@@ -277,7 +278,11 @@ export default async function Home() {
                 <EmptyProfilePrompt />
               ) : (
                 // 로그인 + 프로필 있음 — 자동 추천 카드 (server component)
-                <HomeRecommendAuto profile={fullProfile} />
+                // + Phase C 거주지 정책 별도 섹션 (district 매칭 정확)
+                <div className="flex flex-col gap-4">
+                  <HomeRecommendAuto profile={fullProfile} />
+                  <HomeLocalRecommend signals={fullProfile.signals} />
+                </div>
               )
             ) : (
               // 비로그인 — AI 진단 wizard (Phase 3, 5문항 익명, 가입 funnel)
