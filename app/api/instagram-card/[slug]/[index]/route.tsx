@@ -235,9 +235,10 @@ function renderInfoCard(
   const longest = Math.max(...sentences.map((s) => s.length));
 
   // fontSize 임계 — 가장 긴 한 문장 길이 기준 (전체 길이 X)
-  // 1080 - padding 180 = 900px width. 한 글자 폭 ≈ fontSize × 0.95.
+  // 1080 - padding 200 = 880px width. 한 글자 폭 ≈ fontSize × 1.0 (한글).
+  // letter-spacing 0.5px 양수 + line-height 1.7 의 호흡감을 고려해 약간 작게.
   const headFontSize =
-    longest > 50 ? 40 : longest > 40 ? 46 : longest > 30 ? 54 : longest > 20 ? 62 : 72;
+    longest > 50 ? 38 : longest > 40 ? 44 : longest > 30 ? 50 : longest > 20 ? 58 : 68;
   const bodyFontSize = Math.round(headFontSize * 0.82);
 
   // 배경색 밝기 판정 — light 배경 (노년 #FE9800·학생·교육 #18A5A5) 위
@@ -259,7 +260,7 @@ function renderInfoCard(
         width: "100%",
         height: "100%",
         background: color,
-        padding: "120px 90px",
+        padding: "120px 100px",
         fontFamily: "Pretendard",
       }}
     >
@@ -267,11 +268,11 @@ function renderInfoCard(
         style={{
           display: "flex",
           alignSelf: "flex-start",
-          padding: "12px 28px",
+          padding: "14px 30px",
           background: "#FFFFFF",
           color: color,
-          fontSize: 32,
-          fontWeight: 800,
+          fontSize: 30,
+          fontWeight: 700,
           borderRadius: 999,
           marginBottom: 60,
         }}
@@ -283,7 +284,7 @@ function renderInfoCard(
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 36,
+          gap: 56,
           flex: 1,
           width: "100%",
           maxWidth: "100%",
@@ -296,12 +297,16 @@ function renderInfoCard(
             style={{
               display: "flex",
               fontSize: i === 0 ? headFontSize : bodyFontSize,
-              fontWeight: 800,
+              // Pretendard-Bold.woff 는 700 만 로딩 — 800 지정 시 fake-bold 로
+              // 글자 두꺼워지면서 한글 빽빽함 (2026-05-16 사장님 가독성 신고).
+              fontWeight: 700,
               color: bodyColor,
-              lineHeight: 1.45,
-              letterSpacing: "-0.3px",
+              // 한글 가독성: line-height 1.7 (줄간 호흡감) + letter-spacing 0
+              // (음수 자간은 한글에서 답답). wordBreak keep-all 로 어절 안 자름.
+              lineHeight: 1.7,
+              letterSpacing: "0",
               opacity: i === 0 ? 1 : 0.92,
-              wordBreak: "break-word",
+              wordBreak: "keep-all",
             }}
           >
             {sentence}
@@ -312,11 +317,12 @@ function renderInfoCard(
       <div
         style={{
           display: "flex",
-          fontSize: 32,
+          fontSize: 30,
           color: bodyColor,
           opacity: 0.9,
           fontWeight: 700,
           marginTop: 40,
+          letterSpacing: "0",
         }}
       >
         @ keepioo · 정책알리미
