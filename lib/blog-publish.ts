@@ -22,6 +22,7 @@ import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
 import { getRecentBlogTrendHints } from "@/lib/blog/trend-learning";
+import { getRecentExternalChannelLearningHints } from "@/lib/blog/external-channel-learning";
 import { evaluateBlogQuality, type BlogQualityResult } from "@/lib/blog/quality-check";
 import { logAdminAction } from "@/lib/admin-actions";
 import {
@@ -422,14 +423,22 @@ async function publishWithCandidate(
 ) {
   // AI 호출. Vercel Hobby 60초 함수 한도 때문에 인프로세스 재시도는 하지 않는다.
   // 일시 오류·timeout 재시도는 GitHub Actions 의 HTTP 재시도 레이어에서 처리한다.
-  const [qualityLearningHints, trendLearningHints] = await Promise.all([
+  const [
+    qualityLearningHints,
+    trendLearningHints,
+    externalChannelLearningHints,
+  ] = await Promise.all([
     getRecentQualityImprovementHints(),
     getRecentBlogTrendHints(),
+    getRecentExternalChannelLearningHints(),
   ]);
   const generated = await generateBlogPost({
     ...picked.ctx,
     qualityLearningHints,
-    trendLearningHints,
+    trendLearningHints: [
+      ...trendLearningHints,
+      ...externalChannelLearningHints,
+    ],
   });
 
   // AI 응답 검증 (AdSense 정책 + 데이터 무결성)

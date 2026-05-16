@@ -288,9 +288,9 @@ export async function generateBlogPost(
     .slice(0, 5);
   const trendBlock =
     trendHints.length > 0
-      ? `\n[최근 사이트 반응 트렌드]\n${trendHints
+      ? `\n[최근 반응/외부 채널 학습]\n${trendHints
           .map((hint, idx) => `${idx + 1}. ${hint}`)
-          .join("\n")}\n- 위 신호는 keepioo 내부 조회수·카테고리·태그 기반입니다. 억지로 끼워 넣지 말고, 이번 정책과 자연스럽게 맞는 키워드·표현만 반영하세요.\n`
+          .join("\n")}\n- 위 신호는 keepioo 내부 조회수·카테고리·태그와 네이버/인스타 발행 결과 기반입니다. 억지로 끼워 넣지 말고, 이번 정책과 자연스럽게 맞는 키워드·표현만 반영하세요.\n`
       : "";
 
   const userPrompt = `다음 정책에 대한 AdSense 승인용 블로그 글을 작성해줘. JSON 형식으로만 출력.

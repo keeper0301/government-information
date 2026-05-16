@@ -101,7 +101,7 @@ describe("generateBlogPost", () => {
     expect(params.contents).toContain("같은 문제가 다시 나오지 않게");
   });
 
-  it("feeds internal trend hints into the generation prompt", async () => {
+  it("feeds trend and external-channel learning hints into the generation prompt", async () => {
     const { generateBlogPost } = await import("@/lib/ai");
 
     await generateBlogPost({
@@ -117,9 +117,9 @@ describe("generateBlogPost", () => {
     const params = mockState.generateContentParams as {
       contents?: string;
     };
-    expect(params.contents).toContain("[최근 사이트 반응 트렌드]");
+    expect(params.contents).toContain("[최근 반응/외부 채널 학습]");
     expect(params.contents).toContain("최근 반응 카테고리: 청년(8), 주거(4)");
-    expect(params.contents).toContain("keepioo 내부 조회수·카테고리·태그 기반");
+    expect(params.contents).toContain("keepioo 내부 조회수·카테고리·태그와 네이버/인스타 발행 결과 기반");
     expect(params.contents).toContain("자연스럽게 맞는 키워드·표현만 반영");
   });
 });
