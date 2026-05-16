@@ -40,6 +40,7 @@ export type ImprovementSnapshot = {
   snsRuns24h: number;
   blogPublishRuns24h: number;
   qualityImprovementHints: string[];
+  externalQualityPending: number;
 };
 
 export type ImprovementScanRun = {
@@ -104,6 +105,35 @@ async function getRecentQualityImprovementHints(): Promise<string[]> {
     return [...new Set(hints)];
   } catch {
     return [];
+  }
+}
+
+async function countExternalQualityPending(): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const [instagram, naver] = await Promise.all([
+      admin
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .not("published_at", "is", null)
+        .is("instagram_published_at", null)
+        .lt("instagram_attempt_count", 3)
+        .or("admin_review_required.is.null,admin_review_required.eq.true"),
+      admin
+        .from("naver_blog_queue")
+        .select("id, blog_post:blog_posts!inner(id, admin_review_required)", {
+          count: "exact",
+          head: true,
+        })
+        .eq("status", "pending")
+        .lt("attempt_count", 3)
+        .or("admin_review_required.is.null,admin_review_required.eq.true", {
+          referencedTable: "blog_post",
+        }),
+    ]);
+    return (instagram.count ?? 0) + (naver.count ?? 0);
+  } catch {
+    return 0;
   }
 }
 
@@ -172,6 +202,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     snsRuns24h,
     blogPublishRuns24h,
     qualityImprovementHints,
+    externalQualityPending,
   ] = await Promise.all([
     countAdminAction("blog_quality_flag"),
     countAdminAction("instagram_publish_fail"),
@@ -188,6 +219,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     countAdminAction("sns_publish_run"),
     countAdminAction("blog_publish_run"),
     getRecentQualityImprovementHints(),
+    countExternalQualityPending(),
   ]);
 
   return {
@@ -202,6 +234,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     snsRuns24h,
     blogPublishRuns24h,
     qualityImprovementHints,
+    externalQualityPending,
   };
 }
 
@@ -318,6 +351,26 @@ export function buildImprovementRecommendations(
     });
   }
 
+  if (s.externalQualityPending >= 5) {
+    recs.push({
+      area: "content_quality",
+      severity: "high",
+      title: "품질 검수 대기 때문에 외부 발행이 막혀 있습니다",
+      evidence: `외부 발행 품질 대기 ${s.externalQualityPending}건`,
+      action:
+        "blog-quality-check cron을 수동 실행하고, score 2 이하 글은 improvements 지적을 반영한 뒤 재검수하세요.",
+    });
+  } else if (s.externalQualityPending > 0) {
+    recs.push({
+      area: "content_quality",
+      severity: "medium",
+      title: "외부 발행 전 품질 검수가 필요한 글이 있습니다",
+      evidence: `외부 발행 품질 대기 ${s.externalQualityPending}건`,
+      action:
+        "다음 품질 검수 cron 이후 네이버/인스타 큐가 다시 흐르는지 확인하세요.",
+    });
+  }
+
   if (recs.length === 0) {
     recs.push({
       area: "growth",
@@ -355,6 +408,7 @@ function toSnapshot(value: unknown): ImprovementSnapshot {
     snsRuns24h: 0,
     blogPublishRuns24h: 0,
     qualityImprovementHints: [],
+    externalQualityPending: 0,
   };
   if (!isRecord(value)) return fallback;
   return Object.fromEntries(

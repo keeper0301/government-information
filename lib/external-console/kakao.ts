@@ -290,5 +290,3 @@ export async function checkKakao(): Promise<ConsoleCheckResult> {
 
   return { console: "kakao", alerts, kpis };
 }
-
-export type { SolapiMessageRow };

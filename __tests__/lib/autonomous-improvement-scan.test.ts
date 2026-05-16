@@ -16,6 +16,7 @@ const base: ImprovementSnapshot = {
   snsRuns24h: 1,
   blogPublishRuns24h: 0,
   qualityImprovementHints: [],
+  externalQualityPending: 0,
 };
 
 describe("buildImprovementRecommendations", () => {
@@ -89,6 +90,20 @@ describe("buildImprovementRecommendations", () => {
       expect.objectContaining({
         area: "growth",
         severity: "low",
+      }),
+    );
+  });
+
+  it("외부 발행 품질 대기가 많으면 high 개선 과제로 분류한다", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      externalQualityPending: 5,
+    });
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        area: "content_quality",
+        severity: "high",
+        title: "품질 검수 대기 때문에 외부 발행이 막혀 있습니다",
       }),
     );
   });
