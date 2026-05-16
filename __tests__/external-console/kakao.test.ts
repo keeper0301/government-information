@@ -6,10 +6,12 @@
 // 실패율 임계 (≥10% + total ≥5) + pending 누적 임계 (≥10) 검증.
 // ============================================================
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   buildKakaoAlerts,
+  buildKakaoBalanceAlert,
   type SolapiMessageRow,
+  type SolapiBalance,
 } from "@/lib/external-console/kakao";
 
 function row(statusCode: string, type = "ATA"): SolapiMessageRow {
@@ -79,4 +81,50 @@ describe("buildKakaoAlerts", () => {
     expect(failed_codes["4040"]).toBe(3);
     expect(failed_codes["5000"]).toBe(2);
   });
+});
+
+// ============================================================
+// buildKakaoBalanceAlert — 5/14 Solapi 잔액 0 사고 회귀 방지
+// ============================================================
+// 잔액 + 포인트 합산 < SOLAPI_BALANCE_FLOOR (default 10000) → alert.
+// NaN 가드: SOLAPI_BALANCE_ALERT_FLOOR env typo (예: "1ee04") 시 fallback 10000.
+// ============================================================
+
+const bal = (balance: number, point = 0): SolapiBalance => ({ balance, point });
+
+describe("buildKakaoBalanceAlert (Solapi 잔액)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("잔액 + 포인트 합 ≥ 10000 → null (alert 없음)", () => {
+    expect(buildKakaoBalanceAlert(bal(10000))).toBeNull();
+    expect(buildKakaoBalanceAlert(bal(5000, 5000))).toBeNull();
+    expect(buildKakaoBalanceAlert(bal(50000))).toBeNull();
+  });
+
+  it("합 < 10000 → solapi_balance_low alert", () => {
+    const alert = buildKakaoBalanceAlert(bal(5000, 1000));
+    expect(alert).not.toBeNull();
+    expect(alert?.key).toBe("solapi_balance_low");
+    expect(alert?.message).toContain("6,000원");
+    // SMS 1건 45원 → 6000 / 45 = 133건
+    expect(alert?.message).toContain("133건");
+  });
+
+  it("잔액 0 + 포인트 0 → alert", () => {
+    const alert = buildKakaoBalanceAlert(bal(0, 0));
+    expect(alert?.message).toContain("0원");
+    expect(alert?.message).toContain("0건");
+  });
+
+  it("음수 잔액 (이상치) → alert (보수적 fallback)", () => {
+    const alert = buildKakaoBalanceAlert(bal(-100, 0));
+    expect(alert).not.toBeNull();
+    expect(alert?.key).toBe("solapi_balance_low");
+  });
+
+  // 환경변수 기반 임계 검증은 module-level const 라 import 시점에 고정되어
+  // runtime stubEnv 가 안 먹힘. fallback 동작 자체는 코드 review 로 확인됨
+  // (NaN → Number.isFinite false → 10000 fallback). 미래 dynamic 임계 시 보강.
 });
