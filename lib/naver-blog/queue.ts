@@ -40,16 +40,17 @@ export type NaverQueueRowWithPayload = NaverQueueRow & {
  * publish 흐름의 핵심 경로 영향 0 — 큐 enqueue 실패해도 블로그 발행 자체는 성공해야 함.
  * 따라서 호출자가 try/catch 로 감싸 실패해도 무시 (로그만).
  */
-export async function enqueueNaverBlog(blogPostId: string): Promise<void> {
+export async function enqueueNaverBlog(blogPostId: string): Promise<boolean> {
   const admin = createAdminClient();
   const { error } = await admin
     .from("naver_blog_queue")
     .insert({ blog_post_id: blogPostId, status: "pending" });
   if (error) {
     // UNIQUE 위반 (이미 큐에 있음) 은 정상 — 무시
-    if (error.code === "23505") return;
+    if (error.code === "23505") return false;
     throw new Error(`네이버 큐 enqueue 실패: ${error.message}`);
   }
+  return true;
 }
 
 /**

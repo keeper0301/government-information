@@ -51,9 +51,21 @@ function mergeCandidates(...groups: BlogPost[][]): BlogPost[] {
   return Array.from(map.values()).slice(0, BATCH_LIMIT);
 }
 
-async function releaseApprovedPostToExternalChannels(post: BlogPost) {
+type ExternalReleaseResult = {
+  naverQueued: boolean;
+  wordpressAttempted: boolean;
+};
+
+async function releaseApprovedPostToExternalChannels(
+  post: BlogPost,
+): Promise<ExternalReleaseResult> {
+  const result: ExternalReleaseResult = {
+    naverQueued: false,
+    wordpressAttempted: false,
+  };
+
   try {
-    await enqueueNaverBlog(post.id);
+    result.naverQueued = await enqueueNaverBlog(post.id);
   } catch (e) {
     console.warn(
       `[blog-quality-check] naver enqueue 실패 (quality pass): ${(e as Error).message}`,
@@ -68,8 +80,9 @@ async function releaseApprovedPostToExternalChannels(post: BlogPost) {
       .eq("blog_post_id", post.id)
       .eq("status", "published")
       .maybeSingle();
-    if (data) return;
+    if (data) return result;
 
+    result.wordpressAttempted = true;
     await publishToWordPress(post.id, {
       slug: post.slug,
       title: post.title,
@@ -83,6 +96,7 @@ async function releaseApprovedPostToExternalChannels(post: BlogPost) {
       `[blog-quality-check] wordpress release 실패 (quality pass): ${(e as Error).message}`,
     );
   }
+  return result;
 }
 
 async function run() {
@@ -143,7 +157,8 @@ async function run() {
   );
   let evaluated = 0;
   let flagged = 0;
-  let releasedExternal = 0;
+  let releasedNaver = 0;
+  let releasedWordPress = 0;
   let scoreSum = 0;
 
   for (const p of list) {
@@ -186,8 +201,9 @@ async function run() {
         console.warn("[blog-quality-check] audit 실패:", auditErr);
       }
     } else if (!updateErr) {
-      await releaseApprovedPostToExternalChannels(p);
-      releasedExternal += 1;
+      const release = await releaseApprovedPostToExternalChannels(p);
+      if (release.naverQueued) releasedNaver += 1;
+      if (release.wordpressAttempted) releasedWordPress += 1;
     }
   }
 
@@ -197,7 +213,9 @@ async function run() {
     ok: true,
     evaluated,
     flagged,
-    releasedExternal,
+    releasedExternal: releasedNaver + releasedWordPress,
+    releasedNaver,
+    releasedWordPress,
     avgScore,
   });
 }
