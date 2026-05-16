@@ -82,7 +82,11 @@ export function parseDetailBody(html: string): string | null {
 
 // ── fetch helpers ──────────────────────────────────────────
 
-async function fetchPage(url: string): Promise<string> {
+// D-4 step 2 — auto-fix logic 에서 sample HTML fetch 위해 export
+export const SUNCHEON_LIST_URL = LIST_URL;
+export const SUNCHEON_DETAIL_BASE = DETAIL_BASE;
+
+export async function fetchPage(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
     redirect: "follow",

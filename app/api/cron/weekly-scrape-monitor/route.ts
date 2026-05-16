@@ -17,6 +17,10 @@ import {
   formatAutoFixSummary,
   isAutoFixEnabled,
 } from "@/lib/monitoring/auto-fix";
+import {
+  executeAllAutoFixAttempts,
+  formatAutoFixResults,
+} from "@/lib/monitoring/auto-fix-integration";
 import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -48,7 +52,12 @@ export async function GET(request: Request) {
     // D-4 step 1 — auto-fix 분석 (dry-run, 실제 변경 X)
     const autoFixAttempts = analyzeForAutoFix(report);
     const autoFixSummary = formatAutoFixSummary(autoFixAttempts);
-    const message = baseMessage + autoFixSummary;
+
+    // D-4 step 2 — LLM regex 제안 (env D4_AUTO_FIX_LLM_ENABLED 일 때만 LLM 호출)
+    const autoFixResults = await executeAllAutoFixAttempts(autoFixAttempts);
+    const autoFixLlmSummary = formatAutoFixResults(autoFixResults);
+
+    const message = baseMessage + autoFixSummary + autoFixLlmSummary;
 
     // 텔레그램 알림 — 사고 있으면 즉시, 사고 0 도 매주 1회 정상 보고 (사장님 운영 가시화)
     const telegram = await sendOpsAlertTelegram({
@@ -73,6 +82,16 @@ export async function GET(request: Request) {
         action: a.action,
         status: a.status,
       })),
+      d4_step2_proposals: autoFixResults
+        .filter((r) => r.proposal)
+        .map((r) => ({
+          domain: r.proposal!.domain,
+          matched: r.proposal!.sampleMatchTested,
+          reason: r.proposal!.reason.slice(0, 200),
+        })),
+      d4_step2_errors: autoFixResults
+        .filter((r) => r.error)
+        .map((r) => ({ domain: r.attempt.domain, error: r.error })),
       report, // 다음 주 비교용 전체 snapshot
     });
 

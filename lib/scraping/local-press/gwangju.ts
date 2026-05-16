@@ -92,7 +92,11 @@ export function parseDetailBody(html: string): string | null {
   return text.length > 0 ? text : null;
 }
 
-async function fetchPage(url: string): Promise<string> {
+// D-4 step 2 — auto-fix sample fetch 위해 export
+export const GWANGJU_LIST_URL = LIST_URL;
+export const GWANGJU_DETAIL_BASE = DETAIL_BASE;
+
+export async function fetchPage(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
     redirect: "follow",
