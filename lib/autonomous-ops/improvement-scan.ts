@@ -39,6 +39,7 @@ export type ImprovementSnapshot = {
   policyInsightPct: number;
   snsRuns24h: number;
   blogPublishRuns24h: number;
+  qualityImprovementHints: string[];
 };
 
 export type ImprovementScanRun = {
@@ -74,6 +75,35 @@ async function countAdminAction(action: string): Promise<number> {
     return count ?? 0;
   } catch {
     return 0;
+  }
+}
+
+async function getRecentQualityImprovementHints(): Promise<string[]> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("admin_actions")
+      .select("details")
+      .eq("action", "blog_quality_flag")
+      .gte("created_at", since24h())
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (error || !data) return [];
+    const hints: string[] = [];
+    for (const row of data as Array<{ details?: unknown }>) {
+      if (!isRecord(row.details)) continue;
+      const raw = row.details.improvements;
+      if (!Array.isArray(raw)) continue;
+      for (const item of raw) {
+        if (typeof item !== "string") continue;
+        const text = item.trim();
+        if (text.length > 0) hints.push(text.slice(0, 120));
+        if (hints.length >= 5) return [...new Set(hints)];
+      }
+    }
+    return [...new Set(hints)];
+  } catch {
+    return [];
   }
 }
 
@@ -141,6 +171,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     policyInsightPct,
     snsRuns24h,
     blogPublishRuns24h,
+    qualityImprovementHints,
   ] = await Promise.all([
     countAdminAction("blog_quality_flag"),
     countAdminAction("instagram_publish_fail"),
@@ -156,6 +187,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     getPolicyInsightPct(),
     countAdminAction("sns_publish_run"),
     countAdminAction("blog_publish_run"),
+    getRecentQualityImprovementHints(),
   ]);
 
   return {
@@ -169,6 +201,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     policyInsightPct,
     snsRuns24h,
     blogPublishRuns24h,
+    qualityImprovementHints,
   };
 }
 
@@ -184,7 +217,9 @@ export function buildImprovementRecommendations(
       title: "블로그 품질 경고가 많습니다",
       evidence: `24시간 품질 경고 ${s.blogQualityFlags24h}건`,
       action:
-        "발행 프롬프트에 대상·지원금·마감·신청 링크 검증 문장을 강화하고, score 2 이하 글은 자동 외부 발행 전 보류하세요.",
+        s.qualityImprovementHints.length > 0
+          ? `최근 지적: ${s.qualityImprovementHints.slice(0, 3).join(" / ")}`
+          : "발행 프롬프트에 대상·지원금·마감·신청 링크 검증 문장을 강화하고, score 2 이하 글은 자동 외부 발행 전 보류하세요.",
     });
   } else if (s.blogQualityFlags24h > 0) {
     recs.push({
@@ -193,7 +228,9 @@ export function buildImprovementRecommendations(
       title: "일부 글은 검수 큐를 확인해야 합니다",
       evidence: `24시간 품질 경고 ${s.blogQualityFlags24h}건`,
       action:
-        "/admin/blog 에서 경고 글의 제목·도입부·CTA를 보강하고 같은 패턴을 다음 발행 프롬프트에 반영하세요.",
+        s.qualityImprovementHints.length > 0
+          ? `최근 지적: ${s.qualityImprovementHints.slice(0, 3).join(" / ")}`
+          : "/admin/blog 에서 경고 글의 제목·도입부·CTA를 보강하고 같은 패턴을 다음 발행 프롬프트에 반영하세요.",
     });
   }
 
@@ -317,11 +354,20 @@ function toSnapshot(value: unknown): ImprovementSnapshot {
     policyInsightPct: 0,
     snsRuns24h: 0,
     blogPublishRuns24h: 0,
+    qualityImprovementHints: [],
   };
   if (!isRecord(value)) return fallback;
   return Object.fromEntries(
     Object.entries(fallback).map(([key, defaultValue]) => {
       const raw = value[key];
+      if (Array.isArray(defaultValue)) {
+        return [
+          key,
+          Array.isArray(raw)
+            ? raw.filter((item): item is string => typeof item === "string")
+            : defaultValue,
+        ];
+      }
       return [key, typeof raw === "number" ? raw : defaultValue];
     }),
   ) as ImprovementSnapshot;

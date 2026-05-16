@@ -15,6 +15,7 @@ const base: ImprovementSnapshot = {
   policyInsightPct: 100,
   snsRuns24h: 1,
   blogPublishRuns24h: 0,
+  qualityImprovementHints: [],
 };
 
 describe("buildImprovementRecommendations", () => {
@@ -38,6 +39,17 @@ describe("buildImprovementRecommendations", () => {
         severity: "high",
       }),
     );
+  });
+
+  it("품질 검수에서 나온 구체 개선 포인트를 추천 액션에 반영한다", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      blogQualityFlags24h: 1,
+      qualityImprovementHints: ["신청 기간을 첫 단락에 추가", "공식 신청 링크 확인 문구 추가"],
+    });
+    const contentRec = recs.find((r) => r.area === "content_quality");
+    expect(contentRec?.action).toContain("신청 기간을 첫 단락에 추가");
+    expect(contentRec?.action).toContain("공식 신청 링크 확인 문구 추가");
   });
 
   it("네이버 큐가 쌓이고 성공 발행이 없으면 high 개선 과제로 분류한다", () => {
