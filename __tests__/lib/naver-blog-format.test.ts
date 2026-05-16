@@ -89,9 +89,17 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
     expect(introSection).toContain("만 24세 경기도 청년에게 분기별 25만원");
   });
 
+  it("본문 초반에 정책 확인 체크리스트가 들어간다", () => {
+    const out = convertToNaverBlog(basePost);
+    expect(out.body).toContain("먼저 확인하세요");
+    expect(out.body).toContain("대상: 나이·지역·소득 조건이 맞는지 확인");
+    expect(out.body).toContain("공식 신청 페이지에서 최종 조건 확인");
+  });
+
   it("meta_description 이 null 이면 도입부 없이 본문 바로 시작", () => {
     const out = convertToNaverBlog({ ...basePost, meta_description: null });
-    expect(out.body).toMatch(/^📍/);
+    expect(out.body).toMatch(/^먼저 확인하세요/);
+    expect(out.body).toContain("📍 이 정책은 무엇인가요?");
   });
 
   it("HTML 엔티티가 디코딩된다 (&amp;·&nbsp; 등)", () => {
@@ -138,6 +146,13 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain(
       "<p><strong>만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.</strong></p>",
     );
+  });
+
+  it("SE3 HTML 본문에도 정책 확인 체크리스트가 들어간다", () => {
+    const out = convertToNaverBlogHtml(post);
+    expect(out.bodyHtml).toContain("<p><strong>먼저 확인하세요</strong></p>");
+    expect(out.bodyHtml).toContain("<p>• 대상: 나이·지역·소득 조건이 맞는지 확인</p>");
+    expect(out.bodyHtml).toContain("<p>• 신청: 공식 신청 페이지에서 최종 조건 확인</p>");
   });
 
   it("inline style/class/id 모두 제거 (SE3 자체 스타일 덮어쓰기 회피)", () => {

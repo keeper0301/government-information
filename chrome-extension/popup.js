@@ -54,6 +54,10 @@ document.getElementById("save-secret").addEventListener("click", async () => {
 });
 
 document.getElementById("manual-dry-run").addEventListener("click", async () => {
+  await runDryRun();
+});
+
+async function runDryRun() {
   setStatus("🧪 dry-run 시작 — 약 60초 대기...");
   try {
     const r = await chrome.runtime.sendMessage({ type: "manual-trigger", dryRun: true });
@@ -61,7 +65,13 @@ document.getElementById("manual-dry-run").addEventListener("click", async () => 
   } catch (e) {
     setStatus(`❌ ${e?.message ?? e}`);
   }
-});
+}
+
+if (new URLSearchParams(location.search).get("autoDryRun") === "1") {
+  setTimeout(() => {
+    runDryRun();
+  }, 1000);
+}
 
 document.getElementById("manual-publish").addEventListener("click", async () => {
   if (!confirm("실 발행 1건 진행합니다. 사장님 네이버 블로그에 글 게시. 진행할까요?")) return;
@@ -79,7 +89,9 @@ function formatResult(r) {
   if (r.ok === false) return `❌ ${r.error ?? "unknown"}`;
   const result = r.result ?? {};
   if (result.skipped) return `⏸  skip: ${result.skipped}`;
-  if (result.ok === false) return `❌ ${result.error ?? "unknown"}`;
+  if (result.ok === false) {
+    return `❌ ${result.error ?? "unknown"}\n${JSON.stringify(result.debug ?? {}, null, 2)}`;
+  }
   const inner = result.result ?? result;
   if (inner.dryRun) return `✅ dry-run OK\n${JSON.stringify(inner.debug, null, 2)}`;
   return `✅ 발행 성공\n${inner.naverUrl ?? "(URL 없음)"}\n${JSON.stringify(inner.debug, null, 2)}`;

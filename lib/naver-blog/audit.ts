@@ -38,7 +38,9 @@ export const AUDIT_SAFE_KEYS = new Set([
   // C-NEW-1/2 debug keys
   "clipboard_write_ok", "clipboard_write_error",
   "body_paste_method", "body_after_dispatch", "body_after_insertHTML",
-  "insertHTML_error", "has_focus",
+  "body_after_insertText", "insertHTML_error", "insertText_error", "has_focus",
+  "debugger_paste_ok", "debugger_paste_error", "body_after_debugger_paste",
+  "debugger_insert_text_ok", "debugger_insert_text_error", "body_after_debugger_insert_text",
 ]);
 
 export function pickAuditDetails(d: Record<string, unknown> | null | undefined): Record<string, unknown> | null {

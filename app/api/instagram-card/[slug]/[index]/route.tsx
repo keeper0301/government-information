@@ -203,7 +203,27 @@ function renderCoverCard(title: string, category: string, color: string) {
 }
 
 /**
+ * meta_description 을 문장별로 분리 — 카드 2 가독성 fix (2026-05-16).
+ * 한국어 종결형 (~다·~요·~까?) + 영어 .!? 모두 cover. max 문장 cap 으로
+ * 매우 긴 description 도 카드 안에 안전하게 들어감.
+ */
+function splitSentences(text: string, max: number): string[] {
+  const parts = text
+    .split(/(?<=[다요까])\.\s+|(?<=[.!?])\s+/u)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return [text.trim()];
+  return parts.slice(0, max);
+}
+
+/**
  * 카드 2: 핵심 정보 — meta_description 큰 글씨로 (자격·금액·마감 hook).
+ *
+ * 가독성 (2026-05-16 사장님 사진 신고 → 단락 break 0 사고):
+ *   - 한 단락 줄줄이 흐름 → 문장별 split + flex gap 으로 단락 break
+ *   - 첫 문장 큰 글씨 (hook), 나머지 작게 + opacity 0.92 (시각 hierarchy)
+ *   - line-height 1.45 (gap 으로 단락 break 별도라 줄 안 빽빽 ↓)
+ *   - justifyContent center — 짧은 텍스트도 카드 가운데 정렬
  */
 function renderInfoCard(
   title: string,
@@ -211,6 +231,14 @@ function renderInfoCard(
   color: string,
 ) {
   const text = description ?? title;
+  const sentences = splitSentences(text, 3);
+  const longest = Math.max(...sentences.map((s) => s.length));
+
+  // fontSize 임계 — 가장 긴 한 문장 길이 기준 (전체 길이 X)
+  // 1080 - padding 180 = 900px width. 한 글자 폭 ≈ fontSize × 0.95.
+  const headFontSize =
+    longest > 50 ? 40 : longest > 40 ? 46 : longest > 30 ? 54 : longest > 20 ? 62 : 72;
+  const bodyFontSize = Math.round(headFontSize * 0.82);
 
   // 배경색 밝기 판정 — light 배경 (노년 #FE9800·학생·교육 #18A5A5) 위
   // 흰 글씨는 WCAG contrast fail (2.3:1·3.2:1) → 다크 텍스트로 분기.
@@ -251,32 +279,34 @@ function renderInfoCard(
         💡 핵심 정보
       </div>
 
-      {/* description 본문 — line-height 1.65·letter-spacing -0.3px
-          (2026-05-12: 카드 2 빽빽 가독성 사고 → 한글 본문 호흡감 ↑)
-          색상은 isLightBg 분기 (노년·학생 카테고리는 다크 텍스트) */}
       <div
         style={{
-          fontSize:
-            text.length > 200
-              ? 36
-              : text.length > 150
-                ? 44
-                : text.length > 100
-                  ? 52
-                  : 60,
-          fontWeight: 800,
-          color: bodyColor,
-          lineHeight: 1.65,
-          letterSpacing: "-0.3px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 36,
           flex: 1,
           width: "100%",
           maxWidth: "100%",
-          display: "flex",
-          alignItems: "center",
-          wordBreak: "break-word",
+          justifyContent: "center",
         }}
       >
-        {text}
+        {sentences.map((sentence, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              fontSize: i === 0 ? headFontSize : bodyFontSize,
+              fontWeight: 800,
+              color: bodyColor,
+              lineHeight: 1.45,
+              letterSpacing: "-0.3px",
+              opacity: i === 0 ? 1 : 0.92,
+              wordBreak: "break-word",
+            }}
+          >
+            {sentence}
+          </div>
+        ))}
       </div>
 
       <div

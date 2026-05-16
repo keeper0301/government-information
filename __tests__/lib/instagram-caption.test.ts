@@ -16,6 +16,7 @@ describe("buildInstagramCaption", () => {
   it("hook (제목) + 핵심 정보 (meta_description) 포함", () => {
     const caption = buildInstagramCaption(baseInput);
     expect(caption).toContain("📌 2026년 경기도 청년 기본소득");
+    expect(caption).toContain("저장해두고 다시 확인");
     expect(caption).toContain("만 24세 경기도 청년에게 분기별 25만원");
   });
 
@@ -23,6 +24,14 @@ describe("buildInstagramCaption", () => {
     const caption = buildInstagramCaption(baseInput);
     expect(caption).toContain("프로필 링크");
     expect(caption).toContain("keepioo.com");
+    expect(caption).toContain("keepioo에서");
+    expect(caption).toContain("검색");
+  });
+
+  it("정책 정보 안전 체크리스트와 변동 가능성 안내 포함", () => {
+    const caption = buildInstagramCaption(baseInput);
+    expect(caption).toContain("대상·소득 기준·신청 기간·제출 서류");
+    expect(caption).toContain("지역·소득·마감일에 따라 달라질 수");
   });
 
   it("카테고리별 해시태그 포함", () => {

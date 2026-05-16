@@ -9,6 +9,7 @@
     "storage",
     "tabs",
     "scripting",
+    "debugger",
     "clipboardRead",
     "clipboardWrite"
   ],
@@ -32,7 +33,5 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  },
-
-  "_comment_content_scripts": "scripting.executeScript 사용 — manifest content_scripts 와 중복 inject 시 listener 2번 등록 충돌 (C-1 fix). 명시 inject 만 신뢰."
+  }
 }

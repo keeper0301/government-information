@@ -12,6 +12,7 @@
 // ============================================================
 
 const KEEPIOO_BASE = "https://www.keepioo.com";
+const NAVER_WRITE = "https://blog.naver.com/GoBlogWrite.naver";
 
 // 5 schedule — 각 시간 fire (KST). chrome.alarms 는 UTC 기준이지만 우리는
 // when 으로 next 시점 계산.
@@ -59,16 +60,38 @@ chrome.runtime.onStartup.addListener(() => registerAlarms());
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (!alarm.name.startsWith("naver-")) return;
   console.log(`[keepioo-naver] alarm fire: ${alarm.name}`);
-  await runPublishOnce(false);
+  await runPublishOnce(false, { allowLoginWait: false });
 });
 
 // popup 에서 사장님 manual trigger
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "manual-trigger") {
-    runPublishOnce(msg.dryRun === true)
+    runPublishOnce(msg.dryRun === true, { allowLoginWait: true })
       .then((r) => sendResponse({ ok: true, result: r }))
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true; // async
+  }
+  if (msg?.type === "debugger-paste") {
+    const tabId = _sender?.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "sender tab id 없음" });
+      return false;
+    }
+    dispatchCtrlV(tabId)
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
+  }
+  if (msg?.type === "debugger-insert-text") {
+    const tabId = _sender?.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "sender tab id 없음" });
+      return false;
+    }
+    insertTextViaDebugger(tabId, String(msg.text ?? ""))
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
   }
   return false;
 });
@@ -87,11 +110,98 @@ async function reportFail(secret, next, errorMessage) {
         blogPostId: next?.blogPostId,
         result: "fail",
         errorMessage: String(errorMessage ?? "unknown").slice(0, 500),
+        details: { stage: "background_fail" },
       }),
     });
   } catch (e) {
     console.warn("[keepioo-naver] reportFail error:", e?.message);
   }
+}
+
+async function dispatchCtrlV(tabId) {
+  const target = { tabId };
+  let attached = false;
+  try {
+    await debuggerAttach(target);
+    attached = true;
+    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "Control",
+      code: "ControlLeft",
+      windowsVirtualKeyCode: 17,
+      nativeVirtualKeyCode: 17,
+      modifiers: 2,
+    });
+    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "v",
+      code: "KeyV",
+      windowsVirtualKeyCode: 86,
+      nativeVirtualKeyCode: 86,
+      modifiers: 2,
+      commands: ["paste"],
+    });
+    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "v",
+      code: "KeyV",
+      windowsVirtualKeyCode: 86,
+      nativeVirtualKeyCode: 86,
+      modifiers: 2,
+    });
+    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Control",
+      code: "ControlLeft",
+      windowsVirtualKeyCode: 17,
+      nativeVirtualKeyCode: 17,
+      modifiers: 0,
+    });
+  } finally {
+    if (attached) await debuggerDetach(target).catch(() => undefined);
+  }
+}
+
+async function insertTextViaDebugger(tabId, text) {
+  const target = { tabId };
+  let attached = false;
+  try {
+    await debuggerAttach(target);
+    attached = true;
+    await debuggerSendCommand(target, "Input.insertText", { text });
+  } finally {
+    if (attached) await debuggerDetach(target).catch(() => undefined);
+  }
+}
+
+function debuggerAttach(target) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.attach(target, "1.3", () => {
+      const err = chrome.runtime.lastError;
+      if (err) reject(new Error(err.message));
+      else resolve();
+    });
+  });
+}
+
+function debuggerSendCommand(target, method, params) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand(target, method, params, (result) => {
+      const err = chrome.runtime.lastError;
+      if (err) reject(new Error(err.message));
+      else resolve(result);
+    });
+  });
+}
+
+function debuggerDetach(target) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.detach(target, () => {
+      const err = chrome.runtime.lastError;
+      if (err) reject(new Error(err.message));
+      else resolve();
+    });
+  });
 }
 
 async function getSecret() {
@@ -100,7 +210,8 @@ async function getSecret() {
   return keepioo_secret;
 }
 
-async function runPublishOnce(dryRun = false) {
+async function runPublishOnce(dryRun = false, options = {}) {
+  const allowLoginWait = options.allowLoginWait === true;
   const secret = await getSecret();
   const force = dryRun ? "?force=1" : "";
 
@@ -122,7 +233,7 @@ async function runPublishOnce(dryRun = false) {
   //    minimize 는 inject 후로 미룸 — 즉시 minimize 하면 content.js inject 가
   //    abort 될 가능성 (Could not establish connection 사고).
   const win = await chrome.windows.create({
-    url: "https://blog.naver.com/GoBlogWrite.naver",
+    url: NAVER_WRITE,
     focused: false,
   });
   const tab = win.tabs?.[0];
@@ -134,14 +245,31 @@ async function runPublishOnce(dryRun = false) {
     await chrome.windows.remove(win.id).catch(() => undefined);
     throw new Error("글쓰기 페이지 로드 timeout");
   }
+  // Naver login redirect can happen just after the first complete event.
+  await new Promise((r) => setTimeout(r, 3000));
   // tab.url 검증 — cookies 만료 시 naver 로그인 페이지로 redirect (C-2 fix).
   // blog.naver.com 외 페이지면 cookies 만료. content.js inject 의미 X.
   const finalTab = await chrome.tabs.get(tab.id);
-  if (!finalTab.url || !finalTab.url.includes("blog.naver.com")) {
-    await chrome.windows.remove(win.id).catch(() => undefined);
-    // fail audit 보고 (W-1 fix)
-    await reportFail(secret, next, `cookies 만료 의심: redirect to ${finalTab.url?.slice(0, 100)}`);
-    throw new Error(`cookies 만료 — naver 로그인 redirect (${finalTab.url?.slice(0, 60)})`);
+  if (
+    !finalTab.url ||
+    finalTab.url.includes("nid.naver.com/nidlogin") ||
+    !finalTab.url.includes("blog.naver.com")
+  ) {
+    if (!allowLoginWait) {
+      await chrome.windows.remove(win.id).catch(() => undefined);
+      // fail audit 보고 (W-1 fix)
+      await reportFail(secret, next, `cookies 만료 의심: redirect to ${finalTab.url?.slice(0, 100)}`);
+      throw new Error(`cookies 만료 — naver 로그인 redirect (${finalTab.url?.slice(0, 60)})`);
+    }
+
+    console.log("[keepioo-naver] login required; waiting for manual login in same window");
+    await chrome.windows.update(win.id, { focused: true, state: "normal" }).catch(() => undefined);
+    const loginOk = await waitForNaverLoginThenReopenWriter(tab.id, 10 * 60_000);
+    if (!loginOk) {
+      await chrome.windows.remove(win.id).catch(() => undefined);
+      await reportFail(secret, next, `login wait timeout: ${finalTab.url?.slice(0, 100)}`);
+      throw new Error("네이버 로그인 대기 timeout — 같은 창에서 로그인 후 다시 시도");
+    }
   }
 
   // 4. content.js 강제 inject — manifest content_scripts 가 background window 에서
@@ -158,8 +286,9 @@ async function runPublishOnce(dryRun = false) {
   // listener 등록 대기
   await new Promise((r) => setTimeout(r, 2000));
 
-  // 5. minimize — content.js inject 끝난 후 (사장님 작업 방해 ↓)
-  await chrome.windows.update(win.id, { state: "minimized" }).catch(() => undefined);
+  // 5. activate — paste fail 가설 검증 (minimized 의 hasFocus=false 가
+  //    SE3 paste fail 원인 의심). 안정 후 minimized 복귀 예정.
+  await chrome.windows.update(win.id, { focused: true, state: "normal" }).catch(() => undefined);
 
   // 6. content.js 에 publish 명령 — retry 패턴
   let result;
@@ -199,6 +328,9 @@ async function runPublishOnce(dryRun = false) {
       }),
     });
   } else {
+    const failDetails = result?.debug && typeof result.debug === "object"
+      ? { stage: "content_fail", ...result.debug }
+      : { stage: "content_fail" };
     await fetch(`${KEEPIOO_BASE}/api/naver-extension/published`, {
       method: "POST",
       headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
@@ -207,6 +339,7 @@ async function runPublishOnce(dryRun = false) {
         blogPostId: next.blogPostId,
         result: "fail",
         errorMessage: result?.error ?? "unknown",
+        details: failDetails,
       }),
     });
   }
@@ -229,4 +362,30 @@ function waitForTabReady(tabId, timeoutMs) {
     };
     check();
   });
+}
+
+async function waitForNaverLoginThenReopenWriter(tabId, timeoutMs) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    const url = tab?.url ?? "";
+
+    // 로그인 성공 직후 네이버가 블로그 홈/Redirect=Write 로 보낼 수 있어
+    // 글쓰기 URL을 다시 열어 SmartEditor iframe 이 뜨는 상태로 수렴시킨다.
+    if (url.includes("blog.naver.com") && !url.includes("nid.naver.com")) {
+      await chrome.tabs.update(tabId, { url: NAVER_WRITE }).catch(() => undefined);
+      const ready = await waitForTabReady(tabId, 30_000);
+      if (!ready) return false;
+      await new Promise((r) => setTimeout(r, 3_000));
+
+      const finalTab = await chrome.tabs.get(tabId).catch(() => null);
+      const finalUrl = finalTab?.url ?? "";
+      return finalUrl.includes("blog.naver.com") && !finalUrl.includes("nid.naver.com");
+    }
+
+    await new Promise((r) => setTimeout(r, 1_000));
+  }
+
+  return false;
 }

@@ -63,6 +63,14 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
   const intro = post.meta_description
     ? `${post.meta_description.trim()}\n\n`
     : "";
+  const trustChecklist = [
+    "먼저 확인하세요",
+    "• 대상: 나이·지역·소득 조건이 맞는지 확인",
+    "• 기간: 신청 마감일과 예산 소진 여부 확인",
+    "• 서류: 주민등록·소득·사업자 증빙 필요 여부 확인",
+    "• 신청: 공식 신청 페이지에서 최종 조건 확인",
+    "",
+  ].join("\n");
 
   // 2) 본문 변환
   const bodyText = htmlToNaverText(post.content);
@@ -80,7 +88,7 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
     "─────────────────────────",
   ].join("\n");
 
-  const body = (intro + bodyText + footer).trim();
+  const body = (intro + trustChecklist + bodyText + footer).trim();
 
   return {
     title: post.title,
@@ -249,6 +257,14 @@ export function convertToNaverBlogHtml(
   const hookHtml = post.meta_description
     ? `<p><strong>${escapeHtml(post.meta_description.trim())}</strong></p>\n<p>&nbsp;</p>\n`
     : "";
+  const trustChecklistHtml = [
+    `<p><strong>먼저 확인하세요</strong></p>`,
+    `<p>• 대상: 나이·지역·소득 조건이 맞는지 확인</p>`,
+    `<p>• 기간: 신청 마감일과 예산 소진 여부 확인</p>`,
+    `<p>• 서류: 주민등록·소득·사업자 증빙 필요 여부 확인</p>`,
+    `<p>• 신청: 공식 신청 페이지에서 최종 조건 확인</p>`,
+    `<p>&nbsp;</p>`,
+  ].join("\n");
 
   // 2) cover image — HTML <img> paste 는 SE3 가 외부 fetch 실패 시 alert 띄움 (2026-05-12 사고).
   //    runner.mjs 가 본문 paste 후 별도로 base64 image paste (SE3 자동 upload).
@@ -275,7 +291,14 @@ export function convertToNaverBlogHtml(
     `<p><strong>━━━━━━━━━━━━━━━━━━</strong></p>`,
   ].join("\n");
 
-  const bodyHtml = (coverHtml + hookHtml + bodyContentHtml + "\n" + ctaHtml).trim();
+  const bodyHtml = (
+    coverHtml +
+    hookHtml +
+    trustChecklistHtml +
+    bodyContentHtml +
+    "\n" +
+    ctaHtml
+  ).trim();
 
   return {
     title: post.title,

@@ -49,6 +49,7 @@ export function buildInstagramCaption(input: CaptionInput): string {
 
   // 1) Hook — 제목 그대로 (이미 CTR 강화된 prompt 결과)
   lines.push(`📌 ${input.title}`);
+  lines.push("놓치기 쉬운 지원 조건은 저장해두고 다시 확인하세요.");
   lines.push("");
 
   // 2) 핵심 정보 — meta_description 활용
@@ -58,7 +59,10 @@ export function buildInstagramCaption(input: CaptionInput): string {
   }
 
   // 3) keepioo 안내 (인스타 캡션 link 클릭 안 되므로 "프로필 링크" 가이드)
+  lines.push("✅ 확인할 것: 대상·소득 기준·신청 기간·제출 서류");
+  lines.push("⚠️ 실제 자격과 금액은 지역·소득·마감일에 따라 달라질 수 있어요.");
   lines.push("👉 자세한 자격·금액·신청 방법은 프로필 링크 (keepioo.com) 에서 확인하세요!");
+  lines.push(`👉 keepioo에서 "${input.title.slice(0, 28)}" 검색`);
   lines.push("👉 1분 자격 진단으로 사장님이 받을 수 있는 정책을 즉시 확인 →");
   lines.push("");
 

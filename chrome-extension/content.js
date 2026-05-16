@@ -22,17 +22,26 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type !== "naver-publish") return false;
   publishToSe3(msg.payload, msg.dryRun === true)
     .then((result) => sendResponse({ ok: true, result }))
-    .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null }));
   return true;
 });
 
 async function publishToSe3(payload, dryRun) {
   const debug = { stage: "init" };
 
+  if (isNaverLoginPage()) {
+    throw new Error(`cookies 만료 — naver 로그인 redirect (${location.href.slice(0, 80)})`);
+  }
+
   // mainFrame iframe (SE3)
   debug.stage = "mainFrame";
   const mainFrame = await waitForMainFrame();
-  if (!mainFrame) throw new Error("mainFrame iframe 못 찾음");
+  if (!mainFrame) {
+    if (isNaverLoginPage()) {
+      throw new Error(`cookies 만료 — naver 로그인 redirect (${location.href.slice(0, 80)})`);
+    }
+    throw new Error(`mainFrame iframe 못 찾음 (url=${location.href.slice(0, 80)})`);
+  }
   const mfDoc = mainFrame.contentDocument;
   if (!mfDoc) throw new Error("mainFrame contentDocument 접근 불가");
 
@@ -94,7 +103,7 @@ async function publishToSe3(payload, dryRun) {
   if (!bodyEl) throw new Error("본문 영역 못 찾음");
   // focus 명시 — minimized window 의 hasFocus=false 우회 (C-NEW-2)
   mainFrame.contentWindow?.focus?.();
-  bodyEl.click();
+  focusEditor(bodyEl);
   await sleep(500);
   debug.has_focus = mfDoc.hasFocus();
   // cover 없을 때만 selectAll (cover 있으면 cover 까지 지워질 위험)
@@ -102,7 +111,7 @@ async function publishToSe3(payload, dryRun) {
     await selectAllDelete(mfDoc, mainFrame);
   } else {
     // cover 뒤에 본문 추가 — cursor 를 본문 영역 끝으로
-    bodyEl.focus?.();
+    focusEditor(bodyEl);
   }
   await pasteHtml(bodyEl, payload.bodyHtml, debug);
   await sleep(2000);
@@ -119,16 +128,16 @@ async function publishToSe3(payload, dryRun) {
     debug.stage = "dry_run_verify";
     // 정확한 본문 길이 — 위에서 이미 측정. 임계 200 (W-NEW-1 권고)
     if (debug.bodyLength < 200) {
-      throw new Error(`dry-run fail: 본문 paste 실패 의심 (length=${debug.bodyLength}, expected≥200)`);
+      throwWithDebug(`dry-run fail: 본문 paste 실패 의심 (length=${debug.bodyLength}, expected≥200)`, debug);
     }
     const mainPub = mfDoc.querySelector('button[data-click-area="tpb.publish"]');
-    if (!mainPub || !isVisible(mainPub)) throw new Error("publish 메인 버튼 visible X");
+    if (!mainPub || !isVisible(mainPub)) throwWithDebug("publish 메인 버튼 visible X", debug);
     mainPub.click();
     await sleep(2500);
     const confirmBtn = mfDoc.querySelector('[class*="layer_publish"] button[data-click-area="tpb*i.publish"]');
     debug.dry_run_confirm_visible = !!confirmBtn && isVisible(confirmBtn);
     if (!debug.dry_run_confirm_visible) {
-      throw new Error("dry-run fail: confirm 버튼 (tpb*i.publish) 보이지 않음");
+      throwWithDebug("dry-run fail: confirm 버튼 (tpb*i.publish) 보이지 않음", debug);
     }
     return { dryRun: true, debug };
   }
@@ -173,15 +182,29 @@ async function publishToSe3(payload, dryRun) {
 // ────────────────────────────────────────────────────────────
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
+function throwWithDebug(message, debug) {
+  const error = new Error(message);
+  error.debug = { ...(debug ?? {}) };
+  throw error;
+}
+
 function isVisible(el) {
   if (!el) return false;
   const r = el.getBoundingClientRect();
   return r.width > 0 && r.height > 0;
 }
 
+function isNaverLoginPage() {
+  const href = location.href;
+  if (href.includes("nid.naver.com/nidlogin")) return true;
+  const bodyText = document.body?.innerText ?? "";
+  return bodyText.includes("ID/전화번호") && bodyText.includes("비밀번호") && bodyText.includes("패스키 로그인");
+}
+
 async function waitForMainFrame() {
   const start = Date.now();
   while (Date.now() - start < 15000) {
+    if (isNaverLoginPage()) return null;
     const f = document.querySelector("#mainFrame");
     if (f && f.contentDocument) return f;
     await sleep(500);
@@ -227,12 +250,14 @@ async function typeText(mfDoc, text) {
  */
 async function pasteHtml(targetEl, html, debug) {
   const beforeLen = (targetEl?.textContent ?? "").length;
+  const plainText = htmlToPlainText(html);
+  focusEditor(targetEl);
 
   // 1단계 — navigator.clipboard.write + ClipboardEvent dispatch
   let clipboardWriteOk = false;
   try {
     const htmlBlob = new Blob([html], { type: "text/html" });
-    const plainBlob = new Blob([html.replace(/<[^>]+>/g, "")], { type: "text/plain" });
+    const plainBlob = new Blob([plainText], { type: "text/plain" });
     await navigator.clipboard.write([
       new ClipboardItem({ "text/html": htmlBlob, "text/plain": plainBlob }),
     ]);
@@ -242,7 +267,7 @@ async function pasteHtml(targetEl, html, debug) {
   }
   debug.clipboard_write_ok = clipboardWriteOk;
 
-  await dispatchPasteEvent(targetEl, { html, text: html.replace(/<[^>]+>/g, "") });
+  await dispatchPasteEvent(targetEl, { html, text: plainText });
   await sleep(800);
 
   // 검증 — paste 후 본문 길이
@@ -255,6 +280,7 @@ async function pasteHtml(targetEl, html, debug) {
       const mfDoc = targetEl.ownerDocument;
       const win = mfDoc.defaultView;
       win.focus?.();
+      focusEditor(targetEl);
       mfDoc.execCommand("insertHTML", false, html);
       await sleep(800);
       afterLen = (targetEl?.parentElement?.textContent ?? "").length;
@@ -266,6 +292,71 @@ async function pasteHtml(targetEl, html, debug) {
   } else {
     debug.body_paste_method = "clipboard_dispatch";
   }
+
+  // 3단계 — fallback: plain text insertion. SE3/Chromium 조합에 따라
+  // untrusted paste + insertHTML 이 조용히 실패하는 경우가 있어 최종 안전망.
+  if (afterLen - beforeLen < 100) {
+    try {
+      const mfDoc = targetEl.ownerDocument;
+      const win = mfDoc.defaultView;
+      win.focus?.();
+      focusEditor(targetEl);
+      mfDoc.execCommand("insertText", false, plainText);
+      await sleep(800);
+      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      debug.body_paste_method = "insertText_fallback";
+      debug.body_after_insertText = afterLen;
+    } catch (e) {
+      debug.insertText_error = String(e?.message ?? e).slice(0, 100);
+    }
+  }
+
+  // 4단계 — final fallback: Chrome DevTools Protocol 로 실제 Ctrl+V key event.
+  // SE3 는 synthetic paste / execCommand 를 무시하지만 실제 키 입력 paste 는 받는다.
+  if (afterLen - beforeLen < 100) {
+    try {
+      focusEditor(targetEl);
+      const pasteRes = await sendRuntimeMessage({ type: "debugger-paste" });
+      debug.debugger_paste_ok = pasteRes?.ok === true;
+      if (!pasteRes?.ok) debug.debugger_paste_error = String(pasteRes?.error ?? "unknown").slice(0, 100);
+      await sleep(1500);
+      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      debug.body_paste_method = "debugger_ctrl_v_fallback";
+      debug.body_after_debugger_paste = afterLen;
+    } catch (e) {
+      debug.debugger_paste_error = String(e?.message ?? e).slice(0, 100);
+    }
+  }
+
+  // 5단계 — DevTools Protocol text insertion. Formatting is downgraded, but
+  // it avoids false login loops by getting the article body into the editor.
+  if (afterLen - beforeLen < 100) {
+    try {
+      focusEditor(targetEl);
+      const insertRes = await sendRuntimeMessage({
+        type: "debugger-insert-text",
+        text: plainText,
+      });
+      debug.debugger_insert_text_ok = insertRes?.ok === true;
+      if (!insertRes?.ok) debug.debugger_insert_text_error = String(insertRes?.error ?? "unknown").slice(0, 100);
+      await sleep(1500);
+      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      debug.body_paste_method = "debugger_insert_text_fallback";
+      debug.body_after_debugger_insert_text = afterLen;
+    } catch (e) {
+      debug.debugger_insert_text_error = String(e?.message ?? e).slice(0, 100);
+    }
+  }
+}
+
+function sendRuntimeMessage(message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      const err = chrome.runtime.lastError;
+      if (err) reject(new Error(err.message));
+      else resolve(response);
+    });
+  });
 }
 
 async function dispatchPasteEvent(targetEl, { html, text, imageBlob }) {
@@ -279,7 +370,7 @@ async function dispatchPasteEvent(targetEl, { html, text, imageBlob }) {
   }
 
   // focus 보장
-  targetEl.focus?.();
+  focusEditor(targetEl);
   await sleep(100);
   // paste 이벤트 dispatch
   const ev = new ClipboardEvent("paste", {
@@ -289,4 +380,33 @@ async function dispatchPasteEvent(targetEl, { html, text, imageBlob }) {
   });
   targetEl.dispatchEvent(ev);
   await sleep(500);
+}
+
+function focusEditor(targetEl) {
+  const doc = targetEl.ownerDocument;
+  const win = doc.defaultView;
+  win?.focus?.();
+
+  const editable = targetEl.closest("[contenteditable='true'], [contenteditable='plaintext-only']") ?? targetEl;
+  editable.focus?.();
+
+  const selection = win?.getSelection?.();
+  if (!selection) return;
+  const range = doc.createRange();
+  range.selectNodeContents(targetEl);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function htmlToPlainText(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  for (const br of doc.querySelectorAll("br")) br.replaceWith("\n");
+  for (const block of doc.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, div")) {
+    block.appendChild(doc.createTextNode("\n\n"));
+  }
+  return (doc.body.textContent ?? "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
