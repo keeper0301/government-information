@@ -156,7 +156,7 @@ function fmtDate(iso: string): string {
 export default async function PressIngestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ hours?: string; ok?: string }>;
+  searchParams: Promise<{ hours?: string; ok?: string; tier?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -171,11 +171,16 @@ export default async function PressIngestPage({
     const n = parseInt(params.hours || "24", 10);
     return [24, 48, 168].includes(n) ? n : 24;
   })();
+  // tier 필터 — '', 'low', 'mid', 'high'. invalid → undefined (전체).
+  const tierFilter: "low" | "mid" | "high" | undefined =
+    params.tier === "low" || params.tier === "mid" || params.tier === "high"
+      ? params.tier
+      : undefined;
 
   const [candidates, l2Candidates, kpi, autoTrend, recentAuto, autoStats] =
     await Promise.all([
       getPressIngestCandidates(hours, 100),
-      listPressCandidates(100),
+      listPressCandidates(100, tierFilter ? { tier: tierFilter } : undefined),
       getPressIngestKpi(),
       getAutoIngestTrend(7),
       getRecentAutoIngestRows(5),
@@ -396,13 +401,41 @@ export default async function PressIngestPage({
       </div>
 
       <section className="mb-7">
-        <div className="flex items-baseline justify-between gap-3 mb-3">
+        <div className="flex items-baseline justify-between gap-3 mb-3 flex-wrap">
           <h2 className="text-base font-bold text-grey-900 tracking-[-0.2px]">
-            L2 confirm 후보 ({l2Candidates.length}건)
+            L2 confirm 후보 ({l2Candidates.length}건
+            {tierFilter && ` · ${tierFilter.toUpperCase()} 만`})
           </h2>
-          <span className="text-xs text-grey-600">
-            LLM 분류 완료 · 승인 전 사용자 노출 없음
-          </span>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex rounded-lg border border-grey-200 bg-white overflow-hidden">
+              {[
+                { value: "", label: "전체" },
+                { value: "low", label: "LOW" },
+                { value: "mid", label: "MID" },
+                { value: "high", label: "HIGH" },
+              ].map((opt) => {
+                const active = (tierFilter ?? "") === opt.value;
+                const qs = new URLSearchParams();
+                if (hours !== 24) qs.set("hours", String(hours));
+                if (opt.value) qs.set("tier", opt.value);
+                const href = `/admin/press-ingest${qs.toString() ? `?${qs.toString()}` : ""}`;
+                return (
+                  <Link
+                    key={opt.value || "all"}
+                    href={href}
+                    className={`px-3 py-1.5 text-xs font-semibold no-underline transition-colors ${
+                      active ? "bg-blue-500 text-white" : "text-grey-700 hover:bg-grey-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <span className="text-xs text-grey-600">
+              LLM 분류 완료 · 승인 전 사용자 노출 없음
+            </span>
+          </div>
         </div>
         {l2Candidates.length === 0 ? (
           <div className="rounded-lg border border-grey-200 bg-white p-5 text-sm text-grey-600">
