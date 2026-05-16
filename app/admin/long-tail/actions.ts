@@ -6,7 +6,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { publishKeywordPost } from "@/lib/blog-publish";
-import { logAdminAction } from "@/lib/admin-actions";
+import { logAdminAction, type AdminActionType } from "@/lib/admin-actions";
 
 interface SubmitInput {
   keyword: string;
@@ -46,6 +46,18 @@ export async function submitLongTailKeyword(
         action: "blog_publish",
         details: {
           source: "long_tail",
+          keyword,
+          category: result.generated.category,
+          slug: result.slug,
+          title: result.generated.title,
+          qualityReviewScore: result.qualityReview?.score ?? null,
+          externalPublishHeld: result.externalPublishHeld,
+        },
+      });
+      await logAdminAction({
+        actorId: user.id,
+        action: "long_tail_seo_run" as AdminActionType,
+        details: {
           keyword,
           category: result.generated.category,
           slug: result.slug,

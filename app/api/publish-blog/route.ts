@@ -26,9 +26,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { publishOnePost, getTodayCategory } from "@/lib/blog-publish";
 import { notifyCronFailure } from "@/lib/email";
+import { logAdminAction, type AdminActionType } from "@/lib/admin-actions";
 
 // AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림
 export const maxDuration = 60;
+
+async function logPublishBlogRun(details: Record<string, unknown>) {
+  try {
+    await logAdminAction({
+      actorId: null,
+      action: "blog_publish_run" as AdminActionType,
+      details,
+    });
+  } catch (e) {
+    console.warn("[publish-blog] audit 실패:", (e as Error).message);
+  }
+}
 
 export async function POST(request: NextRequest) {
   // 1) 인증
@@ -48,6 +61,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await publishOnePost(opts);
+    if (!opts.dryRun) {
+      await logPublishBlogRun({
+        mode: "post",
+        category: opts.category || result.generated.category,
+        count: 1,
+        success: 1,
+        failed: 0,
+        externalPublishHeld: result.externalPublishHeld,
+        qualityScore: result.qualityReview?.score ?? null,
+        slug: result.slug,
+        sourceProgramId: result.sourceProgramId,
+        sourceProgramType: result.sourceProgramType,
+      });
+    }
 
     return NextResponse.json({
       message: result.dryRun ? "Dry run 성공 (DB 저장 안 함)" : "글 발행 완료",
@@ -73,6 +100,14 @@ export async function POST(request: NextRequest) {
     const category = opts.category || getTodayCategory();
     // dryRun 실패는 무음 (수동 테스트), 진짜 발행 실패만 운영자에게 알림
     if (!opts.dryRun) {
+      await logPublishBlogRun({
+        mode: "post",
+        category,
+        count: 1,
+        success: 0,
+        failed: 1,
+        error: message.slice(0, 300),
+      });
       await notifyCronFailure("publish-blog (POST)", message, `카테고리: ${category}`);
     }
     return NextResponse.json(
@@ -143,6 +178,24 @@ export async function GET(request: NextRequest) {
 
   // 실패한 카테고리만 모아서 알림 (성공 1+ 면 200, 모두 실패면 500)
   const failures = results.filter((r) => !r.ok);
+  await logPublishBlogRun({
+    mode: "cron",
+    count,
+    offset,
+    categories,
+    success: results.filter((r) => r.ok).length,
+    failed: failures.length,
+    externalPublishHeld: results.filter(
+      (r) => r.ok && r.externalPublishHeld,
+    ).length,
+    results: results.map((r) => ({
+      category: r.category,
+      ok: r.ok,
+      slug: r.ok ? r.slug : null,
+      externalPublishHeld: r.ok ? r.externalPublishHeld : null,
+      error: r.ok ? null : String(r.error).slice(0, 160),
+    })),
+  });
   if (failures.length > 0) {
     const detail = failures.map((f) => `[${f.category}] ${f.error}`).join("\n");
     await notifyCronFailure("publish-blog (cron)", detail, `count=${count}`);
