@@ -19,30 +19,71 @@ const NEUTRAL: BlogQualityResult = {
   reason: "skipped",
 };
 
-export async function evaluateBlogQuality(post: {
-  title: string;
-  content: string;
-}): Promise<BlogQualityResult> {
-  const prompt = `다음 블로그 글의 품질을 1~5 점으로 평가하세요.
+export function getSeasonalMarketingFocus(now = new Date()): string {
+  const month = now.getMonth() + 1;
+  if (month <= 2) {
+    return "연초 예산 확정, 신규 모집 시작, 청년·소상공인 정책 탐색 수요";
+  }
+  if (month <= 4) {
+    return "입학·취업·이사철, 주거비·교육비·청년 취업 지원 수요";
+  }
+  if (month <= 6) {
+    return "상반기 마감 전 신청, 가족·육아·근로장려·소상공인 운영자금 수요";
+  }
+  if (month <= 8) {
+    return "여름방학·휴가철, 문화·교육·에너지 비용 절감 정책 수요";
+  }
+  if (month <= 10) {
+    return "하반기 채용·창업·주거 안정, 예산 소진 전 신청 수요";
+  }
+  return "연말 마감, 다음 해 제도 변경, 미신청 지원금 점검 수요";
+}
+
+export function buildBlogQualityPrompt(
+  post: { title: string; content: string },
+  now = new Date(),
+): string {
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const seasonalFocus = getSeasonalMarketingFocus(now);
+  return `다음 블로그 글의 발행 품질을 1~5 점으로 평가하세요.
+
+현재 기준:
+- 연도/월: ${year}년 ${month}월
+- 한국 정책 콘텐츠 시즌 힌트: ${seasonalFocus}
 
 평가 기준:
 1 = 광고성·잘못된 정보·심각하게 읽기 어려움
-2 = 내용 부실 또는 일부 명백한 오류
+2 = 내용 부실, 일부 명백한 오류, 또는 외부 채널 업로드 전 보강 필요
 3 = 평균 (정상, 발행 가능)
-4 = 잘 정리됨 (가독성·정확성 우수)
-5 = 매우 정확하고 가독성 매우 우수
+4 = 검색 의도·정확성·가독성·CTA가 잘 정리됨
+5 = 매우 정확하고, 최신성·신뢰·전환 요소가 모두 우수
+
+반드시 함께 평가할 마케팅 품질:
+- 제목이 사용자의 검색 의도와 현재 연도/시즌에 맞는가
+- 대상·혜택/금액·신청 기간·제출 서류·공식 신청 경로가 충분히 분명한가
+- 네이버 블로그/인스타 재활용 시 저장·검색·프로필 링크 CTA로 이어질 수 있는가
+- 과장 없이 지역·소득·마감일에 따른 변동 가능성을 안내하는가
+- 본문 첫 화면에서 핵심 조건을 빠르게 이해할 수 있는가
 
 JSON 만 반환:
 { "score": 1~5 정수, "reason": "한 줄 근거 (한국어)" }
 
 제목: ${post.title}
 
-본문 (앞 2000자):
-${post.content.slice(0, 2000)}`;
+본문 (앞 2400자):
+${post.content.slice(0, 2400)}`;
+}
+
+export async function evaluateBlogQuality(post: {
+  title: string;
+  content: string;
+}): Promise<BlogQualityResult> {
+  const prompt = buildBlogQualityPrompt(post);
 
   let parsed: { score?: number; reason?: string };
   try {
-    const text = await callLLM({ prompt, maxTokens: 150, jsonMode: true });
+    const text = await callLLM({ prompt, maxTokens: 220, jsonMode: true });
     parsed = parseJSONResponse<{ score?: number; reason?: string }>(text);
   } catch (e) {
     return { ...NEUTRAL, reason: (e as Error).message.slice(0, 80) };
