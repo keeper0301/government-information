@@ -21,6 +21,11 @@ import {
   executeAllAutoFixAttempts,
   formatAutoFixResults,
 } from "@/lib/monitoring/auto-fix-integration";
+import {
+  commitRegexProposal,
+  formatCommitResults,
+  isCommitEnabled,
+} from "@/lib/monitoring/auto-fix-commit";
 import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -57,7 +62,17 @@ export async function GET(request: Request) {
     const autoFixResults = await executeAllAutoFixAttempts(autoFixAttempts);
     const autoFixLlmSummary = formatAutoFixResults(autoFixResults);
 
-    const message = baseMessage + autoFixSummary + autoFixLlmSummary;
+    // D-4 step 3 — 매칭 성공 proposal 만 PR 생성 (env D4_AUTO_FIX_COMMIT_ENABLED 일 때만)
+    const commitResults = isCommitEnabled()
+      ? await Promise.all(
+          autoFixResults
+            .filter((r) => r.proposal && r.proposal.sampleMatchTested)
+            .map((r) => commitRegexProposal(r.proposal!)),
+        )
+      : [];
+    const commitSummary = formatCommitResults(commitResults);
+
+    const message = baseMessage + autoFixSummary + autoFixLlmSummary + commitSummary;
 
     // 텔레그램 알림 — 사고 있으면 즉시, 사고 0 도 매주 1회 정상 보고 (사장님 운영 가시화)
     const telegram = await sendOpsAlertTelegram({
@@ -92,6 +107,12 @@ export async function GET(request: Request) {
       d4_step2_errors: autoFixResults
         .filter((r) => r.error)
         .map((r) => ({ domain: r.attempt.domain, error: r.error })),
+      d4_step3_prs: commitResults
+        .filter((r): r is Extract<typeof r, { prUrl: string }> => "prUrl" in r)
+        .map((r) => ({ pr: r.prNumber, branch: r.branch, domain: r.domain })),
+      d4_step3_errors: commitResults
+        .filter((r): r is Extract<typeof r, { error: string }> => "error" in r)
+        .map((r) => ({ error: r.error })),
       report, // 다음 주 비교용 전체 snapshot
     });
 
