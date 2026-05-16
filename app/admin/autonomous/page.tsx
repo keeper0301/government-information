@@ -12,7 +12,9 @@ import { isAdminUser } from "@/lib/admin-auth";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   getAllPhaseStatuses,
+  aggregatePendingActions,
   type PhaseStatus,
+  type AggregatedPendingAction,
 } from "@/lib/autonomous-ops/status";
 import {
   getLatestImprovementScan,
@@ -59,6 +61,8 @@ export default async function AdminAutonomousPage() {
       />
 
       <ImprovementPanel scan={improvementScan} />
+
+      <PendingActionsPanel actions={aggregatePendingActions(phases)} />
 
       <div className="space-y-3">
         {phases.map((p) => (
@@ -161,6 +165,58 @@ function ImprovementItem({ item }: { item: ImprovementRecommendation }) {
         )}
       </div>
     </li>
+  );
+}
+
+// 5 phase 의 pendingActions 를 한 카드에 통합. 사장님이 외부 액션 우선순위
+// 한 화면 확인. 액션 0건이면 카드 자체 숨김 (noise 0).
+function PendingActionsPanel({ actions }: { actions: AggregatedPendingAction[] }) {
+  if (actions.length === 0) return null;
+  return (
+    <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
+      <header className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold text-grey-600 mb-1">
+            외부 액션 통합
+          </div>
+          <h2 className="text-base font-semibold">
+            사장님 처리 대기 ({actions.length}건)
+          </h2>
+        </div>
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+          5 Phase 통합
+        </span>
+      </header>
+      <ol className="space-y-2">
+        {actions.map((a, i) => (
+          <li
+            key={i}
+            className="rounded border border-white/80 bg-white px-3 py-2 text-sm"
+          >
+            <div className="text-[11px] font-semibold text-amber-700 mb-1">
+              Phase {a.phase} · {a.phaseTitle}
+            </div>
+            <div className="text-xs text-grey-800">
+              {a.url ? (
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline hover:text-blue-800"
+                >
+                  {a.text} ↗
+                </a>
+              ) : (
+                a.text
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-[11px] text-grey-600">
+        각 액션 완료 후 hub 새로고침 시 자동 가동 (✓ 가동) 으로 전환됩니다.
+      </p>
+    </section>
   );
 }
 

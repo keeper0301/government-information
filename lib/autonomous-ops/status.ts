@@ -315,3 +315,22 @@ async function phase5(): Promise<PhaseStatus> {
 export async function getAllPhaseStatuses(): Promise<PhaseStatus[]> {
   return Promise.all([phase1(), phase2(), phase3(), phase4(), phase5()]);
 }
+
+// 5 phase 의 pendingActions 통합 — hub 페이지에서 사장님 외부 액션 한 화면
+// 가시화 (각 카드 안 분산 X). 각 action 에 phase 메타 추가.
+export type AggregatedPendingAction = PendingAction & {
+  phase: PhaseStatus["phase"];
+  phaseTitle: string;
+};
+
+export function aggregatePendingActions(
+  phases: PhaseStatus[],
+): AggregatedPendingAction[] {
+  return phases.flatMap((p) =>
+    p.pendingActions.map((a) => ({
+      ...a,
+      phase: p.phase,
+      phaseTitle: p.title,
+    })),
+  );
+}
