@@ -145,15 +145,32 @@ export async function checkAdsense(): Promise<ConsoleCheckResult> {
       token,
     );
     const account = accs.accounts?.[0];
-    if (!account) throw new Error("AdSense 계정 없음 — 승인 후 재시도");
+    // 계정 없음 — 승인 대기/publisher ID 미연결 case. throw 대신 안내 alert 1건
+    // 반환해서 adsense_fetch_failed 매일 폭주 사고 방지 (2026-05-10 spec).
+    if (!account) {
+      return {
+        console: "adsense",
+        alerts: [
+          {
+            key: "adsense_account_state",
+            message: "AdSense 계정 없음 — 승인 대기 중 또는 publisher ID 미연결.",
+            recommendation:
+              "AdSense 콘솔 (adsense.google.com) → 계정 → 승인 상태 확인. 7일 이상 미진행 시 Google 지원 문의.",
+          },
+        ],
+        kpis: { account_state: "NOT_FOUND" },
+      };
+    }
 
     // 2) 24h 수익 (TODAY) — metrics=ESTIMATED_EARNINGS
     const reportUrl = `${ADSENSE_API}/${account.name}/reports:generate?dateRange=TODAY&metrics=ESTIMATED_EARNINGS`;
     const report = await googleFetch<AdSenseReport>(reportUrl, token);
     const cell = report.totals?.cells?.[0]?.value ?? "0";
     const earningsToday = parseFloat(cell) || 0;
-    // currency 는 별도 metric 이지만 단순화 — 사장님 한국 가입 USD default
-    const currency = "USD";
+    // 사장님 한국 가입 → AdSense 기본 통화 KRW. ADSENSE_CURRENCY env 로
+    // override 가능 (다른 국가/통화 운영 대비). USD 하드코딩 사고 fix
+    // (2026-05-10 spec — "USD 0" 출력에 사장님 헷갈림 사고 방지).
+    const currency = process.env.ADSENSE_CURRENCY ?? "KRW";
 
     const { alerts, kpis } = buildAdsenseAlerts({
       account,
