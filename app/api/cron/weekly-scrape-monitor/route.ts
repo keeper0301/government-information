@@ -30,6 +30,10 @@ import {
   analyzeRollback,
   formatRollbackAlerts,
 } from "@/lib/monitoring/auto-fix-rollback";
+import {
+  collectRevenueTrend,
+  formatRevenueTrend,
+} from "@/lib/monitoring/adsense-revenue-trend";
 import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -80,7 +84,17 @@ export async function GET(request: Request) {
     const rollbackAlerts = await analyzeRollback(report);
     const rollbackSummary = formatRollbackAlerts(rollbackAlerts);
 
-    const message = baseMessage + autoFixSummary + autoFixLlmSummary + commitSummary + rollbackSummary;
+    // Phase D 매출 추세 — AdSense 7일 추세 + ↓ alert
+    const revenueTrend = await collectRevenueTrend(7);
+    const revenueSummary = "\n\n" + formatRevenueTrend(revenueTrend);
+
+    const message =
+      baseMessage +
+      autoFixSummary +
+      autoFixLlmSummary +
+      commitSummary +
+      rollbackSummary +
+      revenueSummary;
 
     // 텔레그램 알림 — 사고 있으면 즉시, 사고 0 도 매주 1회 정상 보고 (사장님 운영 가시화)
     const telegram = await sendOpsAlertTelegram({
@@ -126,6 +140,9 @@ export async function GET(request: Request) {
         domain: a.domain,
         reason: a.reason,
       })),
+      adsense_revenue_7d: revenueTrend.total7d,
+      adsense_revenue_currency: revenueTrend.currency,
+      adsense_revenue_alerts: revenueTrend.alerts.length,
       report, // 다음 주 비교용 전체 snapshot
     });
 
