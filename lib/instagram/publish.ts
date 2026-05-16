@@ -88,10 +88,12 @@ async function createCarouselContainer(
 /**
  * Container status polling — Instagram 권장. carousel container 생성 직후
  * publish 호출하면 IN_PROGRESS 상태라 "Media ID is not available" 실패.
- * status_code 가 FINISHED 될 때까지 polling (최대 60초, 2초 간격).
+ * status_code 가 FINISHED 될 때까지 polling (최대 120초, 2초 간격).
  *
  * 30s → 60s (2026-05-12): 첫 발행에서 30s 안에 FINISHED 안 떠서 3연속 실패.
- * carousel item 3개라 indexing 더 오래 걸림. Vercel maxDuration 300s 안전.
+ * 60s → 120s + FINISHED 후 5s 추가 sleep (2026-05-16): 5/15+5/16 누적 2건
+ * attempt:1 fail (Graph API race — FINISHED 응답 직후에도 publish 실패).
+ * Vercel maxDuration 300s 안전.
  */
 async function waitForContainerReady(
   containerId: string,
@@ -99,8 +101,11 @@ async function waitForContainerReady(
 ): Promise<void> {
   const url = `${API_BASE}/${containerId}?fields=status_code&access_token=${token}`;
   const start = Date.now();
-  const TIMEOUT_MS = 60_000;
+  const TIMEOUT_MS = 120_000;
   const POLL_MS = 2_000;
+  // FINISHED 응답 직후에도 publish 가 indexing 미완료로 fail 하는 race —
+  // 추가 sleep 으로 안전 마진 (2026-05-16 사고).
+  const POST_FINISHED_SLEEP_MS = 5_000;
 
   while (Date.now() - start < TIMEOUT_MS) {
     const res = await fetch(url);
@@ -108,13 +113,16 @@ async function waitForContainerReady(
       status_code?: string;
       error?: { message: string };
     };
-    if (json.status_code === "FINISHED") return;
+    if (json.status_code === "FINISHED") {
+      await new Promise((r) => setTimeout(r, POST_FINISHED_SLEEP_MS));
+      return;
+    }
     if (json.status_code === "ERROR" || json.status_code === "EXPIRED") {
       throw new Error(`container 상태 ${json.status_code}`);
     }
     await new Promise((r) => setTimeout(r, POLL_MS));
   }
-  throw new Error(`container ready timeout 60s (마지막 polling)`);
+  throw new Error(`container ready timeout 120s (마지막 polling)`);
 }
 
 /**

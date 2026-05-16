@@ -22,6 +22,8 @@ import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
 export const dynamic = "force-dynamic";
 // 2026-05-12: jitter (max 90s) + container polling (max 60s) + 5 Graph API
 // 호출 + retry → 최대 ~180s. Vercel Pro 한도 300s.
+// 2026-05-16: polling 60s → 120s + FINISHED 후 5s sleep — 첫 시도 fail 2건 fix.
+//             최대 ~245s 까지 늘어남. Vercel 300s 한도 안전 마진 55s.
 export const maxDuration = 300;
 
 function siteUrl(): string {
