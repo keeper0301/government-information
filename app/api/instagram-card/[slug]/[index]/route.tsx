@@ -142,58 +142,64 @@ function renderCoverCard(title: string, category: string, color: string) {
         style={{
           display: "flex",
           alignSelf: "flex-start",
-          padding: "16px 36px",
+          padding: "14px 32px",
           background: color,
           color: "#FFFFFF",
-          fontSize: 36,
-          fontWeight: 800,
+          fontSize: 32,
+          fontWeight: 700,
           borderRadius: 999,
           marginBottom: 80,
+          letterSpacing: "0",
         }}
       >
         {category}
       </div>
 
       {/* 큰 제목 — 인스타 모바일 가독성 최우선
-          line-height 1.45·letter-spacing -0.5px (2026-05-12 가독성 개선:
-          이전 1.25·-2px 가 한글 빽빽해 보임 → 칸띄움 ↑)
-          fontSize 임계 5단계: 50자+/40자+/30자+/15자+/그 이하 (짧은 제목 sparse 방지) */}
+          2026-05-16 사장님 가독성 신고 후 카드 2 와 동일 칸띄움 적용:
+          letter-spacing 0 (음수 자간 제거) + line-height 1.55 (제목용 호흡감)
+          + fontWeight 700 (Pretendard-Bold 실 weight, fake-bold 두꺼움 X) */}
       <div
         style={{
+          // fontSize 임계 — 한 단계 낮춤 (구두점만 다음 줄로 떨어지는 사고 방지).
+          // 한글 + 영문 구두점 ("주목!") 이 Satori 에서 별개 word 로 처리되어
+          // "!" 만 over-flow 됨. fontSize ↓ → 한 줄 글자 수 ↓ → "주목!" 통째
+          // 줄바꿈 가능. (2026-05-16 ulsan title 검수 사고)
           fontSize:
             title.length > 50
-              ? 52
+              ? 44
               : title.length > 40
-                ? 60
+                ? 52
                 : title.length > 30
-                  ? 72
+                  ? 60
                   : title.length > 15
-                    ? 88
-                    : 100,
-          fontWeight: 800,
+                    ? 76
+                    : 88,
+          fontWeight: 700,
           color: "#191F28",
-          lineHeight: 1.45,
-          letterSpacing: "-0.5px",
+          lineHeight: 1.55,
+          letterSpacing: "0",
           flex: 1,
           width: "100%",
           maxWidth: "100%",
           display: "flex",
           alignItems: "center",
-          wordBreak: "break-word",
+          wordBreak: "keep-all",
         }}
       >
         {title}
       </div>
 
-      {/* 하단 브랜드 */}
+      {/* 하단 브랜드 — 3 카드 통일 (fontSize 30·weight 700) */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          fontSize: 36,
+          fontSize: 30,
           color: color,
-          fontWeight: 800,
+          fontWeight: 700,
           marginTop: 60,
+          letterSpacing: "0",
         }}
       >
         @ keepioo · 정책알리미
@@ -362,63 +368,76 @@ function renderCtaCard(title: string, color: string) {
         }}
       />
 
-      {/* 안내 문구 — line-height·letter-spacing 완화 (2026-05-12 가독성 ↑) */}
-      <div
-        style={{
-          display: "flex",
-          fontSize: 56,
-          fontWeight: 800,
-          color: "#191F28",
-          lineHeight: 1.5,
-          letterSpacing: "-0.5px",
-          marginBottom: 60,
-          wordBreak: "keep-all",
-        }}
-      >
-        ✅ 자세한 자격·금액·신청 방법은
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          fontSize: 96,
-          fontWeight: 800,
-          color: color,
-          lineHeight: 1.2,
-          letterSpacing: "-1px",
-          marginBottom: 80,
-          wordBreak: "keep-all",
-        }}
-      >
-        keepioo.com
-      </div>
-
-      {/* 2줄 구성 — line-height 1.65 로 호흡감 ↑ */}
+      {/* 본문 cluster — vertical center (카드 2 와 동일 패턴, 시각 일관성)
+          안내 → keepioo.com → 1분 진단 3 chunks 사이 gap 으로 호흡감 */}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
-          fontSize: 44,
-          fontWeight: 700,
-          color: "#4E5968",
-          lineHeight: 1.65,
-          letterSpacing: "-0.3px",
           flex: 1,
-          wordBreak: "keep-all",
+          width: "100%",
+          justifyContent: "center",
+          alignItems: "flex-start",
+          gap: 48,
         }}
       >
-        <div style={{ display: "flex" }}>🔍 1분 자격 진단으로</div>
-        <div style={{ display: "flex", marginTop: 12 }}>
-          받을 수 있는 정책 즉시 확인
+        <div
+          style={{
+            display: "flex",
+            fontSize: 52,
+            fontWeight: 700,
+            color: "#191F28",
+            lineHeight: 1.6,
+            letterSpacing: "0",
+            wordBreak: "keep-all",
+          }}
+        >
+          ✅ 자세한 자격·금액·신청 방법은
+        </div>
+
+        {/* keepioo.com — 영문이라 letterSpacing -0.5px 정도는 typography 느낌 */}
+        <div
+          style={{
+            display: "flex",
+            fontSize: 92,
+            fontWeight: 700,
+            color: color,
+            lineHeight: 1.2,
+            letterSpacing: "-0.5px",
+            wordBreak: "keep-all",
+          }}
+        >
+          keepioo.com
+        </div>
+
+        {/* 2줄 구성 — line-height 1.7 + 줄 사이 marginTop 28 */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            fontSize: 42,
+            fontWeight: 700,
+            color: "#4E5968",
+            lineHeight: 1.7,
+            letterSpacing: "0",
+            wordBreak: "keep-all",
+          }}
+        >
+          <div style={{ display: "flex" }}>🔍 1분 자격 진단으로</div>
+          <div style={{ display: "flex", marginTop: 28 }}>
+            받을 수 있는 정책 즉시 확인
+          </div>
         </div>
       </div>
 
+      {/* 하단 brand — 3 카드 통일 (fontSize 30·weight 700) */}
       <div
         style={{
           display: "flex",
-          fontSize: 36,
+          fontSize: 30,
           color: color,
-          fontWeight: 800,
+          fontWeight: 700,
+          letterSpacing: "0",
         }}
       >
         프로필 링크 → keepioo.com
