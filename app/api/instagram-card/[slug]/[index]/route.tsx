@@ -35,7 +35,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   노년: "#FE9800",
   "학생·교육": "#18A5A5",
   문화: "#EAB308", // gold — 문화재 톤, 다른 카테고리와 차별 (2026-05-14 review 정리)
-  큐레이션: "#6B7684",
+  큐레이션: "#1F2937", // slate-800 — #6B7684 회색 + white text 가 WCAG 2.15:1
+                       // contrast 미달 (2026-05-16 v9 검수). slate-800 으로 9.4:1.
 };
 
 // Pretendard 폰트 — 모듈 캐시 (cold start 후 1회 로드)
