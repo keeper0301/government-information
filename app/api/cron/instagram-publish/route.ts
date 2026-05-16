@@ -17,6 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { publishCarousel } from "@/lib/instagram/publish";
 import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
+import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
 
 export const dynamic = "force-dynamic";
 // 2026-05-12: jitter (max 90s) + container polling (max 60s) + 5 Graph API
@@ -142,9 +143,10 @@ export async function GET(request: Request) {
   // 발행 대기 글 1건 (가장 오래된 것 먼저 — FIFO)
   const { data: post, error: queryErr } = await admin
     .from("blog_posts")
-    .select("id, slug, title, meta_description, category, tags, instagram_attempt_count")
+    .select("id, slug, title, meta_description, category, tags, instagram_attempt_count, admin_review_required")
     .not("published_at", "is", null)
     .is("instagram_published_at", null)
+    .eq("admin_review_required", false)
     .lt("instagram_attempt_count", 3)
     .order("published_at", { ascending: true })
     .limit(1)
@@ -160,9 +162,32 @@ export async function GET(request: Request) {
   }
 
   if (!post) {
+    const { count: blockedByQuality } = await admin
+      .from("blog_posts")
+      .select("id", { count: "exact", head: true })
+      .not("published_at", "is", null)
+      .is("instagram_published_at", null)
+      .lt("instagram_attempt_count", 3)
+      .or("admin_review_required.is.null,admin_review_required.eq.true");
+    if ((blockedByQuality ?? 0) > 0) {
+      await logSkip("quality_review_pending", { blockedByQuality });
+      return NextResponse.json({
+        status: "quality_review_pending",
+        blockedByQuality,
+        message: "품질 검수 통과 전 글은 인스타 자동 발행하지 않음",
+      });
+    }
     // 2026-05-14 — no_pending 분기 audit (정상 가동 흔적 보장)
     await logSkip("no_pending", {});
     return NextResponse.json({ status: "no_pending", message: "발행 대기 글 없음" });
+  }
+
+  if (!isExternalPublishQualityApproved(post)) {
+    await logSkip("quality_gate_rejected", { slug: post.slug });
+    return NextResponse.json({
+      status: "quality_gate_rejected",
+      slug: post.slug,
+    });
   }
 
   // 카드 3장 public URL (api/instagram-card 가 만드는 1080×1350, 4:5 portrait)

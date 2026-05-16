@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToNaverBlogHtml } from "@/lib/naver-blog/format";
 import { countTodaySuccess, getKstHour } from "@/lib/naver-blog/audit";
+import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
@@ -59,9 +60,10 @@ export async function GET(request: Request) {
   const { data: row, error } = await admin
     .from("naver_blog_queue")
     .select(
-      "id, blog_post_id, attempt_count, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)",
+      "id, blog_post_id, attempt_count, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image, admin_review_required)",
     )
     .eq("status", "pending")
+    .eq("blog_post.admin_review_required", false)
     .lt("attempt_count", 3)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -71,6 +73,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "db_error", error: error.message }, { status: 500 });
   }
   if (!row) {
+    const { count: blockedByQuality } = await admin
+      .from("naver_blog_queue")
+      .select("id, blog_post:blog_posts!inner(id, admin_review_required)", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "pending")
+      .lt("attempt_count", 3)
+      .or("admin_review_required.is.null,admin_review_required.eq.true", {
+        referencedTable: "blog_post",
+      });
+    if ((blockedByQuality ?? 0) > 0) {
+      return NextResponse.json({
+        status: "quality_review_pending",
+        blockedByQuality,
+      });
+    }
     return NextResponse.json({ status: "no_pending" });
   }
 
@@ -85,6 +104,12 @@ export async function GET(request: Request) {
   // SE3 호환 HTML 변환
   const blogPostRaw = row.blog_post as unknown;
   const post = Array.isArray(blogPostRaw) ? blogPostRaw[0] : blogPostRaw;
+  if (!isExternalPublishQualityApproved(post)) {
+    return NextResponse.json({
+      status: "quality_gate_rejected",
+      queueId: row.id,
+    });
+  }
   const payload = convertToNaverBlogHtml(post);
 
   return NextResponse.json({
