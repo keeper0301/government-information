@@ -4,6 +4,7 @@
 // 'use client' 없음 — createClient 사용 가능
 import Link from "next/link";
 import { RecommendLinkTracker } from "@/components/analytics/recommend-link-tracker";
+import { TopPopularFallback } from "@/components/personalization/top-popular-fallback";
 import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilterWithPopularity } from '@/lib/personalization/filter';
@@ -326,6 +327,8 @@ export async function HomeRecommendAuto({
             맞춤 조건 다시 검색
           </Link>
         </div>
+        {/* A 10차: signals 부족 사용자에게 "이번 달 인기 정책" 노출. event 0 건이면 null 반환 */}
+        <TopPopularFallback />
       </section>
     );
   }

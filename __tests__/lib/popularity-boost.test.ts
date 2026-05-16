@@ -9,11 +9,14 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 import {
   applyPopularityBoost,
   getProgramPopularityScore,
+  getTopPopularPrograms,
   _resetPopularityCache,
 } from "@/lib/personalization/popularity-boost";
 import * as supabase from "@/lib/supabase/admin";
 
-function mockEvents(events: Array<{ program_id: string; event_type: string }>) {
+function mockEvents(
+  events: Array<{ program_id: string; event_type: string; program_table?: string }>,
+) {
   vi.mocked(supabase.createAdminClient).mockReturnValue({
     from: () => ({
       select: () => ({
@@ -171,5 +174,85 @@ describe("getProgramPopularityScore", () => {
       { program_id: "p1", event_type: "program_view" },
     ]);
     expect(await getProgramPopularityScore("p1")).toBe(4.5); // 2*2 + 0.5
+  });
+});
+
+describe("getTopPopularPrograms (A 10차)", () => {
+  beforeEach(() => {
+    _resetPopularityCache();
+    vi.clearAllMocks();
+  });
+
+  it("programTable 별 top N 분리 + score 내림차순", async () => {
+    mockEvents([
+      { program_id: "w1", event_type: "apply_click", program_table: "welfare_programs" }, // +2
+      { program_id: "w2", event_type: "apply_click", program_table: "welfare_programs" },
+      { program_id: "w2", event_type: "apply_click", program_table: "welfare_programs" }, // +4
+      { program_id: "l1", event_type: "program_view", program_table: "loan_programs" }, // +0.5
+    ]);
+    const welfare = await getTopPopularPrograms("welfare_programs", 5);
+    expect(welfare.map((x) => x.id)).toEqual(["w2", "w1"]); // 4 > 2
+    const loan = await getTopPopularPrograms("loan_programs", 5);
+    expect(loan.map((x) => x.id)).toEqual(["l1"]);
+  });
+
+  it("event 0 건 → 빈 배열", async () => {
+    mockEvents([]);
+    expect(await getTopPopularPrograms("welfare_programs", 3)).toEqual([]);
+  });
+
+  it("limit 작동 (top 3 만)", async () => {
+    mockEvents([
+      { program_id: "p1", event_type: "apply_click", program_table: "welfare_programs" },
+      { program_id: "p2", event_type: "apply_click", program_table: "welfare_programs" },
+      { program_id: "p3", event_type: "apply_click", program_table: "welfare_programs" },
+      { program_id: "p4", event_type: "apply_click", program_table: "welfare_programs" },
+      { program_id: "p5", event_type: "apply_click", program_table: "welfare_programs" },
+    ]);
+    const top3 = await getTopPopularPrograms("welfare_programs", 3);
+    expect(top3.length).toBe(3);
+  });
+});
+
+describe("강건성 (A 10차)", () => {
+  beforeEach(() => {
+    _resetPopularityCache();
+    vi.clearAllMocks();
+  });
+
+  it("DB error 발생 시 빈 Map 반환 (caller 정상 동작)", async () => {
+    vi.mocked(supabase.createAdminClient).mockReturnValue({
+      from: () => ({
+        select: () => ({
+          gte: () => ({
+            not: () => ({
+              in: () => ({
+                limit: () =>
+                  Promise.resolve({
+                    data: null,
+                    error: { message: "PostgreSQL connection refused" },
+                  }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof supabase.createAdminClient>);
+
+    // throw 하지 않고 빈 Map 반환 → caller 의 boost 가 no-op 으로 fallback
+    const out = await applyPopularityBoost([
+      { item: { id: "p1" }, score: 10, signals: [] },
+    ]);
+    expect(out).toEqual([{ item: { id: "p1" }, score: 10, signals: [] }]);
+  });
+
+  it("예외 throw 시에도 caller throw 차단", async () => {
+    vi.mocked(supabase.createAdminClient).mockImplementation(() => {
+      throw new Error("admin client unavailable");
+    });
+    const out = await applyPopularityBoost([
+      { item: { id: "p1" }, score: 5, signals: [] },
+    ]);
+    expect(out).toEqual([{ item: { id: "p1" }, score: 5, signals: [] }]);
   });
 });

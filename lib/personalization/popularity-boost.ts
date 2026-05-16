@@ -11,7 +11,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { MatchSignal } from "./types";
 
-type PopularityEntry = { score: number; views: number; applies: number };
+type PopularityEntry = {
+  score: number;
+  views: number;
+  applies: number;
+  programTable: string | null; // A 10차: top N fallback 시 카테고리별 분리 위해 보존
+};
 
 type PopularityCache = {
   expiresAt: number;
@@ -40,24 +45,33 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
     try {
       const admin = createAdminClient();
       const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
-      const { data } = await admin
+      const { data, error } = await admin
         .from("user_events")
-        .select("program_id, event_type")
+        .select("program_id, event_type, program_table")
         .gte("created_at", since)
         .not("program_id", "is", null)
         .in("event_type", ["program_view", "apply_click"])
         .limit(10000);
 
+      // A 10차: DB 에러 시 page 500 차단 — 빈 Map 반환 (boost no-op 으로 fallback)
+      // popularity boost 는 부가 기능이라 page 가 죽으면 본업 (추천) 까지 영향. 안전성 우선.
+      if (error) {
+        console.error("[popularity-boost] DB error:", error.message);
+        return new Map<string, PopularityEntry>();
+      }
+
       const byProgramId = new Map<string, PopularityEntry>();
       for (const row of (data ?? []) as Array<{
         program_id: string | null;
         event_type: string;
+        program_table: string | null;
       }>) {
         if (!row.program_id) continue;
         const entry = byProgramId.get(row.program_id) ?? {
           score: 0,
           views: 0,
           applies: 0,
+          programTable: row.program_table ?? null,
         };
         if (row.event_type === "program_view") entry.views += 1;
         if (row.event_type === "apply_click") entry.applies += 1;
@@ -70,13 +84,46 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
 
       _cache = { expiresAt: Date.now() + TTL_MS, byProgramId };
       return byProgramId;
+    } catch (err) {
+      // A 10차: 네트워크·예외 발생 시 빈 Map — caller 의 await 가 throw 하지 않도록 보장
+      console.error("[popularity-boost] unexpected error:", err);
+      return new Map<string, PopularityEntry>();
     } finally {
-      // 성공·실패 무관 inflight 해제 — 다음 호출이 stale Promise 재사용 차단
       _inflight = null;
     }
   })();
 
   return _inflight;
+}
+
+// ============================================================
+// signals 부족 사용자 fallback (A 10차)
+// ============================================================
+// 비로그인·빈 프로필 사용자에게 "인기 top N" 자동 노출 시 사용.
+// popularity score 내림차순 + programTable 별 분리.
+// ============================================================
+export async function getTopPopularPrograms(
+  programTable: "welfare_programs" | "loan_programs" | "news_posts",
+  limit: number = 3,
+): Promise<Array<{ id: string; score: number; views: number; applies: number }>> {
+  const popMap = await loadPopularitySet();
+  if (popMap.size === 0) return [];
+  const candidates: Array<{
+    id: string;
+    score: number;
+    views: number;
+    applies: number;
+  }> = [];
+  for (const [id, entry] of popMap.entries()) {
+    if (entry.programTable !== programTable) continue;
+    candidates.push({
+      id,
+      score: entry.score,
+      views: entry.views,
+      applies: entry.applies,
+    });
+  }
+  return candidates.sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
 // score 결과 list 에 popularity boost 적용. order 유지.
