@@ -9,6 +9,8 @@ import { isBookmarked } from "@/lib/bookmarks";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld";
+import { ProgramViewTracker } from "@/components/analytics/program-view-tracker";
+import { ApplyClickTracker } from "@/components/analytics/apply-click-tracker";
 import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
@@ -316,26 +318,34 @@ export default async function LoanDetailPage({ params }: Props) {
         )}
 
         {/* Action buttons — 콘텐츠 전체(핵심 정보·본문·상세 섹션) 를 다 살펴본 뒤
-            "이제 신청하러 갈래?" 로 이어지는 최종 CTA. 3단 분기 유지. */}
+            "이제 신청하러 갈래?" 로 이어지는 최종 CTA. 3단 분기 유지.
+            Phase A apply_click event 자동 기록 (ApplyClickTracker). */}
+        <ProgramViewTracker
+          programId={program.id}
+          programTable="loan_programs"
+          sourcePage={`/loan/${program.id}`}
+        />
         <div className="flex items-center gap-3 flex-wrap mb-10 mt-6">
           {program.apply_url && isDeepLink(program.apply_url) ? (
-            <a
+            <ApplyClickTracker
+              programId={program.id}
+              programTable="loan_programs"
+              sourcePage={`/loan/${program.id}`}
               href={program.apply_url}
-              target="_blank"
-              rel="noopener noreferrer"
               className="px-6 py-3 text-[15px] font-semibold text-white bg-blue-500 rounded-xl no-underline hover:bg-blue-600 transition-colors"
             >
               신청하러 가기
-            </a>
+            </ApplyClickTracker>
           ) : program.apply_url ? (
-            <a
+            <ApplyClickTracker
+              programId={program.id}
+              programTable="loan_programs"
+              sourcePage={`/loan/${program.id}`}
               href={program.apply_url}
-              target="_blank"
-              rel="noopener noreferrer"
               className="px-6 py-3 text-[15px] font-semibold text-grey-700 bg-grey-100 rounded-xl no-underline hover:bg-grey-200 transition-colors"
             >
               {program.source} 홈페이지 방문
-            </a>
+            </ApplyClickTracker>
           ) : (
             <a
               href={`https://www.google.com/search?q=${encodeURIComponent(program.source + ' ' + program.title + ' 신청')}`}

@@ -8,6 +8,8 @@ import { isBookmarked } from "@/lib/bookmarks";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld";
+import { ProgramViewTracker } from "@/components/analytics/program-view-tracker";
+import { ApplyClickTracker } from "@/components/analytics/apply-click-tracker";
 import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
@@ -188,6 +190,13 @@ export default async function WelfareDetailPage({ params }: Props) {
         {program.title}
       </h1>
 
+      {/* Phase A 클릭 분석 — 페이지 진입 시 program_view event 자동 기록 */}
+      <ProgramViewTracker
+        programId={program.id}
+        programTable="welfare_programs"
+        sourcePage={`/welfare/${program.id}`}
+      />
+
       {/* D-day + Source + View count */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         {dday !== null && (
@@ -307,26 +316,29 @@ export default async function WelfareDetailPage({ params }: Props) {
         </InfoSection>
       )}
 
-      {/* Action buttons — 콘텐츠 전체를 본 뒤 최종 CTA. 3단 분기 유지. */}
+      {/* Action buttons — 콘텐츠 전체를 본 뒤 최종 CTA. 3단 분기 유지.
+          Phase A apply_click event 자동 기록 (ApplyClickTracker wrapper). */}
       <div className="flex gap-3 flex-wrap mb-10 mt-6">
         {program.apply_url && isDeepLink(program.apply_url) ? (
-          <a
+          <ApplyClickTracker
+            programId={program.id}
+            programTable="welfare_programs"
+            sourcePage={`/welfare/${program.id}`}
             href={program.apply_url}
-            target="_blank"
-            rel="noopener noreferrer"
             className="px-6 py-3 bg-blue-500 text-white text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-600 transition-colors"
           >
             신청하기
-          </a>
+          </ApplyClickTracker>
         ) : program.apply_url ? (
-          <a
+          <ApplyClickTracker
+            programId={program.id}
+            programTable="welfare_programs"
+            sourcePage={`/welfare/${program.id}`}
             href={program.apply_url}
-            target="_blank"
-            rel="noopener noreferrer"
             className="px-6 py-3 bg-grey-100 text-grey-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-grey-200 transition-colors"
           >
             {program.source} 홈페이지 방문
-          </a>
+          </ApplyClickTracker>
         ) : (
           <a
             href={`https://www.google.com/search?q=${encodeURIComponent(program.source + ' ' + program.title + ' 신청')}`}
