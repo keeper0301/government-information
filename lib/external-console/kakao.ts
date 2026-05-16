@@ -28,7 +28,7 @@ function classifyStatus(code: string): "success" | "failed" | "pending" {
   return "pending"; // 1xxx·3xxx·기타 — 발송 대기·진행중
 }
 
-interface SolapiMessageRow {
+export interface SolapiMessageRow {
   messageId?: string;
   type?: string;        // SMS·LMS·MMS·ATA(알림톡)·CTA(친구톡) 등
   statusCode?: string;
