@@ -3,6 +3,7 @@
 // HomeRecommendCard (입력 폼) 와 같은 자리에 server-rendered
 // 'use client' 없음 — createClient 사용 가능
 import Link from "next/link";
+import { RecommendLinkTracker } from "@/components/analytics/recommend-link-tracker";
 import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilter } from '@/lib/personalization/filter';
@@ -399,9 +400,16 @@ function HomeRecommendationList({
         {items.map(({ item, signals }) => {
           const reasons = getHomeMatchReasonLabels(signals, 4);
           const confidence = getRecommendationConfidenceLabel(signals);
+          // Phase A click 분석 — 추천 카드 클릭 시 home_recommend_click 기록
+          const programTable: "welfare_programs" | "loan_programs" =
+            item.href.startsWith("/loan/") ? "loan_programs" : "welfare_programs";
           return (
             <li key={item.id}>
-              <Link
+              <RecommendLinkTracker
+                programId={item.id}
+                programTable={programTable}
+                eventType="home_recommend_click"
+                sourcePage="/"
                 href={item.href}
                 className={`block rounded-xl px-3 py-2.5 no-underline transition hover:bg-grey-50 ${
                   muted ? "border border-dashed border-grey-200" : ""
@@ -434,7 +442,7 @@ function HomeRecommendationList({
                     </span>
                   )}
                 </div>
-              </Link>
+              </RecommendLinkTracker>
             </li>
           );
         })}

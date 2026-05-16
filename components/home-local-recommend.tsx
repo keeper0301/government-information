@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { UserSignals } from "@/lib/personalization/types";
+import { RecommendLinkTracker } from "@/components/analytics/recommend-link-tracker";
 
 // 카드에 표시할 정책 1건 — 최소 정보만
 type LocalProgram = {
@@ -132,7 +133,11 @@ export async function HomeLocalRecommend({ signals }: Props) {
       <ul className="space-y-2">
         {programs.map((p) => (
           <li key={`${p.type}-${p.id}`}>
-            <Link
+            <RecommendLinkTracker
+              programId={p.id}
+              programTable={p.type === "welfare" ? "welfare_programs" : "loan_programs"}
+              eventType="home_recommend_click"
+              sourcePage="/"
               href={p.href}
               className="flex items-center justify-between gap-2 rounded-lg bg-white border border-grey-200 px-3 py-2 hover:border-blue-300 no-underline"
             >
@@ -147,7 +152,7 @@ export async function HomeLocalRecommend({ signals }: Props) {
                 </div>
               </div>
               <span className="text-blue-600 text-sm whitespace-nowrap">→</span>
-            </Link>
+            </RecommendLinkTracker>
           </li>
         ))}
       </ul>
