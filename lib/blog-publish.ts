@@ -22,6 +22,8 @@ import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
 import { getRecentBlogTrendHints } from "@/lib/blog/trend-learning";
+import { evaluateBlogQuality } from "@/lib/blog/quality-check";
+import { logAdminAction } from "@/lib/admin-actions";
 import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
@@ -537,9 +539,51 @@ async function publishWithCandidate(
     throw new Error(`DB 저장 실패: ${error.message}`);
   }
 
+  let qualityApproved = true;
+  if (inserted?.id) {
+    const quality = await evaluateBlogQuality({
+      title: generated.title,
+      content: generated.content,
+    });
+    qualityApproved = !quality.needsReview;
+
+    const { error: qualityUpdateErr } = await admin
+      .from("blog_posts")
+      .update({
+        admin_review_score: quality.score,
+        admin_review_required: quality.needsReview,
+        admin_reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", inserted.id);
+    if (qualityUpdateErr) {
+      console.warn(
+        `[blog-publish] inline quality update 실패: ${qualityUpdateErr.message}`,
+      );
+    }
+
+    if (quality.needsReview) {
+      try {
+        await logAdminAction({
+          actorId: null,
+          action: "blog_quality_flag",
+          details: {
+            id: inserted.id,
+            title: generated.title.slice(0, 80),
+            score: quality.score,
+            reason: quality.reason,
+            improvements: quality.improvements,
+            stage: "inline_publish",
+          },
+        });
+      } catch (e) {
+        console.warn(`[blog-publish] inline quality audit 실패: ${(e as Error).message}`);
+      }
+    }
+  }
+
   // 네이버 블로그 발행 큐에 자동 enqueue — 실패해도 블로그 발행 자체는 성공으로
   // 처리 (백링크용 부가 작업이 핵심 경로를 막지 않게). UNIQUE 위반은 정상 무시.
-  if (inserted?.id) {
+  if (inserted?.id && qualityApproved) {
     try {
       await enqueueNaverBlog(inserted.id);
     } catch (e) {
@@ -560,6 +604,10 @@ async function publishWithCandidate(
     } catch (e) {
       console.warn(`[blog-publish] wordpress 발행 실패 (블로그 발행은 성공): ${(e as Error).message}`);
     }
+  } else if (inserted?.id) {
+    console.warn(
+      `[blog-publish] 품질 검수 대기: 외부 발행 보류 (blog_post=${inserted.id})`,
+    );
   }
 
   return {
