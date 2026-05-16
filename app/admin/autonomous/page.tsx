@@ -47,22 +47,20 @@ export default async function AdminAutonomousPage() {
     getLatestImprovementScan(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
-  const pendingCount = phases.reduce(
-    (sum, p) => sum + p.pendingActions.length,
-    0,
-  );
+  // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
+  const pendingActions = aggregatePendingActions(phases);
 
   return (
     <div className="max-w-[980px]">
       <AdminPageHeader
         kicker="ADMIN · 운영 상태"
         title="자율 운영 마스터"
-        description={`5 Phase 중 ${activeCount}개 가동 · 외부 액션 ${pendingCount}건 대기. 매일 1번 점검 권장.`}
+        description={`5 Phase 중 ${activeCount}개 가동 · 외부 액션 ${pendingActions.length}건 대기. 매일 1번 점검 권장.`}
       />
 
       <ImprovementPanel scan={improvementScan} />
 
-      <PendingActionsPanel actions={aggregatePendingActions(phases)} />
+      <PendingActionsPanel actions={pendingActions} />
 
       <div className="space-y-3">
         {phases.map((p) => (
@@ -179,10 +177,10 @@ function PendingActionsPanel({ actions }: { actions: AggregatedPendingAction[] }
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-            ✓ 모든 외부 액션 완료
+            ✓ 외부 입력 대기 0건
           </span>
           <span className="text-xs text-grey-700">
-            5 Phase 모두 가동 중. 외부 입력 대기 0건.
+            사장님이 처리할 액션이 없습니다. phase 별 가동 상태는 아래 카드에서 확인.
           </span>
         </div>
       </section>
