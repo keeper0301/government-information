@@ -28,21 +28,12 @@ import {
   tokenizeSemantic,
   splitSentences,
 } from "@/lib/instagram/card-text";
+import {
+  getCategoryColor,
+  categoryTextColor,
+} from "@/lib/instagram/card-colors";
 
 export const runtime = "nodejs";
-
-// 카테고리 색상 — 블로그 OG 와 동일 (일관성)
-const CATEGORY_COLORS: Record<string, string> = {
-  청년: "#3182F6",
-  소상공인: "#A234C7",
-  주거: "#03B26C",
-  "육아·가족": "#EC4899",
-  노년: "#FE9800",
-  "학생·교육": "#18A5A5",
-  문화: "#EAB308", // gold — 문화재 톤, 다른 카테고리와 차별 (2026-05-14 review 정리)
-  큐레이션: "#1F2937", // slate-800 — #6B7684 회색 + white text 가 WCAG 2.15:1
-                       // contrast 미달 (2026-05-16 v9 검수). slate-800 으로 9.4:1.
-};
 
 // Pretendard 폰트 — 모듈 캐시 (cold start 후 1회 로드)
 let fontDataPromise: Promise<Buffer> | null = null;
@@ -90,7 +81,7 @@ export async function GET(
   }
 
   const category = post.category || "정책";
-  const color = CATEGORY_COLORS[category] || "#3182F6";
+  const color = getCategoryColor(category);
   const fontData = await loadFontData();
   // 1080×1350 (4:5 portrait) — 2026 인스타 carousel 공식 권장 ratio
   const size = { width: 1080, height: 1350 };
@@ -263,16 +254,9 @@ function renderInfoCard(
     longest > 50 ? 38 : longest > 40 ? 44 : longest > 30 ? 50 : longest > 20 ? 58 : 68;
   const bodyFontSize = Math.round(headFontSize * 0.82);
 
-  // 배경색 밝기 판정 — light 배경 (노년 #FE9800·학생·교육 #18A5A5) 위
-  // 흰 글씨는 WCAG contrast fail (2.3:1·3.2:1) → 다크 텍스트로 분기.
-  // YIQ luminance 공식 (0~255) — threshold 130 으로 두 카테고리 정확히 분리.
-  const isLightBg = (() => {
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-    return (r * 299 + g * 587 + b * 114) / 1000 > 130;
-  })();
-  const bodyColor = isLightBg ? "#191F28" : "#FFFFFF";
+  // 배경색이 밝으면 (노년 #FE9800·문화 #EAB308) 흰 글씨가 WCAG contrast 미달.
+  // YIQ luminance 130 threshold 분기 (lib/instagram/card-colors).
+  const bodyColor = categoryTextColor(color);
 
   return (
     <div
