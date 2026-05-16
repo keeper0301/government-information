@@ -110,6 +110,49 @@ describe("applyPopularityBoost", () => {
   });
 });
 
+describe("inflight 단일화 (A 8차)", () => {
+  beforeEach(() => {
+    _resetPopularityCache();
+    vi.clearAllMocks();
+  });
+
+  it("동시 다발 호출 시 DB query 1번만 (Promise 재사용)", async () => {
+    let queryCount = 0;
+    const slowFetch = () => {
+      queryCount += 1;
+      return new Promise((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              data: [{ program_id: "p1", event_type: "apply_click" }],
+            }),
+          20,
+        ),
+      );
+    };
+    vi.mocked(supabase.createAdminClient).mockReturnValue({
+      from: () => ({
+        select: () => ({
+          gte: () => ({
+            not: () => ({ in: () => ({ limit: slowFetch }) }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof supabase.createAdminClient>);
+
+    // 3개 동시 호출 → 1 query 만 일어나야 함
+    const [s1, s2, s3] = await Promise.all([
+      getProgramPopularityScore("p1"),
+      getProgramPopularityScore("p1"),
+      getProgramPopularityScore("p1"),
+    ]);
+    expect(queryCount).toBe(1);
+    expect(s1).toBe(2);
+    expect(s2).toBe(2);
+    expect(s3).toBe(2);
+  });
+});
+
 describe("getProgramPopularityScore", () => {
   beforeEach(() => {
     _resetPopularityCache();

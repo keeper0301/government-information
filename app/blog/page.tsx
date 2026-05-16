@@ -21,10 +21,11 @@ import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { getBlogCategoryCounts } from "@/lib/category-counts";
 import { CategoryChipBar } from "@/components/category-chip-bar";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
-import { scoreAndFilter } from "@/lib/personalization/filter";
+import { scoreAndFilterWithPopularity } from "@/lib/personalization/filter";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { ScorableItem } from "@/lib/personalization/score";
+import type { ScoredItem } from "@/lib/personalization/types";
 import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
 
 // 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
@@ -160,7 +161,9 @@ export default async function BlogIndexPage({
 
   // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
   // profile 이 있고 비어있지 않을 때만 점수 계산 (비로그인·빈 프로필은 skip)
-  type ScoredBlog = ReturnType<typeof scoreAndFilter<ScorableItem>>;
+  // blog 의 ScorableItem.id 는 slug (UUID 아님) — user_events.program_id (UUID) 와 매칭 안 됨.
+  // popularity hit=0 이지만 boost 0 으로 안전. 향후 blog tracker 추가 시 program_id 컬럼 규약 통일 필요.
+  type ScoredBlog = ScoredItem<ScorableItem>[];
   let personalSection: ScoredBlog = [];
 
   if (profile && !profile.isEmpty) {
@@ -183,7 +186,8 @@ export default async function BlogIndexPage({
     const scorablePool = cohortFiltered.map(
       (p) => blogToScorable(p as BlogCardData & { tags: string[] | null })
     );
-    personalSection = scoreAndFilter(scorablePool, profile.signals, {
+    // A 8차: popularity boost 적용 — click 누적 글이 상단 노출 + "🔥 인기" 배지
+    personalSection = await scoreAndFilterWithPopularity(scorablePool, profile.signals, {
       minScore: BLOG_PERSONAL_MIN_SCORE,
       limit: BLOG_PERSONAL_MAX_ITEMS,
     });

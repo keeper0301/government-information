@@ -29,12 +29,13 @@ import { getNewsBenefitTagCounts } from "@/lib/category-counts";
 import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
 import { CategoryChipBar } from "@/components/category-chip-bar";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
-import { scoreAndFilter } from "@/lib/personalization/filter";
+import { scoreAndFilterWithPopularity } from "@/lib/personalization/filter";
 import { dedupeBySimilarity } from "@/lib/personalization/dedupe";
 import {
   PERSONAL_SECTION_MIN_SCORE,
   PERSONAL_SECTION_MAX_ITEMS,
 } from "@/lib/personalization/types";
+import type { ScoredItem } from "@/lib/personalization/types";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
@@ -232,14 +233,15 @@ export default async function NewsIndexPage({ searchParams }: Props) {
 
   // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
   // profile 이 있고 비어있지 않을 때만 점수 계산 (비로그인·빈 프로필은 skip)
-  type ScoredNews = ReturnType<typeof scoreAndFilter<ScorableItem>>;
+  type ScoredNews = ScoredItem<ScorableItem>[];
   let personalSection: ScoredNews = [];
 
   if (profile && !profile.isEmpty) {
     const displayPool = (poolData || []).map(newsToScorable);
     // 사고 (2026-04-28): 같은 행사 다른 출처 뉴스가 4개 중복 노출 → dedupe 후처리.
     // limit 2배로 score 후 비슷 제목 dedupe → 다시 정확 limit 자르기.
-    const scored = scoreAndFilter(displayPool, profile.signals, {
+    // A 8차: popularity boost 적용 — click 누적 뉴스가 상단 노출 + "🔥 인기" 배지
+    const scored = await scoreAndFilterWithPopularity(displayPool, profile.signals, {
       minScore: PERSONAL_SECTION_MIN_SCORE,
       limit: PERSONAL_SECTION_MAX_ITEMS * 2,
     });

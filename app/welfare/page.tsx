@@ -10,7 +10,8 @@ import { getRegionMatchPatterns } from "@/lib/regions";
 import { getProgramCategoryCounts } from "@/lib/category-counts";
 import { CategoryChipBar } from "@/components/category-chip-bar";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
-import { scoreAndFilter } from "@/lib/personalization/filter";
+import { scoreAndFilterWithPopularity } from "@/lib/personalization/filter";
+import type { ScoredItem } from "@/lib/personalization/types";
 import {
   PERSONAL_SECTION_MIN_SCORE,
   PERSONAL_SECTION_MAX_ITEMS,
@@ -168,12 +169,13 @@ export default async function WelfarePage({ searchParams }: Props) {
 
   // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
   // profile 이 있고 비어있지 않을 때만 점수 계산 (비로그인·빈 프로필은 skip)
-  type ScoredWelfare = ReturnType<typeof scoreAndFilter<ScorableItem>>;
+  type ScoredWelfare = ScoredItem<ScorableItem>[];
   let personalSection: ScoredWelfare = [];
 
   if (profile && !profile.isEmpty) {
     const displayPool = (poolData || []).map(welfareToScorable);
-    personalSection = scoreAndFilter(displayPool, profile.signals, {
+    // A 8차: popularity boost 적용 — click 누적 정책이 상단 노출 + "🔥 인기" 배지
+    personalSection = await scoreAndFilterWithPopularity(displayPool, profile.signals, {
       minScore: PERSONAL_SECTION_MIN_SCORE,
       limit: PERSONAL_SECTION_MAX_ITEMS,
     });
