@@ -165,16 +165,17 @@ function renderCoverCard(title: string, category: string, color: string) {
           // 한글 + 영문 구두점 ("주목!") 이 Satori 에서 별개 word 로 처리되어
           // "!" 만 over-flow 됨. fontSize ↓ → 한 줄 글자 수 ↓ → "주목!" 통째
           // 줄바꿈 가능. (2026-05-16 ulsan title 검수 사고)
+          // fontSize 임계 한 단계 ↓ (orphan word 사고 + 긴 title 호흡감)
           fontSize:
             title.length > 50
-              ? 44
+              ? 40
               : title.length > 40
-                ? 52
+                ? 48
                 : title.length > 30
-                  ? 60
+                  ? 56
                   : title.length > 15
-                    ? 76
-                    : 88,
+                    ? 72
+                    : 84,
           fontWeight: 700,
           color: "#191F28",
           lineHeight: 1.55,
@@ -274,6 +275,16 @@ function tokenizeSemantic(text: string): string[] {
       merged[merged.length - 1] = `${prev} ${t}`;
     } else {
       merged.push(t);
+    }
+  }
+  // orphan 결합 — 마지막 token 이 3 글자 이하 (예: "복지", "방법", "조성") 면
+  // 이전 token 과 합쳐서 한 chunk. 긴 title 의 마지막 단어가 외롭게 한 줄
+  // 차지하는 사고 (2026-05-16 광주 광산구 카드 1) 방지.
+  if (merged.length >= 2) {
+    const last = merged[merged.length - 1];
+    if (last.length <= 3 && !NUMERIC_START.test(last)) {
+      merged[merged.length - 2] = `${merged[merged.length - 2]} ${last}`;
+      merged.pop();
     }
   }
   return merged;
