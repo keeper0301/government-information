@@ -80,20 +80,25 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
 - ✅ 5/17: 서울특별시 collector 추가 (commit `be45e65`)
 - ✅ 5/17: helper 추출 (_factory.ts) + 수원·부산 (commit `bd89abb`) — 5 시·군 가동
 - ✅ 5/17: 인천·대전·울산·고양·용인·청주·화성·전주·김해·남양주·세종 추가 — 16 시·군 가동
-- ✅ 5/17: **평택시 추가** (commit pending) — SPA 우회 GET 성공. 17 시·군 가동.
+- ✅ 5/17: **평택시 추가** (commit 1f837b8) — SPA 우회 GET 성공. 17 시·군 가동.
   - 표면적 SPA (`yhLib.inline.post` + viewForm POST 추정) 였으나, `/view.do?bcIdx=90&mid=0402010000&idx={NNN}` GET 도 응답.
   - 직접 fetch 로 collector 추가 (Playwright 의존성 0).
+- ✅ 5/17: **포항시 추가** (commit pending) — referer 가드 우회 + SI 표준 GET. 18 시·군 가동.
+  - 초기 진단: `/list.do?bcIdx=644` 직접 GET → "잘못된 접근입니다" alert (referer 가드 추정).
+  - 실제 원인: `mid=0102000000` 파라미터 누락. 홈 → 보도자료 link 에서 추출 후 정상 응답.
+  - selector 차이: list 는 `<span class="tit">` + `<span class="date">` (평택은 `list_title`/`list_data`).
+  - 본문 container 는 view_cont > mT10 (평택과 동일 SI 표준).
 - ⏸ 5/17: 대구광역시 **보류** — Playwright 필요. SPA + AJAX.
 - ⏸ 5/17: 성남시 **보류** — Playwright 필요. SPA + AJAX (모든 link javascript:void).
 - ⏸ 5/17: 천안시 **보류** — Playwright 필요. `fn_search_detail('alphanumeric')` JS 함수.
 - ⏸ 5/17: 안산시 **보류** — Playwright 필요. fnGoPage pagination 만 노출.
 - ⏸ 5/17: 창원시 **보류** — Playwright 필요. portal 메뉴 link 만 노출.
-- ⏸ 5/17: 포항시 **보류** — referer 가드 (`/list.do?bcIdx=644` 직접 GET 시 "잘못된 접근입니다" alert). cookie/referer 헤더 + Playwright 가 가장 안전.
+- ✅ 5/17: 포항시 **추가 완료** (위 항목 참조)
 - ⏸ 5/17: 익산시 **보류** — Playwright 필요. 9is 확장자 (planweb 변형) + JS 라우터.
 
-## 보류 누적 (7개) — Playwright 필요
+## 보류 누적 (6개) — Playwright 필요
 
-대구·성남·천안·안산·창원·포항·익산 — 7 시·군 모두 SPA 변형 또는 referer 가드.
+대구·성남·천안·안산·창원·익산 — 6 시·군 모두 SPA 변형 (포항은 5/17 mid 파라미터 발견 후 해소).
 공통 의존성: `@sparticuz/chromium` (Vercel chromium runtime, ~50MB) + `playwright-core`.
 
 ### Playwright batch 도입 전 권장 사전 검증
