@@ -1,8 +1,14 @@
-# AdSense 재신청 가이드 (5/17 오늘)
+# AdSense 재신청 가이드 (5/24 권장)
 
-> **작성일**: 2026-05-16 (5/17 오늘 사장님 액션 당일 갱신)
+> **작성일**: 2026-05-16 (5/17 진단으로 5/24 시점 권장 보정)
 > **대상**: 사장님 직접 액션 (외부 콘솔)
-> **거절일**: 2026-04-23 (오늘 기준 24일 경과)
+> **등록일**: 2026-04-23 / **거절일**: 2026-05-10 (5/17 기준 거절 +7일)
+> **권장 재신청 시점**: 2026-05-24 (거절 +14일, 1~2주 권장 범위 중앙)
+>
+> **5/17 진단 결과**: welfare unique_insight 1.43% (5/11 가속 메모리 예상의 21%).
+> 원인: 인기순 fetch 50건 중 98% sparse skip → cron당 1건만 처리.
+> 5/17 commit 5a66105 로 fetch over-fetch + client filter fix (cron당 25건 목표).
+> fix 효과 1주 누적 후 5/24 재신청 권장.
 > **사전 조건 충족**:
 >   - 5/11 가속 13 commit 적용 (백필 4개월 + noindex 면제 + 페르소나 4종 + UI 발췌 10영역)
 >   - 5/16 v10 카드 가독성 마감
@@ -24,12 +30,15 @@ Search Console → 클릭/노출 추세 (sc_no_clicks alert 없는지)
 
 **목표**: 7일 누적 페이지뷰 ≥ 500 / 활성 사용자 ≥ 100. 이하면 트래픽 더 쌓기 권장 (재신청 보류).
 
-### 1-2. unique_insight 백필 확인
-DDL 083 (5/10) 의 unique_insight 컬럼 채워진 글 비율.
+### 1-2. unique_insight 백필 확인 (5/17 보정)
+DDL 083 (5/10) 의 정책 unique_insight 컬럼 채워진 비율 — blog_posts 가 아니라 welfare/loan_programs 컬럼.
 
 ```
-/admin/blog-quality → unique_insight 채움률 ≥ 80% 확인
+/admin/autonomous → Phase 3 "정책 해설 진행률 N/total %" metric
 ```
+
+**목표 (5/24 재신청 시점)**: welfare ≥ 8%, loan ≥ 50%. 5/17 commit 5a66105 fix 효과 1주 누적 가정.
+이하면 cron 재 사고 신호 → /admin/cron-trigger 에서 수동 trigger 후 추세 재확인.
 
 ### 1-3. UI 발췌 (10영역) 확인
 5/11 commit (ec5eca8) 의 UI 발췌 일관성 — 카테고리 hub / About / FAQ / blog 카드 / sidebar.
