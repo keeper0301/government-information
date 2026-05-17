@@ -7,7 +7,10 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { evaluateBlogQuality } from "@/lib/blog/quality-check";
+import {
+  evaluateBlogQuality,
+  isTransientQualityReviewFailure,
+} from "@/lib/blog/quality-check";
 import { logAdminAction } from "@/lib/admin-actions";
 import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
@@ -173,13 +176,16 @@ async function run() {
     );
     evaluated += 1;
     scoreSum += result.score;
+    const isTransientQualityFailure = isTransientQualityReviewFailure(result);
 
     const { error: updateErr } = await admin
       .from("blog_posts")
       .update({
         admin_review_score: result.score,
         admin_review_required: result.needsReview,
-        admin_reviewed_at: new Date().toISOString(),
+        admin_reviewed_at: isTransientQualityFailure
+          ? null
+          : new Date().toISOString(),
       })
       .eq("id", p.id);
 

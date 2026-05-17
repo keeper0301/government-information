@@ -3,6 +3,7 @@ import {
   buildBlogQualityPrompt,
   evaluateBlogQuality,
   getSeasonalMarketingFocus,
+  isTransientQualityReviewFailure,
 } from "@/lib/blog/quality-check";
 
 vi.mock("@/lib/llm/text", () => ({
@@ -103,6 +104,7 @@ describe("evaluateBlogQuality", () => {
     expect(result.needsReview).toBe(true);
     expect(result.reason).toContain("품질 검수 실패");
     expect(result.improvements[0]).toContain("재시도");
+    expect(isTransientQualityReviewFailure(result)).toBe(true);
   });
 
   it("LLM 개선 포인트를 최대 3개까지 정규화한다", async () => {
@@ -126,6 +128,7 @@ describe("evaluateBlogQuality", () => {
 
     expect(result.score).toBe(2);
     expect(result.needsReview).toBe(true);
+    expect(isTransientQualityReviewFailure(result)).toBe(false);
     expect(result.improvements).toEqual([
       "신청 기간을 첫 단락에 추가",
       "공식 신청 링크 확인 문구 추가",

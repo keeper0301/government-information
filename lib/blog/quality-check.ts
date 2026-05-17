@@ -117,6 +117,12 @@ export async function evaluateBlogQuality(
   };
 }
 
+export function isTransientQualityReviewFailure(
+  result: BlogQualityResult,
+): boolean {
+  return result.needsReview && result.reason.startsWith("품질 검수 실패:");
+}
+
 function normalizeImprovements(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value

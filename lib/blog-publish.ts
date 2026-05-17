@@ -23,7 +23,11 @@ import { publishToWordPress } from "@/lib/wordpress/publisher";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
 import { getRecentBlogTrendHints } from "@/lib/blog/trend-learning";
 import { getRecentExternalChannelLearningHints } from "@/lib/blog/external-channel-learning";
-import { evaluateBlogQuality, type BlogQualityResult } from "@/lib/blog/quality-check";
+import {
+  evaluateBlogQuality,
+  isTransientQualityReviewFailure,
+  type BlogQualityResult,
+} from "@/lib/blog/quality-check";
 import { logAdminAction } from "@/lib/admin-actions";
 import {
   WELFARE_EXCLUDED_FILTER,
@@ -564,13 +568,16 @@ async function publishWithCandidate(
     );
     qualityReview = quality;
     qualityApproved = !quality.needsReview;
+    const isTransientQualityFailure = isTransientQualityReviewFailure(quality);
 
     const { error: qualityUpdateErr } = await admin
       .from("blog_posts")
       .update({
         admin_review_score: quality.score,
         admin_review_required: quality.needsReview,
-        admin_reviewed_at: new Date().toISOString(),
+        admin_reviewed_at: isTransientQualityFailure
+          ? null
+          : new Date().toISOString(),
       })
       .eq("id", inserted.id);
     if (qualityUpdateErr) {
