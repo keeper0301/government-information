@@ -74,3 +74,24 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
 - A. 즉시 (다음 차) — 서울특별시 1개 추가 + 검증
 - B. helper 추출 먼저 → 5개 한 번에 (큰 차 1번)
 - C. 사용자 cohort 데이터 누적 후 우선순위 결정
+
+## 진행 이력 (2026-05-17)
+
+- ✅ 5/17: 서울특별시 collector 추가 (commit `be45e65`)
+- ✅ 5/17: helper 추출 (_factory.ts) + 수원·부산 (commit `bd89abb`) — 5 시·군 가동
+- ⏸ 5/17: 대구광역시 **보류** — `https://www.daegu.go.kr/index.do?menu_id=00000854&menu_link=/icms/bbs/selectBoardList.do&bbsId=BBS_00029`
+  - list page 의 nttId 가 hidden input 만 노출 (SPA + AJAX 추정)
+  - dgom portal page 의 article link 는 banner image (title text 없음)
+  - 대구시 CMS 가 다른 시·군 (SI 표준) 과 달라 selector 추출 큰 작업
+  - **다음 차 후보**: Playwright headless 로 SPA 렌더 후 추출 (Vercel chromium 의존) 또는 인천광역시 등 다른 시·군 우선
+
+## 다음 우선순위 (인구 순)
+
+| 우선 | 시·군 | 비고 |
+|---|---|---|
+| 1 | 인천광역시 | 광역시 4위, CMS 단순 추정 |
+| 2 | 대전광역시 | 광역시 5위 |
+| 3 | 울산광역시 | 광역시 6위 |
+| 4 | 성남시 (경기) | 판교 cohort |
+| 5 | 고양시 (경기) | 인구 ↑ |
+| 6 | **대구광역시 (재시도)** | SPA selector 분석 또는 Playwright |
