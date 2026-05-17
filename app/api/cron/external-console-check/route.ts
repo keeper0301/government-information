@@ -30,6 +30,10 @@ import { checkSearchConsole } from "@/lib/external-console/search-console";
 import type { ConsoleCheckResult } from "@/lib/external-console/types";
 import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import {
+  filterRecentlyAlertedKeys,
+  recordAlertsSent,
+} from "@/lib/external-console/alert-dedupe";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -80,18 +84,27 @@ async function run() {
 
   const totalAlerts = results.flatMap((r) => r.alerts);
 
-  // 이상 1건 이상이면 SMS + 텔레그램 둘 다 발송 (이중 안전).
+  // G7 (2026-05-17) — per-key 24h dedupe. 1주차 모니터링 결과 매일 동일 5종 alert
+  // (site_slow / solapi_balance_low / ga4_no_traffic / supabase_advisor_warn / sc_fetch_failed)
+  // 사장님 SMS 폭주 → 24h 내 발송된 key 는 skip. 새 key 만 발송.
+  const { active: alertsToSend, suppressed } =
+    await filterRecentlyAlertedKeys(totalAlerts);
+
+  // 이상 1건 이상 + 24h 신규 key 가 있을 때만 SMS + 텔레그램 발송.
   // 2026-05-14 — sendOpsAlertMultichannel helper 로 단일 진입점 (Improvement-2 fix).
   // 잔액 0 사고 시 SMS 단절돼도 텔레그램으로 도달 보장.
   let multi: Awaited<ReturnType<typeof sendOpsAlertMultichannel>> | null = null;
-  if (totalAlerts.length > 0) {
-    const lines = totalAlerts.map((a) => {
+  if (alertsToSend.length > 0) {
+    const lines = alertsToSend.map((a) => {
       const rec = a.recommendation ? `\n  → ${a.recommendation}` : "";
       return `- [${a.key}] ${a.message}${rec}`;
     });
-    const subject = `[keepioo 외부 점검] ${totalAlerts.length}건 이상`;
+    const subject = `[keepioo 외부 점검] ${alertsToSend.length}건 신규 이상`;
     const message = lines.join("\n");
     multi = await sendOpsAlertMultichannel({ subject, message });
+
+    // 발송 성공/실패 무관, 시도한 key 는 24h cooldown 기록 (실패 재시도 폭주 차단).
+    await recordAlertsSent(alertsToSend.map((a) => a.key));
   }
   const smsResult = multi?.sms ?? null;
   const telegramResult = multi?.telegram ?? null;
@@ -105,6 +118,10 @@ async function run() {
     checked: results.length,
     alerts_total: totalAlerts.length,
     alert_keys: totalAlerts.map((a) => a.key),
+    // G7 dedupe 가시성 — 사장님 진단성
+    alerts_sent: alertsToSend.length,
+    sent_keys: alertsToSend.map((a) => a.key),
+    suppressed_keys: suppressed,
     // 각 console 별 alert·KPI 요약 (전체 KPI 본문은 details json 통째로 저장)
     results_summary: results.map((r) => ({
       console: r.console,
