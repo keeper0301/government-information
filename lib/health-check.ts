@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // react cache 가 결과 공유 → round trip 1회.
 import { getAuthUsersCached } from "@/lib/admin-stats";
 import { getStaleCityCount } from "@/lib/analytics/local-press-stats";
+import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 
 export type HealthSignals = {
   // 24h 신규 가입 수
@@ -105,6 +106,13 @@ export type HealthSignals = {
    * 첫 가동 3일 baseline 보다는 LOCAL_PRESS_STALE_FLOOR=10 정도 보수적 baseline 권장.
    */
   localPressStaleCities: number;
+  /**
+   * 2026-05-17 추가 — 마지막 블로그 발행 이후 hours. 9999 = 발행 이력 0.
+   * 5/15 spending cap 사고 (2.5일 무발행) 자동 감지. G1 quota 알림과 다른 진단 layer
+   * (원인 vs 결과). GitHub Actions secret 만료·workflow disabled 도 잡음.
+   * 평소 1~2 글/일 (GitHub Actions 매일 06:00 UTC).
+   */
+  blogPublishStaleHours: number;
 };
 
 export type ThresholdAlert = {
@@ -124,7 +132,8 @@ export type ThresholdAlert = {
     | "delivery_fail"
     | "loan_inflow_zero"
     | "naver_publish_failure"
-    | "local_press_stale";
+    | "local_press_stale"
+    | "blog_publish_stalled";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -208,6 +217,12 @@ const NAVER_PUBLISH_FAIL_RATE_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_RATE)
 // noise 있을 수 있어 보수적 floor (10). 1주 모니터링 후 5 로 낮추는 방향.
 const LOCAL_PRESS_STALE_FLOOR = Number(
   process.env.LOCAL_PRESS_STALE_FLOOR ?? "10",
+);
+// 2026-05-17 — 블로그 발행 stalled 임계 (hours).
+// 5/15 사고 (2.5일 = 60h 무발행) 자동 감지. 평소 1~2 글/일.
+// G1 (Gemini quota 알림) 과 다른 진단 layer (원인 vs 결과) — 동시 발화 가능.
+const BLOG_PUBLISH_STALE_HOURS = Number(
+  process.env.BLOG_PUBLISH_STALE_HOURS ?? "60",
 );
 
 export async function getHealthSignals(): Promise<HealthSignals> {
@@ -424,6 +439,10 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
   const localPressStaleCities = await getStaleCityCount(72);
 
+  // 2026-05-17 — 블로그 발행 stalled (마지막 발행 이후 hours).
+  const blogStats = await getBlogPublishStats();
+  const blogPublishStaleHours = blogStats.hoursSinceLastPublish;
+
   return {
     signups24h,
     active7d,
@@ -447,6 +466,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     naverPublishEligiblePending,
     collectLastRunHours,
     localPressStaleCities,
+    blogPublishStaleHours,
   };
 }
 
@@ -676,6 +696,19 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `시·군 보도자료 collector stale ${s.localPressStaleCities}건 (임계 ${LOCAL_PRESS_STALE_FLOOR}+). 최근 72h inserted 0 시·군 수.`,
       recommendation:
         "/admin/autonomous 의 시·군 카드 확인 → 오류 시·군 사이트 직접 접속해 selector 점검. KST 09:00 cron 다음 회차 자동 재시도. 3 회차 연속 실패 시 lib/scraping/local-press/{city}.ts regex 수정 필요.",
+    });
+  }
+
+  // 2026-05-17 — 블로그 발행 stalled (5/15 spending cap 사고 재발 방지).
+  // 평소 1~2 글/일 (GitHub Actions 매일 06:00 UTC). 60h+ 무발행 = 사고.
+  // G1 (Gemini quota 알림, publish-blog route 직접 발화) 과 다른 진단 layer
+  // (원인 vs 결과) — 동시 발화 가능. GitHub Actions secret/workflow 사고도 잡음.
+  if (s.blogPublishStaleHours >= BLOG_PUBLISH_STALE_HOURS) {
+    alerts.push({
+      key: "blog_publish_stalled",
+      message: `블로그 발행 ${s.blogPublishStaleHours}h+ 무발행 (임계 ${BLOG_PUBLISH_STALE_HOURS}h+). 5/15 spending cap 사고 패턴.`,
+      recommendation:
+        "1) Google AI Studio 의 keepioo project Spending cap 잔액 확인 2) GitHub Actions publish-blog workflow 최근 실행 결과 (gh run list -w publish-blog) 3) /admin/autonomous 의 블로그 발행 카드 확인. BLOG_PUBLISH_STALE_HOURS env 로 임계 1분 조정.",
     });
   }
 

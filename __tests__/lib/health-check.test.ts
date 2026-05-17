@@ -34,6 +34,8 @@ const BASE_SIGNALS: HealthSignals = {
   collectLastRunHours: 1,
   // 2026-05-17 — baseline 0 (전 시·군 정상, alert X). 10+ 케이스는 별도 테스트.
   localPressStaleCities: 0,
+  // 2026-05-17 — baseline 1h (방금 발행, alert X). 60h+ 케이스는 별도 테스트.
+  blogPublishStaleHours: 1,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -671,5 +673,32 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
   it("localPressStaleCities 0 → 발화 안 함 (정상)", () => {
     const alerts = checkThresholds({ ...ACTIVE, localPressStaleCities: 0 });
     expect(alerts.find((a) => a.key === "local_press_stale")).toBeUndefined();
+  });
+});
+
+describe("checkThresholds — 2026-05-17: blog_publish_stalled", () => {
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("blogPublishStaleHours 60+ → blog_publish_stalled alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, blogPublishStaleHours: 60 });
+    const a = alerts.find((x) => x.key === "blog_publish_stalled");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("60h+ 무발행");
+    expect(a?.recommendation).toContain("Spending cap");
+    expect(a?.recommendation).toContain("publish-blog");
+  });
+
+  it("blogPublishStaleHours 59 → 발화 안 함 (boundary)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, blogPublishStaleHours: 59 });
+    expect(alerts.find((a) => a.key === "blog_publish_stalled")).toBeUndefined();
+  });
+
+  it("blogPublishStaleHours 9999 (발행 이력 없음) → 반드시 alert", () => {
+    const alerts = checkThresholds({ ...ACTIVE, blogPublishStaleHours: 9999 });
+    expect(alerts.find((a) => a.key === "blog_publish_stalled")).toBeDefined();
   });
 });
