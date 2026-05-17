@@ -53,6 +53,8 @@ import { getLocalPressStats } from "@/lib/analytics/local-press-stats";
 import { LocalPressCard } from "./_components/local-press-card";
 import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
 import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
+import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
+import { BlogPublishCard } from "./_components/blog-publish-card";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -93,6 +95,7 @@ export default async function AdminAutonomousPage() {
     geminiSpending,
     localPressStats,
     pressIngestTierStats,
+    blogPublishStats,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -106,6 +109,7 @@ export default async function AdminAutonomousPage() {
     getGeminiSpendingStats(28),
     getLocalPressStats(),
     getPressIngestTierStats(),
+    getBlogPublishStats(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -128,13 +132,17 @@ export default async function AdminAutonomousPage() {
       <RevenueChartCard series={revenueSeries} />
       <GeminiSpendingCard stats={geminiSpending} />
 
-      {/* 3. 사용자 가치 — 클릭·인기·SNS 가시화 */}
+      {/* 3. 사용자 가치 — 클릭·인기 가시화 */}
       <SectionHeader title="📈 사용자 가치" />
       <ClickStatsCard stats={eventStats24h} top={topPrograms} />
       <PopularityTrendCard trend={popularityTrend} />
+
+      {/* 4. 콘텐츠 발행 — 블로그·SNS 가동 상태 (5/17 BlogPublish 신규) */}
+      <SectionHeader title="📝 콘텐츠 발행" />
+      <BlogPublishCard stats={blogPublishStats} />
       <SnsPublishCard stats={snsStats} envStatus={snsEnvStatus} />
 
-      {/* 4. 데이터 수집 — cron 자동 가동 결과 (5/17 신규) */}
+      {/* 5. 데이터 수집 — cron 자동 가동 결과 (5/17 신규) */}
       <SectionHeader title="🗞️ 데이터 수집" />
       <div className="mb-4">
         <LocalPressCard stats={localPressStats} />
@@ -143,7 +151,7 @@ export default async function AdminAutonomousPage() {
         <PressIngestTierCard stats={pressIngestTierStats} />
       </div>
 
-      {/* 5. 외부 액션 + Phase 상태 */}
+      {/* 6. 외부 액션 + Phase 상태 */}
       <SectionHeader title="⚙️ Phase 가동 + 외부 액션" />
       <PendingActionsPanel actions={pendingActions} />
 
