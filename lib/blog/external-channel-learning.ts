@@ -24,7 +24,8 @@ export type ExternalChannelLearningInput = {
   naverAudits?: NaverAuditRow[];
 };
 
-const DEFAULT_LIMIT = 5;
+// 비용 절약 (5/17): 5 → 3. 입력 토큰 ↓
+const DEFAULT_LIMIT = 3;
 const DEFAULT_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

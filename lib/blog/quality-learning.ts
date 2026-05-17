@@ -8,7 +8,9 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const DEFAULT_LIMIT = 5;
+// 비용 절약 (5/17): 5 → 3. 학습 hints 가 prompt 에 누적 입력 토큰 ↑ 큰 부분.
+// 3건이면 최근 사고 충분 커버 + 입력 토큰 ~15% 절감.
+const DEFAULT_LIMIT = 3;
 const DEFAULT_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

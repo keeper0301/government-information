@@ -14,7 +14,8 @@ export type BlogTrendRow = {
   view_count: number | null;
 };
 
-const DEFAULT_LIMIT = 5;
+// 비용 절약 (5/17): 5 → 3. 입력 토큰 ↓
+const DEFAULT_LIMIT = 3;
 const DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
 function topEntries(counts: Map<string, number>, limit: number): string[] {
