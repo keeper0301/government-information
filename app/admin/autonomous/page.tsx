@@ -162,7 +162,7 @@ export default async function AdminAutonomousPage() {
       </div>
 
       <p className="mt-6 text-xs text-grey-600">
-        spec 문서: <code>docs/superpowers/specs/2026-05-08-autonomous-ops-master-design.md</code>
+        hub 구조 + 카드 추가 가이드: <code>docs/autonomous-hub-guide.md</code>
         {" · "}
         Phase 진행 메모리: <code>memory/project_keepioo_autonomous_ops_master_2026_05_08.md</code>
       </p>
