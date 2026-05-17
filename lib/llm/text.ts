@@ -83,3 +83,93 @@ export function parseJSONResponse<T = unknown>(text: string): T {
     throw new Error(`JSON 파싱 실패: ${(e as Error).message}`);
   }
 }
+
+// ============================================================
+// callLLMWithUsage — system 분리 + usage metadata 반환 (5/17 G5)
+// ============================================================
+// generateBlogPost (lib/ai.ts) 의 Gemini → OpenAI 마이그를 위해 추가.
+// 페르소나별 system instruction + 비용 추적용 usage 반환이 callLLM 만으론 부족.
+// 기존 callLLM 호출 측 7 cron 영향 0 (별도 함수).
+//
+// 응답 형식: Gemini usageMetadata 호환 (promptTokens/candidatesTokens/totalTokens)
+// → caller (blog-publish audit) 가 형식 변경 없이 그대로 저장.
+// ============================================================
+
+export type CallLLMWithUsageOptions = CallLLMOptions & {
+  /** system role 메시지. 페르소나·역할 지시 분리용 */
+  system?: string;
+  /** sampling temperature (0.0~2.0). 미지정 시 OpenAI default (1.0) */
+  temperature?: number;
+};
+
+export type LLMUsage = {
+  promptTokens: number;
+  candidatesTokens: number; // OpenAI completion_tokens 와 동의
+  totalTokens: number;
+};
+
+export type CallLLMWithUsageResult = {
+  text: string;
+  usage: LLMUsage;
+};
+
+export async function callLLMWithUsage(
+  opts: CallLLMWithUsageOptions,
+): Promise<CallLLMWithUsageResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY 환경변수 누락");
+  }
+
+  const messages: Array<{ role: "system" | "user"; content: string }> = [];
+  if (opts.system) messages.push({ role: "system", content: opts.system });
+  messages.push({ role: "user", content: opts.prompt });
+
+  const body: Record<string, unknown> = {
+    model: opts.model ?? DEFAULT_MODEL,
+    max_tokens: opts.maxTokens ?? 300,
+    messages,
+  };
+  if (opts.jsonMode) {
+    body.response_format = { type: "json_object" };
+  }
+  if (typeof opts.temperature === "number") {
+    body.temperature = opts.temperature;
+  }
+
+  const res = await fetch(OPENAI_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`OpenAI API 오류 ${res.status}: ${errText.slice(0, 300)}`);
+  }
+
+  const json: unknown = await res.json().catch(() => ({}));
+  const text = extractMessageText(json);
+  if (!text) throw new Error("OpenAI 응답에서 텍스트 추출 실패");
+
+  // OpenAI usage: { prompt_tokens, completion_tokens, total_tokens }
+  // → Gemini 호환 형식 (promptTokens/candidatesTokens/totalTokens)
+  const usage = extractUsage(json);
+  return { text, usage };
+}
+
+function extractUsage(json: unknown): LLMUsage {
+  const empty: LLMUsage = { promptTokens: 0, candidatesTokens: 0, totalTokens: 0 };
+  if (!json || typeof json !== "object") return empty;
+  const usage = (json as Record<string, unknown>).usage;
+  if (!usage || typeof usage !== "object") return empty;
+  const u = usage as Record<string, unknown>;
+  return {
+    promptTokens: typeof u.prompt_tokens === "number" ? u.prompt_tokens : 0,
+    candidatesTokens: typeof u.completion_tokens === "number" ? u.completion_tokens : 0,
+    totalTokens: typeof u.total_tokens === "number" ? u.total_tokens : 0,
+  };
+}

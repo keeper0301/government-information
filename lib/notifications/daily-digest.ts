@@ -383,13 +383,13 @@ export function formatDigestMessage(data: DigestData): string {
     lines.push(`⚠️ cron 실패 ${data.cronFailures24h}건`);
   }
 
-  // G4 (2026-05-17) — Gemini 월 추정 80% 도달 시 사전 알림 (spending cap 사고 재발 방지).
-  // 5/14~17 ₩50K cap 도달로 2.5일 무발행 사고 후 추가. 80~99% 노란, 100% 빨간.
-  // 평소 (0~79%) 미노출 → SMS 압축 유지.
+  // G4/G5 (2026-05-17) — LLM 월 추정 80% 도달 시 사전 알림 (spending cap 사고 재발 방지).
+  // 5/14~17 Gemini cap 도달로 2.5일 무발행 사고 후 추가. G5 마이그 (OpenAI gpt-4o-mini) 후
+  // 라벨·콘솔 URL 갱신. 80~99% 노란, 100% 빨간. 평소 (0~79%) 미노출 → SMS 압축 유지.
   if (data.geminiSpendingRatio >= 0.8) {
     const pct = Math.round(data.geminiSpendingRatio * 100);
     const mark = data.geminiSpendingRatio >= 1 ? "🚨" : "⚠️";
-    lines.push(`${mark} Gemini 월 추정 ${pct}% (cap ₩${GEMINI_KEEPIOO_CAP_KRW.toLocaleString()}) — aistudio.google.com/spend`);
+    lines.push(`${mark} LLM 월 추정 ${pct}% (cap ₩${GEMINI_KEEPIOO_CAP_KRW.toLocaleString()}) — platform.openai.com/settings/organization/limits`);
   }
 
   // spec A A3 안전망 — 24h dedupe 자동 confirm 무작위 1건 (있을 때만)

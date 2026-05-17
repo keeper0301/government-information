@@ -1,11 +1,21 @@
 // ============================================================
-// AI 콘텐츠 생성 — Google Gemini API
+// AI 콘텐츠 생성 — OpenAI gpt-4o-mini (5/17 G5)
 // ============================================================
 // 정책 데이터 → AdSense 승인용 블로그 글 자동 생성.
-// SDK: @google/genai (새 SDK. @google/generative-ai 는 deprecated)
 //
-// 모델: gemini-2.5-flash (무료 티어, 분당 15회·일 1500회 — 충분)
-//   → 매일 1글 발행에 적합. 비용 0원.
+// 2026-05-17 G5: Gemini 2.5 Flash → OpenAI gpt-4o-mini 마이그.
+// 메모리 [LLM 전체 마이그 2026-05-10] 의 마지막 남은 cron 마감.
+// 5/14~17 Gemini spending cap 2.5일 사고 재발 방지 — Gemini 의존성 0.
+//
+// callLLMWithUsage (lib/llm/text.ts) 사용:
+//   - system instruction (페르소나) 분리
+//   - usage metadata 반환 (autonomous hub gemini-spending 카드 호환 형식 유지)
+//   - jsonMode + temperature 옵션
+//
+// 모델: gpt-4o-mini
+//   - Input: $0.15 / 1M tokens, Output: $0.60 / 1M tokens
+//   - 발행당 ~5K input + ~2K output ≈ $0.002 ≈ ₩3
+//   - 일 14건 발행 시 월 비용 ~₩1,300 (Gemini 대비 약간 ↑이나 quota 사고 0)
 //
 // 품질 가드 (2026-04-24 신규):
 //   이전 Gemini 파이프라인(enrich-llm) 이 description 원문을 필드에 복붙하는
@@ -15,27 +25,7 @@
 //   거절 → blog-publish.ts 에서 fallback 또는 cron 재시도.
 // ============================================================
 
-import { GoogleGenAI } from "@google/genai";
-
-const GEMINI_REQUEST_TIMEOUT_MS = 45_000;
-
-// 빌드 시점에는 API 키 없어도 통과하도록 lazy init (lib/email.ts 동일 패턴)
-let _ai: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI {
-  if (_ai) return _ai;
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    throw new Error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.");
-  }
-  _ai = new GoogleGenAI({
-    apiKey: key,
-    httpOptions: {
-      timeout: GEMINI_REQUEST_TIMEOUT_MS,
-      retryOptions: { attempts: 1 },
-    },
-  });
-  return _ai;
-}
+import { callLLMWithUsage } from "@/lib/llm/text";
 
 // ============================================================
 // 블로그 글 자동 생성 — 정책 데이터 → AdSense 승인용 글
@@ -78,8 +68,9 @@ export type GeneratedPost = {
   category: string;          // 청년/소상공인/주거/육아·가족/노년/학생·교육/큐레이션
   tags: string[];            // 3~6개 태그
   faqs: { question: string; answer: string }[]; // 3~5개 FAQ
-  // 비용 추적용 (5/17 추가) — Gemini API 의 usageMetadata 그대로 보존.
+  // 비용 추적용 (5/17 추가) — LLM usage metadata (OpenAI → Gemini 호환 형식 변환됨).
   // caller (lib/blog-publish.ts) 가 audit details 에 저장 → autonomous hub 차트.
+  // 필드명은 Gemini 호환 그대로 유지 (호출 측 영향 0).
   _usage?: {
     promptTokens: number;
     candidatesTokens: number;
@@ -250,7 +241,6 @@ const SYSTEM_INSTRUCTION_BODY = `## 글의 목적
 export async function generateBlogPost(
   ctx: ProgramContext,
 ): Promise<GeneratedPost> {
-  const ai = getAI();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -378,28 +368,21 @@ ${trendBlock}
   // 표현·어조 다양성 확보. 2026-05-10 거절 ("가치 별로 없는 콘텐츠") 대응.
   const persona = pickBlogPersona();
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: userPrompt,
-    config: {
-      systemInstruction: buildSystemInstruction(persona),
-      responseMimeType: "application/json",
-      // JSON 응답 강제. schema 는 텍스트 지시로도 충분.
-      // 0.7 → 0.85: 페르소나 rotation 과 함께 표현 다양성 추가 (정확도는 prompt 룰이 담보).
-      temperature: 0.85,
-      thinkingConfig: {
-        thinkingBudget: 0,
-        includeThoughts: false,
-      },
-      // 본문 2,300자 + faqs 5개 + meta + tags ≈ 4,200~5,200 토큰. 안전 마진으로 7168.
-      // 길이 제어는 instruction + MAX_CONTENT_LENGTH 검증 두 단계로 처리 (여기는 절대 상한)
-      maxOutputTokens: 7168,
-    },
+  // 본문 2,300자 + faqs 5개 + meta + tags ≈ 4,200~5,200 토큰. 안전 마진으로 7168.
+  // 길이 제어는 instruction + MAX_CONTENT_LENGTH 검증 두 단계로 처리 (여기는 절대 상한)
+  const result = await callLLMWithUsage({
+    system: buildSystemInstruction(persona),
+    prompt: userPrompt,
+    model: "gpt-4o-mini",
+    maxTokens: 7168,
+    jsonMode: true, // response_format json_object 강제
+    // 0.85: 페르소나 rotation 과 함께 표현 다양성 추가 (정확도는 prompt 룰이 담보).
+    temperature: 0.85,
   });
 
-  const raw = response.text;
+  const raw = result.text;
   if (!raw) {
-    throw new Error("Gemini 응답이 비어있습니다.");
+    throw new Error("OpenAI 응답이 비어있습니다.");
   }
 
   let parsed: GeneratedPost;
@@ -407,7 +390,7 @@ ${trendBlock}
     parsed = JSON.parse(raw);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "파싱 실패";
-    throw new Error(`Gemini 응답 JSON 파싱 실패: ${msg}\n원본 (앞 500자): ${raw.slice(0, 500)}`);
+    throw new Error(`OpenAI 응답 JSON 파싱 실패: ${msg}\n원본 (앞 500자): ${raw.slice(0, 500)}`);
   }
 
   // 최소 필드 검증
@@ -419,17 +402,9 @@ ${trendBlock}
   parsed.tags = parsed.tags || [];
   parsed.faqs = parsed.faqs || [];
 
-  // 비용 추적 — Gemini usageMetadata 보존. caller 가 audit 저장.
-  const meta = response.usageMetadata as
-    | { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number }
-    | undefined;
-  if (meta) {
-    parsed._usage = {
-      promptTokens: meta.promptTokenCount ?? 0,
-      candidatesTokens: meta.candidatesTokenCount ?? 0,
-      totalTokens: meta.totalTokenCount ?? 0,
-    };
-  }
+  // 비용 추적 — callLLMWithUsage 가 Gemini 호환 형식으로 변환해서 반환.
+  // caller (blog-publish.ts) 가 audit details.results[].usage 에 저장.
+  parsed._usage = result.usage;
 
   return parsed;
 }
