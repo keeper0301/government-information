@@ -73,7 +73,8 @@ export type AdminActionType =
   | "weekly_scrape_monitor_run"       // 2026-05-16 — Phase D-1 매주 월 KST 09:30 진단 cron
   | "popularity_snapshot_run"         // 2026-05-17 — A 12차 매일 KST 03:00 popularity 30일 추세 누적
   | "sns_publish_popular_policy_run"  // 2026-05-17 — B 1차 매주 월 KST 10:00 인기 정책 SNS 자동 노출
-  | "gemini_quota_alert";             // 2026-05-17 — G1 Gemini 429 spending cap 사고 자동 감지·알림 (24h cooldown)
+  | "gemini_quota_alert"              // 2026-05-17 — G1 Gemini 429 spending cap 사고 자동 감지·알림 (24h cooldown)
+  | "press_low_reminder_run";         // 2026-05-17 — G2 low pending 매주 월 텔레그램 reminder + 90일 archived cron
 
 export type AdminActionRecord = {
   id: string;
@@ -372,4 +373,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   popularity_snapshot_run: "popularity 30일 추세 snapshot cron",
   sns_publish_popular_policy_run: "인기 정책 SNS 자동 발행 cron",
   gemini_quota_alert: "Gemini 월 한도 사고 텔레그램 알림",
+  press_low_reminder_run: "press low pending 검수 reminder + 90일 archived",
 };
