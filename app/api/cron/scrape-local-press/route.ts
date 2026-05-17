@@ -25,13 +25,14 @@ import { scrapeHwaseongAndInsert } from "@/lib/scraping/local-press/hwaseong";
 import { scrapeJeonjuAndInsert } from "@/lib/scraping/local-press/jeonju";
 import { scrapeGimhaeAndInsert } from "@/lib/scraping/local-press/gimhae";
 import { scrapeNamyangjuAndInsert } from "@/lib/scraping/local-press/namyangju";
+import { scrapePyeongtaekAndInsert } from "@/lib/scraping/local-press/pyeongtaek";
 import { scrapeSejongAndInsert } from "@/lib/scraping/local-press/sejong";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
-// 시·군 1개 = ~15s. 8 시·군 = ~120s. Pro plan 300s 까지 가능 (5/17 G4 확장).
-export const maxDuration = 180;
+// 시·군 1개 = ~15s. 17 시·군 = ~150s. Pro plan 300s 까지 가능 (5/17 G4 확장).
+export const maxDuration = 240;
 
 async function authorize(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -65,6 +66,7 @@ const COLLECTORS = [
   { city: "전주시", fn: scrapeJeonjuAndInsert },
   { city: "김해시", fn: scrapeGimhaeAndInsert },
   { city: "남양주시", fn: scrapeNamyangjuAndInsert },
+  { city: "평택시", fn: scrapePyeongtaekAndInsert },
   { city: "세종특별자치시", fn: scrapeSejongAndInsert },
 ];
 
@@ -87,7 +89,6 @@ async function runScrape() {
         actorId: null,
         action: "local_press_scrape",
         details: {
-          ministry: "전라남도 순천시",
           trigger: "cron",
           ...r,
         },

@@ -79,38 +79,29 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
 
 - ✅ 5/17: 서울특별시 collector 추가 (commit `be45e65`)
 - ✅ 5/17: helper 추출 (_factory.ts) + 수원·부산 (commit `bd89abb`) — 5 시·군 가동
-- ⏸ 5/17: 대구광역시 **보류** — `https://www.daegu.go.kr/index.do?menu_id=00000854&menu_link=/icms/bbs/selectBoardList.do&bbsId=BBS_00029`
-  - list page 의 nttId 가 hidden input 만 노출 (SPA + AJAX 추정)
-  - dgom portal page 의 article link 는 banner image (title text 없음)
-  - 대구시 CMS 가 다른 시·군 (SI 표준) 과 달라 selector 추출 큰 작업
-  - **다음 차 후보**: Playwright headless 로 SPA 렌더 후 추출 (Vercel chromium 의존) 또는 인천광역시 등 다른 시·군 우선
-- ⏸ 5/17: 성남시 **보류** — `https://www.seongnam.go.kr/city/1000060/30005/bbsList.do`
-  - list page 의 모든 link 가 `javascript:void(0)` (SPA + AJAX)
-  - 대구와 동일하게 Playwright headless 필요
-  - 다른 URL probe 결과: ggnews/pressList.do 는 경기도 뉴스 (성남 X)
-  - **다음 차 후보**: Playwright 또는 성남시 RSS/API endpoint 추적
-- ⏸ 5/17: 천안시 **보류** — `https://skygreen.cheonan.go.kr/bbs/BBSMSTR_000000000030/list.do`
-  - list page 의 모든 link 가 `<button onclick="fn_search_detail('B000000507485Ly0gG7')">` (JS 함수)
-  - `fn_search_detail` URL pattern 추정 어려움 (seq 가 mixed alphanumeric, 일반 nttId 패턴 아님)
-  - **다음 차 후보**: Playwright 또는 fn_search_detail 함수 source 추적
-- ⏸ 5/17: 안산시 **보류** — `https://www.ansan.go.kr/www/common/bbs/selectPageListBbs.do?bbs_code=B0238`
-  - list page 의 모든 onclick 이 `fnGoPage('N')` (pagination 만)
-  - article 별 selectBbsDetail link 없음 (SPA + AJAX 추정)
-- ⏸ 5/17: 창원시 **보류** — `https://www.changwon.go.kr/cwportal/10310/10429/10432.web`
-  - 모든 link 가 `onclick="window.open(this.href)"` + href 는 portal 메뉴 (article 아님)
-  - article URL pattern 노출 X (JS 라우터 추정)
-- ⏸ 5/17: 평택시 **보류** — `https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90`
-  - 모든 onclick 이 `goPage(N)` (pagination 만)
-  - article 별 view link 없음 (SPA + AJAX)
-- ⏸ 5/17: 포항시 **보류** — `https://www.pohang.go.kr/news/board/post/list.do?bcIdx=644`
-  - 모든 onclick 이 `goPage(N)` 만 (평택과 동일 패턴, SI 표준 SPA)
-- ⏸ 5/17: 익산시 **보류** — `http://www.iksan.go.kr/index.9is?menuUid=ff80808198eafcbd019902ab48032c02`
-  - 9is 확장자 (planweb CMS 변형) + article view link 없음 (JS 라우터)
+- ✅ 5/17: 인천·대전·울산·고양·용인·청주·화성·전주·김해·남양주·세종 추가 — 16 시·군 가동
+- ✅ 5/17: **평택시 추가** (commit pending) — SPA 우회 GET 성공. 17 시·군 가동.
+  - 표면적 SPA (`yhLib.inline.post` + viewForm POST 추정) 였으나, `/view.do?bcIdx=90&mid=0402010000&idx={NNN}` GET 도 응답.
+  - 직접 fetch 로 collector 추가 (Playwright 의존성 0).
+- ⏸ 5/17: 대구광역시 **보류** — Playwright 필요. SPA + AJAX.
+- ⏸ 5/17: 성남시 **보류** — Playwright 필요. SPA + AJAX (모든 link javascript:void).
+- ⏸ 5/17: 천안시 **보류** — Playwright 필요. `fn_search_detail('alphanumeric')` JS 함수.
+- ⏸ 5/17: 안산시 **보류** — Playwright 필요. fnGoPage pagination 만 노출.
+- ⏸ 5/17: 창원시 **보류** — Playwright 필요. portal 메뉴 link 만 노출.
+- ⏸ 5/17: 포항시 **보류** — referer 가드 (`/list.do?bcIdx=644` 직접 GET 시 "잘못된 접근입니다" alert). cookie/referer 헤더 + Playwright 가 가장 안전.
+- ⏸ 5/17: 익산시 **보류** — Playwright 필요. 9is 확장자 (planweb 변형) + JS 라우터.
 
-## 보류 누적 (4개) — Playwright 필요
+## 보류 누적 (7개) — Playwright 필요
 
-천안·성남·대구·안산·창원 — 5 시·군 모두 SPA 변형. Vercel chromium runtime 또는
-별도 Playwright 헤드리스 함수 도입 시 batch 추가 가능.
+대구·성남·천안·안산·창원·포항·익산 — 7 시·군 모두 SPA 변형 또는 referer 가드.
+공통 의존성: `@sparticuz/chromium` (Vercel chromium runtime, ~50MB) + `playwright-core`.
+
+### Playwright batch 도입 전 권장 사전 검증
+
+1. **Vercel function size 영향** — `@sparticuz/chromium` 약 50MB 압축, 함수 size 25MB 한도 영향.
+   대안: edge runtime + `chrome-aws-lambda` (deprecated) 또는 별도 worker (Cloudflare Workers + Browser Rendering API).
+2. **수익 vs 비용** — 보류 7 시·군 총 인구 ~700만. 사용자 cohort 데이터 누적 후 우선순위 결정.
+3. **부분 도입** — 포항(referer 가드) 만 `fetch` + Referer/Cookie 추가로 시도 가능. SPA 6개는 Playwright 필수.
 
 ## 다음 우선순위 (인구 순)
 
