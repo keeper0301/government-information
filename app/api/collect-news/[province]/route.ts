@@ -18,6 +18,7 @@ import {
 } from "@/lib/regions";
 import { collectNaverNewsByProvince } from "@/lib/news-collectors/naver-news";
 import { notifyCronFailure } from "@/lib/email";
+import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const maxDuration = 300;
 
@@ -38,8 +39,22 @@ async function run(provinceCode: string, jobLabel: string) {
     );
   }
 
+  const startedAt = Date.now();
   try {
     const result = await collectNaverNewsByProvince(provinceCode as ProvinceCode);
+
+    // 2026-05-18 — naver-news cron 가시성 audit (5/17 사고 진단 시 admin_actions
+    // 비어있어서 published_at 으로만 추론하던 가시성 0 사고 해소).
+    await auditCronRun("naver_news_collect_run", {
+      province: provinceCode,
+      province_name: getProvinceByCode(provinceCode)?.name ?? provinceCode,
+      total: result.total,
+      news_upserted: result.news_upserted,
+      skipped_dup: result.skippedDup,
+      skipped_batch_dup: result.skippedBatchDup,
+      errors_count: result.errors.length,
+      duration_ms: Date.now() - startedAt,
+    });
 
     // 에러가 있고 한 건도 못 가져왔으면 알림 (네이버 API 장애·키 문제 의심).
     if (result.errors.length > 0 && result.total === 0) {
@@ -69,6 +84,13 @@ async function run(provinceCode: string, jobLabel: string) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "알 수 없는 오류";
+    // 실패 시에도 audit (cron 가동했는데 throw — 외부 API 장애 등 진단성 보장)
+    await auditCronRun("naver_news_collect_run", {
+      province: provinceCode,
+      province_name: getProvinceByCode(provinceCode)?.name ?? provinceCode,
+      error: msg.slice(0, 300),
+      duration_ms: Date.now() - startedAt,
+    });
     await notifyCronFailure(jobLabel, msg);
     return NextResponse.json({ error: "수집 실패", detail: msg }, { status: 500 });
   }
