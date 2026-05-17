@@ -13,6 +13,10 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPressAutoConfirmStats } from "@/lib/press-ingest/filter";
+import {
+  getGeminiSpendingStats,
+  GEMINI_KEEPIOO_CAP_KRW,
+} from "@/lib/analytics/gemini-spending";
 
 export type DigestData = {
   // 기존 6 KPI
@@ -40,6 +44,10 @@ export type DigestData = {
   autoRevoke24h: number;
   /** 현재 low 큐 적체 (참고용 — health-alert 가 별도로 임계 점검) */
   pressLowTierBacklog: number;
+  // 2026-05-17 G4 — Gemini keepioo project 월 추정 비율 (cap 대비).
+  // 80% 이상 시 SMS 경고 1줄 추가. 5/14~17 spending cap 2.5일 사고 재발 방지.
+  // 0 = 데이터 없음 또는 fetch 실패. 1.0 cap.
+  geminiSpendingRatio: number;
 };
 
 /**
@@ -243,6 +251,18 @@ export async function collectDailyDigest(): Promise<DigestData> {
     return null;
   });
 
+  // G4 (2026-05-17) — Gemini keepioo project 월 추정 비율. fetch 실패 시 0 fallback (SMS 정상).
+  // 80% 임계 도달 시 formatDigestMessage 에서 한 줄 경고 추가 (사장님 spend 인상 사전 액션).
+  const geminiSpendingRatio = await getGeminiSpendingStats(28)
+    .then((s) => Math.min(1, s.monthlyProjectionKrw / GEMINI_KEEPIOO_CAP_KRW))
+    .catch((e) => {
+      console.warn(
+        "[daily-digest] gemini spending fetch 실패 (0 fallback):",
+        e instanceof Error ? e.message : String(e),
+      );
+      return 0;
+    });
+
   return {
     signups24h,
     newPolicies24h,
@@ -260,6 +280,8 @@ export async function collectDailyDigest(): Promise<DigestData> {
     autoConfirm24h,
     autoRevoke24h,
     pressLowTierBacklog,
+    // G4 — Gemini 80% 사전 알림 신호 (0~1)
+    geminiSpendingRatio,
   };
 }
 
@@ -359,6 +381,15 @@ export function formatDigestMessage(data: DigestData): string {
   // cron 실패 — 1건 이상일 때만 노출 (정상 운영 시 SMS 깔끔)
   if (data.cronFailures24h > 0) {
     lines.push(`⚠️ cron 실패 ${data.cronFailures24h}건`);
+  }
+
+  // G4 (2026-05-17) — Gemini 월 추정 80% 도달 시 사전 알림 (spending cap 사고 재발 방지).
+  // 5/14~17 ₩50K cap 도달로 2.5일 무발행 사고 후 추가. 80~99% 노란, 100% 빨간.
+  // 평소 (0~79%) 미노출 → SMS 압축 유지.
+  if (data.geminiSpendingRatio >= 0.8) {
+    const pct = Math.round(data.geminiSpendingRatio * 100);
+    const mark = data.geminiSpendingRatio >= 1 ? "🚨" : "⚠️";
+    lines.push(`${mark} Gemini 월 추정 ${pct}% (cap ₩${GEMINI_KEEPIOO_CAP_KRW.toLocaleString()}) — aistudio.google.com/spend`);
   }
 
   // spec A A3 안전망 — 24h dedupe 자동 confirm 무작위 1건 (있을 때만)

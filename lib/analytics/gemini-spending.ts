@@ -16,6 +16,10 @@ const INPUT_PRICE_PER_M = 0.075; // USD
 const OUTPUT_PRICE_PER_M = 0.3; // USD
 const USD_TO_KRW = 1380; // 환율 가정 (보수적)
 
+// G3 분리 후 keepioo 프로젝트 단독 spending cap (₩30K/월).
+// 사장님 console 인상 시 같이 갱신. autonomous hub 카드 + daily-digest 80% 알림 공통 사용.
+export const GEMINI_KEEPIOO_CAP_KRW = 30000;
+
 export type GeminiSpendingStat = {
   windowDays: number;
   totalCalls: number;

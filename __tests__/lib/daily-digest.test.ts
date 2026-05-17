@@ -22,6 +22,8 @@ const ZERO: DigestData = {
   autoConfirm24h: 0,
   autoRevoke24h: 0,
   pressLowTierBacklog: 0,
+  // G4 (2026-05-17) — Gemini spending 80% 사전 알림
+  geminiSpendingRatio: 0,
 };
 
 describe("formatDigestMessage", () => {
@@ -83,6 +85,32 @@ describe("formatDigestMessage", () => {
       cronFailures24h: 4,
     });
     expect(message).toContain("cron 실패 4");
+  });
+
+  // G4 (2026-05-17) — Gemini spending 80% 사전 알림 회귀 방어 3종
+  it("G4 — Gemini 추정 < 80% (0.5) — 알림 미노출 (평소 SMS 압축)", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      geminiSpendingRatio: 0.5,
+    });
+    expect(message).not.toContain("Gemini 월 추정");
+  });
+
+  it("G4 — Gemini 추정 80% (0.85) — ⚠️ 알림 1줄 포함", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      geminiSpendingRatio: 0.85,
+    });
+    expect(message).toContain("⚠️ Gemini 월 추정 85%");
+    expect(message).toContain("aistudio.google.com/spend");
+  });
+
+  it("G4 — Gemini 추정 100% (1.0) — 🚨 알림 1줄 포함", () => {
+    const message = formatDigestMessage({
+      ...ZERO,
+      geminiSpendingRatio: 1.0,
+    });
+    expect(message).toContain("🚨 Gemini 월 추정 100%");
   });
 
   it("직접 URL link 는 메시지에 포함 안 됨 (link 결정은 cron 라우터 책임)", () => {

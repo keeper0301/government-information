@@ -47,6 +47,7 @@ import {
 } from "@/lib/analytics/sns-env-status";
 import {
   getGeminiSpendingStats,
+  GEMINI_KEEPIOO_CAP_KRW,
   type GeminiSpendingStat,
 } from "@/lib/analytics/gemini-spending";
 import { getLocalPressStats } from "@/lib/analytics/local-press-stats";
@@ -710,7 +711,7 @@ function SnsPublishCard({
 // keepioo 프로젝트 cap ₩30K 대비 사용량 비율 시각화.
 // blog_publish_run audit 의 results[].usage 누적 (G3 분리 후 keepioo project 만 추적).
 function GeminiSpendingCard({ stats }: { stats: GeminiSpendingStat }) {
-  const CAP_KRW = 30000; // G3 keepioo 프로젝트 spending cap (₩30K)
+  const CAP_KRW = GEMINI_KEEPIOO_CAP_KRW;
   const projectionRatio = Math.min(1, stats.monthlyProjectionKrw / CAP_KRW);
   const projectionPercent = Math.round(projectionRatio * 100);
   const danger = projectionRatio >= 0.8;
