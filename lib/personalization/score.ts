@@ -14,8 +14,10 @@ import {
   type RegionMatchResult,
 } from './region-match';
 
-// backward compat re-export — 외부 6 파일 (welfare/loan/news/blog/quiz/home-recommend-auto)
-// 이 score.ts 에서 REGION_ALIASES import 하고 있어 별도 spec 으로 정리 전까지 유지.
+// 5/17 후속: 외부 6 파일 (welfare/loan/news/quiz/home-recommend-auto/trace-area) 모두
+// region-match.ts 직접 import 로 전환 (commit 후속). 아래 re-export 는 lib 내부
+// (score.ts → evaluateRegion + hasConflictingRegionInTitle 호출, REGION_ALIASES 직접 참조)
+// 와 잠재 외부 import 안전망. 동작 100% 동일.
 export { REGION_ALIASES, evaluateRegion, hasConflictingRegionInTitle };
 export type { RegionMatchResult };
 

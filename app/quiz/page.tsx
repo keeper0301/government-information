@@ -16,7 +16,8 @@ import {
   LOAN_EXCLUDED_FILTER,
 } from '@/lib/listing-sources';
 import { scoreAndFilterWithPopularity } from '@/lib/personalization/filter';
-import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
+import { type ScorableItem } from '@/lib/personalization/score';
+import { REGION_ALIASES } from '@/lib/personalization/region-match';
 import type { UserSignals } from '@/lib/personalization/types';
 import {
   AGE_OPTIONS,

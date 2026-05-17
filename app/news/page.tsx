@@ -38,7 +38,8 @@ import {
 import type { ScoredItem } from "@/lib/personalization/types";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
-import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
+import { type ScorableItem } from "@/lib/personalization/score";
+import { REGION_ALIASES } from "@/lib/personalization/region-match";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 

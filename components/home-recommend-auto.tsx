@@ -10,7 +10,8 @@ import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-
 import { scoreAndFilterWithPopularity } from '@/lib/personalization/filter';
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
 import type { MatchSignal, UserSignals } from '@/lib/personalization/types';
-import { REGION_ALIASES, type ScorableItem } from '@/lib/personalization/score';
+import { type ScorableItem } from '@/lib/personalization/score';
+import { REGION_ALIASES } from '@/lib/personalization/region-match';
 import { LOAN_EXCLUDED_FILTER, WELFARE_EXCLUDED_FILTER } from '@/lib/listing-sources';
 
 const HOME_MATCH_REASON_LABELS: Record<MatchSignal["kind"], string> = {

@@ -19,7 +19,8 @@ import {
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { LoanProgram } from "@/lib/database.types";
-import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
+import { type ScorableItem } from "@/lib/personalization/score";
+import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
 export const metadata: Metadata = {

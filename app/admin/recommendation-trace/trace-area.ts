@@ -14,7 +14,8 @@ import {
   type TraceSummary,
 } from "@/lib/personalization/diagnostic";
 import type { UserSignals } from "@/lib/personalization/types";
-import { REGION_ALIASES, type ScorableItem } from "@/lib/personalization/score";
+import { type ScorableItem } from "@/lib/personalization/score";
+import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { PERSONAL_SECTION_MIN_SCORE } from "@/lib/personalization/types";
 import {
   newsRowToScorable,
