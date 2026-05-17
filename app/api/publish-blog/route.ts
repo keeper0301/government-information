@@ -27,9 +27,53 @@ import { NextRequest, NextResponse } from "next/server";
 import { publishOnePost, getTodayCategory } from "@/lib/blog-publish";
 import { notifyCronFailure } from "@/lib/email";
 import { logAdminAction, type AdminActionType } from "@/lib/admin-actions";
+import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림
 export const maxDuration = 60;
+
+// G1 (5/17) — Gemini quota 사고 24h cooldown + 텔레그램 알림.
+// admin_actions.gemini_quota_alert 가 24h 내 있으면 skip (알림 폭주 차단).
+async function sendGeminiQuotaAlertIfNew(
+  failures: Array<{ category: string; error?: string }>,
+): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { count } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "gemini_quota_alert")
+      .gte("created_at", since);
+    if ((count ?? 0) > 0) return; // 24h cooldown 통과
+
+    const failureSummary = failures
+      .map((f) => `[${f.category}] ${f.error?.slice(0, 80) ?? ""}`)
+      .join("\n");
+    await sendOpsAlertMultichannel({
+      subject: "[keepioo] Gemini 월 한도 도달 — blog 발행 멈춤",
+      message: [
+        `🚨 Gemini API 429 (spending cap / RESOURCE_EXHAUSTED) 감지.`,
+        `blog 발행 ${failures.length}건 모두 실패.`,
+        ``,
+        `[조치] https://aistudio.google.com/spend 에서 월 지출 한도 인상.`,
+        `또는 다른 모델 (OpenAI) 임시 fallback 검토.`,
+        ``,
+        `[실패 사유 ${failures.length}건]`,
+        failureSummary.slice(0, 500),
+      ].join("\n"),
+      link: "https://aistudio.google.com/spend",
+    });
+    await logAdminAction({
+      actorId: null,
+      action: "gemini_quota_alert" as AdminActionType,
+      details: { failures: failures.length, summary: failureSummary.slice(0, 300) },
+    });
+  } catch (e) {
+    console.error("[publish-blog] gemini quota alert 실패:", e);
+  }
+}
 
 async function logPublishBlogRun(details: Record<string, unknown>) {
   try {
@@ -199,6 +243,16 @@ export async function GET(request: NextRequest) {
   if (failures.length > 0) {
     const detail = failures.map((f) => `[${f.category}] ${f.error}`).join("\n");
     await notifyCronFailure("publish-blog (cron)", detail, `count=${count}`);
+
+    // G1 (5/17 사고 후속) — Gemini quota 사고 자동 감지 + 텔레그램 명확 안내.
+    // 5/14 사고 시 email 알림은 사장님 inbox 확인 안 해 2.5일 멈춤. 텔레그램 즉시.
+    // 24h cooldown — gemini_quota_alert audit 매칭으로 중복 알림 차단.
+    const quotaHit = failures.some((f) =>
+      /spending cap|RESOURCE_EXHAUSTED|Too Many Requests|429/i.test(f.error ?? ""),
+    );
+    if (quotaHit) {
+      await sendGeminiQuotaAlertIfNew(failures);
+    }
   }
 
   const status = results.every((r) => !r.ok) ? 500 : 200;
