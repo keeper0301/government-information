@@ -279,7 +279,7 @@ export default async function CronTriggerPage({
         광역 뉴스 수집 (17 시·도)
       </h2>
       <p className="text-sm text-grey-600 mb-3">
-        매일 14:00~15:20 KST 5분 간격 자동 수집. 즉시 반영 필요 시 클릭.
+        매일 KST 14:00 + 23:00 일 2회 5분 간격 자동 수집 (5/17 변경). 즉시 반영 필요 시 클릭.
       </p>
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-8">
         {PROVINCE_CRONS.map((code) => (
