@@ -13,7 +13,7 @@ import {
   formatDigestMessage,
   reviewQueueTotal,
 } from "@/lib/notifications/daily-digest";
-import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
@@ -47,19 +47,27 @@ async function run(): Promise<NextResponse> {
         ? "keepioo.com/admin"
         : "";
 
-  // SMS 발송 — 환경변수 (SOLAPI_OPS_FROM_PHONE/TO_PHONE) 미설정 시 skipped
-  const sms = await sendOpsAlertSms({
+  // G8 (2026-05-17) — SMS + 텔레그램 multi-channel 발송 (Solapi balance 0 사고 영구 대비).
+  // 5/14~17 Solapi balance 0 으로 daily-digest SMS 4일 손실 + 사장님 KPI·AdSense reminder 도달 0.
+  // health-alert · external-console-check 와 일관된 multichannel 패턴.
+  const multi = await sendOpsAlertMultichannel({
     subject: "",
     message,
     link,
   });
+  const sms = multi.sms;
+  const telegram = multi.telegram;
 
   // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+  // G8 — telegram_ok / telegram_reason 추가로 사장님 도달 채널 진단 가능
   await auditCronRun("daily_digest_run", {
     review_queue_total: reviewTotal,
     cron_failures_24h: data.cronFailures24h,
     sms_ok: sms?.ok ?? null,
     sms_reason: sms?.ok === false ? sms.reason : undefined,
+    telegram_ok: telegram?.ok ?? null,
+    telegram_reason: telegram?.ok === false ? telegram.reason : undefined,
+    any_delivered: multi.anyDelivered,
     has_link: link.length > 0,
   });
 
@@ -70,6 +78,8 @@ async function run(): Promise<NextResponse> {
     reviewTotal,
     link,
     sms,
+    telegram,
+    anyDelivered: multi.anyDelivered,
   });
 }
 
