@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scrapeSuncheonAndInsert } from "@/lib/scraping/local-press/suncheon";
 import { scrapeGwangjuAndInsert } from "@/lib/scraping/local-press/gwangju";
+import { scrapeSeoulAndInsert } from "@/lib/scraping/local-press/seoul";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -38,6 +39,7 @@ async function authorize(request: Request) {
 const COLLECTORS = [
   { city: "순천시", fn: scrapeSuncheonAndInsert },
   { city: "광주광역시", fn: scrapeGwangjuAndInsert },
+  { city: "서울특별시", fn: scrapeSeoulAndInsert },
 ];
 
 async function runScrape() {
