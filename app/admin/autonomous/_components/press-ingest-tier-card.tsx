@@ -113,6 +113,14 @@ export function PressIngestTierCard({
             </span>
           )}
         </div>
+        {/* 5/17 G6 — 데이터 부족 + low 큐 적체 시 모바일 검수 가속 가이드 */}
+        {stats.lowConfirmRateHint === "데이터 부족" && stats.pressLowTierBacklog >= 5 && (
+          <p className="mt-2 text-[11px] opacity-90">
+            💡 모바일에서 텔레그램 <code>/press low</code> 5건씩 검수 가능 (5/16 명령).
+            {stats.pressLowTierBacklog}건 적체 — 1회 5건씩{" "}
+            {Math.ceil(stats.pressLowTierBacklog / 5)}배치면 hint 정확화.
+          </p>
+        )}
         {stats.lowConfirmRateHint.includes("AUTO_CONFIRM_TIER_FLOOR=low") && (
           <p className="mt-2 text-[11px] opacity-90">
             Vercel env 에 <code>AUTO_CONFIRM_TIER_FLOOR=low</code> 추가 시 low
