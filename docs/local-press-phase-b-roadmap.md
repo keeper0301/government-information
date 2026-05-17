@@ -89,6 +89,10 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
   - 대구와 동일하게 Playwright headless 필요
   - 다른 URL probe 결과: ggnews/pressList.do 는 경기도 뉴스 (성남 X)
   - **다음 차 후보**: Playwright 또는 성남시 RSS/API endpoint 추적
+- ⏸ 5/17: 천안시 **보류** — `https://skygreen.cheonan.go.kr/bbs/BBSMSTR_000000000030/list.do`
+  - list page 의 모든 link 가 `<button onclick="fn_search_detail('B000000507485Ly0gG7')">` (JS 함수)
+  - `fn_search_detail` URL pattern 추정 어려움 (seq 가 mixed alphanumeric, 일반 nttId 패턴 아님)
+  - **다음 차 후보**: Playwright 또는 fn_search_detail 함수 source 추적
 
 ## 다음 우선순위 (인구 순)
 
