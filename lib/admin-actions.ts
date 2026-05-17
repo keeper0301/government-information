@@ -76,7 +76,9 @@ export type AdminActionType =
   | "gemini_quota_alert"              // 2026-05-17 — G1 Gemini 429 spending cap 사고 자동 감지·알림 (24h cooldown)
   | "press_low_reminder_run"          // 2026-05-17 — G2 low pending 매주 월 텔레그램 reminder + 90일 archived cron
   | "external_console_alert_sent"     // 2026-05-17 — G7 external-console-check per-key 24h dedupe (SMS fatigue 차단)
-  | "naver_news_collect_run";         // 2026-05-18 — 17 광역 collect-news cron 진입 흔적 (가시성 0 사고 해소)
+  | "naver_news_collect_run"          // 2026-05-18 — 17 광역 collect-news cron 진입 흔적 (가시성 0 사고 해소)
+  | "agent_diagnose_run"              // 2026-05-18 — Phase 6 Codex 자율 운영 W0: /api/agent/diagnose 호출 흔적
+  | "agent_execute_run";              // 2026-05-18 — Phase 6 Codex 자율 운영: /api/agent/execute 호출 흔적 (W1+)
 
 export type AdminActionRecord = {
   id: string;
@@ -378,4 +380,6 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   press_low_reminder_run: "press low pending 검수 reminder + 90일 archived",
   external_console_alert_sent: "외부 점검 alert 발송 (24h dedupe)",
   naver_news_collect_run: "naver-news 광역 cron 진입 흔적",
+  agent_diagnose_run: "Codex agent 사고 진단 호출 (W0)",
+  agent_execute_run: "Codex agent 액션 실행 호출 (W1+)",
 };
