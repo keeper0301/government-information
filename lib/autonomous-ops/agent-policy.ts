@@ -15,7 +15,8 @@ export type AgentOperationArea =
   | "security"
   | "data"
   | "secrets"
-  | "payments";
+  | "payments"
+  | "agent_call";  // 2026-05-18 Phase 6 — Codex 호출 자체 분류 (diagnose / execute meta-action)
 
 export type AgentAutomationMode =
   | "auto_execute"
@@ -58,6 +59,8 @@ const AUTO_ACTIONS = new Set([
   "retry_safe_cron",
   "content_generate_with_quality_gate",
   "external_signal_learning",
+  // 2026-05-18 Phase 6 W0 — Codex diagnose 는 read-only DB query 라 auto_execute 안전
+  "codex_diagnose",
 ]);
 
 const PR_ACTIONS = new Set([
@@ -66,6 +69,10 @@ const PR_ACTIONS = new Set([
   "prompt_tuning",
   "notification_copy_change",
   "non_destructive_backfill",
+  // 2026-05-18 Phase 6 W1 (선반영) — sidecar Codex 가 PR 생성 활성화 시 가동
+  "codex_scraper_fix",
+  "codex_ui_copy_fix",
+  "codex_prompt_tuning",
 ]);
 
 export function decideAgentAutomation(

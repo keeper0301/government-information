@@ -161,6 +161,44 @@ describe("decideAgentAutomation", () => {
       risk: "medium",
     });
   });
+
+  // 2026-05-18 Phase 6 — Codex 자율 운영 회귀 방어 3종
+  it("Phase 6 W0 — codex_diagnose 는 auto_execute (read-only)", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_diagnose",
+      }),
+    ).toMatchObject({
+      mode: "auto_execute",
+      risk: "low",
+    });
+  });
+
+  it("Phase 6 W1 — codex_scraper_fix 는 create_pr (사장님 1 click merge)", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_scraper_fix",
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "medium",
+    });
+  });
+
+  it("Phase 6 안전망 — area='agent_call' + destructive=true 는 영구 blocked", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_diagnose",
+        destructive: true,
+      }),
+    ).toMatchObject({
+      mode: "blocked",
+      risk: "critical",
+    });
+  });
 });
 
 describe("getAgentPolicySummary", () => {
