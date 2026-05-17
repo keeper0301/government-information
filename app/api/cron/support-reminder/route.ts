@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
@@ -72,10 +72,13 @@ async function run() {
     `→ /admin/support`,
   ].join("\n");
 
-  const smsResult = await sendOpsAlertSms({ subject, message });
+  // G9 (2026-05-17) — SMS + 텔레그램 multi-channel (Solapi balance 0 사고 대비 일관화).
+  const multi = await sendOpsAlertMultichannel({ subject, message });
+  const sms = multi.sms;
+  const telegram = multi.telegram;
 
-  // 발송 성공 시만 reminder_sent_at 마킹 (실패면 다음 cron 에서 재시도)
-  if (smsResult.ok) {
+  // 1 채널 이상 도달 시 reminder_sent_at 마킹 (둘 다 실패면 다음 cron 재시도)
+  if (multi.anyDelivered) {
     const ids = tickets.map((t) => t.id as string);
     await admin
       .from("support_tickets")
@@ -84,17 +87,22 @@ async function run() {
   }
 
   // 2026-05-14 — cron 가동 흔적 audit (가시성 강화)
+  // G9 — telegram_ok / telegram_reason / any_delivered 추가
   await auditCronRun("support_reminder_run", {
     stale_tickets: tickets.length,
-    sent: smsResult.ok,
-    sms_reason: smsResult.ok === false ? smsResult.reason : undefined,
+    sent: multi.anyDelivered,
+    sms_ok: sms?.ok ?? null,
+    sms_reason: sms?.ok === false ? sms.reason : undefined,
+    telegram_ok: telegram?.ok ?? null,
+    telegram_reason: telegram?.ok === false ? telegram.reason : undefined,
   });
 
   return NextResponse.json({
-    ok: smsResult.ok,
-    sent: smsResult.ok,
+    ok: multi.anyDelivered,
+    sent: multi.anyDelivered,
     count: tickets.length,
-    sms: smsResult,
+    sms,
+    telegram,
   });
 }
 

@@ -6,14 +6,17 @@
 //
 // 설계:
 //   - 임계치 3건 — 3일 이상 안 비울 때만 알림 (매일 알림 부담 ↓)
-//   - SMS 채널 재사용 (sendOpsAlertSms)
+//   - 2026-05-17 G9: SMS → SMS + 텔레그램 multichannel (Solapi balance 0 사고 대비)
 //   - 환경변수 미설정 시 skipped (운영 단계 보호)
 //
 // 호출처: app/api/cron/naver-queue-alert/route.ts
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import {
+  sendOpsAlertMultichannel,
+  type MultichannelResult,
+} from "@/lib/notifications/ops-alert-multichannel";
 
 // 알림 임계치 — pending 큐가 이 값 이상이면 SMS 발송.
 const QUEUE_THRESHOLD = 3;
@@ -23,7 +26,7 @@ export type NaverQueueAlertResult = {
   threshold: number;
   sent: boolean;
   reason?: "below_threshold" | "skipped_no_credentials" | "invalid_phone" | "api_error" | "network_error";
-  smsResult?: Awaited<ReturnType<typeof sendOpsAlertSms>>;
+  multiResult?: MultichannelResult;
 };
 
 /**
@@ -59,19 +62,22 @@ export async function checkAndAlertNaverQueue(): Promise<NaverQueueAlertResult> 
     };
   }
 
-  // SMS 본문 — 약 100자 (subject + message + link 합산). 90자 초과로 Solapi 가
-  // 자동 LMS 로 전환 (~30원/건). 임계치 미달 시 미발송이라 월 비용 영향 미미.
-  const smsResult = await sendOpsAlertSms({
+  // SMS + 텔레그램 동시 발송 (G9). SMS 본문 약 100자 (LMS 전환 ~30원/건).
+  // 임계치 미달 시 미발송이라 월 비용 영향 미미.
+  const multi = await sendOpsAlertMultichannel({
     subject: `[keepioo] 네이버 큐 ${pendingCount}건 대기`,
     message: `PC 켤 때 클로드한테 "naver-blog 큐 일괄 발행해줘" 라고 말씀하시면 5분 안에 정리됩니다.`,
     link: "keepioo.com/admin/naver-blog",
   });
 
+  // 1 채널 이상 도달 시 sent=true. SMS 만 보면 Solapi 0 사고에서 false 표시되어 부정확.
   return {
     pendingCount,
     threshold: QUEUE_THRESHOLD,
-    sent: smsResult.ok,
-    reason: smsResult.ok ? undefined : smsResult.reason,
-    smsResult,
+    sent: multi.anyDelivered,
+    reason: multi.anyDelivered
+      ? undefined
+      : (multi.sms?.ok === false ? multi.sms.reason : "api_error"),
+    multiResult: multi,
   };
 }
