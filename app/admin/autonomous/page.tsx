@@ -51,6 +51,8 @@ import {
 } from "@/lib/analytics/gemini-spending";
 import { getLocalPressStats } from "@/lib/analytics/local-press-stats";
 import { LocalPressCard } from "./_components/local-press-card";
+import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
+import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -90,6 +92,7 @@ export default async function AdminAutonomousPage() {
     snsEnvStatus,
     geminiSpending,
     localPressStats,
+    pressIngestTierStats,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -102,6 +105,7 @@ export default async function AdminAutonomousPage() {
     getSnsEnvStatus(),
     getGeminiSpendingStats(28),
     getLocalPressStats(),
+    getPressIngestTierStats(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -129,6 +133,10 @@ export default async function AdminAutonomousPage() {
 
       <div className="mb-4">
         <LocalPressCard stats={localPressStats} />
+      </div>
+
+      <div className="mb-4">
+        <PressIngestTierCard stats={pressIngestTierStats} />
       </div>
 
       <PendingActionsPanel actions={pendingActions} />
