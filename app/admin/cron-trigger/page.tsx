@@ -95,7 +95,7 @@ async function getRecentRuns(limit = 5): Promise<RecentRun[]> {
   });
 }
 
-// 광역별 collect-news 17 (vercel.json 14:00~15:20 KST 5분 간격)
+// 광역별 collect-news 17 (vercel.json 일 2회 14:00 + 23:00 KST 5분 간격, 5/17 변경)
 const PROVINCE_CRONS = [
   "seoul", "busan", "daegu", "incheon", "gwangju", "daejeon", "ulsan",
   "sejong", "gyeonggi", "gangwon", "chungbuk", "chungnam", "jeonbuk",
