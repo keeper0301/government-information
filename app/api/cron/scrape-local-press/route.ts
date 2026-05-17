@@ -16,12 +16,14 @@ import { scrapeSeoulAndInsert } from "@/lib/scraping/local-press/seoul";
 import { scrapeSuwonAndInsert } from "@/lib/scraping/local-press/suwon";
 import { scrapeBusanAndInsert } from "@/lib/scraping/local-press/busan";
 import { scrapeIncheonAndInsert } from "@/lib/scraping/local-press/incheon";
+import { scrapeDaejeonAndInsert } from "@/lib/scraping/local-press/daejeon";
+import { scrapeUlsanAndInsert } from "@/lib/scraping/local-press/ulsan";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
-// 시·군 1개 = ~15s. 다중 시·군 (5개) 까지 maxDuration 60s 안전.
-export const maxDuration = 60;
+// 시·군 1개 = ~15s. 8 시·군 = ~120s. Pro plan 300s 까지 가능 (5/17 G4 확장).
+export const maxDuration = 180;
 
 async function authorize(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -46,6 +48,8 @@ const COLLECTORS = [
   { city: "수원시", fn: scrapeSuwonAndInsert },
   { city: "부산광역시", fn: scrapeBusanAndInsert },
   { city: "인천광역시", fn: scrapeIncheonAndInsert },
+  { city: "대전광역시", fn: scrapeDaejeonAndInsert },
+  { city: "울산광역시", fn: scrapeUlsanAndInsert },
 ];
 
 async function runScrape() {
