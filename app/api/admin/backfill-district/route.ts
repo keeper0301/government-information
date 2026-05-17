@@ -50,6 +50,7 @@ type LoanRow = {
   title: string | null;
   source: string | null;
   description: string | null;
+  region: string | null; // f3 (2026-05-17): region 동기화 대상
 };
 
 // district NULL 인 row 들에 extractor 적용 + 50 병렬 chunk 로 UPDATE.
@@ -63,7 +64,7 @@ async function backfillTable(
   const isWelfare = table === "welfare_programs";
   const selectCols = isWelfare
     ? "id, title, source, target, description, region"
-    : "id, title, source, description";
+    : "id, title, source, description, region";
 
   const { data, error } = await admin
     .from(table)
@@ -89,20 +90,20 @@ async function backfillTable(
         const fields: Array<string | null> = [
           row.title ?? null,
           row.source ?? null,
-          (row as WelfareRow).target ?? null,
+          (row as WelfareRow).target ?? null, // welfare 만 target 보유
           row.description ?? null,
-          (row as WelfareRow).region ?? null,
+          row.region ?? null, // f3 (2026-05-17): welfare + loan 둘 다 region 보유
         ];
         const match = extractDistrictFromFields(...fields);
         if (!match) return; // 매치 없음 — district NULL 유지
 
         const update: Record<string, string> = { district: match.district };
-        // loan 만 region 도 비어있으면 같이 채움 (welfare 의 region 은 광역 단위라 안 건드림).
-        if (!isWelfare && !row.source) {
-          // loan 은 source 가 NULL 일 수 있음. region 만 채우는 안전한 조건.
-        }
-        if (!isWelfare) {
-          // loan 의 region 은 어차피 NULL 인 row 만 (백필 첫 호출) — 무조건 채움.
+        // f3 (2026-05-17): region 동기화 — extractor 의 provinceName 이 row.region 과
+        // 다른 광역이면 정정. 사장님 거주지 매칭 정확도 ↑ (이전엔 district 만 채우고
+        // region 은 잘못된 값 유지 → 광역 필터에서 누락 사고 가능).
+        // welfare 는 광역 region 이 의도된 값일 수 있어 NULL 일 때만 채움 (보수적).
+        // loan 은 신규 collector path 라 NULL 이 디폴트 — 둘 다 NULL 일 때만 채움.
+        if (!row.region) {
           update.region = match.provinceName;
         }
 
