@@ -25,6 +25,7 @@ import { scrapeHwaseongAndInsert } from "@/lib/scraping/local-press/hwaseong";
 import { scrapeJeonjuAndInsert } from "@/lib/scraping/local-press/jeonju";
 import { scrapeGimhaeAndInsert } from "@/lib/scraping/local-press/gimhae";
 import { scrapeNamyangjuAndInsert } from "@/lib/scraping/local-press/namyangju";
+import { scrapeSejongAndInsert } from "@/lib/scraping/local-press/sejong";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -64,6 +65,7 @@ const COLLECTORS = [
   { city: "전주시", fn: scrapeJeonjuAndInsert },
   { city: "김해시", fn: scrapeGimhaeAndInsert },
   { city: "남양주시", fn: scrapeNamyangjuAndInsert },
+  { city: "세종특별자치시", fn: scrapeSejongAndInsert },
 ];
 
 async function runScrape() {

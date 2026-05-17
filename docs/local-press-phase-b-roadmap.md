@@ -102,6 +102,10 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
 - ⏸ 5/17: 평택시 **보류** — `https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90`
   - 모든 onclick 이 `goPage(N)` (pagination 만)
   - article 별 view link 없음 (SPA + AJAX)
+- ⏸ 5/17: 포항시 **보류** — `https://www.pohang.go.kr/news/board/post/list.do?bcIdx=644`
+  - 모든 onclick 이 `goPage(N)` 만 (평택과 동일 패턴, SI 표준 SPA)
+- ⏸ 5/17: 익산시 **보류** — `http://www.iksan.go.kr/index.9is?menuUid=ff80808198eafcbd019902ab48032c02`
+  - 9is 확장자 (planweb CMS 변형) + article view link 없음 (JS 라우터)
 
 ## 보류 누적 (4개) — Playwright 필요
 
