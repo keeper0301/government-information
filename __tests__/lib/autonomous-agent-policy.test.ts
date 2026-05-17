@@ -106,6 +106,61 @@ describe("decideAgentAutomation", () => {
       risk: "critical",
     });
   });
+
+  // area === "secrets" 단독 지정 (touchesSecrets 플래그 없이) 도 critical 처리
+  it("area === 'secrets' 단독 지정도 관리자 검토로 보낸다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "secrets",
+        action: "rotate_token",
+      }),
+    ).toMatchObject({
+      mode: "admin_review",
+      risk: "critical",
+    });
+  });
+
+  // destructive 는 qualityApproved 와 무관하게 가장 먼저 차단
+  it("destructive 작업은 qualityApproved=true 여도 차단한다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "external_publish",
+        action: "content_generate_with_quality_gate",
+        destructive: true,
+        qualityApproved: true,
+      }),
+    ).toMatchObject({
+      mode: "blocked",
+      risk: "critical",
+    });
+  });
+
+  // destructive 는 AUTO_ACTIONS 자동 실행보다 우선 차단
+  it("AUTO_ACTIONS 라도 destructive=true 면 차단한다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "site_ops",
+        action: "health_check",
+        destructive: true,
+      }),
+    ).toMatchObject({
+      mode: "blocked",
+      risk: "critical",
+    });
+  });
+
+  // 분류되지 않은 action 은 보수적으로 review/medium
+  it("분류되지 않은 action 은 admin_review/medium 으로 떨어진다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "site_ops",
+        action: "unknown_thing",
+      }),
+    ).toMatchObject({
+      mode: "admin_review",
+      risk: "medium",
+    });
+  });
 });
 
 describe("getAgentPolicySummary", () => {

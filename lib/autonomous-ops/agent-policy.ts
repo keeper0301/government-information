@@ -79,7 +79,7 @@ export function decideAgentAutomation(
     };
   }
 
-  if (op.touchesSecrets) {
+  if (op.touchesSecrets || op.area === "secrets") {
     return {
       mode: "admin_review",
       risk: "critical",
