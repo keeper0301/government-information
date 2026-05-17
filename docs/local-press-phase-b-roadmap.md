@@ -1,5 +1,8 @@
 # Phase A district Phase B 로드맵 (G4, 2026-05-17)
 
+> 📘 **신규 시·군 추가 self-service 가이드** → `docs/local-press-add-city-guide.md`
+> (4가지 진단 룰 + 6단계 체크리스트. 사장님 단독 진행 가능.)
+
 Phase A 완료 (5/16): district 컬럼 + 7,272건 백필 + 순천시·광주광역시 collector 가동.
 
 Phase B = **사용자 cohort 확장**: 핵심 광역·시 collector 추가 → 더 많은 사용자 거주지 정책 자동 수집.
