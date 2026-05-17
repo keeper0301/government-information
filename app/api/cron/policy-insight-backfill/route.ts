@@ -20,6 +20,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5분 — 100건 × 1~2s = 100~200s
 
 const BATCH_CAP_PER_TABLE = 50; // welfare 50 + loan 50 = 일 100건
+// welfare 90% sparse (desc<50자) → fetch 50건 = 1건만 처리되는 사고 보정.
+// fetch 단계에서 description 길이 필터를 못 걸어서 client filter 후 50건만 LLM.
+// 5/17 진단: cron당 0~1건만 update → 5/24까지 100% 도달 불가. 10x fetch 로 cron당 25건 목표.
+const FETCH_MULTIPLIER = 10;
 const MIN_DESC_LEN = 50;        // sparse 정책 skip
 const MIN_INSIGHT_LEN = 80;     // LLM 응답 너무 짧으면 skip
 const MAX_DESC_PROMPT_LEN = 1500; // 토큰 cap (description 자르기)
@@ -75,13 +79,15 @@ async function backfillTable(
   // unique_insight NULL 인 row 만 (partial index 활용).
   // 우선순위: view_count DESC (인기 정책 — 검수자 hit 확률 ↑) → published_at DESC (cold start 는 최신 우선).
   // welfare_programs / loan_programs 둘 다 view_count + published_at 보유 (2026-05-11 확인).
+  // FETCH_MULTIPLIER 만큼 over-fetch 후 client side 에서 sparse(desc<50자) 미리 제외.
+  // 그래야 limit 50 일 때 LLM 처리 가능한 50건이 실제로 확보됨 (5/17 사고 보정).
   const { data: rows, error } = await admin
     .from(table)
     .select("id, title, source, description")
     .is("unique_insight", null)
     .order("view_count", { ascending: false, nullsFirst: false })
     .order("published_at", { ascending: false, nullsFirst: false })
-    .limit(limit);
+    .limit(limit * FETCH_MULTIPLIER);
 
   if (error) {
     // DDL 083 미적용 환경에서는 unique_insight 컬럼 없음 → 정상 graceful skip.
@@ -90,14 +96,22 @@ async function backfillTable(
     return { ...result, llm_failed: 0 };
   }
   if (!rows || rows.length === 0) return result;
-  result.fetched = rows.length;
 
+  // sparse 정책 client filter 후 상위 limit 건만 LLM 호출.
+  const eligible: PolicyRow[] = [];
   for (const row of rows as PolicyRow[]) {
     const desc = row.description?.trim();
     if (!desc || desc.length < MIN_DESC_LEN) {
       result.skipped_short++;
       continue;
     }
+    eligible.push(row);
+    if (eligible.length >= limit) break;
+  }
+  result.fetched = eligible.length;
+
+  for (const row of eligible) {
+    const desc = row.description!.trim();
 
     const prompt = PROMPT_TEMPLATE
       .replace("{{TITLE}}", row.title)
