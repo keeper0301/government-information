@@ -55,6 +55,9 @@ import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats
 import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 import { BlogPublishCard } from "./_components/blog-publish-card";
+import { getNaverPublishStats } from "@/lib/analytics/naver-publish-stats";
+import { NaverPublishCard } from "./_components/naver-publish-card";
+import { getAgentPolicySummary } from "@/lib/autonomous-ops/agent-policy";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -96,6 +99,7 @@ export default async function AdminAutonomousPage() {
     localPressStats,
     pressIngestTierStats,
     blogPublishStats,
+    naverPublishStats,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -110,10 +114,12 @@ export default async function AdminAutonomousPage() {
     getLocalPressStats(),
     getPressIngestTierStats(),
     getBlogPublishStats(),
+    getNaverPublishStats(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
   const pendingActions = aggregatePendingActions(phases);
+  const agentPolicy = getAgentPolicySummary();
 
   return (
     <div className="max-w-[980px]">
@@ -126,6 +132,7 @@ export default async function AdminAutonomousPage() {
       {/* 1. 자동 개선 진단 — 사장님이 가장 먼저 보는 행동 액션 */}
       <SectionHeader title="🎯 오늘 반영할 개선 과제" />
       <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
+      <AgentPolicyCard summary={agentPolicy} />
 
       {/* 2. 수익·비용 — 매출 추세 + 콘텐츠 비용 */}
       <SectionHeader title="💰 수익 · 비용" />
@@ -137,9 +144,10 @@ export default async function AdminAutonomousPage() {
       <ClickStatsCard stats={eventStats24h} top={topPrograms} />
       <PopularityTrendCard trend={popularityTrend} />
 
-      {/* 4. 콘텐츠 발행 — 블로그·SNS 가동 상태 (5/17 BlogPublish 신규) */}
+      {/* 4. 콘텐츠 발행 — 블로그·SNS·네이버 가동 상태 (5/17 BlogPublish/NaverPublish 신규) */}
       <SectionHeader title="📝 콘텐츠 발행" />
       <BlogPublishCard stats={blogPublishStats} />
+      <NaverPublishCard stats={naverPublishStats} />
       <SnsPublishCard stats={snsStats} envStatus={snsEnvStatus} />
 
       {/* 5. 데이터 수집 — cron 자동 가동 결과 (5/17 신규) */}
@@ -167,6 +175,49 @@ export default async function AdminAutonomousPage() {
         Phase 진행 메모리: <code>memory/project_keepioo_autonomous_ops_master_2026_05_08.md</code>
       </p>
     </div>
+  );
+}
+
+function AgentPolicyCard({
+  summary,
+}: {
+  summary: ReturnType<typeof getAgentPolicySummary>;
+}) {
+  const columns = [
+    ["자동 실행", summary.auto, "border-green-200 bg-green-50/40"],
+    ["PR 생성", summary.pr, "border-blue-200 bg-blue-50/40"],
+    ["관리자 검토", summary.review, "border-amber-200 bg-amber-50/40"],
+    ["차단", summary.blocked, "border-red-200 bg-red-50/40"],
+  ] as const;
+
+  return (
+    <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
+      <div className="mb-3">
+        <div className="mb-1 text-[11px] font-semibold text-grey-600">
+          AI 운영 권한 정책
+        </div>
+        <h2 className="text-base font-semibold">
+          자동화는 위험도별로 분리해 실행
+        </h2>
+        <p className="mt-1 text-xs text-grey-700">
+          글발행·운영·버그·보안 작업은 같은 정책으로 판단합니다.
+        </p>
+      </div>
+      <div className="grid gap-2 md:grid-cols-4">
+        {columns.map(([title, items, tone]) => (
+          <div key={title} className={`rounded-md border p-3 ${tone}`}>
+            <div className="mb-2 text-xs font-semibold text-grey-900">
+              {title}
+            </div>
+            <ul className="space-y-1 text-[11px] leading-relaxed text-grey-700">
+              {items.slice(0, 3).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
