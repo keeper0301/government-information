@@ -84,6 +84,11 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
   - dgom portal page 의 article link 는 banner image (title text 없음)
   - 대구시 CMS 가 다른 시·군 (SI 표준) 과 달라 selector 추출 큰 작업
   - **다음 차 후보**: Playwright headless 로 SPA 렌더 후 추출 (Vercel chromium 의존) 또는 인천광역시 등 다른 시·군 우선
+- ⏸ 5/17: 성남시 **보류** — `https://www.seongnam.go.kr/city/1000060/30005/bbsList.do`
+  - list page 의 모든 link 가 `javascript:void(0)` (SPA + AJAX)
+  - 대구와 동일하게 Playwright headless 필요
+  - 다른 URL probe 결과: ggnews/pressList.do 는 경기도 뉴스 (성남 X)
+  - **다음 차 후보**: Playwright 또는 성남시 RSS/API endpoint 추적
 
 ## 다음 우선순위 (인구 순)
 
