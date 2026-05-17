@@ -55,7 +55,8 @@ export async function POST(request: Request) {
     // W1 ramp-up gate — W0 default 는 auto_execute 결정이 나도 실제 실행 X.
     // 사장님 검증 후 AGENT_W1_ENABLED=true 로 ramp-up.
     const w1Enabled = process.env.AGENT_W1_ENABLED === "true";
-    const dispatched = w1Enabled && decision.mode === "auto_execute";
+    const dispatcherReady = false;
+    const dispatched = false;
 
     // 모든 호출 audit — 사장님 가시성 (Codex 가 무엇을 하려고 했는지 추적)
     await logAdminAction({
@@ -68,7 +69,11 @@ export async function POST(request: Request) {
         decision_risk: decision.risk,
         decision_reason: decision.reason,
         dispatched,
-        w0_pending: !dispatched && decision.mode === "auto_execute",
+        w1_enabled: w1Enabled,
+        dispatcher_ready: dispatcherReady,
+        w0_pending: !w1Enabled && decision.mode === "auto_execute",
+        w1_dispatcher_missing:
+          w1Enabled && decision.mode === "auto_execute" && !dispatcherReady,
         duration_ms: Date.now() - startedAt,
       },
     });
