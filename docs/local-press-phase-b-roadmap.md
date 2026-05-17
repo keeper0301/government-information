@@ -93,6 +93,17 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
   - list page 의 모든 link 가 `<button onclick="fn_search_detail('B000000507485Ly0gG7')">` (JS 함수)
   - `fn_search_detail` URL pattern 추정 어려움 (seq 가 mixed alphanumeric, 일반 nttId 패턴 아님)
   - **다음 차 후보**: Playwright 또는 fn_search_detail 함수 source 추적
+- ⏸ 5/17: 안산시 **보류** — `https://www.ansan.go.kr/www/common/bbs/selectPageListBbs.do?bbs_code=B0238`
+  - list page 의 모든 onclick 이 `fnGoPage('N')` (pagination 만)
+  - article 별 selectBbsDetail link 없음 (SPA + AJAX 추정)
+- ⏸ 5/17: 창원시 **보류** — `https://www.changwon.go.kr/cwportal/10310/10429/10432.web`
+  - 모든 link 가 `onclick="window.open(this.href)"` + href 는 portal 메뉴 (article 아님)
+  - article URL pattern 노출 X (JS 라우터 추정)
+
+## 보류 누적 (4개) — Playwright 필요
+
+천안·성남·대구·안산·창원 — 5 시·군 모두 SPA 변형. Vercel chromium runtime 또는
+별도 Playwright 헤드리스 함수 도입 시 batch 추가 가능.
 
 ## 다음 우선순위 (인구 순)
 
