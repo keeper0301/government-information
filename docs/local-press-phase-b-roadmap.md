@@ -99,6 +99,9 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
 - ⏸ 5/17: 창원시 **보류** — `https://www.changwon.go.kr/cwportal/10310/10429/10432.web`
   - 모든 link 가 `onclick="window.open(this.href)"` + href 는 portal 메뉴 (article 아님)
   - article URL pattern 노출 X (JS 라우터 추정)
+- ⏸ 5/17: 평택시 **보류** — `https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90`
+  - 모든 onclick 이 `goPage(N)` (pagination 만)
+  - article 별 view link 없음 (SPA + AJAX)
 
 ## 보류 누적 (4개) — Playwright 필요
 

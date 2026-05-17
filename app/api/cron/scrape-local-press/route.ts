@@ -21,6 +21,8 @@ import { scrapeUlsanAndInsert } from "@/lib/scraping/local-press/ulsan";
 import { scrapeGoyangAndInsert } from "@/lib/scraping/local-press/goyang";
 import { scrapeYonginAndInsert } from "@/lib/scraping/local-press/yongin";
 import { scrapeCheongjuAndInsert } from "@/lib/scraping/local-press/cheongju";
+import { scrapeHwaseongAndInsert } from "@/lib/scraping/local-press/hwaseong";
+import { scrapeJeonjuAndInsert } from "@/lib/scraping/local-press/jeonju";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -56,6 +58,8 @@ const COLLECTORS = [
   { city: "고양특례시", fn: scrapeGoyangAndInsert },
   { city: "용인특례시", fn: scrapeYonginAndInsert },
   { city: "청주시", fn: scrapeCheongjuAndInsert },
+  { city: "화성특례시", fn: scrapeHwaseongAndInsert },
+  { city: "전주시", fn: scrapeJeonjuAndInsert },
 ];
 
 async function runScrape() {
