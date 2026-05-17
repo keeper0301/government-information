@@ -211,6 +211,8 @@ export async function GET(request: NextRequest) {
         url: `/blog/${s.value.slug}`,
         qualityReview: s.value.qualityReview,
         externalPublishHeld: s.value.externalPublishHeld,
+        // Gemini 비용 추적 (5/17, autonomous hub 카드)
+        usage: s.value.generated._usage ?? null,
       };
     }
     return {
@@ -238,6 +240,8 @@ export async function GET(request: NextRequest) {
       slug: r.ok ? r.slug : null,
       externalPublishHeld: r.ok ? r.externalPublishHeld : null,
       error: r.ok ? null : String(r.error).slice(0, 160),
+      // Gemini token 누적 (autonomous hub Gemini 지출 카드)
+      usage: r.ok ? r.usage : null,
     })),
   });
   if (failures.length > 0) {

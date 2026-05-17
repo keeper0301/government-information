@@ -78,6 +78,13 @@ export type GeneratedPost = {
   category: string;          // 청년/소상공인/주거/육아·가족/노년/학생·교육/큐레이션
   tags: string[];            // 3~6개 태그
   faqs: { question: string; answer: string }[]; // 3~5개 FAQ
+  // 비용 추적용 (5/17 추가) — Gemini API 의 usageMetadata 그대로 보존.
+  // caller (lib/blog-publish.ts) 가 audit details 에 저장 → autonomous hub 차트.
+  _usage?: {
+    promptTokens: number;
+    candidatesTokens: number;
+    totalTokens: number;
+  };
 };
 
 // ─── 페르소나 rotation (2026-05-10 AdSense "thin/scaled content" 거절 대응) ───
@@ -411,6 +418,18 @@ ${trendBlock}
   // tags·faqs 가 비어있을 수 있으니 기본값
   parsed.tags = parsed.tags || [];
   parsed.faqs = parsed.faqs || [];
+
+  // 비용 추적 — Gemini usageMetadata 보존. caller 가 audit 저장.
+  const meta = response.usageMetadata as
+    | { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number }
+    | undefined;
+  if (meta) {
+    parsed._usage = {
+      promptTokens: meta.promptTokenCount ?? 0,
+      candidatesTokens: meta.candidatesTokenCount ?? 0,
+      totalTokens: meta.totalTokenCount ?? 0,
+    };
+  }
 
   return parsed;
 }

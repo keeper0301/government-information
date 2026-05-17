@@ -45,6 +45,10 @@ import {
   getSnsEnvStatus,
   type SnsEnvStatus,
 } from "@/lib/analytics/sns-env-status";
+import {
+  getGeminiSpendingStats,
+  type GeminiSpendingStat,
+} from "@/lib/analytics/gemini-spending";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -82,6 +86,7 @@ export default async function AdminAutonomousPage() {
     popularityTrend,
     snsStats,
     snsEnvStatus,
+    geminiSpending,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -92,6 +97,7 @@ export default async function AdminAutonomousPage() {
     getPopularityTrend(3),
     getSnsPublishStats(30),
     getSnsEnvStatus(),
+    getGeminiSpendingStats(28),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -114,6 +120,8 @@ export default async function AdminAutonomousPage() {
       <PopularityTrendCard trend={popularityTrend} />
 
       <SnsPublishCard stats={snsStats} envStatus={snsEnvStatus} />
+
+      <GeminiSpendingCard stats={geminiSpending} />
 
       <PendingActionsPanel actions={pendingActions} />
 
@@ -604,6 +612,77 @@ function SnsPublishCard({
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+// 5/17 — Gemini 28일 토큰 누적 + ₩ 추정 카드.
+// keepioo 프로젝트 cap ₩30K 대비 사용량 비율 시각화.
+// blog_publish_run audit 의 results[].usage 누적 (G3 분리 후 keepioo project 만 추적).
+function GeminiSpendingCard({ stats }: { stats: GeminiSpendingStat }) {
+  const CAP_KRW = 30000; // G3 keepioo 프로젝트 spending cap (₩30K)
+  const projectionRatio = Math.min(1, stats.monthlyProjectionKrw / CAP_KRW);
+  const projectionPercent = Math.round(projectionRatio * 100);
+  const danger = projectionRatio >= 0.8;
+
+  if (stats.totalCalls === 0) {
+    return (
+      <section className="mb-4 rounded-lg border border-grey-200 bg-white p-4">
+        <div className="text-[11px] font-semibold text-grey-600 mb-1">
+          Gemini 지출 (keepioo)
+        </div>
+        <p className="text-sm text-grey-700">
+          최근 {stats.windowDays}일 blog 발행 token 데이터 없음. 다음 cron 가동 후 누적 시작.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className={`mb-4 rounded-lg border p-4 ${
+        danger
+          ? "border-rose-200 bg-rose-50/40"
+          : "border-violet-200 bg-violet-50/40"
+      }`}
+    >
+      <header className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold text-grey-600 mb-1">
+            Gemini 지출 (keepioo blog 발행)
+          </div>
+          <h2 className="text-base font-semibold">
+            ₩{Math.round(stats.totalCostKrw).toLocaleString()}{" "}
+            <span className="text-xs text-grey-600">/ {stats.windowDays}일</span>
+          </h2>
+          <p className="text-xs text-grey-700 mt-1">
+            {stats.totalCalls}건 발행 · in {stats.totalInputTokens.toLocaleString()} · out {stats.totalOutputTokens.toLocaleString()} tokens
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-grey-600">월 추정 / cap</div>
+          <div
+            className={`text-lg font-bold ${danger ? "text-rose-700" : "text-violet-700"}`}
+          >
+            ₩{Math.round(stats.monthlyProjectionKrw).toLocaleString()}
+          </div>
+          <div className="text-[10px] text-grey-600">
+            / ₩{CAP_KRW.toLocaleString()} ({projectionPercent}%)
+          </div>
+        </div>
+      </header>
+      <div className="w-full h-1.5 bg-grey-200 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${danger ? "bg-rose-500" : "bg-violet-500"}`}
+          style={{ width: `${projectionPercent}%` }}
+          aria-label={`월 추정 ${projectionPercent}%`}
+        />
+      </div>
+      {danger && (
+        <p className="text-xs text-rose-700 mt-2 font-medium">
+          ⚠️ 월 추정이 cap 80% 초과. https://aistudio.google.com/spend?project=keepioo 한도 인상 검토.
+        </p>
+      )}
     </section>
   );
 }
