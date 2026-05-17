@@ -51,9 +51,11 @@ export type ScrapeResult = {
 // 표준 HTML entity 디코딩 (5/17 추가). title / 본문 모두 사용 가능.
 // 사이트 별 특수 entity (예: 한자 / numeric entity) 는 각 collector 가 보완.
 //
-// 일관성 spec (W1): parseListItems 의 title 매칭 후 호출 권장. 현재 신규
-// collector 4종 (pyeongtaek·pohang·iksan·daegu) 부터 적용. 기존 13 collector
-// 는 baseline 영향 작아 별도 batch 미룸 (회귀 위험 < 가치).
+// 일관성 (5/17): helper 사용 collector 11종 모두 통일 — pyeongtaek·pohang·iksan·daegu
+// (5/17 신규) + goyang·yongin·cheongju·hwaseong·jeonju·gimhae·namyangju·sejong (batch).
+// helper 비사용 8 collector (suncheon·gwangju·seoul·suwon·busan·incheon·daejeon·ulsan)
+// 는 자체 decode 함수 없음 — entity raw 노출 가능성 있으나 사이트 baseline 영향 작아
+// 별도 spec 미룸.
 export function decodeBasicEntities(s: string): string {
   return s
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))

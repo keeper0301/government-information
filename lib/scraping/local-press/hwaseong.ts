@@ -9,6 +9,7 @@
 
 import {
   createPressCollector,
+  decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
 
@@ -53,23 +54,12 @@ const BODY_REGEXES: RegExp[] = [
   /<div\s+class="board[_-]?view[_-]?content[^"]*"[^>]*>([\s\S]*?)<\/div>/,
 ];
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lsquo;|&rsquo;/g, "'")
-    .replace(/&ldquo;|&rdquo;/g, '"')
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
-}
 
 export function parseDetailBody(html: string): string | null {
   for (const re of BODY_REGEXES) {
     const m = re.exec(html);
     if (!m) continue;
-    const text = decodeEntities(
+    const text = decodeBasicEntities(
       m[1]
         .replace(/<br\s*\/?>/gi, "\n")
         .replace(/<[^>]+>/g, "")
@@ -87,7 +77,7 @@ export function parseDetailBody(html: string): string | null {
   const paragraphs: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = PARAGRAPH_REGEX.exec(html)) !== null) {
-    const text = decodeEntities(m[1].trim());
+    const text = decodeBasicEntities(m[1].trim());
     if (!/[가-힣]/.test(text)) continue;
     if (/element-invisible|첨부파일|문서보기|jsView|fileDownload/.test(text)) continue;
     paragraphs.push(text);

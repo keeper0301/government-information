@@ -8,6 +8,7 @@
 
 import {
   createPressCollector,
+  decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
 
@@ -64,22 +65,11 @@ export function parseListPage(html: string): PressNewsItem[] {
 const BODY_CONTAINER_REGEX =
   /<td[^>]*class="board_text_td"[^>]*>([\s\S]*?)<\/td>/;
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lsquo;|&rsquo;/g, "'")
-    .replace(/&ldquo;|&rdquo;/g, '"')
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
-}
 
 export function parseDetailBody(html: string): string | null {
   const m = BODY_CONTAINER_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeEntities(
+  const text = decodeBasicEntities(
     m[1]
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, "")
