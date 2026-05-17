@@ -59,6 +59,10 @@ import { BlogPublishCard } from "./_components/blog-publish-card";
 import { getNaverPublishStats } from "@/lib/analytics/naver-publish-stats";
 import { NaverPublishCard } from "./_components/naver-publish-card";
 import { getAgentPolicySummary } from "@/lib/autonomous-ops/agent-policy";
+import {
+  getKeepioAgentStatus,
+  type KeepioAgentStatus,
+} from "@/lib/analytics/keepio-agent-status";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -101,6 +105,7 @@ export default async function AdminAutonomousPage() {
     pressIngestTierStats,
     blogPublishStats,
     naverPublishStats,
+    keepioAgentStatus,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -116,6 +121,7 @@ export default async function AdminAutonomousPage() {
     getPressIngestTierStats(),
     getBlogPublishStats(),
     getNaverPublishStats(),
+    getKeepioAgentStatus(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -134,6 +140,7 @@ export default async function AdminAutonomousPage() {
       <SectionHeader title="🎯 오늘 반영할 개선 과제" />
       <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
       <AgentPolicyCard summary={agentPolicy} />
+      <KeepioAgentCard status={keepioAgentStatus} />
 
       {/* 2. 수익·비용 — 매출 추세 + 콘텐츠 비용 */}
       <SectionHeader title="💰 수익 · 비용" />
@@ -176,6 +183,75 @@ export default async function AdminAutonomousPage() {
         Phase 진행 메모리: <code>memory/project_keepioo_autonomous_ops_master_2026_05_08.md</code>
       </p>
     </div>
+  );
+}
+
+function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
+  const tone = status.ready
+    ? "border-green-200 bg-green-50/40"
+    : status.configured
+      ? "border-amber-200 bg-amber-50/50"
+      : "border-red-200 bg-red-50/40";
+  const headline = status.ready
+    ? "상시 에이전트 연결 정상"
+    : status.configured
+      ? "상시 에이전트 응답 점검 필요"
+      : "상시 에이전트 health URL 미연결";
+  const items: Array<[string, boolean]> = [
+    ["텔레그램 운영 알림", status.automation.telegram],
+    ["정책 DB 읽기", status.automation.policyDb],
+    ["AI 글 생성", status.automation.contentGeneration],
+    ["Threads 자동 발행", status.automation.threadsPublishing],
+    ["Instagram metric 수집", status.automation.instagramMetrics],
+    ["Instagram 댓글 답글", status.automation.instagramComments],
+  ];
+
+  return (
+    <section className={`mb-4 rounded-lg border p-4 ${tone}`}>
+      <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="mb-1 text-[11px] font-semibold text-grey-600">
+            Keepio Agent 상시 운영
+          </div>
+          <h2 className="text-base font-semibold">{headline}</h2>
+          <p className="mt-1 text-xs text-grey-700">
+            로컬/Render sidecar cron, Threads, Instagram 자동화 준비 상태를 확인합니다.
+          </p>
+        </div>
+        <div className="text-left text-[11px] text-grey-600 md:text-right">
+          <div>uptime: {status.uptimeSec !== null ? `${status.uptimeSec}s` : "-"}</div>
+          <div>
+            checked:{" "}
+            {status.checkedAt
+              ? new Date(status.checkedAt).toLocaleString("ko-KR", {
+                  timeZone: "Asia/Seoul",
+                })
+              : "-"}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-2 md:grid-cols-3">
+        {items.map(([label, ok]) => (
+          <div key={label} className="rounded-md border border-white/60 bg-white/70 p-3">
+            <div className="text-xs font-semibold text-grey-900">{label}</div>
+            <div className={`mt-1 text-[11px] ${ok ? "text-green-700" : "text-red-600"}`}>
+              {ok ? "준비됨" : "미설정 또는 비활성"}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {(status.error || status.missingRequired.length > 0) && (
+        <div className="mt-3 rounded-md border border-white/70 bg-white/70 p-3 text-xs text-grey-700">
+          {status.error && <div>오류: {status.error}</div>}
+          {status.missingRequired.length > 0 && (
+            <div>필요 설정: {status.missingRequired.join(", ")}</div>
+          )}
+          {status.healthUrl && <div className="mt-1 break-all">health: {status.healthUrl}</div>}
+        </div>
+      )}
+    </section>
   );
 }
 
