@@ -120,7 +120,7 @@ export default async function AdminAutonomousPage() {
       <AdminPageHeader
         kicker="ADMIN · 운영 상태"
         title="자율 운영 마스터"
-        description={`5 Phase 중 ${activeCount}개 가동 · 외부 액션 ${pendingActions.length}건 대기. 매일 1번 점검 권장.`}
+        description={`5 Phase 중 ${activeCount}개 가동 · 6 카테고리 14+ 카드 · 외부 액션 ${pendingActions.length}건 대기. 매일 30초 점검 권장.`}
       />
 
       {/* 1. 자동 개선 진단 — 사장님이 가장 먼저 보는 행동 액션 */}

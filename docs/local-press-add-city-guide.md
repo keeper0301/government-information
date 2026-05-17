@@ -151,3 +151,17 @@ autonomous hub LocalPressCard 에서 신규 시·군 카드 색깔 확인:
 5. `fetchPage` 가드 (redirect/alert silent fail 차단)
 
 자세한 commit 이력 + 보류 시·군 사유 = `docs/local-press-phase-b-roadmap.md`.
+
+## 알려진 일관성 부채 (5/17 spec)
+
+helper 비사용 8 collector (suncheon·gwangju·seoul·suwon·busan·incheon·daejeon·ulsan)
+는 자체 inline `.replace(/&xxx;/g, ...)` 5 entity 만 처리. helper (10 entity) 가
+처리하는 `&lsquo;/&rsquo;` `&ldquo;/&rdquo;` `&hellip;` `&middot;` `&#NNN;` 은
+raw 노출 가능. baseline 영향 작아 일괄 batch 미룸 (회귀 위험 vs 가치 보수적 판단).
+
+향후 batch 적용 시:
+1. 각 collector 자체 구조 검토 (suncheon 은 SuncheonNewsItem 자체 type 등 다양)
+2. parseDetailBody 의 inline replace chain → `decodeBasicEntities` 호출 교체
+3. import 추가만 — `_factory` 의 createPressCollector 와 무관 (helper 만 사용 가능)
+4. parseListItems 의 title 매칭은 entity 거의 없는 사이트라 보수적 유지 권장
+
