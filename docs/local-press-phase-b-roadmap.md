@@ -88,12 +88,17 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
   - 실제 원인: `mid=0102000000` 파라미터 누락. 홈 → 보도자료 link 에서 추출 후 정상 응답.
   - selector 차이: list 는 `<span class="tit">` + `<span class="date">` (평택은 `list_title`/`list_data`).
   - 본문 container 는 view_cont > mT10 (평택과 동일 SI 표준).
-- ✅ 5/17: **익산시 추가** (commit pending) — planweb 9is CMS. 19 시·군 가동.
+- ✅ 5/17: **익산시 추가** (commit 12d0ca4) — planweb 9is CMS. 19 시·군 가동.
   - 초기 진단: 9is 확장자 + JS 라우터 추정으로 보류.
   - 실제 원인: list 는 9is, detail 은 .do 직접 link. table-based (`<td data-cell-header="제목"/"작성일">`).
   - URL pattern: `/board/post/view.do?boardUid=...&menuUid=...&postUid={alphanumeric}`.
   - 본문 container: `hwp_editor_board_content` (한컴 hwp 변환) 우선 + `view_con` fallback.
-- ⏸ 5/17: 대구광역시 **보류** — Playwright 필요. SPA + AJAX.
+- ✅ 5/17: **대구광역시 추가** (commit pending) — 보도자료 전용 sub-domain `info.daegu.go.kr`. 20 시·군 가동.
+  - 초기 진단: www 사이트의 nttId hidden input (SPA) 보류.
+  - 실제 원인: www 의 메뉴 link 가 외부 sub-domain (`info.daegu.go.kr/newshome/`) 으로 이동.
+  - URL pattern: `mtnmain.php?mtnkey=articleview&aid={NNN}` (PHP-based, mtnkey 분기로 list/article).
+  - 본문 container: `article_view_content`. list 에 date 없음 → `_factory` 가 now() fallback.
+- ✅ 5/17: 대구광역시 **추가 완료** (위 항목 참조)
 - ⏸ 5/17: 성남시 **보류** — Playwright 필요. SPA + AJAX (모든 link javascript:void).
 - ⏸ 5/17: 천안시 **보류** — Playwright 필요. `fn_search_detail('alphanumeric')` JS 함수.
 - ⏸ 5/17: 안산시 **보류** — Playwright 필요. fnGoPage pagination 만 노출.
@@ -101,9 +106,10 @@ export function createPressCollector(cfg: CollectorConfig) { ... }
 - ✅ 5/17: 포항시 **추가 완료** (위 항목 참조)
 - ✅ 5/17: 익산시 **추가 완료** (위 항목 참조)
 
-## 보류 누적 (5개) — Playwright 필요
+## 보류 누적 (4개) — Playwright 필요
 
-대구·성남·천안·안산·창원 — 5 시·군 모두 SPA 변형 (포항은 mid 파라미터, 익산은 .do 직접 link 로 해소).
+성남·천안·안산·창원 — 4 시·군 모두 SPA 변형 또는 sitemap 부재.
+대구는 5/17 sub-domain 발견으로 해소.
 공통 의존성: `@sparticuz/chromium` (Vercel chromium runtime, ~50MB) + `playwright-core`.
 
 ### Playwright batch 도입 전 권장 사전 검증
