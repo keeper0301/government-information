@@ -32,6 +32,8 @@ const BASE_SIGNALS: HealthSignals = {
   naverPublishEligiblePending: 10,
   // 2026-05-14 — baseline 1h (방금 실행됨, alert X). 36h+ 케이스는 별도 테스트.
   collectLastRunHours: 1,
+  // 2026-05-17 — baseline 0 (전 시·군 정상, alert X). 10+ 케이스는 별도 테스트.
+  localPressStaleCities: 0,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -643,5 +645,31 @@ describe("checkThresholds — 2026-05-14: naver_publish_failure (codex spec)", (
       naverPublishEligiblePending: 50,
     });
     expect(alerts.find((a) => a.key === "naver_publish_failure")).toBeUndefined();
+  });
+});
+
+describe("checkThresholds — 2026-05-17: local_press_stale", () => {
+  const ACTIVE: HealthSignals = {
+    ...BASE_SIGNALS,
+    signups24h: 5,
+    active7dAny: 10,
+  };
+
+  it("localPressStaleCities 10+ → local_press_stale alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, localPressStaleCities: 10 });
+    const a = alerts.find((x) => x.key === "local_press_stale");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("stale 10건");
+    expect(a?.recommendation).toContain("/admin/autonomous");
+  });
+
+  it("localPressStaleCities 9 → 발화 안 함 (boundary)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, localPressStaleCities: 9 });
+    expect(alerts.find((a) => a.key === "local_press_stale")).toBeUndefined();
+  });
+
+  it("localPressStaleCities 0 → 발화 안 함 (정상)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, localPressStaleCities: 0 });
+    expect(alerts.find((a) => a.key === "local_press_stale")).toBeUndefined();
   });
 });

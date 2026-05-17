@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 같은 요청 안에서 lib/admin-health 등이 getAuthUsersCached 를 이미 호출했다면
 // react cache 가 결과 공유 → round trip 1회.
 import { getAuthUsersCached } from "@/lib/admin-stats";
+import { getStaleCityCount } from "@/lib/analytics/local-press-stats";
 
 export type HealthSignals = {
   // 24h 신규 가입 수
@@ -97,6 +98,13 @@ export type HealthSignals = {
    * collect_run audit 흔적 없음 → 999 (반드시 alert).
    */
   collectLastRunHours: number;
+  /**
+   * 2026-05-17 추가 — 시·군 보도자료 collector 중 최근 72h 안 inserted 0 인 수.
+   * 20 시·군 중 N 개 = collector regex 깨졌거나 사이트 구조 변경 (CMS 개편 등).
+   * KST 09:00 cron 3회차 연속 실패 = 운영자 selector 점검 필요.
+   * 첫 가동 3일 baseline 보다는 LOCAL_PRESS_STALE_FLOOR=10 정도 보수적 baseline 권장.
+   */
+  localPressStaleCities: number;
 };
 
 export type ThresholdAlert = {
@@ -115,7 +123,8 @@ export type ThresholdAlert = {
     | "collect_no_show"
     | "delivery_fail"
     | "loan_inflow_zero"
-    | "naver_publish_failure";
+    | "naver_publish_failure"
+    | "local_press_stale";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -194,6 +203,12 @@ const NAVER_PUBLISH_FAIL_FLOOR_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_FLOOR)
 const NAVER_PUBLISH_FAIL_RATE_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_RATE)
   ? NAVER_PUBLISH_FAIL_RATE
   : 0.9;
+// 2026-05-17 — 시·군 보도자료 collector stale 임계.
+// 20 시·군 중 N 이상이 72h 안 inserted 0 면 alert. 첫 cron 가동 후 baseline 누적까지
+// noise 있을 수 있어 보수적 floor (10). 1주 모니터링 후 5 로 낮추는 방향.
+const LOCAL_PRESS_STALE_FLOOR = Number(
+  process.env.LOCAL_PRESS_STALE_FLOOR ?? "10",
+);
 
 export async function getHealthSignals(): Promise<HealthSignals> {
   const sb = createAdminClient();
@@ -406,6 +421,9 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const naverPublishFails24h = naverFails.count ?? 0;
   const naverPublishEligiblePending = naverPending.count ?? 0;
 
+  // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
+  const localPressStaleCities = await getStaleCityCount(72);
+
   return {
     signups24h,
     active7d,
@@ -428,6 +446,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     naverPublishFails24h,
     naverPublishEligiblePending,
     collectLastRunHours,
+    localPressStaleCities,
   };
 }
 
@@ -645,6 +664,18 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `네이버 publish 24h 실패율 ${failRate}% (${s.naverPublishFails24h}/${s.naverPublishAttempts24h}, pending ${s.naverPublishEligiblePending}건). Playwright IP 차단 또는 legacy runner 잔존 가동 의심.`,
       recommendation:
         "/admin/naver-blog 의 audit details->>'runner' 분포 확인. legacy-cron-playwright 다수면 NAVER_PLAYWRIGHT_ENABLED 미설정 확인. local-playwright 다수면 사장님 노트북 runner.mjs 종료. Chrome Extension pivot 정상 가동 시 runner='chrome-extension' 으로 잡힘.",
+    });
+  }
+
+  // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
+  // 20 시·군 중 N 이상 stale = collector regex 깨졌거나 사이트 구조 변경.
+  // 첫 cron 가동 baseline 누적까지 noise 대비 보수적 floor 10 (LOCAL_PRESS_STALE_FLOOR env).
+  if (s.localPressStaleCities >= LOCAL_PRESS_STALE_FLOOR) {
+    alerts.push({
+      key: "local_press_stale",
+      message: `시·군 보도자료 collector stale ${s.localPressStaleCities}건 (임계 ${LOCAL_PRESS_STALE_FLOOR}+). 최근 72h inserted 0 시·군 수.`,
+      recommendation:
+        "/admin/autonomous 의 시·군 카드 확인 → 오류 시·군 사이트 직접 접속해 selector 점검. KST 09:00 cron 다음 회차 자동 재시도. 3 회차 연속 실패 시 lib/scraping/local-press/{city}.ts regex 수정 필요.",
     });
   }
 

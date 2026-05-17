@@ -96,3 +96,38 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
     lastCronAt,
   };
 }
+
+// health-alert cron 이 호출. 최근 windowHours (기본 72h) 안에 inserted 한 적 없는
+// 시·군 수를 반환. 3 cron 회차 연속 실패 = collector regex 깨졌거나 사이트 구조 변경 신호.
+// audit 자체가 없는 시·군도 stale 로 처리 (cron 노쇼 진단 보조).
+export async function getStaleCityCount(windowHours = 72): Promise<number> {
+  const admin = createAdminClient();
+  const since = new Date(
+    Date.now() - windowHours * 60 * 60 * 1000,
+  ).toISOString();
+
+  const { data: rows } = await admin
+    .from("admin_actions")
+    .select("details")
+    .eq("action", "local_press_scrape")
+    .gte("created_at", since);
+
+  // city → max inserted (한 번이라도 1+ 면 정상)
+  const maxInsertedByCity = new Map<string, number>();
+  for (const row of rows ?? []) {
+    const d = (row.details ?? {}) as Record<string, unknown>;
+    const city = String(d.city ?? "");
+    if (!city) continue;
+    const inserted = Number(d.inserted ?? 0);
+    const prev = maxInsertedByCity.get(city) ?? 0;
+    if (inserted > prev) maxInsertedByCity.set(city, inserted);
+  }
+
+  let stale = 0;
+  for (const entry of CITY_REGISTRY) {
+    if ((maxInsertedByCity.get(entry.city) ?? 0) === 0) {
+      stale += 1;
+    }
+  }
+  return stale;
+}
