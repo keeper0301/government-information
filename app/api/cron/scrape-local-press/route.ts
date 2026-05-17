@@ -3,33 +3,15 @@
 // ============================================================
 // Phase B B1-b. Vercel cron 매일 KST 09:00 (UTC 00:00) 호출.
 //
-// 현재 가동: 순천시청 (사장님 거주지). 향후 다른 시·군 같은 cron 안에 추가.
+// 시·군 등록: lib/scraping/local-press/_registry.ts (single source of truth).
+// 추가 시 그 파일에만 1줄 추가.
 //
 // auth: CRON_SECRET Bearer (vercel cron 자동 호출).
 // ============================================================
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { scrapeSuncheonAndInsert } from "@/lib/scraping/local-press/suncheon";
-import { scrapeGwangjuAndInsert } from "@/lib/scraping/local-press/gwangju";
-import { scrapeSeoulAndInsert } from "@/lib/scraping/local-press/seoul";
-import { scrapeSuwonAndInsert } from "@/lib/scraping/local-press/suwon";
-import { scrapeBusanAndInsert } from "@/lib/scraping/local-press/busan";
-import { scrapeIncheonAndInsert } from "@/lib/scraping/local-press/incheon";
-import { scrapeDaejeonAndInsert } from "@/lib/scraping/local-press/daejeon";
-import { scrapeUlsanAndInsert } from "@/lib/scraping/local-press/ulsan";
-import { scrapeGoyangAndInsert } from "@/lib/scraping/local-press/goyang";
-import { scrapeYonginAndInsert } from "@/lib/scraping/local-press/yongin";
-import { scrapeCheongjuAndInsert } from "@/lib/scraping/local-press/cheongju";
-import { scrapeHwaseongAndInsert } from "@/lib/scraping/local-press/hwaseong";
-import { scrapeJeonjuAndInsert } from "@/lib/scraping/local-press/jeonju";
-import { scrapeGimhaeAndInsert } from "@/lib/scraping/local-press/gimhae";
-import { scrapeNamyangjuAndInsert } from "@/lib/scraping/local-press/namyangju";
-import { scrapePyeongtaekAndInsert } from "@/lib/scraping/local-press/pyeongtaek";
-import { scrapePohangAndInsert } from "@/lib/scraping/local-press/pohang";
-import { scrapeIksanAndInsert } from "@/lib/scraping/local-press/iksan";
-import { scrapeDaeguAndInsert } from "@/lib/scraping/local-press/daegu";
-import { scrapeSejongAndInsert } from "@/lib/scraping/local-press/sejong";
+import { CITY_REGISTRY } from "@/lib/scraping/local-press/_registry";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -51,31 +33,6 @@ async function authorize(request: Request) {
   return null;
 }
 
-// 시·군 collector 목록 — Phase B 확장 시 여기에 추가.
-// 각 collector 는 admin client + limit 받아 ScrapeResult 반환.
-const COLLECTORS = [
-  { city: "순천시", fn: scrapeSuncheonAndInsert },
-  { city: "광주광역시", fn: scrapeGwangjuAndInsert },
-  { city: "서울특별시", fn: scrapeSeoulAndInsert },
-  { city: "수원시", fn: scrapeSuwonAndInsert },
-  { city: "부산광역시", fn: scrapeBusanAndInsert },
-  { city: "인천광역시", fn: scrapeIncheonAndInsert },
-  { city: "대전광역시", fn: scrapeDaejeonAndInsert },
-  { city: "울산광역시", fn: scrapeUlsanAndInsert },
-  { city: "고양특례시", fn: scrapeGoyangAndInsert },
-  { city: "용인특례시", fn: scrapeYonginAndInsert },
-  { city: "청주시", fn: scrapeCheongjuAndInsert },
-  { city: "화성특례시", fn: scrapeHwaseongAndInsert },
-  { city: "전주시", fn: scrapeJeonjuAndInsert },
-  { city: "김해시", fn: scrapeGimhaeAndInsert },
-  { city: "남양주시", fn: scrapeNamyangjuAndInsert },
-  { city: "평택시", fn: scrapePyeongtaekAndInsert },
-  { city: "포항시", fn: scrapePohangAndInsert },
-  { city: "익산시", fn: scrapeIksanAndInsert },
-  { city: "대구광역시", fn: scrapeDaeguAndInsert },
-  { city: "세종특별자치시", fn: scrapeSejongAndInsert },
-];
-
 async function runScrape() {
   const admin = createAdminClient();
   const results: Array<{
@@ -87,9 +44,9 @@ async function runScrape() {
     error?: string;
   }> = [];
 
-  for (const collector of COLLECTORS) {
+  for (const entry of CITY_REGISTRY) {
     try {
-      const r = await collector.fn(admin, 10);
+      const r = await entry.fn(admin, 10);
       results.push(r);
       await logAdminAction({
         actorId: null,
@@ -101,7 +58,7 @@ async function runScrape() {
       });
     } catch (e) {
       results.push({
-        city: collector.city,
+        city: entry.city,
         fetched: 0,
         inserted: 0,
         skipped: 0,

@@ -1,7 +1,7 @@
 // ============================================================
 // /admin/scrape-local server action — 도시별 수동 수집
 // ============================================================
-// 사장님 1 클릭 호출. 각 collector 의 scrape*AndInsert 직접 실행 +
+// 사장님 1 클릭 호출. _registry 에서 collector 검색 → 실행 +
 // admin_actions 감사 로그 + revalidatePath 로 페이지 자동 갱신.
 // ============================================================
 
@@ -12,23 +12,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
-import { scrapeSuncheonAndInsert } from "@/lib/scraping/local-press/suncheon";
-import { scrapeGwangjuAndInsert } from "@/lib/scraping/local-press/gwangju";
+import {
+  CITY_BY_KEY,
+  type CityKey,
+} from "@/lib/scraping/local-press/_registry";
 
-const COLLECTORS = {
-  suncheon: {
-    city: "순천시",
-    ministry: "전라남도 순천시",
-    fn: scrapeSuncheonAndInsert,
-  },
-  gwangju: {
-    city: "광주광역시",
-    ministry: "광주광역시",
-    fn: scrapeGwangjuAndInsert,
-  },
-} as const;
-
-export type CityKey = keyof typeof COLLECTORS;
+export type { CityKey } from "@/lib/scraping/local-press/_registry";
 
 export async function scrapeCityAction(city: CityKey, limit = 10) {
   const supabase = await createClient();
@@ -38,20 +27,20 @@ export async function scrapeCityAction(city: CityKey, limit = 10) {
   if (!user || !isAdminUser(user.email)) {
     return { error: "권한 없음" };
   }
-  const collector = COLLECTORS[city];
-  if (!collector) {
+  const entry = CITY_BY_KEY[city];
+  if (!entry) {
     return { error: "알 수 없는 도시" };
   }
 
   const safeLimit = Math.min(Math.max(limit, 1), 30);
 
   try {
-    const result = await collector.fn(createAdminClient(), safeLimit);
+    const result = await entry.fn(createAdminClient(), safeLimit);
     await logAdminAction({
       actorId: user.id,
       action: "local_press_scrape",
       details: {
-        ministry: collector.ministry,
+        ministry: entry.ministry,
         trigger: "admin_manual",
         ...result,
       },

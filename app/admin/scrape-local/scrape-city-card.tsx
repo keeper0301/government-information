@@ -8,7 +8,7 @@ import { useState, useTransition } from "react";
 import { scrapeCityAction, type CityKey } from "./actions";
 
 type RecentRun = {
-  ministry: string;
+  city: string;
   trigger: string;
   fetched: number;
   inserted: number;
