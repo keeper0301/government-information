@@ -119,26 +119,32 @@ export default async function AdminAutonomousPage() {
         description={`5 Phase 중 ${activeCount}개 가동 · 외부 액션 ${pendingActions.length}건 대기. 매일 1번 점검 권장.`}
       />
 
+      {/* 1. 자동 개선 진단 — 사장님이 가장 먼저 보는 행동 액션 */}
+      <SectionHeader title="🎯 오늘 반영할 개선 과제" />
       <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
 
+      {/* 2. 수익·비용 — 매출 추세 + 콘텐츠 비용 */}
+      <SectionHeader title="💰 수익 · 비용" />
       <RevenueChartCard series={revenueSeries} />
-
-      <ClickStatsCard stats={eventStats24h} top={topPrograms} />
-
-      <PopularityTrendCard trend={popularityTrend} />
-
-      <SnsPublishCard stats={snsStats} envStatus={snsEnvStatus} />
-
       <GeminiSpendingCard stats={geminiSpending} />
 
+      {/* 3. 사용자 가치 — 클릭·인기·SNS 가시화 */}
+      <SectionHeader title="📈 사용자 가치" />
+      <ClickStatsCard stats={eventStats24h} top={topPrograms} />
+      <PopularityTrendCard trend={popularityTrend} />
+      <SnsPublishCard stats={snsStats} envStatus={snsEnvStatus} />
+
+      {/* 4. 데이터 수집 — cron 자동 가동 결과 (5/17 신규) */}
+      <SectionHeader title="🗞️ 데이터 수집" />
       <div className="mb-4">
         <LocalPressCard stats={localPressStats} />
       </div>
-
       <div className="mb-4">
         <PressIngestTierCard stats={pressIngestTierStats} />
       </div>
 
+      {/* 5. 외부 액션 + Phase 상태 */}
+      <SectionHeader title="⚙️ Phase 가동 + 외부 액션" />
       <PendingActionsPanel actions={pendingActions} />
 
       <div className="space-y-3">
@@ -153,6 +159,15 @@ export default async function AdminAutonomousPage() {
         Phase 진행 메모리: <code>memory/project_keepioo_autonomous_ops_master_2026_05_08.md</code>
       </p>
     </div>
+  );
+}
+
+// 5/17 추가 — 14+ 카드를 5 카테고리로 grouping 해 사장님 매일 30초 점검 가독성 ↑.
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <h2 className="mt-6 mb-3 text-xs font-semibold uppercase tracking-wider text-grey-500 first:mt-0">
+      {title}
+    </h2>
   );
 }
 
