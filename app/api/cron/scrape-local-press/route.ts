@@ -13,6 +13,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { scrapeSuncheonAndInsert } from "@/lib/scraping/local-press/suncheon";
 import { scrapeGwangjuAndInsert } from "@/lib/scraping/local-press/gwangju";
 import { scrapeSeoulAndInsert } from "@/lib/scraping/local-press/seoul";
+import { scrapeSuwonAndInsert } from "@/lib/scraping/local-press/suwon";
+import { scrapeBusanAndInsert } from "@/lib/scraping/local-press/busan";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
@@ -40,6 +42,8 @@ const COLLECTORS = [
   { city: "순천시", fn: scrapeSuncheonAndInsert },
   { city: "광주광역시", fn: scrapeGwangjuAndInsert },
   { city: "서울특별시", fn: scrapeSeoulAndInsert },
+  { city: "수원시", fn: scrapeSuwonAndInsert },
+  { city: "부산광역시", fn: scrapeBusanAndInsert },
 ];
 
 async function runScrape() {
