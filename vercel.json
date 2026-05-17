@@ -11,8 +11,8 @@
   "crons": [
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
     { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/health-alert", "schedule": "5 0 * * *" },
-    { "path": "/api/cron/naver-queue-alert", "schedule": "10 0 * * *" },
+    { "path": "/api/cron/health-alert", "schedule": "15 0 * * *" },
+    { "path": "/api/cron/naver-queue-alert", "schedule": "20 0 * * *" },
     { "path": "/api/cron/onboarding-reminder", "schedule": "5 2 * * *" },
     { "path": "/api/cron/weekly-digest", "schedule": "0 0 * * 1" },
     { "path": "/api/cron/weekly-ops-digest", "schedule": "0 0 * * 2" },
