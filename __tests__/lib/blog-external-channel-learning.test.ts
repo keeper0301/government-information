@@ -3,30 +3,33 @@ import { extractExternalChannelLearningHints } from "@/lib/blog/external-channel
 
 describe("extractExternalChannelLearningHints", () => {
   it("인스타와 네이버 발행 결과를 다음 글 생성 힌트로 요약한다", () => {
-    const hints = extractExternalChannelLearningHints({
-      instagramActions: [
-        {
-          action: "instagram_publish_fail",
-          details: { error: "Graph API media container failed" },
-        },
-        {
-          action: "instagram_publish_success",
-          details: { slug: "youth-rent" },
-        },
-      ],
-      naverAudits: [
-        {
-          result: "fail",
-          error_message: "captcha_detected",
-          skip_reason: null,
-        },
-        {
-          result: "success",
-          error_message: null,
-          skip_reason: null,
-        },
-      ],
-    });
+    const hints = extractExternalChannelLearningHints(
+      {
+        instagramActions: [
+          {
+            action: "instagram_publish_fail",
+            details: { error: "Graph API media container failed" },
+          },
+          {
+            action: "instagram_publish_success",
+            details: { slug: "youth-rent" },
+          },
+        ],
+        naverAudits: [
+          {
+            result: "fail",
+            error_message: "captcha_detected",
+            skip_reason: null,
+          },
+          {
+            result: "success",
+            error_message: null,
+            skip_reason: null,
+          },
+        ],
+      },
+      4,
+    );
 
     expect(hints).toEqual([
       expect.stringContaining("인스타 최근 실패 1건"),

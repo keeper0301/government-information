@@ -85,9 +85,9 @@ describe("formatDigestMessage", () => {
     expect(message).toContain("cron 실패 4");
   });
 
-  it("link 는 메시지에 포함 안 됨 (link 결정은 cron 라우터 책임)", () => {
+  it("직접 URL link 는 메시지에 포함 안 됨 (link 결정은 cron 라우터 책임)", () => {
     const message = formatDigestMessage(ZERO);
-    expect(message).not.toContain("keepioo.com");
+    expect(message).not.toContain("https://");
   });
 
   it("press 자동 등록 0 — 광역 의존도 라벨 미포함 (의미 X)", () => {
