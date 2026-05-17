@@ -9,6 +9,7 @@
 
 import {
   createPressCollector,
+  decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
 
@@ -24,20 +25,6 @@ const LIST_ITEM_REGEX =
 const DATE_REGEX =
   /<td\s+data-cell-header="작성일"\s+class="date">[\s\S]*?(\d{4})-(\d{2})-(\d{2})\s*<\/td>/g;
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lsquo;|&rsquo;/g, "'")
-    .replace(/&ldquo;|&rdquo;/g, '"')
-    .replace(/&hellip;/g, "…")
-    .replace(/&middot;/g, "·")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
-}
-
 export function parseListPage(html: string): PressNewsItem[] {
   const items: Array<Omit<PressNewsItem, "publishedDate"> & { idx: number }> =
     [];
@@ -50,7 +37,7 @@ export function parseListPage(html: string): PressNewsItem[] {
   while ((m = itemRe.exec(html)) !== null) {
     const href = m[1];
     const seq = m[2];
-    const title = decodeEntities(m[3]).trim();
+    const title = decodeBasicEntities(m[3]).trim();
     if (!title) continue;
     if (seen.has(seq)) continue;
     seen.add(seq);
@@ -86,7 +73,7 @@ export function parseDetailBody(html: string): string | null {
   for (const re of BODY_REGEXES) {
     const m = re.exec(html);
     if (!m) continue;
-    const text = decodeEntities(
+    const text = decodeBasicEntities(
       m[1]
         .replace(/<br\s*\/?>/gi, "\n")
         .replace(/<[^>]+>/g, "")

@@ -11,6 +11,7 @@
 
 import {
   createPressCollector,
+  decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
 
@@ -22,20 +23,6 @@ const DETAIL_BASE_ORIGIN = "http://info.daegu.go.kr/newshome/";
 const LIST_ITEM_REGEX =
   /<a\s+href="(\.\/mtnmain\.php\?mtnkey=articleview[^"]*aid=(\d+))"\s+title="([^"]+)"/g;
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lsquo;|&rsquo;/g, "'")
-    .replace(/&ldquo;|&rdquo;/g, '"')
-    .replace(/&hellip;/g, "…")
-    .replace(/&middot;/g, "·")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
-}
-
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
   const seen = new Set<string>();
@@ -45,7 +32,7 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[2];
     if (seen.has(seq)) continue;
     seen.add(seq);
-    const title = decodeEntities(m[3]).trim();
+    const title = decodeBasicEntities(m[3]).trim();
     if (!title) continue;
     const href = m[1].replace(/^\.\//, "").replace(/&amp;/g, "&");
     items.push({
@@ -66,7 +53,7 @@ const BODY_REGEX =
 export function parseDetailBody(html: string): string | null {
   const m = BODY_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeEntities(
+  const text = decodeBasicEntities(
     m[1]
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<img[^>]*>/gi, "")

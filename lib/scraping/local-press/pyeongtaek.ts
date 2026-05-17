@@ -10,6 +10,7 @@
 
 import {
   createPressCollector,
+  decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
 
@@ -32,7 +33,9 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[1];
     if (seen.has(seq)) continue;
     seen.add(seq);
-    const title = m[2].trim();
+    // W1 일관성 (5/17): decodeBasicEntities 호출. title 에 &hellip; &middot; 등이
+    // 있을 때 raw 노출 방지 (5/17 commit d948039 후속).
+    const title = decodeBasicEntities(m[2]).trim();
     if (!title) continue;
     const publishedDate = `${m[3]}-${m[4]}-${m[5]}`;
     items.push({
@@ -49,24 +52,10 @@ export function parseListPage(html: string): PressNewsItem[] {
 const BODY_REGEX =
   /<div\s+class="view_cont">[\s\S]*?<div\s+class="mT10[^"]*">([\s\S]*?)<\/div>/;
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lsquo;|&rsquo;/g, "'")
-    .replace(/&ldquo;|&rdquo;/g, '"')
-    .replace(/&hellip;/g, "…")
-    .replace(/&middot;/g, "·")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
-}
-
 export function parseDetailBody(html: string): string | null {
   const m = BODY_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeEntities(
+  const text = decodeBasicEntities(
     m[1]
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, "")

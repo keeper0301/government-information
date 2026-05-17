@@ -48,6 +48,26 @@ export type ScrapeResult = {
   errors: string[];
 };
 
+// 표준 HTML entity 디코딩 (5/17 추가). title / 본문 모두 사용 가능.
+// 사이트 별 특수 entity (예: 한자 / numeric entity) 는 각 collector 가 보완.
+//
+// 일관성 spec (W1): parseListItems 의 title 매칭 후 호출 권장. 현재 신규
+// collector 4종 (pyeongtaek·pohang·iksan·daegu) 부터 적용. 기존 13 collector
+// 는 baseline 영향 작아 별도 batch 미룸 (회귀 위험 < 가치).
+export function decodeBasicEntities(s: string): string {
+  return s
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lsquo;|&rsquo;/g, "'")
+    .replace(/&ldquo;|&rdquo;/g, '"')
+    .replace(/&hellip;/g, "…")
+    .replace(/&middot;/g, "·")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+}
+
 // 응답 본문이 alert page 인지 검증. 시청 사이트가 mid/menu_id 누락 시
 // "alert('잘못된 접근입니다.'); location.href='/'" 같은 200 byte 응답 반환 (포항 사례).
 // silent fail 방지 위해 throw → collector errors[] 에 잡혀 health-alert 가 발화.
