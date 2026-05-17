@@ -48,6 +48,15 @@ export type ScrapeResult = {
   errors: string[];
 };
 
+// 응답 본문이 alert page 인지 검증. 시청 사이트가 mid/menu_id 누락 시
+// "alert('잘못된 접근입니다.'); location.href='/'" 같은 200 byte 응답 반환 (포항 사례).
+// silent fail 방지 위해 throw → collector errors[] 에 잡혀 health-alert 가 발화.
+const ALERT_REDIRECT_RE =
+  /alert\s*\(\s*['"](잘못된 접근|접근이 제한|권한이 없|존재하지 않)/i;
+// 최소 size — list page 는 보통 30KB+. redirect HTML 은 200~500 byte.
+// 안전 buffer 로 1024 (1KB). 작은 fixture 사이트 알려진 사례 없음.
+const MIN_RESPONSE_SIZE = 1024;
+
 export async function fetchPage(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
@@ -56,7 +65,16 @@ export async function fetchPage(url: string): Promise<string> {
   if (!res.ok) {
     throw new Error(`fetch failed (${res.status}): ${url}`);
   }
-  return res.text();
+  const text = await res.text();
+  if (text.length < MIN_RESPONSE_SIZE) {
+    throw new Error(
+      `response too small (${text.length} bytes, redirect/alert 의심): ${url}`,
+    );
+  }
+  if (ALERT_REDIRECT_RE.test(text)) {
+    throw new Error(`alert/redirect 응답 감지 (referer/mid 가드 의심): ${url}`);
+  }
+  return text;
 }
 
 // config → collector instance. .scrapeAndInsert 가 cron 에서 호출되는 표준 시그너처.
