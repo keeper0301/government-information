@@ -36,7 +36,7 @@ interface BlogPostRow {
   id: string;
   title: string;
   slug: string;
-  description: string | null;
+  meta_description: string | null;
 }
 
 async function run() {
@@ -46,7 +46,7 @@ async function run() {
   // 24h 발행 + admin_review_required=false (낮은 점수 글은 SNS 게시 X — A1 결합)
   const { data: posts, error } = await admin
     .from("blog_posts")
-    .select("id, title, slug, description")
+    .select("id, title, slug, meta_description")
     .gte("published_at", since24h)
     .eq("admin_review_required", false)
     .limit(BATCH_LIMIT);
@@ -82,7 +82,9 @@ async function run() {
     const results = await dispatchBlogToSns({
       title: p.title,
       slug: p.slug,
-      description: p.description,
+      // 5/18 fix — blog_posts.description column 부재. meta_description (150~160자) 으로 대체.
+      // dispatch.ts:37 이 100자 truncate 하므로 자연스럽게 호환.
+      description: p.meta_description,
     });
     processedResults.push({ id: p.id, results });
 
