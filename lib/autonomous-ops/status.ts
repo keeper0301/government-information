@@ -124,11 +124,11 @@ async function phase1(): Promise<PhaseStatus> {
       },
       {
         label: "24h 상주 agent 진단",
-        value: `${agentDiagnose}회 (30분 cycle)`,
+        value: `${agentDiagnose}회 (sidecar + in-site 합산, 30분 cycle)`,
       },
       {
         label: "24h 상주 agent 판단",
-        value: `${agentExecute}회 (정책엔진 감사)`,
+        value: `${agentExecute}회 (agent-policy 감사 — sidecar + in-site)`,
       },
       {
         label: "24h weekly-ops-digest",

@@ -52,8 +52,10 @@ export type ImprovementSnapshot = {
   pendingExternalActionsCount?: number;
   // 2026-05-19 — Naver Extension 7일 audit 0건 (가동 안 됨)
   naverExtensionIdle?: boolean;
-  // 2026-05-19 — Codex sidecar 24h agent_diagnose_run count
-  // 정상 ≥ 300 (30분 cycle × 48 × 9 question = 432, 70% threshold)
+  // 2026-05-19 — agent_diagnose_run 24h count (sidecar + in-site agent-resident-cycle 합산).
+  // 정상 ≥ 300 (30분 cycle × 48 × 9 question = 432, 70% threshold).
+  // 사장님 5/19 in-site cron 도입 (commit 24c3825) 후 sidecar 미가동이라도 in-site 만으로 임계 충족 가능.
+  // 두 source 모두 < 300 시만 recommendation 발동 — false positive 차단.
   agentDiagnoseRuns24h?: number;
 };
 
@@ -398,14 +400,15 @@ export function buildImprovementRecommendations(
   }
 
   // 2026-05-19 — Codex sidecar cycle 사고 (free cold start)
+  // 사장님 in-site agent-resident-cycle 도입 (24c3825) 후 합산 카운트 사용 — 양쪽 모두 0 이면 발동.
   if (s.agentDiagnoseRuns24h !== undefined && s.agentDiagnoseRuns24h > 0 && s.agentDiagnoseRuns24h < 300) {
     recs.push({
       area: "cron_reliability",
       severity: "medium",
-      title: "Codex sidecar cycle 사고 — Render free cold start 추정",
-      evidence: `24h agent_diagnose_run ${s.agentDiagnoseRuns24h}건 (정상 ≥ 300, 의도 432 = 30분 cycle × 48 × 9 question)`,
+      title: "Codex agent cycle 부진 — sidecar + in-site 합산 미달",
+      evidence: `24h agent_diagnose_run ${s.agentDiagnoseRuns24h}건 (정상 ≥ 300, 의도 432 = 30분 cycle × 48 × 9 question). sidecar (Render free cold start) + in-site agent-resident-cycle 합산.`,
       action:
-        "Render Starter plan 업그레이드 ($7/월) 로 always-on. 가이드: docs/external-actions/render-plan-upgrade.md. W1 ramp-up (5/25) 전 권장.",
+        "1) Vercel cron agent-resident-cycle 가동 확인 (/admin/cron-trigger). 2) Render Starter ($7/월) 업그레이드 (sidecar always-on, 선택적). 가이드: docs/external-actions/render-plan-upgrade.md",
     });
   }
 
