@@ -14,8 +14,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 단일 source — pressUnclassified24h 정확 의미 (24h news_posts 광역 ∖ candidates)
 // dashboard-alerts 와 임계 (≥30) 일관성 보장.
 import { getPressIngestKpi } from "@/lib/press-ingest/filter";
-// news cap 단일 source — cron route 에서 export
-import { CAP_PER_CRON as NEWS_CAP_PER_CRON } from "@/app/api/cron/news-classify/route";
+// news cap 단일 source
+import { NEWS_CLASSIFY_CAP_PER_CRON as NEWS_CAP_PER_CRON } from "@/lib/news-classify-config";
 
 export type DailyCount = { day: string; count: number };
 

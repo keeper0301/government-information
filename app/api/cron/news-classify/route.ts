@@ -10,16 +10,13 @@ import {
   decideAutoModeration,
 } from "@/lib/news/classify";
 import { logAdminAction } from "@/lib/admin-actions";
+import { NEWS_CLASSIFY_CAP_PER_CRON } from "@/lib/news-classify-config";
 
 export const dynamic = "force-dynamic";
 // cap 200 × 평균 3초/건 ÷ 동시 5 = ~120초. maxDuration 600초 = 5x margin.
 export const maxDuration = 600;
 
-// spec opt-C — 100 → 200 확대 + 동시 5 병렬화. 14k backlog 14일 해소 목표.
-// gpt-4o-mini 비용: cron 6회 × 200건 = 1,200건/일 ≈ 월 ~$15 (Haiku 의 ~1/7).
-// timeout: 200 × ~3초 ÷ 동시 5 ≈ 120초 < maxDuration 600초 (5x margin).
-// export — /admin/ops-monitor 가 표시값 동기화.
-export const CAP_PER_CRON = 200;
+const CAP_PER_CRON = NEWS_CLASSIFY_CAP_PER_CRON;
 // 동시 호출 수 — Anthropic Tier 별 rate limit 고려해 보수적 5. 24h 모니터링 후 조정 가능.
 const CONCURRENCY = 5;
 

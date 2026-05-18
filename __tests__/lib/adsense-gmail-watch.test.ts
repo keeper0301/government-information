@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifyAdsenseEmail } from "@/lib/external-console/gmail-adsense-watch";
-import { buildGmailVerdictAlert } from "@/app/api/cron/adsense-gmail-watch/route";
+import { buildGmailVerdictAlert } from "@/lib/adsense-gmail-verdict-alert";
 
 describe("classifyAdsenseEmail", () => {
   it("한국어 '승인' → approved", () => {

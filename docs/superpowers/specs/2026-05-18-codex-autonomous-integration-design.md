@@ -61,9 +61,11 @@ Codex 통합 = 위 3 영역 자동화. 단 **agent-policy 절대 우회 X** — 
 - 사장님 PR 검토 부담 ~5분/일
 
 ### W2 (안전 영역 auto_execute, 1주)
-- 검증된 PR_ACTIONS (prompt_tuning·notification_copy_change·non_destructive_backfill)
+- `AGENT_W2_ENABLED=true` 일 때 등록된 `ACTION_DISPATCHERS` 만 직접 실행
+- 2026-05-18 1차 등록: `codex_diagnose`, `health_check`, `cron_audit`, `quality_score`
+- sidecar W2는 안전한 W1 PR만 자동 merge 해서 GitHub→Vercel production deploy 로 연결
 - destructive·auth·secrets·payments 는 영구 blocked/admin_review.
-- 2026-05-18 사장님 승인: DB schema 변경은 W1부터 migration PR 생성까지 허용한다. 운영 DB 직접 적용은 별도 W2 dispatcher와 검증 후만 허용한다.
+- 2026-05-18 사장님 승인: DB schema 변경은 W1부터 migration PR 생성까지 허용한다. 운영 DB 직접 적용과 schema PR 자동 merge 는 차단한다.
 
 ### W3+ (점진 확장)
 - 콘텐츠 자율 발행 (Phase 5-B/C)
