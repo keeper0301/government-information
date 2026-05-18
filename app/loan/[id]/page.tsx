@@ -61,9 +61,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     (v) => v && !isSubstantiallyDuplicate(v as string, data.description),
   ).length;
   const hasInsight = !!(data.unique_insight && (data.unique_insight as string).trim().length >= 80);
-  // "thin" 임계: 핵심 정보 1개 이하 또는 본문 100자 이하 → noindex.
-  // 단, unique_insight 있으면 본문 충분 → index 허용 (검수자 sample 시 큐레이션 페이지 노출).
-  const isSparse = !hasInsight && (filledCount <= 1 || descLen <= 100);
+  // "thin" 임계 — 2026-05-18 AdSense 재거절 후 엄격 강화.
+  // unique_insight 없으면 무조건 noindex (정부 원문 복붙 페이지 검수자 노출 차단).
+  const isSparse = !hasInsight;
+  void filledCount; void descLen;
 
   return {
     title: `${data.title} — 정책알리미`,

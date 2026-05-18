@@ -48,9 +48,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const summaryFields = [data.eligibility, data.benefits, period, data.apply_method];
   const filledCount = summaryFields.filter((v) => v && !isSubstantiallyDuplicate(v as string, data.description)).length;
   const hasInsight = !!(data.unique_insight && (data.unique_insight as string).trim().length >= 80);
-  // "thin" 임계: 핵심 정보 1개 이하 또는 본문 100자 이하 → noindex.
-  // 단, unique_insight 있으면 본문 충분 → index 허용 (검수자 sample 시 큐레이션 페이지 노출).
-  const isSparse = !hasInsight && (filledCount <= 1 || descLen <= 100);
+  // "thin" 임계 — 2026-05-18 AdSense 재거절 후 엄격 강화.
+  // unique_insight 없으면 무조건 noindex (정부 원문 복붙 페이지 검수자 노출 차단).
+  // filledCount/descLen 충실 보조 조건은 폐기 — AdSense "low value content" 정책상
+  // 정부 데이터 가공만으로는 부가가치 불충분 판정. 백필 완료 row 만 index.
+  const isSparse = !hasInsight;
+  // 회귀 감시: filledCount/descLen 도 함께 기록 (admin/insight-progress 진단용).
+  void filledCount; void descLen;
 
   return {
     title: `${data.title} — 정책알리미`,

@@ -135,24 +135,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Welfare programs — unique_insight 보유 페이지는 priority 0.7 → 0.85 (큐레이션 시그널 우선).
-  // unique_insight_at 만 select → row 당 transfer 최소 (text 본문 미수신).
-  // lastModified 는 더 최근 시점 사용 — 백필 진행 시 검색엔진 "신규 갱신" 인식 강화.
+  // Welfare programs — 2026-05-18 AdSense 재거절 후 엄격 강화.
+  // unique_insight 보유 페이지만 sitemap 등록 (detail page noindex 정책과 일관).
+  // welfare/[id]/page.tsx 의 isSparse 가 !hasInsight 면 noindex 처리 → sitemap 에서
+  // 같은 row 빼지 않으면 Search Console "Indexed, though blocked by noindex" 경고 +
+  // AdSense 검수자가 sitemap → noindex URL 도달 시 부정 시그널.
   const { data: welfare } = await supabase
     .from("welfare_programs")
     .select("id, updated_at, unique_insight_at")
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER);
+    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+    .not("unique_insight_at", "is", null);
   const welfarePages: MetadataRoute.Sitemap = (welfare || []).map((w) => {
-    const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at ?? null;
-    const hasInsight = !!insightAt;
-    const lastModSrc = hasInsight && insightAt && new Date(insightAt) > new Date(w.updated_at)
-      ? insightAt
-      : w.updated_at;
+    const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at!;
+    const lastModSrc = new Date(insightAt) > new Date(w.updated_at) ? insightAt : w.updated_at;
     return {
       url: `${baseUrl}/welfare/${w.id}`,
       lastModified: new Date(lastModSrc),
       changeFrequency: "weekly" as const,
-      priority: hasInsight ? 0.85 : 0.7,
+      priority: 0.85,
     };
   });
 
@@ -165,22 +165,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // Loan programs — welfare 와 동일 패턴 (unique_insight 보유 시 priority 0.85 + lastMod 갱신).
+  // Loan programs — welfare 와 동일 패턴 (unique_insight 보유 row 만 sitemap 등록).
   const { data: loans } = await supabase
     .from("loan_programs")
     .select("id, updated_at, unique_insight_at")
-    .not("source_code", "in", LOAN_EXCLUDED_FILTER);
+    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+    .not("unique_insight_at", "is", null);
   const loanPages: MetadataRoute.Sitemap = (loans || []).map((l) => {
-    const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at ?? null;
-    const hasInsight = !!insightAt;
-    const lastModSrc = hasInsight && insightAt && new Date(insightAt) > new Date(l.updated_at)
-      ? insightAt
-      : l.updated_at;
+    const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at!;
+    const lastModSrc = new Date(insightAt) > new Date(l.updated_at) ? insightAt : l.updated_at;
     return {
       url: `${baseUrl}/loan/${l.id}`,
       lastModified: new Date(lastModSrc),
       changeFrequency: "weekly" as const,
-      priority: hasInsight ? 0.85 : 0.7,
+      priority: 0.85,
     };
   });
 
