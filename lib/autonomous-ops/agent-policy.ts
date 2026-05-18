@@ -112,9 +112,9 @@ export function decideAgentAutomation(
 
   if (op.touchesSchema) {
     return {
-      mode: "admin_review",
+      mode: "create_pr",
       risk: "high",
-      reason: "운영 DB schema 변경은 마이그레이션 검토와 적용 승인이 필요합니다.",
+      reason: "운영 DB schema 변경은 허용하되 migration PR과 테스트를 거친 뒤 반영합니다.",
     };
   }
 
@@ -161,10 +161,10 @@ export function getAgentPolicySummary(): AgentPolicySummary {
       "스크래퍼 regex/selector 수정",
       "프롬프트·SEO 문구·알림 copy 변경",
       "어드민 dashboard UI 개선",
+      "운영 DB schema migration PR 생성",
       "인증·보안 관련 코드 변경",
     ],
     review: [
-      "운영 DB schema migration 적용",
       "시크릿·토큰·환경변수 교체",
       "결제·환불·구독 상태 변경",
       "분류되지 않은 신규 자동화 작업",

@@ -70,14 +70,17 @@ describe("decideAgentAutomation", () => {
     });
   });
 
-  it("schema·secret·payment 는 관리자 검토로 보낸다", () => {
+  it("schema 는 허용하되 PR/high 로 보내고 secret·payment 는 관리자 검토로 보낸다", () => {
     expect(
       decideAgentAutomation({
         area: "data",
         action: "apply_migration",
         touchesSchema: true,
-      }).mode,
-    ).toBe("admin_review");
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "high",
+    });
     expect(
       decideAgentAutomation({
         area: "secrets",

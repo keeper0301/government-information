@@ -62,7 +62,8 @@ Codex 통합 = 위 3 영역 자동화. 단 **agent-policy 절대 우회 X** — 
 
 ### W2 (안전 영역 auto_execute, 1주)
 - 검증된 PR_ACTIONS (prompt_tuning·notification_copy_change·non_destructive_backfill)
-- destructive·schema·auth·secrets·payments 는 영구 blocked
+- destructive·auth·secrets·payments 는 영구 blocked/admin_review.
+- 2026-05-18 사장님 승인: DB schema 변경은 W1부터 migration PR 생성까지 허용한다. 운영 DB 직접 적용은 별도 W2 dispatcher와 검증 후만 허용한다.
 
 ### W3+ (점진 확장)
 - 콘텐츠 자율 발행 (Phase 5-B/C)
