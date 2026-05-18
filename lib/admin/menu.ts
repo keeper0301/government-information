@@ -25,6 +25,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     title: "운영 상태",
     items: [
       { href: "/admin/autonomous", label: "자율 운영 마스터", icon: "🤖" },
+      { href: "/admin/external-actions", label: "외부 액션 가이드", icon: "📌" },
       { href: "/admin/health", label: "헬스 대시보드", icon: "📊" },
       { href: "/admin/ops-monitor", label: "운영 모니터링", icon: "📡" },
       { href: "/admin/cron-trigger", label: "cron 수동 실행", icon: "⚙️" },
