@@ -22,6 +22,8 @@ export type BlogPublishStats = {
   // 정상 ~1,900자. < 1,700자 = LLM dysfunction 의심.
   avgBodyChars24h: number | null;
   bodyStatus: "healthy" | "anomaly" | "no-data";
+  // 2026-05-19 — 7일 일별 본문 평균 (mini chart). 0인 날은 발행 없음.
+  dailyBodyAvg7d: { day: string; avgChars: number }[];
 };
 
 export async function getBlogPublishStats(): Promise<BlogPublishStats> {
@@ -31,7 +33,7 @@ export async function getBlogPublishStats(): Promise<BlogPublishStats> {
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const [c24, c7d, lastRow, posts24h] = await Promise.all([
+  const [c24, c7d, lastRow, posts24h, posts7d] = await Promise.all([
     admin
       .from("blog_posts")
       .select("id", { count: "exact", head: true })
@@ -55,7 +57,42 @@ export async function getBlogPublishStats(): Promise<BlogPublishStats> {
       .select("content")
       .gte("published_at", since24h)
       .not("published_at", "is", null),
+    // 2026-05-19 — 7일 발행글 content + published_at (일별 mini chart)
+    admin
+      .from("blog_posts")
+      .select("content, published_at")
+      .gte("published_at", since7d)
+      .not("published_at", "is", null),
   ]);
+
+  // 7일 일별 본문 평균 계산 — KST 기준 일자 group
+  const dailyBuckets = new Map<string, { total: number; count: number }>();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 3600_000);
+    const kstDate = new Date(d.getTime() + 9 * 3600_000);
+    const key = kstDate.toISOString().slice(5, 10); // MM-DD
+    dailyBuckets.set(key, { total: 0, count: 0 });
+  }
+  for (const post of posts7d.data ?? []) {
+    const publishedAt = (post as { published_at?: string }).published_at;
+    if (!publishedAt) continue;
+    const kstDate = new Date(new Date(publishedAt).getTime() + 9 * 3600_000);
+    const key = kstDate.toISOString().slice(5, 10);
+    const bucket = dailyBuckets.get(key);
+    if (!bucket) continue;
+    const plain =
+      ((post as { content?: string }).content ?? "")
+        .replace(/<[^>]+>/g, "")
+        .trim();
+    bucket.total += plain.length;
+    bucket.count += 1;
+  }
+  const dailyBodyAvg7d = Array.from(dailyBuckets.entries()).map(
+    ([day, { total, count }]) => ({
+      day,
+      avgChars: count > 0 ? Math.round(total / count) : 0,
+    }),
+  );
 
   const lastPublishedAt = lastRow.data?.published_at ?? null;
   const hoursSinceLastPublish = lastPublishedAt
@@ -95,5 +132,6 @@ export async function getBlogPublishStats(): Promise<BlogPublishStats> {
     status,
     avgBodyChars24h,
     bodyStatus,
+    dailyBodyAvg7d,
   };
 }

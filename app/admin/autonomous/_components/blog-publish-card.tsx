@@ -91,14 +91,55 @@ export function BlogPublishCard({ stats }: { stats: BlogPublishStats }) {
       {stats.bodyStatus === "anomaly" && (
         <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
           <div className="font-medium">
-            ⚠️ 본문 평균 {stats.avgBodyChars24h}자 &lt; 1,700자 임계 — LLM dysfunction 의심
+            ⚠️ 본문 평균 {stats.avgBodyChars24h}자 — 정상 1,700~2,800자 범위 이탈
           </div>
           <p className="mt-1 opacity-90">
-            정상 ~1,900자. 5/18 OpenAI 마이그 사고 패턴 (591~859자) 재발 의심.
-            lib/ai.ts 의 model/maxTokens/jsonMode 확인 권장.
+            5/18 OpenAI 사고 패턴 (짧음 591~859자) 또는 AI 잡담 (김 3,000자+) 의심.
+            lib/ai.ts model/maxTokens/jsonMode 확인 권장.
           </p>
         </div>
       )}
+
+      {/* 2026-05-19 — 7일 일별 본문 평균 mini bar chart */}
+      {stats.dailyBodyAvg7d.length > 0 &&
+        stats.dailyBodyAvg7d.some((d) => d.avgChars > 0) && (
+          <div className="rounded border border-slate-200 bg-slate-50 p-2">
+            <div className="text-[11px] text-slate-600 mb-1">7일 일별 본문 평균 (자)</div>
+            <div className="flex items-end gap-1 h-14">
+              {stats.dailyBodyAvg7d.map((d) => {
+                const max = 3000;
+                const heightPct = Math.max(2, (d.avgChars / max) * 100);
+                const isAnomaly =
+                  d.avgChars > 0 && (d.avgChars < 1700 || d.avgChars > 2800);
+                return (
+                  <div
+                    key={d.day}
+                    className="flex-1 flex flex-col items-center justify-end"
+                    title={`${d.day}: ${d.avgChars}자${isAnomaly ? " (이상)" : ""}`}
+                  >
+                    <div
+                      className={`w-full rounded-sm ${
+                        d.avgChars === 0
+                          ? "bg-slate-200"
+                          : isAnomaly
+                            ? "bg-red-500"
+                            : "bg-emerald-500"
+                      }`}
+                      style={{ height: `${heightPct}%` }}
+                    />
+                    <div className="text-[9px] text-slate-500 mt-0.5">
+                      {d.day}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-1 flex justify-between text-[9px] text-slate-500">
+              <span>정상 범위 1,700~2,800자 (emerald)</span>
+              <span>이상 (red) · 발행 없음 (grey)</span>
+            </div>
+          </div>
+        )}
 
       <div
         className={`rounded border px-3 py-2.5 text-xs ${STATUS_TONE[stats.status]}`}

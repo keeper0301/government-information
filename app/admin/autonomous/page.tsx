@@ -1117,8 +1117,11 @@ function TomorrowAlertsCard({ gmailOAuthReady }: { gmailOAuthReady: boolean }) {
 
 // 2026-05-18 — Phase 3 백필 추세 mini bar chart.
 // 7일 일별 막대. max 기준 height %, 0 인 날은 1px 회색 dot 으로 가시화.
+// 2026-05-19 — day (YYYY-MM-DD) → MM-DD KST 변환 표시.
 function TrendBarChart({ data }: { data: { day: string; added: number }[] }) {
   const max = Math.max(1, ...data.map((d) => d.added));
+  // day 가 YYYY-MM-DD 형식이면 MM-DD slice, 아니면 그대로 (defensive)
+  const formatDay = (day: string) => (day.length >= 10 ? day.slice(5, 10) : day);
   return (
     <div className="mb-3 rounded border border-grey-200 bg-white p-2">
       <div className="text-[11px] text-grey-600 mb-1">7일 일별 백필</div>
@@ -1136,7 +1139,7 @@ function TrendBarChart({ data }: { data: { day: string; added: number }[] }) {
                 style={{ height: `${heightPct}%` }}
               />
               <div className="text-[9px] text-grey-500 mt-0.5">
-                {d.day.slice(5)}
+                {formatDay(d.day)}
               </div>
             </div>
           );
