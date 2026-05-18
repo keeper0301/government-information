@@ -94,6 +94,20 @@ async function run() {
       message: transition.message,
       link: "https://adsense.google.com/",
     });
+  } else if (current === "NEEDS_ATTENTION") {
+    // 2026-05-18 — 검수 대기 중 일일 안심 reminder.
+    // 사장님이 "매일 cron 가동·검수 진행 확인" 원함 — 승인/거절 결정 시점까지 매일 1건.
+    // baseline (previous=null) 도 동일 가지로 알림 → 첫 cron 가동 확인 즉시.
+    await sendOpsAlertMultichannel({
+      subject: "[keepioo] AdSense 검수 진행 중",
+      message: [
+        `state=NEEDS_ATTENTION. 검수 cron 정상 가동.`,
+        `결과 (승인 / 거절) 도착 시 즉시 자동 알림 전환.`,
+        ``,
+        `5/18 재신청 후 5~14일 대기 — 매일 KST 10:05 자동 polling.`,
+      ].join("\n"),
+      link: "https://adsense.google.com/",
+    });
   }
 
   return NextResponse.json({
@@ -101,6 +115,7 @@ async function run() {
     current,
     previous,
     alerted: transition?.shouldAlert ?? false,
+    daily_reminder: current === "NEEDS_ATTENTION" && !transition?.shouldAlert,
   });
 }
 

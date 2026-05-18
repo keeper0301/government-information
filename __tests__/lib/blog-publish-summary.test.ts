@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { buildSummaryMessage } from "@/app/api/cron/blog-publish-summary/route";
+
+describe("buildSummaryMessage", () => {
+  it("정상 발행 (7건) — subject + 마지막 발행 시각 포함", () => {
+    const r = buildSummaryMessage({
+      publishedCount: 7,
+      successAttempts: 7,
+      failedAttempts: 0,
+      lastPublishedAt: "2026-05-19T07:10:00+09:00",
+    });
+    expect(r.subject).toContain("7건 발행");
+    expect(r.message).toContain("정상 발행");
+    expect(r.message).toContain("성공 7");
+    expect(r.message).toContain("실패 0");
+    expect(r.message).toContain("마지막 발행");
+  });
+
+  it("일부 실패 (5/7) — subject 는 발행된 5건 강조, 본문에 실패 2건 명시", () => {
+    const r = buildSummaryMessage({
+      publishedCount: 5,
+      successAttempts: 5,
+      failedAttempts: 2,
+      lastPublishedAt: "2026-05-19T07:05:00+09:00",
+    });
+    expect(r.subject).toContain("5건 발행");
+    expect(r.message).toContain("성공 5");
+    expect(r.message).toContain("실패 2");
+  });
+
+  it("발행 0건 (5/18 OpenAI 사고 패턴) — 사고 의심 메시지 + 3 원인 가이드", () => {
+    const r = buildSummaryMessage({
+      publishedCount: 0,
+      successAttempts: 0,
+      failedAttempts: 14,
+      lastPublishedAt: null,
+    });
+    expect(r.subject).toContain("0건");
+    expect(r.subject).toContain("⚠️");
+    expect(r.message).toContain("Gemini quota");
+    expect(r.message).toContain("sparse 가드");
+    expect(r.message).toContain("GitHub Actions");
+  });
+
+  it("발행 0건 + cron 노쇼 (success+failed=0)", () => {
+    const r = buildSummaryMessage({
+      publishedCount: 0,
+      successAttempts: 0,
+      failedAttempts: 0,
+      lastPublishedAt: null,
+    });
+    expect(r.subject).toContain("0건");
+    expect(r.message).toContain("0회");
+  });
+});
