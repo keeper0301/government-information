@@ -83,6 +83,8 @@ async function phase1(): Promise<PhaseStatus> {
     onboardingReminder,
     policyEnrich,
     improvementScan,
+    agentDiagnose,
+    agentExecute,
   ] = await Promise.all([
     countAction24h("health_alert_run"),
     countAction24h("daily_digest_run"),
@@ -91,6 +93,8 @@ async function phase1(): Promise<PhaseStatus> {
     countAction24h("onboarding_reminder_run"),
     countAction24h("policy_enrich_run"),
     countAction24h("autonomous_improvement_scan_run"),
+    countAction24h("agent_diagnose_run"),
+    countAction24h("agent_execute_run"),
   ]);
   return {
     phase: 1,
@@ -117,6 +121,14 @@ async function phase1(): Promise<PhaseStatus> {
       {
         label: "24h 개선 스캔",
         value: `${improvementScan}회 (정상 1, KST 10:20)`,
+      },
+      {
+        label: "24h 상주 agent 진단",
+        value: `${agentDiagnose}회 (30분 cycle)`,
+      },
+      {
+        label: "24h 상주 agent 판단",
+        value: `${agentExecute}회 (정책엔진 감사)`,
       },
       {
         label: "24h weekly-ops-digest",

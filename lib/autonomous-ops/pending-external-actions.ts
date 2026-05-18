@@ -55,24 +55,38 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
 
   // 2026-05-19 — Render Starter plan 업그레이드 (Codex sidecar 82분 cycle 사고)
   // [[codex-sidecar-cycle-diagnosis]] 참조 — free cold start 가 30분 cycle 깸.
-  // W1 ramp-up (5/25) 전 권장. audit 있으면 hide.
+  // 단 사장님이 5/19 agent-resident-cycle in-site cron 도입 → fallback 가동 시 권장 강도 ↓.
   let renderUpgraded = false;
+  let residentCycleActive = false;
   try {
     const admin = createAdminClient();
-    const { count } = await admin
-      .from("admin_actions")
-      .select("id", { count: "exact", head: true })
-      .eq("action", "render_plan_upgraded");
-    renderUpgraded = (count ?? 0) > 0;
+    const [renderRes, residentRes] = await Promise.all([
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "render_plan_upgraded"),
+      // agent_diagnose_run 24h 중 site_resident_cron source 가 1건+ 이면 in-site fallback 가동
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "agent_diagnose_run")
+        .gte("created_at", new Date(Date.now() - 24 * 3600_000).toISOString())
+        .filter("details->>source", "eq", "site_resident_cron"),
+    ]);
+    renderUpgraded = (renderRes.count ?? 0) > 0;
+    residentCycleActive = (residentRes.count ?? 0) > 0;
   } catch {
     // DB 실패 시 보수적으로 reminder 노출 유지
   }
   if (!renderUpgraded) {
     actions.push({
       category: "infrastructure",
-      label: "Render Starter plan 업그레이드 ($7/월)",
-      description:
-        "Codex sidecar 82분 cycle 사고 (5/18 진단, 의도 30분) — Render free plan 15분 idle sleep 이 원인. Starter plan ($7/월) 으로 always-on. W1 ramp-up (5/25) 전 권장.",
+      label: residentCycleActive
+        ? "Render Starter plan ($7/월) — 선택적"
+        : "Render Starter plan 업그레이드 ($7/월)",
+      description: residentCycleActive
+        ? "agent-resident-cycle in-site cron 가동 중 — Render free 유지 가능. Codex sidecar always-on 필요 시 Starter 권장 (선택)."
+        : "Codex sidecar 82분 cycle 사고 (5/18 진단, 의도 30분) — Render free plan 15분 idle sleep 이 원인. Starter plan ($7/월) 으로 always-on. W1 ramp-up (5/25) 전 권장.",
       url: "https://dashboard.render.com/web/srv-d84vlgek1jcs73andjbg",
       estimatedMinutes: 3,
     });

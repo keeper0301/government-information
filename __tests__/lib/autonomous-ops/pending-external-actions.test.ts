@@ -5,14 +5,23 @@ const mockState = {
   securityCount: 0,
   renderCount: 0,
   naverCount: 0,
+  residentCycleCount: 0,
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: () => ({
       select: () => ({
-        eq: (_col: string, action: string) =>
-          Promise.resolve({ count: countFor(action) }),
+        eq: (_col: string, action: string) => {
+          // 2026-05-19 — render plan 체크 + agent-resident-cycle 가동 체크
+          const baseResult = Promise.resolve({ count: countFor(action) });
+          return Object.assign(baseResult, {
+            gte: () => ({
+              filter: () =>
+                Promise.resolve({ count: mockState.residentCycleCount }),
+            }),
+          });
+        },
         in: () => ({
           gte: () =>
             Promise.resolve({ count: mockState.naverCount }),
@@ -36,6 +45,7 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     mockState.securityCount = 0;
     mockState.renderCount = 0;
     mockState.naverCount = 0;
+    mockState.residentCycleCount = 0;
     // env 미설정 default — Gmail OAuth reminder 노출
     delete process.env.GMAIL_CLIENT_ID;
     delete process.env.GMAIL_CLIENT_SECRET;
