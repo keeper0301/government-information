@@ -211,6 +211,18 @@ describe("decideAgentAutomation", () => {
     });
   });
 
+  it("Phase 6 W1 — blog publish fix 는 create_pr", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_blog_publish_fix",
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "medium",
+    });
+  });
+
   it("Phase 6 W1 — schema migration 은 사장님 승인 후 create_pr/high", () => {
     expect(
       decideAgentAutomation({

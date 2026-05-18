@@ -30,17 +30,28 @@ vi.mock("@/lib/analytics/gemini-spending", () => ({
   }),
 }));
 
+vi.mock("@/lib/analytics/blog-publish-stats", () => ({
+  getBlogPublishStats: async () => ({
+    published24h: 1,
+    published7d: 7,
+    lastPublishedAt: "2026-05-18T00:00:00.000Z",
+    hoursSinceLastPublish: 3,
+    status: "healthy",
+  }),
+}));
+
 import { runDiagnose, listDiagnoseQuestions } from "@/lib/agent/diagnose";
 
 describe("listDiagnoseQuestions", () => {
-  it("8 question id 노출 (사전 정의)", () => {
+  it("9 question id 노출 (사전 정의)", () => {
     const list = listDiagnoseQuestions();
-    expect(list).toHaveLength(8);
+    expect(list).toHaveLength(9);
     expect(list).toContain("health_overview");
     expect(list).toContain("cron_recent_24h");
     expect(list).toContain("news_freshness");
     expect(list).toContain("press_tier_status");
     expect(list).toContain("llm_spending_28d");
+    expect(list).toContain("blog_publish_status");
     expect(list).toContain("sms_delivery_24h");
     expect(list).toContain("agent_recent_actions");
     expect(list).toContain("alert_recent_24h");
@@ -65,5 +76,12 @@ describe("runDiagnose", () => {
     const data = r.data as { cap_krw: number; ratio: number };
     expect(data.cap_krw).toBe(30000);
     expect(data.ratio).toBe(0);
+  });
+
+  it("blog_publish_status → 작성/발행 상태를 반환한다", async () => {
+    const r = await runDiagnose("blog_publish_status");
+    const data = r.data as { status: string; published24h: number };
+    expect(data.status).toBe("healthy");
+    expect(data.published24h).toBe(1);
   });
 });

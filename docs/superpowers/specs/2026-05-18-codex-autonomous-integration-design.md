@@ -130,7 +130,7 @@ Codex 통합 = 위 3 영역 자동화. 단 **agent-policy 절대 우회 X** — 
 - rate limit 분당 10
 - 입력: `{ question: string }`
 - 출력: `{ data: <relevant DB snapshot> }` (LLM 미사용, 사전 정의 query set)
-- 7~10 query template (health / cron audit / news 추세 / spending 등)
+- 9 query template (health / cron audit / news 추세 / blog publish status / spending 등)
 - audit `admin_actions.agent_diagnose_run`
 
 ### Stage 3 — /api/agent/execute + agent-policy 통합 (W0 모드)

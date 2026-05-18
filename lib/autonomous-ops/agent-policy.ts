@@ -75,6 +75,7 @@ const PR_ACTIONS = new Set([
   "codex_prompt_tuning",
   "codex_cron_fix",
   "codex_notification_fix",
+  "codex_blog_publish_fix",
 ]);
 
 export function decideAgentAutomation(

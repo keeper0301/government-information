@@ -23,6 +23,7 @@ export type DiagnoseQuestion =
   | "news_freshness"            // news_posts published_at 최신 + count by day
   | "press_tier_status"         // press tier mid/low 적체
   | "llm_spending_28d"          // 28일 LLM 추정 비용 (G4 reuse)
+  | "blog_publish_status"       // 블로그 작성/발행 정상 가동 여부
   | "sms_delivery_24h"          // daily-digest / external-console-check 발송 결과
   | "agent_recent_actions"      // agent_execute_run 최근 50건 (Codex 본인 행동 점검)
   | "alert_recent_24h";         // health-alert 발화 추세
@@ -148,6 +149,13 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
       cap_krw: GEMINI_KEEPIOO_CAP_KRW,
       ratio: Math.min(1, stats.monthlyProjectionKrw / GEMINI_KEEPIOO_CAP_KRW),
     };
+  },
+
+  blog_publish_status: async () => {
+    const { getBlogPublishStats } = await import(
+      "@/lib/analytics/blog-publish-stats"
+    );
+    return getBlogPublishStats();
   },
 
   sms_delivery_24h: async () => {
