@@ -74,7 +74,7 @@ JSON 형식 (다른 말 없이 JSON 만 출력):
   "body_urls": ["본문에 등장한 모든 http/https URL 을 빠짐없이 배열로. 신청·문의·홈페이지·첨부 모두 포함. 없으면 빈 배열"],
   "apply_start": "YYYY-MM-DD 또는 null",
   "apply_end": "YYYY-MM-DD 또는 null",
-  "category": "welfare 면 생계|의료|양육|교육|취업|주거|문화|창업 중 하나, loan 면 정책자금|창업자금|소상공인|생계자금|주거자금|농어업|기타 중 하나",
+  "category": "welfare 면 [생계|의료|양육|교육|취업|주거|문화|창업|기타] 중 하나, loan 면 [정책자금|창업자금|소상공인|생계자금|주거자금|농어업|기타] 중 하나. ⚠️ 반드시 list 안 값만 사용. 매칭 안 되면 '기타' (list 외 값 시 분류 실패 처리).",
   "loan_amount": "대출 한도 (loan 일 때만, 예: '최대 5,000만원')",
   "interest_rate": "이자율 (loan 일 때만, 예: '연 2.0% 고정')",
   "repayment_period": "상환 기간 (loan 일 때만)",
@@ -168,11 +168,30 @@ export async function classifyPressNews(input: {
       ? (rawConfidence as "high" | "mid" | "low")
       : "low";
 
+  // 5/18 category validation — confidence 와 동일 패턴.
+  // 이전엔 parsed.category || "" 그대로 사용 → LLM 가 list 외 값 ("기타"/"welfare"/"복지" 등)
+  // return 시 그대로 저장 → press_ingest_candidates 의 mid_pending 13건·low_pending 24건
+  // "기타" 누적 (5/18 자동 정리 commit).
+  const programType: "welfare" | "loan" | "unsure" = ["welfare", "loan", "unsure"].includes(parsed.program_type)
+    ? parsed.program_type
+    : "unsure";
+  const allowedWelfareCategories: readonly string[] = [
+    "생계", "의료", "양육", "교육", "취업", "주거", "문화", "창업", "기타",
+  ];
+  const allowedLoanCategories: readonly string[] = [
+    "정책자금", "창업자금", "소상공인", "생계자금", "주거자금", "농어업", "기타",
+  ];
+  const allowedCategories =
+    programType === "welfare" ? allowedWelfareCategories :
+    programType === "loan" ? allowedLoanCategories : [];
+  const rawCategory = parsed.category || "";
+  const category = allowedCategories.includes(rawCategory)
+    ? rawCategory
+    : (allowedCategories.length > 0 ? "기타" : "");
+
   return {
     is_policy: !!parsed.is_policy,
-    program_type: ["welfare", "loan", "unsure"].includes(parsed.program_type)
-      ? parsed.program_type
-      : "unsure",
+    program_type: programType,
     title: parsed.title || input.title,
     target: parsed.target || "",
     eligibility: parsed.eligibility || "",
@@ -182,7 +201,7 @@ export async function classifyPressNews(input: {
     body_urls: bodyUrls,
     apply_start: parsed.apply_start || null,
     apply_end: parsed.apply_end || null,
-    category: parsed.category || "",
+    category,
     loan_amount: parsed.loan_amount,
     interest_rate: parsed.interest_rate,
     repayment_period: parsed.repayment_period,
