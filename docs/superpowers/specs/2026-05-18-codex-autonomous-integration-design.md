@@ -18,7 +18,7 @@
 2. **운영 결정** — press tier floor 튜닝, dedupe 임계 조정, AdSense 재신청 등
 3. **콘텐츠 보강** — 블로그 외 SNS·티스토리 자율 발행 (Phase 5-B/C 미완)
 
-Codex 통합 = 위 3 영역 자동화. 단 **agent-policy 절대 우회 X** — destructive·secrets·payments 는 영구 blocked.
+Codex 통합 = 위 3 영역 자동화. 단 **agent-policy 절대 우회 X** — destructive 실제 실행·secrets·payments 는 영구 blocked/admin_review.
 
 ---
 
@@ -67,7 +67,13 @@ Codex 통합 = 위 3 영역 자동화. 단 **agent-policy 절대 우회 X** — 
 - destructive·auth·secrets·payments 는 영구 blocked/admin_review.
 - 2026-05-18 사장님 승인: DB schema 변경은 W1부터 migration PR 생성까지 허용한다. 운영 DB 직접 적용과 schema PR 자동 merge 는 차단한다.
 
-### W3+ (점진 확장)
+### W3 (고위험 자동 검토, PR only)
+- `codex_auth_fix`: 인증·권한 코드 문제를 자동 진단하고 PR 생성까지 허용
+- `codex_destructive_plan`: 삭제·purge·reset 계열은 dry-run/rollback 계획 PR 생성까지만 허용
+- 실제 destructive=true 실행, 시크릿, 결제, 운영 DB 직접 apply 는 계속 차단
+- W2 auto-merge 대상에서 auth/destructive/schema 는 제외
+
+### W4+ (점진 확장)
 - 콘텐츠 자율 발행 (Phase 5-B/C)
 - 운영 결정 (press tier floor 튜닝 등) — quality_approved=true 가드 필수
 
@@ -187,7 +193,9 @@ const PR_ACTIONS = new Set([
 회귀 테스트:
 - `area="agent_call"` + `action="codex_diagnose"` → `auto_execute`
 - `area="agent_call"` + `action="codex_scraper_fix"` → `create_pr`
-- `area="agent_call"` + `destructive=true` → `blocked` (기존 가드)
+- `area="agent_call"` + `action="codex_auth_fix"` → `create_pr/critical`
+- `area="agent_call"` + `action="codex_destructive_plan"` → `create_pr/critical`
+- `area="agent_call"` + `destructive=true` → `blocked` (실제 파괴 실행 가드)
 
 ---
 

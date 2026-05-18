@@ -236,6 +236,41 @@ describe("decideAgentAutomation", () => {
     });
   });
 
+  it("Phase 6 W3 — auth/destructive 계열은 PR 생성까지만 critical 로 허용한다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_auth_fix",
+        touchesAuth: true,
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "critical",
+    });
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_destructive_plan",
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "critical",
+    });
+  });
+
+  it("Phase 6 W3 안전망 — destructive=true 실제 실행 요청은 계속 blocked", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_destructive_plan",
+        destructive: true,
+      }),
+    ).toMatchObject({
+      mode: "blocked",
+      risk: "critical",
+    });
+  });
+
   it("Phase 6 안전망 — area='agent_call' + destructive=true 는 영구 blocked", () => {
     expect(
       decideAgentAutomation({

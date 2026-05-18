@@ -78,9 +78,22 @@ const PR_ACTIONS = new Set([
   "codex_blog_publish_fix",
 ]);
 
+const HIGH_RISK_PR_ACTIONS = new Set([
+  "codex_auth_fix",
+  "codex_destructive_plan",
+]);
+
 export function decideAgentAutomation(
   op: AgentOperation,
 ): AgentPolicyDecision {
+  if (HIGH_RISK_PR_ACTIONS.has(op.action) && !op.destructive) {
+    return {
+      mode: "create_pr",
+      risk: "critical",
+      reason: "auth/destructive 계열은 W3 고위험 검토 모드로 PR·테스트·감사 로그까지만 자동화합니다.",
+    };
+  }
+
   if (op.destructive) {
     return {
       mode: "blocked",
@@ -166,6 +179,7 @@ export function getAgentPolicySummary(): AgentPolicySummary {
       "어드민 dashboard UI 개선",
       "운영 DB schema migration PR 생성",
       "인증·보안 관련 코드 변경",
+      "삭제·purge·reset 등 파괴 작업의 dry-run/rollback 계획 PR 생성",
     ],
     review: [
       "시크릿·토큰·환경변수 교체",
@@ -174,7 +188,7 @@ export function getAgentPolicySummary(): AgentPolicySummary {
     ],
     blocked: [
       "품질 검수 실패 글의 외부 자동 발행",
-      "삭제·reset·force push 같은 파괴 작업",
+      "삭제·reset·force push 같은 실제 파괴 작업 실행",
       "감사 로그 없는 권한 우회",
     ],
   };
