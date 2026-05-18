@@ -64,6 +64,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/cron/adsense-gmail-watch", label: "AdSense Gmail 이메일 파싱 (D 옵션)", schedule: "매일 10:10 KST", desc: "Gmail OAuth env 등록 시 가동 — 한·영 verdict 매칭" },
   { path: "/api/cron/press-legacy-cleanup", label: "press 큐 자동 정리", schedule: "매주 일 03:00 KST", desc: "legacy null 7일+ + low 14일+ 자동 reject + 텔레그램 1회" },
   { path: "/api/cron/naver-extension-idle-reminder", label: "Naver Extension 미가동 reminder", schedule: "매주 일 09:00 KST", desc: "7일 audit 0건 시 텔레그램 + 가이드 link" },
+  { path: "/api/cron/agent-resident-cycle", label: "사이트 상주 agent cycle (Codex fallback)", schedule: "매 30분", desc: "Vercel cron 의 in-site 자율 운영 — agent-policy 거쳐 diagnose + 사고 시 audit. 사이드카 fallback" },
 ];
 
 // 최근 실행 fetch — 사장님이 "방금 누른 게 됐나?" 한눈에 확인.
