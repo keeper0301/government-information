@@ -73,6 +73,8 @@ const PR_ACTIONS = new Set([
   "codex_scraper_fix",
   "codex_ui_copy_fix",
   "codex_prompt_tuning",
+  "codex_cron_fix",
+  "codex_notification_fix",
 ]);
 
 export function decideAgentAutomation(

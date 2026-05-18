@@ -190,6 +190,40 @@ describe("decideAgentAutomation", () => {
     });
   });
 
+  it("Phase 6 W1 — cron/notification fix 는 create_pr", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_cron_fix",
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "medium",
+    });
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_notification_fix",
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "medium",
+    });
+  });
+
+  it("Phase 6 W1 — schema migration 은 사장님 승인 후 create_pr/high", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_schema_migration",
+        touchesSchema: true,
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "high",
+    });
+  });
+
   it("Phase 6 안전망 — area='agent_call' + destructive=true 는 영구 blocked", () => {
     expect(
       decideAgentAutomation({
