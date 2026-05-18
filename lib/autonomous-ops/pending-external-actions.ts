@@ -28,17 +28,30 @@ export type PendingExternalAction = {
 export async function getPendingExternalActions(): Promise<PendingExternalAction[]> {
   const actions: PendingExternalAction[] = [];
 
-  // 1. 보안 회전 — 사장님 직접 처리 확인 audit 없으므로 항상 노출.
-  //    완료 후 별도 audit row (security_rotation_done) 도입 시 자동 hide 가능.
-  actions.push({
-    category: "security",
-    label: "보안 회전 (cgc0301! + RENDER_API_KEY)",
-    description:
-      "Chrome paste hijack 사고 (5/18) 후속 — 26 도메인 재사용 비밀번호 변경 + Render API key revoke",
-    guideUrl:
-      "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/security-rotation-2026-05-18.md",
-    estimatedMinutes: 10,
-  });
+  // 1. 보안 회전 — security_rotation_done audit 있으면 자동 hide (2026-05-19 도입).
+  //    사장님이 회전 완료 신고 (`/api/admin/mark-security-rotation` 또는 클로드 SQL) 시 hide.
+  let securityRotated = false;
+  try {
+    const admin = createAdminClient();
+    const { count } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "security_rotation_done");
+    securityRotated = (count ?? 0) > 0;
+  } catch {
+    // DB 실패 시 보수적으로 reminder 노출 유지
+  }
+  if (!securityRotated) {
+    actions.push({
+      category: "security",
+      label: "보안 회전 (cgc0301! + RENDER_API_KEY)",
+      description:
+        "Chrome paste hijack 사고 (5/18) 후속 — 26 도메인 재사용 비밀번호 변경 + Render API key revoke. 완료 후 클로드에게 '보안 회전 완료' 알려주면 자동 hide.",
+      guideUrl:
+        "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/security-rotation-2026-05-18.md",
+      estimatedMinutes: 10,
+    });
+  }
 
   // 2. Gmail OAuth — env 검사 (3종 중 1건이라도 없으면 노출)
   const gmailReady =

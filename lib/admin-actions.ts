@@ -83,7 +83,8 @@ export type AdminActionType =
   | "blog_publish_summary_run"        // 2026-05-18 — 매일 KST 07:30 블로그 24h 발행 누적 텔레그램 cron (5/18 OpenAI 사고 학습)
   | "blog_short_content_alert"        // 2026-05-18 — LLM 본문 짧음 사고 자동 감지 (5/18 OpenAI 사각 학습) + 24h cooldown
   | "adsense_gmail_match"             // 2026-05-18 — D 옵션 AdSense 이메일 Gmail 자동 파싱 + verdict 분류 + 24h dedup
-  | "naver_extension_idle_check";     // 2026-05-18 — Naver Extension 1주 미가동 자동 reminder cron audit
+  | "naver_extension_idle_check"      // 2026-05-18 — Naver Extension 1주 미가동 자동 reminder cron audit
+  | "security_rotation_done";         // 2026-05-19 — 사장님 보안 회전 완료 신고 (PendingExternalActionsCard 자동 hide trigger)
 
 export type AdminActionRecord = {
   id: string;
@@ -392,4 +393,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   blog_short_content_alert: "LLM 본문 짧음 사고 자동 감지 (24h cooldown)",
   adsense_gmail_match: "AdSense Gmail 이메일 자동 파싱 + verdict 분류",
   naver_extension_idle_check: "Naver Extension 1주 미가동 자동 reminder cron",
+  security_rotation_done: "사장님 보안 회전 완료 신고",
 };

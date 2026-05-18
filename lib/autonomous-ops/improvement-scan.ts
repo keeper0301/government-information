@@ -10,6 +10,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
+import { getPendingExternalActions } from "@/lib/autonomous-ops/pending-external-actions";
 
 export type ImprovementArea =
   | "content_quality"
@@ -47,6 +48,8 @@ export type ImprovementSnapshot = {
   // 정상 ~1,900자. < 1,700자 = LLM dysfunction 의심.
   blogBodyAvgChars24h?: number;
   blogBodyAnomaly?: boolean;
+  // 2026-05-19 — 사장님 외부 액션 잔여 (PendingExternalActionsCard 와 통합).
+  pendingExternalActionsCount?: number;
 };
 
 export type ImprovementScanRun = {
@@ -189,6 +192,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     qualityImprovementHints,
     externalQualityPending,
     blogPublishStats,
+    pendingExternalActions,
   ] = await Promise.all([
     countAdminAction("blog_quality_flag"),
     countAdminAction("instagram_publish_fail"),
@@ -207,6 +211,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     getRecentQualityImprovementHints({ lookbackMs: DAY_MS }),
     countExternalQualityPending(),
     getBlogPublishStats(),
+    getPendingExternalActions(),
   ]);
 
   return {
@@ -224,6 +229,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     externalQualityPending,
     blogBodyAvgChars24h: blogPublishStats.avgBodyChars24h ?? undefined,
     blogBodyAnomaly: blogPublishStats.bodyStatus === "anomaly",
+    pendingExternalActionsCount: pendingExternalActions.length,
   };
 }
 
@@ -357,6 +363,18 @@ export function buildImprovementRecommendations(
       evidence: `외부 발행 품질 대기 ${s.externalQualityPending}건`,
       action:
         "다음 품질 검수 cron 이후 네이버/인스타 큐가 다시 흐르는지 확인하세요.",
+    });
+  }
+
+  // 2026-05-19 — 사장님 외부 액션 잔여 자동 제안
+  if (s.pendingExternalActionsCount !== undefined && s.pendingExternalActionsCount > 0) {
+    recs.push({
+      area: "growth",
+      severity: s.pendingExternalActionsCount >= 3 ? "high" : "medium",
+      title: "사장님 외부 액션이 누적되어 있습니다",
+      evidence: `잔여 ${s.pendingExternalActionsCount}건 (env 미설정·audit 미가동·보안 회전 미완)`,
+      action:
+        "/admin/autonomous 상단 PendingExternalActionsCard 에서 각 액션 가이드 link 확인 후 처리 — 평균 5~10분/건.",
     });
   }
 
