@@ -1,0 +1,51 @@
+name: Agent resident heartbeat
+
+# GitHub Actions cannot keep one process alive forever. This workflow is the
+# paid-GitHub fallback: wake the site-resident agent cycle every 5 minutes.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: agent-resident-heartbeat
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  heartbeat:
+    name: Wake site-resident agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Call agent-resident-cycle
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_BASE_URL: https://www.keepioo.com
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET secret is not configured."
+            exit 1
+          fi
+
+          echo "== agent resident heartbeat $(date -u '+%Y-%m-%d %H:%M:%S') UTC =="
+          http_status=$(curl -sS -o /tmp/agent-resident-response.json -w "%{http_code}" \
+            --request POST \
+            --max-time 120 \
+            --retry 2 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${SITE_BASE_URL}/api/cron/agent-resident-cycle")
+
+          echo "== HTTP ${http_status} =="
+          cat /tmp/agent-resident-response.json
+          echo ""
+
+          if [ "${http_status}" -ne 200 ]; then
+            echo "::error::agent-resident-cycle failed (HTTP ${http_status})"
+            exit 1
+          fi
