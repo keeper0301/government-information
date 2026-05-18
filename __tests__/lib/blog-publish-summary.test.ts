@@ -8,12 +8,28 @@ describe("buildSummaryMessage", () => {
       successAttempts: 7,
       failedAttempts: 0,
       lastPublishedAt: "2026-05-19T07:10:00+09:00",
+      avgBodyChars: 1950,
     });
     expect(r.subject).toContain("7건 발행");
+    expect(r.subject).not.toContain("⚠️");
     expect(r.message).toContain("정상 발행");
     expect(r.message).toContain("성공 7");
-    expect(r.message).toContain("실패 0");
-    expect(r.message).toContain("마지막 발행");
+    expect(r.message).toContain("본문 평균: 1950자");
+  });
+
+  it("본문 짧음 사고 의심 (avgBodyChars < 1700) — subject 에 ⚠️ + 의심 원인", () => {
+    const r = buildSummaryMessage({
+      publishedCount: 7,
+      successAttempts: 7,
+      failedAttempts: 0,
+      lastPublishedAt: "2026-05-19T07:10:00+09:00",
+      avgBodyChars: 800, // 5/18 OpenAI 사고 패턴 (591~859자)
+    });
+    expect(r.subject).toContain("본문 짧음 ⚠️");
+    expect(r.message).toContain("본문 평균: 800자");
+    expect(r.message).toContain("LLM dysfunction 의심");
+    expect(r.message).toContain("lib/ai.ts");
+    expect(r.message).toContain("keepioo-blog-revert-2026-05-18");
   });
 
   it("일부 실패 (5/7) — subject 는 발행된 5건 강조, 본문에 실패 2건 명시", () => {

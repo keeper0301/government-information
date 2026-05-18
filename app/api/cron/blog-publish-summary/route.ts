@@ -65,11 +65,29 @@ async function run() {
     .limit(1)
     .single();
 
+  // 2026-05-18 — 24h 발행글 본문 평균 길이 (5/18 OpenAI 사고 학습)
+  // HTML tag 제거 후 길이 — < 1700자면 LLM dysfunction 의심
+  let avgBodyChars: number | undefined;
+  if ((publishedCount ?? 0) > 0) {
+    const { data: posts } = await admin
+      .from("blog_posts")
+      .select("content")
+      .gte("published_at", since24h);
+    if (posts && posts.length > 0) {
+      const totalChars = posts.reduce((sum, p) => {
+        const plain = (p.content as string | null)?.replace(/<[^>]+>/g, "").trim() ?? "";
+        return sum + plain.length;
+      }, 0);
+      avgBodyChars = Math.round(totalChars / posts.length);
+    }
+  }
+
   const summary = buildSummaryMessage({
     publishedCount: publishedCount ?? 0,
     successAttempts,
     failedAttempts,
     lastPublishedAt: latest?.published_at ?? null,
+    avgBodyChars,
   });
 
   await sendOpsAlertMultichannel({
