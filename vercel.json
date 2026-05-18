@@ -63,6 +63,8 @@
 
     { "path": "/api/cron/blog-publish-summary", "schedule": "30 22 * * *" },
 
+    { "path": "/api/cron/adsense-gmail-watch", "schedule": "10 1 * * *" },
+
     { "path": "/api/cron/support-reminder", "schedule": "15 0 * * *" },
     { "path": "/api/cron/cancellation-followup", "schedule": "30 0 * * *" },
     { "path": "/api/cron/category-backfill", "schedule": "0 18 * * *" },
