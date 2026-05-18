@@ -16,8 +16,11 @@ import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 
 export const dynamic = "force-dynamic";
-// 시·군 1개 = ~15s. 20 시·군 = ~180s. Pro plan 300s 까지 가능 (5/17 G4 확장).
+// 시·군 1개 = ~15s. 21 시·군 sequential = ~315s → 5/17 22:00 504 timeout.
+// 5/18 parallel batch 도입: BATCH_SIZE=4 → 21/4=6 batches × 15s = ~90s (300s 충분 margin).
+// 시·군 마다 다른 외부 도메인이라 동시 4 request 가 단일 site burst 위험 X.
 export const maxDuration = 300;
+const BATCH_SIZE = 4;
 
 async function authorize(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -33,39 +36,51 @@ async function authorize(request: Request) {
   return null;
 }
 
+type CityResult = {
+  city: string;
+  fetched: number;
+  inserted: number;
+  skipped: number;
+  errors: string[];
+  error?: string;
+};
+
+async function scrapeCity(
+  admin: ReturnType<typeof createAdminClient>,
+  entry: (typeof CITY_REGISTRY)[number],
+): Promise<CityResult> {
+  try {
+    const r = await entry.fn(admin, 10);
+    await logAdminAction({
+      actorId: null,
+      action: "local_press_scrape",
+      details: { trigger: "cron", ...r },
+    });
+    return r;
+  } catch (e) {
+    return {
+      city: entry.city,
+      fetched: 0,
+      inserted: 0,
+      skipped: 0,
+      errors: [],
+      error: (e as Error).message,
+    };
+  }
+}
+
 async function runScrape() {
   const admin = createAdminClient();
-  const results: Array<{
-    city: string;
-    fetched: number;
-    inserted: number;
-    skipped: number;
-    errors: string[];
-    error?: string;
-  }> = [];
+  const results: CityResult[] = [];
 
-  for (const entry of CITY_REGISTRY) {
-    try {
-      const r = await entry.fn(admin, 10);
-      results.push(r);
-      await logAdminAction({
-        actorId: null,
-        action: "local_press_scrape",
-        details: {
-          trigger: "cron",
-          ...r,
-        },
-      });
-    } catch (e) {
-      results.push({
-        city: entry.city,
-        fetched: 0,
-        inserted: 0,
-        skipped: 0,
-        errors: [],
-        error: (e as Error).message,
-      });
-    }
+  // BATCH_SIZE 단위 병렬 처리 — chunk 간 sequential 로 외부 부하 분산.
+  // 각 scrapeCity 가 try/catch 내장이라 Promise.all reject X (allSettled 불필요).
+  for (let i = 0; i < CITY_REGISTRY.length; i += BATCH_SIZE) {
+    const chunk = CITY_REGISTRY.slice(i, i + BATCH_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map((entry) => scrapeCity(admin, entry)),
+    );
+    results.push(...chunkResults);
   }
   return results;
 }
