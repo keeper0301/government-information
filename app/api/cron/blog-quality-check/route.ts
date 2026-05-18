@@ -19,6 +19,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const BATCH_LIMIT = 50;
+// 5/18 parallel batch 도입 — sequential 50 posts × ~10s LLM = ~500s > 300s timeout.
+// BATCH_SIZE=4 → 50/4=13 batches × ~10s = ~130s. LLM rate limit (Anthropic/OpenAI)
+// 도 동시 4 호출은 안전 (분당 50 req 한계 충분 margin).
+const BATCH_SIZE = 4;
 
 async function authorize(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -158,24 +162,17 @@ async function run() {
     (instagramPending.data ?? []) as BlogPost[],
     naverPosts,
   );
-  let evaluated = 0;
-  let flagged = 0;
-  let releasedNaver = 0;
-  let releasedWordPress = 0;
-  let scoreSum = 0;
-
-  for (const p of list) {
+  // 단일 post 평가 + DB update + 조건부 외부 발행. throw 안 함 (각 단계 try/catch 또는 error return).
+  async function evaluateOne(p: BlogPost): Promise<{
+    score: number;
+    flagged: boolean;
+    naverReleased: boolean;
+    wordpressReleased: boolean;
+  }> {
     const result = await evaluateBlogQuality(
-      {
-        title: p.title,
-        content: p.content ?? "",
-      },
-      {
-        failClosed: true,
-      },
+      { title: p.title, content: p.content ?? "" },
+      { failClosed: true },
     );
-    evaluated += 1;
-    scoreSum += result.score;
     const isTransientQualityFailure = isTransientQualityReviewFailure(result);
 
     const { error: updateErr } = await admin
@@ -189,8 +186,11 @@ async function run() {
       })
       .eq("id", p.id);
 
-    if (!updateErr && result.needsReview) {
-      flagged += 1;
+    if (updateErr) {
+      return { score: result.score, flagged: false, naverReleased: false, wordpressReleased: false };
+    }
+
+    if (result.needsReview) {
       try {
         await logAdminAction({
           actorId: null,
@@ -206,10 +206,43 @@ async function run() {
       } catch (auditErr) {
         console.warn("[blog-quality-check] audit 실패:", auditErr);
       }
-    } else if (!updateErr) {
-      const release = await releaseApprovedPostToExternalChannels(p);
-      if (release.naverQueued) releasedNaver += 1;
-      if (release.wordpressAttempted) releasedWordPress += 1;
+      return { score: result.score, flagged: true, naverReleased: false, wordpressReleased: false };
+    }
+
+    const release = await releaseApprovedPostToExternalChannels(p);
+    return {
+      score: result.score,
+      flagged: false,
+      naverReleased: release.naverQueued,
+      wordpressReleased: release.wordpressAttempted,
+    };
+  }
+
+  let evaluated = 0;
+  let flagged = 0;
+  let releasedNaver = 0;
+  let releasedWordPress = 0;
+  let scoreSum = 0;
+
+  // BATCH_SIZE 단위 병렬 처리 — chunk 간 sequential 로 LLM API rate limit 보호.
+  for (let i = 0; i < list.length; i += BATCH_SIZE) {
+    const chunk = list.slice(i, i + BATCH_SIZE);
+    const chunkResults = await Promise.all(
+      chunk.map(async (p) => {
+        try {
+          return await evaluateOne(p);
+        } catch (e) {
+          console.warn(`[blog-quality-check] ${p.id} evaluate 실패:`, (e as Error).message);
+          return { score: 0, flagged: false, naverReleased: false, wordpressReleased: false };
+        }
+      }),
+    );
+    for (const r of chunkResults) {
+      evaluated += 1;
+      scoreSum += r.score;
+      if (r.flagged) flagged += 1;
+      if (r.naverReleased) releasedNaver += 1;
+      if (r.wordpressReleased) releasedWordPress += 1;
     }
   }
 
