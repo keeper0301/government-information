@@ -55,6 +55,10 @@ import { LocalPressCard } from "./_components/local-press-card";
 import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
 import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
+import {
+  getPendingExternalActions,
+  type PendingExternalAction,
+} from "@/lib/autonomous-ops/pending-external-actions";
 import { BlogPublishCard } from "./_components/blog-publish-card";
 import { getNaverPublishStats } from "@/lib/analytics/naver-publish-stats";
 import { NaverPublishCard } from "./_components/naver-publish-card";
@@ -106,6 +110,7 @@ export default async function AdminAutonomousPage() {
     blogPublishStats,
     naverPublishStats,
     keepioAgentStatus,
+    pendingExternalActions,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -122,6 +127,7 @@ export default async function AdminAutonomousPage() {
     getBlogPublishStats(),
     getNaverPublishStats(),
     getKeepioAgentStatus(),
+    getPendingExternalActions(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -143,6 +149,8 @@ export default async function AdminAutonomousPage() {
           process.env.GMAIL_REFRESH_TOKEN
         )}
       />
+
+      <PendingExternalActionsCard actions={pendingExternalActions} />
 
       {/* 1. 자동 개선 진단 — 사장님이 가장 먼저 보는 행동 액션 */}
       <SectionHeader title="🎯 오늘 반영할 개선 과제" />
@@ -950,6 +958,73 @@ function PendingActionsPanel({ actions }: { actions: AggregatedPendingAction[] }
       </ol>
       <p className="mt-3 text-[11px] text-grey-600">
         각 액션 완료 후 hub 새로고침 시 자동 가동 (✓ 가동) 으로 전환됩니다.
+      </p>
+    </section>
+  );
+}
+
+// 2026-05-18 — 사장님 외부 액션 잔여 통합 reminder (5/18 메가 세션 누적 가이드).
+// env + audit 검사 동적 감지. 액션 완료 시 자동 hide.
+function PendingExternalActionsCard({
+  actions,
+}: {
+  actions: PendingExternalAction[];
+}) {
+  if (actions.length === 0) return null;
+  const categoryEmoji: Record<PendingExternalAction["category"], string> = {
+    security: "🔐",
+    oauth: "🔑",
+    automation: "⚙️",
+    checkout: "💳",
+  };
+  const totalMinutes = actions.reduce((s, a) => s + a.estimatedMinutes, 0);
+  return (
+    <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+      <h2 className="text-sm font-semibold text-amber-900 mb-2">
+        ⚠️ 사장님 외부 액션 {actions.length}건 (총 {totalMinutes}분 예상)
+      </h2>
+      <ul className="space-y-2 text-xs">
+        {actions.map((a) => (
+          <li
+            key={a.label}
+            className="rounded border border-amber-100 bg-white p-2"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-bold text-amber-900">
+                {categoryEmoji[a.category]} {a.label}
+              </span>
+              <span className="text-[11px] text-amber-700">
+                {a.estimatedMinutes}분
+              </span>
+            </div>
+            <p className="text-grey-800 mt-1">{a.description}</p>
+            <div className="mt-1 flex gap-3 text-[11px]">
+              {a.url && (
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  외부 콘솔 ↗
+                </a>
+              )}
+              {a.guideUrl && (
+                <a
+                  href={a.guideUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  가이드 문서 ↗
+                </a>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-amber-700">
+        💡 액션 완료 후 hub 새로고침 시 자동 hide.
       </p>
     </section>
   );
