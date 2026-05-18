@@ -57,7 +57,13 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/enrich", label: "공고 detail 보강", schedule: "매 5분", desc: "bokjiro·youthcenter·mss" },
   { path: "/api/enrich-thumbnails", label: "naver-news og:image", schedule: "매 5분", desc: "BATCH 50" },
   { path: "/api/enrich-targeting", label: "본문 targeting 분석", schedule: "매일 08시 UTC", desc: "Phase 1.5 income/household 백필" },
-  { path: "/api/cron/policy-insight-backfill", label: "정책 자체 해설 백필", schedule: "4회/일 (09·15·21·03시 KST)", desc: "AdSense 큐레이션 시그널 — gpt-4o-mini · 일 400건" },
+  { path: "/api/cron/policy-insight-backfill", label: "정책 자체 해설 백필", schedule: "12회/일 (매 2시간 KST)", desc: "AdSense 큐레이션 시그널 — gpt-4o-mini · 일 1,200건 (5/18 가속)" },
+  // 2026-05-18 신규 5건 — 메가 세션 추가.
+  { path: "/api/cron/blog-publish-summary", label: "블로그 24h 발행 요약 (텔레그램)", schedule: "매일 07:30 KST", desc: "본문 평균 길이 사고 자동 감지 (양면 임계 1,700~2,800자)" },
+  { path: "/api/cron/adsense-review-watch", label: "AdSense 검수 결과 감지", schedule: "매일 10:05 KST", desc: "state 전환 (NEEDS_ATTENTION→READY 등) 즉시 텔레그램+SMS + NEEDS_ATTENTION 일일 reminder" },
+  { path: "/api/cron/adsense-gmail-watch", label: "AdSense Gmail 이메일 파싱 (D 옵션)", schedule: "매일 10:10 KST", desc: "Gmail OAuth env 등록 시 가동 — 한·영 verdict 매칭" },
+  { path: "/api/cron/press-legacy-cleanup", label: "press 큐 자동 정리", schedule: "매주 일 03:00 KST", desc: "legacy null 7일+ + low 14일+ 자동 reject + 텔레그램 1회" },
+  { path: "/api/cron/naver-extension-idle-reminder", label: "Naver Extension 미가동 reminder", schedule: "매주 일 09:00 KST", desc: "7일 audit 0건 시 텔레그램 + 가이드 link" },
 ];
 
 // 최근 실행 fetch — 사장님이 "방금 누른 게 됐나?" 한눈에 확인.
