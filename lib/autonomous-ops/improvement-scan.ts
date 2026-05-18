@@ -9,6 +9,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
+import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 
 export type ImprovementArea =
   | "content_quality"
@@ -42,6 +43,10 @@ export type ImprovementSnapshot = {
   blogPublishRuns24h: number;
   qualityImprovementHints: string[];
   externalQualityPending: number;
+  // 2026-05-18 — 본문 평균 길이 사고 감지 (5/18 OpenAI 사고 학습).
+  // 정상 ~1,900자. < 1,700자 = LLM dysfunction 의심.
+  blogBodyAvgChars24h?: number;
+  blogBodyAnomaly?: boolean;
 };
 
 export type ImprovementScanRun = {
@@ -183,6 +188,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     blogPublishRuns24h,
     qualityImprovementHints,
     externalQualityPending,
+    blogPublishStats,
   ] = await Promise.all([
     countAdminAction("blog_quality_flag"),
     countAdminAction("instagram_publish_fail"),
@@ -200,6 +206,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     countAdminAction("blog_publish_run"),
     getRecentQualityImprovementHints({ lookbackMs: DAY_MS }),
     countExternalQualityPending(),
+    getBlogPublishStats(),
   ]);
 
   return {
@@ -215,6 +222,8 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     blogPublishRuns24h,
     qualityImprovementHints,
     externalQualityPending,
+    blogBodyAvgChars24h: blogPublishStats.avgBodyChars24h ?? undefined,
+    blogBodyAnomaly: blogPublishStats.bodyStatus === "anomaly",
   };
 }
 
@@ -348,6 +357,18 @@ export function buildImprovementRecommendations(
       evidence: `외부 발행 품질 대기 ${s.externalQualityPending}건`,
       action:
         "다음 품질 검수 cron 이후 네이버/인스타 큐가 다시 흐르는지 확인하세요.",
+    });
+  }
+
+  // 2026-05-18 — 본문 평균 길이 사고 의심 (OpenAI 마이그 사고 패턴)
+  if (s.blogBodyAnomaly && s.blogBodyAvgChars24h !== undefined) {
+    recs.push({
+      area: "content_quality",
+      severity: "high",
+      title: "블로그 본문 평균 길이가 너무 짧습니다 — LLM dysfunction 의심",
+      evidence: `24시간 본문 평균 ${s.blogBodyAvgChars24h}자 (정상 1,900자 내외, 임계 1,700자)`,
+      action:
+        "5/18 OpenAI 마이그 사고 패턴 (591~859자) 재발 의심. lib/ai.ts 의 model/maxTokens/jsonMode 변경 여부 확인 + 메모리 [keepioo-blog-revert-2026-05-18] 참조 + 즉시 revert 검토.",
     });
   }
 
