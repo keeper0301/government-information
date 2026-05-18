@@ -195,20 +195,22 @@ const TIER_RANK = { high: 3, mid: 2, low: 1 } as const;
 
 /**
  * AUTO_CONFIRM_TIER_FLOOR env 기반 자동 confirm 분기.
- * - default 'mid' (high+mid 자동 confirm, low 는 사장님 검토 큐로 유지)
- * - invalid 값 (예: 'extreme') → 'mid' fallback (보수적 운영)
+ * - default 'high' (2026-05-18 변경) — high 만 자동, mid·low 사장님 검토 큐.
+ *   5/9~5/18 1주차 측정: mid 자동 confirm 91건 중 14.3% (13건) 사장님 reject.
+ *   회수율 ↓ 위해 mid 도 검수 큐로. 적극 모드 원하면 env='mid' 명시.
+ * - invalid 값 (예: 'extreme') → 'high' fallback (보수적 운영)
  * - tier=null (legacy 후보 또는 신뢰도 측정 불가) → false (자동 confirm X)
  *
  * 호출처: autoConfirmPendingPressCandidates (cron) 의 row 별 분기.
  */
 export function shouldAutoConfirm(tier: "high" | "mid" | "low" | null): boolean {
   if (tier === null) return false;
-  const raw = process.env.AUTO_CONFIRM_TIER_FLOOR ?? "mid";
+  const raw = process.env.AUTO_CONFIRM_TIER_FLOOR ?? "high";
   const floor = (["high", "mid", "low"] as const).includes(
     raw as "high" | "mid" | "low",
   )
     ? (raw as "high" | "mid" | "low")
-    : "mid";
+    : "high";
   return TIER_RANK[tier] >= TIER_RANK[floor];
 }
 

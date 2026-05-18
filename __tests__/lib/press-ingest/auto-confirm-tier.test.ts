@@ -72,33 +72,33 @@ describe("buildCandidateUpsert — confidence_tier 보존", () => {
 
 // Task 4 — autoConfirm 단계의 tier filter 분기.
 // AUTO_CONFIRM_TIER_FLOOR env 기반으로 high/mid/low 중 어디부터 자동 confirm 할지 결정.
-// default 'mid' (high+mid 자동 confirm, low 는 사장님 검토 큐로 유지) — 운영 보수적 기본값.
+// 2026-05-18 default 'high' 로 변경 (1주차 mid 회수율 14.3% 우려 → 검수 큐로 전환).
 describe("shouldAutoConfirm — tier 분기 + AUTO_CONFIRM_TIER_FLOOR env", () => {
-  it("default floor='mid' → high/mid 자동, low pending", () => {
+  it("default floor='high' (5/18 변경) → high 만 자동, mid·low 검수 큐", () => {
     delete process.env.AUTO_CONFIRM_TIER_FLOOR;
-    expect(shouldAutoConfirm("high")).toBe(true);
-    expect(shouldAutoConfirm("mid")).toBe(true);
-    expect(shouldAutoConfirm("low")).toBe(false);
-  });
-
-  it("floor='high' → high 만 자동", () => {
-    process.env.AUTO_CONFIRM_TIER_FLOOR = "high";
     expect(shouldAutoConfirm("high")).toBe(true);
     expect(shouldAutoConfirm("mid")).toBe(false);
     expect(shouldAutoConfirm("low")).toBe(false);
   });
 
-  it("floor='low' → 모두 자동 (적극 모드)", () => {
+  it("floor='mid' (적극 모드) → high+mid 자동, low 만 검수 큐", () => {
+    process.env.AUTO_CONFIRM_TIER_FLOOR = "mid";
+    expect(shouldAutoConfirm("high")).toBe(true);
+    expect(shouldAutoConfirm("mid")).toBe(true);
+    expect(shouldAutoConfirm("low")).toBe(false);
+  });
+
+  it("floor='low' → 모두 자동 (최대 적극 모드)", () => {
     process.env.AUTO_CONFIRM_TIER_FLOOR = "low";
     expect(shouldAutoConfirm("high")).toBe(true);
     expect(shouldAutoConfirm("mid")).toBe(true);
     expect(shouldAutoConfirm("low")).toBe(true);
   });
 
-  it("invalid floor 값 → default 'mid' fallback", () => {
+  it("invalid floor 값 → default 'high' fallback (보수적)", () => {
     process.env.AUTO_CONFIRM_TIER_FLOOR = "extreme";
     expect(shouldAutoConfirm("high")).toBe(true);
-    expect(shouldAutoConfirm("mid")).toBe(true);
+    expect(shouldAutoConfirm("mid")).toBe(false);
     expect(shouldAutoConfirm("low")).toBe(false);
   });
 
