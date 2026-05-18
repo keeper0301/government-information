@@ -6,7 +6,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getInsightProgress } from "./insight-progress";
+import { getInsightProgress, getInsightTrend7d } from "./insight-progress";
 
 export type PhaseMetric = { label: string; value: string };
 // pendingAction — url 옵셔널. 있으면 hub 에서 link 로 표시되어 클릭 1회로 portal 진입.
@@ -158,9 +158,10 @@ async function phase2(): Promise<PhaseStatus> {
 }
 
 async function phase3(): Promise<PhaseStatus> {
-  const [checks, insight] = await Promise.all([
+  const [checks, insight, trend] = await Promise.all([
     countAction24h("external_console_check"),
     getInsightProgress(),
+    getInsightTrend7d(),
   ]);
   const env = (...keys: string[]) => keys.every((k) => !!process.env[k]);
   // 콘솔별 [라벨, 활성, 미설정 시 안내] — 추가 console 은 이 표만 갱신.
@@ -215,6 +216,12 @@ async function phase3(): Promise<PhaseStatus> {
       {
         label: "정책 해설 진행률",
         value: `${insight.welfare.filled + insight.loan.filled}/${insight.welfare.total + insight.loan.total} (${insight.pct}%)`,
+      },
+      {
+        label: "7일 백필 추세",
+        value: trend.avgPerDay > 0
+          ? `일 ${trend.avgPerDay}건 · 100% ${trend.daysToFull ?? "?"}일 후`
+          : "추세 없음 (cron 점검)",
       },
     ],
     pendingActions: pending,
