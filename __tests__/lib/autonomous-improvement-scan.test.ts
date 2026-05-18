@@ -151,6 +151,96 @@ describe("buildImprovementRecommendations", () => {
     expect(recs).toHaveLength(1);
     expect(recs[0].severity).toBe("low");
   });
+
+  // ── 2026-05-18~19 신규 분기 (5/18 사고 학습 환류) ────
+  it("외부 액션 잔여 3건 이상 → high severity", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      pendingExternalActionsCount: 3,
+    });
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        area: "growth",
+        severity: "high",
+        title: expect.stringContaining("외부 액션"),
+      }),
+    );
+  });
+
+  it("외부 액션 잔여 1~2건 → medium severity", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      pendingExternalActionsCount: 1,
+    });
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        area: "growth",
+        severity: "medium",
+        title: expect.stringContaining("외부 액션"),
+      }),
+    );
+  });
+
+  it("blogBodyAnomaly true → high content_quality (5/18 OpenAI 사고 패턴)", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      blogBodyAnomaly: true,
+      blogBodyAvgChars24h: 800,
+    });
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        area: "content_quality",
+        severity: "high",
+        title: expect.stringContaining("본문 평균"),
+        action: expect.stringContaining("lib/ai.ts"),
+      }),
+    );
+  });
+
+  it("naverExtensionIdle true → medium naver_blog", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      naverExtensionIdle: true,
+    });
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        area: "naver_blog",
+        severity: "medium",
+        title: expect.stringContaining("Naver Extension"),
+      }),
+    );
+  });
+
+  it("agentDiagnoseRuns24h < 300 → medium cron_reliability (Render free cold start)", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      agentDiagnoseRuns24h: 159, // 5/18 측정값
+    });
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        area: "cron_reliability",
+        severity: "medium",
+        title: expect.stringContaining("Codex sidecar"),
+        action: expect.stringContaining("Render Starter"),
+      }),
+    );
+  });
+
+  it("agentDiagnoseRuns24h ≥ 300 → cron_reliability 추천 X (정상 cycle)", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      agentDiagnoseRuns24h: 400,
+    });
+    expect(recs.find((r) => r.title.includes("Codex sidecar"))).toBeUndefined();
+  });
+
+  it("agentDiagnoseRuns24h = 0 → 추천 X (cron 첫 가동 또는 sidecar 미가동, false positive 차단)", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      agentDiagnoseRuns24h: 0,
+    });
+    expect(recs.find((r) => r.title.includes("Codex sidecar"))).toBeUndefined();
+  });
 });
 
 // ── parseImprovementScanRow (getLatest + getPrevious 공유 헬퍼) ────
