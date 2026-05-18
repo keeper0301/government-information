@@ -59,6 +59,10 @@ import {
   getPendingExternalActions,
   type PendingExternalAction,
 } from "@/lib/autonomous-ops/pending-external-actions";
+import {
+  getYesterdayDigest,
+  type YesterdayDigest,
+} from "@/lib/autonomous-ops/yesterday-digest";
 import { BlogPublishCard } from "./_components/blog-publish-card";
 import { getNaverPublishStats } from "@/lib/analytics/naver-publish-stats";
 import { NaverPublishCard } from "./_components/naver-publish-card";
@@ -111,6 +115,7 @@ export default async function AdminAutonomousPage() {
     naverPublishStats,
     keepioAgentStatus,
     pendingExternalActions,
+    yesterdayDigest,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -128,6 +133,7 @@ export default async function AdminAutonomousPage() {
     getNaverPublishStats(),
     getKeepioAgentStatus(),
     getPendingExternalActions(),
+    getYesterdayDigest(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -141,6 +147,8 @@ export default async function AdminAutonomousPage() {
         title="자율 운영 마스터"
         description={`5 Phase 중 ${activeCount}개 가동 · 6 카테고리 14+ 카드 · 외부 액션 ${pendingActions.length}건 대기. 매일 30초 점검 권장.`}
       />
+
+      <YesterdayDigestCard digest={yesterdayDigest} />
 
       <TomorrowAlertsCard
         gmailOAuthReady={!!(
@@ -1026,6 +1034,40 @@ function PendingExternalActionsCard({
       <p className="mt-2 text-[11px] text-amber-700">
         💡 액션 완료 후 hub 새로고침 시 자동 hide.
       </p>
+    </section>
+  );
+}
+
+// 2026-05-19 — 어제 24h 처리 누적 요약. 사장님 아침 hub 접속 시 한눈에 인지.
+function YesterdayDigestCard({ digest }: { digest: YesterdayDigest }) {
+  if (digest.totalActions === 0) return null;
+  return (
+    <section className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/40 p-3">
+      <h2 className="text-sm font-semibold text-emerald-900 mb-2">
+        📊 어제 24h 처리 누적 — admin_actions {digest.totalActions}건
+      </h2>
+      <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+        <div className="rounded border border-emerald-100 bg-white px-2 py-1.5">
+          <div className="text-[11px] text-emerald-700">블로그 발행</div>
+          <div className="font-bold text-emerald-900">{digest.blogPublished}건</div>
+        </div>
+        <div className="rounded border border-emerald-100 bg-white px-2 py-1.5">
+          <div className="text-[11px] text-emerald-700">인스타 발행</div>
+          <div className="font-bold text-emerald-900">{digest.instagramPublished}건</div>
+        </div>
+        <div className="rounded border border-emerald-100 bg-white px-2 py-1.5">
+          <div className="text-[11px] text-emerald-700">cron 가동</div>
+          <div className="font-bold text-emerald-900">{digest.cronRuns}회</div>
+        </div>
+      </div>
+      {digest.topActions.length > 0 && (
+        <div className="text-[11px] text-emerald-800">
+          <span className="font-semibold">top:</span>{" "}
+          {digest.topActions
+            .map((a) => `${a.action.replace(/_/g, " ")} ${a.count}`)
+            .join(" · ")}
+        </div>
+      )}
     </section>
   );
 }
