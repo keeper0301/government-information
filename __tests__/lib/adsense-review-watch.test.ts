@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTransitionAlert } from "@/app/api/cron/adsense-review-watch/route";
+import { buildTransitionAlert } from "@/lib/adsense-review-watch";
 
 describe("buildTransitionAlert", () => {
   it("첫 가동 (previous=null) 은 audit baseline 만 — alert 없음", () => {
