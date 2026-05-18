@@ -1039,7 +1039,7 @@ function TomorrowAlertsCard({ gmailOAuthReady }: { gmailOAuthReady: boolean }) {
     .replace(/\.\s?/g, "/")
     .replace(/\/$/, "");
   const alerts: { time: string; channel: string; message: string }[] = [
-    { time: "07:30", channel: "텔레그램+SMS", message: "블로그 24h 발행 N건 / 0건 사고 의심" },
+    { time: "07:30", channel: "텔레그램+SMS", message: "블로그 24h 발행 N건 + 본문 평균 (사고 감지)" },
     { time: "09:30", channel: "텔레그램", message: "외부 콘솔 통합 점검 — 이상 0건 시 무음" },
     { time: "10:05", channel: "텔레그램+SMS", message: "AdSense 검수 진행 중 (전환 시 즉시 승인·거절)" },
   ];
