@@ -80,7 +80,8 @@ export type AdminActionType =
   | "agent_diagnose_run"              // 2026-05-18 — Phase 6 Codex 자율 운영 W0: /api/agent/diagnose 호출 흔적
   | "agent_execute_run"               // 2026-05-18 — Phase 6 Codex 자율 운영: /api/agent/execute 호출 흔적 (W1+)
   | "adsense_review_state"            // 2026-05-18 — AdSense 검수 결과 자동 감지 cron 이 매일 polling 한 state + 전환 history
-  | "blog_publish_summary_run";       // 2026-05-18 — 매일 KST 07:30 블로그 24h 발행 누적 텔레그램 cron (5/18 OpenAI 사고 학습)
+  | "blog_publish_summary_run"        // 2026-05-18 — 매일 KST 07:30 블로그 24h 발행 누적 텔레그램 cron (5/18 OpenAI 사고 학습)
+  | "blog_short_content_alert";       // 2026-05-18 — LLM 본문 짧음 사고 자동 감지 (5/18 OpenAI 사각 학습) + 24h cooldown
 
 export type AdminActionRecord = {
   id: string;
@@ -386,4 +387,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   agent_execute_run: "Codex agent 액션 실행 호출 (W1+)",
   adsense_review_state: "AdSense 검수 state 추적 (전환 알림 cron)",
   blog_publish_summary_run: "블로그 24h 발행 누적 텔레그램 cron",
+  blog_short_content_alert: "LLM 본문 짧음 사고 자동 감지 (24h cooldown)",
 };

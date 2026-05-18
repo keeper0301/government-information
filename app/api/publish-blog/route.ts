@@ -75,6 +75,55 @@ async function sendGeminiQuotaAlertIfNew(
   }
 }
 
+// 2026-05-18 사고 학습 — OpenAI gpt-4o-mini jsonMode 가 본문 591~859자 짧게 반환.
+// quota detection regex 매칭 안 됨 → 24h 사각. short content N건+ 누적 시 별도 알림.
+// 24h cooldown — blog_short_content_alert audit 매칭 (gemini_quota_alert 동일 패턴).
+async function sendShortContentAlertIfNew(
+  failures: Array<{ category: string; error?: string }>,
+  shortContentCount: number,
+): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { count } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "blog_short_content_alert")
+      .gte("created_at", since);
+    if ((count ?? 0) > 0) return;
+
+    const sample = failures
+      .filter((f) => /본문이 너무 짧음/.test(f.error ?? ""))
+      .slice(0, 3)
+      .map((f) => `[${f.category}] ${f.error?.slice(0, 60) ?? ""}`)
+      .join("\n");
+    await sendOpsAlertMultichannel({
+      subject: "[keepioo] 블로그 본문 짧음 사고 의심",
+      message: [
+        `LLM 이 본문 짧게 반환 ${shortContentCount}건 누적 (가드 차단).`,
+        ``,
+        `[의심 원인]`,
+        `1. LLM 모델 변경 후 prompt 조정 부족 (5/18 OpenAI 마이그 사고 패턴)`,
+        `2. Gemini 한도 ↓ 등 부분 응답`,
+        `3. prompt 변경으로 본문 토큰 분산`,
+        ``,
+        `[조치] lib/ai.ts 의 maxTokens·model·jsonMode 확인 + admin_actions.blog_publish_run details 검토`,
+        ``,
+        `[샘플]`,
+        sample,
+      ].join("\n"),
+      link: "https://www.keepioo.com/admin/autonomous",
+    });
+    await logAdminAction({
+      actorId: null,
+      action: "blog_short_content_alert" as AdminActionType,
+      details: { short_content_count: shortContentCount, sample: sample.slice(0, 300) },
+    });
+  } catch (e) {
+    console.error("[publish-blog] short content alert 실패:", e);
+  }
+}
+
 async function logPublishBlogRun(details: Record<string, unknown>) {
   try {
     await logAdminAction({
@@ -256,6 +305,17 @@ export async function GET(request: NextRequest) {
     );
     if (quotaHit) {
       await sendGeminiQuotaAlertIfNew(failures);
+    }
+
+    // 2026-05-18 사고 학습 — OpenAI gpt-4o-mini jsonMode 가 본문 591~859자 반환
+    // 26회 연속 사각 (quota regex 매칭 X → SMS·텔레그램 무음 24h).
+    // "본문이 너무 짧음" 가드 사고가 N건+ 누적 시 별도 알림 (24h cooldown).
+    // 미래 LLM 마이그 (gpt-4o / claude / 기타) 시 동일 사각 차단.
+    const shortContentCount = failures.filter((f) =>
+      /본문이 너무 짧음/.test(f.error ?? ""),
+    ).length;
+    if (shortContentCount >= 3) {
+      await sendShortContentAlertIfNew(failures, shortContentCount);
     }
   }
 
