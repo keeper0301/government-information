@@ -12,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PendingExternalAction = {
   /** 카테고리 — UI grouping */
-  category: "security" | "oauth" | "automation" | "checkout";
+  category: "security" | "oauth" | "automation" | "checkout" | "infrastructure";
   /** 짧은 라벨 (3~6 단어) */
   label: string;
   /** 사장님 액션 한 줄 설명 */
@@ -50,6 +50,31 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       guideUrl:
         "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/security-rotation-2026-05-18.md",
       estimatedMinutes: 10,
+    });
+  }
+
+  // 2026-05-19 — Render Starter plan 업그레이드 (Codex sidecar 82분 cycle 사고)
+  // [[codex-sidecar-cycle-diagnosis]] 참조 — free cold start 가 30분 cycle 깸.
+  // W1 ramp-up (5/25) 전 권장. audit 있으면 hide.
+  let renderUpgraded = false;
+  try {
+    const admin = createAdminClient();
+    const { count } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "render_plan_upgraded");
+    renderUpgraded = (count ?? 0) > 0;
+  } catch {
+    // DB 실패 시 보수적으로 reminder 노출 유지
+  }
+  if (!renderUpgraded) {
+    actions.push({
+      category: "infrastructure",
+      label: "Render Starter plan 업그레이드 ($7/월)",
+      description:
+        "Codex sidecar 82분 cycle 사고 (5/18 진단, 의도 30분) — Render free plan 15분 idle sleep 이 원인. Starter plan ($7/월) 으로 always-on. W1 ramp-up (5/25) 전 권장.",
+      url: "https://dashboard.render.com/web/srv-d84vlgek1jcs73andjbg",
+      estimatedMinutes: 3,
     });
   }
 

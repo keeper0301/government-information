@@ -21,9 +21,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const ACTION_GUIDES: {
-  // PendingExternalAction.category 와 매칭되는 항목 (security/oauth/automation/checkout)
+  // PendingExternalAction.category 와 매칭되는 항목 (security/oauth/automation/checkout/infrastructure)
   // 또는 PendingExternalAction 미추적 (adsense/codex) — 항상 "완료 또는 미적용" 표시.
-  category: "security" | "oauth" | "automation" | "checkout" | "adsense" | "codex";
+  category: "security" | "oauth" | "automation" | "checkout" | "infrastructure" | "adsense" | "codex";
   emoji: string;
   title: string;
   guidePath: string;
@@ -70,6 +70,14 @@ const ACTION_GUIDES: {
     estimatedMinutes: 5,
     description: "Phase 6 W0 1주차 검증 완료 후 W1 활성화 — GitHub PAT + AGENT_W1_ENABLED env",
   },
+  {
+    category: "infrastructure",
+    emoji: "☁️",
+    title: "Render Starter plan 업그레이드 ($7/월)",
+    guidePath: "memory/project_codex_sidecar_cycle_diagnosis_2026_05_18.md",
+    estimatedMinutes: 3,
+    description: "Codex sidecar 82분 cycle 사고 — free cold start 해소 + always-on. W1 ramp-up 전 권장.",
+  },
 ];
 
 const REPO_BASE = "https://github.com/keeper0301/government-information/blob/master";
@@ -106,12 +114,13 @@ export default async function ExternalActionsPage() {
 
       <ul className="space-y-3">
         {ACTION_GUIDES.map((g) => {
-          // pendingCategories 는 security/oauth/automation/checkout 만 — adsense/codex 항상 false (미추적)
+          // pendingCategories 는 security/oauth/automation/checkout/infrastructure 만 — adsense/codex 항상 false (미추적)
           const isPending =
             (g.category === "security" ||
               g.category === "oauth" ||
               g.category === "automation" ||
-              g.category === "checkout") &&
+              g.category === "checkout" ||
+              g.category === "infrastructure") &&
             pendingCategories.has(g.category);
           return (
             <li

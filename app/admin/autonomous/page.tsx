@@ -984,6 +984,7 @@ function PendingExternalActionsCard({
     oauth: "🔑",
     automation: "⚙️",
     checkout: "💳",
+    infrastructure: "☁️",
   };
   const totalMinutes = actions.reduce((s, a) => s + a.estimatedMinutes, 0);
   return (
