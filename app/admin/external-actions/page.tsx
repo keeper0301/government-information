@@ -100,6 +100,30 @@ export default async function ExternalActionsPage() {
   // ACTION_GUIDES.category 와 PendingExternalAction.category 가 1:1 매칭.
   const pendingCategories = new Set(pendingActions.map((a) => a.category));
 
+  // 2026-05-19 — 잔여 우선 정렬. 사장님 hub 진입 시 잔여 액션 상단 노출.
+  type TrackedCategory =
+    | "security"
+    | "oauth"
+    | "automation"
+    | "checkout"
+    | "infrastructure";
+  const TRACKED_SET = new Set<string>([
+    "security",
+    "oauth",
+    "automation",
+    "checkout",
+    "infrastructure",
+  ]);
+  const isPendingGuide = (cat: string): boolean =>
+    TRACKED_SET.has(cat) && pendingCategories.has(cat as TrackedCategory);
+  const sortedGuides = [...ACTION_GUIDES].sort((a, b) => {
+    const aPending = isPendingGuide(a.category);
+    const bPending = isPendingGuide(b.category);
+    if (aPending && !bPending) return -1;
+    if (!aPending && bPending) return 1;
+    return 0;
+  });
+
   return (
     <div className="max-w-[980px]">
       <AdminPageHeader
@@ -113,7 +137,7 @@ export default async function ExternalActionsPage() {
       </p>
 
       <ul className="space-y-3">
-        {ACTION_GUIDES.map((g) => {
+        {sortedGuides.map((g) => {
           // pendingCategories 는 security/oauth/automation/checkout/infrastructure 만 — adsense/codex 항상 false (미추적)
           const isPending =
             (g.category === "security" ||
