@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSummaryMessage } from "@/app/api/cron/blog-publish-summary/route";
+import { buildSummaryMessage } from "@/lib/blog-publish-summary";
 
 describe("buildSummaryMessage", () => {
   it("정상 발행 (7건) — subject + 마지막 발행 시각 포함", () => {

@@ -34,6 +34,7 @@ import {
   filterRecentlyAlertedKeys,
   recordAlertsSent,
 } from "@/lib/external-console/alert-dedupe";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -109,6 +110,37 @@ async function run() {
   const smsResult = multi?.sms ?? null;
   const telegramResult = multi?.telegram ?? null;
 
+  // 2026-05-18 — first-run baseline 알림 (cron 신규 가동·OAuth 등록 직후 정상 신호).
+  // 조건: alerts 0 (모든 console 정상) AND 이전 7일 audit 0 (cron 신규 가동).
+  // 효과: 사장님 "OAuth 등록 후 정상 가동 확인" 즉시. 이후 매일 무음 (변화 시만 알림).
+  let firstRunAlerted = false;
+  if (alertsToSend.length === 0 && totalAlerts.length === 0) {
+    const admin = createAdminClient();
+    const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+    const { count } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "external_console_check_run")
+      .gte("created_at", since7d);
+    if ((count ?? 0) === 0) {
+      const activeConsoles = results
+        .filter((r) => !r.error?.startsWith("skipped:"))
+        .map((r) => r.console)
+        .join(", ");
+      await sendOpsAlertMultichannel({
+        subject: "[keepioo] 외부 콘솔 통합 점검 정상 가동 ✓",
+        message: [
+          `external-console-check cron 신규 가동 — 모든 console 정상.`,
+          `활성: ${activeConsoles}`,
+          ``,
+          `이후 매일 KST 09:30 자동 점검. 이상 시만 텔레그램 발송 (24h dedupe).`,
+        ].join("\n"),
+        link: "https://www.keepioo.com/admin/external-console",
+      });
+      firstRunAlerted = true;
+    }
+  }
+
   // 2026-05-14 — 사장님 가시성 audit (subagent Critical-1).
   // 핵심 KPI (balance_total/balance_cash/balance_point/site availability/vercel deploy 등) 가
   // 지금까지 vercel function logs 에만 있어 admin_actions 영구 저장 0 → autonomous hub metric 무력했음.
@@ -144,6 +176,7 @@ async function run() {
     results,
     sms: smsResult,
     telegram: telegramResult,
+    first_run_alerted: firstRunAlerted,
   });
 }
 
