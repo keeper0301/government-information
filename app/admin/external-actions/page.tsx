@@ -74,7 +74,7 @@ const ACTION_GUIDES: {
     category: "infrastructure",
     emoji: "☁️",
     title: "Render Starter plan 업그레이드 ($7/월)",
-    guidePath: "memory/project_codex_sidecar_cycle_diagnosis_2026_05_18.md",
+    guidePath: "docs/external-actions/render-plan-upgrade.md",
     estimatedMinutes: 3,
     description: "Codex sidecar 82분 cycle 사고 — free cold start 해소 + always-on. W1 ramp-up 전 권장.",
   },

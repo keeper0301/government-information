@@ -50,6 +50,11 @@ export type ImprovementSnapshot = {
   blogBodyAnomaly?: boolean;
   // 2026-05-19 — 사장님 외부 액션 잔여 (PendingExternalActionsCard 와 통합).
   pendingExternalActionsCount?: number;
+  // 2026-05-19 — Naver Extension 7일 audit 0건 (가동 안 됨)
+  naverExtensionIdle?: boolean;
+  // 2026-05-19 — Codex sidecar 24h agent_diagnose_run count
+  // 정상 ≥ 300 (30분 cycle × 48 × 9 question = 432, 70% threshold)
+  agentDiagnoseRuns24h?: number;
 };
 
 export type ImprovementScanRun = {
@@ -230,6 +235,8 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     blogBodyAvgChars24h: blogPublishStats.avgBodyChars24h ?? undefined,
     blogBodyAnomaly: blogPublishStats.bodyStatus === "anomaly",
     pendingExternalActionsCount: pendingExternalActions.length,
+    naverExtensionIdle: pendingExternalActions.some((a) => a.category === "automation"),
+    agentDiagnoseRuns24h: await countAdminAction("agent_diagnose_run"),
   };
 }
 
@@ -375,6 +382,30 @@ export function buildImprovementRecommendations(
       evidence: `잔여 ${s.pendingExternalActionsCount}건 (env 미설정·audit 미가동·보안 회전 미완)`,
       action:
         "/admin/autonomous 상단 PendingExternalActionsCard 에서 각 액션 가이드 link 확인 후 처리 — 평균 5~10분/건.",
+    });
+  }
+
+  // 2026-05-19 — Naver Extension 1주 미가동
+  if (s.naverExtensionIdle) {
+    recs.push({
+      area: "naver_blog",
+      severity: "medium",
+      title: "Naver Extension 가동 안 됨 (1주+)",
+      evidence: "최근 7일 naver_publish_* audit 0건 — 5/13 코드 push 후 사장님 액션 3건 (설치·secret·dry-run) 미완 추정",
+      action:
+        "본체 PC Chrome Extension 설치 + popup secret 입력 + manual-test 페이지 dry-run 1건. 가이드: docs/external-actions/render-plan-upgrade.md 참조 (별도 가이드 chrome-extension/README.md).",
+    });
+  }
+
+  // 2026-05-19 — Codex sidecar cycle 사고 (free cold start)
+  if (s.agentDiagnoseRuns24h !== undefined && s.agentDiagnoseRuns24h > 0 && s.agentDiagnoseRuns24h < 300) {
+    recs.push({
+      area: "cron_reliability",
+      severity: "medium",
+      title: "Codex sidecar cycle 사고 — Render free cold start 추정",
+      evidence: `24h agent_diagnose_run ${s.agentDiagnoseRuns24h}건 (정상 ≥ 300, 의도 432 = 30분 cycle × 48 × 9 question)`,
+      action:
+        "Render Starter plan 업그레이드 ($7/월) 로 always-on. 가이드: docs/external-actions/render-plan-upgrade.md. W1 ramp-up (5/25) 전 권장.",
     });
   }
 
