@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: keepioo-agent-resident
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm run agent:resident
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SITE_BASE_URL
+        value: https://www.keepioo.com
+      - key: AGENT_RESIDENT_INTERVAL_MS
+        value: "300000"
+      - key: CRON_SECRET
+        sync: false

@@ -70,7 +70,7 @@ describe("decideAgentAutomation", () => {
     });
   });
 
-  it("schema 는 허용하되 PR/high 로 보내고 secret·payment 는 관리자 검토로 보낸다", () => {
+  it("검증 미완료 schema 는 허용하되 PR/high 로 보내고 secret·payment 는 관리자 검토로 보낸다", () => {
     expect(
       decideAgentAutomation({
         area: "data",
@@ -95,6 +95,53 @@ describe("decideAgentAutomation", () => {
         touchesPayments: true,
       }).mode,
     ).toBe("admin_review");
+  });
+
+  it("운영 DB 비파괴 변경은 테스트와 rollback 이 확인되면 자동 실행한다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "data",
+        action: "apply_migration",
+        touchesProductionDb: true,
+        touchesSchema: true,
+        dbChangeKind: "schema_additive",
+        migrationTested: true,
+        rollbackReady: true,
+      }),
+    ).toMatchObject({
+      mode: "auto_execute",
+      risk: "high",
+    });
+  });
+
+  it("운영 DB 변경은 rollback 준비가 없으면 PR 검증으로 보낸다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "data",
+        action: "non_destructive_backfill",
+        touchesProductionDb: true,
+        dbChangeKind: "non_destructive_backfill",
+        migrationTested: true,
+        rollbackReady: false,
+      }),
+    ).toMatchObject({
+      mode: "create_pr",
+      risk: "high",
+    });
+  });
+
+  it("운영 DB 파괴 변경은 명시 허용 후에도 차단한다", () => {
+    expect(
+      decideAgentAutomation({
+        area: "data",
+        action: "drop_table",
+        touchesProductionDb: true,
+        dbChangeKind: "destructive",
+      }),
+    ).toMatchObject({
+      mode: "blocked",
+      risk: "critical",
+    });
   });
 
   it("파괴 작업은 차단한다", () => {

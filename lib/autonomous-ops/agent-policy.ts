@@ -30,10 +30,14 @@ export type AgentOperation = {
   area: AgentOperationArea;
   action: string;
   destructive?: boolean;
+  touchesProductionDb?: boolean;
   touchesAuth?: boolean;
   touchesSecrets?: boolean;
   touchesPayments?: boolean;
   touchesSchema?: boolean;
+  dbChangeKind?: "schema_additive" | "non_destructive_backfill" | "data_correction" | "destructive";
+  migrationTested?: boolean;
+  rollbackReady?: boolean;
   externalPublish?: boolean;
   qualityApproved?: boolean | null;
 };
@@ -126,11 +130,27 @@ export function decideAgentAutomation(
     };
   }
 
-  if (op.touchesSchema) {
+  if (op.touchesProductionDb || op.touchesSchema) {
+    if (op.dbChangeKind === "destructive") {
+      return {
+        mode: "blocked",
+        risk: "critical",
+        reason: "운영 DB 변경은 허용됐지만 삭제·drop·truncate 같은 파괴적 변경은 자동 실행하지 않습니다.",
+      };
+    }
+
+    if (op.migrationTested === true && op.rollbackReady === true) {
+      return {
+        mode: "auto_execute",
+        risk: "high",
+        reason: "사장님 승인에 따라 운영 DB 비파괴 변경을 허용합니다. 테스트와 rollback 경로가 확인된 경우만 자동 실행합니다.",
+      };
+    }
+
     return {
       mode: "create_pr",
       risk: "high",
-      reason: "운영 DB schema 변경은 허용하되 migration PR과 테스트를 거친 뒤 반영합니다.",
+      reason: "운영 DB 변경은 허용됐지만 테스트 완료와 rollback 준비가 확인되지 않으면 PR과 검증을 먼저 거칩니다.",
     };
   }
 
@@ -172,12 +192,13 @@ export function getAgentPolicySummary(): AgentPolicySummary {
       "블로그 품질 점수화와 품질 통과 글의 외부 발행 재개",
       "IndexNow 제출과 안전한 cron 재시도",
       "외부 채널 성공/실패 신호를 다음 글 생성에 학습",
+      "테스트·rollback 이 확인된 운영 DB 비파괴 변경",
     ],
     pr: [
       "스크래퍼 regex/selector 수정",
       "프롬프트·SEO 문구·알림 copy 변경",
       "어드민 dashboard UI 개선",
-      "운영 DB schema migration PR 생성",
+      "검증 미완료 운영 DB 변경의 migration PR 생성",
       "인증·보안 관련 코드 변경",
       "삭제·purge·reset 등 파괴 작업의 dry-run/rollback 계획 PR 생성",
     ],
@@ -188,6 +209,7 @@ export function getAgentPolicySummary(): AgentPolicySummary {
     ],
     blocked: [
       "품질 검수 실패 글의 외부 자동 발행",
+      "운영 DB 삭제·drop·truncate 같은 파괴적 변경",
       "삭제·reset·force push 같은 실제 파괴 작업 실행",
       "감사 로그 없는 권한 우회",
     ],

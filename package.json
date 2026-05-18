@@ -10,7 +10,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ci": "tsc --noEmit && vitest run"
+    "ci": "tsc --noEmit && vitest run",
+    "agent:resident": "node tools/agent-resident-server.mjs",
+    "agent:resident:check": "node tools/agent-resident-server.mjs --check-config"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

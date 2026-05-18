@@ -68,6 +68,7 @@ Low risk, can run automatically:
 - content quality scoring
 - IndexNow submission
 - retrying failed non-destructive crons
+- non-destructive production DB changes when tests and rollback are both confirmed
 - creating GitHub PRs for parser fixes
 - generating recommendations in `/admin/autonomous`
 
@@ -77,12 +78,12 @@ Medium risk, prefer PR or admin review:
 - SEO copy/prompt changes
 - UI changes in admin dashboards
 - notification wording changes
-- non-destructive database backfills
+- production DB changes missing test or rollback proof
 
 High risk, do not run silently:
 
 - deleting rows or files
-- schema migrations on production
+- destructive production DB changes such as drop, truncate, purge, or irreversible mass update
 - rotating secrets
 - payment, auth, or RLS changes
 - publishing externally when quality review failed
