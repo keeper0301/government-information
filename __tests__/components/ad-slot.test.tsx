@@ -26,14 +26,15 @@ afterEach(() => {
 });
 
 describe("AdSlot", () => {
-  it("env 미설정 시 placeholder 노출 ('광고' 라벨)", () => {
+  it("env 미설정 시 노출 X (5/18 AdSense 재거절 후 placeholder 제거)", () => {
     act(() => {
       root.render(<AdSlot />);
     });
-    // placeholder 안에 '광고' 라벨이 있어야 함
-    expect(container.textContent).toContain("광고");
-    // 진짜 ins 태그는 env 미설정이라 렌더되면 안 됨
+    // 검수 봇이 빈 "광고" 박스를 콘텐츠 없는 광고 슬롯으로 인식하지 않도록
+    // null 반환 — DOM 에 아무것도 렌더링 안 함.
+    expect(container.textContent).toBe("");
     expect(container.querySelector("ins.adsbygoogle")).toBeNull();
+    expect(container.querySelector("div")).toBeNull();
   });
 
   it("module import 성공 — AdSlot export 존재", async () => {
@@ -42,14 +43,13 @@ describe("AdSlot", () => {
     expect(typeof mod.AdSlot).toBe("function");
   });
 
-  it("format prop 받아도 placeholder 분기에서 에러 없음", () => {
-    // env 미설정 환경이라 placeholder 만 렌더 — format 은 무시되지만 prop 전달 자체로 throw 없는지만 확인
+  it("format prop 받아도 env 미설정 분기에서 에러 없음", () => {
     expect(() => {
       act(() => {
         root.render(<AdSlot format="auto" />);
       });
     }).not.toThrow();
-    expect(container.textContent).toContain("광고");
+    expect(container.textContent).toBe("");
   });
 });
 

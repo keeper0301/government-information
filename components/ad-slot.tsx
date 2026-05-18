@@ -75,14 +75,11 @@ export function AdSlot({ format = "fluid" }: AdSlotProps) {
     };
   }, []);
 
+  // 2026-05-18 AdSense 5/18 재거절 후속 — env 미설정 시 placeholder 노출 X.
+  // AdSense 검수 봇이 빈 "광고" 박스를 "콘텐츠 없는 광고 슬롯" 으로 인식 risk.
+  // 검수 통과 후 env 등록 → 자동으로 실제 광고 렌더링 재개.
   if (!PUBLISHER_ID || !SLOT_INFEED) {
-    return (
-      <div className="max-w-content mx-auto px-6 lg:px-10">
-        <div className="border-t border-b border-grey-100 py-4 text-center text-xs text-grey-500">
-          광고
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
