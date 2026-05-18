@@ -1000,6 +1000,76 @@ export async function rejectPressCandidate(
   });
 }
 
+// 2026-05-18 — 제목 유사 묶음 자동 detection (cleanup 우선순위 가시화).
+// 사장님 검수 큐 정리 시 "고유가 피해지원금" 4건 같은 중복 묶음 1 click 처리.
+// 알고리즘: title normalize (공백·괄호·하이픈 제거 + lowercase) → 첫 8자 grouping.
+// 8자 기준은 한국어 정책명 (도시명 + 정책 키워드) 의 핵심 식별 영역.
+export type TitleDupeGroup = {
+  /** normalized prefix (debug + UI key) */
+  key: string;
+  /** 묶음 첫 후보 title (UI 표시) */
+  sampleTitle: string;
+  /** 묶음 ids */
+  ids: string[];
+  /** 묶음 크기 */
+  count: number;
+};
+
+export function normalizeTitleForDupe(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[()\-_·,.\[\]【】]/g, "")
+    .slice(0, 8);
+}
+
+export function groupCandidatesByTitle(
+  rows: { id: string; title: string }[],
+  minGroupSize = 2,
+): TitleDupeGroup[] {
+  const groups = new Map<string, { sample: string; ids: string[] }>();
+  for (const row of rows) {
+    const key = normalizeTitleForDupe(row.title);
+    if (key.length === 0) continue;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.ids.push(row.id);
+    } else {
+      groups.set(key, { sample: row.title, ids: [row.id] });
+    }
+  }
+  return Array.from(groups.entries())
+    .filter(([, v]) => v.ids.length >= minGroupSize)
+    .map(([key, v]) => ({
+      key,
+      sampleTitle: v.sample,
+      ids: v.ids,
+      count: v.ids.length,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function detectPendingTitleDupeGroups(opts?: {
+  minGroupSize?: number;
+}): Promise<TitleDupeGroup[]> {
+  const minGroupSize = opts?.minGroupSize ?? 2;
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("press_ingest_candidates")
+      .select("id, title")
+      .eq("status", "pending")
+      .limit(500);
+    if (error || !data) return [];
+    return groupCandidatesByTitle(
+      data as { id: string; title: string }[],
+      minGroupSize,
+    );
+  } catch {
+    return [];
+  }
+}
+
 // 2026-05-18 — legacy null + 묵음 7일+ pending 개수 (UI 가드 + cleanup 후보).
 export async function countLegacyPendingPressCandidates(opts?: {
   olderThanHours?: number;

@@ -21,6 +21,7 @@ import {
 import {
   listPressCandidates,
   countLegacyPendingPressCandidates,
+  detectPendingTitleDupeGroups,
   type PressCandidateListRow,
 } from "@/lib/press-ingest/candidates";
 import { PressClassifyAction } from "./classify-action";
@@ -179,7 +180,7 @@ export default async function PressIngestPage({
       ? params.tier
       : undefined;
 
-  const [candidates, l2Candidates, kpi, autoTrend, recentAuto, autoStats, legacyCount] =
+  const [candidates, l2Candidates, kpi, autoTrend, recentAuto, autoStats, legacyCount, dupeGroups] =
     await Promise.all([
       getPressIngestCandidates(hours, 100),
       listPressCandidates(100, tierFilter ? { tier: tierFilter } : undefined),
@@ -188,6 +189,7 @@ export default async function PressIngestPage({
       getRecentAutoIngestRows(5),
       getPressAutoConfirmStats(),
       countLegacyPendingPressCandidates(),
+      detectPendingTitleDupeGroups({ minGroupSize: 3 }),
     ]);
   // 7일 추세 max — 막대 길이 정규화 용
   const trendMax = Math.max(1, ...autoTrend.map((d) => d.count));
@@ -226,6 +228,25 @@ export default async function PressIngestPage({
               일괄 해제
             </button>
           </form>
+        </div>
+      )}
+
+      {/* 2026-05-18 — 제목 유사 묶음 자동 detection (3건+ 묶음만 표시). */}
+      {dupeGroups.length > 0 && (
+        <div className="mb-5 rounded-lg border border-purple-200 bg-purple-50 p-3">
+          <div className="text-sm font-semibold text-purple-900 mb-2">
+            중복 의심 묶음 {dupeGroups.length}건 — 검수 시 묶음 단위 처리 권장
+          </div>
+          <ul className="space-y-1 text-xs text-purple-800">
+            {dupeGroups.slice(0, 5).map((g) => (
+              <li key={g.key} className="flex items-center justify-between">
+                <span className="truncate max-w-[480px]">
+                  {g.sampleTitle}
+                </span>
+                <span className="ml-2 font-bold text-purple-900">{g.count}건</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
