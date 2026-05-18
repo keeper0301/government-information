@@ -67,6 +67,8 @@
 
     { "path": "/api/cron/press-legacy-cleanup", "schedule": "0 18 * * 6" },
 
+    { "path": "/api/cron/naver-extension-idle-reminder", "schedule": "0 0 * * 0" },
+
     { "path": "/api/cron/support-reminder", "schedule": "15 0 * * *" },
     { "path": "/api/cron/cancellation-followup", "schedule": "30 0 * * *" },
     { "path": "/api/cron/category-backfill", "schedule": "0 18 * * *" },
