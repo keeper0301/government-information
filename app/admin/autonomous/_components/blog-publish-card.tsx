@@ -100,9 +100,13 @@ export function BlogPublishCard({ stats }: { stats: BlogPublishStats }) {
         </div>
       )}
 
-      {/* 2026-05-19 — 7일 일별 본문 평균 mini bar chart */}
+      {/* 2026-05-19 — 7일 일별 본문 평균 mini bar chart.
+          분기 우선순위:
+          1) length=0 (lib generate 실패 graceful) — 미렌더, 조용함
+          2) 전체 avgChars=0 (7일 발행 0건, 5/18 OpenAI 사고 패턴) — red warning banner
+          3) some avgChars>0 — 정상 chart */}
       {stats.dailyBodyAvg7d.length > 0 &&
-        stats.dailyBodyAvg7d.some((d) => d.avgChars > 0) && (
+        (stats.dailyBodyAvg7d.some((d) => d.avgChars > 0) ? (
           <div className="rounded border border-slate-200 bg-slate-50 p-2">
             <div className="text-[11px] text-slate-600 mb-1">7일 일별 본문 평균 (자)</div>
             <div className="flex items-end gap-1 h-14">
@@ -139,7 +143,16 @@ export function BlogPublishCard({ stats }: { stats: BlogPublishStats }) {
               <span>이상 (red) · 발행 없음 (grey)</span>
             </div>
           </div>
-        )}
+        ) : (
+          // 7일 발행 0건 — 5/18 OpenAI 사고 같은 stalled 상태 직접 표시.
+          // 기존 statusbanner 의 stalled 와 중복이지만 chart 영역 에 별도 시각화 유지.
+          <div className="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-900">
+            <span className="font-semibold">⚠️ 최근 7일 발행 0건</span>
+            <span className="ml-2 opacity-90">
+              cron 노쇼 또는 LLM 사고 의심 — GitHub Actions publish-blog workflow + Gemini quota 확인.
+            </span>
+          </div>
+        ))}
 
       <div
         className={`rounded border px-3 py-2.5 text-xs ${STATUS_TONE[stats.status]}`}
