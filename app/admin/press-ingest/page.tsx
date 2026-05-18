@@ -20,12 +20,14 @@ import {
 } from "@/lib/press-ingest/filter";
 import {
   listPressCandidates,
+  countLegacyPendingPressCandidates,
   type PressCandidateListRow,
 } from "@/lib/press-ingest/candidates";
 import { PressClassifyAction } from "./classify-action";
 import {
   confirmPressCandidateAction,
   rejectPressCandidateAction,
+  bulkRejectLegacyAction,
 } from "./actions";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -177,7 +179,7 @@ export default async function PressIngestPage({
       ? params.tier
       : undefined;
 
-  const [candidates, l2Candidates, kpi, autoTrend, recentAuto, autoStats] =
+  const [candidates, l2Candidates, kpi, autoTrend, recentAuto, autoStats, legacyCount] =
     await Promise.all([
       getPressIngestCandidates(hours, 100),
       listPressCandidates(100, tierFilter ? { tier: tierFilter } : undefined),
@@ -185,6 +187,7 @@ export default async function PressIngestPage({
       getAutoIngestTrend(7),
       getRecentAutoIngestRows(5),
       getPressAutoConfirmStats(),
+      countLegacyPendingPressCandidates(),
     ]);
   // 7일 추세 max — 막대 길이 정규화 용
   const trendMax = Math.max(1, ...autoTrend.map((d) => d.count));
@@ -203,6 +206,26 @@ export default async function PressIngestPage({
       {params.ok && (
         <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm font-semibold text-blue-900">
           {params.ok}
+        </div>
+      )}
+
+      {/* 2026-05-18 — legacy null tier 7일+ 묵음 후보 일괄 정리 (5/9 가동 전 후보). */}
+      {legacyCount > 0 && (
+        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center justify-between gap-3">
+          <div className="text-sm text-amber-900">
+            <span className="font-bold">legacy 후보 {legacyCount}건</span>
+            <span className="ml-2 text-amber-700">
+              · 5/9 가동 전 누적, LLM 신뢰도 미측정 → 자동 confirm 불가
+            </span>
+          </div>
+          <form action={bulkRejectLegacyAction}>
+            <button
+              type="submit"
+              className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+            >
+              일괄 해제
+            </button>
+          </form>
         </div>
       )}
 

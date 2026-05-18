@@ -7,6 +7,7 @@ import { isAdminUser } from "@/lib/admin-auth";
 import {
   confirmPressCandidate,
   rejectPressCandidate,
+  bulkRejectLegacyPressCandidates,
 } from "@/lib/press-ingest/candidates";
 
 async function requireAdminUserId(): Promise<string> {
@@ -42,4 +43,17 @@ export async function rejectPressCandidateAction(formData: FormData) {
   await rejectPressCandidate(candidateId, actorId);
   revalidatePath("/admin/press-ingest");
   redirect("/admin/press-ingest?ok=후보를 해제했어요");
+}
+
+// 2026-05-18 — 5/9 가동 전 legacy null 후보 (7일+ 묵음) 일괄 정리.
+// 사장님 1 click 으로 검수 큐 cleanup → /admin/press-ingest 가독성 ↑.
+export async function bulkRejectLegacyAction(_formData: FormData) {
+  const actorId = await requireAdminUserId();
+  const result = await bulkRejectLegacyPressCandidates(actorId);
+  revalidatePath("/admin/press-ingest");
+  redirect(
+    result.rejected === 0
+      ? "/admin/press-ingest?ok=legacy 후보 없음 (이미 정리됨)"
+      : `/admin/press-ingest?ok=legacy ${result.rejected}건 일괄 해제`,
+  );
 }

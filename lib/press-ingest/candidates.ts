@@ -999,3 +999,75 @@ export async function rejectPressCandidate(
     details: { candidate_id: candidateId },
   });
 }
+
+// 2026-05-18 — legacy null + 묵음 7일+ pending 개수 (UI 가드 + cleanup 후보).
+export async function countLegacyPendingPressCandidates(opts?: {
+  olderThanHours?: number;
+}): Promise<number> {
+  const olderThanHours = opts?.olderThanHours ?? 168;
+  const cutoff = new Date(Date.now() - olderThanHours * 3600_000).toISOString();
+  const admin = createAdminClient();
+  const { count, error } = await admin
+    .from("press_ingest_candidates")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .is("confidence_tier", null)
+    .lt("created_at", cutoff);
+  if (error) {
+    console.warn("[press-ingest] legacy count 실패:", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+// 2026-05-18 — 5/9 가동 전 legacy 후보 (confidence_tier IS NULL) 일괄 정리.
+// 5/9~ 메모리 [press-tier-1week-monitoring-2026-05-10] 의 1주차 마감 시점 정리.
+// tier=null = LLM 신뢰도 측정 불가능 = 자동 confirm 영구 X = 사장님 수동 처리 외
+// 옵션 없음. 신선도 ↓ row 누적 → /admin/press-ingest 큐 사장님 가독성 ↓.
+// 묵음 7일+ + tier IS NULL 만 대상 — mid/low 신규 후보는 영향 0.
+export async function bulkRejectLegacyPressCandidates(
+  actorId: string | null,
+  opts?: { olderThanHours?: number },
+): Promise<{ rejected: number; ids: string[] }> {
+  const olderThanHours = opts?.olderThanHours ?? 168; // 기본 7일
+  const cutoff = new Date(Date.now() - olderThanHours * 3600_000).toISOString();
+  const admin = createAdminClient();
+
+  // 대상 row 먼저 select — audit 에 ids 남기기.
+  const { data: targets, error: selectErr } = await admin
+    .from("press_ingest_candidates")
+    .select("id")
+    .eq("status", "pending")
+    .is("confidence_tier", null)
+    .lt("created_at", cutoff);
+  if (selectErr) throw new Error(`legacy 후보 조회 실패: ${selectErr.message}`);
+  const ids = (targets ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return { rejected: 0, ids: [] };
+
+  const now = new Date().toISOString();
+  const { error: updateErr } = await admin
+    .from("press_ingest_candidates")
+    .update({
+      status: "rejected",
+      rejected_at: now,
+      rejected_by: actorId,
+      updated_at: now,
+    })
+    .in("id", ids)
+    .eq("status", "pending"); // race condition 가드 (다른 사장님 액션 중복 방지)
+  if (updateErr) throw new Error(`legacy 후보 일괄 해제 실패: ${updateErr.message}`);
+
+  await logAdminAction({
+    actorId,
+    action: "press_l2_reject",
+    details: {
+      bulk: true,
+      reason: "legacy_null_tier_stale",
+      older_than_hours: olderThanHours,
+      rejected_count: ids.length,
+      candidate_ids: ids,
+    },
+  });
+
+  return { rejected: ids.length, ids };
+}
