@@ -87,30 +87,30 @@ describe("formatDigestMessage", () => {
     expect(message).toContain("cron 실패 4");
   });
 
-  // G4/G5 (2026-05-17) — LLM spending 80% 사전 알림 회귀 방어 3종
-  it("G4 — LLM 추정 < 80% (0.5) — 알림 미노출 (평소 SMS 압축)", () => {
+  // G4 (2026-05-17) — Gemini spending 80% 사전 알림 회귀 방어 3종
+  it("G4 — Gemini 추정 < 80% (0.5) — 알림 미노출 (평소 SMS 압축)", () => {
     const message = formatDigestMessage({
       ...ZERO,
       geminiSpendingRatio: 0.5,
     });
-    expect(message).not.toContain("LLM 월 추정");
+    expect(message).not.toContain("Gemini 월 추정");
   });
 
-  it("G4 — LLM 추정 80% (0.85) — ⚠️ 알림 1줄 포함 + OpenAI 콘솔 URL", () => {
+  it("G4 — Gemini 추정 80% (0.85) — ⚠️ 알림 1줄 포함", () => {
     const message = formatDigestMessage({
       ...ZERO,
       geminiSpendingRatio: 0.85,
     });
-    expect(message).toContain("⚠️ LLM 월 추정 85%");
-    expect(message).toContain("platform.openai.com");
+    expect(message).toContain("⚠️ Gemini 월 추정 85%");
+    expect(message).toContain("aistudio.google.com/spend");
   });
 
-  it("G4 — LLM 추정 100% (1.0) — 🚨 알림 1줄 포함", () => {
+  it("G4 — Gemini 추정 100% (1.0) — 🚨 알림 1줄 포함", () => {
     const message = formatDigestMessage({
       ...ZERO,
       geminiSpendingRatio: 1.0,
     });
-    expect(message).toContain("🚨 LLM 월 추정 100%");
+    expect(message).toContain("🚨 Gemini 월 추정 100%");
   });
 
   it("직접 URL link 는 메시지에 포함 안 됨 (link 결정은 cron 라우터 책임)", () => {
