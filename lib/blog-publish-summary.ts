@@ -1,11 +1,3 @@
-// ============================================================
-// buildSummaryMessage — blog-publish-summary cron 메시지 빌더 (테스트 export)
-// ============================================================
-// 5/18 — Next.js route file 은 GET/POST 외 named export 금지 정책 (route export
-// 제약). 사장님 buildGmailVerdictAlert refactor (lib/adsense-gmail-verdict-alert)
-// 와 동일 패턴 — route.ts 의 helper 함수 lib 으로 분리.
-// ============================================================
-
 export function buildSummaryMessage(input: {
   publishedCount: number;
   successAttempts: number;
@@ -34,7 +26,9 @@ export function buildSummaryMessage(input: {
     message: [
       `24h 블로그 ${publishedCount}건 정상 발행.`,
       `cron 시도 ${successAttempts + failedAttempts}회 (성공 ${successAttempts} / 실패 ${failedAttempts}).`,
-      lastPublishedAt ? `마지막 발행: ${new Date(lastPublishedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}` : null,
+      lastPublishedAt
+        ? `마지막 발행: ${new Date(lastPublishedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
+        : null,
     ].filter(Boolean).join("\n"),
   };
 }

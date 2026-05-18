@@ -947,6 +947,37 @@ function PendingActionsPanel({ actions }: { actions: AggregatedPendingAction[] }
   );
 }
 
+// 2026-05-18 — Phase 3 백필 추세 mini bar chart.
+// 7일 일별 막대. max 기준 height %, 0 인 날은 1px 회색 dot 으로 가시화.
+function TrendBarChart({ data }: { data: { day: string; added: number }[] }) {
+  const max = Math.max(1, ...data.map((d) => d.added));
+  return (
+    <div className="mb-3 rounded border border-grey-200 bg-white p-2">
+      <div className="text-[11px] text-grey-600 mb-1">7일 일별 백필</div>
+      <div className="flex items-end gap-1 h-12">
+        {data.map((d) => {
+          const heightPct = Math.max(2, (d.added / max) * 100);
+          return (
+            <div
+              key={d.day}
+              className="flex-1 flex flex-col items-center justify-end"
+              title={`${d.day}: ${d.added}건`}
+            >
+              <div
+                className={`w-full rounded-sm ${d.added > 0 ? "bg-blue-500" : "bg-grey-300"}`}
+                style={{ height: `${heightPct}%` }}
+              />
+              <div className="text-[9px] text-grey-500 mt-0.5">
+                {d.day.slice(5)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PhaseCard({ status }: { status: PhaseStatus }) {
   const tone = status.active
     ? "border-green-200 bg-green-50/40"
@@ -976,6 +1007,10 @@ function PhaseCard({ status }: { status: PhaseStatus }) {
           </li>
         ))}
       </ul>
+
+      {status.trend && status.trend.length > 0 && (
+        <TrendBarChart data={status.trend} />
+      )}
 
       {status.pendingActions.length > 0 && (
         <div className="rounded border border-amber-200 bg-white p-2">

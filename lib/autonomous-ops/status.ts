@@ -20,6 +20,9 @@ export type PhaseStatus = {
   metrics: PhaseMetric[];
   /** 사장님이 처리해야 할 외부 액션 (없으면 빈 배열) */
   pendingActions: PendingAction[];
+  /** 일별 추세 mini bar chart (Phase 3 만 채움, 다른 Phase 는 undefined).
+   *  2026-05-18 — 백필 추세 시각화. day=YYYY-MM-DD, added=일별 건수. */
+  trend?: { day: string; added: number }[];
 };
 
 const MS_PER_DAY = 24 * 3600_000;
@@ -225,6 +228,7 @@ async function phase3(): Promise<PhaseStatus> {
       },
     ],
     pendingActions: pending,
+    trend: trend.daily,
   };
 }
 
