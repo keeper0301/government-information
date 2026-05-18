@@ -21,7 +21,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const ACTION_GUIDES: {
-  category: string;
+  // PendingExternalAction.category 와 매칭되는 항목 (security/oauth/automation/checkout)
+  // 또는 PendingExternalAction 미추적 (adsense/codex) — 항상 "완료 또는 미적용" 표시.
+  category: "security" | "oauth" | "automation" | "checkout" | "adsense" | "codex";
   emoji: string;
   title: string;
   guidePath: string;
@@ -86,7 +88,9 @@ export default async function ExternalActionsPage() {
   await requireAdmin();
 
   const pendingActions = await getPendingExternalActions();
-  const pendingLabels = new Set(pendingActions.map((a) => a.label));
+  // 2026-05-19 — category 기반 정확 매칭 (이전 includes() 는 false positive risk).
+  // ACTION_GUIDES.category 와 PendingExternalAction.category 가 1:1 매칭.
+  const pendingCategories = new Set(pendingActions.map((a) => a.category));
 
   return (
     <div className="max-w-[980px]">
@@ -102,10 +106,13 @@ export default async function ExternalActionsPage() {
 
       <ul className="space-y-3">
         {ACTION_GUIDES.map((g) => {
-          const isPending = Array.from(pendingLabels).some((label) =>
-            label.includes(g.title.split(" (")[0]) ||
-            g.title.includes(label.split(" (")[0]),
-          );
+          // pendingCategories 는 security/oauth/automation/checkout 만 — adsense/codex 항상 false (미추적)
+          const isPending =
+            (g.category === "security" ||
+              g.category === "oauth" ||
+              g.category === "automation" ||
+              g.category === "checkout") &&
+            pendingCategories.has(g.category);
           return (
             <li
               key={g.guidePath}
