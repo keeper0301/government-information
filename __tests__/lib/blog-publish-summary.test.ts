@@ -58,6 +58,39 @@ describe("buildSummaryMessage", () => {
     expect(r.message).toContain("GitHub Actions");
   });
 
+  it("본문 너무 김 사고 (avgBodyChars > 2,800자) — AI 잡담 신호 + MAX_CONTENT_LENGTH 가드 안내", () => {
+    const r = buildSummaryMessage({
+      publishedCount: 7,
+      successAttempts: 7,
+      failedAttempts: 0,
+      lastPublishedAt: "2026-05-19T07:10:00+09:00",
+      avgBodyChars: 2950, // 정상 ~1,950 대비 너무 김
+    });
+    expect(r.subject).toContain("본문 김 ⚠️");
+    expect(r.message).toContain("본문 평균: 2950자");
+    expect(r.message).toContain("AI 잡담");
+    expect(r.message).toContain("MAX_CONTENT_LENGTH=3000");
+  });
+
+  it("본문 평균 정상 범위 (1,700~2,800자) — 양면 anomaly 모두 미발동", () => {
+    const r1 = buildSummaryMessage({
+      publishedCount: 7,
+      successAttempts: 7,
+      failedAttempts: 0,
+      lastPublishedAt: "2026-05-19T07:10:00+09:00",
+      avgBodyChars: 1700, // 하한 경계
+    });
+    const r2 = buildSummaryMessage({
+      publishedCount: 7,
+      successAttempts: 7,
+      failedAttempts: 0,
+      lastPublishedAt: "2026-05-19T07:10:00+09:00",
+      avgBodyChars: 2800, // 상한 경계
+    });
+    expect(r1.subject).not.toContain("⚠️");
+    expect(r2.subject).not.toContain("⚠️");
+  });
+
   it("발행 0건 + cron 노쇼 (success+failed=0)", () => {
     const r = buildSummaryMessage({
       publishedCount: 0,

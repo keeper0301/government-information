@@ -82,7 +82,9 @@ export async function getBlogPublishStats(): Promise<BlogPublishStats> {
       return sum + plain.length;
     }, 0);
     avgBodyChars24h = Math.round(totalChars / posts24h.data.length);
-    bodyStatus = avgBodyChars24h >= 1700 ? "healthy" : "anomaly";
+    // 2026-05-18 양면 임계 — 1,700~2,800자 정상, 외 anomaly (짧음 LLM dysfunction / 김 AI 잡담)
+    bodyStatus =
+      avgBodyChars24h >= 1700 && avgBodyChars24h <= 2800 ? "healthy" : "anomaly";
   }
 
   return {
