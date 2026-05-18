@@ -136,6 +136,14 @@ export default async function AdminAutonomousPage() {
         description={`5 Phase 중 ${activeCount}개 가동 · 6 카테고리 14+ 카드 · 외부 액션 ${pendingActions.length}건 대기. 매일 30초 점검 권장.`}
       />
 
+      <TomorrowAlertsCard
+        gmailOAuthReady={!!(
+          process.env.GMAIL_CLIENT_ID &&
+          process.env.GMAIL_CLIENT_SECRET &&
+          process.env.GMAIL_REFRESH_TOKEN
+        )}
+      />
+
       {/* 1. 자동 개선 진단 — 사장님이 가장 먼저 보는 행동 액션 */}
       <SectionHeader title="🎯 오늘 반영할 개선 과제" />
       <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
@@ -943,6 +951,49 @@ function PendingActionsPanel({ actions }: { actions: AggregatedPendingAction[] }
       <p className="mt-3 text-[11px] text-grey-600">
         각 액션 완료 후 hub 새로고침 시 자동 가동 (✓ 가동) 으로 전환됩니다.
       </p>
+    </section>
+  );
+}
+
+// 2026-05-19 — 내일 아침 자동 알림 도착 예정 안내 (사장님 모바일 가시화).
+// Vercel cron 가동 시각 + 메시지 미리 인지 → 알림 도착 시 사장님 즉시 의미 파악.
+// Gmail OAuth env 등록 여부에 따라 10:10 알림 동적 표시.
+function TomorrowAlertsCard({ gmailOAuthReady }: { gmailOAuthReady: boolean }) {
+  const tomorrow = new Date(Date.now() + 24 * 3600_000)
+    .toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" })
+    .replace(/\.\s?/g, "/")
+    .replace(/\/$/, "");
+  const alerts: { time: string; channel: string; message: string }[] = [
+    { time: "07:30", channel: "텔레그램+SMS", message: "블로그 24h 발행 N건 / 0건 사고 의심" },
+    { time: "09:30", channel: "텔레그램", message: "외부 콘솔 통합 점검 — 이상 0건 시 무음" },
+    { time: "10:05", channel: "텔레그램+SMS", message: "AdSense 검수 진행 중 (전환 시 즉시 승인·거절)" },
+  ];
+  if (gmailOAuthReady) {
+    alerts.push({
+      time: "10:10",
+      channel: "텔레그램+SMS",
+      message: "AdSense Gmail 이메일 자동 파싱 (verdict 매칭 시만)",
+    });
+  }
+  return (
+    <section className="mb-4 rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+      <h2 className="text-sm font-semibold text-blue-900 mb-2">
+        🔔 {tomorrow} KST 자동 알림 예정
+      </h2>
+      <ul className="space-y-1 text-xs text-blue-900">
+        {alerts.map((a) => (
+          <li key={a.time} className="flex items-baseline gap-2">
+            <span className="font-mono font-bold w-12">{a.time}</span>
+            <span className="text-blue-700 w-20">{a.channel}</span>
+            <span className="text-grey-800 flex-1">{a.message}</span>
+          </li>
+        ))}
+      </ul>
+      {!gmailOAuthReady && (
+        <p className="mt-2 text-[11px] text-blue-700">
+          💡 Gmail OAuth 등록 시 10:10 알림 추가 (검수 결과 2 채널 보강).
+        </p>
+      )}
     </section>
   );
 }
