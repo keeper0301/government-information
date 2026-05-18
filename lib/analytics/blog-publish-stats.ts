@@ -18,6 +18,10 @@ export type BlogPublishStats = {
   hoursSinceLastPublish: number; // 마지막 발행 이후 hours
   // 5/15 사고 baseline: 평소 1~2 글/일. 36h 무발행 = 의심, 60h+ = 사고.
   status: "healthy" | "watch" | "stalled";
+  // 2026-05-18 — 24h 발행글 본문 평균 길이 (5/18 OpenAI 사고 학습).
+  // 정상 ~1,900자. < 1,700자 = LLM dysfunction 의심.
+  avgBodyChars24h: number | null;
+  bodyStatus: "healthy" | "anomaly" | "no-data";
 };
 
 export async function getBlogPublishStats(): Promise<BlogPublishStats> {
@@ -27,7 +31,7 @@ export async function getBlogPublishStats(): Promise<BlogPublishStats> {
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const [c24, c7d, lastRow] = await Promise.all([
+  const [c24, c7d, lastRow, posts24h] = await Promise.all([
     admin
       .from("blog_posts")
       .select("id", { count: "exact", head: true })
@@ -45,6 +49,12 @@ export async function getBlogPublishStats(): Promise<BlogPublishStats> {
       .order("published_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // 2026-05-18 — 24h 발행글 content 조회 (본문 평균 길이 계산용)
+    admin
+      .from("blog_posts")
+      .select("content")
+      .gte("published_at", since24h)
+      .not("published_at", "is", null),
   ]);
 
   const lastPublishedAt = lastRow.data?.published_at ?? null;
@@ -63,11 +73,25 @@ export async function getBlogPublishStats(): Promise<BlogPublishStats> {
         ? "watch"
         : "stalled";
 
+  // 2026-05-18 — 본문 평균 길이 + 사고 감지 status
+  let avgBodyChars24h: number | null = null;
+  let bodyStatus: BlogPublishStats["bodyStatus"] = "no-data";
+  if (posts24h.data && posts24h.data.length > 0) {
+    const totalChars = posts24h.data.reduce((sum, p) => {
+      const plain = (p.content as string | null)?.replace(/<[^>]+>/g, "").trim() ?? "";
+      return sum + plain.length;
+    }, 0);
+    avgBodyChars24h = Math.round(totalChars / posts24h.data.length);
+    bodyStatus = avgBodyChars24h >= 1700 ? "healthy" : "anomaly";
+  }
+
   return {
     published24h: c24.count ?? 0,
     published7d: c7d.count ?? 0,
     lastPublishedAt,
     hoursSinceLastPublish,
     status,
+    avgBodyChars24h,
+    bodyStatus,
   };
 }

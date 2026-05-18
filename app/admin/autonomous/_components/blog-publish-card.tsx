@@ -48,7 +48,7 @@ export function BlogPublishCard({ stats }: { stats: BlogPublishStats }) {
         </Link>
       </header>
 
-      <div className="mb-3 grid grid-cols-3 gap-2 text-sm">
+      <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
         <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="text-[11px] text-slate-600">24h 발행</div>
           <div className="font-semibold text-slate-900">
@@ -67,7 +67,38 @@ export function BlogPublishCard({ stats }: { stats: BlogPublishStats }) {
             {relativeTime(stats.lastPublishedAt)}
           </div>
         </div>
+        {/* 2026-05-18 — 본문 평균 길이 (5/18 OpenAI 사고 학습) */}
+        <div
+          className={`rounded border px-3 py-2 ${
+            stats.bodyStatus === "anomaly"
+              ? "border-red-300 bg-red-50"
+              : "border-slate-200 bg-slate-50"
+          }`}
+        >
+          <div className="text-[11px] text-slate-600">본문 평균</div>
+          <div
+            className={`font-semibold ${
+              stats.bodyStatus === "anomaly" ? "text-red-900" : "text-slate-900"
+            }`}
+          >
+            {stats.avgBodyChars24h !== null
+              ? `${stats.avgBodyChars24h}자${stats.bodyStatus === "anomaly" ? " ⚠️" : ""}`
+              : "—"}
+          </div>
+        </div>
       </div>
+
+      {stats.bodyStatus === "anomaly" && (
+        <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+          <div className="font-medium">
+            ⚠️ 본문 평균 {stats.avgBodyChars24h}자 &lt; 1,700자 임계 — LLM dysfunction 의심
+          </div>
+          <p className="mt-1 opacity-90">
+            정상 ~1,900자. 5/18 OpenAI 마이그 사고 패턴 (591~859자) 재발 의심.
+            lib/ai.ts 의 model/maxTokens/jsonMode 확인 권장.
+          </p>
+        </div>
+      )}
 
       <div
         className={`rounded border px-3 py-2.5 text-xs ${STATUS_TONE[stats.status]}`}
