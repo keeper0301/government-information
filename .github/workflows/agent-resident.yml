@@ -39,6 +39,8 @@ jobs:
             --retry-delay 10 \
             --retry-all-errors \
             -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --data '{"source":"github_actions_heartbeat"}' \
             "${SITE_BASE_URL}/api/cron/agent-resident-cycle")
 
           echo "== HTTP ${http_status} =="

@@ -58,7 +58,7 @@ function validateConfig(config) {
   return missing;
 }
 
-async function runCycle(config, source = "scheduler") {
+async function runCycle(config, source = "server_resident_worker") {
   if (state.running) {
     return { skipped: true, reason: "already_running" };
   }
@@ -167,7 +167,7 @@ function startHealthServer(config) {
     }
 
     if (url.pathname === "/run-once" && req.method === "POST") {
-      const result = await runCycle(config, "manual");
+      const result = await runCycle(config, "server_resident_manual");
       res.writeHead(result.ok ? 200 : 202, { "content-type": "application/json" });
       res.end(JSON.stringify(result));
       return;
@@ -191,10 +191,10 @@ function startHealthServer(config) {
 }
 
 async function scheduler(config) {
-  await runCycle(config, "startup");
+  await runCycle(config, "server_resident_startup");
   for (;;) {
     await sleep(config.intervalMs);
-    await runCycle(config, "scheduler");
+    await runCycle(config, "server_resident_worker");
   }
 }
 

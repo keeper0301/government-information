@@ -7,7 +7,10 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { runResidentAgentCycle } from "@/lib/agent/resident-cycle";
+import {
+  runResidentAgentCycle,
+  type ResidentAgentSource,
+} from "@/lib/agent/resident-cycle";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,11 +29,44 @@ function authorize(request: Request) {
   return null;
 }
 
+const SOURCE_ALIASES: Record<string, ResidentAgentSource> = {
+  github_actions_heartbeat: "github_actions_heartbeat",
+  site_resident_cron: "site_resident_cron",
+  startup: "server_resident_startup",
+  scheduler: "server_resident_worker",
+  manual: "server_resident_manual",
+  server_resident_startup: "server_resident_startup",
+  server_resident_worker: "server_resident_worker",
+  server_resident_manual: "server_resident_manual",
+};
+
+async function readSource(request: Request): Promise<ResidentAgentSource> {
+  const headerSource = request.headers.get("x-agent-resident-source") ?? "";
+  const bodySource = await readBodySource(request);
+  return (
+    SOURCE_ALIASES[bodySource] ??
+    SOURCE_ALIASES[headerSource] ??
+    "site_resident_cron"
+  );
+}
+
+async function readBodySource(request: Request) {
+  if (request.method !== "POST") return "";
+  try {
+    const body = (await request.json()) as { source?: unknown };
+    return typeof body.source === "string" ? body.source : "";
+  } catch {
+    return "";
+  }
+}
+
 async function run(request: Request) {
   const denied = authorize(request);
   if (denied) return denied;
 
-  const result = await runResidentAgentCycle();
+  const result = await runResidentAgentCycle({
+    source: await readSource(request),
+  });
   return NextResponse.json(result);
 }
 

@@ -47,6 +47,7 @@ describe("runResidentAgentCycle", () => {
   it("audits every diagnostic and baseline resident decision", async () => {
     const result = await runResidentAgentCycle();
 
+    expect(result.source).toBe("site_resident_cron");
     expect(result.diagnoseCount).toBe(4);
     expect(result.recommendationCount).toBe(1);
     expect(result.recommendations[0].operation.action).toBe("codex_diagnose");
@@ -99,6 +100,30 @@ describe("runResidentAgentCycle", () => {
           action: "codex_blog_publish_fix",
           decision_mode: "create_pr",
           decision_risk: "medium",
+        }),
+      }),
+    );
+  });
+
+  it("records the caller source for GitHub Actions heartbeat runs", async () => {
+    const result = await runResidentAgentCycle({
+      source: "github_actions_heartbeat",
+    });
+
+    expect(result.source).toBe("github_actions_heartbeat");
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent_diagnose_run",
+        details: expect.objectContaining({
+          source: "github_actions_heartbeat",
+        }),
+      }),
+    );
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "agent_execute_run",
+        details: expect.objectContaining({
+          source: "github_actions_heartbeat",
         }),
       }),
     );

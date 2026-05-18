@@ -25,10 +25,23 @@ export type ResidentAgentRecommendation = {
   evidence: string;
 };
 
+export type ResidentAgentSource =
+  | "site_resident_cron"
+  | "github_actions_heartbeat"
+  | "server_resident_startup"
+  | "server_resident_worker"
+  | "server_resident_manual";
+
+export type ResidentAgentCycleOptions = {
+  questions?: DiagnoseQuestion[];
+  source?: ResidentAgentSource;
+};
+
 export type ResidentAgentCycleResult = {
   ok: true;
   startedAt: string;
   finishedAt: string;
+  source: ResidentAgentSource;
   diagnoseCount: number;
   recommendationCount: number;
   highestRisk: AgentPolicyDecision["risk"];
@@ -43,13 +56,16 @@ const RISK_RANK: Record<AgentPolicyDecision["risk"], number> = {
 };
 
 export async function runResidentAgentCycle(
-  questions: DiagnoseQuestion[] = listDiagnoseQuestions(),
+  input: DiagnoseQuestion[] | ResidentAgentCycleOptions = {},
 ): Promise<ResidentAgentCycleResult> {
+  const options = Array.isArray(input) ? { questions: input } : input;
+  const source = options.source ?? "site_resident_cron";
+  const questions = options.questions ?? listDiagnoseQuestions();
   const startedAt = new Date().toISOString();
   const diagnoseResults = await Promise.all(
     questions.map(async (question) => {
       const result = await runDiagnose(question);
-      await auditDiagnose(result);
+      await auditDiagnose(result, source);
       return result;
     }),
   );
@@ -63,13 +79,14 @@ export async function runResidentAgentCycle(
   );
 
   for (const rec of recommendations) {
-    await auditRecommendation(rec);
+    await auditRecommendation(rec, source);
   }
 
   return {
     ok: true,
     startedAt,
     finishedAt: new Date().toISOString(),
+    source,
     diagnoseCount: diagnoseResults.length,
     recommendationCount: recommendations.length,
     highestRisk: highestRisk(recommendations),
@@ -178,24 +195,30 @@ function highestRisk(
   );
 }
 
-async function auditDiagnose(result: DiagnoseResult) {
+async function auditDiagnose(
+  result: DiagnoseResult,
+  source: ResidentAgentSource,
+) {
   await logAdminAction({
     actorId: null,
     action: "agent_diagnose_run",
     details: {
-      source: "site_resident_cron",
+      source,
       question: result.question,
       collected_at: result.collected_at,
     },
   });
 }
 
-async function auditRecommendation(rec: ResidentAgentRecommendation) {
+async function auditRecommendation(
+  rec: ResidentAgentRecommendation,
+  source: ResidentAgentSource,
+) {
   await logAdminAction({
     actorId: null,
     action: "agent_execute_run",
     details: {
-      source: "site_resident_cron",
+      source,
       area: rec.operation.area,
       action: rec.operation.action,
       evidence: rec.evidence,
