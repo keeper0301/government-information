@@ -97,7 +97,10 @@ function joinContactInfo(rprs: string | null, blocks: string[]): string | null {
 const fetcher: DetailFetcher = {
   sourceCode: "bokjiro",
   label: "복지로 Detail API",
-  enabled: () => !!KEY,
+  // BOKJIRO_DETAIL_DISABLED=true 면 fetcher 매칭 X → enrich route 가 skipped 처리.
+  // 2026-04-26 시작된 3주째 5/5 fail (cron_failure_log occurrences 170+, permanent_skipped 165건)
+  // 사고 회복까지 사장님 dashboard 에서 toggle 가능. data.go.kr endpoint 회복 확인 후 false 로 재개.
+  enabled: () => !!KEY && process.env.BOKJIRO_DETAIL_DISABLED !== "true",
 
   // source_id 가 WLF... 형식이면서 (source_code='bokjiro' OR source_url 이 bokjiro.go.kr)
   //
