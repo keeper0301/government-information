@@ -37,11 +37,15 @@ type Provider = keyof typeof PROVIDER_STATUS;
 export function SocialLoginButtons({
   next,
   onError,
+  disabled = false,
 }: {
   /** 로그인 성공 후 돌아갈 내부 경로 (예: "/" 또는 "/welfare/abc"). */
   next: string;
   /** 에러 발생 시 부모 컴포넌트에 알리는 콜백 (login 페이지의 빨강 박스). */
   onError: (message: string) => void;
+  /** 진입 자체 비활성 (예: signup 페이지에서 만 14세 미체크 시).
+   *  미설정 기본 false — login 페이지는 기존 그대로 동작. */
+  disabled?: boolean;
 }) {
   // 진행 중 provider — 동시 클릭 방지용
   const [busy, setBusy] = useState<Provider | null>(null);
@@ -49,6 +53,7 @@ export function SocialLoginButtons({
   const [notice, setNotice] = useState<string | null>(null);
 
   async function handleSocialLogin(provider: Provider) {
+    if (disabled) return; // 외부 disabled — 버튼이 막혀 도달 어렵지만 방어
     onError("");
     setNotice(null);
 
@@ -96,8 +101,8 @@ export function SocialLoginButtons({
       <button
         type="button"
         onClick={() => handleSocialLogin("kakao")}
-        disabled={busy !== null}
-        className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] text-black/85 rounded-lg text-[15px] font-semibold font-pretendard cursor-pointer hover:brightness-95 transition-all disabled:opacity-50 mb-4"
+        disabled={disabled || busy !== null}
+        className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] text-black/85 rounded-lg text-[15px] font-semibold font-pretendard cursor-pointer hover:brightness-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
       >
         {/* 카카오 말풍선 로고 */}
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -121,16 +126,19 @@ export function SocialLoginButtons({
         <SocialCircleButton
           provider="google"
           busy={busy}
+          disabled={disabled}
           onClick={() => handleSocialLogin("google")}
         />
         <SocialCircleButton
           provider="naver"
           busy={busy}
+          disabled={disabled}
           onClick={() => handleSocialLogin("naver")}
         />
         <SocialCircleButton
           provider="facebook"
           busy={busy}
+          disabled={disabled}
           onClick={() => handleSocialLogin("facebook")}
         />
       </div>
@@ -151,10 +159,12 @@ export function SocialLoginButtons({
 function SocialCircleButton({
   provider,
   busy,
+  disabled = false,
   onClick,
 }: {
   provider: "google" | "naver" | "facebook";
   busy: Provider | null;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   const status = PROVIDER_STATUS[provider];
@@ -174,10 +184,10 @@ function SocialCircleButton({
     <button
       type="button"
       onClick={onClick}
-      disabled={busy !== null}
+      disabled={disabled || busy !== null}
       aria-label={`${status.label}로 계속하기`}
       title={status.enabled ? `${status.label}로 계속하기` : `${status.label} 준비 중`}
-      className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 ${styles[provider]}`}
+      className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${styles[provider]}`}
     >
       {provider === "google" && <GoogleLogo />}
       {provider === "naver" && <NaverLogo />}

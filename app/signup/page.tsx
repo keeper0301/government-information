@@ -28,6 +28,10 @@ export default function SignupPage() {
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeAge, setAgreeAge] = useState(false);
   const [agreeMarketing, setAgreeMarketing] = useState(false);
+  // 소셜 가입 path 의 만 14세 사전 차단 (commit 233fe13 follow-up).
+  // 소셜은 callback 에서 metadata 사후 확인 불가능 — 페이지에서 사전 게이트.
+  // 이메일 path 의 agreeAge 와 별개 state (소셜 사용자가 form 의 동의 박스를 안 보고 진입).
+  const [socialAgeOk, setSocialAgeOk] = useState(false);
   // 폼 제출 중인지 (중복 클릭 방지)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -127,9 +131,30 @@ export default function SignupPage() {
         </div>
       )}
 
+      {/* 소셜 가입 path 의 만 14세 사전 차단 — 「개인정보 보호법」 제22조의2.
+          이메일 path 와 별도 (소셜은 form 의 agreeAge 체크박스 우회 가능).
+          체크 안 하면 SocialLoginButtons 의 모든 button disabled. */}
+      <label className="flex items-center gap-2.5 mb-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={socialAgeOk}
+          onChange={(e) => setSocialAgeOk(e.target.checked)}
+          className="w-[16px] h-[16px] accent-blue-500 cursor-pointer"
+        />
+        <span className="text-[13px] text-grey-700 leading-[1.5]">
+          <span className="text-red font-semibold mr-1">[필수]</span>
+          만 14세 이상입니다 (소셜 가입 시 사전 확인)
+        </span>
+      </label>
+
       {/* 소셜 진입 4종 — 카카오 메인 + 구글·네이버·페이스북 원형.
-          login 페이지와 동일 컴포넌트. 신규 사용자 가입 + 기가입자 로그인 모두 동작. */}
-      <SocialLoginButtons next="/" onError={setError} />
+          login 페이지와 동일 컴포넌트 (disabled prop 만 추가). */}
+      <SocialLoginButtons next="/" onError={setError} disabled={!socialAgeOk} />
+      {!socialAgeOk && (
+        <p className="text-[12px] text-amber-600 text-center mb-3 leading-[1.5]">
+          만 14세 이상 확인 후 소셜 가입이 가능해요.
+        </p>
+      )}
       <div className="mb-6" />
 
       {/* 동의 안내 — 소셜 진입 시 신규 사용자는 로그인/가입 완료 시 약관·방침 동의로 간주.
