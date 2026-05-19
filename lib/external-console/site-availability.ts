@@ -1,7 +1,7 @@
 // ============================================================
 // 사이트 가용성 점검 (Phase 3 외부 console — 즉시 가치 1단계)
 // ============================================================
-// keepioo.com 주요 페이지 5종 HEAD 요청으로 가용성·응답 시간 점검.
+// keepioo.com 주요 페이지 5종 GET 요청 + body cancel 로 가용성·응답 시간 점검.
 // Vercel 자체 다운 시에는 health-alert (DB 기반) 가 작동 못 하므로 별도 가용성
 // 점검 cron 가치 있음.
 //
@@ -34,7 +34,9 @@ export interface CheckOneResult {
   error?: string;
 }
 
-// 1 페이지 점검 — HEAD 요청. timeout + 에러 모두 핸들링.
+// 1 페이지 점검 — GET 요청 + headers 받은 즉시 body cancel.
+// HEAD 는 Next.js force-dynamic 페이지에서 응답이 늦게 와 timeout/false positive 발생 (2026-05-19 진단).
+// GET 으로 변경 후 res.body?.cancel() 로 payload 다운로드 회피 — 외부 트래픽 비용 0.
 async function checkOne(
   baseUrl: string,
   target: (typeof TARGETS)[number],
@@ -45,13 +47,15 @@ async function checkOne(
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     const res = await fetch(url, {
-      method: "HEAD",
+      method: "GET",
       // bot 차단·캐시 우회 회피 — Vercel edge 가 caching 안 하도록
       cache: "no-store",
       headers: { "User-Agent": "keepioo-availability-check/1.0" },
       signal: ctrl.signal,
     });
     clearTimeout(timer);
+    // status·headers 받은 직후 body stream 즉시 cancel — list 페이지 161~385KB 다운로드 회피.
+    res.body?.cancel().catch(() => {});
     return {
       path: target.path,
       label: target.label,
