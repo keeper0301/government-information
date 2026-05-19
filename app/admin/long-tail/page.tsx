@@ -36,7 +36,10 @@ export default async function LongTailPage() {
   await requireAdmin();
 
   const admin = createAdminClient();
-  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const generatedAt = new Date();
+  const since7d = new Date(
+    generatedAt.getTime() - 7 * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   // 최근 long_tail audit 로그 (admin_actions where action='blog_publish' AND details.source='long_tail')
   const { data: recentActions } = await admin

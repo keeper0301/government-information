@@ -98,7 +98,7 @@ export function buildAdsenseOnboardingSummary(
   const scImpressions = scMetrics?.impressions ?? 0;
   const scClicks = scMetrics?.clicks ?? 0;
 
-  const afterHours = (hours: number) => readyHours === null || readyHours >= hours;
+  const afterHours = (hours: number) => readyHours !== null && readyHours >= hours;
 
   return {
     active: true,
@@ -205,6 +205,14 @@ export function buildOpsNextActions(
         title: "AdSense 요청·노출 0",
         detail: `READY 후 ${readyHours}h 지났지만 광고 요청과 노출이 모두 0입니다.`,
         recommendation: "NEXT_PUBLIC_ADSENSE_ID, 광고 slot, ads.txt, robots allow 확인",
+        source: "adsense",
+      });
+    } else if (readyHours === null && adsense.impressions === 0 && adRequests === 0) {
+      actions.push({
+        severity: "watch",
+        title: "AdSense READY 시간 미확정",
+        detail: "광고 KPI row는 있지만 READY 후 경과 시간이 아직 계산되지 않았습니다.",
+        recommendation: "adsense_review_state READY audit 누적 후 24h 기준으로 요청·노출을 재판정",
         source: "adsense",
       });
     } else if (readyHours !== null && readyHours < 24) {

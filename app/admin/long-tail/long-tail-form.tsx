@@ -95,7 +95,7 @@ export function LongTailForm() {
           ))}
         </select>
         <p className="mt-1 text-xs text-grey-600">
-          자동 추정: 키워드에 "청년"/"노인" 등 매칭 단어 있으면 자동, 없으면 큐레이션.
+          자동 추정: 키워드에 &ldquo;청년&rdquo;/&ldquo;노인&rdquo; 등 매칭 단어 있으면 자동, 없으면 큐레이션.
         </p>
       </label>
 

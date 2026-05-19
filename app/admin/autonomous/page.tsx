@@ -35,7 +35,6 @@ import {
 } from "@/lib/monitoring/sc-metrics-trend";
 import {
   collectExternalConsoleMetrics,
-  type ExternalConsoleMetrics,
   type Ga4Metrics,
   type VercelMetrics,
   type SupabaseMetrics,
@@ -206,6 +205,7 @@ export default async function AdminAutonomousPage() {
       <YesterdayDigestCard digest={yesterdayDigest} />
 
       <TomorrowAlertsCard
+        generatedAt={new Date()}
         gmailOAuthReady={!!(
           process.env.GMAIL_CLIENT_ID &&
           process.env.GMAIL_CLIENT_SECRET &&
@@ -1971,8 +1971,14 @@ function YesterdayDigestCard({ digest }: { digest: YesterdayDigest }) {
 // 2026-05-19 — 내일 아침 자동 알림 도착 예정 안내 (사장님 모바일 가시화).
 // Vercel cron 가동 시각 + 메시지 미리 인지 → 알림 도착 시 사장님 즉시 의미 파악.
 // Gmail OAuth env 등록 여부에 따라 10:10 알림 동적 표시.
-function TomorrowAlertsCard({ gmailOAuthReady }: { gmailOAuthReady: boolean }) {
-  const tomorrow = new Date(Date.now() + 24 * 3600_000)
+function TomorrowAlertsCard({
+  generatedAt,
+  gmailOAuthReady,
+}: {
+  generatedAt: Date;
+  gmailOAuthReady: boolean;
+}) {
+  const tomorrow = new Date(generatedAt.getTime() + 24 * 3600_000)
     .toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" })
     .replace(/\.\s?/g, "/")
     .replace(/\/$/, "");

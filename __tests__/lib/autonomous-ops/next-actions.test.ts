@@ -130,6 +130,30 @@ describe("buildAdsenseOnboardingSummary", () => {
       "action_required",
     );
   });
+
+  it("READY 경과 시간이 없으면 24h 초과로 단정하지 않는다", () => {
+    const adsense: AdsenseMetricsLatest = {
+      earnings: 0,
+      currency: "KRW",
+      impressions: 0,
+      clicks: 0,
+      adRequests: 0,
+      pageViews: 0,
+      ctrPct: null,
+      readySinceHours: null,
+      observedAt: "2026-05-19T00:00:00.000Z",
+    };
+
+    const summary = buildAdsenseOnboardingSummary(adsense, null);
+
+    expect(summary.dayLabel).toBe("READY");
+    expect(summary.steps.find((s) => s.label === "D+1 광고 요청")?.status).toBe(
+      "watch",
+    );
+    expect(summary.steps.find((s) => s.label === "D+1 노출")?.status).toBe(
+      "watch",
+    );
+  });
 });
 
 describe("buildOpsNextActions", () => {
@@ -160,6 +184,30 @@ describe("buildOpsNextActions", () => {
     expect(actions[0]).toMatchObject({
       severity: "normal",
       source: "summary",
+    });
+  });
+
+  it("AdSense READY 경과 시간이 없으면 action_required 로 과대 판정하지 않는다", () => {
+    const actions = buildOpsNextActions(
+      baseInput({
+        adsenseMetrics: {
+          earnings: 0,
+          currency: "KRW",
+          impressions: 0,
+          clicks: 0,
+          adRequests: 0,
+          pageViews: 0,
+          ctrPct: null,
+          readySinceHours: null,
+          observedAt: "2026-05-19T00:00:00.000Z",
+        },
+      }),
+    );
+
+    expect(actions[0]).toMatchObject({
+      severity: "watch",
+      source: "adsense",
+      title: "AdSense READY 시간 미확정",
     });
   });
 });

@@ -79,7 +79,10 @@ export default async function SupportPage() {
   await requireAdmin();
 
   const admin = createAdminClient();
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const generatedAt = new Date();
+  const since24h = new Date(
+    generatedAt.getTime() - 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   // 24h KPI
   const [count24h, autoReplied24h, openTotal, repliedToday] = await Promise.all([

@@ -67,7 +67,7 @@ const BODY_CONTAINER_REGEX =
 export function parseDetailBody(html: string): string | null {
   const m = BODY_CONTAINER_REGEX.exec(html);
   if (!m) return null;
-  let text = m[1]
+  const text = m[1]
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")

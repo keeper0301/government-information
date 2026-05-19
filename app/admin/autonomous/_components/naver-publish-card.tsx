@@ -111,7 +111,7 @@ export function NaverPublishCard({ stats }: { stats: NaverPublishStats }) {
         {stats.status === "stalled" && (
           <p className="mt-1 opacity-90">
             5/13 사고 패턴 (Playwright IP 차단 또는 legacy runner). 사장님 PC
-            Chrome Extension 가동 + cookies 유효 확인. runner='chrome-extension'
+            Chrome Extension 가동 + cookies 유효 확인. runner=&apos;chrome-extension&apos;
             audit details 분포 확인.
           </p>
         )}
