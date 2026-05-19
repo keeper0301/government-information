@@ -80,15 +80,12 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
   } catch {
     // DB 실패 시 보수적으로 reminder 노출 유지
   }
-  if (!renderUpgraded) {
+  if (!renderUpgraded && !residentCycleActive) {
     actions.push({
       category: "infrastructure",
-      label: residentCycleActive
-        ? "Render Starter plan ($7/월) — 선택적"
-        : "Render Starter plan 업그레이드 ($7/월)",
-      description: residentCycleActive
-        ? "agent-resident-cycle in-site cron 가동 중 — Render free 유지 가능. Codex sidecar always-on 필요 시 Starter 권장 (선택)."
-        : "Codex sidecar 82분 cycle 사고 (5/18 진단, 의도 30분) — Render free plan 15분 idle sleep 이 원인. Starter plan ($7/월) 으로 always-on. W1 ramp-up (5/25) 전 권장.",
+      label: "Render Starter plan 업그레이드 ($7/월)",
+      description:
+        "Codex sidecar 82분 cycle 사고 (5/18 진단, 의도 30분) — Render free plan 15분 idle sleep 이 원인. Starter plan ($7/월) 으로 always-on. W1 ramp-up (5/25) 전 권장.",
       url: "https://dashboard.render.com/web/srv-d84vlgek1jcs73andjbg",
       estimatedMinutes: 3,
     });
@@ -170,7 +167,7 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       actions.push({
         category: "codex",
         label: "Codex W1 임계 미달 — W0 추가 가동 또는 임계 재검토",
-        description: `5/25 도달했으나 임계 미달: ${w1.reasons.join(" / ")}. W0 cron 가동 점검 또는 임계 (800 runs·9 questions·5% err) 재검토 필요.`,
+        description: `5/25 도달했으나 임계 미달: ${w1.reasons.join(" / ")}. W0 cron 가동 점검 또는 임계 (800 runs·10 questions·5% err) 재검토 필요.`,
         guideUrl:
           "https://github.com/keeper0301/government-information/blob/master/docs/superpowers/specs/2026-05-25-codex-w0-to-w1-rampup.md",
         estimatedMinutes: 10,

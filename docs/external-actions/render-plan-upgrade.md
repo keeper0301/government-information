@@ -64,7 +64,7 @@ WHERE action = 'agent_diagnose_run'
   AND created_at >= NOW() - INTERVAL '24 hours';
 ```
 
-**기대 결과**: total ≥ 400 (예상 432, 30분 cycle × 48 × 9 question).
+**기대 결과**: total ≥ 450 (예상 480, 30분 cycle × 48 × 10 question).
 
 기존 159 (5/18 측정) 대비 2.5배 가속.
 

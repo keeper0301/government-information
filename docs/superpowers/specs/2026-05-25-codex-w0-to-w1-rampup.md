@@ -29,8 +29,8 @@ WHERE action = 'agent_diagnose_run'
 **판단 기준**:
 | 지표 | 임계 | W1 GO 조건 |
 |---|---|---|
-| total | ≥ 800 | 30분 cycle × 48 × 9 × 7 = 약 3,024 예상, 80% (2,400) 이상이면 안전 |
-| unique_questions | 9 | 모든 question 정상 dispatch |
+| total | ≥ 800 | 30분 cycle × 48 × 10 × 7 = 약 3,360 예상, 약 24% 보수 임계 |
+| unique_questions | 10 | 모든 question 정상 dispatch |
 | errors | < 5% | sidecar Codex CLI / network / DB 에러 미만 |
 
 5/18 1일차 측정: total 159 (24h), 9 unique, errors 0. 7일 누적 추정 ~ 1,100.

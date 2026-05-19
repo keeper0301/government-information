@@ -93,6 +93,14 @@ import {
   type LearningLoopSnapshot,
 } from "@/lib/autonomous-ops/learning-loop";
 import { checkW1Readiness, type W1ReadinessResult } from "@/lib/codex/w1-readiness";
+import {
+  buildAdsenseOnboardingSummary,
+  buildDiagnoseCoverageSummary,
+  buildOpsNextActions,
+  type AdsenseOnboardingSummary,
+  type DiagnoseCoverageSummary,
+  type OpsNextAction,
+} from "@/lib/autonomous-ops/next-actions";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -171,6 +179,21 @@ export default async function AdminAutonomousPage() {
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
   const pendingActions = aggregatePendingActions(phases);
   const agentPolicy = getAgentPolicySummary();
+  const nextActions = buildOpsNextActions({
+    pendingExternalActions,
+    adsenseMetrics,
+    scMetrics,
+    blogPublishStats,
+    keepioAgentStatus,
+    learningLoop,
+    codexW1,
+    externalMetrics,
+  });
+  const diagnoseCoverage = buildDiagnoseCoverageSummary(codexW1);
+  const adsenseOnboarding = buildAdsenseOnboardingSummary(
+    adsenseMetrics,
+    scMetrics,
+  );
 
   return (
     <div className="max-w-[980px]">
@@ -188,6 +211,13 @@ export default async function AdminAutonomousPage() {
           process.env.GMAIL_CLIENT_SECRET &&
           process.env.GMAIL_REFRESH_TOKEN
         )}
+      />
+
+      <OpsNextActionsCard
+        actions={nextActions}
+        diagnose={diagnoseCoverage}
+        adsense={adsenseOnboarding}
+        pendingExternalCount={pendingExternalActions.length}
       />
 
       <PendingExternalActionsCard actions={pendingExternalActions} />
@@ -251,6 +281,100 @@ export default async function AdminAutonomousPage() {
         Phase 진행 메모리: <code>memory/project_keepioo_autonomous_ops_master_2026_05_08.md</code>
       </p>
     </div>
+  );
+}
+
+function OpsNextActionsCard({
+  actions,
+  diagnose,
+  adsense,
+  pendingExternalCount,
+}: {
+  actions: OpsNextAction[];
+  diagnose: DiagnoseCoverageSummary;
+  adsense: AdsenseOnboardingSummary;
+  pendingExternalCount: number;
+}) {
+  const top = actions[0];
+  const tone =
+    top.severity === "action_required"
+      ? "border-red-200 bg-red-50/40"
+      : top.severity === "watch"
+        ? "border-amber-200 bg-amber-50/40"
+        : "border-green-200 bg-green-50/40";
+  const severityLabel: Record<OpsNextAction["severity"], string> = {
+    action_required: "조치 필요",
+    watch: "관찰",
+    normal: "정상",
+  };
+  const stepTone: Record<string, string> = {
+    done: "border-green-200 bg-green-50 text-green-800",
+    watch: "border-amber-200 bg-amber-50 text-amber-800",
+    action_required: "border-red-200 bg-red-50 text-red-800",
+  };
+  const diagnoseTone =
+    diagnose.status === "normal"
+      ? "text-green-700"
+      : diagnose.status === "watch"
+        ? "text-amber-700"
+        : "text-red-700";
+
+  return (
+    <section className={`mb-4 rounded-lg border p-4 ${tone}`}>
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="mb-1 text-[11px] font-semibold text-grey-600">
+            오늘의 다음 액션
+          </div>
+          <h2 className="text-base font-semibold text-grey-950">
+            {severityLabel[top.severity]} · {top.title}
+          </h2>
+          <p className="mt-1 text-xs text-grey-700">{top.detail}</p>
+          <p className="mt-1 text-xs font-medium text-grey-800">
+            {top.recommendation}
+          </p>
+        </div>
+        <div className="text-left text-[11px] text-grey-600 md:text-right">
+          <div>외부 액션: {pendingExternalCount}건</div>
+          <div className={diagnoseTone}>진단 coverage: {diagnose.label}</div>
+        </div>
+      </div>
+
+      <div className="mb-3 grid gap-2 md:grid-cols-5">
+        {actions.map((action) => (
+          <div key={`${action.source}:${action.title}`} className="border-l-2 border-grey-300 pl-2">
+            <div className="text-xs font-semibold text-grey-950">{action.title}</div>
+            <div className="mt-1 text-[11px] text-grey-600">
+              {severityLabel[action.severity]} · {action.source}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {adsense.active && (
+        <div className="border-t border-white/80 pt-3">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="text-xs font-semibold text-grey-900">
+              AdSense 첫 7일 체크리스트
+            </div>
+            <div className="text-[11px] text-grey-600">
+              {adsense.dayLabel} · {adsense.headline}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
+            {adsense.steps.map((step) => (
+              <div
+                key={step.label}
+                className={`rounded-md border px-2 py-2 ${stepTone[step.status]}`}
+              >
+                <div className="text-[11px] font-semibold">{step.label}</div>
+                <div className="mt-1 text-[10px] leading-snug">{step.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

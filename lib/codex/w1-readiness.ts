@@ -4,8 +4,8 @@
 // spec: docs/superpowers/specs/2026-05-25-codex-w0-to-w1-rampup.md
 //
 // W0 1주 가동 후 W1 활성화 적합성 자동 측정:
-// - 7일 agent_diagnose_run 누적 ≥ 800 (의도 432×7=3024 의 약 26%, 안전 threshold)
-// - unique_questions = 9 (모든 question dispatch)
+// - 7일 agent_diagnose_run 누적 ≥ 800 (의도 480×7=3360 의 약 24%, 안전 threshold)
+// - unique_questions = 10 (모든 question dispatch)
 // - errors < 5%
 //
 // PendingExternalActionsCard 자동 표시 — 5/25 이후 + 임계 충족 시.
@@ -43,7 +43,7 @@ export type W1ReadinessResult = {
 };
 
 const W1_THRESHOLD_TOTAL_RUNS = 800;
-const W1_THRESHOLD_UNIQUE_QUESTIONS = 9;
+const W1_THRESHOLD_UNIQUE_QUESTIONS = 10;
 const W1_THRESHOLD_ERROR_RATE = 0.05;
 const W1_WINDOW_START = new Date("2026-05-25T00:00:00+09:00");
 
