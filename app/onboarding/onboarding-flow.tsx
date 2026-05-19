@@ -30,6 +30,11 @@ export type OnboardingState = {
   householdTypes: HouseholdOption[];
   hasChildren: boolean | null; // 자녀 유무 (산후조리·아동 cohort) — 마이페이지에서 단순 라디오, 온보딩은 옵션
   interests: string[];
+  // 2026-05-19 spec E+F — 신규 가입자 동의 강제 (legal risk + 마케팅 옵트인).
+  // 만 14세 사전 확인은 「개인정보 보호법」 제22조의2 — step 1 미체크 시 진행 불가.
+  // 마케팅은 선택 — 체크 시 saveOnboardingProfile 이 consent_log 에 기록.
+  ageConfirmed: boolean;
+  marketingConsent: boolean;
 };
 
 // 총 단계 수 (2026-04-28 Phase 2: 5단계 → 3단계 합치기 — 사용자 부담 ↓)
@@ -122,6 +127,40 @@ export function OnboardingFlow({
           한 단계 안에 2 컴포넌트가 들어가는 경우 section + 구분선으로 시각 위계 */}
       {step === 1 && (
         <div className="space-y-8">
+          {/* 2026-05-19 spec E+F — 만 14세 [필수] + 마케팅 [선택].
+              「개인정보 보호법」 제22조의2 — 만 14세 미체크 시 "다음" 버튼 disabled.
+              login path 의 OAuth 신규 가입자가 callback 측 강제 redirect 로 여기 진입. */}
+          <section className="bg-grey-50 border border-grey-200 rounded-lg p-4 space-y-3">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={state.ageConfirmed}
+                onChange={(e) => update('ageConfirmed', e.target.checked)}
+                className="mt-0.5 w-[16px] h-[16px] accent-blue-500 cursor-pointer"
+              />
+              <span className="text-[13px] text-grey-700 leading-[1.5]">
+                <span className="text-red font-semibold mr-1">[필수]</span>
+                만 14세 이상입니다 (가입 진행에 필요한 사전 확인)
+              </span>
+            </label>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={state.marketingConsent}
+                onChange={(e) => update('marketingConsent', e.target.checked)}
+                className="mt-0.5 w-[16px] h-[16px] accent-blue-500 cursor-pointer"
+              />
+              <span className="text-[13px] text-grey-700 leading-[1.5]">
+                <span className="text-grey-600 mr-1">[선택]</span>
+                마케팅 정보 수신 (이메일·카카오톡으로 혜택·이벤트 안내)
+              </span>
+            </label>
+            {!state.ageConfirmed && (
+              <p className="text-[12px] text-amber-600 leading-[1.5]">
+                만 14세 이상 확인 후 다음 단계 진행이 가능해요.
+              </p>
+            )}
+          </section>
           <section>
             <h3 className="text-[18px] font-bold text-grey-900 mb-3">연령대</h3>
             <StepAge value={state.ageGroup} onChange={(v) => update('ageGroup', v)} />
@@ -158,7 +197,9 @@ export function OnboardingFlow({
         />
       )}
 
-      {/* 이전 / 건너뛰기 / 다음(완료) 버튼 영역 */}
+      {/* 이전 / 건너뛰기 / 다음(완료) 버튼 영역.
+          2026-05-19 spec E — step 1 의 만 14세 미체크 시 "다음" + "건너뛰기" 모두 disabled.
+          legal risk 차단 — step 1 통과 자체가 만 14세 확인 의미. */}
       <div className="flex items-center justify-between pt-4 border-t">
         <button
           onClick={back}
@@ -170,14 +211,14 @@ export function OnboardingFlow({
         <div className="flex items-center gap-2">
           <button
             onClick={skip}
-            disabled={saving}
-            className="text-sm text-zinc-500 hover:text-zinc-700 px-3 py-1.5"
+            disabled={saving || (step === 1 && !state.ageConfirmed)}
+            className="text-sm text-zinc-500 hover:text-zinc-700 px-3 py-1.5 disabled:opacity-30"
           >
             건너뛰기
           </button>
           <button
             onClick={next}
-            disabled={saving}
+            disabled={saving || (step === 1 && !state.ageConfirmed)}
             className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
           >
             {step === TOTAL_STEPS ? (saving ? '저장 중…' : '완료') : '다음 →'}

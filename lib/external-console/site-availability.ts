@@ -22,7 +22,11 @@ const TARGETS = [
   { path: "/blog", label: "블로그 목록" },
 ] as const;
 
-const RESPONSE_TIME_THRESHOLD_MS = 3000; // 3초 이상 → 느림 alert
+// 2026-05-19 (저녁) — 3000 → 5000 임계 상향.
+// HEAD→GET fix (commit eb10cde) 후에도 force-dynamic SSR cold start 가 3초 종종 넘는
+// 측정값 발생 (avg 3,324ms, max 4,456ms). 사용자 실제 GET 측정은 1.0~1.5초 정상.
+// cron 1회/일 측정의 cold start noise 차단 + 진짜 사고 (≥5초) 신호 보존.
+const RESPONSE_TIME_THRESHOLD_MS = 5000; // 5초 이상 → 느림 alert
 const FETCH_TIMEOUT_MS = 8000; // 8초 timeout (Vercel 응답 보통 ~수백ms)
 
 export interface CheckOneResult {

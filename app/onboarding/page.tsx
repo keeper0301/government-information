@@ -28,7 +28,10 @@ export default async function OnboardingPage() {
     .eq('id', user.id)
     .maybeSingle();
 
-  // 기본 initial — DB 프로필 그대로
+  // 기본 initial — DB 프로필 그대로.
+  // 2026-05-19 spec E+F — ageConfirmed/marketingConsent 추가.
+  // 둘 다 매 진입 false (재진입자도 동의 매번 확인. 단 기존 사용자는 이미 dismissed_onboarding_at
+  // 채워져 있어 callback 측에서 onboarding 으로 강제 redirect 안 됨 → 영향 0).
   const baseInitial: OnboardingState = {
     ageGroup: profile?.age_group ?? null,
     region: profile?.region ?? null,
@@ -38,6 +41,8 @@ export default async function OnboardingPage() {
     incomeLevel: (profile?.income_level ?? null) as IncomeOption | null,
     householdTypes: (profile?.household_types ?? []) as HouseholdOption[],
     hasChildren: (profile?.has_children ?? null) as boolean | null,
+    ageConfirmed: false,
+    marketingConsent: false,
   };
 
   // /quiz 가입 funnel 쿠키 — 빈 필드만 채움 (DB 값이 있으면 보존)

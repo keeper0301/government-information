@@ -203,14 +203,16 @@ export async function GET(request: Request) {
       : (rawProvider ?? "");
 
   // ━━━ 온보딩 분기 ━━━
-  // next 파라미터가 명시되지 않은 (= 기본값 "/") 경우에만 온보딩 여부 확인.
-  // 명시적 next 가 있으면 사용자가 특정 페이지를 목적지로 로그인한 것이므로 방해 안 함.
+  // (1) next === "/" 일반 진입 → 온보딩 미완료 시 우회
+  // (2) 2026-05-19 — 신규 사용자 (isNewUser) 는 next 가 무엇이든 무조건 온보딩 진입.
+  //     login path 의 OAuth 신규 가입자에게 만 14세 체크박스 + 마케팅 옵트인 강제
+  //     (「개인정보 보호법」 제22조의2 legal risk 100% 차단). spec E 해소.
   //
   // 판정 기준: user_profiles 행이 없거나 dismissed_onboarding_at 이 NULL
   //   → 온보딩을 한 번도 완료(스킵 포함)하지 않은 사용자 → /onboarding 으로 우회.
   //
   // admin client 사용 — 위와 동일한 이유 (세션 쿠키 타이밍 문제 회피).
-  if (user && next === "/") {
+  if (user && (isNewUser || next === "/")) {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("user_profiles")
