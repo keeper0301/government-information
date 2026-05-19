@@ -7,10 +7,30 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { subscribeUser } from "@/lib/push/subscribe";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
+
+// 2026-05-19 review fix — anonymous endpoint spam 차단.
+// 1분 내 30 row 초과 시 429. DDL 091 미적용 graceful (rate limit 무시 → 단 subscribeUser 도 graceful empty).
+const RATE_LIMIT_PER_MIN = 30;
+
+async function isRateLimited(): Promise<boolean> {
+  try {
+    const admin = createAdminClient();
+    const since = new Date(Date.now() - 60_000).toISOString();
+    const { count } = await admin
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since);
+    return (count ?? 0) >= RATE_LIMIT_PER_MIN;
+  } catch {
+    // DDL 미적용 또는 DB 실패 → 보수적 통과 (subscribeUser 단계에서 graceful)
+    return false;
+  }
+}
 
 export async function POST(request: Request) {
   let body: {
@@ -28,6 +48,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "endpoint + keys (p256dh, auth) 필수" },
       { status: 400 },
+    );
+  }
+
+  if (await isRateLimited()) {
+    return NextResponse.json(
+      { error: "rate limit — 분당 30 구독 cap" },
+      { status: 429 },
     );
   }
 

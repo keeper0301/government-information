@@ -109,9 +109,20 @@ self.addEventListener("push", (event) => {
 
 // notificationclick — 알림 클릭 시 keepioo 탭이 열려있으면 focus + navigate,
 // 없으면 새 창으로 payload.url (default /) 오픈.
+// 2026-05-19 review fix — same-origin 가드. server bug 로 외부 origin 발송 시
+// keepioo 탭이 외부로 navigate 되는 사고 차단. attacker.com URL fallback "/".
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || "/";
+  const rawUrl = event.notification.data?.url || "/";
+  let targetUrl = "/";
+  try {
+    const resolved = new URL(rawUrl, self.location.origin);
+    if (resolved.origin === self.location.origin) {
+      targetUrl = resolved.pathname + resolved.search + resolved.hash;
+    }
+  } catch {
+    // 잘못된 URL → "/" fallback
+  }
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
