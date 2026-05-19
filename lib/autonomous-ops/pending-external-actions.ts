@@ -154,6 +154,7 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
   // 2026-05-25 — Codex W0 → W1 ramp-up 자동 검증.
   // spec [2026-05-25-codex-w0-to-w1-rampup] 의 Step 1 SQL 자동 실행.
   // 임계 충족 시 사장님 reminder (GitHub PAT + AGENT_W1_ENABLED env).
+  // 2026-05-19 — windowReached=true && !ready 케이스도 reminder (미달 사유 가시화).
   try {
     const w1 = await checkW1Readiness();
     if (w1.windowReached && w1.ready) {
@@ -165,9 +166,18 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
           "https://github.com/keeper0301/government-information/blob/master/docs/superpowers/specs/2026-05-25-codex-w0-to-w1-rampup.md",
         estimatedMinutes: 5,
       });
+    } else if (w1.windowReached && !w1.ready) {
+      actions.push({
+        category: "codex",
+        label: "Codex W1 임계 미달 — W0 추가 가동 또는 임계 재검토",
+        description: `5/25 도달했으나 임계 미달: ${w1.reasons.join(" / ")}. W0 cron 가동 점검 또는 임계 (800 runs·9 questions·5% err) 재검토 필요.`,
+        guideUrl:
+          "https://github.com/keeper0301/government-information/blob/master/docs/superpowers/specs/2026-05-25-codex-w0-to-w1-rampup.md",
+        estimatedMinutes: 10,
+      });
     }
   } catch {
-    // graceful — 5/25 이전 또는 DB 실패 시 noop
+    // graceful — DB 실패 시 noop
   }
 
   // 3. Naver Extension — 5/13 push 후 admin_actions audit 0건 = 가동 안 됨

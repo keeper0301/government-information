@@ -76,6 +76,7 @@ import {
   type ImprovementCandidate,
   type LearningLoopSnapshot,
 } from "@/lib/autonomous-ops/learning-loop";
+import { checkW1Readiness, type W1ReadinessResult } from "@/lib/codex/w1-readiness";
 
 // severity 시각 분기 — high(0) < medium(1) < low(2). rank 큰 쪽이 개선.
 const SEVERITY_RANK: Record<"high" | "medium" | "low", number> = {
@@ -122,6 +123,7 @@ export default async function AdminAutonomousPage() {
     learningLoop,
     pendingExternalActions,
     yesterdayDigest,
+    codexW1,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -141,6 +143,7 @@ export default async function AdminAutonomousPage() {
     getLearningLoopSnapshot(),
     getPendingExternalActions(),
     getYesterdayDigest(),
+    checkW1Readiness(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -172,6 +175,7 @@ export default async function AdminAutonomousPage() {
       <ImprovementPanel scan={improvementScan} previousScan={previousScan} />
       <AgentPolicyCard summary={agentPolicy} />
       <KeepioAgentCard status={keepioAgentStatus} />
+      <CodexW1ProgressCard readiness={codexW1} />
       <LearningLoopCard snapshot={learningLoop} />
 
       {/* 2. 수익·비용 — 매출 추세 + 콘텐츠 비용 */}
@@ -282,6 +286,90 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           )}
           {status.healthUrl && <div className="mt-1 break-all">health: {status.healthUrl}</div>}
         </div>
+      )}
+    </section>
+  );
+}
+
+// 2026-05-19 — Codex W0 → W1 ramp-up 진척률 카드.
+// 5/25 windowStart 까지 D-day + 3 metric progress bar 가시화. ready 시 색상 강조.
+function CodexW1ProgressCard({ readiness }: { readiness: W1ReadinessResult }) {
+  const tone = readiness.ready
+    ? "border-green-200 bg-green-50"
+    : readiness.windowReached
+      ? "border-amber-200 bg-amber-50"
+      : "border-grey-200 bg-grey-50";
+  const headerLabel = readiness.ready
+    ? "✅ W1 활성화 권장"
+    : readiness.windowReached
+      ? "⚠️ W1 임계 미달"
+      : `🕒 W1 검증 창까지 D-${readiness.daysToWindow}`;
+  const dayHint = readiness.windowReached
+    ? readiness.ready
+      ? "임계 모두 통과 — 외부 액션 가이드 따라 활성화 권장"
+      : "임계 일부 미달 — W0 추가 가동 또는 임계 재검토 필요"
+    : `5/25 windowStart 까지 ${Math.max(0, readiness.daysToWindow)}일 — 현재 W0 가동 중`;
+
+  const bars: Array<{ label: string; ratio: number; detail: string }> = [
+    {
+      label: "7일 누적 diagnose",
+      ratio: readiness.progressTotalRuns,
+      detail: `${readiness.totalRuns7d} / ${readiness.thresholds.totalRuns}`,
+    },
+    {
+      label: "Unique questions",
+      ratio: readiness.progressUniqueQuestions,
+      detail: `${readiness.uniqueQuestions} / ${readiness.thresholds.uniqueQuestions}`,
+    },
+    {
+      label: "Error rate 안정성",
+      ratio: readiness.progressErrorRate,
+      detail: `${(readiness.errorRate * 100).toFixed(1)}% (cap ${(readiness.thresholds.errorRate * 100).toFixed(0)}%)`,
+    },
+  ];
+
+  return (
+    <section className={`mb-4 rounded-lg border ${tone} p-3`}>
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-grey-900">
+          🤖 Codex W1 진척률
+        </h3>
+        <span className="text-[11px] text-grey-600">{headerLabel}</span>
+      </div>
+      <p className="mb-3 text-[11px] text-grey-700">{dayHint}</p>
+      <div className="space-y-2">
+        {bars.map((bar) => {
+          const pct = Math.round(bar.ratio * 100);
+          const barTone =
+            bar.ratio >= 1
+              ? "bg-green-500"
+              : bar.ratio >= 0.5
+                ? "bg-blue-500"
+                : "bg-amber-500";
+          return (
+            <div key={bar.label}>
+              <div className="mb-0.5 flex items-baseline justify-between text-[11px]">
+                <span className="text-grey-800">{bar.label}</span>
+                <span className="text-grey-600">
+                  {bar.detail} ({pct}%)
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-grey-200">
+                <div
+                  className={`h-full ${barTone}`}
+                  style={{ width: `${Math.min(100, pct)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {readiness.reasons.length > 0 && !readiness.ready && (
+        <ul className="mt-2 space-y-0.5 text-[11px] text-grey-700">
+          {readiness.reasons.map((reason, idx) => (
+            <li key={idx}>· {reason}</li>
+          ))}
+        </ul>
       )}
     </section>
   );

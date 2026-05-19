@@ -26,6 +26,20 @@ export type W1ReadinessResult = {
   ready: boolean;
   /** 미충족 사유 (사장님 reminder 메시지용) */
   reasons: string[];
+  /** 5/25 까지 남은 일 수 (음수 = 지난 날짜) */
+  daysToWindow: number;
+  /** totalRuns/임계 진척률 (0~1, ≥1 = 충족) — 가시화용 */
+  progressTotalRuns: number;
+  /** uniqueQuestions/임계 진척률 */
+  progressUniqueQuestions: number;
+  /** errorRate 안정성 (1 - rate/threshold, 0~1) — 1 = 안정 */
+  progressErrorRate: number;
+  /** 임계 상수 (UI 라벨용) */
+  thresholds: {
+    totalRuns: number;
+    uniqueQuestions: number;
+    errorRate: number;
+  };
 };
 
 const W1_THRESHOLD_TOTAL_RUNS = 800;
@@ -35,21 +49,12 @@ const W1_WINDOW_START = new Date("2026-05-25T00:00:00+09:00");
 
 export async function checkW1Readiness(): Promise<W1ReadinessResult> {
   const windowReached = Date.now() >= W1_WINDOW_START.getTime();
+  const daysToWindow = Math.ceil(
+    (W1_WINDOW_START.getTime() - Date.now()) / (24 * 3600_000),
+  );
 
-  // 5/25 이전이면 measurement 무의미 — early return
-  if (!windowReached) {
-    return {
-      windowReached: false,
-      totalRuns7d: 0,
-      uniqueQuestions: 0,
-      errorRate: 0,
-      ready: false,
-      reasons: [
-        `검증 창 시작 전 (5/25 이후 발동). 현재 W0 가동 중.`,
-      ],
-    };
-  }
-
+  // 2026-05-19 — windowReached=false 일 때도 measurement 진행 (early return 폐기).
+  // 사장님이 5/25 까지의 진척률 미리 가시화. reminder 발동 조건은 호출 측에서 분리.
   try {
     const admin = createAdminClient();
     const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
@@ -59,14 +64,11 @@ export async function checkW1Readiness(): Promise<W1ReadinessResult> {
       .eq("action", "agent_diagnose_run")
       .gte("created_at", since7d);
     if (error || !runs) {
-      return {
-        windowReached: true,
-        totalRuns7d: 0,
-        uniqueQuestions: 0,
-        errorRate: 0,
-        ready: false,
+      return emptyResult({
+        windowReached,
+        daysToWindow,
         reasons: [`DB 조회 실패: ${error?.message ?? "unknown"}`],
-      };
+      });
     }
 
     const total = runs.length;
@@ -90,22 +92,63 @@ export async function checkW1Readiness(): Promise<W1ReadinessResult> {
       reasons.push(`error rate ${(errorRate * 100).toFixed(1)}% ≥ ${(W1_THRESHOLD_ERROR_RATE * 100).toFixed(1)}%`);
     }
 
+    // 진척률 계산 (시각화용). errorRate 는 안정성 점수 = 1 - rate/threshold.
+    const progressTotalRuns = Math.min(1, total / W1_THRESHOLD_TOTAL_RUNS);
+    const progressUniqueQuestions = Math.min(
+      1,
+      questions.size / W1_THRESHOLD_UNIQUE_QUESTIONS,
+    );
+    const progressErrorRate =
+      errorRate >= W1_THRESHOLD_ERROR_RATE
+        ? 0
+        : 1 - errorRate / W1_THRESHOLD_ERROR_RATE;
+
     return {
-      windowReached: true,
+      windowReached,
       totalRuns7d: total,
       uniqueQuestions: questions.size,
       errorRate,
-      ready: reasons.length === 0,
+      ready: windowReached && reasons.length === 0,
       reasons,
+      daysToWindow,
+      progressTotalRuns,
+      progressUniqueQuestions,
+      progressErrorRate,
+      thresholds: {
+        totalRuns: W1_THRESHOLD_TOTAL_RUNS,
+        uniqueQuestions: W1_THRESHOLD_UNIQUE_QUESTIONS,
+        errorRate: W1_THRESHOLD_ERROR_RATE,
+      },
     };
   } catch (e) {
-    return {
-      windowReached: true,
-      totalRuns7d: 0,
-      uniqueQuestions: 0,
-      errorRate: 0,
-      ready: false,
+    return emptyResult({
+      windowReached,
+      daysToWindow,
       reasons: [`exception: ${(e as Error).message}`],
-    };
+    });
   }
+}
+
+function emptyResult(input: {
+  windowReached: boolean;
+  daysToWindow: number;
+  reasons: string[];
+}): W1ReadinessResult {
+  return {
+    windowReached: input.windowReached,
+    totalRuns7d: 0,
+    uniqueQuestions: 0,
+    errorRate: 0,
+    ready: false,
+    reasons: input.reasons,
+    daysToWindow: input.daysToWindow,
+    progressTotalRuns: 0,
+    progressUniqueQuestions: 0,
+    progressErrorRate: 0,
+    thresholds: {
+      totalRuns: W1_THRESHOLD_TOTAL_RUNS,
+      uniqueQuestions: W1_THRESHOLD_UNIQUE_QUESTIONS,
+      errorRate: W1_THRESHOLD_ERROR_RATE,
+    },
+  };
 }
