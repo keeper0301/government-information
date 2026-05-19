@@ -89,6 +89,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 // push — 서버에서 푸시 발송 시 호출 (사용자 동의 + VAPID 키 셋업 필요)
+// 2026-05-19 — payload 확장: url + tag + icon + badge 지원
 self.addEventListener("push", (event) => {
   const data = event.data?.json() ?? {
     title: "keepioo",
@@ -96,27 +97,34 @@ self.addEventListener("push", (event) => {
   };
   event.waitUntil(
     self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "/icon.svg",
+      body: data.body || "",
+      icon: data.icon || "/icon.svg",
+      badge: data.badge || "/icon.svg",
+      tag: data.tag || "keepioo-notification",
+      renotify: true,
+      data: { url: data.url || "/" },
     }),
   );
 });
 
-// notificationclick — 알림 클릭 시 keepioo 탭이 열려있으면 focus,
-// 없으면 새 창으로 홈 오픈
+// notificationclick — 알림 클릭 시 keepioo 탭이 열려있으면 focus + navigate,
+// 없으면 새 창으로 payload.url (default /) 오픈.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const targetUrl = event.notification.data?.url || "/";
   event.waitUntil(
-    self.clients.matchAll({ type: "window" }).then((clients) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
         if (
           client.url.startsWith(self.location.origin) &&
           "focus" in client
         ) {
-          return client.focus();
+          client.focus();
+          if ("navigate" in client) client.navigate(targetUrl);
+          return;
         }
       }
-      return self.clients.openWindow("/");
+      return self.clients.openWindow(targetUrl);
     }),
   );
 });
