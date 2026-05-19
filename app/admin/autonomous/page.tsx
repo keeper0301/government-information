@@ -34,6 +34,16 @@ import {
   type ScMetricsLatest,
 } from "@/lib/monitoring/sc-metrics-trend";
 import {
+  collectExternalConsoleMetrics,
+  type ExternalConsoleMetrics,
+  type Ga4Metrics,
+  type VercelMetrics,
+  type SupabaseMetrics,
+  type KakaoMetrics,
+  type TossMetrics,
+} from "@/lib/monitoring/external-console-kpis";
+import { SOLAPI_BALANCE_FLOOR } from "@/lib/external-console/kakao";
+import {
   getEventTypeStats24h,
   getTopProgramsByEvents,
   type EventTypeStats,
@@ -132,6 +142,7 @@ export default async function AdminAutonomousPage() {
     codexW1,
     adsenseMetrics,
     scMetrics,
+    externalMetrics,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -154,6 +165,7 @@ export default async function AdminAutonomousPage() {
     checkW1Readiness(),
     collectAdsenseMetricsLatest(),
     collectScMetricsLatest(),
+    collectExternalConsoleMetrics(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -199,6 +211,14 @@ export default async function AdminAutonomousPage() {
       <SectionHeader title="📈 사용자 가치" />
       <ClickStatsCard stats={eventStats24h} top={topPrograms} />
       <PopularityTrendCard trend={popularityTrend} />
+
+      {/* 3.5. 외부 시스템 — 5/19 신규. ga4/vercel/supabase/kakao/toss 5 console 가시화 */}
+      <SectionHeader title="🔍 외부 시스템" />
+      <Ga4MetricsCard metrics={externalMetrics.ga4} observedAt={externalMetrics.observedAt} />
+      <VercelMetricsCard metrics={externalMetrics.vercel} observedAt={externalMetrics.observedAt} />
+      <SupabaseMetricsCard metrics={externalMetrics.supabase} observedAt={externalMetrics.observedAt} />
+      <KakaoMetricsCard metrics={externalMetrics.kakao} observedAt={externalMetrics.observedAt} />
+      <TossMetricsCard metrics={externalMetrics.toss} observedAt={externalMetrics.observedAt} />
 
       {/* 4. 콘텐츠 발행 — 블로그·SNS·네이버 가동 상태 (5/17 BlogPublish/NaverPublish 신규) */}
       <SectionHeader title="📝 콘텐츠 발행" />
@@ -987,6 +1007,308 @@ function getObservedHoursAgo(observedAt: string | null): number | null {
   const observedMs = new Date(observedAt).getTime();
   if (!Number.isFinite(observedMs)) return null;
   return Math.max(0, Math.floor((Date.now() - observedMs) / 3600_000));
+}
+
+// ============================================================
+// 5/19 신규 — 5 외부 console 가시화 카드 (ga4/vercel/supabase/kakao/toss)
+// 데이터 0 시 graceful hide. 한 audit cycle 의 데이터 → observedAt 공유.
+// ============================================================
+
+function ExternalConsoleHeader({
+  title,
+  observedAt,
+}: {
+  title: string;
+  observedAt: string | null;
+}) {
+  const hoursAgo = getObservedHoursAgo(observedAt);
+  return (
+    <header className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="text-[11px] font-semibold text-grey-600">{title}</div>
+      <div className="text-[11px] text-grey-500">
+        {hoursAgo !== null ? `${hoursAgo}h 전 측정` : ""}
+      </div>
+    </header>
+  );
+}
+
+function Ga4MetricsCard({
+  metrics,
+  observedAt,
+}: {
+  metrics: Ga4Metrics | null;
+  observedAt: string | null;
+}) {
+  if (!metrics) return null;
+  const cells: Array<{ label: string; value: string; tone: string }> = [
+    {
+      label: "세션 (24h)",
+      value: metrics.sessions.toLocaleString(),
+      tone: metrics.sessions > 0 ? "text-emerald-700" : "text-amber-700",
+    },
+    {
+      label: "활성 사용자 (24h)",
+      value: metrics.activeUsers.toLocaleString(),
+      tone: metrics.activeUsers > 0 ? "text-emerald-700" : "text-amber-700",
+    },
+    {
+      label: "이탈률",
+      value:
+        metrics.sessions > 0
+          ? `${(metrics.bounceRate * 100).toFixed(1)}%`
+          : "—",
+      tone: "text-grey-900",
+    },
+  ];
+  return (
+    <section className="mb-4 rounded-lg border border-violet-200 bg-white p-4">
+      <ExternalConsoleHeader title="GA4 트래픽 (24h)" observedAt={observedAt} />
+      <div className="grid grid-cols-3 gap-3">
+        {cells.map((cell) => (
+          <div key={cell.label} className="text-xs">
+            <div className="text-[10px] text-grey-500">{cell.label}</div>
+            <div className={`font-semibold ${cell.tone}`}>{cell.value}</div>
+          </div>
+        ))}
+      </div>
+      {metrics.sessions === 0 && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          ⚠️ 세션 0 — GA4 데이터 lag 1~2일 또는 measurement ID 사고. ga.js
+          tag 가 layout.tsx 에 정상 삽입되어 있는지 확인.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function VercelMetricsCard({
+  metrics,
+  observedAt,
+}: {
+  metrics: VercelMetrics | null;
+  observedAt: string | null;
+}) {
+  if (!metrics) return null;
+  const failPct = metrics.failureRate * 100;
+  const cells: Array<{ label: string; value: string; tone: string }> = [
+    {
+      label: "배포 (24h)",
+      value: metrics.total24h.toLocaleString(),
+      tone: "text-grey-900",
+    },
+    {
+      label: "실패 (24h)",
+      value: metrics.failed24h.toLocaleString(),
+      tone: metrics.failed24h === 0 ? "text-emerald-700" : "text-amber-700",
+    },
+    {
+      label: "실패율",
+      value:
+        metrics.total24h > 0 ? `${failPct.toFixed(1)}%` : "—",
+      tone:
+        metrics.total24h > 0 && failPct < 10
+          ? "text-emerald-700"
+          : metrics.total24h > 0
+            ? "text-red-700"
+            : "text-grey-900",
+    },
+    {
+      label: "최근 상태",
+      value: metrics.latestState ?? "—",
+      tone:
+        metrics.latestState === "READY"
+          ? "text-emerald-700"
+          : metrics.latestState === "ERROR"
+            ? "text-red-700"
+            : "text-grey-900",
+    },
+  ];
+  return (
+    <section className="mb-4 rounded-lg border border-grey-300 bg-white p-4">
+      <ExternalConsoleHeader title="Vercel 배포 (24h)" observedAt={observedAt} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {cells.map((cell) => (
+          <div key={cell.label} className="text-xs">
+            <div className="text-[10px] text-grey-500">{cell.label}</div>
+            <div className={`font-semibold ${cell.tone}`}>{cell.value}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SupabaseMetricsCard({
+  metrics,
+  observedAt,
+}: {
+  metrics: SupabaseMetrics | null;
+  observedAt: string | null;
+}) {
+  if (!metrics) return null;
+  const healthy =
+    metrics.projectStatus === "ACTIVE_HEALTHY" && metrics.advisorError === 0;
+  const cells: Array<{ label: string; value: string; tone: string }> = [
+    {
+      label: "상태",
+      value: metrics.projectStatus ?? "—",
+      tone: healthy
+        ? "text-emerald-700"
+        : metrics.projectStatus === "ACTIVE_HEALTHY"
+          ? "text-grey-900"
+          : "text-red-700",
+    },
+    {
+      label: "리전",
+      value: metrics.projectRegion ?? "—",
+      tone: "text-grey-900",
+    },
+    {
+      label: "Advisor warn",
+      value: metrics.advisorWarn.toLocaleString(),
+      tone:
+        metrics.advisorWarn === 0
+          ? "text-emerald-700"
+          : metrics.advisorWarn < 10
+            ? "text-amber-700"
+            : "text-red-700",
+    },
+    {
+      label: "Advisor error",
+      value: metrics.advisorError.toLocaleString(),
+      tone: metrics.advisorError === 0 ? "text-emerald-700" : "text-red-700",
+    },
+  ];
+  return (
+    <section className="mb-4 rounded-lg border border-emerald-200 bg-white p-4">
+      <ExternalConsoleHeader title="Supabase 상태" observedAt={observedAt} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {cells.map((cell) => (
+          <div key={cell.label} className="text-xs">
+            <div className="text-[10px] text-grey-500">{cell.label}</div>
+            <div className={`font-semibold ${cell.tone}`}>{cell.value}</div>
+          </div>
+        ))}
+      </div>
+      {metrics.advisorWarn > 0 && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          ⚠️ Advisor warn {metrics.advisorWarn}건 — Supabase 콘솔 → Advisors
+          탭에서 보안/성능 권고 점검.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function KakaoMetricsCard({
+  metrics,
+  observedAt,
+}: {
+  metrics: KakaoMetrics | null;
+  observedAt: string | null;
+}) {
+  if (!metrics) return null;
+  const failPct = metrics.failureRate * 100;
+  // alert 임계 (lib/external-console/kakao.ts) 와 통일 — 사장님 헷갈림 차단.
+  const lowBalance = metrics.balanceTotal < SOLAPI_BALANCE_FLOOR;
+  const cells: Array<{ label: string; value: string; tone: string }> = [
+    {
+      label: "잔액 (cash+point)",
+      value: metrics.balanceTotal.toLocaleString(),
+      tone: lowBalance ? "text-red-700" : "text-emerald-700",
+    },
+    {
+      label: "발송 (24h)",
+      value: metrics.total24h.toLocaleString(),
+      tone: "text-grey-900",
+    },
+    {
+      label: "성공/실패",
+      value: `${metrics.success24h}/${metrics.failed24h}`,
+      tone: metrics.failed24h === 0 ? "text-emerald-700" : "text-amber-700",
+    },
+    {
+      label: "실패율",
+      value:
+        metrics.total24h > 0 ? `${failPct.toFixed(1)}%` : "—",
+      tone:
+        metrics.total24h > 0 && failPct < 5
+          ? "text-emerald-700"
+          : metrics.total24h > 0
+            ? "text-red-700"
+            : "text-grey-900",
+    },
+  ];
+  return (
+    <section className="mb-4 rounded-lg border border-amber-200 bg-white p-4">
+      <ExternalConsoleHeader title="Solapi (카카오·SMS)" observedAt={observedAt} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {cells.map((cell) => (
+          <div key={cell.label} className="text-xs">
+            <div className="text-[10px] text-grey-500">{cell.label}</div>
+            <div className={`font-semibold ${cell.tone}`}>{cell.value}</div>
+          </div>
+        ))}
+      </div>
+      {lowBalance && (
+        <p className="mt-2 text-[11px] text-red-700">
+          🔴 잔액 부족 — 다음 SMS·알림톡 발송 실패 위험. Solapi 콘솔에서 충전 필요.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function TossMetricsCard({
+  metrics,
+  observedAt,
+}: {
+  metrics: TossMetrics | null;
+  observedAt: string | null;
+}) {
+  if (!metrics) return null;
+  const churnPct = metrics.churnRate24h * 100;
+  const cells: Array<{ label: string; value: string; tone: string }> = [
+    {
+      label: "활성 구독자",
+      value: metrics.activeTotal.toLocaleString(),
+      tone: metrics.activeTotal > 0 ? "text-emerald-700" : "text-grey-700",
+    },
+    {
+      label: "신규 (24h)",
+      value: metrics.newActive24h.toLocaleString(),
+      tone: metrics.newActive24h > 0 ? "text-emerald-700" : "text-grey-700",
+    },
+    {
+      label: "이탈 (24h)",
+      value: metrics.cancelled24h.toLocaleString(),
+      tone: metrics.cancelled24h === 0 ? "text-emerald-700" : "text-amber-700",
+    },
+    {
+      label: "이탈률 (24h)",
+      value:
+        metrics.activeTotal > 0 ? `${churnPct.toFixed(1)}%` : "—",
+      tone:
+        metrics.activeTotal > 0 && churnPct < 5
+          ? "text-emerald-700"
+          : metrics.activeTotal > 0
+            ? "text-amber-700"
+            : "text-grey-900",
+    },
+  ];
+  return (
+    <section className="mb-4 rounded-lg border border-blue-200 bg-white p-4">
+      <ExternalConsoleHeader title="Toss 결제 (구독)" observedAt={observedAt} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {cells.map((cell) => (
+          <div key={cell.label} className="text-xs">
+            <div className="text-[10px] text-grey-500">{cell.label}</div>
+            <div className={`font-semibold ${cell.tone}`}>{cell.value}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 // Phase A — 24h 클릭 event 합계 + 30일 인기 정책 top 5.

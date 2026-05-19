@@ -111,7 +111,8 @@ async function fetchSolapiBalance(): Promise<SolapiBalance> {
 const SOLAPI_BALANCE_FLOOR_RAW = Number(
   process.env.SOLAPI_BALANCE_ALERT_FLOOR ?? "10000",
 );
-const SOLAPI_BALANCE_FLOOR = Number.isFinite(SOLAPI_BALANCE_FLOOR_RAW)
+// 5/19 — UI 카드 (autonomous hub) 와 동일 임계 사용을 위해 export.
+export const SOLAPI_BALANCE_FLOOR = Number.isFinite(SOLAPI_BALANCE_FLOOR_RAW)
   ? SOLAPI_BALANCE_FLOOR_RAW
   : 10000;
 export function buildKakaoBalanceAlert(
