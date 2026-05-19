@@ -90,8 +90,11 @@ export function buildAdsenseAlerts(input: {
   clicks?: number;
   adRequests?: number;
   pageViews?: number;
+  // 2026-05-19 — state=READY 가 된 시점 (KST). 24h 미경과 시 zero_impressions alert skip.
+  // 검수 통과 직후 1~24h 광고 채워지기 전 false positive 차단 (review 권고).
+  readySinceHours?: number;
 }): { alerts: ConsoleAlert[]; kpis: Record<string, unknown> } {
-  const { account, earningsToday, currency, impressions, clicks, adRequests, pageViews } = input;
+  const { account, earningsToday, currency, impressions, clicks, adRequests, pageViews, readySinceHours } = input;
   const alerts: ConsoleAlert[] = [];
   const state = account.state ?? "UNKNOWN";
 
@@ -116,12 +119,14 @@ export function buildAdsenseAlerts(input: {
   }
 
   // 2026-05-19 — 24h 노출 0 (READY 인데 광고 요청·표시 0 = AdSense 봇 crawl 부재 또는 광고 코드 미작동)
+  // grace period — READY 가 된 후 24h 미경과 시 alert skip (광고 채워지기 1~24h 정상)
   if (
     state === "READY" &&
     impressions !== undefined &&
     impressions === 0 &&
     adRequests !== undefined &&
-    adRequests === 0
+    adRequests === 0 &&
+    (readySinceHours === undefined || readySinceHours >= 24)
   ) {
     alerts.push({
       key: "adsense_zero_impressions",
@@ -142,6 +147,7 @@ export function buildAdsenseAlerts(input: {
       clicks: clicks ?? null,
       ad_requests: adRequests ?? null,
       page_views: pageViews ?? null,
+      ready_since_hours: readySinceHours ?? null,
       // 노출당 클릭률 (CTR) — impressions > 0 일 때만
       ctr_pct:
         impressions !== undefined && impressions > 0 && clicks !== undefined
@@ -208,6 +214,30 @@ export async function checkAdsense(): Promise<ConsoleCheckResult> {
     // (2026-05-10 spec — "USD 0" 출력에 사장님 헷갈림 사고 방지).
     const currency = process.env.ADSENSE_CURRENCY ?? "KRW";
 
+    // 2026-05-19 — readySinceHours 계산 (admin_actions adsense_review_state 의 가장 오래된 READY row).
+    // grace period: READY 직후 24h 미경과 시 zero_impressions alert skip.
+    let readySinceHours: number | undefined;
+    if (account.state === "READY") {
+      try {
+        const { createAdminClient } = await import("@/lib/supabase/admin");
+        const adminDb = createAdminClient();
+        const { data: firstReady } = await adminDb
+          .from("admin_actions")
+          .select("created_at")
+          .eq("action", "adsense_review_state")
+          .filter("details->>state", "eq", "READY")
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (firstReady?.created_at) {
+          const ms = Date.now() - new Date(firstReady.created_at).getTime();
+          readySinceHours = Math.floor(ms / 3600_000);
+        }
+      } catch {
+        // graceful — readySinceHours undefined 시 buildAdsenseAlerts default 동작 (alert 발동)
+      }
+    }
+
     const { alerts, kpis } = buildAdsenseAlerts({
       account,
       earningsToday,
@@ -216,6 +246,7 @@ export async function checkAdsense(): Promise<ConsoleCheckResult> {
       clicks,
       adRequests,
       pageViews,
+      readySinceHours,
     });
     return { console: "adsense", alerts, kpis };
   } catch (e) {
