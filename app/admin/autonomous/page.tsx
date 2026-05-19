@@ -1143,6 +1143,7 @@ function PendingExternalActionsCard({
     checkout: "💳",
     infrastructure: "☁️",
     adsense: "📊",
+    codex: "🤖",
   };
   const totalMinutes = actions.reduce((s, a) => s + a.estimatedMinutes, 0);
   return (

@@ -107,7 +107,8 @@ export default async function ExternalActionsPage() {
     | "automation"
     | "checkout"
     | "infrastructure"
-    | "adsense";
+    | "adsense"
+    | "codex";
   const TRACKED_SET = new Set<string>([
     "security",
     "oauth",
@@ -115,6 +116,7 @@ export default async function ExternalActionsPage() {
     "checkout",
     "infrastructure",
     "adsense",
+    "codex",
   ]);
   const isPendingGuide = (cat: string): boolean =>
     TRACKED_SET.has(cat) && pendingCategories.has(cat as TrackedCategory);

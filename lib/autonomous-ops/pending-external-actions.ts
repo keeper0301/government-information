@@ -9,10 +9,11 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkW1Readiness } from "@/lib/codex/w1-readiness";
 
 export type PendingExternalAction = {
   /** 카테고리 — UI grouping */
-  category: "security" | "oauth" | "automation" | "checkout" | "infrastructure" | "adsense";
+  category: "security" | "oauth" | "automation" | "checkout" | "infrastructure" | "adsense" | "codex";
   /** 짧은 라벨 (3~6 단어) */
   label: string;
   /** 사장님 액션 한 줄 설명 */
@@ -148,6 +149,25 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     }
   } catch {
     // DB 실패 시 noop — false reminder 차단
+  }
+
+  // 2026-05-25 — Codex W0 → W1 ramp-up 자동 검증.
+  // spec [2026-05-25-codex-w0-to-w1-rampup] 의 Step 1 SQL 자동 실행.
+  // 임계 충족 시 사장님 reminder (GitHub PAT + AGENT_W1_ENABLED env).
+  try {
+    const w1 = await checkW1Readiness();
+    if (w1.windowReached && w1.ready) {
+      actions.push({
+        category: "codex",
+        label: "Codex W1 ramp-up 활성화 (1주차 검증 통과)",
+        description: `W0 7일 누적 ${w1.totalRuns7d}건·unique ${w1.uniqueQuestions}·errors ${(w1.errorRate * 100).toFixed(1)}% — 모든 임계 충족. GitHub PAT 발급 + AGENT_W1_ENABLED=true env 등록.`,
+        guideUrl:
+          "https://github.com/keeper0301/government-information/blob/master/docs/superpowers/specs/2026-05-25-codex-w0-to-w1-rampup.md",
+        estimatedMinutes: 5,
+      });
+    }
+  } catch {
+    // graceful — 5/25 이전 또는 DB 실패 시 noop
   }
 
   // 3. Naver Extension — 5/13 push 후 admin_actions audit 0건 = 가동 안 됨
