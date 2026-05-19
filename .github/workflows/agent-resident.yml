@@ -51,3 +51,20 @@ jobs:
             echo "::error::agent-resident-cycle failed (HTTP ${http_status})"
             exit 1
           fi
+
+          node - <<'NODE'
+          const fs = require("fs");
+          const body = fs.readFileSync("/tmp/agent-resident-response.json", "utf8");
+          let json;
+          try {
+            json = JSON.parse(body);
+          } catch {
+            console.error("::error::agent-resident-cycle did not return JSON.");
+            process.exit(1);
+          }
+          if (!json.source || typeof json.diagnoseCount !== "number") {
+            console.error("::error::agent-resident-cycle returned unexpected JSON.");
+            process.exit(1);
+          }
+          console.log(`resident cycle ok: source=${json.source} diagnostics=${json.diagnoseCount}`);
+          NODE

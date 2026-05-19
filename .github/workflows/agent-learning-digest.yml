@@ -49,3 +49,20 @@ jobs:
             echo "::error::agent-learning-digest failed (HTTP ${http_status})"
             exit 1
           fi
+
+          node - <<'NODE'
+          const fs = require("fs");
+          const body = fs.readFileSync("/tmp/agent-learning-digest-response.json", "utf8");
+          let json;
+          try {
+            json = JSON.parse(body);
+          } catch {
+            console.error("::error::agent-learning-digest did not return JSON.");
+            process.exit(1);
+          }
+          if (json.ok !== true || !json.digest) {
+            console.error("::error::agent-learning-digest returned JSON without ok=true digest.");
+            process.exit(1);
+          }
+          console.log(`learning digest ok: health=${json.healthScore}`);
+          NODE
