@@ -28,7 +28,14 @@ interface AdSenseAccount {
 interface AdSenseReportCell {
   value?: string;
 }
+// 2026-05-19 (저녁) — headers[].currencyCode 추출 위해 추가. ESTIMATED_EARNINGS metric 의 publisher 계정 default currency 가 headers[N].currencyCode 로 옴 (예: "USD").
+interface AdSenseReportHeader {
+  name?: string;
+  type?: string;
+  currencyCode?: string;
+}
 interface AdSenseReport {
+  headers?: AdSenseReportHeader[];
   totals?: { cells?: AdSenseReportCell[] };
   rows?: { cells?: AdSenseReportCell[] }[];
 }
@@ -209,10 +216,18 @@ export async function checkAdsense(): Promise<ConsoleCheckResult> {
     const clicks = parseInt(cells[2]?.value ?? "0", 10) || 0;
     const adRequests = parseInt(cells[3]?.value ?? "0", 10) || 0;
     const pageViews = parseInt(cells[4]?.value ?? "0", 10) || 0;
-    // 사장님 한국 가입 → AdSense 기본 통화 KRW. ADSENSE_CURRENCY env 로
-    // override 가능 (다른 국가/통화 운영 대비). USD 하드코딩 사고 fix
-    // (2026-05-10 spec — "USD 0" 출력에 사장님 헷갈림 사고 방지).
-    const currency = process.env.ADSENSE_CURRENCY ?? "KRW";
+    // 2026-05-19 (저녁) — AdSense API 응답의 headers[].currencyCode 추출.
+    // 옛 코드 `?? "KRW"` 가 사고였음: 사장님 publisher 계정 default = USD 인데
+    // 코드가 KRW 라벨 강제 → hub 매출 카드가 "25.53 KRW" 로 1,300배 적게 표시
+    // (실제 25.53 USD = 약 33,950원). 5/19 콘솔 직접 확인으로 발견.
+    // 우선순위: env override (다국가 운영 강제) → API headers → "USD" fallback.
+    const earningsHeader = report.headers?.find(
+      (h) => h.name === "ESTIMATED_EARNINGS",
+    );
+    const currency =
+      process.env.ADSENSE_CURRENCY ??
+      earningsHeader?.currencyCode ??
+      "USD";
 
     // 2026-05-19 — readySinceHours 계산 (admin_actions adsense_review_state 의 가장 오래된 READY row).
     // grace period: READY 직후 24h 미경과 시 zero_impressions alert skip.
