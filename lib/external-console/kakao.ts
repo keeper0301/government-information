@@ -102,19 +102,23 @@ async function fetchSolapiBalance(): Promise<SolapiBalance> {
 // pure function — 잔액 → alert (또는 null). buildKakaoAlerts 와 분리해 단위 테스트 용이.
 // 잔액 + 포인트 합산 < SOLAPI_BALANCE_ALERT_FLOOR 면 alert.
 // 2026-05-14 — 임계 5000 → 10000 (subagent Warning-3 fix).
-// 1만원 = SMS ~220건 = 4~5일 buffer. cron 24h 1회 → 한 cron 사이 5000원→0원 추락 방지.
-// 사장님 충전 시간 (주말 포함 2~3일) 확보 + 텔레그램 fallback 으로 alert 자체 도달 보장.
+// 2026-05-19 — 임계 10000 → 9000 임시 하향 (사장님 결정).
+//   배경: 사장님이 추가 ₩1,000 충전 완료해 Solapi UI 잔액 10,017원 표시. 그러나 Solapi
+//   `/cash/v1/balance` API 는 결제 정산 처리 lag (보통 1~10분, 가끔 시간 단위) 로 9,017원
+//   그대로 반환 — alert false positive 가 cron 마다 발화. lag 자연 해소까지 임시 하향.
+//   다음 사장님 충전 또는 lag 해소 확인 시 다시 10000 으로 원복 권장 (commit 1줄).
+// 9000 = SMS ~200건 = 약 4일 buffer. cron 24h 1회 → 한 cron 사이 9000→0 추락 가능성 낮음.
 //
 // NaN 가드 (subagent Warning-1 fix): env typo (예: "1ee04") 시 Number=NaN →
 // `usable >= NaN` = false → null 리턴 → 잔액 0 사고도 alert 0. 5/14 사고 재발 방지 본분 위반.
-// Number.isFinite 검증 후 fallback 10000.
+// Number.isFinite 검증 후 fallback 9000.
 const SOLAPI_BALANCE_FLOOR_RAW = Number(
-  process.env.SOLAPI_BALANCE_ALERT_FLOOR ?? "10000",
+  process.env.SOLAPI_BALANCE_ALERT_FLOOR ?? "9000",
 );
 // 5/19 — UI 카드 (autonomous hub) 와 동일 임계 사용을 위해 export.
 export const SOLAPI_BALANCE_FLOOR = Number.isFinite(SOLAPI_BALANCE_FLOOR_RAW)
   ? SOLAPI_BALANCE_FLOOR_RAW
-  : 10000;
+  : 9000;
 export function buildKakaoBalanceAlert(
   balance: SolapiBalance,
 ): ConsoleAlert | null {
