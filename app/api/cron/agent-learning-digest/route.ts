@@ -55,9 +55,12 @@ async function run() {
     ok: true,
     highestSeverity,
     healthScore: snapshot.healthScore,
+    anomalyCount: snapshot.anomalyCount,
+    criticalAnomalyCount: snapshot.criticalAnomalyCount,
     automationReliability: snapshot.automationReliability,
     cost: snapshot.cost,
     digest: snapshot.digest,
+    anomalies: snapshot.anomalies,
     recommendations,
   });
 }

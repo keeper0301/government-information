@@ -306,6 +306,8 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
       "Heartbeat",
       `${snapshot.automationReliability.actualRuns24h}/${snapshot.automationReliability.targetRuns24h}`,
     ],
+    ["Anomalies", `${snapshot.anomalyCount}`],
+    ["Critical", `${snapshot.criticalAnomalyCount}`],
     ["PR-ready", `${snapshot.prReadyCount}`],
     ["Auto-safe", `${snapshot.autoExecutableCount}`],
     ["Review", `${snapshot.adminReviewCount}`],
@@ -372,6 +374,43 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
             <div>Cap usage: {formatPercent(snapshot.cost.capRatio)}</div>
             <div className="mt-1">{snapshot.cost.recommendation}</div>
           </div>
+        </div>
+      </div>
+
+      <div className="mb-3 rounded-md border border-grey-200 bg-grey-50 p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="text-xs font-semibold text-grey-900">Anomaly detection</div>
+          <span className="text-[11px] text-grey-600">{snapshot.anomalyCount} signals</span>
+        </div>
+        <div className="space-y-2">
+          {snapshot.anomalies.slice(0, 6).map((anomaly) => (
+            <div key={anomaly.key} className="rounded border border-white bg-white p-2">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-grey-950">{anomaly.title}</span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                    anomaly.severity === "critical"
+                      ? "border-red-200 bg-red-50 text-red-800"
+                      : anomaly.severity === "high"
+                        ? "border-amber-200 bg-amber-50 text-amber-800"
+                        : anomaly.severity === "medium"
+                          ? "border-blue-200 bg-blue-50 text-blue-800"
+                          : "border-grey-200 bg-grey-50 text-grey-700"
+                  }`}
+                >
+                  {anomaly.severity}
+                </span>
+                <span className="text-[10px] text-grey-500">{anomaly.area}</span>
+              </div>
+              <div className="text-[11px] text-grey-700">{anomaly.evidence}</div>
+              <div className="mt-1 text-[11px] text-grey-600">{anomaly.recommendation}</div>
+            </div>
+          ))}
+          {snapshot.anomalies.length === 0 && (
+            <div className="rounded border border-white bg-white p-2 text-xs text-grey-700">
+              No anomaly signal yet. The resident loop is currently within guardrails.
+            </div>
+          )}
         </div>
       </div>
 

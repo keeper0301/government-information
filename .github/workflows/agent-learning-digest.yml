@@ -69,6 +69,8 @@ jobs:
             process.exit(1);
           }
           console.log(`learning digest ok: health=${json.healthScore}`);
+          const anomalies = Array.isArray(json.anomalies) ? json.anomalies : [];
+          fs.writeFileSync("/tmp/agent-anomaly-count", String(anomalies.length));
           const prReady = (json.recommendations || []).filter((item) => item.lane === "auto_pr");
           fs.writeFileSync("/tmp/agent-pr-ready-count", String(prReady.length));
           if (prReady.length > 0) {
@@ -93,6 +95,30 @@ jobs:
             ];
             fs.writeFileSync("/tmp/agent-pr-ready-issue.md", `${lines.join("\n")}\n`);
           }
+          const criticalAnomalies = anomalies.filter((item) => item.severity === "critical" || item.severity === "high");
+          if (criticalAnomalies.length > 0) {
+            const lines = [
+              "# Auto-ops anomaly alert",
+              "",
+              `Health score: ${json.healthScore}`,
+              `Anomalies: ${anomalies.length}`,
+              `Critical/high: ${criticalAnomalies.length}`,
+              `Generated: ${json.digest.generatedAt}`,
+              "",
+              "These signals indicate the resident loop needs review.",
+              "",
+              ...criticalAnomalies.slice(0, 10).flatMap((item, index) => [
+                `## ${index + 1}. ${item.title}`,
+                "",
+                `- Area: ${item.area}`,
+                `- Severity: ${item.severity}`,
+                `- Evidence: ${item.evidence || "-"}`,
+                `- Recommendation: ${item.recommendation || "-"}`,
+                "",
+              ]),
+            ];
+            fs.writeFileSync("/tmp/agent-anomaly-issue.md", `${lines.join("\n")}\n`);
+          }
           NODE
 
           pr_ready_count=$(cat /tmp/agent-pr-ready-count)
@@ -106,4 +132,18 @@ jobs:
             fi
           else
             echo "No PR-ready candidates today."
+          fi
+
+          anomaly_count=$(cat /tmp/agent-anomaly-count)
+          if [ "${anomaly_count}" -gt 0 ]; then
+            critical_count=$(node -e "const fs=require('fs'); const body=fs.readFileSync('/tmp/agent-learning-digest-response.json','utf8'); const json=JSON.parse(body); console.log(json.criticalAnomalyCount || 0)")
+            if [ "${critical_count}" -gt 0 ] && [ -f /tmp/agent-anomaly-issue.md ]; then
+              issue_title="Auto-ops anomaly alert $(date -u '+%Y-%m-%d')"
+              existing_count=$(gh issue list --state open --search "${issue_title} in:title" --json number --jq 'length')
+              if [ "${existing_count}" -eq 0 ]; then
+                gh issue create --title "${issue_title}" --body-file /tmp/agent-anomaly-issue.md
+              else
+                echo "Anomaly issue already exists for today."
+              fi
+            fi
           fi

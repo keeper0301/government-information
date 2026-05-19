@@ -71,8 +71,11 @@ describe("buildLearningLoopSnapshotFromRows", () => {
     expect(snapshot.generatedAt).toBe(NOW);
     expect(snapshot.agentRuns24h).toBe(2);
     expect(snapshot.agentDecisions24h).toBe(1);
+    expect(snapshot.anomalyCount).toBe(1);
+    expect(snapshot.criticalAnomalyCount).toBe(0);
     expect(snapshot.automationReliability.targetRuns24h).toBe(288);
     expect(snapshot.automationReliability.status).toBe("cold");
+    expect(snapshot.anomalies[0].title).toBe("Resident cycle is cold");
     expect(snapshot.sourceStats24h).toEqual([
       {
         source: "github_actions_heartbeat",
@@ -121,6 +124,8 @@ describe("buildLearningLoopSnapshotFromRows", () => {
     });
 
     expect(snapshot.blockedCount).toBe(1);
+    expect(snapshot.anomalyCount).toBe(4);
+    expect(snapshot.criticalAnomalyCount).toBe(3);
     expect(snapshot.cost.capRatio).toBe(1);
     expect(snapshot.cost.recommendation).toContain("Reduce content generation cadence");
     expect(snapshot.digest.risks).toContain("LLM monthly projection is above 80% of cap.");

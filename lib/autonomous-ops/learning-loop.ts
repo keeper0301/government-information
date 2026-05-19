@@ -59,16 +59,31 @@ export type AutomationReliabilitySnapshot = {
   status: "healthy" | "watch" | "cold";
 };
 
+export type OperationalAnomaly = {
+  key: string;
+  title: string;
+  area: string;
+  severity: "critical" | "high" | "medium" | "low";
+  evidence: string;
+  recommendation: string;
+  signal: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+};
+
 export type LearningLoopSnapshot = {
   generatedAt: string;
   healthScore: number;
   agentRuns24h: number;
   agentDecisions24h: number;
+  anomalyCount: number;
+  criticalAnomalyCount: number;
   prReadyCount: number;
   autoExecutableCount: number;
   adminReviewCount: number;
   blockedCount: number;
   automationReliability: AutomationReliabilitySnapshot;
+  anomalies: OperationalAnomaly[];
   sourceStats24h: LearningLoopSourceStat[];
   decisionStats24h: LearningLoopDecisionStat[];
   candidates: ImprovementCandidate[];
@@ -127,10 +142,22 @@ export function buildLearningLoopSnapshotFromRows(input: {
   const autoExecutableCount = candidates.filter((c) => c.lane === "auto_execute").length;
   const adminReviewCount = candidates.filter((c) => c.lane === "admin_review").length;
   const blockedCount = candidates.filter((c) => c.lane === "blocked").length;
+  const anomalies = buildOperationalAnomalies({
+    rows24h,
+    sourceStats24h,
+    decisionStats24h,
+    candidates,
+    cost,
+    automationReliability,
+    agentRuns24h,
+    agentDecisions24h,
+    generatedAt,
+  });
   const healthScore = buildHealthScore({
     automationReliability,
     cost,
     candidates,
+    anomalies,
   });
   const digest = buildDigest({
     generatedAt,
@@ -140,6 +167,7 @@ export function buildLearningLoopSnapshotFromRows(input: {
     decisionStats24h,
     candidates,
     cost,
+    anomalies,
   });
 
   return {
@@ -147,11 +175,14 @@ export function buildLearningLoopSnapshotFromRows(input: {
     healthScore,
     agentRuns24h,
     agentDecisions24h,
+    anomalyCount: anomalies.length,
+    criticalAnomalyCount: anomalies.filter((a) => a.severity === "critical").length,
     prReadyCount,
     autoExecutableCount,
     adminReviewCount,
     blockedCount,
     automationReliability,
+    anomalies,
     sourceStats24h,
     decisionStats24h,
     candidates,
@@ -363,12 +394,28 @@ function buildHealthScore(input: {
   automationReliability: AutomationReliabilitySnapshot;
   cost: CostEffectivenessSnapshot;
   candidates: ImprovementCandidate[];
+  anomalies: OperationalAnomaly[];
 }) {
   const reliabilityScore = input.automationReliability.completionRatio * 60;
   const costScore = (1 - Math.min(1, input.cost.capRatio)) * 20;
   const highPenalty = input.candidates.filter((c) => c.severity === "high").length * 8;
   const blockedPenalty = input.candidates.filter((c) => c.lane === "blocked").length * 6;
-  return Math.max(0, Math.min(100, Math.round(reliabilityScore + costScore + 20 - highPenalty - blockedPenalty)));
+  const anomalyPenalty = input.anomalies.reduce((sum, anomaly) => {
+    switch (anomaly.severity) {
+      case "critical":
+        return sum + 14;
+      case "high":
+        return sum + 8;
+      case "medium":
+        return sum + 4;
+      default:
+        return sum + 1;
+    }
+  }, 0);
+  return Math.max(
+    0,
+    Math.min(100, Math.round(reliabilityScore + costScore + 20 - highPenalty - blockedPenalty - anomalyPenalty)),
+  );
 }
 
 function buildDigest(input: {
@@ -379,14 +426,17 @@ function buildDigest(input: {
   decisionStats24h: LearningLoopDecisionStat[];
   candidates: ImprovementCandidate[];
   cost: CostEffectivenessSnapshot;
+  anomalies: OperationalAnomaly[];
 }): LearningDigest {
   const activeSources = input.sourceStats24h.filter((s) => s.diagnoseRuns > 0).length;
   const highCandidates = input.candidates.filter((c) => c.severity === "high").length;
   const prCandidates = input.candidates.filter((c) => c.lane === "auto_pr").length;
+  const criticalAnomalies = input.anomalies.filter((a) => a.severity === "critical").length;
+  const highAnomalies = input.anomalies.filter((a) => a.severity === "high").length;
   return {
     periodHours: 24,
     generatedAt: input.generatedAt,
-    summary: `${input.agentRuns24h} diagnostics, ${input.agentDecisions24h} decisions, ${input.candidates.length} learned candidates.`,
+    summary: `${input.agentRuns24h} diagnostics, ${input.agentDecisions24h} decisions, ${input.candidates.length} learned candidates, ${input.anomalies.length} anomalies.`,
     wins: [
       `${activeSources} heartbeat sources reported in the last 24h.`,
       `${input.decisionStats24h.find((s) => s.mode === "auto_execute")?.count ?? 0} low-risk decisions stayed automatic.`,
@@ -397,13 +447,227 @@ function buildDigest(input: {
         ? [`Resident diagnostics are below the ${RESIDENT_HEARTBEAT_TARGET_24H}/day reliability target.`]
         : []),
       ...(highCandidates > 0 ? [`${highCandidates} high-severity improvement candidates need attention.`] : []),
+      ...(highAnomalies > 0 ? [`${highAnomalies} high-severity anomalies detected.`] : []),
+      ...(criticalAnomalies > 0 ? [`${criticalAnomalies} critical anomalies need immediate review.`] : []),
       ...(input.cost.capRatio >= 0.8 ? ["LLM monthly projection is above 80% of cap."] : []),
     ],
     nextActions: [
       ...(prCandidates > 0 ? [`Promote ${prCandidates} repeated safe candidates into GitHub PR work.`] : []),
+      ...(input.anomalies[0] ? [`Top anomaly: ${input.anomalies[0].title}`] : []),
       ...(input.candidates[0] ? [`Top candidate: ${input.candidates[0].title}`] : ["Keep collecting learning signals."]),
     ],
   };
+}
+
+function buildOperationalAnomalies(input: {
+  rows24h: AdminActionRow[];
+  sourceStats24h: LearningLoopSourceStat[];
+  decisionStats24h: LearningLoopDecisionStat[];
+  candidates: ImprovementCandidate[];
+  cost: CostEffectivenessSnapshot;
+  automationReliability: AutomationReliabilitySnapshot;
+  agentRuns24h: number;
+  agentDecisions24h: number;
+  generatedAt: string;
+}): OperationalAnomaly[] {
+  const anomalies: OperationalAnomaly[] = [];
+  const sourceStats = input.sourceStats24h.filter((s) => s.diagnoseRuns > 0 || s.executeRuns > 0);
+  const sourceTotals = sourceStats.map((s) => ({
+    stat: s,
+    total: s.diagnoseRuns + s.executeRuns,
+  }));
+  const topSource = sourceTotals.reduce<(typeof sourceTotals)[number] | null>(
+    (best, current) => {
+      if (!best || current.total > best.total) return current;
+      return best;
+    },
+    null,
+  );
+  const totalRuns = sourceTotals.reduce((sum, entry) => sum + entry.total, 0);
+  const unknownSourceRuns = sourceStats.find((s) => s.source === "unknown");
+  const cronRetryCount = input.rows24h.filter((row) => row.action === "cron_retry_run").length;
+  const highCandidates = input.candidates.filter((candidate) => candidate.severity === "high").length;
+  const blockedCandidates = input.candidates.filter((candidate) => candidate.lane === "blocked").length;
+  const prCandidates = input.candidates.filter((candidate) => candidate.lane === "auto_pr").length;
+
+  if (input.automationReliability.actualRuns24h === 0) {
+    anomalies.push({
+      key: "resident-cycle-empty",
+      title: "Resident cycle stopped",
+      area: "automation",
+      severity: "critical",
+      evidence: "No agent_diagnose_run events were recorded in the last 24h.",
+      recommendation: "Check cron delivery, CRON_SECRET, and the Vercel deployment path immediately.",
+      signal: "resident_cycle_zero",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  } else if (input.automationReliability.completionRatio < 0.5) {
+    anomalies.push({
+      key: "resident-cycle-cold",
+      title: "Resident cycle is cold",
+      area: "automation",
+      severity: "high",
+      evidence: `${input.automationReliability.actualRuns24h}/${input.automationReliability.targetRuns24h} runs in 24h.`,
+      recommendation: "Increase resident-cycle frequency or restore the missed source.",
+      signal: "resident_cycle_cold",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  } else if (input.automationReliability.completionRatio < 1) {
+    anomalies.push({
+      key: "resident-cycle-under-target",
+      title: "Resident cycle is below target",
+      area: "automation",
+      severity: "medium",
+      evidence: `${input.automationReliability.missingRuns} runs missing from the 24h target.`,
+      recommendation: "Keep collecting signals and restore the missing heartbeat capacity.",
+      signal: "resident_cycle_under_target",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (sourceStats.length === 0) {
+    anomalies.push({
+      key: "no-sources",
+      title: "No source activity",
+      area: "source_health",
+      severity: "critical",
+      evidence: "No source-specific diagnostics or executions were observed.",
+      recommendation: "Verify admin_actions ingestion and the resident source aliases.",
+      signal: "source_empty",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  } else if (topSource && totalRuns > 0 && topSource.total / totalRuns > 0.85) {
+    anomalies.push({
+      key: `source-dominance:${topSource.stat.source}`,
+      title: "Single source dominates the loop",
+      area: "source_health",
+      severity: "medium",
+      evidence: `${topSource.stat.source} contributes ${(100 * (topSource.total / totalRuns)).toFixed(0)}% of recent activity.`,
+      recommendation: "Bring the secondary source back or treat the current source as a fallback-only path.",
+      signal: "source_dominance",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (unknownSourceRuns) {
+    anomalies.push({
+      key: "unknown-source",
+      title: "Unknown source events detected",
+      area: "data_quality",
+      severity: "medium",
+      evidence: `Unknown source recorded ${unknownSourceRuns.diagnoseRuns + unknownSourceRuns.executeRuns} times.`,
+      recommendation: "Fix the caller source mapping before the unknown bucket grows.",
+      signal: "unknown_source",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (cronRetryCount >= 3) {
+    anomalies.push({
+      key: "cron-retry-storm",
+      title: "Cron retry storm",
+      area: "cron_health",
+      severity: cronRetryCount >= 6 ? "high" : "medium",
+      evidence: `${cronRetryCount} cron retry events in 24h.`,
+      recommendation: "Inspect the last failed cron and reduce retry noise until the root cause is fixed.",
+      signal: "cron_retry_storm",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (input.cost.capRatio >= 0.8) {
+    anomalies.push({
+      key: "llm-cap-pressure",
+      title: "LLM budget pressure",
+      area: "cost",
+      severity: "high",
+      evidence: `Projected monthly spend is ${Math.round(input.cost.capRatio * 100)}% of cap.`,
+      recommendation: "Lower generation cadence, throttle repeats, or tighten the cap before the month closes.",
+      signal: "cost_cap_pressure",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (highCandidates >= 3) {
+    anomalies.push({
+      key: "high-candidate-backlog",
+      title: "High-severity backlog is building",
+      area: "improvement_queue",
+      severity: "high",
+      evidence: `${highCandidates} high-severity improvement candidates are waiting.`,
+      recommendation: "Review the top blockers before the queue absorbs more low-risk work.",
+      signal: "high_candidate_backlog",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (blockedCandidates > 0) {
+    anomalies.push({
+      key: "blocked-candidates",
+      title: "Blocked recommendations were generated",
+      area: "policy",
+      severity: "critical",
+      evidence: `${blockedCandidates} candidate(s) were classified as blocked.`,
+      recommendation: "Audit the blocked action paths and keep them out of auto-execution.",
+      signal: "blocked_recommendations",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (prCandidates >= 5) {
+    anomalies.push({
+      key: "pr-burst",
+      title: "PR queue burst",
+      area: "github_work_queue",
+      severity: "medium",
+      evidence: `${prCandidates} candidates are ready for GitHub PR work.`,
+      recommendation: "Create a small batch of PRs rather than pushing all changes into one review.",
+      signal: "pr_queue_burst",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  if (input.agentDecisions24h > input.agentRuns24h * 2 && input.agentRuns24h > 0) {
+    anomalies.push({
+      key: "decision-skew",
+      title: "Decision skew detected",
+      area: "agent_policy",
+      severity: "medium",
+      evidence: `${input.agentDecisions24h} execute decisions for ${input.agentRuns24h} diagnostics.`,
+      recommendation: "Check whether repeated execution decisions are masking a diagnostic issue.",
+      signal: "decision_skew",
+      firstSeenAt: input.generatedAt,
+      lastSeenAt: input.generatedAt,
+    });
+  }
+
+  return anomalies
+    .sort((a, b) => severityWeight(a.severity) - severityWeight(b.severity))
+    .slice(0, 8);
+}
+
+function severityWeight(value: OperationalAnomaly["severity"]) {
+  switch (value) {
+    case "critical":
+      return 0;
+    case "high":
+      return 1;
+    case "medium":
+      return 2;
+    default:
+      return 3;
+  }
 }
 
 function laneFor(
