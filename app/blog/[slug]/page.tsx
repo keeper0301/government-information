@@ -265,10 +265,10 @@ export default async function BlogPostPage({
               {post.faqs.map((faq, idx) => (
                 <li key={idx} className="bg-grey-50 rounded-xl p-5">
                   <div className="text-[15px] font-bold text-grey-900 mb-2">
-                    Q. {faq.question}
+                    Q. {stripHtmlTags(faq.question)}
                   </div>
                   <div className="text-[14px] text-grey-700 leading-[1.7]">
-                    A. {faq.answer}
+                    A. {stripHtmlTags(faq.answer)}
                   </div>
                 </li>
               ))}
