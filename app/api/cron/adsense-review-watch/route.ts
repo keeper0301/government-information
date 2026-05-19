@@ -40,6 +40,8 @@ export const maxDuration = 30;
 // 직전 state 조회 — admin_actions 최신 adsense_review_state row.
 // 없으면 null 반환 (cron 첫 가동 시).
 async function getPreviousState(): Promise<AdSenseState | null> {
+  // 2026-05-19 review fix — .single() 이 audit row 0건 시 PGRST116 throw.
+  // .maybeSingle() 로 graceful null. 첫 cron 가동 안전망.
   const admin = createAdminClient();
   const { data } = await admin
     .from("admin_actions")
@@ -47,7 +49,7 @@ async function getPreviousState(): Promise<AdSenseState | null> {
     .eq("action", "adsense_review_state")
     .order("created_at", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
   if (!data) return null;
   const state = (data.details as { state?: string } | null)?.state;
   return (state as AdSenseState) ?? null;

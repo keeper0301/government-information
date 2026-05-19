@@ -105,4 +105,23 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     const actions = await getPendingExternalActions();
     expect(actions).toHaveLength(0);
   });
+
+  // 2026-05-19 review 권고 #3 — residentCycleActive=true 시 Render label 분기
+  it("residentCycleActive=true + Render 미업그레이드 → label '선택적' + free 유지 가능 message", async () => {
+    mockState.residentCycleCount = 1; // in-site cron 가동 중
+    const actions = await getPendingExternalActions();
+    const renderAction = actions.find((a) => a.category === "infrastructure");
+    expect(renderAction).toBeDefined();
+    expect(renderAction?.label).toContain("선택적");
+    expect(renderAction?.description).toContain("free 유지 가능");
+  });
+
+  it("residentCycleActive=false + Render 미업그레이드 → label '업그레이드' + W1 ramp-up 권장", async () => {
+    mockState.residentCycleCount = 0;
+    const actions = await getPendingExternalActions();
+    const renderAction = actions.find((a) => a.category === "infrastructure");
+    expect(renderAction).toBeDefined();
+    expect(renderAction?.label).toContain("업그레이드");
+    expect(renderAction?.description).toContain("W1 ramp-up");
+  });
 });

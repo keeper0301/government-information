@@ -399,16 +399,17 @@ export function buildImprovementRecommendations(
     });
   }
 
-  // 2026-05-19 — Codex sidecar cycle 사고 (free cold start)
-  // 사장님 in-site agent-resident-cycle 도입 (24c3825) 후 합산 카운트 사용 — 양쪽 모두 0 이면 발동.
+  // 2026-05-19 — Codex agent cycle 부진 (sidecar 또는 in-site 한쪽만 가동·둘 다 부진)
+  // 사장님 in-site agent-resident-cycle 도입 (24c3825) 후 합산 카운트.
+  // < 300 발동 = 양쪽 모두 정상 가동 시 432 예상의 70% 미만 = 한쪽 또는 양쪽 부진.
   if (s.agentDiagnoseRuns24h !== undefined && s.agentDiagnoseRuns24h > 0 && s.agentDiagnoseRuns24h < 300) {
     recs.push({
       area: "cron_reliability",
       severity: "medium",
       title: "Codex agent cycle 부진 — sidecar + in-site 합산 미달",
-      evidence: `24h agent_diagnose_run ${s.agentDiagnoseRuns24h}건 (정상 ≥ 300, 의도 432 = 30분 cycle × 48 × 9 question). sidecar (Render free cold start) + in-site agent-resident-cycle 합산.`,
+      evidence: `24h agent_diagnose_run ${s.agentDiagnoseRuns24h}건 (정상 ≥ 300, 의도 432 = 30분 cycle × 48 × 9 question). 두 source 합산 (admin_actions details.source = 'site_resident_cron' 또는 sidecar 미설정 = sidecar). 한쪽만 가동 중일 수 있음.`,
       action:
-        "1) Vercel cron agent-resident-cycle 가동 확인 (/admin/cron-trigger). 2) Render Starter ($7/월) 업그레이드 (sidecar always-on, 선택적). 가이드: docs/external-actions/render-plan-upgrade.md",
+        "1) /admin/cron-trigger 의 agent-resident-cycle 수동 trigger + 결과 audit row 확인. 2) sidecar 가동 시: Render Starter ($7/월) always-on 업그레이드 검토 (가이드: docs/external-actions/render-plan-upgrade.md). 3) source 별 카운트 분리는 /admin/autonomous Phase 1 metric 참조.",
     });
   }
 
