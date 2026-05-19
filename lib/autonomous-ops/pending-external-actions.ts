@@ -12,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PendingExternalAction = {
   /** 카테고리 — UI grouping */
-  category: "security" | "oauth" | "automation" | "checkout" | "infrastructure";
+  category: "security" | "oauth" | "automation" | "checkout" | "infrastructure" | "adsense";
   /** 짧은 라벨 (3~6 단어) */
   label: string;
   /** 사장님 액션 한 줄 설명 */
@@ -108,6 +108,45 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
         "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/adsense-gmail-watch-spec.md",
       estimatedMinutes: 5,
     });
+  }
+
+  // 2026-05-19 — AdSense 검수 결과 + 광고 게재 env 통합 감지.
+  // state=READY + NEXT_PUBLIC_ADSENSE_ID 등록 시 hide.
+  // state=DISABLED 또는 env 누락 시 reminder.
+  try {
+    const admin = createAdminClient();
+    const { data: latestAdsense } = await admin
+      .from("admin_actions")
+      .select("details")
+      .eq("action", "adsense_review_state")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const adsenseState = (latestAdsense?.details as { state?: string } | null)?.state;
+    const adsenseEnvReady = !!process.env.NEXT_PUBLIC_ADSENSE_ID;
+    if (adsenseState === "DISABLED" || adsenseState === "CLOSED") {
+      actions.push({
+        category: "adsense",
+        label: "AdSense 거절 사유 확인 + fix",
+        description: `state=${adsenseState}. AdSense 콘솔에서 거절 사유 확인 후 메모리 [adsense-rejection-response] 따라 1~2주 fix 누적 후 재신청.`,
+        url: "https://adsense.google.com/",
+        guideUrl:
+          "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/adsense-post-decision-actions.md",
+        estimatedMinutes: 10,
+      });
+    } else if (adsenseState === "READY" && !adsenseEnvReady) {
+      actions.push({
+        category: "adsense",
+        label: "AdSense 광고 게재 env 등록",
+        description: "검수 통과 (READY) 후 NEXT_PUBLIC_ADSENSE_ID env 등록 필요. 광고 단위 slot + layout 추가 권장.",
+        url: "https://vercel.com/keeper0301-8938s-projects/government-information/settings/environment-variables",
+        guideUrl:
+          "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/adsense-post-decision-actions.md",
+        estimatedMinutes: 5,
+      });
+    }
+  } catch {
+    // DB 실패 시 noop — false reminder 차단
   }
 
   // 3. Naver Extension — 5/13 push 후 admin_actions audit 0건 = 가동 안 됨
