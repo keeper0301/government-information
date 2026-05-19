@@ -13,6 +13,7 @@
 // ============================================================
 
 import type { Metadata } from "next";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
@@ -116,13 +117,14 @@ function CategoryRow({ row }: { row: Awaited<ReturnType<typeof loadCategoryPrevi
             >
               {/* 1080×1350 PNG → 4:5 비율 축소 (CSS aspect-ratio). 카드 한 장당
                   데스크톱 약 216×270, 모바일 자동 축소. */}
-              <img
+              <Image
                 src={`/api/instagram-card/${encodeURIComponent(row.slug!)}/${idx}`}
                 alt={`${row.category} 카드 ${idx}`}
-                className="block w-full"
-                style={{ aspectRatio: "4 / 5" }}
+                width={1080}
+                height={1350}
+                className="block h-auto w-full"
+                sizes="(max-width: 768px) 30vw, 216px"
                 loading="lazy"
-                decoding="async"
               />
               <div className="border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-center text-xs text-slate-600">
                 카드 {idx} ·{" "}

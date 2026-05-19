@@ -1680,7 +1680,7 @@ function SnsPublishCard({
               </div>
               <div className="text-xs text-grey-700">
                 <span className="text-emerald-700">{c.ok}</span>
-                <span className="text-grey-400 mx-1">/</span>
+                <span className="text-grey-500 mx-1">/</span>
                 <span className="text-grey-500">{total}</span>
                 <span className="text-grey-500 ml-1">({successRate}%)</span>
                 {c.topFailReason && c.fail > 0 && (

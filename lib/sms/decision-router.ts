@@ -174,15 +174,15 @@ const DECISION_HANDLERS: Partial<
 > = {
   // 임계 조정 — 실제 Vercel env 변경은 별도 chrome 자동화 또는 사장님 콘솔.
   // 여기선 admin_actions 에 audit + admin_decisions 알림만.
-  dedupe_threshold_w2: async (_ctx) =>
+  dedupe_threshold_w2: async () =>
     "Vercel env DEDUPE_AUTO_CONFIRM_THRESHOLD=0.88 변경 권장 (별도 chrome 자동화 또는 사장님 콘솔)",
-  dedupe_threshold_w3: async (_ctx) =>
+  dedupe_threshold_w3: async () =>
     "Vercel env DEDUPE_AUTO_CONFIRM_THRESHOLD=0.86 변경 권장",
-  dedupe_threshold_w4: async (_ctx) =>
+  dedupe_threshold_w4: async () =>
     "Vercel env DEDUPE_AUTO_CONFIRM_THRESHOLD=0.85 변경 권장",
   // spec C 진입 결정 — 비용 동의만 받고 다음 spec 작성으로 넘김
-  spec_c_baseline_start: async (_ctx) =>
+  spec_c_baseline_start: async () =>
     "spec C welfare LLM 매칭 baseline 1주 측정 진입 동의 — 다음 세션 spec 작성·구현",
-  news_cap_increase: async (_ctx) =>
+  news_cap_increase: async () =>
     "news cap 변경 권장 — duration_ms audit 결과 확인 후 별도 commit",
 };

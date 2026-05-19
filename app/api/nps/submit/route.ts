@@ -5,7 +5,6 @@
 // token 검증 + nps_responses insert (중복 user_id 차단 — UNIQUE).
 // 응답 후 thank-you HTML 반환 (사용자 친화).
 
-import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyNpsToken } from "@/lib/nps/token";
 

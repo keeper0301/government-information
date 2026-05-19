@@ -18,7 +18,7 @@ import {
 
 describe("PERMISSION_MATRIX 무결성", () => {
   it("모든 정책에 owner 가 포함된다 (owner 는 모든 명령 가능)", () => {
-    for (const [cmd, policy] of Object.entries(PERMISSION_MATRIX)) {
+    for (const policy of Object.values(PERMISSION_MATRIX)) {
       expect(policy).toContain("owner");
     }
   });

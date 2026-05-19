@@ -2,7 +2,7 @@
 // Phase D-4 auto-fix 단위 테스트 (step 1 dry-run)
 // ============================================================
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   analyzeForAutoFix,
   formatAutoFixSummary,

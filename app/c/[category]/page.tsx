@@ -524,7 +524,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
                     <span className="text-[15px] font-semibold text-grey-900 leading-[1.5]">
                       {item.q}
                     </span>
-                    <span className="text-grey-400 text-[18px] leading-none mt-0.5 group-open:rotate-180 transition-transform">
+                    <span className="text-grey-500 text-[18px] leading-none mt-0.5 group-open:rotate-180 transition-transform">
                       ⌃
                     </span>
                   </summary>

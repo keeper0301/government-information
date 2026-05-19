@@ -7,7 +7,7 @@
 "use client";
 
 import { trackEvent } from "@/lib/analytics/track-client";
-import type { ReactNode, MouseEvent } from "react";
+import type { ReactNode } from "react";
 
 type Props = {
   programId: string;
@@ -26,7 +26,7 @@ export function ApplyClickTracker({
   className,
   children,
 }: Props) {
-  function onClick(_e: MouseEvent<HTMLAnchorElement>) {
+  function onClick() {
     trackEvent({
       event_type: "apply_click",
       program_id: programId,

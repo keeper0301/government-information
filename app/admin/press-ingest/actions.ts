@@ -47,7 +47,8 @@ export async function rejectPressCandidateAction(formData: FormData) {
 
 // 2026-05-18 — 5/9 가동 전 legacy null 후보 (7일+ 묵음) 일괄 정리.
 // 사장님 1 click 으로 검수 큐 cleanup → /admin/press-ingest 가독성 ↑.
-export async function bulkRejectLegacyAction(_formData: FormData) {
+export async function bulkRejectLegacyAction(formData: FormData) {
+  void formData;
   const actorId = await requireAdminUserId();
   const result = await bulkRejectLegacyPressCandidates(actorId);
   revalidatePath("/admin/press-ingest");

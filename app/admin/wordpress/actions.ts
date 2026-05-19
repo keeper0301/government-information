@@ -30,9 +30,11 @@ async function ensureAdmin(): Promise<void> {
  * useActionState signature: (prevState, formData) => Promise<RepublishState>
  */
 export async function republishLatestBlogAction(
-  _prevState: RepublishState,
-  _formData: FormData,
+  prevState: RepublishState,
+  formData: FormData,
 ): Promise<RepublishState> {
+  void prevState;
+  void formData;
   try {
     await ensureAdmin();
   } catch {
