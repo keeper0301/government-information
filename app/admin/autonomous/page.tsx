@@ -30,6 +30,10 @@ import {
   type AdsenseMetricsLatest,
 } from "@/lib/monitoring/adsense-revenue-trend";
 import {
+  collectScMetricsLatest,
+  type ScMetricsLatest,
+} from "@/lib/monitoring/sc-metrics-trend";
+import {
   getEventTypeStats24h,
   getTopProgramsByEvents,
   type EventTypeStats,
@@ -127,6 +131,7 @@ export default async function AdminAutonomousPage() {
     yesterdayDigest,
     codexW1,
     adsenseMetrics,
+    scMetrics,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -148,6 +153,7 @@ export default async function AdminAutonomousPage() {
     getYesterdayDigest(),
     checkW1Readiness(),
     collectAdsenseMetricsLatest(),
+    collectScMetricsLatest(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -186,6 +192,7 @@ export default async function AdminAutonomousPage() {
       <SectionHeader title="💰 수익 · 비용" />
       <RevenueChartCard series={revenueSeries} />
       <AdsenseMetricsCard metrics={adsenseMetrics} />
+      <SearchConsoleMetricsCard metrics={scMetrics} />
       <GeminiSpendingCard stats={geminiSpending} />
 
       {/* 3. 사용자 가치 — 클릭·인기 가시화 */}
@@ -843,14 +850,7 @@ function AdsenseMetricsCard({ metrics }: { metrics: AdsenseMetricsLatest | null 
     // env 미설정 또는 첫 cron 전 — 카드 자체 hide (false reminder 차단)
     return null;
   }
-  const observedHoursAgo = metrics.observedAt
-    ? Math.max(
-        0,
-        Math.floor(
-          (Date.now() - new Date(metrics.observedAt).getTime()) / 3600_000,
-        ),
-      )
-    : null;
+  const observedHoursAgo = getObservedHoursAgo(metrics.observedAt);
   const cells: Array<{ label: string; value: string; tone: string }> = [
     {
       label: "오늘 매출",
@@ -910,6 +910,83 @@ function AdsenseMetricsCard({ metrics }: { metrics: AdsenseMetricsLatest | null 
       </div>
     </section>
   );
+}
+
+// 2026-05-19 — Search Console KPI 카드. AdSense 통과 직후 색인·노출 트래픽 추적.
+// clicks/impressions/CTR/avg_position 4 cell. 데이터 0건 시 graceful hide.
+// Search Console API lag 1~2일 (외부 console checker 가 startDate=3일전, endDate=1일전 query).
+function SearchConsoleMetricsCard({
+  metrics,
+}: {
+  metrics: ScMetricsLatest | null;
+}) {
+  if (!metrics) return null;
+  const observedHoursAgo = getObservedHoursAgo(metrics.observedAt);
+  const ctrPct = metrics.ctr * 100;
+  const cells: Array<{ label: string; value: string; tone: string }> = [
+    {
+      label: "클릭 (3일)",
+      value: metrics.clicks.toLocaleString(),
+      tone: metrics.clicks > 0 ? "text-emerald-700" : "text-grey-700",
+    },
+    {
+      label: "노출 (3일)",
+      value: metrics.impressions.toLocaleString(),
+      tone: "text-grey-900",
+    },
+    {
+      label: "CTR",
+      value: metrics.impressions > 0 ? `${ctrPct.toFixed(2)}%` : "—",
+      tone:
+        metrics.impressions > 0 && ctrPct >= 0.5
+          ? "text-emerald-700"
+          : metrics.impressions >= 100 && ctrPct < 0.5
+            ? "text-amber-700"
+            : "text-grey-900",
+    },
+    {
+      label: "평균 순위",
+      value:
+        metrics.avgPosition > 0 ? metrics.avgPosition.toFixed(1) : "—",
+      tone:
+        metrics.avgPosition > 0 && metrics.avgPosition <= 10
+          ? "text-emerald-700"
+          : "text-grey-900",
+    },
+  ];
+  return (
+    <section className="mb-4 rounded-lg border border-blue-200 bg-white p-4">
+      <header className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="text-[11px] font-semibold text-grey-600">
+          Search Console (최근 3일)
+        </div>
+        <div className="text-[11px] text-grey-500">
+          {observedHoursAgo !== null ? `${observedHoursAgo}h 전 측정` : ""}
+        </div>
+      </header>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {cells.map((cell) => (
+          <div key={cell.label} className="text-xs">
+            <div className="text-[10px] text-grey-500">{cell.label}</div>
+            <div className={`font-semibold ${cell.tone}`}>{cell.value}</div>
+          </div>
+        ))}
+      </div>
+      {metrics.clicks === 0 && metrics.impressions === 0 && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          ⚠️ 클릭·노출 0 — 색인·robots·도메인 차단 의심. 5/19 AdSense 통과 직후
+          데이터 lag 1~2일 가능.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function getObservedHoursAgo(observedAt: string | null): number | null {
+  if (!observedAt) return null;
+  const observedMs = new Date(observedAt).getTime();
+  if (!Number.isFinite(observedMs)) return null;
+  return Math.max(0, Math.floor((Date.now() - observedMs) / 3600_000));
 }
 
 // Phase A — 24h 클릭 event 합계 + 30일 인기 정책 top 5.
