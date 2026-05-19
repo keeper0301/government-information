@@ -34,21 +34,26 @@ type AuditRow = {
 function extractAdsenseRevenue(
   row: AuditRow,
 ): { earnings: number; currency: string } | null {
+  const kpiObj = extractAdsenseKpis(row);
+  if (!kpiObj) return null;
+  const earnings = Number(kpiObj.earnings_today);
+  if (Number.isNaN(earnings)) return null;
+  const currency =
+    typeof kpiObj.currency === "string" ? kpiObj.currency : "USD";
+  return { earnings, currency };
+}
+
+function extractAdsenseKpis(row: AuditRow): Record<string, unknown> | null {
   if (!row.details || typeof row.details !== "object") return null;
   const d = row.details as Record<string, unknown>;
-  // external_console_check_run 의 console 별 결과 안에 adsense kpis 있음
   const consoles = d.consoles ?? d.results;
   if (!consoles || typeof consoles !== "object") return null;
   const adsense = (consoles as Record<string, unknown>).adsense;
   if (!adsense || typeof adsense !== "object") return null;
   const kpis = (adsense as Record<string, unknown>).kpis;
-  if (!kpis || typeof kpis !== "object") return null;
-  const kpiObj = kpis as Record<string, unknown>;
-  const earnings = Number(kpiObj.earnings_today);
-  if (isNaN(earnings)) return null;
-  const currency =
-    typeof kpiObj.currency === "string" ? kpiObj.currency : "USD";
-  return { earnings, currency };
+  return kpis && typeof kpis === "object"
+    ? (kpis as Record<string, unknown>)
+    : null;
 }
 
 // 직전 N일 모든 일별 매출 (autonomous hub 30일 차트 등).
@@ -56,20 +61,27 @@ function extractAdsenseRevenue(
 export async function collectRevenueDailySeries(
   days = 30,
 ): Promise<DailyRevenue[]> {
-  const admin = createAdminClient();
-  const since = new Date(Date.now() - days * 24 * 3600_000).toISOString();
-  const { data } = await admin
-    .from("admin_actions")
-    .select("details, created_at")
-    .eq("action", "external_console_check_run")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(days * 3);
+  // 2026-05-19 — supabase query throw 시 hub 페이지 500 차단. 빈 array 로 graceful skip.
+  let data: AuditRow[] | null = null;
+  try {
+    const admin = createAdminClient();
+    const since = new Date(Date.now() - days * 24 * 3600_000).toISOString();
+    const res = await admin
+      .from("admin_actions")
+      .select("details, created_at")
+      .eq("action", "external_console_check_run")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(days * 3);
+    data = (res.data ?? []) as AuditRow[];
+  } catch {
+    return [];
+  }
 
   const daily: DailyRevenue[] = [];
   const seenDates = new Set<string>();
 
-  for (const row of (data ?? []) as AuditRow[]) {
+  for (const row of data ?? []) {
     const revenue = extractAdsenseRevenue(row);
     if (!revenue) continue;
     const date = (row.created_at ?? "").slice(0, 10);
@@ -89,23 +101,36 @@ export async function collectRevenueDailySeries(
 export async function collectRevenueTrend(
   days = 7,
 ): Promise<RevenueTrend> {
-  const admin = createAdminClient();
-  const since = new Date(Date.now() - days * 2 * 24 * 3600_000).toISOString();
-
-  const { data } = await admin
-    .from("admin_actions")
-    .select("details, created_at")
-    .eq("action", "external_console_check_run")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(days * 4); // 안전 margin (cron 가동 가변성)
+  // 2026-05-19 — supabase query throw 시 hub 페이지 500 차단. 빈 trend 로 graceful skip.
+  let data: AuditRow[] | null = null;
+  try {
+    const admin = createAdminClient();
+    const since = new Date(Date.now() - days * 2 * 24 * 3600_000).toISOString();
+    const res = await admin
+      .from("admin_actions")
+      .select("details, created_at")
+      .eq("action", "external_console_check_run")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(days * 4); // 안전 margin (cron 가동 가변성)
+    data = (res.data ?? []) as AuditRow[];
+  } catch {
+    return {
+      daily: [],
+      total7d: 0,
+      avgPerDay: 0,
+      currency: "USD",
+      vsPrev7d: null,
+      alerts: [],
+    };
+  }
 
   const daily: DailyRevenue[] = [];
   let currency = "USD";
   const seenDates = new Set<string>();
 
   // 가장 최근 row → 가장 이전 row 순회. 일별 가장 최근 데이터 채택.
-  for (const row of (data ?? []) as AuditRow[]) {
+  for (const row of data ?? []) {
     const revenue = extractAdsenseRevenue(row);
     if (!revenue) continue;
     const date = (row.created_at ?? "").slice(0, 10);
@@ -172,26 +197,26 @@ export type AdsenseMetricsLatest = {
 };
 
 export async function collectAdsenseMetricsLatest(): Promise<AdsenseMetricsLatest | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("admin_actions")
-    .select("details, created_at")
-    .eq("action", "external_console_check_run")
-    .order("created_at", { ascending: false })
-    .limit(5);
+  // 2026-05-19 — supabase query throw 시 hub 페이지 500 차단. null 로 graceful skip (카드 hide).
+  let data: AuditRow[] | null = null;
+  try {
+    const admin = createAdminClient();
+    const res = await admin
+      .from("admin_actions")
+      .select("details, created_at")
+      .eq("action", "external_console_check_run")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    data = (res.data ?? []) as AuditRow[];
+  } catch {
+    return null;
+  }
 
-  for (const row of (data ?? []) as AuditRow[]) {
-    if (!row.details || typeof row.details !== "object") continue;
-    const d = row.details as Record<string, unknown>;
-    const consoles = d.consoles ?? d.results;
-    if (!consoles || typeof consoles !== "object") continue;
-    const adsense = (consoles as Record<string, unknown>).adsense;
-    if (!adsense || typeof adsense !== "object") continue;
-    const kpis = (adsense as Record<string, unknown>).kpis;
-    if (!kpis || typeof kpis !== "object") continue;
-    const k = kpis as Record<string, unknown>;
+  for (const row of data ?? []) {
+    const k = extractAdsenseKpis(row);
+    if (!k) continue;
     const earnings = Number(k.earnings_today ?? 0);
-    if (isNaN(earnings)) continue;
+    if (Number.isNaN(earnings)) continue;
     return {
       earnings,
       currency: typeof k.currency === "string" ? k.currency : "KRW",
@@ -210,7 +235,7 @@ export async function collectAdsenseMetricsLatest(): Promise<AdsenseMetricsLates
 function nullableNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   const n = Number(value);
-  return isNaN(n) ? null : n;
+  return Number.isNaN(n) ? null : n;
 }
 
 // 텔레그램 메시지 추가용
