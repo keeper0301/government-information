@@ -14,8 +14,29 @@ export function buildTransitionAlert(input: {
 }): { shouldAlert: boolean; subject: string; message: string } | null {
   const { previous, current } = input;
 
-  // 첫 가동 — previous 가 null 이면 audit 만, alert 안 함 (baseline 수립).
-  if (previous === null) return null;
+  // 첫 가동 — previous 가 null 이면 audit 만 (baseline 수립).
+  // 단 2026-05-19 사고 학습: state=READY 인 채로 첫 가동 시 사장님 알림 못 받음.
+  // 검수 통과 신호는 항상 즉시 보내야 함 (사장님 ADSENSE_PUBLISHER_ID 등록 trigger).
+  if (previous === null) {
+    if (current === "READY") {
+      return {
+        shouldAlert: true,
+        subject: "[keepioo] AdSense 승인 통과 🎉 (첫 감지)",
+        message: [
+          `AdSense 검수 결과: 승인.`,
+          `account.state=READY 첫 감지 — 검수 통과 확인.`,
+          ``,
+          `[다음 액션 (5분)]`,
+          `1. AdSense 콘솔에서 publisher ID 확인 (pub-XXXXXXXXXXXXXXXX)`,
+          `2. Vercel env 등록: NEXT_PUBLIC_ADSENSE_ID = ca-pub-...`,
+          `3. AdSense 콘솔 → 광고 단위 → 인피드 광고 생성 → slot ID 확보`,
+          `4. Vercel env 등록: NEXT_PUBLIC_ADSENSE_SLOT_INFEED + LAYOUT`,
+          `5. Redeploy → /blog 모바일 광고 노출 확인`,
+        ].join("\n"),
+      };
+    }
+    return null; // 다른 state 는 baseline audit 만, alert X
+  }
 
   // 동일 state — noop.
   if (previous === current) return null;

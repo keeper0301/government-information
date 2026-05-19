@@ -61,7 +61,7 @@
 
     { "path": "/api/cron/adsense-review-watch", "schedule": "5 1 * * *" },
 
-    { "path": "/api/cron/blog-publish-summary", "schedule": "30 22 * * *" },
+    { "path": "/api/cron/blog-publish-summary", "schedule": "30 23 * * *" },
 
     { "path": "/api/cron/adsense-gmail-watch", "schedule": "10 1 * * *" },
 

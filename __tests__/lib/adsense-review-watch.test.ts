@@ -2,10 +2,19 @@ import { describe, expect, it } from "vitest";
 import { buildTransitionAlert } from "@/lib/adsense-review-watch";
 
 describe("buildTransitionAlert", () => {
-  it("첫 가동 (previous=null) 은 audit baseline 만 — alert 없음", () => {
+  it("첫 가동 (previous=null) + NEEDS_ATTENTION → audit baseline 만, alert 없음", () => {
     expect(
       buildTransitionAlert({ previous: null, current: "NEEDS_ATTENTION" }),
     ).toBeNull();
+  });
+
+  it("2026-05-19 fix — 첫 가동 (previous=null) + state=READY → 즉시 승인 알림", () => {
+    const r = buildTransitionAlert({ previous: null, current: "READY" });
+    expect(r?.shouldAlert).toBe(true);
+    expect(r?.subject).toContain("승인 통과");
+    expect(r?.subject).toContain("첫 감지");
+    expect(r?.message).toContain("NEXT_PUBLIC_ADSENSE_ID");
+    expect(r?.message).toContain("Vercel env");
   });
 
   it("동일 state 는 noop (매일 폭주 차단)", () => {
