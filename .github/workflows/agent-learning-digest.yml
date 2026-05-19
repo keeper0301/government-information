@@ -24,6 +24,7 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           SITE_BASE_URL: https://www.keepioo.com
         run: |
           set -euo pipefail
