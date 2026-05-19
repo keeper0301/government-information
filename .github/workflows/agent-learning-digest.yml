@@ -9,7 +9,9 @@ concurrency:
   group: agent-learning-digest
   cancel-in-progress: false
 
-permissions: {}
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   digest:
@@ -21,6 +23,7 @@ jobs:
       - name: Call agent-learning-digest
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          GH_TOKEN: ${{ github.token }}
           SITE_BASE_URL: https://www.keepioo.com
         run: |
           set -euo pipefail
@@ -65,4 +68,41 @@ jobs:
             process.exit(1);
           }
           console.log(`learning digest ok: health=${json.healthScore}`);
+          const prReady = (json.recommendations || []).filter((item) => item.lane === "auto_pr");
+          fs.writeFileSync("/tmp/agent-pr-ready-count", String(prReady.length));
+          if (prReady.length > 0) {
+            const lines = [
+              "# Auto-ops PR-ready candidates",
+              "",
+              `Health score: ${json.healthScore}`,
+              `Generated: ${json.digest.generatedAt}`,
+              "",
+              "These candidates repeated enough to leave the dashboard queue and enter the GitHub work queue.",
+              "",
+              ...prReady.slice(0, 10).flatMap((item, index) => [
+                `## ${index + 1}. ${item.title}`,
+                "",
+                `- Area: ${item.area}`,
+                `- Severity: ${item.severity}`,
+                `- Occurrences: ${item.occurrences}`,
+                `- Evidence: ${item.evidence || "-"}`,
+                `- Suggested action: ${item.action || "-"}`,
+                "",
+              ]),
+            ];
+            fs.writeFileSync("/tmp/agent-pr-ready-issue.md", `${lines.join("\n")}\n`);
+          }
           NODE
+
+          pr_ready_count=$(cat /tmp/agent-pr-ready-count)
+          if [ "${pr_ready_count}" -gt 0 ]; then
+            issue_title="Auto-ops PR-ready candidates $(date -u '+%Y-%m-%d')"
+            existing_count=$(gh issue list --state open --search "${issue_title} in:title" --json number --jq 'length')
+            if [ "${existing_count}" -eq 0 ]; then
+              gh issue create --title "${issue_title}" --body-file /tmp/agent-pr-ready-issue.md
+            else
+              echo "PR-ready issue already exists for today."
+            fi
+          else
+            echo "No PR-ready candidates today."
+          fi
