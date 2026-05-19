@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError, classifyAuthError } from "@/lib/auth-errors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import { SocialLoginButtons } from "@/components/social-login-buttons";
 
 // 회원가입 페이지 (이메일 + 비밀번호 방식)
 // - 가입 후에는 Supabase가 확인 메일을 보냄
@@ -115,9 +116,9 @@ export default function SignupPage() {
         회원가입
       </h1>
       <p className="text-[15px] text-grey-600 mb-8 leading-[1.6]">
-        이메일과 비밀번호로 가입해보세요.
+        소셜 계정으로 빠르게 시작하거나
         <br />
-        가입 후 확인 메일을 보내드려요.
+        이메일로 가입하세요.
       </p>
 
       {error && (
@@ -125,6 +126,44 @@ export default function SignupPage() {
           {error}
         </div>
       )}
+
+      {/* 소셜 진입 4종 — 카카오 메인 + 구글·네이버·페이스북 원형.
+          login 페이지와 동일 컴포넌트. 신규 사용자 가입 + 기가입자 로그인 모두 동작. */}
+      <SocialLoginButtons next="/" onError={setError} />
+      <div className="mb-6" />
+
+      {/* 동의 안내 — 소셜 진입 시 신규 사용자는 로그인/가입 완료 시 약관·방침 동의로 간주.
+          (실제 consent_log 기록은 /auth/callback 에서 신규 사용자 판정 후 자동) */}
+      <p className="text-[13px] text-grey-600 text-center mb-6 leading-[1.5]">
+        로그인·가입 시{" "}
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-grey-700 underline hover:text-grey-900"
+        >
+          이용약관
+        </a>
+        과{" "}
+        <a
+          href="/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-grey-700 underline hover:text-grey-900"
+        >
+          개인정보처리방침
+        </a>
+        에
+        <br />
+        동의하는 것으로 간주됩니다.
+      </p>
+
+      {/* "또는" 구분선 — 이메일 회원가입 form 진입 안내 */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex-1 h-px bg-grey-200" />
+        <span className="text-[13px] text-grey-600">또는 이메일로 가입</span>
+        <div className="flex-1 h-px bg-grey-200" />
+      </div>
 
       <form onSubmit={handleSubmit}>
         {/* 이메일 입력 */}
