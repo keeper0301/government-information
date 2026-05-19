@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     url: "/",
     title: "keepioo · 정책알리미",
     description:
-      "한국의 공공 지원제도를 큐레이션해 이메일·알림톡으로 전달합니다.",
+      "한국의 공공 지원제도를 모아 이메일·알림톡으로 전달합니다.",
     siteName: "keepioo",
     locale: "ko_KR",
     type: "website",

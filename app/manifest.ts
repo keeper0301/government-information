@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "keepioo · 정책알리미",
     short_name: "keepioo",
     description:
-      "한국의 정부·지자체 공공 지원제도를 큐레이션해 이메일·알림톡으로 전달합니다.",
+      "한국의 정부·지자체 공공 지원제도를 모아 이메일·알림톡으로 전달합니다.",
     start_url: "/",
     display: "standalone",
     background_color: "#FFFFFF",

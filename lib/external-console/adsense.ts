@@ -83,10 +83,15 @@ async function googleFetch<T>(
 // pure function — fetch 결과 → alerts/kpis. 단위 테스트 + checkAdsense 둘 다 호출.
 export function buildAdsenseAlerts(input: {
   account: AdSenseAccount;
-  earningsToday: number; // USD
+  earningsToday: number;
   currency: string;
+  // 2026-05-19 — 광고 노출·클릭 metric 확장 (AdSense 봇 crawl 감지)
+  impressions?: number;
+  clicks?: number;
+  adRequests?: number;
+  pageViews?: number;
 }): { alerts: ConsoleAlert[]; kpis: Record<string, unknown> } {
-  const { account, earningsToday, currency } = input;
+  const { account, earningsToday, currency, impressions, clicks, adRequests, pageViews } = input;
   const alerts: ConsoleAlert[] = [];
   const state = account.state ?? "UNKNOWN";
 
@@ -110,6 +115,22 @@ export function buildAdsenseAlerts(input: {
     });
   }
 
+  // 2026-05-19 — 24h 노출 0 (READY 인데 광고 요청·표시 0 = AdSense 봇 crawl 부재 또는 광고 코드 미작동)
+  if (
+    state === "READY" &&
+    impressions !== undefined &&
+    impressions === 0 &&
+    adRequests !== undefined &&
+    adRequests === 0
+  ) {
+    alerts.push({
+      key: "adsense_zero_impressions",
+      message: `AdSense 24h 노출·요청 0 — 광고 코드 미작동 또는 ads.txt 인식 지연.`,
+      recommendation:
+        "lib/ad-slot.tsx 의 ADSENSE_PUBLISHER_ID env 확인 + 모바일 keepioo.com 직접 광고 노출 확인 + Mediapartners-Google 봇 robots.txt allow 확인",
+    });
+  }
+
   return {
     alerts,
     kpis: {
@@ -117,6 +138,15 @@ export function buildAdsenseAlerts(input: {
       account_state: state,
       earnings_today: earningsToday,
       currency,
+      impressions: impressions ?? null,
+      clicks: clicks ?? null,
+      ad_requests: adRequests ?? null,
+      page_views: pageViews ?? null,
+      // 노출당 클릭률 (CTR) — impressions > 0 일 때만
+      ctr_pct:
+        impressions !== undefined && impressions > 0 && clicks !== undefined
+          ? Math.round((clicks / impressions) * 10000) / 100
+          : null,
     },
   };
 }
@@ -162,11 +192,17 @@ export async function checkAdsense(): Promise<ConsoleCheckResult> {
       };
     }
 
-    // 2) 24h 수익 (TODAY) — metrics=ESTIMATED_EARNINGS
-    const reportUrl = `${ADSENSE_API}/${account.name}/reports:generate?dateRange=TODAY&metrics=ESTIMATED_EARNINGS`;
+    // 2) 24h 수익 + 노출 + 클릭 (TODAY) — 2026-05-19 metric 확장
+    // metrics: ESTIMATED_EARNINGS, IMPRESSIONS, CLICKS, AD_REQUESTS, PAGE_VIEWS
+    // totals.cells 순서 = metrics 파라미터 순서.
+    const reportUrl = `${ADSENSE_API}/${account.name}/reports:generate?dateRange=TODAY&metrics=ESTIMATED_EARNINGS&metrics=IMPRESSIONS&metrics=CLICKS&metrics=AD_REQUESTS&metrics=PAGE_VIEWS`;
     const report = await googleFetch<AdSenseReport>(reportUrl, token);
-    const cell = report.totals?.cells?.[0]?.value ?? "0";
-    const earningsToday = parseFloat(cell) || 0;
+    const cells = report.totals?.cells ?? [];
+    const earningsToday = parseFloat(cells[0]?.value ?? "0") || 0;
+    const impressions = parseInt(cells[1]?.value ?? "0", 10) || 0;
+    const clicks = parseInt(cells[2]?.value ?? "0", 10) || 0;
+    const adRequests = parseInt(cells[3]?.value ?? "0", 10) || 0;
+    const pageViews = parseInt(cells[4]?.value ?? "0", 10) || 0;
     // 사장님 한국 가입 → AdSense 기본 통화 KRW. ADSENSE_CURRENCY env 로
     // override 가능 (다른 국가/통화 운영 대비). USD 하드코딩 사고 fix
     // (2026-05-10 spec — "USD 0" 출력에 사장님 헷갈림 사고 방지).
@@ -176,6 +212,10 @@ export async function checkAdsense(): Promise<ConsoleCheckResult> {
       account,
       earningsToday,
       currency,
+      impressions,
+      clicks,
+      adRequests,
+      pageViews,
     });
     return { console: "adsense", alerts, kpis };
   } catch (e) {

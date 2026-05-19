@@ -111,7 +111,7 @@ export async function Footer() {
           신뢰성 시그널 강화. rel=noopener noreferrer 로 보안 유지. */}
       <div className="text-[13px] text-grey-600 leading-[1.7] mb-6">
         <p className="text-grey-700 font-medium mb-2">
-          매일 새 정부 정책을 큐레이션해서 알려드려요.
+          매일 새 정부 정책을 모아서 알려드려요.
         </p>
         <p>
           데이터 출처:{" "}
