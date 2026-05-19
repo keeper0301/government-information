@@ -11,8 +11,10 @@ export function buildSummaryMessage(input: {
   lastPublishedAt: string | null;
   /** 24h 발행글 본문 평균 길이 (HTML tag 제거 후) — 5/18 사고 학습 metric */
   avgBodyChars?: number;
+  /** publish-blog cron 의도 시각 (07:07 KST) 부터 실제 첫 발행까지 분 — GitHub Actions 지연 모니터링 */
+  cronDelayMinutes?: number;
 }): { subject: string; message: string } {
-  const { publishedCount, successAttempts, failedAttempts, lastPublishedAt, avgBodyChars } = input;
+  const { publishedCount, successAttempts, failedAttempts, lastPublishedAt, avgBodyChars, cronDelayMinutes } = input;
 
   if (publishedCount === 0) {
     return {
@@ -39,12 +41,20 @@ export function buildSummaryMessage(input: {
       ? `[keepioo] 블로그 ${publishedCount}건 발행 — 본문 김 ⚠️`
       : `[keepioo] 블로그 ${publishedCount}건 발행`;
 
+  // 2026-05-19 — GitHub Actions 지연 알림 (5/19 KST 07:07 의도 → 실제 08:17 = 1시간 지연 학습)
+  const cronDelayed = cronDelayMinutes !== undefined && cronDelayMinutes > 30;
+
   return {
-    subject,
+    subject: cronDelayed && !bodyAnomaly
+      ? `${subject} (cron 지연 ${cronDelayMinutes}분)`
+      : subject,
     message: [
       `24h 블로그 ${publishedCount}건 정상 발행.`,
       `cron 시도 ${successAttempts + failedAttempts}회 (성공 ${successAttempts} / 실패 ${failedAttempts}).`,
       avgBodyChars !== undefined ? `본문 평균: ${avgBodyChars}자 (정상 1,700~2,800자)` : null,
+      cronDelayMinutes !== undefined
+        ? `cron 지연: ${cronDelayMinutes}분 (의도 KST 07:07)${cronDelayed ? " ⚠️" : ""}`
+        : null,
       lastPublishedAt
         ? `마지막 발행: ${new Date(lastPublishedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
         : null,

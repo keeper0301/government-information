@@ -82,12 +82,42 @@ async function run() {
     }
   }
 
+  // 2026-05-19 — GitHub Actions 지연 모니터링.
+  // publish-blog cron 의도: UTC 22:07 = KST 07:07. 실제 첫 발행 시각 측정.
+  // 24h 내 첫 발행 (사이클 시작) 시각 - 의도 시각 = 지연 분.
+  let cronDelayMinutes: number | undefined;
+  const intentedStartUtc = (() => {
+    // 오늘 UTC 22:07 또는 어제 UTC 22:07 — 24h 내에서 가장 가까운 cron 의도 시각
+    const now = new Date();
+    const todayIntent = new Date(now);
+    todayIntent.setUTCHours(22, 7, 0, 0);
+    if (todayIntent.getTime() > now.getTime()) {
+      todayIntent.setUTCDate(todayIntent.getUTCDate() - 1);
+    }
+    return todayIntent;
+  })();
+  if ((publishedCount ?? 0) > 0) {
+    const { data: firstPost } = await admin
+      .from("blog_posts")
+      .select("published_at")
+      .gte("published_at", intentedStartUtc.toISOString())
+      .order("published_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (firstPost?.published_at) {
+      const firstMs = new Date(firstPost.published_at).getTime();
+      const delta = firstMs - intentedStartUtc.getTime();
+      cronDelayMinutes = Math.max(0, Math.round(delta / 60_000));
+    }
+  }
+
   const summary = buildSummaryMessage({
     publishedCount: publishedCount ?? 0,
     successAttempts,
     failedAttempts,
     lastPublishedAt: latest?.published_at ?? null,
     avgBodyChars,
+    cronDelayMinutes,
   });
 
   await sendOpsAlertMultichannel({

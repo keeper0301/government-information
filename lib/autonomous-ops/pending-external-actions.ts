@@ -46,7 +46,8 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       category: "security",
       label: "보안 회전 (cgc0301! + RENDER_API_KEY)",
       description:
-        "Chrome paste hijack 사고 (5/18) 후속 — 26 도메인 재사용 비밀번호 변경 + Render API key revoke. 완료 후 클로드에게 '보안 회전 완료' 알려주면 자동 hide.",
+        "Chrome paste hijack 사고 (5/18) 후속 — 26 도메인 재사용 비밀번호 변경 + Render API key revoke. 완료 후 /api/admin/mark-security-rotation 호출 (admin 로그인 + URL 1 click).",
+      url: "/api/admin/mark-security-rotation",
       guideUrl:
         "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/security-rotation-2026-05-18.md",
       estimatedMinutes: 10,

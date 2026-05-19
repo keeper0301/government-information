@@ -45,6 +45,27 @@ async function countAction24h(action: string): Promise<number> {
   }
 }
 
+// 2026-05-19 — details.source 별 분리 카운트. agent_diagnose_run 의 sidecar 와
+// site_resident_cron 분리 visualization. graceful 0 fallback.
+async function countActionBySource24h(
+  action: string,
+  source: string,
+): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const { count, error } = await admin
+      .from("admin_actions")
+      .select("*", { count: "exact", head: true })
+      .eq("action", action)
+      .gte("created_at", since24h())
+      .filter("details->>source", "eq", source);
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 // 테이블 row 카운트 (graceful — 미적용 DDL 시 0)
 async function countTable(table: string): Promise<number> {
   try {
@@ -85,6 +106,7 @@ async function phase1(): Promise<PhaseStatus> {
     improvementScan,
     agentDiagnose,
     agentExecute,
+    agentDiagnoseResident,
   ] = await Promise.all([
     countAction24h("health_alert_run"),
     countAction24h("daily_digest_run"),
@@ -95,7 +117,10 @@ async function phase1(): Promise<PhaseStatus> {
     countAction24h("autonomous_improvement_scan_run"),
     countAction24h("agent_diagnose_run"),
     countAction24h("agent_execute_run"),
+    // 2026-05-19 — in-site agent-resident-cycle 분리 카운트 (review 권고 #2)
+    countActionBySource24h("agent_diagnose_run", "site_resident_cron"),
   ]);
+  const agentDiagnoseSidecar = Math.max(0, agentDiagnose - agentDiagnoseResident);
   return {
     phase: 1,
     title: "사고 자동 진단",
@@ -124,7 +149,7 @@ async function phase1(): Promise<PhaseStatus> {
       },
       {
         label: "24h 상주 agent 진단",
-        value: `${agentDiagnose}회 (sidecar + in-site 합산, 30분 cycle)`,
+        value: `${agentDiagnose}회 (sidecar ${agentDiagnoseSidecar} + in-site ${agentDiagnoseResident}, 30분 cycle)`,
       },
       {
         label: "24h 상주 agent 판단",
