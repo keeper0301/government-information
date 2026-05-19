@@ -26,7 +26,8 @@ export type DiagnoseQuestion =
   | "blog_publish_status"       // 블로그 작성/발행 정상 가동 여부
   | "sms_delivery_24h"          // daily-digest / external-console-check 발송 결과
   | "agent_recent_actions"      // agent_execute_run 최근 50건 (Codex 본인 행동 점검)
-  | "alert_recent_24h";         // health-alert 발화 추세
+  | "alert_recent_24h"          // health-alert 발화 추세
+  | "db_table_sizes";           // 5/19 추가 — 큰 테이블 row count (storage growth 추적)
 
 export type DiagnoseResult = {
   question: DiagnoseQuestion;
@@ -208,5 +209,39 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
       created_at: row.created_at,
       alert_keys: (row.details as { alert_keys?: unknown })?.alert_keys ?? [],
     }));
+  },
+
+  db_table_sizes: async () => {
+    // 5/19 추가 — Supabase storage growth 추적. 큰 테이블 row count 만 보고.
+    // 실제 byte size 는 Supabase dashboard 에서만. row count = 증가 추세 proxy.
+    const admin = createAdminClient();
+    const tables = [
+      "admin_actions",
+      "news_posts",
+      "press_ingest_candidates",
+      "cron_failure_log",
+      "blog_posts",
+    ];
+    const counts = await Promise.all(
+      tables.map(async (table) => {
+        try {
+          const { count } = await admin
+            .from(table)
+            .select("id", { count: "exact", head: true });
+          return { table, count: count ?? 0, error: null };
+        } catch (e) {
+          return {
+            table,
+            count: 0,
+            error: e instanceof Error ? e.message.slice(0, 100) : String(e),
+          };
+        }
+      }),
+    );
+    return {
+      counts,
+      collected_note:
+        "row count 기반. byte size 는 Supabase dashboard 에서만. 급증 추세 = storage 한도 위험 신호.",
+    };
   },
 };
