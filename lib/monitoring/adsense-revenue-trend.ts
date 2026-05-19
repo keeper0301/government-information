@@ -156,6 +156,63 @@ export async function collectRevenueTrend(
   };
 }
 
+// 2026-05-19 — 가장 최근 external-console-check audit 에서 AdSense 광고 성능 metric 추출.
+// 매출 외 impressions·clicks·CTR·ad_requests·ready_since_hours 표시 (첫 24h 광고 성능 추적).
+export type AdsenseMetricsLatest = {
+  earnings: number;
+  currency: string;
+  impressions: number | null;
+  clicks: number | null;
+  adRequests: number | null;
+  pageViews: number | null;
+  ctrPct: number | null;
+  readySinceHours: number | null;
+  /** 측정 시각 (UTC ISO). null = 데이터 없음 */
+  observedAt: string | null;
+};
+
+export async function collectAdsenseMetricsLatest(): Promise<AdsenseMetricsLatest | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("admin_actions")
+    .select("details, created_at")
+    .eq("action", "external_console_check_run")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  for (const row of (data ?? []) as AuditRow[]) {
+    if (!row.details || typeof row.details !== "object") continue;
+    const d = row.details as Record<string, unknown>;
+    const consoles = d.consoles ?? d.results;
+    if (!consoles || typeof consoles !== "object") continue;
+    const adsense = (consoles as Record<string, unknown>).adsense;
+    if (!adsense || typeof adsense !== "object") continue;
+    const kpis = (adsense as Record<string, unknown>).kpis;
+    if (!kpis || typeof kpis !== "object") continue;
+    const k = kpis as Record<string, unknown>;
+    const earnings = Number(k.earnings_today ?? 0);
+    if (isNaN(earnings)) continue;
+    return {
+      earnings,
+      currency: typeof k.currency === "string" ? k.currency : "KRW",
+      impressions: nullableNumber(k.impressions),
+      clicks: nullableNumber(k.clicks),
+      adRequests: nullableNumber(k.ad_requests),
+      pageViews: nullableNumber(k.page_views),
+      ctrPct: nullableNumber(k.ctr_pct),
+      readySinceHours: nullableNumber(k.ready_since_hours),
+      observedAt: row.created_at ?? null,
+    };
+  }
+  return null;
+}
+
+function nullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  return isNaN(n) ? null : n;
+}
+
 // 텔레그램 메시지 추가용
 export function formatRevenueTrend(trend: RevenueTrend): string {
   if (trend.daily.length === 0) {

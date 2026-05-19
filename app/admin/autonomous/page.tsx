@@ -25,7 +25,9 @@ import {
 import { parseActionSegments } from "@/lib/autonomous-ops/improvement-actions";
 import {
   collectRevenueDailySeries,
+  collectAdsenseMetricsLatest,
   type DailyRevenue,
+  type AdsenseMetricsLatest,
 } from "@/lib/monitoring/adsense-revenue-trend";
 import {
   getEventTypeStats24h,
@@ -124,6 +126,7 @@ export default async function AdminAutonomousPage() {
     pendingExternalActions,
     yesterdayDigest,
     codexW1,
+    adsenseMetrics,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -144,6 +147,7 @@ export default async function AdminAutonomousPage() {
     getPendingExternalActions(),
     getYesterdayDigest(),
     checkW1Readiness(),
+    collectAdsenseMetricsLatest(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -181,6 +185,7 @@ export default async function AdminAutonomousPage() {
       {/* 2. 수익·비용 — 매출 추세 + 콘텐츠 비용 */}
       <SectionHeader title="💰 수익 · 비용" />
       <RevenueChartCard series={revenueSeries} />
+      <AdsenseMetricsCard metrics={adsenseMetrics} />
       <GeminiSpendingCard stats={geminiSpending} />
 
       {/* 3. 사용자 가치 — 클릭·인기 가시화 */}
@@ -822,6 +827,87 @@ function RevenueChartCard({ series }: { series: DailyRevenue[] }) {
           />
         </svg>
       </header>
+    </section>
+  );
+}
+
+// 2026-05-19 — AdSense 광고 성능 카드. 첫 광고 노출 ~24h 동안 사장님이 매출 외
+// impressions·clicks·CTR·ad_requests 가시화. 데이터 0건 시 graceful skip.
+function AdsenseMetricsCard({ metrics }: { metrics: AdsenseMetricsLatest | null }) {
+  if (!metrics) {
+    return null;
+  }
+  const hasImpressions =
+    metrics.impressions !== null && metrics.impressions !== undefined;
+  if (!hasImpressions) {
+    // env 미설정 또는 첫 cron 전 — 카드 자체 hide (false reminder 차단)
+    return null;
+  }
+  const observedHoursAgo = metrics.observedAt
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.now() - new Date(metrics.observedAt).getTime()) / 3600_000,
+        ),
+      )
+    : null;
+  const cells: Array<{ label: string; value: string; tone: string }> = [
+    {
+      label: "오늘 매출",
+      value: `${metrics.currency} ${metrics.earnings.toFixed(2)}`,
+      tone: metrics.earnings > 0 ? "text-emerald-700" : "text-grey-700",
+    },
+    {
+      label: "노출",
+      value: metrics.impressions!.toLocaleString(),
+      tone: "text-grey-900",
+    },
+    {
+      label: "클릭",
+      value: (metrics.clicks ?? 0).toLocaleString(),
+      tone: "text-grey-900",
+    },
+    {
+      label: "CTR",
+      value: metrics.ctrPct !== null ? `${metrics.ctrPct.toFixed(2)}%` : "—",
+      tone:
+        metrics.ctrPct !== null && metrics.ctrPct >= 2
+          ? "text-emerald-700"
+          : "text-grey-900",
+    },
+    {
+      label: "광고 요청",
+      value: (metrics.adRequests ?? 0).toLocaleString(),
+      tone: "text-grey-900",
+    },
+    {
+      label: "Page Views",
+      value: (metrics.pageViews ?? 0).toLocaleString(),
+      tone: "text-grey-900",
+    },
+  ];
+  return (
+    <section className="mb-4 rounded-lg border border-emerald-200 bg-white p-4">
+      <header className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="text-[11px] font-semibold text-grey-600">
+          AdSense 광고 성능 (오늘)
+        </div>
+        <div className="text-[11px] text-grey-500">
+          {metrics.readySinceHours !== null && metrics.readySinceHours < 24
+            ? `READY 후 ${metrics.readySinceHours}h · grace period`
+            : observedHoursAgo !== null
+              ? `${observedHoursAgo}h 전 측정`
+              : ""}
+        </div>
+      </header>
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {cells.map((cell) => (
+          <div key={cell.label} className="text-xs">
+            <div className="text-[10px] text-grey-500">{cell.label}</div>
+            <div className={`font-semibold ${cell.tone}`}>{cell.value}</div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
