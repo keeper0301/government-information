@@ -78,8 +78,14 @@ describe("formatRevenueTrend", () => {
 // ============================================================
 
 function rowWithKpis(kpis: Record<string, unknown>, createdAt = "2026-05-19T01:30:00Z"): AuditRow {
+  // 실제 prod schema (5/14~): admin_actions.details.results_summary = [{console, kpis, ...}]
   return {
-    details: { consoles: { adsense: { kpis } } },
+    details: {
+      results_summary: [
+        { console: "site", kpis: { ok_count: 5 }, alert_keys: [], alerts_count: 0 },
+        { console: "adsense", kpis, alert_keys: [], alerts_count: 0 },
+      ],
+    },
     created_at: createdAt,
   };
 }
@@ -161,7 +167,19 @@ describe("extractAdsenseMetricsFromRow", () => {
 
   it("adsense console 부재 row → null", () => {
     const row: AuditRow = {
-      details: { consoles: { search_console: { kpis: { ok: true } } } },
+      details: {
+        results_summary: [
+          { console: "search_console", kpis: { clicks: 100 }, alert_keys: [], alerts_count: 0 },
+        ],
+      },
+      created_at: "2026-05-19T00:00:00Z",
+    };
+    expect(extractAdsenseMetricsFromRow(row)).toBeNull();
+  });
+
+  it("results_summary 가 array 아님 (옛 schema) → null", () => {
+    const row: AuditRow = {
+      details: { consoles: { adsense: { kpis: { earnings_today: 5 } } } },
       created_at: "2026-05-19T00:00:00Z",
     };
     expect(extractAdsenseMetricsFromRow(row)).toBeNull();

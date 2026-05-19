@@ -43,17 +43,31 @@ function extractAdsenseRevenue(
   return { earnings, currency };
 }
 
-function extractAdsenseKpis(row: AuditRow): Record<string, unknown> | null {
+// audit details.results_summary 는 array — [{ console, alerts_count, alert_keys, kpis, error }, ...].
+// console 이름으로 매칭하여 해당 kpis 추출. 다른 console (SC/GA4/Vercel 등) 도 재사용.
+// 2026-05-19 — 옛 `consoles.<name>` schema 가정으로 작성된 버그 fix (5/14 이후 모두 results_summary).
+export function extractKpisByConsole(
+  row: AuditRow,
+  consoleName: string,
+): Record<string, unknown> | null {
   if (!row.details || typeof row.details !== "object") return null;
   const d = row.details as Record<string, unknown>;
-  const consoles = d.consoles ?? d.results;
-  if (!consoles || typeof consoles !== "object") return null;
-  const adsense = (consoles as Record<string, unknown>).adsense;
-  if (!adsense || typeof adsense !== "object") return null;
-  const kpis = (adsense as Record<string, unknown>).kpis;
-  return kpis && typeof kpis === "object"
-    ? (kpis as Record<string, unknown>)
-    : null;
+  const summary = d.results_summary;
+  if (!Array.isArray(summary)) return null;
+  for (const item of summary) {
+    if (!item || typeof item !== "object") continue;
+    const itemObj = item as Record<string, unknown>;
+    if (itemObj.console !== consoleName) continue;
+    const kpis = itemObj.kpis;
+    return kpis && typeof kpis === "object"
+      ? (kpis as Record<string, unknown>)
+      : null;
+  }
+  return null;
+}
+
+function extractAdsenseKpis(row: AuditRow): Record<string, unknown> | null {
+  return extractKpisByConsole(row, "adsense");
 }
 
 // 직전 N일 모든 일별 매출 (autonomous hub 30일 차트 등).
