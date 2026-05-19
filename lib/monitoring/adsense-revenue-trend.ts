@@ -26,7 +26,7 @@ export type RevenueTrend = {
 };
 
 // audit details 에서 AdSense kpis 추출 — 안전한 fallback.
-type AuditRow = {
+export type AuditRow = {
   details: unknown;
   created_at: string | null;
 };
@@ -74,7 +74,8 @@ export async function collectRevenueDailySeries(
       .order("created_at", { ascending: false })
       .limit(days * 3);
     data = (res.data ?? []) as AuditRow[];
-  } catch {
+  } catch (e) {
+    console.error("[adsense-revenue-trend] collectRevenueDailySeries failed", e);
     return [];
   }
 
@@ -114,7 +115,8 @@ export async function collectRevenueTrend(
       .order("created_at", { ascending: false })
       .limit(days * 4); // 안전 margin (cron 가동 가변성)
     data = (res.data ?? []) as AuditRow[];
-  } catch {
+  } catch (e) {
+    console.error("[adsense-revenue-trend] collectRevenueTrend failed", e);
     return {
       daily: [],
       total7d: 0,
@@ -196,38 +198,54 @@ export type AdsenseMetricsLatest = {
   observedAt: string | null;
 };
 
+// row 1건 → AdsenseMetricsLatest 변환 (pure function, 단위 테스트용).
+// audit kpis 부재 시 null. earnings_today 누락 시에도 null (NOT_FOUND row 처리).
+export function extractAdsenseMetricsFromRow(
+  row: AuditRow,
+): AdsenseMetricsLatest | null {
+  const k = extractAdsenseKpis(row);
+  if (!k) return null;
+  // earnings_today 키 자체가 없으면 valid kpis 아님 (NOT_FOUND/empty row skip).
+  if (!("earnings_today" in k)) return null;
+  const earnings = Number(k.earnings_today ?? 0);
+  if (Number.isNaN(earnings)) return null;
+  return {
+    earnings,
+    currency: typeof k.currency === "string" ? k.currency : "KRW",
+    impressions: nullableNumber(k.impressions),
+    clicks: nullableNumber(k.clicks),
+    adRequests: nullableNumber(k.ad_requests),
+    pageViews: nullableNumber(k.page_views),
+    ctrPct: nullableNumber(k.ctr_pct),
+    readySinceHours: nullableNumber(k.ready_since_hours),
+    observedAt: row.created_at ?? null,
+  };
+}
+
 export async function collectAdsenseMetricsLatest(): Promise<AdsenseMetricsLatest | null> {
   // 2026-05-19 — supabase query throw 시 hub 페이지 500 차단. null 로 graceful skip (카드 hide).
   let data: AuditRow[] | null = null;
   try {
     const admin = createAdminClient();
+    // 7일 신선도 가드 — cron 1주+ 멈춤 시 옛 데이터 misleading 표시 차단.
+    // external-console-check 매일 가동 (KST 09:30) 이라 7일 안전 margin.
+    const since = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
     const res = await admin
       .from("admin_actions")
       .select("details, created_at")
       .eq("action", "external_console_check_run")
+      .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(5);
     data = (res.data ?? []) as AuditRow[];
-  } catch {
+  } catch (e) {
+    console.error("[adsense-revenue-trend] collectAdsenseMetricsLatest failed", e);
     return null;
   }
 
   for (const row of data ?? []) {
-    const k = extractAdsenseKpis(row);
-    if (!k) continue;
-    const earnings = Number(k.earnings_today ?? 0);
-    if (Number.isNaN(earnings)) continue;
-    return {
-      earnings,
-      currency: typeof k.currency === "string" ? k.currency : "KRW",
-      impressions: nullableNumber(k.impressions),
-      clicks: nullableNumber(k.clicks),
-      adRequests: nullableNumber(k.ad_requests),
-      pageViews: nullableNumber(k.page_views),
-      ctrPct: nullableNumber(k.ctr_pct),
-      readySinceHours: nullableNumber(k.ready_since_hours),
-      observedAt: row.created_at ?? null,
-    };
+    const metrics = extractAdsenseMetricsFromRow(row);
+    if (metrics) return metrics;
   }
   return null;
 }

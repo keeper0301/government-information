@@ -3,7 +3,12 @@
 // ============================================================
 
 import { describe, it, expect } from "vitest";
-import { formatRevenueTrend, type RevenueTrend } from "@/lib/monitoring/adsense-revenue-trend";
+import {
+  formatRevenueTrend,
+  extractAdsenseMetricsFromRow,
+  type RevenueTrend,
+  type AuditRow,
+} from "@/lib/monitoring/adsense-revenue-trend";
 
 function baseTrend(overrides?: Partial<RevenueTrend>): RevenueTrend {
   return {
@@ -67,3 +72,104 @@ describe("formatRevenueTrend", () => {
 
 // collectRevenueTrend 는 admin_actions 의존 — separate integration test 가 적절.
 // 이 파일에는 format helper test 만.
+
+// ============================================================
+// extractAdsenseMetricsFromRow — row 1건 → AdsenseMetricsLatest 변환 (pure)
+// ============================================================
+
+function rowWithKpis(kpis: Record<string, unknown>, createdAt = "2026-05-19T01:30:00Z"): AuditRow {
+  return {
+    details: { consoles: { adsense: { kpis } } },
+    created_at: createdAt,
+  };
+}
+
+describe("extractAdsenseMetricsFromRow", () => {
+  it("정상 kpis → 모든 metric 채워서 반환", () => {
+    const row = rowWithKpis({
+      earnings_today: 123.45,
+      currency: "KRW",
+      impressions: 1500,
+      clicks: 12,
+      ad_requests: 1800,
+      page_views: 800,
+      ctr_pct: 0.8,
+      ready_since_hours: 18,
+    });
+    const m = extractAdsenseMetricsFromRow(row);
+    expect(m).not.toBeNull();
+    expect(m!.earnings).toBe(123.45);
+    expect(m!.currency).toBe("KRW");
+    expect(m!.impressions).toBe(1500);
+    expect(m!.clicks).toBe(12);
+    expect(m!.adRequests).toBe(1800);
+    expect(m!.pageViews).toBe(800);
+    expect(m!.ctrPct).toBe(0.8);
+    expect(m!.readySinceHours).toBe(18);
+    expect(m!.observedAt).toBe("2026-05-19T01:30:00Z");
+  });
+
+  it("impressions=0 → 카드 표시 가능 (null 아님)", () => {
+    const row = rowWithKpis({
+      earnings_today: 0,
+      currency: "KRW",
+      impressions: 0,
+      clicks: 0,
+      ad_requests: 0,
+      page_views: 0,
+      ctr_pct: null,
+      ready_since_hours: 2,
+    });
+    const m = extractAdsenseMetricsFromRow(row);
+    expect(m!.impressions).toBe(0);
+    expect(m!.clicks).toBe(0);
+    expect(m!.ctrPct).toBeNull();
+    expect(m!.readySinceHours).toBe(2);
+  });
+
+  it("metric 일부 null → null 그대로 유지", () => {
+    const row = rowWithKpis({
+      earnings_today: 0,
+      currency: "KRW",
+      impressions: null,
+      clicks: null,
+      ad_requests: null,
+      page_views: null,
+      ctr_pct: null,
+      ready_since_hours: null,
+    });
+    const m = extractAdsenseMetricsFromRow(row);
+    expect(m!.impressions).toBeNull();
+    expect(m!.ctrPct).toBeNull();
+    expect(m!.readySinceHours).toBeNull();
+  });
+
+  it("NOT_FOUND row (account_state 만 있고 earnings_today 부재) → null", () => {
+    const row = rowWithKpis({ account_state: "NOT_FOUND" });
+    expect(extractAdsenseMetricsFromRow(row)).toBeNull();
+  });
+
+  it("env 미설정 row (kpis 빈 객체) → null", () => {
+    const row = rowWithKpis({});
+    expect(extractAdsenseMetricsFromRow(row)).toBeNull();
+  });
+
+  it("details 부재 row → null", () => {
+    const row: AuditRow = { details: null, created_at: "2026-05-19T00:00:00Z" };
+    expect(extractAdsenseMetricsFromRow(row)).toBeNull();
+  });
+
+  it("adsense console 부재 row → null", () => {
+    const row: AuditRow = {
+      details: { consoles: { search_console: { kpis: { ok: true } } } },
+      created_at: "2026-05-19T00:00:00Z",
+    };
+    expect(extractAdsenseMetricsFromRow(row)).toBeNull();
+  });
+
+  it("currency 누락 → KRW fallback", () => {
+    const row = rowWithKpis({ earnings_today: 10, impressions: 100 });
+    const m = extractAdsenseMetricsFromRow(row);
+    expect(m!.currency).toBe("KRW");
+  });
+});
