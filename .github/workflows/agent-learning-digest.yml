@@ -1,0 +1,51 @@
+name: Agent learning digest
+
+on:
+  schedule:
+    - cron: "10 0 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: agent-learning-digest
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  digest:
+    name: Record daily agent learning memory
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Call agent-learning-digest
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_BASE_URL: https://www.keepioo.com
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET secret is not configured."
+            exit 1
+          fi
+
+          echo "== agent learning digest $(date -u '+%Y-%m-%d %H:%M:%S') UTC =="
+          http_status=$(curl -sS -o /tmp/agent-learning-digest-response.json -w "%{http_code}" \
+            --request POST \
+            --max-time 120 \
+            --retry 2 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            --data '{"source":"github_actions_daily_digest"}' \
+            "${SITE_BASE_URL}/api/cron/agent-learning-digest")
+
+          echo "== HTTP ${http_status} =="
+          cat /tmp/agent-learning-digest-response.json
+          echo ""
+
+          if [ "${http_status}" -ne 200 ]; then
+            echo "::error::agent-learning-digest failed (HTTP ${http_status})"
+            exit 1
+          fi

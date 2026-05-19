@@ -220,7 +220,7 @@ describe("buildImprovementRecommendations", () => {
       expect.objectContaining({
         area: "cron_reliability",
         severity: "medium",
-        title: expect.stringContaining("Codex sidecar"),
+        title: expect.stringContaining("Codex agent cycle"),
         action: expect.stringContaining("Render Starter"),
       }),
     );
@@ -231,7 +231,7 @@ describe("buildImprovementRecommendations", () => {
       ...base,
       agentDiagnoseRuns24h: 400,
     });
-    expect(recs.find((r) => r.title.includes("Codex sidecar"))).toBeUndefined();
+    expect(recs.find((r) => r.title.includes("Codex agent cycle"))).toBeUndefined();
   });
 
   it("agentDiagnoseRuns24h = 0 → 추천 X (cron 첫 가동 또는 sidecar 미가동, false positive 차단)", () => {
@@ -239,7 +239,7 @@ describe("buildImprovementRecommendations", () => {
       ...base,
       agentDiagnoseRuns24h: 0,
     });
-    expect(recs.find((r) => r.title.includes("Codex sidecar"))).toBeUndefined();
+    expect(recs.find((r) => r.title.includes("Codex agent cycle"))).toBeUndefined();
   });
 });
 
