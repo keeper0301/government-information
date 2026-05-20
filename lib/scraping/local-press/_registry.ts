@@ -36,6 +36,8 @@ import { scrapeGyeongnamAndInsert } from "./gyeongnam";
 import { scrapeGyeongbukAndInsert } from "./gyeongbuk";
 import { scrapeChungnamAndInsert } from "./chungnam";
 import { scrapeChungbukAndInsert } from "./chungbuk";
+import { scrapeGangwonAndInsert } from "./gangwon";
+import { scrapeJejuAndInsert } from "./jeju";
 
 export type CityKey =
   | "suncheon"
@@ -64,7 +66,9 @@ export type CityKey =
   | "gyeongnam"
   | "gyeongbuk"
   | "chungnam"
-  | "chungbuk";
+  | "chungbuk"
+  | "gangwon"
+  | "jeju";
 
 export type CityEntry = {
   key: CityKey;
@@ -297,6 +301,22 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.chungbuk.go.kr/www/selectBbsNttList.do?bbsNo=65&key=429",
     fn: scrapeChungbukAndInsert,
+  },
+  {
+    key: "gangwon",
+    city: "강원특별자치도",
+    ministry: "강원특별자치도청",
+    ministryAliases: ["강원특별자치도", "강원도"],
+    siteUrl: "https://state.gwd.go.kr/portal/briefing/pressRelease",
+    fn: scrapeGangwonAndInsert,
+  },
+  {
+    key: "jeju",
+    city: "제주특별자치도",
+    ministry: "제주특별자치도청",
+    ministryAliases: ["제주특별자치도", "제주도"],
+    siteUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
+    fn: scrapeJejuAndInsert,
   },
 ];
 

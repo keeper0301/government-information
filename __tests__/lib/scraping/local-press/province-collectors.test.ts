@@ -12,6 +12,10 @@ import {
   parseListPage as parseGyeongbukList,
 } from "@/lib/scraping/local-press/gyeongbuk";
 import {
+  parseDetailBody as parseGangwonBody,
+  parseListPage as parseGangwonList,
+} from "@/lib/scraping/local-press/gangwon";
+import {
   parseDetailBody as parseGyeonggiBody,
   parseListPage as parseGyeonggiList,
 } from "@/lib/scraping/local-press/gyeonggi";
@@ -27,6 +31,10 @@ import {
   parseDetailBody as parseJeonnamBody,
   parseListPage as parseJeonnamList,
 } from "@/lib/scraping/local-press/jeonnam";
+import {
+  parseDetailBody as parseJejuBody,
+  parseListPage as parseJejuList,
+} from "@/lib/scraping/local-press/jeju";
 
 const bodyText =
   "Province collector detail body includes enough policy announcement text for parsing. ".repeat(
@@ -82,6 +90,71 @@ describe("province local press collectors", () => {
     expect(parseGyeonggiBody(`<div class="postBody"><p>${bodyText}</p></div><div></div>`)).toContain(
       "Province collector detail body",
     );
+  });
+
+  it("gangwon maps prboard seq, title, row date, and attachment-backed body", () => {
+    const items = parseGangwonList(`
+      <tr data-prboard-seq="8333" class="skinTxa-center">
+        <td class="skinTxa-center">7478</td>
+        <td class="skinTb-sbj"><a href="/portal/briefing/pressRelease?seq=8333">
+          Gangwon promising business support announcement
+        </a></td>
+        <td class="skinTb-part">경제국</td>
+        <td class="skinTb-date">2026-05-20</td>
+      </tr>
+    `);
+    expect(items[0]).toMatchObject({
+      seq: "8333",
+      title: "Gangwon promising business support announcement",
+      publishedDate: "2026-05-20",
+    });
+    expect(items[0].sourceUrl).toContain("seq=8333");
+
+    const body = parseGangwonBody(`
+      <div class="skinTb-th">내용</div>
+      <div class="skinTb-td skinTb-conts">
+        <p>Gangwon detail summary for the official press release.</p>
+      </div>
+      <div class="skinTb-th">첨부파일</div>
+      <div class="skinTb-td attachFile">
+        <a href="/egf/bp/common/front/260303/download">
+          <span class="icoFile"></span> 1. Gangwon detailed support notice attachment.hwp
+        </a>
+      </div>
+    `);
+    expect(body).toContain("Gangwon detail summary");
+    expect(body).toContain("Gangwon detailed support notice attachment");
+  });
+
+  it("jeju maps seq, title, row date, and articleContents body", () => {
+    const items = parseJejuList(`
+      <li class="board-news__article">
+        <a href="/news/bodo/list.htm?act=view&amp;seq=2019615">
+          <strong class="text-ellipsis">
+            Jeju smart logistics center prepares for operation
+          </strong>
+          <span class="date">통상물류과 | 2026-05-20</span>
+        </a>
+      </li>
+    `);
+    expect(items[0]).toMatchObject({
+      seq: "2019615",
+      title: "Jeju smart logistics center prepares for operation",
+      publishedDate: "2026-05-20",
+    });
+    expect(items[0].sourceUrl).toContain("seq=2019615");
+
+    const body = parseJejuBody(`
+      <div id="articleContents" class="article-contents">
+        <div class="file-preview"><iframe src="/tool/synap/convert.jsp"></iframe></div>
+        <p>Jeju official press release body with enough detail for parsing.</p>
+        <p>Additional operational context for the local press collector.</p>
+        <div id="hwpEditorBoardContent">&nbsp;</div>
+      </div>
+      <div id="popularNews"></div>
+    `);
+    expect(body).toContain("Jeju official press release body");
+    expect(body).not.toContain("file-preview");
   });
 
   it("gyeongnam maps dataSid, title, row-scoped date, and body", () => {
@@ -153,9 +226,11 @@ describe("province local press collectors", () => {
     expect(parseJeonnamBody(html)).toBeNull();
     expect(parseJeonbukBody(html)).toBeNull();
     expect(parseGyeonggiBody(html)).toBeNull();
+    expect(parseGangwonBody(html)).toBeNull();
     expect(parseGyeongnamBody(html)).toBeNull();
     expect(parseGyeongbukBody(html)).toBeNull();
     expect(parseChungnamBody(html)).toBeNull();
     expect(parseChungbukBody(html)).toBeNull();
+    expect(parseJejuBody(html)).toBeNull();
   });
 });
