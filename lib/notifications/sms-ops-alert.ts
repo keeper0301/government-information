@@ -24,6 +24,7 @@ import crypto from "node:crypto";
 export type OpsAlertSmsResult =
   | { ok: true; messageId: string }
   | { ok: false; reason: "skipped_no_credentials"; error?: undefined }
+  | { ok: false; reason: "skipped_disabled"; error?: undefined }
   | { ok: false; reason: "invalid_phone"; error: string }
   | { ok: false; reason: "api_error"; error: string }
   | { ok: false; reason: "network_error"; error: string };
@@ -57,6 +58,13 @@ export async function sendOpsAlertSms({
   /** SMS 본문 끝 링크 (사장님 즉시 처리 진입점). 미지정 시 admin/health 기본값. */
   link?: string;
 }): Promise<OpsAlertSmsResult> {
+  // 2026-05-21 사장님 명시 — Solapi 잔액 보존 위해 SMS 비활성화.
+  // 텔레그램 채널이 사장님 즉시 알림 1차 (multichannel helper 가 텔레그램 + SMS 발송 → SMS skip).
+  // 미래 재활성화 시 env 만 제거 (코드 변경 0).
+  if (process.env.OPS_ALERT_DISABLE_SMS === "true") {
+    return { ok: false, reason: "skipped_disabled" };
+  }
+
   const apiKey = process.env.SOLAPI_API_KEY;
   const apiSecret = process.env.SOLAPI_API_SECRET;
   const fromPhone = normalizePhone(process.env.SOLAPI_OPS_FROM_PHONE);

@@ -20,6 +20,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendOpsAlertSms } from "@/lib/notifications/sms-ops-alert";
+import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
 
 // 결정 종류 — 새 결정 추가 시 DECISION_HANDLERS 에 액션도 함께 등록.
 // kind 이름은 sub-project + 단계 명시 (rollback 시 추적 쉬움).
@@ -59,13 +60,18 @@ export async function registerDecision(
     throw new Error(`decision_pending insert 실패: ${error?.message}`);
   }
 
-  // SMS 본문 — 사장님이 휴대폰에서 1/2/3 만 답장하면 됨.
-  // id 는 본문에 노출 안 함 (가독성). 매칭은 "가장 최근 미결정" 으로.
+  // 2026-05-21 사장님 명시 — SMS off, 텔레그램으로 알림 도달.
+  // multichannel 가 SMS + 텔레그램 동시 발송 → OPS_ALERT_DISABLE_SMS=true env 에서 텔레그램만.
+  // 답장 처리는 webhook (handleSmsReply) — SMS off 시 사장님은 /admin/decisions UI 또는
+  // 텔레그램 봇 명령 (다음 세션 spec) 으로 결정 처리 필요.
   const smsBody = `${input.prompt}\n\n1=승인 / 2=무시 / 3=상의`;
-  const smsResult = await sendOpsAlertSms({
+  const multi = await sendOpsAlertMultichannel({
     subject: "[keepioo 결정 요청]",
     message: smsBody,
   });
+  // 기존 호환성 위해 smsResult 그대로 반환 (sms 채널 결과만).
+  const smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> =
+    multi.sms ?? { ok: false, reason: "network_error", error: "sms unavailable" };
 
   return { id: data.id as string, smsResult };
 }

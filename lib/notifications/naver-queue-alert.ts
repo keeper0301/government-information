@@ -25,7 +25,7 @@ export type NaverQueueAlertResult = {
   pendingCount: number;
   threshold: number;
   sent: boolean;
-  reason?: "below_threshold" | "skipped_no_credentials" | "invalid_phone" | "api_error" | "network_error";
+  reason?: "below_threshold" | "skipped_no_credentials" | "skipped_disabled" | "invalid_phone" | "api_error" | "network_error";
   multiResult?: MultichannelResult;
 };
 
