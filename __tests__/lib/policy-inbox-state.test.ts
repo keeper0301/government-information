@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPolicyInboxUpsertPayload,
   buildPolicyInboxStatePatch,
+  isPolicyInboxStorageUnavailableError,
   mergePolicyInboxState,
   normalizePolicyInboxProgramRef,
 } from "@/lib/notifications/policy-inbox-state";
@@ -112,5 +113,26 @@ describe("policy inbox state helpers", () => {
         now: new Date("2026-05-21T02:00:00.000Z"),
       }),
     ).toBeNull();
+  });
+
+  it("detects unavailable policy inbox storage errors", () => {
+    expect(
+      isPolicyInboxStorageUnavailableError({
+        code: "42P01",
+        message: 'relation "public.user_policy_inbox_items" does not exist',
+      }),
+    ).toBe(true);
+    expect(
+      isPolicyInboxStorageUnavailableError({
+        code: "PGRST205",
+        message: "Could not find the table 'public.user_policy_inbox_items'",
+      }),
+    ).toBe(true);
+    expect(
+      isPolicyInboxStorageUnavailableError({
+        code: "42501",
+        message: "permission denied",
+      }),
+    ).toBe(false);
   });
 });

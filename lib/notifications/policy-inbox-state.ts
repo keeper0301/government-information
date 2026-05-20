@@ -41,6 +41,11 @@ export type PolicyInboxUpsertPayload = PolicyInboxProgramRef &
     updated_at: string;
   };
 
+export type PolicyInboxStorageErrorLike = {
+  code?: string | null;
+  message?: string | null;
+};
+
 export function normalizePolicyInboxProgramRef(
   ref: PolicyInboxSourceRef,
 ): PolicyInboxProgramRef | null {
@@ -111,4 +116,17 @@ export function buildPolicyInboxUpsertPayload({
     ...buildPolicyInboxStatePatch(action, now),
     updated_at: now.toISOString(),
   };
+}
+
+export function isPolicyInboxStorageUnavailableError(
+  error: PolicyInboxStorageErrorLike | null | undefined,
+): boolean {
+  if (!error) return false;
+  const message = error.message ?? "";
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes("does not exist") ||
+    message.includes("Could not find the table")
+  );
 }

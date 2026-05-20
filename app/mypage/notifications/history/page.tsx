@@ -20,6 +20,7 @@ import {
 } from "@/lib/notifications/history-inbox";
 import {
   mergePolicyInboxState,
+  isPolicyInboxStorageUnavailableError,
   normalizePolicyInboxProgramRef,
   type MergedPolicyInboxState,
   type PolicyInboxStateRow,
@@ -134,6 +135,7 @@ export default async function HistoryPage({
     )
     .filter((ref): ref is NonNullable<typeof ref> => Boolean(ref));
   const statesByKey = new Map<string, MergedPolicyInboxState>();
+  let policyInboxStorageReady = true;
 
   if (policyIds.welfareIds.length > 0) {
     const { data } = await supabase
@@ -158,7 +160,7 @@ export default async function HistoryPage({
   }
 
   if (stateRefs.length > 0) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("user_policy_inbox_items")
       .select("program_type, program_id, read_at, saved_at, hidden_at")
       .eq("user_id", user.id)
@@ -167,11 +169,18 @@ export default async function HistoryPage({
         [...new Set(stateRefs.map((ref) => ref.program_id))],
       );
 
-    for (const row of (data ?? []) as PolicyInboxStateDbRow[]) {
-      statesByKey.set(
-        toInboxStateKey(row.program_type, row.program_id),
-        mergePolicyInboxState(row),
-      );
+    if (error) {
+      policyInboxStorageReady = false;
+      if (!isPolicyInboxStorageUnavailableError(error)) {
+        console.warn("[policy-inbox] state fetch failed:", error.message);
+      }
+    } else {
+      for (const row of (data ?? []) as PolicyInboxStateDbRow[]) {
+        statesByKey.set(
+          toInboxStateKey(row.program_type, row.program_id),
+          mergePolicyInboxState(row),
+        );
+      }
     }
   }
 
@@ -195,6 +204,7 @@ export default async function HistoryPage({
         mergePolicyInboxState(null)
       : mergePolicyInboxState(null);
 
+    if (!policyInboxStorageReady && boxParam !== "inbox") return false;
     if (boxParam === "saved") return itemState.isSaved && !itemState.isHidden;
     if (boxParam === "hidden") return itemState.isHidden;
     return !itemState.isHidden;
@@ -303,27 +313,41 @@ export default async function HistoryPage({
         >
           받은 정책함
         </Link>
-        <Link
-          href={buildNotificationHistoryUrl(state, { box: "saved", page: "1" })}
-          className={`rounded-full border px-3 py-1.5 font-semibold no-underline ${
-            boxParam === "saved"
-              ? "border-blue-200 bg-blue-50 text-blue-700"
-              : "border-grey-200 text-grey-700 hover:bg-grey-50"
-          }`}
-        >
-          저장한 정책
-        </Link>
-        <Link
-          href={buildNotificationHistoryUrl(state, { box: "hidden", page: "1" })}
-          className={`rounded-full border px-3 py-1.5 font-semibold no-underline ${
-            boxParam === "hidden"
-              ? "border-blue-200 bg-blue-50 text-blue-700"
-              : "border-grey-200 text-grey-700 hover:bg-grey-50"
-          }`}
-        >
-          숨긴 정책
-        </Link>
+        {policyInboxStorageReady ? (
+          <>
+            <Link
+              href={buildNotificationHistoryUrl(state, { box: "saved", page: "1" })}
+              className={`rounded-full border px-3 py-1.5 font-semibold no-underline ${
+                boxParam === "saved"
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-grey-200 text-grey-700 hover:bg-grey-50"
+              }`}
+            >
+              저장한 정책
+            </Link>
+            <Link
+              href={buildNotificationHistoryUrl(state, { box: "hidden", page: "1" })}
+              className={`rounded-full border px-3 py-1.5 font-semibold no-underline ${
+                boxParam === "hidden"
+                  ? "border-blue-200 bg-blue-50 text-blue-700"
+                  : "border-grey-200 text-grey-700 hover:bg-grey-50"
+              }`}
+            >
+              숨긴 정책
+            </Link>
+          </>
+        ) : (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 font-semibold text-amber-700">
+            저장소 준비 중
+          </span>
+        )}
       </nav>
+
+      {!policyInboxStorageReady && (
+        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[13px] leading-5 text-amber-800">
+          정책 확인은 가능하지만, 읽음·저장·숨김 기능은 저장소 적용 후 사용할 수 있습니다.
+        </div>
+      )}
 
       {isEmpty || visibleDeliveries.length === 0 ? (
         <div className="rounded-lg bg-grey-50 p-8 text-center text-[14px] leading-[1.7] text-grey-700">
@@ -427,7 +451,7 @@ export default async function HistoryPage({
                   )}
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {inboxRef && (
+                    {policyInboxStorageReady && inboxRef && (
                       <>
                         <PolicyInboxStateButton
                           delivery={delivery}
