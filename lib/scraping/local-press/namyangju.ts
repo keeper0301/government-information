@@ -108,6 +108,8 @@ export const { scrapeAndInsert: scrapeNamyangjuAndInsert } =
     region: "경기",
     ministry: "남양주시청",
     sourceOutlet: "남양주시청",
+
+    sourceCode: "local-press-namyangju",
     listUrl: LIST_URL,
     parseListItems: parseListPage,
     parseDetailBody,

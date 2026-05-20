@@ -33,6 +33,9 @@ export type PressCollectorConfig = {
   region: string; // "서울"/"부산"/"경기" 등
   ministry: string; // 등록 source 표시
   sourceOutlet: string; // news_posts.source_outlet
+  // 2026-05-20 — news_posts.source_code NOT NULL constraint. 누락 시 insert 실패 사고.
+  // 일관 패턴: "local-press-<slug>" (예: "local-press-suncheon").
+  sourceCode: string;
   listUrl: string;
   // 각 시·군 selector 자체 파싱 — return PressNewsItem[]
   parseListItems: (html: string) => PressNewsItem[];
@@ -132,6 +135,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
         body: body.slice(0, 20000),
         source_url: item.sourceUrl,
         source_outlet: cfg.sourceOutlet,
+        source_code: cfg.sourceCode, // 2026-05-20 — NOT NULL constraint fix
         ministry: cfg.ministry,
         published_at: item.publishedDate
           ? `${item.publishedDate}T00:00:00+09:00`

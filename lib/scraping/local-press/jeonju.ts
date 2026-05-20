@@ -88,6 +88,8 @@ export const { scrapeAndInsert: scrapeJeonjuAndInsert } = createPressCollector({
   region: "전북",
   ministry: "전주시청",
   sourceOutlet: "전주시청",
+
+  sourceCode: "local-press-jeonju",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

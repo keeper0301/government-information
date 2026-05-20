@@ -93,6 +93,8 @@ export const { scrapeAndInsert: scrapeIncheonAndInsert } = createPressCollector(
   region: "인천",
   ministry: "인천광역시청",
   sourceOutlet: "인천광역시청",
+
+  sourceCode: "local-press-incheon",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

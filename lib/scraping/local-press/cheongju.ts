@@ -87,6 +87,8 @@ export const { scrapeAndInsert: scrapeCheongjuAndInsert } = createPressCollector
   region: "충북",
   ministry: "청주시청",
   sourceOutlet: "청주시청",
+
+  sourceCode: "local-press-cheongju",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

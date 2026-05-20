@@ -94,6 +94,8 @@ export const { scrapeAndInsert: scrapeHwaseongAndInsert } =
     region: "경기",
     ministry: "화성특례시청",
     sourceOutlet: "화성특례시청",
+
+    sourceCode: "local-press-hwaseong",
     listUrl: LIST_URL,
     parseListItems: parseListPage,
     parseDetailBody,

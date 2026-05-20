@@ -90,6 +90,8 @@ export const { scrapeAndInsert: scrapeDaejeonAndInsert } = createPressCollector(
   region: "대전",
   ministry: "대전광역시청",
   sourceOutlet: "대전광역시청",
+
+  sourceCode: "local-press-daejeon",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

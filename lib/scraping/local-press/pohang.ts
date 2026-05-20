@@ -72,6 +72,8 @@ export const { scrapeAndInsert: scrapePohangAndInsert } = createPressCollector({
   region: "경북",
   ministry: "포항시청",
   sourceOutlet: "포항시청",
+
+  sourceCode: "local-press-pohang",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

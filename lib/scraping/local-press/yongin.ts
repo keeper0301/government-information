@@ -101,6 +101,8 @@ export const { scrapeAndInsert: scrapeYonginAndInsert } = createPressCollector({
   region: "경기",
   ministry: "용인특례시청",
   sourceOutlet: "용인특례시청",
+
+  sourceCode: "local-press-yongin",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

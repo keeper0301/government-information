@@ -72,6 +72,8 @@ export const { scrapeAndInsert: scrapeDaeguAndInsert } = createPressCollector({
   region: "대구",
   ministry: "대구광역시청",
   sourceOutlet: "대구광역시청",
+
+  sourceCode: "local-press-daegu",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

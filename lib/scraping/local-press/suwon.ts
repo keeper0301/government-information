@@ -83,6 +83,8 @@ export const { scrapeAndInsert: scrapeSuwonAndInsert } = createPressCollector({
   region: "경기",
   ministry: "수원특례시청",
   sourceOutlet: "수원특례시청",
+
+  sourceCode: "local-press-suwon",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

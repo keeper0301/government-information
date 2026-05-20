@@ -156,6 +156,8 @@ export async function scrapeSuncheonAndInsert(
       body: item.body.slice(0, 20000),
       source_url: item.sourceUrl,
       source_outlet: SUNCHEON_SOURCE_OUTLET,
+
+      source_code: "local-press-suncheon",
       ministry: SUNCHEON_MINISTRY,
       published_at: now,
       classified_at: null,

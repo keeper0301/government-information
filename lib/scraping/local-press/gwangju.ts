@@ -154,6 +154,8 @@ export async function scrapeGwangjuAndInsert(
       body: item.body.slice(0, 20000),
       source_url: item.sourceUrl,
       source_outlet: GWANGJU_SOURCE_OUTLET,
+
+      source_code: "local-press-gwangju",
       ministry: GWANGJU_MINISTRY,
       published_at: publishedAt,
       classified_at: null,

@@ -93,6 +93,8 @@ export const { scrapeAndInsert: scrapeIksanAndInsert } = createPressCollector({
   region: "전북",
   ministry: "익산시청",
   sourceOutlet: "익산시청",
+
+  sourceCode: "local-press-iksan",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

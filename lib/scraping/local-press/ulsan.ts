@@ -97,6 +97,8 @@ export const { scrapeAndInsert: scrapeUlsanAndInsert } = createPressCollector({
   region: "울산",
   ministry: "울산광역시청",
   sourceOutlet: "울산광역시청",
+
+  sourceCode: "local-press-ulsan",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

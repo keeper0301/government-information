@@ -74,6 +74,8 @@ export const { scrapeAndInsert: scrapePyeongtaekAndInsert } =
     region: "경기",
     ministry: "평택시청",
     sourceOutlet: "평택시청",
+
+    sourceCode: "local-press-pyeongtaek",
     listUrl: LIST_URL,
     parseListItems: parseListPage,
     parseDetailBody,

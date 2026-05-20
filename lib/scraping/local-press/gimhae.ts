@@ -112,6 +112,8 @@ export const { scrapeAndInsert: scrapeGimhaeAndInsert } = createPressCollector({
   region: "경남",
   ministry: "김해시청",
   sourceOutlet: "김해시청",
+
+  sourceCode: "local-press-gimhae",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

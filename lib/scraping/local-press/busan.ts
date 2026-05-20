@@ -82,6 +82,7 @@ export const { scrapeAndInsert: scrapeBusanAndInsert } = createPressCollector({
   region: "부산",
   ministry: "부산광역시청",
   sourceOutlet: "부산광역시청",
+  sourceCode: "local-press-busan",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

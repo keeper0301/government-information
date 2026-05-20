@@ -152,6 +152,8 @@ export async function scrapeSeoulAndInsert(
       body: body.slice(0, 20000),
       source_url: item.sourceUrl,
       source_outlet: SEOUL_SOURCE_OUTLET,
+
+      source_code: "local-press-seoul",
       ministry: SEOUL_MINISTRY,
       published_at: item.publishedDate
         ? `${item.publishedDate}T00:00:00+09:00`

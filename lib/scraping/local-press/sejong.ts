@@ -85,6 +85,8 @@ export const { scrapeAndInsert: scrapeSejongAndInsert } = createPressCollector({
   region: "세종",
   ministry: "세종특별자치시청",
   sourceOutlet: "세종특별자치시청",
+
+  sourceCode: "local-press-sejong",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,

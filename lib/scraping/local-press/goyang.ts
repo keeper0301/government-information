@@ -91,6 +91,8 @@ export const { scrapeAndInsert: scrapeGoyangAndInsert } = createPressCollector({
   region: "경기",
   ministry: "고양특례시청",
   sourceOutlet: "고양특례시청",
+
+  sourceCode: "local-press-goyang",
   listUrl: LIST_URL,
   parseListItems: parseListPage,
   parseDetailBody,
