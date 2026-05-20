@@ -14,6 +14,7 @@ export type UserSignals = {
   ageGroup: AgeOption | null;        // 연령대 (예: '30대')
   region: RegionOption | null;       // 광역시도 (예: '서울')
   district: string | null;           // 시군구 (예: '강남구')
+  subDistrict?: string | null;       // 2026-05-20 Phase B — 읍·면·동·리 (예: '매월리'). district 정확화 +20점.
   occupation: OccupationOption | null; // 직업 (예: '직장인')
   incomeLevel: 'low' | 'mid_low' | 'mid' | 'mid_high' | 'high' | null; // 소득 수준
   householdTypes: string[];          // 가구 유형 목록 (예: ['single_parent'])

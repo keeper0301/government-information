@@ -25,7 +25,7 @@ export async function syncProfileAutoRule(userId: string): Promise<void> {
   const [profileRes, subRes] = await Promise.all([
     supabase
       .from('user_profiles')
-      .select('age_group, region, district, occupation, income_level, household_types, benefit_tags, has_children, merit_status')
+      .select('age_group, region, district, sub_district, occupation, income_level, household_types, benefit_tags, has_children, merit_status')
       .eq('id', userId)
       .maybeSingle(),
     supabase
@@ -47,6 +47,7 @@ export async function syncProfileAutoRule(userId: string): Promise<void> {
     ageGroup: (profile.age_group ?? null) as AgeOption | null,
     region: (profile.region ?? null) as RegionOption | null,
     district: profile.district ?? null,
+    subDistrict: (profile as { sub_district?: string | null }).sub_district ?? null,
     occupation: (profile.occupation ?? null) as OccupationOption | null,
     incomeLevel: (profile.income_level ?? null) as UserSignals['incomeLevel'],
     householdTypes: (profile.household_types ?? []) as string[],

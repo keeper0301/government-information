@@ -32,6 +32,8 @@ export type ScorableItem = {
   detailed_content?: string | null;
   region?: string | null;
   district?: string | null;
+  // 2026-05-20 District Phase B — 읍·면·동·리 단위. extractSubDistrict 백필 결과.
+  sub_district?: string | null;
   benefit_tags?: string[] | null;
   apply_end?: string | null;
   source?: string | null;
@@ -565,6 +567,10 @@ export function scoreProgram<T extends ScorableItem>(
     user.region,
     user.district,
     program.district,
+    // 2026-05-20 Phase B — 사용자 sub_district 와 정책 sub_district 일치 시 +20점.
+    // ScorableItem 의 sub_district 컬럼이 백필 후 채워짐. NULL 이면 기존 region_district +10 그대로.
+    user.subDistrict ?? null,
+    program.sub_district ?? null,
   );
 
   // ②-Gate: Regional gate — 사용자가 region 설정 + 정책에 region 정보 있을 때만 적용

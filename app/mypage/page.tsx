@@ -67,7 +67,7 @@ export default async function MyPage() {
     supabase
       .from("user_profiles")
       .select(
-        "age_group, region, district, occupation, interests, income_level, household_types, has_children, merit_status"
+        "age_group, region, district, sub_district, occupation, interests, income_level, household_types, has_children, merit_status"
       )
       .eq("id", user.id)
       .maybeSingle(),
@@ -154,6 +154,7 @@ export default async function MyPage() {
                 age_group: profile?.age_group ?? null,
                 region: profile?.region ?? null,
                 district: profile?.district ?? null,
+                sub_district: profile?.sub_district ?? null,
                 occupation: profile?.occupation ?? null,
                 interests: profile?.interests ?? [],
                 income_level: (profile?.income_level ?? null) as

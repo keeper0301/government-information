@@ -35,6 +35,8 @@ type Profile = {
   age_group: string | null;
   region: string | null;
   district: string | null;
+  // 2026-05-20 District Phase B — 읍·면·동·리 단위 (예: "매월리", "월등면"). district 정확화 +20점.
+  sub_district: string | null;
   occupation: string | null;
   interests: string[];
   income_level: IncomeOption | null;    // 소득 수준 (단일 선택, 선택사항)
@@ -87,11 +89,15 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       setSaving(false);
       return;
     }
+    const subDistrictTrimmed = (form.sub_district ?? "").trim();
     const { error } = await supabase.from("user_profiles").upsert({
       id: user.id,
       age_group: form.age_group,
       region: form.region,
       district: form.district,
+      // Phase B 5/20 — 빈 값은 null (NOT 빈 문자열). matching 시 null check 일관성.
+      sub_district: subDistrictTrimmed || null,
+      sub_district_confirmed_at: subDistrictTrimmed ? new Date().toISOString() : null,
       occupation: form.occupation,
       interests: form.interests,
       income_level: form.income_level,
@@ -159,6 +165,30 @@ export function ProfileForm({ initial }: { initial: Profile }) {
                 }))
               }
             />
+          )}
+
+          {/* 2026-05-20 Phase B — 읍·면·동·리 단위 입력 (선택). 시·군 선택 후에만 노출.
+              사장님 거주지 매월리 같이 정확 매칭 시 정책 추천 점수 +20.
+              자유 텍스트 (자동완성은 별도 spec) — 사용자가 직접 입력. */}
+          {form.district && (
+            <label className="block">
+              <span className="block text-[13px] font-medium text-grey-900 mb-2">
+                읍·면·동·리 (선택)
+              </span>
+              <input
+                type="text"
+                value={form.sub_district ?? ""}
+                onChange={(e) =>
+                  updateForm((p) => ({ ...p, sub_district: e.target.value }))
+                }
+                placeholder="예: 매월리, 월등면, 향동"
+                maxLength={20}
+                className="w-full rounded-lg border border-grey-200 px-3 py-2 text-[14px] text-grey-900 focus:border-emerald-500 focus:outline-none"
+              />
+              <p className="mt-1 text-[12px] text-grey-600">
+                거주지 동·리 입력 시 정책 매칭 정확도가 더 높아져요.
+              </p>
+            </label>
           )}
 
           <ChipSelect
