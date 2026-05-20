@@ -1,4 +1,5 @@
 import { safeJsonLd } from "@/lib/json-ld-safe";
+import { stripHtmlTags } from "@/lib/utils";
 
 type WebSiteSchemaProps = {
   name: string;
@@ -90,10 +91,10 @@ export function FAQSchema({ questions }: FAQSchemaProps) {
     "@type": "FAQPage",
     mainEntity: questions.map((q) => ({
       "@type": "Question",
-      name: q.question,
+      name: stripHtmlTags(q.question),
       acceptedAnswer: {
         "@type": "Answer",
-        text: q.answer,
+        text: stripHtmlTags(q.answer),
       },
     })),
   };
