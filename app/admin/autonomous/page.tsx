@@ -71,6 +71,8 @@ import { getSilentFailStats } from "@/lib/analytics/silent-fail-stats";
 import { SilentFailCard } from "./_components/silent-fail-card";
 import { getAdsensePlacementSummary } from "@/lib/analytics/adsense-placement-status";
 import { AdsensePlacementCard } from "./_components/adsense-placement-card";
+import { getCronFailureStats } from "@/lib/analytics/cron-failure-stats";
+import { CronFailureCard } from "./_components/cron-failure-card";
 import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
 import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
@@ -155,6 +157,7 @@ export default async function AdminAutonomousPage() {
     scMetrics,
     externalMetrics,
     silentFailStats,
+    cronFailureStats,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -179,6 +182,7 @@ export default async function AdminAutonomousPage() {
     collectScMetricsLatest(),
     collectExternalConsoleMetrics(),
     getSilentFailStats(),
+    getCronFailureStats(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -272,6 +276,9 @@ export default async function AdminAutonomousPage() {
       </div>
       <div className="mb-4">
         <SilentFailCard stats={silentFailStats} />
+      </div>
+      <div className="mb-4">
+        <CronFailureCard stats={cronFailureStats} />
       </div>
       <div className="mb-4">
         <AdsensePlacementCard summary={getAdsensePlacementSummary()} />
