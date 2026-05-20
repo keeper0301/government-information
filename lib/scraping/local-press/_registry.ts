@@ -33,6 +33,9 @@ import { scrapeJeonnamAndInsert } from "./jeonnam";
 import { scrapeGyeonggiAndInsert } from "./gyeonggi";
 import { scrapeJeonbukAndInsert } from "./jeonbuk";
 import { scrapeGyeongnamAndInsert } from "./gyeongnam";
+import { scrapeGyeongbukAndInsert } from "./gyeongbuk";
+import { scrapeChungnamAndInsert } from "./chungnam";
+import { scrapeChungbukAndInsert } from "./chungbuk";
 
 export type CityKey =
   | "suncheon"
@@ -58,7 +61,10 @@ export type CityKey =
   | "jeonnam"
   | "gyeonggi"
   | "jeonbuk"
-  | "gyeongnam";
+  | "gyeongnam"
+  | "gyeongbuk"
+  | "chungnam"
+  | "chungbuk";
 
 export type CityEntry = {
   key: CityKey;
@@ -264,6 +270,33 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gyeongnam.go.kr/index.gyeong?menuCd=DOM_000000135002001000",
     fn: scrapeGyeongnamAndInsert,
+  },
+  {
+    key: "gyeongbuk",
+    city: "경상북도",
+    ministry: "경상북도청",
+    ministryAliases: ["경상북도"],
+    siteUrl:
+      "https://www.gb.go.kr/Main/page.do?mnu_uid=6792&LARGE_CODE=720&MEDIUM_CODE=50&SMALL_CODE=10&SMALL_CODE2=60",
+    fn: scrapeGyeongbukAndInsert,
+  },
+  {
+    key: "chungnam",
+    city: "충청남도",
+    ministry: "충청남도청",
+    ministryAliases: ["충청남도"],
+    siteUrl:
+      "https://www.chungnam.go.kr/cnportal/cnapcPressList/cnapcPress/list.do?menuNo=500498",
+    fn: scrapeChungnamAndInsert,
+  },
+  {
+    key: "chungbuk",
+    city: "충청북도",
+    ministry: "충청북도청",
+    ministryAliases: ["충청북도"],
+    siteUrl:
+      "https://www.chungbuk.go.kr/www/selectBbsNttList.do?bbsNo=65&key=429",
+    fn: scrapeChungbukAndInsert,
   },
 ];
 
