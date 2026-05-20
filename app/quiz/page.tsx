@@ -59,6 +59,7 @@ type Row = {
   region: string | null;
   // migration 090 (2026-05-16) — 사장님 거주지 정확 매칭용 시·군 컬럼
   district: string | null;
+  sub_district: string | null;
   apply_end: string | null;
   source: string;
   benefit_tags: string[] | null;
@@ -75,6 +76,7 @@ function rowToScorable(row: Row): ScorableItem {
       .join(' '),
     region: row.region,
     district: row.district ?? null,
+    sub_district: row.sub_district ?? null,
     benefit_tags: row.benefit_tags ?? [],
     apply_end: row.apply_end,
     source: row.source,
@@ -139,7 +141,7 @@ export default async function QuizPage({
   const regionOrFilter = buildRegionOrFilter(region);
 
   const COLUMNS =
-    'id, title, description, eligibility, detailed_content, region, district, apply_end, source, benefit_tags, income_target_level, household_target_tags';
+    'id, title, description, eligibility, detailed_content, region, district, sub_district, apply_end, source, benefit_tags, income_target_level, household_target_tags';
 
   let welfareQ = supabase
     .from('welfare_programs')

@@ -607,6 +607,10 @@ export function scoreProgram<T extends ScorableItem>(
 
   if (regionEval.kind === 'national') {
     signals.push({ kind: 'region', score: 5 });
+  } else if (regionEval.kind === 'region_sub_district') {
+    signals.push({ kind: 'region', score: 5 });
+    signals.push({ kind: 'district', score: 5 });
+    signals.push({ kind: 'sub_district', score: 10 });
   } else if (regionEval.kind === 'region_district') {
     signals.push({ kind: 'region', score: 5 });
     signals.push({ kind: 'district', score: 5 });

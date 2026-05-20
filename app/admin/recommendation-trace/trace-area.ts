@@ -58,7 +58,7 @@ export async function traceWelfare(user: UserSignals): Promise<AreaResult> {
     let q = supabase
       .from("welfare_programs")
       .select(
-        "id, title, target, description, eligibility, region, district, benefit_tags, apply_end, source, income_target_level, household_target_tags",
+        "id, title, target, description, eligibility, region, district, sub_district, benefit_tags, apply_end, source, income_target_level, household_target_tags",
       )
       .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
       .is("duplicate_of_id", null);
@@ -97,7 +97,7 @@ export async function traceLoan(user: UserSignals): Promise<AreaResult> {
     let q = supabase
       .from("loan_programs")
       .select(
-        "id, title, target, description, eligibility, region_tags, district, region, benefit_tags, apply_end, source, income_target_level, household_target_tags",
+        "id, title, target, description, eligibility, region_tags, district, sub_district, region, benefit_tags, apply_end, source, income_target_level, household_target_tags",
       )
       .not("source_code", "in", LOAN_EXCLUDED_FILTER)
       .is("duplicate_of_id", null);
@@ -125,6 +125,7 @@ export async function traceLoan(user: UserSignals): Promise<AreaResult> {
       region_tags: string[] | null;
       region: string | null;
       district: string | null;
+      sub_district: string | null;
       benefit_tags: string[] | null;
       apply_end: string | null;
       source: string | null;
@@ -141,6 +142,7 @@ export async function traceLoan(user: UserSignals): Promise<AreaResult> {
       eligibility: r.eligibility,
       region: r.region ?? r.region_tags?.[0] ?? null,
       district: r.district ?? null,
+      sub_district: r.sub_district ?? null,
       benefit_tags: r.benefit_tags,
       apply_end: r.apply_end,
       source: r.source,

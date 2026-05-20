@@ -13,6 +13,7 @@ describe("getHomeMatchReasonLabels", () => {
   it("maps scoring signals to compact Korean reason labels", () => {
     const signals: MatchSignal[] = [
       { kind: "region", score: 5 },
+      { kind: "sub_district", score: 10 },
       { kind: "income_target", score: 4, detail: "low" },
       { kind: "household_target", score: 3, detail: "single_parent" },
       { kind: "benefit_tags", score: 3, detail: "의료" },
@@ -21,10 +22,10 @@ describe("getHomeMatchReasonLabels", () => {
 
     expect(getHomeMatchReasonLabels(signals)).toEqual([
       "지역",
+      "읍면동",
       "소득",
       "가구",
       "관심분야",
-      "마감임박",
     ]);
   });
 

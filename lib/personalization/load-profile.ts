@@ -54,7 +54,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
     supabase
       .from('user_profiles')
       .select(`
-        id, age_group, region, district, occupation,
+        id, age_group, region, district, sub_district, occupation,
         interests, income_level, household_types, benefit_tags, has_children,
         merit_status, dismissed_onboarding_at
       `)
@@ -110,6 +110,7 @@ export const loadUserProfile = cache(async (): Promise<LoadedProfile | null> => 
     ageGroup: (profile.age_group ?? null) as AgeOption | null,
     region: (profile.region ?? null) as RegionOption | null,
     district: profile.district ?? null,
+    subDistrict: (profile as { sub_district?: string | null }).sub_district ?? null,
     occupation: (profile.occupation ?? null) as OccupationOption | null,
     incomeLevel: (profile.income_level ?? null) as UserSignals['incomeLevel'],
     householdTypes: (profile.household_types ?? []) as string[],

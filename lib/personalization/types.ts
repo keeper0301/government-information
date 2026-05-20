@@ -27,6 +27,7 @@ export type UserSignals = {
 // 매칭 시그널 1개 — 점수에 기여한 이유와 점수를 함께 기록
 export type MatchSignal = {
   kind: 'region' | 'district' | 'benefit_tags' | 'occupation' | 'age'
+        | 'sub_district'                         // District Phase B: 읍·면·동·리 exact match
         | 'income_keyword' | 'household_keyword' | 'urgent_deadline'
         | 'income_target' | 'household_target'  // Phase 1.5: 정확 매칭 시그널
         | 'business_match'                       // 자영업자 자격 정확 매칭 (Basic wedge)

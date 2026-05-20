@@ -1006,6 +1006,26 @@ describe('scoreProgram — district 컬럼 정확 매칭 (migration 090)', () =>
     expect(r.score).toBe(10);
   });
 
+  it('program.sub_district === user.subDistrict → region_sub_district (+20)', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도',
+        district: '순천시',
+        sub_district: '매월리',
+        benefit_tags: [],
+      },
+      { ...emptyUser, region: '전남', district: '순천시', subDistrict: '매월리' },
+    );
+
+    expect(r.score).toBe(20);
+    expect(r.signals).toEqual([
+      { kind: 'region', score: 5 },
+      { kind: 'district', score: 5 },
+      { kind: 'sub_district', score: 10 },
+    ]);
+  });
+
   it('program.district === user.district + region NULL → no_match (동명 시·군 사고 차단)', () => {
     // 광역 검증 logic 추가 후: region NULL 인 row 의 district 정확 매칭은
     // 동명 시·군 (중구·동구 등 다수 광역) 사고 risk 라 안전 fallback (no_match).

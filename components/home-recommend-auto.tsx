@@ -17,6 +17,7 @@ import { LOAN_EXCLUDED_FILTER, WELFARE_EXCLUDED_FILTER } from '@/lib/listing-sou
 const HOME_MATCH_REASON_LABELS: Record<MatchSignal["kind"], string> = {
   region: "지역",
   district: "지역",
+  sub_district: "읍면동",
   benefit_tags: "관심분야",
   occupation: "직업",
   age: "연령",
@@ -134,6 +135,7 @@ function welfareRowToScorable(row: {
   region: string | null;
   // migration 090 (2026-05-16) — 사장님 거주지 정확 매칭용 시·군 컬럼
   district: string | null;
+  sub_district: string | null;
   apply_end: string | null;
   source: string;
   benefit_tags: string[] | null;
@@ -151,6 +153,7 @@ function welfareRowToScorable(row: {
       .join(' '),
     region: row.region,
     district: row.district ?? null,
+    sub_district: row.sub_district ?? null,
     benefit_tags: row.benefit_tags ?? [],
     apply_end: row.apply_end,
     source: row.source,
@@ -170,6 +173,7 @@ function loanRowToScorable(row: {
   region_tags: string[] | null;
   // migration 090 (2026-05-16) — 사장님 거주지 정확 매칭용 시·군 컬럼
   district: string | null;
+  sub_district: string | null;
   apply_end: string | null;
   source: string;
   benefit_tags: string[] | null;
@@ -195,6 +199,7 @@ function loanRowToScorable(row: {
       .join(' '),
     region,
     district: row.district ?? null,
+    sub_district: row.sub_district ?? null,
     benefit_tags: row.benefit_tags ?? [],
     apply_end: row.apply_end,
     source: row.source,
@@ -254,13 +259,13 @@ export async function HomeRecommendAuto({
   const today = new Date().toISOString().slice(0, 10);
   let welfareQuery = supabase
     .from('welfare_programs')
-    .select('id, title, description, eligibility, detailed_content, region, district, apply_end, source, benefit_tags, income_target_level, household_target_tags')
+    .select('id, title, description, eligibility, detailed_content, region, district, sub_district, apply_end, source, benefit_tags, income_target_level, household_target_tags')
     .not('source_code', 'in', WELFARE_EXCLUDED_FILTER)
     .or(`apply_end.gte.${today},apply_end.is.null`);
 
   let loanQuery = supabase
     .from('loan_programs')
-    .select('id, title, description, eligibility, detailed_content, region, region_tags, district, apply_end, source, benefit_tags, income_target_level, household_target_tags')
+    .select('id, title, description, eligibility, detailed_content, region, region_tags, district, sub_district, apply_end, source, benefit_tags, income_target_level, household_target_tags')
     .not('source_code', 'in', LOAN_EXCLUDED_FILTER)
     .is('duplicate_of_id', null)
     .or(`apply_end.gte.${today},apply_end.is.null`);
