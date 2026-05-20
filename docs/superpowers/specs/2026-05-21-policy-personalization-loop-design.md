@@ -4,7 +4,7 @@ Date: 2026-05-21
 
 ## Goal
 
-Build a visible policy personalization loop across the user homepage, policy alert inbox, and admin operations dashboard.
+Build a visible policy personalization loop across the user homepage, personalized notification inbox, and admin operations dashboard.
 
 The site already has recommendation scoring, profile loading, alert surfaces, and autonomous operations pages. The next upgrade should connect those pieces into one product loop:
 
@@ -15,14 +15,16 @@ The site already has recommendation scoring, profile loading, alert surfaces, an
 This design covers options 1, 2, and 3 selected by the user:
 
 - Neighborhood recommendation 2.0
-- Personal policy alert inbox
+- Personal policy notification inbox
 - Admin autonomous operations cockpit
 
 ## Product Shape
 
 ### 1. Neighborhood Recommendation 2.0
 
-Upgrade homepage recommendation surfaces so users understand the match reason, not just the policy title.
+Upgrade and reuse the existing homepage recommendation explanation surfaces so users understand the match reason, not just the policy title.
+
+The homepage already has reason labels and a profile trust strip in `components/home-recommend-auto.tsx`. This slice should not rebuild that work. It should extract the useful pieces into clearer shared helpers and apply them consistently where recommendation results appear.
 
 Expected behavior:
 
@@ -38,22 +40,32 @@ Primary UI surfaces:
 - Recommendation list cards where match reasons are already available
 - Profile completion entry points that lead to `/mypage` or `/quiz`
 
-### 2. Personal Policy Alert Inbox
+### 2. Personal Policy Notification Inbox
 
-Upgrade `/alerts` from a passive alert list into a personal policy inbox.
+Upgrade the matched-policy notification experience into a personal policy inbox.
+
+Important routing distinction:
+
+- `/alerts` is the current deadline reminder screen for policies a user explicitly subscribed to through `alarm_subscriptions`.
+- `/mypage/notifications` manages personalized alert rules through `user_alert_rules`.
+- `/mypage/notifications/history` shows delivered personalized alerts through `alert_deliveries`.
+
+The policy inbox should be centered on `/mypage/notifications/history`, with `/mypage/notifications` as the settings screen. `/alerts` can keep handling explicit deadline reminders or link users into the new inbox, but it should not be the primary data model for matched-policy notifications.
 
 Expected behavior:
 
-- Each alert item explains why the policy was sent.
-- Users can mark alerts as read, keep them for later, or hide alerts that are not relevant.
-- Alert items link back to the policy detail or recommendation result.
+- Each notification item explains why the policy was sent.
+- Users can understand why a notification was delivered.
+- Read, save-for-later, and hide behavior requires new persistence and should be implemented only after the first inbox explanation slice.
+- Notification items link back to the policy detail or recommendation result.
 - The inbox should distinguish new, deadline-sensitive, and profile-matched policies.
-- Alert settings should stay lightweight: region, category, and frequency are enough for the first pass.
+- Notification settings should stay lightweight: region, category, and frequency are enough for the first pass.
 
 Primary UI surfaces:
 
-- `/alerts`
-- Alert preference controls if they already exist
+- `/mypage/notifications/history`
+- `/mypage/notifications`
+- `/alerts` as a separate deadline-reminder surface or cross-link
 - Entry points from homepage recommendation sections
 
 ### 3. Admin Autonomous Operations Cockpit
@@ -81,7 +93,7 @@ Recommended layering:
 
 - `lib/personalization/*` remains the scoring and signal source.
 - UI components render reason chips from scored signals instead of recomputing reasons.
-- Alert inbox rows reuse the same reason-label mapping as recommendation cards.
+- Notification inbox rows reuse the same reason-label mapping as recommendation cards.
 - Admin cockpit reads aggregate health metrics through small server helpers.
 - Next.js route files should keep logic in `lib/` helpers and export only allowed route/page exports.
 
@@ -91,7 +103,7 @@ This keeps the loop explainable and testable:
 profile + policy data
   -> personalization scoring
   -> reason chips on homepage/recommendations
-  -> alert inbox entries with the same reason language
+  -> notification inbox entries with the same reason language
   -> admin health metrics showing coverage and failure points
 ```
 
@@ -101,8 +113,8 @@ profile + policy data
 
 Expected component work:
 
-- Add or extend a reusable `RecommendationReasonChips` component.
-- Reuse it in homepage recommendation rows and alert inbox rows.
+- Extract or wrap the existing homepage reason-label logic into a reusable `RecommendationReasonChips` component.
+- Reuse it in homepage recommendation rows and notification inbox rows.
 - Keep chip labels short and stable:
   - `지역`
   - `시군구`
@@ -115,13 +127,17 @@ Expected component work:
   - `인기`
 - Add a profile completion indicator near personalized homepage recommendations.
 
-### Alert Inbox Components
+### Notification Inbox Components
 
 Expected component work:
 
-- Add inbox sections for new, urgent, and saved policies if the data supports them.
-- Add read, save-for-later, and hide actions only when backed by existing persistence or a small scoped persistence helper.
-- If persistence is not ready, render read-only explanation first and defer actions to a later implementation slice.
+- Improve `/mypage/notifications/history` as the first inbox surface.
+- Add sections or filters for delivered, failed, pending, urgent, and recent notifications using existing `alert_deliveries` fields.
+- Add reason chips when the linked policy and current profile can be resolved.
+- Keep `/mypage/notifications` focused on rule editing.
+- Keep `/alerts` focused on explicit deadline reminders.
+- Add read, save-for-later, and hide actions only after adding a small scoped persistence helper or table.
+- If persistence is not ready, render read-only explanation first and defer actions to a later slice.
 
 ### Admin Cockpit Components
 
@@ -145,18 +161,22 @@ The recommendation reason display should be derived from scored signals:
 
 ### Alerts
 
-The inbox should prefer existing alert data. If an alert row does not have explicit reason metadata, the page can resolve reasons from the linked policy and current profile at render time.
+The notification inbox should prefer existing personalized alert data. `alert_deliveries` is the correct first source for delivered matched-policy notifications. If a delivery row does not have explicit reason metadata, the page can resolve reasons from the linked policy and current profile at render time.
 
 First-pass alert fields:
 
-- policy id
-- title
-- alert status
+- program table and id
+- snapshot title
+- delivery status
+- channel
+- created or sent time
 - deadline or freshness label
 - reason chips
 - primary link
 
-Avoid adding broad notification infrastructure in the first slice. This design is about making the existing alert experience understandable before expanding channels.
+Avoid adding broad notification infrastructure in the first slice. This design is about making the existing delivered-notification experience understandable before expanding channels or item-state persistence.
+
+If read, saved, or hidden states are required, add a narrow persistence design first. A small table such as `notification_item_states` can store `user_id`, `delivery_id`, `read_at`, `saved_at`, and `hidden_at`, with RLS scoped to the owning user. Do not overload `alert_deliveries.status`, because that field describes send status, not user interaction state.
 
 ### Admin Metrics
 
@@ -176,40 +196,57 @@ The cockpit should surface next actions, but actions that affect production data
 
 - If recommendation scoring fails, show the quiz/profile fallback instead of an empty recommendation panel.
 - If reason signals are missing, show the policy without chips and avoid inventing a reason.
-- If alert inbox aggregation fails, show a plain alert list with a short degraded-state message.
+- If notification inbox aggregation fails, show a plain delivery list with a short degraded-state message.
 - If admin metrics fail, isolate the failed card and keep the rest of `/admin/autonomous` usable.
 - If user profile data is missing, do not infer sensitive eligibility.
 
 ## Implementation Order
 
-### Slice 1: Homepage Recommendation Explanation
+### Slice 1: Homepage Recommendation Explanation Commonization
 
 Scope:
 
-- Reusable reason-chip mapping
-- Homepage recommendation chips
-- Profile completion nudge
+- Extract the existing homepage reason-chip mapping into a reusable component or helper
+- Keep current homepage recommendation chips working
+- Keep the current profile completion nudge working
+- Make the shared helper usable by notification history
 - Tests for sub-district reason display and incomplete-profile fallback
 
 Why first:
 
 - It directly uses the recent sub-district scoring work.
-- It gives users visible value before changing alert or admin workflows.
+- It turns existing homepage behavior into a reusable building block before changing alert or admin workflows.
 - It has the smallest blast radius.
 
-### Slice 2: Alert Inbox Explanation
+### Slice 2: Notification History Inbox Explanation
 
 Scope:
 
-- `/alerts` layout upgrade
-- Reason chips on alert rows
-- New, urgent, and saved/read states where supported
+- `/mypage/notifications/history` layout upgrade
+- Reason chips on delivered notification rows
+- Better filters or sections using existing delivery status, channel, and time fields
+- Cross-links to `/mypage/notifications` for rule changes
+- Preserve `/alerts` as explicit deadline reminder management
 - Tests for degraded behavior when reason metadata is missing
 
 Why second:
 
-- Alert explanations should use the same reason language introduced in Slice 1.
+- Notification explanations should use the same reason language introduced in Slice 1.
 - It turns recommendation trust into repeat usage.
+
+### Slice 2B: Notification Item State Persistence
+
+Scope:
+
+- Add read, saved, and hidden state only if the inbox explanation slice proves useful.
+- Store user interaction state separately from delivery send status.
+- Add RLS and tests for owner-only access.
+- Add UI actions after persistence exists.
+
+Why separate:
+
+- Current tables do not store these states.
+- Separating this prevents fake buttons that do not survive refreshes.
 
 ### Slice 3: Admin Personalization Cockpit
 
@@ -233,8 +270,10 @@ Targeted tests:
 - `sub_district` recommendation signals render as `읍면동`.
 - Missing profile data renders a completion nudge.
 - Anonymous users still see quiz/signup paths.
-- Alert rows render reason chips when signals are available.
-- Alert rows degrade without throwing when reason signals are missing.
+- Notification history rows render reason chips when signals are available.
+- Notification history rows degrade without throwing when reason signals are missing.
+- `/alerts` continues to manage explicit deadline reminders.
+- Read, saved, and hidden states persist only after the item-state persistence slice exists.
 - Admin metric helpers return safe defaults on query errors.
 - High-risk admin actions remain gated by existing autonomous policy logic.
 
@@ -250,7 +289,9 @@ Validation commands for implementation slices:
 
 - Do not replace the recommendation engine.
 - Do not add a new external policy data source in this feature.
-- Do not add broad new notification channels in the first alert inbox slice.
+- Do not add broad new notification channels in the first notification inbox slice.
+- Do not treat `/alerts` and `/mypage/notifications/history` as the same data model.
+- Do not add read, saved, or hidden buttons without persistence.
 - Do not bypass admin automation risk gates.
 - Do not claim guaranteed benefit eligibility from recommendation signals.
 - Do not redesign every homepage, alert, or admin component at once.
@@ -261,7 +302,8 @@ The upgrade is successful when:
 
 - Users can see clear reasons for top recommendations.
 - Sub-district personalization is visible where it affects ranking.
-- The alert page feels like a personal policy inbox rather than a generic list.
+- `/mypage/notifications/history` feels like a personal policy inbox rather than a generic delivery log.
+- `/alerts` remains understandable as explicit deadline reminder management.
 - Admins can see whether recommendations and alerts are producing useful outcomes.
 - Failures degrade locally without breaking the page.
 - The implementation remains split into reviewable slices.
