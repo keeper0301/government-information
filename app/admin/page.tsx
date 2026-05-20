@@ -40,6 +40,7 @@ import {
 import { Sparkline } from "@/components/admin/sparkline";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { getDashboardAlerts } from "@/lib/admin/dashboard-alerts";
+import { getPolicyInboxStorageStatus } from "@/lib/admin/policy-inbox-storage-status";
 import { getAdminPersonalizationStatus } from "@/lib/admin/personalization-status";
 
 export const metadata: Metadata = {
@@ -194,6 +195,7 @@ export default async function AdminHomePage({
     dailyRevenue,
     alerts,
     personalizationStatus,
+    policyInboxStorageStatus,
   ] = await Promise.all([
     get24hStats(),
     getRecentSignups(5),
@@ -202,6 +204,7 @@ export default async function AdminHomePage({
     getDailyRevenueEstimated(30),
     getDashboardAlerts(),
     getAdminPersonalizationStatus(),
+    getPolicyInboxStorageStatus(),
   ]);
 
   return (
@@ -324,6 +327,34 @@ export default async function AdminHomePage({
             대기 중인 발송 {personalizationStatus.queued24h.toLocaleString()}건이 있습니다.
           </p>
         )}
+        <div className="mt-3 rounded-xl border border-grey-200 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold tracking-[0.06em] text-grey-700 uppercase">
+                정책함 저장소
+              </div>
+              <div className="mt-1 text-sm font-bold text-grey-900">
+                {policyInboxStorageStatus.label}
+              </div>
+              <div className="mt-1 text-xs text-grey-700">
+                {policyInboxStorageStatus.hint}
+              </div>
+            </div>
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                policyInboxStorageStatus.tone === "good"
+                  ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                  : policyInboxStorageStatus.tone === "warn"
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : "border-red/30 bg-red/10 text-red"
+              }`}
+            >
+              {policyInboxStorageStatus.status === "ready"
+                ? `${policyInboxStorageStatus.count.toLocaleString()}개 상태`
+                : "점검 필요"}
+            </span>
+          </div>
+        </div>
       </section>
 
       {/* 4. 30일 추세 차트 2종 */}
