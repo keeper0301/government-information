@@ -126,12 +126,14 @@ export function hasConflictingRegionInTitle(title: string, userRegion: string): 
 
 // 정책 지역 평가 결과
 // - national: 전국 정책 → +5
+// - region_sub_district: 광역 + 시군구 + 읍·면·동·리 정확 매칭 → +20 (Phase B 5/20)
 // - region_district: 광역 + 시군구 정확 매칭 → +10 (광역 5 + 시군구 5)
 // - region_only: 광역만 매칭 (정책에 시군구 명시 없음) → +5
 // - district_mismatch: 같은 광역인데 다른 시군구 → 0 (영암군 정책에 순천시 사용자 매칭 차단)
 // - no_match: 다른 광역 또는 정보 없음 → 0
 export type RegionMatchResult =
   | { kind: 'national'; score: 5 }
+  | { kind: 'region_sub_district'; score: 20 }
   | { kind: 'region_district'; score: 10 }
   | { kind: 'region_only'; score: 5 }
   | { kind: 'district_mismatch'; score: 0 }
@@ -150,6 +152,11 @@ export function evaluateRegion(
   userRegion: string | null,
   userDistrict: string | null,
   programDistrict?: string | null,
+  // 2026-05-20 Phase B — sub_district (읍·면·동·리) 단위 정확 매칭 시 +20.
+  // welfare/loan/news 에 sub_district 컬럼 추가 + 백필 (다음 step) 후 발현.
+  // 지금은 program.sub_district 가 NULL 이라 기존 동작 그대로.
+  userSubDistrict?: string | null,
+  programSubDistrict?: string | null,
 ): RegionMatchResult {
   if (!programRegion && !programDistrict) return { kind: 'no_match', score: 0 };
   // 사용자 region 미설정 → 어떤 매칭도 안 함 (기존 동작 유지: 빈 프로필은 추천 풀에 진입 못 함)
@@ -170,6 +177,15 @@ export function evaluateRegion(
   //    그렇지 않으면 위험. 단순화: region NULL 이면 정확 매칭 거부 (다음 단계로).
   if (userDistrict && programDistrict && userDistrict === programDistrict) {
     if (programRegion && regionHit) {
+      // 2026-05-20 Phase B — district 일치 + sub_district 도 일치하면 정확도 ↑ +20.
+      // userSubDistrict NULL 또는 programSubDistrict NULL 이면 기존 region_district +10.
+      if (
+        userSubDistrict &&
+        programSubDistrict &&
+        userSubDistrict === programSubDistrict
+      ) {
+        return { kind: 'region_sub_district', score: 20 };
+      }
       return { kind: 'region_district', score: 10 };
     }
     if (!programRegion) {
