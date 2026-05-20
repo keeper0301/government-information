@@ -97,6 +97,9 @@ describe("notification history inbox helpers", () => {
     expect(buildNotificationHistoryUrl(state, { status: "all", page: "2" })).toBe(
       "/mypage/notifications/history?page=2&period=7d&q=%EC%A3%BC%EA%B1%B0",
     );
+    expect(buildNotificationHistoryUrl(state, { box: "saved", page: "1" })).toBe(
+      "/mypage/notifications/history?status=failed&period=7d&q=%EC%A3%BC%EA%B1%B0&box=saved",
+    );
   });
 
   it("groups supported delivery policy ids and builds policy hrefs", () => {

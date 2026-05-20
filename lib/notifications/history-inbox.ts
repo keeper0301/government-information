@@ -86,7 +86,7 @@ export function normalizeHistorySearchParams(
 
 export function buildNotificationHistoryUrl(
   state: NotificationHistoryState,
-  overrides: Partial<Record<"page" | "status" | "period" | "q", string>>,
+  overrides: Partial<Record<"page" | "status" | "period" | "q" | "box", string>>,
 ): string {
   const next: Record<string, string> = {
     page: String(state.page),

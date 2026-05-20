@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Pagination } from "@/components/pagination";
 import { RecommendationReasonChips } from "@/components/personalization/recommendation-reason-chips";
+import { updatePolicyInboxItemState } from "./actions";
 import {
   NOTIFICATION_HISTORY_PER_PAGE,
   buildDeliveryHref,
@@ -17,6 +18,12 @@ import {
   type NotificationDelivery,
   type NotificationPolicy,
 } from "@/lib/notifications/history-inbox";
+import {
+  mergePolicyInboxState,
+  normalizePolicyInboxProgramRef,
+  type MergedPolicyInboxState,
+  type PolicyInboxStateRow,
+} from "@/lib/notifications/policy-inbox-state";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,6 +40,11 @@ type LoanPolicyRow = NotificationPolicy & {
   region_tags?: string[] | null;
 };
 
+type PolicyInboxStateDbRow = PolicyInboxStateRow & {
+  program_type: "welfare" | "loan";
+  program_id: string;
+};
+
 const POLICY_SELECT =
   "id, title, target, description, eligibility, detailed_content, region, district, sub_district, benefit_tags, apply_end, source, income_target_level, household_target_tags";
 
@@ -41,6 +53,10 @@ const LOAN_POLICY_SELECT =
 
 function toPolicyKey(table: string | null, id: string | null): string {
   return `${table ?? ""}:${id ?? ""}`;
+}
+
+function toInboxStateKey(programType: string | null, id: string | null): string {
+  return `${programType ?? ""}:${id ?? ""}`;
 }
 
 function toLoanPolicy(row: LoanPolicyRow): NotificationPolicy {
@@ -66,6 +82,7 @@ export default async function HistoryPage({
     status?: string;
     period?: string;
     q?: string;
+    box?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -74,8 +91,11 @@ export default async function HistoryPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/mypage/notifications/history");
 
-  const state = normalizeHistorySearchParams(await searchParams);
+  const params = await searchParams;
+  const state = normalizeHistorySearchParams(params);
   const { page, offset, statusParam, periodParam, q } = state;
+  const boxParam =
+    params.box === "saved" || params.box === "hidden" ? params.box : "inbox";
 
   let query = supabase
     .from("alert_deliveries")
@@ -105,6 +125,15 @@ export default async function HistoryPage({
   const profile = await loadUserProfile();
   const policyIds = groupDeliveryPolicyIds(deliveryRows);
   const policiesByKey = new Map<string, NotificationPolicy>();
+  const stateRefs = deliveryRows
+    .map((delivery) =>
+      normalizePolicyInboxProgramRef({
+        program_table: delivery.program_table,
+        program_id: delivery.program_id,
+      }),
+    )
+    .filter((ref): ref is NonNullable<typeof ref> => Boolean(ref));
+  const statesByKey = new Map<string, MergedPolicyInboxState>();
 
   if (policyIds.welfareIds.length > 0) {
     const { data } = await supabase
@@ -128,12 +157,48 @@ export default async function HistoryPage({
     }
   }
 
+  if (stateRefs.length > 0) {
+    const { data } = await supabase
+      .from("user_policy_inbox_items")
+      .select("program_type, program_id, read_at, saved_at, hidden_at")
+      .eq("user_id", user.id)
+      .in(
+        "program_id",
+        [...new Set(stateRefs.map((ref) => ref.program_id))],
+      );
+
+    for (const row of (data ?? []) as PolicyInboxStateDbRow[]) {
+      statesByKey.set(
+        toInboxStateKey(row.program_type, row.program_id),
+        mergePolicyInboxState(row),
+      );
+    }
+  }
+
   function buildUrl(overrides: Record<string, string>) {
-    return buildNotificationHistoryUrl(state, overrides);
+    const url = buildNotificationHistoryUrl(state, {
+      ...(boxParam !== "inbox" ? { box: boxParam } : {}),
+      ...overrides,
+    });
+    return url;
   }
 
   const sentCount = deliveryRows.filter((delivery) => delivery.status === "sent").length;
   const failedCount = deliveryRows.filter((delivery) => delivery.status === "failed").length;
+  const visibleDeliveries = deliveryRows.filter((delivery) => {
+    const ref = normalizePolicyInboxProgramRef({
+      program_table: delivery.program_table,
+      program_id: delivery.program_id,
+    });
+    const itemState = ref
+      ? statesByKey.get(toInboxStateKey(ref.program_type, ref.program_id)) ??
+        mergePolicyInboxState(null)
+      : mergePolicyInboxState(null);
+
+    if (boxParam === "saved") return itemState.isSaved && !itemState.isHidden;
+    if (boxParam === "hidden") return itemState.isHidden;
+    return !itemState.isHidden;
+  });
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-10">
@@ -227,7 +292,40 @@ export default async function HistoryPage({
         )}
       </form>
 
-      {isEmpty ? (
+      <nav className="mb-5 flex flex-wrap gap-2 text-sm">
+        <Link
+          href={buildNotificationHistoryUrl(state, { box: "inbox", page: "1" })}
+          className={`rounded-full border px-3 py-1.5 font-semibold no-underline ${
+            boxParam === "inbox"
+              ? "border-blue-200 bg-blue-50 text-blue-700"
+              : "border-grey-200 text-grey-700 hover:bg-grey-50"
+          }`}
+        >
+          받은 정책함
+        </Link>
+        <Link
+          href={buildNotificationHistoryUrl(state, { box: "saved", page: "1" })}
+          className={`rounded-full border px-3 py-1.5 font-semibold no-underline ${
+            boxParam === "saved"
+              ? "border-blue-200 bg-blue-50 text-blue-700"
+              : "border-grey-200 text-grey-700 hover:bg-grey-50"
+          }`}
+        >
+          저장한 정책
+        </Link>
+        <Link
+          href={buildNotificationHistoryUrl(state, { box: "hidden", page: "1" })}
+          className={`rounded-full border px-3 py-1.5 font-semibold no-underline ${
+            boxParam === "hidden"
+              ? "border-blue-200 bg-blue-50 text-blue-700"
+              : "border-grey-200 text-grey-700 hover:bg-grey-50"
+          }`}
+        >
+          숨긴 정책
+        </Link>
+      </nav>
+
+      {isEmpty || visibleDeliveries.length === 0 ? (
         <div className="rounded-lg bg-grey-50 p-8 text-center text-[14px] leading-[1.7] text-grey-700">
           {isFiltered ? (
             <>
@@ -252,11 +350,19 @@ export default async function HistoryPage({
       ) : (
         <>
           <div className="space-y-3">
-            {deliveryRows.map((delivery) => {
+            {visibleDeliveries.map((delivery) => {
               const statusMeta = getDeliveryStatusMeta(delivery.status);
               const policy = policiesByKey.get(
                 toPolicyKey(delivery.program_table, delivery.program_id),
               );
+              const inboxRef = normalizePolicyInboxProgramRef({
+                program_table: delivery.program_table,
+                program_id: delivery.program_id,
+              });
+              const itemState = inboxRef
+                ? statesByKey.get(toInboxStateKey(inboxRef.program_type, inboxRef.program_id)) ??
+                  mergePolicyInboxState(null)
+                : mergePolicyInboxState(null);
               const reasonSignals = getDeliveryReasonSignals(
                 policy,
                 profile?.signals ?? null,
@@ -264,25 +370,41 @@ export default async function HistoryPage({
               const deliveredAt = delivery.sent_at ?? delivery.created_at;
 
               return (
-                <Link
+                <article
                   key={delivery.id}
-                  href={buildDeliveryHref(delivery)}
-                  className="block rounded-lg border border-grey-200 bg-white p-4 no-underline hover:bg-grey-50"
+                  className={`rounded-lg border bg-white p-4 ${
+                    itemState.isRead ? "border-grey-200" : "border-blue-200"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-semibold text-grey-500">
                         {getDeliveryChannelLabel(delivery.channel)} · {formatDateTime(deliveredAt)}
                       </div>
-                      <h2 className="mt-1 text-base font-bold leading-6 text-grey-950">
+                      <Link
+                        href={buildDeliveryHref(delivery)}
+                        className="mt-1 block text-base font-bold leading-6 text-grey-950 no-underline hover:text-blue-700"
+                      >
                         {delivery.program_title || policy?.title || "제목 없는 정책"}
-                      </h2>
+                      </Link>
                     </div>
-                    <span
-                      className={`shrink-0 rounded border px-2 py-0.5 text-[12px] font-bold ${statusMeta.badgeClassName}`}
-                    >
-                      {statusMeta.label}
-                    </span>
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                      {!itemState.isRead && (
+                        <span className="rounded border border-blue-100 bg-blue-50 px-2 py-0.5 text-[12px] font-bold text-blue-700">
+                          새 정책
+                        </span>
+                      )}
+                      {itemState.isSaved && (
+                        <span className="rounded border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[12px] font-bold text-emerald-700">
+                          저장됨
+                        </span>
+                      )}
+                      <span
+                        className={`rounded border px-2 py-0.5 text-[12px] font-bold ${statusMeta.badgeClassName}`}
+                      >
+                        {statusMeta.label}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-3">
@@ -304,10 +426,34 @@ export default async function HistoryPage({
                     </p>
                   )}
 
-                  <div className="mt-3 text-[13px] font-semibold text-blue-700">
-                    정책 확인하기
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {inboxRef && (
+                      <>
+                        <PolicyInboxStateButton
+                          delivery={delivery}
+                          action={itemState.isRead ? "unread" : "read"}
+                          label={itemState.isRead ? "안 읽음" : "읽음"}
+                        />
+                        <PolicyInboxStateButton
+                          delivery={delivery}
+                          action={itemState.isSaved ? "unsave" : "save"}
+                          label={itemState.isSaved ? "저장 해제" : "저장"}
+                        />
+                        <PolicyInboxStateButton
+                          delivery={delivery}
+                          action={itemState.isHidden ? "unhide" : "hide"}
+                          label={itemState.isHidden ? "숨김 해제" : "숨김"}
+                        />
+                      </>
+                    )}
+                    <Link
+                      href={buildDeliveryHref(delivery)}
+                      className="text-[13px] font-semibold text-blue-700 no-underline hover:underline"
+                    >
+                      정책 확인하기
+                    </Link>
                   </div>
-                </Link>
+                </article>
               );
             })}
           </div>
@@ -318,5 +464,29 @@ export default async function HistoryPage({
         </>
       )}
     </main>
+  );
+}
+
+function PolicyInboxStateButton({
+  delivery,
+  action,
+  label,
+}: {
+  delivery: NotificationDelivery;
+  action: string;
+  label: string;
+}) {
+  return (
+    <form action={updatePolicyInboxItemState}>
+      <input type="hidden" name="program_table" value={delivery.program_table ?? ""} />
+      <input type="hidden" name="program_id" value={delivery.program_id ?? ""} />
+      <input type="hidden" name="action" value={action} />
+      <button
+        type="submit"
+        className="rounded-md border border-grey-200 px-2.5 py-1 text-[12px] font-semibold text-grey-700 hover:bg-grey-50"
+      >
+        {label}
+      </button>
+    </form>
   );
 }
