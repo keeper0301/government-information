@@ -1,0 +1,17 @@
+{
+  "name": "keepioo-playwright-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "keepioo SPA 시청 보도자료 scrape — GitHub Actions ubuntu / 사장님 PC 양쪽 호환",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test:changwon": "node lib/changwon.mjs",
+    "run:all": "node runner.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
