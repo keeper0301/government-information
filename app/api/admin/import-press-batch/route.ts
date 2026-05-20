@@ -21,6 +21,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -35,6 +36,21 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     ministry: "창원특례시청",
     sourceOutlet: "창원특례시청",
     sourceCode: "local-press-changwon",
+  },
+  seongnam: {
+    ministry: "성남시청",
+    sourceOutlet: "성남시청",
+    sourceCode: "local-press-seongnam",
+  },
+  ansan: {
+    ministry: "안산시청",
+    sourceOutlet: "안산시청",
+    sourceCode: "local-press-ansan",
+  },
+  cheonan: {
+    ministry: "천안시청",
+    sourceOutlet: "천안시청",
+    sourceCode: "local-press-cheonan",
   },
 };
 
@@ -114,6 +130,10 @@ export async function POST(request: Request) {
       ? `${item.publishedDate}T00:00:00+09:00`
       : now;
 
+    // NOT NULL 가드 — source_id / category / slug 누락 시 silent fail (audit 2026-05-22).
+    const sourceId = makeNewsSourceId(item.sourceUrl);
+    const slug = makeNewsSlug(item.title, cityKey, sourceId);
+
     const { error } = await admin.from("news_posts").insert({
       title: item.title,
       summary: item.body.slice(0, 500),
@@ -121,6 +141,9 @@ export async function POST(request: Request) {
       source_url: item.sourceUrl,
       source_outlet: cfg.sourceOutlet,
       source_code: cfg.sourceCode,
+      source_id: sourceId,
+      category: "news",
+      slug,
       ministry: cfg.ministry,
       published_at: publishedAt,
       classified_at: null,

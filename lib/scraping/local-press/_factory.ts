@@ -18,6 +18,8 @@
 // 기존 suncheon/gwangju/seoul 은 자체 작성. helper 마이그레이션은 다음 차.
 // ============================================================
 
+import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+
 const USER_AGENT =
   "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
 
@@ -129,6 +131,13 @@ export function createPressCollector(cfg: PressCollectorConfig) {
         skipped += 1;
         continue;
       }
+      // NOT NULL 가드 — source_id / category / slug 추가 (audit 2026-05-22).
+      // 누락 시 silent fail → 시·군 collector 27개 prod row 0건 사고 해소.
+      const sourceId = makeNewsSourceId(item.sourceUrl);
+      // cityKey 는 sourceCode 의 마지막 segment (`local-press-suncheon` → `suncheon`)
+      const cityKey = cfg.sourceCode.replace(/^local-press-/, "");
+      const slug = makeNewsSlug(item.title, cityKey, sourceId);
+
       const { error } = await admin.from("news_posts").insert({
         title: item.title.slice(0, 500),
         summary: body.slice(0, 500),
@@ -136,6 +145,9 @@ export function createPressCollector(cfg: PressCollectorConfig) {
         source_url: item.sourceUrl,
         source_outlet: cfg.sourceOutlet,
         source_code: cfg.sourceCode, // 2026-05-20 — NOT NULL constraint fix
+        source_id: sourceId,
+        category: "news",
+        slug,
         ministry: cfg.ministry,
         published_at: item.publishedDate
           ? `${item.publishedDate}T00:00:00+09:00`

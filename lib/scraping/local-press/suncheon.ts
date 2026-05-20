@@ -19,6 +19,8 @@
 //   - parse 실패 graceful skip
 // ============================================================
 
+import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+
 const LIST_URL = "http://www.suncheon.go.kr/kr/news/0006/0001/";
 const DETAIL_BASE = "http://www.suncheon.go.kr/kr/news/0006/0001/";
 const USER_AGENT = "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
@@ -150,6 +152,10 @@ export async function scrapeSuncheonAndInsert(
       skipped += 1;
       continue;
     }
+    // NOT NULL 가드 (audit 2026-05-22) — source_id / category / slug 필수.
+    const sourceId = makeNewsSourceId(item.sourceUrl);
+    const slug = makeNewsSlug(item.title, "suncheon", sourceId);
+
     const { error } = await admin.from("news_posts").insert({
       title: item.title.slice(0, 500),
       summary: item.body.slice(0, 500),
@@ -158,6 +164,9 @@ export async function scrapeSuncheonAndInsert(
       source_outlet: SUNCHEON_SOURCE_OUTLET,
 
       source_code: "local-press-suncheon",
+      source_id: sourceId,
+      category: "news",
+      slug,
       ministry: SUNCHEON_MINISTRY,
       published_at: now,
       classified_at: null,

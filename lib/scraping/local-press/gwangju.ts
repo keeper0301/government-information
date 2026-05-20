@@ -8,6 +8,8 @@
 //      → 상세: /boardView.do?pageId=www789&boardId=BD_0000000027&seq=NNNN
 // ============================================================
 
+import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+
 const LIST_URL =
   "https://www.gwangju.go.kr/boardList.do?pageId=www789&boardId=BD_0000000027";
 const DETAIL_BASE = "https://www.gwangju.go.kr/boardView.do";
@@ -148,6 +150,10 @@ export async function scrapeGwangjuAndInsert(
     const publishedAt = item.publishedDate
       ? new Date(item.publishedDate).toISOString()
       : now;
+    // NOT NULL 가드 (audit 2026-05-22) — source_id / category / slug 필수.
+    const sourceId = makeNewsSourceId(item.sourceUrl);
+    const slug = makeNewsSlug(item.title, "gwangju", sourceId);
+
     const { error } = await admin.from("news_posts").insert({
       title: item.title.slice(0, 500),
       summary: item.body.slice(0, 500),
@@ -156,6 +162,9 @@ export async function scrapeGwangjuAndInsert(
       source_outlet: GWANGJU_SOURCE_OUTLET,
 
       source_code: "local-press-gwangju",
+      source_id: sourceId,
+      category: "news",
+      slug,
       ministry: GWANGJU_MINISTRY,
       published_at: publishedAt,
       classified_at: null,

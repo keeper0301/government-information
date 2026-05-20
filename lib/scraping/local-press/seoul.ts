@@ -11,6 +11,8 @@
 // 가 low tier 또는 skip. 일반 정책 글은 <p> 텍스트 추출 가능.
 // ============================================================
 
+import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+
 const LIST_URL = "https://opengov.seoul.go.kr/press/list";
 const DETAIL_BASE = "https://opengov.seoul.go.kr/press";
 const USER_AGENT =
@@ -146,6 +148,10 @@ export async function scrapeSeoulAndInsert(
       skipped += 1; // iframe PDF 공문 등 본문 추출 불가
       continue;
     }
+    // NOT NULL 가드 (audit 2026-05-22) — source_id / category / slug 필수.
+    const sourceId = makeNewsSourceId(item.sourceUrl);
+    const slug = makeNewsSlug(item.title, "seoul", sourceId);
+
     const { error } = await admin.from("news_posts").insert({
       title: item.title.slice(0, 500),
       summary: body.slice(0, 500),
@@ -154,6 +160,9 @@ export async function scrapeSeoulAndInsert(
       source_outlet: SEOUL_SOURCE_OUTLET,
 
       source_code: "local-press-seoul",
+      source_id: sourceId,
+      category: "news",
+      slug,
       ministry: SEOUL_MINISTRY,
       published_at: item.publishedDate
         ? `${item.publishedDate}T00:00:00+09:00`

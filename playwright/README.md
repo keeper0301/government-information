@@ -21,23 +21,25 @@ node runner.mjs
 
 ## 디렉터리
 
-- `lib/changwon.mjs` — 1차 시 1개. `scrapeChangwon({ limit, headless })` export
+- `lib/_factory.mjs` — `makeScraper({ listUrl, cityName })` 표준 selector 분기
+- `lib/cities.mjs` — 4 city config (창원·성남·안산·천안) export
 - `runner.mjs` — entry, COLLECTORS 순서대로 scrape + POST
-- 다음 세션 추가 예정: `lib/{seongnam,ansan,cheonan}.mjs`
 
 ## manual test
 
 ```bash
-node lib/changwon.mjs  # 3건 list + body 길이 출력
+node lib/cities.mjs changwon   # 또는 seongnam / ansan / cheonan
+# 또는 npm script
+npm run test:changwon
 ```
 
-## GitHub Actions (다음 세션)
+## GitHub Actions
 
-`.github/workflows/big-cities-press.yml` 추가 예정. 매 6시간 (KST 10/16/22/4) cron + workflow_dispatch.
+`.github/workflows/big-cities-press.yml` — KST 10/16/22/4 cron + workflow_dispatch.
 
-secrets:
-- `KEEPIOO_API_URL`
-- `KEEPIOO_API_KEY`
+secrets 등록 (사장님 GitHub repo settings → Secrets and variables → Actions):
+- `KEEPIOO_API_URL=https://www.keepioo.com`
+- `KEEPIOO_API_KEY=<Vercel env IMPORT_PRESS_API_KEY 와 동일 값>`
 
 ## 회귀 안전
 

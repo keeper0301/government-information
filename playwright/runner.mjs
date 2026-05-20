@@ -15,11 +15,18 @@
 //   - 사장님 PC (.env.local 또는 task scheduler)
 // ============================================================
 
-import { scrapeChangwon } from "./lib/changwon.mjs";
+import {
+  scrapeChangwon,
+  scrapeSeongnam,
+  scrapeAnsan,
+  scrapeCheonan,
+} from "./lib/cities.mjs";
 
 const COLLECTORS = [
   { city: "창원시", key: "changwon", fn: scrapeChangwon },
-  // 다음 세션 추가: 성남시 / 안산시 / 천안시
+  { city: "성남시", key: "seongnam", fn: scrapeSeongnam },
+  { city: "안산시", key: "ansan", fn: scrapeAnsan },
+  { city: "천안시", key: "cheonan", fn: scrapeCheonan },
 ];
 
 async function postBatch({ apiUrl, apiKey, city, items }) {

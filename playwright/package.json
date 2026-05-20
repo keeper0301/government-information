@@ -8,7 +8,10 @@
     "node": ">=20"
   },
   "scripts": {
-    "test:changwon": "node lib/changwon.mjs",
+    "test:changwon": "node lib/cities.mjs changwon",
+    "test:seongnam": "node lib/cities.mjs seongnam",
+    "test:ansan": "node lib/cities.mjs ansan",
+    "test:cheonan": "node lib/cities.mjs cheonan",
     "run:all": "node runner.mjs"
   },
   "dependencies": {
