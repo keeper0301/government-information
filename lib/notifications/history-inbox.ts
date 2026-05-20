@@ -3,6 +3,7 @@ import {
   type ScorableItem,
 } from "@/lib/personalization/score";
 import type { MatchSignal, UserSignals } from "@/lib/personalization/types";
+import type { PolicyInboxProgramRef } from "@/lib/notifications/policy-inbox-state";
 
 export const NOTIFICATION_HISTORY_PER_PAGE = 30;
 
@@ -38,6 +39,9 @@ export type DeliveryStatusMeta = {
   tone: DeliveryStatusTone;
   badgeClassName: string;
 };
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function statusToDb(status: string): "sent" | "failed" | "queued" | null {
   if (status === "sent") return "sent";
@@ -125,6 +129,36 @@ export function groupDeliveryPolicyIds(deliveries: NotificationDelivery[]): {
     welfareIds: [...welfareIds],
     loanIds: [...loanIds],
   };
+}
+
+export function buildDeliveryPolicyRefOrFilter(
+  refs: PolicyInboxProgramRef[],
+): string | null {
+  const welfareIds = new Set<string>();
+  const loanIds = new Set<string>();
+
+  for (const ref of refs) {
+    if (!UUID_RE.test(ref.program_id)) continue;
+    if (ref.program_type === "welfare") {
+      welfareIds.add(ref.program_id);
+    } else if (ref.program_type === "loan") {
+      loanIds.add(ref.program_id);
+    }
+  }
+
+  const parts: string[] = [];
+  if (welfareIds.size > 0) {
+    parts.push(
+      `and(program_table.eq.welfare_programs,program_id.in.(${[...welfareIds].join(",")}))`,
+    );
+  }
+  if (loanIds.size > 0) {
+    parts.push(
+      `and(program_table.eq.loan_programs,program_id.in.(${[...loanIds].join(",")}))`,
+    );
+  }
+
+  return parts.length > 0 ? parts.join(",") : null;
 }
 
 export function buildDeliveryHref(delivery: NotificationDelivery): string {

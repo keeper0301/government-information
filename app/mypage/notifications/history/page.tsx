@@ -7,6 +7,7 @@ import { updatePolicyInboxItemState } from "./actions";
 import {
   NOTIFICATION_HISTORY_PER_PAGE,
   buildDeliveryHref,
+  buildDeliveryPolicyRefOrFilter,
   buildNotificationHistoryUrl,
   getDeliveryChannelLabel,
   getDeliveryReasonSignals,
@@ -23,6 +24,7 @@ import {
   isPolicyInboxStorageUnavailableError,
   normalizePolicyInboxProgramRef,
   type MergedPolicyInboxState,
+  type PolicyInboxProgramRef,
   type PolicyInboxStateRow,
 } from "@/lib/notifications/policy-inbox-state";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
@@ -97,6 +99,45 @@ export default async function HistoryPage({
   const { page, offset, statusParam, periodParam, q } = state;
   const boxParam =
     params.box === "saved" || params.box === "hidden" ? params.box : "inbox";
+  let policyInboxStorageReady = true;
+  let skipDeliveryQuery = false;
+  let boxStateRows: PolicyInboxStateDbRow[] = [];
+  let boxRefs: PolicyInboxProgramRef[] | null = null;
+
+  if (boxParam !== "inbox") {
+    let stateQuery = supabase
+      .from("user_policy_inbox_items")
+      .select("program_type, program_id, read_at, saved_at, hidden_at")
+      .eq("user_id", user.id);
+
+    if (boxParam === "saved") {
+      stateQuery = stateQuery
+        .not("saved_at", "is", null)
+        .is("hidden_at", null)
+        .order("saved_at", { ascending: false });
+    } else {
+      stateQuery = stateQuery
+        .not("hidden_at", "is", null)
+        .order("hidden_at", { ascending: false });
+    }
+
+    const { data, error } = await stateQuery.limit(1000);
+
+    if (error) {
+      policyInboxStorageReady = false;
+      skipDeliveryQuery = true;
+      if (!isPolicyInboxStorageUnavailableError(error)) {
+        console.warn("[policy-inbox] box state fetch failed:", error.message);
+      }
+    } else {
+      boxStateRows = (data ?? []) as PolicyInboxStateDbRow[];
+      boxRefs = boxStateRows.map((row) => ({
+        program_type: row.program_type,
+        program_id: row.program_id,
+      }));
+      skipDeliveryQuery = boxRefs.length === 0;
+    }
+  }
 
   let query = supabase
     .from("alert_deliveries")
@@ -113,12 +154,25 @@ export default async function HistoryPage({
     query = query.ilike("program_title", `%${q}%`);
   }
 
-  const { data: deliveries, count } = await query
-    .order("created_at", { ascending: false })
-    .range(offset, offset + NOTIFICATION_HISTORY_PER_PAGE - 1);
+  if (boxRefs && boxRefs.length > 0) {
+    const boxFilter = buildDeliveryPolicyRefOrFilter(boxRefs);
+    if (boxFilter) {
+      query = query.or(boxFilter);
+    } else {
+      skipDeliveryQuery = true;
+    }
+  }
 
-  const deliveryRows = (deliveries ?? []) as NotificationDelivery[];
-  const total = count ?? 0;
+  let deliveryRows: NotificationDelivery[] = [];
+  let total = 0;
+  if (!skipDeliveryQuery) {
+    const { data: deliveries, count } = await query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + NOTIFICATION_HISTORY_PER_PAGE - 1);
+
+    deliveryRows = (deliveries ?? []) as NotificationDelivery[];
+    total = count ?? 0;
+  }
   const totalPages = Math.max(1, Math.ceil(total / NOTIFICATION_HISTORY_PER_PAGE));
   const isFiltered = statusParam !== "all" || periodParam !== "30d" || Boolean(q);
   const isEmpty = deliveryRows.length === 0;
@@ -135,7 +189,13 @@ export default async function HistoryPage({
     )
     .filter((ref): ref is NonNullable<typeof ref> => Boolean(ref));
   const statesByKey = new Map<string, MergedPolicyInboxState>();
-  let policyInboxStorageReady = true;
+
+  for (const row of boxStateRows) {
+    statesByKey.set(
+      toInboxStateKey(row.program_type, row.program_id),
+      mergePolicyInboxState(row),
+    );
+  }
 
   if (policyIds.welfareIds.length > 0) {
     const { data } = await supabase
@@ -159,7 +219,7 @@ export default async function HistoryPage({
     }
   }
 
-  if (stateRefs.length > 0) {
+  if (stateRefs.length > 0 && policyInboxStorageReady) {
     const { data, error } = await supabase
       .from("user_policy_inbox_items")
       .select("program_type, program_id, read_at, saved_at, hidden_at")

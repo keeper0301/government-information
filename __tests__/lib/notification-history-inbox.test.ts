@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDeliveryHref,
+  buildDeliveryPolicyRefOrFilter,
   buildNotificationHistoryUrl,
   getDeliveryReasonSignals,
   getDeliveryStatusMeta,
@@ -117,6 +118,40 @@ describe("notification history inbox helpers", () => {
     expect(buildDeliveryHref(deliveries[0])).toBe("/welfare/policy-1");
     expect(buildDeliveryHref(deliveries[1])).toBe("/loan/loan-1");
     expect(buildDeliveryHref(deliveries[2])).toBe("/policy");
+  });
+
+  it("builds a safe delivery filter from policy inbox refs", () => {
+    expect(
+      buildDeliveryPolicyRefOrFilter([
+        {
+          program_type: "welfare",
+          program_id: "11111111-1111-4111-8111-111111111111",
+        },
+        {
+          program_type: "welfare",
+          program_id: "11111111-1111-4111-8111-111111111111",
+        },
+        {
+          program_type: "loan",
+          program_id: "22222222-2222-4222-8222-222222222222",
+        },
+        {
+          program_type: "loan",
+          program_id: "not-a-uuid",
+        },
+      ]),
+    ).toBe(
+      "and(program_table.eq.welfare_programs,program_id.in.(11111111-1111-4111-8111-111111111111)),and(program_table.eq.loan_programs,program_id.in.(22222222-2222-4222-8222-222222222222))",
+    );
+
+    expect(
+      buildDeliveryPolicyRefOrFilter([
+        {
+          program_type: "welfare",
+          program_id: "not-a-uuid",
+        },
+      ]),
+    ).toBeNull();
   });
 
   it("returns display metadata for delivery statuses", () => {
