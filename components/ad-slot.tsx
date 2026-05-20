@@ -2,21 +2,56 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// 2026-05-21 — 위치별 slot/layout 분리 (#43).
+// AdSense console 에서 위치별 ad unit 생성 후 해당 env 등록하면 자동 분기.
+// env 미등록 위치는 기존 SLOT_INFEED + LAYOUT_INFEED fallback → 회귀 0.
 const PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
-const SLOT_INFEED = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
-const LAYOUT_INFEED = process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_INFEED;
+const SLOT_DEFAULT = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
+const LAYOUT_DEFAULT = process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_INFEED;
+
+// 위치별 slot ID 매핑 — env 미설정 시 default fallback.
+const PLACEMENT_SLOTS: Record<AdPlacement, string | undefined> = {
+  home: process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME,
+  list: process.env.NEXT_PUBLIC_ADSENSE_SLOT_LIST,
+  detail: process.env.NEXT_PUBLIC_ADSENSE_SLOT_DETAIL,
+  category: process.env.NEXT_PUBLIC_ADSENSE_SLOT_CATEGORY,
+  eligibility: process.env.NEXT_PUBLIC_ADSENSE_SLOT_ELIGIBILITY,
+  default: undefined,
+};
+const PLACEMENT_LAYOUTS: Record<AdPlacement, string | undefined> = {
+  home: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_HOME,
+  list: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_LIST,
+  detail: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_DETAIL,
+  category: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_CATEGORY,
+  eligibility: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_ELIGIBILITY,
+  default: undefined,
+};
+
 const EMPTY_SLOT_FALLBACK_MS = 15000;
 
 type AdsByGoogle = Array<Record<string, unknown>>;
 export type AdRenderState = "pending" | "filled" | "empty";
 
+export type AdPlacement =
+  | "home"
+  | "list"
+  | "detail"
+  | "category"
+  | "eligibility"
+  | "default";
+
 interface AdSlotProps {
   /**
    * AdSense ad-format.
-   * - "fluid": in-feed
+   * - "fluid": in-feed (layout-key 필요)
    * - "auto": responsive banner
    */
   format?: "fluid" | "auto";
+  /**
+   * 광고 위치 — AdSense console 에서 위치별 ad unit 생성 후 해당 env 등록 시
+   * 위치별 수익/CTR 분석 가능. env 미등록 시 default fallback.
+   */
+  placement?: AdPlacement;
 }
 
 export function getAdRenderState(node: Element): AdRenderState {
@@ -26,12 +61,19 @@ export function getAdRenderState(node: Element): AdRenderState {
   return "pending";
 }
 
-export function AdSlot({ format = "fluid" }: AdSlotProps) {
+export function AdSlot({ format = "fluid", placement = "default" }: AdSlotProps) {
   const adRef = useRef<HTMLModElement | null>(null);
   const [renderState, setRenderState] = useState<AdRenderState>("pending");
 
+  // placement 별 slot/layout 선택 + default fallback.
+  const slotId = PLACEMENT_SLOTS[placement] ?? SLOT_DEFAULT;
+  const layoutKey =
+    format === "fluid"
+      ? PLACEMENT_LAYOUTS[placement] ?? LAYOUT_DEFAULT
+      : undefined;
+
   useEffect(() => {
-    if (!PUBLISHER_ID || !SLOT_INFEED) return;
+    if (!PUBLISHER_ID || !slotId) return;
     if (typeof window === "undefined") return;
 
     let observer: MutationObserver | null = null;
@@ -73,12 +115,12 @@ export function AdSlot({ format = "fluid" }: AdSlotProps) {
       observer?.disconnect();
       if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
     };
-  }, []);
+  }, [slotId]);
 
   // 2026-05-18 AdSense 5/18 재거절 후속 — env 미설정 시 placeholder 노출 X.
   // AdSense 검수 봇이 빈 "광고" 박스를 "콘텐츠 없는 광고 슬롯" 으로 인식 risk.
   // 검수 통과 후 env 등록 → 자동으로 실제 광고 렌더링 재개.
-  if (!PUBLISHER_ID || !SLOT_INFEED) {
+  if (!PUBLISHER_ID || !slotId) {
     return null;
   }
 
@@ -95,9 +137,9 @@ export function AdSlot({ format = "fluid" }: AdSlotProps) {
         className="adsbygoogle block"
         style={{ display: "block" }}
         data-ad-format={format}
-        data-ad-layout-key={LAYOUT_INFEED}
+        data-ad-layout-key={layoutKey}
         data-ad-client={PUBLISHER_ID}
-        data-ad-slot={SLOT_INFEED}
+        data-ad-slot={slotId}
       />
     </div>
   );

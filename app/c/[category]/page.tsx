@@ -459,7 +459,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
             관련 가이드/블로그 (보조 콘텐츠) 사이. 자연 흐름 끊지 않는 위치. */}
         {(recommended.length > 0 || deadlineSoon.length > 0) && (
           <div className="mb-10">
-            <AdSlot />
+            <AdSlot placement="category" />
           </div>
         )}
 

@@ -340,7 +340,7 @@ export default async function NewsDetailPage({ params }: Props) {
           AdSense 정책상 "위치" 가 중요: 본문 전부 읽은 독자에게 자연스럽게 광고 →
           키피오 USP 인 관련 공고 로 이어지는 흐름. 광고가 차단기 역할 안 하게 배치. */}
       <div className="my-8 -mx-10 max-md:-mx-6">
-        <AdSlot />
+        <AdSlot placement="detail" />
       </div>
 
       {/* 관련 공고 — keepioo 의 진짜 차별점. 뉴스 읽고 바로 신청 가능한 공고로. */}

@@ -200,7 +200,7 @@ export default async function EligibilityCategoryPage({
           long-tail SEO 진입자의 정책 탐색을 다 끝낸 시점이라 광고 친화적 위치. */}
       {programs.length > 0 && (
         <div className="mt-8">
-          <AdSlot />
+          <AdSlot placement="eligibility" />
         </div>
       )}
 

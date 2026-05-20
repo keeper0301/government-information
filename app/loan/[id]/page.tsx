@@ -381,7 +381,7 @@ export default async function LoanDetailPage({ params }: Props) {
 
       {/* Ad */}
       <div className="mt-12">
-        <AdSlot />
+        <AdSlot placement="detail" />
       </div>
     </main>
   );

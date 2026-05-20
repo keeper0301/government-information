@@ -530,7 +530,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
             정책 위반 위험 → 페이지당 1개만. */}
         {list.length > 0 && (
           <div className="mt-10">
-            <AdSlot />
+            <AdSlot placement="list" />
           </div>
         )}
 

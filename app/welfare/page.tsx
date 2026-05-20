@@ -341,7 +341,7 @@ export default async function WelfarePage({ searchParams }: Props) {
                     로 자기 가로폭 처리 → row list 흐름 자연스럽게 끊고 다음 row 로 이어짐. */}
                 {idx === 4 && page === 1 && (
                   <div className="-mx-6 md:-mx-8 my-1">
-                    <AdSlot />
+                    <AdSlot placement="list" />
                   </div>
                 )}
               </div>
@@ -357,7 +357,7 @@ export default async function WelfarePage({ searchParams }: Props) {
       {/* Ad — 리스트 끝 추가 슬롯 (스크롤 끝 도달한 사용자 대상). page 무관 노출. */}
       {programs.length > 0 && (
         <div className="mt-8">
-          <AdSlot />
+          <AdSlot placement="list" />
         </div>
       )}
 

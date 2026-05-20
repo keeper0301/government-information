@@ -148,7 +148,7 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
         {/* AdSense 슬롯 — 키워드별 뉴스 다 읽은 독자에게. 라이선스 안내 앞. */}
         {list.length > 0 && (
           <div className="mt-10">
-            <AdSlot />
+            <AdSlot placement="category" />
           </div>
         )}
 
