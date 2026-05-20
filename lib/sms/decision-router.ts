@@ -62,12 +62,14 @@ export async function registerDecision(
 
   // 2026-05-21 사장님 명시 — SMS off, 텔레그램으로 알림 도달.
   // multichannel 가 SMS + 텔레그램 동시 발송 → OPS_ALERT_DISABLE_SMS=true env 에서 텔레그램만.
-  // 답장 처리는 webhook (handleSmsReply) — SMS off 시 사장님은 /admin/decisions UI 또는
-  // 텔레그램 봇 명령 (다음 세션 spec) 으로 결정 처리 필요.
-  const smsBody = `${input.prompt}\n\n1=승인 / 2=무시 / 3=상의`;
+  // 답장 처리 2 채널 (2026-05-22):
+  //   1) 텔레그램 봇 `/decide approve|reject|consult {8자 id}`
+  //   2) /admin/decisions web UI
+  const smsBody = `${input.prompt}\n\n처리:\n· 텔레그램 봇 /decide\n· keepioo.com/admin/decisions`;
   const multi = await sendOpsAlertMultichannel({
     subject: "[keepioo 결정 요청]",
     message: smsBody,
+    link: "keepioo.com/admin/decisions",
   });
   // 기존 호환성 위해 smsResult 그대로 반환 (sms 채널 결과만).
   const smsResult: Awaited<ReturnType<typeof sendOpsAlertSms>> =
