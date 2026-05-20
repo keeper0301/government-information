@@ -30,6 +30,7 @@ import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
 import { scrapeSejongAndInsert } from "./sejong";
 import { scrapeJeonnamAndInsert } from "./jeonnam";
+import { scrapeGyeonggiAndInsert } from "./gyeonggi";
 
 export type CityKey =
   | "suncheon"
@@ -52,7 +53,8 @@ export type CityKey =
   | "iksan"
   | "daegu"
   | "sejong"
-  | "jeonnam";
+  | "jeonnam"
+  | "gyeonggi";
 
 export type CityEntry = {
   key: CityKey;
@@ -232,6 +234,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.jeonnam.go.kr/M7116/boardList.do?menuId=jeonnam0202000000",
     fn: scrapeJeonnamAndInsert,
+  },
+  {
+    key: "gyeonggi",
+    city: "경기도",
+    ministry: "경기도청",
+    ministryAliases: ["경기도"],
+    siteUrl: "https://gnews.gg.go.kr/briefing/brief_gongbo.do",
+    fn: scrapeGyeonggiAndInsert,
   },
 ];
 
