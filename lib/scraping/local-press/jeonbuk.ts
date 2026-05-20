@@ -28,39 +28,28 @@ const BODY_CONTAINER_REGEX =
   /<div\s+class="bbs_view"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<\/section|<\/article)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
-  const items: Array<Omit<PressNewsItem, "publishedDate"> & { idx: number }> = [];
+  const items: PressNewsItem[] = [];
   const seen = new Set<string>();
-  const dates: string[] = [];
 
   let m: RegExpExecArray | null;
   const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
-  let idx = 0;
   while ((m = itemRe.exec(html)) !== null) {
     const seq = m[1];
     if (seen.has(seq)) continue;
     seen.add(seq);
     const title = decodeBasicEntities(m[2]).trim();
     if (!title || title.length < 5) continue;
+    const slice = html.slice(m.index, m.index + 800);
+    const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     items.push({
-      idx,
       seq,
       title,
+      publishedDate: dateMatch ? dateMatch[1] : null,
       sourceUrl: `${BASE_URL}/board/view.jeonbuk?boardId=BBS_0000090&menuCd=DOM_000001101000000000&dataSid=${seq}`,
     });
-    idx += 1;
   }
 
-  const dateRe = new RegExp(DATE_REGEX.source, "g");
-  while ((m = dateRe.exec(html)) !== null) {
-    dates.push(m[1]);
-  }
-
-  return items.map((item) => ({
-    seq: item.seq,
-    title: item.title,
-    publishedDate: dates[item.idx] ?? null,
-    sourceUrl: item.sourceUrl,
-  }));
+  return items;
 }
 
 export function parseDetailBody(html: string): string | null {

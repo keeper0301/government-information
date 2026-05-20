@@ -33,40 +33,28 @@ const BODY_CONTAINER_REGEX =
   /<div\s+class="bbs_view_contnet"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
-  const items: Array<Omit<PressNewsItem, "publishedDate"> & { idx: number }> = [];
-  const dates: string[] = [];
+  const items: PressNewsItem[] = [];
   const seen = new Set<string>();
 
   let m: RegExpExecArray | null;
   const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
-  let idx = 0;
   while ((m = itemRe.exec(html)) !== null) {
     const seq = m[1];
     if (seen.has(seq)) continue;
     seen.add(seq);
     const title = decodeBasicEntities(m[2]).trim();
     if (!title || title.length < 5) continue;
+    const slice = html.slice(m.index, m.index + 800);
+    const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     items.push({
-      idx,
       seq,
       title,
+      publishedDate: dateMatch ? dateMatch[1] : null,
       sourceUrl: `${BASE_URL}/M7116/boardView.do?seq=${seq}&menuId=jeonnam0202000000`,
     });
-    idx += 1;
   }
 
-  // 날짜 — list 의 모든 date 순서대로 추출. items 와 1:1 매칭 (앞에서부터)
-  const dateRe = new RegExp(DATE_REGEX.source, "g");
-  while ((m = dateRe.exec(html)) !== null) {
-    dates.push(m[1]);
-  }
-
-  return items.map((item) => ({
-    seq: item.seq,
-    title: item.title,
-    publishedDate: dates[item.idx] ?? null,
-    sourceUrl: item.sourceUrl,
-  }));
+  return items;
 }
 
 export function parseDetailBody(html: string): string | null {
