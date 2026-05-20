@@ -89,6 +89,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 2026-05-22 — SMS off (사장님 명시) 면 webhook graceful skip.
+  // Solapi 가 발송 안 하니 답장 자체도 0 예상이지만, 콘솔에 webhook 등록되어
+  // 있고 다른 sender (테스트·spam) 가 trigger 할 가능성 차단.
+  if (process.env.OPS_ALERT_DISABLE_SMS === "true") {
+    return NextResponse.json({
+      ok: false,
+      reason: "sms_disabled",
+      note: "SMS off 상태 — 텔레그램 /decide 또는 /admin/decisions 사용",
+    });
+  }
+
   const result = await handleSmsReply({ from, text });
 
   // Solapi 가 200 OK 받지 못하면 재시도 — 결정 매칭 결과는 200 으로 반환,
