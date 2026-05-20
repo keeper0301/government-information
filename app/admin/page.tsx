@@ -40,6 +40,7 @@ import {
 import { Sparkline } from "@/components/admin/sparkline";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { getDashboardAlerts } from "@/lib/admin/dashboard-alerts";
+import { getAdminPersonalizationStatus } from "@/lib/admin/personalization-status";
 
 export const metadata: Metadata = {
   title: "어드민 대시보드 | 정책알리미",
@@ -192,6 +193,7 @@ export default async function AdminHomePage({
     dailySignups,
     dailyRevenue,
     alerts,
+    personalizationStatus,
   ] = await Promise.all([
     get24hStats(),
     getRecentSignups(5),
@@ -199,6 +201,7 @@ export default async function AdminHomePage({
     getDailySignups(30),
     getDailyRevenueEstimated(30),
     getDashboardAlerts(),
+    getAdminPersonalizationStatus(),
   ]);
 
   return (
@@ -283,6 +286,44 @@ export default async function AdminHomePage({
             tone={stats.cronAlertsNew >= 3 ? "warn" : "neutral"}
           />
         </div>
+      </section>
+
+      {/* 3-1. 추천·알림 상태 — 개인화 루프 운영 가시화 */}
+      <section className="mb-8">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-grey-900 tracking-[-0.02em]">
+              추천·알림 상태
+            </h2>
+            <p className="mt-1 text-xs text-grey-700">
+              추천 준비도와 정책함 발송 상태를 함께 봅니다 · 현재 상태 {personalizationStatus.healthLabel}
+            </p>
+          </div>
+          <Link
+            href="/admin/recommendation-trace"
+            className="text-xs font-semibold text-blue-500 hover:underline"
+          >
+            추천 진단 보기 →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {personalizationStatus.cards.map((card) => (
+            <StatusLinkCard
+              key={card.key}
+              href={card.href}
+              label={card.label}
+              value={card.value}
+              suffix={card.suffix}
+              hint={card.hint}
+              tone={card.tone}
+            />
+          ))}
+        </div>
+        {personalizationStatus.queued24h > 0 && (
+          <p className="mt-2 text-xs text-amber-700">
+            대기 중인 발송 {personalizationStatus.queued24h.toLocaleString()}건이 있습니다.
+          </p>
+        )}
       </section>
 
       {/* 4. 30일 추세 차트 2종 */}
@@ -473,6 +514,47 @@ function KpiCard({
         </div>
       )}
     </div>
+  );
+}
+
+function StatusLinkCard({
+  href,
+  label,
+  value,
+  suffix,
+  hint,
+  tone,
+}: {
+  href: string;
+  label: string;
+  value: number;
+  suffix: string;
+  hint: string;
+  tone: "good" | "neutral" | "warn" | "danger";
+}) {
+  const toneClass =
+    tone === "danger"
+      ? "border-red/30 bg-red/10 text-red"
+      : tone === "warn"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : tone === "good"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-grey-200 bg-white text-grey-900";
+
+  return (
+    <Link
+      href={href}
+      className={`block rounded-xl border p-4 no-underline transition-colors hover:border-blue-300 hover:bg-blue-50 ${toneClass}`}
+    >
+      <div className="text-xs font-semibold tracking-[0.06em] text-grey-700 uppercase mb-1.5">
+        {label}
+      </div>
+      <div className="text-2xl font-extrabold leading-none tracking-[-0.02em]">
+        {value.toLocaleString()}
+        <span className="ml-1 text-sm font-semibold text-grey-700">{suffix}</span>
+      </div>
+      <div className="mt-1.5 text-xs leading-[1.45] text-grey-700">{hint}</div>
+    </Link>
   );
 }
 
