@@ -170,6 +170,101 @@ export async function handleSmsReply(input: {
   return { ok: true, decisionId: row.id, kind, result, actionResult };
 }
 
+// 2026-05-21 — 텔레그램 봇 명령 /decide 진입점. id 명시 매칭 (vs handleSmsReply 의 "최근" 매칭).
+// 같은 갱신·핸들러 흐름 재사용. 텔레그램 / SMS 둘 다 같은 결정 처리 보장.
+export async function handleDecisionAction(input: {
+  id: string;
+  result: DecisionResult;
+  sender: string; // 텔레그램 chatId 또는 SMS from
+}): Promise<{
+  ok: boolean;
+  reason?: string;
+  decisionId?: string;
+  kind?: DecisionKind;
+  result?: DecisionResult;
+  actionResult?: string;
+}> {
+  const admin = createAdminClient();
+  // id 로 row 매칭 + 미결정 + 미만료 가드
+  const { data: pending } = await admin
+    .from("decision_pending")
+    .select("id, kind, context, decision, expires_at")
+    .eq("id", input.id)
+    .maybeSingle();
+
+  if (!pending) {
+    return { ok: false, reason: "decision_not_found" };
+  }
+  const row = pending as {
+    id: string;
+    kind: string;
+    context: Record<string, unknown> | null;
+    decision: string | null;
+    expires_at: string;
+  };
+  if (row.decision) {
+    return { ok: false, reason: "already_decided" };
+  }
+  if (new Date(row.expires_at) < new Date()) {
+    return { ok: false, reason: "expired" };
+  }
+
+  const kind = row.kind as DecisionKind;
+
+  let actionResult = "skipped";
+  if (input.result === "approve") {
+    const handler = DECISION_HANDLERS[kind];
+    if (handler) {
+      try {
+        actionResult = await handler(row.context ?? {});
+      } catch (e) {
+        actionResult = `error: ${(e as Error).message.slice(0, 200)}`;
+      }
+    } else {
+      actionResult = "no_handler";
+    }
+  }
+
+  await admin
+    .from("decision_pending")
+    .update({
+      decision: input.result,
+      decided_at: new Date().toISOString(),
+      sender_phone: input.sender,
+      action_result: actionResult,
+    })
+    .eq("id", row.id);
+
+  return { ok: true, decisionId: row.id, kind, result: input.result, actionResult };
+}
+
+// 미결정 row 목록 — 텔레그램 /decide 무인자 호출 시 사용.
+export async function listPendingDecisions(): Promise<
+  Array<{
+    id: string;
+    kind: DecisionKind;
+    prompt: string;
+    sent_at: string;
+    expires_at: string;
+  }>
+> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("decision_pending")
+    .select("id, kind, prompt, sent_at, expires_at")
+    .is("decision", null)
+    .gte("expires_at", new Date().toISOString())
+    .order("sent_at", { ascending: false })
+    .limit(10);
+  return (data ?? []) as Array<{
+    id: string;
+    kind: DecisionKind;
+    prompt: string;
+    sent_at: string;
+    expires_at: string;
+  }>;
+}
+
 // 결정 종류별 액션 핸들러 — kind 이름과 1:1.
 // approve 일 때만 호출. 위험한 액션 (DDL·prod 데이터 변경) 은 사장님 명시 표현 다음
 // 단계로 미루고, 여기선 환경변수 toggle 같은 안전한 액션만 자동.

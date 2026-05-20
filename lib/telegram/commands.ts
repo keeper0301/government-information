@@ -32,6 +32,12 @@ import {
   dedupeRejectCommand,
 } from "@/lib/telegram/admin/dedupe";
 import {
+  decideListCommand,
+  decideApproveCommand,
+  decideRejectCommand,
+  decideConsultCommand,
+} from "@/lib/telegram/admin/decide";
+import {
   envListCommand,
   envSetCommand,
   redeployCommand,
@@ -83,6 +89,8 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
       return pressDispatch(args);
     case "dedupe":
       return dedupeDispatch(args);
+    case "decide":
+      return decideDispatch(args, String(ctx.chatId));
     case "env":
       return envDispatch(args);
     case "redeploy":
@@ -125,6 +133,27 @@ async function pressDispatch(args: string): Promise<string> {
       return pressDismissCommand(uuid);
     default:
       return "사용법: /press | /press low | /press confirm {uuid} | /press dismiss {uuid}";
+  }
+}
+
+// /decide — 미결정 목록 / approve / reject / consult {8자 id}
+// SMS off (2026-05-21) 후 결정 답장 채널이 텔레그램으로 옮겨짐.
+async function decideDispatch(args: string, chatId: string): Promise<string> {
+  if (!args) return decideListCommand();
+  const [sub, ...rest] = args.split(/\s+/);
+  const id = rest.join(" ").trim();
+  switch ((sub ?? "").toLowerCase()) {
+    case "approve":
+    case "1":
+      return decideApproveCommand(id, chatId);
+    case "reject":
+    case "2":
+      return decideRejectCommand(id, chatId);
+    case "consult":
+    case "3":
+      return decideConsultCommand(id, chatId);
+    default:
+      return "사용법: /decide | /decide approve {id} | /decide reject {id} | /decide consult {id}";
   }
 }
 

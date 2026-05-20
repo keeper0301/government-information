@@ -47,10 +47,11 @@ export const PERMISSION_MATRIX: Readonly<Record<string, CommandPolicy>> = {
   // 시스템 진단 (dev OK, staff X)
   trigger: ["owner", "dev"],
 
-  // 사장님 전용 — env 변경·재배포·사용자 PII 조회
+  // 사장님 전용 — env 변경·재배포·사용자 PII 조회·결정 액션 실행
   env: ["owner"],
   redeploy: ["owner"],
   user: ["owner"],
+  decide: ["owner"],
 };
 
 function parseEnvIds(value: string | undefined): string[] {
