@@ -10,6 +10,7 @@ import {
   detectProvince,
   extractDistrict,
   extractDistrictFromFields,
+  extractSubDistrict,
 } from "@/lib/region/district-extractor";
 
 // ── detectProvince ──────────────────────────────────────────
@@ -132,5 +133,37 @@ describe("extractDistrictFromFields", () => {
   it("title 만 매치 → 그 결과 반환", () => {
     const match = extractDistrictFromFields("순천시 청년 정책", null, null);
     expect(match?.district).toBe("순천시");
+  });
+});
+
+describe("extractSubDistrict", () => {
+  it("월등면 매월리처럼 면과 리가 같이 있으면 더 세부 단위인 리를 반환", () => {
+    const text = "전라남도 순천시 월등면 매월리 청년 농업인 지원";
+    const district = extractDistrict(text);
+
+    expect(district?.district).toBe("순천시");
+    expect(extractSubDistrict(text, district!)).toMatchObject({
+      province: "jeonnam",
+      district: "순천시",
+      subDistrict: "매월리",
+      subType: "ri",
+    });
+  });
+
+  it("순천시 읍면동만 있으면 해당 하위 행정구역을 반환", () => {
+    const text = "순천시 월등면 농가 지원";
+    const district = extractDistrict(text);
+
+    expect(extractSubDistrict(text, district!)).toMatchObject({
+      subDistrict: "월등면",
+      subType: "myeon",
+    });
+  });
+
+  it("사전에 없는 시군구나 빈 텍스트는 null", () => {
+    const yeosu = extractDistrict("전남 여수시 어업 지원");
+
+    expect(extractSubDistrict("전남 여수시 돌산읍 어업 지원", yeosu!)).toBeNull();
+    expect(extractSubDistrict(null, yeosu!)).toBeNull();
   });
 });

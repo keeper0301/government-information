@@ -113,6 +113,105 @@ export function extractDistrict(text: string | null | undefined): DistrictMatch 
   return null;
 }
 
+// ============================================================
+// 2026-05-20 District Phase B — 읍·면·동·리 단위 매칭
+// ============================================================
+// DDL 097 district_dictionary 와 별도로 코드 inline (동기 함수 유지 + 핵심 데이터 fast).
+// DB 의 district_dictionary 는 사용자 입력 form 의 lookup + 미래 확장용.
+// 매칭 우선: 가장 긴 sub_district 부터 (substring 사고 회피 — "매월리" > "매월").
+//
+// 데이터 source: 사장님 거주지 (전남 순천) 우선 + 다른 도시는 점차 확장.
+// ============================================================
+
+export type SubDistrictType = "eup" | "myeon" | "dong" | "ri";
+
+export type SubDistrictMatch = DistrictMatch & {
+  subDistrict: string;
+  subType: SubDistrictType;
+};
+
+// province + district 별 sub_district 목록. 가장 긴 이름 우선 (substring 사고 회피).
+// 5/20 — 전남 순천 28 읍·면·동 + 6 법정리 (사장님 거주지). 다른 도시 점차 확장.
+const SUB_DISTRICT_DATA: Record<string, Array<{ sub: string; type: SubDistrictType }>> = {
+  "jeonnam|순천시": [
+    // 1읍
+    { sub: "승주읍", type: "eup" },
+    // 10면
+    { sub: "해룡면", type: "myeon" },
+    { sub: "서면", type: "myeon" },
+    { sub: "황전면", type: "myeon" },
+    { sub: "월등면", type: "myeon" },
+    { sub: "주암면", type: "myeon" },
+    { sub: "송광면", type: "myeon" },
+    { sub: "외서면", type: "myeon" },
+    { sub: "낙안면", type: "myeon" },
+    { sub: "별량면", type: "myeon" },
+    { sub: "상사면", type: "myeon" },
+    // 12동
+    { sub: "향동", type: "dong" },
+    { sub: "매곡동", type: "dong" },
+    { sub: "삼산동", type: "dong" },
+    { sub: "조곡동", type: "dong" },
+    { sub: "덕연동", type: "dong" },
+    { sub: "풍덕동", type: "dong" },
+    { sub: "남제동", type: "dong" },
+    { sub: "저전동", type: "dong" },
+    { sub: "장천동", type: "dong" },
+    { sub: "중앙동", type: "dong" },
+    { sub: "도사동", type: "dong" },
+    { sub: "왕지동", type: "dong" },
+    // 사장님 거주지 월등면 법정리
+    { sub: "매월리", type: "ri" },
+    { sub: "신성리", type: "ri" },
+    { sub: "월용리", type: "ri" },
+    { sub: "계월리", type: "ri" },
+    { sub: "대평리", type: "ri" },
+    { sub: "대광리", type: "ri" },
+  ],
+};
+
+const SUB_DISTRICT_TYPE_RANK: Record<SubDistrictType, number> = {
+  ri: 4,
+  dong: 3,
+  eup: 2,
+  myeon: 2,
+};
+
+/**
+ * text 안에서 sub_district (읍·면·동·리) 매칭. district 단위 매칭 이후 호출.
+ * district 가 jeonnam 순천시 라면 SUB_DISTRICT_DATA["jeonnam|순천시"] 안 검색.
+ *
+ * substring 사고 회피 — 가장 긴 sub 부터 우선 ("매월리" 가 "매월" 보다 먼저).
+ */
+export function extractSubDistrict(
+  text: string | null | undefined,
+  match: DistrictMatch,
+): SubDistrictMatch | null {
+  if (!text) return null;
+  const key = `${match.province}|${match.district}`;
+  const subs = SUB_DISTRICT_DATA[key];
+  if (!subs) return null;
+
+  // 가장 긴 sub 우선. 길이가 같으면 실제 주소에서 더 세부적인 단위를 먼저 잡는다.
+  const sorted = subs
+    .slice()
+    .sort(
+      (a, b) =>
+        b.sub.length - a.sub.length ||
+        SUB_DISTRICT_TYPE_RANK[b.type] - SUB_DISTRICT_TYPE_RANK[a.type],
+    );
+  for (const { sub, type } of sorted) {
+    if (text.includes(sub)) {
+      return {
+        ...match,
+        subDistrict: sub,
+        subType: type,
+      };
+    }
+  }
+  return null;
+}
+
 // 여러 텍스트 (title + content + source) 조합에서 추출. 첫 정확 match 반환.
 // 광역 명시 텍스트가 있으면 그것이 우선.
 export function extractDistrictFromFields(
