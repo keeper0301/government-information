@@ -4,82 +4,38 @@
 // 'use client' 없음 — createClient 사용 가능
 import Link from "next/link";
 import { RecommendLinkTracker } from "@/components/analytics/recommend-link-tracker";
+import { RecommendationReasonChips } from "@/components/personalization/recommendation-reason-chips";
 import { TopPopularFallback } from "@/components/personalization/top-popular-fallback";
 import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-profile';
 import { scoreAndFilterWithPopularity } from '@/lib/personalization/filter';
+import {
+  getMatchReasonLabels,
+  type MatchReasonLabelMap,
+} from "@/lib/personalization/reason-labels";
+import {
+  getProfileCompletionSummary as summarizeProfileCompletion,
+  type ProfileCompletionSummary,
+} from "@/lib/personalization/profile-completion";
 import { PERSONAL_SECTION_MIN_SCORE } from '@/lib/personalization/types';
-import type { MatchSignal, UserSignals } from '@/lib/personalization/types';
+import type { MatchSignal } from '@/lib/personalization/types';
 import { type ScorableItem } from '@/lib/personalization/score';
 import { REGION_ALIASES } from '@/lib/personalization/region-match';
 import { LOAN_EXCLUDED_FILTER, WELFARE_EXCLUDED_FILTER } from '@/lib/listing-sources';
 
-const HOME_MATCH_REASON_LABELS: Record<MatchSignal["kind"], string> = {
-  region: "지역",
+const HOME_MATCH_REASON_LABEL_OVERRIDES = {
   district: "지역",
-  sub_district: "읍면동",
   benefit_tags: "관심분야",
-  occupation: "직업",
-  age: "연령",
-  income_keyword: "소득",
-  income_target: "소득",
-  household_keyword: "가구",
-  household_target: "가구",
   urgent_deadline: "마감임박",
-  business_match: "사업자",
+  age: "연령",
   popularity: "🔥 인기",
-};
+} satisfies Partial<MatchReasonLabelMap>;
 
 export function getHomeMatchReasonLabels(signals: MatchSignal[], limit = 5): string[] {
-  if (limit <= 0) return [];
-  const labels: string[] = [];
-  for (const signal of signals) {
-    const label = HOME_MATCH_REASON_LABELS[signal.kind];
-    if (!label || labels.includes(label)) continue;
-    labels.push(label);
-    if (labels.length >= limit) break;
-  }
-  return labels;
-}
-
-type ProfileCompletionField = {
-  key: string;
-  label: string;
-  completed: boolean;
-};
-
-export type ProfileCompletionSummary = {
-  completed: number;
-  total: number;
-  percent: number;
-  missingLabels: string[];
-};
-
-export function getProfileCompletionSummary(
-  signals: UserSignals,
-): ProfileCompletionSummary {
-  const fields: ProfileCompletionField[] = [
-    { key: 'age', label: '나이', completed: Boolean(signals.ageGroup) },
-    { key: 'region', label: '지역', completed: Boolean(signals.region) },
-    { key: 'occupation', label: '직업', completed: Boolean(signals.occupation) },
-    { key: 'income', label: '소득', completed: Boolean(signals.incomeLevel) },
-    {
-      key: 'household',
-      label: '가구',
-      completed: signals.householdTypes.length > 0 || signals.hasChildren !== null,
-    },
-    { key: 'interests', label: '관심분야', completed: signals.benefitTags.length > 0 },
-  ];
-  const completed = fields.filter((field) => field.completed).length;
-
-  return {
-    completed,
-    total: fields.length,
-    percent: Math.round((completed / fields.length) * 100),
-    missingLabels: fields
-      .filter((field) => !field.completed)
-      .map((field) => field.label),
-  };
+  return getMatchReasonLabels(signals, {
+    limit,
+    labels: HOME_MATCH_REASON_LABEL_OVERRIDES,
+  });
 }
 
 export function getRecommendationConfidenceLabel(signals: MatchSignal[]): string {
@@ -96,6 +52,8 @@ export function getRecommendationConfidenceLabel(signals: MatchSignal[]): string
   if (reasons.length >= 2) return '적합';
   return '확인 필요';
 }
+
+export { getProfileCompletionSummary } from "@/lib/personalization/profile-completion";
 
 export type HomeRecommendationGroups<T> = {
   likely: T[];
@@ -307,7 +265,7 @@ export async function HomeRecommendAuto({
   // 매칭 결과 0건 → null 대신 fallback 카드 (hero 우측 빈 영역 사고 차단).
   // 사장님 본인 화면에서 매일 보는 자리라 빈 영역은 즉각 UX 사고로 체감.
   if (items.length === 0) {
-    const profileSummary = getProfileCompletionSummary(profile.signals);
+    const profileSummary = summarizeProfileCompletion(profile.signals);
     return (
       <section className="rounded-2xl border border-grey-200 bg-white p-5 sm:p-6 shadow-lg">
         <h2 className="text-base sm:text-lg font-bold text-grey-900 mb-2">
@@ -339,7 +297,7 @@ export async function HomeRecommendAuto({
     );
   }
 
-  const profileSummary = getProfileCompletionSummary(profile.signals);
+  const profileSummary = summarizeProfileCompletion(profile.signals);
   const groupedItems = groupHomeRecommendationsByConfidence(items);
   const likelyItems = getHighConfidenceHomeRecommendations(items);
 
@@ -409,7 +367,6 @@ function HomeRecommendationList({
       <div className="mb-2 text-[12px] font-bold text-grey-700">{title}</div>
       <ul className="space-y-2.5">
         {items.map(({ item, signals }) => {
-          const reasons = getHomeMatchReasonLabels(signals, 4);
           const confidence = getRecommendationConfidenceLabel(signals);
           // Phase A click 분석 — 추천 카드 클릭 시 home_recommend_click 기록
           const programTable: "welfare_programs" | "loan_programs" =
@@ -439,14 +396,12 @@ function HomeRecommendationList({
                   >
                     {confidence}
                   </span>
-                  {reasons.map((reason) => (
-                    <span
-                      key={reason}
-                      className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"
-                    >
-                      {reason}
-                    </span>
-                  ))}
+                  <RecommendationReasonChips
+                    signals={signals}
+                    limit={4}
+                    labelOptions={{ labels: HOME_MATCH_REASON_LABEL_OVERRIDES }}
+                    className="contents"
+                  />
                   {item.apply_end && (
                     <span className="text-[11px] font-medium text-grey-500">
                       마감 {item.apply_end}
