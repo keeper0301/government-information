@@ -69,6 +69,8 @@ import { getLocalPressStats } from "@/lib/analytics/local-press-stats";
 import { LocalPressCard } from "./_components/local-press-card";
 import { getSilentFailStats } from "@/lib/analytics/silent-fail-stats";
 import { SilentFailCard } from "./_components/silent-fail-card";
+import { getAdsensePlacementSummary } from "@/lib/analytics/adsense-placement-status";
+import { AdsensePlacementCard } from "./_components/adsense-placement-card";
 import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
 import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
@@ -270,6 +272,9 @@ export default async function AdminAutonomousPage() {
       </div>
       <div className="mb-4">
         <SilentFailCard stats={silentFailStats} />
+      </div>
+      <div className="mb-4">
+        <AdsensePlacementCard summary={getAdsensePlacementSummary()} />
       </div>
 
       {/* 6. 외부 액션 + Phase 상태 */}
