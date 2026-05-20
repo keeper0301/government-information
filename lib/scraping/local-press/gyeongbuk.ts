@@ -28,40 +28,32 @@ const BODY_CONTAINER_REGEX =
   /<(?:div|td)\s+(?:class|id)="(?:bbs_view|content|board_view|view_content)"[^>]*>([\s\S]*?)<\/(?:div|td)>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
-  const items: Array<Omit<PressNewsItem, "publishedDate"> & { idx: number }> = [];
+  // 2026-05-20 subagent review hot-fix — 각 link 매치 위치 +800 char slice 안에서만
+  // date 추출. 옛 코드의 dates[] 전체 array 매칭은 footer/script date 까지 잡혀
+  // items[i] ↔ dates[i] 어긋날 위험.
+  const items: PressNewsItem[] = [];
   const seen = new Set<string>();
-  const dates: string[] = [];
 
   let m: RegExpExecArray | null;
   const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
-  let idx = 0;
   while ((m = itemRe.exec(html)) !== null) {
     const seq = m[1];
     if (seen.has(seq)) continue;
     seen.add(seq);
     const title = decodeBasicEntities(m[2]).trim();
     if (!title || title.length < 5) continue;
+    const slice = html.slice(m.index, m.index + 800);
+    const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
+    const publishedDate = dateMatch ? dateMatch[1] : null;
     items.push({
-      idx,
       seq,
       title,
-      // V_NUM=14274 는 view counter table id (fixed for bodo board)
+      publishedDate,
       sourceUrl: `${BASE_URL}/Main/page.do?mnu_uid=6792&BD_CODE=bbs_bodo&cmd=2&B_NUM=${seq}&V_NUM=14274&tbbscode1=bbs_bodo`,
     });
-    idx += 1;
   }
 
-  const dateRe = new RegExp(DATE_REGEX.source, "g");
-  while ((m = dateRe.exec(html)) !== null) {
-    dates.push(m[1]);
-  }
-
-  return items.map((item) => ({
-    seq: item.seq,
-    title: item.title,
-    publishedDate: dates[item.idx] ?? null,
-    sourceUrl: item.sourceUrl,
-  }));
+  return items;
 }
 
 export function parseDetailBody(html: string): string | null {
