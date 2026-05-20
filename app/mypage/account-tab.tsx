@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Tier } from "@/lib/subscription";
 import { TierBadge } from "@/components/tier-badge";
+import { PushToggle } from "@/components/push-toggle";
 import { WithdrawDialog } from "./withdraw-dialog";
 
 // 계정 탭 — 상단 "내 계정 요약" 카드 + 내 정보 다운로드 + 하단 위험 영역(탈퇴)
@@ -62,6 +63,14 @@ export function AccountTab({
             value={`${alertsThisMonth.toLocaleString("ko-KR")}건 (이번 달)`}
           />
         </dl>
+      </section>
+
+      {/* PWA 푸시 알림 토글 — 2026-05-21 spec */}
+      <section>
+        <h2 className="text-[15px] font-semibold text-grey-900 pb-2 mb-4 border-b border-grey-100">
+          알림 설정
+        </h2>
+        <PushToggle />
       </section>
 
       {/* 내 정보 다운로드 — 「개인정보 보호법」 제35조 열람권 */}
