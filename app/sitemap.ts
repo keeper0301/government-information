@@ -1,6 +1,16 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
+
+// 2026-05-21 SC 색인 1,958 페이지 미생성 진단 후속:
+// 정적·hub 페이지 lastModified 가 매 sitemap fetch 마다 new Date() 로 갱신되어
+// Google 이 "진짜 변경 아님" 의심 → 색인 우선순위 ↓.
+//
+// revalidate 86400 = 24h 단위 build-time 고정. module-level SITEMAP_BUILD_TIME 이
+// 24h 동안 같은 값 보장 (Next.js App Router force-static 패턴). 정책 detail
+// (welfare/loan/news/blog) 의 updated_at 기준은 그대로 유지.
+export const revalidate = 86400;
+const SITEMAP_BUILD_TIME = new Date();
 import {
   CROSS_COMBINATIONS,
   ELIGIBILITY_CATALOG,
@@ -19,23 +29,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
   const supabase = await createClient();
 
-  // Static pages
+  // Static pages — lastModified 는 SITEMAP_BUILD_TIME 고정 (Google "진짜 변경" 신호 정확화)
   const staticPages: MetadataRoute.Sitemap = [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1.0 },
-    { url: `${baseUrl}/welfare`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/loan`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/news`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/calendar`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/recommend`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/popular`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/consult`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-    { url: `${baseUrl}/alerts`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
-    { url: `${baseUrl}/pricing`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
-    { url: `${baseUrl}/help`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-    { url: `${baseUrl}/eligibility`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-    { url: `${baseUrl}/guides`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    { url: baseUrl, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 1.0 },
+    { url: `${baseUrl}/welfare`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/loan`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/blog`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/news`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/calendar`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/recommend`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/popular`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/consult`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${baseUrl}/alerts`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${baseUrl}/pricing`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${baseUrl}/help`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/about`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/eligibility`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${baseUrl}/guides`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.7 },
   ];
 
   // 정책 종합 가이드 (policy-bible 자산화) — 격주 발행, 영구 자산
@@ -140,11 +150,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // welfare/[id]/page.tsx 의 isSparse 가 !hasInsight 면 noindex 처리 → sitemap 에서
   // 같은 row 빼지 않으면 Search Console "Indexed, though blocked by noindex" 경고 +
   // AdSense 검수자가 sitemap → noindex URL 도달 시 부정 시그널.
+  // 2026-05-21 — supabase default limit 1000 차단. unique_insight 보유 row 모두 등록.
+  // welfare 현재 ~1,000 row 라 limit 영향 미미하나 명시로 안전망.
   const { data: welfare } = await supabase
     .from("welfare_programs")
     .select("id, updated_at, unique_insight_at")
     .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-    .not("unique_insight_at", "is", null);
+    .not("unique_insight_at", "is", null)
+    .limit(15000);
   const welfarePages: MetadataRoute.Sitemap = (welfare || []).map((w) => {
     const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at!;
     const lastModSrc = new Date(insightAt) > new Date(w.updated_at) ? insightAt : w.updated_at;
@@ -166,11 +179,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Loan programs — welfare 와 동일 패턴 (unique_insight 보유 row 만 sitemap 등록).
+  // 2026-05-21 — default limit 1000 차단. loan 1,360 with_insight 의 360 row 누락 사고 fix.
   const { data: loans } = await supabase
     .from("loan_programs")
     .select("id, updated_at, unique_insight_at")
     .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-    .not("unique_insight_at", "is", null);
+    .not("unique_insight_at", "is", null)
+    .limit(5000);
   const loanPages: MetadataRoute.Sitemap = (loans || []).map((l) => {
     const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at!;
     const lastModSrc = new Date(insightAt) > new Date(l.updated_at) ? insightAt : l.updated_at;
@@ -193,10 +208,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Blog posts (발행된 글만) — 한글 slug 는 percent-encode 해서 XML sitemap 표준 준수
   // (일부 크롤러가 raw 한글을 CP949 등으로 재인코딩하는 문제 회피)
+  // 2026-05-21 — limit 명시 (현재 201 row 라 영향 미미, 미래 확장 안전망)
   const { data: posts } = await supabase
     .from("blog_posts")
     .select("slug, updated_at, published_at")
-    .not("published_at", "is", null);
+    .not("published_at", "is", null)
+    .limit(5000);
   const blogPages: MetadataRoute.Sitemap = (posts || []).map((p) => ({
     url: `${baseUrl}/blog/${encodeURIComponent(p.slug)}`,
     lastModified: new Date(p.updated_at),
@@ -220,11 +237,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // News posts (korea.kr 수집) — slug 는 `{title-slug}-{newsId}` 형식이며 title
   // 부분에 한글 포함. XML sitemap 표준상 한글 URL 은 percent-encode 해야 함.
   // 2026-04-24: 보도자료(press) + keepioo 키워드 매칭 안 된 노이즈는 비노출.
+  // 2026-05-21 🔴 default limit 1000 사고 fix — news 9,326 중 8,326 row 가 sitemap 에서
+  // 누락되어 있었음 (SC 색인 미생성 1,958 의 핵심 원인). 25,000 limit 으로 안전망.
   const { data: newsPosts } = await supabase
     .from("news_posts")
     .select("slug, updated_at")
     .neq("category", "press")
-    .not("keywords", "eq", "{}");
+    .not("keywords", "eq", "{}")
+    .limit(25000);
   const newsPages: MetadataRoute.Sitemap = (newsPosts || []).map((n) => ({
     url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,
     lastModified: new Date(n.updated_at),
