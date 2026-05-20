@@ -60,10 +60,17 @@ export async function listSubscriptions(): Promise<StoredSubscription[]> {
   }
 }
 
-export async function removeSubscription(endpoint: string): Promise<void> {
+// userId 전달 시 본인 row 만 삭제 (다른 사용자 endpoint 임의 삭제 차단).
+// userId 미전달 (발송 cron 의 410/404 cleanup) 시 endpoint 만으로 삭제.
+export async function removeSubscription(
+  endpoint: string,
+  userId?: string | null,
+): Promise<void> {
   try {
     const admin = createAdminClient();
-    await admin.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    let query = admin.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    if (userId) query = query.eq("user_id", userId);
+    await query;
   } catch {
     // graceful
   }

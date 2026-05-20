@@ -108,7 +108,12 @@ export function PushToggle() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "구독 등록 실패");
+        // 401 (로그인 필요) 은 별도 안내 — 비로그인 사용자가 마이페이지 접근 못하지만 방어
+        if (res.status === 401) {
+          setError("로그인 후 다시 시도해주세요");
+        } else {
+          setError(data.error ?? "구독 등록 실패");
+        }
         setStatus("idle");
         return;
       }
@@ -124,8 +129,15 @@ export function PushToggle() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
+        const endpoint = sub.endpoint;
         await sub.unsubscribe();
-        // 서버 row 삭제는 별도 endpoint 필요 — 1단계는 클라 unsubscribe 만
+        // 서버 row 도 즉시 삭제 — 발송 cron 가동 후 410 폭주 방지.
+        // 네트워크 실패는 사용자에게 보이지 않게 swallow (재구독 시 upsert 로 자가복구).
+        await fetch("/api/push/subscribe", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint }),
+        }).catch(() => {});
       }
       setStatus("idle");
     } catch (e) {
@@ -155,9 +167,12 @@ export function PushToggle() {
         <div>
           <p className="text-[14px] font-semibold text-grey-900 mb-0.5">
             🔔 PWA 푸시 알림
+            <span className="ml-1.5 text-[11px] font-normal text-amber-700">
+              곧 가동 예정
+            </span>
           </p>
           <p className="text-[12px] text-grey-600 leading-[1.5]">
-            새 정책 매칭 / 마감 임박 알림을 브라우저로 즉시 받아요.
+            새 정책 매칭 / 마감 임박 알림을 브라우저로 받아요. 발송 시작 시점에 안내드려요.
           </p>
         </div>
         {status === "subscribed" ? (
