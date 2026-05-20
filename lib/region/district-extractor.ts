@@ -231,3 +231,13 @@ export function extractDistrictFromFields(
   }
   return null;
 }
+
+export function extractSubDistrictFromFields(
+  ...fields: Array<string | null | undefined>
+): SubDistrictMatch | null {
+  const districtMatch = extractDistrictFromFields(...fields);
+  if (!districtMatch) return null;
+
+  const combined = fields.filter((f): f is string => !!f).join(" ");
+  return extractSubDistrict(combined, districtMatch);
+}

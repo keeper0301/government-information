@@ -11,6 +11,7 @@ import {
   extractDistrict,
   extractDistrictFromFields,
   extractSubDistrict,
+  extractSubDistrictFromFields,
 } from "@/lib/region/district-extractor";
 
 // ── detectProvince ──────────────────────────────────────────
@@ -165,5 +166,29 @@ describe("extractSubDistrict", () => {
 
     expect(extractSubDistrict("전남 여수시 돌산읍 어업 지원", yeosu!)).toBeNull();
     expect(extractSubDistrict(null, yeosu!)).toBeNull();
+  });
+});
+
+describe("extractSubDistrictFromFields", () => {
+  it("여러 필드 조합에서 시군구와 읍면동리를 함께 찾아 반환", () => {
+    const match = extractSubDistrictFromFields(
+      "순천시 청년 농업인 지원",
+      "월등면 매월리 거주 청년 우대",
+      "전라남도",
+    );
+
+    expect(match).toMatchObject({
+      province: "jeonnam",
+      provinceName: "전라남도",
+      district: "순천시",
+      subDistrict: "매월리",
+      subType: "ri",
+    });
+  });
+
+  it("시군구는 찾았지만 하위 행정구역이 없으면 null", () => {
+    expect(
+      extractSubDistrictFromFields("전라남도 순천시 청년 지원", "농업인 대상"),
+    ).toBeNull();
   });
 });
