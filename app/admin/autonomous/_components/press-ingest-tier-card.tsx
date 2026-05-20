@@ -95,6 +95,23 @@ export function PressIngestTierCard({
             전체 pending {stats.pressPending}
           </div>
         </div>
+        <div
+          className={`rounded border px-3 py-2 ${
+            stats.newsBacklog > 100
+              ? "border-amber-200 bg-amber-50"
+              : "border-slate-200 bg-slate-50"
+          }`}
+        >
+          <div className="text-[11px] text-slate-600">분류 대기 뉴스</div>
+          <div className={`font-semibold ${
+            stats.newsBacklog > 100 ? "text-amber-900" : "text-slate-900"
+          }`}>
+            {stats.newsBacklog.toLocaleString("ko-KR")}건
+          </div>
+          <div className="text-[10px] text-slate-600/80">
+            news-classify cron · /news
+          </div>
+        </div>
       </div>
 
       <div
