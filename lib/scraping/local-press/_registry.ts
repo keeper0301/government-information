@@ -29,6 +29,7 @@ import { scrapePohangAndInsert } from "./pohang";
 import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
 import { scrapeSejongAndInsert } from "./sejong";
+import { scrapeJeonnamAndInsert } from "./jeonnam";
 
 export type CityKey =
   | "suncheon"
@@ -50,7 +51,8 @@ export type CityKey =
   | "pohang"
   | "iksan"
   | "daegu"
-  | "sejong";
+  | "sejong"
+  | "jeonnam";
 
 export type CityEntry = {
   key: CityKey;
@@ -221,6 +223,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministryAliases: ["세종특별자치시"],
     siteUrl: "https://www.sejong.go.kr/bbs/R0079/list.do",
     fn: scrapeSejongAndInsert,
+  },
+  {
+    key: "jeonnam",
+    city: "전라남도",
+    ministry: "전라남도청",
+    ministryAliases: ["전라남도"],
+    siteUrl:
+      "https://www.jeonnam.go.kr/M7116/boardList.do?menuId=jeonnam0202000000",
+    fn: scrapeJeonnamAndInsert,
   },
 ];
 
