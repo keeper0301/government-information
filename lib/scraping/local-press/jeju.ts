@@ -10,7 +10,11 @@ const LIST_URL = "https://www.jeju.go.kr/news/bodo/list.htm";
 const LIST_ITEM_REGEX =
   /<li\s+class="board-news__article"[^>]*>[\s\S]*?<a\s+href="\/news\/bodo\/list\.htm\?act=view&amp;seq=(\d+)"[^>]*>[\s\S]*?<strong\s+class="text-ellipsis"[^>]*>([\s\S]*?)<\/strong>[\s\S]*?<span\s+class="date"[^>]*>[\s\S]*?\|\s*(\d{4}-\d{2}-\d{2})\s*<\/span>[\s\S]*?<\/li>/g;
 
+// 2026-05-22 fix — site 가 id="articleContents" → class="article-contents" 변경.
+// 새 selector + legacy id fallback.
 const BODY_CONTAINER_REGEX =
+  /<div\s+class="article-contents[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="file-preview|<div\s+class="article-files|<aside)/i;
+const BODY_CONTAINER_REGEX_LEGACY =
   /<div\s+id="articleContents"[^>]*>([\s\S]*?)<div\s+id="popularNews"/i;
 
 function toText(html: string): string {
@@ -49,7 +53,7 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
+  const m = BODY_CONTAINER_REGEX.exec(html) ?? BODY_CONTAINER_REGEX_LEGACY.exec(html);
   if (!m) return null;
   const text = toText(m[1]);
   return text.length >= 50 ? text : null;

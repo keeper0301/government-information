@@ -25,7 +25,11 @@ const LIST_ITEM_REGEX =
 // 작성일 — list 안 td.date 또는 별도 위치. 일단 YYYY-MM-DD 패턴
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
+// 2026-05-22 — 경남도청이 se-contents 편집기 본문 구조로 변경.
+// 기존 bbs_view 가 매칭되지 않아, 새 본문 구조와 예전 구조를 함께 지원.
 const BODY_CONTAINER_REGEX =
+  /<div\s+class="se-contents[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:basicView__|fileList|btn)|<\/article)/i;
+const BODY_CONTAINER_REGEX_LEGACY =
   /<div\s+class="bbs_view"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<\/section|<\/article)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
@@ -58,7 +62,7 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
+  const m = BODY_CONTAINER_REGEX.exec(html) ?? BODY_CONTAINER_REGEX_LEGACY.exec(html);
   if (!m) return null;
   const text = decodeBasicEntities(m[1])
     .replace(/<br\s*\/?>/gi, "\n")
