@@ -17,9 +17,10 @@ const BASE_URL = "https://www.gb.go.kr";
 const LIST_URL =
   "https://www.gb.go.kr/Main/page.do?mnu_uid=6792&LARGE_CODE=720&MEDIUM_CODE=50&SMALL_CODE=10&SMALL_CODE2=60";
 
-// B_NUM + title attribute 패턴
+// 2026-05-22 fix — site 가 query 순서 변경 (BD_CODE 가 B_NUM 보다 앞).
+// 순서 swap. 기존 regex 0 매칭.
 const LIST_ITEM_REGEX =
-  /<a\s+href="\.\/page\.do\?[^"]*?B_NUM=(\d+)[^"]*?BD_CODE=bbs_bodo[^"]*"\s+title="([^"]+)"/g;
+  /<a\s+href="\.\/page\.do\?[^"]*?BD_CODE=bbs_bodo[^"]*?B_NUM=(\d+)[^"]*"\s+title="([^"]+)"/g;
 
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 

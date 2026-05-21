@@ -21,7 +21,11 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
+// 2026-05-22 fix — site 가 board-view + content_body 새 class 사용.
+// 기존 bbs_view 등 매칭 0. 새 class + legacy fallback.
 const BODY_CONTAINER_REGEX =
+  /<div\s+class="(?:board-view|content_body|content_ar)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="board-view-li\s+item|<\/article|<\/section)/i;
+const BODY_CONTAINER_REGEX_LEGACY =
   /<(?:div|td)\s+(?:class|id)="(?:bbs_view|content|board_view|view_content|tbl_view)"[^>]*>([\s\S]*?)<\/(?:div|td)>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
@@ -54,7 +58,7 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
+  const m = BODY_CONTAINER_REGEX.exec(html) ?? BODY_CONTAINER_REGEX_LEGACY.exec(html);
   if (!m) return null;
   const text = decodeBasicEntities(m[1])
     .replace(/<br\s*\/?>/gi, "\n")
