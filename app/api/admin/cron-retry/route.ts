@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user || !isAdminUser(user.email)) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
   }
 
   const body = (await request.json().catch(() => null)) as {
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   const cronPath = body?.cronPath;
   if (!cronPath || !ALLOWED_PATHS.has(cronPath)) {
     return NextResponse.json(
-      { error: `invalid cronPath: ${cronPath ?? "(missing)"}` },
+      { error: `허용되지 않은 크론 주소입니다: ${cronPath ?? "(누락)"}` },
       { status: 400 },
     );
   }
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
+      { error: "CRON_SECRET 비밀값이 설정되지 않았습니다." },
       { status: 500 },
     );
   }
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   } catch (err) {
     return NextResponse.json(
       {
-        error: `fetch error: ${err instanceof Error ? err.message : String(err)}`,
+        error: `크론 호출 실패: ${err instanceof Error ? err.message : String(err)}`,
       },
       { status: 500 },
     );

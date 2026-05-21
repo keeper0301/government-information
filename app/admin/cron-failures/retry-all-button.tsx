@@ -14,7 +14,14 @@ type Result =
       total: number;
       ok: number;
       fail: number;
-      details: { prefix: string; cronPath: string; ok: boolean; status: number; elapsedMs: number; error?: string }[];
+      details: {
+        prefix: string;
+        cronPath: string;
+        ok: boolean;
+        status: number;
+        elapsedMs: number;
+        error?: string;
+      }[];
     };
 
 export function RetryAllButton({ prefixes }: { prefixes: string[] }) {
@@ -54,7 +61,7 @@ export function RetryAllButton({ prefixes }: { prefixes: string[] }) {
             ok: res.ok && (data.ok ?? false),
             status: res.status,
             elapsedMs: Date.now() - start,
-            error: res.ok ? undefined : data.error || `HTTP ${res.status}`,
+            error: res.ok ? undefined : data.error || `응답 코드 ${res.status}`,
           };
         } catch (err) {
           return {
@@ -92,10 +99,10 @@ export function RetryAllButton({ prefixes }: { prefixes: string[] }) {
             : `🔁 24h 실패 ${known.length}개 일괄 재시도`}
         </button>
         <span className="text-xs text-blue-900">
-          {known.length}개 prefix 의 cron 을 동시 호출 (Promise.all)
+          {known.length}개 묶음의 크론을 동시에 호출
           {unknown.length > 0 && (
             <span className="text-blue-700">
-              {" "}· 미매핑 {unknown.length}건은 skip (PREFIX_TO_PATH 추가 필요)
+              {" "}· 미매핑 {unknown.length}건은 건너뜀 (주소 매핑 추가 필요)
             </span>
           )}
         </span>
