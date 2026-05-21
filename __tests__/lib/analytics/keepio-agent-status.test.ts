@@ -86,4 +86,28 @@ describe("getKeepioAgentStatus", () => {
     expect(status.ready).toBe(false);
     expect(status.error).toBe("연결 실패");
   });
+
+  it("health 응답 코드 실패를 한국어 오류로 반환한다", async () => {
+    process.env.KEEPIO_AGENT_HEALTH_URL = "http://127.0.0.1:8787/health";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          ok: false,
+          ready: false,
+          checkedAt: "2026-05-21T00:00:00.000Z",
+          uptimeSec: 10,
+          env: { missingRequired: [] },
+          automation: {},
+        }),
+      })),
+    );
+
+    const status = await getKeepioAgentStatus();
+
+    expect(status.ok).toBe(false);
+    expect(status.error).toBe("상태 확인 실패: HTTP 503");
+  });
 });

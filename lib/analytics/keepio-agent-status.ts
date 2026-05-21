@@ -121,7 +121,7 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
         instagramMetrics: body.automation?.instagramMetrics === true,
         instagramComments: body.automation?.instagramComments === true,
       },
-      error: res.ok ? null : `health ${res.status}`,
+      error: res.ok ? null : `상태 확인 실패: HTTP ${res.status}`,
     };
   } catch (e) {
     return {
