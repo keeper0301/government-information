@@ -206,5 +206,34 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     // DB 실패는 silent — UI 차라리 안 보이는 게 안전 (false reminder 차단)
   }
 
+  // 2026-05-22 — Playwright Phase 1 GitHub secrets 자동 감지.
+  // 4 city (changwon/seongnam/ansan/cheonan) 의 news_posts row 가 24h 안에 있으면
+  // = GitHub Actions cron 가동 = secrets 등록 완료 → hide.
+  // 24h row 0 = 미등록 또는 cron 미실행 → reminder.
+  try {
+    const admin = createAdminClient();
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const playwrightCityKeys = ["changwon", "seongnam", "ansan", "cheonan"];
+    const sourceCodes = playwrightCityKeys.map((k) => `local-press-${k}`);
+    const { count } = await admin
+      .from("news_posts")
+      .select("id", { count: "exact", head: true })
+      .in("source_code", sourceCodes)
+      .gte("created_at", since24h);
+    const playwrightActive = (count ?? 0) > 0;
+    if (!playwrightActive) {
+      actions.push({
+        category: "automation",
+        label: "Playwright Phase 1 GitHub secrets (4 시)",
+        description:
+          "5/22 Playwright Phase 1 인프라 push 완료. GitHub repo settings → Secrets and variables → Actions 에서 KEEPIOO_API_URL + KEEPIOO_API_KEY 등록 + workflow_dispatch 1회 수동 trigger.",
+        url: "https://github.com/keeper0301/government-information/settings/secrets/actions",
+        estimatedMinutes: 5,
+      });
+    }
+  } catch {
+    // DB 실패는 silent
+  }
+
   return actions;
 }
