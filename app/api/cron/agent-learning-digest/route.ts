@@ -1,23 +1,10 @@
 import { NextResponse } from "next/server";
 import { logAdminAction } from "@/lib/admin-actions";
 import { getLearningLoopSnapshot } from "@/lib/autonomous-ops/learning-loop";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 async function run() {
   const snapshot = await getLearningLoopSnapshot();
@@ -66,13 +53,13 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const denied = authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
 
 export async function POST(request: Request) {
-  const denied = authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }

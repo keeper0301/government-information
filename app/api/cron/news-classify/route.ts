@@ -11,6 +11,7 @@ import {
 } from "@/lib/news/classify";
 import { logAdminAction } from "@/lib/admin-actions";
 import { NEWS_CLASSIFY_CAP_PER_CRON } from "@/lib/news-classify-config";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 // cap 200 × 평균 3초/건 ÷ 동시 5 = ~120초. maxDuration 600초 = 5x margin.
@@ -19,20 +20,6 @@ export const maxDuration = 600;
 const CAP_PER_CRON = NEWS_CLASSIFY_CAP_PER_CRON;
 // 동시 호출 수 — Anthropic Tier 별 rate limit 고려해 보수적 5. 24h 모니터링 후 조정 가능.
 const CONCURRENCY = 5;
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 type ClassifyResult = {
   fetched: number;
@@ -184,14 +171,14 @@ async function run(): Promise<NextResponse> {
 }
 
 export async function GET(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
 
 // POST 도 같은 동작 (수동 trigger 편의)
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
