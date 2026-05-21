@@ -1,9 +1,9 @@
 // ============================================================
 // /api/cron/agent-resident-cycle
 // ============================================================
-// Site-resident autonomous operations loop. This is the in-site fallback for
-// "Codex is resident": Vercel cron runs diagnostics, classifies next actions
-// through agent-policy, and writes audit rows for the admin hub.
+// 사이트 안에서 계속 도는 자율 운영 루프입니다.
+// Vercel cron 이 진단을 실행하고, agent-policy 로 다음 행동을 분류한 뒤
+// 관리자 허브에서 볼 수 있도록 감사 기록을 남깁니다.
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -19,12 +19,12 @@ function authorize(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
+      { error: "CRON_SECRET 환경변수가 설정되지 않았습니다." },
       { status: 500 },
     );
   }
   if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 });
   }
   return null;
 }
