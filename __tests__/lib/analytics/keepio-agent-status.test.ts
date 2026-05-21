@@ -35,6 +35,15 @@ describe("getKeepioAgentStatus", () => {
           checkedAt: "2026-05-21T00:00:00.000Z",
           uptimeSec: 123,
           env: { missingRequired: [] },
+          resident: {
+            lastRunAt: "2026-05-21T00:01:00.000Z",
+            lastOkAt: "2026-05-21T00:01:03.000Z",
+            lastFailureAt: "2026-05-20T23:59:00.000Z",
+            lastStatus: 200,
+            totalRuns: 12,
+            totalFailures: 1,
+            consecutiveFailures: 0,
+          },
           automation: {
             telegram: true,
             policyDb: true,
@@ -53,6 +62,10 @@ describe("getKeepioAgentStatus", () => {
     expect(status.ok).toBe(true);
     expect(status.ready).toBe(true);
     expect(status.uptimeSec).toBe(123);
+    expect(status.lastFailureAt).toBe("2026-05-20T23:59:00.000Z");
+    expect(status.lastStatus).toBe(200);
+    expect(status.totalRuns).toBe(12);
+    expect(status.totalFailures).toBe(1);
     expect(status.automation.policyDb).toBe(true);
     expect(status.automation.threadsPublishing).toBe(false);
   });

@@ -17,10 +17,10 @@ const BASE_URL = "https://www.gb.go.kr";
 const LIST_URL =
   "https://www.gb.go.kr/Main/page.do?mnu_uid=6792&LARGE_CODE=720&MEDIUM_CODE=50&SMALL_CODE=10&SMALL_CODE2=60";
 
-// 2026-05-22 fix — site 가 query 순서 변경 (BD_CODE 가 B_NUM 보다 앞).
-// 순서 swap. 기존 regex 0 매칭.
+// 2026-05-22 — 경북도청이 query 순서를 바꾸는 경우가 있어
+// BD_CODE 와 B_NUM 순서에 상관없이 보도자료 링크를 찾습니다.
 const LIST_ITEM_REGEX =
-  /<a\s+href="\.\/page\.do\?[^"]*?BD_CODE=bbs_bodo[^"]*?B_NUM=(\d+)[^"]*"\s+title="([^"]+)"/g;
+  /<a\s+href="\.\/page\.do\?(?=[^"]*BD_CODE=bbs_bodo)[^"]*?B_NUM=(\d+)[^"]*"\s+title="([^"]+)"/g;
 
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 

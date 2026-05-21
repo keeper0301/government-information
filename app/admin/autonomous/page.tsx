@@ -416,6 +416,12 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
     ["Instagram metric 수집", status.automation.instagramMetrics],
     ["Instagram 댓글 답글", status.automation.instagramComments],
   ];
+  const formatDate = (value: string | null) =>
+    value
+      ? new Date(value).toLocaleString("ko-KR", {
+          timeZone: "Asia/Seoul",
+        })
+      : "-";
 
   return (
     <section className={`mb-4 rounded-lg border p-4 ${tone}`}>
@@ -430,14 +436,12 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           </p>
         </div>
         <div className="text-left text-[11px] text-grey-600 md:text-right">
-          <div>uptime: {status.uptimeSec !== null ? `${status.uptimeSec}s` : "-"}</div>
+          <div>가동 시간: {status.uptimeSec !== null ? `${status.uptimeSec}초` : "-"}</div>
           <div>
-            checked:{" "}
-            {status.checkedAt
-              ? new Date(status.checkedAt).toLocaleString("ko-KR", {
-                  timeZone: "Asia/Seoul",
-                })
-              : "-"}
+            실행: {status.totalRuns}회 / 실패: {status.totalFailures}회
+          </div>
+          <div>
+            확인: {formatDate(status.checkedAt)}
           </div>
         </div>
       </div>
@@ -453,12 +457,21 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
         ))}
       </div>
 
-      {(status.error || status.missingRequired.length > 0) && (
+      {(status.error || status.missingRequired.length > 0 || status.totalRuns > 0) && (
         <div className="mt-3 rounded-md border border-white/70 bg-white/70 p-3 text-xs text-grey-700">
           {status.error && <div>오류: {status.error}</div>}
           {status.missingRequired.length > 0 && (
             <div>필요 설정: {status.missingRequired.join(", ")}</div>
           )}
+          <div>마지막 실행: {formatDate(status.lastRunAt)}</div>
+          <div>마지막 정상: {formatDate(status.lastOkAt)}</div>
+          {status.totalFailures > 0 && (
+            <div>마지막 실패: {formatDate(status.lastFailureAt)}</div>
+          )}
+          {status.consecutiveFailures > 0 && (
+            <div>연속 실패: {status.consecutiveFailures}회</div>
+          )}
+          {status.lastStatus !== null && <div>마지막 응답 코드: {status.lastStatus}</div>}
           {status.healthUrl && <div className="mt-1 break-all">health: {status.healthUrl}</div>}
         </div>
       )}

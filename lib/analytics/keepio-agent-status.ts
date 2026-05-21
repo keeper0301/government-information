@@ -14,6 +14,13 @@ export type KeepioAgentStatus = {
   healthUrl: string | null;
   checkedAt: string | null;
   uptimeSec: number | null;
+  lastRunAt: string | null;
+  lastOkAt: string | null;
+  lastFailureAt: string | null;
+  lastStatus: number | null;
+  totalRuns: number;
+  totalFailures: number;
+  consecutiveFailures: number;
   missingRequired: string[];
   automation: KeepioAgentAutomationStatus;
   error: string | null;
@@ -38,6 +45,13 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       healthUrl: null,
       checkedAt: null,
       uptimeSec: null,
+      lastRunAt: null,
+      lastOkAt: null,
+      lastFailureAt: null,
+      lastStatus: null,
+      totalRuns: 0,
+      totalFailures: 0,
+      consecutiveFailures: 0,
       missingRequired: ["KEEPIO_AGENT_HEALTH_URL"],
       automation: EMPTY_AUTOMATION,
       error: "KEEPIO_AGENT_HEALTH_URL 미설정",
@@ -57,6 +71,15 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       checkedAt?: unknown;
       uptimeSec?: unknown;
       env?: { missingRequired?: unknown };
+      resident?: {
+        lastRunAt?: unknown;
+        lastOkAt?: unknown;
+        lastFailureAt?: unknown;
+        lastStatus?: unknown;
+        totalRuns?: unknown;
+        totalFailures?: unknown;
+        consecutiveFailures?: unknown;
+      };
       automation?: Partial<Record<keyof KeepioAgentAutomationStatus, unknown>>;
     };
 
@@ -67,6 +90,26 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       healthUrl,
       checkedAt: typeof body.checkedAt === "string" ? body.checkedAt : null,
       uptimeSec: typeof body.uptimeSec === "number" ? body.uptimeSec : null,
+      lastRunAt:
+        typeof body.resident?.lastRunAt === "string" ? body.resident.lastRunAt : null,
+      lastOkAt:
+        typeof body.resident?.lastOkAt === "string" ? body.resident.lastOkAt : null,
+      lastFailureAt:
+        typeof body.resident?.lastFailureAt === "string"
+          ? body.resident.lastFailureAt
+          : null,
+      lastStatus:
+        typeof body.resident?.lastStatus === "number" ? body.resident.lastStatus : null,
+      totalRuns:
+        typeof body.resident?.totalRuns === "number" ? body.resident.totalRuns : 0,
+      totalFailures:
+        typeof body.resident?.totalFailures === "number"
+          ? body.resident.totalFailures
+          : 0,
+      consecutiveFailures:
+        typeof body.resident?.consecutiveFailures === "number"
+          ? body.resident.consecutiveFailures
+          : 0,
       missingRequired: Array.isArray(body.env?.missingRequired)
         ? body.env.missingRequired.filter((v): v is string => typeof v === "string")
         : [],
@@ -88,6 +131,13 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       healthUrl,
       checkedAt: null,
       uptimeSec: null,
+      lastRunAt: null,
+      lastOkAt: null,
+      lastFailureAt: null,
+      lastStatus: null,
+      totalRuns: 0,
+      totalFailures: 0,
+      consecutiveFailures: 0,
       missingRequired: [],
       automation: EMPTY_AUTOMATION,
       error: e instanceof Error ? e.message : String(e),

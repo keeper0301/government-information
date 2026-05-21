@@ -24,6 +24,7 @@ const state = {
   running: false,
   lastRunAt: null,
   lastOkAt: null,
+  lastFailureAt: null,
   lastStatus: null,
   lastError: null,
   consecutiveFailures: 0,
@@ -134,6 +135,7 @@ async function runCycle(config, source = "server_resident_worker") {
   } catch (error) {
     state.totalFailures += 1;
     state.consecutiveFailures += 1;
+    state.lastFailureAt = new Date().toISOString();
     state.lastError = error instanceof Error ? error.message : String(error);
     console.error(
       JSON.stringify({
@@ -172,6 +174,7 @@ function health(config) {
       running: state.running,
       lastRunAt: state.lastRunAt,
       lastOkAt: state.lastOkAt,
+      lastFailureAt: state.lastFailureAt,
       lastStatus: state.lastStatus,
       lastError: state.lastError,
       consecutiveFailures: state.consecutiveFailures,

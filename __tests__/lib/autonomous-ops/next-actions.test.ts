@@ -30,6 +30,13 @@ const agentReady: KeepioAgentStatus = {
   healthUrl: "https://example.com/health",
   checkedAt: "2026-05-19T00:00:00.000Z",
   uptimeSec: 100,
+  lastRunAt: "2026-05-19T00:00:00.000Z",
+  lastOkAt: "2026-05-19T00:00:03.000Z",
+  lastFailureAt: null,
+  lastStatus: 200,
+  totalRuns: 1,
+  totalFailures: 0,
+  consecutiveFailures: 0,
   missingRequired: [],
   automation: {
     telegram: true,
