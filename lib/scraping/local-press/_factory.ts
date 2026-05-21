@@ -20,8 +20,11 @@
 
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 
+// 2026-05-22 fix — cheongju site 가 keepioo-bot UA 차단 (488 byte redirect).
+// Chrome UA 로 변경 — 다른 시청 (광주·수원·고양 등 12개) 은 keepioo-bot 도 정상이라
+// Chrome UA 도 무관. cheongju + 미래 차단 site 일괄 우회.
 const USER_AGENT =
-  "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 export type PressNewsItem = {
   seq: string; // string — 수원처럼 17자리 timestamp seq 도 지원

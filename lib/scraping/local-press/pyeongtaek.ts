@@ -14,7 +14,8 @@ import {
   type PressNewsItem,
 } from "./_factory";
 
-const LIST_URL = "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90";
+// 2026-05-22 fix — site 가 mid query 필수로 변경. 누락 시 HTTP 400.
+const LIST_URL = "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000";
 const DETAIL_BASE =
   "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/view.do?bcIdx=90&mid=0402010000&idx=";
 

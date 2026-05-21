@@ -18,8 +18,10 @@ const LIST_URL =
 const DETAIL_BASE =
   "https://www.hscity.go.kr/www/user/bbs/BD_selectBbs.do?q_bbsCode=1051&q_bbscttSn=";
 
+// 2026-05-22 fix — site 가 a 태그 안 nested tag (strong·span 등) 추가하면서
+// 기존 [가-힣][^<]{4,} 매칭 0. loose regex + tag strip 으로 대응.
 const LIST_ITEM_REGEX =
-  /<a\s+href="BD_selectBbs\.do\?q_bbsCode=1051&(?:amp;)?q_bbscttSn=(\d{14,})[^"]*"[^>]*>([가-힣][^<]{4,})<\/a>/g;
+  /<a[^>]*href="[^"]*BD_selectBbs\.do\?q_bbsCode=1051&(?:amp;)?q_bbscttSn=(\d{14,})[^"]*"[^>]*>([\s\S]{0,300}?)<\/a>/g;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -30,8 +32,11 @@ export function parseListPage(html: string): PressNewsItem[] {
   while ((m = itemRe.exec(html)) !== null) {
     const seq = m[1];
     if (seen.has(seq)) continue;
-    const title = m[2].trim();
-    if (!title) continue;
+    const title = m[2]
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     seen.add(seq);
     // seq 앞 8자리 = YYYYMMDD (용인과 동일 패턴)
     const publishedDate =

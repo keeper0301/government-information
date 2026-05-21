@@ -15,9 +15,11 @@ const LIST_URL =
   "https://www.daejeon.go.kr/drh/board/boardNormalList.do?boardId=normal_0189&menuSeq=6825";
 const DETAIL_BASE = "https://www.daejeon.go.kr";
 
-// title link: <td class="al_left subject"><a href="...ntatcSeq={NNN}"><strong>{title}</strong></a></td>
+// 2026-05-22 fix — 일반 보도자료 row 누락 사고. site 가 공지 row 만 <strong> 사용.
+// 일반 row 는 a 안 plain text. regex 단순화 + title tag 제거.
+// <td class="al_left subject"><a href="...ntatcSeq={NNN}">{title or <strong>...}</a></td>
 const LIST_ITEM_REGEX =
-  /<td[^>]*class="al_left subject"[^>]*>\s*<a\s+href="([^"]*ntatcSeq=\d+[^"]*)"[^>]*>\s*<strong>([^<]+)<\/strong>/g;
+  /<td[^>]*class="al_left subject"[^>]*>\s*<a\s+href="([^"]*ntatcSeq=\d+[^"]*)"[^>]*>([\s\S]*?)<\/a>/g;
 // 대전 list 의 date 별도 td. <td>2026-05-16</td> 형식 (다른 td 와 충돌 가능)
 const DATE_REGEX = /<td[^>]*>(\d{4}-\d{2}-\d{2})<\/td>/g;
 // ntatcSeq 추출
@@ -36,8 +38,12 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seqMatch = NTATC_REGEX.exec(href);
     if (!seqMatch) continue;
     const seq = seqMatch[1];
-    const title = m[2].trim();
-    if (!title) continue;
+    // a 안 content 에서 <strong>·<i>·기타 tag 제거 후 trim. 한글 가드.
+    const title = m[2]
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!title || !/[가-힣]/.test(title)) continue;
     items.push({
       idx,
       seq,
