@@ -13,23 +13,47 @@ import { chromium } from "playwright";
 const USER_AGENT =
   "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
 
+// 2026-05-22 — 광범위 확장. 5 city SPA site 표준 selector 다양 대응.
+// Playwright waitForSelector 가 OR list — 1개라도 매칭 시 진행.
 const LIST_SELECTORS = [
   "table.boardList tbody tr",
+  "table.tbl_basic tbody tr",
+  "table.board_list tbody tr",
+  "table[class*='board'] tbody tr",
   "ul.bbs_list li",
+  "ul.board_list li",
+  "ul[class*='news'] li",
+  "ul[class*='press'] li",
+  "ul[class*='list'] li[class*='item']",
   ".board_list li",
   ".board-list li",
-  "table.tbl_basic tbody tr",
+  ".news-list li",
+  ".press-list li",
+  "div[class*='board-list'] li",
+  "div[class*='news-list'] li",
+  // fallback 최후 — 단일 table 의 tbody tr (false positive 가능, length>3 가드)
   "table tbody tr",
 ];
 
 const BODY_SELECTORS = [
   ".view_cont",
   ".board_view",
+  ".board_view_body",
+  ".board_view_contents",
   ".bbs_view",
+  ".bbs_view_content",
   ".bbs_content",
   ".content_view",
+  ".board_txt",
+  ".view_con",
+  ".board-view-contents",
+  ".article-contents",
+  ".se-contents",
   "[class*='view_content']",
   "[class*='cont_box']",
+  "[class*='view-content']",
+  "[class*='board-view']",
+  "[id='articleContents']",
   "#contents .content",
 ];
 
@@ -45,21 +69,42 @@ export function makeScraper({ listUrl, cityName }) {
 
     try {
       await page.goto(listUrl, { waitUntil: "networkidle", timeout: 30000 });
-      await page.waitForSelector(LIST_SELECTORS.join(", "), {
-        timeout: 15000,
-      });
+      // 2026-05-22 — wait 시간 15s → 25s 확장 (느린 SPA 대응).
+      // selector 매칭 실패해도 evaluate 진행 (catch fallthrough).
+      try {
+        await page.waitForSelector(LIST_SELECTORS.join(", "), {
+          timeout: 25000,
+        });
+      } catch (e) {
+        console.error(`[${cityName}] waitForSelector timeout — fallthrough`);
+      }
 
       const items = await page.evaluate(
         ({ selectors, limit }) => {
           let rows = [];
+          let chosen = null;
+          // 2026-05-22 debug — 각 selector 매칭 count 기록 (Actions log).
+          const counts = {};
+          for (const sel of selectors) {
+            try {
+              const c = document.querySelectorAll(sel).length;
+              counts[sel] = c;
+            } catch {}
+          }
           for (const sel of selectors) {
             const els = document.querySelectorAll(sel);
             if (els.length > 3) {
               rows = Array.from(els);
+              chosen = sel;
               break;
             }
           }
-          if (rows.length === 0) return [];
+          // 매칭 0 일 시 debug info 반환 (runner 가 stderr 출력)
+          if (rows.length === 0) {
+            console.log(`[FACTORY] no list selector matched. counts=${JSON.stringify(counts)}`);
+            return [];
+          }
+          console.log(`[FACTORY] list selector "${chosen}" matched ${rows.length} rows`);
 
           return rows
             .slice(0, limit)
