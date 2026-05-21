@@ -30,6 +30,7 @@ npm run agent:resident:check
 3. `CRON_SECRET`을 비밀 환경변수로 추가합니다.
 4. 항상 켜진 상태가 필요하므로 Starter 이상 요금제를 사용합니다.
 5. `/health`가 `ready: true`를 돌려주는지 확인합니다.
+6. 본 사이트의 Vercel 환경변수에 `KEEPIO_AGENT_HEALTH_URL`을 추가합니다. 값은 Render가 제공한 공개 주소 뒤에 `/health`를 붙인 주소입니다.
 
 ## 로컬 실행
 
