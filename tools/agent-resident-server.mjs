@@ -210,7 +210,7 @@ function startHealthServer(config) {
     }
 
     res.writeHead(404, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: "not_found" }));
+    res.end(JSON.stringify({ error: "요청한 주소를 찾을 수 없습니다." }));
   });
 
   server.listen(config.port, () => {
