@@ -11,10 +11,13 @@ export const maxDuration = 30;
 async function authorize(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "CRON_SECRET 환경변수가 설정되지 않았습니다." },
+      { status: 500 },
+    );
   }
   if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 });
   }
   return null;
 }
@@ -26,13 +29,16 @@ export async function POST(request: Request) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!botToken || !chatId) {
-    return NextResponse.json({ error: "TELEGRAM env missing" }, { status: 500 });
+    return NextResponse.json(
+      { error: "텔레그램 환경변수가 설정되지 않았습니다." },
+      { status: 500 },
+    );
   }
 
   const body = (await request.json().catch(() => ({}))) as { text?: unknown };
   const text = typeof body.text === "string" ? body.text : "";
   if (!text) {
-    return NextResponse.json({ error: "text required" }, { status: 400 });
+    return NextResponse.json({ error: "보낼 메시지 text 값이 필요합니다." }, { status: 400 });
   }
 
   // Telegram Bot API sendMessage — chat_id + text. parse_mode 는 호출자 책임 X (안전 default).
