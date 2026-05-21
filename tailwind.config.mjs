@@ -1,5 +1,3 @@
-import type { Config } from "tailwindcss";
-
 // ============================================================
 // keepioo 디자인 토큰 — Toss Design System (TDS) 정확화
 // ============================================================
@@ -14,7 +12,7 @@ import type { Config } from "tailwindcss";
 // - 카드 분리는 ring 보다 background 차이 + 그림자로
 // ============================================================
 
-const config: Config = {
+const config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",

@@ -5,7 +5,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
-@config "../tailwind.config.ts";
+@config "../tailwind.config.mjs";
 
 html {
   -webkit-font-smoothing: antialiased;
