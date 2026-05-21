@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".tmp-*.mjs",
   ]),
   {
     // ━━━ 접근성·WCAG AA 가드 ━━━
