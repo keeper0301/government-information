@@ -66,10 +66,14 @@ async function loadCityStats(
     e.ministry,
     ...(e.ministryAliases ?? []),
   ]);
+  // 2026-05-22 fix — Supabase 기본 1000 row cap 으로 ministry 일부 누락 사고.
+  // news_posts 18,000+ row 중 in() 매칭 시 cap 에서 잘려 시·군 ministry 가 빠짐
+  // → 누적 수집 0건 표시 사고. ministry column 만 가져오므로 가볍게 50,000 limit.
   const { data: postRows } = await admin
     .from("news_posts")
     .select("ministry")
-    .in("ministry", allMinistries);
+    .in("ministry", allMinistries)
+    .limit(50000);
   const countByMinistry = new Map<string, number>();
   for (const r of postRows ?? []) {
     const m = String((r as { ministry: string }).ministry ?? "");
