@@ -38,7 +38,7 @@ export async function checkAgentAuth(request: Request): Promise<AgentAuthResult>
     return {
       ok: false,
       response: NextResponse.json(
-        { error: "agent disabled (kill switch)" },
+        { error: "에이전트가 비활성화되어 있습니다." },
         { status: 503 },
       ),
     };
@@ -50,7 +50,7 @@ export async function checkAgentAuth(request: Request): Promise<AgentAuthResult>
     return {
       ok: false,
       response: NextResponse.json(
-        { error: "AGENT_SECRET not configured" },
+        { error: "AGENT_SECRET 환경변수가 설정되지 않았습니다." },
         { status: 500 },
       ),
     };
@@ -60,7 +60,7 @@ export async function checkAgentAuth(request: Request): Promise<AgentAuthResult>
   if (!safeCompare(header, expected)) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+      response: NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 }),
     };
   }
 
@@ -70,7 +70,7 @@ export async function checkAgentAuth(request: Request): Promise<AgentAuthResult>
     return {
       ok: false,
       response: NextResponse.json(
-        { error: "rate_limit", limit_per_min: RATE_LIMIT_PER_MIN },
+        { error: "호출이 너무 많습니다.", limit_per_min: RATE_LIMIT_PER_MIN },
         { status: 429 },
       ),
     };
