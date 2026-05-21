@@ -10,6 +10,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkW1Readiness } from "@/lib/codex/w1-readiness";
+import { getAdsensePlacementSummary } from "@/lib/analytics/adsense-placement-status";
 
 export type PendingExternalAction = {
   /** 카테고리 — UI grouping */
@@ -204,6 +205,25 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     }
   } catch {
     // DB 실패는 silent — UI 차라리 안 보이는 게 안전 (false reminder 차단)
+  }
+
+  // 2026-05-22 — AdSense placement 위치별 unit 등록 자동 감지.
+  // 5 placement (home/list/detail/category/eligibility) 중 1건 이상 미등록 시 reminder.
+  // SLOT_INFEED default fallback 가동 중이면 사이트 영향 0, 분석만 통합.
+  const adsensePlacement = getAdsensePlacementSummary();
+  if (
+    adsensePlacement.defaultFallback &&
+    adsensePlacement.registeredCount < adsensePlacement.totalCount
+  ) {
+    const remaining =
+      adsensePlacement.totalCount - adsensePlacement.registeredCount;
+    actions.push({
+      category: "adsense",
+      label: `AdSense placement 미등록 ${remaining}/${adsensePlacement.totalCount}`,
+      description: `5/22 placement 분리 인프라 push 완료 (commit 74cb64c). AdSense console 에서 ${remaining} 위치 ad unit 생성 후 NEXT_PUBLIC_ADSENSE_SLOT_/LAYOUT_ Vercel env 등록. 미등록은 default fallback 으로 동작.`,
+      url: "https://adsense.google.com/adsense/u/0/pub-5310204530716694/myads",
+      estimatedMinutes: 15,
+    });
   }
 
   // 2026-05-22 — Playwright Phase 1 GitHub secrets 자동 감지.
