@@ -98,15 +98,29 @@ export function ScrapeCityCard({
       </div>
 
       {recent && (
-        <div className="mb-3 rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+        <div
+          className={`mb-3 rounded border px-3 py-2 text-xs ${
+            recent.fetched === 0 && recent.errors.length > 0
+              ? "border-red-300 bg-red-50 text-red-900"
+              : recent.inserted === 0 && recent.skipped > 0
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-slate-200 bg-white text-slate-700"
+          }`}
+        >
           <div>
             <span className="font-semibold">{recent.trigger}</span>
             {" · fetched "}
             {recent.fetched}건 / inserted {recent.inserted}건 / skipped{" "}
             {recent.skipped}건
+            {recent.fetched === 0 && recent.errors.length > 0 && (
+              <span className="ml-2 font-semibold">🚨 fetch throw</span>
+            )}
+            {recent.fetched > 0 && recent.inserted === 0 && recent.skipped > 0 && (
+              <span className="ml-2 font-semibold">⚠️ body skip</span>
+            )}
           </div>
           {recent.errors.length > 0 && (
-            <div className="mt-1 text-amber-700">
+            <div className="mt-1 opacity-90">
               오류: {recent.errors.slice(0, 2).join(", ")}
             </div>
           )}
