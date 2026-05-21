@@ -354,6 +354,19 @@ export default async function AdminHomePage({
                 : "점검 필요"}
             </span>
           </div>
+          {policyInboxStorageStatus.status === "ready" && (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-md bg-grey-50 px-2.5 py-1 font-semibold text-grey-700">
+                읽음 {policyInboxStorageStatus.readCount.toLocaleString()}
+              </span>
+              <span className="rounded-md bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
+                저장 {policyInboxStorageStatus.savedCount.toLocaleString()}
+              </span>
+              <span className="rounded-md bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+                숨김 {policyInboxStorageStatus.hiddenCount.toLocaleString()}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 

@@ -40,17 +40,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
   const fn = map[target];
   if (!fn) {
-    // eslint-disable-next-line no-console
     console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });
-  // eslint-disable-next-line no-console
   console.log(`[${target}] fetched ${items.length} items`);
   for (const it of items) {
-    // eslint-disable-next-line no-console
     console.log(`  ${it.publishedDate ?? "-"} | ${it.title.slice(0, 60)}`);
-    // eslint-disable-next-line no-console
     console.log(`    body ${it.body.length}자: ${it.body.slice(0, 80)}...`);
   }
 }

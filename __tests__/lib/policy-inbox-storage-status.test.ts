@@ -9,6 +9,9 @@ describe("policy inbox storage status", () => {
     expect(
       buildPolicyInboxStorageStatus({
         count: 12,
+        readCount: 7,
+        savedCount: 3,
+        hiddenCount: 2,
         error: null,
       }),
     ).toEqual({
@@ -16,6 +19,9 @@ describe("policy inbox storage status", () => {
       label: "정책함 저장소 정상",
       tone: "good",
       count: 12,
+      readCount: 7,
+      savedCount: 3,
+      hiddenCount: 2,
       hint: "읽음·저장·숨김 상태 저장 가능",
     });
   });
@@ -34,6 +40,9 @@ describe("policy inbox storage status", () => {
       label: "정책함 저장소 미적용",
       tone: "warn",
       count: 0,
+      readCount: 0,
+      savedCount: 0,
+      hiddenCount: 0,
       hint: "Supabase migration 20260520191551 적용 필요",
     });
   });

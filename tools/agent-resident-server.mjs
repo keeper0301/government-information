@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 /**
- * Server-grade resident operations worker.
+ * 서버급 상시 운영 워커.
  *
- * Run this on an always-on host (Render Starter, VPS, systemd, Docker). It keeps
- * a process alive, exposes /health, and continuously triggers the in-site
- * autonomous resident cycle.
+ * Render Starter, VPS, systemd, Docker 같은 항상 켜져 있는 환경에서 실행한다.
+ * 프로세스를 계속 살려두고, /health 상태 확인을 열며, 사이트 내부 자율 운영
+ * 사이클을 계속 호출한다.
  */
 
 import http from "node:http";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 const DEFAULT_SITE_BASE_URL = "https://www.keepioo.com";
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
 const MIN_INTERVAL_MS = 60 * 1000;
 const REQUEST_TIMEOUT_MS = 55 * 1000;
+
+loadLocalEnv();
 
 const startedAt = Date.now();
 const state = {
@@ -45,6 +49,35 @@ function readConfig() {
     intervalMs,
     cycleUrl: `${siteBaseUrl}/api/cron/agent-resident-cycle`,
   };
+}
+
+function loadLocalEnv() {
+  const envPath = path.join(process.cwd(), ".env.local");
+  if (!existsSync(envPath)) return;
+
+  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex <= 0) continue;
+
+    const key = trimmed.slice(0, eqIndex).trim();
+    const value = cleanEnvValue(trimmed.slice(eqIndex + 1).trim());
+    if (!key || process.env[key] !== undefined) continue;
+
+    process.env[key] = value;
+  }
+}
+
+function cleanEnvValue(value) {
+  const quote = value[0];
+  const last = value[value.length - 1];
+  if ((quote === '"' || quote === "'") && last === quote) {
+    return value.slice(1, -1);
+  }
+  return value;
 }
 
 function trimTrailingSlash(value) {

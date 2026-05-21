@@ -114,7 +114,6 @@ export function makeScraper({ listUrl, cityName }) {
           }, BODY_SELECTORS);
           if (body) out.push({ ...item, body });
         } catch (e) {
-          // eslint-disable-next-line no-console
           console.error(
             `[${cityName}] detail fail: ${item.sourceUrl} — ${e.message}`,
           );

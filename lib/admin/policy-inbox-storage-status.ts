@@ -12,11 +12,17 @@ export type PolicyInboxStorageSummary = {
   label: string;
   tone: PolicyInboxStorageTone;
   count: number;
+  readCount: number;
+  savedCount: number;
+  hiddenCount: number;
   hint: string;
 };
 
 export type PolicyInboxStorageCountResult = {
   count: number | null;
+  readCount?: number | null;
+  savedCount?: number | null;
+  hiddenCount?: number | null;
   error: {
     code?: string;
     message?: string;
@@ -54,6 +60,9 @@ export function buildPolicyInboxStorageStatus(
       label: "정책함 저장소 정상",
       tone: "good",
       count: result.count ?? 0,
+      readCount: result.readCount ?? 0,
+      savedCount: result.savedCount ?? 0,
+      hiddenCount: result.hiddenCount ?? 0,
       hint: "읽음·저장·숨김 상태 저장 가능",
     };
   }
@@ -65,6 +74,9 @@ export function buildPolicyInboxStorageStatus(
       label: "정책함 저장소 미적용",
       tone: "warn",
       count: 0,
+      readCount: 0,
+      savedCount: 0,
+      hiddenCount: 0,
       hint: normalized.safeMessage,
     };
   }
@@ -74,18 +86,40 @@ export function buildPolicyInboxStorageStatus(
     label: "정책함 저장소 점검 필요",
     tone: "danger",
     count: 0,
+    readCount: 0,
+    savedCount: 0,
+    hiddenCount: 0,
     hint: normalized.safeMessage,
   };
 }
 
 export async function getPolicyInboxStorageStatus(): Promise<PolicyInboxStorageSummary> {
   const admin = createAdminClient();
-  const { count, error } = await admin
-    .from("user_policy_inbox_items")
-    .select("id", { count: "exact", head: true });
+  const [total, read, saved, hidden] = await Promise.all([
+    admin
+      .from("user_policy_inbox_items")
+      .select("id", { count: "exact", head: true }),
+    admin
+      .from("user_policy_inbox_items")
+      .select("id", { count: "exact", head: true })
+      .not("read_at", "is", null),
+    admin
+      .from("user_policy_inbox_items")
+      .select("id", { count: "exact", head: true })
+      .not("saved_at", "is", null),
+    admin
+      .from("user_policy_inbox_items")
+      .select("id", { count: "exact", head: true })
+      .not("hidden_at", "is", null),
+  ]);
+
+  const error = total.error ?? read.error ?? saved.error ?? hidden.error;
 
   return buildPolicyInboxStorageStatus({
-    count: count ?? 0,
+    count: total.count ?? 0,
+    readCount: read.count ?? 0,
+    savedCount: saved.count ?? 0,
+    hiddenCount: hidden.count ?? 0,
     error: error
       ? {
           code: error.code,
