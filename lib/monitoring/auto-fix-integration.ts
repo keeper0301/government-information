@@ -39,7 +39,7 @@ const DOMAIN_SOURCES = {
     listUrl: GWANGJU_LIST_URL,
     fetcher: fetchGwangju,
     currentBodyRegex:
-      '<div\\s+class="board_view_content[^"]*"[^>]*>([\\s\\S]*?)</div>',
+      '<div\\s+class="board_view_body[^"]*"[^>]*>([\\s\\S]*?)<div\\s+class="add_file"',
     target: "보도자료 본문 텍스트",
   },
 } as const;
