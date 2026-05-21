@@ -58,14 +58,27 @@ async function scrapeCity(
     });
     return r;
   } catch (e) {
-    return {
+    // 2026-05-22 fix — throw 시 invisible silent fail (audit 미기록) 사고 해소.
+    // catch 안에서도 logAdminAction 호출 → /admin/scrape-local 페이지 + silent-fail-detect 가시화.
+    const errorMessage = (e as Error).message;
+    const errResult: CityResult = {
       city: entry.city,
       fetched: 0,
       inserted: 0,
       skipped: 0,
-      errors: [],
-      error: (e as Error).message,
+      errors: [errorMessage.slice(0, 200)],
+      error: errorMessage,
     };
+    try {
+      await logAdminAction({
+        actorId: null,
+        action: "local_press_scrape",
+        details: { trigger: "cron", ...errResult },
+      });
+    } catch {
+      // audit insert 도 fail 하면 silent — 무한 throw 회피
+    }
+    return errResult;
   }
 }
 

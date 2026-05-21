@@ -10,7 +10,12 @@ const LIST_URL = "https://state.gwd.go.kr/portal/briefing/pressRelease";
 const LIST_ROW_REGEX =
   /<tr\s+data-prboard-seq="(\d+)"[^>]*>[\s\S]*?<td\s+class="skinTb-sbj">\s*<a\s+href="\/portal\/briefing\/pressRelease\?seq=\d+"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<td\s+class="skinTb-date">(\d{4}-\d{2}-\d{2})<\/td>/g;
 
+// 2026-05-22 fix — gangwon site 가 본문을 짧은 <p>title</p> 만 두고 hwp 첨부에 본문.
+// 기존 regex 첫 close div 에서 끊겨 본문 31자 → skip 50자 가드 fail.
+// 끝점을 copyright-bx 까지로 확장 — 본문 + 첨부 파일 title 모두 포함.
 const BODY_CONTENT_REGEX =
+  /<div\s+class="skinTb-td skinTb-conts"[^>]*>([\s\S]*?)<div\s+class="copyright-bx"/i;
+const BODY_CONTENT_REGEX_LEGACY =
   /<div\s+class="skinTb-td skinTb-conts"[^>]*>([\s\S]*?)<\/div>/i;
 const ATTACH_SECTION_REGEX =
   /<div\s+class="skinTb-td attachFile"[^>]*>([\s\S]*?)<div\s+class="copyright-bx"/i;
@@ -52,7 +57,7 @@ export function parseListPage(html: string): PressNewsItem[] {
 
 export function parseDetailBody(html: string): string | null {
   const parts: string[] = [];
-  const bodyMatch = BODY_CONTENT_REGEX.exec(html);
+  const bodyMatch = BODY_CONTENT_REGEX.exec(html) ?? BODY_CONTENT_REGEX_LEGACY.exec(html);
   if (bodyMatch) {
     parts.push(toText(bodyMatch[1]));
   }

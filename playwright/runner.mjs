@@ -20,6 +20,7 @@ import {
   scrapeSeongnam,
   scrapeAnsan,
   scrapeCheonan,
+  scrapeBusan,
 } from "./lib/cities.mjs";
 
 const COLLECTORS = [
@@ -27,6 +28,7 @@ const COLLECTORS = [
   { city: "성남시", key: "seongnam", fn: scrapeSeongnam },
   { city: "안산시", key: "ansan", fn: scrapeAnsan },
   { city: "천안시", key: "cheonan", fn: scrapeCheonan },
+  { city: "부산광역시", key: "busan", fn: scrapeBusan },
 ];
 
 async function postBatch({ apiUrl, apiKey, city, items }) {

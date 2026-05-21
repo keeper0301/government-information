@@ -29,6 +29,12 @@ export const scrapeCheonan = makeScraper({
   listUrl: "https://www.cheonan.go.kr/prog/bbsArticle/BBSMSTR_000000000060/list.do",
 });
 
+// 2026-05-22 — busan 정적 fetch 불가 (SPA list). Playwright 로 가동.
+export const scrapeBusan = makeScraper({
+  cityName: "부산광역시",
+  listUrl: "https://www.busan.go.kr/nbtnewsBU",
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -37,6 +43,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     seongnam: scrapeSeongnam,
     ansan: scrapeAnsan,
     cheonan: scrapeCheonan,
+    busan: scrapeBusan,
   };
   const fn = map[target];
   if (!fn) {

@@ -52,6 +52,11 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "천안시청",
     sourceCode: "local-press-cheonan",
   },
+  busan: {
+    ministry: "부산광역시청",
+    sourceOutlet: "부산광역시청",
+    sourceCode: "local-press-busan",
+  },
 };
 
 type BatchItem = {
