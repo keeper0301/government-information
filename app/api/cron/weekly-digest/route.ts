@@ -15,6 +15,7 @@ import { notifyCronFailure } from "@/lib/email";
 import { sendWeeklyDigestEmail } from "@/lib/email/weekly-digest";
 import { loadHotPrograms, loadRecipients } from "@/lib/digest/weekly";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 // 사용자 수가 늘어도 1회 발송이라 5분 한도면 충분 (Resend 1통당 ~수백 ms).
 export const maxDuration = 300;
@@ -23,20 +24,6 @@ export const dynamic = "force-dynamic";
 // 이메일 발송 동시 실행 갯수 — 너무 큰 batch 는 Resend rate limit 위험.
 // 토스 patterns 따라 5건씩 끊어서 보냄.
 const SEND_BATCH = 5;
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 async function run() {
   const jobLabel = "weekly-digest";
@@ -159,13 +146,13 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
 
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
