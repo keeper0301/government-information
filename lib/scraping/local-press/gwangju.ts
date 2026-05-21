@@ -73,10 +73,12 @@ export function parseListPage(html: string): GwangjuNewsItem[] {
   }));
 }
 
-// 상세 page 본문 추출. 광주광역시청 패턴:
-// <div class="board_view_content">...본문 HTML...</div>
+// 상세 page 본문 추출. 광주광역시청 패턴 변경 (5/22 audit):
+// 이전: <div class="board_view_content"> (prod 0 matches)
+// 현재: <div class="board_view_body"> ... </div> ... <div class="add_file"> (본문 끝)
+// add_file 까지 매칭 = nested div (view_image, koglSeView 등) 까지 본문에 포함.
 const BODY_REGEX_GWANGJU =
-  /<div\s+class="board_view_content[^"]*"[^>]*>([\s\S]*?)<\/div>/;
+  /<div\s+class="board_view_body[^"]*"[^>]*>([\s\S]*?)<div\s+class="add_file"/;
 
 export function parseDetailBody(html: string): string | null {
   const m = BODY_REGEX_GWANGJU.exec(html);
