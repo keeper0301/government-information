@@ -16,8 +16,10 @@ const BASE_URL = "https://www.chungbuk.go.kr";
 const LIST_URL =
   "https://www.chungbuk.go.kr/www/selectBbsNttList.do?bbsNo=65&key=429";
 
+// 2026-05-22 fix — site 가 a 태그 안에 nested <span> 추가하면서 ([^<]+) 0 매칭.
+// loose ([\s\S]{0,500}?) + tag strip 으로 대응.
 const LIST_ITEM_REGEX =
-  /<a\s+href="\.\/selectBbsNttView\.do\?key=429[^"]*?nttNo=(\d+)[^"]*"[^>]*>([^<]+)<\/a>/g;
+  /<a\s+href="\.\/selectBbsNttView\.do\?key=429[^"]*?nttNo=(\d+)[^"]*"[^>]*>([\s\S]{0,500}?)<\/a>/g;
 
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
@@ -37,8 +39,11 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[1];
     if (seen.has(seq)) continue;
     seen.add(seq);
-    const title = decodeBasicEntities(m[2]).trim();
-    if (!title || title.length < 5) continue;
+    // tag strip 후 decode (nested span 등 모두 제거)
+    const title = decodeBasicEntities(
+      m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
+    ).trim();
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const slice = html.slice(m.index, m.index + 800);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     const publishedDate = dateMatch ? dateMatch[1] : null;

@@ -15,8 +15,10 @@ import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 
 const LIST_URL = "https://opengov.seoul.go.kr/press/list";
 const DETAIL_BASE = "https://opengov.seoul.go.kr/press";
+// 2026-05-22 fix — keepioo-bot UA 차단 의심 (사장님 image 누적 0건 + cron 결과 없음).
+// _factory.ts 의 Chrome UA 와 통일.
 const USER_AGENT =
-  "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 export type SeoulNewsItem = {
   seq: number;
