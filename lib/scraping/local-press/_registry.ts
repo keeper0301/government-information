@@ -50,6 +50,7 @@ import { scrapeGunpoAndInsert } from "./gunpo";
 import { scrapeYangjuAndInsert } from "./yangju";
 import { scrapeBupyeongAndInsert } from "./bupyeong";
 import { scrapeYeonsuAndInsert } from "./yeonsu";
+import { scrapeSeoIncheonAndInsert } from "./seo_incheon";
 
 export type CityKey =
   | "suncheon"
@@ -92,7 +93,8 @@ export type CityKey =
   | "gunpo"
   | "yangju"
   | "bupyeong"
-  | "yeonsu";
+  | "yeonsu"
+  | "seo_incheon";
 
 export type CityEntry = {
   key: CityKey;
@@ -446,6 +448,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "연수구청",
     siteUrl: "https://www.yeonsu.go.kr/main/community/notify/report.asp",
     fn: scrapeYeonsuAndInsert,
+  },
+  // 2026-05-22 — 인천 서구 56만. 부평구와 동일 system. 18,488+ 보도자료.
+  {
+    key: "seo_incheon",
+    city: "인천 서구",
+    ministry: "인천 서구청",
+    siteUrl:
+      "https://www.seo.incheon.kr/open_content/main/community/news/report.jsp",
+    fn: scrapeSeoIncheonAndInsert,
   },
 ];
 
