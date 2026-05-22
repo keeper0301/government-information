@@ -38,6 +38,7 @@ import { scrapeChungnamAndInsert } from "./chungnam";
 import { scrapeChungbukAndInsert } from "./chungbuk";
 import { scrapeGangwonAndInsert } from "./gangwon";
 import { scrapeJejuAndInsert } from "./jeju";
+import { scrapeGangnamAndInsert } from "./gangnam";
 
 export type CityKey =
   | "suncheon"
@@ -68,7 +69,8 @@ export type CityKey =
   | "chungnam"
   | "chungbuk"
   | "gangwon"
-  | "jeju";
+  | "jeju"
+  | "gangnam";
 
 export type CityEntry = {
   key: CityKey;
@@ -317,6 +319,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministryAliases: ["제주특별자치도", "제주도"],
     siteUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
     fn: scrapeJejuAndInsert,
+  },
+  // 2026-05-22 — 광역시 자치구 확장 첫 시범 (강남구). 정적 fetch 가능 site.
+  {
+    key: "gangnam",
+    city: "강남구",
+    ministry: "강남구청",
+    siteUrl:
+      "https://www.gangnam.go.kr/board/B_000031/list.do?mid=ID01_031",
+    fn: scrapeGangnamAndInsert,
   },
 ];
 
