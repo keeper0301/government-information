@@ -48,6 +48,7 @@ import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
 import { scrapeYangjuAndInsert } from "./yangju";
+import { scrapeBupyeongAndInsert } from "./bupyeong";
 
 export type CityKey =
   | "suncheon"
@@ -88,7 +89,8 @@ export type CityKey =
   | "wonju"
   | "gwangsan"
   | "gunpo"
-  | "yangju";
+  | "yangju"
+  | "bupyeong";
 
 export type CityEntry = {
   key: CityKey;
@@ -426,6 +428,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.yangju.go.kr/www/selectBbsNttList.do?bbsNo=13&key=202",
     fn: scrapeYangjuAndInsert,
+  },
+  // 2026-05-22 — 부평구 47만 (인천광역시). 24,127+ 보도자료. 자체 system (bbsMsgDetail).
+  {
+    key: "bupyeong",
+    city: "부평구",
+    ministry: "부평구청",
+    siteUrl: "https://www.icbp.go.kr/main/participation/news/report.jsp",
+    fn: scrapeBupyeongAndInsert,
   },
 ];
 
