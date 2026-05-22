@@ -103,9 +103,44 @@ async function run() {
     }
   }
 
+  // 5/22: caption AI 티 검출 시 사장님 즉시 알림 (사장님 5/22 명시)
+  // validate-caption 이 ok:false reason:caption_violations 반환 → admin 가시 + 즉시 알림
+  const violationItems: Array<{ id: string; title: string; channels: string[]; reasons: string[] }> = [];
+  for (const proc of processedResults) {
+    const violations = (proc.results as Array<{ channel: string; ok: boolean; reason?: string }>)
+      .filter((r) => !r.ok && r.reason?.startsWith("caption_violations:"));
+    if (violations.length > 0) {
+      const post = list.find((p) => p.id === proc.id);
+      violationItems.push({
+        id: proc.id,
+        title: post?.title.slice(0, 60) ?? "(제목 없음)",
+        channels: violations.map((v) => v.channel),
+        reasons: violations.map((v) => v.reason?.slice(0, 120) ?? "").filter(Boolean),
+      });
+    }
+  }
+  if (violationItems.length > 0) {
+    try {
+      const { sendOpsAlertTelegram } = await import("@/lib/notifications/telegram-ops-alert");
+      const msg = violationItems
+        .map(
+          (v) =>
+            `- ${v.title}\n  channels: ${v.channels.join(", ")}\n  ${v.reasons[0] ?? ""}`,
+        )
+        .join("\n\n");
+      await sendOpsAlertTelegram({
+        subject: `🚨 SNS 발행 차단 — caption AI 티 ${violationItems.length}건`,
+        message: `${msg}\n\nadmin 에서 caption 수정 후 재발행 필요. blog_posts.title/meta_description LLM 결과가 금지 phrase 포함.`,
+      });
+    } catch (e) {
+      console.warn("[sns-publish-blog] caption_violations 알림 실패:", e);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     processed: processedResults.length,
+    caption_violations: violationItems.length,
     results: processedResults,
   });
 }

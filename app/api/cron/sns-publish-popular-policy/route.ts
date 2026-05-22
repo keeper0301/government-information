@@ -175,7 +175,39 @@ async function run() {
     }
   }
 
-  return { success: true, published: results.length, results };
+  // 5/22: caption AI 티 검출 시 사장님 즉시 알림 (사장님 5/22 명시)
+  const violationItems: Array<{ id: string; title: string; channels: string[]; reasons: string[] }> = [];
+  for (const r of results) {
+    const violations = (r.channels as Array<{ channel: string; ok: boolean; reason?: string }>)
+      .filter((c) => !c.ok && c.reason?.startsWith("caption_violations:"));
+    if (violations.length > 0) {
+      violationItems.push({
+        id: r.id,
+        title: r.title,
+        channels: violations.map((v) => v.channel),
+        reasons: violations.map((v) => v.reason?.slice(0, 120) ?? "").filter(Boolean),
+      });
+    }
+  }
+  if (violationItems.length > 0) {
+    try {
+      const { sendOpsAlertTelegram } = await import("@/lib/notifications/telegram-ops-alert");
+      const msg = violationItems
+        .map(
+          (v) =>
+            `- ${v.title}\n  channels: ${v.channels.join(", ")}\n  ${v.reasons[0] ?? ""}`,
+        )
+        .join("\n\n");
+      await sendOpsAlertTelegram({
+        subject: `🚨 인기 정책 SNS 발행 차단 — caption AI 티 ${violationItems.length}건`,
+        message: `${msg}\n\nadmin 에서 정책 title 수정 후 재발행 필요.`,
+      });
+    } catch (e) {
+      console.warn("[sns-publish-popular-policy] caption_violations 알림 실패:", e);
+    }
+  }
+
+  return { success: true, published: results.length, caption_violations: violationItems.length, results };
 }
 
 export async function GET(request: Request) {
