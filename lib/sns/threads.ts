@@ -7,6 +7,8 @@
 // env: THREADS_USER_ID / THREADS_ACCESS_TOKEN
 // 텍스트 500자 제한.
 
+import { validateCaption } from "../validate-caption";
+
 const THREADS_API_BASE = "https://graph.threads.net/v1.0";
 
 export type SnsResult =
@@ -20,6 +22,19 @@ export async function publishThreadsPost(opts: {
   const accessToken = process.env.THREADS_ACCESS_TOKEN;
   if (!userId || !accessToken) {
     return { ok: false, reason: "skipped_no_credentials" };
+  }
+
+  // 5/22: AI 티 자동 차단 (사장님 5/22 명시 신뢰도 보호)
+  // 위반 시 ok:false 로 반환 (throw X — dispatch 의 다른 채널 진행 보호)
+  const validation = validateCaption(opts.text, {
+    source: "threads",
+    warnOnly: true,
+  });
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: `caption_violations: ${validation.violations.slice(0, 3).join("; ")}`,
+    };
   }
 
   // Step 1: container 생성 (text 만 — 500자 cap)

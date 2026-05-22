@@ -44,6 +44,8 @@ const COMMON_HASHTAGS = [
   "#내가받을수있는정책",
 ];
 
+import { validateCaption } from "../validate-caption";
+
 export function buildInstagramCaption(input: CaptionInput): string {
   const lines: string[] = [];
 
@@ -76,7 +78,11 @@ export function buildInstagramCaption(input: CaptionInput): string {
   const allTags = [...new Set([...categoryTags, ...COMMON_HASHTAGS, ...userTags])];
   lines.push(allTags.slice(0, 12).join(" ")); // 인스타 권장 8~12개
 
-  return lines.join("\n").trim();
+  const caption = lines.join("\n").trim();
+  // 5/22: AI 티 자동 검증 — 위반 시 throw → 자동 cron 발행 차단.
+  // meta_description LLM 결과가 금지 패턴 포함 시 발행 X.
+  validateCaption(caption, { source: "instagram-caption" });
+  return caption;
 }
 
 /**
