@@ -40,6 +40,7 @@ import { scrapeGangwonAndInsert } from "./gangwon";
 import { scrapeJejuAndInsert } from "./jeju";
 import { scrapeGangnamAndInsert } from "./gangnam";
 import { scrapeNowonAndInsert } from "./nowon";
+import { scrapeSongpaAndInsert } from "./songpa";
 
 export type CityKey =
   | "suncheon"
@@ -72,7 +73,8 @@ export type CityKey =
   | "gangwon"
   | "jeju"
   | "gangnam"
-  | "nowon";
+  | "nowon"
+  | "songpa";
 
 export type CityEntry = {
   key: CityKey;
@@ -339,6 +341,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027",
     fn: scrapeNowonAndInsert,
+  },
+  // 2026-05-22 — 송파구 67만 (서울 자치구 1위). sub.do?key=2781 → selectBbsNttList.do redirect SI 표준.
+  {
+    key: "songpa",
+    city: "송파구",
+    ministry: "송파구청",
+    siteUrl:
+      "https://www.songpa.go.kr/www/selectBbsNttList.do?bbsNo=96&key=2781",
+    fn: scrapeSongpaAndInsert,
   },
 ];
 
