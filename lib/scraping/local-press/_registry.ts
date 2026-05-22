@@ -46,6 +46,7 @@ import { scrapeUiwangAndInsert } from "./uiwang";
 import { scrapeGimpoAndInsert } from "./gimpo";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
+import { scrapeGunpoAndInsert } from "./gunpo";
 
 export type CityKey =
   | "suncheon"
@@ -84,7 +85,8 @@ export type CityKey =
   | "uiwang"
   | "gimpo"
   | "wonju"
-  | "gwangsan";
+  | "gwangsan"
+  | "gunpo";
 
 export type CityEntry = {
   key: CityKey;
@@ -404,6 +406,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gwangsan.go.kr/boardList.do?boardId=REPORT_NEW&pageId=www16",
     fn: scrapeGwangsanAndInsert,
+  },
+  // 2026-05-22 — 군포시 26만. SI 표준 + 12,277+ 보도자료.
+  {
+    key: "gunpo",
+    city: "군포시",
+    ministry: "군포시청",
+    siteUrl:
+      "https://www.gunpo.go.kr/www/selectBbsNttList.do?bbsNo=685&key=3893",
+    fn: scrapeGunpoAndInsert,
   },
 ];
 
