@@ -49,6 +49,7 @@ import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
 import { scrapeYangjuAndInsert } from "./yangju";
 import { scrapeBupyeongAndInsert } from "./bupyeong";
+import { scrapeYeonsuAndInsert } from "./yeonsu";
 
 export type CityKey =
   | "suncheon"
@@ -90,7 +91,8 @@ export type CityKey =
   | "gwangsan"
   | "gunpo"
   | "yangju"
-  | "bupyeong";
+  | "bupyeong"
+  | "yeonsu";
 
 export type CityEntry = {
   key: CityKey;
@@ -436,6 +438,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "부평구청",
     siteUrl: "https://www.icbp.go.kr/main/participation/news/report.jsp",
     fn: scrapeBupyeongAndInsert,
+  },
+  // 2026-05-22 — 연수구 39만 (인천광역시). ASP system (report.asp?seq=N), 29,084+ 보도자료.
+  {
+    key: "yeonsu",
+    city: "연수구",
+    ministry: "연수구청",
+    siteUrl: "https://www.yeonsu.go.kr/main/community/notify/report.asp",
+    fn: scrapeYeonsuAndInsert,
   },
 ];
 
