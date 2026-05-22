@@ -54,6 +54,7 @@ import { scrapeSeoIncheonAndInsert } from "./seo_incheon";
 import { scrapeHanamAndInsert } from "./hanam";
 import { scrapeGuriAndInsert } from "./guri";
 import { scrapeChungjuAndInsert } from "./chungju";
+import { scrapeYeosuAndInsert } from "./yeosu";
 
 export type CityKey =
   | "suncheon"
@@ -100,7 +101,8 @@ export type CityKey =
   | "seo_incheon"
   | "hanam"
   | "guri"
-  | "chungju";
+  | "chungju"
+  | "yeosu";
 
 export type CityEntry = {
   key: CityKey;
@@ -490,6 +492,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.chungju.go.kr/www/selectBbsNttList.do?bbsNo=6&key=494",
     fn: scrapeChungjuAndInsert,
+  },
+  // 2026-05-22 — 여수시 27만 (사장님 거주지 전남 인접). 자체 CMS + 30,327+ 보도자료.
+  {
+    key: "yeosu",
+    city: "여수시",
+    ministry: "여수시청",
+    siteUrl: "https://yeosu.go.kr/www/govt/news/release",
+    fn: scrapeYeosuAndInsert,
   },
 ];
 
