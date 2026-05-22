@@ -53,6 +53,7 @@ import { scrapeYeonsuAndInsert } from "./yeonsu";
 import { scrapeSeoIncheonAndInsert } from "./seo_incheon";
 import { scrapeHanamAndInsert } from "./hanam";
 import { scrapeGuriAndInsert } from "./guri";
+import { scrapeChungjuAndInsert } from "./chungju";
 
 export type CityKey =
   | "suncheon"
@@ -98,7 +99,8 @@ export type CityKey =
   | "yeonsu"
   | "seo_incheon"
   | "hanam"
-  | "guri";
+  | "guri"
+  | "chungju";
 
 export type CityEntry = {
   key: CityKey;
@@ -479,6 +481,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://guri.go.kr/www/selectBbsNttList.do?bbsNo=42&key=393",
     fn: scrapeGuriAndInsert,
+  },
+  // 2026-05-22 — 충주시 21만. SI 표준 + 30,226+ 보도자료.
+  {
+    key: "chungju",
+    city: "충주시",
+    ministry: "충주시청",
+    siteUrl:
+      "https://www.chungju.go.kr/www/selectBbsNttList.do?bbsNo=6&key=494",
+    fn: scrapeChungjuAndInsert,
   },
 ];
 
