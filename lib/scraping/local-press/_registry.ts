@@ -39,6 +39,7 @@ import { scrapeChungbukAndInsert } from "./chungbuk";
 import { scrapeGangwonAndInsert } from "./gangwon";
 import { scrapeJejuAndInsert } from "./jeju";
 import { scrapeGangnamAndInsert } from "./gangnam";
+import { scrapeNowonAndInsert } from "./nowon";
 
 export type CityKey =
   | "suncheon"
@@ -70,7 +71,8 @@ export type CityKey =
   | "chungbuk"
   | "gangwon"
   | "jeju"
-  | "gangnam";
+  | "gangnam"
+  | "nowon";
 
 export type CityEntry = {
   key: CityKey;
@@ -328,6 +330,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gangnam.go.kr/board/B_000031/list.do?mid=ID01_031",
     fn: scrapeGangnamAndInsert,
+  },
+  // 2026-05-22 — 노원구. 화성·수원 와 같은 SI 표준 (BD_select), 5,563+ 보도자료.
+  {
+    key: "nowon",
+    city: "노원구",
+    ministry: "노원구청",
+    siteUrl:
+      "https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027",
+    fn: scrapeNowonAndInsert,
   },
 ];
 
