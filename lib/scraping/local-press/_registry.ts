@@ -42,6 +42,7 @@ import { scrapeGangnamAndInsert } from "./gangnam";
 import { scrapeNowonAndInsert } from "./nowon";
 import { scrapeSongpaAndInsert } from "./songpa";
 import { scrapeAnyangAndInsert } from "./anyang";
+import { scrapeUiwangAndInsert } from "./uiwang";
 
 export type CityKey =
   | "suncheon"
@@ -76,7 +77,8 @@ export type CityKey =
   | "gangnam"
   | "nowon"
   | "songpa"
-  | "anyang";
+  | "anyang"
+  | "uiwang";
 
 export type CityEntry = {
   key: CityKey;
@@ -361,6 +363,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://anyang.go.kr/main/selectPressReleaseList.do?bbsNo=1687&key=4107",
     fn: scrapeAnyangAndInsert,
+  },
+  // 2026-05-22 — 의왕시 16만. 자체 system (UWKORINFO0201 path), 5,864+ 보도자료.
+  {
+    key: "uiwang",
+    city: "의왕시",
+    ministry: "의왕시청",
+    siteUrl: "https://www.uiwang.go.kr/UWKORINFO0201/",
+    fn: scrapeUiwangAndInsert,
   },
 ];
 
