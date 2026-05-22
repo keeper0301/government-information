@@ -38,7 +38,6 @@ export function parseListPage(html: string): PressNewsItem[] {
 
   let m: RegExpExecArray | null;
   const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
-  let idx = 0;
   while ((m = itemRe.exec(html)) !== null) {
     const seq = m[1];
     if (seen.has(seq)) continue;
@@ -51,7 +50,6 @@ export function parseListPage(html: string): PressNewsItem[] {
       publishedDate: null,
       sourceUrl: `${BASE_URL}/boardView.do?boardId=REPORT_NEW&pageId=www16&seq=${seq}`,
     });
-    idx += 1;
   }
 
   const dateRe = new RegExp(DATE_REGEX.source, "g");

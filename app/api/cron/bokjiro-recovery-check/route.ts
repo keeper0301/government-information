@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { fetchWithTimeout } from "@/lib/collectors";
 import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -21,20 +22,6 @@ const API =
   "https://apis.data.go.kr/B554287/NationalWelfareInformationsV001/NationalWelfaredetailedV001";
 // 실존 bokjiro servId — Detail API 정상 응답 시 <wantedDtl> 루트 포함.
 const SAMPLE_SERV_ID = "WLF00005184";
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 interface CheckResult {
   recovered: boolean;
@@ -92,13 +79,13 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
 
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }

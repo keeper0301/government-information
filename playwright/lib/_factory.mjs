@@ -75,7 +75,7 @@ export function makeScraper({ listUrl, cityName }) {
         await page.waitForSelector(LIST_SELECTORS.join(", "), {
           timeout: 25000,
         });
-      } catch (e) {
+      } catch {
         console.error(`[${cityName}] waitForSelector timeout — fallthrough`);
       }
 
