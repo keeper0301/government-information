@@ -52,6 +52,7 @@ import { scrapeBupyeongAndInsert } from "./bupyeong";
 import { scrapeYeonsuAndInsert } from "./yeonsu";
 import { scrapeSeoIncheonAndInsert } from "./seo_incheon";
 import { scrapeHanamAndInsert } from "./hanam";
+import { scrapeGuriAndInsert } from "./guri";
 
 export type CityKey =
   | "suncheon"
@@ -96,7 +97,8 @@ export type CityKey =
   | "bupyeong"
   | "yeonsu"
   | "seo_incheon"
-  | "hanam";
+  | "hanam"
+  | "guri";
 
 export type CityEntry = {
   key: CityKey;
@@ -468,6 +470,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.hanam.go.kr/sosik/selectBbsNttList.do?bbsNo=1164&key=10048",
     fn: scrapeHanamAndInsert,
+  },
+  // 2026-05-22 — 구리시 18만. SI 표준 selectBbsNttList.
+  {
+    key: "guri",
+    city: "구리시",
+    ministry: "구리시청",
+    siteUrl:
+      "https://guri.go.kr/www/selectBbsNttList.do?bbsNo=42&key=393",
+    fn: scrapeGuriAndInsert,
   },
 ];
 
