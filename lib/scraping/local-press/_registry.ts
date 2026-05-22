@@ -44,6 +44,7 @@ import { scrapeSongpaAndInsert } from "./songpa";
 import { scrapeAnyangAndInsert } from "./anyang";
 import { scrapeUiwangAndInsert } from "./uiwang";
 import { scrapeGimpoAndInsert } from "./gimpo";
+import { scrapeWonjuAndInsert } from "./wonju";
 
 export type CityKey =
   | "suncheon"
@@ -80,7 +81,8 @@ export type CityKey =
   | "songpa"
   | "anyang"
   | "uiwang"
-  | "gimpo";
+  | "gimpo"
+  | "wonju";
 
 export type CityEntry = {
   key: CityKey;
@@ -382,6 +384,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gimpo.go.kr/news/selectBbsNttList.do?bbsNo=466&key=9377",
     fn: scrapeGimpoAndInsert,
+  },
+  // 2026-05-22 — 원주시 35만. SI 표준 + 40,744+ 보도자료 (강원 1위).
+  {
+    key: "wonju",
+    city: "원주시",
+    ministry: "원주시청",
+    siteUrl:
+      "https://www.wonju.go.kr/www/selectBbsNttList.do?bbsNo=145&key=222",
+    fn: scrapeWonjuAndInsert,
   },
 ];
 
