@@ -51,6 +51,7 @@ import { scrapeYangjuAndInsert } from "./yangju";
 import { scrapeBupyeongAndInsert } from "./bupyeong";
 import { scrapeYeonsuAndInsert } from "./yeonsu";
 import { scrapeSeoIncheonAndInsert } from "./seo_incheon";
+import { scrapeHanamAndInsert } from "./hanam";
 
 export type CityKey =
   | "suncheon"
@@ -94,7 +95,8 @@ export type CityKey =
   | "yangju"
   | "bupyeong"
   | "yeonsu"
-  | "seo_incheon";
+  | "seo_incheon"
+  | "hanam";
 
 export type CityEntry = {
   key: CityKey;
@@ -457,6 +459,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.seo.incheon.kr/open_content/main/community/news/report.jsp",
     fn: scrapeSeoIncheonAndInsert,
+  },
+  // 2026-05-22 — 하남시 32만. SI 표준 selectBbsNttList.
+  {
+    key: "hanam",
+    city: "하남시",
+    ministry: "하남시청",
+    siteUrl:
+      "https://www.hanam.go.kr/sosik/selectBbsNttList.do?bbsNo=1164&key=10048",
+    fn: scrapeHanamAndInsert,
   },
 ];
 
