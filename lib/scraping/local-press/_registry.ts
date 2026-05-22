@@ -47,6 +47,7 @@ import { scrapeGimpoAndInsert } from "./gimpo";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
+import { scrapeYangjuAndInsert } from "./yangju";
 
 export type CityKey =
   | "suncheon"
@@ -86,7 +87,8 @@ export type CityKey =
   | "gimpo"
   | "wonju"
   | "gwangsan"
-  | "gunpo";
+  | "gunpo"
+  | "yangju";
 
 export type CityEntry = {
   key: CityKey;
@@ -415,6 +417,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gunpo.go.kr/www/selectBbsNttList.do?bbsNo=685&key=3893",
     fn: scrapeGunpoAndInsert,
+  },
+  // 2026-05-22 — 양주시 27만. SI 표준 "양주소식".
+  {
+    key: "yangju",
+    city: "양주시",
+    ministry: "양주시청",
+    siteUrl:
+      "https://www.yangju.go.kr/www/selectBbsNttList.do?bbsNo=13&key=202",
+    fn: scrapeYangjuAndInsert,
   },
 ];
 
