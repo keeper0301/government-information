@@ -41,6 +41,7 @@ import { scrapeJejuAndInsert } from "./jeju";
 import { scrapeGangnamAndInsert } from "./gangnam";
 import { scrapeNowonAndInsert } from "./nowon";
 import { scrapeSongpaAndInsert } from "./songpa";
+import { scrapeAnyangAndInsert } from "./anyang";
 
 export type CityKey =
   | "suncheon"
@@ -74,7 +75,8 @@ export type CityKey =
   | "jeju"
   | "gangnam"
   | "nowon"
-  | "songpa";
+  | "songpa"
+  | "anyang";
 
 export type CityEntry = {
   key: CityKey;
@@ -350,6 +352,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.songpa.go.kr/www/selectBbsNttList.do?bbsNo=96&key=2781",
     fn: scrapeSongpaAndInsert,
+  },
+  // 2026-05-22 — 안양시 55만. SI 표준 specialized endpoint (selectPressReleaseList).
+  {
+    key: "anyang",
+    city: "안양시",
+    ministry: "안양시청",
+    siteUrl:
+      "https://anyang.go.kr/main/selectPressReleaseList.do?bbsNo=1687&key=4107",
+    fn: scrapeAnyangAndInsert,
   },
 ];
 
