@@ -31,10 +31,10 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
       <header className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
-            🗞️ 시·군 보도자료 collector
+            🗞️ 지자체 보도자료 collector
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            매일 KST 09:00 cron · {stats.cities.length} 시·군 ·{" "}
+            매일 KST 09:00 cron · {stats.cities.length} 지자체 (시·군·도·자치구) ·{" "}
             {relativeMinutes(stats.lastCronAt)}
           </p>
         </div>
