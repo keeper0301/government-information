@@ -55,6 +55,8 @@ import { scrapeHanamAndInsert } from "./hanam";
 import { scrapeGuriAndInsert } from "./guri";
 import { scrapeChungjuAndInsert } from "./chungju";
 import { scrapeYeosuAndInsert } from "./yeosu";
+import { scrapeMokpoAndInsert } from "./mokpo";
+import { scrapeGwangyangAndInsert } from "./gwangyang";
 
 export type CityKey =
   | "suncheon"
@@ -102,7 +104,9 @@ export type CityKey =
   | "hanam"
   | "guri"
   | "chungju"
-  | "yeosu";
+  | "yeosu"
+  | "mokpo"
+  | "gwangyang";
 
 export type CityEntry = {
   key: CityKey;
@@ -500,6 +504,22 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "여수시청",
     siteUrl: "https://yeosu.go.kr/www/govt/news/release",
     fn: scrapeYeosuAndInsert,
+  },
+  // 2026-05-22 — 목포시 21만 (전남). 자체 CMS (idx=N&mode=view) + 10,764+ 보도자료.
+  {
+    key: "mokpo",
+    city: "목포시",
+    ministry: "목포시청",
+    siteUrl: "https://www.mokpo.go.kr/www/mokpo_news/press_release",
+    fn: scrapeMokpoAndInsert,
+  },
+  // 2026-05-22 — 광양시 14만 (전남). board.es CMS (mid=a11007000000&bid=0057) + 27,607+ 보도자료.
+  {
+    key: "gwangyang",
+    city: "광양시",
+    ministry: "광양시청",
+    siteUrl: "https://gwangyang.go.kr/board.es?mid=a11007000000&bid=0057",
+    fn: scrapeGwangyangAndInsert,
   },
 ];
 
