@@ -6,6 +6,7 @@
 // 280자 제한 (URL 23자 단축 고려).
 
 import crypto from "node:crypto";
+import { validateCaption } from "../validate-caption";
 
 const ENDPOINT = "https://api.twitter.com/2/tweets";
 
@@ -21,6 +22,15 @@ export async function publishTweet(text: string): Promise<SnsResult> {
 
   if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
     return { ok: false, reason: "skipped_no_credentials" };
+  }
+
+  // 5/22: AI 티 자동 차단 — 위반 시 ok:false (다른 채널 진행 보호)
+  const validation = validateCaption(text, { source: "twitter", warnOnly: true });
+  if (!validation.ok) {
+    return {
+      ok: false,
+      reason: `caption_violations: ${validation.violations.slice(0, 3).join("; ")}`,
+    };
   }
 
   const tweet = text.slice(0, 280);
