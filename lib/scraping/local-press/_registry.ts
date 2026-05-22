@@ -45,6 +45,7 @@ import { scrapeAnyangAndInsert } from "./anyang";
 import { scrapeUiwangAndInsert } from "./uiwang";
 import { scrapeGimpoAndInsert } from "./gimpo";
 import { scrapeWonjuAndInsert } from "./wonju";
+import { scrapeGwangsanAndInsert } from "./gwangsan";
 
 export type CityKey =
   | "suncheon"
@@ -82,7 +83,8 @@ export type CityKey =
   | "anyang"
   | "uiwang"
   | "gimpo"
-  | "wonju";
+  | "wonju"
+  | "gwangsan";
 
 export type CityEntry = {
   key: CityKey;
@@ -393,6 +395,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.wonju.go.kr/www/selectBbsNttList.do?bbsNo=145&key=222",
     fn: scrapeWonjuAndInsert,
+  },
+  // 2026-05-22 — 광산구 40만 (광주광역시 자치구). 광주광역시 와 동일 system.
+  {
+    key: "gwangsan",
+    city: "광산구",
+    ministry: "광산구청",
+    siteUrl:
+      "https://www.gwangsan.go.kr/boardList.do?boardId=REPORT_NEW&pageId=www16",
+    fn: scrapeGwangsanAndInsert,
   },
 ];
 
