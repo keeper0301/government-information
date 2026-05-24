@@ -57,6 +57,7 @@ import { scrapeChungjuAndInsert } from "./chungju";
 import { scrapeYeosuAndInsert } from "./yeosu";
 import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
+import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
 export type CityKey =
   | "suncheon"
@@ -106,7 +107,8 @@ export type CityKey =
   | "chungju"
   | "yeosu"
   | "mokpo"
-  | "gwangyang";
+  | "gwangyang"
+  | "uijeongbu";
 
 export type CityEntry = {
   key: CityKey;
@@ -520,6 +522,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "광양시청",
     siteUrl: "https://gwangyang.go.kr/board.es?mid=a11007000000&bid=0057",
     fn: scrapeGwangyangAndInsert,
+  },
+  // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
+  {
+    key: "uijeongbu",
+    city: "의정부시",
+    ministry: "의정부시청",
+    siteUrl:
+      "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
+    fn: scrapeUijeongbuAndInsert,
   },
 ];
 
