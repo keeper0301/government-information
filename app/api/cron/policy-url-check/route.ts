@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 // 사장님 텔레그램 알림 (naver-publish cron 패턴 동일). env 없으면 silent.
 async function alertTelegram(text: string): Promise<void> {
@@ -171,14 +172,8 @@ async function fetchPrograms(
 
 export async function GET(request: Request) {
   // Vercel cron 인증 — env 누락 시 명시 500 (Bearer undefined 통과 차단, codex P1 fix)
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
-  }
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
 
   const admin = createAdminClient();
   const [welfare, loan] = await Promise.all([

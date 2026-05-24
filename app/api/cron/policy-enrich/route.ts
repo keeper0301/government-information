@@ -9,25 +9,12 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enrichPolicy } from "@/lib/policy/enrich";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const BATCH_PER_TABLE = 15; // welfare 15 + loan 15 = 30건/일
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 interface PolicyRow {
   id: string;
@@ -114,13 +101,13 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
 
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
