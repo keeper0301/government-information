@@ -12,26 +12,13 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { POPULARITY_WEIGHTS } from "@/lib/personalization/popularity-boost";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 // A 12차: popularity-boost.ts 와 단일 source — silent mismatch 차단
 const { VIEW_WEIGHT, APPLY_WEIGHT, MAX_BOOST } = POPULARITY_WEIGHTS;
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 async function run() {
   const admin = createAdminClient();
@@ -117,7 +104,7 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const unauth = await authorize(request);
+  const unauth = authorizeCronRequest(request);
   if (unauth) return unauth;
   const result = await run();
   await auditCronRun("popularity_snapshot_run", {
