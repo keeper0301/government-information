@@ -24,8 +24,8 @@ const footerLinks = [
 ];
 
 // 사업자 정보 — 전자상거래 등에서의 소비자보호에 관한 법률 제13조 표시 의무.
-// 연락처 전화번호는 공개 시 개인정보 유출 리스크 있어 이메일로 단일화.
-// 주소는 1인 운영 + 자택 주소 노출 우려로 미공개 (필요 시 사업자등록상태조회 링크).
+// 2026-05-24: 토스페이먼츠 빌링결제 카드사 심사 위해 주소·전화 추가 (사업자등록증 일치).
+// 전화 0507 = 안심번호 (개인 핸드폰 보호).
 // host: 전상법 제13조 1항 — 호스팅서비스 제공자 표시 의무.
 // dpo: 개인정보보호법 제31조 — 개인정보보호책임자 표시 의무.
 const BUSINESS_INFO = {
@@ -33,6 +33,8 @@ const BUSINESS_INFO = {
   ceo: "최관철",
   regNo: "657-24-02265",
   mailOrderNo: "2026-전남순천-7182",
+  address: "전라남도 순천시 해룡면 순광로 234-8, 108동 304호 (한신더휴아파트)",
+  phone: "0507-1366-9722",
   email: "keeper0301@gmail.com",
   service: "keepioo.com",
   host: "Vercel Inc.",
@@ -158,6 +160,19 @@ export async function Footer() {
           <span>
             통신판매번호{" "}
             <strong className="text-grey-700">{BUSINESS_INFO.mailOrderNo}</strong>
+          </span>
+          <span>
+            사업장 주소{" "}
+            <strong className="text-grey-700">{BUSINESS_INFO.address}</strong>
+          </span>
+          <span>
+            전화{" "}
+            <a
+              href={`tel:${BUSINESS_INFO.phone.replace(/-/g, "")}`}
+              className="text-grey-700 hover:text-grey-900 underline"
+            >
+              {BUSINESS_INFO.phone}
+            </a>
           </span>
           <span>
             이메일{" "}
