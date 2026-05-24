@@ -57,7 +57,8 @@ import { scrapeChungjuAndInsert } from "./chungju";
 import { scrapeYeosuAndInsert } from "./yeosu";
 import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
-import { scrapeUijeongbuAndInsert } from "./uijeongbu";
+// disabled 2026-05-24 (review): 의정부 검증 후 재enable
+// import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
 export type CityKey =
   | "suncheon"
@@ -107,8 +108,8 @@ export type CityKey =
   | "chungju"
   | "yeosu"
   | "mokpo"
-  | "gwangyang"
-  | "uijeongbu";
+  | "gwangyang";
+// | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
   key: CityKey;
@@ -524,14 +525,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     fn: scrapeGwangyangAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
-  {
-    key: "uijeongbu",
-    city: "의정부시",
-    ministry: "의정부시청",
-    siteUrl:
-      "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
-    fn: scrapeUijeongbuAndInsert,
-  },
+  // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
+  // {
+  //   key: "uijeongbu",
+  //   city: "의정부시",
+  //   ministry: "의정부시청",
+  //   siteUrl:
+  //     "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
+  //   fn: scrapeUijeongbuAndInsert,
+  // },
 ];
 
 // key → entry lookup (actions.ts 가 city key 로 검색)

@@ -16,8 +16,9 @@ const LIST_URL =
   "https://www.mokpo.go.kr/www/mokpo_news/press_release";
 
 // detail URL: /www/mokpo_news/press_release/report_material?idx=N&mode=view
+// regex 완화 (2026-05-24 review fix): mode=view 조건 제거 → 파라미터 순서 hard-fix silent fail 방지
 const LIST_ITEM_REGEX =
-  /<a[^>]*href="([^"]*press_release\/report_material\?idx=(\d+)[^"]*mode=view[^"]*)"[^>]*>([\s\S]{0,500}?)<\/a>/g;
+  /<a[^>]*href="([^"]*press_release\/report_material\?[^"]*idx=(\d+)[^"]*)"[^>]*>([\s\S]{0,500}?)<\/a>/g;
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
