@@ -1,0 +1,16 @@
+{"region":"부산","name":"중구","slug":"jung-bs","host":"junggu.busan.kr","candidates":[]}
+{"region":"부산","name":"서구","slug":"seo-bs","host":"seogu.busan.kr","candidates":[]}
+{"region":"부산","name":"동구","slug":"dong-bs","host":"donggu.busan.kr","candidates":[]}
+{"region":"부산","name":"영도구","slug":"yeongdo","host":"yeongdo.go.kr","candidates":[]}
+{"region":"부산","name":"부산진구","slug":"busanjin","host":"busanjin.go.kr","candidates":[{"pattern":"/index.do?menuId=press","url":"https://www.busanjin.go.kr/index.do?menuId=press","status":200,"size":261376,"ids":[{"name":"nttId","count":2,"sample":"nttId=326796"},{"name":"idx","count":4,"sample":"idx=3664"},{"name":"seq","count":2,"sample":"seq=26600"}],"hasPressKeyword":true}]}
+{"region":"부산","name":"동래구","slug":"dongnae","host":"dongnae.go.kr","candidates":[]}
+{"region":"부산","name":"남구","slug":"nam-bs","host":"bsnamgu.go.kr","candidates":[]}
+{"region":"부산","name":"북구","slug":"buk-bs","host":"bsbukgu.go.kr","candidates":[]}
+{"region":"부산","name":"해운대구","slug":"haeundae","host":"haeundae.go.kr","candidates":[{"pattern":"/index.do?menuId=press","url":"https://www.haeundae.go.kr/index.do?menuId=press","status":200,"size":493652,"ids":[{"name":"seq","count":1,"sample":"seq=261472"}],"hasPressKeyword":false}]}
+{"region":"부산","name":"사하구","slug":"saha","host":"saha.go.kr","candidates":[]}
+{"region":"부산","name":"금정구","slug":"geumjeong","host":"geumjeong.go.kr","candidates":[{"pattern":"/index.do?menuId=press","url":"https://www.geumjeong.go.kr/index.do?menuId=press","status":200,"size":118088,"ids":[{"name":"idx","count":6,"sample":"idx=63"},{"name":"seq","count":1,"sample":"seq=192100"}],"hasPressKeyword":true}]}
+{"region":"부산","name":"강서구","slug":"gangseo-bs","host":"bsgangseo.go.kr","candidates":[]}
+{"region":"부산","name":"연제구","slug":"yeonje","host":"yeonje.go.kr","candidates":[]}
+{"region":"부산","name":"수영구","slug":"suyeong","host":"suyeong.go.kr","candidates":[{"pattern":"/index.do?menuId=press","url":"https://www.suyeong.go.kr/index.do?menuId=press","status":200,"size":75823,"ids":[{"name":"seq","count":1,"sample":"seq=01"}],"hasPressKeyword":true}]}
+{"region":"부산","name":"사상구","slug":"sasang","host":"sasang.go.kr","candidates":[]}
+{"region":"부산","name":"기장군","slug":"gijang","host":"gijang.go.kr","candidates":[]}
