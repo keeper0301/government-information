@@ -41,6 +41,25 @@ function telegramRequest(body: unknown) {
   }) as NextRequest;
 }
 
+function invalidJsonRequest() {
+  return new Request("https://www.keepioo.com/api/webhook/telegram-receive", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-telegram-bot-api-secret-token": "webhook-secret",
+    },
+    body: "{",
+  }) as NextRequest;
+}
+
+function setRequiredWebhookEnv() {
+  process.env.TELEGRAM_WEBHOOK_SECRET = "webhook-secret";
+  process.env.TELEGRAM_OWNER_CHAT_IDS = "123";
+  delete process.env.TELEGRAM_CHAT_ID;
+  process.env.TELEGRAM_BOT_TOKEN = "bot-token";
+  process.env.CRON_SECRET = "cron-secret";
+}
+
 describe("telegram-receive route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,11 +71,7 @@ describe("telegram-receive route", () => {
   });
 
   it("허용된 채팅의 명령에 크론 인증 헤더를 붙여 분배하고 답장을 보낸다", async () => {
-    process.env.TELEGRAM_WEBHOOK_SECRET = "webhook-secret";
-    process.env.TELEGRAM_OWNER_CHAT_IDS = "123";
-    delete process.env.TELEGRAM_CHAT_ID;
-    process.env.TELEGRAM_BOT_TOKEN = "bot-token";
-    process.env.CRON_SECRET = "cron-secret";
+    setRequiredWebhookEnv();
 
     vi.mocked(dispatchCommand).mockResolvedValue("처리 완료");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true });
@@ -90,10 +105,7 @@ describe("telegram-receive route", () => {
   });
 
   it("허용되지 않은 채팅은 명령을 실행하지 않는다", async () => {
-    process.env.TELEGRAM_WEBHOOK_SECRET = "webhook-secret";
-    process.env.TELEGRAM_OWNER_CHAT_IDS = "123";
-    process.env.TELEGRAM_BOT_TOKEN = "bot-token";
-    process.env.CRON_SECRET = "cron-secret";
+    setRequiredWebhookEnv();
 
     const response = await POST(
       telegramRequest({
@@ -108,6 +120,38 @@ describe("telegram-receive route", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       skipped: "not_whitelisted",
+    });
+    expect(dispatchCommand).not.toHaveBeenCalled();
+  });
+
+  it("잘못된 JSON 요청은 명령을 실행하지 않고 오류를 반환한다", async () => {
+    setRequiredWebhookEnv();
+
+    const response = await POST(invalidJsonRequest());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: "invalid_json",
+    });
+    expect(dispatchCommand).not.toHaveBeenCalled();
+  });
+
+  it("텍스트 메시지가 아니면 명령을 실행하지 않고 건너뛴다", async () => {
+    setRequiredWebhookEnv();
+
+    const response = await POST(
+      telegramRequest({
+        update_id: 1,
+        message: {
+          chat: { id: 123, type: "private" },
+        },
+      }),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      skipped: "no_text_message",
     });
     expect(dispatchCommand).not.toHaveBeenCalled();
   });
