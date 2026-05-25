@@ -93,7 +93,11 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
             <div
               key={c.city}
               className={`rounded border ${bg} px-2 py-1.5 text-xs`}
-              title={c.lastError ?? undefined}
+              title={
+                c.recentErrors.length > 0
+                  ? c.recentErrors.join("\n")
+                  : c.lastError ?? undefined
+              }
             >
               <div className="truncate font-medium">{c.city}</div>
               <div className="text-[10px] opacity-75">

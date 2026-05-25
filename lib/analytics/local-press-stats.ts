@@ -15,6 +15,8 @@ export type LocalPressCityStat = {
   errors24h: number;
   lastRunAt: string | null;
   lastError: string | null; // 마지막 audit 의 error 필드 (한 줄)
+  // 2026-05-26: 최근 errors 모두 (slice 20 까지). silent_fail 정확 진단.
+  recentErrors: string[];
 };
 
 export type LocalPressStats = {
@@ -47,6 +49,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
       errors: number;
       lastRunAt: string | null;
       lastError: string | null;
+      recentErrors: string[];
     }
   >();
 
@@ -71,6 +74,12 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
     const errCount = errs.length + errFatal;
 
     const prev = byCity.get(city);
+    // recentErrors: 마지막 5건만 보존 (UI tooltip)
+    const newRecent = [
+      ...(prev?.recentErrors ?? []),
+      ...(errFatal ? [String(d.error)] : []),
+      ...errs,
+    ].slice(0, 5);
     byCity.set(city, {
       inserted: (prev?.inserted ?? 0) + inserted,
       fetched: (prev?.fetched ?? 0) + fetched,
@@ -79,6 +88,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
       lastError:
         prev?.lastError ??
         (errFatal ? String(d.error) : errs[0] ?? null),
+      recentErrors: newRecent,
     });
   }
 
@@ -91,6 +101,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
       errors24h: stat?.errors ?? 0,
       lastRunAt: stat?.lastRunAt ?? null,
       lastError: stat?.lastError ?? null,
+      recentErrors: stat?.recentErrors ?? [],
     };
   });
 
