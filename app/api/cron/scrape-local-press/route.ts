@@ -14,6 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { CITY_REGISTRY } from "@/lib/scraping/local-press/_registry";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 // 시·군 1개 = ~15s. 21 시·군 sequential = ~315s → 5/17 22:00 504 timeout.
@@ -21,20 +22,6 @@ export const dynamic = "force-dynamic";
 // 시·군 마다 다른 외부 도메인이라 동시 4 request 가 단일 site burst 위험 X.
 export const maxDuration = 300;
 const BATCH_SIZE = 4;
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 type CityResult = {
   city: string;
@@ -99,7 +86,7 @@ async function runScrape() {
 }
 
 export async function GET(request: Request) {
-  const authErr = await authorize(request);
+  const authErr = authorizeCronRequest(request);
   if (authErr) return authErr;
 
   try {

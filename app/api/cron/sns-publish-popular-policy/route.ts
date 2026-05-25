@@ -12,26 +12,13 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchPolicyToSns, type PolicyShare } from "@/lib/sns/policy-dispatch";
 import { logAdminAction } from "@/lib/admin-actions";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const WELFARE_TOP_N = 2;
 const LOAN_TOP_N = 1;
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 // 지난 7일 popularity_snapshots 의 program 별 누적 score 집계 → top N
 async function findTopPrograms(
@@ -211,14 +198,14 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   const out = await run();
   return NextResponse.json(out, { status: out.success ? 200 : 500 });
 }
 
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   const out = await run();
   return NextResponse.json(out, { status: out.success ? 200 : 500 });
