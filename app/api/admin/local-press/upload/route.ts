@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { CITY_REGISTRY } from "@/lib/scraping/local-press/_registry";
+import { PC_RUNNER_CFGS } from "@/lib/scraping/local-press/_pc_runner_cfgs";
 import { processProvidedHtml } from "@/lib/scraping/local-press/_factory";
 import { logAdminAction } from "@/lib/admin-actions";
 
@@ -48,31 +48,37 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const results: Array<{ city: string; fetched: number; inserted: number; skipped: number; errors: string[] }> = [];
 
-  // 정의된 cfg 없으면 reject. PC runner 가 잘못된 city_key 보내면 무시.
-  // 등록된 city 의 collector cfg 의 parseListItems / parseDetailBody 재사용.
+  // PC_RUNNER_CFGS 에 등록된 city_key 만 처리. seoul 은 다른 type 으로 다음 commit.
   for (const item of body.items) {
-    const entry = CITY_REGISTRY.find((c) => c.key === item.city_key);
-    if (!entry) {
+    const cfg = PC_RUNNER_CFGS[item.city_key];
+    if (!cfg) {
       results.push({
         city: item.city_key,
         fetched: 0,
         inserted: 0,
         skipped: 0,
-        errors: [`unknown city_key: ${item.city_key}`],
+        errors: [`unsupported city_key (PC_RUNNER_CFGS): ${item.city_key}`],
       });
       continue;
     }
 
-    // PC runner upload 의 사용 인터페이스 — collector cfg 가 fn 만 export 하므로
-    // parseListItems / parseDetailBody 직접 접근 안 됨. 별도 cfg map 필요.
-    // 임시 — 모든 collector 가 cfg export 안 함. 다음 commit 에서 cfg export 추가.
-    results.push({
-      city: entry.city,
-      fetched: 0,
-      inserted: 0,
-      skipped: 0,
-      errors: ["PC runner config export 필요 (다음 commit)"],
-    });
+    try {
+      const r = await processProvidedHtml(
+        cfg,
+        admin,
+        item.list_html,
+        item.detail_htmls,
+      );
+      results.push(r);
+    } catch (e) {
+      results.push({
+        city: cfg.cityName,
+        fetched: 0,
+        inserted: 0,
+        skipped: 0,
+        errors: [`processProvidedHtml: ${(e as Error).message}`],
+      });
+    }
   }
 
   // audit 기록
