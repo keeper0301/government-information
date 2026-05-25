@@ -46,6 +46,13 @@ export async function POST(req: Request) {
   if (!body?.items?.length) {
     return NextResponse.json({ error: "items 누락" }, { status: 400 });
   }
+  // 2026-05-26 review nit#6: items 크기 cap (악성/실수 폭주 차단)
+  if (body.items.length > 20) {
+    return NextResponse.json(
+      { error: `items 너무 많음 (${body.items.length}건, max 20)` },
+      { status: 400 },
+    );
+  }
 
   // round 1 분기 — items 중 detail_htmls 있는 게 하나도 없으면 round1.
   // 2026-05-26 review#3 fix: some() 으로 round2 진입 (혼합 시 명시 skip).

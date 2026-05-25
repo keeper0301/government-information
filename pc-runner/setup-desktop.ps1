@@ -57,6 +57,10 @@ if (-not (Test-Path "$Target\.env")) {
 Set-Location $Target
 Write-Host "[5] npm install dotenv 진행..." -ForegroundColor Cyan
 npm install --silent 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "    npm install 실패 — 사장님 직접 'npm install' 실행 필요" -ForegroundColor Red
+    exit 1
+}
 Write-Host "    dotenv 설치 완료" -ForegroundColor Green
 
 # 6. 안내
