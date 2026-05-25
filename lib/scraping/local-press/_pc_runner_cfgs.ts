@@ -8,7 +8,23 @@
 // 5 site 우선.
 // ============================================================
 
-import type { PressCollectorConfig } from "./_factory";
+import type { PressCollectorConfig, PressNewsItem } from "./_factory";
+
+import {
+  parseListPage as parseSeoulListNum,
+  parseDetailBody as parseSeoulDetail,
+} from "./seoul";
+
+// seoul wrapper — SeoulNewsItem seq:number → PressNewsItem seq:string 호환.
+// body 필드 (SeoulNewsItem 만 가진) 는 PressNewsItem 에 없으므로 무시.
+function parseSeoulList(html: string): PressNewsItem[] {
+  return parseSeoulListNum(html).map((item) => ({
+    seq: String(item.seq),
+    title: item.title,
+    publishedDate: item.publishedDate,
+    sourceUrl: item.sourceUrl,
+  }));
+}
 
 import {
   parseListPage as parseBusanList,
@@ -32,6 +48,16 @@ import {
 } from "./pyeongtaek";
 
 export const PC_RUNNER_CFGS: Record<string, PressCollectorConfig> = {
+  seoul: {
+    cityName: "서울특별시",
+    region: "서울",
+    ministry: "서울특별시청",
+    sourceOutlet: "서울특별시청",
+    sourceCode: "local-press-seoul",
+    listUrl: "https://opengov.seoul.go.kr/press/list",
+    parseListItems: parseSeoulList,
+    parseDetailBody: parseSeoulDetail,
+  },
   busan: {
     cityName: "부산광역시",
     region: "부산",
