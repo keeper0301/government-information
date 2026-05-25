@@ -178,7 +178,9 @@ export async function processProvidedHtml(
     fetched: list.length,
     inserted,
     skipped,
-    errors: errors.slice(0, 3),
+    // 2026-05-26 review fix: 3 → 20. 경북 5/25 cron 에서 10건 detail 모두 fail 인데
+    // audit 에 3건만 표시 → 나머지 7건 silent skip 의심. 정확 진단 위해 확장.
+    errors: errors.slice(0, 20),
   };
 }
 
@@ -257,7 +259,8 @@ export function createPressCollector(cfg: PressCollectorConfig) {
       fetched: list.length,
       inserted,
       skipped,
-      errors: errors.slice(0, 3),
+      // 2026-05-26 review fix: 3 → 20 (silent_fail 정확 진단)
+      errors: errors.slice(0, 20),
     };
   }
   return { scrapeAndInsert };
