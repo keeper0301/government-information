@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { extractTargeting } from '@/lib/personalization/targeting-extract';
+import { authorizeCronRequest } from '@/lib/cron-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Vercel Pro: 함수 최대 60초
@@ -74,13 +75,8 @@ async function processTable(
 // - 관리자가 수동으로 ?backfill=1&batch=1000 파라미터로 호출 가능
 export async function GET(request: NextRequest) {
   // CRON_SECRET 검증 — cron 또는 admin 만 접근 가능
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: 'CRON_SECRET 미설정' }, { status: 500 });
-  }
-  if (request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
-    return new NextResponse('Unauthorized', { status: 401 });
-  }
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
 
   const url = new URL(request.url);
   const isBackfill = url.searchParams.get('backfill') === '1';

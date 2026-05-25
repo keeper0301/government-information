@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchOgImage } from "@/lib/og-image";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 const BATCH = 50; // 한 cron 당 처리 row 수 (5분 cron + 9,120/일 유입 대응)
 const PROCESS_TIMEOUT_MS = 40_000; // fetch 단계 상한 (DB update 병렬 ~5s + 마진 → 60s 안전)
@@ -126,32 +127,16 @@ async function runEnrichThumbnails() {
 
 // CRON_SECRET 가드 — Vercel cron 만 호출 가능
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
+
   return runEnrichThumbnails();
 }
 
 // POST 도 같은 권한 (admin 수동 trigger 용)
 export async function POST(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
+
   return runEnrichThumbnails();
 }
