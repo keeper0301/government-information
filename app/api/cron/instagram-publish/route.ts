@@ -18,6 +18,7 @@ import { publishCarousel } from "@/lib/instagram/publish";
 import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
 import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
+import { authorizeOptionalCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 // 2026-05-12: jitter (max 90s) + container polling (max 60s) + 5 Graph API
@@ -32,13 +33,8 @@ function siteUrl(): string {
 
 export async function GET(request: Request) {
   // cron secret 검증 (다른 cron 과 동일 패턴)
-  const cronSecret = process.env.CRON_SECRET;
-  if (
-    cronSecret &&
-    request.headers.get("authorization") !== `Bearer ${cronSecret}`
-  ) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeOptionalCronRequest(request);
+  if (denied) return denied;
 
   // ━━━ 인스타 정지 예방 안전책 (2026-05-12 추가) ━━━
 

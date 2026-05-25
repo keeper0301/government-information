@@ -31,6 +31,7 @@ import {
   getKstHour,
   type AuditSkipReason,
 } from "@/lib/naver-blog/audit";
+import { authorizeOptionalCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 // Vercel Pro: chromium cold start 6s + SE3 입력 30s + jitter 120s + 발행 모달 5s = ~3min
@@ -40,13 +41,8 @@ type CronResult = Record<string, unknown>;
 
 export async function GET(request: Request) {
   // cron secret 검증
-  const cronSecret = process.env.CRON_SECRET;
-  if (
-    cronSecret &&
-    request.headers.get("authorization") !== `Bearer ${cronSecret}`
-  ) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeOptionalCronRequest(request);
+  if (denied) return denied;
 
   // ?dry_run=1 & ?force=1 — 운영자 manual 검증용 (CRON_SECRET Bearer 필요).
   // dry_run: publisher 의 마지막 발행 click 만 skip (selector·iframe·cookies 검증).

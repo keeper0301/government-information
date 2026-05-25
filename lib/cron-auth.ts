@@ -16,3 +16,16 @@ export function authorizeCronRequest(request: Request): NextResponse | null {
 
   return null;
 }
+
+export function authorizeOptionalCronRequest(request: Request): NextResponse | null {
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (
+    cronSecret &&
+    request.headers.get("authorization") !== `Bearer ${cronSecret}`
+  ) {
+    return NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 });
+  }
+
+  return null;
+}
