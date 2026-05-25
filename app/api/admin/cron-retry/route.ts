@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { requireAdminUser } from "@/lib/admin-auth-server";
+import { getCronAuthorizationHeader } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -55,8 +56,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
+  const authorizationHeader = getCronAuthorizationHeader();
+  if (!authorizationHeader) {
     return NextResponse.json(
       { error: "CRON_SECRET 비밀값이 설정되지 않았습니다." },
       { status: 500 },
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
   try {
     res = await fetch(url.toString(), {
       method: "GET",
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: authorizationHeader },
     });
   } catch (err) {
     return NextResponse.json(
