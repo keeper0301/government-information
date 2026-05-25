@@ -75,39 +75,47 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
-        {stats.cities.map((c) => {
-          const status =
-            c.errors24h > 0
-              ? "error"
-              : c.inserted24h > 0
-                ? "ok"
-                : "idle";
-          const bg =
-            status === "ok"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-              : status === "error"
-                ? "bg-amber-50 border-amber-200 text-amber-900"
-                : "bg-slate-50 border-slate-200 text-slate-600";
-          return (
-            <div
-              key={c.city}
-              className={`rounded border ${bg} px-2 py-1.5 text-xs`}
-              title={
-                c.recentErrors.length > 0
-                  ? c.recentErrors.join("\n")
-                  : c.lastError ?? undefined
-              }
-            >
-              <div className="truncate font-medium">{c.city}</div>
-              <div className="text-[10px] opacity-75">
-                +{c.inserted24h}
-                {c.errors24h > 0 ? ` · 오류 ${c.errors24h}` : ""}
-              </div>
+      {/* 2026-05-25 D3: grouping — 광역(도청·광역시) · 자치구(구) · 시·군 별 분리. */}
+      {(() => {
+        const groups = {
+          광역: stats.cities.filter((c) => /(특별시|광역시|특별자치도|특별자치시|^.+도$)/.test(c.city)),
+          자치구: stats.cities.filter((c) => /구$/.test(c.city) || c.city.includes(" ")),
+          "시·군": stats.cities.filter((c) =>
+            !/구$/.test(c.city) && !c.city.includes(" ") &&
+            !/(특별시|광역시|특별자치도|특별자치시|^.+도$)/.test(c.city)
+          ),
+        };
+        return Object.entries(groups).map(([label, cities]) => cities.length > 0 && (
+          <div key={label} className="mb-3">
+            <div className="text-[11px] font-semibold text-slate-600 mb-1.5">
+              {label} ({cities.length})
             </div>
-          );
-        })}
-      </div>
+            <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
+              {cities.map((c) => {
+                const status = c.errors24h > 0 ? "error" : c.inserted24h > 0 ? "ok" : "idle";
+                const bg = status === "ok"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                  : status === "error"
+                    ? "bg-amber-50 border-amber-200 text-amber-900"
+                    : "bg-slate-50 border-slate-200 text-slate-600";
+                return (
+                  <div
+                    key={c.city}
+                    className={`rounded border ${bg} px-2 py-1.5 text-xs`}
+                    title={c.recentErrors.length > 0 ? c.recentErrors.join("\n") : c.lastError ?? undefined}
+                  >
+                    <div className="truncate font-medium">{c.city}</div>
+                    <div className="text-[10px] opacity-75">
+                      +{c.inserted24h}
+                      {c.errors24h > 0 ? ` · 오류 ${c.errors24h}` : ""}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ));
+      })()}
 
       {erroredCount > 0 && (
         <p className="mt-3 rounded bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
