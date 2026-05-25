@@ -26,9 +26,11 @@ export type SilentFailHistoryStats = {
   totalSilentFails7d: number;
 };
 
-export async function getSilentFailHistory(): Promise<SilentFailHistoryStats> {
+export async function getSilentFailHistory(
+  days = 7,
+): Promise<SilentFailHistoryStats> {
   const admin = createAdminClient();
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: rows } = await admin
     .from("admin_actions")
@@ -85,14 +87,15 @@ export async function getSilentFailHistory(): Promise<SilentFailHistoryStats> {
     byDay.set(kstDate, dayPrev);
   }
 
-  // 7일 전부 표시 (audit 없는 날도 0 표시)
-  const days: SilentFailDay[] = [];
-  for (let i = 6; i >= 0; i--) {
+  // 전체 range 표시 (audit 없는 날도 0). 90일 범위 max.
+  const dayList: SilentFailDay[] = [];
+  const maxDays = Math.min(days, 90);
+  for (let i = maxDays - 1; i >= 0; i--) {
     const target = new Date(Date.now() - i * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
     const stat = byDay.get(target);
-    days.push({
+    dayList.push({
       date: target,
       silentFailCount: stat?.count ?? 0,
       totalRuns: stat?.total ?? 0,
@@ -105,7 +108,7 @@ export async function getSilentFailHistory(): Promise<SilentFailHistoryStats> {
     .sort((a, b) => b.count - a.count);
 
   return {
-    days,
+    days: dayList,
     cityTotals,
     totalRuns7d,
     totalSilentFails7d,
