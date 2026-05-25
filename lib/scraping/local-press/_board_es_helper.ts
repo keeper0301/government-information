@@ -35,6 +35,9 @@ export type BoardEsConfig = {
   //   "attr" — a tag 의 title attribute (남구·북구)
   //   "inner" — a tag 안 inner text (서구·동구)
   titleStrategy: "attr" | "inner";
+  // 2026-05-26 review fix: inner 전략 a tag 안 nested HTML 크기 limit.
+  // 광주 4 자치구는 500 충분. 다른 board.es site 가 큰 nested (img·div) 시 5000 권장.
+  innerLimit?: number;
 };
 
 // 광주 자치구 등 board.es CMS 표준 body container
@@ -45,11 +48,15 @@ const DATE_REGEX = /(\d{4}\/\d{2}\/\d{2}|\d{4}-\d{2}-\d{2})/g;
 
 export function createBoardEsCollector(cfg: BoardEsConfig) {
   const listUrl = `${cfg.baseUrl}/board.es?mid=${cfg.mid}&bid=${cfg.bid}`;
+  const innerLimit = cfg.innerLimit ?? 500;
   // a tag title attribute 있으면 attr 전략. inner content 큰 site (img + span 등) 는 inner.
   const listItemRegex =
     cfg.titleStrategy === "attr"
       ? /<a[^>]*href="\/board\.es\?[^"]*list_no=(\d+)[^"]*"[^>]*title="([^"]+)"/g
-      : /<a[^>]*href="\/board\.es\?[^"]*list_no=(\d+)[^"]*"[^>]*>([\s\S]{0,500}?)<\/a>/g;
+      : new RegExp(
+          `<a[^>]*href="\\/board\\.es\\?[^"]*list_no=(\\d+)[^"]*"[^>]*>([\\s\\S]{0,${innerLimit}}?)<\\/a>`,
+          "g",
+        );
 
   function parseListPage(html: string): PressNewsItem[] {
     const items: PressNewsItem[] = [];
