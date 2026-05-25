@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logPublishAudit, pickAuditDetails, type AuditSkipReason } from "@/lib/naver-blog/audit";
+import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
@@ -30,13 +31,8 @@ function sanitizeDetails(d: Record<string, unknown> | null | undefined) {
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.NAVER_EXTENSION_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "NAVER_EXTENSION_SECRET not configured" }, { status: 500 });
-  }
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeNaverExtensionRequest(request);
+  if (denied) return denied;
 
   const body = (await request.json().catch(() => ({}))) as Body;
   if (!body.queueId || !body.result) {

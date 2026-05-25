@@ -10,19 +10,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToNaverBlogHtml } from "@/lib/naver-blog/format";
 import { countTodaySuccess, getKstHour } from "@/lib/naver-blog/audit";
 import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
+import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
 export async function GET(request: Request) {
   // Bearer 인증
-  const secret = process.env.NAVER_EXTENSION_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "NAVER_EXTENSION_SECRET not configured" }, { status: 500 });
-  }
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeNaverExtensionRequest(request);
+  if (denied) return denied;
 
   // 가드 — 시간대 + 일 cap (force=1 으로 우회 가능, 운영자 검증용)
   const url = new URL(request.url);
