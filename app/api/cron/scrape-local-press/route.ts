@@ -17,10 +17,9 @@ import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
-// 2026-05-25 region: 서울 (icn1) — 미국 default region 에서 fetch failed 발생한
-// 광역 도청 9건 (서울·부산·인천·대전·울산·강원·충남·경북·전남) 가 한국 정부 site 의
-// IP geo 차단으로 추정. 서울 region 으로 한국 IP 으로 fetch.
-export const preferredRegion = "icn1";
+// 2026-05-25 region: vercel.json 의 functions.regions=["icn1"] 으로 설정 (project 레벨).
+// Node runtime 의 preferredRegion export 는 Edge runtime 만 지원 → vercel.json 으로 우회.
+// 미국 default region 의 한국 정부 site IP geo 차단 (광역 9건 fetch failed) 해소.
 // 시·군 1개 = ~15s. 21 시·군 sequential = ~315s → 5/17 22:00 504 timeout.
 // 5/18 parallel batch 도입: BATCH_SIZE=4 → 21/4=6 batches × 15s = ~90s (300s 충분 margin).
 // 시·군 마다 다른 외부 도메인이라 동시 4 request 가 단일 site burst 위험 X.

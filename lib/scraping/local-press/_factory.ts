@@ -121,6 +121,15 @@ export function createPressCollector(cfg: PressCollectorConfig) {
     let skipped = 0;
     const errors: string[] = [];
 
+    // 2026-05-25 review fix: list 0건 silent skip 방지 — site HTML 구조 변경 (예: dataSid → dataIdx)
+    // 시 silent-fail-detect 가 prefix 단위라 다른 시·군이 살아있으면 누락 감지 불가.
+    // list size > 30K (정상 page) 인데 parseListItems 가 0개면 regex 변경 의심.
+    if (list.length === 0 && listHtml.length > 5000) {
+      errors.push(
+        `list 0건 — site HTML size ${listHtml.length} bytes 인데 regex 매칭 0. site 구조 변경 의심`,
+      );
+    }
+
     for (const item of list) {
       let body: string | null = null;
       try {

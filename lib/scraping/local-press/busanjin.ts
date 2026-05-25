@@ -45,8 +45,9 @@ export function parseListPage(html: string): PressNewsItem[] {
     let publishedDate: string | null = null;
     if (dateMatch) {
       const raw = dateMatch[1].replace(/\./g, "-");
-      // 25-05-15 같은 짧은 형식이면 20 prefix 추가
-      publishedDate = raw.length === 8 ? `20${raw}` : raw;
+      // 2026-05-25 review fix: length 8 hard 가정 X. 첫 segment 가 2 자리면 20 prefix.
+      // 25-5-15 (한자리 월) 같은 비표준 형식도 안전 처리.
+      publishedDate = /^\d{2}-/.test(raw) ? `20${raw}` : raw;
     }
     const path = m[1].startsWith("http") ? m[1] : `${BASE_URL}${m[1]}`;
     items.push({

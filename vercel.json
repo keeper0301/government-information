@@ -8,6 +8,9 @@
       ]
     }
   ],
+  "functions": {
+    "app/api/cron/scrape-local-press/route.ts": { "regions": ["icn1"] }
+  },
   "crons": [
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
     { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
