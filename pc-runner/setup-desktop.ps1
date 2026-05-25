@@ -65,13 +65,25 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "    dotenv 설치 완료" -ForegroundColor Green
 
-# 6. 안내
-Write-Host ""
-Write-Host "===== setup 완료 =====" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "다음 단계:" -ForegroundColor White
-Write-Host "  1. Vercel dashboard 에서 PC_RUNNER_SECRET 환경변수 추가" -ForegroundColor White
-Write-Host "  2. $Target\.env 에 동일한 PC_RUNNER_SECRET 입력" -ForegroundColor White
-Write-Host "  3. dry-run: cd $Target; node local-press-runner.mjs" -ForegroundColor White
-Write-Host "  4. 정상 동작 확인 후 Task Scheduler 매일 KST 09:30 가동" -ForegroundColor White
-Write-Host ""
+# 6. .env PC_RUNNER_SECRET 입력 여부 자동 확인 + dry-run 자동 trigger
+$envContent = Get-Content "$Target\.env" -Raw -ErrorAction SilentlyContinue
+if ($envContent -match "PC_RUNNER_SECRET=.+\S") {
+    Write-Host "[6] .env PC_RUNNER_SECRET 입력 확인 ✅" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "===== dry-run 시작 =====" -ForegroundColor Cyan
+    Write-Host ""
+    node local-press-runner.mjs
+    Write-Host ""
+    Write-Host "===== dry-run 완료 =====" -ForegroundColor Cyan
+    Write-Host "정상 동작 확인 후 Task Scheduler 매일 KST 09:30 가동" -ForegroundColor White
+} else {
+    Write-Host "[6] .env PC_RUNNER_SECRET 미입력" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "===== setup 완료 =====" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "다음 단계:" -ForegroundColor White
+    Write-Host "  1. Vercel dashboard 에서 PC_RUNNER_SECRET 환경변수 추가" -ForegroundColor White
+    Write-Host "  2. $Target\.env 에 동일한 PC_RUNNER_SECRET 입력" -ForegroundColor White
+    Write-Host "  3. ./setup-desktop.ps1 재실행 (자동 dry-run)" -ForegroundColor White
+    Write-Host ""
+}
