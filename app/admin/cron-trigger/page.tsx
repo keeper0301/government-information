@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
+import { getCronAuthorizationHeader } from "@/lib/cron-auth";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
@@ -120,8 +121,8 @@ async function triggerCron(formData: FormData): Promise<void> {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
+  const authorizationHeader = getCronAuthorizationHeader();
+  if (!authorizationHeader) {
     redirect("/admin/cron-trigger?error=" + encodeURIComponent("CRON_SECRET 누락"));
   }
 
@@ -130,7 +131,7 @@ async function triggerCron(formData: FormData): Promise<void> {
   try {
     const res = await fetch(`${siteUrl}${path}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: authorizationHeader },
       cache: "no-store",
     });
     result = await res.json();

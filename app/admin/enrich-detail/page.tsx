@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
+import { getCronAuthorizationHeader } from "@/lib/cron-auth";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
@@ -90,8 +91,8 @@ async function triggerEnrich(): Promise<void> {
   const user = await requireAdmin();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
+  const authorizationHeader = getCronAuthorizationHeader();
+  if (!authorizationHeader) {
     redirect("/admin/enrich-detail?error=" + encodeURIComponent("CRON_SECRET 환경변수 누락"));
   }
 
@@ -100,7 +101,7 @@ async function triggerEnrich(): Promise<void> {
   try {
     const res = await fetch(`${siteUrl}/api/enrich`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: authorizationHeader },
       cache: "no-store",
     });
     result = await res.json();

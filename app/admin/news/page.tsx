@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
+import { getCronAuthorizationHeader } from "@/lib/cron-auth";
 import {
   searchNewsForAdmin,
   getRecentlyHiddenNews,
@@ -89,8 +90,8 @@ async function triggerCollect(): Promise<void> {
   const user = await requireAdmin();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
+  const authorizationHeader = getCronAuthorizationHeader();
+  if (!authorizationHeader) {
     redirect("/admin/news?error=" + encodeURIComponent("CRON_SECRET 환경변수 누락"));
   }
 
@@ -99,7 +100,7 @@ async function triggerCollect(): Promise<void> {
   try {
     const res = await fetch(`${siteUrl}/api/collect-news`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: authorizationHeader },
       cache: "no-store",
     });
     result = await res.json();
