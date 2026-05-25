@@ -28,6 +28,12 @@ export function SilentFailCard({ stats }: { stats: SilentFailStats }) {
             2026-05-22 audit 사고 재발생 방지
           </p>
         </div>
+        <a
+          href="/admin/silent-fail-history"
+          className="text-xs text-blue-600 hover:text-blue-800 underline"
+        >
+          7일 추세 ↗
+        </a>
       </header>
 
       {hasFailure && (
