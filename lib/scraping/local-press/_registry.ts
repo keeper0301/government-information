@@ -59,6 +59,7 @@ import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
 import { scrapeBusanjinAndInsert } from "./busanjin";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
+import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -112,7 +113,8 @@ export type CityKey =
   | "mokpo"
   | "gwangyang"
   | "busanjin"
-  | "namgu_gwangju";
+  | "namgu_gwangju"
+  | "bukgu_gwangju";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -548,6 +550,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.namgu.gwangju.kr/board.es?mid=a10707060200&bid=0001",
     fn: scrapeNamguGwangjuAndInsert,
+  },
+  // 2026-05-25 — 광주 북구 41만. board.es CMS (mid=a10402010000&bid=0001).
+  {
+    key: "bukgu_gwangju",
+    city: "광주 북구",
+    ministry: "광주 북구청",
+    siteUrl: "https://bukgu.gwangju.kr/board.es?mid=a10402010000&bid=0001",
+    fn: scrapeBukguGwangjuAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
