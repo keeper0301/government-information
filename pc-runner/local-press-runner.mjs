@@ -98,7 +98,12 @@ async function main() {
       }
     }
     // round1 의 list_html 재사용 (round2 server insert 에 필요)
+    // 2026-05-26 review#4 fix: list_html 빈 string 인 fetch fail 케이스 명시 skip
     const round1Item = round1Items.find((i) => i.city_key === r1.city_key);
+    if (!round1Item?.list_html) {
+      console.log(`  ${r1.city_key}: skip (round1 fetch failed, empty list_html)`);
+      continue;
+    }
     round2Items.push({
       city_key: r1.city_key,
       list_html: round1Item.list_html,

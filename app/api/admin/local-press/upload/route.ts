@@ -47,9 +47,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "items 누락" }, { status: 400 });
   }
 
-  // round 1 분기 — detail_htmls 없으면 list parse + sourceUrls 반환 (insert X)
-  const isRound1 = body.items.every((i) => !i.detail_htmls);
-  if (isRound1) {
+  // round 1 분기 — items 중 detail_htmls 있는 게 하나도 없으면 round1.
+  // 2026-05-26 review#3 fix: some() 으로 round2 진입 (혼합 시 명시 skip).
+  const isRound2 = body.items.some((i) => i.detail_htmls);
+  if (!isRound2) {
     const round1Results = body.items.map((item) => {
       const cfg = PC_RUNNER_CFGS[item.city_key];
       if (!cfg) {
@@ -99,12 +100,23 @@ export async function POST(req: Request) {
       });
       continue;
     }
+    // 2026-05-26 review#3 fix: round2 안 detail_htmls 없는 item 명시 skip (errors 폭주 방지)
+    if (!item.detail_htmls) {
+      results.push({
+        city: cfg.cityName,
+        fetched: 0,
+        inserted: 0,
+        skipped: 0,
+        errors: ["detail_htmls 누락 — round1 만 요청한 경우 무시 (혼합 batch)"],
+      });
+      continue;
+    }
     try {
       const r = await processProvidedHtml(
         cfg,
         admin,
         item.list_html,
-        item.detail_htmls || {},
+        item.detail_htmls,
       );
       results.push(r);
     } catch (e) {
@@ -119,11 +131,12 @@ export async function POST(req: Request) {
   }
 
   // audit 기록
+  // 2026-05-26 review#2 fix: spread 순서 — r 먼저, trigger 뒤 (미래 r.trigger 덮어쓰기 방지)
   for (const r of results) {
     await logAdminAction({
       actorId: null,
       action: "local_press_scrape",
-      details: { trigger: "pc_runner", ...r },
+      details: { ...r, trigger: "pc_runner" },
     });
   }
 
