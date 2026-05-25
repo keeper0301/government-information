@@ -13,17 +13,14 @@
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectedItem } from "@/lib/collectors";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return new Response("CRON_SECRET 미설정", { status: 500 });
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return new Response("unauthorized", { status: 401 });
-  }
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
+
   const source = request.nextUrl.searchParams.get("source") || "local-welfare";
 
   const enc = new TextEncoder();
