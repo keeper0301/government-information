@@ -3,6 +3,7 @@ import {
   authorizeCronRequest,
   authorizeOptionalCronRequest,
   authorizePrivateCronRequest,
+  getCronAuthorizationHeader,
   isPrivateCronRequestAuthorized,
 } from "@/lib/cron-auth";
 
@@ -159,5 +160,27 @@ describe("isPrivateCronRequestAuthorized", () => {
     const authorized = isPrivateCronRequestAuthorized(requestWithToken("right-secret"));
 
     expect(authorized).toBe(true);
+  });
+});
+
+describe("getCronAuthorizationHeader", () => {
+  afterEach(() => {
+    restoreCronSecret();
+  });
+
+  it("CRON_SECRET 비밀값이 없으면 null을 반환한다", () => {
+    delete process.env.CRON_SECRET;
+
+    const header = getCronAuthorizationHeader();
+
+    expect(header).toBeNull();
+  });
+
+  it("CRON_SECRET 비밀값이 있으면 인증 헤더 값을 반환한다", () => {
+    process.env.CRON_SECRET = "right-secret";
+
+    const header = getCronAuthorizationHeader();
+
+    expect(header).toBe("Bearer right-secret");
   });
 });

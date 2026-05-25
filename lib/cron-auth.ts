@@ -44,3 +44,11 @@ export function isPrivateCronRequestAuthorized(request: Request): boolean {
 
   return !!cronSecret && authHeader === `Bearer ${cronSecret}`;
 }
+
+export function getCronAuthorizationHeader(): string | null {
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret) return null;
+
+  return `Bearer ${cronSecret}`;
+}
