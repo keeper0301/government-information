@@ -1,119 +1,95 @@
 // ============================================================
-// 서울특별시청 보도자료 수집 — G4 Phase B
+// 서울특별시 보도자료 수집 — 2026-05-26 RSS 기반 재작성
 // ============================================================
-// 서울특별시 사용자 cohort 1위 대응. opengov.seoul.go.kr/press CMS.
+// 이전: opengov.seoul.go.kr/press/list (ASN 차단, PC runner 필요)
+// 신규: news.seoul.go.kr/gov/feed/ (RSS, Vercel cron 정적 fetch 가능)
 //
-// URL:
-//   list:   https://opengov.seoul.go.kr/press/list
-//   상세:   https://opengov.seoul.go.kr/press/{seq}
-//
-// 본문 일부 글은 iframe PDF (회의 결과 공문) → 추출 빈 string → press_ingest
-// 가 low tier 또는 skip. 일반 정책 글은 <p> 텍스트 추출 가능.
+// RSS 안 item:
+//   - title: "[제안요청서 사전공개] 2026년 S-Map 기능개선 용역"
+//   - link: https://news.seoul.go.kr/gov/archives/578160
+//   - pubDate: 2026-05-22 16:38:15
+//   - description: 본문 일부
+// 카테고리 혼합 (보도자료 외 공고도 포함). 모두 news category 으로 insert.
 // ============================================================
 
-import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+import {
+  createPressCollector,
+  decodeBasicEntities,
+  type PressNewsItem,
+} from "./_factory";
 
-const LIST_URL = "https://opengov.seoul.go.kr/press/list";
-const DETAIL_BASE = "https://opengov.seoul.go.kr/press";
-// 2026-05-22 fix — keepioo-bot UA 차단 의심 (사장님 image 누적 0건 + cron 결과 없음).
-// _factory.ts 의 Chrome UA 와 통일.
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const LIST_URL = "https://news.seoul.go.kr/gov/feed/";
 
-export type SeoulNewsItem = {
-  seq: number;
-  title: string;
-  publishedDate: string | null; // YYYY-MM-DD
-  sourceUrl: string;
-  body: string | null;
-};
+// RSS item parser — XML 단순 regex (큰 dependency 회피)
+const RSS_ITEM_REGEX = /<item>([\s\S]*?)<\/item>/g;
+const TAG = (tag: string) => new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`);
 
-// 목록 row 의 <td class="data-title aLeft"><a href="/press/{seq}">{title}</a>
-const LIST_ITEM_REGEX =
-  /<td[^>]*class="data-title[^"]*"[^>]*>[\s\S]*?<a\s+href="\/press\/(\d+)"[^>]*>([^<]+)<\/a>/g;
+// archives/N 의 N 추출 (seq)
+const SEQ_REGEX = /\/archives\/(\d+)/;
 
-// <td class="data-date">YYYY-MM-DD</td>
-const DATE_REGEX = /<td[^>]*class="data-date[^"]*"[^>]*>(\d{4}-\d{2}-\d{2})<\/td>/g;
-
-export function parseListPage(html: string): SeoulNewsItem[] {
-  const items: Array<Omit<SeoulNewsItem, "publishedDate"> & { idx: number }> =
-    [];
-  const dates: string[] = [];
-
-  // 1) 게시물 정보 (seq + title)
+export function parseListPage(xml: string): PressNewsItem[] {
+  const items: PressNewsItem[] = [];
+  const seen = new Set<string>();
   let m: RegExpExecArray | null;
-  const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
-  let idx = 0;
-  while ((m = itemRe.exec(html)) !== null) {
-    const seq = parseInt(m[1], 10);
-    if (isNaN(seq) || seq <= 0) continue;
-    const title = m[2].trim();
-    if (!title) continue;
+  const itemRe = new RegExp(RSS_ITEM_REGEX.source, "g");
+  while ((m = itemRe.exec(xml)) !== null) {
+    const inner = m[1];
+    const link = TAG("link").exec(inner)?.[1]?.trim();
+    if (!link) continue;
+    const seqMatch = SEQ_REGEX.exec(link);
+    if (!seqMatch) continue;
+    const seq = seqMatch[1];
+    if (seen.has(seq)) continue;
+    seen.add(seq);
+    const titleRaw = TAG("title").exec(inner)?.[1]?.trim() ?? "";
+    const title = decodeBasicEntities(
+      titleRaw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, "$1"),
+    ).trim();
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
+    // pubDate "2026-05-22 16:38:15" → "2026-05-22"
+    const pubDate = TAG("pubDate").exec(inner)?.[1]?.trim();
+    const publishedDate = pubDate ? pubDate.slice(0, 10) : null;
     items.push({
-      idx,
       seq,
       title,
-      sourceUrl: `${DETAIL_BASE}/${seq}`,
-      body: null,
+      publishedDate,
+      sourceUrl: link,
     });
-    idx += 1;
   }
-
-  // 2) 날짜 (같은 row 순서대로 매핑)
-  const dateRe = new RegExp(DATE_REGEX.source, "g");
-  while ((m = dateRe.exec(html)) !== null) {
-    dates.push(m[1]);
-  }
-
-  // 3) seq ↔ date 매핑 (등장 순서 보장)
-  return items.map((item) => ({
-    seq: item.seq,
-    title: item.title,
-    publishedDate: dates[item.idx] ?? null,
-    sourceUrl: item.sourceUrl,
-    body: item.body,
-  }));
+  return items;
 }
 
-// 상세 page 본문 추출. <p>...텍스트...</p> 패턴 모음.
-// iframe PDF 공문은 <p> 거의 없음 → 빈 string 반환 (skip).
+// detail page 의 본문 — news.seoul.go.kr/gov/archives/N
+const BODY_CONTAINER_REGEX =
+  /<div\s+class="(?:view_content|board_view|entry-content|article-content|content-area)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|share)|<\/article|<\/section)/i;
+
 export function parseDetailBody(html: string): string | null {
-  // 본문 영역 추정 — view-content view-content-article 안의 <p>
-  // 단순화: 전체 HTML 의 <p>...</p> 중 한국어 ≥20자만 추출.
-  const PARAGRAPH_REGEX = /<p[^>]*>([^<]{20,})<\/p>/g;
-  const paragraphs: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = PARAGRAPH_REGEX.exec(html)) !== null) {
-    const text = m[1]
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .trim();
-    // 한국어 1자 이상 포함 + meta/navigation 패턴 제외
-    if (!/[가-힣]/.test(text)) continue;
-    if (/element-invisible|첨부파일|문서보기/.test(text)) continue;
-    paragraphs.push(text);
-  }
-  if (paragraphs.length === 0) return null;
-  return paragraphs.join("\n").slice(0, 5000); // 5K 자 제한 (분류 prompt 적정)
+  // RSS description fallback 우선 (작은 buffer)
+  const m = BODY_CONTAINER_REGEX.exec(html);
+  if (!m) return null;
+  const text = decodeBasicEntities(m[1])
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!/[가-힣]/.test(text) || text.length < 50) return null;
+  return text.slice(0, 5000);
 }
 
-// HTTP fetch helper — 외부 검증 + 재사용 가능
-export async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) {
-    throw new Error(`fetch failed (${res.status}): ${url}`);
-  }
-  return res.text();
-}
+export const { scrapeAndInsert: scrapeSeoulAndInsert } = createPressCollector({
+  cityName: "서울특별시",
+  region: "서울",
+  ministry: "서울특별시청",
+  sourceOutlet: "서울특별시청",
+  sourceCode: "local-press-seoul",
+  listUrl: LIST_URL,
+  parseListItems: parseListPage,
+  parseDetailBody,
+});
 
-export const SEOUL_MINISTRY = "서울특별시청";
-export const SEOUL_SOURCE_OUTLET = "서울특별시청";
+// 2026-05-26 — 기존 SeoulNewsItem type 외부 사용처 (PC_RUNNER_CFGS) 호환 위해 유지.
+// 새 collector 는 PressNewsItem 표준 사용 — PC_RUNNER_CFGS 의 seoul 제거 가능.
+export type SeoulNewsItem = PressNewsItem & { body?: string | null };
 
 export type ScrapeResult = {
   city: string;
@@ -122,71 +98,3 @@ export type ScrapeResult = {
   skipped: number;
   errors: string[];
 };
-
-// list → 상세 (병렬) → news_posts insert. suncheon/gwangju 와 동일 시그너처.
-// cron route 의 COLLECTORS array 에 등록 가능.
-export async function scrapeSeoulAndInsert(
-  admin: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
-  limit = 10,
-): Promise<ScrapeResult> {
-  const listHtml = await fetchPage(LIST_URL);
-  const list = parseListPage(listHtml).slice(0, limit);
-  const now = new Date().toISOString();
-
-  let inserted = 0;
-  let skipped = 0;
-  const errors: string[] = [];
-
-  for (const item of list) {
-    let body: string | null = null;
-    try {
-      const detailHtml = await fetchPage(item.sourceUrl);
-      body = parseDetailBody(detailHtml);
-    } catch (e) {
-      errors.push(`seq=${item.seq}: fetch ${(e as Error).message}`);
-      continue;
-    }
-    if (!body || body.length < 50) {
-      skipped += 1; // iframe PDF 공문 등 본문 추출 불가
-      continue;
-    }
-    // NOT NULL 가드 (audit 2026-05-22) — source_id / category / slug 필수.
-    const sourceId = makeNewsSourceId(item.sourceUrl);
-    const slug = makeNewsSlug(item.title, "seoul", sourceId);
-
-    const { error } = await admin.from("news_posts").insert({
-      title: item.title.slice(0, 500),
-      summary: body.slice(0, 500),
-      body: body.slice(0, 20000),
-      source_url: item.sourceUrl,
-      source_outlet: SEOUL_SOURCE_OUTLET,
-
-      source_code: "local-press-seoul",
-      source_id: sourceId,
-      category: "news",
-      slug,
-      ministry: SEOUL_MINISTRY,
-      published_at: item.publishedDate
-        ? `${item.publishedDate}T00:00:00+09:00`
-        : now,
-      classified_at: null,
-    });
-    if (error) {
-      if (error.code === "23505") {
-        skipped += 1; // 이미 수집됨
-      } else {
-        errors.push(`seq=${item.seq}: ${error.message}`);
-      }
-    } else {
-      inserted += 1;
-    }
-  }
-
-  return {
-    city: "서울특별시",
-    fetched: list.length,
-    inserted,
-    skipped,
-    errors: errors.slice(0, 3),
-  };
-}

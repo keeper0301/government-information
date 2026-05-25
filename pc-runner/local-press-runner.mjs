@@ -25,9 +25,8 @@ const UA =
 
 // ASN 차단 site list — _registry 의 city_key 와 동일.
 // site 추가는 같이 server endpoint 변경 필요 (다음 commit cfg export).
-// seoul wrapper 추가 — _pc_runner_cfgs 의 seoul cfg 사용
+// 2026-05-26: seoul 제거 — news.seoul.go.kr RSS 으로 일반 cron 가동.
 const ASN_BLOCKED_CITIES = [
-  { key: "seoul", listUrl: "https://opengov.seoul.go.kr/press/list" },
   { key: "busan", listUrl: "https://www.busan.go.kr/nbtnewsBU" },
   { key: "gwangsan", listUrl: "https://www.gwangsan.go.kr/boardList.do?boardId=REPORT_NEW&pageId=www16" },
   { key: "gangwon", listUrl: "https://state.gwd.go.kr/portal/briefing/pressRelease" },
