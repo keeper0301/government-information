@@ -6,6 +6,12 @@
 
 import Link from "next/link";
 import type { LocalPressStats } from "@/lib/analytics/local-press-stats";
+import { PC_RUNNER_CFGS } from "@/lib/scraping/local-press/_pc_runner_cfgs";
+
+// ASN 차단 site (PC runner 필요) 의 cityName set
+const PC_RUNNER_CITIES = new Set(
+  Object.values(PC_RUNNER_CFGS).map((c) => c.cityName),
+);
 
 function relativeMinutes(iso: string | null): string {
   if (!iso) return "—";
@@ -75,12 +81,16 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
         </span>
       </div>
 
-      {/* 2026-05-25 D3: grouping — 광역(도청·광역시) · 자치구(구) · 시·군 별 분리. */}
+      {/* 2026-05-25 D3: grouping — 광역·자치구·시·군 + PC runner. 2026-05-26 PC runner group 추가. */}
       {(() => {
+        // PC runner 필요 site (ASN 차단) 별도 group
+        const pcRunnerCities = stats.cities.filter((c) => PC_RUNNER_CITIES.has(c.city));
+        const other = stats.cities.filter((c) => !PC_RUNNER_CITIES.has(c.city));
         const groups = {
-          광역: stats.cities.filter((c) => /(특별시|광역시|특별자치도|특별자치시|^.+도$)/.test(c.city)),
-          자치구: stats.cities.filter((c) => /구$/.test(c.city) || c.city.includes(" ")),
-          "시·군": stats.cities.filter((c) =>
+          "🖥️ PC runner 필요 (ASN 차단)": pcRunnerCities,
+          광역: other.filter((c) => /(특별시|광역시|특별자치도|특별자치시|^.+도$)/.test(c.city)),
+          자치구: other.filter((c) => /구$/.test(c.city) || c.city.includes(" ")),
+          "시·군": other.filter((c) =>
             !/구$/.test(c.city) && !c.city.includes(" ") &&
             !/(특별시|광역시|특별자치도|특별자치시|^.+도$)/.test(c.city)
           ),
