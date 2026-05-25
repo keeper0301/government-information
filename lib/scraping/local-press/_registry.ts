@@ -178,7 +178,7 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "대전광역시청",
     ministryAliases: ["대전광역시"],
     siteUrl:
-      "https://www.daejeon.go.kr/drh/board/boardList.do?boardId=PUBNTA01&menuSeq=2843",
+      "https://www.daejeon.go.kr/drh/board/boardNormalList.do?boardId=normal_0189&menuSeq=6825",
     fn: scrapeDaejeonAndInsert,
   },
   {
