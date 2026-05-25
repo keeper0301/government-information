@@ -7,23 +7,10 @@
 import { NextResponse } from "next/server";
 import { fetchSentryDailySummary } from "@/lib/sentry/daily-summary";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 async function run() {
   const summary = await fetchSentryDailySummary();
@@ -73,13 +60,13 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
 
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
