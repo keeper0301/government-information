@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 // Vercel Hobby/Pro 60s 한도 — 단순 DELETE 라 충분
 export const maxDuration = 60;
@@ -205,24 +206,9 @@ async function runCleanup(dryRun: boolean): Promise<CleanupResult> {
   };
 }
 
-function checkAuth(request: NextRequest): NextResponse | null {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 // GET — dry-run (DB 변경 X). 카운트 + 샘플 5건 반환.
 export async function GET(request: NextRequest) {
-  const auth = checkAuth(request);
+  const auth = authorizeCronRequest(request);
   if (auth) return auth;
   try {
     const result = await runCleanup(true);
@@ -238,7 +224,7 @@ export async function GET(request: NextRequest) {
 
 // POST — 실제 삭제. 실패 시 운영자 이메일 알림.
 export async function POST(request: NextRequest) {
-  const auth = checkAuth(request);
+  const auth = authorizeCronRequest(request);
   if (auth) return auth;
   try {
     const result = await runCleanup(false);

@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure } from "@/lib/email";
 import { logAdminAction } from "@/lib/admin-actions";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 import {
   detectDuplicateScore,
   getDedupeSelectColumns,
@@ -212,21 +213,6 @@ async function runDedupe() {
 }
 
 // ─── 인증 가드 ───────────────────────────────────────────
-function checkAuth(request: NextRequest): NextResponse | null {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 async function runAndRespond(jobLabel: string) {
   try {
     const result = await runDedupe();
@@ -246,13 +232,13 @@ async function runAndRespond(jobLabel: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const fail = checkAuth(request);
+  const fail = authorizeCronRequest(request);
   if (fail) return fail;
   return runAndRespond("dedupe-detect (POST)");
 }
 
 export async function GET(request: NextRequest) {
-  const fail = checkAuth(request);
+  const fail = authorizeCronRequest(request);
   if (fail) return fail;
   return runAndRespond("dedupe-detect (cron)");
 }

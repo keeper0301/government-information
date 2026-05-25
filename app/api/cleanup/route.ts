@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { currentMinAllowedYear, isOutdatedByTitle } from "@/lib/utils";
 import { notifyCronFailure } from "@/lib/email";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 const RETENTION_DAYS = 180; // 6개월 (welfare/loan: 만료 후 이 일수 이상 지난 공고만 삭제)
 // news_posts 는 published_at 기준 retention. 네이버 광역별 cron 17개가 매일
@@ -180,21 +181,6 @@ async function runCleanup() {
   };
 }
 
-function checkAuth(request: NextRequest): NextResponse | null {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 async function runCleanupAndRespond(jobLabel: string) {
   try {
     const result = await runCleanup();
@@ -217,13 +203,13 @@ async function runCleanupAndRespond(jobLabel: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const authError = checkAuth(request);
+  const authError = authorizeCronRequest(request);
   if (authError) return authError;
   return runCleanupAndRespond("cleanup (POST)");
 }
 
 export async function GET(request: NextRequest) {
-  const authError = checkAuth(request);
+  const authError = authorizeCronRequest(request);
   if (authError) return authError;
   return runCleanupAndRespond("cleanup (cron)");
 }

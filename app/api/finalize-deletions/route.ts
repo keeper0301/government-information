@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
 import { notifyCronFailure } from "@/lib/email";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 // 한 번 cron 에 처리할 최대 건수 — 60s 안에 auth 삭제 + 감사 로그 여유 있게.
 const BATCH_LIMIT = 50;
@@ -114,21 +115,6 @@ async function runFinalize() {
   };
 }
 
-function checkAuth(request: NextRequest): NextResponse | null {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 async function runAndRespond(jobLabel: string) {
   try {
     const result = await runFinalize();
@@ -150,13 +136,13 @@ async function runAndRespond(jobLabel: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = checkAuth(request);
+  const auth = authorizeCronRequest(request);
   if (auth) return auth;
   return runAndRespond("finalize-deletions (POST)");
 }
 
 export async function GET(request: NextRequest) {
-  const auth = checkAuth(request);
+  const auth = authorizeCronRequest(request);
   if (auth) return auth;
   return runAndRespond("finalize-deletions (cron)");
 }
