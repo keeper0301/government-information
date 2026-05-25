@@ -40,7 +40,8 @@ export function parseListPage(html: string): PressNewsItem[] {
   let m: RegExpExecArray | null;
   const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
   while ((m = itemRe.exec(html)) !== null) {
-    const href = m[1].replace(/&amp;/g, "&");
+    // 2026-05-26 review nit#5: decode 단일화 — &amp; manual replace 와 decodeBasicEntities 2 경로 합침
+    const href = decodeBasicEntities(m[1]);
     const seq = m[2];
     if (seen.has(seq)) continue;
     seen.add(seq);

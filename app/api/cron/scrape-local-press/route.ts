@@ -20,10 +20,10 @@ export const dynamic = "force-dynamic";
 // 2026-05-25 region: vercel.json 의 functions.regions=["icn1"] 으로 설정 (project 레벨).
 // Node runtime 의 preferredRegion export 는 Edge runtime 만 지원 → vercel.json 으로 우회.
 // 미국 default region 의 한국 정부 site IP geo 차단 (광역 9건 fetch failed) 해소.
-// 시·군 1개 = ~15s. 21 시·군 sequential = ~315s → 5/17 22:00 504 timeout.
-// 5/18 parallel batch 도입: BATCH_SIZE=4 → 21/4=6 batches × 15s = ~90s (300s 충분 margin).
-// 시·군 마다 다른 외부 도메인이라 동시 4 request 가 단일 site burst 위험 X.
-export const maxDuration = 300;
+// 시·군 1개 = list 1 + detail 10 fetch × 25s = 최대 275s. 5/26 review fix:
+// 48 시·군 / BATCH_SIZE=4 = 12 batches. 한 batch 최대 275s + 평균 ~30s ×12 = 360s 안 마진.
+// 5/26 timeout 15s → 25s (인천 서구 등 응답 느린 site) 와 짝맞춤 + maxDuration 60s 추가.
+export const maxDuration = 360;
 const BATCH_SIZE = 4;
 
 type CityResult = {
