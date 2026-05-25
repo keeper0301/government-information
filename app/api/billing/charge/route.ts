@@ -19,6 +19,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { chargeBilling, generateOrderId, TossError } from "@/lib/toss";
 import { TIER_PRICES, TIER_NAMES, type Tier } from "@/lib/subscription";
 import { sendReceiptEmail } from "@/lib/email";
+import { authorizePrivateCronRequest } from "@/lib/cron-auth";
 
 // 30일을 ms 로
 const PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
@@ -28,11 +29,8 @@ const CHARGEABLE_STATUSES = ["trialing", "active", "past_due"] as const;
 
 export async function POST(request: NextRequest) {
   // 1) 인증: CRON_SECRET 검증
-  const authHeader = request.headers.get("authorization") || "";
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || authHeader !== expected) {
-    return NextResponse.json({ error: "권한이 없습니다." }, { status: 401 });
-  }
+  const denied = authorizePrivateCronRequest(request);
+  if (denied) return denied;
 
   // 2) body 파싱 (없으면 batch 모드)
   let userId: string | undefined;

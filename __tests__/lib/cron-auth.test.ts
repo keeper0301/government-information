@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { authorizeCronRequest, authorizeOptionalCronRequest } from "@/lib/cron-auth";
+import {
+  authorizeCronRequest,
+  authorizeOptionalCronRequest,
+  authorizePrivateCronRequest,
+} from "@/lib/cron-auth";
 
 const OLD_CRON_SECRET = process.env.CRON_SECRET;
 
@@ -86,6 +90,42 @@ describe("authorizeOptionalCronRequest", () => {
     process.env.CRON_SECRET = "right-secret";
 
     const response = authorizeOptionalCronRequest(requestWithToken("right-secret"));
+
+    expect(response).toBeNull();
+  });
+});
+
+describe("authorizePrivateCronRequest", () => {
+  afterEach(() => {
+    restoreCronSecret();
+  });
+
+  it("CRON_SECRET 비밀값이 없으면 권한 없음으로 거절한다", async () => {
+    delete process.env.CRON_SECRET;
+
+    const response = authorizePrivateCronRequest(requestWithToken("secret"));
+
+    expect(response?.status).toBe(401);
+    await expect(readError(response!)).resolves.toEqual({
+      error: "권한이 없습니다.",
+    });
+  });
+
+  it("인증값이 다르면 권한 없음으로 거절한다", async () => {
+    process.env.CRON_SECRET = "right-secret";
+
+    const response = authorizePrivateCronRequest(requestWithToken("wrong-secret"));
+
+    expect(response?.status).toBe(401);
+    await expect(readError(response!)).resolves.toEqual({
+      error: "권한이 없습니다.",
+    });
+  });
+
+  it("인증값이 맞으면 통과시킨다", () => {
+    process.env.CRON_SECRET = "right-secret";
+
+    const response = authorizePrivateCronRequest(requestWithToken("right-secret"));
 
     expect(response).toBeNull();
   });

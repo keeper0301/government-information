@@ -29,3 +29,14 @@ export function authorizeOptionalCronRequest(request: Request): NextResponse | n
 
   return null;
 }
+
+export function authorizePrivateCronRequest(request: Request): NextResponse | null {
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = request.headers.get("authorization") ?? "";
+
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "권한이 없습니다." }, { status: 401 });
+  }
+
+  return null;
+}
