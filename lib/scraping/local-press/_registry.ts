@@ -24,7 +24,7 @@ import { scrapeHwaseongAndInsert } from "./hwaseong";
 import { scrapeJeonjuAndInsert } from "./jeonju";
 import { scrapeGimhaeAndInsert } from "./gimhae";
 import { scrapeNamyangjuAndInsert } from "./namyangju";
-import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
+// 2026-05-25 disabled (SPA — list ajax): import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
 import { scrapePohangAndInsert } from "./pohang";
 import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
@@ -76,7 +76,7 @@ export type CityKey =
   | "jeonju"
   | "gimhae"
   | "namyangju"
-  | "pyeongtaek"
+  // | "pyeongtaek" — disabled 2026-05-25 (SPA)
   | "pohang"
   | "iksan"
   | "daegu"
@@ -240,14 +240,17 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.nyj.go.kr/main/1058",
     fn: scrapeNamyangjuAndInsert,
   },
-  {
-    key: "pyeongtaek",
-    city: "평택시",
-    ministry: "평택시청",
-    siteUrl:
-      "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90",
-    fn: scrapePyeongtaekAndInsert,
-  },
+  // 2026-05-25 disabled: 평택 site = SPA. list ajax render 으로 정적 fetch idx 추출 불가.
+  // contents.do?mid=0402010000 정확 list URL 도 size 344K 인데 idx/view link 0개 매칭.
+  // ajax endpoint 직접 분석 또는 Playwright fallback 필요 (다음 세션 spec).
+  // {
+  //   key: "pyeongtaek",
+  //   city: "평택시",
+  //   ministry: "평택시청",
+  //   siteUrl:
+  //     "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90",
+  //   fn: scrapePyeongtaekAndInsert,
+  // },
   {
     key: "pohang",
     city: "포항시",
