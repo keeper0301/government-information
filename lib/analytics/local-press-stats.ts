@@ -23,6 +23,8 @@ export type LocalPressStats = {
   totalErrors24h: number;
   cities: LocalPressCityStat[]; // CITY_REGISTRY 순서 유지
   lastCronAt: string | null;
+  // 2026-05-25 — PC runner (사장님 PC 한국 IP fetch) 마지막 가동
+  lastPcRunnerAt: string | null;
 };
 
 export async function getLocalPressStats(): Promise<LocalPressStats> {
@@ -49,6 +51,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
   >();
 
   let lastCronAt: string | null = null;
+  let lastPcRunnerAt: string | null = null;
 
   for (const row of rows ?? []) {
     const d = (row.details ?? {}) as Record<string, unknown>;
@@ -57,6 +60,9 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
     const trigger = String(d.trigger ?? "");
     if (trigger === "cron" && !lastCronAt) {
       lastCronAt = String(row.created_at);
+    }
+    if (trigger === "pc_runner" && !lastPcRunnerAt) {
+      lastPcRunnerAt = String(row.created_at);
     }
     const inserted = Number(d.inserted ?? 0);
     const fetched = Number(d.fetched ?? 0);
@@ -94,6 +100,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
     totalErrors24h: cities.reduce((s, c) => s + c.errors24h, 0),
     cities,
     lastCronAt,
+    lastPcRunnerAt,
   };
 }
 
