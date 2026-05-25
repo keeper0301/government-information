@@ -60,6 +60,7 @@ import { scrapeGwangyangAndInsert } from "./gwangyang";
 import { scrapeBusanjinAndInsert } from "./busanjin";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
 import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
+import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -114,7 +115,8 @@ export type CityKey =
   | "gwangyang"
   | "busanjin"
   | "namgu_gwangju"
-  | "bukgu_gwangju";
+  | "bukgu_gwangju"
+  | "seogu_gwangju";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -558,6 +560,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "광주 북구청",
     siteUrl: "https://bukgu.gwangju.kr/board.es?mid=a10402010000&bid=0001",
     fn: scrapeBukguGwangjuAndInsert,
+  },
+  // 2026-05-25 — 광주 서구 30만. board.es CMS (mid=c50501000000&bid=0154).
+  {
+    key: "seogu_gwangju",
+    city: "광주 서구",
+    ministry: "광주 서구청",
+    siteUrl: "https://www.seogu.gwangju.kr/board.es?mid=c50501000000&bid=0154",
+    fn: scrapeSeoguGwangjuAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
