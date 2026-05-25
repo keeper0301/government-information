@@ -17,11 +17,13 @@ import { logAdminAction } from "@/lib/admin-actions";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// PC runner upload body — city_key 별로 list HTML + detail HTML map
+// PC runner upload body — 2 round 분기:
+//   round 1: { items: [{ city_key, list_html }] } → server parse → { items: [{ city, sourceUrls }] } 반환
+//   round 2: { items: [{ city_key, list_html, detail_htmls }] } → server insert → 결과 반환
 type UploadItem = {
   city_key: string;
   list_html: string;
-  detail_htmls: Record<string, string>;
+  detail_htmls?: Record<string, string>;
 };
 type UploadBody = { items: UploadItem[] };
 
@@ -45,10 +47,46 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "items 누락" }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-  const results: Array<{ city: string; fetched: number; inserted: number; skipped: number; errors: string[] }> = [];
+  // round 1 분기 — detail_htmls 없으면 list parse + sourceUrls 반환 (insert X)
+  const isRound1 = body.items.every((i) => !i.detail_htmls);
+  if (isRound1) {
+    const round1Results = body.items.map((item) => {
+      const cfg = PC_RUNNER_CFGS[item.city_key];
+      if (!cfg) {
+        return {
+          city_key: item.city_key,
+          error: `unsupported city_key: ${item.city_key}`,
+          items: [],
+        };
+      }
+      try {
+        const list = cfg.parseListItems(item.list_html).slice(0, 10);
+        return {
+          city_key: item.city_key,
+          city: cfg.cityName,
+          items: list.map((x) => ({ seq: x.seq, sourceUrl: x.sourceUrl })),
+        };
+      } catch (e) {
+        return {
+          city_key: item.city_key,
+          error: `parseListItems: ${(e as Error).message}`,
+          items: [],
+        };
+      }
+    });
+    return NextResponse.json({ ok: true, phase: "round1", results: round1Results });
+  }
 
-  // PC_RUNNER_CFGS 에 등록된 city_key 만 처리. seoul 은 다른 type 으로 다음 commit.
+  // round 2 — insert
+  const admin = createAdminClient();
+  const results: Array<{
+    city: string;
+    fetched: number;
+    inserted: number;
+    skipped: number;
+    errors: string[];
+  }> = [];
+
   for (const item of body.items) {
     const cfg = PC_RUNNER_CFGS[item.city_key];
     if (!cfg) {
@@ -61,13 +99,12 @@ export async function POST(req: Request) {
       });
       continue;
     }
-
     try {
       const r = await processProvidedHtml(
         cfg,
         admin,
         item.list_html,
-        item.detail_htmls,
+        item.detail_htmls || {},
       );
       results.push(r);
     } catch (e) {
@@ -90,5 +127,5 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true, results });
+  return NextResponse.json({ ok: true, phase: "round2", results });
 }

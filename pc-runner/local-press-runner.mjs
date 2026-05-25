@@ -43,51 +43,7 @@ async function fetchPage(url) {
   return r.text();
 }
 
-// detail URL 추출 — site 별 다름. 임시 — 모든 detail URL 을 list HTML 에서 정규식으로.
-// 다음 commit 에서 _factory 의 parseListItems 사용으로 변경.
-function extractDetailUrls(listHtml) {
-  // 임시 placeholder — 실제 city 별 정확 추출은 다음 commit.
-  const matches = listHtml.match(/href="[^"]*(?:view|detail|read)[^"]*"/g) || [];
-  return matches.slice(0, 10);
-}
-
-async function processSite(city) {
-  try {
-    const listHtml = await fetchPage(city.listUrl);
-    const detailUrls = extractDetailUrls(listHtml);
-    const detailHtmls = {};
-    for (const url of detailUrls) {
-      try {
-        detailHtmls[url] = await fetchPage(url);
-      } catch (e) {
-        // detail 1건 fail 은 무시 (PC runner 단 best-effort)
-      }
-    }
-    return {
-      city_key: city.key,
-      list_html: listHtml,
-      detail_htmls: detailHtmls,
-    };
-  } catch (e) {
-    console.error(`${city.key} fetch fail:`, e.message);
-    return { city_key: city.key, list_html: "", detail_htmls: {} };
-  }
-}
-
-async function main() {
-  if (!SECRET) {
-    console.error("PC_RUNNER_SECRET 환경변수 미설정");
-    process.exit(1);
-  }
-  console.log(`PC runner 시작 — ${ASN_BLOCKED_CITIES.length} site`);
-  const items = [];
-  for (const city of ASN_BLOCKED_CITIES) {
-    const result = await processSite(city);
-    items.push(result);
-    console.log(`  ${city.key}: list ${result.list_html.length} bytes, detail ${Object.keys(result.detail_htmls).length}건`);
-  }
-
-  console.log("upload 중...");
+async function postUpload(items) {
   const r = await fetch(`${API_BASE}/api/admin/local-press/upload`, {
     method: "POST",
     headers: {
@@ -96,8 +52,65 @@ async function main() {
     },
     body: JSON.stringify({ items }),
   });
-  const result = await r.json();
-  console.log("upload 결과:", JSON.stringify(result, null, 2));
+  if (!r.ok) throw new Error(`upload ${r.status}`);
+  return r.json();
+}
+
+async function main() {
+  if (!SECRET) {
+    console.error("PC_RUNNER_SECRET 환경변수 미설정");
+    process.exit(1);
+  }
+  console.log(`PC runner 시작 — ${ASN_BLOCKED_CITIES.length} site\n`);
+
+  // ===== Round 1: list_html fetch + server parse =====
+  console.log("[round 1] list_html upload + server parse");
+  const round1Items = [];
+  for (const city of ASN_BLOCKED_CITIES) {
+    try {
+      const listHtml = await fetchPage(city.listUrl);
+      round1Items.push({ city_key: city.key, list_html: listHtml });
+      console.log(`  ${city.key}: list ${listHtml.length} bytes ✅`);
+    } catch (e) {
+      console.error(`  ${city.key}: list fetch fail — ${e.message}`);
+      round1Items.push({ city_key: city.key, list_html: "" });
+    }
+  }
+  const round1 = await postUpload(round1Items);
+  console.log(`[round 1] server response: ${round1.results.length} cities\n`);
+
+  // ===== Round 2: detail fetch + server insert =====
+  console.log("[round 2] detail fetch + server insert");
+  const round2Items = [];
+  for (const r1 of round1.results) {
+    const city = ASN_BLOCKED_CITIES.find((c) => c.key === r1.city_key);
+    if (!city || !r1.items?.length) {
+      console.log(`  ${r1.city_key}: skip (round1 ${r1.error || "no items"})`);
+      continue;
+    }
+    const detailHtmls = {};
+    for (const item of r1.items) {
+      try {
+        detailHtmls[item.seq] = await fetchPage(item.sourceUrl);
+      } catch (e) {
+        // detail 1건 fail 은 best-effort
+      }
+    }
+    // round1 의 list_html 재사용 (round2 server insert 에 필요)
+    const round1Item = round1Items.find((i) => i.city_key === r1.city_key);
+    round2Items.push({
+      city_key: r1.city_key,
+      list_html: round1Item.list_html,
+      detail_htmls: detailHtmls,
+    });
+    console.log(`  ${r1.city_key}: list + detail ${Object.keys(detailHtmls).length}건`);
+  }
+
+  const round2 = await postUpload(round2Items);
+  console.log(`\n[round 2] insert 결과:`);
+  for (const r of round2.results) {
+    console.log(`  ${r.city}: fetched ${r.fetched} / inserted ${r.inserted} / skipped ${r.skipped} / errors ${r.errors?.length || 0}`);
+  }
 }
 
 main().catch((e) => {
