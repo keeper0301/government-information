@@ -29,6 +29,10 @@ import { notifyCronFailure } from "@/lib/email";
 import { logAdminAction, type AdminActionType } from "@/lib/admin-actions";
 import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  authorizePrivateCronRequest,
+  isPrivateCronRequestAuthorized,
+} from "@/lib/cron-auth";
 
 // AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림
 export const maxDuration = 60;
@@ -138,11 +142,8 @@ async function logPublishBlogRun(details: Record<string, unknown>) {
 
 export async function POST(request: NextRequest) {
   // 1) 인증
-  const authHeader = request.headers.get("authorization") || "";
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  if (!process.env.CRON_SECRET || authHeader !== expected) {
-    return NextResponse.json({ error: "권한이 없습니다." }, { status: 401 });
-  }
+  const denied = authorizePrivateCronRequest(request);
+  if (denied) return denied;
 
   // 2) body 파싱
   let opts: { category?: string; dryRun?: boolean } = {};
@@ -213,9 +214,7 @@ export async function POST(request: NextRequest) {
 // GET 은 GitHub Actions cron 호출용. 인증된 GET 은 자동 발행 (오늘 카테고리).
 // 인증 없으면 디버깅용 상태 응답.
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization") || "";
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
-  const authed = process.env.CRON_SECRET && authHeader === expected;
+  const authed = isPrivateCronRequestAuthorized(request);
 
   if (!authed) {
     return NextResponse.json({
