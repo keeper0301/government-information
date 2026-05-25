@@ -10,26 +10,16 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth-server";
 import { scrapeSuncheonAndInsert } from "@/lib/scraping/local-press/suncheon";
 import { logAdminAction } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !isAdminUser(user.email)) return null;
-  return user;
-}
-
 export async function POST(req: Request) {
-  const user = await requireAdmin();
+  const user = await requireAdminUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

@@ -16,25 +16,13 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth-server";
 import { extractDistrictFromFields } from "@/lib/region/district-extractor";
 
 export const dynamic = "force-dynamic";
 // Vercel Pro 한도 안에서 안전 — 5000 row × 0.02s = 100s 예상.
 export const maxDuration = 300;
-
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !isAdminUser(user.email)) {
-    return null;
-  }
-  return user;
-}
 
 type WelfareRow = {
   id: string;
@@ -124,7 +112,7 @@ async function backfillTable(
 }
 
 export async function POST(req: Request) {
-  const user = await requireAdmin();
+  const user = await requireAdminUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
