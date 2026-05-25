@@ -53,7 +53,7 @@ import { canExecute, denyMessage, type Role } from "@/lib/telegram/permissions";
 export interface CommandContext {
   chatId: number;
   text: string;
-  cronSecret: string;
+  cronAuthorizationHeader: string | null;
   /** RBAC role — webhook receive 가 getRole 로 결정해 전달 */
   role: Role;
 }
@@ -78,9 +78,9 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
     case "test":
       return "✅ 살아있어요. 텔레그램 양방향 봇 정상 가동 중.";
     case "status":
-      return statusCommand(ctx.cronSecret);
+      return statusCommand(ctx.cronAuthorizationHeader);
     case "trigger":
-      return triggerCommand(args, ctx.cronSecret);
+      return triggerCommand(args, ctx.cronAuthorizationHeader);
     case "revoke":
       return revokeCommand(args);
     case "restore":
@@ -96,7 +96,7 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
     case "redeploy":
       return redeployCommand();
     case "publish":
-      return publishDispatch(args, ctx.cronSecret);
+      return publishDispatch(args, ctx.cronAuthorizationHeader);
     case "recent":
       return recentCommand();
     case "queue":
@@ -104,7 +104,7 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
     case "news":
       return newsListCommand();
     case "health":
-      return healthCommand(ctx.cronSecret);
+      return healthCommand(ctx.cronAuthorizationHeader);
     case "user":
       return userLookupCommand(args);
     case "today":
@@ -188,7 +188,7 @@ async function envDispatch(args: string): Promise<string> {
 // /publish — blog [카테고리] / preview [카테고리] / indexnow
 async function publishDispatch(
   args: string,
-  cronSecret: string,
+  cronAuthorizationHeader: string | null,
 ): Promise<string> {
   if (!args) {
     return [
@@ -202,13 +202,12 @@ async function publishDispatch(
   const subArgs = rest.join(" ").trim();
   switch ((sub ?? "").toLowerCase()) {
     case "blog":
-      return publishBlogCommand(subArgs, cronSecret);
+      return publishBlogCommand(subArgs, cronAuthorizationHeader);
     case "preview":
-      return publishPreviewCommand(subArgs, cronSecret);
+      return publishPreviewCommand(subArgs, cronAuthorizationHeader);
     case "indexnow":
-      return publishIndexnowCommand(cronSecret);
+      return publishIndexnowCommand(cronAuthorizationHeader);
     default:
       return `❌ 알 수 없는 sub: ${sub}\n/publish blog | preview | indexnow`;
   }
 }
-

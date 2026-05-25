@@ -39,24 +39,26 @@ interface IndexNowResp {
 // /publish blog [카테고리] — 즉시 발행 (DB 저장)
 export async function publishBlogCommand(
   args: string,
-  cronSecret: string,
+  cronAuthorizationHeader: string | null,
 ): Promise<string> {
-  return callPublishBlog(args, false, cronSecret);
+  return callPublishBlog(args, false, cronAuthorizationHeader);
 }
 
 // /publish preview [카테고리] — dryRun (DB 저장 안 함, 미리보기)
 export async function publishPreviewCommand(
   args: string,
-  cronSecret: string,
+  cronAuthorizationHeader: string | null,
 ): Promise<string> {
-  return callPublishBlog(args, true, cronSecret);
+  return callPublishBlog(args, true, cronAuthorizationHeader);
 }
 
 async function callPublishBlog(
   category: string,
   dryRun: boolean,
-  cronSecret: string,
+  cronAuthorizationHeader: string | null,
 ): Promise<string> {
+  if (!cronAuthorizationHeader) return "❌ CRON_SECRET 비밀값이 설정되지 않았습니다.";
+
   const body: Record<string, unknown> = {};
   const cat = category.trim();
   if (cat) body.category = cat;
@@ -67,7 +69,7 @@ async function callPublishBlog(
     res = await fetch(`${SITE_BASE}/api/publish-blog`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${cronSecret}`,
+        Authorization: cronAuthorizationHeader,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -98,13 +100,15 @@ async function callPublishBlog(
 
 // /publish indexnow — 최근 24h 발행 글 색인 ping (네이버 + Bing + Yandex)
 export async function publishIndexnowCommand(
-  cronSecret: string,
+  cronAuthorizationHeader: string | null,
 ): Promise<string> {
+  if (!cronAuthorizationHeader) return "❌ CRON_SECRET 비밀값이 설정되지 않았습니다.";
+
   let res: Response;
   try {
     res = await fetch(`${SITE_BASE}/api/indexnow-submit-recent`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: cronAuthorizationHeader },
     });
   } catch (e) {
     return `❌ indexnow 호출 실패: ${(e as Error).message.slice(0, 80)}`;

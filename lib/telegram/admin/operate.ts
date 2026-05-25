@@ -77,11 +77,15 @@ export async function restoreCommand(args: string): Promise<string> {
   }
 }
 
-export async function statusCommand(cronSecret: string): Promise<string> {
+export async function statusCommand(
+  cronAuthorizationHeader: string | null,
+): Promise<string> {
+  if (!cronAuthorizationHeader) return "❌ CRON_SECRET 비밀값이 설정되지 않았습니다.";
+
   let res: Response;
   try {
     res = await fetch(`${SITE_BASE}/api/auto-confirm-stats`, {
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: cronAuthorizationHeader },
     });
   } catch (e) {
     return `❌ 호출 실패: ${(e as Error).message.slice(0, 80)}`;
@@ -110,8 +114,10 @@ export async function statusCommand(cronSecret: string): Promise<string> {
 
 export async function triggerCommand(
   args: string,
-  cronSecret: string,
+  cronAuthorizationHeader: string | null,
 ): Promise<string> {
+  if (!cronAuthorizationHeader) return "❌ CRON_SECRET 비밀값이 설정되지 않았습니다.";
+
   const name = args.trim().toLowerCase();
   if (!name) return "사용법: /trigger {cron-name} — /help 에서 목록 확인";
   if (!(ALLOWED_TRIGGERS as readonly string[]).includes(name)) {
@@ -127,7 +133,7 @@ export async function triggerCommand(
   try {
     res = await fetch(`${SITE_BASE}${path}`, {
       method: triggerName === "auto-confirm-stats" ? "GET" : "POST",
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: cronAuthorizationHeader },
     });
   } catch (e) {
     return `❌ ${triggerName} 호출 실패: ${(e as Error).message.slice(0, 80)}`;

@@ -32,10 +32,14 @@ export async function newsListCommand(): Promise<string> {
 }
 
 // /health — health-alert cron 응답 1줄 요약
-export async function healthCommand(cronSecret: string): Promise<string> {
+export async function healthCommand(
+  cronAuthorizationHeader: string | null,
+): Promise<string> {
+  if (!cronAuthorizationHeader) return "❌ CRON_SECRET 비밀값이 설정되지 않았습니다.";
+
   try {
     const res = await fetch(`${SITE_BASE}/api/cron/health-alert`, {
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { Authorization: cronAuthorizationHeader },
     });
     const body = await res.text();
     if (!res.ok) return `❌ HTTP ${res.status}\n${body.slice(0, 200)}`;

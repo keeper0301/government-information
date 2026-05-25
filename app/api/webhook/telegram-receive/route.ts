@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dispatchCommand } from "@/lib/telegram/commands";
 import { getRole, loadRoleSets } from "@/lib/telegram/permissions";
 import { authorizeTelegramWebhookRequest } from "@/lib/telegram-webhook-auth";
+import { getCronAuthorizationHeader } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -66,10 +67,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "not_whitelisted" });
   }
 
-  const cronSecret = process.env.CRON_SECRET ?? "";
+  const cronAuthorizationHeader = getCronAuthorizationHeader();
   let reply: string;
   try {
-    reply = await dispatchCommand({ chatId, text, cronSecret, role });
+    reply = await dispatchCommand({ chatId, text, cronAuthorizationHeader, role });
   } catch (e) {
     reply = `❌ 명령 처리 실패: ${(e as Error).message.slice(0, 80)}`;
   }
