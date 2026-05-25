@@ -42,6 +42,16 @@ function solapiRequest(rawBody: string, signature = signBody(rawBody)) {
   }) as NextRequest;
 }
 
+function solapiAuthorizationRequest(rawBody: string, signature = signBody(rawBody)) {
+  return new Request("https://www.keepioo.com/api/webhook/solapi-receive", {
+    method: "POST",
+    headers: {
+      authorization: signature,
+    },
+    body: rawBody,
+  }) as NextRequest;
+}
+
 function setRequiredWebhookEnv() {
   process.env.SOLAPI_WEBHOOK_SECRET = "solapi-secret";
   delete process.env.OPS_ALERT_DISABLE_SMS;
@@ -62,6 +72,19 @@ describe("solapi-receive route", () => {
 
     const response = await POST(
       solapiRequest(JSON.stringify({ message: { from: "01012345678", text: "1" } }), "wrong"),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "invalid_signature" });
+    expect(handleSmsReply).not.toHaveBeenCalled();
+  });
+
+  it("웹훅 비밀값이 없으면 문자 답장 처리를 실행하지 않는다", async () => {
+    delete process.env.SOLAPI_WEBHOOK_SECRET;
+    delete process.env.OPS_ALERT_DISABLE_SMS;
+
+    const response = await POST(
+      solapiRequest(JSON.stringify({ message: { from: "01012345678", text: "1" } })),
     );
 
     expect(response.status).toBe(401);
@@ -126,6 +149,50 @@ describe("solapi-receive route", () => {
     expect(handleSmsReply).toHaveBeenCalledWith({
       from: "01012345678",
       text: "1",
+    });
+  });
+
+  it("sha256 접두사가 붙은 서명도 허용한다", async () => {
+    setRequiredWebhookEnv();
+    vi.mocked(handleSmsReply).mockResolvedValue({
+      ok: true,
+      reason: "approved",
+    });
+    const rawBody = JSON.stringify({
+      message: { from: "01012345678", text: "1" },
+    });
+
+    const response = await POST(solapiRequest(rawBody, `sha256=${signBody(rawBody)}`));
+
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      reason: "approved",
+    });
+    expect(handleSmsReply).toHaveBeenCalledWith({
+      from: "01012345678",
+      text: "1",
+    });
+  });
+
+  it("authorization 헤더로 온 서명도 허용한다", async () => {
+    setRequiredWebhookEnv();
+    vi.mocked(handleSmsReply).mockResolvedValue({
+      ok: true,
+      reason: "approved",
+    });
+    const rawBody = JSON.stringify({
+      message: { from: "01012345678", text: "2" },
+    });
+
+    const response = await POST(solapiAuthorizationRequest(rawBody));
+
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      reason: "approved",
+    });
+    expect(handleSmsReply).toHaveBeenCalledWith({
+      from: "01012345678",
+      text: "2",
     });
   });
 });
