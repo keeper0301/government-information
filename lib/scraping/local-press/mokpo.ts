@@ -16,9 +16,12 @@ const LIST_URL =
   "https://www.mokpo.go.kr/www/mokpo_news/press_release";
 
 // detail URL: /www/mokpo_news/press_release/report_material?idx=N&mode=view
-// regex 완화 (2026-05-24 review fix): mode=view 조건 제거 → 파라미터 순서 hard-fix silent fail 방지
+// regex 완화 2건:
+// (1) 2026-05-24: mode=view 조건 제거 (파라미터 순서 hard-fix 방지)
+// (2) 2026-05-26: inner limit {0,500} → {0,5000}. a 안 img thumb_box + cont_box title meta 가
+//     785자 → 500 으로 매칭 0 silent fail. 5/22 batch 추가 site 첫 cron 부터 누락.
 const LIST_ITEM_REGEX =
-  /<a[^>]*href="([^"]*press_release\/report_material\?[^"]*idx=(\d+)[^"]*)"[^>]*>([\s\S]{0,500}?)<\/a>/g;
+  /<a[^>]*href="([^"]*press_release\/report_material\?[^"]*idx=(\d+)[^"]*)"[^>]*>([\s\S]{0,5000}?)<\/a>/g;
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 

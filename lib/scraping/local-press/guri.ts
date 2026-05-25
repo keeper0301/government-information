@@ -8,8 +8,9 @@ const BASE_URL = "https://guri.go.kr";
 const LIST_URL =
   "https://guri.go.kr/www/selectBbsNttList.do?bbsNo=42&key=393";
 
+// 2026-05-26 inner limit {0,500} → {0,5000} (a 안 nested 큰 thumb 가 첫 match 막음)
 const LIST_ITEM_REGEX =
-  /<a[^>]*href="[^"]*selectBbsNttView\.do\?(?=[^"]*bbsNo=42)[^"]*?nttNo=(\d+)[^"]*"[^>]*>([\s\S]{0,500}?)<\/a>/g;
+  /<a[^>]*href="[^"]*selectBbsNttView\.do\?(?=[^"]*bbsNo=42)[^"]*?nttNo=(\d+)[^"]*"[^>]*>([\s\S]{0,5000}?)<\/a>/g;
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
