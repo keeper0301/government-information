@@ -63,6 +63,7 @@ import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
 import { scrapeDongguGwangjuAndInsert } from "./donggu_gwangju";
 import { scrapeNamdongIncheonAndInsert } from "./namdong_incheon";
+import { scrapeGyeyangIncheonAndInsert } from "./gyeyang_incheon";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -120,7 +121,8 @@ export type CityKey =
   | "bukgu_gwangju"
   | "seogu_gwangju"
   | "donggu_gwangju"
-  | "namdong_incheon";
+  | "namdong_incheon"
+  | "gyeyang_incheon";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -589,6 +591,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "남동구청",
     siteUrl: "https://www.namdong.go.kr/main/news/report.jsp",
     fn: scrapeNamdongIncheonAndInsert,
+  },
+  // 2026-05-26 — 인천 계양구 30만. open_content/bbsMsgDetail CMS (서구 동일 base path).
+  {
+    key: "gyeyang_incheon",
+    city: "계양구",
+    ministry: "계양구청",
+    siteUrl: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/report.jsp",
+    fn: scrapeGyeyangIncheonAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
