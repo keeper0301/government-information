@@ -8,8 +8,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
-import { createClient } from "@/lib/supabase/server";
-import { isAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth-server";
 import { buildAuthorizeUrl } from "@/lib/instagram/oauth";
 
 export const dynamic = "force-dynamic";
@@ -19,11 +18,8 @@ const STATE_MAX_AGE = 600; // 10분 — 사용자가 동의 완료할 만한 시
 
 export async function GET() {
   // 1) 어드민 only — 어드민 아니면 403
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !isAdminUser(user.email)) {
+  const user = await requireAdminUser();
+  if (!user) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

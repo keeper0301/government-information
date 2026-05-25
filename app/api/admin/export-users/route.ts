@@ -10,8 +10,8 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
+import { getSignedInUser } from "@/lib/admin-auth-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
 
@@ -39,10 +39,7 @@ function csvCell(v: string | null | undefined): string {
 
 export async function GET() {
   // 권한 가드
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSignedInUser();
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

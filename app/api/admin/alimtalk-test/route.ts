@@ -14,8 +14,8 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
+import { getSignedInUser } from "@/lib/admin-auth-server";
 import { sendAlimtalk } from "@/lib/kakao-alimtalk";
 import { logAdminAction } from "@/lib/admin-actions";
 
@@ -29,8 +29,7 @@ function maskPhone(raw: string): string {
 
 export async function POST(request: NextRequest) {
   // 1) 인증·권한 체크
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSignedInUser();
   if (!user) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
