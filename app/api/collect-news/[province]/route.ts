@@ -19,6 +19,7 @@ import {
 import { collectNaverNewsByProvince } from "@/lib/news-collectors/naver-news";
 import { notifyCronFailure } from "@/lib/email";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const maxDuration = 300;
 
@@ -96,23 +97,11 @@ async function run(provinceCode: string, jobLabel: string) {
   }
 }
 
-function checkAuth(request: NextRequest): NextResponse | null {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ province: string }> },
 ) {
-  const fail = checkAuth(request);
+  const fail = authorizeCronRequest(request);
   if (fail) return fail;
   const { province } = await params;
   return run(province, `collect-news/${province} (cron)`);
@@ -122,7 +111,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ province: string }> },
 ) {
-  const fail = checkAuth(request);
+  const fail = authorizeCronRequest(request);
   if (fail) return fail;
   const { province } = await params;
   return run(province, `collect-news/${province} (POST)`);

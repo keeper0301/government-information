@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { collectKoreaKr } from "@/lib/news-collectors/korea-kr";
 import { collectKoreaKrTopics } from "@/lib/news-collectors/korea-kr-topics";
 import { notifyCronFailure } from "@/lib/email";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 // RSS(25s) + topics(10s) 합쳐 ~35s 예상. Hobby 60s 시절보다 여유.
 export const maxDuration = 60;
@@ -65,26 +66,14 @@ async function run(jobLabel: string) {
   }
 }
 
-function checkAuth(request: NextRequest): NextResponse | null {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
-  }
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
 export async function POST(request: NextRequest) {
-  const fail = checkAuth(request);
+  const fail = authorizeCronRequest(request);
   if (fail) return fail;
   return run("collect-news (POST)");
 }
 
 export async function GET(request: NextRequest) {
-  const fail = checkAuth(request);
+  const fail = authorizeCronRequest(request);
   if (fail) return fail;
   return run("collect-news (cron)");
 }
