@@ -97,8 +97,18 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
         };
         return Object.entries(groups).map(([label, cities]) => cities.length > 0 && (
           <div key={label} className="mb-3">
-            <div className="text-[11px] font-semibold text-slate-600 mb-1.5">
-              {label} ({cities.length})
+            <div className="text-[11px] font-semibold text-slate-600 mb-1.5 flex items-center gap-2">
+              <span>{label} ({cities.length})</span>
+              {label.includes("PC runner") && (
+                <a
+                  href="https://github.com/keeper0301/government-information/blob/master/pc-runner/README.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-purple-600 hover:text-purple-800 underline"
+                >
+                  가이드 ↗
+                </a>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
               {cities.map((c) => {
