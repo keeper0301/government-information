@@ -14,9 +14,8 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth-server";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIMES = new Set([
@@ -28,11 +27,8 @@ const ALLOWED_MIMES = new Set([
 
 export async function POST(request: NextRequest) {
   // 1) admin 인증
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !isAdminUser(user.email)) {
+  const user = await requireAdminUser();
+  if (!user) {
     return NextResponse.json({ error: "관리자만 업로드 가능합니다" }, { status: 403 });
   }
 

@@ -3,8 +3,7 @@
 // /admin/cron-failures 의 retry 버튼이 호출.
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { isAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -40,11 +39,8 @@ const ALLOWED_PATHS = new Set<string>([
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.keepioo.com";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !isAdminUser(user.email)) {
+  const user = await requireAdminUser();
+  if (!user) {
     return NextResponse.json({ error: "관리자 권한이 필요합니다." }, { status: 403 });
   }
 

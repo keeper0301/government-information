@@ -9,19 +9,15 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { isAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/admin-auth-server";
 import { logAdminAction, type AdminActionType } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
 async function run() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user || !isAdminUser(user.email)) {
+  const user = await requireAdminUser();
+  if (!user) {
     return NextResponse.json({ error: "권한 없음" }, { status: 403 });
   }
 
