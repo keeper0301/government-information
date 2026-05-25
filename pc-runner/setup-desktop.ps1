@@ -56,7 +56,9 @@ if (-not (Test-Path "$Target\.env")) {
 # 5. npm install
 Set-Location $Target
 Write-Host "[5] npm install dotenv 진행..." -ForegroundColor Cyan
-npm install --silent 2>&1 | Out-Null
+# 2026-05-26 review critical: pipe 의 $LASTEXITCODE 는 마지막 cmd (Out-Null) 의 0 으로 덮어쓰기.
+# redirection 분리로 npm 의 정확한 exit code 보존.
+npm install --silent 1>$null 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "    npm install 실패 — 사장님 직접 'npm install' 실행 필요" -ForegroundColor Red
     exit 1

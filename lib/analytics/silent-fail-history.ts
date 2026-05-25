@@ -75,7 +75,8 @@ export async function getSilentFailHistory(): Promise<SilentFailHistoryStats> {
       cities: new Set<string>(),
     };
     dayPrev.total += 1;
-    if (isSilentFail) {
+    // 2026-05-26 review important: city 빈 string 가드 (round1 audit 등 city 누락 case)
+    if (isSilentFail && city) {
       dayPrev.count += 1;
       dayPrev.cities.add(city);
       totalSilentFails7d += 1;
