@@ -137,6 +137,52 @@ describe("telegram-receive route", () => {
     expect(dispatchCommand).not.toHaveBeenCalled();
   });
 
+  it("웹훅 비밀값이 설정되지 않으면 명령을 실행하지 않는다", async () => {
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+    process.env.TELEGRAM_OWNER_CHAT_IDS = "123";
+    process.env.TELEGRAM_BOT_TOKEN = "bot-token";
+    process.env.CRON_SECRET = "cron-secret";
+
+    const response = await POST(
+      telegramRequest({
+        update_id: 1,
+        message: {
+          chat: { id: 123, type: "private" },
+          text: "/status",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "TELEGRAM_WEBHOOK_SECRET 비밀값이 설정되지 않았습니다.",
+    });
+    expect(dispatchCommand).not.toHaveBeenCalled();
+  });
+
+  it("웹훅 비밀값이 다르면 명령을 실행하지 않는다", async () => {
+    process.env.TELEGRAM_WEBHOOK_SECRET = "right-secret";
+    process.env.TELEGRAM_OWNER_CHAT_IDS = "123";
+    process.env.TELEGRAM_BOT_TOKEN = "bot-token";
+    process.env.CRON_SECRET = "cron-secret";
+
+    const response = await POST(
+      telegramRequest({
+        update_id: 1,
+        message: {
+          chat: { id: 123, type: "private" },
+          text: "/status",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "인증에 실패했습니다.",
+    });
+    expect(dispatchCommand).not.toHaveBeenCalled();
+  });
+
   it("텍스트 메시지가 아니면 명령을 실행하지 않고 건너뛴다", async () => {
     setRequiredWebhookEnv();
 
