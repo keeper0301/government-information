@@ -28,12 +28,26 @@ export function SilentFailCard({ stats }: { stats: SilentFailStats }) {
             2026-05-22 audit 사고 재발생 방지
           </p>
         </div>
-        <a
-          href="/admin/silent-fail-history"
-          className="text-xs text-blue-600 hover:text-blue-800 underline"
-        >
-          7일 추세 ↗
-        </a>
+        <div className="flex gap-2 text-xs">
+          <a
+            href="/admin/silent-fail-history?range=7"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            7일 ↗
+          </a>
+          <a
+            href="/admin/silent-fail-history?range=30"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            30일 ↗
+          </a>
+          <a
+            href="/admin/silent-fail-history?range=90"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            90일 ↗
+          </a>
+        </div>
       </header>
 
       {hasFailure && (
