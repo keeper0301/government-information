@@ -57,6 +57,7 @@ import { scrapeChungjuAndInsert } from "./chungju";
 import { scrapeYeosuAndInsert } from "./yeosu";
 import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
+import { scrapeBusanjinAndInsert } from "./busanjin";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -108,7 +109,8 @@ export type CityKey =
   | "chungju"
   | "yeosu"
   | "mokpo"
-  | "gwangyang";
+  | "gwangyang"
+  | "busanjin";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -526,6 +528,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "광양시청",
     siteUrl: "https://gwangyang.go.kr/board.es?mid=a11007000000&bid=0057",
     fn: scrapeGwangyangAndInsert,
+  },
+  // 2026-05-25 — 부산진구 35만. 자체 CMS (board.busanjin?boardId=BBS_0000265).
+  {
+    key: "busanjin",
+    city: "부산진구",
+    ministry: "부산진구청",
+    siteUrl:
+      "https://www.busanjin.go.kr/board/list.busanjin?boardId=BBS_0000265&menuCd=DOM_000000103007004000",
+    fn: scrapeBusanjinAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
