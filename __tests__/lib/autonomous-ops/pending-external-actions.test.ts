@@ -31,6 +31,26 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
+vi.mock("@/lib/codex/w1-readiness", () => ({
+  checkW1Readiness: vi.fn(async () => ({
+    windowReached: false,
+    totalRuns7d: 0,
+    uniqueQuestions: 0,
+    errorRate: 0,
+    ready: false,
+    reasons: [],
+    daysToWindow: 1,
+    progressTotalRuns: 0,
+    progressUniqueQuestions: 0,
+    progressErrorRate: 1,
+    thresholds: {
+      totalRuns: 800,
+      uniqueQuestions: 10,
+      errorRate: 0.05,
+    },
+  })),
+}));
+
 function countFor(action: string): number {
   if (action === "security_rotation_done") return mockState.securityCount;
   if (action === "render_plan_upgraded") return mockState.renderCount;

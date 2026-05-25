@@ -14,6 +14,7 @@ import {
 import { logAdminAction } from "@/lib/admin-actions";
 import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -23,20 +24,6 @@ const BATCH_LIMIT = 50;
 // BATCH_SIZE=4 → 50/4=13 batches × ~10s = ~130s. LLM rate limit (Anthropic/OpenAI)
 // 도 동시 4 호출은 안전 (분당 50 req 한계 충분 margin).
 const BATCH_SIZE = 4;
-
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
-}
 
 interface BlogPost {
   id: string;
@@ -260,13 +247,13 @@ async function run() {
 }
 
 export async function GET(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
 
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
   return run();
 }
