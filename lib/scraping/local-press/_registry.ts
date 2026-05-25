@@ -327,7 +327,7 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "경상북도청",
     ministryAliases: ["경상북도"],
     siteUrl:
-      "https://www.gb.go.kr/Main/page.do?mnu_uid=6792&LARGE_CODE=720&MEDIUM_CODE=50&SMALL_CODE=10&SMALL_CODE2=60",
+      "https://www.gb.go.kr/Main/page.do?BD_CODE=bbs_bodo&mnu_uid=6792",
     fn: scrapeGyeongbukAndInsert,
   },
   {

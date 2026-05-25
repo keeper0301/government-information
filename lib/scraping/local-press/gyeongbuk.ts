@@ -14,13 +14,15 @@ import {
 } from "./_factory";
 
 const BASE_URL = "https://www.gb.go.kr";
+// 2026-05-26 — 정확 LIST_URL fix. 이전 LARGE_CODE=720 등 잘못된 query 파라미터로
+// "이미 삭제된 글" alert page 반환 (5/25 cron seq 508041401 alert 발화 진단).
 const LIST_URL =
-  "https://www.gb.go.kr/Main/page.do?mnu_uid=6792&LARGE_CODE=720&MEDIUM_CODE=50&SMALL_CODE=10&SMALL_CODE2=60";
+  "https://www.gb.go.kr/Main/page.do?BD_CODE=bbs_bodo&mnu_uid=6792";
 
-// 2026-05-22 — 경북도청이 query 순서를 바꾸는 경우가 있어
-// BD_CODE 와 B_NUM 순서에 상관없이 보도자료 링크를 찾습니다.
+// 2026-05-26 — 전체 href 추출 (V_NUM, B_STEP 동적 포함).
+// 이전 V_NUM=14274 고정 detail URL 으로 "존재하지 않는 글" alert 진단.
 const LIST_ITEM_REGEX =
-  /<a\s+href="\.\/page\.do\?(?=[^"]*BD_CODE=bbs_bodo)[^"]*?B_NUM=(\d+)[^"]*"\s+title="([^"]+)"/g;
+  /<a\s+href="(\.\/page\.do\?(?=[^"]*BD_CODE=bbs_bodo)[^"]*?B_NUM=(\d+)[^"]*)"\s+title="([^"]+)"/g;
 
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
@@ -38,19 +40,21 @@ export function parseListPage(html: string): PressNewsItem[] {
   let m: RegExpExecArray | null;
   const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
   while ((m = itemRe.exec(html)) !== null) {
-    const seq = m[1];
+    const href = m[1].replace(/&amp;/g, "&");
+    const seq = m[2];
     if (seen.has(seq)) continue;
     seen.add(seq);
-    const title = decodeBasicEntities(m[2]).trim();
+    const title = decodeBasicEntities(m[3]).trim();
     if (!title || title.length < 5) continue;
     const slice = html.slice(m.index, m.index + 800);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     const publishedDate = dateMatch ? dateMatch[1] : null;
+    // 2026-05-26: full href 그대로 사용 (V_NUM·B_STEP 동적 포함)
     items.push({
       seq,
       title,
       publishedDate,
-      sourceUrl: `${BASE_URL}/Main/page.do?mnu_uid=6792&BD_CODE=bbs_bodo&cmd=2&B_NUM=${seq}&V_NUM=14274&tbbscode1=bbs_bodo`,
+      sourceUrl: `${BASE_URL}/Main/${href.replace(/^\.\//, "")}`,
     });
   }
 
