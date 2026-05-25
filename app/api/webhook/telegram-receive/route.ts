@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dispatchCommand } from "@/lib/telegram/commands";
 import { getRole, loadRoleSets } from "@/lib/telegram/permissions";
+import { authorizeTelegramWebhookRequest } from "@/lib/telegram-webhook-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -21,22 +22,6 @@ interface TelegramUpdate {
     chat?: { id?: number; type?: string };
     text?: string;
   };
-}
-
-async function authorize(request: NextRequest) {
-  const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!expected) {
-    return NextResponse.json(
-      { error: "TELEGRAM_WEBHOOK_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  // 텔레그램 setWebhook 시 등록한 secret_token 이 X-Telegram-Bot-Api-Secret-Token 헤더로 옴.
-  const got = request.headers.get("x-telegram-bot-api-secret-token");
-  if (got !== expected) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return null;
 }
 
 async function sendBackToTelegram(chatId: number, text: string): Promise<void> {
@@ -53,7 +38,7 @@ async function sendBackToTelegram(chatId: number, text: string): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
-  const denied = await authorize(request);
+  const denied = authorizeTelegramWebhookRequest(request);
   if (denied) return denied;
 
   let update: TelegramUpdate;
