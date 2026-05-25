@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
-import { authorizeCronRequest } from "@/lib/cron-auth";
+import { authorizeCronRequest, getCronAuthorizationHeader } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -37,7 +37,14 @@ const JOB_TO_PATH: Record<string, string> = {
 
 async function run() {
   const admin = createAdminClient();
-  const cronSecret = process.env.CRON_SECRET ?? "";
+  const authorizationHeader = getCronAuthorizationHeader();
+  if (!authorizationHeader) {
+    return NextResponse.json(
+      { ok: false, error: "CRON_SECRET 비밀값이 설정되지 않았습니다." },
+      { status: 500 },
+    );
+  }
+
   const since1h = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
   // 1h 안에 last_seen_at 인 + occurrences ≤ 3 (만성 버그 X)
@@ -91,7 +98,7 @@ async function run() {
     try {
       const res = await fetch(`${SITE_BASE}${path}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${cronSecret}` },
+        headers: { Authorization: authorizationHeader },
       });
       results.push({ job: f.job_name, status: res.status });
     } catch (e) {

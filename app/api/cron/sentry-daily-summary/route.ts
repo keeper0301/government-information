@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { fetchSentryDailySummary } from "@/lib/sentry/daily-summary";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
-import { authorizeCronRequest } from "@/lib/cron-auth";
+import { authorizeCronRequest, getCronAuthorizationHeader } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -28,13 +28,20 @@ async function run() {
 
   // 같은 prod 의 notify-telegram 호출 (CRON_SECRET 인증).
   // 동일 deployment 내 호출이라 cold start 영향 작음.
-  const cronSecret = process.env.CRON_SECRET ?? "";
+  const authorizationHeader = getCronAuthorizationHeader();
+  if (!authorizationHeader) {
+    return NextResponse.json(
+      { ok: false, error: "CRON_SECRET 비밀값이 설정되지 않았습니다." },
+      { status: 500 },
+    );
+  }
+
   const tgRes = await fetch(
     `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.keepioo.com"}/api/notify-telegram`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${cronSecret}`,
+        Authorization: authorizationHeader,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ text: summary.textForSummary }),

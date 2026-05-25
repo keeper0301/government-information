@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
-import { authorizeCronRequest } from "@/lib/cron-auth";
+import { authorizeCronRequest, getCronAuthorizationHeader } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -24,12 +24,13 @@ const COST_PER_CALL_USD: Record<string, number> = {
 };
 
 async function notifyTelegram(text: string): Promise<void> {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return;
+  const authorizationHeader = getCronAuthorizationHeader();
+  if (!authorizationHeader) return;
+
   await fetch("https://www.keepioo.com/api/notify-telegram", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${cronSecret}`,
+      Authorization: authorizationHeader,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ text }),
