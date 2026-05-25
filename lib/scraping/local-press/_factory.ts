@@ -109,6 +109,79 @@ export async function fetchPage(url: string): Promise<string> {
   return text;
 }
 
+// 2026-05-25 — PC runner Phase 2 용 export. ASN 차단 site (서울·부산·광산·강원·제주·평택) 의
+// 사장님 PC 가 fetch 한 HTML 을 받아서 parse + insert 만 처리. Vercel cron 의 fetch failed 우회.
+type AdminClient = ReturnType<
+  typeof import("@/lib/supabase/admin").createAdminClient
+>;
+
+export async function processProvidedHtml(
+  cfg: PressCollectorConfig,
+  admin: AdminClient,
+  listHtml: string,
+  detailHtmlMap: Record<string, string>,
+  limit = 10,
+): Promise<ScrapeResult> {
+  const list = cfg.parseListItems(listHtml).slice(0, limit);
+  const now = new Date().toISOString();
+  let inserted = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  if (list.length === 0 && listHtml.length > 5000) {
+    errors.push(
+      `list 0건 — site HTML size ${listHtml.length} bytes 인데 regex 매칭 0. site 구조 변경 의심`,
+    );
+  }
+
+  for (const item of list) {
+    const detailHtml = detailHtmlMap[item.seq];
+    if (!detailHtml) {
+      errors.push(`seq=${item.seq}: PC runner detail HTML 누락`);
+      continue;
+    }
+    const body = cfg.parseDetailBody(detailHtml);
+    if (!body || body.length < 50) {
+      skipped += 1;
+      continue;
+    }
+    const sourceId = makeNewsSourceId(item.sourceUrl);
+    const cityKey = cfg.sourceCode.replace(/^local-press-/, "");
+    const slug = makeNewsSlug(item.title, cityKey, sourceId);
+
+    const { error } = await admin.from("news_posts").insert({
+      title: item.title.slice(0, 500),
+      summary: body.slice(0, 500),
+      body: body.slice(0, 20000),
+      source_url: item.sourceUrl,
+      source_outlet: cfg.sourceOutlet,
+      source_code: cfg.sourceCode,
+      source_id: sourceId,
+      category: "news",
+      slug,
+      ministry: cfg.ministry,
+      published_at: item.publishedDate
+        ? `${item.publishedDate}T00:00:00+09:00`
+        : now,
+      classified_at: null,
+    });
+    if (error) {
+      if (error.code === "23505") skipped += 1;
+      else errors.push(`seq=${item.seq}: ${error.message}`);
+    } else {
+      inserted += 1;
+    }
+  }
+
+  return {
+    city: cfg.cityName,
+    fetched: list.length,
+    inserted,
+    skipped,
+    errors: errors.slice(0, 3),
+  };
+}
+
 // config → collector instance. .scrapeAndInsert 가 cron 에서 호출되는 표준 시그너처.
 export function createPressCollector(cfg: PressCollectorConfig) {
   async function scrapeAndInsert(
