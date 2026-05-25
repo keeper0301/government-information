@@ -88,9 +88,11 @@ const ALERT_REDIRECT_RE =
 const MIN_RESPONSE_SIZE = 1024;
 
 export async function fetchPage(url: string): Promise<string> {
+  // 2026-05-26: 15s → 25s. 인천 서구 등 일부 site 가 list page 113K+ 응답 느림.
+  // Vercel function maxDuration 300s 충분 buffer (시·군 50개 × 25s = 1250s 이나 BATCH_SIZE=4 병렬로 ~300s).
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(25000),
   });
   if (!res.ok) {
     throw new Error(`fetch failed (${res.status}): ${url}`);
