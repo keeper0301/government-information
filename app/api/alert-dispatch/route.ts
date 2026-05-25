@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyCronFailure, sendCustomAlertEmail } from "@/lib/email";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 import { findMatchingPrograms, type AlertRule } from "@/lib/alerts/matching";
 import { getUserTier } from "@/lib/subscription";
 import { sendAlimtalk } from "@/lib/kakao-alimtalk";
@@ -505,23 +506,15 @@ async function runAlertDispatch(jobLabel: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
+
   return runAlertDispatch("alert-dispatch (POST)");
 }
 
 export async function GET(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
+
   return runAlertDispatch("alert-dispatch (cron)");
 }

@@ -4,26 +4,13 @@
 // env 의존: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
 
 import { NextResponse } from "next/server";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-async function authorize(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET 환경변수가 설정되지 않았습니다." },
-      { status: 500 },
-    );
-  }
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 });
-  }
-  return null;
-}
-
 export async function POST(request: Request) {
-  const denied = await authorize(request);
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
