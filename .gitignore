@@ -71,6 +71,10 @@ tmp/
 .lighthouse-results/
 .lighthouse-results-baseline/
 
+# 토스 검수용 결과물 (스크립트는 commit, PPT/캡처는 재생성 가능)
+tools/toss-captures/
+tools/toss-payment-route.pptx
+
 # Sentry CLI 토큰 캐시 (절대 커밋 금지)
 .sentryclirc
 .viewport-snapshots/
