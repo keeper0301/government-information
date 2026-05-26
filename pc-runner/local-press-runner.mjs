@@ -29,7 +29,7 @@ const UA =
 const ASN_BLOCKED_CITIES = [
   { key: "busan", listUrl: "https://www.busan.go.kr/nbtnewsBU" },
   { key: "gwangsan", listUrl: "https://www.gwangsan.go.kr/boardList.do?boardId=REPORT_NEW&pageId=www16" },
-  { key: "gangwon", listUrl: "https://state.gwd.go.kr/portal/briefing/pressRelease" },
+  // gangwon 제거 (2026-05-26): icn1 region 으로 일반 cron OK
   { key: "jeju", listUrl: "https://www.jeju.go.kr/news/bodo/list.htm" },
   { key: "pyeongtaek", listUrl: "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000" },
 ];

@@ -21,10 +21,8 @@ import {
   parseListPage as parseGwangsanList,
   parseDetailBody as parseGwangsanDetail,
 } from "./gwangsan";
-import {
-  parseListPage as parseGangwonList,
-  parseDetailBody as parseGangwonDetail,
-} from "./gangwon";
+// 2026-05-26: gangwon 제거 — icn1 region 으로 일반 cron 가동 OK (5/26 수동 트리거 inserted 10).
+
 import {
   parseListPage as parseJejuList,
   parseDetailBody as parseJejuDetail,
@@ -56,16 +54,7 @@ export const PC_RUNNER_CFGS: Record<string, PressCollectorConfig> = {
     parseListItems: parseGwangsanList,
     parseDetailBody: parseGwangsanDetail,
   },
-  gangwon: {
-    cityName: "강원특별자치도",
-    region: "강원",
-    ministry: "강원특별자치도청",
-    sourceOutlet: "강원특별자치도청",
-    sourceCode: "local-press-gangwon",
-    listUrl: "https://state.gwd.go.kr/portal/briefing/pressRelease",
-    parseListItems: parseGangwonList,
-    parseDetailBody: parseGangwonDetail,
-  },
+  // gangwon 제거 (2026-05-26): icn1 region 으로 일반 cron OK.
   jeju: {
     cityName: "제주특별자치도",
     region: "제주",
