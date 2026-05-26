@@ -75,6 +75,8 @@ import { getCronFailureStats } from "@/lib/analytics/cron-failure-stats";
 import { CronFailureCard } from "./_components/cron-failure-card";
 import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
 import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
+import { getSelfLearningSnapshot } from "@/lib/self-learning/snapshot";
+import { SelfLearningCard } from "./_components/self-learning-card";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 import {
   getPendingExternalActions,
@@ -160,6 +162,7 @@ export default async function AdminAutonomousPage() {
     externalMetrics,
     silentFailStats,
     cronFailureStats,
+    selfLearningSnapshot,
   ] = await Promise.all([
     getAllPhaseStatuses(),
     getLatestImprovementScan(),
@@ -185,6 +188,7 @@ export default async function AdminAutonomousPage() {
     collectExternalConsoleMetrics(),
     getSilentFailStats(),
     getCronFailureStats(),
+    getSelfLearningSnapshot(),
   ]);
   const activeCount = phases.filter((p) => p.active).length;
   // pendingActions 단일 source — header description + PendingActionsPanel 양쪽 같은 결과.
@@ -276,6 +280,9 @@ export default async function AdminAutonomousPage() {
       </div>
       <div className="mb-4">
         <PressIngestTierCard stats={pressIngestTierStats} />
+      </div>
+      <div className="mb-4">
+        <SelfLearningCard snapshot={selfLearningSnapshot} />
       </div>
       <div className="mb-4">
         <SilentFailCard stats={silentFailStats} />
