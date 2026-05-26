@@ -78,3 +78,7 @@ tools/toss-payment-route.pptx
 # Sentry CLI 토큰 캐시 (절대 커밋 금지)
 .sentryclirc
 .viewport-snapshots/
+
+# 일회성 secret 파일 — VAPID 회전, 임시 API 키 등 (절대 커밋 금지)
+local-*-private*
+local-*-secret*
