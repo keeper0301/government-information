@@ -72,7 +72,7 @@ export const PC_RUNNER_CFGS: Record<string, PressCollectorConfig> = {
     ministry: "제주특별자치도청",
     sourceOutlet: "제주특별자치도청",
     sourceCode: "local-press-jeju",
-    listUrl: "https://www.jeju.go.kr/news/news/notice.htm",
+    listUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
     parseListItems: parseJejuList,
     parseDetailBody: parseJejuDetail,
   },
