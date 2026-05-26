@@ -207,6 +207,35 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     // DB 실패는 silent — UI 차라리 안 보이는 게 안전 (false reminder 차단)
   }
 
+  // 2026-05-26 — PC runner 7일 가동 0건 자동 감지. 사장님 PC OFF / setup 미완 시 가시화.
+  // local_press_scrape 의 details.trigger=pc_runner row count 으로 판정.
+  try {
+    const admin = createAdminClient();
+    const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+    const { data: rows } = await admin
+      .from("admin_actions")
+      .select("details")
+      .eq("action", "local_press_scrape")
+      .gte("created_at", since7d)
+      .limit(2000);
+    const pcRunnerRuns = (rows ?? []).filter(
+      (r) => (r.details as { trigger?: string } | null)?.trigger === "pc_runner",
+    ).length;
+    if (pcRunnerRuns === 0) {
+      actions.push({
+        category: "automation",
+        label: "PC runner 본체 가동 (Vercel env + setup-desktop.ps1)",
+        description:
+          "7일 가동 0건. ASN 차단 3 site (광산구·제주·평택) 자동 fetch 불가. Vercel env (PC_RUNNER_TOKEN) 등록 후 setup-desktop.ps1 1회 실행 권장",
+        guideUrl:
+          "https://github.com/keeper0301/government-information/blob/master/pc-runner/README.md",
+        estimatedMinutes: 5,
+      });
+    }
+  } catch {
+    // DB 실패 silent
+  }
+
   // 2026-05-22 — AdSense placement 위치별 unit 등록 자동 감지.
   // 5 placement (home/list/detail/category/eligibility) 중 1건 이상 미등록 시 reminder.
   // SLOT_INFEED default fallback 가동 중이면 사이트 영향 0, 분석만 통합.
