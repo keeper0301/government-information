@@ -33,11 +33,13 @@ export async function getCategoryTrends(
   ).toISOString();
 
   // category·view_count 집계 — count + view_count sum 한번에
+  // 2026-05-26 review fix: PostgREST default 1000 row 가 90일 (~수만 row) 잘릴 위험 → .limit(50000) 명시
   const { data: rows, error } = await admin
     .from("news_posts")
     .select("category, view_count")
     .gte("created_at", since)
-    .not("category", "is", null);
+    .not("category", "is", null)
+    .limit(50000);
 
   if (error || !rows) {
     return { days, stats: [], totalCount: 0, totalViews: 0 };

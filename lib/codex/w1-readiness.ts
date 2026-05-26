@@ -16,7 +16,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type W1ReadinessResult = {
   /** 5/25 이전이면 false (아직 검증 시점 X) */
   windowReached: boolean;
-  /** 7일 agent_diagnose_run 누적 */
+  /** 7일 agent_diagnose_run 누적 (W0 codex agent — silent-fail-history 의 totalRuns 와 별개 도메인) */
   totalRuns7d: number;
   /** unique question dispatch 수 */
   uniqueQuestions: number;
