@@ -65,17 +65,20 @@ node local-press-runner.mjs
 - 동작: `node.exe C:\Users\cgc09\keepioo-pc-runner\local-press-runner.mjs`
 - 사용자: 본인 (BATCH 권한)
 
-## 처리 site
+## 처리 site (2026-05-26 update — 3 site)
 
 | city_key | site | 상태 |
 |----------|------|------|
-| busan | busan.go.kr/nbtnewsBU | SPA — Playwright 필요 가능 |
-| gwangsan | gwangsan.go.kr | 정적 가능성 ↑ |
-| gangwon | state.gwd.go.kr | SPA |
-| jeju | jeju.go.kr | SPA |
-| pyeongtaek | pyeongtaek.go.kr | SPA + token CSRF |
+| gwangsan | gwangsan.go.kr | ASN 차단 |
+| jeju | jeju.go.kr/news/bodo/list.htm | ASN 차단 |
+| pyeongtaek | pyeongtaek.go.kr | SPA + token CSRF — Playwright 필요 가능 |
 
-dry-run 결과 SPA site = list parse 0 → 다음 commit Playwright fallback.
+**이전 6 site 중 3 site 일반 cron 으로 회생** (2026-05-26):
+- seoul → RSS endpoint (news.seoul.go.kr/gov/feed/) 으로 변경
+- busan → list inner regex fix
+- gangwon → icn1 region 으로 일반 cron 가동 OK
+
+dry-run 결과 SPA site = list parse 0 → Playwright fallback (다음 commit).
 
 ## 트러블슈팅
 
