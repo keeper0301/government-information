@@ -42,8 +42,9 @@ export function parseListPage(xml: string): PressNewsItem[] {
     if (seen.has(seq)) continue;
     seen.add(seq);
     const titleRaw = TAG("title").exec(inner)?.[1]?.trim() ?? "";
+    // 2026-05-26 review nit#2: CDATA global flag — multiple CDATA 시 모두 unwrap
     const title = decodeBasicEntities(
-      titleRaw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, "$1"),
+      titleRaw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1"),
     ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     // pubDate "2026-05-22 16:38:15" → "2026-05-22"
@@ -87,14 +88,4 @@ export const { scrapeAndInsert: scrapeSeoulAndInsert } = createPressCollector({
   parseDetailBody,
 });
 
-// 2026-05-26 — 기존 SeoulNewsItem type 외부 사용처 (PC_RUNNER_CFGS) 호환 위해 유지.
-// 새 collector 는 PressNewsItem 표준 사용 — PC_RUNNER_CFGS 의 seoul 제거 가능.
-export type SeoulNewsItem = PressNewsItem & { body?: string | null };
-
-export type ScrapeResult = {
-  city: string;
-  fetched: number;
-  inserted: number;
-  skipped: number;
-  errors: string[];
-};
+// 2026-05-26 review nit#3: SeoulNewsItem + ScrapeResult orphan export 삭제 (외부 참조 0)

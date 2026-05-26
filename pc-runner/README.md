@@ -1,6 +1,6 @@
 # keepioo PC runner
 
-ASN 차단 site (서울·부산·광산구·강원·제주·평택) 의 한국 IP fetch 우회.
+ASN 차단·SPA site (광산구·제주·평택) 의 한국 IP fetch 우회. 서울·부산·강원 은 5/26 일반 cron 으로 회생됨.
 
 ## 작동 흐름
 

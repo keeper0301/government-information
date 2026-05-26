@@ -10,8 +10,7 @@
 
 import type { PressCollectorConfig } from "./_factory";
 
-// 2026-05-26: seoul 은 news.seoul.go.kr RSS 으로 변경 — Vercel cron 정적 fetch 가능.
-// PC runner cfg 에서 제거 (일반 cron 가동).
+// 2026-05-26: seoul 은 news.seoul.go.kr RSS 으로 변경 (PC runner 제거).
 
 import {
   parseListPage as parseBusanList,
