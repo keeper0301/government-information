@@ -208,20 +208,17 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
   }
 
   // 2026-05-26 — PC runner 7일 가동 0건 자동 감지. 사장님 PC OFF / setup 미완 시 가시화.
-  // local_press_scrape 의 details.trigger=pc_runner row count 으로 판정.
+  // local_press_scrape 의 details->>trigger=pc_runner row count (server-side JSON path filter).
   try {
     const admin = createAdminClient();
     const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
-    const { data: rows } = await admin
+    const { count: pcRunnerRuns } = await admin
       .from("admin_actions")
-      .select("details")
+      .select("id", { count: "exact", head: true })
       .eq("action", "local_press_scrape")
-      .gte("created_at", since7d)
-      .limit(2000);
-    const pcRunnerRuns = (rows ?? []).filter(
-      (r) => (r.details as { trigger?: string } | null)?.trigger === "pc_runner",
-    ).length;
-    if (pcRunnerRuns === 0) {
+      .eq("details->>trigger", "pc_runner")
+      .gte("created_at", since7d);
+    if ((pcRunnerRuns ?? 0) === 0) {
       actions.push({
         category: "automation",
         label: "PC runner 본체 가동 (Vercel env + setup-desktop.ps1)",
