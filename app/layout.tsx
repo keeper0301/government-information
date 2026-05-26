@@ -137,12 +137,13 @@ export default async function RootLayout({
           url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
           description="대한민국 복지 정보와 소상공인 대출·지원금 정보를 한곳에 모아 제공하는 플랫폼"
         />
+        {/* 2026-05-27: founder(ceoName) 제거 — 사장님 본명 SEO/AI 색인 외부 노출 회피.
+            법적 표기(전상법 §13, 개인정보보호법 §31)는 footer·about·privacy·terms 본문에서 충족. */}
         <OrganizationSchema
           name="정책알리미"
           url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
           description="공공기관 데이터 기반 복지·대출 정보 안내 서비스"
           legalName="키피오"
-          ceoName="최관철"
           taxId="657-24-02265"
           email="keeper0301@gmail.com"
         />

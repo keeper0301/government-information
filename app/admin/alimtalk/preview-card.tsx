@@ -22,7 +22,7 @@ const DEFAULTS: Record<TemplateKey, Record<string, string>> = {
     detail_path: "/welfare/sample-policy-id",
   },
   POLICY_NEW_V3: {
-    user_name: "최관철",
+    user_name: "홍길동",
     rule_name: "소상공인 정책자금",
     title: "고유가 피해 소상공인 지원금",
     announced_at: "4월 28일",

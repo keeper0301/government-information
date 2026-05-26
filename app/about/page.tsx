@@ -66,25 +66,9 @@ export default async function AboutPage() {
   const stats = await loadOpsStats();
   const totalPolicies = stats.welfare + stats.loan;
 
-  // Person JSON-LD — Google E-E-A-T "운영자 신원" 시그널.
-  // AdSense / 검색엔진이 sitebehind 사람 인식 → 신뢰도 ↑↑.
-  const personJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: "최관철",
-    alternateName: "keepioo",
-    jobTitle: "정책알리미 운영자 (1인 사업자)",
-    email: "keeper0301@gmail.com",
-    worksFor: {
-      "@type": "Organization",
-      name: "키피오 (keepioo)",
-      url: "https://www.keepioo.com",
-    },
-    sameAs: ["https://www.keepioo.com/about"],
-    knowsAbout: ["정부 복지 정책", "정부 대출 지원", "정부 지원금", "공공 데이터 큐레이션"],
-  };
-
   // AboutPage JSON-LD — schema.org/AboutPage 명시. 검색엔진이 "이 페이지는 소개 페이지" 인식.
+  // 2026-05-27: Person schema + Organization.founder 제거 — 사장님 본명 SEO/AI 색인 외부 노출 회피.
+  // 법적 표기(전상법 §13, 개인정보보호법 §31)는 본문(라인 183 등)에서 충족.
   const aboutPageJsonLd = {
     "@context": "https://schema.org",
     "@type": "AboutPage",
@@ -97,21 +81,13 @@ export default async function AboutPage() {
       "@type": "Organization",
       name: "키피오 (keepioo)",
       url: "https://www.keepioo.com",
-      founder: { "@type": "Person", name: "최관철" },
       foundingDate: "2026-04",
     },
   };
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      {/* JSON-LD: Person (운영자 신원) + AboutPage (페이지 분류).
-          AdSense E-E-A-T 시그널 + 검색엔진 sitebehind 사람 인식. */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(personJsonLd).replace(/</g, "\\u003c"),
-        }}
-      />
+      {/* JSON-LD: AboutPage (페이지 분류). 검색엔진이 소개 페이지로 인식. */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
