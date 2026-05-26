@@ -50,12 +50,20 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
             </p>
           )}
         </div>
-        <Link
-          href="/admin/scrape-local"
-          className="text-xs text-blue-600 hover:text-blue-800 underline"
-        >
-          수동 호출 ↗
-        </Link>
+        <div className="flex gap-2 text-xs">
+          <Link
+            href="/admin/scrape-local"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            수동 호출 ↗
+          </Link>
+          <Link
+            href="/admin/category-trends"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            📊 카테고리 추세 ↗
+          </Link>
+        </div>
       </header>
 
       <div className="mb-4 grid grid-cols-3 gap-2 text-sm">
