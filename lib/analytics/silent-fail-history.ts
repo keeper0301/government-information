@@ -45,8 +45,8 @@ export async function getSilentFailHistory(
     { count: number; total: number; cities: Set<string> }
   >();
   const byCity = new Map<string, number>();
-  let totalRuns7d = 0;
-  let totalSilentFails7d = 0;
+  let totalRuns = 0;
+  let totalSilentFails = 0;
 
   for (const row of rows ?? []) {
     const d = (row.details ?? {}) as Record<string, unknown>;
