@@ -43,10 +43,22 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
             매일 KST 09:00 cron · {stats.cities.length} 지자체 (시·군·도·자치구) ·{" "}
             {relativeMinutes(stats.lastCronAt)}
           </p>
-          {/* 2026-05-25 — PC runner (사장님 PC 한국 IP) 가동 상태. ASN 차단 site 우회. */}
-          {stats.lastPcRunnerAt && (
-            <p className="mt-0.5 text-xs text-purple-600">
-              🖥️ PC runner 마지막 가동 · {relativeMinutes(stats.lastPcRunnerAt)}
+          {/* 2026-05-25 — PC runner (사장님 PC 한국 IP) 가동 상태. ASN 차단 site 우회.
+              2026-05-26 — 48h+ stale 시 amber, 7d+ stale 시 red. 사장님 PC OFF 자가 감지. */}
+          {stats.lastPcRunnerAt && (() => {
+            const minutes = Math.floor((Date.now() - new Date(stats.lastPcRunnerAt).getTime()) / 60000);
+            const hours = minutes / 60;
+            const tone = hours > 24 * 7 ? "text-red-600 font-medium" : hours > 48 ? "text-amber-700 font-medium" : "text-purple-600";
+            const suffix = hours > 24 * 7 ? " · 🚨 7일+ 미가동, PC OFF 가능성" : hours > 48 ? " · ⚠️ 48h+ stale" : "";
+            return (
+              <p className={`mt-0.5 text-xs ${tone}`}>
+                🖥️ PC runner 마지막 가동 · {relativeMinutes(stats.lastPcRunnerAt)}{suffix}
+              </p>
+            );
+          })()}
+          {!stats.lastPcRunnerAt && (
+            <p className="mt-0.5 text-xs text-slate-500">
+              🖥️ PC runner 아직 가동 0회 · 설치 가이드: pc-runner/README.md
             </p>
           )}
         </div>
