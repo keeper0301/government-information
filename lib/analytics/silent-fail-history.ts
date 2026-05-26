@@ -99,13 +99,18 @@ export async function getSilentFailHistory(
       date: target,
       silentFailCount: stat?.count ?? 0,
       totalRuns: stat?.total ?? 0,
-      topCities: Array.from(stat?.cities ?? []).slice(0, 5),
+      // 2026-05-26 — Set insertion order 의존성 제거 (cron 순서 변동 시 day 별 시각 다름) → localeCompare
+      topCities: Array.from(stat?.cities ?? []).sort((a, b) => a.localeCompare(b)).slice(0, 5),
     });
   }
 
+  // 2026-05-26 review nit: count 동률 시 city localeCompare → 매번 동일 순서 (검수 추적 안정)
   const cityTotals = Array.from(byCity.entries())
     .map(([city, count]) => ({ city, count }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => {
+      if (a.count !== b.count) return b.count - a.count;
+      return a.city.localeCompare(b.city);
+    });
 
   return {
     days: dayList,
