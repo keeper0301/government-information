@@ -86,7 +86,8 @@ export type AdminActionType =
   | "naver_extension_idle_check"      // 2026-05-18 — Naver Extension 1주 미가동 자동 reminder cron audit
   | "security_rotation_done"          // 2026-05-19 — 사장님 보안 회전 완료 신고 (PendingExternalActionsCard 자동 hide trigger)
   | "render_plan_upgraded"            // 2026-05-19 — Render Starter plan 업그레이드 신고 (Codex sidecar cycle 정상화 신호)
-  | "toss_billing_approved";          // 2026-05-26 — 토스페이먼츠 빌링 카드사 심사 통과 신고 (사장님 1 click, PendingExternalActionsCard 자동 hide)
+  | "toss_billing_approved"           // 2026-05-26 — 토스페이먼츠 빌링 카드사 심사 통과 신고 (사장님 1 click, PendingExternalActionsCard 자동 hide)
+  | "press_confidence_tune_run";      // 2026-05-27 — Spec 1 자가 진화 학습 매주 월 KST 02:00 tier_floor 자동 튜닝 cron
 
 export type AdminActionRecord = {
   id: string;
@@ -398,4 +399,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   security_rotation_done: "사장님 보안 회전 완료 신고",
   render_plan_upgraded: "Render Starter plan 업그레이드 신고",
   toss_billing_approved: "토스 빌링 카드사 심사 통과 신고",
+  press_confidence_tune_run: "press tier_floor 자가 진화 학습 (매주 월)",
 };

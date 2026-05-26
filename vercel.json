@@ -95,6 +95,8 @@
 
     { "path": "/api/cron/sns-publish-popular-policy", "schedule": "0 1 * * 1" },
 
-    { "path": "/api/cron/press-low-reminder", "schedule": "0 0 * * 1" }
+    { "path": "/api/cron/press-low-reminder", "schedule": "0 0 * * 1" },
+
+    { "path": "/api/cron/press-confidence-tune", "schedule": "0 17 * * 0" }
   ]
 }

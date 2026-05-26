@@ -106,4 +106,24 @@ describe("shouldAutoConfirm — tier 분기 + AUTO_CONFIRM_TIER_FLOOR env", () =
     delete process.env.AUTO_CONFIRM_TIER_FLOOR;
     expect(shouldAutoConfirm(null)).toBe(false);
   });
+
+  // Spec 1 자가 진화 학습 — floorOverride 인자가 env 보다 우선.
+  // cron 의 autoConfirmPendingPressCandidates 가 getCurrentTierFloor() 결과를
+  // floorOverride 로 주입하여 DB 학습값을 row 별 일관 적용한다.
+  it("floorOverride='mid' 명시 → env='high' 와 무관하게 mid 까지 자동", () => {
+    process.env.AUTO_CONFIRM_TIER_FLOOR = "high";
+    expect(shouldAutoConfirm("mid", "mid")).toBe(true);
+    expect(shouldAutoConfirm("low", "mid")).toBe(false);
+  });
+
+  it("floorOverride='low' 명시 → env 무관, low 까지 자동 (학습 결과 확장)", () => {
+    process.env.AUTO_CONFIRM_TIER_FLOOR = "high";
+    expect(shouldAutoConfirm("low", "low")).toBe(true);
+  });
+
+  it("floorOverride 미명시 → 기존 env 동작 유지 (회귀 가드)", () => {
+    process.env.AUTO_CONFIRM_TIER_FLOOR = "mid";
+    expect(shouldAutoConfirm("mid")).toBe(true); // env='mid' 동작
+    expect(shouldAutoConfirm("mid", undefined)).toBe(true); // explicit undefined 도 동일
+  });
 });

@@ -15,6 +15,8 @@ import {
 import { PROVINCES } from "@/lib/regions";
 // 4 layer apply_url fallback — autoConfirm 단계에서 기존 pending 도 자동 채움.
 import { resolveApplyUrl } from "./url-fallback";
+// Spec 1 — 학습된 tier_floor 조회 (env > DB > 'high' default)
+import { getCurrentTierFloor } from "./auto-confirm-settings";
 
 export type PressCandidateStatus =
   | "pending"
@@ -194,23 +196,33 @@ export function buildFailedCandidateUpsert({
 const TIER_RANK = { high: 3, mid: 2, low: 1 } as const;
 
 /**
- * AUTO_CONFIRM_TIER_FLOOR env 기반 자동 confirm 분기.
- * - default 'high' (2026-05-18 변경) — high 만 자동, mid·low 사장님 검토 큐.
- *   5/9~5/18 1주차 측정: mid 자동 confirm 91건 중 14.3% (13건) 사장님 reject.
- *   회수율 ↓ 위해 mid 도 검수 큐로. 적극 모드 원하면 env='mid' 명시.
- * - invalid 값 (예: 'extreme') → 'high' fallback (보수적 운영)
- * - tier=null (legacy 후보 또는 신뢰도 측정 불가) → false (자동 confirm X)
+ * tier 자동 confirm 분기. floor 결정 우선순위:
+ * - floorOverride 인자 (caller 가 DB 학습값 주입) — Spec 1 자가 진화 학습
+ * - process.env.AUTO_CONFIRM_TIER_FLOOR — 긴급 override
+ * - 'high' default — invalid env 또는 미설정
  *
- * 호출처: autoConfirmPendingPressCandidates (cron) 의 row 별 분기.
+ * tier=null (legacy 후보 또는 신뢰도 측정 불가) → 항상 false.
+ *
+ * 호출처:
+ *   - autoConfirmPendingPressCandidates (cron) — getCurrentTierFloor() 결과 주입
+ *   - 테스트 — floorOverride 생략, env 만 사용
  */
-export function shouldAutoConfirm(tier: "high" | "mid" | "low" | null): boolean {
+export function shouldAutoConfirm(
+  tier: "high" | "mid" | "low" | null,
+  floorOverride?: "high" | "mid" | "low",
+): boolean {
   if (tier === null) return false;
-  const raw = process.env.AUTO_CONFIRM_TIER_FLOOR ?? "high";
-  const floor = (["high", "mid", "low"] as const).includes(
-    raw as "high" | "mid" | "low",
-  )
-    ? (raw as "high" | "mid" | "low")
-    : "high";
+  let floor: "high" | "mid" | "low";
+  if (floorOverride) {
+    floor = floorOverride;
+  } else {
+    const raw = process.env.AUTO_CONFIRM_TIER_FLOOR ?? "high";
+    floor = (["high", "mid", "low"] as const).includes(
+      raw as "high" | "mid" | "low",
+    )
+      ? (raw as "high" | "mid" | "low")
+      : "high";
+  }
   return TIER_RANK[tier] >= TIER_RANK[floor];
 }
 
@@ -551,6 +563,9 @@ export async function autoConfirmPendingPressCandidates({
   limit = 50,
 }: { limit?: number } = {}): Promise<AutoConfirmResult> {
   const admin = createAdminClient();
+  // Spec 1 — DB 학습값 (press_auto_confirm_settings) 을 env 보다 우선 적용.
+  // cron 한 사이클 동안 동일 floor 유지 → row 별 추가 DB 조회 없음.
+  const currentFloor = await getCurrentTierFloor();
   // news_posts 의 body·ministry + 후보의 confidence_tier 까지 select.
   // tier 분기 (Task 4) + fallback chain 입력 (Task 2 직전 작업) 둘 다 필요.
   const { data, error } = await admin
@@ -587,7 +602,7 @@ export async function autoConfirmPendingPressCandidates({
       | "mid"
       | "low"
       | null;
-    if (!shouldAutoConfirm(tier)) {
+    if (!shouldAutoConfirm(tier, currentFloor)) {
       continue;
     }
     let applyUrl = row.classified_payload?.apply_url ?? null;
