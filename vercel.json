@@ -97,6 +97,8 @@
 
     { "path": "/api/cron/press-low-reminder", "schedule": "0 0 * * 1" },
 
-    { "path": "/api/cron/press-confidence-tune", "schedule": "0 17 * * 0" }
+    { "path": "/api/cron/press-confidence-tune", "schedule": "0 17 * * 0" },
+
+    { "path": "/api/cron/popularity-weights-tune", "schedule": "30 17 * * 0" }
   ]
 }

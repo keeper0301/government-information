@@ -10,6 +10,8 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { MatchSignal } from "./types";
+// Spec 2 — 학습된 weights 조회 (DB 5분 cache + default fallback)
+import { loadCurrentWeights } from "./popularity-weights-settings";
 
 type PopularityEntry = {
   score: number;
@@ -28,16 +30,14 @@ let _inflight: Promise<PopularityCache["byProgramId"]> | null = null;
 const TTL_MS = 5 * 60 * 1000; // 5분
 const NEGATIVE_TTL_MS = 30 * 1000; // A 11차: DB error 시 30초 빈 cache — 폭주 차단 + 자가치유
 
-// A 12차: cron (popularity-snapshot) 과 단일 source. 한쪽 튜닝 시 silent mismatch 차단.
+// A 12차 (5/17) — cron (popularity-snapshot) 과 단일 source. 한쪽 튜닝 시 silent mismatch 차단.
+// Spec 2 (5/27) — 이 값은 default fallback. 실제 사용은 loadCurrentWeights() 가 DB 학습값
+// (popularity_weights_history) 을 5분 cache 로 조회. cron 미가동/DB 실패 시 이 값으로 회귀.
 export const POPULARITY_WEIGHTS = {
   VIEW_WEIGHT: 0.5,
   APPLY_WEIGHT: 2,
   MAX_BOOST: 5, // cap — 매우 인기 정책도 +5 까지만 (다른 시그널 압도 X)
 } as const;
-
-const VIEW_WEIGHT = POPULARITY_WEIGHTS.VIEW_WEIGHT;
-const APPLY_WEIGHT = POPULARITY_WEIGHTS.APPLY_WEIGHT;
-const MAX_BOOST = POPULARITY_WEIGHTS.MAX_BOOST;
 
 // 직전 30일 program 별 view/apply 합계 → boost score map.
 // 메모리 cache 5분 + inflight Promise 단일화 (A 8차 — 동시 다발 cache miss 시 DB 중복 query 차단).
@@ -51,6 +51,8 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
 
   _inflight = (async () => {
     try {
+      // Spec 2 — 학습된 weights (DB 5분 cache) — cron 미가동/실패 시 default fallback.
+      const w = await loadCurrentWeights();
       const admin = createAdminClient();
       const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
       const { data, error } = await admin
@@ -87,8 +89,8 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
         if (row.event_type === "program_view") entry.views += 1;
         if (row.event_type === "apply_click") entry.applies += 1;
         entry.score = Math.min(
-          MAX_BOOST,
-          entry.views * VIEW_WEIGHT + entry.applies * APPLY_WEIGHT,
+          w.maxBoost,
+          entry.views * w.viewWeight + entry.applies * w.applyWeight,
         );
         byProgramId.set(row.program_id, entry);
       }

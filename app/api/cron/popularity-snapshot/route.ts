@@ -11,17 +11,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
-import { POPULARITY_WEIGHTS } from "@/lib/personalization/popularity-boost";
+import { loadCurrentWeights } from "@/lib/personalization/popularity-weights-settings";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// A 12차: popularity-boost.ts 와 단일 source — silent mismatch 차단
-const { VIEW_WEIGHT, APPLY_WEIGHT, MAX_BOOST } = POPULARITY_WEIGHTS;
+// Spec 2 (5/27): 학습된 weights 를 5분 cache 로 조회. cron 미가동/DB 실패 시 default fallback.
 
 async function run() {
   const admin = createAdminClient();
+  const w = await loadCurrentWeights();
   const today = new Date().toISOString().slice(0, 10);
   const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
 
@@ -58,8 +58,8 @@ async function run() {
     if (row.event_type === "program_view") entry.views += 1;
     if (row.event_type === "apply_click") entry.applies += 1;
     entry.score = Math.min(
-      MAX_BOOST,
-      entry.views * VIEW_WEIGHT + entry.applies * APPLY_WEIGHT,
+      w.maxBoost,
+      entry.views * w.viewWeight + entry.applies * w.applyWeight,
     );
     agg.set(row.program_id, entry);
   }
