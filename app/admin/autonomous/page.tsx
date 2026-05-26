@@ -1922,15 +1922,17 @@ function PendingExternalActionsCard({
               idx === 0 ? "border-amber-400 border-2 shadow-sm" : "border-amber-100"
             }`}
           >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-bold text-amber-900">
-                {idx === 0 && <span className="mr-1 text-amber-600">⭐</span>}
-                {CATEGORY_META[a.category].emoji} {a.label}
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-normal text-amber-800">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+              <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-1 font-bold text-amber-900">
+                {idx === 0 && <span className="text-amber-600">⭐</span>}
+                <span>
+                  {CATEGORY_META[a.category].emoji} {a.label}
+                </span>
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-normal text-amber-800">
                   {CATEGORY_META[a.category].label}
                 </span>
               </span>
-              <span className="text-[11px] text-amber-700">
+              <span className="shrink-0 text-[11px] text-amber-700">
                 {a.estimatedMinutes}분
               </span>
             </div>

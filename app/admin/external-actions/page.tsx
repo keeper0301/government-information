@@ -141,24 +141,26 @@ export default async function ExternalActionsPage() {
                   : "border-grey-200 bg-white"
               }`}
             >
-              <div className="flex items-baseline justify-between gap-2 mb-1">
-                <span className="text-sm font-bold">
-                  {CATEGORY_META[g.category].emoji} {g.title}
-                  <span className="ml-2 rounded bg-grey-100 px-1.5 py-0.5 text-[10px] font-normal text-grey-700">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 mb-1">
+                <span className="inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm font-bold">
+                  <span>
+                    {CATEGORY_META[g.category].emoji} {g.title}
+                  </span>
+                  <span className="rounded bg-grey-100 px-1.5 py-0.5 text-[10px] font-normal text-grey-700">
                     {CATEGORY_META[g.category].label}
                   </span>
                   {isPending && (
-                    <span className="ml-2 text-[11px] font-normal text-amber-700">
+                    <span className="text-[11px] font-normal text-amber-700">
                       잔여
                     </span>
                   )}
                   {!isPending && (
-                    <span className="ml-2 text-[11px] font-normal text-emerald-700">
+                    <span className="text-[11px] font-normal text-emerald-700">
                       ✓ 완료 또는 미적용
                     </span>
                   )}
                 </span>
-                <span className="text-[11px] text-grey-600">{g.estimatedMinutes}분</span>
+                <span className="shrink-0 text-[11px] text-grey-600">{g.estimatedMinutes}분</span>
               </div>
               <p className="text-xs text-grey-700 mb-2">{g.description}</p>
               <Link
