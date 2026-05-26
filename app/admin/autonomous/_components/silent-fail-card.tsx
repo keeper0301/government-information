@@ -28,24 +28,32 @@ export function SilentFailCard({ stats }: { stats: SilentFailStats }) {
             2026-05-22 audit 사고 재발생 방지
           </p>
         </div>
-        <div className="flex gap-2 text-xs">
+        <div className="flex flex-col items-end gap-1 text-xs">
+          <div className="flex gap-2">
+            <a
+              href="/admin/silent-fail-history?range=7"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              7일 ↗
+            </a>
+            <a
+              href="/admin/silent-fail-history?range=30"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              30일 ↗
+            </a>
+            <a
+              href="/admin/silent-fail-history?range=90"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              90일 ↗
+            </a>
+          </div>
           <a
-            href="/admin/silent-fail-history?range=7"
-            className="text-blue-600 hover:text-blue-800 underline"
+            href="/admin/category-trends"
+            className="text-blue-600 hover:text-blue-800 underline text-[10px]"
           >
-            7일 ↗
-          </a>
-          <a
-            href="/admin/silent-fail-history?range=30"
-            className="text-blue-600 hover:text-blue-800 underline"
-          >
-            30일 ↗
-          </a>
-          <a
-            href="/admin/silent-fail-history?range=90"
-            className="text-blue-600 hover:text-blue-800 underline"
-          >
-            90일 ↗
+            📊 카테고리 추세 ↗
           </a>
         </div>
       </header>
