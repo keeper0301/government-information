@@ -22,8 +22,8 @@ export type SilentFailDay = {
 export type SilentFailHistoryStats = {
   days: SilentFailDay[]; // 최근 7일
   cityTotals: Array<{ city: string; count: number }>; // 시·군별 누적 (1주)
-  totalRuns7d: number;
-  totalSilentFails7d: number;
+  totalRuns: number;
+  totalSilentFails: number;
 };
 
 export async function getSilentFailHistory(
@@ -63,7 +63,7 @@ export async function getSilentFailHistory(
       .toISOString()
       .slice(0, 10);
 
-    totalRuns7d += 1;
+    totalRuns += 1;
 
     // silent_fail 판정
     const isSilentFail =
@@ -81,7 +81,7 @@ export async function getSilentFailHistory(
     if (isSilentFail && city) {
       dayPrev.count += 1;
       dayPrev.cities.add(city);
-      totalSilentFails7d += 1;
+      totalSilentFails += 1;
       byCity.set(city, (byCity.get(city) ?? 0) + 1);
     }
     byDay.set(kstDate, dayPrev);
@@ -110,7 +110,7 @@ export async function getSilentFailHistory(
   return {
     days: dayList,
     cityTotals,
-    totalRuns7d,
-    totalSilentFails7d,
+    totalRuns,
+    totalSilentFails,
   };
 }

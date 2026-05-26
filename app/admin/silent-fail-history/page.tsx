@@ -60,17 +60,17 @@ export default async function SilentFailHistoryPage({
             <div>
               <div className="text-[12px] text-grey-600 mb-1">{days}일 총 cron 회차</div>
               <div className="text-[24px] font-extrabold text-grey-900">
-                {stats.totalRuns7d.toLocaleString()}건
+                {stats.totalRuns.toLocaleString()}건
               </div>
             </div>
             <div>
               <div className="text-[12px] text-grey-600 mb-1">{days}일 silent_fail</div>
               <div className="text-[24px] font-extrabold text-amber-700">
-                {stats.totalSilentFails7d.toLocaleString()}건
+                {stats.totalSilentFails.toLocaleString()}건
               </div>
               <div className="text-[11px] text-grey-500 mt-1">
-                비율 {stats.totalRuns7d > 0
-                  ? ((stats.totalSilentFails7d / stats.totalRuns7d) * 100).toFixed(1)
+                비율 {stats.totalRuns > 0
+                  ? ((stats.totalSilentFails / stats.totalRuns) * 100).toFixed(1)
                   : "0"}%
               </div>
             </div>
