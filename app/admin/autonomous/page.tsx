@@ -223,6 +223,7 @@ export default async function AdminAutonomousPage() {
           process.env.GMAIL_CLIENT_SECRET &&
           process.env.GMAIL_REFRESH_TOKEN
         )}
+        smsDisabled={process.env.OPS_ALERT_DISABLE_SMS === "true"}
       />
 
       <OpsNextActionsCard
@@ -2016,23 +2017,28 @@ function YesterdayDigestCard({ digest }: { digest: YesterdayDigest }) {
 function TomorrowAlertsCard({
   generatedAt,
   gmailOAuthReady,
+  smsDisabled,
 }: {
   generatedAt: Date;
   gmailOAuthReady: boolean;
+  smsDisabled: boolean;
 }) {
   const tomorrow = new Date(generatedAt.getTime() + 24 * 3600_000)
     .toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" })
     .replace(/\.\s?/g, "/")
     .replace(/\/$/, "");
+  // 2026-05-26 — OPS_ALERT_DISABLE_SMS env 동기. SMS off 시 "텔레그램+SMS" → "텔레그램".
+  // 메모리 [[project_sms_disabled_telegram_only_2026_05_21]] 의 거짓 가시화 fix.
+  const multiChannel = smsDisabled ? "텔레그램" : "텔레그램+SMS";
   const alerts: { time: string; channel: string; message: string }[] = [
-    { time: "07:30", channel: "텔레그램+SMS", message: "블로그 24h 발행 N건 + 본문 평균 (사고 감지)" },
+    { time: "07:30", channel: multiChannel, message: "블로그 24h 발행 N건 + 본문 평균 (사고 감지)" },
     { time: "09:30", channel: "텔레그램", message: "외부 콘솔 통합 점검 — 이상 0건 시 무음" },
-    { time: "10:05", channel: "텔레그램+SMS", message: "AdSense 검수 진행 중 (전환 시 즉시 승인·거절)" },
+    { time: "10:05", channel: multiChannel, message: "AdSense 검수 진행 중 (전환 시 즉시 승인·거절)" },
   ];
   if (gmailOAuthReady) {
     alerts.push({
       time: "10:10",
-      channel: "텔레그램+SMS",
+      channel: multiChannel,
       message: "AdSense Gmail 이메일 자동 파싱 (verdict 매칭 시만)",
     });
   }
@@ -2052,7 +2058,12 @@ function TomorrowAlertsCard({
       </ul>
       {!gmailOAuthReady && (
         <p className="mt-2 text-[11px] text-blue-700">
-          💡 Gmail OAuth 등록 시 10:10 알림 추가 (검수 결과 2 채널 보강).
+          💡 Gmail OAuth 등록 시 10:10 알림 추가 (검수 결과 자동 분류).
+        </p>
+      )}
+      {smsDisabled && (
+        <p className="mt-1 text-[11px] text-blue-700">
+          💡 SMS 비활성 중 (OPS_ALERT_DISABLE_SMS=true) — 텔레그램만 발송. Solapi 잔액 보존 정책.
         </p>
       )}
     </section>
