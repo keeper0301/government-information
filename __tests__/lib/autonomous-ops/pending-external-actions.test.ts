@@ -142,4 +142,19 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     expect(renderAction?.label).toContain("업그레이드");
     expect(renderAction?.description).toContain("W1 ramp-up");
   });
+
+  // 2026-05-26 — category priority 정렬 (ops next action firstExternal[0] 우선순위).
+  it("category priority — automation > security > oauth > codex > infrastructure", async () => {
+    // default 상태: security · infrastructure · oauth · automation 4 카테고리 노출
+    const actions = await getPendingExternalActions();
+    const categories = actions.map((a) => a.category);
+    // automation 이 security 보다 앞
+    const automationIdx = categories.indexOf("automation");
+    const securityIdx = categories.indexOf("security");
+    const oauthIdx = categories.indexOf("oauth");
+    const infraIdx = categories.indexOf("infrastructure");
+    expect(automationIdx).toBeLessThan(securityIdx);
+    expect(securityIdx).toBeLessThan(oauthIdx);
+    expect(oauthIdx).toBeLessThan(infraIdx);
+  });
 });
