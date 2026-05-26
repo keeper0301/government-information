@@ -252,6 +252,33 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     });
   }
 
+  // 2026-05-26 — 토스페이먼츠 빌링 카드사 심사 진행 중.
+  // tools/generate-toss-ppt.mjs 로 PPT 검수 자료 생성 (commit 0e0eac2). 카드사 심사 통과 시
+  // 사장님이 /api/admin/mark-toss-billing-approved 1 click → audit row → 자동 hide.
+  // 보안 회전 패턴 그대로 (멱등성·중복 insert OK).
+  try {
+    const admin = createAdminClient();
+    const { count } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "toss_billing_approved");
+    const tossBillingApproved = (count ?? 0) > 0;
+    if (!tossBillingApproved) {
+      actions.push({
+        category: "checkout",
+        label: "토스페이먼츠 빌링 카드사 심사 통과 신고",
+        description:
+          "tools/generate-toss-ppt.mjs 으로 PPT 검수 자료 생성 (5/26 commit 0e0eac2). 카드사 심사 통과 후 /api/admin/mark-toss-billing-approved 1 click 으로 hide. 통과 전까지는 빌링 정기결제 카드 입력창 비활성 — checkout 페이지의 7일 무료체험 button 은 동작하나 토스 결제창은 심사 통과 후 가동.",
+        url: "/api/admin/mark-toss-billing-approved",
+        guideUrl:
+          "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/toss-billing-review.md",
+        estimatedMinutes: 2,
+      });
+    }
+  } catch {
+    // DB 실패 silent
+  }
+
   // 2026-05-22 — Playwright Phase 1 GitHub secrets 자동 감지.
   // 4 city (changwon/seongnam/ansan/cheonan) 의 news_posts row 가 24h 안에 있으면
   // = GitHub Actions cron 가동 = secrets 등록 완료 → hide.

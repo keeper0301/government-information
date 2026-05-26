@@ -6,6 +6,7 @@ const mockState = {
   renderCount: 0,
   naverCount: 0,
   residentCycleCount: 0,
+  tossBillingCount: 0,
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -54,6 +55,7 @@ vi.mock("@/lib/codex/w1-readiness", () => ({
 function countFor(action: string): number {
   if (action === "security_rotation_done") return mockState.securityCount;
   if (action === "render_plan_upgraded") return mockState.renderCount;
+  if (action === "toss_billing_approved") return mockState.tossBillingCount;
   return 0;
 }
 
@@ -66,6 +68,7 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     mockState.renderCount = 0;
     mockState.naverCount = 0;
     mockState.residentCycleCount = 0;
+    mockState.tossBillingCount = 0;
     // env 미설정 default — Gmail OAuth reminder 노출
     delete process.env.GMAIL_CLIENT_ID;
     delete process.env.GMAIL_CLIENT_SECRET;
@@ -119,6 +122,7 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     mockState.securityCount = 1;
     mockState.renderCount = 1;
     mockState.naverCount = 1;
+    mockState.tossBillingCount = 1;
     process.env.GMAIL_CLIENT_ID = "test";
     process.env.GMAIL_CLIENT_SECRET = "test";
     process.env.GMAIL_REFRESH_TOKEN = "test";
@@ -141,6 +145,23 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     expect(renderAction).toBeDefined();
     expect(renderAction?.label).toContain("업그레이드");
     expect(renderAction?.description).toContain("W1 ramp-up");
+  });
+
+  // 2026-05-26 — 토스 빌링 카드사 심사 진행 중 → checkout 카테고리 노출.
+  it("default 상태 → checkout (토스 빌링) 항목 노출", async () => {
+    const actions = await getPendingExternalActions();
+    const tossAction = actions.find((a) => a.category === "checkout");
+    expect(tossAction).toBeDefined();
+    expect(tossAction?.label).toContain("토스");
+    expect(tossAction?.url).toBe("/api/admin/mark-toss-billing-approved");
+  });
+
+  it("toss_billing_approved audit ≥ 1 → checkout 항목 hide", async () => {
+    mockState.tossBillingCount = 1;
+    const actions = await getPendingExternalActions();
+    expect(actions.find((a) => a.category === "checkout")).toBeUndefined();
+    // 다른 항목 영향 0
+    expect(actions.find((a) => a.category === "security")).toBeDefined();
   });
 
   // 2026-05-26 — category priority 정렬 (ops next action firstExternal[0] 우선순위).

@@ -78,6 +78,14 @@ const ACTION_GUIDES: {
     estimatedMinutes: 3,
     description: "Codex sidecar 82분 cycle 사고 — free cold start 해소 + always-on. W1 ramp-up 전 권장.",
   },
+  {
+    category: "checkout",
+    emoji: "💳",
+    title: "토스페이먼츠 빌링 카드사 심사 통과 신고",
+    guidePath: "docs/external-actions/toss-billing-review.md",
+    estimatedMinutes: 2,
+    description: "tools/generate-toss-ppt.mjs 으로 PPT 검수 자료 생성 (5/26). 카드사 심사 통과 후 1 click 신고",
+  },
 ];
 
 const REPO_BASE = "https://github.com/keeper0301/government-information/blob/master";
@@ -133,7 +141,7 @@ export default async function ExternalActionsPage() {
       <AdminPageHeader
         kicker="ADMIN · 운영 상태"
         title="사장님 외부 액션 가이드"
-        description={`5/18 메가 세션 누적 가이드 5건. 잔여 액션 ${pendingActions.length}건 (자동 감지). 각 가이드 5~10분.`}
+        description={`외부 액션 가이드 ${ACTION_GUIDES.length}건. 잔여 액션 ${pendingActions.length}건 (자동 감지). 각 가이드 2~10분.`}
       />
 
       <p className="mb-5 text-sm text-grey-700">
@@ -142,14 +150,9 @@ export default async function ExternalActionsPage() {
 
       <ul className="space-y-3">
         {sortedGuides.map((g) => {
-          // pendingCategories 는 security/oauth/automation/checkout/infrastructure 만 — adsense/codex 항상 false (미추적)
-          const isPending =
-            (g.category === "security" ||
-              g.category === "oauth" ||
-              g.category === "automation" ||
-              g.category === "checkout" ||
-              g.category === "infrastructure") &&
-            pendingCategories.has(g.category);
+          // 2026-05-26 — adsense/codex 도 PendingExternalAction 카테고리에 포함되어 자동 hide 가능.
+          // TRACKED_SET 과 동기 — 7 카테고리 모두 자동 감지 + 추가 시 한 곳만 수정.
+          const isPending = TRACKED_SET.has(g.category) && pendingCategories.has(g.category);
           return (
             <li
               key={g.guidePath}
