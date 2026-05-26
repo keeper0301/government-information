@@ -1920,13 +1920,17 @@ function PendingExternalActionsCard({
         ⚠️ 사장님 외부 액션 {actions.length}건 (총 {totalMinutes}분 예상)
       </h2>
       <ul className="space-y-2 text-xs">
-        {actions.map((a) => (
+        {/* 2026-05-26 — priority 정렬 후 첫 액션 시각 강조 (사장님 매일 영향 큰 액션 즉시 처리 유도) */}
+        {actions.map((a, idx) => (
           <li
             key={a.label}
-            className="rounded border border-amber-100 bg-white p-2"
+            className={`rounded border bg-white p-2 ${
+              idx === 0 ? "border-amber-400 border-2 shadow-sm" : "border-amber-100"
+            }`}
           >
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-bold text-amber-900">
+                {idx === 0 && <span className="mr-1 text-amber-600">⭐</span>}
                 {categoryEmoji[a.category]} {a.label}
               </span>
               <span className="text-[11px] text-amber-700">
