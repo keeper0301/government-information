@@ -90,3 +90,16 @@ Vercel env 의 PC_RUNNER_SECRET 와 PC `.env` 동일 값인지 확인.
 
 ### round1 results 의 items 0
 SPA site — server parseListItems 가 0 반환. Playwright fallback (다음 commit).
+
+## 자가 감지 (2026-05-26)
+
+PC runner 가동 상태는 /admin/autonomous 의 LocalPressCard 에서 자가 인식.
+
+| 상태 | 시각 |
+|---|---|
+| 24h 안 가동 | 보라 `🖥️ PC runner 마지막 가동 · N분 전` |
+| 48h+ stale | amber `⚠️ 48h+ stale` (PC 종료 / 인터넷 끊김 의심) |
+| 7d+ stale | red `🚨 7일+ 미가동, PC OFF 가능성` |
+| 가동 0회 | slate `아직 가동 0회 · 설치 가이드` |
+
+7일 가동 0건 시 PendingExternalActionsCard 의 "PC runner 본체 가동" 외부 액션 으로 자동 추가.
