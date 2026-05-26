@@ -53,6 +53,7 @@ export async function getCategoryTrends(
     byCategory.set(cat, { count: prev.count + 1, views: prev.views + views });
   }
 
+  // 2026-05-26 — count 동률 시 totalViews 순, 다음 category localeCompare (검수 추적 안정)
   const stats: CategoryTrendStat[] = Array.from(byCategory.entries())
     .map(([category, v]) => ({
       category,
@@ -60,7 +61,11 @@ export async function getCategoryTrends(
       totalViews: v.views,
       avgViews: v.count > 0 ? Math.round(v.views / v.count) : 0,
     }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => {
+      if (a.count !== b.count) return b.count - a.count;
+      if (a.totalViews !== b.totalViews) return b.totalViews - a.totalViews;
+      return a.category.localeCompare(b.category);
+    });
 
   return {
     days,
