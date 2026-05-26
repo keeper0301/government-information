@@ -78,6 +78,7 @@ import { PressIngestTierCard } from "./_components/press-ingest-tier-card";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 import {
   getPendingExternalActions,
+  CATEGORY_META,
   type PendingExternalAction,
 } from "@/lib/autonomous-ops/pending-external-actions";
 import {
@@ -1904,15 +1905,8 @@ function PendingExternalActionsCard({
   actions: PendingExternalAction[];
 }) {
   if (actions.length === 0) return null;
-  const categoryEmoji: Record<PendingExternalAction["category"], string> = {
-    security: "🔐",
-    oauth: "🔑",
-    automation: "⚙️",
-    checkout: "💳",
-    infrastructure: "☁️",
-    adsense: "📊",
-    codex: "🤖",
-  };
+  // 2026-05-26 — CATEGORY_META 로 통합 (lib/autonomous-ops/pending-external-actions.ts 의 단일 source).
+  // 신규 카테고리 추가 시 lib 한 곳만 수정 — 두 페이지 자동 동기화.
   const totalMinutes = actions.reduce((s, a) => s + a.estimatedMinutes, 0);
   return (
     <section className="mb-4 rounded-lg border border-amber-200 bg-amber-50/50 p-3">
@@ -1931,7 +1925,10 @@ function PendingExternalActionsCard({
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-bold text-amber-900">
                 {idx === 0 && <span className="mr-1 text-amber-600">⭐</span>}
-                {categoryEmoji[a.category]} {a.label}
+                {CATEGORY_META[a.category].emoji} {a.label}
+                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-normal text-amber-800">
+                  {CATEGORY_META[a.category].label}
+                </span>
               </span>
               <span className="text-[11px] text-amber-700">
                 {a.estimatedMinutes}분

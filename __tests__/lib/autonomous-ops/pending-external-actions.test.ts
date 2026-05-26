@@ -60,7 +60,10 @@ function countFor(action: string): number {
 }
 
 // 모듈 import — top-level 가 아니라 mock 적용 후
-import { getPendingExternalActions } from "@/lib/autonomous-ops/pending-external-actions";
+import {
+  getPendingExternalActions,
+  CATEGORY_META,
+} from "@/lib/autonomous-ops/pending-external-actions";
 
 describe("getPendingExternalActions — audit hide 동작", () => {
   beforeEach(() => {
@@ -162,6 +165,30 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     expect(actions.find((a) => a.category === "checkout")).toBeUndefined();
     // 다른 항목 영향 0
     expect(actions.find((a) => a.category === "security")).toBeDefined();
+  });
+
+  // 2026-05-26 — CATEGORY_META 단일 source 검증.
+  // 모든 카테고리가 emoji + 한국어 label 정의됨 (UI 누락 방지).
+  it("CATEGORY_META 가 7 카테고리 모두 emoji + label 정의", async () => {
+    const expectedCategories = [
+      "security",
+      "oauth",
+      "automation",
+      "checkout",
+      "infrastructure",
+      "adsense",
+      "codex",
+    ] as const;
+    for (const cat of expectedCategories) {
+      expect(CATEGORY_META[cat]).toBeDefined();
+      expect(CATEGORY_META[cat].emoji.length).toBeGreaterThan(0);
+      expect(CATEGORY_META[cat].label.length).toBeGreaterThan(0);
+    }
+    // 실제 getPendingExternalActions 결과의 카테고리도 모두 매핑 가능
+    const actions = await getPendingExternalActions();
+    for (const a of actions) {
+      expect(CATEGORY_META[a.category]).toBeDefined();
+    }
   });
 
   // 2026-05-26 — category priority 정렬 (ops next action firstExternal[0] 우선순위).

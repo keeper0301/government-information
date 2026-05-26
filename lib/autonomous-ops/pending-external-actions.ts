@@ -12,9 +12,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { checkW1Readiness } from "@/lib/codex/w1-readiness";
 import { getAdsensePlacementSummary } from "@/lib/analytics/adsense-placement-status";
 
+export type PendingExternalActionCategory =
+  | "security"
+  | "oauth"
+  | "automation"
+  | "checkout"
+  | "infrastructure"
+  | "adsense"
+  | "codex";
+
 export type PendingExternalAction = {
   /** 카테고리 — UI grouping */
-  category: "security" | "oauth" | "automation" | "checkout" | "infrastructure" | "adsense" | "codex";
+  category: PendingExternalActionCategory;
   /** 짧은 라벨 (3~6 단어) */
   label: string;
   /** 사장님 액션 한 줄 설명 */
@@ -25,6 +34,22 @@ export type PendingExternalAction = {
   guideUrl?: string;
   /** 예상 소요 (분) */
   estimatedMinutes: number;
+};
+
+// 2026-05-26 — 카테고리별 emoji + 한국어 라벨 단일 source.
+// PendingExternalActionsCard (autonomous/page.tsx) 와 /admin/external-actions
+// 두 곳이 같은 표기를 쓰도록 DRY. 새 카테고리 추가 시 여기 한 줄만 더하면 됨.
+export const CATEGORY_META: Record<
+  PendingExternalActionCategory,
+  { emoji: string; label: string }
+> = {
+  automation: { emoji: "⚙️", label: "자동화" },
+  security: { emoji: "🔐", label: "보안" },
+  oauth: { emoji: "🔑", label: "인증" },
+  codex: { emoji: "🤖", label: "자율 운영" },
+  infrastructure: { emoji: "☁️", label: "인프라" },
+  checkout: { emoji: "💳", label: "결제" },
+  adsense: { emoji: "📊", label: "광고" },
 };
 
 export async function getPendingExternalActions(): Promise<PendingExternalAction[]> {
