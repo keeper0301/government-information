@@ -51,12 +51,15 @@ async function measure(): Promise<Measurement> {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
 
+  // P1-2 (5/27 review): 안전 cap — 사용자 풀 확장 시 단일 쿼리 OOM·timeout 차단.
+  // 데이터 부족 임계 (≥100) 와 무관하게 cron 안정성 우선. popularity-snapshot 의 20000 보다 여유.
   const { data, error } = await admin
     .from("user_events")
     .select("event_type, user_id")
     .gte("created_at", since)
     .in("event_type", ["program_view", "apply_click"])
-    .not("program_id", "is", null);
+    .not("program_id", "is", null)
+    .limit(50000);
 
   if (error || !data) {
     return {

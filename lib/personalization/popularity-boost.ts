@@ -30,14 +30,9 @@ let _inflight: Promise<PopularityCache["byProgramId"]> | null = null;
 const TTL_MS = 5 * 60 * 1000; // 5분
 const NEGATIVE_TTL_MS = 30 * 1000; // A 11차: DB error 시 30초 빈 cache — 폭주 차단 + 자가치유
 
-// A 12차 (5/17) — cron (popularity-snapshot) 과 단일 source. 한쪽 튜닝 시 silent mismatch 차단.
-// Spec 2 (5/27) — 이 값은 default fallback. 실제 사용은 loadCurrentWeights() 가 DB 학습값
-// (popularity_weights_history) 을 5분 cache 로 조회. cron 미가동/DB 실패 시 이 값으로 회귀.
-export const POPULARITY_WEIGHTS = {
-  VIEW_WEIGHT: 0.5,
-  APPLY_WEIGHT: 2,
-  MAX_BOOST: 5, // cap — 매우 인기 정책도 +5 까지만 (다른 시그널 압도 X)
-} as const;
+// Spec 2 (5/27) — 가중치는 loadCurrentWeights() 가 DB (popularity_weights_history)
+// 학습값을 5분 cache 로 조회. cron 미가동·DB 실패 시 POPULARITY_WEIGHTS_DEFAULT 회귀.
+// 과거 5/17 hardcode POPULARITY_WEIGHTS 는 P2-1 review 후 dead export 정리됨 (5/27).
 
 // 직전 30일 program 별 view/apply 합계 → boost score map.
 // 메모리 cache 5분 + inflight Promise 단일화 (A 8차 — 동시 다발 cache miss 시 DB 중복 query 차단).

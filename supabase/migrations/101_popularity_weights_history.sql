@@ -36,10 +36,11 @@ COMMENT ON TABLE popularity_weights_history IS
   'Recommendation popularity weights 자가 진화 학습. 매주 cron 측정 후 변경 시 새 row. effective_from DESC 최상단 = active.';
 
 -- 학습 seed — 5/17 A 12차 hardcode 값 (5/16~26 user_events 사용자 1명 단계)
+-- 마이그레이션 재실행 시 duplicate 차단: applied_by='initial_seed' 가 이미 있으면 skip
 INSERT INTO popularity_weights_history
   (view_weight, apply_weight, max_boost, reason,
    conversion_rate_30d, unique_users_30d, total_events_30d, applied_by, data_snapshot)
-VALUES (
+SELECT
   0.5,
   2.0,
   5.0,
@@ -55,6 +56,8 @@ VALUES (
     'view_count', 566,
     'apply_count', 3
   )
+WHERE NOT EXISTS (
+  SELECT 1 FROM popularity_weights_history WHERE applied_by = 'initial_seed'
 );
 
 ALTER TABLE popularity_weights_history ENABLE ROW LEVEL SECURITY;
