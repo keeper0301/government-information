@@ -85,6 +85,7 @@ import {
   getYesterdayDigest,
   type YesterdayDigest,
 } from "@/lib/autonomous-ops/yesterday-digest";
+import { ACTION_LABELS, type AdminActionType } from "@/lib/admin-actions";
 import { BlogPublishCard } from "./_components/blog-publish-card";
 import { getNaverPublishStats } from "@/lib/analytics/naver-publish-stats";
 import { NaverPublishCard } from "./_components/naver-publish-card";
@@ -1995,7 +1996,13 @@ function YesterdayDigestCard({ digest }: { digest: YesterdayDigest }) {
         <div className="text-[11px] text-emerald-800">
           <span className="font-semibold">top:</span>{" "}
           {digest.topActions
-            .map((a) => `${a.action.replace(/_/g, " ")} ${a.count}`)
+            .map((a) => {
+              // 2026-05-26 — ACTION_LABELS 참조 (한국어 라벨). 미정의 시 underscore→space fallback.
+              const label =
+                ACTION_LABELS[a.action as AdminActionType] ??
+                a.action.replace(/_/g, " ");
+              return `${label} ${a.count}`;
+            })
             .join(" · ")}
         </div>
       )}
