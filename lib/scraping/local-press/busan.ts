@@ -12,9 +12,11 @@ import {
 const LIST_URL = "https://www.busan.go.kr/nbtnewsBU";
 const DETAIL_BASE = "https://www.busan.go.kr/nbtnewsBU/";
 
-// list link: <a href="/nbtnewsBU/{seq}?...">{title}</a>
+// 2026-05-26 fix: inner content 가 nested HTML (span/i/img) 으로 625~1038 char.
+// 이전 `[^<]{8,}` 은 nested tag 시 매칭 0 → list 0건 silent fail.
+// lazy + 2000 limit + parseListPage 의 tag strip 으로 정확 추출.
 const LIST_ITEM_REGEX =
-  /<a\s+href="\/nbtnewsBU\/(\d+)[^"]*"[^>]*>\s*([^<]{8,})\s*<\/a>/g;
+  /<a\s+href="\/nbtnewsBU\/(\d+)[^"]*"[^>]*>([\s\S]{0,2000}?)<\/a>/g;
 
 // 날짜: YYYY-MM-DD 별도 위치
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
@@ -31,8 +33,9 @@ export function parseListPage(html: string): PressNewsItem[] {
   while ((m = itemRe.exec(html)) !== null) {
     const seq = m[1];
     if (seen.has(seq)) continue; // 같은 seq 중복 link 무시
-    const title = m[2].trim();
-    if (!title || title.length < 5) continue;
+    // nested tag 제거 + decode
+    const title = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     seen.add(seq);
     items.push({
       idx,
