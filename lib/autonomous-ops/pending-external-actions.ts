@@ -281,5 +281,22 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     // DB 실패는 silent
   }
 
-  return actions;
+  // 2026-05-26 — category priority 정렬. ops next action firstExternal 가 매일 영향 큰 액션 우선 노출.
+  // automation (PC runner·Naver Ext 매일 영향) > security > oauth > codex > infrastructure > checkout > adsense
+  const CATEGORY_PRIORITY: Record<string, number> = {
+    automation: 1,
+    security: 2,
+    oauth: 3,
+    codex: 4,
+    infrastructure: 5,
+    checkout: 6,
+    adsense: 7,
+  };
+  return actions.sort((a, b) => {
+    const ap = CATEGORY_PRIORITY[a.category] ?? 99;
+    const bp = CATEGORY_PRIORITY[b.category] ?? 99;
+    if (ap !== bp) return ap - bp;
+    // tie-break: estimatedMinutes 작은 것 우선 (사장님 즉시 처리 가능 액션)
+    return (a.estimatedMinutes ?? 99) - (b.estimatedMinutes ?? 99);
+  });
 }
