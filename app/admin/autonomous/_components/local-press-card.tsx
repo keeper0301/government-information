@@ -111,7 +111,12 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
               )}
             </div>
             <div className="grid grid-cols-2 gap-1 md:grid-cols-4">
-              {cities.map((c) => {
+              {/* 2026-05-26 — inserted24h 순 정렬: 활성 site (insert > 0) 먼저, 다음 오류, 다음 유휴 */}
+              {[...cities].sort((a, b) => {
+                if (a.inserted24h !== b.inserted24h) return b.inserted24h - a.inserted24h;
+                if (a.errors24h !== b.errors24h) return b.errors24h - a.errors24h;
+                return 0;
+              }).map((c) => {
                 const status = c.errors24h > 0 ? "error" : c.inserted24h > 0 ? "ok" : "idle";
                 const bg = status === "ok"
                   ? "bg-emerald-50 border-emerald-200 text-emerald-900"
