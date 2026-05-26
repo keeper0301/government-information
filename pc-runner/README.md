@@ -93,7 +93,7 @@ SPA site — server parseListItems 가 0 반환. Playwright fallback (다음 com
 
 ## 자가 감지 (2026-05-26)
 
-PC runner 가동 상태는 /admin/autonomous 의 LocalPressCard 에서 자가 인식.
+PC runner 가동 상태는 [/admin/autonomous](https://www.keepioo.com/admin/autonomous) 의 LocalPressCard 에서 자가 인식.
 
 | 상태 | 시각 |
 |---|---|
