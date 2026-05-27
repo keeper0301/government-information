@@ -30,8 +30,7 @@ import type {
   RegionOption,
 } from "@/lib/profile-options";
 import { isProgramAllowedForUser } from "@/lib/personalization/score";
-import type { UserSignals } from "@/lib/personalization/types";
-import type { BenefitTag } from "@/lib/tags/taxonomy";
+import { createUserSignalsLoader } from "@/lib/personalization/user-signals";
 
 // POLICY_NEW v2 → v3 분기 — SOLAPI_TEMPLATE_ID_POLICY_NEW_V3 환경변수 등록되면 자동 v3.
 // v3 = 호명 + 자격 진단 한 줄 + 금액 + 마감 통합 (사장님 케이뱅크 reference 수준).
@@ -110,59 +109,10 @@ async function runAlertDispatch(jobLabel: string) {
     // 알림 발송 매칭에 score.ts 의 isProgramAllowedForUser 적용 (장애인·결식아동·
     // 산후조리·기초수급자 cohort 차단). 사용자가 마이페이지에서 "자녀 없음"
     // 선택하면 산후조리 알림톡 발송 안 됨 — 추천 노출과 일관성 보장.
-    const userSignalsCache = new Map<string, UserSignals>();
-    async function getUserSignals(userId: string, businessProfile: BusinessProfile | null): Promise<UserSignals> {
-      const cached = userSignalsCache.get(userId);
-      if (cached) return cached;
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select(
-          "age_group, region, district, occupation, income_level, household_types, benefit_tags, has_children, merit_status",
-        )
-        .eq("id", userId)
-        .maybeSingle();
-      const signals: UserSignals = {
-        ageGroup: (profile?.age_group ?? null) as AgeOption | null,
-        region: (profile?.region ?? null) as RegionOption | null,
-        district: profile?.district ?? null,
-        occupation: (profile?.occupation ?? null) as OccupationOption | null,
-        incomeLevel: (profile?.income_level ?? null) as UserSignals["incomeLevel"],
-        householdTypes: (profile?.household_types ?? []) as string[],
-        benefitTags: (profile?.benefit_tags ?? []) as BenefitTag[],
-        hasChildren: (profile?.has_children ?? null) as boolean | null,
-        merit: (profile?.merit_status ?? null) as 'merit' | 'none' | null,
-        businessProfile,
-      };
-      userSignalsCache.set(userId, signals);
-      return signals;
-    }
-
-    // business_profiles 캐시 — 같은 user 가 규칙 여러 개 들고 있어도 1회만 fetch
+    // 2026-05-27: lib/personalization/user-signals 으로 extract.
+    // match-payload (Spec 3 PWA push) 도 같은 cohort gate 적용 위한 두 경로 단일화.
+    const { getBusinessProfile, getUserSignals } = createUserSignalsLoader(supabase);
     const v3Enabled = isV3Enabled();
-    const businessProfileCache = new Map<string, BusinessProfile | null>();
-    async function getBusinessProfile(userId: string): Promise<BusinessProfile | null> {
-      if (businessProfileCache.has(userId)) return businessProfileCache.get(userId)!;
-      const { data } = await supabase
-        .from("business_profiles")
-        .select(
-          "industry, revenue_scale, employee_count, business_type, established_date, region, district",
-        )
-        .eq("user_id", userId)
-        .maybeSingle();
-      const profile: BusinessProfile | null = data
-        ? {
-            industry: (data.industry ?? null) as BusinessIndustry | null,
-            revenue_scale: (data.revenue_scale ?? null) as BusinessRevenue | null,
-            employee_count: (data.employee_count ?? null) as BusinessEmployee | null,
-            business_type: (data.business_type ?? null) as BusinessType | null,
-            established_date: data.established_date ?? null,
-            region: data.region ?? null,
-            district: data.district ?? null,
-          }
-        : null;
-      businessProfileCache.set(userId, profile);
-      return profile;
-    }
 
     let dispatchedEmail = 0;
     let dispatchedKakao = 0;

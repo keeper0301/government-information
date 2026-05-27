@@ -16,6 +16,8 @@ import {
   type AlertRule,
   type MatchedProgram,
 } from "@/lib/alerts/matching";
+import { isProgramAllowedForUser } from "@/lib/personalization/score";
+import { createUserSignalsLoader } from "@/lib/personalization/user-signals";
 import type { PushPayload } from "./send";
 
 const MAX_TITLE_LEN = 80;
@@ -49,8 +51,12 @@ function programToPayload(top: MatchedProgram): PushPayload {
   };
 }
 
-// 모든 active rule 의 매칭 합치고 (dedup) + 최신순 top 1 → payload.
-// 매칭 0건이면 null.
+// 모든 active rule 의 매칭 합치고 (dedup + cohort gate) + 최신순 top 1 → payload.
+// 매칭 0건 또는 모두 cohort gate 차단 시 null.
+//
+// cohort gate (2026-05-27 review subagent P1 fix):
+//   alert-dispatch 와 동일한 isProgramAllowedForUser 필터링.
+//   "자녀 없음" 사용자에게 산후조리 정책 발송 차단 (4/28 사고 회귀 방지).
 export async function buildPushPayloadForUser(
   supabase: SupabaseClient,
   userId: string,
@@ -62,6 +68,11 @@ export async function buildPushPayloadForUser(
     .eq("is_active", true);
   if (error || !rules || rules.length === 0) return null;
 
+  // cohort gate 용 signals — 한 user 1회만 fetch (closure cache)
+  const { getBusinessProfile, getUserSignals } = createUserSignalsLoader(supabase);
+  const businessProfile = await getBusinessProfile(userId);
+  const signals = await getUserSignals(userId, businessProfile);
+
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const matched = new Map<string, MatchedProgram>();
   for (const rule of rules as AlertRule[]) {
@@ -72,6 +83,21 @@ export async function buildPushPayloadForUser(
       MATCH_LIMIT_PER_RULE,
     );
     for (const p of programs) {
+      // cohort gate — 자녀 없음 + 산후조리 등 mismatch 차단
+      if (
+        !isProgramAllowedForUser(
+          {
+            id: p.id,
+            title: p.title,
+            description: p.description,
+            source: p.source,
+            household_target_tags: p.household_target_tags,
+          },
+          signals,
+        )
+      ) {
+        continue;
+      }
       // dedup key: table:id (welfare/loan 분리)
       matched.set(`${p.table}:${p.id}`, p);
     }
