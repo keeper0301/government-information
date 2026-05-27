@@ -6,8 +6,14 @@
 //
 // 가드:
 //   - 1회/일 cap (last 23h 안에 success 발송 있으면 skip)
+//   - 1-user-1-device cap (multi-device 사용자도 한 사이클에 1번만)
 //   - VAPID env 없으면 fail (graceful 502)
 //   - subscriber 0 → 즉시 OK 종료
+//
+// 동시성 (5/27 P1-3 review fix):
+//   - 청크 (CONCURRENCY=20) + Promise.allSettled — subscriber 1000+ 시 매시
+//     cron 의 60s maxDuration 초과 차단. 200ms/send × 1000 직렬 = 200s 위험을
+//     1000/20×200ms = 10s 로 축소.
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -21,6 +27,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const DEFAULT_HOURS = [9, 12, 18];
+const CONCURRENCY = 20;
 
 function nowHourKst(): number {
   const utc = new Date();
@@ -89,20 +96,9 @@ async function run() {
     ((recentLogs ?? []) as { user_id: string }[]).map((r) => r.user_id),
   );
 
-  // 4) 발송 대상 필터링 → 발송
-  let sent = 0;
+  // 4) 발송 대상 필터링 — 1-user-1-device dedup + skip 카운트
   let skipped = 0;
-  let failed = 0;
-  let eligible = 0;
-
-  // 스켈레톤 payload — 향후 user_alert_rules / user_policy_inbox_items 매칭으로 개선.
-  // 5/27 단계: 발송 cron + 시점 학습 동작 검증이 우선.
-  const payload: PushPayload = {
-    title: "키피오 정책 알림",
-    body: "오늘의 새 정책 매칭을 확인해보세요",
-    url: "/mypage",
-  };
-
+  const eligibleByUser = new Map<string, SubscriberRow>();
   for (const sub of subscribers) {
     if (!sub.user_id) {
       skipped += 1;
@@ -117,13 +113,43 @@ async function run() {
       skipped += 1;
       continue;
     }
-    eligible += 1;
-    const result = await sendPushToSubscription(sub, payload);
-    if (result.status === "success") {
-      sent += 1;
-      userSentRecently.add(sub.user_id); // 같은 사이클 내 multi-device 시 1번만
+    // multi-device: 한 user 당 첫 subscription 만 처리 (race 해소)
+    // 사장님 한 사이클 안에 같은 알림 multi-device 중복 차단.
+    if (!eligibleByUser.has(sub.user_id)) {
+      eligibleByUser.set(sub.user_id, sub);
     } else {
-      failed += 1;
+      skipped += 1;
+    }
+  }
+  const eligibleSubs = [...eligibleByUser.values()];
+  const eligible = eligibleSubs.length;
+
+  // 스켈레톤 payload — 향후 user_alert_rules / user_policy_inbox_items 매칭으로 개선.
+  // 5/27 단계: 발송 cron + 시점 학습 동작 검증이 우선.
+  const payload: PushPayload = {
+    title: "키피오 정책 알림",
+    body: "오늘의 새 정책 매칭을 확인해보세요",
+    url: "/mypage",
+  };
+
+  // 5) 청크 처리 (Promise.allSettled + CONCURRENCY=20) — 5/27 P1-3 review fix
+  //    subscriber 1000+ 시 maxDuration 60s 초과 차단.
+  let sent = 0;
+  let failed = 0;
+  for (let i = 0; i < eligibleSubs.length; i += CONCURRENCY) {
+    const chunk = eligibleSubs.slice(i, i + CONCURRENCY);
+    const chunkResults = await Promise.allSettled(
+      chunk.map((sub) => sendPushToSubscription(sub, payload)),
+    );
+    for (let j = 0; j < chunkResults.length; j++) {
+      const r = chunkResults[j];
+      const sub = chunk[j];
+      if (r.status === "fulfilled" && r.value.status === "success") {
+        sent += 1;
+        if (sub.user_id) userSentRecently.add(sub.user_id);
+      } else {
+        failed += 1;
+      }
     }
   }
 
