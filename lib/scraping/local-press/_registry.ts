@@ -58,6 +58,7 @@ import { scrapeYeosuAndInsert } from "./yeosu";
 import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
 import { scrapeBusanjinAndInsert } from "./busanjin";
+import { scrapeGeumjeongAndInsert } from "./geumjeong";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
 import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
@@ -124,7 +125,8 @@ export type CityKey =
   | "donggu_gwangju"
   | "namdong_incheon"
   | "gyeyang_incheon"
-  | "michuhol_incheon";
+  | "michuhol_incheon"
+  | "geumjeong";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -609,6 +611,16 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "미추홀구청",
     siteUrl: "https://www.michuhol.go.kr/main/board/list.do?board_code=news_item",
     fn: scrapeMichuholAndInsert,
+  },
+  // 2026-05-27 — 금정구 22만 (부산 자치구). 부산진 동일 SI CMS (board.geumj?boardId=BBS_0000004).
+  // detail body class="contents" (busanjin 의 view_cont 와 다름, 정규식 fallback 확장).
+  {
+    key: "geumjeong",
+    city: "금정구",
+    ministry: "금정구청",
+    siteUrl:
+      "https://www.geumjeong.go.kr/board/list.geumj?boardId=BBS_0000004",
+    fn: scrapeGeumjeongAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
