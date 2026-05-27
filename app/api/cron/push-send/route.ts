@@ -21,7 +21,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
-import { sendPushToSubscription, type PushPayload } from "@/lib/push/send";
+import { sendPushToSubscription } from "@/lib/push/send";
+import { buildPushPayloadForUser } from "@/lib/push/match-payload";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -124,26 +125,36 @@ async function run() {
   const eligibleSubs = [...eligibleByUser.values()];
   const eligible = eligibleSubs.length;
 
-  // 스켈레톤 payload — 향후 user_alert_rules / user_policy_inbox_items 매칭으로 개선.
-  // 5/27 단계: 발송 cron + 시점 학습 동작 검증이 우선.
-  const payload: PushPayload = {
-    title: "키피오 정책 알림",
-    body: "오늘의 새 정책 매칭을 확인해보세요",
-    url: "/mypage",
-  };
-
-  // 5) 청크 처리 (Promise.allSettled + CONCURRENCY=20) — 5/27 P1-3 review fix
-  //    subscriber 1000+ 시 maxDuration 60s 초과 차단.
+  // 5) 사용자별 매칭 payload 빌더 — 매칭 0건이면 skip (5/27 follow-up).
+  //    user_alert_rules × 24h 신규 정책 매칭. 매칭 1건 이상 → 가장 최신 정책.
+  //    no_match 도 skipped 카운트로 묶어 cron audit 노이즈 차단.
   let sent = 0;
   let failed = 0;
-  for (let i = 0; i < eligibleSubs.length; i += CONCURRENCY) {
-    const chunk = eligibleSubs.slice(i, i + CONCURRENCY);
+  let noMatch = 0;
+  const subsWithPayload: Array<{
+    sub: SubscriberRow;
+    payload: import("@/lib/push/send").PushPayload;
+  }> = [];
+  for (const sub of eligibleSubs) {
+    if (!sub.user_id) continue;
+    const payload = await buildPushPayloadForUser(admin, sub.user_id);
+    if (!payload) {
+      noMatch += 1;
+      continue;
+    }
+    subsWithPayload.push({ sub, payload });
+  }
+
+  // 6) 청크 처리 (Promise.allSettled + CONCURRENCY=20) — 5/27 P1-3 review fix
+  //    subscriber 1000+ 시 maxDuration 60s 초과 차단.
+  for (let i = 0; i < subsWithPayload.length; i += CONCURRENCY) {
+    const chunk = subsWithPayload.slice(i, i + CONCURRENCY);
     const chunkResults = await Promise.allSettled(
-      chunk.map((sub) => sendPushToSubscription(sub, payload)),
+      chunk.map(({ sub, payload }) => sendPushToSubscription(sub, payload)),
     );
     for (let j = 0; j < chunkResults.length; j++) {
       const r = chunkResults[j];
-      const sub = chunk[j];
+      const { sub } = chunk[j];
       if (r.status === "fulfilled" && r.value.status === "success") {
         sent += 1;
         if (sub.user_id) userSentRecently.add(sub.user_id);
@@ -158,8 +169,10 @@ async function run() {
     hour_kst: hourKst,
     total_subscribers: subscribers.length,
     eligible,
+    eligible_with_match: subsWithPayload.length,
     sent,
     skipped,
+    no_match: noMatch,
     failed,
   };
 }
