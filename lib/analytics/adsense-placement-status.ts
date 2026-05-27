@@ -28,6 +28,8 @@ const PLACEMENTS: Array<{ key: string; label: string }> = [
   { key: "detail", label: "대출/뉴스 상세" },
   { key: "category", label: "카테고리 hub / 키워드" },
   { key: "eligibility", label: "자격 진단 hub" },
+  // 5/27 추가 — blog detail 본문 inline + news detail 본문 inline.
+  { key: "article", label: "블로그·뉴스 본문 inline" },
 ];
 
 function envHas(key: string): boolean {

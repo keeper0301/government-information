@@ -10,12 +10,15 @@ const SLOT_DEFAULT = process.env.NEXT_PUBLIC_ADSENSE_SLOT_INFEED;
 const LAYOUT_DEFAULT = process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_INFEED;
 
 // 위치별 slot ID 매핑 — env 미설정 시 default fallback.
+// 'article' (5/27 추가): blog detail 본문 inline + news detail 본문 inline.
+//   기존 'detail' 은 detail 끝 (본문 read 후). 'article' 은 본문 중/끝 inline (read flow).
 const PLACEMENT_SLOTS: Record<AdPlacement, string | undefined> = {
   home: process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME,
   list: process.env.NEXT_PUBLIC_ADSENSE_SLOT_LIST,
   detail: process.env.NEXT_PUBLIC_ADSENSE_SLOT_DETAIL,
   category: process.env.NEXT_PUBLIC_ADSENSE_SLOT_CATEGORY,
   eligibility: process.env.NEXT_PUBLIC_ADSENSE_SLOT_ELIGIBILITY,
+  article: process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE,
   default: undefined,
 };
 const PLACEMENT_LAYOUTS: Record<AdPlacement, string | undefined> = {
@@ -24,6 +27,7 @@ const PLACEMENT_LAYOUTS: Record<AdPlacement, string | undefined> = {
   detail: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_DETAIL,
   category: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_CATEGORY,
   eligibility: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_ELIGIBILITY,
+  article: process.env.NEXT_PUBLIC_ADSENSE_LAYOUT_ARTICLE,
   default: undefined,
 };
 
@@ -38,6 +42,7 @@ export type AdPlacement =
   | "detail"
   | "category"
   | "eligibility"
+  | "article"
   | "default";
 
 interface AdSlotProps {

@@ -17,6 +17,7 @@ import { ArticleSchema, FAQSchema, BreadcrumbSchema } from "@/components/json-ld
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
 import { getCategoryGradient, getCategoryGradientCss } from "@/lib/blog-cover";
+import { AdSlot } from "@/components/ad-slot";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 
@@ -256,6 +257,13 @@ export default async function BlogPostPage({
           className="blog-content text-[16px] text-grey-900 leading-[1.8]"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
+
+        {/* AdSense 본문 inline (5/27 신규 placement='article').
+            본문 read 후 + FAQ 전 자연스러운 위치 — 광고 차단기 역할 안 함.
+            기존 'detail' (news detail 끝) 과 다른 위치 분리 → CTR 비교 가능. */}
+        <div className="my-8">
+          <AdSlot placement="article" />
+        </div>
 
         {/* FAQ 섹션 (구조화 데이터와 별개로 사용자에게도 보여줌) */}
         {post.faqs && post.faqs.length > 0 && (
