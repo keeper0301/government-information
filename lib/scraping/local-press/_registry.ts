@@ -59,6 +59,7 @@ import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
 import { scrapeBusanjinAndInsert } from "./busanjin";
 import { scrapeGeumjeongAndInsert } from "./geumjeong";
+import { scrapeDongnaeAndInsert } from "./dongnae";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
 import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
@@ -126,7 +127,8 @@ export type CityKey =
   | "namdong_incheon"
   | "gyeyang_incheon"
   | "michuhol_incheon"
-  | "geumjeong";
+  | "geumjeong"
+  | "dongnae";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -621,6 +623,16 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.geumjeong.go.kr/board/list.geumj?boardId=BBS_0000004",
     fn: scrapeGeumjeongAndInsert,
+  },
+  // 2026-05-27 — 동래구 27만 (부산 자치구). 부산진·금정 동일 SI CMS.
+  // boardId=BBS_0000001 + menuCd=DOM_000000103001005000.
+  {
+    key: "dongnae",
+    city: "동래구",
+    ministry: "동래구청",
+    siteUrl:
+      "https://www.dongnae.go.kr/board/list.dongnae?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
+    fn: scrapeDongnaeAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
