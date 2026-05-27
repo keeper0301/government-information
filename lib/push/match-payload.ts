@@ -65,7 +65,10 @@ export async function buildPushPayloadForUser(
     .from("user_alert_rules")
     .select("*")
     .eq("user_id", userId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    // 2026-05-27: channels 에 'push' 포함된 rule 만 — 사용자 명시 opt-in.
+    // spam 차단 + 사용자 통제권. PostgREST array contains: cs (contains).
+    .contains("channels", ["push"]);
   if (error || !rules || rules.length === 0) return null;
 
   // cohort gate 용 signals — 한 user 1회만 fetch (closure cache)

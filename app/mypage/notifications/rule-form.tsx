@@ -284,6 +284,28 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
                 에서 <strong>카카오 알림톡 수신</strong> 동의를 켜 주세요.
               </p>
             )}
+            {/* PWA 푸시 채널 — 2026-05-27 Spec 3. 사용자 PWA 구독 + channels.push 둘 다 필요. */}
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={channels.includes("push")}
+                onChange={(e) =>
+                  setChannels(
+                    e.target.checked
+                      ? Array.from(new Set([...channels, "push"]))
+                      : channels.filter((c) => c !== "push"),
+                  )
+                }
+              />
+              <span>PWA 푸시</span>
+              <span className="ml-1 text-[12px] text-gray-500">
+                — 브라우저 알림 (구독 안 했으면{" "}
+                <Link href="/mypage#account" className="text-blue-600 underline">
+                  계정 탭
+                </Link>
+                에서 켜기)
+              </span>
+            </label>
           </div>
           {channels.includes("kakao") && (
             <input
