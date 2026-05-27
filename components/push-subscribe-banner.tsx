@@ -88,7 +88,7 @@ export function PushSubscribeBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Link
-            href="/mypage/account"
+            href="/mypage#account"
             className="rounded-md bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
           >
             알림 설정 →
