@@ -61,6 +61,8 @@ import { scrapeBusanjinAndInsert } from "./busanjin";
 import { scrapeGeumjeongAndInsert } from "./geumjeong";
 import { scrapeDongnaeAndInsert } from "./dongnae";
 import { scrapeBsbukguAndInsert } from "./bsbukgu";
+import { scrapeSasangAndInsert } from "./sasang";
+import { scrapeGijangAndInsert } from "./gijang";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
 import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
@@ -130,7 +132,9 @@ export type CityKey =
   | "michuhol_incheon"
   | "geumjeong"
   | "dongnae"
-  | "bsbukgu";
+  | "bsbukgu"
+  | "sasang"
+  | "gijang";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -645,6 +649,24 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.bsbukgu.go.kr/board/list.bsbukgu?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
     fn: scrapeBsbukguAndInsert,
+  },
+  // 2026-05-27 — 부산 사상구 21만. SI 표준 동일.
+  {
+    key: "sasang",
+    city: "사상구",
+    ministry: "사상구청",
+    siteUrl:
+      "https://www.sasang.go.kr/board/list.sasang?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
+    fn: scrapeSasangAndInsert,
+  },
+  // 2026-05-27 — 부산 기장군 16만 (부산 16 자치구 중 유일한 '군'). SI 표준 동일.
+  {
+    key: "gijang",
+    city: "기장군",
+    ministry: "기장군청",
+    siteUrl:
+      "https://www.gijang.go.kr/board/list.gijang?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
+    fn: scrapeGijangAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
