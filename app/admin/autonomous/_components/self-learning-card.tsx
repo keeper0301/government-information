@@ -10,6 +10,8 @@ import type {
   SelfLearningSnapshot,
   SelfLearningPressTier,
   SelfLearningPopularityWeights,
+  PressTierHistoryEntry,
+  PopularityWeightsHistoryEntry,
   PressTierAppliedBy,
 } from "@/lib/self-learning/snapshot";
 
@@ -30,6 +32,25 @@ function formatKstDate(iso: string): string {
   const d = new Date(iso);
   const kst = new Date(d.getTime() + 9 * 3600_000);
   return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, "0")}-${String(kst.getUTCDate()).padStart(2, "0")}`;
+}
+
+// timeline 표시용 — '05/27' 단축 (year 생략)
+function formatKstShort(iso: string): string {
+  const d = new Date(iso);
+  const kst = new Date(d.getTime() + 9 * 3600_000);
+  return `${String(kst.getUTCMonth() + 1).padStart(2, "0")}/${String(kst.getUTCDate()).padStart(2, "0")}`;
+}
+
+// applied_by → 이모지 (timeline 가독성)
+const APPLIED_BY_ICON: Record<PressTierAppliedBy, string> = {
+  initial_seed: "🌱",
+  cron_learn: "🤖",
+  manual_override: "👤",
+};
+
+function truncateReason(reason: string, max = 50): string {
+  if (reason.length <= max) return reason;
+  return reason.slice(0, max - 1) + "…";
 }
 
 function Tag({ tone, label }: { tone: string; label: string }) {
@@ -132,6 +153,80 @@ function PopularityWeightsBlock({ data }: { data: SelfLearningPopularityWeights 
   );
 }
 
+function HistoryTimeline({
+  pressHistory,
+  popularityHistory,
+}: {
+  pressHistory: PressTierHistoryEntry[];
+  popularityHistory: PopularityWeightsHistoryEntry[];
+}) {
+  // 두 history 모두 latest 1개 이하면 timeline 가치 ↓ (변화 없음)
+  if (pressHistory.length <= 1 && popularityHistory.length <= 1) return null;
+
+  return (
+    <div className="mt-4 border-t border-slate-100 pt-3">
+      <h3 className="mb-2 text-xs font-semibold text-slate-700">
+        📜 최근 학습 history (최대 7주)
+      </h3>
+      <div className="space-y-3">
+        {pressHistory.length > 1 && (
+          <div>
+            <div className="mb-1 text-[11px] font-medium text-blue-700">
+              Spec 1 · tier_floor
+            </div>
+            <ol className="space-y-1">
+              {pressHistory.map((row, idx) => (
+                <li
+                  key={`tier-${idx}-${row.effectiveFrom}`}
+                  className="flex items-start gap-1.5 text-[11px] text-slate-700"
+                >
+                  <span className="shrink-0 w-4">{APPLIED_BY_ICON[row.appliedBy]}</span>
+                  <span className="shrink-0 w-9 text-slate-500">
+                    {formatKstShort(row.effectiveFrom)}
+                  </span>
+                  <span className="shrink-0 w-10 font-semibold text-slate-900">
+                    {row.tierFloor}
+                  </span>
+                  <span className="text-slate-600 leading-snug">
+                    {truncateReason(row.reason)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {popularityHistory.length > 1 && (
+          <div>
+            <div className="mb-1 text-[11px] font-medium text-emerald-700">
+              Spec 2 · weights (apply_weight)
+            </div>
+            <ol className="space-y-1">
+              {popularityHistory.map((row, idx) => (
+                <li
+                  key={`weights-${idx}-${row.effectiveFrom}`}
+                  className="flex items-start gap-1.5 text-[11px] text-slate-700"
+                >
+                  <span className="shrink-0 w-4">{APPLIED_BY_ICON[row.appliedBy]}</span>
+                  <span className="shrink-0 w-9 text-slate-500">
+                    {formatKstShort(row.effectiveFrom)}
+                  </span>
+                  <span className="shrink-0 w-10 font-semibold text-slate-900">
+                    {row.applyWeight}
+                  </span>
+                  <span className="text-slate-600 leading-snug">
+                    {truncateReason(row.reason)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function SelfLearningCard({ snapshot }: { snapshot: SelfLearningSnapshot }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5">
@@ -161,6 +256,11 @@ export function SelfLearningCard({ snapshot }: { snapshot: SelfLearningSnapshot 
           </div>
         )}
       </div>
+
+      <HistoryTimeline
+        pressHistory={snapshot.pressTierHistory}
+        popularityHistory={snapshot.popularityWeightsHistory}
+      />
     </section>
   );
 }

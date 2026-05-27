@@ -36,9 +36,29 @@ export type SelfLearningPopularityWeights = {
   nextCronKst: string; // 'YYYY-MM-DD 02:30 KST'
 };
 
+// 7주 추세 timeline 표시용 — latest 보다 간소화된 형식
+export type PressTierHistoryEntry = {
+  tierFloor: "high" | "mid" | "low";
+  appliedBy: PressTierAppliedBy;
+  effectiveFrom: string;
+  reason: string;
+};
+
+export type PopularityWeightsHistoryEntry = {
+  viewWeight: number;
+  applyWeight: number;
+  maxBoost: number;
+  appliedBy: PressTierAppliedBy;
+  effectiveFrom: string;
+  reason: string;
+};
+
 export type SelfLearningSnapshot = {
   pressTier: SelfLearningPressTier | null;
   popularityWeights: SelfLearningPopularityWeights | null;
+  // 7주 추세 — latest 포함 (history[0] = pressTier 와 같은 row). 회귀 위험 0.
+  pressTierHistory: PressTierHistoryEntry[];
+  popularityWeightsHistory: PopularityWeightsHistoryEntry[];
 };
 
 // 다음 월요일 KST 일자 (YYYY-MM-DD).
@@ -69,6 +89,7 @@ export async function getSelfLearningSnapshot(): Promise<SelfLearningSnapshot> {
   const admin = createAdminClient();
   const now = new Date();
 
+  // 7주 추세 위해 limit(7) — history[0] 가 latest (단일 source).
   const [tierRes, weightsRes] = await Promise.all([
     admin
       .from("press_auto_confirm_settings")
@@ -76,55 +97,95 @@ export async function getSelfLearningSnapshot(): Promise<SelfLearningSnapshot> {
         "tier_floor, applied_by, reason, effective_from, mid_revoke_rate_7d, low_confirm_rate_7d, mid_decided_count, low_decided_count",
       )
       .order("effective_from", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(7),
     admin
       .from("popularity_weights_history")
       .select(
         "view_weight, apply_weight, max_boost, applied_by, reason, effective_from, conversion_rate_30d, unique_users_30d, total_events_30d",
       )
       .order("effective_from", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(7),
   ]);
 
-  const pressTier: SelfLearningPressTier | null = tierRes.data
+  const tierRows = (tierRes.data ?? []) as Array<{
+    tier_floor: string;
+    applied_by: string;
+    reason: string;
+    effective_from: string;
+    mid_revoke_rate_7d: number | null;
+    low_confirm_rate_7d: number | null;
+    mid_decided_count: number | null;
+    low_decided_count: number | null;
+  }>;
+  const weightsRows = (weightsRes.data ?? []) as Array<{
+    view_weight: number;
+    apply_weight: number;
+    max_boost: number;
+    applied_by: string;
+    reason: string;
+    effective_from: string;
+    conversion_rate_30d: number | null;
+    unique_users_30d: number | null;
+    total_events_30d: number | null;
+  }>;
+  const tierLatest = tierRows[0] ?? null;
+  const weightsLatest = weightsRows[0] ?? null;
+
+  const pressTier: SelfLearningPressTier | null = tierLatest
     ? {
-        current: tierRes.data.tier_floor as "high" | "mid" | "low",
-        appliedBy: tierRes.data.applied_by as PressTierAppliedBy,
-        reason: tierRes.data.reason,
-        effectiveFrom: tierRes.data.effective_from,
+        current: tierLatest.tier_floor as "high" | "mid" | "low",
+        appliedBy: tierLatest.applied_by as PressTierAppliedBy,
+        reason: tierLatest.reason,
+        effectiveFrom: tierLatest.effective_from,
         midRevokeRate7d:
-          tierRes.data.mid_revoke_rate_7d === null
+          tierLatest.mid_revoke_rate_7d === null
             ? null
-            : Number(tierRes.data.mid_revoke_rate_7d),
+            : Number(tierLatest.mid_revoke_rate_7d),
         lowConfirmRate7d:
-          tierRes.data.low_confirm_rate_7d === null
+          tierLatest.low_confirm_rate_7d === null
             ? null
-            : Number(tierRes.data.low_confirm_rate_7d),
-        midDecidedCount: tierRes.data.mid_decided_count,
-        lowDecidedCount: tierRes.data.low_decided_count,
+            : Number(tierLatest.low_confirm_rate_7d),
+        midDecidedCount: tierLatest.mid_decided_count,
+        lowDecidedCount: tierLatest.low_decided_count,
         nextCronKst: `${nextMondayKst(now, 2, 0)} 02:00`,
       }
     : null;
 
-  const popularityWeights: SelfLearningPopularityWeights | null = weightsRes.data
+  const popularityWeights: SelfLearningPopularityWeights | null = weightsLatest
     ? {
-        viewWeight: Number(weightsRes.data.view_weight),
-        applyWeight: Number(weightsRes.data.apply_weight),
-        maxBoost: Number(weightsRes.data.max_boost),
-        appliedBy: weightsRes.data.applied_by as PressTierAppliedBy,
-        reason: weightsRes.data.reason,
-        effectiveFrom: weightsRes.data.effective_from,
+        viewWeight: Number(weightsLatest.view_weight),
+        applyWeight: Number(weightsLatest.apply_weight),
+        maxBoost: Number(weightsLatest.max_boost),
+        appliedBy: weightsLatest.applied_by as PressTierAppliedBy,
+        reason: weightsLatest.reason,
+        effectiveFrom: weightsLatest.effective_from,
         conversionRate30d:
-          weightsRes.data.conversion_rate_30d === null
+          weightsLatest.conversion_rate_30d === null
             ? null
-            : Number(weightsRes.data.conversion_rate_30d),
-        uniqueUsers30d: weightsRes.data.unique_users_30d,
-        totalEvents30d: weightsRes.data.total_events_30d,
+            : Number(weightsLatest.conversion_rate_30d),
+        uniqueUsers30d: weightsLatest.unique_users_30d,
+        totalEvents30d: weightsLatest.total_events_30d,
         nextCronKst: `${nextMondayKst(now, 2, 30)} 02:30`,
       }
     : null;
 
-  return { pressTier, popularityWeights };
+  const pressTierHistory: PressTierHistoryEntry[] = tierRows.map((r) => ({
+    tierFloor: r.tier_floor as "high" | "mid" | "low",
+    appliedBy: r.applied_by as PressTierAppliedBy,
+    effectiveFrom: r.effective_from,
+    reason: r.reason,
+  }));
+
+  const popularityWeightsHistory: PopularityWeightsHistoryEntry[] = weightsRows.map(
+    (r) => ({
+      viewWeight: Number(r.view_weight),
+      applyWeight: Number(r.apply_weight),
+      maxBoost: Number(r.max_boost),
+      appliedBy: r.applied_by as PressTierAppliedBy,
+      effectiveFrom: r.effective_from,
+      reason: r.reason,
+    }),
+  );
+
+  return { pressTier, popularityWeights, pressTierHistory, popularityWeightsHistory };
 }
