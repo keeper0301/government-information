@@ -8,6 +8,7 @@
 import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { removeSubscription } from "./subscribe";
+import { signPushLogId } from "./track-token";
 
 export type PushPayload = {
   title: string;
@@ -97,7 +98,9 @@ export async function sendPushToSubscription(
     };
   }
 
-  // 2) web-push 발송 — payload.data 에 logId 포함 (sw 가 클릭 시 사용)
+  // 2) web-push 발송 — payload.data 에 logId + HMAC token 포함.
+  //    sw 가 클릭 시 endpoint POST 에 둘 다 전송 → endpoint 가 verify.
+  //    P1-1 review fix (2026-05-27): attacker 의 logId guess 공격 차단.
   const wpPayload = JSON.stringify({
     title: payload.title,
     body: payload.body,
@@ -106,6 +109,7 @@ export async function sendPushToSubscription(
     icon: payload.icon ?? "/icon.svg",
     badge: payload.badge ?? "/icon.svg",
     logId: logRow.id,
+    token: signPushLogId(logRow.id),
   });
 
   try {

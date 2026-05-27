@@ -5,15 +5,17 @@
 // push_notification_log.clicked_at + click_hour_kst update.
 // push-time-learn cron 이 이 데이터를 사용해 시간대별 click_rate 학습.
 //
-// 보안:
-//   - logId 는 BIGINT 라 guess 어려움
-//   - 다른 user 의 logId 를 임의로 click marking 하더라도 영향은 그 user 의
-//     학습 데이터에 +1 click. 부정 가치 ↓ + 학습 cron 이 user 별 독립.
-//   - 추가 가드 필요 시 future: logId + signed token (HMAC) 패턴 도입.
+// 보안 (2026-05-27 P1-1 review fix):
+//   - logId 1..N brute-force POST 공격 차단 위해 HMAC token verify.
+//   - send.ts 가 payload.data.token = signPushLogId(logId) 동봉 → sw 가
+//     endpoint POST 에 logId + token 둘 다 전송 → verifyPushLogToken 검증.
+//   - 검증 실패 시 401 (verbose 누설 X).
+//   - 이미 click marked row 는 멱등 skip (같은 알림 반복 클릭 시 첫 클릭만).
 // ============================================================
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyPushLogToken } from "@/lib/push/track-token";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +26,7 @@ function nowHourKst(): number {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { logId?: number | string };
+    const body = (await request.json()) as { logId?: number | string; token?: string };
     const logId =
       typeof body.logId === "number"
         ? body.logId
@@ -33,6 +35,9 @@ export async function POST(request: Request) {
           : NaN;
     if (!Number.isFinite(logId) || logId <= 0) {
       return NextResponse.json({ ok: false, error: "invalid_logId" }, { status: 400 });
+    }
+    if (!verifyPushLogToken(logId, body.token)) {
+      return NextResponse.json({ ok: false, error: "invalid_token" }, { status: 401 });
     }
 
     const admin = createAdminClient();

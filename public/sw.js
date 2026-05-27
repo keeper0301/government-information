@@ -116,6 +116,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const rawUrl = event.notification.data?.url || "/";
   const logId = event.notification.data?.logId;
+  const token = event.notification.data?.token;
   let targetUrl = "/";
   try {
     const resolved = new URL(rawUrl, self.location.origin);
@@ -126,11 +127,12 @@ self.addEventListener("notificationclick", (event) => {
     // 잘못된 URL → "/" fallback
   }
   // 클릭 추적 — 실패해도 navigate 진행 (사용자 경험 우선)
-  const trackPromise = logId
+  // 2026-05-27 P1-1: token 동봉 — endpoint 가 HMAC verify (brute-force 차단)
+  const trackPromise = logId && token
     ? fetch("/api/push/track-click", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logId }),
+        body: JSON.stringify({ logId, token }),
         keepalive: true,
       }).catch(() => {})
     : Promise.resolve();
