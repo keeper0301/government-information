@@ -8,11 +8,21 @@
 // marking 해서 push-time-learn 의 시간대 학습을 오염시키는 사고 차단.
 //
 // 보안:
-//   - SECRET = process.env.CRON_SECRET (재사용). 별도 PUSH_TRACK_HMAC_SECRET
-//     으로 분리하면 secret 노출 영향 격리 가능 (P2 follow-up).
+//   - SECRET 우선순위 (5/27 P2 follow-up — secret 분리):
+//       1. PUSH_TRACK_HMAC_SECRET (별도 env, 권장 — 노출 영향 격리)
+//       2. CRON_SECRET (fallback, 호환)
 //   - HMAC-SHA256 → hex slice(0,16) 8바이트. brute-force 비용 2^64 →
 //     단일 logId guess 비용 천문학적. multi-logId 공격에도 안전.
 //   - timing-safe compare 사용 (crypto.timingSafeEqual) — side-channel 방어.
+//
+// Vercel env 등록 (사장님 액션):
+//   Settings → Environment Variables → Add:
+//     Key: PUSH_TRACK_HMAC_SECRET
+//     Value: openssl rand -base64 32 또는 PowerShell:
+//       [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+//     Target: Production · Preview · Development 모두
+//     Sensitive: ON
+//   미등록 시 CRON_SECRET 자동 사용 (회귀 0). 등록 후 재배포 시점에 분리.
 // ============================================================
 
 import { createHmac, timingSafeEqual } from "node:crypto";
@@ -20,9 +30,16 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const TOKEN_LEN = 16; // hex 16자 = 8 byte (≈64 bit security)
 
 function getSecret(): string {
-  const s = process.env.CRON_SECRET;
-  if (!s) throw new Error("CRON_SECRET env missing — push track-token unavailable");
-  return s;
+  // 1순위: 별도 env (권장). 미설정 시 CRON_SECRET fallback (회귀 호환).
+  const dedicated = process.env.PUSH_TRACK_HMAC_SECRET;
+  if (dedicated) return dedicated;
+  const cron = process.env.CRON_SECRET;
+  if (!cron) {
+    throw new Error(
+      "PUSH_TRACK_HMAC_SECRET or CRON_SECRET env missing — push track-token unavailable",
+    );
+  }
+  return cron;
 }
 
 // logId 를 받아 hex token (16자) 반환.
