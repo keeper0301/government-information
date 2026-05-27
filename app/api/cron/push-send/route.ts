@@ -125,9 +125,11 @@ async function run() {
   const eligibleSubs = [...eligibleByUser.values()];
   const eligible = eligibleSubs.length;
 
-  // 5) 사용자별 매칭 payload 빌더 — 매칭 0건이면 skip (5/27 follow-up).
-  //    user_alert_rules × 24h 신규 정책 매칭. 매칭 1건 이상 → 가장 최신 정책.
-  //    no_match 도 skipped 카운트로 묶어 cron audit 노이즈 차단.
+  // 5) 사용자별 매칭 payload 빌더 — 청크 처리 (P1-2 5/27 review fix).
+  //    cohort gate (6eb9552) 로 user 당 query 가 user_alert_rules + user_profile +
+  //    business_profile + findMatchingPrograms (rule × 2 table) = 평균 5건.
+  //    user 50+ 시 직렬 처리 = 50 × 5 × 200ms = 50s. maxDuration 60s 직전.
+  //    청크 (CONCURRENCY=20 + Promise.allSettled) 로 5 chunk × ~1s = 안전 마진.
   let sent = 0;
   let failed = 0;
   let noMatch = 0;
@@ -135,14 +137,27 @@ async function run() {
     sub: SubscriberRow;
     payload: import("@/lib/push/send").PushPayload;
   }> = [];
-  for (const sub of eligibleSubs) {
-    if (!sub.user_id) continue;
-    const payload = await buildPushPayloadForUser(admin, sub.user_id);
-    if (!payload) {
-      noMatch += 1;
-      continue;
+  for (let i = 0; i < eligibleSubs.length; i += CONCURRENCY) {
+    const chunk = eligibleSubs.slice(i, i + CONCURRENCY);
+    const chunkResults = await Promise.allSettled(
+      chunk.map(async (sub) => {
+        if (!sub.user_id) return { sub, payload: null };
+        const payload = await buildPushPayloadForUser(admin, sub.user_id);
+        return { sub, payload };
+      }),
+    );
+    for (const r of chunkResults) {
+      if (r.status === "fulfilled") {
+        if (r.value.payload) {
+          subsWithPayload.push({ sub: r.value.sub, payload: r.value.payload });
+        } else {
+          noMatch += 1;
+        }
+      } else {
+        // payload 빌드 실패 (cohort gate fetch DB error 등) → no_match 로 묶음
+        noMatch += 1;
+      }
     }
-    subsWithPayload.push({ sub, payload });
   }
 
   // 6) 청크 처리 (Promise.allSettled + CONCURRENCY=20) — 5/27 P1-3 review fix
