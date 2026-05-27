@@ -63,6 +63,7 @@ import { scrapeDongnaeAndInsert } from "./dongnae";
 import { scrapeBsbukguAndInsert } from "./bsbukgu";
 import { scrapeSasangAndInsert } from "./sasang";
 import { scrapeGijangAndInsert } from "./gijang";
+import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
 import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
@@ -134,7 +135,8 @@ export type CityKey =
   | "dongnae"
   | "bsbukgu"
   | "sasang"
-  | "gijang";
+  | "gijang"
+  | "ongjin";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -667,6 +669,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gijang.go.kr/board/list.gijang?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
     fn: scrapeGijangAndInsert,
+  },
+  // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
+  {
+    key: "ongjin",
+    city: "옹진군",
+    ministry: "옹진군청",
+    siteUrl: "https://www.ongjin.go.kr/main/community/notify/report.jsp",
+    fn: scrapeOngjinAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
