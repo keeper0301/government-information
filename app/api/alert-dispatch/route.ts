@@ -20,15 +20,6 @@ import {
   type BusinessProfile,
   type BusinessMatch,
 } from "@/lib/eligibility/business-match";
-import type {
-  AgeOption,
-  BusinessIndustry,
-  BusinessRevenue,
-  BusinessEmployee,
-  BusinessType,
-  OccupationOption,
-  RegionOption,
-} from "@/lib/profile-options";
 import { isProgramAllowedForUser } from "@/lib/personalization/score";
 import { createUserSignalsLoader } from "@/lib/personalization/user-signals";
 
