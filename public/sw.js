@@ -111,9 +111,11 @@ self.addEventListener("push", (event) => {
 // 없으면 새 창으로 payload.url (default /) 오픈.
 // 2026-05-19 review fix — same-origin 가드. server bug 로 외부 origin 발송 시
 // keepioo 탭이 외부로 navigate 되는 사고 차단. attacker.com URL fallback "/".
+// 2026-05-27 Spec 3 — logId 있으면 track-click endpoint POST (시점 학습 데이터).
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const rawUrl = event.notification.data?.url || "/";
+  const logId = event.notification.data?.logId;
   let targetUrl = "/";
   try {
     const resolved = new URL(rawUrl, self.location.origin);
@@ -123,19 +125,31 @@ self.addEventListener("notificationclick", (event) => {
   } catch {
     // 잘못된 URL → "/" fallback
   }
+  // 클릭 추적 — 실패해도 navigate 진행 (사용자 경험 우선)
+  const trackPromise = logId
+    ? fetch("/api/push/track-click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logId }),
+        keepalive: true,
+      }).catch(() => {})
+    : Promise.resolve();
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if (
-          client.url.startsWith(self.location.origin) &&
-          "focus" in client
-        ) {
-          client.focus();
-          if ("navigate" in client) client.navigate(targetUrl);
-          return;
+    Promise.all([
+      trackPromise,
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        for (const client of clients) {
+          if (
+            client.url.startsWith(self.location.origin) &&
+            "focus" in client
+          ) {
+            client.focus();
+            if ("navigate" in client) client.navigate(targetUrl);
+            return;
+          }
         }
-      }
-      return self.clients.openWindow(targetUrl);
-    }),
+        return self.clients.openWindow(targetUrl);
+      }),
+    ]),
   );
 });

@@ -167,12 +167,13 @@ export function PushToggle() {
         <div>
           <p className="text-[14px] font-semibold text-grey-900 mb-0.5">
             🔔 PWA 푸시 알림
-            <span className="ml-1.5 text-[11px] font-normal text-amber-700">
-              곧 가동 예정
+            <span className="ml-1.5 text-[11px] font-normal text-emerald-700">
+              가동 중
             </span>
           </p>
           <p className="text-[12px] text-grey-600 leading-[1.5]">
-            새 정책 매칭 / 마감 임박 알림을 브라우저로 받아요. 발송 시작 시점에 안내드려요.
+            새 정책 매칭 / 마감 임박 알림을 브라우저로 받아요. 클릭률에 따라
+            발송 시간대가 자동으로 학습됩니다 (Spec 3).
           </p>
         </div>
         {status === "subscribed" ? (
