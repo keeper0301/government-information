@@ -19,6 +19,7 @@ import { AdSlot } from "@/components/ad-slot";
 import { BlogCategoryChips } from "@/components/blog-category-chips";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
 import { EnhanceProfileBanner } from "@/components/personalization/EnhanceProfileBanner";
+import { PushSubscribeBanner } from "@/components/push-subscribe-banner";
 import { loadUserProfile, type LoadedProfile } from "@/lib/personalization/load-profile";
 import {
   getPersonalizedRecentBlogs,
@@ -321,6 +322,10 @@ export default async function Home() {
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
       {showEnhanceBanner && <EnhanceProfileBanner />}
+
+      {/* PWA 푸시 구독 유도 — 로그인 + 미구독 사용자에게만 (client-side 판단).
+          7일 dismiss. Spec 3 발송 cron 가동 후 subscriber 0 → 첫 구독 가속. */}
+      <PushSubscribeBanner isLoggedIn={isLoggedIn} />
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           내러티브 4단계: 문제(Hero 카피) → 해결(Hero+RecommendCard) →
