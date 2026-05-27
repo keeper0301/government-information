@@ -35,6 +35,20 @@ export const scrapeBusan = makeScraper({
   listUrl: "https://www.busan.go.kr/nbtnewsBU",
 });
 
+// 2026-05-27 — 부산 자치구 SPA (정적 fetch 불가):
+// 수영구·해운대구 — 정적 curl 시 list 0건 (JS 렌더). Playwright 가동.
+export const scrapeSuyeong = makeScraper({
+  cityName: "수영구",
+  listUrl: "https://www.suyeong.go.kr/board/list.suyeong?menuCd=DOM_000000103001006000",
+});
+
+// 2026-05-27 — 해운대 구청 main bot 차단 + SPA. menuCd 는 다른 부산 자치구
+// 패턴 (DOM_000000103001005000) 추정. 다음 세션 manual test 후 verify.
+export const scrapeHaeundae = makeScraper({
+  cityName: "해운대구",
+  listUrl: "https://www.haeundae.go.kr/board/list.haeundae?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -44,10 +58,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     ansan: scrapeAnsan,
     cheonan: scrapeCheonan,
     busan: scrapeBusan,
+    suyeong: scrapeSuyeong,
+    haeundae: scrapeHaeundae,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });
