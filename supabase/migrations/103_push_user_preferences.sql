@@ -8,9 +8,9 @@
 --
 -- 학습 룰:
 --   - 누적 발송 < 14건 (2주 분량): default 시간대 유지 (9, 12, 18 KST)
---   - 누적 발송 ≥ 14건: click_rate_per_hour 상위 3개 시간대로 update
---
--- 변경 폭 cap: 한 사용자 당 한 사이클에 ±1 hour 만 변경 (overfit 차단)
+--   - 누적 발송 ≥ 14건 + click ≥ 1: click_rate_per_hour 상위 3개 시간대로 update
+--   - click 0: default 유지 (선호 불명)
+-- 동률 시 click 수 많은 시간 우선 (denominator 큰 신호 우선).
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS push_user_preferences (

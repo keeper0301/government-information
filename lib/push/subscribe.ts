@@ -76,14 +76,4 @@ export async function removeSubscription(
   }
 }
 
-export async function markSent(endpoint: string): Promise<void> {
-  try {
-    const admin = createAdminClient();
-    await admin
-      .from("push_subscriptions")
-      .update({ last_sent_at: new Date().toISOString() })
-      .eq("endpoint", endpoint);
-  } catch {
-    // graceful
-  }
-}
+// markSent 는 send.ts 의 last_sent_at update 로 대체 (5/27 Spec 3) — dead export 제거

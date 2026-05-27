@@ -93,7 +93,7 @@ async function run() {
   let sent = 0;
   let skipped = 0;
   let failed = 0;
-  const eligibleEndpoints: string[] = [];
+  let eligible = 0;
 
   // 스켈레톤 payload — 향후 user_alert_rules / user_policy_inbox_items 매칭으로 개선.
   // 5/27 단계: 발송 cron + 시점 학습 동작 검증이 우선.
@@ -117,7 +117,7 @@ async function run() {
       skipped += 1;
       continue;
     }
-    eligibleEndpoints.push(sub.endpoint);
+    eligible += 1;
     const result = await sendPushToSubscription(sub, payload);
     if (result.status === "success") {
       sent += 1;
@@ -131,7 +131,7 @@ async function run() {
     success: true,
     hour_kst: hourKst,
     total_subscribers: subscribers.length,
-    eligible: eligibleEndpoints.length,
+    eligible,
     sent,
     skipped,
     failed,

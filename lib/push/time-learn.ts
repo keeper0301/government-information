@@ -211,17 +211,4 @@ export async function listActiveLearnUsers(): Promise<string[]> {
   return [...set];
 }
 
-// 현재 KST hour 가 user 의 preferred_hours 에 포함되는지 — push-send cron 발송 판단
-export async function shouldSendForUserAtHour(
-  userId: string,
-  hourKst: number,
-): Promise<boolean> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("push_user_preferences")
-    .select("preferred_hours")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const hours: number[] = (data?.preferred_hours as number[] | undefined) ?? DEFAULT_HOURS;
-  return hours.includes(hourKst);
-}
+// shouldSendForUserAtHour 는 push-send cron 의 prefByUser map 으로 대체 (N+1 차단) — dead export 제거
