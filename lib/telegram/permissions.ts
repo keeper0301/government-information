@@ -34,6 +34,7 @@ export const PERMISSION_MATRIX: Readonly<Record<string, CommandPolicy>> = {
   stats: ["owner", "staff", "dev"],
   admin: ["owner", "staff", "dev"],
   queue: ["owner", "staff", "dev"],
+  selflearning: ["owner", "staff", "dev"],
 
   // 컨텐츠 운영 + 검수 (staff OK, dev X)
   press: ["owner", "staff"],

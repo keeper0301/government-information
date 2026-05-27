@@ -83,7 +83,7 @@ export function buildPushLearnLine(action: RecentAction): string[] {
   return [`  ✅ user ${total}명 학습 — 변경 ${changed} · skip ${skipped}`];
 }
 
-async function buildDigest(): Promise<string> {
+export async function buildDigest(): Promise<string> {
   // 직전 2시간 안 결과 (학습 cron 들이 02:00~03:00 가동, digest 03:30 호출)
   const [press, popularity, pushLearn] = await Promise.all([
     fetchRecentAction("press_confidence_tune_run", 2),

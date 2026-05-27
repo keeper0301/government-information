@@ -32,6 +32,7 @@ export function helpText(): string {
     "/today — 24h KPI",
     "/stats [welfare|loan|all] — enrich 진행률",
     "/admin — 어드민 빠른 링크",
+    "/selflearning — 자가 진화 학습 결과 즉시 (cron 안 기다리고)",
     "",
     "── 자동 등록 회수 ──",
     "/recent — 24h 자동 등록 5개 (revoke prefill)",

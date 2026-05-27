@@ -48,6 +48,7 @@ import {
   publishIndexnowCommand,
 } from "@/lib/telegram/admin/content";
 import { helpText } from "@/lib/telegram/admin/help";
+import { selfLearningCommand } from "@/lib/telegram/admin/self-learning";
 import { canExecute, denyMessage, type Role } from "@/lib/telegram/permissions";
 
 export interface CommandContext {
@@ -113,6 +114,8 @@ export async function dispatchCommand(ctx: CommandContext): Promise<string> {
       return statsCommand(args);
     case "admin":
       return adminLinksCommand();
+    case "selflearning":
+      return selfLearningCommand();
     default:
       return `알 수 없는 명령: /${name}\n\n${helpText()}`;
   }
