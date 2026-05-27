@@ -133,6 +133,9 @@ async function run() {
   let sent = 0;
   let failed = 0;
   let noMatch = 0;
+  // 5/27 P2 review fix — build 예외 (DB error 등) 와 정상 noMatch 분리.
+  // cron audit 시 build_failed 가 0 이 아니면 cohort gate fetch / matching engine 진단 필요.
+  let buildFailed = 0;
   const subsWithPayload: Array<{
     sub: SubscriberRow;
     payload: import("@/lib/push/send").PushPayload;
@@ -154,8 +157,8 @@ async function run() {
           noMatch += 1;
         }
       } else {
-        // payload 빌드 실패 (cohort gate fetch DB error 등) → no_match 로 묶음
-        noMatch += 1;
+        // payload 빌드 throw (cohort gate fetch DB error 등) — noMatch 와 별도 카운트
+        buildFailed += 1;
       }
     }
   }
@@ -188,6 +191,7 @@ async function run() {
     sent,
     skipped,
     no_match: noMatch,
+    build_failed: buildFailed,
     failed,
   };
 }

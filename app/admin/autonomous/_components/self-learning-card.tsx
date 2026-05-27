@@ -48,9 +48,19 @@ const APPLIED_BY_ICON: Record<PressTierAppliedBy, string> = {
   manual_override: "👤",
 };
 
+// 한국어 단어 경계 trim — 인스타 카드 readability 학습 패턴 적용 (5/16).
+// slice(0, max-1) 후 공백/·/,/. 마지막 위치 찾아 단어 중간 잘림 방지.
+// 마지막 break 가 max 의 60% 이전이면 자연 단위 못 찾은 것 — 어쩔 수 없이 max cut.
 function truncateReason(reason: string, max = 50): string {
   if (reason.length <= max) return reason;
-  return reason.slice(0, max - 1) + "…";
+  const slice = reason.slice(0, max - 1);
+  const breakChars = [" ", "·", ",", ".", "—", "→", "/"];
+  const lastBreak = Math.max(
+    ...breakChars.map((c) => slice.lastIndexOf(c)),
+  );
+  const minBreakAt = Math.floor(max * 0.6);
+  const cutAt = lastBreak > minBreakAt ? lastBreak : max - 1;
+  return slice.slice(0, cutAt).trimEnd() + "…";
 }
 
 function Tag({ tone, label }: { tone: string; label: string }) {
