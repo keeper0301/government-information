@@ -102,6 +102,7 @@
     { "path": "/api/cron/popularity-weights-tune", "schedule": "30 17 * * 0" },
 
     { "path": "/api/cron/push-send", "schedule": "0 * * * *" },
-    { "path": "/api/cron/push-time-learn", "schedule": "0 18 * * 0" }
+    { "path": "/api/cron/push-time-learn", "schedule": "0 18 * * 0" },
+    { "path": "/api/cron/self-learning-digest", "schedule": "30 18 * * 0" }
   ]
 }
