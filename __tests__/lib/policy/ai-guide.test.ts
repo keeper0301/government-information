@@ -3,9 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const mocks = vi.hoisted(() => ({ callLLM: vi.fn() }));
 vi.mock("@/lib/llm/text", () => ({
   callLLM: mocks.callLLM,
-  parseJSONResponse: (raw: string) => {
-    try { return JSON.parse(raw); } catch { return null; }
-  },
+  // 실제 lib/llm/text.ts 와 동일하게 invalid JSON 이면 throw.
+  parseJSONResponse: (raw: string) => JSON.parse(raw),
 }));
 
 import { generatePolicyGuide, buildPolicyGuidePrompt } from "@/lib/policy/ai-guide";

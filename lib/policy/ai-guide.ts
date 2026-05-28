@@ -59,19 +59,25 @@ export function buildPolicyGuidePrompt(input: PolicyGuideInput): string {
 export async function generatePolicyGuide(
   input: PolicyGuideInput,
 ): Promise<PolicyAiGuide> {
-  const raw = await callLLM({
-    prompt: buildPolicyGuidePrompt(input),
-    maxTokens: 600,
-    jsonMode: true,
-  });
-  const parsed = parseJSONResponse<{
-    tips?: string;
-    faq?: string;
-    checklist?: string;
-  }>(raw);
-  return {
-    tips: sanitize(parsed?.tips),
-    faq: sanitize(parsed?.faq),
-    checklist: sanitize(parsed?.checklist),
-  };
+  // LLM 호출 실패·JSON 파싱 실패 등 어떤 오류라도 모두 null 로 안전하게 반환.
+  // (실제 parseJSONResponse 는 invalid JSON 이면 throw 하므로 try/catch 필수)
+  try {
+    const raw = await callLLM({
+      prompt: buildPolicyGuidePrompt(input),
+      maxTokens: 600,
+      jsonMode: true,
+    });
+    const parsed = parseJSONResponse<{
+      tips?: string;
+      faq?: string;
+      checklist?: string;
+    }>(raw);
+    return {
+      tips: sanitize(parsed?.tips),
+      faq: sanitize(parsed?.faq),
+      checklist: sanitize(parsed?.checklist),
+    };
+  } catch {
+    return { tips: null, faq: null, checklist: null };
+  }
 }
