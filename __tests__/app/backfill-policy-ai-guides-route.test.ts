@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   requireAdminUser: vi.fn(),
   generatePolicyGuide: vi.fn(),
   rows: [] as Array<Record<string, unknown>>,
-  update: vi.fn(async () => ({ error: null })),
+  update: vi.fn(async (_patch?: Record<string, unknown>) => ({ error: null })),
 }));
 
 vi.mock("@/lib/admin-auth-server", () => ({

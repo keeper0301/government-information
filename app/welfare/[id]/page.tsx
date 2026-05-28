@@ -20,6 +20,7 @@ import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { isAdminUser } from "@/lib/admin-auth";
 import { findCandidateByProgramId } from "@/lib/press-ingest/candidates";
 import { AutoConfirmBadge } from "@/components/admin/auto-confirm-badge";
+import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -280,6 +281,15 @@ export default async function WelfareDetailPage({ params }: Props) {
           </div>
         </section>
       )}
+
+      {/* keepioo 자체 가치 박스 — AI 생성 팁/거절 사유/체크리스트.
+          백필 전 row 는 3 필드 NULL → template fallback. */}
+      <PolicyGuideBox
+        tips={(program as { ai_tips?: string | null }).ai_tips ?? null}
+        faq={(program as { ai_faq?: string | null }).ai_faq ?? null}
+        checklist={(program as { ai_checklist?: string | null }).ai_checklist ?? null}
+        category={program.category}
+      />
 
       {/* Description — InfoSection 통일 디자인. 카드 중복 라인 제거. 결과 비면 생략. */}
       {(() => {
