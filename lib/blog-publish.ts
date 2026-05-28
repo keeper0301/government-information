@@ -35,10 +35,11 @@ import {
 } from "@/lib/listing-sources";
 
 // AdSense 가이드 — 본문 길이 (한글 기준)
-// 1,000자 미만이면 "valuable inventory: low quality" 로 거절될 위험
-// 3,000자 초과는 가독성 떨어지고 AI 가 잡담 늘리는 신호 (재시도 권장)
-const MIN_CONTENT_LENGTH = 1000;
-const MAX_CONTENT_LENGTH = 3000;
+// 2026-05-28 자체 콘텐츠 가치 강화: AdSense "가치 콘텐츠" 거절 대응으로
+// 최소 2,000자로 상향 (얕은 요약 차단). 목표 본문 2,000~4,000자를 수용하도록
+// 상한도 4,500자로 상향 (이전 3,000 이면 4,000자 본문이 거절됐음).
+export const MIN_CONTENT_LENGTH = 2000;
+export const MAX_CONTENT_LENGTH = 4500;
 
 // SEO — meta description 길이 가드 (검색 스니펫 잘림 방지)
 // 프롬프트 지시는 150~160자(목표 155). 실제 Gemini 출력은 108~131자 폭 편차.
