@@ -1,8 +1,9 @@
-// 2026-05-18 OpenAI 사고 (본문 591~859자 × 26회) 학습 — 정상 본문 평균 1,950자.
-// 5/18 commit fc1326e (Gemini 복귀) 후 회복. 미래 동일 사고 시 사장님 즉시 인지.
+// 2026-05-18 OpenAI 사고 (본문 591~859자 × 26회) 학습.
+// 2026-05-28 자체 콘텐츠 강화로 본문 목표 1,700~2,300 → 2,800~3,800자 상향 →
+// 정상 범위도 동반 상향 (안 올리면 정상 발행이 매일 "본문 너무 김" 거짓 경보).
 // 양면 임계 — 너무 짧으면 LLM dysfunction, 너무 길면 AI 잡담 늘리는 신호.
-const NORMAL_AVG_BODY_MIN = 1700; // 정상 ~1,950자, 10% buffer 미만 = 사고 의심
-const NORMAL_AVG_BODY_MAX = 2800; // 가드 한도 3,000 의 7% buffer — AI 잡담 신호
+const NORMAL_AVG_BODY_MIN = 2300; // 본문 목표 하한 2,800 의 buffer 미만 = 사고 의심
+const NORMAL_AVG_BODY_MAX = 4200; // 가드 한도 4,500 의 buffer — AI 잡담 신호
 
 export function buildSummaryMessage(input: {
   publishedCount: number;
@@ -76,7 +77,7 @@ export function buildSummaryMessage(input: {
             `[의심 원인]`,
             `1. prompt 의 본문 길이 가이드 무력화 (예: maxTokens ↑ 변경)`,
             `2. 새 prompt 가 본문 확장 요구`,
-            `[조치] lib/blog-publish.ts 의 MAX_CONTENT_LENGTH=3000 가드 차단 발생 검토`,
+            `[조치] lib/blog-publish.ts 의 MAX_CONTENT_LENGTH=4500 가드 차단 발생 검토`,
           ].join("\n")
         : null,
     ].filter(Boolean).join("\n"),

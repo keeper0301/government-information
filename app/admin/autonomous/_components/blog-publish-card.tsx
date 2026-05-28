@@ -111,10 +111,10 @@ export function BlogPublishCard({ stats }: { stats: BlogPublishStats }) {
             <div className="text-[11px] text-slate-600 mb-1">7일 일별 본문 평균 (자)</div>
             <div className="flex items-end gap-1 h-14">
               {stats.dailyBodyAvg7d.map((d) => {
-                const max = 3000;
+                const max = 4500;
                 const heightPct = Math.max(2, (d.avgChars / max) * 100);
                 const isAnomaly =
-                  d.avgChars > 0 && (d.avgChars < 1700 || d.avgChars > 2800);
+                  d.avgChars > 0 && (d.avgChars < 2300 || d.avgChars > 4200);
                 return (
                   <div
                     key={d.day}
@@ -139,7 +139,7 @@ export function BlogPublishCard({ stats }: { stats: BlogPublishStats }) {
               })}
             </div>
             <div className="mt-1 flex justify-between text-[9px] text-slate-500">
-              <span>정상 범위 1,700~2,800자 (emerald)</span>
+              <span>정상 범위 2,300~4,200자 (emerald)</span>
               <span>이상 (red) · 발행 없음 (grey)</span>
             </div>
           </div>
