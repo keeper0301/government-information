@@ -57,6 +57,16 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "부산광역시청",
     sourceCode: "local-press-busan",
   },
+  suyeong: {
+    ministry: "수영구청",
+    sourceOutlet: "수영구청",
+    sourceCode: "local-press-suyeong",
+  },
+  haeundae: {
+    ministry: "해운대구청",
+    sourceOutlet: "해운대구청",
+    sourceCode: "local-press-haeundae",
+  },
 };
 
 type BatchItem = {
