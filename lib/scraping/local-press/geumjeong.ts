@@ -21,9 +21,13 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2}|\d{2}\.\d{2}\.\d{2})/g;
 
-// 금정 body: class="contents" + busanjin 패턴 fallback (호환성)
+// 금정 상세 본문은 <td class="contents"> 셀 (busanjin 의 div.substan 와 다른 스킨).
+// 기존엔 <div class="contents"> 만 찾아 td 라 매칭 실패 → 누적 0건이었다.
+// 끝 경계: 본문 뒤 목록 버튼(btn_list)·이전다음글(view_list)·첨부 섹션 class 의
+// 여는 '<' 직전까지. 텍스트 마커(>첨부 등)는 본문 이미지 alt·링크에서 오발해 본문이
+// 잘릴 수 있어 쓰지 않음 (code review).
 const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:contents|view_cont|board_view|bbs_view|cont_box|view_content|board_view_body)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|attach|view_list)|<\/article|<\/section)/i;
+  /<td[^>]*\sclass="contents"[^>]*>([\s\S]*?)(?:<[a-z][^>]*class="[^"]*(?:board-btns|boardbtn|btnArea|btn_list|view_list|add_file|view_file)|<(?:ul|div|p)[^>]*class="[^"]*\bfile\b|<[a-z][^>]*onclick="goList|<!--\s*s\s*:\s*이전)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -62,9 +66,13 @@ export function parseListPage(html: string): PressNewsItem[] {
 export function parseDetailBody(html: string): string | null {
   const m = BODY_CONTAINER_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
+  const text = decodeBasicEntities(
+    m[1]
+      .replace(/<!--[\s\S]*?-->/g, " ") // MS Word/HWP export 조건부 주석 제거
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/<[^>]*$/, ""), // 끝에 남는 미완성 여는 태그 조각 제거
+  )
     .replace(/\s+/g, " ")
     .trim();
   if (!/[가-힣]/.test(text) || text.length < 50) return null;
