@@ -33,10 +33,12 @@ export type BbsMsgDetailConfig = {
   region: string;
   ministry: string;
   sourceCode: string;
+  bcd?: string;
 };
 
-const LIST_ITEM_REGEX =
-  /<a[^>]*href="[^"]*bbsMsgDetail\.do[^"]*msg_seq=(\d+)[^"]*bcd=report[^"]*"[^>]*>([\s\S]{0,500}?)<\/a>/g;
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
@@ -45,12 +47,19 @@ const BODY_CONTAINER_REGEX =
 
 export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
   const listUrl = `${cfg.baseUrl}${cfg.listPath}`;
+  const bcd = cfg.bcd ?? "report";
+  const listItemRegex = new RegExp(
+    `<a[^>]*href="[^"]*bbsMsgDetail\\.do[^"]*msg_seq=(\\d+)[^"]*bcd=${escapeRegExp(
+      bcd,
+    )}[^"]*"[^>]*>([\\s\\S]{0,500}?)<\\/a>`,
+    "g",
+  );
 
   function parseListPage(html: string): PressNewsItem[] {
     const items: PressNewsItem[] = [];
     const seen = new Set<string>();
     let m: RegExpExecArray | null;
-    const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
+    const itemRe = new RegExp(listItemRegex.source, "g");
     while ((m = itemRe.exec(html)) !== null) {
       const seq = m[1];
       if (seen.has(seq)) continue;
@@ -68,7 +77,7 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
         seq,
         title,
         publishedDate,
-        sourceUrl: `${cfg.baseUrl}${cfg.detailBasePath}/bbsMsgDetail.do?msg_seq=${seq}&bcd=report`,
+        sourceUrl: `${cfg.baseUrl}${cfg.detailBasePath}/bbsMsgDetail.do?msg_seq=${seq}&bcd=${bcd}`,
       });
     }
     return items;

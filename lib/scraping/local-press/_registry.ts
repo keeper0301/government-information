@@ -64,6 +64,9 @@ import { scrapeBsbukguAndInsert } from "./bsbukgu";
 import { scrapeSasangAndInsert } from "./sasang";
 import { scrapeGijangAndInsert } from "./gijang";
 import { scrapeOngjinAndInsert } from "./ongjin";
+import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
+import { scrapeGanghwaAndInsert } from "./ganghwa";
+import { scrapeDongguIncheonAndInsert } from "./donggu_incheon";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
 import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
@@ -136,7 +139,10 @@ export type CityKey =
   | "bsbukgu"
   | "sasang"
   | "gijang"
-  | "ongjin";
+  | "ongjin"
+  | "junggu_incheon"
+  | "ganghwa"
+  | "donggu_incheon";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -677,6 +683,30 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "옹진군청",
     siteUrl: "https://www.ongjin.go.kr/main/community/notify/report.jsp",
     fn: scrapeOngjinAndInsert,
+  },
+  // 2026-05-28 인천 중구 15만. 자체 krop0231c CMS, 목록/상세 모두 정적 HTML로 fetch 가능.
+  {
+    key: "junggu_incheon",
+    city: "인천 중구",
+    ministry: "인천 중구청",
+    siteUrl: "https://www.icjg.go.kr/krop0231c",
+    fn: scrapeJungguIncheonAndInsert,
+  },
+  // 2026-05-28 인천 강화군 7만. bbsMsgDetail CMS, open_content/main/bbs 경로 사용.
+  {
+    key: "ganghwa",
+    city: "강화군",
+    ministry: "강화군청",
+    siteUrl: "https://www.ganghwa.go.kr/open_content/main/bbs/bbsMsgList.do?bcd=report",
+    fn: scrapeGanghwaAndInsert,
+  },
+  // 2026-05-28 인천 동구 6만. bbsMsgDetail CMS, bcd=press 게시판 사용.
+  {
+    key: "donggu_incheon",
+    city: "인천 동구",
+    ministry: "인천 동구청",
+    siteUrl: "https://www.icdonggu.go.kr/main/bbs/bbsMsgList.do?bcd=press",
+    fn: scrapeDongguIncheonAndInsert,
   },
   // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
   // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
