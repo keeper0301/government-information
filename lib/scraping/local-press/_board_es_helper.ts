@@ -40,11 +40,44 @@ export type BoardEsConfig = {
   innerLimit?: number;
 };
 
-// 광주 자치구 등 board.es CMS 표준 body container
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:view_cont|board_view|board_view_body|cont_box|view_content|p-view__cont)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|attach|p-view__bottom)|<\/article|<\/section)/i;
+// board.es CMS 는 지자체 스킨마다 본문 컨테이너가 다르다. 순서대로 시도해 첫 clean 매칭 채택.
+//   1) tb_contents 스킨 (광주 남·북·동구): <td/div class="tb_contents"> — td 에 colspan 등 속성 먼저 옴
+//   2) board_view/contents 스킨 (광주 서구): <div class="contents">
+//   3) 기존 view_cont 류 (그 외 board.es 사이트 대비 fallback)
+// 끝 경계: 본문에 절대 안 나오는 구조 마커(첨부 add_file/file·버튼 btnArea·목록 goList)의
+// 여는 '<' 직전까지 non-greedy. 본문 내 HWP/워드 export 중첩 table 영향 제거.
+// file 마커는 컨테이너 태그(ul/div)로 한정 — 본문 내 인라인 <a class="file"> 다운로드
+// 링크에 걸려 본문이 조기 절단되는 사고 방지 (code review).
+// 길이 상한은 두지 않음: 본문에 base64 이미지가 박힌 글은 raw 캡처가 40만~110만 자라도
+// clean 본문은 정상(600자 안팎)이라, 상한을 걸면 이미지 포함 글이 통째로 skip 됨(검증).
+const BODY_END =
+  '(?:<[a-z][^>]*class="[^"]*add_file|<[a-z][^>]*class="[^"]*btnArea|<(?:ul|div)[^>]*class="file"|<[a-z][^>]*onclick="goList|<strong[^>]*>\\s*첨부파일|<!--최초 파일만)';
+const BODY_REGEXES: RegExp[] = [
+  new RegExp(`class="[^"]*tb_contents[^"]*"[^>]*>([\\s\\S]*?)${BODY_END}`, "i"),
+  new RegExp(`<div\\s+class="contents"[^>]*>([\\s\\S]*?)${BODY_END}`, "i"),
+  /<div\s+class="(?:view_cont|board_view_body|cont_box|view_content|p-view__cont)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|attach|p-view__bottom)|<\/article|<\/section)/i,
+];
 
 const DATE_REGEX = /(\d{4}\/\d{2}\/\d{2}|\d{4}-\d{2}-\d{2})/g;
+
+// board.es 상세 본문 추출 — cfg 무관(스킨만 봄)이라 모듈 레벨로 분리(단위 테스트용 export).
+export function parseBoardEsDetailBody(html: string): string | null {
+  for (const re of BODY_REGEXES) {
+    const m = re.exec(html);
+    if (!m) continue;
+    const text = decodeBasicEntities(
+      m[1]
+        // MS Word/HWP export 조건부 주석 (<!--[if ...]-->) 제거
+        .replace(/<!--[\s\S]*?-->/g, " ")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, ""),
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    if (/[가-힣]/.test(text) && text.length >= 50) return text.slice(0, 5000);
+  }
+  return null;
+}
 
 export function createBoardEsCollector(cfg: BoardEsConfig) {
   const listUrl = `${cfg.baseUrl}/board.es?mid=${cfg.mid}&bid=${cfg.bid}`;
@@ -89,18 +122,6 @@ export function createBoardEsCollector(cfg: BoardEsConfig) {
     return items;
   }
 
-  function parseDetailBody(html: string): string | null {
-    const m = BODY_CONTAINER_REGEX.exec(html);
-    if (!m) return null;
-    const text = decodeBasicEntities(m[1])
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<[^>]+>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!/[가-힣]/.test(text) || text.length < 50) return null;
-    return text.slice(0, 5000);
-  }
-
   return createPressCollector({
     cityName: cfg.cityName,
     region: cfg.region,
@@ -109,6 +130,6 @@ export function createBoardEsCollector(cfg: BoardEsConfig) {
     sourceCode: cfg.sourceCode,
     listUrl,
     parseListItems: parseListPage,
-    parseDetailBody,
+    parseDetailBody: parseBoardEsDetailBody,
   });
 }
