@@ -60,11 +60,21 @@ describe("generatePolicyGuide", () => {
     expect(g.checklist).toBeNull(); // 10자 미만
   });
 
-  it("LLM 이 잘못된 JSON 을 주면 모두 null", async () => {
+  it("LLM 이 잘못된 JSON 을 주면 모두 null + llmOk=false (일시 실패 → 재시도)", async () => {
     mocks.callLLM.mockResolvedValueOnce("not json at all");
     const g = await generatePolicyGuide({
       title: "x", summary: null, category: null, target: null,
     });
-    expect(g).toEqual({ tips: null, faq: null, checklist: null });
+    expect(g).toEqual({ tips: null, faq: null, checklist: null, llmOk: false });
+  });
+
+  it("LLM 성공했으나 sanitize 전부 실패면 llmOk=true (영구 부적합 → sentinel 대상)", async () => {
+    mocks.callLLM.mockResolvedValueOnce(
+      JSON.stringify({ tips: "abc", faq: "ENGLISH ONLY 123", checklist: "" }),
+    );
+    const g = await generatePolicyGuide({
+      title: "x", summary: null, category: null, target: null,
+    });
+    expect(g).toEqual({ tips: null, faq: null, checklist: null, llmOk: true });
   });
 });

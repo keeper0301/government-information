@@ -19,6 +19,9 @@ export type PolicyAiGuide = {
   tips: string | null;
   faq: string | null;
   checklist: string | null;
+  // LLM 호출+파싱 성공 여부 (sanitize 결과와 무관). 백필 cron 이 "일시 LLM 실패(재시도)"
+  // 와 "LLM 성공했으나 메타 부실로 sanitize 전부 실패(영구 부적합)"를 구분하는 데 사용.
+  llmOk: boolean;
 };
 
 // HTML 제거·공백 정리·한국어 검증·길이 cap. 부적합하면 null.
@@ -76,8 +79,9 @@ export async function generatePolicyGuide(
       tips: sanitize(parsed?.tips),
       faq: sanitize(parsed?.faq),
       checklist: sanitize(parsed?.checklist),
+      llmOk: true,
     };
   } catch {
-    return { tips: null, faq: null, checklist: null };
+    return { tips: null, faq: null, checklist: null, llmOk: false };
   }
 }
