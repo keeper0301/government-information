@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generatePolicyGuide } from "@/lib/policy/ai-guide";
 import { authorizeCronRequest } from "@/lib/cron-auth";
+import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 
 export const dynamic = "force-dynamic";
 // 5분 — welfare 100 + loan 100 = 200건. CHUNK 10 → 20 chunk × ~5s ≈ 100~200s.
@@ -126,6 +127,30 @@ async function run() {
   };
   // Vercel runtime logs 로 cron 결과 모니터링 (remote routine 이 secret 없이 확인 가능).
   console.log("[ai-guide-backfill] 결과:", JSON.stringify(result));
+
+  // 사장님 텔레그램 알림 — 신규 백필 발생(updated>0) 또는 실패 시에만.
+  // 신규 정책 없는 날(fetched 0)은 조용 (매일 0건 알림 노이즈 방지).
+  const totalFailed =
+    welfare.llm_failed + welfare.update_failed + loan.llm_failed + loan.update_failed;
+  if (result.total_updated > 0 || totalFailed > 0) {
+    const lines = [
+      `신규 정책 자체 가이드 ${result.total_updated}건 생성 (복지 ${welfare.updated} / 대출 ${loan.updated})`,
+    ];
+    if (totalFailed > 0) {
+      lines.push(
+        `[주의] 실패 ${totalFailed}건 (AI 생성 ${welfare.llm_failed + loan.llm_failed} / 저장 ${welfare.update_failed + loan.update_failed}) — 점검 권장`,
+      );
+    }
+    try {
+      await sendOpsAlertTelegram({
+        subject: "정책 AI 가이드 자동 백필",
+        message: lines.join("\n"),
+      });
+    } catch {
+      // 알림 실패가 cron 을 깨지 않게 — 결과는 이미 DB 에 반영됨.
+    }
+  }
+
   return NextResponse.json(result);
 }
 
