@@ -67,6 +67,12 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "해운대구청",
     sourceCode: "local-press-haeundae",
   },
+  // 2026-05-29 — 노원구: 정적 BD_select 본문 elusive → Playwright PC 러너로 이관.
+  nowon: {
+    ministry: "노원구청",
+    sourceOutlet: "노원구청",
+    sourceCode: "local-press-nowon",
+  },
 };
 
 type BatchItem = {

@@ -49,6 +49,13 @@ export const scrapeHaeundae = makeScraper({
   listUrl: "https://www.haeundae.go.kr/board/list.haeundae?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
 });
 
+// 2026-05-29 — 노원구. 정적 BD_select collector 가 본문(무클래스 span 조각)을 못 잡아
+// 누적 0건이었으나, Playwright 렌더 후 표준 BODY_SELECTOR 로 본문 추출 검증(1637자).
+export const scrapeNowon = makeScraper({
+  cityName: "노원구",
+  listUrl: "https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027",
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -60,10 +67,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     busan: scrapeBusan,
     suyeong: scrapeSuyeong,
     haeundae: scrapeHaeundae,
+    nowon: scrapeNowon,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

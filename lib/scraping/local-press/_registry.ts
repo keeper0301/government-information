@@ -39,7 +39,7 @@ import { scrapeChungbukAndInsert } from "./chungbuk";
 import { scrapeGangwonAndInsert } from "./gangwon";
 import { scrapeJejuAndInsert } from "./jeju";
 import { scrapeGangnamAndInsert } from "./gangnam";
-import { scrapeNowonAndInsert } from "./nowon";
+// 2026-05-29 disabled (본문 elusive → playwright PC 러너로 이관): import { scrapeNowonAndInsert } from "./nowon";
 import { scrapeSongpaAndInsert } from "./songpa";
 import { scrapeAnyangAndInsert } from "./anyang";
 import { scrapeUiwangAndInsert } from "./uiwang";
@@ -108,7 +108,7 @@ export type CityKey =
   | "gangwon"
   | "jeju"
   | "gangnam"
-  | "nowon"
+  // | "nowon" — 2026-05-29 disabled (→ playwright PC 러너)
   | "songpa"
   | "anyang"
   | "uiwang"
@@ -405,15 +405,16 @@ export const CITY_REGISTRY: CityEntry[] = [
       "https://www.gangnam.go.kr/board/B_000031/list.do?mid=ID01_031",
     fn: scrapeGangnamAndInsert,
   },
-  // 2026-05-22 — 노원구. 화성·수원 와 같은 SI 표준 (BD_select), 5,563+ 보도자료.
-  {
-    key: "nowon",
-    city: "노원구",
-    ministry: "노원구청",
-    siteUrl:
-      "https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027",
-    fn: scrapeNowonAndInsert,
-  },
+  // 2026-05-29 disabled — 노원구 본문이 무클래스 span 조각이라 정적 추출 불가.
+  // Playwright PC 러너(playwright/lib/cities.mjs scrapeNowon)로 이관. dual-path 방지.
+  // {
+  //   key: "nowon",
+  //   city: "노원구",
+  //   ministry: "노원구청",
+  //   siteUrl:
+  //     "https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027",
+  //   fn: scrapeNowonAndInsert,
+  // },
   // 2026-05-22 — 송파구 67만 (서울 자치구 1위). sub.do?key=2781 → selectBbsNttList.do redirect SI 표준.
   {
     key: "songpa",
