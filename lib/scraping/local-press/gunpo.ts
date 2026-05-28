@@ -9,6 +9,7 @@ import {
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
+import { parseSiNttBody } from "./_si_ntt_helper";
 
 const BASE_URL = "https://www.gunpo.go.kr";
 const LIST_URL =
@@ -18,9 +19,6 @@ const LIST_ITEM_REGEX =
   /<a[^>]*href="[^"]*selectBbsNttView\.do\?(?=[^"]*bbsNo=685)[^"]*?nttNo=(\d+)[^"]*"[^>]*>([\s\S]{0,500}?)<\/a>/g;
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
-
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:bbs_wrap|p-table__content|bbs__view)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:p-table__bottom|btn|pagination)|<\/article|<\/section)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -51,17 +49,8 @@ export function parseListPage(html: string): PressNewsItem[] {
   return items;
 }
 
-export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!/[가-힣]/.test(text) || text.length < 50) return null;
-  return text.slice(0, 5000);
-}
+// 본문 파싱은 SI selectBbsNttView 공용 헬퍼 사용 (p-table__content/bbs_content 셀).
+export const parseDetailBody = parseSiNttBody;
 
 export const { scrapeAndInsert: scrapeGunpoAndInsert } = createPressCollector({
   cityName: "군포시",
