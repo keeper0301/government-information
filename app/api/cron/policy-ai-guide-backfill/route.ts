@@ -118,12 +118,15 @@ async function run() {
   // welfare → loan 순차 (동시 시 OpenAI 병렬도 2배 → rate limit 마진 확보).
   const welfare = await backfillTable("welfare_programs", BATCH_CAP_PER_TABLE);
   const loan = await backfillTable("loan_programs", BATCH_CAP_PER_TABLE);
-  return NextResponse.json({
+  const result = {
     ok: true,
     total_updated: welfare.updated + loan.updated,
     welfare,
     loan,
-  });
+  };
+  // Vercel runtime logs 로 cron 결과 모니터링 (remote routine 이 secret 없이 확인 가능).
+  console.log("[ai-guide-backfill] 결과:", JSON.stringify(result));
+  return NextResponse.json(result);
 }
 
 export async function GET(request: Request) {
