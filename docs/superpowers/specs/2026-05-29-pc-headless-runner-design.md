@@ -36,6 +36,25 @@
 
 → 접근법 유효. 남은 작업은 사이트별 selector 튜닝(코드)뿐.
 
+### 4.1 추가 검증 (2026-05-29) — selector 튜닝 규모
+
+기존 GitHub Actions 7 도시를 **로컬(한국 IP)** Playwright 로 재실행:
+- 전부 `page.goto` 는 성공(타임아웃 없음) → **IP 차단은 GitHub Actions(미국 IP) 한정**, 한국 IP 면 페이지 로드 OK 재확인.
+- 그러나 창원·성남·안산·천안·수영·해운대 모두 `waitForSelector timeout`(makeScraper LIST_SELECTORS 미매칭) → 0건.
+
+**결론:** 인프라·접근법은 유효하나, **makeScraper 범용 selector 가 맞는 건 노원뿐**이고
+나머지 ~12 시·군(기존 큰 시 6 + 신규 5 + 부산북구 등)은 **사이트별 list/body selector
+튜닝이 필수**다. 사이트당 Playwright DOM 조사 필요 = 반복 작업 규모 큼.
+
+추가로 일부(부산북구=렌더 후에도 본문 DOM 부재, 동래=본문이 단일 요소로 안 모임,
+김포=목록이 위젯 뒤섞임+bbsNo 상이)는 단순 selector 튜닝을 넘어 클릭/AJAX 트리거 등
+사이트별 깊은 작업이 필요할 수 있어, 검증 통과분만 점진 등록한다.
+
+### 4.2 현재 진행 (2026-05-29)
+- 노원 ✅ PC 러너 경로로 이관 완료(commit 81ad0a7): cities.mjs/runner.mjs/import-press-batch
+  등록 + 정적 _registry 비활성화(dual-path 방지).
+- 나머지 ~12 시·군: 사이트별 selector 튜닝 대기(미착수).
+
 ## 5. 아키텍처
 
 ```
