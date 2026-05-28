@@ -56,7 +56,7 @@ describe("backfill-policy-ai-guides POST", () => {
   it("NULL row 를 생성 결과로 update 한다", async () => {
     mocks.requireAdminUser.mockResolvedValueOnce({ email: "admin@x.com" });
     mocks.rows = [
-      { id: "p1", title: "청년 월세", summary: null, category: "주거", target: "청년" },
+      { id: "p1", title: "청년 월세", description: "저소득 청년 월세 보조", category: "주거", target: "청년" },
     ];
     mocks.generatePolicyGuide.mockResolvedValueOnce({
       tips: "팁 내용", faq: "거절 사유", checklist: "체크리스트",

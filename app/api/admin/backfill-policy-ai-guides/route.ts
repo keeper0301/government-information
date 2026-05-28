@@ -15,7 +15,8 @@ export const maxDuration = 60;
 type PolicyRow = {
   id: string;
   title: string;
-  summary: string | null;
+  // welfare_programs 에는 summary 컬럼이 없어 description 을 요약 입력으로 사용.
+  description: string | null;
   category: string | null;
   target: string | null;
 };
@@ -27,7 +28,7 @@ async function backfillTable(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from(table)
-    .select("id, title, summary, category, target")
+    .select("id, title, description, category, target")
     .or("ai_tips.is.null,ai_faq.is.null,ai_checklist.is.null")
     .limit(limit);
 
@@ -43,7 +44,7 @@ async function backfillTable(
       chunk.map(async (row) => {
         const guide = await generatePolicyGuide({
           title: row.title,
-          summary: row.summary,
+          summary: row.description ? row.description.slice(0, 200) : null,
           category: row.category,
           target: row.target,
         });
