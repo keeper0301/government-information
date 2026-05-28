@@ -5,14 +5,14 @@
 //   1. 마스트헤드 + 주요 링크 (도움말·이용약관·개인정보처리방침·문의)
 //   2. 데이터 신선도 (마지막 갱신 시각) — 활성 운영 시그널
 //   3. 데이터 출처 안내 (정부 공공데이터)
-//   4. 공공누리 라이선스 (정책 뉴스 korea.kr 활용분 — KOGL-Type1 의무 표기)
-//   5. 사업자 정보 (전자상거래법 제13조 기본 표시 의무)
-//   6. 저작권
+//   4. 사업자 정보 (전자상거래법 제13조 기본 표시 의무)
+//   5. 저작권
 // ============================================================
 
 import Link from "next/link";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
 import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 const footerLinks = [
   { label: "1분 진단", href: "/quiz" },
@@ -130,19 +130,20 @@ export async function Footer() {
         <p>
           본 서비스는 정보 안내 목적이며, 실제 신청은 각 기관 공식 사이트에서 진행됩니다.
         </p>
-        {/* 공공누리 KOGL-Type1 의무 표기 — news_posts 에 저장된 korea.kr 뉴스 활용분 */}
-        <p className="text-grey-700 mt-1">
-          정책 뉴스 섹션의 본문·썸네일은{" "}
-          <a
-            href="https://www.korea.kr"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-grey-900"
-          >
-            정책브리핑(korea.kr)
-          </a>
-          의 자료를 공공누리 제1유형(KOGL-Type1, 출처표시·상업이용·변형 허용) 으로 활용합니다.
-        </p>
+        {!ADSENSE_REVIEW_MODE && (
+          <p className="text-grey-700 mt-1">
+            정책 뉴스 섹션의 본문·썸네일은{" "}
+            <a
+              href="https://www.korea.kr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-grey-900"
+            >
+              정책브리핑(korea.kr)
+            </a>
+            의 자료를 공공누리 제1유형(KOGL-Type1, 출처표시·상업이용·변형 허용) 으로 활용합니다.
+          </p>
+        )}
       </div>
 
       {/* 사업자 정보 — 전자상거래법 제13조 (신원정보) 표시 의무.

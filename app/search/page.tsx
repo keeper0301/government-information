@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   searchAll,
-  SEARCH_TYPES,
   SEARCH_SORTS,
   type NewsHit,
   type BlogHit,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/search";
 import type { DisplayProgram } from "@/lib/programs";
 import { SearchTracker } from "@/components/search-tracker";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // /search?q=... — 통합 검색 결과 페이지
 // UX 설계:
@@ -18,17 +18,22 @@ import { SearchTracker } from "@/components/search-tracker";
 //   - 영역 헤더: 정확한 전체 매칭 건수 표시
 //   - 영역별 "전체 NNN건 보기 →" 큰 버튼 → 카테고리 페이지로 이동, 페이지네이션 활용
 //   - 결과 0건 영역 자동 숨김
-//   - 영역 필터 칩 (?type=welfare,loan,news,blog 단일/복수)
+//   - 영역 필터 칩 (?type=welfare,loan,blog 단일/복수)
 //   - 정렬 칩 (?sort=popular|latest|deadline) — 복지·대출 영역에만 적용
 
 export const metadata: Metadata = {
   title: "검색 결과 — 정책알리미",
-  description: "복지·대출·정책뉴스·블로그를 한 번에 검색합니다.",
+  description: "복지·대출·정책 가이드를 한 번에 검색합니다.",
 };
 
 export const dynamic = "force-dynamic";
 
 const PREVIEW_LIMIT = 20;
+const PUBLIC_SEARCH_TYPES = (
+  ADSENSE_REVIEW_MODE
+    ? ["welfare", "loan", "blog"]
+    : ["welfare", "loan", "news", "blog"]
+) as readonly SearchType[];
 
 // type 라벨 — 영역 필터 칩과 빈 결과 카테고리 추천에 공통 사용
 const TYPE_LABEL: Record<SearchType, string> = {
@@ -52,7 +57,7 @@ function parseTypes(raw: string | undefined): SearchType[] {
     .split(",")
     .map((t) => t.trim())
     .filter((t): t is SearchType =>
-      (SEARCH_TYPES as readonly string[]).includes(t),
+      (PUBLIC_SEARCH_TYPES as readonly string[]).includes(t),
     );
 }
 
@@ -100,7 +105,7 @@ export default async function SearchPage({ searchParams }: Props) {
           검색
         </h1>
         <p className="text-[15px] text-grey-700 leading-[1.6] mb-6">
-          복지·대출·정책뉴스·블로그를 한 번에 검색해보세요.
+          복지·대출·정책 가이드를 한 번에 검색해보세요.
         </p>
         <SearchInputForm initialQuery="" />
       </main>
@@ -108,14 +113,14 @@ export default async function SearchPage({ searchParams }: Props) {
   }
 
   // 영역별 미리보기 20건씩 + 정확 카운트 + 영역 필터 + 정렬.
-  // types 미지정 시 전체 4영역 검색, 정렬 미지정 시 popular (view_count desc).
+  // types 미지정 시 공개 검색 3영역 검색, 정렬 미지정 시 popular (view_count desc).
   const data = await searchAll(trimmed, {
     welfareLimit: PREVIEW_LIMIT,
     loanLimit: PREVIEW_LIMIT,
-    newsLimit: PREVIEW_LIMIT,
+    newsLimit: ADSENSE_REVIEW_MODE ? 0 : PREVIEW_LIMIT,
     blogLimit: PREVIEW_LIMIT,
     includeCount: true,
-    types: activeTypes.length > 0 ? activeTypes : undefined,
+    types: activeTypes.length > 0 ? activeTypes : PUBLIC_SEARCH_TYPES,
     sort: activeSort,
   });
 
@@ -187,7 +192,7 @@ export default async function SearchPage({ searchParams }: Props) {
               tone="orange"
             />
           )}
-          {data.newsTotal > 0 && (
+          {!ADSENSE_REVIEW_MODE && data.newsTotal > 0 && (
             <NewsSection
               total={data.newsTotal}
               items={data.news}
@@ -227,7 +232,7 @@ function TypeFilterChips({
       >
         전체
       </ChipLink>
-      {SEARCH_TYPES.map((t) => {
+      {PUBLIC_SEARCH_TYPES.map((t) => {
         const isActive = active.length === 1 && active[0] === t;
         return (
           <ChipLink
@@ -361,12 +366,21 @@ function EmptyState({ query }: { query: string }) {
         >
           대출·지원금 보기
         </Link>
-        <Link
-          href="/news"
-          className="text-[13px] font-semibold px-4 py-2 rounded-full bg-grey-100 text-grey-700 hover:bg-grey-200 transition-colors no-underline min-h-[36px] inline-flex items-center"
-        >
-          정책 뉴스 보기
-        </Link>
+        {ADSENSE_REVIEW_MODE ? (
+          <Link
+            href="/blog"
+            className="text-[13px] font-semibold px-4 py-2 rounded-full bg-grey-100 text-grey-700 hover:bg-grey-200 transition-colors no-underline min-h-[36px] inline-flex items-center"
+          >
+            정책 가이드 보기
+          </Link>
+        ) : (
+          <Link
+            href="/news"
+            className="text-[13px] font-semibold px-4 py-2 rounded-full bg-grey-100 text-grey-700 hover:bg-grey-200 transition-colors no-underline min-h-[36px] inline-flex items-center"
+          >
+            정책 뉴스 보기
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -499,7 +513,6 @@ function ProgramSection({
   );
 }
 
-// 정책 뉴스 영역
 function NewsSection({
   total,
   items,

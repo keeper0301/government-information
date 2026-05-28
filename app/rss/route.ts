@@ -3,13 +3,13 @@
 // ============================================================
 // 네이버 서치어드바이저가 사이트 등록 시 자동으로 /rss 를 수집 시도함.
 // 없으면 404 경고가 뜸 (색인 자체는 막지 않지만 노출 신호 약해짐).
-// keepioo 는 뉴스(/news)와 블로그(/blog) 두 종류 콘텐츠가 있으니 최신
-// 40건을 하나의 RSS 피드로 묶어 제공.
+// keepioo 자체 블로그 글을 최신순으로 제공.
 //
 // 캐시: 1시간 (콘텐츠 갱신 주기 대비 충분).
 // ============================================================
 
 import { createClient } from "@/lib/supabase/server";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export const revalidate = 3600;
 
@@ -24,17 +24,19 @@ export async function GET() {
   const supabase = await createClient();
 
   const [newsRes, blogRes] = await Promise.all([
-    supabase
-      .from("news_posts")
-      .select("slug, title, summary, published_at")
-      .order("published_at", { ascending: false })
-      .limit(30),
+    ADSENSE_REVIEW_MODE
+      ? Promise.resolve({ data: [] })
+      : supabase
+          .from("news_posts")
+          .select("slug, title, summary, published_at")
+          .order("published_at", { ascending: false })
+          .limit(30),
     supabase
       .from("blog_posts")
       .select("slug, title, meta_description, published_at")
       .not("published_at", "is", null)
       .order("published_at", { ascending: false })
-      .limit(10),
+      .limit(ADSENSE_REVIEW_MODE ? 40 : 10),
   ]);
 
   type FeedItem = {
@@ -76,7 +78,7 @@ export async function GET() {
     <title>keepioo · 정책알리미</title>
     <link>${baseUrl}</link>
     <atom:link href="${baseUrl}/rss" rel="self" type="application/rss+xml" />
-    <description>한국 정부·지자체의 복지·대출·지원금과 정책 뉴스 큐레이션</description>
+    <description>${ADSENSE_REVIEW_MODE ? "복지·대출·지원금 신청을 쉽게 이해할 수 있도록 정리한 정책 가이드" : "한국 정부·지자체의 복지·대출·지원금과 정책 뉴스 큐레이션"}</description>
     <language>ko</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <generator>keepioo.com</generator>

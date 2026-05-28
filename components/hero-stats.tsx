@@ -2,7 +2,7 @@
 // HeroStats — Hero 영역 아래 "수의 힘" 통계 띠 (토스 전략)
 // ============================================================
 // 토스 전략: 첫 화면에 강력한 비주얼 = 수가 많거나·움직이거나·호기심.
-// keepioo 의 강점인 누적 데이터 (정책 뉴스·진행 공고·정부 출처) 를
+// keepioo 의 강점인 누적 데이터 (진행 공고·오늘 신규·정부 출처) 를
 // 큰 숫자로 노출 + 카운트업 애니메이션으로 활동감.
 //
 // 데이터: lib/home-stats 의 getProgramCounts() 사용. react cache 로
@@ -11,6 +11,7 @@
 
 import { CountUp } from "./count-up";
 import { getProgramCounts } from "@/lib/home-stats";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // 광역 시·도 17개 (region 페이지 17 광역 동일) — 커버리지 시그널
 const PROVINCE_COUNT = 17;
@@ -27,8 +28,20 @@ export async function HeroStats() {
           (활성 사용자 부족 단계라 노출 시 신뢰 ↓ 위험. 데이터·커버리지 강조).
           모바일 2x2 · 폴드7 메인·태블릿(md~lg) 도 2x2 (4열은 폭 부족) · lg+ 부터 4열. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 bg-white rounded-3xl shadow-sm px-5 lg:px-8 py-6 lg:py-8">
-        <Stat to={counts.news_total} label="정책 뉴스 큐레이션" />
-        <Stat to={totalPrograms} label="진행 중 지원 공고" />
+        {ADSENSE_REVIEW_MODE ? (
+          <>
+            <Stat to={totalPrograms} label="진행 중 지원 공고" />
+            <Stat
+              to={counts.today_new_welfare + counts.today_new_loan}
+              label="오늘 새로 등록"
+            />
+          </>
+        ) : (
+          <>
+            <Stat to={counts.news_total} label="정책 뉴스 큐레이션" />
+            <Stat to={totalPrograms} label="진행 중 지원 공고" />
+          </>
+        )}
         <Stat to={PROVINCE_COUNT} label="광역 시·도 커버" suffix="개" />
         <Stat to={SOURCE_COUNT} label="공식 데이터 출처" suffix="개" />
       </div>

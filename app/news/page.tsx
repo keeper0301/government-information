@@ -40,6 +40,7 @@ import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePro
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
@@ -68,6 +69,12 @@ export const metadata: Metadata = {
   description:
     "korea.kr 정책뉴스·정책자료 큐레이션. 관심 정책 발표를 한눈에.",
   alternates: { canonical: "/news" },
+  robots: ADSENSE_REVIEW_MODE
+    ? {
+        index: false,
+        follow: true,
+      }
+    : undefined,
   openGraph: {
     title: "정책 소식 | 정책알리미",
     description: "정부 부처의 최신 정책 발표를 한눈에.",
@@ -528,7 +535,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
         {/* AdSense — 그리드·페이지네이션 아래·공공누리 출처 위.
             목록 소비 마친 독자에게 자연 정지점. 연속 슬롯 배치는 AdSense
             정책 위반 위험 → 페이지당 1개만. */}
-        {list.length > 0 && (
+        {list.length > 0 && !ADSENSE_REVIEW_MODE && (
           <div className="mt-10">
             <AdSlot placement="list" />
           </div>

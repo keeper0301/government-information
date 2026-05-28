@@ -34,6 +34,7 @@ import { NewsCard } from "@/components/news-card";
 import { getUrgentPrograms } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // FloatingWishWidget — 좌측 하단 floating 위젯, 즉시 노출 불필요.
 // nextDynamic 으로 청크 분리 → 메인 번들 가벼움.
@@ -136,7 +137,6 @@ async function RecentNewsSection({
 }: {
   profile: LoadedProfile | null;
 }) {
-  // pool 100 fetch + score 적용 (사용자 입력 반영). 빈 프로필·매칭 0건이면 최신 3건 fallback.
   const recentNews = await getPersonalizedRecentNews(profile, 3);
 
   if (recentNews.length === 0) return null;
@@ -374,12 +374,13 @@ export default async function Home() {
         </Suspense>
       </RevealOnScroll>
 
-      {/* [도구 4] News — 외부 정책 발표 큐레이션 (korea.kr 출처) */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
-          <RecentNewsSection profile={fullProfile} />
-        </Suspense>
-      </RevealOnScroll>
+      {!ADSENSE_REVIEW_MODE && (
+        <RevealOnScroll>
+          <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
+            <RecentNewsSection profile={fullProfile} />
+          </Suspense>
+        </RevealOnScroll>
+      )}
 
       {/* [방법] FeatureGrid — 어떻게 작동? 3 STEPS (조건 입력 → 마감 알림 → 챗봇 안내) */}
       <RevealOnScroll>

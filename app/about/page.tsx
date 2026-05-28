@@ -8,6 +8,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export const metadata: Metadata = {
   title: "정책알리미 소개 | keepioo.com",
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
 // ISR — 소개 페이지는 갱신 드물어 1일 캐시
 export const revalidate = 86400;
 
-// 운영 통계 — 매일 갱신되는 실 카운트 (welfare/loan 활성 + 블로그 발행 + 정책 뉴스)
+// 운영 통계 — 매일 갱신되는 실 카운트 (welfare/loan 활성 + 블로그 발행)
 // graceful: 한 fetch 실패해도 0 으로 표시 (페이지 자체는 살아있음).
 async function loadOpsStats() {
   try {
@@ -46,10 +47,12 @@ async function loadOpsStats() {
         .from("blog_posts")
         .select("*", { count: "estimated", head: true })
         .not("published_at", "is", null),
-      supabase
-        .from("news_posts")
-        .select("*", { count: "estimated", head: true })
-        .not("published_at", "is", null),
+      ADSENSE_REVIEW_MODE
+        ? Promise.resolve({ count: 0 })
+        : supabase
+            .from("news_posts")
+            .select("*", { count: "estimated", head: true })
+            .not("published_at", "is", null),
     ]);
     return {
       welfare: welfare.count ?? 0,
@@ -180,7 +183,8 @@ export default async function AboutPage() {
             동적 카운트 (DB 실 카운트) — ISR 1일 갱신으로 매일 정확 숫자 노출. */}
         <Section title="지금 정책알리미는">
           <p>
-            매일 정부·지자체 정책을 자동 수집·검증·분류해 사용자에게 전달합니다.
+            매일 정부·지자체 정책을 자동 수집·검증·분류하고, 신청에 필요한
+            조건과 주의사항을 함께 정리해 사용자에게 전달합니다.
             현재 운영 규모와 갱신 주기는 다음과 같습니다.
           </p>
           <ul className="mt-3 space-y-2 text-grey-700">
@@ -198,15 +202,17 @@ export default async function AboutPage() {
               건강·복지). 매일 14편 자동 발행 — 한 달 약 420편 페이스
             </li>
             <li>
-              <b className="text-grey-900">정책 소식 수집</b>: 17개 광역
-              지자체의 보도자료 누적
-              {" "}<b className="text-blue-700">{stats.news.toLocaleString("ko-KR")}건</b>
-              {" "}— 매일 RSS·공식 페이지에서 자동 수집·분류
-            </li>
-            <li>
               <b className="text-grey-900">맞춤 추천 + 알림</b>: 가입한
               사용자에게 마감 임박·새 정책을 이메일로 자동 알림
             </li>
+            {!ADSENSE_REVIEW_MODE && (
+              <li>
+                <b className="text-grey-900">정책 소식 수집</b>: 17개 광역
+                지자체의 보도자료 누적
+                {" "}<b className="text-blue-700">{stats.news.toLocaleString("ko-KR")}건</b>
+                {" "}— 매일 RSS·공식 페이지에서 자동 수집·분류
+              </li>
+            )}
             <li>
               <b className="text-grey-900">중복 정책 검출</b>: 같은 정책의
               여러 출처를 자동 감지해 사용자 노출에서 중복 제거
@@ -226,8 +232,8 @@ export default async function AboutPage() {
             <li>복지로 (bokjiro.go.kr) — 중앙·지자체 복지 사업</li>
             <li>온라인청년센터 (youthcenter.go.kr) — 청년 정책</li>
             <li>중소벤처기업부 (mss.go.kr) — 소상공인·중소기업 지원</li>
-            <li>각 지자체 보도자료 RSS — 광역·기초 자치단체 정책 뉴스</li>
-            <li>대한민국 정책브리핑 (korea.kr) — 부처별 발표</li>
+            <li>각 지자체 공식 공고·보도자료 — 정책 변경 확인용 보조 자료</li>
+            <li>대한민국 정책브리핑 (korea.kr) — 부처별 정책 발표 확인용 보조 자료</li>
           </ul>
         </Section>
 
@@ -302,7 +308,7 @@ export default async function AboutPage() {
           <ul className="grid grid-cols-2 gap-2">
             <QuickLink href="/welfare" label="복지정보" />
             <QuickLink href="/loan" label="대출·지원금" />
-            <QuickLink href="/news" label="정책 소식" />
+            {!ADSENSE_REVIEW_MODE && <QuickLink href="/news" label="정책 소식" />}
             <QuickLink href="/blog" label="정책 블로그" />
             <QuickLink href="/recommend" label="맞춤 추천" />
             <QuickLink href="/help" label="도움말" />

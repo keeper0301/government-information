@@ -252,6 +252,17 @@ export default async function BlogPostPage({
           </p>
         )}
 
+        <section className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-[14px] text-grey-800 leading-[1.7]">
+          <h2 className="text-[15px] font-bold text-grey-900 mb-2">
+            이 글에서 확인할 수 있는 것
+          </h2>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>신청 전에 먼저 확인해야 할 대상 조건</li>
+            <li>마감일과 준비 서류를 놓치지 않는 방법</li>
+            <li>공식 원문에서 다시 확인해야 할 핵심 항목</li>
+          </ul>
+        </section>
+
         {/* 본문 — markdown/HTML 렌더 */}
         <div
           className="blog-content text-[16px] text-grey-900 leading-[1.8]"

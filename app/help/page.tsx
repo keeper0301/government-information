@@ -11,6 +11,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { safeJsonLd } from "@/lib/json-ld-safe";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export const metadata: Metadata = {
   title: "도움말 (자주 묻는 질문) | 정책알리미",
@@ -46,8 +47,9 @@ const SECTIONS: Section[] = [
         a: (
           <>
             정부·지자체의 복지 서비스와 소상공인 대출·지원금 공고를 한곳에
-            모아 보여드리는 서비스예요. 복지로·소상공인24·온통청년·금융위원회·
-            정책브리핑 등 여러 공공 데이터를 매일 자동 수집해서 정리합니다.
+            모아 보여드리는 서비스예요. 복지로·소상공인24·온통청년·금융위원회
+            {ADSENSE_REVIEW_MODE ? "" : "·정책브리핑"} 등 여러 공공 데이터를
+            매일 자동 수집해서 정리합니다.
             <br />
             <br />
             <strong className="text-grey-900">
@@ -60,7 +62,8 @@ const SECTIONS: Section[] = [
         q: "무료인가요?",
         a: (
           <>
-            공고 검색·열람·정책 뉴스 읽기는 <strong>누구나 무료</strong>예요.
+            공고 검색·열람·{ADSENSE_REVIEW_MODE ? "정책 가이드" : "정책 뉴스"} 읽기는{" "}
+            <strong>누구나 무료</strong>예요.
             <br />
             맞춤 알림·AI 상담은 플랜별로 제공 범위가 달라요. 자세한 내용은{" "}
             <Link href="/pricing" className="text-blue-500 hover:underline">
@@ -75,8 +78,13 @@ const SECTIONS: Section[] = [
         a: (
           <>
             공고는 매일 자동 수집되고, 일부 소스는 하루에 여러 번 갱신해요.
-            <br />
-            정책 뉴스는 korea.kr(정책브리핑) RSS 기반으로 매일 11시(KST) 한 번 수집합니다.
+            새로 확인된 정책은 조건별로 분류한 뒤 목록과 알림에 반영합니다.
+            {!ADSENSE_REVIEW_MODE && (
+              <>
+                <br />
+                정책 뉴스는 korea.kr(정책브리핑) RSS 기반으로 매일 11시(KST) 한 번 수집합니다.
+              </>
+            )}
           </>
         ),
       },

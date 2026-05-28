@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // 2026-05-21 SC 색인 1,958 페이지 미생성 진단 후속:
 // 정적·hub 페이지 lastModified 가 매 sitemap fetch 마다 new Date() 로 갱신되어
@@ -35,7 +36,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/welfare`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
     { url: `${baseUrl}/loan`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
     { url: `${baseUrl}/blog`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/news`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
+    ...(!ADSENSE_REVIEW_MODE
+      ? [{ url: `${baseUrl}/news`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 }]
+      : []),
     { url: `${baseUrl}/calendar`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/recommend`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/popular`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
@@ -234,45 +237,41 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // News posts (korea.kr 수집) — slug 는 `{title-slug}-{newsId}` 형식이며 title
-  // 부분에 한글 포함. XML sitemap 표준상 한글 URL 은 percent-encode 해야 함.
-  // 2026-04-24: 보도자료(press) + keepioo 키워드 매칭 안 된 노이즈는 비노출.
-  // 2026-05-21 🔴 default limit 1000 사고 fix — news 9,326 중 8,326 row 가 sitemap 에서
-  // 누락되어 있었음 (SC 색인 미생성 1,958 의 핵심 원인). 25,000 limit 으로 안전망.
-  const { data: newsPosts } = await supabase
-    .from("news_posts")
-    .select("slug, updated_at")
-    .neq("category", "press")
-    .not("keywords", "eq", "{}")
-    .limit(25000);
-  const newsPages: MetadataRoute.Sitemap = (newsPosts || []).map((n) => ({
-    url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,
-    lastModified: new Date(n.updated_at),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+  let newsPages: MetadataRoute.Sitemap = [];
+  let keywordPages: MetadataRoute.Sitemap = [];
+  let topicPages: MetadataRoute.Sitemap = [];
 
-  // 뉴스 키워드 페이지 24개 — SEO long-tail (청년·소상공인·지원금 등 각각 URL)
-  const keywordPages: MetadataRoute.Sitemap = getAllKeywords().map((k) => ({
-    url: `${baseUrl}/news/keyword/${encodeURIComponent(k)}`,
-    lastModified: new Date(),
-    changeFrequency: "daily" as const,
-    priority: 0.7,
-  }));
+  if (!ADSENSE_REVIEW_MODE) {
+    const { data: newsPosts } = await supabase
+      .from("news_posts")
+      .select("slug, updated_at")
+      .neq("category", "press")
+      .not("keywords", "eq", "{}")
+      .limit(25000);
+    newsPages = (newsPosts || []).map((n) => ({
+      url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,
+      lastModified: new Date(n.updated_at),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
 
-  // 뉴스 주제 페이지 15개 — korea.kr 키워드 뉴스 분류 (대상별·주제별·핫이슈)
-  // 쿼리 파라미터 기반이라 정식 별도 라우트보다 SEO 힘은 약하지만 Google 은
-  // query-string URL 도 색인함. 각 주제별로 최신 뉴스 모음이 노출되어 long-tail
-  // 검색 대응.
-  const { TOPIC_CATEGORIES } = await import(
-    "@/lib/news-collectors/korea-kr-topics"
-  );
-  const topicPages: MetadataRoute.Sitemap = TOPIC_CATEGORIES.map((t) => ({
-    url: `${baseUrl}/news?topic=${encodeURIComponent(t.name)}`,
-    lastModified: new Date(),
-    changeFrequency: "daily" as const,
-    priority: 0.6,
-  }));
+    keywordPages = getAllKeywords().map((k) => ({
+      url: `${baseUrl}/news/keyword/${encodeURIComponent(k)}`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+    }));
+
+    const { TOPIC_CATEGORIES } = await import(
+      "@/lib/news-collectors/korea-kr-topics"
+    );
+    topicPages = TOPIC_CATEGORIES.map((t) => ({
+      url: `${baseUrl}/news?topic=${encodeURIComponent(t.name)}`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.6,
+    }));
+  }
 
   return [
     ...staticPages,

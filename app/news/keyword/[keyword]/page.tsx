@@ -19,6 +19,7 @@ import { AdSlot } from "@/components/ad-slot";
 import { BreadcrumbSchema } from "@/components/json-ld";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { findRelatedPrograms } from "@/lib/news-matching";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 const PER_PAGE = 18;
 export const revalidate = 600; // 10분 ISR
@@ -35,11 +36,22 @@ const VALID_KEYWORDS = new Set(getAllKeywords());
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { keyword } = await params;
   const decoded = decodeURIComponent(keyword);
-  if (!VALID_KEYWORDS.has(decoded)) return { title: "정책 소식 — 정책알리미" };
+  if (!VALID_KEYWORDS.has(decoded)) {
+    return {
+      title: "정책 소식 — 정책알리미",
+      robots: ADSENSE_REVIEW_MODE ? { index: false, follow: true } : undefined,
+    };
+  }
   return {
     title: `${decoded} 정책 뉴스 | 정책알리미`,
     description: `${decoded} 관련 정부 정책 발표·보도자료·정책자료를 한눈에. 관련 공고 신청 정보까지 함께.`,
     alternates: { canonical: `/news/keyword/${encodeURIComponent(decoded)}` },
+    robots: ADSENSE_REVIEW_MODE
+      ? {
+          index: false,
+          follow: true,
+        }
+      : undefined,
     openGraph: {
       title: `${decoded} 정책 뉴스`,
       description: `${decoded} 관련 정부 정책 발표·공고 모음`,
@@ -146,7 +158,7 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
         )}
 
         {/* AdSense 슬롯 — 키워드별 뉴스 다 읽은 독자에게. 라이선스 안내 앞. */}
-        {list.length > 0 && (
+        {list.length > 0 && !ADSENSE_REVIEW_MODE && (
           <div className="mt-10">
             <AdSlot placement="category" />
           </div>

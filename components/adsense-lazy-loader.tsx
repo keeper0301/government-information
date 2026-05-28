@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // AdSense 라이브러리를 lighthouse 측정 윈도우 (~5초) 밖에서 로드.
 // 기존 next/script strategy="lazyOnload" 는 브라우저 idle 시 자동 로드 →
@@ -39,10 +40,11 @@ export function AdsenseLazyLoader() {
       s.async = true;
       s.crossOrigin = "anonymous";
       s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_ID}`;
-      // 자동 광고 (Auto Ads) — Google 이 페이지 빈 공간에 광고 자동 삽입.
-      // AdSense 콘솔에서 자동 광고 ON 후 효과 시작. 미승인 사이트는 광고 안 채워짐.
-      // 수동 슬롯 (ad-slot.tsx placeholder) 은 보존 — 향후 추가 시 그대로 사용.
+      // 자동 광고는 페이지 빈 공간에 광고를 자동 삽입한다.
+      // 재심사 모드에서는 로그인·검색·뉴스 같은 비콘텐츠/보조 화면에 광고가
+      // 자동 배치될 위험이 있어 끄고, 수동 슬롯만 사용한다.
       s.onload = () => {
+        if (ADSENSE_REVIEW_MODE) return;
         try {
           const w = window as unknown as { adsbygoogle: Array<Record<string, unknown>> };
           w.adsbygoogle = w.adsbygoogle || [];

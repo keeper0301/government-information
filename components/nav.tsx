@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./user-menu";
 import { NotificationBell } from "./notification-bell";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // ============================================================
 // 헤더 메뉴 — 11개 → 5개로 축소
@@ -14,11 +15,11 @@ import { NotificationBell } from "./notification-bell";
 // 한 손가락 동선을 줄였다.
 // 알림센터·도움말·이용약관 은 헤더에서 빼고 모바일 햄버거 하단
 // "기타 메뉴" 영역과 푸터로만 노출 (헤더 가독성 우선).
-// 정책 블로그는 /news 헤더 버튼으로 일원화 (2026-04-25).
+// 애드센스 재심사 기간에는 외부 뉴스 모음보다 자체 정책 가이드를 먼저 노출.
 // ============================================================
 // `priority: "core"` 는 md(768)+ 부터 항상 노출 — 폴드7 메인·태블릿 가로에서
 // desktop nav 가 보이도록. `priority: "extra"` 는 lg(1024)+ 에서만 노출.
-// 핵심 4개 = 정책·소식·달력·검색. 나머지 (AI상담·요금제) 는 lg+ 한정.
+// 핵심 4개 = 정책·블로그·달력·검색. 나머지 (AI상담·요금제) 는 lg+ 한정.
 const items = [
   {
     label: "정책",
@@ -34,7 +35,9 @@ const items = [
       { label: "자격별 정책", href: "/eligibility" },
     ],
   },
-  { label: "소식", href: "/news", priority: "core" },
+  ADSENSE_REVIEW_MODE
+    ? { label: "블로그", href: "/blog", priority: "core" }
+    : { label: "소식", href: "/news", priority: "core" },
   { label: "달력", href: "/calendar", priority: "core" },
   { label: "AI상담", href: "/consult", priority: "extra" },
   { label: "요금제", href: "/pricing", priority: "extra" },
@@ -44,8 +47,7 @@ const items = [
 ] as const;
 
 // 모바일 햄버거 하단 "기타 메뉴" — 헤더에서 빠진 항목들의 마지막 진입점.
-// 2026-04-25: "정책 블로그" 헤더 제거 — /news 헤더에 진입 버튼 있고 푸터에서도 제거됨,
-// 일관성 유지 위해 모바일 햄버거에서도 제거. 사용자는 /news → 정책 블로그 버튼으로 진입.
+// 정책 블로그는 헤더 핵심 메뉴로 노출하므로 기타 메뉴에서는 중복 제거.
 // 2026-04-26: "1분 진단" (/quiz) 익명 funnel 추가.
 const mobileExtraItems = [
   { label: "1분 진단", href: "/quiz" },

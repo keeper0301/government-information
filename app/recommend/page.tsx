@@ -18,6 +18,7 @@ import { RecommendForm } from "./form";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export const metadata: Metadata = {
   title: "맞춤추천 — 정책알리미",
@@ -131,12 +132,14 @@ export default async function RecommendPage({
         businessProfile,
         programType: candidateType,
       }),
-      getRelatedNews({
-        age: candidateAge as AgeOption,
-        occupation: candidateOcc as OccupationOption,
-        // signals — quiz 입력 + 로그인 프로필 합성 (region/income/household/cohort 게이트 적용용)
-        signals: relatedSignals,
-      }),
+      ADSENSE_REVIEW_MODE
+        ? Promise.resolve([])
+        : getRelatedNews({
+            age: candidateAge as AgeOption,
+            occupation: candidateOcc as OccupationOption,
+            // signals — quiz 입력 + 로그인 프로필 합성 (region/income/household/cohort 게이트 적용용)
+            signals: relatedSignals,
+          }),
       getRelatedBlogs({
         age: candidateAge as AgeOption,
         occupation: candidateOcc as OccupationOption,

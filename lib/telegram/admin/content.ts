@@ -123,7 +123,9 @@ export async function publishIndexnowCommand(
   }
   return [
     "✅ IndexNow ping 완료",
-    `blog ${data.blog_count ?? 0} + news ${data.news_count ?? 0} = ${data.total_urls ?? 0} URL`,
+    data.news_count
+      ? `blog ${data.blog_count ?? 0} + news ${data.news_count} = ${data.total_urls ?? 0} URL`
+      : `blog ${data.blog_count ?? 0} = ${data.total_urls ?? 0} URL`,
     "네이버·Bing·Yandex 색인 큐 진입.",
   ].join("\n");
 }

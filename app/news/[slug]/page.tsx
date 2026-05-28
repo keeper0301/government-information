@@ -27,6 +27,7 @@ import { safeJsonLd } from "@/lib/json-ld-safe";
 import { HideNewsButton } from "./HideNewsButton";
 import { HiddenNewsNotice } from "./HiddenNewsNotice";
 import { AdminRestoreBanner } from "./AdminRestoreBanner";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export const revalidate = 3600; // 상세는 갱신 적어 1시간 ISR
 
@@ -49,7 +50,12 @@ function safeDecodeSlug(raw: string): string | null {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
-  if (!slug) return { title: "정책 소식 — 정책알리미" };
+  if (!slug) {
+    return {
+      title: "정책 소식 — 정책알리미",
+      robots: ADSENSE_REVIEW_MODE ? { index: false, follow: true } : undefined,
+    };
+  }
 
   // hidden 포함 모든 row 를 조회해야 metadata 단계에서도 노출 정책을 정확히 판단
   // (anon RLS 로 createClient 를 쓰면 hidden 은 NULL 로 떨어져 404 와 구별 불가).
@@ -61,7 +67,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .maybeSingle();
 
   // 2026-04-24 보도자료(press) 는 비노출 정책 — 404 와 동일 취급
-  if (!data || data.category === "press") return { title: "정책 소식 — 정책알리미" };
+  if (!data || data.category === "press") {
+    return {
+      title: "정책 소식 — 정책알리미",
+      robots: ADSENSE_REVIEW_MODE ? { index: false, follow: true } : undefined,
+    };
+  }
 
   // 모더레이션으로 비공개된 뉴스: 검색엔진 인덱스 제거 신호 noindex,nofollow
   // + canonical 제거. status 는 200 이지만 robots 가 검색 결과에서 빼도록 함.
@@ -80,6 +91,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${data.title} | 정책알리미`,
     description: data.summary || undefined,
     alternates: { canonical: `/news/${slug}` },
+    robots: ADSENSE_REVIEW_MODE
+      ? {
+          index: false,
+          follow: true,
+        }
+      : undefined,
     openGraph: {
       title: data.title,
       description: data.summary || undefined,
@@ -339,9 +356,11 @@ export default async function NewsDetailPage({ params }: Props) {
       {/* AdSense 슬롯 — 원문 CTA·공유 끝, 관련 공고 섹션 바로 위.
           AdSense 정책상 "위치" 가 중요: 본문 전부 읽은 독자에게 자연스럽게 광고 →
           키피오 USP 인 관련 공고 로 이어지는 흐름. 광고가 차단기 역할 안 하게 배치. */}
-      <div className="my-8 -mx-10 max-md:-mx-6">
-        <AdSlot placement="detail" />
-      </div>
+      {!ADSENSE_REVIEW_MODE && (
+        <div className="my-8 -mx-10 max-md:-mx-6">
+          <AdSlot placement="detail" />
+        </div>
+      )}
 
       {/* 관련 공고 — keepioo 의 진짜 차별점. 뉴스 읽고 바로 신청 가능한 공고로. */}
       <RelatedPrograms

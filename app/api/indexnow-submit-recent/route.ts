@@ -3,11 +3,10 @@
 // ============================================================
 // 매일 KST 16:00 (publish-blog 끝난 후 1시간) 에 자동 호출:
 //   1) 최근 24h blog_posts (published_at) 조회
-//   2) 최근 24h news_posts (published_at) 조회 (선택, 양 많으면 skip)
-//   3) URL list → IndexNow ping (네이버 + Bing/Yandex 동시)
+//   2) URL list → IndexNow ping (네이버 + Bing/Yandex 동시)
 //
 // 효과:
-//   - 매일 7글 (publish-blog) + 새 뉴스 = 약 50 URL/day
+//   - 매일 발행되는 자체 블로그 글을 검색엔진에 빠르게 알림
 //   - 검색봇이 "방문" 기다리지 않고 push → 색인 시간 1~2주 → 1~3일
 //   - 네이버 D.I.A 알고리즘 신선도 시그널 ↑
 //
@@ -21,10 +20,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { submitToIndexNow } from "@/lib/indexnow";
 import { authorizeCronRequest } from "@/lib/cron-auth";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 const RECENT_HOURS = 24;
-const NEWS_LIMIT = 100; // news 가 많아 무한 ping 방지
+const NEWS_LIMIT = 100; // 승인 후 뉴스까지 다시 색인 알림할 때 과다 전송 방지
 
 export const maxDuration = 30;
 
@@ -47,17 +47,19 @@ async function runSubmitRecent() {
     );
   }
 
-  // 2) 최근 24h news_posts (RSS 등록 보완 — IndexNow 가 더 빠름)
-  const { data: news, error: newsErr } = await supabase
-    .from("news_posts")
-    .select("slug, published_at")
-    .gte("published_at", since)
-    .order("published_at", { ascending: false })
-    .limit(NEWS_LIMIT);
+  let news: Array<{ slug: string }> = [];
+  if (!ADSENSE_REVIEW_MODE) {
+    const { data: newsData, error: newsErr } = await supabase
+      .from("news_posts")
+      .select("slug, published_at")
+      .gte("published_at", since)
+      .order("published_at", { ascending: false })
+      .limit(NEWS_LIMIT);
 
-  if (newsErr) {
-    console.error("[indexnow-submit-recent] news select 실패:", newsErr);
-    // news 실패해도 blog 는 진행
+    if (newsErr) {
+      console.error("[indexnow-submit-recent] news select 실패:", newsErr);
+    }
+    news = newsData ?? [];
   }
 
   // URL list — keepioo 절대 URL
@@ -65,7 +67,7 @@ async function runSubmitRecent() {
   for (const b of blogs || []) {
     urls.push(`${SITE_URL}/blog/${b.slug}`);
   }
-  for (const n of news || []) {
+  for (const n of news) {
     urls.push(`${SITE_URL}/news/${n.slug}`);
   }
 
@@ -79,7 +81,7 @@ async function runSubmitRecent() {
   return NextResponse.json({
     timestamp: new Date().toISOString(),
     blog_count: blogs?.length ?? 0,
-    news_count: news?.length ?? 0,
+    news_count: news.length,
     total_urls: urls.length,
     results,
   });

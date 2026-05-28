@@ -64,6 +64,9 @@ export const metadata: Metadata = {
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION,
     other: {
+      ...(process.env.NEXT_PUBLIC_ADSENSE_ID && {
+        "google-adsense-account": process.env.NEXT_PUBLIC_ADSENSE_ID,
+      }),
       ...(process.env.NAVER_SITE_VERIFICATION && {
         "naver-site-verification": process.env.NAVER_SITE_VERIFICATION,
       }),
