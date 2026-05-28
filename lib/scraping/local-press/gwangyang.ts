@@ -25,8 +25,12 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
+// 본문은 board.es view 테이블의 <td colspan="4" class="view_content"> 셀.
+// class 앞에 colspan 등 속성이 먼저 오고 (그래서 <td class= 로는 매칭 안 됨),
+// 본문 안에 HWP/워드 export 중첩 table 이 섞여 있어 </td> 경계가 깨진다.
+// → 첨부파일 행(view_file)·버튼영역 마커까지 non-greedy 로 잘라 중첩 table 영향 제거.
 const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:view_cont|board_view|board_view_body|cont_box|contents|p-view__cont)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|attach|p-view__bottom)|<\/article|<\/section)/i;
+  /class="[^"]*view_content[^"]*"[^>]*>([\s\S]*?)(?:<td[^>]*class="[^"]*view_file|<th[^>]*>\s*첨부파일|<div\s+class="btnArea|<!--버튼영역-->)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -60,10 +64,16 @@ export function parseListPage(html: string): PressNewsItem[] {
 export function parseDetailBody(html: string): string | null {
   const m = BODY_CONTAINER_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
+  const text = decodeBasicEntities(
+    m[1]
+      // MS Word/HWP export 조건부 주석 (<!--[if ...]-->) 제거
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  )
     .replace(/\s+/g, " ")
+    // 캡처 끝에 딸려오는 구조 라벨(첨부파일) 제거
+    .replace(/\s*첨부파일\s*$/, "")
     .trim();
   if (!/[가-힣]/.test(text) || text.length < 50) return null;
   return text.slice(0, 5000);
