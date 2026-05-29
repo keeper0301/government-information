@@ -14,9 +14,14 @@ export const scrapeChangwon = makeScraper({
   listUrl: "https://www.changwon.go.kr/cwportal/10310/10429/10432.web",
 });
 
+// 2026-05-29 — 성남시. 목록 상세가 onclick="dataView('N')"(href=#N) → bbsView.do?idx=N GET.
+// onclickIdRe 로 id 추출 + detailPath 로 URL 구성. 본문 td.content (boardWrap 은 메타 포함).
 export const scrapeSeongnam = makeScraper({
   cityName: "성남시",
   listUrl: "https://www.seongnam.go.kr/city/1000060/30005/bbsList.do",
+  onclickIdRe: "dataView\\('(\\d+)'\\)",
+  detailPath: "bbsView.do?idx={id}",
+  bodySelectors: ["td.content"],
 });
 
 export const scrapeAnsan = makeScraper({

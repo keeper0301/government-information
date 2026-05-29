@@ -110,7 +110,16 @@ export const BODY_SELECTORS = [
 // bodySelectors: 사이트별 본문 컨테이너 selector(미지정 시 범용 BODY_SELECTORS).
 // listSelectors: 사이트별 목록 row selector(미지정 시 범용 LIST_SELECTORS).
 //   사상소식지처럼 갤러리형(dl/dt) 등 범용 table/ul 패턴이 안 맞는 경우 지정.
-export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS, listSelectors = LIST_SELECTORS }) {
+// onclickIdRe + detailPath: 상세 링크가 href 가 아니라 onclick(예: dataView('384521'))인
+//   큰 시(성남 등) 대응. onclick 에서 id 추출 → detailPath("bbsView.do?idx={id}") 로 GET URL 구성.
+export function makeScraper({
+  listUrl,
+  cityName,
+  bodySelectors = BODY_SELECTORS,
+  listSelectors = LIST_SELECTORS,
+  onclickIdRe = null,
+  detailPath = null,
+}) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });
     const ctx = await browser.newContext({
@@ -137,7 +146,7 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS,
       // listSelectors 는 정확한 selector 라 소량(구보 등 2~3건)도 신뢰 → >0 허용.
       const minRows = listSelectors === LIST_SELECTORS ? 3 : 0;
       const items = await page.evaluate(
-        ({ selectors, limit, minRows }) => {
+        ({ selectors, limit, minRows, onclickIdRe, detailPath }) => {
           let rows = [];
           let chosen = null;
           // 2026-05-22 debug — 각 selector 매칭 count 기록 (Actions log).
@@ -168,8 +177,21 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS,
             .map((row) => {
               const a = row.querySelector("a[href]");
               if (!a) return null;
-              const href = a.getAttribute("href");
-              if (!href || href.startsWith("javascript:")) return null;
+              let href = a.getAttribute("href");
+              // onclick 기반 상세(href=# 또는 javascript:): onclick 에서 id 추출 → 템플릿으로 URL.
+              // 성남 등 큰 시: <a href="#N" onclick="dataView('N')"> → bbsView.do?idx=N
+              if (
+                onclickIdRe &&
+                href &&
+                (href.startsWith("#") || href.startsWith("javascript"))
+              ) {
+                const oc = a.getAttribute("onclick") || "";
+                const mm = oc.match(new RegExp(onclickIdRe));
+                if (!mm) return null;
+                href = detailPath.replace("{id}", mm[1]);
+              } else if (!href || href.startsWith("javascript:")) {
+                return null;
+              }
               const sourceUrl = href.startsWith("http")
                 ? href
                 : new URL(href, location.href).href;
@@ -192,7 +214,7 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS,
             })
             .filter(Boolean);
         },
-        { selectors: listSelectors, limit, minRows },
+        { selectors: listSelectors, limit, minRows, onclickIdRe, detailPath },
       );
 
       const out = [];
