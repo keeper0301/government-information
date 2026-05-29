@@ -1,0 +1,43 @@
+name: Local Press Scraping (Playwright + icn1 프록시)
+
+# JS 렌더형 시·군 보도자료를 풀 chromium 으로 읽어 keepioo /api/admin/import-press-batch POST.
+# 정부 사이트가 해외(GitHub Actions 미국) IP 를 차단하므로, 정부 도메인 요청을 Vercel icn1
+# (한국 IP) 프록시 /api/internal/icn1-fetch 로 우회시킨다 (KEEPIOO_USE_PROXY=1).
+#
+# 검증된 도시만 KEEPIOO_RUNNER_CITIES 로 점진 활성화 (현재: 노원).
+# 도시 추가 시 ① 프록시 allowlist(icn1-fetch) ② factory selector 검증 ③ 이 목록에 key 추가.
+#
+# secrets 필요:
+#   KEEPIOO_API_URL  — 예 https://www.keepioo.com (프록시 base + 배치 POST 대상)
+#   KEEPIOO_API_KEY  — Vercel env IMPORT_PRESS_API_KEY 와 동일 값 (프록시 인증 + 배치 인증)
+#
+# 일정: KST 10/22 (= UTC 1/13). 2회/일.
+
+on:
+  schedule:
+    - cron: "0 1,13 * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install --no-package-lock
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run scraper
+        env:
+          KEEPIOO_API_URL: ${{ secrets.KEEPIOO_API_URL }}
+          KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
+          KEEPIOO_USE_PROXY: "1"
+          KEEPIOO_RUNNER_CITIES: "nowon"
+        run: node runner.mjs

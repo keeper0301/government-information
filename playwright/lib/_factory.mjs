@@ -13,6 +13,56 @@ import { chromium } from "playwright";
 const USER_AGENT =
   "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
 
+// ── icn1 프록시 우회 (해외 GitHub Actions 전용) ──────────────────
+// KEEPIOO_USE_PROXY 가 설정되면, 정부 도메인(.kr) 요청을 Vercel icn1(한국 IP)
+// 프록시로 우회시킨다. 한국 IP(사장님 PC)에서는 이 변수를 안 켜므로 직접 접속.
+// 이미지·CSS·폰트·미디어는 차단(본문 텍스트만 필요 → 프록시 부하·렌더 지연 제거).
+const USE_PROXY = !!process.env.KEEPIOO_USE_PROXY;
+const PROXY_URL = (process.env.KEEPIOO_API_URL || "") + "/api/internal/icn1-fetch";
+const PROXY_KEY = process.env.KEEPIOO_API_KEY || "";
+// 프록시 경유는 매 요청이 Vercel 왕복이라 느림 → networkidle 대신 domcontentloaded.
+const NAV_WAIT = USE_PROXY ? "domcontentloaded" : "networkidle";
+const LIST_TIMEOUT = USE_PROXY ? 45000 : 30000;
+const DETAIL_TIMEOUT = USE_PROXY ? 35000 : 20000;
+
+async function installProxy(page) {
+  if (!USE_PROXY) return;
+  await page.route("**/*", async (route) => {
+    const req = route.request();
+    if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) {
+      return route.abort();
+    }
+    let host;
+    try {
+      host = new URL(req.url()).hostname;
+    } catch {
+      return route.continue();
+    }
+    if (!host.endsWith(".kr")) return route.continue();
+    try {
+      const r = await fetch(PROXY_URL, {
+        method: "POST",
+        headers: { "X-API-Key": PROXY_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: req.url(),
+          method: req.method(),
+          headers: req.headers(),
+          postData: req.postData(),
+        }),
+      });
+      if (!r.ok) return route.continue();
+      const d = await r.json();
+      await route.fulfill({
+        status: d.status,
+        headers: d.headers || {},
+        body: Buffer.from(d.bodyB64, "base64"),
+      });
+    } catch {
+      return route.continue();
+    }
+  });
+}
+
 // 2026-05-22 — 광범위 확장. 5 city SPA site 표준 selector 다양 대응.
 // Playwright waitForSelector 가 OR list — 1개라도 매칭 시 진행.
 const LIST_SELECTORS = [
@@ -66,9 +116,10 @@ export function makeScraper({ listUrl, cityName }) {
       timezoneId: "Asia/Seoul",
     });
     const page = await ctx.newPage();
+    await installProxy(page);
 
     try {
-      await page.goto(listUrl, { waitUntil: "networkidle", timeout: 30000 });
+      await page.goto(listUrl, { waitUntil: NAV_WAIT, timeout: LIST_TIMEOUT });
       // 2026-05-22 — wait 시간 15s → 25s 확장 (느린 SPA 대응).
       // selector 매칭 실패해도 evaluate 진행 (catch fallthrough).
       try {
@@ -142,9 +193,11 @@ export function makeScraper({ listUrl, cityName }) {
       for (const item of items) {
         try {
           await page.goto(item.sourceUrl, {
-            waitUntil: "networkidle",
-            timeout: 20000,
+            waitUntil: NAV_WAIT,
+            timeout: DETAIL_TIMEOUT,
           });
+          // 프록시 모드(domcontentloaded)는 본문 JS 주입을 위해 잠깐 더 대기
+          if (USE_PROXY) await page.waitForTimeout(1000);
           const body = await page.evaluate((selectors) => {
             for (const sel of selectors) {
               const el = document.querySelector(sel);

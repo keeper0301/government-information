@@ -23,7 +23,7 @@ import {
   scrapeNowon,
 } from "./lib/cities.mjs";
 
-const COLLECTORS = [
+const ALL_COLLECTORS = [
   { city: "창원시", key: "changwon", fn: scrapeChangwon },
   { city: "성남시", key: "seongnam", fn: scrapeSeongnam },
   { city: "안산시", key: "ansan", fn: scrapeAnsan },
@@ -33,6 +33,16 @@ const COLLECTORS = [
   { city: "해운대구", key: "haeundae", fn: scrapeHaeundae },
   { city: "노원구", key: "nowon", fn: scrapeNowon },
 ];
+
+// KEEPIOO_RUNNER_CITIES (쉼표 구분) 가 있으면 해당 key 만 실행.
+// 프록시 우회로 검증된 도시만 점진 활성화하기 위함 (미검증 도시 0건/잡음 방지).
+const ONLY = (process.env.KEEPIOO_RUNNER_CITIES || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const COLLECTORS = ONLY.length
+  ? ALL_COLLECTORS.filter((c) => ONLY.includes(c.key))
+  : ALL_COLLECTORS;
 
 async function postBatch({ apiUrl, apiKey, city, items }) {
   const res = await fetch(`${apiUrl}/api/admin/import-press-batch`, {
