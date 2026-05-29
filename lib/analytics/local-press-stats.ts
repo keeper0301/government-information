@@ -8,6 +8,24 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CITY_REGISTRY } from "@/lib/scraping/local-press/_registry";
 
+// 프록시 경로(GitHub Actions + icn1)로 "실제 가동 중"(local-press-proxy.yml RUNNER_CITIES)인
+// 시·군. audit details.city = ministry 에서 "청" 제거 값(노원구청→노원구). stale 노쇼 감지용.
+// ※ suyeong/haeundae/busan 은 PLAYWRIGHT_CITY_REGISTRY 매핑에 있으나 RUNNER_CITIES 미포함=미가동
+//   이라 제외(수집 안 하므로 stale 무의미). RUNNER_CITIES 에 도시 추가 시 여기도 동기화할 것.
+const PROXY_LOCAL_PRESS_CITIES = [
+  "노원구",
+  "동래구",
+  "부산진구",
+  "금정구",
+  "부산 북구",
+  "사상구",
+  "김포시",
+  "성남시",
+  "천안시",
+  "안산시",
+  "창원특례시",
+];
+
 export type LocalPressCityStat = {
   city: string; // 한국어 이름
   inserted24h: number;
@@ -131,8 +149,9 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
   };
 }
 
-// health-alert cron 이 호출. 최근 windowHours (기본 72h) 안에 inserted 한 적 없는
-// 시·군 수를 반환. 3 cron 회차 연속 실패 = collector regex 깨졌거나 사이트 구조 변경 신호.
+// health-alert cron 이 호출. 최근 windowHours (기본 72h) 안에 한 번도 fetched>0 한 적 없는
+// 시·군 수를 반환(정적 CITY_REGISTRY + 프록시 도시). fetched 0 = collector 가 list/본문을 못
+// 가져옴 = regex 깨짐·사이트 구조 변경·노쇼. (신규 없어 중복 skip 만 한 날은 fetched>0 라 정상.)
 // audit 자체가 없는 시·군도 stale 로 처리 (cron 노쇼 진단 보조).
 export async function getStaleCityCount(windowHours = 72): Promise<number> {
   const admin = createAdminClient();
@@ -146,20 +165,27 @@ export async function getStaleCityCount(windowHours = 72): Promise<number> {
     .eq("action", "local_press_scrape")
     .gte("created_at", since);
 
-  // city → max inserted (한 번이라도 1+ 면 정상)
-  const maxInsertedByCity = new Map<string, number>();
+  // city → max fetched (한 번이라도 fetched 1+ 면 collector 동작 = 정상).
+  // ※ inserted 가 아닌 fetched 기준: 신규 글이 없어 전부 중복 skip(inserted 0)이어도
+  //   list/본문을 가져왔으면(fetched>0) collector 는 정상. inserted 0=stale 은 오발.
+  const maxFetchedByCity = new Map<string, number>();
   for (const row of rows ?? []) {
     const d = (row.details ?? {}) as Record<string, unknown>;
     const city = String(d.city ?? "");
     if (!city) continue;
-    const inserted = Number(d.inserted ?? 0);
-    const prev = maxInsertedByCity.get(city) ?? 0;
-    if (inserted > prev) maxInsertedByCity.set(city, inserted);
+    const fetched = Number(d.fetched ?? 0);
+    const prev = maxFetchedByCity.get(city) ?? 0;
+    if (fetched > prev) maxFetchedByCity.set(city, fetched);
   }
 
+  // 정적 CITY_REGISTRY + 프록시 경로(import-press-batch) 도시를 함께 stale 판정.
+  // 프록시 도시가 완전히 죽으면(audit 0=노쇼) 감지하려면 정적 목록 필요(audit 기반만으론 노쇼 누락).
+  const targets = new Set<string>(CITY_REGISTRY.map((e) => e.city));
+  for (const c of PROXY_LOCAL_PRESS_CITIES) targets.add(c);
+
   let stale = 0;
-  for (const entry of CITY_REGISTRY) {
-    if ((maxInsertedByCity.get(entry.city) ?? 0) === 0) {
+  for (const city of targets) {
+    if ((maxFetchedByCity.get(city) ?? 0) === 0) {
       stale += 1;
     }
   }
