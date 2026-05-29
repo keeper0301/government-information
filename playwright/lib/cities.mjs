@@ -36,8 +36,9 @@ export const scrapeAnsan = makeScraper({
   listSelectors: ["table tbody tr"],
   onclickIdRe: "fnGoDetail\\(\\s*(\\d+)\\s*\\)",
   detailPath: "selectBbsDetail.do?bbs_code=B0238&bbs_seq={id}",
-  // .p-table__subject tr 안 td 3개[제목·날짜·본문] 중 본문은 마지막 td.
-  bodySelectors: [".p-table__subject td:last-child"],
+  // 본문 td 는 무class 지만 .p-photo(사진)를 자식으로 가짐. .p-photo 는 정적 HTML 이라
+  // JS 재배치(.p-table__subject td 로 이동)와 무관 → td:has(.p-photo) 로 프록시(JS 전)에서도 잡음.
+  bodySelectors: ["td:has(.p-photo)"],
 });
 
 // 2026-05-29 — 천안시. 기존 _060 은 기금운용 오등록 → 진짜 보도자료 _030 으로 교정.
