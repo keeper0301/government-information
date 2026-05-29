@@ -29,9 +29,16 @@ export const scrapeAnsan = makeScraper({
   listUrl: "https://ansan.go.kr/www/common/bbs/selectBbsList.do?bbs_code=B0238",
 });
 
+// 2026-05-29 — 천안시. 기존 _060 은 기금운용 오등록 → 진짜 보도자료 _030 으로 교정.
+// 카드형(.item--bodo) + button onclick="fn_search_detail('영숫자nttId')" → view.do?nttId=N GET.
+// 제목은 img alt(썸네일 카드). 본문 .board-view__contents (script/갤러리 잡음은 factory 가 정제).
 export const scrapeCheonan = makeScraper({
   cityName: "천안시",
-  listUrl: "https://www.cheonan.go.kr/prog/bbsArticle/BBSMSTR_000000000060/list.do",
+  listUrl: "https://www.cheonan.go.kr/bbs/BBSMSTR_000000000030/list.do",
+  listSelectors: [".item--bodo"],
+  onclickIdRe: "fn_search_detail\\('([^']+)'\\)",
+  detailPath: "view.do?nttId={id}",
+  bodySelectors: [".board-view__contents"],
 });
 
 // 2026-05-22 — busan 정적 fetch 불가 (SPA list). Playwright 로 가동.

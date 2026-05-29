@@ -176,31 +176,39 @@ export function makeScraper({
             .slice(0, limit)
             .map((row) => {
               const a = row.querySelector("a[href]");
-              if (!a) return null;
-              let href = a.getAttribute("href");
-              // onclick 기반 상세(href=# 또는 javascript:): onclick 에서 id 추출 → 템플릿으로 URL.
-              // 성남 등 큰 시: <a href="#N" onclick="dataView('N')"> → bbsView.do?idx=N
-              if (
-                onclickIdRe &&
-                href &&
-                (href.startsWith("#") || href.startsWith("javascript"))
-              ) {
-                const oc = a.getAttribute("onclick") || "";
-                const mm = oc.match(new RegExp(onclickIdRe));
-                if (!mm) return null;
-                href = detailPath.replace("{id}", mm[1]);
-              } else if (!href || href.startsWith("javascript:")) {
-                return null;
+              let href = a ? a.getAttribute("href") : null;
+              // onclick 기반 상세: ① a 의 href=#/javascript (성남 dataView)
+              //   ② a 없고 button 등 [onclick] 요소 (천안 fn_search_detail). onclick 에서 id 추출 → URL.
+              if (onclickIdRe) {
+                const needOnclick =
+                  !href || href.startsWith("#") || href.startsWith("javascript");
+                if (needOnclick) {
+                  const clickEl =
+                    a && a.getAttribute("onclick") ? a : row.querySelector("[onclick]");
+                  const oc = clickEl ? clickEl.getAttribute("onclick") || "" : "";
+                  const mm = oc.match(new RegExp(onclickIdRe));
+                  if (!mm) return null;
+                  href = detailPath.replace("{id}", mm[1]);
+                }
               }
+              if (!href || href.startsWith("javascript:")) return null;
               const sourceUrl = href.startsWith("http")
                 ? href
                 : new URL(href, location.href).href;
 
               const titleEl =
                 row.querySelector(".title, .subject, .tit") ?? a;
-              const title = (titleEl.textContent || "")
-                .trim()
-                .replace(/\s+/g, " ");
+              let title = titleEl
+                ? (titleEl.textContent || "").trim().replace(/\s+/g, " ")
+                : "";
+              // 제목 텍스트 요소가 없는 썸네일 카드(천안 등): img alt 에서 제목(" 이미지" 접미 제거)
+              if (!title || title.length < 5) {
+                const img = row.querySelector("img[alt]");
+                if (img)
+                  title = (img.getAttribute("alt") || "")
+                    .replace(/\s*이미지\s*$/, "")
+                    .trim();
+              }
               if (!title || title.length < 5) return null;
 
               const dateText = (
@@ -227,13 +235,22 @@ export function makeScraper({
           // 프록시 모드(domcontentloaded)는 본문 JS 주입을 위해 잠깐 더 대기
           if (USE_PROXY) await page.waitForTimeout(1000);
           const body = await page.evaluate((selectors) => {
-            // 정부 사이트 이미지 첨부의 접근성 UI 라벨(본문 아님) 제거 — 범용.
+            // 본문 아닌 UI 라벨 제거(범용): 이미지 첨부 접근성 라벨 + 포토갤러리 슬라이더 컨트롤.
             const stripUiLabels = (t) =>
-              t.replace(/이미지\s*(확대보기|다운로드)/g, "").replace(/\s+/g, " ").trim();
+              t
+                .replace(/이미지\s*(확대보기|다운로드)/g, "")
+                .replace(/포토갤러리\s*(정지|재생)/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
             for (const sel of selectors) {
               const el = document.querySelector(sel);
               if (el) {
-                const text = stripUiLabels((el.textContent ?? "").replace(/\s+/g, " ").trim());
+                // script/style 텍스트(inline JS 등)는 본문 아님 → 복제 후 제거.
+                const clone = el.cloneNode(true);
+                clone.querySelectorAll("script, style").forEach((s) => s.remove());
+                const text = stripUiLabels(
+                  (clone.textContent ?? "").replace(/\s+/g, " ").trim(),
+                );
                 if (text.length > 100) return text.slice(0, 5000);
               }
             }
