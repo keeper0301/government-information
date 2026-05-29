@@ -4,8 +4,9 @@ name: Local Press Scraping (Playwright + icn1 프록시)
 # 정부 사이트가 해외(GitHub Actions 미국) IP 를 차단하므로, 정부 도메인 요청을 Vercel icn1
 # (한국 IP) 프록시 /api/internal/icn1-fetch 로 우회시킨다 (KEEPIOO_USE_PROXY=1).
 #
-# 검증된 도시만 KEEPIOO_RUNNER_CITIES 로 점진 활성화 (현재: 노원).
-# 도시 추가 시 ① 프록시 allowlist(icn1-fetch) ② factory selector 검증 ③ 이 목록에 key 추가.
+# 검증된 도시만 KEEPIOO_RUNNER_CITIES 로 점진 활성화 (현재 10: 노원·동래·부산진·금정·부산북구·
+# 사상·사상소식지·김포·성남·천안). 도시 추가 시 ① 프록시 allowlist(icn1-fetch) ② factory selector
+# 검증 ③ 이 목록에 key 추가.
 #
 # secrets 필요:
 #   KEEPIOO_API_URL  — 예 https://www.keepioo.com (프록시 base + 배치 POST 대상)
@@ -45,5 +46,5 @@ jobs:
           KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
           KEEPIOO_USE_PROXY: "1"
           # dispatch 시 입력값 우선, 스케줄 실행 시 기본값(검증 완료 도시)
-          KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon,dongnae,busanjin,geumjeong,bsbukgu,sasang,sasang_news,gimpo,seongnam' }}
+          KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon,dongnae,busanjin,geumjeong,bsbukgu,sasang,sasang_news,gimpo,seongnam,cheonan' }}
         run: node runner.mjs
