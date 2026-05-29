@@ -51,43 +51,53 @@ export async function GET(request: Request) {
     });
     const page = await ctx.newPage();
 
-    // 1) 목록 — 첫 상세 링크 추출 (networkidle: makeScraper 와 동일, JS 렌더 완료 대기)
+    // 1) 목록 — 상세 링크 3개 추출
     await page.goto(LIST_URL, { waitUntil: "networkidle", timeout: 30000 });
-    const detailUrl = await page.evaluate(() => {
-      const a = Array.from(document.querySelectorAll("a[href]")).find((x) =>
-        /BD_selectBbs\.do\?[^"']*q_bbscttSn=\d/.test(x.getAttribute("href") || ""),
-      );
-      return a ? (a as HTMLAnchorElement).href : null;
-    });
-    if (!detailUrl) {
-      return NextResponse.json({
-        ok: false,
-        step: "list",
-        msg: "상세 링크 미발견 (목록 렌더 실패 가능)",
-        ms: Date.now() - t0,
-      });
-    }
-
-    // 2) 상세 — 본문 추출 (networkidle: 본문이 JS 로 늦게 렌더되는 사이트 대응)
-    await page.goto(detailUrl, { waitUntil: "networkidle", timeout: 25000 });
-    const body = await page.evaluate((sels) => {
-      for (const s of sels) {
-        const el = document.querySelector(s);
-        if (el) {
-          const t = (el.textContent || "").replace(/\s+/g, " ").trim();
-          if (t.length > 100) return t.slice(0, 600);
+    const detailUrls: string[] = await page.evaluate(() => {
+      const seen = new Set<string>();
+      const out: string[] = [];
+      for (const x of Array.from(document.querySelectorAll("a[href]"))) {
+        const h = (x as HTMLAnchorElement).href;
+        if (/BD_selectBbs\.do\?[^"']*q_bbscttSn=\d/.test(x.getAttribute("href") || "")) {
+          if (!seen.has(h)) { seen.add(h); out.push(h); }
         }
       }
-      return null;
-    }, BODY_SELECTORS);
-
-    return NextResponse.json({
-      ok: !!body,
-      detailUrl,
-      bodyLen: body ? body.length : 0,
-      bodyPreview: body ? body.slice(0, 250) : null,
-      ms: Date.now() - t0,
+      return out.slice(0, 3);
     });
+    if (detailUrls.length === 0) {
+      return NextResponse.json({ ok: false, step: "list", msg: "상세 링크 0", ms: Date.now() - t0 });
+    }
+
+    // 2) 상세 3개 진단 — 자원 문제 회피 위해 domcontentloaded + 고정 대기
+    const diags = [];
+    for (const url of detailUrls) {
+      try {
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+        await page.waitForTimeout(5000); // JS 본문 렌더 대기
+        const d = await page.evaluate((sels) => {
+          const matched = sels
+            .map((s) => {
+              const el = document.querySelector(s);
+              const t = el ? (el.textContent || "").replace(/\s+/g, " ").trim() : "";
+              return el ? { s, len: t.length } : null;
+            })
+            .filter(Boolean);
+          const bodyText = (document.body?.innerText || "").replace(/\s+/g, " ").trim();
+          // 가장 긴 한글 div/td (selector 무관) 1개
+          let best = { cls: "", ko: 0 };
+          for (const el of Array.from(document.querySelectorAll("div,td,article"))) {
+            const t = (el.textContent || "").replace(/\s+/g, " ").trim();
+            const ko = (t.match(/[가-힣]/g) || []).length;
+            if (ko > best.ko && ko <= 3000) best = { cls: ((el as HTMLElement).className || (el as HTMLElement).id || "").toString().slice(0, 40), ko };
+          }
+          return { matched, bodyTextLen: bodyText.length, bodyKo: (bodyText.match(/[가-힣]/g) || []).length, best };
+        }, BODY_SELECTORS);
+        diags.push({ url: url.slice(-40), ...d });
+      } catch (e) {
+        diags.push({ url: url.slice(-40), error: (e as Error).message.slice(0, 60) });
+      }
+    }
+    return NextResponse.json({ ok: true, count: detailUrls.length, diags, ms: Date.now() - t0 });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: (e as Error).message, ms: Date.now() - t0 },
