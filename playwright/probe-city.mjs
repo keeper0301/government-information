@@ -46,15 +46,16 @@ try {
       counts[sel] = c;
       if (!chosen && c > 3) chosen = sel;
     }
-    let firstLinks = [];
+    let firstFull = [];
     if (chosen) {
       const rows = [...document.querySelectorAll(chosen)].slice(0, 5);
-      firstLinks = rows.map((r) => {
+      firstFull = rows.map((r) => {
         const a = r.querySelector("a[href]");
-        return a ? (a.getAttribute("href") || "").slice(0, 90) : "(a 없음)";
+        return a ? a.getAttribute("href") || "" : "";
       });
     }
-    return { counts, chosen, firstLinks };
+    // firstLinks 는 표시용(90자), firstFull 은 navigate 용(전체)
+    return { counts, chosen, firstLinks: firstFull.map((h) => h.slice(0, 90) || "(a 없음)"), firstFull };
   }, LIST_SELECTORS);
 
   console.log("=== LIST 진단 ===");
@@ -65,8 +66,8 @@ try {
   console.log("첫 row a[href]:");
   listDiag.firstLinks.forEach((h) => console.log("  -", h));
 
-  // ── 첫 상세 링크로 본문 진단 ──
-  const detailHref = listDiag.firstLinks.find((h) => h && h !== "(a 없음)" && !h.startsWith("javascript:"));
+  // ── 첫 상세 링크로 본문 진단 (자르지 않은 full href 사용) ──
+  const detailHref = (listDiag.firstFull || []).find((h) => h && !h.startsWith("javascript:"));
   if (!detailHref) {
     console.log("상세 링크 없음 — list 단계에서 실패.");
     process.exit(0);
