@@ -205,12 +205,13 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS,
           // 프록시 모드(domcontentloaded)는 본문 JS 주입을 위해 잠깐 더 대기
           if (USE_PROXY) await page.waitForTimeout(1000);
           const body = await page.evaluate((selectors) => {
+            // 정부 사이트 이미지 첨부의 접근성 UI 라벨(본문 아님) 제거 — 범용.
+            const stripUiLabels = (t) =>
+              t.replace(/이미지\s*(확대보기|다운로드)/g, "").replace(/\s+/g, " ").trim();
             for (const sel of selectors) {
               const el = document.querySelector(sel);
               if (el) {
-                const text = (el.textContent ?? "")
-                  .trim()
-                  .replace(/\s+/g, " ");
+                const text = stripUiLabels((el.textContent ?? "").replace(/\s+/g, " ").trim());
                 if (text.length > 100) return text.slice(0, 5000);
               }
             }
