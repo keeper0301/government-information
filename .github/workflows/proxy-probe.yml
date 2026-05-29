@@ -1,0 +1,29 @@
+name: Proxy Probe (icn1 우회 검증)
+
+# 임시 검증용. 해외(GitHub Actions) 풀 chromium + Vercel icn1 프록시로 정부 사이트
+# 본문이 깨끗하게 나오는지(해외 IP 차단 우회 성공 여부) 확인. 검증 후 삭제.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install --no-package-lock
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run proxy probe
+        env:
+          KEEPIOO_API_URL: ${{ secrets.KEEPIOO_API_URL }}
+          KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
+        run: node proxy-probe.mjs
