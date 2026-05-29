@@ -105,6 +105,22 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
     };
   });
 
+  // 2026-05-29 — Playwright 프록시 경로(import-press-batch, trigger=proxy)로 이관한 시·군은
+  // 정적 CITY_REGISTRY 에 없으므로, audit 에만 나타난 city 를 추가 표시(가시화).
+  const registryCities = new Set(CITY_REGISTRY.map((e) => e.city));
+  for (const [city, stat] of byCity) {
+    if (registryCities.has(city)) continue;
+    cities.push({
+      city,
+      inserted24h: stat.inserted,
+      fetched24h: stat.fetched,
+      errors24h: stat.errors,
+      lastRunAt: stat.lastRunAt,
+      lastError: stat.lastError,
+      recentErrors: stat.recentErrors,
+    });
+  }
+
   return {
     totalInserted24h: cities.reduce((s, c) => s + c.inserted24h, 0),
     totalFetched24h: cities.reduce((s, c) => s + c.fetched24h, 0),

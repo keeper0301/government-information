@@ -22,6 +22,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+import { logAdminAction } from "@/lib/admin-actions";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -211,6 +212,25 @@ export async function POST(request: Request) {
     } else {
       inserted += 1;
     }
+  }
+
+  // autonomous hub LocalPressCard 가시화용 audit (admin_actions.local_press_scrape).
+  // city 는 ministry 에서 "청" 제거(노원구청→노원구) → stats 의 city 집계와 매칭.
+  // audit 실패가 수집 응답을 막지 않도록 try-catch.
+  try {
+    await logAdminAction({
+      actorId: null,
+      action: "local_press_scrape",
+      details: {
+        trigger: "proxy",
+        city: cfg.ministry.replace(/청$/, ""),
+        fetched: items.length,
+        inserted,
+        errors,
+      },
+    });
+  } catch {
+    // audit insert 실패는 무시 (수집 자체는 성공)
   }
 
   return NextResponse.json({
