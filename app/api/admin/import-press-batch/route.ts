@@ -107,6 +107,12 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "사상구청",
     sourceCode: "local-press-sasang-news",
   },
+  // 2026-05-29 — 김포시 보도자료(17,781건+). 목록 위젯 혼재·본문 무class td 라 프록시 경로.
+  gimpo: {
+    ministry: "김포시청",
+    sourceOutlet: "김포시청",
+    sourceCode: "local-press-gimpo",
+  },
 };
 
 type BatchItem = {

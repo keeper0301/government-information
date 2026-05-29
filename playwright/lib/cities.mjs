@@ -107,6 +107,15 @@ export const scrapeSasangNews = makeScraper({
   bodySelectors: [".news_con", ".txtBox"],
 });
 
+// 2026-05-29 — 김포시(보도자료 17,781건+, 가치 최고). 목록에 위젯(fact/most) 혼재라
+// 실제 목록 .p-media-list li 명시. 본문은 무class td(.news_bbs_left td) — view_cont류 없음.
+export const scrapeGimpo = makeScraper({
+  cityName: "김포시",
+  listUrl: "https://www.gimpo.go.kr/news/selectBbsNttList.do?bbsNo=466&key=9377",
+  listSelectors: [".p-media-list li"],
+  bodySelectors: [".news_bbs_left td", ".news_bbs_left"],
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -125,10 +134,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     bsbukgu: scrapeBsbukgu,
     sasang: scrapeSasang,
     sasang_news: scrapeSasangNews,
+    gimpo: scrapeGimpo,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news|gimpo`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });
