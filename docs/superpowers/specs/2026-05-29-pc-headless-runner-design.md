@@ -50,6 +50,23 @@
 김포=목록이 위젯 뒤섞임+bbsNo 상이)는 단순 selector 튜닝을 넘어 클릭/AJAX 트리거 등
 사이트별 깊은 작업이 필요할 수 있어, 검증 통과분만 점진 등록한다.
 
+### 4.3 Vercel 서버리스 headless 검증 (2026-05-29, probe 6차)
+
+사장님 목표 "손 안 대기"의 최선책으로 Vercel(icn1, 이미 결제 중) 안 headless 를 6차 probe 로 실증:
+- ✅ **chromium launch OK** (`@sparticuz/chromium` + `playwright-core`, publisher.ts 패턴 재사용).
+- ✅ **icn1 한국 IP 가 gov 사이트(노원) 안 막힘** — 목록 렌더 + 상세 링크 추출 성공. (IP 문제 해결 실증)
+- ✅ **본문 JS 렌더됨** — 상세 페이지 한글 ~1,700자 존재.
+- ❌ **본문 추출 불안정**: @sparticuz **headless-shell 이 풀 chromium 과 DOM 을 다르게 렌더**.
+  노원 본문이 class 없는 `<td>` + `<p class="0">` 조각으로 흩어지고, class 있는 큰 요소는
+  전부 메뉴(lnb/container). 로컬(풀 chromium)에서 잡히던 selector 가 Vercel headless-shell 에선
+  matched:[]. **per-site selector 를 Vercel DOM 으로 직접 디버그해야 하는데 로컬과 DOM 이 달라
+  deploy-probe 루프로만 가능 = 느리고 불안정.**
+- ⚠️ networkidle + 반복 호출 시 `ERR_INSUFFICIENT_RESOURCES`(메모리). 순차 + 메모리 상향 필요.
+
+**판정**: Vercel headless 는 IP·렌더는 되나 **본문 추출 신뢰성이 낮다**(headless-shell DOM 불일치).
+→ **풀 chromium(한국 클라우드 VM)** 이면 로컬 디버깅 DOM 과 동일해 per-site selector 가 그대로
+통한다(신뢰성 ↑). 단 사장님 계정/셋업 필요. 손 안 대기 vs 신뢰성 트레이드오프.
+
 ### 4.2 현재 진행 (2026-05-29)
 - 노원 ✅ PC 러너 경로로 이관 완료(commit 81ad0a7): cities.mjs/runner.mjs/import-press-batch
   등록 + 정적 _registry 비활성화(dual-path 방지).
