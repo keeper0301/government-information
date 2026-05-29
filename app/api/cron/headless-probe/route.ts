@@ -51,9 +51,8 @@ export async function GET(request: Request) {
     });
     const page = await ctx.newPage();
 
-    // 1) 목록 — 첫 상세 링크 추출
-    await page.goto(LIST_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.waitForTimeout(3000);
+    // 1) 목록 — 첫 상세 링크 추출 (networkidle: makeScraper 와 동일, JS 렌더 완료 대기)
+    await page.goto(LIST_URL, { waitUntil: "networkidle", timeout: 30000 });
     const detailUrl = await page.evaluate(() => {
       const a = Array.from(document.querySelectorAll("a[href]")).find((x) =>
         /BD_selectBbs\.do\?[^"']*q_bbscttSn=\d/.test(x.getAttribute("href") || ""),
@@ -69,9 +68,8 @@ export async function GET(request: Request) {
       });
     }
 
-    // 2) 상세 — 본문 추출
-    await page.goto(detailUrl, { waitUntil: "domcontentloaded", timeout: 25000 });
-    await page.waitForTimeout(2500);
+    // 2) 상세 — 본문 추출 (networkidle: 본문이 JS 로 늦게 렌더되는 사이트 대응)
+    await page.goto(detailUrl, { waitUntil: "networkidle", timeout: 25000 });
     const body = await page.evaluate((sels) => {
       for (const s of sels) {
         const el = document.querySelector(s);
