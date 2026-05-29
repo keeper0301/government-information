@@ -133,8 +133,11 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS,
         console.error(`[${cityName}] waitForSelector timeout — fallthrough`);
       }
 
+      // 범용 LIST_SELECTORS 는 레이아웃 table 오인 방지로 >3 가드. 사이트별 커스텀
+      // listSelectors 는 정확한 selector 라 소량(구보 등 2~3건)도 신뢰 → >0 허용.
+      const minRows = listSelectors === LIST_SELECTORS ? 3 : 0;
       const items = await page.evaluate(
-        ({ selectors, limit }) => {
+        ({ selectors, limit, minRows }) => {
           let rows = [];
           let chosen = null;
           // 2026-05-22 debug — 각 selector 매칭 count 기록 (Actions log).
@@ -147,7 +150,7 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS,
           }
           for (const sel of selectors) {
             const els = document.querySelectorAll(sel);
-            if (els.length > 3) {
+            if (els.length > minRows) {
               rows = Array.from(els);
               chosen = sel;
               break;
@@ -189,7 +192,7 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS,
             })
             .filter(Boolean);
         },
-        { selectors: listSelectors, limit },
+        { selectors: listSelectors, limit, minRows },
       );
 
       const out = [];
