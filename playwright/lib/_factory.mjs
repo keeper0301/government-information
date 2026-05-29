@@ -25,7 +25,7 @@ const NAV_WAIT = USE_PROXY ? "domcontentloaded" : "networkidle";
 const LIST_TIMEOUT = USE_PROXY ? 45000 : 30000;
 const DETAIL_TIMEOUT = USE_PROXY ? 35000 : 20000;
 
-async function installProxy(page) {
+export async function installProxy(page) {
   if (!USE_PROXY) return;
   await page.route("**/*", async (route) => {
     const req = route.request();
@@ -65,7 +65,7 @@ async function installProxy(page) {
 
 // 2026-05-22 — 광범위 확장. 5 city SPA site 표준 selector 다양 대응.
 // Playwright waitForSelector 가 OR list — 1개라도 매칭 시 진행.
-const LIST_SELECTORS = [
+export const LIST_SELECTORS = [
   "table.boardList tbody tr",
   "table.tbl_basic tbody tr",
   "table.board_list tbody tr",
@@ -85,7 +85,7 @@ const LIST_SELECTORS = [
   "table tbody tr",
 ];
 
-const BODY_SELECTORS = [
+export const BODY_SELECTORS = [
   ".view_cont",
   ".board_view",
   ".board_view_body",

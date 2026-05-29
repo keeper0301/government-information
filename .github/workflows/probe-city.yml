@@ -1,0 +1,35 @@
+name: Probe City (도시 selector 진단)
+
+# 신규 도시 온보딩용 진단 도구. 목록 URL 을 입력하면 GitHub Actions(해외 IP) + icn1
+# 프록시 경로로 factory LIST/BODY_SELECTORS 매칭 여부를 출력한다. 0건 원인 파악용.
+
+on:
+  workflow_dispatch:
+    inputs:
+      list_url:
+        description: "조사할 목록 페이지 URL"
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install --no-package-lock
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run probe
+        env:
+          KEEPIOO_API_URL: ${{ secrets.KEEPIOO_API_URL }}
+          KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
+          KEEPIOO_USE_PROXY: "1"
+          PROBE_LIST_URL: ${{ github.event.inputs.list_url }}
+        run: node probe-city.mjs
