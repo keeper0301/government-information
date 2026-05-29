@@ -276,10 +276,7 @@ export function makeScraper({
                 const text = stripUiLabels(
                   (clone.textContent ?? "").replace(/\s+/g, " ").trim(),
                 );
-                console.log(`[FACTORY] body sel="${sel}" len=${text.length}`);
                 if (text.length > 100) return text.slice(0, 5000);
-              } else {
-                console.log(`[FACTORY] body sel="${sel}" el=null`);
               }
             }
             return null;
