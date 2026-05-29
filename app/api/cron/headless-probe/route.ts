@@ -74,25 +74,24 @@ export async function GET(request: Request) {
       try {
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
         await page.waitForTimeout(5000); // JS 본문 렌더 대기
-        const d = await page.evaluate((sels) => {
-          const matched = sels
-            .map((s) => {
-              const el = document.querySelector(s);
-              const t = el ? (el.textContent || "").replace(/\s+/g, " ").trim() : "";
-              return el ? { s, len: t.length } : null;
-            })
-            .filter(Boolean);
-          const bodyText = (document.body?.innerText || "").replace(/\s+/g, " ").trim();
-          // 가장 긴 한글 div/td (selector 무관) 1개
-          let best = { cls: "", ko: 0 };
-          for (const el of Array.from(document.querySelectorAll("div,td,article"))) {
+        const d = await page.evaluate(() => {
+          // nav/메뉴/푸터/헤더 류 제외하고 "가장 작은데 한글 충분한" 요소 = 본문 추정.
+          // (큰 wrapper 는 nav 까지 포함하므로, ko≥200 인 가장 깊은/작은 요소 선택)
+          const NAV_RE = /gnb|lnb|snb|nav|menu|header|footer|breadcrumb|banner|skip|sitemap|aside|quick|family|relate|foot/i;
+          let best: { cls: string; tag: string; ko: number; text: string } | null = null;
+          for (const el of Array.from(document.querySelectorAll("div,td,article,section"))) {
+            const cls = ((el as HTMLElement).className || (el as HTMLElement).id || "").toString();
+            if (NAV_RE.test(cls)) continue;
+            // 자식 중 더 작은 본문 후보가 있으면 그쪽이 우선되도록, 직접 텍스트 비율도 고려
             const t = (el.textContent || "").replace(/\s+/g, " ").trim();
             const ko = (t.match(/[가-힣]/g) || []).length;
-            if (ko > best.ko && ko <= 3000) best = { cls: ((el as HTMLElement).className || (el as HTMLElement).id || "").toString().slice(0, 40), ko };
+            if (ko < 200 || ko > 4000) continue;
+            // 더 작은(=본문에 가까운) 후보 선호: 현재 best 보다 ko 작으면서 200+ 면 교체
+            if (!best || ko < best.ko) best = { cls: cls.slice(0, 45), tag: el.tagName, ko, text: t.slice(0, 200) };
           }
-          return { matched, bodyTextLen: bodyText.length, bodyKo: (bodyText.match(/[가-힣]/g) || []).length, best };
-        }, BODY_SELECTORS);
-        diags.push({ url: url.slice(-40), ...d });
+          return best;
+        });
+        diags.push({ url: url.slice(-40), body: d });
       } catch (e) {
         diags.push({ url: url.slice(-40), error: (e as Error).message.slice(0, 60) });
       }
