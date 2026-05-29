@@ -9,9 +9,15 @@
 
 import { makeScraper } from "./_factory.mjs";
 
+// 2026-05-30 — 창원특례시. 목록 li.li1, 상세는 ?gcode=..&idx=N&amode=view query href
+// (onclick 아님 → makeScraper 가 그대로 추적). 본문 div.substance.
 export const scrapeChangwon = makeScraper({
   cityName: "창원시",
   listUrl: "https://www.changwon.go.kr/cwportal/10310/10429/10432.web",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["li.li1"],
+  bodySelectors: [".substance"],
 });
 
 // 2026-05-29 — 성남시. 목록 상세가 onclick="dataView('N')"(href=#N) → bbsView.do?idx=N GET.
