@@ -104,12 +104,12 @@ export const BODY_SELECTORS = [
   "[class*='view-content']",
   "[class*='board-view']",
   "[id='articleContents']",
-  // 부산 SI CMS(동래·부산진·금정·북구·기장 등) 게시물 본문 컨테이너
-  "#view",
   "#contents .content",
 ];
 
-export function makeScraper({ listUrl, cityName }) {
+// bodySelectors: 사이트별 본문 컨테이너 selector 배열(미지정 시 범용 BODY_SELECTORS).
+// 부산 SI CMS 처럼 본문이 class 없는 특수 셀에 있어 범용이 못 잡는 경우 지정.
+export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS }) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });
     const ctx = await browser.newContext({
@@ -211,7 +211,7 @@ export function makeScraper({ listUrl, cityName }) {
               }
             }
             return null;
-          }, BODY_SELECTORS);
+          }, bodySelectors);
           if (body) out.push({ ...item, body });
         } catch (e) {
           console.error(

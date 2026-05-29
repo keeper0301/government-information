@@ -57,10 +57,14 @@ export const scrapeNowon = makeScraper({
 });
 
 // 2026-05-29 — 동래구(부산) 구정소식(BBS_0000012). 기존 정적 collector 의 BBS_0000001 은
-// 사전정보공개 게시판이라 0건이었음 → 실제 소식 게시판으로 교정. 본문 컨테이너 #view.
+// 사전정보공개 게시판이라 0건이었음 → 실제 소식 게시판으로 교정.
+// 부산 SI CMS 본문은 class 없는 td (colspan=6 + style padding). #view 는 제목·메타까지
+// 잡아 잡음 → 본문 셀만 지정. 부산진·금정·북구 등 동일 CMS 재사용 가능.
+const BUSAN_SI_BODY = ["#view td[colspan='6'][style*='padding']", "td[colspan='6'][style*='padding']"];
 export const scrapeDongnae = makeScraper({
   cityName: "동래구",
   listUrl: "https://www.dongnae.go.kr/board/list.dongnae?boardId=BBS_0000012&menuCd=DOM_000000103001001000&startPage=1",
+  bodySelectors: BUSAN_SI_BODY,
 });
 
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
