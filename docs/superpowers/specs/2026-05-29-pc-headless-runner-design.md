@@ -1,6 +1,10 @@
 # 사장님 PC headless 러너 — JS 렌더링 시·군 보도자료 수집 설계
 
-작성: 2026-05-29 · 상태: 설계(구현 전)
+작성: 2026-05-29 · 상태: **GitHub Actions + icn1 프록시로 pivot, 노원 가동 완료(2026-05-29)**
+
+> **결론 갱신(2026-05-29):** 사장님 PC 상주 대신 **무료 GitHub Actions(풀 chromium) + Vercel
+> icn1(한국 IP) 프록시**로 해외 IP 차단을 우회하는 방식이 검증·가동됨. 사장님 PC·새 클라우드
+> 계정 불필요. 상세는 아래 **13절**. 본 문서의 1~12절(PC 러너 설계)은 검토 이력으로 보존.
 
 ## 1. 문제
 
@@ -132,3 +136,44 @@ PC 러너가 맡을 JS/elusive 시·군:
 - 각 시·군: 로컬 Playwright로 list+body 추출 → 본문 육안 확인(메뉴/파일/JS 혼입 없음) → 등록.
 - import-press-batch: 기존 dedupe + sanitize(본문 50자+ 가드) 그대로.
 - 등록 후 수동 1회(`node runner.mjs`) → news_posts insert 확인 → Task Scheduler 가동.
+
+## 13. icn1 프록시 우회 — 검증·가동 완료 (2026-05-29)
+
+사장님 "한국정부가 막은거 뚫는방법찾아봐" 요청에 따라, PC 상주 대신 **무료 GitHub Actions
+(풀 chromium) + Vercel icn1(한국 IP) 프록시**로 해외 IP 차단을 우회. 검증·가동 완료.
+
+### 아키텍처
+```
+[GitHub Actions ubuntu, 미국 IP] node runner.mjs (KEEPIOO_USE_PROXY=1)
+  → makeScraper: chromium 렌더, page.route 로 .kr 요청 가로챔
+      → POST https://www.keepioo.com/api/internal/icn1-fetch  (X-API-Key 인증)
+[Vercel icn1, 한국 IP] icn1-fetch: 정부 도메인 allowlist 검증 → fetch(한국 IP)
+      → 응답 바이트 그대로 base64 반환 (인코딩 보존)
+  ← chromium 이 EUC-KR 정상 디코딩 → 본문 추출 → import-press-batch POST
+```
+
+### 핵심 구성
+- `app/api/internal/icn1-fetch/route.ts` — icn1 리전 프록시. gov allowlist + X-API-Key(=IMPORT_PRESS_API_KEY)
+  + base64 바이트 보존. `vercel.json` 에 `regions:["icn1"]` 핀.
+- `playwright/lib/_factory.mjs` — `KEEPIOO_USE_PROXY` 시 page.route 우회(이미지·CSS·폰트·미디어 abort,
+  domcontentloaded, 타임아웃 상향). 미설정 시 기존 직접 경로 그대로(회귀 0).
+- `playwright/runner.mjs` — `KEEPIOO_RUNNER_CITIES` 로 검증 도시만 점진 활성화.
+- `.github/workflows/local-press-proxy.yml` — KST 10/22, KEEPIOO_USE_PROXY=1, RUNNER_CITIES=nowon.
+
+### 검증 결과
+- **노원 본문 1,873자 / 깨진 글자 0** (해외 IP, GitHub Actions). Vercel headless-shell 의 mojibake 와
+  대조 — 풀 chromium 은 EUC-KR 클린 디코딩.
+- 프로덕션 러너 1회 dispatch: fetched 10 / inserted 0 / skipped 10(dedupe 정상).
+  DB 의 노원 10건 본문 1,377~2,062자, breadcrumb 잡음 없이 제목+본문, **분류까지 완료**.
+- 즉 우회 → 수집 → 저장 → 분류 전체 파이프라인 프로덕션 정상 작동.
+
+### 다음 도시 확장 절차
+도시 추가 시: ① 프록시 allowlist(`icn1-fetch` ALLOWED_SUFFIX/EXACT)에 도메인 추가 →
+② 해당 도시 detail DOM 에서 본문 컨테이너 selector 검증(factory BODY_SELECTORS 매칭 확인) →
+③ `cities.mjs`/`runner.mjs` 등록 + 정적 `_registry.ts` 제거(dual-path 방지) →
+④ `local-press-proxy.yml` 의 `KEEPIOO_RUNNER_CITIES` 에 key 추가.
+
+### 비용·운영
+- 비용 0 (GitHub Actions 무료 + 이미 결제 중인 Vercel Pro). 사장님 PC·신규 클라우드 계정 불필요.
+- PC 러너(1~12절)의 idle 리스크 제거. 단 GitHub Actions 무료 한도(공개 repo 무제한)·Vercel
+  함수 실행시간(maxDuration 60s/요청) 내에서 동작.
