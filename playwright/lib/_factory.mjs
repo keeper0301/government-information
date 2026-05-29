@@ -244,8 +244,21 @@ export function makeScraper({
             waitUntil: NAV_WAIT,
             timeout: DETAIL_TIMEOUT,
           });
-          // 프록시 모드(domcontentloaded)는 본문 JS 주입을 위해 잠깐 더 대기
-          if (USE_PROXY) await page.waitForTimeout(1000);
+          // 프록시 모드(domcontentloaded)는 본문이 JS 로 동적 주입될 수 있음(안산 등).
+          // 본문 selector 가 100자 넘을 때까지 대기(채워지면 즉시 통과, 최대 8s). 못 채우면 진행.
+          if (USE_PROXY) {
+            await page
+              .waitForFunction(
+                (sels) =>
+                  sels.some((s) => {
+                    const e = document.querySelector(s);
+                    return e && (e.textContent || "").trim().length > 100;
+                  }),
+                bodySelectors,
+                { timeout: 8000 },
+              )
+              .catch(() => {});
+          }
           const body = await page.evaluate((selectors) => {
             // 본문 아닌 UI 라벨 제거(범용): 이미지 첨부 접근성 라벨 + 포토갤러리 슬라이더 컨트롤.
             const stripUiLabels = (t) =>
