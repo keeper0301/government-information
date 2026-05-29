@@ -14,10 +14,12 @@ const ctx = await browser.newContext({
 });
 const page = await ctx.newPage();
 
-let proxied = 0, direct = 0, failed = 0;
+let proxied = 0, direct = 0, failed = 0, aborted = 0;
 await page.route("**/*", async (route) => {
   const req = route.request();
   const url = req.url();
+  // 본문 텍스트만 필요 → 이미지·CSS·폰트·미디어는 차단(프록시 부하·networkidle 지연 제거)
+  if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) { aborted++; return route.abort(); }
   let host;
   try { host = new URL(url).hostname; } catch { return route.continue(); }
   if (!host.endsWith(".kr")) { direct++; return route.continue(); }
@@ -36,14 +38,15 @@ await page.route("**/*", async (route) => {
 });
 
 try {
-  await page.goto("https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027", { waitUntil: "networkidle", timeout: 45000 });
+  await page.goto("https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027", { waitUntil: "domcontentloaded", timeout: 45000 });
   const detail = await page.evaluate(() => {
     const a = [...document.querySelectorAll("a[href]")].find(x => /BD_selectBbs\.do\?[^"']*q_bbscttSn=\d/.test(x.getAttribute("href") || ""));
     return a ? a.href : null;
   });
-  console.log(`[프록시 경유 ${proxied} / 직접 ${direct} / 실패 ${failed}] 상세링크: ${detail ? "OK" : "없음"}`);
+  console.log(`[프록시 경유 ${proxied} / 직접 ${direct} / 차단 ${aborted} / 실패 ${failed}] 상세링크: ${detail ? "OK" : "없음"}`);
   if (!detail) process.exit(0);
-  await page.goto(detail, { waitUntil: "networkidle", timeout: 35000 });
+  await page.goto(detail, { waitUntil: "domcontentloaded", timeout: 35000 });
+  await page.waitForTimeout(1500);
   const body = await page.evaluate(() => {
     const SELS = [".board_text_td","td.board_text_td",".view_cont",".board_view",".bbs_content","[class*='board-view']","[class*='view_content']","#contents .content"];
     for (const s of SELS) { const el = document.querySelector(s); if (el) { const t=(el.textContent||"").replace(/\s+/g," ").trim(); if (t.length>100) return {sel:s, text:t}; } }
