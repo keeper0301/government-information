@@ -59,7 +59,6 @@ import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
 import { scrapeBusanjinAndInsert } from "./busanjin";
 import { scrapeGeumjeongAndInsert } from "./geumjeong";
-import { scrapeDongnaeAndInsert } from "./dongnae";
 import { scrapeBsbukguAndInsert } from "./bsbukgu";
 import { scrapeSasangAndInsert } from "./sasang";
 import { scrapeGijangAndInsert } from "./gijang";
@@ -135,7 +134,6 @@ export type CityKey =
   | "gyeyang_incheon"
   | "michuhol_incheon"
   | "geumjeong"
-  | "dongnae"
   | "bsbukgu"
   | "sasang"
   | "gijang"
@@ -639,16 +637,9 @@ export const CITY_REGISTRY: CityEntry[] = [
       "https://www.geumjeong.go.kr/board/list.geumj?boardId=BBS_0000004",
     fn: scrapeGeumjeongAndInsert,
   },
-  // 2026-05-27 — 동래구 27만 (부산 자치구). 부산진·금정 동일 SI CMS.
-  // boardId=BBS_0000001 + menuCd=DOM_000000103001005000.
-  {
-    key: "dongnae",
-    city: "동래구",
-    ministry: "동래구청",
-    siteUrl:
-      "https://www.dongnae.go.kr/board/list.dongnae?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
-    fn: scrapeDongnaeAndInsert,
-  },
+  // 2026-05-29 — 동래구는 Playwright 프록시 경로(local-press-proxy.yml)로 이관.
+  // 기존 정적 BBS_0000001 은 사전정보공개라 0건이었고, 구정소식(BBS_0000012)은 본문이
+  // JS·특수 td 라 정적 불가 → dual-path 방지 위해 정적 등록 제거.
   // 2026-05-27 — 부산 북구 29만. 부산진·금정·동래 동일 SI CMS.
   // boardId=BBS_0000001 + menuCd=DOM_000000103001005000 (동래와 동일 패턴).
   {
