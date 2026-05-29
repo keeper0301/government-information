@@ -129,14 +129,21 @@ export function makeScraper({
     });
     const page = await ctx.newPage();
     await installProxy(page);
+    // 브라우저 콘솔의 [FACTORY] 진단 로그를 Node(Actions log)로 포워딩.
+    page.on("console", (m) => {
+      const t = m.text();
+      if (t.includes("[FACTORY]")) console.log(t);
+    });
 
     try {
       await page.goto(listUrl, { waitUntil: NAV_WAIT, timeout: LIST_TIMEOUT });
       // 2026-05-22 — wait 시간 15s → 25s 확장 (느린 SPA 대응).
+      // 프록시 모드는 CSS 를 abort 하므로 visible 판정 불가 → state:"attached"(존재만 확인).
       // selector 매칭 실패해도 evaluate 진행 (catch fallthrough).
       try {
         await page.waitForSelector(listSelectors.join(", "), {
           timeout: 25000,
+          state: "attached",
         });
       } catch {
         console.error(`[${cityName}] waitForSelector timeout — fallthrough`);
