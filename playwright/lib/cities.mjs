@@ -35,6 +35,9 @@ export const scrapeAnsan = makeScraper({
 export const scrapeCheonan = makeScraper({
   cityName: "천안시",
   listUrl: "https://www.cheonan.go.kr/bbs/BBSMSTR_000000000030/list.do",
+  // 천안은 keepioo-bot UA 를 차단(빈 목록) → 진짜 Chrome UA 필요.
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   listSelectors: [".item--bodo"],
   onclickIdRe: "fn_search_detail\\('([^']+)'\\)",
   detailPath: "view.do?nttId={id}",

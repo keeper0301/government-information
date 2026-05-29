@@ -112,6 +112,7 @@ export const BODY_SELECTORS = [
 //   사상소식지처럼 갤러리형(dl/dt) 등 범용 table/ul 패턴이 안 맞는 경우 지정.
 // onclickIdRe + detailPath: 상세 링크가 href 가 아니라 onclick(예: dataView('384521'))인
 //   큰 시(성남 등) 대응. onclick 에서 id 추출 → detailPath("bbsView.do?idx={id}") 로 GET URL 구성.
+// userAgent: 일부 사이트(천안 등)는 keepioo-bot UA 를 차단 → 진짜 Chrome UA 필요. 사이트별 지정.
 export function makeScraper({
   listUrl,
   cityName,
@@ -119,11 +120,12 @@ export function makeScraper({
   listSelectors = LIST_SELECTORS,
   onclickIdRe = null,
   detailPath = null,
+  userAgent = USER_AGENT,
 }) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });
     const ctx = await browser.newContext({
-      userAgent: USER_AGENT,
+      userAgent,
       locale: "ko-KR",
       timezoneId: "Asia/Seoul",
     });
