@@ -75,18 +75,21 @@ export async function GET(request: Request) {
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
         await page.waitForTimeout(5000); // JS 본문 렌더 대기
         const d = await page.evaluate(() => {
-          // 노원(BD_select) 본문 = td.board_text_td (nowon.ts 가 쓰던 셀). 사이트별 selector.
-          const SELS = [".board_text_td", "td.board_text_td", ".hwp_editor_board_content", ".board-view-content"];
-          for (const s of SELS) {
-            const el = document.querySelector(s);
-            if (el) {
-              const t = (el.textContent || "").replace(/\s+/g, " ").trim();
-              if (t.length > 100) return { sel: s, len: t.length, text: t.slice(0, 200) };
-            }
+          // 렌더된 DOM 의 한글 150+ 요소 전수 (class/tag/ko) — 본문 컨테이너 식별용.
+          // 부모-자식 중복 제거 위해, 자식이 같은 ko 면 부모 skip (가장 깊은 컨테이너 우선).
+          const out: { c: string; t: string; ko: number }[] = [];
+          for (const el of Array.from(document.querySelectorAll("div,td,article,section,p"))) {
+            const txt = (el.textContent || "").replace(/\s+/g, " ").trim();
+            const ko = (txt.match(/[가-힣]/g) || []).length;
+            if (ko < 150) continue;
+            const c = (((el as HTMLElement).className || "") + "#" + ((el as HTMLElement).id || "")).toString().slice(0, 50);
+            out.push({ c, t: el.tagName, ko });
           }
-          return null;
+          // ko 작은 순(=본문에 가까운 깊은 요소) 8개
+          out.sort((a, b) => a.ko - b.ko);
+          return out.slice(0, 10);
         });
-        diags.push({ url: url.slice(-40), body: d });
+        diags.push({ url: url.slice(-40), els: d });
       } catch (e) {
         diags.push({ url: url.slice(-40), error: (e as Error).message.slice(0, 60) });
       }
