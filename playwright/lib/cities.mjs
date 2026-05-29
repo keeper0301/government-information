@@ -63,26 +63,6 @@ export const scrapeCheonan = makeScraper({
   bodySelectors: [".board-view__contents"],
 });
 
-// 2026-05-22 — busan 정적 fetch 불가 (SPA list). Playwright 로 가동.
-export const scrapeBusan = makeScraper({
-  cityName: "부산광역시",
-  listUrl: "https://www.busan.go.kr/nbtnewsBU",
-});
-
-// 2026-05-27 — 부산 자치구 SPA (정적 fetch 불가):
-// 수영구·해운대구 — 정적 curl 시 list 0건 (JS 렌더). Playwright 가동.
-export const scrapeSuyeong = makeScraper({
-  cityName: "수영구",
-  listUrl: "https://www.suyeong.go.kr/board/list.suyeong?menuCd=DOM_000000103001006000",
-});
-
-// 2026-05-27 — 해운대 구청 main bot 차단 + SPA. menuCd 는 다른 부산 자치구
-// 패턴 (DOM_000000103001005000) 추정. 다음 세션 manual test 후 verify.
-export const scrapeHaeundae = makeScraper({
-  cityName: "해운대구",
-  listUrl: "https://www.haeundae.go.kr/board/list.haeundae?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
-});
-
 // 2026-05-29 — 노원구. 정적 BD_select collector 가 본문(무클래스 span 조각)을 못 잡아
 // 누적 0건이었으나, Playwright 렌더 후 표준 BODY_SELECTOR 로 본문 추출 검증(1637자).
 export const scrapeNowon = makeScraper({
@@ -158,9 +138,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     seongnam: scrapeSeongnam,
     ansan: scrapeAnsan,
     cheonan: scrapeCheonan,
-    busan: scrapeBusan,
-    suyeong: scrapeSuyeong,
-    haeundae: scrapeHaeundae,
     nowon: scrapeNowon,
     dongnae: scrapeDongnae,
     busanjin: scrapeBusanjin,
@@ -172,7 +149,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news|gimpo`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news|gimpo`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

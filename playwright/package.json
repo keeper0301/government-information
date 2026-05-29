@@ -12,8 +12,6 @@
     "test:seongnam": "node lib/cities.mjs seongnam",
     "test:ansan": "node lib/cities.mjs ansan",
     "test:cheonan": "node lib/cities.mjs cheonan",
-    "test:suyeong": "node lib/cities.mjs suyeong",
-    "test:haeundae": "node lib/cities.mjs haeundae",
     "run:all": "node runner.mjs"
   },
   "dependencies": {
