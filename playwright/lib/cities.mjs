@@ -56,6 +56,13 @@ export const scrapeNowon = makeScraper({
   listUrl: "https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027",
 });
 
+// 2026-05-29 — 동래구(부산). 정적 collector 가 본문을 못 잡아(JS 렌더형) Playwright 경로로.
+// detail link 는 href 기반(/board/view.dongnae?...dataSid=)이라 makeScraper 추적 가능.
+export const scrapeDongnae = makeScraper({
+  cityName: "동래구",
+  listUrl: "https://www.dongnae.go.kr/board/list.dongnae?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -68,10 +75,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     suyeong: scrapeSuyeong,
     haeundae: scrapeHaeundae,
     nowon: scrapeNowon,
+    dongnae: scrapeDongnae,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon|dongnae`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

@@ -17,6 +17,11 @@ on:
   schedule:
     - cron: "0 1,13 * * *"
   workflow_dispatch:
+    inputs:
+      cities:
+        description: "테스트할 도시 key (쉼표 구분, 비우면 스케줄 기본값)"
+        required: false
+        default: ""
 
 jobs:
   scrape:
@@ -39,5 +44,6 @@ jobs:
           KEEPIOO_API_URL: ${{ secrets.KEEPIOO_API_URL }}
           KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
           KEEPIOO_USE_PROXY: "1"
-          KEEPIOO_RUNNER_CITIES: "nowon"
+          # dispatch 시 입력값 우선, 스케줄 실행 시 기본값(검증 완료 도시)
+          KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon' }}
         run: node runner.mjs
