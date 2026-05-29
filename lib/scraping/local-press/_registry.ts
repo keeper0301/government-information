@@ -57,7 +57,6 @@ import { scrapeChungjuAndInsert } from "./chungju";
 import { scrapeYeosuAndInsert } from "./yeosu";
 import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
-import { scrapeSasangAndInsert } from "./sasang";
 import { scrapeGijangAndInsert } from "./gijang";
 import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
@@ -129,7 +128,6 @@ export type CityKey =
   | "namdong_incheon"
   | "gyeyang_incheon"
   | "michuhol_incheon"
-  | "sasang"
   | "gijang"
   | "ongjin"
   | "junggu_incheon"
@@ -615,15 +613,8 @@ export const CITY_REGISTRY: CityEntry[] = [
   },
   // 2026-05-29 — 부산진·금정·동래·부산북구는 Playwright 프록시 경로(local-press-proxy.yml)로 이관.
   // 정적 BBS_0000001 은 사전정보공개 오등록(0건)이라 제거, 구정소식은 본문이 JS·특수 td 라 정적 불가.
-  // 2026-05-27 — 부산 사상구 21만. SI 표준 동일.
-  {
-    key: "sasang",
-    city: "사상구",
-    ministry: "사상구청",
-    siteUrl:
-      "https://www.sasang.go.kr/board/list.sasang?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
-    fn: scrapeSasangAndInsert,
-  },
+  // 2026-05-29 — 사상구는 Playwright 프록시 경로(알림사항+소식지)로 이관. 정적(BBS_0000001
+  // 사전정보공개 오등록) 제거. ※ 기장은 eminwon 별도 시스템이라 미이관(정적 잔존, 0건).
   // 2026-05-27 — 부산 기장군 16만 (부산 16 자치구 중 유일한 '군'). SI 표준 동일.
   {
     key: "gijang",
