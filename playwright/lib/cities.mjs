@@ -32,6 +32,8 @@ export const scrapeAnsan = makeScraper({
   listUrl: "https://www.ansan.go.kr/www/common/bbs/selectPageListBbs.do?bbs_code=B0238",
   userAgent:
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  // 범용 selector 가 메뉴 ul 을 먼저 잡아 → 게시물 table 명시.
+  listSelectors: ["table tbody tr"],
   onclickIdRe: "fnGoDetail\\(\\s*(\\d+)\\s*\\)",
   detailPath: "selectBbsDetail.do?bbs_code=B0238&bbs_seq={id}",
   bodySelectors: [".p-table__subject td"],
