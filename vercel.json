@@ -9,7 +9,8 @@
     }
   ],
   "functions": {
-    "app/api/cron/scrape-local-press/route.ts": { "regions": ["icn1"] }
+    "app/api/cron/scrape-local-press/route.ts": { "regions": ["icn1"] },
+    "app/api/internal/icn1-fetch/route.ts": { "regions": ["icn1"] }
   },
   "crons": [
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
