@@ -56,11 +56,11 @@ export const scrapeNowon = makeScraper({
   listUrl: "https://www.nowon.kr/www/user/bbs/BD_selectBbsList.do?q_bbsCode=1027",
 });
 
-// 2026-05-29 — 동래구(부산). 정적 collector 가 본문을 못 잡아(JS 렌더형) Playwright 경로로.
-// detail link 는 href 기반(/board/view.dongnae?...dataSid=)이라 makeScraper 추적 가능.
+// 2026-05-29 — 동래구(부산) 구정소식(BBS_0000012). 기존 정적 collector 의 BBS_0000001 은
+// 사전정보공개 게시판이라 0건이었음 → 실제 소식 게시판으로 교정. 본문 컨테이너 #view.
 export const scrapeDongnae = makeScraper({
   cityName: "동래구",
-  listUrl: "https://www.dongnae.go.kr/board/list.dongnae?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
+  listUrl: "https://www.dongnae.go.kr/board/list.dongnae?boardId=BBS_0000012&menuCd=DOM_000000103001001000&startPage=1",
 });
 
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)

@@ -104,6 +104,8 @@ export const BODY_SELECTORS = [
   "[class*='view-content']",
   "[class*='board-view']",
   "[id='articleContents']",
+  // 부산 SI CMS(동래·부산진·금정·북구·기장 등) 게시물 본문 컨테이너
+  "#view",
   "#contents .content",
 ];
 
