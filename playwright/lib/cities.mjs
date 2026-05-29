@@ -31,7 +31,7 @@ export const scrapeSeongnam = makeScraper({
 });
 
 // 2026-05-29 — 안산시. 기존 selectBbsList.do(404) → 진짜 언론보도자료 selectPageListBbs.do.
-// 상세 a href="#" onclick="fnGoDetail( N )" → selectBbsDetail.do?bbs_seq=N GET. 본문 .p-table__subject td.
+// 상세 a href="#" onclick="fnGoDetail( N )" → selectBbsDetail.do?bbs_seq=N GET.
 // 봇 UA 차단 가능성 → Chrome UA.
 export const scrapeAnsan = makeScraper({
   cityName: "안산시",
@@ -42,9 +42,10 @@ export const scrapeAnsan = makeScraper({
   listSelectors: ["table tbody tr"],
   onclickIdRe: "fnGoDetail\\(\\s*(\\d+)\\s*\\)",
   detailPath: "selectBbsDetail.do?bbs_code=B0238&bbs_seq={id}",
-  // 본문 td 는 무class 지만 .p-photo(사진)를 자식으로 가짐. .p-photo 는 정적 HTML 이라
-  // JS 재배치(.p-table__subject td 로 이동)와 무관 → td:has(.p-photo) 로 프록시(JS 전)에서도 잡음.
-  bodySelectors: ["td:has(.p-photo)"],
+  // 제목·등록일·내용 행이 모두 tr.p-table__subject 라 첫 매치는 제목(짧음). 본문(th=내용)이
+  // 항상 가장 길어 bodyPickLongest 로 채택 → 사진 유무 무관(이전 td:has(.p-photo)는 사진글만 잡음).
+  bodySelectors: [".p-table__subject td"],
+  bodyPickLongest: true,
 });
 
 // 2026-05-29 — 천안시. 기존 _060 은 기금운용 오등록 → 진짜 보도자료 _030 으로 교정.

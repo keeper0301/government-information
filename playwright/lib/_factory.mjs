@@ -121,6 +121,7 @@ export function makeScraper({
   onclickIdRe = null,
   detailPath = null,
   userAgent = USER_AGENT,
+  bodyPickLongest = false,
 }) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });
@@ -249,38 +250,61 @@ export function makeScraper({
           if (USE_PROXY) {
             await page
               .waitForFunction(
-                (sels) =>
+                ({ sels, pickLongest }) =>
                   sels.some((s) => {
-                    const e = document.querySelector(s);
-                    return e && (e.textContent || "").trim().length > 100;
+                    // pickLongest 면 첫 매치가 본문이 아닐 수 있어(안산 제목/날짜/본문 동일 selector)
+                    // 매치 전체를 훑어 하나라도 100자 넘으면 통과.
+                    const els = pickLongest
+                      ? document.querySelectorAll(s)
+                      : [document.querySelector(s)].filter(Boolean);
+                    return [...els].some(
+                      (e) => (e.textContent || "").trim().length > 100,
+                    );
                   }),
-                bodySelectors,
+                { sels: bodySelectors, pickLongest: bodyPickLongest },
                 { timeout: 8000 },
               )
               .catch(() => {});
           }
-          const body = await page.evaluate((selectors) => {
-            // 본문 아닌 UI 라벨 제거(범용): 이미지 첨부 접근성 라벨 + 포토갤러리 슬라이더 컨트롤.
-            const stripUiLabels = (t) =>
-              t
-                .replace(/(이미지|사진)\s*(확대보기|다운로드)/g, "")
-                .replace(/포토갤러리\s*(정지|재생)/g, "")
-                .replace(/\s+/g, " ")
-                .trim();
-            for (const sel of selectors) {
-              const el = document.querySelector(sel);
-              if (el) {
+          const body = await page.evaluate(
+            ({ selectors, pickLongest }) => {
+              // 본문 아닌 UI 라벨 제거(범용): 이미지 첨부 접근성 라벨 + 포토갤러리 슬라이더 컨트롤.
+              const stripUiLabels = (t) =>
+                t
+                  .replace(/(이미지|사진)\s*(확대보기|다운로드)/g, "")
+                  .replace(/포토갤러리\s*(정지|재생)/g, "")
+                  .replace(/\s+/g, " ")
+                  .trim();
+              const textOf = (el) => {
                 // script/style 텍스트(inline JS 등)는 본문 아님 → 복제 후 제거.
                 const clone = el.cloneNode(true);
                 clone.querySelectorAll("script, style").forEach((s) => s.remove());
-                const text = stripUiLabels(
+                return stripUiLabels(
                   (clone.textContent ?? "").replace(/\s+/g, " ").trim(),
                 );
-                if (text.length > 100) return text.slice(0, 5000);
+              };
+              for (const sel of selectors) {
+                if (pickLongest) {
+                  // 같은 selector 가 여러 요소를 매칭하고 본문이 첫 매치가 아닐 때(안산: 제목/날짜/
+                  // 본문이 모두 .p-table__subject td) → 가장 긴 매치를 본문으로 채택.
+                  let best = null;
+                  for (const el of document.querySelectorAll(sel)) {
+                    const t = textOf(el);
+                    if (!best || t.length > best.length) best = t;
+                  }
+                  if (best && best.length > 100) return best.slice(0, 5000);
+                } else {
+                  const el = document.querySelector(sel);
+                  if (el) {
+                    const text = textOf(el);
+                    if (text.length > 100) return text.slice(0, 5000);
+                  }
+                }
               }
-            }
-            return null;
-          }, bodySelectors);
+              return null;
+            },
+            { selectors: bodySelectors, pickLongest: bodyPickLongest },
+          );
           if (body) out.push({ ...item, body });
         } catch (e) {
           console.error(
