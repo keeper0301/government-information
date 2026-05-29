@@ -95,6 +95,17 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "부산 북구청",
     sourceCode: "local-press-bsbukgu",
   },
+  // 2026-05-29 — 사상구: 구정소식 게시판 부재. 알림사항(sasang) + 소식지(sasang_news) 2종.
+  sasang: {
+    ministry: "사상구청",
+    sourceOutlet: "사상구청",
+    sourceCode: "local-press-sasang",
+  },
+  sasang_news: {
+    ministry: "사상구청",
+    sourceOutlet: "사상구청",
+    sourceCode: "local-press-sasang-news",
+  },
 };
 
 type BatchItem = {

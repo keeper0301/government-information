@@ -90,6 +90,23 @@ export const scrapeBsbukgu = makeScraper({
   bodySelectors: [".board_con"],
 });
 
+// 2026-05-29 — 사상구 알림사항(BBS_0000001 표준 table). 구정소식 게시판이 없어
+// 알림사항(모집·안내·공고)으로 수집. 본문 div.contents.
+export const scrapeSasang = makeScraper({
+  cityName: "사상구",
+  listUrl: "https://www.sasang.go.kr/board/list.sasang?boardId=BBS_0000001&menuCd=DOM_000000104008001000&startPage=1",
+  bodySelectors: [".contents", ".bbs_vtype"],
+});
+
+// 2026-05-29 — 사상소식지(구보, BBS_0000100 종합). 갤러리형(div.bbs_gallery5 > dl > dt > a)
+// 이라 listSelectors 지정. 본문 div.news_con. 월간 구보라 건수 적음.
+export const scrapeSasangNews = makeScraper({
+  cityName: "사상구 소식지",
+  listUrl: "https://www.sasang.go.kr/news/board/list.sasang?boardId=BBS_0000100&categoryCode1=359&menuCd=DOM_000000901000000000",
+  listSelectors: [".bbs_gallery5 dl", ".bbs_gallery5 li"],
+  bodySelectors: [".news_con", ".txtBox"],
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -106,10 +123,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     busanjin: scrapeBusanjin,
     geumjeong: scrapeGeumjeong,
     bsbukgu: scrapeBsbukgu,
+    sasang: scrapeSasang,
+    sasang_news: scrapeSasangNews,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon|dongnae|busanjin|geumjeong|bsbukgu`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|busan|suyeong|haeundae|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

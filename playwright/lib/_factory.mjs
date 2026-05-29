@@ -107,9 +107,10 @@ export const BODY_SELECTORS = [
   "#contents .content",
 ];
 
-// bodySelectors: 사이트별 본문 컨테이너 selector 배열(미지정 시 범용 BODY_SELECTORS).
-// 부산 SI CMS 처럼 본문이 class 없는 특수 셀에 있어 범용이 못 잡는 경우 지정.
-export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS }) {
+// bodySelectors: 사이트별 본문 컨테이너 selector(미지정 시 범용 BODY_SELECTORS).
+// listSelectors: 사이트별 목록 row selector(미지정 시 범용 LIST_SELECTORS).
+//   사상소식지처럼 갤러리형(dl/dt) 등 범용 table/ul 패턴이 안 맞는 경우 지정.
+export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS, listSelectors = LIST_SELECTORS }) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });
     const ctx = await browser.newContext({
@@ -125,7 +126,7 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS 
       // 2026-05-22 — wait 시간 15s → 25s 확장 (느린 SPA 대응).
       // selector 매칭 실패해도 evaluate 진행 (catch fallthrough).
       try {
-        await page.waitForSelector(LIST_SELECTORS.join(", "), {
+        await page.waitForSelector(listSelectors.join(", "), {
           timeout: 25000,
         });
       } catch {
@@ -188,7 +189,7 @@ export function makeScraper({ listUrl, cityName, bodySelectors = BODY_SELECTORS 
             })
             .filter(Boolean);
         },
-        { selectors: LIST_SELECTORS, limit },
+        { selectors: listSelectors, limit },
       );
 
       const out = [];
