@@ -63,6 +63,10 @@
   deploy-probe 루프로만 가능 = 느리고 불안정.**
 - ⚠️ networkidle + 반복 호출 시 `ERR_INSUFFICIENT_RESOURCES`(메모리). 순차 + 메모리 상향 필요.
 
+**최종 판정 (8차 probe, 2026-05-29)**: Vercel headless **사용 불가**. `p[class="0"]` 로 본문 구조는
+정확히 잡았으나 **글자가 전부 mojibake**(EUC-KR/PUA 를 headless-shell 이 잘못 디코딩 → lone
+low-surrogate). 메뉴는 정상, 본문만 깨짐. 풀 chromium(로컬)은 동일 페이지를 클린 한글로 디코딩.
+→ **풀 chromium 한국 클라우드 VM 만이 깨끗한 본문 제공.** (이하 원래 판정 유지)
 **판정**: Vercel headless 는 IP·렌더는 되나 **본문 추출 신뢰성이 낮다**(headless-shell DOM 불일치).
 → **풀 chromium(한국 클라우드 VM)** 이면 로컬 디버깅 DOM 과 동일해 per-site selector 가 그대로
 통한다(신뢰성 ↑). 단 사장님 계정/셋업 필요. 손 안 대기 vs 신뢰성 트레이드오프.
