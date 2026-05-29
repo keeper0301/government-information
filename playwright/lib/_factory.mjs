@@ -137,6 +137,9 @@ export function makeScraper({
 
     try {
       await page.goto(listUrl, { waitUntil: NAV_WAIT, timeout: LIST_TIMEOUT });
+      // 프록시 모드(domcontentloaded)는 JS 렌더 목록(천안 .item--bodo 등)을 위해 고정 대기.
+      // probe-city 가 waitForTimeout(1500)으로 잡은 것과 동일 — waitForSelector 만으론 미렌더.
+      if (USE_PROXY) await page.waitForTimeout(2500);
       // 2026-05-22 — wait 시간 15s → 25s 확장 (느린 SPA 대응).
       // 프록시 모드는 CSS 를 abort 하므로 visible 판정 불가 → state:"attached"(존재만 확인).
       // selector 매칭 실패해도 evaluate 진행 (catch fallthrough).
