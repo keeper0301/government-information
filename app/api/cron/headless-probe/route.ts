@@ -54,23 +54,27 @@ export async function GET(request: Request) {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
       await page.waitForTimeout(4000);
       const body = await page.evaluate(() => {
-        const NAV = /gnb|lnb|snb|nav|menu|header|footer|breadcrumb|banner|skip|aside|sitemap|family|relate|quick|foot|top_btn|btn/i;
+        // MS워드 export 본문 단락 = <p class="0">. 제목(커스텀폰트)·메타·JS·nav 자동 제외.
+        const p0 = Array.from(document.querySelectorAll("p"))
+          .filter((p) => p.getAttribute("class") === "0")
+          .map((p) => p.textContent || "")
+          .join("\n");
+        if (p0.replace(/\s/g, "").length >= 50) {
+          return { strategy: "p0", text: p0.replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim() };
+        }
+        // fallback: nav 밖 leaf <p>
+        const NAV = /gnb|lnb|nav|menu|header|footer|skip|aside|sitemap|relate|quick|foot|btn/i;
         const inNav = (el: Element | null): boolean => {
           let n: Element | null = el;
-          while (n) {
-            const c = (((n as HTMLElement).className || "") + "#" + ((n as HTMLElement).id || "")).toString();
-            if (NAV.test(c)) return true;
-            n = n.parentElement;
-          }
+          while (n) { if (NAV.test((((n as HTMLElement).className || "") + "#" + ((n as HTMLElement).id || "")).toString())) return true; n = n.parentElement; }
           return false;
         };
-        const ps = Array.from(document.querySelectorAll("p, td"))
-          .filter((p) => !inNav(p) && p.querySelectorAll("p,td,div").length === 0); // leaf 텍스트 노드만
-        const text = ps.map((p) => p.textContent || "").join("\n").replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim();
-        return text;
+        const ps = Array.from(document.querySelectorAll("p")).filter((p) => !inNav(p) && !p.querySelector("script"));
+        return { strategy: "leafp", text: ps.map((p) => p.textContent || "").join("\n").replace(/[ \t]+/g, " ").trim() };
       });
-      const ko = (body.match(/[가-힣]/g) || []).length;
-      diags.push({ url: url.slice(-30), bodyLen: body.length, ko, preview: body.slice(0, 150) });
+      const bodyText = body.text;
+      const koCount = (bodyText.match(/[가-힣]/g) || []).length;
+      diags.push({ url: url.slice(-30), strategy: body.strategy, bodyLen: bodyText.length, ko: koCount, preview: bodyText.slice(0, 160) });
     }
     return NextResponse.json({ ok: true, diags, ms: Date.now() - t0 });
   } catch (e) {
