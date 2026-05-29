@@ -36,7 +36,8 @@ export const scrapeAnsan = makeScraper({
   listSelectors: ["table tbody tr"],
   onclickIdRe: "fnGoDetail\\(\\s*(\\d+)\\s*\\)",
   detailPath: "selectBbsDetail.do?bbs_code=B0238&bbs_seq={id}",
-  bodySelectors: [".p-table__subject td"],
+  // .p-table__subject tr 안 td 3개[제목·날짜·본문] 중 본문은 마지막 td.
+  bodySelectors: [".p-table__subject td:last-child"],
 });
 
 // 2026-05-29 — 천안시. 기존 _060 은 기금운용 오등록 → 진짜 보도자료 _030 으로 교정.
