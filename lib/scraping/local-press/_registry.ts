@@ -43,7 +43,6 @@ import { scrapeGangnamAndInsert } from "./gangnam";
 import { scrapeSongpaAndInsert } from "./songpa";
 import { scrapeAnyangAndInsert } from "./anyang";
 import { scrapeUiwangAndInsert } from "./uiwang";
-import { scrapeGimpoAndInsert } from "./gimpo";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
@@ -107,7 +106,6 @@ export type CityKey =
   | "songpa"
   | "anyang"
   | "uiwang"
-  | "gimpo"
   | "wonju"
   | "gwangsan"
   | "gunpo"
@@ -431,15 +429,8 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.uiwang.go.kr/UWKORINFO0201/",
     fn: scrapeUiwangAndInsert,
   },
-  // 2026-05-22 — 김포시 48만. SI 표준 + 17,781+ 보도자료 (매우 풍부).
-  {
-    key: "gimpo",
-    city: "김포시",
-    ministry: "김포시청",
-    siteUrl:
-      "https://www.gimpo.go.kr/news/selectBbsNttList.do?bbsNo=466&key=9377",
-    fn: scrapeGimpoAndInsert,
-  },
+  // 2026-05-29 — 김포시는 Playwright 프록시 경로로 이관(목록 위젯 혼재·본문 무class td 라
+  // 정적 selector 불가). 정적 등록 제거(dual-path 방지).
   // 2026-05-22 — 원주시 35만. SI 표준 + 40,744+ 보도자료 (강원 1위).
   {
     key: "wonju",
