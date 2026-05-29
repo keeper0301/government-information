@@ -57,9 +57,6 @@ import { scrapeChungjuAndInsert } from "./chungju";
 import { scrapeYeosuAndInsert } from "./yeosu";
 import { scrapeMokpoAndInsert } from "./mokpo";
 import { scrapeGwangyangAndInsert } from "./gwangyang";
-import { scrapeBusanjinAndInsert } from "./busanjin";
-import { scrapeGeumjeongAndInsert } from "./geumjeong";
-import { scrapeBsbukguAndInsert } from "./bsbukgu";
 import { scrapeSasangAndInsert } from "./sasang";
 import { scrapeGijangAndInsert } from "./gijang";
 import { scrapeOngjinAndInsert } from "./ongjin";
@@ -125,7 +122,6 @@ export type CityKey =
   | "yeosu"
   | "mokpo"
   | "gwangyang"
-  | "busanjin"
   | "namgu_gwangju"
   | "bukgu_gwangju"
   | "seogu_gwangju"
@@ -133,8 +129,6 @@ export type CityKey =
   | "namdong_incheon"
   | "gyeyang_incheon"
   | "michuhol_incheon"
-  | "geumjeong"
-  | "bsbukgu"
   | "sasang"
   | "gijang"
   | "ongjin"
@@ -560,15 +554,7 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://gwangyang.go.kr/board.es?mid=a11007000000&bid=0057",
     fn: scrapeGwangyangAndInsert,
   },
-  // 2026-05-25 — 부산진구 35만. 자체 CMS (board.busanjin?boardId=BBS_0000265).
-  {
-    key: "busanjin",
-    city: "부산진구",
-    ministry: "부산진구청",
-    siteUrl:
-      "https://www.busanjin.go.kr/board/list.busanjin?boardId=BBS_0000265&menuCd=DOM_000000103007004000",
-    fn: scrapeBusanjinAndInsert,
-  },
+  // 2026-05-29 — 부산진구는 Playwright 프록시 경로(local-press-proxy.yml)로 이관. dual-path 제거.
   // 2026-05-25 — 광주 남구 21만. board.es CMS (mid=a10707060200&bid=0001).
   {
     key: "namgu_gwangju",
@@ -627,29 +613,8 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.michuhol.go.kr/main/board/list.do?board_code=news_item",
     fn: scrapeMichuholAndInsert,
   },
-  // 2026-05-27 — 금정구 22만 (부산 자치구). 부산진 동일 SI CMS (board.geumj?boardId=BBS_0000004).
-  // detail body class="contents" (busanjin 의 view_cont 와 다름, 정규식 fallback 확장).
-  {
-    key: "geumjeong",
-    city: "금정구",
-    ministry: "금정구청",
-    siteUrl:
-      "https://www.geumjeong.go.kr/board/list.geumj?boardId=BBS_0000004",
-    fn: scrapeGeumjeongAndInsert,
-  },
-  // 2026-05-29 — 동래구는 Playwright 프록시 경로(local-press-proxy.yml)로 이관.
-  // 기존 정적 BBS_0000001 은 사전정보공개라 0건이었고, 구정소식(BBS_0000012)은 본문이
-  // JS·특수 td 라 정적 불가 → dual-path 방지 위해 정적 등록 제거.
-  // 2026-05-27 — 부산 북구 29만. 부산진·금정·동래 동일 SI CMS.
-  // boardId=BBS_0000001 + menuCd=DOM_000000103001005000 (동래와 동일 패턴).
-  {
-    key: "bsbukgu",
-    city: "부산 북구",
-    ministry: "부산 북구청",
-    siteUrl:
-      "https://www.bsbukgu.go.kr/board/list.bsbukgu?boardId=BBS_0000001&menuCd=DOM_000000103001005000",
-    fn: scrapeBsbukguAndInsert,
-  },
+  // 2026-05-29 — 부산진·금정·동래·부산북구는 Playwright 프록시 경로(local-press-proxy.yml)로 이관.
+  // 정적 BBS_0000001 은 사전정보공개 오등록(0건)이라 제거, 구정소식은 본문이 JS·특수 td 라 정적 불가.
   // 2026-05-27 — 부산 사상구 21만. SI 표준 동일.
   {
     key: "sasang",
