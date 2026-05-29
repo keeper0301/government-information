@@ -45,5 +45,5 @@ jobs:
           KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
           KEEPIOO_USE_PROXY: "1"
           # dispatch 시 입력값 우선, 스케줄 실행 시 기본값(검증 완료 도시)
-          KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon,dongnae,busanjin,geumjeong,bsbukgu,sasang,sasang_news,gimpo' }}
+          KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon,dongnae,busanjin,geumjeong,bsbukgu,sasang,sasang_news,gimpo,seongnam' }}
         run: node runner.mjs
