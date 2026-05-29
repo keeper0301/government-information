@@ -79,6 +79,22 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "동래구청",
     sourceCode: "local-press-dongnae",
   },
+  // 2026-05-29 — 부산 SI CMS 자치구 3종 (부산진·금정·북구). Playwright 프록시 경로 이관.
+  busanjin: {
+    ministry: "부산진구청",
+    sourceOutlet: "부산진구청",
+    sourceCode: "local-press-busanjin",
+  },
+  geumjeong: {
+    ministry: "금정구청",
+    sourceOutlet: "금정구청",
+    sourceCode: "local-press-geumjeong",
+  },
+  bsbukgu: {
+    ministry: "부산 북구청",
+    sourceOutlet: "부산 북구청",
+    sourceCode: "local-press-bsbukgu",
+  },
 };
 
 type BatchItem = {
