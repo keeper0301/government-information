@@ -73,6 +73,12 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "노원구청",
     sourceCode: "local-press-nowon",
   },
+  // 2026-05-29 — 동래구 구정소식(BBS_0000012). 정적은 BBS_0000001(사전정보공개) 오등록이라 0건.
+  dongnae: {
+    ministry: "동래구청",
+    sourceOutlet: "동래구청",
+    sourceCode: "local-press-dongnae",
+  },
 };
 
 type BatchItem = {
