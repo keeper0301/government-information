@@ -21,6 +21,10 @@ if (!LIST_URL) {
   console.error("PROBE_LIST_URL 환경변수가 필요합니다.");
   process.exit(1);
 }
+// PROBE_LIST_SELECTORS (쉼표) 가 있으면 그 목록 selector 로 진단(비표준 갤러리/위젯 혼재 사이트).
+const CUSTOM_LIST = process.env.PROBE_LIST_SELECTORS;
+const LIST_SELS = CUSTOM_LIST ? CUSTOM_LIST.split(",").map((s) => s.trim()) : LIST_SELECTORS;
+const MIN_ROWS = CUSTOM_LIST ? 0 : 3;
 const NAV_WAIT = process.env.KEEPIOO_USE_PROXY ? "domcontentloaded" : "networkidle";
 
 const browser = await chromium.launch({ headless: true });
@@ -37,14 +41,14 @@ try {
   await page.waitForTimeout(1500);
 
   // ── list selector 진단 ──
-  const listDiag = await page.evaluate((selectors) => {
+  const listDiag = await page.evaluate(({ selectors, minRows }) => {
     const counts = {};
     let chosen = null;
     for (const sel of selectors) {
       let c = 0;
       try { c = document.querySelectorAll(sel).length; } catch {}
       counts[sel] = c;
-      if (!chosen && c > 3) chosen = sel;
+      if (!chosen && c > minRows) chosen = sel;
     }
     let firstFull = [];
     if (chosen) {
@@ -56,7 +60,7 @@ try {
     }
     // firstLinks 는 표시용(90자), firstFull 은 navigate 용(전체)
     return { counts, chosen, firstLinks: firstFull.map((h) => h.slice(0, 90) || "(a 없음)"), firstFull };
-  }, LIST_SELECTORS);
+  }, { selectors: LIST_SELS, minRows: MIN_ROWS });
 
   console.log("=== LIST 진단 ===");
   console.log("선택된 selector:", listDiag.chosen || "(없음 — list 미매칭!)");

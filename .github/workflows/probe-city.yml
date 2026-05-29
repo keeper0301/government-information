@@ -9,6 +9,10 @@ on:
       list_url:
         description: "조사할 목록 페이지 URL"
         required: true
+      list_selectors:
+        description: "목록 row selector (쉼표, 비표준 갤러리/위젯 혼재 사이트용. 비우면 범용)"
+        required: false
+        default: ""
 
 jobs:
   probe:
@@ -32,4 +36,5 @@ jobs:
           KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
           KEEPIOO_USE_PROXY: "1"
           PROBE_LIST_URL: ${{ github.event.inputs.list_url }}
+          PROBE_LIST_SELECTORS: ${{ github.event.inputs.list_selectors }}
         run: node probe-city.mjs
