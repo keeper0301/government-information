@@ -250,7 +250,7 @@ export function makeScraper({
             // 본문 아닌 UI 라벨 제거(범용): 이미지 첨부 접근성 라벨 + 포토갤러리 슬라이더 컨트롤.
             const stripUiLabels = (t) =>
               t
-                .replace(/이미지\s*(확대보기|다운로드)/g, "")
+                .replace(/(이미지|사진)\s*(확대보기|다운로드)/g, "")
                 .replace(/포토갤러리\s*(정지|재생)/g, "")
                 .replace(/\s+/g, " ")
                 .trim();

@@ -24,9 +24,17 @@ export const scrapeSeongnam = makeScraper({
   bodySelectors: ["td.content"],
 });
 
+// 2026-05-29 — 안산시. 기존 selectBbsList.do(404) → 진짜 언론보도자료 selectPageListBbs.do.
+// 상세 a href="#" onclick="fnGoDetail( N )" → selectBbsDetail.do?bbs_seq=N GET. 본문 .p-table__subject td.
+// 봇 UA 차단 가능성 → Chrome UA.
 export const scrapeAnsan = makeScraper({
   cityName: "안산시",
-  listUrl: "https://ansan.go.kr/www/common/bbs/selectBbsList.do?bbs_code=B0238",
+  listUrl: "https://www.ansan.go.kr/www/common/bbs/selectPageListBbs.do?bbs_code=B0238",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  onclickIdRe: "fnGoDetail\\(\\s*(\\d+)\\s*\\)",
+  detailPath: "selectBbsDetail.do?bbs_code=B0238&bbs_seq={id}",
+  bodySelectors: [".p-table__subject td"],
 });
 
 // 2026-05-29 — 천안시. 기존 _060 은 기금운용 오등록 → 진짜 보도자료 _030 으로 교정.
