@@ -1,6 +1,6 @@
-// GitHub Actions(해외 IP) 풀 chromium + icn1 프록시 우회 검증
+// GitHub Actions(해외 IP) 풀 chromium + icn1 프록시 우회 검증/진단
 // 정부 도메인(.kr) 요청을 page.route 로 가로채 Vercel icn1 프록시(한국 IP)로 보냄.
-// 노원 본문이 깨끗한 한글로 나오면 = 해외 IP 차단 우회 + mojibake 없음 = 전체 우회 성공.
+// 노원 상세 페이지에서 본문 컨테이너 후보를 길이순으로 출력 → 정확한 selector 발굴.
 import { chromium } from "playwright";
 
 const PROXY = (process.env.KEEPIOO_API_URL || "https://www.keepioo.com") + "/api/internal/icn1-fetch";
@@ -18,7 +18,6 @@ let proxied = 0, direct = 0, failed = 0, aborted = 0;
 await page.route("**/*", async (route) => {
   const req = route.request();
   const url = req.url();
-  // 본문 텍스트만 필요 → 이미지·CSS·폰트·미디어는 차단(프록시 부하·networkidle 지연 제거)
   if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) { aborted++; return route.abort(); }
   let host;
   try { host = new URL(url).hostname; } catch { return route.continue(); }
@@ -47,16 +46,21 @@ try {
   if (!detail) process.exit(0);
   await page.goto(detail, { waitUntil: "domcontentloaded", timeout: 35000 });
   await page.waitForTimeout(1500);
-  const body = await page.evaluate(() => {
-    const SELS = [".board_text_td","td.board_text_td",".view_cont",".board_view",".bbs_content","[class*='board-view']","[class*='view_content']","#contents .content"];
-    for (const s of SELS) { const el = document.querySelector(s); if (el) { const t=(el.textContent||"").replace(/\s+/g," ").trim(); if (t.length>100) return {sel:s, text:t}; } }
-    const ps=[...document.querySelectorAll("p")].map(p=>p.textContent||"").join(" ").replace(/\s+/g," ").trim();
-    return {sel:"p-join", text:ps};
+  const diag = await page.evaluate(() => {
+    const cand = [];
+    document.querySelectorAll("div,td,article,section").forEach((el) => {
+      const id = el.id || "";
+      const cls = typeof el.className === "string" ? el.className : "";
+      if (!/board|view|cont|bbs|article|txt/i.test(id + " " + cls)) return;
+      const t = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (t.length < 150) return;
+      const sel = el.tagName.toLowerCase() + (id ? "#" + id : "") + (cls ? "." + cls.trim().split(/\s+/).join(".") : "");
+      cand.push({ sel: sel.slice(0, 70), len: t.length });
+    });
+    cand.sort((a, b) => a.len - b.len);
+    return cand.slice(0, 12);
   });
-  const hangul = (body.text.match(/[가-힣]/g) || []).length;
-  const garbage = (body.text.match(/[\uD800-\uDFFF�-]/g) || []).length;
-  console.log(`본문 sel=${body.sel} 길이=${body.text.length} 정상한글=${hangul} 깨진문자=${garbage}`);
-  console.log(`판정: ${hangul > 200 && garbage < hangul / 10 ? "✅ 깨끗(우회 성공)" : "❌ 깨짐/실패"}`);
-  console.log("미리보기:", body.text.slice(0, 200));
+  console.log("본문 후보 컨테이너(짧은 순 12개):");
+  diag.forEach((c) => console.log(`  len=${c.len} ${c.sel}`));
 } catch (e) { console.log("ERR", e.message.slice(0, 120)); }
 await browser.close();
