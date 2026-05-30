@@ -40,6 +40,8 @@ const BASE_SIGNALS: HealthSignals = {
   newsRatio: 0.3,
   // 2026-05-31 — baseline false (백필 미달 or review mode off, alert X). true 별도 테스트.
   adsenseReadyToDisable: false,
+  // 2026-05-31 — baseline null (ENV 미설정 = alert X). 7일/만료 케이스 별도.
+  vercelTokenExpiresInDays: null,
   // 2026-05-17 — baseline 1h (방금 발행, alert X). 60h+ 케이스는 별도 테스트.
   blogPublishStaleHours: 1,
 };
@@ -704,6 +706,28 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
   it("adsenseReadyToDisable false → 발화 안 함 (정상, 미달 or off)", () => {
     const alerts = checkThresholds({ ...ACTIVE, adsenseReadyToDisable: false });
     expect(alerts.find((a) => a.key === "adsense_ready_to_disable")).toBeFalsy();
+  });
+
+  it("vercelTokenExpiresInDays 7 → vercel_token_expiring alert", () => {
+    const alerts = checkThresholds({ ...ACTIVE, vercelTokenExpiresInDays: 7 });
+    expect(alerts.find((a) => a.key === "vercel_token_expiring")).toBeTruthy();
+  });
+
+  it("vercelTokenExpiresInDays -3 (이미 만료) → vercel_token_expiring alert", () => {
+    const alerts = checkThresholds({ ...ACTIVE, vercelTokenExpiresInDays: -3 });
+    const a = alerts.find((x) => x.key === "vercel_token_expiring");
+    expect(a).toBeTruthy();
+    expect(a?.message).toContain("이미 만료");
+  });
+
+  it("vercelTokenExpiresInDays 8 → 발화 안 함 (boundary)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, vercelTokenExpiresInDays: 8 });
+    expect(alerts.find((a) => a.key === "vercel_token_expiring")).toBeFalsy();
+  });
+
+  it("vercelTokenExpiresInDays null (ENV 미설정) → 발화 안 함", () => {
+    const alerts = checkThresholds({ ...ACTIVE, vercelTokenExpiresInDays: null });
+    expect(alerts.find((a) => a.key === "vercel_token_expiring")).toBeFalsy();
   });
 
   it("localPressStaleCities 0 → 발화 안 함 (정상)", () => {

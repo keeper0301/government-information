@@ -131,6 +131,13 @@ export type HealthSignals = {
    */
   adsenseReadyToDisable: boolean;
   /**
+   * 2026-05-31 추가 — Vercel PAT(VERCEL_TOKEN) 만료까지 일수. ENV
+   * VERCEL_TOKEN_EXPIRES_AT (ISO 날짜) 미설정 시 null = alert X.
+   * 0 ≤ N ≤ 7 시 alert (AdSense Phase B redeploy + 봇 /env /redeploy silent
+   * fail 차단). 음수 = 이미 만료.
+   */
+  vercelTokenExpiresInDays: number | null;
+  /**
    * 2026-05-17 추가 — 마지막 블로그 발행 이후 hours. 9999 = 발행 이력 0.
    * 5/15 spending cap 사고 (2.5일 무발행) 자동 감지. G1 quota 알림과 다른 진단 layer
    * (원인 vs 결과). GitHub Actions secret 만료·workflow disabled 도 잡음.
@@ -160,6 +167,7 @@ export type ThresholdAlert = {
     | "local_press_null_date"
     | "news_ratio_high"
     | "adsense_ready_to_disable"
+    | "vercel_token_expiring"
     | "blog_publish_stalled";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
@@ -483,6 +491,15 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const adsenseReadyToDisable =
     ADSENSE_REVIEW_MODE && commentaryBackfillRatio >= 0.8;
 
+  // 2026-05-31 — Vercel PAT 만료 일수 (ENV VERCEL_TOKEN_EXPIRES_AT ISO 날짜).
+  const vercelTokenExpiresAt = process.env.VERCEL_TOKEN_EXPIRES_AT;
+  const vercelTokenExpiresInDays = vercelTokenExpiresAt
+    ? Math.floor(
+        (new Date(vercelTokenExpiresAt).getTime() - Date.now()) /
+          (24 * 3600_000),
+      )
+    : null;
+
   // 2026-05-17 — 블로그 발행 stalled (마지막 발행 이후 hours).
   const blogStats = await getBlogPublishStats();
   const blogPublishStaleHours = blogStats.hoursSinceLastPublish;
@@ -513,6 +530,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     localPressNullDateCities,
     newsRatio,
     adsenseReadyToDisable,
+    vercelTokenExpiresInDays,
     blogPublishStaleHours,
   };
 }
@@ -760,6 +778,22 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
 
   // 2026-05-31 — AdSense 자동 트리거 Phase A. ADSENSE_REVIEW_MODE on + 백필 80% 도달 시
   // 사장님이 Vercel env off 안전 시점 자동 안내. 매일 1회 발화 (1-tap 액션 가이드).
+  // 2026-05-31 — Vercel PAT 만료 임박. AdSense Phase B + 봇 /env /redeploy silent fail 차단.
+  if (
+    s.vercelTokenExpiresInDays !== null &&
+    s.vercelTokenExpiresInDays <= 7
+  ) {
+    const expired = s.vercelTokenExpiresInDays < 0;
+    alerts.push({
+      key: "vercel_token_expiring",
+      message: expired
+        ? `Vercel PAT 이미 만료 (${Math.abs(s.vercelTokenExpiresInDays)}일 전). AdSense Phase B 자동 off + 봇 /env /redeploy 모두 401 실패 중.`
+        : `Vercel PAT 만료 ${s.vercelTokenExpiresInDays}일 남음 (≤ 7일). 갱신 안 하면 AdSense Phase B + 봇 /env /redeploy 모두 silent fail.`,
+      recommendation:
+        "Vercel account settings → Tokens → 새 PAT 발급 (1년) → Vercel 환경변수 VERCEL_TOKEN 갱신 + VERCEL_TOKEN_EXPIRES_AT (ISO 날짜) 동시 갱신 → production redeploy. project scope 필수.",
+    });
+  }
+
   if (s.adsenseReadyToDisable) {
     alerts.push({
       key: "adsense_ready_to_disable",
