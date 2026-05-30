@@ -157,6 +157,38 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
   };
 }
 
+// 2026-05-30 — keepioo 의 index 가능 페이지 중 news (외부 원본) 비중. ≥0.6 시
+// Google "Scaled content abuse" 정책 의심 신호 — keepioo USP (welfare/loan 정책 가이드)
+// 대비 news 비중이 과도하면 AdSense 평가에서 "주요 목적이 외부 콘텐츠 자동 복제" 로
+// 잘못 판정될 위험. selective noindex(summary+classified_at) 기준 적용.
+export async function getNewsRatio(): Promise<{
+  welfare: number;
+  loan: number;
+  blog: number;
+  newsIndexable: number;
+  ratio: number; // newsIndexable / 전체 (0~1)
+}> {
+  const admin = createAdminClient();
+  const [w, l, b, n] = await Promise.all([
+    admin.from("welfare_programs").select("id", { count: "exact", head: true }),
+    admin.from("loan_programs").select("id", { count: "exact", head: true }),
+    admin.from("blog_posts").select("id", { count: "exact", head: true }),
+    admin
+      .from("news_posts")
+      .select("id", { count: "exact", head: true })
+      .neq("category", "press")
+      .not("summary", "is", null)
+      .not("classified_at", "is", null),
+  ]);
+  const welfare = w.count ?? 0;
+  const loan = l.count ?? 0;
+  const blog = b.count ?? 0;
+  const newsIndexable = n.count ?? 0;
+  const total = welfare + loan + blog + newsIndexable;
+  const ratio = total > 0 ? newsIndexable / total : 0;
+  return { welfare, loan, blog, newsIndexable, ratio };
+}
+
 // 2026-05-30 — health-alert silent → audible 세 번째 단계. 도시별 null_date 누적이
 // threshold 넘는 시·군 수. factory date 추출 selector 깨졌거나 사이트 구조 변경 → 모든
 // 글 published_at 이 now 로 silent fallback. NewsArticle schema 신뢰도 ↓ + 사용자 알림

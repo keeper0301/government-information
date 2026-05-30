@@ -36,6 +36,8 @@ const BASE_SIGNALS: HealthSignals = {
   localPressStaleCities: 0,
   // 2026-05-30 — baseline 0 (silent fallback 없음, alert X). ≥1 케이스 별도 테스트.
   localPressNullDateCities: 0,
+  // 2026-05-30 — baseline 0.3 (news 비중 정상, alert X). ≥0.6 케이스 별도 테스트.
+  newsRatio: 0.3,
   // 2026-05-17 — baseline 1h (방금 발행, alert X). 60h+ 케이스는 별도 테스트.
   blogPublishStaleHours: 1,
 };
@@ -680,6 +682,16 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
   it("localPressNullDateCities 0 → 발화 안 함 (정상)", () => {
     const alerts = checkThresholds({ ...ACTIVE, localPressNullDateCities: 0 });
     expect(alerts.find((a) => a.key === "local_press_null_date")).toBeFalsy();
+  });
+
+  it("newsRatio 0.6+ → news_ratio_high alert (Google scaled content 정책)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, newsRatio: 0.6 });
+    expect(alerts.find((a) => a.key === "news_ratio_high")).toBeTruthy();
+  });
+
+  it("newsRatio 0.59 → 발화 안 함 (boundary)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, newsRatio: 0.59 });
+    expect(alerts.find((a) => a.key === "news_ratio_high")).toBeFalsy();
   });
 
   it("localPressStaleCities 0 → 발화 안 함 (정상)", () => {

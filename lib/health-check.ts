@@ -12,6 +12,7 @@ import { getAuthUsersCached } from "@/lib/admin-stats";
 import {
   getStaleCityCount,
   getHighNullDateCityCount,
+  getNewsRatio,
 } from "@/lib/analytics/local-press-stats";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 
@@ -116,6 +117,13 @@ export type HealthSignals = {
    */
   localPressNullDateCities: number;
   /**
+   * 2026-05-30 추가 — keepioo 의 index 가능 페이지 중 news(외부 보도자료) 비중 (0~1).
+   * ≥0.6 = Google "Scaled content abuse" 정책 의심 표면. keepioo USP (welfare/loan
+   * 정책 가이드) 대비 외부 보도자료 비중이 과도하면 AdSense 검수 실패 위험. selective
+   * noindex(summary+classified_at) 기준 적용 — 실제 index 후보만 카운트.
+   */
+  newsRatio: number;
+  /**
    * 2026-05-17 추가 — 마지막 블로그 발행 이후 hours. 9999 = 발행 이력 0.
    * 5/15 spending cap 사고 (2.5일 무발행) 자동 감지. G1 quota 알림과 다른 진단 layer
    * (원인 vs 결과). GitHub Actions secret 만료·workflow disabled 도 잡음.
@@ -143,6 +151,7 @@ export type ThresholdAlert = {
     | "naver_publish_failure"
     | "local_press_stale"
     | "local_press_null_date"
+    | "news_ratio_high"
     | "blog_publish_stalled";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
@@ -450,6 +459,8 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const localPressStaleCities = await getStaleCityCount(72);
   // 2026-05-30 — 24h null_date ≥5 누적 시·군 (factory date 추출 collector 점검 신호).
   const localPressNullDateCities = await getHighNullDateCityCount(5, 24);
+  // 2026-05-30 — news 비중 (외부 보도자료 대 keepioo 자체 자산).
+  const { ratio: newsRatio } = await getNewsRatio();
 
   // 2026-05-17 — 블로그 발행 stalled (마지막 발행 이후 hours).
   const blogStats = await getBlogPublishStats();
@@ -479,6 +490,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     collectLastRunHours,
     localPressStaleCities,
     localPressNullDateCities,
+    newsRatio,
     blogPublishStaleHours,
   };
 }
@@ -721,6 +733,18 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `시·군 published_at silent fallback ${s.localPressNullDateCities}개 도시 (24h null_date ≥5 누적). factory date 추출 점검 신호.`,
       recommendation:
         "/admin/autonomous 의 시·군 카드에서 '날짜 미상 N' 표시 도시 확인 → 사이트 직접 접속해 list row 의 등록일 cell 구조 변경 확인. playwright/lib/_factory.mjs 의 date selector (td.date/.date/.reg/td.td-date) 또는 도시별 listSelectors 조정 필요.",
+    });
+  }
+
+  // 2026-05-30 — news 비중 ≥0.6 = Google "Scaled content abuse" 정책 의심 표면.
+  // keepioo USP (welfare/loan 자체 가이드) 대비 외부 보도자료 비중 과도. AdSense
+  // 검수자 시각에서 "주요 목적이 외부 콘텐츠 자동 복제" 로 잘못 판정될 위험.
+  if (s.newsRatio >= 0.6) {
+    alerts.push({
+      key: "news_ratio_high",
+      message: `news 비중 ${(s.newsRatio * 100).toFixed(1)}% (임계 60%+). Google scaled content 정책 의심 표면 — keepioo USP 대비 외부 보도자료 비중 과도.`,
+      recommendation:
+        "1) welfare/loan 신규 collector 점검 (수집 cron 노쇼 시 비율 자연 상승) 2) news selective noindex 임계 강화 검토 (현재 summary+classified_at, body length 추가 고려) 3) news 도시별 자체 해설 박스(PolicyGuideBox 등) 추가로 originality 보강.",
     });
   }
 
