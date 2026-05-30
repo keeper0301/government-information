@@ -291,6 +291,18 @@ export default async function AdminAutonomousPage() {
           </span>
           <span className="text-[10px] text-slate-500">임계 60% (Google scaled content)</span>
         </div>
+        {/* 2026-05-30 P2 — AI 자체 해설 백필 진행률. review mode off 전 80%+ 권장. */}
+        <div className="mt-1.5 flex items-center justify-between text-[11px]">
+          <span>
+            <strong>AI 자체 해설 백필</strong>{" "}
+            <span className={newsRatioStats.commentaryBackfillRatio >= 0.8 ? "text-emerald-700 font-semibold" : "text-amber-700"}>
+              {(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}%
+            </span>
+          </span>
+          <span className="text-[10px] text-slate-500">
+            review mode off 전 ≥80% 권장 (cron KST 04:30 매일 ~200건)
+          </span>
+        </div>
       </div>
       <div className="mb-4">
         <LocalPressCard stats={localPressStats} />

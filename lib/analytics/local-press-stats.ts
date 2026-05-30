@@ -167,9 +167,12 @@ export async function getNewsRatio(): Promise<{
   blog: number;
   newsIndexable: number;
   ratio: number; // newsIndexable / 전체 (0~1)
+  // 2026-05-30 P2 — newsIndexable 중 ai_commentary 채워진 비율 (백필 cron 진행률).
+  // review mode off 직전 사장님 점검 신호. 1.0 도달 = sitemap 100% 진입 가능.
+  commentaryBackfillRatio: number;
 }> {
   const admin = createAdminClient();
-  const [w, l, b, n] = await Promise.all([
+  const [w, l, b, n, nc] = await Promise.all([
     admin.from("welfare_programs").select("id", { count: "exact", head: true }),
     admin.from("loan_programs").select("id", { count: "exact", head: true }),
     admin.from("blog_posts").select("id", { count: "exact", head: true }),
@@ -179,14 +182,24 @@ export async function getNewsRatio(): Promise<{
       .neq("category", "press")
       .not("summary", "is", null)
       .not("classified_at", "is", null),
+    admin
+      .from("news_posts")
+      .select("id", { count: "exact", head: true })
+      .neq("category", "press")
+      .not("summary", "is", null)
+      .not("classified_at", "is", null)
+      .not("ai_commentary", "is", null),
   ]);
   const welfare = w.count ?? 0;
   const loan = l.count ?? 0;
   const blog = b.count ?? 0;
   const newsIndexable = n.count ?? 0;
+  const newsWithCommentary = nc.count ?? 0;
   const total = welfare + loan + blog + newsIndexable;
   const ratio = total > 0 ? newsIndexable / total : 0;
-  return { welfare, loan, blog, newsIndexable, ratio };
+  const commentaryBackfillRatio =
+    newsIndexable > 0 ? newsWithCommentary / newsIndexable : 0;
+  return { welfare, loan, blog, newsIndexable, ratio, commentaryBackfillRatio };
 }
 
 // 2026-05-30 — health-alert silent → audible 세 번째 단계. 도시별 null_date 누적이
