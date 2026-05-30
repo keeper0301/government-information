@@ -285,7 +285,7 @@ export default async function AdminAutonomousPage() {
           <div className="text-[11px] leading-relaxed">
             ai_commentary NULL news 는 sitemap·index 에서 자동 제외돼 Google 색인 진행이 정체됩니다.
             즉시 Vercel env <code className="bg-white px-1 rounded">NEXT_PUBLIC_ADSENSE_REVIEW_MODE=on</code> 으로 되돌리고 redeploy 권장 →
-            cron KST 04:30 매일 ~200건 자동 백필이 80% 도달할 때까지 review mode 유지.
+            cron KST 04:30 매일 ~100건 자동 백필이 80% 도달할 때까지 review mode 유지.
           </div>
         </div>
       )}
