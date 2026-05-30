@@ -19,34 +19,50 @@ export const maxDuration = 30;
 
 async function run() {
   const admin = createAdminClient();
-  const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
+  // 2026-05-31 — schedule 주 1 → 매일. 단 noise 방지 위해 5일+ idle 시 + 7/14/21/...
+  // 일수 단위 도달 시만 발화. 그 사이 일은 audit 만 (hub UI 가 일수 가시화).
+  const since30d = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
 
-  const { count } = await admin
+  // 최근 30일 마지막 가동 audit 찾기 (없으면 30+ days idle).
+  const { data: lastRow } = await admin
     .from("admin_actions")
-    .select("id", { count: "exact", head: true })
+    .select("created_at")
     .in("action", [
       "naver_publish_success",
       "naver_publish_fail",
       "naver_extension_publish",
       "naver_cookies_uploaded",
     ])
-    .gte("created_at", since7d);
+    .gte("created_at", since30d)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  const idle = (count ?? 0) === 0;
+  // daysIdle: 마지막 가동 시점부터 일수. row 없으면 30+ (capped).
+  const daysIdle = lastRow?.created_at
+    ? Math.floor(
+        (Date.now() - new Date(lastRow.created_at).getTime()) /
+          (24 * 3600_000),
+      )
+    : 30;
+  const idle = daysIdle >= 5;
+  // 7/14/21/28/30 일 단위 마일스톤 도달 시만 발화 (noise ↓).
+  const milestone =
+    daysIdle === 7 || daysIdle === 14 || daysIdle === 21 || daysIdle >= 28;
   let alerted = false;
 
-  if (idle) {
+  if (idle && milestone) {
     await sendOpsAlertMultichannel({
-      subject: "[keepioo] Naver Extension 1주 가동 0건 ⚠️",
+      subject: `[keepioo] Naver Extension ${daysIdle}일째 가동 0 ⚠️`,
       message: [
-        `최근 7일 Naver Extension audit 0건 감지.`,
+        `Naver Extension 마지막 가동 후 ${daysIdle}일 경과. 매일 hub 자동 점검.`,
         ``,
-        `[사장님 액션 3건]`,
+        `[사장님 액션 3건] (예상 10분)`,
         `1. Chrome Extension 설치 (메모리 [naver-extension-desktop-setup])`,
         `2. popup 에서 secret 입력`,
         `3. /admin/naver-blog manual-test 에서 dry-run 1건 검증`,
         ``,
-        `설치 완료 후 매주 일요일 09:00 자동 가동 검증 cron 무음 전환.`,
+        `설치 후 cron 자동 무음 전환 (5일 미만 idle 시 알림 X).`,
       ].join("\n"),
       link: "https://github.com/keeper0301/government-information/blob/master/chrome-extension/README.md",
     });
@@ -58,7 +74,8 @@ async function run() {
     action: "naver_extension_idle_check" as AdminActionType,
     details: {
       idle,
-      audit_count_7d: count ?? 0,
+      days_idle: daysIdle,
+      milestone,
       alerted,
     },
   });
@@ -66,7 +83,8 @@ async function run() {
   return NextResponse.json({
     ok: true,
     idle,
-    audit_count_7d: count ?? 0,
+    days_idle: daysIdle,
+    milestone,
     alerted,
   });
 }

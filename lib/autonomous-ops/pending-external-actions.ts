@@ -203,26 +203,41 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     // graceful — DB 실패 시 noop
   }
 
-  // 3. Naver Extension — 5/13 push 후 admin_actions audit 0건 = 가동 안 됨
+  // 3. Naver Extension — 5/13 push 후 마지막 가동까지 일수 추적 + 일수 가시화.
   try {
     const admin = createAdminClient();
-    const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
-    const { count } = await admin
+    const since30d = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+    const { data: lastRow } = await admin
       .from("admin_actions")
-      .select("id", { count: "exact", head: true })
+      .select("created_at")
       .in("action", [
         "naver_publish_success",
         "naver_publish_fail",
         "naver_extension_publish",
         "naver_cookies_uploaded",
       ])
-      .gte("created_at", since7d);
-    if ((count ?? 0) === 0) {
+      .gte("created_at", since30d)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const daysIdle = lastRow?.created_at
+      ? Math.floor(
+          (Date.now() - new Date(lastRow.created_at).getTime()) /
+            (24 * 3600_000),
+        )
+      : 30;
+    if (daysIdle >= 5) {
+      // 일수 카운트 + 강도 ↑ (5+ 일째부터 reminder, 14+ 일째부터 압박 톤).
+      const tone =
+        daysIdle >= 14
+          ? "🔴 14일+ 가동 0건"
+          : daysIdle >= 7
+            ? "🟠 1주+ 가동 0건"
+            : "🟡 5일+ 가동 0건";
       actions.push({
         category: "automation",
-        label: "Naver Extension 설치·secret·dry-run",
-        description:
-          "5/13 코드 push 후 1주 가동 0건. 사장님 본체 PC 에 Manifest V3 Extension 설치 + popup secret 입력 + dry-run 1건 검증 필요",
+        label: `Naver Extension ${daysIdle}일째 미가동 — 설치·secret·dry-run`,
+        description: `${tone}. 본체 PC 에 Manifest V3 Extension 설치 + popup secret 입력 + /admin/naver-blog manual-test dry-run 1건 검증 (예상 10분).`,
         guideUrl:
           "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/naver-extension-desktop-setup.md",
         estimatedMinutes: 10,
