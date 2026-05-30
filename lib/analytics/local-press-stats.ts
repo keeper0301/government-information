@@ -31,6 +31,9 @@ export type LocalPressCityStat = {
   inserted24h: number;
   fetched24h: number;
   errors24h: number;
+  // 2026-05-30: factory date 추출 실패 → published_at silent now-fallback 건수.
+  // import-press-batch audit details.null_date 누적. NewsArticle schema 신뢰도 진단.
+  nullDate24h: number;
   lastRunAt: string | null;
   lastError: string | null; // 마지막 audit 의 error 필드 (한 줄)
   // 2026-05-26: 최근 errors 모두 (slice 20 까지). silent_fail 정확 진단.
@@ -65,6 +68,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
       inserted: number;
       fetched: number;
       errors: number;
+      nullDate: number;
       lastRunAt: string | null;
       lastError: string | null;
       recentErrors: string[];
@@ -87,6 +91,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
     }
     const inserted = Number(d.inserted ?? 0);
     const fetched = Number(d.fetched ?? 0);
+    const nullDateRow = Number(d.null_date ?? 0);
     const errs = Array.isArray(d.errors) ? (d.errors as string[]) : [];
     const errFatal = d.error ? 1 : 0;
     const errCount = errs.length + errFatal;
@@ -102,6 +107,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
       inserted: (prev?.inserted ?? 0) + inserted,
       fetched: (prev?.fetched ?? 0) + fetched,
       errors: (prev?.errors ?? 0) + errCount,
+      nullDate: (prev?.nullDate ?? 0) + nullDateRow,
       lastRunAt: prev?.lastRunAt ?? String(row.created_at),
       lastError:
         prev?.lastError ??
@@ -117,6 +123,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
       inserted24h: stat?.inserted ?? 0,
       fetched24h: stat?.fetched ?? 0,
       errors24h: stat?.errors ?? 0,
+      nullDate24h: stat?.nullDate ?? 0,
       lastRunAt: stat?.lastRunAt ?? null,
       lastError: stat?.lastError ?? null,
       recentErrors: stat?.recentErrors ?? [],
@@ -133,6 +140,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
       inserted24h: stat.inserted,
       fetched24h: stat.fetched,
       errors24h: stat.errors,
+      nullDate24h: stat.nullDate,
       lastRunAt: stat.lastRunAt,
       lastError: stat.lastError,
       recentErrors: stat.recentErrors,

@@ -148,12 +148,19 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
                   <div
                     key={c.city}
                     className={`rounded border ${bg} px-2 py-1.5 text-xs`}
-                    title={c.recentErrors.length > 0 ? c.recentErrors.join("\n") : c.lastError ?? undefined}
+                    title={
+                      c.recentErrors.length > 0
+                        ? c.recentErrors.join("\n")
+                        : c.nullDate24h > 0
+                          ? `날짜 미상 ${c.nullDate24h}건: 본문에서 발행일 추출 실패 → 지금 시각으로 임시 기록. ${c.nullDate24h >= 5 ? "collector regex 점검 권장." : "1~2건은 자연 발생 가능."}`
+                          : c.lastError ?? undefined
+                    }
                   >
                     <div className="truncate font-medium">{c.city}</div>
                     <div className="text-[10px] opacity-75">
                       +{c.inserted24h}
                       {c.errors24h > 0 ? ` · 오류 ${c.errors24h}` : ""}
+                      {c.nullDate24h > 0 ? ` · 날짜 미상 ${c.nullDate24h}` : ""}
                     </div>
                   </div>
                 );
