@@ -77,6 +77,11 @@ import { scrapeDongjakAndInsert } from "./dongjak";
 import { scrapeYongsanAndInsert } from "./yongsan";
 // 2026-05-31 — 서울 18 자치구 확장 패턴 3 (/site/main/board/press): 마포
 import { scrapeMapoAndInsert } from "./mapo";
+// 2026-05-31 — 서울 18 자치구 확장 패턴 4 (ASP 클래식 bbs.asp): 도봉
+import { scrapeDobongAndInsert } from "./dobong";
+// 2026-05-31 — 서울 18 자치구 확장 패턴 5 (eGovFrame site/ex/bbs JS onclick): 관악·양천
+import { scrapeGwanakAndInsert } from "./gwanak";
+import { scrapeYangcheonAndInsert } from "./yangcheon";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -145,7 +150,12 @@ export type CityKey =
   | "dongjak"
   | "yongsan"
   // 2026-05-31 서울 18 자치구 확장 (패턴 3: /site/main/board/press)
-  | "mapo";
+  | "mapo"
+  // 2026-05-31 서울 18 자치구 확장 (패턴 4: ASP 클래식 bbs.asp)
+  | "dobong"
+  // 2026-05-31 서울 18 자치구 확장 (패턴 5: eGovFrame site/ex/bbs JS onclick)
+  | "gwanak"
+  | "yangcheon";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -700,6 +710,32 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "마포구청",
     siteUrl: "https://www.mapo.go.kr/site/main/board/press/list",
     fn: scrapeMapoAndInsert,
+  },
+  // 패턴 4: ASP 클래식 (도봉) — bbs.asp?bmode=D&pcode=N + bbsCont 본문.
+  // list 의 광고 banner Contents.asp anchor 와 보도자료 bbs.asp anchor 가 명확 구분.
+  {
+    key: "dobong",
+    city: "도봉구",
+    ministry: "도봉구청",
+    siteUrl: "https://www.dobong.go.kr/Contents.asp?code=10008782",
+    fn: scrapeDobongAndInsert,
+  },
+  // 패턴 5: eGovFrame site/ex/bbs JS onclick (관악·양천)
+  // — href="#view" + doBbsFView() onclick → bcIdx 추출 → View.do?cbIdx=N&bcIdx=N
+  {
+    key: "gwanak",
+    city: "관악구",
+    ministry: "관악구청",
+    siteUrl: "https://www.gwanak.go.kr/site/gwanak/ex/bbs/List.do?cbIdx=295",
+    fn: scrapeGwanakAndInsert,
+  },
+  {
+    key: "yangcheon",
+    city: "양천구",
+    ministry: "양천구청",
+    siteUrl:
+      "https://www.yangcheon.go.kr/site/yangcheon/ex/bbs/List.do?cbIdx=290",
+    fn: scrapeYangcheonAndInsert,
   },
 ];
 

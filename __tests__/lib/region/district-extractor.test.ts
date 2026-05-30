@@ -192,3 +192,81 @@ describe("extractSubDistrictFromFields", () => {
     ).toBeNull();
   });
 });
+
+// ============================================================
+// 2026-05-31 District Phase C — alias 확장 + false positive 회귀 안전망
+// ============================================================
+describe("District Phase C — 확장 alias (2026-05-31)", () => {
+  it("'강원자치도 원주' → gangwon (강원특별자치도 짧은 변형)", () => {
+    expect(detectProvince("강원자치도 원주시 청년 지원")).toBe("gangwon");
+  });
+
+  it("'전북자치도 전주' → jeonbuk (전북특별자치도 짧은 변형)", () => {
+    expect(detectProvince("전북자치도 전주시 청년 지원")).toBe("jeonbuk");
+  });
+
+  it("'전남도 순천' → jeonnam (전라남도 변형)", () => {
+    expect(detectProvince("전남도 순천시 청년 지원")).toBe("jeonnam");
+  });
+
+  it("'제주자치도' → jeju (제주특별자치도 짧은 변형)", () => {
+    expect(detectProvince("제주자치도 어업 지원")).toBe("jeju");
+  });
+});
+
+describe("District Phase C — 동명 자치구 정확 매칭 (false positive 0)", () => {
+  it("'서울특별시 강서구' → seoul/강서구 (부산 강서구 아님)", () => {
+    const m = extractDistrict("서울특별시 강서구 청년 지원");
+    expect(m?.province).toBe("seoul");
+    expect(m?.district).toBe("강서구");
+  });
+
+  it("'부산광역시 강서구' → busan/강서구 (서울 강서구 아님)", () => {
+    const m = extractDistrict("부산광역시 강서구 청년 지원");
+    expect(m?.province).toBe("busan");
+    expect(m?.district).toBe("강서구");
+  });
+
+  it("'대구광역시 중구' → daegu/중구 (다른 광역 중구 아님)", () => {
+    const m = extractDistrict("대구광역시 중구 청년 지원");
+    expect(m?.province).toBe("daegu");
+    expect(m?.district).toBe("중구");
+  });
+
+  it("'인천광역시 동구' → incheon/동구 (다른 광역 동구 아님)", () => {
+    const m = extractDistrict("인천광역시 동구 청년 지원");
+    expect(m?.province).toBe("incheon");
+    expect(m?.district).toBe("동구");
+  });
+});
+
+describe("District Phase C — 광역 없이 동명 자치구 (수도권 fallback)", () => {
+  it("광역 없는 '강서구' → seoul fallback (수도권 우선)", () => {
+    // PROVINCES 순서 seoul 우선 → 부산 강서구 false positive 위험 회피
+    const m = extractDistrict("강서구 청년 정책 안내");
+    expect(m?.province).toBe("seoul");
+  });
+
+  it("광역 없는 '중구' → seoul fallback (PROVINCES 첫 매칭)", () => {
+    const m = extractDistrict("중구 청년 지원 사업");
+    expect(m?.province).toBe("seoul");
+  });
+});
+
+describe("District Phase C — 무관 텍스트 null 반환", () => {
+  it("정책 본문 자체에 시·군 명시 없으면 null", () => {
+    expect(extractDistrict("청년 정책 안내 전국 대상")).toBeNull();
+  });
+
+  it("빈 문자열·null·undefined → null", () => {
+    expect(extractDistrict("")).toBeNull();
+    expect(extractDistrict(null)).toBeNull();
+    expect(extractDistrict(undefined)).toBeNull();
+  });
+
+  it("광역만 명시 + 시·군 없음 → extractDistrict null (광역만으론 매칭 X)", () => {
+    // detectProvince 는 통과하나 extractDistrict 는 시·군 매칭이 있어야 결과 반환.
+    // 정책 본문이 시·군 명시 없이 광역만 있으면 추출 실패가 정상 (전국 정책 분류).
+    expect(extractDistrict("광주광역시 청년 지원")).toBeNull();
+  });
+});

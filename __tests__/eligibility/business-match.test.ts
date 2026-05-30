@@ -97,6 +97,129 @@ describe('extractPolicyRequirements', () => {
         .max_years_since_established,
     ).toBe(5);
   });
+
+  // ========================================================
+  // 2026-05-31 확장 — INDUSTRY_KEYWORDS / 매출 / 직원 / 창업 신규 패턴
+  // ========================================================
+  describe('확장 키워드 + regex (2026-05-31)', () => {
+    it('"베이커리 운영자" → industries food (신규)', () => {
+      expect(
+        extractPolicyRequirements('베이커리 운영자 대상').industries,
+      ).toContain('food');
+    });
+
+    it('"편의점 점주" → industries retail (신규)', () => {
+      expect(
+        extractPolicyRequirements('편의점 점주 대상').industries,
+      ).toContain('retail');
+    });
+
+    it('"스타트업 대상" → industries it (신규)', () => {
+      expect(
+        extractPolicyRequirements('스타트업 대상').industries,
+      ).toContain('it');
+    });
+
+    it('"미용업 종사자" → industries service (신규)', () => {
+      expect(
+        extractPolicyRequirements('미용업 종사자').industries,
+      ).toContain('service');
+    });
+
+    it('"월매출 5억 이하" → max_revenue 5억 (신규 키워드)', () => {
+      expect(
+        extractPolicyRequirements('월매출 5억 이하 사업자').max_revenue,
+      ).toBe(500_000_000);
+    });
+
+    it('"매출 3억 이내" → max_revenue 3억 (신규 종결어 "이내")', () => {
+      expect(
+        extractPolicyRequirements('매출 3억 이내 사업자').max_revenue,
+      ).toBe(300_000_000);
+    });
+
+    it('"직원 5명 이내" → max_employees 5 (신규 종결어 "이내")', () => {
+      expect(
+        extractPolicyRequirements('직원 5명 이내 사업장').max_employees,
+      ).toBe(5);
+    });
+
+    it('"10인 이하 사업장" → max_employees 10 (무키워드 변형)', () => {
+      expect(
+        extractPolicyRequirements('10인 이하 사업장 대상').max_employees,
+      ).toBe(10);
+    });
+
+    it('"개업 3년 이내" → max_years_since_established 3 (신규 키워드)', () => {
+      expect(
+        extractPolicyRequirements('개업 3년 이내 사업자')
+          .max_years_since_established,
+      ).toBe(3);
+    });
+
+    it('"창업 후 5년 이내" → max_years_since_established 5 (신규 "후")', () => {
+      expect(
+        extractPolicyRequirements('창업 후 5년 이내 기업')
+          .max_years_since_established,
+      ).toBe(5);
+    });
+
+    it('"설립 3년 미만" → max_years_since_established 3 (신규 "미만")', () => {
+      expect(
+        extractPolicyRequirements('설립 3년 미만 기업')
+          .max_years_since_established,
+      ).toBe(3);
+    });
+  });
+
+  // ========================================================
+  // 2026-05-31 BUSINESS_POLICY_SIGNAL 확장 (evaluateBusinessMatch 경유)
+  // ========================================================
+  describe('BUSINESS_POLICY_SIGNAL 신규 키워드 (evaluateBusinessMatch)', () => {
+    const PROFILE_FOOD_SMALL: BusinessProfile = {
+      industry: 'food',
+      revenue_scale: 'under_50m',
+      employee_count: '1_4',
+      business_type: 'sole_proprietor',
+      established_date: '2023-01-01',
+      region: '전남',
+      district: '순천시',
+    };
+
+    it('"자영자" 시그널 → 사업자 정책 인식 (signal 통과)', () => {
+      // 자영자 시그널 + food 키워드 → industries food 매칭
+      const result = evaluateBusinessMatch(
+        '자영자 외식업 대상 지원',
+        PROFILE_FOOD_SMALL,
+      );
+      expect(result).toBe('match');
+    });
+
+    it('"영세사업자" 시그널 → 사업자 정책 인식', () => {
+      const result = evaluateBusinessMatch(
+        '영세사업자 음식점 대상',
+        PROFILE_FOOD_SMALL,
+      );
+      expect(result).toBe('match');
+    });
+
+    it('"1인사업자" 시그널 → 사업자 정책 인식', () => {
+      const result = evaluateBusinessMatch(
+        '1인사업자 외식 지원',
+        PROFILE_FOOD_SMALL,
+      );
+      expect(result).toBe('match');
+    });
+
+    it('일반 복지 본문 (자영자 시그널 없음) → unknown 유지 (false positive 0)', () => {
+      // 일반 복지 본문에 매출 키워드 우연 등장 — 사업자 시그널 없으면 unknown
+      const result = evaluateBusinessMatch(
+        '기초수급자 매출 5억 이하 대상',
+        PROFILE_FOOD_SMALL,
+      );
+      expect(result).toBe('unknown');
+    });
+  });
 });
 
 // ============================================================

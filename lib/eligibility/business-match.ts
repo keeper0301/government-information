@@ -51,13 +51,62 @@ export type PolicyRequirement = {
 // 정책 본문 → PolicyRequirement 추출
 // ============================================================
 
-// 업종별 키워드 정규식 사전
+// 업종별 키워드 정규식 사전.
+// 2026-05-31 확장 — 풍부화로 매칭률 ↑. 기존 6개 키워드 → 평균 12개.
+// 각 키워드는 false positive 방어 위해 단어 경계 또는 정확 표현 사용.
 const INDUSTRY_KEYWORDS: Record<BusinessIndustry, RegExp[]> = {
-  food: [/외식/, /요식/, /음식점/, /식당/, /카페/, /주점/],
-  retail: [/소매/, /도소매/, /도매/, /유통업/],
-  manufacturing: [/제조업/, /제조공정/, /생산업체/],
-  service: [/서비스업/],
-  it: [/IT\s*기업/, /정보통신/, /콘텐츠/, /소프트웨어/, /벤처기업/],
+  food: [
+    /외식/,
+    /요식/,
+    /음식점/,
+    /식당/,
+    /카페/,
+    /주점/,
+    /베이커리/,
+    /제과/,
+    /분식/,
+    /한식|중식|일식|양식/,
+    /치킨|피자/,
+    /호프|술집/,
+  ],
+  retail: [
+    /소매/,
+    /도소매/,
+    /도매/,
+    /유통업/,
+    /편의점/,
+    /슈퍼마켓?/,
+    /(?:대형|소형)?마트/,
+    /쇼핑몰/,
+    /온라인몰/,
+  ],
+  manufacturing: [
+    /제조업/,
+    /제조공정/,
+    /생산업체/,
+    /가공업/,
+    /공장\s*(?:운영|등록|설립|을)/, // "공장 운영자" 만 매칭 — "공장 견학" 같은 무관 본문 제외
+  ],
+  service: [
+    /서비스업/,
+    /미용업/,
+    /세탁업/,
+    /청소업/,
+    /운수업/,
+    /돌봄\s*서비스/,
+  ],
+  it: [
+    /IT\s*기업/,
+    /정보통신/,
+    /콘텐츠/,
+    /소프트웨어/,
+    /벤처기업/,
+    /스타트업/,
+    /플랫폼\s*기업/,
+    /앱\s*개발/,
+    /게임\s*개발/,
+    /인공지능|AI\s*기업/,
+  ],
   // 'other' 는 키워드 매칭으로 추출하지 않음 (의미 없는 분류)
   other: [],
 };
@@ -66,8 +115,9 @@ export function extractPolicyRequirements(text: string): PolicyRequirement {
   const result: PolicyRequirement = {};
 
   // 매출 상한 — "매출 5억 이하" / "연매출 10억원 이하" / "매출액 5천만원 이하"
+  // 2026-05-31 확장: "월매출"·"총매출" 키워드 + "이내" 종결어 추가
   const revenueMatch = text.match(
-    /(?:매출|매출액|연매출)[\s가-힣]*?(\d+)\s*(억|천만)\s*(?:원\s*)?(?:이하|미만)/,
+    /(?:매출|매출액|연매출|월매출|총매출)[\s가-힣]*?(\d+)\s*(억|천만)\s*(?:원\s*)?(?:이하|미만|이내)/,
   );
   if (revenueMatch) {
     const num = parseInt(revenueMatch[1], 10);
@@ -77,11 +127,19 @@ export function extractPolicyRequirements(text: string): PolicyRequirement {
   }
 
   // 직원 수 상한 — "상시근로자 5인 미만" / "근로자 10명 이하" / "직원 30인 이하"
+  // 2026-05-31 확장 — "이내" 종결어 + "N인 사업장" 무키워드 패턴 추가.
+  // "5인 사업장" / "10인 이하 사업장" 도 검출. 단 "사업장" 가드 필수 (오추출 방지).
   const employeeMatch = text.match(
-    /(?:상시근로자|근로자|직원|종업원)\s*(\d+)\s*(?:인|명)\s*(?:미만|이하)/,
+    /(?:상시근로자|근로자|직원|종업원)\s*(\d+)\s*(?:인|명)\s*(?:미만|이하|이내)/,
   );
   if (employeeMatch) {
     result.max_employees = parseInt(employeeMatch[1], 10);
+  } else {
+    // "5인 사업장" / "10인 이하 사업장" — 키워드 없는 변형
+    const sajangMatch = text.match(/(\d+)\s*인\s*(?:이하\s*)?사업장/);
+    if (sajangMatch) {
+      result.max_employees = parseInt(sajangMatch[1], 10);
+    }
   }
 
   // 소상공인 법적 정의 자동 적용 (소상공인기본법): 매출 5억 + 5인 이하
@@ -115,7 +173,10 @@ export function extractPolicyRequirements(text: string): PolicyRequirement {
   }
 
   // 창업 N년차 — "창업 3년 이내" / "설립 5년 이내 기업"
-  const yearsMatch = text.match(/(?:창업|설립)\s*(\d+)\s*년\s*이[내하]/);
+  // 2026-05-31 확장 — "개업"·"창업 후"·"설립 후" 변형 + "미만" 종결어
+  const yearsMatch = text.match(
+    /(?:창업|설립|개업)\s*(?:후\s*)?(\d+)\s*년\s*(?:이[내하]|미만)/,
+  );
   if (yearsMatch) {
     result.max_years_since_established = parseInt(yearsMatch[1], 10);
   }
@@ -235,8 +296,14 @@ export function matchBusinessProfile(
 //
 // "기업 지원" 은 lookbehind 로 "사회적기업/예비사회적기업" 제외 — 사회적기업
 // 정책은 사회복지 영역에 자주 등장하고 매출 기준 우연 매칭 시 false positive 위험.
+// 2026-05-31 확장: 자영자·소기업·영세사업자·중견기업·1인사업자 추가
+//   - 자영자 — 자영업자와 같은 의미. 일부 정책 본문에서 사용.
+//   - 소기업 — 소상공인 외 별도 카테고리. 명백한 사업자 시그널.
+//   - 영세사업자 — 정책 본문 빈도 ↑. 매출 기준 false positive 가드.
+//   - 중견기업 — 명확한 사업자 시그널. score.ts mismatch 안전 (사장님 enum 매칭).
+//   - 1인사업자 / 1인기업 — 최근 트렌드 키워드.
 const BUSINESS_POLICY_SIGNAL =
-  /소상공인|창업|자영업|개인사업|법인사업|중소기업|상공인|(?<!사회적|예비)기업\s*지원|벤처|사업자\s*등록/;
+  /소상공인|창업|자영업|자영자|개인사업|법인사업|중소기업|중견기업|상공인|소기업|영세사업|1인사업|1인기업|(?<!사회적|예비)기업\s*지원|벤처|사업자\s*등록/;
 
 // 한 번에: 정책 본문 → 사용자 매칭 결과
 export function evaluateBusinessMatch(

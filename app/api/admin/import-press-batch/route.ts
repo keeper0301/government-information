@@ -117,6 +117,12 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "김포시청",
     sourceCode: "local-press-gimpo",
   },
+  // 2026-05-31 — 영도구. SPA (.web path 가 JS 렌더). Playwright 경로로 수집.
+  yeongdo: {
+    ministry: "영도구청",
+    sourceOutlet: "영도구청",
+    sourceCode: "local-press-yeongdo",
+  },
 };
 
 type BatchItem = {

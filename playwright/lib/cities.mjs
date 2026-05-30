@@ -139,6 +139,15 @@ export const scrapeGimpo = makeScraper({
   titleSelectors: [".p-media__heading-title"],
 });
 
+// 2026-05-31 — 영도구 SPA. list URL `00000/00007/00011.web` 가 JS 렌더 SPA.
+// 정찰: tr 0건·ul li 0건 — 정적 selector 모두 매치 0. Playwright 가 JS 렌더 후
+// makeScraper 기본 LIST_SELECTORS 시도. 부족 시 다음 세션 정밀 selector 추가.
+// (5/30 정찰 메모리: 사용자 클릭/scroll trigger 가능성 또는 ajax endpoint 직접 호출)
+export const scrapeYeongdo = makeScraper({
+  cityName: "영도구",
+  listUrl: "https://www.yeongdo.go.kr/00000/00007/00011.web",
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -155,10 +164,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     sasang: scrapeSasang,
     sasang_news: scrapeSasangNews,
     gimpo: scrapeGimpo,
+    yeongdo: scrapeYeongdo,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news|gimpo`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news|gimpo|yeongdo`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });
