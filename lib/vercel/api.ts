@@ -107,6 +107,17 @@ async function getLastProductionDeployment(): Promise<DeploymentRow> {
   return last;
 }
 
+// 2026-05-31 — Critical #2 polling fallback. deployment state 조회.
+// READY=build 완료(광고 가동), ERROR/CANCELED=실패. BUILDING/QUEUED=진행 중.
+export async function getDeploymentById(
+  deploymentId: string,
+): Promise<{ id: string; state: string; url?: string }> {
+  const r = await vercelFetch<{ id: string; state?: string; url?: string }>(
+    `/v13/deployments/${deploymentId}`,
+  );
+  return { id: r.id, state: r.state ?? "UNKNOWN", url: r.url };
+}
+
 // 마지막 prod 배포 redeployment — git 코드 변경 없이 새 build 트리거.
 // 새 env 값이 build env 에 주입되면서 적용.
 export async function triggerProductionRedeploy(): Promise<{

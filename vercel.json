@@ -90,6 +90,7 @@
     { "path": "/api/cron/policy-insight-backfill", "schedule": "0 */2 * * *" },
     { "path": "/api/cron/policy-ai-guide-backfill", "schedule": "15 19 * * *" },
     { "path": "/api/cron/news-ai-commentary-backfill", "schedule": "30 19,7 * * *" },
+    { "path": "/api/cron/adsense-deployment-poll", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/policy-url-check", "schedule": "0 19 * * 0" },
 
     { "path": "/api/cron/instagram-publish", "schedule": "0 * * * *" },
