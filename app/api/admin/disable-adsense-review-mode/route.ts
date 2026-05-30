@@ -68,8 +68,26 @@ export async function GET(): Promise<NextResponse> {
   });
 }
 
-// POST — 실제 실행. admin 인증 + 백필 ≥80% 재확인 + Vercel API 호출.
-export async function POST(): Promise<NextResponse> {
+// POST — 실제 실행. CSRF(Origin) + admin 인증 + 백필 ≥80% 재확인 + Vercel API 호출.
+export async function POST(request: Request): Promise<NextResponse> {
+  // 0. CSRF Origin 검증 — same-origin 요청만 허용 (악성 사이트 form 자동 submit 차단).
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (origin && host) {
+    let originHost: string;
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      return NextResponse.json({ error: "invalid origin" }, { status: 400 });
+    }
+    if (originHost !== host) {
+      return NextResponse.json(
+        { error: "CSRF: cross-origin POST 차단" },
+        { status: 403 },
+      );
+    }
+  }
+
   // 1. admin 인증
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -109,20 +127,68 @@ export async function POST(): Promise<NextResponse> {
     }
   }
 
-  // 4. audit log
-  await logAdminAction({
-    actorId: user?.id ?? null,
-    action: "adsense_review_mode_disabled",
-    details: {
-      commentary_backfill_ratio: ratio.commentaryBackfillRatio,
-      env_updated: envUpdated,
-      redeployed,
-      errors,
-    },
-  });
+  // 4. audit log (실패해도 state 응답에 영향 X — 리뷰어 Major: audit 실패 ≠ state 실패 분리).
+  try {
+    await logAdminAction({
+      actorId: user?.id ?? null,
+      action: "adsense_review_mode_disabled",
+      details: {
+        commentary_backfill_ratio: ratio.commentaryBackfillRatio,
+        env_updated: envUpdated,
+        redeployed,
+        errors,
+      },
+    });
+  } catch (e) {
+    // audit 실패는 state 변경 후 silent — console 로만 진단.
+    console.error(
+      "[disable-adsense-review-mode] audit log 실패:",
+      (e as Error).message,
+    );
+  }
 
+  // 5. 성공 시 사장님 가독성 HTML page 로 redirect (raw JSON 노출 ↓ — 리뷰어 Minor).
+  // 실패 시 raw JSON 으로 errors 노출 (디버깅 우선).
+  if (errors.length === 0) {
+    const successHtml = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>AdSense Review Mode OFF 완료</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+    h1 { color: #047857; }
+    .info { background: #ecfdf5; border: 1px solid #6ee7b7; padding: 16px; border-radius: 8px; margin: 16px 0; }
+    .small { color: #64748b; font-size: 12px; margin-top: 16px; }
+    a.btn { display: inline-block; background: #1e40af; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>✅ AdSense Review Mode OFF 완료</h1>
+  <div class="info">
+    <strong>Vercel ENV 변경 + production redeploy 모두 성공</strong><br />
+    백필 시점: ${(ratio.commentaryBackfillRatio * 100).toFixed(1)}%<br />
+    수 분 안에 새 build 가 완료되면 사이트 광고 게재가 시작됩니다.
+  </div>
+  <p>다음 단계 자동 진행:</p>
+  <ul>
+    <li>build 완료 (~3~5분)</li>
+    <li>sitemap selective 가 ai_commentary 채워진 news 진입 시작</li>
+    <li>Google 색인 점진 ramp-up</li>
+  </ul>
+  <p><a class="btn" href="/admin/autonomous">자율 운영 hub 로 이동</a></p>
+  <p class="small">audit log: adsense_review_mode_disabled</p>
+</body>
+</html>`;
+    return new NextResponse(successHtml, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
+
+  // 실패 시 — raw JSON (사장님이 errors 직접 확인 후 재시도 또는 수동 처리).
   return NextResponse.json({
-    ok: errors.length === 0,
+    ok: false,
     commentary_backfill_ratio: ratio.commentaryBackfillRatio,
     env_updated: envUpdated,
     redeployed,
