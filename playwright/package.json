@@ -12,6 +12,7 @@
     "test:seongnam": "node lib/cities.mjs seongnam",
     "test:ansan": "node lib/cities.mjs ansan",
     "test:cheonan": "node lib/cities.mjs cheonan",
+    "test": "node --test __tests__/*.test.mjs",
     "run:all": "node runner.mjs"
   },
   "dependencies": {

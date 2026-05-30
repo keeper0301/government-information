@@ -85,6 +85,26 @@ export const LIST_SELECTORS = [
   "table tbody tr",
 ];
 
+// stripUiLabels / stripTitleBadges — evaluate 안 인라인 정의의 단위 테스트용 export.
+// ※ evaluate 인라인 코드와 정규식 동기화 필수 (browser context 에서 외부 함수 호출 불가).
+// 이 두 함수만 단위 테스트로 silent 회귀 방어. 변경 시 evaluate 안 인라인 같이 갱신.
+// ※ 분리 trigger: stripUiLabels 안 도시-specific 패턴(<사진 설명> 등)이 3개 이상 누적되면
+//   factory 옵션 `cityStripPatterns: []` opt-in 으로 분리. 현재 1개(<사진 설명>=김포)라 미진행.
+export const stripUiLabels = (t) =>
+  t
+    .replace(/(이미지|사진)\s*(확대보기|다운로드)/g, "")
+    .replace(/포토갤러리\s*(정지|재생)/g, "")
+    .replace(/<\s*사진\s*설명\s*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+export const stripTitleBadges = (t) =>
+  t.replace(/\s+(새\s*글|NEW)\s*$/, "").trim();
+
+// 도시별 titleSelectors 미지정 시 default. LIST_SELECTORS / BODY_SELECTORS 와 같은
+// 모듈 export 상수로 통일(이전 inline default 에서 추출). 새 도시 추가 시 여기 확장.
+export const TITLE_SELECTORS = [".title", ".subject", ".tit"];
+
 export const BODY_SELECTORS = [
   ".view_cont",
   ".board_view",
@@ -122,7 +142,7 @@ export function makeScraper({
   detailPath = null,
   userAgent = USER_AGENT,
   bodyPickLongest = false,
-  titleSelectors = [".title", ".subject", ".tit"],
+  titleSelectors = TITLE_SELECTORS,
 }) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });

@@ -29,6 +29,9 @@ export const maxDuration = 60;
 
 // Playwright runner 의 city key → news_posts insert 메타. 활성 12 도시
 // (KEEPIOO_RUNNER_CITIES 기본값과 동기화). 도시 추가 시 여기 + workflow yml 둘 다 갱신.
+// ※ 부산: 광역(busan)은 정적 collector (lib/scraping/local-press/busan.ts) 가 담당하고
+//   자치구(dongnae·busanjin·geumjeong·bsbukgu·sasang)는 여기 playwright 경로로 수집.
+//   두 시스템 공존이지만 source_code 가 분리되어 서로 영향 없음.
 const PLAYWRIGHT_CITY_REGISTRY: Record<
   string,
   { ministry: string; sourceOutlet: string; sourceCode: string }
