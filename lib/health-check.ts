@@ -765,7 +765,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "adsense_ready_to_disable",
       message: `AdSense P2 ai_commentary 백필 ≥80% 도달 — review mode off 안전 시점.`,
       recommendation:
-        "Vercel 프로젝트 settings → environment variables → NEXT_PUBLIC_ADSENSE_REVIEW_MODE 를 'off' 로 변경 후 redeploy. 변경 즉시 sitemap selective 가 ai_commentary 채워진 news 진입 시작 → Google 색인 점진 ramp-up. /admin/autonomous hub 의 백필 비율 카드 확인 후 진행.",
+        "사장님 1-tap: https://www.keepioo.com/api/admin/disable-adsense-review-mode (admin 로그인 후 GET 으로 confirm page 진입 → 빨간 버튼 클릭 → Vercel ENV 자동 off + production redeploy). 또는 수동: Vercel settings → env → NEXT_PUBLIC_ADSENSE_REVIEW_MODE off + redeploy.",
     });
   }
 
