@@ -23,8 +23,11 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
+// 2026-05-31 fix — chungbuk 실 site 본문 selector 가 contenttext (viewcontent 안 nested).
+// 5/22 Phase B fix (bbs_view) 가 실제 selector 미커버 → fetched 10/inserted 0/skipped 10
+// 패턴으로 cron 1주+ 0건. fix: contenttext + viewcontent 추가 (legacy 후보군 보존).
 const BODY_CONTAINER_REGEX =
-  /<(?:div|td)\s+(?:class|id)="(?:bbs_view|content|board_view|view_content|tbl_view)"[^>]*>([\s\S]*?)<\/(?:div|td)>/i;
+  /<(?:div|td)\s+(?:class|id)="(?:contenttext|viewcontent|bbs_view|content|board_view|view_content|tbl_view)"[^>]*>([\s\S]*?)<\/(?:div|td)>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   // 2026-05-20 subagent review hot-fix — 각 link 매치 위치 +800 char slice 안에서만
