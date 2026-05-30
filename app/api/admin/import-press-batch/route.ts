@@ -27,8 +27,8 @@ import { logAdminAction } from "@/lib/admin-actions";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Playwright runner 의 city key → news_posts insert 메타.
-// 다음 세션 추가: seongnam / ansan / cheonan.
+// Playwright runner 의 city key → news_posts insert 메타. 활성 12 도시
+// (KEEPIOO_RUNNER_CITIES 기본값과 동기화). 도시 추가 시 여기 + workflow yml 둘 다 갱신.
 const PLAYWRIGHT_CITY_REGISTRY: Record<
   string,
   { ministry: string; sourceOutlet: string; sourceCode: string }
@@ -52,21 +52,6 @@ const PLAYWRIGHT_CITY_REGISTRY: Record<
     ministry: "천안시청",
     sourceOutlet: "천안시청",
     sourceCode: "local-press-cheonan",
-  },
-  busan: {
-    ministry: "부산광역시청",
-    sourceOutlet: "부산광역시청",
-    sourceCode: "local-press-busan",
-  },
-  suyeong: {
-    ministry: "수영구청",
-    sourceOutlet: "수영구청",
-    sourceCode: "local-press-suyeong",
-  },
-  haeundae: {
-    ministry: "해운대구청",
-    sourceOutlet: "해운대구청",
-    sourceCode: "local-press-haeundae",
   },
   // 2026-05-29 — 노원구: 정적 BD_select 본문 elusive → Playwright PC 러너로 이관.
   nowon: {
