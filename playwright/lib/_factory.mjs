@@ -278,6 +278,8 @@ export function makeScraper({
                 t
                   .replace(/(이미지|사진)\s*(확대보기|다운로드)/g, "")
                   .replace(/포토갤러리\s*(정지|재생)/g, "")
+                  // 김포 본문 끝의 "<사진 설명> [캡션]" 라벨만 제거 (캡션 텍스트는 보존).
+                  .replace(/<\s*사진\s*설명\s*>/g, "")
                   .replace(/\s+/g, " ")
                   .trim();
               const textOf = (el) => {
