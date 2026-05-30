@@ -125,11 +125,14 @@ export const scrapeSasangNews = makeScraper({
 
 // 2026-05-29 — 김포시(보도자료 17,781건+, 가치 최고). 목록에 위젯(fact/most) 혼재라
 // 실제 목록 .p-media-list li 명시. 본문은 무class td(.news_bbs_left td) — view_cont류 없음.
+// 2026-05-30 — li 안에 .title/.subject/.tit 없어 factory 가 a textContent 잡아 제목이
+// 본문 요약+날짜까지 포함(762자) 되던 버그 → 정확한 selector .p-media__heading-title 명시.
 export const scrapeGimpo = makeScraper({
   cityName: "김포시",
   listUrl: "https://www.gimpo.go.kr/news/selectBbsNttList.do?bbsNo=466&key=9377",
   listSelectors: [".p-media-list li"],
   bodySelectors: [".news_bbs_left td", ".news_bbs_left"],
+  titleSelectors: [".p-media__heading-title"],
 });
 
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)

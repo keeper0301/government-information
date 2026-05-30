@@ -122,6 +122,7 @@ export function makeScraper({
   detailPath = null,
   userAgent = USER_AGENT,
   bodyPickLongest = false,
+  titleSelectors = [".title", ".subject", ".tit"],
 }) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });
@@ -159,7 +160,7 @@ export function makeScraper({
       // listSelectors 는 정확한 selector 라 소량(구보 등 2~3건)도 신뢰 → >0 허용.
       const minRows = listSelectors === LIST_SELECTORS ? 3 : 0;
       const items = await page.evaluate(
-        ({ selectors, limit, minRows, onclickIdRe, detailPath }) => {
+        ({ selectors, limit, minRows, onclickIdRe, detailPath, titleSelectors }) => {
           let rows = [];
           let chosen = null;
           // 2026-05-22 debug — 각 selector 매칭 count 기록 (Actions log).
@@ -210,7 +211,7 @@ export function makeScraper({
                 : new URL(href, location.href).href;
 
               const titleEl =
-                row.querySelector(".title, .subject, .tit") ?? a;
+                row.querySelector(titleSelectors.join(", ")) ?? a;
               let title = titleEl
                 ? (titleEl.textContent || "").trim().replace(/\s+/g, " ")
                 : "";
@@ -235,7 +236,7 @@ export function makeScraper({
             })
             .filter(Boolean);
         },
-        { selectors: listSelectors, limit, minRows, onclickIdRe, detailPath },
+        { selectors: listSelectors, limit, minRows, onclickIdRe, detailPath, titleSelectors },
       );
 
       const out = [];
