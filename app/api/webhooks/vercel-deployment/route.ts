@@ -18,7 +18,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
+import { notifyAdsenseDeploymentResult } from "@/lib/adsense/deployment-message";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -94,36 +94,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ ok: true, skipped: "not adsense phase b" });
   }
 
-  // 매칭 — 텔레그램 follow-up 발화.
+  // 매칭 — helper 가 텔레그램 + dedup audit 둘 다 처리 (메시지 통일 + 비대칭 해소).
   const url = payload.payload?.deployment?.url;
-  const subject = isReady
-    ? "✅ AdSense 광고 가동 시작"
-    : "⚠️ AdSense redeploy 실패 (수동 확인 필요)";
-  const message = isReady
-    ? [
-        `AdSense Phase B redeploy 완료 — production build 성공.`,
-        ``,
-        `사이트 광고 게재 가동 시작. sitemap selective 가 ai_commentary 채워진 news 진입 → Google 색인 점진 ramp-up.`,
-        url ? `deployment: https://${url}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n")
-    : [
-        `AdSense Phase B redeploy 실패 (${eventType}).`,
-        ``,
-        `사장님 액션:`,
-        `1. Vercel deployments page 에서 실패 사유 확인`,
-        `2. 필요 시 ENV 수동 복원 (NEXT_PUBLIC_ADSENSE_REVIEW_MODE=on) + 재시도`,
-        url ? `deployment: https://${url}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-  try {
-    await sendOpsAlertTelegram({ subject, message });
-  } catch {
-    // 텔레그램 실패는 silent (webhook 자체는 성공 응답).
-  }
+  const state = isReady ? "READY" : eventType.endsWith(".canceled") ? "CANCELED" : "ERROR";
+  await notifyAdsenseDeploymentResult({ deploymentId, state, url });
 
   return NextResponse.json({
     ok: true,

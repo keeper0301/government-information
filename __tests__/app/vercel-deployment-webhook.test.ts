@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   matches: [] as Array<{ details: { deployment_id?: string }; created_at: string; id: string }>,
-  sendOpsAlertTelegram: vi.fn(async () => undefined),
+  notifyAdsenseDeploymentResult: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -23,8 +23,8 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-vi.mock("@/lib/notifications/telegram-ops-alert", () => ({
-  sendOpsAlertTelegram: mocks.sendOpsAlertTelegram,
+vi.mock("@/lib/adsense/deployment-message", () => ({
+  notifyAdsenseDeploymentResult: mocks.notifyAdsenseDeploymentResult,
 }));
 
 import { POST } from "@/app/api/webhooks/vercel-deployment/route";
@@ -42,7 +42,7 @@ function webhookReq(payload: unknown, signature?: string): Request {
 
 beforeEach(() => {
   mocks.matches.length = 0;
-  mocks.sendOpsAlertTelegram.mockReset();
+  mocks.notifyAdsenseDeploymentResult.mockReset();
   delete process.env.VERCEL_WEBHOOK_SECRET; // graceful skip 기본
 });
 
@@ -91,7 +91,7 @@ describe("이벤트 필터 + 매칭", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.skipped).toContain("not adsense phase b");
-    expect(mocks.sendOpsAlertTelegram).not.toHaveBeenCalled();
+    expect(mocks.notifyAdsenseDeploymentResult).not.toHaveBeenCalled();
   });
 
   it("deployment.succeeded + 매칭 audit → 텔레그램 발화 (광고 가동)", async () => {
@@ -111,10 +111,11 @@ describe("이벤트 필터 + 매칭", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.matched).toBe(true);
-    expect(mocks.sendOpsAlertTelegram).toHaveBeenCalledOnce();
-    const call = (mocks.sendOpsAlertTelegram.mock.calls as unknown as Array<[{ subject: string; message: string }]>)[0][0];
-    expect(call.subject).toContain("광고 가동 시작");
-    expect(call.message).toContain("abc.vercel.app");
+    expect(mocks.notifyAdsenseDeploymentResult).toHaveBeenCalledOnce();
+    const call = (mocks.notifyAdsenseDeploymentResult.mock.calls as unknown as Array<[{ deploymentId: string; state: string; url?: string }]>)[0][0];
+    expect(call.deploymentId).toBe("dpl_match");
+    expect(call.state).toBe("READY");
+    expect(call.url).toBe("abc.vercel.app");
   });
 
   it("deployment.error + 매칭 audit → 텔레그램 발화 (실패 안내)", async () => {
@@ -132,9 +133,9 @@ describe("이벤트 필터 + 매칭", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect(mocks.sendOpsAlertTelegram).toHaveBeenCalled();
-    const call = (mocks.sendOpsAlertTelegram.mock.calls as unknown as Array<[{ subject: string; message: string }]>)[0][0];
-    expect(call.subject).toContain("실패");
-    expect(call.message).toContain("ENV 수동 복원");
+    expect(mocks.notifyAdsenseDeploymentResult).toHaveBeenCalled();
+    const call = (mocks.notifyAdsenseDeploymentResult.mock.calls as unknown as Array<[{ deploymentId: string; state: string }]>)[0][0];
+    expect(call.deploymentId).toBe("dpl_fail");
+    expect(call.state).toBe("ERROR");
   });
 });

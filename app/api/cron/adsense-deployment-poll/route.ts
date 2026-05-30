@@ -12,8 +12,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDeploymentById } from "@/lib/vercel/api";
-import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
-import { logAdminAction } from "@/lib/admin-actions";
+import { notifyAdsenseDeploymentResult } from "@/lib/adsense/deployment-message";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
@@ -89,46 +88,9 @@ async function run() {
       state === "CANCELED";
     if (!isFinal) continue; // BUILDING/QUEUED — 다음 회차 재시도
 
-    // 텔레그램 follow-up + resolved audit insert.
-    const subject = isReady
-      ? "✅ AdSense 광고 가동 시작"
-      : "⚠️ AdSense redeploy 실패 (수동 확인 필요)";
-    const message = isReady
-      ? [
-          `AdSense Phase B redeploy 완료 — production build 성공.`,
-          ``,
-          `사이트 광고 게재 가동 시작. sitemap selective 가 ai_commentary 채워진 news 진입 → Google 색인 점진 ramp-up.`,
-          url ? `deployment: https://${url}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n")
-      : [
-          `AdSense Phase B redeploy 실패 (state=${state}).`,
-          ``,
-          `사장님 액션:`,
-          `1. Vercel deployments page 에서 실패 사유 확인`,
-          `2. ENV NEXT_PUBLIC_ADSENSE_REVIEW_MODE=on 으로 복원 + 재시도`,
-          url ? `deployment: https://${url}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n");
-
-    try {
-      await sendOpsAlertTelegram({ subject, message });
-    } catch {
-      // 텔레그램 실패는 silent.
-    }
-
-    try {
-      await logAdminAction({
-        actorId: null,
-        action: "adsense_deployment_state_resolved",
-        details: { deployment_id: depId, state, url },
-      });
-      resolved_count += 1;
-    } catch {
-      // audit 실패해도 텔레그램은 발화 — 다음 회차에 dedup 안 되어 중복 발화 가능 (low risk).
-    }
+    // helper 가 텔레그램 + dedup audit 둘 다 처리 (메시지 통일 + 비대칭 해소).
+    await notifyAdsenseDeploymentResult({ deploymentId: depId, state, url });
+    resolved_count += 1;
   }
 
   return NextResponse.json({ ok: true, checked, resolved: resolved_count });
