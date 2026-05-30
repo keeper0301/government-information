@@ -14,6 +14,7 @@ import {
   getHighNullDateCityCount,
   getNewsRatio,
 } from "@/lib/analytics/local-press-stats";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 
 export type HealthSignals = {
@@ -124,6 +125,12 @@ export type HealthSignals = {
    */
   newsRatio: number;
   /**
+   * 2026-05-31 추가 — AdSense 자동 트리거 Phase A. ADSENSE_REVIEW_MODE on 상태에서
+   * P2 ai_commentary 백필이 80%+ 도달했는지 (review mode off 안전 가능 시점).
+   * true = 텔레그램 알림 발화 + 사장님 Vercel env off 안내.
+   */
+  adsenseReadyToDisable: boolean;
+  /**
    * 2026-05-17 추가 — 마지막 블로그 발행 이후 hours. 9999 = 발행 이력 0.
    * 5/15 spending cap 사고 (2.5일 무발행) 자동 감지. G1 quota 알림과 다른 진단 layer
    * (원인 vs 결과). GitHub Actions secret 만료·workflow disabled 도 잡음.
@@ -152,6 +159,7 @@ export type ThresholdAlert = {
     | "local_press_stale"
     | "local_press_null_date"
     | "news_ratio_high"
+    | "adsense_ready_to_disable"
     | "blog_publish_stalled";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
@@ -470,7 +478,10 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   // 2026-05-30 — 24h null_date ≥5 누적 시·군 (factory date 추출 collector 점검 신호).
   const localPressNullDateCities = await getHighNullDateCityCount(5, 24);
   // 2026-05-30 — news 비중 (외부 보도자료 대 keepioo 자체 자산).
-  const { ratio: newsRatio } = await getNewsRatio();
+  const { ratio: newsRatio, commentaryBackfillRatio } = await getNewsRatio();
+  // 2026-05-31 — AdSense 자동 트리거 Phase A. review mode on + 백필 ≥80% = off 안전.
+  const adsenseReadyToDisable =
+    ADSENSE_REVIEW_MODE && commentaryBackfillRatio >= 0.8;
 
   // 2026-05-17 — 블로그 발행 stalled (마지막 발행 이후 hours).
   const blogStats = await getBlogPublishStats();
@@ -501,6 +512,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     localPressStaleCities,
     localPressNullDateCities,
     newsRatio,
+    adsenseReadyToDisable,
     blogPublishStaleHours,
   };
 }
@@ -743,6 +755,17 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `시·군 published_at silent fallback ${s.localPressNullDateCities}개 도시 (임계 ${LOCAL_PRESS_NULL_DATE_CITY_FLOOR}+, 24h null_date ≥5 누적). factory date 추출 점검 신호.`,
       recommendation:
         "/admin/autonomous 의 시·군 카드에서 '날짜 미상 N' 표시 도시 확인 → 사이트 직접 접속해 list row 의 등록일 cell 구조 변경 확인. playwright/lib/_factory.mjs 의 date selector (td.date/.date/.reg/td.td-date) 또는 도시별 listSelectors 조정 필요.",
+    });
+  }
+
+  // 2026-05-31 — AdSense 자동 트리거 Phase A. ADSENSE_REVIEW_MODE on + 백필 80% 도달 시
+  // 사장님이 Vercel env off 안전 시점 자동 안내. 매일 1회 발화 (1-tap 액션 가이드).
+  if (s.adsenseReadyToDisable) {
+    alerts.push({
+      key: "adsense_ready_to_disable",
+      message: `AdSense P2 ai_commentary 백필 ≥80% 도달 — review mode off 안전 시점.`,
+      recommendation:
+        "Vercel 프로젝트 settings → environment variables → NEXT_PUBLIC_ADSENSE_REVIEW_MODE 를 'off' 로 변경 후 redeploy. 변경 즉시 sitemap selective 가 ai_commentary 채워진 news 진입 시작 → Google 색인 점진 ramp-up. /admin/autonomous hub 의 백필 비율 카드 확인 후 진행.",
     });
   }
 
