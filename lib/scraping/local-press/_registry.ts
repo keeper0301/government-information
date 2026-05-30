@@ -71,6 +71,12 @@ import { scrapeDongguGwangjuAndInsert } from "./donggu_gwangju";
 import { scrapeNamdongIncheonAndInsert } from "./namdong_incheon";
 import { scrapeGyeyangIncheonAndInsert } from "./gyeyang_incheon";
 import { scrapeMichuholAndInsert } from "./michuhol_incheon";
+// 2026-05-31 — 서울 18 자치구 확장 패턴 1 (eGovFrame portal/bbs): 광진·동작·용산
+import { scrapeGwangjinAndInsert } from "./gwangjin";
+import { scrapeDongjakAndInsert } from "./dongjak";
+import { scrapeYongsanAndInsert } from "./yongsan";
+// 2026-05-31 — 서울 18 자치구 확장 패턴 3 (/site/main/board/press): 마포
+import { scrapeMapoAndInsert } from "./mapo";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -133,7 +139,13 @@ export type CityKey =
   | "ongjin"
   | "junggu_incheon"
   | "ganghwa"
-  | "donggu_incheon";
+  | "donggu_incheon"
+  // 2026-05-31 서울 18 자치구 확장 (패턴 1: eGovFrame portal/bbs)
+  | "gwangjin"
+  | "dongjak"
+  | "yongsan"
+  // 2026-05-31 서울 18 자치구 확장 (패턴 3: /site/main/board/press)
+  | "mapo";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -658,6 +670,37 @@ export const CITY_REGISTRY: CityEntry[] = [
   //     "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
   //   fn: scrapeUijeongbuAndInsert,
   // },
+  // 2026-05-31 서울 18 자치구 확장 (5/30 정찰 base 활용)
+  // 패턴 1: eGovFrame portal/bbs (광진·동작·용산) — dbData 본문 + span.date.
+  {
+    key: "gwangjin",
+    city: "광진구",
+    ministry: "광진구청",
+    siteUrl: "https://www.gwangjin.go.kr/portal/bbs/B0000002/list.do?menuNo=200191",
+    fn: scrapeGwangjinAndInsert,
+  },
+  {
+    key: "dongjak",
+    city: "동작구",
+    ministry: "동작구청",
+    siteUrl: "https://www.dongjak.go.kr/portal/bbs/B0000171/list.do?menuNo=200647",
+    fn: scrapeDongjakAndInsert,
+  },
+  {
+    key: "yongsan",
+    city: "용산구",
+    ministry: "용산구청",
+    siteUrl: "https://www.yongsan.go.kr/portal/bbs/B0000043/list.do?menuNo=200230",
+    fn: scrapeYongsanAndInsert,
+  },
+  // 패턴 3: /site/main/board/press (마포) — bbs_view_body 본문 + td YYYY.MM.DD.
+  {
+    key: "mapo",
+    city: "마포구",
+    ministry: "마포구청",
+    siteUrl: "https://www.mapo.go.kr/site/main/board/press/list",
+    fn: scrapeMapoAndInsert,
+  },
 ];
 
 // key → entry lookup (actions.ts 가 city key 로 검색)
