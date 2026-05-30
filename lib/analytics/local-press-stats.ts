@@ -157,6 +157,36 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
   };
 }
 
+// 2026-05-30 — health-alert silent → audible 세 번째 단계. 도시별 null_date 누적이
+// threshold 넘는 시·군 수. factory date 추출 selector 깨졌거나 사이트 구조 변경 → 모든
+// 글 published_at 이 now 로 silent fallback. NewsArticle schema 신뢰도 ↓ + 사용자 알림
+// "오늘 새 정책" 거짓. 5+ 누적 = collector regex 점검 권장 강한 시그널.
+export async function getHighNullDateCityCount(
+  threshold = 5,
+  windowHours = 24,
+): Promise<number> {
+  const admin = createAdminClient();
+  const since = new Date(
+    Date.now() - windowHours * 60 * 60 * 1000,
+  ).toISOString();
+  const { data: rows } = await admin
+    .from("admin_actions")
+    .select("details")
+    .eq("action", "local_press_scrape")
+    .gte("created_at", since);
+
+  const byCity = new Map<string, number>();
+  for (const row of rows ?? []) {
+    const d = (row.details ?? {}) as Record<string, unknown>;
+    const city = String(d.city ?? "");
+    if (!city) continue;
+    byCity.set(city, (byCity.get(city) ?? 0) + Number(d.null_date ?? 0));
+  }
+  let high = 0;
+  for (const n of byCity.values()) if (n >= threshold) high += 1;
+  return high;
+}
+
 // health-alert cron 이 호출. 최근 windowHours (기본 72h) 안에 한 번도 fetched>0 한 적 없는
 // 시·군 수를 반환(정적 CITY_REGISTRY + 프록시 도시). fetched 0 = collector 가 list/본문을 못
 // 가져옴 = regex 깨짐·사이트 구조 변경·노쇼. (신규 없어 중복 skip 만 한 날은 fetched>0 라 정상.)

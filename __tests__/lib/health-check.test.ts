@@ -34,6 +34,8 @@ const BASE_SIGNALS: HealthSignals = {
   collectLastRunHours: 1,
   // 2026-05-17 — baseline 0 (전 시·군 정상, alert X). 10+ 케이스는 별도 테스트.
   localPressStaleCities: 0,
+  // 2026-05-30 — baseline 0 (silent fallback 없음, alert X). ≥1 케이스 별도 테스트.
+  localPressNullDateCities: 0,
   // 2026-05-17 — baseline 1h (방금 발행, alert X). 60h+ 케이스는 별도 테스트.
   blogPublishStaleHours: 1,
 };
@@ -668,6 +670,16 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
   it("localPressStaleCities 9 → 발화 안 함 (boundary)", () => {
     const alerts = checkThresholds({ ...ACTIVE, localPressStaleCities: 9 });
     expect(alerts.find((a) => a.key === "local_press_stale")).toBeUndefined();
+  });
+
+  it("localPressNullDateCities 1+ → local_press_null_date alert", () => {
+    const alerts = checkThresholds({ ...ACTIVE, localPressNullDateCities: 1 });
+    expect(alerts.find((a) => a.key === "local_press_null_date")).toBeTruthy();
+  });
+
+  it("localPressNullDateCities 0 → 발화 안 함 (정상)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, localPressNullDateCities: 0 });
+    expect(alerts.find((a) => a.key === "local_press_null_date")).toBeFalsy();
   });
 
   it("localPressStaleCities 0 → 발화 안 함 (정상)", () => {

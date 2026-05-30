@@ -9,7 +9,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 같은 요청 안에서 lib/admin-health 등이 getAuthUsersCached 를 이미 호출했다면
 // react cache 가 결과 공유 → round trip 1회.
 import { getAuthUsersCached } from "@/lib/admin-stats";
-import { getStaleCityCount } from "@/lib/analytics/local-press-stats";
+import {
+  getStaleCityCount,
+  getHighNullDateCityCount,
+} from "@/lib/analytics/local-press-stats";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 
 export type HealthSignals = {
@@ -107,6 +110,12 @@ export type HealthSignals = {
    */
   localPressStaleCities: number;
   /**
+   * 2026-05-30 추가 — 24h 안 null_date ≥5 누적된 시·군 수. factory date 추출
+   * silent fallback (수집시각 = published_at) silent → audible. NewsArticle
+   * schema 신뢰도 + 사용자 알림 "오늘 새 정책" 정확도 보호.
+   */
+  localPressNullDateCities: number;
+  /**
    * 2026-05-17 추가 — 마지막 블로그 발행 이후 hours. 9999 = 발행 이력 0.
    * 5/15 spending cap 사고 (2.5일 무발행) 자동 감지. G1 quota 알림과 다른 진단 layer
    * (원인 vs 결과). GitHub Actions secret 만료·workflow disabled 도 잡음.
@@ -133,6 +142,7 @@ export type ThresholdAlert = {
     | "loan_inflow_zero"
     | "naver_publish_failure"
     | "local_press_stale"
+    | "local_press_null_date"
     | "blog_publish_stalled";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
@@ -438,6 +448,8 @@ export async function getHealthSignals(): Promise<HealthSignals> {
 
   // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
   const localPressStaleCities = await getStaleCityCount(72);
+  // 2026-05-30 — 24h null_date ≥5 누적 시·군 (factory date 추출 collector 점검 신호).
+  const localPressNullDateCities = await getHighNullDateCityCount(5, 24);
 
   // 2026-05-17 — 블로그 발행 stalled (마지막 발행 이후 hours).
   const blogStats = await getBlogPublishStats();
@@ -466,6 +478,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     naverPublishEligiblePending,
     collectLastRunHours,
     localPressStaleCities,
+    localPressNullDateCities,
     blogPublishStaleHours,
   };
 }
@@ -696,6 +709,18 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `시·군 보도자료 collector stale ${s.localPressStaleCities}건 (임계 ${LOCAL_PRESS_STALE_FLOOR}+). 최근 72h inserted 0 시·군 수.`,
       recommendation:
         "/admin/autonomous 의 시·군 카드 확인 → 오류 시·군 사이트 직접 접속해 selector 점검. KST 09:00 cron 다음 회차 자동 재시도. 3 회차 연속 실패 시 lib/scraping/local-press/{city}.ts regex 수정 필요.",
+    });
+  }
+
+  // 2026-05-30 — 시·군 collector 의 published_at silent now-fallback 누적 (24h ≥5 도시).
+  // factory date selector 깨졌거나 사이트 구조 변경 → 모든 글이 수집시각으로 잡혀
+  // NewsArticle schema 신뢰도 ↓ + 사용자 "오늘 새 정책" 알림 거짓 발화 위험.
+  if (s.localPressNullDateCities >= 1) {
+    alerts.push({
+      key: "local_press_null_date",
+      message: `시·군 published_at silent fallback ${s.localPressNullDateCities}개 도시 (24h null_date ≥5 누적). factory date 추출 점검 신호.`,
+      recommendation:
+        "/admin/autonomous 의 시·군 카드에서 '날짜 미상 N' 표시 도시 확인 → 사이트 직접 접속해 list row 의 등록일 cell 구조 변경 확인. playwright/lib/_factory.mjs 의 date selector (td.date/.date/.reg/td.td-date) 또는 도시별 listSelectors 조정 필요.",
     });
   }
 
