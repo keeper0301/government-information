@@ -242,9 +242,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let topicPages: MetadataRoute.Sitemap = [];
 
   if (!ADSENSE_REVIEW_MODE) {
-    // 2026-05-30 selective sitemap — summary AND classified_at 둘 다 채워진 news 만
-    // 포함. review mode off 직후 "갑작스러운 대량 thin page" 가 Google 에 일제히
-    // 색인되는 위험 차단. LLM 분류 cron 진행에 맞춰 sitemap 점진 ramp-up.
+    // 2026-05-30 selective sitemap — summary + classified_at + ai_commentary(P2)
+    // 셋 다 채워진 news 만 포함. review mode off 직후 "갑작스러운 대량 thin page" 가
+    // Google 에 일제히 색인되는 위험 차단. AI 백필 cron 진행에 맞춰 점진 ramp-up.
     const { data: newsPosts } = await supabase
       .from("news_posts")
       .select("slug, updated_at")
@@ -252,6 +252,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .not("keywords", "eq", "{}")
       .not("summary", "is", null)
       .not("classified_at", "is", null)
+      .not("ai_commentary", "is", null)
       .limit(25000);
     newsPages = (newsPosts || []).map((n) => ({
       url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,

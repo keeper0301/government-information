@@ -14,6 +14,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ShareButton } from "@/components/share-button";
 import { RelatedPrograms } from "@/components/related-programs";
+import { NewsCommentaryBox } from "@/components/news/NewsCommentaryBox";
 import { AdSlot } from "@/components/ad-slot";
 import { BreadcrumbSchema } from "@/components/json-ld";
 import {
@@ -62,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("news_posts")
-    .select("title, summary, thumbnail_url, category, is_hidden, classified_at")
+    .select("title, summary, thumbnail_url, category, is_hidden, classified_at, ai_commentary")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -75,9 +76,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   // 2026-05-30 selective noindex — AdSense review mode off 시점에 "갑작스러운 대량
-  // thin page" 위험 차단. summary 또는 classified_at 둘 다 채워진 row 만 index.
-  // (LLM 분류 cron 이 채울 때까지 신규 news 는 자동 noindex follow.)
-  const isThin = !data.summary || !data.classified_at;
+  // thin page" 위험 차단. summary + classified_at + ai_commentary(P2) 셋 다 채워진
+  // row 만 index. ai_commentary NULL = "외부 보도자료 단순 복제" 평가 표면 → noindex 유지.
+  const isThin = !data.summary || !data.classified_at || !data.ai_commentary;
 
   // 모더레이션으로 비공개된 뉴스: 검색엔진 인덱스 제거 신호 noindex,nofollow
   // + canonical 제거. status 는 200 이지만 robots 가 검색 결과에서 빼도록 함.
@@ -303,6 +304,9 @@ export default async function NewsDetailPage({ params }: Props) {
           className="w-full aspect-[16/9] object-cover rounded-2xl mb-8 bg-grey-100"
         />
       )}
+
+      {/* 2026-05-30 P2 — keepioo 자체 해설 박스 (ai_commentary 채워진 row 만 렌더). */}
+      <NewsCommentaryBox commentary={post.ai_commentary ?? null} />
 
       {/* 본문 — cleanDescription + paragraphizeNewsBody 로 자동 단락 분할 후
           단락별 <p> 렌더. RSS body 가 한 덩어리 평문이라 글자 벽 가독성 이슈 해소.
