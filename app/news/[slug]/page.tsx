@@ -62,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("news_posts")
-    .select("title, summary, thumbnail_url, category, is_hidden")
+    .select("title, summary, thumbnail_url, category, is_hidden, classified_at")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -73,6 +73,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       robots: ADSENSE_REVIEW_MODE ? { index: false, follow: true } : undefined,
     };
   }
+
+  // 2026-05-30 selective noindex — AdSense review mode off 시점에 "갑작스러운 대량
+  // thin page" 위험 차단. summary 또는 classified_at 둘 다 채워진 row 만 index.
+  // (LLM 분류 cron 이 채울 때까지 신규 news 는 자동 noindex follow.)
+  const isThin = !data.summary || !data.classified_at;
 
   // 모더레이션으로 비공개된 뉴스: 검색엔진 인덱스 제거 신호 noindex,nofollow
   // + canonical 제거. status 는 200 이지만 robots 가 검색 결과에서 빼도록 함.
@@ -91,7 +96,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${data.title} | 정책알리미`,
     description: data.summary || undefined,
     alternates: { canonical: `/news/${slug}` },
-    robots: ADSENSE_REVIEW_MODE
+    // ADSENSE_REVIEW_MODE 또는 isThin(분류·summary 미완) 시 noindex follow.
+    robots: ADSENSE_REVIEW_MODE || isThin
       ? {
           index: false,
           follow: true,

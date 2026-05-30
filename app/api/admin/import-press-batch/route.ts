@@ -39,6 +39,10 @@ export const maxDuration = 60;
 // node:crypto timingSafeEqual 사용 — Edge runtime 미지원이므로 명시.
 export const runtime = "nodejs";
 
+// 본문 최소 길이 — playwright/lib/_factory.mjs 의 BODY_MIN_LEN 과 동기화 필수.
+// (cross-module import 가 .mjs/.ts 경계라 어색해 로컬 상수 유지. 변경 시 양쪽 같이.)
+const BODY_MIN_LEN = 250;
+
 // Playwright runner 의 city key → news_posts insert 메타. 활성 12 도시
 // (KEEPIOO_RUNNER_CITIES 기본값과 동기화). 도시 추가 시 여기 + workflow yml 둘 다 갱신.
 // ※ 부산: 광역(busan)은 정적 collector (lib/scraping/local-press/busan.ts) 가 담당하고
@@ -131,7 +135,9 @@ function sanitize(item: BatchItem): {
   if (typeof item.title !== "string" || item.title.length < 5) return null;
   if (typeof item.sourceUrl !== "string" || !/^https?:\/\//.test(item.sourceUrl))
     return null;
-  if (typeof item.body !== "string" || item.body.length < 50) return null;
+  // 2026-05-30 50 → BODY_MIN_LEN(250) 상향. AdSense thin content 페널티 표면 ↓.
+  // 110~249 자 짧은 알림(첨부파일 + 한 줄 안내)은 정책 가이드 가치 미미.
+  if (typeof item.body !== "string" || item.body.length < BODY_MIN_LEN) return null;
   let publishedDate: string | null = null;
   if (typeof item.publishedDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.publishedDate)) {
     publishedDate = item.publishedDate;
@@ -180,6 +186,7 @@ export async function POST(request: Request) {
 
   let inserted = 0;
   let skipped = 0;
+  let nullDate = 0; // factory 가 date 못 잡아 now 로 fallback 한 건수 (audit 가시화).
   const errors: string[] = [];
 
   for (const raw of items) {
@@ -188,6 +195,7 @@ export async function POST(request: Request) {
       skipped += 1;
       continue;
     }
+    if (!item.publishedDate) nullDate += 1;
     const publishedAt = item.publishedDate
       ? `${item.publishedDate}T00:00:00+09:00`
       : now;
@@ -233,6 +241,7 @@ export async function POST(request: Request) {
         city: cfg.ministry.replace(/청$/, ""),
         fetched: items.length,
         inserted,
+        null_date: nullDate, // factory date 추출 실패 = silent now-fallback 가시화
         errors,
       },
     });

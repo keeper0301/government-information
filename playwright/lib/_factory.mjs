@@ -105,6 +105,11 @@ export const stripTitleBadges = (t) =>
 // 모듈 export 상수로 통일(이전 inline default 에서 추출). 새 도시 추가 시 여기 확장.
 export const TITLE_SELECTORS = [".title", ".subject", ".tit"];
 
+// 2026-05-30 본문 채택 임계. 이전 100 → 250 상향. 100~249자 짧은 알림(첨부+한줄
+// 안내)은 정책 가이드 가치 미미해 AdSense thin content 페널티 표면 ↓. 한 곳만
+// 변경하면 wait/pickLongest/단일매치 분기 모두 동기화. (sanitize body cap 과 일치)
+export const BODY_MIN_LEN = 250;
+
 export const BODY_SELECTORS = [
   ".view_cont",
   ".board_view",
@@ -275,24 +280,24 @@ export function makeScraper({
           if (USE_PROXY) {
             await page
               .waitForFunction(
-                ({ sels, pickLongest }) =>
+                ({ sels, pickLongest, minLen }) =>
                   sels.some((s) => {
                     // pickLongest 면 첫 매치가 본문이 아닐 수 있어(안산 제목/날짜/본문 동일 selector)
-                    // 매치 전체를 훑어 하나라도 100자 넘으면 통과.
+                    // 매치 전체를 훑어 하나라도 minLen 자 넘으면 통과.
                     const els = pickLongest
                       ? document.querySelectorAll(s)
                       : [document.querySelector(s)].filter(Boolean);
                     return [...els].some(
-                      (e) => (e.textContent || "").trim().length > 100,
+                      (e) => (e.textContent || "").trim().length > minLen,
                     );
                   }),
-                { sels: bodySelectors, pickLongest: bodyPickLongest },
+                { sels: bodySelectors, pickLongest: bodyPickLongest, minLen: BODY_MIN_LEN },
                 { timeout: 8000 },
               )
               .catch(() => {});
           }
           const body = await page.evaluate(
-            ({ selectors, pickLongest }) => {
+            ({ selectors, pickLongest, minLen }) => {
               // 본문 아닌 UI 라벨 제거(범용): 이미지 첨부 접근성 라벨 + 포토갤러리 슬라이더 컨트롤.
               const stripUiLabels = (t) =>
                 t
@@ -319,18 +324,18 @@ export function makeScraper({
                     const t = textOf(el);
                     if (!best || t.length > best.length) best = t;
                   }
-                  if (best && best.length > 100) return best.slice(0, 5000);
+                  if (best && best.length > minLen) return best.slice(0, 5000);
                 } else {
                   const el = document.querySelector(sel);
                   if (el) {
                     const text = textOf(el);
-                    if (text.length > 100) return text.slice(0, 5000);
+                    if (text.length > minLen) return text.slice(0, 5000);
                   }
                 }
               }
               return null;
             },
-            { selectors: bodySelectors, pickLongest: bodyPickLongest },
+            { selectors: bodySelectors, pickLongest: bodyPickLongest, minLen: BODY_MIN_LEN },
           );
           if (body) out.push({ ...item, body });
         } catch (e) {

@@ -55,7 +55,7 @@ describe("플레이wright 보도자료 배치 수신", () => {
             sourceUrl:
               "https://www.ansan.go.kr/www/common/bbs/selectBbsDetail.do?bbs_code=B0238&bbs_seq=1",
             publishedDate: "2026-05-28",
-            body: "안산시는 주민 생활과 밀접한 지원사업을 추진한다고 밝혔다. ".repeat(3),
+            body: "안산시는 주민 생활과 밀접한 지원사업을 추진한다고 밝혔다. ".repeat(10),
           },
         ],
       }),
@@ -85,7 +85,7 @@ describe("플레이wright 보도자료 배치 수신", () => {
             sourceUrl:
               "https://www.gimpo.go.kr/news/selectBbsNttView.do?nttNo=1",
             publishedDate: "2026-05-28",
-            body: "김포시는 주민 안전을 위해 현장 점검을 강화한다고 밝혔다. ".repeat(3),
+            body: "김포시는 주민 안전을 위해 현장 점검을 강화한다고 밝혔다. ".repeat(10),
           },
         ],
       }),
