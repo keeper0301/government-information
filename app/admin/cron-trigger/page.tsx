@@ -60,6 +60,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/enrich-targeting", label: "본문 targeting 분석", schedule: "매일 08시 UTC", desc: "Phase 1.5 income/household 백필" },
   { path: "/api/cron/policy-insight-backfill", label: "정책 자체 해설 백필", schedule: "12회/일 (매 2시간 KST)", desc: "AdSense 큐레이션 시그널 — gpt-4o-mini · 일 1,200건 (5/18 가속)" },
   { path: "/api/cron/news-ai-commentary-backfill", label: "뉴스 AI 자체 해설 백필 (P2)", schedule: "매일 04:30 KST", desc: "ai_commentary NULL row 채워 selective noindex 해제 + scaled content 방어 — gpt-4o-mini · 일 200건 (5/30 도입)" },
+  { path: "/api/cron/adsense-deployment-poll", label: "AdSense Phase B deployment polling (Critical #2)", schedule: "매 5분", desc: "Phase B 후 Vercel deployment state(READY/ERROR) 확인 → 텔레그램 follow-up. webhook 등록 없어도 동일 효과 (5/31 도입)" },
   // 2026-05-18 신규 5건 — 메가 세션 추가.
   { path: "/api/cron/blog-publish-summary", label: "블로그 24h 발행 요약 (텔레그램)", schedule: "매일 07:30 KST", desc: "본문 평균 길이 사고 자동 감지 (양면 임계 1,700~2,800자)" },
   { path: "/api/cron/adsense-review-watch", label: "AdSense 검수 결과 감지", schedule: "매일 10:05 KST", desc: "state 전환 (NEEDS_ATTENTION→READY 등) 즉시 텔레그램+SMS + NEEDS_ATTENTION 일일 reminder" },
