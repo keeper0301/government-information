@@ -20,12 +20,24 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 import { logAdminAction } from "@/lib/admin-actions";
 
+// API key 비교는 길이 분기 + timingSafeEqual 로 — 단순 `!==` 는 early-return 으로
+// 길이/prefix 추론 timing attack 노출.
+function safeKeyEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a, "utf8");
+  const bBuf = Buffer.from(b, "utf8");
+  if (aBuf.length !== bBuf.length) return false;
+  return timingSafeEqual(aBuf, bBuf);
+}
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+// node:crypto timingSafeEqual 사용 — Edge runtime 미지원이므로 명시.
+export const runtime = "nodejs";
 
 // Playwright runner 의 city key → news_posts insert 메타. 활성 12 도시
 // (KEEPIOO_RUNNER_CITIES 기본값과 동기화). 도시 추가 시 여기 + workflow yml 둘 다 갱신.
@@ -133,10 +145,10 @@ function sanitize(item: BatchItem): {
 }
 
 export async function POST(request: Request) {
-  // 인증 — X-API-Key 헤더
+  // 인증 — X-API-Key 헤더 (timing-safe 비교)
   const apiKey = request.headers.get("x-api-key");
   const expected = process.env.IMPORT_PRESS_API_KEY;
-  if (!expected || !apiKey || apiKey !== expected) {
+  if (!expected || !apiKey || !safeKeyEqual(apiKey, expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
