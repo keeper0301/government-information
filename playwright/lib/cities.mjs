@@ -106,10 +106,12 @@ export const scrapeBsbukgu = makeScraper({
 
 // 2026-05-29 — 사상구 알림사항(BBS_0000001 표준 table). 구정소식 게시판이 없어
 // 알림사항(모집·안내·공고)으로 수집. 본문 div.contents.
+// 2026-05-30 — fallback `.bbs_vtype` 제거: 본문 0 글(첨부파일만)에서 메타+제목+파일 라벨까지
+// 묶어 잡아 dead-junk push (108자 사례 확인). `.contents` 단독으로 본문 있는 글만 채택.
 export const scrapeSasang = makeScraper({
   cityName: "사상구",
   listUrl: "https://www.sasang.go.kr/board/list.sasang?boardId=BBS_0000001&menuCd=DOM_000000104008001000&startPage=1",
-  bodySelectors: [".contents", ".bbs_vtype"],
+  bodySelectors: [".contents"],
 });
 
 // 2026-05-29 — 사상소식지(구보, BBS_0000100 종합). 갤러리형(div.bbs_gallery5 > dl > dt > a)
