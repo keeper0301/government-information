@@ -59,6 +59,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/enrich-thumbnails", label: "naver-news og:image", schedule: "매 5분", desc: "BATCH 50" },
   { path: "/api/enrich-targeting", label: "본문 targeting 분석", schedule: "매일 08시 UTC", desc: "Phase 1.5 income/household 백필" },
   { path: "/api/cron/policy-insight-backfill", label: "정책 자체 해설 백필", schedule: "12회/일 (매 2시간 KST)", desc: "AdSense 큐레이션 시그널 — gpt-4o-mini · 일 1,200건 (5/18 가속)" },
+  { path: "/api/cron/news-ai-commentary-backfill", label: "뉴스 AI 자체 해설 백필 (P2)", schedule: "매일 04:30 KST", desc: "ai_commentary NULL row 채워 selective noindex 해제 + scaled content 방어 — gpt-4o-mini · 일 200건 (5/30 도입)" },
   // 2026-05-18 신규 5건 — 메가 세션 추가.
   { path: "/api/cron/blog-publish-summary", label: "블로그 24h 발행 요약 (텔레그램)", schedule: "매일 07:30 KST", desc: "본문 평균 길이 사고 자동 감지 (양면 임계 1,700~2,800자)" },
   { path: "/api/cron/adsense-review-watch", label: "AdSense 검수 결과 감지", schedule: "매일 10:05 KST", desc: "state 전환 (NEEDS_ATTENTION→READY 등) 즉시 텔레그램+SMS + NEEDS_ATTENTION 일일 reminder" },
