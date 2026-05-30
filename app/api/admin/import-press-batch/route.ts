@@ -146,8 +146,9 @@ function sanitize(item: BatchItem): {
 
 export async function POST(request: Request) {
   // 인증 — X-API-Key 헤더 (timing-safe 비교)
-  const apiKey = request.headers.get("x-api-key");
-  const expected = process.env.IMPORT_PRESS_API_KEY;
+  // Vercel UI 입력 trailing whitespace 사고 예방 차원에서 양쪽 trim.
+  const apiKey = request.headers.get("x-api-key")?.trim();
+  const expected = process.env.IMPORT_PRESS_API_KEY?.trim();
   if (!expected || !apiKey || !safeKeyEqual(apiKey, expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

@@ -104,4 +104,43 @@ describe("플레이wright 보도자료 배치 수신", () => {
       }),
     );
   });
+
+  // 401 negative — timing-safe 인증 변환 후 회귀 안전망
+  it("잘못된 API key 는 401 반환", async () => {
+    const response = await POST(
+      request({ city: "ansan", items: [] }, "wrong-key"),
+    );
+    expect(response.status).toBe(401);
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("API key 헤더가 없으면 401 반환", async () => {
+    const req = new Request("https://www.keepioo.com/api/admin/import-press-batch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ city: "ansan", items: [] }),
+    });
+    const response = await POST(req);
+    expect(response.status).toBe(401);
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("API key 길이만 다른 입력은 401 반환 (timingSafeEqual length 분기)", async () => {
+    // expected="test-key"(8자), 입력 "test-key-extra"(14자) — length 다르면 early-return.
+    const response = await POST(
+      request({ city: "ansan", items: [] }, "test-key-extra"),
+    );
+    expect(response.status).toBe(401);
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("같은 길이 다른 바이트 키는 401 반환 (timingSafeEqual 실 경로)", async () => {
+    // expected="test-key"(8자), 입력 "test-keX"(8자) — 같은 length, 마지막 byte 다름.
+    // timingSafeEqual 가 실제 byte-level 비교에서 false 반환하는 경로 검증.
+    const response = await POST(
+      request({ city: "ansan", items: [] }, "test-keX"),
+    );
+    expect(response.status).toBe(401);
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
 });

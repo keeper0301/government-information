@@ -1,0 +1,62 @@
+// 12 도시 city key 동기화 회귀 안전망 — 운영·보안 리뷰 P3 권장.
+// 세 source(workflow yml KEEPIOO_RUNNER_CITIES + route.ts PLAYWRIGHT_CITY_REGISTRY +
+// runner.mjs ALL_COLLECTORS) 가 모두 같은 12 키를 가져야 cron 이 silent fail 없이 작동.
+
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const ROOT = process.cwd();
+
+describe("12 도시 city key 3-source 동기화", () => {
+  // 1) workflow yml 의 KEEPIOO_RUNNER_CITIES 기본값 추출
+  const ymlPath = join(ROOT, ".github/workflows/local-press-proxy.yml");
+  const yml = readFileSync(ymlPath, "utf8");
+  const ymlMatch = yml.match(
+    /KEEPIOO_RUNNER_CITIES:[^']*'([^']+)'/,
+  );
+  const workflowKeys = (ymlMatch?.[1] ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // 2) route.ts 의 PLAYWRIGHT_CITY_REGISTRY 키 추출
+  const routePath = join(ROOT, "app/api/admin/import-press-batch/route.ts");
+  const routeSrc = readFileSync(routePath, "utf8");
+  // registry 객체 시작 ~ } ; 까지 캡처
+  const registryBlock = routeSrc.match(
+    /PLAYWRIGHT_CITY_REGISTRY[^{]*\{([\s\S]*?)\};/,
+  )?.[1] ?? "";
+  // 키 후보: 줄 시작에 식별자: { (sourceCode 가 안에 있음) 형식
+  const routeKeys = [
+    ...registryBlock.matchAll(/^\s{2}([a-z_]+):\s*\{/gm),
+  ].map((m) => m[1]);
+
+  // 3) runner.mjs 의 ALL_COLLECTORS 키 추출
+  const runnerPath = join(ROOT, "playwright/runner.mjs");
+  const runnerSrc = readFileSync(runnerPath, "utf8");
+  const collectorsBlock = runnerSrc.match(
+    /ALL_COLLECTORS\s*=\s*\[([\s\S]*?)\];/,
+  )?.[1] ?? "";
+  const runnerKeys = [
+    ...collectorsBlock.matchAll(/key:\s*"([a-z_]+)"/g),
+  ].map((m) => m[1]);
+
+  it("workflow yml 에 12 키 정확히 정의", () => {
+    expect(workflowKeys.length).toBe(12);
+    expect(new Set(workflowKeys).size).toBe(12); // 중복 0
+  });
+
+  it("route.ts 와 workflow yml 의 12 키 집합 일치", () => {
+    expect(new Set(routeKeys)).toEqual(new Set(workflowKeys));
+  });
+
+  it("runner.mjs 와 workflow yml 의 12 키 집합 일치", () => {
+    expect(new Set(runnerKeys)).toEqual(new Set(workflowKeys));
+  });
+
+  it("3 source 키 개수 모두 동일", () => {
+    expect(routeKeys.length).toBe(workflowKeys.length);
+    expect(runnerKeys.length).toBe(workflowKeys.length);
+  });
+});
