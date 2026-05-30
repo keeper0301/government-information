@@ -31,16 +31,19 @@ async function run() {
   }
 
   const admin = createAdminClient();
-  const since = new Date(Date.now() - 30 * 60_000).toISOString();
+  // 2026-05-31 — 30분 → 60분 완화 (리뷰어 minor #1). Vercel build worst case
+  // (대시보드 대기 + build) 30분+ stuck 시나리오 catch 마진 ↑. polling 비용 0
+  // (limit 10 → 20 audit, 매 5분 호출 무영향).
+  const since = new Date(Date.now() - 60 * 60_000).toISOString();
 
-  // 최근 30분 안 disable-adsense-review-mode + deployment_id 있는 row.
+  // 최근 60분 안 disable-adsense-review-mode + deployment_id 있는 row.
   const { data: triggers } = await admin
     .from("admin_actions")
     .select("id, details, created_at")
     .eq("action", "adsense_review_mode_disabled")
     .gte("created_at", since)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(20);
 
   if (!triggers || triggers.length === 0) {
     return NextResponse.json({ ok: true, checked: 0 });
