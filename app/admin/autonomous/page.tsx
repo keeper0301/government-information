@@ -65,7 +65,7 @@ import {
   GEMINI_KEEPIOO_CAP_KRW,
   type GeminiSpendingStat,
 } from "@/lib/analytics/gemini-spending";
-import { getLocalPressStats } from "@/lib/analytics/local-press-stats";
+import { getLocalPressStats, getNewsRatio } from "@/lib/analytics/local-press-stats";
 import { LocalPressCard } from "./_components/local-press-card";
 import { getSilentFailStats } from "@/lib/analytics/silent-fail-stats";
 import { SilentFailCard } from "./_components/silent-fail-card";
@@ -149,6 +149,7 @@ export default async function AdminAutonomousPage() {
     snsEnvStatus,
     geminiSpending,
     localPressStats,
+    newsRatioStats,
     pressIngestTierStats,
     blogPublishStats,
     naverPublishStats,
@@ -175,6 +176,7 @@ export default async function AdminAutonomousPage() {
     getSnsEnvStatus(),
     getGeminiSpendingStats(28),
     getLocalPressStats(),
+    getNewsRatio(),
     getPressIngestTierStats(),
     getBlogPublishStats(),
     getNaverPublishStats(),
@@ -275,6 +277,21 @@ export default async function AdminAutonomousPage() {
 
       {/* 5. 데이터 수집 — cron 자동 가동 결과 (5/17 신규) */}
       <SectionHeader title="🗞️ 데이터 수집" />
+      {/* 2026-05-30 — news 비중 (Google scaled content 정책 방어 신호). 임계 60%. */}
+      <div className="mb-3 rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+        <div className="flex items-center justify-between">
+          <span>
+            <strong>news 비중</strong>{" "}
+            <span className={newsRatioStats.ratio >= 0.6 ? "text-amber-700 font-semibold" : "text-slate-600"}>
+              {(newsRatioStats.ratio * 100).toFixed(1)}%
+            </span>{" "}
+            <span className="text-[10px] text-slate-500">
+              (welfare {newsRatioStats.welfare.toLocaleString()} · loan {newsRatioStats.loan.toLocaleString()} · blog {newsRatioStats.blog.toLocaleString()} · news {newsRatioStats.newsIndexable.toLocaleString()})
+            </span>
+          </span>
+          <span className="text-[10px] text-slate-500">임계 60% (Google scaled content)</span>
+        </div>
+      </div>
       <div className="mb-4">
         <LocalPressCard stats={localPressStats} />
       </div>
