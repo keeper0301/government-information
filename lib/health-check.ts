@@ -225,6 +225,16 @@ const NAVER_PUBLISH_FAIL_FLOOR = Number(
 const NAVER_PUBLISH_FAIL_RATE = Number(
   process.env.NAVER_PUBLISH_FAIL_RATE ?? "0.9",
 );
+// 2026-05-31 — null_date 도시 임계 (silent → audible 3단계). 1주 baseline 후 재평가.
+// 기본 1 = 1개 도시만 발화. baseline noise 발생 시 ENV 로 2~3 으로 상향 가능.
+const LOCAL_PRESS_NULL_DATE_CITY_FLOOR = Number(
+  process.env.LOCAL_PRESS_NULL_DATE_CITY_FLOOR ?? "1",
+);
+// 2026-05-31 — news 비중 임계 (Google scaled content 정책 방어). 기본 0.6 = 60%.
+// 1주 baseline 후 사장님 실 비율 확인하고 재조정 가능.
+const NEWS_RATIO_HIGH_FLOOR = Number(
+  process.env.NEWS_RATIO_HIGH_FLOOR ?? "0.6",
+);
 const NAVER_PUBLISH_FAIL_FLOOR_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_FLOOR)
   ? NAVER_PUBLISH_FAIL_FLOOR
   : 20;
@@ -727,10 +737,10 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   // 2026-05-30 — 시·군 collector 의 published_at silent now-fallback 누적 (24h ≥5 도시).
   // factory date selector 깨졌거나 사이트 구조 변경 → 모든 글이 수집시각으로 잡혀
   // NewsArticle schema 신뢰도 ↓ + 사용자 "오늘 새 정책" 알림 거짓 발화 위험.
-  if (s.localPressNullDateCities >= 1) {
+  if (s.localPressNullDateCities >= LOCAL_PRESS_NULL_DATE_CITY_FLOOR) {
     alerts.push({
       key: "local_press_null_date",
-      message: `시·군 published_at silent fallback ${s.localPressNullDateCities}개 도시 (24h null_date ≥5 누적). factory date 추출 점검 신호.`,
+      message: `시·군 published_at silent fallback ${s.localPressNullDateCities}개 도시 (임계 ${LOCAL_PRESS_NULL_DATE_CITY_FLOOR}+, 24h null_date ≥5 누적). factory date 추출 점검 신호.`,
       recommendation:
         "/admin/autonomous 의 시·군 카드에서 '날짜 미상 N' 표시 도시 확인 → 사이트 직접 접속해 list row 의 등록일 cell 구조 변경 확인. playwright/lib/_factory.mjs 의 date selector (td.date/.date/.reg/td.td-date) 또는 도시별 listSelectors 조정 필요.",
     });
@@ -739,10 +749,10 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   // 2026-05-30 — news 비중 ≥0.6 = Google "Scaled content abuse" 정책 의심 표면.
   // keepioo USP (welfare/loan 자체 가이드) 대비 외부 보도자료 비중 과도. AdSense
   // 검수자 시각에서 "주요 목적이 외부 콘텐츠 자동 복제" 로 잘못 판정될 위험.
-  if (s.newsRatio >= 0.6) {
+  if (s.newsRatio >= NEWS_RATIO_HIGH_FLOOR) {
     alerts.push({
       key: "news_ratio_high",
-      message: `news 비중 ${(s.newsRatio * 100).toFixed(1)}% (임계 60%+). Google scaled content 정책 의심 표면 — keepioo USP 대비 외부 보도자료 비중 과도.`,
+      message: `news 비중 ${(s.newsRatio * 100).toFixed(1)}% (임계 ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}%+). Google scaled content 정책 의심 표면 — keepioo USP 대비 외부 보도자료 비중 과도.`,
       recommendation:
         "1) welfare/loan 신규 collector 점검 (수집 cron 노쇼 시 비율 자연 상승) 2) news selective noindex 임계 강화 검토 (현재 summary+classified_at, body length 추가 고려) 3) news 도시별 자체 해설 박스(PolicyGuideBox 등) 추가로 originality 보강.",
     });

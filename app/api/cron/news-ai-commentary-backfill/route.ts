@@ -21,8 +21,11 @@ export const dynamic = "force-dynamic";
 // 5분 cap — 200건 / CHUNK 10 = 20 chunk × ~5s ≈ 100~200s. 정책 백필과 동일 규모.
 export const maxDuration = 300;
 
-const BATCH_CAP = 200;
-const CHUNK = 10;
+// 2026-05-31 — 리뷰어 Major 3 권고 적용. BATCH 200/CHUNK 10 = 20 chunk × 50초 = 1000초 →
+// 300초 cap 초과 + OpenAI 동시 10 호출 rate limit 위험. BATCH 100/CHUNK 5 = 20 chunk × 25초
+// = 500초 → 안전 마진. backlog 누적 시 cron schedule 분산(매일 04:30 + 16:30) 검토.
+const BATCH_CAP = 100;
+const CHUNK = 5;
 
 type NewsRow = {
   id: string;
@@ -36,6 +39,9 @@ type NewsRow = {
 type BackfillResult = {
   fetched: number;
   updated: number;
+  // LLM 성공했지만 sanitize 실패해 "" sentinel 로 채워진 row (영구 미백필).
+  // hub commentaryBackfillRatio 가 영원히 100% 못 가는 원인 가시화 (Major 2).
+  sentinel_filled: number;
   llm_failed: number;
   update_failed: number;
 };
@@ -57,13 +63,14 @@ async function backfill(limit: number): Promise<BackfillResult> {
 
   if (error) {
     console.warn(`[news-ai-commentary] select 실패:`, error.message);
-    return { fetched: 0, updated: 0, llm_failed: 0, update_failed: 0 };
+    return { fetched: 0, updated: 0, sentinel_filled: 0, llm_failed: 0, update_failed: 0 };
   }
   if (!rows || rows.length === 0) {
-    return { fetched: 0, updated: 0, llm_failed: 0, update_failed: 0 };
+    return { fetched: 0, updated: 0, sentinel_filled: 0, llm_failed: 0, update_failed: 0 };
   }
 
   let updated = 0;
+  let sentinelFilled = 0;
   let llmFailed = 0;
   let updateFailed = 0;
   const list = rows as NewsRow[];
@@ -88,9 +95,11 @@ async function backfill(limit: number): Promise<BackfillResult> {
           }
           // LLM 성공 → null/sanitize 실패 시 "" sentinel (부적합 row 매일 재과금 차단).
           // NewsCommentaryBox 는 "" falsy 로 보고 미표시.
+          const value = result.commentary ?? "";
+          const isSentinel = value === "";
           const { error: upErr } = await admin
             .from("news_posts")
-            .update({ ai_commentary: result.commentary ?? "" })
+            .update({ ai_commentary: value })
             .eq("id", row.id);
           if (upErr) {
             updateFailed += 1;
@@ -100,6 +109,7 @@ async function backfill(limit: number): Promise<BackfillResult> {
             );
           } else {
             updated += 1;
+            if (isSentinel) sentinelFilled += 1;
           }
         } catch (e) {
           updateFailed += 1;
@@ -114,6 +124,7 @@ async function backfill(limit: number): Promise<BackfillResult> {
   return {
     fetched: list.length,
     updated,
+    sentinel_filled: sentinelFilled,
     llm_failed: llmFailed,
     update_failed: updateFailed,
   };

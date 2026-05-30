@@ -193,6 +193,8 @@ export async function scrapeGijangEminwonAndInsert(
 
     for (const it of items) {
       try {
+        // 2026-05-31 Minor 1 — detail POST 사이 200ms sleep (eminwon polite, 차단 위험 ↓).
+        await new Promise((r) => setTimeout(r, 200));
         const detailHtml = await postFetch(detailBody(it.newsEpctNo));
         const body = parseDetailBody(detailHtml);
         if (!body) {

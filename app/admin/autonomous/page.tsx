@@ -66,6 +66,7 @@ import {
   type GeminiSpendingStat,
 } from "@/lib/analytics/gemini-spending";
 import { getLocalPressStats, getNewsRatio } from "@/lib/analytics/local-press-stats";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { LocalPressCard } from "./_components/local-press-card";
 import { getSilentFailStats } from "@/lib/analytics/silent-fail-stats";
 import { SilentFailCard } from "./_components/silent-fail-card";
@@ -277,6 +278,18 @@ export default async function AdminAutonomousPage() {
 
       {/* 5. 데이터 수집 — cron 자동 가동 결과 (5/17 신규) */}
       <SectionHeader title="🗞️ 데이터 수집" />
+      {/* 2026-05-31 Critical 가드 — review mode off + 백필 < 80% 사고 차단. */}
+      {!ADSENSE_REVIEW_MODE && newsRatioStats.commentaryBackfillRatio < 0.8 && (
+        <div className="mb-3 rounded border-2 border-red-400 bg-red-50 px-3 py-2.5 text-xs text-red-900">
+          <div className="font-bold mb-1">⚠️ AdSense review mode 가 꺼져 있는데 AI 자체 해설 백필이 {(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}% (목표 80%+)</div>
+          <div className="text-[11px] leading-relaxed">
+            ai_commentary NULL news 는 sitemap·index 에서 자동 제외돼 Google 색인 진행이 정체됩니다.
+            즉시 Vercel env <code className="bg-white px-1 rounded">NEXT_PUBLIC_ADSENSE_REVIEW_MODE=on</code> 으로 되돌리고 redeploy 권장 →
+            cron KST 04:30 매일 ~200건 자동 백필이 80% 도달할 때까지 review mode 유지.
+          </div>
+        </div>
+      )}
+
       {/* 2026-05-30 — news 비중 (Google scaled content 정책 방어 신호). 임계 60%. */}
       <div className="mb-3 rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
         <div className="flex items-center justify-between">
