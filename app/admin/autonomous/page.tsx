@@ -311,9 +311,19 @@ export default async function AdminAutonomousPage() {
             <span className={newsRatioStats.commentaryBackfillRatio >= 0.8 ? "text-emerald-700 font-semibold" : "text-amber-700"}>
               {(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}%
             </span>
+            {/* 2026-05-31 Major 7 — 80% 도달까지 ETA (BATCH 100/일 가정). 자율 운영 가시화. */}
+            {newsRatioStats.commentaryBackfillRatio < 0.8 && newsRatioStats.newsIndexable > 0 && (
+              <span className="ml-1.5 text-[10px] text-slate-500">
+                (80% 도달까지 약 {Math.ceil(
+                  (0.8 * newsRatioStats.newsIndexable -
+                    newsRatioStats.commentaryBackfillRatio * newsRatioStats.newsIndexable) /
+                  100
+                )}일, 매일 +100건 가정)
+              </span>
+            )}
           </span>
           <span className="text-[10px] text-slate-500">
-            review mode off 전 ≥80% 권장 (cron KST 04:30 매일 ~200건)
+            review mode off 전 ≥80% 권장 (cron KST 04:30 매일 ~100건)
           </span>
         </div>
       </div>
