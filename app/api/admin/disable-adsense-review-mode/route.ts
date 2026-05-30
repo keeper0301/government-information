@@ -112,6 +112,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const errors: string[] = [];
   let envUpdated = false;
   let redeployed = false;
+  let deploymentId: string | null = null;
   try {
     await updateProjectEnvByKey("NEXT_PUBLIC_ADSENSE_REVIEW_MODE", "off");
     envUpdated = true;
@@ -120,7 +121,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
   if (envUpdated) {
     try {
-      await triggerProductionRedeploy();
+      const r = await triggerProductionRedeploy();
+      deploymentId = r.id;
       redeployed = true;
     } catch (e) {
       errors.push(`redeploy: ${(e as Error).message.slice(0, 200)}`);
@@ -128,6 +130,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   // 4. audit log (실패해도 state 응답에 영향 X — 리뷰어 Major: audit 실패 ≠ state 실패 분리).
+  // deployment_id 저장 → webhook 이 build 결과 받으면 매칭 가능 (Critical #2).
   try {
     await logAdminAction({
       actorId: user?.id ?? null,
@@ -136,6 +139,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         commentary_backfill_ratio: ratio.commentaryBackfillRatio,
         env_updated: envUpdated,
         redeployed,
+        deployment_id: deploymentId,
         errors,
       },
     });
