@@ -247,23 +247,37 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     // DB 실패는 silent — UI 차라리 안 보이는 게 안전 (false reminder 차단)
   }
 
-  // 2026-05-26 — PC runner 7일 가동 0건 자동 감지. 사장님 PC OFF / setup 미완 시 가시화.
-  // local_press_scrape 의 details->>trigger=pc_runner row count (server-side JSON path filter).
+  // 2026-05-26 — PC runner 가동 0건 자동 감지. 2026-05-31 — 일수 카운트 + tone 단계 강화
+  // (naver Extension reminder 와 같은 패턴). local_press_scrape 의 details->>trigger=pc_runner.
   try {
     const admin = createAdminClient();
-    const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
-    const { count: pcRunnerRuns } = await admin
+    const since30d = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+    const { data: lastRow } = await admin
       .from("admin_actions")
-      .select("id", { count: "exact", head: true })
+      .select("created_at")
       .eq("action", "local_press_scrape")
       .eq("details->>trigger", "pc_runner")
-      .gte("created_at", since7d);
-    if ((pcRunnerRuns ?? 0) === 0) {
+      .gte("created_at", since30d)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const daysIdle = lastRow?.created_at
+      ? Math.floor(
+          (Date.now() - new Date(lastRow.created_at).getTime()) /
+            (24 * 3600_000),
+        )
+      : 30;
+    if (daysIdle >= 5) {
+      const tone =
+        daysIdle >= 14
+          ? "🔴 14일+ 가동 0건"
+          : daysIdle >= 7
+            ? "🟠 1주+ 가동 0건"
+            : "🟡 5일+ 가동 0건";
       actions.push({
         category: "automation",
-        label: "PC runner 본체 가동 (Vercel env + setup-desktop.ps1)",
-        description:
-          "7일 가동 0건. ASN 차단 3 site (광산구·제주·평택) 자동 fetch 불가. Vercel env (PC_RUNNER_TOKEN) 등록 후 setup-desktop.ps1 1회 실행 권장",
+        label: `PC runner ${daysIdle}일째 미가동 — Vercel env + setup-desktop.ps1`,
+        description: `${tone}. ASN 차단 3 site (광산구·제주·평택) 자동 fetch 불가. Vercel env (PC_RUNNER_TOKEN) 등록 후 setup-desktop.ps1 1회 실행 (예상 5분).`,
         guideUrl:
           "https://github.com/keeper0301/government-information/blob/master/pc-runner/README.md",
         estimatedMinutes: 5,
