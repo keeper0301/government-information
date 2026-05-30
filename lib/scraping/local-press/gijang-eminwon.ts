@@ -83,7 +83,8 @@ async function postFetch(body: string): Promise<string> {
 
 // list HTML 파싱 — onclick searchDetail('N') + 같은 tr 의 제목·부서·등록일.
 // 메모리 정찰 dump 기준: tr 안에 4909/제목/부서/등록일 sequence.
-export function parseListItems(html: string): ListItem[] {
+// silentSkips: 제목 추출 실패한 newsEpctNo 리스트 — 운영 audit 가시화 (m3 리뷰어 권고).
+export function parseListItems(html: string, silentSkips?: string[]): ListItem[] {
   const items: ListItem[] = [];
   // tr 단위로 잘라 안에서 searchDetail + 데이터 추출.
   const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
@@ -124,7 +125,11 @@ export function parseListItems(html: string): ListItem[] {
         department = t;
       }
     }
-    if (!title) continue;
+    if (!title) {
+      // 제목 추출 실패 — silent skip 방지로 newsEpctNo 만 audit 노출.
+      silentSkips?.push(newsEpctNo);
+      continue;
+    }
     items.push({ newsEpctNo, title, department, publishedDate });
   }
   return items;
@@ -169,7 +174,11 @@ export async function scrapeGijangEminwonAndInsert(
 
   try {
     const listHtml = await postFetch(listBody(1));
-    const allItems = parseListItems(listHtml);
+    const silentSkips: string[] = [];
+    const allItems = parseListItems(listHtml, silentSkips);
+    if (silentSkips.length > 0) {
+      errors.push(`title 추출 실패 ${silentSkips.length}건 (newsEpctNo: ${silentSkips.slice(0, 5).join(",")})`);
+    }
     const items = typeof limit === "number" ? allItems.slice(0, limit) : allItems;
     fetched = items.length;
     if (items.length === 0) {
