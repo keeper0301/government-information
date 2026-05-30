@@ -91,7 +91,8 @@ export type AdminActionType =
   | "popularity_weights_tune_run"     // 2026-05-27 — Spec 2 자가 진화 학습 매주 월 KST 02:30 popularity weights 자동 튜닝 cron
   | "push_send_run"                   // 2026-05-27 — Spec 3-A PWA 푸시 발송 매시 cron (사용자별 preferred_hours 매칭)
   | "push_time_learn_run"             // 2026-05-27 — Spec 3-B PWA 푸시 시점 자가 진화 학습 매주 월 KST 03:00 cron
-  | "self_learning_digest_run";       // 2026-05-27 — 자가 진화 학습 3 cron 결과 텔레그램 요약 매주 월 KST 03:30
+  | "self_learning_digest_run"       // 2026-05-27 — 자가 진화 학습 3 cron 결과 텔레그램 요약 매주 월 KST 03:30
+  | "adsense_review_mode_disabled";  // 2026-05-31 — AdSense Phase B 사장님 1-tap 으로 review mode off + Vercel API redeploy 완료 신고
 
 export type AdminActionRecord = {
   id: string;
@@ -408,4 +409,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   push_send_run: "PWA 푸시 발송 (매시)",
   push_time_learn_run: "PWA 푸시 시점 자가 진화 학습 (매주 월)",
   self_learning_digest_run: "자가 진화 학습 다이제스트 (매주 월)",
+  adsense_review_mode_disabled: "AdSense review mode 자동 OFF (Vercel API + redeploy)",
 };

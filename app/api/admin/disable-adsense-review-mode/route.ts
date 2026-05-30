@@ -17,7 +17,7 @@ import {
   triggerProductionRedeploy,
 } from "@/lib/vercel/api";
 import { getNewsRatio } from "@/lib/analytics/local-press-stats";
-import { logAdminAction, type AdminActionType } from "@/lib/admin-actions";
+import { logAdminAction } from "@/lib/admin-actions";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 
@@ -112,7 +112,7 @@ export async function POST(): Promise<NextResponse> {
   // 4. audit log
   await logAdminAction({
     actorId: user?.id ?? null,
-    action: "adsense_review_mode_disabled" as AdminActionType,
+    action: "adsense_review_mode_disabled",
     details: {
       commentary_backfill_ratio: ratio.commentaryBackfillRatio,
       env_updated: envUpdated,
