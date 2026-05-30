@@ -1,0 +1,162 @@
+// ============================================================
+// /api/cron/news-ai-commentary-backfill — 신규 news 자체 해설 백필 (P2)
+// ============================================================
+// news_posts.ai_commentary IS NULL row 를 매일 채워 NewsCommentaryBox 가 항상
+// 자체 콘텐츠를 노출하게 한다. AdSense "scaled content" 정책 방어 + selective
+// noindex 해제 후보 확장 (isThin = !ai_commentary 해소).
+//
+// 스케줄: KST 04:30 (policy-ai-guide-backfill 04:15 직후, 수집·enrich cron 모두 끝).
+// 처리량: news 200건/run (12 도시 × ~50/일 = 600/일 → 3일 안 신규분 catch-up).
+// LLM: gpt-4o-mini (lib/news/ai-commentary.ts generateNewsCommentary, throw-safe).
+// graceful: OPENAI_API_KEY 미설정 시 안전 skip.
+// ============================================================
+
+import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { generateNewsCommentary } from "@/lib/news/ai-commentary";
+import { authorizeCronRequest } from "@/lib/cron-auth";
+import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
+
+export const dynamic = "force-dynamic";
+// 5분 cap — 200건 / CHUNK 10 = 20 chunk × ~5s ≈ 100~200s. 정책 백필과 동일 규모.
+export const maxDuration = 300;
+
+const BATCH_CAP = 200;
+const CHUNK = 10;
+
+type NewsRow = {
+  id: string;
+  title: string;
+  summary: string | null;
+  body: string;
+  category: string | null;
+  keywords: string[] | null;
+};
+
+type BackfillResult = {
+  fetched: number;
+  updated: number;
+  llm_failed: number;
+  update_failed: number;
+};
+
+async function backfill(limit: number): Promise<BackfillResult> {
+  const admin = createAdminClient();
+  // 백필 대상: ai_commentary NULL + 분류 완료 (classified_at·summary 있음 = 가치 row).
+  // press 카테고리 제외 (기존 비노출 정책). 인기 글 우선 (검수자 hit 확률 ↑).
+  const { data: rows, error } = await admin
+    .from("news_posts")
+    .select("id, title, summary, body, category, keywords")
+    .is("ai_commentary", null)
+    .neq("category", "press")
+    .not("summary", "is", null)
+    .not("classified_at", "is", null)
+    .not("body", "is", null)
+    .order("view_count", { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (error) {
+    console.warn(`[news-ai-commentary] select 실패:`, error.message);
+    return { fetched: 0, updated: 0, llm_failed: 0, update_failed: 0 };
+  }
+  if (!rows || rows.length === 0) {
+    return { fetched: 0, updated: 0, llm_failed: 0, update_failed: 0 };
+  }
+
+  let updated = 0;
+  let llmFailed = 0;
+  let updateFailed = 0;
+  const list = rows as NewsRow[];
+  for (let i = 0; i < list.length; i += CHUNK) {
+    const chunk = list.slice(i, i + CHUNK);
+    // 각 row try/catch 격리 — 일시 네트워크 예외가 Promise.all 전체 reject 시켜
+    // 백필 중단되는 사고 방지 (정책 백필 1차 247건 크래시 교훈).
+    await Promise.all(
+      chunk.map(async (row) => {
+        try {
+          const result = await generateNewsCommentary({
+            title: row.title,
+            summary: row.summary,
+            body: row.body,
+            category: row.category,
+            keywords: row.keywords,
+          });
+          // LLM 일시 실패 → sentinel 안 함 → 다음날 재시도.
+          if (!result.llmOk) {
+            llmFailed += 1;
+            return;
+          }
+          // LLM 성공 → null/sanitize 실패 시 "" sentinel (부적합 row 매일 재과금 차단).
+          // NewsCommentaryBox 는 "" falsy 로 보고 미표시.
+          const { error: upErr } = await admin
+            .from("news_posts")
+            .update({ ai_commentary: result.commentary ?? "" })
+            .eq("id", row.id);
+          if (upErr) {
+            updateFailed += 1;
+            console.error(
+              `[news-ai-commentary] ${row.id} update 실패:`,
+              upErr.message,
+            );
+          } else {
+            updated += 1;
+          }
+        } catch (e) {
+          updateFailed += 1;
+          console.error(
+            `[news-ai-commentary] ${row.id} 예외:`,
+            (e as Error).message,
+          );
+        }
+      }),
+    );
+  }
+  return {
+    fetched: list.length,
+    updated,
+    llm_failed: llmFailed,
+    update_failed: updateFailed,
+  };
+}
+
+async function run() {
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ ok: true, skipped: "OPENAI_API_KEY missing" });
+  }
+  const result = await backfill(BATCH_CAP);
+  const payload = { ok: true, ...result };
+  console.log("[news-ai-commentary] 결과:", JSON.stringify(payload));
+
+  // 신규 백필(updated>0) 또는 실패 시에만 텔레그램. 신규 0 일은 조용.
+  const totalFailed = result.llm_failed + result.update_failed;
+  if (result.updated > 0 || totalFailed > 0) {
+    const lines = [`news 자체 해설 ${result.updated}건 생성 (P2 백필)`];
+    if (totalFailed > 0) {
+      lines.push(
+        `[주의] 실패 ${totalFailed}건 (AI ${result.llm_failed} / 저장 ${result.update_failed}) — 점검 권장`,
+      );
+    }
+    try {
+      await sendOpsAlertTelegram({
+        subject: "뉴스 AI 자체 해설 자동 백필",
+        message: lines.join("\n"),
+      });
+    } catch {
+      // 알림 실패가 cron 을 깨지 않게.
+    }
+  }
+  return NextResponse.json(payload);
+}
+
+export async function GET(request: Request) {
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
+  return run();
+}
+
+// 수동 trigger (어드민 cron-trigger 페이지)
+export async function POST(request: Request) {
+  const denied = authorizeCronRequest(request);
+  if (denied) return denied;
+  return run();
+}
