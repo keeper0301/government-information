@@ -11,6 +11,9 @@ import { makeScraper } from "./_factory.mjs";
 
 // 2026-05-30 — 창원특례시. 목록 li.li1, 상세는 ?gcode=..&idx=N&amode=view query href
 // (onclick 아님 → makeScraper 가 그대로 추적). 본문 div.substance.
+// 2026-05-30 — li 안에 .title/.subject/.tit 없어 factory 가 a textContent 잡아 제목 +
+// 본문 일부(span.t2)·날짜·부서·조회수까지 한 덩어리(228~253자) 로 들어가던 버그.
+// 정확 selector strong.t1 명시(span.t1 "새 글" 배지와 구분).
 export const scrapeChangwon = makeScraper({
   cityName: "창원시",
   listUrl: "https://www.changwon.go.kr/cwportal/10310/10429/10432.web",
@@ -18,6 +21,7 @@ export const scrapeChangwon = makeScraper({
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   listSelectors: ["li.li1"],
   bodySelectors: [".substance"],
+  titleSelectors: ["strong.t1"],
 });
 
 // 2026-05-29 — 성남시. 목록 상세가 onclick="dataView('N')"(href=#N) → bbsView.do?idx=N GET.

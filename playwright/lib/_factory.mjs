@@ -223,6 +223,10 @@ export function makeScraper({
                     .replace(/\s*이미지\s*$/, "")
                     .trim();
               }
+              // title 끝의 "새 글"/"NEW" 임시 배지(li 안 자식 요소 텍스트로 끼는 case,
+              // 창원 strong.t1 안 i.ic1.new 등) strip. 대문자만(소문자 new/New 는 영문 제목
+              // 자연어로 자주 등장 → 잘림 방지).
+              title = title.replace(/\s+(새\s*글|NEW)\s*$/, "").trim();
               if (!title || title.length < 5) return null;
 
               const dateText = (
