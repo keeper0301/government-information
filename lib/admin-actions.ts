@@ -93,7 +93,9 @@ export type AdminActionType =
   | "push_time_learn_run"             // 2026-05-27 — Spec 3-B PWA 푸시 시점 자가 진화 학습 매주 월 KST 03:00 cron
   | "self_learning_digest_run"       // 2026-05-27 — 자가 진화 학습 3 cron 결과 텔레그램 요약 매주 월 KST 03:30
   | "adsense_review_mode_disabled"   // 2026-05-31 — AdSense Phase B 사장님 1-tap 으로 review mode off + Vercel API redeploy 완료 신고
-  | "adsense_deployment_state_resolved"; // 2026-05-31 — Critical #2 polling: Phase B 후 deployment state(READY/ERROR) 텔레그램 follow-up 완료 표시 (dedup)
+  | "adsense_deployment_state_resolved" // 2026-05-31 — Critical #2 polling: Phase B 후 deployment state(READY/ERROR) 텔레그램 follow-up 완료 표시 (dedup)
+  | "press_tier_manual_override"     // 2026-05-31 — P3 #1 사장님 수동 override: press_auto_confirm_settings.tier_floor 강제 변경
+  | "weights_manual_override";       // 2026-05-31 — P3 #1 사장님 수동 override: popularity_weights_history view/apply/max_boost 강제 변경
 
 export type AdminActionRecord = {
   id: string;
@@ -412,4 +414,6 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   self_learning_digest_run: "자가 진화 학습 다이제스트 (매주 월)",
   adsense_review_mode_disabled: "AdSense review mode 자동 OFF (Vercel API + redeploy)",
   adsense_deployment_state_resolved: "AdSense Phase B deployment state 텔레그램 알림 완료 (dedup)",
+  press_tier_manual_override: "press tier_floor 수동 override (P3 #1)",
+  weights_manual_override: "popularity weights 수동 override (P3 #1)",
 };

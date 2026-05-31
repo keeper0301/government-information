@@ -249,9 +249,10 @@ export function SelfLearningCard({ snapshot }: { snapshot: SelfLearningSnapshot 
             매주 월 새벽 데이터 기반 자동 튜닝. cron 미가동·데이터 부족 시 no-op.
           </p>
         </div>
-        {/* 2026-05-31 P3 #2/#4 — 사장님 매주 월 자동 발화 안 기다리고 즉시 검증
+        {/* 2026-05-31 P3 #2/#4/#1 — 사장님 매주 월 자동 발화 안 기다리고 즉시 검증
             가속용 link. cron-trigger page 에 학습 cron 3종 등록되어 있음.
-            audit link 는 7주 누적 발화 이력 표 (P3 #4). */}
+            audit link 는 7주 누적 발화 이력 표 (P3 #4).
+            override link 는 학습 결과 마음에 안 들 때 강제 변경 (P3 #1). */}
         <div className="shrink-0 flex flex-col gap-1.5">
           <a
             href="/admin/cron-trigger"
@@ -266,6 +267,13 @@ export function SelfLearningCard({ snapshot }: { snapshot: SelfLearningSnapshot 
             title="7주 누적 발화 이력 + 액션별 카운트"
           >
             📜 7주 audit ↗
+          </a>
+          <a
+            href="/admin/self-learning-override"
+            className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 text-center"
+            title="press tier_floor + popularity weights 수동 강제 변경"
+          >
+            🔧 수동 override
           </a>
         </div>
       </header>
