@@ -347,6 +347,11 @@ export default async function AdminAutonomousPage() {
       <div className="mb-4">
         <AdsensePlacementCard summary={getAdsensePlacementSummary()} />
       </div>
+
+      {/* 5.5 보안 — secret 회전 추적 (2026-05-31 P3 #13 정리: 데이터 수집과 분리).
+          3+ secret 카드 누적 시 SecretRotationCard generic + config array 패턴
+          으로 helper 추출 권장 (현재 2 카드 = 직관적 분리 합리적) */}
+      <SectionHeader title="🔐 보안 (secret 회전)" />
       <div className="mb-4">
         <CronSecretRotationCard />
       </div>
