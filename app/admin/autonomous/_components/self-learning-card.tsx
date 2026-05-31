@@ -240,13 +240,24 @@ function HistoryTimeline({
 export function SelfLearningCard({ snapshot }: { snapshot: SelfLearningSnapshot }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5">
-      <header className="mb-4">
-        <h2 className="text-base font-semibold text-slate-900">
-          🤖 자가 진화 학습 (Spec 1+2)
-        </h2>
-        <p className="mt-0.5 text-xs text-slate-500">
-          매주 월 새벽 데이터 기반 자동 튜닝. cron 미가동·데이터 부족 시 no-op.
-        </p>
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">
+            🤖 자가 진화 학습 (Spec 1+2)
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            매주 월 새벽 데이터 기반 자동 튜닝. cron 미가동·데이터 부족 시 no-op.
+          </p>
+        </div>
+        {/* 2026-05-31 P3 #2 — 사장님 매주 월 자동 발화 안 기다리고 즉시 검증
+            가속용 link. cron-trigger page 에 학습 cron 3종 등록되어 있음. */}
+        <a
+          href="/admin/cron-trigger"
+          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          title="cron-trigger page 에서 press-confidence-tune / popularity-weights-tune / self-learning-digest 수동 실행"
+        >
+          ▶ 수동 실행 ↗
+        </a>
       </header>
 
       <div className="space-y-4">
