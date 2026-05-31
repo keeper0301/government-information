@@ -16,6 +16,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 const DISMISS_KEY = "keepioo-push-banner-dismissed-at";
 const DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -40,23 +41,31 @@ export function PushSubscribeBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
     if (Notification.permission === "denied") return;
 
     // 3) 이미 구독했는지 확인 — sw 등록 + pushManager subscription
+    // 2026-05-31 P3 #7 — show=true 변화 시 banner_shown track (1회만)
     navigator.serviceWorker
       .getRegistration()
       .then(async (reg) => {
         if (!reg) {
           setShow(true);
+          trackEvent(EVENTS.PUSH_BANNER_SHOWN);
           return;
         }
         try {
           const sub = await reg.pushManager.getSubscription();
-          if (!sub) setShow(true);
+          if (!sub) {
+            setShow(true);
+            trackEvent(EVENTS.PUSH_BANNER_SHOWN);
+          }
         } catch {
-          setShow(true); // pushManager 접근 실패 시 banner 표시 (사용자 후 결정)
+          // pushManager 접근 실패 시 banner 표시 (사용자 후 결정)
+          setShow(true);
+          trackEvent(EVENTS.PUSH_BANNER_SHOWN);
         }
       })
       .catch(() => {
         // sw registration 실패 — banner 표시 OK (사용자가 마이페이지에서 다시 시도)
         setShow(true);
+        trackEvent(EVENTS.PUSH_BANNER_SHOWN);
       });
   }, [isLoggedIn]);
 
@@ -65,6 +74,7 @@ export function PushSubscribeBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
       localStorage.setItem(DISMISS_KEY, String(Date.now()));
     }
     setShow(false);
+    trackEvent(EVENTS.PUSH_BANNER_DISMISSED);
   }
 
   if (!show) return null;
@@ -89,6 +99,7 @@ export function PushSubscribeBanner({ isLoggedIn }: { isLoggedIn: boolean }) {
         <div className="flex items-center gap-1 shrink-0">
           <Link
             href="/mypage#account"
+            onClick={() => trackEvent(EVENTS.PUSH_BANNER_CLICKED)}
             className="rounded-md bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
           >
             알림 설정 →

@@ -249,15 +249,25 @@ export function SelfLearningCard({ snapshot }: { snapshot: SelfLearningSnapshot 
             매주 월 새벽 데이터 기반 자동 튜닝. cron 미가동·데이터 부족 시 no-op.
           </p>
         </div>
-        {/* 2026-05-31 P3 #2 — 사장님 매주 월 자동 발화 안 기다리고 즉시 검증
-            가속용 link. cron-trigger page 에 학습 cron 3종 등록되어 있음. */}
-        <a
-          href="/admin/cron-trigger"
-          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          title="cron-trigger page 에서 press-confidence-tune / popularity-weights-tune / self-learning-digest 수동 실행"
-        >
-          ▶ 수동 실행 ↗
-        </a>
+        {/* 2026-05-31 P3 #2/#4 — 사장님 매주 월 자동 발화 안 기다리고 즉시 검증
+            가속용 link. cron-trigger page 에 학습 cron 3종 등록되어 있음.
+            audit link 는 7주 누적 발화 이력 표 (P3 #4). */}
+        <div className="shrink-0 flex flex-col gap-1.5">
+          <a
+            href="/admin/cron-trigger"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 text-center"
+            title="press-confidence-tune / popularity-weights-tune / self-learning-digest 수동 실행"
+          >
+            ▶ 수동 실행 ↗
+          </a>
+          <a
+            href="/admin/self-learning-audit"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 text-center"
+            title="7주 누적 발화 이력 + 액션별 카운트"
+          >
+            📜 7주 audit ↗
+          </a>
+        </div>
       </header>
 
       <div className="space-y-4">

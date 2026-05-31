@@ -71,6 +71,10 @@ export const EVENTS = {
   PROFILE_ENHANCE_BANNER_SHOWN: "profile_enhance_banner_shown",
   PROFILE_ENHANCE_BANNER_CLICKED: "profile_enhance_banner_clicked",
   PROFILE_ENHANCE_BANNER_DISMISSED: "profile_enhance_banner_dismissed",
+  // 2026-05-31 P3 #7 — PushSubscribeBanner 효과 측정 (PWA 푸시 가속)
+  PUSH_BANNER_SHOWN: "push_banner_shown",
+  PUSH_BANNER_CLICKED: "push_banner_clicked",
+  PUSH_BANNER_DISMISSED: "push_banner_dismissed",
   // /quiz funnel — 익명 진단 후 가입 전환·공유 측정
   QUIZ_SIGNUP_CLICKED: "quiz_signup_clicked",   // 결과 → 가입 버튼 클릭 (prefill 저장)
   QUIZ_SHARE_CLICKED: "quiz_share_clicked",     // 결과 공유 버튼 클릭
