@@ -72,6 +72,7 @@ import { getSilentFailStats } from "@/lib/analytics/silent-fail-stats";
 import { SilentFailCard } from "./_components/silent-fail-card";
 import { getAdsensePlacementSummary } from "@/lib/analytics/adsense-placement-status";
 import { AdsensePlacementCard } from "./_components/adsense-placement-card";
+import { CronSecretRotationCard } from "./_components/cron-secret-rotation-card";
 import { getCronFailureStats } from "@/lib/analytics/cron-failure-stats";
 import { CronFailureCard } from "./_components/cron-failure-card";
 import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
@@ -344,6 +345,9 @@ export default async function AdminAutonomousPage() {
       </div>
       <div className="mb-4">
         <AdsensePlacementCard summary={getAdsensePlacementSummary()} />
+      </div>
+      <div className="mb-4">
+        <CronSecretRotationCard />
       </div>
 
       {/* 6. 외부 액션 + Phase 상태 */}
