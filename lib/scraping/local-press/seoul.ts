@@ -60,21 +60,38 @@ export function parseListPage(xml: string): PressNewsItem[] {
   return items;
 }
 
-// detail page 의 본문 — news.seoul.go.kr/gov/archives/N
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:view_content|board_view|entry-content|article-content|content-area)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|share)|<\/article|<\/section)/i;
+// 2026-06-02 fix — 본문은 JSON-LD(schema.org NewsArticle) 의 `articleBody` 에 plain text 로
+// 존재(WordPress). 구 BODY_CONTAINER_REGEX(view_content 등 div) 는 실제 페이지에 없는 class 라
+// 본문 0건(전 글 skip)이었음. articleBody 는 태그 없는 본문이라 구조변경에 강함.
+const LD_JSON_REGEX =
+  /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi;
 
 export function parseDetailBody(html: string): string | null {
-  // RSS description fallback 우선 (작은 buffer)
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!/[가-힣]/.test(text) || text.length < 50) return null;
-  return text.slice(0, 5000);
+  const blocks = html.matchAll(new RegExp(LD_JSON_REGEX.source, "gi"));
+  for (const b of blocks) {
+    let obj: unknown;
+    try {
+      obj = JSON.parse(b[1].trim());
+    } catch {
+      continue; // 깨진 JSON-LD 블록은 건너뜀
+    }
+    // 단일 객체 / 배열 / @graph 배열 모두 대응
+    const record = obj as Record<string, unknown>;
+    const nodes: unknown[] = Array.isArray(obj)
+      ? obj
+      : Array.isArray(record["@graph"])
+        ? (record["@graph"] as unknown[])
+        : [obj];
+    for (const node of nodes) {
+      const body = (node as Record<string, unknown>)?.articleBody;
+      if (typeof body === "string" && body.trim()) {
+        const text = decodeBasicEntities(body).replace(/\s+/g, " ").trim();
+        // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
+        if (/[가-힣]/.test(text)) return text.slice(0, 20000);
+      }
+    }
+  }
+  return null;
 }
 
 export const { scrapeAndInsert: scrapeSeoulAndInsert } = createPressCollector({

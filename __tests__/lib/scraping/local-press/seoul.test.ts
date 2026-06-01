@@ -102,69 +102,83 @@ describe("parseListPage (RSS)", () => {
   });
 });
 
-describe("parseDetailBody", () => {
-  it("view_content 컨테이너에서 한국어 본문을 뽑는다", () => {
-    const html = `
-      <div class="view_content">
-        <p>○ 학습역량과 학습태도 역시 서울런 활용도가 높은 집단에서 각각 84점, 86점으로 나타났다.</p>
-        <p>○ 또 예체능 진학 희망자를 위한 대학연계 특화 프로그램과 소통 전문가 강연을 운영한다.</p>
-      </div>
-      <div class="btn-set"><a>목록</a></div>
-    `;
-    const body = parseDetailBody(html);
-    expect(body).toContain("서울런");
-    expect(body).toContain("대학연계");
-  });
+// 2026-06-02 — 본문 소스를 JSON-LD(NewsArticle.articleBody)로 교체(구 div 컨테이너 0건 회귀).
+const ld = (obj: unknown) =>
+  `<script type="application/ld+json">${JSON.stringify(obj)}</script>`;
 
-  it("entry-content 컨테이너 도 본문으로 인식한다", () => {
-    const html = `
-      <div class="entry-content">
-        <p>서울특별시는 시민 안전을 위한 새로운 정책을 발표했다고 밝혔다. 이 정책은 누구나 신청할 수 있다.</p>
-      </div>
-      <section><a>다음 글</a></section>
-    `;
+describe("parseDetailBody (JSON-LD articleBody)", () => {
+  it("NewsArticle articleBody 에서 본문을 뽑는다", () => {
+    const html = ld({
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      headline: "서울시 정책",
+      articleBody:
+        "서울특별시는 시민 안전을 위한 새로운 정책을 발표했다고 밝혔다. 이 정책은 만 40세 이상 누구나 신청할 수 있으며 자세한 내용은 시청 누리집에서 확인할 수 있다.",
+    });
     const body = parseDetailBody(html);
     expect(body).toContain("서울특별시");
-    expect(body).toContain("정책을 발표");
+    expect(body).toContain("신청할 수 있");
+  });
+
+  it("@graph 배열 안 NewsArticle 도 인식한다", () => {
+    const html = ld({
+      "@context": "https://schema.org",
+      "@graph": [
+        { "@type": "WebSite" },
+        {
+          "@type": "NewsArticle",
+          articleBody:
+            "서울시는 청년 주거 지원 사업을 확대한다고 발표했다. 신청 자격과 절차는 자치구별로 안내되며 누구나 온라인으로 접수할 수 있다.",
+        },
+      ],
+    });
+    expect(parseDetailBody(html)).toContain("청년 주거");
   });
 
   it("HTML entity 를 풀어서 출력한다", () => {
-    const html = `
-      <div class="board_view">
-        <p>한국어 본문 &nbsp;&quot;테스트&quot; &amp;시작합니다 — 충분히 긴 본문으로 50자 임계를 통과해야 합니다.</p>
-      </div>
-      <section>끝</section>
-    `;
+    const html = ld({
+      "@type": "NewsArticle",
+      articleBody:
+        "한국어 본문 &quot;테스트&quot; &amp;시작합니다. 충분히 긴 본문으로 50자 임계를 통과하도록 작성한 서울시 보도자료 예시 문장입니다.",
+    });
     const body = parseDetailBody(html);
     expect(body).toContain('"테스트"');
     expect(body).toContain("&시작");
   });
 
-  it("본문 컨테이너가 없으면 null 을 돌려준다", () => {
+  it("깨진 JSON-LD 블록은 건너뛰고 유효 블록을 쓴다", () => {
     const html = `
-      <iframe id="pdf" src="/blank.php"></iframe>
-      <p>element-invisible 안내</p>
-    `;
+      <script type="application/ld+json">{ 깨진 JSON 입니다 }</script>
+      ${ld({
+        "@type": "NewsArticle",
+        articleBody:
+          "서울특별시가 폭염 대비 무더위쉼터를 확대 운영한다고 밝혔다. 자세한 위치는 누리집에서 확인할 수 있으며 누구나 이용 가능하다.",
+      })}`;
+    expect(parseDetailBody(html)).toContain("무더위쉼터");
+  });
+
+  it("JSON-LD 가 없으면 null", () => {
+    expect(
+      parseDetailBody(`<div class="view_content"><p>본문 한국어입니다</p></div>`),
+    ).toBeNull();
+  });
+
+  it("articleBody 없는 다른 schema 는 null", () => {
+    expect(parseDetailBody(ld({ "@type": "WebPage", name: "서울" }))).toBeNull();
+  });
+
+  it("articleBody 에 한국어가 없으면 null", () => {
+    const html = ld({
+      "@type": "NewsArticle",
+      articleBody: "EVENT 2026 ABCD efgh ijkl mnop qrst uvwx 12345 67890 schedule",
+    });
     expect(parseDetailBody(html)).toBeNull();
   });
 
-  it("컨테이너 안에 한국어가 한 글자도 없으면 null", () => {
-    const html = `
-      <div class="view_content">
-        <p>2026-05-14 EVENT_CODE_12345 ABCD efgh ijkl mnop qrst uvwx yz12 3456 7890</p>
-        <div class="btn">목록 버튼</div>
-    `;
-    expect(parseDetailBody(html)).toBeNull();
-  });
-
-  it("5,000자 초과 본문은 5,000자에서 잘린다", () => {
-    const longText = "한" + "가나다라마바사아자차카타파하".repeat(500); // 약 6,500자
-    const html = `
-      <div class="view_content"><p>${longText}</p></div>
-      <section>끝</section>
-    `;
-    const body = parseDetailBody(html);
+  it("20,000자 초과 본문은 20,000자에서 잘린다", () => {
+    const longText = "한" + "가나다라마바사아자차카타파하".repeat(2000);
+    const body = parseDetailBody(ld({ "@type": "NewsArticle", articleBody: longText }));
     expect(body).not.toBeNull();
-    expect(body!.length).toBeLessThanOrEqual(5000);
+    expect(body!.length).toBeLessThanOrEqual(20000);
   });
 });
