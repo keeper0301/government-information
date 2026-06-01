@@ -87,9 +87,11 @@ const ALERT_REDIRECT_RE =
 // 안전 buffer 로 1024 (1KB). 작은 fixture 사이트 알려진 사례 없음.
 const MIN_RESPONSE_SIZE = 1024;
 
-export async function fetchPage(url: string): Promise<string> {
-  // 2026-05-26: 15s → 25s. 인천 서구 등 일부 site 가 list page 113K+ 응답 느림.
-  // Vercel function maxDuration 360s (review fix). 시·군 48개 ÷ BATCH_SIZE=4 = 12 batches × 평균 ~30s = ~360s margin.
+// 2026-06-01 — Vercel function 일시 timeout 사고 자가 복구를 위한 1회 retry.
+// 동작구 6/1 사례: local fetch 2.2s 정상인데 Vercel cron 만 timeout.
+// 첫 시도 실패가 timeout (TimeoutError) 일 때만 retry — fetch failed (HTTP error)
+// 나 alert/size 사고는 retry 무의미 (사이트 구조 변경 신호) → 즉시 throw.
+async function fetchOnce(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
     signal: AbortSignal.timeout(25000),
@@ -107,6 +109,33 @@ export async function fetchPage(url: string): Promise<string> {
     throw new Error(`alert/redirect 응답 감지 (referer/mid 가드 의심): ${url}`);
   }
   return text;
+}
+
+function isTransientTimeout(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message ?? "";
+  // AbortSignal.timeout 의 TimeoutError 또는 일부 환경의 메시지 변형
+  return (
+    err.name === "TimeoutError" ||
+    err.name === "AbortError" ||
+    /timeout|timed out|aborted due to timeout/i.test(msg)
+  );
+}
+
+export async function fetchPage(url: string): Promise<string> {
+  // 2026-05-26: 15s → 25s. 인천 서구 등 일부 site 가 list page 113K+ 응답 느림.
+  // Vercel function maxDuration 360s (review fix). 시·군 48개 ÷ BATCH_SIZE=4 =
+  // 12 batches × 평균 ~30s = ~360s margin. retry 1회 (1초 백오프) 추가해도
+  // 최악 50s × 12 = 600s 위험은 site 별 timeout 동시 발생 가정 — 실측 1~2 site 만
+  // 일시 timeout 이라 안전.
+  try {
+    return await fetchOnce(url);
+  } catch (err) {
+    if (!isTransientTimeout(err)) throw err;
+    // 1초 백오프 후 1회 retry (Vercel function 일시 사고 자가 복구)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return await fetchOnce(url);
+  }
 }
 
 // 2026-05-25 — PC runner Phase 2 용 export. ASN 차단 site (서울·부산·광산·강원·제주·평택) 의
