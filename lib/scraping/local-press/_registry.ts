@@ -90,6 +90,8 @@ import { scrapeEunpyeongAndInsert } from "./eunpyeong";
 import { scrapeSeodaemunAndInsert } from "./seodaemun";
 // 2026-06-01 — 금천구 보도자료 (SI 표준, bbsNo=8. 메인 메뉴 150151 은 영상 갤러리라 회피).
 import { scrapeGeumcheonAndInsert } from "./geumcheon";
+// 2026-06-01 — 강서구 보도자료 (eDotXpress CMS, /gs040201/{id} 정적, view-content 본문).
+import { scrapeGangseoAndInsert } from "./gangseo";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -171,7 +173,9 @@ export type CityKey =
   // 2026-06-01 서대문구 (EUC-KR 구정뉴스 goView GET)
   | "seodaemun"
   // 2026-06-01 금천구 (SI 보도자료 bbsNo=8)
-  | "geumcheon";
+  | "geumcheon"
+  // 2026-06-01 강서구 (eDotXpress /gs040201)
+  | "gangseo";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -791,6 +795,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "금천구청",
     siteUrl: "https://www.geumcheon.go.kr/portal/selectBbsNttList.do?bbsNo=8&key=297",
     fn: scrapeGeumcheonAndInsert,
+  },
+  // 2026-06-01 — 강서구 보도자료. eDotXpress CMS (/gs040201/{id} 정적, view-content 본문).
+  {
+    key: "gangseo",
+    city: "강서구",
+    ministry: "강서구청",
+    siteUrl: "https://www.gangseo.seoul.kr/gs040201",
+    fn: scrapeGangseoAndInsert,
   },
 ];
 
