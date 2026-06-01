@@ -21,10 +21,17 @@ export const dynamic = "force-dynamic";
 // Node runtime 의 preferredRegion export 는 Edge runtime 만 지원 → vercel.json 으로 우회.
 // 미국 default region 의 한국 정부 site IP geo 차단 (광역 9건 fetch failed) 해소.
 // 시·군 1개 = list 1 + detail 10 fetch × 25s = 최대 275s. 5/26 review fix:
-// 48 시·군 / BATCH_SIZE=4 = 12 batches. 한 batch 최대 275s + 평균 ~30s ×12 = 360s 안 마진.
-// 5/26 timeout 15s → 25s (인천 서구 등 응답 느린 site) 와 짝맞춤 + maxDuration 60s 추가.
-export const maxDuration = 360;
-const BATCH_SIZE = 4;
+// 시·군 1개 = list 1 + detail 10 fetch × 25s = 최대 275s.
+// chunk 소요시간 = chunk 내 "가장 느린 도시 1개"(Promise.all 병렬). 따라서 batch 수(chunk 개수)가
+// 총시간을 좌우 — chunk 수↓ = 느린도시 가산 횟수↓ = 총시간 단축.
+// 2026-06-02 — registry 79 도시(서울 자치구 13곳 6/1 추가)로 늘며 BATCH 4(=20 chunk)면
+//   registry 끝쪽 서울 자치구가 timeout 으로 실행조차 못 될 위험. audit: 매일 완주 55~64에 그침
+//   (registry 79인데). 서울 13곳 DB 7일=0 = 끝쪽 미도달 정황.
+//   대응: ① BATCH 6(=14 chunk)으로 가산 횟수↓ ② maxDuration 360→800(Vercel Pro fluid 한도) 안전망.
+//   서울 13곳이 끝 chunk 에 몰린 구조라 효과는 다음 09시 audit(cities 79 도달)으로 실측 확정 필요.
+//   (도시별 다른 사이트라 동시 6 fetch 부하 분산 OK. icn1-fetch proxy 미경유.)
+export const maxDuration = 800;
+const BATCH_SIZE = 6;
 
 type CityResult = {
   city: string;
