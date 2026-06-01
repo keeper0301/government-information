@@ -105,6 +105,8 @@ import { scrapeSeochoAndInsert } from "./seocho";
 import { scrapeJungguSeoulAndInsert } from "./junggu_seoul";
 // 2026-06-01 — 성북구 보도자료 (SI 표준 bbsNo=46. 메인 빈 shell → /www/index.do).
 import { scrapeSeongbukAndInsert } from "./seongbuk";
+// 2026-06-01 — 강동구 보도자료 (newportal CMS, /web/newportal/press/{id} 정적).
+import { scrapeGangdongAndInsert } from "./gangdong";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -199,7 +201,9 @@ export type CityKey =
   | "seocho"
   | "junggu_seoul"
   // 2026-06-01 성북구 (SI selectBbsNttList bbsNo=46)
-  | "seongbuk";
+  | "seongbuk"
+  // 2026-06-01 강동구 (newportal /web/newportal/press)
+  | "gangdong";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -884,6 +888,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "성북구청",
     siteUrl: "https://www.sb.go.kr/www/selectBbsNttList.do?bbsNo=46&key=6356",
     fn: scrapeSeongbukAndInsert,
+  },
+  // 2026-06-01 — 강동구 보도자료. newportal CMS (/web/newportal/press/{id} 정적,
+  // input-table colspan=4 본문). 메인이 meta refresh 로 /newportal/ 이동.
+  {
+    key: "gangdong",
+    city: "강동구",
+    ministry: "강동구청",
+    siteUrl: "https://www.gangdong.go.kr/web/newportal/press/list",
+    fn: scrapeGangdongAndInsert,
   },
 ];
 
