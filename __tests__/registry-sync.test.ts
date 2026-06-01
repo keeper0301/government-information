@@ -21,8 +21,12 @@ describe("Playwright proxy 도시 city key 3-source 동기화", () => {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // 2) route.ts 의 PLAYWRIGHT_CITY_REGISTRY 키 추출
-  const routePath = join(ROOT, "app/api/admin/import-press-batch/route.ts");
+  // 2) PLAYWRIGHT_CITY_REGISTRY 키 추출 (단일 출처 = _playwright-city-registry.ts,
+  //    route.ts·가동 카드가 공용 import).
+  const routePath = join(
+    ROOT,
+    "lib/scraping/local-press/_playwright-city-registry.ts",
+  );
   const routeSrc = readFileSync(routePath, "utf8");
   // registry 객체 시작 ~ } ; 까지 캡처
   const registryBlock = routeSrc.match(

@@ -11,12 +11,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
-
-const PLAYWRIGHT_PROXY_CITIES = [
-  "nowon", "dongnae", "busanjin", "geumjeong", "bsbukgu",
-  "sasang", "sasang_news", "gimpo", "seongnam", "cheonan",
-  "ansan", "changwon", "yeongdo",
-] as const;
+import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
 
 async function fetchProxyHealth(): Promise<{
   totalSources: number;
@@ -28,9 +23,12 @@ async function fetchProxyHealth(): Promise<{
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // 13 도시 의 source_code 가 'local-press-{key}' 패턴.
-  // 7d 안 row 가 있으면 active.
-  const sourceCodes = PLAYWRIGHT_PROXY_CITIES.map((k) => `local-press-${k}`);
+  // sourceCode 는 registry 단일 출처에서 직접 가져옴 (이전 `local-press-${key}` 추정은
+  // sasang_news → local-press-sasang_news(밑줄) 로 실DB(하이픈) 와 어긋나 항상 미가동
+  // 오표시됐음). 7d 안 row 가 있으면 active.
+  const sourceCodes = Object.values(PLAYWRIGHT_CITY_REGISTRY).map(
+    (c) => c.sourceCode,
+  );
   const { data } = await admin
     .from("news_posts")
     .select("source_code")

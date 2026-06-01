@@ -24,6 +24,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 import { logAdminAction } from "@/lib/admin-actions";
+import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
 
 // API key 비교는 길이 분기 + timingSafeEqual 로 — 단순 `!==` 는 early-return 으로
 // 길이/prefix 추론 timing attack 노출.
@@ -43,88 +44,8 @@ export const runtime = "nodejs";
 // (cross-module import 가 .mjs/.ts 경계라 어색해 로컬 상수 유지. 변경 시 양쪽 같이.)
 const BODY_MIN_LEN = 250;
 
-// Playwright runner 의 city key → news_posts insert 메타. 활성 12 도시
-// (KEEPIOO_RUNNER_CITIES 기본값과 동기화). 도시 추가 시 여기 + workflow yml 둘 다 갱신.
-// ※ 부산: 광역(busan)은 정적 collector (lib/scraping/local-press/busan.ts) 가 담당하고
-//   자치구(dongnae·busanjin·geumjeong·bsbukgu·sasang)는 여기 playwright 경로로 수집.
-//   두 시스템 공존이지만 source_code 가 분리되어 서로 영향 없음.
-const PLAYWRIGHT_CITY_REGISTRY: Record<
-  string,
-  { ministry: string; sourceOutlet: string; sourceCode: string }
-> = {
-  changwon: {
-    ministry: "창원특례시청",
-    sourceOutlet: "창원특례시청",
-    sourceCode: "local-press-changwon",
-  },
-  seongnam: {
-    ministry: "성남시청",
-    sourceOutlet: "성남시청",
-    sourceCode: "local-press-seongnam",
-  },
-  ansan: {
-    ministry: "안산시청",
-    sourceOutlet: "안산시청",
-    sourceCode: "local-press-ansan",
-  },
-  cheonan: {
-    ministry: "천안시청",
-    sourceOutlet: "천안시청",
-    sourceCode: "local-press-cheonan",
-  },
-  // 2026-05-29 — 노원구: 정적 BD_select 본문 elusive → Playwright PC 러너로 이관.
-  nowon: {
-    ministry: "노원구청",
-    sourceOutlet: "노원구청",
-    sourceCode: "local-press-nowon",
-  },
-  // 2026-05-29 — 동래구 구정소식(BBS_0000012). 정적은 BBS_0000001(사전정보공개) 오등록이라 0건.
-  dongnae: {
-    ministry: "동래구청",
-    sourceOutlet: "동래구청",
-    sourceCode: "local-press-dongnae",
-  },
-  // 2026-05-29 — 부산 SI CMS 자치구 3종 (부산진·금정·북구). Playwright 프록시 경로 이관.
-  busanjin: {
-    ministry: "부산진구청",
-    sourceOutlet: "부산진구청",
-    sourceCode: "local-press-busanjin",
-  },
-  geumjeong: {
-    ministry: "금정구청",
-    sourceOutlet: "금정구청",
-    sourceCode: "local-press-geumjeong",
-  },
-  bsbukgu: {
-    ministry: "부산 북구청",
-    sourceOutlet: "부산 북구청",
-    sourceCode: "local-press-bsbukgu",
-  },
-  // 2026-05-29 — 사상구: 구정소식 게시판 부재. 알림사항(sasang) + 소식지(sasang_news) 2종.
-  sasang: {
-    ministry: "사상구청",
-    sourceOutlet: "사상구청",
-    sourceCode: "local-press-sasang",
-  },
-  sasang_news: {
-    ministry: "사상구청",
-    sourceOutlet: "사상구청",
-    sourceCode: "local-press-sasang-news",
-  },
-  // 2026-05-29 — 김포시 보도자료(17,781건+). 목록 위젯 혼재·본문 무class td 라 프록시 경로.
-  gimpo: {
-    ministry: "김포시청",
-    sourceOutlet: "김포시청",
-    sourceCode: "local-press-gimpo",
-  },
-  // 2026-05-31 — 영도구. SPA (.web path 가 JS 렌더). Playwright 경로로 수집.
-  yeongdo: {
-    ministry: "영도구청",
-    sourceOutlet: "영도구청",
-    sourceCode: "local-press-yeongdo",
-  },
-};
-
+// Playwright runner 의 city key → news_posts insert 메타. registry 정의는
+// lib/scraping/local-press/_playwright-city-registry.ts 단일 출처 (가동 카드와 공용).
 type BatchItem = {
   title?: unknown;
   sourceUrl?: unknown;
