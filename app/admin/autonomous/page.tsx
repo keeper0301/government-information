@@ -74,6 +74,7 @@ import { getAdsensePlacementSummary } from "@/lib/analytics/adsense-placement-st
 import { AdsensePlacementCard } from "./_components/adsense-placement-card";
 import { CronSecretRotationCard } from "./_components/cron-secret-rotation-card";
 import { PushTrackSecretRotationCard } from "./_components/push-track-secret-rotation-card";
+import { PlaywrightProxyCard } from "./_components/playwright-proxy-card";
 import { getCronFailureStats } from "@/lib/analytics/cron-failure-stats";
 import { CronFailureCard } from "./_components/cron-failure-card";
 import { getPressIngestTierStats } from "@/lib/analytics/press-ingest-tier-stats";
@@ -346,6 +347,9 @@ export default async function AdminAutonomousPage() {
       </div>
       <div className="mb-4">
         <AdsensePlacementCard summary={getAdsensePlacementSummary()} />
+      </div>
+      <div className="mb-4">
+        <PlaywrightProxyCard />
       </div>
 
       {/* 5.5 보안 — secret 회전 추적 (2026-05-31 P3 #13 정리: 데이터 수집과 분리).
