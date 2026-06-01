@@ -13,10 +13,40 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
+import { Agent } from "undici";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+// 2026-06-01 — 일부 정부 사이트(사상구 등)가 SSL 인증서 체인 불완전(intermediate 누락)
+// 이라 server-side fetch 가 UNABLE_TO_VERIFY_LEAF_SIGNATURE 로 실패. 브라우저는 AIA 로
+// 누락 인증서를 자동 보완하나 node(undici) fetch 는 실패 → 사상 collector proxy 0건 사고.
+// 정상 검증을 먼저 시도하고, "체인 검증" 오류일 때만 검증 완화로 1회 재시도한다.
+// allowlist(.go.kr 등 정부 도메인)로 이미 제한 + 본문 텍스트만 수집이라 MITM 위험 최소.
+// 정상 인증서 사이트는 검증을 그대로 유지(완화 fallback 진입 안 함).
+const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } });
+const TLS_CHAIN_ERROR_CODES = new Set([
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "SELF_SIGNED_CERT_IN_CHAIN",
+]);
+
+async function govFetch(target: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(target, init);
+  } catch (e) {
+    const code = (e as { cause?: { code?: string } }).cause?.code;
+    if (code && TLS_CHAIN_ERROR_CODES.has(code)) {
+      // 체인 불완전 정부 사이트 — TLS 검증 완화 후 1회 재시도.
+      return await fetch(target, {
+        ...init,
+        dispatcher: insecureAgent,
+      } as RequestInit & { dispatcher: unknown });
+    }
+    throw e;
+  }
+}
 
 // 정부/지자체 도메인만 허용. 우리가 수집하는 호스트 패턴.
 const ALLOWED_SUFFIX = [
@@ -73,7 +103,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const res = await fetch(target, {
+    const res = await govFetch(target, {
       method: body.method ?? "GET",
       headers: reqHeaders,
       body: body.postData ?? undefined,
