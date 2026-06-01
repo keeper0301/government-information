@@ -19,22 +19,21 @@ const BASE_URL = "https://www.gwangsan.go.kr";
 const LIST_URL =
   "https://www.gwangsan.go.kr/boardList.do?boardId=REPORT_NEW&pageId=www16";
 
-// 광주광역시 패턴 — subject div 또는 title attr
+// 2026-06-02 fix — 사이트 구조 변경(광주광역시와 분기). list 0건 사고 복구.
+//   구: <div class="subject"><a ...seq=N title="...">  (5/28 부터 깨짐)
+//   신: <td class="subject"><a href="...boardId=REPORT_NEW&seq=N" data-view>제목</a></td>
+//       (제목이 title 속성 → anchor 텍스트, div → td, 날짜는 같은 row 의 plain <td>)
 const LIST_ITEM_REGEX =
-  /<div\s+class="subject">[\s\S]*?<a\s+href="[^"]*&(?:amp;)?seq=(\d+)[^"]*"[^>]*title="([^"]+)"/g;
+  /<a[^>]*href="[^"]*boardId=REPORT_NEW[^"]*seq=(\d+)[^"]*"[^>]*data-view[^>]*>([\s\S]{0,150}?)<\/a>/g;
 
-const DATE_REGEX = /class="date">[\s\S]*?(\d{4}-\d{2}-\d{2})</g;
+const DATE_REGEX = /(\d{4})-(\d{2})-(\d{2})/;
 
-// 광주 5/22 fix 패턴 — board_view_body + add_file 끝점
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="board_view_body[^"]*"[^>]*>([\s\S]*?)<div\s+class="add_file"/i;
-const BODY_CONTAINER_REGEX_LEGACY =
-  /<div\s+class="board_view_content[^"]*"[^>]*>([\s\S]*?)<\/div>/i;
+// 2026-06-02 fix — 본문 컨테이너도 변경: board_view_body → boardContents (div 깊이 추적).
+const BODY_OPEN_REGEX = /<div[^>]*\bclass="boardContents[^"]*"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
   const seen = new Set<string>();
-  const dates: string[] = [];
 
   let m: RegExpExecArray | null;
   const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
@@ -42,41 +41,58 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[1];
     if (seen.has(seq)) continue;
     seen.add(seq);
-    const title = decodeBasicEntities(m[2]).trim();
+    const title = decodeBasicEntities(
+      m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
+    ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
+    // 같은 row 의 작성일 td (anchor 뒤 부서 td 다음). 500자 안 첫 YYYY-MM-DD.
+    const slice = html.slice(m.index, m.index + 500);
+    const d = DATE_REGEX.exec(slice);
     items.push({
       seq,
       title,
-      publishedDate: null,
+      publishedDate: d ? `${d[1]}-${d[2]}-${d[3]}` : null,
       sourceUrl: `${BASE_URL}/boardView.do?boardId=REPORT_NEW&pageId=www16&seq=${seq}`,
     });
   }
-
-  const dateRe = new RegExp(DATE_REGEX.source, "g");
-  while ((m = dateRe.exec(html)) !== null) {
-    dates.push(m[1]);
-  }
-
-  return items.map((it, i) => ({
-    seq: it.seq,
-    title: it.title,
-    publishedDate: dates[i] ?? null,
-    sourceUrl: it.sourceUrl,
-  }));
+  return items;
 }
 
+// 본문 <div class="boardContents ..."> — div 깊이 추적(중첩 div 안전, 닫는 div 없으면 null).
 export function parseDetailBody(html: string): string | null {
-  const m =
-    BODY_CONTAINER_REGEX.exec(html) ?? BODY_CONTAINER_REGEX_LEGACY.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
+  const open = BODY_OPEN_REGEX.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let mm: RegExpExecArray | null;
+  while ((mm = tagRe.exec(html)) !== null) {
+    if (mm[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, mm.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, " "),
+  )
     .replace(/\s+/g, " ")
     .trim();
   if (!/[가-힣]/.test(text) || text.length < 50) return null;
-  return text.slice(0, 5000);
+  return text.slice(0, 20000);
 }
 
 export const { scrapeAndInsert: scrapeGwangsanAndInsert } = createPressCollector(
