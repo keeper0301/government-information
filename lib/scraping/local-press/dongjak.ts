@@ -25,8 +25,11 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /<span\s+class="date">\s*(\d{4}-\d{2}-\d{2})/;
 
+// 2026-06-01 fix — 동작은 광진과 달리 id="dbData" 없이 class="dbData" 만 있음.
+// strict regex (id+class 둘 다 요구) 가 매칭 실패 → 5/31 fetched 10/inserted 0.
+// id 가드 제거. class 만 매칭 — 광진은 id+class 모두 있어 그대로 별도 collector 유지.
 const BODY_CONTAINER_REGEX =
-  /<div[^>]*id="dbData"[^>]*class="dbData"[^>]*>([\s\S]*?)<\/div>\s*(?:<\/div>|<div\s+class="btnSet")/i;
+  /<div[^>]*class="dbData"[^>]*>([\s\S]*?)<\/div>\s*(?:<\/div>|<div\s+class="btnSet")/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
