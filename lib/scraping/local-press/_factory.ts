@@ -70,7 +70,8 @@ export type ScrapeResult = {
 //
 // 일관성 (5/17): helper 사용 collector 11종 모두 통일 — pyeongtaek·pohang·iksan·daegu
 // (5/17 신규) + goyang·yongin·cheongju·hwaseong·jeonju·gimhae·namyangju·sejong (batch).
-// helper 비사용 8 collector (suncheon·gwangju·seoul·suwon·busan·incheon·daejeon·ulsan)
+// helper 비사용 7 collector (suncheon·gwangju·seoul·busan·incheon·daejeon·ulsan)
+// (수원은 2026-06-02 Playwright 경로로 이관 → cities.mjs scrapeSuwon)
 // 는 자체 decode 함수 없음 — entity raw 노출 가능성 있으나 사이트 baseline 영향 작아
 // 별도 spec 미룸.
 export function decodeBasicEntities(s: string): string {

@@ -4,8 +4,8 @@ name: Local Press Scraping (Playwright + icn1 프록시)
 # 정부 사이트가 해외(GitHub Actions 미국) IP 를 차단하므로, 정부 도메인 요청을 Vercel icn1
 # (한국 IP) 프록시 /api/internal/icn1-fetch 로 우회시킨다 (KEEPIOO_USE_PROXY=1).
 #
-# 검증된 도시만 KEEPIOO_RUNNER_CITIES 로 점진 활성화 (현재 12: 노원·동래·부산진·금정·
-# 사상·사상소식지·김포·성남·천안·안산·창원·영도). 도시 추가 시 ① 프록시 allowlist(icn1-fetch) ② factory
+# 검증된 도시만 KEEPIOO_RUNNER_CITIES 로 점진 활성화 (현재 13: 노원·동래·부산진·금정·
+# 사상·사상소식지·김포·성남·천안·안산·창원·영도·수원). 도시 추가 시 ① 프록시 allowlist(icn1-fetch) ② factory
 # selector 검증 ③ 이 목록에 key 추가.
 # (부산 북구는 2026-06-01 eminwon 으로 재이관 → 정적 _registry.ts bsbukgu-eminwon, 여기서 제외.)
 #
@@ -47,5 +47,5 @@ jobs:
           KEEPIOO_API_KEY: ${{ secrets.KEEPIOO_API_KEY }}
           KEEPIOO_USE_PROXY: "1"
           # dispatch 시 입력값 우선, 스케줄 실행 시 기본값(검증 완료 도시)
-          KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon,dongnae,busanjin,geumjeong,sasang,sasang_news,gimpo,seongnam,cheonan,ansan,changwon,yeongdo' }}
+          KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon,dongnae,busanjin,geumjeong,sasang,sasang_news,gimpo,seongnam,cheonan,ansan,changwon,yeongdo,suwon' }}
         run: node runner.mjs

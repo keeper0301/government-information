@@ -12,7 +12,7 @@
 //   (부산 북구는 2026-06-01 eminwon 으로 재이관 → bsbukgu-eminwon.ts, 여기서 제외.)
 //   두 시스템 공존이지만 source_code 가 분리되어 서로 영향 없음.
 // ※ 도시 추가 시: 여기 + workflow yml KEEPIOO_RUNNER_CITIES + runner.mjs ALL_COLLECTORS
-//   3곳 동기화 (registry-sync.test.ts 가 키 집합 일치 검증). 현재 12 도시.
+//   3곳 동기화 (registry-sync.test.ts 가 키 집합 일치 검증). 현재 13 도시.
 // ============================================================
 
 export const PLAYWRIGHT_CITY_REGISTRY: Record<
@@ -84,5 +84,12 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     ministry: "영도구청",
     sourceOutlet: "영도구청",
     sourceCode: "local-press-yeongdo",
+  },
+  // 2026-06-02 — 수원시. 정적 BD_board 본문이 JS 렌더(.p-table__content)라 정적 parse 가
+  //   메타/제목만(68자) 잡아 누적 thin → factory 250 으로 수집 0. Playwright 경로로 이관.
+  suwon: {
+    ministry: "수원특례시청",
+    sourceOutlet: "수원특례시청",
+    sourceCode: "local-press-suwon",
   },
 };

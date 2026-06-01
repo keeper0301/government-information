@@ -151,6 +151,21 @@ export const scrapeYeongdo = makeScraper({
   titleSelectors: ["strong.t1"],
 });
 
+// 2026-06-02 — 수원시. 정적 collector(BD_board)는 본문이 JS 렌더(.p-table__content)라
+// parseDetailBody 가 메타/제목만(68자) 잡아 누적 thin 이었음 → Playwright 경로 이관.
+// list table tbody tr + 제목 onclick jsView('1043','17자리id') → BD_board.view.do?seq=id GET.
+// 본문 .p-table__content (라이브 렌더 검증: detail 컨테이너 783자, factory 제목 결합 후 928~1212자).
+export const scrapeSuwon = makeScraper({
+  cityName: "수원시",
+  listUrl: "https://www.suwon.go.kr/web/board/BD_board.list.do?bbsCd=1043",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["table tbody tr"],
+  onclickIdRe: "jsView\\('1043',\\s*'(\\d+)'",
+  detailPath: "BD_board.view.do?bbsCd=1043&seq={id}",
+  bodySelectors: [".p-table__content"],
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -167,10 +182,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     sasang_news: scrapeSasangNews,
     gimpo: scrapeGimpo,
     yeongdo: scrapeYeongdo,
+    suwon: scrapeSuwon,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

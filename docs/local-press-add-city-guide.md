@@ -154,7 +154,8 @@ autonomous hub LocalPressCard 에서 신규 시·군 카드 색깔 확인:
 
 ## 알려진 일관성 부채 (5/17 spec)
 
-helper 비사용 8 collector (suncheon·gwangju·seoul·suwon·busan·incheon·daejeon·ulsan)
+helper 비사용 7 collector (suncheon·gwangju·seoul·busan·incheon·daejeon·ulsan)
+(수원은 2026-06-02 Playwright 경로 이관 → cities.mjs scrapeSuwon)
 는 자체 inline `.replace(/&xxx;/g, ...)` 5 entity 만 처리. helper (10 entity) 가
 처리하는 `&lsquo;/&rsquo;` `&ldquo;/&rdquo;` `&hellip;` `&middot;` `&#NNN;` 은
 raw 노출 가능. baseline 영향 작아 일괄 batch 미룸 (회귀 위험 vs 가치 보수적 판단).

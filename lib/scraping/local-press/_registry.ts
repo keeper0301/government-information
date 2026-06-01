@@ -12,7 +12,6 @@ import type { ScrapeResult } from "./_factory";
 import { scrapeSuncheonAndInsert } from "./suncheon";
 import { scrapeGwangjuAndInsert } from "./gwangju";
 import { scrapeSeoulAndInsert } from "./seoul";
-import { scrapeSuwonAndInsert } from "./suwon";
 import { scrapeBusanAndInsert } from "./busan";
 import { scrapeIncheonAndInsert } from "./incheon";
 import { scrapeDaejeonAndInsert } from "./daejeon";
@@ -116,7 +115,6 @@ export type CityKey =
   | "suncheon"
   | "gwangju"
   | "seoul"
-  | "suwon"
   | "busan"
   | "incheon"
   | "daejeon"
@@ -246,14 +244,6 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministryAliases: ["서울특별시"],
     siteUrl: "https://opengov.seoul.go.kr/press/list",
     fn: scrapeSeoulAndInsert,
-  },
-  {
-    key: "suwon",
-    city: "수원시",
-    ministry: "수원특례시청",
-    siteUrl:
-      "https://www.suwon.go.kr/web/news/notice/notice01.jsp?menuCd=1043",
-    fn: scrapeSuwonAndInsert,
   },
   {
     key: "busan",
