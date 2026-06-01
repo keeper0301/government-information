@@ -82,6 +82,10 @@ import { scrapeDobongAndInsert } from "./dobong";
 // 2026-05-31 — 서울 18 자치구 확장 패턴 5 (eGovFrame site/ex/bbs JS onclick): 관악·양천
 import { scrapeGwanakAndInsert } from "./gwanak";
 import { scrapeYangcheonAndInsert } from "./yangcheon";
+// 2026-06-01 — 서울 자치구 확장 (SI selectBbsNttList — 송파·군포 동일 CMS): 성동·영등포·은평
+import { scrapeSeongdongAndInsert } from "./seongdong";
+import { scrapeYeongdeungpoAndInsert } from "./yeongdeungpo";
+import { scrapeEunpyeongAndInsert } from "./eunpyeong";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -155,7 +159,11 @@ export type CityKey =
   | "dobong"
   // 2026-05-31 서울 18 자치구 확장 (패턴 5: eGovFrame site/ex/bbs JS onclick)
   | "gwanak"
-  | "yangcheon";
+  | "yangcheon"
+  // 2026-06-01 서울 자치구 확장 (SI selectBbsNttList)
+  | "seongdong"
+  | "yeongdeungpo"
+  | "eunpyeong";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -736,6 +744,28 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.yangcheon.go.kr/site/yangcheon/ex/bbs/List.do?cbIdx=290",
     fn: scrapeYangcheonAndInsert,
+  },
+  // 2026-06-01 — 서울 자치구 확장 (SI 표준 selectBbsNttList, 송파·군포 동일 CMS).
+  {
+    key: "seongdong",
+    city: "성동구",
+    ministry: "성동구청",
+    siteUrl: "https://www.sd.go.kr/main/selectBbsNttList.do?bbsNo=188&key=1477",
+    fn: scrapeSeongdongAndInsert,
+  },
+  {
+    key: "yeongdeungpo",
+    city: "영등포구",
+    ministry: "영등포구청",
+    siteUrl: "https://www.ydp.go.kr/www/selectBbsNttList.do?bbsNo=45&key=2868",
+    fn: scrapeYeongdeungpoAndInsert,
+  },
+  {
+    key: "eunpyeong",
+    city: "은평구",
+    ministry: "은평구청",
+    siteUrl: "https://www.ep.go.kr/www/selectBbsNttList.do?bbsNo=48&key=762",
+    fn: scrapeEunpyeongAndInsert,
   },
 ];
 
