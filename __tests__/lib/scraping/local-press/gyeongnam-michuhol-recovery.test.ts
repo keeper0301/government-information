@@ -25,7 +25,7 @@ describe("경남 parseDetailBody (conText div-depth)", () => {
     expect(body).toContain("재난 대응 훈련"); // 이미지 div 앞
     expect(body).toContain("안전정책과로"); // 뒤 (조기 잘림 X)
   });
-  it("conText 없음/250 미만 → null", () => {
+  it("conText 없음/50자 미만 → null", () => {
     expect(bodyGyeongnam(`<div class="other">${LONG}</div>`)).toBeNull();
     expect(bodyGyeongnam(`<div class="conText"><p>짧은 글</p></div>`)).toBeNull();
   });
@@ -45,7 +45,7 @@ describe("미추홀 parseDetailBody (content editor_content div-depth)", () => {
     expect(body).toContain("홍보실로");
     expect(body).not.toContain("편집 주석"); // 주석 제거
   });
-  it("content editor_content 없음/250 미만 → null", () => {
+  it("content editor_content 없음/50자 미만 → null", () => {
     expect(bodyMichuhol(`<div class="other">${LONG}</div>`)).toBeNull();
     expect(bodyMichuhol(`<div class="content editor_content"><p>짧음</p></div>`)).toBeNull();
   });
