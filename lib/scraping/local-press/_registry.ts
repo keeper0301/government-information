@@ -60,6 +60,9 @@ import { scrapeGwangyangAndInsert } from "./gwangyang";
 // (BBS_0000001 정적, 0건) 폐기 후 gijang-eminwon.ts(POST+parser) 로 교체.
 // 기존 ts 파일은 다음 cleanup 세션에 삭제.
 import { scrapeGijangEminwonAndInsert } from "./gijang-eminwon";
+// 2026-06-01 — 부산 북구도 eminwon(기장과 동일 OfrAction.do POST). 기존 proxy 경로
+// (BBS_0000012=공동주택 오등록, 0건) 폐기 후 eminwon 으로 재이관 (dead-path swap).
+import { scrapeBsbukguEminwonAndInsert } from "./bsbukgu-eminwon";
 import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
@@ -153,6 +156,7 @@ export type CityKey =
   | "gyeyang_incheon"
   | "michuhol_incheon"
   | "gijang"
+  | "bsbukgu"
   | "ongjin"
   | "junggu_incheon"
   | "ganghwa"
@@ -651,8 +655,9 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.michuhol.go.kr/main/board/list.do?board_code=news_item",
     fn: scrapeMichuholAndInsert,
   },
-  // 2026-05-29 — 부산진·금정·동래·부산북구는 Playwright 프록시 경로(local-press-proxy.yml)로 이관.
+  // 2026-05-29 — 부산진·금정·동래는 Playwright 프록시 경로(local-press-proxy.yml)로 수집.
   // 2026-05-30 — 기장군 eminwon 별도 시스템 OfrAction.do POST 경로로 이관 완료.
+  // 2026-06-01 — 부산 북구도 eminwon 으로 재이관(proxy 공동주택 오등록 폐기).
   // list/detail 모두 POST + form-urlencoded. chromium 불필요(fetch + regex 충분).
   // 정찰 결과는 메모리 project_headless_runner_2026_05_29 참조.
   {
@@ -661,6 +666,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "기장군청",
     siteUrl: "https://eminwon.gijang.go.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp",
     fn: scrapeGijangEminwonAndInsert,
+  },
+  {
+    key: "bsbukgu",
+    city: "부산 북구",
+    ministry: "부산 북구청",
+    siteUrl: "https://eminwon.bsbukgu.go.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp",
+    fn: scrapeBsbukguEminwonAndInsert,
   },
   // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
   {

@@ -1,8 +1,8 @@
 // ============================================================
-// autonomous hub — Playwright proxy 13 도시 가동 카드 (2026-06-01)
+// autonomous hub — Playwright proxy 12 도시 가동 카드 (2026-06-01)
 // ============================================================
-// GitHub Actions local-press-proxy.yml workflow 가 13 도시 (창원·성남·안산·천안·
-// 노원·동래·부산진·금정·부산북구·사상·사상소식지·김포·영도) JS 렌더 site 를
+// GitHub Actions local-press-proxy.yml workflow 가 12 도시 (창원·성남·안산·천안·
+// 노원·동래·부산진·금정·사상·사상소식지·김포·영도) JS 렌더 site 를
 // 풀 chromium 으로 수집. 사장님 GitHub secrets 미등록 시 workflow 미발화 →
 // audit row 7d 0건 → 텔레그램·SMS alert 없음 (Vercel cron 아니라 별도).
 //

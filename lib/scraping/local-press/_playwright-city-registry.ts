@@ -8,10 +8,11 @@
 //    실제 DB `local-press-sasang-news`(하이픈) 와 어긋나 항상 미가동 오표시 버그.)
 //
 // ※ 부산: 광역(busan)은 정적 collector (lib/scraping/local-press/busan.ts) 가 담당하고
-//   자치구(dongnae·busanjin·geumjeong·bsbukgu·sasang)는 이 playwright 경로로 수집.
+//   자치구(dongnae·busanjin·geumjeong·sasang)는 이 playwright 경로로 수집.
+//   (부산 북구는 2026-06-01 eminwon 으로 재이관 → bsbukgu-eminwon.ts, 여기서 제외.)
 //   두 시스템 공존이지만 source_code 가 분리되어 서로 영향 없음.
 // ※ 도시 추가 시: 여기 + workflow yml KEEPIOO_RUNNER_CITIES + runner.mjs ALL_COLLECTORS
-//   3곳 동기화 (registry-sync.test.ts 가 키 집합 일치 검증). 현재 13 도시.
+//   3곳 동기화 (registry-sync.test.ts 가 키 집합 일치 검증). 현재 12 도시.
 // ============================================================
 
 export const PLAYWRIGHT_CITY_REGISTRY: Record<
@@ -60,11 +61,6 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     ministry: "금정구청",
     sourceOutlet: "금정구청",
     sourceCode: "local-press-geumjeong",
-  },
-  bsbukgu: {
-    ministry: "부산 북구청",
-    sourceOutlet: "부산 북구청",
-    sourceCode: "local-press-bsbukgu",
   },
   // 2026-05-29 — 사상구: 구정소식 게시판 부재. 알림사항(sasang) + 소식지(sasang_news) 2종.
   sasang: {

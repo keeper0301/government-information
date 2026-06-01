@@ -99,14 +99,8 @@ export const scrapeGeumjeong = makeScraper({
   bodySelectors: ["td.contents", ".contents"],
 });
 
-// 2026-05-29 — 부산 북구. 구정소식 BBS_0000012(정적은 BBS_0000001 사전정보공개 오등록).
-// 본문 JS 렌더 → chromium 필요. 본문 컨테이너 div.board_con 만 사용
-// (board-view-wrap fallback 은 표형 게시물에서 제목·메타·첨부까지 잡아 잡음 → 제거).
-export const scrapeBsbukgu = makeScraper({
-  cityName: "부산 북구",
-  listUrl: "https://www.bsbukgu.go.kr/board/list.bsbukgu?boardId=BBS_0000012&menuCd=DOM_000000103001001000",
-  bodySelectors: [".board_con"],
-});
+// 2026-06-01 — 부산 북구는 eminwon(보도자료 OfrAction.do POST)으로 재이관.
+// 기존 proxy(BBS_0000012=공동주택 관리 오등록, 0건) 폐기 → lib/scraping/local-press/bsbukgu-eminwon.ts.
 
 // 2026-05-29 — 사상구 알림사항(BBS_0000001 표준 table). 구정소식 게시판이 없어
 // 알림사항(모집·안내·공고)으로 수집. 본문 div.contents.
@@ -167,7 +161,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     dongnae: scrapeDongnae,
     busanjin: scrapeBusanjin,
     geumjeong: scrapeGeumjeong,
-    bsbukgu: scrapeBsbukgu,
     sasang: scrapeSasang,
     sasang_news: scrapeSasangNews,
     gimpo: scrapeGimpo,
@@ -175,7 +168,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|bsbukgu|sasang|sasang_news|gimpo|yeongdo`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });
