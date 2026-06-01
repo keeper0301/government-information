@@ -46,6 +46,9 @@ export type PressCollectorConfig = {
   parseListItems: (html: string) => PressNewsItem[];
   // 상세 page 본문 — fail 시 null (skip)
   parseDetailBody: (html: string) => string | null;
+  // 2026-06-01 — 비 UTF-8 사이트 opt-in 디코딩 (예: "euc-kr", 서대문 구정뉴스).
+  // 미지정 시 UTF-8(res.text()) = 기존 collector 전부 동작 동일 (회귀 0).
+  encoding?: string;
 };
 
 export type ScrapeResult = {
@@ -91,7 +94,7 @@ const MIN_RESPONSE_SIZE = 1024;
 // 동작구 6/1 사례: local fetch 2.2s 정상인데 Vercel cron 만 timeout.
 // 첫 시도 실패가 timeout (TimeoutError) 일 때만 retry — fetch failed (HTTP error)
 // 나 alert/size 사고는 retry 무의미 (사이트 구조 변경 신호) → 즉시 throw.
-async function fetchOnce(url: string): Promise<string> {
+async function fetchOnce(url: string, encoding?: string): Promise<string> {
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
     signal: AbortSignal.timeout(25000),
@@ -99,7 +102,12 @@ async function fetchOnce(url: string): Promise<string> {
   if (!res.ok) {
     throw new Error(`fetch failed (${res.status}): ${url}`);
   }
-  const text = await res.text();
+  // 2026-06-01 — encoding 지정 시(예: "euc-kr") arrayBuffer 를 해당 charset 으로 디코딩.
+  // 미지정 시 res.text()(UTF-8) — 기존 collector 전부 동일 동작.
+  const text =
+    encoding && encoding.toLowerCase() !== "utf-8"
+      ? new TextDecoder(encoding).decode(new Uint8Array(await res.arrayBuffer()))
+      : await res.text();
   if (text.length < MIN_RESPONSE_SIZE) {
     throw new Error(
       `response too small (${text.length} bytes, redirect/alert 의심): ${url}`,
@@ -122,19 +130,22 @@ function isTransientTimeout(err: unknown): boolean {
   );
 }
 
-export async function fetchPage(url: string): Promise<string> {
+export async function fetchPage(
+  url: string,
+  encoding?: string,
+): Promise<string> {
   // 2026-05-26: 15s → 25s. 인천 서구 등 일부 site 가 list page 113K+ 응답 느림.
   // Vercel function maxDuration 360s (review fix). 시·군 48개 ÷ BATCH_SIZE=4 =
   // 12 batches × 평균 ~30s = ~360s margin. retry 1회 (1초 백오프) 추가해도
   // 최악 50s × 12 = 600s 위험은 site 별 timeout 동시 발생 가정 — 실측 1~2 site 만
   // 일시 timeout 이라 안전.
   try {
-    return await fetchOnce(url);
+    return await fetchOnce(url, encoding);
   } catch (err) {
     if (!isTransientTimeout(err)) throw err;
     // 1초 백오프 후 1회 retry (Vercel function 일시 사고 자가 복구)
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    return await fetchOnce(url);
+    return await fetchOnce(url, encoding);
   }
 }
 
@@ -219,7 +230,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
     admin: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
     limit = 10,
   ): Promise<ScrapeResult> {
-    const listHtml = await fetchPage(cfg.listUrl);
+    const listHtml = await fetchPage(cfg.listUrl, cfg.encoding);
     const list = cfg.parseListItems(listHtml).slice(0, limit);
     const now = new Date().toISOString();
 
@@ -239,7 +250,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
     for (const item of list) {
       let body: string | null = null;
       try {
-        const detailHtml = await fetchPage(item.sourceUrl);
+        const detailHtml = await fetchPage(item.sourceUrl, cfg.encoding);
         body = cfg.parseDetailBody(detailHtml);
       } catch (e) {
         errors.push(`seq=${item.seq}: fetch ${(e as Error).message}`);

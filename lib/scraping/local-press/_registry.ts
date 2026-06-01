@@ -86,6 +86,8 @@ import { scrapeYangcheonAndInsert } from "./yangcheon";
 import { scrapeSeongdongAndInsert } from "./seongdong";
 import { scrapeYeongdeungpoAndInsert } from "./yeongdeungpo";
 import { scrapeEunpyeongAndInsert } from "./eunpyeong";
+// 2026-06-01 — 서대문구 구정뉴스 (EUC-KR 사이트, factory encoding opt-in + goView GET).
+import { scrapeSeodaemunAndInsert } from "./seodaemun";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -163,7 +165,9 @@ export type CityKey =
   // 2026-06-01 서울 자치구 확장 (SI selectBbsNttList)
   | "seongdong"
   | "yeongdeungpo"
-  | "eunpyeong";
+  | "eunpyeong"
+  // 2026-06-01 서대문구 (EUC-KR 구정뉴스 goView GET)
+  | "seodaemun";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -766,6 +770,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "은평구청",
     siteUrl: "https://www.ep.go.kr/www/selectBbsNttList.do?bbsNo=48&key=762",
     fn: scrapeEunpyeongAndInsert,
+  },
+  // 2026-06-01 — 서대문구 구정뉴스. ⚠️ EUC-KR 사이트(factory encoding opt-in).
+  // 보도자료 메뉴는 구보(PDF)라 부적합 → /news/news.do 개별 기사 board 사용.
+  {
+    key: "seodaemun",
+    city: "서대문구",
+    ministry: "서대문구청",
+    siteUrl: "https://www.sdm.go.kr/news/news.do",
+    fn: scrapeSeodaemunAndInsert,
   },
 ];
 
