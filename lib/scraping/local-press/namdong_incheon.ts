@@ -16,4 +16,7 @@ export const { scrapeAndInsert: scrapeNamdongIncheonAndInsert } =
     region: "인천",
     ministry: "남동구청",
     sourceCode: "local-press-namdong",
+    // 2026-06-02 — 보도자료 게시판 bcd 가 기본 "report" 가 아니라 "press_release".
+    // (TLS 체인 누락으로 fetch 자체가 막혀있던 것은 factory TLS 완화로 해소.)
+    bcd: "press_release",
   });

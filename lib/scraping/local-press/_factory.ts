@@ -18,7 +18,21 @@
 // 기존 suncheon/gwangju/seoul 은 자체 작성. helper 마이그레이션은 다음 차.
 // ============================================================
 
+import { Agent } from "undici";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+
+// 2026-06-02 — 일부 정부 사이트가 중간 인증서(intermediate CA)를 빠뜨려 Node 의 TLS
+// 체인 검증이 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE). 브라우저는 AIA 로 자동 보완하지만
+// Node fetch 는 안 함 → 검증 실패할 때만 1회 이 dispatcher 로 완화 retry. 읽기 전용
+// 공개 보도자료 GET 이라 MITM 위험 낮음(인증서 자체는 유효, 체인만 불완전). 정상
+// 사이트엔 미적용(영향 0). 사장님 2026-06-02 승인. namdong·ongjin·donggu_incheon 복구.
+const INSECURE_TLS_AGENT = new Agent({ connect: { rejectUnauthorized: false } });
+
+// TLS 인증서 체인 검증 실패 에러인지 판정 (cause.code 기반).
+function isTlsChainError(err: unknown): boolean {
+  const code = (err as { cause?: { code?: string } })?.cause?.code ?? "";
+  return /UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_|SELF_SIGNED/.test(code);
+}
 
 // 2026-05-22 fix — cheongju site 가 keepioo-bot UA 차단 (488 byte redirect).
 // Chrome UA 로 변경 — 다른 시청 (광주·수원·고양 등 12개) 은 keepioo-bot 도 정상이라
@@ -101,11 +115,21 @@ const MIN_RESPONSE_SIZE = 1024;
 // 동작구 6/1 사례: local fetch 2.2s 정상인데 Vercel cron 만 timeout.
 // 첫 시도 실패가 timeout (TimeoutError) 일 때만 retry — fetch failed (HTTP error)
 // 나 alert/size 사고는 retry 무의미 (사이트 구조 변경 신호) → 즉시 throw.
-async function fetchOnce(url: string, encoding?: string): Promise<string> {
-  const res = await fetch(url, {
+async function fetchOnce(
+  url: string,
+  encoding?: string,
+  insecureTls = false,
+): Promise<string> {
+  const init: RequestInit = {
     headers: { "User-Agent": USER_AGENT },
     signal: AbortSignal.timeout(25000),
-  });
+  };
+  // insecureTls 일 때만 TLS 검증 완화 dispatcher 부착 (dispatcher 는 표준 RequestInit
+  // 타입에 없는 undici 확장 옵션 → 명시적 캐스팅).
+  if (insecureTls) {
+    (init as RequestInit & { dispatcher?: Agent }).dispatcher = INSECURE_TLS_AGENT;
+  }
+  const res = await fetch(url, init);
   if (!res.ok) {
     throw new Error(`fetch failed (${res.status}): ${url}`);
   }
@@ -149,6 +173,10 @@ export async function fetchPage(
   try {
     return await fetchOnce(url, encoding);
   } catch (err) {
+    // 정부 사이트 인증서 체인 누락(intermediate CA) → TLS 검증 완화로 1회 retry.
+    if (isTlsChainError(err)) {
+      return await fetchOnce(url, encoding, true);
+    }
     if (!isTransientTimeout(err)) throw err;
     // 1초 백오프 후 1회 retry (Vercel function 일시 사고 자가 복구)
     await new Promise((resolve) => setTimeout(resolve, 1000));

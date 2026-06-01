@@ -72,10 +72,13 @@ function extractBoardViewRaw(html: string): string | null {
 export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
   const listUrl = `${cfg.baseUrl}${cfg.listPath}`;
   const bcd = cfg.bcd ?? "report";
+  // 2026-06-02 — bcd 와 msg_seq 의 query 파라미터 순서가 사이트마다 다름
+  // (namdong=msg_seq 먼저, ongjin=bcd 먼저). lookahead 로 bcd 존재만 확인(순서 무관)
+  // 한 뒤 msg_seq 를 추출 → 두 순서 모두 매칭.
   const listItemRegex = new RegExp(
-    `<a[^>]*href="[^"]*bbsMsgDetail\\.do[^"]*msg_seq=(\\d+)[^"]*bcd=${escapeRegExp(
+    `<a[^>]*href="(?=[^"]*\\bbcd=${escapeRegExp(
       bcd,
-    )}[^"]*"[^>]*>([\\s\\S]{0,500}?)<\\/a>`,
+    )}\\b)[^"]*bbsMsgDetail\\.do[^"]*\\bmsg_seq=(\\d+)[^"]*"[^>]*>([\\s\\S]{0,500}?)<\\/a>`,
     "g",
   );
 

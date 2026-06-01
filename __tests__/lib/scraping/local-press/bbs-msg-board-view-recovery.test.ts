@@ -67,3 +67,45 @@ describe("bbsMsgDetail board_view 복구", () => {
     );
   });
 });
+
+// 2026-06-02 — list anchor 의 bcd·msg_seq query 순서가 사이트마다 다름(ongjin=bcd 먼저).
+// helper lookahead 가 순서 무관 매칭하는지 회귀 방어.
+describe("bbsMsgDetail list bcd·msg_seq 순서 무관", () => {
+  beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  function run(listAnchor: string) {
+    const listHtml = `<html><body>${PAD}${listAnchor}<span>2026.06.01</span></body></html>`;
+    const detail = `<html><body>${PAD}<div class="general_board board_view"><p>${LONG}</p></div></body></html>`;
+    (global.fetch as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(new Response(listHtml, { status: 200 }))
+      .mockResolvedValueOnce(new Response(detail, { status: 200 }));
+    const insert = vi.fn(async () => ({ error: null }));
+    const admin = { from: vi.fn(() => ({ insert })) };
+    const { scrapeAndInsert } = createBbsMsgDetailCollector({
+      baseUrl: "https://www.ongjin.go.kr",
+      listPath: "/x.jsp",
+      detailBasePath: "/open_content/main/bbs",
+      cityName: "옹진군",
+      region: "인천",
+      ministry: "옹진군청",
+      sourceCode: "local-press-x",
+      bcd: "notice",
+    });
+    return scrapeAndInsert(admin as never, 1);
+  }
+
+  it("bcd 가 msg_seq 앞에 오는 순서(ongjin)도 매칭한다", async () => {
+    const r = await run(
+      `<a href="/open_content/main/bbs/bbsMsgDetail.do?bcd=notice&amp;msg_seq=26687">옹진군 보도자료 제목입니다</a>`,
+    );
+    expect(r).toMatchObject({ fetched: 1, inserted: 1 });
+  });
+
+  it("msg_seq 가 앞에 오는 순서도 여전히 매칭한다", async () => {
+    const r = await run(
+      `<a href="/open_content/main/bbs/bbsMsgDetail.do?msg_seq=26687&amp;bcd=notice">옹진군 보도자료 제목입니다</a>`,
+    );
+    expect(r).toMatchObject({ fetched: 1, inserted: 1 });
+  });
+});
