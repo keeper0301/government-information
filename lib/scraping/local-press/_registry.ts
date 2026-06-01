@@ -100,6 +100,9 @@ import { scrapeJongnoAndInsert } from "./jongno";
 // 2026-06-01 — 구로·동대문 보도자료 (SI 표준. 메인 빈 shell → /www/index.do 가 실제 콘텐츠).
 import { scrapeGuroAndInsert } from "./guro";
 import { scrapeDongdaemunAndInsert } from "./dongdaemun";
+// 2026-06-01 — 서초(eGovFrame site/ex/bbs cbIdx=61)·서울 중구(content.do cmsid=14390).
+import { scrapeSeochoAndInsert } from "./seocho";
+import { scrapeJungguSeoulAndInsert } from "./junggu_seoul";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -189,7 +192,10 @@ export type CityKey =
   | "jongno"
   // 2026-06-01 구로·동대문 (SI selectBbsNttList)
   | "guro"
-  | "dongdaemun";
+  | "dongdaemun"
+  // 2026-06-01 서초(site/ex/bbs)·서울 중구(content.do)
+  | "seocho"
+  | "junggu_seoul";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -850,6 +856,22 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "동대문구청",
     siteUrl: "https://www.ddm.go.kr/www/selectBbsNttList.do?bbsNo=39&key=199",
     fn: scrapeDongdaemunAndInsert,
+  },
+  // 2026-06-01 — 서초구 보도자료. eGovFrame site/ex/bbs (cbIdx=61, view_contents 본문).
+  {
+    key: "seocho",
+    city: "서초구",
+    ministry: "서초구청",
+    siteUrl: "https://www.seocho.go.kr/site/seocho/ex/bbs/List.do?cbIdx=61",
+    fn: scrapeSeochoAndInsert,
+  },
+  // 2026-06-01 — 서울 중구 보도자료. 자체 content.do CMS (cmsid=14390). 인천 중구와 별개.
+  {
+    key: "junggu_seoul",
+    city: "서울 중구",
+    ministry: "서울 중구청",
+    siteUrl: "https://www.junggu.seoul.kr/content.do?cmsid=14390",
+    fn: scrapeJungguSeoulAndInsert,
   },
 ];
 
