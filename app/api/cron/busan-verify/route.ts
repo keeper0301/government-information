@@ -14,26 +14,27 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// diag: ⚠️(7d 0건) 일 때 텔레그램에 붙는 원인 진단 한 줄(자동 상세 진단).
 const VERIFY_CITIES = [
   // 부산 자치구 (6/1 수리)
-  { code: "local-press-busanjin", name: "부산진구", region: "부산" },
-  { code: "local-press-bsbukgu", name: "부산 북구", region: "부산" },
-  { code: "local-press-sasang", name: "사상구", region: "부산" },
-  { code: "local-press-dongnae", name: "동래구", region: "부산" },
+  { code: "local-press-busanjin", name: "부산진구", region: "부산", diag: "BBS_0000031 보도자료 게시판 selector·날짜 2자리 확인" },
+  { code: "local-press-bsbukgu", name: "부산 북구", region: "부산", diag: "eminwon OfrAction.do POST 응답·searchDetail 파싱 확인" },
+  { code: "local-press-sasang", name: "사상구", region: "부산", diag: "icn1 TLS fallback 동작·proxy(GitHub Actions) 가동 확인" },
+  { code: "local-press-dongnae", name: "동래구", region: "부산", diag: "주말이면 발행 없음(정상). 평일 0이면 BBS_0000012 selector" },
   // 서울 자치구 (외부 자율 추가 13)
-  { code: "local-press-seongdong", name: "성동구", region: "서울" },
-  { code: "local-press-yeongdeungpo", name: "영등포구", region: "서울" },
-  { code: "local-press-eunpyeong", name: "은평구", region: "서울" },
-  { code: "local-press-seodaemun", name: "서대문구", region: "서울" },
-  { code: "local-press-jongno", name: "종로구", region: "서울" },
-  { code: "local-press-gangseo", name: "강서구", region: "서울" },
-  { code: "local-press-geumcheon", name: "금천구", region: "서울" },
-  { code: "local-press-guro", name: "구로구", region: "서울" },
-  { code: "local-press-dongdaemun", name: "동대문구", region: "서울" },
-  { code: "local-press-seocho", name: "서초구", region: "서울" },
-  { code: "local-press-junggu-seoul", name: "중구", region: "서울" },
-  { code: "local-press-seongbuk", name: "성북구", region: "서울" },
-  { code: "local-press-gangdong", name: "강동구", region: "서울" },
+  { code: "local-press-seongdong", name: "성동구", region: "서울", diag: "SI selectBbsNttList list selector·본문 250 확인" },
+  { code: "local-press-yeongdeungpo", name: "영등포구", region: "서울", diag: "SI selectBbsNttList list selector·본문 250 확인" },
+  { code: "local-press-eunpyeong", name: "은평구", region: "서울", diag: "SI selectBbsNttList list selector·본문 250 확인" },
+  { code: "local-press-seodaemun", name: "서대문구", region: "서울", diag: "EUC-KR 인코딩·goView GET·본문 250 확인" },
+  { code: "local-press-jongno", name: "종로구", region: "서울", diag: "eGovFrame selectBoardList bbsId=1618·본문 250 확인" },
+  { code: "local-press-gangseo", name: "강서구", region: "서울", diag: "eDotXpress /gs040201 view-content·본문 250 확인" },
+  { code: "local-press-geumcheon", name: "금천구", region: "서울", diag: "SI bbsNo=8 list selector·본문 250 확인" },
+  { code: "local-press-guro", name: "구로구", region: "서울", diag: "SI /www/index.do list selector·본문 250 확인" },
+  { code: "local-press-dongdaemun", name: "동대문구", region: "서울", diag: "SI /www/index.do list selector·본문 250 확인" },
+  { code: "local-press-seocho", name: "서초구", region: "서울", diag: "빈 shell 메인 우회 정적 게시판·본문 250 확인" },
+  { code: "local-press-junggu-seoul", name: "중구", region: "서울", diag: "content.do cmsid=14390 list 파라미터 순서 확인" },
+  { code: "local-press-seongbuk", name: "성북구", region: "서울", diag: "SI 빈 shell 메인 우회·본문 250 확인" },
+  { code: "local-press-gangdong", name: "강동구", region: "서울", diag: "newportal meta refresh 우회·본문 250 확인" },
 ] as const;
 
 async function sendTelegram(
@@ -62,6 +63,7 @@ async function run() {
   const results: {
     name: string;
     region: string;
+    diag: string;
     cnt24: number;
     cnt7: number;
     latestPublished: string | null;
@@ -87,6 +89,7 @@ async function run() {
     results.push({
       name: c.name,
       region: c.region,
+      diag: c.diag,
       cnt24: cnt24 ?? 0,
       cnt7: cnt7 ?? 0,
       latestPublished: latest?.[0]?.published_at ?? null,
@@ -97,7 +100,9 @@ async function run() {
   const fmt = (r: (typeof results)[number]) => {
     const icon = r.cnt24 > 0 ? "✅" : r.cnt7 > 0 ? "🟡" : "⚠️";
     const pub = r.latestPublished ? r.latestPublished.slice(0, 10) : "-";
-    return `${icon} ${r.name}: 24h ${r.cnt24} / 7d ${r.cnt7} (최신 ${pub})`;
+    const base = `${icon} ${r.name}: 24h ${r.cnt24} / 7d ${r.cnt7} (최신 ${pub})`;
+    // ⚠️(7d 0건)인 도시만 자동 상세 진단 한 줄 첨부.
+    return r.cnt7 === 0 ? `${base}\n    └ 진단: ${r.diag}` : base;
   };
 
   // region 별 섹션 (부산 먼저, 서울 다음). 등록 순서 유지.
