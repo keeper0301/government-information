@@ -24,8 +24,9 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /<td\s+class="wdate">\s*(\d{4})\.(\d{2})\.(\d{2})/;
 
+// 2026-06-01 fix — 관악 동일 sentinel 단순화 (closing pattern specific 사고 회피)
 const BODY_CONTAINER_REGEX =
-  /<div[^>]*class="view_contents"[^>]*>([\s\S]{50,40000}?)<\/div>\s*(?:<div\s+class="view-nuri|<\/div>\s*<form\s+id="bbsFVo)/i;
+  /<div[^>]*class="view_contents"[^>]*>([\s\S]{50,40000}?)<div\s+class="view-nuri/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];

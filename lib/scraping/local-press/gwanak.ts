@@ -29,9 +29,11 @@ const LIST_ITEM_REGEX =
 // list date: <td class="wdate">YYYY.MM.DD</td> — 같은 row.
 const DATE_REGEX = /<td\s+class="wdate">\s*(\d{4})\.(\d{2})\.(\d{2})/;
 
-// 본문 container: view_contents 안 모두. 닫힘은 view-nuri 또는 board-prevnext.
+// 본문 container: view_contents 시작 → view-nuri div 시작 직전까지 모두 포함.
+// 2026-06-01 fix — 이전 sentinel 이 너무 specific (</div>\s* 패턴 가드) 으로 매칭 0
+// (cron audit: 5/31~6/1 inserted 0/skipped 10). 단순화로 prod 검증 통과 (text 1754자).
 const BODY_CONTAINER_REGEX =
-  /<div[^>]*class="view_contents"[^>]*>([\s\S]{50,40000}?)<\/div>\s*(?:<div\s+class="view-nuri|<\/div>\s*<form\s+id="bbsFVo)/i;
+  /<div[^>]*class="view_contents"[^>]*>([\s\S]{50,40000}?)<div\s+class="view-nuri/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
