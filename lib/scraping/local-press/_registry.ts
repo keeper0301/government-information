@@ -97,6 +97,9 @@ import { scrapeGeumcheonAndInsert } from "./geumcheon";
 import { scrapeGangseoAndInsert } from "./gangseo";
 // 2026-06-01 — 종로구 보도자료 (eGovFrame selectBoardList bbsId=1618, viewMove nttId).
 import { scrapeJongnoAndInsert } from "./jongno";
+// 2026-06-01 — 구로·동대문 보도자료 (SI 표준. 메인 빈 shell → /www/index.do 가 실제 콘텐츠).
+import { scrapeGuroAndInsert } from "./guro";
+import { scrapeDongdaemunAndInsert } from "./dongdaemun";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -183,7 +186,10 @@ export type CityKey =
   // 2026-06-01 강서구 (eDotXpress /gs040201)
   | "gangseo"
   // 2026-06-01 종로구 (eGovFrame selectBoardList bbsId=1618)
-  | "jongno";
+  | "jongno"
+  // 2026-06-01 구로·동대문 (SI selectBbsNttList)
+  | "guro"
+  | "dongdaemun";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -828,6 +834,22 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.jongno.go.kr/portal/bbs/selectBoardList.do?bbsId=BBSMSTR_000000001618&menuId=388338&menuNo=388338",
     fn: scrapeJongnoAndInsert,
+  },
+  // 2026-06-01 — 구로구 보도자료. SI 표준 bbsNo=665 (메인 빈 shell → /www/index.do).
+  {
+    key: "guro",
+    city: "구로구",
+    ministry: "구로구청",
+    siteUrl: "https://www.guro.go.kr/www/selectBbsNttList.do?bbsNo=665&key=1793",
+    fn: scrapeGuroAndInsert,
+  },
+  // 2026-06-01 — 동대문구 보도자료. SI 표준 bbsNo=39 (짧은 bbsNo 종결자 가드).
+  {
+    key: "dongdaemun",
+    city: "동대문구",
+    ministry: "동대문구청",
+    siteUrl: "https://www.ddm.go.kr/www/selectBbsNttList.do?bbsNo=39&key=199",
+    fn: scrapeDongdaemunAndInsert,
   },
 ];
 
