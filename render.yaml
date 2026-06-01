@@ -14,3 +14,39 @@ services:
         value: "300000"
       - key: CRON_SECRET
         sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_OWNER_CHAT_IDS
+        sync: false
+      - key: AI_MANAGER_ENABLED
+        value: "true"
+      - key: OUTER_AUTH_TOKEN
+        sync: false
+      - key: OUTER_BASE_URL
+        value: https://keepio-agent.onrender.com
+      - key: OUTER_USE_CRON_SECRET
+        value: "true"
+      - key: OUTER_GATEWAY_ENABLED
+        value: "true"
+      - key: OUTER_MODEL
+        value: "gpt-5.2"
+      - key: AI_MANAGER_PERMISSION_LEVEL
+        value: full_safe
+      - key: AI_MANAGER_INTERVAL_MS
+        value: "1800000"
+      - key: BLOG_MANAGER_ENABLED
+        value: "true"
+      - key: BLOG_MANAGER_ALLOW_BACKUP_PUBLISH
+        value: "true"
+      - key: BLOG_MANAGER_INTERVAL_MS
+        value: "3600000"
+      - key: BLOG_MANAGER_BACKUP_PUBLISH_GAP_MS
+        value: "43200000"
+      - key: SITE_MAINTENANCE_MANAGER_ENABLED
+        value: "true"
+      - key: SITE_MAINTENANCE_MANAGER_INTERVAL_MS
+        value: "3600000"
+      - key: SITE_UPGRADE_MANAGER_ENABLED
+        value: "true"
+      - key: SITE_UPGRADE_MANAGER_INTERVAL_MS
+        value: "21600000"

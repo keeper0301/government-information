@@ -21,6 +21,32 @@ export type KeepioAgentStatus = {
   totalRuns: number;
   totalFailures: number;
   consecutiveFailures: number;
+  siteLastCheckAt: string | null;
+  siteLastOkAt: string | null;
+  siteLastFailureAt: string | null;
+  siteTotalChecks: number;
+  siteTotalFailures: number;
+  siteConsecutiveFailures: number;
+  siteTelegramConfigured: boolean;
+  aiManagerEnabled: boolean;
+  aiManagerConfigured: boolean;
+  aiManagerPermissionLevel: string | null;
+  aiManagerLastRunAt: string | null;
+  aiManagerLastOkAt: string | null;
+  aiManagerTotalRuns: number;
+  aiManagerTotalFailures: number;
+  blogManagerEnabled: boolean;
+  blogManagerLastRunAt: string | null;
+  blogManagerTotalRuns: number;
+  blogManagerTotalFailures: number;
+  siteMaintenanceEnabled: boolean;
+  siteMaintenanceLastRunAt: string | null;
+  siteMaintenanceTotalRuns: number;
+  siteMaintenanceTotalFailures: number;
+  siteUpgradeEnabled: boolean;
+  siteUpgradeLastRunAt: string | null;
+  siteUpgradeTotalRuns: number;
+  siteUpgradeTotalFailures: number;
   missingRequired: string[];
   automation: KeepioAgentAutomationStatus;
   error: string | null;
@@ -52,6 +78,32 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       totalRuns: 0,
       totalFailures: 0,
       consecutiveFailures: 0,
+      siteLastCheckAt: null,
+      siteLastOkAt: null,
+      siteLastFailureAt: null,
+      siteTotalChecks: 0,
+      siteTotalFailures: 0,
+      siteConsecutiveFailures: 0,
+      siteTelegramConfigured: false,
+      aiManagerEnabled: false,
+      aiManagerConfigured: false,
+      aiManagerPermissionLevel: null,
+      aiManagerLastRunAt: null,
+      aiManagerLastOkAt: null,
+      aiManagerTotalRuns: 0,
+      aiManagerTotalFailures: 0,
+      blogManagerEnabled: false,
+      blogManagerLastRunAt: null,
+      blogManagerTotalRuns: 0,
+      blogManagerTotalFailures: 0,
+      siteMaintenanceEnabled: false,
+      siteMaintenanceLastRunAt: null,
+      siteMaintenanceTotalRuns: 0,
+      siteMaintenanceTotalFailures: 0,
+      siteUpgradeEnabled: false,
+      siteUpgradeLastRunAt: null,
+      siteUpgradeTotalRuns: 0,
+      siteUpgradeTotalFailures: 0,
       missingRequired: ["KEEPIO_AGENT_HEALTH_URL"],
       automation: EMPTY_AUTOMATION,
       error: "KEEPIO_AGENT_HEALTH_URL 미설정",
@@ -80,7 +132,43 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
         totalFailures?: unknown;
         consecutiveFailures?: unknown;
       };
+      site?: {
+        lastCheckAt?: unknown;
+        lastOkAt?: unknown;
+        lastFailureAt?: unknown;
+        totalChecks?: unknown;
+        totalFailures?: unknown;
+        consecutiveFailures?: unknown;
+        telegramConfigured?: unknown;
+      };
       automation?: Partial<Record<keyof KeepioAgentAutomationStatus, unknown>>;
+      aiManager?: {
+        enabled?: unknown;
+        configured?: unknown;
+        permissionLevel?: unknown;
+        lastRunAt?: unknown;
+        lastOkAt?: unknown;
+        totalRuns?: unknown;
+        totalFailures?: unknown;
+      };
+      blogManager?: {
+        enabled?: unknown;
+        lastRunAt?: unknown;
+        totalRuns?: unknown;
+        totalFailures?: unknown;
+      };
+      siteMaintenance?: {
+        enabled?: unknown;
+        lastRunAt?: unknown;
+        totalRuns?: unknown;
+        totalFailures?: unknown;
+      };
+      siteUpgrade?: {
+        enabled?: unknown;
+        lastRunAt?: unknown;
+        totalRuns?: unknown;
+        totalFailures?: unknown;
+      };
     };
 
     return {
@@ -110,6 +198,84 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
         typeof body.resident?.consecutiveFailures === "number"
           ? body.resident.consecutiveFailures
           : 0,
+      siteLastCheckAt:
+        typeof body.site?.lastCheckAt === "string" ? body.site.lastCheckAt : null,
+      siteLastOkAt:
+        typeof body.site?.lastOkAt === "string" ? body.site.lastOkAt : null,
+      siteLastFailureAt:
+        typeof body.site?.lastFailureAt === "string"
+          ? body.site.lastFailureAt
+          : null,
+      siteTotalChecks:
+        typeof body.site?.totalChecks === "number" ? body.site.totalChecks : 0,
+      siteTotalFailures:
+        typeof body.site?.totalFailures === "number" ? body.site.totalFailures : 0,
+      siteConsecutiveFailures:
+        typeof body.site?.consecutiveFailures === "number"
+          ? body.site.consecutiveFailures
+          : 0,
+      siteTelegramConfigured: body.site?.telegramConfigured === true,
+      aiManagerEnabled: body.aiManager?.enabled === true,
+      aiManagerConfigured: body.aiManager?.configured === true,
+      aiManagerPermissionLevel:
+        typeof body.aiManager?.permissionLevel === "string"
+          ? body.aiManager.permissionLevel
+          : null,
+      aiManagerLastRunAt:
+        typeof body.aiManager?.lastRunAt === "string"
+          ? body.aiManager.lastRunAt
+          : null,
+      aiManagerLastOkAt:
+        typeof body.aiManager?.lastOkAt === "string"
+          ? body.aiManager.lastOkAt
+          : null,
+      aiManagerTotalRuns:
+        typeof body.aiManager?.totalRuns === "number"
+          ? body.aiManager.totalRuns
+          : 0,
+      aiManagerTotalFailures:
+        typeof body.aiManager?.totalFailures === "number"
+          ? body.aiManager.totalFailures
+          : 0,
+      blogManagerEnabled: body.blogManager?.enabled === true,
+      blogManagerLastRunAt:
+        typeof body.blogManager?.lastRunAt === "string"
+          ? body.blogManager.lastRunAt
+          : null,
+      blogManagerTotalRuns:
+        typeof body.blogManager?.totalRuns === "number"
+          ? body.blogManager.totalRuns
+          : 0,
+      blogManagerTotalFailures:
+        typeof body.blogManager?.totalFailures === "number"
+          ? body.blogManager.totalFailures
+          : 0,
+      siteMaintenanceEnabled: body.siteMaintenance?.enabled === true,
+      siteMaintenanceLastRunAt:
+        typeof body.siteMaintenance?.lastRunAt === "string"
+          ? body.siteMaintenance.lastRunAt
+          : null,
+      siteMaintenanceTotalRuns:
+        typeof body.siteMaintenance?.totalRuns === "number"
+          ? body.siteMaintenance.totalRuns
+          : 0,
+      siteMaintenanceTotalFailures:
+        typeof body.siteMaintenance?.totalFailures === "number"
+          ? body.siteMaintenance.totalFailures
+          : 0,
+      siteUpgradeEnabled: body.siteUpgrade?.enabled === true,
+      siteUpgradeLastRunAt:
+        typeof body.siteUpgrade?.lastRunAt === "string"
+          ? body.siteUpgrade.lastRunAt
+          : null,
+      siteUpgradeTotalRuns:
+        typeof body.siteUpgrade?.totalRuns === "number"
+          ? body.siteUpgrade.totalRuns
+          : 0,
+      siteUpgradeTotalFailures:
+        typeof body.siteUpgrade?.totalFailures === "number"
+          ? body.siteUpgrade.totalFailures
+          : 0,
       missingRequired: Array.isArray(body.env?.missingRequired)
         ? body.env.missingRequired.filter((v): v is string => typeof v === "string")
         : [],
@@ -138,6 +304,32 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       totalRuns: 0,
       totalFailures: 0,
       consecutiveFailures: 0,
+      siteLastCheckAt: null,
+      siteLastOkAt: null,
+      siteLastFailureAt: null,
+      siteTotalChecks: 0,
+      siteTotalFailures: 0,
+      siteConsecutiveFailures: 0,
+      siteTelegramConfigured: false,
+      aiManagerEnabled: false,
+      aiManagerConfigured: false,
+      aiManagerPermissionLevel: null,
+      aiManagerLastRunAt: null,
+      aiManagerLastOkAt: null,
+      aiManagerTotalRuns: 0,
+      aiManagerTotalFailures: 0,
+      blogManagerEnabled: false,
+      blogManagerLastRunAt: null,
+      blogManagerTotalRuns: 0,
+      blogManagerTotalFailures: 0,
+      siteMaintenanceEnabled: false,
+      siteMaintenanceLastRunAt: null,
+      siteMaintenanceTotalRuns: 0,
+      siteMaintenanceTotalFailures: 0,
+      siteUpgradeEnabled: false,
+      siteUpgradeLastRunAt: null,
+      siteUpgradeTotalRuns: 0,
+      siteUpgradeTotalFailures: 0,
       missingRequired: [],
       automation: EMPTY_AUTOMATION,
       error: e instanceof Error ? e.message : String(e),

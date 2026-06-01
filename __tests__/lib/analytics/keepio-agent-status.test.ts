@@ -44,6 +44,15 @@ describe("getKeepioAgentStatus", () => {
             totalFailures: 1,
             consecutiveFailures: 0,
           },
+          site: {
+            lastCheckAt: "2026-05-21T00:02:00.000Z",
+            lastOkAt: "2026-05-21T00:02:00.000Z",
+            lastFailureAt: "2026-05-20T23:50:00.000Z",
+            totalChecks: 20,
+            totalFailures: 2,
+            consecutiveFailures: 0,
+            telegramConfigured: true,
+          },
           automation: {
             telegram: true,
             policyDb: true,
@@ -51,6 +60,33 @@ describe("getKeepioAgentStatus", () => {
             threadsPublishing: false,
             instagramMetrics: true,
             instagramComments: false,
+          },
+          aiManager: {
+            enabled: true,
+            configured: true,
+            permissionLevel: "full_safe",
+            lastRunAt: "2026-05-21T00:03:00.000Z",
+            lastOkAt: "2026-05-21T00:03:05.000Z",
+            totalRuns: 3,
+            totalFailures: 0,
+          },
+          blogManager: {
+            enabled: true,
+            lastRunAt: "2026-05-21T00:04:00.000Z",
+            totalRuns: 4,
+            totalFailures: 1,
+          },
+          siteMaintenance: {
+            enabled: true,
+            lastRunAt: "2026-05-21T00:05:00.000Z",
+            totalRuns: 5,
+            totalFailures: 0,
+          },
+          siteUpgrade: {
+            enabled: true,
+            lastRunAt: "2026-05-21T00:06:00.000Z",
+            totalRuns: 6,
+            totalFailures: 0,
           },
         }),
       })),
@@ -66,6 +102,20 @@ describe("getKeepioAgentStatus", () => {
     expect(status.lastStatus).toBe(200);
     expect(status.totalRuns).toBe(12);
     expect(status.totalFailures).toBe(1);
+    expect(status.siteLastCheckAt).toBe("2026-05-21T00:02:00.000Z");
+    expect(status.siteTotalChecks).toBe(20);
+    expect(status.siteTotalFailures).toBe(2);
+    expect(status.siteTelegramConfigured).toBe(true);
+    expect(status.aiManagerEnabled).toBe(true);
+    expect(status.aiManagerConfigured).toBe(true);
+    expect(status.aiManagerPermissionLevel).toBe("full_safe");
+    expect(status.aiManagerTotalRuns).toBe(3);
+    expect(status.blogManagerEnabled).toBe(true);
+    expect(status.blogManagerTotalRuns).toBe(4);
+    expect(status.siteMaintenanceEnabled).toBe(true);
+    expect(status.siteMaintenanceTotalRuns).toBe(5);
+    expect(status.siteUpgradeEnabled).toBe(true);
+    expect(status.siteUpgradeTotalRuns).toBe(6);
     expect(status.automation.policyDb).toBe(true);
     expect(status.automation.threadsPublishing).toBe(false);
   });

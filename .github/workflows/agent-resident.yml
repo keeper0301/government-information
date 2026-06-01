@@ -1,7 +1,7 @@
-name: Agent resident heartbeat
+name: 상주 에이전트 백업 감시
 
-# GitHub Actions cannot keep one process alive forever. This workflow is the
-# paid-GitHub fallback: wake the site-resident agent cycle every 5 minutes.
+# 깃허브 액션은 한 프로세스를 영원히 켜둘 수 없으므로,
+# 5분마다 사이트 상주 진단을 깨우는 2차 백업 감시자입니다.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -15,23 +15,24 @@ permissions: {}
 
 jobs:
   heartbeat:
-    name: Wake site-resident agent
+    name: 사이트 상주 진단 깨우기
     runs-on: ubuntu-latest
     timeout-minutes: 3
 
     steps:
-      - name: Call agent-resident-cycle
+      - name: 상주 진단 호출
+        id: heartbeat
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_BASE_URL: https://www.keepioo.com
         run: |
           set -euo pipefail
           if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::error::CRON_SECRET secret is not configured."
+            echo "::error::CRON_SECRET 비밀값이 설정되지 않았습니다."
             exit 1
           fi
 
-          echo "== agent resident heartbeat $(date -u '+%Y-%m-%d %H:%M:%S') UTC =="
+          echo "== 상주 에이전트 백업 감시 $(date -u '+%Y-%m-%d %H:%M:%S') UTC =="
           http_status=$(curl -sS -o /tmp/agent-resident-response.json -w "%{http_code}" \
             --request POST \
             --max-time 120 \
@@ -48,7 +49,7 @@ jobs:
           echo ""
 
           if [ "${http_status}" -ne 200 ]; then
-            echo "::error::agent-resident-cycle failed (HTTP ${http_status})"
+            echo "::error::상주 진단 호출 실패 (HTTP ${http_status})"
             exit 1
           fi
 
@@ -59,12 +60,41 @@ jobs:
           try {
             json = JSON.parse(body);
           } catch {
-            console.error("::error::agent-resident-cycle did not return JSON.");
+            console.error("::error::상주 진단 응답이 JSON 형식이 아닙니다.");
             process.exit(1);
           }
           if (!json.source || typeof json.diagnoseCount !== "number") {
-            console.error("::error::agent-resident-cycle returned unexpected JSON.");
+            console.error("::error::상주 진단 응답 형식이 예상과 다릅니다.");
             process.exit(1);
           }
-          console.log(`resident cycle ok: source=${json.source} diagnostics=${json.diagnoseCount}`);
+          console.log(`상주 진단 정상: 출처=${json.source} 진단수=${json.diagnoseCount}`);
           NODE
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_IDS: ${{ secrets.TELEGRAM_OWNER_CHAT_IDS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_OWNER_CHAT_IDS:-}" ]; then
+            echo "텔레그램 비밀값이 없어 알림을 건너뜁니다."
+            exit 0
+          fi
+
+          text="[keepioo 상주 감시] GitHub 백업 감시 실패
+
+          사이트 상주 진단 호출이 실패했습니다.
+          확인 순서: Vercel 배포 상태, /api/cron/agent-resident-cycle, CRON_SECRET, Render 상주 서버 /health"
+
+          IFS=',' read -ra chat_ids <<< "${TELEGRAM_OWNER_CHAT_IDS}"
+          for chat_id in "${chat_ids[@]}"; do
+            trimmed="$(echo "${chat_id}" | xargs)"
+            if [ -z "${trimmed}" ]; then
+              continue
+            fi
+            curl -sS --fail \
+              -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -H "Content-Type: application/json" \
+              --data "$(node -e 'console.log(JSON.stringify({ chat_id: process.argv[1], text: process.argv[2], disable_web_page_preview: true }))' "${trimmed}" "${text}")"
+          done

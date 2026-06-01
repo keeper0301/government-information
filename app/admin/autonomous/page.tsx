@@ -558,6 +558,60 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           </div>
         ))}
       </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
+        <div className="rounded-md border border-white/60 bg-white/70 p-3">
+          <div className="text-xs font-semibold text-grey-900">실제 사이트 감시</div>
+          <div className={`mt-1 text-[11px] ${status.siteConsecutiveFailures === 0 ? "text-green-700" : "text-red-600"}`}>
+            {status.siteConsecutiveFailures === 0
+              ? "정상"
+              : `연속 실패 ${status.siteConsecutiveFailures}회`}
+          </div>
+        </div>
+        <div className="rounded-md border border-white/60 bg-white/70 p-3">
+          <div className="text-xs font-semibold text-grey-900">감시 알림</div>
+          <div className={`mt-1 text-[11px] ${status.siteTelegramConfigured ? "text-green-700" : "text-red-600"}`}>
+            {status.siteTelegramConfigured ? "텔레그램 연결됨" : "텔레그램 미설정"}
+          </div>
+        </div>
+        <div className="rounded-md border border-white/60 bg-white/70 p-3">
+          <div className="text-xs font-semibold text-grey-900">사이트 점검</div>
+          <div className="mt-1 text-[11px] text-grey-700">
+            {status.siteTotalChecks}회 / 실패 {status.siteTotalFailures}회
+          </div>
+        </div>
+        <div className="rounded-md border border-white/60 bg-white/70 p-3">
+          <div className="text-xs font-semibold text-grey-900">AI 상주 관리자</div>
+          <div className={`mt-1 text-[11px] ${status.aiManagerEnabled && status.aiManagerConfigured ? "text-green-700" : "text-red-600"}`}>
+            {status.aiManagerEnabled && status.aiManagerConfigured
+              ? `자동 판단 연결됨 (${status.aiManagerPermissionLevel ?? "권한 미표시"})`
+              : "비활성 또는 인증 미설정"}
+          </div>
+        </div>
+        <div className="rounded-md border border-white/60 bg-white/70 p-3">
+          <div className="text-xs font-semibold text-grey-900">블로그 발행 관리</div>
+          <div className={`mt-1 text-[11px] ${status.blogManagerEnabled ? "text-green-700" : "text-red-600"}`}>
+            {status.blogManagerEnabled
+              ? `${status.blogManagerTotalRuns}회 실행 / 실패 ${status.blogManagerTotalFailures}회`
+              : "비활성"}
+          </div>
+        </div>
+        <div className="rounded-md border border-white/60 bg-white/70 p-3">
+          <div className="text-xs font-semibold text-grey-900">업그레이드·버그 관리</div>
+          <div className={`mt-1 text-[11px] ${status.siteMaintenanceEnabled ? "text-green-700" : "text-red-600"}`}>
+            {status.siteMaintenanceEnabled
+              ? `${status.siteMaintenanceTotalRuns}회 실행 / 실패 ${status.siteMaintenanceTotalFailures}회`
+              : "비활성"}
+          </div>
+        </div>
+        <div className="rounded-md border border-white/60 bg-white/70 p-3">
+          <div className="text-xs font-semibold text-grey-900">검색·콘텐츠 업그레이드</div>
+          <div className={`mt-1 text-[11px] ${status.siteUpgradeEnabled ? "text-green-700" : "text-red-600"}`}>
+            {status.siteUpgradeEnabled
+              ? `${status.siteUpgradeTotalRuns}회 실행 / 실패 ${status.siteUpgradeTotalFailures}회`
+              : "비활성"}
+          </div>
+        </div>
+      </div>
 
       {(status.error || status.missingRequired.length > 0 || status.totalRuns > 0) && (
         <div className="mt-3 rounded-md border border-white/70 bg-white/70 p-3 text-xs text-grey-700">
@@ -567,6 +621,26 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           )}
           <div>마지막 실행: {formatDate(status.lastRunAt)}</div>
           <div>마지막 정상: {formatDate(status.lastOkAt)}</div>
+          <div>마지막 사이트 확인: {formatDate(status.siteLastCheckAt)}</div>
+          <div>마지막 사이트 정상: {formatDate(status.siteLastOkAt)}</div>
+          {status.siteLastFailureAt && (
+            <div>마지막 사이트 실패: {formatDate(status.siteLastFailureAt)}</div>
+          )}
+          <div>마지막 AI 판단: {formatDate(status.aiManagerLastRunAt)}</div>
+          <div>마지막 AI 정상: {formatDate(status.aiManagerLastOkAt)}</div>
+          <div>마지막 블로그 관리: {formatDate(status.blogManagerLastRunAt)}</div>
+          <div>
+            마지막 업그레이드·버그 관리:{" "}
+            {formatDate(status.siteMaintenanceLastRunAt)}
+          </div>
+          <div>
+            마지막 검색·콘텐츠 업그레이드:{" "}
+            {formatDate(status.siteUpgradeLastRunAt)}
+          </div>
+          <div>
+            AI 판단 실행: {status.aiManagerTotalRuns}회 / 실패{" "}
+            {status.aiManagerTotalFailures}회
+          </div>
           {status.totalFailures > 0 && (
             <div>마지막 실패: {formatDate(status.lastFailureAt)}</div>
           )}
