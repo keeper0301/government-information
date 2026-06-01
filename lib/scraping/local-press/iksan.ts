@@ -63,29 +63,44 @@ export function parseListPage(html: string): PressNewsItem[] {
   }));
 }
 
-// 본문 — hwp_editor_board_content 우선 + view_con fallback
-const BODY_REGEXES: RegExp[] = [
-  /<div\s+class="hwp_editor_board_content"[^>]*>([\s\S]*?)<\/div>\s*<\/td>/,
-  /<div\s+class="view_con"[^>]*>([\s\S]*?)<\/div>\s*<\/td>/,
-];
+// 2026-06-02 fix — 본문이 view_con div 에 정적 존재(hwp_editor 는 빈 div, JS 미렌더 미끼).
+// 구 regex 는 `</div></td>` sentinel 의존이라 구조변경으로 0건 → div 깊이 추적으로 복구.
+const VIEW_CON_OPEN = /<div[^>]*\bclass="[^"]*\bview_con\b[^"]*"[^>]*>/i;
 
 export function parseDetailBody(html: string): string | null {
-  for (const re of BODY_REGEXES) {
-    const m = re.exec(html);
-    if (!m) continue;
-    const text = decodeBasicEntities(
-      m[1]
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<[^>]+>/g, "")
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/[ \t]+/g, " ")
-        .trim(),
-    );
-    if (/[가-힣]/.test(text) && text.length >= 50) {
-      return text.slice(0, 5000);
+  const open = VIEW_CON_OPEN.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
     }
   }
-  return null;
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]+/g, " ")
+      .trim(),
+  );
+  // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 여기선 한글 본문 여부만 게이트.
+  return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeIksanAndInsert } = createPressCollector({
