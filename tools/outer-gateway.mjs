@@ -6,13 +6,14 @@ export function readOuterGatewayConfig(env = process.env) {
   const useCronSecret = env.OUTER_USE_CRON_SECRET === "true";
   const authToken = env.OUTER_AUTH_TOKEN || (useCronSecret ? env.CRON_SECRET || "" : "");
   const upstreamBaseUrl = trimTrailingSlash(env.OUTER_UPSTREAM_BASE_URL || "");
+  const upstreamAuthToken = env.OUTER_UPSTREAM_AUTH_TOKEN || env.OPENAI_API_KEY || "";
 
   return {
     enabled: env.OUTER_GATEWAY_ENABLED !== "false",
     authToken,
-    mode: upstreamBaseUrl && env.OUTER_UPSTREAM_AUTH_TOKEN ? "proxy" : "rules",
+    mode: upstreamBaseUrl && upstreamAuthToken ? "proxy" : "rules",
     upstreamBaseUrl,
-    upstreamAuthToken: env.OUTER_UPSTREAM_AUTH_TOKEN || "",
+    upstreamAuthToken,
     upstreamModel: env.OUTER_UPSTREAM_MODEL || env.OUTER_MODEL || "gpt-5.2",
   };
 }

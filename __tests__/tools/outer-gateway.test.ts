@@ -26,6 +26,18 @@ describe("outer-gateway", () => {
     expect(config.upstreamBaseUrl).toBe("https://upstream.example.com/v1");
   });
 
+  it("업스트림 토큰이 없으면 기존 OpenAI 키를 쓸 수 있다", async () => {
+    const { readOuterGatewayConfig } = await import("../../tools/outer-gateway.mjs");
+
+    const config = readOuterGatewayConfig({
+      OUTER_UPSTREAM_BASE_URL: "https://api.openai.com/v1",
+      OPENAI_API_KEY: "openai-token",
+    } as unknown as NodeJS.ProcessEnv);
+
+    expect(config.mode).toBe("proxy");
+    expect(config.upstreamAuthToken).toBe("openai-token");
+  });
+
   it("규칙 모드는 사이트 장애를 긴급 판단으로 반환한다", async () => {
     const { handleOuterResponsesRequest } = await import("../../tools/outer-gateway.mjs");
     const response = createResponseRecorder();

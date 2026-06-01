@@ -28,6 +28,12 @@ services:
         value: "true"
       - key: OUTER_GATEWAY_ENABLED
         value: "true"
+      - key: OUTER_UPSTREAM_BASE_URL
+        value: https://api.openai.com/v1
+      - key: OUTER_UPSTREAM_AUTH_TOKEN
+        sync: false
+      - key: OUTER_UPSTREAM_MODEL
+        value: "gpt-5.2"
       - key: OUTER_MODEL
         value: "gpt-5.2"
       - key: AI_MANAGER_PERMISSION_LEVEL

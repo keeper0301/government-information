@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.codex-local-worker/
 .naver-cookies-temp.json
 naver-chromium-profile/
 naver-publish-fail-*.png
