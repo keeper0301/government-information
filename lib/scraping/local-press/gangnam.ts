@@ -7,7 +7,9 @@
 //   list:  /board/B_000031/list.do?mid=ID01_031
 //   상세:  /board/B_000031/{id}/view.do?mid=ID01_031
 //
-// body: hwp_editor_board_content 안 hwp 변환 본문.
+// body: 2026-06-01 cron 검증서 사이트 개편 확인. hwp_editor_board_content 컨테이너가
+//   한컴 웹에디터(JS 렌더)로 바뀌어 정적 HTML 에선 빈 div(data-jsonlen) → 본문 0자.
+//   대신 본문 평문이 hidden input#content_main_text value 에 서버 렌더됨 → 이걸 추출.
 // ============================================================
 
 import {
@@ -28,9 +30,10 @@ const LIST_ITEM_REGEX =
 // 작성일 td — list 의 마지막 column
 const DATE_REGEX = /<td>(\d{4}-\d{2}-\d{2})<\/td>/g;
 
-// 본문 — hwp_editor_board_content
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="hwp_editor_board_content"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i;
+// 본문 — hidden input#content_main_text value (서버 렌더 평문 본문).
+// id 가 value 앞/뒤 어느 순서든 매칭 (사이트 마크업 변동 대비).
+const BODY_INPUT_REGEX =
+  /<input[^>]*id="content_main_text"[^>]*\svalue="([^"]*)"|<input[^>]*\svalue="([^"]*)"[^>]*\sid="content_main_text"/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -60,9 +63,11 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
+  const m = BODY_INPUT_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeBasicEntities(m[1])
+  // 매칭 그룹은 id-앞 패턴(m[1]) 또는 id-뒤 패턴(m[2]) 중 하나.
+  const raw = m[1] ?? m[2] ?? "";
+  const text = decodeBasicEntities(raw)
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
