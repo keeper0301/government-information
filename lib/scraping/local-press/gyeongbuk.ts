@@ -26,9 +26,12 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
-// 본문 컨테이너 — 표준 board content 패턴. 미확정 시 td.content 또는 div.bbs_view 시도.
-const BODY_CONTAINER_REGEX =
-  /<(?:div|td)\s+(?:class|id)="(?:bbs_view|content|board_view|view_content)"[^>]*>([\s\S]*?)<\/(?:div|td)>/i;
+// 2026-06-02 fix — 본문은 `cont_view` div 에 정적 존재(부제목+본문). 구 regex 는
+// bbs_view(언더스코어) 등 실제 사이트에 없는 class 라 0건이었음.
+// ⚠️ 핵심 함정: 제목이 HTML 주석 `<!--div class="view_title">...</div-->` 으로 감싸져
+// 있어, 주석 닫는 `</div-->` 를 div 깊이 추적이 진짜 닫는 div 로 오인 → 제목에서 조기종료.
+// → 주석을 깊이 추적 전에 먼저 제거해야 함. 끝 경계는 네비(bbsView) 형제 div 라 안 섞임.
+const CONT_VIEW_OPEN = /<div[^>]*\bclass="[^"]*\bcont_view\b[^"]*"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   // 2026-05-20 subagent review hot-fix — 각 link 매치 위치 +800 char slice 안에서만
@@ -62,15 +65,40 @@ export function parseListPage(html: string): PressNewsItem[] {
   return items;
 }
 
-export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length >= 50 ? text : null;
+export function parseDetailBody(htmlRaw: string): string | null {
+  // 핵심: 주석 먼저 제거 — 주석 안 `</div-->` 가 깊이 추적을 오염시킴(제목 조기종료).
+  const html = htmlRaw.replace(/<!--[\s\S]*?-->/g, " ");
+  const open = CONT_VIEW_OPEN.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
+  return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeGyeongbukAndInsert } = createPressCollector({
