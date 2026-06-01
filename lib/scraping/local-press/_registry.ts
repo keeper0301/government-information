@@ -103,6 +103,8 @@ import { scrapeDongdaemunAndInsert } from "./dongdaemun";
 // 2026-06-01 — 서초(eGovFrame site/ex/bbs cbIdx=61)·서울 중구(content.do cmsid=14390).
 import { scrapeSeochoAndInsert } from "./seocho";
 import { scrapeJungguSeoulAndInsert } from "./junggu_seoul";
+// 2026-06-01 — 성북구 보도자료 (SI 표준 bbsNo=46. 메인 빈 shell → /www/index.do).
+import { scrapeSeongbukAndInsert } from "./seongbuk";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -195,7 +197,9 @@ export type CityKey =
   | "dongdaemun"
   // 2026-06-01 서초(site/ex/bbs)·서울 중구(content.do)
   | "seocho"
-  | "junggu_seoul";
+  | "junggu_seoul"
+  // 2026-06-01 성북구 (SI selectBbsNttList bbsNo=46)
+  | "seongbuk";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -872,6 +876,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "서울 중구청",
     siteUrl: "https://www.junggu.seoul.kr/content.do?cmsid=14390",
     fn: scrapeJungguSeoulAndInsert,
+  },
+  // 2026-06-01 — 성북구 보도자료. SI 표준 bbsNo=46 (메인 빈 shell → /www/index.do).
+  {
+    key: "seongbuk",
+    city: "성북구",
+    ministry: "성북구청",
+    siteUrl: "https://www.sb.go.kr/www/selectBbsNttList.do?bbsNo=46&key=6356",
+    fn: scrapeSeongbukAndInsert,
   },
 ];
 
