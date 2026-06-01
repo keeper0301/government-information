@@ -107,6 +107,8 @@ import { scrapeJungguSeoulAndInsert } from "./junggu_seoul";
 import { scrapeSeongbukAndInsert } from "./seongbuk";
 // 2026-06-01 — 강동구 보도자료 (newportal CMS, /web/newportal/press/{id} 정적).
 import { scrapeGangdongAndInsert } from "./gangdong";
+// 2026-06-01 — 대전 서구 보도자료 (eGovFrame bbs, fn_search_detail nttId GET).
+import { scrapeSeoguDaejeonAndInsert } from "./seogu_daejeon";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -203,7 +205,9 @@ export type CityKey =
   // 2026-06-01 성북구 (SI selectBbsNttList bbsNo=46)
   | "seongbuk"
   // 2026-06-01 강동구 (newportal /web/newportal/press)
-  | "gangdong";
+  | "gangdong"
+  // 2026-06-01 대전 서구 (eGovFrame bbs fn_search_detail)
+  | "seogu_daejeon";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -897,6 +901,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "강동구청",
     siteUrl: "https://www.gangdong.go.kr/web/newportal/press/list",
     fn: scrapeGangdongAndInsert,
+  },
+  // 2026-06-01 — 대전 서구 보도자료 (48만, 대전 최대 자치구). eGovFrame bbs.
+  // 광주 서구·인천 서구와 별개 (key=seogu_daejeon).
+  {
+    key: "seogu_daejeon",
+    city: "대전 서구",
+    ministry: "대전 서구청",
+    siteUrl: "https://www.seogu.go.kr/bbs/BBSMSTR_000000000277/list.do",
+    fn: scrapeSeoguDaejeonAndInsert,
   },
 ];
 
