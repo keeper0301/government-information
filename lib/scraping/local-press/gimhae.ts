@@ -67,31 +67,55 @@ export function parseListPage(html: string): PressNewsItem[] {
   }));
 }
 
-// 본문 — board_text_td 또는 일반 <p> fallback
-const BODY_REGEXES: RegExp[] = [
-  /<td[^>]*class="board_text_td"[^>]*>([\s\S]*?)<\/td>/,
-  /<div\s+class="(?:board[_-]?view[_-]?content|view-con|article-detail)[^"]*"[^>]*>([\s\S]*?)<\/div>/,
-];
-
+// 본문 — div.substance (영도·창원과 동일 CMS). 중첩 div 가 깊어 non-greedy 가
+// 첫 </div> 에서 끊기므로 div depth 추적으로 컨테이너 끝을 찾는다.
+// 2026-06-02 — 기존 board_text_td/view-con selector 는 김해 CMS 에 존재하지 않아
+//   <p> fallback 71자(요약)만 수집 → factory 250 전량 skip 이었음. .substance 로 교정.
+const BODY_OPEN_REGEX = /<div[^>]*\bclass="substance"[^>]*>/i;
 
 export function parseDetailBody(html: string): string | null {
-  for (const re of BODY_REGEXES) {
-    const m = re.exec(html);
-    if (!m) continue;
-    const text = decodeBasicEntities(
-      m[1]
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<[^>]+>/g, "")
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/[ \t]+/g, " ")
-        .trim(),
-    );
-    if (/[가-힣]/.test(text) && text.length >= 50) {
-      return text.slice(0, 5000);
+  const open = BODY_OPEN_REGEX.exec(html);
+  if (open) {
+    const start = open.index + open[0].length;
+    const tagRe = /<(\/?)div\b[^>]*>/gi;
+    tagRe.lastIndex = start;
+    let depth = 1;
+    let raw: string | null = null;
+    let dm: RegExpExecArray | null;
+    while ((dm = tagRe.exec(html)) !== null) {
+      if (dm[1] === "/") {
+        depth -= 1;
+        if (depth === 0) {
+          raw = html.slice(start, dm.index);
+          break;
+        }
+      } else {
+        depth += 1;
+      }
+    }
+    if (raw !== null) {
+      const text = decodeBasicEntities(
+        raw
+          .replace(/<script[\s\S]*?<\/script>/gi, " ")
+          .replace(/<style[\s\S]*?<\/style>/gi, " ")
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<[^>]+>/g, "")
+          .replace(/\r/g, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .replace(/[ \t]+/g, " ")
+          .trim(),
+      )
+        // .substance 선두에 사진 슬라이더 잡음(&lsaquo;/&rsaquo; ‹› 화살표 + 빈 슬라이드 줄)
+        // 이 본문 앞 ~250자를 차지 → 첫 한글 등장 전 비한글 잡음을 제거. 보도자료 본문은
+        // 시·기관명 등 한글로 시작하므로 의미 손실 없음.
+        .replace(/^[^가-힣]*/, "");
+      if (/[가-힣]/.test(text) && text.length >= 250) {
+        return text.slice(0, 20000);
+      }
     }
   }
 
-  // Fallback — <p> 한국어 다수
+  // Fallback — <p> 한국어 다수 (.substance 부재/짧음 대비)
   const PARAGRAPH_REGEX = /<p[^>]*>([^<]{20,})<\/p>/g;
   const paragraphs: string[] = [];
   let m: RegExpExecArray | null;
@@ -103,8 +127,8 @@ export function parseDetailBody(html: string): string | null {
   }
   if (paragraphs.length === 0) return null;
   const joined = paragraphs.join("\n");
-  if (joined.length < 50) return null;
-  return joined.slice(0, 5000);
+  if (joined.length < 250) return null;
+  return joined.slice(0, 20000);
 }
 
 export const { scrapeAndInsert: scrapeGimhaeAndInsert } = createPressCollector({

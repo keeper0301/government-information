@@ -49,20 +49,52 @@ describe("gimhae parseListPage", () => {
 });
 
 describe("gimhae parseDetailBody", () => {
-  it("board_text_td 안 본문 추출", () => {
+  // 250자+ 본문 (factory BODY_MIN_LEN=250 통과 + 실제 .substance 길이 재현)
+  const 긴본문 =
+    "김해시는 28일 김해시생활문화평생학습관에서 제3기 평생학습 SNS 서포터즈 발대식을 개최했다고 밝혔다. " +
+    "이번 발대식에는 평생학습 매니저와 SNS 서포터즈 50여 명이 참석했으며, 시는 이들이 평생학습 프로그램을 " +
+    "시민들에게 널리 알리는 역할을 맡게 된다고 설명했다. 서포터즈는 앞으로 6개월간 활동하며 평생학습 우수 사례를 " +
+    "발굴하고 온라인 채널을 통해 홍보 콘텐츠를 제작할 예정이다. 시 관계자는 시민 누구나 평생 배움을 누릴 수 있는 " +
+    "환경을 만들기 위해 지속적으로 노력하겠다고 말했다.";
+
+  it("div.substance 중첩 div depth 추적으로 본문 추출", () => {
+    // .substance 안에 사진 갤러리 div + 본문 — non-greedy 면 첫 </div> 에서 끊김.
     const html = `
-      <td class="board_text_td">김해시는 5월 15일 정책 수립 단계부터 성차별을 사전에 걸러내는 시스템을 도입한다고 밝혔다. 이번 정책은 공직사회 양성평등 실현을 위한 것이다.</td>
+      <div class="substance">
+        <div class="photo_area"><img src="/x.jpg"><span>1번째 사진</span></div>
+        <script>jQchangePic3('click');</script>
+        <p>${긴본문}</p>
+      </div>
+      <div class="btn">목록</div>
     `;
     const body = parseGimhaeBody(html);
     expect(body).toContain("김해시");
-    expect(body).toContain("성차별");
+    expect(body).toContain("서포터즈");
+    expect(body).not.toContain("jQchangePic3"); // script 제거
+    expect((body ?? "").length).toBeGreaterThanOrEqual(250);
   });
 
-  it("fallback <p> 한국어 다수", () => {
+  it("선두 사진 슬라이더 잡음(‹›+빈줄) 제거 — 첫 한글부터", () => {
+    // 라이브 .substance 도입부 재현: 화살표 entity + 빈 슬라이드 줄(\r\n 다발)
     const html = `
-      <p>김해시는 시민의 안전과 복지를 최우선으로 하는 정책을 추진하고 있으며, 모든 시민이 평등하고 안전한 생활을 할 수 있도록 노력합니다.</p>
-      <p>또한 환경 보호와 지속 가능한 발전을 위한 다양한 프로그램을 운영합니다.</p>
+      <div class="substance">
+        <div class="photo_area">-${"\r\n".repeat(40)}&lsaquo;${"\r\n".repeat(40)}&rsaquo;${"\r\n".repeat(40)}</div>
+        <p>${긴본문}</p>
+      </div>
     `;
+    const body = parseGimhaeBody(html);
+    expect(body).not.toContain("&lsaquo;");
+    expect(body).not.toContain("&rsaquo;");
+    expect(body?.startsWith("김해시")).toBe(true); // 선두 잡음 제거 후 한글 본문부터
+  });
+
+  it("250자 미만 본문 — null (thin 차단)", () => {
+    const html = `<div class="substance"><p>김해시 짧은 안내문</p></div>`;
+    expect(parseGimhaeBody(html)).toBeNull();
+  });
+
+  it("fallback <p> 한국어 다수 (.substance 부재)", () => {
+    const html = `<p>${긴본문}</p>`;
     const body = parseGimhaeBody(html);
     expect(body).toContain("김해시");
   });
