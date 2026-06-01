@@ -92,6 +92,8 @@ import { scrapeSeodaemunAndInsert } from "./seodaemun";
 import { scrapeGeumcheonAndInsert } from "./geumcheon";
 // 2026-06-01 — 강서구 보도자료 (eDotXpress CMS, /gs040201/{id} 정적, view-content 본문).
 import { scrapeGangseoAndInsert } from "./gangseo";
+// 2026-06-01 — 종로구 보도자료 (eGovFrame selectBoardList bbsId=1618, viewMove nttId).
+import { scrapeJongnoAndInsert } from "./jongno";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -175,7 +177,9 @@ export type CityKey =
   // 2026-06-01 금천구 (SI 보도자료 bbsNo=8)
   | "geumcheon"
   // 2026-06-01 강서구 (eDotXpress /gs040201)
-  | "gangseo";
+  | "gangseo"
+  // 2026-06-01 종로구 (eGovFrame selectBoardList bbsId=1618)
+  | "jongno";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -803,6 +807,15 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "강서구청",
     siteUrl: "https://www.gangseo.seoul.kr/gs040201",
     fn: scrapeGangseoAndInsert,
+  },
+  // 2026-06-01 — 종로구 보도자료. eGovFrame selectBoardList (bbsId=1618, viewMove nttId).
+  {
+    key: "jongno",
+    city: "종로구",
+    ministry: "종로구청",
+    siteUrl:
+      "https://www.jongno.go.kr/portal/bbs/selectBoardList.do?bbsId=BBSMSTR_000000001618&menuId=388338&menuNo=388338",
+    fn: scrapeJongnoAndInsert,
   },
 ];
 
