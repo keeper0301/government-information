@@ -1,8 +1,9 @@
 // app/api/cron/busan-verify/route.ts
-// 부산 자치구 4곳(부산진·북구·사상·동래) 수집 검증 — 2026-06-01 수리 효과 확인용.
-// 매일 KST 11시(= 02 UTC) 4곳의 24h/7d inserted + 최신 글을 조회해 텔레그램 발송.
-// 6/1 수리: 부산진=BBS_0000031 교정, 북구=eminwon 재이관, 사상=icn1 TLS fallback, 날짜 2자리.
-// proxy(부산진·사상) cron KST 10시 + 정적(북구 eminwon) 오전 이후 시점이라 11시 확인.
+// 자치구 보도자료 수집 검증 — 2026-06-01 수리·신규 효과 확인용.
+// 매일 KST 11시(= 02 UTC) 부산 4곳 + 서울 13곳의 24h/7d inserted + 최신 글을 조회해 텔레그램 발송.
+// 부산: 부산진=BBS_0000031, 북구=eminwon, 사상=TLS fallback, 동래(대조). 날짜 2자리.
+// 서울: 외부 자율 추가 13 자치구(본문 min 250 통일 적용분).
+// proxy(부산진·사상) KST 10시 + 정적(eminwon·서울 09시) 이후라 11시 확인.
 // ⚠️ 1주 모니터링 검증 완료 후 vercel.json crons 에서 제거 권장(상시 noise 방지).
 
 import { NextResponse } from "next/server";
@@ -11,13 +12,28 @@ import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
-const BUSAN_CITIES = [
-  { code: "local-press-busanjin", name: "부산진구" },
-  { code: "local-press-bsbukgu", name: "부산 북구" },
-  { code: "local-press-sasang", name: "사상구" },
-  { code: "local-press-dongnae", name: "동래구" },
+const VERIFY_CITIES = [
+  // 부산 자치구 (6/1 수리)
+  { code: "local-press-busanjin", name: "부산진구", region: "부산" },
+  { code: "local-press-bsbukgu", name: "부산 북구", region: "부산" },
+  { code: "local-press-sasang", name: "사상구", region: "부산" },
+  { code: "local-press-dongnae", name: "동래구", region: "부산" },
+  // 서울 자치구 (외부 자율 추가 13)
+  { code: "local-press-seongdong", name: "성동구", region: "서울" },
+  { code: "local-press-yeongdeungpo", name: "영등포구", region: "서울" },
+  { code: "local-press-eunpyeong", name: "은평구", region: "서울" },
+  { code: "local-press-seodaemun", name: "서대문구", region: "서울" },
+  { code: "local-press-jongno", name: "종로구", region: "서울" },
+  { code: "local-press-gangseo", name: "강서구", region: "서울" },
+  { code: "local-press-geumcheon", name: "금천구", region: "서울" },
+  { code: "local-press-guro", name: "구로구", region: "서울" },
+  { code: "local-press-dongdaemun", name: "동대문구", region: "서울" },
+  { code: "local-press-seocho", name: "서초구", region: "서울" },
+  { code: "local-press-junggu-seoul", name: "중구", region: "서울" },
+  { code: "local-press-seongbuk", name: "성북구", region: "서울" },
+  { code: "local-press-gangdong", name: "강동구", region: "서울" },
 ] as const;
 
 async function sendTelegram(
@@ -45,12 +61,13 @@ async function run() {
 
   const results: {
     name: string;
+    region: string;
     cnt24: number;
     cnt7: number;
     latestPublished: string | null;
   }[] = [];
 
-  for (const c of BUSAN_CITIES) {
+  for (const c of VERIFY_CITIES) {
     const { count: cnt24 } = await admin
       .from("news_posts")
       .select("*", { count: "exact", head: true })
@@ -69,22 +86,33 @@ async function run() {
       .limit(1);
     results.push({
       name: c.name,
+      region: c.region,
       cnt24: cnt24 ?? 0,
       cnt7: cnt7 ?? 0,
       latestPublished: latest?.[0]?.published_at ?? null,
     });
   }
 
-  const lines = results.map((r) => {
-    // ✅ 24h 수집 · 🟡 24h 0 이나 7d 있음 · ⚠️ 7d 0(수리 미작동/장기 무발행 의심)
+  // ✅ 24h 수집 · 🟡 24h 0 이나 7d 있음 · ⚠️ 7d 0(수집 실패/장기 무발행 의심)
+  const fmt = (r: (typeof results)[number]) => {
     const icon = r.cnt24 > 0 ? "✅" : r.cnt7 > 0 ? "🟡" : "⚠️";
     const pub = r.latestPublished ? r.latestPublished.slice(0, 10) : "-";
-    return `${icon} ${r.name}: 24h ${r.cnt24}건 / 7d ${r.cnt7}건 (최신 ${pub})`;
-  });
+    return `${icon} ${r.name}: 24h ${r.cnt24} / 7d ${r.cnt7} (최신 ${pub})`;
+  };
+
+  // region 별 섹션 (부산 먼저, 서울 다음). 등록 순서 유지.
+  const regions = [...new Set(results.map((r) => r.region))];
+  const sections = regions
+    .map((rg) => {
+      const lines = results.filter((r) => r.region === rg).map(fmt).join("\n");
+      return `[${rg}]\n${lines}`;
+    })
+    .join("\n\n");
+
   const text =
-    "🏙 부산 자치구 수집 확인 (6/1 수리 검증)\n" +
-    lines.join("\n") +
-    "\n\n⚠️=7d 0건(수리 미작동·주말 의심) · 🟡=24h만 0";
+    "🏙 자치구 보도자료 수집 확인 (6/1 수리·신규 검증)\n\n" +
+    sections +
+    "\n\n⚠️=7d 0건(수집 실패·주말 의심) · 🟡=24h만 0";
 
   const telegram = await sendTelegram(text);
   return NextResponse.json({ ok: true, results, telegram });
