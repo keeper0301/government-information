@@ -6,6 +6,7 @@
 
 import {
   createPressCollector,
+  decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
 
@@ -59,25 +60,27 @@ export function parseListPage(html: string): PressNewsItem[] {
   }));
 }
 
-// 본문 — <p> 한국어 추출 (서울/수원 동일 패턴)
+// 2026-06-02 fix — 본문은 boardView 의 `<dt>부제목</dt><dd>...◈ 개조식 본문...</dd>` 에 존재.
+// (라벨은 "부제목"이나 실제 웹 본문. 전문은 첨부 HWP.) 구 파서는 `<p>([^<]{20,})</p>`(중첩
+// 태그 없는 순수 p)만 잡아 본문 대부분 누락 → 65자 thin junk 수집이었음.
+// 같은 form-data-info dl 의 부서명/전화번호/작성자 메타는 dt 라벨로 구분되어 누출 0.
+const BODY_DD_REGEX =
+  /<dt>\s*<span>\s*부제목\s*<\/span>\s*<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/i;
+
 export function parseDetailBody(html: string): string | null {
-  const PARAGRAPH_REGEX = /<p[^>]*>([^<]{20,})<\/p>/g;
-  const paragraphs: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = PARAGRAPH_REGEX.exec(html)) !== null) {
-    const text = m[1]
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .trim();
-    if (!/[가-힣]/.test(text)) continue;
-    if (/element-invisible|첨부파일|문서보기/.test(text)) continue;
-    paragraphs.push(text);
-  }
-  if (paragraphs.length === 0) return null;
-  return paragraphs.join("\n").slice(0, 5000);
+  const m = BODY_DD_REGEX.exec(html);
+  if (!m) return null;
+  const text = decodeBasicEntities(
+    m[1]
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+  // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
+  return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeBusanAndInsert } = createPressCollector({

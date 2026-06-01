@@ -42,14 +42,38 @@ describe("busan parseListPage", () => {
   });
 });
 
-describe("busan parseDetailBody", () => {
-  it("<p> 한국어 본문 추출", () => {
+// 2026-06-02 — 본문은 boardView 의 <dt>부제목</dt><dd>본문</dd>. 같은 form-data-info dl 의
+// 부서명/작성자 메타가 본문 앞에 와도 부제목 dd 만 추출(메타 누출 방어).
+describe("busan parseDetailBody (부제목 dd)", () => {
+  it("부제목 dd 본문 추출 + 메타(부서명/작성자) 미누출", () => {
     const html = `
-      <p>부산시는 박형준 시장 주재로 BTS 월드투어 가격안정 대책회의를 개최했다.</p>
-      <p>관계 실·국 및 유관기관 참여 민관합동 대책회의 진행으로 숙박업소 가격을 안정화한다.</p>
-    `;
+      <div class="boardView">
+        <div class="form-group"><dl class="form-data-info">
+          <dt><span>부서명</span></dt><dd>인공지능소프트웨어과</dd>
+          <dt><span>전화번호</span></dt><dd>051-888-4484</dd>
+          <dt><span>작성자</span></dt><dd>정용준</dd>
+        </dl></div>
+        <div class="form-group"><dl class="form-data-info">
+          <dt><span>부제목</span></dt>
+          <dd>◈ 부산대학교 연구팀이 글로벌 퀀텀 이노베이션 챌린지에서 최종 우승했다고 시가 밝혔다. 시는 덴마크 이노베이션 센터와 협력해 지역 연구자들의 국제 연구 활동을 지원해 왔다.</dd>
+        </dl></div>
+      </div>`;
     const body = parseBusanBody(html);
-    expect(body).toContain("부산시");
-    expect(body).toContain("박형준");
+    expect(body).toContain("부산대학교");
+    expect(body).toContain("글로벌 퀀텀");
+    expect(body).not.toContain("부서명");
+    expect(body).not.toContain("인공지능소프트웨어과");
+    expect(body).not.toContain("작성자");
+  });
+
+  it("부제목 dt 가 없으면 null", () => {
+    expect(parseBusanBody(`<dd>본문만 있고 부제목 dt 없음입니다.</dd>`)).toBeNull();
+  });
+
+  it("HTML entity 디코딩", () => {
+    const html = `<dt><span>부제목</span></dt><dd>부산시 &quot;글로벌 가교&quot; 역할 &amp; 협력을 강화한다고 밝혔다.</dd>`;
+    const body = parseBusanBody(html);
+    expect(body).toContain('"글로벌 가교"');
+    expect(body).toContain("역할 & 협력");
   });
 });
