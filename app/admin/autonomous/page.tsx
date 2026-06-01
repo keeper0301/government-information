@@ -329,6 +329,29 @@ export default async function AdminAutonomousPage() {
             review mode off 전 ≥80% 권장 (cron KST 04:30 매일 ~100건)
           </span>
         </div>
+        {/* 2026-06-01 — 80% 도달 + review mode on 시 1-tap OFF 강조 link.
+            기존 /api/admin/disable-adsense-review-mode GET → confirm page →
+            Vercel env 자동 off + production redeploy 까지 자동. */}
+        {ADSENSE_REVIEW_MODE && newsRatioStats.commentaryBackfillRatio >= 0.8 && (
+          <div className="mt-2 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-emerald-800 font-semibold">
+                ✅ 백필 80% 도달 — review mode OFF 안전 시점
+              </span>
+              <a
+                href="/api/admin/disable-adsense-review-mode"
+                className="shrink-0 rounded bg-emerald-600 px-3 py-1 text-white font-semibold hover:bg-emerald-700 text-[11px]"
+              >
+                🚀 자동 OFF 1-tap ↗
+              </a>
+            </div>
+            <p className="mt-1 text-[10px] text-emerald-700">
+              admin 로그인 후 GET 진입 → confirm page → Vercel env 자동 off +
+              production redeploy. 수동 백업: Vercel settings → env →
+              NEXT_PUBLIC_ADSENSE_REVIEW_MODE off.
+            </p>
+          </div>
+        )}
       </div>
       <div className="mb-4">
         <LocalPressCard stats={localPressStats} />
