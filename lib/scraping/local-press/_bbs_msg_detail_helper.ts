@@ -45,6 +45,30 @@ const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 const BODY_CONTAINER_REGEX =
   /<div\s+class="(?:view_cont|board_view|bbs_view|content|cont)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file)|<\/article|<\/section)/i;
 
+// 2026-06-02 — 부평·계양·강화는 본문이 `board_view`(class 중간, 예: "general_board board_view")
+// div 에 정적 존재(hwp_editor 빈 div 는 미끼). div 깊이 추적으로 추출. 없으면 null → fallback.
+// 서구 등은 board_view 미사용 → null → 기존 regex 로 처리(무영향).
+const BOARD_VIEW_OPEN = /<div[^>]*\bclass="[^"]*\bboard_view\b[^"]*"[^>]*>/i;
+
+function extractBoardViewRaw(html: string): string | null {
+  const open = BOARD_VIEW_OPEN.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) return html.slice(start, m.index);
+    } else {
+      depth += 1;
+    }
+  }
+  return null; // 닫는 div 없음
+}
+
 export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
   const listUrl = `${cfg.baseUrl}${cfg.listPath}`;
   const bcd = cfg.bcd ?? "report";
@@ -84,15 +108,26 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
   }
 
   function parseDetailBody(html: string): string | null {
-    const m = BODY_CONTAINER_REGEX.exec(html);
-    if (!m) return null;
-    const text = decodeBasicEntities(m[1])
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<[^>]+>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!/[가-힣]/.test(text) || text.length < 50) return null;
-    return text.slice(0, 5000);
+    // board_view div 우선(부평·계양·강화), 비거나 없으면 기존 regex(서구 등) fallback.
+    const candidates = [
+      extractBoardViewRaw(html),
+      BODY_CONTAINER_REGEX.exec(html)?.[1] ?? null,
+    ];
+    for (const raw of candidates) {
+      if (raw === null) continue;
+      const text = decodeBasicEntities(
+        raw
+          .replace(/<!--[\s\S]*?-->/g, " ")
+          .replace(/<script[\s\S]*?<\/script>/gi, " ")
+          .replace(/<style[\s\S]*?<\/style>/gi, " ")
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<[^>]+>/g, "")
+          .replace(/\s+/g, " ")
+          .trim(),
+      );
+      if (/[가-힣]/.test(text) && text.length >= 50) return text.slice(0, 20000);
+    }
+    return null;
   }
 
   return createPressCollector({
