@@ -11,7 +11,7 @@
 import { describe, it, expect } from "vitest";
 import { parseSiNttBody } from "@/lib/scraping/local-press/_si_ntt_helper";
 
-const LONG = "관내 소공인과 시민이 함께 참여하는 행사를 개최한다고 밝혔다. 자세한 사항은 시청 누리집에서 확인할 수 있으며 많은 관심을 바란다고 당부했다.";
+const LONG = "관내 소공인과 시민이 함께 참여하는 행사를 개최한다고 밝혔다. 이번 행사는 지역 소상공인의 판로 확대와 시민의 생활 편의를 동시에 높이기 위해 마련된 자리로, 다양한 체험형 프로그램과 전시 부스가 함께 운영될 예정이다. 시는 이번 행사를 통해 관내 소공인의 우수한 제품을 널리 알리고 지역 경제에 활력을 불어넣겠다는 계획이라고 전했다. 행사 기간 동안 현장에서는 상담 창구도 함께 운영되어 누구나 손쉽게 정보를 얻을 수 있도록 지원할 방침이다. 자세한 사항은 시청 누리집에서 확인할 수 있으며 많은 관심을 바란다고 당부했다.";
 
 describe("parseSiNttBody — p-table__content 셀 (군포·구리)", () => {
   it("td.p-table__content (class 앞 colspan) → 셀 닫힘까지, 뒤 <script> 제외", () => {

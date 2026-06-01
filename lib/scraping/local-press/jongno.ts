@@ -100,7 +100,8 @@ export function parseDetailBody(html: string): string | null {
     // (\s+) 로 "내용물" 같은 단어는 보호.
     .replace(/^\s*내용\s+/, "")
     .trim();
-  if (!/[가-힣]/.test(text) || text.length < 50) return null;
+  // 2026-06-01 리뷰 — 본문 min 50 → 250 (AGENTS.md 룰·thin content/AdSense 방지 통일).
+  if (!/[가-힣]/.test(text) || text.length < 250) return null;
   return text.slice(0, 20000);
 }
 

@@ -52,6 +52,8 @@ export function parseSiNttBody(html: string): string | null {
     .replace(/사진\s*확대보기/g, " ") // 이미지 갤러리 UI 라벨 제거
     .replace(/\s+/g, " ")
     .trim();
-  if (!/[가-힣]/.test(text) || text.length < 50) return null;
-  return text.slice(0, 5000);
+  // 2026-06-01 리뷰 — 본문 min 50 → 250, cut 5000 → 20000 (AGENTS.md 룰 통일:
+  // thin content/AdSense 방지 + 긴 보도자료 절단 방지). SI 경유 도시 전체 적용.
+  if (!/[가-힣]/.test(text) || text.length < 250) return null;
+  return text.slice(0, 20000);
 }
