@@ -62,31 +62,52 @@ export function parseListPage(html: string): PressNewsItem[] {
   }));
 }
 
-// 본문 — board_text_td 또는 일반 <p> fallback
-const BODY_REGEXES: RegExp[] = [
-  /<td[^>]*class="board_text_td"[^>]*>([\s\S]*?)<\/td>/,
-  /<div\s+class="(?:board[_-]?view[_-]?content|view-con|article-detail|cms_content)[^"]*"[^>]*>([\s\S]*?)<\/div>/,
-];
-
+// 본문 — div.contenttext (남양주 CMS). 중첩 div 가 깊어 div depth 추적으로 끝을 찾는다.
+// 2026-06-02 — 기존 board_text_td/view-con/cms_content selector 는 남양주 CMS 에 없어
+//   <p> fallback 91자(요약)만 수집 → factory 250 전량 skip 이었음. contenttext 로 교정.
+const BODY_OPEN_REGEX = /<div[^>]*\bclass="[^"]*\bcontenttext\b[^"]*"[^>]*>/i;
 
 export function parseDetailBody(html: string): string | null {
-  for (const re of BODY_REGEXES) {
-    const m = re.exec(html);
-    if (!m) continue;
-    const text = decodeBasicEntities(
-      m[1]
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<[^>]+>/g, "")
-        .replace(/\n{3,}/g, "\n\n")
-        .replace(/[ \t]+/g, " ")
-        .trim(),
-    );
-    if (/[가-힣]/.test(text) && text.length >= 50) {
-      return text.slice(0, 5000);
+  const open = BODY_OPEN_REGEX.exec(html);
+  if (open) {
+    const start = open.index + open[0].length;
+    const tagRe = /<(\/?)div\b[^>]*>/gi;
+    tagRe.lastIndex = start;
+    let depth = 1;
+    let raw: string | null = null;
+    let dm: RegExpExecArray | null;
+    while ((dm = tagRe.exec(html)) !== null) {
+      if (dm[1] === "/") {
+        depth -= 1;
+        if (depth === 0) {
+          raw = html.slice(start, dm.index);
+          break;
+        }
+      } else {
+        depth += 1;
+      }
+    }
+    if (raw !== null) {
+      const text = decodeBasicEntities(
+        raw
+          .replace(/<script[\s\S]*?<\/script>/gi, " ")
+          .replace(/<style[\s\S]*?<\/style>/gi, " ")
+          .replace(/<figure[\s\S]*?<\/figure>/gi, " ")
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<[^>]+>/g, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .replace(/[ \t]+/g, " ")
+          .trim(),
+      )
+        // 선두 비한글 잡음(소제목 머리 "- " 등) 제거 — 본문은 시·기관명 등 한글로 시작.
+        .replace(/^[^가-힣]*/, "");
+      if (/[가-힣]/.test(text) && text.length >= 250) {
+        return text.slice(0, 20000);
+      }
     }
   }
 
-  // Fallback — <p> 한국어 다수
+  // Fallback — <p> 한국어 다수 (contenttext 부재/짧음 대비)
   const PARAGRAPH_REGEX = /<p[^>]*>([^<]{20,})<\/p>/g;
   const paragraphs: string[] = [];
   let m: RegExpExecArray | null;
@@ -98,8 +119,8 @@ export function parseDetailBody(html: string): string | null {
   }
   if (paragraphs.length === 0) return null;
   const joined = paragraphs.join("\n");
-  if (joined.length < 50) return null;
-  return joined.slice(0, 5000);
+  if (joined.length < 250) return null;
+  return joined.slice(0, 20000);
 }
 
 export const { scrapeAndInsert: scrapeNamyangjuAndInsert } =

@@ -130,17 +130,31 @@ describe("namyangju parseListPage", () => {
 });
 
 describe("namyangju parseDetailBody", () => {
-  it("일반 <p> 한국어 다수 (fallback)", () => {
+  const 긴본문 =
+    "남양주시는 제9회 전국동시지방선거 사전투표일을 하루 앞둔 28일 진접읍과 오남읍 사전투표 모의시험 " +
+    "현장을 찾아 선거사무 준비 상황을 점검했다고 밝혔다. 이번 점검은 사전투표 장비와 투표소 동선, " +
+    "안내체계를 종합적으로 확인하기 위해 마련됐다. 시는 투표용지 발급기와 신분 확인 단말기 작동 상태를 " +
+    "직접 살피고, 유권자 동선과 안내 표지 배치를 꼼꼼히 점검했다. 또한 현장 종사자들의 역할 분담과 " +
+    "비상 대응 절차를 재확인하며 차질 없는 선거관리를 당부했다.";
+
+  it("div.contenttext 중첩 div depth 추적 + 선두 소제목 머리 제거", () => {
     const html = `
-      <p>남양주시는 5월 15일 대형공사장 안전관리 책임자를 위한 현장간담회를 개최했다고 밝혔다.</p>
-      <p>이번 간담회는 안전사고 예방과 책임자의 역할 강화를 위한 것이다.</p>
+      <div class="contenttext">
+        <div class="sub"><p>- 사전투표 모의시험 현장점검 장비·동선 집중 점검</p></div>
+        <p>${긴본문}</p>
+      </div>
     `;
     const body = parseNamyangjuBody(html);
-    expect(body).toContain("남양주시");
-    expect(body).toContain("안전관리");
+    expect(body).toContain("남양주시는");
+    expect(body?.startsWith("-")).toBe(false); // 선두 "- " 머리 제거
+    expect((body ?? "").length).toBeGreaterThanOrEqual(250);
   });
 
-  it("container + p 없음 — null", () => {
+  it("250자 미만 본문 — null (thin 차단)", () => {
+    expect(parseNamyangjuBody(`<div class="contenttext"><p>남양주시 짧은 안내</p></div>`)).toBeNull();
+  });
+
+  it("contenttext 부재 — null", () => {
     expect(parseNamyangjuBody(`<span>짧음</span>`)).toBeNull();
   });
 });
