@@ -4,7 +4,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { stripUiLabels, stripTitleBadges } from "../lib/_factory.mjs";
+import { stripUiLabels, stripTitleBadges, parseListDate } from "../lib/_factory.mjs";
 
 test("stripUiLabels — 이미지/사진 + 확대보기/다운로드 라벨 제거", () => {
   assert.equal(stripUiLabels("이미지 확대보기"), "");
@@ -60,4 +60,34 @@ test("stripTitleBadges — 정상 제목 영향 0", () => {
 test("stripTitleBadges — 끝 아닌 '새 글'은 보존 (안쪽은 영향 0)", () => {
   // 끝에만 매치하는 정규식이라 안쪽은 그대로
   assert.equal(stripTitleBadges("새 글 페스티벌 개최"), "새 글 페스티벌 개최");
+});
+
+test("parseListDate — 4자리 연도 (기존 동작 유지)", () => {
+  assert.equal(parseListDate("2026-05-18"), "2026-05-18");
+  assert.equal(parseListDate("2026.05.18"), "2026-05-18");
+  assert.equal(parseListDate("등록일 2026-06-01 조회 87"), "2026-06-01");
+});
+
+test("parseListDate — 2자리 연도 (부산 SI YY.MM.DD → 20 접두)", () => {
+  assert.equal(parseListDate("26.05.18"), "2026-05-18");
+  assert.equal(parseListDate("2741 제목 평생교육과 26.05.18 87"), "2026-05-18");
+  assert.equal(parseListDate("25.03.17"), "2025-03-17");
+});
+
+test("parseListDate — 4자리 우선 (2자리·4자리 공존 시 4자리)", () => {
+  // 4자리 날짜가 있으면 그것을 채택 (alternation 4자리 우선)
+  assert.equal(parseListDate("2026-05-18"), "2026-05-18");
+});
+
+test("parseListDate — month/day 범위 밖 = null (비-날짜 숫자 오매칭 차단)", () => {
+  assert.equal(parseListDate("버전 10.20.30"), null); // month 20 invalid
+  assert.equal(parseListDate("12.34.56"), null); // 시각/버전 (month 34)
+  assert.equal(parseListDate("26.13.01"), null); // month 13
+  assert.equal(parseListDate("26.05.40"), null); // day 40
+});
+
+test("parseListDate — 날짜 패턴 없음 = null", () => {
+  assert.equal(parseListDate("조회수 87"), null);
+  assert.equal(parseListDate(""), null);
+  assert.equal(parseListDate(null), null);
 });

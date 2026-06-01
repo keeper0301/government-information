@@ -101,6 +101,20 @@ export const stripUiLabels = (t) =>
 export const stripTitleBadges = (t) =>
   t.replace(/\s+(새\s*글|NEW)\s*$/, "").trim();
 
+// list row 날짜 추출. 4자리 연도(2026-05-18) 우선 + 2자리 연도(부산 SI 자치구 YY.MM.DD,
+// 예 26.05.18)도 20 접두로 지원. month 1-12·day 1-31 범위 검증으로 비-날짜 숫자
+// (버전·IP·시각 등) 오매칭 차단. 미매칭/범위 밖이면 null → published_at=now() fallback.
+// ※ evaluate 안 인라인 코드와 동기화 필수 (browser context 에서 외부 함수 호출 불가).
+export function parseListDate(dateText) {
+  const m = (dateText || "").match(/(\d{4}|\d{2})[.\-](\d{2})[.\-](\d{2})/);
+  if (!m) return null;
+  const mm = parseInt(m[2], 10);
+  const dd = parseInt(m[3], 10);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const year = m[1].length === 2 ? `20${m[1]}` : m[1];
+  return `${year}-${m[2]}-${m[3]}`;
+}
+
 // 도시별 titleSelectors 미지정 시 default. LIST_SELECTORS / BODY_SELECTORS 와 같은
 // 모듈 export 상수로 통일(이전 inline default 에서 추출). 새 도시 추가 시 여기 확장.
 export const TITLE_SELECTORS = [".title", ".subject", ".tit"];
@@ -258,8 +272,18 @@ export function makeScraper({
                 row.querySelector("td.date, .date, .reg, td.td-date")
                   ?.textContent ?? row.textContent ?? ""
               ).trim();
-              const m = dateText.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
-              const publishedDate = m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+              // ※ parseListDate(_factory export)와 동기화. 4자리 우선 + 2자리 연도(20
+              // 접두) + month/day 범위 검증으로 비-날짜 숫자 오매칭 차단.
+              const dm = dateText.match(/(\d{4}|\d{2})[.\-](\d{2})[.\-](\d{2})/);
+              let publishedDate = null;
+              if (dm) {
+                const mm = parseInt(dm[2], 10);
+                const dd = parseInt(dm[3], 10);
+                if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+                  const yr = dm[1].length === 2 ? `20${dm[1]}` : dm[1];
+                  publishedDate = `${yr}-${dm[2]}-${dm[3]}`;
+                }
+              }
 
               return { title, sourceUrl, publishedDate };
             })
