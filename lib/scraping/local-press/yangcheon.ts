@@ -24,9 +24,9 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /<td\s+class="wdate">\s*(\d{4})\.(\d{2})\.(\d{2})/;
 
-// 2026-06-01 fix — 관악 동일 sentinel 단순화 (closing pattern specific 사고 회피)
-const BODY_CONTAINER_REGEX =
-  /<div[^>]*class="view_contents"[^>]*>([\s\S]{50,40000}?)<div\s+class="view-nuri/i;
+// 2026-06-02 fix — 종결 마커 `view-nuri` 가 양천 detail 에 없어 매칭 실패(수집 0).
+// view_contents div 를 깊이 추적으로 추출(중첩 div 안전 + 종결 마커 의존 제거). 1738자 검증.
+const VIEW_CONTENTS_OPEN = /<div[^>]*\bclass="[^"]*\bview_contents\b[^"]*"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -56,16 +56,38 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
+  const open = VIEW_CONTENTS_OPEN.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  )
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  if (!/[가-힣]/.test(text) || text.length < 250) return null;
-  return text.slice(0, 20000);
+  // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
+  return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeYangcheonAndInsert } =
