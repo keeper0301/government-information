@@ -85,10 +85,12 @@ export const scrapeDongnae = makeScraper({
   bodySelectors: BUSAN_SI_BODY,
 });
 
-// 2026-05-29 — 부산진구. BBS_0000265 보도자료(현재 등록 URL 정상). 본문 div.substan.
+// 2026-06-01 — 부산진구 보도자료 게시판 교정. 기존 BBS_0000265 는 "신발산업 특구"
+// 전용(최신 2025-05, 저빈도)이라 일반 보도자료 누락. 진짜 보도자료는 BBS_0000031
+// (소통참여>보도자료, 최신 26.05.18 활발). 본문은 동일 div.substan(라이브 462자 검증).
 export const scrapeBusanjin = makeScraper({
   cityName: "부산진구",
-  listUrl: "https://www.busanjin.go.kr/board/list.busanjin?boardId=BBS_0000265&menuCd=DOM_000000103007004000",
+  listUrl: "https://www.busanjin.go.kr/board/list.busanjin?boardId=BBS_0000031&menuCd=DOM_000000110003000000&contentsSid=319&cpath=",
   bodySelectors: [".substan"],
 });
 
