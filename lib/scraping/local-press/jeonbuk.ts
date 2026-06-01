@@ -24,8 +24,11 @@ const LIST_ITEM_REGEX =
 // list 안 "작성일 : YYYY-MM-DD" 패턴
 const DATE_REGEX = /작성일\s*:\s*(\d{4}-\d{2}-\d{2})/g;
 
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="bbs_view"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<\/section|<\/article)/i;
+// 본문 — div.bbs_con. bbs_view 안이 제목·메타(div.bbs_vtop)와 본문(div.bbs_con)으로
+// 나뉘는 구조라, 본문 컨테이너만 지정. 중첩 div(figure 등)가 깊어 div depth 추적으로 끝을 찾는다.
+// 2026-06-02 — 기존 bbs_view non-greedy 는 안쪽 첫 </div>(figure)에서 끊겨 88자(요약)만
+//   추출 → factory 250 전량 skip 이었음. bbs_con 으로 교정 + figure(이미지 캡션) 제거.
+const BODY_OPEN_REGEX = /<div[^>]*\bclass="[^"]*\bbbs_con\b[^"]*"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -53,14 +56,38 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length >= 50 ? text : null;
+  const open = BODY_OPEN_REGEX.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<figure[\s\S]*?<\/figure>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]+/g, " ")
+      .trim(),
+  );
+  return /[가-힣]/.test(text) && text.length >= 250 ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeJeonbukAndInsert } = createPressCollector({
