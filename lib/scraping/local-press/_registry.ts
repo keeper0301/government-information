@@ -88,6 +88,8 @@ import { scrapeYeongdeungpoAndInsert } from "./yeongdeungpo";
 import { scrapeEunpyeongAndInsert } from "./eunpyeong";
 // 2026-06-01 — 서대문구 구정뉴스 (EUC-KR 사이트, factory encoding opt-in + goView GET).
 import { scrapeSeodaemunAndInsert } from "./seodaemun";
+// 2026-06-01 — 금천구 보도자료 (SI 표준, bbsNo=8. 메인 메뉴 150151 은 영상 갤러리라 회피).
+import { scrapeGeumcheonAndInsert } from "./geumcheon";
 // disabled 2026-05-24 (review): 의정부 검증 후 재enable
 // import { scrapeUijeongbuAndInsert } from "./uijeongbu";
 
@@ -167,7 +169,9 @@ export type CityKey =
   | "yeongdeungpo"
   | "eunpyeong"
   // 2026-06-01 서대문구 (EUC-KR 구정뉴스 goView GET)
-  | "seodaemun";
+  | "seodaemun"
+  // 2026-06-01 금천구 (SI 보도자료 bbsNo=8)
+  | "geumcheon";
 // | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
@@ -779,6 +783,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "서대문구청",
     siteUrl: "https://www.sdm.go.kr/news/news.do",
     fn: scrapeSeodaemunAndInsert,
+  },
+  // 2026-06-01 — 금천구 보도자료. SI 표준 bbsNo=8 (메인 메뉴의 150151 은 영상 갤러리).
+  {
+    key: "geumcheon",
+    city: "금천구",
+    ministry: "금천구청",
+    siteUrl: "https://www.geumcheon.go.kr/portal/selectBbsNttList.do?bbsNo=8&key=297",
+    fn: scrapeGeumcheonAndInsert,
   },
 ];
 
