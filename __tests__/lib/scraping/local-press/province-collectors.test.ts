@@ -168,7 +168,8 @@ describe("province local press collectors", () => {
       title: "경남 정책 발표",
       publishedDate: "2026-05-20",
     });
-    expect(parseGyeongnamBody(`<div class="bbs_view"><p>${bodyText}</p></div><div></div>`)).toContain(
+    // 2026-06-02 — 경남 본문 컨테이너 변경(bbs_view → conText) 복구 반영.
+    expect(parseGyeongnamBody(`<div class="conText"><p>${bodyText}</p></div>`)).toContain(
       "Province collector detail body",
     );
   });

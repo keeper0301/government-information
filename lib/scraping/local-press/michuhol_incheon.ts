@@ -24,8 +24,8 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:view_cont|board_view|board_view_body|cont_box|view_content|content)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|attach)|<\/article|<\/section)/i;
+// 2026-06-02 fix — 본문 컨테이너 변경(→ content editor_content). 본문 0건 복구. div 깊이 추적.
+const BODY_OPEN_REGEX = /<div[^>]*\bclass="content editor_content"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -54,15 +54,38 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const open = BODY_OPEN_REGEX.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
   if (!/[가-힣]/.test(text) || text.length < 50) return null;
-  return text.slice(0, 5000);
+  return text.slice(0, 20000);
 }
 
 export const { scrapeAndInsert: scrapeMichuholAndInsert } =

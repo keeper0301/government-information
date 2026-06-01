@@ -27,10 +27,8 @@ const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
 // 2026-05-22 — 경남도청이 se-contents 편집기 본문 구조로 변경.
 // 기존 bbs_view 가 매칭되지 않아, 새 본문 구조와 예전 구조를 함께 지원.
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="se-contents[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:basicView__|fileList|btn)|<\/article)/i;
-const BODY_CONTAINER_REGEX_LEGACY =
-  /<div\s+class="bbs_view"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<\/section|<\/article)/i;
+// 2026-06-02 fix — 본문 컨테이너 변경(se-contents → conText). 본문 0건 복구. div 깊이 추적.
+const BODY_OPEN_REGEX = /<div[^>]*\bclass="conText"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   // 2026-05-20 subagent review hot-fix — 각 link 매치 위치 +800 char slice 안에서만
@@ -62,14 +60,36 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html) ?? BODY_CONTAINER_REGEX_LEGACY.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length >= 50 ? text : null;
+  const open = BODY_OPEN_REGEX.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  return text.length >= 50 ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeGyeongnamAndInsert } = createPressCollector({

@@ -26,6 +26,12 @@ import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+// 2026-06-02 근본 수정 — 본문 최소 길이 250 을 factory 에서 강제(AGENTS.md 룰 통일).
+// 개별 collector parseDetailBody 가 min 50 으로 짜도 factory 가 250 미만이면 skip →
+// 모든 정적 collector + 외부 자동 추가 collector 까지 일괄 thin content(AdSense) 방지.
+// (이전엔 각 collector 가 자체 min 을 가져 50/250 뒤섞임. factory 한 곳으로 근본 해소.)
+const BODY_MIN_LEN = 250;
+
 export type PressNewsItem = {
   seq: string; // string — 수원처럼 17자리 timestamp seq 도 지원
   title: string;
@@ -181,7 +187,7 @@ export async function processProvidedHtml(
       continue;
     }
     const body = cfg.parseDetailBody(detailHtml);
-    if (!body || body.length < 50) {
+    if (!body || body.length < BODY_MIN_LEN) {
       skipped += 1;
       continue;
     }
@@ -256,7 +262,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
         errors.push(`seq=${item.seq}: fetch ${(e as Error).message}`);
         continue;
       }
-      if (!body || body.length < 50) {
+      if (!body || body.length < BODY_MIN_LEN) {
         skipped += 1;
         continue;
       }
