@@ -139,13 +139,20 @@ export const scrapeGimpo = makeScraper({
   titleSelectors: [".p-media__heading-title"],
 });
 
-// 2026-05-31 — 영도구 SPA. list URL `00000/00007/00011.web` 가 JS 렌더 SPA.
-// 정찰: tr 0건·ul li 0건 — 정적 selector 모두 매치 0. Playwright 가 JS 렌더 후
-// makeScraper 기본 LIST_SELECTORS 시도. 부족 시 다음 세션 정밀 selector 추가.
-// (5/30 정찰 메모리: 사용자 클릭/scroll trigger 가능성 또는 ajax endpoint 직접 호출)
+// 2026-06-01 — 영도구. list URL `00000/00007/00011.web` 가 JS 렌더 SPA 라
+// 기본 LIST_SELECTORS(table/ul.bbs_list 등) 가 매치 0 이었음. Playwright 정찰로
+// 진짜 목록 구조 확정: 카드형 ul.even-grid 안 li.column(m1~m12) + a.a1 상세링크
+// (?gcode=1027&idx=N&amode=view query href) + 제목 strong.t1 + 날짜 span.t2.
+// → 창원시와 동일 CMS(strong.t1 제목 + gcode/idx/amode 링크 + 본문 .substance).
+// 본문 .substance 라이브 검증 631자 정상.
 export const scrapeYeongdo = makeScraper({
   cityName: "영도구",
   listUrl: "https://www.yeongdo.go.kr/00000/00007/00011.web",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["ul.even-grid li.column"],
+  bodySelectors: [".substance"],
+  titleSelectors: ["strong.t1"],
 });
 
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)

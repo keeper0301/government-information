@@ -1,8 +1,8 @@
 // ============================================================
-// autonomous hub — Playwright proxy 14 도시 가동 카드 (2026-06-01)
+// autonomous hub — Playwright proxy 13 도시 가동 카드 (2026-06-01)
 // ============================================================
-// GitHub Actions local-press-proxy.yml workflow 가 14 도시 (창원·성남·안산·천안·
-// 노원·동래·부산진·금정·bsbukgu·사상·사상소식지·김포·gimpo·영도 등) JS 렌더 site 를
+// GitHub Actions local-press-proxy.yml workflow 가 13 도시 (창원·성남·안산·천안·
+// 노원·동래·부산진·금정·부산북구·사상·사상소식지·김포·영도) JS 렌더 site 를
 // 풀 chromium 으로 수집. 사장님 GitHub secrets 미등록 시 workflow 미발화 →
 // audit row 7d 0건 → 텔레그램·SMS alert 없음 (Vercel cron 아니라 별도).
 //
@@ -28,7 +28,7 @@ async function fetchProxyHealth(): Promise<{
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // 14 도시 의 source_code 가 'local-press-{key}' 패턴.
+  // 13 도시 의 source_code 가 'local-press-{key}' 패턴.
   // 7d 안 row 가 있으면 active.
   const sourceCodes = PLAYWRIGHT_PROXY_CITIES.map((k) => `local-press-${k}`);
   const { data } = await admin
@@ -65,7 +65,7 @@ export async function PlaywrightProxyCard() {
       <header className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
-            🎭 Playwright proxy 14 도시 (GitHub Actions)
+            🎭 Playwright proxy {totalSources} 도시 (GitHub Actions)
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
             JS 렌더 시·군 보도자료 수집 · KST 10/22 2회/일 · 7d 안 row 누적 기준
@@ -93,7 +93,7 @@ export async function PlaywrightProxyCard() {
       {allInactive && (
         <div className="text-sm text-red-700">
           <p className="font-semibold">
-            ⚠️ 14 도시 전체 미가동 — GitHub Actions workflow 실행 안 됨
+            ⚠️ {totalSources} 도시 전체 미가동 — GitHub Actions workflow 실행 안 됨
           </p>
           <p className="mt-2 text-xs text-red-600">
             원인 가능성:
@@ -140,7 +140,7 @@ export async function PlaywrightProxyCard() {
 
       {!allInactive && !partial && (
         <p className="text-sm text-emerald-700">
-          ✅ 14 도시 모두 7d 안 row 누적 — workflow 정상 가동
+          ✅ {totalSources} 도시 모두 7d 안 row 누적 — workflow 정상 가동
         </p>
       )}
     </section>
