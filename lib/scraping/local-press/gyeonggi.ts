@@ -26,9 +26,11 @@ const LIST_ITEM_REGEX =
 // 날짜 — list 의 YYYY.MM.DD 패턴 추출
 const DATE_REGEX = /(\d{4})\.(\d{2})\.(\d{2})/g;
 
-// 본문 — postBody div. div 종료까지 greedy match 의 비탐욕 버전.
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="postBody"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<\/section|<\/article)/i;
+// 본문 — postBody div.
+// 2026-06-03 fix — 구 regex 는 첫 `</div>\s*<div` 종결인데, postBody 닫는 div 직후가
+// <ul class="fileset26-list">(첨부)라 매칭 실패 → 첨부 섹션(파일명·"바로듣기"·"전체 다운로드")
+// 까지 본문에 캡처되던 버그. postBody 를 div 깊이 추적으로 정확히 추출(첨부 ul 은 밖이라 제외).
+const POST_BODY_OPEN = /<div[^>]*\bclass="[^"]*\bpostBody\b[^"]*"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   // 2026-05-20 subagent review hot-fix — 각 link 매치 위치 +800 char slice 안에서만
@@ -63,14 +65,42 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
+  const open = POST_BODY_OPEN.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      // postBody 안 첨부 파일 목록(<ul class="fileset..">: 파일명·"바로듣기"·"전체 다운로드")
+      // 제거 — 본문 아님. div 가 아닌 ul 이라 div 깊이 추적으로는 안 빠져 별도 제거.
+      .replace(/<ul[^>]*\bfileset[^>]*>[\s\S]*?<\/ul>/gi, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  )
     .replace(/\s+/g, " ")
+    // 첨부 ul 제거 후 남는 헤더/버튼 라벨("첨부파일 전체 다운로드") 본문 끝에서 제거.
+    .replace(/\s*첨부파일\s*(?:전체\s*다운로드)?\s*$/, "")
     .trim();
-  return text.length >= 50 ? text : null;
+  // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
+  return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeGyeonggiAndInsert } = createPressCollector({
