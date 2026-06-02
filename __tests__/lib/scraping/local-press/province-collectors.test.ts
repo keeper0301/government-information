@@ -92,7 +92,7 @@ describe("province local press collectors", () => {
     );
   });
 
-  it("gangwon maps prboard seq, title, row date, and attachment-backed body", () => {
+  it("gangwon maps prboard seq, title, row date, and attachment-backed body", async () => {
     const items = parseGangwonList(`
       <tr data-prboard-seq="8333" class="skinTxa-center">
         <td class="skinTxa-center">7478</td>
@@ -110,14 +110,16 @@ describe("province local press collectors", () => {
     });
     expect(items[0].sourceUrl).toContain("seq=8333");
 
-    const body = parseGangwonBody(`
+    // 강원은 parseDetailBody 가 async(@ohah hwp5). download href 는 hwp fetch(네트워크) 회피용
+    // "#" 더미 → fetchHwpBody null → skinTb-conts + 첨부 title fallback 경로 검증.
+    const body = await parseGangwonBody(`
       <div class="skinTb-th">내용</div>
       <div class="skinTb-td skinTb-conts">
         <p>Gangwon detail summary for the official press release.</p>
       </div>
       <div class="skinTb-th">첨부파일</div>
       <div class="skinTb-td attachFile">
-        <a href="/egf/bp/common/front/260303/download">
+        <a href="#">
           <span class="icoFile"></span> 1. Gangwon detailed support notice attachment.hwp
         </a>
       </div>
@@ -224,12 +226,12 @@ describe("province local press collectors", () => {
     );
   });
 
-  it("returns null when province detail containers are missing", () => {
+  it("returns null when province detail containers are missing", async () => {
     const html = `<main>${bodyText}</main>`;
     expect(parseJeonnamBody(html)).toBeNull();
     expect(parseJeonbukBody(html)).toBeNull();
     expect(parseGyeonggiBody(html)).toBeNull();
-    expect(parseGangwonBody(html)).toBeNull();
+    expect(await parseGangwonBody(html)).toBeNull(); // 강원만 async(@ohah)
     expect(parseGyeongnamBody(html)).toBeNull();
     expect(parseGyeongbukBody(html)).toBeNull();
     expect(parseChungnamBody(html)).toBeNull();
