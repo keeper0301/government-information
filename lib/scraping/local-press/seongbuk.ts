@@ -16,7 +16,7 @@ import {
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
-import { parseSiNttBody } from "./_si_ntt_helper";
+import { parseSiAttachOrBody } from "./_si_attach_helper";
 
 const BASE_URL = "https://www.sb.go.kr";
 const LIST_URL = `${BASE_URL}/www/selectBbsNttList.do?bbsNo=46&key=6356`;
@@ -60,7 +60,10 @@ export function parseListPage(html: string): PressNewsItem[] {
   return items;
 }
 
-export const parseDetailBody = parseSiNttBody;
+// 성북 본문 전문은 첨부 hwp 에만(웹 셀은 요약 74자뿐). SI 첨부 공용 헬퍼로 추출, 부재 시
+// 정적 fallback. baseDir = detail URL 디렉터리(/www/) — href 는 상대경로(./downloadBbsFile.do).
+export const parseDetailBody = (html: string) =>
+  parseSiAttachOrBody(html, `${BASE_URL}/www/`);
 
 export const { scrapeAndInsert: scrapeSeongbukAndInsert } =
   createPressCollector({

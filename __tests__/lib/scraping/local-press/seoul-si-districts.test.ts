@@ -2,8 +2,9 @@
 // 서울 SI selectBbsNttList 자치구 list 파서 단위 테스트 (2026-06-01)
 // ============================================================
 // 성동·영등포·은평 parseListPage 의 regex silent 회귀 방어.
-// 본문(parseDetailBody)은 공용 parseSiNttBody → si-ntt-helper.test.ts 가 커버.
-// 여기서는 list 추출만 검증:
+// 성동 본문(parseDetailBody)은 SI 첨부 helper(parseSiAttachOrBody) — 하단에 stripSiPdfMeta/
+// fallback 회귀 테스트 추가. 그 외 자치구 정적 본문은 si-ntt-helper.test.ts 커버.
+// list 추출 검증:
 //   - bbsNo lookahead 필터 (다른 게시판 배너 anchor 제외)
 //   - "NEW" 새 글 배지 strip (배지 뒤 공백 유무 무관, RENEW 등 단어는 보호)
 //   - 작성일 td 날짜 추출 (YYYY.MM.DD → YYYY-MM-DD)
@@ -13,9 +14,9 @@
 import { describe, it, expect } from "vitest";
 import {
   parseListPage as parseSeongdong,
-  stripSiPdfMeta,
   parseDetailBody as parseSeongdongBody,
 } from "@/lib/scraping/local-press/seongdong";
+import { stripSiPdfMeta } from "@/lib/scraping/local-press/_si_attach_helper";
 import { parseListPage as parseYeongdeungpo } from "@/lib/scraping/local-press/yeongdeungpo";
 import { parseListPage as parseEunpyeong } from "@/lib/scraping/local-press/eunpyeong";
 
