@@ -24,7 +24,7 @@ const VERIFY_CITIES = [
   { code: "local-press-sasang", name: "사상구", region: "부산", diag: "icn1 TLS fallback 동작·proxy(GitHub Actions) 가동 확인" },
   { code: "local-press-dongnae", name: "동래구", region: "부산", diag: "주말이면 발행 없음(정상). 평일 0이면 BBS_0000012 selector" },
   // 서울 자치구 (외부 자율 추가 13)
-  { code: "local-press-seongdong", name: "성동구", region: "서울", diag: "SI selectBbsNttList list selector·본문 250 확인" },
+  { code: "local-press-seongdong", name: "성동구", region: "서울", diag: "첨부 PDF unpdf 수리(0c9ff9e). 0이면 downloadBbsFile.do %PDF 매직·stripSiPdfMeta 확인" },
   { code: "local-press-yeongdeungpo", name: "영등포구", region: "서울", diag: "SI selectBbsNttList list selector·본문 250 확인" },
   { code: "local-press-eunpyeong", name: "은평구", region: "서울", diag: "SI selectBbsNttList list selector·본문 250 확인" },
   { code: "local-press-seodaemun", name: "서대문구", region: "서울", diag: "EUC-KR 인코딩·goView GET·본문 250 확인" },
@@ -32,10 +32,10 @@ const VERIFY_CITIES = [
   { code: "local-press-gangseo", name: "강서구", region: "서울", diag: "eDotXpress /gs040201 view-content·본문 250 확인" },
   { code: "local-press-geumcheon", name: "금천구", region: "서울", diag: "SI bbsNo=8 list selector·본문 250 확인" },
   { code: "local-press-guro", name: "구로구", region: "서울", diag: "SI /www/index.do list selector·본문 250 확인" },
-  { code: "local-press-dongdaemun", name: "동대문구", region: "서울", diag: "SI /www/index.do list selector·본문 250 확인" },
+  { code: "local-press-dongdaemun", name: "동대문구", region: "서울", diag: "SI 첨부형이나 첨부 다운로드 에러페이지 → 메커니즘 미해결(다음 세션). thin noindex 정상" },
   { code: "local-press-seocho", name: "서초구", region: "서울", diag: "빈 shell 메인 우회 정적 게시판·본문 250 확인" },
   { code: "local-press-junggu-seoul", name: "중구", region: "서울", diag: "content.do cmsid=14390 list 파라미터 순서 확인" },
-  { code: "local-press-seongbuk", name: "성북구", region: "서울", diag: "SI 빈 shell 메인 우회·본문 250 확인" },
+  { code: "local-press-seongbuk", name: "성북구", region: "서울", diag: "SI 첨부형이나 첨부 다운로드 에러페이지 → 메커니즘 미해결(다음 세션). thin noindex 정상" },
   { code: "local-press-gangdong", name: "강동구", region: "서울", diag: "newportal meta refresh 우회·본문 250 확인" },
   { code: "local-press-gangwon", name: "강원도", region: "강원", diag: "hwp5 첨부 @ohah(napi) 파싱(283d83b). 0이면 @ohah Vercel 런타임·hwp download·OLE 매직 확인" },
 ] as const;
