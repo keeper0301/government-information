@@ -18,8 +18,9 @@ import { parseSiNttBody } from "./_si_ntt_helper";
 const SI_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// SI 첨부 download 링크 — href 안에 개행/탭 들여쓰기가 섞여 \s 제거 + &amp; 디코드 필요.
-const DOWNLOAD_REGEX = /href="([^"]*downloadBbsFile\.do[^"]*)"/gi;
+// 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do) 공통.
+// href 안에 개행/탭이 섞여 \s 제거 + &amp; 디코드 필요.
+const DOWNLOAD_REGEX = /href="([^"]*(?:downloadBbsFile|fileDown)\.do[^"]*)"/gi;
 
 // PDF 전문 머리의 보도자료 표준 메타(자료제공 일시·담당부서·전화·"사진 있음/없음·총 매수 N쪽")
 // 를 "총 매수 N쪽" 마커 기준으로 cut. 마커 부재/cut 후 250 미만이면 전체 유지(전문 확보 우선).
@@ -73,9 +74,10 @@ async function extractAttachBody(buf: Uint8Array): Promise<string | null> {
   return null;
 }
 
-// SI 첨부(downloadBbsFile.do) 순회 → PDF/hwp 전문. 첨부가 여러 개(hwp+pdf)면 전문 추출
-// 성공한 첫 것 반환. href 상대(./)·절대(/main/) 모두 baseDir 기준 resolve.
-async function fetchSiAttachBody(
+// 첨부(downloadBbsFile.do/fileDown.do) 순회 → PDF/hwp 전문. 첨부가 여러 개(hwp+pdf)면 전문
+// 추출 성공한 첫 것 반환. href 상대(./)·절대(/main/, /portal/) 모두 baseDir 기준 resolve.
+// fallback 이 collector 마다 달라(SI=parseSiNttBody, eGovFrame=dbData) export 해 직접 호출케 함.
+export async function fetchSiAttachBody(
   html: string,
   baseDir: string,
 ): Promise<string | null> {

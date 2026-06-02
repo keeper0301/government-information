@@ -16,6 +16,7 @@ import {
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
+import { fetchSiAttachBody } from "./_si_attach_helper";
 
 const BASE_URL = "https://www.dongjak.go.kr";
 const LIST_URL = `${BASE_URL}/portal/bbs/B0000171/list.do?menuNo=200647`;
@@ -57,7 +58,12 @@ export function parseListPage(html: string): PressNewsItem[] {
   return items;
 }
 
-export function parseDetailBody(html: string): string | null {
+// 2026-06-03 — 동작 본문 전문은 첨부 hwp(fileDown.do)에만(dbData 정적 셀은 부제목 101자 thin).
+// SI 첨부 공용 헬퍼로 hwp 전문 추출, 부재 시 dbData 정적 fallback → 250 미만이면 factory skip.
+// baseDir = host(`${BASE}/`) — 동작 첨부 href 는 절대경로(/portal/cmmn/file/fileDown.do).
+export async function parseDetailBody(html: string): Promise<string | null> {
+  const attach = await fetchSiAttachBody(html, `${BASE_URL}/`);
+  if (attach) return attach;
   const m = BODY_CONTAINER_REGEX.exec(html);
   if (!m) return null;
   const text = decodeBasicEntities(m[1])
