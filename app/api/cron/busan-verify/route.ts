@@ -37,6 +37,7 @@ const VERIFY_CITIES = [
   { code: "local-press-junggu-seoul", name: "중구", region: "서울", diag: "content.do cmsid=14390 list 파라미터 순서 확인" },
   { code: "local-press-seongbuk", name: "성북구", region: "서울", diag: "첨부 hwp helper 수리(951e35d 상대경로 ./ resolve fix). 0이면 @ohah hwp 파싱·downloadBbsFile.do resolve 확인" },
   { code: "local-press-gangdong", name: "강동구", region: "서울", diag: "newportal meta refresh 우회·본문 250 확인" },
+  { code: "local-press-dongjak", name: "동작구", region: "서울", diag: "eGovFrame 첨부 hwp helper(fe87874). 0이면 fileDown.do @ohah·dbData fallback 확인" },
   { code: "local-press-gangwon", name: "강원도", region: "강원", diag: "hwp5 첨부 @ohah(napi) 파싱(283d83b). 0이면 @ohah Vercel 런타임·hwp download·OLE 매직 확인" },
 ] as const;
 
