@@ -20,12 +20,11 @@ const LIST_URL = "https://www.uiwang.go.kr/UWKORINFO0201/";
 const LIST_ITEM_REGEX =
   /<a\s+href="\/UWKORINFO0201\/(\d+)\/[^"]*"\s+class="tit">\s*([\s\S]{0,500}?)<\/a>[\s\S]{0,200}?<td>(\d{4}-\d{2}-\d{2})<\/td>/g;
 
-// 2026-06-01 — 본문 컨테이너 교정. 기존 bbs-view 는 제목·작성자·작성일·조회수
-// 메타 테이블까지 잡아 본문 대신 "보도자료 상세 - 제목, 작성자..." 가 저장되던 버그.
-// 실제 본문은 div.txtWrap (라이브 검증: 단순 <p>/<span> 구조라 첫 </div> 가 정확한
-// 본문 끝, 696자 완결). cron 결과 검증(6/1)에서 발견.
-const BODY_CONTAINER_REGEX =
-  /<div\s+class="txtWrap[^"]*"[^>]*>([\s\S]*?)<\/div>/i;
+// 본문 컨테이너 div.txtWrap.
+// 2026-06-02 fix — 구 regex 는 첫 `</div>` 종료(non-greedy)라, txtWrap 안에 중첩 div 가
+// 생기면 조기 종료 → thin → skip (6/2 cron fetched 10·inserted 0). div 깊이 추적으로
+// txtWrap 의 진짜 닫는 div 까지 캡처(중첩 div 안전, 라이브 650~1122자 검증).
+const TXT_WRAP_OPEN = /<div[^>]*\bclass="[^"]*\btxtWrap\b[^"]*"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -55,15 +54,37 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
-  const m = BODY_CONTAINER_REGEX.exec(html);
-  if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
+  const open = TXT_WRAP_OPEN.exec(html);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const tagRe = /<(\/?)div\b[^>]*>/gi;
+  tagRe.lastIndex = start;
+  let depth = 1;
+  let raw: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    if (m[1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        raw = html.slice(start, m.index);
+        break;
+      }
+    } else {
+      depth += 1;
+    }
+  }
+  if (raw === null) return null;
+  const text = decodeBasicEntities(
+    raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  )
     .replace(/\s+/g, " ")
     .trim();
-  if (!/[가-힣]/.test(text) || text.length < 50) return null;
-  return text.slice(0, 5000);
+  // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
+  return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeUiwangAndInsert } = createPressCollector({
