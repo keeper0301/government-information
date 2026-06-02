@@ -50,13 +50,18 @@ export function parseListPage(html: string): PressNewsItem[] {
 export function parseDetailBody(html: string): string | null {
   const m = BODY_CONTAINER_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
+  // 2026-06-03 fix — 본문 컨테이너 안 <script>(fn_update 등) 블록 제거 (JS 코드 본문 혼입 버그).
+  const text = decodeBasicEntities(
+    m[1]
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]+>/g, ""),
+  )
     .replace(/\s+/g, " ")
     .trim();
-  if (!/[가-힣]/.test(text) || text.length < 50) return null;
-  return text.slice(0, 5000);
+  // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
+  return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeAnyangAndInsert } = createPressCollector({
