@@ -1,9 +1,11 @@
 // app/api/cron/busan-verify/route.ts
 // 자치구 보도자료 수집 검증 — 2026-06-01 수리·신규 효과 확인용.
-// 매일 KST 11시(= 02 UTC) 부산 4곳 + 서울 13곳의 24h/7d inserted + 최신 글을 조회해 텔레그램 발송.
+// 매일 KST 11:30(= 02:30 UTC) 부산 4곳 + 서울 13곳의 24h/7d inserted + 최신 글 + korea.kr
+// 본문 250+ 비율을 조회해 텔레그램 발송.
 // 부산: 부산진=BBS_0000031, 북구=eminwon, 사상=TLS fallback, 동래(대조). 날짜 2자리.
 // 서울: 외부 자율 추가 13 자치구(본문 min 250 통일 적용분).
-// proxy(부산진·사상) KST 10시 + 정적(eminwon·서울 09시) 이후라 11시 확인.
+// proxy(부산진·사상) KST 10시 + 정적(eminwon·서울 09시) + collect-news(korea.kr, 11시) 이후라
+// 11:30 확인 (collect-news 보강 후 korea.kr 250+ 비율 반영).
 // ⚠️ 1주 모니터링 검증 완료 후 vercel.json crons 에서 제거 권장(상시 noise 방지).
 
 import { NextResponse } from "next/server";
@@ -114,10 +116,26 @@ async function run() {
     })
     .join("\n\n");
 
+  // 2026-06-02 — korea.kr 상세 본문 보강(commit c3c1ba1) 효과 확인.
+  // 최근 24h korea.kr 수집 글의 본문 250+ 비율 (RSS 요약 → 전문 보강 성공률).
+  // collect-news(KST 11시) 보강 후 조회하도록 이 cron 은 11:30 에 둠.
+  const { data: krRows } = await admin
+    .from("news_posts")
+    .select("body")
+    .like("source_code", "korea-kr%")
+    .gte("created_at", since24);
+  const krTotal = krRows?.length ?? 0;
+  const krRich = krRows?.filter((r) => (r.body?.length ?? 0) >= 250).length ?? 0;
+  const krLine =
+    krTotal > 0
+      ? `\n\n📰 korea.kr 본문 보강: 24h ${krTotal}건 중 250+ ${krRich}건 (${Math.round((100 * krRich) / krTotal)}%)`
+      : "\n\n📰 korea.kr: 24h 수집 0";
+
   const text =
     "🏙 자치구 보도자료 수집 확인 (6/1 수리·신규 검증)\n\n" +
     sections +
-    "\n\n⚠️=7d 0건(수집 실패·주말 의심) · 🟡=24h만 0";
+    "\n\n⚠️=7d 0건(수집 실패·주말 의심) · 🟡=24h만 0" +
+    krLine;
 
   const telegram = await sendTelegram(text);
   return NextResponse.json({ ok: true, results, telegram });
