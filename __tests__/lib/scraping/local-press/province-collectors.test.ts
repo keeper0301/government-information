@@ -37,7 +37,7 @@ import {
 } from "@/lib/scraping/local-press/jeju";
 
 const bodyText =
-  "Province collector detail body includes enough policy announcement text for parsing. ".repeat(
+  "Province collector detail body includes enough policy announcement text for parsing. 정책 발표 본문 한국어 포함. ".repeat(
     3,
   );
 
@@ -185,7 +185,9 @@ describe("province local press collectors", () => {
       title: "경북 정책 발표",
       publishedDate: "2026-05-20",
     });
-    expect(parseGyeongbukBody(`<div class="bbs_view"><p>${bodyText}</p></div>`)).toContain(
+    // 2026-06-02 — gyeongbuk 본문 컨테이너는 cont_view (29d41e0 에서 bbs_view→cont_view 변경했으나
+    // 이 테스트만 구 bbs_view 로 남아 null 실패였음). collector 와 일치시킴.
+    expect(parseGyeongbukBody(`<div class="cont_view"><p>${bodyText}</p></div>`)).toContain(
       "Province collector detail body",
     );
   });
