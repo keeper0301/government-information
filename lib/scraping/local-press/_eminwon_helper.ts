@@ -146,29 +146,43 @@ export function parseEminwonListItems(
   return items;
 }
 
-// detail HTML 본문 파싱 — td 안 가장 긴 한국어 본문.
+// detail HTML 본문 파싱 — 가장 긴 한국어 본문.
+// 2026-06-02 — 부산 북구는 본문이 td 가 아니라 div 에 존재(기장은 td). eminwon 스킨 차이.
+// td 우선(기장 등 깨끗) → td 본문 250 미만이면 div/textarea/pre 후보(부산북구). td 우선이라
+// 기장은 div("게시물 상세내용 보기" 라벨 포함 wrapper) 가 아닌 깨끗한 td 본문 유지.
+function cleanEminwonText(raw: string): string {
+  return raw
+    .replace(/<script[\s\S]*?<\/script>/g, "")
+    .replace(/<style[\s\S]*?<\/style>/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function parseEminwonDetailBody(html: string): string | null {
-  const tdRe = /<td[^>]*>([\s\S]*?)<\/td>/g;
-  let best = "";
-  let m: RegExpExecArray | null;
-  while ((m = tdRe.exec(html)) !== null) {
-    const text = m[1]
-      .replace(/<script[\s\S]*?<\/script>/g, "")
-      .replace(/<style[\s\S]*?<\/style>/g, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/\s+/g, " ")
-      .trim();
-    if (text.length < 100) continue;
-    if (!/[가-힣]/.test(text)) continue;
-    if (text.length > best.length) best = text;
-  }
+  const longest = (re: RegExp): string => {
+    let best = "";
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      // td regex 는 그룹1, div regex 는 그룹2 가 내용 → 마지막 캡처 그룹 사용.
+      const text = cleanEminwonText(m[m.length - 1]);
+      if (text.length >= 100 && /[가-힣]/.test(text) && text.length > best.length) {
+        best = text;
+      }
+    }
+    return best;
+  };
+  // 1차: td (기장 등 — 깨끗 본문). 2차: div/textarea/pre (부산북구 — td 본문 부족 시).
+  const td = longest(/<td[^>]*>([\s\S]*?)<\/td>/g);
+  if (td.length >= 250) return td.slice(0, 20000);
+  const el = longest(/<(div|textarea|pre)[^>]*>([\s\S]*?)<\/\1>/g);
   // 본문 cut 20000 — _factory.ts createPressCollector 와 동일 정책.
-  return best.length >= 250 ? best.slice(0, 20000) : null;
+  return el.length >= 250 ? el.slice(0, 20000) : null;
 }
 
 // config → eminwon collector. .scrapeAndInsert 가 cron 표준 시그니처.
