@@ -11,7 +11,11 @@
 // ============================================================
 
 import { describe, it, expect } from "vitest";
-import { parseListPage as parseSeongdong } from "@/lib/scraping/local-press/seongdong";
+import {
+  parseListPage as parseSeongdong,
+  stripSiPdfMeta,
+  parseDetailBody as parseSeongdongBody,
+} from "@/lib/scraping/local-press/seongdong";
 import { parseListPage as parseYeongdeungpo } from "@/lib/scraping/local-press/yeongdeungpo";
 import { parseListPage as parseEunpyeong } from "@/lib/scraping/local-press/eunpyeong";
 
@@ -82,5 +86,48 @@ describe("은평구 parseListPage (bbsNo=48)", () => {
     const items = parseEunpyeong(html);
     expect(items).toHaveLength(1); // 배너 제외, 보도자료만
     expect(items[0].seq).toBe("317600");
+  });
+});
+
+// 성동 본문은 첨부 PDF 전문(2026-06-02 fix). PDF 메타 머리 cut + PDF 부재 fallback 회귀 방어.
+describe("성동구 stripSiPdfMeta (PDF 메타 머리 cut)", () => {
+  it("'총 매수 N쪽' 마커 이후를 본문으로 cut (담당자 메타 제거)", () => {
+    const pdf =
+      "(자료 제공) 2026. 6. 2.(화) 성동구 보도자료 과장 반경자 사진 있음 총 매수 2쪽 " +
+      "성동구, 무더위 속 노숙인 안전 지킨다. 서울 성동구는 폭염 피해에 취약한 거리 노숙인의 건강과 안전을 보호하기 위해 보호대책을 추진한다고 밝혔다. ".repeat(
+        5,
+      );
+    const body = stripSiPdfMeta(pdf);
+    expect(body.startsWith("성동구, 무더위")).toBe(true);
+    expect(body).not.toContain("자료 제공"); // 메타 머리 제거됨
+  });
+
+  it("마커 부재 시 전체 유지 (전문 확보 우선)", () => {
+    const pdf =
+      "성동구는 폭염 대비 거리노숙인 보호대책을 추진한다고 밝혔다. 현장 중심의 선제 대응 체계를 강화한다. ".repeat(
+        4,
+      );
+    const body = stripSiPdfMeta(pdf);
+    expect(body).toContain("성동구는");
+  });
+
+  it("cut 후 250 미만이면 전체 유지 (잘못된 cut 방지)", () => {
+    const pdf = "보도자료 메타 머리 정보 총 매수 1쪽 짧은본문";
+    const body = stripSiPdfMeta(pdf);
+    expect(body).toContain("메타 머리"); // cut 후 본문 짧아 전체 유지
+  });
+});
+
+describe("성동구 parseDetailBody (PDF 부재 시 SI 헬퍼 fallback)", () => {
+  it("downloadBbsFile.do 첨부 없으면 정적 본문(parseSiNttBody)으로 fallback", async () => {
+    // 본문 셀에 250+ 정적 본문이 있는 (드문) 글 — PDF fetch 없이 정적 추출.
+    const body250 =
+      "서울 성동구는 폭염 피해에 취약한 거리 노숙인의 건강과 안전을 보호하기 위해 2026년 폭염 대비 거리노숙인 보호대책을 추진한다고 밝혔다. 현장 중심의 선제 대응 체계를 강화해 거리 노숙인 보호에 총력을 기울일 방침이다. ".repeat(
+        3,
+      );
+    const html = `<td colspan="2" class="p-table__content">${body250}</td>`;
+    const body = await parseSeongdongBody(html);
+    expect(body).not.toBeNull();
+    expect(body).toContain("성동구는");
   });
 });
