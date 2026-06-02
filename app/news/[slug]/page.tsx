@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("news_posts")
-    .select("title, summary, thumbnail_url, category, is_hidden, classified_at, ai_commentary")
+    .select("title, summary, thumbnail_url, category, is_hidden, classified_at, ai_commentary, body")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -78,7 +78,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 2026-05-30 selective noindex — AdSense review mode off 시점에 "갑작스러운 대량
   // thin page" 위험 차단. summary + classified_at + ai_commentary(P2) 셋 다 채워진
   // row 만 index. ai_commentary NULL = "외부 보도자료 단순 복제" 평가 표면 → noindex 유지.
-  const isThin = !data.summary || !data.classified_at || !data.ai_commentary;
+  // 2026-06-02 — 본문 250자 미만(카드뉴스·짧은 공지)도 thin 으로 noindex. korea.kr 등
+  // RSS 요약·전문부재 글이 분류만 완료돼 색인되던 것 차단 (body 보강 불가한 카드 포함).
+  // body 길이는 화면 렌더(cleanDescription = HTML 태그·entity 제거)와 동일 기준으로 측정 —
+  // 원본 body 에 태그가 섞여 길어도 실제 본문이 250 미만이면 thin 으로 판정(리뷰 P1).
+  const isThin =
+    !data.summary ||
+    !data.classified_at ||
+    !data.ai_commentary ||
+    cleanDescription(data.body ?? "").length < 250;
 
   // 모더레이션으로 비공개된 뉴스: 검색엔진 인덱스 제거 신호 noindex,nofollow
   // + canonical 제거. status 는 200 이지만 robots 가 검색 결과에서 빼도록 함.
