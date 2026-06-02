@@ -36,8 +36,8 @@ async function main() {
     args.push("--model", process.env.CODEX_LOCAL_WORKER_MODEL);
   }
 
-  args.push(prompt);
-  const result = await runInherited(resolveCodexCommand(), args, cwd);
+  args.push("-");
+  const result = await runInherited(resolveCodexCommand(), args, cwd, prompt);
   writeLog(outputDir, {
     ok: result === 0,
     skipped: false,
@@ -84,13 +84,14 @@ function runText(command, args, cwd) {
   });
 }
 
-function runInherited(command, args, cwd) {
+function runInherited(command, args, cwd, input) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
       shell: process.platform === "win32",
-      stdio: "inherit",
+      stdio: ["pipe", "inherit", "inherit"],
     });
+    child.stdin.end(input);
     child.on("error", reject);
     child.on("close", (code) => resolve(code ?? 1));
   });
