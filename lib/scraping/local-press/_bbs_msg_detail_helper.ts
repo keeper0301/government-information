@@ -120,6 +120,8 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
       if (raw === null) continue;
       const text = decodeBasicEntities(
         raw
+          // 2026-06-03 — board_view 안 네비(ul.other_con: 이전글/다음글) 제거.
+          .replace(/<ul[^>]*\bother_con[^>]*>[\s\S]*?<\/ul>/gi, " ")
           .replace(/<!--[\s\S]*?-->/g, " ")
           .replace(/<script[\s\S]*?<\/script>/gi, " ")
           .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -127,7 +129,15 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
           .replace(/<[^>]+>/g, "")
           .replace(/\s+/g, " ")
           .trim(),
-      );
+      )
+        // 끝에 남는 네비/첨부 잔재 cut (other_con 밖·fallback 경로 대비).
+        // 이전글/다음글/첨부파일/파일크기([NMByte]) 이후 전부 제거 + 끝 "목록" 제거.
+        .replace(
+          /\s*(?:이전글|다음글|첨부파일|미리보기 목록|\[\s*[\d.]+\s*[KMG]?Byte\s*\]|\(\s*[\d.]+\s*[KMG]?Byte\s*\))[\s\S]*$/,
+          "",
+        )
+        .replace(/\s*목록\s*$/, "")
+        .trim();
       if (/[가-힣]/.test(text) && text.length >= 50) return text.slice(0, 20000);
     }
     return null;

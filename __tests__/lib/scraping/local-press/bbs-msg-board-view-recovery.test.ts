@@ -66,6 +66,29 @@ describe("bbsMsgDetail board_view 복구", () => {
       expect.objectContaining({ body: expect.stringContaining("전문 심리치료를 지원") }),
     );
   });
+
+  // 2026-06-03 — board_view 안 ul.other_con(이전글/다음글 네비)·끝 첨부/목록 잔재 제거.
+  it("board_view 안 네비(ul.other_con)·끝 목록 라벨이 본문에 안 섞임", async () => {
+    const detail = `<html><body>${PAD}
+      <div class="general_board board_view">
+        <div class="tit">계양구, 아동 심리치료 후원 협약</div>
+        <p>${LONG}</p>
+        <ul class="other_con">
+          <li>이전글 계양구, 다른 보도자료 제목입니다</li>
+          <li>다음글 계양구, 또 다른 보도자료 제목입니다</li>
+        </ul>
+        목록
+      </div></body></html>`;
+    const { scrapeAndInsert, admin, insert } = setup(detail);
+    const r = await scrapeAndInsert(admin as never, 1);
+    expect(r).toMatchObject({ fetched: 1, inserted: 1 });
+    const body = ((insert.mock.calls as unknown[][])[0]?.[0] as { body?: string })
+      ?.body ?? "";
+    expect(body).toContain("전문 심리치료를 지원");
+    expect(body).not.toContain("이전글");
+    expect(body).not.toContain("다음글");
+    expect(body).not.toContain("다른 보도자료 제목");
+  });
 });
 
 // 2026-06-02 — list anchor 의 bcd·msg_seq query 순서가 사이트마다 다름(ongjin=bcd 먼저).
