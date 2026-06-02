@@ -27,7 +27,7 @@ async function main() {
     "--cd",
     cwd,
     "--sandbox",
-    "workspace-write",
+    process.env.CODEX_LOCAL_WORKER_SANDBOX || "danger-full-access",
     "--output-last-message",
     path.join(outputDir, "last-message.md"),
   ];
