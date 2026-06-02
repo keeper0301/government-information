@@ -65,7 +65,9 @@ export type PressCollectorConfig = {
   // 각 시·군 selector 자체 파싱 — return PressNewsItem[]
   parseListItems: (html: string) => PressNewsItem[];
   // 상세 page 본문 — fail 시 null (skip)
-  parseDetailBody: (html: string) => string | null;
+  // 2026-06-02 — async 반환 지원(부산: detail HTML → PDF 첨부 fetch+파싱 비동기).
+  // 기존 동기 collector 는 await 무영향(동기 string = await string).
+  parseDetailBody: (html: string) => string | null | Promise<string | null>;
   // 2026-06-01 — 비 UTF-8 사이트 opt-in 디코딩 (예: "euc-kr", 서대문 구정뉴스).
   // 미지정 시 UTF-8(res.text()) = 기존 collector 전부 동작 동일 (회귀 0).
   encoding?: string;
@@ -215,7 +217,7 @@ export async function processProvidedHtml(
       errors.push(`seq=${item.seq}: PC runner detail HTML 누락`);
       continue;
     }
-    const body = cfg.parseDetailBody(detailHtml);
+    const body = await cfg.parseDetailBody(detailHtml);
     if (!body || body.length < BODY_MIN_LEN) {
       skipped += 1;
       continue;
@@ -286,7 +288,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
       let body: string | null = null;
       try {
         const detailHtml = await fetchPage(item.sourceUrl, cfg.encoding);
-        body = cfg.parseDetailBody(detailHtml);
+        body = await cfg.parseDetailBody(detailHtml);
       } catch (e) {
         errors.push(`seq=${item.seq}: fetch ${(e as Error).message}`);
         continue;
