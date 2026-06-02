@@ -86,7 +86,11 @@ function runText(command, args, cwd) {
 
 function runInherited(command, args, cwd) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: "inherit" });
+    const child = spawn(command, args, {
+      cwd,
+      shell: process.platform === "win32",
+      stdio: "inherit",
+    });
     child.on("error", reject);
     child.on("close", (code) => resolve(code ?? 1));
   });
