@@ -30,6 +30,11 @@ import {
   parseListPage as parsePyeongtaekList,
   parseDetailBody as parsePyeongtaekDetail,
 } from "./pyeongtaek";
+// 2026-06-02 — namdong: prod(Vercel) 403 IP 차단 (donggu·ongjin 은 정상). 가정용 IP PC runner 로.
+import {
+  parseNamdongList,
+  parseNamdongDetail,
+} from "./namdong_incheon";
 
 export const PC_RUNNER_CFGS: Record<string, PressCollectorConfig> = {
   busan: {
@@ -74,6 +79,17 @@ export const PC_RUNNER_CFGS: Record<string, PressCollectorConfig> = {
       "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000",
     parseListItems: parsePyeongtaekList,
     parseDetailBody: parsePyeongtaekDetail,
+  },
+  // 2026-06-02 — 남동구: prod 403 Vercel IP 차단 (cron 로그 확인). 정적 parser 재사용.
+  namdong: {
+    cityName: "남동구",
+    region: "인천",
+    ministry: "남동구청",
+    sourceOutlet: "남동구청",
+    sourceCode: "local-press-namdong",
+    listUrl: "https://www.namdong.go.kr/main/news/report.jsp",
+    parseListItems: parseNamdongList,
+    parseDetailBody: parseNamdongDetail,
   },
 };
 

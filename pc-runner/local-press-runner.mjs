@@ -32,6 +32,8 @@ const ASN_BLOCKED_CITIES = [
   // gangwon 제거 (2026-05-26): icn1 region 으로 일반 cron OK
   { key: "jeju", listUrl: "https://www.jeju.go.kr/news/bodo/list.htm" },
   { key: "pyeongtaek", listUrl: "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000" },
+  // 2026-06-02 — 남동구: prod 403 Vercel IP 차단 (cron 로그). 가정용 IP 로 우회.
+  { key: "namdong", listUrl: "https://www.namdong.go.kr/main/news/report.jsp" },
 ];
 
 async function fetchPage(url) {

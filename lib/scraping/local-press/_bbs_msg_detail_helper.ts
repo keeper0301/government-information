@@ -133,14 +133,20 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
     return null;
   }
 
-  return createPressCollector({
-    cityName: cfg.cityName,
-    region: cfg.region,
-    ministry: cfg.ministry,
-    sourceOutlet: cfg.ministry,
-    sourceCode: cfg.sourceCode,
-    listUrl,
+  return {
+    ...createPressCollector({
+      cityName: cfg.cityName,
+      region: cfg.region,
+      ministry: cfg.ministry,
+      sourceOutlet: cfg.ministry,
+      sourceCode: cfg.sourceCode,
+      listUrl,
+      parseListItems: parseListPage,
+      parseDetailBody,
+    }),
+    // 2026-06-02 — PC runner(processProvidedHtml via _pc_runner_cfgs)·단위 테스트용
+    // parse 함수 노출. 기존 호출처는 { scrapeAndInsert } 구조분해라 무영향.
     parseListItems: parseListPage,
     parseDetailBody,
-  });
+  };
 }

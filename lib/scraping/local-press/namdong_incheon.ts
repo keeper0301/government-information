@@ -7,8 +7,13 @@
 
 import { createBbsMsgDetailCollector } from "./_bbs_msg_detail_helper";
 
-export const { scrapeAndInsert: scrapeNamdongIncheonAndInsert } =
-  createBbsMsgDetailCollector({
+// parseListItems/parseDetailBody 도 export — namdong 은 prod(Vercel) 403 IP 차단이라
+// PC runner(가정용 IP) 경로(_pc_runner_cfgs)에서 정적 parser 재사용.
+export const {
+  scrapeAndInsert: scrapeNamdongIncheonAndInsert,
+  parseListItems: parseNamdongList,
+  parseDetailBody: parseNamdongDetail,
+} = createBbsMsgDetailCollector({
     baseUrl: "https://www.namdong.go.kr",
     listPath: "/main/news/report.jsp",
     detailBasePath: "/main/bbs",
