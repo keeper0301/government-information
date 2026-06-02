@@ -84,7 +84,6 @@ async function run() {
       continue;
     }
 
-    const isReady = state === "READY";
     const isFinal =
       state === "READY" ||
       state === "ERROR" ||

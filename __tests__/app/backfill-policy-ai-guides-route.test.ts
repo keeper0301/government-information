@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   requireAdminUser: vi.fn(),
   generatePolicyGuide: vi.fn(),
   rows: [] as Array<Record<string, unknown>>,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mock signature: 호출부가 patch 인자 전달, 본문은 미사용
   update: vi.fn(async (_patch?: Record<string, unknown>) => ({ error: null })),
 }));
 

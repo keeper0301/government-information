@@ -38,6 +38,7 @@ export default async function SelfLearningAuditPage() {
   if (!user || !isAdminUser(user.email)) redirect("/");
 
   const admin = createAdminClient();
+  // eslint-disable-next-line react-hooks/purity -- server render 시 요청 시점 기준 49일 audit 범위(매 요청 정상)
   const since49d = new Date(Date.now() - 49 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: rows, error } = await admin

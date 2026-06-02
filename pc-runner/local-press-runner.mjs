@@ -94,7 +94,7 @@ async function main() {
     for (const item of r1.items) {
       try {
         detailHtmls[item.seq] = await fetchPage(item.sourceUrl);
-      } catch (e) {
+      } catch {
         // detail 1건 fail 은 best-effort
       }
     }

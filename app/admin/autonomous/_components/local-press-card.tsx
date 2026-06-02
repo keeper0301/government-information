@@ -46,6 +46,7 @@ export function LocalPressCard({ stats }: { stats: LocalPressStats }) {
           {/* 2026-05-25 — PC runner (사장님 PC 한국 IP) 가동 상태. ASN 차단 site 우회.
               2026-05-26 — 48h+ stale 시 amber, 7d+ stale 시 red. 사장님 PC OFF 자가 감지. */}
           {stats.lastPcRunnerAt && (() => {
+            // eslint-disable-next-line react-hooks/purity -- render 시점 경과시간 표시가 의도(매 render 현재 시각 기준 stale 판정)
             const minutes = Math.floor((Date.now() - new Date(stats.lastPcRunnerAt).getTime()) / 60000);
             const hours = minutes / 60;
             const tone = hours > 24 * 7 ? "text-red-600 font-medium" : hours > 48 ? "text-amber-700 font-medium" : "text-purple-600";
