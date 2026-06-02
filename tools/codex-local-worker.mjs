@@ -16,7 +16,7 @@ async function main() {
       ok: false,
       skipped: true,
       reason: "dirty_worktree",
-      message: "작업 폴더에 미저장 변경이 있어 코덱스 자동 작업을 건너뜁니다.",
+      message: "작업 폴더에 미정리 변경이 있어 코덱스 자동 작업을 건너뜁니다.",
     });
     return;
   }
@@ -37,7 +37,7 @@ async function main() {
   }
 
   args.push(prompt);
-  const result = await runInherited("codex", args, cwd);
+  const result = await runInherited(resolveCodexCommand(), args, cwd);
   writeLog(outputDir, {
     ok: result === 0,
     skipped: false,
@@ -57,6 +57,16 @@ function buildPrompt() {
     "문제가 명확하고 작게 고칠 수 있을 때만 최소 수정하고 관련 테스트만 실행해라.",
     "수정이 필요 없으면 `.codex-local-worker/last-message.md`에 운영 보고서만 남겨라.",
   ].join("\n");
+}
+
+function resolveCodexCommand() {
+  if (process.platform !== "win32") return "codex";
+
+  const appData = process.env.APPDATA || "";
+  const installedCommand = path.join(appData, "npm", "codex.cmd");
+  if (existsSync(installedCommand)) return installedCommand;
+
+  return "codex.cmd";
 }
 
 function runText(command, args, cwd) {
