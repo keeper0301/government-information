@@ -20,8 +20,9 @@ import { collectKoreaKrTopics } from "@/lib/news-collectors/korea-kr-topics";
 import { notifyCronFailure } from "@/lib/email";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
-// RSS(25s) + topics(10s) 합쳐 ~35s 예상. Hobby 60s 시절보다 여유.
-export const maxDuration = 60;
+// RSS(25s) + topics(10s) + 상세 본문 보강(신규 payload 전문 스크래핑, 병렬 3).
+// 2026-06-02 — 상세 fetch 추가로 60s 초과 가능 → 300s 상향(Vercel Pro fluid).
+export const maxDuration = 300;
 
 async function run(jobLabel: string) {
   try {

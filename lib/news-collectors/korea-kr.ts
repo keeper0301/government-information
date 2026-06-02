@@ -33,6 +33,7 @@ import { extractNewsKeywords } from "@/lib/news-keywords";
 import { cleanDescription, stripHtmlTags } from "@/lib/utils";
 import { fetchWithTimeout } from "@/lib/collectors";
 import { computeDedupeHash, loadRecentDedupeHashes, hasJaccardMatch } from "@/lib/news-dedupe";
+import { enrichDetailBodies } from "./korea-kr-detail";
 
 type FeedCategory = "news" | "press" | "policy-doc";
 
@@ -351,6 +352,10 @@ export async function collectKoreaKr(): Promise<{
           skipped_batch_dup: feed_skipped_batch_dup,
         };
       }
+
+      // 2026-06-02 — 신규 payload 본문을 상세 페이지 전문으로 보강(RSS 요약 140자 → 전문).
+      // article_body/view_cont 추출 ≥250 시 body/summary 교체, 실패·thin 은 요약 유지(안전).
+      await enrichDetailBodies(payload);
 
       // slug 는 DB 에 unique constraint 가 있음. 부처별 RSS 는 동일 뉴스가
       // 여러 부처에 동시 노출되는 케이스가 있음 (예: 복지부+성평등가족부 공동
