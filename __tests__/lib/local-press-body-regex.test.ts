@@ -50,7 +50,7 @@ describe("gwangju parseDetailBody", () => {
 });
 
 describe("gangwon parseDetailBody", () => {
-  it("title + 첨부파일 합산 — 5/22 fix", () => {
+  it("title + 첨부파일 합산 — 5/22 fix", async () => {
     const html = `
       <div class="skinTb-td skinTb-conts">
         <p>도 사회서비스원, 재난복지 전문인력 현장 대응 역량 강화</p>
@@ -65,20 +65,20 @@ describe("gangwon parseDetailBody", () => {
       </div>
       <div class="copyright-bx">공공누리</div>
     `;
-    const body = parseGangwon(html);
+    const body = await parseGangwon(html);
     expect(body).not.toBeNull();
     // 본문 (title) + 첨부 file 이름 합산 → 50자+
     expect(body!.length).toBeGreaterThan(50);
     expect(body).toContain("재난복지 전문인력");
   });
 
-  it("legacy fallback — copyright-bx 없는 옛 page 도 매칭", () => {
+  it("legacy fallback — copyright-bx 없는 옛 page 도 매칭", async () => {
     const html = `
       <div class="skinTb-td skinTb-conts">
         강원도, 디지털 격차 해소 사업 본격 추진. 시군 협력 확대.
       </div>
     `;
-    const body = parseGangwon(html);
+    const body = await parseGangwon(html);
     // 본문 50자 미만 → null
     expect(body).toBeNull();
   });

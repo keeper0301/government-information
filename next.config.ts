@@ -12,7 +12,9 @@ const nextConfig: NextConfig = {
   // serverExternalPackages 로 명시하면 번들에 포함하지 않고 node_modules 의
   // jsdom 을 그대로 require → 정상 작동.
   // isomorphic-dompurify 는 내부에서 jsdom 을 사용 (lib/html-sanitize.ts).
-  serverExternalPackages: ["jsdom", "isomorphic-dompurify"],
+  // @ohah/hwpjs 는 네이티브 모듈(.node napi, hwp5 파싱). 번들 제외 → node_modules
+  // 플랫폼 prebuilt(@ohah/hwpjs-linux-x64-gnu 등)를 런타임 require (강원 hwp 본문).
+  serverExternalPackages: ["jsdom", "isomorphic-dompurify", "@ohah/hwpjs"],
 
   // IndexNow 표준 — 검색엔진 봇이 root path 의 {key}.txt 를 GET 해 키 검증.
   // /api/indexnow-key 로 rewrite 해 동일 키 응답 (api 라우트가 INDEXNOW_KEY env 반환).
