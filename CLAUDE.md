@@ -32,3 +32,11 @@ Key routing rules:
   은 여전히 명시적 확인 필요합니다.
 - 커밋 메시지는 한국어로 작성하며, 기존 커밋 스타일 (`feat(scope): ...`,
   `fix(scope): ...`, `chore(scope): ...`) 을 따릅니다.
+
+## Health Stack
+
+`/health` (코드 건강 점검) 시 자동 실행하는 도구. knip(죽은 코드)은 미설치.
+
+- typecheck: tsc --noEmit
+- lint: eslint
+- test: vitest run
