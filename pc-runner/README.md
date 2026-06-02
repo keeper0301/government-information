@@ -65,20 +65,20 @@ node local-press-runner.mjs
 - 동작: `node.exe C:\Users\cgc09\keepioo-pc-runner\local-press-runner.mjs`
 - 사용자: 본인 (BATCH 권한)
 
-## 처리 site (2026-05-26 update — 3 site)
+## 처리 site (2026-06-02 update — 5 site)
 
-| city_key | site | 상태 |
+| city_key | site | 왜 PC runner 가 필요한가 |
 |----------|------|------|
-| gwangsan | gwangsan.go.kr | ASN 차단 |
-| jeju | jeju.go.kr/news/bodo/list.htm | ASN 차단 |
-| pyeongtaek | pyeongtaek.go.kr | SPA + token CSRF — Playwright 필요 가능 |
+| **namdong** | namdong.go.kr | **prod(Vercel) 403 IP 차단** (donggu·ongjin 은 정상). 6/2 cron 로그 확인. 신규 |
+| jeju | jeju.go.kr/news/bodo/list.htm | prod 간헐 fetch failed (데이터센터 IP) |
+| pyeongtaek | pyeongtaek.go.kr | SPA + token CSRF — list parse 0 가능 |
+| busan | busan.go.kr/nbtnewsBU | 정적 PDF 전문 추출로 회생(보조 — PC runner 도 가능) |
+| gwangsan | gwangsan.go.kr | 정적 복구됨(보조) |
 
-**이전 6 site 중 3 site 일반 cron 으로 회생** (2026-05-26):
-- seoul → RSS endpoint (news.seoul.go.kr/gov/feed/) 으로 변경
-- busan → list inner regex fix
-- gangwon → icn1 region 으로 일반 cron 가동 OK
-
-dry-run 결과 SPA site = list parse 0 → Playwright fallback (다음 commit).
+- **PC runner 가 진짜 필요한 핵심 3 site**: namdong(403)·jeju(간헐)·pyeongtaek(SPA).
+  busan·gwangsan 은 일반 cron 으로도 수집되나 ASN 목록에 남겨 둠(이중 수집은 동일
+  sourceCode 의 23505 dedupe 로 중복 없음).
+- 이전 회생: seoul(RSS endpoint)·gangwon(hwp5 첨부 전문)·busan(PDF 전문) 은 일반 cron OK.
 
 ## 트러블슈팅
 
