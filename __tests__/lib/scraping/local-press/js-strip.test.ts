@@ -41,3 +41,66 @@ describe("본문 <script> 제거 (JS 코드 혼입 방어)", () => {
     });
   }
 });
+
+// ============================================================
+// 본문 앞/끝 junk 제거 회귀 (2026-06-03) — 라이브 HTML 구조 재현
+// ============================================================
+describe("anyang 앞 이미지캡션 + 끝 첨부/만족도/담당자 junk 제거", () => {
+  it("이미지 확대보기·대체텍스트·-->·첨부·[KBytes] 미혼입, 본문 보존", () => {
+    const html =
+      `<div class="view_cont"> 이미지 확대보기 대체텍스트 개발해주세요 이미지 확대보기 --> ` +
+      `<pre>${BODY}</pre></div>` +
+      `<div class="attached_file"><p class="title">첨부파일</p><ul><li>붙임.hwp[KBytes]</li></ul></div>` +
+      `<form><span>만족도</span> 매우 만족</form><h3>담당자 정보</h3><div>담당부서 홍보기획관</div>`;
+    const body = anyang(html);
+    expect(body).toContain("소상공인");
+    expect(body).toContain("당부했다");
+    expect(body).not.toContain("이미지 확대보기");
+    expect(body).not.toContain("대체텍스트");
+    expect(body).not.toContain("-->");
+    expect(body).not.toContain("첨부파일");
+    expect(body).not.toContain("[KBytes]");
+    expect(body).not.toContain("만족도");
+    expect(body).not.toContain("담당부서");
+  });
+});
+
+describe("songpa 앞 메타(작성일/자료제공) + 끝 목록/네비/공공누리 junk 제거", () => {
+  it("앞 메타 + 끝 junk 미혼입, 본문 보존", () => {
+    const html =
+      `<div class="content-information"><table>` +
+      `<caption>보도자료 상세보기 - 제목 자료제공 내용 조회수 작성일 의 정보를 제공합니다</caption>` +
+      `<tr><td>송파구 행사 안내 조회수 -->22 작성일 : 2026년 06월 01일 10시 26분 02초 자료제공 자원활용과 ` +
+      `${BODY}</td></tr></table></div>` +
+      `<div class="p-table__bottom"><a>목록</a></div>` +
+      `<ul class="p-post-move"><li>다음글 다른 기사</li></ul>` +
+      `<script>var IS_ID_LOGIN='N';</script>` +
+      `<p class="kogl_text">본 저작물은 "공공누리" 제4유형 조건에 따라 이용할 수 있습니다.</p>`;
+    const body = songpa(html);
+    expect(body).toContain("소상공인");
+    expect(body).toContain("당부했다");
+    expect(body).not.toContain("자료제공");
+    expect(body).not.toContain("작성일");
+    expect(body).not.toContain("조회수");
+    expect(body).not.toContain("다음글");
+    expect(body).not.toContain("IS_ID_LOGIN");
+    expect(body).not.toContain("공공누리");
+    expect(body).not.toContain("본 저작물");
+  });
+
+  // 네거티브 회귀 — cut 정규식이 본문 자연어를 오제거하지 않는지 (리뷰 P1 방어).
+  it("songpa: 본문에 '본 저작물은'(공공누리 미동반) 등장해도 손실 0", () => {
+    const html =
+      `<div class="content-information"><table><tr><td>` +
+      `행사 안내 조회수 -->5 작성일 : 2026년 06월 01일 10시 26분 02초 자료제공 정책과 ` +
+      `시는 본 저작물은 시민 공동의 자산이라는 인식 아래 행사를 연다. ${BODY}</td></tr></table></div>` +
+      `<div class="p-table__bottom"></div>`;
+    const body = songpa(html);
+    // 메타는 잘리고
+    expect(body).not.toContain("자료제공");
+    expect(body).not.toContain("작성일");
+    // 본문의 "본 저작물은 …"(공공누리 미동반)은 보존
+    expect(body).toContain("본 저작물은 시민 공동의 자산");
+    expect(body).toContain("소상공인");
+  });
+});

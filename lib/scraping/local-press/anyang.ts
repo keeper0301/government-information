@@ -22,8 +22,10 @@ const LIST_URL =
 const LIST_ITEM_REGEX =
   /<td\s+class="p-subject"><a\s+href="\.\/selectPressRelease\.do\?key=4107&(?:amp;)?nttNo=(\d+)[^"]*">([^<]+)<\/a><\/td>\s*<td[^>]*>[^<]*<\/td>\s*<td[^>]*>(\d{4}-\d{2}-\d{2})/g;
 
+// 2026-06-03 — 본문(<pre>) 뒤 div.attached_file(첨부) + 만족도조사 form + 담당자정보가
+// 컨테이너에 포함돼 본문에 섞이던 junk → 끝 마커에 attached_file 추가(본문 직후 종료).
 const BODY_CONTAINER_REGEX =
-  /<div\s+class="view_cont[^"]*"[^>]*>([\s\S]{50,30000}?)(?:<div\s+class="(?:btn|p-table__bottom|btn_area)|<\/article)/i;
+  /<div\s+class="view_cont[^"]*"[^>]*>([\s\S]{50,30000}?)(?:<div\s+class="(?:btn|p-table__bottom|btn_area|attached_file)|<\/article)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -58,6 +60,12 @@ export function parseDetailBody(html: string): string | null {
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, ""),
   )
+    .replace(/\s+/g, " ")
+    // 본문 앞 이미지 캡션 junk 제거 — view_cont 머리의 p-photo 영역이 본문에 섞임.
+    // "이미지 확대보기"·"대체텍스트 개발해주세요"(미작성 alt placeholder)·"-->"(주석 잔재).
+    .replace(/이미지\s*확대보기/g, " ")
+    .replace(/대체텍스트 개발해주세요/g, " ")
+    .replace(/--&gt;|-->/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.

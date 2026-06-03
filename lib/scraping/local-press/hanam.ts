@@ -73,11 +73,10 @@ export function parseDetailBody(html: string): string | null {
     .replace(/\s+/g, " ")
     // 이미지 확대보기 버튼 텍스트 제거 (SI 계열 표준 UI junk — _si_ntt_helper 와 동일).
     .replace(/사진\s*확대보기/g, " ")
-    // 공공누리 라이선스 푸터 제거 — 모든 정부 보도자료 표준 문구라 본문 자연어
-    // 오제거 위험 없음. "본 저작물은 "공공누리" 제N유형 …" 부터 끝까지.
-    // (공공누리가 본문 컨테이너 안에 포함된 경우에만 작동; 컨테이너 밖이면
-    //  위 BODY_CONTAINER_REGEX 끝 마커가 이미 제외.)
-    .replace(/\s*본\s*저작물은[\s\S]*$/, "")
+    // 공공누리 라이선스 푸터 제거 — "본 저작물은 … 공공누리" 동반일 때만 cut(본문
+    // 자연어 "본 저작물은" 단독 오제거 방지). 공공누리가 본문 컨테이너 안에 포함된
+    // 경우에만 작동; 컨테이너 밖이면 위 BODY_CONTAINER_REGEX 끝 마커가 이미 제외.
+    .replace(/\s*본\s*저작물은[\s\S]{0,20}?공공누리[\s\S]*$/, "")
     .replace(/\s+/g, " ")
     .trim();
   // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
