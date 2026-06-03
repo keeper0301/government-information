@@ -62,13 +62,21 @@ const KEYWORD_TO_SEARCH: Record<string, string[]> = {
 };
 
 // 뉴스 keywords 를 공고 검색용 ILIKE 토큰으로 변환
-function expandKeywords(newsKeywords: string[]): string[] {
+export function expandKeywords(newsKeywords: string[]): string[] {
   const out = new Set<string>();
   for (const k of newsKeywords) {
     const expanded = KEYWORD_TO_SEARCH[k];
     if (expanded) expanded.forEach((e) => out.add(e));
   }
   return Array.from(out);
+}
+
+// ILIKE 검색 토큰 안전화 — %·_·\·,·() 제거(injection 방지) + 길이 1~20 필터.
+// .or() 체인에 들어가는 user-derived 토큰의 마지막 방어선이라 회귀 시 보안 위험.
+export function sanitizeSearchTokens(tokens: string[]): string[] {
+  return tokens
+    .map((t) => t.replace(/[%_\\,()]/g, ""))
+    .filter((t) => t.length > 0 && t.length <= 20);
 }
 
 // 관련 공고 검색 — 뉴스의 keywords 로 welfare/loan 에서 매칭
@@ -83,10 +91,7 @@ export async function findRelatedPrograms(params: {
   const searchTerms = expandKeywords(keywords);
   if (searchTerms.length === 0) return [];
 
-  // ILIKE 에서 위험한 문자 (%·_·\·,·()) 제거 — 외부 입력 안전화
-  const sanitized = searchTerms
-    .map((t) => t.replace(/[%_\\,()]/g, ""))
-    .filter((t) => t.length > 0 && t.length <= 20);
+  const sanitized = sanitizeSearchTokens(searchTerms);
   if (sanitized.length === 0) return [];
 
   const supabase = await createClient();
