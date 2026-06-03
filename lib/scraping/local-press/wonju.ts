@@ -24,9 +24,12 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
-// 원주 body — bbs_wrap 안 본문 (송파 bbs__view 와 다른 표준)
+// 원주 body — table 구조. 행 헤더 th 는 [담당부서·문의전화·파일] 뿐이고 본문은
+// <td title="내용" class="p-table__...">. (기존 bbs_wrap 통째 캡처는 제목·작성일·
+// 담당부서·문의전화 메타 + 끝 파일/미리보기/목록 junk 가 섞였음)
+// 2026-06-03 — 본문 td(title="내용") 직접 타겟 → 메타·첨부·네비 전부 제외.
 const BODY_CONTAINER_REGEX =
-  /<div\s+class="bbs_wrap"[^>]*>([\s\S]{500,40000}?)<\/div>\s*<\/div>/i;
+  /<td[^>]*\btitle="내용"[^>]*>([\s\S]{50,40000}?)<\/td>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
