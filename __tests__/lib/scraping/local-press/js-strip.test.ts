@@ -25,7 +25,7 @@ const SCRIPT = `<script>function fn_update(url){ if(confirm("수정하시겠습�
 const cases: Array<[string, (h: string) => string | null, string]> = [
   ["anyang", anyang, `<div class="view_cont"><p>${BODY}</p>${SCRIPT}</div><div class="btn"></div>`],
   ["songpa", songpa, `<div class="p-table__content"><p>${BODY}</p>${SCRIPT}</div><div class="p-table__bottom"></div>`],
-  ["yeonsu", yeonsu, `<div class="board_view"><p>${BODY}</p>${SCRIPT}</div><div class="file"></div>`],
+  ["yeonsu", yeonsu, `<div class="con"><p>${BODY}</p>${SCRIPT}</div><ul class="other_con"></ul>`],
   ["wonju", wonju, `<div class="bbs_wrap"><p>${BODY}</p>${SCRIPT}</div></div>`],
 ];
 
@@ -86,6 +86,27 @@ describe("songpa 앞 메타(작성일/자료제공) + 끝 목록/네비/공공�
     expect(body).not.toContain("IS_ID_LOGIN");
     expect(body).not.toContain("공공누리");
     expect(body).not.toContain("본 저작물");
+  });
+
+  it("yeonsu: con div 본문만 추출 — 앞 제목/메타·뒤 네비 제외", () => {
+    // 라이브 구조: board_view[제목h4+부제목+datalist(작성자/담당부서/조회수/첨부)]
+    //   + <div class="con">[add_img + 본문] + <ul class="other_con">[이전글/다음글] + 목록
+    const html =
+      `<div class="board_view"><h4 class="title">연수구, 행사 실시<span class="stitle">부제목</span></h4>` +
+      `<ul class="datalist"><li><dl><dt>작성자</dt><dd>홍길동</dd></dl></li>` +
+      `<li><dl><dt>담당부서</dt><dd>홍보소통실</dd></dl></li>` +
+      `<li class="addfile"><dl><dt>첨부파일</dt><dd>붙임.hwp</dd></dl></li></ul>` +
+      `<div class="con"><p class="add_img"><img alt="이미지 설명"></p><p>${BODY}</p></div>` +
+      `<ul class="other_con"><li>이전글 다른 기사</li><li>다음글 또 다른 기사</li></ul> 목록`;
+    const body = yeonsu(html);
+    expect(body).toContain("소상공인");
+    expect(body).toContain("당부했다");
+    expect(body).not.toContain("작성자");
+    expect(body).not.toContain("담당부서");
+    expect(body).not.toContain("첨부파일");
+    expect(body).not.toContain("이전글");
+    expect(body).not.toContain("다음글");
+    expect(body).not.toContain("목록");
   });
 
   // 네거티브 회귀 — cut 정규식이 본문 자연어를 오제거하지 않는지 (리뷰 P1 방어).

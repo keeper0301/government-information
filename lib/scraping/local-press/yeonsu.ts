@@ -23,8 +23,12 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
+// 2026-06-03 — 기존 board_view 는 [제목 h4+부제목+datalist(작성자/담당부서/조회수/첨부)]
+// + 본문 + [목록/이전글/다음글] 전체 wrapper 라 본문 앞뒤 메타·네비가 섞였음.
+// 실제 본문 전용 컨테이너는 board_view 안 <div class="con"> (datalist 뒤). 이걸 타겟해
+// 제목/메타/첨부 제외, 끝 마커 other_con(이전글/다음글)로 네비 제외, 끝 "목록"은 text cut.
 const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:board_view|hwp_editor_board_content)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:btn|pagination|file|attach)|<\/article|<\/section)/i;
+  /<div\s+class="con"[^>]*>([\s\S]{50,40000}?)(?:<ul\s+class="other_con"|<div\s+class="(?:btn|pagination)|<\/article|<\/section)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -67,6 +71,8 @@ export function parseDetailBody(html: string): string | null {
       .replace(/<[^>]+>/g, ""),
   )
     .replace(/\s+/g, " ")
+    // con 끝 "목록" 버튼 텍스트 제거 (other_con 네비는 끝 마커로 이미 제외).
+    .replace(/\s*목록\s*$/, "")
     .trim();
   // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.
   return /[가-힣]/.test(text) ? text.slice(0, 20000) : null;
