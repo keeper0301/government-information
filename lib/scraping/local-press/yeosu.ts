@@ -38,9 +38,11 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[2];
     if (seen.has(seq)) continue;
     seen.add(seq);
+    // 2026-06-03 — "새로운글" 배지 cut. 기존 `새로운글$` 는 \s+→" " 후 끝 공백이
+    // 남아 $ 미매칭(trim 이 cut 뒤라 무효)이었음 → 앞뒤 공백 허용으로 실제 제거.
     const title = decodeBasicEntities(
       m[3].replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
-    ).replace(/새로운글$/, "").trim();
+    ).replace(/\s*새로운글\s*$/, "").trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const slice = html.slice(m.index, m.index + 800);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
