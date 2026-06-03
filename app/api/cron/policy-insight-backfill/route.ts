@@ -4,9 +4,12 @@
 // 2026-05-10 AdSense "thin/scaled content" 거절 대응. 정부 원문(description) 외에
 // keepioo 자체 5~7줄 해설을 unique_insight 컬럼에 자동 저장.
 //
-// cron 4회/일 (KST 09:00, 15:00, 21:00, 03:00) — welfare 50 + loan 50 × 4 = 일 400건.
-// LLM: gpt-4o-mini (callLLM 추상화). 정책당 ~400 토큰 = 월 비용 약 $12 추정.
-// AdSense 재신청 시점 (5/24) 가속화 위해 1회/일 → 4회/일 (2026-05-11).
+// cron 2시간마다 12회/일 (vercel.json "0 */2 * * *").
+// LLM: gpt-4o-mini (callLLM 추상화). 정책당 ~400 토큰.
+// AdSense 색인 가속 위해 1회/일 → 4회/일(5/11) → 현재 2시간마다 12회/일.
+// 2026-06-03 — loan eligible(desc≥50 & insight NULL) 0건 = 사실상 완료(129 NULL 전부 sparse).
+// loan slot 50 이 매 cron 통째 낭비되던 것을 welfare 로 재배분: welfare 50→100, loan 50→10.
+// welfare eligible 5,005건 → 100×12회=1,200/일 ≈ 4일(기존 50×12=600/일 ≈ 8일). loan 10 미래 신규 안전망.
 //
 // graceful: OPENAI_API_KEY 미설정 / DDL 083 미적용 시 안전 skip.
 // description < 50자 (sparse) 정책은 백필 안 함 — 해설 만들어도 thin.
@@ -20,7 +23,8 @@ import { authorizeCronRequest } from "@/lib/cron-auth";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5분 — 100건 × 1~2s = 100~200s
 
-const BATCH_CAP_PER_TABLE = 50; // welfare 50 + loan 50 = 일 100건
+const WELFARE_CAP = 100; // welfare eligible 5,005 남음 → 집중(maxDuration 내 ~200s)
+const LOAN_CAP = 10;     // loan eligible 0(완료) → 미래 신규 정책 안전망만
 // welfare 90% sparse (desc<50자) → fetch 50건 = 1건만 처리되는 사고 보정.
 // fetch 단계에서 description 길이 필터를 못 걸어서 client filter 후 50건만 LLM.
 // 5/17 진단: cron당 0~1건만 update → 5/24까지 100% 도달 불가. 10x fetch 로 cron당 25건 목표.
@@ -163,8 +167,8 @@ async function run() {
   }
 
   const [welfare, loan] = await Promise.all([
-    backfillTable("welfare_programs", BATCH_CAP_PER_TABLE),
-    backfillTable("loan_programs", BATCH_CAP_PER_TABLE),
+    backfillTable("welfare_programs", WELFARE_CAP),
+    backfillTable("loan_programs", LOAN_CAP),
   ]);
 
   const totalUpdated = welfare.updated + loan.updated;
