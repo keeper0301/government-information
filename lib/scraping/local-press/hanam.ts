@@ -20,8 +20,12 @@ const LIST_ITEM_REGEX =
 
 const DATE_REGEX = /(\d{4}[.\-]\d{2}[.\-]\d{2})/g;
 
+// 2026-06-03 — 본문 컨테이너가 첨부박스(div.attach_box)·이전글/다음글 네비
+// (ul.temp_board_bottom)까지 포함해 본문 끝에 "첨부파일 ...[KBytes] 이전글 X 다음글 Y
+// 목록으로" junk 가 사용자 본문에 노출되던 버그 → 끝 마커에 attach_box·temp_board_bottom
+// 추가해 본문 직후에서 컨테이너 캡처 종료.
 const BODY_CONTAINER_REGEX =
-  /<div\s+class="(?:bbs_wrap|p-table__content|bbs__view)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:p-table__bottom|btn|pagination)|<\/article|<\/section)/i;
+  /<div\s+class="(?:bbs_wrap|p-table__content|bbs__view)[^"]*"[^>]*>([\s\S]{50,40000}?)(?:<div\s+class="(?:p-table__bottom|btn|pagination|attach_box)|<ul\s+class="temp_board_bottom"|<\/article|<\/section)/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -66,6 +70,14 @@ export function parseDetailBody(html: string): string | null {
       .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, ""),
   )
+    .replace(/\s+/g, " ")
+    // 이미지 확대보기 버튼 텍스트 제거 (SI 계열 표준 UI junk — _si_ntt_helper 와 동일).
+    .replace(/사진\s*확대보기/g, " ")
+    // 공공누리 라이선스 푸터 제거 — 모든 정부 보도자료 표준 문구라 본문 자연어
+    // 오제거 위험 없음. "본 저작물은 "공공누리" 제N유형 …" 부터 끝까지.
+    // (공공누리가 본문 컨테이너 안에 포함된 경우에만 작동; 컨테이너 밖이면
+    //  위 BODY_CONTAINER_REGEX 끝 마커가 이미 제외.)
+    .replace(/\s*본\s*저작물은[\s\S]*$/, "")
     .replace(/\s+/g, " ")
     .trim();
   // 길이 하한은 factory(BODY_MIN_LEN 250)에 일임 — 한글 본문 여부만 게이트.

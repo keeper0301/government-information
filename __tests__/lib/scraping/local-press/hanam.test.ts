@@ -34,6 +34,36 @@ describe("hanam parseDetailBody", () => {
   it("본문 컨테이너 없으면 null", () => {
     expect(parseDetailBody(`<div class="other"><p>${BODY}</p></div>`)).toBeNull();
   });
+
+  // 2026-06-03 — 본문 끝 첨부박스·이전글/다음글 네비·공공누리·사진확대보기 junk 가
+  // 사용자 본문에 노출되던 버그 fix. 라이브 HTML 구조 재현.
+  it("첨부박스·이전글/다음글 네비·공공누리·사진확대보기 junk 제거 (본문은 보존)", () => {
+    const html = `
+      <div class="bbs_wrap">
+        <p>${BODY}</p>
+        <span class="btn_zoom">사진 확대보기</span>
+        <div class="public_nuri">본 저작물은 "공공누리" 제4유형 : 출처표시 + 상업적 이용금지 + 변경금지 조건에 따라 이용할 수 있습니다.</div>
+        <div class="attach_box"><p class="title">첨부파일</p><ul><li><a href="./downloadBbsFile.do?atchmnflNo=1">(보도자료)하남시.hwp[KBytes]</a></li></ul></div>
+        <ul class="temp_board_bottom">
+          <li class="post_prev"><span class="skip">이전글</span> <a href="x">하남시, 다른 기사 제목</a></li>
+          <li class="post_next"><span class="skip">다음글</span> <a href="y">또 다른 기사 제목</a></li>
+        </ul>
+        <div class="text_center"><a class="btn">목록으로</a></div>
+      </div>`;
+    const body = parseDetailBody(html);
+    // 본문 보존 (시작·끝)
+    expect(body).toContain("투표소를 대상으로");
+    expect(body).toContain("강조했다");
+    // junk 전부 제거
+    expect(body).not.toContain("첨부파일");
+    expect(body).not.toContain("[KBytes]");
+    expect(body).not.toContain("이전글");
+    expect(body).not.toContain("다음글");
+    expect(body).not.toContain("목록으로");
+    expect(body).not.toContain("공공누리");
+    expect(body).not.toContain("본 저작물");
+    expect(body).not.toContain("사진 확대보기");
+  });
 });
 
 describe("hanam parseListPage", () => {
