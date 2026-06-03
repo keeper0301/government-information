@@ -44,7 +44,10 @@ export function parseListPage(html: string): PressNewsItem[] {
     seen.add(seq);
     const title = decodeBasicEntities(
       m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " "),
-    ).trim();
+    )
+      // 2026-06-03 — span.new "새글" 배지 텍스트가 제목 앞에 붙던 것 제거.
+      .replace(/^\s*새글\s*/, "")
+      .trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const slice = html.slice(m.index, m.index + 1500);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);

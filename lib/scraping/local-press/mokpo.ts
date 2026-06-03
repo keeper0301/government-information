@@ -38,9 +38,16 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[2];
     if (seen.has(seq)) continue;
     seen.add(seq);
-    // title 은 a 안 nested cont_box 안 title 일 가능성 — 후속 추출
-    const inner = m[3].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    const title = decodeBasicEntities(inner);
+    // 2026-06-03 fix — anchor inner 통째(썸네일·새로운글 배지·p 본문)를 제목으로 잡던 버그.
+    // 제목은 div.title_box > h3 만. 배지 span.icon_new 를 먼저 제거(제목 본문에 "새로운글"
+    // 글자가 있어도 안전 — 텍스트 strip 대신 배지 요소만 제거).
+    const tm = /<div\s+class="title_box"[^>]*>\s*<h3[^>]*>([\s\S]*?)<\/h3>/i.exec(m[3]);
+    const title = decodeBasicEntities(
+      (tm ? tm[1] : m[3])
+        .replace(/<span[^>]*icon_new[^>]*>[\s\S]*?<\/span>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " "),
+    ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const slice = html.slice(m.index, m.index + 1500);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);

@@ -35,8 +35,12 @@ export function parseListPage(html: string): PressNewsItem[] {
   while ((m = itemRe.exec(html)) !== null) {
     const seq = m[1];
     if (seen.has(seq)) continue; // 같은 seq 중복 link 무시
-    // nested tag 제거 + decode
-    const title = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    // 2026-06-03 fix — anchor inner 통째(썸네일 alt=본문·부서·작성자·전화·날짜·◈본문)를
+    // 제목으로 잡던 버그. 제목은 div.bTitle 만. + decodeBasicEntities(&quot; 등).
+    const bTitle = /<div\s+class="bTitle"[^>]*>([\s\S]*?)<\/div>/i.exec(m[2]);
+    const title = decodeBasicEntities(
+      (bTitle ? bTitle[1] : m[2]).replace(/<[^>]+>/g, " ").replace(/\s+/g, " "),
+    ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     seen.add(seq);
     items.push({
