@@ -29,6 +29,7 @@ export type SuncheonNewsItem = {
   seq: number;
   title: string;
   writer: string | null; // 담당부서
+  publishedDate: string | null; // YYYY-MM-DD (td.created)
   sourceUrl: string; // 상세 page URL
   body: string | null; // 본문 (별도 fetch 후 채움)
 };
@@ -36,9 +37,10 @@ export type SuncheonNewsItem = {
 // ── HTML parsing helpers (cheerio 없이 정규식 — 의존성 0) ─────
 
 // 목록 page 의 <td class="title_minwon lefttd"><a href="?mode=view&seq=NNNN">제목</a></td>
-// + 다음 <td class="writer">부서</td> 패턴 추출.
+// + <td class="writer">부서</td> + <td class="created">YYYY-MM-DD</td> 패턴 추출.
+// 2026-06-03 — td.created 날짜 추가(이전엔 published_at 을 now() 로 하드코딩하던 것).
 const LIST_ITEM_REGEX =
-  /<td\s+class="title_minwon\s+lefttd"><a\s+href="\?mode=view&(?:amp;)?seq=(\d+)"\s*>([^<]+)<\/a><\/td>\s*<td\s+class="writer">([^<]*)<\/td>/g;
+  /<td\s+class="title_minwon\s+lefttd"><a\s+href="\?mode=view&(?:amp;)?seq=(\d+)"\s*>([^<]+)<\/a><\/td>\s*<td\s+class="writer">([^<]*)<\/td>\s*<td\s+class="created">\s*(\d{4}-\d{2}-\d{2})/g;
 
 export function parseListPage(html: string): SuncheonNewsItem[] {
   const items: SuncheonNewsItem[] = [];
@@ -54,6 +56,7 @@ export function parseListPage(html: string): SuncheonNewsItem[] {
       seq,
       title,
       writer: writer || null,
+      publishedDate: m[4] ?? null,
       sourceUrl: `${DETAIL_BASE}?mode=view&seq=${seq}`,
       body: null,
     });
@@ -168,7 +171,10 @@ export async function scrapeSuncheonAndInsert(
       category: "news",
       slug,
       ministry: SUNCHEON_MINISTRY,
-      published_at: now,
+      // 2026-06-03 — td.created 발행일 사용(없으면 now fallback).
+      published_at: item.publishedDate
+        ? `${item.publishedDate}T00:00:00+09:00`
+        : now,
       classified_at: null,
     });
     if (error) {

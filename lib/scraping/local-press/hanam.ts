@@ -37,7 +37,9 @@ export function parseListPage(html: string): PressNewsItem[] {
       m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
     ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
-    const slice = html.slice(m.index, m.index + 800);
+    // 2026-06-03 — 날짜(span.post_data)가 anchor 에서 ~880자 뒤라 800 으론 못 잡아 fallback
+    // 되던 것 → 1300. DATE_REGEX 첫 매칭이라 다음 글 날짜는 안 잡음.
+    const slice = html.slice(m.index, m.index + 1300);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     const publishedDate = dateMatch
       ? dateMatch[1].replace(/\./g, "-")

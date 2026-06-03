@@ -24,7 +24,6 @@ const LIST_URL =
 const LIST_ITEM_REGEX =
   /<a\s+href="(\.\/page\.do\?(?=[^"]*BD_CODE=bbs_bodo)[^"]*?B_NUM=(\d+)[^"]*)"\s+title="([^"]+)"/g;
 
-const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
 
 // 2026-06-02 fix — 본문은 `cont_view` div 에 정적 존재(부제목+본문). 구 regex 는
 // bbs_view(언더스코어) 등 실제 사이트에 없는 class 라 0건이었음.
@@ -50,9 +49,22 @@ export function parseListPage(html: string): PressNewsItem[] {
     seen.add(seq);
     const title = decodeBasicEntities(m[3]).trim();
     if (!title || title.length < 5) continue;
-    const slice = html.slice(m.index, m.index + 800);
-    const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
-    const publishedDate = dateMatch ? dateMatch[1] : null;
+    // 2026-06-03 — 게시물 날짜가 "26-06-02"(2자리 연도) 형식 → 4자리 regex 가 못 잡아
+    // fallback 되던 것. 2자리 연도(20 접두) 허용. 같은 줄 전화번호("054-880-6322")는
+    // segment 가 3·4자리라 2자리 month/day 패턴(\d{2}-\d{2})에 애초에 안 걸리고, 추가로
+    // 월/일 범위(1~12·1~31) 검증이 이중 안전망. 첫 유효 날짜 채택.
+    const slice = html.slice(m.index, m.index + 1500);
+    let publishedDate: string | null = null;
+    const dre = /(\d{2,4})-(\d{2})-(\d{2})/g;
+    let dm: RegExpExecArray | null;
+    while ((dm = dre.exec(slice)) !== null) {
+      const mo = parseInt(dm[2], 10);
+      const da = parseInt(dm[3], 10);
+      if (mo >= 1 && mo <= 12 && da >= 1 && da <= 31) {
+        publishedDate = `${dm[1].length === 2 ? `20${dm[1]}` : dm[1]}-${dm[2]}-${dm[3]}`;
+        break;
+      }
+    }
     // 2026-05-26: full href 그대로 사용 (V_NUM·B_STEP 동적 포함)
     items.push({
       seq,

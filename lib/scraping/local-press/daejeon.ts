@@ -20,8 +20,9 @@ const DETAIL_BASE = "https://www.daejeon.go.kr";
 // <td class="al_left subject"><a href="...ntatcSeq={NNN}">{title or <strong>...}</a></td>
 const LIST_ITEM_REGEX =
   /<td[^>]*class="al_left subject"[^>]*>\s*<a\s+href="([^"]*ntatcSeq=\d+[^"]*)"[^>]*>([\s\S]*?)<\/a>/g;
-// 대전 list 의 date 별도 td. <td>2026-05-16</td> 형식 (다른 td 와 충돌 가능)
-const DATE_REGEX = /<td[^>]*>(\d{4}-\d{2}-\d{2})<\/td>/g;
+// 대전 list 의 date 별도 td. <td ...> YYYY-MM-DD </td> (내부 공백/개행 허용).
+// 2026-06-03 — td 직후 날짜만 매칭(공백 미허용)이라 매칭 0 → fallback 되던 것 → \s* 추가.
+const DATE_REGEX = /<td[^>]*>\s*(\d{4}-\d{2}-\d{2})\s*<\/td>/g;
 // ntatcSeq 추출
 const NTATC_REGEX = /ntatcSeq=(\d+)/;
 

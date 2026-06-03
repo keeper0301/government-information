@@ -18,21 +18,25 @@ const SAMPLE_LIST_HTML = `
       <td>1</td>
       <td class="title_minwon lefttd"><a href="?mode=view&amp;seq=71153" >순천시 승주읍, 주택 화재 피해 주민에 성금 전달</a></td>
       <td class="writer">승주읍</td>
+      <td class="created">2026-06-02</td>
     </tr>
     <tr>
       <td>2</td>
       <td class="title_minwon lefttd"><a href="?mode=view&amp;seq=71150" >"순천에서의 달콤한 하룻밤"… 순천시, 최대 12만 원 숙박 할인 쏜다</a></td>
       <td class="writer">관광과</td>
+      <td class="created">2026-06-01</td>
     </tr>
     <tr>
       <td>3</td>
       <td class="title_minwon lefttd"><a href="?mode=view&amp;seq=71145" >순천시, 「2026년 지역사회건강조사」 실시</a></td>
       <td class="writer">건강증진과</td>
+      <td class="created">2026-05-30</td>
     </tr>
     <tr>
       <td>4</td>
       <td class="title_minwon lefttd"><a href="?mode=view&amp;seq=71143" >순천시, 시청사 전 직원 대상 소방훈련 실시</a></td>
       <td class="writer">회계과</td>
+      <td class="created">2026-05-29</td>
     </tr>
   </tbody>
 </table>
@@ -50,6 +54,7 @@ describe("parseListPage", () => {
       seq: 71153,
       title: "순천시 승주읍, 주택 화재 피해 주민에 성금 전달",
       writer: "승주읍",
+      publishedDate: "2026-06-02",
       sourceUrl: "http://www.suncheon.go.kr/kr/news/0006/0001/?mode=view&seq=71153",
       body: null,
     });
