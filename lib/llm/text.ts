@@ -17,6 +17,8 @@ export type CallLLMOptions = {
   jsonMode?: boolean;
   /** model override. 기본 gpt-4o-mini */
   model?: string;
+  /** fetch 타임아웃(ms). 기본 20000 — 1건 hang 이 maxDuration 전체를 잡지 않게 격리 */
+  timeoutMs?: number;
 };
 
 /**
@@ -39,14 +41,26 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
     body.response_format = { type: "json_object" };
   }
 
-  const res = await fetch(OPENAI_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+      // 1건 hang 격리 — welfare insight cap 100 등 대량 호출이 maxDuration 에 묶이지 않게.
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 20000),
+    });
+  } catch (e) {
+    const err = e as Error;
+    throw new Error(
+      err.name === "TimeoutError"
+        ? `OpenAI 응답 타임아웃 (${opts.timeoutMs ?? 20000}ms)`
+        : `OpenAI 호출 실패: ${err.message}`,
+    );
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");

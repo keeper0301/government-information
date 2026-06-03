@@ -145,7 +145,9 @@ export async function classifyPressNews(input: {
     .replace("{BODY}", truncatedBody || "(본문 없음)");
 
   // jsonMode true → response_format json_object 강제. JSON 추출 정규식 불필요.
-  const text = await callLLM({ prompt, maxTokens: 1500, jsonMode: true });
+  // maxTokens 1500 (callLLM 최대 호출) → 기본 20s 대신 30s 여유 (느린 시간대 cutoff 방지).
+  // 1건 실패해도 ingest 가 failed 큐로 graceful 처리 — 안전망 이중.
+  const text = await callLLM({ prompt, maxTokens: 1500, jsonMode: true, timeoutMs: 30000 });
   const parsed = parseJSONResponse<ClassifyResult>(text);
 
   // 결과 보정 — 빈 string vs null 정규화
