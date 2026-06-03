@@ -20,6 +20,7 @@
 
 import { Agent } from "undici";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+import { decodeHtmlEntities } from "@/lib/utils";
 
 // 2026-06-02 — 일부 정부 사이트가 중간 인증서(intermediate CA)를 빠뜨려 Node 의 TLS
 // 체인 검증이 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE). 브라우저는 AIA 로 자동 보완하지만
@@ -217,7 +218,12 @@ export async function processProvidedHtml(
       errors.push(`seq=${item.seq}: PC runner detail HTML 누락`);
       continue;
     }
-    const body = await cfg.parseDetailBody(detailHtml);
+    // 본문 저장 직전 공통 HTML 엔티티 디코드 — 각 collector 의 부분 치환
+    // (daejeon 등 &middot;/&hellip;/&apos; 누락) 을 factory 가 일괄 보완.
+    // idempotent 라 이미 디코드한 collector 엔 무영향. body 길이 측정 전에 적용해야
+    // (`&middot;` 8자 → `·` 1자) noindex 길이 판정도 화면 표시 기준과 일치.
+    let body = await cfg.parseDetailBody(detailHtml);
+    if (body) body = decodeHtmlEntities(body);
     if (!body || body.length < BODY_MIN_LEN) {
       skipped += 1;
       continue;
@@ -289,6 +295,8 @@ export function createPressCollector(cfg: PressCollectorConfig) {
       try {
         const detailHtml = await fetchPage(item.sourceUrl, cfg.encoding);
         body = await cfg.parseDetailBody(detailHtml);
+        // 본문 공통 엔티티 디코드 (위 processProvidedHtml 와 동일 — 길이 측정 전)
+        if (body) body = decodeHtmlEntities(body);
       } catch (e) {
         errors.push(`seq=${item.seq}: fetch ${(e as Error).message}`);
         continue;

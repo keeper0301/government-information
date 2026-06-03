@@ -134,7 +134,9 @@ function decodeHtmlEntitiesOnce(text: string): string {
 
 // 이중(또는 그 이상) 인코딩된 엔티티까지 잡기 위해 변화가 없을 때까지 최대 3회 반복.
 // 예: "&amp;nbsp;" → "&nbsp;" (1회) → " " (2회)
-function decodeHtmlEntities(text: string): string {
+// export — local-press factory 가 본문 저장 직전 공통 디코드로 재사용(2026-06-03).
+// 각 collector 의 부분 치환(daejeon &middot;/&hellip; 누락 등) 을 factory 가 일괄 보완.
+export function decodeHtmlEntities(text: string): string {
   let current = text;
   for (let i = 0; i < 3; i++) {
     const next = decodeHtmlEntitiesOnce(current);

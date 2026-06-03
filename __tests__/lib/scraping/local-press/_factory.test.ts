@@ -6,7 +6,11 @@
 // ============================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchPage } from "@/lib/scraping/local-press/_factory";
+import {
+  fetchPage,
+  processProvidedHtml,
+  type PressCollectorConfig,
+} from "@/lib/scraping/local-press/_factory";
 
 describe("_factory fetchPage 안전 가드", () => {
   beforeEach(() => {
@@ -88,5 +92,91 @@ describe("_factory fetchPage 안전 가드", () => {
     );
     const result = await fetchPage("https://example.com/list");
     expect(result).toContain("일반 보도자료");
+  });
+});
+
+// ============================================================
+// 본문 공통 엔티티 디코드 (2026-06-03) — collector 부분 치환 보완 회귀
+// ============================================================
+// daejeon 등 helper 비사용 collector 가 &middot;/&hellip; 를 안 풀고 raw 본문을
+// 반환해도, factory 가 저장 직전 decodeHtmlEntities 로 일괄 디코드해야 함
+// (body + summary 둘 다). DB 10개 collector 엔티티 잔존 사고 회귀 방어.
+describe("_factory 본문 엔티티 디코드", () => {
+  // insert payload 를 캡처하는 mock admin
+  function makeAdmin(captured: { payload?: Record<string, unknown> }) {
+    return {
+      from: () => ({
+        insert: (p: Record<string, unknown>) => {
+          captured.payload = p;
+          return Promise.resolve({ error: null });
+        },
+      }),
+    };
+  }
+
+  function makeCfg(rawBody: string): PressCollectorConfig {
+    return {
+      cityName: "테스트시",
+      region: "테스트",
+      ministry: "테스트시청",
+      sourceOutlet: "테스트시청",
+      sourceCode: "local-press-test",
+      listUrl: "https://example.com/list",
+      parseListItems: () => [
+        {
+          seq: "1",
+          title: "테스트 제목",
+          publishedDate: "2026-06-03",
+          sourceUrl: "https://example.com/1",
+        },
+      ],
+      // collector 가 &middot;/&hellip; 를 안 푼 raw 본문 반환 (daejeon 패턴 재현)
+      parseDetailBody: () => rawBody,
+    };
+  }
+
+  it("raw 엔티티(&middot;·&hellip;)가 body 에서 디코드돼 저장됨", async () => {
+    const rawBody = "노후&middot;파손 점검 " + "가".repeat(280) + " 무대&hellip;";
+    const captured: { payload?: Record<string, unknown> } = {};
+    await processProvidedHtml(
+      makeCfg(rawBody),
+      makeAdmin(captured) as never,
+      "<list/>",
+      { "1": "<detail/>" },
+      10,
+    );
+    const body = captured.payload?.body as string;
+    expect(body).toBeTruthy();
+    expect(body).not.toMatch(/&middot;|&hellip;/);
+    expect(body).toContain("노후·파손");
+    expect(body).toContain("무대…");
+  });
+
+  it("summary 도 디코드된 본문에서 생성됨 (raw 엔티티 누출 0)", async () => {
+    const rawBody = "지원&middot;대상 안내 " + "나".repeat(280);
+    const captured: { payload?: Record<string, unknown> } = {};
+    await processProvidedHtml(
+      makeCfg(rawBody),
+      makeAdmin(captured) as never,
+      "<list/>",
+      { "1": "<detail/>" },
+      10,
+    );
+    const summary = captured.payload?.summary as string;
+    expect(summary).not.toMatch(/&middot;/);
+    expect(summary).toContain("지원·대상");
+  });
+
+  it("이미 디코드된 본문은 그대로 (idempotent — 회귀 0)", async () => {
+    const cleanBody = "이미 깨끗한 본문 · 점검 " + "다".repeat(280);
+    const captured: { payload?: Record<string, unknown> } = {};
+    await processProvidedHtml(
+      makeCfg(cleanBody),
+      makeAdmin(captured) as never,
+      "<list/>",
+      { "1": "<detail/>" },
+      10,
+    );
+    expect(captured.payload?.body).toBe(cleanBody.slice(0, 20000));
   });
 });

@@ -22,7 +22,7 @@ import {
   NEWS_CATEGORY_COLOR,
   type NewsCategory,
 } from "@/components/news-card";
-import { cleanDescription, formatKoreanDate, paragraphizeNewsBody } from "@/lib/utils";
+import { cleanDescription, formatKoreanDate, paragraphizeNewsBody, stripHtmlTags } from "@/lib/utils";
 import { findRelatedPrograms } from "@/lib/news-matching";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 import { HideNewsButton } from "./HideNewsButton";
@@ -101,9 +101,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 미리보기가 빈 회색 박스 안 나오게. 기본 OG 는 /opengraph-image (Next.js 자동).
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
   const ogImage = data.thumbnail_url || `${siteUrl}/opengraph-image`;
+  // summary 는 collector 가 raw body 앞부분을 잘라 저장 → &middot;/&hellip; 등 엔티티가
+  // 남을 수 있음(특히 helper 비사용 collector). SEO/OG description 은 화면 cleanDescription
+  // 을 안 거치므로 여기서 stripHtmlTags 로 엔티티 디코드 + 한 줄 정리(2026-06-03).
+  const metaDesc = data.summary ? stripHtmlTags(data.summary) : undefined;
   return {
     title: `${data.title} | 정책알리미`,
-    description: data.summary || undefined,
+    description: metaDesc,
     alternates: { canonical: `/news/${slug}` },
     // ADSENSE_REVIEW_MODE 또는 isThin(분류·summary 미완) 시 noindex follow.
     robots: ADSENSE_REVIEW_MODE || isThin
@@ -114,14 +118,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : undefined,
     openGraph: {
       title: data.title,
-      description: data.summary || undefined,
+      description: metaDesc,
       images: [{ url: ogImage }],
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
       title: data.title,
-      description: data.summary || undefined,
+      description: metaDesc,
       images: [ogImage],
     },
   };
@@ -197,7 +201,7 @@ export default async function NewsDetailPage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: post.title,
-    description: post.summary || undefined,
+    description: post.summary ? stripHtmlTags(post.summary) : undefined,
     image: post.thumbnail_url || undefined,
     datePublished: post.published_at,
     dateModified: post.updated_at || post.published_at,
