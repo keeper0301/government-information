@@ -208,7 +208,11 @@ export default async function Home() {
         </div>
 
         {/* 안쪽 max-w-content — content 가운데 정렬 (1140px). z-10 으로 blob 위. */}
-        <div className="relative z-10 max-w-content mx-auto px-6 lg:px-10 grid gap-10 items-start lg:grid-cols-[1.15fr_1fr]">
+        <div
+          className={`relative z-10 max-w-content mx-auto px-6 lg:px-10 grid gap-10 items-start ${
+            isLoggedIn && !isProfileEmpty ? "" : "lg:grid-cols-[1.15fr_1fr]"
+          }`}
+        >
           {/* 왼쪽: 카피 + 검색 — fade-up stagger 60ms 간격으로 위에서 아래로
               자연스럽게 등장. animationDelay 는 inline style 로 정확 제어. */}
           <div>
@@ -266,31 +270,35 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* 오른쪽: 맞춤 추천 카드 (데스크톱 전용 위치. 모바일에선 아래로 자연 스택)
-              3가지 상태 분기:
-              - 비로그인: HomeRecommendCard 입력 폼
-              - 로그인 + 빈 프로필: EmptyProfilePrompt 프로필 입력 유도
-              - 로그인 + 프로필 있음: HomeRecommendAuto 자동 추천 카드
-              인기 정책 TOP 5 는 viewport 1500px+ 에서 fixed sticky sidebar 로 이동. */}
-          <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
-            {isLoggedIn ? (
-              isProfileEmpty ? (
-                // 로그인했지만 프로필 미입력 — 프로필 작성 유도 메시지
+          {/* 오른쪽 컬럼: 비로그인=AI 진단 wizard / 로그인+빈프로필=프로필 입력 유도.
+              로그인+프로필 사용자는 두 추천 카드를 hero 아래 full-width 2열로 분리(아래
+              블록) — 우측 좁은 컬럼(1fr) 폭 부족으로 가로 2열 불가 해소(2026-06-03). */}
+          {!(isLoggedIn && !isProfileEmpty) && (
+            <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
+              {isLoggedIn ? (
+                // 로그인 + 빈 프로필 — 프로필 작성 유도
                 <EmptyProfilePrompt />
               ) : (
-                // 로그인 + 프로필 있음 — 자동 추천 카드 (server component)
-                // + Phase C 거주지 정책 별도 섹션 (district 매칭 정확)
-                <div className="flex flex-col gap-4">
-                  <HomeRecommendAuto profile={fullProfile} />
-                  <HomeLocalRecommend signals={fullProfile.signals} />
-                </div>
-              )
-            ) : (
-              // 비로그인 — AI 진단 wizard (Phase 3, 5문항 익명, 가입 funnel)
-              <QuizInlineWizard />
-            )}
-          </div>
+                // 비로그인 — AI 진단 wizard (Phase 3, 5문항 익명, 가입 funnel)
+                <QuizInlineWizard />
+              )}
+            </div>
+          )}
         </div>
+
+        {/* 로그인 + 프로필 사용자 — 맞춤 추천 + 내 지역 정책을 full-width 2열로.
+            (hero 우측 좁은 컬럼 대신 아래 넓은 폭에서 가로 2열·모바일 세로, 2026-06-03) */}
+        {isLoggedIn && !isProfileEmpty && (
+          <div
+            className="relative z-10 max-w-content mx-auto px-6 lg:px-10 mt-10 fade-up"
+            style={{ animationDelay: "240ms" }}
+          >
+            <div className="grid gap-4 lg:grid-cols-2 items-start">
+              <HomeRecommendAuto profile={fullProfile} />
+              <HomeLocalRecommend signals={fullProfile.signals} />
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 인기 정책 TOP 5 — viewport 1800px+ fixed sticky sidebar.

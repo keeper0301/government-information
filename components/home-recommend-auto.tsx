@@ -4,7 +4,6 @@
 // 'use client' 없음 — createClient 사용 가능
 import Link from "next/link";
 import { RecommendLinkTracker } from "@/components/analytics/recommend-link-tracker";
-import { RecommendationReasonChips } from "@/components/personalization/recommendation-reason-chips";
 import { TopPopularFallback } from "@/components/personalization/top-popular-fallback";
 import { createClient } from '@/lib/supabase/server';
 import { loadUserProfile, type LoadedProfile } from '@/lib/personalization/load-profile';
@@ -368,6 +367,8 @@ function HomeRecommendationList({
       <ul className="space-y-2.5">
         {items.map(({ item, signals }) => {
           const confidence = getRecommendationConfidenceLabel(signals);
+          // 매칭 이유 — 배지 박스(과다·반복) 대신 차분한 텍스트 한 줄로(제목 가독성 우선, 2026-06-03)
+          const reasonLabels = getHomeMatchReasonLabels(signals, 4);
           // Phase A click 분석 — 추천 카드 클릭 시 home_recommend_click 기록
           const programTable: "welfare_programs" | "loan_programs" =
             item.href.startsWith("/loan/") ? "loan_programs" : "welfare_programs";
@@ -386,26 +387,21 @@ function HomeRecommendationList({
                 <div className="text-sm max-md:text-[15px] font-semibold text-grey-900 line-clamp-2">
                   {item.title}
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {/* 매칭 이유 — 신뢰도만 색 강조 + 나머지는 차분한 텍스트 한 줄(제목 위계 우선) */}
+                <div className="mt-1.5 text-[12px] leading-relaxed">
                   <span
-                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${
-                      muted
-                        ? "border-amber-100 bg-amber-50 text-amber-700"
-                        : "border-blue-100 bg-blue-50 text-blue-700"
-                    }`}
+                    className={`font-bold ${muted ? "text-amber-700" : "text-blue-600"}`}
                   >
-                    {confidence}
+                    ✓ {confidence}
                   </span>
-                  <RecommendationReasonChips
-                    signals={signals}
-                    limit={4}
-                    labelOptions={{ labels: HOME_MATCH_REASON_LABEL_OVERRIDES }}
-                    className="contents"
-                  />
-                  {item.apply_end && (
-                    <span className="text-[11px] font-medium text-grey-500">
-                      마감 {item.apply_end}
+                  {reasonLabels.length > 0 && (
+                    <span className="text-grey-500">
+                      {"  ·  "}
+                      {reasonLabels.join(" · ")}
                     </span>
+                  )}
+                  {item.apply_end && (
+                    <span className="text-grey-500">{"  ·  마감 "}{item.apply_end}</span>
                   )}
                 </div>
               </RecommendLinkTracker>

@@ -110,25 +110,25 @@ export async function HomeLocalRecommend({ signals }: Props) {
 
   return (
     <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-5 sm:p-6 shadow-lg">
-      <header className="flex items-end justify-between gap-3 mb-4">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600 mb-1">
-            내 지역 정책
-          </div>
-          <h2 className="text-base sm:text-lg font-bold text-grey-900">
-            🏛️ {signals.region} {signals.district}
-          </h2>
-          <p className="text-xs text-grey-600 mt-1">
-            진행 중 {totalCount}건 중 마감 임박 {programs.length}건
-          </p>
-        </div>
+      {/* 헤더 — 카드1(맞춤 정책)과 동일 패턴: 제목+건수 / 전체 보기.
+          기존 uppercase tracking 한글 라벨(자간만 벌어져 어색) 제거(2026-06-03). */}
+      <div className="flex items-end justify-between gap-3 mb-1">
+        <h2 className="text-base sm:text-lg font-bold text-grey-900">
+          🏛️ {signals.region} {signals.district}
+          <span className="ml-2 text-xs max-md:text-[13px] text-grey-500 font-normal">
+            {totalCount}건
+          </span>
+        </h2>
         <Link
           href={`/recommend?district=${encodeURIComponent(signals.district)}`}
-          className="text-xs text-blue-600 hover:text-blue-800 underline whitespace-nowrap"
+          className="text-xs max-md:text-[13px] text-blue-500 hover:text-blue-600 underline whitespace-nowrap"
         >
           전체 보기 →
         </Link>
-      </header>
+      </div>
+      <p className="mb-4 text-[13px] leading-[1.5] text-grey-600">
+        내 지역에서 진행 중인 {totalCount}건 중 마감 임박 {programs.length}건을 먼저 보여드려요.
+      </p>
 
       <ul className="space-y-2">
         {programs.map((p) => (
