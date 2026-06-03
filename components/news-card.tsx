@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Newspaper, Megaphone, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cleanDescription, formatKoreanDate } from "@/lib/utils";
+import { cleanDescription, formatKoreanDate, stripHtmlTags } from "@/lib/utils";
 
 export type NewsCategory = "news" | "press" | "policy-doc";
 
@@ -124,9 +124,10 @@ export function NewsCard({ post }: { post: NewsCardData }) {
             )}
           </div>
 
-          {/* 제목 — 2줄 이상이면 생략. 카드 높이 통일 */}
+          {/* 제목 — 2줄 이상이면 생략. 카드 높이 통일. stripHtmlTags 로 제목의
+              &quot;/&#039;/&nbsp; 엔티티 정제(raw 노출 방지, 2026-06-03). */}
           <h2 className="text-[16px] font-bold text-grey-900 mb-2 leading-[1.4] tracking-[-0.3px] line-clamp-2">
-            {post.title}
+            {stripHtmlTags(post.title)}
           </h2>
 
           {/* 요약 — summary 가 비어있으면 아예 생략. cleanDescription 으로 HTML

@@ -105,8 +105,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 남을 수 있음(특히 helper 비사용 collector). SEO/OG description 은 화면 cleanDescription
   // 을 안 거치므로 여기서 stripHtmlTags 로 엔티티 디코드 + 한 줄 정리(2026-06-03).
   const metaDesc = data.summary ? stripHtmlTags(data.summary) : undefined;
+  // 제목도 일부 collector 가 &quot;/&#039;/&nbsp; 엔티티를 raw 로 남김 → 검색결과·OG·
+  // twitter 카드에 그대로 노출. title 은 표시 정제 경로가 없어 여기서 stripHtmlTags 적용.
+  const metaTitle = stripHtmlTags(data.title);
   return {
-    title: `${data.title} | 정책알리미`,
+    title: `${metaTitle} | 정책알리미`,
     description: metaDesc,
     alternates: { canonical: `/news/${slug}` },
     // ADSENSE_REVIEW_MODE 또는 isThin(분류·summary 미완) 시 noindex follow.
@@ -117,14 +120,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         }
       : undefined,
     openGraph: {
-      title: data.title,
+      title: metaTitle,
       description: metaDesc,
       images: [{ url: ogImage }],
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
-      title: data.title,
+      title: metaTitle,
       description: metaDesc,
       images: [ogImage],
     },
@@ -160,6 +163,10 @@ export default async function NewsDetailPage({ params }: Props) {
   if (post.is_hidden && !isAdmin) {
     return <HiddenNewsNotice />;
   }
+
+  // 제목 엔티티 정제 — H1·JSON-LD headline·breadcrumb 는 raw 노출 경로라 일부
+  // collector 의 &quot;/&#039;/&nbsp; 가 그대로 보임. stripHtmlTags 로 통일 (2026-06-03).
+  const cleanTitle = stripHtmlTags(post.title);
 
   // 조회수 증가 (fire-and-forget) — 실패해도 상세 렌더에는 영향 없음
   supabase
@@ -200,7 +207,7 @@ export default async function NewsDetailPage({ params }: Props) {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
-    headline: post.title,
+    headline: cleanTitle,
     description: post.summary ? stripHtmlTags(post.summary) : undefined,
     image: post.thumbnail_url || undefined,
     datePublished: post.published_at,
@@ -234,7 +241,7 @@ export default async function NewsDetailPage({ params }: Props) {
         items={[
           { name: "홈", url: baseUrl },
           { name: "정책소식", url: `${baseUrl}/news` },
-          { name: post.title, url: `${baseUrl}/news/${post.slug}` },
+          { name: cleanTitle, url: `${baseUrl}/news/${post.slug}` },
         ]}
       />
 
@@ -265,9 +272,9 @@ export default async function NewsDetailPage({ params }: Props) {
         </Link>
         <span className="mx-2 text-grey-600">&gt;</span>
         <span className="text-grey-900 font-medium">
-          {post.title.length > 30
-            ? post.title.substring(0, 30) + "..."
-            : post.title}
+          {cleanTitle.length > 30
+            ? cleanTitle.substring(0, 30) + "..."
+            : cleanTitle}
         </span>
       </nav>
 
@@ -293,7 +300,7 @@ export default async function NewsDetailPage({ params }: Props) {
 
       {/* 제목 */}
       <h1 className="text-[32px] font-bold tracking-[-1.2px] text-grey-900 mb-3 max-md:text-[24px]">
-        {post.title}
+        {cleanTitle}
       </h1>
 
       {/* 메타: 발행일 + 조회수 */}
