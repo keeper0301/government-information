@@ -167,6 +167,31 @@ describe("_factory 본문 엔티티 디코드", () => {
     expect(summary).toContain("지원·대상");
   });
 
+  it("제목 HTML 엔티티도 디코드 — 검색결과/OG/H1 노출 방지", async () => {
+    const captured: { payload?: Record<string, unknown> } = {};
+    const cfg = makeCfg("본문 내용 " + "가".repeat(280));
+    // 울산 패턴 재현 — 숫자 엔티티(&#039; &#034;)·&quot; raw 잔존
+    cfg.parseListItems = () => [
+      {
+        seq: "1",
+        title: "울산시, &#039;학교 감염병&#039; &quot;공모전&quot; 개최",
+        publishedDate: "2026-06-03",
+        sourceUrl: "https://example.com/1",
+      },
+    ];
+    await processProvidedHtml(
+      cfg,
+      makeAdmin(captured) as never,
+      "<list/>",
+      { "1": "<detail/>" },
+      10,
+    );
+    const title = captured.payload?.title as string;
+    expect(title).not.toMatch(/&#0?39;|&#0?34;|&quot;/);
+    expect(title).toContain("'학교 감염병'");
+    expect(title).toContain('"공모전"');
+  });
+
   it("이미 디코드된 본문은 그대로 (idempotent — 회귀 0)", async () => {
     const cleanBody = "이미 깨끗한 본문 · 점검 " + "다".repeat(280);
     const captured: { payload?: Record<string, unknown> } = {};

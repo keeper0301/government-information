@@ -233,7 +233,9 @@ export async function processProvidedHtml(
     const slug = makeNewsSlug(item.title, cityKey, sourceId);
 
     const { error } = await admin.from("news_posts").insert({
-      title: item.title.slice(0, 500),
+      // 제목 HTML 엔티티 디코드 — title 은 검색결과·OG·H1·카드에 정제 경로 없이
+      // 그대로 노출되는데 일부 collector 가 &quot;/&#039;/&nbsp; 를 raw 로 남김(2026-06-03).
+      title: decodeHtmlEntities(item.title).slice(0, 500),
       summary: body.slice(0, 500),
       body: body.slice(0, 20000),
       source_url: item.sourceUrl,
@@ -313,7 +315,9 @@ export function createPressCollector(cfg: PressCollectorConfig) {
       const slug = makeNewsSlug(item.title, cityKey, sourceId);
 
       const { error } = await admin.from("news_posts").insert({
-        title: item.title.slice(0, 500),
+        // 제목 HTML 엔티티 디코드 — title 은 검색결과·OG·H1·카드에 정제 경로 없이
+      // 그대로 노출되는데 일부 collector 가 &quot;/&#039;/&nbsp; 를 raw 로 남김(2026-06-03).
+      title: decodeHtmlEntities(item.title).slice(0, 500),
         summary: body.slice(0, 500),
         body: body.slice(0, 20000),
         source_url: item.sourceUrl,
