@@ -4,6 +4,15 @@
 > 작성 2026-06-03. keepioo 는 **Supabase 단일 시스템 유지 확정** (Convex 전환 보류 — `CONVEX_MIGRATION_GOAL_PROMPT.md` 참고).
 > 이 문서는 현재 Supabase 스택의 **보안·성능 기술 부채를 Supabase advisor 기반으로 우선순위 해소**하는 작업.
 
+> ✅ **2026-06-03 진행 (Phase 1·2 완료, Phase 3 부분)**: 마이그 106(district RLS)·107(anon EXECUTE
+> 차단, REVOKE PUBLIC+GRANT service_role)·108(push RLS initplan)·109(unindexed FK 10 covering index)·
+> 110(keywords_gin 2 제거 496KB) apply 완료. **advisor security+performance ERROR 1→0 · WARN 5→0 +
+> unused 496KB 회수.** 남은 = 모두 INFO(저ROI/미래/대시보드): ① 작은 partial unused index — 작은
+> 테이블이라 seq scan, 미래 성장 시 가치 → 보류 ② 109 FK index 가 unused 로 재분류(통계 부족, 시간
+> 지나면 일부 해제) ③ RLS no policy 16(의도적 전체 차단=안전) ④ auth db connections(Supabase
+> **대시보드** Auth pooler 퍼센트 전략, 인스턴스 증설 시 사장님 액션). **다음 세션: get_advisors 재확인
+> 후 위 INFO 는 무리하게 0 만들지 말 것(미래 위험·대시보드 영역).**
+
 ---
 
 ## 0. 목표
