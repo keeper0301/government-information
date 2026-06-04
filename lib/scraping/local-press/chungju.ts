@@ -32,8 +32,16 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[1];
     if (seen.has(seq)) continue;
     seen.add(seq);
+    // anchor inner(substance) 에는 제목 <strong class="subject"> + 부제목·담당부서·본문
+    // <span class="text"> 가 함께 들어있다. 통째 태그제거 시 "제목 - 부제목 - (부서) 본문…"
+    // 으로 junk 가 섞이므로, subject 블록 안만 제목으로 추출(없으면 기존 통째 fallback).
+    const subjectMatch =
+      /<strong[^>]*class="[^"]*\bsubject\b[^"]*"[^>]*>([\s\S]*?)<\/strong>/i.exec(
+        m[2],
+      );
+    const rawTitle = subjectMatch ? subjectMatch[1] : m[2];
     const title = decodeBasicEntities(
-      m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
+      rawTitle.replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
     ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const slice = html.slice(m.index, m.index + 2500);
