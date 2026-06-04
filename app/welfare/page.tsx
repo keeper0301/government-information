@@ -26,6 +26,9 @@ import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 export const metadata: Metadata = {
   title: "복지 지원사업 — 정책알리미",
   description: "내가 받을 수 있는 정부·지자체 복지 혜택을 한곳에 모았어요.",
+  // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
+  // 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
+  alternates: { canonical: "/welfare" },
 };
 
 // 페이지당 20건 — 기존 10건은 7122건이 713페이지로 쪼개져 사용자 탐색 부담이 큼.
