@@ -5,10 +5,13 @@ type WebSiteSchemaProps = {
   name: string;
   url: string;
   description: string;
+  // 사이트 별칭(브랜드 다표기) — "keepioo"·"키피오" 등. 검색엔진이 다양한
+  // 사이트명 검색어를 같은 공식 엔티티로 연결하도록 돕는다 (브랜드 검색 노출 ↑).
+  alternateName?: string[];
 };
 
-export function WebSiteSchema({ name, url, description }: WebSiteSchemaProps) {
-  const schema = {
+export function WebSiteSchema({ name, url, description, alternateName }: WebSiteSchemaProps) {
+  const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name,
@@ -21,6 +24,7 @@ export function WebSiteSchema({ name, url, description }: WebSiteSchemaProps) {
       "query-input": "required name=search_term_string",
     },
   };
+  if (alternateName && alternateName.length > 0) schema.alternateName = alternateName;
   return (
     <script
       type="application/ld+json"
@@ -39,6 +43,10 @@ type OrganizationSchemaProps = {
   taxId?: string;              // 사업자등록번호
   email?: string;              // 고객 문의 이메일
   foundingDate?: string;       // ISO 8601 (yyyy-mm-dd)
+  // 조직 별칭(브랜드 다표기) — "keepioo"·"키피오" 등. 사이트명 검색 ↔ 공식 엔티티 연결.
+  alternateName?: string[];
+  // 공식 채널 URL (인스타·블로그 등) — 검색엔진의 브랜드 엔티티 신뢰·연결 신호.
+  sameAs?: string[];
 };
 
 export function OrganizationSchema({
@@ -50,6 +58,8 @@ export function OrganizationSchema({
   taxId,
   email,
   foundingDate,
+  alternateName,
+  sameAs,
 }: OrganizationSchemaProps) {
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -60,6 +70,8 @@ export function OrganizationSchema({
     logo: `${url}/api/og-logo`,
     inLanguage: "ko",
   };
+  if (alternateName && alternateName.length > 0) schema.alternateName = alternateName;
+  if (sameAs && sameAs.length > 0) schema.sameAs = sameAs;
   if (legalName) schema.legalName = legalName;
   if (ceoName) schema.founder = { "@type": "Person", name: ceoName };
   if (taxId) schema.taxID = taxId;
