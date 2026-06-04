@@ -10,6 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { loadCurrentWeights } from "@/lib/personalization/popularity-weights-settings";
 import { authorizeCronRequest } from "@/lib/cron-auth";
@@ -26,16 +27,26 @@ async function run() {
   const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
 
   // 1) 직전 30일 user_events 집계 — popularity-boost.ts 와 동일 로직
-  const { data: events, error: eventErr } = await admin
-    .from("user_events")
-    .select("program_id, program_table, event_type")
-    .gte("created_at", since)
-    .not("program_id", "is", null)
-    .in("event_type", ["program_view", "apply_click"])
-    .limit(20000);
+  // PostgREST max 1000행 — 30일 user_events 를 .limit(20000) 으로 받아도 1000건에서
+  // 잘려 snapshot 집계가 왜곡된다(코드리뷰). .range() 페이지네이션으로 전량 수집.
+  const { rows: events, error: eventErr } = await fetchAllRows<{
+    program_id: string;
+    program_table: string | null;
+    event_type: string;
+  }>((from, to) =>
+    admin
+      .from("user_events")
+      .select("program_id, program_table, event_type")
+      .gte("created_at", since)
+      .not("program_id", "is", null)
+      .in("event_type", ["program_view", "apply_click"])
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 
   if (eventErr) {
-    return { success: false, error: eventErr.message, inserted: 0, cleaned: 0 };
+    return { success: false, error: eventErr, inserted: 0, cleaned: 0 };
   }
 
   // program_id 별 집계

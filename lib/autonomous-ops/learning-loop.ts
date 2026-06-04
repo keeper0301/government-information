@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import {
   getGeminiSpendingStats,
   GEMINI_KEEPIOO_CAP_KRW,
@@ -195,22 +196,31 @@ async function fetchAdminActions(days: number): Promise<AdminActionRow[]> {
   try {
     const admin = createAdminClient();
     const since = new Date(Date.now() - days * DAY_MS).toISOString();
-    const { data, error } = await admin
-      .from("admin_actions")
-      .select("action, created_at, details")
-      .in("action", [
-        "agent_diagnose_run",
-        "agent_execute_run",
-        "autonomous_improvement_scan_run",
-        "blog_publish_run",
-        "cron_retry_run",
-        "llm_usage_summary",
-      ])
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(1000);
+    // PostgREST max 1000행 — resident-cycle 이 자주 돌면 24h agent_diagnose_run 등이
+    // 1000 을 넘어 .limit(1000) 으로 최근 1000건만 집계돼 agentRuns24h 등이 과소
+    // 평가된다(코드리뷰). .range() 페이지네이션으로 전량 수집.
+    const { rows, error } = await fetchAllRows<AdminActionRow>((from, to) =>
+      admin
+        .from("admin_actions")
+        .select("action, created_at, details")
+        .in("action", [
+          "agent_diagnose_run",
+          "agent_execute_run",
+          "autonomous_improvement_scan_run",
+          "blog_publish_run",
+          "cron_retry_run",
+          "llm_usage_summary",
+        ])
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to) as unknown as PromiseLike<{
+          data: AdminActionRow[] | null;
+          error: { message: string } | null;
+        }>,
+    );
     if (error) return [];
-    return ((data ?? []) as AdminActionRow[]).map(normalizeRow);
+    return rows.map(normalizeRow);
   } catch {
     return [];
   }

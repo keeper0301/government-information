@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { notifyCronFailure } from "@/lib/email";
 import { logAdminAction } from "@/lib/admin-actions";
 import { authorizeCronRequest } from "@/lib/cron-auth";
@@ -74,31 +75,50 @@ async function detectInTable(
 
   // 신규 row — duplicate_of_id 가 아직 비어있고 (이미 매칭된 건 skip)
   // 최근 7일 안에 들어온 것만.
-  const { data: newRows, error: newErr } = await admin
-    .from(table)
-    .select(getDedupeSelectColumns(table))
-    .is("duplicate_of_id", null)
-    .gte("created_at", sinceIso);
+  // PostgREST max 1000행 — 활성 모수가 수천(welfare ~11k)이라 .limit/.range 없이는
+  // 1000건만 비교 대상이 돼 cutoff 밖의 진짜 중복을 놓친다(코드리뷰). 신규·활성 모두
+  // .range() 페이지네이션으로 created_at+id 안정 정렬 전량 수집.
+  const { rows: newRows, error: newErr } = await fetchAllRows<DedupeDbRow>((fr, to) =>
+    admin
+      .from(table)
+      .select(getDedupeSelectColumns(table))
+      .is("duplicate_of_id", null)
+      .gte("created_at", sinceIso)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(fr, to) as unknown as PromiseLike<{
+        data: DedupeDbRow[] | null;
+        error: { message: string } | null;
+      }>,
+  );
 
   if (newErr) {
-    throw new Error(`${table} 신규 조회 실패: ${newErr.message}`);
+    throw new Error(`${table} 신규 조회 실패: ${newErr}`);
   }
 
   // 활성 row — 마감일이 미래거나 null. 신규/활성 모두 한 큰 set 안에 있을 수
   // 있어 detectDuplicateScore 가 같은 id 를 자기참조로 거름.
-  const { data: activeRows, error: actErr } = await admin
-    .from(table)
-    .select(getDedupeSelectColumns(table))
-    .or(`apply_end.gte.${today},apply_end.is.null`);
+  const { rows: activeRows, error: actErr } = await fetchAllRows<DedupeDbRow>((fr, to) =>
+    admin
+      .from(table)
+      .select(getDedupeSelectColumns(table))
+      .or(`apply_end.gte.${today},apply_end.is.null`)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(fr, to) as unknown as PromiseLike<{
+        data: DedupeDbRow[] | null;
+        error: { message: string } | null;
+      }>,
+  );
 
   if (actErr) {
-    throw new Error(`${table} 활성 조회 실패: ${actErr.message}`);
+    throw new Error(`${table} 활성 조회 실패: ${actErr}`);
   }
 
-  const news: DedupeRow[] = ((newRows ?? []) as unknown as DedupeDbRow[]).map((row) =>
+  const news: DedupeRow[] = newRows.map((row) =>
     normalizeDedupeDbRow(table, row),
   );
-  const actives: DedupeRow[] = ((activeRows ?? []) as unknown as DedupeDbRow[]).map((row) =>
+  const actives: DedupeRow[] = activeRows.map((row) =>
     normalizeDedupeDbRow(table, row),
   );
 

@@ -23,7 +23,11 @@ function mockEvents(
         gte: () => ({
           not: () => ({
             in: () => ({
-              limit: () => Promise.resolve({ data: events }),
+              order: () => ({
+                order: () => ({
+                  range: () => Promise.resolve({ data: events, error: null }),
+                }),
+              }),
             }),
           }),
         }),
@@ -137,7 +141,11 @@ describe("inflight 단일화 (A 8차)", () => {
       from: () => ({
         select: () => ({
           gte: () => ({
-            not: () => ({ in: () => ({ limit: slowFetch }) }),
+            not: () => ({
+              in: () => ({
+                order: () => ({ order: () => ({ range: slowFetch }) }),
+              }),
+            }),
           }),
         }),
       }),
@@ -228,13 +236,17 @@ describe("negative cache (A 11차)", () => {
           gte: () => ({
             not: () => ({
               in: () => ({
-                limit: () => {
-                  queryCount += 1;
-                  return Promise.resolve({
-                    data: null,
-                    error: { message: "DB down" },
-                  });
-                },
+                order: () => ({
+                  order: () => ({
+                    range: () => {
+                      queryCount += 1;
+                      return Promise.resolve({
+                        data: null,
+                        error: { message: "DB down" },
+                      });
+                    },
+                  }),
+                }),
               }),
             }),
           }),
@@ -273,11 +285,15 @@ describe("강건성 (A 10차)", () => {
           gte: () => ({
             not: () => ({
               in: () => ({
-                limit: () =>
-                  Promise.resolve({
-                    data: null,
-                    error: { message: "PostgreSQL connection refused" },
+                order: () => ({
+                  order: () => ({
+                    range: () =>
+                      Promise.resolve({
+                        data: null,
+                        error: { message: "PostgreSQL connection refused" },
+                      }),
                   }),
+                }),
               }),
             }),
           }),

@@ -9,6 +9,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import type { MatchSignal } from "./types";
 // Spec 2 — 학습된 weights 조회 (DB 5분 cache + default fallback)
 import { loadCurrentWeights } from "./popularity-weights-settings";
@@ -50,19 +51,30 @@ async function loadPopularitySet(): Promise<PopularityCache["byProgramId"]> {
       const w = await loadCurrentWeights();
       const admin = createAdminClient();
       const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
-      const { data, error } = await admin
-        .from("user_events")
-        .select("program_id, event_type, program_table")
-        .gte("created_at", since)
-        .not("program_id", "is", null)
-        .in("event_type", ["program_view", "apply_click"])
-        .limit(10000);
+      // PostgREST max 1000행 — 30일 user_events(현재 ~1,285건>1000)를 정렬 없는
+      // .limit(10000) 으로 받으면 임의 1000건만 와 program 별 카운트·인기 boost 가
+      // 왜곡됐다(코드리뷰). .range() 페이지네이션으로 전량 수집(created_at+id 안정 정렬).
+      const { rows: data, error } = await fetchAllRows<{
+        program_id: string | null;
+        event_type: string;
+        program_table: string | null;
+      }>((from, to) =>
+        admin
+          .from("user_events")
+          .select("program_id, event_type, program_table")
+          .gte("created_at", since)
+          .not("program_id", "is", null)
+          .in("event_type", ["program_view", "apply_click"])
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to),
+      );
 
       // A 10차: DB 에러 시 page 500 차단 — 빈 Map 반환 (boost no-op 으로 fallback)
       // A 11차: 빈 Map 도 negative cache (30초) 로 저장 — DB 5분 다운 시 매 호출
       // 재시도로 query 폭주 사고 차단. 30초 후 자동 자가치유.
       if (error) {
-        console.error("[popularity-boost] DB error:", error.message);
+        console.error("[popularity-boost] DB error:", error);
         const emptyMap = new Map<string, PopularityEntry>();
         _cache = { expiresAt: Date.now() + NEGATIVE_TTL_MS, byProgramId: emptyMap };
         return emptyMap;

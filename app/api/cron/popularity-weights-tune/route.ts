@@ -19,6 +19,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { logAdminAction } from "@/lib/admin-actions";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
@@ -53,15 +54,25 @@ async function measure(): Promise<Measurement> {
 
   // P1-2 (5/27 review): 안전 cap — 사용자 풀 확장 시 단일 쿼리 OOM·timeout 차단.
   // 데이터 부족 임계 (≥100) 와 무관하게 cron 안정성 우선. popularity-snapshot 의 20000 보다 여유.
-  const { data, error } = await admin
-    .from("user_events")
-    .select("event_type, user_id")
-    .gte("created_at", since)
-    .in("event_type", ["program_view", "apply_click"])
-    .not("program_id", "is", null)
-    .limit(50000);
+  // PostgREST max 1000행 — 30일 user_events(현재 ~1,285건>1000)를 정렬 없는
+  // .limit(50000) 으로 받으면 임의 1000건만 와 전환율·uniqueUsers 가 왜곡돼 잘못된
+  // 가중치가 학습된다(코드리뷰). .range() 페이지네이션으로 전량 수집.
+  const { rows: data, error } = await fetchAllRows<{
+    event_type: string;
+    user_id: string | null;
+  }>((from, to) =>
+    admin
+      .from("user_events")
+      .select("event_type, user_id")
+      .gte("created_at", since)
+      .in("event_type", ["program_view", "apply_click"])
+      .not("program_id", "is", null)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 
-  if (error || !data) {
+  if (error) {
     return {
       viewCount: 0,
       applyCount: 0,

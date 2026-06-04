@@ -12,6 +12,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 export type W1ReadinessResult = {
   /** 5/25 이전이면 false (아직 검증 시점 X) */
@@ -58,16 +59,24 @@ export async function checkW1Readiness(): Promise<W1ReadinessResult> {
   try {
     const admin = createAdminClient();
     const since7d = new Date(Date.now() - 7 * 24 * 3600_000).toISOString();
-    const { data: runs, error } = await admin
-      .from("admin_actions")
-      .select("details")
-      .eq("action", "agent_diagnose_run")
-      .gte("created_at", since7d);
-    if (error || !runs) {
+    // PostgREST max 1000행 — resident-cycle 이 자주 돌면 7일 agent_diagnose_run 이
+    // 수천 건이라 단일 select 가 1000 에서 잘려 total/errorRate 가 왜곡된다(코드리뷰).
+    // .range() 페이지네이션으로 전량 수집(created_at+id 안정 정렬).
+    const { rows: runs, error } = await fetchAllRows<{ details: unknown }>((from, to) =>
+      admin
+        .from("admin_actions")
+        .select("details")
+        .eq("action", "agent_diagnose_run")
+        .gte("created_at", since7d)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    );
+    if (error) {
       return emptyResult({
         windowReached,
         daysToWindow,
-        reasons: [`DB 조회 실패: ${error?.message ?? "unknown"}`],
+        reasons: [`DB 조회 실패: ${error}`],
       });
     }
 
