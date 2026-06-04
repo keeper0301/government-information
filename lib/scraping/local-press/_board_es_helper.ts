@@ -79,6 +79,25 @@ export function parseBoardEsDetailBody(html: string): string | null {
   return null;
 }
 
+// board.es inner 전략(서구·동구) 공용 제목 정제 — a tag 안 nested HTML 에서 제목 추출.
+// 서구 신규 글은 제목 앞에 <span class="sr_only">새글</span> 스크린리더 전용 텍스트가 붙어,
+// 단순 태그 제거 시 "새글 [제목]" 으로 junk 가 섞인다. sr_only span 을 통째로 먼저 제거해
+// 화면에 안 보이는 텍스트를 배제(제목이 우연히 "새글~" 로 시작해도 오제거 0).
+//   ※ 동구 신규 배지는 sr_only 가 아니라 <img alt="new"> 라 태그 제거로 자동 소거됨 →
+//     이 함수와 무관(전후 동일·무해). 단 동구도 inner 전략이라 동일 경유한다.
+//   ※ attr 전략(남·북구)은 title attribute 라 sr_only 미포함 → 이 함수 미경유.
+//   ※ 한계: class="sr_only"(큰따옴표·언더바)만 매칭. 다른 board.es 스킨이 'sr-only'/'blind'/
+//     작은따옴표를 쓰면 재발 가능 — 현재 4구는 통일돼 위험 0(신규 inner site 추가 시 재확인).
+// 모듈 레벨 export — parser 회귀 단위 테스트용.
+export function cleanBoardEsInnerTitle(innerHtml: string): string {
+  return decodeBasicEntities(
+    innerHtml
+      .replace(/<span[^>]*class="[^"]*sr_only[^"]*"[^>]*>[\s\S]*?<\/span>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " "),
+  ).trim();
+}
+
 export function createBoardEsCollector(cfg: BoardEsConfig) {
   const listUrl = `${cfg.baseUrl}/board.es?mid=${cfg.mid}&bid=${cfg.bid}`;
   const innerLimit = cfg.innerLimit ?? 500;
@@ -101,11 +120,11 @@ export function createBoardEsCollector(cfg: BoardEsConfig) {
       if (seen.has(seq)) continue;
       seen.add(seq);
       // attr 전략 = m[2] 가 정확 title, inner 전략 = m[2] 가 nested HTML
-      const rawTitle =
+      // (inner 는 cleanBoardEsInnerTitle 로 sr_only "새글" 배지 제거 후 태그 정제)
+      const title =
         cfg.titleStrategy === "attr"
-          ? m[2]
-          : m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-      const title = decodeBasicEntities(rawTitle).trim();
+          ? decodeBasicEntities(m[2]).trim()
+          : cleanBoardEsInnerTitle(m[2]);
       if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
       const slice = html.slice(m.index, m.index + 1500);
       const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);

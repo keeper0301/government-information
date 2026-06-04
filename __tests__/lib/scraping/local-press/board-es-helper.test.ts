@@ -8,7 +8,10 @@
 //   - 끝 마커(add_file·file·BtnArea/goList) 없으면(응답 truncation) null = junk insert 차단
 
 import { describe, it, expect } from "vitest";
-import { parseBoardEsDetailBody } from "@/lib/scraping/local-press/_board_es_helper";
+import {
+  parseBoardEsDetailBody,
+  cleanBoardEsInnerTitle,
+} from "@/lib/scraping/local-press/_board_es_helper";
 
 describe("parseBoardEsDetailBody — tb_contents 스킨 (광주 남·북·동구)", () => {
   it("td.tb_contents (class 앞 colspan) → add_file 직전까지 추출", () => {
@@ -101,5 +104,36 @@ describe("parseBoardEsDetailBody — 안전 분기", () => {
     expect(body).toContain("청년 지원");
     expect(body).toContain("일자리경제과"); // 인라인 file 링크 뒤 문장까지 살아있어야 함
     expect(body).not.toContain("신청서.hwp"); // 진짜 첨부 섹션은 제외
+  });
+});
+
+describe("cleanBoardEsInnerTitle — inner 전략 제목 정제 (서구·동구)", () => {
+  // 라이브(seogu.gwangju.kr) 신규 글 anchor inner 구조 재현 — sr_only "새글" 배지가 제목 앞에.
+  it('신규 글 "새글" sr_only 배지를 제거하고 제목만 추출', () => {
+    const inner =
+      '\n<i class="xi-new"></i><span class="sr_only">새글</span> 광주 서구, 가족돌봄청년 전수조사 실시\n';
+    expect(cleanBoardEsInnerTitle(inner)).toBe(
+      "광주 서구, 가족돌봄청년 전수조사 실시",
+    );
+  });
+
+  it("sr_only 배지가 없는 일반 글은 제목 그대로", () => {
+    const inner = "\n광주 서구, 여름철 폭염 대응 종합대책 추진\n";
+    expect(cleanBoardEsInnerTitle(inner)).toBe(
+      "광주 서구, 여름철 폭염 대응 종합대책 추진",
+    );
+  });
+
+  // 핵심 회귀: 제목이 우연히 "새글" 로 시작해도(sr_only span 아님) 오제거하면 안 됨.
+  // (^새글 텍스트 제거 방식의 약점 — sr_only span 단위 제거라 안전)
+  it('제목 본문이 "새글" 로 시작해도 보존 (오제거 방지)', () => {
+    const inner = "\n새글동 행복마을 사업 설명회 개최\n";
+    expect(cleanBoardEsInnerTitle(inner)).toBe("새글동 행복마을 사업 설명회 개최");
+  });
+
+  it("HTML 엔티티 디코드 + 공백 정규화", () => {
+    const inner =
+      '<span class="sr_only">새글</span> 서구 &middot; 동구 합동 안전점검';
+    expect(cleanBoardEsInnerTitle(inner)).toBe("서구 · 동구 합동 안전점검");
   });
 });
