@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { getSignedInUser } from "@/lib/admin-auth-server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows, fetchAllAuthUsers } from "@/lib/supabase/paginate";
 import { logAdminAction } from "@/lib/admin-actions";
 
 // 이메일 마스킹 — local 1글자 + 별표 + 도메인 1글자 + 별표
@@ -50,25 +51,33 @@ export async function GET() {
   const admin = createAdminClient();
 
   // auth.users + user_profiles 통합
-  const [authResult, profilesResult] = await Promise.all([
-    admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-    admin
-      .from("user_profiles")
-      .select("id, region, occupation, age_group, income_level, created_at"),
+  // listUsers·user_profiles 모두 한 번에 max 1000행이라 사용자 1000+ 면 CSV 에서
+  // 누락된다(코드리뷰 예방). page/range 페이지네이션으로 전량 수집.
+  type ProfileRow = {
+    id: string;
+    region: string | null;
+    occupation: string | null;
+    age_group: string | null;
+    income_level: string | null;
+    created_at: string;
+  };
+  const [authResult, profilesRes] = await Promise.all([
+    fetchAllAuthUsers((page, perPage) =>
+      admin.auth.admin.listUsers({ page, perPage }),
+    ),
+    fetchAllRows<ProfileRow>((from, to) =>
+      admin
+        .from("user_profiles")
+        .select("id, region, occupation, age_group, income_level, created_at")
+        .order("id")
+        .range(from, to) as unknown as PromiseLike<{
+          data: ProfileRow[] | null;
+          error: { message: string } | null;
+        }>,
+    ),
   ]);
 
-  const profiles = new Map(
-    (profilesResult.data ?? []).map(
-      (p: {
-        id: string;
-        region: string | null;
-        occupation: string | null;
-        age_group: string | null;
-        income_level: string | null;
-        created_at: string;
-      }) => [p.id, p],
-    ),
-  );
+  const profiles = new Map(profilesRes.rows.map((p) => [p.id, p] as const));
 
   // CSV 헤더
   const header = [
@@ -84,7 +93,7 @@ export async function GET() {
   ];
   const rows: string[] = [header.map(csvCell).join(",")];
 
-  for (const u of authResult.data?.users ?? []) {
+  for (const u of authResult.users) {
     const p = profiles.get(u.id);
     rows.push(
       [

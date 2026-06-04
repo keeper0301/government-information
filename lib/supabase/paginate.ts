@@ -49,3 +49,35 @@ export async function fetchAllRows<T>(
 
   return { rows, truncated: rows.length >= maxRows, error: null };
 }
+
+// ============================================================
+// auth.admin.listUsers 전용 페이지네이션
+// ============================================================
+// Supabase Auth 의 listUsers 는 .range 가 아니라 page/perPage 기반이고 한 페이지
+// 최대 1000명만 반환한다. 가입자가 1000명을 넘으면 첫 페이지만 받아 일부 사용자가
+// 누락되므로(알림 미발송·CSV 누락 등) page 를 1부터 증가시키며 전량 수집한다.
+export async function fetchAllAuthUsers<U>(
+  listPage: (
+    page: number,
+    perPage: number,
+  ) => PromiseLike<{
+    data: { users: U[] } | null;
+    error: { message: string } | null;
+  }>,
+  options: { perPage?: number; maxPages?: number } = {},
+): Promise<{ users: U[]; error: string | null }> {
+  const perPage = options.perPage ?? 1000;
+  const maxPages = options.maxPages ?? 50;
+  const users: U[] = [];
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const { data, error } = await listPage(page, perPage);
+    if (error) return { users, error: error.message };
+    const batch = data?.users ?? [];
+    if (batch.length === 0) break;
+    users.push(...batch);
+    if (batch.length < perPage) break; // 마지막 페이지
+  }
+
+  return { users, error: null };
+}

@@ -18,6 +18,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { logAdminAction } from "@/lib/admin-actions";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
@@ -49,15 +50,27 @@ async function run() {
   const since23h = new Date(Date.now() - 23 * 3600_000).toISOString();
 
   // 1) 활성 subscriber + user pref
-  const { data: subs, error: subErr } = await admin
-    .from("push_subscriptions")
-    .select("id, user_id, endpoint, p256dh, auth_key")
-    .not("user_id", "is", null);
+  // PostgREST max 1000행 — 구독자가 1000+ 면 1001번째부터 매 cron 에서 조회 누락돼
+  // 푸시를 영영 못 받는다(코드리뷰 예방). .range() 페이지네이션 전량 수집(id unique 안정 정렬).
+  const { rows: subs, error: subErr } = await fetchAllRows<{
+    id: string;
+    user_id: string | null;
+    endpoint: string;
+    p256dh: string;
+    auth_key: string;
+  }>((from, to) =>
+    admin
+      .from("push_subscriptions")
+      .select("id, user_id, endpoint, p256dh, auth_key")
+      .not("user_id", "is", null)
+      .order("id")
+      .range(from, to),
+  );
 
   if (subErr) {
     return {
       success: false,
-      reason: `subscribe_query_failed: ${subErr.message}`,
+      reason: `subscribe_query_failed: ${subErr}`,
       sent: 0,
       skipped: 0,
       failed: 0,

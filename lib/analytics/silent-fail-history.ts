@@ -11,6 +11,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 export type SilentFailDay = {
   date: string; // YYYY-MM-DD (KST)
@@ -32,12 +33,18 @@ export async function getSilentFailHistory(
   const admin = createAdminClient();
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: rows } = await admin
-    .from("admin_actions")
-    .select("details, created_at")
-    .eq("action", "local_press_scrape")
-    .gte("created_at", since)
-    .order("created_at", { ascending: false });
+  // PostgREST max 1000행 — 7일 audit 이 1000 을 넘으면 silent_fail 추세가 과소 집계된다
+  // (코드리뷰 예방). .range() 페이지네이션 전량 수집.
+  const { rows } = await fetchAllRows<{ details: unknown; created_at: string }>((from, to) =>
+    admin
+      .from("admin_actions")
+      .select("details, created_at")
+      .eq("action", "local_press_scrape")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 
   // KST 날짜별 + 시·군별 누적
   const byDay = new Map<

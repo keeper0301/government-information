@@ -8,6 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllAuthUsers } from "@/lib/supabase/paginate";
 import { sendNpsInvite } from "@/lib/notifications/nps-invite";
 import { logAdminAction } from "@/lib/admin-actions";
 import { authorizeCronRequest } from "@/lib/cron-auth";
@@ -24,16 +25,18 @@ async function run() {
   const before6d = new Date(now - 6 * 24 * 60 * 60 * 1000).toISOString();
 
   // 가입 7~8일 사용자 (auth.users.created_at)
-  const { data: usersData, error: usersErr } = await admin.auth.admin.listUsers({
-    perPage: 1000,
-  });
+  // listUsers 는 한 페이지 max 1000명 — 가입자 1000+ 면 윈도우 대상이 누락될 수 있어
+  // page 루프로 전량 수집(코드리뷰 예방).
+  const { users: allUsers, error: usersErr } = await fetchAllAuthUsers((page, perPage) =>
+    admin.auth.admin.listUsers({ page, perPage }),
+  );
   if (usersErr) {
     return NextResponse.json(
-      { ok: false, error: `listUsers failed: ${usersErr.message}` },
+      { ok: false, error: `listUsers failed: ${usersErr}` },
       { status: 500 },
     );
   }
-  const candidates = (usersData?.users ?? [])
+  const candidates = allUsers
     .filter(
       (u) =>
         u.email &&

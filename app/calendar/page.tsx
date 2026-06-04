@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { shortenCalendarTitle } from "@/lib/utils";
 import {
   WELFARE_EXCLUDED_FILTER,
@@ -123,18 +124,45 @@ export default async function CalendarPage({
   // PostgREST or() + and() 조합으로 한 번에 처리
   const dateFilter = `and(apply_start.gte.${monthStart},apply_start.lte.${monthEnd}),and(apply_end.gte.${monthStart},apply_end.lte.${monthEnd})`;
 
-  const [{ data: welfareRows }, { data: loanRows }] = await Promise.all([
-    supabase
-      .from("welfare_programs")
-      .select("id, title, source, apply_start, apply_end")
-      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-      .or(dateFilter),
-    supabase
-      .from("loan_programs")
-      .select("id, title, source, apply_start, apply_end")
-      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-      .or(dateFilter),
+  // PostgREST max 1000행 — 월말·연말은 마감이 몰려 한 달 정책이 1000 을 넘으면 달력
+  // 이벤트가 조용히 누락된다(코드리뷰 예방). .range() 페이지네이션으로 전량 수집.
+  type CalRow = {
+    id: string;
+    title: string;
+    source: string;
+    apply_start: string | null;
+    apply_end: string | null;
+  };
+  const [welfareRes, loanRes] = await Promise.all([
+    fetchAllRows<CalRow>((from, to) =>
+      supabase
+        .from("welfare_programs")
+        .select("id, title, source, apply_start, apply_end")
+        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+        .or(dateFilter)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to) as unknown as PromiseLike<{
+          data: CalRow[] | null;
+          error: { message: string } | null;
+        }>,
+    ),
+    fetchAllRows<CalRow>((from, to) =>
+      supabase
+        .from("loan_programs")
+        .select("id, title, source, apply_start, apply_end")
+        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+        .or(dateFilter)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to) as unknown as PromiseLike<{
+          data: CalRow[] | null;
+          error: { message: string } | null;
+        }>,
+    ),
   ]);
+  const welfareRows = welfareRes.rows;
+  const loanRows = loanRes.rows;
 
   // 프로그램 1건 → 최대 2개 이벤트 (start·end 가 둘 다 이번 달이면)
   const events: CalendarEvent[] = [];

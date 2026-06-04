@@ -6,6 +6,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 export type TopProgram = {
   programTable: "welfare_programs" | "loan_programs" | "news_posts";
@@ -27,14 +28,24 @@ export async function getTopProgramsByEvents(
   const admin = createAdminClient();
   const since = new Date(Date.now() - days * 24 * 3600_000).toISOString();
 
-  const { data } = await admin
-    .from("user_events")
-    .select("program_table, program_id, event_type")
-    .gte("created_at", since)
-    .not("program_id", "is", null)
-    .limit(10000); // 메모리 안전 cap
+  // PostgREST max 1000행 — 30일 user_events 가 1000 을 넘으면 top 정책 집계가 왜곡된다
+  // (코드리뷰). .range() 페이지네이션 전량 수집.
+  const { rows: data, error } = await fetchAllRows<{
+    program_table: string | null;
+    program_id: string | null;
+    event_type: string;
+  }>((from, to) =>
+    admin
+      .from("user_events")
+      .select("program_table, program_id, event_type")
+      .gte("created_at", since)
+      .not("program_id", "is", null)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 
-  if (!data) return [];
+  if (error) return [];
 
   // 메모리 집계 — table+id 별 count
   const map = new Map<
@@ -82,13 +93,19 @@ export async function getTopProgramsByEvents(
 export async function getEventTypeStats24h(): Promise<EventTypeStats[]> {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 24 * 3600_000).toISOString();
-  const { data } = await admin
-    .from("user_events")
-    .select("event_type")
-    .gte("created_at", since)
-    .limit(10000);
+  // PostgREST max 1000행 — 24h user_events 가 1000 을 넘으면 event_type 합계가 과소
+  // 집계된다(코드리뷰). .range() 페이지네이션 전량 수집.
+  const { rows: data, error } = await fetchAllRows<{ event_type: string }>((from, to) =>
+    admin
+      .from("user_events")
+      .select("event_type")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 
-  if (!data) return [];
+  if (error) return [];
 
   const counts = new Map<string, number>();
   for (const row of data as Array<{ event_type: string }>) {

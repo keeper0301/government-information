@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllAuthUsers } from "@/lib/supabase/paginate";
 import { notifyCronFailure, sendCustomAlertEmail } from "@/lib/email";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { authorizeCronRequest } from "@/lib/cron-auth";
@@ -83,10 +84,14 @@ async function runAlertDispatch(jobLabel: string) {
     // 2) 사용자 이메일 일괄 조회 (auth.users) — listUsers 가 전체 페이지 반환하므로
     // 별도 user_id 화이트리스트 dedupe 없이 emailByUserId map 만 구축.
     // displayNameByUserId 도 같이 채움 — POLICY_NEW v3 의 user_name 변수.
-    const { data: users } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    // listUsers 는 한 페이지 max 1000명 — 가입자 1000+ 면 이메일 매핑 누락으로 알림이
+    // 발송 안 된다(코드리뷰 예방). page 루프로 전량 수집.
+    const { users: authUsers } = await fetchAllAuthUsers((page, perPage) =>
+      supabase.auth.admin.listUsers({ page, perPage }),
+    );
     const emailByUserId = new Map<string, string>();
     const displayNameByUserId = new Map<string, string>();
-    for (const u of users?.users || []) {
+    for (const u of authUsers) {
       if (u.id && u.email) emailByUserId.set(u.id, u.email);
       if (u.id) {
         const fullName = (u.user_metadata as { full_name?: string } | null)?.full_name?.trim();

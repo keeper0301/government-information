@@ -9,6 +9,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 export type CategoryTrendStat = {
   category: string; // "welfare" | "loan" | "news" | "blog" | "기타"
@@ -32,16 +33,24 @@ export async function getCategoryTrends(
     Date.now() - days * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // category·view_count 집계 — count + view_count sum 한번에
-  // 2026-05-26 review fix: PostgREST default 1000 row 가 90일 (~수만 row) 잘릴 위험 → .limit(50000) 명시
-  const { data: rows, error } = await admin
-    .from("news_posts")
-    .select("category, view_count")
-    .gte("created_at", since)
-    .not("category", "is", null)
-    .limit(50000);
+  // category·view_count 집계 — count + view_count sum 한번에.
+  // PostgREST max 1000행이라 .limit(50000) 도 1000 에서 잘려 90일(~수만 row) 집계가
+  // 왜곡됐다(코드리뷰). .range() 페이지네이션 전량 수집.
+  const { rows, error } = await fetchAllRows<{
+    category: string | null;
+    view_count: number | null;
+  }>((from, to) =>
+    admin
+      .from("news_posts")
+      .select("category, view_count")
+      .gte("created_at", since)
+      .not("category", "is", null)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
 
-  if (error || !rows) {
+  if (error) {
     return { days, stats: [], totalCount: 0, totalViews: 0 };
   }
 

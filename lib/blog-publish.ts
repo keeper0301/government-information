@@ -11,6 +11,7 @@
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import {
   generateBlogPost,
   detectDescriptionCopy,
@@ -106,10 +107,19 @@ export async function pickProgramsForCategory(
   const today = new Date().toISOString().slice(0, 10);
 
   // 이미 글로 발행된 정책 ID 목록 (중복 방지)
-  const { data: published } = await admin
-    .from("blog_posts")
-    .select("source_program_id, source_program_type")
-    .not("source_program_id", "is", null);
+  // PostgREST max 1000행 — blog_posts 누적이 1000+ 면 이미 발행된 정책 ID 가 일부
+  // 누락돼 같은 정책이 중복 발행될 수 있다(코드리뷰 예방). .range() 페이지네이션 전량 수집.
+  const { rows: published } = await fetchAllRows<{
+    source_program_id: string | null;
+    source_program_type: string | null;
+  }>((from, to) =>
+    admin
+      .from("blog_posts")
+      .select("source_program_id, source_program_type")
+      .not("source_program_id", "is", null)
+      .order("id")
+      .range(from, to),
+  );
   const usedWelfare = new Set<string>();
   const usedLoan = new Set<string>();
   for (const p of published || []) {
@@ -213,10 +223,19 @@ export async function pickProgramsForKeyword(
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: published } = await admin
-    .from("blog_posts")
-    .select("source_program_id, source_program_type")
-    .not("source_program_id", "is", null);
+  // PostgREST max 1000행 — blog_posts 누적이 1000+ 면 이미 발행된 정책 ID 가 일부
+  // 누락돼 같은 정책이 중복 발행될 수 있다(코드리뷰 예방). .range() 페이지네이션 전량 수집.
+  const { rows: published } = await fetchAllRows<{
+    source_program_id: string | null;
+    source_program_type: string | null;
+  }>((from, to) =>
+    admin
+      .from("blog_posts")
+      .select("source_program_id, source_program_type")
+      .not("source_program_id", "is", null)
+      .order("id")
+      .range(from, to),
+  );
   const usedWelfare = new Set<string>();
   const usedLoan = new Set<string>();
   for (const p of published || []) {
