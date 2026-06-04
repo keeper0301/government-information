@@ -90,14 +90,11 @@ const HIGH_RISK_PR_ACTIONS = new Set([
 export function decideAgentAutomation(
   op: AgentOperation,
 ): AgentPolicyDecision {
-  if (HIGH_RISK_PR_ACTIONS.has(op.action) && !op.destructive) {
-    return {
-      mode: "create_pr",
-      risk: "critical",
-      reason: "auth/destructive 계열은 W3 고위험 검토 모드로 PR·테스트·감사 로그까지만 자동화합니다.",
-    };
-  }
-
+  // 가장 엄격한 게이트를 먼저 평가한다 — destructive·secrets·payments 는 op.action 이
+  // 무엇이든(codex_auth_fix 등 HIGH_RISK_PR_ACTIONS 포함) 우회되면 안 되는 불변식이다.
+  // 2026-06-05 코드리뷰 P2 — 이전엔 HIGH_RISK_PR_ACTIONS 검사가 secrets/payments 보다
+  // 먼저라, codex_auth_fix + touchesSecrets 인 작업이 admin_review 를 우회해 create_pr
+  // 로 분류되던 권한 경계 버그가 있었다. W1(AGENT_W1_ENABLED) ramp-up 전 필수 수정.
   if (op.destructive) {
     return {
       mode: "blocked",
@@ -119,6 +116,15 @@ export function decideAgentAutomation(
       mode: "admin_review",
       risk: "critical",
       reason: "결제·환불·청구 로직은 자동 적용하지 않고 관리자 검토를 거칩니다.",
+    };
+  }
+
+  // destructive/secrets/payments 를 통과한 auth 계열 고위험 PR 액션만 여기 도달.
+  if (HIGH_RISK_PR_ACTIONS.has(op.action)) {
+    return {
+      mode: "create_pr",
+      risk: "critical",
+      reason: "auth/destructive 계열은 W3 고위험 검토 모드로 PR·테스트·감사 로그까지만 자동화합니다.",
     };
   }
 

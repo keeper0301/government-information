@@ -305,6 +305,36 @@ describe("decideAgentAutomation", () => {
     });
   });
 
+  // 2026-06-05 코드리뷰 P2 회귀 방어 — HIGH_RISK_PR_ACTIONS(codex_auth_fix 등) 검사가
+  // secrets/payments 게이트보다 먼저 평가돼, secret/payment 를 건드리는 codex_auth_fix 가
+  // admin_review 를 우회해 create_pr 로 분류되던 권한 경계 버그. 게이트 순서를 재배열해
+  // 차단했고, 우회가 다시 생기지 않도록 고정한다.
+  it("codex_auth_fix + touchesSecrets 는 create_pr 가 아니라 admin_review (secrets 우회 차단)", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_auth_fix",
+        touchesSecrets: true,
+      }),
+    ).toMatchObject({
+      mode: "admin_review",
+      risk: "critical",
+    });
+  });
+
+  it("codex_auth_fix + touchesPayments 도 admin_review (payments 우회 차단)", () => {
+    expect(
+      decideAgentAutomation({
+        area: "agent_call",
+        action: "codex_auth_fix",
+        touchesPayments: true,
+      }),
+    ).toMatchObject({
+      mode: "admin_review",
+      risk: "critical",
+    });
+  });
+
   it("Phase 6 W3 안전망 — destructive=true 실제 실행 요청은 계속 blocked", () => {
     expect(
       decideAgentAutomation({
