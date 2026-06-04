@@ -25,10 +25,15 @@ export const maxDuration = 300; // 5분 — 100건 × 1~2s = 100~200s
 
 const WELFARE_CAP = 100; // welfare eligible 5,005 남음 → 집중(maxDuration 내 ~200s)
 const LOAN_CAP = 10;     // loan eligible 0(완료) → 미래 신규 정책 안전망만
-// welfare 90% sparse (desc<50자) → fetch 50건 = 1건만 처리되는 사고 보정.
-// fetch 단계에서 description 길이 필터를 못 걸어서 client filter 후 50건만 LLM.
-// 5/17 진단: cron당 0~1건만 update → 5/24까지 100% 도달 불가. 10x fetch 로 cron당 25건 목표.
-const FETCH_MULTIPLIER = 10;
+// welfare 90% 가 sparse (desc<50자)인데 PostgREST 로는 char_length 필터를 못 걸어
+// client filter 로 거른다. 그런데 PostgREST 는 한 번에 max 1000행이라 단일 윈도우만
+// fetch 하면 한계가 있다.
+// 2026-06-05 진단 — view_count DESC 단일 1000행 윈도우가 인기 상위 eligible 소진 후
+// 막힘: 남은 eligible(desc≥50) 4,463건이 대부분 view_count 가 낮아 윈도우(상위 1000)
+// 밖이라 cron당 처리량이 5건으로 급감, 영원히 다 못 채움.
+// → .range() 페이지네이션으로 eligible 을 limit 개 채울 때까지 다음 윈도우로 순회.
+const PAGE_SIZE = 1000; // PostgREST 한 번에 max 1000행
+const MAX_SCAN_ROWS = 12000; // insight NULL 전체(~9,300) 커버 + 여유
 const MIN_DESC_LEN = 50;        // sparse 정책 skip
 const MIN_INSIGHT_LEN = 80;     // LLM 응답 너무 짧으면 skip
 const MAX_DESC_PROMPT_LEN = 1500; // 토큰 cap (description 자르기)
@@ -84,34 +89,44 @@ async function backfillTable(
   // unique_insight NULL 인 row 만 (partial index 활용).
   // 우선순위: view_count DESC (인기 정책 — 검수자 hit 확률 ↑) → published_at DESC (cold start 는 최신 우선).
   // welfare_programs / loan_programs 둘 다 view_count + published_at 보유 (2026-05-11 확인).
-  // FETCH_MULTIPLIER 만큼 over-fetch 후 client side 에서 sparse(desc<50자) 미리 제외.
-  // 그래야 limit 50 일 때 LLM 처리 가능한 50건이 실제로 확보됨 (5/17 사고 보정).
-  const { data: rows, error } = await admin
-    .from(table)
-    .select("id, title, source, description")
-    .is("unique_insight", null)
-    .order("view_count", { ascending: false, nullsFirst: false })
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .limit(limit * FETCH_MULTIPLIER);
-
-  if (error) {
-    // DDL 083 미적용 환경에서는 unique_insight 컬럼 없음 → 정상 graceful skip.
-    // 운영 진단성 위해 한 줄 로그 — Vercel function logs 에서 원인 즉시 파악.
-    console.warn(`[insight-backfill] ${table} select 실패 (DDL 083 미적용 가능):`, error.message);
-    return { ...result, llm_failed: 0 };
-  }
-  if (!rows || rows.length === 0) return result;
-
-  // sparse 정책 client filter 후 상위 limit 건만 LLM 호출.
+  // .order("id") tie-break 추가 — view_count/published_at 동률 시 .range() 페이지 경계가
+  // 흔들려 row 가 중복·누락되는 것 방지(안정 정렬).
+  // sparse(desc<50자) 는 DB 필터 불가라 client 에서 거르되, eligible 이 limit 에 못 미치면
+  // 다음 1000행 윈도우로 이어 순회 (저 view_count eligible 까지 도달).
   const eligible: PolicyRow[] = [];
-  for (const row of rows as PolicyRow[]) {
-    const desc = row.description?.trim();
-    if (!desc || desc.length < MIN_DESC_LEN) {
-      result.skipped_short++;
-      continue;
+  for (
+    let offset = 0;
+    offset < MAX_SCAN_ROWS && eligible.length < limit;
+    offset += PAGE_SIZE
+  ) {
+    const { data: rows, error } = await admin
+      .from(table)
+      .select("id, title, source, description")
+      .is("unique_insight", null)
+      .order("view_count", { ascending: false, nullsFirst: false })
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) {
+      // DDL 083 미적용 환경에서는 unique_insight 컬럼 없음 → 정상 graceful skip.
+      // 운영 진단성 위해 한 줄 로그 — Vercel function logs 에서 원인 즉시 파악.
+      console.warn(`[insight-backfill] ${table} select 실패 (DDL 083 미적용 가능):`, error.message);
+      return { ...result, llm_failed: 0 };
     }
-    eligible.push(row);
-    if (eligible.length >= limit) break;
+    if (!rows || rows.length === 0) break;
+
+    for (const row of rows as PolicyRow[]) {
+      const desc = row.description?.trim();
+      if (!desc || desc.length < MIN_DESC_LEN) {
+        result.skipped_short++;
+        continue;
+      }
+      eligible.push(row);
+      if (eligible.length >= limit) break;
+    }
+
+    if (rows.length < PAGE_SIZE) break; // 마지막 페이지 도달
   }
   result.fetched = eligible.length;
 
