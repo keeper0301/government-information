@@ -46,7 +46,7 @@ export type MatchedProgram = {
 // 사용자 keyword 에 이 문자가 섞이면 필터 문법이 깨져 그 테이블 매칭이 통째로 실패
 // → 해당 사용자 알림이 silent 누락된다(코드리뷰 P1). 알림 작성 입력창 placeholder 가
 // "전기차, 창업자금" 처럼 쉼표를 유도해 실제로 흔히 발생. 보간 전에 메타문자를 제거한다.
-function sanitizeAlertKeyword(raw: string): string {
+export function sanitizeAlertKeyword(raw: string): string {
   return raw.replace(/[,()%]/g, " ").replace(/\s+/g, " ").trim();
 }
 
