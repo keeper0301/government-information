@@ -78,7 +78,7 @@ export function convertToWordPress(post: BlogPostForWordPress): WordPressPayload
   → <a href="${backlinkUrl}" rel="canonical" target="_blank">${backlinkUrl}</a>
 </p>
 <p style="font-size: 14px; color: #4e5968;">
-  정책알리미 keepioo 에서는 매일 새 정부 정책을 자동으로 정리해 드려요.
+  정책알리미 <a href="${KEEPIOO_BASE}" target="_blank">keepioo</a> 에서는 매일 새 정부 정책을 자동으로 정리해 드려요.
   1분 자격 진단으로 받을 수 있는 정책을 즉시 확인할 수 있어요.<br />
   → <a href="${recommendUrl}" target="_blank">나에게 맞는 정책 찾기</a>
 </p>
