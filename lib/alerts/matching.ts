@@ -42,6 +42,14 @@ export type MatchedProgram = {
   table: "welfare_programs" | "loan_programs";
 };
 
+// PostgREST .or() 필터에서 쉼표는 조건 구분자, 괄호는 그룹, % 는 ILIKE 와일드카드라
+// 사용자 keyword 에 이 문자가 섞이면 필터 문법이 깨져 그 테이블 매칭이 통째로 실패
+// → 해당 사용자 알림이 silent 누락된다(코드리뷰 P1). 알림 작성 입력창 placeholder 가
+// "전기차, 창업자금" 처럼 쉼표를 유도해 실제로 흔히 발생. 보간 전에 메타문자를 제거한다.
+function sanitizeAlertKeyword(raw: string): string {
+  return raw.replace(/[,()%]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 // ============================================================
 // 규칙 하나에 대해 매칭되는 새 정책 조회
 // ============================================================
@@ -98,8 +106,10 @@ export async function findMatchingPrograms(
       query = query.eq("income_target_level", rule.income_target);
     }
     if (rule.keyword && rule.keyword.trim().length >= 2) {
-      const k = rule.keyword.trim();
-      query = query.or(`title.ilike.%${k}%,description.ilike.%${k}%`);
+      const k = sanitizeAlertKeyword(rule.keyword);
+      if (k.length >= 2) {
+        query = query.or(`title.ilike.%${k}%,description.ilike.%${k}%`);
+      }
     }
 
     const { data, error } = await query;
@@ -152,8 +162,10 @@ export async function previewMatchCount(
     if (rule.household_tags.length > 0) query = query.overlaps("household_tags", rule.household_tags);
     if (rule.income_target) query = query.eq("income_target_level", rule.income_target);
     if (rule.keyword && rule.keyword.trim().length >= 2) {
-      const k = rule.keyword.trim();
-      query = query.or(`title.ilike.%${k}%,description.ilike.%${k}%`);
+      const k = sanitizeAlertKeyword(rule.keyword);
+      if (k.length >= 2) {
+        query = query.or(`title.ilike.%${k}%,description.ilike.%${k}%`);
+      }
     }
 
     const { data, count } = await query;

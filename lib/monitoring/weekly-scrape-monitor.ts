@@ -116,12 +116,24 @@ export async function collectWeeklyMonitor(): Promise<WeeklyMonitorReport> {
   const scrapeMissingDays = Math.max(0, 7 - cronRuns);
 
   // 2) 도시별 cron audit 분석 (trigger="cron" 만)
-  const { data: cronRows } = await admin
-    .from("admin_actions")
-    .select("details")
-    .eq("action", SCRAPE_ACTION)
-    .gte("created_at", rangeStart)
-    .limit(200);
+  // PostgREST 는 한 번에 max 1000행이라, 7일 audit(현재 ~644건, 시·군 collector 증가로
+  // 늘어나는 중)을 단일 .limit(200) 으로 가져오면 정렬도 없어 임의 200건만 잡혀 도시별
+  // 집계·차단 판정·주간 텔레그램 알림이 틀어진다(코드리뷰 P1). .range() 페이지네이션으로
+  // 최신순 전량 수집한다.
+  const SCRAPE_PAGE = 1000;
+  const cronRows: Array<{ details: unknown }> = [];
+  for (let offset = 0; offset < 10000; offset += SCRAPE_PAGE) {
+    const { data: page } = await admin
+      .from("admin_actions")
+      .select("details")
+      .eq("action", SCRAPE_ACTION)
+      .gte("created_at", rangeStart)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + SCRAPE_PAGE - 1);
+    if (!page || page.length === 0) break;
+    cronRows.push(...(page as Array<{ details: unknown }>));
+    if (page.length < SCRAPE_PAGE) break;
+  }
   const cityStats = new Map<
     string,
     { fetched: number; inserted: number; skipped: number; errors: number; runs: number }

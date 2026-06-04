@@ -43,17 +43,32 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   // 4) "결제 의도" 를 DB 에 미리 기록 (tier 변조 방지)
   // success 페이지는 URL 의 tier 가 아니라 이 행의 tier 를 사용함.
   // 결제 미완료 상태로 두기 위해 status='pending', billing_key 는 비움.
-  // 같은 사용자가 여러 번 시도하면 마지막 의도로 덮어써짐 (UNIQUE on user_id).
+  //
+  // ⚠️ 단 이미 결제 중인 활성 구독자(active/trialing/past_due)는 status 를
+  // pending 으로 덮어쓰면 안 된다. 업그레이드/카드변경으로 진입했다가 토스 인증
+  // 화면에서 이탈하면 success 가 실행되지 않아 status 가 pending 에 영구히 머물고,
+  // 자동결제 cron(active/trialing 만 청구)에서 빠져 매출이 새고(무료 사용) 본인은
+  // "구독 없음" 화면을 보게 된다(코드리뷰 P1). 따라서 신규/free/cancelled 일 때만
+  // pending 의도를 기록하고, 활성 구독자는 기존 상태를 보존한다.
+  // (활성 구독자의 티어 업그레이드 플로우는 pro 기능 출시 시 별도 설계)
   const admin = createAdminClient();
-  await admin
+  const { data: existingSub } = await admin
     .from("subscriptions")
-    .upsert({
-      user_id: user.id,
-      tier: validTier,
-      status: "pending",
-      // 기존 billing_key/카드정보 가 있으면 덮어쓰지 않도록 null 명시 X
-      // (해지된 사용자의 재가입 시 기존 카드 정보 보존)
-    }, { onConflict: "user_id", ignoreDuplicates: false });
+    .select("status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const ACTIVE_SUB_STATUSES = ["active", "trialing", "past_due"];
+  if (!existingSub || !ACTIVE_SUB_STATUSES.includes(existingSub.status)) {
+    await admin
+      .from("subscriptions")
+      .upsert({
+        user_id: user.id,
+        tier: validTier,
+        status: "pending",
+        // 기존 billing_key/카드정보 가 있으면 덮어쓰지 않도록 null 명시 X
+        // (해지된 사용자의 재가입 시 기존 카드 정보 보존)
+      }, { onConflict: "user_id", ignoreDuplicates: false });
+  }
 
   // 토스 클라이언트 키는 NEXT_PUBLIC_ 으로 노출 가능 (브라우저에서 사용)
   const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
