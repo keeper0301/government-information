@@ -32,7 +32,10 @@ export function parseListPage(html: string): PressNewsItem[] {
     seen.add(seq);
     const title = decodeBasicEntities(
       m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
-    ).replace(/새글$/, "").trim();
+    )
+      // 끝 "새글" 배지 제거 — 끝 공백 허용(yeosu fa7e408 교훈: `새글$` 는 끝 공백 시 미매칭)
+      .replace(/\s*새글\s*$/, "")
+      .trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const slice = html.slice(m.index, m.index + 800);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
