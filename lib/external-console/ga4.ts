@@ -78,6 +78,9 @@ async function runReport(
           { name: "sessions" },
           { name: "bounceRate" },
         ],
+        // ⚠️ 필수: 이게 없으면 report.totals 가 비어 와 parseTotals 가 항상 0 을 반환한다
+        // (2026-06-06 GA4 ga4_no_traffic 만성 오탐의 근본 원인 — 측정·PROPERTY_ID 정상인데 0).
+        metricAggregations: ["TOTAL"],
       }),
     });
     if (!res.ok) {
@@ -127,12 +130,14 @@ export function buildGa4Alerts(input: {
   };
 }
 
-function parseTotals(report: GA4ReportResponse): {
+export function parseTotals(report: GA4ReportResponse): {
   activeUsers: number;
   sessions: number;
   bounceRate: number;
 } {
-  const cells = report.totals?.[0]?.metricValues ?? [];
+  // totals(metricAggregations TOTAL) 우선, 없으면 rows[0](차원 없는 report 는 단일 row 가 전체값).
+  const cells =
+    report.totals?.[0]?.metricValues ?? report.rows?.[0]?.metricValues ?? [];
   return {
     activeUsers: parseInt(cells[0]?.value ?? "0", 10) || 0,
     sessions: parseInt(cells[1]?.value ?? "0", 10) || 0,
