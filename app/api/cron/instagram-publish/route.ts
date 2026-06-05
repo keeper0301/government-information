@@ -201,11 +201,16 @@ export async function GET(request: Request) {
   // attempt_count 먼저 증가 (실패해도 무한 retry 방지)
   // .select() 로 실제 update 된 row 가져와서 검증 — row 0개 영향이면 audit.
   // 2026-05-12 사고: 8회 fail 후에도 attempt_count=0 — 진짜 원인 추적용.
-  const expectedAttempt = (post.instagram_attempt_count ?? 0) + 1;
+  // attempt_count CAS 선점 — .eq(현재값) 조건부 update 로 두 실행(수동 트리거 + 정시
+  // cron 등)이 같은 글을 동시에 게시하는 것을 막는다(멱등성). NOT NULL default 0 컬럼이라
+  // .eq 매칭 안전. 0행이면 다른 실행이 이미 선점했거나 update 실패 → 중복 게시 방지로
+  // 즉시 중단 (코드리뷰 P2 — 기존엔 0행이어도 게시 계속해 중복 위험).
+  const currentAttempt = post.instagram_attempt_count ?? 0;
   const updateRes = await admin
     .from("blog_posts")
-    .update({ instagram_attempt_count: expectedAttempt })
+    .update({ instagram_attempt_count: currentAttempt + 1 })
     .eq("id", post.id)
+    .eq("instagram_attempt_count", currentAttempt)
     .select("id, instagram_attempt_count");
   if (updateRes.error || !updateRes.data || updateRes.data.length === 0) {
     await logAdminAction({
@@ -214,11 +219,13 @@ export async function GET(request: Request) {
       details: {
         post_id: post.id,
         slug: post.slug,
-        expected: expectedAttempt,
+        expected: currentAttempt + 1,
         error: updateRes.error?.message ?? null,
         rows_affected: updateRes.data?.length ?? 0,
       },
     });
+    await logSkip("attempt_claim_failed", { slug: post.slug });
+    return NextResponse.json({ status: "attempt_claim_failed", slug: post.slug });
   }
 
   // 카드 endpoint cold start warmup (2026-05-14 review 정리)
