@@ -151,7 +151,9 @@ export async function scrapeSuncheonAndInsert(
   const errors: string[] = [];
 
   for (const item of items) {
-    if (!item.body) {
+    // factory(BODY_MIN_LEN 250)와 동일 — 250자 미만 thin 본문 skip. suncheon 은 factory
+    // 미경유 자체 collector 라 이 가드를 직접 둬 thin insert(AdSense·품질)를 막는다 (코드리뷰 P2).
+    if (!item.body || item.body.length < 250) {
       skipped += 1;
       continue;
     }

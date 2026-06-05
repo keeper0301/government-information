@@ -147,12 +147,16 @@ export async function scrapeGwangjuAndInsert(
   const errors: string[] = [];
 
   for (const item of items) {
-    if (!item.body) {
+    // factory(BODY_MIN_LEN 250)와 동일 — 250자 미만 thin 본문 skip. gwangju 는 factory
+    // 미경유 자체 collector 라 이 가드를 직접 둬 thin insert(AdSense·품질)를 막는다 (코드리뷰 P2).
+    if (!item.body || item.body.length < 250) {
       skipped += 1;
       continue;
     }
+    // YYYY-MM-DD 를 KST 자정으로 저장 — new Date(date).toISOString() 은 date-only 를
+    // UTC 자정으로 해석해 KST 기준 9시간 어긋난다(suncheon·factory 와 불일치, 코드리뷰 P2).
     const publishedAt = item.publishedDate
-      ? new Date(item.publishedDate).toISOString()
+      ? `${item.publishedDate}T00:00:00+09:00`
       : now;
     // NOT NULL 가드 (audit 2026-05-22) — source_id / category / slug 필수.
     const sourceId = makeNewsSourceId(item.sourceUrl);
