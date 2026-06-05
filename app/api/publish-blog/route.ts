@@ -34,8 +34,10 @@ import {
   isPrivateCronRequestAuthorized,
 } from "@/lib/cron-auth";
 
-// AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림
-export const maxDuration = 60;
+// AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림.
+// 2026-06-05: Gemini 실패 시 OpenAI 비상 우회(lib/ai.ts)까지 한 함수에서 처리하므로
+// Gemini timeout(45s) + OpenAI fallback(40s) 최악 케이스 수용을 위해 90s 로 상향(Pro 플랜).
+export const maxDuration = 90;
 
 // G1 (5/17) — Gemini quota 사고 24h cooldown + 텔레그램 알림.
 // admin_actions.gemini_quota_alert 가 24h 내 있으면 skip (알림 폭주 차단).
