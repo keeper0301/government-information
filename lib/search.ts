@@ -4,6 +4,7 @@
 // → 0건 같은 띄어쓰기 누락 발생. 토큰 AND 로 매칭 정확도 5~175배 향상.
 
 import { createClient } from "@/lib/supabase/server";
+import { tokenizeForOrFilter } from "@/lib/postgrest-filter";
 import {
   welfareToDisplay,
   loanToDisplay,
@@ -72,13 +73,10 @@ const EMPTY: SearchResults = {
   total: 0,
 };
 
-// 검색어를 공백 분리 → ILIKE wildcard 안전하게 escape → 빈 토큰 제외
+// 검색어를 공백 분리 → PostgREST .or() 메타문자(쉼표·괄호·점) 제거 + ILIKE
+// wildcard escape → 빈 토큰 제외. (lib/postgrest-filter 공통 헬퍼)
 function tokenize(raw: string): string[] {
-  return raw
-    .trim()
-    .replace(/[%_\\]/g, "\\$&")
-    .split(/\s+/)
-    .filter((t) => t.length > 0);
+  return tokenizeForOrFilter(raw);
 }
 
 // 통합 검색 실행. 검색어 2글자 미만이면 빈 결과 즉시 반환.

@@ -15,6 +15,7 @@
 // ============================================================
 
 import type { Metadata } from "next";
+import { tokenizeForOrFilter } from "@/lib/postgrest-filter";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -156,9 +157,7 @@ export default async function NewsIndexPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(params.page || "1", 10));
   // 통합 검색에서 ?q= 로 넘어온 검색어 — 토큰 AND 매칭용 (lib/search.ts 와 동일 패턴)
   const queryRaw = (params.q ?? "").trim();
-  const queryTokens = queryRaw.length >= 2
-    ? queryRaw.replace(/[%_\\]/g, "\\$&").split(/\s+/).filter((t) => t.length > 0)
-    : [];
+  const queryTokens = queryRaw.length >= 2 ? tokenizeForOrFilter(queryRaw) : [];
 
   const supabase = await createClient();
 

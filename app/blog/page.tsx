@@ -15,6 +15,7 @@
 // ============================================================
 
 import type { Metadata } from "next";
+import { tokenizeForOrFilter } from "@/lib/postgrest-filter";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
@@ -109,9 +110,7 @@ export default async function BlogIndexPage({
 
   // 통합 검색 ?q= 토큰 AND 매칭 (lib/search.ts 와 동일 패턴)
   const queryRaw = (q ?? "").trim();
-  const queryTokens = queryRaw.length >= 2
-    ? queryRaw.replace(/[%_\\]/g, "\\$&").split(/\s+/).filter((t) => t.length > 0)
-    : [];
+  const queryTokens = queryRaw.length >= 2 ? tokenizeForOrFilter(queryRaw) : [];
 
   const supabase = await createClient();
 

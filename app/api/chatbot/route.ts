@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { escapeOrFilterValue } from "@/lib/postgrest-filter";
 import { createClient } from "@/lib/supabase/server";
 import { welfareToDisplay, loanToDisplay, type DisplayProgram } from "@/lib/programs";
 import {
@@ -133,9 +134,14 @@ export async function POST(request: NextRequest) {
     reply = `"${matchedKeywords.join(", ")}" 관련 프로그램 ${unique.length}건을 찾았습니다.`;
   } else if (message.length < 2) {
     reply = "검색어를 좀 더 구체적으로 입력해주세요. 예: '청년 주거', '소상공인 대출', '의료 지원'";
+  } else if (escapeOrFilterValue(message).length === 0) {
+    // 쉼표·괄호·점·% 등 메타문자로만 이뤄진 입력 — sanitize 후 빈 문자열이라
+    // .or(title.ilike.%%) 전체매칭(검색어 무관 결과 노출)을 막고 안내로 처리.
+    reply = "관련 프로그램을 찾지 못했습니다. 다른 키워드로 검색해보세요.\n\n추천 키워드: 청년, 주거, 대출, 소상공인, 의료, 양육";
   } else {
     // Fallback: full-text search
-    const sanitized = message.replace(/[%_\\]/g, '\\$&');
+    // PostgREST .or() 메타문자(쉼표·괄호·점) 제거 + ILIKE escape (필터 인젝션·붕괴 방지)
+    const sanitized = escapeOrFilterValue(message);
     const [{ data: w }, { data: l }] = await Promise.all([
       supabase
         .from("welfare_programs")
