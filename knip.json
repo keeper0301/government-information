@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "chrome-extension/*.js",
+    "public/sw.js",
+    "playwright/**/*.mjs",
+    "pc-runner/**/*.mjs",
+    "tools/**/*.{js,mjs}",
+    "scripts/**/*.{js,mjs,ts}"
+  ],
+  "ignore": [
+    "__tests__/**/*fixtures*.ts",
+    "lib/scraping/local-press/nowon.ts",
+    "lib/scraping/local-press/uijeongbu.ts"
+  ],
+  "ignoreDependencies": [
+    "server-only"
+  ]
+}

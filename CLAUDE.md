@@ -35,8 +35,10 @@ Key routing rules:
 
 ## Health Stack
 
-`/health` (코드 건강 점검) 시 자동 실행하는 도구. knip(죽은 코드)은 미설치.
+`/health` (코드 건강 점검) 시 자동 실행하는 도구.
 
 - typecheck: tsc --noEmit
 - lint: eslint
 - test: vitest run
+- deadcode: knip (knip.json 에 entry/ignore 설정 — 독립 스크립트·테스트 fixture·
+  disabled collector 무시로 노이즈 제거. zero-config 면 false positive 100+ 발생)
