@@ -105,6 +105,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 알림 수신 주소는 클라이언트가 보낸 email 이 아니라 인증된 user.email 로 고정한다.
+  // body email 을 그대로 신뢰하면 로그인한 채 타인 이메일을 넣어 원치 않는 알림을
+  // 양산하는 스팸/괴롭힘 벡터가 된다(코드리뷰 P2).
+  const targetEmail = user.email;
+  if (!targetEmail) {
+    return NextResponse.json({ error: "계정 이메일을 확인할 수 없습니다." }, { status: 400 });
+  }
+
   // 베이직 이상 티어만 알림 등록 가능 (무료 사용자는 가격표 안내)
   const tier = await requireTier(user.id, "basic");
   if (!tier) {
@@ -122,7 +130,7 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await supabase
     .from("alarm_subscriptions")
     .select("id")
-    .eq("email", email)
+    .eq("email", targetEmail)
     .eq("program_id", programId)
     .eq("is_active", true)
     .limit(1);
@@ -134,7 +142,7 @@ export async function POST(request: NextRequest) {
   const adminSupabase = createAdminClient();
   const { error } = await adminSupabase.from("alarm_subscriptions").insert({
     user_id: user.id,
-    email,
+    email: targetEmail,
     program_type: programType,
     program_id: programId,
     notify_before_days: 7,

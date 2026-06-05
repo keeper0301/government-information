@@ -18,7 +18,7 @@ import { publishCarousel } from "@/lib/instagram/publish";
 import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
 import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
-import { authorizeOptionalCronRequest } from "@/lib/cron-auth";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 // 2026-05-12: jitter (max 90s) + container polling (max 60s) + 5 Graph API
@@ -32,8 +32,10 @@ function siteUrl(): string {
 }
 
 export async function GET(request: Request) {
-  // cron secret 검증 (다른 cron 과 동일 패턴)
-  const denied = authorizeOptionalCronRequest(request);
+  // cron secret 필수 검증 — 실제 인스타 발행 + Graph API 토큰 소모 cron 이라
+  // CRON_SECRET 미설정 시 무인증 노출을 막기 위해 authorizeCronRequest(필수) 사용
+  // (다른 발행성 cron 45개와 일관, 코드리뷰 P2).
+  const denied = authorizeCronRequest(request);
   if (denied) return denied;
 
   // ━━━ 인스타 정지 예방 안전책 (2026-05-12 추가) ━━━

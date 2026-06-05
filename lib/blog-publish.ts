@@ -18,7 +18,8 @@ import {
   detectMetaCopy,
   type ProgramContext,
 } from "@/lib/ai";
-import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
+import { makeSlug, estimateReadingTime } from "@/lib/utils";
+import { sanitizeBlogHtml } from "@/lib/html-sanitize";
 import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
@@ -522,7 +523,9 @@ async function publishWithCandidate(
   }
 
   // XSS 방어: AI 가 생성한 HTML 의 위험 태그·속성 제거
-  generated.content = sanitizeHtml(generated.content);
+  // AI(Gemini) 생성 본문은 신뢰 경계 밖 — 정규식 sanitizeHtml(우회 가능) 대신
+  // 검증된 DOMPurify 기반 sanitizeBlogHtml 로 정제 (저장형 XSS 방어, 코드리뷰 P2).
+  generated.content = await sanitizeBlogHtml(generated.content);
 
   // 본문 글자수 기준 읽기 시간
   const reading = estimateReadingTime(generated.content);
