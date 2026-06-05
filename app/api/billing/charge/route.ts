@@ -52,6 +52,16 @@ export async function POST(request: NextRequest) {
     candidateIds = [userId];
   } else {
     const now = new Date().toISOString();
+    // 좀비 charging 락 복구 — 이전 실행이 status=charging 설정 후 크래시(timeout/OOM)하면
+    // charging 에 영구히 머물러 다음 cron 청구 대상(trialing/active)에서 빠져 무료 방치된다.
+    // 10분+ 지속된 charging 은 좀비로 보고 past_due 로 복구한다 (코드리뷰 P2).
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    await admin
+      .from("subscriptions")
+      .update({ status: "past_due" })
+      .eq("status", "charging")
+      .lt("updated_at", tenMinAgo);
+
     const { data } = await admin
       .from("subscriptions")
       .select("user_id")
@@ -92,7 +102,9 @@ async function chargeOne(
   // .select() 로 영향받은 행을 받아서 결제에 필요한 데이터도 같이 가져옴.
   const { data: locked, error: lockError } = await admin
     .from("subscriptions")
-    .update({ status: "charging" })
+    // updated_at 을 명시 설정 — 좀비 charging 복구(batch 의 10분 stale 판정)가
+    // updated_at trigger 유무와 무관하게 정확히 동작하도록 락 시각을 기록한다.
+    .update({ status: "charging", updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .in("status", CHARGEABLE_STATUSES as unknown as string[])
     .select("user_id, tier, billing_key, customer_key, customer_email")
@@ -169,20 +181,28 @@ async function chargeOne(
     return { userId, ok: true };
   } catch (err) {
     // 실패: payment_history 에 실패 기록 + 락 해제 (status=past_due)
-    const code = err instanceof TossError ? err.code : "UNKNOWN";
+    const isTossError = err instanceof TossError;
+    const code = isTossError ? err.code : "UNKNOWN";
     const message = err instanceof Error ? err.message : "결제 실패";
 
+    // TossError = 토스가 명확히 거절(잔액부족·카드한도 등) → FAILED.
+    // non-TossError(타임아웃·네트워크 끊김) = 토스가 승인했는데 응답만 못 받았을 수 있어
+    // 결제 진위가 불명확 → status 'UNKNOWN' 으로 기록한다(실제 청구됐는데 FAILED 로
+    // 오기록되는 정합성 사고 방지, 코드리뷰 P2). 토스가 보내는 DONE/CANCELED webhook 이
+    // payment_history 를 실제 상태로 갱신하므로 운영에서 진위 확인 가능.
     await admin.from("payment_history").insert({
       user_id: userId,
       payment_key: null,
       order_id: orderId,
       amount,
       tier,
-      status: "FAILED",
+      status: isTossError ? "FAILED" : "UNKNOWN",
       failure_code: code,
       failure_reason: message,
     });
 
+    // 어느 경우든 past_due 로 — cron 재청구 대상(trialing/active)에서 빠져 (타임아웃 시)
+    // 새 orderId 로 재청구돼 중복 결제되는 것을 막는다.
     await admin
       .from("subscriptions")
       .update({ status: "past_due" })

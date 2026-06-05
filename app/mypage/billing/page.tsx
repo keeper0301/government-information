@@ -200,6 +200,9 @@ function HistoryRow({ item }: { item: PaymentHistoryRow }) {
     year: "numeric", month: "2-digit", day: "2-digit",
   });
   const isFailed = item.status === "FAILED" || item.status === "ABORTED";
+  // UNKNOWN = charge 타임아웃 등으로 결제 진위 불명(곧 webhook 으로 갱신). "결제 완료"로
+  // 잘못 보이지 않도록 "확인 중" 으로 표기 (코드리뷰 P3).
+  const isPending = item.status === "UNKNOWN";
 
   return (
     <li className="py-3 flex items-center justify-between gap-3">
@@ -210,11 +213,11 @@ function HistoryRow({ item }: { item: PaymentHistoryRow }) {
         </div>
       </div>
       <div className="text-right">
-        <div className={`text-[14px] font-bold ${isFailed ? "text-red-500" : "text-grey-900"}`}>
+        <div className={`text-[14px] font-bold ${isFailed ? "text-red-500" : isPending ? "text-grey-500" : "text-grey-900"}`}>
           {item.amount.toLocaleString()}원
         </div>
-        <div className={`text-[12px] font-semibold ${isFailed ? "text-red-500" : "text-grey-700"}`}>
-          {isFailed ? "실패" : "결제 완료"}
+        <div className={`text-[12px] font-semibold ${isFailed ? "text-red-500" : isPending ? "text-grey-500" : "text-grey-700"}`}>
+          {isFailed ? "실패" : isPending ? "확인 중" : "결제 완료"}
         </div>
       </div>
     </li>

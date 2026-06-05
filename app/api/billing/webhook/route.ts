@@ -88,10 +88,26 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (history?.user_id) {
-      await admin
+      // 지연·재시도로 도착한 과거 결제건의 webhook 이 현재 정상 구독을 강등하지 않도록
+      // 가드 — 이미 active/trialing 이고 현재 주기(current_period_end)가 유효하면(= 재결제
+      // 완료 상태) 이 과거 webhook 으로 past_due 강등하지 않는다 (코드리뷰 P2). 현재 주기
+      // 결제 실패는 charge 라우트가 이미 past_due 처리하므로 여기서 중복 강등 불필요.
+      const { data: sub } = await admin
         .from("subscriptions")
-        .update({ status: "past_due" })
-        .eq("user_id", history.user_id);
+        .select("status, current_period_end")
+        .eq("user_id", history.user_id)
+        .maybeSingle();
+      const stillValid =
+        !!sub &&
+        (sub.status === "active" || sub.status === "trialing") &&
+        !!sub.current_period_end &&
+        new Date(sub.current_period_end) > new Date();
+      if (!stillValid) {
+        await admin
+          .from("subscriptions")
+          .update({ status: "past_due" })
+          .eq("user_id", history.user_id);
+      }
     }
   }
 
