@@ -18,6 +18,7 @@ import {
   type ApplicationDraft,
 } from '@/lib/application-draft';
 import { PrintButton } from './print-button';
+import { sanitizeApplyUrl } from '@/lib/utils/apply-url';
 
 export function ApplicationDraftView({
   draft,
@@ -153,16 +154,20 @@ export function ApplicationDraftView({
       {/* 화면 전용 액션 — print 시 숨김 */}
       <div className="print:hidden flex items-center gap-3 max-md:flex-col">
         <PrintButton />
-        {draft.applyUrl && (
-          <a
-            href={draft.applyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center min-h-[48px] px-6 text-[15px] font-bold rounded-xl bg-grey-900 text-white hover:bg-grey-800 no-underline transition-colors max-md:w-full max-md:justify-center"
-          >
-            정책 공식 페이지에서 신청 →
-          </a>
-        )}
+        {(() => {
+          // 외부 apply_url 스킴 검증 — javascript:/data: 등 위험 스킴이면 링크 숨김(XSS·피싱 방지)
+          const safeApplyUrl = sanitizeApplyUrl(draft.applyUrl);
+          return safeApplyUrl ? (
+            <a
+              href={safeApplyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center min-h-[48px] px-6 text-[15px] font-bold rounded-xl bg-grey-900 text-white hover:bg-grey-800 no-underline transition-colors max-md:w-full max-md:justify-center"
+            >
+              정책 공식 페이지에서 신청 →
+            </a>
+          ) : null;
+        })()}
       </div>
 
       <p className="text-[12px] text-grey-600 mt-6 leading-[1.65] print:hidden">

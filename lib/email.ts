@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { createHash } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 
 // Resend 클라이언트를 lazy 하게 초기화
 // 빌드 시점에 RESEND_API_KEY 가 없어도 빌드 통과하도록 (실제 호출 시 에러)
@@ -52,13 +53,13 @@ export async function sendCustomAlertEmail({
     const safeTitle = escapeHtml(p.title);
     const safeSource = escapeHtml(p.source || "");
     const deadline = p.applyEnd ? `마감 ${p.applyEnd}` : "상시";
-    const url = p.applyUrl && p.applyUrl.startsWith("http")
-      ? p.applyUrl
-      : `https://www.keepioo.com/${typePath}/${p.id}`;
+    // 외부 apply_url 은 sanitizeApplyUrl(http/https + URL 검증)로 정제 — javascript:
+    // 등 위험 스킴·깨진 URL 이면 내부 상세 페이지로 fallback (메일 피싱·깨진 링크 방지).
+    const url = sanitizeApplyUrl(p.applyUrl) ?? `https://www.keepioo.com/${typePath}/${p.id}`;
     return `
       <div style="padding: 16px; border-bottom: 1px solid #e5e8eb;">
         <div style="font-size: 11px; font-weight: 700; color: #3182f6; margin-bottom: 4px;">${typeLabel} · ${safeSource}</div>
-        <a href="${url}" style="font-size: 16px; font-weight: 700; color: #191f28; text-decoration: none;">${safeTitle}</a>
+        <a href="${escapeHtml(url)}" style="font-size: 16px; font-weight: 700; color: #191f28; text-decoration: none;">${safeTitle}</a>
         <div style="font-size: 13px; color: #8b95a1; margin-top: 4px;">${deadline}</div>
       </div>
     `;

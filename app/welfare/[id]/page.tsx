@@ -15,7 +15,7 @@ import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
-import { isDeepLink } from "@/lib/utils/apply-url";
+import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { isAdminUser } from "@/lib/admin-auth";
@@ -107,6 +107,9 @@ export default async function WelfareDetailPage({ params }: Props) {
     : null;
 
   const sourceLink = program.source_url || program.apply_url;
+  // 외부 apply_url 스킴 검증 — javascript:/data: 등 위험 스킴·깨진 URL 이면 null
+  // → 신청 버튼 대신 Google 검색 fallback (XSS·피싱·깨진 링크 방지)
+  const safeApplyUrl = sanitizeApplyUrl(program.apply_url);
   const related = await getRelatedPrograms(
     "welfare",
     program.category,
@@ -337,22 +340,22 @@ export default async function WelfareDetailPage({ params }: Props) {
       {/* Action buttons — 콘텐츠 전체를 본 뒤 최종 CTA. 3단 분기 유지.
           Phase A apply_click event 자동 기록 (ApplyClickTracker wrapper). */}
       <div className="flex gap-3 flex-wrap mb-10 mt-6">
-        {program.apply_url && isDeepLink(program.apply_url) ? (
+        {safeApplyUrl && isDeepLink(safeApplyUrl) ? (
           <ApplyClickTracker
             programId={program.id}
             programTable="welfare_programs"
             sourcePage={`/welfare/${program.id}`}
-            href={program.apply_url}
+            href={safeApplyUrl}
             className="px-6 py-3 bg-blue-500 text-white text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-600 transition-colors"
           >
             신청하기
           </ApplyClickTracker>
-        ) : program.apply_url ? (
+        ) : safeApplyUrl ? (
           <ApplyClickTracker
             programId={program.id}
             programTable="welfare_programs"
             sourcePage={`/welfare/${program.id}`}
-            href={program.apply_url}
+            href={safeApplyUrl}
             className="px-6 py-3 bg-grey-100 text-grey-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-grey-200 transition-colors"
           >
             {program.source} 홈페이지 방문

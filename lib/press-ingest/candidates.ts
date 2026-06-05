@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
+import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -277,7 +278,10 @@ export function buildWelfareInsertPayload(
     eligibility: result.eligibility,
     benefits: result.benefits,
     apply_method: result.apply_method,
-    apply_url: result.apply_url,
+    // LLM 이 외부 보도자료에서 추출한 apply_url — sanitizeApplyUrl(http/https +
+    // URL 검증)로 위험 스킴(javascript: 등)·깨진 URL 을 null 처리해 저장(일반 collector
+    // 경로와 일관, 코드리뷰 P2).
+    apply_url: sanitizeApplyUrl(result.apply_url),
     apply_start: result.apply_start,
     apply_end: result.apply_end,
     source: ministryToSource(candidate.news.ministry),
@@ -327,7 +331,10 @@ export function buildLoanInsertPayload(
     interest_rate: result.interest_rate ?? null,
     repayment_period: result.repayment_period ?? null,
     apply_method: result.apply_method,
-    apply_url: result.apply_url,
+    // LLM 이 외부 보도자료에서 추출한 apply_url — sanitizeApplyUrl(http/https +
+    // URL 검증)로 위험 스킴(javascript: 등)·깨진 URL 을 null 처리해 저장(일반 collector
+    // 경로와 일관, 코드리뷰 P2).
+    apply_url: sanitizeApplyUrl(result.apply_url),
     apply_start: result.apply_start,
     apply_end: result.apply_end,
     source: ministryToSource(candidate.news.ministry),
