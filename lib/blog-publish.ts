@@ -18,7 +18,7 @@ import {
   detectMetaCopy,
   type ProgramContext,
 } from "@/lib/ai";
-import { makeSlug, estimateReadingTime } from "@/lib/utils";
+import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
 import { sanitizeBlogHtml } from "@/lib/html-sanitize";
 import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
@@ -522,10 +522,31 @@ async function publishWithCandidate(
     );
   }
 
-  // XSS 방어: AI 가 생성한 HTML 의 위험 태그·속성 제거
-  // AI(Gemini) 생성 본문은 신뢰 경계 밖 — 정규식 sanitizeHtml(우회 가능) 대신
-  // 검증된 DOMPurify 기반 sanitizeBlogHtml 로 정제 (저장형 XSS 방어, 코드리뷰 P2).
-  generated.content = await sanitizeBlogHtml(generated.content);
+  // XSS 방어: AI 가 생성한 HTML 의 위험 태그·속성 제거.
+  // DOMPurify 기반 sanitizeBlogHtml 우선(코드리뷰 P2, 강한 방어). 단 일부 서버
+  // 런타임에서 jsdom 하위 의존성(@exodus/bytes 가 ESM 전용으로 전환)을 require 못 해
+  // throw 하는 환경이 있어(2026-06-05 prod blog 발행 500 사고), 실패 시 정규식
+  // sanitizeHtml 로 fallback 한다. blog 본문은 우리 프롬프트로 생성되는(외부 비신뢰
+  // 입력 아님) HTML 이라 정규식 필터(script·iframe·on*·javascript: 차단)로도 실질
+  // 안전하며, 발행 자체가 멈추는 것보다 낫다. DOMPurify 근본 복구는 의존성 후속 과제.
+  try {
+    generated.content = await sanitizeBlogHtml(generated.content);
+  } catch (e) {
+    // jsdom 하위 의존성(@exodus/bytes 가 ESM 전용으로 전환)을 CommonJS 서버 런타임이
+    // require 못 해 throw 하는 환경에서만 정규식 sanitizeHtml 로 fallback 한다.
+    // 그 외 에러는 그대로 전파 — 정작 잡아야 할 버그를 조용히 삼키지 않도록(silent fail 방지,
+    // cron 이 거르고 재시도). blog 본문은 우리 프롬프트로 생성되는 HTML 이라 정규식
+    // 필터(script·iframe·svg·on*·javascript: 차단)로도 실질 안전하며 발행 중단보다 낫다.
+    const msg = e instanceof Error ? e.message : String(e);
+    const isEsmRequireError =
+      (e as NodeJS.ErrnoException)?.code === "ERR_REQUIRE_ESM" ||
+      /require\(\) of ES Module/i.test(msg);
+    if (!isEsmRequireError) throw e;
+    console.warn(
+      `[blog-publish] sanitizeBlogHtml ESM require 실패 → 정규식 sanitizeHtml fallback: ${msg}`,
+    );
+    generated.content = sanitizeHtml(generated.content);
+  }
 
   // 본문 글자수 기준 읽기 시간
   const reading = estimateReadingTime(generated.content);

@@ -410,7 +410,9 @@ export function sanitizeHtml(html: string): string {
   let safe = html;
 
   // 위험 태그 통째로 제거 (내용 포함)
-  const dangerousTags = ["script", "style", "iframe", "object", "embed", "form", "input", "button", "select", "textarea"];
+  // svg·math 포함 — 내부에 onbegin/xlink:href javascript 등 스크립트 벡터를 품을 수 있어
+  // 통째 제거 (blog-publish 의 DOMPurify fallback 경로 보안 강화, 2026-06-05 코드리뷰).
+  const dangerousTags = ["script", "style", "iframe", "object", "embed", "form", "input", "button", "select", "textarea", "svg", "math"];
   for (const tag of dangerousTags) {
     const re = new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "gi");
     safe = safe.replace(re, "");
