@@ -86,6 +86,9 @@ export type GeneratedPost = {
   category: string;          // 청년/소상공인/주거/육아·가족/노년/학생·교육/큐레이션
   tags: string[];            // 3~6개 태그
   faqs: { question: string; answer: string }[]; // 3~5개 FAQ
+  // 어느 LLM 으로 생성됐는지 (2026-06-05) — "openai" 면 Gemini 실패로 비상 백업이
+  // 발동한 것. caller(route)가 audit 기록 + 텔레그램 조기경보(gpt-4o 비용 가시화)에 사용.
+  _provider?: "gemini" | "openai";
   // 비용 추적용 (5/17 추가) — Gemini API 의 usageMetadata 그대로 보존.
   // caller (lib/blog-publish.ts) 가 audit details 에 저장 → autonomous hub 차트.
   _usage?: {
@@ -271,6 +274,7 @@ const SYSTEM_INSTRUCTION_BODY = `## 글의 목적
 type RawBlogResult = {
   raw: string | undefined;
   usage?: GeneratedPost["_usage"];
+  provider: "gemini" | "openai";
 };
 
 // Gemini(gemini-2.5-flash) 호출 → raw JSON 문자열 + usage(비용 추적용).
@@ -304,6 +308,7 @@ async function generateViaGemini(
           totalTokens: meta.totalTokenCount ?? 0,
         }
       : undefined,
+    provider: "gemini",
   };
 }
 
@@ -326,7 +331,7 @@ async function generateViaOpenAI(
     timeoutMs: OPENAI_FALLBACK_TIMEOUT_MS,
   });
   // callLLM 은 usage 를 반환하지 않음 → 비용 추적 생략(폴백은 예외 상황이라 허용).
-  return { raw };
+  return { raw, provider: "openai" };
 }
 
 // Gemini 우선 → 실패 시 OpenAI 비상 우회.
@@ -502,7 +507,7 @@ ${trendBlock}
 
   // Gemini 우선 호출 → 실패(선불 크레딧 소진·quota·장애 등) 시 OpenAI 비상 우회.
   // 설정·폴백 로직은 generateRawBlogJson / generateViaGemini / generateViaOpenAI 참고.
-  const { raw, usage } = await generateRawBlogJson(systemInstruction, userPrompt);
+  const { raw, usage, provider } = await generateRawBlogJson(systemInstruction, userPrompt);
   if (!raw) {
     throw new Error("LLM 응답이 비어있습니다.");
   }
@@ -524,6 +529,8 @@ ${trendBlock}
   parsed.tags = parsed.tags || [];
   parsed.faqs = parsed.faqs || [];
 
+  // 어느 LLM 으로 생성됐는지 기록 — caller(route)가 OpenAI 폴백 발동을 감지·알림.
+  parsed._provider = provider;
   // 비용 추적 — Gemini usageMetadata 보존(OpenAI 폴백 시엔 usage 없음). caller 가 audit 저장.
   if (usage) {
     parsed._usage = usage;

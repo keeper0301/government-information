@@ -130,6 +130,42 @@ async function sendShortContentAlertIfNew(
   }
 }
 
+// 2026-06-05 — Gemini 실패 시 OpenAI(gpt-4o) 비상 백업(lib/ai.ts)이 발동하면 조기경보.
+// blog 는 정상 발행돼 사장님이 모를 수 있고, gpt-4o 비용은 usage 추적 밖이라 장기 지속 시
+// 5/17 "조용히 돈 나감" 패턴 재현 우려. 24h cooldown(blog_openai_fallback_alert audit 매칭).
+async function sendOpenAIFallbackAlertIfNew(categories: string[]): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { count } = await admin
+      .from("admin_actions")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "blog_openai_fallback_alert")
+      .gte("created_at", since);
+    if ((count ?? 0) > 0) return; // 24h cooldown 통과
+
+    await sendOpsAlertMultichannel({
+      subject: "[keepioo] Gemini 막힘 — OpenAI 백업으로 blog 발행 중",
+      message: [
+        `⚠️ Gemini 블로그 생성 실패 → OpenAI(gpt-4o) 비상 백업으로 발행됨.`,
+        `대상 카테고리: ${categories.join(", ")}`,
+        ``,
+        `blog 는 정상 발행되지만 Gemini 가 막힌 상태이며 gpt-4o 단가가 더 높습니다.`,
+        `[조치] AI Studio 에서 Gemini 선불 잔액/자동충전·quota 점검.`,
+        `(Gemini 복구되면 자동으로 Gemini 발행으로 돌아갑니다.)`,
+      ].join("\n"),
+      link: "https://aistudio.google.com/usage",
+    });
+    await logAdminAction({
+      actorId: null,
+      action: "blog_openai_fallback_alert" as AdminActionType,
+      details: { categories: categories.slice(0, 7) },
+    });
+  } catch (e) {
+    console.error("[publish-blog] openai fallback alert 실패:", e);
+  }
+}
+
 async function logPublishBlogRun(details: Record<string, unknown>) {
   try {
     await logAdminAction({
@@ -169,6 +205,8 @@ export async function POST(request: NextRequest) {
         slug: result.slug,
         sourceProgramId: result.sourceProgramId,
         sourceProgramType: result.sourceProgramType,
+        // 어느 LLM 으로 생성됐는지 — "openai" 면 Gemini 실패로 비상 백업 발동.
+        provider: result.generated._provider ?? "gemini",
       });
     }
 
@@ -263,12 +301,15 @@ export async function GET(request: NextRequest) {
         externalPublishHeld: s.value.externalPublishHeld,
         // Gemini 비용 추적 (5/17, autonomous hub 카드)
         usage: s.value.generated._usage ?? null,
+        // 어느 LLM 으로 생성됐는지 — "openai" 면 Gemini 실패로 비상 백업 발동 (2026-06-05)
+        provider: s.value.generated._provider ?? "gemini",
       };
     }
     return {
       category: categories[i],
       ok: false,
       error: s.reason instanceof Error ? s.reason.message : String(s.reason),
+      provider: null as "gemini" | "openai" | null,
     };
   });
 
@@ -292,6 +333,8 @@ export async function GET(request: NextRequest) {
       error: r.ok ? null : String(r.error).slice(0, 160),
       // Gemini token 누적 (autonomous hub Gemini 지출 카드)
       usage: r.ok ? r.usage : null,
+      // 생성 LLM ("openai" = Gemini 실패로 비상 백업 발동, 2026-06-05)
+      provider: r.provider ?? null,
     })),
   });
   if (failures.length > 0) {
@@ -318,6 +361,15 @@ export async function GET(request: NextRequest) {
     if (shortContentCount >= 3) {
       await sendShortContentAlertIfNew(failures, shortContentCount);
     }
+  }
+
+  // OpenAI 비상 백업 발동 감지 — Gemini 가 막혀 gpt-4o 로 성공 발행된 케이스 조기경보
+  // (blog 는 정상이라 사장님이 모를 수 있음 + gpt-4o 비용 가시화). 24h cooldown.
+  const fallbackCats = results
+    .filter((r) => r.ok && r.provider === "openai")
+    .map((r) => r.category);
+  if (fallbackCats.length > 0) {
+    await sendOpenAIFallbackAlertIfNew(fallbackCats);
   }
 
   const status = results.every((r) => !r.ok) ? 500 : 200;

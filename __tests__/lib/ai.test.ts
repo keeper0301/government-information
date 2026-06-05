@@ -168,9 +168,10 @@ describe("generateBlogPost", () => {
     expect(args.model).toBe("gpt-4o");
     expect(args.jsonMode).toBe(true);
     expect(args.prompt).toContain("[정책 데이터]");
-    // OpenAI 백업 결과가 반환됨
+    // OpenAI 백업 결과가 반환됨 + provider 표시 = openai (조기경보·비용 가시화용)
     expect(result.title).toBe("OpenAI 백업 글 제목");
     expect(result.category).toBe("청년");
+    expect(result._provider).toBe("openai");
   });
 
   it("Gemini 정상이면 OpenAI 백업을 호출하지 않는다", async () => {
@@ -182,8 +183,9 @@ describe("generateBlogPost", () => {
       description: "청년에게 월세를 지원하는 정책",
     });
 
-    // Gemini 정상 → 폴백 미호출, Gemini 결과 반환
+    // Gemini 정상 → 폴백 미호출, Gemini 결과 반환, provider = gemini
     expect(mockState.callLLMArgs).toBeUndefined();
     expect(result.title).toBe("2026년 청년 정책 지원금 신청 조건과 혜택 정리");
+    expect(result._provider).toBe("gemini");
   });
 });
