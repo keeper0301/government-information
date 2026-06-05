@@ -4,11 +4,15 @@
 // 정책 데이터 → AdSense 승인용 블로그 글 자동 생성.
 // SDK: @google/genai (새 SDK. @google/generative-ai 는 deprecated)
 //
-// 모델: gemini-2.5-flash (Tier 2 유료 후불 — 무료 아님, 2026-06-05 확인).
-//   → 매일 1글 발행. ⚠️ GEMINI_API_KEY 가 nanobanana mcp·N8N 과 같은 Google Cloud
-//      project(BlogFury/strong-augury-484111-t1)를 공유하면, Nano Banana 2(이미지)
-//      대량 사용 시 project quota 압박으로 blog 가 429(Too Many Requests)로 멈춘다.
-//      → prod 키는 별도 project 의 "keepioo blog (분리)" 키로 두어 격리할 것.
+// 모델: gemini-2.5-flash (Tier 2 유료, 선불 prepay 충전식 — 2026-06-05 확인).
+//   → 매일 1글 발행. ⚠️ prod GEMINI_API_KEY = keepioo project 키. 결제가 "선불
+//      충전식"이라 충전 잔액이 0 이 되면 한도(quota/spending cap/rate limit)와
+//      무관하게 429 RESOURCE_EXHAUSTED ("Your prepayment credits are depleted")로
+//      blog 발행이 멈춘다 (2026-06-05 발행 0건 사고 — 진단 라우트 raw fetch 로 원본 확인).
+//      → AI Studio 선불 자동충전(auto top-up) 설정으로 재발 방지(결제라 사장님 직접).
+//   ⚠️ 과거 추정(BlogFury/strong-augury project 의 Nano Banana 2 quota 공유 압박)은
+//      오진이었음 — 그날 quota·spending cap·rate limit 모두 여유였고(RPD 0.03% 등),
+//      실제 원인은 선불 잔액 소진이었다. [[blog-publish-spending-cap-incident-2026-05-17]] 메모리 참고.
 //
 // 품질 가드 (2026-04-24 신규):
 //   이전 Gemini 파이프라인(enrich-llm) 이 description 원문을 필드에 복붙하는
