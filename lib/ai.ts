@@ -4,8 +4,11 @@
 // 정책 데이터 → AdSense 승인용 블로그 글 자동 생성.
 // SDK: @google/genai (새 SDK. @google/generative-ai 는 deprecated)
 //
-// 모델: gemini-2.5-flash (무료 티어, 분당 15회·일 1500회 — 충분)
-//   → 매일 1글 발행에 적합. 비용 0원.
+// 모델: gemini-2.5-flash (Tier 2 유료 후불 — 무료 아님, 2026-06-05 확인).
+//   → 매일 1글 발행. ⚠️ GEMINI_API_KEY 가 nanobanana mcp·N8N 과 같은 Google Cloud
+//      project(BlogFury/strong-augury-484111-t1)를 공유하면, Nano Banana 2(이미지)
+//      대량 사용 시 project quota 압박으로 blog 가 429(Too Many Requests)로 멈춘다.
+//      → prod 키는 별도 project 의 "keepioo blog (분리)" 키로 두어 격리할 것.
 //
 // 품질 가드 (2026-04-24 신규):
 //   이전 Gemini 파이프라인(enrich-llm) 이 description 원문을 필드에 복붙하는
