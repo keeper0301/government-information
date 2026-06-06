@@ -99,7 +99,7 @@ export function buildAvailabilityAlerts(
     });
   }
 
-  // 느린 페이지 — 3초 이상 (정상 응답한 것 중)
+  // 느린 페이지 — 5초 이상 (정상 응답한 것 중)
   const slow = results.filter(
     (r) => r.ok && r.durationMs >= RESPONSE_TIME_THRESHOLD_MS,
   );
