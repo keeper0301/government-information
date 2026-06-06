@@ -209,6 +209,13 @@ export async function POST(request: NextRequest) {
         // 어느 LLM 으로 생성됐는지 — "openai" 면 Gemini 실패로 비상 백업 발동.
         provider: result.generated._provider ?? "gemini",
       });
+      // OpenAI 폴백 발동 시 조기경보 (GET cron 과 동일 24h cooldown). 수동/일부 cron 의
+      // POST 발행도 Gemini 막힘을 놓치지 않게 (코드리뷰 P2 follow-up).
+      if (result.generated._provider === "openai") {
+        await sendOpenAIFallbackAlertIfNew([
+          opts.category || result.generated.category,
+        ]);
+      }
     }
 
     return NextResponse.json({

@@ -517,7 +517,7 @@ ${trendBlock}
     parsed = JSON.parse(raw);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "파싱 실패";
-    throw new Error(`Gemini 응답 JSON 파싱 실패: ${msg}\n원본 (앞 500자): ${raw.slice(0, 500)}`);
+    throw new Error(`LLM 응답 JSON 파싱 실패: ${msg}\n원본 (앞 500자): ${raw.slice(0, 500)}`);
   }
 
   // 최소 필드 검증
