@@ -26,6 +26,10 @@ export type EminwonConfig = {
   sourceCode: string; // "local-press-gijang" 등
   cityKey: string; // slug — makeNewsSlug 용 (gijang / bsbukgu)
   cityName: string; // ScrapeResult.city ("기장군" / "부산 북구")
+  // detail POST body 빌더(선택). 미지정 시 표준 detailBody(기장·부산북구).
+  // 일부 eminwon 스킨(광주 북구 등)은 form1 전체 필드(subCheck=N + 빈 검색필드)를
+  // 요구해, 축약 detailBody 로는 본문 없는 2.7KB 응답만 돌아온다 → 도시별 override.
+  detailBodyBuilder?: (newsEpctNo: string) => string;
 };
 
 export type EminwonListItem = {
@@ -187,6 +191,9 @@ export function parseEminwonDetailBody(html: string): string | null {
 
 // config → eminwon collector. .scrapeAndInsert 가 cron 표준 시그니처.
 export function createEminwonScraper(cfg: EminwonConfig) {
+  // detail POST body — 도시별 override 우선, 없으면 표준(기장·부산북구).
+  const buildDetailBody = cfg.detailBodyBuilder ?? detailBody;
+
   async function scrapeAndInsert(
     admin: SupabaseClient,
     limit?: number,
@@ -224,7 +231,7 @@ export function createEminwonScraper(cfg: EminwonConfig) {
           await new Promise((r) => setTimeout(r, 200));
           const detailHtml = await postFetch(
             cfg.actionUrl,
-            detailBody(it.newsEpctNo),
+            buildDetailBody(it.newsEpctNo),
           );
           const body = parseEminwonDetailBody(detailHtml);
           if (!body) {

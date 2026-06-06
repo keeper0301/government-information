@@ -67,7 +67,10 @@ import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
 import { scrapeDongguIncheonAndInsert } from "./donggu_incheon";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
-import { scrapeBukguGwangjuAndInsert } from "./bukgu_gwangju";
+// 2026-06-07 — 광주 북구도 eminwon 으로 재이관. 기존 board.es(mid=a10402010000=
+// 희망아카데미 강연 안내 오등록, 누적 1건) 폐기 후 eminwon(OfrAction.do POST) 으로
+// 교체 (부산 북구 6/1 과 동일 dead-path swap).
+import { scrapeBukguGwangjuEminwonAndInsert } from "./bukgu-gwangju-eminwon";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
 import { scrapeDongguGwangjuAndInsert } from "./donggu_gwangju";
 import { scrapeNamdongIncheonAndInsert } from "./namdong_incheon";
@@ -620,13 +623,14 @@ export const CITY_REGISTRY: CityEntry[] = [
       "https://www.namgu.gwangju.kr/board.es?mid=a10707060200&bid=0001",
     fn: scrapeNamguGwangjuAndInsert,
   },
-  // 2026-05-25 — 광주 북구 41만. board.es CMS (mid=a10402010000&bid=0001).
+  // 2026-06-07 — 광주 북구 41만. eminwon 재이관(기존 board.es=희망아카데미 오등록 폐기).
   {
     key: "bukgu_gwangju",
     city: "광주 북구",
     ministry: "광주 북구청",
-    siteUrl: "https://bukgu.gwangju.kr/board.es?mid=a10402010000&bid=0001",
-    fn: scrapeBukguGwangjuAndInsert,
+    siteUrl:
+      "https://eminwon.bukgu.gwangju.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp",
+    fn: scrapeBukguGwangjuEminwonAndInsert,
   },
   // 2026-05-25 — 광주 서구 30만. board.es CMS (mid=c50501000000&bid=0154).
   {
