@@ -19,8 +19,11 @@ function fromRpc(rows: Array<{ category: string; n: number | string }> | null): 
   return (rows ?? []).map((r) => ({ category: r.category, n: Number(r.n) }));
 }
 
-// BENEFIT_TAGS 순서 우선 + 그 외(미상)는 뒤에
-function reorderByTaxonomy(rows: CategoryCount[]): CategoryCount[] {
+// BENEFIT_TAGS 순서 우선 + 그 외(미상)는 뒤에.
+// 단 BENEFIT_TAGS 밖이면서 한글이 전혀 없는 raw 값(예: source 분류 실패로 남은 "welfare")은
+// 칩에서 제외 — 한글 카테고리 사이에 영어 칩이 섞여 노출되는 UX 문제 방지(2026-06-06).
+// 한글 정부 원분류(수질·내수 등)는 유지.
+export function reorderByTaxonomy(rows: CategoryCount[]): CategoryCount[] {
   const map = new Map(rows.map((r) => [r.category, r.n]));
   const ordered: CategoryCount[] = [];
   for (const tag of BENEFIT_TAGS) {
@@ -28,7 +31,9 @@ function reorderByTaxonomy(rows: CategoryCount[]): CategoryCount[] {
     if (n !== undefined) ordered.push({ category: tag, n });
   }
   for (const r of rows) {
-    if (!(BENEFIT_TAGS as readonly string[]).includes(r.category)) ordered.push(r);
+    if ((BENEFIT_TAGS as readonly string[]).includes(r.category)) continue;
+    if (!/[가-힣]/.test(r.category)) continue; // 한글 없는 raw(영어 등) 제외
+    ordered.push(r);
   }
   return ordered;
 }
