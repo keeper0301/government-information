@@ -58,10 +58,19 @@ async function sendGeminiQuotaAlertIfNew(
     const failureSummary = failures
       .map((f) => `[${f.category}] ${f.error?.slice(0, 80) ?? ""}`)
       .join("\n");
+    // Gemini 실패 후 OpenAI 비상 백업까지 실패한 경우(둘 다 죽음)는 더 심각 — 문구 강화
+    // (ai.ts generateRawBlogJson 의 "Gemini·OpenAI 모두 실패. ... / OpenAI:" 메시지 감지).
+    const bothFailed = failures.some((f) =>
+      /OpenAI 모두 실패|\/ OpenAI:/i.test(f.error ?? ""),
+    );
     await sendOpsAlertMultichannel({
-      subject: "[keepioo] Gemini 월 한도 도달 — blog 발행 멈춤",
+      subject: bothFailed
+        ? "[keepioo] 🚨🚨 Gemini+OpenAI 백업까지 실패 — blog 완전 멈춤"
+        : "[keepioo] Gemini 월 한도 도달 — blog 발행 멈춤",
       message: [
-        `🚨 Gemini API 429 (spending cap / RESOURCE_EXHAUSTED) 감지.`,
+        bothFailed
+          ? `🚨🚨 Gemini 실패 + OpenAI 비상 백업까지 실패 — blog 완전 멈춤(심각, 즉시 점검).`
+          : `🚨 Gemini API 429 (spending cap / RESOURCE_EXHAUSTED) 감지.`,
         `blog 발행 ${failures.length}건 모두 실패.`,
         ``,
         `[조치] https://aistudio.google.com/spend 에서 월 지출 한도 인상.`,
