@@ -88,7 +88,10 @@ export async function evaluateBlogQuality(
 
   let parsed: { score?: number; reason?: string; improvements?: unknown };
   try {
-    const text = await callLLM({ prompt, maxTokens: 220, jsonMode: true });
+    // timeoutMs 명시(12s) — 이 호출은 publish 함수에서 Gemini(45s)+OpenAI 폴백(35s) 뒤에
+    // 실행되므로, 기본 20s 면 폴백 발동 시 합산이 maxDuration(110s)을 압박한다. 품질검수는
+    // maxTokens 220 으로 짧아 12s 면 충분.
+    const text = await callLLM({ prompt, maxTokens: 220, jsonMode: true, timeoutMs: 12000 });
     parsed = parseJSONResponse<{ score?: number; reason?: string }>(text);
   } catch (e) {
     if (opts.failClosed) {

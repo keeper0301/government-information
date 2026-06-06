@@ -370,7 +370,11 @@ function isQualityGuardError(err: unknown): boolean {
     msg.includes("본문이 너무 김") ||
     msg.includes("meta_description 길이 부적정") ||
     msg.includes("본문이 원문 설명을 복붙") ||
-    msg.includes("메타 설명이 원문을 복붙")
+    msg.includes("메타 설명이 원문을 복붙") ||
+    // LLM 이 본문 HTML 에 raw 제어문자를 넣어 JSON.parse 가 깨지는 경우(2026-06-06 6/6 발생).
+    // candidate 별 LLM 응답 특성이라 다음 candidate(다른 정책)는 정상일 가능성 → retry 대상.
+    // (OpenAI 폴백은 파싱 단계 밖이라 이 유형을 못 구하므로 candidate retry 가 유일한 자가복구)
+    msg.includes("JSON 파싱 실패")
   );
 }
 
