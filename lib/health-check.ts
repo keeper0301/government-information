@@ -145,9 +145,11 @@ export type HealthSignals = {
    */
   blogPublishStaleHours: number;
   /**
-   * 2026-06-07 P3 #6 — 자가 진화 학습 cron 7d 발화 횟수 (3 cron 합산).
-   * 매주 월 새벽 발화 → 평소 7d = 3건. 0건 = cron 자체 노쇼(Vercel 노쇼·secret 만료·
-   * endpoint 깨짐) → 사장님 주간 텔레그램 다이제스트 누락 + 학습 효과 0 자각 못 함.
+   * 2026-06-07 P3 #6 — 자가 진화 학습 cron 7d 발화 횟수 (4 cron 합산: press_confidence·
+   * popularity_weights·push_time_learn·digest). 매주 월 새벽 발화 → 평소 7d = 4건.
+   * 0건 = 학습 파이프 전체 노쇼(Vercel 노쇼·secret 만료·endpoint 깨짐) → 사장님 주간
+   * 텔레그램 다이제스트 누락 + 학습 효과 0 자각 못 함. (개별 cron 노쇼는 합산이라 미감지 —
+   * 전체 노쇼만 감지하는 보수적 설계.)
    */
   selfLearningCronRunsLast7d: number;
 };
@@ -511,13 +513,15 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const blogStats = await getBlogPublishStats();
   const blogPublishStaleHours = blogStats.hoursSinceLastPublish;
 
-  // 2026-06-07 P3 #6 — 자가 진화 학습 cron(3종) 7d 발화 횟수. 0건 = cron 노쇼 신호.
+  // 2026-06-07 P3 #6 — 자가 진화 학습 cron(4종) 7d 발화 횟수. 0건 = 학습 파이프 전체 노쇼.
+  // 2026-06-07 코드리뷰 P1 — push_time_learn_run 누락 보완(4종 전체로 정확도 ↑).
   const { count: learningRunsCount } = await sb
     .from("admin_actions")
     .select("id", { count: "exact", head: true })
     .in("action", [
       "press_confidence_tune_run",
       "popularity_weights_tune_run",
+      "push_time_learn_run",
       "self_learning_digest_run",
     ])
     .gte("created_at", since7dIso);

@@ -32,6 +32,11 @@ export const dynamic = "force-dynamic";
 //   (도시별 다른 사이트라 동시 6 fetch 부하 분산 OK. icn1-fetch proxy 미경유.)
 export const maxDuration = 800;
 const BATCH_SIZE = 6;
+// 2026-06-07 코드리뷰 P1 — 도시당 wall-clock 상한. 느린 도시 1개(detail 순차 25s×10 +
+// 백오프 재시도로 최악 275s+)가 chunk 를 끝까지 끌어 registry 끝쪽(서울 자치구 등)이
+// 실행조차 못 되던 위험 차단. 상한 도달 시 그 도시는 0건 처리하고 다음 chunk 진행
+// (entry.fn 의 이미 insert 된 row 는 유지 — 부분 수집은 보존).
+const CITY_TIMEOUT_MS = 90_000;
 
 type CityResult = {
   city: string;
@@ -47,7 +52,25 @@ async function scrapeCity(
   entry: (typeof CITY_REGISTRY)[number],
 ): Promise<CityResult> {
   try {
-    const r = await entry.fn(admin, 10);
+    // 도시당 wall-clock 상한 — 초과 시 0건 CityResult 로 resolve 하고 다음 도시 진행.
+    // entry.fn 의 fetch 는 백그라운드로 계속될 수 있으나(이미 insert 된 row 보존),
+    // chunk 가 이 도시로 인해 90s 이상 늘어나지 않도록 보장한다.
+    const r = await Promise.race<CityResult>([
+      entry.fn(admin, 10),
+      new Promise<CityResult>((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              city: entry.city,
+              fetched: 0,
+              inserted: 0,
+              skipped: 0,
+              errors: [`city wall-clock timeout ${CITY_TIMEOUT_MS}ms`],
+            }),
+          CITY_TIMEOUT_MS,
+        ),
+      ),
+    ]);
     await logAdminAction({
       actorId: null,
       action: "local_press_scrape",
@@ -79,13 +102,33 @@ async function scrapeCity(
   }
 }
 
+// 2026-06-07 코드리뷰 P1 — 전체 wall-clock 예산. 도시당 90s cap 만으론 최악
+// 14 chunk × 90s = 1260s 가 maxDuration 800 을 넘어 Vercel 이 함수를 강제 종료 →
+// registry 끝쪽(서울 자치구 등)이 silent 미실행되던 원래 위험이 부분 재현될 수 있다.
+// 예산 초과 시 잔여 도시를 skip CityResult(가시화) 로 남기고 break — 정상 종료 + 다음 cron 처리.
+const TOTAL_BUDGET_MS = 700_000;
+
 async function runScrape() {
   const admin = createAdminClient();
   const results: CityResult[] = [];
+  const startedAt = Date.now();
 
   // BATCH_SIZE 단위 병렬 처리 — chunk 간 sequential 로 외부 부하 분산.
   // 각 scrapeCity 가 try/catch 내장이라 Promise.all reject X (allSettled 불필요).
   for (let i = 0; i < CITY_REGISTRY.length; i += BATCH_SIZE) {
+    if (Date.now() - startedAt > TOTAL_BUDGET_MS) {
+      // 예산 초과 — 잔여 도시는 강제종료 대신 skip 기록으로 가시화(silent 미실행 방지).
+      for (const entry of CITY_REGISTRY.slice(i)) {
+        results.push({
+          city: entry.city,
+          fetched: 0,
+          inserted: 0,
+          skipped: 0,
+          errors: ["wall-clock budget 초과 — 이번 cron skip(다음 cron 처리)"],
+        });
+      }
+      break;
+    }
     const chunk = CITY_REGISTRY.slice(i, i + BATCH_SIZE);
     const chunkResults = await Promise.all(
       chunk.map((entry) => scrapeCity(admin, entry)),

@@ -693,11 +693,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     fn: scrapeBsbukguEminwonAndInsert,
   },
   // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
+  // 2026-06-07 — 사이트 개편으로 siteUrl 신규 보도/해명 게시판 경로로 정정(구 경로는 302 redirect).
   {
     key: "ongjin",
     city: "옹진군",
     ministry: "옹진군청",
-    siteUrl: "https://www.ongjin.go.kr/main/community/notify/report.jsp",
+    siteUrl:
+      "https://www.ongjin.go.kr/open_content/main/community/board/report.jsp",
     fn: scrapeOngjinAndInsert,
   },
   // 2026-05-28 인천 중구 15만. 자체 krop0231c CMS, 목록/상세 모두 정적 HTML로 fetch 가능.

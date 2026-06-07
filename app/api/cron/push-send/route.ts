@@ -5,7 +5,7 @@
 // 현재 KST hour 가 preferred_hours 에 포함되는 사용자에게 발송.
 //
 // 가드:
-//   - 1회/일 cap (last 23h 안에 success 발송 있으면 skip)
+//   - 1회/일 cap (last 24h 안에 success 발송 있으면 skip — 매칭 윈도우와 통일)
 //   - 1-user-1-device cap (multi-device 사용자도 한 사이클에 1번만)
 //   - VAPID env 없으면 fail (graceful 502)
 //   - subscriber 0 → 즉시 OK 종료
@@ -47,7 +47,10 @@ type SubscriberRow = {
 async function run() {
   const admin = createAdminClient();
   const hourKst = nowHourKst();
-  const since23h = new Date(Date.now() - 23 * 3600_000).toISOString();
+  // 2026-06-07 — cap 윈도우를 매칭 윈도우(match-payload 의 since=now-24h)와 통일(코드리뷰
+  // P1). cap 23h < 매칭 24h 불일치 + preferred_hours 다중 슬롯 조합에서 같은 정책이 24h
+  // 경계 근처에 2회 발송되던 경계 케이스 해소.
+  const since24h = new Date(Date.now() - 24 * 3600_000).toISOString();
 
   // 1) 활성 subscriber + user pref
   // PostgREST max 1000행 — 구독자가 1000+ 면 1001번째부터 매 cron 에서 조회 누락돼
@@ -104,7 +107,7 @@ async function run() {
     .from("push_notification_log")
     .select("user_id")
     .eq("send_status", "success")
-    .gte("sent_at", since23h)
+    .gte("sent_at", since24h)
     .in("user_id", userIds);
   const userSentRecently = new Set<string>(
     ((recentLogs ?? []) as { user_id: string }[]).map((r) => r.user_id),
