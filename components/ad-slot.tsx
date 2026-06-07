@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // 2026-05-21 — 위치별 slot/layout 분리 (#43).
 // AdSense console 에서 위치별 ad unit 생성 후 해당 env 등록하면 자동 분기.
@@ -78,7 +79,7 @@ export function AdSlot({ format = "fluid", placement = "default" }: AdSlotProps)
       : undefined;
 
   useEffect(() => {
-    if (!PUBLISHER_ID || !slotId) return;
+    if (ADSENSE_REVIEW_MODE || !PUBLISHER_ID || !slotId) return;
     if (typeof window === "undefined") return;
 
     let observer: MutationObserver | null = null;
@@ -122,10 +123,13 @@ export function AdSlot({ format = "fluid", placement = "default" }: AdSlotProps)
     };
   }, [slotId]);
 
+  // 2026-06-07 — review mode 중엔 컴포넌트 단에서 전 페이지 광고 차단(코드리뷰 P1).
+  // 기존엔 페이지별 `!ADSENSE_REVIEW_MODE && <AdSlot>` 게이트라 일부 페이지(홈·welfare·
+  // loan·blog)에 누락 → 광고 env 먼저 켜지면 검수 중 노출 risk. 컴포넌트로 끌어올려 일관.
   // 2026-05-18 AdSense 5/18 재거절 후속 — env 미설정 시 placeholder 노출 X.
   // AdSense 검수 봇이 빈 "광고" 박스를 "콘텐츠 없는 광고 슬롯" 으로 인식 risk.
   // 검수 통과 후 env 등록 → 자동으로 실제 광고 렌더링 재개.
-  if (!PUBLISHER_ID || !slotId) {
+  if (ADSENSE_REVIEW_MODE || !PUBLISHER_ID || !slotId) {
     return null;
   }
 

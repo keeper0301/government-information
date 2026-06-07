@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { cleanDescription } from "@/lib/utils";
 
 // 2026-05-21 SC 색인 1,958 페이지 미생성 진단 후속:
 // 정적·hub 페이지 lastModified 가 매 sitemap fetch 마다 new Date() 로 갱신되어
@@ -247,19 +248,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Google 에 일제히 색인되는 위험 차단. AI 백필 cron 진행에 맞춰 점진 ramp-up.
     const { data: newsPosts } = await supabase
       .from("news_posts")
-      .select("slug, updated_at")
+      .select("slug, updated_at, body")
       .neq("category", "press")
       .not("keywords", "eq", "{}")
       .not("summary", "is", null)
       .not("classified_at", "is", null)
       .not("ai_commentary", "is", null)
       .limit(25000);
-    newsPages = (newsPosts || []).map((n) => ({
-      url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,
-      lastModified: new Date(n.updated_at),
-      changeFrequency: "weekly" as const,
-      priority: 0.7,
-    }));
+    newsPages = (newsPosts || [])
+      // 2026-06-07 — news 상세 isThin 의 본문 조건(cleanDescription(body)<250)과 일치
+      // (코드리뷰 P1). 상세는 noindex 인데 sitemap 에만 있으면 "Indexed, though blocked
+      // by noindex" 부정 신호 → 본문 250 미만 뉴스는 sitemap 에서도 제외.
+      .filter((n) => cleanDescription(n.body).length >= 250)
+      .map((n) => ({
+        url: `${baseUrl}/news/${encodeURIComponent(n.slug)}`,
+        lastModified: new Date(n.updated_at),
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      }));
 
     keywordPages = getAllKeywords().map((k) => ({
       url: `${baseUrl}/news/keyword/${encodeURIComponent(k)}`,
