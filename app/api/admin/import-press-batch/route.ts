@@ -20,20 +20,12 @@
 // ============================================================
 
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 import { logAdminAction } from "@/lib/admin-actions";
 import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
-
-// API key 비교는 길이 분기 + timingSafeEqual 로 — 단순 `!==` 는 early-return 으로
-// 길이/prefix 추론 timing attack 노출.
-function safeKeyEqual(a: string, b: string): boolean {
-  const aBuf = Buffer.from(a, "utf8");
-  const bBuf = Buffer.from(b, "utf8");
-  if (aBuf.length !== bBuf.length) return false;
-  return timingSafeEqual(aBuf, bBuf);
-}
+// 2026-06-08 — 코드리뷰 P2: 로컬 중복 safeKeyEqual 을 공용 모듈로 통일(상수시간 비교).
+import { safeKeyEqual } from "@/lib/safe-key-equal";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
