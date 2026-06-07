@@ -19,8 +19,11 @@ import {
 const BASE_URL = "https://www.yangcheon.go.kr";
 const LIST_URL = `${BASE_URL}/site/yangcheon/ex/bbs/List.do?cbIdx=290`;
 
+// 2026-06-07 — a 태그 title 속성이 "NNNN번글2"(게시판 내부 라벨) junk 라, 진짜 제목은
+// a 안 <script>document.write(wdigm_title('제목'))</script> JS 인자에 있다. title 속성
+// 대신 wdigm_title('...') 인자에서 추출(본문은 정상인데 제목만 "6397번글2"로 깨지던 사고).
 const LIST_ITEM_REGEX =
-  /<a\s+href="#view"\s+onclick="doBbsFView\('290','(\d+)'[^"]*"[^>]*title="([^"]*)"[^>]*>/g;
+  /<a\s+href="#view"\s+onclick="doBbsFView\('290','(\d+)'[^"]*"[^>]*>[\s\S]*?wdigm_title\('([^']*)'\)/g;
 
 const DATE_REGEX = /<td\s+class="wdate">\s*(\d{4})\.(\d{2})\.(\d{2})/;
 

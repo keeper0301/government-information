@@ -45,17 +45,28 @@ describe("yangcheon parseDetailBody", () => {
   });
 });
 
-describe("yangcheon parseListPage", () => {
-  it("doBbsFView onclick 에서 bcIdx + title + 날짜 매핑", () => {
+describe("yangcheon parseListPage — wdigm_title 제목 추출", () => {
+  // 2026-06-07 — a 태그 title 속성은 "NNNN번글2"(게시판 내부 라벨) junk. 진짜 제목은
+  // a 안 <script>wdigm_title('제목')</script> JS 인자에 있다. title 속성이 아닌 wdigm_title
+  // 에서 추출(본문은 정상인데 제목만 "6390번글2"로 깨지던 사고 회귀 방어).
+  it("title 속성 junk('번글2') 가 아니라 wdigm_title 인자에서 진짜 제목 추출", () => {
     const html = `
-      <a href="#view" onclick="doBbsFView('290','310780');" title="도심 속 여름 피서지 운영">링크</a>
+      <a href="#view" onclick="doBbsFView('290','310780','16010100','310780');return false;" title="6390번글2">
+        <script>document.write(wdigm_title('양천구, 도심 속 여름 피서지 18개소 본격 운영'));</script>
+      </a>
       <td class="wdate">2026.06.01</td>
     `;
     const items = parseListPage(html);
     expect(items).toHaveLength(1);
     expect(items[0].seq).toBe("310780");
     expect(items[0].title).toContain("여름 피서지");
+    expect(items[0].title).not.toMatch(/번글/);
     expect(items[0].publishedDate).toBe("2026-06-01");
     expect(items[0].sourceUrl).toContain("bcIdx=310780");
+  });
+
+  it("wdigm_title 없는 행은 매치 안 됨(한글 제목 게이트)", () => {
+    const html = `<a href="#view" onclick="doBbsFView('290','999','x','999');return false;" title="1번글2"></a>`;
+    expect(parseListPage(html)).toHaveLength(0);
   });
 });
