@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeKeyEqual } from "@/lib/safe-key-equal";
 
 export function authorizeCronRequest(request: Request): NextResponse | null {
   const cronSecret = process.env.CRON_SECRET;
@@ -10,7 +11,9 @@ export function authorizeCronRequest(request: Request): NextResponse | null {
     );
   }
 
-  if (request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+  // 2026-06-07 — 상수시간 비교(코드리뷰 P1, 타이밍 공격 방어).
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (!safeKeyEqual(authHeader, `Bearer ${cronSecret}`)) {
     return NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 });
   }
 
@@ -20,10 +23,8 @@ export function authorizeCronRequest(request: Request): NextResponse | null {
 export function authorizeOptionalCronRequest(request: Request): NextResponse | null {
   const cronSecret = process.env.CRON_SECRET;
 
-  if (
-    cronSecret &&
-    request.headers.get("authorization") !== `Bearer ${cronSecret}`
-  ) {
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (cronSecret && !safeKeyEqual(authHeader, `Bearer ${cronSecret}`)) {
     return NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 });
   }
 
@@ -42,7 +43,7 @@ export function isPrivateCronRequestAuthorized(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = request.headers.get("authorization") ?? "";
 
-  return !!cronSecret && authHeader === `Bearer ${cronSecret}`;
+  return !!cronSecret && safeKeyEqual(authHeader, `Bearer ${cronSecret}`);
 }
 
 export function getCronAuthorizationHeader(): string | null {
