@@ -20,9 +20,11 @@ const DETAIL_BASE =
 
 // list link + title: <a href="BD_selectBbs.do?...q_bbscttSn={seq}">{한국어 title}</a>
 // 두 번째 link (heading dl dt btitle) 안에 진짜 제목 (첫 link 는 thumbnail).
-// 한국어 시작 + 5자+ 만 매칭 (image alt 와 충돌 방지).
+// 2026-06-07 — 시작 [가-힣] 강제 제거(따옴표·영문 제목 누락 방지, 포항 동일 패턴).
+// thumbnail link 는 inner 가 <img> 라 [^<] 텍스트가 없어 자동 제외되고, 그 외 junk 는
+// parseListPage 한글 포함 검사로 차단. (검증 시점 누락 0이나 동일 버그 클래스 선제 차단.)
 const LIST_ITEM_REGEX =
-  /<a\s+href="BD_selectBbs\.do\?q_bbsCode=1020&(?:amp;)?q_bbscttSn=(\d{14,})"[^>]*>([가-힣][^<]{4,})<\/a>/g;
+  /<a\s+href="BD_selectBbs\.do\?q_bbsCode=1020&(?:amp;)?q_bbscttSn=(\d{14,})"[^>]*>([^<]{4,})<\/a>/g;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -34,7 +36,8 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[1];
     if (seen.has(seq)) continue;
     const title = m[2].trim();
-    if (!title) continue;
+    // 시작 제약을 푼 대신 한글 포함 검사로 junk(영문 메뉴·image alt) 차단.
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     seen.add(seq);
     // seq 앞 8자리 = YYYYMMDD → YYYY-MM-DD
     const publishedDate =

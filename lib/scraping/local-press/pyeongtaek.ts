@@ -22,8 +22,10 @@ const DETAIL_BASE =
 // list anchor: <a ... data-req-get-p-idx="{NNN}">
 //   안에: <span class="list_title">{title}</span>
 //          <span class="list_data">작성일 YYYY.MM.DD 조회 N</span>
+// 2026-06-07 — 제목 시작 [가-힣] 강제는 따옴표·영문 시작 제목 누락 버그(포항 동일).
+// 시작 제약 제거 + 한글 포함 검사는 parseListPage.
 const LIST_ITEM_REGEX =
-  /data-req-get-p-idx="(\d+)"[\s\S]*?<span\s+class="list_title">\s*([가-힣][^<]{4,}?)\s*<\/span>[\s\S]*?<span\s+class="list_data">\s*작성일\s+(\d{4})\.(\d{2})\.(\d{2})/g;
+  /data-req-get-p-idx="(\d+)"[\s\S]*?<span\s+class="list_title">\s*([^<]{4,}?)\s*<\/span>[\s\S]*?<span\s+class="list_data">\s*작성일\s+(\d{4})\.(\d{2})\.(\d{2})/g;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -37,7 +39,8 @@ export function parseListPage(html: string): PressNewsItem[] {
     // W1 일관성 (5/17): decodeBasicEntities 호출. title 에 &hellip; &middot; 등이
     // 있을 때 raw 노출 방지 (5/17 commit d948039 후속).
     const title = decodeBasicEntities(m[2]).trim();
-    if (!title) continue;
+    // 시작 제약을 푼 대신 한글 포함 검사로 junk(영문 메뉴·라벨) 차단.
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const publishedDate = `${m[3]}-${m[4]}-${m[5]}`;
     items.push({
       seq,

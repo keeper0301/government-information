@@ -22,8 +22,11 @@ const DETAIL_BASE =
   "https://www.pohang.go.kr/news/board/post/view.do?bcIdx=644&mid=0102000000&idx=";
 
 // list anchor: data-req-get-p-idx="{NNN}" + <span class="tit">{title}</span> + <span class="date">YYYY-MM-DD(요일)</span>
+// 2026-06-07 — 제목 시작 문자를 [가-힣] 으로 강제하던 게 버그였다. 보도자료 제목이
+// 작은따옴표(&lsquo; ‘)·영문·숫자로 시작하면 누락 → 12건 중 4건(~30%) 상시 누락.
+// 시작 제약을 [^<] 로 풀고, 한글 포함 여부는 parseListPage 에서 검사(junk 차단).
 const LIST_ITEM_REGEX =
-  /data-req-get-p-idx="(\d+)"[\s\S]*?<span\s+class="tit"[^>]*>\s*([가-힣][^<]{4,}?)\s*<\/span>[\s\S]*?<span\s+class="date"[^>]*>\s*(\d{4})-(\d{2})-(\d{2})/g;
+  /data-req-get-p-idx="(\d+)"[\s\S]*?<span\s+class="tit"[^>]*>\s*([^<]{4,}?)\s*<\/span>[\s\S]*?<span\s+class="date"[^>]*>\s*(\d{4})-(\d{2})-(\d{2})/g;
 
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
@@ -35,7 +38,8 @@ export function parseListPage(html: string): PressNewsItem[] {
     if (seen.has(seq)) continue;
     seen.add(seq);
     const title = decodeBasicEntities(m[2]).trim();
-    if (!title) continue;
+    // 한글 본문 게이트 — 시작 문자 제약을 푼 대신 여기서 junk(메뉴·영문 라벨) 차단.
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     const publishedDate = `${m[3]}-${m[4]}-${m[5]}`;
     items.push({
       seq,

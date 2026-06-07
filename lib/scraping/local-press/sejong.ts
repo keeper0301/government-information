@@ -17,8 +17,10 @@ const DETAIL_BASE =
   "https://www.sejong.go.kr/bbs/R0079/view.do?mno=sub02_0401&nttId=";
 
 // list link + title: <a href="/bbs/R0079/view.do?nttId={alphanumeric}&...">{title}</a>
+// 2026-06-07 — 제목 시작 [가-힣] 강제는 따옴표(‘)·영문 시작 제목을 누락하는 버그(포항
+// 동일 패턴). 검증 결과 세종 누락 4건/40%. 시작 제약 제거 + 한글 포함 검사는 parseListPage.
 const LIST_ITEM_REGEX =
-  /<a\s+href="\/bbs\/R0079\/view\.do\?nttId=([A-Za-z0-9]+)[^"]*"[^>]*>\s*([가-힣][^<]{4,}?)\s*<\/a>/g;
+  /<a\s+href="\/bbs\/R0079\/view\.do\?nttId=([A-Za-z0-9]+)[^"]*"[^>]*>\s*([^<]{4,}?)\s*<\/a>/g;
 
 // 날짜: <td data-cell-header="등록일">YYYY-MM-DD</td>
 const DATE_REGEX = /<td[^>]*data-cell-header="등록일"[^>]*>(\d{4}-\d{2}-\d{2})<\/td>/g;
@@ -36,7 +38,8 @@ export function parseListPage(html: string): PressNewsItem[] {
     const seq = m[1];
     if (seen.has(seq)) continue;
     const title = m[2].trim();
-    if (!title) continue;
+    // 시작 제약을 푼 대신 한글 포함 검사로 junk(영문 메뉴·라벨) 차단.
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     seen.add(seq);
     items.push({
       idx,
