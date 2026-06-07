@@ -44,6 +44,8 @@ const BASE_SIGNALS: HealthSignals = {
   vercelTokenExpiresInDays: null,
   // 2026-05-17 — baseline 1h (방금 발행, alert X). 60h+ 케이스는 별도 테스트.
   blogPublishStaleHours: 1,
+  // 2026-06-07 — baseline 3 (매주 학습 cron 정상 발화, alert X). 0건 케이스 별도 테스트.
+  selfLearningCronRunsLast7d: 3,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -760,5 +762,28 @@ describe("checkThresholds — 2026-05-17: blog_publish_stalled", () => {
   it("blogPublishStaleHours 9999 (발행 이력 없음) → 반드시 alert", () => {
     const alerts = checkThresholds({ ...ACTIVE, blogPublishStaleHours: 9999 });
     expect(alerts.find((a) => a.key === "blog_publish_stalled")).toBeDefined();
+  });
+});
+
+describe("checkThresholds — self_learning_cron_idle (P3 #6)", () => {
+  it("env 활성(과거 날짜) + 학습 cron 7d 0건 → alert", () => {
+    vi.stubEnv("SELF_LEARNING_CRON_ALERT_AFTER", "2026-01-01");
+    const alerts = checkThresholds({ ...BASE_SIGNALS, selfLearningCronRunsLast7d: 0 });
+    expect(alerts.find((a) => a.key === "self_learning_cron_idle")).toBeDefined();
+    vi.unstubAllEnvs();
+  });
+
+  it("env 미설정 → 0건이어도 alert 안 함 (안전 기본값, 등록 전 오탐 0)", () => {
+    vi.stubEnv("SELF_LEARNING_CRON_ALERT_AFTER", "");
+    const alerts = checkThresholds({ ...BASE_SIGNALS, selfLearningCronRunsLast7d: 0 });
+    expect(alerts.find((a) => a.key === "self_learning_cron_idle")).toBeUndefined();
+    vi.unstubAllEnvs();
+  });
+
+  it("env 활성 + 정상 발화(3건) → alert 안 함", () => {
+    vi.stubEnv("SELF_LEARNING_CRON_ALERT_AFTER", "2026-01-01");
+    const alerts = checkThresholds({ ...BASE_SIGNALS, selfLearningCronRunsLast7d: 3 });
+    expect(alerts.find((a) => a.key === "self_learning_cron_idle")).toBeUndefined();
+    vi.unstubAllEnvs();
   });
 });

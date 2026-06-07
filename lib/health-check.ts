@@ -144,6 +144,12 @@ export type HealthSignals = {
    * 평소 1~2 글/일 (GitHub Actions 매일 06:00 UTC).
    */
   blogPublishStaleHours: number;
+  /**
+   * 2026-06-07 P3 #6 — 자가 진화 학습 cron 7d 발화 횟수 (3 cron 합산).
+   * 매주 월 새벽 발화 → 평소 7d = 3건. 0건 = cron 자체 노쇼(Vercel 노쇼·secret 만료·
+   * endpoint 깨짐) → 사장님 주간 텔레그램 다이제스트 누락 + 학습 효과 0 자각 못 함.
+   */
+  selfLearningCronRunsLast7d: number;
 };
 
 export type ThresholdAlert = {
@@ -168,7 +174,8 @@ export type ThresholdAlert = {
     | "news_ratio_high"
     | "adsense_ready_to_disable"
     | "vercel_token_expiring"
-    | "blog_publish_stalled";
+    | "blog_publish_stalled"
+    | "self_learning_cron_idle";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -504,6 +511,18 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const blogStats = await getBlogPublishStats();
   const blogPublishStaleHours = blogStats.hoursSinceLastPublish;
 
+  // 2026-06-07 P3 #6 — 자가 진화 학습 cron(3종) 7d 발화 횟수. 0건 = cron 노쇼 신호.
+  const { count: learningRunsCount } = await sb
+    .from("admin_actions")
+    .select("id", { count: "exact", head: true })
+    .in("action", [
+      "press_confidence_tune_run",
+      "popularity_weights_tune_run",
+      "self_learning_digest_run",
+    ])
+    .gte("created_at", since7dIso);
+  const selfLearningCronRunsLast7d = learningRunsCount ?? 0;
+
   return {
     signups24h,
     active7d,
@@ -532,6 +551,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     adsenseReadyToDisable,
     vercelTokenExpiresInDays,
     blogPublishStaleHours,
+    selfLearningCronRunsLast7d,
   };
 }
 
@@ -670,6 +690,23 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
         : `네이버 RPA cookies 만료 ${s.naverCookiesExpiresInDays}일 남음 (≤ 7일). 사장님 cookies 재발급 필요.`,
       recommendation:
         "사장님 Chrome 으로 naver.com 재로그인 → F12 DevTools 에서 cookies 재 export → /admin/naver-blog/cookies 에 업로드.",
+    });
+  }
+
+  // 2026-06-07 P3 #6 — 자가 진화 학습 cron 7d 0건 = 운영 자가 진화 멈춤.
+  // SELF_LEARNING_CRON_ALERT_AFTER(예: 2026-06-08) 이후만 활성 — 첫 cycle(6/1) 전
+  // false positive 차단. 미설정 시 비활성(안전 기본값, 환경변수 등록 전 오탐 0).
+  const selfLearningAlertAfter = process.env.SELF_LEARNING_CRON_ALERT_AFTER;
+  const selfLearningAlertActive = selfLearningAlertAfter
+    ? new Date() >= new Date(selfLearningAlertAfter)
+    : false;
+  if (selfLearningAlertActive && s.selfLearningCronRunsLast7d === 0) {
+    alerts.push({
+      key: "self_learning_cron_idle",
+      message:
+        "자가 진화 학습 cron 7d 동안 0건 발화 — Vercel cron schedule 또는 endpoint 점검 필요",
+      recommendation:
+        "vercel.json crons 검증 + /admin/cron-trigger 에서 수동 trigger 시도. 사장님 주간 텔레그램 다이제스트 누락 진단.",
     });
   }
 
