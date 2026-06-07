@@ -50,21 +50,39 @@ describe("_factory fetchPage 안전 가드", () => {
     );
   });
 
-  it("큰 응답 + alert('잘못된 접근') 포함 → throw alert/redirect", async () => {
-    // 일부 사이트는 alert 도 큰 HTML 안에 묶어서 응답하는 경우.
+  it("중간 응답(1~4KB) + alert('잘못된 접근') 포함 → throw alert/redirect", async () => {
+    // 실제 redirect/alert 페이지가 약간 큰 경우(1~4KB). alert 가드 size 창(<4096) 안.
     const body =
       "<html>" +
-      "padding".repeat(300) +
+      "padding".repeat(200) +
       "<script>alert('잘못된 접근입니다.');</script>" +
-      "padding".repeat(300) +
+      "padding".repeat(200) +
       "</html>";
     expect(body.length).toBeGreaterThan(1024);
+    expect(body.length).toBeLessThan(4096);
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Response(body, { status: 200 }),
     );
     await expect(fetchPage("https://example.com/list")).rejects.toThrow(
       /alert\/redirect 응답 감지/,
     );
+  });
+
+  it("큰 정상 list(>4KB) + 인라인 조건부 alert → 통과 (평택 false positive 방지)", async () => {
+    // 2026-06-07 평택 사례: 정상 list page(30KB+) 인라인 스크립트에 case '-2' 에러
+    // 핸들러 alert("잘못된 접근입니다.") 가 있다. alert 가드는 작은 응답(<4096)에만
+    // 적용하므로, 큰 정상 페이지는 인라인 alert 가 있어도 throw 하지 않고 통과해야 한다.
+    const body =
+      "<html><body>" +
+      "<div>보도자료 목록 항목</div>".repeat(400) +
+      "<script>switch(code){case '-2': alert('잘못된 접근입니다.'); break;}</script>" +
+      "</body></html>";
+    expect(body.length).toBeGreaterThan(4096);
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Response(body, { status: 200 }),
+    );
+    const result = await fetchPage("https://example.com/list");
+    expect(result).toContain("보도자료 목록 항목");
   });
 
   it("큰 응답 + alert('권한이 없') 포함 → throw", async () => {

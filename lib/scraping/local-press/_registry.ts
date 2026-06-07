@@ -23,7 +23,7 @@ import { scrapeHwaseongAndInsert } from "./hwaseong";
 import { scrapeJeonjuAndInsert } from "./jeonju";
 import { scrapeGimhaeAndInsert } from "./gimhae";
 import { scrapeNamyangjuAndInsert } from "./namyangju";
-// 2026-05-25 disabled (SPA — list ajax): import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
+import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
 import { scrapePohangAndInsert } from "./pohang";
 import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
@@ -129,7 +129,7 @@ export type CityKey =
   | "jeonju"
   | "gimhae"
   | "namyangju"
-  // | "pyeongtaek" — disabled 2026-05-25 (SPA)
+  | "pyeongtaek"
   | "pohang"
   | "iksan"
   | "daegu"
@@ -332,17 +332,17 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.nyj.go.kr/main/1058",
     fn: scrapeNamyangjuAndInsert,
   },
-  // 2026-05-25 disabled: 평택 site = SPA. list ajax render 으로 정적 fetch idx 추출 불가.
-  // contents.do?mid=0402010000 정확 list URL 도 size 344K 인데 idx/view link 0개 매칭.
-  // ajax endpoint 직접 분석 또는 Playwright fallback 필요 (다음 세션 spec).
-  // {
-  //   key: "pyeongtaek",
-  //   city: "평택시",
-  //   ministry: "평택시청",
-  //   siteUrl:
-  //     "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90",
-  //   fn: scrapePyeongtaekAndInsert,
-  // },
+  // 2026-06-07 재가동 — 5/25 "SPA" 는 오진단. 실제 원인은 factory alert 게이트가 평택
+  // 페이지 인라인 case '-2' 핸들러의 alert("잘못된 접근입니다.") 를 redirect 로 오탐해
+  // throw 한 false positive. factory size 게이트 fix 로 정적 fetch 정상(라이브 list 10건·본문 1175자).
+  {
+    key: "pyeongtaek",
+    city: "평택시",
+    ministry: "평택시청",
+    siteUrl:
+      "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000",
+    fn: scrapePyeongtaekAndInsert,
+  },
   {
     key: "pohang",
     city: "포항시",

@@ -113,6 +113,11 @@ const ALERT_REDIRECT_RE =
 // 최소 size — list page 는 보통 30KB+. redirect HTML 은 200~500 byte.
 // 안전 buffer 로 1024 (1KB). 작은 fixture 사이트 알려진 사례 없음.
 const MIN_RESPONSE_SIZE = 1024;
+// alert 가드 검사 상한 — 실제 redirect/alert 페이지는 200~500 byte(많아야 1~2KB)다.
+// 정상 list page(30KB+)의 인라인 스크립트에 든 조건부 alert(예: 평택 case '-2' 핸들러의
+// alert("잘못된 접근입니다."))를 redirect 로 오탐하지 않도록, alert 검사는 작은 응답에만
+// 적용한다. (이 오탐이 평택을 2026-05-25 "SPA" 로 오진단·disable 시킨 원인 — 2026-06-07.)
+const ALERT_GUARD_MAX_SIZE = 4096;
 
 // 2026-06-01 — Vercel function 일시 timeout 사고 자가 복구를 위한 1회 retry.
 // 동작구 6/1 사례: local fetch 2.2s 정상인데 Vercel cron 만 timeout.
@@ -147,7 +152,7 @@ async function fetchOnce(
       `response too small (${text.length} bytes, redirect/alert 의심): ${url}`,
     );
   }
-  if (ALERT_REDIRECT_RE.test(text)) {
+  if (text.length < ALERT_GUARD_MAX_SIZE && ALERT_REDIRECT_RE.test(text)) {
     throw new Error(`alert/redirect 응답 감지 (referer/mid 가드 의심): ${url}`);
   }
   return text;
