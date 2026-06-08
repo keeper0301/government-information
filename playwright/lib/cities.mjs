@@ -321,6 +321,21 @@ export const scrapeGangnam = makeScraper({
   bodyValueSelector: "#content_main_text",
 });
 
+// 2026-06-08 — 제주도. 정적 collector 가 prod 미수집(ASN 차단, 한국 IP 200). 목록
+// li.board-news__article + 제목 strong.text-ellipsis, 상세 list.htm?act=view&seq= href 직접,
+// 본문 .article-contents. GHA+icn1 경로 이관.
+export const scrapeJeju = makeScraper({
+  cityName: "제주도",
+  listUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
+  listSelectors: ["li.board-news__article"],
+  titleSelectors: ["strong.text-ellipsis", ".text-ellipsis"],
+  bodySelectors: [".article-contents"],
+});
+
+// 2026-06-08 — 의정부시: 보류. ASN 차단(한국 IP 200)이나 게시판 list 가 networkidle+2s
+//   후에도 미렌더(view.do?bIdx 게시판 0건, 정적 HTML 도 familysite 드롭만). list.do URL/
+//   ajax·iframe 구조 추가 진단 필요. board.es 2개(namgu·namdong)와 함께 다음 batch.
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -345,10 +360,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     seongdong: scrapeSeongdong,
     dongdaemun: scrapeDongdaemun,
     seongbuk: scrapeSeongbuk,
+    jeju: scrapeJeju,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam|seongdong|dongdaemun|seongbuk`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam|seongdong|dongdaemun|seongbuk|jeju`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

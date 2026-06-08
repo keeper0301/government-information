@@ -36,7 +36,7 @@ import { scrapeGyeongbukAndInsert } from "./gyeongbuk";
 import { scrapeChungnamAndInsert } from "./chungnam";
 import { scrapeChungbukAndInsert } from "./chungbuk";
 import { scrapeGangwonAndInsert } from "./gangwon";
-import { scrapeJejuAndInsert } from "./jeju";
+// 2026-06-08 disabled (ASN 차단 → GHA+icn1 playwright 경로 이관): import { scrapeJejuAndInsert } from "./jeju";
 // 2026-06-08 disabled (본문 JS 렌더 → GHA+icn1 playwright 경로 이관): import { scrapeGangnamAndInsert } from "./gangnam";
 // 2026-05-29 disabled (본문 elusive → playwright PC 러너로 이관): import { scrapeNowonAndInsert } from "./nowon";
 import { scrapeSongpaAndInsert } from "./songpa";
@@ -142,7 +142,7 @@ export type CityKey =
   | "chungnam"
   | "chungbuk"
   | "gangwon"
-  | "jeju"
+  // | "jeju" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // | "gangnam" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // | "nowon" — 2026-05-29 disabled (→ playwright PC 러너)
   | "songpa"
@@ -438,14 +438,8 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://state.gwd.go.kr/portal/briefing/pressRelease",
     fn: scrapeGangwonAndInsert,
   },
-  {
-    key: "jeju",
-    city: "제주특별자치도",
-    ministry: "제주특별자치도청",
-    ministryAliases: ["제주특별자치도", "제주도"],
-    siteUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
-    fn: scrapeJejuAndInsert,
-  },
+  // 2026-06-08 — 제주도: 정적 collector 가 prod 미수집(ASN 차단, 한국 IP 200). GHA+icn1
+  //   경로(scrapeJeju)로 이관. dual-path 방지로 정적 등록 제거. (jeju.ts·테스트 유지)
   // 2026-06-08 — 강남구: 본문 한컴 웹에디터(div JS 렌더 빈칸, 평문은 hidden input value)
   //   라 정적 cron 0건. GHA+icn1 경로(scrapeGangnam, bodyValueSelector)로 이관.
   //   dual-path 방지로 정적 등록 제거. (gangnam.ts·테스트 유지)

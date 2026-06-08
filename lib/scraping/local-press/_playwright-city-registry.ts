@@ -136,4 +136,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "성북구청",
     sourceCode: "local-press-seongbuk",
   },
+  // 2026-06-08 — 제주도. 정적 collector 가 prod 미수집(ASN 차단, 한국 IP 200, 본문 .article-contents).
+  //   GHA+icn1 경로 이관(makeScraper). 로컬 검증 1072/1090/1831자.
+  jeju: {
+    ministry: "제주특별자치도청",
+    sourceOutlet: "제주특별자치도청",
+    sourceCode: "local-press-jeju",
+  },
 };
