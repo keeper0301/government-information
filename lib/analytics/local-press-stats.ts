@@ -7,22 +7,21 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CITY_REGISTRY } from "@/lib/scraping/local-press/_registry";
+import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
 
-// 프록시 경로(GitHub Actions + icn1)로 "실제 가동 중"(local-press-proxy.yml RUNNER_CITIES)인
-// 시·군. audit details.city = ministry 에서 "청" 제거 값(노원구청→노원구). stale 노쇼 감지용.
-// ※ suyeong/haeundae/busan 은 PLAYWRIGHT_CITY_REGISTRY 매핑에 있으나 RUNNER_CITIES 미포함=미가동
-//   이라 제외(수집 안 하므로 stale 무의미). RUNNER_CITIES 에 도시 추가 시 여기도 동기화할 것.
+// 프록시 경로(GitHub Actions + icn1)로 "실제 가동 중"인 시·군의 audit city 명 집합.
+// audit details.city = import-press-batch 가 `ministry.replace(/청$/,"")` 로 기록(노원구청→노원구).
+// stale 노쇼 감지용 — 이 목록에 없는 프록시 도시는 collector 가 완전히 죽어도(audit 0) 경보 사각.
+//
+// 2026-06-09 — 하드코딩 10개 목록을 PLAYWRIGHT_CITY_REGISTRY 파생으로 전환. registry 가
+//   runner 단일 출처(= RUNNER_CITIES, 3곳 동기화를 registry-sync.test 가 보증)라, 도시 추가 때마다
+//   여기 동기화를 빠뜨려 생기던 노쇼 사각지대(예: 6/8 평택·양천)를 근본 차단. 새 도시는 자동 편입.
 const PROXY_LOCAL_PRESS_CITIES = [
-  "노원구",
-  "동래구",
-  "부산진구",
-  "금정구",
-  "사상구",
-  "김포시",
-  "성남시",
-  "천안시",
-  "안산시",
-  "창원특례시",
+  ...new Set(
+    Object.values(PLAYWRIGHT_CITY_REGISTRY).map((c) =>
+      c.ministry.replace(/청$/, ""),
+    ),
+  ),
 ];
 
 export type LocalPressCityStat = {
