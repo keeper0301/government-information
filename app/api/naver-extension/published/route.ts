@@ -11,6 +11,8 @@ import { logPublishAudit, pickAuditDetails, type AuditSkipReason } from "@/lib/n
 import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
 
 export const dynamic = "force-dynamic";
+// safeKeyEqual(node:crypto) 사용 — Edge runtime 미지원이므로 명시.
+export const runtime = "nodejs";
 export const maxDuration = 10;
 
 type Body = {

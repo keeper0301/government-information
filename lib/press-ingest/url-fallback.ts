@@ -94,13 +94,19 @@ export type ResolveApplyUrlResult = {
  *  4. 광역 도청 매핑 url
  *  5. source_url (최후 — 항상 채워짐)
  *
- * 1번은 화이트리스트 미적용 (LLM 이 신중하게 추출한 직접 신청 url 신뢰).
+ * 1번은 LLM 직접 응답이되, 본문은 신뢰 불가 외부 데이터(프롬프트 인젝션·환각 위험)
+ *   라 정부 도메인 화이트리스트를 통과한 경우에만 신뢰 (코드리뷰 P1 2026-06-08).
+ *   비정부 url 은 Layer 2 이하(화이트리스트 강제)로 강등해 악성·광고 url 자동 등록 차단.
  * 2~3번은 화이트리스트 강제 (광고·외부 사이트 차단).
  * 4~5번은 안전 도메인.
  */
 export function resolveApplyUrl(input: ResolveApplyUrlInput): ResolveApplyUrlResult {
-  // Layer 1 — LLM 직접 응답 신뢰
-  if (input.llmApplyUrl && /^https?:\/\//i.test(input.llmApplyUrl)) {
+  // Layer 1 — LLM 직접 응답. 단, 정부 도메인 화이트리스트 통과 시에만 신뢰.
+  if (
+    input.llmApplyUrl &&
+    /^https?:\/\//i.test(input.llmApplyUrl) &&
+    isPublicDomain(input.llmApplyUrl)
+  ) {
     return { url: input.llmApplyUrl, source: "llm" };
   }
 

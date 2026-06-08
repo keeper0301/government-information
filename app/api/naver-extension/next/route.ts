@@ -13,6 +13,8 @@ import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
 import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
 
 export const dynamic = "force-dynamic";
+// safeKeyEqual(node:crypto) 사용 — Edge runtime 미지원이므로 명시.
+export const runtime = "nodejs";
 export const maxDuration = 10;
 
 export async function GET(request: Request) {

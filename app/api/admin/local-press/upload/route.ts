@@ -13,8 +13,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PC_RUNNER_CFGS } from "@/lib/scraping/local-press/_pc_runner_cfgs";
 import { processProvidedHtml } from "@/lib/scraping/local-press/_factory";
 import { logAdminAction } from "@/lib/admin-actions";
+import { safeKeyEqual } from "@/lib/safe-key-equal";
 
 export const dynamic = "force-dynamic";
+// safeKeyEqual(node:crypto) 사용 — Edge runtime 미지원이므로 명시.
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // PC runner upload body — 2 round 분기:
@@ -32,8 +35,9 @@ export async function POST(req: Request) {
   if (!secret) {
     return NextResponse.json({ error: "PC_RUNNER_SECRET 미설정" }, { status: 500 });
   }
+  // 상수시간 비교 (타이밍 공격 방어, 코드리뷰 P2 2026-06-08).
   const auth = req.headers.get("authorization") || "";
-  if (auth !== `Bearer ${secret}`) {
+  if (!safeKeyEqual(auth, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

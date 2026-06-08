@@ -15,7 +15,7 @@ import {
 } from "@/lib/region/district-extractor";
 import { PROVINCES } from "@/lib/regions";
 // 4 layer apply_url fallback — autoConfirm 단계에서 기존 pending 도 자동 채움.
-import { resolveApplyUrl } from "./url-fallback";
+import { resolveApplyUrl, isPublicDomain } from "./url-fallback";
 // Spec 1 — 학습된 tier_floor 조회 (env > DB > 'high' default)
 import { getCurrentTierFloor } from "./auto-confirm-settings";
 
@@ -614,6 +614,13 @@ export async function autoConfirmPendingPressCandidates({
     }
     let applyUrl = row.classified_payload?.apply_url ?? null;
 
+    // 보안 (코드리뷰 P1 2026-06-08): 기존 apply_url 이 정부 도메인 화이트리스트
+    // 밖이면(legacy 후보 방어) 신뢰하지 않고 null 로 강등해 fallback chain 으로
+    // 재해결한다. LLM 이 본문(신뢰 불가 외부 데이터)에서 뽑은 악성·광고 url 차단.
+    if (applyUrl && !isPublicDomain(applyUrl)) {
+      applyUrl = null;
+    }
+
     // apply_url 없으면 4 layer fallback 적용 + classified_payload jsonb update.
     // confirmPressCandidate 가 candidate fetch 시 갱신된 payload 를 쓰므로 INSERT payload 의
     // apply_url 도 새 url 로 채워짐.
@@ -628,6 +635,13 @@ export async function autoConfirmPendingPressCandidates({
           slug: row.news_posts.slug,
         }),
       });
+      // 보안 (코드리뷰 P1 #5 2026-06-08): 최후 fallback(source_url=keepioo 자체
+      // 뉴스 URL)으로만 채워지면 '신청하기'가 자기참조가 되므로 자동 confirm 하지
+      // 않고 pending 유지(사장님이 /admin/press-ingest 에서 수동 검토).
+      if (fallback.source === "source_url") {
+        result.skipped_no_url += 1;
+        continue;
+      }
       applyUrl = fallback.url;
 
       const updatedPayload: ClassifyResult = {

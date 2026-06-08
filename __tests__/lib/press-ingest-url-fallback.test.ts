@@ -93,8 +93,23 @@ describe("resolveProvinceFallback — 광역 도청 매핑", () => {
 });
 
 describe("resolveApplyUrl — 4 layer fallback chain", () => {
-  it("Layer 1 — LLM apply_url 그대로 사용 (화이트리스트 미적용)", () => {
-    // LLM 이 직접 응답한 url 은 외부 사이트라도 신뢰 (LLM 이 신중하게 선택)
+  it("Layer 1 — LLM apply_url 이 정부 도메인이면 그대로 신뢰", () => {
+    const r = resolveApplyUrl({
+      llmApplyUrl: "https://www.seoul.go.kr/apply/123",
+      bodyUrls: [],
+      body: null,
+      ministry: "서울특별시",
+      sourceUrl: SOURCE_URL,
+    });
+    expect(r).toEqual({
+      url: "https://www.seoul.go.kr/apply/123",
+      source: "llm",
+    });
+  });
+
+  it("Layer 1 — LLM apply_url 이 비정부 도메인이면 강등 (코드리뷰 P1 2026-06-08)", () => {
+    // 본문은 신뢰 불가 외부 데이터(프롬프트 인젝션·환각) — 화이트리스트 밖 url 은
+    // 신뢰하지 않고 Layer 2 이하로 강등. 여기선 ministry 광역 매핑으로 떨어진다.
     const r = resolveApplyUrl({
       llmApplyUrl: "https://special.example.com/apply",
       bodyUrls: [],
@@ -103,8 +118,8 @@ describe("resolveApplyUrl — 4 layer fallback chain", () => {
       sourceUrl: SOURCE_URL,
     });
     expect(r).toEqual({
-      url: "https://special.example.com/apply",
-      source: "llm",
+      url: "https://www.seoul.go.kr",
+      source: "province",
     });
   });
 
