@@ -159,6 +159,12 @@ export function makeScraper({
   listSelectors = LIST_SELECTORS,
   onclickIdRe = null,
   detailPath = null,
+  // 상세 id 가 onclick 이 아니라 data 속성에 있는 경우(평택 data-req-get-p-idx).
+  // 지정 시 a(또는 row 내) 요소의 이 속성값을 id 로 detailPath 구성.
+  attrIdName = null,
+  // 제목이 셀 텍스트가 아니라 JS 함수 인자 등 텍스트 안에 있는 경우(양천
+  // wdigm_title('제목')). titleEl textContent 에 이 정규식 적용 → 캡처그룹1 을 제목으로.
+  titleTextRe = null,
   userAgent = USER_AGENT,
   bodyPickLongest = false,
   titleSelectors = TITLE_SELECTORS,
@@ -199,7 +205,7 @@ export function makeScraper({
       // listSelectors 는 정확한 selector 라 소량(구보 등 2~3건)도 신뢰 → >0 허용.
       const minRows = listSelectors === LIST_SELECTORS ? 3 : 0;
       const items = await page.evaluate(
-        ({ selectors, limit, minRows, onclickIdRe, detailPath, titleSelectors }) => {
+        ({ selectors, limit, minRows, onclickIdRe, detailPath, attrIdName, titleSelectors, titleTextRe }) => {
           let rows = [];
           let chosen = null;
           // 2026-05-22 debug — 각 selector 매칭 count 기록 (Actions log).
@@ -228,8 +234,17 @@ export function makeScraper({
           return rows
             .slice(0, limit)
             .map((row) => {
-              const a = row.querySelector("a[href]");
+              const a = row.querySelector("a[href]") || row.querySelector("a");
               let href = a ? a.getAttribute("href") : null;
+              // 속성 기반 상세: 상세 id 가 onclick 이 아니라 data 속성(평택
+              // data-req-get-p-idx)에 있는 경우. a 또는 row 내 해당 속성 요소에서 id 추출.
+              if (attrIdName && (!href || href.startsWith("#") || href.startsWith("javascript"))) {
+                const idEl =
+                  a && a.getAttribute(attrIdName) ? a : row.querySelector(`[${attrIdName}]`);
+                const idv = idEl ? idEl.getAttribute(attrIdName) : null;
+                if (!idv) return null;
+                href = detailPath.replace("{id}", idv);
+              }
               // onclick 기반 상세: ① a 의 href=#/javascript (성남 dataView)
               //   ② a 없고 button 등 [onclick] 요소 (천안 fn_search_detail). onclick 에서 id 추출 → URL.
               if (onclickIdRe) {
@@ -254,6 +269,11 @@ export function makeScraper({
               let title = titleEl
                 ? (titleEl.textContent || "").trim().replace(/\s+/g, " ")
                 : "";
+              // 제목이 JS 함수 인자 안에 있는 경우(양천 wdigm_title('제목')) — 정규식 추출.
+              if (titleTextRe) {
+                const tm = title.match(new RegExp(titleTextRe));
+                if (tm) title = (tm[1] || "").trim();
+              }
               // 제목 텍스트 요소가 없는 썸네일 카드(천안 등): img alt 에서 제목(" 이미지" 접미 제거)
               if (!title || title.length < 5) {
                 const img = row.querySelector("img[alt]");
@@ -289,7 +309,7 @@ export function makeScraper({
             })
             .filter(Boolean);
         },
-        { selectors: listSelectors, limit, minRows, onclickIdRe, detailPath, titleSelectors },
+        { selectors: listSelectors, limit, minRows, onclickIdRe, detailPath, attrIdName, titleSelectors, titleTextRe },
       );
 
       const out = [];

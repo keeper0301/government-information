@@ -166,6 +166,36 @@ export const scrapeSuwon = makeScraper({
   bodySelectors: [".p-table__content"],
 });
 
+// 2026-06-08 — 평택시. 정적 collector(pyeongtaek.ts)는 list/본문 다 정상이나 평택이
+// ASN 차단 site 라 Vercel cron 직접 fetch 0건 → GHA+icn1 프록시 경로로 이관.
+// 목록 ul.blog_list li, 상세 id 는 a[data-req-get-p-idx] 속성(onclick 아님).
+// 본문 .view_cont 안 .mT10 div(메타 제외). 정적 검증: list 10 + 본문 852자.
+export const scrapePyeongtaek = makeScraper({
+  cityName: "평택시",
+  listUrl: "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000",
+  listSelectors: ["ul.blog_list li", ".blog_list li"],
+  attrIdName: "data-req-get-p-idx",
+  detailPath: "view.do?bcIdx=90&mid=0402010000&idx={id}",
+  titleSelectors: ["span.list_title", ".list_title"],
+  bodySelectors: [".view_cont .mT10", ".view_cont"],
+});
+
+// 2026-06-08 — 양천구. 정적 collector(yangcheon.ts)는 list/본문 다 정상이나 ASN 차단
+// site 라 Vercel cron 0건 → GHA+icn1 경로 이관. 상세 onclick doBbsFView('290','id'),
+// 본문 .view_contents. 정적 검증: list 10 + 본문 2154자.
+export const scrapeYangcheon = makeScraper({
+  cityName: "양천구",
+  listUrl: "https://www.yangcheon.go.kr/site/yangcheon/ex/bbs/List.do?cbIdx=290",
+  // 범용 LIST_SELECTORS 는 사이드 위젯 ul(li[class*=item] 6개)을 먼저 잡아 0건이 됨.
+  // 게시판은 table.basic-list tbody tr (a 조상 체인 확인).
+  listSelectors: ["table.basic-list tbody tr", "table tbody tr"],
+  onclickIdRe: "doBbsFView\\('290','(\\d+)'",
+  detailPath: "View.do?cbIdx=290&bcIdx={id}",
+  // 제목이 a 안 document.write(wdigm_title('제목')) JS 인자 (렌더돼도 텍스트로 남음).
+  titleTextRe: "wdigm_title\\('([^']*)'\\)",
+  bodySelectors: [".view_contents"],
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -183,10 +213,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     gimpo: scrapeGimpo,
     yeongdo: scrapeYeongdo,
     suwon: scrapeSuwon,
+    pyeongtaek: scrapePyeongtaek,
+    yangcheon: scrapeYangcheon,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

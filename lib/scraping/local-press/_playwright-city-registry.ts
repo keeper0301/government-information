@@ -92,4 +92,16 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "수원특례시청",
     sourceCode: "local-press-suwon",
   },
+  // 2026-06-08 — 평택시·양천구. 정적 collector 는 정상이나 ASN 차단 site 라 Vercel cron
+  //   직접 fetch 0건 → GHA+icn1 프록시 경로 이관. 정적 _registry.ts 등록은 같은 커밋에 제거.
+  pyeongtaek: {
+    ministry: "평택시청",
+    sourceOutlet: "평택시청",
+    sourceCode: "local-press-pyeongtaek",
+  },
+  yangcheon: {
+    ministry: "양천구청",
+    sourceOutlet: "양천구청",
+    sourceCode: "local-press-yangcheon",
+  },
 };

@@ -23,7 +23,7 @@ import { scrapeHwaseongAndInsert } from "./hwaseong";
 import { scrapeJeonjuAndInsert } from "./jeonju";
 import { scrapeGimhaeAndInsert } from "./gimhae";
 import { scrapeNamyangjuAndInsert } from "./namyangju";
-import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
+// 2026-06-08 disabled (ASN 차단 → GHA+icn1 playwright 경로 이관): import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
 import { scrapePohangAndInsert } from "./pohang";
 import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
@@ -86,7 +86,7 @@ import { scrapeMapoAndInsert } from "./mapo";
 import { scrapeDobongAndInsert } from "./dobong";
 // 2026-05-31 — 서울 18 자치구 확장 패턴 5 (eGovFrame site/ex/bbs JS onclick): 관악·양천
 import { scrapeGwanakAndInsert } from "./gwanak";
-import { scrapeYangcheonAndInsert } from "./yangcheon";
+// 2026-06-08 disabled (ASN 차단 → GHA+icn1 playwright 경로 이관): import { scrapeYangcheonAndInsert } from "./yangcheon";
 // 2026-06-01 — 서울 자치구 확장 (SI selectBbsNttList — 송파·군포 동일 CMS): 성동·영등포·은평
 import { scrapeSeongdongAndInsert } from "./seongdong";
 import { scrapeYeongdeungpoAndInsert } from "./yeongdeungpo";
@@ -129,7 +129,7 @@ export type CityKey =
   | "jeonju"
   | "gimhae"
   | "namyangju"
-  | "pyeongtaek"
+  // | "pyeongtaek" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   | "pohang"
   | "iksan"
   | "daegu"
@@ -184,7 +184,7 @@ export type CityKey =
   | "dobong"
   // 2026-05-31 서울 18 자치구 확장 (패턴 5: eGovFrame site/ex/bbs JS onclick)
   | "gwanak"
-  | "yangcheon"
+  // | "yangcheon" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // 2026-06-01 서울 자치구 확장 (SI selectBbsNttList)
   | "seongdong"
   | "yeongdeungpo"
@@ -332,17 +332,9 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.nyj.go.kr/main/1058",
     fn: scrapeNamyangjuAndInsert,
   },
-  // 2026-06-07 재가동 — 5/25 "SPA" 는 오진단. 실제 원인은 factory alert 게이트가 평택
-  // 페이지 인라인 case '-2' 핸들러의 alert("잘못된 접근입니다.") 를 redirect 로 오탐해
-  // throw 한 false positive. factory size 게이트 fix 로 정적 fetch 정상(라이브 list 10건·본문 1175자).
-  {
-    key: "pyeongtaek",
-    city: "평택시",
-    ministry: "평택시청",
-    siteUrl:
-      "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000",
-    fn: scrapePyeongtaekAndInsert,
-  },
+  // 2026-06-08 — 평택시: ASN 차단 site 라 Vercel cron 직접 fetch 0건(정적 parse 자체는
+  //   정상). GHA+icn1 프록시 경로(playwright/lib/cities.mjs scrapePyeongtaek)로 이관.
+  //   dual-path 방지로 정적 등록 제거. (pyeongtaek.ts·테스트는 정적 parse 회귀 방어로 유지)
   {
     key: "pohang",
     city: "포항시",
@@ -785,14 +777,8 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.gwanak.go.kr/site/gwanak/ex/bbs/List.do?cbIdx=295",
     fn: scrapeGwanakAndInsert,
   },
-  {
-    key: "yangcheon",
-    city: "양천구",
-    ministry: "양천구청",
-    siteUrl:
-      "https://www.yangcheon.go.kr/site/yangcheon/ex/bbs/List.do?cbIdx=290",
-    fn: scrapeYangcheonAndInsert,
-  },
+  // 2026-06-08 — 양천구: ASN 차단 site 라 Vercel cron 0건(정적 parse 는 정상). GHA+icn1
+  //   경로(scrapeYangcheon)로 이관. dual-path 방지로 정적 등록 제거. yangcheon.ts·테스트 유지.
   // 2026-06-01 — 서울 자치구 확장 (SI 표준 selectBbsNttList, 송파·군포 동일 CMS).
   {
     key: "seongdong",
