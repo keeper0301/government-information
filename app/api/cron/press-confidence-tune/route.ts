@@ -27,26 +27,11 @@ import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import {
   getCurrentTierFloor,
   _resetTierFloorCache,
-  type TierFloor,
 } from "@/lib/press-ingest/auto-confirm-settings";
+import { decide, type Measurement } from "@/lib/press-ingest/tier-floor-decide";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-const TIER_RANK: Record<TierFloor, number> = { high: 3, mid: 2, low: 1 };
-const MID_REVOKE_DANGER_PCT = 5;
-const LOW_CONFIRM_EXPAND_PCT = 50;
-const MIN_MID_DECIDED = 10;
-const MIN_LOW_DECIDED = 5;
-
-type Measurement = {
-  midRevokedCount: number;
-  midDecidedCount: number;
-  midRevokeRatePct: number;
-  lowConfirmedCount: number;
-  lowDecidedCount: number;
-  lowConfirmRatePct: number;
-};
 
 // 7일 데이터 측정
 async function measure(): Promise<Measurement> {
@@ -101,68 +86,8 @@ async function measure(): Promise<Measurement> {
   };
 }
 
-// 적극 방향 1단계 cap. 보수 방향은 즉시 변경.
-function stepTowards(current: TierFloor, target: TierFloor): TierFloor {
-  if (TIER_RANK[target] >= TIER_RANK[current]) {
-    // 보수적 방향 (또는 동일) — 즉시 변경
-    return target;
-  }
-  // 적극적 방향 (high→mid, mid→low) — 1단계만
-  const stepRank = TIER_RANK[current] - 1;
-  if (stepRank === 2) return "mid";
-  if (stepRank === 1) return "low";
-  return current;
-}
-
-function decide(current: TierFloor, m: Measurement): {
-  target: TierFloor;
-  next: TierFloor;
-  reason: string;
-  sufficient: boolean;
-} {
-  const sufficient =
-    m.midDecidedCount >= MIN_MID_DECIDED || m.lowDecidedCount >= MIN_LOW_DECIDED;
-
-  if (!sufficient) {
-    return {
-      target: current,
-      next: current,
-      reason: `데이터 부족 — mid_decided ${m.midDecidedCount} (<${MIN_MID_DECIDED}) AND low_decided ${m.lowDecidedCount} (<${MIN_LOW_DECIDED}). 현재 floor='${current}' 유지.`,
-      sufficient: false,
-    };
-  }
-
-  // 1순위: mid 회수율 > 5% → 'high' (안전 강화)
-  if (m.midDecidedCount >= MIN_MID_DECIDED && m.midRevokeRatePct > MID_REVOKE_DANGER_PCT) {
-    const next = stepTowards(current, "high");
-    return {
-      target: "high",
-      next,
-      reason: `mid 회수율 ${m.midRevokeRatePct}% (>${MID_REVOKE_DANGER_PCT}%) — high 안전 모드. ${current} → ${next}`,
-      sufficient: true,
-    };
-  }
-
-  // 2순위: low_confirm_rate > 50% → 'low' (확장, 1단계 cap)
-  if (m.lowDecidedCount >= MIN_LOW_DECIDED && m.lowConfirmRatePct > LOW_CONFIRM_EXPAND_PCT) {
-    const next = stepTowards(current, "low");
-    return {
-      target: "low",
-      next,
-      reason: `low confirm 비율 ${m.lowConfirmRatePct}% (>${LOW_CONFIRM_EXPAND_PCT}%) — low 확장. ${current} → ${next} (1단계 cap)`,
-      sufficient: true,
-    };
-  }
-
-  // 3순위: 그 외 → 'mid' (default 적극)
-  const next = stepTowards(current, "mid");
-  return {
-    target: "mid",
-    next,
-    reason: `mid 회수율 ${m.midRevokeRatePct}% (안전) + low confirm ${m.lowConfirmRatePct}% (확장 부족) — mid default. ${current} → ${next}`,
-    sufficient: true,
-  };
-}
+// decide()·stepTowards()·상수는 lib/press-ingest/tier-floor-decide.ts 로 분리
+// (Next.js route export 제약 + 단위 테스트). measure() 는 DB 측정이라 여기 유지.
 
 async function run() {
   const admin = createAdminClient();
