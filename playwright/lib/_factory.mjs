@@ -173,6 +173,9 @@ export function makeScraper({
   // 무거운 동적 wrapper 페이지(의정부 contents.do)는 icn1 프록시 경유 시 기본 45s 를
   // 넘길 수 있어 목록 goto timeout 을 도시별로 늘린다(미지정 시 기본 LIST_TIMEOUT).
   listTimeout = null,
+  // 무거운 wrapper 가 domcontentloaded 도 못 도달하는 경우 'commit'(초기 응답 즉시)로 진행
+  // 후 게시판 ajax 를 waitForSelector 로 기다린다(의정부). 미지정 시 기본 NAV_WAIT.
+  navWait = null,
   userAgent = USER_AGENT,
   bodyPickLongest = false,
   titleSelectors = TITLE_SELECTORS,
@@ -193,7 +196,7 @@ export function makeScraper({
     });
 
     try {
-      await page.goto(listUrl, { waitUntil: NAV_WAIT, timeout: listTimeout || LIST_TIMEOUT });
+      await page.goto(listUrl, { waitUntil: navWait || NAV_WAIT, timeout: listTimeout || LIST_TIMEOUT });
       // 프록시 모드(domcontentloaded)는 JS 렌더 목록(천안 .item--bodo 등)을 위해 고정 대기.
       // probe-city 가 waitForTimeout(1500)으로 잡은 것과 동일 — waitForSelector 만으론 미렌더.
       if (USE_PROXY) await page.waitForTimeout(2500);

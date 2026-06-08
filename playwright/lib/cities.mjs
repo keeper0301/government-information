@@ -363,8 +363,10 @@ export const scrapeUijeongbu = makeScraper({
   // prefix 는 titleTextRe 로 제거.
   titleSelectors: ["span.blog_tit", ".blog_tit"],
   titleTextRe: "^\\[[^\\]]+\\]\\s*(.+)$",
-  // contents.do 동적 wrapper 라 icn1 프록시 경유 시 기본 45s 초과 → 90s.
-  listTimeout: 90000,
+  // contents.do 동적 wrapper 가 icn1 프록시로 무겁고 불안정 → commit(초기 응답 즉시)으로
+  // 진행 후 div.bod_blog ajax 를 waitForSelector 로 대기. timeout 120s 마진.
+  navWait: "commit",
+  listTimeout: 120000,
 });
 
 // 2026-06-08 — 광주남구: 이관 불가 확정. board.es 본문이 raw·DOM·ajax 어디에도 텍스트로 없음
