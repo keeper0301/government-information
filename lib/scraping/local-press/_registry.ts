@@ -37,7 +37,7 @@ import { scrapeChungnamAndInsert } from "./chungnam";
 import { scrapeChungbukAndInsert } from "./chungbuk";
 import { scrapeGangwonAndInsert } from "./gangwon";
 import { scrapeJejuAndInsert } from "./jeju";
-import { scrapeGangnamAndInsert } from "./gangnam";
+// 2026-06-08 disabled (본문 JS 렌더 → GHA+icn1 playwright 경로 이관): import { scrapeGangnamAndInsert } from "./gangnam";
 // 2026-05-29 disabled (본문 elusive → playwright PC 러너로 이관): import { scrapeNowonAndInsert } from "./nowon";
 import { scrapeSongpaAndInsert } from "./songpa";
 import { scrapeAnyangAndInsert } from "./anyang";
@@ -90,7 +90,7 @@ import { scrapeGwanakAndInsert } from "./gwanak";
 // 2026-06-01 — 서울 자치구 확장 (SI selectBbsNttList — 송파·군포 동일 CMS): 성동·영등포·은평
 import { scrapeSeongdongAndInsert } from "./seongdong";
 import { scrapeYeongdeungpoAndInsert } from "./yeongdeungpo";
-import { scrapeEunpyeongAndInsert } from "./eunpyeong";
+// 2026-06-08 disabled (본문 JS 렌더 → GHA+icn1 playwright 경로 이관): import { scrapeEunpyeongAndInsert } from "./eunpyeong";
 // 2026-06-01 — 서대문구 구정뉴스 (EUC-KR 사이트, factory encoding opt-in + goView GET).
 import { scrapeSeodaemunAndInsert } from "./seodaemun";
 // 2026-06-01 — 금천구 보도자료 (SI 표준, bbsNo=8. 메인 메뉴 150151 은 영상 갤러리라 회피).
@@ -143,7 +143,7 @@ export type CityKey =
   | "chungbuk"
   | "gangwon"
   | "jeju"
-  | "gangnam"
+  // | "gangnam" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // | "nowon" — 2026-05-29 disabled (→ playwright PC 러너)
   | "songpa"
   | "anyang"
@@ -188,7 +188,7 @@ export type CityKey =
   // 2026-06-01 서울 자치구 확장 (SI selectBbsNttList)
   | "seongdong"
   | "yeongdeungpo"
-  | "eunpyeong"
+  // | "eunpyeong" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // 2026-06-01 서대문구 (EUC-KR 구정뉴스 goView GET)
   | "seodaemun"
   // 2026-06-01 금천구 (SI 보도자료 bbsNo=8)
@@ -446,15 +446,9 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
     fn: scrapeJejuAndInsert,
   },
-  // 2026-05-22 — 광역시 자치구 확장 첫 시범 (강남구). 정적 fetch 가능 site.
-  {
-    key: "gangnam",
-    city: "강남구",
-    ministry: "강남구청",
-    siteUrl:
-      "https://www.gangnam.go.kr/board/B_000031/list.do?mid=ID01_031",
-    fn: scrapeGangnamAndInsert,
-  },
+  // 2026-06-08 — 강남구: 본문 한컴 웹에디터(div JS 렌더 빈칸, 평문은 hidden input value)
+  //   라 정적 cron 0건. GHA+icn1 경로(scrapeGangnam, bodyValueSelector)로 이관.
+  //   dual-path 방지로 정적 등록 제거. (gangnam.ts·테스트 유지)
   // 2026-05-29 disabled — 노원구 본문이 무클래스 span 조각이라 정적 추출 불가.
   // Playwright PC 러너(playwright/lib/cities.mjs scrapeNowon)로 이관. dual-path 방지.
   // {
@@ -794,13 +788,8 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.ydp.go.kr/www/selectBbsNttList.do?bbsNo=45&key=2868",
     fn: scrapeYeongdeungpoAndInsert,
   },
-  {
-    key: "eunpyeong",
-    city: "은평구",
-    ministry: "은평구청",
-    siteUrl: "https://www.ep.go.kr/www/selectBbsNttList.do?bbsNo=48&key=762",
-    fn: scrapeEunpyeongAndInsert,
-  },
+  // 2026-06-08 — 은평구: 본문 .p-table__content JS 렌더 → 정적 cron 0건. GHA+icn1
+  //   경로(scrapeEunpyeong)로 이관. dual-path 방지로 정적 등록 제거. (eunpyeong.ts·테스트 유지)
   // 2026-06-01 — 서대문구 구정뉴스. ⚠️ EUC-KR 사이트(factory encoding opt-in).
   // 보도자료 메뉴는 구보(PDF)라 부적합 → /news/news.do 개별 기사 board 사용.
   {

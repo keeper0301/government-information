@@ -165,6 +165,10 @@ export function makeScraper({
   // 제목이 셀 텍스트가 아니라 JS 함수 인자 등 텍스트 안에 있는 경우(양천
   // wdigm_title('제목')). titleEl textContent 에 이 정규식 적용 → 캡처그룹1 을 제목으로.
   titleTextRe = null,
+  // 본문이 div textContent 가 아니라 hidden input/textarea 의 value 에 서버 렌더되는
+  // 경우(강남 #content_main_text — 한컴 웹에디터라 div 는 JS 렌더 빈칸). 이 selector
+  // 요소의 value 를 본문으로 추출.
+  bodyValueSelector = null,
   userAgent = USER_AGENT,
   bodyPickLongest = false,
   titleSelectors = TITLE_SELECTORS,
@@ -341,7 +345,7 @@ export function makeScraper({
               .catch(() => {});
           }
           const body = await page.evaluate(
-            ({ selectors, pickLongest, minLen }) => {
+            ({ selectors, pickLongest, minLen, valueSelector }) => {
               // 본문 아닌 UI 라벨 제거(범용): 이미지 첨부 접근성 라벨 + 포토갤러리 슬라이더 컨트롤.
               const stripUiLabels = (t) =>
                 t
@@ -351,6 +355,15 @@ export function makeScraper({
                   .replace(/<\s*사진\s*설명\s*>/g, "")
                   .replace(/\s+/g, " ")
                   .trim();
+              // 본문이 input/textarea value 인 경우(강남 #content_main_text 서버 렌더 평문).
+              if (valueSelector) {
+                const el = document.querySelector(valueSelector);
+                const v = el ? el.value || el.getAttribute("value") || "" : "";
+                const t = stripUiLabels(
+                  v.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+                );
+                return t.length > minLen ? t.slice(0, 5000) : null;
+              }
               const textOf = (el) => {
                 // script/style 텍스트(inline JS 등)는 본문 아님 → 복제 후 제거.
                 const clone = el.cloneNode(true);
@@ -379,7 +392,7 @@ export function makeScraper({
               }
               return null;
             },
-            { selectors: bodySelectors, pickLongest: bodyPickLongest, minLen: BODY_MIN_LEN },
+            { selectors: bodySelectors, pickLongest: bodyPickLongest, minLen: BODY_MIN_LEN, valueSelector: bodyValueSelector },
           );
           if (body) out.push({ ...item, body });
         } catch (e) {

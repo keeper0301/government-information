@@ -196,6 +196,30 @@ export const scrapeYangcheon = makeScraper({
   bodySelectors: [".view_contents"],
 });
 
+// 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
+// .p-table__content 가 JS(한컴 웹에디터) 렌더라 정적 cron 0건 → Playwright 이관.
+// 렌더 후 본문 666자 검증.
+export const scrapeEunpyeong = makeScraper({
+  cityName: "은평구",
+  listUrl: "https://www.ep.go.kr/www/selectBbsNttList.do?bbsNo=48&key=762",
+  listSelectors: ["table.p-table tbody tr"],
+  bodySelectors: [".p-table__content"],
+});
+
+// 2026-06-08 — 성동구: 보류. SI list/렌더는 정상이나 웹 본문이 요약 100~155자(실제
+//   본문은 첨부 hwp/pdf)라 BODY_MIN_LEN 250 미달로 전 글 0건. GHA 이관해도 무의미.
+//   PDF 파싱(부산 unpdf 패턴) 별도 구현 필요.
+
+// 2026-06-08 — 강남구. 본문이 한컴 웹에디터(div 는 JS 렌더 빈칸)라 정적 cron 0건.
+// 평문 본문은 hidden input#content_main_text value 에 서버 렌더 → bodyValueSelector 로 추출.
+// 목록 tr.grid-item(table.table), 상세 view.do href 직접. 렌더 후 본문 706자 검증.
+export const scrapeGangnam = makeScraper({
+  cityName: "강남구",
+  listUrl: "https://www.gangnam.go.kr/board/B_000031/list.do?mid=ID01_031",
+  listSelectors: ["tr.grid-item", "table.table tbody tr"],
+  bodyValueSelector: "#content_main_text",
+});
+
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
   const target = (process.argv[2] || "changwon").toLowerCase();
@@ -215,10 +239,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     suwon: scrapeSuwon,
     pyeongtaek: scrapePyeongtaek,
     yangcheon: scrapeYangcheon,
+    eunpyeong: scrapeEunpyeong,
+    gangnam: scrapeGangnam,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

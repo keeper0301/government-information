@@ -104,4 +104,17 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "양천구청",
     sourceCode: "local-press-yangcheon",
   },
+  // 2026-06-08 — 은평구·강남구. 본문이 JS 렌더(은평 .p-table__content / 강남 한컴
+  //   웹에디터 → hidden input value)라 정적 cron 0건 → GHA+icn1 경로 이관. 정적 등록은
+  //   같은 커밋에 제거. (성동구는 웹 본문 요약 100~155자뿐이라 보류 — PDF 파싱 별도 필요)
+  eunpyeong: {
+    ministry: "은평구청",
+    sourceOutlet: "은평구청",
+    sourceCode: "local-press-eunpyeong",
+  },
+  gangnam: {
+    ministry: "강남구청",
+    sourceOutlet: "강남구청",
+    sourceCode: "local-press-gangnam",
+  },
 };
