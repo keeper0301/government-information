@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPayment, TossError } from "@/lib/toss";
+import { SUBSCRIPTION_PERIOD_MS } from "@/lib/subscription";
 
 type WebhookPayload = {
   eventType: string;
@@ -78,7 +79,35 @@ export async function POST(request: NextRequest) {
 
   // 5) subscription status 동기화
   // FAILED / CANCELED → past_due (사용자에게 재결제 유도)
-  // DONE → active 유지 (이미 charge 라우트에서 처리됨, webhook 은 보조)
+  // DONE → 사후 확정 활성화 (charge 라우트가 비-DONE 으로 past_due 보류한 건을 승격)
+
+  // DONE 분기 (코드리뷰 2026-06-08): charge 라우트는 DONE 일 때만 active 로 만들고
+  // 비-DONE(IN_PROGRESS 등) 은 past_due 로 보류한다. 그 결제가 사후에 토스에서 DONE 으로
+  // 확정되면 이 webhook 이 past_due 구독만 활성화한다.
+  // ⚠️ past_due 로 한정하는 이유: active/trialing 까지 건드리면 (a) 만료 직후 옛 orderId
+  //    의 DONE webhook 재전송이 30일을 거저 연장하거나 (b) 트라이얼이 유료로 덮어써진다.
+  //    charge 가 만든 비활성 상태는 past_due 뿐이므로 이 한정으로 의도를 정확히 표현한다.
+  if (realStatus === "DONE") {
+    const { data: history } = await admin
+      .from("payment_history")
+      .select("user_id")
+      .eq("order_id", orderId)
+      .maybeSingle();
+
+    if (history?.user_id) {
+      // .eq("status","past_due") 조건부 UPDATE 로 원자화 — 동시/재전송 시 한 번만 승격.
+      await admin
+        .from("subscriptions")
+        .update({
+          status: "active",
+          current_period_end: new Date(Date.now() + SUBSCRIPTION_PERIOD_MS).toISOString(),
+          trial_ends_at: null,
+        })
+        .eq("user_id", history.user_id)
+        .eq("status", "past_due");
+    }
+  }
+
   if (realStatus === "FAILED" || realStatus === "ABORTED" || realStatus === "CANCELED") {
     // user_id 찾기 (payment_history 에서)
     const { data: history } = await admin

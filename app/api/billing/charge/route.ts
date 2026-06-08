@@ -17,12 +17,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { chargeBilling, generateOrderId, TossError } from "@/lib/toss";
-import { TIER_PRICES, TIER_NAMES, type Tier } from "@/lib/subscription";
+import { TIER_PRICES, TIER_NAMES, SUBSCRIPTION_PERIOD_MS, type Tier } from "@/lib/subscription";
 import { sendReceiptEmail } from "@/lib/email";
 import { authorizePrivateCronRequest } from "@/lib/cron-auth";
 
-// 30일을 ms 로
-const PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+// 30일을 ms 로 (공용 상수 — charge·webhook 공유)
+const PERIOD_MS = SUBSCRIPTION_PERIOD_MS;
 
 // 결제 시도 가능한 상태 (동시성 락 풀기 위한 화이트리스트)
 const CHARGEABLE_STATUSES = ["trialing", "active", "past_due"] as const;
@@ -156,6 +156,22 @@ async function chargeOne(
       paid_at: payment.approvedAt,
       raw_response: payment as unknown as Record<string, unknown>,
     });
+
+    // 결제 확정 검증 (코드리뷰 P1 2026-06-08): HTTP 200 이어도 status 가 DONE 이
+    // 아니거나(IN_PROGRESS 등) 승인 금액이 청구액과 다르면 active 승격·기간 연장을
+    // 하지 않는다. 미확정 결제에 30일 유료 권한이 부여되는 매출 누수를 차단.
+    // 실제 DONE 은 webhook 의 DONE 분기에서 사후 활성화한다.
+    if (payment.status !== "DONE" || payment.totalAmount !== amount) {
+      await admin
+        .from("subscriptions")
+        .update({ status: "past_due" })
+        .eq("user_id", userId);
+      return {
+        userId,
+        ok: false,
+        reason: `결제 미확정 (status=${payment.status}, amount=${payment.totalAmount})`,
+      };
+    }
 
     // 락 해제 + 다음 결제일 갱신
     const newPeriodEnd = new Date(Date.now() + PERIOD_MS).toISOString();

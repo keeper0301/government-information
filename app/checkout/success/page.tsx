@@ -65,6 +65,17 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   if (!intent || (intent.tier !== "basic" && intent.tier !== "pro")) {
     return <ErrorState message="결제 의도를 확인할 수 없습니다. 요금제 페이지에서 다시 시작해주세요." />;
   }
+
+  // 결제 의도가 'pending' 일 때만 진행 (코드리뷰 P1 2026-06-08).
+  // checkout 은 신규/free/cancelled 사용자만 status='pending' 으로 기록한다. 이미
+  // active/trialing 인 사용자가 success 에 재진입(뒤로가기·카드 재등록)하면 기존 구독을
+  // 신규 7일 트라이얼로 덮어써(트라이얼 무한 재발급·결제주기 리셋) 어뷰징이 가능했다.
+  // 빌링키 발급 전에 차단해 좀비 빌링키도 남기지 않는다.
+  if (intent.status !== "pending") {
+    return (
+      <ErrorState message="이미 구독 중이거나 결제 의도가 만료되었어요. 내 구독 페이지에서 확인해주세요." />
+    );
+  }
   const tier = intent.tier as "basic" | "pro";
 
   // 4) 토스에서 영구 빌링키 발급
@@ -79,7 +90,9 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   // 5) subscriptions 행 갱신 (status=trialing + 7일 트라이얼)
   const trialEndsAtIso = calcTrialEndIso(TRIAL_DAYS);
 
-  const { error: dbError } = await admin
+  // status='pending' 조건부 UPDATE 로 원자화 (코드리뷰 P1 2026-06-08).
+  // 동시 요청·replay 시 두 번째 실행은 0건 매칭이 되어 트라이얼 재부여가 일어나지 않는다.
+  const { data: updatedRows, error: dbError } = await admin
     .from("subscriptions")
     .update({
       tier,
@@ -93,7 +106,9 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
       current_period_end: trialEndsAtIso,
       cancelled_at: null,
     })
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("status", "pending")
+    .select("user_id");
 
   if (dbError) {
     // DB 저장 실패 시: 토스에 좀비 빌링키 남지 않도록 정리 시도
@@ -107,6 +122,12 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
         extra={cleanupNote}
       />
     );
+  }
+
+  if (!updatedRows || updatedRows.length === 0) {
+    // 동시 요청/replay 로 pending 이 이미 소진됨 — 이 빌링키는 중복이라 정리
+    await deleteBillingKey(billingInfo.billingKey);
+    redirect("/mypage/billing?welcome=1");
   }
 
   // 6) POST-redirect-GET: success URL 흔적 지우고 mypage 로 이동

@@ -10,6 +10,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 티어 종류
 export type Tier = "free" | "basic" | "pro";
 
+// 결제 주기 30일(ms). charge·webhook 라우트가 공유하는 단일 소스
+// (양쪽에 중복 정의돼 한쪽만 바뀌면 만료일이 어긋나던 것을 통일, 코드리뷰 2026-06-08).
+export const SUBSCRIPTION_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+
 // 티어별 가격 (월 단위, 원)
 // 토스 결제 시 amount 로 사용
 export const TIER_PRICES: Record<Exclude<Tier, "free">, number> = {
