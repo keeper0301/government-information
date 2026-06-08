@@ -16,6 +16,7 @@ import {
   type PressNewsItem,
 } from "./_factory";
 import { parseSiAttachOrBody } from "./_si_attach_helper";
+import { nextDifferentIdIndex } from "./_date_window";
 
 const BASE_URL = "https://www.sd.go.kr";
 const LIST_URL = `${BASE_URL}/main/selectBbsNttList.do?bbsNo=188&key=1477`;
@@ -43,7 +44,12 @@ export function parseListPage(html: string): PressNewsItem[] {
       .replace(/새글$/, "")
       .trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
-    const slice = html.slice(m.index, m.index + 800);
+    // 날짜 추출 범위를 '다음 글(다른 nttNo) 등장 직전'까지로 제한해 인접 글 날짜
+    // 침범 차단 (코드리뷰 P1 2026-06-08).
+    const nextItemIdx = nextDifferentIdIndex(html, itemRe.lastIndex, "nttNo", seq);
+    const sliceEnd =
+      nextItemIdx === -1 ? m.index + 800 : Math.min(m.index + 800, nextItemIdx);
+    const slice = html.slice(m.index, sliceEnd);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     const publishedDate = dateMatch ? dateMatch[1].replace(/\./g, "-") : null;
     items.push({

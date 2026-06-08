@@ -22,6 +22,7 @@ import {
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
+import { nextDifferentIdIndex } from "./_date_window";
 
 export type BoardEsConfig = {
   baseUrl: string; // 예: "https://www.namgu.gwangju.kr"
@@ -126,7 +127,13 @@ export function createBoardEsCollector(cfg: BoardEsConfig) {
           ? decodeBasicEntities(m[2]).trim()
           : cleanBoardEsInnerTitle(m[2]);
       if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
-      const slice = html.slice(m.index, m.index + 1500);
+      // 날짜 추출 범위를 '다음 글(다른 list_no) 등장 직전'까지로 제한해 인접 글
+      // 날짜 침범을 차단 (코드리뷰 P1 2026-06-08). 고정 1500자 윈도우는 행 간격이
+      // 좁으면 다음 글 영역까지 먹어 옆 글의 날짜를 잘못 가져왔다.
+      const nextItemIdx = nextDifferentIdIndex(html, itemRe.lastIndex, "list_no", seq);
+      const sliceEnd =
+        nextItemIdx === -1 ? m.index + 1500 : Math.min(m.index + 1500, nextItemIdx);
+      const slice = html.slice(m.index, sliceEnd);
       const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
       const publishedDate = dateMatch
         ? dateMatch[1].replace(/\//g, "-")

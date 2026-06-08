@@ -21,6 +21,7 @@ import {
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
+import { nextDifferentIdIndex } from "./_date_window";
 
 export type BbsMsgDetailConfig = {
   baseUrl: string; // 예: "https://www.namdong.go.kr"
@@ -95,7 +96,12 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
         m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " "),
       ).trim();
       if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
-      const slice = html.slice(m.index, m.index + 1500);
+      // 날짜 추출 범위를 '다음 글(다른 msg_seq) 등장 직전'까지로 제한해 인접 글
+      // 날짜 침범 차단 (코드리뷰 P1 2026-06-08).
+      const nextItemIdx = nextDifferentIdIndex(html, itemRe.lastIndex, "msg_seq", seq);
+      const sliceEnd =
+        nextItemIdx === -1 ? m.index + 1500 : Math.min(m.index + 1500, nextItemIdx);
+      const slice = html.slice(m.index, sliceEnd);
       const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
       const publishedDate = dateMatch
         ? dateMatch[1].replace(/\./g, "-")
