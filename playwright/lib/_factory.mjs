@@ -170,6 +170,9 @@ export function makeScraper({
   // 경우(강남 #content_main_text — 한컴 웹에디터라 div 는 JS 렌더 빈칸). 이 selector
   // 요소의 value 를 본문으로 추출.
   bodyValueSelector = null,
+  // 무거운 동적 wrapper 페이지(의정부 contents.do)는 icn1 프록시 경유 시 기본 45s 를
+  // 넘길 수 있어 목록 goto timeout 을 도시별로 늘린다(미지정 시 기본 LIST_TIMEOUT).
+  listTimeout = null,
   userAgent = USER_AGENT,
   bodyPickLongest = false,
   titleSelectors = TITLE_SELECTORS,
@@ -190,7 +193,7 @@ export function makeScraper({
     });
 
     try {
-      await page.goto(listUrl, { waitUntil: NAV_WAIT, timeout: LIST_TIMEOUT });
+      await page.goto(listUrl, { waitUntil: NAV_WAIT, timeout: listTimeout || LIST_TIMEOUT });
       // 프록시 모드(domcontentloaded)는 JS 렌더 목록(천안 .item--bodo 등)을 위해 고정 대기.
       // probe-city 가 waitForTimeout(1500)으로 잡은 것과 동일 — waitForSelector 만으론 미렌더.
       if (USE_PROXY) await page.waitForTimeout(2500);

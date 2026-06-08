@@ -359,6 +359,8 @@ export const scrapeUijeongbu = makeScraper({
   onclickIdRe: "boardView\\([^)]*?'(\\d{4,})'",
   detailPath: "bbs/view.do?bIdx={id}&mId=0301020000&ptIdx=1709",
   bodySelectors: [".view_cont", ".board_view", ".bbs_view", ".p-view__content", ".view_content"],
+  // contents.do 동적 wrapper 라 icn1 프록시 경유 시 기본 45s 초과 → 90s.
+  listTimeout: 90000,
 });
 
 // 2026-06-08 — 광주남구: 이관 불가 확정. board.es 본문이 raw·DOM·ajax 어디에도 텍스트로 없음
