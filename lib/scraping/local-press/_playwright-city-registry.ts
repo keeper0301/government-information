@@ -150,4 +150,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "남동구청",
     sourceCode: "local-press-namdong",
   },
+  // 2026-06-08 — 의정부시. ASN 차단 + 보도자료가 contents.do 동적 게시판 → GHA+icn1 이관
+  //   (makeScraper, onclick boardView bIdx). 행 selector div.bod_blog ul li 발굴.
+  uijeongbu: {
+    ministry: "의정부시청",
+    sourceOutlet: "의정부시청",
+    sourceCode: "local-press-uijeongbu",
+  },
 };

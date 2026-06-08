@@ -348,8 +348,21 @@ export const scrapeNamdongIncheon = makeScraper({
   bodySelectors: [".board_view"],
 });
 
-// 2026-06-08 — 의정부시: 보류. contents.do 동적 게시판 + 행 링크 비표준(view.do 아님).
-//   광주남구: board.es 본문 비표준 스킨(tb_contents 없음). 둘 다 본문 selector 발굴 추가 필요.
+// 2026-06-08 — 의정부시. ASN 차단 + 사이트 개편으로 보도자료가 contents.do?mId=0301020000
+//   동적 게시판(내부 bbs/list.do ajax). list.do 직접은 메인페이지 0건이라 contents.do 를 listUrl 로.
+//   목록 div.bod_blog ul li, 상세 onclick boardView('portal','listForm','코드','Y','bIdx',...).
+//   본문 view_cont 류. (행 selector 발굴 완료)
+export const scrapeUijeongbu = makeScraper({
+  cityName: "의정부시",
+  listUrl: "https://www.ui4u.go.kr/portal/contents.do?mId=0301020000",
+  listSelectors: ["div.bod_blog ul li", ".bod_blog li"],
+  onclickIdRe: "boardView\\([^)]*?'(\\d{4,})'",
+  detailPath: "bbs/view.do?bIdx={id}&mId=0301020000&ptIdx=1709",
+  bodySelectors: [".view_cont", ".board_view", ".bbs_view", ".p-view__content", ".view_content"],
+});
+
+// 2026-06-08 — 광주남구: 이관 불가 확정. board.es 본문이 raw·DOM·ajax 어디에도 텍스트로 없음
+//   (8가지 발굴 실패, POST/세션/암호화 또는 이미지·첨부 위주 추정). 더 파지 말 것.
 
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -377,6 +390,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     seongbuk: scrapeSeongbuk,
     jeju: scrapeJeju,
     namdong_incheon: scrapeNamdongIncheon,
+    uijeongbu: scrapeUijeongbu,
   };
   const fn = map[target];
   if (!fn) {

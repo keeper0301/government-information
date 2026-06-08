@@ -47,9 +47,9 @@ describe("Playwright proxy 도시 city key 3-source 동기화", () => {
     ...collectorsBlock.matchAll(/key:\s*"([a-z_]+)"/g),
   ].map((m) => m[1]);
 
-  it("workflow yml 에 22 키 정확히 정의 (2026-06-08 +인천남동 우회 이관)", () => {
-    expect(workflowKeys.length).toBe(22);
-    expect(new Set(workflowKeys).size).toBe(22); // 중복 0
+  it("workflow yml 에 23 키 정확히 정의 (2026-06-08 +의정부 우회 이관)", () => {
+    expect(workflowKeys.length).toBe(23);
+    expect(new Set(workflowKeys).size).toBe(23); // 중복 0
   });
 
   it("route.ts 와 workflow yml 의 키 집합 일치", () => {
