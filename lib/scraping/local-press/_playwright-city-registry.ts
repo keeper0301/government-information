@@ -124,4 +124,16 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "성동구청",
     sourceCode: "local-press-seongdong",
   },
+  // 2026-06-08 — 동대문·성북. 성동과 동일 SI 첨부(전문이 hwp/pdf 첨부에만) + ASN 차단 →
+  //   GHA+icn1 경로 makeSiAttachScraper 재사용. 정적 등록 제거.
+  dongdaemun: {
+    ministry: "동대문구청",
+    sourceOutlet: "동대문구청",
+    sourceCode: "local-press-dongdaemun",
+  },
+  seongbuk: {
+    ministry: "성북구청",
+    sourceOutlet: "성북구청",
+    sourceCode: "local-press-seongbuk",
+  },
 };

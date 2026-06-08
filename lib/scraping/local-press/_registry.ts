@@ -101,12 +101,12 @@ import { scrapeGangseoAndInsert } from "./gangseo";
 import { scrapeJongnoAndInsert } from "./jongno";
 // 2026-06-01 — 구로·동대문 보도자료 (SI 표준. 메인 빈 shell → /www/index.do 가 실제 콘텐츠).
 import { scrapeGuroAndInsert } from "./guro";
-import { scrapeDongdaemunAndInsert } from "./dongdaemun";
+// 2026-06-08 disabled (SI 첨부 본문 → GHA+icn1 playwright 경로 이관): import { scrapeDongdaemunAndInsert } from "./dongdaemun";
 // 2026-06-01 — 서초(eGovFrame site/ex/bbs cbIdx=61)·서울 중구(content.do cmsid=14390).
 import { scrapeSeochoAndInsert } from "./seocho";
 import { scrapeJungguSeoulAndInsert } from "./junggu_seoul";
 // 2026-06-01 — 성북구 보도자료 (SI 표준 bbsNo=46. 메인 빈 shell → /www/index.do).
-import { scrapeSeongbukAndInsert } from "./seongbuk";
+// 2026-06-08 disabled (SI 첨부 본문 → GHA+icn1 playwright 경로 이관): import { scrapeSeongbukAndInsert } from "./seongbuk";
 // 2026-06-01 — 강동구 보도자료 (newportal CMS, /web/newportal/press/{id} 정적).
 import { scrapeGangdongAndInsert } from "./gangdong";
 // 2026-06-01 — 대전 서구 보도자료 (eGovFrame bbs, fn_search_detail nttId GET).
@@ -199,12 +199,12 @@ export type CityKey =
   | "jongno"
   // 2026-06-01 구로·동대문 (SI selectBbsNttList)
   | "guro"
-  | "dongdaemun"
+  // | "dongdaemun" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // 2026-06-01 서초(site/ex/bbs)·서울 중구(content.do)
   | "seocho"
   | "junggu_seoul"
   // 2026-06-01 성북구 (SI selectBbsNttList bbsNo=46)
-  | "seongbuk"
+  // | "seongbuk" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // 2026-06-01 강동구 (newportal /web/newportal/press)
   | "gangdong"
   // 2026-06-01 대전 서구 (eGovFrame bbs fn_search_detail)
@@ -828,14 +828,8 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.guro.go.kr/www/selectBbsNttList.do?bbsNo=665&key=1793",
     fn: scrapeGuroAndInsert,
   },
-  // 2026-06-01 — 동대문구 보도자료. SI 표준 bbsNo=39 (짧은 bbsNo 종결자 가드).
-  {
-    key: "dongdaemun",
-    city: "동대문구",
-    ministry: "동대문구청",
-    siteUrl: "https://www.ddm.go.kr/www/selectBbsNttList.do?bbsNo=39&key=199",
-    fn: scrapeDongdaemunAndInsert,
-  },
+  // 2026-06-08 — 동대문구: SI 첨부 본문(hwp/pdf) + ASN 차단 → 정적 cron 0건. GHA+icn1
+  //   경로(scrapeDongdaemun, makeSiAttachScraper)로 이관. dual-path 방지로 정적 등록 제거.
   // 2026-06-01 — 서초구 보도자료. eGovFrame site/ex/bbs (cbIdx=61, view_contents 본문).
   {
     key: "seocho",
@@ -852,14 +846,8 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.junggu.seoul.kr/content.do?cmsid=14390",
     fn: scrapeJungguSeoulAndInsert,
   },
-  // 2026-06-01 — 성북구 보도자료. SI 표준 bbsNo=46 (메인 빈 shell → /www/index.do).
-  {
-    key: "seongbuk",
-    city: "성북구",
-    ministry: "성북구청",
-    siteUrl: "https://www.sb.go.kr/www/selectBbsNttList.do?bbsNo=46&key=6356",
-    fn: scrapeSeongbukAndInsert,
-  },
+  // 2026-06-08 — 성북구: SI 첨부 본문(hwp/pdf) + ASN 차단 → 정적 cron 0건. GHA+icn1
+  //   경로(scrapeSeongbuk, makeSiAttachScraper)로 이관. dual-path 방지로 정적 등록 제거.
   // 2026-06-01 — 강동구 보도자료. newportal CMS (/web/newportal/press/{id} 정적,
   // input-table colspan=4 본문). 메인이 meta refresh 로 /newportal/ 이동.
   {

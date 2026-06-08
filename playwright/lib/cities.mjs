@@ -234,55 +234,82 @@ export const scrapeEunpyeong = makeScraper({
   bodySelectors: [".p-table__content"],
 });
 
-// 2026-06-08 — 성동구. 웹 본문 셀은 요약 100~155자, 전문은 hwp 첨부에만(ASN 차단이라
-//   정적 cron 0건). makeScraper(textContent) 로 안 되므로 별도 scraper: SI list 파싱 +
-//   첨부 hwp 다운로드(icn1 프록시) → @ohah hwp 파싱. 로컬 검증 본문 1381자.
+// 2026-06-08 — SI 첨부 본문 자치구 공용 팩토리(성동·동대문·성북). 웹 본문 셀은 요약
+//   100~155자, 전문은 hwp/pdf 첨부에만(ASN 차단이라 정적 cron 0건). makeScraper(textContent)
+//   로 안 되므로 별도 scraper: SI list 파싱 + 첨부 다운로드(icn1 프록시) → @ohah/unpdf 파싱.
+//   base/bbsNo/key 만 다름. 짧은 bbsNo(39·46) prefix 충돌은 종결자 (?:&|") 로 차단.
 //   runner 의 fn({limit}) 인터페이스 동일(items 반환).
-export async function scrapeSeongdong({ limit = 10 } = {}) {
-  const base = "https://www.sd.go.kr/main/";
-  const listBuf = await fetchBinViaProxy(
-    `${base}selectBbsNttList.do?bbsNo=188&key=1477`,
-  );
-  if (!listBuf) return [];
-  const html = Buffer.from(listBuf).toString("utf8");
-  // SI list anchor: selectBbsNttView.do?bbsNo=188...nttNo=N + 제목(태그 안)
-  const re =
-    /<a[^>]*href="[^"]*selectBbsNttView\.do\?(?=[^"]*bbsNo=188)[^"]*?nttNo=(\d+)[^"]*"[^>]*>([\s\S]{0,900}?)<\/a>/g;
-  const items = [];
-  const seen = new Set();
-  let m;
-  while ((m = re.exec(html)) !== null && items.length < limit) {
-    const seq = m[1];
-    if (seen.has(seq)) continue;
-    seen.add(seq);
-    const title = m[2]
-      .replace(/<span[^>]*p-icon[^>]*>[\s\S]*?<\/span>/gi, "") // "NEW" 새글 배지 span 제거
-      .replace(/<[^>]+>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
-    const slice = html.slice(m.index, m.index + 800);
-    const dm = slice.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
-    items.push({
-      title,
-      publishedDate: dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null,
-      sourceUrl: `${base}selectBbsNttView.do?bbsNo=188&nttNo=${seq}&key=1477`,
-    });
-  }
-  const out = [];
-  for (const it of items) {
-    try {
-      const dBuf = await fetchBinViaProxy(it.sourceUrl);
-      if (!dBuf) continue;
-      const dHtml = Buffer.from(dBuf).toString("utf8");
-      const body = await fetchSiAttachBody(dHtml, base, fetchBinViaProxy);
-      if (body) out.push({ ...it, body });
-    } catch {
-      // skip
+function makeSiAttachScraper({ listUrl, detailDir, bbsNo, key }) {
+  return async function scrape({ limit = 10 } = {}) {
+    const listBuf = await fetchBinViaProxy(listUrl);
+    if (!listBuf) return [];
+    const html = Buffer.from(listBuf).toString("utf8");
+    const re = new RegExp(
+      `<a[^>]*href="[^"]*selectBbsNttView\\.do\\?(?=[^"]*bbsNo=${bbsNo}(?:&|"))[^"]*?nttNo=(\\d+)[^"]*"[^>]*>([\\s\\S]{0,900}?)<\\/a>`,
+      "g",
+    );
+    const items = [];
+    const seen = new Set();
+    let m;
+    while ((m = re.exec(html)) !== null && items.length < limit) {
+      const seq = m[1];
+      if (seen.has(seq)) continue;
+      seen.add(seq);
+      const title = m[2]
+        .replace(/<span[^>]*p-icon[^>]*>[\s\S]*?<\/span>/gi, "") // "NEW" 새글 배지 span 제거
+        .replace(/<[^>]+>/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
+      // SI anchor 가 href 파라미터 체인으로 길어(716자+) 날짜 td 가 anchor+1315 위치라
+      // 2000 buffer 필요(동대문·성북). 800 이면 날짜 누락 → published_at=now() fallback.
+      const slice = html.slice(m.index, m.index + 2000);
+      const dm = slice.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
+      items.push({
+        title,
+        publishedDate: dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null,
+        sourceUrl: `${detailDir}selectBbsNttView.do?bbsNo=${bbsNo}&nttNo=${seq}&key=${key}`,
+      });
     }
-  }
-  return out;
+    const out = [];
+    for (const it of items) {
+      try {
+        const dBuf = await fetchBinViaProxy(it.sourceUrl);
+        if (!dBuf) continue;
+        const dHtml = Buffer.from(dBuf).toString("utf8");
+        const body = await fetchSiAttachBody(dHtml, detailDir, fetchBinViaProxy);
+        if (body) out.push({ ...it, body });
+      } catch {
+        // skip
+      }
+    }
+    return out;
+  };
 }
+
+// 성동(hwp 첨부, 로컬 검증 1381자) — 2026-06-08
+export const scrapeSeongdong = makeSiAttachScraper({
+  listUrl: "https://www.sd.go.kr/main/selectBbsNttList.do?bbsNo=188&key=1477",
+  detailDir: "https://www.sd.go.kr/main/",
+  bbsNo: 188,
+  key: 1477,
+});
+
+// 동대문(SI 첨부, bbsNo=39 짧음) — 2026-06-08
+export const scrapeDongdaemun = makeSiAttachScraper({
+  listUrl: "https://www.ddm.go.kr/www/selectBbsNttList.do?bbsNo=39&key=199",
+  detailDir: "https://www.ddm.go.kr/www/",
+  bbsNo: 39,
+  key: 199,
+});
+
+// 성북(SI 첨부, bbsNo=46 짧음) — 2026-06-08
+export const scrapeSeongbuk = makeSiAttachScraper({
+  listUrl: "https://www.sb.go.kr/www/selectBbsNttList.do?bbsNo=46&key=6356",
+  detailDir: "https://www.sb.go.kr/www/",
+  bbsNo: 46,
+  key: 6356,
+});
 
 // 2026-06-08 — 강남구. 본문이 한컴 웹에디터(div 는 JS 렌더 빈칸)라 정적 cron 0건.
 // 평문 본문은 hidden input#content_main_text value 에 서버 렌더 → bodyValueSelector 로 추출.
@@ -316,10 +343,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     eunpyeong: scrapeEunpyeong,
     gangnam: scrapeGangnam,
     seongdong: scrapeSeongdong,
+    dongdaemun: scrapeDongdaemun,
+    seongbuk: scrapeSeongbuk,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam|seongdong`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam|seongdong|dongdaemun|seongbuk`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });
