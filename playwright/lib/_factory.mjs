@@ -239,7 +239,14 @@ export function makeScraper({
           return rows
             .slice(0, limit)
             .map((row) => {
-              const a = row.querySelector("a[href]") || row.querySelector("a");
+              // 파일다운로드(bbsMsgFileDown 등) 링크는 상세가 아니므로 제외하고 첫 본문 링크 선택
+              // (인천 남동구: row 첫 a 가 fileDown 이라 detail goto 가 다운로드로 실패하던 사고).
+              const a =
+                [...row.querySelectorAll("a[href]")].find(
+                  (x) => !/ileDown|download/i.test(x.getAttribute("href") || ""),
+                ) ||
+                row.querySelector("a[href]") ||
+                row.querySelector("a");
               let href = a ? a.getAttribute("href") : null;
               // 속성 기반 상세: 상세 id 가 onclick 이 아니라 data 속성(평택
               // data-req-get-p-idx)에 있는 경우. a 또는 row 내 해당 속성 요소에서 id 추출.

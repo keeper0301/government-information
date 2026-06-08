@@ -332,9 +332,24 @@ export const scrapeJeju = makeScraper({
   bodySelectors: [".article-contents"],
 });
 
-// 2026-06-08 — 의정부시: 보류. ASN 차단(한국 IP 200)이나 게시판 list 가 networkidle+2s
-//   후에도 미렌더(view.do?bIdx 게시판 0건, 정적 HTML 도 familysite 드롭만). list.do URL/
-//   ajax·iframe 구조 추가 진단 필요. board.es 2개(namgu·namdong)와 함께 다음 batch.
+// 2026-06-08 — 인천 남동구. bbsMsg CMS(report.jsp) + ASN 차단(prod 403, 한국 IP 200).
+//   목록 ul.generalList li + 제목 p.title, 상세 bbsMsgDetail.do?msg_seq= href 직접,
+//   본문 .board_view. 로컬 검증 983자. GHA+icn1 경로 이관.
+export const scrapeNamdongIncheon = makeScraper({
+  cityName: "인천 남동구",
+  listUrl: "https://www.namdong.go.kr/main/news/report.jsp",
+  // generalList 는 80행(첨부·메뉴 혼재, fileDown 만 가진 li 포함) → bbsMsgDetail 링크를
+  // 가진 게시판 글 li 만 :has 로 한정.
+  listSelectors: [
+    "ul.generalList li:has(a[href*='bbsMsgDetail'])",
+    "div.board_list li:has(a[href*='bbsMsgDetail'])",
+  ],
+  titleSelectors: ["p.title", ".title"],
+  bodySelectors: [".board_view"],
+});
+
+// 2026-06-08 — 의정부시: 보류. contents.do 동적 게시판 + 행 링크 비표준(view.do 아님).
+//   광주남구: board.es 본문 비표준 스킨(tb_contents 없음). 둘 다 본문 selector 발굴 추가 필요.
 
 // manual test — `node lib/cities.mjs changwon` (또는 seongnam/ansan/cheonan)
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -361,6 +376,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     dongdaemun: scrapeDongdaemun,
     seongbuk: scrapeSeongbuk,
     jeju: scrapeJeju,
+    namdong_incheon: scrapeNamdongIncheon,
   };
   const fn = map[target];
   if (!fn) {

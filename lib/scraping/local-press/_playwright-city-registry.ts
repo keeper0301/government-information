@@ -143,4 +143,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "제주특별자치도청",
     sourceCode: "local-press-jeju",
   },
+  // 2026-06-08 — 인천 남동구. bbsMsg CMS + ASN 차단(prod 403) → GHA+icn1 이관(makeScraper,
+  //   :has 로 게시판 글 한정). ⚠️ key(namdong_incheon)와 sourceCode(local-press-namdong) 다름.
+  namdong_incheon: {
+    ministry: "남동구청",
+    sourceOutlet: "남동구청",
+    sourceCode: "local-press-namdong",
+  },
 };
