@@ -10,16 +10,17 @@
 
 import { chromium } from "playwright";
 
-const USER_AGENT =
+// 첨부(hwp/pdf) 다운로드 등 makeScraper 밖 scraper(성동 SI 첨부)도 재사용하도록 export.
+export const USER_AGENT =
   "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
 
 // ── icn1 프록시 우회 (해외 GitHub Actions 전용) ──────────────────
 // KEEPIOO_USE_PROXY 가 설정되면, 정부 도메인(.kr) 요청을 Vercel icn1(한국 IP)
 // 프록시로 우회시킨다. 한국 IP(사장님 PC)에서는 이 변수를 안 켜므로 직접 접속.
 // 이미지·CSS·폰트·미디어는 차단(본문 텍스트만 필요 → 프록시 부하·렌더 지연 제거).
-const USE_PROXY = !!process.env.KEEPIOO_USE_PROXY;
-const PROXY_URL = (process.env.KEEPIOO_API_URL || "") + "/api/internal/icn1-fetch";
-const PROXY_KEY = process.env.KEEPIOO_API_KEY || "";
+export const USE_PROXY = !!process.env.KEEPIOO_USE_PROXY;
+export const PROXY_URL = (process.env.KEEPIOO_API_URL || "") + "/api/internal/icn1-fetch";
+export const PROXY_KEY = process.env.KEEPIOO_API_KEY || "";
 // 프록시 경유는 매 요청이 Vercel 왕복이라 느림 → networkidle 대신 domcontentloaded.
 const NAV_WAIT = USE_PROXY ? "domcontentloaded" : "networkidle";
 const LIST_TIMEOUT = USE_PROXY ? 45000 : 30000;

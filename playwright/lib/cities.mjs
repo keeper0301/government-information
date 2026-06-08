@@ -7,7 +7,35 @@
 // 다음 batch 추가 시 (안양·부천·부평·진주 등) 여기 한 줄만 추가.
 // ============================================================
 
-import { makeScraper } from "./_factory.mjs";
+import {
+  makeScraper,
+  USE_PROXY,
+  PROXY_URL,
+  PROXY_KEY,
+  USER_AGENT,
+} from "./_factory.mjs";
+import { fetchSiAttachBody } from "./_si_attach.mjs";
+
+// SI 첨부(hwp/pdf) 본문용 바이너리 fetch — GHA 는 icn1 프록시 경유(한국 IP),
+// 로컬(사장님 PC)은 직접. url → Uint8Array | null.
+async function fetchBinViaProxy(url) {
+  if (USE_PROXY) {
+    const r = await fetch(PROXY_URL, {
+      method: "POST",
+      headers: { "X-API-Key": PROXY_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ url, method: "GET", headers: { "User-Agent": USER_AGENT } }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return new Uint8Array(Buffer.from(d.bodyB64, "base64"));
+  }
+  const r = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!r.ok) return null;
+  return new Uint8Array(await r.arrayBuffer());
+}
 
 // 2026-05-30 — 창원특례시. 목록 li.li1, 상세는 ?gcode=..&idx=N&amode=view query href
 // (onclick 아님 → makeScraper 가 그대로 추적). 본문 div.substance.
@@ -206,9 +234,55 @@ export const scrapeEunpyeong = makeScraper({
   bodySelectors: [".p-table__content"],
 });
 
-// 2026-06-08 — 성동구: 보류. SI list/렌더는 정상이나 웹 본문이 요약 100~155자(실제
-//   본문은 첨부 hwp/pdf)라 BODY_MIN_LEN 250 미달로 전 글 0건. GHA 이관해도 무의미.
-//   PDF 파싱(부산 unpdf 패턴) 별도 구현 필요.
+// 2026-06-08 — 성동구. 웹 본문 셀은 요약 100~155자, 전문은 hwp 첨부에만(ASN 차단이라
+//   정적 cron 0건). makeScraper(textContent) 로 안 되므로 별도 scraper: SI list 파싱 +
+//   첨부 hwp 다운로드(icn1 프록시) → @ohah hwp 파싱. 로컬 검증 본문 1381자.
+//   runner 의 fn({limit}) 인터페이스 동일(items 반환).
+export async function scrapeSeongdong({ limit = 10 } = {}) {
+  const base = "https://www.sd.go.kr/main/";
+  const listBuf = await fetchBinViaProxy(
+    `${base}selectBbsNttList.do?bbsNo=188&key=1477`,
+  );
+  if (!listBuf) return [];
+  const html = Buffer.from(listBuf).toString("utf8");
+  // SI list anchor: selectBbsNttView.do?bbsNo=188...nttNo=N + 제목(태그 안)
+  const re =
+    /<a[^>]*href="[^"]*selectBbsNttView\.do\?(?=[^"]*bbsNo=188)[^"]*?nttNo=(\d+)[^"]*"[^>]*>([\s\S]{0,900}?)<\/a>/g;
+  const items = [];
+  const seen = new Set();
+  let m;
+  while ((m = re.exec(html)) !== null && items.length < limit) {
+    const seq = m[1];
+    if (seen.has(seq)) continue;
+    seen.add(seq);
+    const title = m[2]
+      .replace(/<span[^>]*p-icon[^>]*>[\s\S]*?<\/span>/gi, "") // "NEW" 새글 배지 span 제거
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
+    const slice = html.slice(m.index, m.index + 800);
+    const dm = slice.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
+    items.push({
+      title,
+      publishedDate: dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null,
+      sourceUrl: `${base}selectBbsNttView.do?bbsNo=188&nttNo=${seq}&key=1477`,
+    });
+  }
+  const out = [];
+  for (const it of items) {
+    try {
+      const dBuf = await fetchBinViaProxy(it.sourceUrl);
+      if (!dBuf) continue;
+      const dHtml = Buffer.from(dBuf).toString("utf8");
+      const body = await fetchSiAttachBody(dHtml, base, fetchBinViaProxy);
+      if (body) out.push({ ...it, body });
+    } catch {
+      // skip
+    }
+  }
+  return out;
+}
 
 // 2026-06-08 — 강남구. 본문이 한컴 웹에디터(div 는 JS 렌더 빈칸)라 정적 cron 0건.
 // 평문 본문은 hidden input#content_main_text value 에 서버 렌더 → bodyValueSelector 로 추출.
@@ -241,10 +315,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     yangcheon: scrapeYangcheon,
     eunpyeong: scrapeEunpyeong,
     gangnam: scrapeGangnam,
+    seongdong: scrapeSeongdong,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam|seongdong`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

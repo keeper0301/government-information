@@ -88,7 +88,7 @@ import { scrapeDobongAndInsert } from "./dobong";
 import { scrapeGwanakAndInsert } from "./gwanak";
 // 2026-06-08 disabled (ASN 차단 → GHA+icn1 playwright 경로 이관): import { scrapeYangcheonAndInsert } from "./yangcheon";
 // 2026-06-01 — 서울 자치구 확장 (SI selectBbsNttList — 송파·군포 동일 CMS): 성동·영등포·은평
-import { scrapeSeongdongAndInsert } from "./seongdong";
+// 2026-06-08 disabled (hwp 첨부 본문 → GHA+icn1 playwright 경로 이관): import { scrapeSeongdongAndInsert } from "./seongdong";
 import { scrapeYeongdeungpoAndInsert } from "./yeongdeungpo";
 // 2026-06-08 disabled (본문 JS 렌더 → GHA+icn1 playwright 경로 이관): import { scrapeEunpyeongAndInsert } from "./eunpyeong";
 // 2026-06-01 — 서대문구 구정뉴스 (EUC-KR 사이트, factory encoding opt-in + goView GET).
@@ -186,7 +186,7 @@ export type CityKey =
   | "gwanak"
   // | "yangcheon" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // 2026-06-01 서울 자치구 확장 (SI selectBbsNttList)
-  | "seongdong"
+  // | "seongdong" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   | "yeongdeungpo"
   // | "eunpyeong" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   // 2026-06-01 서대문구 (EUC-KR 구정뉴스 goView GET)
@@ -774,13 +774,9 @@ export const CITY_REGISTRY: CityEntry[] = [
   // 2026-06-08 — 양천구: ASN 차단 site 라 Vercel cron 0건(정적 parse 는 정상). GHA+icn1
   //   경로(scrapeYangcheon)로 이관. dual-path 방지로 정적 등록 제거. yangcheon.ts·테스트 유지.
   // 2026-06-01 — 서울 자치구 확장 (SI 표준 selectBbsNttList, 송파·군포 동일 CMS).
-  {
-    key: "seongdong",
-    city: "성동구",
-    ministry: "성동구청",
-    siteUrl: "https://www.sd.go.kr/main/selectBbsNttList.do?bbsNo=188&key=1477",
-    fn: scrapeSeongdongAndInsert,
-  },
+  // 2026-06-08 — 성동구: 본문 전문이 hwp 첨부에만(ASN 차단) → 정적 cron 0건. GHA+icn1
+  //   경로(scrapeSeongdong, _si_attach.mjs hwp 파싱)로 이관. dual-path 방지로 정적 등록 제거.
+  //   (seongdong.ts·테스트 유지 — 정적 parse 회귀 방어)
   {
     key: "yeongdeungpo",
     city: "영등포구",

@@ -16,6 +16,8 @@
     "run:all": "node runner.mjs"
   },
   "dependencies": {
-    "playwright": "^1.48.0"
+    "@ohah/hwpjs": "^0.1.0-rc.10",
+    "playwright": "^1.48.0",
+    "unpdf": "^1.6.2"
   }
 }

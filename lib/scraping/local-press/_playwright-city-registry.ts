@@ -117,4 +117,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "강남구청",
     sourceCode: "local-press-gangnam",
   },
+  // 2026-06-08 — 성동구. 본문 전문이 hwp 첨부에만(웹 셀 요약 100~155자) + ASN 차단 →
+  //   GHA+icn1 경로에서 첨부 hwp 다운로드+@ohah 파싱(cities.mjs scrapeSeongdong). 정적 등록 제거.
+  seongdong: {
+    ministry: "성동구청",
+    sourceOutlet: "성동구청",
+    sourceCode: "local-press-seongdong",
+  },
 };
