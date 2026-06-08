@@ -359,6 +359,10 @@ export const scrapeUijeongbu = makeScraper({
   onclickIdRe: "boardView\\([^)]*?'(\\d{4,})'",
   detailPath: "bbs/view.do?bIdx={id}&mId=0301020000&ptIdx=1709",
   bodySelectors: [".view_cont", ".board_view", ".bbs_view", ".p-view__content", ".view_content"],
+  // 제목: span.blog_tit (li 전체 a 는 본문요약까지 포함해 제목 오염). [행사]/[환경] 카테고리
+  // prefix 는 titleTextRe 로 제거.
+  titleSelectors: ["span.blog_tit", ".blog_tit"],
+  titleTextRe: "^\\[[^\\]]+\\]\\s*(.+)$",
   // contents.do 동적 wrapper 라 icn1 프록시 경유 시 기본 45s 초과 → 90s.
   listTimeout: 90000,
 });
