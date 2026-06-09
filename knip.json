@@ -10,8 +10,18 @@
   ],
   "ignore": [
     "__tests__/**/*fixtures*.ts",
+    "components/ui/**",
     "lib/scraping/local-press/nowon.ts",
-    "lib/scraping/local-press/uijeongbu.ts"
+    "lib/scraping/local-press/uijeongbu.ts",
+    "lib/scraping/local-press/pyeongtaek.ts",
+    "lib/scraping/local-press/yangcheon.ts",
+    "lib/scraping/local-press/eunpyeong.ts",
+    "lib/scraping/local-press/gangnam.ts",
+    "lib/scraping/local-press/seongdong.ts",
+    "lib/scraping/local-press/dongdaemun.ts",
+    "lib/scraping/local-press/seongbuk.ts",
+    "lib/scraping/local-press/jeju.ts",
+    "lib/scraping/local-press/namdong_incheon.ts"
   ],
   "ignoreDependencies": [
     "server-only"
