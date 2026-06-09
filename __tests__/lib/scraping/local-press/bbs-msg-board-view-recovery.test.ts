@@ -89,6 +89,29 @@ describe("bbsMsgDetail board_view 복구", () => {
     expect(body).not.toContain("다음글");
     expect(body).not.toContain("다른 보도자료 제목");
   });
+
+  // 2026-06-10 — 본문이 "첨부파일 [파일명]" 목록 뒤에 오는 site(강화·인천동구·인천서구).
+  // 2026-06-03 의 "첨부파일 이후 전부 cut" 이 이런 site 본문을 통째로 날려 insert 0 회귀했음.
+  // 첨부 라벨+파일명만 surgical 제거해 본문(앞·뒤 무관) 보존하는지 방어.
+  it("본문이 첨부파일 목록 뒤에 오는 site(강화형)도 본문 보존", async () => {
+    const detail = `<html><body>${PAD}
+      <div class="general_board board_view">
+        <div class="tit">강화군, 폭염 대응 종합대책 본격 가동</div>
+        <span>작성자 안전총괄과 작성일 2026년 6월 8일 조회수 58</span>
+        첨부파일 강화군_폭염_대응_종합대책.hwp 폭염저감시설_사진(1).jpg
+        <p>${LONG}</p>
+        <ul class="other_con"><li>이전글 강화군, 다른 보도자료 제목입니다</li></ul>
+      </div></body></html>`;
+    const { scrapeAndInsert, admin, insert } = setup(detail);
+    const r = await scrapeAndInsert(admin as never, 1);
+    expect(r).toMatchObject({ fetched: 1, inserted: 1 });
+    const body = ((insert.mock.calls as unknown[][])[0]?.[0] as { body?: string })
+      ?.body ?? "";
+    expect(body).toContain("전문 심리치료를 지원"); // 첨부 뒤 본문 보존(핵심)
+    expect(body).not.toContain(".hwp"); // 첨부 파일명 제거
+    expect(body).not.toContain("폭염저감시설_사진"); // 첨부 파일명 제거
+    expect(body).not.toContain("이전글"); // 네비 제거
+  });
 });
 
 // 2026-06-02 — list anchor 의 bcd·msg_seq query 순서가 사이트마다 다름(ongjin=bcd 먼저).

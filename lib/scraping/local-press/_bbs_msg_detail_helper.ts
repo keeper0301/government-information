@@ -136,13 +136,20 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
           .replace(/\s+/g, " ")
           .trim(),
       )
-        // 끝에 남는 네비/첨부 잔재 cut (other_con 밖·fallback 경로 대비).
-        // 이전글/다음글/첨부파일/파일크기([NMByte]) 이후 전부 제거 + 끝 "목록" 제거.
+        // 2026-06-10 — "첨부파일 [파일명…]" 목록만 surgical 제거. 이전(2026-06-03)엔 첨부파일
+        // 이후 전부 cut 했으나, 본문이 첨부 목록 뒤에 오는 site(강화·인천동구·인천서구)는 본문
+        // 전체가 잘려 insert 0 회귀했음. 첨부 라벨+확장자 파일명 시퀀스만 제거해 본문 위치 무관.
         .replace(
-          /\s*(?:이전글|다음글|첨부파일|미리보기 목록|\[\s*[\d.]+\s*[KMG]?Byte\s*\]|\(\s*[\d.]+\s*[KMG]?Byte\s*\))[\s\S]*$/,
+          /첨부파일\s*(?:\S+\.(?:hwp|hwpx|pdf|jpe?g|png|gif|zip|xlsx?|docx?|pptx?|txt|gul|bmp|hwt)\b\s*)+/gi,
+          " ",
+        )
+        // 끝에 남는 네비/파일크기 잔재 cut (이전글/다음글/목록/[NMByte]). 첨부파일은 위에서 처리.
+        .replace(
+          /\s*(?:이전글|다음글|미리보기 목록|\[\s*[\d.]+\s*[KMG]?Byte\s*\]|\(\s*[\d.]+\s*[KMG]?Byte\s*\))[\s\S]*$/,
           "",
         )
         .replace(/\s*목록\s*$/, "")
+        .replace(/\s+/g, " ")
         .trim();
       if (/[가-힣]/.test(text) && text.length >= 50) return text.slice(0, 20000);
     }
