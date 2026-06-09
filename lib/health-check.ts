@@ -20,6 +20,8 @@ import {
   getCollectorDiagnoses,
   formatCollectorProblems,
   isProblemStatus,
+  getSustainedInsertStops,
+  formatInsertStops,
 } from "@/lib/monitoring/collector-health-diagnosis";
 
 export type HealthSignals = {
@@ -128,6 +130,14 @@ export type HealthSignals = {
    */
   localPressCollectorDetail: string;
   /**
+   * 2026-06-10 추가 — 회귀형 silent insert-stop collector 수. 목록은 꾸준히 가져오나
+   * (fetched>0 ≥3일) 최근 신규 insert 0 + 이전엔 작동(회귀). 본문 추출 silent fail /
+   * BODY_MIN_LEN 250 급감 감지. 동작구류 transient·저발행은 baseline 비교로 자동 제외.
+   */
+  localPressInsertStopped: number;
+  /** 2026-06-10 추가 — 위 insert-stop collector 의 도시·회귀 detail(텔레그램용). 없으면 "". */
+  localPressInsertStopDetail: string;
+  /**
    * 2026-05-30 추가 — 24h 안 null_date ≥5 누적된 시·군 수. factory date 추출
    * silent fallback (수집시각 = published_at) silent → audible. NewsArticle
    * schema 신뢰도 + 사용자 알림 "오늘 새 정책" 정확도 보호.
@@ -189,6 +199,7 @@ export type ThresholdAlert = {
     | "naver_publish_failure"
     | "local_press_stale"
     | "local_press_collector_broken"
+    | "local_press_insert_stop"
     | "local_press_null_date"
     | "news_ratio_high"
     | "adsense_ready_to_disable"
@@ -522,6 +533,11 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     isProblemStatus(d.status),
   ).length;
   const localPressCollectorDetail = formatCollectorProblems(collectorDiagnoses);
+  // 2026-06-10 — 회귀형 silent insert-stop(목록 OK·최근 신규 0·이전 작동). 본문 추출
+  // silent fail 조기 감지. baseline 비교라 transient(동작구)·저발행은 자동 제외.
+  const insertStops = await getSustainedInsertStops();
+  const localPressInsertStopped = insertStops.length;
+  const localPressInsertStopDetail = formatInsertStops(insertStops);
   // 2026-05-30 — 24h null_date ≥5 누적 시·군 (factory date 추출 collector 점검 신호).
   const localPressNullDateCities = await getHighNullDateCityCount(5, 24);
   // 2026-05-30 — news 비중 (외부 보도자료 대 keepioo 자체 자산).
@@ -582,6 +598,8 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     localPressStaleCities,
     localPressBrokenCollectors,
     localPressCollectorDetail,
+    localPressInsertStopped,
+    localPressInsertStopDetail,
     localPressNullDateCities,
     newsRatio,
     adsenseReadyToDisable,
@@ -847,6 +865,19 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       recommendation:
         s.localPressCollectorDetail ||
         "/admin/autonomous 자율 허브에서 collector 상태 확인",
+    });
+  }
+
+  // 2026-06-10 — 회귀형 silent insert-stop. 목록은 꾸준히 가져오나(fetched>0) 최근 신규
+  // insert 0 + 이전엔 작동(회귀). error 없는 silent 본문 추출 실패 / BODY_MIN_LEN 250 급감.
+  // baseline 비교라 동작구류 transient·저발행 collector 는 자동 제외(오탐 ↓). 1건만 떠도 알림.
+  if (s.localPressInsertStopped >= 1) {
+    alerts.push({
+      key: "local_press_insert_stop",
+      message: `지역뉴스 신규수집 끊김 ${s.localPressInsertStopped}건 (목록 OK·최근 신규 0·이전엔 작동=회귀).`,
+      recommendation:
+        s.localPressInsertStopDetail ||
+        "본문 추출 silent fail 의심 — 해당 사이트 본문 글자수·BODY_MIN_LEN 점검",
     });
   }
 

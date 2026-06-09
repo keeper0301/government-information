@@ -7,8 +7,11 @@ import {
   isProblemStatus,
   formatCollectorProblems,
   expectedCollectorsFromRegistry,
+  flagInsertStops,
+  formatInsertStops,
   type ScrapeAuditRow,
   type ExpectedCollector,
+  type CityInsertStat,
 } from "@/lib/monitoring/collector-health-diagnosis";
 
 // 테스트용 고정 expected (registry 전체에 의존하지 않도록).
@@ -101,6 +104,44 @@ describe("formatCollectorProblems", () => {
     const msg = formatCollectorProblems(result);
     expect(msg).toContain("마시");
     expect(msg).toContain("제안");
+  });
+});
+
+describe("flagInsertStops — 회귀형 silent insert-stop", () => {
+  const stats: CityInsertStat[] = [
+    // 강화군: 최근 0 + 활동 5일 + 이전 70 → 회귀(flag)
+    { city: "강화군", recentActiveDays: 5, recentInserted: 0, baselineInserted: 70 },
+    // 동작구: 최근에도 insert 4 → transient/정상(제외)
+    { city: "동작구", recentActiveDays: 5, recentInserted: 4, baselineInserted: 30 },
+    // 금정구: 최근 0 + 활동 5일 + 이전 0 → 원래 저발행/이관불가(제외, baseline 0)
+    { city: "금정구", recentActiveDays: 5, recentInserted: 0, baselineInserted: 0 },
+    // 짧은활동: 최근 0 + 활동 2일(<3) → 휴재 가능성, 미flag(목록 충분히 안 돔)
+    { city: "짧은시", recentActiveDays: 2, recentInserted: 0, baselineInserted: 50 },
+  ];
+  const flags = flagInsertStops(stats);
+
+  it("이전엔 작동·최근 0·활동≥3 = 회귀만 flag (강화군)", () => {
+    expect(flags.map((f) => f.city)).toEqual(["강화군"]);
+  });
+  it("최근에도 insert 있으면 제외 (동작구 transient)", () => {
+    expect(flags.find((f) => f.city === "동작구")).toBeUndefined();
+  });
+  it("baseline 0(원래 저발행/이관불가)은 제외 (금정구)", () => {
+    expect(flags.find((f) => f.city === "금정구")).toBeUndefined();
+  });
+  it("활동일 < minActiveDays 제외 (목록 안정성 부족)", () => {
+    expect(flags.find((f) => f.city === "짧은시")).toBeUndefined();
+  });
+  it("flag detail(이전 건수) 보존", () => {
+    expect(flags[0].baselineInserted).toBe(70);
+    expect(flags[0].recentActiveDays).toBe(5);
+  });
+
+  it("formatInsertStops: 0건 → 빈 문자열, 있으면 city 포함", () => {
+    expect(formatInsertStops([])).toBe("");
+    const msg = formatInsertStops(flags);
+    expect(msg).toContain("강화군");
+    expect(msg).toContain("회귀");
   });
 });
 

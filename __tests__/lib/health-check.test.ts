@@ -37,6 +37,9 @@ const BASE_SIGNALS: HealthSignals = {
   // 2026-06-09 — baseline 0 (collector 고장 없음, alert X). ≥1 케이스 별도 테스트.
   localPressBrokenCollectors: 0,
   localPressCollectorDetail: "",
+  // 2026-06-10 — baseline 0 (insert-stop 없음, alert X). ≥1 케이스 별도 테스트.
+  localPressInsertStopped: 0,
+  localPressInsertStopDetail: "",
   // 2026-05-30 — baseline 0 (silent fallback 없음, alert X). ≥1 케이스 별도 테스트.
   localPressNullDateCities: 0,
   // 2026-05-30 — baseline 0.3 (news 비중 정상, alert X). ≥0.6 케이스 별도 테스트.
@@ -151,6 +154,32 @@ describe("checkThresholds — collector 고장(자가치유 감지 확장)", () 
     expect(a).toBeDefined();
     expect(a?.message).toContain("2건");
     expect(a?.recommendation).toContain("의정부");
+  });
+
+  it("insert-stop 0건 → alert 없음", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      localPressInsertStopped: 0,
+    });
+    expect(
+      alerts.find((a) => a.key === "local_press_insert_stop"),
+    ).toBeUndefined();
+  });
+
+  it("insert-stop ≥1 → local_press_insert_stop alert + detail recommendation", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      localPressInsertStopped: 3,
+      localPressInsertStopDetail: "🔇 강화군 — 최근 5일 목록은 수집되나 신규 0",
+    });
+    const a = alerts.find((x) => x.key === "local_press_insert_stop");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("3건");
+    expect(a?.recommendation).toContain("강화군");
   });
 });
 

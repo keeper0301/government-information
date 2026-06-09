@@ -160,6 +160,112 @@ export async function getCollectorDiagnoses(
   return diagnoseCollectors(rows);
 }
 
+// ============================================================
+// 지속적 silent insert-stop 감지 (회귀 전용) — 2026-06-10
+// ============================================================
+// "목록은 가져오는데(fetched>0) 신규 insert 가 끊긴" collector. 단 동작구 교훈(단일
+// blip ≠ 고장) 반영해 **회귀(이전엔 됐는데 최근 끊김)만** 잡는다:
+//   recent(기본 5일) inserted=0 + 활동(fetched>0) ≥3일 + baseline(이전 14일) inserted>0.
+// → 동작구(최근에도 insert>0)·금정/광주남구(원래부터 0=저발행/이관불가)는 자동 제외(ignore 불요).
+// 본문 추출 silent fail(목록 OK·본문 <250 필터) 또는 BODY_MIN_LEN 250 예고된 급감 감지용.
+
+// city 별 recent/baseline 집계 (async fetcher 가 날짜로 분리해 채움).
+export type CityInsertStat = {
+  city: string;
+  recentActiveDays: number; // recent 창에서 fetched>0 였던 distinct 일수
+  recentInserted: number; // recent 창 insert 합
+  baselineInserted: number; // baseline 창 insert 합 (이전에 작동했는지)
+};
+
+export type InsertStopFlag = {
+  city: string;
+  recentActiveDays: number;
+  baselineInserted: number;
+};
+
+// 회귀형 insert-stop 만 flag (순수). minActiveDays 기본 3.
+export function flagInsertStops(
+  stats: CityInsertStat[],
+  { minActiveDays = 3 }: { minActiveDays?: number } = {},
+): InsertStopFlag[] {
+  return stats
+    .filter(
+      (s) =>
+        s.recentInserted === 0 && // 최근 신규 0
+        s.recentActiveDays >= minActiveDays && // 그래도 목록은 꾸준히 가져옴(list OK)
+        s.baselineInserted > 0, // 이전엔 작동(=회귀, 원래 0인 저발행/이관불가 제외)
+    )
+    .map((s) => ({
+      city: s.city,
+      recentActiveDays: s.recentActiveDays,
+      baselineInserted: s.baselineInserted,
+    }));
+}
+
+// audit 를 읽어 회귀형 insert-stop 반환 (DB read). recent/baseline 분리는 created_at age 로.
+export async function getSustainedInsertStops({
+  recentDays = 5,
+  baselineDays = 14,
+  minActiveDays = 3,
+}: { recentDays?: number; baselineDays?: number; minActiveDays?: number } = {}): Promise<
+  InsertStopFlag[]
+> {
+  const admin = createAdminClient();
+  const totalDays = recentDays + baselineDays;
+  const sinceMs = Date.now() - totalDays * 86_400_000;
+  const recentCutoffMs = Date.now() - recentDays * 86_400_000;
+  const { data } = await admin
+    .from("admin_actions")
+    .select("details, created_at")
+    .eq("action", "local_press_scrape")
+    .gte("created_at", new Date(sinceMs).toISOString());
+
+  // city → { recentInserted, baselineInserted, recentActiveDays(set) }
+  const agg = new Map<
+    string,
+    { recentInserted: number; baselineInserted: number; recentActiveDays: Set<string> }
+  >();
+  for (const row of (data ?? []) as { details: unknown; created_at: string }[]) {
+    const d = (row.details ?? {}) as Record<string, unknown>;
+    const city = String(d.city ?? "");
+    if (!city) continue;
+    const fetched = Number(d.fetched ?? 0);
+    const inserted = Number(d.inserted ?? 0);
+    const ts = new Date(row.created_at).getTime();
+    const cur =
+      agg.get(city) ??
+      { recentInserted: 0, baselineInserted: 0, recentActiveDays: new Set<string>() };
+    if (ts >= recentCutoffMs) {
+      cur.recentInserted += inserted;
+      if (fetched > 0) cur.recentActiveDays.add(row.created_at.slice(0, 10)); // UTC 일자 키(분리만 목적)
+    } else {
+      cur.baselineInserted += inserted;
+    }
+    agg.set(city, cur);
+  }
+
+  const stats: CityInsertStat[] = [...agg.entries()].map(([city, v]) => ({
+    city,
+    recentActiveDays: v.recentActiveDays.size,
+    recentInserted: v.recentInserted,
+    baselineInserted: v.baselineInserted,
+  }));
+  return flagInsertStops(stats, { minActiveDays });
+}
+
+// 회귀형 insert-stop 텔레그램 포맷. 없으면 "".
+export function formatInsertStops(flags: InsertStopFlag[]): string {
+  if (flags.length === 0) return "";
+  const lines = ["", `🔇 지역뉴스 신규수집 끊김 (${flags.length}건, 목록OK·신규0 지속):`];
+  for (const f of flags.slice(0, 8)) {
+    lines.push(
+      `  ${f.city} — 최근 ${f.recentActiveDays}일 목록은 수집되나 신규 0 (이전 ${f.baselineInserted}건 → 회귀).`,
+    );
+    lines.push("     본문 추출(<250자 필터)·사이트 본문구조·BODY_MIN_LEN 점검");
+  }
+  return lines.join("\n");
+}
+
 // 문제 collector 만 텔레그램/agent 보고용으로 포맷. 정상은 제외(noise ↓).
 export function formatCollectorProblems(diagnoses: CollectorDiagnosis[]): string {
   const problems = diagnoses.filter((d) => isProblemStatus(d.status));
