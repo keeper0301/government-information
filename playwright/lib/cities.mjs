@@ -122,10 +122,13 @@ export const scrapeBusanjin = makeScraper({
   bodySelectors: [".substan"],
 });
 
-// 2026-05-29 — 금정구. BBS_0000004 소식(현재 등록 URL 정상). 본문 td.contents (colspan).
+// 2026-05-29 — 금정구. 본문 td.contents (colspan).
+// 2026-06-10 — board 교정: BBS_0000004 는 공지/안내(거의 비활성, 최신 05-26→05-06→2021)
+//   오등록이었음. 진짜 보도자료는 BBS_0000005(거의 매일 발행: 청년·소상공인·복지 등). 홈
+//   index.geumj 섹션 매핑(공지사항=0004, 보도자료=0005)으로 확인. busanjin BBS_0000265→0000031 류.
 export const scrapeGeumjeong = makeScraper({
   cityName: "금정구",
-  listUrl: "https://www.geumjeong.go.kr/board/list.geumj?boardId=BBS_0000004",
+  listUrl: "https://www.geumjeong.go.kr/board/list.geumj?boardId=BBS_0000005",
   bodySelectors: ["td.contents", ".contents"],
 });
 
