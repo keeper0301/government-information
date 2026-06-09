@@ -22,6 +22,8 @@ import {
   isProblemStatus,
   getSustainedInsertStops,
   formatInsertStops,
+  getCadenceRegressions,
+  formatCadenceRegressions,
 } from "@/lib/monitoring/collector-health-diagnosis";
 
 export type HealthSignals = {
@@ -138,6 +140,14 @@ export type HealthSignals = {
   /** 2026-06-10 추가 — 위 insert-stop collector 의 도시·회귀 detail(텔레그램용). 없으면 "". */
   localPressInsertStopDetail: string;
   /**
+   * 2026-06-10 추가 — cron 완주 저하 collector 수. 실행빈도가 자기 baseline 대비 급락
+   * (예: GHA 2회/일 → 0.8회/일 = timeout 으로 뒷순서 누락). GitHub API 없이 audit run 수만으로
+   * cron 부분실패 감지. 2026-06-09 timeout(15→30) 같은 사고 영구 가드.
+   */
+  localPressCadenceDrops: number;
+  /** 2026-06-10 추가 — 위 cadence 급락 collector 도시·빈도 detail(텔레그램용). 없으면 "". */
+  localPressCadenceDetail: string;
+  /**
    * 2026-05-30 추가 — 24h 안 null_date ≥5 누적된 시·군 수. factory date 추출
    * silent fallback (수집시각 = published_at) silent → audible. NewsArticle
    * schema 신뢰도 + 사용자 알림 "오늘 새 정책" 정확도 보호.
@@ -200,6 +210,7 @@ export type ThresholdAlert = {
     | "local_press_stale"
     | "local_press_collector_broken"
     | "local_press_insert_stop"
+    | "local_press_cron_cadence"
     | "local_press_null_date"
     | "news_ratio_high"
     | "adsense_ready_to_disable"
@@ -538,6 +549,11 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const insertStops = await getSustainedInsertStops();
   const localPressInsertStopped = insertStops.length;
   const localPressInsertStopDetail = formatInsertStops(insertStops);
+  // 2026-06-10 — cron 완주(cadence) 저하. 실행빈도가 baseline 대비 급락(timeout/부분실패)
+  // 을 GitHub API 없이 audit run 수로 감지. baseline 비교라 cadence 다른 collector 도 대응.
+  const cadenceDrops = await getCadenceRegressions();
+  const localPressCadenceDrops = cadenceDrops.length;
+  const localPressCadenceDetail = formatCadenceRegressions(cadenceDrops);
   // 2026-05-30 — 24h null_date ≥5 누적 시·군 (factory date 추출 collector 점검 신호).
   const localPressNullDateCities = await getHighNullDateCityCount(5, 24);
   // 2026-05-30 — news 비중 (외부 보도자료 대 keepioo 자체 자산).
@@ -600,6 +616,8 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     localPressCollectorDetail,
     localPressInsertStopped,
     localPressInsertStopDetail,
+    localPressCadenceDrops,
+    localPressCadenceDetail,
     localPressNullDateCities,
     newsRatio,
     adsenseReadyToDisable,
@@ -878,6 +896,19 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       recommendation:
         s.localPressInsertStopDetail ||
         "본문 추출 silent fail 의심 — 해당 사이트 본문 글자수·BODY_MIN_LEN 점검",
+    });
+  }
+
+  // 2026-06-10 — cron 완주(cadence) 저하. 실행빈도가 baseline 대비 급락(GHA timeout 으로
+  // 뒷순서 도시 누락 등 부분실패). GitHub API 없이 audit run 수로 감지. 2026-06-09 timeout
+  // 사고(몇 주간 안 보였던) 영구 가드. baseline 비교라 신규/저빈도는 자동 제외, 1건만 떠도 알림.
+  if (s.localPressCadenceDrops >= 1) {
+    alerts.push({
+      key: "local_press_cron_cadence",
+      message: `지역뉴스 cron 완주 저하 ${s.localPressCadenceDrops}건 (실행빈도 baseline 대비 급락=timeout/부분실패 의심).`,
+      recommendation:
+        s.localPressCadenceDetail ||
+        "GHA local-press-proxy run cancelled 여부 + timeout-minutes 점검",
     });
   }
 

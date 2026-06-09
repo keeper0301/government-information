@@ -40,6 +40,9 @@ const BASE_SIGNALS: HealthSignals = {
   // 2026-06-10 — baseline 0 (insert-stop 없음, alert X). ≥1 케이스 별도 테스트.
   localPressInsertStopped: 0,
   localPressInsertStopDetail: "",
+  // 2026-06-10 — baseline 0 (cadence 급락 없음, alert X). ≥1 케이스 별도 테스트.
+  localPressCadenceDrops: 0,
+  localPressCadenceDetail: "",
   // 2026-05-30 — baseline 0 (silent fallback 없음, alert X). ≥1 케이스 별도 테스트.
   localPressNullDateCities: 0,
   // 2026-05-30 — baseline 0.3 (news 비중 정상, alert X). ≥0.6 케이스 별도 테스트.
@@ -180,6 +183,32 @@ describe("checkThresholds — collector 고장(자가치유 감지 확장)", () 
     expect(a).toBeDefined();
     expect(a?.message).toContain("3건");
     expect(a?.recommendation).toContain("강화군");
+  });
+
+  it("cadence 급락 0건 → alert 없음", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      localPressCadenceDrops: 0,
+    });
+    expect(
+      alerts.find((a) => a.key === "local_press_cron_cadence"),
+    ).toBeUndefined();
+  });
+
+  it("cadence 급락 ≥1 → local_press_cron_cadence alert + detail recommendation", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      localPressCadenceDrops: 2,
+      localPressCadenceDetail: "⏱ 의정부 — 최근 0.8회/일 (이전 2회/일 → 급락)",
+    });
+    const a = alerts.find((x) => x.key === "local_press_cron_cadence");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("2건");
+    expect(a?.recommendation).toContain("의정부");
   });
 });
 

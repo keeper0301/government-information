@@ -266,6 +266,113 @@ export function formatInsertStops(flags: InsertStopFlag[]): string {
   return lines.join("\n");
 }
 
+// ============================================================
+// cron 완주(cadence) 저하 감지 — 2026-06-10
+// ============================================================
+// keepioo 모니터링은 "무엇이 수집됐나(DB)"만 보고 "cron 이 끝까지 돌았나"는 안 봐서,
+// GHA timeout(15분 cancel)으로 뒷순서 도시가 몇 주간 누락된 게 안 보였음(2026-06-09 발견).
+// → GitHub API 없이 **audit run 수만으로** cron 완주를 감지: 각 collector 의 최근 실행
+// 빈도를 자기 baseline 과 비교해 급락(timeout/부분실패)을 잡는다. insert-stop 과 동일한
+// baseline 비교 패턴이라 cadence 가 다른 collector(GHA 2회/일 vs 정적 1회/일)도 자동 대응.
+
+export type CityCadence = {
+  city: string;
+  recentRuns: number;
+  recentDays: number;
+  baselineRuns: number;
+  baselineDays: number;
+};
+
+export type CadenceFlag = {
+  city: string;
+  recentPerDay: number;
+  baselinePerDay: number;
+};
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// 실행빈도 급락만 flag (순수). 이전 ≥minBaselinePerDay 회/일 운영하던 collector 가
+// 최근 baseline 의 maxDropRatio 배 미만으로 떨어지면 = cron 완주 저하(timeout/부분실패).
+export function flagCadenceRegressions(
+  stats: CityCadence[],
+  {
+    minBaselinePerDay = 1,
+    maxDropRatio = 0.5,
+  }: { minBaselinePerDay?: number; maxDropRatio?: number } = {},
+): CadenceFlag[] {
+  const out: CadenceFlag[] = [];
+  for (const s of stats) {
+    const recentPerDay = s.recentDays > 0 ? s.recentRuns / s.recentDays : 0;
+    const baselinePerDay = s.baselineDays > 0 ? s.baselineRuns / s.baselineDays : 0;
+    if (
+      baselinePerDay >= minBaselinePerDay && // 이전엔 꾸준히 돌던 collector(저빈도/신규 제외)
+      recentPerDay < baselinePerDay * maxDropRatio // 최근 빈도 절반 이하로 급락
+    ) {
+      out.push({
+        city: s.city,
+        recentPerDay: round2(recentPerDay),
+        baselinePerDay: round2(baselinePerDay),
+      });
+    }
+  }
+  return out;
+}
+
+// audit run 수를 읽어 cadence 급락 반환 (DB read). recent/baseline 은 created_at age 로 분리.
+export async function getCadenceRegressions({
+  recentDays = 3,
+  baselineDays = 11,
+  minBaselinePerDay = 1,
+  maxDropRatio = 0.5,
+}: {
+  recentDays?: number;
+  baselineDays?: number;
+  minBaselinePerDay?: number;
+  maxDropRatio?: number;
+} = {}): Promise<CadenceFlag[]> {
+  const admin = createAdminClient();
+  const totalDays = recentDays + baselineDays;
+  const sinceMs = Date.now() - totalDays * 86_400_000;
+  const recentCutoffMs = Date.now() - recentDays * 86_400_000;
+  const { data } = await admin
+    .from("admin_actions")
+    .select("details, created_at")
+    .eq("action", "local_press_scrape")
+    .gte("created_at", new Date(sinceMs).toISOString());
+
+  const agg = new Map<string, { recentRuns: number; baselineRuns: number }>();
+  for (const row of (data ?? []) as { details: unknown; created_at: string }[]) {
+    const city = String((row.details as Record<string, unknown>)?.city ?? "");
+    if (!city) continue;
+    const cur = agg.get(city) ?? { recentRuns: 0, baselineRuns: 0 };
+    if (new Date(row.created_at).getTime() >= recentCutoffMs) cur.recentRuns += 1;
+    else cur.baselineRuns += 1;
+    agg.set(city, cur);
+  }
+
+  const stats: CityCadence[] = [...agg.entries()].map(([city, v]) => ({
+    city,
+    recentRuns: v.recentRuns,
+    recentDays,
+    baselineRuns: v.baselineRuns,
+    baselineDays,
+  }));
+  return flagCadenceRegressions(stats, { minBaselinePerDay, maxDropRatio });
+}
+
+// cron cadence 급락 텔레그램 포맷. 없으면 "".
+export function formatCadenceRegressions(flags: CadenceFlag[]): string {
+  if (flags.length === 0) return "";
+  const lines = ["", `⏱ 지역뉴스 cron 완주 저하 (${flags.length}건, 실행빈도 급락):`];
+  for (const f of flags.slice(0, 8)) {
+    lines.push(
+      `  ${f.city} — 최근 ${f.recentPerDay}회/일 (이전 ${f.baselinePerDay}회/일 → 급락).`,
+    );
+    lines.push("     GHA local-press-proxy run cancelled? + timeout-minutes / 도시별 에러 점검");
+  }
+  return lines.join("\n");
+}
+
 // 문제 collector 만 텔레그램/agent 보고용으로 포맷. 정상은 제외(noise ↓).
 export function formatCollectorProblems(diagnoses: CollectorDiagnosis[]): string {
   const problems = diagnoses.filter((d) => isProblemStatus(d.status));

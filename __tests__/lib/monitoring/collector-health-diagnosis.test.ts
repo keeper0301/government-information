@@ -9,9 +9,12 @@ import {
   expectedCollectorsFromRegistry,
   flagInsertStops,
   formatInsertStops,
+  flagCadenceRegressions,
+  formatCadenceRegressions,
   type ScrapeAuditRow,
   type ExpectedCollector,
   type CityInsertStat,
+  type CityCadence,
 } from "@/lib/monitoring/collector-health-diagnosis";
 
 // 테스트용 고정 expected (registry 전체에 의존하지 않도록).
@@ -142,6 +145,41 @@ describe("flagInsertStops — 회귀형 silent insert-stop", () => {
     const msg = formatInsertStops(flags);
     expect(msg).toContain("강화군");
     expect(msg).toContain("회귀");
+  });
+});
+
+describe("flagCadenceRegressions — cron 완주 저하", () => {
+  const stats: CityCadence[] = [
+    // 의정부: 이전 2회/일 → 최근 0.67회/일(2/3) = 절반 이하 급락 → flag (timeout 누락)
+    { city: "의정부", recentRuns: 2, recentDays: 3, baselineRuns: 22, baselineDays: 11 },
+    // 정상GHA: 이전 2 → 최근 2 = 유지(제외)
+    { city: "정상시", recentRuns: 6, recentDays: 3, baselineRuns: 22, baselineDays: 11 },
+    // 죽은정적: 이전 1회/일 → 최근 0 = 급락(제외 X, flag — 정적 collector 死도 잡음)
+    { city: "죽은구", recentRuns: 0, recentDays: 3, baselineRuns: 11, baselineDays: 11 },
+    // 신규/저빈도: baseline < 1회/일 → 제외(아직 안정 아님)
+    { city: "신규시", recentRuns: 0, recentDays: 3, baselineRuns: 5, baselineDays: 11 },
+  ];
+  const flags = flagCadenceRegressions(stats);
+  const cities = flags.map((f) => f.city);
+
+  it("이전 ≥1회/일 + 최근 절반이하 급락 = flag (의정부 timeout 누락)", () => {
+    expect(cities).toContain("의정부");
+  });
+  it("정상 유지 collector 제외", () => {
+    expect(cities).not.toContain("정상시");
+  });
+  it("이전 잘 돌던 정적 collector 死(최근 0) 도 flag", () => {
+    expect(cities).toContain("죽은구");
+  });
+  it("baseline < minBaselinePerDay(저빈도/신규) 제외", () => {
+    expect(cities).not.toContain("신규시");
+  });
+  it("recent/baseline 빈도 보존 + formatCadenceRegressions", () => {
+    const f = flags.find((x) => x.city === "의정부");
+    expect(f?.baselinePerDay).toBe(2);
+    expect(f?.recentPerDay).toBeCloseTo(0.67, 1);
+    expect(formatCadenceRegressions([])).toBe("");
+    expect(formatCadenceRegressions(flags)).toContain("의정부");
   });
 });
 
