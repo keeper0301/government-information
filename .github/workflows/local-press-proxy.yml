@@ -28,7 +28,10 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 23 도시(chromium + icn1 프록시 + hwp/PDF 첨부 다운로드)가 15분 초과 → 스케줄 run 이
+    # 15분에 cancelled 되어 뒷순서 7개 도시(강남·성동·동대문·성북·제주·남동·의정부) 가끔 누락.
+    # 셋업(npm+chromium) ~3분 + 도시당 ~45초 = 23도시 ~20분 → 30분 여유(2026-06-09 15→30).
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: playwright
