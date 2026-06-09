@@ -43,9 +43,9 @@ vi.mock("@/lib/analytics/blog-publish-stats", () => ({
 import { runDiagnose, listDiagnoseQuestions } from "@/lib/agent/diagnose";
 
 describe("listDiagnoseQuestions", () => {
-  it("10 question id 노출 (사전 정의)", () => {
+  it("11 question id 노출 (사전 정의)", () => {
     const list = listDiagnoseQuestions();
-    expect(list).toHaveLength(10);
+    expect(list).toHaveLength(11);
     expect(list).toContain("health_overview");
     expect(list).toContain("cron_recent_24h");
     expect(list).toContain("news_freshness");
@@ -56,6 +56,7 @@ describe("listDiagnoseQuestions", () => {
     expect(list).toContain("agent_recent_actions");
     expect(list).toContain("alert_recent_24h");
     expect(list).toContain("db_table_sizes");
+    expect(list).toContain("local_press_collector_health");
   });
 });
 

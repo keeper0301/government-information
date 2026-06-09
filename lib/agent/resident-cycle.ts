@@ -164,6 +164,26 @@ function buildResidentRecommendations(
     });
   }
 
+  // 자가치유 감지 확장 — 23 GHA collector 고장 시 수리 제안 생성(W0 audit only).
+  // local_press_collector_health 진단(읽기전용)의 문제 collector 를 evidence 로.
+  const collectorHealth = findData(
+    results,
+    "local_press_collector_health",
+  ) as {
+    problem_count?: number;
+    problems?: { city?: string; status?: string }[];
+  } | null;
+  if ((collectorHealth?.problem_count ?? 0) > 0) {
+    const cities = (collectorHealth?.problems ?? [])
+      .slice(0, 5)
+      .map((p) => `${p.city ?? "?"}(${p.status ?? "?"})`)
+      .join(", ");
+    recs.push({
+      operation: { area: "agent_call", action: "codex_scraper_fix" },
+      evidence: `local-press collector 고장 ${collectorHealth?.problem_count}건: ${cities}`,
+    });
+  }
+
   return dedupeRecommendations(recs);
 }
 
