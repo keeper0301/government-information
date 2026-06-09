@@ -122,15 +122,58 @@ export const scrapeBusanjin = makeScraper({
   bodySelectors: [".substan"],
 });
 
-// 2026-05-29 — 금정구. 본문 td.contents (colspan).
-// 2026-06-10 — board 교정: BBS_0000004 는 공지/안내(거의 비활성, 최신 05-26→05-06→2021)
-//   오등록이었음. 진짜 보도자료는 BBS_0000005(거의 매일 발행: 청년·소상공인·복지 등). 홈
-//   index.geumj 섹션 매핑(공지사항=0004, 보도자료=0005)으로 확인. busanjin BBS_0000265→0000031 류.
-export const scrapeGeumjeong = makeScraper({
-  cityName: "금정구",
-  listUrl: "https://www.geumjeong.go.kr/board/list.geumj?boardId=BBS_0000005",
-  bodySelectors: ["td.contents", ".contents"],
-});
+// 2026-06-10 — 금정구. board 교정 BBS_0000004(공지/안내)→BBS_0000005(보도자료, 거의 매일).
+//   ⚠️ 보도자료는 인라인 본문 없이 HWP 첨부 전용(view.geumj 283자 shell + download.geumj .hwp).
+//   makeScraper(in-page body) 불가 → 성동류 첨부 본문 패턴(fetchSiAttachBody/@ohah) 재사용한 별도
+//   scraper. 부산 SI CMS download.geumj 는 _si_attach DOWNLOAD_REGEX 에 추가. de-risk: HWP 1096자 검증.
+export async function scrapeGeumjeong({ limit = 10 } = {}) {
+  const BASE = "https://www.geumjeong.go.kr";
+  const listBuf = await fetchBinViaProxy(
+    `${BASE}/board/list.geumj?boardId=BBS_0000005`,
+  );
+  if (!listBuf) return [];
+  const listHtml = Buffer.from(listBuf).toString("utf8");
+  // 목록 행: td.subject 의 view.geumj 링크(href + dataSid) + title 속성(전체 제목).
+  const re =
+    /<a[^>]*href="([^"]*view\.geumj[^"]*dataSid=(\d+)[^"]*)"[^>]*title="([^"]*)"/gi;
+  const items = [];
+  const seen = new Set();
+  let m;
+  while ((m = re.exec(listHtml)) !== null && items.length < limit) {
+    const sid = m[2];
+    if (seen.has(sid)) continue;
+    seen.add(sid);
+    const title = m[3]
+      .replace(/&amp;/g, "&")
+      .replace(/&lsquo;|&rsquo;/g, "'")
+      .replace(/&[a-z#0-9]+;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
+    items.push({
+      title,
+      detailUrl: new URL(m[1].replace(/&amp;/g, "&"), BASE).href,
+    });
+  }
+  const out = [];
+  for (const it of items) {
+    try {
+      const dBuf = await fetchBinViaProxy(it.detailUrl);
+      if (!dBuf) continue;
+      const dHtml = Buffer.from(dBuf).toString("utf8");
+      // 등록일 yyyy/mm/dd (또는 -, .) → published_at.
+      const dm = dHtml.match(/등록일[\s\S]{0,80}?(\d{4})[.\-/](\d{2})[.\-/](\d{2})/);
+      const publishedDate = dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null;
+      // HWP/PDF 첨부 본문(download.geumj) — 성동류 공용 파서 재사용.
+      const body = await fetchSiAttachBody(dHtml, `${BASE}/board/`, fetchBinViaProxy);
+      if (body) out.push({ title: it.title, sourceUrl: it.detailUrl, publishedDate, body });
+      await new Promise((r) => setTimeout(r, 200)); // polite delay
+    } catch {
+      // skip
+    }
+  }
+  return out;
+}
 
 // 2026-06-01 — 부산 북구는 eminwon(보도자료 OfrAction.do POST)으로 재이관.
 // 기존 proxy(BBS_0000012=공동주택 관리 오등록, 0건) 폐기 → lib/scraping/local-press/bsbukgu-eminwon.ts.
