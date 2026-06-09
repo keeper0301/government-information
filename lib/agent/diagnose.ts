@@ -27,7 +27,8 @@ export type DiagnoseQuestion =
   | "sms_delivery_24h"          // daily-digest / external-console-check 발송 결과
   | "agent_recent_actions"      // agent_execute_run 최근 50건 (Codex 본인 행동 점검)
   | "alert_recent_24h"          // health-alert 발화 추세
-  | "db_table_sizes";           // 5/19 추가 — 큰 테이블 row count (storage growth 추적)
+  | "db_table_sizes"            // 5/19 추가 — 큰 테이블 row count (storage growth 추적)
+  | "local_press_collector_health"; // 23 GHA collector 고장 감지 + 수리 제안 (자가치유 감지 확장)
 
 export type DiagnoseResult = {
   question: DiagnoseQuestion;
@@ -242,6 +243,45 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
       counts,
       collected_note:
         "row count 기반. byte size 는 Supabase dashboard 에서만. 급증 추세 = storage 한도 위험 신호.",
+    };
+  },
+
+  local_press_collector_health: async () => {
+    // 자가치유 감지 확장 — 23 GHA collector audit 를 읽어 고장 collector + 추정
+    // 원인 + 수리 제안 반환. **읽기 전용(W0)** — 실제 수정 X, 사람이 보고 수동 적용.
+    const { diagnoseCollectors, formatCollectorProblems, isProblemStatus } =
+      await import("@/lib/monitoring/collector-health-diagnosis");
+    const admin = createAdminClient();
+    const since24h = new Date(Date.now() - 86_400_000).toISOString();
+    const { data } = await admin
+      .from("admin_actions")
+      .select("details, created_at")
+      .eq("action", "local_press_scrape")
+      .gte("created_at", since24h)
+      .order("created_at", { ascending: false });
+
+    const rows = ((data ?? []) as { details: unknown; created_at: string }[]).map(
+      (row) => {
+        const d = (row.details ?? {}) as Record<string, unknown>;
+        const errs = Array.isArray(d.errors) ? d.errors.length : 0;
+        return {
+          city: String(d.city ?? ""),
+          fetched: Number(d.fetched ?? 0),
+          inserted: Number(d.inserted ?? 0),
+          errors: errs + (d.error ? 1 : 0),
+          createdAt: String(row.created_at),
+        };
+      },
+    );
+
+    const diagnoses = diagnoseCollectors(rows);
+    const problems = diagnoses.filter((x) => isProblemStatus(x.status));
+    return {
+      total_collectors: diagnoses.length,
+      problem_count: problems.length,
+      healthy_count: diagnoses.length - problems.length,
+      problems, // 문제 collector 만 (정상 제외 — Codex context 부담 ↓)
+      telegram_summary: formatCollectorProblems(diagnoses),
     };
   },
 };
