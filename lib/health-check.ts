@@ -16,6 +16,11 @@ import {
 } from "@/lib/analytics/local-press-stats";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
+import {
+  getCollectorDiagnoses,
+  formatCollectorProblems,
+  isProblemStatus,
+} from "@/lib/monitoring/collector-health-diagnosis";
 
 export type HealthSignals = {
   // 24h 신규 가입 수
@@ -112,6 +117,17 @@ export type HealthSignals = {
    */
   localPressStaleCities: number;
   /**
+   * 2026-06-09 추가 — 자가치유 감지 확장. 23 GHA collector 중 고장(no_audit·
+   * list_broken·body_fail) 으로 분류된 수. ≥1 = 텔레그램 alert(도시·원인·제안 첨부).
+   * stale(72h inserted0, floor 10)보다 민감 — collector 1개 깨져도 조기 감지.
+   */
+  localPressBrokenCollectors: number;
+  /**
+   * 2026-06-09 추가 — 위 고장 collector 의 도시·원인·수리제안 포맷 문자열(텔레그램용).
+   * 정상이면 "". local_press_collector_broken alert 의 recommendation 으로 사용.
+   */
+  localPressCollectorDetail: string;
+  /**
    * 2026-05-30 추가 — 24h 안 null_date ≥5 누적된 시·군 수. factory date 추출
    * silent fallback (수집시각 = published_at) silent → audible. NewsArticle
    * schema 신뢰도 + 사용자 알림 "오늘 새 정책" 정확도 보호.
@@ -172,6 +188,7 @@ export type ThresholdAlert = {
     | "loan_inflow_zero"
     | "naver_publish_failure"
     | "local_press_stale"
+    | "local_press_collector_broken"
     | "local_press_null_date"
     | "news_ratio_high"
     | "adsense_ready_to_disable"
@@ -271,6 +288,12 @@ const NAVER_PUBLISH_FAIL_RATE_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_RATE)
 // noise 있을 수 있어 보수적 floor (10). 1주 모니터링 후 5 로 낮추는 방향.
 const LOCAL_PRESS_STALE_FLOOR = Number(
   process.env.LOCAL_PRESS_STALE_FLOOR ?? "10",
+);
+// 2026-06-09 — 자가치유 감지 확장 collector 고장 alert 임계. ≥N 고장 시 텔레그램.
+// 기본 1(collector 1개 깨져도 알림) — health-alert cooldown 이 중복 발화 억제하므로
+// 스팸 X. no_audit 윈도우 timing false positive 가 잦으면 env 로 상향(2~3) 가능.
+const LOCAL_PRESS_BROKEN_FLOOR = Number(
+  process.env.LOCAL_PRESS_BROKEN_FLOOR ?? "1",
 );
 // 2026-05-17 — 블로그 발행 stalled 임계 (hours).
 // 5/15 사고 (2.5일 = 60h 무발행) 자동 감지. 평소 1~2 글/일.
@@ -492,6 +515,13 @@ export async function getHealthSignals(): Promise<HealthSignals> {
 
   // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
   const localPressStaleCities = await getStaleCityCount(72);
+  // 2026-06-09 — 자가치유 감지 확장. 23 GHA collector 진단(24h audit) → 고장 수 +
+  // 도시·원인·제안 detail(텔레그램용). stale(72h)보다 민감해 조기 감지.
+  const collectorDiagnoses = await getCollectorDiagnoses(24);
+  const localPressBrokenCollectors = collectorDiagnoses.filter((d) =>
+    isProblemStatus(d.status),
+  ).length;
+  const localPressCollectorDetail = formatCollectorProblems(collectorDiagnoses);
   // 2026-05-30 — 24h null_date ≥5 누적 시·군 (factory date 추출 collector 점검 신호).
   const localPressNullDateCities = await getHighNullDateCityCount(5, 24);
   // 2026-05-30 — news 비중 (외부 보도자료 대 keepioo 자체 자산).
@@ -550,6 +580,8 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     naverPublishEligiblePending,
     collectLastRunHours,
     localPressStaleCities,
+    localPressBrokenCollectors,
+    localPressCollectorDetail,
     localPressNullDateCities,
     newsRatio,
     adsenseReadyToDisable,
@@ -802,6 +834,19 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `시·군 보도자료 collector stale ${s.localPressStaleCities}건 (임계 ${LOCAL_PRESS_STALE_FLOOR}+). 최근 72h inserted 0 시·군 수.`,
       recommendation:
         "/admin/autonomous 의 시·군 카드 확인 → 오류 시·군 사이트 직접 접속해 selector 점검. KST 09:00 cron 다음 회차 자동 재시도. 3 회차 연속 실패 시 lib/scraping/local-press/{city}.ts regex 수정 필요.",
+    });
+  }
+
+  // 2026-06-09 — 자가치유 감지 확장. 23 GHA collector 진단(24h)에서 고장(no_audit·
+  // list_broken·body_fail) ≥1 면 도시·원인·수리제안을 텔레그램에 첨부. stale(floor 10)
+  // 보다 민감해 collector 1개 깨져도 조기 감지. health-alert cooldown 이 중복 억제.
+  if (s.localPressBrokenCollectors >= LOCAL_PRESS_BROKEN_FLOOR) {
+    alerts.push({
+      key: "local_press_collector_broken",
+      message: `지역뉴스 collector 고장 ${s.localPressBrokenCollectors}건 (GHA 23도시 자가치유 24h 감지).`,
+      recommendation:
+        s.localPressCollectorDetail ||
+        "/admin/autonomous 자율 허브에서 collector 상태 확인",
     });
   }
 

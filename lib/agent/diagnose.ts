@@ -249,32 +249,9 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
   local_press_collector_health: async () => {
     // 자가치유 감지 확장 — 23 GHA collector audit 를 읽어 고장 collector + 추정
     // 원인 + 수리 제안 반환. **읽기 전용(W0)** — 실제 수정 X, 사람이 보고 수동 적용.
-    const { diagnoseCollectors, formatCollectorProblems, isProblemStatus } =
+    const { getCollectorDiagnoses, formatCollectorProblems, isProblemStatus } =
       await import("@/lib/monitoring/collector-health-diagnosis");
-    const admin = createAdminClient();
-    const since24h = new Date(Date.now() - 86_400_000).toISOString();
-    const { data } = await admin
-      .from("admin_actions")
-      .select("details, created_at")
-      .eq("action", "local_press_scrape")
-      .gte("created_at", since24h)
-      .order("created_at", { ascending: false });
-
-    const rows = ((data ?? []) as { details: unknown; created_at: string }[]).map(
-      (row) => {
-        const d = (row.details ?? {}) as Record<string, unknown>;
-        const errs = Array.isArray(d.errors) ? d.errors.length : 0;
-        return {
-          city: String(d.city ?? ""),
-          fetched: Number(d.fetched ?? 0),
-          inserted: Number(d.inserted ?? 0),
-          errors: errs + (d.error ? 1 : 0),
-          createdAt: String(row.created_at),
-        };
-      },
-    );
-
-    const diagnoses = diagnoseCollectors(rows);
+    const diagnoses = await getCollectorDiagnoses(24);
     const problems = diagnoses.filter((x) => isProblemStatus(x.status));
     return {
       total_collectors: diagnoses.length,

@@ -34,6 +34,9 @@ const BASE_SIGNALS: HealthSignals = {
   collectLastRunHours: 1,
   // 2026-05-17 — baseline 0 (전 시·군 정상, alert X). 10+ 케이스는 별도 테스트.
   localPressStaleCities: 0,
+  // 2026-06-09 — baseline 0 (collector 고장 없음, alert X). ≥1 케이스 별도 테스트.
+  localPressBrokenCollectors: 0,
+  localPressCollectorDetail: "",
   // 2026-05-30 — baseline 0 (silent fallback 없음, alert X). ≥1 케이스 별도 테스트.
   localPressNullDateCities: 0,
   // 2026-05-30 — baseline 0.3 (news 비중 정상, alert X). ≥0.6 케이스 별도 테스트.
@@ -120,6 +123,34 @@ describe("checkThresholds — 다른 임계치", () => {
       cronFailures24h: 3,
     });
     expect(alerts.find((a) => a.key === "cron_fail")).toBeDefined();
+  });
+});
+
+describe("checkThresholds — collector 고장(자가치유 감지 확장)", () => {
+  it("고장 0건 → alert 없음", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      localPressBrokenCollectors: 0,
+    });
+    expect(
+      alerts.find((a) => a.key === "local_press_collector_broken"),
+    ).toBeUndefined();
+  });
+
+  it("고장 ≥1 → local_press_collector_broken alert + detail 을 recommendation 으로", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 5,
+      active7dAny: 10,
+      localPressBrokenCollectors: 2,
+      localPressCollectorDetail: "🩺 의정부 — 목록 매칭 0건\n  제안: listSelectors 재확인",
+    });
+    const a = alerts.find((x) => x.key === "local_press_collector_broken");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("2건");
+    expect(a?.recommendation).toContain("의정부");
   });
 });
 

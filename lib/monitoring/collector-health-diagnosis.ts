@@ -11,6 +11,7 @@
 // ============================================================
 
 import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // collector 상태 분류.
 //  - healthy        : 신규 글 insert 됨 (정상 가동)
@@ -127,6 +128,36 @@ export function diagnoseCollectors(
 
     return { city, sourceCode, status, fetched, inserted, errors, lastRunAt, cause, suggestion };
   });
+}
+
+// audit(admin_actions.local_press_scrape) 를 읽어 진단 반환 (DB read).
+// diagnose 질문 핸들러 + health-check getHealthSignals 공용(DRY). windowHours 기본 24.
+export async function getCollectorDiagnoses(
+  windowHours = 24,
+): Promise<CollectorDiagnosis[]> {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - windowHours * 3_600_000).toISOString();
+  const { data } = await admin
+    .from("admin_actions")
+    .select("details, created_at")
+    .eq("action", "local_press_scrape")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
+
+  const rows: ScrapeAuditRow[] = (
+    (data ?? []) as { details: unknown; created_at: string }[]
+  ).map((row) => {
+    const d = (row.details ?? {}) as Record<string, unknown>;
+    const errs = Array.isArray(d.errors) ? d.errors.length : 0;
+    return {
+      city: String(d.city ?? ""),
+      fetched: Number(d.fetched ?? 0),
+      inserted: Number(d.inserted ?? 0),
+      errors: errs + (d.error ? 1 : 0),
+      createdAt: String(row.created_at),
+    };
+  });
+  return diagnoseCollectors(rows);
 }
 
 // 문제 collector 만 텔레그램/agent 보고용으로 포맷. 정상은 제외(noise ↓).
