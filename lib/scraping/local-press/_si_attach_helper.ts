@@ -9,6 +9,10 @@
 // href 가 절대경로(성동 /main/)·상대경로(동대문·성북 ./) 혼재라 new URL(path, baseDir)로
 // resolve(상대 ./ 버그가 동대문·성북 다운로드 실패의 원인이었음).
 // 부산(unpdf)·강원(@ohah) 패턴을 SI 그룹에 맞게 통합.
+//
+// ⚠️ 동기화 주의: GHA runner 용 포팅본이 `playwright/lib/_si_attach.mjs` 에 별도로 있다
+//   (별도 npm 패키지·raw node 라 이 .ts 를 직접 import 불가 → 불가피한 2벌). stripSiPdfMeta·
+//   cleanHwpMarkdown·extractAttachBody 로직 수정 시 양쪽 같이 고칠 것.
 // ============================================================
 
 import { extractText, getDocumentProxy } from "unpdf";
