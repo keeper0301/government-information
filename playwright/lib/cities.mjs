@@ -264,10 +264,21 @@ function makeSiAttachScraper({ listUrl, detailDir, bbsNo, key }) {
       // SI anchor 가 href 파라미터 체인으로 길어(716자+) 날짜 td 가 anchor+1315 위치라
       // 2000 buffer 필요(동대문·성북). 800 이면 날짜 누락 → published_at=now() fallback.
       const slice = html.slice(m.index, m.index + 2000);
+      // month(1-12)/day(1-31) 범위 검증 — factory parseListDate 와 동일 가드. 이전엔 검증이
+      // 없어 2000자 window 안 비-날짜 숫자(버전·ID·바이트수 등)를 날짜로 오매칭해 엉뚱한
+      // published_at("오늘 새 정책" 거짓)이 될 수 있었음(SI 경로만 사각이었음).
       const dm = slice.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
+      let publishedDate = null;
+      if (dm) {
+        const mo = parseInt(dm[2], 10);
+        const dy = parseInt(dm[3], 10);
+        if (mo >= 1 && mo <= 12 && dy >= 1 && dy <= 31) {
+          publishedDate = `${dm[1]}-${dm[2]}-${dm[3]}`;
+        }
+      }
       items.push({
         title,
-        publishedDate: dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null,
+        publishedDate,
         sourceUrl: `${detailDir}selectBbsNttView.do?bbsNo=${bbsNo}&nttNo=${seq}&key=${key}`,
       });
     }
