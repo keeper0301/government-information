@@ -106,6 +106,10 @@ export async function POST(request: Request) {
   let inserted = 0;
   let skipped = 0;
   let nullDate = 0; // factory 가 date 못 잡아 now 로 fallback 한 건수 (audit 가시화).
+  // 2026-06-10 — auto-triage 데이터. 가져온 글(list) 중 가장 최신 발행일. insert-stop
+  // 감지 triage 가 "사이트 최신(latest_fetched) vs DB 최신(news_posts)" 비교로 "새 글 없음
+  // (정상)" 과 "본문 silent fail(버그)" 을 사이트 재fetch 없이 구분(오탐 제거).
+  let latestFetched: string | null = null;
   const errors: string[] = [];
 
   for (const raw of items) {
@@ -115,6 +119,8 @@ export async function POST(request: Request) {
       continue;
     }
     if (!item.publishedDate) nullDate += 1;
+    else if (!latestFetched || item.publishedDate > latestFetched)
+      latestFetched = item.publishedDate;
     const publishedAt = item.publishedDate
       ? `${item.publishedDate}T00:00:00+09:00`
       : now;
@@ -161,6 +167,7 @@ export async function POST(request: Request) {
         fetched: items.length,
         inserted,
         null_date: nullDate, // factory date 추출 실패 = silent now-fallback 가시화
+        latest_fetched: latestFetched, // auto-triage: 가져온 글 최신 발행일(YYYY-MM-DD|null)
         errors,
       },
     });

@@ -175,12 +175,14 @@ export type CityInsertStat = {
   recentActiveDays: number; // recent 창에서 fetched>0 였던 distinct 일수
   recentInserted: number; // recent 창 insert 합
   baselineInserted: number; // baseline 창 insert 합 (이전에 작동했는지)
+  latestFetched: string | null; // recent 창 audit 의 가져온 글 최신 발행일(triage 용)
 };
 
 export type InsertStopFlag = {
   city: string;
   recentActiveDays: number;
   baselineInserted: number;
+  latestFetched: string | null;
 };
 
 // 회귀형 insert-stop 만 flag (순수). minActiveDays 기본 3.
@@ -199,7 +201,24 @@ export function flagInsertStops(
       city: s.city,
       recentActiveDays: s.recentActiveDays,
       baselineInserted: s.baselineInserted,
+      latestFetched: s.latestFetched,
     }));
+}
+
+// auto-triage (순수) — flag 중 "사이트에 DB 보다 새 글이 있는"(진짜 버그)만 남기고, "새 글
+// 없음(정상)" 은 suppress. dbLatestByCity = city → news_posts 최신 published 날짜(YYYY-MM-DD).
+//   latestFetched > dbLatest → 사이트 최신글이 DB 에 없음 = 본문 silent fail/수집실패(keep).
+//   latestFetched ≤ dbLatest → 가져온 게 다 DB 에 있음 = 새 글 없음(suppress, 오탐 제거).
+//   latestFetched 또는 dbLatest null → triage 불가 → 보수적 keep(오감지 방지보다 미탐 방지).
+export function triageFlags(
+  flags: InsertStopFlag[],
+  dbLatestByCity: Record<string, string | null>,
+): InsertStopFlag[] {
+  return flags.filter((f) => {
+    const dbLatest = dbLatestByCity[f.city] ?? null;
+    if (!f.latestFetched || !dbLatest) return true; // 데이터 부족 → keep(보수적)
+    return f.latestFetched > dbLatest; // 사이트 최신 > DB 최신 = 진짜 버그만 keep
+  });
 }
 
 // audit 를 읽어 회귀형 insert-stop 반환 (DB read). recent/baseline 분리는 created_at age 로.
@@ -220,10 +239,15 @@ export async function getSustainedInsertStops({
     .eq("action", "local_press_scrape")
     .gte("created_at", new Date(sinceMs).toISOString());
 
-  // city → { recentInserted, baselineInserted, recentActiveDays(set) }
+  // city → { recentInserted, baselineInserted, recentActiveDays(set), latestFetched }
   const agg = new Map<
     string,
-    { recentInserted: number; baselineInserted: number; recentActiveDays: Set<string> }
+    {
+      recentInserted: number;
+      baselineInserted: number;
+      recentActiveDays: Set<string>;
+      latestFetched: string | null;
+    }
   >();
   for (const row of (data ?? []) as { details: unknown; created_at: string }[]) {
     const d = (row.details ?? {}) as Record<string, unknown>;
@@ -234,10 +258,18 @@ export async function getSustainedInsertStops({
     const ts = new Date(row.created_at).getTime();
     const cur =
       agg.get(city) ??
-      { recentInserted: 0, baselineInserted: 0, recentActiveDays: new Set<string>() };
+      {
+        recentInserted: 0,
+        baselineInserted: 0,
+        recentActiveDays: new Set<string>(),
+        latestFetched: null,
+      };
     if (ts >= recentCutoffMs) {
       cur.recentInserted += inserted;
       if (fetched > 0) cur.recentActiveDays.add(row.created_at.slice(0, 10)); // UTC 일자 키(분리만 목적)
+      // recent 창 audit 의 latest_fetched 최댓값(triage 용). 구 audit 엔 없어 null.
+      const lf = typeof d.latest_fetched === "string" ? d.latest_fetched : null;
+      if (lf && (!cur.latestFetched || lf > cur.latestFetched)) cur.latestFetched = lf;
     } else {
       cur.baselineInserted += inserted;
     }
@@ -249,8 +281,36 @@ export async function getSustainedInsertStops({
     recentActiveDays: v.recentActiveDays.size,
     recentInserted: v.recentInserted,
     baselineInserted: v.baselineInserted,
+    latestFetched: v.latestFetched,
   }));
-  return flagInsertStops(stats, { minActiveDays });
+  const flags = flagInsertStops(stats, { minActiveDays });
+  if (flags.length === 0) return flags;
+
+  // auto-triage — flag collector 의 DB 최신 published 날짜를 news_posts 에서 조회해, 사이트 최신
+  // (latestFetched) 이 DB 보다 새 게 없으면 "발행 없음(정상)" 으로 suppress(오탐 제거). city→
+  // sourceCode 는 GHA registry 파생(정적 collector 는 매핑 없어 보수적 keep — 정적 경로 follow-up).
+  const cityToCode = new Map(
+    expectedCollectorsFromRegistry().map((c) => [c.city, c.sourceCode]),
+  );
+  const codes = flags.map((f) => cityToCode.get(f.city)).filter(Boolean) as string[];
+  const dbLatestByCity: Record<string, string | null> = {};
+  if (codes.length > 0) {
+    const { data: posts } = await admin
+      .from("news_posts")
+      .select("source_code, published_at")
+      .in("source_code", codes)
+      .order("published_at", { ascending: false });
+    const latestByCode = new Map<string, string>();
+    for (const p of (posts ?? []) as { source_code: string; published_at: string }[]) {
+      if (!latestByCode.has(p.source_code))
+        latestByCode.set(p.source_code, String(p.published_at).slice(0, 10));
+    }
+    for (const f of flags) {
+      const code = cityToCode.get(f.city);
+      dbLatestByCity[f.city] = code ? latestByCode.get(code) ?? null : null;
+    }
+  }
+  return triageFlags(flags, dbLatestByCity);
 }
 
 // 회귀형 insert-stop 텔레그램 포맷. 없으면 "".

@@ -9,11 +9,13 @@ import {
   expectedCollectorsFromRegistry,
   flagInsertStops,
   formatInsertStops,
+  triageFlags,
   flagCadenceRegressions,
   formatCadenceRegressions,
   type ScrapeAuditRow,
   type ExpectedCollector,
   type CityInsertStat,
+  type InsertStopFlag,
   type CityCadence,
 } from "@/lib/monitoring/collector-health-diagnosis";
 
@@ -113,13 +115,13 @@ describe("formatCollectorProblems", () => {
 describe("flagInsertStops — 회귀형 silent insert-stop", () => {
   const stats: CityInsertStat[] = [
     // 강화군: 최근 0 + 활동 5일 + 이전 70 → 회귀(flag)
-    { city: "강화군", recentActiveDays: 5, recentInserted: 0, baselineInserted: 70 },
+    { city: "강화군", recentActiveDays: 5, recentInserted: 0, baselineInserted: 70, latestFetched: "2026-06-08" },
     // 동작구: 최근에도 insert 4 → transient/정상(제외)
-    { city: "동작구", recentActiveDays: 5, recentInserted: 4, baselineInserted: 30 },
+    { city: "동작구", recentActiveDays: 5, recentInserted: 4, baselineInserted: 30, latestFetched: "2026-06-08" },
     // 금정구: 최근 0 + 활동 5일 + 이전 0 → 원래 저발행/이관불가(제외, baseline 0)
-    { city: "금정구", recentActiveDays: 5, recentInserted: 0, baselineInserted: 0 },
+    { city: "금정구", recentActiveDays: 5, recentInserted: 0, baselineInserted: 0, latestFetched: null },
     // 짧은활동: 최근 0 + 활동 2일(<3) → 휴재 가능성, 미flag(목록 충분히 안 돔)
-    { city: "짧은시", recentActiveDays: 2, recentInserted: 0, baselineInserted: 50 },
+    { city: "짧은시", recentActiveDays: 2, recentInserted: 0, baselineInserted: 50, latestFetched: "2026-06-08" },
   ];
   const flags = flagInsertStops(stats);
 
@@ -145,6 +147,35 @@ describe("flagInsertStops — 회귀형 silent insert-stop", () => {
     const msg = formatInsertStops(flags);
     expect(msg).toContain("강화군");
     expect(msg).toContain("회귀");
+  });
+});
+
+describe("triageFlags — auto-triage(사이트 최신 vs DB 최신)", () => {
+  const F = (city: string, latestFetched: string | null): InsertStopFlag => ({
+    city,
+    recentActiveDays: 5,
+    baselineInserted: 10,
+    latestFetched,
+  });
+
+  it("사이트 최신 > DB 최신 = 진짜 버그 → keep", () => {
+    const r = triageFlags([F("강화군", "2026-06-08")], { 강화군: "2026-06-02" });
+    expect(r.map((f) => f.city)).toEqual(["강화군"]); // 06-08 글이 DB(06-02)에 없음 = 수집실패
+  });
+
+  it("사이트 최신 ≤ DB 최신 = 새 글 없음 → suppress(오탐 제거)", () => {
+    const r = triageFlags([F("성북구", "2026-05-29")], { 성북구: "2026-05-29" });
+    expect(r).toHaveLength(0); // 가져온 게 다 DB에 있음 = 무발행 정상
+  });
+
+  it("latestFetched null(구 audit) → 보수적 keep", () => {
+    const r = triageFlags([F("금정구", null)], { 금정구: "2026-06-01" });
+    expect(r).toHaveLength(1);
+  });
+
+  it("dbLatest null(매핑 없는 정적 collector) → 보수적 keep", () => {
+    const r = triageFlags([F("동작구", "2026-06-08")], {});
+    expect(r).toHaveLength(1);
   });
 });
 
