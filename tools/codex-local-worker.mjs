@@ -16,7 +16,8 @@ async function main() {
       ok: false,
       skipped: true,
       reason: "dirty_worktree",
-      message: "작업 폴더에 미정리 변경이 있어 코덱스 자동 작업을 건너뜁니다.",
+      message:
+        "작업 폴더에 정리되지 않은 변경사항이 있어 코덱스 자동 작업을 건너뜁니다.",
     });
     return;
   }

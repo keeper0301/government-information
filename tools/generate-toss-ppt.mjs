@@ -17,8 +17,6 @@ function firstEnvValue(key) {
   const m = envText.match(new RegExp(`^${key}=(.+)$`, "m"));
   return m?.[1]?.trim();
 }
-process.env.NEXT_PUBLIC_SUPABASE_URL = firstEnvValue("NEXT_PUBLIC_SUPABASE_URL");
-process.env.SUPABASE_SERVICE_ROLE_KEY = firstEnvValue("SUPABASE_SERVICE_ROLE_KEY");
 
 const OUT_DIR = path.join("tools", "toss-captures");
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -27,10 +25,9 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 // 누락 시 즉시 종료하여 비밀번호 placeholder 가 화면에 찍히는 사고 회피.
 const LOGIN_EMAIL = firstEnvValue("TOSS_REVIEW_EMAIL");
 const LOGIN_PW = firstEnvValue("TOSS_REVIEW_PASSWORD");
-const ADMIN_EMAIL = firstEnvValue("TOSS_REVIEW_ADMIN_EMAIL"); // 토스 결제창 캡처용 admin (magic link)
-if (!LOGIN_EMAIL || !LOGIN_PW || !ADMIN_EMAIL) {
+if (!LOGIN_EMAIL || !LOGIN_PW) {
   console.error(
-    "❌ .env.local 에 TOSS_REVIEW_EMAIL / TOSS_REVIEW_PASSWORD / TOSS_REVIEW_ADMIN_EMAIL 누락",
+    "❌ .env.local 에 TOSS_REVIEW_EMAIL / TOSS_REVIEW_PASSWORD 누락",
   );
   process.exit(1);
 }
@@ -108,70 +105,17 @@ async function capture() {
   shots[5] = path.join(OUT_DIR, "5-checkout.png");
   await page.screenshot({ path: shots[5], fullPage: false });
 
-  // 6. 토스 결제창 캡처 — admin 으로 magic link 자동 로그인 + 카드 등록 click + 결제창 캡처
-  console.log("6. 토스 결제창 (admin magic link)");
-  try {
-    // admin user 의 magic link 생성 (service_role)
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const SK = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const linkRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
-      method: "POST",
-      headers: {
-        apikey: SK,
-        Authorization: `Bearer ${SK}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "magiclink",
-        email: ADMIN_EMAIL,
-        options: { redirect_to: "https://keepioo.com/checkout?tier=pro" },
-      }),
-    });
-    const linkData = await linkRes.json();
-    const adminLink = linkData.action_link;
-    if (!adminLink) throw new Error("admin magic link 발급 실패");
-    console.log("  admin link 발급 OK");
-
-    // 새 context (admin session) — toss user 세션 분리
-    const adminCtx = await browser.newContext({
-      viewport: { width: 1440, height: 900 },
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    });
-    const adminPage = await adminCtx.newPage();
-
-    // magic link navigate — keepioo.com #access_token=... 으로 redirect → 자동 로그인
-    await adminPage.goto(adminLink, { waitUntil: "domcontentloaded" });
-    await adminPage.waitForTimeout(3000); // supabase client hash → cookie sync 대기
-    await adminPage.goto("https://keepioo.com/checkout?tier=pro", { waitUntil: "networkidle" });
-    await adminPage.waitForTimeout(3000);
-    console.log("  admin /checkout URL:", adminPage.url());
-
-    // 이미 구독 중이면 /mypage/billing 으로 redirect
-    if (adminPage.url().includes("/mypage/billing")) {
-      console.log("  ⚠️ admin 이미 구독 중 → 강제 /checkout");
-      // 토스 결제창 캡처 불가 (이미 구독자 = 카드 등록 페이지 안 보임)
-      // 대신 /mypage/billing 의 "카드 변경" 클릭 → /checkout 강제 진입 시도
-      await adminPage.locator('a:has-text("카드 변경")').first().click({ timeout: 5000 }).catch(() => {});
-      await adminPage.waitForTimeout(2000);
-    }
-
-    // 카드 등록 button click
-    const btn = adminPage.locator('button').filter({ hasText: /카드 등록|등록하기/ }).first();
-    const popupPromise = adminCtx.waitForEvent("page", { timeout: 10000 }).catch(() => null);
-    await btn.click({ timeout: 5000 });
-    const popup = await popupPromise;
-    const target = popup || adminPage;
-    await target.waitForLoadState("networkidle", { timeout: 20000 }).catch(() => {});
-    await target.waitForTimeout(5000);
-    console.log("  토스 결제창 URL:", target.url());
-
-    shots[6] = path.join(OUT_DIR, "6-toss-payment.png");
-    await target.screenshot({ path: shots[6], fullPage: false });
-
-    await adminCtx.close();
-  } catch (e) {
-    console.log("  ⚠️ 토스 결제창 캡처 실패:", e.message);
+  // 6. 결제창 — 토스 빌링 계약 미완료(미승인)라 카드 등록 클릭 시 토스 SDK 가
+  // "Request Error" 를 반환해 실제 결제창이 안 뜬다(2026-06-08 확인). 차선으로
+  // 체크아웃(카드 등록 진입) 화면을 6번으로 사용. 토스 결제창은 계약 완료 후 재캡처 보강.
+  console.log("6. 결제창 (계약 미완료 — 체크아웃 진입 화면으로 대체)");
+  const checkoutShot = path.join(OUT_DIR, "5-checkout.png");
+  const out6 = path.join(OUT_DIR, "6-toss-payment.png");
+  if (fs.existsSync(checkoutShot)) {
+    fs.copyFileSync(checkoutShot, out6);
+    shots[6] = out6;
+    console.log("  ↳ 토스 결제창은 계약 후 보강 — 체크아웃(결제 진입) 화면 사용");
+  } else {
     shots[6] = null;
   }
 
