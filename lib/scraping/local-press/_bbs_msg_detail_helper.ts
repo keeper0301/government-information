@@ -143,9 +143,14 @@ export function createBbsMsgDetailCollector(cfg: BbsMsgDetailConfig) {
           /첨부파일\s*(?:\S+\.(?:hwp|hwpx|pdf|jpe?g|png|gif|zip|xlsx?|docx?|pptx?|txt|gul|bmp|hwt)\b\s*)+/gi,
           " ",
         )
-        // 끝에 남는 네비/파일크기 잔재 cut (이전글/다음글/목록/[NMByte]). 첨부파일은 위에서 처리.
+        // 2026-06-11 — 파일크기 [NMByte]/(NMByte) 표시도 surgical 제거. 이전엔 "이후 전부 cut"
+        // 이었으나, 첨부(+파일크기)가 본문 앞에 오는 site(인천 동구)는 파일크기 뒤 본문이
+        // 통째로 잘려 insert 0 회귀(6/2~). 토큰만 제거해 본문 위치와 무관하게 보존.
+        // (첨부가 본문 뒤인 강화·계양·부평은 본문 보존 동일 — 이후 네비 cut 이 잔재 처리.)
+        .replace(/[[(]\s*[\d.]+\s*[KMG]?Byte\s*[\])]/gi, " ")
+        // 끝에 남는 네비 cut (이전글/다음글/미리보기 목록). 첨부파일·파일크기는 위에서 surgical 처리.
         .replace(
-          /\s*(?:이전글|다음글|미리보기 목록|\[\s*[\d.]+\s*[KMG]?Byte\s*\]|\(\s*[\d.]+\s*[KMG]?Byte\s*\))[\s\S]*$/,
+          /\s*(?:이전글|다음글|미리보기 목록)[\s\S]*$/,
           "",
         )
         .replace(/\s*목록\s*$/, "")

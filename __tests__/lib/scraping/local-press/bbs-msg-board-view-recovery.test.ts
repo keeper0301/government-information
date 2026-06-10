@@ -112,6 +112,29 @@ describe("bbsMsgDetail board_view 복구", () => {
     expect(body).not.toContain("폭염저감시설_사진"); // 첨부 파일명 제거
     expect(body).not.toContain("이전글"); // 네비 제거
   });
+
+  // 2026-06-11 — 파일크기 [NMByte] 가 첨부와 본문 사이에 끼는 site(인천 동구). face5d3 의
+  // "첨부파일 라벨만 surgical 제거" 로는 부족했음: 남은 "[817KByte]" 이후를 cut 하는 정규식이
+  // 본문을 통째로 날려 insert 0 지속(6/2~). 파일크기 표시도 surgical 제거해 본문 보존하는지 방어.
+  it("파일크기[NMByte]가 첨부와 본문 사이에 있어도 본문 보존(인천 동구형)", async () => {
+    const detail = `<html><body>${PAD}
+      <div class="general_board board_view">
+        <div class="tit">인천 동구, 2026년 제1기분 자동차세 부과</div>
+        <span>작성자 홍보체육과 작성일 2026년 6월 10일 조회수 25</span>
+        첨부파일 1._인천_동구_자동차세_부과.jpg [817KByte]
+        <p>${LONG}</p>
+        목록 이전글 이전글이 없습니다 다음글 인천 동구, 다른 보도자료 제목입니다
+      </div></body></html>`;
+    const { scrapeAndInsert, admin, insert } = setup(detail);
+    const r = await scrapeAndInsert(admin as never, 1);
+    expect(r).toMatchObject({ fetched: 1, inserted: 1 });
+    const body = ((insert.mock.calls as unknown[][])[0]?.[0] as { body?: string })
+      ?.body ?? "";
+    expect(body).toContain("전문 심리치료를 지원"); // 파일크기 뒤 본문 보존(핵심)
+    expect(body).not.toContain("817KByte"); // 파일크기 표시 제거
+    expect(body).not.toContain(".jpg"); // 첨부 파일명 제거
+    expect(body).not.toContain("이전글"); // 네비 제거
+  });
 });
 
 // 2026-06-02 — list anchor 의 bcd·msg_seq query 순서가 사이트마다 다름(ongjin=bcd 먼저).
