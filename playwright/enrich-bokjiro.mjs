@@ -29,19 +29,32 @@ if (!URL || !KEY) {
   process.exit(1);
 }
 
-// 후보 조회 — local-welfare + insight 없음 + bokjiro 상세 URL + 영구 skip 아님
-async function pickRows(limit) {
+// 후보 조회 — local-welfare + insight 없음 + bokjiro 상세 URL + 영구 skip 아님 +
+// 아직 시도 안 한 것(last_detail_fetched_at·last_detail_failed_at 모두 NULL).
+// 모든 결과(성공/thin/실패)에 stamp 를 찍으므로 같은 row 가 재선택되지 않아 종료 보장.
+async function pickRows(chunk) {
   const qs = [
     "source_code=eq.local-welfare",
     "unique_insight=is.null",
     "detail_permanently_skipped_at=is.null",
+    "last_detail_fetched_at=is.null",
+    "last_detail_failed_at=is.null",
     "source_url=like.*moveTWAT52011M*",
     "select=id,title,source_url",
     "order=view_count.desc.nullslast",
-    `limit=${limit}`,
+    `limit=${Math.min(chunk, 1000)}`, // PostgREST 한 번에 max 1000
   ].join("&");
   const res = await fetch(`${URL}/rest/v1/welfare_programs?${qs}`, { headers: H });
   return res.json();
+}
+
+// row 에 stamp PATCH (재선택 방지 + 결과 기록)
+async function stamp(id, fields) {
+  await fetch(`${URL}/rest/v1/welfare_programs?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { ...H, Prefer: "return=minimal" },
+    body: JSON.stringify(fields),
+  });
 }
 
 // 렌더된 본문에서 라벨 구간별 필드 추출. 라벨은 '지원대상→근거법령' 순서로 1회씩 등장.
@@ -70,70 +83,72 @@ function extractFields(fullText) {
 }
 
 async function main() {
-  const rows = await pickRows(LIMIT);
-  if (!Array.isArray(rows) || rows.length === 0) {
-    console.log("후보 0건 (전부 처리됐거나 조건 불일치)");
-    return;
-  }
-  console.log(`후보 ${rows.length}건 (DRY_RUN=${DRY_RUN})\n`);
-
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" });
-  let ok = 0, fail = 0, thin = 0;
+  let ok = 0, fail = 0, thin = 0, processed = 0;
+  const t0 = Date.now();
 
-  for (let idx = 0; idx < rows.length; idx++) {
-    const row = rows[idx];
-    try {
-      await page.goto(row.source_url, { waitUntil: "networkidle", timeout: 30000 });
-      await page.waitForTimeout(800);
-      const fullText = await page.evaluate(() => {
-        const el = document.querySelector("[class*=cont]") || document.body;
-        return el.innerText || "";
-      });
-      const ext = extractFields(fullText);
-      if (!ext || ext.body.length < 80) {
-        thin++;
-        console.log(`[${idx + 1}] thin(${ext?.body.length ?? 0}자) — ${row.title.slice(0, 30)}`);
-      } else {
-        const f = ext.fields;
-        const update = {
-          eligibility: f["지원대상"]?.slice(0, 3000) || null,
-          selection_criteria: f["선정기준"]?.slice(0, 3000) || null,
-          benefits: f["서비스 내용"]?.slice(0, 3000) || null,
-          apply_method: f["신청방법"]?.slice(0, 2000) || null,
-          contact_info: f["전화문의"]?.slice(0, 2000) || null,
-          detailed_content: ext.body.slice(0, 6000),
-          last_detail_fetched_at: new Date().toISOString(),
-          detail_failed_count: 0,
-        };
-        if (DRY_RUN) {
-          console.log(`[${idx + 1}] ✅ ${ext.body.length}자 — ${row.title.slice(0, 30)}`);
-          console.log(`     지원대상: ${(update.eligibility || "").slice(0, 60)}`);
-          console.log(`     서비스내용: ${(update.benefits || "").slice(0, 60)}`);
+  // chunk(≤1000)씩 가져와 처리. 모든 결과에 stamp 를 찍어 다음 pickRows 에서 빠지므로
+  // 같은 row 재선택 없이 LIMIT 또는 잔량 소진까지 순회.
+  while (processed < LIMIT) {
+    const rows = await pickRows(Math.min(1000, LIMIT - processed));
+    if (!Array.isArray(rows) || rows.length === 0) {
+      console.log("\n남은 후보 0건 — 전체 완료.");
+      break;
+    }
+    console.log(`\n[chunk] ${rows.length}건 처리 시작 (누적 ${processed})`);
+
+    for (const row of rows) {
+      processed++;
+      try {
+        await page.goto(row.source_url, { waitUntil: "networkidle", timeout: 30000 });
+        await page.waitForTimeout(800);
+        const fullText = await page.evaluate(() => {
+          const el = document.querySelector("[class*=cont]") || document.body;
+          return el.innerText || "";
+        });
+        const ext = extractFields(fullText);
+        if (!ext || ext.body.length < 80) {
+          thin++;
+          // thin(실제 내용 없음): 재시도 무의미 → fetched stamp 로 큐에서 제외.
+          if (!DRY_RUN) await stamp(row.id, { last_detail_fetched_at: new Date().toISOString(), detail_failed_count: 1 });
         } else {
-          const res = await fetch(`${URL}/rest/v1/welfare_programs?id=eq.${row.id}`, {
-            method: "PATCH",
-            headers: { ...H, Prefer: "return=minimal" },
-            body: JSON.stringify(update),
-          });
-          if (res.ok) {
-            ok++;
-            console.log(`[${idx + 1}] ✅ UPDATE ${ext.body.length}자 — ${row.title.slice(0, 30)}`);
+          const f = ext.fields;
+          const update = {
+            eligibility: f["지원대상"]?.slice(0, 3000) || null,
+            selection_criteria: f["선정기준"]?.slice(0, 3000) || null,
+            benefits: f["서비스 내용"]?.slice(0, 3000) || null,
+            apply_method: f["신청방법"]?.slice(0, 2000) || null,
+            contact_info: f["전화문의"]?.slice(0, 2000) || null,
+            detailed_content: ext.body.slice(0, 6000),
+            last_detail_fetched_at: new Date().toISOString(),
+            detail_failed_count: 0,
+          };
+          if (DRY_RUN) {
+            console.log(`  ✅ ${ext.body.length}자 — ${row.title.slice(0, 28)}`);
           } else {
-            fail++;
-            console.log(`[${idx + 1}] ✗ UPDATE 실패 ${res.status} — ${row.title.slice(0, 30)}`);
+            await stamp(row.id, update);
+            ok++;
           }
         }
+      } catch (e) {
+        fail++;
+        // 에러(네트워크 등): failed stamp 로 큐 제외(이번 run). 추후 stamp 초기화로 재시도 가능.
+        if (!DRY_RUN) await stamp(row.id, { last_detail_failed_at: new Date().toISOString() });
       }
-    } catch (e) {
-      fail++;
-      console.log(`[${idx + 1}] ✗ ${e.message.slice(0, 50)} — ${row.title.slice(0, 30)}`);
+      // 진행률 100건마다 출력
+      if (processed % 100 === 0) {
+        const min = ((Date.now() - t0) / 60000).toFixed(1);
+        console.log(`  …진행 ${processed}건 (성공 ${ok}/thin ${thin}/실패 ${fail}, ${min}분)`);
+      }
+      await page.waitForTimeout(DELAY_MS);
     }
-    if (idx < rows.length - 1) await page.waitForTimeout(DELAY_MS);
+    if (DRY_RUN) break; // DRY_RUN 은 한 chunk 만
   }
 
   await browser.close();
-  console.log(`\n결과: 성공 ${ok} / thin ${thin} / 실패 ${fail} (총 ${rows.length})`);
+  const min = ((Date.now() - t0) / 60000).toFixed(1);
+  console.log(`\n=== 완료: 성공 ${ok} / thin ${thin} / 실패 ${fail} (총 ${processed}건, ${min}분) ===`);
 }
 
 main().catch((e) => {
