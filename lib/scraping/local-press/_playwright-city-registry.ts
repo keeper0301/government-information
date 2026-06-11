@@ -171,4 +171,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "시흥시청",
     sourceCode: "local-press-siheung",
   },
+  // 2026-06-12 — 광명시. ⚠️보도자료가 본사이트 아닌 뉴스포털 news.gm.go.kr/bbs(table=bbs_12).
+  //   개별 기사, 상세 view.html?idxno= href 추종, 본문 .content. 날짜 공백형식 → now() fallback.
+  gwangmyeong: {
+    ministry: "광명시청",
+    sourceOutlet: "광명시청",
+    sourceCode: "local-press-gwangmyeong",
+  },
 };

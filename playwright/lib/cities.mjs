@@ -301,6 +301,19 @@ export const scrapeSiheung = makeScraper({
   bodySelectors: [".view_cont"],
 });
 
+// 2026-06-12 — 광명시(인구 ~29만). ⚠️보도자료는 본사이트(gm.go.kr) 아닌 뉴스포털
+// news.gm.go.kr/bbs/list.html?table=bbs_12 에 있음(본사이트엔 전자시보 gazette·소식지뿐).
+// 개별 기사(파주·부천 day-digest 와 달리 개별 정책 기사). 상세 view.html?idxno= href 직접 추종.
+// 본문 .content. 날짜 "2026. 6. 11."(공백+단자리)는 factory 정규식 미스 → now() fallback(허용).
+export const scrapeGwangmyeong = makeScraper({
+  cityName: "광명시",
+  listUrl: "https://news.gm.go.kr/bbs/list.html?table=bbs_12",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["table tbody tr"],
+  bodySelectors: [".content"],
+});
+
 // 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
 // .p-table__content 가 JS(한컴 웹에디터) 렌더라 정적 cron 0건 → Playwright 이관.
 // 렌더 후 본문 666자 검증.
