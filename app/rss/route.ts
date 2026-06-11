@@ -10,6 +10,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 export const revalidate = 3600;
 
@@ -23,7 +27,7 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
   const supabase = await createClient();
 
-  const [newsRes, blogRes] = await Promise.all([
+  const [newsRes, blogRes, welfareRes, loanRes] = await Promise.all([
     ADSENSE_REVIEW_MODE
       ? Promise.resolve({ data: [] })
       : supabase
@@ -37,6 +41,26 @@ export async function GET() {
       .not("published_at", "is", null)
       .order("published_at", { ascending: false })
       .limit(ADSENSE_REVIEW_MODE ? 40 : 10),
+    // 2026-06-11 — 복지·대출 신규 정책도 RSS 노출(네이버 신규 색인 가속). 색인 대상
+    // (unique_insight 있는 충실 페이지)만 — sitemap noindex 필터와 일관. review mode 무관
+    // (unique_insight 있으면 thin 아님). description 은 정부 원문 대신 keepioo 자체 해설(차별화·DIA).
+    supabase
+      .from("welfare_programs")
+      .select("id, title, unique_insight, published_at")
+      // 상세 페이지(notFound)·sitemap 과 동일한 stale source 제외 — RSS 가 404 URL 흘리지 않게.
+      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+      .not("unique_insight", "is", null)
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(15),
+    supabase
+      .from("loan_programs")
+      .select("id, title, unique_insight, published_at")
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+      .not("unique_insight", "is", null)
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(10),
   ]);
 
   type FeedItem = {
@@ -66,9 +90,35 @@ export async function GET() {
     category: "정책 블로그",
   }));
 
-  const items = [...newsItems, ...blogItems]
+  // insight 80자+ 만 — welfare/[id] 의 noindex 면제 기준(isSparse=!hasInsight, 80자)과 일치.
+  // RSS 가 noindex 페이지 URL 을 흘리지 않게(빈/짧은 insight row 제외).
+  const welfareItems: FeedItem[] = (welfareRes.data ?? [])
+    .filter((w) => (w.unique_insight ?? "").trim().length >= 80)
+    .map((w) => ({
+      title: w.title,
+      description: (w.unique_insight ?? "").slice(0, 250),
+      link: `${baseUrl}/welfare/${w.id}`,
+      pubDate: new Date(w.published_at!).toUTCString(),
+      guid: `${baseUrl}/welfare/${w.id}`,
+      category: "복지 지원사업",
+    }));
+
+  const loanItems: FeedItem[] = (loanRes.data ?? [])
+    .filter((l) => (l.unique_insight ?? "").trim().length >= 80)
+    .map((l) => ({
+      title: l.title,
+      description: (l.unique_insight ?? "").slice(0, 250),
+      link: `${baseUrl}/loan/${l.id}`,
+      pubDate: new Date(l.published_at!).toUTCString(),
+      guid: `${baseUrl}/loan/${l.id}`,
+      category: "대출·지원금",
+    }));
+
+  // slice 65 — 뉴스(당일 타임스탬프 30건)가 복지·대출(정부 공고일=과거)을 정렬상 밀어내
+  // 50 cut 시 대출이 전부 잘리던 문제(코드리뷰 P1) 해소. 전 분류(최대 65건) 모두 포함.
+  const items = [...newsItems, ...blogItems, ...welfareItems, ...loanItems]
     .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
-    .slice(0, 40);
+    .slice(0, 65);
 
   const lastBuildDate = items[0]?.pubDate ?? new Date().toUTCString();
 
