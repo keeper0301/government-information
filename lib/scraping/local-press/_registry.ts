@@ -23,6 +23,7 @@ import { scrapeHwaseongAndInsert } from "./hwaseong";
 import { scrapeJeonjuAndInsert } from "./jeonju";
 import { scrapeGimhaeAndInsert } from "./gimhae";
 import { scrapeNamyangjuAndInsert } from "./namyangju";
+import { scrapePajuAndInsert } from "./paju";
 // 2026-06-08 disabled (ASN 차단 → GHA+icn1 playwright 경로 이관): import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
 import { scrapePohangAndInsert } from "./pohang";
 import { scrapeIksanAndInsert } from "./iksan";
@@ -129,6 +130,7 @@ export type CityKey =
   | "jeonju"
   | "gimhae"
   | "namyangju"
+  | "paju"
   // | "pyeongtaek" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   | "pohang"
   | "iksan"
@@ -331,6 +333,16 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "남양주시청",
     siteUrl: "https://www.nyj.go.kr/main/1058",
     fn: scrapeNamyangjuAndInsert,
+  },
+  // 2026-06-11 — 파주시: eGovFrame BD_board(보도자료 bbsCd=1023). 목록 jsView onclick +
+  //   슬래시 날짜, 본문 .article-body. "○월 ○일 보도자료" day-digest 형식(부천류, 매일 1건).
+  {
+    key: "paju",
+    city: "파주시",
+    ministry: "파주시청",
+    siteUrl:
+      "https://www.paju.go.kr/news/user/board/BD_board.list.do?bbsCd=1023&q_ctgCds=5226,5227,5229",
+    fn: scrapePajuAndInsert,
   },
   // 2026-06-08 — 평택시: ASN 차단 site 라 Vercel cron 직접 fetch 0건(정적 parse 자체는
   //   정상). GHA+icn1 프록시 경로(playwright/lib/cities.mjs scrapePyeongtaek)로 이관.
