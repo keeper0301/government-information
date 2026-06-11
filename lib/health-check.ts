@@ -188,6 +188,12 @@ export type HealthSignals = {
    * 전체 노쇼만 감지하는 보수적 설계.)
    */
   selfLearningCronRunsLast7d: number;
+  /**
+   * welfare_programs unique_insight 커버리지(%). insight 없는 정책은 thin 방어로 noindex 라
+   * 이 비율 = 색인 가능 복지 페이지 비중. 2026-06-11 enrich+백필로 57%→90%+ 달성.
+   * floor(WELFARE_INSIGHT_COVERAGE_FLOOR, 기본 80) 미만 = 회귀 신호. 데이터 없으면 100.
+   */
+  welfareInsightCoveragePct: number;
 };
 
 export type ThresholdAlert = {
@@ -216,7 +222,8 @@ export type ThresholdAlert = {
     | "adsense_ready_to_disable"
     | "vercel_token_expiring"
     | "blog_publish_stalled"
-    | "self_learning_cron_idle";
+    | "self_learning_cron_idle"
+    | "welfare_insight_coverage_low";
   message: string;
   // 사장님이 즉시 취할 액션 1줄 (Phase 1 — 사고 자동 진단 권장 hot-fix).
   // 정상 신호 발견 시 SMS 에 함께 노출 → 사장님 진입 동기 ↓.
@@ -248,6 +255,11 @@ const PRESS_NO_SHOW_HOURS = Number(
 );
 const ENRICH_PERMANENT_SKIP_FLOOR = Number(
   process.env.ENRICH_PERMANENT_SKIP_FLOOR ?? "100",
+);
+// 2026-06-11 — welfare insight 커버리지 floor(%). enrich+백필로 ~90% 달성 후,
+// 이 밑으로 떨어지면 회귀(파이프 중단·sparse 신규 급증). 사장님 목표치 80 을 기본 floor 로.
+const WELFARE_INSIGHT_COVERAGE_FLOOR = Number(
+  process.env.WELFARE_INSIGHT_COVERAGE_FLOOR ?? "80",
 );
 // Task 8 (2026-05-08) — low tier 큐 적체 임계.
 // 적극 모드 (high+mid 자동) 채택 후 평소엔 거의 0 이어야 함.
@@ -425,6 +437,22 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       .not("detail_permanently_skipped_at", "is", null),
   ]);
   const enrichPermanentSkip = (welfSkip.count ?? 0) + (loanSkip.count ?? 0);
+
+  // welfare insight 커버리지(%) — unique_insight 채워진 비율. AdSense thin 방어로 insight
+  // 없는 정책은 noindex 되므로, 이 비율이 색인 가능 복지 페이지 비중이다. 2026-06-11
+  // enrich(지자체·youth 상세수집)+백필 합산으로 57%→90%+ 달성. floor 미만 = 회귀(enrich
+  // 파이프라인 중단·sparse 신규 정책 급증 등) 신호.
+  const [welfTotal, welfInsight] = await Promise.all([
+    sb.from("welfare_programs").select("*", { count: "exact", head: true }),
+    sb
+      .from("welfare_programs")
+      .select("*", { count: "exact", head: true })
+      .not("unique_insight", "is", null),
+  ]);
+  const welfareInsightCoveragePct =
+    welfTotal.count && welfTotal.count > 0
+      ? Math.round(((welfInsight.count ?? 0) / welfTotal.count) * 1000) / 10
+      : 100; // 데이터 없으면 알림 X (100 으로 둠)
 
   // Instagram OAuth token 만료 임박 — 가장 임박한 1건 (multi-account 대비)
   // 테이블 빈 상태면 row 없음 → null (OAuth 미연결 — 알림 X)
@@ -624,6 +652,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     vercelTokenExpiresInDays,
     blogPublishStaleHours,
     selfLearningCronRunsLast7d,
+    welfareInsightCoveragePct,
   };
 }
 
@@ -779,6 +808,18 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
         "자가 진화 학습 cron 7d 동안 0건 발화 — Vercel cron schedule 또는 endpoint 점검 필요",
       recommendation:
         "vercel.json crons 검증 + /admin/cron-trigger 에서 수동 trigger 시도. 사장님 주간 텔레그램 다이제스트 누락 진단.",
+    });
+  }
+
+  // 2026-06-11 — welfare insight 커버리지 회귀 가드. enrich+백필로 ~90% 달성 후 floor(80%)
+  // 밑으로 떨어지면 알림. insight 없는 복지는 noindex 라 커버리지 하락 = 색인 가능 페이지 감소
+  // = SEO·AdSense 손실. sparse 신규 정책 급증·enrich/백필 파이프 중단 시 발화.
+  if (s.welfareInsightCoveragePct < WELFARE_INSIGHT_COVERAGE_FLOOR) {
+    alerts.push({
+      key: "welfare_insight_coverage_low",
+      message: `welfare insight 커버리지 ${s.welfareInsightCoveragePct}% (임계 ${WELFARE_INSIGHT_COVERAGE_FLOOR}% 미만). 색인 가능 복지 페이지 비중 하락.`,
+      recommendation:
+        "enrich(playwright/enrich-bokjiro.mjs·enrich-youth.mjs) + 백필 cron 점검. sparse 신규 정책 급증이면 상세수집 재가동.",
     });
   }
 

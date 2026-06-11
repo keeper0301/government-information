@@ -55,6 +55,8 @@ const BASE_SIGNALS: HealthSignals = {
   blogPublishStaleHours: 1,
   // 2026-06-07 — baseline 3 (매주 학습 cron 정상 발화, alert X). 0건 케이스 별도 테스트.
   selfLearningCronRunsLast7d: 3,
+  // 2026-06-11 — baseline 90 (enrich+백필 후 정상, alert X). <80 케이스 별도 테스트.
+  welfareInsightCoveragePct: 90,
 };
 
 describe("checkThresholds — low_activity 가드", () => {
@@ -874,5 +876,22 @@ describe("checkThresholds — self_learning_cron_idle (P3 #6)", () => {
     const alerts = checkThresholds({ ...BASE_SIGNALS, selfLearningCronRunsLast7d: 3 });
     expect(alerts.find((a) => a.key === "self_learning_cron_idle")).toBeUndefined();
     vi.unstubAllEnvs();
+  });
+});
+
+describe("checkThresholds — welfare insight 커버리지 회귀 가드", () => {
+  it("커버리지 80% 미만 → welfare_insight_coverage_low alert 발송", () => {
+    const alerts = checkThresholds({ ...BASE_SIGNALS, welfareInsightCoveragePct: 65 });
+    expect(alerts.find((a) => a.key === "welfare_insight_coverage_low")).toBeDefined();
+  });
+
+  it("커버리지 80% 이상 → alert 안 함", () => {
+    const alerts = checkThresholds({ ...BASE_SIGNALS, welfareInsightCoveragePct: 90 });
+    expect(alerts.find((a) => a.key === "welfare_insight_coverage_low")).toBeUndefined();
+  });
+
+  it("커버리지 floor 경계(정확히 80%) → alert 안 함", () => {
+    const alerts = checkThresholds({ ...BASE_SIGNALS, welfareInsightCoveragePct: 80 });
+    expect(alerts.find((a) => a.key === "welfare_insight_coverage_low")).toBeUndefined();
   });
 });
