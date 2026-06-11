@@ -18,6 +18,7 @@ import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
+import { cleanPolicyTitle } from "@/lib/policy-title";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { isAdminUser } from "@/lib/admin-auth";
 import { findCandidateByProgramId } from "@/lib/press-ingest/candidates";
@@ -68,12 +69,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const isSparse = !hasInsight;
   void filledCount; void descLen;
 
-  // 2026-06-11 — 검색의도 키워드(지원대상·한도) 보강. 짧은 정책명(28자 이하)에만 붙여
-  // title 잘림(네이버 ~40자) 방지. 사용자가 실제 검색하는 롱테일("OO 지원대상·한도")과 매칭.
+  // 2026-06-11 — title 정제(기관명 제거·지역 앞으로, CTR 개선) 후 검색의도 키워드 보강.
+  // 짧은 정책명(24자 이하)에만 붙여 잘림(네이버 ~40자) 방지. 롱테일("OO 지원대상·한도") 매칭.
+  const baseTitle = cleanPolicyTitle(data.title);
   const seoTitle =
-    data.title.length <= 24
-      ? `${data.title} 지원대상·한도 — 정책알리미`
-      : `${data.title} — 정책알리미`;
+    baseTitle.length <= 24
+      ? `${baseTitle} 지원대상·한도 — 정책알리미`
+      : `${baseTitle} — 정책알리미`;
   // 2026-06-11 — 검색결과 스니펫(description)을 unique_insight(keepioo 자체 해설) 우선으로.
   // 정부 원문 그대로면 여러 페이지 "동일 설명문 중복"(네이버 진단) + 딱딱해 CTR 낮음 → 해설로
   // 고유화·매력화. 없으면(noindex sparse) 정부 description fallback. 160자 cut(스니펫 권장).
