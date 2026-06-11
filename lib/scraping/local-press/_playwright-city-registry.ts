@@ -157,4 +157,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "의정부시청",
     sourceCode: "local-press-uijeongbu",
   },
+  // 2026-06-12 — 부천시. basicboard CMS, 목록 정적이나 Playwright 러너 경로로 추가(사장님 요청).
+  //   제목 anchor href ./view?encid=(암호화), 본문 .board-cons. day-digest("○월 ○일 보도자료").
+  bucheon: {
+    ministry: "부천시청",
+    sourceOutlet: "부천시청",
+    sourceCode: "local-press-bucheon",
+  },
 };

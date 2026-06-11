@@ -270,6 +270,20 @@ export const scrapeYangcheon = makeScraper({
   bodySelectors: [".view_contents"],
 });
 
+// 2026-06-12 — 부천시(인구 ~78만, 미커버 경기 큰 시). basicboard CMS. 목록 table tbody tr +
+// 제목 anchor href ./view?...&encid={암호화id}(숫자 id 아님 → href 직접 추종, onclickIdRe 불요).
+// 본문 .board-cons. "부천시 ○월 ○일 보도자료입니다" day-digest(헤드라인 목록 304자, 파주류).
+// 목록 정적이나 사장님 요청대로 Playwright 러너 경로(icn1)로 추가.
+export const scrapeBucheon = makeScraper({
+  cityName: "부천시",
+  listUrl:
+    "https://www.bucheon.go.kr/site/program/board/basicboard/list?boardtypeid=26748&menuid=148002002001",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["table tbody tr"],
+  bodySelectors: [".board-cons"],
+});
+
 // 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
 // .p-table__content 가 JS(한컴 웹에디터) 렌더라 정적 cron 0건 → Playwright 이관.
 // 렌더 후 본문 666자 검증.
