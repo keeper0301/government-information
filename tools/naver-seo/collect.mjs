@@ -82,7 +82,7 @@ function parseDiagnosis(raw) {
 // 노출/클릭 페이지 raw → 구조화
 function parseExpose(raw) {
   const p = raw.pairs;
-  const table = (startHint) => {
+  const table = () => {
     const out = [];
     for (const row of raw.rows) {
       // [No, 텍스트, 클릭, 노출, CTR] — No 가 숫자, 뒤 3개 숫자
