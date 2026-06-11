@@ -4,6 +4,7 @@ import {
   type PressNewsItem,
 } from "./_factory";
 import { parseSiNttBody } from "./_si_ntt_helper";
+import { nextDifferentIdIndex } from "./_date_window";
 
 const BASE_URL = "https://guri.go.kr";
 const LIST_URL =
@@ -30,8 +31,12 @@ export function parseListPage(html: string): PressNewsItem[] {
     ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
     // 2026-06-03 — 날짜가 anchor 에서 ~1700자 뒤라 800 으론 못 잡아 fallback 되던 것 → 2200.
-    // DATE_REGEX 첫 매칭이라 다음 글 날짜는 안 잡음.
-    const slice = html.slice(m.index, m.index + 2200);
+    // 2026-06-11 — 윈도우 끝을 '다음 글(다른 nttNo)' 직전으로 제한(_date_window). 행 간격
+    // 좁을 때 옆 글 날짜 오취득 방지. 다음 글 없으면 2200 유지(엄격히 비회귀).
+    const boundary = nextDifferentIdIndex(html, m.index, "nttNo", seq);
+    const end =
+      boundary >= 0 ? Math.min(boundary, m.index + 2200) : m.index + 2200;
+    const slice = html.slice(m.index, end);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     const publishedDate = dateMatch
       ? dateMatch[1].replace(/\./g, "-")

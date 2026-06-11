@@ -11,6 +11,7 @@ import {
   type PressNewsItem,
 } from "./_factory";
 import { parseSiNttBody } from "./_si_ntt_helper";
+import { nextDifferentIdIndex } from "./_date_window";
 
 const BASE_URL = "https://www.chungju.go.kr";
 const LIST_URL =
@@ -44,7 +45,12 @@ export function parseListPage(html: string): PressNewsItem[] {
       rawTitle.replace(/<[^>]+>/g, "").replace(/\s+/g, " "),
     ).trim();
     if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
-    const slice = html.slice(m.index, m.index + 2500);
+    // 윈도우 끝을 '다음 글(다른 nttNo)' 직전으로 제한 — 행 간격 좁을 때 옆 글 날짜
+    // 오취득 방지(_date_window). 다음 글 없으면 기존 2500 유지(엄격히 비회귀).
+    const boundary = nextDifferentIdIndex(html, m.index, "nttNo", seq);
+    const end =
+      boundary >= 0 ? Math.min(boundary, m.index + 2500) : m.index + 2500;
+    const slice = html.slice(m.index, end);
     const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
     const publishedDate = dateMatch
       ? dateMatch[1].replace(/\./g, "-")

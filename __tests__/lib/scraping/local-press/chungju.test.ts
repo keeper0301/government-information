@@ -46,6 +46,32 @@ describe("chungju parseListPage — subject 제목만 추출 (라이브 구조)"
   });
 });
 
+describe("chungju parseListPage — 날짜 윈도우 경계 (_date_window, 2026-06-11)", () => {
+  // 글1(nttNo=100)은 자체 날짜 없음 + 바로 뒤 글2(nttNo=200)에 날짜.
+  // 고정 윈도우면 글1이 글2 날짜를 옆에서 잘못 가져옴(bleed). 경계 제한 후엔 글1=null.
+  const html = `
+    <a href="./selectBbsNttView.do?key=494&bbsNo=6&nttNo=100">
+      <div class="substance"><strong class="subject">충주시 날짜없는 첫 보도자료 제목</strong></div>
+    </a>
+    <a href="./selectBbsNttView.do?key=494&bbsNo=6&nttNo=200">
+      <div class="substance"><strong class="subject">충주시 둘째 보도자료 제목입니다</strong></div>
+    </a>
+    <span class="date">2026.06.02</span>
+  `;
+  const items = parseListPage(html);
+
+  it("글1은 다음 글(nttNo=200) 날짜를 가져오지 않음 (bleed 방지 → null)", () => {
+    const first = items.find((x) => x.seq === "100");
+    expect(first).toBeDefined();
+    expect(first?.publishedDate).toBeNull();
+  });
+
+  it("글2는 자체 날짜를 정상 추출", () => {
+    const second = items.find((x) => x.seq === "200");
+    expect(second?.publishedDate).toBe("2026-06-02");
+  });
+});
+
 describe("chungju parseListPage — subject 없으면 fallback", () => {
   it("subject 블록이 없으면 기존 통째 추출 (안전망 — 회귀 방지)", () => {
     const html = `

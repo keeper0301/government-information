@@ -16,7 +16,8 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { timingSafeEqual } from "node:crypto";
+// 2026-06-11 — 자체 safeCompare 재구현 → 공용 상수시간 비교로 통일(보안 로직 단일화).
+import { safeKeyEqual } from "@/lib/safe-key-equal";
 
 const RATE_LIMIT_PER_MIN = 10;
 const AGENT_ACTIONS = ["agent_diagnose_run", "agent_execute_run"] as const;
@@ -57,7 +58,7 @@ export async function checkAgentAuth(request: Request): Promise<AgentAuthResult>
   }
   const header = request.headers.get("authorization") ?? "";
   const expected = `Bearer ${secret}`;
-  if (!safeCompare(header, expected)) {
+  if (!safeKeyEqual(header, expected)) {
     return {
       ok: false,
       response: NextResponse.json({ error: "인증에 실패했습니다." }, { status: 401 }),
@@ -77,16 +78,6 @@ export async function checkAgentAuth(request: Request): Promise<AgentAuthResult>
   }
 
   return { ok: true };
-}
-
-function safeCompare(a: string, b: string): boolean {
-  // 길이 다르면 즉시 false (timingSafeEqual 은 길이 같아야 안전)
-  if (a.length !== b.length) return false;
-  try {
-    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
 }
 
 /**
