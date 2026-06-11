@@ -58,8 +58,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 회귀 감시: filledCount/descLen 도 함께 기록 (admin/insight-progress 진단용).
   void filledCount; void descLen;
 
+  // 2026-06-11 — 검색의도 키워드(신청자격·방법) 보강. 짧은 정책명(28자 이하)에만 붙여
+  // title 잘림(네이버 ~40자) 방지. 사용자가 실제 검색하는 롱테일("OO 신청방법·자격")과 매칭.
+  const seoTitle =
+    data.title.length <= 24
+      ? `${data.title} 신청자격·방법 — 정책알리미`
+      : `${data.title} — 정책알리미`;
   return {
-    title: `${data.title} — 정책알리미`,
+    title: seoTitle,
     description: data.description || undefined,
     // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
     // 모든 상세가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).

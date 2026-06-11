@@ -21,9 +21,13 @@ import { callLLM } from "@/lib/llm/text";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5분 — 100건 × 1~2s = 100~200s
+// 2026-06-11 — 네이버 색인 커버리지 가속(복지 noindex 43% → 색인 해제 빠르게).
+// 배치 100→150 으로 1,200→1,800/일. 평균 1.5s 면 225s. 단 LLM 호출당 타임아웃 상한이
+// 20s(lib/llm/text.ts) 라 일부 느린 호출 누적 대비 maxDuration 600 여유(Vercel Pro fluid
+// 한도 800 내). 중간 잘려도 row update 는 독립이라 손상 없음(다음 cron 이 NULL 이어받음).
+export const maxDuration = 600;
 
-const WELFARE_CAP = 100; // welfare eligible 5,005 남음 → 집중(maxDuration 내 ~200s)
+const WELFARE_CAP = 150; // welfare eligible 잔량 색인 가속 (maxDuration 400 내 ~225~300s)
 const LOAN_CAP = 10;     // loan eligible 0(완료) → 미래 신규 정책 안전망만
 // welfare 90% 가 sparse (desc<50자)인데 PostgREST 로는 char_length 필터를 못 걸어
 // client filter 로 거른다. 그런데 PostgREST 는 한 번에 max 1000행이라 단일 윈도우만
