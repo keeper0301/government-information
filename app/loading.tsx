@@ -25,10 +25,12 @@ export default function Loading() {
     >
       <div className="max-w-[480px] mx-auto text-center">
         {/* 사이트 정체성 — 크롤러가 fallback 만 읽어도 무엇을 하는 사이트인지
-            인식할 수 있도록 핵심 카피 노출. h1 으로 SEO 가중치 부여 */}
-        <h1 className="text-[24px] font-extrabold tracking-[-0.5px] text-grey-900 mb-3">
+            인식할 수 있도록 핵심 카피 노출. 2026-06-11 h1→p: streaming fallback 의 h1 이
+            실제 페이지 본문 h1(정책명 등)과 함께 초기 HTML 에 박혀 모든 페이지 "H1 2개"
+            (네이버 사이트진단 1,858건) 유발 → p 로 변경. 시각 동일, 페이지 h1 단일화. */}
+        <p className="text-[24px] font-extrabold tracking-[-0.5px] text-grey-900 mb-3">
           내 조건에 맞는 정부 지원, 30초 만에
-        </h1>
+        </p>
         <p className="text-[14px] text-grey-700 leading-[1.6] mb-8">
           청년·소상공인·부모·신혼부부 정책을 한곳에 모아
           <br className="max-md:hidden" />

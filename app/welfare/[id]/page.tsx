@@ -64,9 +64,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     data.title.length <= 24
       ? `${data.title} 신청자격·방법 — 정책알리미`
       : `${data.title} — 정책알리미`;
+  // 2026-06-11 — 검색결과 스니펫(description)을 unique_insight(keepioo 자체 해설) 우선으로.
+  // 정부 원문 그대로면 여러 페이지 "동일 설명문 중복"(네이버 진단) + 딱딱해 CTR 낮음 → 해설로
+  // 고유화·매력화. 없으면(noindex sparse) 정부 description fallback. 160자 cut(스니펫 권장).
+  const metaDescription = hasInsight
+    ? (data.unique_insight as string).trim().replace(/\s+/g, " ").slice(0, 160)
+    : data.description || undefined;
   return {
     title: seoTitle,
-    description: data.description || undefined,
+    description: metaDescription,
     // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
     // 모든 상세가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
     alternates: { canonical: `/welfare/${id}` },
