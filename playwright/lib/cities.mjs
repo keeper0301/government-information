@@ -284,6 +284,23 @@ export const scrapeBucheon = makeScraper({
   bodySelectors: [".board-cons"],
 });
 
+// 2026-06-12 — 시흥시(인구 ~50만). 의정부와 동일 CMS(div.bod_blog ul li, FORM#list).
+// ⚠️ 상세 view.do 직접 GET 이 mId 누락 시 main.do 로 리다이렉트 → detailPath 에 mId 필수 포함.
+// 목록 onclick goTo.view('list','{bIdx}','82',...) → bIdx 추출. 본문 .view_cont(개별 기사 전문,
+// 라이브 1124자 — 파주·부천 day-digest 와 달리 개별 정책 기사라 가치 ↑).
+export const scrapeSiheung = makeScraper({
+  cityName: "시흥시",
+  listUrl: "https://www.siheung.go.kr/media/bbs/list.do?ptIdx=82&mId=0100000000",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["div.bod_blog ul li"],
+  onclickIdRe: "goTo\\.view\\('list','(\\d+)'",
+  detailPath: "view.do?mId=0100000000&bIdx={id}&ptIdx=82",
+  // 제목 anchor 통째는 "…제목 작성일 2026-06-11 작성자 …" 라벨이 섞임 → .blog_tit 만.
+  titleSelectors: [".blog_tit"],
+  bodySelectors: [".view_cont"],
+});
+
 // 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
 // .p-table__content 가 JS(한컴 웹에디터) 렌더라 정적 cron 0건 → Playwright 이관.
 // 렌더 후 본문 666자 검증.

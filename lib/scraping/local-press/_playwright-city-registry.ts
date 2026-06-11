@@ -164,4 +164,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "부천시청",
     sourceCode: "local-press-bucheon",
   },
+  // 2026-06-12 — 시흥시. 의정부 동일 CMS(div.bod_blog ul li). 상세 view.do 에 mId 필수
+  //   (누락 시 main.do 리다이렉트). onclick goTo.view bIdx, 본문 .view_cont 개별 기사 전문.
+  siheung: {
+    ministry: "시흥시청",
+    sourceOutlet: "시흥시청",
+    sourceCode: "local-press-siheung",
+  },
 };
