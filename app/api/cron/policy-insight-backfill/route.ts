@@ -21,13 +21,17 @@ import { callLLM } from "@/lib/llm/text";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
-// 2026-06-11 — 네이버 색인 커버리지 가속(복지 noindex 43% → 색인 해제 빠르게).
-// 배치 100→150 으로 1,200→1,800/일. 평균 1.5s 면 225s. 단 LLM 호출당 타임아웃 상한이
-// 20s(lib/llm/text.ts) 라 일부 느린 호출 누적 대비 maxDuration 600 여유(Vercel Pro fluid
-// 한도 800 내). 중간 잘려도 row update 는 독립이라 손상 없음(다음 cron 이 NULL 이어받음).
+// maxDuration 600 = 느린 LLM 호출 누적 대비 여유(Vercel Pro fluid 한도 800 내).
+// 중간 잘려도 row update 는 독립이라 손상 없음(다음 cron 이 NULL 이어받음).
 export const maxDuration = 600;
 
-const WELFARE_CAP = 150; // welfare eligible 잔량 색인 가속 (maxDuration 400 내 ~225~300s)
+// 2026-06-11 — welfare insight 57%(6,492/11,423) 정체 진단: 남은 NULL 4,930건은 전부
+//   description<50자(지자체 복지 한 줄 요약). description 단독으론 backfill 불가였음.
+//   ⇒ 해법: ① enrich(상세수집)가 detailed_content/eligibility/benefits 를 채우고
+//          ② backfill 이 buildSourceText 로 그 컬럼들을 합산해 해설 생성(이 파일 변경).
+//   지자체 복지 상세는 playwright/enrich-bokjiro.mjs(한국 IP Playwright)가 bokjiro 웹에서 수집.
+//   enrich 가 진행될수록 eligible 이 늘어 CAP 150 이 다시 의미를 가진다(천장 57%→상승).
+const WELFARE_CAP = 150; // enrich 가 채운 본문 합산이 ≥50 인 welfare 처리 (잔량 따라 가변)
 const LOAN_CAP = 10;     // loan eligible 0(완료) → 미래 신규 정책 안전망만
 // welfare 90% 가 sparse (desc<50자)인데 PostgREST 로는 char_length 필터를 못 걸어
 // client filter 로 거른다. 그런데 PostgREST 는 한 번에 max 1000행이라 단일 윈도우만
@@ -65,7 +69,25 @@ type PolicyRow = {
   title: string;
   source: string | null;
   description: string | null;
+  // 2026-06-11 — enrich(상세수집)가 채우는 본문 컬럼들. description 이 짧아도(지자체 복지
+  // 한 줄 요약) 이 컬럼들이 차 있으면 합산해서 해설 생성. enrich → backfill → 색인 파이프라인.
+  detailed_content: string | null;
+  eligibility: string | null;
+  benefits: string | null;
+  target: string | null;
 };
+
+// LLM 해설 입력 = description + enrich 본문 컬럼 합산. 지자체 복지는 description 이 27자라도
+// detailed_content/eligibility/benefits 에 631자가 차 있어 합산하면 충분(중복 제거).
+function buildSourceText(row: PolicyRow): string {
+  const parts = [row.description, row.detailed_content, row.eligibility, row.benefits, row.target]
+    .map((s) => s?.trim())
+    .filter((s): s is string => !!s && s.length > 0);
+  // 동일 문구 중복 제거(여러 컬럼에 같은 한 줄이 복사된 경우) 후 결합.
+  const seen = new Set<string>();
+  const uniq = parts.filter((p) => (seen.has(p) ? false : (seen.add(p), true)));
+  return uniq.join("\n").trim();
+}
 
 type BackfillResult = {
   table: string;
@@ -105,7 +127,7 @@ async function backfillTable(
   ) {
     const { data: rows, error } = await admin
       .from(table)
-      .select("id, title, source, description")
+      .select("id, title, source, description, detailed_content, eligibility, benefits, target")
       .is("unique_insight", null)
       .order("view_count", { ascending: false, nullsFirst: false })
       .order("published_at", { ascending: false, nullsFirst: false })
@@ -121,8 +143,9 @@ async function backfillTable(
     if (!rows || rows.length === 0) break;
 
     for (const row of rows as PolicyRow[]) {
-      const desc = row.description?.trim();
-      if (!desc || desc.length < MIN_DESC_LEN) {
+      // description 단독이 아니라 enrich 본문 합산으로 판정 — 지자체 복지(desc 짧음+상세 채워짐) 포함.
+      const sourceText = buildSourceText(row);
+      if (sourceText.length < MIN_DESC_LEN) {
         result.skipped_short++;
         continue;
       }
@@ -135,12 +158,12 @@ async function backfillTable(
   result.fetched = eligible.length;
 
   for (const row of eligible) {
-    const desc = row.description!.trim();
+    const sourceText = buildSourceText(row);
 
     const prompt = PROMPT_TEMPLATE
       .replace("{{TITLE}}", row.title)
       .replace("{{SOURCE}}", row.source ?? "정부 공식")
-      .replace("{{DESCRIPTION}}", desc.slice(0, MAX_DESC_PROMPT_LEN));
+      .replace("{{DESCRIPTION}}", sourceText.slice(0, MAX_DESC_PROMPT_LEN));
 
     let insight: string;
     try {
