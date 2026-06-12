@@ -328,6 +328,11 @@ export const scrapeJungnang = makeScraper({
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   listSelectors: ["table tbody tr"],
   bodySelectors: ["#dbdata"],
+  // 로컬(직접 fetch)은 빠르나 icn1 프록시 경유 시 domcontentloaded 45s timeout(GHA 실측).
+  // board HTML 은 초기 응답에 서버렌더라, commit(초기 응답 즉시) 후 table tbody tr 를
+  // waitForSelector 로 대기. 의정부 동일 패턴. timeout 120s 마진.
+  navWait: "commit",
+  listTimeout: 120000,
 });
 
 // 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
