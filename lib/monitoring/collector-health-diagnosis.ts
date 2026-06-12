@@ -303,7 +303,16 @@ export async function getSustainedInsertStops({
     const latestByCode = new Map<string, string>();
     for (const p of (posts ?? []) as { source_code: string; published_at: string }[]) {
       if (!latestByCode.has(p.source_code))
-        latestByCode.set(p.source_code, String(p.published_at).slice(0, 10));
+        // ⚠️ KST 로 slice — published_at 은 `YYYY-MM-DDT00:00:00+09:00` 라 UTC slice 시
+        // 하루 빠르게(예 5/29 KST → "2026-05-28") 나온다. latestFetched(사이트 KST 날짜)와
+        // 비교하므로 KST 로 맞춰야 한다. UTC slice 면 idle collector 가 항상 1일 off 로
+        // false keep(오탐) — 성북 매일 false ⚠️ 원인(2026-06-12 fix).
+        latestByCode.set(
+          p.source_code,
+          new Date(new Date(p.published_at).getTime() + 9 * 3600_000)
+            .toISOString()
+            .slice(0, 10),
+        );
     }
     for (const f of flags) {
       const code = cityToCode.get(f.city);
