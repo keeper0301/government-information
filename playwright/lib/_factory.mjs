@@ -166,6 +166,9 @@ export function makeScraper({
   // 제목이 셀 텍스트가 아니라 JS 함수 인자 등 텍스트 안에 있는 경우(양천
   // wdigm_title('제목')). titleEl textContent 에 이 정규식 적용 → 캡처그룹1 을 제목으로.
   titleTextRe = null,
+  // 사이트별 날짜 형식이 기본(2자리 점/하이픈)과 다를 때 커스텀 정규식. 캡처그룹
+  // (연)(월)(일), 단자리 month/day 허용(광명 "2026. 6. 11."). 미지정 시 기본 정규식.
+  dateTextRe = null,
   // 본문이 div textContent 가 아니라 hidden input/textarea 의 value 에 서버 렌더되는
   // 경우(강남 #content_main_text — 한컴 웹에디터라 div 는 JS 렌더 빈칸). 이 selector
   // 요소의 value 를 본문으로 추출.
@@ -216,7 +219,7 @@ export function makeScraper({
       // listSelectors 는 정확한 selector 라 소량(구보 등 2~3건)도 신뢰 → >0 허용.
       const minRows = listSelectors === LIST_SELECTORS ? 3 : 0;
       const items = await page.evaluate(
-        ({ selectors, limit, minRows, onclickIdRe, detailPath, attrIdName, titleSelectors, titleTextRe }) => {
+        ({ selectors, limit, minRows, onclickIdRe, detailPath, attrIdName, titleSelectors, titleTextRe, dateTextRe }) => {
           let rows = [];
           let chosen = null;
           // 2026-05-22 debug — 각 selector 매칭 count 기록 (Actions log).
@@ -312,14 +315,19 @@ export function makeScraper({
               ).trim();
               // ※ parseListDate(_factory export)와 동기화. 4자리 우선 + 2자리 연도(20
               // 접두) + month/day 범위 검증으로 비-날짜 숫자 오매칭 차단.
-              const dm = dateText.match(/(\d{4}|\d{2})[.\-](\d{2})[.\-](\d{2})/);
+              // dateTextRe 지정 시 사이트별 날짜형식(광명 "2026. 6. 11." 공백·단자리)에 맞춰
+              // 캡처그룹 (연)(월)(일). 미지정 시 기본 정규식(2자리 점/하이픈).
+              const dm = dateText.match(
+                dateTextRe ? new RegExp(dateTextRe) : /(\d{4}|\d{2})[.\-](\d{2})[.\-](\d{2})/,
+              );
               let publishedDate = null;
               if (dm) {
                 const mm = parseInt(dm[2], 10);
                 const dd = parseInt(dm[3], 10);
                 if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
                   const yr = dm[1].length === 2 ? `20${dm[1]}` : dm[1];
-                  publishedDate = `${yr}-${dm[2]}-${dm[3]}`;
+                  // 단자리 month/day(광명 등) zero-pad → 유효 ISO. 기존 2자리 캡처엔 무영향.
+                  publishedDate = `${yr}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
                 }
               }
 
@@ -327,7 +335,7 @@ export function makeScraper({
             })
             .filter(Boolean);
         },
-        { selectors: listSelectors, limit, minRows, onclickIdRe, detailPath, attrIdName, titleSelectors, titleTextRe },
+        { selectors: listSelectors, limit, minRows, onclickIdRe, detailPath, attrIdName, titleSelectors, titleTextRe, dateTextRe },
       );
 
       const out = [];

@@ -312,6 +312,8 @@ export const scrapeGwangmyeong = makeScraper({
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   listSelectors: ["table tbody tr"],
   bodySelectors: [".content"],
+  // "2026. 6. 11."(공백+단자리) → factory zero-pad 로 2026-06-11. now() fallback 해소.
+  dateTextRe: "(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.",
 });
 
 // 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
