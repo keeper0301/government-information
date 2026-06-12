@@ -161,21 +161,19 @@ export async function searchAll(
     : null;
 
   for (const t of tokens) {
-    // 다 묶음 (DDL 081) — keywords (text[]) + summary_short (LLM 추출) 매칭 추가.
-    // keywords.cs.{token} = array contains element. token 안 {/}/, 는 array literal 충돌 → 제거.
-    // summary_short.ilike — LLM 한 줄 요약 안 키워드 fuzzy 매칭.
+    // 2026-06-13 검색 속도 최적화 (migration 113) — 인덱스 있는 컬럼만 매칭해 전체 스캔 제거.
+    //   복지·대출: 제목 트라이그램 + keywords GIN(LLM 추출 검색어). 뉴스·블로그: 제목 트라이그램.
+    //   설명/카테고리/요약 ILIKE 는 인덱스가 없어 OR 에 섞이면 풀스캔을 유발 → 제외.
+    //   (앞 와일드카드 ILIKE 는 B-tree 못 씀. keywords 가 설명문 키워드 recall 을 보완.)
+    //   keywords.cs.{token} = array contains. token 안 {/}/, 는 array literal 충돌 → 제거.
+    //   토큰별 .or()/.ilike() 호출은 PostgREST 에서 AND 결합 → 띄어쓰기 매칭 정확도 유지.
     const safeT = t.replace(/[{},]/g, "");
     if (welfareQ)
-      welfareQ = welfareQ.or(
-        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%,summary_short.ilike.%${t}%,keywords.cs.{${safeT}}`,
-      );
+      welfareQ = welfareQ.or(`title.ilike.%${t}%,keywords.cs.{${safeT}}`);
     if (loanQ)
-      loanQ = loanQ.or(
-        `title.ilike.%${t}%,description.ilike.%${t}%,category.ilike.%${t}%,summary_short.ilike.%${t}%,keywords.cs.{${safeT}}`,
-      );
-    if (newsQ) newsQ = newsQ.or(`title.ilike.%${t}%,summary.ilike.%${t}%`);
-    if (blogQ)
-      blogQ = blogQ.or(`title.ilike.%${t}%,meta_description.ilike.%${t}%`);
+      loanQ = loanQ.or(`title.ilike.%${t}%,keywords.cs.{${safeT}}`);
+    if (newsQ) newsQ = newsQ.ilike("title", `%${t}%`);
+    if (blogQ) blogQ = blogQ.ilike("title", `%${t}%`);
   }
 
   // 복지·대출 공통 정렬 — sort 분기. 뉴스·블로그는 최신순 고정.
