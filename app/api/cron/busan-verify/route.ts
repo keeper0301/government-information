@@ -102,9 +102,16 @@ async function run() {
     });
   }
 
-  // ✅ 24h 수집 · 🟡 24h 0 이나 7d 있음 · ⚠️ 7d 0(수집 실패/장기 무발행 의심)
+  // ✅ 24h 수집 · 🟡 24h 0 이나 7d 있음 / 7d 0 이나 최신글 최근(구청 휴재) · ⚠️ 7d 0 +
+  // 최신글 21일+ 오래됨(진짜 수집실패 의심). 7d 0 이어도 최신글이 최근이면 무발행=정상이라
+  // ⚠️ 오탐(성북). 진짜 break 정밀감지는 self-heal triage(사이트 vs DB) 담당 — 여기선 노이즈 ↓.
+  const STALE_DAYS = 21;
   const fmt = (r: (typeof results)[number]) => {
-    const icon = r.cnt24 > 0 ? "✅" : r.cnt7 > 0 ? "🟡" : "⚠️";
+    const daysSinceLatest = r.latestPublished
+      ? Math.floor((Date.now() - new Date(r.latestPublished).getTime()) / 86_400_000)
+      : 999;
+    const broken = r.cnt7 === 0 && daysSinceLatest > STALE_DAYS;
+    const icon = r.cnt24 > 0 ? "✅" : r.cnt7 > 0 ? "🟡" : broken ? "⚠️" : "🟡";
     // KST 로 slice — published_at 은 `YYYY-MM-DDT00:00:00+09:00` 라 UTC slice 시 하루
     // 빠르게(5/29 KST → "2026-05-28") 나옴. 표시는 KST 발행일로 맞춘다.
     const pub = r.latestPublished
@@ -113,8 +120,10 @@ async function run() {
           .slice(0, 10)
       : "-";
     const base = `${icon} ${r.name}: 24h ${r.cnt24} / 7d ${r.cnt7} (최신 ${pub})`;
-    // ⚠️(7d 0건)인 도시만 자동 상세 진단 한 줄 첨부.
-    return r.cnt7 === 0 ? `${base}\n    └ 진단: ${r.diag}` : base;
+    // ⚠️(진짜 수집실패 의심)만 상세 진단. idle(7d 0 이나 최신 ≤21일)은 무발행(정상) 한 줄.
+    if (broken) return `${base}\n    └ 진단: ${r.diag}`;
+    if (r.cnt7 === 0) return `${base}\n    └ ${daysSinceLatest}일째 무발행 — 구청 휴재 가능(수집기 정상)`;
+    return base;
   };
 
   // region 별 섹션 (부산 먼저, 서울 다음). 등록 순서 유지.
