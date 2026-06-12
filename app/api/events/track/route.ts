@@ -102,23 +102,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // 2026-06-13 — 정책 상세 페이지 정적 ISR 전환에 따라 view_count 증가를 서버 렌더가
-  // 아닌 이 클라이언트 program_view 경로로 이전(정적 페이지는 매 요청 렌더 안 함).
-  // fire-and-forget — 실패해도 이벤트 기록 응답엔 영향 없음. rate limit(1초/IP)이 부풀림 차단.
-  if (
-    eventType === "program_view" &&
-    programTable &&
-    typeof body.program_id === "string"
-  ) {
-    admin
-      .rpc("increment_view_count", {
-        p_table_name: programTable,
-        p_row_id: body.program_id,
-      })
-      .then(({ error: rpcErr }) => {
-        if (rpcErr) console.error("[events/track] view count error:", rpcErr);
-      });
-  }
-
   return NextResponse.json({ ok: true });
 }

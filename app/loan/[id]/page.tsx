@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/ad-slot";
 import { AlarmButton } from "@/components/alarm-button";
@@ -103,9 +104,9 @@ export default async function LoanDetailPage({ params }: Props) {
 
   if (!program) notFound();
 
-  // 2026-06-13 — 조회수 증가는 클라이언트 ProgramViewTracker → /api/events/track(program_view)
-  // 로 일원화. 서버 렌더 증가를 같이 두면 이중 카운트(서버 1 + 클라 1)되므로 제거.
-  // (welfare 상세 정적 ISR 전환 시 track route 에 increment 추가 → loan 도 일원화.)
+  // 조회수 증가 (fire-and-forget). service_role 로 호출 — anon 직접 RPC 조작(조회수 부풀림→추천 왜곡) 차단.
+  createAdminClient().rpc("increment_view_count", { p_table_name: "loan_programs", p_row_id: id })
+    .then(({ error }) => { if (error) console.error("view count error:", error); });
 
   // 로그인 여부 + 북마크 상태 — BookmarkButton 초기 상태 hydration 용
   const { data: { user } } = await supabase.auth.getUser();

@@ -9,6 +9,8 @@ import { ReconsentBannerContainer } from "@/components/reconsent-banner-containe
 import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { PWARegister } from "@/components/pwa-register";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
+import { createClient } from "@/lib/supabase/server";
+import { isAdminUser } from "@/lib/admin-auth";
 import "./globals.css";
 
 // ChatbotPanel — 우측 하단 floating 위젯, 즉시 노출 불필요.
@@ -83,10 +85,27 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 2026-06-13 정적 ISR 전환 — 루트 레이아웃에서 쿠키(auth.getUser)를 읽으면 앱의 모든
-  // 페이지가 동적 렌더링으로 강제돼 전 사이트가 캐시 안 됨(TTFB ~550ms). 따라서 로그인·
-  // 관리자·알림수 판정을 레이아웃에서 제거하고, Nav(client)가 mount 후 서버 액션
-  // getNavAuthState 로 self-fetch 한다. 익명·크롤러엔 영향 0, 로그인 사용자만 하이드레이션 후 갱신.
+  // 어드민 메뉴 노출 여부 — 서버에서 한 번 판정해 Nav 로 내려보냄.
+  // isAdmin 은 UI 노출용일 뿐, 실제 권한은 /admin 페이지에서 서버 가드로 재검증함.
+  // (클라이언트에서 isAdmin 을 조작해도 admin 페이지 진입 불가 — lib/admin-auth.ts)
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isAdmin = isAdminUser(user?.email);
+
+  // 헤더 종 아이콘 배지에 표시할 활성 알림 개수.
+  // 비로그인은 0 (Nav 안 NotificationBell 이 비노출 처리).
+  let alarmCount = 0;
+  if (user) {
+    const { count } = await supabase
+      .from("alarm_subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+    alarmCount = count ?? 0;
+  }
+
   return (
     <html lang="ko">
       <head>
@@ -134,7 +153,7 @@ export default async function RootLayout({
           alternateName={["keepioo", "키피오"]}
           sameAs={["https://www.instagram.com/keepioo_official"]}
         />
-        <Nav />
+        <Nav isAdmin={isAdmin} loggedIn={!!user} alarmCount={alarmCount} />
         <ReconsentBannerContainer />
         {children}
         <Footer />

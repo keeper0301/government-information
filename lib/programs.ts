@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
 import type {
   IncomeTargetLevel,
@@ -330,11 +329,7 @@ export async function getRelatedPrograms(
   limit = 4,
   userSignals?: UserSignals | null,
 ): Promise<DisplayProgram[]> {
-  // 2026-06-13 — 관련정책은 공개 콘텐츠(SEO 내부링크)라 정책 상세의 정적 ISR 렌더 경로에서
-  // 호출된다. 쿠키 클라이언트(createClient)는 라우트를 동적으로 강제하므로 쿠키 없는 admin
-  // client 사용. RLS(USING is_hidden=false) 우회분은 아래 .not("is_hidden","is",true) 로
-  // 명시 대체 — 숨김(회수)된 정책이 관련목록에 노출되지 않게 보장.
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const table = type === "welfare" ? "welfare_programs" : "loan_programs";
   const today = new Date().toISOString().split("T")[0];
   const queryLimit = userSignals ? limit * 4 : limit;
@@ -351,7 +346,6 @@ export async function getRelatedPrograms(
     .from(table)
     .select("*")
     .not("source_code", "in", excludedFilter)
-    .not("is_hidden", "is", true) // 숨김(회수)된 정책 제외 — RLS 대체(admin client 라 명시 필요)
     .eq("category", category)
     .neq("id", excludeId)
     .or(`apply_end.gte.${today},apply_end.is.null`)
@@ -370,7 +364,6 @@ export async function getRelatedPrograms(
         .from(table)
         .select("*")
         .not("source_code", "in", excludedFilter)
-        .not("is_hidden", "is", true) // 숨김(회수)된 정책 제외 — RLS 대체
         .eq("category", category)
         .neq("id", excludeId)
         .or(`apply_end.gte.${today},apply_end.is.null`)

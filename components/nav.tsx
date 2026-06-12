@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./user-menu";
 import { NotificationBell } from "./notification-bell";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
-import { getNavAuthState } from "@/lib/nav/nav-auth-state";
 
 // ============================================================
 // 헤더 메뉴 — 11개 → 5개로 축소
@@ -67,33 +66,12 @@ type NavProps = {
 };
 
 export function Nav({
-  isAdmin: isAdminProp = false,
-  loggedIn: loggedInProp = false,
-  alarmCount: alarmCountProp = 0,
+  isAdmin = false,
+  loggedIn = false,
+  alarmCount = 0,
 }: NavProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  // 2026-06-13 정적 ISR 전환 — 레이아웃이 더 이상 쿠키를 읽지 않으므로(앱 전체 캐시 가능)
-  // 로그인·관리자·알림수를 여기서 mount 후 self-fetch 한다. props 는 backward-compat 폴백.
-  // 익명·크롤러는 loggedIn=false 라 변화 없음(깜빡임 없음). 로그인 사용자만 하이드레이션 후 갱신.
-  const [isAdmin, setIsAdmin] = useState(isAdminProp);
-  const [loggedIn, setLoggedIn] = useState(loggedInProp);
-  const [alarmCount, setAlarmCount] = useState(alarmCountProp);
-  useEffect(() => {
-    let cancelled = false;
-    getNavAuthState()
-      .then((s) => {
-        if (cancelled) return;
-        setIsAdmin(s.isAdmin);
-        setLoggedIn(s.loggedIn);
-        setAlarmCount(s.alarmCount);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
