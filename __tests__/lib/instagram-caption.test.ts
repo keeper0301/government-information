@@ -85,6 +85,30 @@ describe("buildInstagramCaption", () => {
     expect(caption).toContain("📌");
     expect(caption).toContain("프로필 링크");
   });
+
+  // 2026-06-13 오탐 회귀 방어 — 정책 제목(고유명사)에 금지 문구가 들어가도 발행 차단되면 안 됨.
+  // (6/8 "청년과 함께 성장할 기업 모집" 글이 금지구 "함께 성장" 으로 매번 검증 실패 → 영영 미발행 사고)
+  it("제목에 금지 문구(함께 성장)가 있어도 throw 안 함 (인용된 정책명 면제)", () => {
+    const input = {
+      ...baseInput,
+      title: "2026년 중소기업 미래내일 일경험 — 청년과 함께 성장할 기업 모집",
+      meta_description:
+        "청년 일경험 기회를 제공할 중소기업을 모집하는 정부 지원 사업.",
+    };
+    expect(() => buildInstagramCaption(input)).not.toThrow();
+    const caption = buildInstagramCaption(input);
+    expect(caption).toContain("함께 성장할 기업"); // 제목은 그대로 인용 유지
+  });
+
+  // 제목 면제가 meta_description(자체 문체) 검증까지 무력화하면 안 됨 — 진짜 금지 문구는 여전히 차단.
+  it("meta_description 에 든 금지 문구는 여전히 throw (자체 문체 검증 유지)", () => {
+    const input = {
+      ...baseInput,
+      title: "2026년 경기도 청년 기본소득 — 분기 25만원",
+      meta_description: "여러분 이번 글에서는 청년 기본소득을 소개합니다.",
+    };
+    expect(() => buildInstagramCaption(input)).toThrow();
+  });
 });
 
 describe("getLinkInBioText", () => {

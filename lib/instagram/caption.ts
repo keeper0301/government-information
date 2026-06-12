@@ -81,7 +81,18 @@ export function buildInstagramCaption(input: CaptionInput): string {
   const caption = lines.join("\n").trim();
   // 5/22: AI 티 자동 검증 — 위반 시 throw → 자동 cron 발행 차단.
   // meta_description LLM 결과가 금지 패턴 포함 시 발행 X.
-  validateCaption(caption, { source: "instagram-caption" });
+  //
+  // 2026-06-13 오탐 수정: 검증은 keepioo 자체 문체(프로스·meta_description)를 잡는 것이지,
+  // 캡션이 그대로 인용하는 정책 제목(고유명사)을 막으려는 게 아니다. 제목에 금지 문구가
+  // 들어 있으면(예: "청년과 함께 성장할 기업 모집" → 금지구 "함께 성장") 그 글이 매번 검증
+  // 실패해 영영 미발행되던 사고(6/8 admin_actions instagram_publish_fail) → 검증 직전 제목을
+  // 제거한 텍스트로 검사. 제목은 hook(📌)·검색안내("…") 2곳에 들어가며 후자는 28자 절단형이라 둘 다 제거.
+  const titleParts = [...new Set([input.title, input.title.slice(0, 28)])].filter(
+    Boolean,
+  );
+  let checkable = caption;
+  for (const part of titleParts) checkable = checkable.split(part).join(" ");
+  validateCaption(checkable, { source: "instagram-caption" });
   return caption;
 }
 
