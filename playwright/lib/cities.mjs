@@ -316,6 +316,20 @@ export const scrapeGwangmyeong = makeScraper({
   dateTextRe: "(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.",
 });
 
+// 2026-06-12 — 중랑구(서울 25 자치구 중 미커버 2곳 중 하나). portal/bbs CMS, 보도자료
+// B0000151. ⚠️ main.do 진입은 err.jsp 404 라 "anti-bot" 오판했으나 bbs/list 직접 URL 정상
+// (anti-bot 아님). 목록 table tbody tr + 제목 anchor href(view/B0000151/{id}.do) 직접 추종 +
+// 본문 #dbdata. 개별 정책 기사, 날짜 표준형식(2026-06-09). 서울 자치구 24/25 로 진전.
+export const scrapeJungnang = makeScraper({
+  cityName: "중랑구",
+  listUrl:
+    "https://www.jungnang.go.kr/portal/bbs/list/B0000151.do?menuNo=200474",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["table tbody tr"],
+  bodySelectors: ["#dbdata"],
+});
+
 // 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
 // .p-table__content 가 JS(한컴 웹에디터) 렌더라 정적 cron 0건 → Playwright 이관.
 // 렌더 후 본문 666자 검증.

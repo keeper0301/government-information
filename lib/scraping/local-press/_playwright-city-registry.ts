@@ -178,4 +178,11 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "광명시청",
     sourceCode: "local-press-gwangmyeong",
   },
+  // 2026-06-12 — 중랑구(서울 24/25). portal/bbs CMS 보도자료 B0000151. main.do=err.jsp 오판이나
+  //   bbs/list 직접 URL 정상(anti-bot 아님). 개별 기사, href 추종, 본문 #dbdata, 표준 날짜.
+  jungnang: {
+    ministry: "중랑구청",
+    sourceOutlet: "중랑구청",
+    sourceCode: "local-press-jungnang",
+  },
 };
