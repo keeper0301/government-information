@@ -10,7 +10,10 @@
 // local-press-stats 의 PROXY_LOCAL_PRESS_CITIES 와 동일 기준(노쇼 사각 방지 일관).
 // ============================================================
 
-import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
+import {
+  PLAYWRIGHT_CITY_REGISTRY,
+  PC_ONLY_CITIES,
+} from "@/lib/scraping/local-press/_playwright-city-registry";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // collector 상태 분류.
@@ -54,7 +57,9 @@ export type ExpectedCollector = { city: string; sourceCode: string };
 export function expectedCollectorsFromRegistry(): ExpectedCollector[] {
   const seen = new Set<string>();
   const out: ExpectedCollector[] = [];
-  for (const cfg of Object.values(PLAYWRIGHT_CITY_REGISTRY)) {
+  const pcOnly = new Set<string>(PC_ONLY_CITIES);
+  for (const [key, cfg] of Object.entries(PLAYWRIGHT_CITY_REGISTRY)) {
+    if (pcOnly.has(key)) continue; // PC 러너 전용 — GHA audit 대상 아님(self-heal 제외)
     const city = cfg.ministry.replace(/청$/, "");
     if (seen.has(city)) continue; // 같은 city 중복(사상구) 1회만
     seen.add(city);

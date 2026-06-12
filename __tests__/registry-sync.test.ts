@@ -6,7 +6,10 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
+import {
+  PLAYWRIGHT_CITY_REGISTRY,
+  PC_ONLY_CITIES,
+} from "@/lib/scraping/local-press/_playwright-city-registry";
 
 const ROOT = process.cwd();
 
@@ -34,9 +37,10 @@ describe("Playwright proxy 도시 city key 3-source 동기화", () => {
     /PLAYWRIGHT_CITY_REGISTRY[^{]*\{([\s\S]*?)\};/,
   )?.[1] ?? "";
   // 키 후보: 줄 시작에 식별자: { (sourceCode 가 안에 있음) 형식
-  const routeKeys = [
-    ...registryBlock.matchAll(/^\s{2}([a-z_]+):\s*\{/gm),
-  ].map((m) => m[1]);
+  // PC 러너 전용(가정용 IP) 도시는 GHA workflow 엔 미등록이므로 workflow 일치 검증에서 제외.
+  const routeKeys = [...registryBlock.matchAll(/^\s{2}([a-z_]+):\s*\{/gm)]
+    .map((m) => m[1])
+    .filter((k) => !(PC_ONLY_CITIES as readonly string[]).includes(k));
 
   // 3) runner.mjs 의 ALL_COLLECTORS 키 추출
   const runnerPath = join(ROOT, "playwright/runner.mjs");

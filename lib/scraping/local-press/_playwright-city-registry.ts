@@ -178,4 +178,22 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "광명시청",
     sourceCode: "local-press-gwangmyeong",
   },
+  // 2026-06-12 — PC 러너 전용(가정용 IP). 중랑·강북은 portal/bbs CMS 인데 GHA+icn1 프록시
+  //   (Vercel 데이터센터 IP)가 못 닿음(중랑 GHA 실증 120s timeout). 사장님 PC(가정용 IP)에서
+  //   playwright/pc-runner.mjs 로 직접 수집 → import-press-batch POST. GHA workflow 엔 미등록
+  //   (PC_ONLY_CITIES). registry-sync 테스트는 PC_ONLY 를 workflow 비교에서 제외.
+  jungnang: {
+    ministry: "중랑구청",
+    sourceOutlet: "중랑구청",
+    sourceCode: "local-press-jungnang",
+  },
+  gangbuk: {
+    ministry: "강북구청",
+    sourceOutlet: "강북구청",
+    sourceCode: "local-press-gangbuk",
+  },
 };
+
+// PC 러너 전용 도시(가정용 IP) — GHA workflow/runner 엔 미등록. import-press-batch 수용 위해
+// registry 엔 등록하되, registry-sync 테스트의 workflow 일치 검증에서 제외한다.
+export const PC_ONLY_CITIES = ["jungnang", "gangbuk"] as const;

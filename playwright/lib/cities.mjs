@@ -316,6 +316,37 @@ export const scrapeGwangmyeong = makeScraper({
   dateTextRe: "(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.",
 });
 
+// ============================================================
+// PC 러너 전용(가정용 IP) — GHA+icn1 프록시(데이터센터 IP) 미도달 도시. playwright/pc-runner.mjs
+// 가 사장님 PC 에서 직접(프록시 없이) 수집. GHA runner.mjs/workflow 엔 미등록(PC_ONLY_CITIES).
+// ============================================================
+
+// 2026-06-12 — 중랑구(서울). portal/bbs CMS 보도자료 B0000151. 개별 기사, 본문 #dbdata.
+// ⚠️ GHA+icn1(데이터센터 IP) 미도달(중랑 실증 120s timeout) → PC 러너(가정용 IP) 전용.
+// 로컬 직접 3/3 본문 766~992자. (main.do 는 err.jsp 지만 bbs/list 직접 URL 정상.)
+export const scrapeJungnang = makeScraper({
+  cityName: "중랑구",
+  listUrl:
+    "https://www.jungnang.go.kr/portal/bbs/list/B0000151.do?menuNo=200474",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["table tbody tr"],
+  bodySelectors: ["#dbdata"],
+});
+
+// 2026-06-12 — 강북구(서울 마지막 자치구). 중랑과 동일 portal/bbs CMS, 보도자료 B0000142,
+// ⚠️포트 18000(메인 443 은 433byte shell). view.do?nttId= href 추종, 본문 #dbdata.
+// 중랑과 동일 CMS+포트라 GHA 프록시 미도달 추정 → PC 러너 전용. 로컬 10행 개별 기사 1200자.
+export const scrapeGangbuk = makeScraper({
+  cityName: "강북구",
+  listUrl:
+    "https://www.gangbuk.go.kr:18000/portal/bbs/B0000142/list.do?menuNo=200625",
+  userAgent:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  listSelectors: ["table tbody tr"],
+  bodySelectors: ["#dbdata"],
+});
+
 // 2026-06-08 — 은평구. SI 표준(table.p-table, selectBbsNttView href 직접). 본문은
 // .p-table__content 가 JS(한컴 웹에디터) 렌더라 정적 cron 0건 → Playwright 이관.
 // 렌더 후 본문 666자 검증.
