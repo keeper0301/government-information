@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { AlarmButton } from "@/components/alarm-button";
 import { ShareButton } from "@/components/share-button";
 import { BookmarkButton } from "@/components/bookmark-button";
-import { isBookmarked } from "@/lib/bookmarks";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld";
@@ -18,14 +16,23 @@ import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from 
 import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { cleanPolicyTitle } from "@/lib/policy-title";
-import { loadUserProfile } from "@/lib/personalization/load-profile";
-import { isAdminUser } from "@/lib/admin-auth";
-import { findCandidateByProgramId } from "@/lib/press-ingest/candidates";
-import { AutoConfirmBadge } from "@/components/admin/auto-confirm-badge";
+import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
+
+// 2026-06-13 — Next16 정적 ISR 필수 설정 (region 페이지 검증된 패턴).
+// force-static: 프리렌더 강제 + 데이터 캐시 + cookies/headers/useSearchParams 를 빈 값
+//   반환(throw 대신). 이게 없으면 Supabase fetch(no-store 류)가 정적 렌더와 충돌해
+//   런타임 첫 요청에서 DYNAMIC_SERVER_USAGE 500 발생(2026-06-13 사고 — Next docs
+//   incremental-static-regeneration.md L576 + caching-without-cache-components.md L104).
+export const dynamic = "force-static";
+// generateStaticParams [] = 빌드 prebuild 0, 모든 id 는 on-demand 첫 요청 렌더 후 revalidate(1h)
+//   CDN 캐시(ISR). dynamicParams 기본 true 라 신규 id 도 정상 처리(region 은 false=닫힌집합).
+export async function generateStaticParams() {
+  return [];
+}
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -33,7 +40,9 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  // 정적 ISR 유지 — 공개 메타데이터는 쿠키 없는 admin client 로 조회(createClient 쿠키
+  // 접근은 라우트를 동적으로 강제해 캐시를 깬다).
+  const supabase = createAdminClient();
   // AdSense "thin content" 거절 대응 — sparse 페이지는 검수자 sample 에서 빠지도록
   // robots noindex. 본문 + 핵심 정보 카드 채움 정도로 판정 (page render 와 같은 기준).
   // 2026-05-11: unique_insight (keepioo 자체 해설) 있는 페이지는 본문 풍부 (200~400자 추가)
@@ -42,6 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .from("welfare_programs")
     .select("title, description, eligibility, benefits, apply_method, apply_start, apply_end, unique_insight")
     .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+    .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — admin client 라 RLS 대체 명시
     .eq("id", id)
     .single();
   if (!data) return { title: "복지 지원사업 — 정책알리미" };
@@ -84,33 +94,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WelfareDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = await createClient();
+  // 정적 ISR — 공개 정책 데이터는 쿠키 없는 admin client 로 조회(동적 렌더 강제 방지).
+  const supabase = createAdminClient();
   const { data: program } = await supabase
     .from("welfare_programs")
     .select("*")
     .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+    .not("is_hidden", "is", true) // 회수(숨김) 정책은 404 — admin client 라 RLS(USING is_hidden=false) 대체 명시
     .eq("id", id)
     .single();
 
   if (!program) notFound();
 
-  // 조회수 증가 (fire-and-forget). service_role 로 호출 — anon 직접 RPC 조작(조회수 부풀림→추천 왜곡) 차단.
-  createAdminClient().rpc("increment_view_count", { p_table_name: "welfare_programs", p_row_id: id })
-    .then(({ error }) => { if (error) console.error("view count error:", error); });
-
-  // 로그인 여부 + 북마크 상태 — BookmarkButton 초기 상태 hydration 용
-  const { data: { user } } = await supabase.auth.getUser();
-  const initialBookmarked = user ? await isBookmarked("welfare", id) : false;
-  const profile = user ? await loadUserProfile() : null;
-
-  // admin 분기 — 자동 등록 정책의 경우 회수/복원 배지 노출 (일반 사용자엔 X).
-  // DDL 077 미적용 환경에서는 program.auto_confirm_tier 가 undefined 라 자연 분기됨.
-  const isAdmin = !!user && isAdminUser(user.email);
-  const candidateInfo =
-    isAdmin && program.auto_confirm_tier
-      ? await findCandidateByProgramId({ table: "welfare_programs", programId: id })
-      : null;
-
+  // 2026-06-13 정적 ISR 전환 — 아래 3가지는 모두 쿠키(auth.getUser)를 읽어 페이지를
+  // 동적으로 만들어 캐시를 깨므로 클라이언트로 이전했다:
+  //   · view_count 증가 → ProgramViewTracker → /api/events/track(program_view) 가 증가
+  //   · 북마크 초기상태·로그인 여부 → BookmarkButton 자체 self-fetch
+  //   · 관리자 자동등록 배지 → AdminAutoConfirmBadge(클라이언트 admin 판정 + candidateId)
+  // 관련정책은 비개인화 정적 추천(profile=null). 로그인 사용자 개인화는 추후 클라 보강 가능.
   const dday = calcDday(program.apply_end);
   const period = program.apply_start && program.apply_end
     ? `${program.apply_start} ~ ${program.apply_end}`
@@ -124,13 +125,14 @@ export default async function WelfareDetailPage({ params }: Props) {
   // 외부 apply_url 스킴 검증 — javascript:/data: 등 위험 스킴·깨진 URL 이면 null
   // → 신청 버튼 대신 Google 검색 fallback (XSS·피싱·깨진 링크 방지)
   const safeApplyUrl = sanitizeApplyUrl(program.apply_url);
+  // 정적 ISR — 관련정책은 비개인화(profile signals 없이). 모든 방문자 동일 추천.
   const related = await getRelatedPrograms(
     "welfare",
     program.category,
     program.id,
     program.region,
     4,
-    profile?.signals ?? null,
+    null,
   );
 
   // 핵심 정보 4종 — value 있고, 본문 description 과 사실상 같지 않은 것만 표시.
@@ -182,16 +184,16 @@ export default async function WelfareDetailPage({ params }: Props) {
         <span className="text-grey-900 font-medium">{program.title.length > 30 ? program.title.substring(0, 30) + "..." : program.title}</span>
       </nav>
 
-      {/* admin 전용 자동 등록 배지 — 일반 사용자 렌더 0 (SEO/UX 영향 0) */}
-      {isAdmin && program.auto_confirm_tier && (
-        <div className="mb-4">
-          <AutoConfirmBadge
-            candidateId={candidateInfo?.candidateId ?? null}
-            tier={program.auto_confirm_tier as "high" | "mid"}
-            isHidden={!!program.is_hidden}
-            autoConfirmedAt={program.auto_confirmed_at ?? null}
-          />
-        </div>
+      {/* admin 전용 자동 등록 배지 — 클라이언트에서 admin 판정(정적 ISR 유지).
+          일반 사용자·크롤러는 서버 액션 미호출 → 렌더 0 (SEO/UX 영향 0). */}
+      {program.auto_confirm_tier && (
+        <AdminAutoConfirmBadge
+          table="welfare_programs"
+          programId={program.id}
+          tier={program.auto_confirm_tier as "high" | "mid"}
+          isHidden={!!program.is_hidden}
+          autoConfirmedAt={program.auto_confirmed_at ?? null}
+        />
       )}
 
       {/* Badges */}
@@ -385,12 +387,8 @@ export default async function WelfareDetailPage({ params }: Props) {
           </a>
         )}
         <AlarmButton programId={program.id} programType="welfare" />
-        <BookmarkButton
-          programType="welfare"
-          programId={program.id}
-          initialBookmarked={initialBookmarked}
-          isLoggedIn={!!user}
-        />
+        {/* 정적 ISR — props 생략 시 BookmarkButton 이 클라이언트에서 로그인·북마크 self-fetch */}
+        <BookmarkButton programType="welfare" programId={program.id} />
         <ShareButton />
         {/* Pro 신청서 초안 — 모든 사용자에게 노출, 비Pro 는 server 가드가 /pricing redirect.
             ISR 유지 위해 tier 분기는 client/redirect 로 처리. */}
