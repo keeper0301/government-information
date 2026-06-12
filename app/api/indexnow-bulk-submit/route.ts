@@ -11,7 +11,7 @@
 //   - source_code 제외(stale/404 source 제외)
 // 우선순위: view_count DESC (인기 정책 먼저).
 //
-// 사용: CRON_SECRET Bearer 로 수동 호출. ?limit=N (기본 8000=전체, 최대 9000). 2,000개씩 청크 제출.
+// 사용: CRON_SECRET Bearer 로 수동 호출. ?limit=N (기본 9000=view 상위, 최대 9000). 2,000개씩 청크 제출.
 //   curl -H "Authorization: Bearer $CRON_SECRET" \
 //     "https://www.keepioo.com/api/indexnow-bulk-submit"
 //
@@ -30,7 +30,11 @@ import {
 } from "@/lib/listing-sources";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
-const DEFAULT_LIMIT = 8000; // 색인 대상 전체(복지~6,400 + 대출~1,100) 커버
+// 2026-06-13 — 6/11 insight 백필로 색인 대상 복지가 ~10,200(+대출 ~1,100)=~11,300 으로
+// 커짐. 전체(11,300) > 네이버 IndexNow 일일 한도 10,000 이라 한 번에 다 못 보냄.
+// view_count DESC 라 상위(가치 높은) 정책 먼저 커버, 나머지 꼬리는 sitemap 으로 크롤.
+// 기본을 안전 한도 안 최대치(9000)로 둬 1회 실행 커버 극대화(이전 8000=복지 1,000개 누락).
+const DEFAULT_LIMIT = 9000; // view 상위 9,000 커버 (네이버 10,000 한도 안전 마진)
 const MAX_LIMIT = 9000; // IndexNow 10,000 한도 안전 마진 (허브·여유 포함)
 const PAGE = 1000; // PostgREST 한 번에 max 1000행 → range 페이지네이션 필수
 
