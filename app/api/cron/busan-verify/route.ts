@@ -35,7 +35,7 @@ const VERIFY_CITIES = [
   { code: "local-press-dongdaemun", name: "동대문구", region: "서울", diag: "첨부 hwp helper 수리(951e35d 상대경로 ./ resolve fix). 0이면 @ohah hwp 파싱·downloadBbsFile.do resolve 확인" },
   { code: "local-press-seocho", name: "서초구", region: "서울", diag: "빈 shell 메인 우회 정적 게시판·본문 250 확인" },
   { code: "local-press-junggu-seoul", name: "중구", region: "서울", diag: "content.do cmsid=14390 list 파라미터 순서 확인" },
-  { code: "local-press-seongbuk", name: "성북구", region: "서울", diag: "첨부 hwp helper 수리(951e35d 상대경로 ./ resolve fix). 0이면 @ohah hwp 파싱·downloadBbsFile.do resolve 확인" },
+  { code: "local-press-seongbuk", name: "성북구", region: "서울", diag: "최신글이 이미 DB면 구청 무발행=정상(오탐). 진짜 수집실패면 hwp 파싱·downloadBbsFile.do resolve(951e35d) 확인" },
   { code: "local-press-gangdong", name: "강동구", region: "서울", diag: "newportal meta refresh 우회·본문 250 확인" },
   { code: "local-press-dongjak", name: "동작구", region: "서울", diag: "eGovFrame 첨부 hwp helper(fe87874). 0이면 fileDown.do @ohah·dbData fallback 확인" },
   { code: "local-press-gangwon", name: "강원도", region: "강원", diag: "hwp5 첨부 @ohah(napi) 파싱(283d83b). 0이면 @ohah Vercel 런타임·hwp download·OLE 매직 확인" },
@@ -84,11 +84,13 @@ async function run() {
       .select("*", { count: "exact", head: true })
       .eq("source_code", c.code)
       .gte("created_at", since7d);
+    // ⚠️ published_at 정렬(최신 발행글). created_at 정렬은 "마지막 insert 행"이라 배치
+    // 수집 시 옛 글이 마지막 insert 되면 엉뚱한 옛 날짜가 "최신"으로 표시됨(성북 4/26 오표시 fix).
     const { data: latest } = await admin
       .from("news_posts")
       .select("published_at")
       .eq("source_code", c.code)
-      .order("created_at", { ascending: false })
+      .order("published_at", { ascending: false })
       .limit(1);
     results.push({
       name: c.name,
@@ -103,7 +105,13 @@ async function run() {
   // ✅ 24h 수집 · 🟡 24h 0 이나 7d 있음 · ⚠️ 7d 0(수집 실패/장기 무발행 의심)
   const fmt = (r: (typeof results)[number]) => {
     const icon = r.cnt24 > 0 ? "✅" : r.cnt7 > 0 ? "🟡" : "⚠️";
-    const pub = r.latestPublished ? r.latestPublished.slice(0, 10) : "-";
+    // KST 로 slice — published_at 은 `YYYY-MM-DDT00:00:00+09:00` 라 UTC slice 시 하루
+    // 빠르게(5/29 KST → "2026-05-28") 나옴. 표시는 KST 발행일로 맞춘다.
+    const pub = r.latestPublished
+      ? new Date(new Date(r.latestPublished).getTime() + 9 * 3600_000)
+          .toISOString()
+          .slice(0, 10)
+      : "-";
     const base = `${icon} ${r.name}: 24h ${r.cnt24} / 7d ${r.cnt7} (최신 ${pub})`;
     // ⚠️(7d 0건)인 도시만 자동 상세 진단 한 줄 첨부.
     return r.cnt7 === 0 ? `${base}\n    └ 진단: ${r.diag}` : base;
