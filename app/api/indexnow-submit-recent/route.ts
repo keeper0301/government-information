@@ -28,7 +28,11 @@ import {
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 const RECENT_HOURS = 24;
-const NEWS_LIMIT = 100; // 승인 후 뉴스까지 다시 색인 알림할 때 과다 전송 방지
+// 2026-06-13 — review OFF 로 뉴스가 색인 대상이 된 뒤 측정: 24h 뉴스 ~537건.
+// 기존 100 상한은 81%(~437건)를 매일 freshness ping 에서 누락시켰음(느린 크롤 대기).
+// 1000 = 현재량 + 성장 여유 커버. submitToIndexNow 는 1회 POST(최대 10,000)라
+// ~1,000건도 작은 요청(~60KB, 5s 안)·네이버 일일 한도 10,000 여유 충분.
+const NEWS_LIMIT = 1000;
 const POLICY_LIMIT = 300; // 24h 신규 enrich 복지·대출 색인 알림 상한(IndexNow quota 보호)
 
 export const maxDuration = 30;
