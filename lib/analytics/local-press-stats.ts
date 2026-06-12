@@ -7,7 +7,10 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CITY_REGISTRY } from "@/lib/scraping/local-press/_registry";
-import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright-city-registry";
+import {
+  PLAYWRIGHT_CITY_REGISTRY,
+  PC_ONLY_CITIES,
+} from "@/lib/scraping/local-press/_playwright-city-registry";
 
 // 프록시 경로(GitHub Actions + icn1)로 "실제 가동 중"인 시·군의 audit city 명 집합.
 // audit details.city = import-press-batch 가 `ministry.replace(/청$/,"")` 로 기록(노원구청→노원구).
@@ -16,11 +19,15 @@ import { PLAYWRIGHT_CITY_REGISTRY } from "@/lib/scraping/local-press/_playwright
 // 2026-06-09 — 하드코딩 10개 목록을 PLAYWRIGHT_CITY_REGISTRY 파생으로 전환. registry 가
 //   runner 단일 출처(= RUNNER_CITIES, 3곳 동기화를 registry-sync.test 가 보증)라, 도시 추가 때마다
 //   여기 동기화를 빠뜨려 생기던 노쇼 사각지대(예: 6/8 평택·양천)를 근본 차단. 새 도시는 자동 편입.
+// 2026-06-12 — PC 러너 전용(가정용 IP) 도시는 GHA 프록시 audit 이 없어(사장님 PC 수동 수집)
+//   stale 노쇼 감지 대상이 아니다. 제외해야 self-heal(collector-health-diagnosis)·registry-sync
+//   와 일관(아니면 중랑·강북이 영구 stale +2 로 LOCAL_PRESS_STALE_FLOOR baseline 오염).
+const pcOnlyCities = new Set<string>(PC_ONLY_CITIES);
 const PROXY_LOCAL_PRESS_CITIES = [
   ...new Set(
-    Object.values(PLAYWRIGHT_CITY_REGISTRY).map((c) =>
-      c.ministry.replace(/청$/, ""),
-    ),
+    Object.entries(PLAYWRIGHT_CITY_REGISTRY)
+      .filter(([key]) => !pcOnlyCities.has(key))
+      .map(([, c]) => c.ministry.replace(/청$/, "")),
   ),
 ];
 
