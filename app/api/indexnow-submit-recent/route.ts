@@ -21,10 +21,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { submitToIndexNow } from "@/lib/indexnow";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import {
+  WELFARE_EXCLUDED_FILTER,
+  LOAN_EXCLUDED_FILTER,
+} from "@/lib/listing-sources";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 const RECENT_HOURS = 24;
 const NEWS_LIMIT = 100; // 승인 후 뉴스까지 다시 색인 알림할 때 과다 전송 방지
+const POLICY_LIMIT = 300; // 24h 신규 enrich 복지·대출 색인 알림 상한(IndexNow quota 보호)
 
 export const maxDuration = 30;
 
@@ -62,6 +67,30 @@ async function runSubmitRecent() {
     news = newsData ?? [];
   }
 
+  // 2026-06-12 고도화 — 최근 24h 신규 enrich(색인 가능해진) 복지·대출도 IndexNow push.
+  // 기준: unique_insight_at >= since(=색인 가능 전환 시점) + sitemap 과 동일 EXCLUDED 필터
+  // + unique_insight_at not null. 이전엔 블로그·뉴스만 다뤄 신규 정책 색인이 크롤 대기(수주)
+  // 였던 갭 해소. welfare/loan 은 review mode 와 무관(항상 색인 대상).
+  const fetchRecentPolicy = async (
+    table: "welfare_programs" | "loan_programs",
+    filter: string,
+  ) => {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id, unique_insight_at")
+      .gte("unique_insight_at", since)
+      .not("unique_insight_at", "is", null)
+      .not("source_code", "in", filter)
+      .order("unique_insight_at", { ascending: false })
+      .limit(POLICY_LIMIT);
+    if (error) console.error(`[indexnow-submit-recent] ${table} select 실패:`, error);
+    return (data ?? []) as Array<{ id: string }>;
+  };
+  const [welfare, loan] = await Promise.all([
+    fetchRecentPolicy("welfare_programs", WELFARE_EXCLUDED_FILTER),
+    fetchRecentPolicy("loan_programs", LOAN_EXCLUDED_FILTER),
+  ]);
+
   // URL list — keepioo 절대 URL
   const urls: string[] = [];
   for (const b of blogs || []) {
@@ -69,6 +98,12 @@ async function runSubmitRecent() {
   }
   for (const n of news) {
     urls.push(`${SITE_URL}/news/${n.slug}`);
+  }
+  for (const w of welfare) {
+    urls.push(`${SITE_URL}/welfare/${w.id}`);
+  }
+  for (const l of loan) {
+    urls.push(`${SITE_URL}/loan/${l.id}`);
   }
 
   if (urls.length === 0) {
@@ -82,6 +117,8 @@ async function runSubmitRecent() {
     timestamp: new Date().toISOString(),
     blog_count: blogs?.length ?? 0,
     news_count: news.length,
+    welfare_count: welfare.length,
+    loan_count: loan.length,
     total_urls: urls.length,
     results,
   });
