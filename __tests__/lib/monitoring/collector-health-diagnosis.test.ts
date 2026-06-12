@@ -215,11 +215,11 @@ describe("flagCadenceRegressions — cron 완주 저하", () => {
 });
 
 describe("expectedCollectorsFromRegistry", () => {
-  it("registry 파생 — 27 collector·중복 city(사상구) dedupe 후 26", () => {
+  it("registry 파생 — 26 collector·중복 city(사상구) dedupe 후 25", () => {
     const expected = expectedCollectorsFromRegistry();
-    // 사상(알림)+사상소식지 = 같은 city '사상구' → dedupe로 1개. 27 → 26.
-    // (2026-06-12 +부천·시흥·광명·중랑 추가로 23→27.)
-    expect(expected.length).toBe(26);
+    // 사상(알림)+사상소식지 = 같은 city '사상구' → dedupe로 1개. 26 → 25.
+    // (2026-06-12 +부천·시흥·광명 경기 큰 시 추가로 23→26.)
+    expect(expected.length).toBe(25);
     const cities = expected.map((e) => e.city);
     expect(new Set(cities).size).toBe(cities.length); // city 중복 0
     expect(cities).toContain("의정부시");

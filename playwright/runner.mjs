@@ -39,7 +39,6 @@ import {
   scrapeBucheon,
   scrapeSiheung,
   scrapeGwangmyeong,
-  scrapeJungnang,
 } from "./lib/cities.mjs";
 
 const ALL_COLLECTORS = [
@@ -69,7 +68,6 @@ const ALL_COLLECTORS = [
   { city: "부천시", key: "bucheon", fn: scrapeBucheon },
   { city: "시흥시", key: "siheung", fn: scrapeSiheung },
   { city: "광명시", key: "gwangmyeong", fn: scrapeGwangmyeong },
-  { city: "중랑구", key: "jungnang", fn: scrapeJungnang },
 ];
 
 // KEEPIOO_RUNNER_CITIES (쉼표 구분) 가 있으면 해당 key 만 실행.
