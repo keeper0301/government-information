@@ -108,6 +108,7 @@
 
     { "path": "/api/cron/push-send", "schedule": "0 * * * *" },
     { "path": "/api/cron/push-time-learn", "schedule": "0 18 * * 0" },
-    { "path": "/api/cron/self-learning-digest", "schedule": "30 18 * * 0" }
+    { "path": "/api/cron/self-learning-digest", "schedule": "30 18 * * 0" },
+    { "path": "/api/billing/charge", "schedule": "0 19 * * *" }
   ]
 }

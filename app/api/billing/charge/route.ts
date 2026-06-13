@@ -27,20 +27,11 @@ const PERIOD_MS = SUBSCRIPTION_PERIOD_MS;
 // 결제 시도 가능한 상태 (동시성 락 풀기 위한 화이트리스트)
 const CHARGEABLE_STATUSES = ["trialing", "active", "past_due"] as const;
 
-export async function POST(request: NextRequest) {
-  // 1) 인증: CRON_SECRET 검증
-  const denied = authorizePrivateCronRequest(request);
-  if (denied) return denied;
-
-  // 2) body 파싱 (없으면 batch 모드)
-  let userId: string | undefined;
-  try {
-    const body = await request.json().catch(() => ({}));
-    userId = body.userId;
-  } catch {
-    // body 없음 → batch
-  }
-
+// ============================================================
+// 결제 실행 본체 — userId 지정 시 단건, 없으면 batch(결제일 도래 전체).
+// POST(body.userId)·GET(Vercel cron, batch) 가 공유.
+// ============================================================
+async function runCharge(userId?: string) {
   const admin = createAdminClient();
 
   // 3) 결제 대상 user_id 목록 조회
@@ -87,6 +78,29 @@ export async function POST(request: NextRequest) {
     failed: results.filter((r) => !r.ok).length,
     results,
   });
+}
+
+// POST — 단건({userId}) 또는 batch(body 없음). 어드민/수동 트리거용.
+export async function POST(request: NextRequest) {
+  const denied = authorizePrivateCronRequest(request);
+  if (denied) return denied;
+  let userId: string | undefined;
+  try {
+    const body = await request.json().catch(() => ({}));
+    userId = body.userId;
+  } catch {
+    // body 없음 → batch
+  }
+  return runCharge(userId);
+}
+
+// GET — Vercel cron 전용(cron 은 GET 으로 호출). 항상 batch(결제일 도래 전체).
+// 인증 동일(CRON_SECRET Bearer). POST 만 있으면 cron GET 이 405 라 자동결제가 안 돌던
+// 문제 해소(2026-06-13 적대 리뷰: charge cron 미등록 + GET 핸들러 부재).
+export async function GET(request: NextRequest) {
+  const denied = authorizePrivateCronRequest(request);
+  if (denied) return denied;
+  return runCharge();
 }
 
 // ============================================================
