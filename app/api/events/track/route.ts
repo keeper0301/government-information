@@ -104,20 +104,19 @@ export async function POST(req: Request) {
 
   // 2026-06-13 — 정책 상세 페이지 정적 ISR 전환에 따라 view_count 증가를 서버 렌더가
   // 아닌 이 클라이언트 program_view 경로로 이전(정적 페이지는 매 요청 렌더 안 함).
-  // fire-and-forget — 실패해도 이벤트 기록 응답엔 영향 없음. rate limit(1초/IP)이 부풀림 차단.
+  // ⚠️ await 필수 — fire-and-forget(.then) 으로 두면 서버리스 함수가 응답 후 동결돼
+  // RPC 가 완료되기 전에 죽어 view_count 가 안 오름(2026-06-13 검증: track 응답 ok 인데
+  // view_count 0 증가). 백그라운드 분석 endpoint 라 await 지연 무방. rate limit(1초/IP)이 부풀림 차단.
   if (
     eventType === "program_view" &&
     programTable &&
     typeof body.program_id === "string"
   ) {
-    admin
-      .rpc("increment_view_count", {
-        p_table_name: programTable,
-        p_row_id: body.program_id,
-      })
-      .then(({ error: rpcErr }) => {
-        if (rpcErr) console.error("[events/track] view count error:", rpcErr);
-      });
+    const { error: rpcErr } = await admin.rpc("increment_view_count", {
+      p_table_name: programTable,
+      p_row_id: body.program_id,
+    });
+    if (rpcErr) console.error("[events/track] view count error:", rpcErr);
   }
 
   return NextResponse.json({ ok: true });
