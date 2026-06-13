@@ -5,6 +5,7 @@
 // 5 Phase 가동 상태 + 24h 활동 요약 + 외부 액션 미완료 가이드.
 // ============================================================
 
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -223,6 +224,14 @@ export default async function AdminAutonomousPage() {
         title="자율 운영 마스터"
         description={`5 Phase 중 ${activeCount}개 가동 · 6 카테고리 14+ 카드 · 외부 액션 ${pendingActions.length}건 대기. 매일 30초 점검 권장.`}
       />
+
+      {/* 2026-06-13 — 한눈에 보는 시각화(상태판·추세·흐름도) 진입점. 상세 카드는 아래 그대로. */}
+      <Link
+        href="/admin/autonomous/overview"
+        className="inline-flex items-center gap-1.5 mb-5 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 text-[14px] font-semibold no-underline hover:bg-blue-100 transition-colors"
+      >
+        📊 자율운영 시각화 — 한눈에 보기
+      </Link>
 
       <YesterdayDigestCard digest={yesterdayDigest} />
 
