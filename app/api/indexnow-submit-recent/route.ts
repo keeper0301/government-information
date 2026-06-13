@@ -85,6 +85,8 @@ async function runSubmitRecent() {
       .gte("unique_insight_at", since)
       .not("unique_insight_at", "is", null)
       .not("source_code", "in", filter)
+      .not("is_hidden", "is", true) // 회수(숨김=404) 정책 미제출
+      .is("duplicate_of_id", null) // 중복 정책 미제출
       .order("unique_insight_at", { ascending: false })
       .limit(POLICY_LIMIT);
     if (error) console.error(`[indexnow-submit-recent] ${table} select 실패:`, error);

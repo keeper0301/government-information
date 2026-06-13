@@ -161,6 +161,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .select("id, updated_at, unique_insight_at")
     .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
     .not("unique_insight_at", "is", null)
+    .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세는 404 라 sitemap 에 두면 SC 404 경고
+    .is("duplicate_of_id", null) // 중복 정책 제외 — 목록과 동일 기준(중복 콘텐츠 색인 방지)
     .limit(15000);
   const welfarePages: MetadataRoute.Sitemap = (welfare || []).map((w) => {
     const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at!;
@@ -189,6 +191,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .select("id, updated_at, unique_insight_at")
     .not("source_code", "in", LOAN_EXCLUDED_FILTER)
     .not("unique_insight_at", "is", null)
+    .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세 404 와 정합
+    .is("duplicate_of_id", null) // 중복 정책 제외 — 중복 콘텐츠 색인 방지
     .limit(5000);
   const loanPages: MetadataRoute.Sitemap = (loans || []).map((l) => {
     const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at!;

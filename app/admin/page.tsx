@@ -62,6 +62,9 @@ async function requireAdmin() {
 // 사용자 검색 server action — UUID 면 직접 이동, 이메일 이면 listUsers 검색.
 async function searchUser(formData: FormData) {
   "use server";
+  // 보안 — server action 은 페이지 렌더 가드와 별개 POST 엔드포인트라 자체 admin 재검증 필수.
+  // (누락 시 비인증 POST 로 이메일 가입여부 확인 + UUID 열거 + listUsers 부하 유발)
+  await requireAdmin();
   const raw = String(formData.get("query") ?? "").trim();
   if (!raw) return;
 

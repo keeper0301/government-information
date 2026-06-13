@@ -147,15 +147,20 @@ export async function POST(req: NextRequest) {
 
   // ─── Phase 4-B 사용자 자동 응답 메일 (best-effort) ─────────
   // contactEmail 있고 autoReply 채워졌을 때 즉시 발송. 실패해도 ticket 은 유지.
+  // ⚠️ await 필수 — fire-and-forget 면 서버리스 함수가 응답 후 동결돼 메일 발송 fetch 가
+  // 완료 전에 죽어 자동응답 누락(2026-06-13 view_count 와 동일 버그 클래스). try/catch 로
+  // 실패는 swallow 하되(ticket 은 이미 저장됨) 발송은 기다린다.
   if (autoReply && contactEmail) {
-    sendSupportReply({
-      email: contactEmail,
-      ticketId: inserted.id,
-      subject: subject || null,
-      reply: autoReply,
-    }).catch((e) => {
+    try {
+      await sendSupportReply({
+        email: contactEmail,
+        ticketId: inserted.id,
+        subject: subject || null,
+        reply: autoReply,
+      });
+    } catch (e) {
       console.warn("[support/submit] 자동 응답 메일 발송 실패:", e);
-    });
+    }
   }
 
   return NextResponse.json({

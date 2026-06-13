@@ -60,6 +60,8 @@ async function fetchIds(
       // sitemap 과 동일 기준 — unique_insight_at(백필이 80자+ 응답만 기록)으로 색인 대상 판정.
       // unique_insight is null 만 보면 80자 미만(상세 페이지 noindex)도 통과하는 불일치 방지.
       .not("unique_insight_at", "is", null)
+      .not("is_hidden", "is", true) // 회수(숨김=404) 정책 미제출 — 검색엔진 404 push 방지
+      .is("duplicate_of_id", null) // 중복 정책 미제출 — 중복 콘텐츠 색인 방지
       .order("view_count", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true })
       .range(offset, end);
