@@ -1,7 +1,7 @@
 // ============================================================
 // /api/cron/press-legacy-cleanup — 매주 press 큐 자동 정리 (2026-05-18)
 // ============================================================
-// 사장님 매주 1 click "legacy 일괄 해제" 도 자동화. 일요일 KST 03:00.
+// 사장님 매주 1 click "legacy 일괄 해제" 도 자동화. 화/목/일 KST 03:00.
 //
 // 처리 대상:
 //   - confidence_tier IS NULL + 7일+ 묵음 (legacy)
@@ -107,7 +107,7 @@ async function run(dryRun: boolean) {
     await sendOpsAlertMultichannel({
       subject: `[keepioo] press 큐 자동 정리 ${total}건`,
       message: [
-        `매주 일요일 자동 cleanup 가동.`,
+        `주 3회(화/목/일) 자동 cleanup 가동.`,
         `legacy (null tier 7일+): ${legacyResult.rejected}건`,
         `low tier (14일+ 묵음): ${lowResult.rejected}건`,
         ``,

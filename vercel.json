@@ -71,7 +71,7 @@
 
     { "path": "/api/cron/adsense-gmail-watch", "schedule": "10 1 * * *" },
 
-    { "path": "/api/cron/press-legacy-cleanup", "schedule": "0 18 * * 6" },
+    { "path": "/api/cron/press-legacy-cleanup", "schedule": "0 18 * * 1,3,6" },
 
     { "path": "/api/cron/naver-extension-idle-reminder", "schedule": "0 0 * * *" },
 

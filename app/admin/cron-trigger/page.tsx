@@ -65,7 +65,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/cron/blog-publish-summary", label: "블로그 24h 발행 요약 (텔레그램)", schedule: "매일 07:30 KST", desc: "본문 평균 길이 사고 자동 감지 (양면 임계 1,700~2,800자)" },
   { path: "/api/cron/adsense-review-watch", label: "AdSense 검수 결과 감지", schedule: "매일 10:05 KST", desc: "state 전환 (NEEDS_ATTENTION→READY 등) 즉시 텔레그램+SMS + NEEDS_ATTENTION 일일 reminder" },
   { path: "/api/cron/adsense-gmail-watch", label: "AdSense Gmail 이메일 파싱 (D 옵션)", schedule: "매일 10:10 KST", desc: "Gmail OAuth env 등록 시 가동 — 한·영 verdict 매칭" },
-  { path: "/api/cron/press-legacy-cleanup", label: "press 큐 자동 정리", schedule: "매주 일 03:00 KST", desc: "legacy null 7일+ + low 14일+ 자동 reject + 텔레그램 1회" },
+  { path: "/api/cron/press-legacy-cleanup", label: "press 큐 자동 정리", schedule: "매주 화/목/일 03:00 KST", desc: "legacy null 7일+ + low 14일+ 자동 reject + 텔레그램 1회" },
   { path: "/api/cron/naver-extension-idle-reminder", label: "Naver Extension 미가동 reminder", schedule: "매주 일 09:00 KST", desc: "7일 audit 0건 시 텔레그램 + 가이드 link" },
   { path: "/api/cron/agent-resident-cycle", label: "사이트 상주 agent cycle (Codex fallback)", schedule: "매 30분", desc: "Vercel cron 의 in-site 자율 운영 — agent-policy 거쳐 diagnose + 사고 시 audit. 사이드카 fallback" },
   // 2026-05-31 P3 #2 — 자가 진화 학습 cron 3종 (5/27 가동). 사장님 수동 trigger
