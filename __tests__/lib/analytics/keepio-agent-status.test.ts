@@ -26,6 +26,14 @@ describe("getKeepioAgentStatus", () => {
     expect(status.source).toBe("hermes_sidecar");
     expect(status.telemetryConfigured).toBe(false);
     expect(status.automationDetails).toHaveLength(6);
+    expect(status.readinessSummary).toMatchObject({
+      total: 6,
+      ready: 6,
+      needsAttention: 0,
+      readinessPercent: 100,
+      healthLabel: "전체 준비 완료",
+      healthTone: "green",
+    });
     expect(status.automationDetails.find((item) => item.key === "threadsPublishing")).toMatchObject({
       risk: "approval_required",
       riskLabel: "공개 전 승인 필요",
@@ -139,6 +147,14 @@ describe("getKeepioAgentStatus", () => {
     expect(status.siteUpgradeTotalRuns).toBe(6);
     expect(status.automation.policyDb).toBe(true);
     expect(status.automation.threadsPublishing).toBe(false);
+    expect(status.readinessSummary).toMatchObject({
+      total: 6,
+      ready: 4,
+      needsAttention: 2,
+      readinessPercent: 67,
+      healthLabel: "운영 점검 필요",
+      healthTone: "red",
+    });
     expect(status.actionItems.join(" ")).toContain("Threads 자동 발행 확인 필요");
     expect(status.actionItems.join(" ")).toContain("Instagram 댓글 답글 확인 필요");
     expect(status.automationDetails.find((item) => item.key === "threadsPublishing")).toMatchObject({

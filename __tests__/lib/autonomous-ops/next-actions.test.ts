@@ -76,6 +76,17 @@ const agentReady: KeepioAgentStatus = {
     instagramComments: true,
   },
   automationDetails: [],
+  readinessSummary: {
+    total: 6,
+    ready: 6,
+    needsAttention: 0,
+    readOnly: 3,
+    draftOnly: 2,
+    approvalRequired: 1,
+    readinessPercent: 100,
+    healthLabel: "전체 준비 완료",
+    healthTone: "green",
+  },
   actionItems: [],
   error: null,
 };

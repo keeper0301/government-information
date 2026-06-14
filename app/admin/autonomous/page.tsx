@@ -520,6 +520,19 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
       ? "상시 에이전트 응답 점검 필요"
       : "상시 에이전트 health URL 미연결";
   const items = status.automationDetails;
+  const summary = status.readinessSummary;
+  const summaryTone =
+    summary.healthTone === "green"
+      ? "bg-green-50 text-green-700"
+      : summary.healthTone === "amber"
+        ? "bg-amber-50 text-amber-700"
+        : "bg-red-50 text-red-700";
+  const progressTone =
+    summary.healthTone === "green"
+      ? "bg-green-500"
+      : summary.healthTone === "amber"
+        ? "bg-amber-500"
+        : "bg-red-500";
   const formatDate = (value: string | null) =>
     value
       ? new Date(value).toLocaleString("ko-KR", {
@@ -558,6 +571,37 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           <div>
             확인: {formatDate(status.checkedAt)}
           </div>
+        </div>
+      </div>
+
+      <div className="mb-3 rounded-md border border-white/70 bg-white/70 p-3 text-xs text-grey-700">
+        <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-[11px] font-semibold text-grey-500">자동화 준비도</div>
+            <div className="mt-0.5 text-sm font-semibold text-grey-900">
+              {summary.ready}/{summary.total} 준비 · 확인 필요 {summary.needsAttention}개
+            </div>
+          </div>
+          <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${summaryTone}`}>
+            {summary.healthLabel} · {summary.readinessPercent}%
+          </span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-grey-100">
+          <div
+            className={`h-full rounded-full ${progressTone}`}
+            style={{ width: `${summary.readinessPercent}%` }}
+          />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-grey-600">
+          <span className="rounded-full bg-green-50 px-2 py-0.5 text-green-700">
+            읽기/알림 {summary.readOnly}개
+          </span>
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-700">
+            초안 전용 {summary.draftOnly}개
+          </span>
+          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
+            승인 필요 {summary.approvalRequired}개
+          </span>
         </div>
       </div>
 
