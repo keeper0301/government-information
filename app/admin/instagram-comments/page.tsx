@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { listByStatus, type CommentReplyRow } from "@/lib/instagram/comment-queue";
-import { approveAndPost, skipComment } from "./actions";
+import { approveAndPost, skipComment, collectNow } from "./actions";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -62,13 +62,19 @@ function PendingCard({ row }: { row: CommentReplyRow }) {
   );
 }
 
-export default async function InstagramCommentsPage() {
+export default async function InstagramCommentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ flash?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin/instagram-comments");
   if (!isAdminUser(user.email)) redirect("/");
+
+  const flash = (await searchParams).flash ?? null;
 
   const admin = createAdminClient();
   const [pending, posted, failed] = await Promise.all([
@@ -84,6 +90,21 @@ export default async function InstagramCommentsPage() {
         title="댓글 답글 검수"
         description="@keepioo_official 댓글에 AI가 답글 초안을 만들고, 사장님이 검수·승인한 것만 게시합니다. 자동 게시는 하지 않습니다."
       />
+
+      {flash && (
+        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-[13px] text-blue-800">
+          {flash}
+        </div>
+      )}
+
+      <form className="mb-5">
+        <button
+          formAction={collectNow}
+          className="px-4 py-1.5 rounded-md border border-grey-300 text-grey-700 text-[13px] font-semibold no-underline hover:bg-grey-50"
+        >
+          🔄 지금 수집 (cron 안 기다리고 새 댓글·초안 즉시 생성)
+        </button>
+      </form>
 
       <h2 className="text-[16px] font-bold text-grey-900 mb-3">검수 대기 {pending.length}건</h2>
       {pending.length === 0 ? (

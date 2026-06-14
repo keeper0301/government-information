@@ -7,11 +7,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { loadValidToken } from "@/lib/instagram/oauth";
 import { postCommentReply } from "@/lib/instagram/comments";
+import { collectAndDraftComments } from "@/lib/instagram/collect-comments";
 import {
   getById,
   markPosted,
@@ -61,6 +63,19 @@ export async function approveAndPost(formData: FormData) {
     await markFailed(admin, id, e instanceof Error ? e.message : String(e));
   }
   revalidatePath(PATH);
+}
+
+// 지금 수집 — cron 안 기다리고 즉시 댓글 수집 + AI 초안 생성(게시 없음).
+// 결과를 flash 쿼리로 넘겨 화면 배너로 피드백.
+export async function collectNow() {
+  await requireAdmin();
+  const r = await collectAndDraftComments(createAdminClient());
+  let msg: string;
+  if ("skipped" in r) msg = `수집 건너뜀: ${r.skipped}`;
+  else if (!r.ok) msg = `수집 실패: ${r.error}`;
+  else msg = `수집 ${r.collected}건 · 신규 ${r.new}건 · 초안 ${r.inserted - r.draftFailed}건 생성${r.draftFailed > 0 ? ` (초안 실패 ${r.draftFailed})` : ""}`;
+  revalidatePath(PATH);
+  redirect(`${PATH}?flash=${encodeURIComponent(msg)}`);
 }
 
 // 건너뛰기 — 답글 안 함.
