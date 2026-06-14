@@ -116,7 +116,15 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
 
   press_tier_status: async () => {
     const admin = createAdminClient();
-    const [midPending, lowPending, autoRevoke7d] = await Promise.all([
+    const since7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const staleLowCutoff = new Date(Date.now() - 14 * 86_400_000).toISOString();
+    const [
+      midPending,
+      lowPending,
+      staleLowPending,
+      autoRevoke7d,
+      cleanupRuns7d,
+    ] = await Promise.all([
       admin
         .from("press_ingest_candidates")
         .select("id", { count: "exact", head: true })
@@ -128,15 +136,29 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
         .eq("confidence_tier", "low")
         .eq("status", "pending"),
       admin
+        .from("press_ingest_candidates")
+        .select("id", { count: "exact", head: true })
+        .eq("confidence_tier", "low")
+        .eq("status", "pending")
+        .lt("created_at", staleLowCutoff),
+      admin
         .from("admin_actions")
         .select("id", { count: "exact", head: true })
         .eq("action", "press_l2_auto_revoke")
-        .gte("created_at", new Date(Date.now() - 7 * 86_400_000).toISOString()),
+        .gte("created_at", since7d),
+      admin
+        .from("admin_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "press_l2_reject")
+        .eq("details->>reason", "low_tier_14d_auto_cleanup")
+        .gte("created_at", since7d),
     ]);
     return {
       mid_pending: midPending.count ?? 0,
       low_pending: lowPending.count ?? 0,
+      stale_low_pending_14d: staleLowPending.count ?? 0,
       auto_revoke_7d: autoRevoke7d.count ?? 0,
+      low_cleanup_runs_7d: cleanupRuns7d.count ?? 0,
     };
   },
 

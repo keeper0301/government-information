@@ -10,7 +10,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 // 모든 chain 메서드 self-return → resolve to { data: [], count: 0 }
 function makeChain(): unknown {
   const chain: Record<string, unknown> = {};
-  const methods = ["select", "eq", "in", "gte", "like", "order", "limit"];
+  const methods = ["select", "eq", "in", "gte", "lt", "like", "order", "limit"];
   for (const m of methods) chain[m] = () => chain;
   // terminal
   chain.then = (resolve: (v: unknown) => void) =>
