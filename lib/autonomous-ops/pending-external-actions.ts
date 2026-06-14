@@ -278,7 +278,7 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       actions.push({
         category: "automation",
         label: `PC runner ${daysIdle}일째 미가동 — Vercel env + setup-desktop.ps1`,
-        description: `${tone}. ASN 차단 3 site (광산구·제주·평택) 자동 fetch 불가. Vercel env (PC_RUNNER_TOKEN) 등록 후 setup-desktop.ps1 1회 실행 (예상 5분).`,
+        description: `${tone}. ASN 차단 3 site (광산구·제주·평택) 자동 fetch 불가. Vercel env (PC_RUNNER_SECRET) 등록 후 setup-desktop.ps1 1회 실행 (예상 5분).`,
         guideUrl:
           "https://github.com/keeper0301/government-information/blob/master/pc-runner/README.md",
         estimatedMinutes: 5,
