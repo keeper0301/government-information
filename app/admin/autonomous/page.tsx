@@ -564,12 +564,20 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
       <div className="grid gap-2 md:grid-cols-3">
         {items.map((item) => (
           <div key={item.key} className="rounded-md border border-white/60 bg-white/70 p-3">
-            <div className="text-xs font-semibold text-grey-900">{item.label}</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-xs font-semibold text-grey-900">{item.label}</div>
+              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${item.risk === "approval_required" ? "bg-amber-100 text-amber-700" : item.risk === "draft_only" ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>
+                {item.riskLabel}
+              </span>
+            </div>
             <div className={`mt-1 text-[11px] ${item.ready ? "text-green-700" : "text-red-600"}`}>
-              {item.ready ? "준비됨" : "미설정 또는 비활성"}
+              {item.statusLabel}
             </div>
             <div className="mt-1 text-[10px] text-grey-500">{item.mode}</div>
             <div className="mt-1 text-[10px] text-grey-500">{item.safetyNote}</div>
+            <div className="mt-2 rounded bg-white/60 px-2 py-1 text-[10px] text-grey-600">
+              다음 확인: {item.nextCheck}
+            </div>
           </div>
         ))}
       </div>
