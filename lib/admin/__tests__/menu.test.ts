@@ -25,8 +25,9 @@ describe("ADMIN_MENU 구조", () => {
     // 2026-05-16: /admin/scrape-local 추가 (Phase B 시·군 보도자료 수집) → 컨텐츠 그룹 12→13, 총 30→31.
     // 2026-05-19: /admin/external-actions 추가 (사장님 외부 액션 가이드 hub) → 운영 그룹 8→9, 총 31→32.
     // 2026-05-22: /admin/decisions 추가 (사장님 결정 대기 hub) → 운영 그룹 9→10, 총 32→33.
+    // 2026-06-14: /admin/instagram-comments 추가 (IG 댓글 답글 검수 hub) → 컨텐츠 그룹 +1, 총 33→34.
     const total = ADMIN_MENU.reduce((s, g) => s + g.items.length, 0);
-    expect(total).toBe(33);
+    expect(total).toBe(34);
   });
 
   it("href 중복 없음", () => {

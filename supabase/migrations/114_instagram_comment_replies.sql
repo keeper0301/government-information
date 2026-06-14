@@ -38,3 +38,13 @@ CREATE INDEX IF NOT EXISTS instagram_comment_replies_status
 
 COMMENT ON TABLE instagram_comment_replies IS
   'IG 댓글 + AI 답글 초안 대기 큐 — 사장님 승인 후 게시(human-in-loop)';
+
+-- RLS — anon/authenticated 전면 차단(서비스는 service_role 로만 접근).
+-- 089 decision_pending 와 동일 패턴: RLS 누락 시 anon REST 로 PII(댓글·작성자) 노출.
+-- service_role 은 RLS bypass 라 cron·어드민 동작 무영향.
+ALTER TABLE public.instagram_comment_replies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS instagram_comment_replies_block_anon ON public.instagram_comment_replies;
+CREATE POLICY instagram_comment_replies_block_anon
+  ON public.instagram_comment_replies
+  FOR ALL TO anon, authenticated
+  USING (false) WITH CHECK (false);

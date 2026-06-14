@@ -53,6 +53,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
       { href: "/admin/wordpress", label: "워드프레스 자동 발행", icon: "🌐" },
       { href: "/admin/instagram", label: "인스타 카드뉴스", icon: "📸" },
       { href: "/admin/instagram/preview-categories", label: "인스타 카테고리 검증", icon: "🎨" },
+      { href: "/admin/instagram-comments", label: "인스타 댓글 답글 검수", icon: "💬" },
       { href: "/admin/scrape-local", label: "시·군 보도자료 수집", icon: "🏛️" },
     ],
   },
