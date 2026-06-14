@@ -628,9 +628,9 @@ function health(config) {
       telegram: true,
       policyDb: true,
       contentGeneration: true,
-      threadsPublishing: false,
+      threadsPublishing: true,
       instagramMetrics: true,
-      instagramComments: false,
+      instagramComments: true,
     },
   };
 }

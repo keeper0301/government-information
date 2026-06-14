@@ -180,7 +180,8 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
   // 2026-05-19 — windowReached=true && !ready 케이스도 reminder (미달 사유 가시화).
   try {
     const w1 = await checkW1Readiness();
-    if (w1.windowReached && w1.ready) {
+    const w1Enabled = process.env.AGENT_W1_ENABLED === "true";
+    if (w1.windowReached && w1.ready && !w1Enabled) {
       actions.push({
         category: "codex",
         label: "Codex W1 ramp-up 활성화 (1주차 검증 통과)",
