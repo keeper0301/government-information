@@ -31,6 +31,9 @@ export type KeepioAgentReadinessSummary = {
   readOnly: number;
   draftOnly: number;
   approvalRequired: number;
+  blockedPublicActions: number;
+  priorityActionLabel: string;
+  priorityActionDetail: string;
   readinessPercent: number;
   healthLabel: string;
   healthTone: "green" | "amber" | "red";
@@ -176,6 +179,20 @@ function buildReadinessSummary(
   const readOnly = details.filter((item) => item.risk === "read_only").length;
   const draftOnly = details.filter((item) => item.risk === "draft_only").length;
   const approvalRequired = details.filter((item) => item.risk === "approval_required").length;
+  const priorityItem =
+    details.find((item) => !item.ready && item.risk === "approval_required") ??
+    details.find((item) => !item.ready && item.risk === "draft_only") ??
+    details.find((item) => !item.ready) ??
+    null;
+  const blockedPublicActions = details.filter(
+    (item) => !item.ready && item.risk === "approval_required",
+  ).length;
+  const priorityActionLabel = priorityItem
+    ? `${priorityItem.label} 확인 필요`
+    : "공개 액션 안전선 유지";
+  const priorityActionDetail = priorityItem
+    ? priorityItem.nextCheck
+    : "현재 준비된 자동화는 기존 승인·safety gate·dry-run ready 경계를 유지합니다.";
   const healthTone = needsAttention === 0 ? "green" : readinessPercent >= 70 ? "amber" : "red";
   const healthLabel =
     needsAttention === 0
@@ -191,6 +208,9 @@ function buildReadinessSummary(
     readOnly,
     draftOnly,
     approvalRequired,
+    blockedPublicActions,
+    priorityActionLabel,
+    priorityActionDetail,
     readinessPercent,
     healthLabel,
     healthTone,
