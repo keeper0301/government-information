@@ -13,14 +13,23 @@ describe("getKeepioAgentStatus", () => {
     vi.unstubAllGlobals();
   });
 
-  it("health URL이 없으면 미설정 상태를 반환한다", async () => {
+  it("health URL이 없으면 Hermes sidecar 활성 상태로 폴백한다", async () => {
     delete process.env.KEEPIO_AGENT_HEALTH_URL;
 
     const status = await getKeepioAgentStatus();
 
-    expect(status.configured).toBe(false);
-    expect(status.ready).toBe(false);
-    expect(status.missingRequired).toEqual(["KEEPIO_AGENT_HEALTH_URL"]);
+    expect(status.configured).toBe(true);
+    expect(status.ok).toBe(true);
+    expect(status.ready).toBe(true);
+    expect(status.missingRequired).toEqual([]);
+    expect(status.error).toBeNull();
+    expect(status.automation.telegram).toBe(true);
+    expect(status.automation.instagramComments).toBe(true);
+    expect(status.aiManagerEnabled).toBe(true);
+    expect(status.aiManagerConfigured).toBe(true);
+    expect(status.blogManagerEnabled).toBe(true);
+    expect(status.siteMaintenanceEnabled).toBe(true);
+    expect(status.siteUpgradeEnabled).toBe(true);
   });
 
   it("워커 health 응답을 자율 운영 카드 상태로 변환한다", async () => {
