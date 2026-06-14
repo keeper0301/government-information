@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminAction } from "@/lib/admin-actions";
 import { logPublishAudit, pickAuditDetails, type AuditSkipReason } from "@/lib/naver-blog/audit";
 import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
 
@@ -54,6 +55,18 @@ export async function POST(request: Request) {
   });
 
   // 큐 update
+  await logAdminAction({
+    actorId: null,
+    action: "naver_extension_publish",
+    details: {
+      queue_id: body.queueId,
+      blog_post_id: body.blogPostId ?? null,
+      result: body.result,
+      has_naver_url: Boolean(body.naverUrl),
+      skip_reason: body.skipReason ?? null,
+    },
+  }).catch(() => undefined);
+
   if (body.result === "success") {
     await admin
       .from("naver_blog_queue")

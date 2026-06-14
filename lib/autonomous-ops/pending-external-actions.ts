@@ -215,6 +215,7 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
         "naver_publish_success",
         "naver_publish_fail",
         "naver_extension_publish",
+        "naver_manual_test",
         "naver_cookies_uploaded",
       ])
       .gte("created_at", since30d)
