@@ -26,6 +26,12 @@ describe("getKeepioAgentStatus", () => {
     expect(status.source).toBe("hermes_sidecar");
     expect(status.telemetryConfigured).toBe(false);
     expect(status.automationDetails).toHaveLength(6);
+    expect(status.automationDetails.find((item) => item.key === "threadsPublishing")).toMatchObject({
+      risk: "approval_required",
+      riskLabel: "공개 전 승인 필요",
+      statusLabel: "준비됨",
+    });
+    expect(status.automationDetails.find((item) => item.key === "instagramComments")?.nextCheck).toContain("초안");
     expect(status.actionItems.join(" ")).toContain("승인 + safety gate + dry-run ready");
     expect(status.automation.telegram).toBe(true);
     expect(status.automation.instagramComments).toBe(true);
@@ -133,6 +139,13 @@ describe("getKeepioAgentStatus", () => {
     expect(status.siteUpgradeTotalRuns).toBe(6);
     expect(status.automation.policyDb).toBe(true);
     expect(status.automation.threadsPublishing).toBe(false);
+    expect(status.actionItems.join(" ")).toContain("Threads 자동 발행 확인 필요");
+    expect(status.actionItems.join(" ")).toContain("Instagram 댓글 답글 확인 필요");
+    expect(status.automationDetails.find((item) => item.key === "threadsPublishing")).toMatchObject({
+      ready: false,
+      statusLabel: "확인 필요",
+      risk: "approval_required",
+    });
   });
 
   it("health 호출이 실패하면 에러 상태를 반환한다", async () => {

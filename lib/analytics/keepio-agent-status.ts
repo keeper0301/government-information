@@ -10,12 +10,18 @@ export type KeepioAgentRuntimeSource = "hermes_sidecar" | "health_url";
 
 export type KeepioAgentAutomationStatus = Record<KeepioAgentAutomationKey, boolean>;
 
+export type KeepioAgentAutomationRisk = "read_only" | "draft_only" | "approval_required";
+
 export type KeepioAgentAutomationDetail = {
   key: KeepioAgentAutomationKey;
   label: string;
   ready: boolean;
+  statusLabel: string;
   mode: string;
   safetyNote: string;
+  risk: KeepioAgentAutomationRisk;
+  riskLabel: string;
+  nextCheck: string;
 };
 
 export type KeepioAgentStatus = {
@@ -104,16 +110,55 @@ const AUTOMATION_SAFETY_NOTES: Record<KeepioAgentAutomationKey, string> = {
   instagramComments: "댓글 자동 공개 게시는 차단, 답글 초안만 생성",
 };
 
+const AUTOMATION_RISKS: Record<KeepioAgentAutomationKey, KeepioAgentAutomationRisk> = {
+  telegram: "read_only",
+  policyDb: "read_only",
+  contentGeneration: "draft_only",
+  threadsPublishing: "approval_required",
+  instagramMetrics: "read_only",
+  instagramComments: "draft_only",
+};
+
+const AUTOMATION_RISK_LABELS: Record<KeepioAgentAutomationRisk, string> = {
+  read_only: "읽기/알림 안전",
+  draft_only: "초안 전용",
+  approval_required: "공개 전 승인 필요",
+};
+
+const AUTOMATION_NEXT_CHECKS: Record<KeepioAgentAutomationKey, string> = {
+  telegram: "중복 알림보다 행동 필요 변화가 찍히는지 확인",
+  policyDb: "정책 DB 조회 성공과 원본 변경 없음 확인",
+  contentGeneration: "초안 품질과 큐 적재 상태 확인",
+  threadsPublishing: "승인됨·safety gate·dry-run ready 후보만 발행되는지 확인",
+  instagramMetrics: "metric 수집 실패/토큰 만료 여부 확인",
+  instagramComments: "공개 댓글 대신 답글 초안만 생성되는지 확인",
+};
+
 function buildAutomationDetails(
   automation: KeepioAgentAutomationStatus,
 ): KeepioAgentAutomationDetail[] {
-  return (Object.keys(AUTOMATION_LABELS) as KeepioAgentAutomationKey[]).map((key) => ({
-    key,
-    label: AUTOMATION_LABELS[key],
-    ready: automation[key],
-    mode: AUTOMATION_MODES[key],
-    safetyNote: AUTOMATION_SAFETY_NOTES[key],
-  }));
+  return (Object.keys(AUTOMATION_LABELS) as KeepioAgentAutomationKey[]).map((key) => {
+    const risk = AUTOMATION_RISKS[key];
+    return {
+      key,
+      label: AUTOMATION_LABELS[key],
+      ready: automation[key],
+      statusLabel: automation[key] ? "준비됨" : "확인 필요",
+      mode: AUTOMATION_MODES[key],
+      safetyNote: AUTOMATION_SAFETY_NOTES[key],
+      risk,
+      riskLabel: AUTOMATION_RISK_LABELS[risk],
+      nextCheck: AUTOMATION_NEXT_CHECKS[key],
+    };
+  });
+}
+
+function buildDisabledAutomationActionItems(
+  automation: KeepioAgentAutomationStatus,
+): string[] {
+  return (Object.keys(AUTOMATION_LABELS) as KeepioAgentAutomationKey[])
+    .filter((key) => !automation[key])
+    .map((key) => `${AUTOMATION_LABELS[key]} 확인 필요: ${AUTOMATION_NEXT_CHECKS[key]}`);
 }
 
 function buildHermesSidecarStatus(): KeepioAgentStatus {
@@ -373,6 +418,7 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       automationDetails: buildAutomationDetails(automation),
       actionItems: [
         ...(!res.ok ? [`health endpoint HTTP ${res.status} 응답 확인`] : []),
+        ...buildDisabledAutomationActionItems(automation),
         ...(missingRequired.length > 0
           ? ["누락된 필수 환경값을 설정한 뒤 재배포"]
           : []),
