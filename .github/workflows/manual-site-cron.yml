@@ -15,6 +15,7 @@ on:
           - press-legacy-cleanup
           - press-legacy-cleanup-dry
           - press-low-reminder
+          - press-confidence-tune
           - agent-resident-cycle
       source:
         description: "감사 로그용 호출 출처"
@@ -47,6 +48,9 @@ jobs:
               ;;
             press-low-reminder)
               path="/api/cron/press-low-reminder"
+              ;;
+            press-confidence-tune)
+              path="/api/cron/press-confidence-tune"
               ;;
             agent-resident-cycle)
               path="/api/cron/agent-resident-cycle"
