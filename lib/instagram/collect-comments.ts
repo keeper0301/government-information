@@ -17,6 +17,13 @@ import {
 
 type Admin = ReturnType<typeof createAdminClient>;
 
+// 계정 본인이 단 댓글·답글인가 — 본인에게 답글 초안 만드는 것 방지(대소문자 무시).
+// ownUsername 미상(null)이면 거를 수 없으니 false(=일반 댓글로 취급).
+export function isOwnComment(commentUsername: string | null, ownUsername: string | null): boolean {
+  if (!ownUsername || !commentUsername) return false;
+  return commentUsername.toLowerCase() === ownUsername.toLowerCase();
+}
+
 export type CollectResult =
   | { ok: true; skipped: string }
   | { ok: true; collected: number; new: number; inserted: number; draftFailed: number }
@@ -39,7 +46,10 @@ export async function collectAndDraftComments(admin: Admin): Promise<CollectResu
   }
 
   const known = await existingCommentIds(admin, comments.map((c) => c.commentId));
-  const fresh = comments.filter((c) => !known.has(c.commentId)).slice(0, NEW_CAP);
+  // 신규 + 본인 계정 댓글 제외(자기 자신에게 답글 다는 초안 방지).
+  const fresh = comments
+    .filter((c) => !known.has(c.commentId) && !isOwnComment(c.username, tokenInfo.username))
+    .slice(0, NEW_CAP);
   if (fresh.length === 0) {
     return { ok: true, collected: comments.length, new: 0, inserted: 0, draftFailed: 0 };
   }
