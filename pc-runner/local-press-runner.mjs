@@ -113,7 +113,17 @@ async function main() {
     console.log(`  ${r1.city_key}: list + detail ${Object.keys(detailHtmls).length}건`);
   }
 
-  const round2 = await postUpload(round2Items);
+  const round2 = { results: [] };
+  for (const item of round2Items) {
+    const entries = Object.entries(item.detail_htmls || {});
+    const chunks = entries.length
+      ? entries.map(([seq, html]) => ({ [seq]: html }))
+      : [item.detail_htmls || {}];
+    for (const detail_htmls of chunks) {
+      const partial = await postUpload([{ ...item, detail_htmls }]);
+      round2.results.push(...(partial.results || []));
+    }
+  }
   console.log(`\n[round 2] insert 결과:`);
   for (const r of round2.results) {
     console.log(`  ${r.city}: fetched ${r.fetched} / inserted ${r.inserted} / skipped ${r.skipped} / errors ${r.errors?.length || 0}`);
