@@ -148,11 +148,19 @@ function buildResidentRecommendations(
   const press = findData(results, "press_tier_status") as {
     mid_pending?: number;
     low_pending?: number;
+    stale_low_pending_14d?: number;
+    low_cleanup_runs_7d?: number;
   } | null;
   if ((press?.mid_pending ?? 0) >= 10 || (press?.low_pending ?? 0) >= 20) {
+    const evidence = [
+      `mid=${press?.mid_pending ?? 0}`,
+      `low=${press?.low_pending ?? 0}`,
+      `stale_low_14d=${press?.stale_low_pending_14d ?? 0}`,
+      `cleanup7d=${press?.low_cleanup_runs_7d ?? 0}`,
+    ].join(", ");
     recs.push({
       operation: { area: "agent_call", action: "codex_scraper_fix" },
-      evidence: `press queue mid=${press?.mid_pending ?? 0}, low=${press?.low_pending ?? 0}`,
+      evidence: `press queue ${evidence}`,
     });
   }
 
