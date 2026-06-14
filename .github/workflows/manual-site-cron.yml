@@ -39,21 +39,27 @@ jobs:
           case "${ENDPOINT}" in
             press-ingest)
               path="/api/cron/press-ingest"
+              method="POST"
               ;;
             press-legacy-cleanup)
               path="/api/cron/press-legacy-cleanup"
+              method="POST"
               ;;
             press-legacy-cleanup-dry)
               path="/api/cron/press-legacy-cleanup?dry=1"
+              method="POST"
               ;;
             press-low-reminder)
               path="/api/cron/press-low-reminder"
+              method="GET"
               ;;
             press-confidence-tune)
               path="/api/cron/press-confidence-tune"
+              method="POST"
               ;;
             agent-resident-cycle)
               path="/api/cron/agent-resident-cycle"
+              method="POST"
               ;;
             *)
               echo "::error::허용되지 않은 endpoint: ${ENDPOINT}"
@@ -61,12 +67,14 @@ jobs:
               ;;
           esac
           echo "path=${path}" >> "$GITHUB_OUTPUT"
+          echo "method=${method}" >> "$GITHUB_OUTPUT"
 
       - name: Site cron 호출
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_BASE_URL: https://www.keepioo.com
           PATH_TO_CALL: ${{ steps.endpoint.outputs.path }}
+          METHOD: ${{ steps.endpoint.outputs.method }}
           SOURCE: ${{ github.event.inputs.source }}
         run: |
           set -euo pipefail
@@ -83,9 +91,10 @@ jobs:
 
           echo "== manual site cron =="
           echo "endpoint=${PATH_TO_CALL}"
+          echo "method=${METHOD}"
           auth_header="Authorization: Bearer ${CRON_SECRET}"
           http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
-            --request POST \
+            --request "${METHOD}" \
             --max-time 420 \
             -H "${auth_header}" \
             -H "Content-Type: application/json" \
