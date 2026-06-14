@@ -142,11 +142,16 @@ async function pickCandidates(
   return out.slice(0, limit);
 }
 
-// 실제 fetch 1건. 성공/실패 여부와 함께 매칭된 fetcher 없는 경우는 skipped.
+// 실제 fetch 1건. 결과 4종:
+//   ok        — 상세 채움 성공
+//   failed    — fetch 시도했으나 예외
+//   no_fetcher— 매칭 fetcher 자체가 없음 (진짜 코드 사각지대 신호)
+//   no_data   — fetcher 는 있으나 갱신할 새 데이터 없음 (정상 — enrich 완료 후 7일 갱신 배치의 일상)
+// no_fetcher 와 no_data 를 구분해, 정상인 no_data 가 "fetcher 매칭 0건" 알림을 오발하지 않게 한다.
 async function enrichOne(
   supabase: ReturnType<typeof createAdminClient>,
   row: Candidate,
-): Promise<"ok" | "failed" | "skipped"> {
+): Promise<"ok" | "failed" | "no_fetcher" | "no_data"> {
   const fetcher = findFetcher(row);
   if (!fetcher) {
     // 처리 가능한 fetcher 없음. last_detail_fetched_at 을 찍어 재시도 루프 탈출.
@@ -155,18 +160,18 @@ async function enrichOne(
       .from(row.table)
       .update({ last_detail_fetched_at: new Date().toISOString() })
       .eq("id", row.id);
-    return "skipped";
+    return "no_fetcher";
   }
 
   try {
     const result = await fetcher.fetchDetail(row);
     if (!result) {
-      // 응답은 왔지만 데이터 없음 — skipped 와 동일 처리
+      // 응답은 왔지만 데이터 없음 — 정상(갱신 거리 없음). 도장만 찍고 조용히 넘어감.
       await supabase
         .from(row.table)
         .update({ last_detail_fetched_at: new Date().toISOString() })
         .eq("id", row.id);
-      return "skipped";
+      return "no_data";
     }
 
     // 채워진 필드만 UPDATE (기존 값이 있어도 Detail API 최신성이 더 높으므로 덮어씀)
@@ -221,17 +226,18 @@ async function enrichOne(
 async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
   const candidates = await pickCandidates(supabase, BATCH_SIZE);
   if (candidates.length === 0) {
-    return { ok: 0, failed: 0, skipped: 0, total: 0, quotaExceeded: false };
+    return { ok: 0, failed: 0, noFetcher: 0, noData: 0, skipped: 0, total: 0, quotaExceeded: false };
   }
 
-  let ok = 0, failed = 0, skipped = 0;
+  let ok = 0, failed = 0, noFetcher = 0, noData = 0;
   let quotaExceeded = false;
   for (let i = 0; i < candidates.length; i++) {
     try {
       const r = await enrichOne(supabase, candidates[i]);
       if (r === "ok") ok++;
       else if (r === "failed") failed++;
-      else skipped++;
+      else if (r === "no_fetcher") noFetcher++;
+      else noData++; // no_data — 정상(갱신 거리 없음)
     } catch (err) {
       // QuotaExceededError → batch 즉시 중단. 남은 candidate 는 다음 cron 라운드에 처리.
       // enrichOne 이 quota 시 row 에 도장 안 찍으므로 failed 카운트도 증가시키지 않음.
@@ -247,7 +253,8 @@ async function enrichBatch(supabase: ReturnType<typeof createAdminClient>) {
       await new Promise((res) => setTimeout(res, CALL_INTERVAL_MS));
     }
   }
-  return { ok, failed, skipped, total: candidates.length, quotaExceeded };
+  // skipped = no_fetcher + no_data (기존 응답 호환 유지). 두 세부 카운트도 함께 반환.
+  return { ok, failed, noFetcher, noData, skipped: noFetcher + noData, total: candidates.length, quotaExceeded };
 }
 
 async function runEnrichAndRespond(jobLabel: string) {
@@ -273,11 +280,13 @@ async function runEnrichAndRespond(jobLabel: string) {
         );
       }
     }
-    // 전부 skipped 인 경우 — fetcher 누락 or applies 로직 깨짐. 운영 사각지대.
-    if (result.total > 0 && result.ok === 0 && result.failed === 0) {
+    // 매칭 fetcher 가 없는 row 가 실제로 있을 때만 알림 — 진짜 코드 사각지대.
+    // no_data(갱신 거리 없음)만으로 batch 가 채워진 경우는 enrich 완료 후 정상 상태라 조용.
+    // (이전엔 no_fetcher/no_data 를 합쳐 판정 → 정상 갱신 배치가 244회 오발한 원인.)
+    if (result.noFetcher > 0) {
       await notifyCronFailure(
-        `${jobLabel} - 모든 후보 skipped (fetcher 매칭 0건)`,
-        `total=${result.total} skipped=${result.skipped}. DETAIL_FETCHERS applies() 점검 필요.`,
+        `${jobLabel} - fetcher 매칭 없는 후보 ${result.noFetcher}건`,
+        `total=${result.total} no_fetcher=${result.noFetcher} no_data=${result.noData}. DETAIL_FETCHERS applies() 점검 필요.`,
       );
     }
 
