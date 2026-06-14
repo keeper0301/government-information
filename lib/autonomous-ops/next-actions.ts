@@ -293,7 +293,8 @@ export function buildOpsNextActions(
     });
   }
 
-  if (input.codexW1.windowReached && input.codexW1.ready) {
+  const w1Enabled = process.env.AGENT_W1_ENABLED === "true";
+  if (input.codexW1.windowReached && input.codexW1.ready && !w1Enabled) {
     actions.push({
       severity: "action_required",
       title: "Codex W1 활성화 가능",
