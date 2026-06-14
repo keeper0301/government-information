@@ -32,7 +32,10 @@ export const maxDuration = 600;
 //   지자체 복지 상세는 playwright/enrich-bokjiro.mjs(한국 IP Playwright)가 bokjiro 웹에서 수집.
 //   enrich 가 진행될수록 eligible 이 늘어 CAP 150 이 다시 의미를 가진다(천장 57%→상승).
 const WELFARE_CAP = 150; // enrich 가 채운 본문 합산이 ≥50 인 welfare 처리 (잔량 따라 가변)
-const LOAN_CAP = 10;     // loan eligible 0(완료) → 미래 신규 정책 안전망만
+// 2026-06-14 — loan 백필이 그동안 `benefits`(loan 에 없는 컬럼) select 로 매 run 에러 →
+// graceful skip 되어 통째로 멈춰 있었음(loan 89건 eligible 정체 → noindex). select 를
+// 테이블별로 분리해 복구. 정체분 빠른 소진 위해 CAP 10→30(클리어 후 신규 안전망으로 충분).
+const LOAN_CAP = 30;
 // welfare 90% 가 sparse (desc<50자)인데 PostgREST 로는 char_length 필터를 못 걸어
 // client filter 로 거른다. 그런데 PostgREST 는 한 번에 max 1000행이라 단일 윈도우만
 // fetch 하면 한계가 있다.
@@ -73,14 +76,31 @@ type PolicyRow = {
   // 한 줄 요약) 이 컬럼들이 차 있으면 합산해서 해설 생성. enrich → backfill → 색인 파이프라인.
   detailed_content: string | null;
   eligibility: string | null;
-  benefits: string | null;
   target: string | null;
+  // 테이블별 고유 본문 컬럼 — welfare 는 benefits, loan 은 apply_method/loan_amount.
+  // (loan 엔 benefits 컬럼이 없어 select 에 넣으면 에러 → 테이블별 select 로 분리.)
+  benefits?: string | null;
+  apply_method?: string | null;
+  loan_amount?: string | null;
 };
 
-// LLM 해설 입력 = description + enrich 본문 컬럼 합산. 지자체 복지는 description 이 27자라도
-// detailed_content/eligibility/benefits 에 631자가 차 있어 합산하면 충분(중복 제거).
+// 테이블별 select 컬럼 — loan 에 없는 benefits 를 넣으면 PostgREST 에러로 백필 전체가 멈춤.
+const SELECT_COLS: Record<"welfare_programs" | "loan_programs", string> = {
+  welfare_programs: "id, title, source, description, detailed_content, eligibility, benefits, target",
+  loan_programs: "id, title, source, description, detailed_content, eligibility, apply_method, loan_amount, target",
+};
+
+// LLM 해설 입력 = description + enrich 본문 컬럼 합산(테이블별 고유 컬럼 포함). 중복 제거.
 function buildSourceText(row: PolicyRow): string {
-  const parts = [row.description, row.detailed_content, row.eligibility, row.benefits, row.target]
+  const parts = [
+    row.description,
+    row.detailed_content,
+    row.eligibility,
+    row.benefits,
+    row.apply_method,
+    row.loan_amount,
+    row.target,
+  ]
     .map((s) => s?.trim())
     .filter((s): s is string => !!s && s.length > 0);
   // 동일 문구 중복 제거(여러 컬럼에 같은 한 줄이 복사된 경우) 후 결합.
@@ -127,7 +147,7 @@ async function backfillTable(
   ) {
     const { data: rows, error } = await admin
       .from(table)
-      .select("id, title, source, description, detailed_content, eligibility, benefits, target")
+      .select(SELECT_COLS[table])
       .is("unique_insight", null)
       .order("view_count", { ascending: false, nullsFirst: false })
       .order("published_at", { ascending: false, nullsFirst: false })
@@ -142,7 +162,8 @@ async function backfillTable(
     }
     if (!rows || rows.length === 0) break;
 
-    for (const row of rows as PolicyRow[]) {
+    // 동적 select(SELECT_COLS[table])라 supabase 타입 추론이 풀려 unknown 경유 캐스팅.
+    for (const row of rows as unknown as PolicyRow[]) {
       // description 단독이 아니라 enrich 본문 합산으로 판정 — 지자체 복지(desc 짧음+상세 채워짐) 포함.
       const sourceText = buildSourceText(row);
       if (sourceText.length < MIN_DESC_LEN) {
