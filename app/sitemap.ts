@@ -12,6 +12,8 @@ import { cleanDescription } from "@/lib/utils";
 // 24h 동안 같은 값 보장 (Next.js App Router force-static 패턴). 정책 detail
 // (welfare/loan/news/blog) 의 updated_at 기준은 그대로 유지.
 export const revalidate = 86400;
+// 페이지네이션(.range 순회)으로 round-trip 이 늘어 안전망. 일 1회 생성이라 여유 큼.
+export const maxDuration = 60;
 const SITEMAP_BUILD_TIME = new Date();
 import {
   CROSS_COMBINATIONS,
@@ -26,6 +28,22 @@ import { getGuides } from "@/lib/policy-guides";
 import { PROVINCES } from "@/lib/regions";
 import { AGE_SLUGS, getAgeCounts } from "@/lib/age-targeting";
 import { CATEGORY_SLUGS } from "@/lib/category-hubs";
+
+// PostgREST 서버 max-rows(1000) 가 .limit(N>1000) 을 무시해 sitemap 이 1000 에서 잘리던
+// 사고(welfare 10,223 중 1,000 만 제출) fix. .range() 로 1000 단위 순회해 전체 행 수집.
+// 안정 정렬(.order)을 호출자가 붙여야 페이지 경계 중복/누락이 없다.
+async function paginateAll<T>(
+  build: (from: number) => PromiseLike<{ data: T[] | null }>,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < 60000; from += 1000) {
+    const { data } = await build(from);
+    if (!data || data.length === 0) break;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
@@ -154,17 +172,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // welfare/[id]/page.tsx 의 isSparse 가 !hasInsight 면 noindex 처리 → sitemap 에서
   // 같은 row 빼지 않으면 Search Console "Indexed, though blocked by noindex" 경고 +
   // AdSense 검수자가 sitemap → noindex URL 도달 시 부정 시그널.
-  // 2026-05-21 — supabase default limit 1000 차단. unique_insight 보유 row 모두 등록.
-  // welfare 현재 ~1,000 row 라 limit 영향 미미하나 명시로 안전망.
-  const { data: welfare } = await supabase
-    .from("welfare_programs")
-    .select("id, updated_at, unique_insight_at")
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-    .not("unique_insight_at", "is", null)
-    .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세는 404 라 sitemap 에 두면 SC 404 경고
-    .is("duplicate_of_id", null) // 중복 정책 제외 — 목록과 동일 기준(중복 콘텐츠 색인 방지)
-    .limit(15000);
-  const welfarePages: MetadataRoute.Sitemap = (welfare || []).map((w) => {
+  // 2026-06-14 — .limit(15000) 이 PostgREST max-rows(1000) 에 막혀 welfare 가 1,000 에서
+  // 잘리던 사고(10,223 중 9,223 누락) fix. .range() 페이지네이션으로 전체 수집.
+  const welfare = await paginateAll<{ id: string; updated_at: string; unique_insight_at: string | null }>(
+    (from) =>
+      supabase
+        .from("welfare_programs")
+        .select("id, updated_at, unique_insight_at")
+        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+        .not("unique_insight_at", "is", null)
+        .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세는 404 라 sitemap 에 두면 SC 404 경고
+        .is("duplicate_of_id", null) // 중복 정책 제외 — 목록과 동일 기준(중복 콘텐츠 색인 방지)
+        .order("id", { ascending: true }) // .range() 안정 정렬(페이지 경계 중복/누락 방지)
+        .range(from, from + 999),
+  );
+  const welfarePages: MetadataRoute.Sitemap = welfare.map((w) => {
     const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at!;
     const lastModSrc = new Date(insightAt) > new Date(w.updated_at) ? insightAt : w.updated_at;
     return {
@@ -184,17 +206,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // Loan programs — welfare 와 동일 패턴 (unique_insight 보유 row 만 sitemap 등록).
-  // 2026-05-21 — default limit 1000 차단. loan 1,360 with_insight 의 360 row 누락 사고 fix.
-  const { data: loans } = await supabase
-    .from("loan_programs")
-    .select("id, updated_at, unique_insight_at")
-    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-    .not("unique_insight_at", "is", null)
-    .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세 404 와 정합
-    .is("duplicate_of_id", null) // 중복 정책 제외 — 중복 콘텐츠 색인 방지
-    .limit(5000);
-  const loanPages: MetadataRoute.Sitemap = (loans || []).map((l) => {
+  // Loan programs — welfare 와 동일 패턴 + 동일 페이지네이션 fix (1000 cap 우회).
+  const loans = await paginateAll<{ id: string; updated_at: string; unique_insight_at: string | null }>(
+    (from) =>
+      supabase
+        .from("loan_programs")
+        .select("id, updated_at, unique_insight_at")
+        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+        .not("unique_insight_at", "is", null)
+        .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세 404 와 정합
+        .is("duplicate_of_id", null) // 중복 정책 제외 — 중복 콘텐츠 색인 방지
+        .order("id", { ascending: true })
+        .range(from, from + 999),
+  );
+  const loanPages: MetadataRoute.Sitemap = loans.map((l) => {
     const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at!;
     const lastModSrc = new Date(insightAt) > new Date(l.updated_at) ? insightAt : l.updated_at;
     return {
@@ -250,16 +275,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // 2026-05-30 selective sitemap — summary + classified_at + ai_commentary(P2)
     // 셋 다 채워진 news 만 포함. review mode off 직후 "갑작스러운 대량 thin page" 가
     // Google 에 일제히 색인되는 위험 차단. AI 백필 cron 진행에 맞춰 점진 ramp-up.
-    const { data: newsPosts } = await supabase
-      .from("news_posts")
-      .select("slug, updated_at, body")
-      .neq("category", "press")
-      .not("keywords", "eq", "{}")
-      .not("summary", "is", null)
-      .not("classified_at", "is", null)
-      .not("ai_commentary", "is", null)
-      .limit(25000);
-    newsPages = (newsPosts || [])
+    // 1000 cap 우회 — welfare/loan 과 동일 페이지네이션(news 색인가능분 5천+ 가 1000 에서
+    // 잘리던 것 fix). body≥250 필터는 수집 후 적용.
+    const newsPosts = await paginateAll<{ slug: string; updated_at: string; body: string }>(
+      (from) =>
+        supabase
+          .from("news_posts")
+          .select("slug, updated_at, body")
+          .neq("category", "press")
+          .not("keywords", "eq", "{}")
+          .not("summary", "is", null)
+          .not("classified_at", "is", null)
+          .not("ai_commentary", "is", null)
+          .order("slug", { ascending: true })
+          .range(from, from + 999),
+    );
+    newsPages = newsPosts
       // 2026-06-07 — news 상세 isThin 의 본문 조건(cleanDescription(body)<250)과 일치
       // (코드리뷰 P1). 상세는 noindex 인데 sitemap 에만 있으면 "Indexed, though blocked
       // by noindex" 부정 신호 → 본문 250 미만 뉴스는 sitemap 에서도 제외.
