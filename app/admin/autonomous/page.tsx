@@ -602,6 +602,14 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
             승인 필요 {summary.approvalRequired}개
           </span>
+          <span className={`rounded-full px-2 py-0.5 ${summary.blockedPublicActions > 0 ? "bg-red-50 text-red-700" : "bg-white/80 text-grey-600"}`}>
+            공개 차단 {summary.blockedPublicActions}개
+          </span>
+        </div>
+        <div className="mt-2 rounded-md bg-white/70 px-3 py-2 text-[11px] text-grey-700">
+          <span className="font-semibold text-grey-900">최우선 조치: </span>
+          {summary.priorityActionLabel}
+          <div className="mt-0.5 text-[10px] text-grey-500">{summary.priorityActionDetail}</div>
         </div>
       </div>
 

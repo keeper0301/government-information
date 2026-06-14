@@ -33,6 +33,8 @@ describe("getKeepioAgentStatus", () => {
       readinessPercent: 100,
       healthLabel: "전체 준비 완료",
       healthTone: "green",
+      blockedPublicActions: 0,
+      priorityActionLabel: "공개 액션 안전선 유지",
     });
     expect(status.automationDetails.find((item) => item.key === "threadsPublishing")).toMatchObject({
       risk: "approval_required",
@@ -154,6 +156,9 @@ describe("getKeepioAgentStatus", () => {
       readinessPercent: 67,
       healthLabel: "운영 점검 필요",
       healthTone: "red",
+      blockedPublicActions: 1,
+      priorityActionLabel: "Threads 자동 발행 확인 필요",
+      priorityActionDetail: "승인됨·safety gate·dry-run ready 후보만 발행되는지 확인",
     });
     expect(status.actionItems.join(" ")).toContain("Threads 자동 발행 확인 필요");
     expect(status.actionItems.join(" ")).toContain("Instagram 댓글 답글 확인 필요");
