@@ -4,7 +4,7 @@
 // 끝 괄호: 기관명 제거 / 행정구역 앞으로 / 중간 괄호 유지. 정규식 silent 회귀 방어.
 
 import { describe, it, expect } from "vitest";
-import { cleanPolicyTitle } from "@/lib/policy-title";
+import { cleanPolicyTitle, buildSeoTitle } from "@/lib/policy-title";
 
 describe("cleanPolicyTitle", () => {
   it("기관명 끝 괄호 제거", () => {
@@ -55,5 +55,66 @@ describe("cleanPolicyTitle", () => {
   it("빈 문자열·공백 안전", () => {
     expect(cleanPolicyTitle("")).toBe("");
     expect(cleanPolicyTitle("   ")).toBe("");
+  });
+});
+
+describe("buildSeoTitle (연도 + 검색의도 키워드)", () => {
+  const today = "2026-06-15";
+
+  it("마감일이 미래면 연도를 앞에 붙인다", () => {
+    expect(
+      buildSeoTitle({ title: "청년 월세 지원", applyEnd: "2026-12-31", today, keyword: "신청자격·방법" }),
+    ).toBe("2026년 청년 월세 지원 신청자격·방법 — 정책알리미");
+  });
+
+  it("마감일이 과거(만료)면 연도를 붙이지 않는다", () => {
+    expect(
+      buildSeoTitle({ title: "청년 월세 지원", applyEnd: "2025-12-31", today, keyword: "신청자격·방법" }),
+    ).toBe("청년 월세 지원 신청자격·방법 — 정책알리미");
+  });
+
+  it("마감일이 없으면(상시) 연도를 붙이지 않는다", () => {
+    expect(
+      buildSeoTitle({ title: "기초연금", applyEnd: null, today, keyword: "신청자격·방법" }),
+    ).toBe("기초연금 신청자격·방법 — 정책알리미");
+  });
+
+  it("마감일이 비날짜 텍스트면 연도를 붙이지 않는다(상시년 방지)", () => {
+    expect(
+      buildSeoTitle({ title: "기초연금", applyEnd: "상시모집", today, keyword: "신청자격·방법" }),
+    ).toBe("기초연금 신청자격·방법 — 정책알리미");
+  });
+
+  it("datetime 형식(YYYY-MM-DDThh:mm)도 날짜부분으로 정상 처리한다", () => {
+    expect(
+      buildSeoTitle({ title: "청년 월세 지원", applyEnd: "2026-12-31T23:59:59", today, keyword: "신청자격·방법" }),
+    ).toBe("2026년 청년 월세 지원 신청자격·방법 — 정책알리미");
+  });
+
+  it("날짜 뒤 잡문자가 붙어도 앞 10자 날짜로 판정한다", () => {
+    expect(
+      buildSeoTitle({ title: "청년 월세 지원", applyEnd: "2026-12-31마감", today, keyword: "신청자격·방법" }),
+    ).toBe("2026년 청년 월세 지원 신청자격·방법 — 정책알리미");
+  });
+
+  it("정책명에 이미 연도가 있으면 중복으로 붙이지 않는다", () => {
+    expect(
+      buildSeoTitle({ title: "2026 청년도약계좌", applyEnd: "2026-12-31", today, keyword: "지원대상·한도" }),
+    ).toBe("2026 청년도약계좌 지원대상·한도 — 정책알리미");
+  });
+
+  it("정제된 정책명이 24자를 넘으면 키워드를 생략한다(잘림 방지)", () => {
+    const longTitle = "저소득 한부모가정 아동양육비 및 추가아동양육비 통합 지원 사업";
+    expect(buildSeoTitle({ title: longTitle, applyEnd: null, today, keyword: "신청자격·방법" })).toBe(
+      `${longTitle} — 정책알리미`,
+    );
+  });
+
+  it("연도 prefix 때문에 24자를 넘으면 키워드를 생략한다", () => {
+    // base 22자 + "2026년 "(6자) = 28자 → 키워드 생략, 연도는 유지
+    const title = "서울특별시 청년 1인가구 주거안정 월세 한시 지원";
+    expect(
+      buildSeoTitle({ title, applyEnd: "2026-12-31", today, keyword: "신청자격·방법" }),
+    ).toBe(`2026년 ${title} — 정책알리미`);
   });
 });

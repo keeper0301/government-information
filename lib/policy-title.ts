@@ -38,3 +38,34 @@ export function cleanPolicyTitle(title: string): string {
   // 식별 정보 손실 + 동명 정책 title 중복(네이버 진단 악화) 위험 → 원본 유지가 안전.
   return t;
 }
+
+// ============================================================
+// SEO 제목 생성 — 정제된 정책명 + (안전한) 연도 + 검색의도 키워드 (2026-06-15 CTR 개선)
+// ============================================================
+// 클릭률(CTR) 레버: 검색결과 제목에 "연도"가 있으면 최신 정보로 인식돼 클릭이 늘어난다.
+// 단, 무조건 "2026년"을 붙이면 만료·무관 정책에 틀린 연도가 박혀 신뢰가 깨진다(정책
+// 사이트 치명). 그래서 "신청 마감일이 미래로 확정된 정책"에만 그 연도를 표시한다 —
+// "이 정책은 OOOO년에 신청 가능"이라 100% 사실. 그 외엔 연도를 생략해 오표기를 차단.
+export function buildSeoTitle(opts: {
+  title: string;
+  applyEnd: string | null; // 신청 마감일 (YYYY-MM-DD) 또는 null(상시)
+  today: string; // 오늘 (YYYY-MM-DD) — 미래/과거 판정 기준
+  keyword: string; // 검색의도 키워드 ("신청자격·방법" | "지원대상·한도")
+}): string {
+  const base = cleanPolicyTitle(opts.title);
+  // 마감일이 정상 날짜 형식이고 오늘 이후(미래)일 때만 연도 활용. 앞 10자만 잘라
+  // "YYYY-MM-DD" 끝 앵커로 엄격 검증 → "상시모집"·"2026-12-31마감"·"2026-99-99T.." 같은
+  // 비정상/뒤꼬리 값이 잘못된 prefix("상시년") 를 만드는 것을 차단. datetime("...T00:00")
+  // 도 앞 10자가 날짜라 정상 처리. 비교도 같은 10자 기준이라 형식 일관.
+  const ae = (opts.applyEnd ?? "").slice(0, 10);
+  const isFutureDate = /^20\d\d-\d\d-\d\d$/.test(ae) && ae >= opts.today;
+  // 정책명에 이미 4자리 연도가 있으면 중복("2026년 2026 청년...") 방지.
+  const hasYearInBase = /20\d\d/.test(base);
+  const yearPrefix = isFutureDate && !hasYearInBase ? `${ae.slice(0, 4)}년 ` : "";
+  const core = `${yearPrefix}${base}`;
+  // 네이버 검색결과 제목은 ~40자에서 잘린다. 키워드까지 넣어도 여유 있을 때(core ≤24자)만
+  // 검색의도 키워드를 부착해 잘림을 방지. 연도가 붙어 길어지면 키워드는 자연히 생략된다.
+  return core.length <= 24
+    ? `${core} ${opts.keyword} — 정책알리미`
+    : `${core} — 정책알리미`;
+}

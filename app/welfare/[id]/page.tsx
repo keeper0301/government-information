@@ -6,7 +6,7 @@ import { ShareButton } from "@/components/share-button";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
-import { GovernmentServiceSchema, BreadcrumbSchema } from "@/components/json-ld";
+import { GovernmentServiceSchema, BreadcrumbSchema, FAQSchema } from "@/components/json-ld";
 import { ProgramViewTracker } from "@/components/analytics/program-view-tracker";
 import { ApplyClickTracker } from "@/components/analytics/apply-click-tracker";
 import { SummaryItem } from "@/components/summary-item";
@@ -15,9 +15,10 @@ import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
-import { cleanPolicyTitle } from "@/lib/policy-title";
+import { buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
+import { buildPolicyFaqs } from "@/lib/policy-faq";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -69,13 +70,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 회귀 감시: filledCount/descLen 도 함께 기록 (admin/insight-progress 진단용).
   void filledCount; void descLen;
 
-  // 2026-06-11 — title 정제(기관명 제거·지역 앞으로, CTR 개선) 후 검색의도 키워드 보강.
-  // 짧은 정책명(24자 이하)에만 붙여 잘림(네이버 ~40자) 방지. 롱테일("OO 신청방법·자격") 매칭.
-  const baseTitle = cleanPolicyTitle(data.title);
-  const seoTitle =
-    baseTitle.length <= 24
-      ? `${baseTitle} 신청자격·방법 — 정책알리미`
-      : `${baseTitle} — 정책알리미`;
+  // 2026-06-11 title 정제 + 2026-06-15 CTR 개선 — 마감일이 미래인 정책엔 연도를 앞에 붙여
+  // "최신 정보" 신호로 클릭 유도. 검색의도 키워드("신청자격·방법") 부착·잘림 방지는 헬퍼가 처리.
+  // today 는 KST(UTC+9) 기준 — UTC 로 하면 한국 0~9시에 어제로 계산돼 만료 직후 정책에
+  // 연도가 잠깐 남는다(교차 코드리뷰 P1). 마감 판정의 정확도를 위해 KST 로 고정.
+  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const seoTitle = buildSeoTitle({
+    title: data.title,
+    applyEnd: data.apply_end,
+    today,
+    keyword: "신청자격·방법",
+  });
   // 2026-06-11 — 검색결과 스니펫(description)을 unique_insight(keepioo 자체 해설) 우선으로.
   // 정부 원문 그대로면 여러 페이지 "동일 설명문 중복"(네이버 진단) + 딱딱해 CTR 낮음 → 해설로
   // 고유화·매력화. 없으면(noindex sparse) 정부 description fallback. 160자 cut(스니펫 권장).
@@ -146,6 +151,8 @@ export default async function WelfareDetailPage({ params }: Props) {
   const filledSummary = summaryFields.filter(
     (f) => f.value && !isSubstantiallyDuplicate(f.value, program.description),
   );
+  // FAQ 구조화 데이터 — 충실한 핵심정보만 Q&A 로 (AI 검색·네이버 이해 보조, 2026-06-15 CTR).
+  const faqs = buildPolicyFaqs(filledSummary);
 
   // 데이터 빈약도 판정 — 본문 길이 + 핵심 정보 카드 채움 정도로 분류 (loan 과 동일).
   const descLen = (program.description || "").length;
@@ -176,6 +183,7 @@ export default async function WelfareDetailPage({ params }: Props) {
           { name: program.title, url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}/welfare/${program.id}` },
         ]}
       />
+      {faqs.length > 0 && <FAQSchema questions={faqs} />}
 
       {/* Breadcrumb */}
       <nav className="text-sm text-grey-700 mb-6">
