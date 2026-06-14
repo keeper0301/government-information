@@ -12,7 +12,7 @@
 //   (부산 북구는 2026-06-01 eminwon 으로 재이관 → bsbukgu-eminwon.ts, 여기서 제외.)
 //   두 시스템 공존이지만 source_code 가 분리되어 서로 영향 없음.
 // ※ 도시 추가 시: 여기 + workflow yml KEEPIOO_RUNNER_CITIES + runner.mjs ALL_COLLECTORS
-//   3곳 동기화 (registry-sync.test.ts 가 키 집합 일치 검증). 현재 13 도시.
+//   3곳 동기화 (registry-sync.test.ts 가 키 집합 일치 검증). 현재 26 도시(GHA) + 2 PC전용.
 // ============================================================
 
 export const PLAYWRIGHT_CITY_REGISTRY: Record<

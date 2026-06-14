@@ -4,7 +4,7 @@ name: Local Press Scraping (Playwright + icn1 프록시)
 # 정부 사이트가 해외(GitHub Actions 미국) IP 를 차단하므로, 정부 도메인 요청을 Vercel icn1
 # (한국 IP) 프록시 /api/internal/icn1-fetch 로 우회시킨다 (KEEPIOO_USE_PROXY=1).
 #
-# 검증된 도시만 KEEPIOO_RUNNER_CITIES 로 점진 활성화 (현재 23). 도시 추가 시 ① 프록시
+# 검증된 도시만 KEEPIOO_RUNNER_CITIES 로 점진 활성화 (현재 26). 도시 추가 시 ① 프록시
 # allowlist(icn1-fetch) ② factory selector 검증 ③ 이 목록에 key 추가.
 # (성동·동대문·성북: hwp/pdf 첨부 본문 → cities.mjs makeSiAttachScraper + _si_attach.mjs, @ohah/unpdf)
 # (부산 북구는 2026-06-01 eminwon 으로 재이관 → 정적 _registry.ts bsbukgu-eminwon, 여기서 제외.)
@@ -28,10 +28,11 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # 23 도시(chromium + icn1 프록시 + hwp/PDF 첨부 다운로드)가 15분 초과 → 스케줄 run 이
-    # 15분에 cancelled 되어 뒷순서 7개 도시(강남·성동·동대문·성북·제주·남동·의정부) 가끔 누락.
-    # 셋업(npm+chromium) ~3분 + 도시당 ~45초 = 23도시 ~20분 → 30분 여유(2026-06-09 15→30).
-    timeout-minutes: 30
+    # 26 도시(chromium + icn1 프록시 + hwp/PDF 첨부 다운로드). 셋업 ~3분 + 일반 도시 ~45초 +
+    # SI 첨부 3도시(성동·동대문·성북) × ~2.5분 + 의정부(120s list) ~3분 = 명목 ~30분.
+    # 2026-06-12 부천·시흥·광명 추가(+3)로 30분이 한계선 → 여유 없어 timeout 재발.
+    # 2026-06-14 30→45분: 최악 SI 첨부 지연 + 의정부 timeout 합산 ~38분 이내 커버.
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: playwright
