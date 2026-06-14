@@ -519,14 +519,7 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
     : status.configured
       ? "상시 에이전트 응답 점검 필요"
       : "상시 에이전트 health URL 미연결";
-  const items: Array<[string, boolean]> = [
-    ["텔레그램 운영 알림", status.automation.telegram],
-    ["정책 DB 읽기", status.automation.policyDb],
-    ["AI 글 생성", status.automation.contentGeneration],
-    ["Threads 자동 발행", status.automation.threadsPublishing],
-    ["Instagram metric 수집", status.automation.instagramMetrics],
-    ["Instagram 댓글 답글", status.automation.instagramComments],
-  ];
+  const items = status.automationDetails;
   const formatDate = (value: string | null) =>
     value
       ? new Date(value).toLocaleString("ko-KR", {
@@ -545,6 +538,17 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           <p className="mt-1 text-xs text-grey-700">
             로컬/Render sidecar cron, Threads, Instagram 자동화 준비 상태를 확인합니다.
           </p>
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-semibold">
+            <span className="rounded-full bg-white/80 px-2 py-0.5 text-grey-700">
+              상태 출처: {status.sourceLabel}
+            </span>
+            <span className={`rounded-full px-2 py-0.5 ${status.telemetryConfigured ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
+              {status.telemetryConfigured ? "실행 telemetry 연결" : "Hermes sidecar 폴백"}
+            </span>
+            <span className="rounded-full bg-white/80 px-2 py-0.5 text-grey-700">
+              공개 액션 승인형 유지
+            </span>
+          </div>
         </div>
         <div className="text-left text-[11px] text-grey-600 md:text-right">
           <div>가동 시간: {status.uptimeSec !== null ? `${status.uptimeSec}초` : "-"}</div>
@@ -558,12 +562,14 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
       </div>
 
       <div className="grid gap-2 md:grid-cols-3">
-        {items.map(([label, ok]) => (
-          <div key={label} className="rounded-md border border-white/60 bg-white/70 p-3">
-            <div className="text-xs font-semibold text-grey-900">{label}</div>
-            <div className={`mt-1 text-[11px] ${ok ? "text-green-700" : "text-red-600"}`}>
-              {ok ? "준비됨" : "미설정 또는 비활성"}
+        {items.map((item) => (
+          <div key={item.key} className="rounded-md border border-white/60 bg-white/70 p-3">
+            <div className="text-xs font-semibold text-grey-900">{item.label}</div>
+            <div className={`mt-1 text-[11px] ${item.ready ? "text-green-700" : "text-red-600"}`}>
+              {item.ready ? "준비됨" : "미설정 또는 비활성"}
             </div>
+            <div className="mt-1 text-[10px] text-grey-500">{item.mode}</div>
+            <div className="mt-1 text-[10px] text-grey-500">{item.safetyNote}</div>
           </div>
         ))}
       </div>
@@ -621,6 +627,17 @@ function KeepioAgentCard({ status }: { status: KeepioAgentStatus }) {
           </div>
         </div>
       </div>
+
+      {status.actionItems.length > 0 && (
+        <div className="mt-3 rounded-md border border-white/70 bg-white/70 p-3 text-xs text-grey-700">
+          <div className="mb-1 font-semibold text-grey-900">운영 안전선 / 다음 확인</div>
+          <ul className="list-disc space-y-1 pl-4">
+            {status.actionItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {(status.error || status.missingRequired.length > 0 || status.totalRuns > 0) && (
         <div className="mt-3 rounded-md border border-white/70 bg-white/70 p-3 text-xs text-grey-700">

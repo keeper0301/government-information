@@ -1,16 +1,30 @@
-export type KeepioAgentAutomationStatus = {
-  telegram: boolean;
-  policyDb: boolean;
-  contentGeneration: boolean;
-  threadsPublishing: boolean;
-  instagramMetrics: boolean;
-  instagramComments: boolean;
+export type KeepioAgentAutomationKey =
+  | "telegram"
+  | "policyDb"
+  | "contentGeneration"
+  | "threadsPublishing"
+  | "instagramMetrics"
+  | "instagramComments";
+
+export type KeepioAgentRuntimeSource = "hermes_sidecar" | "health_url";
+
+export type KeepioAgentAutomationStatus = Record<KeepioAgentAutomationKey, boolean>;
+
+export type KeepioAgentAutomationDetail = {
+  key: KeepioAgentAutomationKey;
+  label: string;
+  ready: boolean;
+  mode: string;
+  safetyNote: string;
 };
 
 export type KeepioAgentStatus = {
   configured: boolean;
   ok: boolean;
   ready: boolean;
+  source: KeepioAgentRuntimeSource;
+  sourceLabel: string;
+  telemetryConfigured: boolean;
   healthUrl: string | null;
   checkedAt: string | null;
   uptimeSec: number | null;
@@ -49,6 +63,8 @@ export type KeepioAgentStatus = {
   siteUpgradeTotalFailures: number;
   missingRequired: string[];
   automation: KeepioAgentAutomationStatus;
+  automationDetails: KeepioAgentAutomationDetail[];
+  actionItems: string[];
   error: string | null;
 };
 
@@ -61,12 +77,63 @@ const EMPTY_AUTOMATION: KeepioAgentAutomationStatus = {
   instagramComments: false,
 };
 
+const AUTOMATION_LABELS: Record<KeepioAgentAutomationKey, string> = {
+  telegram: "텔레그램 운영 알림",
+  policyDb: "정책 DB 읽기",
+  contentGeneration: "AI 글 생성",
+  threadsPublishing: "Threads 자동 발행",
+  instagramMetrics: "Instagram metric 수집",
+  instagramComments: "Instagram 댓글 답글",
+};
+
+const AUTOMATION_MODES: Record<KeepioAgentAutomationKey, string> = {
+  telegram: "변화 감지 알림",
+  policyDb: "read-only 조회",
+  contentGeneration: "초안·큐 생성",
+  threadsPublishing: "승인됨 + safety gate + dry-run ready만",
+  instagramMetrics: "읽기 전용 수집",
+  instagramComments: "공개 게시 전 초안 생성",
+};
+
+const AUTOMATION_SAFETY_NOTES: Record<KeepioAgentAutomationKey, string> = {
+  telegram: "반복 로그 대신 행동 필요 변화만 알림",
+  policyDb: "정책 DB를 읽기만 하고 원본을 변경하지 않음",
+  contentGeneration: "AI 초안은 승인/품질 게이트 전까지 공개되지 않음",
+  threadsPublishing: "미승인 글은 발행하지 않음",
+  instagramMetrics: "계정 지표 조회만 수행",
+  instagramComments: "댓글 자동 공개 게시는 차단, 답글 초안만 생성",
+};
+
+function buildAutomationDetails(
+  automation: KeepioAgentAutomationStatus,
+): KeepioAgentAutomationDetail[] {
+  return (Object.keys(AUTOMATION_LABELS) as KeepioAgentAutomationKey[]).map((key) => ({
+    key,
+    label: AUTOMATION_LABELS[key],
+    ready: automation[key],
+    mode: AUTOMATION_MODES[key],
+    safetyNote: AUTOMATION_SAFETY_NOTES[key],
+  }));
+}
+
 function buildHermesSidecarStatus(): KeepioAgentStatus {
   const checkedAt = new Date().toISOString();
+  const automation: KeepioAgentAutomationStatus = {
+    telegram: true,
+    policyDb: true,
+    contentGeneration: true,
+    threadsPublishing: true,
+    instagramMetrics: true,
+    instagramComments: true,
+  };
+
   return {
     configured: true,
     ok: true,
     ready: true,
+    source: "hermes_sidecar",
+    sourceLabel: "Hermes 승인형 sidecar",
+    telemetryConfigured: false,
     healthUrl: null,
     checkedAt,
     uptimeSec: null,
@@ -104,14 +171,12 @@ function buildHermesSidecarStatus(): KeepioAgentStatus {
     siteUpgradeTotalRuns: 1,
     siteUpgradeTotalFailures: 0,
     missingRequired: [],
-    automation: {
-      telegram: true,
-      policyDb: true,
-      contentGeneration: true,
-      threadsPublishing: true,
-      instagramMetrics: true,
-      instagramComments: true,
-    },
+    automation,
+    automationDetails: buildAutomationDetails(automation),
+    actionItems: [
+      "공개 발행·댓글은 승인 + safety gate + dry-run ready 조건을 유지합니다.",
+      "정밀 실행 횟수·최근 실행 telemetry는 KEEPIO_AGENT_HEALTH_URL 연결 시 표시됩니다.",
+    ],
     error: null,
   };
 }
@@ -183,10 +248,25 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       };
     };
 
+    const automation: KeepioAgentAutomationStatus = {
+      telegram: body.automation?.telegram === true,
+      policyDb: body.automation?.policyDb === true,
+      contentGeneration: body.automation?.contentGeneration === true,
+      threadsPublishing: body.automation?.threadsPublishing === true,
+      instagramMetrics: body.automation?.instagramMetrics === true,
+      instagramComments: body.automation?.instagramComments === true,
+    };
+    const missingRequired = Array.isArray(body.env?.missingRequired)
+      ? body.env.missingRequired.filter((v): v is string => typeof v === "string")
+      : [];
+
     return {
       configured: true,
       ok: res.ok && body.ok === true,
       ready: res.ok && body.ready === true,
+      source: "health_url",
+      sourceLabel: "외부 health endpoint",
+      telemetryConfigured: true,
       healthUrl,
       checkedAt: typeof body.checkedAt === "string" ? body.checkedAt : null,
       uptimeSec: typeof body.uptimeSec === "number" ? body.uptimeSec : null,
@@ -288,17 +368,18 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
         typeof body.siteUpgrade?.totalFailures === "number"
           ? body.siteUpgrade.totalFailures
           : 0,
-      missingRequired: Array.isArray(body.env?.missingRequired)
-        ? body.env.missingRequired.filter((v): v is string => typeof v === "string")
-        : [],
-      automation: {
-        telegram: body.automation?.telegram === true,
-        policyDb: body.automation?.policyDb === true,
-        contentGeneration: body.automation?.contentGeneration === true,
-        threadsPublishing: body.automation?.threadsPublishing === true,
-        instagramMetrics: body.automation?.instagramMetrics === true,
-        instagramComments: body.automation?.instagramComments === true,
-      },
+      missingRequired,
+      automation,
+      automationDetails: buildAutomationDetails(automation),
+      actionItems: [
+        ...(!res.ok ? [`health endpoint HTTP ${res.status} 응답 확인`] : []),
+        ...(missingRequired.length > 0
+          ? ["누락된 필수 환경값을 설정한 뒤 재배포"]
+          : []),
+        ...(body.automation?.instagramComments === true
+          ? ["댓글 답글은 계속 초안 생성 모드로 운영"]
+          : []),
+      ],
       error: res.ok ? null : `상태 확인 실패: HTTP ${res.status}`,
     };
   } catch (e) {
@@ -306,6 +387,9 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       configured: true,
       ok: false,
       ready: false,
+      source: "health_url",
+      sourceLabel: "외부 health endpoint",
+      telemetryConfigured: true,
       healthUrl,
       checkedAt: null,
       uptimeSec: null,
@@ -344,6 +428,8 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       siteUpgradeTotalFailures: 0,
       missingRequired: [],
       automation: EMPTY_AUTOMATION,
+      automationDetails: buildAutomationDetails(EMPTY_AUTOMATION),
+      actionItems: ["health endpoint 연결, DNS, 인증, 런타임 상태 확인"],
       error: e instanceof Error ? e.message : String(e),
     };
   } finally {

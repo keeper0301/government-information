@@ -23,6 +23,10 @@ describe("getKeepioAgentStatus", () => {
     expect(status.ready).toBe(true);
     expect(status.missingRequired).toEqual([]);
     expect(status.error).toBeNull();
+    expect(status.source).toBe("hermes_sidecar");
+    expect(status.telemetryConfigured).toBe(false);
+    expect(status.automationDetails).toHaveLength(6);
+    expect(status.actionItems.join(" ")).toContain("승인 + safety gate + dry-run ready");
     expect(status.automation.telegram).toBe(true);
     expect(status.automation.instagramComments).toBe(true);
     expect(status.aiManagerEnabled).toBe(true);
@@ -106,6 +110,8 @@ describe("getKeepioAgentStatus", () => {
     expect(status.configured).toBe(true);
     expect(status.ok).toBe(true);
     expect(status.ready).toBe(true);
+    expect(status.source).toBe("health_url");
+    expect(status.telemetryConfigured).toBe(true);
     expect(status.uptimeSec).toBe(123);
     expect(status.lastFailureAt).toBe("2026-05-20T23:59:00.000Z");
     expect(status.lastStatus).toBe(200);
