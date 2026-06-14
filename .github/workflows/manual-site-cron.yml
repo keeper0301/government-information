@@ -1,0 +1,99 @@
+name: Manual Site Cron Trigger
+
+# 긴급 운영 복구용 수동 트리거.
+# GitHub Actions secret CRON_SECRET 을 사용해 keepioo cron endpoint 를 호출한다.
+# 임의 URL 호출을 막기 위해 endpoint 는 whitelist choice 로만 허용한다.
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: "호출할 안전 cron endpoint"
+        required: true
+        type: choice
+        options:
+          - press-ingest
+          - press-legacy-cleanup
+          - press-legacy-cleanup-dry
+          - press-low-reminder
+          - agent-resident-cycle
+      source:
+        description: "감사 로그용 호출 출처"
+        required: false
+        default: "github_manual_site_cron"
+
+permissions: {}
+
+jobs:
+  trigger:
+    name: ${{ github.event.inputs.endpoint }} 호출
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Whitelist endpoint 선택
+        id: endpoint
+        env:
+          ENDPOINT: ${{ github.event.inputs.endpoint }}
+        run: |
+          set -euo pipefail
+          case "${ENDPOINT}" in
+            press-ingest)
+              path="/api/cron/press-ingest"
+              ;;
+            press-legacy-cleanup)
+              path="/api/cron/press-legacy-cleanup"
+              ;;
+            press-legacy-cleanup-dry)
+              path="/api/cron/press-legacy-cleanup?dry=1"
+              ;;
+            press-low-reminder)
+              path="/api/cron/press-low-reminder"
+              ;;
+            agent-resident-cycle)
+              path="/api/cron/agent-resident-cycle"
+              ;;
+            *)
+              echo "::error::허용되지 않은 endpoint: ${ENDPOINT}"
+              exit 1
+              ;;
+          esac
+          echo "path=${path}" >> "$GITHUB_OUTPUT"
+
+      - name: Site cron 호출
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_BASE_URL: https://www.keepioo.com
+          PATH_TO_CALL: ${{ steps.endpoint.outputs.path }}
+          SOURCE: ${{ github.event.inputs.source }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET 비밀값이 설정되지 않았습니다."
+            exit 1
+          fi
+
+          url="${SITE_BASE_URL}${PATH_TO_CALL}"
+          body="{}"
+          if [ "${PATH_TO_CALL}" = "/api/cron/agent-resident-cycle" ]; then
+            body="{\"source\":\"${SOURCE}\"}"
+          fi
+
+          echo "== manual site cron =="
+          echo "endpoint=${PATH_TO_CALL}"
+          secret_var=CRON_SECRET
+          auth_header="Authorization: Bearer ${!secret_var}"
+          http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            --request POST \
+            --max-time 420 \
+            -H "${auth_header}" \
+            -H "Content-Type: application/json" \
+            --data "${body}" \
+            "${url}")
+
+          echo "HTTP ${http_status}"
+          cat /tmp/response.json
+          echo ""
+
+          if [ "${http_status}" -lt 200 ] || [ "${http_status}" -ge 300 ]; then
+            echo "::error::manual site cron 실패 — HTTP ${http_status}"
+            exit 1
+          fi
