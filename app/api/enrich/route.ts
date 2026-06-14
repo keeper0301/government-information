@@ -23,6 +23,7 @@ import { notifyCronFailure } from "@/lib/email";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import {
   findFetcher,
+  DETAIL_FETCHERS,
   FETCHABLE_WELFARE_SOURCES,
   FETCHABLE_LOAN_SOURCES,
   type RowIdentity,
@@ -154,12 +155,26 @@ async function enrichOne(
 ): Promise<"ok" | "failed" | "no_fetcher" | "no_data"> {
   const fetcher = findFetcher(row);
   if (!fetcher) {
-    // 처리 가능한 fetcher 없음. last_detail_fetched_at 을 찍어 재시도 루프 탈출.
-    // (failed 는 1일 쿨다운이라 계속 후보로 돌아옴 → 낭비)
-    await supabase
-      .from(row.table)
-      .update({ last_detail_fetched_at: new Date().toISOString() })
-      .eq("id", row.id);
+    // 처리 가능한 fetcher 없음. last_detail_fetched_at 을 찍어 7일 쿨다운(재시도 루프 탈출).
+    //
+    // 담당 fetcher 가 "일시 disabled" 가 아닌데(=enabled 인데도 applies() false) 매칭 실패가
+    // 반복되면 구조적으로 못 고치는 행(잘못된 source_id·raw_payload NULL 등 legacy 깨진 데이터).
+    // → failed 와 같은 카운터로 누적, PERMANENT_SKIP_THRESHOLD 회 도달 시 영구 skip 으로 picker
+    //   풀에서 제외(무한 재시도 + no_fetcher 알림 영구 발화 차단).
+    // 즉시 영구skip 안 하는 이유: mss 등은 raw_payload 가 다음 라운드 upsert 로 채워질 수 있어
+    //   (applies() false 가 일시적) — 그 사이 채워지면 fetchDetail 성공 → 카운터 0 reset →
+    //   영구skip 안 됨(backfill 대기 정상 행 보호). 담당 fetcher 가 disabled 면 일시적이라 미증가.
+    const now = new Date().toISOString();
+    const handlerDisabled = DETAIL_FETCHERS.some(
+      (f) => f.sourceCode === row.source_code && !f.enabled(),
+    );
+    const stamp: Record<string, string | number> = { last_detail_fetched_at: now };
+    if (!handlerDisabled) {
+      const newCount = (row.detail_failed_count ?? 0) + 1;
+      stamp.detail_failed_count = newCount;
+      if (newCount >= PERMANENT_SKIP_THRESHOLD) stamp.detail_permanently_skipped_at = now;
+    }
+    await supabase.from(row.table).update(stamp).eq("id", row.id);
     return "no_fetcher";
   }
 
