@@ -5,8 +5,9 @@
 // 자체 콘텐츠를 노출하게 한다. AdSense "scaled content" 정책 방어 + selective
 // noindex 해제 후보 확장 (isThin = !ai_commentary 해소).
 //
-// 스케줄: KST 04:30 (policy-ai-guide-backfill 04:15 직후, 수집·enrich cron 모두 끝).
-// 처리량: news 200건/run (12 도시 × ~50/일 = 600/일 → 3일 안 신규분 catch-up).
+// 스케줄: 매시간 :30 (vercel.json "30 * * * *"). 초기 KST 04:30 하루 1회였으나
+//   backlog catch-up 위해 매시간으로 전환(commit 89a759a, 10%→80%).
+// 처리량: news 100건/run (BATCH_CAP) × 시간당 = backlog 빠른 소진.
 // LLM: gpt-4o-mini (lib/news/ai-commentary.ts generateNewsCommentary, throw-safe).
 // graceful: OPENAI_API_KEY 미설정 시 안전 skip.
 // ============================================================
@@ -138,18 +139,20 @@ async function run() {
   const payload = { ok: true, ...result };
   console.log("[news-ai-commentary] 결과:", JSON.stringify(payload));
 
-  // 신규 백필(updated>0) 또는 실패 시에만 텔레그램. 신규 0 일은 조용.
+  // 실패율 50%+ 일 때만 텔레그램 — 정상 성공·일시 1건 타임아웃은 조용.
+  // 매시간 cron 이라 매 성공(updated>0) 알림은 24/일 노이즈. daily→매시간 전환
+  // (commit 89a759a) 후 성공 알림이 24배가 된 부작용 보정. 옆 cron(enrich)의
+  // "실패율 50%+" 알림과 같은 취지(분모는 여기선 fetched 전체 — 이 cron엔
+  // no_fetcher/no_data 범주가 없음). OpenAI 키 무효·할당량 소진 등 진짜 장애만 감지.
   const totalFailed = result.llm_failed + result.update_failed;
-  if (result.updated > 0 || totalFailed > 0) {
-    const lines = [`news 자체 해설 ${result.updated}건 생성 (P2 백필)`];
-    if (totalFailed > 0) {
-      lines.push(
-        `[주의] 실패 ${totalFailed}건 (AI ${result.llm_failed} / 저장 ${result.update_failed}) — 점검 권장`,
-      );
-    }
+  if (result.fetched > 0 && totalFailed / result.fetched >= 0.5) {
+    const lines = [
+      `news 자체 해설 백필 실패율 ${totalFailed}/${result.fetched} (AI ${result.llm_failed} / 저장 ${result.update_failed})`,
+      `OpenAI 키·할당량 또는 DB 이상 가능성 — 점검 권장.`,
+    ];
     try {
       await sendOpsAlertTelegram({
-        subject: "뉴스 AI 자체 해설 자동 백필",
+        subject: "뉴스 AI 자체 해설 백필 — 실패율 경고",
         message: lines.join("\n"),
       });
     } catch {
