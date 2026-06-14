@@ -84,9 +84,24 @@ describe("press ingest confirm payloads", () => {
       source_code: "press_l2_confirm",
       source_id: "11111111-1111-1111-1111-111111111111",
       apply_url: "https://example.go.kr/apply",
+      apply_start: "2026-05-01",
+      apply_end: "2026-05-31",
     });
     expect(payload.region_tags).toContain("전남");
     expect(payload.benefit_tags).toContain("주거");
+  });
+
+  it("LLM이 뱉은 불완전/placeholder 날짜는 DB insert 전에 null로 낮춘다", () => {
+    const payload = buildWelfareInsertPayload({
+      ...candidate,
+      classified_payload: {
+        ...policyResult,
+        apply_start: "2023-06-",
+        apply_end: "YYYY-MM-DD",
+      },
+    });
+    expect(payload.apply_start).toBeNull();
+    expect(payload.apply_end).toBeNull();
   });
 
   it("pending loan 후보를 loan_programs INSERT payload 로 변환한다", () => {

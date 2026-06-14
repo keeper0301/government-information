@@ -100,6 +100,15 @@ type PressCandidateDbRow = {
 
 const SOURCE_CODE = "press_l2_confirm";
 
+function sanitizeDateForDb(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  const date = new Date(`${trimmed}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10) === trimmed ? trimmed : null;
+}
+
 function ministryToSource(ministry: string | null): string {
   return ministry ? `${ministry}청` : "광역 보도자료";
 }
@@ -282,8 +291,8 @@ export function buildWelfareInsertPayload(
     // URL 검증)로 위험 스킴(javascript: 등)·깨진 URL 을 null 처리해 저장(일반 collector
     // 경로와 일관, 코드리뷰 P2).
     apply_url: sanitizeApplyUrl(result.apply_url),
-    apply_start: result.apply_start,
-    apply_end: result.apply_end,
+    apply_start: sanitizeDateForDb(result.apply_start),
+    apply_end: sanitizeDateForDb(result.apply_end),
     source: ministryToSource(candidate.news.ministry),
     source_url: newsSourceUrl(candidate.news),
     region: candidate.news.ministry,
@@ -335,8 +344,8 @@ export function buildLoanInsertPayload(
     // URL 검증)로 위험 스킴(javascript: 등)·깨진 URL 을 null 처리해 저장(일반 collector
     // 경로와 일관, 코드리뷰 P2).
     apply_url: sanitizeApplyUrl(result.apply_url),
-    apply_start: result.apply_start,
-    apply_end: result.apply_end,
+    apply_start: sanitizeDateForDb(result.apply_start),
+    apply_end: sanitizeDateForDb(result.apply_end),
     source: ministryToSource(candidate.news.ministry),
     source_url: newsSourceUrl(candidate.news),
     region: provinceName,
