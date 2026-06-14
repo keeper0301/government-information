@@ -79,8 +79,7 @@ jobs:
 
           echo "== manual site cron =="
           echo "endpoint=${PATH_TO_CALL}"
-          secret_var=CRON_SECRET
-          auth_header="Authorization: Bearer ${!secret_var}"
+          auth_header="Authorization: Bearer ${CRON_SECRET}"
           http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
             --request POST \
             --max-time 420 \
