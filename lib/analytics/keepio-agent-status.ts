@@ -24,6 +24,18 @@ export type KeepioAgentAutomationDetail = {
   nextCheck: string;
 };
 
+export type KeepioAgentReadinessSummary = {
+  total: number;
+  ready: number;
+  needsAttention: number;
+  readOnly: number;
+  draftOnly: number;
+  approvalRequired: number;
+  readinessPercent: number;
+  healthLabel: string;
+  healthTone: "green" | "amber" | "red";
+};
+
 export type KeepioAgentStatus = {
   configured: boolean;
   ok: boolean;
@@ -70,6 +82,7 @@ export type KeepioAgentStatus = {
   missingRequired: string[];
   automation: KeepioAgentAutomationStatus;
   automationDetails: KeepioAgentAutomationDetail[];
+  readinessSummary: KeepioAgentReadinessSummary;
   actionItems: string[];
   error: string | null;
 };
@@ -153,6 +166,37 @@ function buildAutomationDetails(
   });
 }
 
+function buildReadinessSummary(
+  details: KeepioAgentAutomationDetail[],
+): KeepioAgentReadinessSummary {
+  const total = details.length;
+  const ready = details.filter((item) => item.ready).length;
+  const needsAttention = total - ready;
+  const readinessPercent = total > 0 ? Math.round((ready / total) * 100) : 0;
+  const readOnly = details.filter((item) => item.risk === "read_only").length;
+  const draftOnly = details.filter((item) => item.risk === "draft_only").length;
+  const approvalRequired = details.filter((item) => item.risk === "approval_required").length;
+  const healthTone = needsAttention === 0 ? "green" : readinessPercent >= 70 ? "amber" : "red";
+  const healthLabel =
+    needsAttention === 0
+      ? "전체 준비 완료"
+      : readinessPercent >= 70
+        ? "부분 확인 필요"
+        : "운영 점검 필요";
+
+  return {
+    total,
+    ready,
+    needsAttention,
+    readOnly,
+    draftOnly,
+    approvalRequired,
+    readinessPercent,
+    healthLabel,
+    healthTone,
+  };
+}
+
 function buildDisabledAutomationActionItems(
   automation: KeepioAgentAutomationStatus,
 ): string[] {
@@ -171,6 +215,7 @@ function buildHermesSidecarStatus(): KeepioAgentStatus {
     instagramMetrics: true,
     instagramComments: true,
   };
+  const automationDetails = buildAutomationDetails(automation);
 
   return {
     configured: true,
@@ -217,7 +262,8 @@ function buildHermesSidecarStatus(): KeepioAgentStatus {
     siteUpgradeTotalFailures: 0,
     missingRequired: [],
     automation,
-    automationDetails: buildAutomationDetails(automation),
+    automationDetails,
+    readinessSummary: buildReadinessSummary(automationDetails),
     actionItems: [
       "공개 발행·댓글은 승인 + safety gate + dry-run ready 조건을 유지합니다.",
       "정밀 실행 횟수·최근 실행 telemetry는 KEEPIO_AGENT_HEALTH_URL 연결 시 표시됩니다.",
@@ -301,6 +347,7 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       instagramMetrics: body.automation?.instagramMetrics === true,
       instagramComments: body.automation?.instagramComments === true,
     };
+    const automationDetails = buildAutomationDetails(automation);
     const missingRequired = Array.isArray(body.env?.missingRequired)
       ? body.env.missingRequired.filter((v): v is string => typeof v === "string")
       : [];
@@ -415,7 +462,8 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
           : 0,
       missingRequired,
       automation,
-      automationDetails: buildAutomationDetails(automation),
+      automationDetails,
+      readinessSummary: buildReadinessSummary(automationDetails),
       actionItems: [
         ...(!res.ok ? [`health endpoint HTTP ${res.status} 응답 확인`] : []),
         ...buildDisabledAutomationActionItems(automation),
@@ -475,6 +523,7 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       missingRequired: [],
       automation: EMPTY_AUTOMATION,
       automationDetails: buildAutomationDetails(EMPTY_AUTOMATION),
+      readinessSummary: buildReadinessSummary(buildAutomationDetails(EMPTY_AUTOMATION)),
       actionItems: ["health endpoint 연결, DNS, 인증, 런타임 상태 확인"],
       error: e instanceof Error ? e.message : String(e),
     };
