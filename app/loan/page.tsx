@@ -23,13 +23,25 @@ import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
-export const metadata: Metadata = {
-  title: "소상공인 대출·지원금 — 정책알리미",
-  description: "소상공인·자영업자가 받을 수 있는 정부 대출과 지원금을 모았어요.",
-  // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
-  // 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
-  alternates: { canonical: "/loan" },
-};
+// 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
+// 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
+// 2026-06-15 — 필터·페이지네이션 변형은 noindex(follow). canonical 로 /loan 에 통합돼
+// 랭킹 영향은 없으나 변형들이 같은 H1 공유 → 네이버 H1중복 진단·크롤 예산 정리.
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const isFiltered =
+    (!!params.category && params.category !== "전체") ||
+    (!!params.region && params.region !== "전체") ||
+    (!!params.target && params.target !== "전체") ||
+    !!params.q ||
+    (!!params.page && params.page !== "1");
+  return {
+    title: "소상공인 대출·지원금 — 정책알리미",
+    description: "소상공인·자영업자가 받을 수 있는 정부 대출과 지원금을 모았어요.",
+    alternates: { canonical: "/loan" },
+    ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
+  };
+}
 
 // 페이지당 20건 — 기존 10건은 1312건이 132페이지로 쪼개져 사용자 탐색 부담이 큼.
 // 모바일에서도 한 화면에 5~6건이 보일 정도로 리스트 row 가 얇아 20건도 부담 적음.

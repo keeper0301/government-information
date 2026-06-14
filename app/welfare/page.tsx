@@ -23,13 +23,27 @@ import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
-export const metadata: Metadata = {
-  title: "복지 지원사업 — 정책알리미",
-  description: "내가 받을 수 있는 정부·지자체 복지 혜택을 한곳에 모았어요.",
-  // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
-  // 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
-  alternates: { canonical: "/welfare" },
-};
+// 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
+// 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
+// 2026-06-15 — 필터·페이지네이션 변형(?category·?region·?page 등)은 noindex(follow).
+// canonical 로 이미 /welfare 에 통합돼 랭킹 영향은 없으나, 변형들이 같은 H1 을 공유해
+// 네이버 "H1 중복" 진단(~2000)을 키우고 크롤 예산을 잡아먹음 → 기본 목록만 색인.
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const isFiltered =
+    (!!params.category && params.category !== "전체") ||
+    (!!params.region && params.region !== "전체") ||
+    (!!params.target && params.target !== "전체") ||
+    !!params.age ||
+    !!params.q ||
+    (!!params.page && params.page !== "1");
+  return {
+    title: "복지 지원사업 — 정책알리미",
+    description: "내가 받을 수 있는 정부·지자체 복지 혜택을 한곳에 모았어요.",
+    alternates: { canonical: "/welfare" },
+    ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
+  };
+}
 
 // 페이지당 20건 — 기존 10건은 7122건이 713페이지로 쪼개져 사용자 탐색 부담이 큼.
 // loan/page.tsx 와 동일 수치로 통일.
