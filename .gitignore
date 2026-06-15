@@ -53,6 +53,9 @@ scripts/
 .playwright-mcp/
 *.png
 !public/threads-og.png
+# Capacitor 앱 아이콘·스플래시·원본은 빌드 필수 소스 자산 — *.png 무시에서 예외
+!assets/*.png
+!android/app/src/main/res/**/*.png
 supabase/.temp/
 .gstack/
 

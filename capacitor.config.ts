@@ -16,6 +16,17 @@ const config: CapacitorConfig = {
     url: "https://keepioo.com",
     cleartext: false,
   },
+  plugins: {
+    // 앱 시작 시 keepioo 로고 시작화면을 잠깐 보여주고, keepioo.com 이 뜨면 사라짐.
+    SplashScreen: {
+      launchShowDuration: 1200,
+      backgroundColor: "#FFFFFF",
+      androidScaleType: "CENTER_INSIDE",
+      showSpinner: false,
+      splashFullScreen: false,
+      splashImmersive: false,
+    },
+  },
 };
 
 export default config;
