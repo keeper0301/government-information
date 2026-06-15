@@ -77,6 +77,52 @@ const SEVERITY_RANK: Record<ImprovementSeverity, number> = {
   low: 2,
 };
 
+function trailingNumber(value: string): number {
+  const matches = value.match(/\d+/g);
+  if (!matches || matches.length === 0) return 0;
+  return Number(matches[matches.length - 1]);
+}
+
+function pickStrongerRecommendation(
+  current: ImprovementRecommendation,
+  next: ImprovementRecommendation,
+): ImprovementRecommendation {
+  const currentRank = SEVERITY_RANK[current.severity];
+  const nextRank = SEVERITY_RANK[next.severity];
+  const strongerSeverity = nextRank < currentRank ? next.severity : current.severity;
+  const strongerEvidence =
+    trailingNumber(next.evidence) > trailingNumber(current.evidence)
+      ? next.evidence
+      : current.evidence;
+  return {
+    ...current,
+    severity: strongerSeverity,
+    evidence: strongerEvidence,
+  };
+}
+
+export function dedupeImprovementRecommendations(
+  recommendations: ImprovementRecommendation[],
+): ImprovementRecommendation[] {
+  const byStableAction = new Map<string, ImprovementRecommendation>();
+  const order: string[] = [];
+  for (const recommendation of recommendations) {
+    const key = [
+      recommendation.area,
+      recommendation.title,
+      recommendation.action,
+    ].join("\u0000");
+    const existing = byStableAction.get(key);
+    if (existing) {
+      byStableAction.set(key, pickStrongerRecommendation(existing, recommendation));
+      continue;
+    }
+    byStableAction.set(key, recommendation);
+    order.push(key);
+  }
+  return order.map((key) => byStableAction.get(key)!);
+}
+
 type CountResult = {
   count: number | null;
   error: unknown;
@@ -444,7 +490,7 @@ export function buildImprovementRecommendations(
       SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity],
   );
 
-  return recs;
+  return dedupeImprovementRecommendations(recs);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -529,11 +575,13 @@ export function parseImprovementScanRow(
 ): ImprovementScanRun | null {
   if (!isRecord(row.details)) return null;
   const rawRecommendations = row.details.recommendations;
-  const recommendations = Array.isArray(rawRecommendations)
-    ? rawRecommendations
-        .map(toRecommendation)
-        .filter((r): r is ImprovementRecommendation => r !== null)
-    : [];
+  const recommendations = dedupeImprovementRecommendations(
+    Array.isArray(rawRecommendations)
+      ? rawRecommendations
+          .map(toRecommendation)
+          .filter((r): r is ImprovementRecommendation => r !== null)
+      : [],
+  );
   return {
     createdAt: String(row.created_at ?? ""),
     highestSeverity: toSeverity(row.details.highestSeverity),

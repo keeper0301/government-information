@@ -328,4 +328,43 @@ describe("parseImprovementScanRow", () => {
     });
     expect(parsed?.highestSeverity).toBe("low");
   });
+
+  it("저장된 scan row 에 중복 추천이 있으면 같은 액션은 1건으로 정리한다", () => {
+    const action = "/admin/cron-failures 에서 실패 job을 확인하고 failed-cron-retry 결과와 Vercel function 로그를 대조하세요.";
+    const parsed = parseImprovementScanRow({
+      created_at: "2026-06-15T05:21:22Z",
+      details: {
+        highestSeverity: "high",
+        snapshot: {},
+        recommendations: [
+          {
+            area: "cron_reliability",
+            severity: "high",
+            title: "최근 cron 실패가 있습니다",
+            evidence: "24시간 cron 실패 1건",
+            action,
+          },
+          {
+            area: "cron_reliability",
+            severity: "high",
+            title: "최근 cron 실패가 있습니다",
+            evidence: "24시간 cron 실패 8건",
+            action,
+          },
+          {
+            area: "cron_reliability",
+            severity: "high",
+            title: "최근 cron 실패가 있습니다",
+            evidence: "24시간 cron 실패 2건",
+            action,
+          },
+        ],
+      },
+    });
+    expect(parsed?.recommendations).toHaveLength(1);
+    expect(parsed?.recommendations[0]).toMatchObject({
+      area: "cron_reliability",
+      evidence: "24시간 cron 실패 8건",
+    });
+  });
 });
