@@ -23,6 +23,7 @@ import {
 } from "@/lib/eligibility/business-match";
 import { isProgramAllowedForUser } from "@/lib/personalization/score";
 import { createUserSignalsLoader } from "@/lib/personalization/user-signals";
+import { shouldRecordAlertDelivery } from "@/lib/alerts/delivery-ledger";
 
 // POLICY_NEW v2 → v3 분기 — SOLAPI_TEMPLATE_ID_POLICY_NEW_V3 환경변수 등록되면 자동 v3.
 // v3 = 호명 + 자격 진단 한 줄 + 금액 + 마감 통합 (사장님 케이뱅크 reference 수준).
@@ -299,20 +300,10 @@ async function runAlertDispatch(jobLabel: string) {
         }
 
         if (!consented) {
-          for (const m of toSend) {
-            await supabase.from("alert_deliveries").insert({
-              rule_id: rule.id,
-              user_id: rule.user_id,
-              program_table: m.table,
-              program_id: m.id,
-              program_title: m.title,
-              channel: "kakao",
-              status: "skipped",
-              error: "consent_missing",
-              sent_at: null,
-            });
-            kakaoSkippedConsent++;
-          }
+          // consent_missing 은 사용자가 나중에 동의를 켜면 재시도해야 하는 transient 상태다.
+          // alert_deliveries 에 기록하면 UNIQUE(rule, program, channel) 때문에 이후 정상 발송이
+          // 영구 차단되므로 카운트만 남기고 원장에는 넣지 않는다.
+          kakaoSkippedConsent += toSend.length;
         } else {
           for (const m of toSend) {
             // 상세 경로 — welfare/loan 테이블별로 keepioo 내부 상세 페이지 경로가 다름.
@@ -384,17 +375,19 @@ async function runAlertDispatch(jobLabel: string) {
               errorMsg = `${result.reason}: ${result.error ?? ""}`.slice(0, 500);
             }
 
-            await supabase.from("alert_deliveries").insert({
-              rule_id: rule.id,
-              user_id: rule.user_id,
-              program_table: m.table,
-              program_id: m.id,
-              program_title: m.title,
-              channel: "kakao",
-              status,
-              error: errorMsg,
-              sent_at: result.ok ? new Date().toISOString() : null,
-            });
+            if (shouldRecordAlertDelivery({ channel: "kakao", status, error: errorMsg })) {
+              await supabase.from("alert_deliveries").insert({
+                rule_id: rule.id,
+                user_id: rule.user_id,
+                program_table: m.table,
+                program_id: m.id,
+                program_title: m.title,
+                channel: "kakao",
+                status,
+                error: errorMsg,
+                sent_at: result.ok ? new Date().toISOString() : null,
+              });
+            }
             dispatchedKakao++;
           }
         }

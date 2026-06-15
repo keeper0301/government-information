@@ -10,7 +10,7 @@
 
 import { useState } from "react";
 import { loadTossPayments } from "@tosspayments/payment-sdk";
-import { TIER_NAMES } from "@/lib/subscription";
+import { TIER_NAMES, TIER_PRICES } from "@/lib/subscription";
 
 type Props = {
   tier: "basic" | "pro";
@@ -22,9 +22,16 @@ type Props = {
 export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedRecurringBilling, setAcceptedRecurringBilling] = useState(false);
 
   // 토스 빌링 인증 시작 (카드 등록 페이지로 이동)
   async function handleRegisterCard() {
+    if (!acceptedTerms || !acceptedRecurringBilling) {
+      setError("필수 동의 항목을 확인해주세요.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -61,6 +68,8 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
   }
 
   const tierName = TIER_NAMES[tier];
+  const price = TIER_PRICES[tier];
+  const canSubmit = acceptedTerms && acceptedRecurringBilling && !loading;
 
   return (
     <div className="bg-white rounded-2xl border border-grey-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
@@ -70,15 +79,43 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
         <div className="text-[15px] font-semibold text-grey-900">{userEmail}</div>
       </div>
 
+      {/* 정기결제 필수 동의 — 분쟁/PG 심사용 명시 동의 */}
+      <div className="mb-4 space-y-3 rounded-xl bg-grey-50 border border-grey-100 p-4 text-[13px] text-grey-700 leading-[1.55]">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline font-semibold">이용약관</a>,{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline font-semibold">개인정보처리방침</a>,{" "}
+            <a href="/refund" target="_blank" rel="noopener noreferrer" className="underline font-semibold">환불정책</a>을 확인했고 동의합니다.
+          </span>
+        </label>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={acceptedRecurringBilling}
+            onChange={(e) => setAcceptedRecurringBilling(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            오늘 카드 등록 후 7일 무료체험이 시작되며, 체험 종료 후 매월 {price.toLocaleString()}원이 자동결제되는 것에 동의합니다.
+          </span>
+        </label>
+      </div>
+
       {/* 카드 등록 버튼 */}
       <button
         type="button"
         onClick={handleRegisterCard}
-        disabled={loading}
-        className={`w-full min-h-[56px] flex items-center justify-center gap-2 text-[16px] font-bold rounded-xl border-none cursor-pointer transition-colors ${
-          loading
-            ? "bg-grey-200 text-grey-600 cursor-wait"
-            : "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_2px_8px_rgba(49,130,246,0.25)]"
+        disabled={!canSubmit}
+        className={`w-full min-h-[56px] flex items-center justify-center gap-2 text-[16px] font-bold rounded-xl border-none transition-colors ${
+          canSubmit
+            ? "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_2px_8px_rgba(49,130,246,0.25)] cursor-pointer"
+            : "bg-grey-200 text-grey-600 cursor-not-allowed"
         }`}
       >
         {loading ? (

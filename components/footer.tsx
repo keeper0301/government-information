@@ -20,6 +20,7 @@ const footerLinks = [
   { label: "도움말", href: "/help" },
   { label: "이용약관", href: "/terms" },
   { label: "개인정보처리방침", href: "/privacy" },
+  { label: "환불정책", href: "/refund" },
   { label: "문의", href: "mailto:keeper0301@gmail.com" },
 ];
 

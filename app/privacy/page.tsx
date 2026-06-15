@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         개인정보처리방침
       </h1>
       <p className="text-[13px] text-grey-600 mb-8">
-        시행일자: {PRIVACY_POLICY_VERSION} · 운영자: 키피오 (사업자등록번호 657-24-02265)
+        시행일자: {PRIVACY_POLICY_VERSION} · 운영자: 키피오 (사업자등록번호 657-24-02265 · 통신판매번호 2026-전남순천-7182 · 문의 keeper0301@gmail.com)
       </p>
 
       <div className="text-[15px] text-grey-700 leading-[1.8] space-y-7">
