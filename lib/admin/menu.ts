@@ -1,116 +1,264 @@
-// ============================================================
-// 어드민 사이드바 메뉴 단일 source of truth (5 그룹 / 페이지 33)
-// ============================================================
-// 그룹 순서 = 사장님 운영 우선순위 (운영점검 → 컨텐츠 → 알림 → 지표 → 사용자).
-// 새 admin 페이지 추가 시 여기에만 추가하면 사이드바·활성 매칭 자동 반영.
-// ============================================================
-
-// 사이드바에 표시되는 개별 메뉴 항목 타입
 export type AdminMenuItem = {
-  href: string;   // 클릭 시 이동할 경로 (anchor 포함 가능: /admin#user-search)
-  label: string;  // 화면에 보일 한국어 라벨
-  icon: string;   // 이모지 아이콘 (시각 anchor 용)
+  href: string;
+  label: string;
+  icon: string;
+  description?: string;
 };
 
-// 메뉴 그룹 (관련 항목 묶음) 타입
 export type AdminMenuGroup = {
-  number: number;          // 그룹 번호 (1~5, 사장님 운영 우선순위 순)
-  title: string;           // 그룹 제목
-  items: AdminMenuItem[];  // 그룹에 속한 메뉴 항목
+  number: number;
+  title: string;
+  summary: string;
+  items: AdminMenuItem[];
 };
 
 export const ADMIN_MENU: AdminMenuGroup[] = [
   {
     number: 1,
-    title: "운영 상태",
+    title: "오늘 처리",
+    summary: "매일 먼저 확인할 운영 큐",
     items: [
-      { href: "/admin/autonomous", label: "자율 운영 마스터", icon: "🤖" },
-      { href: "/admin/system-ops", label: "시스템 운영 콘솔", icon: "SYS" },
-      { href: "/admin/external-actions", label: "외부 액션 가이드", icon: "📌" },
-      { href: "/admin/health", label: "헬스 대시보드", icon: "📊" },
-      { href: "/admin/ops-monitor", label: "운영 모니터링", icon: "📡" },
-      { href: "/admin/cron-trigger", label: "cron 수동 실행", icon: "⚙️" },
-      { href: "/admin/cron-failures", label: "cron 실패 알림", icon: "🚨" },
-      { href: "/admin/dedupe", label: "중복 정책 dedupe", icon: "🔁" },
-      { href: "/admin/decisions", label: "결정 대기", icon: "🤔" },
-      { href: "/admin/my-actions", label: "내 감사 로그", icon: "📋" },
-      { href: "/admin/enrich-detail", label: "공고 detail 보강", icon: "🔧" },
+      {
+        href: "/admin/autonomous",
+        label: "운영 홈",
+        icon: "▣",
+        description: "자동화 준비도, 개선 과제, 상주 에이전트",
+      },
+      {
+        href: "/admin/external-actions",
+        label: "외부 조치",
+        icon: "↗",
+        description: "콘솔에서 직접 확인해야 하는 승인/설정",
+      },
+      {
+        href: "/admin/decisions",
+        label: "결정 대기",
+        icon: "□",
+        description: "관리자 판단이 필요한 작업",
+      },
+      {
+        href: "/admin#user-search",
+        label: "사용자 조회",
+        icon: "⌕",
+        description: "이메일 또는 UUID로 회원 확인",
+      },
     ],
   },
   {
     number: 2,
-    title: "컨텐츠 발행",
+    title: "자동화·시스템",
+    summary: "오류 확인, cron 실행, 시스템 도구",
     items: [
-      { href: "/admin/press-ingest", label: "광역 보도자료 후보", icon: "🤖" },
-      { href: "/admin/auto-confirmed", label: "AI 자동 등록 검수", icon: "🤖" },
-      { href: "/admin/welfare/new", label: "복지 정책 신규", icon: "➕" },
-      { href: "/admin/loan/new", label: "대출 정책 신규", icon: "➕" },
-      { href: "/admin/news", label: "뉴스 모더레이션", icon: "📰" },
-      { href: "/admin/news/backfill-dedupe-runner", label: "뉴스 dedupe 백필", icon: "🔄" },
-      { href: "/admin/blog", label: "블로그 목록", icon: "✍️" },
-      { href: "/admin/long-tail", label: "long-tail SEO 글 생성", icon: "🌱" },
-      { href: "/admin/naver-blog", label: "네이버 블로그 큐", icon: "🟢" },
-      { href: "/admin/naver-blog/cookies", label: "네이버 세션 cookies", icon: "🍪" },
-      { href: "/admin/wordpress", label: "워드프레스 자동 발행", icon: "🌐" },
-      { href: "/admin/instagram", label: "인스타 카드뉴스", icon: "📸" },
-      { href: "/admin/instagram/preview-categories", label: "인스타 카테고리 검증", icon: "🎨" },
-      { href: "/admin/instagram-comments", label: "인스타 댓글 답글 검수", icon: "💬" },
-      { href: "/admin/scrape-local", label: "시·군 보도자료 수집", icon: "🏛️" },
+      {
+        href: "/admin/system-ops",
+        label: "시스템 운영 콘솔",
+        icon: "⚙",
+        description: "실행, 점검, 오류 해결을 한 곳에서 처리",
+      },
+      {
+        href: "/admin/health",
+        label: "헬스 대시보드",
+        icon: "▤",
+        description: "서비스/데이터 상태 추세",
+      },
+      {
+        href: "/admin/ops-monitor",
+        label: "운영 모니터링",
+        icon: "◉",
+        description: "운영 이벤트와 상태 감시",
+      },
+      {
+        href: "/admin/cron-failures",
+        label: "cron 실패",
+        icon: "!",
+        description: "실패 알림 확인과 재시도",
+      },
+      {
+        href: "/admin/cron-trigger",
+        label: "cron 수동 실행",
+        icon: "▶",
+        description: "예약 작업을 직접 실행",
+      },
+      {
+        href: "/admin/dedupe",
+        label: "중복 정책 정리",
+        icon: "≡",
+        description: "복지/대출 정책 중복 후보 처리",
+      },
+      {
+        href: "/admin/enrich-detail",
+        label: "공고 상세 보강",
+        icon: "+",
+        description: "부족한 상세 정보를 수동 보강",
+      },
     ],
   },
   {
     number: 3,
-    title: "알림 발송",
+    title: "콘텐츠 발행",
+    summary: "정책 등록, 보도자료, 블로그/SNS 발행",
     items: [
-      { href: "/admin/alimtalk", label: "카카오톡 발송", icon: "📤" },
-      { href: "/admin/alert-simulator", label: "알림 시뮬레이터", icon: "🧪" },
-      { href: "/admin/support", label: "고객 문의 큐", icon: "💬" },
+      {
+        href: "/admin/press-ingest",
+        label: "보도자료 후보",
+        icon: "□",
+        description: "광역 보도자료 후보 검수",
+      },
+      {
+        href: "/admin/auto-confirmed",
+        label: "AI 자동 등록 검수",
+        icon: "✓",
+        description: "자동 등록된 정책 회수/복원",
+      },
+      {
+        href: "/admin/welfare/new",
+        label: "복지 정책 등록",
+        icon: "+",
+        description: "복지 정책 직접 추가",
+      },
+      {
+        href: "/admin/loan/new",
+        label: "대출 정책 등록",
+        icon: "+",
+        description: "대출 정책 직접 추가",
+      },
+      {
+        href: "/admin/news",
+        label: "뉴스 모더레이션",
+        icon: "N",
+        description: "정책 뉴스 숨김/복원",
+      },
+      {
+        href: "/admin/blog",
+        label: "블로그 글 관리",
+        icon: "B",
+        description: "글 목록, 편집, 공개 전환",
+      },
+      {
+        href: "/admin/long-tail",
+        label: "SEO 글 생성",
+        icon: "S",
+        description: "롱테일 검색용 글 생성",
+      },
+      {
+        href: "/admin/naver-blog",
+        label: "네이버 블로그",
+        icon: "N",
+        description: "네이버 발행 큐와 수동 테스트",
+      },
+      {
+        href: "/admin/wordpress",
+        label: "워드프레스",
+        icon: "W",
+        description: "워드프레스 재발행/자동 발행",
+      },
+      {
+        href: "/admin/instagram",
+        label: "인스타그램 카드",
+        icon: "I",
+        description: "카드뉴스 발행 준비",
+      },
+      {
+        href: "/admin/instagram-comments",
+        label: "인스타 댓글 답글",
+        icon: "↩",
+        description: "댓글 답글 초안과 검수",
+      },
+      {
+        href: "/admin/scrape-local",
+        label: "지역 보도자료 수집",
+        icon: "L",
+        description: "지역 사이트 수집 상태",
+      },
     ],
   },
   {
     number: 4,
-    title: "지표·분석",
+    title: "고객·알림",
+    summary: "발송, 문의, 개인화",
     items: [
-      { href: "/admin/insights", label: "사용자 funnel", icon: "📈" },
-      { href: "/admin/targeting", label: "본문 targeting 분석", icon: "🎯" },
-      { href: "/admin/business", label: "자영업자 자격 진단", icon: "🏪" },
-      { href: "/admin/recommendation-trace", label: "추천 진단", icon: "🔍" },
+      {
+        href: "/admin/alimtalk",
+        label: "알림톡 발송",
+        icon: "K",
+        description: "카카오 알림톡 운영",
+      },
+      {
+        href: "/admin/alert-simulator",
+        label: "알림 시뮬레이터",
+        icon: "◇",
+        description: "정책별 발송 대상 미리보기",
+      },
+      {
+        href: "/admin/support",
+        label: "고객 문의",
+        icon: "?",
+        description: "문의 답변과 상태 관리",
+      },
+      {
+        href: "/admin/recommendation-trace",
+        label: "추천 진단",
+        icon: "R",
+        description: "개인화 추천 흐름 확인",
+      },
     ],
   },
   {
     number: 5,
-    title: "사용자",
+    title: "분석·기록",
+    summary: "성과, 사용자 흐름, 감사 로그",
     items: [
-      // /admin/users 정적 페이지 없음 — 사용자 검색 form 은 /admin (대시보드) 안에 있음.
-      // 메뉴 클릭 시 /admin#user-search anchor 로 스크롤. 메인 page.tsx 가 id="user-search" 부여.
-      { href: "/admin#user-search", label: "사용자 조회", icon: "👤" },
-      { href: "/admin/wishes", label: "위시리스트", icon: "❤️" },
+      {
+        href: "/admin/insights",
+        label: "사용자 퍼널",
+        icon: "▥",
+        description: "가입/활성/전환 흐름",
+      },
+      {
+        href: "/admin/targeting",
+        label: "본문 타겟팅",
+        icon: "◎",
+        description: "콘텐츠 타겟팅 분석",
+      },
+      {
+        href: "/admin/business",
+        label: "자영업자 진단",
+        icon: "₩",
+        description: "자영업자 프로필/진단 통계",
+      },
+      {
+        href: "/admin/my-actions",
+        label: "내 감사 로그",
+        icon: "≣",
+        description: "내가 실행한 관리자 작업",
+      },
+      {
+        href: "/admin/wishes",
+        label: "위시리스트",
+        icon: "☆",
+        description: "사용자 관심 정책 기록",
+      },
     ],
   },
 ];
 
-// ─── 활성 메뉴 매칭 ───
-// 정확 일치 우선, 그렇지 않으면 가장 긴 prefix 매칭.
-// 예: /admin/news/backfill-dedupe-runner 는 /admin/news 보다 긴 prefix 라
-// 정확히 backfill 메뉴가 활성으로 잡힘.
-// anchor (#user-search) 가 있는 항목은 path 매칭에서 제외.
 export function findActiveMenuItem(currentPath: string): AdminMenuItem | null {
-  // 1) 정확 일치 (anchor 포함 항목도 동일 문자열이면 잡힘)
   for (const group of ADMIN_MENU) {
     for (const item of group.items) {
       if (item.href === currentPath) return item;
     }
   }
-  // 2) 가장 긴 prefix 매칭 (동적 라우트 대응)
+
   let best: AdminMenuItem | null = null;
   let bestLen = -1;
   for (const group of ADMIN_MENU) {
     for (const item of group.items) {
-      // anchor 가 있는 항목은 path prefix 매칭 대상에서 제외
       if (item.href.includes("#")) continue;
-      if (currentPath.startsWith(`${item.href}/`) && item.href.length > bestLen) {
-        best = item;
-        bestLen = item.href.length;
+      if (currentPath === item.href || currentPath.startsWith(`${item.href}/`)) {
+        if (item.href.length > bestLen) {
+          best = item;
+          bestLen = item.href.length;
+        }
       }
     }
   }

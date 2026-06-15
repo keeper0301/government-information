@@ -1,123 +1,84 @@
-// ============================================================
-// /admin — 운영자 메인 대시보드 (T7 슬림화 후)
-// ============================================================
-// 사이드바 IA 재설계 (T1~T6) 완료 후 메인은 4 섹션 + 사용자 검색만:
-//   1. 헤더 (AdminPageHeader)
-//   2. ⚠️ 지금 처리 필요 배너 (alerts.length > 0 일 때만)
-//   3. 24h KPI 카드 4개 (가입·구독·자동등록·cron실패)
-//   4. 30일 추세 차트 (신규 가입 + 매출 추정)
-//   5. 최근 활동 2 col (최근 가입 5건 + 내 작업 5건)
-//   6. 사용자 조회 form (#user-search anchor)
-//
-// 제거된 항목:
-//   - ActionCard 그리드 17종 (모두 사이드바로 이전)
-//   - 24h KPI 카드 8 → 4 축소 (알림·뉴스·공고·AI 는 사이드바 그룹 페이지에 자체 KPI)
-//   - 24h 결제 카드 (Phase 4 카드, 운영점검·컨텐츠 우선순위와 무관)
-//   - Phase 6 종합 대시보드 CTA (사이드바 "운영점검·헬스" 가 대체)
-//
-// 권한:
-//   - 비로그인 → /login?next=/admin
-//   - 어드민 아니면 → /
-//   - layout.tsx 가드 + 본 페이지 가드 (defense in depth)
-//   - ADMIN_EMAILS 환경변수에 이메일 포함돼야 함 (lib/admin-auth.ts)
-// ============================================================
-
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
+import { getActorActionsPaged } from "@/lib/admin-actions";
 import {
-  getActorActionsPaged,
-  ACTION_LABELS,
-} from "@/lib/admin-actions";
-import {
-  getDailySignups,
   getDailyRevenueEstimated,
+  getDailySignups,
   getAuthUsersCached,
 } from "@/lib/admin-stats";
-import { Sparkline } from "@/components/admin/sparkline";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { getDashboardAlerts } from "@/lib/admin/dashboard-alerts";
-import { getPolicyInboxStorageStatus } from "@/lib/admin/policy-inbox-storage-status";
+import { getDashboardAlerts, type DashboardAlert } from "@/lib/admin/dashboard-alerts";
 import { getAdminPersonalizationStatus } from "@/lib/admin/personalization-status";
+import { getPolicyInboxStorageStatus } from "@/lib/admin/policy-inbox-storage-status";
+import { ADMIN_MENU } from "@/lib/admin/menu";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { Sparkline } from "@/components/admin/sparkline";
 
 export const metadata: Metadata = {
-  title: "어드민 대시보드 | 정책알리미",
+  title: "관리자 대시보드 | 정책알리미",
   robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";
 
-// 권한 가드 — layout 가드와 중복이지만 defense in depth.
 async function requireAdmin() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin");
   if (!isAdminUser(user.email)) redirect("/");
   return user;
 }
 
-// 사용자 검색 server action — UUID 면 직접 이동, 이메일 이면 listUsers 검색.
 async function searchUser(formData: FormData) {
   "use server";
-  // 보안 — server action 은 페이지 렌더 가드와 별개 POST 엔드포인트라 자체 admin 재검증 필수.
-  // (누락 시 비인증 POST 로 이메일 가입여부 확인 + UUID 열거 + listUsers 부하 유발)
+
   await requireAdmin();
   const raw = String(formData.get("query") ?? "").trim();
   if (!raw) return;
 
   const admin = createAdminClient();
-  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (uuidRe.test(raw)) {
-    redirect(`/admin/users/${raw}`);
+  const uuidRe =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRe.test(raw)) redirect(`/admin/users/${raw}`);
+
+  const { data, error } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+  if (error || !data) {
+    redirect(`/admin?error=${encodeURIComponent(`조회 실패: ${error?.message ?? "알 수 없음"}`)}`);
   }
 
-  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (error || !data) {
-    redirect(`/admin?error=${encodeURIComponent("조회 실패: " + (error?.message ?? "알수없음"))}`);
-  }
   const found = data.users.find((u) => u.email?.toLowerCase() === raw.toLowerCase());
   if (!found) {
-    redirect(`/admin?error=${encodeURIComponent("일치하는 사용자 없음: " + raw)}`);
+    redirect(`/admin?error=${encodeURIComponent(`일치하는 사용자가 없습니다: ${raw}`)}`);
   }
   redirect(`/admin/users/${found.id}`);
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 24시간 지표 — 4 KPI (가입·구독·자동등록·cron실패)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 슬림화 결과 4 항목만 fetch. 알림 발송·뉴스·공고·AI 등 다른 KPI 는
-// 사이드바 그룹 페이지 (/admin/alimtalk, /admin/insights 등) 에 자체 노출.
 async function get24hStats() {
   const admin = createAdminClient();
   const since24hIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [
-    profilesCount,
-    activeSubsCount,
-    cronAlertsNew,
-    autoIngested,
-  ] = await Promise.all([
-    // 신규 가입 — user_profiles 기준 (온보딩 통과 사용자만 카운트).
+  const [newUsers, activeSubs, cronFailures, autoIngested] = await Promise.all([
     admin
       .from("user_profiles")
       .select("id", { count: "exact", head: true })
       .gte("created_at", since24hIso),
-    // 활성 구독 — basic/pro 중 trialing/active/charging/manual_grant.
     admin
       .from("subscriptions")
       .select("user_id", { count: "exact", head: true })
       .in("tier", ["basic", "pro"])
       .in("status", ["trialing", "active", "charging", "manual_grant"]),
-    // cron 실패 알림 — 24h 신규 메일 발송 건수 (notified_at).
-    // 3건 이상이면 폭주 의심 → tone=warn.
     admin
       .from("cron_failure_log")
       .select("id", { count: "exact", head: true })
-      .gte("notified_at", since24hIso),
-    // press-ingest 자동 등록 — 매일 01:30 KST cron 결과.
+      .gte("last_seen_at", since24hIso),
     admin
       .from("admin_actions")
       .select("id", { count: "exact", head: true })
@@ -126,21 +87,18 @@ async function get24hStats() {
   ]);
 
   return {
-    newUsers: profilesCount.count ?? 0,
-    activeSubs: activeSubsCount.count ?? 0,
-    cronAlertsNew: cronAlertsNew.count ?? 0,
+    newUsers: newUsers.count ?? 0,
+    activeSubs: activeSubs.count ?? 0,
+    cronFailures: cronFailures.count ?? 0,
     autoIngested: autoIngested.count ?? 0,
   };
 }
 
-// 최근 가입 사용자 5건 — auth.users 기준 + user_profiles lookup.
 async function getRecentSignups(limit = 5) {
   const admin = createAdminClient();
   const [users, profilesResult] = await Promise.all([
     getAuthUsersCached(),
-    admin
-      .from("user_profiles")
-      .select("id, region, occupation"),
+    admin.from("user_profiles").select("id, region, occupation"),
   ]);
 
   const profileMap = new Map(
@@ -149,27 +107,25 @@ async function getRecentSignups(limit = 5) {
     ),
   );
 
-  const recent = [...users]
+  return [...users]
     .filter((u) => u.created_at)
     .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
-    .slice(0, limit);
-
-  return recent.map((u) => {
-    const profile = profileMap.get(u.id);
-    return {
-      id: u.id,
-      email: u.email ?? null,
-      created_at: u.created_at ?? "",
-      region: profile?.region ?? null,
-      occupation: profile?.occupation ?? null,
-    };
-  });
+    .slice(0, limit)
+    .map((u) => {
+      const profile = profileMap.get(u.id);
+      return {
+        id: u.id,
+        email: u.email ?? null,
+        createdAt: u.created_at ?? "",
+        region: profile?.region ?? null,
+        occupation: profile?.occupation ?? null,
+      };
+    });
 }
 
-// "방금 전", "5분 전" 같은 상대 시각 포맷.
 function fmtRelative(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
-  const diffMin = Math.floor(diffMs / (60 * 1000));
+  const diffMin = Math.floor(diffMs / 60000);
   if (diffMin < 1) return "방금 전";
   if (diffMin < 60) return `${diffMin}분 전`;
   const diffHour = Math.floor(diffMin / 60);
@@ -179,7 +135,24 @@ function fmtRelative(iso: string): string {
   return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function alertLabel(alert: DashboardAlert): string {
+  const labels: Record<DashboardAlert["key"], string> = {
+    cron_failure: "cron 실패",
+    press_ingest_backlog: "보도자료 후보 적체",
+    deletions_overdue: "탈퇴 예약 처리 필요",
+    advisor_warn: "Supabase 보안 경고",
+    system_error: "알림 시스템 오류",
+    dedupe_pending: "중복 정책 검수",
+    naver_blog_pending: "네이버 블로그 발행 대기",
+  };
+  return labels[alert.key] ?? alert.label;
+}
+
+function policyStorageLabel(status: string) {
+  if (status === "ready") return "정책 저장소 정상";
+  if (status === "pending_migration") return "정책 저장소 마이그레이션 필요";
+  return "정책 저장소 점검 필요";
+}
 
 export default async function AdminHomePage({
   searchParams,
@@ -188,7 +161,6 @@ export default async function AdminHomePage({
 }) {
   const actor = await requireAdmin();
   const params = await searchParams;
-  const error = params.error;
 
   const [
     stats,
@@ -197,11 +169,11 @@ export default async function AdminHomePage({
     dailySignups,
     dailyRevenue,
     alerts,
-    personalizationStatus,
-    policyInboxStorageStatus,
+    personalization,
+    policyStorage,
   ] = await Promise.all([
     get24hStats(),
-    getRecentSignups(5),
+    getRecentSignups(),
     getActorActionsPaged(actor.id, { limit: 5, offset: 0 }),
     getDailySignups(30),
     getDailyRevenueEstimated(30),
@@ -210,319 +182,276 @@ export default async function AdminHomePage({
     getPolicyInboxStorageStatus(),
   ]);
 
+  const primaryWork = [
+    {
+      href: "/admin/autonomous",
+      title: "자동화 상태 보기",
+      body: "상주 에이전트, 개선 과제, 승인 필요 항목을 한 번에 봅니다.",
+    },
+    {
+      href: "/admin/system-ops",
+      title: "시스템 실행·수정",
+      body: "cron 재실행, 환경 설정, 오류 점검을 운영 콘솔에서 처리합니다.",
+    },
+    {
+      href: "/admin/press-ingest",
+      title: "정책 후보 검수",
+      body: "보도자료 기반 후보를 확인하고 등록 또는 제외합니다.",
+    },
+    {
+      href: "/admin/blog",
+      title: "콘텐츠 발행 관리",
+      body: "블로그 글, SEO 글, SNS 발행 흐름으로 이동합니다.",
+    },
+  ];
+
   return (
-    <div className="max-w-[980px]">
-      {/* 1. 헤더 */}
+    <div className="max-w-[1120px]">
       <AdminPageHeader
         kicker="ADMIN"
-        title="대시보드"
-        description={`${actor.email ?? "운영자"} 로 로그인됨 · 최근 24시간 운영 지표 + 30일 추세`}
+        title="관리자 대시보드"
+        description={`${actor.email ?? "관리자"} 계정으로 로그인됨. 오늘 처리할 일, 자동화 상태, 콘텐츠 발행, 고객 알림을 한 화면에서 확인합니다.`}
       />
 
-      {/* 에러 메시지 (쿼리 ?error=) */}
-      {error && (
+      {params.error && (
         <div
           role="alert"
-          className="bg-red/10 border border-red/30 rounded-xl p-3 text-sm text-red mb-4"
+          className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700"
         >
-          {error}
+          {params.error}
         </div>
       )}
 
-      {/* 2. ⚠️ 지금 처리 필요 — alerts.length > 0 시만 */}
-      {alerts.length > 0 && (
-        <section className="mb-6">
-          <div className="bg-red/10 border border-red/30 rounded-xl p-4">
-            <h2 className="text-sm font-bold text-grey-900 mb-3 flex items-center gap-2">
-              <span aria-hidden>⚠️</span>
-              지금 처리 필요
+      <section className="mb-6 rounded-xl border border-grey-200 bg-grey-50 p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-extrabold tracking-[-0.02em] text-grey-900">
+              오늘 먼저 볼 것
             </h2>
-            <div className="flex flex-wrap gap-2">
-              {alerts.map((a) => (
-                <Link
-                  key={a.key}
-                  href={a.href}
-                  className="inline-flex items-center gap-1.5 bg-white border border-red/30 rounded-full px-3 py-1.5 text-sm font-semibold text-grey-900 hover:border-red hover:bg-red/10 no-underline transition-colors"
-                >
-                  <span>{a.label}</span>
-                  <span className="text-red font-extrabold">
-                    {a.count.toLocaleString()}
-                  </span>
-                  <span className="text-grey-700">→</span>
-                </Link>
-              ))}
-            </div>
+            <p className="mt-1 text-sm text-grey-700">
+              자주 쓰는 작업만 앞에 모았습니다. 나머지는 왼쪽 메뉴나 검색으로 이동하세요.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          {primaryWork.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-lg border border-grey-200 bg-white p-4 no-underline transition-colors hover:border-blue-300 hover:bg-blue-50"
+            >
+              <div className="text-sm font-extrabold text-grey-900">{item.title}</div>
+              <div className="mt-1 text-xs leading-[1.5] text-grey-700">{item.body}</div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {alerts.length > 0 && (
+        <section className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-extrabold text-red-800">지금 처리 필요</h2>
+            <span className="text-xs font-bold text-red-700">{alerts.length}개 항목</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {alerts.map((alert) => (
+              <Link
+                key={alert.key}
+                href={alert.href}
+                className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-3 py-1.5 text-sm font-bold text-grey-900 no-underline hover:border-red-300"
+              >
+                <span>{alertLabel(alert)}</span>
+                <span className="text-red-700">{alert.count.toLocaleString()}건</span>
+              </Link>
+            ))}
           </div>
         </section>
       )}
 
-      {/* 3. 24h KPI 카드 4개 */}
-      <section className="mb-8">
-        <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.02em]">
-          최근 24시간
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard
-            label="신규 가입"
-            value={stats.newUsers}
-            suffix="명"
-            hint="user_profiles 기준 (온보딩 통과)"
-          />
-          <KpiCard
-            label="활성 구독"
-            value={stats.activeSubs}
-            suffix="명"
-            hint="basic·pro 활성 상태"
-          />
-          <KpiCard
-            label="자동 등록"
-            value={stats.autoIngested}
-            suffix="건"
-            hint="press-ingest 매일 01:30 KST"
-          />
-          <KpiCard
-            label="cron 실패 알림"
-            value={stats.cronAlertsNew}
-            suffix="건"
-            hint={
-              stats.cronAlertsNew >= 3
-                ? "폭주 의심 — 점검 필요"
-                : "24h 신규 메일 발송"
-            }
-            tone={stats.cronAlertsNew >= 3 ? "warn" : "neutral"}
-          />
-        </div>
+      <section className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <KpiCard label="신규 가입" value={stats.newUsers} suffix="명" hint="최근 24시간" />
+        <KpiCard label="활성 구독" value={stats.activeSubs} suffix="명" hint="basic/pro 활성" />
+        <KpiCard label="자동 등록" value={stats.autoIngested} suffix="건" hint="정책 후보 승인" />
+        <KpiCard
+          label="cron 실패"
+          value={stats.cronFailures}
+          suffix="건"
+          hint={stats.cronFailures > 0 ? "확인 필요" : "최근 24시간 정상"}
+          tone={stats.cronFailures > 0 ? "warn" : "neutral"}
+        />
       </section>
 
-      {/* 3-1. 추천·알림 상태 — 개인화 루프 운영 가시화 */}
-      <section className="mb-8">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-bold text-grey-900 tracking-[-0.02em]">
-              추천·알림 상태
-            </h2>
-            <p className="mt-1 text-xs text-grey-700">
-              추천 준비도와 정책함 발송 상태를 함께 봅니다 · 현재 상태 {personalizationStatus.healthLabel}
-            </p>
-          </div>
-          <Link
-            href="/admin/recommendation-trace"
-            className="text-xs font-semibold text-blue-500 hover:underline"
-          >
-            추천 진단 보기 →
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {personalizationStatus.cards.map((card) => (
-            <StatusLinkCard
-              key={card.key}
-              href={card.href}
-              label={card.label}
-              value={card.value}
-              suffix={card.suffix}
-              hint={card.hint}
-              tone={card.tone}
+      <section className="mb-7 grid grid-cols-1 gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+        <Panel title="자동화 준비도">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <MiniMetric
+              label="추천 준비"
+              value={personalization.profileReady}
+              suffix="명"
+              hint={`전체 ${personalization.profileTotal.toLocaleString()}명 중 ${personalization.profileReadyPercent}%`}
             />
-          ))}
-        </div>
-        {personalizationStatus.queued24h > 0 && (
-          <p className="mt-2 text-xs text-amber-700">
-            대기 중인 발송 {personalizationStatus.queued24h.toLocaleString()}건이 있습니다.
-          </p>
-        )}
-        <div className="mt-3 rounded-xl border border-grey-200 bg-white p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold tracking-[0.06em] text-grey-700 uppercase">
-                정책함 저장소
-              </div>
-              <div className="mt-1 text-sm font-bold text-grey-900">
-                {policyInboxStorageStatus.label}
-              </div>
-              <div className="mt-1 text-xs text-grey-700">
-                {policyInboxStorageStatus.hint}
-              </div>
-            </div>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs font-bold ${
-                policyInboxStorageStatus.tone === "good"
-                  ? "border-emerald-100 bg-emerald-50 text-emerald-700"
-                  : policyInboxStorageStatus.tone === "warn"
-                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                    : "border-red/30 bg-red/10 text-red"
-              }`}
-            >
-              {policyInboxStorageStatus.status === "ready"
-                ? `${policyInboxStorageStatus.count.toLocaleString()}개 상태`
-                : "점검 필요"}
-            </span>
+            <MiniMetric
+              label="활성 알림 규칙"
+              value={personalization.activeRules}
+              suffix="개"
+              hint={`자동 규칙 ${personalization.autoRules.toLocaleString()}개`}
+            />
+            <MiniMetric
+              label="24h 발송 성공"
+              value={personalization.sent24h}
+              suffix="건"
+              hint={`시도 ${personalization.deliveries24h.toLocaleString()}건`}
+            />
+            <MiniMetric
+              label="24h 발송 실패"
+              value={personalization.failed24h}
+              suffix="건"
+              hint={`실패율 ${personalization.deliveryFailureRate}%`}
+              tone={personalization.failed24h > 0 ? "warn" : "neutral"}
+            />
           </div>
-          {policyInboxStorageStatus.status === "ready" && (
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-md bg-grey-50 px-2.5 py-1 font-semibold text-grey-700">
-                읽음 {policyInboxStorageStatus.readCount.toLocaleString()}
-              </span>
-              <span className="rounded-md bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-                저장 {policyInboxStorageStatus.savedCount.toLocaleString()}
-              </span>
-              <span className="rounded-md bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
-                숨김 {policyInboxStorageStatus.hiddenCount.toLocaleString()}
-              </span>
-            </div>
-          )}
-        </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <LinkButton href="/admin/recommendation-trace">추천 진단</LinkButton>
+            <LinkButton href="/admin/alimtalk">알림톡 운영</LinkButton>
+            <LinkButton href="/admin/alert-simulator">발송 시뮬레이션</LinkButton>
+          </div>
+        </Panel>
+
+        <Panel title="정책 저장소">
+          <div className="text-sm font-bold text-grey-900">
+            {policyStorageLabel(policyStorage.status)}
+          </div>
+          <p className="mt-1 text-sm leading-[1.6] text-grey-700">{policyStorage.hint}</p>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <MiniMetric label="전체" value={policyStorage.count} suffix="건" />
+            <MiniMetric label="읽음" value={policyStorage.readCount} suffix="건" />
+            <MiniMetric label="저장" value={policyStorage.savedCount} suffix="건" />
+          </div>
+        </Panel>
       </section>
 
-      {/* 4. 30일 추세 차트 2종 */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-        <div className="bg-white border border-grey-200 rounded-xl p-5">
-          <h3 className="text-sm font-bold text-grey-900 tracking-[-0.02em]">
-            일별 신규 가입
-          </h3>
-          <p className="text-xs text-grey-700 mb-3">
-            지난 30일 (KST 일자 기준, auth.users)
-          </p>
-          {/* Sparkline stroke 은 SVG attribute 라 Tailwind 클래스 적용 불가 → hex 유지 */}
+      <section className="mb-7 grid grid-cols-1 gap-5 md:grid-cols-2">
+        <Panel title="30일 가입 추세">
           <Sparkline data={dailySignups} unit="명" stroke="#3182F6" />
-        </div>
-        <div className="bg-white border border-grey-200 rounded-xl p-5">
-          <h3 className="text-sm font-bold text-grey-900 tracking-[-0.02em]">
-            일별 매출 추이 (추정)
-          </h3>
-          <p className="text-xs text-grey-700 mb-3">
-            지난 30일 (신규 구독 시점 매출 추정)
-          </p>
-          {/* Sparkline stroke 은 SVG attribute 라 Tailwind 클래스 적용 불가 → hex 유지 */}
+        </Panel>
+        <Panel title="30일 매출 추정">
           <Sparkline data={dailyRevenue} unit="원" stroke="#10B981" />
-        </div>
+        </Panel>
       </section>
 
-      {/* 5. 최근 활동 — 가입 5건 + 내 작업 5건 */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-        {/* 좌: 최근 가입자 */}
+      <section className="mb-7 grid grid-cols-1 gap-5 md:grid-cols-2">
         <Panel title={`최근 가입자 ${recentSignups.length}명`}>
           {recentSignups.length === 0 ? (
-            <p className="text-sm text-grey-700 py-2">
-              최근 가입자가 없어요.
-            </p>
+            <EmptyText>최근 가입자가 없습니다.</EmptyText>
           ) : (
-            <ul className="space-y-2">
-              {recentSignups.map((u) => (
+            <ul className="space-y-3">
+              {recentSignups.map((user) => (
                 <li
-                  key={u.id}
-                  className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
+                  key={user.id}
+                  className="flex items-center justify-between gap-3 border-b border-grey-100 pb-3 last:border-b-0 last:pb-0"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-grey-900 truncate">
-                      {u.email ?? "(이메일 없음)"}
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-grey-900">
+                      {user.email ?? "이메일 없음"}
                     </div>
-                    <div className="text-xs text-grey-700 leading-[1.5]">
-                      {[u.region, u.occupation].filter(Boolean).join(" · ") || "프로필 미작성"}
+                    <div className="mt-0.5 text-xs text-grey-600">
+                      {[user.region, user.occupation].filter(Boolean).join(" · ") ||
+                        "프로필 미작성"}
                       {" · "}
-                      {fmtRelative(u.created_at)}
+                      {fmtRelative(user.createdAt)}
                     </div>
                   </div>
-                  <Link
-                    href={`/admin/users/${u.id}`}
-                    className="text-xs font-medium text-blue-500 hover:underline whitespace-nowrap"
-                  >
-                    상세 →
-                  </Link>
+                  <LinkButton href={`/admin/users/${user.id}`}>상세</LinkButton>
                 </li>
               ))}
             </ul>
           )}
         </Panel>
 
-        {/* 우: 내 최근 관리자 액션 */}
-        <Panel title={`내 최근 관리자 액션 ${myActions.records.length}건`}>
+        <Panel title={`내 최근 작업 ${myActions.records.length}건`}>
           {myActions.records.length === 0 ? (
-            <p className="text-sm text-grey-700 py-2">
-              최근 수행한 관리 작업이 없어요.
-            </p>
+            <EmptyText>최근 실행한 관리자 작업이 없습니다.</EmptyText>
           ) : (
-            <ul className="space-y-2">
-              {myActions.records.map((a) => (
+            <ul className="space-y-3">
+              {myActions.records.map((action) => (
                 <li
-                  key={a.id}
-                  className="flex items-center justify-between gap-3 pb-2 border-b border-grey-100 last:border-b-0 last:pb-0"
+                  key={action.id}
+                  className="flex items-center justify-between gap-3 border-b border-grey-100 pb-3 last:border-b-0 last:pb-0"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-grey-900">
-                      {ACTION_LABELS[a.action] ?? a.action}
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-grey-900">
+                      {action.action}
                     </div>
-                    <div className="text-xs text-grey-700 truncate leading-[1.5]">
-                      {a.targetUserId ? (
-                        <span className="font-mono">
-                          {a.targetUserId.slice(0, 8)}…
-                        </span>
-                      ) : (
-                        <span>—</span>
-                      )}
-                      {" · "}
-                      {fmtRelative(a.createdAt)}
+                    <div className="mt-0.5 text-xs text-grey-600">
+                      {fmtRelative(action.createdAt)}
+                      {action.targetUserId ? ` · ${action.targetUserId.slice(0, 8)}` : ""}
                     </div>
                   </div>
-                  {a.targetUserId && (
-                    <Link
-                      href={`/admin/users/${a.targetUserId}`}
-                      className="text-xs font-medium text-blue-500 hover:underline whitespace-nowrap"
-                    >
-                      대상 →
-                    </Link>
+                  {action.targetUserId && (
+                    <LinkButton href={`/admin/users/${action.targetUserId}`}>대상</LinkButton>
                   )}
                 </li>
               ))}
             </ul>
           )}
-          <Link
-            href="/admin/my-actions"
-            className="block text-sm font-medium text-blue-500 hover:underline mt-3"
-          >
-            전체 보기 →
-          </Link>
+          <div className="mt-3">
+            <LinkButton href="/admin/my-actions">전체 로그</LinkButton>
+          </div>
         </Panel>
       </section>
 
-      {/* 6. 사용자 조회 — 사이드바 메뉴 link 대상 (#user-search) */}
-      <section id="user-search" className="mb-6 scroll-mt-20">
-        <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.02em]">
-          사용자 조회
-        </h2>
-        <p className="text-sm text-grey-700 mb-3 leading-[1.6]">
-          이메일 또는 UUID 로 사용자 상세 페이지로 즉시 이동합니다.
-        </p>
-        <form action={searchUser} className="flex gap-2 max-md:flex-col">
-          <input
-            type="text"
-            name="query"
-            required
-            placeholder="이메일 또는 UUID (예: user@example.com 또는 7e25d1c8-...)"
-            className="flex-1 px-4 py-3 border border-grey-200 rounded-xl text-sm focus:border-blue-500 focus:outline-none bg-white"
-          />
-          <button
-            type="submit"
-            className="px-5 py-3 bg-blue-500 text-white rounded-xl text-sm font-bold hover:bg-blue-600 transition-colors cursor-pointer whitespace-nowrap"
-          >
-            조회
-          </button>
-        </form>
+      <section className="mb-7">
+        <Panel title="전체 기능 지도">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {ADMIN_MENU.map((group) => (
+              <div key={group.number}>
+                <div className="mb-2 text-xs font-extrabold text-grey-500">
+                  {group.number}. {group.title}
+                </div>
+                <div className="space-y-1.5">
+                  {group.items.slice(0, 6).map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="block truncate rounded-md px-2 py-1.5 text-sm font-semibold text-grey-800 no-underline hover:bg-grey-100"
+                      title={item.description}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </section>
 
-      {/* 권한 안내 */}
-      <p className="mt-10 text-sm text-grey-700 leading-[1.7]">
-        이 페이지는 운영자 전용입니다. 권한은 Vercel 환경변수{" "}
-        <code className="bg-grey-100 px-1 py-0.5 rounded text-xs">ADMIN_EMAILS</code> 로 관리합니다.
-      </p>
+      <section id="user-search" className="scroll-mt-20">
+        <Panel title="사용자 조회">
+          <p className="mb-3 text-sm leading-[1.6] text-grey-700">
+            이메일 또는 UUID를 입력하면 사용자 상세 페이지로 바로 이동합니다.
+          </p>
+          <form action={searchUser} className="flex gap-2 max-md:flex-col">
+            <input
+              type="text"
+              name="query"
+              required
+              placeholder="user@example.com 또는 UUID"
+              className="flex-1 rounded-lg border border-grey-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              className="cursor-pointer rounded-lg bg-blue-500 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-600"
+            >
+              조회
+            </button>
+          </form>
+        </Panel>
+      </section>
     </div>
   );
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 작은 컴포넌트
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-// 24h KPI 카드 — radius 12 (rounded-xl), 토스 톤 색상
 function KpiCard({
   label,
   value,
@@ -534,29 +463,22 @@ function KpiCard({
   value: number;
   suffix?: string;
   hint?: string;
-  /** warn: 비정상 신호 (cron 실패 폭주 등) */
   tone?: "neutral" | "warn";
 }) {
   const isWarn = tone === "warn";
-  const border = isWarn
-    ? "border-red/30 bg-red/10"
-    : "border-grey-200 bg-white";
-  const hintColor = isWarn ? "text-red font-semibold" : "text-grey-700";
   return (
-    <div className={`rounded-xl border p-4 ${border}`}>
-      <div className="text-xs font-semibold tracking-[0.06em] text-grey-700 uppercase mb-1.5">
-        {label}
-      </div>
-      <div className="text-2xl font-extrabold text-grey-900 leading-none tracking-[-0.02em]">
+    <div
+      className={`rounded-xl border p-4 ${
+        isWarn ? "border-amber-200 bg-amber-50" : "border-grey-200 bg-white"
+      }`}
+    >
+      <div className="mb-1.5 text-xs font-bold text-grey-600">{label}</div>
+      <div className="text-2xl font-extrabold tracking-[-0.02em] text-grey-900">
         {value.toLocaleString()}
-        {suffix && (
-          <span className="text-sm font-semibold text-grey-700 ml-1">
-            {suffix}
-          </span>
-        )}
+        {suffix && <span className="ml-1 text-sm font-bold text-grey-600">{suffix}</span>}
       </div>
       {hint && (
-        <div className={`text-xs mt-1.5 leading-[1.45] ${hintColor}`}>
+        <div className={`mt-1 text-xs ${isWarn ? "text-amber-700" : "text-grey-600"}`}>
           {hint}
         </div>
       )}
@@ -564,48 +486,35 @@ function KpiCard({
   );
 }
 
-function StatusLinkCard({
-  href,
+function MiniMetric({
   label,
   value,
   suffix,
   hint,
-  tone,
+  tone = "neutral",
 }: {
-  href: string;
   label: string;
   value: number;
-  suffix: string;
-  hint: string;
-  tone: "good" | "neutral" | "warn" | "danger";
+  suffix?: string;
+  hint?: string;
+  tone?: "neutral" | "warn";
 }) {
-  const toneClass =
-    tone === "danger"
-      ? "border-red/30 bg-red/10 text-red"
-      : tone === "warn"
-        ? "border-amber-200 bg-amber-50 text-amber-700"
-        : tone === "good"
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-grey-200 bg-white text-grey-900";
-
   return (
-    <Link
-      href={href}
-      className={`block rounded-xl border p-4 no-underline transition-colors hover:border-blue-300 hover:bg-blue-50 ${toneClass}`}
+    <div
+      className={`rounded-lg border p-3 ${
+        tone === "warn" ? "border-amber-200 bg-amber-50" : "border-grey-200 bg-grey-50"
+      }`}
     >
-      <div className="text-xs font-semibold tracking-[0.06em] text-grey-700 uppercase mb-1.5">
-        {label}
-      </div>
-      <div className="text-2xl font-extrabold leading-none tracking-[-0.02em]">
+      <div className="text-xs font-bold text-grey-600">{label}</div>
+      <div className="mt-1 text-lg font-extrabold text-grey-900">
         {value.toLocaleString()}
-        <span className="ml-1 text-sm font-semibold text-grey-700">{suffix}</span>
+        {suffix && <span className="ml-1 text-xs font-bold text-grey-600">{suffix}</span>}
       </div>
-      <div className="mt-1.5 text-xs leading-[1.45] text-grey-700">{hint}</div>
-    </Link>
+      {hint && <div className="mt-1 text-xs leading-[1.4] text-grey-600">{hint}</div>}
+    </div>
   );
 }
 
-// 최근 활동 패널 — 가입자·내 액션 공통
 function Panel({
   title,
   children,
@@ -614,11 +523,32 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white border border-grey-200 rounded-xl p-5">
-      <h3 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.02em]">
+    <section className="rounded-xl border border-grey-200 bg-white p-5">
+      <h2 className="mb-3 text-sm font-extrabold tracking-[-0.02em] text-grey-900">
         {title}
-      </h3>
+      </h2>
       {children}
     </section>
   );
+}
+
+function LinkButton({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center rounded-md border border-grey-200 bg-white px-2.5 py-1.5 text-xs font-bold text-grey-800 no-underline hover:border-blue-300 hover:text-blue-600"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function EmptyText({ children }: { children: React.ReactNode }) {
+  return <p className="py-2 text-sm text-grey-600">{children}</p>;
 }
