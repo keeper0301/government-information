@@ -23,6 +23,7 @@ on:
           - health-alert
           - sns-publish-blog
           - sns-publish-popular-policy
+          - sns-credential-check
           - instagram-publish
           - instagram-comment-drafts
       source:
@@ -92,6 +93,10 @@ jobs:
             sns-publish-popular-policy)
               path="/api/cron/sns-publish-popular-policy"
               method="POST"
+              ;;
+            sns-credential-check)
+              path="/api/cron/sns-credential-check"
+              method="GET"
               ;;
             instagram-publish)
               path="/api/cron/instagram-publish"
