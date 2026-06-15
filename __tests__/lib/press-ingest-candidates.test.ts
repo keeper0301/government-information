@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   buildCandidateUpsert,
   buildLoanInsertPayload,
+  buildLowReviewBoard,
   buildWelfareInsertPayload,
+  classifyLowReviewBucket,
   eligibleAutoConfirmTiers,
   shouldAutoConfirm,
   type PressCandidateForConfirm,
+  type PressCandidateListRow,
 } from "@/lib/press-ingest/candidates";
 import type { ClassifyResult } from "@/lib/press-ingest/classify";
 
@@ -71,6 +74,77 @@ describe("press ingest auto-confirm tier filter", () => {
     expect(shouldAutoConfirm(null, "mid")).toBe(false);
     expect(shouldAutoConfirm("low", "mid")).toBe(false);
     expect(shouldAutoConfirm("mid", "mid")).toBe(true);
+  });
+});
+
+function makeLowRow(overrides: Partial<PressCandidateListRow> = {}): PressCandidateListRow {
+  return {
+    id: "33333333-3333-3333-3333-333333333333",
+    news_id: "11111111-1111-1111-1111-111111111111",
+    status: "pending",
+    program_type: "welfare",
+    title: "전남 청년 주거비 지원",
+    category: "주거",
+    classified_payload: { ...policyResult, apply_end: "2026-06-30" },
+    skip_reason: null,
+    error_message: null,
+    classified_at: "2026-06-14T00:00:00.000Z",
+    created_at: "2026-06-14T00:00:00.000Z",
+    updated_at: "2026-06-14T00:00:00.000Z",
+    confidence_tier: "low",
+    news: {
+      id: "11111111-1111-1111-1111-111111111111",
+      ministry: "전라남도",
+      slug: "jeonnam-youth-housing",
+    },
+    ...overrides,
+  };
+}
+
+describe("press ingest low review board", () => {
+  const now = new Date("2026-06-15T09:00:00.000Z");
+
+  it("LOW 후보를 승인 가능/URL 보강/마감/묵음 bucket 으로 read-only 분류한다", () => {
+    expect(classifyLowReviewBucket(makeLowRow(), now)).toBe("confirm_ready");
+    expect(
+      classifyLowReviewBucket(
+        makeLowRow({ classified_payload: { ...policyResult, apply_url: null, apply_end: "2026-06-30" } }),
+        now,
+      ),
+    ).toBe("missing_url");
+    expect(
+      classifyLowReviewBucket(
+        makeLowRow({ classified_payload: { ...policyResult, apply_end: "2026-06-14" } }),
+        now,
+      ),
+    ).toBe("deadline_expired");
+    expect(
+      classifyLowReviewBucket(makeLowRow({ created_at: "2026-05-20T00:00:00.000Z" }), now),
+    ).toBe("stale_review");
+  });
+
+  it("LOW 검수판은 pending LOW만 집계하고 자동승인은 계속 차단 상태로 표시한다", () => {
+    const board = buildLowReviewBoard(
+      [
+        makeLowRow(),
+        makeLowRow({ classified_payload: { ...policyResult, apply_url: null, apply_end: "2026-06-30" } }),
+        makeLowRow({ classified_payload: { ...policyResult, apply_end: "2026-06-14" } }),
+        makeLowRow({ created_at: "2026-05-20T00:00:00.000Z" }),
+        makeLowRow({ confidence_tier: "mid" }),
+        makeLowRow({ status: "confirmed" }),
+      ],
+      now,
+    );
+
+    expect(board.total).toBe(4);
+    expect(board.buckets).toEqual({
+      confirm_ready: 1,
+      missing_url: 1,
+      deadline_expired: 1,
+      stale_review: 1,
+    });
+    expect(board.autoConfirmSafe).toBe(false);
+    expect(board.topAction).toContain("수동 승인");
   });
 });
 
