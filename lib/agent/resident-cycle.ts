@@ -55,6 +55,10 @@ const RISK_RANK: Record<AgentPolicyDecision["risk"], number> = {
   critical: 3,
 };
 
+const PRESS_MID_PR_THRESHOLD = 10;
+const PRESS_LOW_MONITOR_THRESHOLD = 30;
+const PRESS_LOW_PR_THRESHOLD = 70;
+
 export async function runResidentAgentCycle(
   input: DiagnoseQuestion[] | ResidentAgentCycleOptions = {},
 ): Promise<ResidentAgentCycleResult> {
@@ -151,16 +155,25 @@ function buildResidentRecommendations(
     stale_low_pending_14d?: number;
     low_cleanup_runs_7d?: number;
   } | null;
-  if ((press?.mid_pending ?? 0) >= 10 || (press?.low_pending ?? 0) >= 20) {
-    const evidence = [
-      `mid=${press?.mid_pending ?? 0}`,
-      `low=${press?.low_pending ?? 0}`,
-      `stale_low_14d=${press?.stale_low_pending_14d ?? 0}`,
-      `cleanup7d=${press?.low_cleanup_runs_7d ?? 0}`,
-    ].join(", ");
+  const pressEvidence = [
+    `mid=${press?.mid_pending ?? 0}`,
+    `low=${press?.low_pending ?? 0}`,
+    `stale_low_14d=${press?.stale_low_pending_14d ?? 0}`,
+    `cleanup7d=${press?.low_cleanup_runs_7d ?? 0}`,
+  ].join(", ");
+  const midNeedsPr = (press?.mid_pending ?? 0) >= PRESS_MID_PR_THRESHOLD;
+  const staleLowNeedsPr = (press?.stale_low_pending_14d ?? 0) > 0;
+  const lowNeedsPr = (press?.low_pending ?? 0) >= PRESS_LOW_PR_THRESHOLD;
+
+  if (midNeedsPr || staleLowNeedsPr || lowNeedsPr) {
     recs.push({
       operation: { area: "agent_call", action: "codex_scraper_fix" },
-      evidence: `press queue ${evidence}`,
+      evidence: `press queue ${pressEvidence}`,
+    });
+  } else if ((press?.low_pending ?? 0) >= PRESS_LOW_MONITOR_THRESHOLD) {
+    recs.push({
+      operation: { area: "site_ops", action: "cron_audit" },
+      evidence: `press low backlog monitor only: ${pressEvidence}`,
     });
   }
 
