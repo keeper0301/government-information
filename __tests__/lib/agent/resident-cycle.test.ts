@@ -105,6 +105,70 @@ describe("runResidentAgentCycle", () => {
     );
   });
 
+  it("keeps young LOW press backlog as monitor-only until P2 threshold", async () => {
+    mocks.diagnoseData.set("press_tier_status", {
+      mid_pending: 0,
+      low_pending: 55,
+      stale_low_pending_14d: 0,
+      low_cleanup_runs_7d: 3,
+    });
+
+    const result = await runResidentAgentCycle();
+
+    const scraperFixes = result.recommendations.filter(
+      (r) => r.operation.action === "codex_scraper_fix",
+    );
+    expect(scraperFixes).toHaveLength(0);
+    expect(result.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: { area: "site_ops", action: "cron_audit" },
+          evidence: expect.stringContaining("press low backlog monitor only"),
+        }),
+      ]),
+    );
+  });
+
+  it("queues a scraper PR when LOW press backlog reaches P2 threshold", async () => {
+    mocks.diagnoseData.set("press_tier_status", {
+      mid_pending: 0,
+      low_pending: 70,
+      stale_low_pending_14d: 0,
+      low_cleanup_runs_7d: 3,
+    });
+
+    const result = await runResidentAgentCycle();
+
+    expect(result.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: { area: "agent_call", action: "codex_scraper_fix" },
+          evidence: expect.stringContaining("low=70"),
+        }),
+      ]),
+    );
+  });
+
+  it("queues a scraper PR when LOW press backlog has stale items", async () => {
+    mocks.diagnoseData.set("press_tier_status", {
+      mid_pending: 0,
+      low_pending: 31,
+      stale_low_pending_14d: 1,
+      low_cleanup_runs_7d: 3,
+    });
+
+    const result = await runResidentAgentCycle();
+
+    expect(result.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: { area: "agent_call", action: "codex_scraper_fix" },
+          evidence: expect.stringContaining("stale_low_14d=1"),
+        }),
+      ]),
+    );
+  });
+
   it("records the caller source for GitHub Actions heartbeat runs", async () => {
     const result = await runResidentAgentCycle({
       source: "github_actions_heartbeat",
