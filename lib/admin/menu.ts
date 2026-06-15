@@ -165,6 +165,12 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         description: "댓글 답글 초안과 검수",
       },
       {
+        href: "/admin/sns-control-tower",
+        label: "SNS 관제탑",
+        icon: "T",
+        description: "최종본·중복본·삭제 실패 원장",
+      },
+      {
         href: "/admin/scrape-local",
         label: "지역 보도자료 수집",
         icon: "🏛️",
