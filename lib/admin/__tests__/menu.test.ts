@@ -12,23 +12,11 @@ describe("ADMIN_MENU 구조", () => {
     expect(ADMIN_MENU.map((g) => g.number)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("총 페이지 메뉴 항목 35개", () => {
-    // 2026-04-29 Phase 3 B3: /admin/dedupe 추가 → 운영 그룹 5→6, 총 18→19.
-    // 2026-05-06: /admin/recommendation-trace 추가 → 지표 그룹 3→4, 총 19→20.
-    // 2026-05-07: /admin/naver-blog, /admin/wordpress, /admin/instagram 추가 → 컨텐츠 그룹 6→9, 총 20→23.
-    // 2026-05-08: /admin/ops-monitor 추가 → 운영 그룹 6→7, 총 23→24.
-    // 2026-05-08 후속: ops-monitor 외 추가 페이지 누적 (Phase 4-A 큐, Phase 5-A long-tail) 23→26.
-    // 2026-05-09: /admin/auto-confirmed 추가 (B안 신뢰도 tier) → 컨텐츠 그룹 9→10, 총 26→27.
-    // 2026-05-10: /admin/autonomous 추가 (자율 운영 마스터 hub) → 운영 상태 그룹 7→8, 총 27→28.
-    // 2026-05-12: /admin/naver-blog/cookies 추가 (Phase 2-B RPA session vault) → 컨텐츠 그룹 10→11, 총 28→29.
-    // 2026-05-16: /admin/instagram/preview-categories 추가 → 컨텐츠 그룹 11→12, 총 29→30.
-    // 2026-05-16: /admin/scrape-local 추가 (Phase B 시·군 보도자료 수집) → 컨텐츠 그룹 12→13, 총 30→31.
-    // 2026-05-19: /admin/external-actions 추가 (사장님 외부 액션 가이드 hub) → 운영 그룹 8→9, 총 31→32.
-    // 2026-05-22: /admin/decisions 추가 (사장님 결정 대기 hub) → 운영 그룹 9→10, 총 32→33.
-    // 2026-06-14: /admin/instagram-comments 추가 (IG 댓글 답글 검수 hub) → 컨텐츠 그룹 +1, 총 33→34.
-    // 2026-06-15: /admin/system-ops 추가 (시스템 운영 콘솔) → 운영 그룹 +1, 총 34→35.
+  it("총 페이지 메뉴 항목 32개", () => {
+    // 2026-06-15 dashboard navigation 재정리: 메뉴를 5개 운영 묶음 / 32개 핵심 항목으로 압축.
+    // 일부 보조 페이지는 직접 URL 접근은 유지하되 사이드바 대표 메뉴에서는 제외한다.
     const total = ADMIN_MENU.reduce((s, g) => s + g.items.length, 0);
-    expect(total).toBe(35);
+    expect(total).toBe(32);
   });
 
   it("href 중복 없음", () => {
@@ -52,9 +40,9 @@ describe("findActiveMenuItem", () => {
     expect(item?.href).toBe("/admin/blog");
   });
 
-  it("긴 prefix 우선 — /admin/news/backfill-dedupe-runner 정확 매칭", () => {
+  it("대표 메뉴 prefix — /admin/news/backfill-dedupe-runner → /admin/news", () => {
     const item = findActiveMenuItem("/admin/news/backfill-dedupe-runner");
-    expect(item?.href).toBe("/admin/news/backfill-dedupe-runner");
+    expect(item?.href).toBe("/admin/news");
   });
 
   it("매칭 없음 → null", () => {
