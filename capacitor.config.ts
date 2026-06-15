@@ -12,9 +12,12 @@ const config: CapacitorConfig = {
   // server.url 을 쓰지만 Capacitor 는 기본 웹 폴더 존재를 요구 → 로딩 셸 폴더.
   webDir: "capacitor-shell",
   server: {
-    // 라이브 사이트를 직접 로드. https 만 허용(cleartext=false)로 보안 유지.
-    url: "https://keepioo.com",
+    // 라이브 사이트를 직접 로드. apex(keepioo.com)는 www 로 리다이렉트되는데, Capacitor 는
+    // server.url 과 다른 호스트로 이동하면 외부 브라우저(Chrome)로 열어버린다. 그래서 최종
+    // 주소인 www 를 직접 지정하고, 두 호스트 모두 앱 내 WebView 에서 열도록 허용한다.
+    url: "https://www.keepioo.com",
     cleartext: false,
+    allowNavigation: ["keepioo.com", "www.keepioo.com"],
   },
   plugins: {
     // 앱 시작 시 keepioo 로고 시작화면을 잠깐 보여주고, keepioo.com 이 뜨면 사라짐.
