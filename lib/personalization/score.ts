@@ -40,6 +40,8 @@ export type ScorableItem = {
   // Phase 1.5: 정확 매칭 데이터 (extractTargeting 결과가 저장된 컬럼)
   income_target_level?: 'low' | 'mid_low' | 'mid' | 'any' | null;
   household_target_tags?: string[] | null;
+  // age_tags DB 필드 — 텍스트 패턴 누락 케이스(e.g. "노후") 보완용 gate 에서 사용
+  age_tags?: string[] | null;
 };
 
 export function buildProgramText(program: ScorableItem): string {
@@ -446,6 +448,15 @@ export function isCohortMismatch(haystack: string, user: UserSignals): boolean {
   return detectCohortMismatch(haystack, user) !== null;
 }
 
+// age_tags DB 필드 기반 게이트: 텍스트 패턴을 우회하는 케이스 보완.
+// "노후긴급자금대부" 처럼 제목에 "노후"만 있고 ELDERLY_COHORT_KEYWORDS 가 누락하는
+// 경우를 DB 에 이미 정확히 태깅된 age_tags 로 직접 차단.
+function isAgeTagMismatch(program: ScorableItem, user: UserSignals): boolean {
+  if (!program.age_tags?.includes('노년')) return false;
+  if (program.age_tags.includes('전연령')) return false;
+  return user.ageGroup !== '60대 이상' && !user.householdTypes.includes('elderly_family');
+}
+
 // 사용자 incomeLevel 이 정책 income_target_level 자격을 충족하는지 확인
 // 소득이 낮을수록 더 많은 정책 대상 — 예: low 사용자는 mid 정책도 신청 가능
 function matchesIncomeRequirement(
@@ -510,6 +521,7 @@ export function isProgramAllowedForUser<T extends ScorableItem>(
 
   // 1) Cohort 키워드 차단 (노년/다문화/아동/장애/저소득/산후조리)
   if (isCohortMismatch(haystack, user)) return false;
+  if (isAgeTagMismatch(program, user)) return false;
 
   // DB에 명시된 소득 조건은 사용자가 소득구분을 입력한 경우 자격 gate 로도 적용한다.
   if (hasIncomeTargetMismatch(user.incomeLevel, program.income_target_level)) {
@@ -547,6 +559,10 @@ export function scoreProgram<T extends ScorableItem>(
   // 점수 0 + 빈 시그널 반환 → filter 에서 minScore 못 넘게 함.
   // (signals 만 비우면 region 만 매칭된 부적합 정책이 통과 가능 — score=0 으로 명시 차단)
   if (isCohortMismatch(haystack, user)) {
+    return { item: program, score: 0, signals: [] };
+  }
+  // age_tags 기반 보완 차단: "노후" 처럼 텍스트 패턴이 누락된 노년 정책 방어
+  if (isAgeTagMismatch(program, user)) {
     return { item: program, score: 0, signals: [] };
   }
 

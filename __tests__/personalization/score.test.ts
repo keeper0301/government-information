@@ -915,6 +915,40 @@ describe('scoreProgram — Cohort 부적합 차단 (Phase 1.6)', () => {
     // household_target +3
     expect(r.score).toBe(3);
   });
+
+  // 2026-06-15 버그: "노후긴급자금대부" 가 30대에게 추천되는 사고.
+  // 제목에 "노후"만 있고 ELDERLY_COHORT_KEYWORDS("노년"/"노인"/"만65세이상")가 누락 →
+  // age_tags DB 필드(["노년"]) 기반 보완 게이트로 차단.
+  it('age_tags=["노년"] 정책 + 30대 사용자 → score 0', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전국',
+        benefit_tags: [],
+        title: '노후긴급자금대부 (국민연금공단)',
+        description: '만60세 이상 국민연금수급자 대상 긴급생활자금',
+        age_tags: ['노년'],
+      },
+      { ...emptyUser, ageGroup: '30대' },
+    );
+    expect(r.score).toBe(0);
+  });
+
+  it('age_tags=["노년"] 정책 + 60대 이상 사용자 → 정상 점수', () => {
+    const r = scoreProgram(
+      {
+        ...baseProgram,
+        region: '전라남도',
+        benefit_tags: [],
+        title: '노후긴급자금대부 (국민연금공단)',
+        description: '만60세 이상 국민연금수급자 대상 긴급생활자금',
+        age_tags: ['노년'],
+      },
+      { ...emptyUser, ageGroup: '60대 이상', region: '전남' },
+    );
+    // 광역 매칭 +5 → 5
+    expect(r.score).toBeGreaterThan(0);
+  });
 });
 
 // ============================================================
