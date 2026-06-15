@@ -17,7 +17,7 @@ function buildSearchItems(): SearchItem[] {
     {
       href: "/admin",
       label: "대시보드",
-      icon: "⌂",
+      icon: "🏠",
       group: "홈",
       description: "오늘 처리할 일과 운영 요약",
     },
@@ -126,7 +126,7 @@ export function CmdKPalette() {
       <div className="relative w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl">
         <div className="flex items-center gap-2 border-b border-grey-100 px-4 py-3">
           <span aria-hidden className="text-grey-500">
-            ⌕
+            🔍
           </span>
           <input
             ref={inputRef}
@@ -164,7 +164,7 @@ export function CmdKPalette() {
                       : "text-grey-800 hover:bg-grey-50")
                   }
                 >
-                  <span className="mt-0.5 w-5 shrink-0 text-center text-xs" aria-hidden>
+                  <span className="mt-0.5 w-6 shrink-0 text-center text-base" aria-hidden>
                     {item.icon}
                   </span>
                   <span className="min-w-0 flex-1">

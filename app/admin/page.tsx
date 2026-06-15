@@ -6,9 +6,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { getActorActionsPaged } from "@/lib/admin-actions";
 import {
+  getAuthUsersCached,
   getDailyRevenueEstimated,
   getDailySignups,
-  getAuthUsersCached,
 } from "@/lib/admin-stats";
 import { getDashboardAlerts, type DashboardAlert } from "@/lib/admin/dashboard-alerts";
 import { getAdminPersonalizationStatus } from "@/lib/admin/personalization-status";
@@ -185,21 +185,25 @@ export default async function AdminHomePage({
   const primaryWork = [
     {
       href: "/admin/autonomous",
+      icon: "🤖",
       title: "자동화 상태 보기",
       body: "상주 에이전트, 개선 과제, 승인 필요 항목을 한 번에 봅니다.",
     },
     {
       href: "/admin/system-ops",
-      title: "시스템 실행·수정",
+      icon: "🛠️",
+      title: "시스템 실행과 수정",
       body: "cron 재실행, 환경 설정, 오류 점검을 운영 콘솔에서 처리합니다.",
     },
     {
       href: "/admin/press-ingest",
+      icon: "📰",
       title: "정책 후보 검수",
-      body: "보도자료 기반 후보를 확인하고 등록 또는 제외합니다.",
+      body: "보도자료 기반 후보를 확인하고 등록하거나 제외합니다.",
     },
     {
       href: "/admin/blog",
+      icon: "✍️",
       title: "콘텐츠 발행 관리",
       body: "블로그 글, SEO 글, SNS 발행 흐름으로 이동합니다.",
     },
@@ -223,15 +227,13 @@ export default async function AdminHomePage({
       )}
 
       <section className="mb-6 rounded-xl border border-grey-200 bg-grey-50 p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-extrabold tracking-[-0.02em] text-grey-900">
-              오늘 먼저 볼 것
-            </h2>
-            <p className="mt-1 text-sm text-grey-700">
-              자주 쓰는 작업만 앞에 모았습니다. 나머지는 왼쪽 메뉴나 검색으로 이동하세요.
-            </p>
-          </div>
+        <div className="mb-3">
+          <h2 className="text-base font-extrabold tracking-[-0.02em] text-grey-900">
+            오늘 먼저 볼 것
+          </h2>
+          <p className="mt-1 text-sm text-grey-700">
+            자주 쓰는 작업만 앞에 모았습니다. 나머지는 왼쪽 메뉴나 검색으로 이동하세요.
+          </p>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {primaryWork.map((item) => (
@@ -240,6 +242,9 @@ export default async function AdminHomePage({
               href={item.href}
               className="rounded-lg border border-grey-200 bg-white p-4 no-underline transition-colors hover:border-blue-300 hover:bg-blue-50"
             >
+              <div className="mb-2 text-2xl" aria-hidden>
+                {item.icon}
+              </div>
               <div className="text-sm font-extrabold text-grey-900">{item.title}</div>
               <div className="mt-1 text-xs leading-[1.5] text-grey-700">{item.body}</div>
             </Link>
@@ -250,7 +255,7 @@ export default async function AdminHomePage({
       {alerts.length > 0 && (
         <section className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-extrabold text-red-800">지금 처리 필요</h2>
+            <h2 className="text-sm font-extrabold text-red-800">🚨 지금 처리 필요</h2>
             <span className="text-xs font-bold text-red-700">{alerts.length}개 항목</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -282,7 +287,7 @@ export default async function AdminHomePage({
       </section>
 
       <section className="mb-7 grid grid-cols-1 gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-        <Panel title="자동화 준비도">
+        <Panel title="🤖 자동화 준비도">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <MiniMetric
               label="추천 준비"
@@ -317,7 +322,7 @@ export default async function AdminHomePage({
           </div>
         </Panel>
 
-        <Panel title="정책 저장소">
+        <Panel title="🗂️ 정책 저장소">
           <div className="text-sm font-bold text-grey-900">
             {policyStorageLabel(policyStorage.status)}
           </div>
@@ -331,16 +336,16 @@ export default async function AdminHomePage({
       </section>
 
       <section className="mb-7 grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Panel title="30일 가입 추세">
+        <Panel title="📈 30일 가입 추세">
           <Sparkline data={dailySignups} unit="명" stroke="#3182F6" />
         </Panel>
-        <Panel title="30일 매출 추정">
+        <Panel title="💰 30일 매출 추정">
           <Sparkline data={dailyRevenue} unit="원" stroke="#10B981" />
         </Panel>
       </section>
 
       <section className="mb-7 grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Panel title={`최근 가입자 ${recentSignups.length}명`}>
+        <Panel title={`👥 최근 가입자 ${recentSignups.length}명`}>
           {recentSignups.length === 0 ? (
             <EmptyText>최근 가입자가 없습니다.</EmptyText>
           ) : (
@@ -355,9 +360,9 @@ export default async function AdminHomePage({
                       {user.email ?? "이메일 없음"}
                     </div>
                     <div className="mt-0.5 text-xs text-grey-600">
-                      {[user.region, user.occupation].filter(Boolean).join(" · ") ||
+                      {[user.region, user.occupation].filter(Boolean).join(" / ") ||
                         "프로필 미작성"}
-                      {" · "}
+                      {" / "}
                       {fmtRelative(user.createdAt)}
                     </div>
                   </div>
@@ -368,7 +373,7 @@ export default async function AdminHomePage({
           )}
         </Panel>
 
-        <Panel title={`내 최근 작업 ${myActions.records.length}건`}>
+        <Panel title={`📋 내 최근 작업 ${myActions.records.length}건`}>
           {myActions.records.length === 0 ? (
             <EmptyText>최근 실행한 관리자 작업이 없습니다.</EmptyText>
           ) : (
@@ -384,7 +389,7 @@ export default async function AdminHomePage({
                     </div>
                     <div className="mt-0.5 text-xs text-grey-600">
                       {fmtRelative(action.createdAt)}
-                      {action.targetUserId ? ` · ${action.targetUserId.slice(0, 8)}` : ""}
+                      {action.targetUserId ? ` / ${action.targetUserId.slice(0, 8)}` : ""}
                     </div>
                   </div>
                   {action.targetUserId && (
@@ -401,7 +406,7 @@ export default async function AdminHomePage({
       </section>
 
       <section className="mb-7">
-        <Panel title="전체 기능 지도">
+        <Panel title="🧭 전체 기능 지도">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
             {ADMIN_MENU.map((group) => (
               <div key={group.number}>
@@ -416,6 +421,9 @@ export default async function AdminHomePage({
                       className="block truncate rounded-md px-2 py-1.5 text-sm font-semibold text-grey-800 no-underline hover:bg-grey-100"
                       title={item.description}
                     >
+                      <span className="mr-1.5" aria-hidden>
+                        {item.icon}
+                      </span>
                       {item.label}
                     </Link>
                   ))}
@@ -427,7 +435,7 @@ export default async function AdminHomePage({
       </section>
 
       <section id="user-search" className="scroll-mt-20">
-        <Panel title="사용자 조회">
+        <Panel title="👤 사용자 조회">
           <p className="mb-3 text-sm leading-[1.6] text-grey-700">
             이메일 또는 UUID를 입력하면 사용자 상세 페이지로 바로 이동합니다.
           </p>

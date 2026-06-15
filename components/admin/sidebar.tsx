@@ -40,7 +40,7 @@ export function Sidebar({ onItemClick }: Props) {
           }}
           className="flex w-full items-center gap-2 rounded-lg border border-grey-200 bg-white px-3 py-2.5 text-sm text-grey-600 transition-colors hover:border-blue-300 hover:text-grey-900"
         >
-          <span aria-hidden>⌕</span>
+          <span aria-hidden>🔍</span>
           <span className="flex-1 text-left">페이지 검색</span>
           <kbd className="rounded border border-grey-200 bg-grey-50 px-1.5 py-0.5 text-xs text-grey-500">
             Ctrl K
@@ -57,7 +57,7 @@ export function Sidebar({ onItemClick }: Props) {
             : "flex items-center gap-2.5 py-3 pl-6 pr-5 text-sm font-bold text-grey-800 no-underline hover:bg-grey-100"
         }
       >
-        <span aria-hidden>⌂</span>
+        <span aria-hidden>🏠</span>
         대시보드
       </Link>
 
@@ -88,7 +88,7 @@ export function Sidebar({ onItemClick }: Props) {
                     : "flex items-center gap-2.5 py-2.5 pl-9 pr-5 text-sm text-grey-700 no-underline hover:bg-grey-100 hover:text-grey-900"
                 }
               >
-                <span className="w-4 shrink-0 text-center text-xs" aria-hidden>
+                <span className="w-5 shrink-0 text-center text-sm" aria-hidden>
                   {item.icon}
                 </span>
                 <span className="min-w-0 truncate">{item.label}</span>
