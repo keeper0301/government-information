@@ -826,12 +826,33 @@ function CodexW1ProgressCard({ readiness }: { readiness: W1ReadinessResult }) {
 }
 
 function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
+  const effectiveHealthScore =
+    snapshot.automationReliability.status === "healthy" && snapshot.healthScore === 0
+      ? null
+      : snapshot.healthScore;
   const scoreTone =
-    snapshot.healthScore >= 80
+    effectiveHealthScore === null || effectiveHealthScore >= 80
       ? "border-green-200 bg-green-50 text-green-800"
-      : snapshot.healthScore >= 55
+      : effectiveHealthScore >= 55
         ? "border-amber-200 bg-amber-50 text-amber-800"
         : "border-red-200 bg-red-50 text-red-800";
+  const statusLabel: Record<string, string> = {
+    healthy: "정상",
+    warning: "주의",
+    critical: "긴급",
+  };
+  const severityLabel: Record<string, string> = {
+    critical: "긴급",
+    high: "높음",
+    medium: "보통",
+    low: "낮음",
+  };
+  const laneLabel: Record<ImprovementCandidate["lane"], string> = {
+    auto_execute: "자동 처리 가능",
+    auto_pr: "PR 후보",
+    admin_review: "검토 필요",
+    blocked: "차단됨",
+  };
   const laneTone: Record<ImprovementCandidate["lane"], string> = {
     auto_execute: "border-green-200 bg-green-50 text-green-800",
     auto_pr: "border-blue-200 bg-blue-50 text-blue-800",
@@ -839,40 +860,48 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
     blocked: "border-red-200 bg-red-50 text-red-800",
   };
   const cards = [
-    ["Health", `${snapshot.healthScore}/100`],
+    ["안정성", effectiveHealthScore === null ? "정상" : `${effectiveHealthScore}/100`],
     [
-      "Heartbeat",
+      "실행 확인",
       `${snapshot.automationReliability.actualRuns24h}/${snapshot.automationReliability.targetRuns24h}`,
     ],
-    ["Anomalies", `${snapshot.anomalyCount}`],
-    ["Critical", `${snapshot.criticalAnomalyCount}`],
-    ["PR-ready", `${snapshot.prReadyCount}`],
-    ["Auto-safe", `${snapshot.autoExecutableCount}`],
-    ["Review", `${snapshot.adminReviewCount}`],
-    ["Blocked", `${snapshot.blockedCount}`],
+    ["이상 신호", `${snapshot.anomalyCount}`],
+    ["긴급", `${snapshot.criticalAnomalyCount}`],
+    ["PR 후보", `${snapshot.prReadyCount}`],
+    ["자동 가능", `${snapshot.autoExecutableCount}`],
+    ["검토 필요", `${snapshot.adminReviewCount}`],
+    ["차단", `${snapshot.blockedCount}`],
   ] as const;
+  const topAnomaly = snapshot.anomalies[0];
+  const topCandidate = snapshot.candidates[0];
 
   return (
     <section className="mb-4 rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="mb-1 text-[11px] font-semibold text-grey-600">
-            Resident learning loop
+            상주 학습 루프
           </div>
           <h2 className="text-base font-semibold">
-            Auto-ops memory, PR queue, cost guard, and reliability score
+            자동 운영 기록, PR 후보, 비용 제한, 안정성 점검
           </h2>
           <p className="mt-1 text-xs text-grey-700">
-            Built from admin_actions. Low-risk work can stay automatic; repeated medium-risk work
-            becomes a GitHub PR candidate; destructive work stays blocked.
+            운영 로그를 읽어 낮은 위험 작업은 자동으로 유지하고, 반복되는 중간 위험 작업은 PR 후보로 올리며,
+            파괴적인 작업은 계속 차단합니다.
           </p>
         </div>
         <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${scoreTone}`}>
-          {snapshot.automationReliability.status}
+          {statusLabel[snapshot.automationReliability.status] ?? snapshot.automationReliability.status}
         </span>
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-6">
+      {effectiveHealthScore === null && (
+        <div className="mb-3 rounded-md border border-green-100 bg-green-50 px-3 py-2 text-[11px] text-green-800">
+          상태는 정상입니다. 원본 안정성 점수가 0으로 들어왔지만 치명/차단 신호가 없어 숫자 대신 정상으로 표시합니다.
+        </div>
+      )}
+
+      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
         {cards.map(([label, value]) => (
           <div key={label} className="rounded-md border border-grey-200 bg-grey-50 px-3 py-2">
             <div className="text-[11px] text-grey-600">{label}</div>
@@ -883,42 +912,64 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
 
       <div className="mb-3 grid gap-3 md:grid-cols-2">
         <div className="rounded-md border border-grey-200 bg-grey-50 p-3">
-          <div className="mb-2 text-xs font-semibold text-grey-900">Daily memory</div>
+          <div className="mb-2 text-xs font-semibold text-grey-900">오늘의 운영 기억</div>
           <p className="mb-2 text-xs text-grey-700">{snapshot.digest.summary}</p>
           <div className="grid gap-2 text-[11px] text-grey-700 md:grid-cols-3">
-            <MiniList title="Wins" items={snapshot.digest.wins} />
-            <MiniList title="Risks" items={snapshot.digest.risks} fallback="No active risk." />
-            <MiniList title="Next" items={snapshot.digest.nextActions} />
+            <MiniList title="잘 된 것" items={snapshot.digest.wins} />
+            <MiniList title="위험" items={snapshot.digest.risks} fallback="활성 위험 없음" />
+            <MiniList title="다음 할 일" items={snapshot.digest.nextActions} />
           </div>
         </div>
         <div className="rounded-md border border-grey-200 bg-grey-50 p-3">
-          <div className="mb-2 text-xs font-semibold text-grey-900">Source and spend guard</div>
+          <div className="mb-2 text-xs font-semibold text-grey-900">실행 출처와 비용 제한</div>
           <div className="space-y-1 text-[11px] text-grey-700">
             {snapshot.sourceStats24h.slice(0, 4).map((source) => (
               <div key={source.source} className="flex items-center justify-between gap-2">
                 <span className="truncate">{source.source}</span>
                 <span className="font-mono">
-                  d{source.diagnoseRuns}/e{source.executeRuns}
+                  진단 {source.diagnoseRuns} / 실행 {source.executeRuns}
                 </span>
               </div>
             ))}
-            {snapshot.sourceStats24h.length === 0 && <div>No heartbeat source yet.</div>}
+            {snapshot.sourceStats24h.length === 0 && <div>아직 실행 출처 기록이 없습니다.</div>}
           </div>
           <div className="mt-3 rounded border border-white bg-white p-2 text-[11px] text-grey-700">
             <div>
-              Cost: {formatKrw(snapshot.cost.totalCostKrw)} / projected{" "}
+              비용: {formatKrw(snapshot.cost.totalCostKrw)} / 예상{" "}
               {formatKrw(snapshot.cost.monthlyProjectionKrw)}
             </div>
-            <div>Cap usage: {formatPercent(snapshot.cost.capRatio)}</div>
+            <div>한도 사용률: {formatPercent(snapshot.cost.capRatio)}</div>
             <div className="mt-1">{snapshot.cost.recommendation}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-3 rounded-md border border-blue-100 bg-blue-50 p-3">
+        <div className="mb-2 text-xs font-semibold text-blue-950">지금 먼저 볼 것</div>
+        <div className="grid gap-2 text-[11px] text-blue-900 md:grid-cols-2">
+          <div className="rounded bg-white/70 p-2">
+            <div className="font-semibold">상위 이상 신호</div>
+            <div className="mt-1">
+              {topAnomaly
+                ? `${topAnomaly.title} · ${severityLabel[topAnomaly.severity] ?? topAnomaly.severity}`
+                : "현재 이상 신호 없음"}
+            </div>
+          </div>
+          <div className="rounded bg-white/70 p-2">
+            <div className="font-semibold">상위 개선 후보</div>
+            <div className="mt-1">
+              {topCandidate
+                ? `${topCandidate.title} · ${laneLabel[topCandidate.lane]}`
+                : "현재 개선 후보 없음"}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="mb-3 rounded-md border border-grey-200 bg-grey-50 p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold text-grey-900">Anomaly detection</div>
-          <span className="text-[11px] text-grey-600">{snapshot.anomalyCount} signals</span>
+          <div className="text-xs font-semibold text-grey-900">이상 신호 감지</div>
+          <span className="text-[11px] text-grey-600">{snapshot.anomalyCount}개 신호</span>
         </div>
         <div className="space-y-2">
           {snapshot.anomalies.slice(0, 6).map((anomaly) => (
@@ -936,7 +987,7 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
                           : "border-grey-200 bg-grey-50 text-grey-700"
                   }`}
                 >
-                  {anomaly.severity}
+                  {severityLabel[anomaly.severity] ?? anomaly.severity}
                 </span>
                 <span className="text-[10px] text-grey-500">{anomaly.area}</span>
               </div>
@@ -946,7 +997,7 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
           ))}
           {snapshot.anomalies.length === 0 && (
             <div className="rounded border border-white bg-white p-2 text-xs text-grey-700">
-              No anomaly signal yet. The resident loop is currently within guardrails.
+              현재 이상 신호가 없습니다. 상주 루프가 제한선 안에서 정상 동작 중입니다.
             </div>
           )}
         </div>
@@ -954,8 +1005,8 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
 
       <div className="rounded-md border border-grey-200 bg-grey-50 p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold text-grey-900">Improvement candidate queue</div>
-          <span className="text-[11px] text-grey-600">{snapshot.candidates.length} learned</span>
+          <div className="text-xs font-semibold text-grey-900">개선 후보 큐</div>
+          <span className="text-[11px] text-grey-600">{snapshot.candidates.length}개 학습됨</span>
         </div>
         <div className="space-y-2">
           {snapshot.candidates.slice(0, 6).map((candidate) => (
@@ -963,10 +1014,10 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-grey-950">{candidate.title}</span>
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] ${laneTone[candidate.lane]}`}>
-                  {candidate.lane.replace("_", " ")}
+                  {laneLabel[candidate.lane]}
                 </span>
                 <span className="text-[10px] text-grey-500">
-                  {candidate.severity} · seen {candidate.occurrences}
+                  {severityLabel[candidate.severity] ?? candidate.severity} · {candidate.occurrences}회 감지
                 </span>
               </div>
               <div className="text-[11px] text-grey-700">{candidate.evidence || candidate.action}</div>
@@ -974,7 +1025,7 @@ function LearningLoopCard({ snapshot }: { snapshot: LearningLoopSnapshot }) {
           ))}
           {snapshot.candidates.length === 0 && (
             <div className="rounded border border-white bg-white p-2 text-xs text-grey-700">
-              No candidate yet. The resident cycle will keep collecting signals.
+              아직 개선 후보가 없습니다. 상주 cycle이 계속 신호를 수집합니다.
             </div>
           )}
         </div>
