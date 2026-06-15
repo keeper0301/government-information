@@ -3,6 +3,8 @@ import {
   buildCandidateUpsert,
   buildLoanInsertPayload,
   buildWelfareInsertPayload,
+  eligibleAutoConfirmTiers,
+  shouldAutoConfirm,
   type PressCandidateForConfirm,
 } from "@/lib/press-ingest/candidates";
 import type { ClassifyResult } from "@/lib/press-ingest/classify";
@@ -55,6 +57,20 @@ describe("press ingest L2 candidate mapping", () => {
     expect(unsure.status).toBe("skipped");
     expect(unsure.program_type).toBe("unsure");
     expect(unsure.skip_reason).toBe("program_type_unsure");
+  });
+});
+
+describe("press ingest auto-confirm tier filter", () => {
+  it("floor=mid일 때 high/mid만 자동승인 대상으로 고른다", () => {
+    expect(eligibleAutoConfirmTiers("high")).toEqual(["high"]);
+    expect(eligibleAutoConfirmTiers("mid")).toEqual(["high", "mid"]);
+    expect(eligibleAutoConfirmTiers("low")).toEqual(["high", "mid", "low"]);
+  });
+
+  it("legacy/null tier는 자동승인에서 제외한다", () => {
+    expect(shouldAutoConfirm(null, "mid")).toBe(false);
+    expect(shouldAutoConfirm("low", "mid")).toBe(false);
+    expect(shouldAutoConfirm("mid", "mid")).toBe(true);
   });
 });
 

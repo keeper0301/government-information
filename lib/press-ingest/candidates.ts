@@ -236,6 +236,14 @@ export function shouldAutoConfirm(
   return TIER_RANK[tier] >= TIER_RANK[floor];
 }
 
+export function eligibleAutoConfirmTiers(
+  floor: "high" | "mid" | "low",
+): Array<"high" | "mid" | "low"> {
+  return (["high", "mid", "low"] as const).filter((tier) =>
+    shouldAutoConfirm(tier, floor),
+  );
+}
+
 function requirePending(candidate: PressCandidateForConfirm, expected: "welfare" | "loan") {
   if (candidate.status !== "pending") {
     throw new Error("pending 후보만 확정할 수 있습니다.");
@@ -582,8 +590,12 @@ export async function autoConfirmPendingPressCandidates({
   // Spec 1 — DB 학습값 (press_auto_confirm_settings) 을 env 보다 우선 적용.
   // cron 한 사이클 동안 동일 floor 유지 → row 별 추가 DB 조회 없음.
   const currentFloor = await getCurrentTierFloor();
+  const eligibleTiers = eligibleAutoConfirmTiers(currentFloor);
   // news_posts 의 body·ministry + 후보의 confidence_tier 까지 select.
   // tier 분기 (Task 4) + fallback chain 입력 (Task 2 직전 작업) 둘 다 필요.
+  // low/legacy 후보가 오래된 순서로 앞에 쌓이면 limit 50 이 먼저 차서
+  // floor=mid 인데도 high/mid 후보가 뒤에서 영구 starvation 될 수 있다.
+  // 따라서 현재 floor 에서 실제 자동 confirm 가능한 tier 만 DB query 단계에서 고른다.
   const { data, error } = await admin
     .from("press_ingest_candidates")
     .select(
@@ -591,6 +603,7 @@ export async function autoConfirmPendingPressCandidates({
     )
     .eq("status", "pending")
     .in("program_type", ["welfare", "loan"])
+    .in("confidence_tier", eligibleTiers)
     .order("classified_at", { ascending: true })
     .limit(limit);
   if (error) {
