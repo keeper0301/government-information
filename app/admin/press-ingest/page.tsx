@@ -22,6 +22,8 @@ import {
   listPressCandidates,
   countLegacyPendingPressCandidates,
   detectPendingTitleDupeGroups,
+  buildLowReviewBoard,
+  type LowReviewBoard,
   type PressCandidateListRow,
 } from "@/lib/press-ingest/candidates";
 import { PressClassifyAction } from "./classify-action";
@@ -193,6 +195,7 @@ export default async function PressIngestPage({
     ]);
   // 7일 추세 max — 막대 길이 정규화 용
   const trendMax = Math.max(1, ...autoTrend.map((d) => d.count));
+  const lowReviewBoard = buildLowReviewBoard(l2Candidates);
   // OPENAI_API_KEY 설정 여부 — server side 검증 (값 노출 X)
   const llmEnabled = !!process.env.OPENAI_API_KEY;
 
@@ -370,7 +373,9 @@ export default async function PressIngestPage({
         />
       </section>
 
-      {/* 7일 L2 승인 등록 추세 — 일별 막대 7개. 정책 발굴 페이스 한눈에. */}
+      <LowReviewBoardPanel board={lowReviewBoard} />
+
+      {/* 7일 L2 승인 등록 추세 — 일별 막대 7개. */}
       <section className="mb-5 bg-white border border-grey-200 rounded-lg p-4">
         <h2 className="text-sm font-bold text-grey-900 mb-3 tracking-[-0.2px]">
           7일 L2 승인 등록 추세
@@ -707,6 +712,70 @@ function urlHost(url: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+function LowReviewBoardPanel({ board }: { board: LowReviewBoard }) {
+  const items = [
+    {
+      label: "원문 확인 후 승인 가능",
+      value: board.buckets.confirm_ready,
+      tone: "bg-green-50 text-green-700",
+    },
+    {
+      label: "URL 보강 필요",
+      value: board.buckets.missing_url,
+      tone: "bg-amber-50 text-amber-700",
+    },
+    {
+      label: "마감 의심",
+      value: board.buckets.deadline_expired,
+      tone: "bg-red-50 text-red-700",
+    },
+    {
+      label: "14일+ 묵음",
+      value: board.buckets.stale_review,
+      tone: "bg-grey-100 text-grey-700",
+    },
+  ];
+
+  return (
+    <section className="mb-5 rounded-lg border border-orange-200 bg-orange-50 p-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-sm font-bold text-orange-950 tracking-[-0.2px]">
+            LOW 후보 read-only 검수판
+          </h2>
+          <p className="mt-1 text-xs leading-[1.5] text-orange-900">
+            자동승인 안전선은 그대로 닫아두고, 사람이 볼 순서만 나눕니다.
+          </p>
+        </div>
+        <Link
+          href="/admin/press-ingest?tier=low"
+          className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-orange-700 no-underline ring-1 ring-orange-200 hover:bg-orange-100"
+        >
+          LOW만 보기
+        </Link>
+      </div>
+      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+        {items.map((item) => (
+          <div key={item.label} className="rounded-md bg-white p-3 ring-1 ring-orange-100">
+            <div className={`inline-flex rounded px-2 py-0.5 text-xs font-bold ${item.tone}`}>
+              {item.value}건
+            </div>
+            <div className="mt-1 text-xs font-semibold text-grey-800">
+              {item.label}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs font-semibold text-orange-950">
+        다음 조치: {board.topAction}
+      </p>
+      <p className="mt-1 text-xs text-orange-800">
+        LOW 자동승인: {board.autoConfirmSafe ? "허용" : "차단 유지"}
+      </p>
+    </section>
+  );
 }
 
 function L2CandidateCard({ candidate }: { candidate: PressCandidateListRow }) {

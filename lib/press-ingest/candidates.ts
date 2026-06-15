@@ -77,6 +77,19 @@ export type PressCandidateListRow = PressCandidateForConfirm & {
   confidence_tier: "high" | "mid" | "low" | null;
 };
 
+export type LowReviewBucket =
+  | "confirm_ready"
+  | "missing_url"
+  | "deadline_expired"
+  | "stale_review";
+
+export type LowReviewBoard = {
+  total: number;
+  buckets: Record<LowReviewBucket, number>;
+  topAction: string;
+  autoConfirmSafe: false;
+};
+
 type PressCandidateDbRow = {
   id: string;
   news_id: string;
@@ -198,6 +211,63 @@ export function buildFailedCandidateUpsert({
     updated_at: now,
     // 분류 실패 자체로는 신뢰도 측정 불가 → null. 자동 confirm 대상에서도 자연 제외.
     confidence_tier: null,
+  };
+}
+
+function parseDateOnly(value: string | null | undefined): Date | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function classifyLowReviewBucket(
+  candidate: Pick<PressCandidateListRow, "classified_payload" | "created_at">,
+  now = new Date(),
+): LowReviewBucket {
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const end = parseDateOnly(candidate.classified_payload.apply_end);
+  if (end && end < today) return "deadline_expired";
+
+  const createdAt = candidate.created_at ? new Date(candidate.created_at) : null;
+  if (createdAt && !Number.isNaN(createdAt.getTime())) {
+    const ageMs = now.getTime() - createdAt.getTime();
+    if (ageMs >= 14 * 24 * 3600_000) return "stale_review";
+  }
+
+  if (!candidate.classified_payload.apply_url) return "missing_url";
+  return "confirm_ready";
+}
+
+export function buildLowReviewBoard(
+  candidates: PressCandidateListRow[],
+  now = new Date(),
+): LowReviewBoard {
+  const buckets: Record<LowReviewBucket, number> = {
+    confirm_ready: 0,
+    missing_url: 0,
+    deadline_expired: 0,
+    stale_review: 0,
+  };
+
+  for (const candidate of candidates) {
+    if (candidate.status !== "pending" || candidate.confidence_tier !== "low") continue;
+    buckets[classifyLowReviewBucket(candidate, now)] += 1;
+  }
+
+  const topAction =
+    buckets.confirm_ready > 0
+      ? "신청 URL 있는 후보부터 원문 확인 후 수동 승인"
+      : buckets.missing_url > 0
+        ? "URL 없는 후보는 원문에서 신청 경로 보강 후 승인/해제"
+        : buckets.deadline_expired > 0 || buckets.stale_review > 0
+          ? "마감·장기 묵음 후보는 해제 우선 검토"
+          : "LOW 검수 대기 없음";
+
+  return {
+    total: Object.values(buckets).reduce((sum, count) => sum + count, 0),
+    buckets,
+    topAction,
+    autoConfirmSafe: false,
   };
 }
 
