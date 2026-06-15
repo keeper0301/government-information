@@ -92,14 +92,21 @@ jobs:
           echo "== manual site cron =="
           echo "endpoint=${PATH_TO_CALL}"
           echo "method=${METHOD}"
-          auth_header="Authorization: Bearer ${CRON_SECRET}"
-          http_status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
-            --request "${METHOD}" \
-            --max-time 420 \
-            -H "${auth_header}" \
-            -H "Content-Type: application/json" \
-            --data "${body}" \
-            "${url}")
+          auth_header="Authorization: Bearer "
+          auth_header+="${CRON_SECRET}"
+          curl_args=(
+            -sS
+            -o /tmp/response.json
+            -w "%{http_code}"
+            --request "${METHOD}"
+            --max-time 420
+            -H "${auth_header}"
+            -H "Content-Type: application/json"
+          )
+          if [ "${METHOD}" != "GET" ]; then
+            curl_args+=(--data "${body}")
+          fi
+          http_status=$(curl "${curl_args[@]}" "${url}")
 
           echo "HTTP ${http_status}"
           cat /tmp/response.json
