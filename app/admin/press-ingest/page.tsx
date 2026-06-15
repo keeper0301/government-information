@@ -182,20 +182,31 @@ export default async function PressIngestPage({
       ? params.tier
       : undefined;
 
-  const [candidates, l2Candidates, kpi, autoTrend, recentAuto, autoStats, legacyCount, dupeGroups] =
-    await Promise.all([
-      getPressIngestCandidates(hours, 100),
-      listPressCandidates(100, tierFilter ? { tier: tierFilter } : undefined),
-      getPressIngestKpi(),
-      getAutoIngestTrend(7),
-      getRecentAutoIngestRows(5),
-      getPressAutoConfirmStats(),
-      countLegacyPendingPressCandidates(),
-      detectPendingTitleDupeGroups({ minGroupSize: 3 }),
-    ]);
+  const [
+    candidates,
+    l2Candidates,
+    lowReviewCandidates,
+    kpi,
+    autoTrend,
+    recentAuto,
+    autoStats,
+    legacyCount,
+    dupeGroups,
+  ] = await Promise.all([
+    getPressIngestCandidates(hours, 100),
+    listPressCandidates(100, tierFilter ? { tier: tierFilter } : undefined),
+    // LOW 운영 판단판은 현재 화면 tier 필터나 100건 페이지 제한과 분리해서 항상 전체 LOW 큐 기준으로 계산한다.
+    listPressCandidates(500, { tier: "low" }),
+    getPressIngestKpi(),
+    getAutoIngestTrend(7),
+    getRecentAutoIngestRows(5),
+    getPressAutoConfirmStats(),
+    countLegacyPendingPressCandidates(),
+    detectPendingTitleDupeGroups({ minGroupSize: 3 }),
+  ]);
   // 7일 추세 max — 막대 길이 정규화 용
   const trendMax = Math.max(1, ...autoTrend.map((d) => d.count));
-  const lowReviewBoard = buildLowReviewBoard(l2Candidates);
+  const lowReviewBoard = buildLowReviewBoard(lowReviewCandidates);
   // OPENAI_API_KEY 설정 여부 — server side 검증 (값 노출 X)
   const llmEnabled = !!process.env.OPENAI_API_KEY;
 
