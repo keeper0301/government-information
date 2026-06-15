@@ -154,6 +154,95 @@ function policyStorageLabel(status: string) {
   return "정책 저장소 점검 필요";
 }
 
+type FocusItem = {
+  href: string;
+  icon: string;
+  title: string;
+  body: string;
+  tone: "danger" | "warn" | "good";
+  badge: string;
+};
+
+function buildFocusItems({
+  alerts,
+  stats,
+  personalization,
+  policyStorageStatus,
+}: {
+  alerts: DashboardAlert[];
+  stats: Awaited<ReturnType<typeof get24hStats>>;
+  personalization: Awaited<ReturnType<typeof getAdminPersonalizationStatus>>;
+  policyStorageStatus: string;
+}): FocusItem[] {
+  const items: FocusItem[] = [];
+
+  if (alerts.length > 0) {
+    items.push({
+      href: alerts[0].href,
+      icon: "🚨",
+      title: "긴급 처리 항목 확인",
+      body: `${alertLabel(alerts[0])} 등 ${alerts.length.toLocaleString()}개 항목이 대기 중입니다.`,
+      tone: "danger",
+      badge: "긴급",
+    });
+  }
+
+  if (stats.cronFailures > 0) {
+    items.push({
+      href: "/admin/cron-failures",
+      icon: "⚙️",
+      title: "cron 실패 재시도",
+      body: `최근 24시간 실패 ${stats.cronFailures.toLocaleString()}건을 확인하고 재실행합니다.`,
+      tone: "warn",
+      badge: "점검",
+    });
+  }
+
+  if (personalization.failed24h > 0) {
+    items.push({
+      href: "/admin/alimtalk",
+      icon: "📤",
+      title: "알림 발송 실패 확인",
+      body: `최근 24시간 실패 ${personalization.failed24h.toLocaleString()}건, 실패율 ${personalization.deliveryFailureRate}%입니다.`,
+      tone: "warn",
+      badge: "발송",
+    });
+  }
+
+  if (policyStorageStatus !== "ready") {
+    items.push({
+      href: "/admin/recommendation-trace",
+      icon: "🗂️",
+      title: "정책 저장소 점검",
+      body: "정책함 저장 상태가 정상인지 확인하고 필요한 설정을 보강합니다.",
+      tone: "warn",
+      badge: "저장소",
+    });
+  }
+
+  if (items.length === 0) {
+    items.push({
+      href: "/admin/autonomous",
+      icon: "✅",
+      title: "운영 상태 정상",
+      body: "긴급 알림이 없습니다. 자동화 상태와 다음 개선 과제를 확인하세요.",
+      tone: "good",
+      badge: "정상",
+    });
+  }
+
+  items.push({
+    href: "/admin/system-ops",
+    icon: "🛠️",
+    title: "시스템 운영 콘솔",
+    body: "실행, 수정, 오류 해결 도구를 한 곳에서 사용합니다.",
+    tone: "good",
+    badge: "도구",
+  });
+
+  return items.slice(0, 4);
+}
+
 export default async function AdminHomePage({
   searchParams,
 }: {
@@ -208,6 +297,12 @@ export default async function AdminHomePage({
       body: "블로그 글, SEO 글, SNS 발행 흐름으로 이동합니다.",
     },
   ];
+  const focusItems = buildFocusItems({
+    alerts,
+    stats,
+    personalization,
+    policyStorageStatus: policyStorage.status,
+  });
 
   return (
     <div className="max-w-[1120px]">
@@ -225,6 +320,59 @@ export default async function AdminHomePage({
           {params.error}
         </div>
       )}
+
+      <section className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-extrabold tracking-[-0.02em] text-grey-900">
+              🎯 운영 집중 모드
+            </h2>
+            <p className="mt-1 text-sm text-grey-700">
+              현재 상태를 기준으로 지금 먼저 누를 작업을 자동으로 정렬합니다.
+            </p>
+          </div>
+          <Link
+            href="/admin/system-ops"
+            className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 no-underline hover:border-blue-400"
+          >
+            시스템 콘솔
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          {focusItems.map((item) => (
+            <Link
+              key={`${item.href}-${item.title}`}
+              href={item.href}
+              className={`rounded-lg border bg-white p-4 no-underline transition-colors hover:border-blue-400 ${
+                item.tone === "danger"
+                  ? "border-red-200"
+                  : item.tone === "warn"
+                    ? "border-amber-200"
+                    : "border-grey-200"
+              }`}
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-2xl" aria-hidden>
+                  {item.icon}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${
+                    item.tone === "danger"
+                      ? "bg-red-50 text-red-700"
+                      : item.tone === "warn"
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              </div>
+              <div className="text-sm font-extrabold text-grey-900">{item.title}</div>
+              <div className="mt-1 text-xs leading-[1.5] text-grey-700">{item.body}</div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <section className="mb-6 rounded-xl border border-grey-200 bg-grey-50 p-4">
         <div className="mb-3">
