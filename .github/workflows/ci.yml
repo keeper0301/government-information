@@ -34,3 +34,24 @@ jobs:
       # 로컬 'npm run ci' 와 동일 명령 — drift 0
       - name: 로컬과 동일 검증 (tsc + vitest)
         run: npm run ci
+
+  capacitor-android:
+    name: Capacitor Android sync
+    runs-on: ubuntu-latest
+    # Capacitor CLI v8 requires Node 22+, so keep this separate from the app's Node 20 test runtime.
+    timeout-minutes: 5
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v6
+
+      - name: Node 22 설치 + npm cache
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: 의존성 설치 (lockfile 기준)
+        run: npm ci
+
+      - name: Android Capacitor 동기화 검증
+        run: npm run app:verify:android
