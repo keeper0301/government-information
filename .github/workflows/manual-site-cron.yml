@@ -16,6 +16,7 @@ on:
           - press-legacy-cleanup-dry
           - press-low-reminder
           - press-confidence-tune
+          - alert-delivery-transient-cleanup
           - agent-resident-cycle
       source:
         description: "감사 로그용 호출 출처"
@@ -57,6 +58,10 @@ jobs:
               path="/api/cron/press-confidence-tune"
               method="POST"
               ;;
+            alert-delivery-transient-cleanup)
+              path="/api/cron/alert-delivery-transient-cleanup"
+              method="POST"
+              ;;
             agent-resident-cycle)
               path="/api/cron/agent-resident-cycle"
               method="POST"
@@ -92,8 +97,7 @@ jobs:
           echo "== manual site cron =="
           echo "endpoint=${PATH_TO_CALL}"
           echo "method=${METHOD}"
-          auth_header="Authorization: Bearer "
-          auth_header+="${CRON_SECRET}"
+          auth_header="Authorization: Bearer $CRON_SECRET"
           curl_args=(
             -sS
             -o /tmp/response.json
