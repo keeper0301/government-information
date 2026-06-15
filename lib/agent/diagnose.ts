@@ -127,9 +127,10 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
     ] = await Promise.all([
       admin
         .from("press_ingest_candidates")
-        .select("id", { count: "exact", head: true })
+        .select("id, news_posts!inner(id)", { count: "exact", head: true })
         .eq("confidence_tier", "mid")
-        .eq("status", "pending"),
+        .eq("status", "pending")
+        .in("program_type", ["welfare", "loan"]),
       admin
         .from("press_ingest_candidates")
         .select("id", { count: "exact", head: true })
