@@ -2,6 +2,7 @@ export type KeepioAgentAutomationKey =
   | "telegram"
   | "policyDb"
   | "contentGeneration"
+  | "prCreation"
   | "threadsPublishing"
   | "instagramMetrics"
   | "instagramComments";
@@ -94,6 +95,7 @@ const EMPTY_AUTOMATION: KeepioAgentAutomationStatus = {
   telegram: false,
   policyDb: false,
   contentGeneration: false,
+  prCreation: false,
   threadsPublishing: false,
   instagramMetrics: false,
   instagramComments: false,
@@ -103,6 +105,7 @@ const AUTOMATION_LABELS: Record<KeepioAgentAutomationKey, string> = {
   telegram: "텔레그램 운영 알림",
   policyDb: "정책 DB 읽기",
   contentGeneration: "AI 글 생성",
+  prCreation: "W1 수정 PR 생성",
   threadsPublishing: "Threads 자동 발행",
   instagramMetrics: "Instagram metric 수집",
   instagramComments: "Instagram 댓글 답글",
@@ -112,6 +115,7 @@ const AUTOMATION_MODES: Record<KeepioAgentAutomationKey, string> = {
   telegram: "변화 감지 알림",
   policyDb: "read-only 조회",
   contentGeneration: "초안·큐 생성",
+  prCreation: "GitHub PR 생성만, merge는 관리자 승인",
   threadsPublishing: "승인됨 + safety gate + dry-run ready만",
   instagramMetrics: "읽기 전용 수집",
   instagramComments: "공개 게시 전 초안 생성",
@@ -121,6 +125,7 @@ const AUTOMATION_SAFETY_NOTES: Record<KeepioAgentAutomationKey, string> = {
   telegram: "반복 로그 대신 행동 필요 변화만 알림",
   policyDb: "정책 DB를 읽기만 하고 원본을 변경하지 않음",
   contentGeneration: "AI 초안은 승인/품질 게이트 전까지 공개되지 않음",
+  prCreation: "운영 DB 직접 변경 없이 코드 수정 제안을 PR로만 제출",
   threadsPublishing: "미승인 글은 발행하지 않음",
   instagramMetrics: "계정 지표 조회만 수행",
   instagramComments: "댓글 자동 공개 게시는 차단, 답글 초안만 생성",
@@ -130,6 +135,7 @@ const AUTOMATION_RISKS: Record<KeepioAgentAutomationKey, KeepioAgentAutomationRi
   telegram: "read_only",
   policyDb: "read_only",
   contentGeneration: "draft_only",
+  prCreation: "approval_required",
   threadsPublishing: "approval_required",
   instagramMetrics: "read_only",
   instagramComments: "draft_only",
@@ -145,6 +151,7 @@ const AUTOMATION_NEXT_CHECKS: Record<KeepioAgentAutomationKey, string> = {
   telegram: "중복 알림보다 행동 필요 변화가 찍히는지 확인",
   policyDb: "정책 DB 조회 성공과 원본 변경 없음 확인",
   contentGeneration: "초안 품질과 큐 적재 상태 확인",
+  prCreation: "AGENT_W1_ENABLED와 GitHub PR 생성 토큰이 실제 워커에 설정됐는지 확인",
   threadsPublishing: "승인됨·safety gate·dry-run ready 후보만 발행되는지 확인",
   instagramMetrics: "metric 수집 실패/토큰 만료 여부 확인",
   instagramComments: "공개 댓글 대신 답글 초안만 생성되는지 확인",
@@ -231,6 +238,7 @@ function buildHermesSidecarStatus(): KeepioAgentStatus {
     telegram: true,
     policyDb: true,
     contentGeneration: true,
+    prCreation: false,
     threadsPublishing: true,
     instagramMetrics: true,
     instagramComments: true,
@@ -363,6 +371,7 @@ export async function getKeepioAgentStatus(): Promise<KeepioAgentStatus> {
       telegram: body.automation?.telegram === true,
       policyDb: body.automation?.policyDb === true,
       contentGeneration: body.automation?.contentGeneration === true,
+      prCreation: body.automation?.prCreation === true,
       threadsPublishing: body.automation?.threadsPublishing === true,
       instagramMetrics: body.automation?.instagramMetrics === true,
       instagramComments: body.automation?.instagramComments === true,

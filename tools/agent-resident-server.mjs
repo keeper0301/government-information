@@ -133,6 +133,10 @@ function readConfig() {
   const siteMaintenance = readSiteMaintenanceConfig();
   const siteUpgrade = readSiteUpgradeConfig();
   const outerGateway = readOuterGatewayConfig();
+  const agentW1Enabled = process.env.AGENT_W1_ENABLED === "true";
+  const prCreatorConfigured = Boolean(
+    process.env.GH_AGENT_PAT || process.env.GITHUB_TOKEN,
+  );
 
   return {
     siteBaseUrl,
@@ -146,6 +150,8 @@ function readConfig() {
     siteMaintenance,
     siteUpgrade,
     outerGateway,
+    agentW1Enabled,
+    prCreatorConfigured,
     cycleUrl: `${siteBaseUrl}/api/cron/agent-resident-cycle`,
   };
 }
@@ -628,6 +634,7 @@ function health(config) {
       telegram: true,
       policyDb: true,
       contentGeneration: true,
+      prCreation: config.agentW1Enabled && config.prCreatorConfigured,
       threadsPublishing: true,
       instagramMetrics: true,
       instagramComments: true,
@@ -734,6 +741,8 @@ async function main() {
         outerGatewayEnabled: config.outerGateway.enabled,
         outerGatewayConfigured: !!config.outerGateway.authToken,
         outerGatewayMode: config.outerGateway.mode,
+        agentW1Enabled: config.agentW1Enabled,
+        prCreatorConfigured: config.prCreatorConfigured,
       }),
     );
     return;

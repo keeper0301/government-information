@@ -25,16 +25,16 @@ describe("getKeepioAgentStatus", () => {
     expect(status.error).toBeNull();
     expect(status.source).toBe("hermes_sidecar");
     expect(status.telemetryConfigured).toBe(false);
-    expect(status.automationDetails).toHaveLength(6);
+    expect(status.automationDetails).toHaveLength(7);
     expect(status.readinessSummary).toMatchObject({
-      total: 6,
+      total: 7,
       ready: 6,
-      needsAttention: 0,
-      readinessPercent: 100,
-      healthLabel: "전체 준비 완료",
-      healthTone: "green",
-      blockedPublicActions: 0,
-      priorityActionLabel: "공개 액션 안전선 유지",
+      needsAttention: 1,
+      readinessPercent: 86,
+      healthLabel: "부분 확인 필요",
+      healthTone: "amber",
+      blockedPublicActions: 1,
+      priorityActionLabel: "W1 수정 PR 생성 확인 필요",
     });
     expect(status.automationDetails.find((item) => item.key === "threadsPublishing")).toMatchObject({
       risk: "approval_required",
@@ -44,6 +44,7 @@ describe("getKeepioAgentStatus", () => {
     expect(status.automationDetails.find((item) => item.key === "instagramComments")?.nextCheck).toContain("초안");
     expect(status.actionItems.join(" ")).toContain("승인 + safety gate + dry-run ready");
     expect(status.automation.telegram).toBe(true);
+    expect(status.automation.prCreation).toBe(false);
     expect(status.automation.instagramComments).toBe(true);
     expect(status.aiManagerEnabled).toBe(true);
     expect(status.aiManagerConfigured).toBe(true);
@@ -86,6 +87,7 @@ describe("getKeepioAgentStatus", () => {
             telegram: true,
             policyDb: true,
             contentGeneration: true,
+            prCreation: false,
             threadsPublishing: false,
             instagramMetrics: true,
             instagramComments: false,
@@ -148,18 +150,20 @@ describe("getKeepioAgentStatus", () => {
     expect(status.siteUpgradeEnabled).toBe(true);
     expect(status.siteUpgradeTotalRuns).toBe(6);
     expect(status.automation.policyDb).toBe(true);
+    expect(status.automation.prCreation).toBe(false);
     expect(status.automation.threadsPublishing).toBe(false);
     expect(status.readinessSummary).toMatchObject({
-      total: 6,
+      total: 7,
       ready: 4,
-      needsAttention: 2,
-      readinessPercent: 67,
+      needsAttention: 3,
+      readinessPercent: 57,
       healthLabel: "운영 점검 필요",
       healthTone: "red",
-      blockedPublicActions: 1,
-      priorityActionLabel: "Threads 자동 발행 확인 필요",
-      priorityActionDetail: "승인됨·safety gate·dry-run ready 후보만 발행되는지 확인",
+      blockedPublicActions: 2,
+      priorityActionLabel: "W1 수정 PR 생성 확인 필요",
+      priorityActionDetail: "AGENT_W1_ENABLED와 GitHub PR 생성 토큰이 실제 워커에 설정됐는지 확인",
     });
+    expect(status.actionItems.join(" ")).toContain("W1 수정 PR 생성 확인 필요");
     expect(status.actionItems.join(" ")).toContain("Threads 자동 발행 확인 필요");
     expect(status.actionItems.join(" ")).toContain("Instagram 댓글 답글 확인 필요");
     expect(status.automationDetails.find((item) => item.key === "threadsPublishing")).toMatchObject({
