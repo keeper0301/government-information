@@ -11,6 +11,24 @@ import { validateCaption } from "../validate-caption";
 
 const THREADS_API_BASE = "https://graph.threads.net/v1.0";
 
+function normalizeThreadsError(
+  stage: "create" | "publish",
+  status: number,
+  body: string,
+): string {
+  const lower = body.toLowerCase();
+  if (
+    status === 400 &&
+    (lower.includes("failed to decrypt") || lower.includes('"code":190'))
+  ) {
+    return `${stage}_invalid_token_code_190_failed_to_decrypt`;
+  }
+  if (lower.includes("oauth")) {
+    return `${stage}_oauth_${status}: ${body.slice(0, 80)}`;
+  }
+  return `${stage}_http_${status}: ${body.slice(0, 100)}`;
+}
+
 export type SnsResult =
   | { ok: true; id?: string }
   | { ok: false; reason: string };
@@ -57,7 +75,10 @@ export async function publishThreadsPost(opts: {
   }
   if (!createRes.ok) {
     const errText = await createRes.text().catch(() => "");
-    return { ok: false, reason: `create_http_${createRes.status}: ${errText.slice(0, 100)}` };
+    return {
+      ok: false,
+      reason: normalizeThreadsError("create", createRes.status, errText),
+    };
   }
   const createData = (await createRes.json().catch(() => null)) as
     | { id?: string }
@@ -84,7 +105,10 @@ export async function publishThreadsPost(opts: {
   }
   if (!publishRes.ok) {
     const errText = await publishRes.text().catch(() => "");
-    return { ok: false, reason: `publish_http_${publishRes.status}: ${errText.slice(0, 100)}` };
+    return {
+      ok: false,
+      reason: normalizeThreadsError("publish", publishRes.status, errText),
+    };
   }
   const publishData = (await publishRes.json().catch(() => null)) as
     | { id?: string }

@@ -41,6 +41,7 @@ export type ImprovementSnapshot = {
   supportOpenOver24h: number;
   policyInsightPct: number;
   snsRuns24h: number;
+  snsFailures24h?: number;
   blogPublishRuns24h: number;
   qualityImprovementHints: string[];
   externalQualityPending: number;
@@ -144,6 +145,31 @@ async function countAdminAction(action: string): Promise<number> {
   }
 }
 
+async function countSnsDispatchFailures24h(): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("admin_actions")
+      .select("details")
+      .in("action", ["sns_publish_run", "sns_publish_popular_policy_run"])
+      .gte("created_at", since24h());
+    if (error) return 0;
+
+    let failures = 0;
+    for (const row of (data ?? []) as Array<{ details?: unknown }>) {
+      if (!isRecord(row.details)) continue;
+      const channels = row.details.channels ?? row.details.results;
+      if (!Array.isArray(channels)) continue;
+      for (const channel of channels) {
+        if (isRecord(channel) && channel.ok === false) failures += 1;
+      }
+    }
+    return failures;
+  } catch {
+    return 0;
+  }
+}
+
 async function countExternalQualityPending(): Promise<number> {
   try {
     const admin = createAdminClient();
@@ -236,6 +262,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     supportOpenOver24h,
     policyInsightPct,
     snsRuns24h,
+    snsFailures24h,
     blogPublishRuns24h,
     qualityImprovementHints,
     externalQualityPending,
@@ -255,6 +282,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     ),
     getPolicyInsightPct(),
     countAdminAction("sns_publish_run"),
+    countSnsDispatchFailures24h(),
     countAdminAction("blog_publish_run"),
     getRecentQualityImprovementHints({ lookbackMs: DAY_MS }),
     countExternalQualityPending(),
@@ -272,6 +300,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     supportOpenOver24h,
     policyInsightPct,
     snsRuns24h,
+    snsFailures24h,
     blogPublishRuns24h,
     qualityImprovementHints,
     externalQualityPending,
@@ -395,6 +424,17 @@ export function buildImprovementRecommendations(
     });
   }
 
+  if ((s.snsFailures24h ?? 0) >= 3) {
+    recs.push({
+      area: "growth",
+      severity: "high",
+      title: "SNS 채널 발행 실패가 누적됐습니다",
+      evidence: `24시간 채널 실패 ${s.snsFailures24h}건`,
+      action:
+        "Twitter/Facebook 미설정 env와 Threads OAuth token(code 190·Failed to decrypt)을 분리해 재발급하세요. /admin/autonomous 의 SNS 카드에서 top fail reason 확인 후 Vercel env를 갱신해야 실제 외부 확산이 됩니다.",
+    });
+  }
+
   if (s.externalQualityPending >= 5) {
     recs.push({
       area: "content_quality",
@@ -494,6 +534,7 @@ function toSnapshot(value: unknown): ImprovementSnapshot {
     supportOpenOver24h: 0,
     policyInsightPct: 0,
     snsRuns24h: 0,
+    snsFailures24h: 0,
     blogPublishRuns24h: 0,
     qualityImprovementHints: [],
     externalQualityPending: 0,
