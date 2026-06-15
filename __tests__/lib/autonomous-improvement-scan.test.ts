@@ -211,36 +211,10 @@ describe("buildImprovementRecommendations", () => {
     );
   });
 
-  it("agentDiagnoseRuns24h < 300 → medium cron_reliability (Render free cold start)", () => {
-    const recs = buildImprovementRecommendations({
-      ...base,
-      agentDiagnoseRuns24h: 159, // 5/18 측정값
-    });
-    expect(recs).toContainEqual(
-      expect.objectContaining({
-        area: "cron_reliability",
-        severity: "medium",
-        title: expect.stringContaining("Codex agent cycle"),
-        action: expect.stringContaining("Render Starter"),
-      }),
-    );
-  });
-
-  it("agentDiagnoseRuns24h ≥ 300 → cron_reliability 추천 X (정상 cycle)", () => {
-    const recs = buildImprovementRecommendations({
-      ...base,
-      agentDiagnoseRuns24h: 400,
-    });
-    expect(recs.find((r) => r.title.includes("Codex agent cycle"))).toBeUndefined();
-  });
-
-  it("agentDiagnoseRuns24h = 0 → 추천 X (cron 첫 가동 또는 sidecar 미가동, false positive 차단)", () => {
-    const recs = buildImprovementRecommendations({
-      ...base,
-      agentDiagnoseRuns24h: 0,
-    });
-    expect(recs.find((r) => r.title.includes("Codex agent cycle"))).toBeUndefined();
-  });
+  // 2026-06-16 — "Codex agent cycle 부진" recommendation 제거됨.
+  // 자율 코드 작업은 Hermes 가 전담(메인)하고 keepioo 내장 Codex(resident-cycle)는
+  // 진단 모니터 전용(dispatched:false)이라, agent_diagnose_run 횟수로 "부진" 판정하던
+  // 신호는 Hermes 와 중복·오탐이었음 → snapshot 필드·recommendation·테스트 정리.
 });
 
 // ── parseImprovementScanRow (getLatest + getPrevious 공유 헬퍼) ────

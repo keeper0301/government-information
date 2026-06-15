@@ -52,11 +52,6 @@ export type ImprovementSnapshot = {
   pendingExternalActionsCount?: number;
   // 2026-05-19 — Naver Extension 7일 audit 0건 (가동 안 됨)
   naverExtensionIdle?: boolean;
-  // 2026-05-19 — agent_diagnose_run 24h count (sidecar + in-site agent-resident-cycle 합산).
-  // 정상 ≥ 336 (30분 cycle × 48 × 10 question = 480, 70% threshold).
-  // 사장님 5/19 in-site cron 도입 (commit 24c3825) 후 sidecar 미가동이라도 in-site 만으로 임계 충족 가능.
-  // 두 source 모두 < 336 시만 recommendation 발동 — false positive 차단.
-  agentDiagnoseRuns24h?: number;
 };
 
 export type ImprovementScanRun = {
@@ -284,7 +279,6 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     blogBodyAnomaly: blogPublishStats.bodyStatus === "anomaly",
     pendingExternalActionsCount: pendingExternalActions.length,
     naverExtensionIdle: pendingExternalActions.some((a) => a.category === "automation"),
-    agentDiagnoseRuns24h: await countAdminAction("agent_diagnose_run"),
   };
 }
 
@@ -442,20 +436,6 @@ export function buildImprovementRecommendations(
       evidence: "최근 7일 naver_publish_* audit 0건 — 5/13 코드 push 후 사장님 액션 3건 (설치·secret·dry-run) 미완 추정",
       action:
         "본체 PC Chrome Extension 설치 + popup secret 입력 + manual-test 페이지 dry-run 1건. 가이드: docs/external-actions/render-plan-upgrade.md 참조 (별도 가이드 chrome-extension/README.md).",
-    });
-  }
-
-  // 2026-05-19 — Codex agent cycle 부진 (sidecar 또는 in-site 한쪽만 가동·둘 다 부진)
-  // 사장님 in-site agent-resident-cycle 도입 (24c3825) 후 합산 카운트.
-  // < 336 발동 = 양쪽 모두 정상 가동 시 480 예상의 70% 미만 = 한쪽 또는 양쪽 부진.
-  if (s.agentDiagnoseRuns24h !== undefined && s.agentDiagnoseRuns24h > 0 && s.agentDiagnoseRuns24h < 336) {
-    recs.push({
-      area: "cron_reliability",
-      severity: "medium",
-      title: "Codex agent cycle 부진 — sidecar + in-site 합산 미달",
-      evidence: `24h agent_diagnose_run ${s.agentDiagnoseRuns24h}건 (정상 ≥ 336, 의도 480 = 30분 cycle × 48 × 10 question). 두 source 합산 (admin_actions details.source = 'site_resident_cron' 또는 sidecar 미설정 = sidecar). 한쪽만 가동 중일 수 있음.`,
-      action:
-        "1) /admin/cron-trigger 의 agent-resident-cycle 수동 trigger + 결과 audit row 확인. 2) sidecar 가동 시: Render Starter ($7/월) always-on 업그레이드 검토 (가이드: docs/external-actions/render-plan-upgrade.md). 3) source 별 카운트 분리는 /admin/autonomous Phase 1 metric 참조.",
     });
   }
 
