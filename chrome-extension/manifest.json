@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Keepioo Naver Blog Auto Publish",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "keepioo blog 큐의 글을 사장님 네이버 블로그에 자동 발행 (KST 09:30 ~ 21:30, 각 시간 최대 3건).",
 
   "permissions": [
@@ -27,11 +27,5 @@
   "action": {
     "default_popup": "popup.html",
     "default_title": "Keepioo Naver Publisher"
-  },
-
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
   }
 }

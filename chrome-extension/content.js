@@ -347,6 +347,58 @@ async function pasteHtml(targetEl, html, debug) {
       debug.debugger_insert_text_error = String(e?.message ?? e).slice(0, 100);
     }
   }
+
+  // 6단계 — DOM 직접 주입 최후 안전망.
+  // SE3가 synthetic paste/execCommand/CDP key event를 모두 무시하는 조합이 있다.
+  // 이 경우 contenteditable paragraph에 직접 HTML 조각을 넣고 input 계열 이벤트를
+  // 발생시켜 dry-run 검증과 실제 publish 버튼 진입을 가능하게 한다.
+  if (afterLen - beforeLen < 100) {
+    try {
+      directInsertHtml(targetEl, html, plainText);
+      await sleep(800);
+      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      debug.body_paste_method = "direct_dom_fallback";
+      debug.body_after_direct_dom = afterLen;
+    } catch (e) {
+      debug.direct_dom_error = String(e?.message ?? e).slice(0, 100);
+    }
+  }
+}
+
+function directInsertHtml(targetEl, html, plainText) {
+  const doc = targetEl.ownerDocument;
+  const win = doc.defaultView;
+  focusEditor(targetEl);
+
+  const fragmentDoc = new DOMParser().parseFromString(html, "text/html");
+  const nodes = Array.from(fragmentDoc.body.childNodes);
+  targetEl.replaceChildren();
+  if (nodes.length > 0) {
+    for (const node of nodes) {
+      targetEl.appendChild(doc.importNode(node, true));
+    }
+  } else {
+    targetEl.textContent = plainText;
+  }
+
+  const editable = targetEl.closest("[contenteditable='true'], [contenteditable='plaintext-only']") ?? targetEl;
+  for (const ev of [
+    new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: plainText }),
+    new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: plainText }),
+    new Event("change", { bubbles: true }),
+  ]) {
+    editable.dispatchEvent(ev);
+    targetEl.dispatchEvent(ev);
+  }
+
+  const selection = win?.getSelection?.();
+  if (selection) {
+    const range = doc.createRange();
+    range.selectNodeContents(targetEl);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
 }
 
 function sendRuntimeMessage(message) {
