@@ -18,6 +18,13 @@ on:
           - press-confidence-tune
           - alert-delivery-transient-cleanup
           - agent-resident-cycle
+          - autonomous-improvement-scan
+          - external-console-check
+          - health-alert
+          - sns-publish-blog
+          - sns-publish-popular-policy
+          - instagram-publish
+          - instagram-comment-drafts
       source:
         description: "감사 로그용 호출 출처"
         required: false
@@ -64,6 +71,34 @@ jobs:
               ;;
             agent-resident-cycle)
               path="/api/cron/agent-resident-cycle"
+              method="POST"
+              ;;
+            autonomous-improvement-scan)
+              path="/api/cron/autonomous-improvement-scan"
+              method="POST"
+              ;;
+            external-console-check)
+              path="/api/cron/external-console-check"
+              method="POST"
+              ;;
+            health-alert)
+              path="/api/cron/health-alert"
+              method="GET"
+              ;;
+            sns-publish-blog)
+              path="/api/cron/sns-publish-blog"
+              method="POST"
+              ;;
+            sns-publish-popular-policy)
+              path="/api/cron/sns-publish-popular-policy"
+              method="POST"
+              ;;
+            instagram-publish)
+              path="/api/cron/instagram-publish"
+              method="GET"
+              ;;
+            instagram-comment-drafts)
+              path="/api/cron/instagram-comment-drafts"
               method="POST"
               ;;
             *)
