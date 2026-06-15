@@ -344,7 +344,7 @@ export function buildImprovementRecommendations(
       title: "네이버 블로그 큐가 쌓였지만 성공 발행이 없습니다",
       evidence: `대기 ${s.naverPendingQueue}건, 24시간 성공 ${s.naverSuccess24h}건`,
       action:
-        "본체 PC Chrome Extension dry-run 후 실제 발행을 재개하고, cookies 만료·캡차·2FA 여부를 확인하세요.",
+        "본체 PC Chrome Extension 1.1.0+ 설치/새로고침 후 popup secret 입력 → Chrome이 켜져 있으면 매일 5회, 각 시간 최대 3건씩 자동 발행됩니다. 먼저 /admin/naver-blog/manual-test dry-run 1건으로 cookies·캡차·2FA 상태를 확인하세요.",
     });
   } else if (s.naverPendingQueue >= 10) {
     recs.push({

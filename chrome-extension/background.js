@@ -60,13 +60,29 @@ chrome.runtime.onStartup.addListener(() => registerAlarms());
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (!alarm.name.startsWith("naver-")) return;
   console.log(`[keepioo-naver] alarm fire: ${alarm.name}`);
-  await runPublishOnce(false, { allowLoginWait: false });
+  await runPublishBatch(false, {
+    allowLoginWait: false,
+    batchLimit: 3,
+    stopOnFail: true,
+    source: alarm.name,
+  });
 });
 
 // popup 에서 사장님 manual trigger
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "manual-trigger") {
     runPublishOnce(msg.dryRun === true, { allowLoginWait: true })
+      .then((r) => sendResponse({ ok: true, result: r }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true; // async
+  }
+  if (msg?.type === "manual-batch") {
+    runPublishBatch(false, {
+      allowLoginWait: true,
+      batchLimit: Number(msg.batchLimit ?? 7),
+      stopOnFail: true,
+      source: "manual-batch",
+    })
       .then((r) => sendResponse({ ok: true, result: r }))
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true; // async
@@ -208,6 +224,40 @@ async function getSecret() {
   const { keepioo_secret } = await chrome.storage.local.get(["keepioo_secret"]);
   if (!keepioo_secret) throw new Error("KEEPIOO_SECRET 미설정 — popup 에서 입력 필요");
   return keepioo_secret;
+}
+
+async function runPublishBatch(dryRun = false, options = {}) {
+  const batchLimit = Math.max(1, Math.min(Number(options.batchLimit ?? 1), 7));
+  const stopOnFail = options.stopOnFail !== false;
+  const results = [];
+  for (let i = 0; i < batchLimit; i++) {
+    let item;
+    try {
+      item = await runPublishOnce(dryRun, options);
+    } catch (e) {
+      results.push({ ok: false, error: e?.message ?? String(e) });
+      if (stopOnFail) break;
+      continue;
+    }
+    results.push(item);
+    if (dryRun || item?.skipped) break;
+    const inner = item?.result ?? item;
+    if (inner?.dryRun || item?.ok === false) break;
+    // 네이버/서버 rate limit 완충. 한 alarm 에서 여러 건 처리해도 사람 조작에
+    // 가까운 속도로 유지하고, naver_publish_audit 반영 시간을 준다.
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  return {
+    batch: true,
+    source: options.source ?? "unknown",
+    attempted: results.filter((r) => !r?.skipped).length,
+    published: results.filter((r) => {
+      const inner = r?.result ?? r;
+      return r?.ok !== false && !r?.skipped && !inner?.dryRun;
+    }).length,
+    stoppedReason: results.at(-1)?.skipped ?? (results.at(-1)?.ok === false ? "fail" : "limit"),
+    results,
+  };
 }
 
 async function runPublishOnce(dryRun = false, options = {}) {

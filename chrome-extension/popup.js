@@ -84,10 +84,30 @@ document.getElementById("manual-publish").addEventListener("click", async () => 
   }
 });
 
+document.getElementById("manual-batch-publish").addEventListener("click", async () => {
+  if (!confirm("큐를 일 cap까지 자동 발행합니다. 여러 글이 네이버 블로그에 게시될 수 있습니다. 진행할까요?")) return;
+  setStatus("🚀 큐 자동 발행 시작 — 여러 건이면 몇 분 걸릴 수 있어요...");
+  try {
+    const r = await chrome.runtime.sendMessage({ type: "manual-batch", batchLimit: 7 });
+    setStatus(formatResult(r));
+  } catch (e) {
+    setStatus(`❌ ${e?.message ?? e}`);
+  }
+});
+
 function formatResult(r) {
   if (!r) return "응답 없음";
   if (r.ok === false) return `❌ ${r.error ?? "unknown"}`;
   const result = r.result ?? {};
+  if (result.batch) {
+    const lines = result.results?.map((item, idx) => {
+      if (item?.skipped) return `${idx + 1}. skip: ${item.skipped}`;
+      if (item?.ok === false) return `${idx + 1}. 실패: ${item.error ?? "unknown"}`;
+      const inner = item?.result ?? item;
+      return `${idx + 1}. 발행: ${inner?.naverUrl ?? "URL 확인 필요"}`;
+    }) ?? [];
+    return `✅ 큐 자동 발행 완료\n발행 ${result.published}건 / 시도 ${result.attempted}건\n중단 사유: ${result.stoppedReason}\n${lines.join("\n")}`;
+  }
   if (result.skipped) return `⏸  skip: ${result.skipped}`;
   if (result.ok === false) {
     return `❌ ${result.error ?? "unknown"}\n${JSON.stringify(result.debug ?? {}, null, 2)}`;

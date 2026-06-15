@@ -66,17 +66,26 @@ iwr https://raw.githubusercontent.com/keeper0301/government-information/master/c
 4. **🧪 Dry-run** 클릭 → 결과 확인 (네이버 블로그에 실 발행 X)
 5. 정상 작동 확인 후 가동 시작
 
+## 자동 발행 방식 선택 근거
+
+- 네이버 블로그 글쓰기 공식 API는 종료되어 서버에서 REST API로 안전하게 직접 발행하는 방식은 사용할 수 없습니다.
+- 그래서 keepioo는 **사용자 본체 PC의 로그인된 Chrome + Manifest V3 Extension** 방식으로 발행합니다.
+- 장점: 네이버 로그인 cookies를 사용자의 정상 Chrome 세션에서 재사용하므로 headless/서버 IP 자동화보다 캡차·기기 인증·계정 정지 위험을 낮춥니다.
+- 안전선: 신규 7일 3건/일, 이후 7건/일 cap과 KST 09~22 시간대를 지킵니다.
+
 ## 자동 발행 schedule
 
 매일 KST 5회 fire (사장님 Chrome 가동 중일 때만):
 - 09:30 / 12:30 / 15:30 / 18:30 / 21:30
 
 각 fire 시 invisible tab 에서:
-1. keepioo 큐 조회 — 다음 발행 글 1건
+1. keepioo 큐 조회 — 다음 발행 글 최대 3건을 순차 처리
 2. SE3 글쓰기 페이지 자동 입력 (제목·본문·이미지)
 3. 발행 click
 4. tab close (사장님 작업 방해 X)
 5. keepioo audit 보고 + 텔레그램 알림
+
+popup 에서 **🚀 큐 자동 발행 (일 cap까지)** 를 누르면 같은 로직으로 당일 cap까지 수동 catch-up 할 수 있습니다.
 
 ## 일 cap (정지 예방)
 
