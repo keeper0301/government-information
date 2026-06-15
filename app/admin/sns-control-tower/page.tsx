@@ -20,13 +20,14 @@ export default async function SnsControlTowerPage({
   const params = await searchParams;
   const snapshot = await loadSnsControlTowerSnapshotDbFirst();
   const finalPost = snapshot.posts.find((post) => post.status === "active_final");
+  const failedDeletionPosts = snapshot.posts.filter((post) => post.status === "delete_failed_permission");
 
   return (
     <div className="max-w-[1120px]">
       <AdminPageHeader
         kicker="ADMIN · SNS 운영"
         title="SNS Control Tower"
-        description="발행본 원장, 최종본, 중복본, 삭제 실패를 한 화면에서 보는 운영 콘솔. Phase 1은 기존 Hermes 리포트 읽기 전용."
+        description="발행본 원장, 최종본, 중복본, 삭제 실패를 DB 기준으로 한 화면에서 보는 운영 콘솔."
       />
 
       {params.flash && (
@@ -45,7 +46,7 @@ export default async function SnsControlTowerPage({
           <div>
             <div className="text-sm font-extrabold text-grey-950">DB 원장 이관</div>
             <p className="mt-1 text-xs leading-relaxed text-grey-500">
-              기존 Hermes JSON 리포트를 `sns_posts`, `sns_render_artifacts`, `sns_cleanup_queue`로 이관한다. DB migration 적용 후 사용.
+              기존 Hermes JSON 리포트를 `sns_posts`, `sns_render_artifacts`, `sns_cleanup_queue`로 다시 이관한다. 재실행 시 같은 게시물은 갱신된다.
             </p>
           </div>
           <form action={importLocalReportsAction}>
@@ -108,6 +109,60 @@ export default async function SnsControlTowerPage({
         </section>
       )}
 
+      {failedDeletionPosts.length > 0 && (
+        <section className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5">
+          <div className="text-xs font-bold uppercase tracking-wider text-red-700">
+            즉시 처리 필요
+          </div>
+          <h2 className="mt-1 text-lg font-extrabold tracking-[-0.4px] text-red-950">
+            삭제 실패 게시물 {failedDeletionPosts.length}건
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-red-900">
+            Graph API 권한 문제로 자동 삭제가 실패한 이전 발행본이다. Instagram에서 직접 삭제한 뒤 `수동 삭제 완료`를 눌러 원장을 닫아라.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {failedDeletionPosts.map((post) => (
+              <li
+                key={`failed-${post.platform}-${post.itemId}-${post.mediaId ?? "none"}`}
+                className="rounded-xl border border-red-200 bg-white p-3"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-extrabold text-red-950">{post.topic}</div>
+                    <div className="mt-1 break-all text-xs text-red-800">mediaId: {post.mediaId ?? "—"}</div>
+                    {post.deletion?.reason && (
+                      <div className="mt-2 break-words text-xs text-red-700">{post.deletion.reason}</div>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {post.permalink && (
+                      <Link
+                        href={post.permalink}
+                        target="_blank"
+                        className="rounded-lg border border-red-300 px-3 py-2 text-xs font-bold text-red-900 hover:bg-red-100"
+                      >
+                        Instagram에서 확인
+                      </Link>
+                    )}
+                    {post.mediaId && (
+                      <form action={markManualDeletedAction}>
+                        <input type="hidden" name="mediaId" value={post.mediaId} />
+                        <button
+                          type="submit"
+                          className="rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white hover:bg-red-800"
+                        >
+                          수동 삭제 완료
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="rounded-2xl border border-grey-200 bg-white">
         <div className="border-b border-grey-100 p-5">
           <h2 className="text-base font-extrabold tracking-[-0.3px] text-grey-900">
@@ -132,10 +187,9 @@ export default async function SnsControlTowerPage({
       <section className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm leading-relaxed text-blue-950">
         <div className="font-bold">다음 Phase</div>
         <ul className="mt-2 list-disc pl-5">
-          <li>Phase 2: Supabase `sns_posts`, `sns_cleanup_queue` 원장 테이블 생성</li>
-          <li>Phase 3: 삭제 재시도/수동삭제 완료 서버 액션 추가</li>
-          <li>Phase 4: `next-og-image-response` 아닌 렌더러 발행 차단</li>
-          <li>Phase 5: 승인·렌더·발행·정리까지 관리자 화면으로 통합</li>
+          <li>삭제 재시도 자동화와 Graph API 권한 점검 로그 저장</li>
+          <li>`next-og-image-response` 아닌 렌더러 발행 차단</li>
+          <li>승인·렌더·발행·정리까지 관리자 화면으로 통합</li>
         </ul>
       </section>
     </div>
