@@ -97,7 +97,8 @@ jobs:
           echo "== manual site cron =="
           echo "endpoint=${PATH_TO_CALL}"
           echo "method=${METHOD}"
-          auth_header="Authorization: Bearer $CRON_SECRET"
+          auth_scheme="Bearer"
+          auth_header=$(printf 'Authorization: %s %s' "$auth_scheme" "$CRON_SECRET")
           curl_args=(
             -sS
             -o /tmp/response.json
