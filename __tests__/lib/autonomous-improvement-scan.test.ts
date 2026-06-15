@@ -15,6 +15,7 @@ const base: ImprovementSnapshot = {
   supportOpenOver24h: 0,
   policyInsightPct: 100,
   snsRuns24h: 1,
+  snsFailures24h: 0,
   blogPublishRuns24h: 0,
   qualityImprovementHints: [],
   externalQualityPending: 0,
@@ -91,6 +92,23 @@ describe("buildImprovementRecommendations", () => {
       expect.objectContaining({
         area: "growth",
         severity: "low",
+      }),
+    );
+  });
+
+  it("SNS 채널 발행 실패가 누적되면 high growth 과제로 분류한다", () => {
+    const recs = buildImprovementRecommendations({
+      ...base,
+      snsRuns24h: 7,
+      snsFailures24h: 3,
+    });
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        area: "growth",
+        severity: "high",
+        title: "SNS 채널 발행 실패가 누적됐습니다",
+        evidence: "24시간 채널 실패 3건",
+        action: expect.stringContaining("Threads OAuth token"),
       }),
     );
   });
@@ -234,6 +252,7 @@ describe("parseImprovementScanRow", () => {
           supportOpenOver24h: 0,
           policyInsightPct: 100,
           snsRuns24h: 1,
+          snsFailures24h: 4,
           blogPublishRuns24h: 0,
           qualityImprovementHints: [],
           externalQualityPending: 0,
@@ -253,6 +272,7 @@ describe("parseImprovementScanRow", () => {
     expect(parsed).not.toBeNull();
     expect(parsed?.createdAt).toBe("2026-05-16T10:20:00Z");
     expect(parsed?.highestSeverity).toBe("high");
+    expect(parsed?.snapshot.snsFailures24h).toBe(4);
     expect(parsed?.recommendations).toHaveLength(1);
   });
 
