@@ -105,6 +105,46 @@ describe("runResidentAgentCycle", () => {
     );
   });
 
+  it("keeps fresh zero-24h blog publish gaps as monitor-only while status is healthy", async () => {
+    mocks.diagnoseData.set("blog_publish_status", {
+      status: "healthy",
+      published24h: 0,
+      hoursSinceLastPublish: 12,
+    });
+
+    const result = await runResidentAgentCycle();
+
+    const blogFixes = result.recommendations.filter(
+      (r) => r.operation.action === "codex_blog_publish_fix",
+    );
+    expect(blogFixes).toHaveLength(0);
+    expect(result.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: { area: "site_ops", action: "cron_audit" },
+          evidence: expect.stringContaining("monitor healthy window"),
+        }),
+      ]),
+    );
+  });
+
+  it("queues a blog publish PR when zero-24h data has no status guard", async () => {
+    mocks.diagnoseData.set("blog_publish_status", {
+      published24h: 0,
+    });
+
+    const result = await runResidentAgentCycle();
+
+    expect(result.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: { area: "agent_call", action: "codex_blog_publish_fix" },
+          evidence: "blog published24h is 0",
+        }),
+      ]),
+    );
+  });
+
   it("keeps young LOW press backlog as monitor-only until P2 threshold", async () => {
     mocks.diagnoseData.set("press_tier_status", {
       mid_pending: 0,

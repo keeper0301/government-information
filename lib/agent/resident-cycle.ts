@@ -128,6 +128,7 @@ function buildResidentRecommendations(
   const blog = findData(results, "blog_publish_status") as {
     status?: string;
     published24h?: number;
+    hoursSinceLastPublish?: number;
     bodyStatus?: string;
   } | null;
   if (blog?.status && blog.status !== "healthy") {
@@ -137,10 +138,17 @@ function buildResidentRecommendations(
     });
   }
   if (typeof blog?.published24h === "number" && blog.published24h === 0) {
-    recs.push({
-      operation: { area: "agent_call", action: "codex_blog_publish_fix" },
-      evidence: "blog published24h is 0",
-    });
+    if (blog?.status === "healthy") {
+      recs.push({
+        operation: { area: "site_ops", action: "cron_audit" },
+        evidence: `blog published24h is 0 but last publish is ${blog.hoursSinceLastPublish ?? "?"}h ago; monitor healthy window`,
+      });
+    } else if (!blog?.status) {
+      recs.push({
+        operation: { area: "agent_call", action: "codex_blog_publish_fix" },
+        evidence: "blog published24h is 0",
+      });
+    }
   }
   if (blog?.bodyStatus === "anomaly") {
     recs.push({
