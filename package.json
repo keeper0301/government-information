@@ -13,7 +13,11 @@
     "ci": "tsc --noEmit && vitest run",
     "agent:resident": "node tools/agent-resident-server.mjs",
     "agent:resident:check": "node tools/agent-resident-server.mjs --check-config",
-    "codex:local-worker": "node tools/codex-local-worker.mjs"
+    "codex:local-worker": "node tools/codex-local-worker.mjs",
+    "app:assets": "node tools/gen-app-assets.mjs",
+    "app:sync:android": "cap sync android",
+    "app:doctor:android": "cap doctor android",
+    "app:verify:android": "npm run app:sync:android && npm run app:doctor:android && git diff --exit-code -- android/app/capacitor.build.gradle android/capacitor.settings.gradle"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

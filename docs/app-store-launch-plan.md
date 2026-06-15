@@ -48,12 +48,20 @@
 - 시간: 1~3단계(개발) 클로드가 수 세션. 4~6단계(계정·심사)는 애플 심사 대기 1~7일 변동.
 - 구글이 애플보다 통과 쉬움 → **안드로이드(구글) 먼저 내고, iOS는 그 다음** 권장.
 
-## 7. 다음 행동 (assignment)
+## 7. 운영 명령어
+
+- `npm run app:assets` — `assets/logo.png`, `assets/splash.png`, `assets/splash-dark.png` 원본 재생성.
+- `npx capacitor-assets generate --android` — 원본에서 Android 해상도별 아이콘·스플래시 재생성.
+- `npm run app:sync:android` — Capacitor 설정과 플러그인을 Android 프로젝트에 동기화.
+- `npm run app:doctor:android` — Android Capacitor 의존성·설정 상태 점검.
+- `npm run app:verify:android` — sync + doctor + 생성 Gradle 파일 drift 확인. CI에도 포함되어 플러그인 누락을 조기 감지한다.
+
+## 8. 다음 행동 (assignment)
 
 **사장님이 먼저 결정할 1가지**: "지금 1단계(Capacitor 셋업)부터 클로드가 시작" vs "계정 가입($99 등)을 먼저 알아보고 시작". 
 개발(1~3단계)은 계정 없이도 진행 가능하니, **클로드가 1단계부터 코드 작업을 먼저 시작**하고 계정은 심사 직전(5단계)에 만들어도 됩니다.
 
-## 8. 미결 질문
+## 9. 미결 질문
 
 - 결제를 정말 1차에서 빼도 되는지(현재 구독 매출 비중 확인 필요) — 빼도 웹 결제는 계속 살아있음.
 - 앱 이름/아이콘을 현재 brand(keepioo·정책알리미) 그대로 갈지.
