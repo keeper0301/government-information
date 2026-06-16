@@ -27,9 +27,21 @@ export interface SnsDispatchResult {
 }
 
 const SITE_BASE = "https://www.keepioo.com";
+const ALL_CHANNELS: SnsChannel[] = ["twitter", "facebook", "threads"];
+
+export function buildThreadsText(post: BlogPostShare): string {
+  const url = `${SITE_BASE}/blog/${post.slug}`;
+  const title = post.title.trim();
+  const desc = post.description?.trim();
+  const body = desc
+    ? `${title}\n\n${desc.slice(0, 220)}`
+    : `${title}\n\n핵심 내용과 대상 조건을 먼저 확인해보세요. 해당되는 사람에게는 신청 시점과 기준이 더 중요합니다.`;
+  return `${body}\n\n자세히 보기\n${url}`.slice(0, 500);
+}
 
 export async function dispatchBlogToSns(
   post: BlogPostShare,
+  opts: { channels?: SnsChannel[] } = {},
 ): Promise<SnsDispatchResult[]> {
   const url = `${SITE_BASE}/blog/${post.slug}`;
   const title = post.title;
@@ -37,28 +49,34 @@ export async function dispatchBlogToSns(
   const desc = post.description?.slice(0, 100) ?? "";
   const tweetText = `${title.slice(0, 200)}\n\n${url}`.slice(0, 280);
   const fbMessage = `${title}\n\n${desc}`.slice(0, 500);
-  const threadsText = `${title.slice(0, 350)}\n\n${url}`.slice(0, 500);
+  const threadsText = buildThreadsText(post);
+  const channelSet = new Set(opts.channels ?? ALL_CHANNELS);
 
-  const tasks: Array<Promise<SnsDispatchResult>> = [
-    publishTweet(tweetText).then((r) => ({
+  const tasks: Array<Promise<SnsDispatchResult>> = [];
+  if (channelSet.has("twitter")) {
+    tasks.push(publishTweet(tweetText).then((r) => ({
       channel: "twitter" as SnsChannel,
       ok: r.ok,
       id: r.ok ? r.id : undefined,
       reason: r.ok ? undefined : r.reason,
-    })),
-    publishFacebookPost({ message: fbMessage, link: url }).then((r) => ({
+    })));
+  }
+  if (channelSet.has("facebook")) {
+    tasks.push(publishFacebookPost({ message: fbMessage, link: url }).then((r) => ({
       channel: "facebook" as SnsChannel,
       ok: r.ok,
       id: r.ok ? r.id : undefined,
       reason: r.ok ? undefined : r.reason,
-    })),
-    publishThreadsPost({ text: threadsText }).then((r) => ({
+    })));
+  }
+  if (channelSet.has("threads")) {
+    tasks.push(publishThreadsPost({ text: threadsText }).then((r) => ({
       channel: "threads" as SnsChannel,
       ok: r.ok,
       id: r.ok ? r.id : undefined,
       reason: r.ok ? undefined : r.reason,
-    })),
-  ];
+    })));
+  }
 
   return Promise.all(tasks);
 }

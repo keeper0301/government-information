@@ -59,6 +59,8 @@ export interface ValidateOptions {
   source?: string;
   /** 위반 발견해도 throw 안 함 — log 만 (점진 마이그레이션·진단용). 기본 false (엄격) */
   warnOnly?: boolean;
+  /** 제목+링크 수준의 얇은 게시물을 차단. Threads 같은 공개 SNS 발행 경로에서 사용. */
+  requireSubstance?: boolean;
 }
 
 export interface ValidateResult {
@@ -115,6 +117,19 @@ export function validateCaption(
   const hashtags = caption.match(/#[가-힣A-Za-z0-9_]+/g) ?? [];
   if (hashtags.length > 15) {
     violations.push(`해시태그 ${hashtags.length}개 (12개 초과 spam)`);
+  }
+
+  if (opts.requireSubstance) {
+    const withoutUrls = caption.replace(/https?:\/\/\S+/g, "").trim();
+    const lines = withoutUrls
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (withoutUrls.length < 120) violations.push("본문 정보량 부족 (URL 제외 120자 미만)");
+    if (lines.length < 3) violations.push("문단 수 부족 (URL 제외 3줄 미만)");
+    if (/^[\s\S]+\n\nhttps?:\/\/\S+$/.test(caption.trim())) {
+      violations.push("제목+링크 단독 게시");
+    }
   }
 
   if (violations.length === 0) {
