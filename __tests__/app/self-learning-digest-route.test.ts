@@ -10,7 +10,7 @@ import {
   buildPressTierLine,
   buildPopularityLine,
   buildPushLearnLine,
-} from "@/app/api/cron/self-learning-digest/route";
+} from "@/lib/autonomous-ops/self-learning-digest";
 
 describe("self-learning-digest formatter", () => {
   describe("buildPressTierLine", () => {

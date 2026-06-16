@@ -59,6 +59,20 @@ function countFor(action: string): number {
   return 0;
 }
 
+function setAllOauthEnv() {
+  process.env.GMAIL_CLIENT_ID = "test";
+  process.env.GMAIL_CLIENT_SECRET = "test";
+  process.env.GMAIL_REFRESH_TOKEN = "test";
+  process.env.TWITTER_API_KEY = "test";
+  process.env.TWITTER_API_SECRET = "test";
+  process.env.TWITTER_ACCESS_TOKEN = "test";
+  process.env.TWITTER_ACCESS_TOKEN_SECRET = "test";
+  process.env.FACEBOOK_PAGE_ID = "test";
+  process.env.FACEBOOK_PAGE_ACCESS_TOKEN = "test";
+  process.env.THREADS_USER_ID = "test";
+  process.env.THREADS_ACCESS_TOKEN = "test";
+}
+
 // 모듈 import — top-level 가 아니라 mock 적용 후
 import {
   getPendingExternalActions,
@@ -72,10 +86,18 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     mockState.naverCount = 0;
     mockState.residentCycleCount = 0;
     mockState.tossBillingCount = 0;
-    // env 미설정 default — Gmail OAuth reminder 노출
+    // env 미설정 default — Gmail/SNS OAuth reminder 노출
     delete process.env.GMAIL_CLIENT_ID;
     delete process.env.GMAIL_CLIENT_SECRET;
     delete process.env.GMAIL_REFRESH_TOKEN;
+    delete process.env.TWITTER_API_KEY;
+    delete process.env.TWITTER_API_SECRET;
+    delete process.env.TWITTER_ACCESS_TOKEN;
+    delete process.env.TWITTER_ACCESS_TOKEN_SECRET;
+    delete process.env.FACEBOOK_PAGE_ID;
+    delete process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    delete process.env.THREADS_USER_ID;
+    delete process.env.THREADS_ACCESS_TOKEN;
   });
 
   afterEach(() => {
@@ -107,10 +129,8 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     expect(actions.find((a) => a.category === "security")).toBeDefined();
   });
 
-  it("Gmail OAuth 3 env 모두 등록 → oauth 항목 hide", async () => {
-    process.env.GMAIL_CLIENT_ID = "test";
-    process.env.GMAIL_CLIENT_SECRET = "test";
-    process.env.GMAIL_REFRESH_TOKEN = "test";
+  it("Gmail/SNS OAuth env 모두 등록 → oauth 항목 hide", async () => {
+    setAllOauthEnv();
     const actions = await getPendingExternalActions();
     expect(actions.find((a) => a.category === "oauth")).toBeUndefined();
   });
@@ -126,9 +146,7 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     mockState.renderCount = 1;
     mockState.naverCount = 1;
     mockState.tossBillingCount = 1;
-    process.env.GMAIL_CLIENT_ID = "test";
-    process.env.GMAIL_CLIENT_SECRET = "test";
-    process.env.GMAIL_REFRESH_TOKEN = "test";
+    setAllOauthEnv();
     const actions = await getPendingExternalActions();
     expect(actions).toHaveLength(0);
   });
