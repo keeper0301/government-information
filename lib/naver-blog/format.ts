@@ -58,12 +58,13 @@ const BASE_URL = "https://www.keepioo.com";
  */
 export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
   const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
+  const contentForNaver = prepareContentForNaver(post.content, post.meta_description);
 
   // 1) 도입부 — 광고문보다 검색 의도 답변을 먼저 보여준다.
   const intro = post.meta_description
     ? `${post.meta_description.trim()}\n\n`
     : "";
-  const keySummary = buildNaverKeySummaryText(post.content);
+  const keySummary = buildNaverKeySummaryText(contentForNaver);
   const trustChecklist = [
     "한눈에 보는 핵심",
     ...keySummary.map((item) => `• ${item}`),
@@ -78,7 +79,7 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
   ].join("\n");
 
   // 2) 본문 변환
-  const bodyText = htmlToNaverText(post.content);
+  const bodyText = htmlToNaverText(contentForNaver);
 
   // 3) 백링크 footer (정보 보강형으로 낮은 광고감 유지)
   const footer = [
@@ -102,6 +103,60 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
     body,
     backlinkUrl,
   };
+}
+
+/**
+ * 네이버 외부 발행용 본문 전처리.
+ * keepioo 원문에는 웹 상세 페이지용 목차/리드가 들어갈 수 있는데,
+ * 네이버에는 meta hook과 핵심 요약을 별도로 넣기 때문에 그대로 두면 첫 화면이
+ * 반복·템플릿처럼 보인다. 상세 정보 본문은 유지하고 낮은 가치의 목차/중복 리드만 뺀다.
+ */
+function prepareContentForNaver(html: string, metaDescription?: string | null): string {
+  return removeLeadingParagraphSimilarToMeta(
+    removeLowValueNaverSections(html),
+    metaDescription,
+  );
+}
+
+function removeLowValueNaverSections(html: string): string {
+  // "이 글에서 확인할 수 있는 것"은 웹 페이지용 목차라 네이버 첫 화면에서는
+  // 본문 앞 핵심 요약과 중복된다. 다음 h2 전까지만 제거한다.
+  return html.replace(
+    /<h2[^>]*>\s*이\s*글에서\s*확인할\s*수\s*있는\s*것\s*<\/h2>[\s\S]*?(?=<h2\b|$)/i,
+    "",
+  );
+}
+
+function removeLeadingParagraphSimilarToMeta(html: string, metaDescription?: string | null): string {
+  const meta = normalizeComparableText(metaDescription ?? "");
+  if (meta.length < 40) return html;
+  return html.replace(/^(\s*<p[^>]*>)([\s\S]*?)(<\/p>\s*)/i, (match, open, inner, close) => {
+    const paragraph = normalizeComparableText(decodeBasicEntities(stripTags(inner)));
+    if (paragraph.length < 40) return match;
+    const shorter = Math.min(meta.length, paragraph.length);
+    const longer = Math.max(meta.length, paragraph.length);
+    const commonPrefix = commonPrefixLength(meta, paragraph);
+    const containment = meta.includes(paragraph.slice(0, Math.min(paragraph.length, 80))) ||
+      paragraph.includes(meta.slice(0, Math.min(meta.length, 80)));
+    if (commonPrefix / shorter >= 0.68 || (containment && shorter / longer >= 0.55)) {
+      return "";
+    }
+    return `${open}${inner}${close}`;
+  });
+}
+
+function normalizeComparableText(value: string): string {
+  return value
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function commonPrefixLength(a: string, b: string): number {
+  const limit = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < limit && a[i] === b[i]) i += 1;
+  return i;
 }
 
 /**
@@ -285,6 +340,7 @@ export function convertToNaverBlogHtml(
   post: BlogPostForNaver & { cover_image?: string | null },
 ): NaverBlogHtmlPayload {
   const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
+  const contentForNaver = prepareContentForNaver(post.content, post.meta_description);
   // cover_image — 네이버 블로그 전용 1080×1080 정방형 (2026-05-13 신규).
   // /api/naver-thumbnail/{slug} = 카테고리 컬러 + 큰 제목 + hook + 키핍 브랜드.
   // 이전 cover_image (1200×630 OG) 는 16:9 라 네이버 검색 결과 위아래 잘림.
@@ -300,7 +356,7 @@ export function convertToNaverBlogHtml(
     : "";
   const keySummaryHtml = [
     `<p><strong>한눈에 보는 핵심</strong></p>`,
-    ...buildNaverKeySummaryText(post.content).map((item) => `<p>• ${escapeHtml(item)}</p>`),
+    ...buildNaverKeySummaryText(contentForNaver).map((item) => `<p>• ${escapeHtml(item)}</p>`),
     `<p>&nbsp;</p>`,
   ].join("\n");
   const trustChecklistHtml = [
@@ -321,7 +377,7 @@ export function convertToNaverBlogHtml(
     : "";
 
   // 3) 본문 — SE3 안전 형식으로 변환
-  const bodyContentHtml = transformForSe3(post.content);
+  const bodyContentHtml = transformForSe3(contentForNaver);
 
   // 4) CTA — 정보 확인 이후에만 낮은 광고감으로 배치.
   const ctaHtml = [

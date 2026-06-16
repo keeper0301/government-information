@@ -89,6 +89,31 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
     expect(introSection).toContain("만 24세 경기도 청년에게 분기별 25만원");
   });
 
+  it("네이버 전용 도입부와 중복되는 원문 첫 문단은 한 번만 보인다", () => {
+    const duplicateLead =
+      "만 24세 경기도 청년에게 분기별 25만원을 지급하는 기본소득 제도. 신청 자격과 절차를 1분 안에 확인하세요.";
+    const out = convertToNaverBlog({
+      ...basePost,
+      meta_description: duplicateLead,
+      content: `<p>${duplicateLead}</p>${basePost.content}`,
+    });
+    expect(out.body.match(new RegExp(duplicateLead, "g"))?.length).toBe(1);
+  });
+
+  it("웹 상세 페이지용 목차 섹션은 네이버 평문 본문에서 제거된다", () => {
+    const out = convertToNaverBlog({
+      ...basePost,
+      content: `
+        <h2>이 글에서 확인할 수 있는 것</h2>
+        <ul><li>신청 전에 먼저 확인해야 할 대상 조건</li></ul>
+        ${basePost.content}
+      `,
+    });
+    expect(out.body).not.toContain("이 글에서 확인할 수 있는 것");
+    expect(out.body).not.toContain("신청 전에 먼저 확인해야 할 대상 조건");
+    expect(out.body).toContain("📍 이 정책은 무엇인가요?");
+  });
+
   it("본문 초반에 핵심 요약과 정책 확인 체크리스트가 들어간다", () => {
     const out = convertToNaverBlog(basePost);
     expect(out.body).toContain("한눈에 보는 핵심");
@@ -200,6 +225,24 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     );
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/');
     expect(out.bodyHtml).toContain("자세한 자격·금액·신청 방법 정리");
+  });
+
+  it("SE3 HTML 에서도 중복 리드와 웹용 목차는 제거된다", () => {
+    const duplicateLead = "신청 첫 화면에서 반복되면 광고처럼 보이는 도입 문장입니다. 대상과 금액을 한 번만 보여줍니다.";
+    const out = convertToNaverBlogHtml({
+      ...post,
+      meta_description: duplicateLead,
+      content: `
+        <p>${duplicateLead}</p>
+        <h2>이 글에서 확인할 수 있는 것</h2>
+        <ul><li>신청 전에 먼저 확인해야 할 대상 조건</li></ul>
+        ${post.content}
+      `,
+    });
+    expect(out.bodyHtml.match(new RegExp(duplicateLead, "g"))?.length).toBe(1);
+    expect(out.bodyHtml).not.toContain("이 글에서 확인할 수 있는 것");
+    expect(out.bodyHtml).not.toContain("신청 전에 먼저 확인해야 할 대상 조건");
+    expect(out.bodyHtml).toContain("<p><strong>📌 신청 대상</strong></p>");
   });
 
   it("meta_description 없으면 도입부 없이 본문부터", () => {
