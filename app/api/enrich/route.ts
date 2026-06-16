@@ -139,8 +139,12 @@ async function pickCandidates(
       table: "loan_programs",
     });
   }
-  // source_code 없는 row 는 fetcher 매칭 불가 → 여기서 제외하지 않고 아래에서 skip.
-  return out.slice(0, limit);
+  // 2026-06-16 — 최종 applies() 기준으로 한 번 더 거른다.
+  // source_code whitelist + source_id 존재만으로는 mss raw_payload NULL, bokjiro servId 누락 같은
+  // 구조적 불가 row 가 7일마다 batch 에 재진입해 no_fetcher 알림을 만든다.
+  // picker 단계에서 enabled fetcher 가 실제로 처리할 수 있는 row 만 통과시켜
+  // no_fetcher 는 배치 중 데이터 경합/신규 fetcher 누락 같은 진짜 사각지대 신호로 남긴다.
+  return out.filter((row) => findFetcher(row) !== null).slice(0, limit);
 }
 
 // 실제 fetch 1건. 결과 4종:
