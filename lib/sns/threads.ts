@@ -47,6 +47,7 @@ export async function publishThreadsPost(opts: {
   const validation = validateCaption(opts.text, {
     source: "threads",
     warnOnly: true,
+    requireSubstance: true,
   });
   if (!validation.ok) {
     return {
@@ -113,5 +114,6 @@ export async function publishThreadsPost(opts: {
   const publishData = (await publishRes.json().catch(() => null)) as
     | { id?: string }
     | null;
-  return { ok: true, id: publishData?.id };
+  if (!publishData?.id) return { ok: false, reason: "no_publish_id" };
+  return { ok: true, id: publishData.id };
 }

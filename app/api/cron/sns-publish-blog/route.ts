@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchBlogToSns } from "@/lib/sns/dispatch";
+import { pendingChannelsForPost, type SnsRunRow } from "@/lib/sns/publish-dedupe";
 import { logAdminAction } from "@/lib/admin-actions";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
@@ -50,21 +51,18 @@ async function run() {
     return NextResponse.json({ ok: true, processed: 0 });
   }
 
-  // 이미 SNS 게시한 글 제외 (admin_actions.sns_publish_run 의 details.id 매칭)
+  // 이미 성공한 채널만 제외. 실패한 채널은 재시도 대상으로 남긴다.
   const { data: alreadyRun } = await admin
     .from("admin_actions")
     .select("details")
     .eq("action", "sns_publish_run")
     .gte("created_at", since24h);
-  const alreadyIds = new Set<string>(
-    ((alreadyRun ?? []) as Array<{ details?: { id?: string } | null }>)
-      .map((r) => r.details?.id)
-      .filter((v): v is string => !!v),
-  );
+  const priorRuns = (alreadyRun ?? []) as SnsRunRow[];
 
   const processedResults: Array<{ id: string; results: unknown[] }> = [];
   for (const p of list) {
-    if (alreadyIds.has(p.id)) continue;
+    const pendingChannels = pendingChannelsForPost(priorRuns, p.id);
+    if (pendingChannels.length === 0) continue;
 
     const results = await dispatchBlogToSns({
       title: p.title,
@@ -72,7 +70,7 @@ async function run() {
       // 5/18 fix — blog_posts.description column 부재. meta_description (150~160자) 으로 대체.
       // dispatch.ts:37 이 100자 truncate 하므로 자연스럽게 호환.
       description: p.meta_description,
-    });
+    }, { channels: pendingChannels });
     processedResults.push({ id: p.id, results });
 
     try {
