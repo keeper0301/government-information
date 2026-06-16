@@ -10,7 +10,7 @@
 //   - 운영 중 hub 안 열고도 학습 상태 sanity check
 // ============================================================
 
-import { buildDigest } from "@/app/api/cron/self-learning-digest/route";
+import { buildDigest } from "@/lib/autonomous-ops/self-learning-digest";
 
 export async function selfLearningCommand(): Promise<string> {
   try {
