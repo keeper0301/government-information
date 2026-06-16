@@ -135,6 +135,47 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
     });
   }
 
+  const twitterReady =
+    !!process.env.TWITTER_API_KEY &&
+    !!process.env.TWITTER_API_SECRET &&
+    !!process.env.TWITTER_ACCESS_TOKEN &&
+    !!process.env.TWITTER_ACCESS_TOKEN_SECRET;
+  if (!twitterReady) {
+    actions.push({
+      category: "oauth",
+      label: "X/Twitter SNS 발행 credential 등록",
+      description:
+        "SNS credential check 기준 X/Twitter 발행 env 4종이 필요합니다. Developer Portal 에서 User context read/write token 발급 후 Vercel production env에 등록하세요.",
+      url: "https://developer.x.com/en/portal/dashboard",
+      estimatedMinutes: 10,
+    });
+  }
+
+  const facebookReady =
+    !!process.env.FACEBOOK_PAGE_ID && !!process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  if (!facebookReady) {
+    actions.push({
+      category: "oauth",
+      label: "Facebook Page SNS 발행 credential 등록",
+      description:
+        "SNS credential check 기준 Facebook Page ID와 long-lived Page Access Token이 필요합니다. Meta for Developers에서 Page 권한 token 발급 후 Vercel production env에 등록하세요.",
+      url: "https://developers.facebook.com/apps/",
+      estimatedMinutes: 10,
+    });
+  }
+
+  const threadsReady = !!process.env.THREADS_USER_ID && !!process.env.THREADS_ACCESS_TOKEN;
+  if (!threadsReady) {
+    actions.push({
+      category: "oauth",
+      label: "Threads SNS 발행 credential 등록",
+      description:
+        "THREADS_USER_ID와 THREADS_ACCESS_TOKEN이 필요합니다. 이미 등록됐는데 발행이 실패하면 /api/cron/sns-credential-check 결과의 invalid_token reason을 보고 token을 재발급하세요.",
+      url: "https://developers.facebook.com/apps/",
+      estimatedMinutes: 10,
+    });
+  }
+
   // 2026-05-19 — AdSense 검수 결과 + 광고 게재 env 통합 감지.
   // state=READY + NEXT_PUBLIC_ADSENSE_ID 등록 시 hide.
   // state=DISABLED 또는 env 누락 시 reminder.
