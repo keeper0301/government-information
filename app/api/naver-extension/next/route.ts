@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToNaverBlogHtml } from "@/lib/naver-blog/format";
 import { countTodaySuccess, getKstHour } from "@/lib/naver-blog/audit";
-import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
+import { assessExternalPublishQuality } from "@/lib/blog/quality-gate";
 import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
 
 export const dynamic = "force-dynamic";
@@ -91,7 +91,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending" });
   }
 
+  // SE3 호환 HTML 변환 전 품질 재검수.
+  // 기존 admin_review_required=false 만으로는 얇은 글/템플릿 냄새 글이 네이버에 올라갈 수 있어
+  // 외부 채널용 최소 정보량·검색 의도·공식 신청 신호를 fail-closed로 한 번 더 본다.
+  const blogPostRaw = row.blog_post as unknown;
+  const post = Array.isArray(blogPostRaw) ? blogPostRaw[0] : blogPostRaw;
+  const quality = assessExternalPublishQuality(post);
+  if (!quality.approved) {
+    if (!force) {
+      await admin
+        .from("blog_posts")
+        .update({ admin_review_required: true })
+        .eq("id", row.blog_post_id);
+    }
+    return NextResponse.json({
+      status: "quality_gate_rejected",
+      queueId: row.id,
+      blogPostId: row.blog_post_id,
+      reasons: quality.reasons,
+      metrics: quality.metrics,
+    });
+  }
+
   // attempt_count 증가 — dry-run (force=1) 시 skip (큐 cap 소진 회피, I3 fix)
+  // 품질 거절 글은 attempt_count를 소진하지 않고 admin_review_required=true로 넘긴다.
   if (!force) {
     await admin
       .from("naver_blog_queue")
@@ -99,15 +122,6 @@ export async function GET(request: Request) {
       .eq("id", row.id);
   }
 
-  // SE3 호환 HTML 변환
-  const blogPostRaw = row.blog_post as unknown;
-  const post = Array.isArray(blogPostRaw) ? blogPostRaw[0] : blogPostRaw;
-  if (!isExternalPublishQualityApproved(post)) {
-    return NextResponse.json({
-      status: "quality_gate_rejected",
-      queueId: row.id,
-    });
-  }
   const payload = convertToNaverBlogHtml(post);
 
   return NextResponse.json({

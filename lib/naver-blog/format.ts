@@ -59,31 +59,38 @@ const BASE_URL = "https://www.keepioo.com";
 export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
   const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
 
-  // 1) 도입부 — meta_description 이 있으면 첫 단락으로
+  // 1) 도입부 — 광고문보다 검색 의도 답변을 먼저 보여준다.
   const intro = post.meta_description
     ? `${post.meta_description.trim()}\n\n`
     : "";
+  const keySummary = buildNaverKeySummaryText(post.content);
   const trustChecklist = [
-    "먼저 확인하세요",
+    "한눈에 보는 핵심",
+    ...keySummary.map((item) => `• ${item}`),
+    "",
+    "신청 전 체크포인트",
     "• 대상: 나이·지역·소득 조건이 맞는지 확인",
+    "• 혜택: 지원 금액과 실제 지급 방식을 확인",
     "• 기간: 신청 마감일과 예산 소진 여부 확인",
     "• 서류: 주민등록·소득·사업자 증빙 필요 여부 확인",
-    "• 신청: 공식 신청 페이지에서 최종 조건 확인",
+    "• 경로: 공식 신청 페이지에서 최종 조건 확인",
     "",
   ].join("\n");
 
   // 2) 본문 변환
   const bodyText = htmlToNaverText(post.content);
 
-  // 3) 백링크 footer (keepioo SEO 효과 핵심)
+  // 3) 백링크 footer (정보 보강형으로 낮은 광고감 유지)
   const footer = [
     "",
     "─────────────────────────",
-    "📌 더 자세한 자격·금액·신청 방법",
+    "공식 조건은 모집 시점·지역·예산에 따라 달라질 수 있어요.",
+    "신청 전에는 반드시 해당 기관의 최신 공고를 한 번 더 확인하세요.",
+    "",
+    "자세한 자격·금액·신청 방법 정리",
     `→ ${backlinkUrl}`,
     "",
-    "정책알리미 keepioo 에서는 매일 새 정부 정책을 자동으로 정리해 드려요.",
-    "1분 자격 진단으로 사장님이 받을 수 있는 정책을 즉시 확인할 수 있어요.",
+    "내 조건에 맞는 정책을 더 찾고 싶다면",
     `→ ${BASE_URL}/recommend`,
     "─────────────────────────",
   ].join("\n");
@@ -195,6 +202,40 @@ function decodeBasicEntities(s: string): string {
     .replace(/&apos;/g, "'");
 }
 
+function buildNaverKeySummaryText(html: string): string[] {
+  const plain = decodeBasicEntities(stripTags(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, "\n"),
+  ))
+    .replace(/\u00a0/g, " ")
+    .split(/\n|(?<=[.!?。])\s+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const priority = [
+    /대상|자격|조건|나이|연령|지역|소득|거주/,
+    /지원|혜택|금액|만원|원\b|월\s*\d|최대/,
+    /신청|접수|기간|마감|공식|홈페이지|누리집/,
+    /서류|제출|증빙|문의|기관|센터/,
+  ];
+  const picked: string[] = [];
+  for (const re of priority) {
+    const line = plain.find((candidate) => candidate.length >= 18 && re.test(candidate) && !picked.includes(candidate));
+    if (line) picked.push(line.slice(0, 92));
+  }
+  if (picked.length < 3) {
+    for (const line of plain) {
+      if (picked.includes(line)) continue;
+      picked.push(line.slice(0, 92));
+      if (picked.length >= 3) break;
+    }
+  }
+  return picked.slice(0, 4);
+}
+
 // ============================================================
 // Phase 2-A — RPA 자동 발행용 SE3 호환 HTML 변환
 // ============================================================
@@ -253,16 +294,22 @@ export function convertToNaverBlogHtml(
     ? null
     : `${BASE_URL}/api/naver-thumbnail/${encodeURIComponent(post.slug)}`;
 
-  // 1) 도입부 hook — meta_description 으로 강한 동기 부여
+  // 1) 도입부 — 네이버 첫 화면에서 바로 답을 주는 정보형 구조.
   const hookHtml = post.meta_description
-    ? `<p><strong>${escapeHtml(post.meta_description.trim())}</strong></p>\n<p>&nbsp;</p>\n`
+    ? `<p>${escapeHtml(post.meta_description.trim())}</p>\n<p>&nbsp;</p>\n`
     : "";
+  const keySummaryHtml = [
+    `<p><strong>한눈에 보는 핵심</strong></p>`,
+    ...buildNaverKeySummaryText(post.content).map((item) => `<p>• ${escapeHtml(item)}</p>`),
+    `<p>&nbsp;</p>`,
+  ].join("\n");
   const trustChecklistHtml = [
-    `<p><strong>먼저 확인하세요</strong></p>`,
+    `<p><strong>신청 전 체크포인트</strong></p>`,
     `<p>• 대상: 나이·지역·소득 조건이 맞는지 확인</p>`,
+    `<p>• 혜택: 지원 금액과 실제 지급 방식을 확인</p>`,
     `<p>• 기간: 신청 마감일과 예산 소진 여부 확인</p>`,
     `<p>• 서류: 주민등록·소득·사업자 증빙 필요 여부 확인</p>`,
-    `<p>• 신청: 공식 신청 페이지에서 최종 조건 확인</p>`,
+    `<p>• 경로: 공식 신청 페이지에서 최종 조건 확인</p>`,
     `<p>&nbsp;</p>`,
   ].join("\n");
 
@@ -276,24 +323,26 @@ export function convertToNaverBlogHtml(
   // 3) 본문 — SE3 안전 형식으로 변환
   const bodyContentHtml = transformForSe3(post.content);
 
-  // 4) CTA — 행동 유도 강조
+  // 4) CTA — 정보 확인 이후에만 낮은 광고감으로 배치.
   const ctaHtml = [
     `<p>&nbsp;</p>`,
     `<p><strong>━━━━━━━━━━━━━━━━━━</strong></p>`,
-    `<p><strong>👉 나도 받을 수 있을까? 1분 진단</strong></p>`,
-    `<p><a href="${escapeAttr(BASE_URL)}/recommend">${escapeHtml(BASE_URL + "/recommend")}</a></p>`,
+    `<p>공식 조건은 모집 시점·지역·예산에 따라 달라질 수 있어요.</p>`,
+    `<p>신청 전에는 반드시 해당 기관의 최신 공고를 한 번 더 확인하세요.</p>`,
     `<p>&nbsp;</p>`,
-    `<p><strong>📌 더 자세한 자격·금액·신청 방법</strong></p>`,
+    `<p><strong>자세한 자격·금액·신청 방법 정리</strong></p>`,
     `<p><a href="${escapeAttr(backlinkUrl)}">${escapeHtml(backlinkUrl)}</a></p>`,
     `<p>&nbsp;</p>`,
-    `<p>정책알리미 keepioo 는 매일 새 정부 정책을 자동으로 정리해 드려요.</p>`,
-    `<p>아래 댓글로 사장님이 궁금한 정책 알려주세요. 분석해서 답변드릴게요.</p>`,
+    `<p>내 조건에 맞는 정책을 더 찾고 싶다면</p>`,
+    `<p><a href="${escapeAttr(BASE_URL)}/recommend">${escapeHtml(BASE_URL + "/recommend")}</a></p>`,
     `<p><strong>━━━━━━━━━━━━━━━━━━</strong></p>`,
   ].join("\n");
 
   const bodyHtml = (
     coverHtml +
     hookHtml +
+    keySummaryHtml +
+    "\n" +
     trustChecklistHtml +
     bodyContentHtml +
     "\n" +

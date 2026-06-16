@@ -74,11 +74,11 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
 
   it("백링크 footer 가 본문 끝에 자동 추가된다 (SEO 핵심)", () => {
     const out = convertToNaverBlog(basePost);
-    expect(out.body).toContain("📌 더 자세한 자격·금액·신청 방법");
+    expect(out.body).toContain("자세한 자격·금액·신청 방법 정리");
     expect(out.body).toContain(
       "https://www.keepioo.com/blog/2026-경기도-청년-기본소득",
     );
-    expect(out.body).toContain("정책알리미 keepioo");
+    expect(out.body).toContain("공식 조건은 모집 시점·지역·예산에 따라 달라질 수 있어요.");
     expect(out.body).toContain("https://www.keepioo.com/recommend");
   });
 
@@ -89,16 +89,17 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
     expect(introSection).toContain("만 24세 경기도 청년에게 분기별 25만원");
   });
 
-  it("본문 초반에 정책 확인 체크리스트가 들어간다", () => {
+  it("본문 초반에 핵심 요약과 정책 확인 체크리스트가 들어간다", () => {
     const out = convertToNaverBlog(basePost);
-    expect(out.body).toContain("먼저 확인하세요");
+    expect(out.body).toContain("한눈에 보는 핵심");
+    expect(out.body).toContain("신청 전 체크포인트");
     expect(out.body).toContain("대상: 나이·지역·소득 조건이 맞는지 확인");
-    expect(out.body).toContain("공식 신청 페이지에서 최종 조건 확인");
+    expect(out.body).toContain("경로: 공식 신청 페이지에서 최종 조건 확인");
   });
 
   it("meta_description 이 null 이면 도입부 없이 본문 바로 시작", () => {
     const out = convertToNaverBlog({ ...basePost, meta_description: null });
-    expect(out.body).toMatch(/^먼저 확인하세요/);
+    expect(out.body).toMatch(/^한눈에 보는 핵심/);
     expect(out.body).toContain("📍 이 정책은 무엇인가요?");
   });
 
@@ -143,16 +144,15 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
 
   it("도입부 (meta_description) hook 단락 으로 들어간다 (강조)", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain(
-      "<p><strong>만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.</strong></p>",
-    );
+    expect(out.bodyHtml).toContain("<p>만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.</p>");
   });
 
-  it("SE3 HTML 본문에도 정책 확인 체크리스트가 들어간다", () => {
+  it("SE3 HTML 본문에도 핵심 요약과 정책 확인 체크리스트가 들어간다", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<p><strong>먼저 확인하세요</strong></p>");
+    expect(out.bodyHtml).toContain("<p><strong>한눈에 보는 핵심</strong></p>");
+    expect(out.bodyHtml).toContain("<p><strong>신청 전 체크포인트</strong></p>");
     expect(out.bodyHtml).toContain("<p>• 대상: 나이·지역·소득 조건이 맞는지 확인</p>");
-    expect(out.bodyHtml).toContain("<p>• 신청: 공식 신청 페이지에서 최종 조건 확인</p>");
+    expect(out.bodyHtml).toContain("<p>• 경로: 공식 신청 페이지에서 최종 조건 확인</p>");
   });
 
   it("inline style/class/id 모두 제거 (SE3 자체 스타일 덮어쓰기 회피)", () => {
@@ -199,7 +199,7 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
       'https://www.keepioo.com/blog/2026-청년-월세-지원',
     );
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/');
-    expect(out.bodyHtml).toContain("정책알리미 keepioo");
+    expect(out.bodyHtml).toContain("자세한 자격·금액·신청 방법 정리");
   });
 
   it("meta_description 없으면 도입부 없이 본문부터", () => {
