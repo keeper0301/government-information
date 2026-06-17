@@ -28,6 +28,7 @@ import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { ScorableItem } from "@/lib/personalization/score";
 import type { ScoredItem } from "@/lib/personalization/types";
 import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
+import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 
 // 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
 // force-dynamic 없이 캐시하면 첫 사용자 프로필이 다른 사람에게 노출되는 보안 문제 발생.
@@ -213,6 +214,39 @@ export default async function BlogIndexPage({
           </p>
         </header>
 
+        <section className="mb-8 rounded-2xl border border-blue-100 bg-white p-5 md:p-6">
+          <div className="mb-4">
+            <h2 className="text-[18px] font-bold text-grey-900 mb-1">
+              신청 실수를 줄이는 핵심 가이드
+            </h2>
+            <p className="text-[14px] text-grey-700 leading-[1.6]">
+              단순 정책 요약이 아니라 자격·서류·중복 제한·마감 함정을 직접 해설한 글입니다.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {EDITORIAL_GUIDES.slice(0, 6).map((guide) => (
+              <Link
+                key={guide.slug}
+                href={`/guides/${guide.slug}`}
+                className="block rounded-xl border border-grey-100 bg-grey-50 p-4 no-underline hover:border-blue-300 hover:bg-blue-50/40 transition-colors"
+              >
+                <div className="text-[15px] font-bold text-grey-900 mb-1">
+                  {guide.title}
+                </div>
+                <div className="text-[13px] text-grey-600 leading-[1.5]">
+                  {guide.posts[0].replace(/\s+/g, " ").slice(0, 92)}...
+                </div>
+              </Link>
+            ))}
+          </div>
+          <Link
+            href="/guides"
+            className="mt-4 inline-flex min-h-[44px] items-center rounded-xl bg-blue-500 px-5 text-[14px] font-semibold text-white no-underline hover:bg-blue-600"
+          >
+            전체 가이드 보기 →
+          </Link>
+        </section>
+
         {/* 카테고리 필터 — DB 실측 기반. 빈 카테고리(글 0건) 자동 숨김 */}
         <nav className="mb-8" aria-label="카테고리 필터">
           <CategoryChipBar
@@ -294,16 +328,16 @@ function EmptyState() {
         아직 발행된 글이 없어요
       </h2>
       <p className="text-[14px] text-grey-700 leading-[1.6]">
-        매일 1개씩 정책 블로그 글이 올라올 예정이에요.
+        조건별 해설 가이드는 바로 볼 수 있어요.
         <br />
-        먼저 복지·대출 정보 페이지를 살펴보세요.
+        정책별 자동 발행 글은 준비되는 대로 추가됩니다.
       </p>
       <div className="flex justify-center gap-2 mt-5">
         <Link
-          href="/welfare"
+          href="/guides"
           className="min-h-[44px] inline-flex items-center px-5 text-[14px] font-semibold rounded-xl bg-blue-500 text-white hover:bg-blue-600 no-underline"
         >
-          복지정보 보기
+          가이드 보기
         </Link>
         <Link
           href="/loan"

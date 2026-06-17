@@ -8,6 +8,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 
 export interface PolicyGuide {
   id: string;
@@ -69,13 +70,18 @@ export async function getGuides(limit = 50): Promise<PolicyGuide[]> {
 
   if (error) {
     console.error("[policy-guides] getGuides 실패:", error);
-    return [];
+    return EDITORIAL_GUIDES.slice(0, limit);
   }
-  return (data ?? []).map(rowToGuide);
+
+  const dbGuides = (data ?? []).map(rowToGuide);
+  const dbSlugs = new Set(dbGuides.map((g) => g.slug));
+  const fallback = EDITORIAL_GUIDES.filter((g) => !dbSlugs.has(g.slug));
+  return [...dbGuides, ...fallback].slice(0, limit);
 }
 
 /** slug 로 가이드 1개. 없으면 null. */
 export async function getGuideBySlug(slug: string): Promise<PolicyGuide | null> {
+  const builtin = EDITORIAL_GUIDES.find((g) => g.slug === slug) ?? null;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("policy_guides")
@@ -85,9 +91,9 @@ export async function getGuideBySlug(slug: string): Promise<PolicyGuide | null> 
 
   if (error) {
     console.error(`[policy-guides] getGuideBySlug(${slug}) 실패:`, error);
-    return null;
+    return builtin;
   }
-  return data ? rowToGuide(data) : null;
+  return data ? rowToGuide(data) : builtin;
 }
 
 /** 현재 가이드 외에 최신 발행 N개 (related). */
@@ -103,9 +109,11 @@ export async function getRelatedGuides(
     .order("published_at", { ascending: false })
     .limit(limit);
 
+  const dbGuides = error ? [] : (data ?? []).map(rowToGuide);
   if (error) {
     console.error("[policy-guides] getRelatedGuides 실패:", error);
-    return [];
   }
-  return (data ?? []).map(rowToGuide);
+  const dbIds = new Set(dbGuides.map((g) => g.id));
+  const fallback = EDITORIAL_GUIDES.filter((g) => g.id !== currentId && !dbIds.has(g.id));
+  return [...dbGuides, ...fallback].slice(0, limit);
 }

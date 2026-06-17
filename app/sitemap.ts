@@ -143,6 +143,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // AdSense 재심사 모드: 자동 수집·대량 템플릿 URL은 sitemap 에서 제거한다.
+  // 심사자는 sitemap 을 따라 얇은 정책/뉴스/검색성 페이지를 샘플링하므로,
+  // 직접 작성형 가이드와 핵심 허브만 제출한다.
+  if (ADSENSE_REVIEW_MODE) {
+    return [
+      ...staticPages,
+      ...hubPages,
+      ...guidePages,
+    ];
+  }
+
   // 연령 long-tail 페이지 — 5 age × welfare/loan = 10 페이지.
   // 카운트 ≥ 5 만 sitemap 등록 (thin-content 방지). 카운트 0~4 인 age 는
   // 페이지 자체는 살아있지만 sitemap 미노출 → 색인 압박 약화.

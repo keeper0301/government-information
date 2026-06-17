@@ -19,6 +19,7 @@ import { buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
 import { buildPolicyFaqs } from "@/lib/policy-faq";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -93,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
     // 모든 상세가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
     alternates: { canonical: `/welfare/${id}` },
-    ...(isSparse && { robots: { index: false, follow: false } }),
+    ...(ADSENSE_REVIEW_MODE || isSparse ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
