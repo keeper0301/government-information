@@ -268,31 +268,44 @@ function extractNaverPlainLines(html: string): string[] {
     .filter(Boolean);
 }
 
-function findNaverFactLine(lines: string[], re: RegExp, fallback: string): string {
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
+function findNaverFactLine(
+  lines: string[],
+  re: RegExp,
+  fallback: string,
+  preferred?: RegExp,
+): string {
+  const candidates = preferred
+    ? [...lines.filter((line) => preferred.test(line)), ...lines.filter((line) => !preferred.test(line))]
+    : lines;
+  for (let i = 0; i < candidates.length; i += 1) {
+    const line = candidates[i];
     if (!re.test(line)) continue;
     if (line.length >= 8 && !/^신청\s*대상$|^지원\s*금액$|^신청\s*자격$|^제출\s*서류$|^문의처?$/.test(line)) {
       return shortenNaverFact(line);
     }
-    const next = lines[i + 1];
+    const originalIndex = lines.indexOf(line);
+    const next = lines[originalIndex + 1];
     if (next && next.length >= 4) return shortenNaverFact(next);
   }
   return shortenNaverFact(fallback);
 }
 
 function shortenNaverFact(value: string): string {
-  return value.length > 58 ? `${value.slice(0, 58).trim()}…` : value;
+  const cleaned = value
+    .replace(/^(지원\s*대상|대상|지원\s*금액|지원\s*내용|혜택|신청\s*기간|기간|제출\s*서류|서류|문의처?|경로)\s*[:：]?\s*/i, "")
+    .trim();
+  return cleaned.length > 58 ? `${cleaned.slice(0, 58).trim()}…` : cleaned;
 }
 
 function buildNaverChecklistText(html: string): string[] {
   const lines = extractNaverPlainLines(html);
+  const routeLines = lines.filter((line) => !/마감|기간|상반기|하반기|예산\s*소진/.test(line));
   return [
-    `대상: ${findNaverFactLine(lines, /대상|자격|조건|나이|연령|지역|거주|소득|사업자/, "공식 공고의 대상 조건 확인")}`,
-    `혜택: ${findNaverFactLine(lines, /지원\s*(금액|내용)|혜택|최대|월\s*\d|분기|만원|원\b/, "지원 금액과 지급 방식 확인")}`,
-    `기간: ${findNaverFactLine(lines, /기간|마감|공고|예산\s*소진|선착순|\d{4}[.\-년]/, "신청 마감일과 예산 소진 여부 확인")}`,
-    `서류: ${findNaverFactLine(lines, /서류|제출|준비물|증빙|주민등록|소득\s*증명|사업자등록/, "제출 서류와 증빙 필요 여부 확인")}`,
-    `경로: ${findNaverFactLine(lines, /공식|홈페이지|누리집|온라인|방문|문의|기관|센터|담당|페이지/, "공식 신청 페이지 또는 담당 기관 확인")}`,
+    `대상: ${findNaverFactLine(lines, /대상|자격|조건|나이|연령|지역|거주|소득|사업자/, "공식 공고의 대상 조건 확인", /^지원\s*대상|^대상[:：]/)}`,
+    `혜택: ${findNaverFactLine(lines, /지원\s*(금액|내용)|혜택|최대|월\s*\d|분기|만원|원\b/, "금액과 지급 방식 확인", /^지원\s*금액|^지원\s*내용|^혜택[:：]/)}`,
+    `기간: ${findNaverFactLine(lines, /기간|마감|공고|예산\s*소진|선착순|\d{4}[.\-년]/, "신청 마감일과 예산 소진 여부 확인", /^신청\s*기간|^기간[:：]/)}`,
+    `서류: ${findNaverFactLine(lines, /서류|제출|준비물|증빙|주민등록|소득\s*증명|사업자등록/, "증빙 필요 여부 확인", /^제출\s*서류|^서류[:：]/)}`,
+    `경로: ${findNaverFactLine(routeLines, /홈페이지|누리집|온라인|방문|문의|기관|센터|담당|페이지/, "공식 신청 페이지 또는 담당 기관 확인")}`,
   ];
 }
 
@@ -520,6 +533,8 @@ function softenNaverMarketingCopy(value: string): string {
     .replace(/지금\s*바로\s*자격을\s*확인하세요!?/g, "자격 조건을 확인하세요")
     .replace(/지금\s*바로\s*신청(?:하세요|해보세요)?!?/g, "신청 조건을 확인하세요")
     .replace(/지금\s*바로\s*확인(?:하세요|해보세요)?!?/g, "신청 조건을 확인하세요")
+    .replace(/자격\s*조건을\s*확인하세요\.\s*지원\s*조건을\s*확인하세요\.?/g, "자격 조건과 신청 경로를 확인하세요.")
+    .replace(/신청\s*조건을\s*확인하세요\s*\(정확한 일정은 공식 공고 확인\)/g, "정확한 일정은 공식 공고에서 확인")
     .replace(/\s*놓치지\s*마세요!?/g, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([,.!?])/g, "$1")
