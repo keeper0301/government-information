@@ -79,7 +79,7 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
   ].join("\n");
 
   // 2) 본문 변환
-  const bodyText = htmlToNaverText(contentForNaver);
+  const bodyText = softenNaverMarketingCopy(htmlToNaverText(contentForNaver));
 
   // 3) 백링크 footer (정보 보강형으로 낮은 광고감 유지)
   const footer = [
@@ -482,6 +482,8 @@ function transformForSe3(html: string): string {
   // 8) 빈 단락 normalize
   result = result.replace(/(\s*<p>\s*<\/p>\s*){3,}/gi, "<p>&nbsp;</p>\n<p>&nbsp;</p>");
 
+  result = softenNaverMarketingCopy(result);
+
   return result.trim();
 }
 
@@ -489,6 +491,7 @@ function softenNaverMarketingCopy(value: string): string {
   return value
     .replace(/성장\s*지원\s*혜택을\s*놓치지\s*마세요\.?/g, "지원 조건을 확인하세요.")
     .replace(/지금\s*바로\s*자격\s*확인하고\s*신청하세요!?/g, "자격 조건과 신청 경로를 확인하세요")
+    .replace(/지금\s*바로\s*자격을\s*확인하세요!?/g, "자격 조건을 확인하세요")
     .replace(/지금\s*바로\s*신청(?:하세요|해보세요)?!?/g, "신청 조건을 확인하세요")
     .replace(/지금\s*바로\s*확인(?:하세요|해보세요)?!?/g, "신청 조건을 확인하세요")
     .replace(/\s*놓치지\s*마세요!?/g, "")
