@@ -292,7 +292,8 @@ function findNaverFactLine(
 
 function shortenNaverFact(value: string): string {
   const cleaned = value
-    .replace(/^(지원\s*대상|대상|지원\s*금액|지원\s*내용|혜택|신청\s*기간|기간|제출\s*서류|서류|문의처?|경로)\s*[:：]?\s*/i, "")
+    .replace(/^(지원\s*대상|대상|지원\s*금액|지원\s*내용|혜택|신청\s*기간|기간|문의처?|경로)\s*[:：]?\s*/i, "")
+    .replace(/^(제출\s*서류|서류)\s*[:：]\s*/i, "")
     .trim();
   return cleaned.length > 58 ? `${cleaned.slice(0, 58).trim()}…` : cleaned;
 }
