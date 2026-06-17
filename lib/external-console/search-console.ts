@@ -4,7 +4,8 @@
 // Google Search Analytics API v3 호출 — 최근 3일 ~ 어제 클릭·노출·CTR·평균 순위.
 // 인증: OAuth 2.0 refresh_token (AdSense·GA4 와 같은 패턴, scope 만 다름).
 // env: SC_SITE_URL / SC_CLIENT_ID / SC_CLIENT_SECRET / SC_REFRESH_TOKEN
-// scope: https://www.googleapis.com/auth/webmasters.readonly
+// read-only diagnostics scope: https://www.googleapis.com/auth/webmasters.readonly
+// sitemap submit scope: https://www.googleapis.com/auth/webmasters
 //
 // 점검:
 //   - sc_no_clicks   — 최근 3일 클릭 0 (색인 제외·robots 사고·도메인 차단 의심)

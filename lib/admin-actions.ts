@@ -62,6 +62,7 @@ export type AdminActionType =
   | "press_ingest_run"           // 2026-05-14 — /api/cron/press-ingest 진입 흔적 (cron 가동 자체 추적, press_l2_classify 가 처리한 만큼만 쌓이는 false positive 차단)
   | "alert_dispatch_run"         // 2026-05-14 — /api/alert-dispatch 진입 흔적 (alert_deliveries 가 매칭 0건 시 row 안 쌓여 cron 가동 추적 불가능했음)
   | "external_console_check_run" // 2026-05-14 — /api/cron/external-console-check 진입 흔적 (balance·KPI 등 vercel logs 만 있어 사장님 가시성 0이던 사고)
+  | "search_console_sitemap_submit_run" // 2026-06-17 — Search Console sitemap 제출 cron 실행 흔적 (external_console_check_run KPI 오염 방지)
   | "daily_digest_run"           // 2026-05-14 — /api/cron/daily-digest 매일 KST 08:00 사장님 KPI SMS 가동 흔적
   | "weekly_ops_digest_run"      // 2026-05-14 — /api/cron/weekly-ops-digest 매주 KST 09:00 사장님 운영 보고 가동 흔적
   | "sentry_daily_summary_run"   // 2026-05-14 — /api/cron/sentry-daily-summary 매일 KST 09:45 텔레그램 발송 가동 흔적
@@ -385,6 +386,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   press_ingest_run: "press-ingest cron 진입 흔적",
   alert_dispatch_run: "alert-dispatch cron 진입 흔적",
   external_console_check_run: "외부 콘솔 점검 cron 진입 흔적",
+  search_console_sitemap_submit_run: "Search Console sitemap 제출 cron",
   daily_digest_run: "사장님 일일 KPI SMS cron 가동",
   weekly_ops_digest_run: "사장님 주간 운영 보고 cron 가동",
   sentry_daily_summary_run: "Sentry 일일 요약 cron 가동",

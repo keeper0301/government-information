@@ -11,7 +11,7 @@ async function run() {
     const result = await submitSearchConsoleSitemap({
       sitemapUrl: "https://www.keepioo.com/sitemap.xml",
     });
-    await auditCronRun("external_console_check_run", {
+    await auditCronRun("search_console_sitemap_submit_run", {
       task: "search_console_sitemap_submit",
       site_url: result.siteUrl,
       sitemap_url: result.sitemapUrl,
@@ -26,7 +26,7 @@ async function run() {
     });
   } catch (e) {
     const message = (e as Error).message;
-    await auditCronRun("external_console_check_run", {
+    await auditCronRun("search_console_sitemap_submit_run", {
       task: "search_console_sitemap_submit",
       ok: false,
       error: message.slice(0, 500),
@@ -38,10 +38,11 @@ async function run() {
   }
 }
 
-export async function GET(request: Request) {
-  const denied = authorizeCronRequest(request);
-  if (denied) return denied;
-  return run();
+export async function GET() {
+  return NextResponse.json(
+    { ok: false, error: "Method Not Allowed" },
+    { status: 405, headers: { Allow: "POST" } },
+  );
 }
 
 export async function POST(request: Request) {

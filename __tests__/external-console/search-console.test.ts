@@ -4,8 +4,43 @@
 // 클릭 0 (색인·robots·도메인) + 저 CTR (제목/meta 매력 저하) 검증.
 // ============================================================
 
-import { describe, it, expect } from "vitest";
-import { buildSearchConsoleAlerts } from "@/lib/external-console/search-console";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  buildSearchConsoleAlerts,
+  submitSearchConsoleSitemap,
+} from "@/lib/external-console/search-console";
+
+const ENV_KEYS = [
+  "SC_SITE_URL",
+  "SC_CLIENT_ID",
+  "SC_CLIENT_SECRET",
+  "SC_REFRESH_TOKEN",
+] as const;
+
+function setSearchConsoleEnv() {
+  process.env.SC_SITE_URL = "https://www.keepioo.com/";
+  process.env.SC_CLIENT_ID = "client-id";
+  process.env.SC_CLIENT_SECRET = "client-value";
+  process.env.SC_REFRESH_TOKEN = "refresh-value";
+}
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status });
+}
+
+function textResponse(body: string, status = 200) {
+  return new Response(status === 204 ? null : body, { status });
+}
+
+beforeEach(() => {
+  for (const key of ENV_KEYS) delete process.env[key];
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  for (const key of ENV_KEYS) delete process.env[key];
+});
 
 describe("buildSearchConsoleAlerts", () => {
   it("클릭 > 0 + CTR 정상 → alert 없음", () => {
@@ -64,5 +99,70 @@ describe("buildSearchConsoleAlerts", () => {
     });
     expect(out.kpis.ctr).toBe(0.0212);
     expect(out.kpis.avg_position).toBe(14.68);
+  });
+});
+
+describe("submitSearchConsoleSitemap", () => {
+  it("env 누락 시 credentials missing 에러", async () => {
+    await expect(submitSearchConsoleSitemap()).rejects.toThrow(
+      "Search Console credentials missing",
+    );
+  });
+
+  it("token refresh 후 URL-prefix property와 sitemap URL을 encode해서 PUT 호출", async () => {
+    setSearchConsoleEnv();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ access_token: "access-token" }))
+      .mockResolvedValueOnce(textResponse("", 204));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await submitSearchConsoleSitemap();
+
+    expect(result).toMatchObject({
+      ok: true,
+      siteUrl: "https://www.keepioo.com/",
+      sitemapUrl: "https://www.keepioo.com/sitemap.xml",
+      status: 204,
+      body: "",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "https://www.googleapis.com/webmasters/v3/sites/https%3A%2F%2Fwww.keepioo.com%2F/sitemaps/https%3A%2F%2Fwww.keepioo.com%2Fsitemap.xml",
+    );
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({
+      method: "PUT",
+      headers: { Authorization: "Bearer access-token" },
+      cache: "no-store",
+    });
+  });
+
+  it("token refresh 실패 body를 에러에 포함", async () => {
+    setSearchConsoleEnv();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(textResponse("invalid_grant", 401)),
+    );
+
+    await expect(submitSearchConsoleSitemap()).rejects.toThrow(
+      "token refresh 401: invalid_grant",
+    );
+  });
+
+  it("Google sitemap submit 403 body를 에러에 포함", async () => {
+    setSearchConsoleEnv();
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ access_token: "access-token" }))
+        .mockResolvedValueOnce(
+          textResponse('{"error":{"message":"insufficient permission"}}', 403),
+        ),
+    );
+
+    await expect(submitSearchConsoleSitemap()).rejects.toThrow(
+      /Search Console sitemap submit 403: .*insufficient permission/,
+    );
   });
 });

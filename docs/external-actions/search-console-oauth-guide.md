@@ -43,8 +43,9 @@ AdSense·GA4 와 동일 흐름. **scope 만 다름**.
 2. ⚙️ → "Use your own OAuth credentials" 체크 → CLIENT_ID + SECRET 입력
 3. 좌측 사이드 입력창 아래 **"Input your own scopes"** 텍스트박스에 다음 입력:
    ```
-   https://www.googleapis.com/auth/webmasters.readonly
+   https://www.googleapis.com/auth/webmasters
    ```
+   - 조회만 할 때는 `webmasters.readonly`도 가능하지만, sitemap 제출 자동화까지 쓰려면 반드시 `webmasters`가 필요합니다.
 4. "Authorize APIs" → Google 로그인 → Search Console 가 등록된 계정 선택 → 동의
 5. "Step 2: Exchange authorization code for tokens" 자동 진행
 6. **Refresh token** 복사 (1회만 표시)
@@ -75,7 +76,8 @@ Redeploy 완료 후 (~2분):
 
 ## 보안
 
-- `webmasters.readonly` scope — 읽기만 가능, 색인·sitemap 수정 불가
+- `webmasters` scope — Search Analytics 조회 + sitemap 제출 가능
+- `webmasters.readonly` scope — 읽기만 가능, sitemap 제출 불가
 - refresh_token 만료: AdSense·GA4 와 동일 (6개월 미사용 시)
 
 ## 트러블슈팅
