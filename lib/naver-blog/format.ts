@@ -334,6 +334,43 @@ function buildNaverKeySummaryText(html: string): string[] {
   return picked.slice(0, 4);
 }
 
+function stripChecklistLabel(item: string): string {
+  return item.replace(/^[^:：]+[:：]\s*/, "").trim();
+}
+
+function inferNaverRegion(text: string): string | null {
+  const plain = decodeBasicEntities(stripTags(text)).replace(/\s+/g, " ");
+  const patterns = [
+    /([가-힣]{2,}(?:시|군|구)\s+[가-힣]{1,}(?:시|군|구|읍|면|동))/,
+    /([가-힣]{2,}(?:특별시|광역시|특별자치시|특별자치도|도)\s+[가-힣]{1,}(?:시|군|구))/,
+    /([가-힣]{2,}(?:시|군|구))/,
+  ];
+  for (const re of patterns) {
+    const match = plain.match(re);
+    if (match?.[1]) return match[1].trim();
+  }
+  return null;
+}
+
+function buildNaverAeoFaqHtml(checklistItems: string[]): string {
+  const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건 확인");
+  const benefit = stripChecklistLabel(checklistItems[1] ?? "금액과 지급 방식 확인");
+  const period = stripChecklistLabel(checklistItems[2] ?? "신청 마감일과 예산 소진 여부 확인");
+  const route = stripChecklistLabel(checklistItems[4] ?? "공식 신청 페이지 또는 담당 기관 확인");
+  return [
+    `<p>&nbsp;</p>`,
+    `<p><strong>자주 묻는 질문</strong></p>`,
+    `<p><strong>Q. 누가 신청할 수 있나요?</strong></p>`,
+    `<p>A. ${escapeHtml(target)}</p>`,
+    `<p><strong>Q. 얼마나 지원받을 수 있나요?</strong></p>`,
+    `<p>A. ${escapeHtml(benefit)}</p>`,
+    `<p><strong>Q. 언제까지 확인해야 하나요?</strong></p>`,
+    `<p>A. ${escapeHtml(period)}</p>`,
+    `<p><strong>Q. 어디에서 신청하나요?</strong></p>`,
+    `<p>A. ${escapeHtml(route)}</p>`,
+  ].join("\n");
+}
+
 // ============================================================
 // Phase 2-A — RPA 자동 발행용 SE3 호환 HTML 변환
 // ============================================================
@@ -393,21 +430,35 @@ export function convertToNaverBlogHtml(
     ? null
     : `${BASE_URL}/api/naver-thumbnail/${encodeURIComponent(post.slug)}`;
 
-  // 1) 도입부 — 네이버 첫 화면에서 바로 답을 주는 정보형 구조.
-  const hookHtml = post.meta_description
-    ? `<p>${escapeHtml(softenNaverMarketingCopy(post.meta_description.trim()))}</p>\n<p>&nbsp;</p>\n`
-    : "";
+  // 1) 도입부 — SEO/GEO/AEO 대응: 검색 의도 답변 → 지역/대상/혜택 → 체크리스트 순서.
+  const checklistItems = buildNaverChecklistText(contentForNaver);
+  const region = inferNaverRegion(`${post.title}\n${contentForNaver}`);
+  const answerSummary = post.meta_description
+    ? softenNaverMarketingCopy(post.meta_description.trim())
+    : buildNaverKeySummaryText(contentForNaver)[0] ?? post.title;
+  const hookHtml = [
+    `<p><strong>요약 답변</strong></p>`,
+    `<p>${escapeHtml(answerSummary)}</p>`,
+    `<p>&nbsp;</p>`,
+  ].join("\n");
+  const geoEntityHtml = [
+    `<p><strong>검색 핵심 정보</strong></p>`,
+    `<p>• 지역: ${escapeHtml(region ?? "공식 공고 기준 지역 확인")}</p>`,
+    `<p>• 대상: ${escapeHtml(stripChecklistLabel(checklistItems[0]))}</p>`,
+    `<p>• 혜택: ${escapeHtml(stripChecklistLabel(checklistItems[1]))}</p>`,
+    `<p>&nbsp;</p>`,
+  ].join("\n");
   const keySummaryHtml = [
     `<p><strong>한눈에 보는 핵심</strong></p>`,
     ...buildNaverKeySummaryText(contentForNaver).map((item) => `<p>• ${escapeHtml(item)}</p>`),
     `<p>&nbsp;</p>`,
   ].join("\n");
-  const checklistItems = buildNaverChecklistText(contentForNaver);
   const trustChecklistHtml = [
     `<p><strong>신청 전 체크포인트</strong></p>`,
     ...checklistItems.map((item) => `<p>• ${escapeHtml(item)}</p>`),
     `<p>&nbsp;</p>`,
   ].join("\n");
+  const faqHtml = buildNaverAeoFaqHtml(checklistItems);
 
   // 2) cover image — HTML <img> paste 는 SE3 가 외부 fetch 실패 시 alert 띄움 (2026-05-12 사고).
   //    runner.mjs 가 본문 paste 후 별도로 base64 image paste (SE3 자동 upload).
@@ -437,10 +488,13 @@ export function convertToNaverBlogHtml(
   const bodyHtml = (
     coverHtml +
     hookHtml +
+    geoEntityHtml +
     keySummaryHtml +
     "\n" +
     trustChecklistHtml +
     bodyContentHtml +
+    "\n" +
+    faqHtml +
     "\n" +
     ctaHtml
   ).trim();
