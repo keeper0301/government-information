@@ -62,7 +62,7 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
 
   // 1) 도입부 — 광고문보다 검색 의도 답변을 먼저 보여준다.
   const intro = post.meta_description
-    ? `${post.meta_description.trim()}\n\n`
+    ? `${softenNaverMarketingCopy(post.meta_description.trim())}\n\n`
     : "";
   const keySummary = buildNaverKeySummaryText(contentForNaver);
   const trustChecklist = [
@@ -99,7 +99,7 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
   const body = (intro + trustChecklist + bodyText + footer).trim();
 
   return {
-    title: post.title,
+    title: softenNaverMarketingCopy(post.title),
     body,
     backlinkUrl,
   };
@@ -279,12 +279,12 @@ function buildNaverKeySummaryText(html: string): string[] {
   const picked: string[] = [];
   for (const re of priority) {
     const line = plain.find((candidate) => candidate.length >= 18 && re.test(candidate) && !picked.includes(candidate));
-    if (line) picked.push(line.slice(0, 92));
+    if (line) picked.push(softenNaverMarketingCopy(line).slice(0, 92));
   }
   if (picked.length < 3) {
     for (const line of plain) {
       if (picked.includes(line)) continue;
-      picked.push(line.slice(0, 92));
+      picked.push(softenNaverMarketingCopy(line).slice(0, 92));
       if (picked.length >= 3) break;
     }
   }
@@ -352,7 +352,7 @@ export function convertToNaverBlogHtml(
 
   // 1) 도입부 — 네이버 첫 화면에서 바로 답을 주는 정보형 구조.
   const hookHtml = post.meta_description
-    ? `<p>${escapeHtml(post.meta_description.trim())}</p>\n<p>&nbsp;</p>\n`
+    ? `<p>${escapeHtml(softenNaverMarketingCopy(post.meta_description.trim()))}</p>\n<p>&nbsp;</p>\n`
     : "";
   const keySummaryHtml = [
     `<p><strong>한눈에 보는 핵심</strong></p>`,
@@ -406,7 +406,7 @@ export function convertToNaverBlogHtml(
   ).trim();
 
   return {
-    title: post.title,
+    title: softenNaverMarketingCopy(post.title),
     bodyHtml,
     backlinkUrl,
     coverImageUrl,
@@ -483,6 +483,19 @@ function transformForSe3(html: string): string {
   result = result.replace(/(\s*<p>\s*<\/p>\s*){3,}/gi, "<p>&nbsp;</p>\n<p>&nbsp;</p>");
 
   return result.trim();
+}
+
+function softenNaverMarketingCopy(value: string): string {
+  return value
+    .replace(/성장\s*지원\s*혜택을\s*놓치지\s*마세요\.?/g, "지원 조건을 확인하세요.")
+    .replace(/지금\s*바로\s*자격\s*확인하고\s*신청하세요!?/g, "자격 조건과 신청 경로를 확인하세요")
+    .replace(/지금\s*바로\s*신청(?:하세요|해보세요)?!?/g, "신청 조건을 확인하세요")
+    .replace(/지금\s*바로\s*확인(?:하세요|해보세요)?!?/g, "신청 조건을 확인하세요")
+    .replace(/\s*놓치지\s*마세요!?/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.!?])/g, "$1")
+    .replace(/[ \t]+$/g, "")
+    .trim();
 }
 
 function escapeHtml(s: string): string {

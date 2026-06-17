@@ -245,6 +245,27 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain("<p><strong>📌 신청 대상</strong></p>");
   });
 
+  it("SE3 HTML 출력에서 제목·도입부의 과한 CTA 문구를 정보형으로 낮춘다", () => {
+    const out = convertToNaverBlogHtml({
+      ...post,
+      title: "2026년 대구 동구 D-LINK 사업화 지원금 500만원 놓치지 마세요!",
+      meta_description:
+        "대구 동구 청년 창업기업에 사업화 지원금 500만원을 제공합니다. 지금 바로 자격 확인하고 신청하세요! 성장 지원 혜택을 놓치지 마세요.",
+      content: `
+        <h2>지원 대상</h2>
+        <p>대구 동구 거주 및 사업장 소재 청년 창업기업이 대상입니다.</p>
+        <h2>지원 금액</h2>
+        <p>기업별 사업화 지원금 각 500만 원을 지원합니다.</p>
+      `,
+    });
+
+    expect(out.title).toBe("2026년 대구 동구 D-LINK 사업화 지원금 500만원");
+    expect(out.bodyHtml).toContain("자격 조건과 신청 경로를 확인하세요");
+    expect(out.bodyHtml).not.toContain("지금 바로 자격 확인하고 신청하세요");
+    expect(out.bodyHtml).not.toContain("성장 지원 혜택을.");
+    expect(out.bodyHtml).not.toContain("놓치지 마세요");
+  });
+
   it("meta_description 없으면 도입부 없이 본문부터", () => {
     const out = convertToNaverBlogHtml({ ...post, meta_description: null });
     // body 의 첫 줄이 도입부가 아니라 본문 (h3 또는 다른 태그)
