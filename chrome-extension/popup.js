@@ -45,6 +45,10 @@ async function autoBootstrapSecret() {
   }
 })();
 
+(async () => {
+  await refreshUpdateStatus();
+})();
+
 document.getElementById("save-secret").addEventListener("click", async () => {
   const v = secretEl.value.trim();
   if (!v) { setStatus("❌ secret 입력 필요"); return; }
@@ -94,6 +98,35 @@ document.getElementById("manual-batch-publish").addEventListener("click", async 
     setStatus(`❌ ${e?.message ?? e}`);
   }
 });
+
+document.getElementById("check-update").addEventListener("click", async () => {
+  setStatus("🔄 업데이트 확인 중...");
+  try {
+    const r = await chrome.runtime.sendMessage({ type: "check-update", reason: "popup", force: true });
+    setStatus(formatUpdateStatus(r?.result ?? r));
+  } catch (e) {
+    setStatus(`❌ 업데이트 확인 실패: ${e?.message ?? e}`);
+  }
+});
+
+async function refreshUpdateStatus() {
+  try {
+    const r = await chrome.runtime.sendMessage({ type: "get-update-status" });
+    const current = statusEl.textContent || "";
+    if (!current || current === "대기 중...") {
+      setStatus(formatUpdateStatus(r?.result ?? r));
+    }
+  } catch {
+    // popup smoke/mock 환경에서는 background worker 응답이 없을 수 있다.
+  }
+}
+
+function formatUpdateStatus(status) {
+  if (!status) return "업데이트 상태: 알 수 없음";
+  const version = status.version ? `v${status.version}` : "version unknown";
+  const checked = status.checkedAt ? `\n확인: ${status.checkedAt}` : "";
+  return `🔄 업데이트 상태: ${version}\n${status.message ?? status.status ?? "알 수 없음"}${checked}`;
+}
 
 function formatResult(r) {
   if (!r) return "응답 없음";

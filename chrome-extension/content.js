@@ -18,13 +18,16 @@
 const SE3_TITLE = ".se-section-documentTitle p.se-text-paragraph";
 const SE3_BODY = ".se-section-text p.se-text-paragraph";
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type !== "naver-publish") return false;
-  publishToSe3(msg.payload, msg.dryRun === true)
-    .then((result) => sendResponse({ ok: true, result }))
-    .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null }));
-  return true;
-});
+if (!globalThis.__keepiooNaverPublisherListenerRegistered) {
+  globalThis.__keepiooNaverPublisherListenerRegistered = true;
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type !== "naver-publish") return false;
+    publishToSe3(msg.payload, msg.dryRun === true)
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null }));
+    return true;
+  });
+}
 
 async function publishToSe3(payload, dryRun) {
   const debug = { stage: "init" };
@@ -65,6 +68,30 @@ async function publishToSe3(payload, dryRun) {
   await sleep(500);
   await selectAllDelete(mfDoc, mainFrame);
   await typeText(mfDoc, payload.title);
+  await sleep(300);
+  if (!titleContains(titleEl, payload.title)) {
+    let titleInserted = false;
+    try {
+      titleInserted = await debuggerInsertTextAt(titleEl, payload.title, debug, "title");
+    } catch (e) {
+      debug.title_debugger_click_insert_error = String(e?.message ?? e).slice(0, 120);
+    }
+    await sleep(500);
+    if (!titleInserted || !titleContains(titleEl, payload.title)) {
+      directSetPlainText(titleEl, payload.title);
+      debug.title_method = "direct_dom_fallback";
+      debug.input_verification = "unsafe_direct_dom_title";
+      await sleep(300);
+    } else {
+      debug.title_method = "debugger_click_insert_text";
+    }
+  } else {
+    debug.title_method = "insertText";
+  }
+  debug.titleText = (titleEl.textContent || "").trim().slice(0, 120);
+  if (!titleContains(titleEl, payload.title)) {
+    throwWithDebug(`제목 입력 실패 의심 (titleText=${debug.titleText})`, debug);
+  }
   debug.title = "ok";
   await sleep(500);
 
@@ -77,7 +104,7 @@ async function publishToSe3(payload, dryRun) {
       try {
         bodyEl.click();
         await sleep(500);
-        const r = await fetch(payload.coverImageUrl);
+        const r = await fetchWithTimeout(payload.coverImageUrl, {}, 10_000);
         if (r.ok) {
           const blob = await r.blob();
           if (blob.type.startsWith("image/")) {
@@ -122,6 +149,19 @@ async function publishToSe3(payload, dryRun) {
     .map(el => el.textContent ?? "")
     .join("");
   debug.bodyLength = allBodyText.length;
+  debug.bodyVerified = bodyContainsExpectedText(allBodyText, payload.bodyHtml);
+  if (debug.title_method === "direct_dom_fallback" || debug.body_paste_method === "direct_dom_fallback") {
+    debug.unsafe_input_fallback = true;
+    if (!dryRun) {
+      throwWithDebug(
+        `입력 검증 실패: direct DOM fallback 사용 (${debug.title_method}/${debug.body_paste_method}) — SmartEditor 내부 저장 상태 미검증`,
+        debug,
+      );
+    }
+  }
+  if (!debug.bodyVerified) {
+    throwWithDebug("본문 입력 검증 실패: payload 핵심 문구가 SmartEditor 본문에서 확인되지 않음", debug);
+  }
 
   // dry-run: 본문 길이 + confirm 버튼 visible 검증 (W1·W-NEW-1)
   if (dryRun) {
@@ -164,14 +204,11 @@ async function publishToSe3(payload, dryRun) {
 
   // 8. URL 캡처
   debug.stage = "url_capture";
-  let naverUrl = null;
-  if (/blog\.naver\.com\/[^/]+\/\d{9,}/.test(location.href)) {
-    naverUrl = location.href;
-  } else {
-    const link = mfDoc.querySelector('a[href*="blog.naver.com/cgc0904/"], a[href*="m.site.naver.com"]');
-    naverUrl = link?.href ?? null;
-  }
+  const naverUrl = await capturePublishedUrl(mfDoc, debug);
   debug.url_captured = naverUrl ?? "none";
+  if (!naverUrl) {
+    throwWithDebug("발행 확인 실패: 공개 글 URL을 캡처하지 못해 성공 처리 차단", debug);
+  }
   debug.stage = "done";
 
   return { dryRun: false, naverUrl, debug };
@@ -180,7 +217,50 @@ async function publishToSe3(payload, dryRun) {
 // ────────────────────────────────────────────────────────────
 // helpers
 // ────────────────────────────────────────────────────────────
+async function capturePublishedUrl(mfDoc, debug) {
+  const postUrlRe = /https?:\/\/blog\.naver\.com\/[^/?#]+\/\d{9,}/;
+  const candidates = [];
+  const addCandidate = (value, source) => {
+    const s = String(value || "");
+    const m = s.match(postUrlRe);
+    if (m) candidates.push({ source, url: m[0] });
+  };
+
+  for (let i = 0; i < 30; i++) {
+    addCandidate(location.href, "location.href");
+    addCandidate(document.querySelector('link[rel="canonical"]')?.href, "top canonical");
+    addCandidate(document.querySelector('meta[property="og:url"]')?.content, "top og:url");
+    addCandidate(mfDoc.querySelector('link[rel="canonical"]')?.href, "frame canonical");
+    addCandidate(mfDoc.querySelector('meta[property="og:url"]')?.content, "frame og:url");
+    for (const a of Array.from(document.querySelectorAll('a[href*="blog.naver.com/"]')).slice(0, 50)) {
+      addCandidate(a.href, "top anchor");
+    }
+    for (const a of Array.from(mfDoc.querySelectorAll('a[href*="blog.naver.com/"]')).slice(0, 50)) {
+      addCandidate(a.href, "frame anchor");
+    }
+    if (candidates.length) {
+      debug.url_capture_source = candidates[0].source;
+      return candidates[0].url;
+    }
+    await sleep(1000);
+  }
+
+  debug.url_capture_location = location.href;
+  debug.url_capture_title = document.title;
+  return null;
+}
+
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function throwWithDebug(message, debug) {
   const error = new Error(message);
@@ -249,7 +329,7 @@ async function typeText(mfDoc, text) {
  * 호출 측이 catch 후 debug.body_paste_method 로 어느 path 통과했는지 추적.
  */
 async function pasteHtml(targetEl, html, debug) {
-  const beforeLen = (targetEl?.textContent ?? "").length;
+  const beforeLen = measureEditorTextLength(targetEl);
   const plainText = htmlToPlainText(html);
   focusEditor(targetEl);
 
@@ -271,7 +351,7 @@ async function pasteHtml(targetEl, html, debug) {
   await sleep(800);
 
   // 검증 — paste 후 본문 길이
-  let afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+  let afterLen = measureEditorTextLength(targetEl);
   debug.body_after_dispatch = afterLen;
 
   // 2단계 — fallback: execCommand("insertHTML")
@@ -283,7 +363,7 @@ async function pasteHtml(targetEl, html, debug) {
       focusEditor(targetEl);
       mfDoc.execCommand("insertHTML", false, html);
       await sleep(800);
-      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      afterLen = measureEditorTextLength(targetEl);
       debug.body_paste_method = "insertHTML_fallback";
       debug.body_after_insertHTML = afterLen;
     } catch (e) {
@@ -303,7 +383,7 @@ async function pasteHtml(targetEl, html, debug) {
       focusEditor(targetEl);
       mfDoc.execCommand("insertText", false, plainText);
       await sleep(800);
-      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      afterLen = measureEditorTextLength(targetEl);
       debug.body_paste_method = "insertText_fallback";
       debug.body_after_insertText = afterLen;
     } catch (e) {
@@ -320,7 +400,7 @@ async function pasteHtml(targetEl, html, debug) {
       debug.debugger_paste_ok = pasteRes?.ok === true;
       if (!pasteRes?.ok) debug.debugger_paste_error = String(pasteRes?.error ?? "unknown").slice(0, 100);
       await sleep(1500);
-      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      afterLen = measureEditorTextLength(targetEl);
       debug.body_paste_method = "debugger_ctrl_v_fallback";
       debug.body_after_debugger_paste = afterLen;
     } catch (e) {
@@ -328,7 +408,23 @@ async function pasteHtml(targetEl, html, debug) {
     }
   }
 
-  // 5단계 — DevTools Protocol text insertion. Formatting is downgraded, but
+  // 5단계 — DevTools Protocol trusted click + text insertion.
+  // iframe 내부 좌표를 top-page 좌표로 환산해 실제 클릭 후 insertText를 보낸다.
+  if (afterLen - beforeLen < 100) {
+    try {
+      focusEditor(targetEl);
+      const insertRes = await debuggerInsertTextAt(targetEl, plainText, debug, "body");
+      debug.body_debugger_click_insert_ok = insertRes;
+      await sleep(1500);
+      afterLen = measureEditorTextLength(targetEl);
+      debug.body_paste_method = "debugger_click_insert_text_fallback";
+      debug.body_after_debugger_click_insert_text = afterLen;
+    } catch (e) {
+      debug.debugger_click_insert_text_error = String(e?.message ?? e).slice(0, 100);
+    }
+  }
+
+  // 6단계 — DevTools Protocol text insertion without click. Formatting is downgraded, but
   // it avoids false login loops by getting the article body into the editor.
   if (afterLen - beforeLen < 100) {
     try {
@@ -340,7 +436,7 @@ async function pasteHtml(targetEl, html, debug) {
       debug.debugger_insert_text_ok = insertRes?.ok === true;
       if (!insertRes?.ok) debug.debugger_insert_text_error = String(insertRes?.error ?? "unknown").slice(0, 100);
       await sleep(1500);
-      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      afterLen = measureEditorTextLength(targetEl);
       debug.body_paste_method = "debugger_insert_text_fallback";
       debug.body_after_debugger_insert_text = afterLen;
     } catch (e) {
@@ -356,12 +452,64 @@ async function pasteHtml(targetEl, html, debug) {
     try {
       directInsertHtml(targetEl, html, plainText);
       await sleep(800);
-      afterLen = (targetEl?.parentElement?.textContent ?? "").length;
+      afterLen = measureEditorTextLength(targetEl);
       debug.body_paste_method = "direct_dom_fallback";
       debug.body_after_direct_dom = afterLen;
     } catch (e) {
       debug.direct_dom_error = String(e?.message ?? e).slice(0, 100);
     }
+  }
+}
+
+function titleContains(targetEl, expected) {
+  const actual = (targetEl?.textContent || "").replace(/\s+/g, " ").trim();
+  const want = String(expected || "").replace(/\s+/g, " ").trim();
+  return Boolean(want) && actual.includes(want.slice(0, Math.min(30, want.length)));
+}
+
+function measureEditorTextLength(targetEl) {
+  const doc = targetEl?.ownerDocument ?? document;
+  const section = targetEl?.closest?.(".se-section-text, .se-main-container") ?? doc;
+  const text = Array.from(section.querySelectorAll?.(".se-text-paragraph") ?? [])
+    .map((el) => el.textContent ?? "")
+    .join("");
+  return (text || section.textContent || targetEl?.textContent || "").length;
+}
+
+function bodyContainsExpectedText(actualText, html) {
+  const actual = String(actualText || "").replace(/\s+/g, " ").trim();
+  const plain = htmlToPlainText(html).replace(/\s+/g, " ").trim();
+  if (!plain) return false;
+  if (plain.length < 80) return actual.includes(plain.slice(0, Math.min(30, plain.length)));
+  const middle = Math.floor(plain.length / 2);
+  const snippets = [
+    plain.slice(0, 40),
+    plain.slice(Math.max(0, middle - 20), middle + 20),
+    plain.slice(Math.max(0, plain.length - 40)),
+  ].filter((snippet) => snippet.trim().length >= 20);
+  return snippets.filter((snippet) => actual.includes(snippet.trim())).length >= Math.min(2, snippets.length);
+}
+
+function directSetPlainText(targetEl, text) {
+  const doc = targetEl.ownerDocument;
+  const win = doc.defaultView;
+  targetEl.replaceChildren(doc.createTextNode(String(text || "")));
+  const editable = targetEl.closest("[contenteditable='true'], [contenteditable='plaintext-only']") ?? targetEl;
+  for (const ev of [
+    new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: String(text || "") }),
+    new InputEvent("input", { bubbles: true, inputType: "insertText", data: String(text || "") }),
+    new Event("change", { bubbles: true }),
+  ]) {
+    editable.dispatchEvent(ev);
+    targetEl.dispatchEvent(ev);
+  }
+  const selection = win?.getSelection?.();
+  if (selection) {
+    const range = doc.createRange();
+    range.selectNodeContents(targetEl);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
   }
 }
 
@@ -401,14 +549,33 @@ function directInsertHtml(targetEl, html, plainText) {
   }
 }
 
-function sendRuntimeMessage(message) {
+function sendRuntimeMessage(message, timeoutMs = 5_000) {
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`runtime message timeout: ${message?.type ?? "unknown"}`)), timeoutMs);
     chrome.runtime.sendMessage(message, (response) => {
+      clearTimeout(timer);
       const err = chrome.runtime.lastError;
       if (err) reject(new Error(err.message));
       else resolve(response);
     });
   });
+}
+
+async function debuggerInsertTextAt(targetEl, text, debug, step) {
+  targetEl.scrollIntoView({ block: "center", inline: "nearest" });
+  await sleep(120);
+  const rect = targetEl.getBoundingClientRect();
+  const frameEl = targetEl.ownerDocument.defaultView?.frameElement;
+  const frameRect = frameEl?.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+  const rawX = frameRect.left + rect.left + Math.min(Math.max(rect.width * 0.15, 24), 220);
+  const rawY = frameRect.top + rect.top + Math.min(Math.max(rect.height / 2, 16), 48);
+  const x = Math.round(Math.min(Math.max(rawX, 20), Math.max(window.innerWidth - 20, 20)));
+  const y = Math.round(Math.min(Math.max(rawY, 20), Math.max(window.innerHeight - 20, 20)));
+  debug[`${step}_debugger_click_insert_point`] = { x, y, rawX: Math.round(rawX), rawY: Math.round(rawY), rect: { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }, frameRect: { left: Math.round(frameRect.left || 0), top: Math.round(frameRect.top || 0) } };
+  const res = await sendRuntimeMessage({ type: "debugger-click-insert-text", x, y, text });
+  debug[`${step}_debugger_click_insert_ok`] = res?.ok === true;
+  if (!res?.ok) debug[`${step}_debugger_click_insert_error`] = String(res?.error ?? "unknown").slice(0, 120);
+  return res?.ok === true;
 }
 
 async function dispatchPasteEvent(targetEl, { html, text, imageBlob }) {
