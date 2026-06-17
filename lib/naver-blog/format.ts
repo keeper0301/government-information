@@ -300,7 +300,7 @@ function shortenNaverFact(value: string): string {
 
 function buildNaverChecklistText(html: string): string[] {
   const lines = extractNaverPlainLines(html);
-  const routeLines = lines.filter((line) => !/마감|기간|상반기|하반기|예산\s*소진/.test(line));
+  const routeLines = lines.filter((line) => !/마감|기간|상반기|하반기|예산\s*소진|놓치지|습관|중요한\s*기회/.test(line));
   return [
     `대상: ${findNaverFactLine(lines, /대상|자격|조건|나이|연령|지역|거주|소득|사업자/, "공식 공고의 대상 조건 확인", /^지원\s*대상|^대상[:：]/)}`,
     `혜택: ${findNaverFactLine(lines, /지원\s*(금액|내용)|혜택|최대|월\s*\d|분기|만원|원\b/, "금액과 지급 방식 확인", /^지원\s*금액|^지원\s*내용|^혜택[:：]/)}`,
