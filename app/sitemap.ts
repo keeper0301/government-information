@@ -58,12 +58,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(!ADSENSE_REVIEW_MODE
       ? [{ url: `${baseUrl}/news`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 }]
       : []),
-    { url: `${baseUrl}/calendar`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/recommend`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/popular`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/consult`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${baseUrl}/alerts`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.6 },
-    { url: `${baseUrl}/pricing`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.6 },
+    ...(!ADSENSE_REVIEW_MODE
+      ? [
+          { url: `${baseUrl}/calendar`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
+          { url: `${baseUrl}/recommend`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
+          { url: `${baseUrl}/popular`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
+          { url: `${baseUrl}/consult`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.7 },
+          { url: `${baseUrl}/alerts`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.6 },
+          { url: `${baseUrl}/pricing`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.6 },
+        ]
+      : []),
     { url: `${baseUrl}/terms`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/privacy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/refund`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },

@@ -22,6 +22,7 @@ import type { LoanProgram } from "@/lib/database.types";
 import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
+import { EditorialReviewNote, loanReviewChecklist } from "@/components/editorial-review-note";
 
 // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
 // 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
@@ -250,6 +251,15 @@ export default async function LoanPage({ searchParams }: Props) {
         <p className="text-[15px] text-grey-700 leading-[1.6]">
           소상공인·자영업자가 받을 수 있는 정부 대출과 지원금을 모았어요.
         </p>
+      </section>
+
+      <section className="max-w-content mx-auto px-6 lg:px-10 mb-8">
+        <EditorialReviewNote
+          title="정책자금은 금리보다 ‘심사에서 막히는 지점’을 먼저 확인합니다"
+          description="정책알리미는 대출·지원금 공고를 낮은 금리 홍보 문구로만 보지 않습니다. 업종, 용도, 체납, 보증 절차를 함께 봐야 실제 실행 가능성이 생깁니다."
+          checklist={loanReviewChecklist}
+          guideHref="/guides/small-business-policy-fund-mistakes"
+        />
       </section>
 
       {/* Filters */}

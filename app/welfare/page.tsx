@@ -22,6 +22,7 @@ import type { WelfareProgram } from "@/lib/database.types";
 import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
+import { EditorialReviewNote, welfareReviewChecklist } from "@/components/editorial-review-note";
 
 // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
 // 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
@@ -228,6 +229,15 @@ export default async function WelfarePage({ searchParams }: Props) {
         <p className="text-[15px] text-grey-700 leading-[1.6]">
           내가 받을 수 있는 정부·지자체 복지 혜택을 한곳에 모았어요.
         </p>
+      </section>
+
+      <section className="max-w-content mx-auto px-6 lg:px-10 mb-8">
+        <EditorialReviewNote
+          title="복지 혜택은 ‘받을 수 있는지’보다 ‘반려되지 않는지’를 먼저 봅니다"
+          description="정책알리미는 단순 공고 목록이 아니라 신청자가 실제로 막히는 조건을 먼저 짚습니다. 아래 네 가지를 확인한 뒤 개별 정책의 원문과 문의처로 최종 확인하세요."
+          checklist={welfareReviewChecklist}
+          guideHref="/guides/documents-before-government-benefit"
+        />
       </section>
 
       {/* Filters */}
