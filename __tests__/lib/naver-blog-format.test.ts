@@ -118,8 +118,10 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
     const out = convertToNaverBlog(basePost);
     expect(out.body).toContain("한눈에 보는 핵심");
     expect(out.body).toContain("신청 전 체크포인트");
-    expect(out.body).toContain("대상: 나이·지역·소득 조건이 맞는지 확인");
-    expect(out.body).toContain("경로: 공식 신청 페이지에서 최종 조건 확인");
+    expect(out.body).toContain("대상: 경기도 청년 기본소득은 만 24세 청년에게 분기별 25만원을 지급하는 제도입니다.");
+    expect(out.body).toContain("혜택: 경기도 청년 기본소득은 만 24세 청년에게 분기별 25만원을 지급하는 제도입니다.");
+    expect(out.body).toContain("기간: 신청 마감2026-12-31");
+    expect(out.body).toContain("경로: 자세한 내용은 공식 신청 페이지에서 확인.");
   });
 
   it("meta_description 이 null 이면 도입부 없이 본문 바로 시작", () => {
@@ -176,8 +178,9 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain("<p><strong>한눈에 보는 핵심</strong></p>");
     expect(out.bodyHtml).toContain("<p><strong>신청 전 체크포인트</strong></p>");
-    expect(out.bodyHtml).toContain("<p>• 대상: 나이·지역·소득 조건이 맞는지 확인</p>");
-    expect(out.bodyHtml).toContain("<p>• 경로: 공식 신청 페이지에서 최종 조건 확인</p>");
+    expect(out.bodyHtml).toContain("<p>• 대상: 만 19~34세 청년</p>");
+    expect(out.bodyHtml).toContain("<p>• 혜택: 월 20만원</p>");
+    expect(out.bodyHtml).toContain("<p>• 경로: 자세한 내용은 신청 페이지</p>");
   });
 
   it("inline style/class/id 모두 제거 (SE3 자체 스타일 덮어쓰기 회피)", () => {

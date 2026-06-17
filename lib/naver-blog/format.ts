@@ -65,16 +65,13 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
     ? `${softenNaverMarketingCopy(post.meta_description.trim())}\n\n`
     : "";
   const keySummary = buildNaverKeySummaryText(contentForNaver);
+  const checklistItems = buildNaverChecklistText(contentForNaver);
   const trustChecklist = [
     "한눈에 보는 핵심",
     ...keySummary.map((item) => `• ${item}`),
     "",
     "신청 전 체크포인트",
-    "• 대상: 나이·지역·소득 조건이 맞는지 확인",
-    "• 혜택: 지원 금액과 실제 지급 방식을 확인",
-    "• 기간: 신청 마감일과 예산 소진 여부 확인",
-    "• 서류: 주민등록·소득·사업자 증빙 필요 여부 확인",
-    "• 경로: 공식 신청 페이지에서 최종 조건 확인",
+    ...checklistItems.map((item) => `• ${item}`),
     "",
   ].join("\n");
 
@@ -257,8 +254,8 @@ function decodeBasicEntities(s: string): string {
     .replace(/&apos;/g, "'");
 }
 
-function buildNaverKeySummaryText(html: string): string[] {
-  const plain = decodeBasicEntities(stripTags(
+function extractNaverPlainLines(html: string): string[] {
+  return decodeBasicEntities(stripTags(
     html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -267,8 +264,40 @@ function buildNaverKeySummaryText(html: string): string[] {
   ))
     .replace(/\u00a0/g, " ")
     .split(/\n|(?<=[.!?。])\s+/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
+    .map((line) => softenNaverMarketingCopy(line.replace(/\s+/g, " ").trim()))
     .filter(Boolean);
+}
+
+function findNaverFactLine(lines: string[], re: RegExp, fallback: string): string {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!re.test(line)) continue;
+    if (line.length >= 8 && !/^신청\s*대상$|^지원\s*금액$|^신청\s*자격$|^제출\s*서류$|^문의처?$/.test(line)) {
+      return shortenNaverFact(line);
+    }
+    const next = lines[i + 1];
+    if (next && next.length >= 4) return shortenNaverFact(next);
+  }
+  return shortenNaverFact(fallback);
+}
+
+function shortenNaverFact(value: string): string {
+  return value.length > 58 ? `${value.slice(0, 58).trim()}…` : value;
+}
+
+function buildNaverChecklistText(html: string): string[] {
+  const lines = extractNaverPlainLines(html);
+  return [
+    `대상: ${findNaverFactLine(lines, /대상|자격|조건|나이|연령|지역|거주|소득|사업자/, "공식 공고의 대상 조건 확인")}`,
+    `혜택: ${findNaverFactLine(lines, /지원\s*(금액|내용)|혜택|최대|월\s*\d|분기|만원|원\b/, "지원 금액과 지급 방식 확인")}`,
+    `기간: ${findNaverFactLine(lines, /기간|마감|공고|예산\s*소진|선착순|\d{4}[.\-년]/, "신청 마감일과 예산 소진 여부 확인")}`,
+    `서류: ${findNaverFactLine(lines, /서류|제출|준비물|증빙|주민등록|소득\s*증명|사업자등록/, "제출 서류와 증빙 필요 여부 확인")}`,
+    `경로: ${findNaverFactLine(lines, /공식|홈페이지|누리집|온라인|방문|문의|기관|센터|담당|페이지/, "공식 신청 페이지 또는 담당 기관 확인")}`,
+  ];
+}
+
+function buildNaverKeySummaryText(html: string): string[] {
+  const plain = extractNaverPlainLines(html);
 
   const priority = [
     /대상|자격|조건|나이|연령|지역|소득|거주/,
@@ -359,13 +388,10 @@ export function convertToNaverBlogHtml(
     ...buildNaverKeySummaryText(contentForNaver).map((item) => `<p>• ${escapeHtml(item)}</p>`),
     `<p>&nbsp;</p>`,
   ].join("\n");
+  const checklistItems = buildNaverChecklistText(contentForNaver);
   const trustChecklistHtml = [
     `<p><strong>신청 전 체크포인트</strong></p>`,
-    `<p>• 대상: 나이·지역·소득 조건이 맞는지 확인</p>`,
-    `<p>• 혜택: 지원 금액과 실제 지급 방식을 확인</p>`,
-    `<p>• 기간: 신청 마감일과 예산 소진 여부 확인</p>`,
-    `<p>• 서류: 주민등록·소득·사업자 증빙 필요 여부 확인</p>`,
-    `<p>• 경로: 공식 신청 페이지에서 최종 조건 확인</p>`,
+    ...checklistItems.map((item) => `<p>• ${escapeHtml(item)}</p>`),
     `<p>&nbsp;</p>`,
   ].join("\n");
 
