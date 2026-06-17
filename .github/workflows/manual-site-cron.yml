@@ -20,6 +20,7 @@ on:
           - agent-resident-cycle
           - autonomous-improvement-scan
           - external-console-check
+          - search-console-sitemap-submit
           - health-alert
           - sns-publish-blog
           - sns-publish-popular-policy
@@ -80,6 +81,10 @@ jobs:
               ;;
             external-console-check)
               path="/api/cron/external-console-check"
+              method="POST"
+              ;;
+            search-console-sitemap-submit)
+              path="/api/cron/search-console-sitemap-submit"
               method="POST"
               ;;
             health-alert)

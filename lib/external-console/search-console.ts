@@ -20,6 +20,7 @@ import type { ConsoleCheckResult, ConsoleAlert } from "./types";
 const SC_API = "https://www.googleapis.com/webmasters/v3";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const FETCH_TIMEOUT_MS = 15_000;
+const DEFAULT_SITEMAP_URL = "https://www.keepioo.com/sitemap.xml";
 const MS_PER_DAY = 86_400_000;
 const LOW_CTR_THRESHOLD = 0.005;       // 0.5%
 const LOW_CTR_MIN_IMPRESSIONS = 100;
@@ -91,6 +92,47 @@ async function querySearchAnalytics(
       throw new Error(`Search Console ${res.status}: ${t.slice(0, 200)}`);
     }
     return (await res.json()) as SearchAnalyticsResponse;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function submitSearchConsoleSitemap(input?: {
+  sitemapUrl?: string;
+}): Promise<{
+  ok: boolean;
+  siteUrl: string;
+  sitemapUrl: string;
+  status: number;
+  body: string;
+}> {
+  const siteUrl = process.env.SC_SITE_URL;
+  if (
+    !siteUrl ||
+    !process.env.SC_CLIENT_ID ||
+    !process.env.SC_CLIENT_SECRET ||
+    !process.env.SC_REFRESH_TOKEN
+  ) {
+    throw new Error("Search Console credentials missing");
+  }
+
+  const sitemapUrl = input?.sitemapUrl ?? DEFAULT_SITEMAP_URL;
+  const token = await getAccessToken();
+  const url = `${SC_API}/sites/${encodeURIComponent(siteUrl)}/sitemaps/${encodeURIComponent(sitemapUrl)}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+    const body = await res.text().catch(() => "");
+    if (!res.ok) {
+      throw new Error(`Search Console sitemap submit ${res.status}: ${body.slice(0, 300)}`);
+    }
+    return { ok: true, siteUrl, sitemapUrl, status: res.status, body };
   } finally {
     clearTimeout(timer);
   }
