@@ -182,6 +182,11 @@ export function makeScraper({
   userAgent = USER_AGENT,
   bodyPickLongest = false,
   titleSelectors = TITLE_SELECTORS,
+  // detail 직접 goto 가 차단되는 사이트(부산 SI board RFC 3.0 개편 — URL 직접 접근 시
+  // "RFC 3.0 오류" 페이지 반환, 클릭 시에만 JS 토큰/세션 거쳐 진입) 대응. true 면
+  // 본문 수집 때 sourceUrl 로 goto 하지 않고 목록을 재방문해 해당 행 링크를 클릭으로 진입.
+  // ⚠️ 100도시 공통 코드라 기본 false(직접 goto 유지) — RFC 3.0 도시에만 opt-in.
+  clickNav = false,
 }) {
   return async function scrape({ limit = 10, headless = true } = {}) {
     const browser = await chromium.launch({ headless });
@@ -341,10 +346,88 @@ export function makeScraper({
       const out = [];
       for (const item of items) {
         try {
-          await page.goto(item.sourceUrl, {
-            waitUntil: NAV_WAIT,
-            timeout: DETAIL_TIMEOUT,
-          });
+          if (clickNav) {
+            // RFC 3.0 류: detail 직접 goto 차단 → 목록 재방문 후 해당 글 링크를 클릭으로 진입.
+            // (직접 goto 하면 "RFC 3.0 오류" 페이지가 떠 본문 추출 0 → silent fail.)
+            await page.goto(listUrl, {
+              waitUntil: navWait || NAV_WAIT,
+              timeout: listTimeout || LIST_TIMEOUT,
+            });
+            if (USE_PROXY) await page.waitForTimeout(2500);
+            await page
+              .waitForSelector(listSelectors.join(", "), {
+                timeout: 25000,
+                state: "attached",
+              })
+              .catch(() =>
+                console.error(`[${cityName}] clickNav: 목록 재방문 waitForSelector timeout`),
+              );
+            const listResolvedUrl = page.url();
+            // ※ 인덱스가 아니라 sourceUrl(글 주소) 로 행을 매칭한다. 목록 재방문 사이 새 글이
+            //   올라와 행이 밀려도, 제목(item)과 본문이 다른 글로 어긋나는 오삽입을 차단(P0).
+            //   추출 때와 같은 anchor 선택 + URL 해석 로직으로 sourceUrl 을 재계산해 일치 행만 클릭.
+            const marked = await page.evaluate(
+              ({ selectors, limit, minRows, targetUrl }) => {
+                let rows = [];
+                for (const sel of selectors) {
+                  const els = document.querySelectorAll(sel);
+                  if (els.length > minRows) {
+                    rows = Array.from(els);
+                    break;
+                  }
+                }
+                const pickAnchor = (row) =>
+                  [...row.querySelectorAll("a[href]")].find(
+                    (x) => !/ileDown|download/i.test(x.getAttribute("href") || ""),
+                  ) ||
+                  row.querySelector("a[href]") ||
+                  row.querySelector("a");
+                const resolve = (a) => {
+                  const href = a ? a.getAttribute("href") : null;
+                  if (!href || href.startsWith("javascript:")) return null;
+                  try {
+                    return href.startsWith("http")
+                      ? href
+                      : new URL(href, location.href).href;
+                  } catch {
+                    return null;
+                  }
+                };
+                for (const row of rows.slice(0, limit)) {
+                  const a = pickAnchor(row);
+                  if (a && resolve(a) === targetUrl) {
+                    a.setAttribute("data-keepioo-target", "1");
+                    return true;
+                  }
+                }
+                return false;
+              },
+              { selectors: listSelectors, limit, minRows, targetUrl: item.sourceUrl },
+            );
+            if (!marked) {
+              console.error(
+                `[${cityName}] clickNav: 목록에서 ${item.sourceUrl} 링크 못 찾음 — skip`,
+              );
+              continue;
+            }
+            await page.click('[data-keepioo-target="1"]').catch(() => {});
+            await page
+              .waitForLoadState(navWait || NAV_WAIT, { timeout: DETAIL_TIMEOUT })
+              .catch(() => {});
+            // 클릭 후에도 여전히 목록이면(클릭 실패·새 탭으로 열림 등) 진입 실패 → 목록을
+            // 본문으로 오추출하지 않도록 skip(P1). 정상 진입 시 URL 이 detail 로 바뀐다.
+            if (page.url() === listResolvedUrl) {
+              console.error(
+                `[${cityName}] clickNav: 클릭 후 목록에 머묾 — 진입 실패 skip (${item.sourceUrl})`,
+              );
+              continue;
+            }
+          } else {
+            await page.goto(item.sourceUrl, {
+              waitUntil: NAV_WAIT,
+              timeout: DETAIL_TIMEOUT,
+            });
+          }
           // 프록시 모드(domcontentloaded)는 본문이 JS 로 동적 주입될 수 있음(안산 등).
           // 본문 selector 가 100자 넘을 때까지 대기(채워지면 즉시 통과, 최대 8s). 못 채우면 진행.
           if (USE_PROXY) {

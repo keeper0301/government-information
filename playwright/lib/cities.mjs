@@ -116,10 +116,16 @@ export const scrapeDongnae = makeScraper({
 // 2026-06-01 — 부산진구 보도자료 게시판 교정. 기존 BBS_0000265 는 "신발산업 특구"
 // 전용(최신 2025-05, 저빈도)이라 일반 보도자료 누락. 진짜 보도자료는 BBS_0000031
 // (소통참여>보도자료, 최신 26.05.18 활발). 본문은 동일 div.substan(라이브 462자 검증).
+// 2026-06-17 — 부산 SI board 가 RFC 3.0 으로 개편되어 detail URL 직접 goto 가 차단됨
+//   (직접 접근 시 "RFC 3.0 오류 메세지" 페이지 반환, 본문 19자 → silent fail). 목록에서
+//   링크 클릭 진입은 정상(.substan 본문 471자 라이브 검증). selector(.substan)는 안 깨짐 —
+//   진입 방식이 문제라 clickNav 모드로 우회(목록 재방문+클릭). 같은 부산 SI 계열(동래 등)도
+//   향후 동일 적용 가능하나, 부산진 GHA 검증 후 단계적 확장.
 export const scrapeBusanjin = makeScraper({
   cityName: "부산진구",
   listUrl: "https://www.busanjin.go.kr/board/list.busanjin?boardId=BBS_0000031&menuCd=DOM_000000110003000000&contentsSid=319&cpath=",
   bodySelectors: [".substan"],
+  clickNav: true,
 });
 
 // 2026-06-10 — 금정구. board 교정 BBS_0000004(공지/안내)→BBS_0000005(보도자료, 거의 매일).
