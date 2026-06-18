@@ -153,7 +153,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
       <aside className="mt-12 p-6 border rounded-lg bg-gray-50">
         <p className="font-semibold mb-2">비슷한 정책 자동 알림 받고 싶으세요?</p>
         <p className="text-sm text-gray-600 mb-4">
-          정책알리미는 사장님 조건에 맞는 정책을 자동으로 카톡·이메일로 보내드려요.
+          정책알리미는 사용자의 나이·지역·직업·소득 조건에 맞는 정책을 카톡·이메일로 보내드려요.
         </p>
         <a
           href={signupUrl}

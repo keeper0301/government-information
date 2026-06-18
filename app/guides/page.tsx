@@ -21,7 +21,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "정책 종합 가이드 | 정책알리미",
   description:
-    "정부·지자체 복지·대출·지원금 정책 종합 가이드. 청년·노년·자영업·주거 카테고리별 자격·신청·마감 정리. 매일 새 글 발행.",
+    "정부·지자체 복지·대출·지원금 정책 종합 가이드. 청년·노년·자영업·주거 카테고리별 자격·서류·중복 제한·마감 함정을 직접 해설합니다.",
   alternates: { canonical: "/guides" },
   openGraph: {
     title: "정책 종합 가이드 | 정책알리미",
@@ -49,9 +49,19 @@ export default async function GuidesPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-bold mb-2">정책 종합 가이드</h1>
         <p className="text-gray-600">
-          정부·지자체 복지·대출·지원금 정책을 카테고리별로 정리했어요. 자격·서류·신청·함정·마감까지 한 번에.
+          정부·지자체 복지·대출·지원금 정책을 카테고리별로 정리했어요. 단순 공고 요약이 아니라 자격·서류·중복 제한·마감 함정까지 직접 해설합니다.
         </p>
       </header>
+
+      <section className="mb-10 rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
+        <h2 className="text-xl font-bold mb-3">정책알리미가 가이드를 쓰는 기준</h2>
+        <ul className="list-disc pl-5 space-y-2 text-sm leading-relaxed text-gray-700">
+          <li>공식 공고 제목만 옮기지 않고, 신청자가 실제로 막히는 조건을 먼저 풉니다.</li>
+          <li>소득·거주지·가구 형태·중복 수급 제한처럼 반려로 이어지는 기준을 따로 표시합니다.</li>
+          <li>서류명, 발급 시점, 문의 전 준비 질문을 같이 적어 사용자가 공식 창구에서 다시 확인할 수 있게 합니다.</li>
+          <li>최종 신청·선정 여부는 각 기관의 최신 공고와 담당자 안내가 기준임을 분명히 둡니다.</li>
+        </ul>
+      </section>
 
       {/* 정책 가이드 카드 list (있으면 위에 노출) */}
       {guides.length > 0 && (
@@ -114,7 +124,7 @@ export default async function GuidesPage() {
       <section className="mb-10">
         <h2 className="text-xl font-bold mb-3">블로그 카테고리</h2>
         <p className="text-sm text-gray-600 mb-4">
-          매일 새 정책 가이드가 자동 발행됩니다. 카테고리별로 모아 보세요.
+          재심사 기간에는 신청 실수·서류·중복 제한을 설명하는 대표 가이드를 우선 보여줍니다. 카테고리별로 필요한 주제를 모아 보세요.
         </p>
         <div className="flex flex-wrap gap-2">
           {BLOG_CATEGORIES.map((cat) => (
