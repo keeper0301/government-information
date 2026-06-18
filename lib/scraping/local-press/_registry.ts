@@ -75,8 +75,7 @@ import { scrapeBukguGwangjuEminwonAndInsert } from "./bukgu-gwangju-eminwon";
 import { scrapeSeoguGwangjuAndInsert } from "./seogu_gwangju";
 import { scrapeDongguGwangjuAndInsert } from "./donggu_gwangju";
 // 2026-06-08 disabled (ASN 403 → GHA+icn1 playwright 경로 이관): import { scrapeNamdongIncheonAndInsert } from "./namdong_incheon";
-// 2026-06-19 disabled (인천 ASN 차단 → GHA+icn1 playwright 경로 이관, cities.mjs scrapeGyeyangIncheon):
-//   import { scrapeGyeyangIncheonAndInsert } from "./gyeyang_incheon";
+import { scrapeGyeyangIncheonAndInsert } from "./gyeyang_incheon";
 import { scrapeMichuholAndInsert } from "./michuhol_incheon";
 // 2026-05-31 — 서울 18 자치구 확장 패턴 1 (eGovFrame portal/bbs): 광진·동작·용산
 import { scrapeGwangjinAndInsert } from "./gwangjin";
@@ -169,7 +168,7 @@ export type CityKey =
   | "seogu_gwangju"
   | "donggu_gwangju"
   // | "namdong_incheon" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
-  // | "gyeyang_incheon" — 2026-06-19 disabled (→ GHA+icn1 playwright 경로)
+  | "gyeyang_incheon"
   | "michuhol_incheon"
   | "gijang"
   | "bsbukgu"
@@ -645,9 +644,14 @@ export const CITY_REGISTRY: CityEntry[] = [
   // 2026-06-08 — 인천 남동구: prod 403 ASN 차단 → 정적 cron 0건. GHA+icn1 경로
   //   (scrapeNamdongIncheon, makeScraper :has 한정)로 이관. dual-path 방지로 정적 등록 제거.
   //   (namdong_incheon.ts·_pc_runner_cfgs 의 정적 parser 재사용은 유지)
-  // 2026-06-19 — 인천 계양구: 인천 ASN 차단으로 static 경로 fetched=0 → GHA+icn1 playwright
-  //   (cities.mjs scrapeGyeyangIncheon)로 이관. dual-path 방지로 정적 등록 제거.
-  //   (gyeyang_incheon.ts·import 는 주석 비활성 — namdong 동일 처리)
+  // 2026-05-26 — 인천 계양구 30만. open_content/bbsMsgDetail CMS (서구 동일 base path).
+  {
+    key: "gyeyang_incheon",
+    city: "계양구",
+    ministry: "계양구청",
+    siteUrl: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/report.jsp",
+    fn: scrapeGyeyangIncheonAndInsert,
+  },
   // 2026-05-26 — 인천 미추홀구 41만. board/view.do?sq=N&board_code=news_item CMS (단독).
   {
     key: "michuhol_incheon",

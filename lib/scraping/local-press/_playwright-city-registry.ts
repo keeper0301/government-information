@@ -150,14 +150,6 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
     sourceOutlet: "남동구청",
     sourceCode: "local-press-namdong",
   },
-  // 2026-06-19 — 인천 계양구. 남동과 동일 bbsMsg CMS + ASN 차단 → static 에서 GHA+icn1 이관
-  //   (makeScraper, tr:has bcd=board_111 한정). ⚠️ key(gyeyang_incheon)와 sourceCode 다름 —
-  //   기존 DB 계양 글이 local-press-gyeyang 이라 연속성 위해 그대로 유지(local-press-gyeyang-incheon 아님).
-  gyeyang_incheon: {
-    ministry: "계양구청",
-    sourceOutlet: "계양구청",
-    sourceCode: "local-press-gyeyang",
-  },
   // 2026-06-08 — 의정부시. ASN 차단 + 보도자료가 contents.do 동적 게시판 → GHA+icn1 이관
   //   (makeScraper, onclick boardView bIdx). 행 selector div.bod_blog ul li 발굴.
   uijeongbu: {

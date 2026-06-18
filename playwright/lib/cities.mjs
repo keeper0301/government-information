@@ -482,24 +482,6 @@ export const scrapeNamdongIncheon = makeScraper({
   bodySelectors: [".board_view"],
 });
 
-// 2026-06-19 — 인천 계양구. 남동과 동일 bbsMsg CMS(open_content/report.jsp) + 인천 ASN
-//   차단으로 static(Vercel) 경로 fetched=0(차단페이지). 형제 자치구(남동·동구·서구)처럼
-//   GHA+icn1 proxy 로 이관. 기본 report.jsp 는 board_111(보도자료) 10건만 노출 — 행은
-//   table tr, 제목 td.title a, 상세 bbsMsgDetail.do?msg_seq=&bcd=board_111 직접, 본문 .board_view.
-//   (static gyeyang_incheon.ts 는 같은 commit 제거 — 2경로 anti-pattern 회피)
-export const scrapeGyeyangIncheon = makeScraper({
-  cityName: "인천 계양구",
-  listUrl: "https://www.gyeyang.go.kr/open_content/main/open_info/admin/report.jsp",
-  // 보도자료 행만 한정 — bcd=board_111 링크를 가진 tr (다른 게시판 링크 혼입 방어).
-  listSelectors: ["tr:has(a[href*='bcd=board_111'])"],
-  titleSelectors: ["td.title", ".title"],
-  bodySelectors: [".board_view"],
-  // report.jsp(114KB)가 icn1 프록시 경유 시 domcontentloaded 45s 초과(GHA 첫 검증 timeout).
-  // 의정부 동일 케이스 — commit(초기 응답 즉시)으로 진행 후 tr ajax 를 waitForSelector 로 대기.
-  navWait: "commit",
-  listTimeout: 120000,
-});
-
 // 2026-06-08 — 의정부시. ASN 차단 + 사이트 개편으로 보도자료가 contents.do?mId=0301020000
 //   동적 게시판(내부 bbs/list.do ajax). list.do 직접은 메인페이지 0건이라 contents.do 를 listUrl 로.
 //   목록 div.bod_blog ul li, 상세 onclick boardView('portal','listForm','코드','Y','bIdx',...).
@@ -550,7 +532,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     seongbuk: scrapeSeongbuk,
     jeju: scrapeJeju,
     namdong_incheon: scrapeNamdongIncheon,
-    gyeyang_incheon: scrapeGyeyangIncheon,
     uijeongbu: scrapeUijeongbu,
   };
   const fn = map[target];

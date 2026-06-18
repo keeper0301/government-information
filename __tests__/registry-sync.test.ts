@@ -52,9 +52,9 @@ describe("Playwright proxy 도시 city key 3-source 동기화", () => {
     ...collectorsBlock.matchAll(/key:\s*"([a-z_]+)"/g),
   ].map((m) => m[1]);
 
-  it("workflow yml 에 27 키 정확히 정의 (2026-06-19 +계양 인천 ASN 이관)", () => {
-    expect(workflowKeys.length).toBe(27);
-    expect(new Set(workflowKeys).size).toBe(27); // 중복 0
+  it("workflow yml 에 26 키 정확히 정의 (2026-06-12 +부천·시흥·광명 경기 큰 시)", () => {
+    expect(workflowKeys.length).toBe(26);
+    expect(new Set(workflowKeys).size).toBe(26); // 중복 0
   });
 
   it("route.ts 와 workflow yml 의 키 집합 일치", () => {
@@ -74,13 +74,11 @@ describe("Playwright proxy 도시 city key 3-source 동기화", () => {
 // 코드리뷰 ⑥ — sourceCode 오타 회귀 방어. registry-sync 는 key 집합만 검증해
 // sourceCode 값 오타(예: local-press-pyeongtaek → 오타)는 못 잡는다. sourceCode 가
 // 틀리면 stats/stale 집계·news_posts 가 엉뚱한 도시로 silent 귀속(5/22 silent-fail 류).
-// 규칙: sourceCode === `local-press-${key 의 _ → -}` (예외 namdong_incheon·gyeyang_incheon — 기존 DB 연속성).
+// 규칙: sourceCode === `local-press-${key 의 _ → -}` (유일 예외 namdong_incheon).
 describe("PLAYWRIGHT_CITY_REGISTRY sourceCode 컨벤션", () => {
   // key 와 sourceCode 가 어긋나는 의도된 특례(이관 당시 이미 존재하던 DB source_code 유지).
   const KEY_SOURCECODE_EXCEPTIONS: Record<string, string> = {
     namdong_incheon: "local-press-namdong",
-    // 계양: 기존 DB 글이 local-press-gyeyang(static 시절)이라 연속성 위해 유지(컨벤션 -incheon 아님).
-    gyeyang_incheon: "local-press-gyeyang",
   };
 
   it("모든 key 의 sourceCode 가 규칙 또는 명시 예외와 일치", () => {
