@@ -60,6 +60,17 @@ describe("isExternalPublishQualityApproved", () => {
     expect(assessment.reasons).toContain("template_smell_detected");
   });
 
+  it("구체적으로 발견된 오염 문구도 자동 발행 전에 막는다", () => {
+    const assessment = assessExternalPublishQuality({
+      ...approvedPost,
+      content: `${approvedPost.content}<p>지역: 반드시 확인하세요하고 신청하세요!</p>`,
+    });
+
+    expect(assessment.approved).toBe(false);
+    expect(assessment.reasons).toContain("template_smell_detected");
+    expect(assessment.metrics.hasTemplateSmell).toBe(true);
+  });
+
   it("거절 사유와 지표를 반환해 운영자가 무엇을 고칠지 알 수 있다", () => {
     const assessment = assessExternalPublishQuality({
       admin_review_required: false,

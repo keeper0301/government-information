@@ -51,6 +51,11 @@ const TEMPLATE_SMELL_RE = [
   /아래 댓글로 .*궁금한 정책/i,
   /사장님이 궁금한 정책/i,
   /자동으로 정리해 드려요/i,
+  /지역\s*:\s*반드시/i,
+  /확인하세요하고\s*신청하세요/i,
+  /신청하세요하고/i,
+  /\{\{[^}]+\}\}/,
+  /TODO|TBD|작성 필요/i,
 ];
 
 export function assessExternalPublishQuality(
