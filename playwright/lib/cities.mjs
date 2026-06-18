@@ -494,6 +494,10 @@ export const scrapeGyeyangIncheon = makeScraper({
   listSelectors: ["tr:has(a[href*='bcd=board_111'])"],
   titleSelectors: ["td.title", ".title"],
   bodySelectors: [".board_view"],
+  // report.jsp(114KB)가 icn1 프록시 경유 시 domcontentloaded 45s 초과(GHA 첫 검증 timeout).
+  // 의정부 동일 케이스 — commit(초기 응답 즉시)으로 진행 후 tr ajax 를 waitForSelector 로 대기.
+  navWait: "commit",
+  listTimeout: 120000,
 });
 
 // 2026-06-08 — 의정부시. ASN 차단 + 사이트 개편으로 보도자료가 contents.do?mId=0301020000
