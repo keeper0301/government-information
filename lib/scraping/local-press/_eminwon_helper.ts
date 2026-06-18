@@ -14,7 +14,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
-import type { ScrapeResult } from "./_factory";
+import { latestPublishedDate, type ScrapeResult } from "./_factory";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -202,6 +202,7 @@ export function createEminwonScraper(cfg: EminwonConfig) {
     let fetched = 0;
     let inserted = 0;
     let skipped = 0;
+    let latestFetched: string | null = null;
 
     try {
       const listHtml = await postFetch(cfg.actionUrl, listBody(1));
@@ -215,6 +216,7 @@ export function createEminwonScraper(cfg: EminwonConfig) {
       const items =
         typeof limit === "number" ? allItems.slice(0, limit) : allItems;
       fetched = items.length;
+      latestFetched = latestPublishedDate(items);
       if (items.length === 0) {
         return {
           city: cfg.cityName,
@@ -279,6 +281,8 @@ export function createEminwonScraper(cfg: EminwonConfig) {
       fetched,
       inserted,
       skipped,
+      latestFetched,
+      sourceCode: cfg.sourceCode,
       errors: errors.slice(0, 20),
     };
   }

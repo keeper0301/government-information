@@ -80,7 +80,29 @@ export type ScrapeResult = {
   inserted: number;
   skipped: number;
   errors: string[];
+  // 사이트에서 가져온 글 중 가장 최신 발행일(YYYY-MM-DD). insert-stop auto-triage 가
+  // "사이트 최신 vs DB 최신" 비교로 "새 글 없음(정상)" 을 suppress 하는 데 쓴다(헛경보 제거).
+  // proxy 경로(import-press-batch)의 latest_fetched 와 동일 의미 — 정적 cron 도 동일 공급.
+  latestFetched?: string | null;
+  // collector 가 news_posts 에 실제로 쓰는 source_code(cfg.sourceCode). audit 에 그대로
+  // 기록해 auto-triage 의 DB 최신 조회가 정확한 source_code 로 매칭되게 한다. ⚠️ key 에서
+  // `local-press-${key}` 로 추정하면 underscore/hyphen·축약 불일치(seo_incheon→seo-incheon,
+  // michuhol_incheon→michuhol)로 어긋남 — 반드시 collector 실제 값을 단일 출처로 전달.
+  sourceCode?: string;
 };
+
+// list 항목들의 최신 발행일(YYYY-MM-DD) 추출 — insert-stop auto-triage 의 "사이트 최신" 신호.
+// publishedDate 는 ISO(YYYY-MM-DD)라 문자열 비교로 대소 판정 가능. 전부 null 이면 null.
+export function latestPublishedDate(
+  items: { publishedDate: string | null }[],
+): string | null {
+  let max: string | null = null;
+  for (const it of items) {
+    const d = it.publishedDate;
+    if (d && (!max || d > max)) max = d;
+  }
+  return max;
+}
 
 // 표준 HTML entity 디코딩 (5/17 추가). title / 본문 모두 사용 가능.
 // 사이트 별 특수 entity (예: 한자 / numeric entity) 는 각 collector 가 보완.
@@ -268,6 +290,8 @@ export async function processProvidedHtml(
     fetched: list.length,
     inserted,
     skipped,
+    latestFetched: latestPublishedDate(list),
+    sourceCode: cfg.sourceCode,
     // 2026-05-26 review fix: 3 → 20. 경북 5/25 cron 에서 10건 detail 모두 fail 인데
     // audit 에 3건만 표시 → 나머지 7건 silent skip 의심. 정확 진단 위해 확장.
     errors: errors.slice(0, 20),
@@ -353,6 +377,8 @@ export function createPressCollector(cfg: PressCollectorConfig) {
       fetched: list.length,
       inserted,
       skipped,
+      latestFetched: latestPublishedDate(list),
+      sourceCode: cfg.sourceCode,
       // 2026-05-26 review fix: 3 → 20 (silent_fail 정확 진단)
       errors: errors.slice(0, 20),
     };

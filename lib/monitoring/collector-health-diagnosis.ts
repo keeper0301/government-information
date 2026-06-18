@@ -254,10 +254,16 @@ export async function getSustainedInsertStops({
       latestFetched: string | null;
     }
   >();
+  // audit 에 직접 기록된 city → source_code (정적 cron 이 details.source_code 로 남김).
+  // 이전엔 city→source_code 를 playwright registry 에서만 파생해 정적 collector 가 누락
+  // (dbLatest=null → 항상 보수적 keep = 헛경보)됐다. audit 의 source_code 로 그 갭을 메운다.
+  const auditSourceCodeByCity = new Map<string, string>();
   for (const row of (data ?? []) as { details: unknown; created_at: string }[]) {
     const d = (row.details ?? {}) as Record<string, unknown>;
     const city = String(d.city ?? "");
     if (!city) continue;
+    if (typeof d.source_code === "string" && d.source_code)
+      auditSourceCodeByCity.set(city, d.source_code);
     const fetched = Number(d.fetched ?? 0);
     const inserted = Number(d.inserted ?? 0);
     const ts = new Date(row.created_at).getTime();
@@ -292,11 +298,13 @@ export async function getSustainedInsertStops({
   if (flags.length === 0) return flags;
 
   // auto-triage — flag collector 의 DB 최신 published 날짜를 news_posts 에서 조회해, 사이트 최신
-  // (latestFetched) 이 DB 보다 새 게 없으면 "발행 없음(정상)" 으로 suppress(오탐 제거). city→
-  // sourceCode 는 GHA registry 파생(정적 collector 는 매핑 없어 보수적 keep — 정적 경로 follow-up).
+  // (latestFetched) 이 DB 보다 새 게 없으면 "발행 없음(정상)" 으로 suppress(오탐 제거).
+  // city→sourceCode: playwright registry 파생 + audit 에 기록된 source_code(정적 cron) 보강.
+  // audit 값이 더 직접적이라 우선(registry 에 없는 정적 도시도 이걸로 매핑됨).
   const cityToCode = new Map(
     expectedCollectorsFromRegistry().map((c) => [c.city, c.sourceCode]),
   );
+  for (const [city, code] of auditSourceCodeByCity) cityToCode.set(city, code);
   const codes = flags.map((f) => cityToCode.get(f.city)).filter(Boolean) as string[];
   const dbLatestByCity: Record<string, string | null> = {};
   if (codes.length > 0) {

@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   fetchPage,
   processProvidedHtml,
+  latestPublishedDate,
   type PressCollectorConfig,
 } from "@/lib/scraping/local-press/_factory";
 
@@ -221,5 +222,44 @@ describe("_factory 본문 엔티티 디코드", () => {
       10,
     );
     expect(captured.payload?.body).toBe(cleanBody.slice(0, 20000));
+  });
+});
+
+// ============================================================
+// latestPublishedDate (2026-06-18) — 정적 cron insert-stop auto-triage 헛경보 제거
+// ============================================================
+// 정적 cron collector 가 "사이트 최신 발행일"을 audit(latest_fetched)로 남겨, 발행이
+// 드문 구청이 inserted=0 이어도 헛경보가 안 뜨게 하는 핵심 로직. silent 회귀 방어.
+describe("latestPublishedDate — 사이트 최신 발행일 추출", () => {
+  it("여러 발행일 중 최댓값(가장 최신) 반환", () => {
+    const items = [
+      { publishedDate: "2026-06-08" },
+      { publishedDate: "2026-06-11" }, // 최신
+      { publishedDate: "2026-06-09" },
+    ];
+    expect(latestPublishedDate(items)).toBe("2026-06-11");
+  });
+
+  it("null 발행일은 무시하고 유효한 최신만", () => {
+    const items = [
+      { publishedDate: null },
+      { publishedDate: "2026-05-30" },
+      { publishedDate: null },
+    ];
+    expect(latestPublishedDate(items)).toBe("2026-05-30");
+  });
+
+  it("전부 null 또는 빈 목록 → null (triage 가 보수적 keep)", () => {
+    expect(latestPublishedDate([{ publishedDate: null }])).toBeNull();
+    expect(latestPublishedDate([])).toBeNull();
+  });
+
+  it("중복/순서 무관 — 정렬 안 돼 있어도 최신 정확", () => {
+    const items = [
+      { publishedDate: "2026-06-17" }, // 최신이 맨 앞
+      { publishedDate: "2026-05-29" },
+      { publishedDate: "2026-06-17" },
+    ];
+    expect(latestPublishedDate(items)).toBe("2026-06-17");
   });
 });

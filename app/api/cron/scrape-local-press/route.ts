@@ -45,6 +45,13 @@ type CityResult = {
   skipped: number;
   errors: string[];
   error?: string;
+  // 사이트 최신 발행일(YYYY-MM-DD) — collector(_factory/eminwon/suncheon)가 채워 전달.
+  // audit details.latest_fetched(snake) 로 기록해 insert-stop auto-triage 가 정적 cron 도
+  // proxy 처럼 "사이트 최신 vs DB 최신" 으로 헛경보를 거를 수 있게 한다.
+  latestFetched?: string | null;
+  // collector 가 news_posts 에 실제 쓰는 source_code(cfg.sourceCode). audit 기록용 —
+  // ⚠️ key 에서 추정 금지(underscore/hyphen·축약 불일치). collector 실제 값을 그대로 전달.
+  sourceCode?: string;
 };
 
 async function scrapeCity(
@@ -74,7 +81,15 @@ async function scrapeCity(
     await logAdminAction({
       actorId: null,
       action: "local_press_scrape",
-      details: { trigger: "cron", ...r },
+      // latest_fetched(snake): 모니터(collector-health-diagnosis)가 읽는 이름으로 명시 기록.
+      // source_code: collector 실제값(r.sourceCode=cfg.sourceCode)을 그대로 — auto-triage 가
+      // city→source_code 매핑(이전엔 playwright registry 만 봐 정적 누락) 없이 DB 최신을 조회.
+      details: {
+        trigger: "cron",
+        ...r,
+        latest_fetched: r.latestFetched ?? null,
+        source_code: r.sourceCode ?? null,
+      },
     });
     return r;
   } catch (e) {

@@ -20,6 +20,7 @@
 // ============================================================
 
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
+import { latestPublishedDate } from "./_factory";
 
 const LIST_URL = "http://www.suncheon.go.kr/kr/news/0006/0001/";
 const DETAIL_BASE = "http://www.suncheon.go.kr/kr/news/0006/0001/";
@@ -135,6 +136,10 @@ export type ScrapeResult = {
   inserted: number;
   skipped: number;
   errors: string[];
+  // 사이트 최신 발행일(insert-stop auto-triage 용) — _factory.ScrapeResult 와 동일 의미.
+  latestFetched?: string | null;
+  // news_posts 에 쓰는 실제 source_code — audit 기록용(auto-triage DB 조회 매칭).
+  sourceCode?: string;
 };
 
 // fetchSuncheonRecent + news_posts INSERT 묶음. admin endpoint 와 cron endpoint
@@ -196,6 +201,8 @@ export async function scrapeSuncheonAndInsert(
     fetched: items.length,
     inserted,
     skipped,
+    latestFetched: latestPublishedDate(items),
+    sourceCode: "local-press-suncheon",
     errors: errors.slice(0, 3),
   };
 }

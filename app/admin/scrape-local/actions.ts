@@ -43,6 +43,10 @@ export async function scrapeCityAction(city: CityKey, limit = 10) {
         ministry: entry.ministry,
         trigger: "admin_manual",
         ...result,
+        // 모니터가 읽는 snake_case 로 명시(insert-stop auto-triage 일관).
+        // source_code 는 collector 실제값(result.sourceCode) — key 추정 금지(불일치 위험).
+        latest_fetched: result.latestFetched ?? null,
+        source_code: result.sourceCode ?? null,
       },
     });
     revalidatePath("/admin/scrape-local");
