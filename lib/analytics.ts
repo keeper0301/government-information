@@ -103,6 +103,23 @@ type GtagFn = (
   params?: Record<string, unknown>,
 ) => void;
 
+function isAdminPath(path: string | null): boolean {
+  return path === "/admin" || path?.startsWith("/admin/") === true;
+}
+
+function hasAdminNext(search: string): boolean {
+  if (!search) return false;
+  const next = new URLSearchParams(search).get("next");
+  return isAdminPath(next);
+}
+
+export function shouldTrackAnalyticsPath(pathname: string, search = ""): boolean {
+  if (isAdminPath(pathname)) return false;
+  // /admin 접근이 로그인으로 튕긴 경우도 운영 점검 트래픽이므로 제외한다.
+  if (pathname === "/login" && hasAdminNext(search)) return false;
+  return true;
+}
+
 /**
  * GA4 이벤트 전송.
  *
@@ -114,6 +131,7 @@ export function trackEvent(
   params?: Record<string, string | number | boolean>,
 ): void {
   if (typeof window === "undefined") return;
+  if (!shouldTrackAnalyticsPath(window.location.pathname, window.location.search)) return;
   const w = window as unknown as { gtag?: GtagFn };
   if (typeof w.gtag !== "function") return;
   try {
