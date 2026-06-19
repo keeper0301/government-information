@@ -1,86 +1,20 @@
 // ============================================================
 // PC runner cfg map (2026-05-25)
 // ============================================================
-// ASN 차단 site (서울·부산·광산·강원·제주·평택) 의 collector cfg.
-// PC runner POST upload endpoint 가 사용.
+// PC runner HTML-업로드 엔드포인트(/api/admin/local-press/upload)가 사용하는 collector cfg.
 //
-// seoul 은 별도 type (SeoulNewsItem seq: number) — 다음 commit 에 wrapper.
-// 5 site 우선.
+// 2026-06-19 — busan·gwangsan(cron 정상 수집 중)·jeju·pyeongtaek(GHA proxy 정상) 제거.
+//   이 4곳은 이미 cron/proxy 로 수집되는데 PC 업로드 경로가 중복으로 돌며 "detail HTML 누락"
+//   실패(주 20/21회·insert 0~4 중복)만 내던 dead dual-path 였음(audit 노이즈+모니터링 오염).
+//   정상 경로는 무영향(PC_RUNNER_CFGS 는 /upload 전용). [[feedback_dead_code_two_paths]]
+//   (이전 제거: seoul→RSS, gangwon→icn1 cron)
 // ============================================================
 
 import type { PressCollectorConfig } from "./_factory";
-
-// 2026-05-26: seoul 은 news.seoul.go.kr RSS 으로 변경 (PC runner 제거).
-
-import {
-  parseListPage as parseBusanList,
-  parseDetailBody as parseBusanDetail,
-} from "./busan";
-import {
-  parseListPage as parseGwangsanList,
-  parseDetailBody as parseGwangsanDetail,
-} from "./gwangsan";
-// 2026-05-26: gangwon 제거 — icn1 region 으로 일반 cron 가동 OK (5/26 수동 트리거 inserted 10).
-
-import {
-  parseListPage as parseJejuList,
-  parseDetailBody as parseJejuDetail,
-} from "./jeju";
-import {
-  parseListPage as parsePyeongtaekList,
-  parseDetailBody as parsePyeongtaekDetail,
-} from "./pyeongtaek";
-// 2026-06-02 — namdong: prod(Vercel) 403 IP 차단 (donggu·ongjin 은 정상). 가정용 IP PC runner 로.
-import {
-  parseNamdongList,
-  parseNamdongDetail,
-} from "./namdong_incheon";
+// 2026-06-02 — 남동구: prod(Vercel) 403 IP 차단 → 가정용 IP PC runner. 정적 parser 재사용.
+import { parseNamdongList, parseNamdongDetail } from "./namdong_incheon";
 
 export const PC_RUNNER_CFGS: Record<string, PressCollectorConfig> = {
-  busan: {
-    cityName: "부산광역시",
-    region: "부산",
-    ministry: "부산광역시청",
-    sourceOutlet: "부산광역시청",
-    sourceCode: "local-press-busan",
-    listUrl: "https://www.busan.go.kr/nbtnewsBU",
-    parseListItems: parseBusanList,
-    parseDetailBody: parseBusanDetail,
-  },
-  gwangsan: {
-    cityName: "광산구",
-    region: "광주",
-    ministry: "광산구청",
-    sourceOutlet: "광산구청",
-    sourceCode: "local-press-gwangsan",
-    listUrl:
-      "https://www.gwangsan.go.kr/boardList.do?boardId=REPORT_NEW&pageId=www16",
-    parseListItems: parseGwangsanList,
-    parseDetailBody: parseGwangsanDetail,
-  },
-  // gangwon 제거 (2026-05-26): icn1 region 으로 일반 cron OK.
-  jeju: {
-    cityName: "제주특별자치도",
-    region: "제주",
-    ministry: "제주특별자치도청",
-    sourceOutlet: "제주특별자치도청",
-    sourceCode: "local-press-jeju",
-    listUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
-    parseListItems: parseJejuList,
-    parseDetailBody: parseJejuDetail,
-  },
-  pyeongtaek: {
-    cityName: "평택시",
-    region: "경기",
-    ministry: "평택시청",
-    sourceOutlet: "평택시청",
-    sourceCode: "local-press-pyeongtaek",
-    listUrl:
-      "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000",
-    parseListItems: parsePyeongtaekList,
-    parseDetailBody: parsePyeongtaekDetail,
-  },
-  // 2026-06-02 — 남동구: prod 403 Vercel IP 차단 (cron 로그 확인). 정적 parser 재사용.
   namdong: {
     cityName: "남동구",
     region: "인천",
