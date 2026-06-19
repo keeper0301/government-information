@@ -11,5 +11,8 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const status = await getNaverExtensionStatus();
-  return NextResponse.json({ ok: status.errors.length === 0, ...status });
+  return NextResponse.json(
+    { ok: status.errors.length === 0, ...status },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
