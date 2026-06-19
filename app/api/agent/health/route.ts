@@ -49,7 +49,6 @@ function enabled(value: string | undefined, defaultEnabled = true) {
 
 type OuterAgentAutomationSnapshot = {
   prCreation: boolean;
-  instagramComments: boolean;
 };
 
 async function getOuterAgentAutomationSnapshot(): Promise<OuterAgentAutomationSnapshot | null> {
@@ -70,7 +69,6 @@ async function getOuterAgentAutomationSnapshot(): Promise<OuterAgentAutomationSn
       };
       automation?: {
         w1PrCreation?: unknown;
-        instagramComments?: unknown;
       };
     };
 
@@ -78,9 +76,6 @@ async function getOuterAgentAutomationSnapshot(): Promise<OuterAgentAutomationSn
       prCreation:
         body.automation?.w1PrCreation === true ||
         body.mode?.w1CreatePrEnabled === true,
-      instagramComments:
-        body.automation?.instagramComments === true ||
-        body.mode?.instagramCommentsEnabled === true,
     };
   } catch {
     return null;
@@ -133,8 +128,7 @@ export async function GET() {
     outerAutomation?.prCreation === true ||
     process.env.AGENT_W1_ENABLED === "true" ||
     process.env.KEEPIO_AGENT_W1_CREATE_PR_ENABLED === "true";
-  const instagramCommentsEnabled =
-    outerAutomation?.instagramComments ?? enabled(process.env.INSTAGRAM_COMMENTS_ENABLED);
+  const instagramCommentsEnabled = enabled(process.env.INSTAGRAM_COMMENTS_ENABLED);
 
   const missingRequired = [
     !cronSecretConfigured ? "CRON_SECRET" : null,
