@@ -87,7 +87,7 @@ describe("generateBlogPost", () => {
     });
   });
 
-  it("adds current marketing context for Naver and Instagram reuse", async () => {
+  it("keeps the publish prompt blog-first and blocks SNS-style copy", async () => {
     const { generateBlogPost } = await import("@/lib/ai");
 
     await generateBlogPost({
@@ -101,10 +101,13 @@ describe("generateBlogPost", () => {
       contents?: string;
     };
     expect(params.contents).toContain("[현재 마케팅 컨텍스트]");
-    expect(params.contents).toContain("네이버 블로그와 인스타그램 카드/캡션");
+    expect(params.contents).toContain("신뢰성 있는 안내문");
+    expect(params.contents).toContain("SNS식 구어체, 과장 CTA, 클릭 유도 문구를 섞지 마세요");
     expect(params.contents).toContain("대상·금액·마감·신청 액션");
-    expect(params.contents).toContain("저장/검색/프로필 링크 CTA");
     expect(params.contents).toContain("제출 서류 확인 포인트");
+    expect(params.contents).toContain("content 는 반드시 <h2>가 아니라 <p>로 시작하세요");
+    expect(params.contents).not.toContain("저장/검색/프로필 링크 CTA");
+    expect(params.contents).not.toContain("인스타그램 카드/캡션");
   });
 
   it("feeds recent quality-review learning hints into the generation prompt", async () => {
