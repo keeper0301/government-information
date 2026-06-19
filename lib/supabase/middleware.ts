@@ -30,7 +30,7 @@ async function withTimeout<T>(
 // 로그인한 사용자만 볼 수 있는 경로 목록
 // 이 경로(자기 자신 + 모든 하위)에 미로그인 상태로 접근하면
 // /login?next=<원래경로> 로 리다이렉트
-const PROTECTED_PATHS = ["/mypage", "/alerts", "/checkout"];
+const PROTECTED_PATHS = ["/admin", "/mypage", "/alerts", "/checkout"];
 
 // 보호 경로 안에 있지만 비로그인도 봐야 하는 예외 (정확 매치)
 // - /checkout/fail: 토스 결제가 실패한 사용자에게 안내를 보여주는 페이지

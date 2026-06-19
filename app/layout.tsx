@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { Nav } from "@/components/nav";
+import { ConditionalGoogleAnalytics } from "@/components/conditional-google-analytics";
 import { Footer } from "@/components/footer";
 import { AdsenseLazyLoader } from "@/components/adsense-lazy-loader";
 import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
@@ -148,7 +148,7 @@ export default async function RootLayout({
           <AuthEventTracker />
         </Suspense>
         {process.env.NEXT_PUBLIC_GA_ID && (
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+          <ConditionalGoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
         )}
       </body>
     </html>
