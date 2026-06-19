@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const SITE_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
+const DEFAULT_OUTER_AGENT_BASE_URL = "https://keepio-agent.onrender.com";
 
 type ActionStats = {
   lastRunAt: string | null;
@@ -46,6 +47,51 @@ function enabled(value: string | undefined, defaultEnabled = true) {
   return value !== "false";
 }
 
+type OuterAgentAutomationSnapshot = {
+  prCreation: boolean;
+  instagramComments: boolean;
+};
+
+async function getOuterAgentAutomationSnapshot(): Promise<OuterAgentAutomationSnapshot | null> {
+  const baseUrl =
+    process.env.OUTER_BASE_URL ||
+    process.env.KEEPIO_AGENT_OUTER_BASE_URL ||
+    DEFAULT_OUTER_AGENT_BASE_URL;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+  try {
+    const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/readyz`, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      mode?: {
+        w1CreatePrEnabled?: unknown;
+        instagramCommentsEnabled?: unknown;
+      };
+      automation?: {
+        w1PrCreation?: unknown;
+        instagramComments?: unknown;
+      };
+    };
+
+    return {
+      prCreation:
+        body.automation?.w1PrCreation === true ||
+        body.mode?.w1CreatePrEnabled === true,
+      instagramComments:
+        body.automation?.instagramComments === true ||
+        body.mode?.instagramCommentsEnabled === true,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function GET() {
   const [
     resident,
@@ -55,6 +101,7 @@ export async function GET() {
     siteMaintenance,
     siteUpgrade,
     instagramComments,
+    outerAutomation,
   ] = await Promise.all([
     getActionStats(["agent_diagnose_run", "agent_execute_run"]),
     getActionStats(["health_alert_run", "daily_digest_run", "external_console_check_run"]),
@@ -72,6 +119,7 @@ export async function GET() {
       "external_console_check_run",
     ]),
     getActionStats(["instagram_publish_success", "instagram_publish_fail"]),
+    getOuterAgentAutomationSnapshot(),
   ]);
 
   const checkedAt = new Date().toISOString();
@@ -84,6 +132,12 @@ export async function GET() {
   const blogEnabled = enabled(process.env.BLOG_MANAGER_ENABLED);
   const maintenanceEnabled = enabled(process.env.SITE_MAINTENANCE_MANAGER_ENABLED);
   const upgradeEnabled = enabled(process.env.SITE_UPGRADE_MANAGER_ENABLED);
+  const prCreationEnabled =
+    outerAutomation?.prCreation === true ||
+    process.env.AGENT_W1_ENABLED === "true" ||
+    process.env.KEEPIO_AGENT_W1_CREATE_PR_ENABLED === "true";
+  const instagramCommentsEnabled =
+    outerAutomation?.instagramComments ?? enabled(process.env.INSTAGRAM_COMMENTS_ENABLED);
 
   const missingRequired = [
     !cronSecretConfigured ? "CRON_SECRET" : null,
@@ -184,9 +238,10 @@ export async function GET() {
       telegram: telegramConfigured,
       policyDb: true,
       contentGeneration: true,
+      prCreation: prCreationEnabled,
       threadsPublishing: true,
       instagramMetrics: true,
-      instagramComments: true,
+      instagramComments: instagramCommentsEnabled,
     },
     instagramComments: {
       mode: "draft_only",
