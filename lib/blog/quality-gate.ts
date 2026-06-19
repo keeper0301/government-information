@@ -29,7 +29,9 @@ export type ExternalPublishQualityAssessment = {
 
 const MIN_TITLE_LENGTH = 18;
 const MAX_TITLE_LENGTH = 90;
-const MIN_META_LENGTH = 45;
+// 외부 채널은 한번 올라가면 수정 비용이 크다. 생성 프롬프트의 하한(95자)과
+// 게이트 하한을 맞춰, 너무 짧은 검색 snippet 이 네이버로 빠져나가지 않게 한다.
+const MIN_META_LENGTH = 95;
 const MIN_CONTENT_LENGTH = 700;
 const MIN_INFORMATION_SIGNALS = 4;
 
@@ -43,6 +45,12 @@ const INFORMATION_SIGNAL_RE = [
 ];
 
 const TEMPLATE_SMELL_RE = [
+  /여러분|감사드립니다|함께 해주셔서|응원해주세요/,
+  /이번\s*글에서는|오늘은\s*[^\n]{0,30}에\s*대해|이야기해보려\s*합니다/,
+  /제가\s*말하고\s*싶은\s*건|먼저\s*볼\s*건\s*딱|괜히\s*길게\s*보기\s*전에/,
+  /해당될까\s*싶으면\s*체크해두면\s*돼요|나중에\s*다시\s*찾으려면\s*은근\s*귀찮아요/,
+  /이거\s*그냥\s*넘기면\s*안\s*돼요|마감부터\s*봐야\s*해요/,
+  /정말|엄청|대단히|굉장히/,
   /찾는 분들이 많아서\s*핵심만/i,
   /핵심만\s*보기\s*좋게\s*정리/i,
   /바로가기\s*[👇↓]+/i,

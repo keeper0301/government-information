@@ -114,10 +114,11 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
     expect(out.body).toContain("📍 이 정책은 무엇인가요?");
   });
 
-  it("본문 초반에 핵심 요약과 정책 확인 체크리스트가 들어간다", () => {
+  it("본문 초반에 신청 전 핵심 확인 체크리스트가 한 번만 들어간다", () => {
     const out = convertToNaverBlog(basePost);
-    expect(out.body).toContain("한눈에 보는 핵심");
-    expect(out.body).toContain("신청 전 체크포인트");
+    expect(out.body).toContain("신청 전 핵심 확인");
+    expect(out.body).not.toContain("한눈에 보는 핵심");
+    expect(out.body).not.toContain("신청 전 체크포인트");
     expect(out.body).toContain("대상: 만 24세 경기도 거주 청년");
     expect(out.body).toContain("혜택: 분기 25만원");
     expect(out.body).toContain("기간: 신청 마감2026-12-31");
@@ -127,7 +128,7 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
 
   it("meta_description 이 null 이면 도입부 없이 본문 바로 시작", () => {
     const out = convertToNaverBlog({ ...basePost, meta_description: null });
-    expect(out.body).toMatch(/^한눈에 보는 핵심/);
+    expect(out.body).toMatch(/^신청 전 핵심 확인/);
     expect(out.body).toContain("📍 이 정책은 무엇인가요?");
   });
 
@@ -176,17 +177,16 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain("<p>만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.</p>");
   });
 
-  it("SE3 HTML 본문에도 핵심 요약과 정책 확인 체크리스트가 들어간다", () => {
+  it("SE3 HTML 본문에도 신청 전 핵심 체크리스트가 한 번만 들어간다", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<p><strong>검색 핵심 정보</strong></p>");
-    expect(out.bodyHtml).toContain("<p>• 지역: 공식 공고 기준 지역 확인</p>");
-    expect(out.bodyHtml).toContain("<p><strong>한눈에 보는 핵심</strong></p>");
-    expect(out.bodyHtml).toContain("<p><strong>신청 전 체크포인트</strong></p>");
+    expect(out.bodyHtml).toContain("<p><strong>신청 전 핵심 확인</strong></p>");
+    expect(out.bodyHtml).not.toContain("<p><strong>검색 핵심 정보</strong></p>");
+    expect(out.bodyHtml).not.toContain("<p><strong>한눈에 보는 핵심</strong></p>");
+    expect(out.bodyHtml).not.toContain("<p><strong>신청 전 체크포인트</strong></p>");
     expect(out.bodyHtml).toContain("<p>• 대상: 만 19~34세 청년</p>");
     expect(out.bodyHtml).toContain("<p>• 혜택: 월 20만원</p>");
     expect(out.bodyHtml).toContain("<p>• 경로: 자세한 내용은 신청 페이지</p>");
-    expect(out.bodyHtml).toContain("<p><strong>자주 묻는 질문</strong></p>");
-    expect(out.bodyHtml).toContain("<p><strong>Q. 누가 신청할 수 있나요?</strong></p>");
+    expect(out.bodyHtml).not.toContain("<p><strong>자주 묻는 질문</strong></p>");
   });
 
   it("inline style/class/id 모두 제거 (SE3 자체 스타일 덮어쓰기 회피)", () => {
