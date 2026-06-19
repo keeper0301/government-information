@@ -3,7 +3,9 @@
 // ============================================================
 // 인스타그램/네이버 발행 성공·실패 신호를 다음 글 생성 프롬프트에 되먹인다.
 // 인증·캡차 같은 운영 오류를 콘텐츠 문제로 오해하지 않도록, 힌트는
-// "짧은 CTA, 붙여넣기 안정성, 공식 경로 명확화" 수준으로 제한한다.
+// "붙여넣기 안정성, 공식 경로 명확화" 수준으로 제한한다.
+// 블로그 생성 프롬프트에 SNS식 CTA/캡션/카드 지시가 섞이면 본문 문체가 깨지므로
+// 외부 채널 힌트도 blog-first 표현만 반환한다.
 // ============================================================
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -75,12 +77,12 @@ export function extractExternalChannelLearningHints(
     hints.push(
       `인스타 최근 실패 ${instagramFailures.length}건${
         reasons.length > 0 ? `: ${reasons.join(", ")}` : ""
-      }. 카드 제목·캡션은 짧고 안정적인 문장으로 유지하세요.`,
+      }. 외부 채널 재사용 시에도 본문은 차분한 정보성 문장으로 유지하세요.`,
     );
   }
   if (instagramSuccessCount > 0) {
     hints.push(
-      `인스타 최근 성공 ${instagramSuccessCount}건: 저장/검색 CTA와 3장 카드로 나눠도 어색하지 않은 핵심 문장을 유지하세요.`,
+      `인스타 최근 성공 ${instagramSuccessCount}건: 대상·금액·마감·공식 경로가 첫 화면에서 분명한 문장을 유지하세요.`,
     );
   }
 

@@ -13,8 +13,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const DEFAULT_LIMIT = 3;
 const DEFAULT_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
+const CONTAMINATED_HINT_PATTERNS = [
+  /\bCTA\b/i,
+  /프로필\s*링크/,
+  /저장\s*\/\s*검색/,
+  /인스타|instagram/i,
+  /카드뉴스|카드\s*제목|캡션/,
+  /클릭\s*유도|과장\s*CTA/,
+  /여러분|감사드립니다|이거 그냥 넘기면 안 돼요|마감부터 봐야 해요/,
+  /정말|엄청|굉장히/,
+];
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function isContaminatedHint(text: string): boolean {
+  return CONTAMINATED_HINT_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 export function extractQualityImprovementHints(
@@ -30,6 +45,7 @@ export function extractQualityImprovementHints(
       if (typeof item !== "string") continue;
       const text = item.trim();
       if (!text) continue;
+      if (isContaminatedHint(text)) continue;
       hints.push(text.slice(0, 120));
       if (hints.length >= limit) return [...new Set(hints)];
     }

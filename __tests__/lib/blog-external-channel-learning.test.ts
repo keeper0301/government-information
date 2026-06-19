@@ -37,7 +37,9 @@ describe("extractExternalChannelLearningHints", () => {
       expect.stringContaining("네이버 최근 보류/실패 1건"),
       expect.stringContaining("네이버 최근 성공 1건"),
     ]);
-    expect(hints[0]).toContain("카드 제목·캡션");
+    expect(hints[0]).toContain("차분한 정보성 문장");
+    expect(hints[0]).not.toContain("카드 제목·캡션");
+    expect(hints[1]).not.toContain("저장/검색 CTA");
     expect(hints[2]).toContain("공식 신청 경로");
   });
 

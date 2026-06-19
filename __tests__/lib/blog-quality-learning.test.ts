@@ -25,13 +25,37 @@ describe("extractQualityImprovementHints", () => {
       [
         {
           details: {
-            improvements: ["  ", 123, "CTA 추가", "서류 조건 보강", "마감일 보강"],
+            improvements: ["  ", 123, "신청 절차 보강", "서류 조건 보강", "마감일 보강"],
           },
         },
       ],
       2,
     );
 
-    expect(hints).toEqual(["CTA 추가", "서류 조건 보강"]);
+    expect(hints).toEqual(["신청 절차 보강", "서류 조건 보강"]);
+  });
+
+  it("SNS/CTA 오염 힌트는 다음 글 생성 프롬프트에 넣지 않는다", () => {
+    const hints = extractQualityImprovementHints(
+      [
+        {
+          details: {
+            improvements: [
+              "저장/검색 CTA를 더 강하게 추가",
+              "인스타 카드 제목처럼 짧게",
+              "여러분, 이거 그냥 넘기면 안 돼요 문구 활용",
+              "공식 신청 링크 확인 문구 추가",
+              "제출 서류 확인 포인트 보강",
+            ],
+          },
+        },
+      ],
+      3,
+    );
+
+    expect(hints).toEqual([
+      "공식 신청 링크 확인 문구 추가",
+      "제출 서류 확인 포인트 보강",
+    ]);
   });
 });
