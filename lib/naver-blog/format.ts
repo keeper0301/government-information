@@ -47,6 +47,48 @@ export type NaverBlogPayload = {
 
 const BASE_URL = "https://www.keepioo.com";
 
+// 관철이 지정한 참고글(cgc0904/224279232682) 스타일 기준:
+// - 본문은 좌측 정렬, 짧은 문단, 넓은 행간
+// - 소제목은 큰 굵은 글씨 + 왼쪽 회색 세로 바
+// - 핵심 CTA는 가운데 정렬 + 빨간색 + 굵게
+// - 표는 파란 헤더/얇은 테두리로 네이버 본문 안에서 바로 보이게 구성
+const NAVER_PARAGRAPH_STYLE = "font-size:16px;line-height:2.05;color:#222;text-align:left;margin:0 0 22px;";
+const NAVER_SECTION_TITLE_STYLE = "border-left:7px solid #555;padding-left:14px;margin:52px 0 24px;font-size:22px;line-height:1.45;font-weight:700;color:#111;text-align:left;";
+const NAVER_CENTER_CTA_STYLE = "font-size:20px;line-height:1.7;font-weight:700;color:#ff2b00;text-align:center;text-decoration:underline;margin:28px 0 8px;";
+const NAVER_TABLE_STYLE = "width:100%;border-collapse:collapse;margin:28px 0 34px;font-size:15px;text-align:center;";
+const NAVER_TABLE_HEAD_STYLE = "background:#3f70bd;color:#fff;border:1px solid #2f5597;padding:10px 8px;font-weight:700;";
+const NAVER_TABLE_CELL_STYLE = "border:1px solid #777;padding:10px 8px;color:#111;background:#fff;";
+
+function naverParagraphHtml(text: string): string {
+  return `<p style="${NAVER_PARAGRAPH_STYLE}">${escapeHtml(text)}</p>`;
+}
+
+function naverBlankHtml(): string {
+  return `<p>&nbsp;</p>`;
+}
+
+function naverSectionTitleHtml(title: string): string {
+  return `<p style="${NAVER_SECTION_TITLE_STYLE}">${escapeHtml(title)}</p>`;
+}
+
+function naverCenteredCtaHtml(label: string, href: string): string {
+  return `<p style="${NAVER_CENTER_CTA_STYLE}"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
+}
+
+function naverStyledTableHtml(rows: string[][]): string {
+  if (rows.length === 0) return "";
+  const normalizedRows = rows.length >= 2 && rows.every((row) => row.length === 2)
+    ? [rows.map((row) => row[0]), rows.map((row) => row[1])]
+    : rows;
+  const head = normalizedRows[0]
+    .map((cell) => `<th style="${NAVER_TABLE_HEAD_STYLE}">${escapeHtml(cell)}</th>`)
+    .join("");
+  const body = normalizedRows.slice(1)
+    .map((row) => `<tr>${row.map((cell) => `<td style="${NAVER_TABLE_CELL_STYLE}">${escapeHtml(cell)}</td>`).join("")}</tr>`)
+    .join("\n");
+  return `<table style="${NAVER_TABLE_STYLE}">\n<tr>${head}</tr>\n${body}\n</table>`;
+}
+
 /**
  * keepioo HTML 본문을 네이버 에디터 호환 plain text 로 변환.
  *
@@ -334,20 +376,6 @@ function stripChecklistLabel(item: string): string {
   return item.replace(/^[^:：]+[:：]\s*/, "").trim();
 }
 
-function inferNaverRegion(text: string): string | null {
-  const plain = decodeBasicEntities(stripTags(text)).replace(/\s+/g, " ");
-  const patterns = [
-    /([가-힣]{2,}(?:시|군|구)\s+[가-힣]{1,}(?:시|군|구|읍|면|동))/,
-    /([가-힣]{2,}(?:특별시|광역시|특별자치시|특별자치도|도)\s+[가-힣]{1,}(?:시|군|구))/,
-    /([가-힣]{2,}(?:시|군|구))/,
-  ];
-  for (const re of patterns) {
-    const match = plain.match(re);
-    if (match?.[1]) return match[1].trim();
-  }
-  return null;
-}
-
 function buildNaverAeoFaqHtml(checklistItems: string[]): string {
   const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건 확인");
   const benefit = stripChecklistLabel(checklistItems[1] ?? "금액과 지급 방식 확인");
@@ -355,7 +383,7 @@ function buildNaverAeoFaqHtml(checklistItems: string[]): string {
   const route = stripChecklistLabel(checklistItems[4] ?? "공식 신청 페이지 또는 담당 기관 확인");
   return [
     `<p>&nbsp;</p>`,
-    `<p><strong>자주 묻는 질문</strong></p>`,
+    naverSectionTitleHtml("자주 묻는 질문"),
     `<p><strong>Q. 누가 신청할 수 있나요?</strong></p>`,
     `<p>A. ${escapeHtml(target)}</p>`,
     `<p><strong>Q. 얼마나 지원받을 수 있나요?</strong></p>`,
@@ -426,23 +454,23 @@ export function convertToNaverBlogHtml(
     ? null
     : `${BASE_URL}/api/naver-thumbnail/${encodeURIComponent(post.slug)}`;
 
-  // 1) 도입부 — 검색 의도 답변 → 신청 전 핵심 확인 순서.
-  // 과거에는 검색 핵심 정보/한눈에 보는 핵심/체크포인트/FAQ 를 모두 앞에 붙여
-  // 본문 시작이 반복·템플릿처럼 보였다. 네이버에는 요약 1개 + 체크리스트 1개만 둔다.
+  // 1) 도입부 — 참고 네이버 글처럼 짧은 본문 2문단 → 가운데 빨간 CTA → 상세 섹션 순서.
+  //    기존 "요약 답변/검색 핵심 정보" 반복 제목은 자동 생성 티가 강해 제거한다.
   const checklistItems = buildNaverChecklistText(contentForNaver);
   const answerSummary = post.meta_description
     ? softenNaverMarketingCopy(post.meta_description.trim())
     : buildNaverKeySummaryText(contentForNaver)[0] ?? post.title;
+  const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건 확인");
+  const benefit = stripChecklistLabel(checklistItems[1] ?? "금액과 지급 방식 확인");
+  const period = stripChecklistLabel(checklistItems[2] ?? "신청 마감일과 예산 소진 여부 확인");
   const hookHtml = [
-    `<p><strong>요약 답변</strong></p>`,
-    `<p>${escapeHtml(answerSummary)}</p>`,
-    `<p>&nbsp;</p>`,
+    naverParagraphHtml(answerSummary),
+    naverParagraphHtml(`${target}에 해당한다면 지원 내용(${benefit})과 기간(${period})을 먼저 확인해두는 게 좋아요. 공고마다 세부 조건이 달라질 수 있으니 아래 핵심 정리를 참고하세요.`),
+    naverCenteredCtaHtml("자격·신청 조건 바로가기", backlinkUrl),
+    `<p style="text-align:center;color:#ff2b00;font-size:18px;line-height:1.4;margin:0 0 34px;">👇👇</p>`,
+    naverBlankHtml(),
   ].join("\n");
-  const compactChecklistHtml = [
-    `<p><strong>신청 전 핵심 확인</strong></p>`,
-    ...checklistItems.slice(0, 5).map((item) => `<p>• ${escapeHtml(item)}</p>`),
-    `<p>&nbsp;</p>`,
-  ].join("\n");
+  const faqHtml = buildNaverAeoFaqHtml(checklistItems);
 
   // 2) cover image — HTML <img> paste 는 SE3 가 외부 fetch 실패 시 alert 띄움 (2026-05-12 사고).
   //    runner.mjs 가 본문 paste 후 별도로 base64 image paste (SE3 자동 upload).
@@ -456,24 +484,25 @@ export function convertToNaverBlogHtml(
 
   // 4) CTA — 정보 확인 이후에만 낮은 광고감으로 배치.
   const ctaHtml = [
-    `<p>&nbsp;</p>`,
-    `<p><strong>━━━━━━━━━━━━━━━━━━</strong></p>`,
-    `<p>공식 조건은 모집 시점·지역·예산에 따라 달라질 수 있어요.</p>`,
-    `<p>신청 전에는 반드시 해당 기관의 최신 공고를 한 번 더 확인하세요.</p>`,
-    `<p>&nbsp;</p>`,
-    `<p><strong>자세한 자격·금액·신청 방법 정리</strong></p>`,
-    `<p><a href="${escapeAttr(backlinkUrl)}">${escapeHtml(backlinkUrl)}</a></p>`,
-    `<p>&nbsp;</p>`,
-    `<p>내 조건에 맞는 정책을 더 찾고 싶다면</p>`,
-    `<p><a href="${escapeAttr(BASE_URL)}/recommend">${escapeHtml(BASE_URL + "/recommend")}</a></p>`,
-    `<p><strong>━━━━━━━━━━━━━━━━━━</strong></p>`,
+    naverBlankHtml(),
+    `<p style="text-align:center;font-weight:700;color:#555;margin:28px 0;">━━━━━━━━━━━━━━━━━━</p>`,
+    naverParagraphHtml("공식 조건은 모집 시점·지역·예산에 따라 달라질 수 있어요."),
+    naverParagraphHtml("신청 전에는 반드시 해당 기관의 최신 공고를 한 번 더 확인하세요."),
+    naverBlankHtml(),
+    naverCenteredCtaHtml("자세한 자격·금액·신청 방법 정리", backlinkUrl),
+    naverParagraphHtml(backlinkUrl),
+    naverBlankHtml(),
+    naverParagraphHtml("내 조건에 맞는 정책을 더 찾고 싶다면"),
+    naverParagraphHtml(`${BASE_URL}/recommend`),
+    `<p style="text-align:center;font-weight:700;color:#555;margin:28px 0;">━━━━━━━━━━━━━━━━━━</p>`,
   ].join("\n");
 
   const bodyHtml = (
     coverHtml +
     hookHtml +
-    compactChecklistHtml +
     bodyContentHtml +
+    "\n" +
+    faqHtml +
     "\n" +
     ctaHtml
   ).trim();
@@ -501,32 +530,28 @@ function transformForSe3(html: string): string {
   // 2) inline style·class·id 제거 (SE3 가 자체 스타일 적용)
   result = result.replace(/\s+(?:style|class|id)=["'][^"']*["']/gi, "");
 
-  // 3) <h2>·<h3>·<h4> → <p><strong>📌 ...</strong></p> + 빈 줄.
-  //    SE3 가 paste 시 h3 무시하지만 strong + emoji 는 보존 → 시각 강조 OK.
+  // 3) <h2>·<h3>·<h4> → 왼쪽 세로선 제목 단락 + 빈 줄.
+  //    관철이 지정한 네이버 참고 스타일: 굵은 큰 제목 + 좌측 회색 바.
   for (const lvl of ["h2", "h3", "h4"] as const) {
     const re = new RegExp(`<${lvl}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${lvl}>`, "gi");
     result = result.replace(re, (_, inner: string) => {
       const cleaned = stripTags(inner).trim();
-      return `<p>&nbsp;</p>\n<p><strong>📌 ${cleaned}</strong></p>\n`;
+      return `<p>&nbsp;</p>\n${naverSectionTitleHtml(cleaned)}\n`;
     });
   }
 
-  // 4) <table> → 행별 "라벨: 값" 단락 (SE3 가 table 무시 회피)
+  // 4) <table> → 참고글처럼 파란 헤더가 있는 실제 HTML table로 변환.
   result = result.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, inner: string) => {
-    const rows: string[] = [];
+    const rows: string[][] = [];
     const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
     let rm: RegExpExecArray | null;
     while ((rm = rowRe.exec(inner)) !== null) {
       const cells = [...rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((m) =>
         stripTags(m[1]).trim(),
       ).filter(Boolean);
-      if (cells.length === 2) {
-        rows.push(`<p><strong>${escapeHtml(cells[0])}</strong>: ${escapeHtml(cells[1])}</p>`);
-      } else if (cells.length > 0) {
-        rows.push(`<p>${cells.map(escapeHtml).join(" · ")}</p>`);
-      }
+      if (cells.length > 0) rows.push(cells);
     }
-    return "\n" + rows.join("\n") + "\n";
+    return rows.length > 0 ? `\n${naverStyledTableHtml(rows)}\n` : "";
   });
 
   // 5) <ul><li> → <p>• 항목</p> 단락. SE3 가 ul 받지 않아서.
@@ -546,13 +571,17 @@ function transformForSe3(html: string): string {
   });
 
   // 7) 허용 외 태그 stripping — 안전 whitelist
-  const ALLOW = /^(?:p|a|strong|em|b|i|br|img)$/i;
+  const ALLOW = /^(?:p|a|strong|em|b|i|br|img|table|tr|th|td)$/i;
   result = result.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (m, tag) => {
     if (ALLOW.test(tag)) return m;
     return "";
   });
 
-  // 8) 빈 단락 normalize
+  // 8) 참고글처럼 일반 본문 문단은 좌측 정렬·16px·넓은 행간으로 통일.
+  //    이미 스타일이 있는 CTA/소제목/표 문단과 빈 줄은 건드리지 않는다.
+  result = result.replace(/<p>(?!\s*&nbsp;)([\s\S]*?)<\/p>/gi, `<p style="${NAVER_PARAGRAPH_STYLE}">$1</p>`);
+
+  // 9) 빈 단락 normalize
   result = result.replace(/(\s*<p>\s*<\/p>\s*){3,}/gi, "<p>&nbsp;</p>\n<p>&nbsp;</p>");
 
   result = softenNaverMarketingCopy(result);

@@ -151,6 +151,11 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
       <h2 class="big">신청 대상</h2>
       <p style="color: red;">만 19~34세 청년</p>
       <h3>지원 금액</h3>
+      <table>
+        <tr><th>지원 대상</th><td>만 19~34세 청년</td></tr>
+        <tr><th>지원 금액</th><td>월 20만원</td></tr>
+        <tr><th>지원 기간</th><td>최대 12개월</td></tr>
+      </table>
       <ul>
         <li>월 20만원</li>
         <li>최대 12개월</li>
@@ -171,41 +176,51 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     );
   });
 
-  it("도입부 (meta_description) hook 단락 으로 들어간다 (강조)", () => {
+  it("도입부는 참고글처럼 짧은 문단 2개와 가운데 빨간 CTA로 들어간다", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<p><strong>요약 답변</strong></p>");
-    expect(out.bodyHtml).toContain("<p>만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.</p>");
+    expect(out.bodyHtml).toContain(`style="font-size:16px;line-height:2.05;color:#222;text-align:left`);
+    expect(out.bodyHtml).toContain("만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.");
+    expect(out.bodyHtml).toContain('text-align:center;text-decoration:underline');
+    expect(out.bodyHtml).toContain("자격·신청 조건 바로가기");
+    expect(out.bodyHtml).toContain("👇👇");
+    expect(out.bodyHtml).not.toContain("요약 답변");
+    expect(out.bodyHtml).not.toContain("검색 핵심 정보");
   });
 
-  it("SE3 HTML 본문에도 신청 전 핵심 체크리스트가 한 번만 들어간다", () => {
+  it("SE3 HTML 본문은 왼쪽바 소제목·파란 헤더 표·FAQ를 포함한다", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<p><strong>신청 전 핵심 확인</strong></p>");
-    expect(out.bodyHtml).not.toContain("<p><strong>검색 핵심 정보</strong></p>");
-    expect(out.bodyHtml).not.toContain("<p><strong>한눈에 보는 핵심</strong></p>");
-    expect(out.bodyHtml).not.toContain("<p><strong>신청 전 체크포인트</strong></p>");
-    expect(out.bodyHtml).toContain("<p>• 대상: 만 19~34세 청년</p>");
-    expect(out.bodyHtml).toContain("<p>• 혜택: 월 20만원</p>");
-    expect(out.bodyHtml).toContain("<p>• 경로: 자세한 내용은 신청 페이지</p>");
-    expect(out.bodyHtml).not.toContain("<p><strong>자주 묻는 질문</strong></p>");
+    expect(out.bodyHtml).toContain(">신청 대상</p>");
+    expect(out.bodyHtml).toContain('border-left:7px solid #555');
+    expect(out.bodyHtml).toContain('<table style="width:100%;border-collapse:collapse');
+    expect(out.bodyHtml).toContain('background:#3f70bd;color:#fff');
+    expect(out.bodyHtml).toContain("<th");
+    expect(out.bodyHtml).toContain("지원 금액");
+    expect(out.bodyHtml).toContain("최대 12개월");
+    expect(out.bodyHtml).toContain(">자주 묻는 질문</p>");
+    expect(out.bodyHtml).toContain("<strong>Q. 누가 신청할 수 있나요?</strong>");
   });
 
-  it("inline style/class/id 모두 제거 (SE3 자체 스타일 덮어쓰기 회피)", () => {
+  it("입력 원문의 inline style/class/id 는 제거하고, 생성된 네이버 기준 스타일만 유지한다", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).not.toMatch(/\sstyle=/);
+    expect(out.bodyHtml).not.toContain("color: red");
     expect(out.bodyHtml).not.toMatch(/\sclass=/);
     expect(out.bodyHtml).not.toMatch(/\sid=/);
+    expect(out.bodyHtml).toContain('border-left:7px solid #555');
+    expect(out.bodyHtml).toContain('font-size:16px;line-height:2.05');
   });
 
-  it("h2/h3 는 <p><strong>📌 ...</strong></p> 으로 강제 변환 (SE3 paste 한계 우회)", () => {
+  it("h2/h3 는 왼쪽 세로선 제목 단락으로 강제 변환한다", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<p><strong>📌 신청 대상</strong></p>");
+    expect(out.bodyHtml).toContain(">신청 대상</p>");
+    expect(out.bodyHtml).toContain(">지원 금액</p>");
+    expect(out.bodyHtml).toContain('border-left:7px solid #555');
     expect(out.bodyHtml).not.toContain("<h2>");
     expect(out.bodyHtml).not.toContain("<h3>");
   });
 
   it("ul/li 는 <p>• 항목</p> 단락으로 변환 (SE3 가 ul 무시)", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain("<p>• 월 20만원</p>");
+    expect(out.bodyHtml).toContain("• 월 20만원");
     expect(out.bodyHtml).not.toContain("<ul>");
     expect(out.bodyHtml).not.toContain("<li>");
   });
@@ -251,7 +266,8 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml.match(new RegExp(duplicateLead, "g"))?.length).toBe(1);
     expect(out.bodyHtml).not.toContain("이 글에서 확인할 수 있는 것");
     expect(out.bodyHtml).not.toContain("신청 전에 먼저 확인해야 할 대상 조건");
-    expect(out.bodyHtml).toContain("<p><strong>📌 신청 대상</strong></p>");
+    expect(out.bodyHtml).toContain(">신청 대상</p>");
+    expect(out.bodyHtml).toContain('border-left:7px solid #555');
   });
 
   it("SE3 HTML 출력에서 제목·도입부의 과한 CTA 문구를 정보형으로 낮춘다", () => {

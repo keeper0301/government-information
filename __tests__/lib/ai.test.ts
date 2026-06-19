@@ -110,6 +110,24 @@ describe("generateBlogPost", () => {
     expect(params.contents).not.toContain("인스타그램 카드/캡션");
   });
 
+  it("adds Naver reference-style layout guidance to the generation prompt", async () => {
+    const { generateBlogPost } = await import("@/lib/ai");
+
+    await generateBlogPost({
+      type: "welfare",
+      title: "청년 창업 지원",
+      description: "청년 창업기업에 사업화 자금을 지원하는 정책",
+    });
+
+    const params = mockState.generateContentParams as {
+      config?: { systemInstruction?: string };
+    };
+    const systemInstruction = params.config?.systemInstruction ?? "";
+    expect(systemInstruction).toContain("참고글(cgc0904/224279232682)처럼 단순하고 읽기 쉬운 흐름");
+    expect(systemInstruction).toContain("짧은 정의/요약 문단 2개 → 가운데 CTA → 본문 상세 섹션");
+    expect(systemInstruction).toContain("자동 생성 티 나는 \"검색 핵심 정보\", \"요약 답변\" 같은 반복 제목 남발 금지");
+  });
+
   it("feeds recent quality-review learning hints into the generation prompt", async () => {
     const { generateBlogPost } = await import("@/lib/ai");
 
