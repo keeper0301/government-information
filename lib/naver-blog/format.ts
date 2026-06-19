@@ -50,11 +50,12 @@ const BASE_URL = "https://www.keepioo.com";
 // 관철이 지정한 참고글(cgc0904/224279232682) 스타일 기준:
 // - 본문은 좌측 정렬, 짧은 문단, 넓은 행간
 // - H2/H3 는 글자 크기와 여백을 분리해 계층이 보이게 구성
+// - H2 는 참고 이미지처럼 굵은 회색 세로바 + 큰 제목 + 넉넉한 좌측 여백
 // - 핵심 CTA는 가운데 정렬 + 빨간색 + 굵게
 // - 표는 파란 헤더/얇은 테두리로 네이버 본문 안에서 바로 보이게 구성
 const NAVER_PARAGRAPH_STYLE = "font-size:16px;line-height:2.05;color:#222;text-align:left;margin:0 0 22px;";
-const NAVER_H2_TITLE_STYLE = "border-left:7px solid #555;padding-left:14px;margin:54px 0 24px;font-size:24px;line-height:1.42;font-weight:800;color:#111;text-align:left;";
-const NAVER_H3_TITLE_STYLE = "border-left:4px solid #9a9a9a;padding-left:12px;margin:34px 0 18px;font-size:19px;line-height:1.5;font-weight:700;color:#222;text-align:left;";
+const NAVER_H2_TITLE_STYLE = "border-left:8px solid #555;padding-left:28px;margin:56px 0 30px;font-size:30px;line-height:1.42;font-weight:800;color:#111;text-align:left;";
+const NAVER_H3_TITLE_STYLE = "border-left:4px solid #9a9a9a;padding-left:16px;margin:36px 0 18px;font-size:21px;line-height:1.5;font-weight:700;color:#222;text-align:left;";
 const NAVER_CENTER_CTA_STYLE = "font-size:20px;line-height:1.7;font-weight:700;color:#ff2b00;text-align:center;text-decoration:underline;margin:28px 0 8px;";
 const NAVER_TABLE_STYLE = "width:100%;border-collapse:collapse;margin:28px 0 34px;font-size:15px;text-align:center;";
 const NAVER_TABLE_HEAD_STYLE = "background:#3f70bd;color:#fff;border:1px solid #2f5597;padding:10px 8px;font-weight:700;";

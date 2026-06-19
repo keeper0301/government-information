@@ -127,7 +127,7 @@ describe("generateBlogPost", () => {
     expect(systemInstruction).toContain("짧은 정의/요약 문단 2개 → 가운데 CTA → 본문 상세 섹션");
     expect(systemInstruction).toContain("자동 생성 티 나는 \"검색 핵심 정보\", \"요약 답변\" 같은 반복 제목 남발 금지");
     expect(systemInstruction).toContain("SEO + AEO + GEO");
-    expect(systemInstruction).toContain("H2=24px 굵은 좌측바, H3=19px 작은 좌측바");
+    expect(systemInstruction).toContain("H2=30px 굵은 회색 좌측바, H3=21px 작은 좌측바");
     expect(systemInstruction).toContain("featured snippet/answer box");
   });
 
