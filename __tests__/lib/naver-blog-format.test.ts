@@ -187,10 +187,13 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).not.toContain("검색 핵심 정보");
   });
 
-  it("SE3 HTML 본문은 왼쪽바 소제목·파란 헤더 표·FAQ를 포함한다", () => {
+  it("SE3 HTML 본문은 H2/H3 계층·파란 헤더 표·FAQ를 포함한다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(">신청 대상</p>");
     expect(out.bodyHtml).toContain('border-left:7px solid #555');
+    expect(out.bodyHtml).toContain('font-size:24px');
+    expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
+    expect(out.bodyHtml).toContain('font-size:19px');
     expect(out.bodyHtml).toContain('<table style="width:100%;border-collapse:collapse');
     expect(out.bodyHtml).toContain('background:#3f70bd;color:#fff');
     expect(out.bodyHtml).toContain("<th");
@@ -206,14 +209,18 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).not.toMatch(/\sclass=/);
     expect(out.bodyHtml).not.toMatch(/\sid=/);
     expect(out.bodyHtml).toContain('border-left:7px solid #555');
+    expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
     expect(out.bodyHtml).toContain('font-size:16px;line-height:2.05');
   });
 
-  it("h2/h3 는 왼쪽 세로선 제목 단락으로 강제 변환한다", () => {
+  it("h2/h3 는 서로 다른 글자 크기와 왼쪽 세로선 제목 단락으로 강제 변환한다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(">신청 대상</p>");
     expect(out.bodyHtml).toContain(">지원 금액</p>");
     expect(out.bodyHtml).toContain('border-left:7px solid #555');
+    expect(out.bodyHtml).toContain('font-size:24px');
+    expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
+    expect(out.bodyHtml).toContain('font-size:19px');
     expect(out.bodyHtml).not.toContain("<h2>");
     expect(out.bodyHtml).not.toContain("<h3>");
   });

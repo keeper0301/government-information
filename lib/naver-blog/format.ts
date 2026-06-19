@@ -49,11 +49,12 @@ const BASE_URL = "https://www.keepioo.com";
 
 // 관철이 지정한 참고글(cgc0904/224279232682) 스타일 기준:
 // - 본문은 좌측 정렬, 짧은 문단, 넓은 행간
-// - 소제목은 큰 굵은 글씨 + 왼쪽 회색 세로 바
+// - H2/H3 는 글자 크기와 여백을 분리해 계층이 보이게 구성
 // - 핵심 CTA는 가운데 정렬 + 빨간색 + 굵게
 // - 표는 파란 헤더/얇은 테두리로 네이버 본문 안에서 바로 보이게 구성
 const NAVER_PARAGRAPH_STYLE = "font-size:16px;line-height:2.05;color:#222;text-align:left;margin:0 0 22px;";
-const NAVER_SECTION_TITLE_STYLE = "border-left:7px solid #555;padding-left:14px;margin:52px 0 24px;font-size:22px;line-height:1.45;font-weight:700;color:#111;text-align:left;";
+const NAVER_H2_TITLE_STYLE = "border-left:7px solid #555;padding-left:14px;margin:54px 0 24px;font-size:24px;line-height:1.42;font-weight:800;color:#111;text-align:left;";
+const NAVER_H3_TITLE_STYLE = "border-left:4px solid #9a9a9a;padding-left:12px;margin:34px 0 18px;font-size:19px;line-height:1.5;font-weight:700;color:#222;text-align:left;";
 const NAVER_CENTER_CTA_STYLE = "font-size:20px;line-height:1.7;font-weight:700;color:#ff2b00;text-align:center;text-decoration:underline;margin:28px 0 8px;";
 const NAVER_TABLE_STYLE = "width:100%;border-collapse:collapse;margin:28px 0 34px;font-size:15px;text-align:center;";
 const NAVER_TABLE_HEAD_STYLE = "background:#3f70bd;color:#fff;border:1px solid #2f5597;padding:10px 8px;font-weight:700;";
@@ -67,8 +68,9 @@ function naverBlankHtml(): string {
   return `<p>&nbsp;</p>`;
 }
 
-function naverSectionTitleHtml(title: string): string {
-  return `<p style="${NAVER_SECTION_TITLE_STYLE}">${escapeHtml(title)}</p>`;
+function naverSectionTitleHtml(title: string, level: "h2" | "h3" = "h2"): string {
+  const style = level === "h3" ? NAVER_H3_TITLE_STYLE : NAVER_H2_TITLE_STYLE;
+  return `<p style="${style}">${escapeHtml(title)}</p>`;
 }
 
 function naverCenteredCtaHtml(label: string, href: string): string {
@@ -530,13 +532,14 @@ function transformForSe3(html: string): string {
   // 2) inline style·class·id 제거 (SE3 가 자체 스타일 적용)
   result = result.replace(/\s+(?:style|class|id)=["'][^"']*["']/gi, "");
 
-  // 3) <h2>·<h3>·<h4> → 왼쪽 세로선 제목 단락 + 빈 줄.
-  //    관철이 지정한 네이버 참고 스타일: 굵은 큰 제목 + 좌측 회색 바.
+  // 3) <h2>·<h3>·<h4> → 제목 단락 + 빈 줄.
+  //    H2/H3 의 글자 크기·여백·좌측 바 두께를 분리해 글 계층을 명확히 보존한다.
   for (const lvl of ["h2", "h3", "h4"] as const) {
     const re = new RegExp(`<${lvl}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${lvl}>`, "gi");
     result = result.replace(re, (_, inner: string) => {
       const cleaned = stripTags(inner).trim();
-      return `<p>&nbsp;</p>\n${naverSectionTitleHtml(cleaned)}\n`;
+      const level = lvl === "h3" ? "h3" : "h2";
+      return `<p>&nbsp;</p>\n${naverSectionTitleHtml(cleaned, level)}\n`;
     });
   }
 
