@@ -53,10 +53,7 @@ type OuterAgentAutomationSnapshot = {
 };
 
 async function getOuterAgentAutomationSnapshot(): Promise<OuterAgentAutomationSnapshot | null> {
-  const baseUrl =
-    process.env.OUTER_BASE_URL ||
-    process.env.KEEPIO_AGENT_OUTER_BASE_URL ||
-    DEFAULT_OUTER_AGENT_BASE_URL;
+  const baseUrl = process.env.KEEPIO_AGENT_OUTER_BASE_URL || DEFAULT_OUTER_AGENT_BASE_URL;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 3000);
