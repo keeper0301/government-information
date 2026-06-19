@@ -36,12 +36,17 @@ async function safeCount(
   query: CountQuery,
   errors: string[],
 ): Promise<number> {
-  const { count, error } = await query;
-  if (error) {
-    errors.push(`${label}: ${error.message ?? "unknown"}`);
+  try {
+    const { count, error } = await query;
+    if (error) {
+      errors.push(`${label}: ${error.message ?? "unknown"}`);
+      return 0;
+    }
+    return count ?? 0;
+  } catch (error) {
+    errors.push(`${label}: ${error instanceof Error ? error.message : "unknown"}`);
     return 0;
   }
-  return count ?? 0;
 }
 
 /**
@@ -123,7 +128,11 @@ export async function getNaverExtensionStatus(): Promise<NaverExtensionStatus> {
     .from("naver_publish_audit")
     .select("attempted_at, result, error_message, skip_reason, naver_url")
     .order("attempted_at", { ascending: false })
-    .limit(5);
+    .limit(5)
+    .catch((error: unknown) => ({
+      data: null,
+      error: { message: error instanceof Error ? error.message : "unknown" },
+    }));
 
   if (recentRes.error) {
     errors.push(`recentAudits: ${recentRes.error.message ?? "unknown"}`);
