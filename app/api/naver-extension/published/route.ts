@@ -78,9 +78,27 @@ export async function POST(request: Request) {
       })
       .eq("id", body.queueId);
   } else if (body.result === "fail") {
+    const { data: current } = await admin
+      .from("naver_blog_queue")
+      .select("attempt_count")
+      .eq("id", body.queueId)
+      .maybeSingle();
+    const nextAttemptCount = Math.max(0, Number(current?.attempt_count ?? 0)) + 1;
+    const reachedRetryLimit = nextAttemptCount >= 3;
+
     await admin
       .from("naver_blog_queue")
-      .update({ last_error: body.errorMessage ?? "fail" })
+      .update({
+        attempt_count: nextAttemptCount,
+        last_error: body.errorMessage ?? "fail",
+        ...(reachedRetryLimit
+          ? {
+              status: "skipped",
+              skipped_at: new Date().toISOString(),
+              skip_reason: "extension_failed_3_attempts",
+            }
+          : {}),
+      })
       .eq("id", body.queueId);
   }
   // skipped 는 큐 status 변경 안 함

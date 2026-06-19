@@ -82,7 +82,7 @@ export type ProgramContext = {
 export type GeneratedPost = {
   title: string;             // 글 제목 (검색 친화적)
   meta_description: string;  // 150~160자
-  content: string;           // 본문 HTML (1500~2500자)
+  content: string;           // 본문 HTML (순수 텍스트 2,800~3,800자)
   category: string;          // 청년/소상공인/주거/육아·가족/노년/학생·교육/큐레이션
   tags: string[];            // 3~6개 태그
   faqs: { question: string; answer: string }[]; // 3~5개 FAQ
@@ -218,8 +218,8 @@ const SYSTEM_INSTRUCTION_BODY = `## 글의 목적
 
 ## 출력 형식 — JSON 만 (마크다운 코드블록 X)
 {
-  "title": "검색 친화 제목 (45~60자, 연도 포함)",
-  "meta_description": "정확히 150~160자, 키워드 자연 포함, 사용자 의도 충족 (159자 권장)",
+  "title": "검색 친화 제목 (30~48자, 연도 포함)",
+  "meta_description": "150~160자, 95자 미만 금지, 키워드 자연 포함, 사용자 의도 충족 (155자 권장)",
   "content": "본문 HTML — <h2>·<h3>·<p>·<ul>·<ol>·<table>·<strong>·<a> 사용. 2,800~3,800자 한글.",
   "category": "청년 | 소상공인 | 주거 | 육아·가족 | 노년 | 학생·교육 | 큐레이션 중 하나",
   "tags": ["태그1", "태그2", "태그3"],

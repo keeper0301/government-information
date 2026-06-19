@@ -113,15 +113,9 @@ export async function GET(request: Request) {
     });
   }
 
-  // attempt_count 증가 — dry-run (force=1) 시 skip (큐 cap 소진 회피, I3 fix)
-  // 품질 거절 글은 attempt_count를 소진하지 않고 admin_review_required=true로 넘긴다.
-  if (!force) {
-    await admin
-      .from("naver_blog_queue")
-      .update({ attempt_count: (row.attempt_count ?? 0) + 1 })
-      .eq("id", row.id);
-  }
-
+  // attempt_count 는 실제 실패 보고(/published result='fail') 때만 올린다.
+  // 이전 구조는 /next 조회 직후 선증가라 Chrome 로그인/SE3 로딩 실패만으로도
+  // 3회가 소진되어 status='pending' 인 글이 자동 후보에서 조용히 사라질 수 있었다.
   const payload = convertToNaverBlogHtml(post);
 
   return NextResponse.json({

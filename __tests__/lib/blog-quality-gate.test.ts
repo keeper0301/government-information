@@ -8,7 +8,7 @@ const approvedPost = {
   admin_review_required: false,
   title: "2026년 경기도 청년 기본소득 신청 대상과 지원금 총정리",
   meta_description:
-    "경기도 청년 기본소득의 지원 대상, 분기별 지원 금액, 신청 기간, 제출 서류와 공식 신청 경로를 한 번에 확인하세요.",
+    "경기도 청년 기본소득의 지원 대상, 분기별 지원 금액, 신청 기간, 제출 서류와 공식 신청 경로를 한 번에 확인하세요. 접수 전에는 최신 공고와 거주 기준을 함께 확인해야 합니다.",
   category: "청년",
   content: `
     <h2>지원 대상</h2>
@@ -64,6 +64,17 @@ describe("isExternalPublishQualityApproved", () => {
     const assessment = assessExternalPublishQuality({
       ...approvedPost,
       content: `${approvedPost.content}<p>지역: 반드시 확인하세요하고 신청하세요!</p>`,
+    });
+
+    expect(assessment.approved).toBe(false);
+    expect(assessment.reasons).toContain("template_smell_detected");
+    expect(assessment.metrics.hasTemplateSmell).toBe(true);
+  });
+
+  it("프롬프트 금지 문구도 자동 발행 전에 막는다", () => {
+    const assessment = assessExternalPublishQuality({
+      ...approvedPost,
+      content: `${approvedPost.content}<p>여러분, 이거 그냥 넘기면 안 돼요. 정말 중요한 마감부터 봐야 해요.</p>`,
     });
 
     expect(assessment.approved).toBe(false);
