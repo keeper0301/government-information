@@ -4,6 +4,7 @@
 // 2026-06-02 — RSS 요약 → 상세 전문 보강. selector/정제 silent 회귀 방어.
 
 import { describe, it, expect } from "vitest";
+import { deflateRawSync } from "node:zlib";
 import {
   cleanDetailBody,
   extractDetailAttachmentBody,
@@ -17,6 +18,26 @@ const 긴본문 =
   "탄소중립 실천을 유도하기 위해 다양한 참여 행사를 마련했다. 전국 주요 백화점과 대형마트, 온라인 쇼핑몰이 " +
   "참여하며, 소비자는 녹색제품 인증 마크가 부착된 상품을 구매하면 혜택을 받을 수 있다. 부 관계자는 작은 " +
   "실천이 모여 큰 변화를 만든다며 시민들의 적극적인 참여를 당부했다.";
+
+function zipLocal(entries: Array<{ name: string; body: string; deflate?: boolean }>): Uint8Array {
+  const chunks: Buffer[] = [];
+  for (const entry of entries) {
+    const name = Buffer.from(entry.name, "utf8");
+    const raw = Buffer.from(entry.body, "utf8");
+    const payload = entry.deflate ? deflateRawSync(raw) : raw;
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(0, 6);
+    header.writeUInt16LE(entry.deflate ? 8 : 0, 8);
+    header.writeUInt32LE(payload.length, 18);
+    header.writeUInt32LE(raw.length, 22);
+    header.writeUInt16LE(name.length, 26);
+    header.writeUInt16LE(0, 28);
+    chunks.push(header, name, payload);
+  }
+  return new Uint8Array(Buffer.concat(chunks));
+}
 
 describe("korea-kr-detail parseDetailBodyHtml", () => {
   it("article_body 중첩 div depth 본문 추출", () => {
@@ -108,5 +129,32 @@ describe("korea-kr-detail attachment fallback helpers", () => {
         async () => "짧은 보도자료 요약",
       ),
     ).resolves.toBeNull();
+  });
+
+  it("HWPX Preview/PrvText.txt 에서 250자 이상 본문을 추출", async () => {
+    const body = await extractDetailAttachmentBody(
+      zipLocal([
+        { name: "mimetype", body: "application/hwp+zip" },
+        { name: "Preview/PrvText.txt", body: `<><보도자료><>\r ${긴본문}`, deflate: true },
+      ]),
+    );
+    expect(body).toContain("보도자료");
+    expect(body).toContain("녹색소비주간");
+    expect(body).not.toContain("<>");
+    expect((body ?? "").length).toBeGreaterThanOrEqual(250);
+  });
+
+  it("HWPX preview 가 없으면 Contents/section*.xml hp:t 본문으로 fallback", async () => {
+    const body = await extractDetailAttachmentBody(
+      zipLocal([
+        {
+          name: "Contents/section0.xml",
+          body: `<hs:sec><hp:p><hp:run><hp:t>${긴본문.replace(/&/g, "&amp;")}</hp:t></hp:run></hp:p></hs:sec>`,
+          deflate: true,
+        },
+      ]),
+    );
+    expect(body).toContain("탄소중립");
+    expect((body ?? "").length).toBeGreaterThanOrEqual(250);
   });
 });
