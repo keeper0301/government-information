@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import type { SnsLeadRecommendationStatus } from "@/lib/analytics/sns-utm-performance";
+import type { SnsLeadExperimentAction, SnsLeadRecommendationStatus } from "@/lib/analytics/sns-utm-performance";
 import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
 import { loadLatestSnsCaptionPreviews } from "@/lib/sns-control-tower/caption-preview";
 import {
@@ -146,6 +146,13 @@ export default async function SnsControlTowerPage({
                         {lead.sessions}세션 · {lead.activeUsers}명 · {lead.sharePct}%
                       </div>
                       <div className="mt-1 leading-relaxed text-blue-800">{lead.reason}</div>
+                      <div className="mt-2 rounded-md border border-purple-100 bg-purple-50 px-2 py-1 leading-relaxed text-purple-950">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <span className="font-extrabold">실험 종료 조건</span>
+                          <LeadExperimentBadge action={lead.experiment.action} label={lead.experiment.label} />
+                        </div>
+                        {lead.experiment.reason}
+                      </div>
                       <div className="mt-2 rounded-md border border-blue-100 bg-white px-2 py-1 leading-relaxed text-blue-900">
                         중단 리스크 {lead.pauseImpact.riskLabel}: {lead.pauseImpact.summary}
                       </div>
@@ -507,6 +514,17 @@ function LeadStatusBadge({ status }: { status: SnsLeadRecommendationStatus }) {
     needs_data: "bg-grey-100 text-grey-700 border-grey-200",
   }[status];
   return <span className={`rounded-full border px-2 py-1 text-[11px] font-extrabold ${className}`}>{label}</span>;
+}
+
+function LeadExperimentBadge({ action, label }: { action: SnsLeadExperimentAction; label: string }) {
+  const className = {
+    baseline: "bg-blue-100 text-blue-800 border-blue-200",
+    expand: "bg-green-100 text-green-800 border-green-200",
+    pause: "bg-red-100 text-red-800 border-red-200",
+    watch: "bg-orange-100 text-orange-800 border-orange-200",
+    needs_data: "bg-grey-100 text-grey-700 border-grey-200",
+  }[action];
+  return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-extrabold ${className}`}>{label}</span>;
 }
 
 function Info({ label, value, wide = false }: { label: string; value: string | null; wide?: boolean }) {

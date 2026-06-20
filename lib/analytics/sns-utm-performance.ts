@@ -6,7 +6,12 @@
 // env 미설정/권한 오류는 운영 콘솔을 깨지 않도록 graceful error로 반환.
 // ============================================================
 
-import { LEAD_VARIANTS, type SnsLeadVariant } from "@/lib/sns-control-tower/lead-policy";
+import {
+  CHALLENGER_LEAD_VARIANTS,
+  DEFAULT_ACTIVE_LEAD_VARIANTS,
+  LEAD_VARIANTS,
+  type SnsLeadVariant,
+} from "@/lib/sns-control-tower/lead-policy";
 
 const GA4_API = "https://analyticsdata.googleapis.com/v1beta";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -22,6 +27,7 @@ export type SnsUtmPerformanceRow = {
 };
 
 export type SnsLeadRecommendationStatus = "keep" | "pause" | "watch" | "needs_data";
+export type SnsLeadExperimentAction = "baseline" | "expand" | "pause" | "watch" | "needs_data";
 
 export type SnsLeadRecommendation = {
   content: SnsLeadVariant;
@@ -30,6 +36,15 @@ export type SnsLeadRecommendation = {
   sharePct: number;
   status: SnsLeadRecommendationStatus;
   reason: string;
+  experiment: {
+    action: SnsLeadExperimentAction;
+    label: string;
+    reason: string;
+    coreAverageSessions: number;
+    minSessions: number;
+    pauseBelowPct: number;
+    expandAbovePct: number;
+  };
   pauseImpact: {
     lostSessions: number;
     lostActiveUsers: number;
@@ -130,6 +145,13 @@ export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadR
   const second = sorted[1];
   const sampledLeadCount = leadIds.filter((lead) => (threadRows.get(lead)?.sessions ?? 0) > 0).length;
   const hasEnoughData = totalSessions >= 12 && sampledLeadCount >= 2;
+  const coreAverageSessions = Math.round(
+    DEFAULT_ACTIVE_LEAD_VARIANTS.reduce((sum, lead) => sum + (threadRows.get(lead)?.sessions ?? 0), 0) /
+      DEFAULT_ACTIVE_LEAD_VARIANTS.length,
+  );
+  const experimentMinSessions = 30;
+  const pauseBelowPct = 70;
+  const expandAbovePct = 120;
 
   return leadIds.map((lead) => {
     const row = threadRows.get(lead);
@@ -137,10 +159,22 @@ export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadR
     const activeUsers = row?.activeUsers ?? 0;
     const sharePct = totalSessions > 0 ? Math.round((sessions / totalSessions) * 100) : 0;
     const remainingLeadCount = Math.max(0, leadIds.length - 1);
+    const isChallenger = CHALLENGER_LEAD_VARIANTS.includes(lead);
     let status: SnsLeadRecommendationStatus = "needs_data";
     let reason = "Threads lead별 클릭 데이터가 아직 부족합니다. 최소 12세션 이상 쌓인 뒤 판단하세요.";
     let riskLabel: SnsLeadRecommendation["pauseImpact"]["riskLabel"] = "판단 보류";
     let impactSummary = `표본 부족: 중단하지 말고 더 발행하세요. 현재 중단 시 최근 ${sessions}세션을 포기하는 판단이 됩니다.`;
+    let experiment: SnsLeadRecommendation["experiment"] = {
+      action: isChallenger ? "needs_data" : "baseline",
+      label: isChallenger ? "표본 부족" : "기준군",
+      reason: isChallenger
+        ? `challenger는 ${experimentMinSessions}세션 이상 쌓인 뒤 core 평균과 비교합니다.`
+        : "core lead는 challenger 판정의 기준군입니다.",
+      coreAverageSessions,
+      minSessions: experimentMinSessions,
+      pauseBelowPct,
+      expandAbovePct,
+    };
 
     if (hasEnoughData) {
       if (lead === winner.lead && sessions >= Math.max(5, second.sessions * 1.4)) {
@@ -164,6 +198,47 @@ export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadR
       impactSummary = `중단 시 최근 ${sessions}세션/${activeUsers}활성 사용자를 포기합니다. 남은 lead ${remainingLeadCount}종으로만 발행됩니다.`;
     }
 
+    if (isChallenger && coreAverageSessions > 0) {
+      const pauseCutoff = Math.floor((coreAverageSessions * pauseBelowPct) / 100);
+      const expandCutoff = Math.ceil((coreAverageSessions * expandAbovePct) / 100);
+      if (sessions < experimentMinSessions) {
+        experiment = {
+          ...experiment,
+          action: "needs_data",
+          label: "표본 부족",
+          reason: `현재 ${sessions}세션. 최소 ${experimentMinSessions}세션 전에는 확대/중단 판단 금지.`,
+        };
+      } else if (sessions < pauseCutoff) {
+        experiment = {
+          ...experiment,
+          action: "pause",
+          label: "중단 후보",
+          reason: `core 평균 ${coreAverageSessions}세션의 ${pauseBelowPct}% 미만(${pauseCutoff}세션 미만)이라 실험 종료/중단 후보입니다.`,
+        };
+      } else if (sessions >= expandCutoff) {
+        experiment = {
+          ...experiment,
+          action: "expand",
+          label: "확대 후보",
+          reason: `core 평균 ${coreAverageSessions}세션의 ${expandAbovePct}% 이상(${expandCutoff}세션 이상)이라 제한 노출 확대 검토 후보입니다.`,
+        };
+      } else {
+        experiment = {
+          ...experiment,
+          action: "watch",
+          label: "관찰 유지",
+          reason: `core 평균 ${coreAverageSessions}세션 대비 중립 구간입니다. 20% 제한 노출을 유지하고 더 봅니다.`,
+        };
+      }
+    } else if (isChallenger && coreAverageSessions === 0) {
+      experiment = {
+        ...experiment,
+        action: "needs_data",
+        label: "기준 부족",
+        reason: "core lead 기준 세션이 없어 challenger 성과비를 계산할 수 없습니다.",
+      };
+    }
+
     return {
       content: lead,
       sessions,
@@ -171,6 +246,7 @@ export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadR
       sharePct,
       status,
       reason,
+      experiment,
       pauseImpact: {
         lostSessions: sessions,
         lostActiveUsers: activeUsers,

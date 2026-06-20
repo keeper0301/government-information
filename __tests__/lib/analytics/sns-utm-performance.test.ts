@@ -118,4 +118,34 @@ describe("sns UTM performance", () => {
 
     expect(recommendations.every((row) => row.status === "needs_data")).toBe(true);
   });
+
+  it("challenger lead는 30세션 이후 core 평균 대비 확대/중단 종료 조건을 낸다", () => {
+    const recommendations = buildLeadRecommendations([
+      { source: "threads", content: "lead_0", sessions: 40, activeUsers: 34 },
+      { source: "threads", content: "lead_1", sessions: 50, activeUsers: 42 },
+      { source: "threads", content: "lead_2", sessions: 60, activeUsers: 49 },
+      { source: "threads", content: "lead_3", sessions: 65, activeUsers: 56 },
+      { source: "threads", content: "lead_4", sessions: 30, activeUsers: 25 },
+      { source: "threads", content: "lead_5", sessions: 29, activeUsers: 23 },
+    ]);
+
+    expect(recommendations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        content: "lead_0",
+        experiment: expect.objectContaining({ action: "baseline", label: "기준군", coreAverageSessions: 50 }),
+      }),
+      expect.objectContaining({
+        content: "lead_3",
+        experiment: expect.objectContaining({ action: "expand", label: "확대 후보", coreAverageSessions: 50 }),
+      }),
+      expect.objectContaining({
+        content: "lead_4",
+        experiment: expect.objectContaining({ action: "pause", label: "중단 후보", coreAverageSessions: 50 }),
+      }),
+      expect.objectContaining({
+        content: "lead_5",
+        experiment: expect.objectContaining({ action: "needs_data", label: "표본 부족", coreAverageSessions: 50 }),
+      }),
+    ]));
+  });
 });
