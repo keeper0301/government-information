@@ -124,7 +124,7 @@ describe("generateBlogPost", () => {
     };
     const systemInstruction = params.config?.systemInstruction ?? "";
     expect(systemInstruction).toContain("참고글(https://blog.naver.com/leclerc23/224311229716)의 단순한 글 흐름과 시각 리듬");
-    expect(systemInstruction).toContain("네이버 제목(H1) 아래 짧은 정의/요약 문단 2개 → 가운데 빨간 밑줄 CTA → 👇👇 → 미리보기 링크/상세 섹션");
+    expect(systemInstruction).toContain("네이버 제목(H1) 아래 짧은 정의/요약 문단 2개 → 가운데 빨간 밑줄 CTA → 👇👇 → keepioo 본사이트 해당 글 외부링크 → 상세 섹션");
     expect(systemInstruction).toContain("자동 생성 티 나는 \"검색 핵심 정보\", \"요약 답변\", \"한눈에 보는 핵심\", \"신청 전 체크포인트\" 같은 반복 제목 남발 금지");
     expect(systemInstruction).toContain("SEO + AEO + GEO");
     expect(systemInstruction).toContain("H1 은 JSON 의 title 이 네이버 제목 필드로 들어가며, 본문 content 안에 <h1> 을 반복하지 않는다");

@@ -49,7 +49,7 @@ const BASE_URL = "https://www.keepioo.com";
 
 // 관철이 지정한 참고글(leclerc23/224311229716) 스타일 기준:
 // - H1 은 네이버 제목 필드에 맡기고 본문에는 반복하지 않는다
-// - 첫 화면은 짧은 문단 2개 → 가운데 빨간 CTA → 👇👇 → 링크 미리보기/상세 섹션 흐름
+// - 첫 화면은 짧은 문단 2개 → 가운데 빨간 CTA → 👇👇 → keepioo 외부링크 → 상세 섹션 흐름
 // - 본문은 좌측 정렬, 16px 전후, 짧은 문단, 넓은 행간
 // - H2 는 참고글의 blockquote 질문 제목처럼 굵은 인용박스형 제목으로 보이게 구성
 // - H3 는 세부 조건 제목으로, 작은 글자·얇은 좌측바·짧은 여백으로 H2보다 가볍게 구성
@@ -79,6 +79,10 @@ function naverSectionTitleHtml(title: string, level: "h2" | "h3" = "h2"): string
 
 function naverCenteredCtaHtml(label: string, href: string): string {
   return `<p style="${NAVER_CENTER_CTA_STYLE}"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
+}
+
+function naverCenteredExternalLinkHtml(href: string): string {
+  return `<p style="font-size:16px;line-height:1.8;text-align:center;margin:0 0 34px;color:#0068c9;"><a href="${escapeAttr(href)}">${escapeHtml(href)}</a></p>`;
 }
 
 function naverStyledTableHtml(rows: string[][]): string {
@@ -460,7 +464,7 @@ export function convertToNaverBlogHtml(
     ? null
     : `${BASE_URL}/api/naver-thumbnail/${encodeURIComponent(post.slug)}`;
 
-  // 1) 도입부 — 참고 네이버 글처럼 네이버 제목(H1) 아래 짧은 본문 2문단 → 가운데 빨간 CTA → 👇👇 → 상세 섹션 순서.
+  // 1) 도입부 — 참고 네이버 글처럼 네이버 제목(H1) 아래 짧은 본문 2문단 → 가운데 빨간 CTA → 👇👇 → keepioo 외부링크 → 상세 섹션 순서.
   //    기존 "요약 답변/검색 핵심 정보" 반복 제목은 자동 생성 티가 강해 제거한다.
   const checklistItems = buildNaverChecklistText(contentForNaver);
   const answerSummary = post.meta_description
@@ -473,7 +477,8 @@ export function convertToNaverBlogHtml(
     naverParagraphHtml(answerSummary),
     naverParagraphHtml(`${target}에 해당한다면 지원 내용(${benefit})과 기간(${period})을 먼저 확인해두는 게 좋아요. 공고마다 세부 조건이 달라질 수 있으니 아래 핵심 정리를 참고하세요.`),
     naverCenteredCtaHtml("자격·신청 조건 바로가기", backlinkUrl),
-    `<p style="text-align:center;color:#ff2b00;font-size:18px;line-height:1.4;margin:0 0 34px;">👇👇</p>`,
+    `<p style="text-align:center;color:#ff2b00;font-size:18px;line-height:1.4;margin:0 0 10px;">👇👇</p>`,
+    naverCenteredExternalLinkHtml(backlinkUrl),
     naverBlankHtml(),
   ].join("\n");
   const faqHtml = buildNaverAeoFaqHtml(checklistItems);

@@ -183,6 +183,15 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain('text-align:center;text-decoration:underline');
     expect(out.bodyHtml).toContain("자격·신청 조건 바로가기");
     expect(out.bodyHtml).toContain("👇👇");
+    expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/2026-청년-월세-지원"');
+    const ctaIndex = out.bodyHtml.indexOf("자격·신청 조건 바로가기");
+    const arrowIndex = out.bodyHtml.indexOf("👇👇");
+    const externalLinkIndex = out.bodyHtml.indexOf(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
+    const bodySectionIndex = out.bodyHtml.indexOf(">신청 대상</p>");
+    expect(ctaIndex).toBeGreaterThanOrEqual(0);
+    expect(arrowIndex).toBeGreaterThan(ctaIndex);
+    expect(externalLinkIndex).toBeGreaterThan(arrowIndex);
+    expect(bodySectionIndex).toBeGreaterThan(externalLinkIndex);
     expect(out.bodyHtml).not.toContain("요약 답변");
     expect(out.bodyHtml).not.toContain("검색 핵심 정보");
   });
