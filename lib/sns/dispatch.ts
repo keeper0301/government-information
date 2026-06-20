@@ -253,9 +253,21 @@ export function buildThreadsText(
   const safeSummary = ellipsize(summary, summaryBudget);
   const fallbackText = minimalTemplate(safeLead, safeTitle, safeSummary, safePoint);
 
-  return fallbackText.length <= THREADS_TEXT_LIMIT
-    ? fallbackText
-    : `${ellipsize(lead, Math.max(1, THREADS_TEXT_LIMIT - tail.length - 2))}\n${tail}`.slice(0, THREADS_TEXT_LIMIT);
+  if (fallbackText.length <= THREADS_TEXT_LIMIT) return fallbackText;
+
+  // URL이 긴 한글 slug일 때도 최후 fallback이 "짧은 첫줄+링크"로 퇴화하면
+  // requireSubstance 검증(120자/3줄)을 다시 밟는다. 제목은 버리고, 본문 정보량과 URL을 우선 보존한다.
+  const compactPoint = ellipsize(safePoint || "대상 조건 확인", 32);
+  const compactSecondPoint = "신청 방법·마감 확인";
+  const compactLead = ellipsize(lead, 58);
+  const compactFixed = `${compactLead}\n\n핵심 요약\n\n확인 포인트\n• ${compactPoint}\n• ${compactSecondPoint}\n\n자세히 보기\n${url}`;
+  const compactSummaryBudget = Math.max(0, THREADS_TEXT_LIMIT - compactFixed.length);
+  const compactSummarySource = normalizeShareText(`${summary} ${fallback}`);
+  const compactSummary = ellipsize(compactSummarySource, compactSummaryBudget);
+  const compactFallback = `${compactLead}\n\n핵심 요약\n${compactSummary}\n\n확인 포인트\n• ${compactPoint}\n• ${compactSecondPoint}\n\n자세히 보기\n${url}`;
+  if (compactFallback.length <= THREADS_TEXT_LIMIT) return compactFallback;
+
+  return `${ellipsize(compactLead, Math.max(1, THREADS_TEXT_LIMIT - tail.length - 2))}\n${tail}`.slice(0, THREADS_TEXT_LIMIT);
 }
 
 export async function dispatchBlogToSns(

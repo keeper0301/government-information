@@ -5,6 +5,7 @@ vi.mock("@/lib/sns/facebook", () => ({ publishFacebookPost: vi.fn() }));
 vi.mock("@/lib/sns/threads", () => ({ publishThreadsPost: vi.fn() }));
 
 import { buildThreadsText, dispatchBlogToSns } from "@/lib/sns/dispatch";
+import { validateCaption } from "@/lib/validate-caption";
 import * as twitter from "@/lib/sns/twitter";
 import * as facebook from "@/lib/sns/facebook";
 import * as threads from "@/lib/sns/threads";
@@ -140,6 +141,21 @@ describe("buildThreadsText", () => {
     expect(challengerCount).toBeLessThanOrEqual(390);
     expect((seen.get("lead_0") ?? 0) + (seen.get("lead_1") ?? 0) + (seen.get("lead_2") ?? 0)).toBeGreaterThanOrEqual(610);
   });
+
+  it("긴 한글 slug와 짧은 설명이어도 Threads substance 검증을 통과한다", () => {
+    const text = buildThreadsText({
+      title: "2026년 서울특별시 청년 월세 지원 신청 안내와 소득 기준 확인",
+      slug: "2026년-서울특별시-청년-월세-지원-신청-안내와-소득-기준-확인-abcdef123456",
+      description: "청년 월세 지원의 대상과 신청 방법을 정리했습니다.",
+    });
+
+    expect(text.length).toBeLessThanOrEqual(500);
+    expect(text).toContain("utm_source=threads");
+    expect(text).toMatch(/\n\n핵심 요약\n/);
+    expect(text).toMatch(/\n\n확인 포인트\n• /);
+    expect(text.replace(/https?:\/\/\S+/g, "").trim().length).toBeGreaterThanOrEqual(120);
+    expect(() => validateCaption(text, { source: "threads", requireSubstance: true })).not.toThrow();
+  });
 });
 
 describe("dispatchBlogToSns", () => {
@@ -216,5 +232,36 @@ describe("dispatchBlogToSns", () => {
     expect(threadsText).toContain("utm_source=threads");
     expect(threadsText).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\//);
     expect(threadsText.length).toBeLessThanOrEqual(500);
+  });
+
+  it("긴 한글 slug 때문에 최후 fallback으로 가도 Threads 본문 실질 기준을 통과한다", () => {
+    const cases = [
+      {
+        title: "2026년 김천시 노인활동보조기 지원: 거동 불편 어르신 현물 지원",
+        slug: "2026년-김천시-노인활동보조기-지원-거동-불편-어르신-현물-지원",
+        description:
+          "김천시가 거동이 불편한 어르신에게 활동보조기를 지원하는 사업입니다. 지원 대상, 신청 절차, 준비 서류와 확인할 내용을 정리했습니다.",
+      },
+      {
+        title: "2026년 농식품 시뮬레이션 지원사업: 전북 IT·식품 중소기업 실증 지원",
+        slug: "2026년-농식품-시뮬레이션-지원사업-전북-it-식품-중소기업-실증-지원",
+        description:
+          "전북 지역 IT·식품 중소기업이 농식품 시뮬레이션 기술을 실증할 수 있도록 지원하는 사업입니다. 참여 대상, 지원 내용, 신청 전 확인할 항목을 정리했습니다.",
+      },
+    ];
+
+    for (const post of cases) {
+      const text = buildThreadsText(post);
+      const withoutUrls = text.replace(/https?:\/\/\S+/g, "").trim();
+      const lines = withoutUrls
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      expect(text.length).toBeLessThanOrEqual(500);
+      expect(withoutUrls.length).toBeGreaterThanOrEqual(120);
+      expect(lines.length).toBeGreaterThanOrEqual(3);
+      expect(() => validateCaption(text, { source: "threads-test", requireSubstance: true })).not.toThrow();
+    }
   });
 });
