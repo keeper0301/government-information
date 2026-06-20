@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
+import { loadLatestSnsCaptionPreviews } from "@/lib/sns-control-tower/caption-preview";
 import { loadSnsControlTowerSnapshotDbFirst } from "@/lib/sns-control-tower/registry";
 import { importLocalReportsAction, markManualDeletedAction } from "./actions";
 import type { SnsPostStatus, SnsPublishedPost } from "@/lib/sns-control-tower/types";
@@ -18,7 +20,16 @@ export default async function SnsControlTowerPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
-  const snapshot = await loadSnsControlTowerSnapshotDbFirst();
+  const [snapshot, utmPerformance, captionPreviewsResult] = await Promise.all([
+    loadSnsControlTowerSnapshotDbFirst(),
+    getSnsUtmPerformance(30),
+    loadLatestSnsCaptionPreviews(3)
+      .then((previews) => ({ previews, error: null as string | null }))
+      .catch((error) => ({
+        previews: [],
+        error: error instanceof Error ? error.message : String(error),
+      })),
+  ]);
   const finalPost = snapshot.posts.find((post) => post.status === "active_final");
   const failedDeletionPosts = snapshot.posts.filter((post) => post.status === "delete_failed_permission");
 
@@ -81,6 +92,80 @@ export default async function SnsControlTowerPage({
           tone="red"
         />
         <MetricCard label="URL 누락" value={snapshot.stats.missingPermalink} tone="orange" />
+      </section>
+
+      <section className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+          <div className="text-xs font-bold uppercase tracking-wider text-blue-700">
+            UTM 성과 · 최근 {utmPerformance.windowDays}일
+          </div>
+          <h2 className="mt-1 text-lg font-extrabold tracking-[-0.4px] text-blue-950">
+            SNS 자동 발행 클릭 추적
+          </h2>
+          {utmPerformance.error ? (
+            <p className="mt-2 rounded-xl border border-blue-200 bg-white p-3 text-xs leading-relaxed text-blue-900">
+              GA4 UTM 조회 대기: {utmPerformance.error}. 발행은 계속되지만, 어떤 첫줄이 돈 되는지는 아직 안 보인다.
+            </p>
+          ) : (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <MetricCard label="SNS 세션" value={utmPerformance.totals.sessions} tone="blue" compact />
+                <MetricCard label="활성 사용자" value={utmPerformance.totals.activeUsers} tone="green" compact />
+              </div>
+              {utmPerformance.bestContent && (
+                <p className="mt-3 text-xs font-bold text-blue-950">
+                  현재 1등: {utmPerformance.bestContent.source} · {utmPerformance.bestContent.content} · {utmPerformance.bestContent.sessions}세션
+                </p>
+              )}
+              <ul className="mt-3 space-y-2">
+                {utmPerformance.rows.slice(0, 5).map((row) => (
+                  <li key={`${row.source}-${row.content}`} className="rounded-xl bg-white p-3 text-xs text-blue-950">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-extrabold">{row.source} / {row.content}</span>
+                      <span>{row.sessions}세션 · {row.activeUsers}명</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {utmPerformance.rows.length === 0 && (
+                <p className="mt-3 text-xs text-blue-800">아직 blog_auto UTM 유입이 없다. 다음 발행 뒤 이 카드가 A/B 판정판이 된다.</p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-grey-200 bg-white p-5">
+          <div className="text-xs font-bold uppercase tracking-wider text-grey-500">
+            Threads 미리보기
+          </div>
+          <h2 className="mt-1 text-lg font-extrabold tracking-[-0.4px] text-grey-950">
+            최신 블로그 캡션 가독성 검수
+          </h2>
+          {captionPreviewsResult.error ? (
+            <p className="mt-2 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs text-orange-900">
+              미리보기 로드 실패: {captionPreviewsResult.error}
+            </p>
+          ) : captionPreviewsResult.previews.length === 0 ? (
+            <p className="mt-3 text-sm text-grey-500">미리볼 블로그 글이 없다.</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {captionPreviewsResult.previews.map((preview) => (
+                <li key={preview.slug} className="rounded-xl border border-grey-100 bg-grey-50 p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-bold text-grey-600">
+                    <span>{preview.length}/500자</span>
+                    <span>·</span>
+                    <span>{preview.leadVariant}</span>
+                    <span>·</span>
+                    <span>{formatDate(preview.publishedAt)}</span>
+                  </div>
+                  <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-xs leading-relaxed text-grey-900">
+                    {preview.text}
+                  </pre>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       {finalPost && (
@@ -259,7 +344,17 @@ function PostRow({ post }: { post: SnsPublishedPost }) {
   );
 }
 
-function MetricCard({ label, value, tone }: { label: string; value: number; tone: "grey" | "green" | "blue" | "red" | "orange" }) {
+function MetricCard({
+  label,
+  value,
+  tone,
+  compact = false,
+}: {
+  label: string;
+  value: number;
+  tone: "grey" | "green" | "blue" | "red" | "orange";
+  compact?: boolean;
+}) {
   const toneClass = {
     grey: "border-grey-200 bg-white text-grey-900",
     green: "border-green-200 bg-green-50 text-green-900",
@@ -268,9 +363,9 @@ function MetricCard({ label, value, tone }: { label: string; value: number; tone
     orange: "border-orange-200 bg-orange-50 text-orange-900",
   }[tone];
   return (
-    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+    <div className={`rounded-2xl border ${compact ? "p-3" : "p-4"} ${toneClass}`}>
       <div className="text-xs font-bold text-current opacity-70">{label}</div>
-      <div className="mt-2 text-2xl font-black tracking-[-0.5px]">{value}</div>
+      <div className={`${compact ? "mt-1 text-xl" : "mt-2 text-2xl"} font-black tracking-[-0.5px]`}>{value}</div>
     </div>
   );
 }
