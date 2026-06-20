@@ -64,21 +64,78 @@ function ellipsize(value: string, maxLength: number): string {
   return `${value.slice(0, maxLength - 1).trim()}…`;
 }
 
+function detectRegion(title: string): string | null {
+  const match = title.match(
+    /([가-힣]{2,}(?:특별시|광역시|특별자치시|특별자치도|도|시|군|구))/,
+  );
+  return match?.[1] ?? null;
+}
+
+function detectAudience(title: string): string | null {
+  const rules: Array<[RegExp, string]> = [
+    [/장애인|장애인가정/, "장애인가정에 해당된다면"],
+    [/청년|대학생|취업준비|구직/, "청년이거나 취업을 준비 중이라면"],
+    [/소상공인|자영업|전통시장/, "가게를 운영 중이라면"],
+    [/중소기업|창업기업|스타트업|벤처/, "사업을 운영하거나 창업을 준비 중이라면"],
+    [/신혼부부|출산|임신|육아|아동|부모/, "출산·육아 지원을 확인 중이라면"],
+    [/어르신|노인|기초연금/, "부모님이나 본인의 복지 혜택을 확인 중이라면"],
+    [/대출|자금|보증|융자/, "자금 지원이 필요하다면"],
+  ];
+  return rules.find(([pattern]) => pattern.test(title))?.[1] ?? null;
+}
+
+function detectAction(title: string): string {
+  if (/마감|접수|신청/.test(title)) {
+    return "신청 조건과 마감부터 먼저 확인하세요.";
+  }
+  if (/지원금|장려금|급여|수당|자금|대출|융자|보증/.test(title)) {
+    return "받을 수 있는 금액과 신청 조건부터 먼저 확인하세요.";
+  }
+  if (/모집|공고|선정|참여기업|수행기관/.test(title)) {
+    return "대상 여부와 준비 서류부터 먼저 확인하세요.";
+  }
+  return "내 조건에 맞는지 핵심만 먼저 확인하세요.";
+}
+
+function buildHumanLead(title: string): string {
+  const region = detectRegion(title);
+  const audience = detectAudience(title);
+  const action = detectAction(title);
+  const prefix = [region ? `${region}에서` : null, audience]
+    .filter(Boolean)
+    .join(" ");
+  if (prefix) return `${prefix} ${action}`;
+  return `이 정책이 내 상황에 맞는지 ${action}`;
+}
+
+function fallbackCheckPoints(title: string): string[] {
+  const points = ["대상 조건", "지원 금액·내용", "신청 방법·마감"];
+  if (/서류|준비/.test(title)) points[1] = "준비 서류";
+  if (/대출|자금|보증|융자/.test(title)) points[1] = "한도·금리·상환 조건";
+  if (/모집|공고|참여기업|수행기관/.test(title)) points[1] = "선정 기준·준비 자료";
+  return points.map((point) => `${point} 확인`);
+}
+
 export function buildThreadsText(post: BlogPostShare): string {
   const url = buildBlogUrl(post.slug);
   const title = normalizeShareText(post.title);
   const fallback =
     "대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요. 해당되는 사람은 마감과 기준이 달라질 수 있어 원문 확인이 필요합니다.";
-  const sentences = splitKoreanSentences(post.description ?? fallback);
+  const hasDescription = Boolean(post.description?.trim());
+  const sentences = splitKoreanSentences(hasDescription ? post.description! : fallback);
   const summary = normalizeShareText(sentences[0] ?? fallback);
-  const points = sentences.slice(1, 4).map(normalizeShareText).filter(Boolean);
+  const points = hasDescription
+    ? sentences.slice(1, 4).map(normalizeShareText).filter(Boolean)
+    : [];
+  const readablePoints = points.length > 0 ? points : fallbackCheckPoints(title);
   const tail = `\n자세히 보기\n${url}`;
-  const lines = [title, "", "핵심 요약", summary];
+  const lead = buildHumanLead(title);
+  const lines = [lead, "", "원문", title, "", "핵심 요약", summary];
 
-  if (points.length > 0) {
+  if (readablePoints.length > 0) {
     appendWithinLimit(lines, "", tail);
     appendWithinLimit(lines, "확인 포인트", tail);
-    for (const point of points) {
+    for (const point of readablePoints) {
       if (!appendWithinLimit(lines, `• ${point}`, tail)) break;
     }
   }
@@ -86,25 +143,27 @@ export function buildThreadsText(post: BlogPostShare): string {
   const text = `${lines.join("\n")}\n${tail}`;
   if (text.length <= THREADS_TEXT_LIMIT) return text;
 
-  const minimalTemplate = (safeTitle: string, safeSummary: string) =>
-    `${safeTitle}\n\n핵심 요약\n${safeSummary}\n\n자세히 보기\n${url}`;
-  const fixedWithoutTitleAndSummary = "\n\n핵심 요약\n\n자세히 보기\n".length + url.length;
+  const minimalTemplate = (safeLead: string, safeTitle: string, safeSummary: string) =>
+    `${safeLead}\n\n원문\n${safeTitle}\n\n핵심 요약\n${safeSummary}\n\n자세히 보기\n${url}`;
+  const fixedWithoutVariableText =
+    "\n\n원문\n\n핵심 요약\n\n자세히 보기\n".length + url.length;
+  const safeLead = ellipsize(lead, 90);
   const minSummaryLength = 40;
   const titleBudget = Math.max(
     1,
-    THREADS_TEXT_LIMIT - fixedWithoutTitleAndSummary - minSummaryLength,
+    THREADS_TEXT_LIMIT - fixedWithoutVariableText - safeLead.length - minSummaryLength,
   );
   const safeTitle = ellipsize(title, titleBudget);
   const summaryBudget = Math.max(
     0,
-    THREADS_TEXT_LIMIT - minimalTemplate(safeTitle, "").length,
+    THREADS_TEXT_LIMIT - minimalTemplate(safeLead, safeTitle, "").length,
   );
   const safeSummary = ellipsize(summary, summaryBudget);
-  const fallbackText = minimalTemplate(safeTitle, safeSummary);
+  const fallbackText = minimalTemplate(safeLead, safeTitle, safeSummary);
 
   return fallbackText.length <= THREADS_TEXT_LIMIT
     ? fallbackText
-    : `${ellipsize(title, Math.max(1, THREADS_TEXT_LIMIT - tail.length - 2))}\n${tail}`.slice(0, THREADS_TEXT_LIMIT);
+    : `${ellipsize(lead, Math.max(1, THREADS_TEXT_LIMIT - tail.length - 2))}\n${tail}`.slice(0, THREADS_TEXT_LIMIT);
 }
 
 export async function dispatchBlogToSns(
