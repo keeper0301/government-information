@@ -25,6 +25,8 @@ type AdminActionLeadPolicyRow = {
 
 export const LEAD_VARIANTS: SnsLeadVariant[] = ["lead_0", "lead_1", "lead_2", "lead_3", "lead_4", "lead_5"];
 export const DEFAULT_ACTIVE_LEAD_VARIANTS: SnsLeadVariant[] = ["lead_0", "lead_1", "lead_2"];
+export const CHALLENGER_LEAD_VARIANTS: SnsLeadVariant[] = ["lead_3", "lead_4", "lead_5"];
+export const CHALLENGER_LEAD_TRAFFIC_PCT = 20;
 
 function isLeadVariant(value: unknown): value is SnsLeadVariant {
   return LEAD_VARIANTS.includes(value as SnsLeadVariant);
@@ -83,7 +85,9 @@ export async function loadSnsLeadPolicySnapshot(admin?: SupabaseAdmin): Promise<
   } catch (error) {
     return {
       policies: defaultPolicies(),
-      disabledLeadVariants: [],
+      disabledLeadVariants: defaultPolicies()
+        .filter((policy) => policy.status === "paused")
+        .map((policy) => policy.content),
       warning: `SNS lead 정책 조회 실패, 기본 3종 균등 사용: ${error instanceof Error ? error.message : String(error)}`,
     };
   }

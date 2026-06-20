@@ -4,7 +4,11 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import type { SnsLeadRecommendationStatus } from "@/lib/analytics/sns-utm-performance";
 import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
 import { loadLatestSnsCaptionPreviews } from "@/lib/sns-control-tower/caption-preview";
-import { loadSnsLeadPolicySnapshot } from "@/lib/sns-control-tower/lead-policy";
+import {
+  CHALLENGER_LEAD_TRAFFIC_PCT,
+  CHALLENGER_LEAD_VARIANTS,
+  loadSnsLeadPolicySnapshot,
+} from "@/lib/sns-control-tower/lead-policy";
 import { loadSnsControlTowerSnapshotDbFirst } from "@/lib/sns-control-tower/registry";
 import { importLocalReportsAction, markManualDeletedAction, setLeadPolicyAction } from "./actions";
 import type { SnsPostStatus, SnsPublishedPost } from "@/lib/sns-control-tower/types";
@@ -156,6 +160,10 @@ export default async function SnsControlTowerPage({
                   <ul className="mt-2 space-y-2">
                     {leadPolicy.policies.map((policy) => {
                       const recommendation = leadRecommendationByContent.get(policy.content);
+                      const isChallenger = CHALLENGER_LEAD_VARIANTS.includes(policy.content);
+                      const activeReason = isChallenger
+                        ? `관리자 승인: challenger 제한 노출 최대 ${CHALLENGER_LEAD_TRAFFIC_PCT}% 실험`
+                        : "관리자 승인: lead 재사용";
                       const pauseReason = recommendation
                         ? `관리자 승인: ${recommendation.pauseImpact.summary}`
                         : "관리자 승인: 성과 낮은 lead 중단";
@@ -164,7 +172,7 @@ export default async function SnsControlTowerPage({
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="font-extrabold">{policy.content}</span>
                             <span className={policy.status === "paused" ? "font-bold text-red-700" : "font-bold text-green-700"}>
-                              {policy.status === "paused" ? "중단 적용 중" : "사용 중"}
+                              {policy.status === "paused" ? "중단 적용 중" : isChallenger ? `제한 실험 중 · 최대 ${CHALLENGER_LEAD_TRAFFIC_PCT}%` : "사용 중"}
                             </span>
                           </div>
                           {policy.reason && <div className="mt-1 text-blue-700">사유: {policy.reason}</div>}
@@ -177,7 +185,7 @@ export default async function SnsControlTowerPage({
                             <form action={setLeadPolicyAction}>
                               <input type="hidden" name="content" value={policy.content} />
                               <input type="hidden" name="status" value="active" />
-                              <input type="hidden" name="reason" value="관리자 승인: lead 재사용" />
+                              <input type="hidden" name="reason" value={activeReason} />
                               <button type="submit" className="rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-bold text-green-800 hover:bg-green-100">
                                 사용
                               </button>
@@ -244,7 +252,7 @@ export default async function SnsControlTowerPage({
                   {preview.challengerPreviews.length > 0 && (
                     <div className="mt-3 rounded-lg border border-purple-100 bg-purple-50 p-3">
                       <div className="text-[11px] font-extrabold text-purple-900">
-                        신규 challenger 첫줄 후보 · 승인 전 자동 발행 제외
+                        신규 challenger 첫줄 후보 · 승인 시 최대 {CHALLENGER_LEAD_TRAFFIC_PCT}% 제한 노출
                       </div>
                       <ul className="mt-2 space-y-2">
                         {preview.challengerPreviews.map((candidate) => (

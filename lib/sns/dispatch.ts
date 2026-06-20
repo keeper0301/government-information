@@ -7,7 +7,14 @@
 // 인스타는 별도 cron (/api/cron/instagram-publish) 가 DB-based OAuth token + carousel
 // 발행으로 처리. dispatch 에 포함 X (2026-05-14 review 정리).
 
-import { DEFAULT_ACTIVE_LEAD_VARIANTS, LEAD_VARIANTS, loadSnsLeadPolicySnapshot, type SnsLeadVariant } from "@/lib/sns-control-tower/lead-policy";
+import {
+  CHALLENGER_LEAD_TRAFFIC_PCT,
+  CHALLENGER_LEAD_VARIANTS,
+  DEFAULT_ACTIVE_LEAD_VARIANTS,
+  LEAD_VARIANTS,
+  loadSnsLeadPolicySnapshot,
+  type SnsLeadVariant,
+} from "@/lib/sns-control-tower/lead-policy";
 import { publishTweet } from "./twitter";
 import { publishFacebookPost } from "./facebook";
 import { publishThreadsPost } from "./threads";
@@ -163,7 +170,18 @@ function selectLeadVariant(
 ): number {
   const disabled = new Set(disabledLeadVariants);
   const enabled = LEAD_VARIANTS.filter((lead) => !disabled.has(lead));
-  const candidates = enabled.length > 0 ? enabled : LEAD_VARIANTS;
+  const coreEnabled = enabled.filter((lead) => DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead));
+  const challengerEnabled = enabled.filter((lead) => CHALLENGER_LEAD_VARIANTS.includes(lead));
+  const useChallenger =
+    challengerEnabled.length > 0 &&
+    stableBucket(`${seed}:challenger-gate`, 100) < CHALLENGER_LEAD_TRAFFIC_PCT;
+  const candidates = useChallenger
+    ? challengerEnabled
+    : coreEnabled.length > 0
+      ? coreEnabled
+      : enabled.length > 0
+        ? enabled
+        : DEFAULT_ACTIVE_LEAD_VARIANTS;
   const selected = candidates[stableBucket(seed, candidates.length)];
   return Number(selected.replace("lead_", ""));
 }
@@ -176,7 +194,7 @@ export function buildThreadsText(
   const defaultDisabled = LEAD_VARIANTS.filter((lead) => !DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead));
   const disabledLeadVariants = opts.includeChallengerLeads
     ? (opts.disabledLeadVariants ?? [])
-    : Array.from(new Set([...defaultDisabled, ...(opts.disabledLeadVariants ?? [])]));
+    : (opts.disabledLeadVariants ?? defaultDisabled);
   const variant = selectLeadVariant(`${post.slug}:${title}`, disabledLeadVariants);
   const url = buildBlogUrl(post.slug, "threads", `lead_${variant}`);
   const fallback =

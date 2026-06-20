@@ -92,11 +92,32 @@ describe("buildThreadsText", () => {
           slug: `청년-월세-지원-신청-안내-${i}`,
           description: "청년 월세 지원의 대상과 신청 방법을 정리했습니다.",
         },
-        { disabledLeadVariants: ["lead_1"] },
+        { disabledLeadVariants: ["lead_1", "lead_3", "lead_4", "lead_5"] },
       );
       expect(text).not.toContain("utm_content=lead_1");
       expect(text).toMatch(/utm_content=lead_[02]/);
     }
+  });
+
+  it("승인된 challenger lead도 최대 20% 제한 노출로만 섞는다", () => {
+    const seen = new Map<string, number>();
+    for (let i = 0; i < 1000; i += 1) {
+      const text = buildThreadsText(
+        {
+          title: `청년 월세 지원 신청 안내 ${i}`,
+          slug: `청년-월세-지원-신청-안내-${i}`,
+          description: "청년 월세 지원의 대상과 신청 방법을 정리했습니다.",
+        },
+        { disabledLeadVariants: ["lead_4", "lead_5"] },
+      );
+      const lead = text.match(/utm_content=(lead_\d+)/)?.[1] ?? "missing";
+      seen.set(lead, (seen.get(lead) ?? 0) + 1);
+    }
+
+    const challengerCount = seen.get("lead_3") ?? 0;
+    expect(challengerCount).toBeGreaterThan(0);
+    expect(challengerCount).toBeLessThanOrEqual(240);
+    expect((seen.get("lead_0") ?? 0) + (seen.get("lead_1") ?? 0) + (seen.get("lead_2") ?? 0)).toBeGreaterThanOrEqual(760);
   });
 });
 
