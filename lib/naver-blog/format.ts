@@ -218,8 +218,7 @@ function htmlToNaverText(html: string): string {
   text = text.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, inner: string) => {
     const rows: string[] = [];
     const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-    let rowMatch: RegExpExecArray | null;
-    while ((rowMatch = rowRe.exec(inner)) !== null) {
+    for (const rowMatch of inner.matchAll(rowRe)) {
       const cells = [...rowMatch[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)]
         .map((m) => stripTags(m[1]).trim())
         .filter(Boolean);
@@ -556,8 +555,7 @@ function transformForSe3(html: string): string {
   result = result.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, inner: string) => {
     const rows: string[][] = [];
     const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-    let rm: RegExpExecArray | null;
-    while ((rm = rowRe.exec(inner)) !== null) {
+    for (const rm of inner.matchAll(rowRe)) {
       const cells = [...rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((m) =>
         stripTags(m[1]).trim(),
       ).filter(Boolean);

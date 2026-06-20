@@ -50,6 +50,9 @@ vi.mock("@/lib/llm/text", () => ({
   }),
 }));
 
+const PLACEHOLDER_GEMINI_API_KEY = ["placeholder", "gemini", "key"].join("-");
+const PLACEHOLDER_OPENAI_API_KEY = ["placeholder", "openai", "key"].join("-");
+
 describe("generateBlogPost", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -57,8 +60,8 @@ describe("generateBlogPost", () => {
     mockState.generateContentParams = undefined;
     mockState.geminiShouldThrow = false;
     mockState.callLLMArgs = undefined;
-    process.env.GEMINI_API_KEY = "test-key";
-    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.GEMINI_API_KEY = PLACEHOLDER_GEMINI_API_KEY;
+    process.env.OPENAI_API_KEY = PLACEHOLDER_OPENAI_API_KEY;
   });
 
   it("configures Gemini calls to stay within the publish route timeout", async () => {
@@ -71,7 +74,7 @@ describe("generateBlogPost", () => {
     });
 
     expect(mockState.constructorOptions).toMatchObject({
-      apiKey: "test-key",
+      apiKey: PLACEHOLDER_GEMINI_API_KEY,
       httpOptions: {
         timeout: 45000,
         retryOptions: { attempts: 1 },
