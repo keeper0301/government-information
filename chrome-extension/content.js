@@ -565,25 +565,12 @@ async function pasteHtml(targetEl, html, debug) {
   const plainText = htmlToPlainText(html);
   focusEditor(targetEl);
 
-  // 0단계 — 가장 안정적인 trusted CDP click + insertText를 먼저 시도한다.
-  // navigator.clipboard.write가 성공한 뒤 SmartEditor focus/selection이 흔들려
-  // 뒤쪽 CDP insert가 ok=true인데도 본문에 반영되지 않는 케이스가 있었다.
-  // 그래서 일반 자동 경로는 clipboard보다 trusted keyboard/text 입력을 우선한다.
+  // 0단계 — text/html 클립보드 paste를 먼저 시도한다.
+  // H2/H3 글자 크기, 좌측바, 빨간 CTA 같은 네이버 전용 스타일은
+  // HTML payload에 들어있다. plainText/CDP insertText를 먼저 쓰면 본문은
+  // 안정적으로 들어가지만 모든 inline style이 사라져 관철이 요구한
+  // 글자 크기·H2/H3 시각 계층이 반영되지 않는다.
   let afterLen = beforeLen;
-  try {
-    const insertRes = await debuggerInsertTextAt(targetEl, plainText, debug, "body");
-    debug.body_debugger_click_insert_ok = insertRes;
-    await sleep(1500);
-    afterLen = measureEditorTextLength(targetEl);
-    debug.body_paste_method = "debugger_click_insert_text_primary";
-    debug.body_after_debugger_click_insert_text = afterLen;
-  } catch (e) {
-    debug.debugger_click_insert_text_error = String(e?.message ?? e).slice(0, 100);
-  }
-
-  if (afterLen - beforeLen >= 100) {
-    return;
-  }
 
   // 1단계 — navigator.clipboard.write + ClipboardEvent dispatch
   let clipboardWriteOk = false;
