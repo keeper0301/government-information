@@ -8,6 +8,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 
 export interface PolicyGuide {
@@ -61,6 +62,8 @@ export function rowToGuide(row: PolicyGuideRow): PolicyGuide {
 
 /** 발행 순으로 가이드 목록. 첫 시도엔 페이지네이션 X (가이드 50+개 시 추가). */
 export async function getGuides(limit = 50): Promise<PolicyGuide[]> {
+  if (!hasSupabaseAnonEnv()) return EDITORIAL_GUIDES.slice(0, limit);
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("policy_guides")
@@ -82,6 +85,8 @@ export async function getGuides(limit = 50): Promise<PolicyGuide[]> {
 /** slug 로 가이드 1개. 없으면 null. */
 export async function getGuideBySlug(slug: string): Promise<PolicyGuide | null> {
   const builtin = EDITORIAL_GUIDES.find((g) => g.slug === slug) ?? null;
+  if (!hasSupabaseAnonEnv()) return builtin;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("policy_guides")
@@ -101,6 +106,10 @@ export async function getRelatedGuides(
   currentId: string,
   limit = 3
 ): Promise<PolicyGuide[]> {
+  if (!hasSupabaseAnonEnv()) {
+    return EDITORIAL_GUIDES.filter((g) => g.id !== currentId).slice(0, limit);
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("policy_guides")

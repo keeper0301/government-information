@@ -23,6 +23,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import {
   BLOG_CATEGORIES as VALID_CATEGORIES,
@@ -109,17 +110,20 @@ export default async function BlogCategoryPage({ params }: PageProps) {
   if (!isValidCategory(category)) notFound();
 
   const meta = CATEGORY_META[category];
-  const supabase = await createClient();
+  let list: BlogCardData[] = [];
+  if (hasSupabaseAnonEnv()) {
+    const supabase = await createClient();
 
-  const { data: posts } = await supabase
-    .from("blog_posts")
-    .select("slug, title, meta_description, category, reading_time_min, published_at, cover_image")
-    .eq("category", category)
-    .not("published_at", "is", null)
-    .order("published_at", { ascending: false })
-    .limit(50);
+    const { data: posts } = await supabase
+      .from("blog_posts")
+      .select("slug, title, meta_description, category, reading_time_min, published_at, cover_image")
+      .eq("category", category)
+      .not("published_at", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(50);
 
-  const list = (posts || []) as BlogCardData[];
+    list = (posts || []) as BlogCardData[];
+  }
 
   // CollectionPage + ItemList JSON-LD — 네이버·Google 검색 리치 카드 시그널
   const jsonLd = {

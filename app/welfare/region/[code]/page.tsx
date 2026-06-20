@@ -20,6 +20,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { ProgramRow } from "@/components/program-row";
 import { welfareToDisplay } from "@/lib/programs";
 import {
@@ -82,25 +83,31 @@ export default async function WelfareRegionPage({ params }: PageProps) {
   if (!province) notFound();
 
   const shortName = PROVINCE_CODE_TO_SHORT[code as ProvinceCode] ?? province.name;
-  const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
+  let programs: ReturnType<typeof welfareToDisplay>[] = [];
+  let count: number | null = null;
 
-  // region 필터 — getRegionMatchPatterns 는 ["전라남도", "전남"] 형태로
-  // 정식·짧은 이름 모두 반환. ilike OR 로 다양한 표기 형식 흡수.
-  const patterns = getRegionMatchPatterns(shortName);
-  const orClause = patterns.map((p) => `region.ilike.%${p}%`).join(",");
+  if (hasSupabaseAnonEnv()) {
+    const supabase = await createClient();
 
-  const { data, count } = await supabase
-    .from("welfare_programs")
-    .select("*", { count: "exact" })
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-    .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
-    .or(orClause)
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(DISPLAY_LIMIT);
+    // region 필터 — getRegionMatchPatterns 는 ["전라남도", "전남"] 형태로
+    // 정식·짧은 이름 모두 반환. ilike OR 로 다양한 표기 형식 흡수.
+    const patterns = getRegionMatchPatterns(shortName);
+    const orClause = patterns.map((p) => `region.ilike.%${p}%`).join(",");
 
-  const programs = (data || []).map(welfareToDisplay);
+    const result = await supabase
+      .from("welfare_programs")
+      .select("*", { count: "exact" })
+      .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+      .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
+      .or(orClause)
+      .or(`apply_end.gte.${today},apply_end.is.null`)
+      .order("apply_end", { ascending: true, nullsFirst: false })
+      .limit(DISPLAY_LIMIT);
+
+    count = result.count;
+    programs = (result.data || []).map(welfareToDisplay);
+  }
 
   // CollectionPage + ItemList JSON-LD — 네이버·Google 검색 리치 카드 시그널
   const jsonLd = {

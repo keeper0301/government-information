@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { ProgramRow } from "@/components/program-row";
 import { loanToDisplay } from "@/lib/programs";
 import {
@@ -75,38 +76,44 @@ export default async function LoanAgePage({ params }: PageProps) {
   const cat = getAgeCategory(age);
   if (!cat) notFound();
 
-  const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
+  let programs: ReturnType<typeof loanToDisplay>[] = [];
+  let count: number | null = null;
 
-  // age 매칭 + householdTags 합집합 (welfare 와 동일 전략)
-  const conditions: string[] = [];
-  if (cat.matchAge) {
-    const min = cat.matchAge.min ?? 0;
-    const max = cat.matchAge.max ?? 200;
-    conditions.push(
-      `and(or(age_target_min.lte.${max},age_target_min.is.null),or(age_target_max.gte.${min},age_target_max.is.null))`,
-    );
+  if (hasSupabaseAnonEnv()) {
+    const supabase = await createClient();
+
+    // age 매칭 + householdTags 합집합 (welfare 와 동일 전략)
+    const conditions: string[] = [];
+    if (cat.matchAge) {
+      const min = cat.matchAge.min ?? 0;
+      const max = cat.matchAge.max ?? 200;
+      conditions.push(
+        `and(or(age_target_min.lte.${max},age_target_min.is.null),or(age_target_max.gte.${min},age_target_max.is.null))`,
+      );
+    }
+    if (cat.householdTags) {
+      conditions.push(`household_target_tags.cs.{${cat.householdTags.join(",")}}`);
+    }
+
+    let q = supabase
+      .from("loan_programs")
+      .select("*", { count: "exact" })
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+      .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
+      .or(`apply_end.gte.${today},apply_end.is.null`);
+
+    if (conditions.length > 0) {
+      q = q.or(conditions.join(","));
+    }
+
+    const result = await q
+      .order("apply_end", { ascending: true, nullsFirst: false })
+      .limit(DISPLAY_LIMIT);
+
+    count = result.count;
+    programs = (result.data || []).map(loanToDisplay);
   }
-  if (cat.householdTags) {
-    conditions.push(`household_target_tags.cs.{${cat.householdTags.join(",")}}`);
-  }
-
-  let q = supabase
-    .from("loan_programs")
-    .select("*", { count: "exact" })
-    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-    .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
-    .or(`apply_end.gte.${today},apply_end.is.null`);
-
-  if (conditions.length > 0) {
-    q = q.or(conditions.join(","));
-  }
-
-  const { data, count } = await q
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(DISPLAY_LIMIT);
-
-  const programs = (data || []).map(loanToDisplay);
 
   const jsonLd = {
     "@context": "https://schema.org",

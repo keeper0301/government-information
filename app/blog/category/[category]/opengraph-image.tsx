@@ -9,6 +9,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -38,6 +39,7 @@ export default async function OgImage({ params }: { params: { category: string }
 
   let postCount = 0;
   try {
+    if (!hasSupabaseAnonEnv()) throw new Error("Supabase env missing");
     const supabase = await createClient();
     const { count } = await supabase
       .from("blog_posts")

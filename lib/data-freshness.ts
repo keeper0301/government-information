@@ -10,6 +10,7 @@
 
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 
 export type DataFreshness = {
   // 가장 최근 데이터 추가 시각 (ISO string) — 3 테이블 중 최신
@@ -19,6 +20,10 @@ export type DataFreshness = {
 };
 
 export const getDataFreshness = cache(async (): Promise<DataFreshness> => {
+  if (!hasSupabaseAnonEnv()) {
+    return { latest_at: null, minutes_ago: null };
+  }
+
   const supabase = await createClient();
 
   const [w, l, n] = await Promise.all([

@@ -2,24 +2,22 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/ad-slot";
-import { AlarmButton } from "@/components/alarm-button";
 import { ShareButton } from "@/components/share-button";
-import { BookmarkButton } from "@/components/bookmark-button";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema, BreadcrumbSchema, FAQSchema } from "@/components/json-ld";
 import { buildPolicyFaqs } from "@/lib/policy-faq";
 import { ProgramViewTracker } from "@/components/analytics/program-view-tracker";
-import { ApplyClickTracker } from "@/components/analytics/apply-click-tracker";
 import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
-import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
+import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
+import { ProgramActionCard } from "@/components/program-action-card";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import type { Metadata } from "next";
 
@@ -251,6 +249,19 @@ export default async function LoanDetailPage({ params }: Props) {
           </div>
         )}
 
+        <ProgramActionCard
+          kind="loan"
+          programId={program.id}
+          title={program.title}
+          source={program.source}
+          sourcePage={`/loan/${program.id}`}
+          applyUrl={safeApplyUrl}
+          applyEnd={program.apply_end}
+          dday={dday}
+          isClosed={isClosed}
+          updatedAt={program.updated_at}
+        />
+
         {/* 빈약 안내 박스 — 카드가 비어 있을 때 "원문에 더 풍부" 안내 (카드 위 배치).
             재구성 후에도 카드 바로 위 자리 유지 — 사용자가 빈 카드 보고 답답해지기 전에
             맥락 제공. */}
@@ -350,48 +361,13 @@ export default async function LoanDetailPage({ params }: Props) {
           </InfoSection>
         )}
 
-        {/* Action buttons — 콘텐츠 전체(핵심 정보·본문·상세 섹션) 를 다 살펴본 뒤
-            "이제 신청하러 갈래?" 로 이어지는 최종 CTA. 3단 분기 유지.
-            Phase A apply_click event 자동 기록 (ApplyClickTracker). */}
+        {/* 상세 페이지 조회 이벤트 — 신청/알림/북마크 CTA 는 상단 ProgramActionCard 로 단일화. */}
         <ProgramViewTracker
           programId={program.id}
           programTable="loan_programs"
           sourcePage={`/loan/${program.id}`}
         />
         <div className="flex items-center gap-3 flex-wrap mb-10 mt-6">
-          {safeApplyUrl && isDeepLink(safeApplyUrl) ? (
-            <ApplyClickTracker
-              programId={program.id}
-              programTable="loan_programs"
-              sourcePage={`/loan/${program.id}`}
-              href={safeApplyUrl}
-              className="px-6 py-3 text-[15px] font-semibold text-white bg-blue-500 rounded-xl no-underline hover:bg-blue-600 transition-colors"
-            >
-              신청하러 가기
-            </ApplyClickTracker>
-          ) : safeApplyUrl ? (
-            <ApplyClickTracker
-              programId={program.id}
-              programTable="loan_programs"
-              sourcePage={`/loan/${program.id}`}
-              href={safeApplyUrl}
-              className="px-6 py-3 text-[15px] font-semibold text-grey-700 bg-grey-100 rounded-xl no-underline hover:bg-grey-200 transition-colors"
-            >
-              {program.source} 홈페이지 방문
-            </ApplyClickTracker>
-          ) : (
-            <a
-              href={`https://www.google.com/search?q=${encodeURIComponent(program.source + ' ' + program.title + ' 신청')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-6 py-3 text-[15px] font-semibold text-grey-700 bg-grey-100 rounded-xl no-underline hover:bg-grey-200 transition-colors"
-            >
-              {program.source}에서 신청 방법 찾기
-            </a>
-          )}
-          <AlarmButton programId={program.id} programType="loan" />
-          {/* 정적 ISR — props 생략 시 BookmarkButton 이 클라이언트에서 로그인·북마크 self-fetch */}
-          <BookmarkButton programType="loan" programId={program.id} />
           <ShareButton />
           {/* Pro 신청서 초안 — loan 은 자영업자 wedge 핵심 진입.
               비Pro 는 server 가드가 /pricing 으로 redirect (ISR 유지). */}
