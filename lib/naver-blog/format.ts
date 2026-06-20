@@ -47,17 +47,20 @@ export type NaverBlogPayload = {
 
 const BASE_URL = "https://www.keepioo.com";
 
-// 관철이 지정한 참고글(cgc0904/224279232682) 스타일 기준:
-// - 본문은 좌측 정렬, 짧은 문단, 넓은 행간
-// - H2/H3 는 글자 크기와 여백을 분리해 계층이 보이게 구성
-// - H2 는 참고 이미지처럼 굵은 회색 세로바 + 큰 제목 + 넉넉한 좌측 여백
-// - 핵심 CTA는 가운데 정렬 + 빨간색 + 굵게
+// 관철이 지정한 참고글(leclerc23/224311229716) 스타일 기준:
+// - H1 은 네이버 제목 필드에 맡기고 본문에는 반복하지 않는다
+// - 첫 화면은 짧은 문단 2개 → 가운데 빨간 CTA → 👇👇 → 링크 미리보기/상세 섹션 흐름
+// - 본문은 좌측 정렬, 16px 전후, 짧은 문단, 넓은 행간
+// - H2 는 참고글의 blockquote 질문 제목처럼 굵은 인용박스형 제목으로 보이게 구성
+// - H3 는 세부 조건 제목으로, 작은 글자·얇은 좌측바·짧은 여백으로 H2보다 가볍게 구성
+// - 핵심 CTA는 가운데 정렬 + 빨간색 + 굵게 + 밑줄
 // - 표는 파란 헤더/얇은 테두리로 네이버 본문 안에서 바로 보이게 구성
 const NAVER_PARAGRAPH_STYLE = "font-size:16px;line-height:2.05;color:#222;text-align:left;margin:0 0 22px;";
-const NAVER_H2_TITLE_STYLE = "border-left:8px solid #555;padding-left:28px;margin:56px 0 30px;font-size:30px;line-height:1.42;font-weight:800;color:#111;text-align:left;";
-const NAVER_H3_TITLE_STYLE = "border-left:4px solid #9a9a9a;padding-left:16px;margin:36px 0 18px;font-size:21px;line-height:1.5;font-weight:700;color:#222;text-align:left;";
-const NAVER_CENTER_CTA_STYLE = "font-size:20px;line-height:1.7;font-weight:700;color:#ff2b00;text-align:center;text-decoration:underline;margin:28px 0 8px;";
-const NAVER_TABLE_STYLE = "width:100%;border-collapse:collapse;margin:28px 0 34px;font-size:15px;text-align:center;";
+const NAVER_H2_TITLE_STYLE = "border-left:6px solid #d8d8d8;background:#fafafa;padding:16px 0 16px 20px;margin:52px 0 24px;font-size:24px;line-height:1.48;font-weight:800;color:#111;text-align:left;";
+const NAVER_H3_TITLE_STYLE = "border-left:4px solid #9a9a9a;padding-left:14px;margin:34px 0 16px;font-size:19px;line-height:1.55;font-weight:700;color:#222;text-align:left;";
+const NAVER_CENTER_CTA_STYLE = "font-size:20px;line-height:1.7;font-weight:800;color:#ff2b00;text-align:center;text-decoration:underline;margin:30px 0 8px;";
+const NAVER_DIVIDER_STYLE = "text-align:center;font-weight:700;color:#888;margin:34px 0 30px;letter-spacing:1px;";
+const NAVER_TABLE_STYLE = "width:100%;border-collapse:collapse;margin:30px 0 36px;font-size:15px;text-align:center;";
 const NAVER_TABLE_HEAD_STYLE = "background:#3f70bd;color:#fff;border:1px solid #2f5597;padding:10px 8px;font-weight:700;";
 const NAVER_TABLE_CELL_STYLE = "border:1px solid #777;padding:10px 8px;color:#111;background:#fff;";
 
@@ -457,7 +460,7 @@ export function convertToNaverBlogHtml(
     ? null
     : `${BASE_URL}/api/naver-thumbnail/${encodeURIComponent(post.slug)}`;
 
-  // 1) 도입부 — 참고 네이버 글처럼 짧은 본문 2문단 → 가운데 빨간 CTA → 상세 섹션 순서.
+  // 1) 도입부 — 참고 네이버 글처럼 네이버 제목(H1) 아래 짧은 본문 2문단 → 가운데 빨간 CTA → 👇👇 → 상세 섹션 순서.
   //    기존 "요약 답변/검색 핵심 정보" 반복 제목은 자동 생성 티가 강해 제거한다.
   const checklistItems = buildNaverChecklistText(contentForNaver);
   const answerSummary = post.meta_description
@@ -488,7 +491,7 @@ export function convertToNaverBlogHtml(
   // 4) CTA — 정보 확인 이후에만 낮은 광고감으로 배치.
   const ctaHtml = [
     naverBlankHtml(),
-    `<p style="text-align:center;font-weight:700;color:#555;margin:28px 0;">━━━━━━━━━━━━━━━━━━</p>`,
+    `<p style="${NAVER_DIVIDER_STYLE}">━━━━━━━━━━━━━━━━━━</p>`,
     naverParagraphHtml("공식 조건은 모집 시점·지역·예산에 따라 달라질 수 있어요."),
     naverParagraphHtml("신청 전에는 반드시 해당 기관의 최신 공고를 한 번 더 확인하세요."),
     naverBlankHtml(),
@@ -497,7 +500,7 @@ export function convertToNaverBlogHtml(
     naverBlankHtml(),
     naverParagraphHtml("내 조건에 맞는 정책을 더 찾고 싶다면"),
     naverParagraphHtml(`${BASE_URL}/recommend`),
-    `<p style="text-align:center;font-weight:700;color:#555;margin:28px 0;">━━━━━━━━━━━━━━━━━━</p>`,
+    `<p style="${NAVER_DIVIDER_STYLE}">━━━━━━━━━━━━━━━━━━</p>`,
   ].join("\n");
 
   const bodyHtml = (

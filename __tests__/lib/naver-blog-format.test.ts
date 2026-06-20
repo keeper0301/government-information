@@ -190,10 +190,11 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
   it("SE3 HTML 본문은 H2/H3 계층·파란 헤더 표·FAQ를 포함한다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(">신청 대상</p>");
-    expect(out.bodyHtml).toContain('border-left:8px solid #555');
-    expect(out.bodyHtml).toContain('font-size:30px');
+    expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
+    expect(out.bodyHtml).toContain('background:#fafafa');
+    expect(out.bodyHtml).toContain('font-size:24px');
     expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
-    expect(out.bodyHtml).toContain('font-size:21px');
+    expect(out.bodyHtml).toContain('font-size:19px');
     expect(out.bodyHtml).toContain('<table style="width:100%;border-collapse:collapse');
     expect(out.bodyHtml).toContain('background:#3f70bd;color:#fff');
     expect(out.bodyHtml).toContain("<th");
@@ -208,7 +209,8 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).not.toContain("color: red");
     expect(out.bodyHtml).not.toMatch(/\sclass=/);
     expect(out.bodyHtml).not.toMatch(/\sid=/);
-    expect(out.bodyHtml).toContain('border-left:8px solid #555');
+    expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
+    expect(out.bodyHtml).toContain('background:#fafafa');
     expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
     expect(out.bodyHtml).toContain('font-size:16px;line-height:2.05');
   });
@@ -217,10 +219,11 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(">신청 대상</p>");
     expect(out.bodyHtml).toContain(">지원 금액</p>");
-    expect(out.bodyHtml).toContain('border-left:8px solid #555');
-    expect(out.bodyHtml).toContain('font-size:30px');
+    expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
+    expect(out.bodyHtml).toContain('background:#fafafa');
+    expect(out.bodyHtml).toContain('font-size:24px');
     expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
-    expect(out.bodyHtml).toContain('font-size:21px');
+    expect(out.bodyHtml).toContain('font-size:19px');
     expect(out.bodyHtml).not.toContain("<h2>");
     expect(out.bodyHtml).not.toContain("<h3>");
   });
@@ -274,7 +277,7 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).not.toContain("이 글에서 확인할 수 있는 것");
     expect(out.bodyHtml).not.toContain("신청 전에 먼저 확인해야 할 대상 조건");
     expect(out.bodyHtml).toContain(">신청 대상</p>");
-    expect(out.bodyHtml).toContain('border-left:8px solid #555');
+    expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
   });
 
   it("SE3 HTML 출력에서 제목·도입부의 과한 CTA 문구를 정보형으로 낮춘다", () => {
