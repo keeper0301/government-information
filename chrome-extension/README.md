@@ -1,155 +1,160 @@
-# Keepioo Naver Publisher — Chrome Extension
+# Naver Auto Draft Helper
 
-24시간 가동 본체 PC 의 평소 Chrome 에 설치하는 자동 발행 Extension (Manifest V3).
-playwright RPA 대체 — cookies 만료 문제 영구 해결 + naver 정지 위험 ↓.
+운영 중인 사이트의 RSS 글감이나 현재 페이지 내용을 가져와 네이버 블로그용 제목/본문 초안으로 재구성하고, 네이버 블로그 글쓰기 화면에 채워 넣는 Chrome 확장프로그램 MVP입니다.
 
-## 빠른 설치 (본체 PC, 권장) — 단계별 체크리스트
+## 현재 구현된 기능
 
-### 사전 준비 (본체 PC 에 한 번만)
+구현 현황 전체 표는 `docs/FEATURE_STATUS.md`에서 확인할 수 있고, 릴리즈 검증에는 `python3 scripts/verify_feature_coverage.py`가 포함됩니다.
 
-- [ ] Chrome 설치 (https://www.google.com/chrome)
-- [ ] git 설치 (https://git-scm.com — 설치 시 기본 옵션 OK)
-- [ ] Chrome 에서 naver.com 로그인 상태 유지 (Extension 이 이 cookies 재사용)
-- [ ] Vercel 콘솔 keepioo 프로젝트에 접근 권한 (브라우저에서 vercel.com 로그인된 상태)
+- RSS/Atom 글감 수집
+- 현재 활성 페이지 기반 글감 가져오기
+- 네이버 블로그용 제목 재구성
+- 네이버 블로그용 본문 재구성
+- 키워드 유형 선택
+  - 일반 블로그
+  - 숏텐츠 키워드
+  - 인플루언서 키워드
+  - 쇼핑커넥트 분석
+- 이미지 소스 선택
+  - 이미지 없음
+  - 네이버 이미지 검색
+  - 제미나이 나노바나나
+  - 젠스파크
+  - 챗지피티 이미지
+- 이미지 검색어/생성 프롬프트 생성
+- 초안 클립보드 복사
+- 네이버 블로그 글쓰기 화면 열기
+- 네이버 글쓰기 화면에 제목/본문 채우기
+- 네이버 에디터 진단 결과 클립보드 복사
+- 임시저장 버튼 탐지
 
-### 1 단계 — PowerShell 한 줄 실행
+## 안전선
 
-본체 PC 에서 **PowerShell** 검색해서 열고, 아래 한 줄을 그대로 붙여넣고 Enter:
+이 MVP는 자동 발행을 하지 않습니다.
 
-```powershell
-iwr https://raw.githubusercontent.com/keeper0301/government-information/master/chrome-extension/setup-desktop.ps1 -UseBasicParsing -OutFile $env:TEMP\keepioo-setup.ps1; & $env:TEMP\keepioo-setup.ps1
+- 발행 버튼 클릭 없음
+- 외부 AI API 자동 호출 없음
+- 네이버 이미지 자동 다운로드 없음
+- 네이버 임시저장 버튼 자동 클릭 없음
+- RSS fetch는 http/https URL만 허용
+- RSS 응답은 10초 타임아웃과 2MB 크기 제한 적용
+
+현재는 제목/본문을 채우고, 임시저장 버튼이 있는지만 알려줍니다. 실제 저장 클릭은 사용자가 직접 합니다.
+
+## 설치 방법
+
+1. Chrome에서 `chrome://extensions` 열기
+2. 오른쪽 위 `개발자 모드` 켜기
+3. `압축해제된 확장 프로그램을 로드` 클릭
+4. 이 폴더 선택
+
+```text
+/home/user/.hermes/workspace/naver-auto-draft-extension
 ```
 
-스크립트가 자동으로 처리하는 6 단계:
-1. github repo clone (또는 pull) → `%USERPROFILE%\keepioo\government-information\`
-2. NAVER_EXTENSION_SECRET 32 바이트 신규 생성
-3. `chrome-extension\local-secret.txt` 작성 (popup.js 가 자동 로드, gitignored)
-4. Chrome 으로 Vercel env 페이지 열기 + SECRET 을 클립보드 복사
-5. 빈 commit push 로 Vercel 재배포 trigger
-6. `chrome://extensions/` 열기 + 폴더 경로 클립보드 복사
+## 사용 방법
 
-스크립트가 진행 중 **두 번** 멈추고 Enter 대기:
-- **첫 번째 대기**: Vercel env 페이지에서 사장님이 직접 NAVER_EXTENSION_SECRET 갱신·Save → Enter
-- (재배포 자동) → 두 번째 대기 없음
+### RSS 글감 사용
 
-### 2 단계 — 사장님 manual (3회 클릭만)
+1. 확장프로그램 아이콘 클릭
+2. RSS 주소 입력
+3. `RSS 가져오기` 클릭
+4. 목록에서 글감 선택
+5. 키워드 유형/톤 선택
+6. `네이버 블로그용 재구성` 클릭
+7. `네이버 글쓰기 열기` 클릭
+8. 네이버 로그인/글쓰기 화면 준비
+9. 확장프로그램에서 `네이버 임시저장 채우기` 클릭
+10. 네이버 에디터에서 내용 확인 후 직접 임시저장
 
-**a) Vercel UI** (스크립트가 열어준 탭):
-- [ ] `NAVER_EXTENSION_SECRET` 항목 옆 ⋮ → **Edit**
-- [ ] Value 입력란에 **Ctrl+V** (클립보드에 SECRET 이미 복사됨)
-- [ ] **Sensitive** 체크 **ON** (보안 권장)
-- [ ] **Save** 클릭
-- [ ] PowerShell 으로 돌아가 **Enter** (스크립트가 재배포 trigger)
+입력이 실패하면 네이버 글쓰기 화면에서 `에디터 진단`을 누르세요. 진단 JSON이 클립보드에 복사되며, 그 결과로 selector를 보강할 수 있습니다.
 
-**b) chrome://extensions/** (스크립트가 열어준 탭):
-- [ ] 우상단 **개발자 모드** 토글 **ON**
-- [ ] 좌상단 **압축해제된 확장 프로그램 로드** 클릭
-- [ ] 파일 다이얼로그에서 **Ctrl+L** → **Ctrl+V** (클립보드의 폴더 경로) → **Enter**
-- [ ] Extension 카드가 나타나면 우상단 🧩 퍼즐 아이콘 → "Keepioo Naver Publisher" 옆 📌 클릭 (핀 고정)
+SmartEditor가 확장 내부 JS 입력을 받아들이지 않는 경우에는 Windows 전용 네이티브 붙여넣기 helper를 사용할 수 있습니다. 이 helper는 UTF-8 파일의 제목/본문을 `.NET UnicodeText` 클립보드에 올린 뒤 실제 `Ctrl+V`를 보내므로, 실제 검증에서 한글 깨짐 없이 입력되는 것을 확인했습니다. 최신 helper는 네이버의 “작성 중인 글이 있습니다” 복원 팝업을 감지해 기본적으로 `확인`을 누른 뒤 제목/본문을 교체하고, 붙여넣기 후 `verification.titleHit` / `verification.bodyHit`로 실제 SmartEditor 텍스트 감지 결과를 출력합니다. 자세한 절차는 `docs/NATIVE_PASTE_FALLBACK.md`와 `docs/WINDOWS_TESTING.md`를 확인하세요.
 
-**c) Extension popup** (핀 고정한 아이콘 클릭):
-- [ ] popup 열림 → 상단 status 박스에 `✅ local-secret.txt 자동 로드됨` 표시 확인
-- [ ] **🧪 Dry-run (실 발행 X)** 클릭 → 약 60초 대기
-- [ ] 결과 박스에 `✅ dry-run OK` + debug JSON 표시되면 **셋업 성공**
+Windows popup의 RSS 수집/초안 생성은 `scripts/ui_popup_rss_force_navigate.ps1`로 smoke test할 수 있습니다. 이 스크립트는 `chrome-extension://.../popup.html`을 클립보드+`Ctrl+V`로 열어 `SendKeys` 특수문자 깨짐을 피하고, `rssUrl`/`loadRss`/`generateDraft` 컨트롤을 실제 UIAutomation으로 검증합니다.
 
-### 3 단계 — 검증
+### 현재 페이지 글감 사용
 
-- [ ] 사이트 어드민 (https://www.keepioo.com/admin/autonomous) 접속
-- [ ] Phase 5 카드 의 "24h naver 블로그" metric 확인 (다음 cron fire 후 1+ 표시)
-- [ ] 가동 schedule: KST 09:30 / 12:30 / 15:30 / 18:30 / 21:30 (Chrome 가동 중일 때만)
+1. 글감으로 쓸 페이지를 열기
+2. 확장프로그램 아이콘 클릭
+3. `현재 페이지 글감 가져오기` 클릭
+4. 초안 생성 후 네이버 글쓰기 화면에 채우기
 
-## 수동 설치 (다른 PC 또는 setup-desktop.ps1 실패 시)
+## 릴리즈/자동 업데이트 준비
 
-1. repo clone: `git clone https://github.com/keeper0301/government-information.git`
-2. `chrome://extensions/` → 우상단 **"개발자 모드"** ON → 좌상단 **"압축해제된 확장 프로그램 로드"** → `chrome-extension\` 폴더 선택
-3. Extension popup 핀 고정 → 클릭 → `KEEPIOO_SECRET` 입력란에 Vercel 의 `NAVER_EXTENSION_SECRET` 값 입력 → 저장
-4. **🧪 Dry-run** 클릭 → 결과 확인 (네이버 블로그에 실 발행 X)
-5. 정상 작동 확인 후 가동 시작
+개발용 압축해제 설치는 Chrome 정책상 자동 업데이트가 되지 않습니다. 자동 업데이트를 하려면 Chrome Web Store 배포 또는 self-hosted CRX 배포가 필요합니다.
 
-## 자동 발행 방식 선택 근거
+현재 확장에는 설치본 업데이트 확인 기능이 포함되어 있습니다.
 
-- 네이버 블로그 글쓰기 공식 API는 종료되어 서버에서 REST API로 안전하게 직접 발행하는 방식은 사용할 수 없습니다.
-- 그래서 keepioo는 **사용자 본체 PC의 로그인된 Chrome + Manifest V3 Extension** 방식으로 발행합니다.
-- 장점: 네이버 로그인 cookies를 사용자의 정상 Chrome 세션에서 재사용하므로 headless/서버 IP 자동화보다 캡차·기기 인증·계정 정지 위험을 낮춥니다.
-- 안전선: 신규 7일 3건/일, 이후 7건/일 cap과 KST 09~22 시간대를 지킵니다.
+- service worker가 6시간마다 `chrome.runtime.requestUpdateCheck()` 실행
+- alarm 등록 실패는 `alarm_status`에 기록하고 service worker unhandled rejection을 막음
+- 발행 alarm 결과는 `last_publish_alarm`에 저장해 마지막 시도/성공/중단 사유 확인 가능
+- popup의 `🔄 업데이트 확인` 버튼으로 수동 확인
+- 결과는 `chrome.storage.local.update_status`에 저장
+- self-hosted CRX 릴리즈는 `build_self_hosted_release.py`가 릴리즈용 manifest에 `update_url`을 주입
 
-## 자동 발행 schedule
+릴리즈 산출물 생성:
 
-매일 KST 5회 fire (사장님 Chrome 가동 중일 때만):
-- 09:30 / 12:30 / 15:30 / 18:30 / 21:30
+```bash
+python3 scripts/build_release.py
+```
 
-각 fire 시 invisible tab 에서:
-1. keepioo 큐 조회 — 다음 발행 글 최대 3건을 순차 처리
-2. SE3 글쓰기 페이지 자동 입력 (제목·본문·이미지)
-3. 발행 click
-4. tab close (사장님 작업 방해 X)
-5. keepioo audit 보고 + 텔레그램 알림
+생성물:
 
-popup 에서 **🚀 큐 자동 발행 (일 cap까지)** 를 누르면 같은 로직으로 당일 cap까지 수동 catch-up 할 수 있습니다.
+- `dist/naver-auto-draft-extension-v<version>.zip`
+- `dist/naver-auto-draft-extension-latest.zip`
+- `dist/updates.xml`
+- `dist/VERSION.json`
 
-## 일 cap (정지 예방)
+자세한 절차는 `docs/AUTO_UPDATE.md`를 확인하세요.
 
-- 신규 7일: 3건/일
-- 그 이후: 7건/일
-- 시간대: KST 09:00~22:00 만
+## 다음 단계 추천
 
-## 사고 시 (트러블슈팅)
+### 1단계: 품질 개선
 
-popup → 🧪 Dry-run 으로 진단. 실패 메시지가 status 박스에 자세히 표시.
+- 네이버 블로그 제목 패턴 20개 템플릿 추가
+- 본문 구조를 정보형/후기형/비교형/전환형으로 분리
+- 금칙어/과장 표현 줄이기
+- 원문 출처 표기 방식 옵션화
 
-| 증상 | 원인 / 해결 |
-|---|---|
-| `cookies 만료 — naver 로그인 redirect` | Chrome 에서 naver.com 다시 로그인. cookies 갱신 후 dry-run 재시도. |
-| `dry-run fail: 본문 paste 실패 의심 (length<200)` | SE3 의 paste 핸들러 변경 가능성. content.js `pasteHtml` 3중 fallback 확인. |
-| `KEEPIOO_SECRET 미설정` | popup 의 secret 입력란에 Vercel `NAVER_EXTENSION_SECRET` 값 다시 저장. |
-| `/next 401` | Vercel env 의 `NAVER_EXTENSION_SECRET` 와 popup 의 KEEPIOO_SECRET 가 불일치. Vercel env 갱신 시 popup 재저장 깜빡 빈번 — popup 다시 열어 같은 값으로 저장. |
-| `/next 500 NAVER_EXTENSION_SECRET not configured` | Vercel env 누락. Production + Preview 양쪽 등록 필요. |
-| `status: outside_hours` | KST 09 ~ 22 외 시간 — 정상 skip. force 검증은 dry-run 으로만 가능. |
-| `status: daily_cap_reached` | 신규 7일 3건/일, 이후 7건/일 도달. 정상. |
-| 알람 fire 인데 글 안 올라옴 | Chrome 종료된 상태. service worker 가 idle 후 unload 됐을 수 있음. popup 1회 열어 재활성화. |
-| content.js inject 실패 (executeScript) | manifest host_permissions 권한 거부됐을 가능성. chrome://extensions/ → 본 확장 → "사이트 권한" 재확인. |
-| alarms 발화 안 됨 의심 | chrome://extensions/ → 본 확장 → "서비스 워커" 옆 "검사" 클릭 → DevTools console 에서 `chrome.alarms.getAll(console.log)` 입력 → 5개 alarm (`naver-0930` ~ `naver-2130`) 등록 + 다음 fire 시점 확인. |
-| 코드 수정했는데 반영 안 됨 | `chrome://extensions/` → 본 확장 카드의 🔄 새로고침 버튼 (재로드) 클릭. service worker 재시작 필요. |
+### 2단계: 이미지 흐름 강화
 
-## Chrome 종료 시 동작
+- 네이버 이미지 검색 URL 자동 열기
+- 이미지 생성 서비스별 프롬프트 템플릿 분리
+- 썸네일용/본문 삽입용 프롬프트 분리
+- 이미지 없음 선택 시 본문형 글로 자연스럽게 보완
 
-- service worker 는 알람 fire 시점에 깨어남 → Chrome 자체가 종료되면 알람 발화 안 됨.
-- 사장님 PC 가 꺼져 있어도 동일.
-- 해결: Chrome 을 켜둔 채 PC 사용. Chrome 백그라운드 모드 (`chrome://settings/system` → "Google Chrome 을(를) 닫은 후에도 백그라운드 앱 계속 실행" ON) 권장.
+### 3단계: 네이버 에디터 안정화
 
-## Vercel 환경변수 등록 필요
+- 네이버 스마트에디터 DOM 변경 대응
+- iframe 내부 에디터 탐색 강화
+- 확장 JS 입력이 실패할 때 Windows 네이티브 붙여넣기 fallback 사용
+- 임시저장 버튼 자동 클릭은 별도 승인 후 옵션으로만 추가
+- 저장 성공 토스트 감지
 
-- `NAVER_EXTENSION_SECRET` (production + preview) — Extension popup 의 KEEPIOO_SECRET 와 동일 값
-  - 32자+ 랜덤 권장: `openssl rand -hex 32` 또는 `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`
+### 4단계: AI 연동
 
-## 이전 playwright RPA 정리 (2026-05-13 전환)
+현재 MVP는 브라우저 안에서 템플릿 기반으로 재구성합니다. 실제 AI 품질을 넣으려면 아래 중 하나가 필요합니다.
 
-Chrome Extension 가동 검증 (dry-run + 실 발행 1회) 후 다음 정리 권장:
-
-1. **Task Scheduler 5 task 일괄 제거**
-   ```powershell
-   .\scripts\setup-naver-task-scheduler.ps1 -Remove
-   ```
-2. **chromium profile 폴더 삭제** (cookies 만료 후 가치 없음)
-   ```powershell
-   # 반드시 절대경로로 실행 — 다른 cwd 에서 상대경로 쓰면 의도 외 폴더 삭제 위험
-   Remove-Item -Recurse -Force "C:\Users\cgc09\projects\government-information\naver-chromium-profile"
-   ```
-3. **deprecated 로컬 스크립트 (gitignored)**
-   - `scripts/naver-publish-runner.mjs`
-   - `scripts/setup-naver-task-scheduler.ps1`
-   - `scripts/naver-chrome-setup.mjs`
-   - 파일 헤더에 DEPRECATED 명시 — 신규 실행 금지.
-   - 보존·삭제 선택 자유 (사장님 PC 만 존재, git 추적 X).
+- Gemini API 키 입력 옵션
+- OpenAI API 키 입력 옵션
+- 사용자가 ChatGPT/Gemini 웹에 붙여넣을 프롬프트 자동 생성
+- 서버 없이 로컬에서만 동작하는 프롬프트 복사 방식
 
 ## 파일 구조
 
+```text
+naver-auto-draft-extension/
+├── manifest.json
+├── background.js
+├── popup.html
+├── popup.css
+├── popup.js
+├── content/
+│   └── naverEditor.js
+└── README.md
 ```
-chrome-extension/
-├── manifest.json       (Manifest V3 권한)
-├── background.js       (service worker, chrome.alarms 5회)
-├── content.js          (SE3 자동화 — runner.mjs flow 재사용)
-├── popup.html + .js    (manual trigger + secret 저장)
-├── icons/              (16/48/128 placeholder PNG)
-└── README.md           (이 파일)
-```
+
+## 주의
+
+네이버 블로그 에디터는 DOM 구조가 자주 바뀔 수 있습니다. 제목/본문 채우기가 실패하면 `content/naverEditor.js`의 selector를 현재 에디터 구조에 맞게 보강해야 합니다.

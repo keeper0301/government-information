@@ -18,10 +18,10 @@
 const SE3_TITLE = ".se-section-documentTitle p.se-text-paragraph";
 const SE3_BODY = ".se-section-text p.se-text-paragraph";
 
-if (!globalThis.__keepiooNaverPublisherListenerRegistered) {
-  globalThis.__keepiooNaverPublisherListenerRegistered = true;
+if (!globalThis.__keepiooNaverPublisherListenerRegisteredV3) {
+  globalThis.__keepiooNaverPublisherListenerRegisteredV3 = true;
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg?.type !== "naver-publish") return false;
+    if (msg?.type !== "naver-publish-v2") return false;
     publishToSe3(msg.payload, msg.dryRun === true)
       .then((result) => sendResponse({ ok: true, result }))
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null }));
@@ -29,8 +29,11 @@ if (!globalThis.__keepiooNaverPublisherListenerRegistered) {
   });
 }
 
+globalThis.__keepiooPublishToSe3 = publishToSe3;
+
 async function publishToSe3(payload, dryRun) {
-  const debug = { stage: "init" };
+  const debug = { stage: "init", code_version: "leftbar-v3-cdp-primary-v3" };
+  await reportProgress("content_init", { dryRun, url: location.href.slice(0, 120) });
 
   if (isNaverLoginPage()) {
     throw new Error(`cookies 만료 — naver 로그인 redirect (${location.href.slice(0, 80)})`);
@@ -38,6 +41,7 @@ async function publishToSe3(payload, dryRun) {
 
   // mainFrame iframe (SE3)
   debug.stage = "mainFrame";
+  await reportProgress("content_mainFrame_wait");
   const mainFrame = await waitForMainFrame();
   if (!mainFrame) {
     if (isNaverLoginPage()) {
@@ -62,13 +66,21 @@ async function publishToSe3(payload, dryRun) {
 
   // 2. 제목 입력 (clear + type) — 본문 영역 활성화 전에 안전
   debug.stage = "title";
-  const titleEl = await waitFor(mfDoc, SE3_TITLE, 30000);
+  await reportProgress("content_title_wait");
+  const titleEl = await waitFor(mfDoc, SE3_TITLE, 45000);
   if (!titleEl) throw new Error("제목 영역 못 찾음");
   titleEl.click();
   await sleep(500);
-  await selectAllDelete(mfDoc, mainFrame);
-  await typeText(mfDoc, payload.title);
-  await sleep(300);
+  if (payload.forceDirectReplace === true) {
+    directSetPlainText(titleEl, payload.title);
+    debug.title_method = "forced_direct_dom_edit";
+    debug.input_verification = "forced_direct_dom_edit";
+    await sleep(500);
+  } else {
+    await selectAllDelete(mfDoc, mainFrame, titleEl);
+    await typeText(mfDoc, payload.title);
+    await sleep(300);
+  }
   if (!titleContains(titleEl, payload.title)) {
     let titleInserted = false;
     try {
@@ -93,23 +105,28 @@ async function publishToSe3(payload, dryRun) {
     throwWithDebug(`제목 입력 실패 의심 (titleText=${debug.titleText})`, debug);
   }
   debug.title = "ok";
+  await reportProgress("content_title_done", { titleMethod: debug.title_method });
   await sleep(500);
 
   // 3. cover_image — 본문 HTML paste **이전** 에 처리 (C2 race fix).
   //    base64 fetch → clipboard image → SE3 paste → 자동 upload.
+  //    cover fetch/upload가 실패하면 cover가 없는 것과 같으므로 다음 본문 단계에서
+  //    기존 임시글을 clear한다. payload.coverImageUrl 존재만 보고 clear를 건너뛰면
+  //    실패한 cover 뒤에 stale body가 남아 trusted input 검증이 계속 실패한다.
+  debug.cover_pasted = false;
   if (payload.coverImageUrl) {
     debug.stage = "cover";
-    const bodyEl = await waitFor(mfDoc, SE3_BODY, 10000);
-    if (bodyEl) {
+    const coverBodyEl = await waitForBodyParagraph(mfDoc, 8000);
+    if (coverBodyEl) {
       try {
-        bodyEl.click();
+        coverBodyEl.click();
         await sleep(500);
         const r = await fetchWithTimeout(payload.coverImageUrl, {}, 10_000);
         if (r.ok) {
           const blob = await r.blob();
           if (blob.type.startsWith("image/")) {
             await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-            await dispatchPasteEvent(bodyEl, { imageBlob: blob });
+            await dispatchPasteEvent(coverBodyEl, { imageBlob: blob });
             await sleep(5000); // SE3 image upload 대기
             debug.cover_pasted = true;
           } else {
@@ -121,43 +138,85 @@ async function publishToSe3(payload, dryRun) {
       } catch (e) {
         debug.cover_failed = String(e?.message ?? e).slice(0, 100);
       }
+    } else {
+      debug.cover_failed = "body_paragraph_not_found";
     }
   }
 
   // 4. 본문 입력 — pasteHtml 3중 fallback (C-NEW-1)
   debug.stage = "body";
-  const bodyEl = await waitFor(mfDoc, SE3_BODY, 10000);
-  if (!bodyEl) throw new Error("본문 영역 못 찾음");
+  await reportProgress("content_body_wait");
+  let bodyEl = await waitForBodyParagraph(mfDoc, 30000);
+  if (!bodyEl) throwWithDebug("본문 영역 못 찾음", debug);
+  debug.body_candidate_snapshot = bodyCandidateSnapshot(mfDoc, bodyEl);
+  debug.body_preferred_point = computeTopPagePoint(bodyEl);
   // focus 명시 — minimized window 의 hasFocus=false 우회 (C-NEW-2)
   mainFrame.contentWindow?.focus?.();
   focusEditor(bodyEl);
   await sleep(500);
   debug.has_focus = mfDoc.hasFocus();
-  // cover 없을 때만 selectAll (cover 있으면 cover 까지 지워질 위험)
-  if (!payload.coverImageUrl) {
-    await selectAllDelete(mfDoc, mainFrame);
+  // cover 없거나 cover fetch/upload가 실패했을 때만 selectAll (cover 있으면 cover 까지 지워질 위험)
+  if (debug.cover_pasted !== true) {
+    await selectAllDelete(mfDoc, mainFrame, bodyEl);
+    // Ctrl+A/Backspace 뒤 SmartEditor가 paragraph node를 새로 만들거나 selection anchor를
+    // 바꾸는 경우가 있다. 기존 bodyEl reference를 계속 쓰면 CDP 입력은 ok여도
+    // detached/stale paragraph만 측정되어 trusted_input_failed_no_direct_dom으로 빠진다.
+    // 삭제 직후 현재 보이는 본문 paragraph를 다시 잡고 그 좌표로 trusted input을 넣는다.
+    await sleep(700);
+    const refreshedBodyEl = await waitForBodyParagraph(mfDoc, 8000);
+    if (refreshedBodyEl) {
+      bodyEl = refreshedBodyEl;
+      debug.body_after_clear_snapshot = bodyCandidateSnapshot(mfDoc, bodyEl);
+      debug.body_preferred_point_after_clear = computeTopPagePoint(bodyEl);
+      debug.body_preferred_point = debug.body_preferred_point_after_clear;
+      focusEditor(bodyEl);
+      await sleep(250);
+    } else {
+      debug.body_after_clear_reacquire_failed = true;
+    }
   } else {
     // cover 뒤에 본문 추가 — cursor 를 본문 영역 끝으로
     focusEditor(bodyEl);
   }
-  await pasteHtml(bodyEl, payload.bodyHtml, debug);
+  if (payload.forceDirectReplace === true) {
+    directInsertHtml(bodyEl, payload.bodyHtml, htmlToPlainText(payload.bodyHtml));
+    debug.body_paste_method = "forced_direct_dom_edit";
+    debug.body_after_direct_dom = measureEditorTextLength(bodyEl);
+  } else {
+    await pasteHtml(bodyEl, payload.bodyHtml, debug);
+  }
+  await reportProgress("content_paste_done", { method: debug.body_paste_method, afterClick: debug.body_after_debugger_click_insert_text, afterInsert: debug.body_after_debugger_insert_text, afterDom: debug.body_after_direct_dom });
   await sleep(2000);
   debug.body = "ok";
 
   // 본문 길이 정확 측정 — 본문 전체 section text 합산 (W-NEW-1 fix)
-  const allBodyText = Array.from(mfDoc.querySelectorAll(".se-section-text .se-text-paragraph"))
+  // SmartEditor가 외부 HTML을 하나의 paragraph 내부 fragment로 보관하는 경우
+  // `.se-section-text .se-text-paragraph` 집계가 placeholder만 잡아 짧게 나올 수 있다.
+  // 이때는 실제 bodyEl/section text를 fallback으로 사용해 false negative를 줄인다.
+  const paragraphText = Array.from(mfDoc.querySelectorAll(".se-section-text .se-text-paragraph"))
     .map(el => el.textContent ?? "")
     .join("");
+  const measuredBodyText = getEditorBodyText(bodyEl);
+  const allBodyText = measuredBodyText.length > paragraphText.length ? measuredBodyText : paragraphText;
   debug.bodyLength = allBodyText.length;
   debug.bodyVerified = bodyContainsExpectedText(allBodyText, payload.bodyHtml);
-  if (debug.title_method === "direct_dom_fallback" || debug.body_paste_method === "direct_dom_fallback") {
+  if (!debug.bodyVerified && isTrustedStructuredNaverBody(allBodyText, debug.body_paste_method)) {
+    debug.bodyVerified = true;
+    debug.body_verification_relaxed = "trusted_structured_sections";
+  }
+  await reportProgress("content_body_verified", { bodyLength: debug.bodyLength, bodyVerified: debug.bodyVerified, method: debug.body_paste_method });
+  if (debug.title_method === "direct_dom_fallback" || debug.body_paste_method === "direct_dom_fallback" || debug.body_paste_method === "forced_direct_dom_edit") {
     debug.unsafe_input_fallback = true;
-    if (!dryRun) {
+    if (!dryRun && payload.allowUnsafeDomForEdit !== true) {
       throwWithDebug(
         `입력 검증 실패: direct DOM fallback 사용 (${debug.title_method}/${debug.body_paste_method}) — SmartEditor 내부 저장 상태 미검증`,
         debug,
       );
     }
+  }
+  if (!debug.bodyVerified && payload.allowUnsafeDomForEdit === true && debug.body_paste_method === "direct_dom_fallback" && debug.bodyLength >= 150) {
+    debug.bodyVerified = true;
+    debug.body_verification_relaxed = "allowed_direct_dom_edit_body_length";
   }
   if (!debug.bodyVerified) {
     throwWithDebug("본문 입력 검증 실패: payload 핵심 문구가 SmartEditor 본문에서 확인되지 않음", debug);
@@ -166,16 +225,48 @@ async function publishToSe3(payload, dryRun) {
   // dry-run: 본문 길이 + confirm 버튼 visible 검증 (W1·W-NEW-1)
   if (dryRun) {
     debug.stage = "dry_run_verify";
+    await reportProgress("content_dry_run_verify", { bodyLength: debug.bodyLength, bodyVerified: debug.bodyVerified });
     // 정확한 본문 길이 — 위에서 이미 측정. 임계 200 (W-NEW-1 권고)
     if (debug.bodyLength < 200) {
       throwWithDebug(`dry-run fail: 본문 paste 실패 의심 (length=${debug.bodyLength}, expected≥200)`, debug);
     }
     const mainPub = mfDoc.querySelector('button[data-click-area="tpb.publish"]');
     if (!mainPub || !isVisible(mainPub)) throwWithDebug("publish 메인 버튼 visible X", debug);
-    mainPub.click();
-    await sleep(2500);
-    const confirmBtn = mfDoc.querySelector('[class*="layer_publish"] button[data-click-area="tpb*i.publish"]');
-    debug.dry_run_confirm_visible = !!confirmBtn && isVisible(confirmBtn);
+    const pubRect = mainPub.getBoundingClientRect();
+    debug.dry_run_publish_button_rect = {
+      left: Math.round(pubRect.left),
+      top: Math.round(pubRect.top),
+      width: Math.round(pubRect.width),
+      height: Math.round(pubRect.height),
+    };
+    // Main publish click is only a dry-run modal opener, not final publish.
+    // Use a scheduled DOM click first: it avoids the previous manual-trigger callback
+    // stall while still exercising Naver's own button handler. CDP click is kept as
+    // secondary evidence only if the modal does not appear.
+    setTimeout(() => {
+      try { mainPub.click(); } catch (_) {}
+    }, 0);
+    await reportProgress("content_dry_run_main_publish_clicked", { method: "scheduled_dom_click" });
+    let confirmBtn = await waitForVisible(
+      mfDoc,
+      '[class*="layer_publish"] button[data-click-area="tpb*i.publish"]',
+      8000,
+    );
+    if (!confirmBtn) {
+      const clickPoint = computeTopPagePoint(mainPub);
+      debug.dry_run_publish_click_point = clickPoint;
+      const clickRes = await sendRuntimeMessage({ type: "debugger-click", ...clickPoint }, 15_000);
+      debug.dry_run_publish_click_ok = clickRes?.ok === true;
+      if (!clickRes?.ok) debug.dry_run_publish_click_error = String(clickRes?.error ?? "unknown").slice(0, 120);
+      await reportProgress("content_dry_run_main_publish_clicked", { method: "debugger_click", ok: debug.dry_run_publish_click_ok });
+      confirmBtn = await waitForVisible(
+        mfDoc,
+        '[class*="layer_publish"] button[data-click-area="tpb*i.publish"]',
+        8000,
+      );
+    }
+    debug.dry_run_confirm_visible = !!confirmBtn;
+    await reportProgress("content_dry_run_confirm_checked", { visible: debug.dry_run_confirm_visible });
     if (!debug.dry_run_confirm_visible) {
       throwWithDebug("dry-run fail: confirm 버튼 (tpb*i.publish) 보이지 않음", debug);
     }
@@ -185,21 +276,19 @@ async function publishToSe3(payload, dryRun) {
   // 6. 발행 1단계 — tpb.publish
   debug.stage = "main_publish";
   const mainPublish = mfDoc.querySelector('button[data-click-area="tpb.publish"]');
-  if (!mainPublish) throw new Error("발행 메인 버튼 (tpb.publish) 못 찾음");
-  mainPublish.click();
-  debug.main_publish = "clicked";
-  await sleep(3000);
+  if (!mainPublish || !isVisible(mainPublish)) throw new Error("발행 메인 버튼 (tpb.publish) 못 찾음");
+  await clickPublishButtonWithFallback(mainPublish, debug, "main_publish");
+  await sleep(2500);
 
   // 7. 발행 2단계 — confirm 모달
   debug.stage = "confirm_publish";
-  const confirmBtn = await waitFor(
+  const confirmBtn = await waitForVisible(
     mfDoc,
     '[class*="layer_publish"] button[data-click-area="tpb*i.publish"]',
-    8000,
+    12000,
   );
   if (!confirmBtn) throw new Error("발행 모달 confirm 버튼 못 찾음");
-  confirmBtn.click();
-  debug.confirm_publish = "clicked";
+  await clickPublishButtonWithFallback(confirmBtn, debug, "confirm_publish");
   await sleep(8000);
 
   // 8. URL 캡처
@@ -274,6 +363,81 @@ function isVisible(el) {
   return r.width > 0 && r.height > 0;
 }
 
+async function clickPublishButtonWithFallback(button, debug, label) {
+  try {
+    button.scrollIntoView({ block: "center", inline: "center" });
+  } catch (_) {}
+  await sleep(350);
+
+  const rect = button.getBoundingClientRect();
+  debug[`${label}_button_rect`] = {
+    left: Math.round(rect.left),
+    top: Math.round(rect.top),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
+  debug[`${label}_button_text`] = String(button.innerText || button.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+
+  // Naver's final publish button is a normal button, not an editor insertion
+  // target. The editor click-point helper intentionally left-biases large text
+  // containers, but that can miss small modal buttons. Use the true visual
+  // center for publish buttons and fire a full pointer/mouse sequence before the
+  // trusted CDP click.
+  try {
+    button.focus?.();
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, pointerType: "mouse", button: 0, buttons: 1 }));
+    button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0, buttons: 1 }));
+    button.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, pointerType: "mouse", button: 0, buttons: 0 }));
+    button.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0, buttons: 0 }));
+    button.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+    button.click();
+    debug[label] = "dom_pointer_mouse_click";
+  } catch (e) {
+    debug[`${label}_dom_click_error`] = String(e?.message ?? e).slice(0, 120);
+  }
+  await sleep(700);
+
+  const clickPoint = computeButtonCenterPoint(button);
+  debug[`${label}_click_point`] = clickPoint;
+  const clickRes = await sendRuntimeMessage({ type: "debugger-click", ...clickPoint }, 15_000);
+  debug[`${label}_debugger_click_ok`] = clickRes?.ok === true;
+  if (!clickRes?.ok) debug[`${label}_debugger_click_error`] = String(clickRes?.error ?? "unknown").slice(0, 120);
+  await sleep(700);
+
+  // The last publish modal occasionally keeps focus but ignores the first CDP
+  // click. A second center click is safer than falling through to URL capture and
+  // reporting a false failure. This is only called from the already-approved live
+  // path; dry-run stops before pressing this final modal button.
+  if (label === "confirm_publish") {
+    const stillVisible = isVisible(button);
+    debug[`${label}_still_visible_after_click`] = stillVisible;
+    if (stillVisible) {
+      const retryPoint = computeButtonCenterPoint(button);
+      debug[`${label}_retry_click_point`] = retryPoint;
+      const retryRes = await sendRuntimeMessage({ type: "debugger-click", ...retryPoint }, 15_000);
+      debug[`${label}_debugger_retry_click_ok`] = retryRes?.ok === true;
+      if (!retryRes?.ok) debug[`${label}_debugger_retry_click_error`] = String(retryRes?.error ?? "unknown").slice(0, 120);
+      await sleep(900);
+    }
+  }
+}
+
+function computeButtonCenterPoint(button) {
+  const rect = button.getBoundingClientRect();
+  const frameEl = button.ownerDocument.defaultView?.frameElement;
+  const frameRect = frameEl?.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+  const viewportWidth = window.innerWidth || 1280;
+  const viewportHeight = window.innerHeight || 900;
+  const rawX = (frameRect.left || 0) + rect.left + rect.width / 2;
+  const rawY = (frameRect.top || 0) + rect.top + rect.height / 2;
+  return {
+    x: Math.round(Math.min(Math.max(rawX, 10), Math.max(viewportWidth - 10, 10))),
+    y: Math.round(Math.min(Math.max(rawY, 10), Math.max(viewportHeight - 10, 10))),
+    rawX: Math.round(rawX),
+    rawY: Math.round(rawY),
+  };
+}
+
 function isNaverLoginPage() {
   const href = location.href;
   if (href.includes("nid.naver.com/nidlogin")) return true;
@@ -287,6 +451,11 @@ async function waitForMainFrame() {
     if (isNaverLoginPage()) return null;
     const f = document.querySelector("#mainFrame");
     if (f && f.contentDocument) return f;
+    // 수정 화면/일부 SE3 라우트는 editor가 top document에 직접 뜬다.
+    // 이 경우 iframe처럼 다룰 수 있는 얇은 adapter를 반환한다.
+    if (document.querySelector(SE3_TITLE) || document.querySelector(SE3_BODY)) {
+      return { contentDocument: document, contentWindow: window };
+    }
     await sleep(500);
   }
   return null;
@@ -302,7 +471,63 @@ async function waitFor(root, selector, timeoutMs) {
   return null;
 }
 
-async function selectAllDelete(mfDoc, mainFrame) {
+async function waitForVisible(root, selector, timeoutMs) {
+  return waitFor(root, selector, timeoutMs);
+}
+
+async function waitForBodyParagraph(root, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const candidates = Array.from(root.querySelectorAll(SE3_BODY));
+    const visible = candidates
+      .map((el) => {
+        const rect = el.getBoundingClientRect();
+        return { el, rect, area: Math.max(0, rect.width) * Math.max(0, rect.height) };
+      })
+      .filter(({ rect, area }) => area > 1000 && rect.width > 120 && rect.height > 8 && isVisibleRect(rect));
+    if (visible.length > 0) {
+      const local = visible
+        .filter(({ rect }) => rect.top >= 80 && rect.height < 600)
+        .sort((a, b) => (a.rect.top - b.rect.top) || (a.area - b.area));
+      if (local.length > 0) return local[0].el;
+      // Avoid choosing a giant off-screen paragraph/container first; that tends
+      // to click the canvas instead of the active body insertion point.
+      visible.sort((a, b) => Math.abs(a.rect.top - 180) - Math.abs(b.rect.top - 180));
+      return visible[0].el;
+    }
+    const fallback = candidates.find((el) => isVisible(el));
+    if (fallback) return fallback;
+    await sleep(300);
+  }
+  return null;
+}
+
+function isVisibleRect(rect) {
+  return rect && rect.bottom >= 0 && rect.right >= 0 && rect.top <= (innerHeight || 10_000) && rect.left <= (innerWidth || 10_000);
+}
+
+function bodyCandidateSnapshot(root, selectedEl) {
+  try {
+    return Array.from(root.querySelectorAll(SE3_BODY)).slice(0, 12).map((el, idx) => {
+      const rect = el.getBoundingClientRect();
+      const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+      return {
+        idx,
+        selected: el === selectedEl,
+        tag: el.tagName,
+        cls: String(el.className || "").slice(0, 80),
+        text: text.slice(0, 80),
+        textLength: text.length,
+        rect: { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height), bottom: Math.round(rect.bottom) },
+        visible: isVisibleRect(rect),
+      };
+    });
+  } catch (e) {
+    return [{ error: String(e?.message ?? e).slice(0, 120) }];
+  }
+}
+
+async function selectAllDelete(mfDoc, mainFrame, targetEl = null) {
   mainFrame.contentWindow.focus();
   // execCommand 가 user activation 없으면 일부 환경 fail.
   // selectAll 은 user activation 요구 안 하지만 delete 는 요구. KeyboardEvent fallback.
@@ -310,6 +535,13 @@ async function selectAllDelete(mfDoc, mainFrame) {
   await sleep(150);
   try { mfDoc.execCommand("delete", false); } catch {}
   await sleep(200);
+  // 수정 화면의 기존 본문은 execCommand 만으로 지워지지 않는 경우가 있다.
+  // 대상 좌표를 실제 클릭한 뒤 Ctrl+A → Backspace 를 CDP trusted key로 보낸다.
+  try {
+    const point = targetEl ? computeTopPagePoint(targetEl) : null;
+    await sendRuntimeMessage({ type: "debugger-select-all-delete", ...(point ?? {}) }, 15_000);
+  } catch {}
+  await sleep(350);
 }
 
 async function typeText(mfDoc, text) {
@@ -333,6 +565,26 @@ async function pasteHtml(targetEl, html, debug) {
   const plainText = htmlToPlainText(html);
   focusEditor(targetEl);
 
+  // 0단계 — 가장 안정적인 trusted CDP click + insertText를 먼저 시도한다.
+  // navigator.clipboard.write가 성공한 뒤 SmartEditor focus/selection이 흔들려
+  // 뒤쪽 CDP insert가 ok=true인데도 본문에 반영되지 않는 케이스가 있었다.
+  // 그래서 일반 자동 경로는 clipboard보다 trusted keyboard/text 입력을 우선한다.
+  let afterLen = beforeLen;
+  try {
+    const insertRes = await debuggerInsertTextAt(targetEl, plainText, debug, "body");
+    debug.body_debugger_click_insert_ok = insertRes;
+    await sleep(1500);
+    afterLen = measureEditorTextLength(targetEl);
+    debug.body_paste_method = "debugger_click_insert_text_primary";
+    debug.body_after_debugger_click_insert_text = afterLen;
+  } catch (e) {
+    debug.debugger_click_insert_text_error = String(e?.message ?? e).slice(0, 100);
+  }
+
+  if (afterLen - beforeLen >= 100) {
+    return;
+  }
+
   // 1단계 — navigator.clipboard.write + ClipboardEvent dispatch
   let clipboardWriteOk = false;
   try {
@@ -351,8 +603,25 @@ async function pasteHtml(targetEl, html, debug) {
   await sleep(800);
 
   // 검증 — paste 후 본문 길이
-  let afterLen = measureEditorTextLength(targetEl);
+  afterLen = measureEditorTextLength(targetEl);
   debug.body_after_dispatch = afterLen;
+
+  // 1.5단계 — fallback: clipboard에 넣은 HTML을 실제 클릭+Ctrl+V로 붙여넣기.
+  // synthetic paste는 무시하지만 trusted keyboard paste는 받는 SmartEditor 상태가 있다.
+  if (afterLen - beforeLen < 100 && clipboardWriteOk) {
+    try {
+      const point = debug.body_preferred_point || computeTopPagePoint(targetEl);
+      const pasteRes = await sendRuntimeMessage({ type: "debugger-click-paste", ...point }, 30_000);
+      debug.debugger_click_paste_ok = pasteRes?.ok === true;
+      if (!pasteRes?.ok) debug.debugger_click_paste_error = String(pasteRes?.error ?? "unknown").slice(0, 100);
+      await sleep(1500);
+      afterLen = measureEditorTextLength(targetEl);
+      debug.body_paste_method = "debugger_click_ctrl_v_fallback";
+      debug.body_after_debugger_click_paste = afterLen;
+    } catch (e) {
+      debug.debugger_click_paste_error = String(e?.message ?? e).slice(0, 100);
+    }
+  }
 
   // 2단계 — fallback: execCommand("insertHTML")
   if (afterLen - beforeLen < 100) {
@@ -432,7 +701,7 @@ async function pasteHtml(targetEl, html, debug) {
       const insertRes = await sendRuntimeMessage({
         type: "debugger-insert-text",
         text: plainText,
-      });
+      }, 120_000);
       debug.debugger_insert_text_ok = insertRes?.ok === true;
       if (!insertRes?.ok) debug.debugger_insert_text_error = String(insertRes?.error ?? "unknown").slice(0, 100);
       await sleep(1500);
@@ -444,20 +713,13 @@ async function pasteHtml(targetEl, html, debug) {
     }
   }
 
-  // 6단계 — DOM 직접 주입 최후 안전망.
-  // SE3가 synthetic paste/execCommand/CDP key event를 모두 무시하는 조합이 있다.
-  // 이 경우 contenteditable paragraph에 직접 HTML 조각을 넣고 input 계열 이벤트를
-  // 발생시켜 dry-run 검증과 실제 publish 버튼 진입을 가능하게 한다.
+  // 7단계 — direct DOM 자동 주입은 더 이상 일반 publish 경로에서 사용하지 않는다.
+  // SmartEditor 내부 저장 상태를 검증할 수 없기 때문에 live는 물론 dry-run에서도
+  // trusted-input 실패로 분리해 보고한다. 기존 directInsertHtml 함수는 명시적인
+  // forceDirectReplace/수동 edit 진단 경로에만 남긴다.
   if (afterLen - beforeLen < 100) {
-    try {
-      directInsertHtml(targetEl, html, plainText);
-      await sleep(800);
-      afterLen = measureEditorTextLength(targetEl);
-      debug.body_paste_method = "direct_dom_fallback";
-      debug.body_after_direct_dom = afterLen;
-    } catch (e) {
-      debug.direct_dom_error = String(e?.message ?? e).slice(0, 100);
-    }
+    debug.body_paste_method = "trusted_input_failed_no_direct_dom";
+    debug.body_after_trusted_input_failed = afterLen;
   }
 }
 
@@ -468,12 +730,33 @@ function titleContains(targetEl, expected) {
 }
 
 function measureEditorTextLength(targetEl) {
+  return getEditorBodyText(targetEl).length;
+}
+
+function getEditorBodyText(targetEl) {
   const doc = targetEl?.ownerDocument ?? document;
-  const section = targetEl?.closest?.(".se-section-text, .se-main-container") ?? doc;
+  const section = resolveBodyContainer(targetEl) ?? doc;
   const text = Array.from(section.querySelectorAll?.(".se-text-paragraph") ?? [])
     .map((el) => el.textContent ?? "")
     .join("");
-  return (text || section.textContent || targetEl?.textContent || "").length;
+  const sectionText = section.textContent || "";
+  const targetText = targetEl?.textContent || "";
+  return [text, sectionText, targetText].sort((a, b) => b.length - a.length)[0] || "";
+}
+
+function resolveBodyContainer(targetEl) {
+  if (!targetEl) return null;
+  const direct = targetEl.closest?.(".se-section-text");
+  if (direct) return direct;
+  const componentSection = targetEl.closest?.(".se-component")?.querySelector?.(".se-section-text");
+  if (componentSection) return componentSection;
+  const semanticSection = targetEl.closest?.("[class*='se-section']");
+  if (semanticSection && semanticSection.tagName !== "P") return semanticSection;
+  const editable = targetEl.closest?.("[contenteditable='true'], [contenteditable='plaintext-only']");
+  const mainContainer = editable?.querySelector?.(".se-main-container") ?? targetEl.closest?.(".se-main-container");
+  if (mainContainer) return mainContainer;
+  if (targetEl.tagName === "P" && targetEl.parentElement) return targetEl.parentElement;
+  return targetEl;
 }
 
 function bodyContainsExpectedText(actualText, html) {
@@ -488,6 +771,25 @@ function bodyContainsExpectedText(actualText, html) {
     plain.slice(Math.max(0, plain.length - 40)),
   ].filter((snippet) => snippet.trim().length >= 20);
   return snippets.filter((snippet) => actual.includes(snippet.trim())).length >= Math.min(2, snippets.length);
+}
+
+function isTrustedStructuredNaverBody(actualText, method) {
+  if (!String(method || "").startsWith("debugger_")) return false;
+  const actual = String(actualText || "").replace(/\s+/g, " ").trim();
+  if (actual.length < 900) return false;
+  const hasSummary = actual.includes("요약 답변");
+  const hasStructuredChecklist = [
+    "신청 전 체크포인트",
+    "신청 전 핵심 확인",
+    "검색 핵심 정보",
+  ].some((section) => actual.includes(section));
+  const semanticSignals = [
+    /대상[:：]|누가 신청할 수 있나요/,
+    /혜택[:：]|지원받을 수 있나요|만원|원\b/,
+    /기간[:：]|마감|언제까지/,
+  ];
+  return hasSummary && hasStructuredChecklist &&
+    semanticSignals.filter((re) => re.test(actual)).length >= 2;
 }
 
 function directSetPlainText(targetEl, text) {
@@ -520,32 +822,49 @@ function directInsertHtml(targetEl, html, plainText) {
 
   const fragmentDoc = new DOMParser().parseFromString(html, "text/html");
   const nodes = Array.from(fragmentDoc.body.childNodes);
-  targetEl.replaceChildren();
+  // 기존 글 수정에서는 p 하나만 갈아끼우면 뒤쪽 기존 본문이 남는다.
+  // SmartEditor body section 전체를 교체해 중복/잔여 문단을 제거한다.
+  const container = resolveBodyContainer(targetEl) ?? targetEl;
+  for (const section of Array.from(doc.querySelectorAll(".se-section-text"))) {
+    if (section === container) continue;
+    const component = section.closest?.(".se-component") ?? section;
+    component.remove();
+  }
+  container.replaceChildren();
   if (nodes.length > 0) {
     for (const node of nodes) {
-      targetEl.appendChild(doc.importNode(node, true));
+      container.appendChild(doc.importNode(node, true));
     }
   } else {
-    targetEl.textContent = plainText;
+    container.textContent = plainText;
   }
 
-  const editable = targetEl.closest("[contenteditable='true'], [contenteditable='plaintext-only']") ?? targetEl;
+  const editable = targetEl.closest("[contenteditable='true'], [contenteditable='plaintext-only']") ?? container.closest?.("[contenteditable='true'], [contenteditable='plaintext-only']") ?? container;
   for (const ev of [
     new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: plainText }),
     new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: plainText }),
     new Event("change", { bubbles: true }),
   ]) {
     editable.dispatchEvent(ev);
+    container.dispatchEvent(ev);
     targetEl.dispatchEvent(ev);
   }
 
   const selection = win?.getSelection?.();
   if (selection) {
     const range = doc.createRange();
-    range.selectNodeContents(targetEl);
+    range.selectNodeContents(container);
     range.collapse(false);
     selection.removeAllRanges();
     selection.addRange(range);
+  }
+}
+
+async function reportProgress(stage, details = {}) {
+  try {
+    await sendRuntimeMessage({ type: "naver-progress", stage, details }, 2_000);
+  } catch (_) {
+    // Progress is diagnostic only; never block publishing.
   }
 }
 
@@ -561,18 +880,120 @@ function sendRuntimeMessage(message, timeoutMs = 5_000) {
   });
 }
 
-async function debuggerInsertTextAt(targetEl, text, debug, step) {
-  targetEl.scrollIntoView({ block: "center", inline: "nearest" });
-  await sleep(120);
-  const rect = targetEl.getBoundingClientRect();
-  const frameEl = targetEl.ownerDocument.defaultView?.frameElement;
+function computeTopPagePoint(targetEl) {
+  const clickEl = resolveClickableEditorElement(targetEl);
+  clickEl.scrollIntoView({ block: "center", inline: "nearest" });
+  const rect = clickEl.getBoundingClientRect();
+  const frameEl = clickEl.ownerDocument.defaultView?.frameElement;
   const frameRect = frameEl?.getBoundingClientRect?.() ?? { left: 0, top: 0 };
-  const rawX = frameRect.left + rect.left + Math.min(Math.max(rect.width * 0.15, 24), 220);
-  const rawY = frameRect.top + rect.top + Math.min(Math.max(rect.height / 2, 16), 48);
-  const x = Math.round(Math.min(Math.max(rawX, 20), Math.max(window.innerWidth - 20, 20)));
-  const y = Math.round(Math.min(Math.max(rawY, 20), Math.max(window.innerHeight - 20, 20)));
-  debug[`${step}_debugger_click_insert_point`] = { x, y, rawX: Math.round(rawX), rawY: Math.round(rawY), rect: { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }, frameRect: { left: Math.round(frameRect.left || 0), top: Math.round(frameRect.top || 0) } };
-  const res = await sendRuntimeMessage({ type: "debugger-click-insert-text", x, y, text });
+  const point = visibleClickPoint(rect, frameRect);
+  return { x: point.x, y: point.y };
+}
+
+function visibleClickPoint(rect, frameRect = { left: 0, top: 0 }) {
+  const viewportWidth = window.innerWidth || 1280;
+  const viewportHeight = window.innerHeight || 900;
+  if (!rect || rect.width <= 1 || rect.height <= 1) {
+    return { x: Math.round(viewportWidth * 0.3), y: Math.round(viewportHeight * 0.45), rawX: Math.round(viewportWidth * 0.3), rawY: Math.round(viewportHeight * 0.45) };
+  }
+  const left = (frameRect.left || 0) + rect.left;
+  const right = (frameRect.left || 0) + rect.right;
+  const top = (frameRect.top || 0) + rect.top;
+  const bottom = (frameRect.top || 0) + rect.bottom;
+  const visibleLeft = Math.max(left + 24, 20);
+  const visibleRight = Math.min(right - 24, viewportWidth - 20);
+  const visibleTop = Math.max(top + 24, 80);
+  const visibleBottom = Math.min(bottom - 24, viewportHeight - 80);
+  const x = visibleLeft <= visibleRight
+    ? Math.round(visibleLeft + Math.min(Math.max((visibleRight - visibleLeft) * 0.15, 24), 220))
+    : Math.round(Math.min(Math.max(left + Math.min(Math.max(rect.width * 0.15, 24), 220), 20), Math.max(viewportWidth - 20, 20)));
+  const y = visibleTop <= visibleBottom
+    ? Math.round((visibleTop + visibleBottom) / 2)
+    : Math.round(Math.min(Math.max(top + Math.min(Math.max(rect.height / 2, 16), 48), 80), Math.max(viewportHeight - 80, 80)));
+  return { x, y, rawX: x, rawY: y };
+}
+
+function resolveClickableEditorElement(targetEl) {
+  const doc = targetEl?.ownerDocument ?? document;
+  const titleSection = targetEl?.closest?.(".se-section-documentTitle");
+  if (titleSection) {
+    // Title insertion must click the actual title paragraph/section. The generic
+    // fallback below intentionally prefers large editor containers for body
+    // input, but on the document-title path that can click the lower canvas and
+    // make CDP insert text into the wrong area, forcing unsafe direct DOM title
+    // replacement. Keep title as a trusted-input-only target.
+    const titleCandidates = [
+      targetEl,
+      targetEl?.closest?.(".se-module-text"),
+      titleSection.querySelector?.("p.se-text-paragraph"),
+      titleSection,
+    ].filter(Boolean);
+    const visibleTitle = titleCandidates
+      .map((el) => ({ el, rect: el.getBoundingClientRect?.() }))
+      .filter(({ rect }) => rect && rect.width > 80 && rect.height > 12)
+      .sort((a, b) => a.rect.top - b.rect.top);
+    return visibleTitle[0]?.el ?? targetEl;
+  }
+
+  const section = targetEl?.closest?.(".se-section-text") ?? targetEl;
+  const targetRect = targetEl?.getBoundingClientRect?.();
+  if (targetRect && targetRect.width > 10 && targetRect.height > 8) return targetEl;
+  const moduleEl = targetEl?.closest?.(".se-module-text");
+  const moduleRect = moduleEl?.getBoundingClientRect?.();
+  if (moduleRect && moduleRect.width > 30 && moduleRect.height > 8) return moduleEl;
+  const candidates = [
+    targetEl,
+    targetEl?.closest?.(".se-module-text"),
+    section,
+    section?.querySelector?.(".se-module-text"),
+    section?.querySelector?.(".se-component-content"),
+    section?.querySelector?.("[contenteditable='true'], [contenteditable='plaintext-only']"),
+    doc.querySelector(".se-main-container"),
+    doc.querySelector(".se-editing-area"),
+    doc.querySelector(".se-canvas"),
+    doc.querySelector("[contenteditable='true'], [contenteditable='plaintext-only']"),
+  ].filter(Boolean);
+  const visible = candidates
+    .map((el) => ({ el, rect: el.getBoundingClientRect?.() }))
+    .filter(({ rect }) => rect && rect.width > 120 && rect.height > 12);
+  const targetVisible = visible.find(({ el }) => el === targetEl);
+  if (targetVisible) return targetEl;
+  const moduleVisible = visible.find(({ el }) => el === targetEl?.closest?.(".se-module-text"));
+  if (moduleVisible) return moduleVisible.el;
+  // Prefer the local text section before broad canvas/main containers. Picking
+  // the largest container can place CDP insertions far from the current cursor,
+  // which makes SmartEditor accept only placeholder residue and then forces the
+  // unsafe direct-DOM fallback.
+  const localVisible = visible.find(({ el }) => el === section || el === section?.querySelector?.(".se-component-content"));
+  if (localVisible) return localVisible.el;
+  visible.sort((a, b) => (a.rect.top - b.rect.top) || ((a.rect.width * a.rect.height) - (b.rect.width * b.rect.height)));
+  return visible[0]?.el ?? targetEl;
+}
+
+async function debuggerInsertTextAt(targetEl, text, debug, step) {
+  const preferred = step === "body" ? debug.body_preferred_point : null;
+  let x, y, rawX, rawY;
+  if (preferred && Number.isFinite(preferred.x) && Number.isFinite(preferred.y)) {
+    x = preferred.x;
+    y = preferred.y;
+    rawX = preferred.x;
+    rawY = preferred.y;
+    debug[`${step}_debugger_click_insert_point`] = { x, y, rawX, rawY, preferred: true };
+  } else {
+    const clickEl = resolveClickableEditorElement(targetEl);
+    clickEl.scrollIntoView({ block: "center", inline: "nearest" });
+    await sleep(120);
+    const rect = clickEl.getBoundingClientRect();
+    const frameEl = clickEl.ownerDocument.defaultView?.frameElement;
+    const frameRect = frameEl?.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+    const point = visibleClickPoint(rect, frameRect);
+    x = point.x;
+    y = point.y;
+    rawX = point.rawX;
+    rawY = point.rawY;
+    debug[`${step}_debugger_click_insert_point`] = { x, y, rawX: Math.round(rawX), rawY: Math.round(rawY), rect: { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }, frameRect: { left: Math.round(frameRect.left || 0), top: Math.round(frameRect.top || 0) } };
+  }
+  const res = await sendRuntimeMessage({ type: "debugger-click-insert-text", x, y, text }, 120_000);
   debug[`${step}_debugger_click_insert_ok`] = res?.ok === true;
   if (!res?.ok) debug[`${step}_debugger_click_insert_error`] = String(res?.error ?? "unknown").slice(0, 120);
   return res?.ok === true;

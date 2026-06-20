@@ -15,6 +15,8 @@ const KEEPIOO_BASE = "https://www.keepioo.com";
 const NAVER_WRITE = "https://blog.naver.com/leclerc23?Redirect=Write";
 const UPDATE_ALARM = "extension-update-check";
 const UPDATE_CHECK_INTERVAL_MINUTES = 6 * 60;
+let activeManualTrigger = null;
+let activeManualTriggerStartedAt = 0;
 
 // 5 schedule — 각 시간 fire (KST). chrome.alarms 는 UTC 기준이지만 우리는
 // when 으로 next 시점 계산.
@@ -108,7 +110,6 @@ async function handleAlarm(alarm) {
   console.log(`[keepioo-naver] alarm fire: ${alarm.name}`);
   const result = await runPublishBatch(false, {
     allowLoginWait: false,
-    reuseExistingWriter: true,
     batchLimit: 3,
     stopOnFail: true,
     source: alarm.name,
@@ -127,18 +128,42 @@ async function handleAlarm(alarm) {
 // popup 에서 사장님 manual trigger
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "manual-trigger") {
+    if (activeManualTrigger) {
+      const activeAgeMs = Date.now() - activeManualTriggerStartedAt;
+      if (msg.forceResetActive === true || activeAgeMs > 240_000) {
+        setManualPublishStatusBestEffort("manual_trigger_stale_reset", { activeAgeMs, forceResetActive: msg.forceResetActive === true });
+        activeManualTrigger = null;
+        activeManualTriggerStartedAt = 0;
+      } else {
+        promiseWithTimeout(activeManualTrigger, 1_000, "기존 manual-trigger 실행 중")
+          .then((r) => sendResponse({ ok: true, result: r }))
+          .catch(() => sendResponse({ ok: false, error: "기존 manual-trigger 실행 중 — 이전 dry-run이 아직 종료되지 않았습니다", activeAgeMs }));
+        return true;
+      }
+    }
     // Popup/manual runs keep the old behavior: wait for the owner to log in.
     // Headless cron triggers pass allowLoginWait:false so they fail fast and
     // report a clear blocker instead of exceeding Hermes cron's 120s limit.
     // If the owner already has a logged-in writer tab open, cron can reuse it
     // instead of opening a fresh window that Naver may challenge again.
-    runPublishOnce(msg.dryRun === true, {
+    const run = promiseWithTimeout(runPublishOnceWithFreshWriterRetry(msg.dryRun === true, {
       allowLoginWait: msg.allowLoginWait !== false,
       reuseExistingWriter: msg.reuseExistingWriter === true,
       requireExistingWriter: msg.requireExistingWriter === true,
-    })
+      forceNext: msg.forceNext === true,
+    }), 210_000, "manual-trigger 전체 timeout");
+    activeManualTrigger = run;
+    activeManualTriggerStartedAt = Date.now();
+    run
       .then((r) => sendResponse({ ok: true, result: r }))
-      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }))
+      .finally(() => { activeManualTrigger = null; activeManualTriggerStartedAt = 0; });
+    return true; // async
+  }
+  if (msg?.type === "manual-edit-post") {
+    promiseWithTimeout(runEditPost(msg), 240_000, "manual-edit-post 전체 timeout")
+      .then((r) => sendResponse({ ok: true, result: r }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null }));
     return true; // async
   }
   if (msg?.type === "manual-batch") {
@@ -164,6 +189,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true; // async
   }
+  if (msg?.type === "naver-progress") {
+    setManualPublishStatus(msg.stage || "content_progress", msg.details || {})
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
+  }
   if (msg?.type === "debugger-paste") {
     const tabId = _sender?.tab?.id;
     if (!tabId) {
@@ -171,6 +202,32 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return false;
     }
     dispatchCtrlV(tabId)
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
+  }
+  if (msg?.type === "debugger-select-all-delete") {
+    const tabId = _sender?.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "sender tab id 없음" });
+      return false;
+    }
+    const x = Number(msg.x);
+    const y = Number(msg.y);
+    (Number.isFinite(x) && Number.isFinite(y)
+      ? clickAndSelectAllDelete(tabId, x, y)
+      : dispatchSelectAllDelete(tabId))
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
+  }
+  if (msg?.type === "debugger-click-paste") {
+    const tabId = _sender?.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "sender tab id 없음" });
+      return false;
+    }
+    clickAndPasteViaDebugger(tabId, Number(msg.x), Number(msg.y))
       .then(() => sendResponse({ ok: true }))
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true;
@@ -197,8 +254,34 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true;
   }
+  if (msg?.type === "debugger-click") {
+    const tabId = _sender?.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "sender tab id 없음" });
+      return false;
+    }
+    clickViaDebugger(tabId, Number(msg.x), Number(msg.y))
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
+  }
   return false;
 });
+
+async function clickViaDebugger(tabId, x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("invalid click coordinates");
+  const target = { tabId };
+  let attached = false;
+  try {
+    await debuggerAttach(target);
+    attached = true;
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
+  } finally {
+    if (attached) await debuggerDetach(target).catch(() => undefined);
+  }
+}
 
 /**
  * fail audit 보고 (W-1 fix) — 사고 시 keepioo published API 에 result='fail' 기록.
@@ -206,19 +289,137 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
  */
 async function reportFail(secret, next, errorMessage) {
   try {
-    await fetch(`${KEEPIOO_BASE}/api/naver-extension/published`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        queueId: next?.queueId,
-        blogPostId: next?.blogPostId,
-        result: "fail",
-        errorMessage: String(errorMessage ?? "unknown").slice(0, 500),
-        details: { stage: "background_fail" },
-      }),
-    });
+    await postPublishedAudit(secret, {
+      queueId: next?.queueId,
+      blogPostId: next?.blogPostId,
+      result: "fail",
+      errorMessage: String(errorMessage ?? "unknown").slice(0, 500),
+      details: { stage: "background_fail" },
+    }, "background_fail");
   } catch (e) {
     console.warn("[keepioo-naver] reportFail error:", e?.message);
+  }
+}
+
+async function postPublishedAudit(secret, payload, stage) {
+  try {
+    const res = await fetchWithTimeout(`${KEEPIOO_BASE}/api/naver-extension/published`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }, 12_000);
+    if (!res.ok) {
+      console.warn(`[keepioo-naver] published audit ${stage} HTTP ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn(`[keepioo-naver] published audit ${stage} timeout/error:`, e?.message);
+    await setManualPublishStatus("published_audit_error", { stage, error: e?.message ?? String(e) });
+    return false;
+  }
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function clickAndSelectAllDelete(tabId, x, y) {
+  const target = { tabId };
+  let attached = false;
+  try {
+    await debuggerAttach(target);
+    attached = true;
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+    await new Promise((r) => setTimeout(r, 150));
+    await dispatchSelectAllDeleteWithAttached(target);
+  } finally {
+    if (attached) await debuggerDetach(target).catch(() => undefined);
+  }
+}
+
+async function dispatchSelectAllDelete(tabId) {
+  const target = { tabId };
+  let attached = false;
+  try {
+    await debuggerAttach(target);
+    attached = true;
+    await dispatchSelectAllDeleteWithAttached(target);
+  } finally {
+    if (attached) await debuggerDetach(target).catch(() => undefined);
+  }
+}
+
+async function dispatchSelectAllDeleteWithAttached(target) {
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Control",
+    code: "ControlLeft",
+    windowsVirtualKeyCode: 17,
+    nativeVirtualKeyCode: 17,
+    modifiers: 2,
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "a",
+    code: "KeyA",
+    windowsVirtualKeyCode: 65,
+    nativeVirtualKeyCode: 65,
+    modifiers: 2,
+    commands: ["selectAll"],
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "a",
+    code: "KeyA",
+    windowsVirtualKeyCode: 65,
+    nativeVirtualKeyCode: 65,
+    modifiers: 2,
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Control",
+    code: "ControlLeft",
+    windowsVirtualKeyCode: 17,
+    nativeVirtualKeyCode: 17,
+  });
+  await new Promise((r) => setTimeout(r, 150));
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Backspace",
+    code: "Backspace",
+    windowsVirtualKeyCode: 8,
+    nativeVirtualKeyCode: 8,
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Backspace",
+    code: "Backspace",
+    windowsVirtualKeyCode: 8,
+  });
+}
+
+async function clickAndPasteViaDebugger(tabId, x, y) {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error("invalid click coordinates");
+  const target = { tabId };
+  let attached = false;
+  try {
+    await debuggerAttach(target);
+    attached = true;
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
+    await new Promise((r) => setTimeout(r, 250));
+    await dispatchCtrlVWithAttached(target);
+  } finally {
+    if (attached) await debuggerDetach(target).catch(() => undefined);
   }
 }
 
@@ -228,42 +429,46 @@ async function dispatchCtrlV(tabId) {
   try {
     await debuggerAttach(target);
     attached = true;
-    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
-      type: "keyDown",
-      key: "Control",
-      code: "ControlLeft",
-      windowsVirtualKeyCode: 17,
-      nativeVirtualKeyCode: 17,
-      modifiers: 2,
-    });
-    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
-      type: "keyDown",
-      key: "v",
-      code: "KeyV",
-      windowsVirtualKeyCode: 86,
-      nativeVirtualKeyCode: 86,
-      modifiers: 2,
-      commands: ["paste"],
-    });
-    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
-      type: "keyUp",
-      key: "v",
-      code: "KeyV",
-      windowsVirtualKeyCode: 86,
-      nativeVirtualKeyCode: 86,
-      modifiers: 2,
-    });
-    await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
-      type: "keyUp",
-      key: "Control",
-      code: "ControlLeft",
-      windowsVirtualKeyCode: 17,
-      nativeVirtualKeyCode: 17,
-      modifiers: 0,
-    });
+    await dispatchCtrlVWithAttached(target);
   } finally {
     if (attached) await debuggerDetach(target).catch(() => undefined);
   }
+}
+
+async function dispatchCtrlVWithAttached(target) {
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Control",
+    code: "ControlLeft",
+    windowsVirtualKeyCode: 17,
+    nativeVirtualKeyCode: 17,
+    modifiers: 2,
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "v",
+    code: "KeyV",
+    windowsVirtualKeyCode: 86,
+    nativeVirtualKeyCode: 86,
+    modifiers: 2,
+    commands: ["paste"],
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "v",
+    code: "KeyV",
+    windowsVirtualKeyCode: 86,
+    nativeVirtualKeyCode: 86,
+    modifiers: 2,
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Control",
+    code: "ControlLeft",
+    windowsVirtualKeyCode: 17,
+    nativeVirtualKeyCode: 17,
+    modifiers: 0,
+  });
 }
 
 async function insertTextViaDebugger(tabId, text) {
@@ -272,7 +477,7 @@ async function insertTextViaDebugger(tabId, text) {
   try {
     await debuggerAttach(target);
     attached = true;
-    await debuggerSendCommand(target, "Input.insertText", { text });
+    await insertTextViaDebuggerChunks(target, text);
   } finally {
     if (attached) await debuggerDetach(target).catch(() => undefined);
   }
@@ -288,41 +493,88 @@ async function clickAndInsertTextViaDebugger(tabId, x, y, text) {
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
-    await new Promise((r) => setTimeout(r, 120));
-    await debuggerSendCommand(target, "Input.insertText", { text });
+    await new Promise((r) => setTimeout(r, 250));
+    await insertTextViaDebuggerChunks(target, text);
   } finally {
     if (attached) await debuggerDetach(target).catch(() => undefined);
   }
 }
 
+async function insertTextViaDebuggerChunks(target, text) {
+  const value = String(text ?? "").replace(/\r\n?/g, "\n");
+  // Large Input.insertText payloads can silently truncate in Naver SmartEditor
+  // if sent as one CDP call. Chunking keeps the trusted-input path and avoids
+  // falling back to direct DOM injection for real publish.
+  //
+  // SE3 also tends to flatten literal \n characters into one paragraph. Split
+  // by lines and send trusted Enter key events between lines so headings,
+  // bullets, FAQ, and CTA stay as separate editor paragraphs on mobile Naver.
+  const lines = value.split("\n");
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    await insertTextLineChunks(target, lines[lineIndex]);
+    if (lineIndex < lines.length - 1) {
+      await dispatchEnterViaDebugger(target);
+    }
+  }
+}
+
+async function insertTextLineChunks(target, line) {
+  const chunkSize = 180;
+  for (let i = 0; i < line.length; i += chunkSize) {
+    await debuggerSendCommand(target, "Input.insertText", { text: line.slice(i, i + chunkSize) });
+    // SmartEditor can drop back-to-back CDP insertText calls while it reconciles
+    // its internal document model. A short pause between smaller chunks keeps
+    // the cursor alive and prevents first-chunk-only truncation.
+    await new Promise((r) => setTimeout(r, 220));
+  }
+}
+
+async function dispatchEnterViaDebugger(target) {
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+  });
+  await debuggerSendCommand(target, "Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Enter",
+    code: "Enter",
+    windowsVirtualKeyCode: 13,
+    nativeVirtualKeyCode: 13,
+  });
+  await new Promise((r) => setTimeout(r, 120));
+}
+
 function debuggerAttach(target) {
-  return new Promise((resolve, reject) => {
+  return promiseWithTimeout(new Promise((resolve, reject) => {
     chrome.debugger.attach(target, "1.3", () => {
       const err = chrome.runtime.lastError;
       if (err) reject(new Error(err.message));
       else resolve();
     });
-  });
+  }), 5_000, "chrome.debugger.attach timeout");
 }
 
 function debuggerSendCommand(target, method, params) {
-  return new Promise((resolve, reject) => {
+  return promiseWithTimeout(new Promise((resolve, reject) => {
     chrome.debugger.sendCommand(target, method, params, (result) => {
       const err = chrome.runtime.lastError;
       if (err) reject(new Error(err.message));
       else resolve(result);
     });
-  });
+  }), 8_000, `${method} timeout`);
 }
 
 function debuggerDetach(target) {
-  return new Promise((resolve, reject) => {
+  return promiseWithTimeout(new Promise((resolve, reject) => {
     chrome.debugger.detach(target, () => {
       const err = chrome.runtime.lastError;
       if (err) reject(new Error(err.message));
       else resolve();
     });
-  });
+  }), 3_000, "chrome.debugger.detach timeout");
 }
 
 async function getSecret() {
@@ -346,13 +598,13 @@ function requestUpdateCheck() {
 }
 
 async function getUpdateStatus() {
-  const { update_status } = await chrome.storage.local.get(["update_status"]);
-  return update_status ?? {
+  const { update_status, last_manual_publish_status } = await chrome.storage.local.get(["update_status", "last_manual_publish_status"]);
+  return { ...(update_status ?? {
     status: "unknown",
     version: chrome.runtime.getManifest().version,
     checkedAt: null,
     message: "아직 업데이트 확인 전",
-  };
+  }), lastManualPublishStatus: last_manual_publish_status ?? null };
 }
 
 async function checkForExtensionUpdate(options = {}) {
@@ -436,12 +688,46 @@ async function runPublishBatch(dryRun = false, options = {}) {
   };
 }
 
+function isTransientWriterTabError(error) {
+  const message = String(error?.message ?? error ?? "");
+  return message.includes("No tab with id")
+    || message.includes("Receiving end does not exist")
+    || message.includes("Extension context invalidated")
+    || message.includes("Cannot access contents of url")
+    || message.includes("content.js 메시지 fail");
+}
+
+async function runPublishOnceWithFreshWriterRetry(dryRun = false, options = {}) {
+  try {
+    return await runPublishOnce(dryRun, options);
+  } catch (error) {
+    // Dry-run cron/manual triggers can occasionally lose the writer tab after
+    // SmartEditor opens/closes helper windows. Recover once with a fresh writer
+    // instead of reporting a flaky transport failure as a content failure. Live
+    // publishing and requireExistingWriter paths stay fail-closed.
+    if (!dryRun || options.requireExistingWriter === true || !isTransientWriterTabError(error)) {
+      throw error;
+    }
+    await setManualPublishStatus("fresh_writer_retry_start", { reason: error?.message ?? String(error) });
+    const closedWriterTabs = await closeStaleWriterTabs();
+    await setManualPublishStatus("fresh_writer_retry_cleanup_done", { closedWriterTabs });
+    await new Promise((r) => setTimeout(r, 1200));
+    return await runPublishOnce(dryRun, {
+      ...options,
+      reuseExistingWriter: false,
+      requireExistingWriter: false,
+    });
+  }
+}
+
 async function runPublishOnce(dryRun = false, options = {}) {
+  await setManualPublishStatus("start", { dryRun, options: { allowLoginWait: options.allowLoginWait === true, reuseExistingWriter: options.reuseExistingWriter === true, requireExistingWriter: options.requireExistingWriter === true, forceNext: options.forceNext === true } });
   const allowLoginWait = options.allowLoginWait === true;
   const reuseExistingWriter = options.reuseExistingWriter === true;
   const requireExistingWriter = options.requireExistingWriter === true;
+  const forceNext = options.forceNext === true;
   const secret = await getSecret();
-  const force = dryRun ? "?force=1" : "";
+  const force = (dryRun || forceNext) ? "?force=1" : "";
 
   // 1. 큐 조회
   const nextRes = await fetch(`${KEEPIOO_BASE}/api/naver-extension/next${force}`, {
@@ -449,6 +735,7 @@ async function runPublishOnce(dryRun = false, options = {}) {
   });
   if (!nextRes.ok) throw new Error(`/next ${nextRes.status}`);
   const next = await nextRes.json();
+  await setManualPublishStatus("next", { status: next.status, queueId: next.queueId ?? null, blogPostId: next.blogPostId ?? null });
   console.log("[keepioo-naver] next:", next.status);
 
   if (next.status !== "ready") {
@@ -467,16 +754,26 @@ async function runPublishOnce(dryRun = false, options = {}) {
     if (tab) {
       closeWhenDone = false;
       console.log("[keepioo-naver] reusing existing writer tab", tab.id, tab.url);
+      await setManualPublishStatus("reuse_writer_tab", { tabId: tab.id, url: tab.url ?? null });
       await chrome.windows.update(tab.windowId, { focused: true, state: "normal" }).catch(() => undefined);
-      // 기존 글쓰기 탭이 complete 로 돌아오지 않는 stale/loading 상태일 수 있어
-      // 재사용하더라도 항상 글쓰기 URL로 재수렴시킨다.
-      await chrome.tabs.update(tab.id, { url: NAVER_WRITE, active: true }).catch(() => undefined);
+      await chrome.tabs.update(tab.id, { active: true }).catch(() => undefined);
+      // 중요: 기존 글쓰기 탭을 재사용할 때는 URL 재수렴/새로고침을 하지 않는다.
+      // SmartEditor에 작성 중인 내용이 있으면 Chrome/Naver가
+      // "사이트에서 나가시겠습니까?" beforeunload 확인창을 띄우고,
+      // 그 상태에서 자동화가 멈춰 실제 발행 버튼까지 가지 못한다.
+      await setManualPublishStatus("reuse_writer_tab_no_navigation", { tabId: tab.id, url: tab.url ?? null });
     }
   }
 
   if (!tab) {
     if (requireExistingWriter) {
       throw new Error("재사용 가능한 로그인된 네이버 글쓰기 탭 없음 — Default 프로필에서 블로그 글쓰기 화면을 먼저 열어야 합니다");
+    }
+    await setManualPublishStatus("stale_writer_cleanup_start", {});
+    const closedWriterTabs = await closeStaleWriterTabs();
+    if (closedWriterTabs > 0) {
+      await setManualPublishStatus("stale_writer_tabs_closed", { count: closedWriterTabs });
+      await new Promise((r) => setTimeout(r, 700));
     }
     // background window 로 글쓰기 페이지 열기 (focused:false).
     // visibility='visible' 유지 (naver 봇 탐지 회피).
@@ -492,23 +789,30 @@ async function runPublishOnce(dryRun = false, options = {}) {
 
   // 3. tab 로드 대기 (max 90s)
   const ready = await waitForTabReady(tab.id, 90_000);
+  await setManualPublishStatus("tab_ready_checked", { ready, tabId: tab.id });
   if (!ready) {
     const stuckTab = await chrome.tabs.get(tab.id).catch(() => null);
-    if (closeWhenDone && win?.id) await chrome.windows.remove(win.id).catch(() => undefined);
+    await closeWindowIfNeeded(closeWhenDone, win?.id, "tab_ready_timeout");
     throw new Error(`글쓰기 페이지 로드 timeout (status=${stuckTab?.status ?? "unknown"}, url=${String(stuckTab?.url ?? "").slice(0, 120)})`);
   }
   // Naver login redirect can happen just after the first complete event.
   await new Promise((r) => setTimeout(r, 3000));
   // tab.url 검증 — cookies 만료 시 naver 로그인 페이지로 redirect (C-2 fix).
   // blog.naver.com 외 페이지면 cookies 만료. content.js inject 의미 X.
-  const finalTab = await chrome.tabs.get(tab.id);
+  // Chrome can occasionally leave a just-opened SmartEditor tab in a transient
+  // closed/stale state where chrome.tabs.get never settles; bound it so the
+  // dry-run fresh-writer retry can recover instead of timing out the callback.
+  const finalTab = await promiseWithTimeout(chrome.tabs.get(tab.id), 5_000, `tab get timeout:${tab.id}`)
+    .catch((e) => {
+      throw new Error(`No tab with id ${tab.id} after ready check: ${e?.message ?? e}`);
+    });
   if (
     !finalTab.url ||
     finalTab.url.includes("nid.naver.com/nidlogin") ||
     !finalTab.url.includes("blog.naver.com")
   ) {
     if (!allowLoginWait) {
-      if (closeWhenDone && win?.id) await chrome.windows.remove(win.id).catch(() => undefined);
+      await closeWindowIfNeeded(closeWhenDone, win?.id, "tab_ready_timeout");
       // fail audit 보고 (W-1 fix)
       await reportFail(secret, next, `cookies 만료 의심: redirect to ${finalTab.url?.slice(0, 100)}`);
       throw new Error(`cookies 만료 — naver 로그인 redirect (${finalTab.url?.slice(0, 60)})`);
@@ -519,7 +823,7 @@ async function runPublishOnce(dryRun = false, options = {}) {
     await chrome.windows.update(focusWindowId, { focused: true, state: "normal" }).catch(() => undefined);
     const loginOk = await waitForNaverLoginThenReopenWriter(tab.id, 10 * 60_000);
     if (!loginOk) {
-      if (closeWhenDone && win?.id) await chrome.windows.remove(win.id).catch(() => undefined);
+      await closeWindowIfNeeded(closeWhenDone, win?.id, "tab_ready_timeout");
       await reportFail(secret, next, `login wait timeout: ${finalTab.url?.slice(0, 100)}`);
       throw new Error("네이버 로그인 대기 timeout — 같은 창에서 로그인 후 다시 시도");
     }
@@ -528,11 +832,13 @@ async function runPublishOnce(dryRun = false, options = {}) {
   // 4. content.js 강제 inject — manifest content_scripts 가 background window 에서
   //    안정적이지 못한 사고 (Receiving end does not exist) → executeScript 로 직접 inject.
   try {
-    await chrome.scripting.executeScript({
+    await setManualPublishStatus("inject_start", { tabId: tab.id });
+    await promiseWithTimeout(chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ["content.js"],
-    });
+    }), 10_000, "content.js executeScript timeout");
     console.log("[keepioo-naver] content.js executeScript injected");
+    await setManualPublishStatus("inject_done", { tabId: tab.id });
   } catch (e) {
     console.warn("[keepioo-naver] executeScript fail:", e?.message);
   }
@@ -548,16 +854,36 @@ async function runPublishOnce(dryRun = false, options = {}) {
   let result;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      result = await promiseWithTimeout(chrome.tabs.sendMessage(tab.id, {
-        type: "naver-publish",
-        payload: next,
-        dryRun,
-      }), 65_000, "content.js 처리 timeout");
+      await setManualPublishStatus("send_message_start", { tabId: tab.id, attempt });
+      result = await promiseWithTimeout(chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: async (payload, isDryRun) => {
+          if (typeof globalThis.__keepiooPublishToSe3 !== "function") {
+            return { ok: false, error: "content.js publish 함수 미등록" };
+          }
+          try {
+            const result = await globalThis.__keepiooPublishToSe3(payload, isDryRun);
+            return { ok: true, result };
+          } catch (e) {
+            return { ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null };
+          }
+        },
+        args: [next, dryRun],
+      }).then((rows) => rows?.[0]?.result ?? { ok: false, error: "executeScript result 없음" }), 180_000, "content.js 처리 timeout");
+      if (result?.ok === false && /executeScript result 없음|content\.js publish 함수 미등록/.test(String(result.error || "")) && attempt < 3) {
+        await setManualPublishStatus("send_message_retry_after_empty_result", { tabId: tab.id, attempt, error: result.error });
+        await promiseWithTimeout(chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["content.js"],
+        }), 10_000, "content.js reinject timeout").catch(() => undefined);
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
       break;
     } catch (e) {
       const isContentTimeout = String(e?.message ?? e).includes("content.js 처리 timeout");
       if (isContentTimeout || attempt === 3) {
-        if (closeWhenDone && win?.id) await chrome.windows.remove(win.id).catch(() => undefined);
+        await closeWindowIfNeeded(closeWhenDone, win?.id, "tab_ready_timeout");
         // fail audit 보고 (W-1 fix) — throw 전 audit 남김
         await reportFail(secret, next, `sendMessage fail${isContentTimeout ? " timeout" : " x3"}: ${e?.message ?? e}`);
         throw new Error(`content.js 메시지 fail (${isContentTimeout ? "timeout" : "3 attempts"}): ${e?.message ?? e}`);
@@ -571,19 +897,17 @@ async function runPublishOnce(dryRun = false, options = {}) {
   if (result?.ok) {
     const r = result.result;
     const verifiedSuccess = dryRun || Boolean(r?.naverUrl);
-    await fetch(`${KEEPIOO_BASE}/api/naver-extension/published`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        queueId: next.queueId,
-        blogPostId: next.blogPostId,
-        result: dryRun ? "skipped" : (verifiedSuccess ? "success" : "fail"),
-        naverUrl: r.naverUrl ?? null,
-        skipReason: dryRun ? "dry_run" : null,
-        errorMessage: verifiedSuccess ? null : "발행 URL 미검증 — success 처리 차단",
-        details: r.debug,
-      }),
-    });
+    const auditPayload = {
+      queueId: next.queueId,
+      blogPostId: next.blogPostId,
+      result: dryRun ? "skipped" : (verifiedSuccess ? "success" : "fail"),
+      naverUrl: r.naverUrl ?? null,
+      skipReason: dryRun ? "dry_run" : null,
+      errorMessage: verifiedSuccess ? null : "발행 URL 미검증 — success 처리 차단",
+      details: r.debug,
+    };
+    const auditOk = await postPublishedAudit(secret, auditPayload, "success_or_dry_run");
+    await setManualPublishStatus("published_audit_done", { auditOk, dryRun, verifiedSuccess });
     if (!verifiedSuccess) {
       result = { ok: false, error: "발행 URL 미검증 — success 처리 차단", debug: r.debug, result: r };
     }
@@ -591,21 +915,100 @@ async function runPublishOnce(dryRun = false, options = {}) {
     const failDetails = result?.debug && typeof result.debug === "object"
       ? { stage: "content_fail", ...result.debug }
       : { stage: "content_fail" };
-    await fetch(`${KEEPIOO_BASE}/api/naver-extension/published`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        queueId: next.queueId,
-        blogPostId: next.blogPostId,
-        result: "fail",
-        errorMessage: result?.error ?? "unknown",
-        details: failDetails,
-      }),
-    });
+    await postPublishedAudit(secret, {
+      queueId: next.queueId,
+      blogPostId: next.blogPostId,
+      result: "fail",
+      errorMessage: result?.error ?? "unknown",
+      details: failDetails,
+    }, "content_fail");
   }
 
   // 8. window close (사장님 작업 방해 X)
-  if (closeWhenDone && win?.id) await chrome.windows.remove(win.id).catch(() => undefined);
+  await closeWindowIfNeeded(closeWhenDone, win?.id, "runPublishOnce_done");
+  await setManualPublishStatus("done", { dryRun, resultOk: result?.ok !== false });
+  return result;
+}
+
+async function closeWindowIfNeeded(shouldClose, windowId, stage) {
+  // Never close a Naver writer window automatically. If SmartEditor contains
+  // unsaved text, chrome.windows.remove triggers the browser/Naver beforeunload
+  // prompt: "사이트에서 나가시겠습니까?". That prompt blocks the real publish
+  // path right after the article is written. Preserve the window instead and
+  // let the operator close it manually after success/failure is known.
+  if (!shouldClose || !windowId) return false;
+  await setManualPublishStatus("window_close_preserved", { stage, windowId, reason: "avoid_beforeunload_prompt" });
+  return false;
+}
+
+async function runEditPost(msg) {
+  const editUrl = String(msg?.editUrl || "");
+  const payload = msg?.payload;
+  const dryRun = msg?.dryRun === true;
+  if (!editUrl.includes("blog.naver.com") || !editUrl.includes("logNo=")) {
+    throw new Error("manual-edit-post editUrl 누락 또는 형식 오류");
+  }
+  if (!payload?.title || !payload?.bodyHtml) {
+    throw new Error("manual-edit-post payload.title/bodyHtml 누락");
+  }
+
+  await setManualPublishStatus("edit_start", { dryRun, editUrl: editUrl.slice(0, 160) });
+  const win = await chrome.windows.create({ url: editUrl, focused: true });
+  const tab = win.tabs?.[0];
+  if (!tab) throw new Error("edit window.tabs[0] 없음");
+
+  const ready = await waitForTabReady(tab.id, 90_000);
+  await setManualPublishStatus("edit_tab_ready_checked", { ready, tabId: tab.id });
+  if (!ready) {
+    await setManualPublishStatus("edit_window_preserved", { stage: "edit_tab_ready_timeout", windowId: win.id, reason: "avoid_beforeunload_prompt" });
+    throw new Error("수정 페이지 로드 timeout");
+  }
+  await new Promise((r) => setTimeout(r, 3000));
+  const finalTab = await chrome.tabs.get(tab.id);
+  if (!finalTab.url || finalTab.url.includes("nid.naver.com/nidlogin") || !finalTab.url.includes("blog.naver.com")) {
+    await setManualPublishStatus("edit_window_preserved", { stage: "edit_login_or_url_fail", windowId: win.id, reason: "avoid_beforeunload_prompt" });
+    throw new Error(`네이버 로그인/수정 페이지 접근 실패 (${finalTab.url?.slice(0, 100)})`);
+  }
+
+  try {
+    await setManualPublishStatus("edit_inject_start", { tabId: tab.id });
+    await promiseWithTimeout(chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"],
+    }), 10_000, "content.js executeScript timeout");
+    await setManualPublishStatus("edit_inject_done", { tabId: tab.id });
+  } catch (e) {
+    console.warn("[keepioo-naver] edit executeScript fail:", e?.message);
+  }
+  await new Promise((r) => setTimeout(r, 2000));
+  await chrome.windows.update(win.id, { focused: true, state: "normal" }).catch(() => undefined);
+
+  const result = await promiseWithTimeout(chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: async (editPayload, isDryRun) => {
+      if (typeof globalThis.__keepiooPublishToSe3 !== "function") {
+        return { ok: false, error: "content.js publish 함수 미등록" };
+      }
+      try {
+        const result = await globalThis.__keepiooPublishToSe3(editPayload, isDryRun);
+        return { ok: true, result };
+      } catch (e) {
+        return { ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null };
+      }
+    },
+    args: [payload, dryRun],
+  }).then((rows) => rows?.[0]?.result ?? { ok: false, error: "executeScript result 없음" }), 190_000, "edit content.js 처리 timeout");
+
+  if (result?.ok) {
+    await setManualPublishStatus("edit_done", { dryRun, result: result.result?.dryRun ? "dry_run" : "submitted", naverUrl: result.result?.naverUrl ?? null });
+  } else {
+    await setManualPublishStatus("edit_fail", { error: result?.error ?? "unknown", debug: result?.debug ?? null });
+  }
+  if (dryRun) {
+    // dry-run may leave a publish modal open. Do not close the editor window:
+    // Chrome/Naver can show "사이트에서 나가시겠습니까?" and block the session.
+    await setManualPublishStatus("edit_dry_run_window_preserved", { reason: "avoid_beforeunload_prompt" });
+  }
   return result;
 }
 
@@ -617,6 +1020,42 @@ function promiseWithTimeout(promise, timeoutMs, message) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+function setManualPublishStatusBestEffort(stage, extra = {}) {
+  setManualPublishStatus(stage, extra).catch(() => undefined);
+}
+
+async function setManualPublishStatus(stage, extra = {}) {
+  await chrome.storage.local.set({
+    last_manual_publish_status: {
+      stage,
+      at: new Date().toISOString(),
+      ...extra,
+    },
+  }).catch(() => undefined);
+}
+
+async function closeStaleWriterTabs() {
+  // Do not remove writer tabs automatically. Closing or replacing a SmartEditor
+  // tab with unsaved content triggers Chrome/Naver's "사이트에서 나가시겠습니까?"
+  // dialog, which blocks the publish flow and looks like Chrome is repeatedly
+  // opening/closing without posting. Keep this as a no-op; operators can close
+  // stale tabs manually when they are present.
+  const tabs = await promiseWithTimeout(
+    chrome.tabs.query({ url: ["https://blog.naver.com/*", "https://*.blog.naver.com/*"] }),
+    5_000,
+    "closeStaleWriterTabs query timeout",
+  ).catch(() => []);
+  const writerTabs = tabs.filter((tab) => {
+    const url = String(tab.url || "");
+    return !url.includes("nid.naver.com")
+      && (url.includes("Redirect=Write") || url.includes("GoBlogWrite.naver") || url.includes("categoryNo="));
+  }).length;
+  if (writerTabs > 0) {
+    await setManualPublishStatus("stale_writer_tabs_preserved", { count: writerTabs });
+  }
+  return 0;
+}
+
 async function findReusableWriterTab() {
   const tabs = await chrome.tabs.query({ url: ["https://blog.naver.com/*", "https://*.blog.naver.com/*"] });
   const score = (tab) => {
@@ -625,18 +1064,41 @@ async function findReusableWriterTab() {
     if (url.includes("GoBlogWrite.naver")) s += 1000;
     if (url.includes("Redirect=Write")) s += 700;
     if (tab.active) s += 100;
-    // The trigger page becomes active right before this query, so the writer
-    // tab that the owner just opened is usually identified by recent access.
     s += Math.min(Number(tab.lastAccessed || 0) / 1_000_000_000, 50);
     return s;
   };
-  const usable = tabs
+  const candidates = tabs
     .filter((tab) => {
       const url = String(tab.url || "");
-      return url.includes("blog.naver.com") && !url.includes("nid.naver.com");
+      if (!tab.id || !url.includes("blog.naver.com") || url.includes("nid.naver.com") || tab.status !== "complete") return false;
+      // URL alone is not enough. Redirect=Write can still render the blog home
+      // title and contain no SmartEditor, so we verify DOM below before reuse.
+      return url.includes("GoBlogWrite.naver") || url.includes("Redirect=Write");
     })
     .sort((a, b) => score(b) - score(a));
-  return usable[0] || null;
+  for (const tab of candidates) {
+    if (await tabHasSmartEditor(tab.id)) return tab;
+  }
+  return null;
+}
+
+async function tabHasSmartEditor(tabId) {
+  const result = await promiseWithTimeout(chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      const f = document.querySelector("#mainFrame");
+      let root = document;
+      try { if (f?.contentDocument) root = f.contentDocument; } catch (_) {}
+      return Boolean(
+        root.querySelector('.se-section-documentTitle p.se-text-paragraph')
+        || root.querySelector('button[data-click-area="tpb.publish"]')
+        || root.querySelector('.se-main-container')
+      );
+    },
+  }), 4_000, `tabHasSmartEditor timeout:${tabId}`)
+    .then((rows) => rows?.[0]?.result === true)
+    .catch(() => false);
+  return result;
 }
 
 async function waitForTabReady(tabId, timeoutMs) {
@@ -651,14 +1113,17 @@ async function waitForTabReady(tabId, timeoutMs) {
     // even after the SmartEditor document/iframe is already usable. Do not fail
     // the automation just because ads/long-poll resources keep the load spinner.
     if (url.includes("blog.naver.com") && !url.includes("nid.naver.com")) {
-      const usable = await chrome.scripting.executeScript({
+      if (Date.now() - start > 12_000 && (url.includes("Redirect=Write") || url.includes("GoBlogWrite.naver") || url.includes("categoryNo="))) {
+        return true;
+      }
+      const usable = await promiseWithTimeout(chrome.scripting.executeScript({
         target: { tabId },
         func: () => ({
           readyState: document.readyState,
           hasMainFrame: Boolean(document.querySelector("#mainFrame")),
           title: document.title,
         }),
-      }).then((rows) => rows?.[0]?.result).catch(() => null);
+      }), 3_000, "waitForTabReady executeScript timeout").then((rows) => rows?.[0]?.result).catch(() => null);
       if (usable?.hasMainFrame || usable?.readyState === "interactive" || usable?.readyState === "complete") {
         return true;
       }
