@@ -6,6 +6,8 @@
 import { describe, it, expect } from "vitest";
 import {
   cleanDetailBody,
+  extractDetailAttachmentBody,
+  extractDetailAttachmentUrls,
   parseDetailBodyHtml,
 } from "@/lib/news-collectors/korea-kr-detail";
 
@@ -70,5 +72,41 @@ describe("korea-kr-detail cleanDetailBody", () => {
     expect(out).toContain('"녹색"');
     expect(out).toContain("소비 & 친환경");
     expect(out).not.toContain("<p>");
+  });
+});
+
+describe("korea-kr-detail attachment fallback helpers", () => {
+  it("상세 HTML 의 download/docViewer 첨부 URL 을 절대 URL 로 중복 제거", () => {
+    const html = `
+      <a href="/common/download.do?fileId=198492801&amp;tblKey=GMN">첨부</a>
+      <iframe src="/docViewer/iframe_skin/doc.html?fn=test.pdf&amp;rs=/common/docViewer.do?x=1"></iframe>
+      <a href="/common/download.do?fileId=198492801&amp;tblKey=GMN">중복</a>`;
+    expect(
+      extractDetailAttachmentUrls(
+        html,
+        "https://www.korea.kr/briefing/pressReleaseView.do?newsId=1",
+      ),
+    ).toEqual([
+      "https://www.korea.kr/common/download.do?fileId=198492801&tblKey=GMN",
+      "https://www.korea.kr/docViewer/iframe_skin/doc.html?fn=test.pdf&rs=/common/docViewer.do?x=1",
+    ]);
+  });
+
+  it("PDF 매직 버퍼는 PDF 텍스트 추출 결과가 250자 이상이면 본문으로 사용", async () => {
+    const body = await extractDetailAttachmentBody(
+      new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]),
+      async () => 긴본문,
+    );
+    expect(body).toContain("녹색소비주간");
+    expect((body ?? "").length).toBeGreaterThanOrEqual(250);
+  });
+
+  it("PDF 추출 결과가 짧으면 null", async () => {
+    await expect(
+      extractDetailAttachmentBody(
+        new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]),
+        async () => "짧은 보도자료 요약",
+      ),
+    ).resolves.toBeNull();
   });
 });
