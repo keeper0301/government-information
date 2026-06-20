@@ -19,6 +19,17 @@ export type SnsUtmPerformanceRow = {
   activeUsers: number;
 };
 
+export type SnsLeadRecommendationStatus = "keep" | "pause" | "watch" | "needs_data";
+
+export type SnsLeadRecommendation = {
+  content: "lead_0" | "lead_1" | "lead_2";
+  sessions: number;
+  activeUsers: number;
+  sharePct: number;
+  status: SnsLeadRecommendationStatus;
+  reason: string;
+};
+
 export type SnsUtmPerformance = {
   ready: boolean;
   windowDays: number;
@@ -28,6 +39,7 @@ export type SnsUtmPerformance = {
     activeUsers: number;
   };
   bestContent: SnsUtmPerformanceRow | null;
+  leadRecommendations: SnsLeadRecommendation[];
   error: string | null;
 };
 
@@ -89,8 +101,50 @@ export function summarizeSnsUtmPerformance(
     rows,
     totals,
     bestContent: rows[0] ?? null,
+    leadRecommendations: buildLeadRecommendations(rows),
     error,
   };
+}
+
+export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadRecommendation[] {
+  const leadIds: SnsLeadRecommendation["content"][] = ["lead_0", "lead_1", "lead_2"];
+  const threadRows = new Map(
+    rows
+      .filter((row) => row.source === "threads" && leadIds.includes(row.content as SnsLeadRecommendation["content"]))
+      .map((row) => [row.content, row]),
+  );
+  const totalSessions = leadIds.reduce((sum, lead) => sum + (threadRows.get(lead)?.sessions ?? 0), 0);
+  const sorted = leadIds
+    .map((lead) => ({ lead, sessions: threadRows.get(lead)?.sessions ?? 0 }))
+    .sort((a, b) => b.sessions - a.sessions);
+  const winner = sorted[0];
+  const second = sorted[1];
+  const sampledLeadCount = leadIds.filter((lead) => (threadRows.get(lead)?.sessions ?? 0) > 0).length;
+  const hasEnoughData = totalSessions >= 12 && sampledLeadCount >= 2;
+
+  return leadIds.map((lead) => {
+    const row = threadRows.get(lead);
+    const sessions = row?.sessions ?? 0;
+    const activeUsers = row?.activeUsers ?? 0;
+    const sharePct = totalSessions > 0 ? Math.round((sessions / totalSessions) * 100) : 0;
+    let status: SnsLeadRecommendationStatus = "needs_data";
+    let reason = "Threads lead별 클릭 데이터가 아직 부족합니다. 최소 12세션 이상 쌓인 뒤 판단하세요.";
+
+    if (hasEnoughData) {
+      if (lead === winner.lead && sessions >= Math.max(5, second.sessions * 1.4)) {
+        status = "keep";
+        reason = `현재 ${sharePct}% 점유. 2위 대비 차이가 있어 유지 후보입니다.`;
+      } else if (sessions === 0 || sessions <= Math.max(1, Math.floor(totalSessions / leadIds.length / 2))) {
+        status = "pause";
+        reason = `현재 ${sharePct}% 점유. 평균의 절반 이하라 중단/교체 후보입니다.`;
+      } else {
+        status = "watch";
+        reason = `현재 ${sharePct}% 점유. 더 돌려보고 승자와 격차를 확인하세요.`;
+      }
+    }
+
+    return { content: lead, sessions, activeUsers, sharePct, status, reason };
+  });
 }
 
 async function getAccessToken(): Promise<string> {

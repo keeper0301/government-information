@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import type { SnsLeadRecommendationStatus } from "@/lib/analytics/sns-utm-performance";
 import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
 import { loadLatestSnsCaptionPreviews } from "@/lib/sns-control-tower/caption-preview";
 import { loadSnsControlTowerSnapshotDbFirst } from "@/lib/sns-control-tower/registry";
@@ -117,6 +118,26 @@ export default async function SnsControlTowerPage({
                   현재 1등: {utmPerformance.bestContent.source} · {utmPerformance.bestContent.content} · {utmPerformance.bestContent.sessions}세션
                 </p>
               )}
+              <div className="mt-4 rounded-xl border border-blue-200 bg-white p-3">
+                <div className="text-xs font-extrabold text-blue-950">Threads lead 운영 권고</div>
+                <ul className="mt-2 space-y-2">
+                  {utmPerformance.leadRecommendations.map((lead) => (
+                    <li key={lead.content} className="rounded-lg border border-blue-100 bg-blue-50/70 p-2 text-xs text-blue-950">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-extrabold">{lead.content}</div>
+                        <LeadStatusBadge status={lead.status} />
+                      </div>
+                      <div className="mt-1 text-blue-900">
+                        {lead.sessions}세션 · {lead.activeUsers}명 · {lead.sharePct}%
+                      </div>
+                      <div className="mt-1 leading-relaxed text-blue-800">{lead.reason}</div>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[11px] leading-relaxed text-blue-700">
+                  이건 자동 변경이 아니라 운영 판단표다. 실제 lead 중단/비율 변경은 별도 승인 후 적용.
+                </p>
+              </div>
               <ul className="mt-3 space-y-2">
                 {utmPerformance.rows.slice(0, 5).map((row) => (
                   <li key={`${row.source}-${row.content}`} className="rounded-xl bg-white p-3 text-xs text-blue-950">
@@ -386,6 +407,22 @@ function StatusBadge({ status }: { status: SnsPostStatus }) {
     delete_failed_permission: "bg-red-100 text-red-800 border-red-200",
     manually_deleted: "bg-grey-100 text-grey-700 border-grey-200",
     unknown: "bg-grey-100 text-grey-700 border-grey-200",
+  }[status];
+  return <span className={`rounded-full border px-2 py-1 text-[11px] font-extrabold ${className}`}>{label}</span>;
+}
+
+function LeadStatusBadge({ status }: { status: SnsLeadRecommendationStatus }) {
+  const label = {
+    keep: "유지 후보",
+    pause: "중단 후보",
+    watch: "관찰",
+    needs_data: "데이터 부족",
+  }[status];
+  const className = {
+    keep: "bg-green-100 text-green-800 border-green-200",
+    pause: "bg-red-100 text-red-800 border-red-200",
+    watch: "bg-orange-100 text-orange-800 border-orange-200",
+    needs_data: "bg-grey-100 text-grey-700 border-grey-200",
   }[status];
   return <span className={`rounded-full border px-2 py-1 text-[11px] font-extrabold ${className}`}>{label}</span>;
 }
