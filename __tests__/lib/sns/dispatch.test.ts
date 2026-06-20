@@ -30,11 +30,13 @@ describe("buildThreadsText", () => {
     expect(text).toContain("• 수급자 개인의 소득 보완");
     expect(text).toContain("자세히 보기");
     expect(text).toContain("https://www.keepioo.com/blog/basic-pension");
+    expect(text).toContain("utm_source=threads");
+    expect(text).toContain("utm_campaign=blog_auto");
     expect(text).not.toBe("세대를 이어주는 끈, 기초연금\n\nhttps://www.keepioo.com/blog/basic-pension");
     expect(text).toMatch(/^부모님이나 본인의 복지 혜택을 확인 중이라면/);
     expect(text).toMatch(/\n\n원문\n세대를 이어주는 끈, 기초연금\n\n핵심 요약\n/);
     expect(text).toMatch(/\n\n확인 포인트\n• /);
-    expect(text).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\/basic-pension$/);
+    expect(text).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\/basic-pension\?utm_source=threads&/);
     expect(text.length).toBeLessThanOrEqual(500);
     expect(text.replace(/https?:\/\/\S+/g, "").trim().length).toBeGreaterThanOrEqual(120);
   });
@@ -45,12 +47,12 @@ describe("buildThreadsText", () => {
       slug: "2026년-디딤돌-창업중심대학-지원",
     });
 
-    expect(text).toMatch(/^사업을 운영하거나 창업을 준비 중이라면 받을 수 있는 금액과 신청 조건부터 먼저 확인하세요\.\n\n원문\n/);
+    expect(text).toMatch(/^사업을 운영하거나 창업을 준비 중이라면/);
     expect(text).toContain("대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요.");
     expect(text).toContain("확인 포인트");
     expect(text).toContain("• 대상 조건 확인");
     expect(text).toContain("• 한도·금리·상환 조건 확인");
-    expect(text).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\/2026%EB%85%84-%EB%94%94%EB%94%A4%EB%8F%8C-%EC%B0%BD%EC%97%85%EC%A4%91%EC%8B%AC%EB%8C%80%ED%95%99-%EC%A7%80%EC%9B%90$/);
+    expect(text).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\/2026%EB%85%84-%EB%94%94%EB%94%A4%EB%8F%8C-%EC%B0%BD%EC%97%85%EC%A4%91%EC%8B%AC%EB%8C%80%ED%95%99-%EC%A7%80%EC%9B%90\?utm_source=threads&/);
     expect(text).not.toContain("/blog/2026년");
     expect(text.length).toBeLessThanOrEqual(500);
   });
@@ -63,12 +65,23 @@ describe("buildThreadsText", () => {
         "안양시 장애인가정 출산장려금의 대상과 신청 전 확인할 내용을 정리했습니다. 출산 시점과 거주 요건에 따라 지원 여부가 달라질 수 있습니다.",
     });
 
-    expect(text).toMatch(
-      /^안양시에서 장애인가정에 해당된다면 받을 수 있는 금액과 신청 조건부터 먼저 확인하세요\./,
-    );
+    expect(text).toMatch(/^안양시에서 장애인가정에 해당된다면/);
     expect(text).toContain("원문\n2026년 안양시 장애인가정 출산장려금 지원");
     expect(text).toContain("• 출산 시점과 거주 요건");
     expect(text.length).toBeLessThanOrEqual(500);
+  });
+
+  it("Threads 링크에 A/B 리드 추적용 UTM을 붙인다", () => {
+    const text = buildThreadsText({
+      title: "청년 월세 지원 신청 안내",
+      slug: "청년-월세-지원-신청-안내",
+      description: "청년 월세 지원의 대상과 신청 방법을 정리했습니다.",
+    });
+
+    expect(text).toContain("utm_source=threads");
+    expect(text).toContain("utm_medium=social");
+    expect(text).toContain("utm_campaign=blog_auto");
+    expect(text).toMatch(/utm_content=lead_[0-2]/);
   });
 });
 
@@ -94,6 +107,9 @@ describe("dispatchBlogToSns", () => {
     expect(threads.publishThreadsPost).toHaveBeenCalledWith({
       text: expect.stringContaining("https://www.keepioo.com/blog/basic-pension"),
     });
+    expect(threads.publishThreadsPost).toHaveBeenCalledWith({
+      text: expect.stringContaining("utm_source=threads"),
+    });
     expect(out).toEqual([{ channel: "threads", ok: true, id: "th1" }]);
   });
 
@@ -110,9 +126,14 @@ describe("dispatchBlogToSns", () => {
 
     const encodedUrl = "https://www.keepioo.com/blog/2026%EB%85%84-%EC%95%88%EC%96%91%EC%8B%9C-%EC%9E%A5%EC%95%A0%EC%9D%B8%EA%B0%80%EC%A0%95-%EC%B6%9C%EC%82%B0%EC%9E%A5%EB%A0%A4%EA%B8%88-%EC%A7%80%EC%9B%90-%EC%B5%9C%EB%8C%80-n%EB%A7%8C%EC%9B%90-o4muhe6c";
     expect(twitter.publishTweet).toHaveBeenCalledWith(expect.stringContaining(encodedUrl));
-    expect(facebook.publishFacebookPost).toHaveBeenCalledWith(expect.objectContaining({ link: encodedUrl }));
+    expect(twitter.publishTweet).toHaveBeenCalledWith(expect.stringContaining("utm_source=twitter"));
+    expect(facebook.publishFacebookPost).toHaveBeenCalledWith(expect.objectContaining({ link: expect.stringContaining(encodedUrl) }));
+    expect(facebook.publishFacebookPost).toHaveBeenCalledWith(expect.objectContaining({ link: expect.stringContaining("utm_source=facebook") }));
     expect(threads.publishThreadsPost).toHaveBeenCalledWith({
       text: expect.stringContaining(encodedUrl),
+    });
+    expect(threads.publishThreadsPost).toHaveBeenCalledWith({
+      text: expect.stringContaining("utm_source=threads"),
     });
   });
 
@@ -132,8 +153,10 @@ describe("dispatchBlogToSns", () => {
     const threadsText = vi.mocked(threads.publishThreadsPost).mock.calls[0][0].text;
 
     expect(tweetText).toContain(encodedUrl);
+    expect(tweetText).toContain("utm_source=twitter");
     expect(tweetText.length).toBeLessThanOrEqual(280);
     expect(threadsText).toContain(encodedUrl);
+    expect(threadsText).toContain("utm_source=threads");
     expect(threadsText).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\//);
     expect(threadsText.length).toBeLessThanOrEqual(500);
   });

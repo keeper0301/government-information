@@ -29,6 +29,7 @@ export interface SnsDispatchResult {
 const SITE_BASE = "https://www.keepioo.com";
 const ALL_CHANNELS: SnsChannel[] = ["twitter", "facebook", "threads"];
 const THREADS_TEXT_LIMIT = 500;
+const CHECK_POINT_LIMIT = 3;
 
 function normalizeShareText(value: string): string {
   return value
@@ -53,8 +54,28 @@ function appendWithinLimit(lines: string[], line: string, fixedTail: string): bo
   return true;
 }
 
-function buildBlogUrl(slug: string): string {
-  return `${SITE_BASE}/blog/${encodeURIComponent(slug)}`;
+function stableBucket(value: string, buckets: number): number {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) + hash + value.charCodeAt(i)) >>> 0;
+  }
+  return hash % buckets;
+}
+
+function buildBlogUrl(
+  slug: string,
+  source?: SnsChannel,
+  content?: string,
+): string {
+  const base = `${SITE_BASE}/blog/${encodeURIComponent(slug)}`;
+  if (!source) return base;
+  const params = new URLSearchParams({
+    utm_source: source,
+    utm_medium: "social",
+    utm_campaign: "blog_auto",
+  });
+  if (content) params.set("utm_content", content);
+  return `${base}?${params.toString()}`;
 }
 
 function ellipsize(value: string, maxLength: number): string {
@@ -97,15 +118,18 @@ function detectAction(title: string): string {
   return "내 조건에 맞는지 핵심만 먼저 확인하세요.";
 }
 
-function buildHumanLead(title: string): string {
+function buildHumanLead(title: string, variant: number): string {
   const region = detectRegion(title);
   const audience = detectAudience(title);
   const action = detectAction(title);
   const prefix = [region ? `${region}에서` : null, audience]
     .filter(Boolean)
     .join(" ");
-  if (prefix) return `${prefix} ${action}`;
-  return `이 정책이 내 상황에 맞는지 ${action}`;
+  const subject = prefix || "이 정책이 내 상황에 맞는지";
+  const direct = `${subject} ${action}`;
+  const lossAvoidance = `${subject} 조건이 맞는데 놓치면 아까운 지원입니다. ${action}`;
+  const checklist = `${subject} 신청 전 3가지만 보세요: 대상, 혜택, 마감.`;
+  return [direct, lossAvoidance, checklist][variant] ?? direct;
 }
 
 function fallbackCheckPoints(title: string): string[] {
@@ -116,9 +140,23 @@ function fallbackCheckPoints(title: string): string[] {
   return points.map((point) => `${point} 확인`);
 }
 
+function buildCheckPoints(title: string, points: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const point of [...points, ...fallbackCheckPoints(title)]) {
+    const clean = ellipsize(normalizeShareText(point), 86);
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+    if (out.length >= CHECK_POINT_LIMIT) break;
+  }
+  return out;
+}
+
 export function buildThreadsText(post: BlogPostShare): string {
-  const url = buildBlogUrl(post.slug);
   const title = normalizeShareText(post.title);
+  const variant = stableBucket(`${post.slug}:${title}`, 3);
+  const url = buildBlogUrl(post.slug, "threads", `lead_${variant}`);
   const fallback =
     "대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요. 해당되는 사람은 마감과 기준이 달라질 수 있어 원문 확인이 필요합니다.";
   const hasDescription = Boolean(post.description?.trim());
@@ -127,39 +165,51 @@ export function buildThreadsText(post: BlogPostShare): string {
   const points = hasDescription
     ? sentences.slice(1, 4).map(normalizeShareText).filter(Boolean)
     : [];
-  const readablePoints = points.length > 0 ? points : fallbackCheckPoints(title);
+  const readablePoints = buildCheckPoints(title, points);
   const tail = `\n자세히 보기\n${url}`;
-  const lead = buildHumanLead(title);
+  const lead = buildHumanLead(title, variant);
   const lines = [lead, "", "원문", title, "", "핵심 요약", summary];
 
+  let addedPoints = 0;
   if (readablePoints.length > 0) {
-    appendWithinLimit(lines, "", tail);
-    appendWithinLimit(lines, "확인 포인트", tail);
-    for (const point of readablePoints) {
-      if (!appendWithinLimit(lines, `• ${point}`, tail)) break;
+    const sectionStart = [...lines, "", "확인 포인트"];
+    const firstPointCandidate = [...sectionStart, `• ${readablePoints[0]}`, tail].join("\n");
+    if (firstPointCandidate.length <= THREADS_TEXT_LIMIT) {
+      lines.push("", "확인 포인트");
+      for (const point of readablePoints) {
+        if (!appendWithinLimit(lines, `• ${point}`, tail)) break;
+        addedPoints += 1;
+      }
     }
   }
 
   const text = `${lines.join("\n")}\n${tail}`;
-  if (text.length <= THREADS_TEXT_LIMIT) return text;
+  if (text.length <= THREADS_TEXT_LIMIT && addedPoints > 0) return text;
 
-  const minimalTemplate = (safeLead: string, safeTitle: string, safeSummary: string) =>
-    `${safeLead}\n\n원문\n${safeTitle}\n\n핵심 요약\n${safeSummary}\n\n자세히 보기\n${url}`;
+  const topPoint = readablePoints[0] ?? "대상 조건 확인";
+  const minimalTemplate = (
+    safeLead: string,
+    safeTitle: string,
+    safeSummary: string,
+    safePoint: string,
+  ) =>
+    `${safeLead}\n\n원문\n${safeTitle}\n\n핵심 요약\n${safeSummary}\n\n확인 포인트\n• ${safePoint}\n\n자세히 보기\n${url}`;
   const fixedWithoutVariableText =
-    "\n\n원문\n\n핵심 요약\n\n자세히 보기\n".length + url.length;
-  const safeLead = ellipsize(lead, 90);
-  const minSummaryLength = 40;
+    "\n\n원문\n\n핵심 요약\n\n확인 포인트\n• \n\n자세히 보기\n".length + url.length;
+  const safeLead = ellipsize(lead, 72);
+  const safePoint = ellipsize(topPoint, 54);
+  const minSummaryLength = 34;
   const titleBudget = Math.max(
     1,
-    THREADS_TEXT_LIMIT - fixedWithoutVariableText - safeLead.length - minSummaryLength,
+    THREADS_TEXT_LIMIT - fixedWithoutVariableText - safeLead.length - safePoint.length - minSummaryLength,
   );
   const safeTitle = ellipsize(title, titleBudget);
   const summaryBudget = Math.max(
     0,
-    THREADS_TEXT_LIMIT - minimalTemplate(safeLead, safeTitle, "").length,
+    THREADS_TEXT_LIMIT - minimalTemplate(safeLead, safeTitle, "", safePoint).length,
   );
   const safeSummary = ellipsize(summary, summaryBudget);
-  const fallbackText = minimalTemplate(safeLead, safeTitle, safeSummary);
+  const fallbackText = minimalTemplate(safeLead, safeTitle, safeSummary, safePoint);
 
   return fallbackText.length <= THREADS_TEXT_LIMIT
     ? fallbackText
@@ -170,12 +220,13 @@ export async function dispatchBlogToSns(
   post: BlogPostShare,
   opts: { channels?: SnsChannel[] } = {},
 ): Promise<SnsDispatchResult[]> {
-  const url = buildBlogUrl(post.slug);
+  const twitterUrl = buildBlogUrl(post.slug, "twitter", "link");
+  const facebookUrl = buildBlogUrl(post.slug, "facebook", "link");
   const title = post.title;
   // 캡션 / 메시지 — 채널별 길이 제한. 단순 한국어 default.
   const desc = post.description?.slice(0, 100) ?? "";
-  const tweetTitle = ellipsize(title, Math.max(1, 280 - url.length - 2));
-  const tweetText = `${tweetTitle}\n\n${url}`.slice(0, 280);
+  const tweetTitle = ellipsize(title, Math.max(1, 280 - twitterUrl.length - 2));
+  const tweetText = `${tweetTitle}\n\n${twitterUrl}`.slice(0, 280);
   const fbMessage = `${title}\n\n${desc}`.slice(0, 500);
   const threadsText = buildThreadsText(post);
   const channelSet = new Set(opts.channels ?? ALL_CHANNELS);
@@ -190,7 +241,7 @@ export async function dispatchBlogToSns(
     })));
   }
   if (channelSet.has("facebook")) {
-    tasks.push(publishFacebookPost({ message: fbMessage, link: url }).then((r) => ({
+    tasks.push(publishFacebookPost({ message: fbMessage, link: facebookUrl }).then((r) => ({
       channel: "facebook" as SnsChannel,
       ok: r.ok,
       id: r.ok ? r.id : undefined,
