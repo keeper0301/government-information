@@ -9,7 +9,6 @@ import {
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
-import { extractText, getDocumentProxy } from "unpdf";
 
 const LIST_URL = "https://www.busan.go.kr/nbtnewsBU";
 const DETAIL_BASE = "https://www.busan.go.kr/nbtnewsBU/";
@@ -79,6 +78,16 @@ const BUSAN_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const PDF_ATTACH_REGEX = /href="(\/comm\/getFile\?[^"]*fileTy=ATTACH[^"]*)"/i;
 
+async function loadUnpdf(): Promise<typeof import("unpdf")> {
+  // Next webpack traces even `await import("unpdf")` and emits import.meta warnings.
+  // Keep this dependency out of the route bundle graph; PDF parsing only runs inside
+  // the Node cron collector path after a confirmed PDF attachment download.
+  const dynamicImport = new Function("specifier", "return import(specifier)") as (
+    specifier: string,
+  ) => Promise<typeof import("unpdf")>;
+  return dynamicImport("unpdf");
+}
+
 // PDF 전문에서 보도자료 표준 메타 머리(담당부서·전화·유형·공개여부·"※…표시")를 가능하면
 // 제거. PDF 텍스트 레이아웃이 불규칙해 실패 시 전체 유지(전문 확보 우선).
 export function stripPdfMeta(text: string): string {
@@ -109,6 +118,9 @@ async function fetchPdfBody(html: string): Promise<string | null> {
     if (buf[0] !== 0x25 || buf[1] !== 0x50 || buf[2] !== 0x44 || buf[3] !== 0x46) {
       return null;
     }
+    // unpdf 는 내부에서 import.meta 직접 접근을 사용한다. route/module graph 에 걸면
+    // Next webpack build 가 모든 cron route trace 에 경고를 띄우므로 우회 로더로 지연 로드한다.
+    const { extractText, getDocumentProxy } = await loadUnpdf();
     const pdf = await getDocumentProxy(buf);
     const { text } = await extractText(pdf, { mergePages: true });
     const body = stripPdfMeta(text);
