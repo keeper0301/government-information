@@ -8,6 +8,7 @@
 
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 
 export type ProgramCounts = {
   news_total: number;
@@ -53,6 +54,8 @@ async function withTimeout<T>(
 
 // 누적·오늘·이번 주 신규 카운트. KST 기준.
 export const getProgramCounts = cache(async (): Promise<ProgramCounts> => {
+  if (!hasSupabaseAnonEnv()) return EMPTY_COUNTS;
+
   const supabase = await createClient();
   return withTimeout(
     supabase.rpc("get_program_counts").then(({ data, error }) => {
@@ -69,6 +72,8 @@ export const getProgramCounts = cache(async (): Promise<ProgramCounts> => {
 
 // 시·도 + 전국 카운트. region prefix 매칭. RegionMap 용.
 export const getWelfareRegionCounts = cache(async (): Promise<RegionCounts> => {
+  if (!hasSupabaseAnonEnv()) return {};
+
   const supabase = await createClient();
   return withTimeout(
     supabase.rpc("get_welfare_region_counts").then(({ data, error }) => {

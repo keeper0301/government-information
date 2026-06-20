@@ -1,23 +1,21 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
-import { AlarmButton } from "@/components/alarm-button";
 import { ShareButton } from "@/components/share-button";
-import { BookmarkButton } from "@/components/bookmark-button";
 import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema, BreadcrumbSchema, FAQSchema } from "@/components/json-ld";
 import { ProgramViewTracker } from "@/components/analytics/program-view-tracker";
-import { ApplyClickTracker } from "@/components/analytics/apply-click-tracker";
 import { SummaryItem } from "@/components/summary-item";
 import { SparseDataNotice } from "@/components/sparse-data-notice";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
-import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
+import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
+import { ProgramActionCard } from "@/components/program-action-card";
 import { buildPolicyFaqs } from "@/lib/policy-faq";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import type { Metadata } from "next";
@@ -260,6 +258,19 @@ export default async function WelfareDetailPage({ params }: Props) {
         </div>
       )}
 
+      <ProgramActionCard
+        kind="welfare"
+        programId={program.id}
+        title={program.title}
+        source={program.source}
+        sourcePage={`/welfare/${program.id}`}
+        applyUrl={safeApplyUrl}
+        applyEnd={program.apply_end}
+        dday={dday}
+        isClosed={isClosed}
+        updatedAt={program.updated_at}
+      />
+
       {/* 빈약 안내 박스 — 카드 위 배치 유지 (loan 과 동일). */}
       {sparseVariant && (
         <SparseDataNotice
@@ -362,42 +373,8 @@ export default async function WelfareDetailPage({ params }: Props) {
         </InfoSection>
       )}
 
-      {/* Action buttons — 콘텐츠 전체를 본 뒤 최종 CTA. 3단 분기 유지.
-          Phase A apply_click event 자동 기록 (ApplyClickTracker wrapper). */}
+      {/* 신청/알림/북마크 CTA 는 상단 ProgramActionCard 로 단일화. */}
       <div className="flex gap-3 flex-wrap mb-10 mt-6">
-        {safeApplyUrl && isDeepLink(safeApplyUrl) ? (
-          <ApplyClickTracker
-            programId={program.id}
-            programTable="welfare_programs"
-            sourcePage={`/welfare/${program.id}`}
-            href={safeApplyUrl}
-            className="px-6 py-3 bg-blue-500 text-white text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-600 transition-colors"
-          >
-            신청하기
-          </ApplyClickTracker>
-        ) : safeApplyUrl ? (
-          <ApplyClickTracker
-            programId={program.id}
-            programTable="welfare_programs"
-            sourcePage={`/welfare/${program.id}`}
-            href={safeApplyUrl}
-            className="px-6 py-3 bg-grey-100 text-grey-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-grey-200 transition-colors"
-          >
-            {program.source} 홈페이지 방문
-          </ApplyClickTracker>
-        ) : (
-          <a
-            href={`https://www.google.com/search?q=${encodeURIComponent(program.source + ' ' + program.title + ' 신청')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-3 bg-grey-100 text-grey-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-grey-200 transition-colors"
-          >
-            {program.source}에서 신청 방법 찾기
-          </a>
-        )}
-        <AlarmButton programId={program.id} programType="welfare" />
-        {/* 정적 ISR — props 생략 시 BookmarkButton 이 클라이언트에서 로그인·북마크 self-fetch */}
-        <BookmarkButton programType="welfare" programId={program.id} />
         <ShareButton />
         {/* Pro 신청서 초안 — 모든 사용자에게 노출, 비Pro 는 server 가드가 /pricing redirect.
             ISR 유지 위해 tier 분기는 client/redirect 로 처리. */}

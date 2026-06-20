@@ -9,10 +9,16 @@
 // ============================================================
 
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { needsReconsent } from "@/lib/consent";
 import { ReconsentBanner } from "./reconsent-banner";
 
 export async function ReconsentBannerContainer() {
+  // 로컬/CI의 정적 build 에서 Supabase env 가 없으면 @supabase/ssr client 생성이
+  // throw 하며 /offline 같은 완전 정적 페이지까지 prerender 실패한다. 배너는 로그인
+  // 사용자 보조 UI 이므로 env 없는 빌드에서는 안전하게 생략한다.
+  if (!hasSupabaseAnonEnv()) return null;
+
   const supabase = await createClient();
   const {
     data: { user },

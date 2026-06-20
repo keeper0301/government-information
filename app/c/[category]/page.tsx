@@ -20,6 +20,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { CohortCtaBanner } from "@/components/cohort-cta-banner";
@@ -91,82 +92,80 @@ export default async function CategoryHubPage({ params }: PageProps) {
   const hub = getCategoryHub(category);
   if (!hub) notFound();
 
-  const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
   const orClause = buildHubOrClause(hub);
+  const emptyResult = { data: [] };
 
   // ============================================================
   // 4 fetch 병렬 실행 — welfare/loan 추천 + 마감 임박 + 가이드 + 블로그
   // ============================================================
-  // welfare/loan 각각:
-  //   - 활성 정책 (apply_end >= today OR null)
-  //   - source_code 제외 필터 (stale 데이터 차단)
-  //   - or-clause 매칭 (benefit/age/occupation 세 축 합집합)
-  //   - apply_end 오름차순 → 20건 fetch (한 번에 가져와 마감 임박 5 + 추천 5
-  //     클라이언트 분배. 20 = 충분한 분배 풀 — 5건 분리 후에도 여유 보장)
-  //
-  // PostgREST 에서 .or() 안에 빈 인자 넣으면 신택스 에러 → orClause null 가드.
-  //
-  // 한 query 에 .or() 두 번 호출 — supabase-js 가 두 .or() 를 자동으로 AND 결합.
-  // 의도: (apply_end 활성) AND (세 축 매칭). 별도 .filter() 분리보다 간결.
-  // ============================================================
-  // 인사이트 발췌 fetch — unique_insight 보유 + hub 매칭 정책, view_count 인기순.
-  // 백필 초기 (welfare 0.44%, loan 10%) 라 매칭 0~3건 가변. graceful: data 없으면 섹션 자체 안 보임.
-  const [welfareRes, loanRes, guidesAll, blogRes, insightWelfareRes, insightLoanRes] = await Promise.all([
-    (async () => {
-      let q = supabase
-        .from("welfare_programs")
-        .select("*")
-        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-        .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
-        .or(`apply_end.gte.${today},apply_end.is.null`);
-      if (orClause) q = q.or(orClause);
-      return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
-    })(),
-    (async () => {
-      let q = supabase
-        .from("loan_programs")
-        .select("*")
-        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-        .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
-        .or(`apply_end.gte.${today},apply_end.is.null`);
-      if (orClause) q = q.or(orClause);
-      return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
-    })(),
-    // 가이드는 hub 라벨이 일부 일치하는 5건 정도 후보 가져온 뒤 클라이언트에서
-    // 첫 N개 사용. policy_guides 자체에 카테고리 컬럼 없어 단순 latest 채택.
-    getGuides(GUIDE_LIMIT),
-    // 블로그 — blog_posts.category = blogCategory 정확 매칭, 발행된 글만.
-    hub.blogCategory
-      ? supabase
-          .from("blog_posts")
-          .select("slug, title, category, published_at")
-          .eq("category", hub.blogCategory)
-          .not("published_at", "is", null)
-          .order("published_at", { ascending: false })
-          .limit(BLOG_LIMIT)
-      : Promise.resolve({ data: [] }),
-    (async () => {
-      let q = supabase
-        .from("welfare_programs")
-        .select("id, title, unique_insight, view_count")
-        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-        .is("duplicate_of_id", null)
-        .not("unique_insight", "is", null);
-      if (orClause) q = q.or(orClause);
-      return q.order("view_count", { ascending: false, nullsFirst: false }).limit(INSIGHT_LIMIT);
-    })(),
-    (async () => {
-      let q = supabase
-        .from("loan_programs")
-        .select("id, title, unique_insight, view_count")
-        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-        .is("duplicate_of_id", null)
-        .not("unique_insight", "is", null);
-      if (orClause) q = q.or(orClause);
-      return q.order("view_count", { ascending: false, nullsFirst: false }).limit(INSIGHT_LIMIT);
-    })(),
-  ]);
+  // Supabase env 가 없는 로컬/CI 정적 build 에서는 DB 의존 섹션을 빈 상태로 렌더한다.
+  // 실제 Vercel/운영 env 에서는 기존 query 경로 그대로 실행된다.
+  const [welfareRes, loanRes, guidesAll, blogRes, insightWelfareRes, insightLoanRes] =
+    hasSupabaseAnonEnv()
+      ? await (async () => {
+          const supabase = await createClient();
+          return Promise.all([
+            (async () => {
+              let q = supabase
+                .from("welfare_programs")
+                .select("*")
+                .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+                .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
+                .or(`apply_end.gte.${today},apply_end.is.null`);
+              if (orClause) q = q.or(orClause);
+              return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
+            })(),
+            (async () => {
+              let q = supabase
+                .from("loan_programs")
+                .select("*")
+                .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+                .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
+                .or(`apply_end.gte.${today},apply_end.is.null`);
+              if (orClause) q = q.or(orClause);
+              return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
+            })(),
+            getGuides(GUIDE_LIMIT),
+            hub.blogCategory
+              ? supabase
+                  .from("blog_posts")
+                  .select("slug, title, category, published_at")
+                  .eq("category", hub.blogCategory)
+                  .not("published_at", "is", null)
+                  .order("published_at", { ascending: false })
+                  .limit(BLOG_LIMIT)
+              : Promise.resolve(emptyResult),
+            (async () => {
+              let q = supabase
+                .from("welfare_programs")
+                .select("id, title, unique_insight, view_count")
+                .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+                .is("duplicate_of_id", null)
+                .not("unique_insight", "is", null);
+              if (orClause) q = q.or(orClause);
+              return q.order("view_count", { ascending: false, nullsFirst: false }).limit(INSIGHT_LIMIT);
+            })(),
+            (async () => {
+              let q = supabase
+                .from("loan_programs")
+                .select("id, title, unique_insight, view_count")
+                .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+                .is("duplicate_of_id", null)
+                .not("unique_insight", "is", null);
+              if (orClause) q = q.or(orClause);
+              return q.order("view_count", { ascending: false, nullsFirst: false }).limit(INSIGHT_LIMIT);
+            })(),
+          ]);
+        })()
+      : await Promise.all([
+          Promise.resolve(emptyResult),
+          Promise.resolve(emptyResult),
+          getGuides(GUIDE_LIMIT),
+          Promise.resolve(emptyResult),
+          Promise.resolve(emptyResult),
+          Promise.resolve(emptyResult),
+        ]);
 
   const welfareRows = (welfareRes.data ?? []) as WelfareProgram[];
   const loanRows = (loanRes.data ?? []) as LoanProgram[];

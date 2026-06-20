@@ -18,6 +18,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { ProgramRow } from "@/components/program-row";
 import { loanToDisplay } from "@/lib/programs";
 import {
@@ -79,35 +80,41 @@ export default async function LoanRegionPage({ params }: PageProps) {
   if (!province) notFound();
 
   const shortName = PROVINCE_CODE_TO_SHORT[code as ProvinceCode] ?? province.name;
-  const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0];
+  let programs: ReturnType<typeof loanToDisplay>[] = [];
+  let count: number | null = null;
 
-  // loan region 매칭 — 본 /loan 의 applyFilters 와 동일 전략:
-  //   1) region_tags 배열에 짧은 이름 포함 (예: ['전남']) — cs:'{전남}'
-  //   2) title prefix [전남] 또는 (전남 형식 — title.ilike
-  // 두 갈래 OR 로 표기 변형 모두 흡수.
-  const patterns = getRegionMatchPatterns(shortName); // 예: ["전라남도", "전남"]
-  const orParts: string[] = [];
-  for (const p of patterns) {
-    // region_tags array contains 매칭 — PostgREST cs (contains) 연산자
-    orParts.push(`region_tags.cs.{${p}}`);
-    // title prefix 매칭 — 대괄호·괄호 두 변형
-    orParts.push(`title.ilike.%[${p}%`);
-    orParts.push(`title.ilike.%(${p}%`);
+  if (hasSupabaseAnonEnv()) {
+    const supabase = await createClient();
+
+    // loan region 매칭 — 본 /loan 의 applyFilters 와 동일 전략:
+    //   1) region_tags 배열에 짧은 이름 포함 (예: ['전남']) — cs:'{전남}'
+    //   2) title prefix [전남] 또는 (전남 형식 — title.ilike
+    // 두 갈래 OR 로 표기 변형 모두 흡수.
+    const patterns = getRegionMatchPatterns(shortName); // 예: ["전라남도", "전남"]
+    const orParts: string[] = [];
+    for (const p of patterns) {
+      // region_tags array contains 매칭 — PostgREST cs (contains) 연산자
+      orParts.push(`region_tags.cs.{${p}}`);
+      // title prefix 매칭 — 대괄호·괄호 두 변형
+      orParts.push(`title.ilike.%[${p}%`);
+      orParts.push(`title.ilike.%(${p}%`);
+    }
+    const orClause = orParts.join(",");
+
+    const result = await supabase
+      .from("loan_programs")
+      .select("*", { count: "exact" })
+      .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+      .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
+      .or(orClause)
+      .or(`apply_end.gte.${today},apply_end.is.null`)
+      .order("apply_end", { ascending: true, nullsFirst: false })
+      .limit(DISPLAY_LIMIT);
+
+    count = result.count;
+    programs = (result.data || []).map(loanToDisplay);
   }
-  const orClause = orParts.join(",");
-
-  const { data, count } = await supabase
-    .from("loan_programs")
-    .select("*", { count: "exact" })
-    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-    .is("duplicate_of_id", null) // 중복 정책 (Phase 3 B3) 사용자 노출 차단
-    .or(orClause)
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(DISPLAY_LIMIT);
-
-  const programs = (data || []).map(loanToDisplay);
 
   const jsonLd = {
     "@context": "https://schema.org",
