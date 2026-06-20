@@ -11,6 +11,7 @@
 
 import { fetchWithTimeout } from "@/lib/collectors";
 import { toMarkdown } from "@ohah/hwpjs";
+import { inflateRawSync } from "node:zlib";
 
 const UA = "Mozilla/5.0 keepioo-bot (+https://www.keepioo.com)";
 const KOREA_BASE_URL = "https://www.korea.kr";
@@ -90,6 +91,90 @@ function hasKoreanLongBody(text: string): boolean {
   return /[가-힣]/.test(text) && text.length >= 250;
 }
 
+function decodeXmlEntities(text: string): string {
+  return text
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) =>
+      String.fromCodePoint(parseInt(n, 16)),
+    );
+}
+
+function cleanHwpxText(text: string): string {
+  return decodeXmlEntities(text)
+    .replace(/[<>]+/g, " ")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function readZipEntries(buf: Uint8Array): Map<string, Buffer> {
+  const data = Buffer.from(buf);
+  const entries = new Map<string, Buffer>();
+  let offset = 0;
+
+  while (offset + 30 <= data.length) {
+    const sig = data.readUInt32LE(offset);
+    if (sig !== 0x04034b50) break; // local file header
+
+    const flags = data.readUInt16LE(offset + 6);
+    const method = data.readUInt16LE(offset + 8);
+    const compressedSize = data.readUInt32LE(offset + 18);
+    const uncompressedSize = data.readUInt32LE(offset + 22);
+    const nameLen = data.readUInt16LE(offset + 26);
+    const extraLen = data.readUInt16LE(offset + 28);
+    const nameStart = offset + 30;
+    const payloadStart = nameStart + nameLen + extraLen;
+    if (payloadStart > data.length) break;
+
+    const name = data.subarray(nameStart, nameStart + nameLen).toString("utf8");
+    if ((flags & 0x08) !== 0 || compressedSize === 0xffffffff || uncompressedSize === 0xffffffff) {
+      break; // data descriptor/ZIP64 는 korea.kr HWPX 에서 관찰되지 않음. 안전하게 탈출.
+    }
+
+    const payloadEnd = payloadStart + compressedSize;
+    if (payloadEnd > data.length) break;
+    const payload = data.subarray(payloadStart, payloadEnd);
+
+    if (!name.endsWith("/")) {
+      if (method === 0) entries.set(name, Buffer.from(payload));
+      else if (method === 8) entries.set(name, inflateRawSync(payload));
+    }
+
+    offset = payloadEnd;
+  }
+
+  return entries;
+}
+
+function extractHwpxBody(buf: Uint8Array): string | null {
+  try {
+    const entries = readZipEntries(buf);
+    const preview = entries.get("Preview/PrvText.txt");
+    if (preview) {
+      const body = cleanHwpxText(preview.toString("utf8")).replace(/\s+/g, " ").trim();
+      if (hasKoreanLongBody(body)) return body.slice(0, 20000);
+    }
+
+    const sectionTexts = [...entries.entries()]
+      .filter(([name]) => /^Contents\/section\d+\.xml$/i.test(name))
+      .sort(([a], [b]) => a.localeCompare(b, "en", { numeric: true }))
+      .map(([, content]) => content.toString("utf8"))
+      .flatMap((xml) => [...xml.matchAll(/<hp:t[^>]*>([\s\S]*?)<\/hp:t>/g)].map((m) => m[1]))
+      .join(" ");
+
+    const body = cleanHwpxText(sectionTexts).replace(/\s+/g, " ").trim();
+    return hasKoreanLongBody(body) ? body.slice(0, 20000) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function extractDetailAttachmentUrls(
   html: string,
   baseUrl: string = KOREA_BASE_URL,
@@ -140,6 +225,11 @@ export async function extractDetailAttachmentBody(
     });
     const body = cleanHwpMarkdown(markdown).replace(/\s+/g, " ").trim();
     return hasKoreanLongBody(body) ? body.slice(0, 20000) : null;
+  }
+
+  // HWPX (ZIP 매직 PK) — Preview/PrvText.txt 또는 Contents/section*.xml 에서 전문 추출.
+  if (buf[0] === 0x50 && buf[1] === 0x4b) {
+    return extractHwpxBody(buf);
   }
 
   return null;
