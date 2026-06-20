@@ -5,12 +5,18 @@ import type { SnsLeadExperimentAction, SnsLeadRecommendationStatus } from "@/lib
 import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
 import { loadLatestSnsCaptionPreviews } from "@/lib/sns-control-tower/caption-preview";
 import {
-  CHALLENGER_LEAD_TRAFFIC_PCT,
+  CHALLENGER_LEAD_TRAFFIC_STAGES,
   CHALLENGER_LEAD_VARIANTS,
   loadSnsLeadPolicySnapshot,
+  nextChallengerTrafficPct,
 } from "@/lib/sns-control-tower/lead-policy";
 import { loadSnsControlTowerSnapshotDbFirst } from "@/lib/sns-control-tower/registry";
-import { importLocalReportsAction, markManualDeletedAction, setLeadPolicyAction } from "./actions";
+import {
+  importLocalReportsAction,
+  markManualDeletedAction,
+  setChallengerTrafficAction,
+  setLeadPolicyAction,
+} from "./actions";
 import type { SnsPostStatus, SnsPublishedPost } from "@/lib/sns-control-tower/types";
 
 export const metadata: Metadata = {
@@ -41,6 +47,10 @@ export default async function SnsControlTowerPage({
   const failedDeletionPosts = snapshot.posts.filter((post) => post.status === "delete_failed_permission");
   const leadRecommendationByContent = new Map(
     utmPerformance.leadRecommendations.map((lead) => [lead.content, lead]),
+  );
+  const nextTrafficPct = nextChallengerTrafficPct(leadPolicy.challengerTrafficPct);
+  const hasExpansionCandidate = utmPerformance.leadRecommendations.some(
+    (lead) => lead.experiment.action === "expand",
   );
 
   return (
@@ -169,7 +179,7 @@ export default async function SnsControlTowerPage({
                       const recommendation = leadRecommendationByContent.get(policy.content);
                       const isChallenger = CHALLENGER_LEAD_VARIANTS.includes(policy.content);
                       const activeReason = isChallenger
-                        ? `관리자 승인: challenger 제한 노출 최대 ${CHALLENGER_LEAD_TRAFFIC_PCT}% 실험`
+                        ? `관리자 승인: challenger 제한 노출 최대 ${leadPolicy.challengerTrafficPct}% 실험`
                         : "관리자 승인: lead 재사용";
                       const pauseReason = recommendation
                         ? `관리자 승인: ${recommendation.pauseImpact.summary}`
@@ -179,7 +189,7 @@ export default async function SnsControlTowerPage({
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="font-extrabold">{policy.content}</span>
                             <span className={policy.status === "paused" ? "font-bold text-red-700" : "font-bold text-green-700"}>
-                              {policy.status === "paused" ? "중단 적용 중" : isChallenger ? `제한 실험 중 · 최대 ${CHALLENGER_LEAD_TRAFFIC_PCT}%` : "사용 중"}
+                              {policy.status === "paused" ? "중단 적용 중" : isChallenger ? `제한 실험 중 · 최대 ${leadPolicy.challengerTrafficPct}%` : "사용 중"}
                             </span>
                           </div>
                           {policy.reason && <div className="mt-1 text-blue-700">사유: {policy.reason}</div>}
@@ -210,6 +220,65 @@ export default async function SnsControlTowerPage({
                       );
                     })}
                   </ul>
+                  <div className="mt-3 rounded-xl border border-purple-100 bg-purple-50 p-3 text-xs text-purple-950">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-extrabold">challenger 제한 노출 단계</div>
+                        <p className="mt-1 leading-relaxed">
+                          현재 최대 {leadPolicy.challengerTrafficPct}% · 단계 {CHALLENGER_LEAD_TRAFFIC_STAGES.join(" → ")}%.
+                          확대 후보가 있을 때만 다음 단계 승인 버튼을 누르는 구조다.
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-purple-200 bg-white px-2 py-1 text-[11px] font-extrabold text-purple-900">
+                        현재 {leadPolicy.challengerTrafficPct}%
+                      </span>
+                    </div>
+                    {leadPolicy.challengerTrafficReason && (
+                      <p className="mt-2 leading-relaxed text-purple-800">최근 사유: {leadPolicy.challengerTrafficReason}</p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {nextTrafficPct ? (
+                        <form action={setChallengerTrafficAction}>
+                          <input type="hidden" name="pct" value={nextTrafficPct} />
+                          <input
+                            type="hidden"
+                            name="reason"
+                            value={`관리자 승인: challenger 확대 후보 확인 후 제한 노출 ${leadPolicy.challengerTrafficPct}%→${nextTrafficPct}% 단계 상승`}
+                          />
+                          <button
+                            type="submit"
+                            className="rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-bold text-green-800 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!hasExpansionCandidate}
+                            title={hasExpansionCandidate ? "확대 후보가 있어 다음 단계 승인 가능" : "확대 후보가 뜰 때까지 단계 상승 보류"}
+                          >
+                            {nextTrafficPct}%로 단계 상승 승인
+                          </button>
+                        </form>
+                      ) : (
+                        <span className="rounded-lg border border-purple-200 bg-white px-3 py-1 text-[11px] font-bold text-purple-800">
+                          최대 단계 도달
+                        </span>
+                      )}
+                      {leadPolicy.challengerTrafficPct > CHALLENGER_LEAD_TRAFFIC_STAGES[0] && (
+                        <form action={setChallengerTrafficAction}>
+                          <input type="hidden" name="pct" value={CHALLENGER_LEAD_TRAFFIC_STAGES[0]} />
+                          <input
+                            type="hidden"
+                            name="reason"
+                            value={`관리자 승인: challenger 성과/리스크 재점검으로 제한 노출 ${leadPolicy.challengerTrafficPct}%→${CHALLENGER_LEAD_TRAFFIC_STAGES[0]}% 되돌림`}
+                          />
+                          <button type="submit" className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1 text-[11px] font-bold text-orange-800 hover:bg-orange-100">
+                            20%로 되돌림
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                    {!hasExpansionCandidate && nextTrafficPct && (
+                      <p className="mt-2 text-[11px] leading-relaxed text-purple-800">
+                        지금은 확대 후보가 없다. 여기서 올리면 실험이 아니라 도박이다.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
               <ul className="mt-3 space-y-2">
@@ -259,7 +328,7 @@ export default async function SnsControlTowerPage({
                   {preview.challengerPreviews.length > 0 && (
                     <div className="mt-3 rounded-lg border border-purple-100 bg-purple-50 p-3">
                       <div className="text-[11px] font-extrabold text-purple-900">
-                        신규 challenger 첫줄 후보 · 승인 시 최대 {CHALLENGER_LEAD_TRAFFIC_PCT}% 제한 노출
+                        신규 challenger 첫줄 후보 · 승인 시 최대 {leadPolicy.challengerTrafficPct}% 제한 노출
                       </div>
                       <ul className="mt-2 space-y-2">
                         {preview.challengerPreviews.map((candidate) => (

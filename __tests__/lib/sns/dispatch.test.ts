@@ -119,6 +119,27 @@ describe("buildThreadsText", () => {
     expect(challengerCount).toBeLessThanOrEqual(240);
     expect((seen.get("lead_0") ?? 0) + (seen.get("lead_1") ?? 0) + (seen.get("lead_2") ?? 0)).toBeGreaterThanOrEqual(760);
   });
+
+  it("관리자 승인 단계에 따라 challenger 제한 노출 상한을 35%까지 올릴 수 있다", () => {
+    const seen = new Map<string, number>();
+    for (let i = 0; i < 1000; i += 1) {
+      const text = buildThreadsText(
+        {
+          title: `청년 월세 지원 신청 안내 ${i}`,
+          slug: `청년-월세-지원-신청-안내-${i}`,
+          description: "청년 월세 지원의 대상과 신청 방법을 정리했습니다.",
+        },
+        { disabledLeadVariants: ["lead_4", "lead_5"], challengerTrafficPct: 35 },
+      );
+      const lead = text.match(/utm_content=(lead_\d+)/)?.[1] ?? "missing";
+      seen.set(lead, (seen.get(lead) ?? 0) + 1);
+    }
+
+    const challengerCount = seen.get("lead_3") ?? 0;
+    expect(challengerCount).toBeGreaterThan(240);
+    expect(challengerCount).toBeLessThanOrEqual(390);
+    expect((seen.get("lead_0") ?? 0) + (seen.get("lead_1") ?? 0) + (seen.get("lead_2") ?? 0)).toBeGreaterThanOrEqual(610);
+  });
 });
 
 describe("dispatchBlogToSns", () => {

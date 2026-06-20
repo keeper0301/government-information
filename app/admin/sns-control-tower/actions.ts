@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
-import { normalizeLeadPolicyInput } from "@/lib/sns-control-tower/lead-policy";
+import {
+  normalizeChallengerTrafficInput,
+  normalizeLeadPolicyInput,
+} from "@/lib/sns-control-tower/lead-policy";
 import {
   importLocalReportsToSnsRegistry,
   markSnsPostManuallyDeleted,
@@ -76,4 +79,30 @@ export async function setLeadPolicyAction(formData: FormData) {
 
   const label = policy.status === "paused" ? "중단" : "사용";
   redirect(`${PATH}?flash=${encodeURIComponent(`${policy.content} ${label} 정책 저장 완료`)}`);
+}
+
+export async function setChallengerTrafficAction(formData: FormData) {
+  const user = await requireAdmin();
+  let traffic: ReturnType<typeof normalizeChallengerTrafficInput>;
+  try {
+    traffic = normalizeChallengerTrafficInput({
+      pct: String(formData.get("pct") ?? ""),
+      reason: String(formData.get("reason") ?? ""),
+    });
+  } catch (error) {
+    redirect(`${PATH}?error=${encodeURIComponent(error instanceof Error ? error.message : "invalid_challenger_traffic")}`);
+  }
+
+  try {
+    await logAdminAction({
+      actorId: user.id,
+      action: "sns_challenger_traffic_update",
+      details: traffic,
+    });
+    revalidatePath(PATH);
+  } catch (error) {
+    redirect(`${PATH}?error=${encodeURIComponent(error instanceof Error ? error.message : "challenger_traffic_update_failed")}`);
+  }
+
+  redirect(`${PATH}?flash=${encodeURIComponent(`challenger 제한 노출 ${traffic.pct}% 저장 완료`)}`);
 }

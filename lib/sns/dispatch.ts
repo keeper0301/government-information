@@ -167,14 +167,16 @@ function buildCheckPoints(title: string, points: string[]): string[] {
 function selectLeadVariant(
   seed: string,
   disabledLeadVariants: SnsLeadVariant[] = LEAD_VARIANTS.filter((lead) => !DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead)),
+  challengerTrafficPct: number = CHALLENGER_LEAD_TRAFFIC_PCT,
 ): number {
   const disabled = new Set(disabledLeadVariants);
   const enabled = LEAD_VARIANTS.filter((lead) => !disabled.has(lead));
   const coreEnabled = enabled.filter((lead) => DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead));
   const challengerEnabled = enabled.filter((lead) => CHALLENGER_LEAD_VARIANTS.includes(lead));
+  const safeChallengerTrafficPct = Math.max(0, Math.min(50, Math.floor(challengerTrafficPct)));
   const useChallenger =
     challengerEnabled.length > 0 &&
-    stableBucket(`${seed}:challenger-gate`, 100) < CHALLENGER_LEAD_TRAFFIC_PCT;
+    stableBucket(`${seed}:challenger-gate`, 100) < safeChallengerTrafficPct;
   const candidates = useChallenger
     ? challengerEnabled
     : coreEnabled.length > 0
@@ -188,14 +190,14 @@ function selectLeadVariant(
 
 export function buildThreadsText(
   post: BlogPostShare,
-  opts: { disabledLeadVariants?: SnsLeadVariant[]; includeChallengerLeads?: boolean } = {},
+  opts: { disabledLeadVariants?: SnsLeadVariant[]; includeChallengerLeads?: boolean; challengerTrafficPct?: number } = {},
 ): string {
   const title = normalizeShareText(post.title);
   const defaultDisabled = LEAD_VARIANTS.filter((lead) => !DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead));
   const disabledLeadVariants = opts.includeChallengerLeads
     ? (opts.disabledLeadVariants ?? [])
     : (opts.disabledLeadVariants ?? defaultDisabled);
-  const variant = selectLeadVariant(`${post.slug}:${title}`, disabledLeadVariants);
+  const variant = selectLeadVariant(`${post.slug}:${title}`, disabledLeadVariants, opts.challengerTrafficPct);
   const url = buildBlogUrl(post.slug, "threads", `lead_${variant}`);
   const fallback =
     "대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요. 해당되는 사람은 마감과 기준이 달라질 수 있어 원문 확인이 필요합니다.";
@@ -272,6 +274,7 @@ export async function dispatchBlogToSns(
   const leadPolicy = channelSet.has("threads") ? await loadSnsLeadPolicySnapshot() : null;
   const threadsText = buildThreadsText(post, {
     disabledLeadVariants: leadPolicy?.disabledLeadVariants ?? [],
+    challengerTrafficPct: leadPolicy?.challengerTrafficPct ?? CHALLENGER_LEAD_TRAFFIC_PCT,
   });
 
   const tasks: Array<Promise<SnsDispatchResult>> = [];
