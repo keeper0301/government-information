@@ -35,6 +35,9 @@ export default async function SnsControlTowerPage({
   ]);
   const finalPost = snapshot.posts.find((post) => post.status === "active_final");
   const failedDeletionPosts = snapshot.posts.filter((post) => post.status === "delete_failed_permission");
+  const leadRecommendationByContent = new Map(
+    utmPerformance.leadRecommendations.map((lead) => [lead.content, lead]),
+  );
 
   return (
     <div className="max-w-[1120px]">
@@ -139,6 +142,9 @@ export default async function SnsControlTowerPage({
                         {lead.sessions}세션 · {lead.activeUsers}명 · {lead.sharePct}%
                       </div>
                       <div className="mt-1 leading-relaxed text-blue-800">{lead.reason}</div>
+                      <div className="mt-2 rounded-md border border-blue-100 bg-white px-2 py-1 leading-relaxed text-blue-900">
+                        중단 리스크 {lead.pauseImpact.riskLabel}: {lead.pauseImpact.summary}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -148,35 +154,46 @@ export default async function SnsControlTowerPage({
                 <div className="mt-3 border-t border-blue-100 pt-3">
                   <div className="text-xs font-extrabold text-blue-950">현재 적용 정책</div>
                   <ul className="mt-2 space-y-2">
-                    {leadPolicy.policies.map((policy) => (
-                      <li key={policy.content} className="rounded-lg bg-white p-2 text-xs text-blue-950">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-extrabold">{policy.content}</span>
-                          <span className={policy.status === "paused" ? "font-bold text-red-700" : "font-bold text-green-700"}>
-                            {policy.status === "paused" ? "중단 적용 중" : "사용 중"}
-                          </span>
-                        </div>
-                        {policy.reason && <div className="mt-1 text-blue-700">사유: {policy.reason}</div>}
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <form action={setLeadPolicyAction}>
-                            <input type="hidden" name="content" value={policy.content} />
-                            <input type="hidden" name="status" value="active" />
-                            <input type="hidden" name="reason" value="관리자 승인: lead 재사용" />
-                            <button type="submit" className="rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-bold text-green-800 hover:bg-green-100">
-                              사용
-                            </button>
-                          </form>
-                          <form action={setLeadPolicyAction}>
-                            <input type="hidden" name="content" value={policy.content} />
-                            <input type="hidden" name="status" value="paused" />
-                            <input type="hidden" name="reason" value="관리자 승인: 성과 낮은 lead 중단" />
-                            <button type="submit" className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-bold text-red-800 hover:bg-red-100">
-                              중단
-                            </button>
-                          </form>
-                        </div>
-                      </li>
-                    ))}
+                    {leadPolicy.policies.map((policy) => {
+                      const recommendation = leadRecommendationByContent.get(policy.content);
+                      const pauseReason = recommendation
+                        ? `관리자 승인: ${recommendation.pauseImpact.summary}`
+                        : "관리자 승인: 성과 낮은 lead 중단";
+                      return (
+                        <li key={policy.content} className="rounded-lg bg-white p-2 text-xs text-blue-950">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-extrabold">{policy.content}</span>
+                            <span className={policy.status === "paused" ? "font-bold text-red-700" : "font-bold text-green-700"}>
+                              {policy.status === "paused" ? "중단 적용 중" : "사용 중"}
+                            </span>
+                          </div>
+                          {policy.reason && <div className="mt-1 text-blue-700">사유: {policy.reason}</div>}
+                          {recommendation && (
+                            <div className="mt-2 rounded-md border border-orange-100 bg-orange-50 px-2 py-1 leading-relaxed text-orange-900">
+                              버튼 누르기 전 확인: 중단 리스크 {recommendation.pauseImpact.riskLabel} · {recommendation.pauseImpact.summary}
+                            </div>
+                          )}
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <form action={setLeadPolicyAction}>
+                              <input type="hidden" name="content" value={policy.content} />
+                              <input type="hidden" name="status" value="active" />
+                              <input type="hidden" name="reason" value="관리자 승인: lead 재사용" />
+                              <button type="submit" className="rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-bold text-green-800 hover:bg-green-100">
+                                사용
+                              </button>
+                            </form>
+                            <form action={setLeadPolicyAction}>
+                              <input type="hidden" name="content" value={policy.content} />
+                              <input type="hidden" name="status" value="paused" />
+                              <input type="hidden" name="reason" value={pauseReason} />
+                              <button type="submit" className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-bold text-red-800 hover:bg-red-100">
+                                중단
+                              </button>
+                            </form>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </div>

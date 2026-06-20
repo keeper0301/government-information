@@ -83,9 +83,24 @@ describe("sns UTM performance", () => {
     ]);
 
     expect(recommendations).toEqual([
-      expect.objectContaining({ content: "lead_0", status: "watch", sharePct: 25 }),
-      expect.objectContaining({ content: "lead_1", status: "keep", sharePct: 70 }),
-      expect.objectContaining({ content: "lead_2", status: "pause", sharePct: 5 }),
+      expect.objectContaining({
+        content: "lead_0",
+        status: "watch",
+        sharePct: 25,
+        pauseImpact: expect.objectContaining({ lostSessions: 5, riskLabel: "중간" }),
+      }),
+      expect.objectContaining({
+        content: "lead_1",
+        status: "keep",
+        sharePct: 70,
+        pauseImpact: expect.objectContaining({ lostSessions: 14, lostActiveUsers: 10, riskLabel: "높음" }),
+      }),
+      expect.objectContaining({
+        content: "lead_2",
+        status: "pause",
+        sharePct: 5,
+        pauseImpact: expect.objectContaining({ lostSessions: 1, remainingLeadCount: 2, riskLabel: "중간" }),
+      }),
     ]);
   });
 

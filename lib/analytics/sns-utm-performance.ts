@@ -28,6 +28,13 @@ export type SnsLeadRecommendation = {
   sharePct: number;
   status: SnsLeadRecommendationStatus;
   reason: string;
+  pauseImpact: {
+    lostSessions: number;
+    lostActiveUsers: number;
+    remainingLeadCount: number;
+    riskLabel: "낮음" | "중간" | "높음" | "판단 보류";
+    summary: string;
+  };
 };
 
 export type SnsUtmPerformance = {
@@ -127,8 +134,11 @@ export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadR
     const sessions = row?.sessions ?? 0;
     const activeUsers = row?.activeUsers ?? 0;
     const sharePct = totalSessions > 0 ? Math.round((sessions / totalSessions) * 100) : 0;
+    const remainingLeadCount = Math.max(0, leadIds.length - 1);
     let status: SnsLeadRecommendationStatus = "needs_data";
     let reason = "Threads lead별 클릭 데이터가 아직 부족합니다. 최소 12세션 이상 쌓인 뒤 판단하세요.";
+    let riskLabel: SnsLeadRecommendation["pauseImpact"]["riskLabel"] = "판단 보류";
+    let impactSummary = `표본 부족: 중단하지 말고 더 발행하세요. 현재 중단 시 최근 ${sessions}세션을 포기하는 판단이 됩니다.`;
 
     if (hasEnoughData) {
       if (lead === winner.lead && sessions >= Math.max(5, second.sessions * 1.4)) {
@@ -141,9 +151,32 @@ export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadR
         status = "watch";
         reason = `현재 ${sharePct}% 점유. 더 돌려보고 승자와 격차를 확인하세요.`;
       }
+
+      if (sharePct >= 50 || sessions >= 8) {
+        riskLabel = "높음";
+      } else if (sessions > 0) {
+        riskLabel = "중간";
+      } else {
+        riskLabel = "낮음";
+      }
+      impactSummary = `중단 시 최근 ${sessions}세션/${activeUsers}활성 사용자를 포기합니다. 남은 lead ${remainingLeadCount}종으로만 발행됩니다.`;
     }
 
-    return { content: lead, sessions, activeUsers, sharePct, status, reason };
+    return {
+      content: lead,
+      sessions,
+      activeUsers,
+      sharePct,
+      status,
+      reason,
+      pauseImpact: {
+        lostSessions: sessions,
+        lostActiveUsers: activeUsers,
+        remainingLeadCount,
+        riskLabel,
+        summary: impactSummary,
+      },
+    };
   });
 }
 
