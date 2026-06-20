@@ -28,26 +28,95 @@ export interface SnsDispatchResult {
 
 const SITE_BASE = "https://www.keepioo.com";
 const ALL_CHANNELS: SnsChannel[] = ["twitter", "facebook", "threads"];
+const THREADS_TEXT_LIMIT = 500;
+
+function normalizeShareText(value: string): string {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.!?])(?=\s|$)/g, "$1")
+    .trim();
+}
+
+function splitKoreanSentences(value: string): string[] {
+  const normalized = normalizeShareText(value);
+  if (!normalized) return [];
+  return normalized
+    .split(/(?<=[.!?。！？]|[가-힣]\.)\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function appendWithinLimit(lines: string[], line: string, fixedTail: string): boolean {
+  const candidate = [...lines, line, fixedTail].join("\n");
+  if (candidate.length > THREADS_TEXT_LIMIT) return false;
+  lines.push(line);
+  return true;
+}
+
+function buildBlogUrl(slug: string): string {
+  return `${SITE_BASE}/blog/${encodeURIComponent(slug)}`;
+}
+
+function ellipsize(value: string, maxLength: number): string {
+  if (maxLength <= 0) return "";
+  if (value.length <= maxLength) return value;
+  if (maxLength === 1) return "…";
+  return `${value.slice(0, maxLength - 1).trim()}…`;
+}
 
 export function buildThreadsText(post: BlogPostShare): string {
-  const url = `${SITE_BASE}/blog/${post.slug}`;
-  const title = post.title.trim();
-  const desc = post.description?.trim();
-  const body = desc
-    ? `${title}\n\n${desc.slice(0, 220)}`
-    : `${title}\n\n핵심 내용과 대상 조건을 먼저 확인해보세요. 해당되는 사람에게는 신청 시점과 기준이 더 중요합니다.`;
-  return `${body}\n\n자세히 보기\n${url}`.slice(0, 500);
+  const url = buildBlogUrl(post.slug);
+  const title = normalizeShareText(post.title);
+  const fallback =
+    "대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요. 해당되는 사람은 마감과 기준이 달라질 수 있어 원문 확인이 필요합니다.";
+  const sentences = splitKoreanSentences(post.description ?? fallback);
+  const summary = normalizeShareText(sentences[0] ?? fallback);
+  const points = sentences.slice(1, 4).map(normalizeShareText).filter(Boolean);
+  const tail = `\n자세히 보기\n${url}`;
+  const lines = [title, "", "핵심 요약", summary];
+
+  if (points.length > 0) {
+    appendWithinLimit(lines, "", tail);
+    appendWithinLimit(lines, "확인 포인트", tail);
+    for (const point of points) {
+      if (!appendWithinLimit(lines, `• ${point}`, tail)) break;
+    }
+  }
+
+  const text = `${lines.join("\n")}\n${tail}`;
+  if (text.length <= THREADS_TEXT_LIMIT) return text;
+
+  const minimalTemplate = (safeTitle: string, safeSummary: string) =>
+    `${safeTitle}\n\n핵심 요약\n${safeSummary}\n\n자세히 보기\n${url}`;
+  const fixedWithoutTitleAndSummary = "\n\n핵심 요약\n\n자세히 보기\n".length + url.length;
+  const minSummaryLength = 40;
+  const titleBudget = Math.max(
+    1,
+    THREADS_TEXT_LIMIT - fixedWithoutTitleAndSummary - minSummaryLength,
+  );
+  const safeTitle = ellipsize(title, titleBudget);
+  const summaryBudget = Math.max(
+    0,
+    THREADS_TEXT_LIMIT - minimalTemplate(safeTitle, "").length,
+  );
+  const safeSummary = ellipsize(summary, summaryBudget);
+  const fallbackText = minimalTemplate(safeTitle, safeSummary);
+
+  return fallbackText.length <= THREADS_TEXT_LIMIT
+    ? fallbackText
+    : `${ellipsize(title, Math.max(1, THREADS_TEXT_LIMIT - tail.length - 2))}\n${tail}`.slice(0, THREADS_TEXT_LIMIT);
 }
 
 export async function dispatchBlogToSns(
   post: BlogPostShare,
   opts: { channels?: SnsChannel[] } = {},
 ): Promise<SnsDispatchResult[]> {
-  const url = `${SITE_BASE}/blog/${post.slug}`;
+  const url = buildBlogUrl(post.slug);
   const title = post.title;
   // 캡션 / 메시지 — 채널별 길이 제한. 단순 한국어 default.
   const desc = post.description?.slice(0, 100) ?? "";
-  const tweetText = `${title.slice(0, 200)}\n\n${url}`.slice(0, 280);
+  const tweetTitle = ellipsize(title, Math.max(1, 280 - url.length - 2));
+  const tweetText = `${tweetTitle}\n\n${url}`.slice(0, 280);
   const fbMessage = `${title}\n\n${desc}`.slice(0, 500);
   const threadsText = buildThreadsText(post);
   const channelSet = new Set(opts.channels ?? ALL_CHANNELS);

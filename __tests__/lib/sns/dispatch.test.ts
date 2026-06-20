@@ -24,10 +24,30 @@ describe("buildThreadsText", () => {
 
     expect(text).toContain("세대를 이어주는 끈, 기초연금");
     expect(text).toContain("생활비와 지역 소비");
+    expect(text).toContain("핵심 요약");
+    expect(text).toContain("확인 포인트");
+    expect(text).toContain("• 수급자 개인의 소득 보완");
     expect(text).toContain("자세히 보기");
     expect(text).toContain("https://www.keepioo.com/blog/basic-pension");
     expect(text).not.toBe("세대를 이어주는 끈, 기초연금\n\nhttps://www.keepioo.com/blog/basic-pension");
+    expect(text).toMatch(/^세대를 이어주는 끈, 기초연금\n\n핵심 요약\n/);
+    expect(text).toMatch(/\n\n확인 포인트\n• /);
+    expect(text).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\/basic-pension$/);
+    expect(text.length).toBeLessThanOrEqual(500);
     expect(text.replace(/https?:\/\/\S+/g, "").trim().length).toBeGreaterThanOrEqual(120);
+  });
+
+  it("설명이 없는 글도 문단 간격이 있는 기본 문구로 만든다", () => {
+    const text = buildThreadsText({
+      title: "2026년 디딤돌 창업중심대학: 과학기술원 창업기업 사업화 자금 지원",
+      slug: "2026년-디딤돌-창업중심대학-지원",
+    });
+
+    expect(text).toMatch(/^2026년 디딤돌 창업중심대학: 과학기술원 창업기업 사업화 자금 지원\n\n핵심 요약\n/);
+    expect(text).toContain("대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요.");
+    expect(text).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\/2026%EB%85%84-%EB%94%94%EB%94%A4%EB%8F%8C-%EC%B0%BD%EC%97%85%EC%A4%91%EC%8B%AC%EB%8C%80%ED%95%99-%EC%A7%80%EC%9B%90$/);
+    expect(text).not.toContain("/blog/2026년");
+    expect(text.length).toBeLessThanOrEqual(500);
   });
 });
 
@@ -50,6 +70,50 @@ describe("dispatchBlogToSns", () => {
     expect(twitter.publishTweet).not.toHaveBeenCalled();
     expect(facebook.publishFacebookPost).not.toHaveBeenCalled();
     expect(threads.publishThreadsPost).toHaveBeenCalledOnce();
+    expect(threads.publishThreadsPost).toHaveBeenCalledWith({
+      text: expect.stringContaining("https://www.keepioo.com/blog/basic-pension"),
+    });
     expect(out).toEqual([{ channel: "threads", ok: true, id: "th1" }]);
+  });
+
+  it("한글 slug 외부 링크는 모든 SNS 채널에 percent-encoded URL로 넘긴다", async () => {
+    vi.mocked(twitter.publishTweet).mockResolvedValue({ ok: true, id: "t1" });
+    vi.mocked(facebook.publishFacebookPost).mockResolvedValue({ ok: true, id: "f1" });
+    vi.mocked(threads.publishThreadsPost).mockResolvedValue({ ok: true, id: "th1" });
+
+    await dispatchBlogToSns({
+      title: "2026년 안양시 장애인가정 출산장려금 지원",
+      slug: "2026년-안양시-장애인가정-출산장려금-지원-최대-n만원-o4muhe6c",
+      description: "안양시 장애인가정 출산장려금의 대상과 신청 전 확인할 내용을 정리했습니다.",
+    });
+
+    const encodedUrl = "https://www.keepioo.com/blog/2026%EB%85%84-%EC%95%88%EC%96%91%EC%8B%9C-%EC%9E%A5%EC%95%A0%EC%9D%B8%EA%B0%80%EC%A0%95-%EC%B6%9C%EC%82%B0%EC%9E%A5%EB%A0%A4%EA%B8%88-%EC%A7%80%EC%9B%90-%EC%B5%9C%EB%8C%80-n%EB%A7%8C%EC%9B%90-o4muhe6c";
+    expect(twitter.publishTweet).toHaveBeenCalledWith(expect.stringContaining(encodedUrl));
+    expect(facebook.publishFacebookPost).toHaveBeenCalledWith(expect.objectContaining({ link: encodedUrl }));
+    expect(threads.publishThreadsPost).toHaveBeenCalledWith({
+      text: expect.stringContaining(encodedUrl),
+    });
+  });
+
+  it("긴 제목이어도 X/Threads 링크 본문에서 URL을 잘라먹지 않는다", async () => {
+    vi.mocked(twitter.publishTweet).mockResolvedValue({ ok: true, id: "t1" });
+    vi.mocked(facebook.publishFacebookPost).mockResolvedValue({ ok: true, id: "f1" });
+    vi.mocked(threads.publishThreadsPost).mockResolvedValue({ ok: true, id: "th1" });
+
+    await dispatchBlogToSns({
+      title: "2026년 안양시 장애인가정 출산장려금 지원 ".repeat(8),
+      slug: "2026년-안양시-장애인가정-출산장려금-지원-최대-n만원-o4muhe6c",
+      description: "신청 대상과 지급 조건을 먼저 확인해야 합니다. 출산 시점, 거주 요건, 신청 서류에 따라 결과가 달라질 수 있습니다.",
+    });
+
+    const encodedUrl = "https://www.keepioo.com/blog/2026%EB%85%84-%EC%95%88%EC%96%91%EC%8B%9C-%EC%9E%A5%EC%95%A0%EC%9D%B8%EA%B0%80%EC%A0%95-%EC%B6%9C%EC%82%B0%EC%9E%A5%EB%A0%A4%EA%B8%88-%EC%A7%80%EC%9B%90-%EC%B5%9C%EB%8C%80-n%EB%A7%8C%EC%9B%90-o4muhe6c";
+    const tweetText = vi.mocked(twitter.publishTweet).mock.calls[0][0];
+    const threadsText = vi.mocked(threads.publishThreadsPost).mock.calls[0][0].text;
+
+    expect(tweetText).toContain(encodedUrl);
+    expect(tweetText.length).toBeLessThanOrEqual(280);
+    expect(threadsText).toContain(encodedUrl);
+    expect(threadsText).toMatch(/\n\n자세히 보기\nhttps:\/\/www\.keepioo\.com\/blog\//);
+    expect(threadsText.length).toBeLessThanOrEqual(500);
   });
 });
