@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
+import { logAdminAction } from "@/lib/admin-actions";
+import { normalizeLeadPolicyInput } from "@/lib/sns-control-tower/lead-policy";
 import {
   importLocalReportsToSnsRegistry,
   markSnsPostManuallyDeleted,
@@ -17,6 +19,7 @@ async function requireAdmin() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user || !isAdminUser(user.email)) redirect(`${PATH}?error=unauthorized`);
+  return user;
 }
 
 export async function importLocalReportsAction() {
@@ -45,4 +48,32 @@ export async function markManualDeletedAction(formData: FormData) {
     redirect(`${PATH}?error=${encodeURIComponent(result.error ?? "manual_delete_update_failed")}`);
   }
   redirect(`${PATH}?flash=${encodeURIComponent(`수동 삭제 완료 표시: ${mediaId}`)}`);
+}
+
+export async function setLeadPolicyAction(formData: FormData) {
+  const user = await requireAdmin();
+  let policy: ReturnType<typeof normalizeLeadPolicyInput>;
+  try {
+    policy = normalizeLeadPolicyInput({
+      content: String(formData.get("content") ?? ""),
+      status: String(formData.get("status") ?? ""),
+      reason: String(formData.get("reason") ?? ""),
+    });
+  } catch (error) {
+    redirect(`${PATH}?error=${encodeURIComponent(error instanceof Error ? error.message : "invalid_lead_policy")}`);
+  }
+
+  try {
+    await logAdminAction({
+      actorId: user.id,
+      action: "sns_lead_policy_update",
+      details: policy,
+    });
+    revalidatePath(PATH);
+  } catch (error) {
+    redirect(`${PATH}?error=${encodeURIComponent(error instanceof Error ? error.message : "lead_policy_update_failed")}`);
+  }
+
+  const label = policy.status === "paused" ? "중단" : "사용";
+  redirect(`${PATH}?flash=${encodeURIComponent(`${policy.content} ${label} 정책 저장 완료`)}`);
 }

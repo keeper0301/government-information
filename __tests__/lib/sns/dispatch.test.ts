@@ -83,6 +83,21 @@ describe("buildThreadsText", () => {
     expect(text).toContain("utm_campaign=blog_auto");
     expect(text).toMatch(/utm_content=lead_[0-2]/);
   });
+
+  it("중단된 lead variant는 새 Threads 문구에서 제외한다", () => {
+    for (let i = 0; i < 12; i += 1) {
+      const text = buildThreadsText(
+        {
+          title: `청년 월세 지원 신청 안내 ${i}`,
+          slug: `청년-월세-지원-신청-안내-${i}`,
+          description: "청년 월세 지원의 대상과 신청 방법을 정리했습니다.",
+        },
+        { disabledLeadVariants: ["lead_1"] },
+      );
+      expect(text).not.toContain("utm_content=lead_1");
+      expect(text).toMatch(/utm_content=lead_[02]/);
+    }
+  });
 });
 
 describe("dispatchBlogToSns", () => {

@@ -4,8 +4,9 @@ import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import type { SnsLeadRecommendationStatus } from "@/lib/analytics/sns-utm-performance";
 import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
 import { loadLatestSnsCaptionPreviews } from "@/lib/sns-control-tower/caption-preview";
+import { loadSnsLeadPolicySnapshot } from "@/lib/sns-control-tower/lead-policy";
 import { loadSnsControlTowerSnapshotDbFirst } from "@/lib/sns-control-tower/registry";
-import { importLocalReportsAction, markManualDeletedAction } from "./actions";
+import { importLocalReportsAction, markManualDeletedAction, setLeadPolicyAction } from "./actions";
 import type { SnsPostStatus, SnsPublishedPost } from "@/lib/sns-control-tower/types";
 
 export const metadata: Metadata = {
@@ -21,9 +22,10 @@ export default async function SnsControlTowerPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
-  const [snapshot, utmPerformance, captionPreviewsResult] = await Promise.all([
+  const [snapshot, utmPerformance, leadPolicy, captionPreviewsResult] = await Promise.all([
     loadSnsControlTowerSnapshotDbFirst(),
     getSnsUtmPerformance(30),
+    loadSnsLeadPolicySnapshot(),
     loadLatestSnsCaptionPreviews(3)
       .then((previews) => ({ previews, error: null as string | null }))
       .catch((error) => ({
@@ -83,6 +85,12 @@ export default async function SnsControlTowerPage({
         </section>
       )}
 
+      {leadPolicy.warning && (
+        <section className="mb-5 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm font-semibold text-orange-900">
+          {leadPolicy.warning}
+        </section>
+      )}
+
       <section className="mb-6 grid gap-3 md:grid-cols-5">
         <MetricCard label="총 발행본" value={snapshot.stats.total} tone="grey" />
         <MetricCard label="최종본" value={snapshot.stats.activeFinal} tone="green" />
@@ -137,6 +145,40 @@ export default async function SnsControlTowerPage({
                 <p className="mt-2 text-[11px] leading-relaxed text-blue-700">
                   이건 자동 변경이 아니라 운영 판단표다. 실제 lead 중단/비율 변경은 별도 승인 후 적용.
                 </p>
+                <div className="mt-3 border-t border-blue-100 pt-3">
+                  <div className="text-xs font-extrabold text-blue-950">현재 적용 정책</div>
+                  <ul className="mt-2 space-y-2">
+                    {leadPolicy.policies.map((policy) => (
+                      <li key={policy.content} className="rounded-lg bg-white p-2 text-xs text-blue-950">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-extrabold">{policy.content}</span>
+                          <span className={policy.status === "paused" ? "font-bold text-red-700" : "font-bold text-green-700"}>
+                            {policy.status === "paused" ? "중단 적용 중" : "사용 중"}
+                          </span>
+                        </div>
+                        {policy.reason && <div className="mt-1 text-blue-700">사유: {policy.reason}</div>}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <form action={setLeadPolicyAction}>
+                            <input type="hidden" name="content" value={policy.content} />
+                            <input type="hidden" name="status" value="active" />
+                            <input type="hidden" name="reason" value="관리자 승인: lead 재사용" />
+                            <button type="submit" className="rounded-lg border border-green-200 bg-green-50 px-3 py-1 text-[11px] font-bold text-green-800 hover:bg-green-100">
+                              사용
+                            </button>
+                          </form>
+                          <form action={setLeadPolicyAction}>
+                            <input type="hidden" name="content" value={policy.content} />
+                            <input type="hidden" name="status" value="paused" />
+                            <input type="hidden" name="reason" value="관리자 승인: 성과 낮은 lead 중단" />
+                            <button type="submit" className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-[11px] font-bold text-red-800 hover:bg-red-100">
+                              중단
+                            </button>
+                          </form>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
               <ul className="mt-3 space-y-2">
                 {utmPerformance.rows.slice(0, 5).map((row) => (

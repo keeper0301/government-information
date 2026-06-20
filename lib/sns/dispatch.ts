@@ -7,6 +7,7 @@
 // 인스타는 별도 cron (/api/cron/instagram-publish) 가 DB-based OAuth token + carousel
 // 발행으로 처리. dispatch 에 포함 X (2026-05-14 review 정리).
 
+import { loadSnsLeadPolicySnapshot, type SnsLeadVariant } from "@/lib/sns-control-tower/lead-policy";
 import { publishTweet } from "./twitter";
 import { publishFacebookPost } from "./facebook";
 import { publishThreadsPost } from "./threads";
@@ -153,9 +154,20 @@ function buildCheckPoints(title: string, points: string[]): string[] {
   return out;
 }
 
-export function buildThreadsText(post: BlogPostShare): string {
+function selectLeadVariant(seed: string, disabledLeadVariants: SnsLeadVariant[] = []): number {
+  const disabled = new Set(disabledLeadVariants);
+  const enabled = (["lead_0", "lead_1", "lead_2"] as SnsLeadVariant[]).filter((lead) => !disabled.has(lead));
+  const candidates = enabled.length > 0 ? enabled : (["lead_0", "lead_1", "lead_2"] as SnsLeadVariant[]);
+  const selected = candidates[stableBucket(seed, candidates.length)];
+  return Number(selected.replace("lead_", ""));
+}
+
+export function buildThreadsText(
+  post: BlogPostShare,
+  opts: { disabledLeadVariants?: SnsLeadVariant[] } = {},
+): string {
   const title = normalizeShareText(post.title);
-  const variant = stableBucket(`${post.slug}:${title}`, 3);
+  const variant = selectLeadVariant(`${post.slug}:${title}`, opts.disabledLeadVariants);
   const url = buildBlogUrl(post.slug, "threads", `lead_${variant}`);
   const fallback =
     "대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요. 해당되는 사람은 마감과 기준이 달라질 수 있어 원문 확인이 필요합니다.";
@@ -228,8 +240,11 @@ export async function dispatchBlogToSns(
   const tweetTitle = ellipsize(title, Math.max(1, 280 - twitterUrl.length - 2));
   const tweetText = `${tweetTitle}\n\n${twitterUrl}`.slice(0, 280);
   const fbMessage = `${title}\n\n${desc}`.slice(0, 500);
-  const threadsText = buildThreadsText(post);
   const channelSet = new Set(opts.channels ?? ALL_CHANNELS);
+  const leadPolicy = channelSet.has("threads") ? await loadSnsLeadPolicySnapshot() : null;
+  const threadsText = buildThreadsText(post, {
+    disabledLeadVariants: leadPolicy?.disabledLeadVariants ?? [],
+  });
 
   const tasks: Array<Promise<SnsDispatchResult>> = [];
   if (channelSet.has("twitter")) {

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildThreadsText } from "@/lib/sns/dispatch";
+import { loadSnsLeadPolicySnapshot, type SnsLeadVariant } from "./lead-policy";
 
 export type SnsCaptionPreview = {
   slug: string;
@@ -22,12 +23,15 @@ function extractLeadVariant(text: string): string {
   return match?.[1] ?? "—";
 }
 
-export function buildSnsCaptionPreview(row: BlogPreviewRow): SnsCaptionPreview {
+export function buildSnsCaptionPreview(
+  row: BlogPreviewRow,
+  opts: { disabledLeadVariants?: SnsLeadVariant[] } = {},
+): SnsCaptionPreview {
   const text = buildThreadsText({
     title: row.title,
     slug: row.slug,
     description: row.meta_description,
-  });
+  }, opts);
   return {
     slug: row.slug,
     title: row.title,
@@ -49,5 +53,8 @@ export async function loadLatestSnsCaptionPreviews(limit = 3): Promise<SnsCaptio
     .limit(limit);
 
   if (error) throw new Error(`blog_posts preview select failed: ${error.message}`);
-  return ((data ?? []) as BlogPreviewRow[]).map(buildSnsCaptionPreview);
+  const leadPolicy = await loadSnsLeadPolicySnapshot(admin);
+  return ((data ?? []) as BlogPreviewRow[]).map((row) =>
+    buildSnsCaptionPreview(row, { disabledLeadVariants: leadPolicy.disabledLeadVariants }),
+  );
 }

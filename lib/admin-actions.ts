@@ -99,7 +99,8 @@ export type AdminActionType =
   | "adsense_review_mode_disabled"   // 2026-05-31 — AdSense Phase B 사장님 1-tap 으로 review mode off + Vercel API redeploy 완료 신고
   | "adsense_deployment_state_resolved" // 2026-05-31 — Critical #2 polling: Phase B 후 deployment state(READY/ERROR) 텔레그램 follow-up 완료 표시 (dedup)
   | "press_tier_manual_override"     // 2026-05-31 — P3 #1 사장님 수동 override: press_auto_confirm_settings.tier_floor 강제 변경
-  | "weights_manual_override";       // 2026-05-31 — P3 #1 사장님 수동 override: popularity_weights_history view/apply/max_boost 강제 변경
+  | "weights_manual_override"       // 2026-05-31 — P3 #1 사장님 수동 override: popularity_weights_history view/apply/max_boost 강제 변경
+  | "sns_lead_policy_update";       // 2026-06-20 — SNS Control Tower에서 Threads lead 유지/중단 정책 변경
 
 export type AdminActionRecord = {
   id: string;
@@ -424,4 +425,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   adsense_deployment_state_resolved: "AdSense Phase B deployment state 텔레그램 알림 완료 (dedup)",
   press_tier_manual_override: "press tier_floor 수동 override (P3 #1)",
   weights_manual_override: "popularity weights 수동 override (P3 #1)",
+  sns_lead_policy_update: "SNS lead 정책 변경",
 };
