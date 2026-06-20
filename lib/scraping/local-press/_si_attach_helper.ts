@@ -15,9 +15,18 @@
 //   cleanHwpMarkdown·extractAttachBody 로직 수정 시 양쪽 같이 고칠 것.
 // ============================================================
 
-import { extractText, getDocumentProxy } from "unpdf";
 import { toMarkdown } from "@ohah/hwpjs";
 import { parseSiNttBody } from "./_si_ntt_helper";
+
+async function loadUnpdf(): Promise<typeof import("unpdf")> {
+  // Next webpack traces even `await import("unpdf")` and emits import.meta warnings.
+  // Keep this dependency out of the route bundle graph; PDF parsing only runs inside
+  // the Node cron collector path after a confirmed PDF attachment download.
+  const dynamicImport = new Function("specifier", "return import(specifier)") as (
+    specifier: string,
+  ) => Promise<typeof import("unpdf")>;
+  return dynamicImport("unpdf");
+}
 
 const SI_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -61,6 +70,9 @@ function cleanHwpMarkdown(md: string): string {
 async function extractAttachBody(buf: Uint8Array): Promise<string | null> {
   // PDF (%PDF)
   if (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) {
+    // unpdf 는 내부에서 import.meta 직접 접근을 사용한다. route/module graph 에 걸면
+    // Next webpack build 가 경고를 띄우므로 우회 로더로 지연 로드한다.
+    const { extractText, getDocumentProxy } = await loadUnpdf();
     const pdf = await getDocumentProxy(buf);
     const { text } = await extractText(pdf, { mergePages: true });
     const body = stripSiPdfMeta(text);
