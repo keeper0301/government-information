@@ -82,7 +82,7 @@ describe("sns UTM performance", () => {
       { source: "twitter", content: "link", sessions: 99, activeUsers: 90 },
     ]);
 
-    expect(recommendations).toEqual([
+    expect(recommendations).toEqual(expect.arrayContaining([
       expect.objectContaining({
         content: "lead_0",
         status: "watch",
@@ -99,9 +99,16 @@ describe("sns UTM performance", () => {
         content: "lead_2",
         status: "pause",
         sharePct: 5,
-        pauseImpact: expect.objectContaining({ lostSessions: 1, remainingLeadCount: 2, riskLabel: "중간" }),
+        pauseImpact: expect.objectContaining({ lostSessions: 1, remainingLeadCount: 5, riskLabel: "중간" }),
       }),
-    ]);
+      expect.objectContaining({
+        content: "lead_3",
+        status: "pause",
+        sharePct: 0,
+        pauseImpact: expect.objectContaining({ lostSessions: 0, remainingLeadCount: 5, riskLabel: "낮음" }),
+      }),
+    ]));
+    expect(recommendations).toHaveLength(6);
   });
 
   it("표본이 부족하면 lead를 섣불리 죽이지 않는다", () => {

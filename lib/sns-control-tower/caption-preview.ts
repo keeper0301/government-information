@@ -1,6 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildThreadsText } from "@/lib/sns/dispatch";
-import { loadSnsLeadPolicySnapshot, type SnsLeadVariant } from "./lead-policy";
+import { LEAD_VARIANTS, loadSnsLeadPolicySnapshot, type SnsLeadVariant } from "./lead-policy";
+
+const CHALLENGER_LEADS: SnsLeadVariant[] = ["lead_3", "lead_4", "lead_5"];
+
+export type SnsLeadCandidatePreview = {
+  leadVariant: SnsLeadVariant;
+  firstLine: string;
+  text: string;
+  length: number;
+};
 
 export type SnsCaptionPreview = {
   slug: string;
@@ -9,6 +18,7 @@ export type SnsCaptionPreview = {
   text: string;
   length: number;
   leadVariant: string;
+  challengerPreviews: SnsLeadCandidatePreview[];
 };
 
 type BlogPreviewRow = {
@@ -21,6 +31,27 @@ type BlogPreviewRow = {
 function extractLeadVariant(text: string): string {
   const match = text.match(/utm_content=(lead_\d+)/);
   return match?.[1] ?? "—";
+}
+
+function firstLine(text: string): string {
+  return text.split("\n").find((line) => line.trim().length > 0)?.trim() ?? "";
+}
+
+function forceLeadPreview(row: BlogPreviewRow, leadVariant: SnsLeadVariant): SnsLeadCandidatePreview {
+  const text = buildThreadsText(
+    {
+      title: row.title,
+      slug: row.slug,
+      description: row.meta_description,
+    },
+    { disabledLeadVariants: LEAD_VARIANTS.filter((lead) => lead !== leadVariant), includeChallengerLeads: true },
+  );
+  return {
+    leadVariant,
+    firstLine: firstLine(text),
+    text,
+    length: text.length,
+  };
 }
 
 export function buildSnsCaptionPreview(
@@ -39,6 +70,7 @@ export function buildSnsCaptionPreview(
     text,
     length: text.length,
     leadVariant: extractLeadVariant(text),
+    challengerPreviews: CHALLENGER_LEADS.map((lead) => forceLeadPreview(row, lead)),
   };
 }
 

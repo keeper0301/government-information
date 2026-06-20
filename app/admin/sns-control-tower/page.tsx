@@ -241,6 +241,21 @@ export default async function SnsControlTowerPage({
                   <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-xs leading-relaxed text-grey-900">
                     {preview.text}
                   </pre>
+                  {preview.challengerPreviews.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-purple-100 bg-purple-50 p-3">
+                      <div className="text-[11px] font-extrabold text-purple-900">
+                        신규 challenger 첫줄 후보 · 승인 전 자동 발행 제외
+                      </div>
+                      <ul className="mt-2 space-y-2">
+                        {preview.challengerPreviews.map((candidate) => (
+                          <li key={`${preview.slug}-${candidate.leadVariant}`} className="rounded-md bg-white p-2 text-[11px] text-purple-950">
+                            <div className="font-extrabold">{candidate.leadVariant} · {candidate.length}/500자</div>
+                            <div className="mt-1 leading-relaxed">{candidate.firstLine}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

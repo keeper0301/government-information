@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type SnsLeadVariant = "lead_0" | "lead_1" | "lead_2";
+export type SnsLeadVariant = "lead_0" | "lead_1" | "lead_2" | "lead_3" | "lead_4" | "lead_5";
 export type SnsLeadPolicyStatus = "active" | "paused";
 
 export type SnsLeadPolicy = {
@@ -23,10 +23,11 @@ type AdminActionLeadPolicyRow = {
   created_at: string | null;
 };
 
-export const LEAD_VARIANTS: SnsLeadVariant[] = ["lead_0", "lead_1", "lead_2"];
+export const LEAD_VARIANTS: SnsLeadVariant[] = ["lead_0", "lead_1", "lead_2", "lead_3", "lead_4", "lead_5"];
+export const DEFAULT_ACTIVE_LEAD_VARIANTS: SnsLeadVariant[] = ["lead_0", "lead_1", "lead_2"];
 
 function isLeadVariant(value: unknown): value is SnsLeadVariant {
-  return value === "lead_0" || value === "lead_1" || value === "lead_2";
+  return LEAD_VARIANTS.includes(value as SnsLeadVariant);
 }
 
 function isPolicyStatus(value: unknown): value is SnsLeadPolicyStatus {
@@ -36,8 +37,8 @@ function isPolicyStatus(value: unknown): value is SnsLeadPolicyStatus {
 function defaultPolicies(): SnsLeadPolicy[] {
   return LEAD_VARIANTS.map((content) => ({
     content,
-    status: "active",
-    reason: null,
+    status: DEFAULT_ACTIVE_LEAD_VARIANTS.includes(content) ? "active" : "paused",
+    reason: DEFAULT_ACTIVE_LEAD_VARIANTS.includes(content) ? null : "신규 challenger 후보: 관리자 승인 전까지 자동 발행 제외",
     updatedAt: null,
   }));
 }

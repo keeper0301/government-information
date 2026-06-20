@@ -13,6 +13,10 @@ describe("SNS caption preview", () => {
 
     expect(preview.length).toBeLessThanOrEqual(500);
     expect(preview.leadVariant).toMatch(/^lead_[0-2]$/);
+    expect(preview.challengerPreviews).toHaveLength(3);
+    expect(preview.challengerPreviews.map((candidate) => candidate.leadVariant)).toEqual(["lead_3", "lead_4", "lead_5"]);
+    expect(preview.challengerPreviews.every((candidate) => candidate.length <= 500)).toBe(true);
+    expect(preview.challengerPreviews[0].firstLine).toContain("마감·대상 조건");
     expect(preview.text).toContain("\n\n원문\n");
     expect(preview.text).toContain("\n\n확인 포인트\n");
     expect(preview.text).toContain("utm_source=threads");

@@ -6,6 +6,8 @@
 // env 미설정/권한 오류는 운영 콘솔을 깨지 않도록 graceful error로 반환.
 // ============================================================
 
+import { LEAD_VARIANTS, type SnsLeadVariant } from "@/lib/sns-control-tower/lead-policy";
+
 const GA4_API = "https://analyticsdata.googleapis.com/v1beta";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const FETCH_TIMEOUT_MS = 15000;
@@ -22,7 +24,7 @@ export type SnsUtmPerformanceRow = {
 export type SnsLeadRecommendationStatus = "keep" | "pause" | "watch" | "needs_data";
 
 export type SnsLeadRecommendation = {
-  content: "lead_0" | "lead_1" | "lead_2";
+  content: SnsLeadVariant;
   sessions: number;
   activeUsers: number;
   sharePct: number;
@@ -114,11 +116,11 @@ export function summarizeSnsUtmPerformance(
 }
 
 export function buildLeadRecommendations(rows: SnsUtmPerformanceRow[]): SnsLeadRecommendation[] {
-  const leadIds: SnsLeadRecommendation["content"][] = ["lead_0", "lead_1", "lead_2"];
+  const leadIds = LEAD_VARIANTS;
   const threadRows = new Map(
     rows
-      .filter((row) => row.source === "threads" && leadIds.includes(row.content as SnsLeadRecommendation["content"]))
-      .map((row) => [row.content, row]),
+      .filter((row) => row.source === "threads" && leadIds.includes(row.content as SnsLeadVariant))
+      .map((row) => [row.content as SnsLeadVariant, row]),
   );
   const totalSessions = leadIds.reduce((sum, lead) => sum + (threadRows.get(lead)?.sessions ?? 0), 0);
   const sorted = leadIds

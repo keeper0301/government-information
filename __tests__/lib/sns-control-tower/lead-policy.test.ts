@@ -21,11 +21,14 @@ describe("SNS lead policy", () => {
       },
     ]);
 
-    expect(snapshot.disabledLeadVariants).toEqual(["lead_1"]);
+    expect(snapshot.disabledLeadVariants).toEqual(["lead_1", "lead_3", "lead_4", "lead_5"]);
     expect(snapshot.policies).toEqual([
       expect.objectContaining({ content: "lead_0", status: "active" }),
       expect.objectContaining({ content: "lead_1", status: "paused", reason: "성과 낮음" }),
       expect.objectContaining({ content: "lead_2", status: "active" }),
+      expect.objectContaining({ content: "lead_3", status: "paused" }),
+      expect.objectContaining({ content: "lead_4", status: "paused" }),
+      expect.objectContaining({ content: "lead_5", status: "paused" }),
     ]);
   });
 

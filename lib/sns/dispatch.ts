@@ -7,7 +7,7 @@
 // 인스타는 별도 cron (/api/cron/instagram-publish) 가 DB-based OAuth token + carousel
 // 발행으로 처리. dispatch 에 포함 X (2026-05-14 review 정리).
 
-import { loadSnsLeadPolicySnapshot, type SnsLeadVariant } from "@/lib/sns-control-tower/lead-policy";
+import { DEFAULT_ACTIVE_LEAD_VARIANTS, LEAD_VARIANTS, loadSnsLeadPolicySnapshot, type SnsLeadVariant } from "@/lib/sns-control-tower/lead-policy";
 import { publishTweet } from "./twitter";
 import { publishFacebookPost } from "./facebook";
 import { publishThreadsPost } from "./threads";
@@ -130,7 +130,10 @@ function buildHumanLead(title: string, variant: number): string {
   const direct = `${subject} ${action}`;
   const lossAvoidance = `${subject} 조건이 맞는데 놓치면 아까운 지원입니다. ${action}`;
   const checklist = `${subject} 신청 전 3가지만 보세요: 대상, 혜택, 마감.`;
-  return [direct, lossAvoidance, checklist][variant] ?? direct;
+  const deadlineFirst = `${subject} 마감·대상 조건부터 확인하세요. 늦으면 신청 기회가 사라질 수 있습니다.`;
+  const benefitFirst = `${subject} 받을 수 있는 혜택이 있는지 먼저 보세요. 금액·조건·신청 방법을 짧게 정리했습니다.`;
+  const officialCheck = `${subject} 공식 기준으로 확인하세요. 대상 여부와 준비할 일을 한 번에 훑어볼 수 있습니다.`;
+  return [direct, lossAvoidance, checklist, deadlineFirst, benefitFirst, officialCheck][variant] ?? direct;
 }
 
 function fallbackCheckPoints(title: string): string[] {
@@ -154,20 +157,27 @@ function buildCheckPoints(title: string, points: string[]): string[] {
   return out;
 }
 
-function selectLeadVariant(seed: string, disabledLeadVariants: SnsLeadVariant[] = []): number {
+function selectLeadVariant(
+  seed: string,
+  disabledLeadVariants: SnsLeadVariant[] = LEAD_VARIANTS.filter((lead) => !DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead)),
+): number {
   const disabled = new Set(disabledLeadVariants);
-  const enabled = (["lead_0", "lead_1", "lead_2"] as SnsLeadVariant[]).filter((lead) => !disabled.has(lead));
-  const candidates = enabled.length > 0 ? enabled : (["lead_0", "lead_1", "lead_2"] as SnsLeadVariant[]);
+  const enabled = LEAD_VARIANTS.filter((lead) => !disabled.has(lead));
+  const candidates = enabled.length > 0 ? enabled : LEAD_VARIANTS;
   const selected = candidates[stableBucket(seed, candidates.length)];
   return Number(selected.replace("lead_", ""));
 }
 
 export function buildThreadsText(
   post: BlogPostShare,
-  opts: { disabledLeadVariants?: SnsLeadVariant[] } = {},
+  opts: { disabledLeadVariants?: SnsLeadVariant[]; includeChallengerLeads?: boolean } = {},
 ): string {
   const title = normalizeShareText(post.title);
-  const variant = selectLeadVariant(`${post.slug}:${title}`, opts.disabledLeadVariants);
+  const defaultDisabled = LEAD_VARIANTS.filter((lead) => !DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead));
+  const disabledLeadVariants = opts.includeChallengerLeads
+    ? (opts.disabledLeadVariants ?? [])
+    : Array.from(new Set([...defaultDisabled, ...(opts.disabledLeadVariants ?? [])]));
+  const variant = selectLeadVariant(`${post.slug}:${title}`, disabledLeadVariants);
   const url = buildBlogUrl(post.slug, "threads", `lead_${variant}`);
   const fallback =
     "대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요. 해당되는 사람은 마감과 기준이 달라질 수 있어 원문 확인이 필요합니다.";
