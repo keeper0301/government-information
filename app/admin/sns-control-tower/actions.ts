@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
+import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
 import {
+  loadSnsLeadPolicySnapshot,
+  nextChallengerTrafficPct,
   normalizeChallengerTrafficInput,
   normalizeLeadPolicyInput,
 } from "@/lib/sns-control-tower/lead-policy";
@@ -94,6 +97,21 @@ export async function setChallengerTrafficAction(formData: FormData) {
   }
 
   try {
+    const [currentPolicy, utmPerformance] = await Promise.all([
+      loadSnsLeadPolicySnapshot(),
+      getSnsUtmPerformance(30),
+    ]);
+    const isStageUp = traffic.pct > currentPolicy.challengerTrafficPct;
+    if (isStageUp) {
+      const allowedNext = nextChallengerTrafficPct(currentPolicy.challengerTrafficPct);
+      const hasExpansionCandidate = utmPerformance.leadRecommendations.some(
+        (lead) => lead.experiment.action === "expand",
+      );
+      if (traffic.pct !== allowedNext || !hasExpansionCandidate) {
+        throw new Error("challenger_stage_blocked_no_expansion_candidate");
+      }
+    }
+
     await logAdminAction({
       actorId: user.id,
       action: "sns_challenger_traffic_update",

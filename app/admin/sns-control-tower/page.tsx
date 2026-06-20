@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import type { SnsLeadExperimentAction, SnsLeadRecommendationStatus } from "@/lib/analytics/sns-utm-performance";
-import { getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
+import { buildSnsExperimentDigest, getSnsUtmPerformance } from "@/lib/analytics/sns-utm-performance";
 import { loadLatestSnsCaptionPreviews } from "@/lib/sns-control-tower/caption-preview";
 import {
   CHALLENGER_LEAD_TRAFFIC_STAGES,
@@ -49,6 +49,7 @@ export default async function SnsControlTowerPage({
     utmPerformance.leadRecommendations.map((lead) => [lead.content, lead]),
   );
   const nextTrafficPct = nextChallengerTrafficPct(leadPolicy.challengerTrafficPct);
+  const experimentDigest = buildSnsExperimentDigest(utmPerformance, leadPolicy);
   const hasExpansionCandidate = utmPerformance.leadRecommendations.some(
     (lead) => lead.experiment.action === "expand",
   );
@@ -107,6 +108,23 @@ export default async function SnsControlTowerPage({
           {leadPolicy.warning}
         </section>
       )}
+
+      <section className="mb-5 rounded-2xl border border-purple-200 bg-purple-50 p-4 text-sm text-purple-950">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-xs font-extrabold uppercase tracking-wider text-purple-700">
+              SNS 실험 운영 요약 · {experimentDigest.severity}
+            </div>
+            <h2 className="mt-1 text-base font-extrabold text-purple-950">{experimentDigest.subject}</h2>
+            <pre className="mt-2 whitespace-pre-wrap rounded-xl border border-purple-100 bg-white p-3 text-xs leading-relaxed text-purple-950">
+              {experimentDigest.message}
+            </pre>
+          </div>
+          <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-bold text-purple-900">
+            확대 {experimentDigest.expansionCandidateCount} · 중단 {experimentDigest.pauseCandidateCount}
+          </div>
+        </div>
+      </section>
 
       <section className="mb-6 grid gap-3 md:grid-cols-5">
         <MetricCard label="총 발행본" value={snapshot.stats.total} tone="grey" />

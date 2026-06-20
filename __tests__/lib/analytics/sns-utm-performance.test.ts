@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLeadRecommendations,
+  buildSnsExperimentDigest,
   parseSnsUtmPerformanceRows,
   summarizeSnsUtmPerformance,
 } from "@/lib/analytics/sns-utm-performance";
@@ -147,5 +148,46 @@ describe("sns UTM performance", () => {
         experiment: expect.objectContaining({ action: "needs_data", label: "표본 부족", coreAverageSessions: 50 }),
       }),
     ]));
+  });
+
+  it("SNS 실험 요약은 확대/중단 후보와 현재 cap을 텔레그램용 문장으로 압축한다", () => {
+    const summary = summarizeSnsUtmPerformance(
+      [
+        { source: "threads", content: "lead_0", sessions: 40, activeUsers: 34 },
+        { source: "threads", content: "lead_1", sessions: 50, activeUsers: 42 },
+        { source: "threads", content: "lead_2", sessions: 60, activeUsers: 49 },
+        { source: "threads", content: "lead_3", sessions: 65, activeUsers: 56 },
+        { source: "threads", content: "lead_4", sessions: 30, activeUsers: 25 },
+        { source: "threads", content: "lead_5", sessions: 29, activeUsers: 23 },
+      ],
+      30,
+    );
+
+    const digest = buildSnsExperimentDigest(summary, {
+      challengerTrafficPct: 35,
+      disabledLeadVariants: ["lead_5"],
+      warning: null,
+    });
+
+    expect(digest.severity).toBe("action");
+    expect(digest.expansionCandidateCount).toBe(1);
+    expect(digest.pauseCandidateCount).toBe(1);
+    expect(digest.subject).toContain("실험 조치 후보 2건");
+    expect(digest.message).toContain("현재 challenger 상한: 35%");
+    expect(digest.message).toContain("확대 후보: lead_3(65)");
+    expect(digest.message).toContain("중단 후보: lead_4(30)");
+  });
+
+  it("GA4 오류 요약은 blocked로 보내고 정책 변경 판단을 막는다", () => {
+    const summary = summarizeSnsUtmPerformance([], 30, "GA4 credentials missing");
+    const digest = buildSnsExperimentDigest(summary, {
+      challengerTrafficPct: 20,
+      disabledLeadVariants: ["lead_3", "lead_4", "lead_5"],
+      warning: null,
+    });
+
+    expect(digest.severity).toBe("blocked");
+    expect(digest.subject).toContain("성과 조회 대기");
+    expect(digest.message).toContain("GA4 credentials missing");
   });
 });

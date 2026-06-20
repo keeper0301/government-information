@@ -10,6 +10,7 @@ import {
   CHALLENGER_LEAD_VARIANTS,
   DEFAULT_ACTIVE_LEAD_VARIANTS,
   LEAD_VARIANTS,
+  type SnsLeadPolicySnapshot,
   type SnsLeadVariant,
 } from "@/lib/sns-control-tower/lead-policy";
 
@@ -65,6 +66,15 @@ export type SnsUtmPerformance = {
   bestContent: SnsUtmPerformanceRow | null;
   leadRecommendations: SnsLeadRecommendation[];
   error: string | null;
+};
+
+export type SnsExperimentDigest = {
+  subject: string;
+  message: string;
+  severity: "ok" | "watch" | "action" | "blocked";
+  shouldNotify: boolean;
+  expansionCandidateCount: number;
+  pauseCandidateCount: number;
 };
 
 type GA4RunReportResponse = {
@@ -330,4 +340,84 @@ export async function getSnsUtmPerformance(windowDays = 30): Promise<SnsUtmPerfo
       error instanceof Error ? error.message : String(error),
     );
   }
+}
+
+export function buildSnsExperimentDigest(
+  performance: SnsUtmPerformance,
+  leadPolicy: Pick<SnsLeadPolicySnapshot, "challengerTrafficPct" | "disabledLeadVariants" | "warning">,
+): SnsExperimentDigest {
+  if (performance.error) {
+    return {
+      subject: "[Keepioo SNS] 실험 성과 조회 대기",
+      message: [
+        `최근 ${performance.windowDays}일 SNS UTM 성과를 못 읽었습니다.`,
+        `원인: ${performance.error}`,
+        "발행 자체는 계속되지만, 어떤 Threads 첫줄이 돈 되는지 판단 불가입니다.",
+        "확인: /admin/sns-control-tower",
+      ].join("\n"),
+      severity: "blocked",
+      shouldNotify: true,
+      expansionCandidateCount: 0,
+      pauseCandidateCount: 0,
+    };
+  }
+
+  const expansionCandidates = performance.leadRecommendations.filter(
+    (lead) => lead.experiment.action === "expand",
+  );
+  const pauseCandidates = performance.leadRecommendations.filter(
+    (lead) => lead.experiment.action === "pause",
+  );
+  const needsData = performance.leadRecommendations.filter(
+    (lead) => lead.experiment.action === "needs_data",
+  );
+  const best = performance.bestContent;
+  const topChallenger = performance.leadRecommendations
+    .filter((lead) => CHALLENGER_LEAD_VARIANTS.includes(lead.content))
+    .sort((a, b) => b.sessions - a.sessions)[0];
+  const activeLeadCount = LEAD_VARIANTS.length - leadPolicy.disabledLeadVariants.length;
+
+  const severity: SnsExperimentDigest["severity"] =
+    expansionCandidates.length > 0 || pauseCandidates.length > 0
+      ? "action"
+      : performance.totals.sessions >= 12
+        ? "watch"
+        : "ok";
+  const subject =
+    severity === "action"
+      ? `[Keepioo SNS] 실험 조치 후보 ${expansionCandidates.length + pauseCandidates.length}건`
+      : `[Keepioo SNS] 실험 관찰 ${performance.totals.sessions}세션`;
+
+  const lines = [
+    `최근 ${performance.windowDays}일 SNS 자동발행: ${performance.totals.sessions}세션 / ${performance.totals.activeUsers}활성 사용자`,
+    `현재 challenger 상한: ${leadPolicy.challengerTrafficPct}% · 활성 lead ${activeLeadCount}/${LEAD_VARIANTS.length}`,
+  ];
+
+  if (best) lines.push(`현재 1등: ${best.source}/${best.content} ${best.sessions}세션`);
+  if (topChallenger) {
+    lines.push(
+      `최고 challenger: ${topChallenger.content} ${topChallenger.sessions}세션 · ${topChallenger.experiment.label}`,
+    );
+  }
+  if (expansionCandidates.length > 0) {
+    lines.push(`확대 후보: ${expansionCandidates.map((lead) => `${lead.content}(${lead.sessions})`).join(", ")}`);
+  }
+  if (pauseCandidates.length > 0) {
+    lines.push(`중단 후보: ${pauseCandidates.map((lead) => `${lead.content}(${lead.sessions})`).join(", ")}`);
+  }
+  if (needsData.length > 0) {
+    lines.push(`표본 부족: ${needsData.map((lead) => `${lead.content}(${lead.sessions}/${lead.experiment.minSessions})`).join(", ")}`);
+  }
+  if (leadPolicy.warning) lines.push(`정책 경고: ${leadPolicy.warning}`);
+  lines.push("돈 새는 버튼은 자동으로 안 누릅니다. 확대/중단은 관리자 승인 필요.");
+  lines.push("확인: https://www.keepioo.com/admin/sns-control-tower");
+
+  return {
+    subject,
+    message: lines.join("\n"),
+    severity,
+    shouldNotify: true,
+    expansionCandidateCount: expansionCandidates.length,
+    pauseCandidateCount: pauseCandidates.length,
+  };
 }

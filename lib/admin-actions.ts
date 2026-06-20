@@ -101,7 +101,8 @@ export type AdminActionType =
   | "press_tier_manual_override"     // 2026-05-31 — P3 #1 사장님 수동 override: press_auto_confirm_settings.tier_floor 강제 변경
   | "weights_manual_override"       // 2026-05-31 — P3 #1 사장님 수동 override: popularity_weights_history view/apply/max_boost 강제 변경
   | "sns_lead_policy_update"        // 2026-06-20 — SNS Control Tower에서 Threads lead 유지/중단 정책 변경
-  | "sns_challenger_traffic_update"; // 2026-06-20 — challenger lead 제한 노출 단계 승인/되돌림
+  | "sns_challenger_traffic_update" // 2026-06-20 — challenger lead 제한 노출 단계 승인/되돌림
+  | "sns_experiment_digest_run";    // 2026-06-20 — SNS lead 실험 성과 일일 텔레그램 요약
 
 export type AdminActionRecord = {
   id: string;
@@ -428,4 +429,5 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   weights_manual_override: "popularity weights 수동 override (P3 #1)",
   sns_lead_policy_update: "SNS lead 정책 변경",
   sns_challenger_traffic_update: "SNS challenger 제한 노출 변경",
+  sns_experiment_digest_run: "SNS lead 실험 성과 일일 요약",
 };
