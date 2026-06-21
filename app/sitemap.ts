@@ -33,11 +33,18 @@ import { CATEGORY_SLUGS } from "@/lib/category-hubs";
 // 사고(welfare 10,223 중 1,000 만 제출) fix. .range() 로 1000 단위 순회해 전체 행 수집.
 // 안정 정렬(.order)을 호출자가 붙여야 페이지 경계 중복/누락이 없다.
 async function paginateAll<T>(
-  build: (from: number) => PromiseLike<{ data: T[] | null }>,
+  build: (
+    from: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
 ): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; from < 60000; from += 1000) {
-    const { data } = await build(from);
+    const { data, error } = await build(from);
+    // 2026-06-21 — 에러 시 throw. 이전엔 error 를 삼켜 data=null→빈 배열을 반환했고,
+    // Supabase 일시 장애(PostgREST 503) 중 ISR(revalidate 86400) 재생성이 걸리면
+    // 정적 페이지만 든 빈 sitemap 이 24h 캐시되는 회귀(welfare/loan/news 1.3만 누락)가 났다.
+    // throw 하면 Next 가 빈 sitemap 을 캐시하지 않고 직전 정상본을 유지·재시도한다.
+    if (error) throw new Error(`sitemap paginateAll: ${error.message}`);
     if (!data || data.length === 0) break;
     out.push(...data);
     if (data.length < 1000) break;
