@@ -29,6 +29,8 @@ on:
           - instagram-publish
           - instagram-reels-publish-dry
           - instagram-reels-publish
+          - instagram-reels-render-dry
+          - instagram-reels-render
           - instagram-comment-drafts
       source:
         description: "감사 로그용 호출 출처"
@@ -120,6 +122,14 @@ jobs:
               ;;
             instagram-reels-publish)
               path="/api/cron/instagram-reels-publish"
+              method="GET"
+              ;;
+            instagram-reels-render-dry)
+              path="/api/cron/instagram-reels-render?dry=1"
+              method="GET"
+              ;;
+            instagram-reels-render)
+              path="/api/cron/instagram-reels-render"
               method="GET"
               ;;
             instagram-comment-drafts)
