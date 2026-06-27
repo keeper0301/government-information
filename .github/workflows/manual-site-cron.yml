@@ -27,6 +27,8 @@ on:
           - sns-credential-check
           - instagram-publish-dry
           - instagram-publish
+          - instagram-reels-publish-dry
+          - instagram-reels-publish
           - instagram-comment-drafts
       source:
         description: "감사 로그용 호출 출처"
@@ -110,6 +112,14 @@ jobs:
               ;;
             instagram-publish)
               path="/api/cron/instagram-publish"
+              method="GET"
+              ;;
+            instagram-reels-publish-dry)
+              path="/api/cron/instagram-reels-publish?dry=1"
+              method="GET"
+              ;;
+            instagram-reels-publish)
+              path="/api/cron/instagram-reels-publish"
               method="GET"
               ;;
             instagram-comment-drafts)
