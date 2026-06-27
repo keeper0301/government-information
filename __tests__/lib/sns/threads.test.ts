@@ -4,6 +4,7 @@ import { publishThreadsPost } from "@/lib/sns/threads";
 const accessTokenEnv = "THREADS_ACCESS_" + "TOKEN";
 const originalUserId = process.env.THREADS_USER_ID;
 const originalAccessToken = process.env[accessTokenEnv];
+const originalEnabled = process.env.THREADS_AUTO_PUBLISH_ENABLED;
 const originalFetch = globalThis.fetch;
 const validText = [
   "기초연금은 매달 25일에 끝나는 돈이 아닙니다.",
@@ -20,6 +21,7 @@ describe("publishThreadsPost", () => {
   beforeEach(() => {
     process.env.THREADS_USER_ID = "threads-user";
     process.env[accessTokenEnv] = "dummy-value";
+    process.env.THREADS_AUTO_PUBLISH_ENABLED = "true";
   });
 
   afterEach(() => {
@@ -27,7 +29,21 @@ describe("publishThreadsPost", () => {
     else process.env.THREADS_USER_ID = originalUserId;
     if (originalAccessToken === undefined) delete process.env[accessTokenEnv];
     else process.env[accessTokenEnv] = originalAccessToken;
+    if (originalEnabled === undefined) delete process.env.THREADS_AUTO_PUBLISH_ENABLED;
+    else process.env.THREADS_AUTO_PUBLISH_ENABLED = originalEnabled;
     globalThis.fetch = originalFetch;
+  });
+
+  it("env enable 전에는 Threads API를 호출하지 않고 안전하게 스킵한다", async () => {
+    delete process.env.THREADS_AUTO_PUBLISH_ENABLED;
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(publishThreadsPost({ text: validText })).resolves.toEqual({
+      ok: false,
+      reason: "skipped_disabled",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("code 190 Failed to decrypt create 오류를 안정적인 invalid token reason으로 정규화한다", async () => {
