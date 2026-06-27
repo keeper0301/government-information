@@ -17,7 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { publishCarousel } from "@/lib/instagram/publish";
 import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
-import { isExternalPublishQualityApproved } from "@/lib/blog/quality-gate";
+import { assessExternalPublishQuality } from "@/lib/blog/quality-gate";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
@@ -183,7 +183,7 @@ export async function GET(request: Request) {
   // 발행 대기 글 1건 (가장 오래된 것 먼저 — FIFO)
   const { data: post, error: queryErr } = await admin
     .from("blog_posts")
-    .select("id, slug, title, meta_description, category, tags, instagram_attempt_count, admin_review_required")
+    .select("id, slug, title, content, meta_description, category, tags, instagram_attempt_count, admin_review_required")
     .not("published_at", "is", null)
     .is("instagram_published_at", null)
     .eq("admin_review_required", false)
@@ -235,8 +235,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending", message: "발행 대기 글 없음" });
   }
 
-  if (!isExternalPublishQualityApproved(post)) {
-    if (dryRun) return dryResponse("quality_gate_rejected", { slug: post.slug });
+  const qualityAssessment = assessExternalPublishQuality(post);
+  if (!qualityAssessment.approved) {
+    if (dryRun) {
+      return dryResponse("quality_gate_rejected", {
+        slug: post.slug,
+        reasons: qualityAssessment.reasons,
+        metrics: qualityAssessment.metrics,
+      });
+    }
     await logSkip("quality_gate_rejected", { slug: post.slug });
     return NextResponse.json({
       status: "quality_gate_rejected",

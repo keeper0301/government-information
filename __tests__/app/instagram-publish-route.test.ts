@@ -5,7 +5,18 @@ const mocks = vi.hoisted(() => ({
   loadValidToken: vi.fn(),
   publishCarousel: vi.fn(),
   logAdminAction: vi.fn(),
-  isExternalPublishQualityApproved: vi.fn(() => true),
+  assessExternalPublishQuality: vi.fn(() => ({
+    approved: true,
+    reasons: [] as string[],
+    metrics: {
+      titleLength: 20,
+      plainTextLength: 1000,
+      metaLength: 120,
+      informationSignalCount: 4,
+      hasOfficialActionSignal: true,
+      hasTemplateSmell: false,
+    },
+  })),
   fromCalls: [] as string[],
   firstPub: null as null | { instagram_published_at: string },
   todayCount: 0,
@@ -13,6 +24,7 @@ const mocks = vi.hoisted(() => ({
     id: string;
     slug: string;
     title: string;
+    content: string;
     meta_description: string | null;
     category: string;
     tags: string[];
@@ -58,7 +70,7 @@ vi.mock("@/lib/admin-actions", () => ({
   logAdminAction: mocks.logAdminAction,
 }));
 vi.mock("@/lib/blog/quality-gate", () => ({
-  isExternalPublishQualityApproved: mocks.isExternalPublishQualityApproved,
+  assessExternalPublishQuality: mocks.assessExternalPublishQuality,
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -81,7 +93,18 @@ beforeEach(() => {
   mocks.loadValidToken.mockResolvedValue({ token: "token", userId: "ig-user", username: "keepioo" });
   mocks.publishCarousel.mockResolvedValue({ ok: true, mediaId: "media", permalink: "https://instagram.example/p/1" });
   mocks.logAdminAction.mockResolvedValue(undefined);
-  mocks.isExternalPublishQualityApproved.mockReturnValue(true);
+  mocks.assessExternalPublishQuality.mockReturnValue({
+    approved: true,
+    reasons: [] as string[],
+    metrics: {
+      titleLength: 20,
+      plainTextLength: 1000,
+      metaLength: 120,
+      informationSignalCount: 4,
+      hasOfficialActionSignal: true,
+      hasTemplateSmell: false,
+    },
+  });
   mocks.fromCalls.length = 0;
   mocks.firstPub = null;
   mocks.todayCount = 0;
@@ -89,6 +112,7 @@ beforeEach(() => {
     id: "post-1",
     slug: "slug-1",
     title: "title",
+    content: "대상 신청 기간 서류 문의 공식 지원 금액 ".repeat(40),
     meta_description: "meta",
     category: "청년",
     tags: [],
@@ -135,6 +159,33 @@ describe("instagram-publish dry-run", () => {
     const body = await res.json();
 
     expect(body).toMatchObject({ dryRun: true, status: "no_pending", exhaustedAttempts: 4 });
+    expect(mocks.publishCarousel).not.toHaveBeenCalled();
+  });
+
+  it("returns quality gate reasons in dry-run without writing audit", async () => {
+    mocks.assessExternalPublishQuality.mockReturnValue({
+      approved: false,
+      reasons: ["content_too_short_for_external_publish"],
+      metrics: {
+        titleLength: 20,
+        plainTextLength: 0,
+        metaLength: 120,
+        informationSignalCount: 3,
+        hasOfficialActionSignal: true,
+        hasTemplateSmell: false,
+      },
+    });
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "quality_gate_rejected",
+      reasons: ["content_too_short_for_external_publish"],
+      metrics: { plainTextLength: 0 },
+    });
+    expect(mocks.logAdminAction).not.toHaveBeenCalled();
     expect(mocks.publishCarousel).not.toHaveBeenCalled();
   });
 });
