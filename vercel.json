@@ -97,6 +97,7 @@
     { "path": "/api/cron/policy-url-check", "schedule": "0 19 * * 0" },
 
     { "path": "/api/cron/instagram-publish", "schedule": "0 * * * *" },
+    { "path": "/api/cron/instagram-reels-render", "schedule": "10 1,5,9 * * *" },
     { "path": "/api/cron/instagram-reels-publish", "schedule": "20 2,6,10 * * *" },
 
     { "path": "/api/cron/popularity-snapshot", "schedule": "0 18 * * *" },
