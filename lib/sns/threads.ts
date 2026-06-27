@@ -33,9 +33,17 @@ export type SnsResult =
   | { ok: true; id?: string }
   | { ok: false; reason: string };
 
+function threadsAutoPublishEnabled(): boolean {
+  return process.env.THREADS_AUTO_PUBLISH_ENABLED === "true";
+}
+
 export async function publishThreadsPost(opts: {
   text: string;
 }): Promise<SnsResult> {
+  if (!threadsAutoPublishEnabled()) {
+    return { ok: false, reason: "skipped_disabled" };
+  }
+
   const userId = process.env.THREADS_USER_ID;
   const accessToken = process.env.THREADS_ACCESS_TOKEN;
   if (!userId || !accessToken) {
