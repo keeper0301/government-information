@@ -27,6 +27,25 @@ export const dynamic = "force-dynamic";
 //             최대 ~245s 까지 늘어남. Vercel 300s 한도 안전 마진 55s.
 export const maxDuration = 300;
 
+type InstagramPublishStatus =
+  | "disabled"
+  | "outside_hours"
+  | "not_configured"
+  | "daily_cap_reached"
+  | "quality_review_pending"
+  | "no_pending"
+  | "quality_gate_rejected"
+  | "ready";
+
+function isDryRunRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  return (
+    url.searchParams.get("dry") === "1" ||
+    url.searchParams.get("dryRun") === "1" ||
+    url.searchParams.get("status") === "1"
+  );
+}
+
 function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.keepioo.com";
 }
@@ -37,6 +56,7 @@ export async function GET(request: Request) {
   // (다른 발행성 cron 45개와 일관, 코드리뷰 P2).
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
+  const dryRun = isDryRunRequest(request);
 
   // ━━━ 인스타 정지 예방 안전책 (2026-05-12 추가) ━━━
 
@@ -54,10 +74,18 @@ export async function GET(request: Request) {
     }
   }
 
+  function dryResponse(
+    status: InstagramPublishStatus,
+    extra: Record<string, unknown> = {},
+  ) {
+    return NextResponse.json({ dryRun: true, status, ...extra });
+  }
+
   // 0) Kill switch — INSTAGRAM_CRON_DISABLED=true 면 즉시 skip
   //    rate limit·정지 위험 비상 정지 용. vercel.json schedule 안 건드리고
   //    env 만으로 켜고/끄기 (사장님 비개발자 운영 편의)
   if (process.env.INSTAGRAM_CRON_DISABLED === "true") {
+    if (dryRun) return dryResponse("disabled");
     await logSkip("disabled", {});
     return NextResponse.json({
       status: "disabled",
@@ -71,6 +99,7 @@ export async function GET(request: Request) {
   const bypassHourCheck = process.env.INSTAGRAM_BYPASS_HOUR_CHECK === "true";
   const kstHour = (new Date().getUTCHours() + 9) % 24;
   if (!bypassHourCheck && (kstHour < 9 || kstHour >= 22)) {
+    if (dryRun) return dryResponse("outside_hours", { kstHour });
     await logSkip("outside_hours", { kstHour });
     return NextResponse.json({
       status: "outside_hours",
@@ -84,6 +113,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const creds = await loadValidToken(admin);
   if (!creds) {
+    if (dryRun) return dryResponse("not_configured");
     await logSkip("not_configured", {});
     return NextResponse.json({
       status: "not_configured",
@@ -126,6 +156,14 @@ export async function GET(request: Request) {
     .gte("instagram_published_at", kstMidnight.toISOString());
 
   if ((todayCount ?? 0) >= dailyCap) {
+    if (dryRun) {
+      return dryResponse("daily_cap_reached", {
+        todayCount,
+        dailyCap,
+        isNewAccount,
+        kstMidnight: kstMidnight.toISOString(),
+      });
+    }
     await logSkip("daily_cap_reached", { todayCount, dailyCap, isNewAccount });
     return NextResponse.json({
       status: "daily_cap_reached",
@@ -137,8 +175,10 @@ export async function GET(request: Request) {
   }
 
   // 3) Jitter — random 0~90초 sleep (cron 정각 동시 호출 spike 회피, 봇 패턴 회피)
-  const jitterMs = Math.floor(Math.random() * 90_000);
-  await new Promise((r) => setTimeout(r, jitterMs));
+  const jitterMs = dryRun ? 0 : Math.floor(Math.random() * 90_000);
+  if (jitterMs > 0) {
+    await new Promise((r) => setTimeout(r, jitterMs));
+  }
 
   // 발행 대기 글 1건 (가장 오래된 것 먼저 — FIFO)
   const { data: post, error: queryErr } = await admin
@@ -170,6 +210,9 @@ export async function GET(request: Request) {
       .lt("instagram_attempt_count", 3)
       .or("admin_review_required.is.null,admin_review_required.eq.true");
     if ((blockedByQuality ?? 0) > 0) {
+      if (dryRun) {
+        return dryResponse("quality_review_pending", { blockedByQuality });
+      }
       await logSkip("quality_review_pending", { blockedByQuality });
       return NextResponse.json({
         status: "quality_review_pending",
@@ -177,12 +220,23 @@ export async function GET(request: Request) {
         message: "품질 검수 통과 전 글은 인스타 자동 발행하지 않음",
       });
     }
+    if (dryRun) {
+      const { count: exhaustedAttempts } = await admin
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .not("published_at", "is", null)
+        .is("instagram_published_at", null)
+        .eq("admin_review_required", false)
+        .gte("instagram_attempt_count", 3);
+      return dryResponse("no_pending", { exhaustedAttempts: exhaustedAttempts ?? 0 });
+    }
     // 2026-05-14 — no_pending 분기 audit (정상 가동 흔적 보장)
     await logSkip("no_pending", {});
     return NextResponse.json({ status: "no_pending", message: "발행 대기 글 없음" });
   }
 
   if (!isExternalPublishQualityApproved(post)) {
+    if (dryRun) return dryResponse("quality_gate_rejected", { slug: post.slug });
     await logSkip("quality_gate_rejected", { slug: post.slug });
     return NextResponse.json({
       status: "quality_gate_rejected",
@@ -197,6 +251,22 @@ export async function GET(request: Request) {
     `${base}/api/instagram-card/${encodeURIComponent(post.slug)}/2`,
     `${base}/api/instagram-card/${encodeURIComponent(post.slug)}/3`,
   ];
+
+  if (dryRun) {
+    return dryResponse("ready", {
+      kstHour,
+      todayCount: todayCount ?? 0,
+      dailyCap,
+      isNewAccount,
+      candidate: {
+        id: post.id,
+        slug: post.slug,
+        attempt_count: post.instagram_attempt_count ?? 0,
+        admin_review_required: post.admin_review_required,
+      },
+      cardUrls,
+    });
+  }
 
   // attempt_count 먼저 증가 (실패해도 무한 retry 방지)
   // .select() 로 실제 update 된 row 가져와서 검증 — row 0개 영향이면 audit.

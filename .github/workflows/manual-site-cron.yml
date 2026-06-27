@@ -25,6 +25,7 @@ on:
           - sns-publish-blog
           - sns-publish-popular-policy
           - sns-credential-check
+          - instagram-publish-dry
           - instagram-publish
           - instagram-comment-drafts
       source:
@@ -101,6 +102,10 @@ jobs:
               ;;
             sns-credential-check)
               path="/api/cron/sns-credential-check"
+              method="GET"
+              ;;
+            instagram-publish-dry)
+              path="/api/cron/instagram-publish?dry=1"
               method="GET"
               ;;
             instagram-publish)
