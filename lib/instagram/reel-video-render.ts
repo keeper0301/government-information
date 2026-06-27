@@ -122,7 +122,9 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
   const plan = buildReelVideoPlan(post);
   const dir = await mkdtemp(join(tmpdir(), "keepioo-reel-"));
   const listPath = join(dir, "frames.txt");
-  const outputPath = join(dir, `${post.slug}.mp4`);
+  // slug 는 DB 값이라 정상적으로는 안전하지만, 파일 경로에는 절대 쓰지 않는다.
+  // 악의적/손상된 slug(`../`, `/`)가 temp 디렉터리 밖으로 ffmpeg 출력을 쓰는 일을 막는다.
+  const outputPath = join(dir, "reel.mp4");
   try {
     const frames: string[] = [];
     for (let i = 0; i < plan.slides.length; i += 1) {
