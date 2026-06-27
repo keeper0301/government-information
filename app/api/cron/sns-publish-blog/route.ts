@@ -53,11 +53,17 @@ async function run() {
   }
 
   // 이미 성공한 채널만 제외. 실패한 채널은 재시도 대상으로 남긴다.
-  const { data: alreadyRun } = await admin
+  const { data: alreadyRun, error: alreadyRunError } = await admin
     .from("admin_actions")
     .select("details, created_at")
     .eq("action", "sns_publish_run")
     .gte("created_at", since24h);
+  if (alreadyRunError) {
+    return NextResponse.json(
+      { ok: false, error: `dedupe_query_failed: ${alreadyRunError.message}` },
+      { status: 500 },
+    );
+  }
   const priorRuns = (alreadyRun ?? []) as SnsRunRow[];
   const threadsCadence = createThreadsCadenceState((alreadyRun ?? []) as ThreadsCadenceRunRow[]);
 
