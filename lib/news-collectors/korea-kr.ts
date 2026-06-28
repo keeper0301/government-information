@@ -394,3 +394,52 @@ export async function collectKoreaKr(): Promise<{
 
   return { total, upserted, skippedDup, skippedBatchDup, errors, breakdown, errorDetails };
 }
+
+export async function inspectKoreaKrRecent(since: Date = new Date(Date.now() - 24 * 3600_000)): Promise<{
+  total: number;
+  recent: number;
+  latestPublishedAt: string | null;
+  breakdown: Record<string, { total: number; recent: number }>;
+  errors: number;
+  errorDetails: Record<string, string>;
+}> {
+  let total = 0;
+  let recent = 0;
+  let latestPublishedAt: string | null = null;
+  let errors = 0;
+  const breakdown: Record<string, { total: number; recent: number }> = {};
+  const errorDetails: Record<string, string> = {};
+  const sinceMs = since.getTime();
+
+  const results = await Promise.allSettled(
+    FEEDS.map((feed) => fetchFeed(feed).then((items) => ({ feed, items }))),
+  );
+
+  results.forEach((result, idx) => {
+    const feed = FEEDS[idx];
+    if (result.status !== "fulfilled") {
+      errors++;
+      errorDetails[feed.code] =
+        result.reason instanceof Error ? result.reason.message : String(result.reason);
+      return;
+    }
+
+    const items = result.value.items;
+    const recentItems = items.filter((item) => {
+      const t = new Date(item.published_at).getTime();
+      return Number.isFinite(t) && t >= sinceMs;
+    });
+
+    total += items.length;
+    recent += recentItems.length;
+    breakdown[feed.code] = { total: items.length, recent: recentItems.length };
+
+    for (const item of items) {
+      if (!latestPublishedAt || item.published_at > latestPublishedAt) {
+        latestPublishedAt = item.published_at;
+      }
+    }
+  });
+
+  return { total, recent, latestPublishedAt, breakdown, errors, errorDetails };
+}

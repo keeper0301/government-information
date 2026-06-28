@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authorizeCronRequest } from "@/lib/cron-auth";
+import { inspectKoreaKrRecent } from "@/lib/news-collectors/korea-kr";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -145,10 +146,28 @@ async function run() {
     .gte("created_at", since24);
   const krTotal = krRows?.length ?? 0;
   const krRich = krRows?.filter((r) => (r.body?.length ?? 0) >= 250).length ?? 0;
-  const krLine =
+  let krLine =
     krTotal > 0
-      ? `\n\n📰 korea.kr 본문 보강: 24h ${krTotal}건 중 250+ ${krRich}건 (${Math.round((100 * krRich) / krTotal)}%)`
-      : "\n\n📰 korea.kr: 24h 수집 0";
+      ? `\n\n📰 korea.kr 본문 보강: DB 24h 신규 ${krTotal}건 중 250+ ${krRich}건 (${Math.round((100 * krRich) / krTotal)}%)`
+      : "\n\n📰 korea.kr: DB 24h 신규 0";
+  if (krTotal === 0) {
+    try {
+      const rss = await inspectKoreaKrRecent(new Date(Date.now() - 24 * 3600 * 1000));
+      const latest = rss.latestPublishedAt
+        ? new Date(new Date(rss.latestPublishedAt).getTime() + 9 * 3600_000)
+            .toISOString()
+            .slice(0, 16)
+            .replace("T", " ")
+        : "-";
+      krLine =
+        rss.recent > 0
+          ? `\n\n📰 korea.kr: DB 24h 신규 0 / 원본 RSS 후보 ${rss.recent}건 (최신 ${latest} KST) — collect-news 적재 확인 필요`
+          : `\n\n📰 korea.kr: DB 24h 신규 0 / 원본 RSS 후보 0건 (errors ${rss.errors})`;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      krLine = `\n\n📰 korea.kr: DB 24h 신규 0 / 원본 RSS 확인 실패 — ${msg.slice(0, 120)}`;
+    }
+  }
 
   const text =
     "🏙 자치구 보도자료 수집 확인 (6/1 수리·신규 검증)\n\n" +
