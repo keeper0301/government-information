@@ -78,6 +78,24 @@ function sortedDistricts(province: ProvinceCode): string[] {
     .sort((a, b) => b.length - a.length);
 }
 
+function districtAliases(district: string): string[] {
+  const aliases = [district];
+  // 행정구역명은 본문에서 "전남 순천", "부산 부산진"처럼 접미사 없이 자주 등장한다.
+  // 광역이 먼저 검출된 경우에만 안전하게 축약명도 허용한다. 1글자 축약(중구→중,
+  // 동구→동 등)은 오탐이 너무 커서 제외한다.
+  const short = district.replace(/[시군구]$/, "");
+  if (short.length >= 2 && short !== district) aliases.push(short);
+  return aliases;
+}
+
+function sortedDistrictAliasEntries(
+  province: ProvinceCode,
+): Array<{ district: string; alias: string }> {
+  return sortedDistricts(province)
+    .flatMap((district) => districtAliases(district).map((alias) => ({ district, alias })))
+    .sort((a, b) => b.alias.length - a.alias.length || b.district.length - a.district.length);
+}
+
 // text 안에서 (광역 + 시·군) 자동 추출. 정확도 순으로 시도.
 export function extractDistrict(text: string | null | undefined): DistrictMatch | null {
   if (!text) return null;
@@ -86,13 +104,14 @@ export function extractDistrict(text: string | null | undefined): DistrictMatch 
   const detectedProvince = detectProvince(t);
 
   // Case 1: 광역 명시 + 그 광역의 시·군 매칭 시도 (가장 긴 이름 우선)
+  // 광역이 명확할 때는 "전남 순천", "부산 부산진" 같은 접미사 생략 표현도 허용한다.
   if (detectedProvince) {
-    for (const d of sortedDistricts(detectedProvince)) {
-      if (t.includes(d)) {
+    for (const { district, alias } of sortedDistrictAliasEntries(detectedProvince)) {
+      if (t.includes(alias)) {
         return {
           province: detectedProvince,
           provinceName: PROVINCES.find((p) => p.code === detectedProvince)!.name,
-          district: d,
+          district,
         };
       }
     }
