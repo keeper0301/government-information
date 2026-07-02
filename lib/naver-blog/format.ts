@@ -85,7 +85,11 @@ function naverCenteredCtaHtml(label: string, href: string): string {
   return `<p style="${NAVER_CENTER_CTA_STYLE}"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
 }
 
-function naverCenteredExternalLinkHtml(href: string, label = "keepioo에서 자세히 보기"): string {
+function naverCenteredCtaTextHtml(label: string): string {
+  return `<p style="${NAVER_CENTER_CTA_STYLE}">${escapeHtml(label)}</p>`;
+}
+
+function naverCenteredExternalLinkHtml(href: string, label = href): string {
   return `<p style="font-size:16px;line-height:1.8;text-align:center;margin:0 0 34px;color:#0068c9;"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
 }
 
@@ -482,7 +486,7 @@ export function convertToNaverBlogHtml(
   const hookHtml = [
     naverParagraphHtml(answerSummary),
     naverParagraphHtml(`${target}에 해당한다면 지원 내용(${benefit})과 기간(${period})을 먼저 확인해두는 게 좋아요. 공고마다 세부 조건이 달라질 수 있으니 아래 핵심 정리를 참고하세요.`),
-    naverCenteredCtaHtml("자격·신청 조건 바로가기", backlinkUrl),
+    naverCenteredCtaTextHtml("자격·신청 조건 바로가기"),
     `<p style="text-align:center;color:#ff2b00;font-size:18px;line-height:1.4;margin:0 0 10px;">👇👇</p>`,
     naverCenteredExternalLinkHtml(backlinkUrl),
     naverBlankHtml(),

@@ -181,18 +181,18 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain(`style="font-size:16px;line-height:2.18;color:#222;text-align:left`);
     expect(out.bodyHtml).toContain("만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.");
     expect(out.bodyHtml).toContain('text-align:center;text-decoration:underline');
-    expect(out.bodyHtml).toContain("자격·신청 조건 바로가기");
+    expect(out.bodyHtml).toContain(">자격·신청 조건 바로가기</p>");
+    expect(out.bodyHtml).not.toContain(">자격·신청 조건 바로가기</a>");
     expect(out.bodyHtml).toContain("👇👇");
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/2026-청년-월세-지원"');
     const ctaIndex = out.bodyHtml.indexOf("자격·신청 조건 바로가기");
     const arrowIndex = out.bodyHtml.indexOf("👇👇");
-    const detailCtaIndex = out.bodyHtml.indexOf("keepioo에서 자세히 보기");
+    const detailLinkIndex = out.bodyHtml.indexOf(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
     const bodySectionIndex = out.bodyHtml.indexOf(">신청 대상</p>");
     expect(ctaIndex).toBeGreaterThanOrEqual(0);
     expect(arrowIndex).toBeGreaterThan(ctaIndex);
-    expect(detailCtaIndex).toBeGreaterThan(arrowIndex);
-    expect(bodySectionIndex).toBeGreaterThan(detailCtaIndex);
-    expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
+    expect(detailLinkIndex).toBeGreaterThan(arrowIndex);
+    expect(bodySectionIndex).toBeGreaterThan(detailLinkIndex);
     expect(out.bodyHtml).not.toContain("요약 답변");
     expect(out.bodyHtml).not.toContain("검색 핵심 정보");
   });
@@ -279,7 +279,6 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/recommend"');
     expect(out.bodyHtml).toContain("자세한 자격·금액·신청 방법 정리");
     expect(out.bodyHtml).toContain("내 조건에 맞는 정책 더 찾기");
-    expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
     expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/recommend</a>");
   });
 
