@@ -200,11 +200,16 @@ async function publishToSe3(payload, dryRun) {
   const allBodyText = measuredBodyText.length > paragraphText.length ? measuredBodyText : paragraphText;
   debug.bodyLength = allBodyText.length;
   debug.bodyVerified = bodyContainsExpectedText(allBodyText, payload.bodyHtml);
+  debug.bodyStyleProbe = probeSmartEditorStyles(mfDoc);
   if (!debug.bodyVerified && isTrustedStructuredNaverBody(allBodyText, debug.body_paste_method)) {
     debug.bodyVerified = true;
     debug.body_verification_relaxed = "trusted_structured_sections";
   }
-  await reportProgress("content_body_verified", { bodyLength: debug.bodyLength, bodyVerified: debug.bodyVerified, method: debug.body_paste_method });
+  if (!debug.bodyVerified && isTrustedRichStyledNaverBody(allBodyText, debug.body_paste_method, debug.bodyStyleProbe)) {
+    debug.bodyVerified = true;
+    debug.body_verification_relaxed = "trusted_rich_style_probe";
+  }
+  await reportProgress("content_body_verified", { bodyLength: debug.bodyLength, bodyVerified: debug.bodyVerified, method: debug.body_paste_method, styleProbe: debug.bodyStyleProbe, relaxed: debug.body_verification_relaxed });
   if (debug.title_method === "direct_dom_fallback" || debug.body_paste_method === "direct_dom_fallback" || debug.body_paste_method === "forced_direct_dom_edit") {
     debug.unsafe_input_fallback = true;
     if (!dryRun && payload.allowUnsafeDomForEdit !== true) {
@@ -728,7 +733,17 @@ function getEditorBodyText(targetEl) {
     .join("");
   const sectionText = section.textContent || "";
   const targetText = targetEl?.textContent || "";
-  return [text, sectionText, targetText].sort((a, b) => b.length - a.length)[0] || "";
+  // SmartEditor may replace the focused paragraph after Ctrl+A/Backspace or paste.
+  // In that state a stale targetEl stays short while the real editor document already
+  // contains the inserted body. Use the largest same-document SmartEditor text as
+  // the measurement so the method label does not falsely downgrade HTML paste to
+  // trusted_input_failed_no_direct_dom and then continue into plain-text fallbacks.
+  const documentParagraphText = Array.from(doc.querySelectorAll?.(".se-main-container .se-text-paragraph, .se-section-text .se-text-paragraph") ?? [])
+    .map((el) => el.textContent ?? "")
+    .join("");
+  const documentBodyText = doc.querySelector?.(".se-main-container")?.textContent || "";
+  return [text, sectionText, targetText, documentParagraphText, documentBodyText]
+    .sort((a, b) => b.length - a.length)[0] || "";
 }
 
 function resolveBodyContainer(targetEl) {
@@ -761,7 +776,13 @@ function bodyContainsExpectedText(actualText, html) {
 }
 
 function isTrustedStructuredNaverBody(actualText, method) {
-  if (!String(method || "").startsWith("debugger_")) return false;
+  const trustedMethod = String(method || "");
+  const isTrustedRichOrKeyboardInput = trustedMethod.startsWith("debugger_") ||
+    trustedMethod === "clipboard_dispatch" ||
+    trustedMethod === "debugger_click_ctrl_v_fallback" ||
+    trustedMethod === "debugger_ctrl_v_fallback" ||
+    trustedMethod === "insertHTML_fallback";
+  if (!isTrustedRichOrKeyboardInput) return false;
   const actual = String(actualText || "").replace(/\s+/g, " ").trim();
   if (actual.length < 900) return false;
   const hasSummary = actual.includes("요약 답변");
@@ -777,6 +798,55 @@ function isTrustedStructuredNaverBody(actualText, method) {
   ];
   return hasSummary && hasStructuredChecklist &&
     semanticSignals.filter((re) => re.test(actual)).length >= 2;
+}
+
+function isTrustedRichStyledNaverBody(actualText, method, styleProbe) {
+  const trustedMethod = String(method || "");
+  if (!["clipboard_dispatch", "debugger_click_ctrl_v_fallback", "debugger_ctrl_v_fallback", "insertHTML_fallback"].includes(trustedMethod)) {
+    return false;
+  }
+  const actual = String(actualText || "").replace(/\s+/g, " ").trim();
+  if (actual.length < 900) return false;
+  const probe = styleProbe || {};
+  const hasVisualHierarchy = Number(probe.largeTextBlocks || 0) >= 2 ||
+    (Number(probe.leftBorderBlocks || 0) >= 2 && Number(probe.grayBlocks || 0) >= 2);
+  const hasUsefulStructure = actual.includes("자주 묻는 질문") ||
+    actual.includes("더 알아보기") ||
+    actual.includes("공식 신청 페이지") ||
+    actual.includes("놓치지 말아야 할 점");
+  const hasLinkEvidence = Number(probe.links || 0) >= 1 || actual.includes("keepioo.com");
+  return hasVisualHierarchy && hasUsefulStructure && hasLinkEvidence;
+}
+
+function probeSmartEditorStyles(doc) {
+  const root = doc?.querySelector?.(".se-main-container") || doc;
+  const probe = {
+    leftBorderBlocks: 0,
+    grayBlocks: 0,
+    largeTextBlocks: 0,
+    links: 0,
+    underlinedLinks: 0,
+    redTextBlocks: 0,
+  };
+  if (!root?.querySelectorAll) return probe;
+  const nodes = Array.from(root.querySelectorAll("*"));
+  for (const el of nodes) {
+    const text = (el.textContent || "").trim();
+    if (text.length < 2) continue;
+    const style = doc.defaultView?.getComputedStyle?.(el);
+    if (!style) continue;
+    const fontSize = Number.parseFloat(style.fontSize || "0");
+    const borderLeftWidth = Number.parseFloat(style.borderLeftWidth || "0");
+    const bg = style.backgroundColor || "";
+    const color = style.color || "";
+    if (fontSize >= 19) probe.largeTextBlocks += 1;
+    if (borderLeftWidth >= 2) probe.leftBorderBlocks += 1;
+    if (bg && !/rgba?\(255, 255, 255|rgba?\(0, 0, 0, 0\)|transparent/i.test(bg)) probe.grayBlocks += 1;
+    if (el.tagName === "A" || el.closest?.("a")) probe.links += 1;
+    if ((el.tagName === "A" || el.closest?.("a")) && /underline/i.test(style.textDecorationLine || style.textDecoration || "")) probe.underlinedLinks += 1;
+    if (/rgb\((1[5-9]\d|2[0-5]\d),\s*(0|[1-9]\d),\s*(0|[1-9]\d)\)/i.test(color)) probe.redTextBlocks += 1;
+  }
+  return probe;
 }
 
 function directSetPlainText(targetEl, text) {
