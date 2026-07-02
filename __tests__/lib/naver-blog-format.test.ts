@@ -186,12 +186,13 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/2026-청년-월세-지원"');
     const ctaIndex = out.bodyHtml.indexOf("자격·신청 조건 바로가기");
     const arrowIndex = out.bodyHtml.indexOf("👇👇");
-    const externalLinkIndex = out.bodyHtml.indexOf(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
+    const detailCtaIndex = out.bodyHtml.indexOf("keepioo에서 자세히 보기");
     const bodySectionIndex = out.bodyHtml.indexOf(">신청 대상</p>");
     expect(ctaIndex).toBeGreaterThanOrEqual(0);
     expect(arrowIndex).toBeGreaterThan(ctaIndex);
-    expect(externalLinkIndex).toBeGreaterThan(arrowIndex);
-    expect(bodySectionIndex).toBeGreaterThan(externalLinkIndex);
+    expect(detailCtaIndex).toBeGreaterThan(arrowIndex);
+    expect(bodySectionIndex).toBeGreaterThan(detailCtaIndex);
+    expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
     expect(out.bodyHtml).not.toContain("요약 답변");
     expect(out.bodyHtml).not.toContain("검색 핵심 정보");
   });
@@ -270,13 +271,16 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain("div 는 제거되고 내용만 유지");
   });
 
-  it("백링크 footer 가 <p> + <a> 로 들어간다", () => {
+  it("백링크 footer 가 <p> + <a> 로 들어가되 긴 URL 을 본문 문구로 노출하지 않는다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(
-      'https://www.keepioo.com/blog/2026-청년-월세-지원',
+      'href="https://www.keepioo.com/blog/2026-청년-월세-지원"',
     );
-    expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/');
+    expect(out.bodyHtml).toContain('href="https://www.keepioo.com/recommend"');
     expect(out.bodyHtml).toContain("자세한 자격·금액·신청 방법 정리");
+    expect(out.bodyHtml).toContain("내 조건에 맞는 정책 더 찾기");
+    expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
+    expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/recommend</a>");
   });
 
   it("SE3 HTML 에서도 중복 리드와 웹용 목차는 제거된다", () => {

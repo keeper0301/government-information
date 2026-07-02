@@ -85,8 +85,8 @@ function naverCenteredCtaHtml(label: string, href: string): string {
   return `<p style="${NAVER_CENTER_CTA_STYLE}"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
 }
 
-function naverCenteredExternalLinkHtml(href: string): string {
-  return `<p style="font-size:16px;line-height:1.8;text-align:center;margin:0 0 34px;color:#0068c9;"><a href="${escapeAttr(href)}">${escapeHtml(href)}</a></p>`;
+function naverCenteredExternalLinkHtml(href: string, label = "keepioo에서 자세히 보기"): string {
+  return `<p style="font-size:16px;line-height:1.8;text-align:center;margin:0 0 34px;color:#0068c9;"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
 }
 
 function naverStyledTableHtml(rows: string[][]): string {
@@ -507,10 +507,8 @@ export function convertToNaverBlogHtml(
     naverParagraphHtml("신청 전에는 반드시 해당 기관의 최신 공고를 한 번 더 확인하세요."),
     naverBlankHtml(),
     naverCenteredCtaHtml("자세한 자격·금액·신청 방법 정리", backlinkUrl),
-    naverParagraphHtml(backlinkUrl),
     naverBlankHtml(),
-    naverParagraphHtml("내 조건에 맞는 정책을 더 찾고 싶다면"),
-    naverParagraphHtml(`${BASE_URL}/recommend`),
+    naverCenteredCtaHtml("내 조건에 맞는 정책 더 찾기", `${BASE_URL}/recommend`),
     `<p style="${NAVER_DIVIDER_STYLE}">━━━━━━━━━━━━━━━━━━</p>`,
   ].join("\n");
 
