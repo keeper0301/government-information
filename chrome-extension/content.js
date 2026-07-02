@@ -17,6 +17,10 @@
 
 const SE3_TITLE = ".se-section-documentTitle p.se-text-paragraph";
 const SE3_BODY = ".se-section-text p.se-text-paragraph";
+// SmartEditor currently renders the final publish button in the same document,
+// not under a stable `layer_publish` class. Keep the selector tied to Naver's
+// data-click-area, which stayed stable in the live 2026-07-03 publish run.
+const NAVER_CONFIRM_PUBLISH_SELECTOR = 'button[data-click-area="tpb*i.publish"]';
 
 if (!globalThis.__keepiooNaverPublisherListenerRegisteredV3) {
   globalThis.__keepiooNaverPublisherListenerRegisteredV3 = true;
@@ -254,7 +258,7 @@ async function publishToSe3(payload, dryRun) {
     await reportProgress("content_dry_run_main_publish_clicked", { method: "scheduled_dom_click" });
     let confirmBtn = await waitForVisible(
       mfDoc,
-      '[class*="layer_publish"] button[data-click-area="tpb*i.publish"]',
+      NAVER_CONFIRM_PUBLISH_SELECTOR,
       8000,
     );
     if (!confirmBtn) {
@@ -266,7 +270,7 @@ async function publishToSe3(payload, dryRun) {
       await reportProgress("content_dry_run_main_publish_clicked", { method: "debugger_click", ok: debug.dry_run_publish_click_ok });
       confirmBtn = await waitForVisible(
         mfDoc,
-        '[class*="layer_publish"] button[data-click-area="tpb*i.publish"]',
+        NAVER_CONFIRM_PUBLISH_SELECTOR,
         8000,
       );
     }
@@ -289,7 +293,7 @@ async function publishToSe3(payload, dryRun) {
   debug.stage = "confirm_publish";
   const confirmBtn = await waitForVisible(
     mfDoc,
-    '[class*="layer_publish"] button[data-click-area="tpb*i.publish"]',
+    NAVER_CONFIRM_PUBLISH_SELECTOR,
     12000,
   );
   if (!confirmBtn) throw new Error("발행 모달 confirm 버튼 못 찾음");
