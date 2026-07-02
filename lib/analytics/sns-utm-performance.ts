@@ -371,6 +371,9 @@ export function buildSnsExperimentDigest(
   const needsData = performance.leadRecommendations.filter(
     (lead) => lead.experiment.action === "needs_data",
   );
+  const disabledLeadSet = new Set(leadPolicy.disabledLeadVariants);
+  const disabledChallengers = CHALLENGER_LEAD_VARIANTS.filter((lead) => disabledLeadSet.has(lead));
+  const allChallengersDisabled = disabledChallengers.length === CHALLENGER_LEAD_VARIANTS.length;
   const best = performance.bestContent;
   const topChallenger = performance.leadRecommendations
     .filter((lead) => CHALLENGER_LEAD_VARIANTS.includes(lead.content))
@@ -378,14 +381,18 @@ export function buildSnsExperimentDigest(
   const activeLeadCount = LEAD_VARIANTS.length - leadPolicy.disabledLeadVariants.length;
 
   const severity: SnsExperimentDigest["severity"] =
-    expansionCandidates.length > 0 || pauseCandidates.length > 0
+    allChallengersDisabled && performance.totals.sessions >= 30
+      ? "action"
+      : expansionCandidates.length > 0 || pauseCandidates.length > 0
       ? "action"
       : performance.totals.sessions >= 12
         ? "watch"
         : "ok";
   const subject =
     severity === "action"
-      ? `[Keepioo SNS] 실험 조치 후보 ${expansionCandidates.length + pauseCandidates.length}건`
+      ? allChallengersDisabled && expansionCandidates.length + pauseCandidates.length === 0
+        ? `[Keepioo SNS] challenger 표본 차단 확인`
+        : `[Keepioo SNS] 실험 조치 후보 ${expansionCandidates.length + pauseCandidates.length}건`
       : `[Keepioo SNS] 실험 관찰 ${performance.totals.sessions}세션`;
 
   const lines = [
@@ -407,6 +414,12 @@ export function buildSnsExperimentDigest(
   }
   if (needsData.length > 0) {
     lines.push(`표본 부족: ${needsData.map((lead) => `${lead.content}(${lead.sessions}/${lead.experiment.minSessions})`).join(", ")}`);
+  }
+  if (allChallengersDisabled && performance.totals.sessions >= 30) {
+    lines.push(
+      `표본 차단: challenger ${disabledChallengers.join(", ")}가 모두 중단 적용 중이라 ${leadPolicy.challengerTrafficPct}% 상한이어도 신규 challenger 세션이 쌓이지 않습니다.`,
+    );
+    lines.push("다음 행동: 관리자 화면에서 후보 1개만 '사용' 승인 후 20% 제한 노출로 30세션까지 관찰하세요.");
   }
   if (leadPolicy.warning) lines.push(`정책 경고: ${leadPolicy.warning}`);
   lines.push("돈 새는 버튼은 자동으로 안 누릅니다. 확대/중단은 관리자 승인 필요.");
