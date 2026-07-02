@@ -447,11 +447,11 @@ export const scrapeSeongbuk = makeSiAttachScraper({
 
 // 2026-06-08 — 강남구. 본문이 한컴 웹에디터(div 는 JS 렌더 빈칸)라 정적 cron 0건.
 // 평문 본문은 hidden input#content_main_text value 에 서버 렌더 → bodyValueSelector 로 추출.
-// 목록 tr.grid-item(table.table), 상세 view.do href 직접. 렌더 후 본문 706자 검증.
+// 2026-07-02 — 사이트 개편으로 tr.grid-item / table.table 클래스 제거됨 → 커스텀 selector
+// 삭제, factory 기본 LIST_SELECTORS(table[class*='board'] → table tbody tr)로 폴백.
 export const scrapeGangnam = makeScraper({
   cityName: "강남구",
   listUrl: "https://www.gangnam.go.kr/board/B_000031/list.do?mid=ID01_031",
-  listSelectors: ["tr.grid-item", "table.table tbody tr"],
   bodyValueSelector: "#content_main_text",
 });
 
