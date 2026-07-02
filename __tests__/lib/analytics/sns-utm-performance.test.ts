@@ -178,6 +178,28 @@ describe("sns UTM performance", () => {
     expect(digest.message).toContain("중단 후보: lead_4(30)");
   });
 
+  it("challenger가 모두 중단 중이면 표본 부족이 아니라 표본 차단으로 알린다", () => {
+    const summary = summarizeSnsUtmPerformance(
+      [
+        { source: "threads", content: "lead_1", sessions: 42, activeUsers: 41 },
+        { source: "threads", content: "lead_0", sessions: 30, activeUsers: 29 },
+        { source: "threads", content: "lead_2", sessions: 28, activeUsers: 27 },
+      ],
+      30,
+    );
+    const digest = buildSnsExperimentDigest(summary, {
+      challengerTrafficPct: 20,
+      disabledLeadVariants: ["lead_3", "lead_4", "lead_5"],
+      warning: null,
+    });
+
+    expect(digest.severity).toBe("action");
+    expect(digest.subject).toContain("challenger 표본 차단");
+    expect(digest.message).toContain("활성 lead 3/6");
+    expect(digest.message).toContain("표본 차단: challenger lead_3, lead_4, lead_5");
+    expect(digest.message).toContain("후보 1개만 '사용' 승인");
+  });
+
   it("GA4 오류 요약은 blocked로 보내고 정책 변경 판단을 막는다", () => {
     const summary = summarizeSnsUtmPerformance([], 30, "GA4 credentials missing");
     const digest = buildSnsExperimentDigest(summary, {
