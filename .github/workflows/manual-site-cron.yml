@@ -25,6 +25,7 @@ on:
           - sns-publish-blog
           - sns-publish-popular-policy
           - sns-credential-check
+          - sns-lead3-activate
           - instagram-publish-dry
           - instagram-publish
           - instagram-reels-publish-dry
@@ -107,6 +108,10 @@ jobs:
             sns-credential-check)
               path="/api/cron/sns-credential-check"
               method="GET"
+              ;;
+            sns-lead3-activate)
+              path="/api/cron/sns-lead-policy-apply?content=lead_3&status=active"
+              method="POST"
               ;;
             instagram-publish-dry)
               path="/api/cron/instagram-publish?dry=1"
