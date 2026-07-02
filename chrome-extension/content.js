@@ -424,6 +424,23 @@ async function clickPublishButtonWithFallback(button, debug, label) {
       if (!retryRes?.ok) debug[`${label}_debugger_retry_click_error`] = String(retryRes?.error ?? "unknown").slice(0, 120);
       await sleep(900);
     }
+    const visibleAfterRetry = isVisible(button);
+    debug[`${label}_still_visible_after_retry`] = visibleAfterRetry;
+    if (visibleAfterRetry) {
+      button.focus?.();
+      const enterRes = await sendRuntimeMessage({ type: "debugger-key", key: "Enter" }, 10_000);
+      debug[`${label}_debugger_enter_ok`] = enterRes?.ok === true;
+      if (!enterRes?.ok) debug[`${label}_debugger_enter_error`] = String(enterRes?.error ?? "unknown").slice(0, 120);
+      await sleep(900);
+    }
+    const visibleAfterEnter = isVisible(button);
+    debug[`${label}_still_visible_after_enter`] = visibleAfterEnter;
+    if (visibleAfterEnter) {
+      const spaceRes = await sendRuntimeMessage({ type: "debugger-key", key: "Space" }, 10_000);
+      debug[`${label}_debugger_space_ok`] = spaceRes?.ok === true;
+      if (!spaceRes?.ok) debug[`${label}_debugger_space_error`] = String(spaceRes?.error ?? "unknown").slice(0, 120);
+      await sleep(1200);
+    }
   }
 }
 

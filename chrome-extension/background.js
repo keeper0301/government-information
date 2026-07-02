@@ -265,6 +265,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true;
   }
+  if (msg?.type === "debugger-key") {
+    const tabId = _sender?.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "sender tab id 없음" });
+      return false;
+    }
+    pressKeyViaDebugger(tabId, String(msg.key || "Enter"))
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
+  }
   return false;
 });
 
@@ -278,6 +289,26 @@ async function clickViaDebugger(tabId, x, y) {
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
+  } finally {
+    if (attached) await debuggerDetach(target).catch(() => undefined);
+  }
+}
+
+async function pressKeyViaDebugger(tabId, key) {
+  const normalized = key === " " || /^space$/i.test(key) ? "Space" : key;
+  const keyMap = {
+    Enter: { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 },
+    Space: { key: " ", code: "Space", windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 },
+  };
+  const spec = keyMap[normalized];
+  if (!spec) throw new Error(`unsupported debugger key: ${key}`);
+  const target = { tabId };
+  let attached = false;
+  try {
+    await debuggerAttach(target);
+    attached = true;
+    await debuggerSendCommand(target, "Input.dispatchKeyEvent", { type: "keyDown", ...spec });
+    await debuggerSendCommand(target, "Input.dispatchKeyEvent", { type: "keyUp", ...spec });
   } finally {
     if (attached) await debuggerDetach(target).catch(() => undefined);
   }

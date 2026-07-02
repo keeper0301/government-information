@@ -55,7 +55,7 @@ const BASE_URL = "https://www.keepioo.com";
 // - H3 는 세부 조건 제목으로, 작은 글자·얇은 좌측바·짧은 여백으로 H2보다 가볍게 구성
 // - 핵심 CTA는 가운데 정렬 + 빨간색 + 굵게 + 밑줄
 // - 표는 파란 헤더/얇은 테두리로 네이버 본문 안에서 바로 보이게 구성
-const NAVER_PARAGRAPH_STYLE = "font-size:16px;line-height:2.05;color:#222;text-align:left;margin:0 0 22px;";
+const NAVER_PARAGRAPH_STYLE = "font-size:16px;line-height:2.18;color:#222;text-align:left;margin:0 0 26px;";
 const NAVER_H2_TITLE_STYLE = "border-left:6px solid #d8d8d8;background:#fafafa;padding:16px 0 16px 20px;margin:52px 0 24px;font-size:24px;line-height:1.48;font-weight:800;color:#111;text-align:left;";
 const NAVER_H3_TITLE_STYLE = "border-left:4px solid #9a9a9a;padding-left:14px;margin:34px 0 16px;font-size:19px;line-height:1.55;font-weight:700;color:#222;text-align:left;";
 const NAVER_CENTER_CTA_STYLE = "font-size:20px;line-height:1.7;font-weight:800;color:#ff2b00;text-align:center;text-decoration:underline;margin:30px 0 8px;";
@@ -69,6 +69,10 @@ function naverParagraphHtml(text: string): string {
 }
 
 function naverBlankHtml(): string {
+  return `<p>&nbsp;</p>`;
+}
+
+function naverReadingGapHtml(): string {
   return `<p>&nbsp;</p>`;
 }
 
@@ -395,10 +399,13 @@ function buildNaverAeoFaqHtml(checklistItems: string[]): string {
     naverSectionTitleHtml("자주 묻는 질문"),
     `<p><strong>Q. 누가 신청할 수 있나요?</strong></p>`,
     `<p>A. ${escapeHtml(target)}</p>`,
+    naverReadingGapHtml(),
     `<p><strong>Q. 얼마나 지원받을 수 있나요?</strong></p>`,
     `<p>A. ${escapeHtml(benefit)}</p>`,
+    naverReadingGapHtml(),
     `<p><strong>Q. 언제까지 확인해야 하나요?</strong></p>`,
     `<p>A. ${escapeHtml(period)}</p>`,
+    naverReadingGapHtml(),
     `<p><strong>Q. 어디에서 신청하나요?</strong></p>`,
     `<p>A. ${escapeHtml(route)}</p>`,
   ].join("\n");
@@ -589,10 +596,10 @@ function transformForSe3(html: string): string {
 
   // 8) 참고글처럼 일반 본문 문단은 좌측 정렬·16px·넓은 행간으로 통일.
   //    이미 스타일이 있는 CTA/소제목/표 문단과 빈 줄은 건드리지 않는다.
-  result = result.replace(/<p>(?!\s*&nbsp;)([\s\S]*?)<\/p>/gi, `<p style="${NAVER_PARAGRAPH_STYLE}">$1</p>`);
+  result = result.replace(/<p>(?!\s*&nbsp;)([\s\S]*?)<\/p>/gi, `<p style="${NAVER_PARAGRAPH_STYLE}">$1</p>\n${naverReadingGapHtml()}`);
 
-  // 9) 빈 단락 normalize
-  result = result.replace(/(\s*<p>\s*<\/p>\s*){3,}/gi, "<p>&nbsp;</p>\n<p>&nbsp;</p>");
+  // 9) 빈 단락 normalize — 독자가 숨 쉴 칸은 남기되 과한 여백은 2칸으로 제한.
+  result = result.replace(/(\s*<p>\s*(?:&nbsp;)?\s*<\/p>\s*){3,}/gi, "<p>&nbsp;</p>\n<p>&nbsp;</p>");
 
   result = softenNaverMarketingCopy(result);
 

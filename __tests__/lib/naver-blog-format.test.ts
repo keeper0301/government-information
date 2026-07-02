@@ -178,7 +178,7 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
 
   it("도입부는 참고글처럼 짧은 문단 2개와 가운데 빨간 CTA로 들어간다", () => {
     const out = convertToNaverBlogHtml(post);
-    expect(out.bodyHtml).toContain(`style="font-size:16px;line-height:2.05;color:#222;text-align:left`);
+    expect(out.bodyHtml).toContain(`style="font-size:16px;line-height:2.18;color:#222;text-align:left`);
     expect(out.bodyHtml).toContain("만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.");
     expect(out.bodyHtml).toContain('text-align:center;text-decoration:underline');
     expect(out.bodyHtml).toContain("자격·신청 조건 바로가기");
@@ -221,7 +221,7 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
     expect(out.bodyHtml).toContain('background:#fafafa');
     expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
-    expect(out.bodyHtml).toContain('font-size:16px;line-height:2.05');
+    expect(out.bodyHtml).toContain('font-size:16px;line-height:2.18');
   });
 
   it("h2/h3 는 서로 다른 글자 크기와 왼쪽 세로선 제목 단락으로 강제 변환한다", () => {
@@ -235,6 +235,15 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain('font-size:19px');
     expect(out.bodyHtml).not.toContain("<h2>");
     expect(out.bodyHtml).not.toContain("<h3>");
+  });
+
+  it("일반 문단과 FAQ 사이에 읽기 쉬운 빈 단락을 넣고 과한 여백은 2칸으로 제한한다", () => {
+    const out = convertToNaverBlogHtml(post);
+    expect(out.bodyHtml).toContain(
+      '<p style="font-size:16px;line-height:2.18;color:#222;text-align:left;margin:0 0 26px;">만 19~34세 청년</p>\n<p>&nbsp;</p>',
+    );
+    expect(out.bodyHtml).toContain("<p>A. 만 19~34세 청년</p>\n<p>&nbsp;</p>\n<p><strong>Q. 얼마나 지원받을 수 있나요?</strong></p>");
+    expect(out.bodyHtml).not.toMatch(/(?:<p>&nbsp;<\/p>\s*){3,}/);
   });
 
   it("ul/li 는 <p>• 항목</p> 단락으로 변환 (SE3 가 ul 무시)", () => {
