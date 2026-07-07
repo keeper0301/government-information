@@ -13,6 +13,7 @@ import {
   extractSubDistrict,
   extractSubDistrictFromFields,
 } from "@/lib/region/district-extractor";
+import { DISTRICTS_BY_PROVINCE, PROVINCES } from "@/lib/regions";
 
 // ── detectProvince ──────────────────────────────────────────
 describe("detectProvince", () => {
@@ -68,6 +69,30 @@ describe("extractDistrict — 광역 명시 (Case 1)", () => {
     const match = extractDistrict("경기도 수원시 영통구 청년 사업");
     expect(match?.province).toBe("gyeonggi");
     expect(match?.district).toBe("수원시");
+  });
+
+  it("광역이 있으면 접미사 없는 시군구 표현도 원래 행정구역명으로 복원", () => {
+    expect(extractDistrict("전남 순천 청년 정책")?.district).toBe("순천시");
+    expect(extractDistrict("부산 부산진 보도자료")?.district).toBe("부산진구");
+    expect(extractDistrict("강원 평창 농업 지원")?.district).toBe("평창군");
+  });
+
+  it("대한민국 17개 광역·시도 228개 시군구의 접미사 생략 매칭을 지원", () => {
+    let covered = 0;
+    for (const province of PROVINCES) {
+      for (const district of DISTRICTS_BY_PROVINCE[province.code] ?? []) {
+        const short = district.replace(/[시군구]$/, "");
+        if (short.length < 2 || short === district) continue;
+        covered += 1;
+        const match = extractDistrict(`${province.name} ${short} 청년 지원`);
+        expect(match).toMatchObject({
+          province: province.code,
+          provinceName: province.name,
+          district,
+        });
+      }
+    }
+    expect(covered).toBeGreaterThan(200);
   });
 });
 

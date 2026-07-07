@@ -26,20 +26,36 @@ const NAV_WAIT = USE_PROXY ? "domcontentloaded" : "networkidle";
 const LIST_TIMEOUT = USE_PROXY ? 45000 : 30000;
 const DETAIL_TIMEOUT = USE_PROXY ? 35000 : 20000;
 
+async function safeRouteContinue(route) {
+  try {
+    await route.continue();
+  } catch (err) {
+    console.error(`[PROXY] route.continue failed: ${err?.message || err}`);
+  }
+}
+
+async function safeRouteAbort(route) {
+  try {
+    await route.abort();
+  } catch (err) {
+    console.error(`[PROXY] route.abort failed: ${err?.message || err}`);
+  }
+}
+
 export async function installProxy(page) {
   if (!USE_PROXY) return;
   await page.route("**/*", async (route) => {
     const req = route.request();
     if (["image", "stylesheet", "font", "media"].includes(req.resourceType())) {
-      return route.abort();
+      return safeRouteAbort(route);
     }
     let host;
     try {
       host = new URL(req.url()).hostname;
     } catch {
-      return route.continue();
+      return safeRouteContinue(route);
     }
-    if (!host.endsWith(".kr")) return route.continue();
+    if (!host.endsWith(".kr")) return safeRouteContinue(route);
     try {
       const r = await fetch(PROXY_URL, {
         method: "POST",
@@ -51,15 +67,19 @@ export async function installProxy(page) {
           postData: req.postData(),
         }),
       });
-      if (!r.ok) return route.continue();
+      if (!r.ok) return safeRouteContinue(route);
       const d = await r.json();
       await route.fulfill({
         status: d.status,
         headers: d.headers || {},
         body: Buffer.from(d.bodyB64, "base64"),
       });
-    } catch {
-      return route.continue();
+    } catch (err) {
+      // Playwright can throw here after long proxy waits when the request object is GC'd
+      // ("The object has been collected to prevent unbounded heap growth"). Keep one
+      // flaky request from crashing the whole local-press runner.
+      console.error(`[PROXY] route handler failed: ${err?.message || err}`);
+      return safeRouteContinue(route);
     }
   });
 }
