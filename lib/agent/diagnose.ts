@@ -36,6 +36,68 @@ export type DiagnoseResult = {
   collected_at: string;
 };
 
+type CronFailureRow = {
+  job_name?: string | null;
+  occurrences?: number | null;
+  last_seen_at?: string | null;
+  error_message?: string | null;
+};
+
+export type CronFailureDigest = {
+  jobName: string;
+  occurrences: number;
+  lastSeenAt: string | null;
+  errorClass: string;
+  errorMessage: string | null;
+};
+
+export function classifyCronFailureError(message: string | null | undefined): string {
+  const text = (message ?? "").trim();
+  if (!text) return "unknown";
+  if (/timeout|timed out|ETIMEDOUT|AbortError/i.test(text)) return "timeout";
+  if (/rate limit|429|too many requests/i.test(text)) return "rate_limit";
+  if (/401|403|unauthori[sz]ed|forbidden|permission|invalid secret/i.test(text)) {
+    return "auth";
+  }
+  if (/ECONNRESET|ECONNREFUSED|ENOTFOUND|fetch failed|network/i.test(text)) {
+    return "network";
+  }
+  if (/schema|column|relation|does not exist|PGRST|SQL|syntax/i.test(text)) {
+    return "db_schema";
+  }
+  if (/env|missing|undefined|null|not configured|설정/i.test(text)) return "config";
+  return text.split(/[:\n]/)[0].slice(0, 80) || "other";
+}
+
+export function summarizeCronFailures(rows: CronFailureRow[]): {
+  recent: CronFailureDigest[];
+  totalOccurrences: number;
+  byErrorClass: Record<string, number>;
+  byJobName: Record<string, number>;
+} {
+  const recent = rows.map((row) => {
+    const jobName = row.job_name ?? "unknown";
+    const occurrences = row.occurrences ?? 1;
+    const errorMessage = (row.error_message ?? "").slice(0, 180) || null;
+    return {
+      jobName,
+      occurrences,
+      lastSeenAt: row.last_seen_at ?? null,
+      errorClass: classifyCronFailureError(errorMessage),
+      errorMessage,
+    };
+  });
+  const byErrorClass: Record<string, number> = {};
+  const byJobName: Record<string, number> = {};
+  let totalOccurrences = 0;
+  for (const item of recent) {
+    totalOccurrences += item.occurrences;
+    byErrorClass[item.errorClass] = (byErrorClass[item.errorClass] ?? 0) + 1;
+    byJobName[item.jobName] = (byJobName[item.jobName] ?? 0) + 1;
+  }
+  return { recent, totalOccurrences, byErrorClass, byJobName };
+}
+
 export async function runDiagnose(
   question: DiagnoseQuestion,
 ): Promise<DiagnoseResult> {
@@ -61,19 +123,30 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
   health_overview: async () => {
     const admin = createAdminClient();
     const since24h = new Date(Date.now() - 86_400_000).toISOString();
-    const [cron_failures, alerts] = await Promise.all([
+    const [cron_failures, cronFailureRows, alerts] = await Promise.all([
       admin
         .from("cron_failure_log")
         .select("id", { count: "exact", head: true })
         .gte("last_seen_at", since24h),
+      admin
+        .from("cron_failure_log")
+        .select("job_name, occurrences, last_seen_at, error_message")
+        .gte("last_seen_at", since24h)
+        .order("last_seen_at", { ascending: false })
+        .limit(25),
       admin
         .from("admin_actions")
         .select("id", { count: "exact", head: true })
         .eq("action", "health_alert_run")
         .gte("created_at", since24h),
     ]);
+    const failureSummary = summarizeCronFailures((cronFailureRows.data ?? []) as CronFailureRow[]);
     return {
       cron_failures_24h: cron_failures.count ?? 0,
+      cron_failure_occurrences_24h: failureSummary.totalOccurrences,
+      cron_failure_recent: failureSummary.recent,
+      cron_failure_by_error_class: failureSummary.byErrorClass,
+      cron_failure_by_job_name: failureSummary.byJobName,
       health_alert_runs_24h: alerts.count ?? 0,
     };
   },
@@ -92,7 +165,23 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
     for (const row of (data ?? []) as { action: string }[]) {
       byAction.set(row.action, (byAction.get(row.action) ?? 0) + 1);
     }
-    return Object.fromEntries(byAction);
+    const { data: failureRows, count: failureCount } = await admin
+      .from("cron_failure_log")
+      .select("job_name, occurrences, last_seen_at, error_message", {
+        count: "exact",
+      })
+      .gte("last_seen_at", since24h)
+      .order("last_seen_at", { ascending: false })
+      .limit(25);
+    const failureSummary = summarizeCronFailures((failureRows ?? []) as CronFailureRow[]);
+    return {
+      run_counts_by_action: Object.fromEntries(byAction),
+      failure_count_24h: failureCount ?? 0,
+      failure_occurrences_24h: failureSummary.totalOccurrences,
+      failure_recent: failureSummary.recent,
+      failure_by_error_class: failureSummary.byErrorClass,
+      failure_by_job_name: failureSummary.byJobName,
+    };
   },
 
   news_freshness: async () => {

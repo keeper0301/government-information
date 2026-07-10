@@ -40,7 +40,12 @@ vi.mock("@/lib/analytics/blog-publish-stats", () => ({
   }),
 }));
 
-import { runDiagnose, listDiagnoseQuestions } from "@/lib/agent/diagnose";
+import {
+  classifyCronFailureError,
+  listDiagnoseQuestions,
+  runDiagnose,
+  summarizeCronFailures,
+} from "@/lib/agent/diagnose";
 
 describe("listDiagnoseQuestions", () => {
   it("11 question id 노출 (사전 정의)", () => {
@@ -85,5 +90,35 @@ describe("runDiagnose", () => {
     const data = r.data as { status: string; published24h: number };
     expect(data.status).toBe("healthy");
     expect(data.published24h).toBe(1);
+  });
+
+  it("cron 실패 목록을 원인 분류와 함께 요약한다", () => {
+    expect(classifyCronFailureError("HTTP 429 Too Many Requests")).toBe("rate_limit");
+    expect(classifyCronFailureError("AbortError: timed out")).toBe("timeout");
+    expect(classifyCronFailureError("HTTP 401 unauthorized")).toBe("auth");
+
+    const summary = summarizeCronFailures([
+      {
+        job_name: "press-ingest",
+        occurrences: 3,
+        last_seen_at: "2026-07-10T12:00:00.000Z",
+        error_message: "AbortError: timed out",
+      },
+      {
+        job_name: "env-health",
+        occurrences: 1,
+        last_seen_at: "2026-07-10T12:05:00.000Z",
+        error_message: "HTTP 401 unauthorized",
+      },
+    ]);
+
+    expect(summary.totalOccurrences).toBe(4);
+    expect(summary.byErrorClass).toEqual({ timeout: 1, auth: 1 });
+    expect(summary.byJobName).toEqual({ "press-ingest": 1, "env-health": 1 });
+    expect(summary.recent[0]).toMatchObject({
+      jobName: "press-ingest",
+      occurrences: 3,
+      errorClass: "timeout",
+    });
   });
 });
