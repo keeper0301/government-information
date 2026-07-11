@@ -155,4 +155,23 @@ describe("runDiagnose", () => {
     expect(summary.totalOccurrences).toBe(2);
     expect(summary.suppressedOccurrences).toBe(10);
   });
+
+  it("소진된 publish-blog 카테고리 실패도 active cron failure 에서 제외한다", () => {
+    const row = {
+      job_name: "publish-blog (cron)",
+      occurrences: 36,
+      last_seen_at: "2026-07-10T23:09:00.000Z",
+      error_message:
+        "[노년] 발행 가능한 정책을 못 찾았어요 (카테고리: 노년). 모든 정책이 이미 글로 발행됐거나 매칭이 없어요.",
+    };
+
+    expect(isSuppressedCronFailure(row)).toContain("category exhausted");
+
+    const summary = summarizeCronFailures([row]);
+
+    expect(summary.recent).toHaveLength(0);
+    expect(summary.suppressedRecent).toHaveLength(1);
+    expect(summary.totalOccurrences).toBe(0);
+    expect(summary.suppressedOccurrences).toBe(36);
+  });
 });

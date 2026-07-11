@@ -62,6 +62,12 @@ export function isSuppressedCronFailure(row: CronFailureRow): string | null {
   ) {
     return "korea.kr RSS service discontinued; HTML topic collector is the supported path";
   }
+  if (
+    /publish-blog/i.test(jobName) &&
+    /발행 가능한 정책을 못 찾았어요|모든 정책이 이미 글로 발행됐거나 매칭이 없어요/.test(errorMessage)
+  ) {
+    return "blog category exhausted; publish-blog cron now skips exhausted categories without alerting";
+  }
   return null;
 }
 
