@@ -359,7 +359,7 @@ async function pickCurationPrograms(
 // LLM API 실패 같은 인프라 에러는 즉시 throw (무한 retry 방지).
 // 가속한 5글 발행에서 가드 누적 실패로 발행 글 수가 줄어드는 회귀 차단.
 // ============================================================
-const MAX_PUBLISH_ATTEMPTS = 3;
+const MAX_PUBLISH_ATTEMPTS = 6;
 
 // 품질 가드 throw 메시지에 포함되는 식별 문구 — 다음 candidate 로 retry 가능한 신호.
 // generateBlogPost 의 LLM API 에러나 DB 저장 실패는 여기 매치 안 됨 → 즉시 throw.
@@ -405,8 +405,14 @@ export async function publishOnePost(opts: {
       throw err;
     }
   }
-  // 모든 candidate 가 품질 가드로 거절된 경우 마지막 에러 throw
-  throw lastQualityError ?? new Error(`모든 candidate (${candidates.length}건) 가 품질 가드로 거절됨. 카테고리: ${category}`);
+  // 모든 candidate 가 품질 가드로 거절된 경우 운영 실패로 계속 알리지 않는다.
+  // 같은 카테고리가 매 cron 마다 동일 품질 가드로 실패하면 sidecar incident 루프가 된다.
+  // 호출 route 는 이 메시지를 "오늘 발행 가능한 고품질 후보 없음" 으로 보고 skipped 처리한다.
+  const lastMessage = lastQualityError instanceof Error ? lastQualityError.message : String(lastQualityError ?? "unknown");
+  throw new Error(
+    `발행 가능한 고품질 정책을 못 찾았어요 (카테고리: ${category}). ` +
+      `후보 ${candidates.length}건 모두 품질 가드로 거절됨. 마지막 오류: ${lastMessage}`,
+  );
 }
 
 // Phase 5-A SEO long-tail — 키워드 1개 → 매칭 정책 → 블로그 글 자동 생성.
@@ -438,8 +444,10 @@ export async function publishKeywordPost(opts: {
       throw err;
     }
   }
-  throw lastQualityError ?? new Error(
-    `키워드 "${opts.keyword}" candidate ${candidates.length}건 모두 품질 가드 거절됨.`,
+  const lastMessage = lastQualityError instanceof Error ? lastQualityError.message : String(lastQualityError ?? "unknown");
+  throw new Error(
+    `키워드 "${opts.keyword}" 발행 가능한 고품질 정책 없음. ` +
+      `candidate ${candidates.length}건 모두 품질 가드로 거절됨. 마지막 오류: ${lastMessage}`,
   );
 }
 
