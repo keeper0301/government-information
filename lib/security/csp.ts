@@ -9,7 +9,7 @@ const BASE_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https://cdn.jsdelivr.net",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://api.tosspayments.com https://pagead2.googlesyndication.com https://*.googlesyndication.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://*.tosspayments.com https://pagead2.googlesyndication.com https://*.googlesyndication.com",
   "frame-src 'self' https://*.tosspayments.com https://googleads.g.doubleclick.net https://*.googlesyndication.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
