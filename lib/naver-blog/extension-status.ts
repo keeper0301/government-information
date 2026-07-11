@@ -31,6 +31,27 @@ type CountQuery = PromiseLike<CountResult> & {
   lt(column: string, value: unknown): CountQuery;
 };
 
+type RecentAuditQueryResult = {
+  data: NaverExtensionStatus["recentAudits"] | null;
+  error: { message?: string } | null;
+};
+
+type RecentAuditQuery = PromiseLike<RecentAuditQueryResult> & {
+  select(columns: string): RecentAuditQuery;
+  order(column: string, options: { ascending: boolean }): RecentAuditQuery;
+  limit(count: number): RecentAuditQuery;
+  catch<TResult>(
+    onrejected: (reason: unknown) => TResult | PromiseLike<TResult>,
+  ): PromiseLike<RecentAuditQueryResult | TResult>;
+};
+
+type NaverExtensionStatusClient = {
+  from(table: "naver_blog_queue" | "naver_publish_audit"): {
+    select(columns: string, options: { count: "exact"; head: true }): CountQuery;
+    select(columns: string): RecentAuditQuery;
+  };
+};
+
 async function safeCount(
   label: string,
   query: CountQuery,
@@ -56,7 +77,7 @@ async function safeCount(
 export async function getNaverExtensionStatus(): Promise<NaverExtensionStatus> {
   // Supabase query builder generics can become excessively deep in this status fan-out.
   // Keep this helper runtime-safe and type the returned payload explicitly instead.
-  const admin = createAdminClient() as any;
+  const admin = createAdminClient() as unknown as NaverExtensionStatusClient;
   const checkedAt = new Date().toISOString();
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const errors: string[] = [];
@@ -151,7 +172,7 @@ export async function getNaverExtensionStatus(): Promise<NaverExtensionStatus> {
       fail,
       skipped,
     },
-    recentAudits: (recentRes.data ?? []) as NaverExtensionStatus["recentAudits"],
+    recentAudits: recentRes.data ?? [],
     errors,
   };
 }

@@ -114,7 +114,7 @@ async function main() {
           });
           ok++;
         }
-      } catch (e) {
+      } catch {
         fail++;
         if (!DRY_RUN) await stamp(row.id, { last_detail_failed_at: new Date().toISOString() });
       }

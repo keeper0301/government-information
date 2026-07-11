@@ -1119,7 +1119,7 @@ async function tabHasSmartEditor(tabId) {
     func: () => {
       const f = document.querySelector("#mainFrame");
       let root = document;
-      try { if (f?.contentDocument) root = f.contentDocument; } catch (_) {}
+      try { if (f?.contentDocument) root = f.contentDocument; } catch {}
       return Boolean(
         root.querySelector('.se-section-documentTitle p.se-text-paragraph')
         || root.querySelector('button[data-click-area="tpb.publish"]')

@@ -131,7 +131,7 @@ async function main() {
             ok++;
           }
         }
-      } catch (e) {
+      } catch {
         fail++;
         // 에러(네트워크 등): failed stamp 로 큐 제외(이번 run). 추후 stamp 초기화로 재시도 가능.
         if (!DRY_RUN) await stamp(row.id, { last_detail_failed_at: new Date().toISOString() });
