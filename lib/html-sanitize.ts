@@ -55,13 +55,23 @@ const ALLOWED_ATTR = [
 const ALLOWED_URI_REGEXP =
   /^(?:(?:https?|mailto|tel|ftp|sms):|\/|#|data:image\/(?:png|jpeg|gif|webp|svg\+xml);base64,)/i;
 
+function stripUnsafeUriAttrs(sanitized: string): string {
+  return sanitized.replace(
+    /\s(href|src)=("([^"]*)"|'([^']*)')/gi,
+    (match, _attr: string, _quoted: string, doubleQuoted?: string, singleQuoted?: string) => {
+      const value = (doubleQuoted ?? singleQuoted ?? "").trim();
+      return ALLOWED_URI_REGEXP.test(value) ? match : "";
+    },
+  );
+}
+
 export async function sanitizeBlogHtml(html: string): Promise<string> {
   if (!html) return "";
   // dynamic import — webpack 의 require() 외부화가 jsdom 의 ESM-only deps
   // (parse5, css-tree, @bramus/specificity) 를 require() 로 로드하다 실패하던
   // 문제 회피. native ESM import 는 ESM 패키지를 정상 로드함.
   const { default: DOMPurify } = await import("isomorphic-dompurify");
-  return DOMPurify.sanitize(html, {
+  const sanitized = DOMPurify.sanitize(html, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOWED_URI_REGEXP,
@@ -70,4 +80,7 @@ export async function sanitizeBlogHtml(html: string): Promise<string> {
     // <a target="_blank"> 자동 rel="noopener noreferrer" 강화
     ADD_ATTR: ["target", "rel"],
   });
+  // DOMPurify 는 img 의 data: URI 를 기본적으로 일부 허용한다. keepioo 에서는
+  // data:image/* base64 만 허용해야 하므로 최종 attr allowlist 를 한 번 더 적용한다.
+  return stripUnsafeUriAttrs(sanitized);
 }
