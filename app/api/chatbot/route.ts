@@ -7,6 +7,12 @@ import {
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
 import { checkAndConsumeAiQuota } from "@/lib/quota";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 // 챗봇 검색 결과에서 EXCLUDED 차단을 단일 helper 로 — 매 .from() 마다 분기 반복 회피
 function applyExcludedFilter<Q extends { not: (col: string, op: string, val: string) => Q }>(
@@ -37,7 +43,15 @@ const KEYWORD_MAP: Record<string, { table: "welfare_programs" | "loan_programs";
 };
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await readJsonWithLimit(request, MAX_JSON_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { reply: "요청 본문을 확인해주세요.", programs: [] },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
   const { message, programId, programType } = body as {
     message?: string;
     programId?: string;
