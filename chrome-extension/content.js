@@ -253,7 +253,7 @@ async function publishToSe3(payload, dryRun) {
     // stall while still exercising Naver's own button handler. CDP click is kept as
     // secondary evidence only if the modal does not appear.
     setTimeout(() => {
-      try { mainPub.click(); } catch (_) {}
+      try { mainPub.click(); } catch {}
     }, 0);
     await reportProgress("content_dry_run_main_publish_clicked", { method: "scheduled_dom_click" });
     let confirmBtn = await waitForVisible(
@@ -375,7 +375,7 @@ function isVisible(el) {
 async function clickPublishButtonWithFallback(button, debug, label) {
   try {
     button.scrollIntoView({ block: "center", inline: "center" });
-  } catch (_) {}
+  } catch {}
   await sleep(350);
 
   const rect = button.getBoundingClientRect();
@@ -941,7 +941,7 @@ function directInsertHtml(targetEl, html, plainText) {
 async function reportProgress(stage, details = {}) {
   try {
     await sendRuntimeMessage({ type: "naver-progress", stage, details }, 2_000);
-  } catch (_) {
+  } catch {
     // Progress is diagnostic only; never block publishing.
   }
 }
