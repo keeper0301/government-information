@@ -44,6 +44,11 @@ function isNoPublishCandidateError(err: unknown): boolean {
   );
 }
 
+function shouldSuppressTransientFailureNotify(request: NextRequest): boolean {
+  const value = request.nextUrl.searchParams.get("notify");
+  return value === "0" || value === "false";
+}
+
 // AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림.
 // 2026-06-06: 한 글 최악 경로 = Gemini timeout(45s) + OpenAI fallback(35s) + 품질검수 LLM(12s)
 // ≈ 92s. 폴백 발동 시 90s 초과로 함수가 잘려 "글은 DB 저장됐는데 cron 은 실패로 오집계"
@@ -299,6 +304,7 @@ export async function GET(request: NextRequest) {
   const count = Math.min(Math.max(countParam, 1), 3);
   const offsetParam = parseInt(request.nextUrl.searchParams.get("offset") || "0", 10);
   const offset = Math.max(Math.min(offsetParam, 6), 0);
+  const suppressTransientFailureNotify = shouldSuppressTransientFailureNotify(request);
 
   // 카테고리 목록 결정 (베이스 = 오늘 + offset 일, 그로부터 +0, +1, +2)
   const categories: string[] = [];
@@ -371,7 +377,9 @@ export async function GET(request: NextRequest) {
   });
   if (failures.length > 0) {
     const detail = failures.map((f) => `[${f.category}] ${f.error}`).join("\n");
-    await notifyCronFailure("publish-blog (cron)", detail, `count=${count}`);
+    if (!suppressTransientFailureNotify) {
+      await notifyCronFailure("publish-blog (cron)", detail, `count=${count}`);
+    }
 
     // G1 (5/17 사고 후속) — Gemini quota 사고 자동 감지 + 텔레그램 명확 안내.
     // 5/14 사고 시 email 알림은 사장님 inbox 확인 안 해 2.5일 멈춤. 텔레그램 즉시.
@@ -379,7 +387,7 @@ export async function GET(request: NextRequest) {
     const quotaHit = failures.some((f) =>
       /spending cap|RESOURCE_EXHAUSTED|Too Many Requests|429/i.test(f.error ?? ""),
     );
-    if (quotaHit) {
+    if (quotaHit && !suppressTransientFailureNotify) {
       await sendGeminiQuotaAlertIfNew(failures);
     }
 
@@ -390,7 +398,7 @@ export async function GET(request: NextRequest) {
     const shortContentCount = failures.filter((f) =>
       /본문이 너무 짧음/.test(f.error ?? ""),
     ).length;
-    if (shortContentCount >= 3) {
+    if (shortContentCount >= 3 && !suppressTransientFailureNotify) {
       await sendShortContentAlertIfNew(failures, shortContentCount);
     }
   }

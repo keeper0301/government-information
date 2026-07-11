@@ -146,4 +146,27 @@ describe("publish-blog cron route", () => {
       "count=1",
     );
   });
+
+  it("notify=0 첫 시도 실패는 HTTP 500을 유지하되 cron 실패 알림은 누르지 않는다", async () => {
+    mocks.publishOnePost.mockRejectedValueOnce(new Error("Gemini API 500"));
+
+    const response = await GET(
+      request("https://www.keepioo.com/api/publish-blog?count=1&offset=0&notify=0"),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toMatchObject({ success: 0, failed: 1, skipped: 0 });
+    expect(mocks.notifyCronFailure).not.toHaveBeenCalled();
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "blog_publish_run",
+        details: expect.objectContaining({
+          mode: "cron",
+          success: 0,
+          failed: 1,
+        }),
+      }),
+    );
+  });
 });
