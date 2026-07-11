@@ -20,9 +20,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { handleSmsReply } from "@/lib/sms/decision-router";
+import { isJsonBodyTooLargeError, readTextWithLimit } from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+const MAX_WEBHOOK_BODY_BYTES = 32 * 1024;
 
 // Solapi webhook 서명 검증 — 공식 문서 기준 HMAC-SHA256.
 // 헤더: Authorization: HMAC-SHA256 apiKey=..., date=..., salt=..., signature=...
@@ -63,7 +65,15 @@ interface SolapiReceivePayload {
 }
 
 export async function POST(req: NextRequest) {
-  const rawBody = await req.text();
+  let rawBody: string;
+  try {
+    rawBody = await readTextWithLimit(req, MAX_WEBHOOK_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "body_too_large" : "invalid_body" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
 
   const sigHeader =
     req.headers.get("x-solapi-signature") ??

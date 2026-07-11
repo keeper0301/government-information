@@ -32,7 +32,7 @@ function parseContentLength(value: string | null): number | null {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-async function readBodyTextWithLimit(request: Request, maxBytes: number): Promise<string> {
+export async function readTextWithLimit(request: Request, maxBytes: number): Promise<string> {
   const contentLength = parseContentLength(request.headers.get("content-length"));
   if (contentLength !== null && contentLength > maxBytes) {
     throw new JsonBodyTooLargeError(maxBytes);
@@ -74,7 +74,7 @@ export async function readJsonWithLimit<T = unknown>(
   request: Request,
   maxBytes: number,
 ): Promise<T> {
-  const text = await readBodyTextWithLimit(request, maxBytes);
+  const text = await readTextWithLimit(request, maxBytes);
   if (!text.trim()) {
     throw new JsonBodyInvalidError("Empty JSON body");
   }
