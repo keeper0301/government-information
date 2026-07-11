@@ -46,6 +46,16 @@ type Feed = {
   ministry: string;
 };
 
+// 2026-07-01 정책브리핑 공지: RSS 서비스 제공 중단.
+// https://www.korea.kr/etc/noticeView.do?newsId=132038885
+// 기존 `/rss/dept_*.xml` 는 404, legacy `/newsWeb/resources/rss/*` 는 일부만 200 이고
+// 2012년대 stale item 을 반환해 수집 대체 경로로 쓰면 최신성 모니터가 더 오염된다.
+// 최신 korea.kr 뉴스 수집은 별도 HTML 기반 `collectKoreaKrTopics()` 경로로 유지한다.
+const KOREA_KR_RSS_DISCONTINUED = true;
+const KOREA_KR_RSS_DISCONTINUED_AT = "2026-07-01";
+const KOREA_KR_RSS_DISCONTINUED_REASON =
+  "korea.kr RSS service discontinued by official notice; use collectKoreaKrTopics HTML collector";
+
 const FEEDS: Feed[] = [
   {
     code: "korea-kr-dept-mw",
@@ -274,7 +284,25 @@ export async function collectKoreaKr(): Promise<{
   errors: number;
   breakdown: Record<string, number>;
   errorDetails: Record<string, string>;
+  discontinued?: boolean;
+  discontinuedAt?: string;
+  reason?: string;
 }> {
+  if (KOREA_KR_RSS_DISCONTINUED) {
+    return {
+      total: 0,
+      upserted: 0,
+      skippedDup: 0,
+      skippedBatchDup: 0,
+      errors: 0,
+      breakdown: Object.fromEntries(FEEDS.map((feed) => [feed.code, 0])),
+      errorDetails: {},
+      discontinued: true,
+      discontinuedAt: KOREA_KR_RSS_DISCONTINUED_AT,
+      reason: KOREA_KR_RSS_DISCONTINUED_REASON,
+    };
+  }
+
   const supabase = createAdminClient();
   let total = 0;
   let upserted = 0;
@@ -402,7 +430,26 @@ export async function inspectKoreaKrRecent(since: Date = new Date(Date.now() - 2
   breakdown: Record<string, { total: number; recent: number }>;
   errors: number;
   errorDetails: Record<string, string>;
+  discontinued?: boolean;
+  discontinuedAt?: string;
+  reason?: string;
 }> {
+  if (KOREA_KR_RSS_DISCONTINUED) {
+    return {
+      total: 0,
+      recent: 0,
+      latestPublishedAt: null,
+      breakdown: Object.fromEntries(
+        FEEDS.map((feed) => [feed.code, { total: 0, recent: 0 }]),
+      ),
+      errors: 0,
+      errorDetails: {},
+      discontinued: true,
+      discontinuedAt: KOREA_KR_RSS_DISCONTINUED_AT,
+      reason: KOREA_KR_RSS_DISCONTINUED_REASON,
+    };
+  }
+
   let total = 0;
   let recent = 0;
   let latestPublishedAt: string | null = null;
