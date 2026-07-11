@@ -42,6 +42,7 @@ vi.mock("@/lib/analytics/blog-publish-stats", () => ({
 
 import {
   classifyCronFailureError,
+  isSuppressedCronFailure,
   listDiagnoseQuestions,
   runDiagnose,
   summarizeCronFailures,
@@ -113,6 +114,7 @@ describe("runDiagnose", () => {
     ]);
 
     expect(summary.totalOccurrences).toBe(4);
+    expect(summary.suppressedOccurrences).toBe(0);
     expect(summary.byErrorClass).toEqual({ timeout: 1, auth: 1 });
     expect(summary.byJobName).toEqual({ "press-ingest": 1, "env-health": 1 });
     expect(summary.recent[0]).toMatchObject({
@@ -120,5 +122,37 @@ describe("runDiagnose", () => {
       occurrences: 3,
       errorClass: "timeout",
     });
+  });
+
+  it("중단된 korea.kr RSS 실패는 active cron failure 에서 제외하고 suppressed 로 노출한다", () => {
+    const row = {
+      job_name: "collect-news (cron) - korea.kr RSS 수집 이슈",
+      occurrences: 10,
+      last_seen_at: "2026-07-11T02:00:00.000Z",
+      error_message: "errors=10 / total=0 (실패율 100%)",
+    };
+
+    expect(isSuppressedCronFailure(row)).toContain("RSS service discontinued");
+
+    const summary = summarizeCronFailures([
+      row,
+      {
+        job_name: "press-ingest",
+        occurrences: 2,
+        last_seen_at: "2026-07-11T02:05:00.000Z",
+        error_message: "AbortError: timed out",
+      },
+    ]);
+
+    expect(summary.recent).toHaveLength(1);
+    expect(summary.recent[0]?.jobName).toBe("press-ingest");
+    expect(summary.suppressedRecent).toHaveLength(1);
+    expect(summary.suppressedRecent[0]).toMatchObject({
+      jobName: "collect-news (cron) - korea.kr RSS 수집 이슈",
+      occurrences: 10,
+      suppressedReason: expect.stringContaining("RSS service discontinued"),
+    });
+    expect(summary.totalOccurrences).toBe(2);
+    expect(summary.suppressedOccurrences).toBe(10);
   });
 });
