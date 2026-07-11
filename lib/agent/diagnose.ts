@@ -49,7 +49,21 @@ export type CronFailureDigest = {
   lastSeenAt: string | null;
   errorClass: string;
   errorMessage: string | null;
+  suppressedReason?: string;
 };
+
+export function isSuppressedCronFailure(row: CronFailureRow): string | null {
+  const jobName = row.job_name ?? "";
+  const errorMessage = row.error_message ?? "";
+  if (
+    /collect-news/i.test(jobName) &&
+    /korea\.kr RSS 수집 이슈/.test(jobName) &&
+    /errors=\d+\s*\/\s*total=0|RSS/i.test(errorMessage)
+  ) {
+    return "korea.kr RSS service discontinued; HTML topic collector is the supported path";
+  }
+  return null;
+}
 
 export function classifyCronFailureError(message: string | null | undefined): string {
   const text = (message ?? "").trim();
@@ -71,22 +85,32 @@ export function classifyCronFailureError(message: string | null | undefined): st
 
 export function summarizeCronFailures(rows: CronFailureRow[]): {
   recent: CronFailureDigest[];
+  suppressedRecent: CronFailureDigest[];
   totalOccurrences: number;
+  suppressedOccurrences: number;
   byErrorClass: Record<string, number>;
   byJobName: Record<string, number>;
 } {
-  const recent = rows.map((row) => {
+  const recent: CronFailureDigest[] = [];
+  const suppressedRecent: CronFailureDigest[] = [];
+  for (const row of rows) {
     const jobName = row.job_name ?? "unknown";
     const occurrences = row.occurrences ?? 1;
     const errorMessage = (row.error_message ?? "").slice(0, 180) || null;
-    return {
+    const digest = {
       jobName,
       occurrences,
       lastSeenAt: row.last_seen_at ?? null,
       errorClass: classifyCronFailureError(errorMessage),
       errorMessage,
     };
-  });
+    const suppressedReason = isSuppressedCronFailure(row);
+    if (suppressedReason) {
+      suppressedRecent.push({ ...digest, suppressedReason });
+    } else {
+      recent.push(digest);
+    }
+  }
   const byErrorClass: Record<string, number> = {};
   const byJobName: Record<string, number> = {};
   let totalOccurrences = 0;
@@ -95,7 +119,8 @@ export function summarizeCronFailures(rows: CronFailureRow[]): {
     byErrorClass[item.errorClass] = (byErrorClass[item.errorClass] ?? 0) + 1;
     byJobName[item.jobName] = (byJobName[item.jobName] ?? 0) + 1;
   }
-  return { recent, totalOccurrences, byErrorClass, byJobName };
+  const suppressedOccurrences = suppressedRecent.reduce((sum, item) => sum + item.occurrences, 0);
+  return { recent, suppressedRecent, totalOccurrences, suppressedOccurrences, byErrorClass, byJobName };
 }
 
 export async function runDiagnose(
@@ -133,7 +158,7 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
         .select("job_name, occurrences, last_seen_at, error_message")
         .gte("last_seen_at", since24h)
         .order("last_seen_at", { ascending: false })
-        .limit(25),
+        .limit(100),
       admin
         .from("admin_actions")
         .select("id", { count: "exact", head: true })
@@ -142,9 +167,13 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
     ]);
     const failureSummary = summarizeCronFailures((cronFailureRows.data ?? []) as CronFailureRow[]);
     return {
-      cron_failures_24h: cron_failures.count ?? 0,
+      cron_failures_24h: failureSummary.recent.length,
+      cron_failure_raw_24h: cronFailureRows.data?.length ?? cron_failures.count ?? 0,
+      cron_failure_suppressed_24h: failureSummary.suppressedRecent.length,
       cron_failure_occurrences_24h: failureSummary.totalOccurrences,
+      cron_failure_suppressed_occurrences_24h: failureSummary.suppressedOccurrences,
       cron_failure_recent: failureSummary.recent,
+      cron_failure_suppressed_recent: failureSummary.suppressedRecent,
       cron_failure_by_error_class: failureSummary.byErrorClass,
       cron_failure_by_job_name: failureSummary.byJobName,
       health_alert_runs_24h: alerts.count ?? 0,
@@ -172,13 +201,17 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
       })
       .gte("last_seen_at", since24h)
       .order("last_seen_at", { ascending: false })
-      .limit(25);
+      .limit(100);
     const failureSummary = summarizeCronFailures((failureRows ?? []) as CronFailureRow[]);
     return {
       run_counts_by_action: Object.fromEntries(byAction),
-      failure_count_24h: failureCount ?? 0,
+      failure_count_24h: failureSummary.recent.length,
+      failure_raw_count_24h: failureRows?.length ?? failureCount ?? 0,
+      failure_suppressed_count_24h: failureSummary.suppressedRecent.length,
       failure_occurrences_24h: failureSummary.totalOccurrences,
+      failure_suppressed_occurrences_24h: failureSummary.suppressedOccurrences,
       failure_recent: failureSummary.recent,
+      failure_suppressed_recent: failureSummary.suppressedRecent,
       failure_by_error_class: failureSummary.byErrorClass,
       failure_by_job_name: failureSummary.byJobName,
     };
