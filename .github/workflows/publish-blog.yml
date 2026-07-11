@@ -57,6 +57,7 @@ jobs:
             local offset="$2"
             local label="$3"
             local url="$base_url"
+            local request_url
             local attempt
             local http_status
             local response_file
@@ -67,14 +68,15 @@ jobs:
 
             for attempt in 1 2; do
               response_file="/tmp/publish-blog-${index}-${attempt}.json"
+              request_url="$url"
+              if [ "$attempt" -eq 1 ]; then
+                request_url="${request_url}&notify=0"
+              fi
               echo "== ${index}번째 글 발행 (${label}) / attempt ${attempt} / UTC $(date -u '+%Y-%m-%d %H:%M:%S') =="
               http_status=$(curl -sS -o "$response_file" -w "%{http_code}" \
                 --max-time 70 \
-                --retry 1 \
-                --retry-delay 5 \
-                --retry-all-errors \
                 -H "Authorization: Bearer ${CRON_SECRET}" \
-                "$url") || http_status="000"
+                "$request_url") || http_status="000"
               echo "== HTTP $http_status =="
               cat "$response_file" || true
               echo ""
