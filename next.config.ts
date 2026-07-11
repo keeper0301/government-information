@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import {
+  buildContentSecurityPolicy,
+  buildReportOnlyContentSecurityPolicy,
+} from "./lib/security/csp";
 
 const nextConfig: NextConfig = {
   // OG 이미지 라우트가 process.cwd() 로 폰트를 읽어 — 자동 추적 누락 대비
@@ -47,27 +51,8 @@ const nextConfig: NextConfig = {
     //   - 폰트: data:·cdn.jsdelivr.net
     //
     // 깨짐 시 즉시 롤백 가능 — Vercel Deployments 에서 이전 commit Promote.
-    const csp = [
-      "default-src 'self'",
-      // script: self + AdSense + GA + Toss + unsafe-inline·eval (Next.js)
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.googleadservices.com https://*.googletagmanager.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://js.tosspayments.com",
-      // style: self + 인라인 스타일 (Tailwind JIT, animation inline)
-      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-      // 이미지: 모든 https + data: + blob: (뉴스 썸네일 출처 다양)
-      "img-src 'self' data: blob: https:",
-      // 폰트: self + data + Pretendard CDN
-      "font-src 'self' data: https://cdn.jsdelivr.net",
-      // XHR/fetch: Supabase + GA + Toss + AdSense beacon
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://stats.g.doubleclick.net https://api.tosspayments.com https://pagead2.googlesyndication.com https://*.googlesyndication.com",
-      // iframe: Toss 결제 + AdSense (광고는 iframe 으로 렌더)
-      "frame-src 'self' https://*.tosspayments.com https://googleads.g.doubleclick.net https://*.googlesyndication.com",
-      // 임베드 차단 — clickjacking 방어 (X-Frame-Options 와 중복이지만 모던 브라우저는 frame-ancestors 우선)
-      "frame-ancestors 'none'",
-      // 플러그인·base href·form action 잠금
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; ");
+    const csp = buildContentSecurityPolicy();
+    const cspReportOnly = buildReportOnlyContentSecurityPolicy();
 
     return [
       {
@@ -86,6 +71,8 @@ const nextConfig: NextConfig = {
           },
           // CSP — 외부 스크립트 화이트리스트 + 인라인 허용 (Next.js 호환)
           { key: "Content-Security-Policy", value: csp },
+          // CSP report-only — unsafe-eval 제거 가능성 관찰. 강제 차단 없이 /api/csp-report 로 수집.
+          { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
         ],
       },
     ];
