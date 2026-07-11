@@ -105,18 +105,80 @@ async function capture() {
   shots[5] = path.join(OUT_DIR, "5-checkout.png");
   await page.screenshot({ path: shots[5], fullPage: false });
 
-  // 6. 결제창 — 토스 빌링 계약 미완료(미승인)라 카드 등록 클릭 시 토스 SDK 가
-  // "Request Error" 를 반환해 실제 결제창이 안 뜬다(2026-06-08 확인). 차선으로
-  // 체크아웃(카드 등록 진입) 화면을 6번으로 사용. 토스 결제창은 계약 완료 후 재캡처 보강.
-  console.log("6. 결제창 (계약 미완료 — 체크아웃 진입 화면으로 대체)");
-  const checkoutShot = path.join(OUT_DIR, "5-checkout.png");
+  // 5b. 체크아웃 하단 — 동의 체크박스 체크 후 스크롤 내려 하단 정보 캡처
+  console.log("5b. 체크아웃 하단 (동의 체크박스 + 버튼 영역)");
+  // /checkout 으로 다시 이동 (5번에서 이미 있는 상태지만 로그인 후 상태 확인)
+  if (!page.url().includes("/checkout")) {
+    await page.goto("https://keepioo.com/checkout?tier=pro", { waitUntil: "networkidle" });
+    await page.waitForTimeout(2000);
+  }
+  // 두 체크박스 모두 체크
+  const checkboxes = page.locator('input[type="checkbox"]');
+  const cbCount = await checkboxes.count();
+  console.log(`  체크박스 ${cbCount}개 발견`);
+  for (let i = 0; i < cbCount; i++) {
+    const cb = checkboxes.nth(i);
+    const checked = await cb.isChecked().catch(() => false);
+    if (!checked) await cb.check().catch(() => {});
+  }
+  await page.waitForTimeout(500);
+  // 페이지 하단으로 스크롤
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(1500);
+  shots["5b"] = path.join(OUT_DIR, "5b-checkout-bottom.png");
+  await page.screenshot({ path: shots["5b"], fullPage: false });
+  console.log("  ✅ 체크아웃 하단 캡처 완료");
+
+  // 6. 토스 결제창(카드 입력창) — 카드 등록 버튼 클릭 후 토스 도메인 페이지 캡처
+  // 5b 에서 이미 /checkout 진입 + 약관 체크박스까지 체크한 상태이므로
+  // 여기서는 카드 등록 버튼만 클릭한다.
+  console.log("6. 결제창 — 카드 등록 버튼 클릭 후 토스 페이지 대기");
   const out6 = path.join(OUT_DIR, "6-toss-payment.png");
-  if (fs.existsSync(checkoutShot)) {
-    fs.copyFileSync(checkoutShot, out6);
-    shots[6] = out6;
-    console.log("  ↳ 토스 결제창은 계약 후 보강 — 체크아웃(결제 진입) 화면 사용");
-  } else {
+
+  // 버튼 클릭 + URL 변경 대기 (requestBillingAuth 는 현재 페이지 redirect)
+  let tossPageCaptured = false;
+  try {
+    const cardBtn = page.locator("button").filter({ hasText: /카드 등록|무료체험/ }).first();
+    const btnText = await cardBtn.innerText().catch(() => "?");
+    console.log(`  버튼: "${btnText}"`);
+
+    await Promise.all([
+      page.waitForURL(
+        (u) => !u.toString().includes("keepioo.com"),
+        { timeout: 20000 }
+      ).catch(() => {}),
+      cardBtn.click({ timeout: 5000 }),
+    ]);
+    await page.waitForLoadState("domcontentloaded", { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(5000);
+    console.log("  URL after click:", page.url());
+
+    const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 300));
+    console.log("  body snippet:", bodyText?.slice(0, 150));
+
+    // 성공 판정: 실제 토스 결제창은 tosspayments 도메인으로 이동한다.
+    // 계약 미완료 시 keepioo 페이지에 머물며 "네트워크 에러"를 표시하므로,
+    // 본문 텍스트가 아니라 도메인 이동 여부로 확실하게 판정한다.
+    const onTossDomain = page.url().includes("tosspayments");
+    if (onTossDomain) {
+      await page.screenshot({ path: out6, fullPage: false });
+      shots[6] = out6;
+      tossPageCaptured = true;
+      console.log("  ✅ 토스 결제창 캡처 완료:", page.url());
+    } else {
+      console.log("  ⚠️ 토스 도메인 미이동(계약 미완료 추정) — fallback 사용:", page.url());
+    }
+  } catch (e) {
+    console.log("  ⚠️ 버튼 클릭 실패:", e.message);
+  }
+
+  // 토스창 미표시(빌링 계약 미완료 등) 시 6번 슬라이드를 이미지로 만들지 않는다.
+  // 5b 화면을 6번으로 복사하면 "카드입력창"이라는 제목과 실제 화면이 어긋나
+  // 심사에 오표기로 비칠 수 있으므로, shots[6] 를 비워 buildPptx 가
+  // "계약 완료 후 카드입력창 표시" 안내 슬라이드를 대신 넣도록 한다.
+  if (!tossPageCaptured) {
     shots[6] = null;
+    console.log("  ↳ 토스창 미표시 — 6번은 안내 슬라이드로 대체(오표기 방지)");
   }
 
   await browser.close();
@@ -149,16 +211,17 @@ async function buildPptx(shots) {
     },
   );
 
-  // 슬라이드 2~7: 캡처
+  // 슬라이드 2~8: 캡처
   const titles = {
     1: "② 하단 정보 캡처 — 사업자정보 (footer)",
     2: "③ 환불규정 캡처 (제5~7조)",
     3: "④ 로그인 / 회원가입 캡처",
     4: "⑤ 상품 선택 / 구매과정 캡처 (요금제)",
-    5: "⑤ 상품 선택 / 구매과정 캡처 (체크아웃)",
-    6: "⑥ 카드 결제경로 캡처 (토스 결제창)",
+    5: "⑤ 상품 선택 / 구매과정 캡처 (체크아웃 — 상단)",
+    "5b": "⑤ 상품 선택 / 구매과정 캡처 (체크아웃 — 하단 정보 + 동의)",
+    6: "⑥ 카드 결제경로 캡처 (토스 결제창 — 카드번호 입력)",
   };
-  for (const n of [1, 2, 3, 4, 5, 6]) {
+  for (const n of [1, 2, 3, 4, 5, "5b", 6]) {
     if (!shots[n] || !fs.existsSync(shots[n])) continue;
     const s = pptx.addSlide();
     s.addText(titles[n], {
