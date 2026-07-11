@@ -14,6 +14,7 @@
 //   2) Promise.allSettled 로 병렬 발행 (한 개 실패해도 나머지 진행)
 //   3) 각 카테고리별 정책 1개 골라서 Gemini → DB 저장
 //   4) 실패한 카테고리만 모아서 운영자 알림
+//      단, 특정 카테고리 정책 풀이 소진된 경우는 운영 실패가 아니라 skipped 로 기록.
 //
 // 수동 테스트 (POST):
 //   POST { dryRun: true, category: "청년" } — DB 저장 안 하고 결과만
@@ -33,6 +34,11 @@ import {
   authorizePrivateCronRequest,
   isPrivateCronRequestAuthorized,
 } from "@/lib/cron-auth";
+
+function isNoPublishCandidateError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes("모든 정책이 이미 글로 발행됐거나 매칭이 없어요");
+}
 
 // AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림.
 // 2026-06-06: 한 글 최악 경로 = Gemini timeout(45s) + OpenAI fallback(35s) + 품질검수 LLM(12s)
@@ -311,6 +317,7 @@ export async function GET(request: NextRequest) {
       return {
         category: categories[i],
         ok: true,
+        skipped: false,
         slug: s.value.slug,
         title: s.value.generated.title,
         url: `/blog/${s.value.slug}`,
@@ -325,13 +332,15 @@ export async function GET(request: NextRequest) {
     return {
       category: categories[i],
       ok: false,
+      skipped: isNoPublishCandidateError(s.reason),
       error: s.reason instanceof Error ? s.reason.message : String(s.reason),
       provider: null as "gemini" | "openai" | null,
     };
   });
 
-  // 실패한 카테고리만 모아서 알림 (성공 1+ 면 200, 모두 실패면 500)
-  const failures = results.filter((r) => !r.ok);
+  // 실패한 카테고리만 모아서 알림. 정책 풀 소진은 운영 실패가 아니라 skipped 로 남긴다.
+  const failures = results.filter((r) => !r.ok && !r.skipped);
+  const skipped = results.filter((r) => !r.ok && r.skipped);
   await logPublishBlogRun({
     mode: "cron",
     count,
@@ -339,12 +348,14 @@ export async function GET(request: NextRequest) {
     categories,
     success: results.filter((r) => r.ok).length,
     failed: failures.length,
+    skipped: skipped.length,
     externalPublishHeld: results.filter(
       (r) => r.ok && r.externalPublishHeld,
     ).length,
     results: results.map((r) => ({
       category: r.category,
       ok: r.ok,
+      skipped: r.ok ? false : r.skipped,
       slug: r.ok ? r.slug : null,
       externalPublishHeld: r.ok ? r.externalPublishHeld : null,
       error: r.ok ? null : String(r.error).slice(0, 160),
@@ -389,13 +400,14 @@ export async function GET(request: NextRequest) {
     await sendOpenAIFallbackAlertIfNew(fallbackCats);
   }
 
-  const status = results.every((r) => !r.ok) ? 500 : 200;
+  const status = results.some((r) => r.ok || (!r.ok && r.skipped)) ? 200 : 500;
   return NextResponse.json(
     {
       message: status === 200 ? "발행 완료" : "모든 카테고리 발행 실패",
       count,
       success: results.filter((r) => r.ok).length,
       failed: failures.length,
+      skipped: skipped.length,
       results,
     },
     { status },
