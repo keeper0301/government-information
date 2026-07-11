@@ -174,4 +174,32 @@ describe("runDiagnose", () => {
     expect(summary.totalOccurrences).toBe(0);
     expect(summary.suppressedOccurrences).toBe(36);
   });
+
+  it("해결된 육아·가족 품질 가드 반복 실패도 active cron failure 에서 제외한다", () => {
+    const rows = [
+      {
+        job_name: "publish-blog (cron)",
+        occurrences: 8,
+        last_seen_at: "2026-07-11T08:11:00.000Z",
+        error_message:
+          "[육아·가족] 본문이 너무 짧음 (549자, 최소 1000자). AdSense 정책상 발행 불가.",
+      },
+      {
+        job_name: "publish-blog (cron)",
+        occurrences: 1,
+        last_seen_at: "2026-07-11T08:10:00.000Z",
+        error_message:
+          "[육아·가족] meta_description 길이 부적정 (94자, 권장 95~175자). SEO 검색 스니펫 잘림·저품질 위험.",
+      },
+    ];
+
+    expect(isSuppressedCronFailure(rows[0])).toContain("family blog candidates exhausted");
+
+    const summary = summarizeCronFailures(rows);
+
+    expect(summary.recent).toHaveLength(0);
+    expect(summary.suppressedRecent).toHaveLength(2);
+    expect(summary.totalOccurrences).toBe(0);
+    expect(summary.suppressedOccurrences).toBe(9);
+  });
 });

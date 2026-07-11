@@ -102,6 +102,34 @@ describe("publish-blog cron route", () => {
     );
   });
 
+  it("모든 후보가 품질 가드로 거절된 카테고리도 cron 실패 알림 없이 skipped 로 기록한다", async () => {
+    mocks.publishOnePost.mockRejectedValueOnce(
+      new Error(
+        "발행 가능한 고품질 정책을 못 찾았어요 (카테고리: 육아·가족). 후보 6건 모두 품질 가드로 거절됨. 마지막 오류: 본문이 너무 짧음 (549자, 최소 2000자).",
+      ),
+    );
+
+    const response = await GET(
+      request("https://www.keepioo.com/api/publish-blog?count=1&offset=5"),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ success: 0, failed: 0, skipped: 1 });
+    expect(body.results[0]).toMatchObject({ category: "육아·가족", ok: false, skipped: true });
+    expect(mocks.notifyCronFailure).not.toHaveBeenCalled();
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "blog_publish_run",
+        details: expect.objectContaining({
+          mode: "cron",
+          failed: 0,
+          skipped: 1,
+        }),
+      }),
+    );
+  });
+
   it("LLM/인프라 실패는 기존처럼 cron 실패로 알린다", async () => {
     mocks.publishOnePost.mockRejectedValueOnce(new Error("Gemini API 500"));
 

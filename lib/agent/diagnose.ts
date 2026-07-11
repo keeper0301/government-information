@@ -68,6 +68,13 @@ export function isSuppressedCronFailure(row: CronFailureRow): string | null {
   ) {
     return "blog category exhausted; publish-blog cron now skips exhausted categories without alerting";
   }
+  if (
+    /publish-blog/i.test(jobName) &&
+    /\[육아·가족\]/.test(errorMessage) &&
+    /본문이 너무 짧음|meta_description 길이 부적정/.test(errorMessage)
+  ) {
+    return "family blog candidates exhausted quality guard; publish-blog cron now skips all-quality-rejected categories";
+  }
   return null;
 }
 

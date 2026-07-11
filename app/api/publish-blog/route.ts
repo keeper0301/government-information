@@ -37,7 +37,11 @@ import {
 
 function isNoPublishCandidateError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
-  return message.includes("모든 정책이 이미 글로 발행됐거나 매칭이 없어요");
+  return (
+    message.includes("모든 정책이 이미 글로 발행됐거나 매칭이 없어요") ||
+    message.includes("발행 가능한 고품질 정책을 못 찾았어요") ||
+    message.includes("발행 가능한 고품질 정책 없음")
+  );
 }
 
 // AI 호출이 30초 이상 걸릴 수 있어 Vercel 함수 timeout 늘림.
