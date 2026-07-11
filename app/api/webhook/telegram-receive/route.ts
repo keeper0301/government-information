@@ -11,9 +11,14 @@ import { dispatchCommand } from "@/lib/telegram/commands";
 import { getRole, loadRoleSets } from "@/lib/telegram/permissions";
 import { authorizeTelegramWebhookRequest } from "@/lib/telegram-webhook-auth";
 import { getCronAuthorizationHeader } from "@/lib/cron-auth";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
 interface TelegramUpdate {
   update_id?: number;
@@ -44,9 +49,12 @@ export async function POST(request: NextRequest) {
 
   let update: TelegramUpdate;
   try {
-    update = (await request.json()) as TelegramUpdate;
-  } catch {
-    return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+    update = await readJsonWithLimit<TelegramUpdate>(request, MAX_WEBHOOK_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, error: isJsonBodyTooLargeError(err) ? "body_too_large" : "invalid_json" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
   }
 
   const message = update.message;

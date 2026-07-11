@@ -10,9 +10,11 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { logAdminAction } from "@/lib/admin-actions";
 import { getCronAuthorizationHeader } from "@/lib/cron-auth";
+import { isJsonBodyTooLargeError, readTextWithLimit } from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
 interface VercelWebhookPayload {
   type?: string;
@@ -58,7 +60,15 @@ async function notifyTelegram(text: string): Promise<void> {
 
 export async function POST(request: NextRequest) {
   // raw body 로 받음 (서명 검증용)
-  const rawBody = await request.text();
+  let rawBody: string;
+  try {
+    rawBody = await readTextWithLimit(request, MAX_WEBHOOK_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "body_too_large" : "invalid_body" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
   const signature = request.headers.get("x-vercel-signature");
 
   if (!verifySignature(rawBody, signature)) {

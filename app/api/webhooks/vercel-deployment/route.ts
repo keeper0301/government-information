@@ -19,10 +19,12 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdsenseDeploymentResult } from "@/lib/adsense/deployment-message";
+import { isJsonBodyTooLargeError, readTextWithLimit } from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 30;
+const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
 type DeploymentWebhookPayload = {
   type?: string; // "deployment.succeeded" · "deployment.error" · "deployment.canceled" 등
@@ -50,7 +52,15 @@ function verifySignature(rawBody: string, signature: string | null): boolean {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const rawBody = await request.text();
+  let rawBody: string;
+  try {
+    rawBody = await readTextWithLimit(request, MAX_WEBHOOK_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "body too large" : "invalid body" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
   const signature = request.headers.get("x-vercel-signature");
 
   if (!verifySignature(rawBody, signature)) {

@@ -17,6 +17,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPayment, TossError } from "@/lib/toss";
 import { SUBSCRIPTION_PERIOD_MS } from "@/lib/subscription";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
 type WebhookPayload = {
   eventType: string;
@@ -33,9 +39,12 @@ export async function POST(request: NextRequest) {
   // 1) body 파싱
   let payload: WebhookPayload;
   try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ error: "잘못된 형식의 요청입니다." }, { status: 400 });
+    payload = await readJsonWithLimit<WebhookPayload>(request, MAX_WEBHOOK_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 큽니다." : "잘못된 형식의 요청입니다." },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
   }
 
   // 2) 지원하는 이벤트만 처리

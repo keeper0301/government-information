@@ -5,6 +5,7 @@ import {
   isJsonBodyInvalidError,
   isJsonBodyTooLargeError,
   readJsonWithLimit,
+  readTextWithLimit,
 } from "@/lib/http/json";
 
 describe("readJsonWithLimit", () => {
@@ -41,5 +42,14 @@ describe("readJsonWithLimit", () => {
   it("classifies invalid and oversized errors", () => {
     expect(isJsonBodyInvalidError(new JsonBodyInvalidError())).toBe(true);
     expect(isJsonBodyTooLargeError(new JsonBodyTooLargeError(1))).toBe(true);
+  });
+
+  it("reads raw text within the byte limit for signed webhook handlers", async () => {
+    const req = new Request("https://example.com", {
+      method: "POST",
+      body: "signed-payload",
+    });
+
+    await expect(readTextWithLimit(req, 1024)).resolves.toBe("signed-payload");
   });
 });
