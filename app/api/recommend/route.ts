@@ -9,32 +9,59 @@ import {
   type OccupationOption,
   type RegionOption,
 } from "@/lib/profile-options";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_JSON_BODY_BYTES = 8 * 1024;
 
 // 맞춤추천 API — 실제 매칭 로직은 lib/recommend.ts 에 위치.
 // 이 파일은 입력값 검증과 응답 변환만 담당 (서버 페이지와 로직 공유 목적).
 export async function POST(request: NextRequest) {
+  let body: {
+    ageGroup?: unknown;
+    region?: unknown;
+    district?: unknown;
+    occupation?: unknown;
+    programType?: unknown;
+  };
+  try {
+    body = await readJsonWithLimit(request, MAX_JSON_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 큽니다." : "요청 본문이 올바르지 않습니다." },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
+
   const {
     ageGroup,
     region,
     district,
     occupation,
     programType = "all",
-  } = await request.json();
+  } = body;
+
+  const ageGroupValue = typeof ageGroup === "string" ? ageGroup : "";
+  const regionValue = typeof region === "string" ? region : "";
+  const occupationValue = typeof occupation === "string" ? occupation : "";
+  const programTypeValue = typeof programType === "string" ? programType : "all";
 
   // 입력값 검증
-  if (!ageGroup || !region || !occupation) {
+  if (!ageGroupValue || !regionValue || !occupationValue) {
     return NextResponse.json({ error: "모든 항목을 선택해주세요." }, { status: 400 });
   }
-  if (!(ageGroup in AGE_KEYWORDS)) {
+  if (!(ageGroupValue in AGE_KEYWORDS)) {
     return NextResponse.json({ error: "올바른 나이대를 선택해주세요." }, { status: 400 });
   }
-  if (!REGION_OPTIONS.includes(region)) {
+  if (!REGION_OPTIONS.includes(regionValue as RegionOption)) {
     return NextResponse.json({ error: "올바른 지역을 선택해주세요." }, { status: 400 });
   }
-  if (!(occupation in OCCUPATION_KEYWORDS)) {
+  if (!(occupationValue in OCCUPATION_KEYWORDS)) {
     return NextResponse.json({ error: "올바른 직업을 선택해주세요." }, { status: 400 });
   }
-  if (!PROGRAM_TYPES.includes(programType as ProgramType)) {
+  if (!PROGRAM_TYPES.includes(programTypeValue as ProgramType)) {
     return NextResponse.json({ error: "올바른 정보 종류를 선택해주세요." }, { status: 400 });
   }
   // district 는 optional. 임의 문자열 주입 막으려고 길이·형식만 가볍게 검증.
@@ -47,17 +74,17 @@ export async function POST(request: NextRequest) {
 
   const fullProfile = await loadUserProfile();
   const programs = await getRecommendations({
-    ageGroup: ageGroup as AgeOption,
-    region: region as RegionOption,
+    ageGroup: ageGroupValue as AgeOption,
+    region: regionValue as RegionOption,
     district: safeDistrict,
-    occupation: occupation as OccupationOption,
+    occupation: occupationValue as OccupationOption,
     incomeLevel: fullProfile?.signals.incomeLevel ?? null,
     householdTypes: fullProfile?.signals.householdTypes ?? [],
     benefitTags: fullProfile?.signals.benefitTags ?? [],
     hasChildren: fullProfile?.signals.hasChildren ?? null,
     merit: fullProfile?.signals.merit ?? null,
     businessProfile: fullProfile?.signals.businessProfile ?? null,
-    programType: programType as ProgramType,
+    programType: programTypeValue as ProgramType,
   });
 
   return NextResponse.json({ programs });

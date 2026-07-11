@@ -9,6 +9,10 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
 
 export const runtime = "nodejs";
 
@@ -16,6 +20,7 @@ export const runtime = "nodejs";
 // 봇 spam 1차 방어 (외부 사용자 만나기 전 워밍업).
 const RATE_WINDOW_SEC = 60;
 const RATE_MAX = 2;
+const MAX_JSON_BODY_BYTES = 4 * 1024;
 
 type Body = {
   wish?: unknown;
@@ -25,9 +30,12 @@ type Body = {
 export async function POST(request: Request) {
   let body: Body;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    body = await readJsonWithLimit<Body>(request, MAX_JSON_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 큽니다." : "Invalid JSON" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
   }
 
   const wish = typeof body.wish === "string" ? body.wish.trim() : "";

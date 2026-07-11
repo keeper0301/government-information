@@ -14,6 +14,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
@@ -35,6 +39,7 @@ const VALID_PROGRAM_TABLES = new Set([
 // distributed rate limit 은 Phase E-B 별도 (Redis 등).
 const recentByIp = new Map<string, number>();
 const RATE_LIMIT_MS = 1000;
+const MAX_JSON_BODY_BYTES = 4 * 1024;
 
 function pickIp(req: Request): string {
   return (
@@ -61,7 +66,13 @@ export async function POST(req: Request) {
     }
   }
 
-  const body = await req.json().catch(() => null);
+  const body = await readJsonWithLimit<Record<string, unknown>>(req, MAX_JSON_BODY_BYTES).catch((err) => {
+    if (isJsonBodyTooLargeError(err)) return "too_large" as const;
+    return null;
+  });
+  if (body === "too_large") {
+    return NextResponse.json({ error: "body_too_large" }, { status: 413 });
+  }
   if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }

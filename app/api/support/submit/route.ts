@@ -27,12 +27,17 @@ import {
 } from "@/lib/support/rate-limit";
 import { searchPolicies, generatePolicyAnswer } from "@/lib/support/rag";
 import { sendSupportReply } from "@/lib/support/notify-user";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const MAX_MESSAGE_LEN = 1000;
 const MAX_SUBJECT_LEN = 200;
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 interface SubmitBody {
   subject?: string;
@@ -44,9 +49,12 @@ interface SubmitBody {
 export async function POST(req: NextRequest) {
   let body: SubmitBody;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+    body = await readJsonWithLimit<SubmitBody>(req, MAX_JSON_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "body_too_large" : "invalid_json" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
   }
 
   const message = (body.message ?? "").trim();

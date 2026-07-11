@@ -29,6 +29,10 @@ import {
   matchIntent,
   safeEchoUtterance,
 } from "@/lib/kakao-skill";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
 
 // 카카오 챗봇 타임아웃 5초 — Vercel 콜드스타트 + Supabase 쿼리 합쳐서 가드
 export const maxDuration = 5;
@@ -36,6 +40,7 @@ export const maxDuration = 5;
 // BASE_URL — 운영 도메인. 프리뷰 배포·local 에서도 prod URL 보내야
 // listCard 의 webLink 가 정상 작동 (사용자는 prod 도메인만 인지).
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 // quickReplies 는 lib/kakao-skill.ts 에서 단일 소스. readonly tuple → 카카오 응답에 펼침.
 const QUICK_REPLIES = [...KAKAO_QUICK_REPLIES];
@@ -113,8 +118,11 @@ export async function POST(request: NextRequest) {
 async function handlePost(request: NextRequest) {
   let body: { userRequest?: { utterance?: string } };
   try {
-    body = await request.json();
-  } catch {
+    body = await readJsonWithLimit(request, MAX_JSON_BODY_BYTES);
+  } catch (err) {
+    if (isJsonBodyTooLargeError(err)) {
+      return simpleTextResponse("요청이 너무 커서 처리할 수 없어요. 짧게 다시 보내주세요.");
+    }
     return simpleTextResponse(
       "요청을 처리할 수 없어요. 다시 메시지를 보내주세요.",
     );
