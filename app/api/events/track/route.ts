@@ -5,19 +5,20 @@
 // 발생 시 호출 → user_events INSERT.
 //
 // 인증: 누구나 호출 가능 (user_id NULL 가능 — 익명 추적).
-// 보호: rate limit (IP 당 1초 1건) — 외부 abuse 차단.
+// 보호: Supabase fixed-window rate limit (IP 당 분당 60건) — serverless instance 분산 abuse 차단.
 //
 // POST body:
 //   { event_type, program_id?, program_table?, source_page? }
 // ============================================================
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isJsonBodyTooLargeError,
   readJsonWithLimit,
 } from "@/lib/http/json";
+import { checkRateLimit, getClientIp } from "@/lib/support/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
@@ -35,35 +36,19 @@ const VALID_PROGRAM_TABLES = new Set([
   "news_posts",
 ]);
 
-// 메모리 IP rate limit — Vercel function 한 instance 안에서만 작동.
-// distributed rate limit 은 Phase E-B 별도 (Redis 등).
-const recentByIp = new Map<string, number>();
-const RATE_LIMIT_MS = 1000;
 const MAX_JSON_BODY_BYTES = 4 * 1024;
+const EVENT_TRACK_LIMIT_PER_MINUTE = 60;
 
-function pickIp(req: Request): string {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown"
-  );
-}
-
-export async function POST(req: Request) {
-  const ip = pickIp(req);
-  const now = Date.now();
-  const last = recentByIp.get(ip) ?? 0;
-  if (now - last < RATE_LIMIT_MS) {
-    return NextResponse.json({ error: "rate_limit" }, { status: 429 });
-  }
-  recentByIp.set(ip, now);
-
-  // 메모리 누수 방지 — 한 시간 지난 entry 제거 (간단한 best-effort)
-  if (recentByIp.size > 10000) {
-    const cutoff = now - 60 * 60 * 1000;
-    for (const [k, v] of recentByIp) {
-      if (v < cutoff) recentByIp.delete(k);
-    }
+export async function POST(req: NextRequest) {
+  const rl = await checkRateLimit({
+    bucket: `events:ip:${getClientIp(req)}`,
+    limit: EVENT_TRACK_LIMIT_PER_MINUTE,
+  });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limit", retry_after_sec: rl.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
   }
 
   const body = await readJsonWithLimit<Record<string, unknown>>(req, MAX_JSON_BODY_BYTES).catch((err) => {
@@ -117,7 +102,7 @@ export async function POST(req: Request) {
   // 아닌 이 클라이언트 program_view 경로로 이전(정적 페이지는 매 요청 렌더 안 함).
   // ⚠️ await 필수 — fire-and-forget(.then) 으로 두면 서버리스 함수가 응답 후 동결돼
   // RPC 가 완료되기 전에 죽어 view_count 가 안 오름(2026-06-13 검증: track 응답 ok 인데
-  // view_count 0 증가). 백그라운드 분석 endpoint 라 await 지연 무방. rate limit(1초/IP)이 부풀림 차단.
+  // view_count 0 증가). 백그라운드 분석 endpoint 라 await 지연 무방. 분산 rate limit 이 부풀림 차단.
   if (
     eventType === "program_view" &&
     programTable &&

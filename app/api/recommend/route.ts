@@ -13,12 +13,25 @@ import {
   isJsonBodyTooLargeError,
   readJsonWithLimit,
 } from "@/lib/http/json";
+import { checkRateLimit, getClientIp } from "@/lib/support/rate-limit";
 
-const MAX_JSON_BODY_BYTES = 8 * 1024;
+const MAX_JSON_BODY_BYTES = 4 * 1024;
+const RECOMMEND_LIMIT_PER_MINUTE = 30;
 
 // 맞춤추천 API — 실제 매칭 로직은 lib/recommend.ts 에 위치.
 // 이 파일은 입력값 검증과 응답 변환만 담당 (서버 페이지와 로직 공유 목적).
 export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit({
+    bucket: `recommend:ip:${getClientIp(request)}`,
+    limit: RECOMMEND_LIMIT_PER_MINUTE,
+  });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited", retry_after_sec: rl.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: {
     ageGroup?: unknown;
     region?: unknown;
