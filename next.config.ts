@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
   async headers() {
     // Content-Security-Policy — 외부 스크립트(AdSense·GA·Toss) 도메인 명시.
     // 가장 관대한 정책으로 enforce — 사이트 깨짐 위험 최소화.
-    // unsafe-inline·unsafe-eval 허용: Next.js 의 inline script/style + _next/ chunks
-    // 가 필요. 점진적으로 nonce 또는 hash 도입해 강화 가능.
+    // unsafe-inline 허용: Next.js 의 inline script/style + _next/ chunks 호환.
+    // unsafe-eval 은 report-only 관찰에서 의존성이 없어 enforce 에서 제거.
     //
     // 외부 도메인 화이트리스트:
     //   - AdSense: pagead2.googlesyndication.com·googleads.g.doubleclick.net·googleadservices.com
@@ -71,7 +71,7 @@ const nextConfig: NextConfig = {
           },
           // CSP — 외부 스크립트 화이트리스트 + 인라인 허용 (Next.js 호환)
           { key: "Content-Security-Policy", value: csp },
-          // CSP report-only — unsafe-eval 제거 가능성 관찰. 강제 차단 없이 /api/csp-report 로 수집.
+          // CSP report-only — enforce 와 동일한 정책을 관찰용으로도 수집. 강제 차단 없이 /api/csp-report 로 수집.
           { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
         ],
       },
