@@ -11,8 +11,10 @@ import {
   isJsonBodyTooLargeError,
   readJsonWithLimit,
 } from "@/lib/http/json";
+import { checkRateLimit, getClientIp } from "@/lib/support/rate-limit";
 
 const MAX_JSON_BODY_BYTES = 16 * 1024;
+const CHATBOT_LIMIT_PER_MINUTE = 20;
 
 // 챗봇 검색 결과에서 EXCLUDED 차단을 단일 helper 로 — 매 .from() 마다 분기 반복 회피
 function applyExcludedFilter<Q extends { not: (col: string, op: string, val: string) => Q }>(
@@ -43,6 +45,21 @@ const KEYWORD_MAP: Record<string, { table: "welfare_programs" | "loan_programs";
 };
 
 export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit({
+    bucket: `chatbot:ip:${getClientIp(request)}`,
+    limit: CHATBOT_LIMIT_PER_MINUTE,
+  });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      {
+        reply: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+        programs: [],
+        retry_after_sec: rl.retryAfterSec,
+      },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await readJsonWithLimit(request, MAX_JSON_BODY_BYTES);

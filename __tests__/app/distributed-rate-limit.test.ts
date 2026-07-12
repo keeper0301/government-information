@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as trackEvent } from "@/app/api/events/track/route";
 import { POST as recommend } from "@/app/api/recommend/route";
+import { POST as chatbot } from "@/app/api/chatbot/route";
 import { getRecommendations } from "@/lib/recommend";
 import { checkRateLimit } from "@/lib/support/rate-limit";
 
@@ -9,20 +10,23 @@ vi.mock("@/lib/support/rate-limit", () => ({
   getClientIp: vi.fn(() => "203.0.113.10"),
 }));
 
-const adminInsert = vi.fn(async () => ({ error: null }));
-const adminRpc = vi.fn(async () => ({ error: null }));
+const mocks = vi.hoisted(() => ({
+  adminInsert: vi.fn(async () => ({ error: null })),
+  adminRpc: vi.fn(async () => ({ error: null })),
+  createClient: vi.fn(async () => ({
+    auth: { getUser: async () => ({ data: { user: null } }) },
+  })),
+}));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
-    from: vi.fn(() => ({ insert: adminInsert })),
-    rpc: adminRpc,
+    from: vi.fn(() => ({ insert: mocks.adminInsert })),
+    rpc: mocks.adminRpc,
   }),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
-    auth: { getUser: async () => ({ data: { user: null } }) },
-  }),
+  createClient: mocks.createClient,
 }));
 
 vi.mock("@/lib/recommend", async (importOriginal) => {
@@ -78,7 +82,7 @@ describe("distributed public route rate limits", () => {
       bucket: "events:ip:203.0.113.10",
       limit: 60,
     });
-    expect(adminInsert).not.toHaveBeenCalled();
+    expect(mocks.adminInsert).not.toHaveBeenCalled();
   });
 
   it("blocks recommendation requests before recommendation work", async () => {
@@ -107,5 +111,31 @@ describe("distributed public route rate limits", () => {
       limit: 30,
     });
     expect(getRecommendations).not.toHaveBeenCalled();
+  });
+
+  it("blocks chatbot requests before auth/quota/database work", async () => {
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSec: 15,
+    });
+
+    const res = await chatbot(
+      jsonReq("https://www.keepioo.com/api/chatbot", {
+        message: "청년 주거",
+      }) as never,
+    );
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("15");
+    await expect(res.json()).resolves.toEqual({
+      reply: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+      programs: [],
+      retry_after_sec: 15,
+    });
+    expect(checkRateLimit).toHaveBeenCalledWith({
+      bucket: "chatbot:ip:203.0.113.10",
+      limit: 20,
+    });
+    expect(mocks.createClient).not.toHaveBeenCalled();
   });
 });
