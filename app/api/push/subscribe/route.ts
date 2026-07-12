@@ -13,9 +13,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { subscribeUser, removeSubscription } from "@/lib/push/subscribe";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
+const MAX_PUSH_SUBSCRIPTION_BODY_BYTES = 8 * 1024;
 
 // 발송 endpoint 화이트리스트 — Web Push 표준 4대 브라우저 push service.
 // SSRF 방지: 클라가 임의 URL 등록 후 발송 cron 이 그 URL 로 POST 하는 위험 차단.
@@ -50,9 +55,12 @@ export async function POST(request: Request) {
     user_agent?: string;
   };
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+    body = await readJsonWithLimit(request, MAX_PUSH_SUBSCRIPTION_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "body_too_large" : "invalid body" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
   }
 
   if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
@@ -110,9 +118,12 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   let body: { endpoint?: string };
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+    body = await readJsonWithLimit(request, MAX_PUSH_SUBSCRIPTION_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "body_too_large" : "invalid body" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
   }
 
   if (!body.endpoint) {

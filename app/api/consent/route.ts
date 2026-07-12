@@ -23,6 +23,12 @@ import {
   KAKAO_MESSAGING_VERSION,
   type ConsentType,
 } from "@/lib/consent";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_CONSENT_BODY_BYTES = 4 * 1024;
 
 // 필수 동의 = 서비스 이용 전제. 철회하려면 탈퇴해야 함.
 const REQUIRED_CONSENTS: ConsentType[] = ["privacy_policy", "terms"];
@@ -65,9 +71,12 @@ export async function POST(req: NextRequest) {
   // 2) 본문 파싱
   let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "잘못된 요청이에요." }, { status: 400 });
+    body = await readJsonWithLimit(req, MAX_CONSENT_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 커요." : "잘못된 요청이에요." },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
   }
   const b = body as {
     action?: string;

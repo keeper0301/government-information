@@ -13,6 +13,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redeemReferral } from "@/lib/referrals";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_REFERRAL_REDEEM_BODY_BYTES = 2 * 1024;
 
 export async function POST(request: NextRequest) {
   // 1) 인증
@@ -31,11 +37,11 @@ export async function POST(request: NextRequest) {
   // 2) body 파싱
   let body: { code?: unknown };
   try {
-    body = (await request.json()) as { code?: unknown };
-  } catch {
+    body = await readJsonWithLimit(request, MAX_REFERRAL_REDEEM_BODY_BYTES);
+  } catch (err) {
     return NextResponse.json(
-      { ok: false, reason: "invalid_body" },
-      { status: 400 },
+      { ok: false, reason: isJsonBodyTooLargeError(err) ? "body_too_large" : "invalid_body" },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
     );
   }
 

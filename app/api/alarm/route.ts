@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTier } from "@/lib/subscription";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_ALARM_BODY_BYTES = 8 * 1024;
 
 // 내 알림 목록 조회
 export async function GET() {
@@ -51,7 +57,16 @@ export async function GET() {
 
 // 알림 해제 (is_active를 false로 변경)
 export async function DELETE(request: NextRequest) {
-  const { subscriptionId } = await request.json();
+  let body: { subscriptionId?: unknown };
+  try {
+    body = await readJsonWithLimit(request, MAX_ALARM_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 큽니다." : "잘못된 요청입니다." },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
+  const { subscriptionId } = body;
 
   if (!subscriptionId) {
     return NextResponse.json({ error: "알림 ID가 필요합니다." }, { status: 400 });
@@ -79,18 +94,30 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { email, programId, programType } = await request.json();
+  let body: { email?: unknown; programId?: unknown; programType?: unknown };
+  try {
+    body = await readJsonWithLimit(request, MAX_ALARM_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 큽니다." : "잘못된 요청입니다." },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
+  const { email, programId, programType } = body;
+  const emailValue = typeof email === "string" ? email : "";
+  const programIdValue = typeof programId === "string" ? programId : "";
+  const programTypeValue = typeof programType === "string" ? programType : "";
 
-  if (!email || !programId || !programType) {
+  if (!emailValue || !programIdValue || !programTypeValue) {
     return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
   }
 
-  if (!["welfare", "loan"].includes(programType)) {
+  if (!["welfare", "loan"].includes(programTypeValue)) {
     return NextResponse.json({ error: "잘못된 프로그램 유형입니다." }, { status: 400 });
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  if (!emailRegex.test(emailValue)) {
     return NextResponse.json({ error: "올바른 이메일 주소를 입력해주세요." }, { status: 400 });
   }
 
@@ -131,7 +158,7 @@ export async function POST(request: NextRequest) {
     .from("alarm_subscriptions")
     .select("id")
     .eq("email", targetEmail)
-    .eq("program_id", programId)
+    .eq("program_id", programIdValue)
     .eq("is_active", true)
     .limit(1);
 
@@ -143,8 +170,8 @@ export async function POST(request: NextRequest) {
   const { error } = await adminSupabase.from("alarm_subscriptions").insert({
     user_id: user.id,
     email: targetEmail,
-    program_type: programType,
-    program_id: programId,
+    program_type: programTypeValue,
+    program_id: programIdValue,
     notify_before_days: 7,
   });
 
