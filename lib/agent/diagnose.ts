@@ -28,6 +28,7 @@ export type DiagnoseQuestion =
   | "agent_recent_actions"      // agent_execute_run 최근 50건 (Codex 본인 행동 점검)
   | "alert_recent_24h"          // health-alert 발화 추세
   | "db_table_sizes"            // 5/19 추가 — 큰 테이블 row count (storage growth 추적)
+  | "rate_limit_status"         // public endpoint fixed-window rate limit top buckets
   | "local_press_collector_health"; // 23 GHA collector 고장 감지 + 수리 제안 (자가치유 감지 확장)
 
 export type DiagnoseResult = {
@@ -402,6 +403,11 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
       collected_note:
         "row count 기반. byte size 는 Supabase dashboard 에서만. 급증 추세 = storage 한도 위험 신호.",
     };
+  },
+
+  rate_limit_status: async () => {
+    const { getRateLimitStatus } = await import("@/lib/monitoring/rate-limit-status");
+    return getRateLimitStatus({ lookbackMinutes: 10, limit: 10 });
   },
 
   local_press_collector_health: async () => {

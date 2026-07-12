@@ -25,6 +25,7 @@ import {
   getCadenceRegressions,
   formatCadenceRegressions,
 } from "@/lib/monitoring/collector-health-diagnosis";
+import { getRateLimitStatus, type RateLimitHotBucket } from "@/lib/monitoring/rate-limit-status";
 
 export type HealthSignals = {
   // 24h 신규 가입 수
@@ -42,6 +43,9 @@ export type HealthSignals = {
   cronFailures24h: number;
   // 24h 알림 발송 실패 (alert_deliveries status = 'failed')
   deliveryFailures24h: number;
+  // 최근 fixed-window rate limit top bucket 중 최대 count. 원시 IP/user id 는 마스킹된 top list 만 노출.
+  rateLimitMaxCount: number;
+  rateLimitHotBuckets: RateLimitHotBucket[];
   // ─── Phase 1 자동 진단 (2026-05-08 추가) ───
   // 자동화 적체·노쇼 신호 — 사고 자동 진단 cron 이 매일 점검
   newsBacklogTotal: number;        // news_posts classified_at NULL + visible — cron cap timeout 신호
@@ -201,6 +205,7 @@ export type ThresholdAlert = {
     | "low_activity"
     | "payment_fail"
     | "cron_fail"
+    | "rate_limit_abuse"
     | "news_backlog"
     | "press_pending"
     | "press_no_show"
@@ -283,6 +288,9 @@ const COLLECT_NO_SHOW_HOURS = Number(
 const DELIVERY_FAIL_THRESHOLD = Number(
   process.env.DELIVERY_FAIL_ALERT_THRESHOLD ?? "5",
 );
+// 최근 10분 fixed-window rate limit bucket 중 1분 카운트가 이 값 이상이면 abuse 후보.
+// 실제 endpoint cap(20~60/min)보다 충분히 높게 두어 정상 사용·smoke noise 를 피한다.
+const RATE_LIMIT_ABUSE_FLOOR = Number(process.env.RATE_LIMIT_ABUSE_FLOOR ?? "180");
 // 2026-05-14 추가 — loan_programs 단독 노쇼 임계 (hours).
 // 데이터 기반 발견: 합산 (welfare + loan) 임계는 welfare 7 + loan 0 = 7 통과로 loan 사고 가려짐.
 // loan 30d 평균 ~16건/일이지만 일별 분산 큼 → 48h 보수 baseline (1주 모니터링 후 조정).
@@ -382,6 +390,10 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     .eq("status", "failed")
     .gte("created_at", since24Iso);
   const deliveryFailures24h = delCount ?? 0;
+
+  const rateLimitStatus = await getRateLimitStatus({ lookbackMinutes: 10, limit: 5 });
+  const rateLimitMaxCount = rateLimitStatus.maxCount;
+  const rateLimitHotBuckets = rateLimitStatus.topBuckets;
 
   // ─── Phase 1 자동 진단 (2026-05-08) ───────────────────────
   // news 미분류 backlog — cron cap timeout 또는 cron 노쇼 신호
@@ -624,6 +636,8 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     failed24h,
     cronFailures24h,
     deliveryFailures24h,
+    rateLimitMaxCount,
+    rateLimitHotBuckets,
     newsBacklogTotal,
     pressPending,
     pressLastClassifyHours,
@@ -688,6 +702,16 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "cron_fail",
       message: `24h cron 실패 알림 ${s.cronFailures24h}건 (임계치 ${CRON_FAIL_ALERT_THRESHOLD}).`,
       recommendation: "/admin/cron-failures 에서 cron 별 실패 패턴 확인 + 일괄 재시도",
+    });
+  }
+
+  if (s.rateLimitMaxCount >= RATE_LIMIT_ABUSE_FLOOR) {
+    const top = s.rateLimitHotBuckets[0];
+    alerts.push({
+      key: "rate_limit_abuse",
+      message: `최근 rate limit bucket 최대 ${s.rateLimitMaxCount}회/분 (임계 ${RATE_LIMIT_ABUSE_FLOOR}+). top=${top?.bucket ?? "unknown"}`,
+      recommendation:
+        "/api/agent/diagnose question=rate_limit_status 로 top bucket class 확인 → 필요 시 endpoint cap 조정 또는 WAF/IP 차단 검토",
     });
   }
 

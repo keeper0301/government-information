@@ -8,6 +8,8 @@ const BASE_SIGNALS: HealthSignals = {
   failed24h: 0,
   cronFailures24h: 0,
   deliveryFailures24h: 0,
+  rateLimitMaxCount: 0,
+  rateLimitHotBuckets: [],
   // Phase 1 자동 진단 baseline — 모두 정상 (alert 발송 안 됨)
   newsBacklogTotal: 0,
   pressPending: 0,
@@ -893,5 +895,32 @@ describe("checkThresholds — welfare insight 커버리지 회귀 가드", () =>
   it("커버리지 floor 경계(정확히 80%) → alert 안 함", () => {
     const alerts = checkThresholds({ ...BASE_SIGNALS, welfareInsightCoveragePct: 80 });
     expect(alerts.find((a) => a.key === "welfare_insight_coverage_low")).toBeUndefined();
+  });
+});
+
+describe("checkThresholds — rate_limit_abuse", () => {
+  it("rate limit bucket count 가 floor 이상이면 alert", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      rateLimitMaxCount: 180,
+      rateLimitHotBuckets: [
+        {
+          bucket: "chatbot:ip:*",
+          bucketClass: "chatbot",
+          windowMinute: 123,
+          count: 180,
+        },
+      ],
+    });
+    const a = alerts.find((x) => x.key === "rate_limit_abuse");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("180회/분");
+    expect(a?.message).toContain("chatbot:ip:*");
+    expect(a?.recommendation).toContain("rate_limit_status");
+  });
+
+  it("rate limit bucket count 가 floor 미만이면 alert 안 함", () => {
+    const alerts = checkThresholds({ ...BASE_SIGNALS, rateLimitMaxCount: 179 });
+    expect(alerts.find((a) => a.key === "rate_limit_abuse")).toBeUndefined();
   });
 });
