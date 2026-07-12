@@ -8,6 +8,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { previewMatchCount } from "@/lib/alerts/matching";
 import { requireTier } from "@/lib/subscription";
 import { hasActiveConsent } from "@/lib/consent";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_ALERT_RULE_BODY_BYTES = 16 * 1024;
 
 // Phase 1.5 income_target 화이트리스트 정규화 — DB CHECK 와 동일한 enum.
 // 잘못된 값이나 빈 문자열은 NULL 로 변환 (매칭 무관).
@@ -17,6 +23,14 @@ function normalizeIncomeTarget(
 ): 'low' | 'mid_low' | 'mid' | 'any' | null {
   if (typeof v !== 'string' || !VALID_INCOME_TARGET.has(v)) return null;
   return v as 'low' | 'mid_low' | 'mid' | 'any';
+}
+
+function stringArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+function optionalString(v: unknown, maxLength: number): string | null {
+  return typeof v === "string" ? v.substring(0, maxLength) : null;
 }
 
 // 알림 규칙은 basic 이상만 (무료 사용자는 pricing 페이지로 유도)
@@ -53,7 +67,15 @@ export async function GET() {
 
 // ━━ POST: 새 규칙 생성 + action=preview 시 미리보기 ━━
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonWithLimit(request, MAX_ALERT_RULE_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 큽니다." : "잘못된 요청입니다." },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
 
   // 미리보기 모드 — 로그인 필요하나 저장 안 함
   if (body.action === "preview") {
@@ -62,13 +84,13 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
     const preview = await previewMatchCount(admin, {
-      region_tags: body.region_tags || [],
-      age_tags: body.age_tags || [],
-      occupation_tags: body.occupation_tags || [],
-      benefit_tags: body.benefit_tags || [],
-      household_tags: body.household_tags || [],
+      region_tags: stringArray(body.region_tags),
+      age_tags: stringArray(body.age_tags),
+      occupation_tags: stringArray(body.occupation_tags),
+      benefit_tags: stringArray(body.benefit_tags),
+      household_tags: stringArray(body.household_tags),
       income_target: normalizeIncomeTarget(body.income_target),
-      keyword: body.keyword || null,
+      keyword: optionalString(body.keyword, 100),
     });
     return NextResponse.json(preview);
   }
@@ -119,15 +141,15 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: auth.user.id,
       name: name.substring(0, 50),
-      region_tags: body.region_tags || [],
-      age_tags: body.age_tags || [],
-      occupation_tags: body.occupation_tags || [],
-      benefit_tags: body.benefit_tags || [],
-      household_tags: body.household_tags || [],
+      region_tags: stringArray(body.region_tags),
+      age_tags: stringArray(body.age_tags),
+      occupation_tags: stringArray(body.occupation_tags),
+      benefit_tags: stringArray(body.benefit_tags),
+      household_tags: stringArray(body.household_tags),
       income_target: normalizeIncomeTarget(body.income_target),
-      keyword: body.keyword?.substring(0, 100) || null,
+      keyword: optionalString(body.keyword, 100),
       channels,
-      phone_number: channels.includes("kakao") ? body.phone_number || null : null,
+      phone_number: channels.includes("kakao") ? optionalString(body.phone_number, 30) : null,
       is_active: true,
     })
     .select()

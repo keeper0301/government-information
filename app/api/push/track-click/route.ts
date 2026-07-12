@@ -16,8 +16,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyPushLogToken } from "@/lib/push/track-token";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
 
 export const dynamic = "force-dynamic";
+const MAX_PUSH_TRACK_BODY_BYTES = 2 * 1024;
 
 function nowHourKst(): number {
   const utc = new Date();
@@ -26,7 +31,10 @@ function nowHourKst(): number {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { logId?: number | string; token?: string };
+    const body = await readJsonWithLimit<{ logId?: number | string; token?: string }>(
+      request,
+      MAX_PUSH_TRACK_BODY_BYTES,
+    );
     const logId =
       typeof body.logId === "number"
         ? body.logId
@@ -55,6 +63,9 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
+    if (isJsonBodyTooLargeError(e)) {
+      return NextResponse.json({ ok: false, error: "body_too_large" }, { status: 413 });
+    }
     return NextResponse.json(
       { ok: false, error: (e as Error).message },
       { status: 500 },

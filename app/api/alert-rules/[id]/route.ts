@@ -8,6 +8,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTier } from "@/lib/subscription";
 import { hasActiveConsent } from "@/lib/consent";
+import {
+  isJsonBodyTooLargeError,
+  readJsonWithLimit,
+} from "@/lib/http/json";
+
+const MAX_ALERT_RULE_BODY_BYTES = 16 * 1024;
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -27,7 +33,15 @@ export async function PATCH(
   const auth = await requireAuth();
   if ("error" in auth) return NextResponse.json(auth, { status: auth.status });
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await readJsonWithLimit(request, MAX_ALERT_RULE_BODY_BYTES);
+  } catch (err) {
+    return NextResponse.json(
+      { error: isJsonBodyTooLargeError(err) ? "요청 본문이 너무 큽니다." : "잘못된 요청입니다." },
+      { status: isJsonBodyTooLargeError(err) ? 413 : 400 },
+    );
+  }
 
   // 채널 kakao 는 pro 만
   if (Array.isArray(body.channels) && body.channels.includes("kakao") && auth.tier !== "pro") {
