@@ -157,6 +157,29 @@ function buildResidentRecommendations(
     });
   }
 
+  const instagram = findData(results, "instagram_legacy_publish_status") as {
+    status?: string;
+    pendingCount?: number;
+    blockedByQualityCount?: number;
+    exhaustedAttemptCount?: number;
+    failedAttemptCount?: number;
+    published24h?: number;
+    hoursSinceLastPublish?: number | null;
+    tokenConfigured?: boolean;
+    legacyRenderer?: string;
+  } | null;
+  if (instagram?.status === "not_configured") {
+    recs.push({
+      operation: { area: "site_ops", action: "cron_audit" },
+      evidence: "legacy Instagram 3-card pipeline token is not configured; admin OAuth 연결 필요",
+    });
+  } else if (instagram?.status === "needs_attention") {
+    recs.push({
+      operation: { area: "agent_call", action: "codex_instagram_publish_fix" },
+      evidence: `legacy Instagram pipeline needs attention: pending=${instagram.pendingCount ?? 0}, qualityBlocked=${instagram.blockedByQualityCount ?? 0}, exhausted=${instagram.exhaustedAttemptCount ?? 0}, failed=${instagram.failedAttemptCount ?? 0}, last=${instagram.hoursSinceLastPublish ?? "none"}h, renderer=${instagram.legacyRenderer ?? "unknown"}`,
+    });
+  }
+
   const press = findData(results, "press_tier_status") as {
     mid_pending?: number;
     low_pending?: number;

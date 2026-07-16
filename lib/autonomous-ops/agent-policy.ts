@@ -80,6 +80,7 @@ const PR_ACTIONS = new Set([
   "codex_cron_fix",
   "codex_notification_fix",
   "codex_blog_publish_fix",
+  "codex_instagram_publish_fix",
 ]);
 
 const HIGH_RISK_PR_ACTIONS = new Set([

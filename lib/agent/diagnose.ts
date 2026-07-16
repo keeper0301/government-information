@@ -24,6 +24,7 @@ export type DiagnoseQuestion =
   | "press_tier_status"         // press tier mid/low 적체
   | "llm_spending_28d"          // 28일 LLM 추정 비용 (G4 reuse)
   | "blog_publish_status"       // 블로그 작성/발행 정상 가동 여부
+  | "instagram_legacy_publish_status" // legacy 3-card ImageResponse Instagram pipeline 상태
   | "sms_delivery_24h"          // daily-digest / external-console-check 발송 결과
   | "agent_recent_actions"      // agent_execute_run 최근 50건 (Codex 본인 행동 점검)
   | "alert_recent_24h"          // health-alert 발화 추세
@@ -42,6 +43,22 @@ type CronFailureRow = {
   occurrences?: number | null;
   last_seen_at?: string | null;
   error_message?: string | null;
+};
+
+type InstagramRecentPublishRow = {
+  instagram_published_at?: string | null;
+};
+
+export type InstagramLegacyPublishStatus = {
+  status: "healthy" | "needs_attention" | "not_configured";
+  pendingCount: number;
+  blockedByQualityCount: number;
+  exhaustedAttemptCount: number;
+  failedAttemptCount: number;
+  published24h: number;
+  hoursSinceLastPublish: number | null;
+  tokenConfigured: boolean;
+  legacyRenderer: "next-og-image-response-3-card";
 };
 
 export type CronFailureDigest = {
@@ -135,6 +152,53 @@ export function summarizeCronFailures(rows: CronFailureRow[]): {
   }
   const suppressedOccurrences = suppressedRecent.reduce((sum, item) => sum + item.occurrences, 0);
   return { recent, suppressedRecent, totalOccurrences, suppressedOccurrences, byErrorClass, byJobName };
+}
+
+export function summarizeInstagramLegacyPublishStatus(input: {
+  pendingCount?: number | null;
+  blockedByQualityCount?: number | null;
+  exhaustedAttemptCount?: number | null;
+  failedAttemptCount?: number | null;
+  published24h?: number | null;
+  latestPublishedAt?: string | null;
+  tokenConfigured?: boolean | null;
+  now?: Date;
+}): InstagramLegacyPublishStatus {
+  const now = input.now ?? new Date();
+  const pendingCount = input.pendingCount ?? 0;
+  const blockedByQualityCount = input.blockedByQualityCount ?? 0;
+  const exhaustedAttemptCount = input.exhaustedAttemptCount ?? 0;
+  const failedAttemptCount = input.failedAttemptCount ?? 0;
+  const published24h = input.published24h ?? 0;
+  const tokenConfigured = input.tokenConfigured === true;
+  const latestPublishedAt = input.latestPublishedAt ?? null;
+  const hoursSinceLastPublish = latestPublishedAt
+    ? Math.round((now.getTime() - new Date(latestPublishedAt).getTime()) / 3_600_000)
+    : null;
+
+  let status: InstagramLegacyPublishStatus["status"] = "healthy";
+  if (!tokenConfigured) {
+    status = "not_configured";
+  } else if (
+    exhaustedAttemptCount > 0 ||
+    failedAttemptCount > 0 ||
+    blockedByQualityCount > 0 ||
+    (pendingCount > 0 && (hoursSinceLastPublish === null || hoursSinceLastPublish > 26))
+  ) {
+    status = "needs_attention";
+  }
+
+  return {
+    status,
+    pendingCount,
+    blockedByQualityCount,
+    exhaustedAttemptCount,
+    failedAttemptCount,
+    published24h,
+    hoursSinceLastPublish,
+    tokenConfigured,
+    legacyRenderer: "next-og-image-response-3-card",
+  };
 }
 
 export async function runDiagnose(
@@ -317,6 +381,69 @@ const QUESTION_HANDLERS: Record<DiagnoseQuestion, () => Promise<unknown>> = {
       "@/lib/analytics/blog-publish-stats"
     );
     return getBlogPublishStats();
+  },
+
+  instagram_legacy_publish_status: async () => {
+    const admin = createAdminClient();
+    const since24h = new Date(Date.now() - 86_400_000).toISOString();
+    const [
+      pending,
+      blockedByQuality,
+      exhaustedAttempts,
+      failedAttempts,
+      published24h,
+      latestPublished,
+      tokenRows,
+    ] = await Promise.all([
+      admin
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .not("published_at", "is", null)
+        .is("instagram_published_at", null)
+        .eq("admin_review_required", false)
+        .lt("instagram_attempt_count", 3),
+      admin
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .not("published_at", "is", null)
+        .is("instagram_published_at", null)
+        .or("admin_review_required.is.null,admin_review_required.eq.true"),
+      admin
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .not("published_at", "is", null)
+        .is("instagram_published_at", null)
+        .gte("instagram_attempt_count", 3),
+      admin
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .not("instagram_error", "is", null)
+        .lt("instagram_attempt_count", 3),
+      admin
+        .from("blog_posts")
+        .select("id", { count: "exact", head: true })
+        .gte("instagram_published_at", since24h),
+      admin
+        .from("blog_posts")
+        .select("instagram_published_at")
+        .not("instagram_published_at", "is", null)
+        .order("instagram_published_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      admin
+        .from("instagram_oauth_tokens")
+        .select("id", { count: "exact", head: true }),
+    ]);
+    const latest = latestPublished.data as InstagramRecentPublishRow | null;
+    return summarizeInstagramLegacyPublishStatus({
+      pendingCount: pending.count,
+      blockedByQualityCount: blockedByQuality.count,
+      exhaustedAttemptCount: exhaustedAttempts.count,
+      failedAttemptCount: failedAttempts.count,
+      published24h: published24h.count,
+      latestPublishedAt: latest?.instagram_published_at ?? null,
+      tokenConfigured: (tokenRows.count ?? 0) > 0,
+    });
   },
 
   sms_delivery_24h: async () => {
