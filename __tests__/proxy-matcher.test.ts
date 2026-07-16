@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { config } from "@/proxy";
 
 describe("proxy matcher", () => {
-  it("does not run the Supabase session proxy for normal public SEO pages", () => {
+  it("keeps protected paths and selected public cache-header paths covered without restoring the broad public catch-all", () => {
+    expect(config.matcher).toContain("/help");
+    expect(config.matcher).toContain("/guides");
+    expect(config.matcher).toContain("/login");
     expect(config.matcher).toContain("/admin/:path*");
     expect(config.matcher).toContain("/mypage/:path*");
     expect(config.matcher).toContain("/alerts/:path*");
