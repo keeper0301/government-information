@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/paginate";
 import { shortenCalendarTitle } from "@/lib/utils";
@@ -8,6 +9,13 @@ import {
 } from "@/lib/listing-sources";
 
 export const revalidate = 600;
+
+export const metadata: Metadata = {
+  title: "신청 일정 달력 — 정책알리미",
+  description:
+    "복지·대출·지원금 신청 시작일과 마감일을 월별 달력으로 확인하세요.",
+  alternates: { canonical: "/calendar" },
+};
 
 // 캘린더 이벤트 — 한 프로그램이 start 와 end 둘 다 이번 달이면 이벤트 2개
 type CalendarEvent = {

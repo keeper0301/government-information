@@ -24,6 +24,7 @@ import { HomeLocalRecommend } from "@/components/home-local-recommend";
 export const metadata: Metadata = {
   title: "내 정보 — 정책알리미",
   description: "나의 기본 정보를 관리하고 동의 내역을 확인하세요.",
+  robots: { index: false, follow: true },
 };
 
 export const dynamic = "force-dynamic";

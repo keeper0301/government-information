@@ -228,7 +228,7 @@ export default async function Home() {
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
               style={{ animationDelay: "60ms" }}
             >
-              내 조건에 맞는 정책만
+              내 조건에 맞는 정책만{" "}
               <br />
               먼저 보여드릴게요
             </h1>

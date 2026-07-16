@@ -7,6 +7,7 @@
 // ============================================================
 
 import Link from "next/link";
+import type { Metadata } from "next";
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { EVENTS } from "@/lib/analytics";
 
@@ -14,6 +15,11 @@ type SearchParams = Promise<{
   code?: string;
   message?: string;
 }>;
+
+export const metadata: Metadata = {
+  title: "결제 실패 — 정책알리미",
+  robots: { index: false, follow: false },
+};
 
 // 자주 나오는 토스 에러 코드를 한국어 안내로 매핑
 // (목록은 토스 공식 문서: https://docs.tosspayments.com/reference/error-codes)
