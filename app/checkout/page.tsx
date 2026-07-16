@@ -10,12 +10,19 @@
 // ============================================================
 
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TIER_NAMES, TIER_PRICES, getUserTier, type Tier } from "@/lib/subscription";
 import { CheckoutForm } from "./checkout-form";
 
 type SearchParams = Promise<{ tier?: string }>;
+
+export const metadata: Metadata = {
+  title: "결제 정보 입력 — 정책알리미",
+  description: "정책알리미 유료 구독을 위한 결제 정보를 안전하게 등록합니다.",
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage({ searchParams }: { searchParams: SearchParams }) {
   const { tier } = await searchParams;

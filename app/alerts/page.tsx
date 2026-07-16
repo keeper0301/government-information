@@ -7,6 +7,7 @@ import { PushToggle } from "@/components/push-toggle";
 export const metadata: Metadata = {
   title: "알림센터 — 정책알리미",
   description: "내가 등록한 마감 알림을 확인하고 관리하세요.",
+  robots: { index: false, follow: true },
 };
 
 // 알림센터 페이지 — 로그인 필수

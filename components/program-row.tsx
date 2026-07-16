@@ -60,6 +60,12 @@ function DdayLabel({ dday }: { dday: number | null }) {
   );
 }
 
+function compactText(text: string, maxLength: number): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength).replace(/[\s,.;:·-]+$/u, "")}…`;
+}
+
 export function ProgramRow({
   program,
   businessProfile,
@@ -88,6 +94,21 @@ export function ProgramRow({
       )
     : null;
 
+  const rawDescription =
+    program.uniqueInsight?.split("\n")[0]?.trim() ||
+    program.summaryShort ||
+    cleanDescription(program.description);
+  const visibleDescription = compactText(rawDescription, 150);
+  const ariaLabel = compactText(
+    [
+      program.title,
+      program.dday === null ? "상시" : `D-${program.dday}`,
+      visibleDescription,
+      program.source,
+    ].filter(Boolean).join(" · "),
+    220,
+  );
+
   // Phase A — trackingEventType 전달된 경우 click 시 자동 event 기록
   function onClick() {
     if (!trackingEventType) return;
@@ -103,6 +124,7 @@ export function ProgramRow({
   return (
     <a
       href={`/${program.type}/${program.id}`}
+      aria-label={ariaLabel}
       onClick={trackingEventType ? onClick : undefined}
       className="group relative block py-6 -mx-4 px-4 rounded-2xl border-b border-grey-100 last:border-b-0 cursor-pointer no-underline text-inherit transition-all duration-150 hover:bg-grey-50 hover:translate-x-[1px]"
     >
@@ -156,9 +178,7 @@ export function ProgramRow({
                 keepioo 정리
               </span>
             )}
-            {program.uniqueInsight?.split("\n")[0]?.trim() ||
-              program.summaryShort ||
-              cleanDescription(program.description)}
+            {visibleDescription}
           </div>
         </div>
         {/* 데스크톱에서만 오른쪽에 금액·출처 표시. 출처는 작은 회색 칩으로

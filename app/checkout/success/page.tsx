@@ -14,6 +14,7 @@
 // ============================================================
 
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { issueBillingKey, deleteBillingKey, TossError } from "@/lib/toss";
@@ -24,6 +25,11 @@ type SearchParams = Promise<{
 }>;
 
 const TRIAL_DAYS = 7;
+
+export const metadata: Metadata = {
+  title: "결제 완료 — 정책알리미",
+  robots: { index: false, follow: false },
+};
 
 // 트라이얼 종료 시각 ISO 문자열 — 모듈 레벨 헬퍼로 빼낸 이유:
 // 컴포넌트 함수 안에서 Date.now() 를 직접 호출하면 react-hooks/purity 가
