@@ -192,7 +192,7 @@ export async function GET(request: Request) {
   }
 
   // 발행 대기 글 1건 (가장 오래된 것 먼저 — FIFO)
-  const { data: post, error: queryErr } = await admin
+  const pendingPostRes = await admin
     .from("blog_posts")
     .select("id, slug, title, content, meta_description, category, tags, instagram_attempt_count, admin_review_required")
     .not("published_at", "is", null)
@@ -202,6 +202,8 @@ export async function GET(request: Request) {
     .order("published_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+  let post = pendingPostRes.data;
+  const queryErr = pendingPostRes.error;
 
   if (queryErr) {
     // 2026-05-14 — DB query 실패 분기 audit (cron 가시성 강화)
@@ -246,7 +248,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending", message: "발행 대기 글 없음" });
   }
 
-  const qualityAssessment = assessExternalPublishQuality(post);
+  let qualityAssessment = assessExternalPublishQuality(post);
+  if (!qualityAssessment.approved && forcePublishNow) {
+    const { data: fallbackPosts } = await admin
+      .from("blog_posts")
+      .select("id, slug, title, content, meta_description, category, tags, instagram_attempt_count, admin_review_required")
+      .not("published_at", "is", null)
+      .is("instagram_published_at", null)
+      .eq("admin_review_required", false)
+      .lt("instagram_attempt_count", 3)
+      .neq("id", post.id)
+      .order("published_at", { ascending: true })
+      .limit(10);
+
+    for (const fallbackPost of fallbackPosts ?? []) {
+      const fallbackAssessment = assessExternalPublishQuality(fallbackPost);
+      if (fallbackAssessment.approved) {
+        await logSkip("force_publish_now_skipped_rejected_candidate", {
+          rejectedSlug: post.slug,
+          selectedSlug: fallbackPost.slug,
+        });
+        post = fallbackPost;
+        qualityAssessment = fallbackAssessment;
+        break;
+      }
+    }
+  }
+
   if (!qualityAssessment.approved) {
     if (dryRun) {
       return dryResponse("quality_gate_rejected", {
