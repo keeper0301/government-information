@@ -54,7 +54,34 @@ const nextConfig: NextConfig = {
     const csp = buildContentSecurityPolicy();
     const cspReportOnly = buildReportOnlyContentSecurityPolicy();
 
+    const publicPageCacheHeaders = [
+      {
+        key: "Cache-Control",
+        value: "public, s-maxage=86400, stale-while-revalidate=31449600",
+      },
+    ];
+    const publicShortCacheHeaders = [
+      {
+        key: "Cache-Control",
+        value: "public, s-maxage=60, stale-while-revalidate=31535940",
+      },
+    ];
+
     return [
+      // Vercel production runtime 에서 proxy 를 벗어난 공개 정적/ISR 페이지도
+      // private no-store 로 내려가는 회귀가 있어 공개 SEO 페이지만 명시 캐시.
+      // 로그인 상태·결제·마이페이지·가격표처럼 사용자 상태가 섞이는 페이지는 제외한다.
+      { source: "/help", headers: publicPageCacheHeaders },
+      { source: "/privacy", headers: publicPageCacheHeaders },
+      { source: "/terms", headers: publicPageCacheHeaders },
+      { source: "/refund", headers: publicPageCacheHeaders },
+      { source: "/consult", headers: publicPageCacheHeaders },
+      { source: "/login", headers: publicPageCacheHeaders },
+      { source: "/signup", headers: publicPageCacheHeaders },
+      { source: "/signup/sent", headers: publicPageCacheHeaders },
+      { source: "/forgot-password", headers: publicPageCacheHeaders },
+      { source: "/reset-password", headers: publicPageCacheHeaders },
+      { source: "/guides", headers: publicShortCacheHeaders },
       {
         source: "/:path*",
         headers: [
