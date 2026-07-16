@@ -37,7 +37,15 @@ const mocks = vi.hoisted(() => ({
 
 function makeBlogPostsQuery(step: number) {
   const query: Record<string, unknown> = {};
-  query.select = vi.fn(() => query);
+  let updated = false;
+  query.select = vi.fn(() => {
+    if (updated) return Promise.resolve({ data: [{ id: mocks.candidate?.id ?? "post-1", instagram_attempt_count: 1 }], error: null });
+    return query;
+  });
+  query.update = vi.fn(() => {
+    updated = true;
+    return query;
+  });
   query.not = vi.fn(() => query);
   query.is = vi.fn(() => query);
   query.eq = vi.fn(() => query);
@@ -89,6 +97,7 @@ function req(path = "/api/cron/instagram-publish?dry=1") {
 }
 
 beforeEach(() => {
+  vi.clearAllMocks();
   mocks.authorizeCronRequest.mockReturnValue(null);
   mocks.loadValidToken.mockResolvedValue({ token: "token", userId: "ig-user", username: "keepioo" });
   mocks.publishCarousel.mockResolvedValue({ ok: true, mediaId: "media", permalink: "https://instagram.example/p/1" });
@@ -121,8 +130,19 @@ beforeEach(() => {
   };
   mocks.blockedByQuality = 0;
   mocks.exhaustedAttempts = 0;
+  vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("ok"))));
   process.env.INSTAGRAM_BYPASS_HOUR_CHECK = "true";
   delete process.env.INSTAGRAM_CRON_DISABLED;
+});
+
+it("allows authenticated force=1 publish-now requests to bypass the hour guard", async () => {
+  delete process.env.INSTAGRAM_BYPASS_HOUR_CHECK;
+
+  const res = await GET(req("/api/cron/instagram-publish?force=1"));
+  const body = await res.json();
+
+  expect(body).toMatchObject({ status: "ok", slug: "slug-1", mediaId: "media" });
+  expect(mocks.publishCarousel).toHaveBeenCalledOnce();
 });
 
 describe("instagram-publish dry-run", () => {

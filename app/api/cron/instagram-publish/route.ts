@@ -46,6 +46,11 @@ function isDryRunRequest(request: Request): boolean {
   );
 }
 
+function isForcePublishNowRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  return url.searchParams.get("force") === "1" || url.searchParams.get("publishNow") === "1";
+}
+
 function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.keepioo.com";
 }
@@ -57,6 +62,7 @@ export async function GET(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
   const dryRun = isDryRunRequest(request);
+  const forcePublishNow = !dryRun && isForcePublishNowRequest(request);
 
   // ━━━ 인스타 정지 예방 안전책 (2026-05-12 추가) ━━━
 
@@ -95,10 +101,11 @@ export async function GET(request: Request) {
   }
 
   // 1) 시간대 제한 — KST 09~22 만 발행 (밤 시간 spam 의심 회피)
-  //    INSTAGRAM_BYPASS_HOUR_CHECK=true 면 일시 우회 (사장님 시범 발행용)
+  //    INSTAGRAM_BYPASS_HOUR_CHECK=true 또는 인증된 force=1 요청이면 일시 우회
+  //    (사장님 명시 승인 시범 발행용). dry-run 에서는 force 무시.
   const bypassHourCheck = process.env.INSTAGRAM_BYPASS_HOUR_CHECK === "true";
   const kstHour = (new Date().getUTCHours() + 9) % 24;
-  if (!bypassHourCheck && (kstHour < 9 || kstHour >= 22)) {
+  if (!bypassHourCheck && !forcePublishNow && (kstHour < 9 || kstHour >= 22)) {
     if (dryRun) return dryResponse("outside_hours", { kstHour });
     await logSkip("outside_hours", { kstHour });
     return NextResponse.json({
@@ -106,6 +113,9 @@ export async function GET(request: Request) {
       kstHour,
       message: "KST 09~22 만 발행 (인스타 정지 예방)",
     });
+  }
+  if (forcePublishNow && (kstHour < 9 || kstHour >= 22)) {
+    await logSkip("force_publish_now_bypass_hour_check", { kstHour });
   }
 
   // OAuth flow 미연결 시 graceful skip (instagram_oauth_tokens 빈 테이블 — cron 매 5분 audit 폭주 방지)
@@ -175,7 +185,8 @@ export async function GET(request: Request) {
   }
 
   // 3) Jitter — random 0~90초 sleep (cron 정각 동시 호출 spike 회피, 봇 패턴 회피)
-  const jitterMs = dryRun ? 0 : Math.floor(Math.random() * 90_000);
+  // 인증된 publish-now 호출은 사용자 명시 즉시 발행이라 jitter 없이 실행한다.
+  const jitterMs = dryRun || forcePublishNow ? 0 : Math.floor(Math.random() * 90_000);
   if (jitterMs > 0) {
     await new Promise((r) => setTimeout(r, jitterMs));
   }

@@ -28,6 +28,7 @@ on:
           - sns-lead3-activate
           - instagram-publish-dry
           - instagram-publish
+          - instagram-publish-now
           - instagram-reels-publish-dry
           - instagram-reels-publish
           - instagram-reels-render-dry
@@ -119,6 +120,10 @@ jobs:
               ;;
             instagram-publish)
               path="/api/cron/instagram-publish"
+              method="GET"
+              ;;
+            instagram-publish-now)
+              path="/api/cron/instagram-publish?force=1"
               method="GET"
               ;;
             instagram-reels-publish-dry)
