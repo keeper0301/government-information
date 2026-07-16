@@ -10,9 +10,20 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // monitoring: Sentry tunnelRoute (next.config.ts withSentryConfig) — Sentry SDK 가
-    // /monitoring/* 로 envelope POST 를 보내며, matcher 에 두면 매 호출마다 Supabase
-    // updateSession 가 실행돼 NANO Disk IO 사고 (2026-04-26) 재발 위험 → 명시 제외.
-    "/((?!_next/static|_next/image|favicon.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // 2026-07-17 — 공개 SEO 페이지 캐시 복구.
+    // 이전엔 모든 HTML 요청이 proxy 를 거치며 Supabase 세션 확인을 실행했고,
+    // 정적 페이지(/help, /guides)까지 Vercel 에서 `private, no-store` 로 내려갔다.
+    // 인증·결제·관리·hidden news 검사가 필요한 경로와 추천코드(ref) 진입만 proxy 에 태운다.
+    "/admin/:path*",
+    "/mypage/:path*",
+    "/alerts/:path*",
+    "/checkout/:path*",
+    "/account/restore/:path*",
+    "/auth/:path*",
+    "/news/:path*",
+    {
+      source: "/((?!_next/static|_next/image|favicon.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+      has: [{ type: "query", key: "ref" }],
+    },
   ],
 };

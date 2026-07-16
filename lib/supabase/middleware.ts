@@ -66,6 +66,8 @@ const REFERRAL_CODE_PATTERN = /^[ABCDEFGHJKMNPQRSTVWXYZ23456789]{6}$/;
 // 1) Supabase 세션 쿠키를 갱신해서 로그인 상태 유지
 // 2) 보호 경로에 미로그인 상태로 접근하면 로그인 페이지로 돌려보냄
 // 3) ?ref=CODE 쿼리 있으면 추천 코드 30일 쿠키 저장 (가입 callback 에서 사용)
+// 주의: proxy.ts matcher 가 공개 SEO 페이지 캐시를 위해 보호/뉴스/ref 경로로 좁혀져 있다.
+// 공개 페이지의 인증·개인화는 각 페이지/서버 액션에서 자체 확인해야 한다.
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -139,7 +141,9 @@ export async function updateSession(request: NextRequest) {
     loginUrl.pathname = "/login";
     const originalPath = pathname + request.nextUrl.search;
     loginUrl.search = `?next=${encodeURIComponent(originalPath)}`;
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
   }
 
   // 로그인 상태 + pending 탈퇴 요청 상태 → 복구 페이지 외 모든 경로 차단.
@@ -162,7 +166,9 @@ export async function updateSession(request: NextRequest) {
       const restoreUrl = request.nextUrl.clone();
       restoreUrl.pathname = "/account/restore";
       restoreUrl.search = "";
-      return NextResponse.redirect(restoreUrl);
+      const response = NextResponse.redirect(restoreUrl);
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
     }
   }
 
