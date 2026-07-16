@@ -10,8 +10,21 @@ vi.mock("@/lib/supabase/admin", () => ({
 // 모든 chain 메서드 self-return → resolve to { data: [], count: 0 }
 function makeChain(): unknown {
   const chain: Record<string, unknown> = {};
-  const methods = ["select", "eq", "in", "gte", "lt", "like", "order", "limit"];
+  const methods = [
+    "select",
+    "eq",
+    "in",
+    "gte",
+    "lt",
+    "like",
+    "order",
+    "limit",
+    "not",
+    "is",
+    "or",
+  ];
   for (const m of methods) chain[m] = () => chain;
+  chain.maybeSingle = () => Promise.resolve({ data: null, count: 0 });
   // terminal
   chain.then = (resolve: (v: unknown) => void) =>
     resolve({ data: [], count: 0 });
@@ -49,15 +62,16 @@ import {
 } from "@/lib/agent/diagnose";
 
 describe("listDiagnoseQuestions", () => {
-  it("12 question id 노출 (사전 정의)", () => {
+  it("13 question id 노출 (사전 정의)", () => {
     const list = listDiagnoseQuestions();
-    expect(list).toHaveLength(12);
+    expect(list).toHaveLength(13);
     expect(list).toContain("health_overview");
     expect(list).toContain("cron_recent_24h");
     expect(list).toContain("news_freshness");
     expect(list).toContain("press_tier_status");
     expect(list).toContain("llm_spending_28d");
     expect(list).toContain("blog_publish_status");
+    expect(list).toContain("instagram_legacy_publish_status");
     expect(list).toContain("sms_delivery_24h");
     expect(list).toContain("agent_recent_actions");
     expect(list).toContain("alert_recent_24h");
@@ -92,6 +106,18 @@ describe("runDiagnose", () => {
     const data = r.data as { status: string; published24h: number };
     expect(data.status).toBe("healthy");
     expect(data.published24h).toBe(1);
+  });
+
+  it("instagram_legacy_publish_status → legacy 3장 카드 파이프라인 상태를 반환한다", async () => {
+    const r = await runDiagnose("instagram_legacy_publish_status");
+    const data = r.data as {
+      status: string;
+      tokenConfigured: boolean;
+      legacyRenderer: string;
+    };
+    expect(data.status).toBe("not_configured");
+    expect(data.tokenConfigured).toBe(false);
+    expect(data.legacyRenderer).toBe("next-og-image-response-3-card");
   });
 
   it("cron 실패 목록을 원인 분류와 함께 요약한다", () => {
