@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { TERMS_VERSION } from "@/lib/consent";
 
+export const dynamic = "force-static";
+
 export const metadata: Metadata = {
   title: "이용약관 — 정책알리미",
 };

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { PRIVACY_POLICY_VERSION } from "@/lib/consent";
 
+export const dynamic = "force-static";
+
 export const metadata: Metadata = {
   title: "개인정보처리방침 — 정책알리미",
 };

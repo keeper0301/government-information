@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+export const dynamic = "force-static";
+
 export const metadata: Metadata = {
   title: "환불정책 — 정책알리미",
   description: "정책알리미 유료 구독의 해지, 자동결제, 환불 기준 안내.",
