@@ -40,31 +40,31 @@
     {
       "source": "/login",
       "headers": [
-        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+        { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=31532400" }
       ]
     },
     {
       "source": "/signup",
       "headers": [
-        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+        { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=31532400" }
       ]
     },
     {
       "source": "/signup/sent",
       "headers": [
-        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+        { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=31532400" }
       ]
     },
     {
       "source": "/forgot-password",
       "headers": [
-        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+        { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=31532400" }
       ]
     },
     {
       "source": "/reset-password",
       "headers": [
-        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+        { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=31532400" }
       ]
     },
     {
