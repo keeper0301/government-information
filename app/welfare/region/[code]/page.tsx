@@ -24,17 +24,15 @@ import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { ProgramRow } from "@/components/program-row";
 import { welfareToDisplay } from "@/lib/programs";
 import {
-  PROVINCES,
-  PROVINCE_CODE_TO_SHORT,
-  getProvinceByCode,
+  REGION_PAGE_LINKS,
+  getRegionPageByCode,
   getRegionMatchPatterns,
-  type ProvinceCode,
 } from "@/lib/regions";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
-// 17 광역 SSG 빌드 (Next.js 16 패턴)
+// 17 광역 + 전남광주통합특별시 SSG 빌드 (Next.js 16 패턴)
 export async function generateStaticParams() {
-  return PROVINCES.map((p) => ({ code: p.code }));
+  return REGION_PAGE_LINKS.map((p) => ({ code: p.code }));
 }
 
 export const dynamic = "force-static";
@@ -47,20 +45,20 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { code } = await params;
-  const province = getProvinceByCode(code);
+  const regionPage = getRegionPageByCode(code);
 
-  if (!province) {
+  if (!regionPage) {
     return { title: "광역을 찾을 수 없어요 | 정책알리미" };
   }
+  const regionInfo = regionPage!;
 
-  const shortName = PROVINCE_CODE_TO_SHORT[code as ProvinceCode] ?? province.name;
-  const title = `${province.name} 복지 정책 가이드`;
-  const description = `${province.name} 거주자가 받을 수 있는 정부·지자체 복지 혜택을 한곳에서 확인하세요. 자격·신청 방법·마감일 정리.`;
+  const title = `${regionInfo.name} 복지 정책 가이드`;
+  const description = `${regionInfo.name} 거주자가 받을 수 있는 정부·지자체 복지 혜택을 한곳에서 확인하세요. 자격·신청 방법·마감일 정리.`;
 
   return {
     title: `${title} | 정책알리미`,
     description,
-    keywords: `${province.name}, ${shortName}, 복지, 지원금, 정책, ${shortName} 복지, ${shortName} 지원금, 신청 방법`,
+    keywords: `${regionInfo.name}, ${regionInfo.shortName}, 복지, 지원금, 정책, ${regionInfo.shortName} 복지, ${regionInfo.shortName} 지원금, 신청 방법`,
     alternates: { canonical: `/welfare/region/${code}` },
     authors: [{ name: "정책알리미", url: "https://www.keepioo.com" }],
     openGraph: {
@@ -79,10 +77,13 @@ const DISPLAY_LIMIT = 50;
 
 export default async function WelfareRegionPage({ params }: PageProps) {
   const { code } = await params;
-  const province = getProvinceByCode(code);
-  if (!province) notFound();
+  const regionPage = getRegionPageByCode(code);
+  if (!regionPage) {
+    notFound();
+  }
+  const regionInfo = regionPage!;
 
-  const shortName = PROVINCE_CODE_TO_SHORT[code as ProvinceCode] ?? province.name;
+  const shortName = regionInfo.shortName;
   const today = new Date().toISOString().split("T")[0];
   let programs: ReturnType<typeof welfareToDisplay>[] = [];
   let count: number | null = null;
@@ -113,8 +114,8 @@ export default async function WelfareRegionPage({ params }: PageProps) {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${province.name} 복지 정책 가이드`,
-    description: `${province.name} 거주자가 받을 수 있는 정부·지자체 복지 혜택 모음.`,
+    name: `${regionInfo.name} 복지 정책 가이드`,
+    description: `${regionInfo.name} 거주자가 받을 수 있는 정부·지자체 복지 혜택 모음.`,
     inLanguage: "ko-KR",
     url: `https://www.keepioo.com/welfare/region/${code}`,
     isPartOf: {
@@ -151,15 +152,15 @@ export default async function WelfareRegionPage({ params }: PageProps) {
           <span className="mx-1.5">/</span>
           <Link href="/welfare" className="hover:underline">복지 지원사업</Link>
           <span className="mx-1.5">/</span>
-          <span className="text-grey-900">{province.name}</span>
+          <span className="text-grey-900">{regionInfo.name}</span>
         </nav>
 
         <header className="mb-8">
           <h1 className="text-[32px] font-bold tracking-[-0.5px] text-grey-900 max-md:text-[24px]">
-            {province.name} 복지 정책 가이드
+            {regionInfo.name} 복지 정책 가이드
           </h1>
           <p className="mt-2 text-[15px] text-grey-700 leading-[1.6]">
-            {province.name} 거주자가 받을 수 있는 정부·지자체 복지 혜택을
+            {regionInfo.name} 거주자가 받을 수 있는 정부·지자체 복지 혜택을
             한곳에 모았어요. 자격·신청 방법·마감일을 빠르게 확인하세요.
           </p>
           <p className="mt-3 text-[13px] text-grey-600">
@@ -170,7 +171,7 @@ export default async function WelfareRegionPage({ params }: PageProps) {
         {programs.length === 0 ? (
           <div className="rounded-2xl bg-white border border-grey-200 p-8 text-center">
             <p className="text-grey-700">
-              현재 {province.name} 지역에 활성 복지 정책이 없습니다.
+              현재 {regionInfo.name} 지역에 활성 복지 정책이 없습니다.
             </p>
             <Link
               href="/welfare"
@@ -194,7 +195,7 @@ export default async function WelfareRegionPage({ params }: PageProps) {
               href={`/welfare?region=${encodeURIComponent(shortName)}`}
               className="inline-block px-5 py-3 rounded-full bg-blue-600 text-white text-[14px] font-medium hover:bg-blue-700"
             >
-              {province.name} 정책 전체 보기
+              {regionInfo.name} 정책 전체 보기
             </Link>
           </div>
         )}
@@ -205,7 +206,7 @@ export default async function WelfareRegionPage({ params }: PageProps) {
             다른 광역의 복지 정책
           </h2>
           <div className="flex flex-wrap gap-2">
-            {PROVINCES.filter((p) => p.code !== code).map((p) => (
+            {REGION_PAGE_LINKS.filter((p) => p.code !== code).map((p) => (
               <Link
                 key={p.code}
                 href={`/welfare/region/${p.code}`}

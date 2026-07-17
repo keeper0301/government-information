@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getDistrictsForRegion, REGION_OPTIONS } from "@/lib/profile-options";
-import { getRegionMatchPatterns } from "@/lib/regions";
+import { getRegionMatchPatterns, getRegionPageByCode, REGION_PAGE_LINKS } from "@/lib/regions";
+import { formatProvinceDisplay, formatRegionDisplay } from "@/lib/region-display";
 import {
   evaluateRegion,
   hasConflictingRegionInTitle,
@@ -41,6 +42,25 @@ describe("전남광주통합특별시 통합 권역", () => {
     expect(hasConflictingRegionInTitle("광주광역시 소상공인 지원", "전남광주통합특별시")).toBe(false);
     expect(hasConflictingRegionInTitle("전남 영암군 소상공인 지원", "전남광주통합특별시")).toBe(false);
     expect(hasConflictingRegionInTitle("서울특별시 소상공인 지원", "전남광주통합특별시")).toBe(true);
+  });
+
+  it("통합 SEO path 정보를 제공한다", () => {
+    expect(REGION_PAGE_LINKS.some((r) => r.code === "jeonnam-gwangju")).toBe(true);
+    expect(getRegionPageByCode("jeonnam-gwangju")).toEqual({
+      code: "jeonnam-gwangju",
+      name: "전남광주통합특별시",
+      shortName: "전남광주통합특별시",
+      isIntegrated: true,
+    });
+    expect(getRegionPageByCode("jeonnam")?.name).toBe("전라남도");
+  });
+
+  it("admin 표시명은 legacy alias 를 공식명으로 정규화한다", () => {
+    expect(formatRegionDisplay("광주·전남")).toBe("전남광주통합특별시");
+    expect(formatRegionDisplay("광주전남")).toBe("전남광주통합특별시");
+    expect(formatRegionDisplay("서울")).toBe("서울");
+    expect(formatProvinceDisplay("광주")).toBe("전남광주통합특별시");
+    expect(formatProvinceDisplay("전남")).toBe("전남광주통합특별시");
   });
 
   it("블로그 cohort 지역 gate 도 광주/전남을 같은 권역으로 처리한다", () => {

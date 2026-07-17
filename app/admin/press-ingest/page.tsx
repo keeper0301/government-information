@@ -34,6 +34,7 @@ import {
 } from "./actions";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { formatProvinceDisplay } from "@/lib/region-display";
 
 export const metadata: Metadata = {
   title: "광역 보도자료 정책 후보 | 어드민",
@@ -109,12 +110,12 @@ function shortenMinistry(ministry: string | null): {
   if (!ministry) return { province: "—", district: null };
   // 가장 긴 광역명 prefix 매칭
   for (const [full, short] of Object.entries(PROVINCE_SHORT)) {
-    if (ministry === full) return { province: short, district: null };
+    if (ministry === full) return { province: formatProvinceDisplay(short), district: null };
     if (ministry.startsWith(full + " ")) {
-      return { province: short, district: ministry.slice(full.length + 1) };
+      return { province: formatProvinceDisplay(short), district: ministry.slice(full.length + 1) };
     }
   }
-  return { province: ministry, district: null };
+  return { province: formatProvinceDisplay(ministry), district: null };
 }
 
 // KPI 카드 — 4 카드 grid, tone 별 색상
