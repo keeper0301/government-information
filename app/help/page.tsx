@@ -13,6 +13,8 @@ import Link from "next/link";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
+export const dynamic = "force-static";
+
 export const metadata: Metadata = {
   title: "도움말 (자주 묻는 질문) | 정책알리미",
   description:

@@ -16,6 +16,8 @@ import { getGuides } from "@/lib/policy-guides";
 import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 
+export const dynamic = "force-static";
+
 export const revalidate = 60;
 
 export const metadata: Metadata = {
