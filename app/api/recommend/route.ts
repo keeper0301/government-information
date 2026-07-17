@@ -17,6 +17,7 @@ import { checkRateLimit, getClientIp } from "@/lib/support/rate-limit";
 
 const MAX_JSON_BODY_BYTES = 4 * 1024;
 const RECOMMEND_LIMIT_PER_MINUTE = 30;
+const PUBLIC_REGION_OPTION_SET = new Set<string>(REGION_OPTIONS);
 
 // 맞춤추천 API — 실제 매칭 로직은 lib/recommend.ts 에 위치.
 // 이 파일은 입력값 검증과 응답 변환만 담당 (서버 페이지와 로직 공유 목적).
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
   if (!(ageGroupValue in AGE_KEYWORDS)) {
     return NextResponse.json({ error: "올바른 나이대를 선택해주세요." }, { status: 400 });
   }
-  if (!REGION_OPTIONS.includes(regionValue as RegionOption)) {
+  if (!PUBLIC_REGION_OPTION_SET.has(regionValue)) {
     return NextResponse.json({ error: "올바른 지역을 선택해주세요." }, { status: 400 });
   }
   if (!(occupationValue in OCCUPATION_KEYWORDS)) {

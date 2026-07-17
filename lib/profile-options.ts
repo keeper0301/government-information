@@ -29,11 +29,9 @@ export const REGION_OPTIONS = [
   "세종",
   "충북",
   "충남",
-  // 호남
+  // 호남 — 광주/전남은 통합 권역으로만 노출. legacy 값은 lib/regions 매칭 alias 로 유지.
   "전남광주통합특별시",
-  "광주",
   "전북",
-  "전남",
   // 영남
   "부산",
   "대구",
@@ -59,7 +57,8 @@ export const OCCUPATION_OPTIONS = [
 ] as const;
 
 export type AgeOption = (typeof AGE_OPTIONS)[number];
-export type RegionOption = (typeof REGION_OPTIONS)[number];
+export type LegacyRegionOption = "광주" | "전남";
+export type RegionOption = (typeof REGION_OPTIONS)[number] | LegacyRegionOption;
 export type OccupationOption = (typeof OCCUPATION_OPTIONS)[number];
 
 // /api/recommend 매칭용 — 직업 → target/description 검색 키워드 매핑

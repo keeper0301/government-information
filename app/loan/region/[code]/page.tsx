@@ -23,6 +23,7 @@ import { ProgramRow } from "@/components/program-row";
 import { loanToDisplay } from "@/lib/programs";
 import {
   REGION_PAGE_LINKS,
+  REGION_PAGE_STATIC_PARAMS,
   getRegionPageByCode,
   getRegionMatchPatterns,
 } from "@/lib/regions";
@@ -30,7 +31,7 @@ import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 
 // 17 광역 + 전남광주통합특별시 SSG 빌드 (Next.js 16 패턴)
 export async function generateStaticParams() {
-  return REGION_PAGE_LINKS.map((p) => ({ code: p.code }));
+  return REGION_PAGE_STATIC_PARAMS.map((p) => ({ code: p.code }));
 }
 
 export const dynamic = "force-static";

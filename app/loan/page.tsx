@@ -97,8 +97,8 @@ function loanToScorable(l: LoanProgram): ScorableItem {
 // 지역 필터 화이트리스트 — URL 쿼리 임의 값 주입 차단 (PostgREST ilike
 // interpolation 에 들어가므로 서버에서 재검증 필수).
 const ALLOWED_REGIONS = new Set([
-  "서울", "경기", "인천", "부산", "대구", "전남광주통합특별시", "광주", "대전", "울산",
-  "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+  "서울", "경기", "인천", "부산", "대구", "전남광주통합특별시", "대전", "울산",
+  "세종", "강원", "충북", "충남", "전북", "경북", "경남", "제주",
 ]);
 
 export default async function LoanPage({ searchParams }: Props) {

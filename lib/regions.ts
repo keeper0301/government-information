@@ -246,7 +246,7 @@ export const PROVINCE_CODE_TO_SHORT: Record<ProvinceCode, string> = {
   jeju: "제주",
 };
 
-export const REGION_PAGE_LINKS = [
+export const REGION_PAGE_STATIC_PARAMS = [
   INTEGRATED_JEONNAM_GWANGJU_REGION,
   ...PROVINCES.map((p) => ({
     code: p.code,
@@ -254,6 +254,12 @@ export const REGION_PAGE_LINKS = [
     shortName: PROVINCE_CODE_TO_SHORT[p.code],
   })),
 ];
+
+const PUBLIC_REGION_PAGE_HIDDEN_CODES = new Set(["gwangju", "jeonnam"]);
+
+export const REGION_PAGE_LINKS = REGION_PAGE_STATIC_PARAMS.filter(
+  (p) => !PUBLIC_REGION_PAGE_HIDDEN_CODES.has(p.code),
+);
 
 // ============================================================
 // title 기반 region 추출 — collectors 의 "전국" fallback 대체용

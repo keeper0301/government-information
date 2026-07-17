@@ -25,7 +25,7 @@ import {
 } from "@/components/news-card";
 import { Pagination } from "@/components/pagination";
 import { AdSlot } from "@/components/ad-slot";
-import { PROVINCES } from "@/lib/regions";
+import { INTEGRATED_JEONNAM_GWANGJU_REGION, PROVINCES } from "@/lib/regions";
 import { getNewsBenefitTagCounts } from "@/lib/category-counts";
 import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
 import { CategoryChipBar } from "@/components/category-chip-bar";
@@ -45,11 +45,19 @@ import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
 
+const PUBLIC_NEWS_PROVINCE_FILTERS = [
+  INTEGRATED_JEONNAM_GWANGJU_REGION,
+  ...PROVINCES.filter((p) => p.code !== "gwangju" && p.code !== "jeonnam"),
+];
+
 // 유효 광역 코드 집합 — URL 임의 값 차단. ministry 컬럼 매칭에 사용.
 // 네이버 뉴스 광역별 cron 수집분(ministry = "전라남도" 등) 만 잡힘.
 // korea.kr 부처 뉴스(ministry = "보건복지부" 등) 는 자연스럽게 빠짐
 // = "지역 뉴스만 보기" 효과.
-const VALID_PROVINCE_CODES = new Set<string>(PROVINCES.map((p) => p.code));
+const VALID_PROVINCE_CODES = new Set<string>([
+  ...PROVINCES.map((p) => p.code),
+  INTEGRATED_JEONNAM_GWANGJU_REGION.code,
+]);
 const PROVINCE_BY_CODE: Record<string, string> = Object.fromEntries(
   PROVINCES.map((p) => [p.code, p.name]),
 );
@@ -172,8 +180,12 @@ export default async function NewsIndexPage({ searchParams }: Props) {
     if (activeCategory !== "all") q = q.eq("category", activeCategory);
     if (activeBenefit) q = q.contains("benefit_tags", [activeBenefit]);
     if (activeProvince) {
-      const provinceName = PROVINCE_BY_CODE[activeProvince];
-      if (provinceName) q = q.eq("ministry", provinceName);
+      if (activeProvince === INTEGRATED_JEONNAM_GWANGJU_REGION.code) {
+        q = q.or("ministry.eq.광주광역시,ministry.eq.전라남도");
+      } else {
+        const provinceName = PROVINCE_BY_CODE[activeProvince];
+        if (provinceName) q = q.eq("ministry", provinceName);
+      }
     }
     // 검색어 토큰 AND — title/summary 둘 중 하나에 모든 토큰 포함된 행만
     for (const token of queryTokens) {
@@ -416,23 +428,27 @@ export default async function NewsIndexPage({ searchParams }: Props) {
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {PROVINCES.map((p) => {
+            {PUBLIC_NEWS_PROVINCE_FILTERS.map((p) => {
               const selected = activeProvince === p.code;
-              // 짧은 라벨 — UI 좁음 회피. 표준 약칭 (전라남도→전남, 경상북도→경북)
-              // 을 쓰기 위해 도(道) 광역 6곳만 명시 매핑. 나머지는 접미사 제거.
-              const DO_SHORT: Record<string, string> = {
-                충청북도: "충북",
-                충청남도: "충남",
-                전라북도: "전북",
-                전라남도: "전남",
-                경상북도: "경북",
-                경상남도: "경남",
-              };
-              const shortLabel =
-                DO_SHORT[p.name] ||
-                p.name
-                  .replace(/특별시|광역시|특별자치시|특별자치도/, "")
-                  .replace(/도$/, "");
+              const shortLabel = p.code === INTEGRATED_JEONNAM_GWANGJU_REGION.code
+                ? "전남광주통합특별시"
+                : (() => {
+                    // 짧은 라벨 — UI 좁음 회피. 표준 약칭 (전라남도→전남, 경상북도→경북)
+                    // 을 쓰기 위해 도(道) 광역 6곳만 명시 매핑. 나머지는 접미사 제거.
+                    const DO_SHORT: Record<string, string> = {
+                      충청북도: "충북",
+                      충청남도: "충남",
+                      전라북도: "전북",
+                      경상북도: "경북",
+                      경상남도: "경남",
+                    };
+                    return (
+                      DO_SHORT[p.name] ||
+                      p.name
+                        .replace(/특별시|광역시|특별자치시|특별자치도/, "")
+                        .replace(/도$/, "")
+                    );
+                  })();
               return (
                 <a
                   key={p.code}

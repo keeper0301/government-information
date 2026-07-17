@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getDistrictsForRegion, REGION_OPTIONS } from "@/lib/profile-options";
-import { getRegionMatchPatterns, getRegionPageByCode, REGION_PAGE_LINKS } from "@/lib/regions";
+import { getRegionMatchPatterns, getRegionPageByCode, REGION_PAGE_LINKS, REGION_PAGE_STATIC_PARAMS } from "@/lib/regions";
 import { formatProvinceDisplay, formatRegionDisplay } from "@/lib/region-display";
 import {
   evaluateRegion,
@@ -12,6 +12,8 @@ import type { UserSignals } from "@/lib/personalization/types";
 describe("전남광주통합특별시 통합 권역", () => {
   it("프로필 지역 옵션에 노출되고 광주/전남 매칭 패턴을 함께 반환한다", () => {
     expect(REGION_OPTIONS).toContain("전남광주통합특별시");
+    expect(REGION_OPTIONS).not.toContain("광주");
+    expect(REGION_OPTIONS).not.toContain("전남");
     expect(getRegionMatchPatterns("전남광주통합특별시")).toEqual([
       "전남광주통합특별시",
       "광주·전남",
@@ -44,8 +46,12 @@ describe("전남광주통합특별시 통합 권역", () => {
     expect(hasConflictingRegionInTitle("서울특별시 소상공인 지원", "전남광주통합특별시")).toBe(true);
   });
 
-  it("통합 SEO path 정보를 제공한다", () => {
+  it("통합 SEO path 정보를 제공하고 공개 링크에서는 광주/전남 개별 링크를 숨긴다", () => {
     expect(REGION_PAGE_LINKS.some((r) => r.code === "jeonnam-gwangju")).toBe(true);
+    expect(REGION_PAGE_LINKS.some((r) => r.code === "gwangju")).toBe(false);
+    expect(REGION_PAGE_LINKS.some((r) => r.code === "jeonnam")).toBe(false);
+    expect(REGION_PAGE_STATIC_PARAMS.some((r) => r.code === "gwangju")).toBe(true);
+    expect(REGION_PAGE_STATIC_PARAMS.some((r) => r.code === "jeonnam")).toBe(true);
     expect(getRegionPageByCode("jeonnam-gwangju")).toEqual({
       code: "jeonnam-gwangju",
       name: "전남광주통합특별시",
