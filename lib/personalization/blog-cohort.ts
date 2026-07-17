@@ -37,6 +37,9 @@ const REGION_FULL_NAMES: Record<string, string[]> = {
   "부산": ["부산광역시", "부산시", "부산"],
   "대구": ["대구광역시", "대구시", "대구"],
   "광주": ["광주광역시", "광주시", "광주"],
+  "전남광주통합특별시": ["전남광주통합특별시", "광주·전남", "광주전남", "광주광역시", "광주시", "광주", "전라남도", "전남"],
+  "광주·전남": ["전남광주통합특별시", "광주·전남", "광주전남", "광주광역시", "광주시", "광주", "전라남도", "전남"],
+  "광주전남": ["전남광주통합특별시", "광주·전남", "광주전남", "광주광역시", "광주시", "광주", "전라남도", "전남"],
   "대전": ["대전광역시", "대전시", "대전"],
   "울산": ["울산광역시", "울산시", "울산"],
   "세종": ["세종특별자치시", "세종시", "세종"],
@@ -119,17 +122,18 @@ function passesRegionFilter(
   return true;
 }
 
-function getProvinceCodeForRegion(userRegion: string | null): ProvinceCode | null {
-  if (!userRegion || userRegion === "전국") return null;
+function getProvinceCodesForRegion(userRegion: string | null): ProvinceCode[] {
+  if (!userRegion || userRegion === "전국") return [];
+  if (["전남광주통합특별시", "광주·전남", "광주전남"].includes(userRegion)) return ["gwangju", "jeonnam"];
 
   const fullName = PROVINCE_SHORT_TO_FULL[userRegion] ?? userRegion;
-  const province = PROVINCES.find((p) =>
-    p.name === fullName ||
-    p.name.includes(userRegion) ||
-    fullName.includes(p.name)
-  );
-
-  return province?.code ?? null;
+  return PROVINCES
+    .filter((p) =>
+      p.name === fullName ||
+      p.name.includes(userRegion) ||
+      fullName.includes(p.name)
+    )
+    .map((p) => p.code);
 }
 
 function passesDistrictFilter(
@@ -140,10 +144,10 @@ function passesDistrictFilter(
   if (!userRegion || userRegion === "전국" || !userDistrict) return true;
   if (text.includes(userDistrict)) return true;
 
-  const provinceCode = getProvinceCodeForRegion(userRegion);
-  if (!provinceCode) return true;
+  const provinceCodes = getProvinceCodesForRegion(userRegion);
+  if (provinceCodes.length === 0) return true;
 
-  const districts = DISTRICTS_BY_PROVINCE[provinceCode] ?? [];
+  const districts = provinceCodes.flatMap((code) => DISTRICTS_BY_PROVINCE[code] ?? []);
   const otherDistrictMentioned = districts.some(
     (district) => district !== userDistrict && text.includes(district),
   );

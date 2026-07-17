@@ -48,8 +48,8 @@ const CATEGORIES = [
   { value: "문화", label: "문화·여가" },
 ] as const;
 
-// 17개 광역 짧은 이름
-const PROVINCE_SHORT_NAMES = Object.keys(PROVINCE_SHORT_TO_FULL);
+// 17개 광역 짧은 이름 + 사이트 통합 권역
+const PROVINCE_SHORT_NAMES = ["전남광주통합특별시", ...Object.keys(PROVINCE_SHORT_TO_FULL)];
 
 type SearchParams = {
   tab?: string;
