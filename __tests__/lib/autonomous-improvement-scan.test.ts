@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildImprovementRecommendations,
+  isActionableInstagramSkipDetails,
   parseImprovementScanRow,
   type ImprovementSnapshot,
 } from "@/lib/autonomous-ops/improvement-scan";
@@ -227,6 +228,21 @@ describe("buildImprovementRecommendations", () => {
         title: expect.stringContaining("Naver Extension"),
       }),
     );
+  });
+
+  it("인스타그램 정상 skip 은 운영 개선 경고 카운트에서 제외한다", () => {
+    for (const reason of [
+      "outside_hours",
+      "daily_cap_reached",
+      "disabled",
+      "no_pending",
+      "no_video_pending",
+    ]) {
+      expect(isActionableInstagramSkipDetails({ reason })).toBe(false);
+    }
+    expect(isActionableInstagramSkipDetails({ reason: "quality_gate_rejected" })).toBe(true);
+    expect(isActionableInstagramSkipDetails({ reason: "no_token" })).toBe(true);
+    expect(isActionableInstagramSkipDetails({})).toBe(true);
   });
 
   // 2026-06-16 — "Codex agent cycle 부진" recommendation 제거됨.
