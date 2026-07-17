@@ -158,12 +158,24 @@ describe("vercel-deploy webhook route", () => {
 
   it("production 성공 이벤트는 핵심 경로 smoke 후 텔레그램 알림과 감사 로그를 남긴다", async () => {
     setRequiredWebhookEnv();
-    const headerResponse = (cacheControl: string, status = 200) =>
-      new Response(null, { status, headers: { "cache-control": cacheControl } });
+    const headerResponse = (cacheControl: string, status = 200, body: string | null = null) =>
+      new Response(body, { status, headers: { "cache-control": cacheControl } });
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(headerResponse("public, s-maxage=3600, stale-while-revalidate=31532400"))
-      .mockResolvedValueOnce(headerResponse("public, s-maxage=3600, stale-while-revalidate=31532400"))
+      .mockResolvedValueOnce(
+        headerResponse(
+          "public, s-maxage=3600, stale-while-revalidate=31532400",
+          200,
+          "관심 지역·정책 알림을 놓치지 않게 저장해드려요",
+        ),
+      )
+      .mockResolvedValueOnce(
+        headerResponse(
+          "public, s-maxage=3600, stale-while-revalidate=31532400",
+          200,
+          "무료로 맞춤 정책 알림 시작하기",
+        ),
+      )
       .mockResolvedValueOnce(headerResponse("public, s-maxage=86400, stale-while-revalidate=31449600"))
       .mockResolvedValueOnce(headerResponse("public, s-maxage=60, stale-while-revalidate=31535940"))
       .mockResolvedValueOnce(headerResponse("private, no-store", 307))
@@ -195,7 +207,7 @@ describe("vercel-deploy webhook route", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "https://www.keepioo.com/login",
-      expect.objectContaining({ method: "HEAD", redirect: "manual" }),
+      expect.objectContaining({ method: "GET", redirect: "manual" }),
     );
     const notifyBody = JSON.parse(fetchMock.mock.calls[6][1].body as string) as { text: string };
     expect(notifyBody.text).toContain("production deploy 완료 + smoke 통과");

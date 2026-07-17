@@ -23,6 +23,12 @@ const EXPECTED_GROUPS = [
 ];
 
 const PRIVATE_PATHS = ["/admin", "/mypage", "/checkout", "/pricing", "/?ref=ABCDEF"];
+const UX_TEXT_CHECKS = [
+  { path: "/login", text: "관심 지역·정책 알림을 놓치지 않게 저장해드려요" },
+  { path: "/signup", text: "무료로 맞춤 정책 알림 시작하기" },
+  { path: "/signup/sent", text: "관심 지역과 주제를 고르면 맞춤 알림이 시작돼요" },
+  { path: "/forgot-password", text: "보안을 위해 가입 여부는 알려드리지 않아요" },
+];
 const DEFAULT_BASE_URL = "https://www.keepioo.com";
 
 function parseArgs(argv) {
@@ -32,6 +38,7 @@ function parseArgs(argv) {
     json: false,
     retries: 1,
     retryDelayMs: 1500,
+    ux: true,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -42,8 +49,9 @@ function parseArgs(argv) {
     else if (arg === "--json") out.json = true;
     else if (arg === "--retries") out.retries = Number(argv[++i]);
     else if (arg === "--retry-delay-ms") out.retryDelayMs = Number(argv[++i]);
+    else if (arg === "--skip-ux") out.ux = false;
     else if (arg === "--help" || arg === "-h") {
-      console.log(`Usage: node tools/verify-production-cache-headers.mjs [--base-url https://www.keepioo.com] [--methods HEAD,GET] [--json]`);
+      console.log(`Usage: node tools/verify-production-cache-headers.mjs [--base-url https://www.keepioo.com] [--methods HEAD,GET] [--json] [--skip-ux]`);
       process.exit(0);
     }
   }
@@ -92,6 +100,38 @@ async function requestWithRetries(baseUrl, method, path, retries, retryDelayMs) 
   throw lastError;
 }
 
+async function requestTextWithRetries(baseUrl, path, retries, retryDelayMs) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          "User-Agent": "keepioo-cache-monitor/1.0",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      });
+      const text = await response.text();
+      return {
+        path,
+        method: "GET_UX",
+        status: response.status,
+        cacheControl: response.headers.get("cache-control") || "",
+        xVercelCache: response.headers.get("x-vercel-cache") || "",
+        xMatchedPath: response.headers.get("x-matched-path") || "",
+        location: response.headers.get("location") || "",
+        setCookie: Boolean(response.headers.get("set-cookie")),
+        text,
+      };
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) await delay(retryDelayMs);
+    }
+  }
+  throw lastError;
+}
+
 function evaluate(result, rule) {
   const errors = [];
   if (rule.kind === "public") {
@@ -107,6 +147,28 @@ function evaluate(result, rule) {
     }
   }
   return { ...result, group: rule.group, ok: errors.length === 0, errors };
+}
+
+function evaluateUx(result, rule) {
+  const errors = [];
+  if (result.status !== 200) errors.push(`expected status 200, got ${result.status}`);
+  if (result.setCookie) errors.push("unexpected set-cookie on UX smoke path");
+  if (!result.text.includes(rule.text)) {
+    errors.push(`missing UX text ${JSON.stringify(rule.text)}`);
+  }
+  return {
+    path: result.path,
+    method: result.method,
+    group: "auth-ux-text",
+    ok: errors.length === 0,
+    status: result.status,
+    cacheControl: result.cacheControl,
+    xVercelCache: result.xVercelCache,
+    xMatchedPath: result.xMatchedPath,
+    location: result.location,
+    setCookie: result.setCookie,
+    errors,
+  };
 }
 
 export async function runCacheHeaderCheck(options = {}) {
@@ -138,6 +200,29 @@ export async function runCacheHeaderCheck(options = {}) {
           path: rule.path,
           method,
           group: rule.group,
+          ok: false,
+          status: 0,
+          cacheControl: "",
+          xVercelCache: "",
+          xMatchedPath: "",
+          location: "",
+          setCookie: false,
+          errors: [error instanceof Error ? error.message : String(error)],
+        });
+      }
+    }
+  }
+
+  if (options.ux !== false) {
+    for (const rule of UX_TEXT_CHECKS) {
+      try {
+        const result = await requestTextWithRetries(baseUrl, rule.path, retries, retryDelayMs);
+        checks.push(evaluateUx(result, rule));
+      } catch (error) {
+        checks.push({
+          path: rule.path,
+          method: "GET_UX",
+          group: "auth-ux-text",
           ok: false,
           status: 0,
           cacheControl: "",
