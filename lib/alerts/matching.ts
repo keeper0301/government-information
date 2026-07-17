@@ -6,6 +6,7 @@
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getRegionMatchPatterns } from "@/lib/regions";
 
 export type AlertRule = {
   id: string;
@@ -50,6 +51,12 @@ export function sanitizeAlertKeyword(raw: string): string {
   return raw.replace(/[,()%]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+export function expandRegionTagsForAlertMatch(regionTags: string[]): string[] {
+  return Array.from(
+    new Set(regionTags.flatMap((tag) => getRegionMatchPatterns(tag))),
+  );
+}
+
 // ============================================================
 // 규칙 하나에 대해 매칭되는 새 정책 조회
 // ============================================================
@@ -86,7 +93,7 @@ export async function findMatchingPrograms(
 
     // 배열 교집합 — 비어있으면 생략
     if (rule.region_tags.length > 0) {
-      query = query.overlaps("region_tags", rule.region_tags);
+      query = query.overlaps("region_tags", expandRegionTagsForAlertMatch(rule.region_tags));
     }
     if (rule.age_tags.length > 0) {
       query = query.overlaps("age_tags", rule.age_tags);
@@ -155,7 +162,7 @@ export async function previewMatchCount(
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(5);
 
-    if (rule.region_tags.length > 0) query = query.overlaps("region_tags", rule.region_tags);
+    if (rule.region_tags.length > 0) query = query.overlaps("region_tags", expandRegionTagsForAlertMatch(rule.region_tags));
     if (rule.age_tags.length > 0) query = query.overlaps("age_tags", rule.age_tags);
     if (rule.occupation_tags.length > 0) query = query.overlaps("occupation_tags", rule.occupation_tags);
     if (rule.benefit_tags.length > 0) query = query.overlaps("benefit_tags", rule.benefit_tags);
