@@ -8,6 +8,7 @@ const config = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8")) as {
 };
 
 const DAILY_CACHE = "public, s-maxage=86400, stale-while-revalidate=31449600";
+const AUTH_CACHE = "public, s-maxage=3600, stale-while-revalidate=31532400";
 const SHORT_CACHE = "public, s-maxage=60, stale-while-revalidate=31535940";
 
 function cacheControlFor(source: string): string | undefined {
@@ -24,13 +25,18 @@ describe("vercel public page cache headers", () => {
       "/terms",
       "/refund",
       "/consult",
+    ]) {
+      expect(cacheControlFor(source)).toBe(DAILY_CACHE);
+    }
+
+    for (const source of [
       "/login",
       "/signup",
       "/signup/sent",
       "/forgot-password",
       "/reset-password",
     ]) {
-      expect(cacheControlFor(source)).toBe(DAILY_CACHE);
+      expect(cacheControlFor(source)).toBe(AUTH_CACHE);
     }
 
     expect(cacheControlFor("/guides")).toBe(SHORT_CACHE);
