@@ -11,12 +11,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  REGION_TAGS,
+  PUBLIC_REGION_TAGS,
   AGE_TAGS,
   OCCUPATION_TAGS,
   BENEFIT_TAGS,
   HOUSEHOLD_TAGS,
 } from "@/lib/tags/taxonomy";
+import { formatRegionDisplay } from "@/lib/region-display";
 import type { Tier } from "@/lib/subscription";
 
 type Rule = {
@@ -50,6 +51,10 @@ const INCOME_LABEL: Record<string, string> = {
   mid: '중위소득',
   any: '전 국민',
 };
+
+function formatRegionTagsForDisplay(tags: string[]): string {
+  return Array.from(new Set(tags.map(formatRegionDisplay))).join(",");
+}
 
 type Props = {
   tier: Tier;
@@ -171,7 +176,7 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
                   </div>
                   <div className="text-[13px] text-gray-600 mt-1 leading-[1.5]">
                     {[
-                      r.region_tags.length > 0 && `지역: ${r.region_tags.join(",")}`,
+                      r.region_tags.length > 0 && `지역: ${formatRegionTagsForDisplay(r.region_tags)}`,
                       r.age_tags.length > 0 && `연령: ${r.age_tags.join(",")}`,
                       r.occupation_tags.length > 0 && `업종: ${r.occupation_tags.join(",")}`,
                       r.benefit_tags.length > 0 && `분야: ${r.benefit_tags.join(",")}`,
@@ -207,7 +212,7 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
           />
         </label>
 
-        <TagGroup label="관심 지역 (비우면 전국)" tags={REGION_TAGS} selected={regions}
+        <TagGroup label="관심 지역 (비우면 전국)" tags={PUBLIC_REGION_TAGS} selected={regions}
           onToggle={(v) => toggle(regions, setRegions, v)} />
         <TagGroup label="관심 연령" tags={AGE_TAGS} selected={ages}
           onToggle={(v) => toggle(ages, setAges, v)} />

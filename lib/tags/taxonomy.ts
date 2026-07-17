@@ -14,6 +14,12 @@ export const REGION_TAGS = [
 ] as const;
 export type RegionTag = typeof REGION_TAGS[number];
 
+// 사용자에게 보여주는 지역 태그 목록. 수집/매칭용 legacy 태그(광주/전남)는
+// REGION_TAGS 에 남겨 호환성을 유지하되, 공개 UI 에서는 통합 권역만 노출한다.
+export const PUBLIC_REGION_TAGS = REGION_TAGS.filter(
+  (tag) => tag !== "광주" && tag !== "전남",
+);
+
 // 연령 태그 — 대상 연령층 분류
 // 청년 = 만 19~39, 중장년 = 40~64, 노년 = 65+
 export const AGE_TAGS = [
