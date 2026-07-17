@@ -35,6 +35,7 @@ import {
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { formatProvinceDisplay } from "@/lib/region-display";
+import { ministryToSourceName } from "@/lib/source-display";
 
 export const metadata: Metadata = {
   title: "광역 보도자료 정책 후보 | 어드민",
@@ -43,14 +44,10 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-// 광역 ministry 풀네임 → 사람 읽기 source 값 (등록 폼 prefill 용)
+// ministry 풀네임 → 사람 읽기 source 값 (등록 폼 prefill 용)
 // 예: '전라남도' → '전라남도청', '경기도' → '경기도청'
 function ministryToSource(ministry: string | null): string {
-  if (!ministry) return "";
-  // 특별시·광역시·자치시·도 → "...청" 으로 통일
-  if (ministry.endsWith("시") || ministry.endsWith("도"))
-    return `${ministry}청`;
-  return ministry;
+  return ministryToSourceName(ministry);
 }
 
 // ministry → region 자유 텍스트 prefill (welfare 만 사용)

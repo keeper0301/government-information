@@ -126,7 +126,7 @@ export default async function NewWelfareProgramPage({
             </h2>
             <div className="space-y-4">
               <Field label="정책명 (title) *" name="title" required maxLength={500} placeholder="예: 전남도 고유가 피해지원금" defaultValue={prefill.title} />
-              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전라남도청" defaultValue={prefill.source} />
+              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전남도청" defaultValue={prefill.source} />
               <Field label="신청 URL (apply_url) *" name="apply_url" required type="url" placeholder="https://www.jeonnam.go.kr/..." defaultValue={prefill.apply_url} />
 
               <label className="block">

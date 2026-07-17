@@ -18,6 +18,7 @@ import { PROVINCES } from "@/lib/regions";
 import { resolveApplyUrl, isPublicDomain } from "./url-fallback";
 // Spec 1 — 학습된 tier_floor 조회 (env > DB > 'high' default)
 import { getCurrentTierFloor } from "./auto-confirm-settings";
+import { ministryToSourceName } from "@/lib/source-display";
 
 export type PressCandidateStatus =
   | "pending"
@@ -123,7 +124,7 @@ function sanitizeDateForDb(value: string | null | undefined): string | null {
 }
 
 function ministryToSource(ministry: string | null): string {
-  return ministry ? `${ministry}청` : "광역 보도자료";
+  return ministryToSourceName(ministry);
 }
 
 export function newsSourceUrl(news: { id: string; slug: string | null }): string {
