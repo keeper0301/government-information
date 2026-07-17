@@ -97,6 +97,7 @@ describe("vercel-deploy webhook route", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       ignored: "deployment.ready",
+      target: "unknown",
     });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(logAdminAction).not.toHaveBeenCalled();
@@ -153,5 +154,57 @@ describe("vercel-deploy webhook route", () => {
         type: "deployment.failed",
       },
     });
+  });
+
+  it("production 성공 이벤트는 핵심 경로 smoke 후 텔레그램 알림과 감사 로그를 남긴다", async () => {
+    setRequiredWebhookEnv();
+    const headerResponse = (cacheControl: string, status = 200) =>
+      new Response(null, { status, headers: { "cache-control": cacheControl } });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(headerResponse("public, s-maxage=3600, stale-while-revalidate=31532400"))
+      .mockResolvedValueOnce(headerResponse("public, s-maxage=3600, stale-while-revalidate=31532400"))
+      .mockResolvedValueOnce(headerResponse("public, s-maxage=86400, stale-while-revalidate=31449600"))
+      .mockResolvedValueOnce(headerResponse("public, s-maxage=60, stale-while-revalidate=31535940"))
+      .mockResolvedValueOnce(headerResponse("private, no-store", 307))
+      .mockResolvedValueOnce(headerResponse("private, no-cache, no-store, max-age=0, must-revalidate"))
+      .mockResolvedValueOnce({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.mocked(logAdminAction).mockResolvedValue(undefined);
+    const rawBody = JSON.stringify({
+      type: "deployment.succeeded",
+      payload: {
+        project: { name: "government-information" },
+        target: "production",
+        deployment: {
+          url: "keepioo.vercel.app",
+          meta: {
+            githubCommitMessage: "성공 커밋",
+            githubCommitRef: "master",
+          },
+        },
+      },
+    });
+
+    const response = await POST(vercelRequest(rawBody));
+    const body = await response.json();
+
+    expect(body.ok).toBe(true);
+    expect(body.smoke.lines).toHaveLength(6);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "https://www.keepioo.com/login",
+      expect.objectContaining({ method: "HEAD", redirect: "manual" }),
+    );
+    const notifyBody = JSON.parse(fetchMock.mock.calls[6][1].body as string) as { text: string };
+    expect(notifyBody.text).toContain("production deploy 완료 + smoke 통과");
+    expect(notifyBody.text).toContain("/login");
+    expect(logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "vercel_deploy_smoke_passed",
+        details: expect.objectContaining({ target: "production" }),
+      }),
+    );
   });
 });

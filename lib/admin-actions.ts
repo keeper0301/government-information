@@ -48,6 +48,8 @@ export type AdminActionType =
   | "sns_credential_check_run"   // SNS credential read-only 점검 결과 (게시 없음)
   | "cron_retry_run"             // 가-A1 — failed cron 자동 1회 재시도 audit (job별 retry status)
   | "vercel_deploy_failed"       // 가-A2 — Vercel deployment 실패 webhook 수신 (사장님 텔레그램 알림)
+  | "vercel_deploy_smoke_passed" // production deploy 성공 후 canonical route smoke 통과
+  | "vercel_deploy_smoke_failed" // production deploy 성공 후 canonical route smoke 실패
   | "llm_usage_summary"          // 가-A3 — 24h LLM 호출 cron audit 합산 통계
   | "instagram_publish_success"  // 인스타 carousel 자동 발행 성공 (media_id + permalink 저장)
   | "instagram_publish_fail"     // 인스타 발행 실패 (3회 누적 시 health-alert 트리거)
@@ -381,6 +383,8 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   sns_credential_check_run: "SNS credential 점검",
   cron_retry_run: "Cron 자동 재시도 실행",
   vercel_deploy_failed: "Vercel deploy 실패 알림",
+  vercel_deploy_smoke_passed: "Vercel production smoke 통과",
+  vercel_deploy_smoke_failed: "Vercel production smoke 실패",
   llm_usage_summary: "LLM 사용량 일일 요약",
   instagram_publish_success: "인스타 자동 발행 성공",
   instagram_publish_fail: "인스타 자동 발행 실패",

@@ -1,0 +1,65 @@
+name: Public page performance audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    # KST Monday 10:10 — cache/UX changes after weekly deployments
+    - cron: "10 1 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: fetch timing probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v6
+
+      - name: Node 20 설치
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: public page fetch timing 측정
+        run: |
+          set -euo pipefail
+          node tools/measure-public-pages.mjs --base-url https://www.keepioo.com --json | tee public-page-performance.json
+
+      - name: GitHub summary 작성
+        run: |
+          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('public-page-performance.json', 'utf8'));
+          console.log(`## Public page performance probe`);
+          console.log(`base: ${report.baseUrl}`);
+          console.log('');
+          console.log('| Path | Status | TTFB | Total | HTML | Scripts | Cache |');
+          console.log('|---|---:|---:|---:|---:|---:|---|');
+          for (const r of report.results) {
+            console.log(`| ${r.path} | ${r.status} | ${r.ttfbMs ?? '-'}ms | ${r.totalMs ?? '-'}ms | ${r.htmlBytes}B | ${r.scriptTags} | ${String(r.cacheControl || '-').replaceAll('|', '\\|')} |`);
+          }
+          NODE
+
+      - name: Lighthouse reports 생성
+        run: |
+          set -euo pipefail
+          mkdir -p lighthouse-reports
+          for path in /help /guides /login /signup /privacy; do
+            slug=$(echo "$path" | tr '/' '-' | sed 's/^-//')
+            npx --yes lighthouse@12 "https://www.keepioo.com${path}" \
+              --chrome-flags="--headless --no-sandbox" \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json --output=html \
+              --output-path="lighthouse-reports/${slug:-home}" \
+              --quiet
+          done
+
+      - name: Lighthouse artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: keepioo-public-page-lighthouse
+          path: lighthouse-reports/
+          retention-days: 14

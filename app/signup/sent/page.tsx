@@ -87,6 +87,11 @@ function SignupSentContent() {
         메일이 보이지 않으면 스팸함도 확인해주세요. 그래도 없으면 아래 버튼으로
         다시 보낼 수 있어요.
       </p>
+      <ol className="mb-5 list-decimal space-y-1 pl-5 text-[13px] leading-[1.6] text-grey-600">
+        <li>확인 링크를 누르면 자동으로 로그인됩니다.</li>
+        <li>그다음 관심 지역과 주제를 고르면 맞춤 알림이 시작돼요.</li>
+        <li>메일 주소를 잘못 입력했다면 회원가입 화면에서 다시 입력해주세요.</li>
+      </ol>
 
       {error && (
         <div className="bg-red/10 border border-red/30 rounded-lg p-3 mb-4 text-sm text-red leading-[1.5]">

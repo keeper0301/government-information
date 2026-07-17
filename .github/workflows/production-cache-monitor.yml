@@ -1,0 +1,68 @@
+name: Production cache header monitor
+
+on:
+  schedule:
+    # KST 09:20 / 21:20 — production alias 기준 public/private cache regression 감시
+    - cron: "20 0,12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    name: canonical domain cache header smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v6
+
+      - name: Node 20 설치
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: production cache headers 확인
+        run: |
+          set -euo pipefail
+          node tools/verify-production-cache-headers.mjs --base-url https://www.keepioo.com --methods HEAD,GET --json | tee /tmp/cache-report.json
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET 없음 — GitHub Actions 실패 상태만 남김"
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs = require('fs');
+
+          async function main() {
+            let report = {};
+            try { report = JSON.parse(fs.readFileSync('/tmp/cache-report.json', 'utf8')); } catch {}
+            const failed = (report.checks || []).filter((x) => !x.ok).slice(0, 12);
+            const text = [
+              '[keepioo] ⚠ production Cache-Control 감시 실패',
+              `base: ${report.baseUrl || 'https://www.keepioo.com'}`,
+              ...failed.map((x) => `- ${x.method} ${x.path}: ${x.errors?.join('; ') || 'unknown'} / cache=${x.cacheControl || '-'}`),
+            ].join('\n');
+            const res = await fetch('https://www.keepioo.com/api/notify-telegram', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${process.env.CRON_SECRET}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ text }),
+            });
+            if (!res.ok) throw new Error(`notify failed: ${res.status}`);
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
