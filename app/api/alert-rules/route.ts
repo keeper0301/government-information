@@ -12,6 +12,7 @@ import {
   isJsonBodyTooLargeError,
   readJsonWithLimit,
 } from "@/lib/http/json";
+import { normalizePublicRegionTags } from "@/lib/region-display";
 
 const MAX_ALERT_RULE_BODY_BYTES = 16 * 1024;
 
@@ -27,6 +28,10 @@ function normalizeIncomeTarget(
 
 function stringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
+function regionTagArray(v: unknown): string[] {
+  return normalizePublicRegionTags(stringArray(v));
 }
 
 function optionalString(v: unknown, maxLength: number): string | null {
@@ -84,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient();
     const preview = await previewMatchCount(admin, {
-      region_tags: stringArray(body.region_tags),
+      region_tags: regionTagArray(body.region_tags),
       age_tags: stringArray(body.age_tags),
       occupation_tags: stringArray(body.occupation_tags),
       benefit_tags: stringArray(body.benefit_tags),
@@ -141,7 +146,7 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: auth.user.id,
       name: name.substring(0, 50),
-      region_tags: stringArray(body.region_tags),
+      region_tags: regionTagArray(body.region_tags),
       age_tags: stringArray(body.age_tags),
       occupation_tags: stringArray(body.occupation_tags),
       benefit_tags: stringArray(body.benefit_tags),

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getDistrictsForRegion, REGION_OPTIONS } from "@/lib/profile-options";
 import { getRegionMatchPatterns, getRegionPageByCode, REGION_PAGE_LINKS, REGION_PAGE_STATIC_PARAMS } from "@/lib/regions";
 import { PUBLIC_REGION_TAGS } from "@/lib/tags/taxonomy";
-import { formatProvinceDisplay, formatRegionDisplay } from "@/lib/region-display";
+import { formatProvinceDisplay, formatRegionDisplay, normalizePublicRegionTags, normalizePublicRegionValue } from "@/lib/region-display";
 import {
   evaluateRegion,
   hasConflictingRegionInTitle,
@@ -71,6 +71,12 @@ describe("전남광주통합특별시 통합 권역", () => {
     expect(formatRegionDisplay("서울")).toBe("서울");
     expect(formatProvinceDisplay("광주")).toBe("전남광주통합특별시");
     expect(formatProvinceDisplay("전남")).toBe("전남광주통합특별시");
+    expect(normalizePublicRegionValue("광주")).toBe("전남광주통합특별시");
+    expect(normalizePublicRegionValue("전남")).toBe("전남광주통합특별시");
+    expect(normalizePublicRegionTags(["광주", "전남", "서울"])).toEqual([
+      "전남광주통합특별시",
+      "서울",
+    ]);
   });
 
   it("블로그 cohort 지역 gate 도 광주/전남을 같은 권역으로 처리한다", () => {
