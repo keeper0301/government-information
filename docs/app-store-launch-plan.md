@@ -51,7 +51,7 @@
 ## 7. 운영 명령어
 
 - `npm run app:assets` — `assets/logo.png`, `assets/splash.png`, `assets/splash-dark.png` 원본 재생성.
-- `npx capacitor-assets generate --android` — 원본에서 Android 해상도별 아이콘·스플래시 재생성.
+- Android 해상도별 아이콘·스플래시는 현재 repo에 커밋되어 있다. 재생성이 꼭 필요할 때만 `npx --yes @capacitor/assets@3.0.5 generate --android` 를 일회성으로 실행한다. 이 패키지는 보안 감사 경고가 있는 transitive dependency를 포함하므로 상시 devDependency로 설치하지 않는다.
 - `npm run app:sync:android` — Capacitor 설정과 플러그인을 Android 프로젝트에 동기화.
 - `npm run app:doctor:android` — Android Capacitor 의존성·설정 상태 점검.
 - `npm run app:verify:android` — sync + doctor + 생성 Gradle 파일 drift 확인. CI에도 포함되어 플러그인 누락을 조기 감지한다.
