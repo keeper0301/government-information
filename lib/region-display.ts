@@ -12,6 +12,15 @@ export function formatRegionDisplay(value: string | null | undefined): string | 
   return value;
 }
 
+export function normalizePublicRegionValue(value: string): string {
+  if (value === "광주" || value === "전남") return INTEGRATED_REGION_LABEL;
+  return formatRegionDisplay(value) ?? value;
+}
+
+export function normalizePublicRegionTags(values: string[]): string[] {
+  return Array.from(new Set(values.map(normalizePublicRegionValue)));
+}
+
 export function formatProvinceDisplay(value: string | null | undefined): string {
   if (!value) return "—";
   if (value === "광주" || value === "전남") return INTEGRATED_REGION_LABEL;

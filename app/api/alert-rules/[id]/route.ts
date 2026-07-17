@@ -12,8 +12,13 @@ import {
   isJsonBodyTooLargeError,
   readJsonWithLimit,
 } from "@/lib/http/json";
+import { normalizePublicRegionTags } from "@/lib/region-display";
 
 const MAX_ALERT_RULE_BODY_BYTES = 16 * 1024;
+
+function stringArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -81,7 +86,7 @@ export async function PATCH(
   // 허용된 필드만 업데이트
   const update: Record<string, unknown> = {};
   if (typeof body.name === "string") update.name = body.name.trim().substring(0, 50);
-  if (Array.isArray(body.region_tags)) update.region_tags = body.region_tags;
+  if (Array.isArray(body.region_tags)) update.region_tags = normalizePublicRegionTags(stringArray(body.region_tags));
   if (Array.isArray(body.age_tags)) update.age_tags = body.age_tags;
   if (Array.isArray(body.occupation_tags)) update.occupation_tags = body.occupation_tags;
   if (Array.isArray(body.benefit_tags)) update.benefit_tags = body.benefit_tags;

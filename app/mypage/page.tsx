@@ -20,6 +20,7 @@ import { AccountTab } from "./account-tab";
 import { ReferralTab } from "./referral-tab";
 import { MypageTabs } from "./tabs";
 import { HomeLocalRecommend } from "@/components/home-local-recommend";
+import { formatProvinceDisplay } from "@/lib/region-display";
 
 export const metadata: Metadata = {
   title: "내 정보 — 정책알리미",
@@ -173,7 +174,7 @@ export default async function MyPage() {
             {profile?.region && profile?.district ? (
               <>
                 <p className="text-[14px] text-grey-700 leading-[1.6]">
-                  거주지 ({profile.region} {profile.district}) 매칭 정책을 한
+                  거주지 ({formatProvinceDisplay(profile.region)} {profile.district}) 매칭 정책을 한
                   화면에서 확인해요. 새 정책은 매일 자동으로 업데이트돼요.
                 </p>
                 <HomeLocalRecommend
