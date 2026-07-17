@@ -145,6 +145,41 @@ async function countAdminAction(action: string): Promise<number> {
   }
 }
 
+const NON_ACTIONABLE_INSTAGRAM_SKIP_REASONS = new Set([
+  "outside_hours",
+  "daily_cap_reached",
+  "disabled",
+  "no_pending",
+  "no_video_pending",
+]);
+
+export function isActionableInstagramSkipDetails(details: unknown): boolean {
+  if (!isRecord(details)) return true;
+  const reason = details.reason;
+  return typeof reason !== "string" || !NON_ACTIONABLE_INSTAGRAM_SKIP_REASONS.has(reason);
+}
+
+async function countActionableInstagramSkips24h(): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("admin_actions")
+      .select("details")
+      .in("action", [
+        "instagram_publish_skipped",
+        "instagram_reel_render_skipped",
+        "instagram_reel_publish_skipped",
+      ])
+      .gte("created_at", since24h());
+    if (error) return 0;
+    return ((data ?? []) as Array<{ details?: unknown }>).filter((row) =>
+      isActionableInstagramSkipDetails(row.details),
+    ).length;
+  } catch {
+    return 0;
+  }
+}
+
 async function countSnsDispatchFailures24h(): Promise<number> {
   try {
     const admin = createAdminClient();
@@ -271,7 +306,7 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
   ] = await Promise.all([
     countAdminAction("blog_quality_flag"),
     countAdminAction("instagram_publish_fail"),
-    countAdminAction("instagram_publish_skipped"),
+    countActionableInstagramSkips24h(),
     countTableWhere("naver_blog_queue", (q) => q.eq("status", "pending")),
     countTableWhere("naver_publish_audit", (q) =>
       q.eq("result", "success").gte("attempted_at", since24h()),
