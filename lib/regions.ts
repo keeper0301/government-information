@@ -147,6 +147,7 @@ export function getSearchUnitsForProvince(code: ProvinceCode): string[] {
 //
 // "전남" 이 들어오면 ["전라남도", "전남"] 두 후보 모두로 ILIKE 매칭 →
 // 광역만 저장된 row + 광역+시군구 저장된 row + 짧은 이름 저장된 row 모두 잡힘.
+// "전남광주통합특별시" 은 행정 코드는 유지하되 사이트 필터/추천에서 두 지역을 함께 보는 통합 권역.
 export const PROVINCE_SHORT_TO_FULL: Record<string, string> = {
   서울: "서울특별시",
   부산: "부산광역시",
@@ -167,9 +168,28 @@ export const PROVINCE_SHORT_TO_FULL: Record<string, string> = {
   제주: "제주특별자치도",
 };
 
+const GWANGJU_JEONNAM_PATTERNS = [
+  "전남광주통합특별시",
+  "광주·전남",
+  "광주전남",
+  "광주광역시",
+  "광주시",
+  "광주",
+  "전라남도",
+  "전남",
+];
+
+export const SPECIAL_REGION_MATCH_PATTERNS: Record<string, string[]> = {
+  "전남광주통합특별시": GWANGJU_JEONNAM_PATTERNS,
+  "광주·전남": GWANGJU_JEONNAM_PATTERNS,
+  "광주전남": GWANGJU_JEONNAM_PATTERNS,
+};
+
 // 짧은 이름 → ILIKE 매칭에 쓸 후보 배열. DB 에 다양한 형식이 섞여 있어도
 // 모두 잡도록 정식 이름 + 짧은 이름 둘 다 후보로 반환.
 export function getRegionMatchPatterns(shortName: string): string[] {
+  const special = SPECIAL_REGION_MATCH_PATTERNS[shortName];
+  if (special) return special;
   const full = PROVINCE_SHORT_TO_FULL[shortName];
   if (!full) return [shortName];
   return [full, shortName];

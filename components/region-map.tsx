@@ -22,13 +22,13 @@ const GRID: (string | null)[] = [
   null,    "서울", "강원", null,    null,
   "인천", "경기", "충북", "경북", null,
   "충남", "대전", "세종", "대구", "울산",
-  "광주", "전북", "전남", "경남", "부산",
+  "전남광주통합특별시", "전북", null, "경남", "부산",
 ];
 
 const SIDO_NAMES = [
   "서울", "경기", "인천", "강원",
   "충북", "충남", "세종", "대전",
-  "전북", "전남", "광주",
+  "전북", "전남광주통합특별시",
   "경북", "경남", "대구", "울산", "부산",
   "제주",
 ];
@@ -52,7 +52,9 @@ export async function RegionMap() {
   const allCounts = await getWelfareRegionCounts();
   const counts: Record<string, number> = {};
   SIDO_NAMES.forEach((name) => {
-    counts[name] = allCounts[name] ?? 0;
+    counts[name] = name === "전남광주통합특별시"
+      ? (allCounts["광주"] ?? 0) + (allCounts["전남"] ?? 0) + (allCounts["전남광주통합특별시"] ?? 0)
+      : allCounts[name] ?? 0;
   });
   const nationwide = allCounts["전국"] ?? 0;
   const max = Math.max(...Object.values(counts), 1);

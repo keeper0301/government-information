@@ -24,6 +24,9 @@ export const REGION_ALIASES: Record<string, string[]> = {
   '충북': ['충청북도', '충북'],
   '충남': ['충청남도', '충남'],
   '전북': ['전북특별자치도', '전라북도', '전북'],
+  '전남광주통합특별시': ['전남광주통합특별시', '광주·전남', '광주전남', '광주광역시', '광주시', '광주', '전라남도', '전남'],
+  '광주·전남': ['전남광주통합특별시', '광주·전남', '광주전남', '광주광역시', '광주시', '광주', '전라남도', '전남'],
+  '광주전남': ['전남광주통합특별시', '광주·전남', '광주전남', '광주광역시', '광주시', '광주', '전라남도', '전남'],
   '전남': ['전라남도', '전남'],
   '경북': ['경상북도', '경북'],
   '경남': ['경상남도', '경남'],
@@ -31,22 +34,21 @@ export const REGION_ALIASES: Record<string, string[]> = {
 };
 
 // 사용자 region 짧은 키 ('전남') → PROVINCES 의 ProvinceCode ('jeonnam') 매핑.
+// "전남광주통합특별시" 같은 통합 권역은 여러 ProvinceCode 를 반환한다.
 // REGION_ALIASES 의 키를 lib/regions.ts 의 PROVINCES.name 과 매칭해서 결정.
-// 같은 매핑이 안 여러 함수에서 재사용되므로 캐시.
-const _provinceCodeByUserRegion = new Map<string, string | null>();
-function findProvinceCodeForUserRegion(userRegion: string): string | null {
-  if (_provinceCodeByUserRegion.has(userRegion)) {
-    return _provinceCodeByUserRegion.get(userRegion)!;
-  }
+// 같은 매핑이 여러 함수에서 재사용되므로 캐시.
+const _provinceCodesByUserRegion = new Map<string, string[]>();
+function findProvinceCodesForUserRegion(userRegion: string): string[] {
+  const cached = _provinceCodesByUserRegion.get(userRegion);
+  if (cached) return cached;
   const aliases = REGION_ALIASES[userRegion] ?? [userRegion];
-  let matched: string | null = null;
+  const matched: string[] = [];
   for (const province of PROVINCES) {
     if (aliases.some((a) => province.name.includes(a) || a.includes(province.name))) {
-      matched = province.code;
-      break;
+      matched.push(province.code);
     }
   }
-  _provinceCodeByUserRegion.set(userRegion, matched);
+  _provinceCodesByUserRegion.set(userRegion, matched);
   return matched;
 }
 
@@ -68,11 +70,11 @@ function getConflictingRegionKeywords(userRegion: string): Set<string> {
   const cached = _conflictKeywordsByUserRegion.get(userRegion);
   if (cached) return cached;
 
-  const userProvinceCode = findProvinceCodeForUserRegion(userRegion);
+  const userProvinceCodes = new Set(findProvinceCodesForUserRegion(userRegion));
   const userDistricts = new Set<string>(
-    userProvinceCode
-      ? (DISTRICTS_BY_PROVINCE[userProvinceCode as keyof typeof DISTRICTS_BY_PROVINCE] ?? [])
-      : [],
+    [...userProvinceCodes].flatMap(
+      (code) => DISTRICTS_BY_PROVINCE[code as keyof typeof DISTRICTS_BY_PROVINCE] ?? [],
+    ),
   );
 
   // 동명 시군구 검출용 — 한국 전역에서 2개 이상 광역에 등장하는 시군구 이름.
@@ -87,7 +89,7 @@ function getConflictingRegionKeywords(userRegion: string): Set<string> {
   const result = new Set<string>();
 
   for (const province of PROVINCES) {
-    const isUserProvince = province.code === userProvinceCode;
+    const isUserProvince = userProvinceCodes.has(province.code);
     if (isUserProvince) continue; // 사용자 광역·그 시군구는 conflict 아님
 
     // 다른 광역의 정식 명칭 (예: "강원특별자치도", "전라북도") — 길고 명확해서 false positive ↓

@@ -30,6 +30,7 @@ export const REGION_OPTIONS = [
   "충북",
   "충남",
   // 호남
+  "전남광주통합특별시",
   "광주",
   "전북",
   "전남",
@@ -95,6 +96,12 @@ import {
 
 export function getDistrictsForRegion(region: string): string[] {
   if (region === "전국" || !region) return [];
+  if (["전남광주통합특별시", "광주·전남", "광주전남"].includes(region)) {
+    return [
+      ...(DISTRICTS_BY_PROVINCE.gwangju ?? []),
+      ...(DISTRICTS_BY_PROVINCE.jeonnam ?? []),
+    ];
+  }
   const fullName = PROVINCE_SHORT_TO_FULL[region];
   if (!fullName) return [];
   const province = PROVINCES.find((p) => p.name === fullName);
