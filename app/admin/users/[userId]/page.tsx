@@ -36,6 +36,7 @@ import {
 import { DeleteUserButton } from "./delete-button";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { formatRegionDisplay } from "@/lib/region-display";
 
 export const metadata: Metadata = {
   title: "사용자 상세 | 어드민 | 정책알리미",
@@ -472,7 +473,7 @@ export default async function AdminUserDetailPage({
           {/* 프로필 */}
           <Panel title="프로필">
             <Row label="나이대" value={profile?.age_group} />
-            <Row label="지역" value={profile?.region} />
+            <Row label="지역" value={formatRegionDisplay(profile?.region)} />
             <Row label="직업" value={profile?.occupation} />
             <Row label="관심 분야" value={profile?.interests} />
           </Panel>

@@ -44,6 +44,33 @@ export const PROVINCES = [
 
 export type ProvinceCode = (typeof PROVINCES)[number]["code"];
 
+export const INTEGRATED_JEONNAM_GWANGJU_REGION = {
+  code: "jeonnam-gwangju",
+  name: "전남광주통합특별시",
+  shortName: "전남광주통합특별시",
+} as const;
+
+export type RegionPageInfo = {
+  code: string;
+  name: string;
+  shortName: string;
+  isIntegrated: boolean;
+};
+
+export function getRegionPageByCode(code: string): RegionPageInfo | null {
+  if (code === INTEGRATED_JEONNAM_GWANGJU_REGION.code) {
+    return { ...INTEGRATED_JEONNAM_GWANGJU_REGION, isIntegrated: true };
+  }
+  const province = getProvinceByCode(code);
+  if (!province) return null;
+  return {
+    code: province.code,
+    name: province.name,
+    shortName: PROVINCE_CODE_TO_SHORT[province.code] ?? province.name,
+    isIntegrated: false,
+  };
+}
+
 // 광역 → 그 광역 소속 시군구 목록.
 // 세종특별자치시: 단일 광역시 (시군구 없음, 광역=기초 통합) → 빈 배열.
 // 제주특별자치도: 자치시 2개 (제주시·서귀포시) — 행정시이지만 검색 단위로 활용.
@@ -218,6 +245,15 @@ export const PROVINCE_CODE_TO_SHORT: Record<ProvinceCode, string> = {
   gyeongnam: "경남",
   jeju: "제주",
 };
+
+export const REGION_PAGE_LINKS = [
+  INTEGRATED_JEONNAM_GWANGJU_REGION,
+  ...PROVINCES.map((p) => ({
+    code: p.code,
+    name: p.name,
+    shortName: PROVINCE_CODE_TO_SHORT[p.code],
+  })),
+];
 
 // ============================================================
 // title 기반 region 추출 — collectors 의 "전국" fallback 대체용

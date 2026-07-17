@@ -16,6 +16,7 @@ import { getPolicyInboxStorageStatus } from "@/lib/admin/policy-inbox-storage-st
 import { ADMIN_MENU } from "@/lib/admin/menu";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Sparkline } from "@/components/admin/sparkline";
+import { formatRegionDisplay } from "@/lib/region-display";
 
 export const metadata: Metadata = {
   title: "관리자 대시보드 | 정책알리미",
@@ -117,7 +118,7 @@ async function getRecentSignups(limit = 5) {
         id: u.id,
         email: u.email ?? null,
         createdAt: u.created_at ?? "",
-        region: profile?.region ?? null,
+        region: formatRegionDisplay(profile?.region) ?? null,
         occupation: profile?.occupation ?? null,
       };
     });
