@@ -212,6 +212,7 @@ describe("vercel-deploy webhook route", () => {
     const notifyBody = JSON.parse(fetchMock.mock.calls[6][1].body as string) as { text: string };
     expect(notifyBody.text).toContain("production deploy 완료 + smoke 통과");
     expect(notifyBody.text).toContain("/login");
+    expect(notifyBody.text).toContain("cache=ok ux=ok");
     expect(logAdminAction).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "vercel_deploy_smoke_passed",

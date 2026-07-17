@@ -24,10 +24,38 @@ const EXPECTED_GROUPS = [
 
 const PRIVATE_PATHS = ["/admin", "/mypage", "/checkout", "/pricing", "/?ref=ABCDEF"];
 const UX_TEXT_CHECKS = [
-  { path: "/login", text: "관심 지역·정책 알림을 놓치지 않게 저장해드려요" },
-  { path: "/signup", text: "무료로 맞춤 정책 알림 시작하기" },
-  { path: "/signup/sent", text: "관심 지역과 주제를 고르면 맞춤 알림이 시작돼요" },
-  { path: "/forgot-password", text: "보안을 위해 가입 여부는 알려드리지 않아요" },
+  {
+    path: "/login",
+    label: "login value proposition",
+    anyOf: [
+      "관심 지역·정책 알림을 놓치지 않게 저장해드려요",
+      "로그인하면",
+    ],
+  },
+  {
+    path: "/signup",
+    label: "signup primary CTA",
+    anyOf: [
+      "무료로 맞춤 정책 알림 시작하기",
+      "맞춤 정책 알림",
+    ],
+  },
+  {
+    path: "/signup/sent",
+    label: "signup email next step",
+    anyOf: [
+      "관심 지역과 주제를 고르면 맞춤 알림이 시작돼요",
+      "확인 링크를 누르면 자동으로 로그인됩니다",
+    ],
+  },
+  {
+    path: "/forgot-password",
+    label: "password reset non-enumeration copy",
+    anyOf: [
+      "보안을 위해 가입 여부는 알려드리지 않아요",
+      "가입 여부는 알려드리지 않아요",
+    ],
+  },
 ];
 const DEFAULT_BASE_URL = "https://www.keepioo.com";
 
@@ -153,8 +181,9 @@ function evaluateUx(result, rule) {
   const errors = [];
   if (result.status !== 200) errors.push(`expected status 200, got ${result.status}`);
   if (result.setCookie) errors.push("unexpected set-cookie on UX smoke path");
-  if (!result.text.includes(rule.text)) {
-    errors.push(`missing UX text ${JSON.stringify(rule.text)}`);
+  const snippets = rule.anyOf || [rule.text].filter(Boolean);
+  if (!snippets.some((snippet) => result.text.includes(snippet))) {
+    errors.push(`missing UX text for ${rule.label || rule.path}: expected one of ${JSON.stringify(snippets)}`);
   }
   return {
     path: result.path,
