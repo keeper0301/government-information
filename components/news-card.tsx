@@ -1,3 +1,5 @@
+"use client";
+
 // ============================================================
 // NewsCard — 정책 뉴스 한 장 카드 (목록 페이지 그리드용)
 // ============================================================
@@ -52,6 +54,31 @@ export const NEWS_CATEGORY_COLOR: Record<NewsCategory, string> = {
   "policy-doc": "bg-purple-50 text-purple-700",
 };
 
+function NewsThumbnailFallback({ category, hidden = false }: { category: NewsCategory; hidden?: boolean }) {
+  const Icon = NEWS_CATEGORY_ICON[category];
+  const iconColor =
+    category === "news"
+      ? "text-blue-400/60"
+      : category === "press"
+        ? "text-amber-500/60"
+        : "text-purple-400/60";
+
+  return (
+    <div
+      className={`${hidden ? "hidden" : ""} relative w-full aspect-[16/9] rounded-t-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br ${
+        category === "news"
+          ? "from-blue-50 to-blue-100"
+          : category === "press"
+            ? "from-amber-50 to-amber-100"
+            : "from-purple-50 to-purple-100"
+      }`}
+      aria-hidden="true"
+    >
+      <Icon className={`w-14 h-14 ${iconColor}`} strokeWidth={1.5} />
+    </div>
+  );
+}
+
 export function NewsCard({ post }: { post: NewsCardData }) {
   const categoryLabel = NEWS_CATEGORY_LABEL[post.category];
   const categoryColor = NEWS_CATEGORY_COLOR[post.category];
@@ -68,36 +95,23 @@ export function NewsCard({ post }: { post: NewsCardData }) {
             중복 회피하고 시각요소만 유지 (그라디언트 + 점·선 패턴).
             rounded-t-3xl 명시: Card 기본 *:img:first-child rounded-t-xl 덮어쓰기. */}
         {post.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={post.thumbnail_url}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="w-full aspect-[16/9] object-cover bg-grey-100 rounded-t-3xl"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={post.thumbnail_url}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full aspect-[16/9] object-cover bg-grey-100 rounded-t-3xl"
+              onError={(event) => {
+                event.currentTarget.classList.add("hidden");
+                event.currentTarget.nextElementSibling?.classList.remove("hidden");
+              }}
+            />
+            <NewsThumbnailFallback category={post.category} hidden />
+          </>
         ) : (
-          <div
-            className={`relative w-full aspect-[16/9] rounded-t-3xl overflow-hidden flex items-center justify-center bg-gradient-to-br ${
-              post.category === "news"
-                ? "from-blue-50 to-blue-100"
-                : post.category === "press"
-                  ? "from-amber-50 to-amber-100"
-                  : "from-purple-50 to-purple-100"
-            }`}
-            aria-hidden="true"
-          >
-            {(() => {
-              const Icon = NEWS_CATEGORY_ICON[post.category];
-              const iconColor =
-                post.category === "news"
-                  ? "text-blue-400/60"
-                  : post.category === "press"
-                    ? "text-amber-500/60"
-                    : "text-purple-400/60";
-              return <Icon className={`w-14 h-14 ${iconColor}`} strokeWidth={1.5} />;
-            })()}
-          </div>
+          <NewsThumbnailFallback category={post.category} />
         )}
 
         <CardContent className="p-5 max-md:p-4">
