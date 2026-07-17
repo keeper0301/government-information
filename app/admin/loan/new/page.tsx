@@ -112,7 +112,7 @@ export default async function NewLoanProgramPage({
             <h2 className="text-sm font-bold text-grey-900 mb-4">필수 정보</h2>
             <div className="space-y-4">
               <Field label="정책명 (title) *" name="title" required maxLength={500} placeholder="예: 전남 소상공인 긴급 운영자금" defaultValue={prefill.title} />
-              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전라남도청" defaultValue={prefill.source} />
+              <Field label="출처 기관 (source) *" name="source" required maxLength={200} placeholder="예: 전남도청" defaultValue={prefill.source} />
               <Field label="신청 URL (apply_url) *" name="apply_url" required type="url" defaultValue={prefill.apply_url} />
 
               <label className="block">

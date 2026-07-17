@@ -112,6 +112,11 @@ export async function RegionMap() {
 
 // 단일 시·도 박스 — 색 강도 + 지역명 + 카운트 + click 링크
 // 모바일: 좁은 width 대비 padding·텍스트 한 단계 작게 + 텍스트 ellipsis 방어
+function regionCellLabel(name: string): string[] {
+  if (name === "전남광주통합특별시") return ["전남광주", "통합"];
+  return [name];
+}
+
 function RegionCell({
   name,
   count,
@@ -122,6 +127,7 @@ function RegionCell({
   max: number;
 }) {
   const cls = intensityClass(count, max);
+  const labelLines = regionCellLabel(name);
   return (
     <TrackedLink
       href={`/welfare?region=${encodeURIComponent(name)}`}
@@ -130,8 +136,12 @@ function RegionCell({
       title={`${name} — 진행 중 공고 ${count.toLocaleString()}건`}
       className={`block rounded-xl px-2 py-3 max-md:px-1 max-md:py-2 text-center no-underline transition-all hover:scale-[1.04] hover:shadow-md ${cls}`}
     >
-      <div className="text-[12px] max-md:text-[10px] font-bold tracking-[-0.01em] mb-0.5">
-        {name}
+      <div className="text-[12px] max-md:text-[10px] font-bold tracking-[-0.01em] mb-0.5 leading-tight min-h-[1.2em]">
+        {labelLines.map((line) => (
+          <span key={line} className="block">
+            {line}
+          </span>
+        ))}
       </div>
       <div className="text-[14px] max-md:text-[12px] font-extrabold tabular-nums">
         {count.toLocaleString()}

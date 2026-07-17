@@ -170,7 +170,7 @@ describe("press ingest confirm payloads", () => {
       title: "전남 청년 주거비 지원",
       category: "주거",
       region: "전라남도",
-      source: "전라남도청",
+      source: "전남도청",
       source_code: "press_l2_confirm",
       source_id: "11111111-1111-1111-1111-111111111111",
       apply_url: "https://example.go.kr/apply",
@@ -210,7 +210,7 @@ describe("press ingest confirm payloads", () => {
     });
     expect(payload).toMatchObject({
       category: "정책자금",
-      source: "전라남도청",
+      source: "전남도청",
       source_code: "press_l2_confirm",
       source_id: "11111111-1111-1111-1111-111111111111",
       loan_amount: "최대 5,000만원",

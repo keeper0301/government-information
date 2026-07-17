@@ -11,6 +11,7 @@ import {
 } from "@/lib/listing-sources";
 export { calcDday } from "@/lib/utils";
 import { calcDday } from "@/lib/utils";
+import { formatSourceName } from "@/lib/source-display";
 
 // 홈 개인화용 경량 프로필 타입 (user_profiles 에서 select 한 세 필드만)
 export type ProfileLite = {
@@ -79,7 +80,7 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     target: w.target || "전체",
     description: w.description || "",
     amount: w.benefits || "",
-    source: w.source,
+    source: formatSourceName(w.source),
     dday: calcDday(w.apply_end),
     icon: categoryIconMap[w.category] || "house",
     type: "welfare",
@@ -104,7 +105,7 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     target: l.target || "전체",
     description: l.description || "",
     amount: parts.join(" · "),
-    source: l.source,
+    source: formatSourceName(l.source),
     dday: calcDday(l.apply_end),
     icon: categoryIconMap[l.category] || "coin",
     type: "loan",
