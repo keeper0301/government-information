@@ -32,8 +32,16 @@ interface VercelWebhookPayload {
 
 const CANONICAL_ORIGIN = "https://www.keepioo.com";
 const DEPLOY_SMOKE_PATHS = [
-  { path: "/login", cache: "public, s-maxage=3600" },
-  { path: "/signup", cache: "public, s-maxage=3600" },
+  {
+    path: "/login",
+    cache: "public, s-maxage=3600",
+    text: "관심 지역·정책 알림을 놓치지 않게 저장해드려요",
+  },
+  {
+    path: "/signup",
+    cache: "public, s-maxage=3600",
+    text: "무료로 맞춤 정책 알림 시작하기",
+  },
   { path: "/help", cache: "public, s-maxage=86400" },
   { path: "/guides", cache: "public, s-maxage=60" },
   { path: "/admin", cache: "private" },
@@ -78,14 +86,19 @@ async function runProductionSmoke(): Promise<{
   for (const item of DEPLOY_SMOKE_PATHS) {
     try {
       const response = await fetch(`${CANONICAL_ORIGIN}${item.path}`, {
-        method: "HEAD",
+        method: item.text ? "GET" : "HEAD",
         redirect: "manual",
         headers: { "User-Agent": "keepioo-vercel-deploy-smoke/1.0" },
       });
       const cache = response.headers.get("cache-control") ?? "";
-      const pass = response.status < 500 && cache.toLowerCase().includes(item.cache.toLowerCase());
+      const html = item.text ? await response.text() : "";
+      const cacheOk = response.status < 500 && cache.toLowerCase().includes(item.cache.toLowerCase());
+      const textOk = item.text ? html.includes(item.text) : true;
+      const pass = cacheOk && textOk;
       ok &&= pass;
-      lines.push(`${pass ? "✓" : "✗"} ${item.path} ${response.status} ${cache || "cache-control 없음"}`);
+      lines.push(
+        `${pass ? "✓" : "✗"} ${item.path} ${response.status} ${cache || "cache-control 없음"}${item.text ? ` ux=${textOk ? "ok" : "missing"}` : ""}`,
+      );
     } catch (error) {
       ok = false;
       lines.push(`✗ ${item.path} smoke 실패: ${error instanceof Error ? error.message : String(error)}`);
