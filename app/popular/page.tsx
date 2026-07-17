@@ -48,8 +48,11 @@ const CATEGORIES = [
   { value: "문화", label: "문화·여가" },
 ] as const;
 
-// 17개 광역 짧은 이름 + 사이트 통합 권역
-const PROVINCE_SHORT_NAMES = ["전남광주통합특별시", ...Object.keys(PROVINCE_SHORT_TO_FULL)];
+// 17개 광역 짧은 이름 + 사이트 통합 권역. 광주/전남은 통합 권역으로만 노출한다.
+const PROVINCE_SHORT_NAMES = [
+  "전남광주통합특별시",
+  ...Object.keys(PROVINCE_SHORT_TO_FULL).filter((name) => name !== "광주" && name !== "전남"),
+];
 
 type SearchParams = {
   tab?: string;

@@ -14,6 +14,7 @@ import { Newspaper, Megaphone, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cleanDescription, formatKoreanDate, stripHtmlTags } from "@/lib/utils";
+import { safeNewsThumbnailUrl } from "@/lib/news-thumbnail";
 
 export type NewsCategory = "news" | "press" | "policy-doc";
 
@@ -83,6 +84,7 @@ export function NewsCard({ post }: { post: NewsCardData }) {
   const categoryLabel = NEWS_CATEGORY_LABEL[post.category];
   const categoryColor = NEWS_CATEGORY_COLOR[post.category];
   const dateLabel = formatKoreanDate(post.published_at);
+  const thumbnailUrl = safeNewsThumbnailUrl(post.thumbnail_url, post.source_outlet);
 
   return (
     <Link href={`/news/${post.slug}`} className="block no-underline">
@@ -94,11 +96,11 @@ export function NewsCard({ post }: { post: NewsCardData }) {
             placeholder: 카드 메타 영역에 카테고리 배지·제목이 이미 노출되니
             중복 회피하고 시각요소만 유지 (그라디언트 + 점·선 패턴).
             rounded-t-3xl 명시: Card 기본 *:img:first-child rounded-t-xl 덮어쓰기. */}
-        {post.thumbnail_url ? (
+        {thumbnailUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={post.thumbnail_url}
+              src={thumbnailUrl}
               alt=""
               loading="lazy"
               decoding="async"

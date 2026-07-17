@@ -29,6 +29,7 @@ import { HideNewsButton } from "./HideNewsButton";
 import { HiddenNewsNotice } from "./HiddenNewsNotice";
 import { AdminRestoreBanner } from "./AdminRestoreBanner";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { safeNewsThumbnailUrl } from "@/lib/news-thumbnail";
 
 export const revalidate = 3600; // 상세는 갱신 적어 1시간 ISR
 
@@ -63,7 +64,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("news_posts")
-    .select("title, summary, thumbnail_url, category, is_hidden, classified_at, ai_commentary, body")
+    .select("title, summary, thumbnail_url, source_outlet, category, is_hidden, classified_at, ai_commentary, body")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -100,7 +101,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // 썸네일 없는 뉴스는 사이트 기본 OG 이미지로 fallback — 카카오톡·페이스북 공유
   // 미리보기가 빈 회색 박스 안 나오게. 기본 OG 는 /opengraph-image (Next.js 자동).
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
-  const ogImage = data.thumbnail_url || `${siteUrl}/opengraph-image`;
+  const safeThumbnail = safeNewsThumbnailUrl(data.thumbnail_url, data.source_outlet);
+  const ogImage = safeThumbnail || `${siteUrl}/opengraph-image`;
   // summary 는 collector 가 raw body 앞부분을 잘라 저장 → &middot;/&hellip; 등 엔티티가
   // 남을 수 있음(특히 helper 비사용 collector). SEO/OG description 은 화면 cleanDescription
   // 을 안 거치므로 여기서 stripHtmlTags 로 엔티티 디코드 + 한 줄 정리(2026-06-03).
@@ -184,6 +186,7 @@ export default async function NewsDetailPage({ params }: Props) {
     NEWS_CATEGORY_COLOR[post.category as NewsCategory] ??
     "bg-grey-100 text-grey-700";
   const dateLabel = formatKoreanDate(post.published_at);
+  const safeThumbnail = safeNewsThumbnailUrl(post.thumbnail_url, post.source_outlet);
   // RSS body 는 평문 한 덩어리로 저장돼 가독성이 매우 떨어짐.
   // paragraphizeNewsBody 로 한국어 종결 어미 기준 자동 단락 분할.
   const cleanedBody = post.body
@@ -209,7 +212,7 @@ export default async function NewsDetailPage({ params }: Props) {
     "@type": "NewsArticle",
     headline: cleanTitle,
     description: post.summary ? stripHtmlTags(post.summary) : undefined,
-    image: post.thumbnail_url || undefined,
+    image: safeThumbnail || undefined,
     datePublished: post.published_at,
     dateModified: post.updated_at || post.published_at,
     author: {
@@ -314,11 +317,11 @@ export default async function NewsDetailPage({ params }: Props) {
         )}
       </div>
 
-      {/* 썸네일 — korea.kr 절대경로 그대로 (재호스팅 금지, eslint 예외) */}
-      {post.thumbnail_url && (
+      {/* 썸네일 — 안전한 first-party HTTPS 이미지만 렌더. 외부 언론사 이미지는 인증서/핫링크 실패 방지를 위해 생략 */}
+      {safeThumbnail && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={post.thumbnail_url}
+          src={safeThumbnail}
           alt=""
           className="w-full aspect-[16/9] object-cover rounded-2xl mb-8 bg-grey-100"
         />
