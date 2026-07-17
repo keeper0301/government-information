@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { config } from "@/proxy";
 
 describe("proxy matcher", () => {
-  it("keeps protected paths and selected public cache-header paths covered without restoring the broad public catch-all", () => {
-    expect(config.matcher).toContain("/help");
-    expect(config.matcher).toContain("/guides");
-    expect(config.matcher).toContain("/login");
+  it("keeps protected paths covered without restoring public page proxy matchers", () => {
+    expect(config.matcher).not.toContain("/help");
+    expect(config.matcher).not.toContain("/guides");
+    expect(config.matcher).not.toContain("/login");
     expect(config.matcher).toContain("/admin/:path*");
     expect(config.matcher).toContain("/mypage/:path*");
     expect(config.matcher).toContain("/alerts/:path*");

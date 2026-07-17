@@ -6,6 +6,72 @@
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
         { "key": "Content-Disposition", "value": "" }
       ]
+    },
+    {
+      "source": "/help",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/privacy",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/terms",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/refund",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/consult",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/login",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/signup",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/signup/sent",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/forgot-password",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/reset-password",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=86400, stale-while-revalidate=31449600" }
+      ]
+    },
+    {
+      "source": "/guides",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=60, stale-while-revalidate=31535940" }
+      ]
     }
   ],
   "functions": {
