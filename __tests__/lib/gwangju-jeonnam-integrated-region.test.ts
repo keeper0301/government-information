@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getDistrictsForRegion, REGION_OPTIONS } from "@/lib/profile-options";
 import { getRegionMatchPatterns, getRegionPageByCode, REGION_PAGE_LINKS, REGION_PAGE_STATIC_PARAMS } from "@/lib/regions";
+import { PUBLIC_REGION_TAGS } from "@/lib/tags/taxonomy";
 import { formatProvinceDisplay, formatRegionDisplay } from "@/lib/region-display";
 import {
   evaluateRegion,
@@ -14,6 +15,9 @@ describe("전남광주통합특별시 통합 권역", () => {
     expect(REGION_OPTIONS).toContain("전남광주통합특별시");
     expect(REGION_OPTIONS).not.toContain("광주");
     expect(REGION_OPTIONS).not.toContain("전남");
+    expect(PUBLIC_REGION_TAGS).toContain("전남광주통합특별시");
+    expect(PUBLIC_REGION_TAGS).not.toContain("광주");
+    expect(PUBLIC_REGION_TAGS).not.toContain("전남");
     expect(getRegionMatchPatterns("전남광주통합특별시")).toEqual([
       "전남광주통합특별시",
       "광주·전남",
