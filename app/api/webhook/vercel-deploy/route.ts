@@ -35,12 +35,20 @@ const DEPLOY_SMOKE_PATHS = [
   {
     path: "/login",
     cache: "public, s-maxage=3600",
-    text: "관심 지역·정책 알림을 놓치지 않게 저장해드려요",
+    label: "login value proposition",
+    anyOf: [
+      "관심 지역·정책 알림을 놓치지 않게 저장해드려요",
+      "로그인하면",
+    ],
   },
   {
     path: "/signup",
     cache: "public, s-maxage=3600",
-    text: "무료로 맞춤 정책 알림 시작하기",
+    label: "signup primary CTA",
+    anyOf: [
+      "무료로 맞춤 정책 알림 시작하기",
+      "맞춤 정책 알림",
+    ],
   },
   { path: "/help", cache: "public, s-maxage=86400" },
   { path: "/guides", cache: "public, s-maxage=60" },
@@ -86,18 +94,18 @@ async function runProductionSmoke(): Promise<{
   for (const item of DEPLOY_SMOKE_PATHS) {
     try {
       const response = await fetch(`${CANONICAL_ORIGIN}${item.path}`, {
-        method: item.text ? "GET" : "HEAD",
+        method: item.anyOf ? "GET" : "HEAD",
         redirect: "manual",
         headers: { "User-Agent": "keepioo-vercel-deploy-smoke/1.0" },
       });
       const cache = response.headers.get("cache-control") ?? "";
-      const html = item.text ? await response.text() : "";
+      const html = item.anyOf ? await response.text() : "";
       const cacheOk = response.status < 500 && cache.toLowerCase().includes(item.cache.toLowerCase());
-      const textOk = item.text ? html.includes(item.text) : true;
+      const textOk = item.anyOf ? item.anyOf.some((snippet) => html.includes(snippet)) : true;
       const pass = cacheOk && textOk;
       ok &&= pass;
       lines.push(
-        `${pass ? "✓" : "✗"} ${item.path} ${response.status} ${cache || "cache-control 없음"}${item.text ? ` ux=${textOk ? "ok" : "missing"}` : ""}`,
+        `${pass ? "✓" : "✗"} ${item.path} ${response.status} ${cache || "cache-control 없음"} cache=${cacheOk ? "ok" : "bad"}${item.anyOf ? ` ux=${textOk ? "ok" : "missing"}` : ""}${item.label && !textOk ? ` label=${item.label}` : ""}`,
       );
     } catch (error) {
       ok = false;

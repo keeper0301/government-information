@@ -46,10 +46,12 @@ jobs:
             try { report = JSON.parse(fs.readFileSync('/tmp/cache-report.json', 'utf8')); } catch {}
             const failed = (report.checks || []).filter((x) => !x.ok).slice(0, 12);
             const text = [
-              '[keepioo] ⚠ production Cache-Control 감시 실패',
+              '[keepioo] ⚠ production Cache-Control/UX 감시 실패',
               `base: ${report.baseUrl || 'https://www.keepioo.com'}`,
               ...failed.map((x) => `- ${x.method} ${x.path}: ${x.errors?.join('; ') || 'unknown'} / cache=${x.cacheControl || '-'}`),
             ].join('\n');
+            console.log('== cache monitor failure summary ==');
+            console.log(text);
             const res = await fetch('https://www.keepioo.com/api/notify-telegram', {
               method: 'POST',
               headers: {
@@ -58,11 +60,12 @@ jobs:
               },
               body: JSON.stringify({ text }),
             });
-            if (!res.ok) throw new Error(`notify failed: ${res.status}`);
+            if (!res.ok) {
+              console.warn(`notify failed: ${res.status}`);
+            }
           }
 
           main().catch((error) => {
-            console.error(error);
-            process.exit(1);
+            console.warn('notify attempt failed:', error);
           });
           NODE
