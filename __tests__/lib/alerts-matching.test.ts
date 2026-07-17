@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeAlertKeyword } from "@/lib/alerts/matching";
+import { expandRegionTagsForAlertMatch, sanitizeAlertKeyword } from "@/lib/alerts/matching";
 
 // 2026-06-05 코드리뷰 P1 회귀 방어 — 사용자 알림 keyword 가 PostgREST .or() 필터에
 // escape 없이 보간되던 인젝션 fix. 쉼표·괄호·% 가 필터 문법을 깨면 그 테이블 매칭이
@@ -40,5 +40,29 @@ describe("sanitizeAlertKeyword — PostgREST .or() 메타문자 제거", () => {
 
   it("점(.)은 보존한다 — PostgREST .or() value 내부 점은 안전(구분자 아님)", () => {
     expect(sanitizeAlertKeyword("3.5억")).toBe("3.5억");
+  });
+});
+
+describe("expandRegionTagsForAlertMatch — 통합 권역 알림 매칭 alias", () => {
+  it("전남광주통합특별시는 광주/전남 legacy 정책 태그까지 매칭 후보에 포함한다", () => {
+    expect(expandRegionTagsForAlertMatch(["전남광주통합특별시"])).toEqual([
+      "전남광주통합특별시",
+      "광주·전남",
+      "광주전남",
+      "광주광역시",
+      "광주시",
+      "광주",
+      "전라남도",
+      "전남",
+    ]);
+  });
+
+  it("다른 지역과 함께 들어와도 중복 없이 확장한다", () => {
+    const expanded = expandRegionTagsForAlertMatch(["전남광주통합특별시", "서울"]);
+    expect(expanded).toContain("서울특별시");
+    expect(expanded).toContain("서울");
+    expect(expanded).toContain("광주");
+    expect(expanded).toContain("전남");
+    expect(new Set(expanded).size).toBe(expanded.length);
   });
 });

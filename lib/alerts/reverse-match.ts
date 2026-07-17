@@ -11,7 +11,7 @@
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AlertRule } from "./matching";
+import { expandRegionTagsForAlertMatch, type AlertRule } from "./matching";
 
 // 매칭 입력 — welfare/loan_programs 의 매칭 관련 컬럼 발췌
 export type ProgramTagsForMatch = {
@@ -53,7 +53,7 @@ function matchProgramAgainstRule(
   const reasons: string[] = [];
 
   if (rule.region_tags.length > 0) {
-    if (!arrayOverlap(rule.region_tags, program.region_tags)) {
+    if (!arrayOverlap(expandRegionTagsForAlertMatch(rule.region_tags), program.region_tags)) {
       return { matched: false, reasons: [] };
     }
     reasons.push("region");
