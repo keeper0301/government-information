@@ -119,11 +119,14 @@ export default function SignupPage() {
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-3">
         회원가입
       </h1>
-      <p className="text-[15px] text-grey-600 mb-8 leading-[1.6]">
+      <p className="text-[15px] text-grey-600 mb-4 leading-[1.6]">
         소셜 계정으로 빠르게 시작하거나
         <br />
         이메일로 가입하세요.
       </p>
+      <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[13px] leading-[1.6] text-blue-700">
+        가입하면 관심 지역·나이·상황에 맞는 정책을 저장하고 새 알림을 받을 수 있어요.
+      </div>
 
       {error && (
         <div className="bg-red/10 border border-red/30 rounded-lg p-3 mb-4 text-sm text-red leading-[1.5]">
@@ -275,8 +278,11 @@ export default function SignupPage() {
           disabled={submitting}
           className="w-full py-3 bg-blue-500 text-white border-none rounded-lg text-[15px] font-semibold font-pretendard cursor-pointer hover:bg-blue-600 transition-colors disabled:opacity-50"
         >
-          {submitting ? "가입 중..." : "회원가입"}
+          {submitting ? "가입 중..." : "무료로 맞춤 정책 알림 시작하기"}
         </button>
+        <p className="mt-3 text-center text-[12px] leading-[1.5] text-grey-500">
+          확인 메일을 누르면 바로 가입이 완료돼요. 스팸함도 함께 확인해주세요.
+        </p>
       </form>
 
       {/* 이미 가입한 사용자를 위한 로그인 링크 */}

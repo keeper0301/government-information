@@ -57,11 +57,14 @@ export default function ForgotPasswordPage() {
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-3">
         비밀번호 재설정
       </h1>
-      <p className="text-[15px] text-grey-600 mb-8 leading-[1.6]">
+      <p className="text-[15px] text-grey-600 mb-4 leading-[1.6]">
         가입한 이메일을 입력하시면
         <br />
         비밀번호를 새로 설정할 수 있는 링크를 보내드려요.
       </p>
+      <div className="mb-6 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-[13px] leading-[1.6] text-amber-700">
+        보안을 위해 가입 여부는 알려드리지 않아요. 메일이 없다면 주소 오타와 스팸함을 먼저 확인해주세요.
+      </div>
 
       {error && (
         <div className="bg-red/10 border border-red/30 rounded-lg p-3 mb-4 text-sm text-red leading-[1.5]">

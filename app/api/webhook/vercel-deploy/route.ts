@@ -30,6 +30,16 @@ interface VercelWebhookPayload {
   createdAt?: number;
 }
 
+const CANONICAL_ORIGIN = "https://www.keepioo.com";
+const DEPLOY_SMOKE_PATHS = [
+  { path: "/login", cache: "public, s-maxage=3600" },
+  { path: "/signup", cache: "public, s-maxage=3600" },
+  { path: "/help", cache: "public, s-maxage=86400" },
+  { path: "/guides", cache: "public, s-maxage=60" },
+  { path: "/admin", cache: "private" },
+  { path: "/?ref=ABCDEF", cache: "private" },
+];
+
 function verifySignature(rawBody: string, signature: string | null): boolean {
   const secret = process.env.VERCEL_WEBHOOK_SECRET;
   if (!secret || !signature) return false;
@@ -58,6 +68,33 @@ async function notifyTelegram(text: string): Promise<void> {
   }).catch(() => undefined);
 }
 
+async function runProductionSmoke(): Promise<{
+  ok: boolean;
+  lines: string[];
+}> {
+  const lines: string[] = [];
+  let ok = true;
+
+  for (const item of DEPLOY_SMOKE_PATHS) {
+    try {
+      const response = await fetch(`${CANONICAL_ORIGIN}${item.path}`, {
+        method: "HEAD",
+        redirect: "manual",
+        headers: { "User-Agent": "keepioo-vercel-deploy-smoke/1.0" },
+      });
+      const cache = response.headers.get("cache-control") ?? "";
+      const pass = response.status < 500 && cache.toLowerCase().includes(item.cache.toLowerCase());
+      ok &&= pass;
+      lines.push(`${pass ? "✓" : "✗"} ${item.path} ${response.status} ${cache || "cache-control 없음"}`);
+    } catch (error) {
+      ok = false;
+      lines.push(`✗ ${item.path} smoke 실패: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  return { ok, lines };
+}
+
 export async function POST(request: NextRequest) {
   // raw body 로 받음 (서명 검증용)
   let rawBody: string;
@@ -82,28 +119,63 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  // 실패 이벤트 만 처리 — 성공은 무시 (noise 방지)
   const isFailureEvent =
     payload.type === "deployment.error" || payload.type === "deployment.failed";
-  if (!isFailureEvent) {
+  const isSuccessEvent =
+    payload.type === "deployment.succeeded" || payload.type === "deployment.ready";
+  const target = payload.payload?.target ?? "unknown";
+
+  if (!isFailureEvent && !isSuccessEvent) {
     return NextResponse.json({ ok: true, ignored: payload.type });
   }
 
+  if (isSuccessEvent && target !== "production") {
+    return NextResponse.json({ ok: true, ignored: payload.type, target });
+  }
+
   const project = payload.payload?.project?.name ?? "unknown";
-  const target = payload.payload?.target ?? "unknown";
   const url = payload.payload?.deployment?.url ?? "";
   const commitMsg = payload.payload?.deployment?.meta?.githubCommitMessage ?? "";
   const ref = payload.payload?.deployment?.meta?.githubCommitRef ?? "";
 
+  if (isFailureEvent) {
+    const text = [
+      `[keepioo] ⚠ Vercel deploy 실패`,
+      `프로젝트: ${project} / target: ${target}`,
+      ref ? `브랜치: ${ref}` : "",
+      commitMsg ? `commit: ${commitMsg.slice(0, 100)}` : "",
+      url ? `https://${url}` : "",
+      "",
+      "권고: vercel.com/keeper0301-8938s-projects/government-information/deployments 에서 로그 확인",
+      "직전 commit 으로 rollback 하려면 git revert HEAD + push",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    await notifyTelegram(text);
+
+    try {
+      await logAdminAction({
+        actorId: null,
+        action: "vercel_deploy_failed",
+        details: { project, target, url, commitMsg, ref, type: payload.type },
+      });
+    } catch (e) {
+      console.warn("[vercel-deploy-webhook] audit 실패:", e);
+    }
+
+    return NextResponse.json({ ok: true, notified: true });
+  }
+
+  const smoke = await runProductionSmoke();
   const text = [
-    `[keepioo] ⚠ Vercel deploy 실패`,
+    smoke.ok ? `[keepioo] ✅ production deploy 완료 + smoke 통과` : `[keepioo] ⚠ production deploy 완료 후 smoke 실패`,
     `프로젝트: ${project} / target: ${target}`,
     ref ? `브랜치: ${ref}` : "",
     commitMsg ? `commit: ${commitMsg.slice(0, 100)}` : "",
     url ? `https://${url}` : "",
     "",
-    "권고: vercel.com/keeper0301-8938s-projects/government-information/deployments 에서 로그 확인",
-    "직전 commit 으로 rollback 하려면 git revert HEAD + push",
+    ...smoke.lines,
   ]
     .filter(Boolean)
     .join("\n");
@@ -113,12 +185,12 @@ export async function POST(request: NextRequest) {
   try {
     await logAdminAction({
       actorId: null,
-      action: "vercel_deploy_failed",
-      details: { project, target, url, commitMsg, ref, type: payload.type },
+      action: smoke.ok ? "vercel_deploy_smoke_passed" : "vercel_deploy_smoke_failed",
+      details: { project, target, url, commitMsg, ref, type: payload.type, smoke },
     });
   } catch (e) {
     console.warn("[vercel-deploy-webhook] audit 실패:", e);
   }
 
-  return NextResponse.json({ ok: true, notified: true });
+  return NextResponse.json({ ok: smoke.ok, notified: true, smoke });
 }
