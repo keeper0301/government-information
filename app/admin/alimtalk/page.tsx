@@ -260,21 +260,24 @@ const REASON_LABELS: Record<string, string> = {
 // Solapi 발송에 필요한 환경변수 목록. 각 항목의 존재 여부·길이만 UI 에 노출해
 // 값 유출 없이 "등록 여부" 감지 가능. provider 만 값 자체 표시 (공개돼도 OK).
 const REQUIRED_ENVS = [
-  { name: "KAKAO_ALIMTALK_PROVIDER", exposeValue: true },
-  { name: "SOLAPI_API_KEY", exposeValue: false },
-  { name: "SOLAPI_API_SECRET", exposeValue: false },
-  { name: "KAKAO_CHANNEL_PFID", exposeValue: false },
-  { name: "SOLAPI_TEMPLATE_ID_POLICY_NEW", exposeValue: false },
+  { name: "KAKAO_ALIMTALK_PROVIDER", exposeValue: true, required: true },
+  { name: "SOLAPI_API_KEY", exposeValue: false, required: true },
+  { name: "SOLAPI_API_SECRET", exposeValue: false, required: true },
+  { name: "KAKAO_CHANNEL_PFID", exposeValue: false, required: true },
+  { name: "SOLAPI_TEMPLATE_ID_POLICY_NEW_V4", exposeValue: false, required: false },
+  { name: "SOLAPI_TEMPLATE_ID_POLICY_NEW_V3", exposeValue: false, required: false },
+  { name: "SOLAPI_TEMPLATE_ID_POLICY_NEW", exposeValue: false, required: false },
 ] as const;
 
 type EnvStatus = {
   name: string;
   present: boolean;
+  required: boolean;
   displayValue: string | null;
 };
 
 function checkEnvStatus(): { envs: EnvStatus[]; allSet: boolean } {
-  const envs: EnvStatus[] = REQUIRED_ENVS.map(({ name, exposeValue }) => {
+  const envs: EnvStatus[] = REQUIRED_ENVS.map(({ name, exposeValue, required }) => {
     const raw = process.env[name];
     const present = typeof raw === "string" && raw.trim().length > 0;
     let displayValue: string | null = null;
@@ -286,9 +289,11 @@ function checkEnvStatus(): { envs: EnvStatus[]; allSet: boolean } {
         displayValue = `${raw.length}자`;
       }
     }
-    return { name, present, displayValue };
+    return { name, present, required, displayValue };
   });
-  const allSet = envs.every((e) => e.present);
+  const coreSet = envs.filter((e) => e.required).every((e) => e.present);
+  const templateSet = envs.some((e) => e.name.startsWith("SOLAPI_TEMPLATE_ID_") && e.present);
+  const allSet = coreSet && templateSet;
   return { envs, allSet };
 }
 
@@ -371,12 +376,13 @@ export default async function AlimtalkAdminPage() {
           >
             {envsAllSet ? (
               <>
-                ✅ 환경변수 5종 모두 설정되었습니다. 아래 <strong>테스트 발송</strong> 폼에서
-                본인 번호로 POLICY_NEW 알림톡이 정상 수신되는지 확인해 주세요.
+                ✅ Solapi 핵심 환경변수와 템플릿 ID 1종 이상이 설정되었습니다. 아래{" "}
+                <strong>테스트 발송</strong> 폼에서 본인 번호로 선택한 템플릿 알림톡이
+                정상 수신되는지 확인해 주세요.
               </>
             ) : (
               <>
-                ⚠️ 아직 설정되지 않은 환경변수가 있습니다.{" "}
+                ⚠️ 아직 설정되지 않은 핵심 환경변수가 있거나 승인된 템플릿 ID가 없습니다.{" "}
                 <a
                   href="https://vercel.com/dashboard"
                   target="_blank"

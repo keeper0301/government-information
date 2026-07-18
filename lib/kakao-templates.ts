@@ -8,8 +8,9 @@
 //   1) 아래 문안을 카카오비즈니스 파트너센터 (business.kakao.com/profiles) 에 등록
 //   2) 카카오 심사 통과 (영업일 1~3일)
 //   3) 대행사(솔라피) 콘솔에서 해당 템플릿의 고유 ID 발급 받음
-//   4) Vercel 환경변수 `SOLAPI_TEMPLATE_ID_POLICY_NEW` 에 해당 ID 저장
-//   5) `sendAlimtalk({ templateCode: 'POLICY_NEW', ... })` 호출로 발송
+//   4) Vercel 환경변수 `SOLAPI_TEMPLATE_ID_POLICY_NEW_V4` 에 해당 ID 저장
+//      (기존 승인 템플릿 사용 시 POLICY_NEW/POLICY_NEW_V3 도 fallback 가능)
+//   5) `sendAlimtalk({ templateCode: 'POLICY_NEW_V4', ... })` 호출로 발송
 //
 // 템플릿 수정이 필요하면:
 //   - 카카오 정책상 승인된 템플릿은 수정 불가 → 새 템플릿 등록 후 재심사
@@ -144,30 +145,44 @@
 //
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
-//  📝 (계획) POLICY_NEW_V4 — 발송자 정보 명시 강화 버전
+//  📝 POLICY_NEW_V4 — 발송자 정보 명시 강화 버전 (운영 심사 추천안)
 //
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
-//  배경: 정보통신망법 제50조의5(4) 는 광고성 정보에 한해 발송자 명칭·전화·
-//  주소 표기를 의무화함. v2/v3 는 정보성 분류라 본 의무 직접 적용 X 이지만,
-//  카카오·방통위 정책이 정보성에도 발송자 명시를 권장하는 추세 → 보수적
-//  대응 차원에서 v4 를 사전 준비.
+//  템플릿 명칭: 정책알리미_신규정책알림_v4_운영자명시
+//  메시지 유형: 기본형 (Basic)
+//  분류:        정보성
+//  카테고리:    서비스이용 > 기타
 //
-//  v3 본문 + 다음 한 줄 추가:
-//    문의: (주)키피오 / keeper0301@gmail.com
+//  ────── 본문 (v4.0, 2026-07-18 한국법 자체 점검 반영) ──────
+//  [keepioo] 새 맞춤 정책 알림
 //
-//  카카오 심사 통과된 템플릿 본문은 수정 불가 → 새 템플릿 코드(POLICY_NEW_V4)
-//  로 등록 후 SOLAPI_TEMPLATE_ID_POLICY_NEW_V4 환경변수 추가 + 본 파일에
-//  KakaoTemplateCode/KakaoTemplateVariables 분기 추가하면 코드 변경 최소화.
+//  #{user_name}님,
+//  #{rule_name} 조건에 맞는 새 정책이 등록되었습니다.
 //
-//  주의: 현재(2026-04-27) 시점에는 v3 본문 끝 안내문구
-//    "본 메시지는 ... keepioo 마이페이지에서 직접 등록 ... 해지 가능합니다."
-//  로 발송자(keepioo) 명칭과 해지 방법은 명시되어 있음. v4 등록 전에도 컴플라
-//  이언스상 즉각 위반은 아님.
+//  ▸ 정책명: #{title}
+//  ▸ 발표일: #{announced_at}
+//  ▸ 사장님 자격: #{eligibility_status}
+//  ▸ 지원 금액: #{benefit_summary}
+//  ▸ 신청 마감: #{deadline}
+//
+//  자세한 신청 조건과 절차는 아래에서 확인하실 수 있습니다.
+//
+//  ※ 본 메시지는 고객님께서 keepioo 마이페이지에서 요청하신 맞춤 정책
+//  알림 메시지로, 설정한 조건과 사장님 가게 정보에 해당하는 새로운 정책이
+//  있을 경우 매번 발송되는 정보성 메시지입니다. 수신을 원하지 않으실 경우
+//  마이페이지 > 알림 설정에서 언제든 해지 가능합니다.
+//
+//  문의: 키피오 / keeper0301@gmail.com
+//  ───────────────────
+//
+//  ────── 버튼 ──────
+//  1) 웹링크 | 자세히 보고 신청하기 | URL: https://www.keepioo.com#{detail_path}
+//  2) 웹링크 | 알림 설정 변경 | URL: https://www.keepioo.com/mypage/notifications
 //
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export type KakaoTemplateCode = "POLICY_NEW" | "POLICY_NEW_V3";
+export type KakaoTemplateCode = "POLICY_NEW" | "POLICY_NEW_V3" | "POLICY_NEW_V4";
 
 // 템플릿별 변수 스키마 — 타입 안전성 (오타·누락 방지)
 export type KakaoTemplateVariables = {
@@ -214,6 +229,24 @@ export type KakaoTemplateVariables = {
     /** 상세 페이지 경로 (POLICY_NEW 와 동일 구조) */
     detail_path: string;
   };
+  POLICY_NEW_V4: {
+    /** 사용자 이름 또는 닉네임 (예: "홍길동") */
+    user_name: string;
+    /** 사용자가 등록한 알림 규칙 이름 */
+    rule_name: string;
+    /** 정책 제목 */
+    title: string;
+    /** 정책 발표일 */
+    announced_at: string;
+    /** 자격 진단 결과 한 줄 */
+    eligibility_status: string;
+    /** 지원 금액 요약 */
+    benefit_summary: string;
+    /** 신청 마감 */
+    deadline: string;
+    /** 상세 페이지 경로 */
+    detail_path: string;
+  };
 };
 
 // Solapi 에 등록된 실제 템플릿 ID 로 매핑.
@@ -225,6 +258,8 @@ export function getSolapiTemplateId(code: KakaoTemplateCode): string | null {
       return process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW ?? null;
     case "POLICY_NEW_V3":
       return process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW_V3 ?? null;
+    case "POLICY_NEW_V4":
+      return process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW_V4 ?? null;
     default:
       return null;
   }
