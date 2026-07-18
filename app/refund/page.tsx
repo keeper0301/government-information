@@ -12,7 +12,7 @@ export default function RefundPage() {
     <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">환불정책</h1>
       <p className="text-[13px] text-grey-600 mb-8">
-        시행일자: 2026-06-15 · 운영자: 키피오 (사업자등록번호 657-24-02265 · 통신판매번호 2026-전남순천-7182)
+        시행일자: 2026-07-18 · 운영자: 키피오 (사업자등록번호 657-24-02265 · 통신판매번호 2026-전남순천-7182)
       </p>
 
       <div className="text-[15px] text-grey-700 leading-[1.8] space-y-7">
@@ -43,13 +43,14 @@ export default function RefundPage() {
           <p>다음 경우에는 결제 전액 환불이 가능합니다.</p>
           <ul className="list-disc pl-6 mt-2 space-y-1">
             <li>서비스 장애, 결제 오류 등 회사의 귀책사유로 유료 기능을 이용하지 못한 경우</li>
-            <li>결제 후 24시간 이내에 환불을 요청했고, 해당 기간 동안 유료 기능 사용 이력이 없는 경우</li>
+            <li>결제 후 7일 이내에 환불을 요청했고, 해당 기간 동안 유료 기능 사용 이력이 없는 경우</li>
           </ul>
         </Section>
 
         <Section title="5. 환불 제한">
           <ul className="list-disc pl-6 space-y-1">
             <li>디지털 정보 안내 서비스의 특성상, 현재 결제 주기의 미사용 일수에 대한 일할 환불은 원칙적으로 제공하지 않습니다.</li>
+            <li>결제 후 유료 기능을 사용하거나 맞춤형 유료 정보 제공이 시작된 경우에는 디지털 콘텐츠 제공 개시로 보아 청약철회가 제한될 수 있습니다.</li>
             <li>회원의 약관 위반으로 서비스 이용이 제한되거나 계약이 해지된 경우 환불이 제한될 수 있습니다.</li>
           </ul>
         </Section>
