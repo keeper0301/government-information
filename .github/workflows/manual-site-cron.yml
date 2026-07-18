@@ -34,6 +34,7 @@ on:
           - instagram-reels-render-dry
           - instagram-reels-render
           - instagram-comment-drafts
+          - apply-feature-usage-ddl117
       source:
         description: "감사 로그용 호출 출처"
         required: false
@@ -144,6 +145,10 @@ jobs:
               ;;
             instagram-comment-drafts)
               path="/api/cron/instagram-comment-drafts"
+              method="POST"
+              ;;
+            apply-feature-usage-ddl117)
+              path="/api/cron/apply-feature-usage-ddl117"
               method="POST"
               ;;
             *)
