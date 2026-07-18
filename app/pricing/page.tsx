@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTier, TIER_NAMES, TIER_PRICES, type Tier } from "@/lib/subscription";
 import { GaPageTracker } from "@/components/ga-page-tracker";
+import { parseRecommendedTier, type RecommendedTier } from "@/lib/pricing/recommended-tier";
 import { CheckoutLink } from "./checkout-link";
 
 export const metadata: Metadata = {
@@ -63,7 +64,13 @@ const PLANS: PlanInfo[] = [
   },
 ];
 
-export default async function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const recommendedTier = parseRecommendedTier(resolvedSearchParams);
   // 로그인 상태 + 현재 티어 조회 (없으면 free)
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -92,6 +99,7 @@ export default async function PricingPage() {
               plan={plan}
               currentTier={currentTier}
               isLoggedIn={Boolean(user)}
+              recommendedTier={recommendedTier}
             />
           ))}
         </div>
@@ -113,26 +121,33 @@ export default async function PricingPage() {
 // ============================================================
 // 단일 요금제 카드
 // ============================================================
-function PlanCard({ plan, currentTier, isLoggedIn }: {
+function PlanCard({ plan, currentTier, isLoggedIn, recommendedTier }: {
   plan: PlanInfo;
   currentTier: Tier;
   isLoggedIn: boolean;
+  recommendedTier: RecommendedTier;
 }) {
   const isCurrent = currentTier === plan.tier;
   const price = plan.tier === "free" ? 0 : TIER_PRICES[plan.tier];
-  const isHighlighted = Boolean(plan.highlight);
+  const isRecommended = recommendedTier === plan.tier;
+  const isHighlighted = Boolean(plan.highlight) || isRecommended;
 
-  // 카드 전체 스타일: 추천 티어는 더 진한 그림자 + 파란 테두리
+  // 카드 전체 스타일: 추천 티어는 더 진한 그림자 + 강조 테두리
   const cardClass = isHighlighted
-    ? "bg-white rounded-2xl border-2 border-blue-500 shadow-[0_8px_30px_rgba(49,130,246,0.15)] p-7 relative"
+    ? plan.tier === "pro"
+      ? "bg-white rounded-2xl border-2 border-amber-400 shadow-[0_8px_30px_rgba(245,158,11,0.18)] p-7 relative"
+      : "bg-white rounded-2xl border-2 border-blue-500 shadow-[0_8px_30px_rgba(49,130,246,0.15)] p-7 relative"
     : "bg-white rounded-2xl border border-grey-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-7";
+  const badgeClass = isRecommended && plan.tier === "pro"
+    ? "bg-amber-500 text-white"
+    : "bg-blue-500 text-white";
 
   return (
     <div className={cardClass}>
-      {/* "가장 인기" 뱃지 (추천 티어만) */}
+      {/* 추천/인기 뱃지 */}
       {isHighlighted && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[12px] font-bold px-3 py-1 rounded-full">
-          가장 인기
+        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[12px] font-bold px-3 py-1 rounded-full ${badgeClass}`}>
+          {isRecommended ? "추천 플랜" : "가장 인기"}
         </div>
       )}
 
