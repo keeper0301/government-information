@@ -20,8 +20,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // ━━━ 방침/약관 현재 버전 ━━━
 // 이 상수만 바꾸면 사용자에게 재동의 요청.
 // 본문이 바뀌면 반드시 같이 변경.
-export const PRIVACY_POLICY_VERSION = "2026-04-25";
-export const TERMS_VERSION = "2026-04-22";
+export const PRIVACY_POLICY_VERSION = "2026-07-18";
+export const TERMS_VERSION = "2026-07-18";
 export const KAKAO_MESSAGING_VERSION = "2026-04-24";
 
 // ━━━ 광고성 정보 수신동의 정기 확인 (정보통신망법 제50조의8) ━━━

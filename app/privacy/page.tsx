@@ -97,7 +97,7 @@ export default function PrivacyPage() {
         <Section title="2. 수집 방법">
           <ul className="list-disc pl-6 space-y-1">
             <li>회원가입 폼, 마이페이지 입력</li>
-            <li>카카오 / 구글 소셜 로그인 (사용자 동의 후 카카오·구글이 제공)</li>
+            <li>카카오 / 구글 / 페이스북 소셜 로그인 (사용자 동의 후 각 제공자가 전달)</li>
             <li>토스페이먼츠 결제 흐름 (빌링키 발급 시)</li>
             <li>서비스 이용 중 자동 생성·수집 (쿠키, 로그)</li>
           </ul>
@@ -141,11 +141,33 @@ export default function PrivacyPage() {
               <Row k="Resend Inc." w="이메일 발송" d="이메일 주소, 메시지 본문" />
               <Row k="토스페이먼츠" w="결제 처리·정기결제" d="이름, 카드 정보(직접 저장), 결제 금액" />
               <Row k="카카오" w="소셜 로그인·알림톡 발송" d="카카오 ID, 닉네임, 이메일, 휴대폰" />
+              <Row k="Meta Platforms, Inc." w="페이스북 소셜 로그인" d="페이스북 식별자, 이름·이메일 등 사용자가 동의한 정보" />
               <Row k="OpenAI / Google AI" w="AI 정책 상담" d="질문 텍스트 (개인정보 미포함)" />
               <Row k="Google" w="이용 분석 (GA4) · 광고 (AdSense)" d="익명 사용 통계, 광고 식별자" />
             </tbody>
           </table>
           <p className="text-[13px] text-grey-600 mt-2">위탁받은 자는 위탁 목적 외 사용·재제공이 금지되며, 위탁 종료 시 보유 정보를 즉시 파기합니다.</p>
+        </Section>
+
+        <Section title="5-1. 개인정보의 국외 이전">
+          <p>서비스 운영에 필요한 클라우드·인증·메일·분석·AI 도구 일부는 국외 사업자가 제공합니다. 이전은 서비스 이용 과정에서 암호화된 네트워크 전송으로 이루어지며, 사용자는 국외 이전을 거부할 수 있으나 이 경우 회원가입, 알림, 결제, AI 상담 등 일부 기능 이용이 제한될 수 있습니다.</p>
+          <table className="w-full mt-3 text-[14px] border border-grey-200">
+            <thead className="bg-grey-50">
+              <tr>
+                <th className="text-left p-2 border-b border-grey-200">이전받는 자</th>
+                <th className="text-left p-2 border-b border-grey-200">이전 국가</th>
+                <th className="text-left p-2 border-b border-grey-200">이전 항목·목적</th>
+                <th className="text-left p-2 border-b border-grey-200">보유·이용 기간</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TransferRow k="Supabase Inc." c="미국 등" d="회원 인증, DB 호스팅 — 이메일, 인증 토큰, 프로필" p="회원 탈퇴 또는 위탁 종료 시까지" />
+              <TransferRow k="Vercel Inc." c="미국 등" d="웹 호스팅·보안 로그 — 접속 로그, IP" p="법령상 보존기간 또는 위탁 종료 시까지" />
+              <TransferRow k="Resend Inc." c="미국 등" d="이메일 발송 — 이메일 주소, 메시지 본문" p="발송 목적 달성 또는 위탁 종료 시까지" />
+              <TransferRow k="Google LLC / OpenAI, L.L.C." c="미국 등" d="분석·광고·AI 상담 — 쿠키 식별자, 질문 텍스트 등" p="각 서비스 정책 및 위탁 종료 시까지" />
+              <TransferRow k="Meta Platforms, Inc." c="미국 등" d="페이스북 로그인 — 식별자, 이메일 등 동의 항목" p="회원 탈퇴 또는 연결 해제 시까지" />
+            </tbody>
+          </table>
         </Section>
 
         <Section title="6. 동의 철회 및 정보 수정·삭제">
@@ -263,6 +285,17 @@ function Row({ k, w, d }: { k: string; w: string; d: string }) {
       <td className="p-2 border-b border-grey-100 align-top font-medium text-grey-900">{k}</td>
       <td className="p-2 border-b border-grey-100 align-top">{w}</td>
       <td className="p-2 border-b border-grey-100 align-top text-grey-600 text-[13px]">{d}</td>
+    </tr>
+  );
+}
+
+function TransferRow({ k, c, d, p }: { k: string; c: string; d: string; p: string }) {
+  return (
+    <tr>
+      <td className="p-2 border-b border-grey-100 align-top font-medium text-grey-900">{k}</td>
+      <td className="p-2 border-b border-grey-100 align-top">{c}</td>
+      <td className="p-2 border-b border-grey-100 align-top text-grey-600 text-[13px]">{d}</td>
+      <td className="p-2 border-b border-grey-100 align-top text-grey-600 text-[13px]">{p}</td>
     </tr>
   );
 }
