@@ -46,6 +46,7 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.increment_feature_usage(UUID, TEXT, DATE) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.increment_feature_usage(UUID, TEXT, DATE) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.increment_feature_usage(UUID, TEXT, DATE) TO service_role;
 
 ALTER TABLE public.feature_usage_log ENABLE ROW LEVEL SECURITY;
