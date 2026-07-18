@@ -205,7 +205,7 @@ export default function ConsultPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="궁금한 점을 입력하세요"
-              className="flex-1 px-4 py-3 text-[15px] border border-grey-200 rounded-xl outline-none bg-transparent text-grey-900 font-pretendard placeholder:text-grey-400 focus:border-blue-500 transition-colors"
+              className="min-w-0 flex-1 px-4 py-3 text-[15px] border border-grey-200 rounded-xl outline-none bg-transparent text-grey-900 font-pretendard placeholder:text-grey-400 focus:border-blue-500 transition-colors"
             />
             <button
               onClick={() => handleSend()}
