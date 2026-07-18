@@ -8,6 +8,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
+import { getUserTier } from '@/lib/subscription';
+import { UpgradeCta } from '@/components/upgrade-cta';
 import { BusinessProfileForm, type BusinessFormState } from './business-form';
 import type {
   BusinessIndustry,
@@ -28,6 +30,33 @@ export default async function BusinessProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?next=/mypage/business');
+
+  const tier = await getUserTier(user.id);
+  if (tier === 'free') {
+    return (
+      <main className="pt-24 lg:pt-28 pb-20 max-w-[640px] mx-auto px-6 lg:px-10">
+        <Link
+          href="/mypage"
+          className="inline-flex items-center gap-1 text-[13px] text-grey-600 hover:text-grey-900 mb-5 -mx-2 px-2 py-2 rounded-md hover:bg-grey-50 transition-colors no-underline"
+        >
+          <span aria-hidden="true" className="text-[15px]">←</span>
+          <span>마이페이지</span>
+        </Link>
+
+        <p className="text-[13px] font-semibold text-blue-500 mb-3 tracking-wide">
+          Basic · 자영업자 자격 진단
+        </p>
+        <h1 className="text-[28px] font-extrabold tracking-[-1px] text-grey-900 mb-3 max-md:text-[24px]">
+          내 가게 정보
+        </h1>
+        <p className="text-[14px] text-grey-700 leading-[1.65] mb-4 max-w-[520px]">
+          매출·직원·업종을 입력해 소상공인 정책 자격을 자동으로 판정하는 기능은
+          베이직 플랜부터 이용할 수 있어요.
+        </p>
+        <UpgradeCta currentTier="free" source="business" />
+      </main>
+    );
+  }
 
   const { data: profile } = await supabase
     .from('business_profiles')

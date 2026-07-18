@@ -7,7 +7,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import {
   BUSINESS_INDUSTRY_OPTIONS,
   BUSINESS_REVENUE_OPTIONS,
@@ -71,17 +70,11 @@ export function BusinessProfileForm({
   async function handleSave() {
     setSaving(true);
     setError(null);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id !== userId) {
-      setError('로그인이 만료되었어요. 다시 로그인해주세요.');
-      setSaving(false);
-      return;
-    }
-    const { error: upsertError } = await supabase
-      .from('business_profiles')
-      .upsert({
-        user_id: user.id,
+    const res = await fetch('/api/business-profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
         industry: form.industry,
         revenue_scale: form.revenue_scale,
         employee_count: form.employee_count,
@@ -89,9 +82,11 @@ export function BusinessProfileForm({
         established_date: form.established_date,
         region: form.region,
         district: form.district,
-      });
-    if (upsertError) {
-      setError('저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.');
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(json.error || '저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.');
     } else {
       setSaved(true);
       router.refresh();
