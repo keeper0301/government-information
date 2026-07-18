@@ -7,6 +7,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getUserTier, hasMinTier } from "@/lib/subscription";
+
+const FREE_BOOKMARK_LIMIT = 5;
 
 export type ProgramType = "welfare" | "loan";
 
@@ -66,7 +69,22 @@ export async function toggleBookmark(
     return { ok: true, bookmarked: false };
   }
 
-  // 없음 → 추가
+  // 없음 → 추가. 무료 플랜은 가격표의 "관심 정책 무제한 = 베이직 이상" 약속에 맞춰 5건까지만 허용.
+  const tier = await getUserTier(user.id);
+  if (!hasMinTier(tier, "basic")) {
+    const { count, error: countError } = await supabase
+      .from("user_bookmarks")
+      .select("user_id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if (countError) return { ok: false, error: countError.message };
+    if ((count ?? 0) >= FREE_BOOKMARK_LIMIT) {
+      return {
+        ok: false,
+        error: `무료 플랜은 관심 정책을 ${FREE_BOOKMARK_LIMIT}건까지 저장할 수 있어요. 베이직 이상에서는 무제한으로 저장할 수 있습니다.`,
+      };
+    }
+  }
+
   const { error } = await supabase.from("user_bookmarks").insert({
     user_id: user.id,
     program_type: programType,

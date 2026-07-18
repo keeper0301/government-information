@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { createClient } from "@/lib/supabase/client";
 
 // 2026-05-21 — 위치별 slot/layout 분리 (#43).
 // AdSense console 에서 위치별 ad unit 생성 후 해당 env 등록하면 자동 분기.
@@ -67,9 +68,26 @@ export function getAdRenderState(node: Element): AdRenderState {
   return "pending";
 }
 
+export function isPaidSubscriptionActive(row: {
+  tier?: string | null;
+  status?: string | null;
+  current_period_end?: string | null;
+} | null | undefined): boolean {
+  if (!row || (row.tier !== "basic" && row.tier !== "pro")) return false;
+  if (row.status === "pending") return false;
+  if (row.status === "cancelled") {
+    const periodEnd = row.current_period_end
+      ? new Date(row.current_period_end).getTime()
+      : 0;
+    return periodEnd >= Date.now();
+  }
+  return ["active", "trialing", "charging", "past_due"].includes(row.status ?? "");
+}
+
 export function AdSlot({ format = "fluid", placement = "default" }: AdSlotProps) {
   const adRef = useRef<HTMLModElement | null>(null);
   const [renderState, setRenderState] = useState<AdRenderState>("pending");
+  const [paidCheck, setPaidCheck] = useState<"checking" | "show" | "hide">("checking");
 
   // placement 별 slot/layout 선택 + default fallback.
   const slotId = PLACEMENT_SLOTS[placement] ?? SLOT_DEFAULT;
@@ -79,6 +97,46 @@ export function AdSlot({ format = "fluid", placement = "default" }: AdSlotProps)
       : undefined;
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function checkPaidUser() {
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        setPaidCheck("show");
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          if (!cancelled) setPaidCheck("show");
+          return;
+        }
+
+        const { data } = await supabase
+          .from("subscriptions")
+          .select("tier, status, current_period_end")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!cancelled) {
+          setPaidCheck(isPaidSubscriptionActive(data) ? "hide" : "show");
+        }
+      } catch (err) {
+        console.warn("[AdSlot] paid tier check failed, showing ad:", err);
+        if (!cancelled) setPaidCheck("show");
+      }
+    }
+
+    void checkPaidUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (paidCheck !== "show") return;
     if (ADSENSE_REVIEW_MODE || !PUBLISHER_ID || !slotId) return;
     if (typeof window === "undefined") return;
 
@@ -114,14 +172,14 @@ export function AdSlot({ format = "fluid", placement = "default" }: AdSlotProps)
     // AdsenseLazyLoader can wait 10s before loading on idle pages.
     // Keep the fallback later than that so valid ads are not collapsed early.
     fallbackTimer = window.setTimeout(() => {
-      setRenderState((current) => (current === "pending" ? "empty" : current));
+      setRenderState((current: AdRenderState) => (current === "pending" ? "empty" : current));
     }, EMPTY_SLOT_FALLBACK_MS);
 
     return () => {
       observer?.disconnect();
       if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
     };
-  }, [slotId]);
+  }, [paidCheck, slotId]);
 
   // 2026-06-07 — review mode 중엔 컴포넌트 단에서 전 페이지 광고 차단(코드리뷰 P1).
   // 기존엔 페이지별 `!ADSENSE_REVIEW_MODE && <AdSlot>` 게이트라 일부 페이지(홈·welfare·
@@ -129,7 +187,7 @@ export function AdSlot({ format = "fluid", placement = "default" }: AdSlotProps)
   // 2026-05-18 AdSense 5/18 재거절 후속 — env 미설정 시 placeholder 노출 X.
   // AdSense 검수 봇이 빈 "광고" 박스를 "콘텐츠 없는 광고 슬롯" 으로 인식 risk.
   // 검수 통과 후 env 등록 → 자동으로 실제 광고 렌더링 재개.
-  if (ADSENSE_REVIEW_MODE || !PUBLISHER_ID || !slotId) {
+  if (paidCheck !== "show" || ADSENSE_REVIEW_MODE || !PUBLISHER_ID || !slotId) {
     return null;
   }
 

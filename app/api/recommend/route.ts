@@ -14,6 +14,8 @@ import {
   readJsonWithLimit,
 } from "@/lib/http/json";
 import { checkRateLimit, getClientIp } from "@/lib/support/rate-limit";
+import { createClient } from "@/lib/supabase/server";
+import { checkAndConsumeRecommendQuota } from "@/lib/quota";
 
 const MAX_JSON_BODY_BYTES = 4 * 1024;
 const RECOMMEND_LIMIT_PER_MINUTE = 30;
@@ -85,6 +87,22 @@ export async function POST(request: NextRequest) {
     typeof district === "string" && district.length > 0 && district.length <= 20
       ? district
       : null;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const quota = await checkAndConsumeRecommendQuota(user.id);
+    if (!quota.ok && quota.reason === "over_limit") {
+      return NextResponse.json(
+        {
+          error: `오늘은 맞춤 추천을 ${quota.limit}회 모두 사용하셨어요. 베이직 이상 플랜에서는 무제한으로 이용할 수 있어요.`,
+          needsUpgrade: true,
+          quota: { exceeded: true, limit: quota.limit, tier: quota.tier },
+        },
+        { status: 429 },
+      );
+    }
+  }
 
   const fullProfile = await loadUserProfile();
   const programs = await getRecommendations({
