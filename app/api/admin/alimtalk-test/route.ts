@@ -18,6 +18,7 @@ import { isAdminUser } from "@/lib/admin-auth";
 import { getSignedInUser } from "@/lib/admin-auth-server";
 import { sendAlimtalk } from "@/lib/kakao-alimtalk";
 import { logAdminAction } from "@/lib/admin-actions";
+import type { KakaoTemplateCode } from "@/lib/kakao-templates";
 
 // 휴대폰 번호 마스킹 — 감사 로그에 원본 저장 금지 (개인정보 최소화).
 // 010-1234-5678 → 010****5678, 01012345678 → 010****5678
@@ -25,6 +26,27 @@ function maskPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   if (digits.length < 7) return "***";
   return `${digits.slice(0, 3)}****${digits.slice(-4)}`;
+}
+
+const TESTABLE_TEMPLATE_CODES: readonly KakaoTemplateCode[] = [
+  "POLICY_NEW",
+  "POLICY_NEW_V3",
+  "POLICY_NEW_V4",
+];
+
+function parseTemplateCode(raw: unknown): KakaoTemplateCode {
+  return TESTABLE_TEMPLATE_CODES.includes(raw as KakaoTemplateCode)
+    ? (raw as KakaoTemplateCode)
+    : "POLICY_NEW_V4";
+}
+
+function variableOrDefault(
+  overrides: Record<string, unknown>,
+  key: string,
+  fallback: string,
+): string {
+  const value = overrides[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 }
 
 export async function POST(request: NextRequest) {
@@ -49,19 +71,34 @@ export async function POST(request: NextRequest) {
 
   // 3) 변수 — 기본값 + body.variables override
   // 기본값은 심사 통과 후 사장님이 자기 번호로 빠르게 검증 가능한 현실적 샘플.
-  const overrides =
-    body?.variables && typeof body.variables === "object" ? body.variables : {};
-  const variables = {
-    rule_name: overrides.rule_name ?? "[테스트] 내 맞춤 알림",
-    title: overrides.title ?? "[테스트] 청년 주거 지원 정책 2026",
-    deadline: overrides.deadline ?? "2026-12-31",
-    detail_path: overrides.detail_path ?? "/mypage/notifications",
-  };
+  const overrides: Record<string, unknown> =
+    body?.variables && typeof body.variables === "object"
+      ? (body.variables as Record<string, unknown>)
+      : {};
+  const templateCode = parseTemplateCode(body?.templateCode);
+  const variables: Record<string, string> =
+    templateCode === "POLICY_NEW"
+      ? {
+          rule_name: variableOrDefault(overrides, "rule_name", "[테스트] 내 맞춤 알림"),
+          title: variableOrDefault(overrides, "title", "[테스트] 청년 주거 지원 정책 2026"),
+          deadline: variableOrDefault(overrides, "deadline", "2026-12-31"),
+          detail_path: variableOrDefault(overrides, "detail_path", "/mypage/notifications"),
+        }
+      : {
+          user_name: variableOrDefault(overrides, "user_name", "관철"),
+          rule_name: variableOrDefault(overrides, "rule_name", "[테스트] 내 맞춤 알림"),
+          title: variableOrDefault(overrides, "title", "[테스트] 소상공인 정책자금 2026"),
+          announced_at: variableOrDefault(overrides, "announced_at", "7월 18일"),
+          eligibility_status: variableOrDefault(overrides, "eligibility_status", "✓ 자격 충족 (테스트)"),
+          benefit_summary: variableOrDefault(overrides, "benefit_summary", "최대 500만원"),
+          deadline: variableOrDefault(overrides, "deadline", "2026-12-31"),
+          detail_path: variableOrDefault(overrides, "detail_path", "/mypage/notifications"),
+        };
 
   // 4) 발송
   const result = await sendAlimtalk({
     phoneNumber,
-    templateCode: "POLICY_NEW",
+    templateCode,
     variables,
   });
 
@@ -74,6 +111,7 @@ export async function POST(request: NextRequest) {
       details: {
         phone_masked: maskPhone(phoneNumber),
         result_ok: result.ok,
+        template_code: templateCode,
         result_reason: result.ok ? null : result.reason,
         result_error: result.ok
           ? null

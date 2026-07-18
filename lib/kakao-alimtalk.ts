@@ -13,7 +13,9 @@
 //   SOLAPI_API_KEY=NCS...                    — 솔라피 API Key
 //   SOLAPI_API_SECRET=...                    — 솔라피 API Secret (HMAC 서명용)
 //   KAKAO_CHANNEL_PFID=...                   — 카카오 채널 PFID (솔라피 콘솔에서 발급)
-//   SOLAPI_TEMPLATE_ID_POLICY_NEW=...        — 심사 통과 후 발급되는 템플릿 고유 ID
+//   SOLAPI_TEMPLATE_ID_POLICY_NEW=...        — v2 템플릿 ID (fallback)
+//   SOLAPI_TEMPLATE_ID_POLICY_NEW_V3=...     — v3 템플릿 ID (fallback)
+//   SOLAPI_TEMPLATE_ID_POLICY_NEW_V4=...     — v4 운영 추천 템플릿 ID
 //
 // 환경변수 하나라도 빠지면 sendAlimtalk 가 skipped/api_error 반환 →
 // alert_deliveries 에 기록되고 cron 은 실패로 보고하지 않음.

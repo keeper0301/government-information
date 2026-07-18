@@ -3,8 +3,8 @@
 // ============================================================
 // AlimtalkTestForm — /admin/alimtalk 의 테스트 발송 폼
 // ============================================================
-// 본인 휴대폰 번호 + (선택) 변수 override 입력 → /api/admin/alimtalk-test 호출 →
-// Solapi 응답 그대로 표시.
+// 본인 휴대폰 번호 + 템플릿 선택 + 변수 override 입력 → /api/admin/alimtalk-test 호출
+// → Solapi 응답 그대로 표시.
 // ============================================================
 
 import { useState } from "react";
@@ -13,13 +13,20 @@ type ApiResult =
   | { ok: true; messageId: string; provider: string }
   | { ok: false; reason: string; error?: string; retryAfterSec?: number };
 
+type TemplateCode = "POLICY_NEW" | "POLICY_NEW_V3" | "POLICY_NEW_V4";
+
 // 한국 휴대폰 번호 클라이언트 검증 (서버도 다시 검증하니 여기선 UX 힌트용).
 const PHONE_RE = /^01[016789]-?\d{3,4}-?\d{4}$/;
 
 export function AlimtalkTestForm() {
   const [phone, setPhone] = useState("");
+  const [templateCode, setTemplateCode] = useState<TemplateCode>("POLICY_NEW_V4");
+  const [userName, setUserName] = useState("");
   const [ruleName, setRuleName] = useState("");
   const [title, setTitle] = useState("");
+  const [announcedAt, setAnnouncedAt] = useState("");
+  const [eligibilityStatus, setEligibilityStatus] = useState("");
+  const [benefitSummary, setBenefitSummary] = useState("");
   const [deadline, setDeadline] = useState("");
   const [detailPath, setDetailPath] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,8 +47,12 @@ export function AlimtalkTestForm() {
     try {
       // 빈 값은 override 하지 않음 → 서버 기본값 사용
       const variables: Record<string, string> = {};
+      if (userName.trim()) variables.user_name = userName.trim();
       if (ruleName.trim()) variables.rule_name = ruleName.trim();
       if (title.trim()) variables.title = title.trim();
+      if (announcedAt.trim()) variables.announced_at = announcedAt.trim();
+      if (eligibilityStatus.trim()) variables.eligibility_status = eligibilityStatus.trim();
+      if (benefitSummary.trim()) variables.benefit_summary = benefitSummary.trim();
       if (deadline.trim()) variables.deadline = deadline.trim();
       if (detailPath.trim()) variables.detail_path = detailPath.trim();
 
@@ -50,6 +61,7 @@ export function AlimtalkTestForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phoneNumber: phone,
+          templateCode,
           variables: Object.keys(variables).length > 0 ? variables : undefined,
         }),
       });
@@ -66,6 +78,8 @@ export function AlimtalkTestForm() {
     }
   }
 
+  const isRichTemplate = templateCode !== "POLICY_NEW";
+
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <Field
@@ -76,11 +90,34 @@ export function AlimtalkTestForm() {
         required
       />
 
+      <label className="block">
+        <span className="block text-xs font-semibold text-grey-700 mb-1">
+          테스트 템플릿
+        </span>
+        <select
+          value={templateCode}
+          onChange={(e) => setTemplateCode(e.target.value as TemplateCode)}
+          className="w-full px-3 py-2 border border-grey-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none bg-white"
+        >
+          <option value="POLICY_NEW_V4">POLICY_NEW_V4 — 운영자 문의 명시 추천안</option>
+          <option value="POLICY_NEW_V3">POLICY_NEW_V3 — 자격진단 포함</option>
+          <option value="POLICY_NEW">POLICY_NEW — 기본형 fallback</option>
+        </select>
+      </label>
+
       <details className="rounded-lg border border-grey-200 bg-white p-3">
         <summary className="cursor-pointer text-sm font-semibold text-grey-700">
           템플릿 변수 override (선택)
         </summary>
         <div className="mt-3 space-y-2">
+          {isRichTemplate && (
+            <Field
+              label="user_name (기본값: 관철)"
+              value={userName}
+              onChange={setUserName}
+              placeholder="관철"
+            />
+          )}
           <Field
             label="rule_name (기본값: [테스트] 내 맞춤 알림)"
             value={ruleName}
@@ -88,11 +125,33 @@ export function AlimtalkTestForm() {
             placeholder="[테스트] 내 맞춤 알림"
           />
           <Field
-            label="title (기본값: [테스트] 청년 주거 지원 정책 2026)"
+            label={isRichTemplate ? "title (기본값: [테스트] 소상공인 정책자금 2026)" : "title (기본값: [테스트] 청년 주거 지원 정책 2026)"}
             value={title}
             onChange={setTitle}
-            placeholder="[테스트] 청년 주거 지원 정책 2026"
+            placeholder={isRichTemplate ? "[테스트] 소상공인 정책자금 2026" : "[테스트] 청년 주거 지원 정책 2026"}
           />
+          {isRichTemplate && (
+            <>
+              <Field
+                label="announced_at (기본값: 7월 18일)"
+                value={announcedAt}
+                onChange={setAnnouncedAt}
+                placeholder="7월 18일"
+              />
+              <Field
+                label="eligibility_status (기본값: ✓ 자격 충족 (테스트))"
+                value={eligibilityStatus}
+                onChange={setEligibilityStatus}
+                placeholder="✓ 자격 충족 (테스트)"
+              />
+              <Field
+                label="benefit_summary (기본값: 최대 500만원)"
+                value={benefitSummary}
+                onChange={setBenefitSummary}
+                placeholder="최대 500만원"
+              />
+            </>
+          )}
           <Field
             label="deadline (기본값: 2026-12-31)"
             value={deadline}
@@ -184,6 +243,8 @@ function ResultPanel({ result }: { result: ApiResult }) {
   const reasonExplain: Record<string, string> = {
     skipped_no_provider:
       "KAKAO_ALIMTALK_PROVIDER 환경변수가 비어 있어 발송 경로가 비활성 상태입니다.",
+    skipped_quiet_hours:
+      "KST 21:00~08:00 야간 시간대라 발송을 막았습니다. 주간 시간대에 다시 테스트하세요.",
     invalid_phone: "휴대폰 번호 형식이 유효하지 않습니다.",
     rate_limited: "Solapi 호출 한도 초과. 잠시 후 재시도하세요.",
     blocked_by_user:

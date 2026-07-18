@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 
-type TemplateKey = "POLICY_NEW" | "POLICY_NEW_V3";
+type TemplateKey = "POLICY_NEW" | "POLICY_NEW_V3" | "POLICY_NEW_V4";
 
 // 템플릿별 기본 샘플 값 (사장님이 바로 확인 가능하도록 채워둠)
 const DEFAULTS: Record<TemplateKey, Record<string, string>> = {
@@ -22,6 +22,16 @@ const DEFAULTS: Record<TemplateKey, Record<string, string>> = {
     detail_path: "/welfare/sample-policy-id",
   },
   POLICY_NEW_V3: {
+    user_name: "홍길동",
+    rule_name: "소상공인 정책자금",
+    title: "고유가 피해 소상공인 지원금",
+    announced_at: "4월 28일",
+    eligibility_status: "✓ 자격 충족 (매출 5억 이하·5인 미만)",
+    benefit_summary: "최대 60만원",
+    deadline: "5월 31일까지 (D-30)",
+    detail_path: "/welfare/sample-policy-id",
+  },
+  POLICY_NEW_V4: {
     user_name: "홍길동",
     rule_name: "소상공인 정책자금",
     title: "고유가 피해 소상공인 지원금",
@@ -51,6 +61,16 @@ const VAR_META: Record<TemplateKey, { key: string; label: string; hint?: string 
     { key: "deadline", label: "deadline" },
     { key: "detail_path", label: "detail_path" },
   ],
+  POLICY_NEW_V4: [
+    { key: "user_name", label: "user_name", hint: "사용자 이름 또는 닉네임" },
+    { key: "rule_name", label: "rule_name" },
+    { key: "title", label: "title" },
+    { key: "announced_at", label: "announced_at", hint: "M월 D일 (예: '4월 28일')" },
+    { key: "eligibility_status", label: "eligibility_status", hint: "자격 진단 결과 한 줄" },
+    { key: "benefit_summary", label: "benefit_summary", hint: "예: 최대 60만원" },
+    { key: "deadline", label: "deadline" },
+    { key: "detail_path", label: "detail_path" },
+  ],
 };
 
 // 본문 렌더링 — 카카오비즈 등록 원문과 1:1 매칭. 변수 치환 결과를 그대로
@@ -70,22 +90,25 @@ function renderBody(template: TemplateKey, vars: Record<string, string>): string
       "※ 본 메시지는 고객님께서 keepioo 마이페이지에서 직접 요청하신 맞춤 알림 조건에 해당하는 새로운 정책이 있을 경우 매번 발송되는 정보성 메시지입니다. 수신을 원하지 않으실 경우 마이페이지 > 알림 설정에서 언제든 해지 가능합니다.",
     ].join("\n");
   }
-  // POLICY_NEW_V3
+  // POLICY_NEW_V3 / POLICY_NEW_V4
   return [
     "[keepioo] 새 맞춤 정책 알림",
     "",
     `${vars.user_name || "(user_name)"}님,`,
     `${vars.rule_name || "(rule_name)"} 조건에 맞는 새 정책이 등록되었습니다.`,
     "",
-    `✅ 정책명: ${vars.title || "(title)"}`,
-    `✅ 발표일: ${vars.announced_at || "(announced_at)"}`,
-    `✅ 사장님 자격: ${vars.eligibility_status || "(eligibility_status)"}`,
-    `✅ 지원 금액: ${vars.benefit_summary || "(benefit_summary)"}`,
-    `✅ 신청 마감: ${vars.deadline || "(deadline)"}`,
+    template === "POLICY_NEW_V4" ? `▸ 정책명: ${vars.title || "(title)"}` : `✅ 정책명: ${vars.title || "(title)"}`,
+    template === "POLICY_NEW_V4" ? `▸ 발표일: ${vars.announced_at || "(announced_at)"}` : `✅ 발표일: ${vars.announced_at || "(announced_at)"}`,
+    template === "POLICY_NEW_V4" ? `▸ 사장님 자격: ${vars.eligibility_status || "(eligibility_status)"}` : `✅ 사장님 자격: ${vars.eligibility_status || "(eligibility_status)"}`,
+    template === "POLICY_NEW_V4" ? `▸ 지원 금액: ${vars.benefit_summary || "(benefit_summary)"}` : `✅ 지원 금액: ${vars.benefit_summary || "(benefit_summary)"}`,
+    template === "POLICY_NEW_V4" ? `▸ 신청 마감: ${vars.deadline || "(deadline)"}` : `✅ 신청 마감: ${vars.deadline || "(deadline)"}`,
     "",
     "자세한 신청 조건과 절차는 아래에서 확인하실 수 있습니다.",
     "",
-    "※ 본 메시지는 고객님께서 keepioo 마이페이지에서 직접 요청하신 맞춤 알림 조건과 사장님 가게 정보로 자동 매칭된 새로운 정책이 있을 경우 매번 발송되는 정보성 메시지입니다. 수신을 원하지 않으실 경우 마이페이지 > 알림 설정에서 언제든 해지 가능합니다.",
+    template === "POLICY_NEW_V4"
+      ? "※ 본 메시지는 고객님께서 keepioo 마이페이지에서 요청하신 맞춤 정책 알림 메시지로, 설정한 조건과 사장님 가게 정보에 해당하는 새로운 정책이 있을 경우 매번 발송되는 정보성 메시지입니다. 수신을 원하지 않으실 경우 마이페이지 > 알림 설정에서 언제든 해지 가능합니다."
+      : "※ 본 메시지는 고객님께서 keepioo 마이페이지에서 직접 요청하신 맞춤 알림 조건과 사장님 가게 정보로 자동 매칭된 새로운 정책이 있을 경우 매번 발송되는 정보성 메시지입니다. 수신을 원하지 않으실 경우 마이페이지 > 알림 설정에서 언제든 해지 가능합니다.",
+    ...(template === "POLICY_NEW_V4" ? ["", "문의: 키피오 / keeper0301@gmail.com"] : []),
   ].join("\n");
 }
 
@@ -93,13 +116,15 @@ function renderBody(template: TemplateKey, vars: Record<string, string>): string
 const BUTTON_LABEL_PRIMARY: Record<TemplateKey, string> = {
   POLICY_NEW: "정책 자세히 보기",
   POLICY_NEW_V3: "자세히 보고 신청하기",
+  POLICY_NEW_V4: "자세히 보고 신청하기",
 };
 
 export function AlimtalkPreviewCard() {
-  const [template, setTemplate] = useState<TemplateKey>("POLICY_NEW");
+  const [template, setTemplate] = useState<TemplateKey>("POLICY_NEW_V4");
   const [vars, setVars] = useState<Record<TemplateKey, Record<string, string>>>({
     POLICY_NEW: { ...DEFAULTS.POLICY_NEW },
     POLICY_NEW_V3: { ...DEFAULTS.POLICY_NEW_V3 },
+    POLICY_NEW_V4: { ...DEFAULTS.POLICY_NEW_V4 },
   });
 
   const currentVars = vars[template];
@@ -126,7 +151,7 @@ export function AlimtalkPreviewCard() {
       <div>
         {/* 템플릿 토글 */}
         <div className="mb-4 inline-flex rounded-lg border border-grey-200 bg-white overflow-hidden">
-          {(["POLICY_NEW", "POLICY_NEW_V3"] as const).map((t) => (
+          {(["POLICY_NEW_V4", "POLICY_NEW_V3", "POLICY_NEW"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -137,7 +162,11 @@ export function AlimtalkPreviewCard() {
                   : "bg-white text-grey-700 hover:bg-grey-50"
               }`}
             >
-              {t === "POLICY_NEW" ? "POLICY_NEW (v2)" : "POLICY_NEW_V3"}
+              {t === "POLICY_NEW_V4"
+                ? "POLICY_NEW_V4"
+                : t === "POLICY_NEW_V3"
+                  ? "POLICY_NEW_V3"
+                  : "POLICY_NEW (v2)"}
             </button>
           ))}
         </div>

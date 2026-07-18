@@ -25,10 +25,12 @@ import { isProgramAllowedForUser } from "@/lib/personalization/score";
 import { createUserSignalsLoader } from "@/lib/personalization/user-signals";
 import { shouldRecordAlertDelivery } from "@/lib/alerts/delivery-ledger";
 
-// POLICY_NEW v2 → v3 분기 — SOLAPI_TEMPLATE_ID_POLICY_NEW_V3 환경변수 등록되면 자동 v3.
-// v3 = 호명 + 자격 진단 한 줄 + 금액 + 마감 통합 (사장님 케이뱅크 reference 수준).
-function isV3Enabled(): boolean {
-  return !!process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW_V3;
+// POLICY_NEW v2 → v3 → v4 분기.
+// v4 = v3 가치(호명·자격·금액·마감) + 운영자 문의 명시 강화 버전.
+function getPreferredKakaoTemplateCode(): "POLICY_NEW" | "POLICY_NEW_V3" | "POLICY_NEW_V4" {
+  if (process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW_V4) return "POLICY_NEW_V4";
+  if (process.env.SOLAPI_TEMPLATE_ID_POLICY_NEW_V3) return "POLICY_NEW_V3";
+  return "POLICY_NEW";
 }
 
 // BusinessMatch → 카톡 본문에 들어갈 한국어 라벨
@@ -109,14 +111,15 @@ async function runAlertDispatch(jobLabel: string) {
     // 2026-05-27: lib/personalization/user-signals 으로 extract.
     // match-payload (Spec 3 PWA push) 도 같은 cohort gate 적용 위한 두 경로 단일화.
     const { getBusinessProfile, getUserSignals } = createUserSignalsLoader(supabase);
-    const v3Enabled = isV3Enabled();
+    const kakaoTemplateCode = getPreferredKakaoTemplateCode();
+    const richKakaoTemplateEnabled = kakaoTemplateCode === "POLICY_NEW_V3" || kakaoTemplateCode === "POLICY_NEW_V4";
 
     let dispatchedEmail = 0;
     let dispatchedKakao = 0;
     let skipped = 0;
     let emailFailures = 0;
     let kakaoSkippedConsent = 0;
-    let totalKakaoSkippedMismatch = 0; // v3 자격 mismatch 사전 차단 카운트
+    let totalKakaoSkippedMismatch = 0; // v3/v4 자격 mismatch 사전 차단 카운트
     let totalCohortGateBlocked = 0; // cohort gate (장애인·결식아동·산후조리·기초수급자) 차단 카운트
     const emailFailureDetail: string[] = [];
 
@@ -260,7 +263,7 @@ async function runAlertDispatch(jobLabel: string) {
         let kakaoSkippedMismatch = 0;
         let businessProfile: BusinessProfile | null = null;
         const matchByProgram = new Map<string, BusinessMatch>();
-        if (v3Enabled && consented) {
+        if (richKakaoTemplateEnabled && consented) {
           businessProfile = await getBusinessProfile(rule.user_id);
           if (businessProfile) {
             // 모든 매칭 정책에 대해 1회만 evaluate
@@ -326,10 +329,10 @@ async function runAlertDispatch(jobLabel: string) {
                 })()
               : "최근";
 
-            const result = v3Enabled
+            const result = richKakaoTemplateEnabled
               ? await sendAlimtalk({
                   phoneNumber: rule.phone_number!,
-                  templateCode: "POLICY_NEW_V3",
+                  templateCode: kakaoTemplateCode,
                   variables: {
                     user_name: displayNameByUserId.get(rule.user_id) ?? "회원",
                     rule_name: rule.name,
@@ -419,7 +422,7 @@ async function runAlertDispatch(jobLabel: string) {
       kakao_skipped_consent: kakaoSkippedConsent,
       kakao_skipped_mismatch: totalKakaoSkippedMismatch,
       cohort_gate_blocked: totalCohortGateBlocked,
-      template_version: isV3Enabled() ? "v3" : "v2",
+      template_version: kakaoTemplateCode === "POLICY_NEW_V4" ? "v4" : kakaoTemplateCode === "POLICY_NEW_V3" ? "v3" : "v2",
       skipped,
     });
 
@@ -432,7 +435,7 @@ async function runAlertDispatch(jobLabel: string) {
       kakao_skipped_consent: kakaoSkippedConsent,
       kakao_skipped_mismatch: totalKakaoSkippedMismatch, // v3 자격 사전 차단
       cohort_gate_blocked: totalCohortGateBlocked, // 장애인·결식아동·산후조리·기초수급자 차단
-      template_version: isV3Enabled() ? "v3" : "v2",
+      template_version: kakaoTemplateCode === "POLICY_NEW_V4" ? "v4" : kakaoTemplateCode === "POLICY_NEW_V3" ? "v3" : "v2",
       skipped,
     });
   } catch (err) {
