@@ -17,7 +17,7 @@ import { trackEvent, EVENTS } from "@/lib/analytics";
 import { TierBadge } from "./tier-badge";
 
 // CTA 가 노출 가능한 출처 — analytics 이벤트 source 파라미터로 그대로 전달
-type CtaSource = "mypage" | "notifications" | "search" | "alerts";
+type CtaSource = "mypage" | "notifications" | "search" | "alerts" | "business";
 
 export function UpgradeCta({
   currentTier,
