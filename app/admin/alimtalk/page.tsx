@@ -269,6 +269,37 @@ const REQUIRED_ENVS = [
   { name: "SOLAPI_TEMPLATE_ID_POLICY_NEW", exposeValue: false, required: false },
 ] as const;
 
+const V4_TEMPLATE_BODY = `[keepioo] 새 맞춤 정책 알림
+
+#{user_name}님,
+#{rule_name} 조건에 맞는 새 정책이 등록되었습니다.
+
+▸ 정책명: #{title}
+▸ 발표일: #{announced_at}
+▸ 사장님 자격: #{eligibility_status}
+▸ 지원 금액: #{benefit_summary}
+▸ 신청 마감: #{deadline}
+
+자세한 신청 조건과 절차는 아래에서 확인하실 수 있습니다.
+
+※ 본 메시지는 고객님께서 keepioo 마이페이지에서 요청하신 맞춤 정책
+알림 메시지로, 설정한 조건과 사장님 가게 정보에 해당하는 새로운 정책이
+있을 경우 매번 발송되는 정보성 메시지입니다. 수신을 원하지 않으실 경우
+마이페이지 > 알림 설정에서 언제든 해지 가능합니다.
+
+문의: 키피오 / keeper0301@gmail.com`;
+
+const V4_TEMPLATE_VARIABLES = [
+  "user_name",
+  "rule_name",
+  "title",
+  "announced_at",
+  "eligibility_status",
+  "benefit_summary",
+  "deadline",
+  "detail_path",
+] as const;
+
 type EnvStatus = {
   name: string;
   present: boolean;
@@ -396,6 +427,62 @@ export default async function AlimtalkAdminPage() {
                 값은 보안을 위해 화면에 노출되지 않고, 글자 수와 설정 여부만 표시됩니다.
               </>
             )}
+          </div>
+        </section>
+
+        {/* V4 템플릿 등록 가이드 — Solapi/카카오 콘솔에서 그대로 복사해 심사 신청 */}
+        <section className="mb-6 rounded-lg border border-grey-200 bg-white p-4">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-base font-bold text-grey-900 tracking-[-0.3px]">
+                V4 템플릿 등록 가이드
+              </h2>
+              <p className="mt-1 text-sm text-grey-600 leading-[1.6]">
+                Solapi/카카오 알림톡 콘솔에 아래 문구와 버튼을 그대로 등록하세요.
+                승인 후 발급된 ID를 <code>SOLAPI_TEMPLATE_ID_POLICY_NEW_V4</code>에 넣으면
+                cron 발송이 V4를 자동 우선 사용합니다.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+              추천
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
+            <div>
+              <div className="mb-2 text-xs font-semibold text-grey-700">본문</div>
+              <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap rounded-lg border border-grey-200 bg-grey-50 p-3 text-xs leading-[1.6] text-grey-800">
+                {V4_TEMPLATE_BODY}
+              </pre>
+            </div>
+            <div className="space-y-3 text-sm text-grey-700">
+              <div>
+                <div className="mb-1 text-xs font-semibold text-grey-700">템플릿 정보</div>
+                <ul className="space-y-1 rounded-lg border border-grey-200 bg-grey-50 p-3 text-xs leading-[1.6]">
+                  <li>명칭: <code>정책알리미_신규정책알림_v4_운영자명시</code></li>
+                  <li>메시지 유형: 기본형</li>
+                  <li>분류: 정보성</li>
+                  <li>카테고리: 서비스이용 &gt; 기타</li>
+                </ul>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-semibold text-grey-700">변수</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {V4_TEMPLATE_VARIABLES.map((v) => (
+                    <code key={v} className="rounded bg-grey-100 px-1.5 py-0.5 text-xs text-grey-800">
+                      #{`{${v}}`}
+                    </code>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-semibold text-grey-700">버튼</div>
+                <ol className="list-decimal space-y-1 pl-5 text-xs leading-[1.6]">
+                  <li>웹링크 · 자세히 보고 신청하기 · <code>https://www.keepioo.com#{"{detail_path}"}</code></li>
+                  <li>웹링크 · 알림 설정 변경 · <code>https://www.keepioo.com/mypage/notifications</code></li>
+                </ol>
+              </div>
+            </div>
           </div>
         </section>
 
