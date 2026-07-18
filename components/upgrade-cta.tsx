@@ -31,17 +31,19 @@ export function UpgradeCta({
   const targetTier: "basic" | "pro" =
     currentTier === "free" ? "basic" : "pro";
 
-  // 메시지 — 사장님 wedge 강조 (basic) → AI 무제한 강조 (pro)
+  // 메시지 — 실제 요금제 기능과 문구를 맞춘다.
+  // free → basic 은 이메일·자격진단, basic → pro 는 카카오·AI 초안 강조.
   const message =
     currentTier === "free"
-      ? "🏪 사장님 자격 자동 진단 + 카톡 알림 받으려면"
-      : "✨ AI 상담 무제한 + 신청서 초안 작성하려면";
+      ? "🏪 사장님 자격 자동 진단 + 마감 7일 전 이메일 알림을 받으려면"
+      : "✨ 카카오 알림톡 + AI 상담 무제한 + 신청서 초안 작성하려면";
+  const href = `/pricing?from=${source}&recommended=${targetTier}`;
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 my-4">
       <p className="text-sm text-amber-900 mb-3 leading-[1.6]">{message}</p>
       <Link
-        href={`/pricing?from=${source}`}
+        href={href}
         onClick={() => {
           // GA4 funnel — 어느 페이지의 CTA 가 가장 전환되는지 측정
           trackEvent(EVENTS.UPGRADE_CTA_CLICKED, {
