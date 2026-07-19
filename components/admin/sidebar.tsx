@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ADMIN_MENU, findActiveMenuItem } from "@/lib/admin/menu";
+import { ADMIN_MENU, ADMIN_QUICK_ACTIONS, findActiveMenuItem } from "@/lib/admin/menu";
 
 type Props = {
   onItemClick?: () => void;
@@ -46,6 +46,30 @@ export function Sidebar({ onItemClick }: Props) {
             Ctrl K
           </kbd>
         </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {ADMIN_QUICK_ACTIONS.map((item) => {
+            const isActive = item.href === activeHref;
+            return (
+              <Link
+                key={`quick-${item.href}`}
+                href={item.href}
+                onClick={onItemClick}
+                title={item.description}
+                className={
+                  "rounded-lg border px-2.5 py-2 text-xs font-bold no-underline transition-colors " +
+                  (isActive
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-grey-200 bg-white text-grey-700 hover:border-blue-200 hover:text-blue-700")
+                }
+              >
+                <span className="mr-1" aria-hidden>
+                  {item.icon}
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <Link
