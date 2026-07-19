@@ -33,6 +33,7 @@ const ACTION_GUIDES: {
   guidePath: string;
   estimatedMinutes: number;
   description: string;
+  pendingMatch: (action: Awaited<ReturnType<typeof getPendingExternalActions>>[number]) => boolean;
 }[] = [
   {
     category: "security",
@@ -40,6 +41,7 @@ const ACTION_GUIDES: {
     guidePath: "docs/external-actions/security-rotation-2026-05-18.md",
     estimatedMinutes: 10,
     description: "Chrome paste hijack 사고 후속 — 26 도메인 재사용 비밀번호 변경 + Render API key revoke",
+    pendingMatch: (a) => a.guideUrl?.includes("security-rotation-2026-05-18.md") ?? false,
   },
   {
     category: "oauth",
@@ -47,6 +49,7 @@ const ACTION_GUIDES: {
     guidePath: "docs/external-actions/adsense-gmail-watch-spec.md",
     estimatedMinutes: 5,
     description: "AdSense 검수 결과 Gmail 이메일 자동 파싱 (D 옵션) 가동",
+    pendingMatch: (a) => a.guideUrl?.includes("adsense-gmail-watch-spec.md") ?? false,
   },
   {
     category: "automation",
@@ -54,6 +57,7 @@ const ACTION_GUIDES: {
     guidePath: "chrome-extension/README.md",
     estimatedMinutes: 10,
     description: "5/13 코드 push 후 가동 안 됨 — 본체 PC Chrome Extension 설치 + secret 입력 + 1건 dry-run",
+    pendingMatch: (a) => a.label.includes("Naver Extension"),
   },
   {
     category: "adsense",
@@ -61,6 +65,7 @@ const ACTION_GUIDES: {
     guidePath: "docs/external-actions/adsense-post-decision-actions.md",
     estimatedMinutes: 5,
     description: "검수 결과 도착 시 (5/23~6/1) 승인·거절·14일 초과 시나리오별 액션",
+    pendingMatch: (a) => a.guideUrl?.includes("adsense-post-decision-actions.md") ?? false,
   },
   {
     category: "codex",
@@ -68,6 +73,7 @@ const ACTION_GUIDES: {
     guidePath: "docs/superpowers/specs/2026-05-25-codex-w0-to-w1-rampup.md",
     estimatedMinutes: 5,
     description: "Phase 6 W0 1주차 검증 완료 후 W1 활성화 — GitHub PAT + AGENT_W1_ENABLED env",
+    pendingMatch: (a) => a.guideUrl?.includes("2026-05-25-codex-w0-to-w1-rampup.md") ?? false,
   },
   {
     category: "infrastructure",
@@ -75,6 +81,7 @@ const ACTION_GUIDES: {
     guidePath: "docs/external-actions/render-plan-upgrade.md",
     estimatedMinutes: 3,
     description: "Codex sidecar 82분 cycle 사고 — free cold start 해소 + always-on. W1 ramp-up 전 권장.",
+    pendingMatch: (a) => a.label.includes("Render Starter"),
   },
   {
     category: "checkout",
@@ -82,6 +89,7 @@ const ACTION_GUIDES: {
     guidePath: "docs/external-actions/toss-billing-review.md",
     estimatedMinutes: 2,
     description: "tools/generate-toss-ppt.mjs 으로 PPT 검수 자료 생성 (5/26). 카드사 심사 통과 후 1 click 신고",
+    pendingMatch: (a) => a.guideUrl?.includes("toss-billing-review.md") ?? false,
   },
 ];
 
@@ -101,16 +109,18 @@ export default async function ExternalActionsPage() {
   await requireAdmin();
 
   const pendingActions = await getPendingExternalActions();
-  // 2026-05-19 — category 기반 정확 매칭 (이전 includes() 는 false positive risk).
-  // ACTION_GUIDES.category 와 PendingExternalAction.category 가 1:1 매칭.
-  const pendingCategories = new Set(pendingActions.map((a) => a.category));
+  // 2026-07-19 — category 단위 매칭은 같은 카테고리 내 별도 액션(SNS OAuth, PC runner 등)이
+  // Gmail/Naver guide 를 pending 으로 오염시키는 false positive 를 만든다.
+  // 각 guide 가 자기 guideUrl/label 만 보도록 세분화한다.
+  const guidePending = new Map(
+    ACTION_GUIDES.map((g) => [g.guidePath, pendingActions.some(g.pendingMatch)]),
+  );
+  const guidePendingCount = [...guidePending.values()].filter(Boolean).length;
 
-  // 2026-05-19 — 잔여 우선 정렬. 사장님 hub 진입 시 잔여 액션 상단 노출.
-  // 2026-05-26 — TRACKED_SET 제거. ACTION_GUIDES.category 가 PendingExternalActionCategory 로
-  // type-narrow 되어 있어 pendingCategories.has 가 직접 동작 (Set<PendingExternalActionCategory>).
+  // 잔여 우선 정렬. 사장님 hub 진입 시 잔여 guide 를 상단 노출.
   const sortedGuides = [...ACTION_GUIDES].sort((a, b) => {
-    const aPending = pendingCategories.has(a.category);
-    const bPending = pendingCategories.has(b.category);
+    const aPending = guidePending.get(a.guidePath) ?? false;
+    const bPending = guidePending.get(b.guidePath) ?? false;
     if (aPending && !bPending) return -1;
     if (!aPending && bPending) return 1;
     return 0;
@@ -121,7 +131,7 @@ export default async function ExternalActionsPage() {
       <AdminPageHeader
         kicker="ADMIN · 운영 상태"
         title="사장님 외부 액션 가이드"
-        description={`외부 액션 가이드 ${ACTION_GUIDES.length}건. 잔여 액션 ${pendingActions.length}건 (자동 감지). 각 가이드 2~10분.`}
+        description={`외부 액션 가이드 ${ACTION_GUIDES.length}건. 잔여 액션 ${guidePendingCount}건 (자동 감지). 각 가이드 2~10분.`}
       />
 
       <p className="mb-5 text-sm text-grey-700">
@@ -130,8 +140,8 @@ export default async function ExternalActionsPage() {
 
       <ul className="space-y-3">
         {sortedGuides.map((g) => {
-          // 2026-05-26 — 7 카테고리 모두 자동 감지 대상. pendingCategories 매칭 시 잔여.
-          const isPending = pendingCategories.has(g.category);
+          // 2026-07-19 — guide 별 match. 같은 category 의 다른 잔여가 이 guide 상태를 오염시키지 않음.
+          const isPending = guidePending.get(g.guidePath) ?? false;
           return (
             <li
               key={g.guidePath}
