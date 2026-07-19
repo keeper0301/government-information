@@ -493,7 +493,7 @@ export function buildImprovementRecommendations(
       title: "품질 검수 대기 때문에 외부 발행이 막혀 있습니다",
       evidence: `외부 발행 품질 대기 ${s.externalQualityPending}건`,
       action:
-        "blog-quality-check cron을 수동 실행하고, score 2 이하 글은 improvements 지적을 반영한 뒤 재검수하세요.",
+        "먼저 blog-quality-check-dry로 미검수 후보 수를 확인하세요. candidates=0이면 이미 score 2 이하로 보류된 글이므로 /admin/blog에서 improvements를 반영해 수정·승인해야 외부 발행 큐가 풀립니다. candidates>0일 때만 blog-quality-check live 실행을 검토하세요.",
     });
   } else if (s.externalQualityPending > 0) {
     recs.push({
