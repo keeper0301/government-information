@@ -3,6 +3,7 @@ import {
   buildImprovementRecommendations,
   isActionableInstagramSkipDetails,
   parseImprovementScanRow,
+  shouldFlagNaverExtensionIdle,
   type ImprovementSnapshot,
 } from "@/lib/autonomous-ops/improvement-scan";
 
@@ -228,6 +229,34 @@ describe("buildImprovementRecommendations", () => {
         title: expect.stringContaining("Naver Extension"),
       }),
     );
+  });
+
+  it("Naver success audit가 있으면 다른 automation 외부 액션이 남아도 Naver idle로 보지 않는다", () => {
+    expect(
+      shouldFlagNaverExtensionIdle({
+        naverSuccess24h: 1,
+        pendingExternalActions: [
+          {
+            label: "PC runner 30일째 미가동 — Vercel env + setup-desktop.ps1",
+            description: "현재 PC runner 지원 대상은 남동구",
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("Naver 성공 audit가 없고 Naver 외부 액션이 있을 때만 Naver idle로 본다", () => {
+    expect(
+      shouldFlagNaverExtensionIdle({
+        naverSuccess24h: 0,
+        pendingExternalActions: [
+          {
+            label: "Naver Extension 7일째 미가동 — 설치·secret·dry-run",
+            description: "Chrome Extension dry-run 확인 필요",
+          },
+        ],
+      }),
+    ).toBe(true);
   });
 
   it("인스타그램 정상 skip 은 운영 개선 경고 카운트에서 제외한다", () => {
