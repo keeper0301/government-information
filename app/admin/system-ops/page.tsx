@@ -44,6 +44,19 @@ type RecentRun = {
   createdAt: string;
 };
 
+type ConfigRow = {
+  key: string;
+  configured: boolean;
+  note?: string;
+};
+
+type InstagramOAuthTokenStatus = {
+  connected: boolean;
+  username: string | null;
+  expiresAt: string | null;
+  expiresInDays: number | null;
+};
+
 const SYSTEM_ACTIONS: SystemAction[] = [
   {
     path: "/api/cron/agent-resident-cycle",
@@ -211,7 +224,8 @@ const ENV_KEYS = [
   "BLOG_MANAGER_ENABLED",
   "SITE_MAINTENANCE_MANAGER_ENABLED",
   "SITE_UPGRADE_MANAGER_ENABLED",
-  "INSTAGRAM_ACCESS_TOKEN",
+  "INSTAGRAM_OAUTH_APP_ID",
+  "INSTAGRAM_OAUTH_APP_SECRET",
   "GMAIL_CLIENT_ID",
   "GMAIL_REFRESH_TOKEN",
 ];
@@ -289,6 +303,54 @@ async function getRecentRuns(limit = 12): Promise<RecentRun[]> {
       createdAt: row.created_at,
     };
   });
+}
+
+async function getInstagramOAuthTokenStatus(): Promise<InstagramOAuthTokenStatus> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("instagram_oauth_tokens")
+    .select("username, expires_at")
+    .order("expires_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ username: string | null; expires_at: string }>();
+
+  if (error || !data) {
+    return { connected: false, username: null, expiresAt: null, expiresInDays: null };
+  }
+
+  const expiresMs = new Date(data.expires_at).getTime();
+  const expiresInDays = Number.isFinite(expiresMs)
+    ? Math.ceil((expiresMs - Date.now()) / (24 * 60 * 60 * 1000))
+    : null;
+
+  return {
+    connected: expiresInDays !== null && expiresInDays > 0,
+    username: data.username,
+    expiresAt: data.expires_at,
+    expiresInDays,
+  };
+}
+
+function buildConfigRows(instagramToken: InstagramOAuthTokenStatus): ConfigRow[] {
+  const rows: ConfigRow[] = ENV_KEYS.map((key) => ({
+    key,
+    configured: Boolean(process.env[key]),
+  }));
+
+  rows.push({
+    key: "Instagram OAuth Token",
+    configured: instagramToken.connected,
+    note: instagramToken.connected
+      ? [
+          instagramToken.username ? `@${instagramToken.username}` : "연결됨",
+          instagramToken.expiresInDays !== null ? `만료 ${instagramToken.expiresInDays}일 전` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : "미연결 또는 만료",
+  });
+
+  return rows;
 }
 
 async function runSystemAction(formData: FormData): Promise<void> {
@@ -425,10 +487,11 @@ export default async function SystemOpsPage({
   searchParams: Promise<{ ok?: string; path?: string; status?: string; elapsed?: string; message?: string }>;
 }) {
   await requireAdmin();
-  const [params, agentStatus, recentRuns] = await Promise.all([
+  const [params, agentStatus, recentRuns, instagramToken] = await Promise.all([
     searchParams,
     getKeepioAgentStatus(),
     getRecentRuns(),
+    getInstagramOAuthTokenStatus(),
   ]);
 
   const groupedActions = SYSTEM_ACTIONS.reduce<Record<SystemActionGroup, SystemAction[]>>(
@@ -439,10 +502,7 @@ export default async function SystemOpsPage({
     { status: [], social: [], content: [], repair: [], search: [] },
   );
 
-  const configRows = ENV_KEYS.map((key) => ({
-    key,
-    configured: Boolean(process.env[key]),
-  }));
+  const configRows = buildConfigRows(instagramToken);
   const missingConfig = configRows.filter((row) => !row.configured);
   const recentFailures = recentRuns.filter((run) => !run.ok).length;
   const lastRunByPath = new Map<string, RecentRun>();
@@ -709,12 +769,15 @@ export default async function SystemOpsPage({
           {configRows.map((row) => (
             <div key={row.key} className="flex items-center justify-between gap-3 rounded-lg bg-grey-50 px-3 py-2">
               <span className="font-mono text-xs text-grey-700">{row.key}</span>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                  row.configured ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                }`}
-              >
-                {row.configured ? "설정됨" : "미설정"}
+              <span className="flex shrink-0 items-center gap-2">
+                {row.note && <span className="hidden text-[11px] text-grey-500 md:inline">{row.note}</span>}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                    row.configured ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  {row.configured ? "설정됨" : "미설정"}
+                </span>
               </span>
             </div>
           ))}
