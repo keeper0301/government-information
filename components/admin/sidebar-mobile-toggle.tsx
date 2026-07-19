@@ -97,7 +97,7 @@ export function SidebarMobileToggle() {
         aria-label="메뉴 열기"
         aria-expanded={isOpen}
         aria-controls="admin-mobile-drawer"
-        className="md:hidden fixed top-3 left-3 z-40 w-11 h-11 bg-white border border-grey-200 rounded-lg flex items-center justify-center text-xl cursor-pointer shadow-sm"
+        className="md:hidden fixed top-[70px] left-3 z-[60] w-11 h-11 bg-white border border-grey-200 rounded-lg flex items-center justify-center text-xl cursor-pointer shadow-sm"
       >
         ☰
       </button>
@@ -106,7 +106,7 @@ export function SidebarMobileToggle() {
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
-          className="md:hidden fixed inset-0 bg-black/40 z-40"
+          className="md:hidden fixed inset-x-0 bottom-0 top-[58px] bg-black/40 z-50"
           aria-hidden
         />
       )}
@@ -120,7 +120,7 @@ export function SidebarMobileToggle() {
         aria-label="어드민 메뉴"
         aria-modal={isOpen}
         aria-hidden={!isOpen}
-        className={`md:hidden fixed top-0 left-0 bottom-0 w-[78%] max-w-[300px] z-50 bg-grey-50 shadow-[4px_0_16px_rgba(0,0,0,0.06)] transition-transform duration-200 ${
+        className={`md:hidden fixed top-[58px] left-0 bottom-0 w-[78%] max-w-[300px] z-[60] bg-grey-50 shadow-[4px_0_16px_rgba(0,0,0,0.06)] transition-transform duration-200 ${
           isOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
       >

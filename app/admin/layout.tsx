@@ -27,10 +27,10 @@ export default async function AdminLayout({
   if (!isAdminUser(user.email)) redirect("/");
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="flex min-h-screen bg-white pt-[58px]">
       {/* Desktop 사이드바 — md 이상 */}
       <aside className="hidden md:block flex-shrink-0 w-[200px] xl:w-[280px]">
-        <div className="sticky top-0 h-screen">
+        <div className="sticky top-[58px] h-[calc(100vh-58px)]">
           <Sidebar />
         </div>
       </aside>
@@ -39,7 +39,7 @@ export default async function AdminLayout({
       <SidebarMobileToggle />
 
       {/* 메인 영역 — 반응형 padding */}
-      <main className="flex-1 min-w-0 px-4 md:px-7 xl:px-12 py-6 md:py-10 max-md:pt-16">
+      <main className="flex-1 min-w-0 px-4 md:px-7 xl:px-12 py-6 md:py-10">
         {children}
       </main>
 
