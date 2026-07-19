@@ -81,7 +81,6 @@ type RecentRun = {
   path: string;
   ok: boolean;
   createdAt: string;
-  ageSeconds: number;
 };
 
 async function getRecentRuns(limit = 5): Promise<RecentRun[]> {
@@ -93,7 +92,6 @@ async function getRecentRuns(limit = 5): Promise<RecentRun[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
-  const nowMs = Date.now();
   return data.map((r) => {
     const details = (r.details ?? {}) as Record<string, unknown>;
     const createdAt = r.created_at;
@@ -102,12 +100,22 @@ async function getRecentRuns(limit = 5): Promise<RecentRun[]> {
       path: typeof details.path === "string" ? details.path : "—",
       ok: details.ok === true,
       createdAt,
-      ageSeconds: Math.max(
-        0,
-        Math.floor((nowMs - new Date(createdAt).getTime()) / 1000),
-      ),
     };
   });
+}
+
+function fmtKst(iso: string | undefined): string {
+  if (!iso) return "실행 시각 없음";
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return "실행 시각 없음";
+
+  const kst = new Date(time + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const month = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  const hour = String(kst.getUTCHours()).padStart(2, "0");
+  const minute = String(kst.getUTCMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
 // 광역별 collect-news 17 (vercel.json 일 2회 14:00 + 23:00 KST 5분 간격, 5/17 변경)
@@ -157,14 +165,14 @@ async function triggerCron(formData: FormData): Promise<void> {
     // 감사 로그 실패해도 결과 노출
   }
 
-  const qs = `path=${encodeURIComponent(path)}&ok=${ok ? "1" : "0"}&result=${encodeURIComponent(JSON.stringify(result))}`;
+  const qs = `path=${encodeURIComponent(path)}&ok=${ok ? "1" : "0"}&result=${encodeURIComponent(JSON.stringify(result))}&ts=${encodeURIComponent(new Date().toISOString())}`;
   redirect(`/admin/cron-trigger?${qs}`);
 }
 
 export default async function CronTriggerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ path?: string; ok?: string; result?: string; error?: string }>;
+  searchParams: Promise<{ path?: string; ok?: string; result?: string; error?: string; ts?: string }>;
 }) {
   await requireAdmin();
   const params = await searchParams;
@@ -224,7 +232,7 @@ export default async function CronTriggerPage({
                 {params.path}
               </div>
               <div className="text-xs text-grey-600 mt-1">
-                {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                {fmtKst(params.ts)}
               </div>
             </div>
             <Link
@@ -254,15 +262,7 @@ export default async function CronTriggerPage({
             최근 실행 {recentRuns.length}건
           </div>
           <ul className="space-y-1.5">
-            {recentRuns.map((r) => {
-              const ago = r.ageSeconds;
-              const agoLabel =
-                ago < 60
-                  ? `${ago}초 전`
-                  : ago < 3600
-                  ? `${Math.floor(ago / 60)}분 전`
-                  : `${Math.floor(ago / 3600)}시간 전`;
-              return (
+            {recentRuns.map((r) => (
                 <li
                   key={r.id}
                   className="flex items-center gap-2 text-xs font-mono"
@@ -271,10 +271,9 @@ export default async function CronTriggerPage({
                     {r.ok ? "✅" : "❌"}
                   </span>
                   <span className="flex-1 truncate text-grey-800">{r.path}</span>
-                  <span className="shrink-0 text-grey-500">{agoLabel}</span>
+                  <span className="shrink-0 text-grey-500">{fmtKst(r.createdAt)}</span>
                 </li>
-              );
-            })}
+              ))}
           </ul>
         </div>
       )}
