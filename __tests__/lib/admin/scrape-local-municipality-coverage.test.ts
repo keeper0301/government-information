@@ -33,6 +33,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "경기도 수원시")?.covered,
     ).toMatchObject({ source: "playwright", key: "suwon" });
+    expect(
+      rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
+    ).toMatchObject({ source: "static", key: "yuseong" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
