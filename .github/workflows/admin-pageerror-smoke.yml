@@ -1,0 +1,94 @@
+name: Admin pageerror smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    # KST 10:35 / 22:35 — production 관리자 redirect/hydration 잡음 감시
+    - cron: "35 1,13 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: protected admin redirect pageerrors
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v6
+
+      - name: Node 20 설치 + npm cache
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: 의존성 설치 (lockfile 기준)
+        run: npm ci
+
+      - name: Playwright Chromium 설치
+        run: npx playwright install --with-deps chromium
+
+      - name: production admin pageerror smoke
+        env:
+          ADMIN_SMOKE_BASE_URL: https://www.keepioo.com
+        run: |
+          set -euo pipefail
+          npm run smoke:admin-pageerrors | tee admin-pageerror-smoke.log
+
+      - name: GitHub summary 작성
+        if: always()
+        run: |
+          {
+            echo "## Admin pageerror smoke"
+            echo ""
+            echo "base: https://www.keepioo.com"
+            echo ""
+            echo '```'
+            if [ -f admin-pageerror-smoke.log ]; then
+              tail -n 80 admin-pageerror-smoke.log
+            else
+              echo "admin-pageerror-smoke.log not found"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET 없음 — GitHub Actions 실패 상태만 남김"
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs = require('fs');
+
+          async function main() {
+            const log = fs.existsSync('admin-pageerror-smoke.log')
+              ? fs.readFileSync('admin-pageerror-smoke.log', 'utf8').split('\n').slice(-30).join('\n')
+              : 'log file missing';
+            const text = [
+              '[keepioo] ⚠ admin pageerror smoke 실패',
+              'base: https://www.keepioo.com',
+              '',
+              log.slice(0, 2500),
+            ].join('\n');
+            const res = await fetch('https://www.keepioo.com/api/notify-telegram', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${process.env.CRON_SECRET}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ text }),
+            });
+            if (!res.ok) console.warn(`notify failed: ${res.status}`);
+          }
+
+          main().catch((error) => {
+            console.warn('notify attempt failed:', error);
+          });
+          NODE

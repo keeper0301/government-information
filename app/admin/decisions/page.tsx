@@ -52,6 +52,10 @@ export default async function DecisionsPage({
   await requireAdmin();
   const { ok, error } = await searchParams;
   const pending = await listPendingDecisions();
+  const nextExpiring = pending.reduce<(typeof pending)[number] | null>((earliest, item) => {
+    if (!earliest) return item;
+    return item.expires_at < earliest.expires_at ? item : earliest;
+  }, null);
 
   return (
     <main className="max-w-[920px] mx-auto px-5 lg:px-10 pt-[80px] pb-20">
@@ -59,6 +63,26 @@ export default async function DecisionsPage({
         title="결정 대기"
         description="텔레그램 /decide 명령 외 PC 에서 처리. SMS off 후 사장님 결정 답장 채널 2."
       />
+
+      <section className="mb-5 grid gap-3 sm:grid-cols-3">
+        <DecisionSummaryCard
+          label="처리 대기"
+          value={`${pending.length}건`}
+          hint={pending.length === 0 ? "지금 할 일 없음" : "아래 카드에서 바로 승인·무시·상의"}
+          tone={pending.length > 0 ? "warn" : "ok"}
+        />
+        <DecisionSummaryCard
+          label="다음 만료"
+          value={nextExpiring ? `${formatKst(nextExpiring.expires_at)} KST` : "없음"}
+          hint={nextExpiring ? `${nextExpiring.kind} · ${nextExpiring.id.slice(0, 8)}` : "대기 중인 결정 없음"}
+          tone={nextExpiring ? "warn" : "ok"}
+        />
+        <DecisionSummaryCard
+          label="권장 순서"
+          value={pending.length > 0 ? "만료 임박순" : "대기 없음"}
+          hint="위험한 액션은 승인 전 prompt 확인"
+        />
+      </section>
 
       {ok && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 mb-4 text-[13px] text-emerald-900">
@@ -145,5 +169,36 @@ export default async function DecisionsPage({
         </p>
       </div>
     </main>
+  );
+}
+
+function DecisionSummaryCard({
+  label,
+  value,
+  hint,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "neutral" | "ok" | "warn";
+}) {
+  const toneClass =
+    tone === "warn"
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : tone === "ok"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+        : "border-grey-200 bg-grey-50 text-grey-900";
+
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${toneClass}`}>
+      <div className="text-[11px] font-bold uppercase tracking-[0.08em] opacity-70">
+        {label}
+      </div>
+      <div className="mt-1 text-[18px] font-extrabold tracking-[-0.02em]">
+        {value}
+      </div>
+      <div className="mt-1 text-[12px] leading-[1.4] opacity-80">{hint}</div>
+    </div>
   );
 }
