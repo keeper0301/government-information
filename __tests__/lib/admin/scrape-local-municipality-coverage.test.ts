@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildMunicipalityCoverageRows } from "@/app/admin/scrape-local/municipality-coverage";
+import {
+  buildMunicipalityCoverageRows,
+  buildMunicipalityCoverageSummary,
+} from "@/app/admin/scrape-local/municipality-coverage";
 import { DISTRICTS_BY_PROVINCE, PROVINCES } from "@/lib/regions";
 
 describe("scrape-local municipality coverage", () => {
@@ -25,6 +28,21 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "경기도 수원시")?.covered,
     ).toMatchObject({ source: "playwright", key: "suwon" });
+  });
+
+  it("커버리지 요약 수치가 행 상태와 일치한다", () => {
+    const rows = buildMunicipalityCoverageRows();
+    const summary = buildMunicipalityCoverageSummary(rows);
+
+    expect(summary.totalCount).toBe(rows.length);
+    expect(summary.coveredCount).toBe(rows.filter((row) => row.covered).length);
+    expect(summary.staticCount).toBe(
+      rows.filter((row) => row.covered?.source === "static").length,
+    );
+    expect(summary.playwrightCount).toBe(
+      rows.filter((row) => row.covered?.source === "playwright").length,
+    );
+    expect(summary.uncoveredCount).toBe(summary.totalCount - summary.coveredCount);
   });
 
   it("동명 구는 광역 정보가 없는 collector 이름만으로 오매칭하지 않는다", () => {
