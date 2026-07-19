@@ -34,13 +34,40 @@ const ASN_BLOCKED_CITIES = [
   { key: "namdong", listUrl: "https://www.namdong.go.kr/main/news/report.jsp" },
 ];
 
-async function fetchPage(url) {
+function isTlsChainError(error) {
+  return /UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_|SELF_SIGNED/.test(
+    error?.cause?.code || "",
+  );
+}
+
+async function fetchPageOnce(url) {
   const r = await fetch(url, {
     headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "ko-KR" },
     signal: AbortSignal.timeout(20000),
   });
   if (!r.ok) throw new Error(`fetch ${r.status}`);
   return r.text();
+}
+
+async function withTemporaryInsecureTls(fn) {
+  const previous = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  try {
+    return await fn();
+  } finally {
+    if (previous === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    else process.env.NODE_TLS_REJECT_UNAUTHORIZED = previous;
+  }
+}
+
+async function fetchPage(url) {
+  try {
+    return await fetchPageOnce(url);
+  } catch (error) {
+    if (!isTlsChainError(error)) throw error;
+    console.warn(`  TLS chain incomplete — retrying with verification relaxed for ${url}`);
+    return await withTemporaryInsecureTls(() => fetchPageOnce(url));
+  }
 }
 
 async function postUpload(items) {
@@ -125,14 +152,8 @@ async function main() {
 
   const round2 = { results: [] };
   for (const item of round2Items) {
-    const entries = Object.entries(item.detail_htmls || {});
-    const chunks = entries.length
-      ? entries.map(([seq, html]) => ({ [seq]: html }))
-      : [item.detail_htmls || {}];
-    for (const detail_htmls of chunks) {
-      const partial = await postUpload([{ ...item, detail_htmls }]);
-      round2.results.push(...(partial.results || []));
-    }
+    const partial = await postUpload([item]);
+    round2.results.push(...(partial.results || []));
   }
   console.log(`\n[round 2] insert 결과:`);
   for (const r of round2.results) {
