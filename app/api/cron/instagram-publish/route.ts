@@ -208,7 +208,9 @@ export async function GET(request: Request) {
     await new Promise((r) => setTimeout(r, jitterMs));
   }
 
-  // 발행 대기 글 1건 (가장 오래된 것 먼저 — FIFO)
+  // 발행 대기 글 후보 최대 10건을 FIFO 로 가져온다.
+  // 첫 글이 template_smell_detected 로 막혀도 뒤의 정상 후보까지 같이 본다.
+  // 기존 1건 only 선택은 나쁜 후보 1개가 전체 Instagram 일반글 발행을 영구 정지시키는 병목이었다.
   const pendingPostRes = await admin
     .from("blog_posts")
     .select("id, slug, title, content, meta_description, category, tags, instagram_attempt_count, admin_review_required")
@@ -217,9 +219,8 @@ export async function GET(request: Request) {
     .eq("admin_review_required", false)
     .lt("instagram_attempt_count", 3)
     .order("published_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  let post = pendingPostRes.data;
+    .limit(10);
+  const pendingPosts = pendingPostRes.data ?? [];
   const queryErr = pendingPostRes.error;
 
   if (queryErr) {
@@ -231,7 +232,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (!post) {
+  if (pendingPosts.length === 0) {
     const { count: blockedByQuality } = await admin
       .from("blog_posts")
       .select("id", { count: "exact", head: true })
@@ -265,32 +266,25 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending", message: "발행 대기 글 없음" });
   }
 
-  let qualityAssessment = assessExternalPublishQuality(post);
-  if (!qualityAssessment.approved && forcePublishNow) {
-    const { data: fallbackPosts } = await admin
-      .from("blog_posts")
-      .select("id, slug, title, content, meta_description, category, tags, instagram_attempt_count, admin_review_required")
-      .not("published_at", "is", null)
-      .is("instagram_published_at", null)
-      .eq("admin_review_required", false)
-      .lt("instagram_attempt_count", 3)
-      .neq("id", post.id)
-      .order("published_at", { ascending: true })
-      .limit(10);
+  const rejectedCandidates: Array<{
+    slug: string;
+    reasons: string[];
+  }> = [];
+  let post = pendingPosts[0];
+  let qualityAssessment: ReturnType<typeof assessExternalPublishQuality> | null = null;
 
-    for (const fallbackPost of fallbackPosts ?? []) {
-      const fallbackAssessment = assessExternalPublishQuality(fallbackPost);
-      if (fallbackAssessment.approved) {
-        await logSkip("force_publish_now_skipped_rejected_candidate", {
-          rejectedSlug: post.slug,
-          selectedSlug: fallbackPost.slug,
-        });
-        post = fallbackPost;
-        qualityAssessment = fallbackAssessment;
-        break;
-      }
+  for (const candidate of pendingPosts) {
+    const assessment = assessExternalPublishQuality(candidate);
+    if (assessment.approved) {
+      post = candidate;
+      qualityAssessment = assessment;
+      break;
     }
+    if (!qualityAssessment) qualityAssessment = assessment;
+    rejectedCandidates.push({ slug: candidate.slug, reasons: assessment.reasons });
   }
+
+  if (!qualityAssessment) qualityAssessment = assessExternalPublishQuality(post);
 
   if (!qualityAssessment.approved) {
     if (dryRun) {
@@ -298,12 +292,27 @@ export async function GET(request: Request) {
         slug: post.slug,
         reasons: qualityAssessment.reasons,
         metrics: qualityAssessment.metrics,
+        scannedCandidates: pendingPosts.length,
+        rejectedCandidates,
       });
     }
-    await logSkip("quality_gate_rejected", { slug: post.slug });
+    await logSkip("quality_gate_rejected", {
+      slug: post.slug,
+      scannedCandidates: pendingPosts.length,
+      rejectedCandidates: rejectedCandidates.slice(0, 5),
+    });
     return NextResponse.json({
       status: "quality_gate_rejected",
       slug: post.slug,
+      scannedCandidates: pendingPosts.length,
+    });
+  }
+
+  if (!dryRun && rejectedCandidates.length > 0) {
+    await logSkip("quality_gate_rejected_candidates_skipped", {
+      selectedSlug: post.slug,
+      skippedCount: rejectedCandidates.length,
+      rejectedCandidates: rejectedCandidates.slice(0, 5),
     });
   }
 

@@ -31,6 +31,17 @@ const mocks = vi.hoisted(() => ({
     instagram_attempt_count: number;
     admin_review_required: boolean;
   },
+  candidates: null as null | Array<{
+    id: string;
+    slug: string;
+    title: string;
+    content: string;
+    meta_description: string | null;
+    category: string;
+    tags: string[];
+    instagram_attempt_count: number;
+    admin_review_required: boolean;
+  }>,
   blockedByQuality: 0,
   exhaustedAttempts: 0,
 }));
@@ -57,7 +68,15 @@ function makeBlogPostsQuery(step: number) {
   });
   query.or = vi.fn(() => Promise.resolve({ count: mocks.blockedByQuality }));
   query.order = vi.fn(() => query);
-  query.limit = vi.fn(() => query);
+  query.limit = vi.fn(() => {
+    if (step === 2) {
+      return Promise.resolve({
+        data: mocks.candidates ?? (mocks.candidate ? [mocks.candidate] : []),
+        error: null,
+      });
+    }
+    return query;
+  });
   query.maybeSingle = vi.fn(() => {
     if (step === 0) return Promise.resolve({ data: mocks.firstPub });
     return Promise.resolve({ data: mocks.candidate, error: null });
@@ -128,6 +147,7 @@ beforeEach(() => {
     instagram_attempt_count: 0,
     admin_review_required: false,
   };
+  mocks.candidates = null;
   mocks.blockedByQuality = 0;
   mocks.exhaustedAttempts = 0;
   vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("ok"))));
@@ -178,6 +198,49 @@ describe("instagram-publish dry-run", () => {
       dailyCap: 24,
       isNewAccount: false,
     });
+    expect(mocks.publishCarousel).not.toHaveBeenCalled();
+  });
+
+  it("skips rejected FIFO candidates and reports the first approved fallback", async () => {
+    const rejected = { ...mocks.candidate!, id: "post-bad", slug: "bad-template" };
+    const approved = { ...mocks.candidate!, id: "post-good", slug: "good-policy" };
+    mocks.candidates = [rejected, approved];
+    mocks.assessExternalPublishQuality
+      .mockReturnValueOnce({
+        approved: false,
+        reasons: ["template_smell_detected"],
+        metrics: {
+          titleLength: 20,
+          plainTextLength: 1000,
+          metaLength: 120,
+          informationSignalCount: 4,
+          hasOfficialActionSignal: true,
+          hasTemplateSmell: true,
+        },
+      })
+      .mockReturnValueOnce({
+        approved: true,
+        reasons: [] as string[],
+        metrics: {
+          titleLength: 20,
+          plainTextLength: 1000,
+          metaLength: 120,
+          informationSignalCount: 4,
+          hasOfficialActionSignal: true,
+          hasTemplateSmell: false,
+        },
+      });
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "ready",
+      candidate: { id: "post-good", slug: "good-policy", attempt_count: 0 },
+    });
+    expect(mocks.assessExternalPublishQuality).toHaveBeenCalledTimes(2);
+    expect(mocks.logAdminAction).not.toHaveBeenCalled();
     expect(mocks.publishCarousel).not.toHaveBeenCalled();
   });
 
