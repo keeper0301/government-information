@@ -14,6 +14,9 @@ describe("admin blog quality queue UX", () => {
     expect(listPage).toContain('name="quality"');
     expect(listPage).toContain('value="needs_review"');
     expect(listPage).toContain("품질 보류");
+    expect(listPage).toContain("외부 발행 차단 해소 순서");
+    expect(listPage).toContain("수정 → LLM 재검수 → 승인");
+    expect(listPage).toContain('isQualityReviewQueue ? "처리" : "수정"');
   });
 
   it("adds an audited one-click approval action on the blog edit page", () => {
@@ -22,8 +25,9 @@ describe("admin blog quality queue UX", () => {
     expect(editPage).toContain("admin_reviewed_at: new Date().toISOString()");
     expect(editPage).toContain('action: "blog_quality_approve"');
     expect(adminActions).toContain('| "blog_quality_approve"');
-    expect(editPage).toContain("수정 완료 · 품질 승인");
+    expect(editPage).toContain("직접 확인 완료 · 수동 승인");
     expect(editPage).toContain('/admin/blog?quality=needs_review');
+    expect(editPage).toContain("통과하지 못했지만 운영자가 직접 확인한 경우에만 수동 품질 승인");
   });
 
   it("adds an audited LLM recheck action before manual approval", () => {
@@ -33,6 +37,6 @@ describe("admin blog quality queue UX", () => {
     expect(editPage).toContain('action: "blog_quality_recheck"');
     expect(adminActions).toContain('| "blog_quality_recheck"');
     expect(adminActions).toContain('blog_quality_recheck: "블로그 품질 재검수"');
-    expect(editPage).toContain("LLM 재검수");
+    expect(editPage).toContain("저장 후 LLM 재검수");
   });
 });
