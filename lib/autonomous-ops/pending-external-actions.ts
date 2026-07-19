@@ -147,6 +147,8 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       description:
         "SNS credential check 기준 X/Twitter 발행 env 4종이 필요합니다. Developer Portal 에서 User context read/write token 발급 후 Vercel production env에 등록하세요.",
       url: "https://developer.x.com/en/portal/dashboard",
+      guideUrl:
+        "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/sns-credential-renewal.md",
       estimatedMinutes: 10,
     });
   }
@@ -160,6 +162,8 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       description:
         "SNS credential check 기준 Facebook Page ID와 long-lived Page Access Token이 필요합니다. Meta for Developers에서 Page 권한 token 발급 후 Vercel production env에 등록하세요.",
       url: "https://developers.facebook.com/apps/",
+      guideUrl:
+        "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/sns-credential-renewal.md",
       estimatedMinutes: 10,
     });
   }
@@ -172,6 +176,8 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       description:
         "THREADS_USER_ID와 THREADS_ACCESS_TOKEN이 필요합니다. 이미 등록됐는데 발행이 실패하면 /api/cron/sns-credential-check 결과의 invalid_token reason을 보고 token을 재발급하세요.",
       url: "https://developers.facebook.com/apps/",
+      guideUrl:
+        "https://github.com/keeper0301/government-information/blob/master/docs/external-actions/sns-credential-renewal.md",
       estimatedMinutes: 10,
     });
   }
