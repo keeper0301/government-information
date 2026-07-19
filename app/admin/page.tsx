@@ -14,7 +14,6 @@ import { getDashboardAlerts, type DashboardAlert } from "@/lib/admin/dashboard-a
 import { getAdminPersonalizationStatus } from "@/lib/admin/personalization-status";
 import { getPolicyInboxStorageStatus } from "@/lib/admin/policy-inbox-storage-status";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { Sparkline } from "@/components/admin/sparkline";
 import { formatRegionDisplay } from "@/lib/region-display";
 
 export const metadata: Metadata = {
@@ -466,10 +465,10 @@ export default async function AdminHomePage({
 
         <section className="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2">
           <Panel title="📈 30일 가입 추세">
-            <Sparkline data={dailySignups} unit="명" stroke="#3182F6" />
+            <TrendSummary data={dailySignups} unit="명" />
           </Panel>
           <Panel title="💰 30일 매출 추정">
-            <Sparkline data={dailyRevenue} unit="원" stroke="#10B981" />
+            <TrendSummary data={dailyRevenue} unit="원" />
           </Panel>
         </section>
 
@@ -705,6 +704,26 @@ function MiniMetric({
         {suffix && <span className="ml-1 text-xs font-bold text-grey-600">{suffix}</span>}
       </div>
       {hint && <div className="mt-1 text-xs leading-[1.4] text-grey-600">{hint}</div>}
+    </div>
+  );
+}
+
+function TrendSummary({
+  data,
+  unit,
+}: {
+  data: Array<{ date: string; value: number }>;
+  unit: "명" | "원";
+}) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const latest = data.at(-1)?.value ?? 0;
+  const peak = data.reduce((max, item) => Math.max(max, item.value), 0);
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <MiniMetric label="합계" value={total} suffix={unit} />
+      <MiniMetric label="최근" value={latest} suffix={unit} />
+      <MiniMetric label="최고" value={peak} suffix={unit} />
     </div>
   );
 }

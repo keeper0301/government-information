@@ -85,24 +85,19 @@ async function get24hFailures(): Promise<FailureRow[]> {
   return (data ?? []) as FailureRow[];
 }
 
-// "방금 전", "5분 전" 상대 시각 — admin/page.tsx 와 동일 패턴
-function fmtRelative(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const diffMin = Math.floor(diffMs / (60 * 1000));
-  if (diffMin < 1) return "방금 전";
-  if (diffMin < 60) return `${diffMin}분 전`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay}일 전`;
-  return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
-}
-
 function fmtKst(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    hour12: false,
-  });
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return "날짜 없음";
+
+  // Hydration 안정성: Date.now() 기반 상대 시각은 서버 HTML 과 hydration 시점이
+  // 어긋날 수 있으므로 cron 실패 목록도 절대 KST 시각으로 고정한다.
+  const kst = new Date(time + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const month = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  const hour = String(kst.getUTCHours()).padStart(2, "0");
+  const minute = String(kst.getUTCMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
 export default async function CronFailuresPage() {
@@ -200,7 +195,7 @@ export default async function CronFailuresPage() {
                     <CronRetryButton prefix={g.prefix} />
                   </div>
                   <div className="text-xs text-grey-600">
-                    {g.rows}종 · {fmtRelative(g.newest)}
+                    {g.rows}종 · {fmtKst(g.newest)}
                   </div>
                 </div>
                 <div className="text-xl font-extrabold text-grey-900 leading-none">
@@ -242,7 +237,7 @@ export default async function CronFailuresPage() {
                         {r.job_name}
                       </div>
                       <div className="text-xs text-grey-600 whitespace-nowrap">
-                        {fmtRelative(r.notified_at)}
+                        {fmtKst(r.notified_at)}
                       </div>
                     </div>
                     <div className="text-xs text-grey-700 leading-[1.55] break-words">
