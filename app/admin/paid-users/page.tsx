@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import {
   activationGapLabel,
+  filterPaidUserRows,
   getPaidUsersDashboard,
   interviewSegmentLabel,
   type PaidUserDashboardRow,
@@ -79,24 +80,6 @@ function statusTone(status: string): string {
   return "bg-grey-50 text-grey-700 border-grey-200";
 }
 
-function matchesFilters(row: PaidUserDashboardRow, filters: {
-  tier: string;
-  status: string;
-  segment: string;
-  query: string;
-}): boolean {
-  if (filters.tier && row.tier !== filters.tier) return false;
-  if (filters.status && row.status !== filters.status) return false;
-  if (filters.segment && row.interviewSegment !== filters.segment) return false;
-  if (!filters.query) return true;
-
-  const haystack = [row.email, row.customerEmail, row.userId, row.cardLabel]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(filters.query.toLowerCase());
-}
-
 export default async function AdminPaidUsersPage({
   searchParams,
 }: {
@@ -112,8 +95,16 @@ export default async function AdminPaidUsersPage({
   };
 
   const dashboard = await getPaidUsersDashboard();
-  const rows = dashboard.rows.filter((row) => matchesFilters(row, filters));
+  const rows = filterPaidUserRows(dashboard.rows, filters);
   const statusOptions = [...new Set(dashboard.rows.map((row) => row.status))].sort();
+  const exportParams = new URLSearchParams();
+  if (filters.query) exportParams.set("q", filters.query);
+  if (filters.tier) exportParams.set("tier", filters.tier);
+  if (filters.status) exportParams.set("status", filters.status);
+  if (filters.segment) exportParams.set("segment", filters.segment);
+  const exportHref = `/api/admin/paid-users/export${
+    exportParams.size ? `?${exportParams.toString()}` : ""
+  }`;
 
   return (
     <div className="max-w-[1180px]">
@@ -191,6 +182,12 @@ export default async function AdminPaidUsersPage({
           <Link href="/admin/paid-users" className="text-sm font-semibold text-grey-600 underline">
             초기화
           </Link>
+          <a
+            href={exportHref}
+            className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 no-underline hover:bg-emerald-100"
+          >
+            현재 조건 CSV 다운로드
+          </a>
           <span className="ml-auto text-xs text-grey-500">
             표시 {rows.length.toLocaleString()}명 / 전체 {dashboard.stats.totalPaidRows.toLocaleString()}명
           </span>
