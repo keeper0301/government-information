@@ -15,21 +15,42 @@ type Props = {
   tier: string;
   /** 현재 로그인 여부 — 비로그인 상태에서 클릭 시 로그인 후 복귀 흐름이라 분리 리포트에 활용 */
   isLoggedIn: boolean;
+  /** 가격표 진입 문맥 — 실험별 checkout 전환율을 분리하기 위한 GA4 파라미터 */
+  pricingVariant?: string;
+  source?: string | null;
+  recommendedTier?: string | null;
   className: string;
   children: React.ReactNode;
 };
 
-export function CheckoutLink({ href, tier, isLoggedIn, className, children }: Props) {
+export function CheckoutLink({
+  href,
+  tier,
+  isLoggedIn,
+  pricingVariant = "default",
+  source = null,
+  recommendedTier = null,
+  className,
+  children,
+}: Props) {
   return (
     <a
       href={href}
       className={className}
       onClick={() => {
         // Phase 4 — 결제 funnel 단계별 측정 (PLAN_SELECTED 가 더 일찍의 의도)
-        trackEvent(EVENTS.PRICING_PLAN_SELECTED, { plan: tier });
+        trackEvent(EVENTS.PRICING_PLAN_SELECTED, {
+          plan: tier,
+          pricing_variant: pricingVariant,
+          source: source ?? "direct",
+          recommended_tier: recommendedTier ?? "none",
+        });
         trackEvent(EVENTS.CHECKOUT_STARTED, {
           tier,
           is_logged_in: isLoggedIn,
+          pricing_variant: pricingVariant,
+          source: source ?? "direct",
+          recommended_tier: recommendedTier ?? "none",
         });
       }}
     >
