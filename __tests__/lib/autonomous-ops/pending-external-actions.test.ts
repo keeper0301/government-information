@@ -136,6 +136,17 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     expect(actions.find((a) => a.category === "oauth")).toBeUndefined();
   });
 
+  it("SNS OAuth 항목은 credential 재발급 guideUrl 을 제공한다", async () => {
+    const actions = await getPendingExternalActions();
+    const snsActions = actions.filter((a) =>
+      /Twitter|Facebook|Threads/.test(a.label),
+    );
+    expect(snsActions).toHaveLength(3);
+    for (const action of snsActions) {
+      expect(action.guideUrl).toContain("sns-credential-renewal.md");
+    }
+  });
+
   it("Naver publish audit ≥ 1 (7일) → automation 항목 hide", async () => {
     mockState.naverCount = 1;
     const actions = await getPendingExternalActions();

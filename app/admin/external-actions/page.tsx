@@ -52,6 +52,14 @@ const ACTION_GUIDES: {
     pendingMatch: (a) => a.guideUrl?.includes("adsense-gmail-watch-spec.md") ?? false,
   },
   {
+    category: "oauth",
+    title: "SNS 발행 credential 재발급",
+    guidePath: "docs/external-actions/sns-credential-renewal.md",
+    estimatedMinutes: 10,
+    description: "X/Twitter·Facebook·Threads env 누락/invalid token을 분리 점검하고 Vercel Production env를 갱신",
+    pendingMatch: (a) => a.guideUrl?.includes("sns-credential-renewal.md") ?? false,
+  },
+  {
     category: "automation",
     title: "Naver Extension 설치·secret·dry-run",
     guidePath: "chrome-extension/README.md",
