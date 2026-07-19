@@ -159,6 +159,45 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
     redirect(`/admin/blog/${id}?saved=1`);
   }
 
+  async function approveExternalQuality() {
+    "use server";
+    const user = await requireAdmin();
+    const admin2 = createAdminClient();
+
+    const { error: updateError } = await admin2
+      .from("blog_posts")
+      .update({
+        admin_review_required: false,
+        admin_reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      redirect(
+        `/admin/blog/${id}?error=${encodeURIComponent(`품질 승인 실패: ${updateError.message}`)}`,
+      );
+    }
+
+    await logAdminAction({
+      actorId: user.id,
+      action: "blog_quality_approve",
+      details: {
+        post_id: id,
+        slug: post!.slug,
+        title: post!.title,
+        previous_score: post!.admin_review_score ?? null,
+        previous_required: post!.admin_review_required ?? null,
+      },
+    });
+
+    revalidatePath(`/blog/${post!.slug}`);
+    revalidatePath("/blog");
+    revalidatePath("/admin/blog");
+
+    redirect(`/admin/blog/${id}?saved=1`);
+  }
+
   const tagsString = Array.isArray(post.tags) ? post.tags.join(", ") : "";
   const isPublished = !!post.published_at;
 
@@ -208,6 +247,57 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
           ⚠ {errorMsg}
         </div>
       )}
+
+      <div className={`mb-6 px-5 py-4 border rounded-xl bg-white ${post.admin_review_required ? "border-red-200" : "border-grey-200"}`}>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-sm text-grey-500 mb-1">외부 발행 품질 게이트</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {post.admin_review_required ? (
+                <span className="inline-block px-2.5 py-1 text-sm font-semibold text-red-700 bg-red-50 rounded">
+                  품질 보류{typeof post.admin_review_score === "number" ? ` · ${post.admin_review_score}점` : ""}
+                </span>
+              ) : post.admin_reviewed_at ? (
+                <span className="inline-block px-2.5 py-1 text-sm font-semibold text-emerald-700 bg-emerald-50 rounded">
+                  품질 승인{typeof post.admin_review_score === "number" ? ` · ${post.admin_review_score}점` : ""}
+                </span>
+              ) : (
+                <span className="inline-block px-2.5 py-1 text-sm font-semibold text-grey-700 bg-grey-100 rounded">
+                  미검수
+                </span>
+              )}
+              <span className="text-sm text-grey-600">
+                {post.admin_review_required
+                  ? "본문을 개선한 뒤 승인하면 Naver·WordPress 등 외부 발행 게이트가 풀립니다."
+                  : "품질 보류 상태가 아니면 외부 발행 게이트에서 차단되지 않습니다."}
+              </span>
+            </div>
+            {post.admin_reviewed_at && (
+              <p className="mt-2 text-xs text-grey-500">
+                최근 품질 확인 {new Date(post.admin_reviewed_at).toLocaleString("ko-KR")}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href="/admin/blog?quality=needs_review"
+              className="px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 rounded-lg hover:bg-red-100 no-underline"
+            >
+              보류 글 목록
+            </Link>
+            {post.admin_review_required && (
+              <form action={approveExternalQuality}>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
+                >
+                  수정 완료 · 품질 승인
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* 발행 상태 패널 */}
       <div className="mb-6 px-5 py-4 border border-grey-200 rounded-xl bg-white flex items-center justify-between gap-4 flex-wrap">
