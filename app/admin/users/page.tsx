@@ -45,21 +45,36 @@ async function requireAdmin() {
   return user;
 }
 
+function isIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 async function updateUserOpsStatus(formData: FormData) {
   "use server";
 
   const actor = await requireAdmin();
   const userId = String(formData.get("userId") ?? "").trim();
   const status = String(formData.get("opsStatus") ?? "").trim();
+  const rawNote = String(formData.get("opsNote") ?? "").trim();
+  const rawNextContactAt = String(formData.get("nextContactAt") ?? "").trim();
   const returnTo = String(formData.get("returnTo") ?? "/admin/users");
 
   if (!userId || !isUserOpsStatus(status)) return;
+
+  const note = rawNote.slice(0, 500);
+  const nextContactAt = rawNextContactAt && isIsoDate(rawNextContactAt)
+    ? rawNextContactAt
+    : null;
 
   await logAdminAction({
     actorId: actor.id,
     targetUserId: userId,
     action: "user_ops_status_update",
-    details: { status },
+    details: {
+      status,
+      note: note || null,
+      next_contact_at: nextContactAt,
+    },
   });
   revalidatePath("/admin/users");
   revalidatePath(`/admin/users/${userId}`);
@@ -394,26 +409,45 @@ function UserTableRow({ row, returnTo }: { row: RegisteredUserDashboardRow; retu
         <div className="mt-1 text-[11px] text-grey-500">
           {row.opsStatusIsManual ? `수동 변경 ${formatDate(row.opsStatusUpdatedAt)}` : "자동 분류"}
         </div>
-        <form action={updateUserOpsStatus} className="mt-2 flex items-center gap-1.5">
+        <form action={updateUserOpsStatus} className="mt-2 space-y-2">
           <input type="hidden" name="userId" value={row.userId} />
           <input type="hidden" name="returnTo" value={returnTo} />
-          <select
-            name="opsStatus"
-            defaultValue={row.opsStatus}
-            className="w-[118px] rounded-md border border-grey-200 bg-white px-2 py-1 text-xs text-grey-800"
-          >
-            {USER_OPS_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {userOpsStatusLabel(status)}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-md border border-grey-200 px-2 py-1 text-xs font-bold text-grey-700 hover:bg-grey-50"
-          >
-            저장
-          </button>
+          <div className="flex items-center gap-1.5">
+            <select
+              name="opsStatus"
+              defaultValue={row.opsStatus}
+              className="w-[118px] rounded-md border border-grey-200 bg-white px-2 py-1 text-xs text-grey-800"
+            >
+              {USER_OPS_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {userOpsStatusLabel(status)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-md border border-grey-200 px-2 py-1 text-xs font-bold text-grey-700 hover:bg-grey-50"
+            >
+              저장
+            </button>
+          </div>
+          <textarea
+            name="opsNote"
+            defaultValue={row.opsNote ?? ""}
+            maxLength={500}
+            rows={2}
+            placeholder="메모: 연락 내용, 막힌 지점 등"
+            className="w-[220px] rounded-md border border-grey-200 bg-white px-2 py-1 text-xs text-grey-800 placeholder:text-grey-400"
+          />
+          <label className="block text-[11px] font-semibold text-grey-500">
+            다음 연락일
+            <input
+              type="date"
+              name="nextContactAt"
+              defaultValue={row.nextContactAt ?? ""}
+              className="mt-1 w-[150px] rounded-md border border-grey-200 bg-white px-2 py-1 text-xs text-grey-800"
+            />
+          </label>
         </form>
       </td>
       <td className="px-4 py-4 text-right">

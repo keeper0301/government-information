@@ -75,7 +75,11 @@ describe("registered users dashboard", () => {
     opsStatusActions: [
       {
         target_user_id: "u_paid",
-        details: { status: "waiting_response" },
+        details: {
+          status: "waiting_response",
+          note: "7/19 카톡 보냄, Pro 설정 막힘",
+          next_contact_at: "2026-07-22",
+        },
         created_at: "2026-07-19T09:00:00.000Z",
       },
       {
@@ -106,6 +110,8 @@ describe("registered users dashboard", () => {
     expect(dashboard.rows[1].interests).toEqual(["대출", "주거"]);
     expect(dashboard.rows[1].opsStatus).toBe("waiting_response");
     expect(dashboard.rows[1].opsStatusIsManual).toBe(true);
+    expect(dashboard.rows[1].opsNote).toBe("7/19 카톡 보냄, Pro 설정 막힘");
+    expect(dashboard.rows[1].nextContactAt).toBe("2026-07-22");
     expect(dashboard.rows[2].opsStatus).toBe("onboarding_incomplete");
   });
 
@@ -118,5 +124,7 @@ describe("registered users dashboard", () => {
     expect(filterRegisteredUserRows(dashboard.rows, { alert: "none" }).map((row) => row.userId)).toEqual(["u_paid", "u_missing"]);
     expect(filterRegisteredUserRows(dashboard.rows, { opsStatus: "waiting_response" }).map((row) => row.userId)).toEqual(["u_paid"]);
     expect(filterRegisteredUserRows(dashboard.rows, { query: "온보딩" }).map((row) => row.userId)).toEqual(["u_missing"]);
+    expect(filterRegisteredUserRows(dashboard.rows, { query: "카톡" }).map((row) => row.userId)).toEqual(["u_paid"]);
+    expect(filterRegisteredUserRows(dashboard.rows, { query: "2026-07-22" }).map((row) => row.userId)).toEqual(["u_paid"]);
   });
 });
