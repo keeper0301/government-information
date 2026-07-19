@@ -13,14 +13,11 @@ import { isAdminUser } from "@/lib/admin-auth";
 import { getHealthSnapshot, type HealthCheckItem } from "@/lib/admin-health";
 // Phase 6 — 임계치 alert + 30일 추세 차트 추가
 import { getHealthSignals, checkThresholds } from "@/lib/health-check";
-import { getAdminTrends } from "@/lib/admin-trends";
+import { getAdminTrends, type DailyPoint } from "@/lib/admin-trends";
 import { getFunnelHealthSnapshot } from "@/lib/funnel-health";
 // Phase 6 후속 #13 — 데이터 일관성 모니터링 (orphan FK / 만료 cron)
 import { getDataIntegritySnapshot } from "@/lib/admin-data-integrity";
-import {
-  SimpleBarChart,
-  SimpleLineChart,
-} from "@/components/admin/trend-charts";
+import { formatAdminNumber } from "@/lib/admin-format";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 
@@ -198,40 +195,25 @@ export default async function AdminHealthPage() {
       {/* 데이터 일관성 (#13) — orphan FK · 만료 cron 미처리 */}
       <Section title="🔗 데이터 일관성" items={integrity} />
 
-      {/* Phase 6 — 30일 추세 차트 (DAU·구독·콘텐츠) */}
+      {/* Phase 6 — 30일 추세 요약 (DAU·구독·콘텐츠) */}
       <section className="mt-10 pt-8 border-t border-grey-200">
-        <h2 className="text-base font-bold text-grey-900 mb-4 tracking-[-0.3px]">
-          📈 30일 추세
+        <h2 className="text-base font-bold text-grey-900 mb-2 tracking-[-0.3px]">
+          📈 30일 추세 요약
         </h2>
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="bg-white rounded-2xl border border-grey-100 p-4">
-            <SimpleLineChart title="DAU (일별 로그인)" data={trends.dau} />
-          </div>
-          <div className="bg-white rounded-2xl border border-grey-100 p-4">
-            <SimpleBarChart
-              title="구독 신규 / 취소"
-              series={[
-                { label: "신규", color: "#3182F6", data: trends.subscriptionsNew },
-                { label: "취소", color: "#F04452", data: trends.subscriptionsCancelled },
-              ]}
-            />
-          </div>
-          <div className="bg-white rounded-2xl border border-grey-100 p-4">
-            <SimpleBarChart
-              title="블로그 발행"
-              series={[
-                { label: "blog", color: "#03B26C", data: trends.blogPublished },
-              ]}
-            />
-          </div>
-          <div className="bg-white rounded-2xl border border-grey-100 p-4">
-            <SimpleBarChart
-              title="뉴스 수집"
-              series={[
-                { label: "news", color: "#A234C7", data: trends.newsCollected },
-              ]}
-            />
-          </div>
+        <p className="text-xs text-grey-600 mb-4 leading-relaxed">
+          관리자 헬스 화면은 SVG 차트 대신 고정 요약값만 표시해 hydration 잡음을 줄인다.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <TrendSummaryCard title="DAU (일별 로그인)" data={trends.dau} unit="명" />
+          <TrendSummaryCard
+            title="구독 신규 / 취소"
+            data={trends.subscriptionsNew}
+            secondaryData={trends.subscriptionsCancelled}
+            unit="건"
+            secondaryLabel="취소"
+          />
+          <TrendSummaryCard title="블로그 발행" data={trends.blogPublished} unit="건" />
+          <TrendSummaryCard title="뉴스 수집" data={trends.newsCollected} unit="건" />
         </div>
       </section>
 
@@ -331,8 +313,8 @@ function FunnelMetricCard({
   } as const;
   const valueText =
     metric.key === "active_7d"
-      ? `${metric.value7d.toLocaleString()}명`
-      : `${metric.value24h.toLocaleString()}건`;
+      ? `${formatAdminNumber(metric.value7d)}명`
+      : `${formatAdminNumber(metric.value24h)}건`;
 
   return (
     <div className={`rounded-lg border p-3 ${colors[metric.tone]}`}>
@@ -343,7 +325,7 @@ function FunnelMetricCard({
         {valueText}
       </div>
       <div className="text-xs mt-1 leading-[1.4] text-grey-600">
-        7d {metric.value7d.toLocaleString()}
+        7d {formatAdminNumber(metric.value7d)}
         {metric.key === "active_7d" ? "명" : "건"} · {metric.hint}
       </div>
       {metric.conversionLabel && (
@@ -354,6 +336,64 @@ function FunnelMetricCard({
             : `${metric.conversionRate}%`}
         </div>
       )}
+    </div>
+  );
+}
+
+function summarizeTrend(data: DailyPoint[]) {
+  const total = data.reduce((sum, point) => sum + point.value, 0);
+  const latest = data.at(-1)?.value ?? 0;
+  const max = data.reduce((peak, point) => Math.max(peak, point.value), 0);
+  const start = data[0]?.date.slice(5) ?? "--";
+  const end = data.at(-1)?.date.slice(5) ?? "--";
+  return { total, latest, max, period: `${start}~${end}` };
+}
+
+function TrendSummaryCard({
+  title,
+  data,
+  secondaryData,
+  secondaryLabel = "보조",
+  unit,
+}: {
+  title: string;
+  data: DailyPoint[];
+  secondaryData?: DailyPoint[];
+  secondaryLabel?: string;
+  unit: string;
+}) {
+  const primary = summarizeTrend(data);
+  const secondary = secondaryData ? summarizeTrend(secondaryData) : null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-grey-100 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-sm font-semibold text-grey-800">{title}</h3>
+        <span className="text-xs text-grey-500 whitespace-nowrap">
+          {primary.period}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-3 mt-4">
+        <TrendStat label="합계" value={`${formatAdminNumber(primary.total)}${unit}`} />
+        <TrendStat label="최근" value={`${formatAdminNumber(primary.latest)}${unit}`} />
+        <TrendStat label="최고" value={`${formatAdminNumber(primary.max)}${unit}`} />
+      </div>
+      {secondary && (
+        <div className="mt-4 rounded-lg bg-grey-50 border border-grey-100 p-3 text-xs text-grey-700">
+          {secondaryLabel} 30일 합계 {formatAdminNumber(secondary.total)}{unit} · 최근 {formatAdminNumber(secondary.latest)}{unit} · 최고 {formatAdminNumber(secondary.max)}{unit}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrendStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-grey-500">{label}</div>
+      <div className="text-base font-extrabold text-grey-900 tracking-[-0.2px]">
+        {value}
+      </div>
     </div>
   );
 }
