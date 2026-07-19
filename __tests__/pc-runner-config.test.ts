@@ -31,6 +31,18 @@ describe("PC runner setup and heartbeat config", () => {
     expect(uploadRoute).toContain("PC runner list fetch 실패");
   });
 
+  it("retries Namdong-style incomplete TLS chains without disabling TLS globally forever", () => {
+    expect(runnerScript).toContain("UNABLE_TO_VERIFY_LEAF_SIGNATURE");
+    expect(runnerScript).toContain("withTemporaryInsecureTls");
+    expect(runnerScript).toContain('NODE_TLS_REJECT_UNAUTHORIZED = "0"');
+    expect(runnerScript).toContain("delete process.env.NODE_TLS_REJECT_UNAUTHORIZED");
+  });
+
+  it("uploads the full detail_htmls map once so one-city runs do not create missing-detail error spam", () => {
+    expect(runnerScript).toContain("const partial = await postUpload([item]);");
+    expect(runnerScript).not.toContain("entries.map(([seq, html])");
+  });
+
   it("does not keep stale external-action copy for migrated 광산구·제주·평택 PC runner sites", () => {
     expect(pendingExternalActions).toContain("현재 PC runner 지원 대상은 남동구");
     expect(pendingExternalActions).toContain("일반 cron/GHA proxy 로 이관됨");
