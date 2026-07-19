@@ -44,14 +44,6 @@ function formatKst(iso: string): string {
   return kst.toISOString().slice(0, 16).replace("T", " ");
 }
 
-function formatRemaining(expiresAt: string): string {
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return "만료됨";
-  const hours = Math.floor(ms / (60 * 60 * 1000));
-  if (hours >= 24) return `${Math.floor(hours / 24)}일 ${hours % 24}h 남음`;
-  return `${hours}h 남음`;
-}
-
 export default async function DecisionsPage({
   searchParams,
 }: {
@@ -104,7 +96,7 @@ export default async function DecisionsPage({
                   · {formatKst(p.sent_at)} KST
                 </span>
                 <span className="text-[12px] text-amber-700">
-                  · {formatRemaining(p.expires_at)}
+                  · 만료 {formatKst(p.expires_at)} KST
                 </span>
               </div>
               <p className="text-[14px] text-grey-900 leading-[1.6] mb-4 whitespace-pre-wrap">
