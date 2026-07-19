@@ -93,8 +93,11 @@ async function releaseApprovedPostToExternalChannels(
   return result;
 }
 
-async function run() {
+async function run(request: Request) {
   const admin = createAdminClient();
+  const url = new URL(request.url);
+  const dryRun = url.searchParams.get("dry") === "1" || url.searchParams.get("dry_run") === "1";
+  const logSafe = url.searchParams.get("log_safe") === "1";
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   // 24h 발행 + 미검수 글 fetch
@@ -149,6 +152,26 @@ async function run() {
     (instagramPending.data ?? []) as BlogPost[],
     naverPosts,
   );
+
+  if (dryRun) {
+    return NextResponse.json({
+      ok: true,
+      mode: "dry_run",
+      logSafe,
+      candidates: list.length,
+      recentCandidates: recentPosts?.length ?? 0,
+      instagramPendingCandidates: instagramPending.data?.length ?? 0,
+      naverPendingCandidates: naverPosts.length,
+      evaluated: 0,
+      flagged: 0,
+      releasedExternal: 0,
+      note: "dry_run only counts candidates; it does not call LLMs, update review fields, enqueue Naver, or publish WordPress.",
+      ...(logSafe
+        ? {}
+        : { candidateTitles: list.slice(0, 10).map((p) => p.title) }),
+    });
+  }
+
   // 단일 post 평가 + DB update + 조건부 외부 발행. throw 안 함 (각 단계 try/catch 또는 error return).
   async function evaluateOne(p: BlogPost): Promise<{
     score: number;
@@ -249,11 +272,11 @@ async function run() {
 export async function GET(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
-  return run();
+  return run(request);
 }
 
 export async function POST(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
-  return run();
+  return run(request);
 }
