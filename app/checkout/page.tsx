@@ -14,9 +14,15 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TIER_NAMES, TIER_PRICES, getUserTier, type Tier } from "@/lib/subscription";
+import { getCheckoutReassuranceCopy } from "@/lib/checkout/reassurance-copy";
 import { CheckoutForm } from "./checkout-form";
 
-type SearchParams = Promise<{ tier?: string }>;
+type SearchParams = Promise<{
+  tier?: string;
+  source?: string | string[];
+  recommended?: string | string[];
+  pricing_variant?: string | string[];
+}>;
 
 export const metadata: Metadata = {
   title: "결제 정보 입력 — 정책알리미",
@@ -25,7 +31,8 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutPage({ searchParams }: { searchParams: SearchParams }) {
-  const { tier } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { tier } = resolvedSearchParams;
 
   // 1) tier 검증 — basic|pro 만 결제 가능, free 는 결제 자체가 없음
   if (tier !== "basic" && tier !== "pro") {
@@ -94,6 +101,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
 
   const price = TIER_PRICES[validTier];
   const tierName = TIER_NAMES[validTier];
+  const reassuranceCopy = getCheckoutReassuranceCopy({
+    tier: validTier,
+    searchParams: resolvedSearchParams,
+  });
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -109,6 +120,27 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
           <p className="text-[14px] text-grey-700 mt-2 leading-[1.6]">
             카드를 등록해두면 7일 무료체험이 시작돼요. 체험 기간 동안 언제든 해지 가능합니다.
           </p>
+        </div>
+
+        {/* 결제 직전 안심/혜택 확인 — pricing 유입 문맥에 맞춰 이탈을 줄인다. */}
+        <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5 mb-5">
+          <div className="text-[12px] font-bold text-amber-700 mb-2">
+            결제 전 한 번 더 확인
+          </div>
+          <h2 className="text-[18px] font-extrabold text-grey-900 tracking-[-0.3px]">
+            {reassuranceCopy.title}
+          </h2>
+          <p className="text-[14px] text-grey-700 mt-2 leading-[1.6]">
+            {reassuranceCopy.description}
+          </p>
+          <ul className="mt-4 space-y-2 text-[13px] text-grey-800">
+            {reassuranceCopy.benefits.map((benefit) => (
+              <li key={benefit} className="flex items-start gap-2">
+                <DotIcon className="bg-amber-500" />
+                <span className="leading-[1.55]">{benefit}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* 결제 요약 카드 */}
@@ -165,8 +197,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   );
 }
 
-function DotIcon() {
+function DotIcon({ className = "bg-blue-500" }: { className?: string }) {
   return (
-    <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" aria-hidden="true" />
+    <span className={`inline-block w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${className}`} aria-hidden="true" />
   );
 }
