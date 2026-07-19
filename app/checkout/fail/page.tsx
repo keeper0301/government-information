@@ -10,10 +10,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { EVENTS } from "@/lib/analytics";
+import { getCheckoutRetryHref } from "@/lib/checkout/post-checkout-copy";
 
 type SearchParams = Promise<{
   code?: string;
   message?: string;
+  tier?: string;
 }>;
 
 export const metadata: Metadata = {
@@ -34,12 +36,13 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
 };
 
 export default async function CheckoutFailPage({ searchParams }: { searchParams: SearchParams }) {
-  const { code, message } = await searchParams;
+  const { code, message, tier } = await searchParams;
 
   // 친절한 메시지로 변환, 없으면 토스가 보낸 원문 사용
   const friendly = code && FRIENDLY_MESSAGES[code]
     ? FRIENDLY_MESSAGES[code]
     : (message || "카드 등록 중 문제가 발생했어요.");
+  const retryHref = getCheckoutRetryHref(tier);
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -58,6 +61,9 @@ export default async function CheckoutFailPage({ searchParams }: { searchParams:
             카드 등록을 완료하지 못했어요
           </h1>
           <p className="text-[14px] text-grey-700 leading-[1.6]">{friendly}</p>
+          <p className="text-[13px] text-grey-600 mt-3 leading-[1.6]">
+            카드 등록이 완료되기 전에는 과금되지 않아요. 약관 동의와 카드 정보를 다시 확인한 뒤 재시도할 수 있습니다.
+          </p>
           {code && (
             <p className="text-[13px] text-grey-600 mt-2 font-mono">에러 코드: {code}</p>
           )}
@@ -65,7 +71,7 @@ export default async function CheckoutFailPage({ searchParams }: { searchParams:
 
         <div className="space-y-2.5">
           <Link
-            href="/pricing"
+            href={retryHref}
             className="block w-full min-h-[52px] flex items-center justify-center text-[15px] font-bold rounded-xl bg-blue-500 text-white hover:bg-blue-600 no-underline"
           >
             다시 시도하기
