@@ -19,6 +19,8 @@ on:
           - alert-delivery-transient-cleanup
           - agent-resident-cycle
           - autonomous-improvement-scan
+          - blog-quality-check-dry
+          - blog-quality-check
           - external-console-check
           - adsense-gmail-watch
           - naver-extension-status
@@ -88,6 +90,14 @@ jobs:
               ;;
             autonomous-improvement-scan)
               path="/api/cron/autonomous-improvement-scan"
+              method="POST"
+              ;;
+            blog-quality-check-dry)
+              path="/api/cron/blog-quality-check?dry=1&log_safe=1"
+              method="GET"
+              ;;
+            blog-quality-check)
+              path="/api/cron/blog-quality-check"
               method="POST"
               ;;
             external-console-check)
