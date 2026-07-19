@@ -63,6 +63,7 @@ import { scrapeGijangEminwonAndInsert } from "./gijang-eminwon";
 // 2026-06-01 — 부산 북구도 eminwon(기장과 동일 OfrAction.do POST). 기존 proxy 경로
 // (BBS_0000012=공동주택 오등록, 0건) 폐기 후 eminwon 으로 재이관 (dead-path swap).
 import { scrapeBsbukguEminwonAndInsert } from "./bsbukgu-eminwon";
+import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
@@ -172,6 +173,7 @@ export type CityKey =
   | "michuhol_incheon"
   | "gijang"
   | "bsbukgu"
+  | "yuseong"
   | "ongjin"
   | "junggu_incheon"
   | "ganghwa"
@@ -678,6 +680,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "부산 북구청",
     siteUrl: "https://eminwon.bsbukgu.go.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp",
     fn: scrapeBsbukguEminwonAndInsert,
+  },
+  {
+    key: "yuseong",
+    city: "대전 유성구",
+    ministry: "대전 유성구청",
+    siteUrl: "https://eminwon.yuseong.go.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp",
+    fn: scrapeYuseongEminwonAndInsert,
   },
   // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
   // 2026-06-07 — 사이트 개편으로 siteUrl 신규 보도/해명 게시판 경로로 정정(구 경로는 302 redirect).
