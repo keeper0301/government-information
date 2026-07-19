@@ -1,5 +1,5 @@
 // ============================================================
-// 인스타 자동 발행 cron — 매시간 정각 1회 발행 대기 글 1건 처리
+// 인스타 자동 발행 cron — 30분마다 1회 발행 대기 글 1건 처리
 // ============================================================
 // 발행 후보:
 //   blog_posts.published_at IS NOT NULL          (실제 발행됨)
@@ -8,8 +8,8 @@
 //
 // 1 cron 1건만 처리 (Graph API rate limit 안전 마진 + 실패 시 다른 글로 전파 방지).
 //
-// vercel.json: { "path": "/api/cron/instagram-publish", "schedule": "0 * * * *" }
-// 매시간 정각 (UTC) 1회 fire. 새 글 평균 발행 대기 ~30분.
+// vercel.json: { "path": "/api/cron/instagram-publish", "schedule": "0,30 * * * *" }
+// 30분마다 1회 fire. 새 글 평균 발행 대기 ~15분.
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -26,6 +26,23 @@ export const dynamic = "force-dynamic";
 // 2026-05-16: polling 60s → 120s + FINISHED 후 5s sleep — 첫 시도 fail 2건 fix.
 //             최대 ~245s 까지 늘어남. Vercel 300s 한도 안전 마진 55s.
 export const maxDuration = 300;
+
+const DEFAULT_NEW_ACCOUNT_DAILY_CAP = 8;
+const DEFAULT_ESTABLISHED_DAILY_CAP = 20;
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function resolveDailyCap(isNewAccount: boolean): number {
+  const fallback = isNewAccount ? DEFAULT_NEW_ACCOUNT_DAILY_CAP : DEFAULT_ESTABLISHED_DAILY_CAP;
+  const envKey = isNewAccount
+    ? "INSTAGRAM_NEW_ACCOUNT_DAILY_CAP"
+    : "INSTAGRAM_ESTABLISHED_DAILY_CAP";
+  return parsePositiveInt(process.env[envKey] ?? process.env.INSTAGRAM_DAILY_CAP, fallback);
+}
 
 type InstagramPublishStatus =
   | "disabled"
@@ -158,7 +175,7 @@ export async function GET(request: Request) {
     !firstPub?.instagram_published_at ||
     Date.now() - new Date(firstPub.instagram_published_at).getTime() <
       7 * 86_400_000;
-  const dailyCap = isNewAccount ? 5 : 14; // 첫 7일 5건/일, 이후 14건/일
+  const dailyCap = resolveDailyCap(isNewAccount); // 기본: 첫 7일 8건/일, 이후 20건/일. env로 하향/상향 가능.
 
   const { count: todayCount } = await admin
     .from("blog_posts")

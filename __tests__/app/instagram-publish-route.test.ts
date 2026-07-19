@@ -133,6 +133,9 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("ok"))));
   process.env.INSTAGRAM_BYPASS_HOUR_CHECK = "true";
   delete process.env.INSTAGRAM_CRON_DISABLED;
+  delete process.env.INSTAGRAM_DAILY_CAP;
+  delete process.env.INSTAGRAM_NEW_ACCOUNT_DAILY_CAP;
+  delete process.env.INSTAGRAM_ESTABLISHED_DAILY_CAP;
 });
 
 it("allows authenticated force=1 publish-now requests to bypass the hour guard", async () => {
@@ -153,11 +156,29 @@ describe("instagram-publish dry-run", () => {
     expect(body).toMatchObject({
       dryRun: true,
       status: "ready",
+      dailyCap: 8,
+      isNewAccount: true,
       candidate: { id: "post-1", slug: "slug-1", attempt_count: 0 },
     });
     expect(body.cardUrls).toHaveLength(3);
     expect(mocks.publishCarousel).not.toHaveBeenCalled();
     expect(mocks.logAdminAction).not.toHaveBeenCalled();
+  });
+
+  it("uses configurable established-account daily caps in dry-run", async () => {
+    mocks.firstPub = { instagram_published_at: "2026-01-01T00:00:00.000Z" };
+    process.env.INSTAGRAM_ESTABLISHED_DAILY_CAP = "24";
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "ready",
+      dailyCap: 24,
+      isNewAccount: false,
+    });
+    expect(mocks.publishCarousel).not.toHaveBeenCalled();
   });
 
   it("reports not_configured without writing skip audit", async () => {
