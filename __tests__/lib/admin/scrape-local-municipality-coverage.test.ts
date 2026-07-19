@@ -62,6 +62,17 @@ describe("scrape-local municipality coverage", () => {
     expect(busanJunggu?.covered).toBeNull();
   });
 
+  it("동명 자치구 collector는 광역 alias가 있을 때 해당 광역만 커버한다", () => {
+    const rows = buildMunicipalityCoverageRows();
+
+    expect(
+      rows.find((row) => row.fullName === "서울특별시 강서구")?.covered,
+    ).toMatchObject({ source: "static", key: "gangseo" });
+    expect(
+      rows.find((row) => row.fullName === "부산광역시 강서구")?.covered,
+    ).toBeNull();
+  });
+
   it("운영자가 미구현 목록과 전체 커버리지 CSV를 내보낼 수 있다", () => {
     const rows = buildMunicipalityCoverageRows();
     const uncoveredText = buildUncoveredMunicipalityText(rows);
