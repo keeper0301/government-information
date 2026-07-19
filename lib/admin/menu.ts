@@ -190,6 +190,12 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         description: "카카오 알림톡 운영",
       },
       {
+        href: "/admin/paid-users",
+        label: "유료 사용자",
+        icon: "💳",
+        description: "Basic/Pro 구독자와 활성화 상태 관리",
+      },
+      {
         href: "/admin/alert-simulator",
         label: "알림 시뮬레이터",
         icon: "🧪",
