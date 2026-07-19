@@ -108,6 +108,35 @@ async function handleAlarm(alarm) {
   }
   if (!alarm.name.startsWith("naver-")) return;
   console.log(`[keepioo-naver] alarm fire: ${alarm.name}`);
+  const liveGate = await chrome.storage.local.get("naver_live_alarm_enabled").catch(() => ({}));
+  if (liveGate?.naver_live_alarm_enabled !== true) {
+    const result = {
+      batch: true,
+      source: alarm.name,
+      attempted: 0,
+      published: 0,
+      stoppedReason: "live_alarm_disabled",
+      results: [{ skipped: "live_alarm_disabled" }],
+    };
+    await chrome.storage.local.set({
+      last_publish_alarm_gate: {
+        name: alarm.name,
+        checkedAt: new Date().toISOString(),
+        liveAlarmEnabled: false,
+        safety: "fresh approval required before scheduled live publish",
+      },
+    }).catch(() => undefined);
+    await chrome.storage.local.set({
+      last_publish_alarm: {
+        name: alarm.name,
+        checkedAt: new Date().toISOString(),
+        attempted: result.attempted,
+        published: result.published,
+        stoppedReason: result.stoppedReason,
+      },
+    }).catch(() => undefined);
+    return;
+  }
   const result = await runPublishBatch(false, {
     allowLoginWait: false,
     // Scheduled live alarms must not open a fresh Naver writer window when the
