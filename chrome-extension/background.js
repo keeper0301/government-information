@@ -110,6 +110,13 @@ async function handleAlarm(alarm) {
   console.log(`[keepioo-naver] alarm fire: ${alarm.name}`);
   const result = await runPublishBatch(false, {
     allowLoginWait: false,
+    // Scheduled live alarms must not open a fresh Naver writer window when the
+    // account session is stale. Naver often redirects fresh background windows to
+    // nidlogin, which creates noisy fail audits and can leave login tabs behind.
+    // Require an already logged-in SmartEditor writer tab; manual dry-run remains
+    // the operator path for refreshing that session.
+    reuseExistingWriter: true,
+    requireExistingWriter: true,
     batchLimit: 3,
     stopOnFail: true,
     source: alarm.name,
