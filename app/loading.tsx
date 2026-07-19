@@ -18,7 +18,7 @@
 
 export default function Loading() {
   return (
-    <main
+    <div
       className="min-h-screen bg-grey-50 flex items-center justify-center px-5 py-20"
       role="status"
       aria-live="polite"
@@ -27,7 +27,10 @@ export default function Loading() {
         {/* 사이트 정체성 — 크롤러가 fallback 만 읽어도 무엇을 하는 사이트인지
             인식할 수 있도록 핵심 카피 노출. 2026-06-11 h1→p: streaming fallback 의 h1 이
             실제 페이지 본문 h1(정책명 등)과 함께 초기 HTML 에 박혀 모든 페이지 "H1 2개"
-            (네이버 사이트진단 1,858건) 유발 → p 로 변경. 시각 동일, 페이지 h1 단일화. */}
+            (네이버 사이트진단 1,858건) 유발 → p 로 변경. 시각 동일, 페이지 h1 단일화.
+            2026-07-19: root fallback 이 인증된 /admin 스트리밍 경로의 root boundary 에도
+            먼저 들어가므로, semantic <main> 대신 중립 <div> shell 로 유지해 실제 페이지
+            main landmark 와 충돌하지 않게 한다. */}
         <p className="text-[24px] font-extrabold tracking-[-0.5px] text-grey-900 mb-3">
           내 조건에 맞는 정부 지원, 30초 만에
         </p>
@@ -47,6 +50,6 @@ export default function Loading() {
         </p>
         <span className="sr-only">로딩 중</span>
       </div>
-    </main>
+    </div>
   );
 }
