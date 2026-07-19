@@ -87,6 +87,7 @@
     { "path": "/api/cron/onboarding-reminder", "schedule": "5 2 * * *" },
     { "path": "/api/cron/weekly-digest", "schedule": "0 0 * * 1" },
     { "path": "/api/cron/weekly-ops-digest", "schedule": "0 0 * * 2" },
+    { "path": "/api/cron/user-contact-reminder", "schedule": "0 0 * * *" },
     { "path": "/api/cron/news-classify", "schedule": "30 1,3,5,7,9,11 * * *" },
     { "path": "/api/cron/daily-digest", "schedule": "0 23 * * *" },
 
