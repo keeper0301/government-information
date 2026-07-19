@@ -359,7 +359,12 @@ export async function getPendingExternalActions(): Promise<PendingExternalAction
       .from("admin_actions")
       .select("id", { count: "exact", head: true })
       .eq("action", "toss_billing_approved");
-    const tossBillingApproved = (count ?? 0) > 0;
+    // 2026-07-19 — Hermes 외부 액션 관리 전환.
+    // 사장님이 토스페이먼츠 연결 완료를 별도 보고했고, production 에 TOSS_SECRET_KEY 가
+    // 들어가 external-console-check 의 toss 점검이 정상 동작하면 "카드사 심사 통과 신고"
+    // reminder 는 운영 노이즈다. 기존 1-click audit 도 계속 존중하되, 결제 secret 존재도
+    // 연결 완료 신호로 인정한다. secret 값은 절대 출력하지 않는다.
+    const tossBillingApproved = (count ?? 0) > 0 || !!process.env.TOSS_SECRET_KEY;
     if (!tossBillingApproved) {
       actions.push({
         category: "checkout",

@@ -20,6 +20,7 @@ on:
           - agent-resident-cycle
           - autonomous-improvement-scan
           - external-console-check
+          - adsense-gmail-watch
           - search-console-sitemap-submit
           - health-alert
           - sns-publish-blog
@@ -89,6 +90,10 @@ jobs:
             external-console-check)
               path="/api/cron/external-console-check"
               method="POST"
+              ;;
+            adsense-gmail-watch)
+              path="/api/cron/adsense-gmail-watch"
+              method="GET"
               ;;
             search-console-sitemap-submit)
               path="/api/cron/search-console-sitemap-submit"

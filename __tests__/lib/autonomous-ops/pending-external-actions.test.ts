@@ -98,6 +98,7 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     delete process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
     delete process.env.THREADS_USER_ID;
     delete process.env.THREADS_ACCESS_TOKEN;
+    delete process.env.TOSS_SECRET_KEY;
   });
 
   afterEach(() => {
@@ -183,6 +184,12 @@ describe("getPendingExternalActions — audit hide 동작", () => {
     expect(actions.find((a) => a.category === "checkout")).toBeUndefined();
     // 다른 항목 영향 0
     expect(actions.find((a) => a.category === "security")).toBeDefined();
+  });
+
+  it("TOSS_SECRET_KEY 가 있으면 사장님 연결 완료 신호로 보고 checkout 항목 hide", async () => {
+    process.env.TOSS_SECRET_KEY = "test";
+    const actions = await getPendingExternalActions();
+    expect(actions.find((a) => a.category === "checkout")).toBeUndefined();
   });
 
   // 2026-05-26 — CATEGORY_META 단일 source 검증.
