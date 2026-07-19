@@ -25,4 +25,14 @@ describe("admin blog quality queue UX", () => {
     expect(editPage).toContain("수정 완료 · 품질 승인");
     expect(editPage).toContain('/admin/blog?quality=needs_review');
   });
+
+  it("adds an audited LLM recheck action before manual approval", () => {
+    expect(editPage).toContain("async function recheckExternalQuality");
+    expect(editPage).toContain("evaluateBlogQuality");
+    expect(editPage).toContain("isTransientQualityReviewFailure");
+    expect(editPage).toContain('action: "blog_quality_recheck"');
+    expect(adminActions).toContain('| "blog_quality_recheck"');
+    expect(adminActions).toContain('blog_quality_recheck: "블로그 품질 재검수"');
+    expect(editPage).toContain("LLM 재검수");
+  });
 });

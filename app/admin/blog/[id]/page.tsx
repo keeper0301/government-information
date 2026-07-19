@@ -26,6 +26,10 @@ import { isAdminUser } from "@/lib/admin-auth";
 import { logAdminAction } from "@/lib/admin-actions";
 import { stripHtmlTags } from "@/lib/utils";
 import { sanitizeBlogHtml } from "@/lib/html-sanitize";
+import {
+  evaluateBlogQuality,
+  isTransientQualityReviewFailure,
+} from "@/lib/blog/quality-check";
 import { RichEditor } from "./rich-editor";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -198,6 +202,68 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
     redirect(`/admin/blog/${id}?saved=1`);
   }
 
+  async function recheckExternalQuality() {
+    "use server";
+    const user = await requireAdmin();
+    const admin2 = createAdminClient();
+
+    const { data: latest, error: readError } = await admin2
+      .from("blog_posts")
+      .select("id, slug, title, content, admin_review_score, admin_review_required")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (readError || !latest) {
+      redirect(
+        `/admin/blog/${id}?error=${encodeURIComponent(`재검수 조회 실패: ${readError?.message ?? "글을 찾을 수 없습니다"}`)}`,
+      );
+    }
+
+    const result = await evaluateBlogQuality(
+      { title: latest.title, content: latest.content ?? "" },
+      { failClosed: true },
+    );
+    const isTransientFailure = isTransientQualityReviewFailure(result);
+
+    const { error: updateError } = await admin2
+      .from("blog_posts")
+      .update({
+        admin_review_score: result.score,
+        admin_review_required: result.needsReview,
+        admin_reviewed_at: isTransientFailure ? null : new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      redirect(
+        `/admin/blog/${id}?error=${encodeURIComponent(`품질 재검수 저장 실패: ${updateError.message}`)}`,
+      );
+    }
+
+    await logAdminAction({
+      actorId: user.id,
+      action: "blog_quality_recheck",
+      details: {
+        post_id: id,
+        slug: latest.slug,
+        title: latest.title,
+        score: result.score,
+        needs_review: result.needsReview,
+        reason: result.reason,
+        improvements: result.improvements,
+        previous_score: latest.admin_review_score ?? null,
+        previous_required: latest.admin_review_required ?? null,
+      },
+    });
+
+    revalidatePath(`/blog/${latest.slug}`);
+    revalidatePath("/blog");
+    revalidatePath("/admin/blog");
+
+    redirect(`/admin/blog/${id}?saved=1`);
+  }
+
   const tagsString = Array.isArray(post.tags) ? post.tags.join(", ") : "";
   const isPublished = !!post.published_at;
 
@@ -285,6 +351,14 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
             >
               보류 글 목록
             </Link>
+            <form action={recheckExternalQuality}>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
+              >
+                LLM 재검수
+              </button>
+            </form>
             {post.admin_review_required && (
               <form action={approveExternalQuality}>
                 <button
