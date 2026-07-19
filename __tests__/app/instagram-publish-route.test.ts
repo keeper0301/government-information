@@ -176,7 +176,7 @@ describe("instagram-publish dry-run", () => {
     expect(body).toMatchObject({
       dryRun: true,
       status: "ready",
-      dailyCap: 8,
+      dailyCap: 12,
       isNewAccount: true,
       candidate: { id: "post-1", slug: "slug-1", attempt_count: 0 },
     });

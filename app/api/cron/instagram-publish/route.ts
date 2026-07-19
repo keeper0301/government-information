@@ -1,5 +1,5 @@
 // ============================================================
-// 인스타 자동 발행 cron — 30분마다 1회 발행 대기 글 1건 처리
+// 인스타 자동 발행 cron — 15분마다 1회 발행 대기 글 1건 처리
 // ============================================================
 // 발행 후보:
 //   blog_posts.published_at IS NOT NULL          (실제 발행됨)
@@ -8,8 +8,8 @@
 //
 // 1 cron 1건만 처리 (Graph API rate limit 안전 마진 + 실패 시 다른 글로 전파 방지).
 //
-// vercel.json: { "path": "/api/cron/instagram-publish", "schedule": "0,30 * * * *" }
-// 30분마다 1회 fire. 새 글 평균 발행 대기 ~15분.
+// vercel.json: { "path": "/api/cron/instagram-publish", "schedule": "*/15 * * * *" }
+// 15분마다 1회 fire. 새 글 평균 발행 대기 ~7.5분.
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -27,8 +27,8 @@ export const dynamic = "force-dynamic";
 //             최대 ~245s 까지 늘어남. Vercel 300s 한도 안전 마진 55s.
 export const maxDuration = 300;
 
-const DEFAULT_NEW_ACCOUNT_DAILY_CAP = 8;
-const DEFAULT_ESTABLISHED_DAILY_CAP = 20;
+const DEFAULT_NEW_ACCOUNT_DAILY_CAP = 12;
+const DEFAULT_ESTABLISHED_DAILY_CAP = 28;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
@@ -175,7 +175,7 @@ export async function GET(request: Request) {
     !firstPub?.instagram_published_at ||
     Date.now() - new Date(firstPub.instagram_published_at).getTime() <
       7 * 86_400_000;
-  const dailyCap = resolveDailyCap(isNewAccount); // 기본: 첫 7일 8건/일, 이후 20건/일. env로 하향/상향 가능.
+  const dailyCap = resolveDailyCap(isNewAccount); // 기본: 첫 7일 12건/일, 이후 28건/일. env로 하향/상향 가능.
 
   const { count: todayCount } = await admin
     .from("blog_posts")
