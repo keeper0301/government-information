@@ -72,6 +72,18 @@ describe("registered users dashboard", () => {
       { user_id: "u_free", is_active: false },
       { user_id: "u_paid", is_active: false },
     ],
+    opsStatusActions: [
+      {
+        target_user_id: "u_paid",
+        details: { status: "waiting_response" },
+        created_at: "2026-07-19T09:00:00.000Z",
+      },
+      {
+        target_user_id: "u_paid",
+        details: { status: "contact_needed" },
+        created_at: "2026-07-18T09:00:00.000Z",
+      },
+    ],
   });
 
   it("builds registered user KPIs and newest-first rows", () => {
@@ -85,10 +97,16 @@ describe("registered users dashboard", () => {
       freeUsers: 2,
       paidUsers: 1,
       activeAlertUsers: 1,
+      contactNeededUsers: 0,
+      onboardingIncompleteUsers: 1,
+      dormantRiskUsers: 0,
     });
     expect(dashboard.rows.map((row) => row.userId)).toEqual(["u_free", "u_paid", "u_missing"]);
     expect(dashboard.rows[1].tier).toBe("pro");
     expect(dashboard.rows[1].interests).toEqual(["대출", "주거"]);
+    expect(dashboard.rows[1].opsStatus).toBe("waiting_response");
+    expect(dashboard.rows[1].opsStatusIsManual).toBe(true);
+    expect(dashboard.rows[2].opsStatus).toBe("onboarding_incomplete");
   });
 
   it("filters by query, tier, profile, email confirmation, and active alerts", () => {
@@ -98,5 +116,7 @@ describe("registered users dashboard", () => {
     expect(filterRegisteredUserRows(dashboard.rows, { emailConfirmed: "no" }).map((row) => row.userId)).toEqual(["u_paid"]);
     expect(filterRegisteredUserRows(dashboard.rows, { alert: "active" }).map((row) => row.userId)).toEqual(["u_free"]);
     expect(filterRegisteredUserRows(dashboard.rows, { alert: "none" }).map((row) => row.userId)).toEqual(["u_paid", "u_missing"]);
+    expect(filterRegisteredUserRows(dashboard.rows, { opsStatus: "waiting_response" }).map((row) => row.userId)).toEqual(["u_paid"]);
+    expect(filterRegisteredUserRows(dashboard.rows, { query: "온보딩" }).map((row) => row.userId)).toEqual(["u_missing"]);
   });
 });
