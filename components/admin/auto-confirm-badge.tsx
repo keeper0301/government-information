@@ -19,6 +19,20 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { revokeAction, restoreAction } from "@/app/admin/auto-confirmed/actions";
 
+function formatKstMinute(iso: string | null): string {
+  if (!iso) return "—";
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return "—";
+
+  const kst = new Date(time + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const month = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  const hour = String(kst.getUTCHours()).padStart(2, "0");
+  const minute = String(kst.getUTCMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
 export function AutoConfirmBadge({
   candidateId,
   tier,
@@ -56,10 +70,7 @@ export function AutoConfirmBadge({
         🤖 AI {tier}
       </span>
       <span className="text-xs text-grey-700">
-        자동 등록{" "}
-        {autoConfirmedAt
-          ? new Date(autoConfirmedAt).toLocaleString("ko-KR")
-          : "—"}
+        자동 등록 {formatKstMinute(autoConfirmedAt)}
       </span>
       {isHidden ? (
         <>
