@@ -66,6 +66,7 @@ import { scrapeBsbukguEminwonAndInsert } from "./bsbukgu-eminwon";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
+import { scrapeDaedeokAndInsert } from "./daedeok";
 import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
@@ -178,6 +179,7 @@ export type CityKey =
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
+  | "daedeok"
   | "ongjin"
   | "junggu_incheon"
   | "ganghwa"
@@ -705,6 +707,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "대전 중구청",
     siteUrl: "https://www.djjunggu.go.kr/prog/bbsArticle/BBSMSTR_000000000137/list.do?mno=sub03_07",
     fn: scrapeJungguDaejeonAndInsert,
+  },
+  {
+    key: "daedeok",
+    city: "대전 대덕구",
+    ministry: "대전 대덕구청",
+    siteUrl: "https://www.daedeok.go.kr/dpt/dpt04/DPT040301_cmmBoardList.do",
+    fn: scrapeDaedeokAndInsert,
   },
   // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
   // 2026-06-07 — 사이트 개편으로 siteUrl 신규 보도/해명 게시판 경로로 정정(구 경로는 302 redirect).
