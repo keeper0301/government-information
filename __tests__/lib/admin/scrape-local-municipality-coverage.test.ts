@@ -57,6 +57,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "강원특별자치도 태백시")?.covered,
     ).toMatchObject({ source: "static", key: "taebaek" });
+    expect(
+      rows.find((row) => row.fullName === "강원특별자치도 삼척시")?.covered,
+    ).toMatchObject({ source: "static", key: "samcheok" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
