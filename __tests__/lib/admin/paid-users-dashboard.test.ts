@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPaidUsersCsv,
+  buildPaidUserOutreachMessage,
   buildPaidUsersDashboard,
   filterPaidUserRows,
   getActivationGaps,
@@ -138,6 +139,10 @@ describe("paid users dashboard helpers", () => {
     expect(filtered).toHaveLength(1);
     expect(filtered[0].userId).toBe("u_pro");
     expect(outreachMessageType(filtered[0])).toBe("activation_gap");
+    const activationGapMessage = buildPaidUserOutreachMessage(filtered[0]);
+    expect(activationGapMessage).toContain("Pro 유료 플랜을 시작하신 뒤");
+    expect(activationGapMessage).toContain("현재 확인되는 미설정 항목은 카카오 동의 없음, 알림 조건 없음입니다.");
+    expect(activationGapMessage).toContain("대상: pro,quoted@auth.test");
 
     const csv = buildPaidUsersCsv(filtered, { baseUrl: "https://www.keepioo.com/" });
     expect(csv).toContain("email,tier,status,interview_segment,activation_gaps");

@@ -6,12 +6,16 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import {
   activationGapLabel,
+  buildPaidUserOutreachMessage,
   filterPaidUserRows,
   getPaidUsersDashboard,
   interviewSegmentLabel,
+  outreachMessageType,
+  outreachMessageTypeLabel,
   type PaidUserDashboardRow,
 } from "@/lib/admin/paid-users-dashboard";
 import { TIER_NAMES } from "@/lib/subscription";
+import { CopyOutreachMessageButton } from "./copy-outreach-message-button";
 
 export const metadata: Metadata = {
   title: "유료 사용자 관리 | 어드민",
@@ -204,7 +208,7 @@ export default async function AdminPaidUsersPage({
                 <th className="px-4 py-3">결제 주기</th>
                 <th className="px-4 py-3">마지막 결제</th>
                 <th className="px-4 py-3">활성화</th>
-                <th className="px-4 py-3">인터뷰</th>
+                <th className="px-4 py-3">인터뷰/섭외</th>
                 <th className="px-4 py-3 text-right">관리</th>
               </tr>
             </thead>
@@ -287,6 +291,10 @@ function Select({
 }
 
 function PaidUserTableRow({ row }: { row: PaidUserDashboardRow }) {
+  const messageType = outreachMessageType(row);
+  const messageLabel = outreachMessageTypeLabel(messageType);
+  const outreachMessage = buildPaidUserOutreachMessage(row);
+
   return (
     <tr className="align-top hover:bg-grey-50/70">
       <td className="px-4 py-4">
@@ -334,7 +342,11 @@ function PaidUserTableRow({ row }: { row: PaidUserDashboardRow }) {
         <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700">
           {interviewSegmentLabel(row.interviewSegment)}
         </span>
+        <div className="mt-2 text-xs font-semibold text-grey-600">{messageLabel}</div>
         <div className="mt-2 text-xs text-grey-500">최근 로그인 {formatDate(row.lastSignInAt)}</div>
+        <div className="mt-3">
+          <CopyOutreachMessageButton message={outreachMessage} label={messageLabel} />
+        </div>
       </td>
       <td className="px-4 py-4 text-right">
         <Link
