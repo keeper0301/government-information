@@ -19,6 +19,19 @@ import {
 } from "./actions";
 import type { AutoConfirmedRow } from "@/lib/press-ingest/candidates";
 
+function formatKstMinute(iso: string): string {
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return "날짜 없음";
+
+  const kst = new Date(time + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const month = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  const hour = String(kst.getUTCHours()).padStart(2, "0");
+  const minute = String(kst.getUTCMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
 export function AutoConfirmedList({
   rows,
   days,
@@ -130,9 +143,7 @@ export function AutoConfirmedList({
                   <span>·</span>
                   <span>{r.ministry ?? "—"}</span>
                   <span>·</span>
-                  <span>
-                    {new Date(r.auto_confirmed_at).toLocaleString("ko-KR")}
-                  </span>
+                  <span>{formatKstMinute(r.auto_confirmed_at)}</span>
                   {r.is_hidden && (
                     <span className="text-red-600 font-semibold">회수됨</span>
                   )}
