@@ -45,18 +45,24 @@ const COMMON_HASHTAGS = [
 ];
 
 import { validateCaption } from "../validate-caption";
+import {
+  sanitizeInstagramPolicyDescription,
+  sanitizeInstagramPolicyTitle,
+} from "./policy-copy";
 
 export function buildInstagramCaption(input: CaptionInput): string {
   const lines: string[] = [];
+  const title = sanitizeInstagramPolicyTitle(input.title);
+  const metaDescription = sanitizeInstagramPolicyDescription(input.meta_description);
 
-  // 1) Hook — 제목 그대로 (이미 CTR 강화된 prompt 결과)
-  lines.push(`📌 ${input.title}`);
+  // 1) Hook — Instagram 발행 표면에서는 저가 클릭 유도 문구를 정책 브랜드형으로 정리한다.
+  lines.push(`📌 ${title}`);
   lines.push("놓치기 쉬운 지원 조건은 저장해두고 다시 확인하세요.");
   lines.push("");
 
   // 2) 핵심 정보 — meta_description 활용
-  if (input.meta_description) {
-    lines.push(input.meta_description.trim());
+  if (metaDescription) {
+    lines.push(metaDescription.trim());
     lines.push("");
   }
 
@@ -64,7 +70,7 @@ export function buildInstagramCaption(input: CaptionInput): string {
   lines.push("✅ 확인할 것: 대상·소득 기준·신청 기간·제출 서류");
   lines.push("⚠️ 실제 자격과 금액은 지역·소득·마감일에 따라 달라질 수 있어요.");
   lines.push("👉 자세한 자격·금액·신청 방법은 프로필 링크 (keepioo.com) 에서 확인하세요!");
-  lines.push(`👉 keepioo에서 "${input.title.slice(0, 28)}" 검색`);
+  lines.push(`👉 keepioo에서 "${title.slice(0, 28)}" 검색`);
   lines.push("👉 1분 자격 진단으로 사장님이 받을 수 있는 정책을 즉시 확인 →");
   lines.push("");
 
@@ -87,7 +93,7 @@ export function buildInstagramCaption(input: CaptionInput): string {
   // 들어 있으면(예: "청년과 함께 성장할 기업 모집" → 금지구 "함께 성장") 그 글이 매번 검증
   // 실패해 영영 미발행되던 사고(6/8 admin_actions instagram_publish_fail) → 검증 직전 제목을
   // 제거한 텍스트로 검사. 제목은 hook(📌)·검색안내("…") 2곳에 들어가며 후자는 28자 절단형이라 둘 다 제거.
-  const titleParts = [...new Set([input.title, input.title.slice(0, 28)])].filter(
+  const titleParts = [...new Set([title, title.slice(0, 28)])].filter(
     Boolean,
   );
   let checkable = caption;

@@ -86,6 +86,20 @@ describe("buildInstagramCaption", () => {
     expect(caption).toContain("프로필 링크");
   });
 
+  it("Instagram 발행 표면의 저가 클릭 유도 문구를 정책 브랜드형으로 정리", () => {
+    const caption = buildInstagramCaption({
+      ...baseInput,
+      title: "2026년 인천 블록체인 도입 컨설팅 중소기업 성장 기회 놓치면 후회",
+      meta_description: "마감부터 봐야 해요. 바로가기 👇👇",
+    });
+
+    expect(caption).toContain("📌 2026년 인천 블록체인 도입 컨설팅 중소기업 지원 내용 확인");
+    expect(caption).toContain("신청 기간을 먼저 확인하세요");
+    expect(caption).toContain("공식 신청처 확인");
+    expect(caption).not.toContain("놓치면 후회");
+    expect(caption).not.toContain("바로가기 👇");
+  });
+
   // 2026-06-13 오탐 회귀 방어 — 정책 제목(고유명사)에 금지 문구가 들어가도 발행 차단되면 안 됨.
   // (6/8 "청년과 함께 성장할 기업 모집" 글이 금지구 "함께 성장" 으로 매번 검증 실패 → 영영 미발행 사고)
   it("제목에 금지 문구(함께 성장)가 있어도 throw 안 함 (인용된 정책명 면제)", () => {

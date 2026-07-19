@@ -34,6 +34,7 @@ import {
   categoryBadgeTextColor,
   categoryColorOnWhite,
 } from "@/lib/instagram/card-colors";
+import { sanitizeInstagramPolicyCopy } from "@/lib/instagram/policy-copy";
 
 export const runtime = "nodejs";
 
@@ -82,7 +83,8 @@ export async function GET(
     return NextResponse.json({ error: "post not found" }, { status: 404 });
   }
 
-  const category = post.category || "정책";
+  const displayPost = sanitizeInstagramPolicyCopy(post);
+  const category = displayPost.category || "정책";
   const color = getCategoryColor(category);
   const fontData = await loadFontData();
   // 1080×1350 (4:5 portrait) — 2026 인스타 carousel 공식 권장 ratio
@@ -91,10 +93,10 @@ export async function GET(
   // 카드별 다른 layout 으로 생성 (3 카드 동시 보이는 일관된 시리즈 디자인)
   const cardElement =
     cardIndex === 1
-      ? renderCoverCard(post.title, category, color)
+      ? renderCoverCard(displayPost.title, category, color)
       : cardIndex === 2
-        ? renderInfoCard(post.title, post.meta_description, color)
-        : renderCtaCard(post.title, color);
+        ? renderInfoCard(displayPost.title, displayPost.meta_description, color)
+        : renderCtaCard(displayPost.title, color);
 
   return new ImageResponse(cardElement, {
     ...size,
