@@ -60,9 +60,22 @@ async function logHealthAlertRun(details: {
   }
 }
 
-async function run() {
+async function run({ dryRun = false }: { dryRun?: boolean } = {}) {
   const signals = await getHealthSignals();
   const alerts = checkThresholds(signals);
+
+  if (dryRun) {
+    return NextResponse.json({
+      ok: true,
+      mode: "dry_run",
+      sent: false,
+      audited: false,
+      alerts,
+      alertKeys: alerts.map((a) => a.key),
+      signals,
+      note: "dry_run only evaluates health signals; it does not write admin_actions, send email, SMS, or Telegram.",
+    });
+  }
 
   if (alerts.length === 0) {
     // 정상 cron 실행도 audit — "오늘 09:00 KST 흔적 없음" = cron 노쇼 신호로 활용 가능
@@ -182,15 +195,20 @@ async function run() {
   });
 }
 
+function isDryRunRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  return url.searchParams.get("dry") === "1" || url.searchParams.get("dry_run") === "1";
+}
+
 export async function GET(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
-  return run();
+  return run({ dryRun: isDryRunRequest(request) });
 }
 
 // POST 도 같은 동작 (수동 trigger 편의)
 export async function POST(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
-  return run();
+  return run({ dryRun: isDryRunRequest(request) });
 }
