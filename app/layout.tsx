@@ -88,7 +88,7 @@ export default async function RootLayout({
   // 관리자·알림수 판정을 레이아웃에서 제거하고, Nav(client)가 mount 후 서버 액션
   // getNavAuthState 로 self-fetch 한다. 익명·크롤러엔 영향 0, 로그인 사용자만 하이드레이션 후 갱신.
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
         {/* Pretendard 폰트 preload — globals.css @import 제거 후 직접 link.
             @import 는 CSS parser 차단이라 폰트 다운로드 시작이 늦어짐.
