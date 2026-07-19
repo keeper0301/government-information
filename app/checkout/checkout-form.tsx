@@ -49,7 +49,7 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
       // 의도(tier)를 success 페이지가 신뢰함 (URL 변조 방지)
       const origin = window.location.origin;
       const successUrl = `${origin}/checkout/success`;
-      const failUrl = `${origin}/checkout/fail`;
+      const failUrl = `${origin}/checkout/fail?tier=${tier}`;
 
       // requestBillingAuth: 카드 등록(빌링 인증) 요청
       // "카드" 는 결제 수단 (현재는 카드만 지원)

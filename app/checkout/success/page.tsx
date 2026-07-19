@@ -133,12 +133,12 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   if (!updatedRows || updatedRows.length === 0) {
     // 동시 요청/replay 로 pending 이 이미 소진됨 — 이 빌링키는 중복이라 정리
     await deleteBillingKey(billingInfo.billingKey);
-    redirect("/mypage/billing?welcome=1");
+    redirect(`/mypage/billing?welcome=1&tier=${tier}`);
   }
 
   // 6) POST-redirect-GET: success URL 흔적 지우고 mypage 로 이동
   // 사용자가 새로고침해도 issueBillingKey 가 다시 호출되지 않음
-  redirect("/mypage/billing?welcome=1");
+  redirect(`/mypage/billing?welcome=1&tier=${tier}`);
 }
 
 // 에러 상태 안내 (재시도 링크 포함)

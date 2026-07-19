@@ -17,6 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { TIER_NAMES, TIER_PRICES, type Tier } from "@/lib/subscription";
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { EVENTS } from "@/lib/analytics";
+import { getPostCheckoutActivationCopy } from "@/lib/checkout/post-checkout-copy";
 import { CancelButton } from "./cancel-button";
 
 type SearchParams = Promise<{ already?: string; welcome?: string }>;
@@ -55,6 +56,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
   const tier = subscription.tier as Exclude<Tier, "free">;
   const tierName = TIER_NAMES[tier];
   const price = TIER_PRICES[tier];
+  const activationCopy = getPostCheckoutActivationCopy(tier);
 
   // 상태 표시 정보
   const statusInfo = getStatusInfo(subscription.status, subscription.cancelled_at);
@@ -89,6 +91,27 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 text-[13px] text-blue-700 leading-[1.6]">
               <b>{tierName} 구독이 시작되었어요!</b><br />
               7일 무료체험이 진행 중이며, 등록한 카드는 체험 종료 후 자동 결제됩니다.
+            </div>
+            <div className="bg-white border border-blue-100 rounded-2xl p-5 mb-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+              <h2 className="text-[18px] font-extrabold text-grey-900 tracking-[-0.3px]">
+                {activationCopy.title}
+              </h2>
+              <p className="mt-2 text-[14px] text-grey-700 leading-[1.6]">
+                {activationCopy.description}
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {activationCopy.actions.map((action) => (
+                  <a
+                    key={action.href}
+                    href={action.href}
+                    className={action.tone === "primary"
+                      ? "min-h-[46px] flex items-center justify-center rounded-xl bg-blue-500 px-4 text-[14px] font-bold text-white no-underline hover:bg-blue-600"
+                      : "min-h-[46px] flex items-center justify-center rounded-xl border border-grey-200 bg-white px-4 text-[14px] font-semibold text-grey-800 no-underline hover:bg-grey-50"}
+                  >
+                    {action.label}
+                  </a>
+                ))}
+              </div>
             </div>
           </>
         )}
