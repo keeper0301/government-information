@@ -103,6 +103,8 @@ export type RegisteredUserDashboardRow = {
   opsStatus: UserOpsStatus;
   opsStatusUpdatedAt: string | null;
   opsStatusIsManual: boolean;
+  opsNote: string | null;
+  nextContactAt: string | null;
 };
 
 export type RegisteredUsersDashboard = {
@@ -157,12 +159,20 @@ export function buildRegisteredUsersDashboard(input: {
     alertCounts.set(rule.user_id, prev);
   }
 
-  const opsStatusMap = new Map<string, { status: UserOpsStatus; updatedAt: string }>();
+  const opsStatusMap = new Map<
+    string,
+    { status: UserOpsStatus; updatedAt: string; note: string | null; nextContactAt: string | null }
+  >();
   for (const action of input.opsStatusActions ?? []) {
     const targetUserId = action.target_user_id;
     const status = action.details?.status;
     if (!targetUserId || !isUserOpsStatus(status) || opsStatusMap.has(targetUserId)) continue;
-    opsStatusMap.set(targetUserId, { status, updatedAt: action.created_at });
+    opsStatusMap.set(targetUserId, {
+      status,
+      updatedAt: action.created_at,
+      note: stringOrNull(action.details?.note),
+      nextContactAt: stringOrNull(action.details?.next_contact_at),
+    });
   }
 
   const rows = input.users.map((user) => {
@@ -203,6 +213,8 @@ export function buildRegisteredUsersDashboard(input: {
       opsStatus: manualOpsStatus?.status ?? derivedOpsStatus,
       opsStatusUpdatedAt: manualOpsStatus?.updatedAt ?? null,
       opsStatusIsManual: Boolean(manualOpsStatus),
+      opsNote: manualOpsStatus?.note ?? null,
+      nextContactAt: manualOpsStatus?.nextContactAt ?? null,
     } satisfies RegisteredUserDashboardRow;
   });
 
@@ -249,6 +261,12 @@ function deriveOpsStatus(input: {
   return "done";
 }
 
+function stringOrNull(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export function filterRegisteredUserRows(
   rows: RegisteredUserDashboardRow[],
   filters: RegisteredUsersFilter,
@@ -284,6 +302,8 @@ export function filterRegisteredUserRows(
       row.ageGroup,
       row.incomeLevel,
       userOpsStatusLabel(row.opsStatus),
+      row.opsNote,
+      row.nextContactAt,
       ...row.interests,
     ]
       .filter(Boolean)
