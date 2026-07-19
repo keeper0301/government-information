@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserTier, TIER_NAMES, TIER_PRICES, type Tier } from "@/lib/subscription";
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { parseRecommendedTier, type RecommendedTier } from "@/lib/pricing/recommended-tier";
+import { getPricingConversionCopy, parsePricingSource, type PricingConversionCopy } from "@/lib/pricing/conversion-copy";
 import { CheckoutLink } from "./checkout-link";
 
 export const metadata: Metadata = {
@@ -71,6 +72,11 @@ export default async function PricingPage({
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const recommendedTier = parseRecommendedTier(resolvedSearchParams);
+  const pricingSource = parsePricingSource(resolvedSearchParams);
+  const conversionCopy = getPricingConversionCopy({
+    source: pricingSource,
+    recommendedTier,
+  });
   // 로그인 상태 + 현재 티어 조회 (없으면 free)
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -79,15 +85,22 @@ export default async function PricingPage({
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
       {/* GA4 pricing_viewed 이벤트 (전환 퍼널 분석) */}
-      <GaPageTracker eventName="pricing_viewed" />
+      <GaPageTracker
+        eventName="pricing_viewed"
+        params={{
+          source: pricingSource ?? "direct",
+          recommended_tier: recommendedTier ?? "none",
+          pricing_variant: conversionCopy.variant,
+        }}
+      />
       <div className="max-w-[1100px] mx-auto px-5">
         {/* 헤더 */}
         <div className="text-center mb-10 md:mb-14">
           <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-[-0.6px] text-grey-900 mb-3">
-            나에게 맞는 요금제를 골라보세요
+            {conversionCopy.heading}
           </h1>
           <p className="text-[15px] md:text-[17px] text-grey-700 leading-[1.6]">
-            7일 무료체험 · 언제든 해지 가능 · 부가세 포함
+            {conversionCopy.subheading}
           </p>
         </div>
 
@@ -100,6 +113,7 @@ export default async function PricingPage({
               currentTier={currentTier}
               isLoggedIn={Boolean(user)}
               recommendedTier={recommendedTier}
+              conversionCopy={conversionCopy}
             />
           ))}
         </div>
@@ -121,11 +135,12 @@ export default async function PricingPage({
 // ============================================================
 // 단일 요금제 카드
 // ============================================================
-function PlanCard({ plan, currentTier, isLoggedIn, recommendedTier }: {
+function PlanCard({ plan, currentTier, isLoggedIn, recommendedTier, conversionCopy }: {
   plan: PlanInfo;
   currentTier: Tier;
   isLoggedIn: boolean;
   recommendedTier: RecommendedTier;
+  conversionCopy: PricingConversionCopy;
 }) {
   const isCurrent = currentTier === plan.tier;
   const price = plan.tier === "free" ? 0 : TIER_PRICES[plan.tier];
@@ -157,6 +172,11 @@ function PlanCard({ plan, currentTier, isLoggedIn, recommendedTier }: {
           {TIER_NAMES[plan.tier]}
         </h3>
         <p className="text-[13px] text-grey-600">{plan.tagline}</p>
+        {(plan.tier === "basic" || plan.tier === "pro") && conversionCopy.planNudgeByTier[plan.tier] && (
+          <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[13px] font-semibold leading-[1.5] text-amber-900">
+            {conversionCopy.planNudgeByTier[plan.tier]}
+          </p>
+        )}
       </div>
 
       {/* 가격 */}
@@ -188,16 +208,18 @@ function PlanCard({ plan, currentTier, isLoggedIn, recommendedTier }: {
         plan={plan}
         isCurrent={isCurrent}
         isLoggedIn={isLoggedIn}
+        conversionCopy={conversionCopy}
       />
     </div>
   );
 }
 
 // CTA 버튼: 현재 플랜 / 가입하기 / 무료 시작 분기
-function CtaButton({ plan, isCurrent, isLoggedIn }: {
+function CtaButton({ plan, isCurrent, isLoggedIn, conversionCopy }: {
   plan: PlanInfo;
   isCurrent: boolean;
   isLoggedIn: boolean;
+  conversionCopy: PricingConversionCopy;
 }) {
   const baseClass = "block w-full min-h-[52px] flex items-center justify-center text-[15px] font-bold rounded-xl no-underline transition-colors";
 
@@ -225,18 +247,26 @@ function CtaButton({ plan, isCurrent, isLoggedIn }: {
   // 유료 플랜: 결제 페이지로 이동 (비로그인이면 로그인 후 자동 복귀)
   const next = `/checkout?tier=${plan.tier}`;
   const href = isLoggedIn ? next : `/login?next=${encodeURIComponent(next)}`;
-  const buttonStyle = plan.highlight
-    ? "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_2px_8px_rgba(49,130,246,0.25)]"
-    : "bg-grey-900 text-white hover:bg-grey-800";
+  const ctaLabel = (plan.tier === "basic" || plan.tier === "pro")
+    ? conversionCopy.ctaLabelByTier[plan.tier] ?? "7일 무료로 시작하기"
+    : "7일 무료로 시작하기";
+  const buttonStyle = conversionCopy.recommendedTier === "pro" && plan.tier === "pro"
+    ? "bg-amber-500 text-white hover:bg-amber-600 shadow-[0_2px_8px_rgba(245,158,11,0.25)]"
+    : plan.highlight
+      ? "bg-blue-500 text-white hover:bg-blue-600 shadow-[0_2px_8px_rgba(49,130,246,0.25)]"
+      : "bg-grey-900 text-white hover:bg-grey-800";
 
   return (
     <CheckoutLink
       href={href}
       tier={plan.tier}
       isLoggedIn={isLoggedIn}
+      pricingVariant={conversionCopy.variant}
+      source={conversionCopy.source}
+      recommendedTier={conversionCopy.recommendedTier}
       className={`${baseClass} ${buttonStyle}`}
     >
-      7일 무료로 시작하기
+      {ctaLabel}
     </CheckoutLink>
   );
 }
