@@ -14,6 +14,7 @@
     "audit:route-auth": "node tools/audit-api-route-auth.mjs",
     "cache:guard": "vitest run __tests__/vercel-public-cache-headers.test.ts __tests__/public-static-segment-config.test.ts",
     "cache:monitor": "node tools/verify-production-cache-headers.mjs",
+    "smoke:admin-pageerrors": "node tools/admin-pageerror-smoke.mjs",
     "perf:public": "node tools/measure-public-pages.mjs",
     "region:backfill:jeonnam-gwangju": "node tools/backfill-jeonnam-gwangju-region-tags.mjs",
     "agent:resident": "node tools/agent-resident-server.mjs",

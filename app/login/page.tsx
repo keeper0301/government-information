@@ -70,16 +70,6 @@ function LoginForm() {
   const [resetSuccess] = useState(
     () => searchParams.get("reset") === "success"
   );
-  const nextLabel = useMemo(() => {
-    const labels: Record<string, string> = {
-      "/admin": "관리자 화면",
-      "/mypage": "마이페이지",
-      "/checkout": "결제 화면",
-      "/pricing": "요금제 화면",
-      "/alerts": "맞춤 알림 설정",
-    };
-    return labels[next] ?? (next === "/" ? "홈" : "이전 화면");
-  }, [next]);
 
   // URL 에서 일회성 파라미터(error, reset)만 제거 — next 는 유지.
   // setState 는 하지 않음 (initial state 는 이미 위에서 설정됨).
@@ -169,7 +159,7 @@ function LoginForm() {
         이메일로 로그인하세요.
       </p>
       <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[13px] leading-[1.6] text-blue-700">
-        로그인하면 {nextLabel}으로 바로 이어지고, 관심 지역·정책 알림을 놓치지 않게 저장해드려요.
+        로그인하면 원래 보려던 화면으로 바로 이어지고, 관심 지역·정책 알림을 놓치지 않게 저장해드려요.
       </div>
 
       {/* 비밀번호 변경 완료 알림 (초록 톤) */}
