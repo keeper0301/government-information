@@ -88,8 +88,98 @@ export type PaidUsersDashboard = {
   rows: PaidUserDashboardRow[];
 };
 
+export type PaidUsersFilter = {
+  tier?: string;
+  status?: string;
+  segment?: string;
+  query?: string;
+};
+
+export const PAID_USERS_CSV_HEADER = [
+  "email",
+  "tier",
+  "status",
+  "interview_segment",
+  "activation_gaps",
+  "last_sign_in_at",
+  "current_period_end",
+  "admin_user_url",
+  "outreach_message_type",
+] as const;
+
 export function isPaidActiveStatus(status: string): boolean {
   return (PAID_ACTIVE_STATUSES as readonly string[]).includes(status);
+}
+
+export function filterPaidUserRows(
+  rows: PaidUserDashboardRow[],
+  filters: PaidUsersFilter,
+): PaidUserDashboardRow[] {
+  const tier = filters.tier ?? "";
+  const status = filters.status ?? "";
+  const segment = filters.segment ?? "";
+  const query = (filters.query ?? "").trim().toLowerCase();
+
+  return rows.filter((row) => {
+    if (tier && row.tier !== tier) return false;
+    if (status && row.status !== status) return false;
+    if (segment && row.interviewSegment !== segment) return false;
+    if (!query) return true;
+
+    const haystack = [row.email, row.customerEmail, row.userId, row.cardLabel]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+export function outreachMessageType(
+  row: PaidUserDashboardRow,
+): "payment_risk" | "activation_gap" | "paid_user" {
+  if (row.interviewSegment === "payment_risk") return "payment_risk";
+  if (row.interviewSegment === "activation_gap") return "activation_gap";
+  return "paid_user";
+}
+
+function csvCell(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  const s = String(value);
+  if (/[,"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+export function buildPaidUsersCsv(
+  rows: PaidUserDashboardRow[],
+  options: { baseUrl?: string } = {},
+): string {
+  const baseUrl = options.baseUrl ? trimTrailingSlash(options.baseUrl) : "";
+  const lines = [PAID_USERS_CSV_HEADER.map(csvCell).join(",")];
+
+  for (const row of rows) {
+    const adminPath = `/admin/users/${row.userId}`;
+    lines.push(
+      [
+        row.email ?? "",
+        row.tier,
+        row.status,
+        row.interviewSegment,
+        row.activationGaps.join("|"),
+        row.lastSignInAt ?? "",
+        row.currentPeriodEnd ?? "",
+        baseUrl ? `${baseUrl}${adminPath}` : adminPath,
+        outreachMessageType(row),
+      ]
+        .map(csvCell)
+        .join(","),
+    );
+  }
+
+  return "﻿" + lines.join("\r\n");
 }
 
 export function getActivationGaps(input: {

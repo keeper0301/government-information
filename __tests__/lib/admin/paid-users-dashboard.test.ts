@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPaidUsersCsv,
   buildPaidUsersDashboard,
+  filterPaidUserRows,
   getActivationGaps,
   isPaidActiveStatus,
+  outreachMessageType,
 } from "@/lib/admin/paid-users-dashboard";
 
 describe("paid users dashboard helpers", () => {
@@ -84,5 +87,63 @@ describe("paid users dashboard helpers", () => {
     expect(dashboard.rows[0].interviewSegment).toBe("payment_risk");
     expect(dashboard.rows[1].email).toBe("basic@auth.test");
     expect(dashboard.rows[1].lastPaymentStatus).toBe("DONE");
+  });
+
+  it("filters rows and exports the current interview candidate CSV", () => {
+    const dashboard = buildPaidUsersDashboard({
+      subscriptions: [
+        {
+          user_id: "u_basic",
+          tier: "basic",
+          status: "active",
+          customer_email: "basic@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: "2026-08-01T00:00:00.000Z",
+          cancelled_at: null,
+          created_at: "2026-07-01T00:00:00.000Z",
+          updated_at: "2026-07-10T00:00:00.000Z",
+        },
+        {
+          user_id: "u_pro",
+          tier: "pro",
+          status: "active",
+          customer_email: null,
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: "2026-08-02T00:00:00.000Z",
+          cancelled_at: null,
+          created_at: "2026-07-02T00:00:00.000Z",
+          updated_at: "2026-07-11T00:00:00.000Z",
+        },
+      ],
+      users: [
+        { id: "u_basic", email: "basic@auth.test", last_sign_in_at: "2026-07-12T00:00:00.000Z" },
+        { id: "u_pro", email: "pro,quoted@auth.test", last_sign_in_at: "2026-07-13T00:00:00.000Z" },
+      ],
+      payments: [],
+      businessUserIds: ["u_basic", "u_pro"],
+      kakaoConsentUserIds: [],
+      activeAlertRuleUserIds: ["u_basic"],
+    });
+
+    const filtered = filterPaidUserRows(dashboard.rows, {
+      tier: "pro",
+      segment: "activation_gap",
+      query: "quoted",
+    });
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].userId).toBe("u_pro");
+    expect(outreachMessageType(filtered[0])).toBe("activation_gap");
+
+    const csv = buildPaidUsersCsv(filtered, { baseUrl: "https://www.keepioo.com/" });
+    expect(csv).toContain("email,tier,status,interview_segment,activation_gaps");
+    expect(csv).toContain('"pro,quoted@auth.test"');
+    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications");
+    expect(csv).toContain("https://www.keepioo.com/admin/users/u_pro");
+    expect(csv).toContain("activation_gap");
   });
 });
