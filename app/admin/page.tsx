@@ -34,11 +34,8 @@ async function requireAdmin() {
   return user;
 }
 
-async function searchUser(formData: FormData) {
-  "use server";
-
-  await requireAdmin();
-  const raw = String(formData.get("query") ?? "").trim();
+async function redirectToUserSearchResult(rawQuery: string) {
+  const raw = rawQuery.trim();
   if (!raw) return;
 
   const admin = createAdminClient();
@@ -246,10 +243,11 @@ function buildFocusItems({
 export default async function AdminHomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; query?: string }>;
 }) {
   const actor = await requireAdmin();
   const params = await searchParams;
+  if (params.query) await redirectToUserSearchResult(params.query);
 
   const [
     stats,
@@ -538,7 +536,7 @@ export default async function AdminHomePage({
           <p className="mb-3 text-sm leading-[1.6] text-grey-700">
             이메일 또는 UUID를 입력하면 사용자 상세 페이지로 바로 이동합니다.
           </p>
-          <form action={searchUser} className="flex gap-2 max-md:flex-col">
+          <form action="/admin" method="get" className="flex gap-2 max-md:flex-col">
             <input
               type="text"
               name="query"
