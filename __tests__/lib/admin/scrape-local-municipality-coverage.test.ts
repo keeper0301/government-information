@@ -39,6 +39,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "대전광역시 동구")?.covered,
     ).toMatchObject({ source: "static", key: "donggu_daejeon" });
+    expect(
+      rows.find((row) => row.fullName === "대전광역시 중구")?.covered,
+    ).toMatchObject({ source: "static", key: "junggu_daejeon" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
