@@ -6,6 +6,7 @@ import { PROVINCES } from "@/lib/regions";
 import type { CoverageSummary, MunicipalityRow } from "./municipality-coverage";
 import {
   buildMunicipalityCoverageCsv,
+  buildUncoveredProvinceSummary,
   buildUncoveredMunicipalityText,
 } from "./municipality-coverage-export";
 
@@ -54,6 +55,7 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
       })),
     [filteredRows, rows],
   );
+  const uncoveredProvinceSummary = useMemo(() => buildUncoveredProvinceSummary(rows), [rows]);
 
   const coveragePercent = Math.round((summary.coveredCount / summary.totalCount) * 100);
   const filteredCoveredCount = filteredRows.filter((row) => row.covered).length;
@@ -93,6 +95,13 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
     anchor.remove();
     URL.revokeObjectURL(url);
     setExportMessage(`현재 표시 ${filteredRows.length}곳의 CSV를 다운로드했습니다.`);
+  }
+
+  function focusUncoveredProvince(provinceCode: ProvinceCode) {
+    setProvince(provinceCode);
+    setStatus("uncovered");
+    setQuery("");
+    setExportMessage("");
   }
 
   return (
@@ -212,6 +221,35 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
           <p className="mt-2 text-xs font-medium text-blue-700" role="status">
             {exportMessage}
           </p>
+        )}
+
+        {uncoveredProvinceSummary.length > 0 && (
+          <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 p-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold text-amber-900">미구현 많은 광역 빠른 보기</p>
+                <p className="text-xs text-amber-800">
+                  버튼을 누르면 해당 광역의 미구현 시·군·구만 바로 필터링합니다.
+                </p>
+              </div>
+              <span className="text-xs text-amber-800">
+                미구현 광역 {uncoveredProvinceSummary.length.toLocaleString()}곳
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {uncoveredProvinceSummary.slice(0, 8).map((item) => (
+                <button
+                  key={item.provinceCode}
+                  type="button"
+                  onClick={() => focusUncoveredProvince(item.provinceCode)}
+                  className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                  title={`${item.provinceName} 전체 ${item.totalCount}곳 중 미구현 ${item.uncoveredCount}곳`}
+                >
+                  {item.provinceName} {item.uncoveredCount}곳
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 

@@ -5,6 +5,7 @@ import {
 } from "@/app/admin/scrape-local/municipality-coverage";
 import {
   buildMunicipalityCoverageCsv,
+  buildUncoveredProvinceSummary,
   buildUncoveredMunicipalityText,
 } from "@/app/admin/scrape-local/municipality-coverage-export";
 import { DISTRICTS_BY_PROVINCE, PROVINCES } from "@/lib/regions";
@@ -73,5 +74,22 @@ describe("scrape-local municipality coverage", () => {
     );
     expect(csv).toContain("jeonnam,전라남도,순천시,전라남도 순천시,covered,static,suncheon");
     expect(csv).toContain("busan,부산광역시,중구,부산광역시 중구,uncovered,,,,");
+  });
+
+  it("미구현 지역을 광역별로 많이 남은 순서로 요약한다", () => {
+    const rows = buildMunicipalityCoverageRows();
+    const summary = buildUncoveredProvinceSummary(rows);
+
+    expect(summary.length).toBeGreaterThan(0);
+    expect(summary.every((item) => item.uncoveredCount > 0)).toBe(true);
+    expect(summary[0]?.uncoveredCount).toBeGreaterThanOrEqual(summary.at(-1)?.uncoveredCount ?? 0);
+
+    const busan = summary.find((item) => item.provinceName === "부산광역시");
+    expect(busan?.totalCount).toBe(
+      rows.filter((row) => row.provinceName === "부산광역시").length,
+    );
+    expect(busan?.uncoveredCount).toBe(
+      rows.filter((row) => row.provinceName === "부산광역시" && !row.covered).length,
+    );
   });
 });
