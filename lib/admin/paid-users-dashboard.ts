@@ -134,12 +134,62 @@ export function filterPaidUserRows(
   });
 }
 
+export type OutreachMessageType = "payment_risk" | "activation_gap" | "paid_user";
+
 export function outreachMessageType(
   row: PaidUserDashboardRow,
-): "payment_risk" | "activation_gap" | "paid_user" {
+): OutreachMessageType {
   if (row.interviewSegment === "payment_risk") return "payment_risk";
   if (row.interviewSegment === "activation_gap") return "activation_gap";
   return "paid_user";
+}
+
+export function outreachMessageTypeLabel(type: OutreachMessageType): string {
+  const labels: Record<OutreachMessageType, string> = {
+    paid_user: "유료 사용자 섭외",
+    activation_gap: "미설정 사용자 섭외",
+    payment_risk: "결제/해지 위험 확인",
+  };
+  return labels[type];
+}
+
+export function buildPaidUserOutreachMessage(row: PaidUserDashboardRow): string {
+  const type = outreachMessageType(row);
+  const tierName = row.tier === "pro" ? "Pro" : "Basic";
+  const emailLine = row.email ? `\n\n대상: ${row.email}` : "";
+
+  if (type === "activation_gap") {
+    const gaps = row.activationGaps.map(activationGapLabel).join(", ");
+    return [
+      "안녕하세요, 정책알리미 운영자입니다.",
+      `${tierName} 유료 플랜을 시작하신 뒤 아직 일부 설정이 완료되지 않은 것 같아,`,
+      "혹시 어떤 부분이 막혔는지 10분만 여쭤보고 싶습니다.",
+      gaps ? `현재 확인되는 미설정 항목은 ${gaps}입니다.` : "설정 과정에서 막힌 부분이 있었는지 확인하고 싶습니다.",
+      "설명이 부족했는지, 필요성을 못 느끼셨는지 확인해서 바로 개선하려고 합니다.",
+      "가능하신 시간 편하게 알려주세요.",
+      emailLine.trimStart(),
+    ].filter(Boolean).join("\n");
+  }
+
+  if (type === "payment_risk") {
+    return [
+      "안녕하세요, 정책알리미 운영자입니다.",
+      `${tierName} 플랜 이용 과정에서 결제 상태나 해지 흐름에 불편이 있었는지 확인하고 있습니다.`,
+      "결제 유도 목적이 아니라, 막힌 지점을 고치기 위한 5~10분 확인입니다.",
+      "불편했던 점이나 계속 쓰기 어려웠던 이유를 솔직하게 들려주시면 바로 개선에 반영하겠습니다.",
+      "가능하신 시간 편하게 알려주세요.",
+      emailLine.trimStart(),
+    ].filter(Boolean).join("\n");
+  }
+
+  return [
+    "안녕하세요, 정책알리미 운영자입니다.",
+    `최근 ${tierName} 유료 플랜을 시작해주셔서 정말 감사합니다.`,
+    "서비스를 더 쉽게 만들기 위해 10분 정도 짧게 통화로 의견을 듣고 있어요.",
+    "좋은 말보다 “헷갈렸던 점·아쉬웠던 점”을 듣고 싶습니다.",
+    "가능하신 시간 알려주시면 맞춰서 연락드리겠습니다.",
+    emailLine.trimStart(),
+  ].filter(Boolean).join("\n");
 }
 
 function csvCell(value: string | number | null | undefined): string {
