@@ -3,6 +3,10 @@ import {
   buildMunicipalityCoverageRows,
   buildMunicipalityCoverageSummary,
 } from "@/app/admin/scrape-local/municipality-coverage";
+import {
+  buildMunicipalityCoverageCsv,
+  buildUncoveredMunicipalityText,
+} from "@/app/admin/scrape-local/municipality-coverage-export";
 import { DISTRICTS_BY_PROVINCE, PROVINCES } from "@/lib/regions";
 
 describe("scrape-local municipality coverage", () => {
@@ -55,5 +59,19 @@ describe("scrape-local municipality coverage", () => {
     expect(seoulJunggu?.covered?.key).toBe("junggu_seoul");
     expect(incheonJunggu?.covered?.key).toBe("junggu_incheon");
     expect(busanJunggu?.covered).toBeNull();
+  });
+
+  it("운영자가 미구현 목록과 전체 커버리지 CSV를 내보낼 수 있다", () => {
+    const rows = buildMunicipalityCoverageRows();
+    const uncoveredText = buildUncoveredMunicipalityText(rows);
+    const csv = buildMunicipalityCoverageCsv(rows);
+
+    expect(uncoveredText).toContain("부산광역시\t중구\t부산광역시 중구");
+    expect(uncoveredText).not.toContain("전라남도\t순천시\t전라남도 순천시");
+    expect(csv.split("\n")[0]).toBe(
+      "provinceCode,provinceName,district,fullName,status,source,collectorKey,ministry,label",
+    );
+    expect(csv).toContain("jeonnam,전라남도,순천시,전라남도 순천시,covered,static,suncheon");
+    expect(csv).toContain("busan,부산광역시,중구,부산광역시 중구,uncovered,,,,");
   });
 });
