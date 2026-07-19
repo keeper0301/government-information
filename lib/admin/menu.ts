@@ -3,6 +3,7 @@ export type AdminMenuItem = {
   label: string;
   icon: string;
   description?: string;
+  keywords?: string[];
 };
 
 export type AdminMenuGroup = {
@@ -23,6 +24,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         label: "운영 홈",
         icon: "🤖",
         description: "자동화 준비도, 개선 과제, 상주 에이전트",
+        keywords: ["오늘", "먼저", "할일", "처리", "자동화", "상주", "에이전트"],
       },
       {
         href: "/admin/external-actions",
@@ -37,10 +39,10 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         description: "관리자 판단이 필요한 작업",
       },
       {
-        href: "/admin#user-search",
-        label: "사용자 조회",
+        href: "/admin/users",
+        label: "가입 사용자",
         icon: "👤",
-        description: "이메일 또는 UUID로 회원 확인",
+        description: "회원 목록, 온보딩, 요금제 상태 관리",
       },
     ],
   },
@@ -54,6 +56,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         label: "시스템 운영 콘솔",
         icon: "🛠️",
         description: "실행, 점검, 오류 해결을 한 곳에서 처리",
+        keywords: ["콘솔", "실행", "수정", "오류", "도구", "운영"],
       },
       {
         href: "/admin/health",
@@ -72,12 +75,14 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         label: "cron 실패",
         icon: "🚨",
         description: "실패 알림 확인과 재시도",
+        keywords: ["크론", "실패", "재시도", "알림", "에러"],
       },
       {
         href: "/admin/cron-trigger",
         label: "cron 수동 실행",
         icon: "⚙️",
         description: "예약 작업을 직접 실행",
+        keywords: ["크론", "수동", "실행", "트리거", "예약"],
       },
       {
         href: "/admin/dedupe",
@@ -103,6 +108,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         label: "보도자료 후보",
         icon: "📰",
         description: "광역 보도자료 후보 검수",
+        keywords: ["정책", "후보", "검수", "승인", "등록", "광역"],
       },
       {
         href: "/admin/auto-confirmed",
@@ -145,6 +151,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         label: "네이버 블로그",
         icon: "🟢",
         description: "네이버 발행 큐와 수동 테스트",
+        keywords: ["네이버", "블로그", "발행", "큐", "Chrome", "크롬"],
       },
       {
         href: "/admin/wordpress",
@@ -169,6 +176,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         label: "SNS 관제탑",
         icon: "T",
         description: "최종본·중복본·삭제 실패 원장",
+        keywords: ["sns", "threads", "인스타", "스레드", "중복", "삭제", "원장"],
       },
       {
         href: "/admin/scrape-local",
@@ -188,12 +196,14 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         label: "알림톡 발송",
         icon: "📤",
         description: "카카오 알림톡 운영",
+        keywords: ["카카오", "알림", "톡", "발송", "실패", "메시지"],
       },
       {
         href: "/admin/paid-users",
         label: "유료 사용자",
         icon: "💳",
         description: "Basic/Pro 구독자와 활성화 상태 관리",
+        keywords: ["구독", "결제", "유료", "basic", "pro", "고객"],
       },
       {
         href: "/admin/alert-simulator",
@@ -251,6 +261,33 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         description: "사용자 관심 정책 기록",
       },
     ],
+  },
+];
+
+export const ADMIN_QUICK_ACTIONS: AdminMenuItem[] = [
+  {
+    href: "/admin/autonomous",
+    label: "오늘 처리",
+    icon: "✅",
+    description: "승인·결정·자동화 상태부터 확인",
+  },
+  {
+    href: "/admin/system-ops",
+    label: "오류 해결",
+    icon: "🛠️",
+    description: "시스템 콘솔과 실행 도구",
+  },
+  {
+    href: "/admin/press-ingest",
+    label: "정책 검수",
+    icon: "📰",
+    description: "보도자료 후보 승인/제외",
+  },
+  {
+    href: "/admin/naver-blog",
+    label: "발행 큐",
+    icon: "🟢",
+    description: "네이버·콘텐츠 발행 흐름 확인",
   },
 ];
 
