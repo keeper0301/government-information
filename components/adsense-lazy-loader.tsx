@@ -22,6 +22,11 @@ export function AdsenseLazyLoader() {
   useEffect(() => {
     if (!ADSENSE_ID) return;
     if (typeof window === "undefined") return;
+    // 관리자 화면은 광고 노출 대상이 아니며, AdSense 자동 광고 스크립트가 CSP에
+    // 막히면서 pageerror("Uncaught (in promise) undefined")를 남길 수 있다.
+    // 운영 QA의 실제 오류와 광고 네트워크 잡음을 분리하기 위해 /admin 전체에서
+    // 전역 AdSense lazy loader를 비활성화한다.
+    if (window.location.pathname.startsWith("/admin")) return;
 
     let loaded = false;
 
