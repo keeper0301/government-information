@@ -24,6 +24,7 @@ on:
           - naver-extension-status
           - search-console-sitemap-submit
           - health-alert
+          - user-contact-reminder
           - sns-publish-blog
           - sns-publish-popular-policy
           - sns-credential-check
@@ -108,6 +109,10 @@ jobs:
               path="/api/cron/health-alert"
               method="GET"
               ;;
+            user-contact-reminder)
+              path="/api/cron/user-contact-reminder"
+              method="GET"
+              ;;
             sns-publish-blog)
               path="/api/cron/sns-publish-blog"
               method="POST"
@@ -188,7 +193,8 @@ jobs:
           echo "endpoint=${PATH_TO_CALL}"
           echo "method=${METHOD}"
           auth_scheme="Bearer"
-          auth_header=$(printf 'Authorization: %s %s' "$auth_scheme" "$CRON_SECRET")
+          auth_header="Authorization: ${auth_scheme} "
+          auth_header+="${CRON_SECRET}"
           curl_args=(
             -sS
             -o /tmp/response.json
