@@ -25,6 +25,7 @@ on:
           - adsense-gmail-watch
           - naver-extension-status
           - search-console-sitemap-submit
+          - health-alert-dry
           - health-alert
           - user-contact-reminder-dry
           - user-contact-reminder
@@ -117,6 +118,10 @@ jobs:
             search-console-sitemap-submit)
               path="/api/cron/search-console-sitemap-submit"
               method="POST"
+              ;;
+            health-alert-dry)
+              path="/api/cron/health-alert?dry=1&log_safe=1"
+              method="GET"
               ;;
             health-alert)
               path="/api/cron/health-alert"
