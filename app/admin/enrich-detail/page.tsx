@@ -120,7 +120,7 @@ async function triggerEnrich(): Promise<void> {
     // 감사 로그 실패해도 수동 trigger 자체는 기록 (사용자에 결과 표시)
   }
 
-  const qs = `ok=${ok ? "1" : "0"}&result=${encodeURIComponent(JSON.stringify(result))}`;
+  const qs = `ok=${ok ? "1" : "0"}&result=${encodeURIComponent(JSON.stringify(result))}&ts=${encodeURIComponent(new Date().toISOString())}`;
   redirect(`/admin/enrich-detail?${qs}`);
 }
 
@@ -178,8 +178,22 @@ async function resetPermanentSkips(): Promise<void> {
   }
   const total = welfareReset + loanReset;
   redirect(
-    `/admin/enrich-detail?reset=${total}&w=${welfareReset}&l=${loanReset}`,
+    `/admin/enrich-detail?reset=${total}&w=${welfareReset}&l=${loanReset}&ts=${encodeURIComponent(new Date().toISOString())}`,
   );
+}
+
+function fmtKst(iso: string | undefined): string {
+  if (!iso) return "실행 시각 없음";
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return "실행 시각 없음";
+
+  const kst = new Date(time + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const month = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  const hour = String(kst.getUTCHours()).padStart(2, "0");
+  const minute = String(kst.getUTCMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
 export default async function EnrichDetailPage({
@@ -192,6 +206,7 @@ export default async function EnrichDetailPage({
     reset?: string;
     w?: string;
     l?: string;
+    ts?: string;
   }>;
 }) {
   await requireAdmin();
@@ -274,7 +289,7 @@ export default async function EnrichDetailPage({
                 /api/enrich · 약 40초 소요
               </div>
               <div className="text-xs text-grey-600 mt-1">
-                {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                {fmtKst(params.ts)}
               </div>
             </div>
             <Link
@@ -310,7 +325,7 @@ export default async function EnrichDetailPage({
                 welfare {resetWelfare.toLocaleString()}건 · loan {resetLoan.toLocaleString()}건 · 다음 cron (5분 이내) 부터 재시도 시작
               </div>
               <div className="text-xs text-grey-600 mt-1">
-                {new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                {fmtKst(params.ts)}
               </div>
             </div>
             <Link
