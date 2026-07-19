@@ -70,6 +70,7 @@ import { scrapeDaedeokAndInsert } from "./daedeok";
 import { scrapeGongjuAndInsert } from "./gongju";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
+import { scrapeTaebaekAndInsert } from "./taebaek";
 import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
@@ -186,6 +187,7 @@ export type CityKey =
   | "gongju"
   | "seosan"
   | "gangneung"
+  | "taebaek"
   | "ongjin"
   | "junggu_incheon"
   | "ganghwa"
@@ -741,6 +743,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "강원 강릉시청",
     siteUrl: "https://www.gn.go.kr/www/selectBbsNttList.do?bbsNo=23&key=277",
     fn: scrapeGangneungAndInsert,
+  },
+  {
+    key: "taebaek",
+    city: "강원 태백시",
+    ministry: "강원 태백시청",
+    siteUrl: "https://www.taebaek.go.kr/www/selectBbsNttList.do?bbsNo=31&key=359",
+    fn: scrapeTaebaekAndInsert,
   },
   // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
   // 2026-06-07 — 사이트 개편으로 siteUrl 신규 보도/해명 게시판 경로로 정정(구 경로는 302 redirect).
