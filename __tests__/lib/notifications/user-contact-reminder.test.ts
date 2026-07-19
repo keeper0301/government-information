@@ -4,6 +4,7 @@ import {
   buildContactReminderEmail,
   formatContactReminderText,
   kstDateString,
+  summarizeContactReminderDigest,
 } from "@/lib/notifications/user-contact-reminder";
 import type { RegisteredUserDashboardRow } from "@/lib/admin/users-dashboard";
 
@@ -78,5 +79,17 @@ describe("user contact reminder digest", () => {
     expect(email.subject).toContain("오늘 연락할 사용자 1명");
     expect(email.html).toContain("owner@example.com");
     expect(email.text).toContain("관리:");
+  });
+
+  it("builds log-safe summary without user details", () => {
+    const digest = buildContactReminderDigest({
+      today: "2026-07-22",
+      rows: [row({ userId: "u1", email: "private@example.com", nextContactAt: "2026-07-22", opsNote: "개인 메모" })],
+    });
+
+    const summary = summarizeContactReminderDigest(digest);
+    expect(summary).toEqual({ today: "2026-07-22", totalDue: 1, dueToday: 1, overdue: 0 });
+    expect(JSON.stringify(summary)).not.toContain("private@example.com");
+    expect(JSON.stringify(summary)).not.toContain("개인 메모");
   });
 });

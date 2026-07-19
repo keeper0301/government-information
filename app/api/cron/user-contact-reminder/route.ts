@@ -8,6 +8,7 @@ import {
   collectContactReminderDigest,
   formatContactReminderText,
   kstDateString,
+  summarizeContactReminderDigest,
 } from "@/lib/notifications/user-contact-reminder";
 
 export const dynamic = "force-dynamic";
@@ -16,18 +17,27 @@ export const maxDuration = 60;
 const ADMIN_EMAIL = "keeper0301@gmail.com";
 const FROM_ADDRESS = "정책알리미 <noreply@keepioo.com>";
 
-async function run(): Promise<NextResponse> {
+async function run(request: Request): Promise<NextResponse> {
+  const url = new URL(request.url);
+  const dryRun = url.searchParams.get("dry") === "1" || url.searchParams.get("dry_run") === "1";
+  const logSafe = dryRun || url.searchParams.get("log_safe") === "1";
   const today = kstDateString();
   const digest = await collectContactReminderDigest({ today });
-  const telegramMessage = formatContactReminderText(digest);
-  const telegram = await sendOpsAlertTelegram({
-    subject: "[keepioo] 오늘 연락할 사용자",
-    message: telegramMessage,
-  });
-  const email = await sendEmailDigest(digest);
+  const summary = summarizeContactReminderDigest(digest);
+
+  const telegram = dryRun
+    ? ({ ok: false, reason: "dry_run" } as const)
+    : await sendOpsAlertTelegram({
+        subject: "[keepioo] 오늘 연락할 사용자",
+        message: formatContactReminderText(digest),
+      });
+  const email = dryRun ? ({ ok: false, reason: "dry_run" } as const) : await sendEmailDigest(digest);
+  const anyDelivered = telegram.ok || email.ok;
 
   await auditCronRun("user_contact_reminder_run", {
     today,
+    dry_run: dryRun,
+    log_safe: logSafe,
     total_due: digest.totalDue,
     due_today: digest.dueToday.length,
     overdue: digest.overdue.length,
@@ -35,16 +45,19 @@ async function run(): Promise<NextResponse> {
     telegram_reason: telegram.ok ? undefined : telegram.reason,
     email_ok: email.ok,
     email_reason: email.ok ? undefined : email.reason,
-    any_delivered: telegram.ok || email.ok,
+    any_delivered: anyDelivered,
   });
 
   return NextResponse.json({
     ok: true,
+    mode: dryRun ? "dry_run" : "send",
+    logSafe,
     today,
-    digest,
+    digest: logSafe ? undefined : digest,
+    summary,
     telegram,
     email,
-    anyDelivered: telegram.ok || email.ok,
+    anyDelivered,
   });
 }
 
@@ -83,11 +96,11 @@ async function sendEmailDigest(digest: Awaited<ReturnType<typeof collectContactR
 export async function GET(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
-  return run();
+  return run(request);
 }
 
 export async function POST(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
-  return run();
+  return run(request);
 }
