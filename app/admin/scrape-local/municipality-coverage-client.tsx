@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import type { ProvinceCode } from "@/lib/regions";
 import { PROVINCES } from "@/lib/regions";
 import type { CoverageSummary, MunicipalityRow } from "./municipality-coverage";
+import {
+  buildMunicipalityCoverageCsv,
+  buildUncoveredMunicipalityText,
+} from "./municipality-coverage-export";
 
 type StatusFilter = "all" | "covered" | "uncovered" | "static" | "playwright";
 
@@ -16,6 +20,7 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [province, setProvince] = useState<ProvinceCode | "all">("all");
+  const [exportMessage, setExportMessage] = useState("");
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -62,6 +67,33 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
     setQuery("");
     setStatus("all");
     setProvince("all");
+    setExportMessage("");
+  }
+
+  async function copyUncoveredList() {
+    const text = buildUncoveredMunicipalityText(filteredRows);
+    try {
+      await navigator.clipboard.writeText(text);
+      setExportMessage(
+        `현재 표시 기준 미구현 ${filteredRows.filter((row) => !row.covered).length}곳을 복사했습니다.`,
+      );
+    } catch {
+      setExportMessage("브라우저 권한 때문에 복사에 실패했습니다. CSV 다운로드를 사용하세요.");
+    }
+  }
+
+  function downloadCoverageCsv() {
+    const csv = buildMunicipalityCoverageCsv(filteredRows);
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `scrape-local-coverage-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setExportMessage(`현재 표시 ${filteredRows.length}곳의 CSV를 다운로드했습니다.`);
   }
 
   return (
@@ -153,6 +185,35 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
             </button>
           </div>
         </div>
+
+        <div className="mt-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm md:flex-row md:items-center md:justify-between">
+          <div className="text-slate-600">
+            <span className="font-semibold text-slate-800">운영 처리용</span>{" "}
+            현재 필터 기준 미구현 {filteredRows.filter((row) => !row.covered).length.toLocaleString()}곳을
+            복사하거나 전체 상태를 CSV로 내보냅니다.
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={copyUncoveredList}
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:brightness-95"
+            >
+              미구현 목록 복사
+            </button>
+            <button
+              type="button"
+              onClick={downloadCoverageCsv}
+              className="rounded-lg border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+            >
+              현재 목록 CSV 다운로드
+            </button>
+          </div>
+        </div>
+        {exportMessage && (
+          <p className="mt-2 text-xs font-medium text-blue-700" role="status">
+            {exportMessage}
+          </p>
+        )}
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
