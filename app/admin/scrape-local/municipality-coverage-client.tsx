@@ -72,14 +72,13 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
 
   async function copyUncoveredList() {
     const text = buildUncoveredMunicipalityText(filteredRows);
-    try {
-      await navigator.clipboard.writeText(text);
-      setExportMessage(
-        `현재 표시 기준 미구현 ${filteredRows.filter((row) => !row.covered).length}곳을 복사했습니다.`,
-      );
-    } catch {
-      setExportMessage("브라우저 권한 때문에 복사에 실패했습니다. CSV 다운로드를 사용하세요.");
-    }
+    const uncoveredCount = filteredRows.filter((row) => !row.covered).length;
+    const copied = await copyTextToClipboard(text);
+    setExportMessage(
+      copied
+        ? `현재 표시 기준 미구현 ${uncoveredCount}곳을 복사했습니다.`
+        : `브라우저 권한 때문에 자동 복사하지 못했습니다. 미구현 ${uncoveredCount}곳은 CSV 다운로드로 내보내세요.`,
+    );
   }
 
   function downloadCoverageCsv() {
@@ -255,6 +254,31 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
       </p>
     </section>
   );
+}
+
+async function copyTextToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Headless browsers and some admin desktop contexts can deny the async
+    // clipboard API even on HTTPS. Keep the UI useful by attempting the
+    // legacy selection path before falling back to CSV-only guidance.
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    document.body.append(textarea);
+    textarea.select();
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      textarea.remove();
+    }
+  }
 }
 
 function Metric({
