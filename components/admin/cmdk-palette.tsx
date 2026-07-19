@@ -2,33 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ADMIN_MENU } from "@/lib/admin/menu";
-
-type SearchItem = {
-  href: string;
-  label: string;
-  icon: string;
-  group: string;
-  description?: string;
-};
-
-function buildSearchItems(): SearchItem[] {
-  return [
-    {
-      href: "/admin",
-      label: "대시보드",
-      icon: "🏠",
-      group: "홈",
-      description: "오늘 처리할 일과 운영 요약",
-    },
-    ...ADMIN_MENU.flatMap((group) =>
-      group.items.map((item) => ({
-        ...item,
-        group: group.title,
-      })),
-    ),
-  ];
-}
+import { buildAdminSearchItems, filterAdminSearchItems } from "@/lib/admin/search";
 
 export function CmdKPalette() {
   const router = useRouter();
@@ -36,7 +10,7 @@ export function CmdKPalette() {
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const allItems = useMemo(() => buildSearchItems(), []);
+  const allItems = useMemo(() => buildAdminSearchItems(), []);
 
   const openPalette = useCallback(() => {
     setQuery("");
@@ -46,12 +20,7 @@ export function CmdKPalette() {
   }, []);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return allItems;
-    return allItems.filter((item) => {
-      const haystack = `${item.label} ${item.group} ${item.description ?? ""}`.toLowerCase();
-      return haystack.includes(q);
-    });
+    return filterAdminSearchItems(allItems, query);
   }, [allItems, query]);
 
   useEffect(() => {

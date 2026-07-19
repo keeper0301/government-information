@@ -14,6 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { ScrapeCityCard } from "./scrape-city-card";
+import { MunicipalityCoverage } from "./municipality-coverage";
 import {
   CITY_REGISTRY,
   type CityEntry,
@@ -145,6 +146,8 @@ export default async function Page() {
           (10:30 / 15:30 / 19:30) 이 자동 분류 → welfare / loan 자동 등록.
         </p>
       </div>
+
+      <MunicipalityCoverage />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {CITY_REGISTRY.map((entry) => (
