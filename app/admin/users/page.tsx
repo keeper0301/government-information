@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { isAdminUser } from "@/lib/admin-auth";
+import { logAdminAction } from "@/lib/admin-actions";
 import { createClient } from "@/lib/supabase/server";
 import { formatRegionDisplay } from "@/lib/region-display";
 import {
+  USER_OPS_STATUSES,
   filterRegisteredUserRows,
   getRegisteredUsersDashboard,
+  isUserOpsStatus,
+  userOpsStatusLabel,
   type RegisteredUserDashboardRow,
+  type UserOpsStatus,
 } from "@/lib/admin/users-dashboard";
 
 export const metadata: Metadata = {
@@ -26,6 +32,7 @@ type PageSearchParams = Promise<{
   profile?: string | string[];
   email?: string | string[];
   alert?: string | string[];
+  ops?: string | string[];
 }>;
 
 async function requireAdmin() {
@@ -35,6 +42,28 @@ async function requireAdmin() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/admin/users");
   if (!isAdminUser(user.email)) redirect("/");
+  return user;
+}
+
+async function updateUserOpsStatus(formData: FormData) {
+  "use server";
+
+  const actor = await requireAdmin();
+  const userId = String(formData.get("userId") ?? "").trim();
+  const status = String(formData.get("opsStatus") ?? "").trim();
+  const returnTo = String(formData.get("returnTo") ?? "/admin/users");
+
+  if (!userId || !isUserOpsStatus(status)) return;
+
+  await logAdminAction({
+    actorId: actor.id,
+    targetUserId: userId,
+    action: "user_ops_status_update",
+    details: { status },
+  });
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${userId}`);
+  redirect(returnTo.startsWith("/admin/users") ? returnTo : "/admin/users");
 }
 
 function firstParam(value: string | string[] | undefined): string {
@@ -65,6 +94,37 @@ function tierTone(tier: string): string {
   return "bg-grey-50 text-grey-700 border-grey-200";
 }
 
+function opsStatusTone(status: UserOpsStatus): string {
+  const tones: Record<UserOpsStatus, string> = {
+    new_signup: "bg-blue-50 text-blue-700 border-blue-200",
+    onboarding_incomplete: "bg-amber-50 text-amber-700 border-amber-200",
+    contact_needed: "bg-red-50 text-red-700 border-red-200",
+    waiting_response: "bg-purple-50 text-purple-700 border-purple-200",
+    done: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dormant_risk: "bg-grey-100 text-grey-700 border-grey-300",
+  };
+  return tones[status];
+}
+
+function buildUsersReturnPath(filters: {
+  query?: string;
+  tier?: string;
+  profile?: string;
+  emailConfirmed?: string;
+  alert?: string;
+  opsStatus?: string;
+}): string {
+  const params = new URLSearchParams();
+  if (filters.query) params.set("q", filters.query);
+  if (filters.tier) params.set("tier", filters.tier);
+  if (filters.profile) params.set("profile", filters.profile);
+  if (filters.emailConfirmed) params.set("email", filters.emailConfirmed);
+  if (filters.alert) params.set("alert", filters.alert);
+  if (filters.opsStatus) params.set("ops", filters.opsStatus);
+  const qs = params.toString();
+  return qs ? `/admin/users?${qs}` : "/admin/users";
+}
+
 export default async function AdminUsersPage({
   searchParams,
 }: {
@@ -78,7 +138,9 @@ export default async function AdminUsersPage({
     profile: firstParam(params.profile),
     emailConfirmed: firstParam(params.email),
     alert: firstParam(params.alert),
+    opsStatus: firstParam(params.ops),
   };
+  const returnTo = buildUsersReturnPath(filters);
 
   const dashboard = await getRegisteredUsersDashboard();
   const filteredRows = filterRegisteredUserRows(dashboard.rows, filters);
@@ -114,6 +176,15 @@ export default async function AdminUsersPage({
             ["무료", `${dashboard.stats.freeUsers.toLocaleString()}명`],
             ["유료", `${dashboard.stats.paidUsers.toLocaleString()}명`],
             ["활성 알림 보유", `${dashboard.stats.activeAlertUsers.toLocaleString()}명`],
+            ["연락 필요", `${dashboard.stats.contactNeededUsers.toLocaleString()}명`],
+          ]}
+        />
+        <BreakdownCard
+          title="운영 상태"
+          rows={[
+            ["온보딩 미완료", `${dashboard.stats.onboardingIncompleteUsers.toLocaleString()}명`],
+            ["휴면 위험", `${dashboard.stats.dormantRiskUsers.toLocaleString()}명`],
+            ["연락 필요", `${dashboard.stats.contactNeededUsers.toLocaleString()}명`],
           ]}
         />
         <div className="rounded-2xl border border-grey-200 bg-white p-4">
@@ -136,7 +207,7 @@ export default async function AdminUsersPage({
       </section>
 
       <form className="mb-5 rounded-2xl border border-grey-200 bg-white p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
           <label className="text-xs font-bold text-grey-600 md:col-span-2">
             검색
             <input
@@ -151,6 +222,7 @@ export default async function AdminUsersPage({
           <Select name="profile" label="프로필" value={filters.profile} options={[["", "전체"], ["complete", "작성"], ["missing", "미작성"]]} />
           <Select name="email" label="이메일 인증" value={filters.emailConfirmed} options={[["", "전체"], ["yes", "인증"], ["no", "미인증"]]} />
           <Select name="alert" label="알림" value={filters.alert} options={[["", "전체"], ["active", "활성 알림 있음"], ["none", "활성 알림 없음"]]} />
+          <Select name="ops" label="운영 상태" value={filters.opsStatus} options={[["", "전체"], ...USER_OPS_STATUSES.map((status) => [status, userOpsStatusLabel(status)] as [string, string])]} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600" type="submit">
@@ -175,18 +247,21 @@ export default async function AdminUsersPage({
                 <th className="px-4 py-3">프로필</th>
                 <th className="px-4 py-3">요금제</th>
                 <th className="px-4 py-3">알림</th>
+                <th className="px-4 py-3">운영 상태</th>
                 <th className="px-4 py-3 text-right">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-grey-100">
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-grey-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-grey-500">
                     조건에 맞는 가입 사용자가 없습니다.
                   </td>
                 </tr>
               ) : (
-                visibleRows.map((row) => <UserTableRow key={row.userId} row={row} />)
+                visibleRows.map((row) => (
+                  <UserTableRow key={row.userId} row={row} returnTo={returnTo} />
+                ))
               )}
             </tbody>
           </table>
@@ -261,7 +336,7 @@ function Select({
   );
 }
 
-function UserTableRow({ row }: { row: RegisteredUserDashboardRow }) {
+function UserTableRow({ row, returnTo }: { row: RegisteredUserDashboardRow; returnTo: string }) {
   return (
     <tr className="align-top hover:bg-grey-50/70">
       <td className="px-4 py-4">
@@ -311,6 +386,35 @@ function UserTableRow({ row }: { row: RegisteredUserDashboardRow }) {
       <td className="px-4 py-4 text-xs text-grey-700">
         <div className="font-semibold text-grey-900">활성 {row.activeAlertRules.toLocaleString()}개</div>
         <div className="mt-1 text-grey-500">전체 {row.totalAlertRules.toLocaleString()}개</div>
+      </td>
+      <td className="px-4 py-4">
+        <div className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${opsStatusTone(row.opsStatus)}`}>
+          {userOpsStatusLabel(row.opsStatus)}
+        </div>
+        <div className="mt-1 text-[11px] text-grey-500">
+          {row.opsStatusIsManual ? `수동 변경 ${formatDate(row.opsStatusUpdatedAt)}` : "자동 분류"}
+        </div>
+        <form action={updateUserOpsStatus} className="mt-2 flex items-center gap-1.5">
+          <input type="hidden" name="userId" value={row.userId} />
+          <input type="hidden" name="returnTo" value={returnTo} />
+          <select
+            name="opsStatus"
+            defaultValue={row.opsStatus}
+            className="w-[118px] rounded-md border border-grey-200 bg-white px-2 py-1 text-xs text-grey-800"
+          >
+            {USER_OPS_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {userOpsStatusLabel(status)}
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="rounded-md border border-grey-200 px-2 py-1 text-xs font-bold text-grey-700 hover:bg-grey-50"
+          >
+            저장
+          </button>
+        </form>
       </td>
       <td className="px-4 py-4 text-right">
         <Link

@@ -12,6 +12,7 @@ export type AdminActionType =
   | "reset_ai_quota"      // 오늘 AI 사용 카운트 0 초기화
   | "manual_delete_user"  // 어드민 수동 탈퇴 처리 (Phase 2)
   | "update_tier"         // 구독 티어 수동 변경 (Phase 2)
+  | "user_ops_status_update" // 가입 사용자 운영 상태 변경 (/admin/users CRM 상태)
   | "manual_alert_send"   // 수동 알림 재전송 (Phase 2)
   | "alimtalk_test"       // 어드민 테스트 발송 (대행사·템플릿 심사 후 검증)
   | "enrich_detail_manual" // /api/enrich 수동 트리거 (공고 빈 필드 채움 급할 때)
@@ -347,6 +348,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   reset_ai_quota: "AI 쿼터 초기화",
   manual_delete_user: "수동 탈퇴 처리",
   update_tier: "구독 티어 변경",
+  user_ops_status_update: "가입 사용자 운영 상태 변경",
   manual_alert_send: "수동 알림 전송",
   alimtalk_test: "알림톡 테스트 발송",
   enrich_detail_manual: "공고 상세 수동 보강",
