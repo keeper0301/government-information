@@ -130,6 +130,16 @@ type CountQuery = PromiseLike<CountResult> & {
   lt(column: string, value: string): CountQuery;
 };
 
+export function shouldFlagNaverExtensionIdle(input: {
+  naverSuccess24h: number;
+  pendingExternalActions: Array<{ label: string; description: string }>;
+}): boolean {
+  if (input.naverSuccess24h > 0) return false;
+  return input.pendingExternalActions.some((a) =>
+    /Naver Extension|naver/i.test(`${a.label} ${a.description}`),
+  );
+}
+
 async function countAdminAction(action: string): Promise<number> {
   try {
     const admin = createAdminClient();
@@ -342,7 +352,13 @@ export async function collectImprovementSnapshot(): Promise<ImprovementSnapshot>
     blogBodyAvgChars24h: blogPublishStats.avgBodyChars24h ?? undefined,
     blogBodyAnomaly: blogPublishStats.bodyStatus === "anomaly",
     pendingExternalActionsCount: pendingExternalActions.length,
-    naverExtensionIdle: pendingExternalActions.some((a) => a.category === "automation"),
+    // PendingExternalActions has multiple automation reminders (PC runner, SNS, Naver, ...).
+    // Do not treat any automation action as Naver extension idle; a fresh naver_publish_audit
+    // success is the strongest live signal and must suppress the stale extension warning.
+    naverExtensionIdle: shouldFlagNaverExtensionIdle({
+      naverSuccess24h,
+      pendingExternalActions,
+    }),
   };
 }
 
@@ -508,9 +524,9 @@ export function buildImprovementRecommendations(
       area: "naver_blog",
       severity: "medium",
       title: "Naver Extension 가동 안 됨 (1주+)",
-      evidence: "최근 7일 naver_publish_* audit 0건 — 5/13 코드 push 후 사장님 액션 3건 (설치·secret·dry-run) 미완 추정",
+      evidence: "최근 Naver extension 성공 audit 0건 — 설치·secret·dry-run 상태 확인 필요",
       action:
-        "본체 PC Chrome Extension 설치 + popup secret 입력 + manual-test 페이지 dry-run 1건. 가이드: docs/external-actions/render-plan-upgrade.md 참조 (별도 가이드 chrome-extension/README.md).",
+        "본체 PC Chrome Extension 설치 + popup secret 입력 + manual-test 페이지 dry-run 1건. 가이드: chrome-extension/README.md.",
     });
   }
 
