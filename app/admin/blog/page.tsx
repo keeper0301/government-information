@@ -23,6 +23,7 @@ export const metadata: Metadata = {
 type SearchParams = {
   q?: string;
   status?: "all" | "published" | "draft";
+  quality?: "all" | "needs_review" | "pending_review" | "approved";
   page?: string;
 };
 
@@ -42,14 +43,14 @@ export default async function AdminBlogListPage({
   searchParams: Promise<SearchParams>;
 }) {
   await requireAdmin();
-  const { q = "", status = "all", page: pageRaw = "1" } = await searchParams;
+  const { q = "", status = "all", quality = "all", page: pageRaw = "1" } = await searchParams;
   const page = Math.max(1, parseInt(pageRaw, 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
   const admin = createAdminClient();
   let query = admin
     .from("blog_posts")
-    .select("id, slug, title, category, tags, published_at, updated_at, view_count", {
+    .select("id, slug, title, category, tags, published_at, updated_at, view_count, admin_review_required, admin_review_score, admin_reviewed_at", {
       count: "exact",
     })
     .order("updated_at", { ascending: false })
@@ -67,6 +68,9 @@ export default async function AdminBlogListPage({
   }
   if (status === "published") query = query.not("published_at", "is", null);
   else if (status === "draft") query = query.is("published_at", null);
+  if (quality === "needs_review") query = query.eq("admin_review_required", true);
+  else if (quality === "pending_review") query = query.is("admin_reviewed_at", null);
+  else if (quality === "approved") query = query.eq("admin_review_required", false);
 
   const { data: posts, count, error } = await query;
 
@@ -82,10 +86,11 @@ export default async function AdminBlogListPage({
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  function buildHref(p: { q?: string; status?: string; page?: number }) {
+  function buildHref(p: { q?: string; status?: string; quality?: string; page?: number }) {
     const sp = new URLSearchParams();
     if (p.q !== undefined ? p.q : q) sp.set("q", p.q !== undefined ? p.q : q);
     if ((p.status ?? status) !== "all") sp.set("status", p.status ?? status);
+    if ((p.quality ?? quality) !== "all") sp.set("quality", p.quality ?? quality);
     if ((p.page ?? page) > 1) sp.set("page", String(p.page ?? page));
     const s = sp.toString();
     return s ? `/admin/blog?${s}` : "/admin/blog";
@@ -122,6 +127,16 @@ export default async function AdminBlogListPage({
           <option value="published">발행</option>
           <option value="draft">미발행</option>
         </select>
+        <select
+          name="quality"
+          defaultValue={quality}
+          className="h-10 px-3 text-sm border border-grey-300 rounded-lg bg-white"
+        >
+          <option value="all">전체 품질</option>
+          <option value="needs_review">품질 보류</option>
+          <option value="pending_review">미검수</option>
+          <option value="approved">품질 승인</option>
+        </select>
         <button
           type="submit"
           className="h-10 px-4 text-sm font-semibold text-white bg-grey-900 rounded-lg hover:bg-grey-800"
@@ -133,17 +148,18 @@ export default async function AdminBlogListPage({
       {/* 목록 테이블 */}
       {posts && posts.length > 0 ? (
         <div className="border border-grey-200 rounded-xl bg-white overflow-hidden">
-          <div className="grid grid-cols-[1fr_120px_100px_100px_80px] gap-3 items-center px-4 py-3 bg-grey-50 border-b border-grey-200 text-sm font-semibold text-grey-700">
+          <div className="grid grid-cols-[1fr_120px_100px_110px_100px_80px] gap-3 items-center px-4 py-3 bg-grey-50 border-b border-grey-200 text-sm font-semibold text-grey-700">
             <div>제목</div>
             <div>카테고리</div>
             <div>상태</div>
+            <div>품질</div>
             <div className="text-right">조회수</div>
             <div className="text-right">액션</div>
           </div>
           {posts.map((p) => (
             <div
               key={p.id}
-              className="grid grid-cols-[1fr_120px_100px_100px_80px] gap-3 items-center px-4 py-3 border-b border-grey-100 last:border-b-0 hover:bg-grey-50 transition-colors"
+              className="grid grid-cols-[1fr_120px_100px_110px_100px_80px] gap-3 items-center px-4 py-3 border-b border-grey-100 last:border-b-0 hover:bg-grey-50 transition-colors"
             >
               <div className="min-w-0">
                 <Link
@@ -165,6 +181,21 @@ export default async function AdminBlogListPage({
                 ) : (
                   <span className="inline-block px-2 py-0.5 text-xs font-semibold text-amber-700 bg-amber-50 rounded">
                     미발행
+                  </span>
+                )}
+              </div>
+              <div>
+                {p.admin_review_required ? (
+                  <span className="inline-block px-2 py-0.5 text-xs font-semibold text-red-700 bg-red-50 rounded">
+                    보류 {typeof p.admin_review_score === "number" ? `· ${p.admin_review_score}점` : ""}
+                  </span>
+                ) : p.admin_reviewed_at ? (
+                  <span className="inline-block px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded">
+                    승인 {typeof p.admin_review_score === "number" ? `· ${p.admin_review_score}점` : ""}
+                  </span>
+                ) : (
+                  <span className="inline-block px-2 py-0.5 text-xs font-semibold text-grey-700 bg-grey-100 rounded">
+                    미검수
                   </span>
                 )}
               </div>

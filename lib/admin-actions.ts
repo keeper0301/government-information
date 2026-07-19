@@ -24,6 +24,7 @@ export type AdminActionType =
   | "blog_edit"             // 블로그 글 수정 (title/meta/content/category/tags 등)
   | "blog_publish"          // 미발행 → 발행 전환
   | "blog_unpublish"        // 발행 → 미발행 전환 (임시 비공개)
+  | "blog_quality_approve"  // 품질 보류 글을 운영자가 수정 확인 후 외부 발행 가능 상태로 승인
   | "news_hide"             // 정책 뉴스 비공개 (저작권·오보 모더레이션)
   | "news_unhide"           // 정책 뉴스 복원 (잘못 숨긴 경우 또는 사유 해소)
   | "news_auto_hide"        // LLM 자동 분류로 광고성·저작권 의심 자동 숨김 (system actor=null)
@@ -362,6 +363,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   blog_edit: "블로그 글 수정",
   blog_publish: "블로그 글 발행",
   blog_unpublish: "블로그 글 비공개",
+  blog_quality_approve: "블로그 품질 승인",
   news_hide: "정책 뉴스 비공개",
   news_unhide: "정책 뉴스 복원",
   news_auto_hide: "정책 뉴스 자동 숨김 (LLM)",
