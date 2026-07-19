@@ -14,6 +14,7 @@ import { getDashboardAlerts, type DashboardAlert } from "@/lib/admin/dashboard-a
 import { getAdminPersonalizationStatus } from "@/lib/admin/personalization-status";
 import { getPolicyInboxStorageStatus } from "@/lib/admin/policy-inbox-storage-status";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { formatAdminNumber } from "@/lib/admin-format";
 import { formatRegionDisplay } from "@/lib/region-display";
 
 export const metadata: Metadata = {
@@ -181,7 +182,7 @@ function buildFocusItems({
       href: alerts[0].href,
       icon: "🚨",
       title: "긴급 처리 항목 확인",
-      body: `${alertLabel(alerts[0])} 등 ${alerts.length.toLocaleString()}개 항목이 대기 중입니다.`,
+      body: `${alertLabel(alerts[0])} 등 ${formatAdminNumber(alerts.length)}개 항목이 대기 중입니다.`,
       tone: "danger",
       badge: "긴급",
     });
@@ -192,7 +193,7 @@ function buildFocusItems({
       href: "/admin/cron-failures",
       icon: "⚙️",
       title: "cron 실패 재시도",
-      body: `최근 24시간 실패 ${stats.cronFailures.toLocaleString()}건을 확인하고 재실행합니다.`,
+      body: `최근 24시간 실패 ${formatAdminNumber(stats.cronFailures)}건을 확인하고 재실행합니다.`,
       tone: "warn",
       badge: "점검",
     });
@@ -203,7 +204,7 @@ function buildFocusItems({
       href: "/admin/alimtalk",
       icon: "📤",
       title: "알림 발송 실패 확인",
-      body: `최근 24시간 실패 ${personalization.failed24h.toLocaleString()}건, 실패율 ${personalization.deliveryFailureRate}%입니다.`,
+      body: `최근 24시간 실패 ${formatAdminNumber(personalization.failed24h)}건, 실패율 ${personalization.deliveryFailureRate}%입니다.`,
       tone: "warn",
       badge: "발송",
     });
@@ -384,7 +385,7 @@ export default async function AdminHomePage({
                   className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-3 py-1.5 text-sm font-bold text-grey-900 no-underline hover:border-red-300"
                 >
                   <span>{alertLabel(alert)}</span>
-                  <span className="text-red-700">{alert.count.toLocaleString()}건</span>
+                  <span className="text-red-700">{formatAdminNumber(alert.count)}건</span>
                 </Link>
               ))}
             </div>
@@ -402,19 +403,19 @@ export default async function AdminHomePage({
                 label="추천 준비"
                 value={personalization.profileReady}
                 suffix="명"
-                hint={`전체 ${personalization.profileTotal.toLocaleString()}명 중 ${personalization.profileReadyPercent}%`}
+                hint={`전체 ${formatAdminNumber(personalization.profileTotal)}명 중 ${personalization.profileReadyPercent}%`}
               />
               <MiniMetric
                 label="활성 알림 규칙"
                 value={personalization.activeRules}
                 suffix="개"
-                hint={`자동 규칙 ${personalization.autoRules.toLocaleString()}개`}
+                hint={`자동 규칙 ${formatAdminNumber(personalization.autoRules)}개`}
               />
               <MiniMetric
                 label="24h 발송 성공"
                 value={personalization.sent24h}
                 suffix="건"
-                hint={`시도 ${personalization.deliveries24h.toLocaleString()}건`}
+                hint={`시도 ${formatAdminNumber(personalization.deliveries24h)}건`}
               />
               <MiniMetric
                 label="24h 발송 실패"
@@ -667,7 +668,7 @@ function KpiCard({
     >
       <div className="mb-1.5 text-xs font-bold text-grey-600">{label}</div>
       <div className="text-2xl font-extrabold tracking-[-0.02em] text-grey-900">
-        {value.toLocaleString()}
+        {formatAdminNumber(value)}
         {suffix && <span className="ml-1 text-sm font-bold text-grey-600">{suffix}</span>}
       </div>
       {hint && (
@@ -700,7 +701,7 @@ function MiniMetric({
     >
       <div className="text-xs font-bold text-grey-600">{label}</div>
       <div className="mt-1 text-lg font-extrabold text-grey-900">
-        {value.toLocaleString()}
+        {formatAdminNumber(value)}
         {suffix && <span className="ml-1 text-xs font-bold text-grey-600">{suffix}</span>}
       </div>
       {hint && <div className="mt-1 text-xs leading-[1.4] text-grey-600">{hint}</div>}
