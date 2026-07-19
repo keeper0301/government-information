@@ -51,6 +51,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "충청남도 서산시")?.covered,
     ).toMatchObject({ source: "static", key: "seosan" });
+    expect(
+      rows.find((row) => row.fullName === "강원특별자치도 강릉시")?.covered,
+    ).toMatchObject({ source: "static", key: "gangneung" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
