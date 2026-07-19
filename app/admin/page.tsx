@@ -120,16 +120,20 @@ async function getRecentSignups(limit = 5) {
     });
 }
 
-function fmtRelative(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "방금 전";
-  if (diffMin < 60) return `${diffMin}분 전`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return `${diffDay}일 전`;
-  return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
+function formatAdminTimestamp(iso: string): string {
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return "날짜 없음";
+
+  // Hydration 안정성: "몇 분 전" 같은 Date.now() 기반 상대 시간은 서버 HTML 과
+  // 클라이언트 hydration 시점이 어긋나면 텍스트가 달라질 수 있다. 관리자 대시보드의
+  // 최근 가입/작업 목록은 절대 시각으로 고정해 첫 HTML 과 RSC payload 를 안정화한다.
+  const seoul = new Date(time + 9 * 60 * 60 * 1000);
+  const year = seoul.getUTCFullYear();
+  const month = String(seoul.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(seoul.getUTCDate()).padStart(2, "0");
+  const hour = String(seoul.getUTCHours()).padStart(2, "0");
+  const minute = String(seoul.getUTCMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
 function alertLabel(alert: DashboardAlert): string {
@@ -488,7 +492,7 @@ export default async function AdminHomePage({
                         {[user.region, user.occupation].filter(Boolean).join(" / ") ||
                           "프로필 미작성"}
                         {" / "}
-                        {fmtRelative(user.createdAt)}
+                        {formatAdminTimestamp(user.createdAt)}
                       </div>
                     </div>
                     <LinkButton href={`/admin/users/${user.id}`}>상세</LinkButton>
@@ -513,7 +517,7 @@ export default async function AdminHomePage({
                         {action.action}
                       </div>
                       <div className="mt-0.5 text-xs text-grey-600">
-                        {fmtRelative(action.createdAt)}
+                        {formatAdminTimestamp(action.createdAt)}
                         {action.targetUserId ? ` / ${action.targetUserId.slice(0, 8)}` : ""}
                       </div>
                     </div>
