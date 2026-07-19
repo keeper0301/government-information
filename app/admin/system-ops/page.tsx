@@ -85,12 +85,11 @@ const SYSTEM_ACTIONS: SystemAction[] = [
     path: "/api/cron/instagram-publish",
     label: "인스타 발행 gate 확인",
     group: "social",
-    method: "POST",
+    method: "GET",
     desc: "승인/safety gate 조건을 통과한 후보만 처리합니다.",
     outcome: "승인된 후보가 없으면 skip 감사 로그만 남습니다.",
     risk: "guarded",
     estimate: "20~90초",
-    requiredEnv: ["INSTAGRAM_ACCESS_TOKEN"],
   },
   {
     path: "/api/cron/blog-quality-check",
