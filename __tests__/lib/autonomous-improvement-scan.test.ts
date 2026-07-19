@@ -125,7 +125,7 @@ describe("buildImprovementRecommendations", () => {
         area: "content_quality",
         severity: "high",
         title: "품질 검수 대기 때문에 외부 발행이 막혀 있습니다",
-        action: expect.stringContaining("blog-quality-check-dry"),
+        action: expect.stringContaining("LLM 재검수"),
       }),
     );
   });
