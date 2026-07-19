@@ -809,6 +809,7 @@ export const CITY_REGISTRY: CityEntry[] = [
     key: "gangseo",
     city: "강서구",
     ministry: "강서구청",
+    ministryAliases: ["서울특별시 강서구", "서울 강서구"],
     siteUrl: "https://www.gangseo.seoul.kr/gs040201",
     fn: scrapeGangseoAndInsert,
   },
