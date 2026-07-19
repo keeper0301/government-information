@@ -48,6 +48,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "충청남도 공주시")?.covered,
     ).toMatchObject({ source: "static", key: "gongju" });
+    expect(
+      rows.find((row) => row.fullName === "충청남도 서산시")?.covered,
+    ).toMatchObject({ source: "static", key: "seosan" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
