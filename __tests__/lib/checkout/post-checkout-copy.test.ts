@@ -11,6 +11,10 @@ describe("getPostCheckoutActivationCopy", () => {
       "/mypage/business",
       "/mypage/notifications",
     ]);
+    expect(copy.actions.map((action) => action.analyticsAction)).toEqual([
+      "business_profile",
+      "notifications",
+    ]);
   });
 
   it("routes Pro users to Kakao consent and notification setup", () => {
@@ -21,6 +25,10 @@ describe("getPostCheckoutActivationCopy", () => {
     expect(copy.actions.map((action) => action.href)).toEqual([
       "/mypage#consents",
       "/mypage/notifications",
+    ]);
+    expect(copy.actions.map((action) => action.analyticsAction)).toEqual([
+      "kakao_consent",
+      "notifications",
     ]);
   });
 });
