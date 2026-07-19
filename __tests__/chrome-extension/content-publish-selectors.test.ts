@@ -13,4 +13,17 @@ describe("Naver content publish selectors", () => {
       "[class*=\"layer_publish\"] button[data-click-area=\"tpb*i.publish\"]",
     );
   });
+
+  it("searches both SmartEditor frame and top document for the final confirm modal", () => {
+    expect(contentScript).toContain("function publishConfirmSearchRoots(mfDoc)");
+    expect(contentScript).toContain('add(mfDoc, "mainFrame")');
+    expect(contentScript).toContain('add(document, "topDocument")');
+    expect(contentScript).toContain("waitForPublishConfirmButton(mfDoc, 12000)");
+  });
+
+  it("records confirm candidate snapshots for post-failure diagnosis", () => {
+    expect(contentScript).toContain("snapshotPublishConfirmCandidates(mfDoc)");
+    expect(contentScript).toContain("confirm_publish_candidates");
+    expect(contentScript).toContain("dry_run_confirm_candidates");
+  });
 });

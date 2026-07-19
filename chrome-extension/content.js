@@ -21,6 +21,14 @@ const SE3_BODY = ".se-section-text p.se-text-paragraph";
 // not under a stable `layer_publish` class. Keep the selector tied to Naver's
 // data-click-area, which stayed stable in the live 2026-07-03 publish run.
 const NAVER_CONFIRM_PUBLISH_SELECTOR = 'button[data-click-area="tpb*i.publish"]';
+const NAVER_CONFIRM_PUBLISH_FALLBACK_SELECTORS = [
+  NAVER_CONFIRM_PUBLISH_SELECTOR,
+  'button[data-click-area*="publish"]',
+  'button[class*="publish"]',
+  'button[class*="confirm"]',
+  'a[data-click-area="tpb*i.publish"]',
+  '[role="button"][data-click-area*="publish"]',
+];
 
 if (!globalThis.__keepiooNaverPublisherListenerRegisteredV3) {
   globalThis.__keepiooNaverPublisherListenerRegisteredV3 = true;
@@ -256,11 +264,10 @@ async function publishToSe3(payload, dryRun) {
       try { mainPub.click(); } catch {}
     }, 0);
     await reportProgress("content_dry_run_main_publish_clicked", { method: "scheduled_dom_click" });
-    let confirmBtn = await waitForVisible(
-      mfDoc,
-      NAVER_CONFIRM_PUBLISH_SELECTOR,
-      8000,
-    );
+    let confirmMatch = await waitForPublishConfirmButton(mfDoc, 8000);
+    let confirmBtn = confirmMatch?.button ?? null;
+    debug.dry_run_confirm_selector = confirmMatch?.selector ?? null;
+    debug.dry_run_confirm_root = confirmMatch?.root ?? null;
     if (!confirmBtn) {
       const clickPoint = computeTopPagePoint(mainPub);
       debug.dry_run_publish_click_point = clickPoint;
@@ -268,16 +275,16 @@ async function publishToSe3(payload, dryRun) {
       debug.dry_run_publish_click_ok = clickRes?.ok === true;
       if (!clickRes?.ok) debug.dry_run_publish_click_error = String(clickRes?.error ?? "unknown").slice(0, 120);
       await reportProgress("content_dry_run_main_publish_clicked", { method: "debugger_click", ok: debug.dry_run_publish_click_ok });
-      confirmBtn = await waitForVisible(
-        mfDoc,
-        NAVER_CONFIRM_PUBLISH_SELECTOR,
-        8000,
-      );
+      confirmMatch = await waitForPublishConfirmButton(mfDoc, 8000);
+      confirmBtn = confirmMatch?.button ?? null;
+      debug.dry_run_confirm_selector = confirmMatch?.selector ?? null;
+      debug.dry_run_confirm_root = confirmMatch?.root ?? null;
     }
     debug.dry_run_confirm_visible = !!confirmBtn;
+    debug.dry_run_confirm_candidates = snapshotPublishConfirmCandidates(mfDoc);
     await reportProgress("content_dry_run_confirm_checked", { visible: debug.dry_run_confirm_visible });
     if (!debug.dry_run_confirm_visible) {
-      throwWithDebug("dry-run fail: confirm 버튼 (tpb*i.publish) 보이지 않음", debug);
+      throwWithDebug("dry-run fail: confirm 버튼 후보가 보이지 않음", debug);
     }
     return { dryRun: true, debug };
   }
@@ -291,12 +298,12 @@ async function publishToSe3(payload, dryRun) {
 
   // 7. 발행 2단계 — confirm 모달
   debug.stage = "confirm_publish";
-  const confirmBtn = await waitForVisible(
-    mfDoc,
-    NAVER_CONFIRM_PUBLISH_SELECTOR,
-    12000,
-  );
-  if (!confirmBtn) throw new Error("발행 모달 confirm 버튼 못 찾음");
+  const confirmMatch = await waitForPublishConfirmButton(mfDoc, 12000);
+  const confirmBtn = confirmMatch?.button ?? null;
+  debug.confirm_publish_selector = confirmMatch?.selector ?? null;
+  debug.confirm_publish_root = confirmMatch?.root ?? null;
+  debug.confirm_publish_candidates = snapshotPublishConfirmCandidates(mfDoc);
+  if (!confirmBtn) throwWithDebug("발행 모달 confirm 버튼 후보 못 찾음", debug);
   await clickPublishButtonWithFallback(confirmBtn, debug, "confirm_publish");
   await sleep(8000);
 
@@ -497,8 +504,73 @@ async function waitFor(root, selector, timeoutMs) {
   return null;
 }
 
-async function waitForVisible(root, selector, timeoutMs) {
-  return waitFor(root, selector, timeoutMs);
+async function waitForPublishConfirmButton(mfDoc, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const found = findPublishConfirmButton(mfDoc);
+    if (found) return found;
+    await sleep(300);
+  }
+  return null;
+}
+
+function findPublishConfirmButton(mfDoc) {
+  for (const { root, label } of publishConfirmSearchRoots(mfDoc)) {
+    for (const selector of NAVER_CONFIRM_PUBLISH_FALLBACK_SELECTORS) {
+      const buttons = Array.from(root.querySelectorAll?.(selector) ?? []);
+      const visible = buttons.find((el) => isVisible(el) && isLikelyPublishConfirmButton(el));
+      if (visible) return { button: visible, selector, root: label };
+    }
+  }
+  return null;
+}
+
+function publishConfirmSearchRoots(mfDoc) {
+  const roots = [];
+  const add = (root, label) => {
+    if (!root || roots.some((r) => r.root === root)) return;
+    roots.push({ root, label });
+  };
+  // Naver may render the second publish modal either inside SmartEditor frame or
+  // in the top document overlay. Search both, with the frame first to preserve
+  // the old successful path.
+  add(mfDoc, "mainFrame");
+  add(document, "topDocument");
+  return roots;
+}
+
+function isLikelyPublishConfirmButton(el) {
+  const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+  const dataClickArea = String(el.getAttribute?.("data-click-area") || "");
+  const className = String(el.className || "");
+  if (dataClickArea === "tpb*i.publish") return true;
+  if (dataClickArea.includes("publish") && /발행|게시|확인|완료/.test(text)) return true;
+  if (/발행|게시/.test(text) && /publish|confirm|button|btn/i.test(`${dataClickArea} ${className}`)) return true;
+  return false;
+}
+
+function snapshotPublishConfirmCandidates(mfDoc) {
+  try {
+    return publishConfirmSearchRoots(mfDoc).flatMap(({ root, label }) =>
+      NAVER_CONFIRM_PUBLISH_FALLBACK_SELECTORS.flatMap((selector) =>
+        Array.from(root.querySelectorAll?.(selector) ?? []).slice(0, 8).map((el) => {
+          const rect = el.getBoundingClientRect();
+          return {
+            root: label,
+            selector,
+            text: String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+            dataClickArea: String(el.getAttribute?.("data-click-area") || "").slice(0, 80),
+            className: String(el.className || "").slice(0, 80),
+            visible: isVisible(el),
+            likely: isLikelyPublishConfirmButton(el),
+            rect: { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) },
+          };
+        }),
+      ),
+    ).slice(0, 30);
+  } catch (e) {
+    return [{ error: String(e?.message ?? e).slice(0, 120) }];
+  }
 }
 
 async function waitForBodyParagraph(root, timeoutMs) {
