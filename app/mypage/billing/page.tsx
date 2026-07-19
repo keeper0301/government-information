@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TIER_NAMES, TIER_PRICES, type Tier } from "@/lib/subscription";
 import { GaPageTracker } from "@/components/ga-page-tracker";
+import { TrackedLink } from "@/components/tracked-link";
 import { EVENTS } from "@/lib/analytics";
 import { getPostCheckoutActivationCopy } from "@/lib/checkout/post-checkout-copy";
 import { CancelButton } from "./cancel-button";
@@ -101,15 +102,21 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
               </p>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {activationCopy.actions.map((action) => (
-                  <a
+                  <TrackedLink
                     key={action.href}
                     href={action.href}
+                    event={EVENTS.POST_CHECKOUT_ACTIVATION_CLICKED}
+                    params={{
+                      tier,
+                      tier_name: tierName,
+                      action: action.analyticsAction,
+                    }}
                     className={action.tone === "primary"
                       ? "min-h-[46px] flex items-center justify-center rounded-xl bg-blue-500 px-4 text-[14px] font-bold text-white no-underline hover:bg-blue-600"
                       : "min-h-[46px] flex items-center justify-center rounded-xl border border-grey-200 bg-white px-4 text-[14px] font-semibold text-grey-800 no-underline hover:bg-grey-50"}
                   >
                     {action.label}
-                  </a>
+                  </TrackedLink>
                 ))}
               </div>
             </div>
