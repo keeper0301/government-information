@@ -38,6 +38,7 @@ export const EVENTS = {
   SUBSCRIPTION_ACTIVE: "subscription_active",        // 빌링키 + 첫 청구 성공
   SUBSCRIPTION_CANCELLED: "subscription_cancelled",  // 사용자 취소
   POST_CHECKOUT_ACTIVATION_CLICKED: "post_checkout_activation_clicked", // 결제 직후 welcome 카드 핵심 기능 클릭
+  ACTIVATION_REMINDER_CLICKED: "activation_reminder_clicked", // 결제 후 미설정 핵심 기능 리마인더 클릭
   // Phase 6 E1 — Pro 차별화 가시성 (마이페이지·알림 등에서의 업그레이드 유도 funnel)
   // source: 'mypage' | 'notifications' | 'search' | 'alerts' 등 — 어느 페이지에서 눌렀는지
   // current_tier·target_tier 함께 보내 Free→Basic / Basic→Pro 전환율 분리 측정

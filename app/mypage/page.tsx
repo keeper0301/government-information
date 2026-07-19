@@ -20,6 +20,9 @@ import { AccountTab } from "./account-tab";
 import { ReferralTab } from "./referral-tab";
 import { MypageTabs } from "./tabs";
 import { HomeLocalRecommend } from "@/components/home-local-recommend";
+import { TrackedLink } from "@/components/tracked-link";
+import { EVENTS } from "@/lib/analytics";
+import { getActivationReminder } from "@/lib/checkout/activation-reminder";
 import { formatProvinceDisplay } from "@/lib/region-display";
 
 export const metadata: Metadata = {
@@ -65,6 +68,7 @@ export default async function MyPage() {
     referralCode,
     referralStats,
     tier,
+    { count: activeAlertRulesCount },
   ] = await Promise.all([
     supabase
       .from("user_profiles")
@@ -93,11 +97,29 @@ export default async function MyPage() {
     getReferralStats(adminForReferral, user.id),
     // Phase 6 E1 — 현재 구독 티어 (계정 탭 헤더 배지에 사용)
     getUserTier(user.id),
+    // 결제 후 핵심 기능 미설정 리마인더 — 활성 알림 조건 존재 여부만 head count 로 확인
+    supabase
+      .from("user_alert_rules")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_active", true),
   ]);
 
   const email = user.email || "";
   const provider =
     (user.app_metadata as { provider?: string } | null)?.provider ?? null;
+  const hasKakaoConsent = consents.some(
+    (consent) =>
+      consent.consentType === "kakao_messaging" &&
+      consent.isActive &&
+      !consent.isExpired,
+  );
+  const activationReminder = getActivationReminder({
+    tier,
+    hasBusinessProfile: Boolean(businessProfile),
+    hasKakaoConsent,
+    hasActiveAlertRule: (activeAlertRulesCount ?? 0) > 0,
+  });
 
   return (
     <main className="max-w-[920px] mx-auto px-5 lg:px-10 pt-[80px] pb-20">
@@ -120,6 +142,32 @@ export default async function MyPage() {
       <p className="text-[15px] text-grey-700 mb-8 leading-[1.6]">
         기본 정보를 입력하면 맞춤추천과 알림이 더 정확해져요.
       </p>
+
+      {activationReminder && (
+        <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+          <div className="flex items-start justify-between gap-4 max-md:flex-col">
+            <div>
+              <p className="mb-1 text-[12px] font-bold text-amber-700">
+                구독 기능 설정이 아직 남아 있어요
+              </p>
+              <h2 className="text-[17px] font-extrabold text-grey-900 tracking-[-0.3px]">
+                {activationReminder.title}
+              </h2>
+              <p className="mt-2 text-[14px] text-grey-700 leading-[1.6]">
+                {activationReminder.description}
+              </p>
+            </div>
+            <TrackedLink
+              href={activationReminder.href}
+              event={EVENTS.ACTIVATION_REMINDER_CLICKED}
+              params={{ tier, action: activationReminder.action }}
+              className="shrink-0 inline-flex min-h-[46px] items-center justify-center rounded-xl bg-amber-500 px-5 text-[14px] font-bold text-white no-underline hover:bg-amber-600"
+            >
+              {activationReminder.ctaLabel}
+            </TrackedLink>
+          </div>
+        </div>
+      )}
 
       <MypageTabs
         profileSlot={
