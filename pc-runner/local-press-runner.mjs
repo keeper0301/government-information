@@ -2,12 +2,12 @@
 // 사장님 PC runner — Vercel ASN 차단 site fetch + keepioo upload
 // ============================================================
 // 사용:
-//   1. C:\Users\cgc09\keepioo-pc-runner\ 에 본 스크립트 + .env 설치
+//   1. %USERPROFILE%\keepioo-pc-runner\ 에 본 스크립트 + .env 설치
 //   2. .env 에 PC_RUNNER_SECRET 설정
 //   3. node local-press-runner.mjs 또는 Task Scheduler 매일 KST 09:30 가동
 //
 // 처리 site (ASN/SSL 차단 우회 대상):
-//   - 서울특별시 / 부산광역시 / 광산구 / 강원도 / 제주도 / 평택시
+//   - 남동구 (현재 /api/admin/local-press/upload 의 PC_RUNNER_CFGS 지원 대상)
 //
 // 작동:
 //   1. 각 site 의 list URL fetch (한국 IP 정상 응답)
@@ -27,12 +27,10 @@ const UA =
 // site 추가는 같이 server endpoint 변경 필요 (다음 commit cfg export).
 // 2026-05-26: seoul 제거 — news.seoul.go.kr RSS 으로 일반 cron 가동.
 const ASN_BLOCKED_CITIES = [
-  { key: "busan", listUrl: "https://www.busan.go.kr/nbtnewsBU" },
-  { key: "gwangsan", listUrl: "https://www.gwangsan.go.kr/boardList.do?boardId=REPORT_NEW&pageId=www16" },
-  // gangwon 제거 (2026-05-26): icn1 region 으로 일반 cron OK
-  { key: "jeju", listUrl: "https://www.jeju.go.kr/news/bodo/list.htm" },
-  { key: "pyeongtaek", listUrl: "https://www.pyeongtaek.go.kr/pyeongtaek/board/post/list.do?bcIdx=90&mid=0402010000" },
   // 2026-06-02 — 남동구: prod 403 Vercel IP 차단 (cron 로그). 가정용 IP 로 우회.
+  // 2026-07-19 — busan/gwangsan/jeju/pyeongtaek 은 일반 cron/GHA proxy 로 이관되어
+  // upload endpoint 의 PC_RUNNER_CFGS 에서 제거됨. unsupported city 를 보내면 heartbeat 가
+  // 안 남아 pending_external_actions 가 계속 뜨므로 지원 대상만 유지한다.
   { key: "namdong", listUrl: "https://www.namdong.go.kr/main/news/report.jsp" },
 ];
 
@@ -75,7 +73,7 @@ async function main() {
       console.log(`  ${city.key}: list ${listHtml.length} bytes ✅`);
     } catch (e) {
       console.error(`  ${city.key}: list fetch fail — ${e.message}`);
-      round1Items.push({ city_key: city.key, list_html: "" });
+      round1Items.push({ city_key: city.key, list_html: "", fetch_error: e.message });
     }
   }
   const round1 = await postUpload(round1Items);
@@ -111,6 +109,18 @@ async function main() {
       detail_htmls: detailHtmls,
     });
     console.log(`  ${r1.city_key}: list + detail ${Object.keys(detailHtmls).length}건`);
+  }
+
+  if (!round2Items.length) {
+    console.log("  round2 대상 0건 — heartbeat audit 업로드");
+    for (const item of round1Items) {
+      round2Items.push({
+        city_key: item.city_key,
+        list_html: item.list_html || "",
+        detail_htmls: {},
+        runner_error: item.fetch_error || "round1 no items",
+      });
+    }
   }
 
   const round2 = { results: [] };

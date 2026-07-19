@@ -18,7 +18,7 @@ ASN 차단·SPA site (광산구·제주·평택) 의 한국 IP fetch 우회. 서
 ## 설치 (자동)
 
 ```powershell
-cd C:\Users\cgc09\projects\government-information\pc-runner
+cd <government-information>\pc-runner
 .\setup-desktop.ps1
 ```
 
@@ -35,14 +35,14 @@ cd C:\Users\cgc09\projects\government-information\pc-runner
 - Save
 
 ### 3. PC `.env` 입력
-`C:\Users\cgc09\keepioo-pc-runner\.env` 열기:
+`%USERPROFILE%\keepioo-pc-runner\.env` 열기:
 ```
 PC_RUNNER_SECRET=<2번 동일 값>
 ```
 
 ### 4. dry-run
 ```powershell
-cd C:\Users\cgc09\keepioo-pc-runner
+cd $env:USERPROFILE\keepioo-pc-runner
 node local-press-runner.mjs
 ```
 
@@ -62,23 +62,18 @@ node local-press-runner.mjs
 작업 스케줄러 → 작업 만들기:
 - 이름: keepioo-pc-runner
 - 트리거: 매일 09:30
-- 동작: `node.exe C:\Users\cgc09\keepioo-pc-runner\local-press-runner.mjs`
+- 동작: `node.exe %USERPROFILE%\keepioo-pc-runner\local-press-runner.mjs`
 - 사용자: 본인 (BATCH 권한)
 
-## 처리 site (2026-06-02 update — 5 site)
+## 처리 site (2026-07-19 update — 1 core site)
 
 | city_key | site | 왜 PC runner 가 필요한가 |
 |----------|------|------|
-| **namdong** | namdong.go.kr | **prod(Vercel) 403 IP 차단** (donggu·ongjin 은 정상). 6/2 cron 로그 확인. 신규 |
-| jeju | jeju.go.kr/news/bodo/list.htm | prod 간헐 fetch failed (데이터센터 IP) |
-| pyeongtaek | pyeongtaek.go.kr | SPA + token CSRF — list parse 0 가능 |
-| busan | busan.go.kr/nbtnewsBU | 정적 PDF 전문 추출로 회생(보조 — PC runner 도 가능) |
-| gwangsan | gwangsan.go.kr | 정적 복구됨(보조) |
+| **namdong** | namdong.go.kr | **prod(Vercel) 403 IP 차단**. `/api/admin/local-press/upload` 의 현재 `PC_RUNNER_CFGS` 지원 대상. |
 
-- **PC runner 가 진짜 필요한 핵심 3 site**: namdong(403)·jeju(간헐)·pyeongtaek(SPA).
-  busan·gwangsan 은 일반 cron 으로도 수집되나 ASN 목록에 남겨 둠(이중 수집은 동일
-  sourceCode 의 23505 dedupe 로 중복 없음).
-- 이전 회생: seoul(RSS endpoint)·gangwon(hwp5 첨부 전문)·busan(PDF 전문) 은 일반 cron OK.
+이전 PC runner 후보였던 busan·gwangsan·jeju·pyeongtaek 은 일반 cron/GHA proxy 경로로 이관되어
+현재 upload endpoint 에서는 지원하지 않는다. runner 는 지원 대상만 보내며, fetch 실패/insert 0건이어도
+`trigger=pc_runner` audit heartbeat 를 남겨 “PC runner 미가동”과 “site fetch 실패”를 구분한다.
 
 ## 트러블슈팅
 

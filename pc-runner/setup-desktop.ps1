@@ -1,34 +1,34 @@
 # ============================================================
 # PC runner desktop setup (2026-05-25)
 # ============================================================
-# 사장님 PC 에 keepioo-pc-runner 설치 자동화.
+# Installs keepioo-pc-runner on the current Windows user profile.
 #
-# 사용:
-#   PowerShell (관리자 X) 실행 → cd 본 ps1 위치 → ./setup-desktop.ps1
+# Usage:
+#   PowerShell (non-admin) -> cd to this ps1 directory -> ./setup-desktop.ps1
 # ============================================================
 
 $ErrorActionPreference = "Stop"
 
-$Target = "C:\Users\cgc09\keepioo-pc-runner"
+$Target = Join-Path $env:USERPROFILE "keepioo-pc-runner"
 $Source = $PSScriptRoot
 
 Write-Host ""
 Write-Host "===== keepioo PC runner setup =====" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. 폴더 생성
+# 1. Create folder
 if (-not (Test-Path $Target)) {
     New-Item -ItemType Directory -Path $Target -Force | Out-Null
-    Write-Host "[1] 폴더 생성: $Target" -ForegroundColor Green
+    Write-Host "[1] Created folder: $Target" -ForegroundColor Green
 } else {
-    Write-Host "[1] 폴더 존재: $Target" -ForegroundColor Yellow
+    Write-Host "[1] Folder exists: $Target" -ForegroundColor Yellow
 }
 
-# 2. 스크립트 복사
+# 2. Copy runner script
 Copy-Item "$Source\local-press-runner.mjs" -Destination $Target -Force
-Write-Host "[2] local-press-runner.mjs 복사 완료" -ForegroundColor Green
+Write-Host "[2] Copied local-press-runner.mjs" -ForegroundColor Green
 
-# 3. package.json 생성
+# 3. Create package.json
 $pkg = @"
 {
   "name": "keepioo-pc-runner",
@@ -40,50 +40,49 @@ $pkg = @"
 }
 "@
 Set-Content -Path "$Target\package.json" -Value $pkg -Encoding UTF8
-Write-Host "[3] package.json 생성" -ForegroundColor Green
+Write-Host "[3] Created package.json" -ForegroundColor Green
 
-# 4. .env 템플릿 (사장님 직접 입력)
+# 4. .env template (operator fills the secret)
 $envTpl = @"
-# PC_RUNNER_SECRET 발급 후 입력
-# (Vercel env 와 동일한 값)
+# Fill after issuing PC_RUNNER_SECRET
+# Must match the Vercel env value
 PC_RUNNER_SECRET=
 "@
 if (-not (Test-Path "$Target\.env")) {
     Set-Content -Path "$Target\.env" -Value $envTpl -Encoding UTF8
-    Write-Host "[4] .env 템플릿 생성 — PC_RUNNER_SECRET 직접 입력 필요" -ForegroundColor Yellow
+    Write-Host "[4] Created .env template - fill PC_RUNNER_SECRET manually" -ForegroundColor Yellow
 }
 
 # 5. npm install
 Set-Location $Target
-Write-Host "[5] npm install dotenv 진행..." -ForegroundColor Cyan
-# 2026-05-26 review critical: pipe 의 $LASTEXITCODE 는 마지막 cmd (Out-Null) 의 0 으로 덮어쓰기.
-# redirection 분리로 npm 의 정확한 exit code 보존.
+Write-Host "[5] npm install dotenv..." -ForegroundColor Cyan
+# Preserve npm exit code by using redirection instead of a pipeline.
 npm install --silent 1>$null 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "    npm install 실패 — 사장님 직접 'npm install' 실행 필요" -ForegroundColor Red
+    Write-Host "    npm install failed - run 'npm install' manually" -ForegroundColor Red
     exit 1
 }
-Write-Host "    dotenv 설치 완료" -ForegroundColor Green
+Write-Host "    dotenv installed" -ForegroundColor Green
 
-# 6. .env PC_RUNNER_SECRET 입력 여부 자동 확인 + dry-run 자동 trigger
+# 6. Check PC_RUNNER_SECRET and run dry-run
 $envContent = Get-Content "$Target\.env" -Raw -ErrorAction SilentlyContinue
 if ($envContent -match "PC_RUNNER_SECRET=.+\S") {
-    Write-Host "[6] .env PC_RUNNER_SECRET 입력 확인 ✅" -ForegroundColor Green
+    Write-Host "[6] .env PC_RUNNER_SECRET found" -ForegroundColor Green
     Write-Host ""
-    Write-Host "===== dry-run 시작 =====" -ForegroundColor Cyan
+    Write-Host "===== dry-run start =====" -ForegroundColor Cyan
     Write-Host ""
     node local-press-runner.mjs
     Write-Host ""
-    Write-Host "===== dry-run 완료 =====" -ForegroundColor Cyan
-    Write-Host "정상 동작 확인 후 Task Scheduler 매일 KST 09:30 가동" -ForegroundColor White
+    Write-Host "===== dry-run complete =====" -ForegroundColor Cyan
+    Write-Host "After confirming output, schedule Task Scheduler daily at KST 09:30" -ForegroundColor White
 } else {
-    Write-Host "[6] .env PC_RUNNER_SECRET 미입력" -ForegroundColor Yellow
+    Write-Host "[6] .env PC_RUNNER_SECRET missing" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "===== setup 완료 =====" -ForegroundColor Cyan
+    Write-Host "===== setup complete =====" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "다음 단계:" -ForegroundColor White
-    Write-Host "  1. Vercel dashboard 에서 PC_RUNNER_SECRET 환경변수 추가" -ForegroundColor White
-    Write-Host "  2. $Target\.env 에 동일한 PC_RUNNER_SECRET 입력" -ForegroundColor White
-    Write-Host "  3. ./setup-desktop.ps1 재실행 (자동 dry-run)" -ForegroundColor White
+    Write-Host "Next steps:" -ForegroundColor White
+    Write-Host "  1. Add PC_RUNNER_SECRET in Vercel dashboard" -ForegroundColor White
+    Write-Host "  2. Fill the same PC_RUNNER_SECRET in $Target\.env" -ForegroundColor White
+    Write-Host "  3. Re-run ./setup-desktop.ps1 for automatic dry-run" -ForegroundColor White
     Write-Host ""
 }
