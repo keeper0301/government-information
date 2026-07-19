@@ -27,6 +27,7 @@ type UploadItem = {
   city_key: string;
   list_html: string;
   detail_htmls?: Record<string, string>;
+  runner_error?: string;
 };
 type UploadBody = { items: UploadItem[] };
 
@@ -119,6 +120,20 @@ export async function POST(req: Request) {
         inserted: 0,
         skipped: 0,
         errors: ["detail_htmls 누락 — round1 만 요청한 경우 무시 (혼합 batch)"],
+      });
+      continue;
+    }
+    if (!item.list_html) {
+      results.push({
+        city: cfg.cityName,
+        fetched: 0,
+        inserted: 0,
+        skipped: 0,
+        errors: [
+          item.runner_error
+            ? `PC runner list fetch 실패 — ${item.runner_error}`
+            : "PC runner list_html 비어 있음 — heartbeat only",
+        ],
       });
       continue;
     }
