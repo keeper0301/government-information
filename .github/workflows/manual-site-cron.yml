@@ -21,6 +21,7 @@ on:
           - autonomous-improvement-scan
           - external-console-check
           - adsense-gmail-watch
+          - naver-extension-status
           - search-console-sitemap-submit
           - health-alert
           - sns-publish-blog
@@ -93,6 +94,10 @@ jobs:
               ;;
             adsense-gmail-watch)
               path="/api/cron/adsense-gmail-watch"
+              method="GET"
+              ;;
+            naver-extension-status)
+              path="/api/cron/naver-extension-status"
               method="GET"
               ;;
             search-console-sitemap-submit)
