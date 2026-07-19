@@ -1,0 +1,44 @@
+name: Instagram Inventory Diagnose
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Instagram 후보 재고 진단
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 후보 재고 endpoint 호출
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_BASE_URL: https://www.keepioo.com
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET 비밀값이 설정되지 않았습니다."
+            exit 1
+          fi
+          http_status=$(curl \
+            -sS \
+            -o /tmp/instagram-inventory.json \
+            -w "%{http_code}" \
+            --max-time 420 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            "${SITE_BASE_URL}/api/cron/instagram-publish-inventory")
+          echo "HTTP ${http_status}"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('/tmp/instagram-inventory.json')
+          data = json.loads(p.read_text())
+          print(json.dumps(data, ensure_ascii=False, indent=2))
+          PY
+          if [ "${http_status}" -lt 200 ] || [ "${http_status}" -ge 300 ]; then
+            echo "::error::Instagram inventory diagnose 실패 — HTTP ${http_status}"
+            exit 1
+          fi
