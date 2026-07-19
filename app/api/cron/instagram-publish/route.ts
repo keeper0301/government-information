@@ -44,6 +44,27 @@ function resolveDailyCap(isNewAccount: boolean): number {
   return parsePositiveInt(process.env[envKey] ?? process.env.INSTAGRAM_DAILY_CAP, fallback);
 }
 
+type PublishCandidate = {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+  meta_description: string | null;
+  category: string | null;
+  tags: string[] | null;
+  instagram_attempt_count: number | null;
+  admin_review_required: boolean | null;
+};
+
+const DIVERSITY_PRIORITY_CATEGORIES = ["청년", "주거", "육아·가족", "노년", "학생·교육"];
+
+function selectDiverseApprovedCandidate<T extends PublishCandidate>(approved: T[]): T | null {
+  if (approved.length === 0) return null;
+  const first = approved[0];
+  if (first.category !== "소상공인") return first;
+  return approved.find((candidate) => DIVERSITY_PRIORITY_CATEGORIES.includes(candidate.category ?? "")) ?? first;
+}
+
 type InstagramPublishStatus =
   | "disabled"
   | "outside_hours"
@@ -208,8 +229,10 @@ export async function GET(request: Request) {
     await new Promise((r) => setTimeout(r, jitterMs));
   }
 
-  // 발행 대기 글 후보 최대 10건을 FIFO 로 가져온다.
+  // 발행 대기 글 후보 최대 20건을 FIFO 로 가져온다.
   // 첫 글이 template_smell_detected 로 막혀도 뒤의 정상 후보까지 같이 본다.
+  // 소상공인 후보가 과다한 경우 첫 approved 소상공인만 고집하지 않고
+  // 청년·주거·육아·노년·교육 후보가 가까운 FIFO 안에 있으면 우선해 피드 쏠림을 완화한다.
   // 기존 1건 only 선택은 나쁜 후보 1개가 전체 Instagram 일반글 발행을 영구 정지시키는 병목이었다.
   const pendingPostRes = await admin
     .from("blog_posts")
@@ -219,7 +242,7 @@ export async function GET(request: Request) {
     .eq("admin_review_required", false)
     .lt("instagram_attempt_count", 3)
     .order("published_at", { ascending: true })
-    .limit(10);
+    .limit(20);
   const pendingPosts = pendingPostRes.data ?? [];
   const queryErr = pendingPostRes.error;
 
@@ -270,18 +293,28 @@ export async function GET(request: Request) {
     slug: string;
     reasons: string[];
   }> = [];
-  let post = pendingPosts[0];
+  const approvedCandidates: Array<{
+    candidate: PublishCandidate;
+    assessment: ReturnType<typeof assessExternalPublishQuality>;
+  }> = [];
+  let post: PublishCandidate = pendingPosts[0] as PublishCandidate;
   let qualityAssessment: ReturnType<typeof assessExternalPublishQuality> | null = null;
 
-  for (const candidate of pendingPosts) {
+  for (const candidate of pendingPosts as PublishCandidate[]) {
     const assessment = assessExternalPublishQuality(candidate);
     if (assessment.approved) {
-      post = candidate;
-      qualityAssessment = assessment;
-      break;
+      approvedCandidates.push({ candidate, assessment });
+      if (!qualityAssessment) qualityAssessment = assessment;
+      continue;
     }
     if (!qualityAssessment) qualityAssessment = assessment;
     rejectedCandidates.push({ slug: candidate.slug, reasons: assessment.reasons });
+  }
+
+  const selected = selectDiverseApprovedCandidate(approvedCandidates.map((row) => row.candidate));
+  if (selected) {
+    post = selected;
+    qualityAssessment = approvedCandidates.find((row) => row.candidate.id === selected.id)?.assessment ?? qualityAssessment;
   }
 
   if (!qualityAssessment) qualityAssessment = assessExternalPublishQuality(post);

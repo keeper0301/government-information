@@ -244,6 +244,22 @@ describe("instagram-publish dry-run", () => {
     expect(mocks.publishCarousel).not.toHaveBeenCalled();
   });
 
+  it("diversifies away from 소상공인 when nearby approved candidates can reduce feed skew", async () => {
+    const smallBiz = { ...mocks.candidate!, id: "post-small", slug: "small-biz", category: "소상공인" };
+    const youth = { ...mocks.candidate!, id: "post-youth", slug: "youth-policy", category: "청년" };
+    mocks.candidates = [smallBiz, youth];
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "ready",
+      candidate: { id: "post-youth", slug: "youth-policy" },
+    });
+    expect(mocks.assessExternalPublishQuality).toHaveBeenCalledTimes(2);
+  });
+
   it("reports not_configured without writing skip audit", async () => {
     mocks.loadValidToken.mockResolvedValue(null);
 

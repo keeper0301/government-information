@@ -57,6 +57,15 @@ function safeDecodeSlug(raw: string): string | null {
   }
 }
 
+function buildCoverSaveHook(title: string, description: string | null, category: string): string {
+  const text = `${title} ${description ?? ""}`;
+  if (/금액|만원|원\b|최대|한도/.test(text)) return "저장 포인트 · 대상 · 금액 · 신청기간";
+  if (/서류|준비물|제출|증빙/.test(text)) return "저장 포인트 · 대상 · 서류 · 신청기간";
+  if (/청년|청소년|학생/.test(`${category} ${text}`)) return "공유 포인트 · 대상 나이 · 기간 · 신청처";
+  if (/주거|월세|임대|전세/.test(`${category} ${text}`)) return "저장 포인트 · 대상 조건 · 지원 내용 · 기간";
+  return "저장 포인트 · 대상 · 기간 · 공식 신청처";
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ slug: string; index: string }> },
@@ -93,7 +102,7 @@ export async function GET(
   // 카드별 다른 layout 으로 생성 (3 카드 동시 보이는 일관된 시리즈 디자인)
   const cardElement =
     cardIndex === 1
-      ? renderCoverCard(displayPost.title, category, color)
+      ? renderCoverCard(displayPost.title, displayPost.meta_description, category, color)
       : cardIndex === 2
         ? renderInfoCard(displayPost.title, displayPost.meta_description, color)
         : renderCtaCard(displayPost.title, color);
@@ -110,7 +119,8 @@ export async function GET(
  * 카드 1: 표지 — 정책 제목 + 카테고리 + hook.
  * 사용자가 첫 인스타 피드에서 보는 가장 중요한 카드.
  */
-function renderCoverCard(title: string, category: string, color: string) {
+function renderCoverCard(title: string, description: string | null, category: string, color: string) {
+  const saveHook = buildCoverSaveHook(title, description, category);
   return (
     <div
       style={{
@@ -151,11 +161,30 @@ function renderCoverCard(title: string, category: string, color: string) {
           fontSize: 32,
           fontWeight: 700,
           borderRadius: 999,
-          marginBottom: 80,
+          marginBottom: 34,
           letterSpacing: "0",
         }}
       >
         {category}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignSelf: "flex-start",
+          padding: "18px 28px",
+          background: "#F8FAFC",
+          color: "#334155",
+          border: "2px solid #E2E8F0",
+          borderRadius: 24,
+          fontSize: 30,
+          fontWeight: 700,
+          lineHeight: 1.25,
+          marginBottom: 48,
+          letterSpacing: "0",
+        }}
+      >
+        {saveHook}
       </div>
 
       {/* 큰 제목 — 인스타 모바일 가독성 최우선
