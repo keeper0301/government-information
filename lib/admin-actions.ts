@@ -74,6 +74,7 @@ export type AdminActionType =
   | "search_console_sitemap_submit_run" // 2026-06-17 — Search Console sitemap 제출 cron 실행 흔적 (external_console_check_run KPI 오염 방지)
   | "daily_digest_run"           // 2026-05-14 — /api/cron/daily-digest 매일 KST 08:00 사장님 KPI SMS 가동 흔적
   | "weekly_ops_digest_run"      // 2026-05-14 — /api/cron/weekly-ops-digest 매주 KST 09:00 사장님 운영 보고 가동 흔적
+  | "user_contact_reminder_run"  // /api/cron/user-contact-reminder 매일 KST 09:00 오늘 연락할 사용자 요약
   | "sentry_daily_summary_run"   // 2026-05-14 — /api/cron/sentry-daily-summary 매일 KST 09:45 텔레그램 발송 가동 흔적
   | "onboarding_reminder_run"    // 2026-05-14 — /api/cron/onboarding-reminder 매일 KST 11:05 가입 24h~48h 환영 메일 가동 흔적
   | "policy_enrich_run"          // 2026-05-14 — /api/cron/policy-enrich 매일 KST 03:30 키워드/요약 enrich 가동 흔적
@@ -410,6 +411,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   search_console_sitemap_submit_run: "Search Console sitemap 제출 cron",
   daily_digest_run: "사장님 일일 KPI SMS cron 가동",
   weekly_ops_digest_run: "사장님 주간 운영 보고 cron 가동",
+  user_contact_reminder_run: "오늘 연락할 사용자 요약 cron 가동",
   sentry_daily_summary_run: "Sentry 일일 요약 cron 가동",
   onboarding_reminder_run: "온보딩 reminder cron 가동",
   policy_enrich_run: "정책 키워드/요약 enrich cron 가동",
