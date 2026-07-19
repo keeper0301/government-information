@@ -24,6 +24,7 @@ on:
           - naver-extension-status
           - search-console-sitemap-submit
           - health-alert
+          - user-contact-reminder-dry
           - user-contact-reminder
           - sns-publish-blog
           - sns-publish-popular-policy
@@ -109,8 +110,12 @@ jobs:
               path="/api/cron/health-alert"
               method="GET"
               ;;
+            user-contact-reminder-dry)
+              path="/api/cron/user-contact-reminder?dry=1&log_safe=1"
+              method="GET"
+              ;;
             user-contact-reminder)
-              path="/api/cron/user-contact-reminder"
+              path="/api/cron/user-contact-reminder?log_safe=1"
               method="GET"
               ;;
             sns-publish-blog)

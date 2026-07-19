@@ -17,6 +17,13 @@ export type ContactReminderDigest = {
   totalDue: number;
 };
 
+export type ContactReminderSummary = {
+  today: string;
+  totalDue: number;
+  dueToday: number;
+  overdue: number;
+};
+
 const DEFAULT_BASE_URL = "https://www.keepioo.com";
 const MAX_MESSAGE_ITEMS = 15;
 
@@ -83,6 +90,15 @@ export async function collectContactReminderDigest(input?: {
     today: input?.today,
     baseUrl: input?.baseUrl,
   });
+}
+
+export function summarizeContactReminderDigest(digest: ContactReminderDigest): ContactReminderSummary {
+  return {
+    today: digest.today,
+    totalDue: digest.totalDue,
+    dueToday: digest.dueToday.length,
+    overdue: digest.overdue.length,
+  };
 }
 
 export function formatContactReminderText(digest: ContactReminderDigest): string {
