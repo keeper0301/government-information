@@ -51,6 +51,18 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
   );
 
   const coveragePercent = Math.round((summary.coveredCount / summary.totalCount) * 100);
+  const filteredCoveredCount = filteredRows.filter((row) => row.covered).length;
+  const filteredCoveragePercent =
+    filteredRows.length > 0
+      ? Math.round((filteredCoveredCount / filteredRows.length) * 100)
+      : 0;
+  const hasActiveFilters = query.trim() !== "" || status !== "all" || province !== "all";
+
+  function resetFilters() {
+    setQuery("");
+    setStatus("all");
+    setProvince("all");
+  }
 
   return (
     <section className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -80,6 +92,7 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
           <span className="font-semibold text-slate-700">구현률 {coveragePercent}%</span>
           <span>
             현재 표시 {filteredRows.length.toLocaleString()} / {summary.totalCount.toLocaleString()}곳
+            {hasActiveFilters && ` · 표시 구현률 ${filteredCoveragePercent}%`}
           </span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-white">
@@ -89,7 +102,7 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
           />
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_180px]">
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_180px_120px]">
           <label className="block">
             <span className="mb-1 block text-xs font-semibold text-slate-600">검색</span>
             <input
@@ -129,18 +142,28 @@ export function MunicipalityCoverageClient({ rows, summary }: Props) {
               ))}
             </select>
           </label>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={resetFilters}
+              disabled={!hasActiveFilters}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              초기화
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {groupedRows.map(({ province: p, rows: provinceRows, total }) => {
-          if (total === 0 && province === "all") {
+          if (total === 0 && (province === "all" || province === p.code)) {
             return (
               <ProvinceBlock
                 key={p.code}
                 provinceName={p.name}
                 rows={[]}
-                total={1}
+                total={0}
                 note="광역=기초 통합 지역이라 별도 시·군·구 목록 없음"
               />
             );
@@ -213,7 +236,7 @@ function ProvinceBlock({
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="font-semibold text-slate-900">{provinceName}</h3>
         <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-600">
-          {covered}/{total} 구현
+          {total === 0 ? "광역 통합" : `${covered}/${total} 구현`}
         </span>
       </div>
       {note ? (
