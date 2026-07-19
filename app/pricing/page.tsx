@@ -13,6 +13,7 @@ import { getUserTier, TIER_NAMES, TIER_PRICES, type Tier } from "@/lib/subscript
 import { GaPageTracker } from "@/components/ga-page-tracker";
 import { parseRecommendedTier, type RecommendedTier } from "@/lib/pricing/recommended-tier";
 import { getPricingConversionCopy, parsePricingSource, type PricingConversionCopy } from "@/lib/pricing/conversion-copy";
+import { buildCheckoutQuery } from "@/lib/checkout/reassurance-copy";
 import { CheckoutLink } from "./checkout-link";
 
 export const metadata: Metadata = {
@@ -245,7 +246,12 @@ function CtaButton({ plan, isCurrent, isLoggedIn, conversionCopy }: {
   }
 
   // 유료 플랜: 결제 페이지로 이동 (비로그인이면 로그인 후 자동 복귀)
-  const next = `/checkout?tier=${plan.tier}`;
+  const next = buildCheckoutQuery({
+    tier: plan.tier,
+    source: conversionCopy.source,
+    recommendedTier: conversionCopy.recommendedTier,
+    pricingVariant: conversionCopy.variant,
+  });
   const href = isLoggedIn ? next : `/login?next=${encodeURIComponent(next)}`;
   const ctaLabel = (plan.tier === "basic" || plan.tier === "pro")
     ? conversionCopy.ctaLabelByTier[plan.tier] ?? "7일 무료로 시작하기"
