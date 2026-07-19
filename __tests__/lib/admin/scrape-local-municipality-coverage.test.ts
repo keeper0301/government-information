@@ -45,6 +45,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "대전광역시 대덕구")?.covered,
     ).toMatchObject({ source: "static", key: "daedeok" });
+    expect(
+      rows.find((row) => row.fullName === "충청남도 공주시")?.covered,
+    ).toMatchObject({ source: "static", key: "gongju" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
