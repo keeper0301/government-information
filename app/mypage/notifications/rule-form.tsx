@@ -10,6 +10,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { UpgradeCta } from "@/components/upgrade-cta";
 import {
   PUBLIC_REGION_TAGS,
   AGE_TAGS,
@@ -54,6 +55,10 @@ const INCOME_LABEL: Record<string, string> = {
 
 function formatRegionTagsForDisplay(tags: string[]): string {
   return Array.from(new Set(tags.map(formatRegionDisplay))).join(",");
+}
+
+export function shouldShowPreviewUpgradeCta(tier: Tier, previewTotal: number): boolean {
+  return tier === "basic" && previewTotal > 0;
 }
 
 type Props = {
@@ -349,6 +354,14 @@ export function RuleForm({ tier, existingRules, kakaoConsented, templateApproved
                   <li key={s.id}>{s.title} <span className="text-gray-400">· {s.source}</span></li>
                 ))}
               </ul>
+            )}
+            {shouldShowPreviewUpgradeCta(tier, preview.total) && (
+              <div className="mt-4 border-t border-blue-100 pt-4">
+                <p className="text-sm font-semibold text-blue-950">
+                  이 조건에 맞는 새 정책을 카카오 알림톡으로 더 빠르게 받고 싶다면
+                </p>
+                <UpgradeCta currentTier="basic" source="notifications" />
+              </div>
             )}
           </div>
         )}
