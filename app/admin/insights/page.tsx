@@ -18,6 +18,11 @@ import {
 } from "@/lib/admin-insights";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import {
+  getAdminInstagramInsights,
+  type AdminInstagramInsights,
+  type InstagramPerformanceSummary,
+} from "@/lib/admin-instagram-insights";
 
 export const metadata: Metadata = {
   title: "인사이트 | 어드민",
@@ -38,7 +43,10 @@ async function requireAdmin() {
 
 export default async function AdminInsightsPage() {
   await requireAdmin();
-  const data = await getAdminInsights();
+  const [data, instagram] = await Promise.all([
+    getAdminInsights(),
+    getAdminInstagramInsights(),
+  ]);
 
   return (
     <div className="max-w-[980px]">
@@ -96,6 +104,8 @@ export default async function AdminInsightsPage() {
         </p>
       </section>
 
+      <InstagramPerformanceSection data={instagram} />
+
       {/* 콘텐츠 효과 */}
       <h2 className="text-lg font-bold text-grey-900 mb-3 tracking-[-0.3px]">
         🔥 콘텐츠 TOP (view_count 기준)
@@ -122,6 +132,162 @@ export default async function AdminInsightsPage() {
           ← 어드민 홈
         </Link>
       </p>
+    </div>
+  );
+}
+
+function InstagramPerformanceSection({ data }: { data: AdminInstagramInsights }) {
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-bold text-grey-900 mb-3 tracking-[-0.3px]">
+        📈 Instagram 성과
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <InstagramSummaryCard title="최근 24h" summary={data.summary24h} />
+        <InstagramSummaryCard title="최근 7d" summary={data.summary7d} />
+      </div>
+
+      <div className="bg-white rounded-lg border border-grey-200 p-5 mb-4">
+        <h3 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.2px]">
+          게시물별 성과
+        </h3>
+        {data.posts.length === 0 ? (
+          <p className="text-sm text-grey-600">최근 7일 Instagram 인사이트 수집 기록 없음</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="text-left text-xs text-grey-500">
+                <tr>
+                  <th className="py-2 pr-3">판정</th>
+                  <th className="py-2 pr-3">카테고리</th>
+                  <th className="py-2 pr-3">제목</th>
+                  <th className="py-2 pr-3 text-right">Reach</th>
+                  <th className="py-2 pr-3 text-right">Save</th>
+                  <th className="py-2 pr-3 text-right">Share</th>
+                  <th className="py-2 pr-3">Hook</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.posts.slice(0, 10).map((post) => (
+                  <tr key={post.mediaId} className="border-t border-grey-100">
+                    <td className="py-2 pr-3">
+                      <InstagramSignalBadge signal={post.signal} />
+                    </td>
+                    <td className="py-2 pr-3 text-grey-700">{post.category ?? "미분류"}</td>
+                    <td className="py-2 pr-3 text-grey-900 max-w-[260px]">
+                      <Link href={`/blog/${post.slug}`} className="line-clamp-2 no-underline hover:text-blue-600">
+                        {post.title}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{post.reach.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{post.saved.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{post.shares.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-grey-600 max-w-[180px]">
+                      <span className="line-clamp-2">{post.cardHookLabel ?? "미기록"}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <InstagramRollupList
+          title="카테고리별"
+          items={data.categories.map((it) => ({
+            key: it.category,
+            label: it.category,
+            sub: `${it.posts}건 · reach ${it.reach.toLocaleString()}`,
+            score: it.saved + it.shares,
+          }))}
+        />
+        <InstagramRollupList
+          title="Hook별"
+          items={data.hooks.map((it) => ({
+            key: it.hookType,
+            label: it.hookLabel,
+            sub: `${it.posts}건 · 저장률 ${it.saveRate}% · 공유률 ${it.shareRate}%`,
+            score: it.saved + it.shares,
+          }))}
+        />
+      </div>
+    </section>
+  );
+}
+
+function InstagramSummaryCard({ title, summary }: { title: string; summary: InstagramPerformanceSummary }) {
+  const signalClass = summary.saved + summary.shares > 0
+    ? "text-green-600"
+    : summary.reach >= 30
+      ? "text-yellow-600"
+      : "text-red-500";
+  return (
+    <div className="bg-white rounded-lg border border-grey-200 p-5">
+      <div className="flex items-baseline justify-between mb-3">
+        <h3 className="text-base font-bold text-grey-900 tracking-[-0.2px]">{title}</h3>
+        <span className={`text-xs font-bold ${signalClass}`}>
+          {summary.saved + summary.shares > 0 ? "GOOD" : summary.reach >= 30 ? "WEAK" : "BAD"}
+        </span>
+      </div>
+      <dl className="grid grid-cols-3 gap-3">
+        <Metric label="발행" value={summary.posts} />
+        <Metric label="Reach" value={summary.reach} />
+        <Metric label="Save" value={summary.saved} />
+        <Metric label="Share" value={summary.shares} />
+        <Metric label="Profile" value={summary.profileActivity} />
+        <Metric label="SaveRate" value={`${summary.saveRate}%`} />
+      </dl>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div>
+      <dt className="text-[11px] text-grey-500">{label}</dt>
+      <dd className="text-xl font-extrabold text-grey-900 tabular-nums mt-1">
+        {typeof value === "number" ? value.toLocaleString() : value}
+      </dd>
+    </div>
+  );
+}
+
+function InstagramSignalBadge({ signal }: { signal: "good" | "weak" | "bad" }) {
+  const cls = signal === "good"
+    ? "bg-green-50 text-green-700"
+    : signal === "weak"
+      ? "bg-yellow-50 text-yellow-700"
+      : "bg-red-50 text-red-700";
+  return <span className={`rounded-full px-2 py-1 text-xs font-bold ${cls}`}>{signal}</span>;
+}
+
+function InstagramRollupList({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ key: string; label: string; sub: string; score: number }>;
+}) {
+  return (
+    <div className="bg-white rounded-lg border border-grey-200 p-5">
+      <h3 className="text-base font-bold text-grey-900 mb-3 tracking-[-0.2px]">{title}</h3>
+      {items.length === 0 ? (
+        <p className="text-sm text-grey-600">기록 없음</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.slice(0, 8).map((item) => (
+            <li key={item.key} className="flex items-start justify-between gap-3 border-b border-grey-100 pb-2 last:border-b-0 last:pb-0">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-grey-900 truncate">{item.label}</div>
+                <div className="text-xs text-grey-500">{item.sub}</div>
+              </div>
+              <div className="text-sm font-extrabold text-grey-900 tabular-nums">{item.score}</div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

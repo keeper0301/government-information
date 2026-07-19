@@ -35,6 +35,7 @@ import {
   categoryColorOnWhite,
 } from "@/lib/instagram/card-colors";
 import { sanitizeInstagramPolicyCopy } from "@/lib/instagram/policy-copy";
+import { resolveInstagramCardHook } from "@/lib/instagram/card-hook";
 
 export const runtime = "nodejs";
 
@@ -55,15 +56,6 @@ function safeDecodeSlug(raw: string): string | null {
   } catch {
     return null;
   }
-}
-
-function buildCoverSaveHook(title: string, description: string | null, category: string): string {
-  const text = `${title} ${description ?? ""}`;
-  if (/금액|만원|원\b|최대|한도/.test(text)) return "저장 포인트 · 대상 · 금액 · 신청기간";
-  if (/서류|준비물|제출|증빙/.test(text)) return "저장 포인트 · 대상 · 서류 · 신청기간";
-  if (/청년|청소년|학생/.test(`${category} ${text}`)) return "공유 포인트 · 대상 나이 · 기간 · 신청처";
-  if (/주거|월세|임대|전세/.test(`${category} ${text}`)) return "저장 포인트 · 대상 조건 · 지원 내용 · 기간";
-  return "저장 포인트 · 대상 · 기간 · 공식 신청처";
 }
 
 export async function GET(
@@ -120,7 +112,11 @@ export async function GET(
  * 사용자가 첫 인스타 피드에서 보는 가장 중요한 카드.
  */
 function renderCoverCard(title: string, description: string | null, category: string, color: string) {
-  const saveHook = buildCoverSaveHook(title, description, category);
+  const saveHook = resolveInstagramCardHook({
+    title,
+    description,
+    category,
+  });
   return (
     <div
       style={{
@@ -184,7 +180,7 @@ function renderCoverCard(title: string, description: string | null, category: st
           letterSpacing: "0",
         }}
       >
-        {saveHook}
+        {saveHook.label}
       </div>
 
       {/* 큰 제목 — 인스타 모바일 가독성 최우선

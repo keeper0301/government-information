@@ -19,6 +19,7 @@ import { loadValidToken } from "@/lib/instagram/oauth";
 import { logAdminAction } from "@/lib/admin-actions";
 import { assessExternalPublishQuality } from "@/lib/blog/quality-gate";
 import { authorizeCronRequest } from "@/lib/cron-auth";
+import { resolveInstagramCardHook } from "@/lib/instagram/card-hook";
 
 export const dynamic = "force-dynamic";
 // 2026-05-12: jitter (max 90s) + container polling (max 60s) + 5 Graph API
@@ -357,6 +358,12 @@ export async function GET(request: Request) {
     `${base}/api/instagram-card/${encodeURIComponent(post.slug)}/3`,
   ];
 
+  const cardHook = resolveInstagramCardHook({
+    title: post.title,
+    description: post.meta_description,
+    category: post.category,
+  });
+
   if (dryRun) {
     return dryResponse("ready", {
       kstHour,
@@ -369,6 +376,7 @@ export async function GET(request: Request) {
         attempt_count: post.instagram_attempt_count ?? 0,
         admin_review_required: post.admin_review_required,
       },
+      cardHook,
       cardUrls,
     });
   }
@@ -444,6 +452,8 @@ export async function GET(request: Request) {
         slug: post.slug,
         media_id: result.mediaId,
         permalink: result.permalink,
+        cardHookType: cardHook.type,
+        cardHookLabel: cardHook.label,
       },
     });
 
