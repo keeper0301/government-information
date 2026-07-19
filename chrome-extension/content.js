@@ -309,7 +309,7 @@ async function publishToSe3(payload, dryRun) {
 
   // 8. URL 캡처
   debug.stage = "url_capture";
-  const naverUrl = await capturePublishedUrl(mfDoc, debug);
+  const naverUrl = await capturePublishedUrl(mfDoc, debug, payload);
   debug.url_captured = naverUrl ?? "none";
   if (!naverUrl) {
     throwWithDebug("발행 확인 실패: 공개 글 URL을 캡처하지 못해 성공 처리 차단", debug);
@@ -322,7 +322,7 @@ async function publishToSe3(payload, dryRun) {
 // ────────────────────────────────────────────────────────────
 // helpers
 // ────────────────────────────────────────────────────────────
-async function capturePublishedUrl(mfDoc, debug) {
+async function capturePublishedUrl(mfDoc, debug, payload = {}) {
   const postUrlRe = /https?:\/\/blog\.naver\.com\/[^/?#]+\/\d{9,}/;
   const candidates = [];
   const addCandidate = (value, source) => {
@@ -330,6 +330,15 @@ async function capturePublishedUrl(mfDoc, debug) {
     const m = s.match(postUrlRe);
     if (m) candidates.push({ source, url: m[0] });
   };
+
+  const fallbackUrl = await captureUrlFromRecentPostList(payload, debug).catch((e) => {
+    debug.url_capture_postlist_error = String(e?.message ?? e).slice(0, 160);
+    return null;
+  });
+  if (fallbackUrl) {
+    debug.url_capture_source = "postlist fallback precheck";
+    return fallbackUrl;
+  }
 
   for (let i = 0; i < 30; i++) {
     addCandidate(location.href, "location.href");
@@ -347,12 +356,66 @@ async function capturePublishedUrl(mfDoc, debug) {
       debug.url_capture_source = candidates[0].source;
       return candidates[0].url;
     }
+    const polledFallbackUrl = await captureUrlFromRecentPostList(payload, debug).catch((e) => {
+      debug.url_capture_postlist_error = String(e?.message ?? e).slice(0, 160);
+      return null;
+    });
+    if (polledFallbackUrl) {
+      debug.url_capture_source = "postlist fallback poll";
+      return polledFallbackUrl;
+    }
     await sleep(1000);
   }
 
   debug.url_capture_location = location.href;
   debug.url_capture_title = document.title;
   return null;
+}
+
+async function captureUrlFromRecentPostList(payload, debug) {
+  const blogId = inferBlogId();
+  if (!blogId) return null;
+  const categoryNo = inferCategoryNo();
+  const url = `https://blog.naver.com/PostList.naver?blogId=${encodeURIComponent(blogId)}&from=postList${categoryNo ? `&categoryNo=${encodeURIComponent(categoryNo)}` : ""}`;
+  const res = await fetchWithTimeout(url, { credentials: "include" }, 12_000);
+  debug.url_capture_postlist_status = res.status;
+  if (!res.ok) return null;
+  const html = await res.text();
+  const expectedTitle = normalizeText(payload?.title || "");
+  const titleMatched = expectedTitle && normalizeText(html).includes(expectedTitle);
+  debug.url_capture_postlist_title_matched = Boolean(titleMatched);
+  if (!titleMatched) return null;
+
+  const direct = html.match(/https?:\/\/blog\.naver\.com\/[A-Za-z0-9_-]+\/\d{9,}/);
+  if (direct) return direct[0];
+
+  const logNo =
+    html.match(/nFirstLogNo\s*=\s*["'](\d{9,})["']/)?.[1] ||
+    html.match(/gnFirstLogNo\s*=\s*["'](\d{9,})["']/)?.[1] ||
+    html.match(/logNo\s*:\s*["'](\d{9,})["']/)?.[1] ||
+    html.match(/logNo=(\d{9,})/)?.[1];
+  if (!logNo) return null;
+  debug.url_capture_postlist_log_no = logNo;
+  return `https://blog.naver.com/${blogId}/${logNo}`;
+}
+
+function inferBlogId() {
+  const fromPath = location.pathname.match(/^\/([^/?#]+)(?:\/|$)/)?.[1];
+  if (fromPath && !["PostWriteForm", "PostList", "PostView"].includes(fromPath)) return fromPath;
+  return new URLSearchParams(location.search).get("blogId") || document.querySelector('meta[property="og:url"]')?.content?.match(/blog\.naver\.com\/([^/?#]+)/)?.[1] || null;
+}
+
+function inferCategoryNo() {
+  return new URLSearchParams(location.search).get("categoryNo") || null;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-zA-Z0-9#]+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }

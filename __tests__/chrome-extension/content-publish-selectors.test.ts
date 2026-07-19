@@ -26,4 +26,13 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("confirm_publish_candidates");
     expect(contentScript).toContain("dry_run_confirm_candidates");
   });
+
+  it("falls back to the recent Naver post list when post-submit URL capture misses the redirect", () => {
+    expect(contentScript).toContain("capturePublishedUrl(mfDoc, debug, payload)");
+    expect(contentScript).toContain("async function captureUrlFromRecentPostList(payload, debug)");
+    expect(contentScript).toContain("PostList.naver?blogId=");
+    expect(contentScript).toContain("url_capture_postlist_title_matched");
+    expect(contentScript).toContain("nFirstLogNo");
+    expect(contentScript).toContain("https://blog.naver.com/${blogId}/${logNo}");
+  });
 });
