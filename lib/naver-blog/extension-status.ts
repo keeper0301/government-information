@@ -145,15 +145,22 @@ export async function getNaverExtensionStatus(): Promise<NaverExtensionStatus> {
       ),
     ]);
 
-  const recentRes = await admin
-    .from("naver_publish_audit")
-    .select("attempted_at, result, error_message, skip_reason, naver_url")
-    .order("attempted_at", { ascending: false })
-    .limit(5)
-    .catch((error: unknown) => ({
+  let recentRes: {
+    data: NaverExtensionStatus["recentAudits"] | null;
+    error: { message?: string } | null;
+  } = { data: null, error: null };
+  try {
+    recentRes = await admin
+      .from("naver_publish_audit")
+      .select("attempted_at, result, error_message, skip_reason, naver_url")
+      .order("attempted_at", { ascending: false })
+      .limit(5);
+  } catch (error) {
+    recentRes = {
       data: null,
       error: { message: error instanceof Error ? error.message : "unknown" },
-    }));
+    };
+  }
 
   if (recentRes.error) {
     errors.push(`recentAudits: ${recentRes.error.message ?? "unknown"}`);
