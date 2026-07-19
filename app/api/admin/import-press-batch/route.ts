@@ -45,6 +45,12 @@ type BatchItem = {
   body?: unknown;
 };
 
+function readRunnerError(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, 200) : null;
+}
+
 function sanitize(item: BatchItem): {
   title: string;
   sourceUrl: string;
@@ -100,6 +106,7 @@ export async function POST(request: Request) {
 
   // 최대 100건 cap — runner 가 cron 당 보통 10건. 비정상 폭주 차단.
   const items = body.items.slice(0, 100);
+  const runnerError = readRunnerError((body as { runnerError?: unknown }).runnerError);
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
@@ -110,7 +117,7 @@ export async function POST(request: Request) {
   // 감지 triage 가 "사이트 최신(latest_fetched) vs DB 최신(news_posts)" 비교로 "새 글 없음
   // (정상)" 과 "본문 silent fail(버그)" 을 사이트 재fetch 없이 구분(오탐 제거).
   let latestFetched: string | null = null;
-  const errors: string[] = [];
+  const errors: string[] = runnerError ? [`runner_error: ${runnerError}`] : [];
 
   for (const raw of items) {
     const item = sanitize(raw as BatchItem);

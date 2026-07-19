@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/admin/import-press-batch/route";
+import { logAdminAction } from "@/lib/admin-actions";
 
 const mocks = vi.hoisted(() => {
   const insert = vi.fn(async () => ({ error: null }));
@@ -11,6 +12,10 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({ from: mocks.from })),
+}));
+
+vi.mock("@/lib/admin-actions", () => ({
+  logAdminAction: vi.fn(async () => undefined),
 }));
 
 const OLD_IMPORT_PRESS_API_KEY = process.env.IMPORT_PRESS_API_KEY;
@@ -39,6 +44,7 @@ describe("플레이wright 보도자료 배치 수신", () => {
     process.env.IMPORT_PRESS_API_KEY = "test-key";
     mocks.insert.mockClear();
     mocks.from.mockClear();
+    vi.mocked(logAdminAction).mockClear();
   });
 
   afterEach(() => {
@@ -142,5 +148,48 @@ describe("플레이wright 보도자료 배치 수신", () => {
     );
     expect(response.status).toBe(401);
     expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("빈 items 도 local_press_scrape audit 를 남겨 no_audit 오탐을 막는다", async () => {
+    const response = await POST(request({ city: "seongnam", items: [] }));
+
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      city: "seongnam",
+      fetched: 0,
+      inserted: 0,
+    });
+    expect(logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "local_press_scrape",
+        details: expect.objectContaining({
+          city: "성남시",
+          fetched: 0,
+          inserted: 0,
+          errors: [],
+        }),
+      }),
+    );
+  });
+
+  it("runnerError 를 audit errors 에 남겨 collector 실패 원인을 보존한다", async () => {
+    const response = await POST(
+      request({ city: "uijeongbu", items: [], runnerError: "navigation timeout" }),
+    );
+
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      city: "uijeongbu",
+      fetched: 0,
+    });
+    expect(logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "local_press_scrape",
+        details: expect.objectContaining({
+          city: "의정부시",
+          errors: ["runner_error: navigation timeout"],
+        }),
+      }),
+    );
   });
 });

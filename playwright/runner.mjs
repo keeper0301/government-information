@@ -93,6 +93,20 @@ async function postBatch({ apiUrl, apiKey, city, items }) {
   return { status: res.status, data };
 }
 
+async function postAuditOnly({ apiUrl, apiKey, city, error }) {
+  const items = [];
+  const res = await fetch(`${apiUrl}/api/admin/import-press-batch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey,
+    },
+    body: JSON.stringify({ city, items, runnerError: error }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
+}
+
 async function main() {
   const apiUrl = process.env.KEEPIOO_API_URL;
   const apiKey = process.env.KEEPIOO_API_KEY;
@@ -108,10 +122,22 @@ async function main() {
       items = await fn({ limit: 10 });
     } catch (e) {
       console.error(`${city} 수집 실패: ${e.message}`);
+      const result = await postAuditOnly({
+        apiUrl,
+        apiKey,
+        city: key,
+        error: e.message,
+      });
+      console.log(
+        `  실패 audit 전송 상태=${result.status} ${JSON.stringify(result.data).slice(0, 120)}`,
+      );
       continue;
     }
     if (items.length === 0) {
-      console.log("  가져온 글 0건, 건너뜁니다.");
+      const result = await postBatch({ apiUrl, apiKey, city: key, items });
+      console.log(
+        `  가져온 글 0건, audit 전송 상태=${result.status} ${JSON.stringify(result.data).slice(0, 120)}`,
+      );
       continue;
     }
     console.log(`  가져온 글 ${items.length}건`);

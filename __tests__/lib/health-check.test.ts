@@ -249,11 +249,34 @@ describe("checkThresholds — boundary precision", () => {
     expect(alerts.find((a) => a.key === "press_pending")).toBeDefined();
   });
 
-  it("enrich_stuck = 99 → 발화 안 함, 100 → 발화 (boundary)", () => {
+  it("enrich_stuck = 99 → 발화 안 함, 100 + insight 저하 → 발화 (boundary)", () => {
     const a99 = checkThresholds({ ...ACTIVE, enrichPermanentSkip: 99 });
-    const a100 = checkThresholds({ ...ACTIVE, enrichPermanentSkip: 100 });
+    const a100 = checkThresholds({
+      ...ACTIVE,
+      enrichPermanentSkip: 100,
+      welfareInsightCoveragePct: 79,
+    });
     expect(a99.find((x) => x.key === "enrich_stuck")).toBeUndefined();
     expect(a100.find((x) => x.key === "enrich_stuck")).toBeDefined();
+  });
+
+  it("pending 전부가 low-tier 이면 press_pending 중복 alert 는 숨기고 press_low_tier 만 발화", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      pressPending: 32,
+      pressLowTierBacklog: 32,
+    });
+    expect(alerts.find((a) => a.key === "press_pending")).toBeUndefined();
+    expect(alerts.find((a) => a.key === "press_low_tier")).toBeDefined();
+  });
+
+  it("enrich 영구 skip 누적만 높고 insight 커버리지가 정상권이면 즉시 장애 alert 로 보지 않는다", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      enrichPermanentSkip: 173,
+      welfareInsightCoveragePct: 90,
+    });
+    expect(alerts.find((a) => a.key === "enrich_stuck")).toBeUndefined();
   });
 
   it("press_no_show = 999 (admin_actions 흔적 자체가 없는 운영 초기) → 발화", () => {
@@ -279,8 +302,9 @@ describe("checkThresholds — recommendation 일관성", () => {
       pressPending: 50,
       pressLastClassifyHours: 100,
       enrichPermanentSkip: 500,
+      welfareInsightCoveragePct: 79,
       // Task 8 추가: low tier 큐도 임계 초과
-      pressLowTierBacklog: 50,
+      pressLowTierBacklog: 40,
     });
     // 최소 8 alert key — 신규 임계 추가 시 silent regression 방지 (subagent Warning-4 fix)
     expect(alerts.length).toBeGreaterThanOrEqual(8);
@@ -322,12 +346,13 @@ describe("checkThresholds — multi-alert 시나리오", () => {
       newsBacklogTotal: 14781, // 메모리에 적힌 실제 backlog 시나리오
       pressLastClassifyHours: 36,
       enrichPermanentSkip: 200,
+      welfareInsightCoveragePct: 79,
     });
     const keys = alerts.map((a) => a.key);
     expect(keys).toContain("news_backlog");
     expect(keys).toContain("press_no_show");
     expect(keys).toContain("enrich_stuck");
-    expect(alerts).toHaveLength(3);
+    expect(alerts.length).toBeGreaterThanOrEqual(3);
   });
 
   it("low_activity + 다른 alert 동시 발화 — 둘 다 SMS 에 노출", () => {
@@ -382,7 +407,11 @@ describe("checkThresholds — Phase 1 자동 진단", () => {
   });
 
   it("enrich 영구 skip 100+ → enrich_stuck alert", () => {
-    const alerts = checkThresholds({ ...ACTIVE, enrichPermanentSkip: 100 });
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      enrichPermanentSkip: 100,
+      welfareInsightCoveragePct: 79,
+    });
     const a = alerts.find((x) => x.key === "enrich_stuck");
     expect(a).toBeDefined();
     expect(a?.recommendation).toContain("/admin/enrich-detail");

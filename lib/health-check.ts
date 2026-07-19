@@ -744,8 +744,12 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     });
   }
 
-  // 광역 보도자료 검토 큐 적체 — 4 layer fallback 후에도 사장님 검토 대기
-  if (s.pressPending >= PRESS_PENDING_FLOOR) {
+  // 광역 보도자료 검토 큐 적체 — 4 layer fallback 후에도 사장님 검토 대기.
+  // 단, pending 전부가 low-tier 라면 아래 press_low_tier 가 같은 원인을 더 정확히
+  // 설명하므로 generic press_pending 은 중복 발화하지 않는다.
+  const pressPendingIsOnlyLowTier =
+    s.pressPending > 0 && s.pressPending === s.pressLowTierBacklog;
+  if (s.pressPending >= PRESS_PENDING_FLOOR && !pressPendingIsOnlyLowTier) {
     alerts.push({
       key: "press_pending",
       message: `press_ingest_candidates pending ${s.pressPending}건 (임계 ${PRESS_PENDING_FLOOR}+).`,
@@ -774,14 +778,18 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     });
   }
 
-  // enrich detail-fetcher 영구 skip 폭증 — 외부 API 일관 실패
+  // enrich detail-fetcher 영구 skip 폭증 — 외부 API 일관 실패.
+  // permanent skip 은 누적값이라 한 번 floor 를 넘으면 건강 알림을 계속 오염시킬 수 있다.
+  // insight 커버리지가 이미 정상권이면 즉시 장애보다 cleanup backlog 로 취급한다.
   if (s.enrichPermanentSkip >= ENRICH_PERMANENT_SKIP_FLOOR) {
-    alerts.push({
-      key: "enrich_stuck",
-      message: `enrich 영구 skip 누적 ${s.enrichPermanentSkip}건 (임계 ${ENRICH_PERMANENT_SKIP_FLOOR}+).`,
-      recommendation:
-        "/admin/enrich-detail 에서 일괄 해제 검토 (외부 API 회복 시) 또는 collector 점검",
-    });
+    if (s.welfareInsightCoveragePct < WELFARE_INSIGHT_COVERAGE_FLOOR) {
+      alerts.push({
+        key: "enrich_stuck",
+        message: `enrich 영구 skip 누적 ${s.enrichPermanentSkip}건 (임계 ${ENRICH_PERMANENT_SKIP_FLOOR}+).`,
+        recommendation:
+          "/admin/enrich-detail 에서 일괄 해제 검토 (외부 API 회복 시) 또는 collector 점검",
+      });
+    }
   }
 
   // Instagram OAuth token 만료 임박 — 7일 이내 (long-lived token refresh 못 일어남)
