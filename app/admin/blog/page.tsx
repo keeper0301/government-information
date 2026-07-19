@@ -85,6 +85,7 @@ export default async function AdminBlogListPage({
 
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const isQualityReviewQueue = quality === "needs_review";
 
   function buildHref(p: { q?: string; status?: string; quality?: string; page?: number }) {
     const sp = new URLSearchParams();
@@ -102,8 +103,37 @@ export default async function AdminBlogListPage({
       <AdminPageHeader
         kicker="ADMIN · 컨텐츠 발행"
         title="블로그 관리"
-        description={`블로그 글 ${total.toLocaleString("ko-KR")} 건 · 최근 수정 순`}
+        description={
+          isQualityReviewQueue
+            ? `외부 발행을 막는 품질 보류 ${total.toLocaleString("ko-KR")}건 · 수정 → LLM 재검수 → 승인 순서로 처리`
+            : `블로그 글 ${total.toLocaleString("ko-KR")} 건 · 최근 수정 순`
+        }
       />
+
+      {isQualityReviewQueue && (
+        <section className="mb-5 rounded-xl border border-red-200 bg-red-50 p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide text-red-700">
+                외부 발행 차단 해소 순서
+              </div>
+              <h2 className="mt-1 text-lg font-extrabold text-red-950">
+                보류 글 {total.toLocaleString("ko-KR")}건을 하나씩 열어 improvements를 반영하세요
+              </h2>
+              <p className="mt-2 text-sm text-red-900">
+                score 2 이하 글은 바로 수동 승인하지 말고, 본문 수정 후 LLM 재검수를 먼저 실행합니다.
+                운영자가 사실·품질을 직접 확인한 경우에만 수동 품질 승인을 사용하세요.
+              </p>
+            </div>
+            <ol className="grid min-w-[240px] gap-2 text-sm font-semibold text-red-900">
+              <li>1. 글 열기</li>
+              <li>2. improvements 반영·저장</li>
+              <li>3. LLM 재검수</li>
+              <li>4. 통과 또는 직접 확인 후 승인</li>
+            </ol>
+          </div>
+        </section>
+      )}
 
       {/* 검색 + 필터 — GET form 으로 URL 쿼리 제어 (SSR 친화적) */}
       <form
@@ -205,9 +235,13 @@ export default async function AdminBlogListPage({
               <div className="text-right">
                 <Link
                   href={`/admin/blog/${p.id}`}
-                  className="inline-block px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-50 rounded hover:bg-blue-100 no-underline"
+                  className={`inline-block px-3 py-1 text-xs font-semibold rounded no-underline ${
+                    isQualityReviewQueue
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  }`}
                 >
-                  수정
+                  {isQualityReviewQueue ? "처리" : "수정"}
                 </Link>
               </div>
             </div>

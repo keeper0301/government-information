@@ -343,8 +343,15 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
                 최근 품질 확인 {new Date(post.admin_reviewed_at).toLocaleString("ko-KR")}
               </p>
             )}
+            {post.admin_review_required && (
+              <ol className="mt-4 grid gap-1 text-sm text-red-900">
+                <li>1. 아래 편집 폼에서 지적된 improvements를 본문·도입부에 반영</li>
+                <li>2. 저장 후 LLM 재검수 실행</li>
+                <li>3. 통과하지 못했지만 운영자가 직접 확인한 경우에만 수동 품질 승인</li>
+              </ol>
+            )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link
               href="/admin/blog?quality=needs_review"
               className="px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 rounded-lg hover:bg-red-100 no-underline"
@@ -356,7 +363,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
                 type="submit"
                 className="px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
               >
-                LLM 재검수
+                저장 후 LLM 재검수
               </button>
             </form>
             {post.admin_review_required && (
@@ -365,7 +372,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
                   type="submit"
                   className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
                 >
-                  수정 완료 · 품질 승인
+                  직접 확인 완료 · 수동 승인
                 </button>
               </form>
             )}
