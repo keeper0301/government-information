@@ -77,6 +77,7 @@ import { scrapeHongcheonAndInsert } from "./hongcheon";
 import { scrapeCheorwonAndInsert } from "./cheorwon";
 import { scrapeDonghaeAndInsert } from "./donghae";
 import { scrapeJecheonAndInsert } from "./jecheon";
+import { scrapeOkcheonAndInsert } from "./okcheon";
 import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
@@ -200,6 +201,7 @@ export type CityKey =
   | "cheorwon"
   | "donghae"
   | "jecheon"
+  | "okcheon"
   | "ongjin"
   | "junggu_incheon"
   | "ganghwa"
@@ -804,6 +806,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충북 제천시청",
     siteUrl: "https://www.jecheon.go.kr/www/selectBbsNttList.do?key=112&bbsNo=287",
     fn: scrapeJecheonAndInsert,
+  },
+  {
+    key: "okcheon",
+    city: "충북 옥천군",
+    ministry: "충북 옥천군청",
+    siteUrl: "https://oc.go.kr/www/selectBbsNttList.do?key=252&bbsNo=44",
+    fn: scrapeOkcheonAndInsert,
   },
   // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
   // 2026-06-07 — 사이트 개편으로 siteUrl 신규 보도/해명 게시판 경로로 정정(구 경로는 302 redirect).

@@ -75,6 +75,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "충청북도 제천시")?.covered,
     ).toMatchObject({ source: "static", key: "jecheon" });
+    expect(
+      rows.find((row) => row.fullName === "충청북도 옥천군")?.covered,
+    ).toMatchObject({ source: "static", key: "okcheon" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
