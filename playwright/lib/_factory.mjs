@@ -196,6 +196,8 @@ export function makeScraper({
   // 무거운 동적 wrapper 페이지(의정부 contents.do)는 icn1 프록시 경유 시 기본 45s 를
   // 넘길 수 있어 목록 goto timeout 을 도시별로 늘린다(미지정 시 기본 LIST_TIMEOUT).
   listTimeout = null,
+  // 상세 페이지가 느린 도시(제주 등)는 기본 20s/35s 를 넘길 수 있어 도시별로 늘린다.
+  detailTimeout = null,
   // 무거운 wrapper 가 domcontentloaded 도 못 도달하는 경우 'commit'(초기 응답 즉시)로 진행
   // 후 게시판 ajax 를 waitForSelector 로 기다린다(의정부). 미지정 시 기본 NAV_WAIT.
   navWait = null,
@@ -363,7 +365,7 @@ export function makeScraper({
         try {
           await page.goto(item.sourceUrl, {
             waitUntil: NAV_WAIT,
-            timeout: DETAIL_TIMEOUT,
+            timeout: detailTimeout || DETAIL_TIMEOUT,
           });
           // 프록시 모드(domcontentloaded)는 본문이 JS 로 동적 주입될 수 있음(안산 등).
           // 본문 selector 가 100자 넘을 때까지 대기(채워지면 즉시 통과, 최대 8s). 못 채우면 진행.
