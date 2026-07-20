@@ -16,21 +16,24 @@ import {
 } from "./_factory.mjs";
 import { fetchSiAttachBody } from "./_si_attach.mjs";
 
+const CHROME_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 // SI 첨부(hwp/pdf) 본문용 바이너리 fetch — GHA 는 icn1 프록시 경유(한국 IP),
 // 로컬(사장님 PC)은 직접. url → Uint8Array | null.
-async function fetchBinViaProxy(url) {
+async function fetchBinViaProxy(url, { userAgent = USER_AGENT } = {}) {
   if (USE_PROXY) {
     const r = await fetch(PROXY_URL, {
       method: "POST",
       headers: { "X-API-Key": PROXY_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ url, method: "GET", headers: { "User-Agent": USER_AGENT } }),
+      body: JSON.stringify({ url, method: "GET", headers: { "User-Agent": userAgent } }),
     });
     if (!r.ok) return null;
     const d = await r.json();
     return new Uint8Array(Buffer.from(d.bodyB64, "base64"));
   }
   const r = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
+    headers: { "User-Agent": userAgent },
     signal: AbortSignal.timeout(20000),
   });
   if (!r.ok) return null;
@@ -45,8 +48,7 @@ async function fetchBinViaProxy(url) {
 export const scrapeChangwon = makeScraper({
   cityName: "창원시",
   listUrl: "https://www.changwon.go.kr/cwportal/10310/10429/10432.web",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["li.li1"],
   bodySelectors: [".substance"],
   titleSelectors: ["strong.t1"],
@@ -68,8 +70,7 @@ export const scrapeSeongnam = makeScraper({
 export const scrapeAnsan = makeScraper({
   cityName: "안산시",
   listUrl: "https://www.ansan.go.kr/www/common/bbs/selectPageListBbs.do?bbs_code=B0238",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   // 범용 selector 가 메뉴 ul 을 먼저 잡아 → 게시물 table 명시.
   listSelectors: ["table tbody tr"],
   onclickIdRe: "fnGoDetail\\(\\s*(\\d+)\\s*\\)",
@@ -87,8 +88,7 @@ export const scrapeCheonan = makeScraper({
   cityName: "천안시",
   listUrl: "https://www.cheonan.go.kr/bbs/BBSMSTR_000000000030/list.do",
   // 천안은 keepioo-bot UA 를 차단(빈 목록) → 진짜 Chrome UA 필요.
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: [".item--bodo"],
   onclickIdRe: "fn_search_detail\\('([^']+)'\\)",
   detailPath: "view.do?nttId={id}",
@@ -130,6 +130,7 @@ export async function scrapeGeumjeong({ limit = 10 } = {}) {
   const BASE = "https://www.geumjeong.go.kr";
   const listBuf = await fetchBinViaProxy(
     `${BASE}/board/list.geumj?boardId=BBS_0000005`,
+    { userAgent: CHROME_UA },
   );
   if (!listBuf) return [];
   const listHtml = Buffer.from(listBuf).toString("utf8");
@@ -158,14 +159,18 @@ export async function scrapeGeumjeong({ limit = 10 } = {}) {
   const out = [];
   for (const it of items) {
     try {
-      const dBuf = await fetchBinViaProxy(it.detailUrl);
+      const dBuf = await fetchBinViaProxy(it.detailUrl, { userAgent: CHROME_UA });
       if (!dBuf) continue;
       const dHtml = Buffer.from(dBuf).toString("utf8");
       // 등록일 yyyy/mm/dd (또는 -, .) → published_at.
       const dm = dHtml.match(/등록일[\s\S]{0,80}?(\d{4})[.\-/](\d{2})[.\-/](\d{2})/);
       const publishedDate = dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null;
       // HWP/PDF 첨부 본문(download.geumj) — 성동류 공용 파서 재사용.
-      const body = await fetchSiAttachBody(dHtml, `${BASE}/board/`, fetchBinViaProxy);
+      const body = await fetchSiAttachBody(
+        dHtml,
+        `${BASE}/board/`,
+        (url) => fetchBinViaProxy(url, { userAgent: CHROME_UA }),
+      );
       if (body) out.push({ title: it.title, sourceUrl: it.detailUrl, publishedDate, body });
       await new Promise((r) => setTimeout(r, 200)); // polite delay
     } catch {
@@ -218,8 +223,7 @@ export const scrapeGimpo = makeScraper({
 export const scrapeYeongdo = makeScraper({
   cityName: "영도구",
   listUrl: "https://www.yeongdo.go.kr/00000/00007/00011.web",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["ul.even-grid li.column"],
   bodySelectors: [".substance"],
   titleSelectors: ["strong.t1"],
@@ -232,8 +236,7 @@ export const scrapeYeongdo = makeScraper({
 export const scrapeSuwon = makeScraper({
   cityName: "수원시",
   listUrl: "https://www.suwon.go.kr/web/board/BD_board.list.do?bbsCd=1043",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["table tbody tr"],
   onclickIdRe: "jsView\\('1043',\\s*'(\\d+)'",
   detailPath: "BD_board.view.do?bbsCd=1043&seq={id}",
@@ -267,7 +270,8 @@ export const scrapeYangcheon = makeScraper({
   detailPath: "View.do?cbIdx=290&bcIdx={id}",
   // 제목이 a 안 document.write(wdigm_title('제목')) JS 인자 (렌더돼도 텍스트로 남음).
   titleTextRe: "wdigm_title\\('([^']*)'\\)",
-  bodySelectors: [".view_contents"],
+  // 2026-07-20 — `.view_contents` is now a short KOGL license block; article body is `.view-content`.
+  bodySelectors: [".view-content", ".view_contents"],
 });
 
 // 2026-06-12 — 부천시(인구 ~78만, 미커버 경기 큰 시). basicboard CMS. 목록 table tbody tr +
@@ -278,8 +282,7 @@ export const scrapeBucheon = makeScraper({
   cityName: "부천시",
   listUrl:
     "https://www.bucheon.go.kr/site/program/board/basicboard/list?boardtypeid=26748&menuid=148002002001",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["table tbody tr"],
   bodySelectors: [".board-cons"],
 });
@@ -291,8 +294,7 @@ export const scrapeBucheon = makeScraper({
 export const scrapeSiheung = makeScraper({
   cityName: "시흥시",
   listUrl: "https://www.siheung.go.kr/media/bbs/list.do?ptIdx=82&mId=0100000000",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["div.bod_blog ul li"],
   onclickIdRe: "goTo\\.view\\('list','(\\d+)'",
   detailPath: "view.do?mId=0100000000&bIdx={id}&ptIdx=82",
@@ -308,8 +310,7 @@ export const scrapeSiheung = makeScraper({
 export const scrapeGwangmyeong = makeScraper({
   cityName: "광명시",
   listUrl: "https://news.gm.go.kr/bbs/list.html?table=bbs_12",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["table tbody tr"],
   bodySelectors: [".content"],
   // "2026. 6. 11."(공백+단자리) → factory zero-pad 로 2026-06-11. now() fallback 해소.
@@ -328,8 +329,7 @@ export const scrapeJungnang = makeScraper({
   cityName: "중랑구",
   listUrl:
     "https://www.jungnang.go.kr/portal/bbs/list/B0000151.do?menuNo=200474",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["table tbody tr"],
   bodySelectors: ["#dbdata"],
 });
@@ -341,8 +341,7 @@ export const scrapeGangbuk = makeScraper({
   cityName: "강북구",
   listUrl:
     "https://www.gangbuk.go.kr:18000/portal/bbs/B0000142/list.do?menuNo=200625",
-  userAgent:
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  userAgent: CHROME_UA,
   listSelectors: ["table tbody tr"],
   bodySelectors: ["#dbdata"],
 });
@@ -464,6 +463,7 @@ export const scrapeJeju = makeScraper({
   listSelectors: ["li.board-news__article"],
   titleSelectors: ["strong.text-ellipsis", ".text-ellipsis"],
   bodySelectors: [".article-contents"],
+  detailTimeout: 45000,
 });
 
 // 2026-06-08 — 인천 남동구. bbsMsg CMS(report.jsp) + ASN 차단(prod 403, 한국 IP 200).
