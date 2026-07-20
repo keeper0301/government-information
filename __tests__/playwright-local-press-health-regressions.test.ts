@@ -33,4 +33,10 @@ describe("Playwright local-press collector health regressions", () => {
     expect(factorySource).toContain("timeout: detailTimeout || DETAIL_TIMEOUT");
     expect(citiesSource).toContain("detailTimeout: 45000");
   });
+
+  it("allows detail pages that never reach networkidle to lower only the detail wait condition", () => {
+    expect(factorySource).toContain("detailNavWait = null");
+    expect(factorySource).toContain("waitUntil: detailNavWait || NAV_WAIT");
+    expect(citiesSource).toContain('detailNavWait: "domcontentloaded"');
+  });
 });
