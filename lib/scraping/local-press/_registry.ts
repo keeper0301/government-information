@@ -75,6 +75,7 @@ import { scrapeSamcheokAndInsert } from "./samcheok";
 import { scrapeChuncheonAndInsert } from "./chuncheon";
 import { scrapeHongcheonAndInsert } from "./hongcheon";
 import { scrapeCheorwonAndInsert } from "./cheorwon";
+import { scrapeDonghaeAndInsert } from "./donghae";
 import { scrapeOngjinAndInsert } from "./ongjin";
 import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
@@ -196,6 +197,7 @@ export type CityKey =
   | "chuncheon"
   | "hongcheon"
   | "cheorwon"
+  | "donghae"
   | "ongjin"
   | "junggu_incheon"
   | "ganghwa"
@@ -786,6 +788,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "강원 철원군청",
     siteUrl: "https://www.cwg.go.kr/www/selectBbsNttList.do?bbsNo=32&key=218",
     fn: scrapeCheorwonAndInsert,
+  },
+  {
+    key: "donghae",
+    city: "강원 동해시",
+    ministry: "강원 동해시청",
+    siteUrl: "https://www.dh.go.kr/www/selectBbsNttList.do?bbsNo=95&key=489",
+    fn: scrapeDonghaeAndInsert,
   },
   // 2026-05-27 — 인천 옹진군 2만. 인천 자치구 동일 bbsMsgDetail CMS (부평·연수·서·남동·계양 동일).
   // 2026-06-07 — 사이트 개편으로 siteUrl 신규 보도/해명 게시판 경로로 정정(구 경로는 302 redirect).
