@@ -77,19 +77,20 @@ describe("diagnoseCollectors 상태 분류", () => {
   });
 });
 
-describe("같은 city 여러 run 합산", () => {
-  it("24h 내 2회 cron run fetched/inserted 누적", () => {
+describe("같은 city 여러 run 최신 상태", () => {
+  it("later healthy/no-new run clears an older body_fail inside the same 24h window", () => {
     const audit: ScrapeAuditRow[] = [
-      row({ city: "가시", fetched: 10, inserted: 0, createdAt: "2026-06-09T01:00:00Z" }),
-      row({ city: "가시", fetched: 10, inserted: 2, createdAt: "2026-06-09T13:00:00Z" }),
+      row({ city: "가시", fetched: 10, inserted: 0, errors: 2, createdAt: "2026-06-09T01:00:00Z" }),
+      row({ city: "가시", fetched: 10, inserted: 0, errors: 0, createdAt: "2026-06-09T13:00:00Z" }),
     ];
     const [d] = diagnoseCollectors(audit, [
       { city: "가시", sourceCode: "local-press-x" },
     ]);
-    expect(d.fetched).toBe(20);
-    expect(d.inserted).toBe(2);
-    expect(d.status).toBe("healthy"); // 합산 inserted 2 > 0
-    expect(d.lastRunAt).toBe("2026-06-09T13:00:00Z"); // 최신 run
+    expect(d.fetched).toBe(10);
+    expect(d.inserted).toBe(0);
+    expect(d.errors).toBe(0);
+    expect(d.status).toBe("healthy_no_new");
+    expect(d.lastRunAt).toBe("2026-06-09T13:00:00Z");
   });
 });
 

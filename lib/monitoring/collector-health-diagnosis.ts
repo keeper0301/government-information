@@ -78,7 +78,9 @@ export function diagnoseCollectors(
   auditRows: ScrapeAuditRow[],
   expected: ExpectedCollector[] = expectedCollectorsFromRegistry(),
 ): CollectorDiagnosis[] {
-  // city → 합산 (24h window 안 여러 cron run 누적)
+  // city → latest audit. Collector-broken is a current-state signal, so a later
+  // successful no-new run must clear an older body/list failure inside the same
+  // 24h window. Separate stale/insert-stop checks still aggregate longer windows.
   const byCity = new Map<
     string,
     { fetched: number; inserted: number; errors: number; lastRunAt: string | null }
@@ -86,15 +88,12 @@ export function diagnoseCollectors(
   for (const row of auditRows) {
     if (!row.city) continue;
     const prev = byCity.get(row.city);
+    if (prev?.lastRunAt && row.createdAt <= prev.lastRunAt) continue;
     byCity.set(row.city, {
-      fetched: (prev?.fetched ?? 0) + row.fetched,
-      inserted: (prev?.inserted ?? 0) + row.inserted,
-      errors: (prev?.errors ?? 0) + row.errors,
-      // 최신 run 시각 (audit 는 최신순 가정 안 하므로 max 비교)
-      lastRunAt:
-        !prev?.lastRunAt || row.createdAt > prev.lastRunAt
-          ? row.createdAt
-          : prev.lastRunAt,
+      fetched: row.fetched,
+      inserted: row.inserted,
+      errors: row.errors,
+      lastRunAt: row.createdAt,
     });
   }
 
