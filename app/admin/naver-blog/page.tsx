@@ -41,6 +41,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+const DAILY_SAFE_PUBLISH_TARGET = 20;
+
 async function requireAdmin() {
   const supabase = await createClient();
   const {
@@ -58,6 +60,10 @@ export default async function AdminNaverBlogPage() {
     listPublishedNaverQueue(10),
     getNaverPublishedStats(),
   ]);
+  const estimatedDaysToClear = Math.max(
+    1,
+    Math.ceil(stats.pending / DAILY_SAFE_PUBLISH_TARGET),
+  );
 
   return (
     <div className="max-w-[980px]">
@@ -73,6 +79,29 @@ export default async function AdminNaverBlogPage() {
         <StatCard label="24h 발행" value={stats.published24h} tone="ok" />
         <StatCard label="7d 발행" value={stats.published7d} tone="ok" />
         <StatCard label="30d 발행" value={stats.published30d} tone="ok" />
+      </section>
+
+      <section className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide text-amber-700">
+              대기열 해소 플랜
+            </div>
+            <h2 className="mt-1 text-lg font-extrabold">
+              오래된 글부터 우선 발행 · 하루 {DAILY_SAFE_PUBLISH_TARGET}건 기준 약 {estimatedDaysToClear}일
+            </h2>
+            <p className="mt-2 leading-relaxed">
+              자동 개선 스캔에서 네이버 대기열이 크다고 나오면 이 화면의 상위 카드부터 처리합니다.
+              Extension/RPA를 쓰더라도 외부 게시 전 최종 확인과 마지막 발행 버튼은 운영자가 직접 클릭합니다.
+            </p>
+          </div>
+          <ol className="grid min-w-[250px] gap-1 font-semibold">
+            <li>1. 상위 {Math.min(pending.length, DAILY_SAFE_PUBLISH_TARGET)}건 복사/자동 입력</li>
+            <li>2. 네이버 글쓰기 화면에서 제목·본문 확인</li>
+            <li>3. 마지막 발행 버튼은 운영자가 직접 클릭</li>
+            <li>4. 발행 URL 기록 후 다음 오래된 글 처리</li>
+          </ol>
+        </div>
       </section>
 
       {/* 사용 가이드 */}
