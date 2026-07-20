@@ -39,4 +39,12 @@ describe("Playwright local-press collector health regressions", () => {
     expect(factorySource).toContain("waitUntil: detailNavWait || NAV_WAIT");
     expect(citiesSource).toContain('detailNavWait: "domcontentloaded"');
   });
+
+  it("uses the redesigned Seongnam homepage press slider and detail body/date fields", () => {
+    expect(citiesSource).toContain("https://www.seongnam.go.kr/index");
+    expect(citiesSource).toContain(".notice-box1 .swiper-slide");
+    expect(citiesSource).toContain("/bbs010501/");
+    expect(citiesSource).toContain(".board-view-content, .board-view-body");
+    expect(citiesSource).toMatch(/등록일\\s\*/);
+  });
 });
