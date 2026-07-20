@@ -198,6 +198,8 @@ export function makeScraper({
   listTimeout = null,
   // 상세 페이지가 느린 도시(제주 등)는 기본 20s/35s 를 넘길 수 있어 도시별로 늘린다.
   detailTimeout = null,
+  // 상세 페이지가 networkidle 에 도달하지 않는 도시(제주 등)는 상세 waitUntil 만 낮춘다.
+  detailNavWait = null,
   // 무거운 wrapper 가 domcontentloaded 도 못 도달하는 경우 'commit'(초기 응답 즉시)로 진행
   // 후 게시판 ajax 를 waitForSelector 로 기다린다(의정부). 미지정 시 기본 NAV_WAIT.
   navWait = null,
@@ -364,7 +366,7 @@ export function makeScraper({
       for (const item of items) {
         try {
           await page.goto(item.sourceUrl, {
-            waitUntil: NAV_WAIT,
+            waitUntil: detailNavWait || NAV_WAIT,
             timeout: detailTimeout || DETAIL_TIMEOUT,
           });
           // 프록시 모드(domcontentloaded)는 본문이 JS 로 동적 주입될 수 있음(안산 등).

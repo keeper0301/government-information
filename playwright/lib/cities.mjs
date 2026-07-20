@@ -464,6 +464,7 @@ export const scrapeJeju = makeScraper({
   titleSelectors: ["strong.text-ellipsis", ".text-ellipsis"],
   bodySelectors: [".article-contents"],
   detailTimeout: 45000,
+  detailNavWait: "domcontentloaded",
 });
 
 // 2026-06-08 — 인천 남동구. bbsMsg CMS(report.jsp) + ASN 차단(prod 403, 한국 IP 200).
