@@ -253,6 +253,13 @@ export default async function Home() {
             >
               <Link
                 href={isLoggedIn ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}
+                data-ga-event="cta_clicked"
+                data-ga-label={isLoggedIn ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
+                data-ga-location="home_hero_primary"
+                data-ga-params={JSON.stringify({
+                  is_logged_in: isLoggedIn,
+                  is_profile_empty: isProfileEmpty,
+                })}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-blue-500 text-white text-[15px] font-bold hover:bg-blue-600 transition-colors no-underline shadow-[0_4px_12px_rgba(49,130,246,0.25)] min-h-[48px]"
               >
                 {isLoggedIn ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}

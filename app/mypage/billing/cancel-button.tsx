@@ -42,7 +42,14 @@ export function CancelButton({ tierName }: { tierName: string }) {
     return (
       <button
         type="button"
-        onClick={() => setConfirming(true)}
+        onClick={() => {
+          trackEvent(EVENTS.CTA_CLICKED, {
+            cta_label: "구독 해지",
+            cta_location: "billing_cancel_intent",
+            tier_name: tierName,
+          });
+          setConfirming(true);
+        }}
         className="min-h-[48px] flex items-center justify-center text-[14px] font-semibold rounded-xl bg-white border border-red-200 text-red-600 hover:bg-red-50 cursor-pointer"
       >
         구독 해지

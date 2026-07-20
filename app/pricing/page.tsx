@@ -239,7 +239,14 @@ function CtaButton({ plan, isCurrent, isLoggedIn, conversionCopy }: {
       return <div className={`${baseClass} bg-grey-100 text-grey-600 cursor-default`}>무료로 이용 중</div>;
     }
     return (
-      <a href="/login" className={`${baseClass} bg-grey-100 text-grey-800 hover:bg-grey-200`}>
+      <a
+        href="/login"
+        data-ga-event="cta_clicked"
+        data-ga-label="무료로 시작하기"
+        data-ga-location="pricing_free_plan"
+        data-ga-params='{"target":"signup","plan":"free"}'
+        className={`${baseClass} bg-grey-100 text-grey-800 hover:bg-grey-200`}
+      >
         무료로 시작하기
       </a>
     );

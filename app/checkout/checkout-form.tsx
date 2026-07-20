@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { loadTossPayments } from "@tosspayments/payment-sdk";
+import { EVENTS, trackEvent } from "@/lib/analytics";
 import { TIER_NAMES, TIER_PRICES } from "@/lib/subscription";
 
 type Props = {
@@ -29,9 +30,21 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
   async function handleRegisterCard() {
     if (!acceptedTerms || !acceptedRecurringBilling) {
       setError("필수 동의 항목을 확인해주세요.");
+      trackEvent(EVENTS.CHECKOUT_CARD_REGISTRATION_CLICKED, {
+        tier,
+        result: "blocked_terms_missing",
+        terms_accepted: acceptedTerms,
+        recurring_billing_accepted: acceptedRecurringBilling,
+      });
       return;
     }
 
+    trackEvent(EVENTS.CHECKOUT_CARD_REGISTRATION_CLICKED, {
+      tier,
+      result: "started",
+      terms_accepted: acceptedTerms,
+      recurring_billing_accepted: acceptedRecurringBilling,
+    });
     setLoading(true);
     setError(null);
 
@@ -62,6 +75,10 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
     } catch (err) {
       // 사용자가 팝업 닫음 / 네트워크 에러 등
       const message = err instanceof Error ? err.message : "카드 등록을 시작할 수 없습니다.";
+      trackEvent(EVENTS.CHECKOUT_TOSS_REDIRECT_FAILED, {
+        tier,
+        reason: message.slice(0, 80),
+      });
       setError(message);
       setLoading(false);
     }
@@ -85,7 +102,14 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
           <input
             type="checkbox"
             checked={acceptedTerms}
-            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            onChange={(e) => {
+              setAcceptedTerms(e.target.checked);
+              trackEvent(EVENTS.CHECKOUT_TERMS_TOGGLED, {
+                tier,
+                item: "terms_privacy_refund",
+                checked: e.target.checked,
+              });
+            }}
             className="mt-1"
           />
           <span>
@@ -98,7 +122,14 @@ export function CheckoutForm({ tier, userId, userEmail, clientKey }: Props) {
           <input
             type="checkbox"
             checked={acceptedRecurringBilling}
-            onChange={(e) => setAcceptedRecurringBilling(e.target.checked)}
+            onChange={(e) => {
+              setAcceptedRecurringBilling(e.target.checked);
+              trackEvent(EVENTS.CHECKOUT_TERMS_TOGGLED, {
+                tier,
+                item: "recurring_billing",
+                checked: e.target.checked,
+              });
+            }}
             className="mt-1"
           />
           <span>

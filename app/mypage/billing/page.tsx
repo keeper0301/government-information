@@ -162,6 +162,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Sear
         <div className="grid grid-cols-2 gap-2.5 mb-8">
           <a
             href={`/checkout?tier=${tier}`}
+            data-ga-event="cta_clicked"
+            data-ga-label="카드 변경"
+            data-ga-location="billing_card_change"
+            data-ga-params={JSON.stringify({ tier })}
             className="min-h-[48px] flex items-center justify-center text-[14px] font-semibold rounded-xl bg-white border border-grey-200 text-grey-900 hover:bg-grey-50 no-underline"
           >
             카드 변경
@@ -205,6 +209,10 @@ function FreeUserView() {
         </p>
         <a
           href="/pricing"
+          data-ga-event="cta_clicked"
+          data-ga-label="요금제 보러가기"
+          data-ga-location="billing_free_user"
+          data-ga-params='{"target":"pricing"}'
           className="inline-block min-h-[52px] px-8 flex items-center justify-center text-[15px] font-bold rounded-xl bg-blue-500 text-white hover:bg-blue-600 no-underline"
         >
           요금제 보러가기
