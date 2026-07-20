@@ -66,6 +66,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "강원특별자치도 홍천군")?.covered,
     ).toMatchObject({ source: "static", key: "hongcheon" });
+    expect(
+      rows.find((row) => row.fullName === "강원특별자치도 철원군")?.covered,
+    ).toMatchObject({ source: "static", key: "cheorwon" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
