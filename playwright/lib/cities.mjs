@@ -7,12 +7,14 @@
 // 다음 batch 추가 시 (안양·부천·부평·진주 등) 여기 한 줄만 추가.
 // ============================================================
 
+import { chromium } from "playwright";
 import {
   makeScraper,
   USE_PROXY,
   PROXY_URL,
   PROXY_KEY,
   USER_AGENT,
+  installProxy,
 } from "./_factory.mjs";
 import { fetchSiAttachBody } from "./_si_attach.mjs";
 
@@ -54,15 +56,93 @@ export const scrapeChangwon = makeScraper({
   titleSelectors: ["strong.t1"],
 });
 
-// 2026-05-29 — 성남시. 목록 상세가 onclick="dataView('N')"(href=#N) → bbsView.do?idx=N GET.
-// onclickIdRe 로 id 추출 + detailPath 로 URL 구성. 본문 td.content (boardWrap 은 메타 포함).
-export const scrapeSeongnam = makeScraper({
-  cityName: "성남시",
-  listUrl: "https://www.seongnam.go.kr/city/1000060/30005/bbsList.do",
-  onclickIdRe: "dataView\\('(\\d+)'\\)",
-  detailPath: "bbsView.do?idx={id}",
-  bodySelectors: ["td.content"],
-});
+// 2026-07-21 — 성남시 홈페이지 개편. 기존 `/city/1000060/30005/bbsList.do` 는
+// 404 이고 메인 `/index` 보도자료 슬라이더가 새 상세 URL(`/bbs010501/{id}`)을 노출한다.
+// 상세 페이지는 `.board-view-content` 안에 등록일/본문이 서버 렌더된다.
+export async function scrapeSeongnam({ limit = 10, headless = true } = {}) {
+  const browser = await chromium.launch({ headless });
+  const ctx = await browser.newContext({
+    userAgent: CHROME_UA,
+    locale: "ko-KR",
+    timezoneId: "Asia/Seoul",
+  });
+  const page = await ctx.newPage();
+  await installProxy(page);
+  try {
+    await page.goto("https://www.seongnam.go.kr/index", {
+      waitUntil: USE_PROXY ? "domcontentloaded" : "networkidle",
+      timeout: USE_PROXY ? 45000 : 30000,
+    });
+    await page.waitForTimeout(USE_PROXY ? 2500 : 1200);
+    const items = await page.evaluate((limit) => {
+      const rows = Array.from(
+        document.querySelectorAll(".notice-box1 .swiper-slide, .notice-box3 .swiper-slide"),
+      );
+      const seen = new Set();
+      return rows
+        .map((row) => {
+          const a = row.querySelector("a[href^='/bbs010501/'], a[href*='/bbs010501/']");
+          if (!a) return null;
+          const href = a.getAttribute("href") || "";
+          const id = (href.match(/\/bbs010501\/(\d+)/) || [])[1];
+          if (!id || seen.has(id)) return null;
+          seen.add(id);
+          const title = (row.textContent || "")
+            .replace(/자세히보기/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (!title || title.length < 5) return null;
+          return { title, sourceUrl: new URL(`/bbs010501/${id}`, location.href).href };
+        })
+        .filter(Boolean)
+        .slice(0, limit);
+    }, limit);
+    console.log(`[성남시] homepage press slider matched ${items.length} rows`);
+
+    const out = [];
+    for (const item of items) {
+      try {
+        await page.goto(item.sourceUrl, {
+          waitUntil: USE_PROXY ? "domcontentloaded" : "networkidle",
+          timeout: USE_PROXY ? 45000 : 30000,
+        });
+        if (USE_PROXY) await page.waitForTimeout(1500);
+        const detail = await page.evaluate(() => {
+          const title =
+            document.querySelector(".board-view-head")?.textContent?.replace(/\s+/g, " ").trim() ||
+            "";
+          const meta =
+            document.querySelector(".board-view-table")?.textContent?.replace(/\s+/g, " ").trim() ||
+            "";
+          const dm = meta.match(/등록일\s*(\d{4})[.\-](\d{2})[.\-](\d{2})/);
+          const body =
+            document
+              .querySelector(".board-view-content, .board-view-body")
+              ?.textContent?.replace(/\s+/g, " ")
+              .trim() || "";
+          return {
+            title,
+            publishedDate: dm ? `${dm[1]}-${dm[2]}-${dm[3]}` : null,
+            body: body.length > 250 ? body.slice(0, 5000) : null,
+          };
+        });
+        if (detail.body) {
+          out.push({
+            ...item,
+            title: detail.title || item.title,
+            publishedDate: detail.publishedDate,
+            body: detail.body,
+          });
+        }
+      } catch (e) {
+        console.error(`[성남시] detail fail: ${item.sourceUrl} — ${e.message}`);
+      }
+    }
+    return out;
+  } finally {
+    await browser.close();
+  }
+}
 
 // 2026-05-29 — 안산시. 기존 selectBbsList.do(404) → 진짜 언론보도자료 selectPageListBbs.do.
 // 상세 a href="#" onclick="fnGoDetail( N )" → selectBbsDetail.do?bbs_seq=N GET.
