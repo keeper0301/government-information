@@ -47,4 +47,9 @@ describe("Playwright local-press collector health regressions", () => {
     expect(citiesSource).toContain(".board-view-content, .board-view-body");
     expect(citiesSource).toMatch(/등록일\\s\*/);
   });
+
+  it("parses slash formatted Suwon list dates instead of falling back to now", () => {
+    expect(citiesSource).toContain('cityName: "수원시"');
+    expect(citiesSource).toContain('dateTextRe: "(\\\\d{4})/(\\\\d{2})/(\\\\d{2})"');
+  });
 });
