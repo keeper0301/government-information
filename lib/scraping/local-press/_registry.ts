@@ -78,6 +78,7 @@ import { scrapeBuyeoAndInsert } from "./buyeo";
 import { scrapeSeocheonAndInsert } from "./seocheon";
 import { scrapeCheongyangAndInsert } from "./cheongyang";
 import { scrapeHongseongAndInsert } from "./hongseong";
+import { scrapeYesanAndInsert } from "./yesan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -218,6 +219,7 @@ export type CityKey =
   | "seocheon"
   | "cheongyang"
   | "hongseong"
+  | "yesan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -845,6 +847,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충남 홍성군청",
     siteUrl: "https://www.hongseong.go.kr/bbs/BBSMSTR_000000000842/list.do",
     fn: scrapeHongseongAndInsert,
+  },
+  {
+    key: "yesan",
+    city: "충남 예산군",
+    ministry: "충남 예산군청",
+    siteUrl: "https://www.yesan.go.kr/bbs/BBSMSTR_000000000047/list.do",
+    fn: scrapeYesanAndInsert,
   },
   {
     key: "seosan",
