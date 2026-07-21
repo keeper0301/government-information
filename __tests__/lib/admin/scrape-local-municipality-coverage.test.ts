@@ -81,6 +81,9 @@ describe("scrape-local municipality coverage", () => {
     expect(
       rows.find((row) => row.fullName === "충청북도 음성군")?.covered,
     ).toMatchObject({ source: "static", key: "eumseong" });
+    expect(
+      rows.find((row) => row.fullName === "충청북도 영동군")?.covered,
+    ).toMatchObject({ source: "static", key: "yeongdong" });
   });
 
   it("커버리지 요약 수치가 행 상태와 일치한다", () => {
