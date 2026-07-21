@@ -61,6 +61,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "충청남도 계룡시")?.covered,
     ).toMatchObject({ source: "static", key: "gyeryong" });
     expect(
+      rows.find((row) => row.fullName === "충청남도 당진시")?.covered,
+    ).toMatchObject({ source: "static", key: "dangjin" });
+    expect(
       rows.find((row) => row.fullName === "충청남도 서산시")?.covered,
     ).toMatchObject({ source: "static", key: "seosan" });
     expect(
