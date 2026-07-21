@@ -68,6 +68,7 @@ import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
 import { scrapeDaedeokAndInsert } from "./daedeok";
 import { scrapeGongjuAndInsert } from "./gongju";
+import { scrapeBoryeongAndInsert } from "./boryeong";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -198,6 +199,7 @@ export type CityKey =
   | "junggu_daejeon"
   | "daedeok"
   | "gongju"
+  | "boryeong"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -755,6 +757,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충남 공주시청",
     siteUrl: "https://www.gongju.go.kr/prog/saeolNews/sub04_02_01/list.do",
     fn: scrapeGongjuAndInsert,
+  },
+  {
+    key: "boryeong",
+    city: "충남 보령시",
+    ministry: "충남 보령시청",
+    siteUrl: "https://www.brcn.go.kr/prog/eminwon/kor/AA/sub04_02/list.do",
+    fn: scrapeBoryeongAndInsert,
   },
   {
     key: "seosan",
