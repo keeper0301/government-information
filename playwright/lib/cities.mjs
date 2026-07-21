@@ -321,6 +321,9 @@ export const scrapeSuwon = makeScraper({
   onclickIdRe: "jsView\\('1043',\\s*'(\\d+)'",
   detailPath: "BD_board.view.do?bbsCd=1043&seq={id}",
   bodySelectors: [".p-table__content"],
+  // list row date format is `2026/07/21`; default factory date regex only
+  // covers dot/hyphen dates, causing null_date=10 on every successful Suwon run.
+  dateTextRe: "(\\d{4})/(\\d{2})/(\\d{2})",
 });
 
 // 2026-06-08 — 평택시. 정적 collector(pyeongtaek.ts)는 list/본문 다 정상이나 평택이
