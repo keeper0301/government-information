@@ -74,6 +74,7 @@ import { scrapeNonsanAndInsert } from "./nonsan";
 import { scrapeGyeryongAndInsert } from "./gyeryong";
 import { scrapeDangjinAndInsert } from "./dangjin";
 import { scrapeGeumsanAndInsert } from "./geumsan";
+import { scrapeBuyeoAndInsert } from "./buyeo";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -210,6 +211,7 @@ export type CityKey =
   | "gyeryong"
   | "dangjin"
   | "geumsan"
+  | "buyeo"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -809,6 +811,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충남 금산군청",
     siteUrl: "https://www.geumsan.go.kr/media/html/sub01/0102.html",
     fn: scrapeGeumsanAndInsert,
+  },
+  {
+    key: "buyeo",
+    city: "충남 부여군",
+    ministry: "충남 부여군청",
+    siteUrl: "https://www.buyeo.go.kr/_prog/_board/?code=news_07&site_dvs_cd=kr&menu_dvs_cd=0408",
+    fn: scrapeBuyeoAndInsert,
   },
   {
     key: "seosan",
