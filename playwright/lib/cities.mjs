@@ -571,26 +571,86 @@ export const scrapeNamdongIncheon = makeScraper({
   bodySelectors: [".board_view"],
 });
 
-// 2026-06-08 — 의정부시. ASN 차단 + 사이트 개편으로 보도자료가 contents.do?mId=0301020000
-//   동적 게시판(내부 bbs/list.do ajax). list.do 직접은 메인페이지 0건이라 contents.do 를 listUrl 로.
-//   목록 div.bod_blog ul li, 상세 onclick boardView('portal','listForm','코드','Y','bIdx',...).
-//   본문 view_cont 류. (행 selector 발굴 완료)
-export const scrapeUijeongbu = makeScraper({
+function stripHtmlText(html) {
+  return String(html || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// 2026-07-21 — 의정부시는 로컬 Playwright에서는 `div.bod_blog ul li`가 잡히지만
+// GHA+icn1 page.route 프록시 경로에서는 chromium DOM이 목록 0건으로 렌더되는 회귀가 있었다.
+// list/detail HTML 자체는 서버 렌더라, 프록시 모드에서는 browser DOM 대신 icn1-fetch 결과를
+// 직접 파싱한다. 로컬 수동 smoke는 기존 Playwright factory를 유지한다.
+const scrapeUijeongbuBrowser = makeScraper({
   cityName: "의정부시",
   listUrl: "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
   listSelectors: ["div.bod_blog ul li", ".bod_blog li"],
   onclickIdRe: "boardView\\([^)]*?'(\\d{4,})'",
   detailPath: "bbs/view.do?bIdx={id}&mId=0301020000&ptIdx=1709",
   bodySelectors: [".view_cont", ".board_view", ".bbs_view", ".p-view__content", ".view_content"],
-  // 제목: span.blog_tit (li 전체 a 는 본문요약까지 포함해 제목 오염). [행사]/[환경] 카테고리
-  // prefix 는 titleTextRe 로 제거.
   titleSelectors: ["span.blog_tit", ".blog_tit"],
   titleTextRe: "^\\[[^\\]]+\\]\\s*(.+)$",
-  // contents.do 동적 wrapper 가 icn1 프록시로 무겁고 불안정 → commit(초기 응답 즉시)으로
-  // 진행 후 div.bod_blog ajax 를 waitForSelector 로 대기. timeout 120s 마진.
   navWait: "commit",
   listTimeout: 120000,
 });
+
+export async function scrapeUijeongbu({ limit = 10, headless = true } = {}) {
+  if (!USE_PROXY) return scrapeUijeongbuBrowser({ limit, headless });
+
+  const listUrl = "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709";
+  const listBytes = await fetchBinViaProxy(listUrl, { userAgent: CHROME_UA });
+  if (!listBytes) return [];
+  const listHtml = Buffer.from(listBytes).toString("utf8");
+  const rowRe = /<li[^>]*>[\s\S]*?boardView\([^)]*?'(\d{4,})'[^)]*\)[\s\S]*?<\/li>/g;
+  const rows = [];
+  const seen = new Set();
+  let m;
+  while ((m = rowRe.exec(listHtml)) !== null && rows.length < limit) {
+    const id = m[1];
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const row = m[0];
+    const titleRaw =
+      (row.match(/<span[^>]*class="[^"]*blog_tit[^"]*"[^>]*>([\s\S]*?)<\/span>/i) || [])[1] || row;
+    const title = stripHtmlText(titleRaw).replace(/^\[[^\]]+\]\s*/, "");
+    const dateMatch = stripHtmlText(row).match(/작성일\s*(\d{4})[.\-](\d{2})[.\-](\d{2})/);
+    if (!title || title.length < 5) continue;
+    rows.push({
+      id,
+      title,
+      publishedDate: dateMatch ? `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}` : null,
+      sourceUrl: `https://www.ui4u.go.kr/portal/bbs/view.do?bIdx=${id}&mId=0301020000&ptIdx=1709`,
+    });
+  }
+  console.log(`[의정부시] static proxy list matched ${rows.length} rows`);
+
+  const out = [];
+  for (const item of rows) {
+    const detailBytes = await fetchBinViaProxy(item.sourceUrl, { userAgent: CHROME_UA });
+    if (!detailBytes) continue;
+    const html = Buffer.from(detailBytes).toString("utf8");
+    const bodyHtml =
+      (html.match(/<div[^>]*class="[^"]*(?:view_cont|board_view|bbs_view|p-view__content|view_content)[^"]*"[^>]*>([\s\S]*?)(?:<div[^>]*class="[^"]*(?:btn|file|attach|pagination)|<\/article|<\/section)/i) || [])[1] ||
+      "";
+    const body = stripHtmlText(bodyHtml);
+    if (!/[가-힣]/.test(body) || body.length < 250) continue;
+    out.push({
+      title: item.title,
+      body: body.slice(0, 5000),
+      publishedDate: item.publishedDate,
+      sourceUrl: item.sourceUrl,
+    });
+  }
+  return out;
+}
 
 // 2026-06-08 — 광주남구: 이관 불가 확정. board.es 본문이 raw·DOM·ajax 어디에도 텍스트로 없음
 //   (8가지 발굴 실패, POST/세션/암호화 또는 이미지·첨부 위주 추정). 더 파지 말 것.

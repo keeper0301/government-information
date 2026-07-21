@@ -57,6 +57,8 @@ describe("Playwright local-press collector health regressions", () => {
     expect(citiesSource).toContain(
       "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
     );
+    expect(citiesSource).toContain("static proxy list matched");
+    expect(citiesSource).toContain("scrapeUijeongbuBrowser");
     expect(citiesSource).toContain('cityName: "부천시"');
     expect(citiesSource).toContain('navWait: "commit"');
     expect(citiesSource).toContain("listTimeout: 120000");
