@@ -81,6 +81,7 @@ import { scrapeHongseongAndInsert } from "./hongseong";
 import { scrapeYesanAndInsert } from "./yesan";
 import { scrapeTaeanAndInsert } from "./taean";
 import { scrapeJeongeupAndInsert } from "./jeongeup";
+import { scrapeNamwonAndInsert } from "./namwon";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -224,6 +225,7 @@ export type CityKey =
   | "yesan"
   | "taean"
   | "jeongeup"
+  | "namwon"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -873,6 +875,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.jeongeup.go.kr/board/list.jeongeup?boardId=BBS_0000019&menuCd=DOM_000000101002001000",
     fn: scrapeJeongeupAndInsert,
+  },
+  {
+    key: "namwon",
+    city: "전북 남원시",
+    ministry: "전북 남원시청",
+    siteUrl:
+      "https://www.namwon.go.kr/board/post/list.do?boardUid=ff8080818ea1fec5018ea24651660037&menuUid=ff8080818e3beff0018e407936b40088",
+    fn: scrapeNamwonAndInsert,
   },
   {
     key: "seosan",
