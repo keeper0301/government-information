@@ -221,19 +221,23 @@ export async function getHighNullDateCityCount(
   ).toISOString();
   const { data: rows } = await admin
     .from("admin_actions")
-    .select("details")
+    .select("details, created_at")
     .eq("action", "local_press_scrape")
-    .gte("created_at", since);
+    .gte("created_at", since)
+    .order("created_at", { ascending: false });
 
-  const byCity = new Map<string, number>();
+  // city → latest audit null_date. This is a current-health signal: once a
+  // collector's latest successful run extracts dates again, older fixed rows
+  // inside the 24h window should not keep the alert stuck until they age out.
+  const latestByCity = new Map<string, number>();
   for (const row of rows ?? []) {
     const d = (row.details ?? {}) as Record<string, unknown>;
     const city = String(d.city ?? "");
-    if (!city) continue;
-    byCity.set(city, (byCity.get(city) ?? 0) + Number(d.null_date ?? 0));
+    if (!city || latestByCity.has(city)) continue;
+    latestByCity.set(city, Number(d.null_date ?? 0));
   }
   let high = 0;
-  for (const n of byCity.values()) if (n >= threshold) high += 1;
+  for (const n of latestByCity.values()) if (n >= threshold) high += 1;
   return high;
 }
 
