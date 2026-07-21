@@ -14,9 +14,9 @@ import { toMarkdown } from "@ohah/hwpjs";
 import JSZip from "jszip";
 
 // 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do)·부산 SI
-// CMS(금정 download.geumj) 공통. 2026-06-10 — 금정 보도자료 HWP 첨부 전용 대응 추가.
+// CMS(금정 download.geumj)·진천 board/download.do 공통.
 const DOWNLOAD_REGEX =
-  /href="([^"]*(?:downloadBbsFile\.do|fileDown\.do|download\.geumj)[^"]*)"/gi;
+  /href="([^"]*(?:downloadBbsFile\.do|fileDown\.do|download\.geumj|board\/download\.do)[^"]*)"/gi;
 
 // PDF 전문 머리의 보도자료 표준 메타를 "총 매수 N쪽" 마커 기준으로 cut.
 export function stripSiPdfMeta(text) {
