@@ -5,6 +5,7 @@ const BASE_SIGNALS: HealthSignals = {
   signups24h: 0,
   active7d: 1,
   active7dAny: 1,
+  userEvents7d: 0,
   failed24h: 0,
   cronFailures24h: 0,
   deliveryFailures24h: 0,
@@ -99,6 +100,17 @@ describe("checkThresholds — low_activity 가드", () => {
       signups24h: 0,
       active7d: 1,
       active7dAny: 5,
+    });
+    expect(alerts.find((a) => a.key === "low_activity")).toBeUndefined();
+  });
+
+  it("가입 전 이벤트가 충분하면 low_activity 발송 안 함 — 읽기형 서비스 false positive 방지", () => {
+    const alerts = checkThresholds({
+      ...BASE_SIGNALS,
+      signups24h: 0,
+      active7d: 1,
+      active7dAny: 2,
+      userEvents7d: 580,
     });
     expect(alerts.find((a) => a.key === "low_activity")).toBeUndefined();
   });

@@ -37,6 +37,9 @@ export type HealthSignals = {
   // 안 하는 사용자가 많아, signin 만으로 활성을 정의하면 false positive 발생 가능.
   // 임계치 점검 (low_activity alert) 은 이 값 기준으로 판정해 false positive 줄임.
   active7dAny: number;
+  // 7d 익명/로그인 이벤트 수. 검색·읽기 위주 서비스는 가입 전 program_view/apply_click 이
+  // 주요 activity 이므로 auth.users 만 보면 false positive 가 난다.
+  userEvents7d: number;
   // 24h 결제 실패·해지 (subscriptions.cancelled_at 24h)
   failed24h: number;
   // 24h cron 실패 알림 건수 (cron_failure_log notified_at)
@@ -241,7 +244,11 @@ const CRON_FAIL_ALERT_THRESHOLD = Number(
 // 운영 초기 (사장님 본인만 로그인) 단계에서 매일 발화하면 noise →
 // LOW_ACTIVITY_FLOOR env 로 1분 rollback 가능. 0 으로 두면 alert 자체 끄기 효과.
 const ACTIVE_7D_FLOOR = Number(process.env.LOW_ACTIVITY_FLOOR ?? "5");
-// Phase 1 자동 진단 임계치 — env 로 1분 toggle 가능 (위험 0).
+// 가입 전 program_view/apply_click 도 실제 활동이다. user_events 7d 가 충분하면
+// auth.users 기반 low_activity 는 false positive 로 본다.
+const USER_EVENTS_7D_FLOOR = Number(
+  process.env.HEALTH_USER_EVENTS_7D_FLOOR ?? "100",
+);
 // 정상 운영 baseline 보다 약간 여유 — false positive 톤 다운.
 //
 // 2026-05-14 — 1000 → 5000 (데이터 기반 fix).
@@ -368,6 +375,12 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       (u.last_sign_in_at && u.last_sign_in_at >= since7dIso) ||
       (u.created_at && u.created_at >= since7dIso),
   ).length;
+
+  const { count: userEvents7dCount } = await sb
+    .from("user_events")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", since7dIso);
+  const userEvents7d = userEvents7dCount ?? 0;
 
   // 결제 실패 — subscriptions cancelled_at 24h
   const { count: cancelled } = await sb
@@ -633,6 +646,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     signups24h,
     active7d,
     active7dAny,
+    userEvents7d,
     failed24h,
     cronFailures24h,
     deliveryFailures24h,
@@ -674,13 +688,16 @@ export async function getHealthSignals(): Promise<HealthSignals> {
 export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   const alerts: ThresholdAlert[] = [];
 
-  // 가입 활성도 — active7dAny (signin OR 7d 내 가입) 기준으로 false positive 방지.
-  // 둘 다 충족 (24h 가입 0 AND 7d 신규 가입·로그인 모두 floor 미만) 일 때만 alert →
-  // 사장님 본인 1명만 로그인하는 운영 초기 패턴은 정상 신호로 처리됨.
-  if (s.signups24h === 0 && s.active7dAny < ACTIVE_7D_FLOOR) {
+  // 가입 활성도 — auth users + anonymous/user event activity를 함께 본다.
+  // keepioo는 검색·읽기 위주라 가입 전 program_view/apply_click이 충분하면 low_activity false positive.
+  if (
+    s.signups24h === 0 &&
+    s.active7dAny < ACTIVE_7D_FLOOR &&
+    s.userEvents7d < USER_EVENTS_7D_FLOOR
+  ) {
     alerts.push({
       key: "low_activity",
-      message: `24h 신규 가입 0 + 7d 활성(가입+로그인) ${s.active7dAny}명 (< ${ACTIVE_7D_FLOOR}). 가입 funnel 점검 필요.`,
+      message: `24h 신규 가입 0 + 7d 활성(가입+로그인) ${s.active7dAny}명 + 7d 이벤트 ${s.userEvents7d}건 (< ${USER_EVENTS_7D_FLOOR}). 가입 funnel 점검 필요.`,
       recommendation:
         "/admin/insights funnel 카드 + sitemap 등록 상태 + AdSense/SEO 트래픽 점검 (Phase 5 marketing cron 가동 확인)",
     });
