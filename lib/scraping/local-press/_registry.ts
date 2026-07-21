@@ -80,6 +80,7 @@ import { scrapeJecheonAndInsert } from "./jecheon";
 import { scrapeOkcheonAndInsert } from "./okcheon";
 import { scrapeBoeunAndInsert } from "./boeun";
 import { scrapeGoesanAndInsert } from "./goesan";
+import { scrapeDanyangAndInsert } from "./danyang";
 import { scrapeEumseongAndInsert } from "./eumseong";
 import { scrapeYeongdongAndInsert } from "./yeongdong";
 import { scrapeJeungpyeongAndInsert } from "./jeungpyeong";
@@ -209,6 +210,7 @@ export type CityKey =
   | "okcheon"
   | "boeun"
   | "goesan"
+  | "danyang"
   | "eumseong"
   | "yeongdong"
   | "jeungpyeong"
@@ -837,6 +839,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충북 괴산군청",
     siteUrl: "https://www.goesan.go.kr/www/selectBbsNttList.do?bbsNo=213&key=136",
     fn: scrapeGoesanAndInsert,
+  },
+  {
+    key: "danyang",
+    city: "충북 단양군",
+    ministry: "충북 단양군청",
+    siteUrl: "https://www.danyang.go.kr/dy21/984",
+    fn: scrapeDanyangAndInsert,
   },
   {
     key: "eumseong",
