@@ -94,14 +94,14 @@ describe("getHighNullDateCityCount threshold", () => {
     expect(await getHighNullDateCityCount(5, 24)).toBe(0);
   });
 
-  it("같은 city 누적 (2+3=5) → 1", async () => {
+  it("같은 city는 최신 audit 기준으로 판단한다", async () => {
     responseQueue.push({
       data: [
-        { details: { city: "A", null_date: 2 } },
-        { details: { city: "A", null_date: 3 } },
+        { created_at: "2026-07-21T06:57:10Z", details: { city: "A", null_date: 0 } },
+        { created_at: "2026-07-21T04:22:37Z", details: { city: "A", null_date: 10 } },
       ],
     });
-    expect(await getHighNullDateCityCount(5, 24)).toBe(1);
+    expect(await getHighNullDateCityCount(5, 24)).toBe(0);
   });
 
   it("3 도시 중 2 통과", async () => {
