@@ -558,7 +558,7 @@ export const scrapeJeju = makeScraper({
 // 2026-06-08 — 인천 남동구. bbsMsg CMS(report.jsp) + ASN 차단(prod 403, 한국 IP 200).
 //   목록 ul.generalList li + 제목 p.title, 상세 bbsMsgDetail.do?msg_seq= href 직접,
 //   본문 .board_view. 로컬 검증 983자. GHA+icn1 경로 이관.
-export const scrapeNamdongIncheon = makeScraper({
+const scrapeNamdongIncheonBrowser = makeScraper({
   cityName: "인천 남동구",
   listUrl: "https://www.namdong.go.kr/main/news/report.jsp",
   // generalList 는 80행(첨부·메뉴 혼재, fileDown 만 가진 li 포함) → bbsMsgDetail 링크를
@@ -570,6 +570,56 @@ export const scrapeNamdongIncheon = makeScraper({
   titleSelectors: ["p.title", ".title"],
   bodySelectors: [".board_view"],
 });
+
+export async function scrapeNamdongIncheon({ limit = 10, headless = true } = {}) {
+  if (!USE_PROXY) return scrapeNamdongIncheonBrowser({ limit, headless });
+
+  const listUrl = "https://www.namdong.go.kr/main/bbs/bbsMsgList.do?bcd=press_release";
+  const listBytes = await fetchBinViaProxy(listUrl, { userAgent: CHROME_UA });
+  if (!listBytes) return [];
+  const listHtml = Buffer.from(listBytes).toString("utf8");
+  const rowRe = /<li[^>]*>[\s\S]*?href="([^"]*bbsMsgDetail\.do\?msg_seq=\d+[^\"]*)"[\s\S]*?<\/li>/g;
+  const rows = [];
+  const seen = new Set();
+  let m;
+  while ((m = rowRe.exec(listHtml)) !== null && rows.length < limit) {
+    const href = m[1].replace(/&amp;/g, "&");
+    const msgSeq = new URL(href, "https://www.namdong.go.kr").searchParams.get("msg_seq");
+    if (!msgSeq || seen.has(msgSeq)) continue;
+    seen.add(msgSeq);
+    const row = m[0];
+    const titleRaw =
+      (row.match(/<p[^>]*class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/p>/i) || [])[1] || row;
+    const title = stripHtmlText(titleRaw);
+    const dateMatch = stripHtmlText(row).match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
+    if (!title || title.length < 5) continue;
+    rows.push({
+      title,
+      publishedDate: dateMatch ? `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}` : null,
+      sourceUrl: new URL(href, "https://www.namdong.go.kr").toString(),
+    });
+  }
+  console.log(`[인천 남동구] static proxy list matched ${rows.length} rows`);
+
+  const out = [];
+  for (const item of rows) {
+    const detailBytes = await fetchBinViaProxy(item.sourceUrl, { userAgent: CHROME_UA });
+    if (!detailBytes) continue;
+    const html = Buffer.from(detailBytes).toString("utf8");
+    const bodyHtml =
+      (html.match(/<div[^>]*class="[^"]*board_view[^"]*"[^>]*>([\s\S]*?)(?:<div[^>]*class="[^"]*(?:btn|file|attach|comment)|<\/article|<\/section)/i) || [])[1] ||
+      "";
+    const body = stripHtmlText(bodyHtml);
+    if (!/[가-힣]/.test(body) || body.length < 250) continue;
+    out.push({
+      title: item.title,
+      body: body.slice(0, 5000),
+      publishedDate: item.publishedDate,
+      sourceUrl: item.sourceUrl,
+    });
+  }
+  return out;
+}
 
 function stripHtmlText(html) {
   return String(html || "")
