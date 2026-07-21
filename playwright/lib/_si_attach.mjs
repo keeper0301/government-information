@@ -11,6 +11,7 @@
 
 import { extractText, getDocumentProxy } from "unpdf";
 import { toMarkdown } from "@ohah/hwpjs";
+import JSZip from "jszip";
 
 // 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do)·부산 SI
 // CMS(금정 download.geumj) 공통. 2026-06-10 — 금정 보도자료 HWP 첨부 전용 대응 추가.
@@ -45,6 +46,45 @@ function cleanHwpMarkdown(md) {
     .replace(/^버전:\s*[\d.]+\s*/, "");
 }
 
+function decodeXmlEntities(s) {
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+function cleanHwpxXml(xml) {
+  return decodeXmlEntities(
+    xml
+      .replace(/<hp:br\s*\/?>/g, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+}
+
+export async function extractHwpxBody(buf) {
+  const zip = await JSZip.loadAsync(Buffer.from(buf));
+  const names = Object.keys(zip.files)
+    .filter((name) => /^Contents\/section\d+\.xml$/i.test(name))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  const chunks = [];
+  for (const name of names) {
+    const file = zip.file(name);
+    if (!file) continue;
+    const xml = await file.async("string");
+    const text = cleanHwpxXml(xml);
+    if (text) chunks.push(text);
+  }
+  const body = chunks.join(" ").replace(/\s+/g, " ").trim();
+  return /[가-힣]/.test(body) && body.length >= 250 ? body.slice(0, 20000) : null;
+}
+
 // 첨부 버퍼 → PDF(unpdf)/hwp5(@ohah) 전문. 250+ 한글이면 반환.
 async function extractAttachBody(buf) {
   // PDF (%PDF)
@@ -59,6 +99,11 @@ async function extractAttachBody(buf) {
     const { markdown } = toMarkdown(Buffer.from(buf), { image: "base64", useHtml: false });
     const body = cleanHwpMarkdown(markdown).replace(/\s+/g, " ").trim();
     return /[가-힣]/.test(body) && body.length >= 250 ? body.slice(0, 20000) : null;
+  }
+  // HWPX (OOXML-like zip, PK magic). 인천 서구 첨부가 hwp → hwpx 로 바뀌며
+  // 기존 HWP5(OLE) 파서가 null 을 반환해 fetched=10/skipped=10 insert-stop 이 발생했다.
+  if (buf[0] === 0x50 && buf[1] === 0x4b) {
+    return extractHwpxBody(buf);
   }
   return null;
 }
