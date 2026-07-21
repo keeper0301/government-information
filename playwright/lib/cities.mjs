@@ -368,6 +368,11 @@ export const scrapeBucheon = makeScraper({
   userAgent: CHROME_UA,
   listSelectors: ["table tbody tr"],
   bodySelectors: [".board-cons"],
+  // GHA+icn1 proxy can hang waiting for full domcontentloaded on this large
+  // portal page even though the server-rendered list HTML is available. Commit
+  // is enough; waitForSelector verifies the actual rows afterwards.
+  navWait: "commit",
+  listTimeout: 120000,
 });
 
 // 2026-06-12 — 시흥시(인구 ~50만). 의정부와 동일 CMS(div.bod_blog ul li, FORM#list).
@@ -572,7 +577,7 @@ export const scrapeNamdongIncheon = makeScraper({
 //   본문 view_cont 류. (행 selector 발굴 완료)
 export const scrapeUijeongbu = makeScraper({
   cityName: "의정부시",
-  listUrl: "https://www.ui4u.go.kr/portal/contents.do?mId=0301020000",
+  listUrl: "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
   listSelectors: ["div.bod_blog ul li", ".bod_blog li"],
   onclickIdRe: "boardView\\([^)]*?'(\\d{4,})'",
   detailPath: "bbs/view.do?bIdx={id}&mId=0301020000&ptIdx=1709",
@@ -617,10 +622,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     jeju: scrapeJeju,
     namdong_incheon: scrapeNamdongIncheon,
     uijeongbu: scrapeUijeongbu,
+    bucheon: scrapeBucheon,
   };
   const fn = map[target];
   if (!fn) {
-    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam|seongdong|dongdaemun|seongbuk|jeju`);
+    console.error(`unknown city: ${target}. 사용: changwon|seongnam|ansan|cheonan|nowon|dongnae|busanjin|geumjeong|sasang|sasang_news|gimpo|yeongdo|suwon|pyeongtaek|yangcheon|eunpyeong|gangnam|seongdong|dongdaemun|seongbuk|jeju|namdong_incheon|uijeongbu|bucheon`);
     process.exit(1);
   }
   const items = await fn({ limit: 3, headless: true });

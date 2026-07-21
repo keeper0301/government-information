@@ -52,4 +52,14 @@ describe("Playwright local-press collector health regressions", () => {
     expect(citiesSource).toContain('cityName: "수원시"');
     expect(citiesSource).toContain('dateTextRe: "(\\\\d{4})/(\\\\d{2})/(\\\\d{2})"');
   });
+
+  it("uses direct Uijeongbu bbs list and commit wait for Bucheon proxy stability", () => {
+    expect(citiesSource).toContain(
+      "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
+    );
+    expect(citiesSource).toContain('cityName: "부천시"');
+    expect(citiesSource).toContain('navWait: "commit"');
+    expect(citiesSource).toContain("listTimeout: 120000");
+    expect(citiesSource).toContain("bucheon: scrapeBucheon");
+  });
 });
