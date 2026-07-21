@@ -34,6 +34,20 @@ const context = await browser.newContext(
 
 const failures = [];
 
+function isIgnorableThirdPartyConsoleError(text) {
+  return (
+    text.includes("https://ep2.adtrafficquality.google/sodar/sodar2.js") ||
+    text.includes("adtrafficquality.google/sodar")
+  );
+}
+
+function filterPageErrors(errors, consoleErrors, finalUrl) {
+  const hasThirdPartyAdNoise = consoleErrors.some(isIgnorableThirdPartyConsoleError);
+  if (!finalUrl.includes("/login") || !hasThirdPartyAdNoise) return errors;
+
+  return errors.filter((text) => text !== "Uncaught (in promise) undefined");
+}
+
 for (const route of routes) {
   const page = await context.newPage();
   const pageErrors = [];
@@ -59,8 +73,19 @@ for (const route of routes) {
   const title = await page.title().catch(() => "");
   const h1 = await page.locator("h1").first().textContent().catch(() => "");
 
-  if (pageErrors.length > 0 || consoleErrors.length > 0) {
-    failures.push({ route, finalUrl, status, pageErrors, consoleErrors });
+  const filteredConsoleErrors = consoleErrors.filter(
+    (text) => !isIgnorableThirdPartyConsoleError(text),
+  );
+  const filteredPageErrors = filterPageErrors(pageErrors, consoleErrors, finalUrl);
+
+  if (filteredPageErrors.length > 0 || filteredConsoleErrors.length > 0) {
+    failures.push({
+      route,
+      finalUrl,
+      status,
+      pageErrors: filteredPageErrors,
+      consoleErrors: filteredConsoleErrors,
+    });
   }
 
   if (!hasStorageState && !finalUrl.includes("/login")) {
@@ -81,8 +106,10 @@ for (const route of routes) {
       finalUrl,
       title,
       h1: h1?.trim() || null,
-      pageErrors,
-      consoleErrors,
+      pageErrors: filteredPageErrors,
+      consoleErrors: filteredConsoleErrors,
+      ignoredPageErrors: pageErrors.length - filteredPageErrors.length,
+      ignoredConsoleErrors: consoleErrors.length - filteredConsoleErrors.length,
       mode: hasStorageState ? "authenticated" : "redirect",
     }),
   );
