@@ -79,6 +79,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "충청북도 옥천군")?.covered,
     ).toMatchObject({ source: "static", key: "okcheon" });
     expect(
+      rows.find((row) => row.fullName === "충청북도 보은군")?.covered,
+    ).toMatchObject({ source: "static", key: "boeun" });
+    expect(
       rows.find((row) => row.fullName === "충청북도 음성군")?.covered,
     ).toMatchObject({ source: "static", key: "eumseong" });
     expect(

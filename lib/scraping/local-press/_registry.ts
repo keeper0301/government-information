@@ -78,6 +78,7 @@ import { scrapeCheorwonAndInsert } from "./cheorwon";
 import { scrapeDonghaeAndInsert } from "./donghae";
 import { scrapeJecheonAndInsert } from "./jecheon";
 import { scrapeOkcheonAndInsert } from "./okcheon";
+import { scrapeBoeunAndInsert } from "./boeun";
 import { scrapeEumseongAndInsert } from "./eumseong";
 import { scrapeYeongdongAndInsert } from "./yeongdong";
 import { scrapeJeungpyeongAndInsert } from "./jeungpyeong";
@@ -205,6 +206,7 @@ export type CityKey =
   | "donghae"
   | "jecheon"
   | "okcheon"
+  | "boeun"
   | "eumseong"
   | "yeongdong"
   | "jeungpyeong"
@@ -819,6 +821,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충북 옥천군청",
     siteUrl: "https://oc.go.kr/www/selectBbsNttList.do?key=252&bbsNo=44",
     fn: scrapeOkcheonAndInsert,
+  },
+  {
+    key: "boeun",
+    city: "충북 보은군",
+    ministry: "충북 보은군청",
+    siteUrl: "https://www.boeun.go.kr/www/selectBbsNttList.do?bbsNo=209&key=138",
+    fn: scrapeBoeunAndInsert,
   },
   {
     key: "eumseong",
