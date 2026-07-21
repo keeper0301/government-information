@@ -607,8 +607,9 @@ export async function scrapeNamdongIncheon({ limit = 10, headless = true } = {})
     if (!detailBytes) continue;
     const html = Buffer.from(detailBytes).toString("utf8");
     const bodyHtml =
-      (html.match(/<div[^>]*class="[^"]*board_view[^"]*"[^>]*>([\s\S]*?)(?:<div[^>]*class="[^"]*(?:btn|file|attach|comment)|<\/article|<\/section)/i) || [])[1] ||
-      "";
+      (html.match(/<div[^>]*class="[^"]*board_view[^"]*"[^>]*>([\s\S]*?)<p[^>]*class="[^"]*openNuri[^"]*"/i) ||
+        html.match(/<div[^>]*class="[^"]*board_view[^"]*"[^>]*>([\s\S]*?)<ul[^>]*class="[^"]*other_con[^"]*"/i) ||
+        [])[1] || "";
     const body = stripHtmlText(bodyHtml);
     if (!/[가-힣]/.test(body) || body.length < 250) continue;
     out.push({
