@@ -123,7 +123,7 @@ describe("POST — Vercel API 경로", () => {
     expect(html).toContain("85.0%");
     expect(mocks.updateProjectEnvByKey).toHaveBeenCalledWith(
       "NEXT_PUBLIC_ADSENSE_REVIEW_MODE",
-      "off",
+      "approved-after-review",
     );
     expect(mocks.triggerProductionRedeploy).toHaveBeenCalled();
   });

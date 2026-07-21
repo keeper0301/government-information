@@ -5,6 +5,9 @@
 // ≥80% 도달 시 텔레그램 안내 후, 사장님이 텔레그램 link 1-tap 으로 이
 // endpoint 호출하면 Vercel API 로 ENV 변경 + production redeploy 자동.
 //
+// 2026-07-21 — adsense-review-mode.ts 는 legacy "off" 값을 더 이상 OFF 로
+// 보지 않는다. 승인 후 값은 "approved-after-review" 여야 한다.
+//
 // 안전 가드:
 // - GET = confirm UI 만 (부작용 X). 사장님이 button 클릭해야 POST 실행.
 // - POST = admin 인증 + 백필 비율 ≥80% 재확인 + Vercel API 호출.
@@ -53,7 +56,7 @@ export async function GET(): Promise<NextResponse> {
   <h1>⚠️ AdSense Review Mode OFF 확정</h1>
   <div class="info">
     <strong>현재 AI 자체 해설 백필: ${backfillPct}%</strong><br />
-    이 버튼을 누르면 Vercel ENV 가 자동 off + production redeploy 됩니다.
+    이 버튼을 누르면 Vercel ENV 가 approved-after-review 로 변경 + production redeploy 됩니다.
     사이트 광고가 즉시 가동 시작되고 sitemap selective 가 ai_commentary 채워진 news 진입을 시작합니다.
   </div>
   <form method="POST">
@@ -114,7 +117,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   let redeployed = false;
   let deploymentId: string | null = null;
   try {
-    await updateProjectEnvByKey("NEXT_PUBLIC_ADSENSE_REVIEW_MODE", "off");
+    await updateProjectEnvByKey(
+      "NEXT_PUBLIC_ADSENSE_REVIEW_MODE",
+      "approved-after-review",
+    );
     envUpdated = true;
   } catch (e) {
     errors.push(`env update: ${(e as Error).message.slice(0, 200)}`);
@@ -170,7 +176,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 <body>
   <h1>✅ AdSense Review Mode OFF 완료</h1>
   <div class="info">
-    <strong>Vercel ENV 변경 + production redeploy 모두 성공</strong><br />
+    <strong>Vercel ENV approved-after-review 변경 + production redeploy 모두 성공</strong><br />
     백필 시점: ${(ratio.commentaryBackfillRatio * 100).toFixed(1)}%<br />
     수 분 안에 새 build 가 완료되면 사이트 광고 게재가 시작됩니다.
   </div>
