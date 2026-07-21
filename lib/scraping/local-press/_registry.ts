@@ -69,6 +69,7 @@ import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
 import { scrapeDaedeokAndInsert } from "./daedeok";
 import { scrapeGongjuAndInsert } from "./gongju";
 import { scrapeBoryeongAndInsert } from "./boryeong";
+import { scrapeAsanAndInsert } from "./asan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -200,6 +201,7 @@ export type CityKey =
   | "daedeok"
   | "gongju"
   | "boryeong"
+  | "asan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -764,6 +766,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충남 보령시청",
     siteUrl: "https://www.brcn.go.kr/prog/eminwon/kor/AA/sub04_02/list.do",
     fn: scrapeBoryeongAndInsert,
+  },
+  {
+    key: "asan",
+    city: "충남 아산시",
+    ministry: "충남 아산시청",
+    siteUrl: "https://media.asan.go.kr/develop/m_news/?m_mode=list&cate=news",
+    fn: scrapeAsanAndInsert,
   },
   {
     key: "seosan",
