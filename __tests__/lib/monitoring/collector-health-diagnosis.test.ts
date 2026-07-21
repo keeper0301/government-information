@@ -216,14 +216,14 @@ describe("flagCadenceRegressions — cron 완주 저하", () => {
 });
 
 describe("expectedCollectorsFromRegistry", () => {
-  it("registry 파생 — 26 collector·중복 city(사상구) dedupe 후 25", () => {
+  it("registry 파생 — 25 GHA collector·중복 city(사상구) dedupe 후 24", () => {
     const expected = expectedCollectorsFromRegistry();
-    // 사상(알림)+사상소식지 = 같은 city '사상구' → dedupe로 1개. 26 → 25.
-    // (2026-06-12 +부천·시흥·광명 경기 큰 시 추가로 23→26.)
-    expect(expected.length).toBe(25);
+    // 사상(알림)+사상소식지 = 같은 city '사상구' → dedupe로 1개. 25 → 24.
+    // 의정부시는 GHA+icn1 미도달로 PC_ONLY_CITIES에 편입되어 제외된다.
+    expect(expected.length).toBe(24);
     const cities = expected.map((e) => e.city);
     expect(new Set(cities).size).toBe(cities.length); // city 중복 0
-    expect(cities).toContain("의정부시");
+    expect(cities).not.toContain("의정부시");
     expect(cities).toContain("평택시");
   });
 });

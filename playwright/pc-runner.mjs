@@ -17,12 +17,13 @@
 //   IMPORT_PRESS_API_KEY 또는 KEEPIOO_API_KEY      /api/admin/import-press-batch 인증 키
 // ============================================================
 
-import { scrapeJungnang, scrapeGangbuk } from "./lib/cities.mjs";
+import { scrapeJungnang, scrapeGangbuk, scrapeUijeongbu } from "./lib/cities.mjs";
 
 // PC 전용 도시 — _playwright-city-registry.PC_ONLY_CITIES 와 키 동기화.
 const PC_COLLECTORS = [
   { city: "중랑구", key: "jungnang", fn: scrapeJungnang },
   { city: "강북구", key: "gangbuk", fn: scrapeGangbuk },
+  { city: "의정부시", key: "uijeongbu", fn: scrapeUijeongbu },
 ];
 
 async function postBatch({ apiUrl, apiKey, city, items }) {
