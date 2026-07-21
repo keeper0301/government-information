@@ -80,6 +80,7 @@ import { scrapeCheongyangAndInsert } from "./cheongyang";
 import { scrapeHongseongAndInsert } from "./hongseong";
 import { scrapeYesanAndInsert } from "./yesan";
 import { scrapeTaeanAndInsert } from "./taean";
+import { scrapeJeongeupAndInsert } from "./jeongeup";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -222,6 +223,7 @@ export type CityKey =
   | "hongseong"
   | "yesan"
   | "taean"
+  | "jeongeup"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -863,6 +865,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충남 태안군청",
     siteUrl: "https://www.taean.go.kr/cop/bbs/BBSMSTR_000000000040/selectBoardList.do",
     fn: scrapeTaeanAndInsert,
+  },
+  {
+    key: "jeongeup",
+    city: "전북 정읍시",
+    ministry: "전북 정읍시청",
+    siteUrl:
+      "https://www.jeongeup.go.kr/board/list.jeongeup?boardId=BBS_0000019&menuCd=DOM_000000101002001000",
+    fn: scrapeJeongeupAndInsert,
   },
   {
     key: "seosan",
