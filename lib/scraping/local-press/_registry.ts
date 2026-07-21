@@ -82,6 +82,7 @@ import { scrapeYesanAndInsert } from "./yesan";
 import { scrapeTaeanAndInsert } from "./taean";
 import { scrapeJeongeupAndInsert } from "./jeongeup";
 import { scrapeNamwonAndInsert } from "./namwon";
+import { scrapeGimjeAndInsert } from "./gimje";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -227,6 +228,7 @@ export type CityKey =
   | "taean"
   | "jeongeup"
   | "namwon"
+  | "gimje"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -885,6 +887,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.namwon.go.kr/board/post/list.do?boardUid=ff8080818ea1fec5018ea24651660037&menuUid=ff8080818e3beff0018e407936b40088",
     fn: scrapeNamwonAndInsert,
+  },
+  {
+    key: "gimje",
+    city: "전북 김제시",
+    ministry: "전북 김제시청",
+    siteUrl:
+      "https://www.gimje.go.kr/board/list.gimje?boardId=BBS_0000046&menuCd=DOM_000000104005000000",
+    fn: scrapeGimjeAndInsert,
   },
   {
     key: "seosan",
