@@ -123,17 +123,54 @@ async function scrapeCity(
 // 예산 초과 시 잔여 도시를 skip CityResult(가시화) 로 남기고 break — 정상 종료 + 다음 cron 처리.
 const TOTAL_BUDGET_MS = 700_000;
 
-async function runScrape() {
+function selectCityEntries(request: Request): (typeof CITY_REGISTRY)[number][] {
+  const url = new URL(request.url);
+  const raw = url.searchParams.get("cities") ?? url.searchParams.get("city");
+  if (!raw) return CITY_REGISTRY;
+
+  const wanted = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (wanted.length === 0) return CITY_REGISTRY;
+
+  const byKeyOrCity = new Map<string, (typeof CITY_REGISTRY)[number]>();
+  for (const entry of CITY_REGISTRY) {
+    byKeyOrCity.set(entry.key, entry);
+    byKeyOrCity.set(entry.city, entry);
+  }
+
+  const selected: (typeof CITY_REGISTRY)[number][] = [];
+  const seen = new Set<string>();
+  const unknown: string[] = [];
+  for (const token of wanted) {
+    const entry = byKeyOrCity.get(token);
+    if (!entry) {
+      unknown.push(token);
+      continue;
+    }
+    if (!seen.has(entry.key)) {
+      selected.push(entry);
+      seen.add(entry.key);
+    }
+  }
+  if (unknown.length > 0) {
+    throw new Error(`unknown local press city: ${unknown.join(",")}`);
+  }
+  return selected.length > 0 ? selected : CITY_REGISTRY;
+}
+
+async function runScrape(entries = CITY_REGISTRY) {
   const admin = createAdminClient();
   const results: CityResult[] = [];
   const startedAt = Date.now();
 
   // BATCH_SIZE 단위 병렬 처리 — chunk 간 sequential 로 외부 부하 분산.
   // 각 scrapeCity 가 try/catch 내장이라 Promise.all reject X (allSettled 불필요).
-  for (let i = 0; i < CITY_REGISTRY.length; i += BATCH_SIZE) {
+  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     if (Date.now() - startedAt > TOTAL_BUDGET_MS) {
       // 예산 초과 — 잔여 도시는 강제종료 대신 skip 기록으로 가시화(silent 미실행 방지).
-      for (const entry of CITY_REGISTRY.slice(i)) {
+      for (const entry of entries.slice(i)) {
         results.push({
           city: entry.city,
           fetched: 0,
@@ -144,7 +181,7 @@ async function runScrape() {
       }
       break;
     }
-    const chunk = CITY_REGISTRY.slice(i, i + BATCH_SIZE);
+    const chunk = entries.slice(i, i + BATCH_SIZE);
     const chunkResults = await Promise.all(
       chunk.map((entry) => scrapeCity(admin, entry)),
     );
@@ -158,7 +195,8 @@ export async function GET(request: Request) {
   if (authErr) return authErr;
 
   try {
-    const results = await runScrape();
+    const entries = selectCityEntries(request);
+    const results = await runScrape(entries);
     const totalInserted = results.reduce((s, r) => s + r.inserted, 0);
     await auditCronRun("local_press_scrape_run", {
       cities: results.length,
