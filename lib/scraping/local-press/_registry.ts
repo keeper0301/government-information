@@ -70,6 +70,7 @@ import { scrapeDaedeokAndInsert } from "./daedeok";
 import { scrapeGongjuAndInsert } from "./gongju";
 import { scrapeBoryeongAndInsert } from "./boryeong";
 import { scrapeAsanAndInsert } from "./asan";
+import { scrapeNonsanAndInsert } from "./nonsan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -202,6 +203,7 @@ export type CityKey =
   | "gongju"
   | "boryeong"
   | "asan"
+  | "nonsan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -773,6 +775,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충남 아산시청",
     siteUrl: "https://media.asan.go.kr/develop/m_news/?m_mode=list&cate=news",
     fn: scrapeAsanAndInsert,
+  },
+  {
+    key: "nonsan",
+    city: "충남 논산시",
+    ministry: "충남 논산시청",
+    siteUrl: "https://www.nonsan.go.kr/kor/html/sub03/030106.html",
+    fn: scrapeNonsanAndInsert,
   },
   {
     key: "seosan",
