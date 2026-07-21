@@ -88,6 +88,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "전북특별자치도 정읍시")?.covered,
     ).toMatchObject({ source: "static", key: "jeongeup" });
     expect(
+      rows.find((row) => row.fullName === "전북특별자치도 남원시")?.covered,
+    ).toMatchObject({ source: "static", key: "namwon" });
+    expect(
       rows.find((row) => row.fullName === "충청남도 서산시")?.covered,
     ).toMatchObject({ source: "static", key: "seosan" });
     expect(
