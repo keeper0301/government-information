@@ -16,7 +16,16 @@
 // ============================================================
 
 import { toMarkdown } from "@ohah/hwpjs";
+import type JSZipDefault from "jszip";
 import { parseSiNttBody } from "./_si_ntt_helper";
+
+type JSZipModule = { default: typeof JSZipDefault };
+
+async function loadJsZip(): Promise<JSZipModule> {
+  // Load lazily so normal route bundles do not pay for HWPX parsing unless a
+  // zipped attachment is actually encountered.
+  return import("jszip") as unknown as Promise<JSZipModule>;
+}
 
 async function loadUnpdf(): Promise<typeof import("unpdf")> {
   // Next webpack traces even `await import("unpdf")` and emits import.meta warnings.
@@ -65,6 +74,49 @@ function cleanHwpMarkdown(md: string): string {
     .replace(/^버전:\s*[\d.]+\s*/, "");
 }
 
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+function cleanHwpxXml(xml: string): string {
+  return decodeXmlEntities(
+    xml
+      .replace(/<hp:br\s*\/?>/g, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+}
+
+export async function extractHwpxBody(
+  buf: Uint8Array,
+): Promise<string | null> {
+  const mod = await loadJsZip();
+  const JSZip = mod.default;
+  const zip = await JSZip.loadAsync(Buffer.from(buf));
+  const names = Object.keys(zip.files)
+    .filter((name) => /^Contents\/section\d+\.xml$/i.test(name))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  const chunks: string[] = [];
+  for (const name of names) {
+    const file = zip.file(name);
+    if (!file) continue;
+    const xml = await file.async("string");
+    const text = cleanHwpxXml(xml);
+    if (text) chunks.push(text);
+  }
+  const body = chunks.join(" ").replace(/\s+/g, " ").trim();
+  return /[가-힣]/.test(body) && body.length >= 250 ? body.slice(0, 20000) : null;
+}
+
 // 첨부 버퍼 → PDF(unpdf)/hwp5(@ohah) 전문. 250+ 한글이면 반환, 아니면 null(hwp·HTML 에러
 // 페이지·짧은 첨부 방어).
 async function extractAttachBody(buf: Uint8Array): Promise<string | null> {
@@ -86,6 +138,11 @@ async function extractAttachBody(buf: Uint8Array): Promise<string | null> {
     });
     const body = cleanHwpMarkdown(markdown).replace(/\s+/g, " ").trim();
     return /[가-힣]/.test(body) && body.length >= 250 ? body.slice(0, 20000) : null;
+  }
+  // HWPX (OOXML-like zip, PK magic). 인천 서구 첨부가 hwp → hwpx 로 바뀌며
+  // 기존 HWP5(OLE) 파서가 null 을 반환해 fetched=10/skipped=10 insert-stop 이 발생했다.
+  if (buf[0] === 0x50 && buf[1] === 0x4b) {
+    return extractHwpxBody(buf);
   }
   return null;
 }

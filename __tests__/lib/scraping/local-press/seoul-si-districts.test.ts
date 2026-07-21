@@ -16,7 +16,10 @@ import {
   parseListPage as parseSeongdong,
   parseDetailBody as parseSeongdongBody,
 } from "@/lib/scraping/local-press/seongdong";
-import { stripSiPdfMeta } from "@/lib/scraping/local-press/_si_attach_helper";
+import {
+  extractHwpxBody,
+  stripSiPdfMeta,
+} from "@/lib/scraping/local-press/_si_attach_helper";
 import { parseListPage as parseYeongdeungpo } from "@/lib/scraping/local-press/yeongdeungpo";
 import { parseListPage as parseEunpyeong } from "@/lib/scraping/local-press/eunpyeong";
 
@@ -130,5 +133,27 @@ describe("성동구 parseDetailBody (PDF 부재 시 SI 헬퍼 fallback)", () => 
     const body = await parseSeongdongBody(html);
     expect(body).not.toBeNull();
     expect(body).toContain("성동구는");
+  });
+});
+
+describe("SI 첨부 헬퍼 HWPX 본문 추출", () => {
+  it("Contents/section*.xml zip 첨부에서 250자 이상 한글 본문을 추출한다", async () => {
+    const mod = await import("jszip");
+    const JSZip = mod.default;
+    const zip = new JSZip();
+    const paragraph =
+      "인천 서구는 주민 생활과 밀접한 정책 정보를 보도자료로 안내한다고 밝혔다. 현장 중심 행정과 시민 편의 개선을 위해 관계 기관과 협력하고, 필요한 지원 절차를 누구나 쉽게 확인할 수 있도록 홍보를 강화할 계획이다. ";
+    zip.file(
+      "Contents/section0.xml",
+      `<hp:p><hp:run><hp:t>${paragraph.repeat(3)}</hp:t></hp:run></hp:p>`,
+    );
+    const buf = await zip.generateAsync({ type: "uint8array" });
+
+    const body = await extractHwpxBody(buf);
+
+    expect(body).not.toBeNull();
+    expect(body).toContain("인천 서구는");
+    expect(body).toContain("주민 생활과 밀접한 정책 정보");
+    expect(body!.length).toBeGreaterThanOrEqual(250);
   });
 });
