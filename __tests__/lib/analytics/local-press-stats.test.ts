@@ -50,17 +50,17 @@ describe("getNewsRatio", () => {
     expect(Number.isNaN(r.commentaryBackfillRatio)).toBe(false);
   });
 
-  it("정상 비율: welfare 100 + loan 50 + blog 30 + news 20, ai 10 → ratio 0.1 + 백필 0.5", async () => {
+  it("정상 비율: welfare 100 + loan 50 + blog 30 + indexable news 20 → ratio 0.1", async () => {
     responseQueue.push({ count: 100 }); // welfare
     responseQueue.push({ count: 50 }); // loan
     responseQueue.push({ count: 30 }); // blog
-    responseQueue.push({ count: 20 }); // newsIndexable
-    responseQueue.push({ count: 10 }); // newsWithCommentary
+    responseQueue.push({ count: 20 }); // newsIndexable (summary+classified_at+ai_commentary)
+    responseQueue.push({ count: 20 }); // newsWithCommentary
     const r = await getNewsRatio();
     expect(r.welfare).toBe(100);
     expect(r.newsIndexable).toBe(20);
     expect(r.ratio).toBeCloseTo(0.1, 5);
-    expect(r.commentaryBackfillRatio).toBeCloseTo(0.5, 5);
+    expect(r.commentaryBackfillRatio).toBeCloseTo(1, 5);
   });
 
   it("newsIndexable 0 + 다른 테이블 있음 → commentaryBackfillRatio 0 (NaN 차단)", async () => {
