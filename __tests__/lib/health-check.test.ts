@@ -836,7 +836,9 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
 
   it("adsenseReadyToDisable true → adsense_ready_to_disable alert (AdSense Phase A)", () => {
     const alerts = checkThresholds({ ...ACTIVE, adsenseReadyToDisable: true });
-    expect(alerts.find((a) => a.key === "adsense_ready_to_disable")).toBeTruthy();
+    const alert = alerts.find((a) => a.key === "adsense_ready_to_disable");
+    expect(alert).toBeTruthy();
+    expect(alert?.recommendation).toContain("approved-after-review");
   });
 
   it("adsenseReadyToDisable false → 발화 안 함 (정상, 미달 or off)", () => {
