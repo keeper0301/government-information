@@ -73,6 +73,7 @@ import { scrapeAsanAndInsert } from "./asan";
 import { scrapeNonsanAndInsert } from "./nonsan";
 import { scrapeGyeryongAndInsert } from "./gyeryong";
 import { scrapeDangjinAndInsert } from "./dangjin";
+import { scrapeGeumsanAndInsert } from "./geumsan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -208,6 +209,7 @@ export type CityKey =
   | "nonsan"
   | "gyeryong"
   | "dangjin"
+  | "geumsan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -800,6 +802,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "충남 당진시청",
     siteUrl: "https://www.dangjin.go.kr/cop/bbs/BBSMSTR_000000000014/selectBoardList.do",
     fn: scrapeDangjinAndInsert,
+  },
+  {
+    key: "geumsan",
+    city: "충남 금산군",
+    ministry: "충남 금산군청",
+    siteUrl: "https://www.geumsan.go.kr/media/html/sub01/0102.html",
+    fn: scrapeGeumsanAndInsert,
   },
   {
     key: "seosan",
