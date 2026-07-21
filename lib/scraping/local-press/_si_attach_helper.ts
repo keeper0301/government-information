@@ -40,9 +40,11 @@ async function loadUnpdf(): Promise<typeof import("unpdf")> {
 const SI_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do) 공통.
+// 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do)·
+// 진천 board/download.do 공통.
 // href 안에 개행/탭이 섞여 \s 제거 + &amp; 디코드 필요.
-const DOWNLOAD_REGEX = /href="([^"]*(?:downloadBbsFile|fileDown)\.do[^"]*)"/gi;
+const DOWNLOAD_REGEX =
+  /href="([^"]*(?:downloadBbsFile|fileDown|board\/download)\.do[^"]*)"/gi;
 
 // PDF 전문 머리의 보도자료 표준 메타(자료제공 일시·담당부서·전화·"사진 있음/없음·총 매수 N쪽")
 // 를 "총 매수 N쪽" 마커 기준으로 cut. 마커 부재/cut 후 250 미만이면 전체 유지(전문 확보 우선).
