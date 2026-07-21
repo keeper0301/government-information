@@ -57,7 +57,7 @@ export type HealthSignals = {
   enrichPermanentSkip: number;     // enrich detail_permanently_skipped_at 누적 — 외부 API 일관 실패 신호
   /**
    * press_ingest_candidates 의 confidence_tier='low' + status='pending' 큐 적체.
-   * 적극 모드 (high+mid 자동) 채택 후 평소엔 거의 0. 10+ = LLM 신뢰도 하락 신호.
+   * 30+ = P3 monitor, 70+ 또는 14d+ stale = P2 후보. 30 미만은 weekly reminder/수동 검수.
    * PRESS_LOW_TIER_FLOOR env 로 1줄 toggle.
    */
   pressLowTierBacklog: number;
@@ -274,9 +274,9 @@ const WELFARE_INSIGHT_COVERAGE_FLOOR = Number(
   process.env.WELFARE_INSIGHT_COVERAGE_FLOOR ?? "80",
 );
 // Task 8 (2026-05-08) — low tier 큐 적체 임계.
-// 적극 모드 (high+mid 자동) 채택 후 평소엔 거의 0 이어야 함.
-// 10+ 누적 = LLM 신뢰도 하락 신호 → 사장님 검토 또는 일시 적극화 검토.
-const PRESS_LOW_TIER_FLOOR = Number(process.env.PRESS_LOW_TIER_FLOOR ?? "10");
+// 2026-07-21 운영 데이터 기준 low confirm 0%, stale 14d+ 0건이면 30 미만은
+// weekly reminder 대상이지 매일 health-alert 대상이 아니다. 30+ 부터 P3 monitor 로 발화.
+const PRESS_LOW_TIER_FLOOR = Number(process.env.PRESS_LOW_TIER_FLOOR ?? "30");
 // 2026-05-14 추가 — welfare + loan 24h inflow 임계.
 // 정상 운영 일평균 ~50건 이상. 0건 = 수집 cron 사고 (즉시 알림).
 // 1 = 적어도 1건은 들어와야 정상. 환경변수로 1분 toggle.
@@ -791,7 +791,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "press_low_tier",
       message: `LLM 신뢰도 'low' 큐 ${s.pressLowTierBacklog}건 (임계 ${PRESS_LOW_TIER_FLOOR}+).`,
       recommendation:
-        "/admin/press-ingest 검토 또는 AUTO_CONFIRM_TIER_FLOOR=low 로 일시 적극화 (위험 감수)",
+        "/admin/press-ingest 검토. 최근 low confirm 0%면 AUTO_CONFIRM_TIER_FLOOR=low 는 사용 금지에 가깝게 신중히 검토.",
     });
   }
 
