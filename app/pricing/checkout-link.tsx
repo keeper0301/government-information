@@ -37,6 +37,10 @@ export function CheckoutLink({
     <a
       href={href}
       className={className}
+      data-ga-event={EVENTS.CTA_CLICKED}
+      data-ga-label={typeof children === "string" ? children : "pricing_checkout_cta"}
+      data-ga-location="pricing_plan_card"
+      data-ga-params={JSON.stringify({ plan: tier, pricing_variant: pricingVariant })}
       onClick={() => {
         // Phase 4 — 결제 funnel 단계별 측정 (PLAN_SELECTED 가 더 일찍의 의도)
         trackEvent(EVENTS.PRICING_PLAN_SELECTED, {

@@ -7,6 +7,7 @@ import { Footer } from "@/components/footer";
 import { AdsenseLazyLoader } from "@/components/adsense-lazy-loader";
 import { ReconsentBannerContainer } from "@/components/reconsent-banner-container";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
+import { Ga4ConversionTracker } from "@/components/ga4-conversion-tracker";
 import { PWARegister } from "@/components/pwa-register";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import "./globals.css";
@@ -146,6 +147,7 @@ export default async function RootLayout({
             useSearchParams 사용하므로 Suspense 경계로 감싸 정적 렌더 영향 방지. */}
         <Suspense fallback={null}>
           <AuthEventTracker />
+          <Ga4ConversionTracker />
         </Suspense>
         {process.env.NEXT_PUBLIC_GA_ID && (
           <ConditionalGoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />

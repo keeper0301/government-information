@@ -94,6 +94,13 @@ export const EVENTS = {
   // params: query, type_filter (welfare/loan/news/blog/all), sort, total_count,
   //         has_results (0/1), welfare_count, loan_count, news_count, blog_count
   SEARCH_RESULTS_SHOWN: "search_results_shown",
+  // 전역 GA4 wrapper — 페이지/트래픽 출처/핵심 CTA funnel.
+  SITE_PAGE_VIEWED: "site_page_viewed",
+  TRAFFIC_ATTRIBUTION_CAPTURED: "traffic_attribution_captured",
+  CTA_CLICKED: "cta_clicked",
+  CHECKOUT_TERMS_TOGGLED: "checkout_terms_toggled",
+  CHECKOUT_CARD_REGISTRATION_CLICKED: "checkout_card_registration_clicked",
+  CHECKOUT_TOSS_REDIRECT_FAILED: "checkout_toss_redirect_failed",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -104,6 +111,51 @@ type GtagFn = (
   eventName: string,
   params?: Record<string, unknown>,
 ) => void;
+
+export type AnalyticsParamValue = string | number | boolean;
+export type AnalyticsParams = Record<string, AnalyticsParamValue>;
+type NullableAnalyticsParams = Record<string, AnalyticsParamValue | null | undefined>;
+
+export const TRAFFIC_ATTRIBUTION_STORAGE_KEY = "keepioo_traffic_attribution_v1";
+
+const CAMPAIGN_KEYS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+] as const;
+const CLICK_ID_KEYS = ["gclid", "gbraid", "wbraid", "fbclid", "msclkid"] as const;
+const ATTRIBUTION_CONTEXT_KEYS = [
+  ...CAMPAIGN_KEYS,
+  "click_id_type",
+  "click_id_present",
+  "landing_path",
+  "initial_referrer",
+  "traffic_source_type",
+] as const;
+
+type AttributionKey = (typeof ATTRIBUTION_CONTEXT_KEYS)[number];
+type StoredAttribution = Partial<Record<AttributionKey, string | number | boolean>> & {
+  first_touch_at?: string;
+  last_touch_at?: string;
+  last_landing_path?: string;
+};
+
+function safeString(value: string, maxLength = 120): string {
+  return value.trim().slice(0, maxLength);
+}
+
+function normalizeParams(params?: NullableAnalyticsParams): AnalyticsParams | undefined {
+  if (!params) return undefined;
+  const normalized: AnalyticsParams = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined) continue;
+    normalized[key] = typeof value === "string" ? safeString(value, 180) : value;
+  }
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
 
 function isAdminPath(path: string | null): boolean {
   return path === "/admin" || path?.startsWith("/admin/") === true;
@@ -122,6 +174,118 @@ export function shouldTrackAnalyticsPath(pathname: string, search = ""): boolean
   return true;
 }
 
+function readStoredAttribution(): StoredAttribution {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(TRAFFIC_ATTRIBUTION_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as StoredAttribution;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredAttribution(value: StoredAttribution): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(TRAFFIC_ATTRIBUTION_STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // storage block/private mode — analytics should never break UX.
+  }
+}
+
+function getReferrerSource(referrer: string): string | null {
+  if (!referrer) return null;
+  try {
+    const url = new URL(referrer);
+    if (url.hostname.endsWith("keepioo.com")) return null;
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+function pickClickId(params: URLSearchParams): Pick<StoredAttribution, "click_id_type" | "click_id_present"> {
+  for (const key of CLICK_ID_KEYS) {
+    if (params.has(key)) return { click_id_type: key, click_id_present: true };
+  }
+  return {};
+}
+
+export function getPageCategory(pathname: string): string {
+  if (pathname === "/") return "home";
+  if (pathname.startsWith("/admin")) return "admin";
+  if (pathname.startsWith("/checkout")) return "checkout";
+  if (pathname.startsWith("/pricing")) return "pricing";
+  if (pathname.startsWith("/signup") || pathname.startsWith("/login")) return "auth";
+  if (pathname.startsWith("/mypage")) return "account";
+  if (pathname.startsWith("/welfare") || pathname.startsWith("/loan") || pathname.startsWith("/policy")) return "program";
+  if (pathname.startsWith("/blog") || pathname.startsWith("/news") || pathname.startsWith("/guides")) return "content";
+  if (pathname.startsWith("/quiz") || pathname.startsWith("/recommend") || pathname.startsWith("/onboarding")) return "activation";
+  if (pathname.startsWith("/search")) return "search";
+  return "other";
+}
+
+export function captureTrafficAttribution(): AnalyticsParams {
+  if (typeof window === "undefined") return {};
+  const current = readStoredAttribution();
+  const params = new URLSearchParams(window.location.search);
+  const now = new Date().toISOString();
+  const next: StoredAttribution = { ...current };
+  const landingPath = `${window.location.pathname}${window.location.search}`.slice(0, 240);
+  let hasCampaign = false;
+
+  for (const key of CAMPAIGN_KEYS) {
+    const value = params.get(key);
+    if (value) {
+      next[key] = safeString(value);
+      hasCampaign = true;
+    }
+  }
+
+  const clickId = pickClickId(params);
+  if (clickId.click_id_type) {
+    next.click_id_type = clickId.click_id_type;
+    next.click_id_present = true;
+    hasCampaign = true;
+  }
+
+  const referrerSource = getReferrerSource(document.referrer);
+  if (referrerSource && !next.utm_source && !hasCampaign) {
+    next.utm_source = referrerSource;
+    next.utm_medium = "referral";
+  }
+
+  if (!next.first_touch_at) next.first_touch_at = now;
+  next.last_touch_at = now;
+  if (!next.landing_path) next.landing_path = landingPath;
+  next.last_landing_path = landingPath;
+  if (!next.initial_referrer && referrerSource) next.initial_referrer = referrerSource;
+  next.traffic_source_type = next.utm_medium ? String(next.utm_medium) : "direct";
+
+  writeStoredAttribution(next);
+  return getTrafficAttributionContext();
+}
+
+export function getTrafficAttributionContext(): AnalyticsParams {
+  const stored = readStoredAttribution();
+  const context: AnalyticsParams = {};
+  for (const key of ATTRIBUTION_CONTEXT_KEYS) {
+    const value = stored[key];
+    if (value === undefined) continue;
+    context[key] = typeof value === "string" ? safeString(value, 180) : value;
+  }
+  return context;
+}
+
+export function withAnalyticsContext(params?: NullableAnalyticsParams): AnalyticsParams | undefined {
+  return normalizeParams({
+    ...getTrafficAttributionContext(),
+    ...params,
+  });
+}
+
 /**
  * GA4 이벤트 전송.
  *
@@ -130,14 +294,14 @@ export function shouldTrackAnalyticsPath(pathname: string, search = ""): boolean
  */
 export function trackEvent(
   eventName: EventName | string,
-  params?: Record<string, string | number | boolean>,
+  params?: NullableAnalyticsParams,
 ): void {
   if (typeof window === "undefined") return;
   if (!shouldTrackAnalyticsPath(window.location.pathname, window.location.search)) return;
   const w = window as unknown as { gtag?: GtagFn };
   if (typeof w.gtag !== "function") return;
   try {
-    w.gtag("event", eventName, params);
+    w.gtag("event", eventName, withAnalyticsContext(params));
   } catch {
     // GA 스크립트가 adblock 등으로 막힌 경우 — 조용히 무시
   }
