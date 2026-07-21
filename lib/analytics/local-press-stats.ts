@@ -165,7 +165,8 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
 // 2026-05-30 — keepioo 의 index 가능 페이지 중 news (외부 원본) 비중. ≥0.6 시
 // Google "Scaled content abuse" 정책 의심 신호 — keepioo USP (welfare/loan 정책 가이드)
 // 대비 news 비중이 과도하면 AdSense 평가에서 "주요 목적이 외부 콘텐츠 자동 복제" 로
-// 잘못 판정될 위험. selective noindex(summary+classified_at) 기준 적용.
+// 잘못 판정될 위험. 실제 /news/[slug] metadata 의 selective noindex 기준 중 DB count 로
+// 안전하게 표현 가능한 summary+classified_at+ai_commentary 를 맞춰 계산한다.
 export async function getNewsRatio(): Promise<{
   welfare: number;
   loan: number;
@@ -186,7 +187,8 @@ export async function getNewsRatio(): Promise<{
       .select("id", { count: "exact", head: true })
       .neq("category", "press")
       .not("summary", "is", null)
-      .not("classified_at", "is", null),
+      .not("classified_at", "is", null)
+      .not("ai_commentary", "is", null),
     admin
       .from("news_posts")
       .select("id", { count: "exact", head: true })
