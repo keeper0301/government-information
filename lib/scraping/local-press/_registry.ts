@@ -83,6 +83,7 @@ import { scrapeTaeanAndInsert } from "./taean";
 import { scrapeJeongeupAndInsert } from "./jeongeup";
 import { scrapeNamwonAndInsert } from "./namwon";
 import { scrapeGimjeAndInsert } from "./gimje";
+import { scrapeWanjuAndInsert } from "./wanju";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -229,6 +230,7 @@ export type CityKey =
   | "jeongeup"
   | "namwon"
   | "gimje"
+  | "wanju"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -895,6 +897,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gimje.go.kr/board/list.gimje?boardId=BBS_0000046&menuCd=DOM_000000104005000000",
     fn: scrapeGimjeAndInsert,
+  },
+  {
+    key: "wanju",
+    city: "전북 완주군",
+    ministry: "전북 완주군청",
+    siteUrl:
+      "https://www.wanju.go.kr/news/planweb/board/list.9is?contentUid=ff808081898ba9ba0189f1e5b91101a9&boardUid=ff8080818b024d8e018b1c99655f1226",
+    fn: scrapeWanjuAndInsert,
   },
   {
     key: "seosan",

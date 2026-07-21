@@ -94,6 +94,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "전북특별자치도 김제시")?.covered,
     ).toMatchObject({ source: "static", key: "gimje" });
     expect(
+      rows.find((row) => row.fullName === "전북특별자치도 완주군")?.covered,
+    ).toMatchObject({ source: "static", key: "wanju" });
+    expect(
       rows.find((row) => row.fullName === "충청남도 서산시")?.covered,
     ).toMatchObject({ source: "static", key: "seosan" });
     expect(
