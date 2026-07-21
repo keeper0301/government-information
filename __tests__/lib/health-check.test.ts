@@ -438,15 +438,15 @@ describe("checkThresholds — Phase 1 추가: press_low_tier_backlog", () => {
     active7dAny: 10,
   };
 
-  it("low tier 큐 10+ → press_low_tier alert + recommendation", () => {
-    const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 10 });
+  it("low tier 큐 30+ → press_low_tier alert + recommendation", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 30 });
     const a = alerts.find((x) => x.key === "press_low_tier");
     expect(a).toBeDefined();
-    expect(a?.recommendation).toContain("AUTO_CONFIRM_TIER_FLOOR");
+    expect(a?.recommendation).toContain("/admin/press-ingest");
   });
 
-  it("low tier 9 → 발화 안 함 (boundary)", () => {
-    const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 9 });
+  it("low tier 29 → 발화 안 함 (boundary)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 29 });
     expect(alerts.find((a) => a.key === "press_low_tier")).toBeUndefined();
   });
 });
