@@ -133,6 +133,12 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "전라남도 보성군")?.covered,
     ).toMatchObject({ source: "static", key: "boseong" });
     expect(
+      rows.find((row) => row.fullName === "전라남도 화순군")?.covered,
+    ).toMatchObject({ source: "static", key: "hwasun" });
+    expect(
+      rows.find((row) => row.fullName === "전라남도 화순군")?.covered,
+    ).toMatchObject({ source: "static", key: "hwasun" });
+    expect(
       rows.find((row) => row.fullName === "충청남도 서산시")?.covered,
     ).toMatchObject({ source: "static", key: "seosan" });
     expect(
