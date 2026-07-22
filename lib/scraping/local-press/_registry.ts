@@ -84,6 +84,7 @@ import { scrapeJeongeupAndInsert } from "./jeongeup";
 import { scrapeNamwonAndInsert } from "./namwon";
 import { scrapeGimjeAndInsert } from "./gimje";
 import { scrapeWanjuAndInsert } from "./wanju";
+import { scrapeJinanAndInsert } from "./jinan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -231,6 +232,7 @@ export type CityKey =
   | "namwon"
   | "gimje"
   | "wanju"
+  | "jinan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -905,6 +907,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.wanju.go.kr/news/planweb/board/list.9is?contentUid=ff808081898ba9ba0189f1e5b91101a9&boardUid=ff8080818b024d8e018b1c99655f1226",
     fn: scrapeWanjuAndInsert,
+  },
+  {
+    key: "jinan",
+    city: "전북 진안군",
+    ministry: "전북 진안군청",
+    siteUrl:
+      "https://www.jinan.go.kr/board/list.jinan?menuCd=DOM_000000107002002000&boardId=BBS_0000034",
+    fn: scrapeJinanAndInsert,
   },
   {
     key: "seosan",
