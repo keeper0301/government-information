@@ -85,6 +85,7 @@ import { scrapeNamwonAndInsert } from "./namwon";
 import { scrapeGimjeAndInsert } from "./gimje";
 import { scrapeWanjuAndInsert } from "./wanju";
 import { scrapeJinanAndInsert } from "./jinan";
+import { scrapeMujuAndInsert } from "./muju";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -233,6 +234,7 @@ export type CityKey =
   | "gimje"
   | "wanju"
   | "jinan"
+  | "muju"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -915,6 +917,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.jinan.go.kr/board/list.jinan?menuCd=DOM_000000107002002000&boardId=BBS_0000034",
     fn: scrapeJinanAndInsert,
+  },
+  {
+    key: "muju",
+    city: "전북 무주군",
+    ministry: "전북 무주군청",
+    siteUrl:
+      "https://www.muju.go.kr/planweb/board/list.9is?contentUid=ff8080816c5f9d47016cbd3baf240074&boardUid=ff8080816d3d662f016d4218d1360434",
+    fn: scrapeMujuAndInsert,
   },
   {
     key: "seosan",
