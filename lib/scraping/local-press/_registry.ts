@@ -89,6 +89,7 @@ import { scrapeMujuAndInsert } from "./muju";
 import { scrapeJangsuAndInsert } from "./jangsu";
 import { scrapeSunchangAndInsert } from "./sunchang";
 import { scrapeBuanAndInsert } from "./buan";
+import { scrapeNajuAndInsert } from "./naju";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -241,6 +242,7 @@ export type CityKey =
   | "jangsu"
   | "sunchang"
   | "buan"
+  | "naju"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -955,6 +957,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.buan.go.kr/board/list.buan?boardId=BBS_0000059&menuCd=DOM_000000103002001000&contentsSid=90&cpath=",
     fn: scrapeBuanAndInsert,
+  },
+  {
+    key: "naju",
+    city: "전남 나주시",
+    ministry: "전남 나주시청",
+    siteUrl: "https://www.naju.go.kr/www/administration/reporting/coverage",
+    fn: scrapeNajuAndInsert,
   },
   {
     key: "seosan",
