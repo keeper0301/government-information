@@ -87,6 +87,7 @@ import { scrapeWanjuAndInsert } from "./wanju";
 import { scrapeJinanAndInsert } from "./jinan";
 import { scrapeMujuAndInsert } from "./muju";
 import { scrapeJangsuAndInsert } from "./jangsu";
+import { scrapeSunchangAndInsert } from "./sunchang";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -237,6 +238,7 @@ export type CityKey =
   | "jinan"
   | "muju"
   | "jangsu"
+  | "sunchang"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -935,6 +937,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.jangsu.go.kr/board/list.jangsu?boardId=BBS_0000041&menuCd=DOM_000000102001012000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1",
     fn: scrapeJangsuAndInsert,
+  },
+  {
+    key: "sunchang",
+    city: "전북 순창군",
+    ministry: "전북 순창군청",
+    siteUrl:
+      "https://www.sunchang.go.kr/board/post/list.do?boardUid=ff8080819a2f0e3b019a71a46284217a&menuUid=ff8080819a2f0e3b019a5d1bb7da1652",
+    fn: scrapeSunchangAndInsert,
   },
   {
     key: "seosan",
