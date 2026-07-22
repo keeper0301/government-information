@@ -88,6 +88,7 @@ import { scrapeJinanAndInsert } from "./jinan";
 import { scrapeMujuAndInsert } from "./muju";
 import { scrapeJangsuAndInsert } from "./jangsu";
 import { scrapeSunchangAndInsert } from "./sunchang";
+import { scrapeBuanAndInsert } from "./buan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -239,6 +240,7 @@ export type CityKey =
   | "muju"
   | "jangsu"
   | "sunchang"
+  | "buan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -945,6 +947,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.sunchang.go.kr/board/post/list.do?boardUid=ff8080819a2f0e3b019a71a46284217a&menuUid=ff8080819a2f0e3b019a5d1bb7da1652",
     fn: scrapeSunchangAndInsert,
+  },
+  {
+    key: "buan",
+    city: "전북 부안군",
+    ministry: "전북 부안군청",
+    siteUrl:
+      "https://www.buan.go.kr/board/list.buan?boardId=BBS_0000059&menuCd=DOM_000000103002001000&contentsSid=90&cpath=",
+    fn: scrapeBuanAndInsert,
   },
   {
     key: "seosan",
