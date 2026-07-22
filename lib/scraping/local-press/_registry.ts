@@ -95,6 +95,7 @@ import { scrapeDamyangAndInsert } from "./damyang";
 import { scrapeGuryeAndInsert } from "./gurye";
 import { scrapeGokseongAndInsert } from "./gokseong";
 import { scrapeGoheungAndInsert } from "./goheung";
+import { scrapeBoseongAndInsert } from "./boseong";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -253,6 +254,7 @@ export type CityKey =
   | "gurye"
   | "gokseong"
   | "goheung"
+  | "boseong"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1013,6 +1015,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 고흥군청",
     siteUrl: "https://www.goheung.go.kr/boardList.do?pageId=www102&boardId=BD_00025",
     fn: scrapeGoheungAndInsert,
+  },
+  {
+    key: "boseong",
+    city: "전남 보성군",
+    ministry: "전남 보성군청",
+    siteUrl: "https://www.boseong.go.kr/www/open_administration/city_news/press_release",
+    fn: scrapeBoseongAndInsert,
   },
   {
     key: "seosan",
