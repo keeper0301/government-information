@@ -51,6 +51,13 @@ describe("AdSense approval guardrails", () => {
     }
   });
 
+  it("keeps legacy approved-after-review env from disabling review mode after rejection", () => {
+    const source = read("lib/adsense-review-mode.ts");
+    expect(source).toContain('ADSENSE_LIVE_ADS_TOKEN = "adsense-approved-live-ads"');
+    expect(source).toContain("ADSENSE_REVIEW_MODE");
+    expect(source).not.toContain('!== "approved-after-review"');
+  });
+
   it("keeps noindex helper pages out of the XML sitemap", () => {
     const source = read("app/sitemap.ts");
     for (const path of ["/calendar", "/recommend", "/popular", "/consult", "/alerts", "/pricing"]) {

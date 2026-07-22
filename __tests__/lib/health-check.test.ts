@@ -838,7 +838,7 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
     const alerts = checkThresholds({ ...ACTIVE, adsenseReadyToDisable: true });
     const alert = alerts.find((a) => a.key === "adsense_ready_to_disable");
     expect(alert).toBeTruthy();
-    expect(alert?.recommendation).toContain("approved-after-review");
+    expect(alert?.recommendation).toContain("adsense-approved-live-ads");
   });
 
   it("adsenseReadyToDisable false → 발화 안 함 (정상, 미달 or off)", () => {

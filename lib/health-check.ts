@@ -1037,7 +1037,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "adsense_ready_to_disable",
       message: `AdSense P2 ai_commentary 백필 ≥80% 도달 — review mode off 안전 시점.`,
       recommendation:
-        "사장님 1-tap: https://www.keepioo.com/api/admin/disable-adsense-review-mode (admin 로그인 후 GET 으로 confirm page 진입 → 빨간 버튼 클릭 → Vercel ENV approved-after-review + production redeploy). 또는 수동: Vercel settings → env → NEXT_PUBLIC_ADSENSE_REVIEW_MODE=approved-after-review + redeploy.",
+        "사장님 1-tap: https://www.keepioo.com/api/admin/disable-adsense-review-mode (admin 로그인 후 GET 으로 confirm page 진입 → 빨간 버튼 클릭 → Vercel ENV adsense-approved-live-ads + production redeploy). 또는 수동: Vercel settings → env → NEXT_PUBLIC_ADSENSE_REVIEW_MODE=adsense-approved-live-ads + redeploy.",
     });
   }
 
