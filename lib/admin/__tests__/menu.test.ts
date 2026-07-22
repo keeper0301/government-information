@@ -12,13 +12,14 @@ describe("ADMIN_MENU 구조", () => {
     expect(ADMIN_MENU.map((g) => g.number)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("총 페이지 메뉴 항목 34개", () => {
+  it("총 페이지 메뉴 항목 35개", () => {
     // 2026-06-15 dashboard navigation 재정리: 메뉴를 5개 운영 묶음 / 32개 핵심 항목으로 압축.
     // SNS Control Tower를 대표 운영 메뉴로 추가해 핵심 항목은 33개가 됐다.
     // 유료 사용자 관리 대시보드를 고객 운영 메뉴로 추가해 현재 핵심 항목은 34개다.
+    // 2026-07-22 AdSense 재심사용 Search Console 제출 helper를 오늘 처리 메뉴에 추가해 35개다.
     // 일부 보조 페이지는 직접 URL 접근은 유지하되 사이드바 대표 메뉴에서는 제외한다.
     const total = ADMIN_MENU.reduce((s, g) => s + g.items.length, 0);
-    expect(total).toBe(34);
+    expect(total).toBe(35);
   });
 
   it("href 중복 없음", () => {

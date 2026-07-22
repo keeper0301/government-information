@@ -33,6 +33,13 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
         description: "콘솔에서 직접 확인해야 하는 승인과 설정",
       },
       {
+        href: "/admin/search-console",
+        label: "Search Console",
+        icon: "🔎",
+        description: "AdSense 재심사용 sitemap 제출과 URL 검사 목록",
+        keywords: ["애드센스", "adsense", "search console", "sitemap", "색인"],
+      },
+      {
         href: "/admin/decisions",
         label: "결정 대기",
         icon: "🤔",

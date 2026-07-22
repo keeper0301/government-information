@@ -90,4 +90,14 @@ describe("AdSense approval guardrails", () => {
     expect(read("app/welfare/page.tsx")).toContain("대상 조건 먼저 확인");
     expect(read("app/loan/page.tsx")).toContain("용도 제한 확인");
   });
+
+  it("exposes an admin Search Console submission helper for review follow-up", () => {
+    expect(read("app/admin/search-console/page.tsx")).toContain(
+      "Google Search Console에 sitemap 제출",
+    );
+    expect(read("app/admin/search-console/page.tsx")).toContain(
+      "submitSearchConsoleSitemap",
+    );
+    expect(read("lib/admin/menu.ts")).toContain("/admin/search-console");
+  });
 });
