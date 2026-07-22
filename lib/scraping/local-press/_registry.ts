@@ -99,6 +99,7 @@ import { scrapeBoseongAndInsert } from "./boseong";
 import { scrapeHwasunAndInsert } from "./hwasun";
 import { scrapeGangjinAndInsert } from "./gangjin";
 import { scrapeYeongamAndInsert } from "./yeongam";
+import { scrapeMuanAndInsert } from "./muan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -265,6 +266,7 @@ export type CityKey =
   | "hwasun"
   | "gangjin"
   | "yeongam"
+  | "muan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1053,6 +1055,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 영암군청",
     siteUrl: "https://www.yeongam.go.kr/home/www/open_information/yeongam_news/bodo/yeongam.go",
     fn: scrapeYeongamAndInsert,
+  },
+  {
+    key: "muan",
+    city: "전남 무안군",
+    ministry: "전남 무안군청",
+    siteUrl: "https://www.muan.go.kr/www/openmuan/new/report",
+    fn: scrapeMuanAndInsert,
   },
   {
     key: "seosan",
