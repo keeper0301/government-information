@@ -70,7 +70,8 @@ export async function listProjectEnvs(): Promise<VercelEnv[]> {
   return r.envs;
 }
 
-// 단일 env 변경. PATCH body 는 key 필수 (rename 안 하면 같은 값 재전송).
+// 단일 env 변경. PATCH body 는 key 를 보내지 않는다.
+// Vercel sensitive env 는 key 재전송을 rename 시도로 해석해 400 을 반환한다.
 // target 은 기존 그대로 유지 — 봇은 production+preview 만 변경, 사장님 의도 보존.
 export async function updateProjectEnvByKey(
   key: string,
@@ -92,43 +93,6 @@ export async function updateProjectEnvByKey(
     },
   );
   return r;
-}
-
-export async function createProjectEnv(input: {
-  key: string;
-  value: string;
-  target?: string[];
-  type?: "plain" | "encrypted" | "sensitive";
-}): Promise<{ id: string; key: string; value?: string }> {
-  return vercelFetch<{ id: string; key: string; value?: string }>(
-    `/v10/projects/${PROJECT_NAME}/env`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        key: input.key,
-        value: input.value,
-        target: input.target ?? ["production", "preview"],
-        type: input.type ?? "encrypted",
-      }),
-    },
-  );
-}
-
-export async function upsertProjectEnvByKey(input: {
-  key: string;
-  value: string;
-  target?: string[];
-  type?: "plain" | "encrypted" | "sensitive";
-}): Promise<{ id: string; key: string; action: "created" | "updated" }> {
-  const envs = await listProjectEnvs();
-  const env = envs.find((e) => e.key === input.key);
-  if (!env) {
-    const created = await createProjectEnv(input);
-    return { id: created.id, key: created.key, action: "created" };
-  }
-
-  const updated = await updateProjectEnvByKey(input.key, input.value);
-  return { id: updated.id, key: updated.key, action: "updated" };
 }
 
 // ─── redeploy ───────────────────────────────────────────────
