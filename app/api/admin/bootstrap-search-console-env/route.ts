@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminUser } from "@/lib/admin-auth-server";
 import {
   triggerProductionRedeploy,
   upsertProjectEnvByKey,
@@ -8,7 +9,6 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const BOOTSTRAP_TOKEN = "LXs7Tdi_qRUzjnOYVXt0-gaSr6XM_9kTkSkStya6p20";
 const EXPECTED_KEYS = [
   "SC_SITE_URL",
   "SC_CLIENT_ID",
@@ -18,28 +18,45 @@ const EXPECTED_KEYS = [
 
 type Key = (typeof EXPECTED_KEYS)[number];
 
-function unauthorized() {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+function jsonError(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
+}
+
+function assertSameOrigin(request: Request): NextResponse | null {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (!origin || !host) return null;
+  try {
+    if (new URL(origin).host !== host) {
+      return jsonError("CSRF: cross-origin POST 차단", 403);
+    }
+  } catch {
+    return jsonError("invalid origin", 400);
+  }
+  return null;
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const auth = request.headers.get("authorization") ?? "";
-  if (auth !== `Bearer ${BOOTSTRAP_TOKEN}`) return unauthorized();
+  const csrfError = assertSameOrigin(request);
+  if (csrfError) return csrfError;
+
+  const user = await requireAdminUser();
+  if (!user) return jsonError("unauthorized", 401);
 
   let body: Partial<Record<Key, string>>;
   try {
     body = (await request.json()) as Partial<Record<Key, string>>;
   } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 });
+    return jsonError("invalid json", 400);
   }
 
   for (const key of EXPECTED_KEYS) {
     if (!body[key] || typeof body[key] !== "string") {
-      return NextResponse.json({ error: `missing ${key}` }, { status: 400 });
+      return jsonError(`missing ${key}`, 400);
     }
   }
 
-  const results = [];
+  const results: Array<{ id: string; key: string; action: "created" | "updated" }> = [];
   try {
     for (const key of EXPECTED_KEYS) {
       const result = await upsertProjectEnvByKey({
@@ -52,7 +69,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const deployment = await triggerProductionRedeploy();
-    return NextResponse.json({ ok: true, results, deployment });
+    return NextResponse.json({
+      ok: true,
+      results: results.map((r) => ({ key: r.key, action: r.action })),
+      deployment: { id: deployment.id, url: deployment.url },
+    });
   } catch (err) {
     return NextResponse.json(
       {
