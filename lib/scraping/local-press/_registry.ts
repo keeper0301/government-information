@@ -96,6 +96,7 @@ import { scrapeGuryeAndInsert } from "./gurye";
 import { scrapeGokseongAndInsert } from "./gokseong";
 import { scrapeGoheungAndInsert } from "./goheung";
 import { scrapeBoseongAndInsert } from "./boseong";
+import { scrapeHwasunAndInsert } from "./hwasun";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -255,6 +256,7 @@ export type CityKey =
   | "gokseong"
   | "goheung"
   | "boseong"
+  | "hwasun"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1022,6 +1024,21 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 보성군청",
     siteUrl: "https://www.boseong.go.kr/www/open_administration/city_news/press_release",
     fn: scrapeBoseongAndInsert,
+  },
+  {
+    key: "hwasun",
+    city: "전남 화순군",
+    ministry: "전남 화순군청",
+    siteUrl: "https://www.hwasun.go.kr/gallery.do?S=S01&M=020101000000&b_code=0000000001",
+    fn: scrapeHwasunAndInsert,
+  },
+  {
+    key: "hwasun",
+    city: "전남 화순군",
+    ministry: "전남 화순군청",
+    siteUrl:
+      "https://www.hwasun.go.kr/gallery.do?S=S01&M=020101000000&b_code=0000000001",
+    fn: scrapeHwasunAndInsert,
   },
   {
     key: "seosan",
