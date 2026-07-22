@@ -20,11 +20,11 @@
 // ============================================================
 
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
-import { latestPublishedDate } from "./_factory";
+import { fetchPage as fetchPressPage, latestPublishedDate } from "./_factory";
 
 const LIST_URL = "http://www.suncheon.go.kr/kr/news/0006/0001/";
 const DETAIL_BASE = "http://www.suncheon.go.kr/kr/news/0006/0001/";
-const USER_AGENT = "Mozilla/5.0 (compatible; keepioo-bot/1.0; +https://www.keepioo.com)";
+
 
 export type SuncheonNewsItem = {
   seq: number;
@@ -93,12 +93,7 @@ export const SUNCHEON_LIST_URL = LIST_URL;
 export const SUNCHEON_DETAIL_BASE = DETAIL_BASE;
 
 export async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
-    redirect: "follow",
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
-  return res.text();
+  return fetchPressPage(url);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
