@@ -16,6 +16,7 @@ import Link from "next/link";
 import { RecommendTab } from "./recommend-tab";
 import { CategoryTab } from "./category-tab";
 import { PopularTab } from "./popular-tab";
+import { reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 export const metadata: Metadata = {
   title: "정책 둘러보기 — 정책알리미",
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     "맞춤추천·복지·대출·인기 정책을 한 화면에서 빠르게 둘러보고, 마음에 드는 분야를 깊이 탐색하세요.",
   // /policy 는 여러 탭을 묶는 중간 탐색 화면입니다. 색인 대상은 본문이 더 충분한
   // /welfare, /loan, /blog, /guides, /c/* 허브로 집중합니다.
-  robots: { index: false, follow: true },
+  robots: reviewModeNoindexRobots(),
 };
 
 // 사용자 자영업자 프로필(✓/✗ 배지) 노출을 위해 per-request SSR.

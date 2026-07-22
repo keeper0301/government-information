@@ -18,14 +18,14 @@ import { RecommendForm } from "./form";
 import { NewsCard, type NewsCardData } from "@/components/news-card";
 import { BlogCard, type BlogCardData } from "@/components/blog-card";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
-import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { ADSENSE_REVIEW_MODE, reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 export const metadata: Metadata = {
   title: "맞춤추천 — 정책알리미",
   description: "나이, 지역, 직업에 맞는 복지·대출 정책을 추천받으세요.",
   // 추천 결과는 사용자 조건·로그인 상태에 따라 달라지는 행동형 화면입니다.
   // 재심사 중에는 고정 본문이 충분한 정책 허브와 가이드 중심으로 평가되도록 색인 제외합니다.
-  robots: { index: false, follow: true },
+  robots: reviewModeNoindexRobots(),
 };
 
 type SearchParams = {

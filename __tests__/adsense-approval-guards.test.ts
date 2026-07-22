@@ -18,10 +18,10 @@ describe("AdSense approval guardrails", () => {
       "app/calendar/page.tsx",
     ]) {
       const source = read(path);
-      expect(source).toContain("robots: { index: false, follow: true }");
+      expect(source).toContain("reviewModeNoindexRobots()");
     }
     expect(read("app/onboarding/page.tsx")).toContain(
-      "robots: { index: false, follow: false }",
+      "reviewModeNoindexRobots({ follow: false })",
     );
   });
 
@@ -58,10 +58,11 @@ describe("AdSense approval guardrails", () => {
     expect(source).not.toContain('!== "approved-after-review"');
   });
 
-  it("keeps noindex helper pages out of the XML sitemap", () => {
+  it("keeps noindex helper pages out of review-mode sitemap but leaves an approval restore path", () => {
     const source = read("app/sitemap.ts");
+    expect(source).toContain("!ADSENSE_REVIEW_MODE");
     for (const path of ["/calendar", "/recommend", "/popular", "/consult", "/alerts", "/pricing"]) {
-      expect(source).not.toContain("`${baseUrl}" + path);
+      expect(source).toContain("`${baseUrl}" + path);
     }
     for (const path of ["/privacy", "/terms", "/refund", "/about", "/welfare", "/loan", "/blog", "/guides"]) {
       expect(source).toContain("`${baseUrl}" + path);

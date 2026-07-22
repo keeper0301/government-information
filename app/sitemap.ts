@@ -66,8 +66,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ? [{ url: `${baseUrl}/news`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 }]
       : []),
     // AdSense 재심사 대응: 검색/비교/추천/달력/요금제/상담처럼 사용자 입력·로그인·전환
-    // 목적이 큰 보조 화면은 meta noindex 와 맞춰 sitemap 에 싣지 않는다. sitemap 에
-    // noindex URL 이 섞이면 Search Console/AdSense 샘플링에서 "제출했지만 색인 차단" 신호가 생긴다.
+    // 목적이 큰 보조 화면은 meta noindex 와 맞춰 review mode sitemap 에 싣지 않는다.
+    // 승인 후 ADSENSE_LIVE_ADS_TOKEN 으로 review mode 가 꺼지면 자동 복구된다.
+    ...(!ADSENSE_REVIEW_MODE
+      ? [
+          { url: `${baseUrl}/calendar`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
+          { url: `${baseUrl}/recommend`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
+          { url: `${baseUrl}/popular`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
+          { url: `${baseUrl}/consult`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.7 },
+          { url: `${baseUrl}/alerts`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.6 },
+          { url: `${baseUrl}/pricing`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.6 },
+        ]
+      : []),
     { url: `${baseUrl}/terms`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/privacy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/refund`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },

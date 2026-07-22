@@ -10,7 +10,7 @@ import {
 } from "@/lib/search";
 import type { DisplayProgram } from "@/lib/programs";
 import { SearchTracker } from "@/components/search-tracker";
-import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { ADSENSE_REVIEW_MODE, reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 // /search?q=... — 통합 검색 결과 페이지
 // UX 설계:
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   description: "복지·대출·정책 가이드를 한 번에 검색합니다.",
   // 검색 결과는 사용자 입력별로 달라지는 보조 화면입니다. AdSense 재심사 중
   // "콘텐츠보다 탐색/행동 목적이 큰 화면"으로 샘플링되지 않도록 색인 제외합니다.
-  robots: { index: false, follow: true },
+  robots: reviewModeNoindexRobots(),
 };
 
 export const dynamic = "force-dynamic";

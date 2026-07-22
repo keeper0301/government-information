@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 export const dynamic = "force-static";
 
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/consult" },
   // 입력형 상담 도구는 사용자 행동 목적 화면입니다. AdSense 재심사에서는
   // 충분한 본문을 가진 가이드·정책 허브 중심으로 평가되도록 색인 제외합니다.
-  robots: { index: false, follow: true },
+  robots: reviewModeNoindexRobots(),
 };
 
 export default function ConsultLayout({ children }: { children: ReactNode }) {

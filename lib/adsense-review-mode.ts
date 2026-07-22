@@ -5,3 +5,8 @@
 export const ADSENSE_LIVE_ADS_TOKEN = "adsense-approved-live-ads";
 export const ADSENSE_REVIEW_MODE =
   process.env.NEXT_PUBLIC_ADSENSE_REVIEW_MODE !== ADSENSE_LIVE_ADS_TOKEN;
+
+export function reviewModeNoindexRobots(options: { follow?: boolean } = {}) {
+  if (!ADSENSE_REVIEW_MODE) return undefined;
+  return { index: false, follow: options.follow ?? true };
+}

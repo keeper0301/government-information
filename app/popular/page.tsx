@@ -17,6 +17,7 @@ import { getPopularPrograms, getDeadlineSoonPopular } from "@/lib/programs";
 import { ProgramRow } from "@/components/program-row";
 import { PROVINCE_SHORT_TO_FULL } from "@/lib/regions";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
+import { reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 export const metadata: Metadata = {
   title: "인기정책 — 정책알리미",
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
     "지금 사람들이 가장 많이 보는 복지·대출 정책. 마감 임박은 별도로 강조.",
   // 인기/필터/정렬 조합은 개인화·리스트 성격이 강합니다. AdSense 재심사 중에는
   // 고유 해설이 충분한 정적 허브와 가이드 중심으로 색인 신호를 집중합니다.
-  robots: { index: false, follow: true },
+  robots: reviewModeNoindexRobots(),
 };
 
 // 사용자 자영업자 프로필(✓/✗ 배지) 노출 위해 per-request SSR.

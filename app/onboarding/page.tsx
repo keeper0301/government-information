@@ -11,10 +11,11 @@ import type {
   IncomeOption, HouseholdOption,
 } from '@/lib/profile-options';
 import { readQuizPrefillFromCookie } from '@/lib/quiz-prefill-server';
+import { reviewModeNoindexRobots } from '@/lib/adsense-review-mode';
 
 export const metadata = {
   title: '온보딩 — keepioo',
-  robots: { index: false, follow: false },
+  robots: reviewModeNoindexRobots({ follow: false }),
 };
 
 export default async function OnboardingPage() {
