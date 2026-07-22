@@ -86,6 +86,7 @@ import { scrapeGimjeAndInsert } from "./gimje";
 import { scrapeWanjuAndInsert } from "./wanju";
 import { scrapeJinanAndInsert } from "./jinan";
 import { scrapeMujuAndInsert } from "./muju";
+import { scrapeJangsuAndInsert } from "./jangsu";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -235,6 +236,7 @@ export type CityKey =
   | "wanju"
   | "jinan"
   | "muju"
+  | "jangsu"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -925,6 +927,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.muju.go.kr/planweb/board/list.9is?contentUid=ff8080816c5f9d47016cbd3baf240074&boardUid=ff8080816d3d662f016d4218d1360434",
     fn: scrapeMujuAndInsert,
+  },
+  {
+    key: "jangsu",
+    city: "전북 장수군",
+    ministry: "전북 장수군청",
+    siteUrl:
+      "https://www.jangsu.go.kr/board/list.jangsu?boardId=BBS_0000041&menuCd=DOM_000000102001012000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1",
+    fn: scrapeJangsuAndInsert,
   },
   {
     key: "seosan",
