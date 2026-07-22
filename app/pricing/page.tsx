@@ -19,6 +19,9 @@ import { CheckoutLink } from "./checkout-link";
 export const metadata: Metadata = {
   title: "요금제 | 정책알리미",
   description: "정책알리미 요금제 안내. 무료, 베이직(월 4,900원), 프로(월 9,900원).",
+  // 요금제는 전환 보조 화면이지 공공정책 원문/가이드 콘텐츠가 아닙니다.
+  // 재심사 샘플링에서 상업·얇은 페이지로 잡히지 않도록 색인 제외합니다.
+  robots: { index: false, follow: true },
 };
 
 // 티어별 표시 정보

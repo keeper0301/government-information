@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   title: "keepioo · 정책알리미 — 한국의 공공 지원제도 큐레이션",
   description:
     "보조금24·복지로·기업마당·온통청년 데이터를 한곳에. 내 조건에 맞는 새 정부·지자체 정책을 이메일·알림톡으로 받아보세요.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com"),
   applicationName: "keepioo",
   authors: [{ name: "keepioo" }],
   openGraph: {
@@ -119,7 +119,7 @@ export default async function RootLayout({
         <AdsenseLazyLoader />
         <WebSiteSchema
           name="정책알리미"
-          url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
+          url={process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com"}
           description="대한민국 복지 정보와 소상공인 대출·지원금 정보를 한곳에 모아 제공하는 플랫폼"
           alternateName={["keepioo", "키피오", "keepioo 정책알리미"]}
         />
@@ -127,7 +127,7 @@ export default async function RootLayout({
             법적 표기(전상법 §13, 개인정보보호법 §31)는 footer·about·privacy·terms 본문에서 충족. */}
         <OrganizationSchema
           name="정책알리미"
-          url={process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com"}
+          url={process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com"}
           description="공공기관 데이터 기반 복지·대출 정보 안내 서비스"
           legalName="키피오"
           taxId="657-24-02265"

@@ -18,6 +18,34 @@ const ADSENSE_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
 const FALLBACK_TIMEOUT_MS = 10000;
 const TRIGGER_EVENTS = ["scroll", "mousemove", "touchstart", "keydown"] as const;
 
+const REVIEW_MODE_ADSENSE_PATHS = [
+  "/",
+  "/about",
+  "/help",
+  "/privacy",
+  "/terms",
+  "/refund",
+  "/welfare",
+  "/loan",
+  "/blog",
+  "/guides",
+] as const;
+const REVIEW_MODE_ADSENSE_PREFIXES = [
+  "/welfare/",
+  "/loan/",
+  "/blog/",
+  "/guides/",
+  "/c/",
+] as const;
+
+export function shouldLoadAdsenseScript(pathname: string): boolean {
+  if (!ADSENSE_REVIEW_MODE) return true;
+  if (REVIEW_MODE_ADSENSE_PATHS.includes(pathname as typeof REVIEW_MODE_ADSENSE_PATHS[number])) {
+    return true;
+  }
+  return REVIEW_MODE_ADSENSE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 export function AdsenseLazyLoader() {
   useEffect(() => {
     if (!ADSENSE_ID) return;
@@ -27,6 +55,7 @@ export function AdsenseLazyLoader() {
     // 운영 QA의 실제 오류와 광고 네트워크 잡음을 분리하기 위해 /admin 전체에서
     // 전역 AdSense lazy loader를 비활성화한다.
     if (window.location.pathname.startsWith("/admin")) return;
+    if (!shouldLoadAdsenseScript(window.location.pathname)) return;
 
     let loaded = false;
 

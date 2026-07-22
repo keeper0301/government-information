@@ -24,6 +24,9 @@ import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 export const metadata: Metadata = {
   title: "검색 결과 — 정책알리미",
   description: "복지·대출·정책 가이드를 한 번에 검색합니다.",
+  // 검색 결과는 사용자 입력별로 달라지는 보조 화면입니다. AdSense 재심사 중
+  // "콘텐츠보다 탐색/행동 목적이 큰 화면"으로 샘플링되지 않도록 색인 제외합니다.
+  robots: { index: false, follow: true },
 };
 
 export const dynamic = "force-dynamic";

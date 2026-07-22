@@ -11,7 +11,17 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/auth/", "/login"],
+        disallow: [
+          "/api/",
+          "/auth/",
+          "/admin/",
+          "/login",
+          "/signup",
+          "/checkout",
+          "/mypage",
+          "/search",
+          "/compare",
+        ],
       },
       // 한국 검색엔진 — 네이버 (Yeti) / 다음 (Daum) 명시 Allow
       { userAgent: "Yeti", allow: "/" },

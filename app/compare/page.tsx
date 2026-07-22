@@ -30,6 +30,9 @@ import {
 export const metadata: Metadata = {
   title: "정책 비교 — keepioo",
   description: "복지·대출 정책을 옆에 두고 자격·금액·기간을 한눈에 비교하세요.",
+  // /compare 는 사용자가 고른 id 조합별 유틸리티 페이지입니다.
+  // 빈 진입/조합 URL이 thin 페이지로 색인되지 않게 합니다.
+  robots: { index: false, follow: true },
 };
 
 export const dynamic = "force-dynamic";
