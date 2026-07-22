@@ -270,6 +270,21 @@ export default async function AboutPage() {
           </p>
         </Section>
 
+        <Section title="편집·검수 기준">
+          <p>
+            정책알리미의 핵심 콘텐츠는 단순 목록이 아니라 신청자가 실제로 판단해야 할
+            기준을 설명하는 데 맞춰져 있습니다. 정책 원문에서 확인 가능한 정보와
+            자체 해설을 분리하고, 금액·대상·기간처럼 바뀔 수 있는 정보는 공식 출처
+            링크를 통해 다시 확인하도록 안내합니다.
+          </p>
+          <ul className="mt-3 list-disc pl-5 space-y-1.5">
+            <li>정부·공공기관·지자체 공식 페이지를 우선 출처로 사용합니다.</li>
+            <li>중복 정책과 마감 지난 정책은 사용자 노출에서 줄입니다.</li>
+            <li>신청 전 체크리스트, 반려 가능성, 필요 서류를 별도 문장으로 보강합니다.</li>
+            <li>오류 제보는 <Link href="/contact" className="text-blue-600 hover:underline">문의하기</Link>에서 접수해 원문과 대조합니다.</li>
+          </ul>
+        </Section>
+
         {/* 광고·수익 모델 */}
         <Section title="서비스 운영 비용">
           <p>
@@ -312,7 +327,10 @@ export default async function AboutPage() {
               사업자 정보·도움말은 페이지 하단 푸터와{" "}
               <Link href="/help" className="text-blue-600 hover:underline">
                 /help
-              </Link>{" "}
+              </Link>, 문의 접수는{" "}
+              <Link href="/contact" className="text-blue-600 hover:underline">
+                /contact
+              </Link>
               에서 확인할 수 있어요.
             </li>
           </ul>
@@ -331,6 +349,7 @@ export default async function AboutPage() {
             <QuickLink href="/blog" label="정책 블로그" />
             <QuickLink href="/recommend" label="맞춤 추천" />
             <QuickLink href="/help" label="도움말" />
+            <QuickLink href="/contact" label="문의하기" />
           </ul>
         </nav>
       </div>

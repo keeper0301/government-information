@@ -240,6 +240,23 @@ export default async function WelfarePage({ searchParams }: Props) {
         />
       </section>
 
+      <section className="max-w-content mx-auto px-6 lg:px-10 mb-8">
+        <div className="grid gap-3 md:grid-cols-3">
+          <GuidePoint
+            title="대상 조건 먼저 확인"
+            text="소득, 가구 구성, 거주지, 나이 조건이 하나라도 다르면 신청 단계에서 반려될 수 있습니다."
+          />
+          <GuidePoint
+            title="서류 발급 시점 확인"
+            text="주민등록등본, 소득 증빙, 가족관계 서류는 발급일 기준을 요구하는 경우가 많습니다."
+          />
+          <GuidePoint
+            title="중복 수급 제한 확인"
+            text="비슷한 목적의 현금성 지원은 동시에 받을 수 없는 경우가 있어 원문 제한 조항을 함께 봐야 합니다."
+          />
+        </div>
+      </section>
+
       {/* Filters */}
       <section className="max-w-content mx-auto px-6 lg:px-10 mb-6">
         {/* Category tabs — DB 실측 기반 동적. 빈 카테고리 자동 숨김 + 건수 표기 */}
@@ -391,5 +408,14 @@ export default async function WelfarePage({ searchParams }: Props) {
       {/* Pagination */}
       <Pagination currentPage={page} totalPages={totalPages} buildUrl={buildUrl} />
     </main>
+  );
+}
+
+function GuidePoint({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+      <h2 className="text-[15px] font-bold text-grey-900 mb-2">{title}</h2>
+      <p className="text-[13px] leading-6 text-grey-700">{text}</p>
+    </div>
   );
 }

@@ -22,6 +22,7 @@ const REVIEW_MODE_ADSENSE_PATHS = [
   "/",
   "/about",
   "/help",
+  "/contact",
   "/privacy",
   "/terms",
   "/refund",

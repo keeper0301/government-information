@@ -262,6 +262,23 @@ export default async function LoanPage({ searchParams }: Props) {
         />
       </section>
 
+      <section className="max-w-content mx-auto px-6 lg:px-10 mb-8">
+        <div className="grid gap-3 md:grid-cols-3">
+          <GuidePoint
+            title="용도 제한 확인"
+            text="운전자금, 시설자금, 보증료 지원은 쓸 수 있는 범위가 다릅니다. 신청 전 자금 용도를 먼저 맞춰야 합니다."
+          />
+          <GuidePoint
+            title="신용·체납 상태 확인"
+            text="국세·지방세 체납, 보증 사고, 휴폐업 상태는 낮은 금리보다 먼저 심사에서 걸리는 항목입니다."
+          />
+          <GuidePoint
+            title="기관 절차 분리"
+            text="공고 기관, 보증 기관, 은행 심사가 나뉘는 경우가 많아 접수 순서와 필요 서류를 따로 확인해야 합니다."
+          />
+        </div>
+      </section>
+
       {/* Filters */}
       <section className="max-w-content mx-auto px-6 lg:px-10 mb-6">
         {/* Category tabs — DB 실측 기반 동적. 빈 카테고리 자동 숨김 + 건수 표기 */}
@@ -412,5 +429,14 @@ export default async function LoanPage({ searchParams }: Props) {
       {/* Pagination */}
       <Pagination currentPage={page} totalPages={totalPages} buildUrl={buildUrl} />
     </main>
+  );
+}
+
+function GuidePoint({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
+      <h2 className="text-[15px] font-bold text-grey-900 mb-2">{title}</h2>
+      <p className="text-[13px] leading-6 text-grey-700">{text}</p>
+    </div>
   );
 }

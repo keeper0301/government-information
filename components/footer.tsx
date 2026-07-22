@@ -21,7 +21,7 @@ const footerLinks = [
   { label: "이용약관", href: "/terms" },
   { label: "개인정보처리방침", href: "/privacy" },
   { label: "환불정책", href: "/refund" },
-  { label: "문의", href: "mailto:keeper0301@gmail.com" },
+  { label: "문의", href: "/contact" },
 ];
 
 // 사업자 정보 — 전자상거래 등에서의 소비자보호에 관한 법률 제13조 표시 의무.
