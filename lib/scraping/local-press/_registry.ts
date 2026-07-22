@@ -93,6 +93,7 @@ import { scrapeGochangAndInsert } from "./gochang";
 import { scrapeNajuAndInsert } from "./naju";
 import { scrapeDamyangAndInsert } from "./damyang";
 import { scrapeGuryeAndInsert } from "./gurye";
+import { scrapeGokseongAndInsert } from "./gokseong";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -249,6 +250,7 @@ export type CityKey =
   | "naju"
   | "damyang"
   | "gurye"
+  | "gokseong"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -994,6 +996,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.gurye.go.kr/board/list.do?bbsId=BBS_0000000000000300&menuNo=115004006000",
     fn: scrapeGuryeAndInsert,
+  },
+  {
+    key: "gokseong",
+    city: "전남 곡성군",
+    ministry: "전남 곡성군청",
+    siteUrl:
+      "https://www.gokseong.go.kr/kr/board/list.do?bbsId=BBS_000000000000151&menuNo=102001002000",
+    fn: scrapeGokseongAndInsert,
   },
   {
     key: "seosan",
