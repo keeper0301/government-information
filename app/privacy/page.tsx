@@ -5,6 +5,9 @@ export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침 — 정책알리미",
+  description:
+    "정책알리미의 개인정보 수집 항목, 이용 목적, 보관 기간, 제3자 제공 여부와 이용자 권리를 안내합니다.",
+  alternates: { canonical: "/privacy" },
 };
 
 // ============================================================

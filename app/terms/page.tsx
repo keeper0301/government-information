@@ -5,6 +5,9 @@ export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "이용약관 — 정책알리미",
+  description:
+    "정책알리미 서비스 이용 조건, 데이터 출처, 유료 구독, 환불, 회원 탈퇴 기준을 안내합니다.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {

@@ -12,7 +12,10 @@ import type {
 } from '@/lib/profile-options';
 import { readQuizPrefillFromCookie } from '@/lib/quiz-prefill-server';
 
-export const metadata = { title: '온보딩 — keepioo' };
+export const metadata = {
+  title: '온보딩 — keepioo',
+  robots: { index: false, follow: false },
+};
 
 export default async function OnboardingPage() {
   const supabase = await createClient();

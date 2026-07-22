@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   description:
     "복지·대출·지원금 신청 시작일과 마감일을 월별 달력으로 확인하세요.",
   alternates: { canonical: "/calendar" },
+  // 달력은 날짜 쿼리별로 변하는 보조 탐색 화면입니다. 재심사 중에는 sitemap 에도
+  // 제외되어 있으므로 meta noindex 로 색인 신호를 일관시킵니다.
+  robots: { index: false, follow: true },
 };
 
 // 캘린더 이벤트 — 한 프로그램이 start 와 end 둘 다 이번 달이면 이벤트 2개
