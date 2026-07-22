@@ -116,7 +116,11 @@ import { scrapeJincheonAndInsert } from "./jincheon";
 import { scrapeYeongdongAndInsert } from "./yeongdong";
 import { scrapeJeungpyeongAndInsert } from "./jeungpyeong";
 import { scrapeOngjinAndInsert } from "./ongjin";
-import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
+// 2026-07-22 disabled: icjg.go.kr now serves a small /index.html shell to
+// Vercel/static fetch, so the legacy krop0231c parser records fetched=0 with
+// no useful error. Keep the collector file for a future PC/Playwright-specific
+// recovery, but exclude it from the static cron/stale health target set.
+// import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
 import { scrapeDongguIncheonAndInsert } from "./donggu_incheon";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
@@ -277,7 +281,7 @@ export type CityKey =
   | "yeongdong"
   | "jeungpyeong"
   | "ongjin"
-  | "junggu_incheon"
+  // | "junggu_incheon" — 2026-07-22 disabled (static fetch sees /index.html shell; needs PC/Playwright recovery)
   | "ganghwa"
   | "donggu_incheon"
   // 2026-05-31 서울 18 자치구 확장 (패턴 1: eGovFrame portal/bbs)
@@ -1170,14 +1174,16 @@ export const CITY_REGISTRY: CityEntry[] = [
       "https://www.ongjin.go.kr/open_content/main/community/board/report.jsp",
     fn: scrapeOngjinAndInsert,
   },
-  // 2026-05-28 인천 중구 15만. 자체 krop0231c CMS, 목록/상세 모두 정적 HTML로 fetch 가능.
-  {
-    key: "junggu_incheon",
-    city: "인천 중구",
-    ministry: "인천 중구청",
-    siteUrl: "https://www.icjg.go.kr/krop0231c",
-    fn: scrapeJungguIncheonAndInsert,
-  },
+  // 2026-07-22 disabled: 인천 중구 krop0231c public pages still exist, but
+  // Vercel/static fetch receives a small /index.html shell (fetched=0, errors=[]).
+  // Do not count it as a static cron stale target until a PC/Playwright path is wired.
+  // {
+  //   key: "junggu_incheon",
+  //   city: "인천 중구",
+  //   ministry: "인천 중구청",
+  //   siteUrl: "https://www.icjg.go.kr/krop0231c",
+  //   fn: scrapeJungguIncheonAndInsert,
+  // },
   // 2026-05-28 인천 강화군 7만. bbsMsgDetail CMS, open_content/main/bbs 경로 사용.
   {
     key: "ganghwa",
