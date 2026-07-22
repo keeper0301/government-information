@@ -85,7 +85,6 @@ export async function updateProjectEnvByKey(
     {
       method: "PATCH",
       body: JSON.stringify({
-        key: env.key,
         value,
         target: env.target,
         type: env.type,
@@ -93,6 +92,43 @@ export async function updateProjectEnvByKey(
     },
   );
   return r;
+}
+
+export async function createProjectEnv(input: {
+  key: string;
+  value: string;
+  target?: string[];
+  type?: "plain" | "encrypted" | "sensitive";
+}): Promise<{ id: string; key: string; value?: string }> {
+  return vercelFetch<{ id: string; key: string; value?: string }>(
+    `/v10/projects/${PROJECT_NAME}/env`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        key: input.key,
+        value: input.value,
+        target: input.target ?? ["production", "preview"],
+        type: input.type ?? "encrypted",
+      }),
+    },
+  );
+}
+
+export async function upsertProjectEnvByKey(input: {
+  key: string;
+  value: string;
+  target?: string[];
+  type?: "plain" | "encrypted" | "sensitive";
+}): Promise<{ id: string; key: string; action: "created" | "updated" }> {
+  const envs = await listProjectEnvs();
+  const env = envs.find((e) => e.key === input.key);
+  if (!env) {
+    const created = await createProjectEnv(input);
+    return { id: created.id, key: created.key, action: "created" };
+  }
+
+  const updated = await updateProjectEnvByKey(input.key, input.value);
+  return { id: updated.id, key: updated.key, action: "updated" };
 }
 
 // ─── redeploy ───────────────────────────────────────────────
