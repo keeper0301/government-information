@@ -89,6 +89,7 @@ import { scrapeMujuAndInsert } from "./muju";
 import { scrapeJangsuAndInsert } from "./jangsu";
 import { scrapeSunchangAndInsert } from "./sunchang";
 import { scrapeBuanAndInsert } from "./buan";
+import { scrapeGochangAndInsert } from "./gochang";
 import { scrapeNajuAndInsert } from "./naju";
 import { scrapeDamyangAndInsert } from "./damyang";
 import { scrapeSeosanAndInsert } from "./seosan";
@@ -243,6 +244,7 @@ export type CityKey =
   | "jangsu"
   | "sunchang"
   | "buan"
+  | "gochang"
   | "naju"
   | "damyang"
   | "seosan"
@@ -959,6 +961,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.buan.go.kr/board/list.buan?boardId=BBS_0000059&menuCd=DOM_000000103002001000&contentsSid=90&cpath=",
     fn: scrapeBuanAndInsert,
+  },
+  {
+    key: "gochang",
+    city: "전북 고창군",
+    ministry: "전북 고창군청",
+    siteUrl:
+      "https://www.gochang.go.kr/board/list.gochang?boardId=BBS_0000179&menuCd=DOM_000000102002001000",
+    fn: scrapeGochangAndInsert,
   },
   {
     key: "naju",
