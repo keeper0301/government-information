@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { rowToGuide } from "@/lib/policy-guides";
+import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 
 describe("rowToGuide", () => {
   it("supabase row 를 PolicyGuide 로 변환", () => {
@@ -51,5 +52,34 @@ describe("rowToGuide", () => {
     expect(guide.programType).toBe("welfare");
     expect(guide.rotationIdx).toBeNull();
     expect(guide.ogImageUrl).toBe("https://example.com/og.png");
+  });
+});
+
+describe("EDITORIAL_GUIDES", () => {
+  it("keeps enough people-first guides for AdSense review", () => {
+    expect(EDITORIAL_GUIDES.length).toBeGreaterThanOrEqual(24);
+    const slugs = new Set(EDITORIAL_GUIDES.map((guide) => guide.slug));
+    expect(slugs.size).toBe(EDITORIAL_GUIDES.length);
+    for (const slug of [
+      "jobseeker-benefit-checklist",
+      "emergency-welfare-application-guide",
+      "youth-savings-account-before-apply",
+      "senior-long-term-care-first-steps",
+      "small-business-tax-delinquency-support",
+      "housing-lease-document-check",
+      "child-education-local-benefits",
+      "self-employed-family-income-proof",
+    ]) {
+      expect(slugs.has(slug)).toBe(true);
+    }
+  });
+
+  it("uses five substantial paragraphs per editorial guide", () => {
+    for (const guide of EDITORIAL_GUIDES) {
+      expect(guide.posts).toHaveLength(5);
+      for (const post of guide.posts) {
+        expect(post.length).toBeGreaterThanOrEqual(100);
+      }
+    }
   });
 });
