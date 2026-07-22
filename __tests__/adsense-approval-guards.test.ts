@@ -51,6 +51,16 @@ describe("AdSense approval guardrails", () => {
     }
   });
 
+  it("keeps noindex helper pages out of the XML sitemap", () => {
+    const source = read("app/sitemap.ts");
+    for (const path of ["/calendar", "/recommend", "/popular", "/consult", "/alerts", "/pricing"]) {
+      expect(source).not.toContain("`${baseUrl}" + path);
+    }
+    for (const path of ["/privacy", "/terms", "/refund", "/about", "/welfare", "/loan", "/blog", "/guides"]) {
+      expect(source).toContain("`${baseUrl}" + path);
+    }
+  });
+
   it("uses the www canonical host for default metadata and schema urls", () => {
     const source = read("app/layout.tsx");
     expect(source).toContain('"https://www.keepioo.com"');
