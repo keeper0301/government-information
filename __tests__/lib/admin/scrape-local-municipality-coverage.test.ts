@@ -109,6 +109,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "전북특별자치도 순창군")?.covered,
     ).toMatchObject({ source: "static", key: "sunchang" });
     expect(
+      rows.find((row) => row.fullName === "전북특별자치도 부안군")?.covered,
+    ).toMatchObject({ source: "static", key: "buan" });
+    expect(
       rows.find((row) => row.fullName === "충청남도 서산시")?.covered,
     ).toMatchObject({ source: "static", key: "seosan" });
     expect(
