@@ -97,6 +97,7 @@ import { scrapeGokseongAndInsert } from "./gokseong";
 import { scrapeGoheungAndInsert } from "./goheung";
 import { scrapeBoseongAndInsert } from "./boseong";
 import { scrapeHwasunAndInsert } from "./hwasun";
+import { scrapeGangjinAndInsert } from "./gangjin";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -257,6 +258,7 @@ export type CityKey =
   | "goheung"
   | "boseong"
   | "hwasun"
+  | "gangjin"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1033,12 +1035,11 @@ export const CITY_REGISTRY: CityEntry[] = [
     fn: scrapeHwasunAndInsert,
   },
   {
-    key: "hwasun",
-    city: "전남 화순군",
-    ministry: "전남 화순군청",
-    siteUrl:
-      "https://www.hwasun.go.kr/gallery.do?S=S01&M=020101000000&b_code=0000000001",
-    fn: scrapeHwasunAndInsert,
+    key: "gangjin",
+    city: "전남 강진군",
+    ministry: "전남 강진군청",
+    siteUrl: "https://www.gangjin.go.kr/www/government/news/press",
+    fn: scrapeGangjinAndInsert,
   },
   {
     key: "seosan",
