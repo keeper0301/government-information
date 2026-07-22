@@ -112,6 +112,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "전북특별자치도 부안군")?.covered,
     ).toMatchObject({ source: "static", key: "buan" });
     expect(
+      rows.find((row) => row.fullName === "전북특별자치도 고창군")?.covered,
+    ).toMatchObject({ source: "static", key: "gochang" });
+    expect(
       rows.find((row) => row.fullName === "전라남도 나주시")?.covered,
     ).toMatchObject({ source: "static", key: "naju" });
     expect(
