@@ -98,6 +98,7 @@ import { scrapeGoheungAndInsert } from "./goheung";
 import { scrapeBoseongAndInsert } from "./boseong";
 import { scrapeHwasunAndInsert } from "./hwasun";
 import { scrapeGangjinAndInsert } from "./gangjin";
+import { scrapeYeongamAndInsert } from "./yeongam";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -259,6 +260,7 @@ export type CityKey =
   | "boseong"
   | "hwasun"
   | "gangjin"
+  | "yeongam"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1040,6 +1042,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 강진군청",
     siteUrl: "https://www.gangjin.go.kr/www/government/news/press",
     fn: scrapeGangjinAndInsert,
+  },
+  {
+    key: "yeongam",
+    city: "전남 영암군",
+    ministry: "전남 영암군청",
+    siteUrl: "https://www.yeongam.go.kr/home/www/open_information/yeongam_news/bodo/yeongam.go",
+    fn: scrapeYeongamAndInsert,
   },
   {
     key: "seosan",
