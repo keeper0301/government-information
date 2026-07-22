@@ -217,7 +217,9 @@ describe("scrape-local municipality coverage", () => {
     const incheonJunggu = rows.find((row) => row.fullName === "인천광역시 중구");
 
     expect(seoulJunggu?.covered?.key).toBe("junggu_seoul");
-    expect(incheonJunggu?.covered?.key).toBe("junggu_incheon");
+    // 2026-07-22: 인천 중구 static collector 는 Vercel fetch 에서 /index.html shell 만
+    // 받아 stale false-positive 를 만들기 때문에 PC/Playwright 복구 전까지 미구현으로 본다.
+    expect(incheonJunggu?.covered).toBeNull();
     expect(busanJunggu?.covered).toBeNull();
   });
 
