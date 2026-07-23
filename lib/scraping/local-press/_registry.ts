@@ -104,6 +104,7 @@ import { scrapeMuanAndInsert } from "./muan";
 import { scrapeYeonggwangAndInsert } from "./yeonggwang";
 import { scrapeJangseongAndInsert } from "./jangseong";
 import { scrapeWandoAndInsert } from "./wando";
+import { scrapeShinanAndInsert } from "./shinan";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -275,6 +276,7 @@ export type CityKey =
   | "yeonggwang"
   | "jangseong"
   | "wando"
+  | "shinan"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1098,6 +1100,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 완도군청",
     siteUrl: "https://www.wando.go.kr/wando/sub.cs?m=299",
     fn: scrapeWandoAndInsert,
+  },
+  {
+    key: "shinan",
+    city: "전남 신안군",
+    ministry: "전남 신안군청",
+    siteUrl: "https://www.shinan.go.kr/home/www/openinfo/participation_07/participation_07_03",
+    fn: scrapeShinanAndInsert,
   },
   {
     key: "seosan",
