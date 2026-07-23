@@ -27,6 +27,8 @@ on:
           - search-console-sitemap-submit
           - health-alert-dry
           - health-alert
+          - news-classify
+          - news-ai-commentary-backfill
           - user-contact-reminder-dry
           - user-contact-reminder
           - sns-publish-blog
@@ -126,6 +128,14 @@ jobs:
             health-alert)
               path="/api/cron/health-alert"
               method="GET"
+              ;;
+            news-classify)
+              path="/api/cron/news-classify"
+              method="POST"
+              ;;
+            news-ai-commentary-backfill)
+              path="/api/cron/news-ai-commentary-backfill"
+              method="POST"
               ;;
             user-contact-reminder-dry)
               path="/api/cron/user-contact-reminder?dry=1&log_safe=1"
