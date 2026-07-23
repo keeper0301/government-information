@@ -43,6 +43,7 @@ import { scrapeGangwonAndInsert } from "./gangwon";
 import { scrapeSongpaAndInsert } from "./songpa";
 import { scrapeAnyangAndInsert } from "./anyang";
 import { scrapeUiwangAndInsert } from "./uiwang";
+import { scrapeGwangjuGyeonggiAndInsert } from "./gwangju_gyeonggi";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
@@ -216,6 +217,7 @@ export type CityKey =
   | "songpa"
   | "anyang"
   | "uiwang"
+  | "gwangju_gyeonggi"
   | "wonju"
   | "gwangsan"
   | "gunpo"
@@ -618,6 +620,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "의왕시청",
     siteUrl: "https://www.uiwang.go.kr/UWKORINFO0201/",
     fn: scrapeUiwangAndInsert,
+  },
+  {
+    key: "gwangju_gyeonggi",
+    city: "경기 광주시",
+    ministry: "경기도 광주시청",
+    siteUrl: "https://www.gjcity.go.kr/portal/bbs/list.do?ptIdx=22&mId=0203010000",
+    fn: scrapeGwangjuGyeonggiAndInsert,
   },
   // 2026-05-29 — 김포시는 Playwright 프록시 경로로 이관(목록 위젯 혼재·본문 무class td 라
   // 정적 selector 불가). 정적 등록 제거(dual-path 방지).
