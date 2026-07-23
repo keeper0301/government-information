@@ -106,6 +106,7 @@ import { scrapeJangseongAndInsert } from "./jangseong";
 import { scrapeWandoAndInsert } from "./wando";
 import { scrapeShinanAndInsert } from "./shinan";
 import { scrapeJindoAndInsert } from "./jindo";
+import { scrapeHaenamAndInsert } from "./haenam";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -279,6 +280,7 @@ export type CityKey =
   | "wando"
   | "shinan"
   | "jindo"
+  | "haenam"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1116,6 +1118,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 진도군청",
     siteUrl: "https://jindo.go.kr/home/board/B0016.cs?m=626",
     fn: scrapeJindoAndInsert,
+  },
+  {
+    key: "haenam",
+    city: "전남 해남군",
+    ministry: "전남 해남군청",
+    siteUrl: "https://www.haenam.go.kr/planweb/board/list.9is?boardUid=18e3368f5fb80fdc015fdc4c2ac203e7&contentUid=&layoutUid=&pBoardId=BBSMSTR_000000000131&recordCountPerPage=10",
+    fn: scrapeHaenamAndInsert,
   },
   {
     key: "seosan",
