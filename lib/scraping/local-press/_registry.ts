@@ -101,6 +101,7 @@ import { scrapeGangjinAndInsert } from "./gangjin";
 import { scrapeJangheungAndInsert } from "./jangheung";
 import { scrapeYeongamAndInsert } from "./yeongam";
 import { scrapeMuanAndInsert } from "./muan";
+import { scrapeYeonggwangAndInsert } from "./yeonggwang";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -269,6 +270,7 @@ export type CityKey =
   | "jangheung"
   | "yeongam"
   | "muan"
+  | "yeonggwang"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1071,6 +1073,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 무안군청",
     siteUrl: "https://www.muan.go.kr/www/openmuan/new/report",
     fn: scrapeMuanAndInsert,
+  },
+  {
+    key: "yeonggwang",
+    city: "전남 영광군",
+    ministry: "전남 영광군청",
+    siteUrl: "https://www.yeonggwang.go.kr/bbs/?b_id=news_data&site=headquarter_new&mn=9056",
+    fn: scrapeYeonggwangAndInsert,
   },
   {
     key: "seosan",
