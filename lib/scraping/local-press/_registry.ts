@@ -46,6 +46,7 @@ import { scrapeUiwangAndInsert } from "./uiwang";
 import { scrapeGwangjuGyeonggiAndInsert } from "./gwangju_gyeonggi";
 import { scrapeOsanAndInsert } from "./osan";
 import { scrapeIcheonAndInsert } from "./icheon";
+import { scrapeAnseongAndInsert } from "./anseong";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
@@ -222,6 +223,7 @@ export type CityKey =
   | "gwangju_gyeonggi"
   | "osan"
   | "icheon"
+  | "anseong"
   | "wonju"
   | "gwangsan"
   | "gunpo"
@@ -645,6 +647,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "경기도 이천시청",
     siteUrl: "https://www.icheon.go.kr/news/contents.do?mid=0301000000",
     fn: scrapeIcheonAndInsert,
+  },
+  {
+    key: "anseong",
+    city: "안성시",
+    ministry: "경기도 안성시청",
+    siteUrl: "https://www.anseong.go.kr/portal/saeol/newsList.do?mId=0502010100",
+    fn: scrapeAnseongAndInsert,
   },
   // 2026-05-29 — 김포시는 Playwright 프록시 경로로 이관(목록 위젯 혼재·본문 무class td 라
   // 정적 selector 불가). 정적 등록 제거(dual-path 방지).
