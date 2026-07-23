@@ -18,6 +18,11 @@ import JSZip from "jszip";
 const DOWNLOAD_REGEX =
   /href="([^"]*(?:downloadBbsFile\.do|fileDown\.do|download\.geumj|board\/download\.do)[^"]*)"/gi;
 
+// eGovFrame/YH portal boards may expose attachments as JavaScript calls instead
+// of hrefs: fn_egov_downFile('<atchFileId>','<fileSn>').
+const EGOV_DOWNFILE_CALL_REGEX =
+  /fn_egov_downFile\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
+
 // PDF 전문 머리의 보도자료 표준 메타를 "총 매수 N쪽" 마커 기준으로 cut.
 export function stripSiPdfMeta(text) {
   const t = text.replace(/\s+/g, " ").trim();
@@ -121,6 +126,41 @@ export async function fetchSiAttachBody(html, baseDir, fetchBin) {
   for (const path of paths) {
     try {
       const url = new URL(path, baseDir).href;
+      const buf = await fetchBin(url);
+      if (!buf) continue;
+      const body = await extractAttachBody(buf);
+      if (body) return body;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export function parseEgovDownFileUrls(html, baseUrl) {
+  const origin = new URL(baseUrl).origin;
+  const urls = [];
+  const seen = new Set();
+  let match;
+  const re = new RegExp(EGOV_DOWNFILE_CALL_REGEX.source, "gi");
+
+  while ((match = re.exec(html)) !== null) {
+    const [, atchFileId, fileSn] = match;
+    const url = `${origin}/cmm/fms/FileDown.do?atchFileId=${encodeURIComponent(
+      atchFileId,
+    )}&fileSn=${encodeURIComponent(fileSn)}`;
+    if (!seen.has(url)) {
+      seen.add(url);
+      urls.push(url);
+    }
+  }
+
+  return urls;
+}
+
+export async function fetchEgovDownFileAttachBody(html, baseUrl, fetchBin) {
+  for (const url of parseEgovDownFileUrls(html, baseUrl)) {
+    try {
       const buf = await fetchBin(url);
       if (!buf) continue;
       const body = await extractAttachBody(buf);

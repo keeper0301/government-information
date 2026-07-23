@@ -46,6 +46,12 @@ const SI_UA =
 const DOWNLOAD_REGEX =
   /href="([^"]*(?:downloadBbsFile|fileDown|board\/download)\.do[^"]*)"/gi;
 
+// eGovFrame/YH portal boards may expose attachments only as JS calls instead of
+// hrefs: fn_egov_downFile('<atchFileId>','<fileSn>'). The corresponding download
+// endpoint is `/cmm/fms/FileDown.do` on the same origin.
+const EGOV_DOWNFILE_CALL_REGEX =
+  /fn_egov_downFile\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
+
 // PDF 전문 머리의 보도자료 표준 메타(자료제공 일시·담당부서·전화·"사진 있음/없음·총 매수 N쪽")
 // 를 "총 매수 N쪽" 마커 기준으로 cut. 마커 부재/cut 후 250 미만이면 전체 유지(전문 확보 우선).
 export function stripSiPdfMeta(text: string): string {
@@ -166,6 +172,47 @@ export async function fetchSiAttachBody(
   for (const path of paths) {
     try {
       const url = new URL(path, baseDir).href;
+      const res = await fetch(url, {
+        headers: { "User-Agent": SI_UA },
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!res.ok) continue;
+      const body = await extractAttachBody(new Uint8Array(await res.arrayBuffer()));
+      if (body) return body;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export function parseEgovDownFileUrls(html: string, baseUrl: string): string[] {
+  const origin = new URL(baseUrl).origin;
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+  const re = new RegExp(EGOV_DOWNFILE_CALL_REGEX.source, "gi");
+
+  while ((match = re.exec(html)) !== null) {
+    const [, atchFileId, fileSn] = match;
+    const url = `${origin}/cmm/fms/FileDown.do?atchFileId=${encodeURIComponent(
+      atchFileId,
+    )}&fileSn=${encodeURIComponent(fileSn)}`;
+    if (!seen.has(url)) {
+      seen.add(url);
+      urls.push(url);
+    }
+  }
+
+  return urls;
+}
+
+export async function fetchEgovDownFileAttachBody(
+  html: string,
+  baseUrl: string,
+): Promise<string | null> {
+  for (const url of parseEgovDownFileUrls(html, baseUrl)) {
+    try {
       const res = await fetch(url, {
         headers: { "User-Agent": SI_UA },
         signal: AbortSignal.timeout(20000),

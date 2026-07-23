@@ -6,27 +6,26 @@
 // 상세: 웹 본문은 1줄 요약이고 전문은 HWP 첨부에 있음.
 // ============================================================
 
-import { toMarkdown } from "@ohah/hwpjs";
 import {
   createPressCollector,
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
+import {
+  fetchEgovDownFileAttachBody,
+  parseEgovDownFileUrls,
+} from "./_si_attach_helper";
 
 const BASE_URL = "https://www.osan.go.kr";
 const LIST_PATH = "/portal/contents.do?mId=0301080000";
 const LIST_URL = `${BASE_URL}${LIST_PATH}`;
 const DETAIL_PATH = "/portal/bbs/view.do";
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const ROW_REGEX = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
 const LINK_REGEX = /<a\b[^>]*onclick\s*=\s*["'][^"']*goTo\.view\([^,]+,\s*['"](\d+)['"],\s*['"](\d+)['"],\s*['"](\d+)['"][\s\S]*?<\/a>/i;
 const DATE_REGEX = /<td\b[^>]*class\s*=\s*["'][^"']*\blist_date\b[^"']*["'][^>]*>\s*(\d{4}-\d{2}-\d{2})\s*<\/td>/i;
 const TITLE_REGEX = /<div\b[^>]*class\s*=\s*["'][^"']*\bbod_view\b[^"']*["'][^>]*>[\s\S]*?<h4[^>]*>([\s\S]*?)<\/h4>/i;
 const BODY_REGEX = /<div\b[^>]*class\s*=\s*["'][^"']*\bview_cont\b[^"']*["'][^>]*>([\s\S]*?)<dl\b[^>]*class\s*=\s*["'][^"']*\bview_file\b/i;
-const DOWNLOAD_CALL_REGEX =
-  /fn_egov_downFile\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
 
 function stripHtml(rawHtml: string): string {
   return decodeBasicEntities(
@@ -55,22 +54,6 @@ function stripHtml(rawHtml: string): string {
     .replace(/\n\s+/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-}
-
-function cleanHwpMarkdown(markdown: string): string {
-  return markdown
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
-    .replace(/`{1,3}/g, "")
-    .replace(/~~/g, "")
-    .replace(/\*\*/g, "")
-    .replace(/^#+\s.*$/gm, "")
-    .replace(/^\s*\|[^\n]*\|\s*$/gm, "")
-    .replace(/^\s*\|?-{2,}.*$/gm, " ")
-    .replace(/\|/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim()
-    .replace(/^버전:\s*[\d.]+\s*/, "");
 }
 
 function makeDetailUrl(bIdx: string, ptIdx: string, mId: string): string {
@@ -107,49 +90,11 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDownloadUrls(html: string): string[] {
-  const urls: string[] = [];
-  const seen = new Set<string>();
-  let match: RegExpExecArray | null;
-  const re = new RegExp(DOWNLOAD_CALL_REGEX.source, "gi");
-
-  while ((match = re.exec(html)) !== null) {
-    const [, atchFileId, fileSn] = match;
-    const url = `${BASE_URL}/cmm/fms/FileDown.do?atchFileId=${encodeURIComponent(
-      atchFileId,
-    )}&fileSn=${encodeURIComponent(fileSn)}`;
-    if (!seen.has(url)) {
-      seen.add(url);
-      urls.push(url);
-    }
-  }
-
-  return urls;
-}
-
-async function fetchHwpBody(html: string): Promise<string | null> {
-  for (const url of parseDownloadUrls(html)) {
-    try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": USER_AGENT },
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!res.ok) continue;
-      const buffer = Buffer.from(await res.arrayBuffer());
-      if (buffer[0] !== 0xd0 || buffer[1] !== 0xcf) continue;
-      const { markdown } = toMarkdown(buffer, { image: "base64", useHtml: false });
-      const text = cleanHwpMarkdown(markdown).replace(/\s+/g, " ").trim();
-      if (/[가-힣]/.test(text) && text.length >= 250) {
-        return text.slice(0, 20000);
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
+  return parseEgovDownFileUrls(html, BASE_URL);
 }
 
 export async function parseDetailBody(html: string): Promise<string | null> {
-  const hwpBody = await fetchHwpBody(html);
+  const hwpBody = await fetchEgovDownFileAttachBody(html, BASE_URL);
   if (hwpBody) return hwpBody;
 
   const title = stripHtml(TITLE_REGEX.exec(html)?.[1] ?? "");
