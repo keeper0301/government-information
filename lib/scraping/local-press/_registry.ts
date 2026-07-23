@@ -107,6 +107,7 @@ import { scrapeWandoAndInsert } from "./wando";
 import { scrapeShinanAndInsert } from "./shinan";
 import { scrapeJindoAndInsert } from "./jindo";
 import { scrapeHaenamAndInsert } from "./haenam";
+import { scrapeHampyeongAndInsert } from "./hampyeong";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -281,6 +282,7 @@ export type CityKey =
   | "shinan"
   | "jindo"
   | "haenam"
+  | "hampyeong"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1125,6 +1127,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 해남군청",
     siteUrl: "https://www.haenam.go.kr/planweb/board/list.9is?boardUid=18e3368f5fb80fdc015fdc4c2ac203e7&contentUid=&layoutUid=&pBoardId=BBSMSTR_000000000131&recordCountPerPage=10",
     fn: scrapeHaenamAndInsert,
+  },
+  {
+    key: "hampyeong",
+    city: "전남 함평군",
+    ministry: "전남 함평군청",
+    siteUrl: "https://www.hampyeong.go.kr/boardList.do?boardId=NEWS&pageId=www275",
+    fn: scrapeHampyeongAndInsert,
   },
   {
     key: "seosan",
