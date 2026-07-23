@@ -102,6 +102,7 @@ import { scrapeJangheungAndInsert } from "./jangheung";
 import { scrapeYeongamAndInsert } from "./yeongam";
 import { scrapeMuanAndInsert } from "./muan";
 import { scrapeYeonggwangAndInsert } from "./yeonggwang";
+import { scrapeJangseongAndInsert } from "./jangseong";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -271,6 +272,7 @@ export type CityKey =
   | "yeongam"
   | "muan"
   | "yeonggwang"
+  | "jangseong"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1080,6 +1082,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 영광군청",
     siteUrl: "https://www.yeonggwang.go.kr/bbs/?b_id=news_data&site=headquarter_new&mn=9056",
     fn: scrapeYeonggwangAndInsert,
+  },
+  {
+    key: "jangseong",
+    city: "전남 장성군",
+    ministry: "전남 장성군청",
+    siteUrl: "https://www.jangseong.go.kr/home/www/news/jangseong/bodo",
+    fn: scrapeJangseongAndInsert,
   },
   {
     key: "seosan",
