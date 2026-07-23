@@ -103,6 +103,7 @@ import { scrapeYeongamAndInsert } from "./yeongam";
 import { scrapeMuanAndInsert } from "./muan";
 import { scrapeYeonggwangAndInsert } from "./yeonggwang";
 import { scrapeJangseongAndInsert } from "./jangseong";
+import { scrapeWandoAndInsert } from "./wando";
 import { scrapeSeosanAndInsert } from "./seosan";
 import { scrapeGangneungAndInsert } from "./gangneung";
 import { scrapeTaebaekAndInsert } from "./taebaek";
@@ -273,6 +274,7 @@ export type CityKey =
   | "muan"
   | "yeonggwang"
   | "jangseong"
+  | "wando"
   | "seosan"
   | "gangneung"
   | "taebaek"
@@ -1089,6 +1091,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전남 장성군청",
     siteUrl: "https://www.jangseong.go.kr/home/www/news/jangseong/bodo",
     fn: scrapeJangseongAndInsert,
+  },
+  {
+    key: "wando",
+    city: "전남 완도군",
+    ministry: "전남 완도군청",
+    siteUrl: "https://www.wando.go.kr/wando/sub.cs?m=299",
+    fn: scrapeWandoAndInsert,
   },
   {
     key: "seosan",
