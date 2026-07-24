@@ -53,6 +53,7 @@ import { scrapeDongducheonAndInsert } from "./dongducheon";
 import { scrapeGwacheonAndInsert } from "./gwacheon";
 import { scrapeYangpyeongAndInsert } from "./yangpyeong";
 import { scrapeGapyeongAndInsert } from "./gapyeong";
+import { scrapeYeoncheonAndInsert } from "./yeoncheon";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
@@ -236,6 +237,7 @@ export type CityKey =
   | "gwacheon"
   | "yangpyeong"
   | "gapyeong"
+  | "yeoncheon"
   | "wonju"
   | "gwangsan"
   | "gunpo"
@@ -709,6 +711,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "경기도 가평군청",
     siteUrl: "https://gp.go.kr/portal/selectBbsNttList.do?bbsNo=127&key=787",
     fn: scrapeGapyeongAndInsert,
+  },
+  {
+    key: "yeoncheon",
+    city: "연천군",
+    ministry: "경기도 연천군청",
+    siteUrl: "https://www.yeoncheon.go.kr/www/selectBbsNttList.do?bbsNo=29&key=3398",
+    fn: scrapeYeoncheonAndInsert,
   },
   // 2026-05-29 — 김포시는 Playwright 프록시 경로로 이관(목록 위젯 혼재·본문 무class td 라
   // 정적 selector 불가). 정적 등록 제거(dual-path 방지).
