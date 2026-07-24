@@ -26,6 +26,7 @@ import {
   formatCadenceRegressions,
 } from "@/lib/monitoring/collector-health-diagnosis";
 import { getRateLimitStatus, type RateLimitHotBucket } from "@/lib/monitoring/rate-limit-status";
+import { getPressAutoConfirmStats } from "@/lib/press-ingest/filter";
 
 export type HealthSignals = {
   // 24h 신규 가입 수
@@ -61,6 +62,17 @@ export type HealthSignals = {
    * PRESS_LOW_TIER_FLOOR env 로 1줄 toggle.
    */
   pressLowTierBacklog: number;
+  /**
+   * low tier pending 중 기존 cleanup 정책(14일+ 묵음)에 해당하는 수.
+   * 0이면 현재 low queue 는 자동 reject 대상이 아니라 수동 검수/관찰 대상이다.
+   */
+  pressLowTierCleanupEligible: number;
+  /** 7일 내 low tier 검수 결과 기반 confirm rate. 표본 부족 시 0이며 hint 를 함께 본다. */
+  pressLowConfirmRate7d: number;
+  /** 7일 내 low tier 검수 결정 수(confirmed+rejected). */
+  pressLowDecisions7d: number;
+  /** low tier 자동화 floor 판단 힌트. AUTO_CONFIRM_TIER_FLOOR=low 완화 금지/검토 근거. */
+  pressLowConfirmRateHint: string;
   /**
    * Instagram OAuth token 가장 임박한 만료까지 일수.
    * null = instagram_oauth_tokens 테이블 빈 상태 (OAuth 미연결 — 알림 X).
@@ -444,6 +456,21 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     .eq("status", "pending")
     .eq("confidence_tier", "low");
   const pressLowTierBacklog = lowTierCount ?? 0;
+  const lowTierCleanupCutoff = new Date(
+    Date.now() - 14 * 24 * 3600_000,
+  ).toISOString();
+  const { count: lowTierCleanupEligibleCount } = await sb
+    .from("press_ingest_candidates")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .eq("confidence_tier", "low")
+    .lt("created_at", lowTierCleanupCutoff);
+  const pressLowTierCleanupEligible = lowTierCleanupEligibleCount ?? 0;
+  const pressAutoStats = await getPressAutoConfirmStats();
+  const pressLowConfirmRate7d = pressAutoStats.low_confirm_rate_7d;
+  const pressLowDecisions7d =
+    pressAutoStats.low_confirmed_7d + pressAutoStats.low_rejected_7d;
+  const pressLowConfirmRateHint = pressAutoStats.low_confirm_rate_hint;
 
   // 마지막 press cron 흔적 시간차 — 노쇼 진단.
   // 2026-05-14 — press_l2_classify 는 후보 처리한 만큼만 row 쌓여 false positive 위험
@@ -671,6 +698,10 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     pressLastClassifyHours,
     enrichPermanentSkip,
     pressLowTierBacklog,
+    pressLowTierCleanupEligible,
+    pressLowConfirmRate7d,
+    pressLowDecisions7d,
+    pressLowConfirmRateHint,
     instagramTokenExpiresInDays,
     naverCookiesExpiresInDays,
     policyInflow24h,
@@ -802,11 +833,15 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
 
   // Task 8 — LLM 신뢰도 'low' 큐 적체 (적극 모드 후에도 사장님 검토 필요한 잔여 큐)
   if (s.pressLowTierBacklog >= PRESS_LOW_TIER_FLOOR) {
+    const cleanupNote =
+      s.pressLowTierCleanupEligible > 0
+        ? `cleanup dry-run 대상 ${s.pressLowTierCleanupEligible}건 있음 — press-legacy-cleanup-dry 먼저 확인.`
+        : "cleanup 대상 0건이면 자동 reject 대신 /admin/press-ingest 수동 검수/관찰 유지.";
     alerts.push({
       key: "press_low_tier",
-      message: `LLM 신뢰도 'low' 큐 ${s.pressLowTierBacklog}건 (임계 ${PRESS_LOW_TIER_FLOOR}+).`,
+      message: `LLM 신뢰도 'low' 큐 ${s.pressLowTierBacklog}건 (임계 ${PRESS_LOW_TIER_FLOOR}+). cleanup 대상 ${s.pressLowTierCleanupEligible}건, 7d low 결정 ${s.pressLowDecisions7d}건/confirm ${s.pressLowConfirmRate7d}%.`,
       recommendation:
-        "/admin/press-ingest 검토. 최근 low confirm 0%면 AUTO_CONFIRM_TIER_FLOOR=low 는 사용 금지에 가깝게 신중히 검토.",
+        `${cleanupNote} 최근 low 판단: ${s.pressLowConfirmRateHint}. AUTO_CONFIRM_TIER_FLOOR=low 는 low confirm rate 가 충분히 높을 때만 신중히 검토.`,
     });
   }
 

@@ -18,6 +18,10 @@ const BASE_SIGNALS: HealthSignals = {
   enrichPermanentSkip: 0,
   // Task 8 (2026-05-08) — low tier 큐 baseline 정상 (적극 모드에서는 거의 0)
   pressLowTierBacklog: 0,
+  pressLowTierCleanupEligible: 0,
+  pressLowConfirmRate7d: 0,
+  pressLowDecisions7d: 0,
+  pressLowConfirmRateHint: "데이터 부족",
   // 2026-05-12 — null = OAuth 미연결 (alert X). 만료 임박 케이스는 별도 테스트에서.
   instagramTokenExpiresInDays: null,
   // 2026-05-12 — null = 네이버 cookies 미업로드 (alert X). 만료 임박 케이스는 별도 테스트.
@@ -439,10 +443,34 @@ describe("checkThresholds — Phase 1 추가: press_low_tier_backlog", () => {
   };
 
   it("low tier 큐 30+ → press_low_tier alert + recommendation", () => {
-    const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 30 });
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      pressLowTierBacklog: 30,
+      pressLowTierCleanupEligible: 0,
+      pressLowDecisions7d: 6,
+      pressLowConfirmRate7d: 0,
+      pressLowConfirmRateHint: "LLM 정확 — 현 상태 유지",
+    });
     const a = alerts.find((x) => x.key === "press_low_tier");
     expect(a).toBeDefined();
-    expect(a?.recommendation).toContain("/admin/press-ingest");
+    expect(a?.message).toContain("cleanup 대상 0건");
+    expect(a?.recommendation).toContain("수동 검수/관찰 유지");
+    expect(a?.recommendation).toContain("LLM 정확 — 현 상태 유지");
+  });
+
+  it("low tier cleanup eligible 이 있으면 dry-run 우선 실행을 권장", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      pressLowTierBacklog: 30,
+      pressLowTierCleanupEligible: 4,
+      pressLowDecisions7d: 9,
+      pressLowConfirmRate7d: 22,
+      pressLowConfirmRateHint: "LLM 정확 — 현 상태 유지",
+    });
+    const a = alerts.find((x) => x.key === "press_low_tier");
+    expect(a?.message).toContain("cleanup 대상 4건");
+    expect(a?.message).toContain("confirm 22%");
+    expect(a?.recommendation).toContain("press-legacy-cleanup-dry");
   });
 
   it("low tier 29 → 발화 안 함 (boundary)", () => {
