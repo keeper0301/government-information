@@ -18,4 +18,12 @@ describe("admin naver blog queue guidance", () => {
     expect(page).toContain("마지막 발행 버튼은 운영자가 직접 클릭");
     expect(page).toContain("외부 게시 전 최종 확인");
   });
+
+  it("shows Chrome extension status beside the backlog plan", () => {
+    expect(page).toContain("getNaverExtensionStatus");
+    expect(page).toContain("Chrome Extension 상태");
+    expect(page).toContain("24h 시도");
+    expect(page).toContain("PC/Chrome Extension 미가동 또는 live alarm gate");
+    expect(page).toContain("/api/naver-extension/status");
+  });
 });

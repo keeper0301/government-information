@@ -26,6 +26,7 @@ import {
   listPublishedNaverQueue,
   getNaverPublishedStats,
 } from "@/lib/naver-blog/queue";
+import { getNaverExtensionStatus } from "@/lib/naver-blog/extension-status";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   markNaverPublishedAction,
@@ -55,10 +56,11 @@ async function requireAdmin() {
 
 export default async function AdminNaverBlogPage() {
   await requireAdmin();
-  const [pending, published, stats] = await Promise.all([
+  const [pending, published, stats, extensionStatus] = await Promise.all([
     listPendingNaverQueue(20),
     listPublishedNaverQueue(10),
     getNaverPublishedStats(),
+    getNaverExtensionStatus(),
   ]);
   const estimatedDaysToClear = Math.max(
     1,
@@ -101,6 +103,35 @@ export default async function AdminNaverBlogPage() {
             <li>3. 마지막 발행 버튼은 운영자가 직접 클릭</li>
             <li>4. 발행 URL 기록 후 다음 오래된 글 처리</li>
           </ol>
+        </div>
+      </section>
+
+      <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-900">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
+              Chrome Extension 상태
+            </div>
+            <h2 className="mt-1 text-lg font-extrabold">
+              24h 시도 {extensionStatus.audit24h.success + extensionStatus.audit24h.fail}건 · 성공 {extensionStatus.audit24h.success}건 · 실패 {extensionStatus.audit24h.fail}건
+            </h2>
+            <p className="mt-2 leading-relaxed text-slate-700">
+              대기 {extensionStatus.queue.pending}건 중 재시도 가능 {extensionStatus.queue.retryablePending}건,
+              3회 이상 막힘 {extensionStatus.queue.blockedPending}건입니다. 24h 시도 0건이면 PC/Chrome Extension 미가동 또는 live alarm gate 를 먼저 확인하세요.
+            </p>
+          </div>
+          <div className="grid min-w-[240px] gap-1 text-xs font-semibold text-slate-700">
+            <span>스킵된 extension 실패: {extensionStatus.queue.skippedExtensionFailed}건</span>
+            <span>24h skipped audit: {extensionStatus.audit24h.skipped}건</span>
+            <a href="/api/naver-extension/status" className="text-blue-600 underline">
+              상태 JSON 보기 →
+            </a>
+            {extensionStatus.errors.length > 0 && (
+              <span className="text-red-700">
+                상태 조회 일부 실패: {extensionStatus.errors.length}건
+              </span>
+            )}
+          </div>
         </div>
       </section>
 
