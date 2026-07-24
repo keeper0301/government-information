@@ -28,6 +28,7 @@ on:
           - health-alert-dry
           - health-alert
           - scrape-local-press-pocheon-yeoju
+          - scrape-local-press-dongducheon
           - news-classify
           - news-ai-commentary-backfill
           - user-contact-reminder-dry
@@ -132,6 +133,10 @@ jobs:
               ;;
             scrape-local-press-pocheon-yeoju)
               path="/api/cron/scrape-local-press?cities=pocheon,yeoju"
+              method="GET"
+              ;;
+            scrape-local-press-dongducheon)
+              path="/api/cron/scrape-local-press?cities=dongducheon"
               method="GET"
               ;;
             news-classify)
