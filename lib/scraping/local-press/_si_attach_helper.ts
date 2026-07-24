@@ -52,6 +52,11 @@ const DOWNLOAD_REGEX =
 const EGOV_DOWNFILE_CALL_REGEX =
   /fn_egov_downFile\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
 
+// Some eminwon-backed municipal pages expose attachments as POST-only JavaScript
+// calls: goDownLoad('<user_file_nm>','<sys_file_nm>','<file_path>').
+const EMINWON_GODOWNLOAD_CALL_REGEX =
+  /goDownLoad\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
+
 // PDF 전문 머리의 보도자료 표준 메타(자료제공 일시·담당부서·전화·"사진 있음/없음·총 매수 N쪽")
 // 를 "총 매수 N쪽" 마커 기준으로 cut. 마커 부재/cut 후 250 미만이면 전체 유지(전문 확보 우선).
 export function stripSiPdfMeta(text: string): string {
@@ -220,6 +225,63 @@ export async function fetchEgovDownFileAttachBody(
       if (!res.ok) continue;
       const body = await extractAttachBody(new Uint8Array(await res.arrayBuffer()));
       if (body) return body;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export type EminwonGoDownloadForm = {
+  userFileName: string;
+  systemFileName: string;
+  filePath: string;
+};
+
+export function parseEminwonGoDownloadForms(
+  html: string,
+): EminwonGoDownloadForm[] {
+  const forms: EminwonGoDownloadForm[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+  const re = new RegExp(EMINWON_GODOWNLOAD_CALL_REGEX.source, "gi");
+
+  while ((match = re.exec(html)) !== null) {
+    const [, userFileName, systemFileName, filePath] = match;
+    const key = `${userFileName}\n${systemFileName}\n${filePath}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    forms.push({ userFileName, systemFileName, filePath });
+  }
+
+  return forms;
+}
+
+export async function fetchEminwonGoDownloadAttachBody(
+  html: string,
+  endpoint = "https://eminwon.yeoju.go.kr/emwp/jsp/ofr/FileDownNew.jsp",
+): Promise<string | null> {
+  for (const form of parseEminwonGoDownloadForms(html)) {
+    try {
+      const body = new URLSearchParams({
+        user_file_nm: form.userFileName,
+        sys_file_nm: form.systemFileName,
+        file_path: form.filePath,
+      });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+          "User-Agent": SI_UA,
+        },
+        body,
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!res.ok) continue;
+      const attachBody = await extractAttachBody(
+        new Uint8Array(await res.arrayBuffer()),
+      );
+      if (attachBody) return attachBody;
     } catch {
       continue;
     }
