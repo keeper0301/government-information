@@ -341,13 +341,14 @@ function extractTags(result: ClassifyResult) {
 }
 
 export type AutoConfirmTier = "high" | "mid" | "low";
+type ProgramAutoConfirmTier = "high" | "mid";
 
 // Task 4 — auto_confirm_tier / auto_confirmed_at 메타를 INSERT payload 에 동봉.
 // options.autoConfirmTier 가 있으면 자동 등록 마킹, null 이면 사장님 수동 confirm 으로 간주.
 // DDL 077 의 welfare_programs / loan_programs 컬럼이 이 두 필드를 받는다.
 export function buildWelfareInsertPayload(
   candidate: PressCandidateForConfirm,
-  options?: { autoConfirmTier?: AutoConfirmTier | null },
+  options?: { autoConfirmTier?: ProgramAutoConfirmTier | null },
 ) {
   requirePending(candidate, "welfare");
   const result = candidate.classified_payload;
@@ -388,7 +389,7 @@ export function buildWelfareInsertPayload(
 
 export function buildLoanInsertPayload(
   candidate: PressCandidateForConfirm,
-  options?: { autoConfirmTier?: AutoConfirmTier | null },
+  options?: { autoConfirmTier?: ProgramAutoConfirmTier | null },
 ) {
   requirePending(candidate, "loan");
   const result = candidate.classified_payload;
@@ -537,7 +538,7 @@ export async function getPressCandidateForConfirm(
 export async function confirmPressCandidate(
   candidateId: string,
   actorId: string | null,
-  options?: { autoConfirmTier?: AutoConfirmTier | null },
+  options?: { autoConfirmTier?: ProgramAutoConfirmTier | null },
 ): Promise<{ table: "welfare_programs" | "loan_programs"; id: string }> {
   const candidate = await getPressCandidateForConfirm(candidateId);
   if (!candidate) throw new Error("후보를 찾을 수 없습니다.");
@@ -772,9 +773,12 @@ export async function autoConfirmPendingPressCandidates({
 
     try {
       // 자동 confirm 메타 (auto_confirm_tier / auto_confirmed_at) 동봉.
-      // floor='low' 운영 시 low 도 자동 승인 출처가 감사/회수 화면에 남아야 하므로
-      // null 로 강등하지 않고 실제 tier 를 기록한다.
-      await confirmPressCandidate(row.id, null, { autoConfirmTier: tier });
+      // production DB 의 welfare/loan check constraint 는 high/mid 만 허용한다.
+      // floor='low' 운영 시에도 자동 승인은 수행하되 program row 메타는 null 로 두고,
+      // candidate.confidence_tier='low' + confirmed_by=NULL + press_l2_confirm audit 으로 추적한다.
+      await confirmPressCandidate(row.id, null, {
+        autoConfirmTier: tier === "high" || tier === "mid" ? tier : null,
+      });
       result.confirmed += 1;
     } catch (e) {
       result.errors.push({

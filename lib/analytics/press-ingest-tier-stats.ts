@@ -5,7 +5,7 @@
 // 1주차 모니터링 spec (memory project_press_ingest_confidence_tier_2026_05_09).
 //
 // 핵심 metric:
-// - autoConfirm24h/7d: high+mid+low 자동 등록 누적
+// - autoConfirm24h/7d: high+mid program-row metadata + low candidate/audit metadata 자동 등록 누적
 // - midRevokeRate7d: mid 사후 회수율 (>5% = 임계 낮추기 위험)
 // - lowConfirmRate7d: low pending → 사장님 confirm 률 (>50% = LLM 보수적)
 // - lowConfirmRateHint: AUTO_CONFIRM_TIER_FLOOR 튜닝 자동 추천
@@ -157,12 +157,10 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
 
   const highCount24h = w24High + l24High;
   const midCount24h = w24Mid + l24Mid;
-  const lowAutoCount24h = w24Low + l24Low;
-  const autoConfirm24h = highCount24h + midCount24h + lowAutoCount24h;
+  const lowProgramAutoCount24h = w24Low + l24Low;
   const highCount7d = w7High + l7High;
   const midCount7d = w7Mid + l7Mid;
-  const lowAutoCount7d = w7Low + l7Low;
-  const autoConfirm7d = highCount7d + midCount7d + lowAutoCount7d;
+  const lowProgramAutoCount7d = w7Low + l7Low;
 
   const [revoke24h, revoke7d] = await Promise.all([
     safe(
@@ -199,10 +197,9 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
   }
   const midRevokeRate7d =
     midCount7d > 0 ? Math.round((midRevoke7d / midCount7d) * 100) : 0;
-  const revokeRate7d =
-    autoConfirm7d > 0 ? Math.round((revoke7d / autoConfirm7d) * 100) : 0;
 
-  const [lowQueue, pressPending, newsBacklog] = await Promise.all([
+  const [lowQueue, pressPending, newsBacklog, lowCandidateAuto24h, lowCandidateAuto7d] =
+    await Promise.all([
     safe(
       admin
         .from("press_ingest_candidates")
@@ -223,7 +220,32 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
         .is("classified_at", null)
         .eq("is_hidden", false),
     ),
+    safe(
+      admin
+        .from("press_ingest_candidates")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "confirmed")
+        .eq("confidence_tier", "low")
+        .is("confirmed_by", null)
+        .gte("confirmed_at", since24h),
+    ),
+    safe(
+      admin
+        .from("press_ingest_candidates")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "confirmed")
+        .eq("confidence_tier", "low")
+        .is("confirmed_by", null)
+        .gte("confirmed_at", since7d),
+    ),
   ]);
+
+  const lowAutoCount24h = Math.max(lowProgramAutoCount24h, lowCandidateAuto24h);
+  const lowAutoCount7d = Math.max(lowProgramAutoCount7d, lowCandidateAuto7d);
+  const autoConfirm24h = highCount24h + midCount24h + lowAutoCount24h;
+  const autoConfirm7d = highCount7d + midCount7d + lowAutoCount7d;
+  const revokeRate7d =
+    autoConfirm7d > 0 ? Math.round((revoke7d / autoConfirm7d) * 100) : 0;
 
   const [lowConfirmed7d, lowRejected7d] = await Promise.all([
     safe(

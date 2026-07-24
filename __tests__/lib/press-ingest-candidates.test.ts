@@ -181,10 +181,10 @@ describe("press ingest confirm payloads", () => {
     expect(payload.benefit_tags).toContain("주거");
   });
 
-  it("low tier 자동 승인도 auto_confirm_tier='low' 로 감사 메타를 남긴다", () => {
-    const payload = buildWelfareInsertPayload(candidate, { autoConfirmTier: "low" });
-    expect(payload.auto_confirm_tier).toBe("low");
-    expect(payload.auto_confirmed_at).toEqual(expect.any(String));
+  it("low tier 자동 승인은 program row constraint 때문에 auto_confirm_tier=null 로 둔다", () => {
+    const payload = buildWelfareInsertPayload(candidate, { autoConfirmTier: null });
+    expect(payload.auto_confirm_tier).toBeNull();
+    expect(payload.auto_confirmed_at).toBeNull();
   });
 
   it("LLM이 뱉은 불완전/placeholder 날짜는 DB insert 전에 null로 낮춘다", () => {
