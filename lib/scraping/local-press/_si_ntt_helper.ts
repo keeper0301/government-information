@@ -15,7 +15,7 @@
 import { decodeBasicEntities } from "./_factory";
 
 const CELL_OPEN_REGEX =
-  /<td[^>]*\sclass="(?:p-table__content|bbs_content)[^"]*"[^>]*>/i;
+  /<td\b[^>]*\bclass\s*=\s*["'][^"']*\b(?:p-table__content|bbs_content)\b[^"']*["'][^>]*>/i;
 
 // 본문 셀 open ~ 매칭되는 </td> 까지 (중첩 <td> 깊이 추적). 없으면 null.
 function extractCellContent(html: string): string | null {
