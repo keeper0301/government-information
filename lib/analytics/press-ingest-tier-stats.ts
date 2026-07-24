@@ -5,7 +5,7 @@
 // 1주차 모니터링 spec (memory project_press_ingest_confidence_tier_2026_05_09).
 //
 // 핵심 metric:
-// - autoConfirm24h/7d: high+mid 자동 등록 누적
+// - autoConfirm24h/7d: high+mid+low 자동 등록 누적
 // - midRevokeRate7d: mid 사후 회수율 (>5% = 임계 낮추기 위험)
 // - lowConfirmRate7d: low pending → 사장님 confirm 률 (>50% = LLM 보수적)
 // - lowConfirmRateHint: AUTO_CONFIRM_TIER_FLOOR 튜닝 자동 추천
@@ -18,9 +18,11 @@ export type PressIngestTierStats = {
   autoConfirm24h: number;
   highCount24h: number;
   midCount24h: number;
+  lowAutoCount24h: number;
   autoConfirm7d: number;
   highCount7d: number;
   midCount7d: number;
+  lowAutoCount7d: number;
   autoRevoke24h: number;
   autoRevoke7d: number;
   revokeRate7d: number;
@@ -53,8 +55,20 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
     Date.now() - 7 * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const [w24High, w24Mid, l24High, l24Mid, w7High, w7Mid, l7High, l7Mid] =
-    await Promise.all([
+  const [
+    w24High,
+    w24Mid,
+    w24Low,
+    l24High,
+    l24Mid,
+    l24Low,
+    w7High,
+    w7Mid,
+    w7Low,
+    l7High,
+    l7Mid,
+    l7Low,
+  ] = await Promise.all([
       safe(
         admin
           .from("welfare_programs")
@@ -71,6 +85,13 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
       ),
       safe(
         admin
+          .from("welfare_programs")
+          .select("id", { count: "exact", head: true })
+          .eq("auto_confirm_tier", "low")
+          .gte("auto_confirmed_at", since24h),
+      ),
+      safe(
+        admin
           .from("loan_programs")
           .select("id", { count: "exact", head: true })
           .eq("auto_confirm_tier", "high")
@@ -81,6 +102,13 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
           .from("loan_programs")
           .select("id", { count: "exact", head: true })
           .eq("auto_confirm_tier", "mid")
+          .gte("auto_confirmed_at", since24h),
+      ),
+      safe(
+        admin
+          .from("loan_programs")
+          .select("id", { count: "exact", head: true })
+          .eq("auto_confirm_tier", "low")
           .gte("auto_confirmed_at", since24h),
       ),
       safe(
@@ -99,6 +127,13 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
       ),
       safe(
         admin
+          .from("welfare_programs")
+          .select("id", { count: "exact", head: true })
+          .eq("auto_confirm_tier", "low")
+          .gte("auto_confirmed_at", since7d),
+      ),
+      safe(
+        admin
           .from("loan_programs")
           .select("id", { count: "exact", head: true })
           .eq("auto_confirm_tier", "high")
@@ -109,16 +144,25 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
           .from("loan_programs")
           .select("id", { count: "exact", head: true })
           .eq("auto_confirm_tier", "mid")
+          .gte("auto_confirmed_at", since7d),
+      ),
+      safe(
+        admin
+          .from("loan_programs")
+          .select("id", { count: "exact", head: true })
+          .eq("auto_confirm_tier", "low")
           .gte("auto_confirmed_at", since7d),
       ),
     ]);
 
   const highCount24h = w24High + l24High;
   const midCount24h = w24Mid + l24Mid;
-  const autoConfirm24h = highCount24h + midCount24h;
+  const lowAutoCount24h = w24Low + l24Low;
+  const autoConfirm24h = highCount24h + midCount24h + lowAutoCount24h;
   const highCount7d = w7High + l7High;
   const midCount7d = w7Mid + l7Mid;
-  const autoConfirm7d = highCount7d + midCount7d;
+  const lowAutoCount7d = w7Low + l7Low;
+  const autoConfirm7d = highCount7d + midCount7d + lowAutoCount7d;
 
   const [revoke24h, revoke7d] = await Promise.all([
     safe(
@@ -219,9 +263,11 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
     autoConfirm24h,
     highCount24h,
     midCount24h,
+    lowAutoCount24h,
     autoConfirm7d,
     highCount7d,
     midCount7d,
+    lowAutoCount7d,
     autoRevoke24h: revoke24h,
     autoRevoke7d: revoke7d,
     revokeRate7d,

@@ -340,12 +340,14 @@ function extractTags(result: ClassifyResult) {
   };
 }
 
+export type AutoConfirmTier = "high" | "mid" | "low";
+
 // Task 4 — auto_confirm_tier / auto_confirmed_at 메타를 INSERT payload 에 동봉.
-// options.autoConfirmTier 가 'high' / 'mid' 면 자동 등록 마킹, null 이면 사장님 수동 confirm 으로 간주.
+// options.autoConfirmTier 가 있으면 자동 등록 마킹, null 이면 사장님 수동 confirm 으로 간주.
 // DDL 077 의 welfare_programs / loan_programs 컬럼이 이 두 필드를 받는다.
 export function buildWelfareInsertPayload(
   candidate: PressCandidateForConfirm,
-  options?: { autoConfirmTier?: "high" | "mid" | null },
+  options?: { autoConfirmTier?: AutoConfirmTier | null },
 ) {
   requirePending(candidate, "welfare");
   const result = candidate.classified_payload;
@@ -386,7 +388,7 @@ export function buildWelfareInsertPayload(
 
 export function buildLoanInsertPayload(
   candidate: PressCandidateForConfirm,
-  options?: { autoConfirmTier?: "high" | "mid" | null },
+  options?: { autoConfirmTier?: AutoConfirmTier | null },
 ) {
   requirePending(candidate, "loan");
   const result = candidate.classified_payload;
@@ -535,7 +537,7 @@ export async function getPressCandidateForConfirm(
 export async function confirmPressCandidate(
   candidateId: string,
   actorId: string | null,
-  options?: { autoConfirmTier?: "high" | "mid" | null },
+  options?: { autoConfirmTier?: AutoConfirmTier | null },
 ): Promise<{ table: "welfare_programs" | "loan_programs"; id: string }> {
   const candidate = await getPressCandidateForConfirm(candidateId);
   if (!candidate) throw new Error("후보를 찾을 수 없습니다.");
@@ -770,12 +772,9 @@ export async function autoConfirmPendingPressCandidates({
 
     try {
       // 자동 confirm 메타 (auto_confirm_tier / auto_confirmed_at) 동봉.
-      // shouldAutoConfirm 통과 시 tier 는 항상 high/mid (low 는 floor 기본값에서 제외).
-      // floor='low' 운영 시에도 low 가 들어올 수 있으나 buildXInsertPayload 의
-      // autoConfirmTier 타입이 'high' | 'mid' | null 이라 low 는 null 로 마킹.
-      await confirmPressCandidate(row.id, null, {
-        autoConfirmTier: tier === "high" || tier === "mid" ? tier : null,
-      });
+      // floor='low' 운영 시 low 도 자동 승인 출처가 감사/회수 화면에 남아야 하므로
+      // null 로 강등하지 않고 실제 tier 를 기록한다.
+      await confirmPressCandidate(row.id, null, { autoConfirmTier: tier });
       result.confirmed += 1;
     } catch (e) {
       result.errors.push({
@@ -975,7 +974,7 @@ export type AutoConfirmedRow = {
   title: string;
   // welfare 는 region, loan 은 source 를 동일 슬롯으로 노출 (UI 가독성 통일)
   ministry: string | null;
-  auto_confirm_tier: "high" | "mid";
+  auto_confirm_tier: AutoConfirmTier;
   auto_confirmed_at: string;
   is_hidden: boolean;
   revoked_at: string | null;
@@ -1047,7 +1046,7 @@ export async function listAutoConfirmedPolicies({
       program_id: w.id,
       title: w.title,
       ministry: w.region ?? null,
-      auto_confirm_tier: w.auto_confirm_tier as "high" | "mid",
+      auto_confirm_tier: w.auto_confirm_tier as AutoConfirmTier,
       auto_confirmed_at: w.auto_confirmed_at,
       is_hidden: w.is_hidden,
       revoked_at: w.revoked_at,
@@ -1070,7 +1069,7 @@ export async function listAutoConfirmedPolicies({
       program_id: l.id,
       title: l.title,
       ministry: l.source ?? null,
-      auto_confirm_tier: l.auto_confirm_tier as "high" | "mid",
+      auto_confirm_tier: l.auto_confirm_tier as AutoConfirmTier,
       auto_confirmed_at: l.auto_confirmed_at,
       is_hidden: l.is_hidden,
       revoked_at: l.revoked_at,
