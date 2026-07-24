@@ -38,6 +38,8 @@ const BASE_SIGNALS: HealthSignals = {
   naverPublishAttempts24h: 5,
   naverPublishFails24h: 0,
   naverPublishEligiblePending: 10,
+  naverPublishBacklogDetail:
+    "pending 10, 24h attempts 5 (success 5, fail 0, failRate 0%)",
   // 2026-05-14 — baseline 1h (방금 실행됨, alert X). 36h+ 케이스는 별도 테스트.
   collectLastRunHours: 1,
   // 2026-05-17 — baseline 0 (전 시·군 정상, alert X). 10+ 케이스는 별도 테스트.
@@ -812,10 +814,13 @@ describe("checkThresholds — 2026-05-14: naver_publish_failure (codex spec)", (
       naverPublishAttempts24h: 20,
       naverPublishFails24h: 19,
       naverPublishEligiblePending: 10,
+      naverPublishBacklogDetail:
+        "pending 10, 24h attempts 20 (success 1, fail 19, failRate 95%)",
     });
     const a = alerts.find((x) => x.key === "naver_publish_failure");
     expect(a).toBeDefined();
     expect(a?.message).toContain("95%");
+    expect(a?.message).toContain("pending 10, 24h attempts 20");
     expect(a?.recommendation).toContain("runner");
   });
 
