@@ -191,6 +191,15 @@ function isTransientTimeout(err: unknown): boolean {
   );
 }
 
+function isTransientNetworkFetchError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  // undici/Node occasionally throws TypeError("fetch failed") for connection
+  // resets/DNS/TLS race without a stable cause code. Treat only the raw network
+  // TypeError as retryable; HTTP status failures are thrown as Error("fetch
+  // failed (500)") above and still fail fast so broken sites stay audible.
+  return err.name === "TypeError" && /^fetch failed$/i.test(err.message ?? "");
+}
+
 export async function fetchPage(
   url: string,
   encoding?: string,
@@ -207,8 +216,8 @@ export async function fetchPage(
     if (isTlsChainError(err)) {
       return await fetchOnce(url, encoding, true);
     }
-    if (!isTransientTimeout(err)) throw err;
-    // 1초 백오프 후 1회 retry (Vercel function 일시 사고 자가 복구)
+    if (!isTransientTimeout(err) && !isTransientNetworkFetchError(err)) throw err;
+    // 1초 백오프 후 1회 retry (Vercel function/undici 일시 네트워크 사고 자가 복구)
     await new Promise((resolve) => setTimeout(resolve, 1000));
     return await fetchOnce(url, encoding);
   }

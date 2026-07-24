@@ -39,6 +39,29 @@ describe("_factory fetchPage 안전 가드", () => {
     );
   });
 
+  it("일시 TypeError fetch failed → 1회 재시도 후 성공", async () => {
+    const body = "<html>" + "가".repeat(2000) + "</html>";
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(new Response(body, { status: 200 }));
+
+    const result = await fetchPage("https://example.com/detail");
+
+    expect(result).toContain("가가가");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("HTTP status fetch failed 는 재시도하지 않고 즉시 실패", async () => {
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue(new Response("server error", { status: 500 }));
+
+    await expect(fetchPage("https://example.com/status-500")).rejects.toThrow(
+      /fetch failed \(500\)/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("작은 응답 (< 1KB, 196 byte redirect HTML) → throw response too small", async () => {
     // 포항 사례: mid 파라미터 누락 시 응답
     const body = `<!DOCTYPE html><html lang="ko"><head><title> 알림창 </title><script>alert('잘못된 접근입니다.'); location.href='/'</script></head><body></body></html>`;
