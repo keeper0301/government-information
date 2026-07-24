@@ -187,6 +187,8 @@ export type HealthSignals = {
    * noindex(summary+classified_at) 기준 적용 — 실제 index 후보만 카운트.
    */
   newsRatio: number;
+  /** newsRatio 산출 상세 — news/(welfare+loan+blog+news) count 를 dry-run 에 노출. */
+  newsRatioDetail: string;
   /**
    * 2026-05-31 추가 — AdSense 자동 트리거 Phase A. ADSENSE_REVIEW_MODE on 상태에서
    * P2 ai_commentary 백필이 80%+ 도달했는지 (review mode off 안전 가능 시점).
@@ -656,7 +658,19 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   // 2026-05-30 — 24h null_date ≥5 누적 시·군 (factory date 추출 collector 점검 신호).
   const localPressNullDateCities = await getHighNullDateCityCount(5, 24);
   // 2026-05-30 — news 비중 (외부 보도자료 대 keepioo 자체 자산).
-  const { ratio: newsRatio, commentaryBackfillRatio } = await getNewsRatio();
+  const {
+    welfare: newsRatioWelfare,
+    loan: newsRatioLoan,
+    blog: newsRatioBlog,
+    newsIndexable,
+    ratio: newsRatio,
+    commentaryBackfillRatio,
+  } = await getNewsRatio();
+  const newsRatioTotal =
+    newsRatioWelfare + newsRatioLoan + newsRatioBlog + newsIndexable;
+  const newsRatioDetail =
+    `news ${newsIndexable.toLocaleString()} / total ${newsRatioTotal.toLocaleString()}` +
+    ` (welfare ${newsRatioWelfare.toLocaleString()}, loan ${newsRatioLoan.toLocaleString()}, blog ${newsRatioBlog.toLocaleString()})`;
   // 2026-05-31 — AdSense 자동 트리거 Phase A. review mode on + 백필 ≥80% = off 안전.
   const adsenseReadyToDisable =
     ADSENSE_REVIEW_MODE && commentaryBackfillRatio >= 0.8;
@@ -728,6 +742,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     localPressCadenceDetail,
     localPressNullDateCities,
     newsRatio,
+    newsRatioDetail,
     adsenseReadyToDisable,
     vercelTokenExpiresInDays,
     blogPublishStaleHours,
@@ -1119,7 +1134,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   if (s.newsRatio >= NEWS_RATIO_HIGH_FLOOR) {
     alerts.push({
       key: "news_ratio_high",
-      message: `news 비중 ${(s.newsRatio * 100).toFixed(1)}% (임계 ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}%+). Google scaled content 정책 의심 표면 — keepioo USP 대비 외부 보도자료 비중 과도.`,
+      message: `news 비중 ${(s.newsRatio * 100).toFixed(1)}% (임계 ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}%+). ${s.newsRatioDetail}. Google scaled content 정책 의심 표면 — keepioo USP 대비 외부 보도자료 비중 과도.`,
       recommendation:
         "1) welfare/loan 신규 collector 점검 (수집 cron 노쇼 시 비율 자연 상승) 2) news selective noindex 임계 강화 검토 (현재 summary+classified_at, body length 추가 고려) 3) news 도시별 자체 해설 박스(PolicyGuideBox 등) 추가로 originality 보강.",
     });
