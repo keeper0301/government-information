@@ -12,4 +12,8 @@ describe("naver blog queue ordering", () => {
     expect(queueSource).toContain("pending 항목을 오래된 순서");
     expect(queueSource).toContain('.order("created_at", { ascending: true })');
   });
+
+  it("selects attempt_count so admin can distinguish retryable and blocked items", () => {
+    expect(queueSource).toContain("attempt_count");
+  });
 });

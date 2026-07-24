@@ -192,6 +192,20 @@ export default async function AdminNaverBlogPage() {
                       카테고리: {row.blog_post.category ?? "—"} · 추가일:{" "}
                       {formatDate(row.created_at)}
                     </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
+                        시도 {row.attempt_count ?? 0}회
+                      </span>
+                      {(row.attempt_count ?? 0) >= 3 ? (
+                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-red-700">
+                          Extension 자동 재시도 차단 · 수동 검수 필요
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-green-50 px-2 py-0.5 text-green-700">
+                          Extension 재시도 가능
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-grey-500 mt-1">
                       백링크 URL:{" "}
                       <a
