@@ -55,6 +55,7 @@ const BASE_SIGNALS: HealthSignals = {
   localPressNullDateCities: 0,
   // 2026-05-30 — baseline 0.3 (news 비중 정상, alert X). ≥0.6 케이스 별도 테스트.
   newsRatio: 0.3,
+  newsRatioDetail: "news 300 / total 1,000 (welfare 500, loan 150, blog 50)",
   // 2026-05-31 — baseline false (백필 미달 or review mode off, alert X). true 별도 테스트.
   adsenseReadyToDisable: false,
   // 2026-05-31 — baseline null (ENV 미설정 = alert X). 7일/만료 케이스 별도.
@@ -901,7 +902,9 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
 
   it("newsRatio 0.6+ → news_ratio_high alert (Google scaled content 정책)", () => {
     const alerts = checkThresholds({ ...ACTIVE, newsRatio: 0.6 });
-    expect(alerts.find((a) => a.key === "news_ratio_high")).toBeTruthy();
+    const alert = alerts.find((a) => a.key === "news_ratio_high");
+    expect(alert).toBeTruthy();
+    expect(alert?.message).toContain("news 300 / total 1,000");
   });
 
   it("newsRatio 0.59 → 발화 안 함 (boundary)", () => {
