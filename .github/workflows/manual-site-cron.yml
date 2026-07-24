@@ -27,6 +27,7 @@ on:
           - search-console-sitemap-submit
           - health-alert-dry
           - health-alert
+          - scrape-local-press-pocheon-yeoju
           - news-classify
           - news-ai-commentary-backfill
           - user-contact-reminder-dry
@@ -127,6 +128,10 @@ jobs:
               ;;
             health-alert)
               path="/api/cron/health-alert"
+              method="GET"
+              ;;
+            scrape-local-press-pocheon-yeoju)
+              path="/api/cron/scrape-local-press?cities=pocheon,yeoju"
               method="GET"
               ;;
             news-classify)

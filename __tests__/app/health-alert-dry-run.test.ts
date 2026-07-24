@@ -24,4 +24,12 @@ describe("health-alert dry-run wiring", () => {
     expect(workflowSource).toContain('path="/api/cron/health-alert?dry=1&log_safe=1"');
     expect(workflowSource).toContain("- health-alert");
   });
+
+  it("exposes a scoped local-press recovery endpoint for currently stale cities", () => {
+    expect(workflowSource).toContain("- scrape-local-press-pocheon-yeoju");
+    expect(workflowSource).toContain(
+      'path="/api/cron/scrape-local-press?cities=pocheon,yeoju"',
+    );
+    expect(workflowSource).toContain('method="GET"');
+  });
 });
