@@ -67,6 +67,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "경기도 연천군")?.covered,
     ).toMatchObject({ source: "static", key: "yeoncheon" });
     expect(
+      rows.find((row) => row.fullName === "강원특별자치도 속초시")?.covered,
+    ).toMatchObject({ source: "static", key: "sokcho" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
