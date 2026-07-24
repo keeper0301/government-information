@@ -615,7 +615,13 @@ export async function getHealthSignals(): Promise<HealthSignals> {
 
   // 2026-05-14 — 네이버 publish 24h 통계 + eligible pending (codex 권장 spec).
   // 발행 가능한 큐가 있는데 시도가 거의 다 fail = 진짜 사고. 셋 다 충족 시만 발화.
-  const [naverAtt, naverFails, naverPending] = await Promise.all([
+  const [
+    naverAtt,
+    naverFails,
+    naverPending,
+    naverBlockedPending,
+    naverSkippedExtensionFailed,
+  ] = await Promise.all([
     sb
       .from("naver_publish_audit")
       .select("*", { count: "exact", head: true })
@@ -631,6 +637,16 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       .select("*", { count: "exact", head: true })
       .eq("status", "pending")
       .lt("attempt_count", 3),
+    sb
+      .from("naver_blog_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+      .gte("attempt_count", 3),
+    sb
+      .from("naver_blog_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "skipped")
+      .eq("skip_reason", "extension_failed_3_attempts"),
   ]);
   const naverPublishAttempts24h = naverAtt.count ?? 0;
   const naverPublishFails24h = naverFails.count ?? 0;
@@ -642,8 +658,12 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const naverPublishFailRate = naverPublishAttempts24h
     ? Math.round((naverPublishFails24h / naverPublishAttempts24h) * 100)
     : 0;
+  const naverPublishBlockedPending = naverBlockedPending.count ?? 0;
+  const naverPublishSkippedExtensionFailed =
+    naverSkippedExtensionFailed.count ?? 0;
   const naverPublishBacklogDetail =
-    `pending ${naverPublishEligiblePending.toLocaleString()}, 24h attempts ${naverPublishAttempts24h.toLocaleString()}` +
+    `eligible ${naverPublishEligiblePending.toLocaleString()}, blocked ${naverPublishBlockedPending.toLocaleString()}, ` +
+    `skippedExtensionFailed ${naverPublishSkippedExtensionFailed.toLocaleString()}, 24h attempts ${naverPublishAttempts24h.toLocaleString()}` +
     ` (success ${naverPublishSuccesses24h.toLocaleString()}, fail ${naverPublishFails24h.toLocaleString()}, failRate ${naverPublishFailRate}%)`;
 
   // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
