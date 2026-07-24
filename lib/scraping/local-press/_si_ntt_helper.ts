@@ -2,7 +2,8 @@
 // SI 전자정부 표준 게시판(selectBbsNttView) 본문 파서 (2026-05-29)
 // ============================================================
 // 군포·김포·양주·구리·충주 등 `selectBbsNttList.do?bbsNo=N&key=M` CMS 공용.
-// 본문 셀은 스킨별 2종: <td class="p-table__content"> / <td class="bbs_content">
+// 본문 셀은 스킨별 3종: <td class="p-table__content"> / <td class="bbs_content"> /
+// <td class="board_text_td" id="cnText">.
 //   (class 앞에 colspan 등 속성이 먼저 오므로 <td[^>]*\sclass= 로 매칭)
 //
 // 끝 경계는 정규식 마커 대신 **<td> 깊이 추적**으로 본문 셀의 진짜 닫는 </td> 를 찾는다.
@@ -15,7 +16,7 @@
 import { decodeBasicEntities } from "./_factory";
 
 const CELL_OPEN_REGEX =
-  /<td\b[^>]*\bclass\s*=\s*["'][^"']*\b(?:p-table__content|bbs_content)\b[^"']*["'][^>]*>/i;
+  /<td\b[^>]*\bclass\s*=\s*["'][^"']*\b(?:p-table__content|bbs_content|board_text_td)\b[^"']*["'][^>]*>/i;
 
 // 본문 셀 open ~ 매칭되는 </td> 까지 (중첩 <td> 깊이 추적). 없으면 null.
 function extractCellContent(html: string): string | null {

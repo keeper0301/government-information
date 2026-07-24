@@ -61,6 +61,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "경기도 양평군")?.covered,
     ).toMatchObject({ source: "static", key: "yangpyeong" });
     expect(
+      rows.find((row) => row.fullName === "경기도 가평군")?.covered,
+    ).toMatchObject({ source: "static", key: "gapyeong" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
