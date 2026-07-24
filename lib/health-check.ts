@@ -129,6 +129,8 @@ export type HealthSignals = {
   naverPublishAttempts24h: number;
   naverPublishFails24h: number;
   naverPublishEligiblePending: number;
+  /** 네이버 발행 큐/시도 상태를 dry-run 에 바로 설명하는 운영 detail. */
+  naverPublishBacklogDetail: string;
   /**
    * /api/collect (GitHub Actions collect.yml KST 13:00) 마지막 실행 시간차 (hours).
    * 36h+ = cron 노쇼 (GitHub Actions secret 만료·workflow disabled 등).
@@ -633,6 +635,16 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const naverPublishAttempts24h = naverAtt.count ?? 0;
   const naverPublishFails24h = naverFails.count ?? 0;
   const naverPublishEligiblePending = naverPending.count ?? 0;
+  const naverPublishSuccesses24h = Math.max(
+    0,
+    naverPublishAttempts24h - naverPublishFails24h,
+  );
+  const naverPublishFailRate = naverPublishAttempts24h
+    ? Math.round((naverPublishFails24h / naverPublishAttempts24h) * 100)
+    : 0;
+  const naverPublishBacklogDetail =
+    `pending ${naverPublishEligiblePending.toLocaleString()}, 24h attempts ${naverPublishAttempts24h.toLocaleString()}` +
+    ` (success ${naverPublishSuccesses24h.toLocaleString()}, fail ${naverPublishFails24h.toLocaleString()}, failRate ${naverPublishFailRate}%)`;
 
   // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
   const localPressStaleCityNames = await getStaleCityNames(72);
@@ -731,6 +743,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     naverPublishAttempts24h,
     naverPublishFails24h,
     naverPublishEligiblePending,
+    naverPublishBacklogDetail,
     collectLastRunHours,
     localPressStaleCities,
     localPressStaleDetail,
@@ -1030,7 +1043,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     );
     alerts.push({
       key: "naver_publish_failure",
-      message: `네이버 publish 24h 실패율 ${failRate}% (${s.naverPublishFails24h}/${s.naverPublishAttempts24h}, pending ${s.naverPublishEligiblePending}건). Playwright IP 차단 또는 legacy runner 잔존 가동 의심.`,
+      message: `네이버 publish 24h 실패율 ${failRate}% (${s.naverPublishFails24h}/${s.naverPublishAttempts24h}, ${s.naverPublishBacklogDetail}). Playwright IP 차단 또는 legacy runner 잔존 가동 의심.`,
       recommendation:
         "/admin/naver-blog 의 audit details->>'runner' 분포 확인. legacy-cron-playwright 다수면 NAVER_PLAYWRIGHT_ENABLED 미설정 확인. local-playwright 다수면 사장님 노트북 runner.mjs 종료. Chrome Extension pivot 정상 가동 시 runner='chrome-extension' 으로 잡힘.",
     });
