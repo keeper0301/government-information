@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // react cache 가 결과 공유 → round trip 1회.
 import { getAuthUsersCached } from "@/lib/admin-stats";
 import {
-  getStaleCityCount,
+  getStaleCityNames,
   getHighNullDateCityCount,
   getNewsRatio,
 } from "@/lib/analytics/local-press-stats";
@@ -127,6 +127,11 @@ export type HealthSignals = {
    * 첫 가동 3일 baseline 보다는 LOCAL_PRESS_STALE_FLOOR=10 정도 보수적 baseline 권장.
    */
   localPressStaleCities: number;
+  /**
+   * localPressStaleCities 의 상위 도시명. alert threshold 미만이어도 dry-run 에 노출해
+   * "1건 남음" 상태를 바로 targeted rerun/selector 점검으로 이어갈 수 있게 한다.
+   */
+  localPressStaleDetail?: string;
   /**
    * 2026-06-09 추가 — 자가치유 감지 확장. 23 GHA collector 중 고장(no_audit·
    * list_broken·body_fail) 으로 분류된 수. ≥1 = 텔레그램 alert(도시·원인·제안 첨부).
@@ -350,6 +355,13 @@ const LOCAL_PRESS_BROKEN_FLOOR = Number(
 const BLOG_PUBLISH_STALE_HOURS = Number(
   process.env.BLOG_PUBLISH_STALE_HOURS ?? "60",
 );
+
+function formatStaleCityDetail(cities: string[]): string {
+  if (cities.length === 0) return "";
+  const shown = cities.slice(0, 10).join(", ");
+  const more = cities.length > 10 ? ` 외 ${cities.length - 10}건` : "";
+  return `${shown}${more}`;
+}
 
 export async function getHealthSignals(): Promise<HealthSignals> {
   const sb = createAdminClient();
@@ -589,7 +601,9 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const naverPublishEligiblePending = naverPending.count ?? 0;
 
   // 2026-05-17 — 시·군 보도자료 collector stale (72h 안 inserted 0 인 시·군 수).
-  const localPressStaleCities = await getStaleCityCount(72);
+  const localPressStaleCityNames = await getStaleCityNames(72);
+  const localPressStaleCities = localPressStaleCityNames.length;
+  const localPressStaleDetail = formatStaleCityDetail(localPressStaleCityNames);
   // 2026-06-09 — 자가치유 감지 확장. 23 GHA collector 진단(24h audit) → 고장 수 +
   // 도시·원인·제안 detail(텔레그램용). stale(72h)보다 민감해 조기 감지.
   const collectorDiagnoses = await getCollectorDiagnoses(24);
@@ -668,6 +682,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     naverPublishEligiblePending,
     collectLastRunHours,
     localPressStaleCities,
+    localPressStaleDetail,
     localPressBrokenCollectors,
     localPressCollectorDetail,
     localPressInsertStopped,
@@ -959,7 +974,9 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "local_press_stale",
       message: `시·군 보도자료 collector stale ${s.localPressStaleCities}건 (임계 ${LOCAL_PRESS_STALE_FLOOR}+). 최근 72h inserted 0 시·군 수.`,
       recommendation:
-        "/admin/autonomous 의 시·군 카드 확인 → 오류 시·군 사이트 직접 접속해 selector 점검. KST 09:00 cron 다음 회차 자동 재시도. 3 회차 연속 실패 시 lib/scraping/local-press/{city}.ts regex 수정 필요.",
+        s.localPressStaleDetail
+          ? `stale 도시: ${s.localPressStaleDetail}\n/admin/autonomous 의 시·군 카드 확인 → 오류 시·군 사이트 직접 접속해 selector 점검. KST 09:00 cron 다음 회차 자동 재시도. 3 회차 연속 실패 시 lib/scraping/local-press/{city}.ts regex 수정 필요.`
+          : "/admin/autonomous 의 시·군 카드 확인 → 오류 시·군 사이트 직접 접속해 selector 점검. KST 09:00 cron 다음 회차 자동 재시도. 3 회차 연속 실패 시 lib/scraping/local-press/{city}.ts regex 수정 필요.",
     });
   }
 

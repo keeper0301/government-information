@@ -33,6 +33,7 @@ function makeBuilder(): unknown {
 import {
   getNewsRatio,
   getHighNullDateCityCount,
+  getStaleCityNames,
 } from "@/lib/analytics/local-press-stats";
 
 beforeEach(() => {
@@ -71,6 +72,23 @@ describe("getNewsRatio", () => {
     responseQueue.push({ count: 0 });
     const r = await getNewsRatio();
     expect(r.commentaryBackfillRatio).toBe(0);
+  });
+});
+
+describe("getStaleCityNames", () => {
+  it("최근 72h fetched>0 도시를 stale 목록에서 제외하고 노쇼 도시는 이름으로 반환한다", async () => {
+    responseQueue.push({
+      data: [
+        { details: { city: "노원구", fetched: 3 } },
+        { details: { city: "없는도시", fetched: 99 } },
+      ],
+    });
+
+    const stale = await getStaleCityNames(72);
+
+    expect(stale).not.toContain("노원구");
+    expect(stale).not.toContain("없는도시");
+    expect(stale.length).toBeGreaterThan(0);
   });
 });
 

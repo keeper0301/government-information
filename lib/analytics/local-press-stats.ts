@@ -247,7 +247,7 @@ export async function getHighNullDateCityCount(
 // 시·군 수를 반환(정적 CITY_REGISTRY + 프록시 도시). fetched 0 = collector 가 list/본문을 못
 // 가져옴 = regex 깨짐·사이트 구조 변경·노쇼. (신규 없어 중복 skip 만 한 날은 fetched>0 라 정상.)
 // audit 자체가 없는 시·군도 stale 로 처리 (cron 노쇼 진단 보조).
-export async function getStaleCityCount(windowHours = 72): Promise<number> {
+export async function getStaleCityNames(windowHours = 72): Promise<string[]> {
   const admin = createAdminClient();
   const since = new Date(
     Date.now() - windowHours * 60 * 60 * 1000,
@@ -277,11 +277,15 @@ export async function getStaleCityCount(windowHours = 72): Promise<number> {
   const targets = new Set<string>(CITY_REGISTRY.map((e) => e.city));
   for (const c of PROXY_LOCAL_PRESS_CITIES) targets.add(c);
 
-  let stale = 0;
+  const stale: string[] = [];
   for (const city of targets) {
     if ((maxFetchedByCity.get(city) ?? 0) === 0) {
-      stale += 1;
+      stale.push(city);
     }
   }
   return stale;
+}
+
+export async function getStaleCityCount(windowHours = 72): Promise<number> {
+  return (await getStaleCityNames(windowHours)).length;
 }
