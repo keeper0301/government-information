@@ -27,6 +27,7 @@ import {
 } from "@/lib/monitoring/collector-health-diagnosis";
 import { getRateLimitStatus, type RateLimitHotBucket } from "@/lib/monitoring/rate-limit-status";
 import { getPressAutoConfirmStats } from "@/lib/press-ingest/filter";
+import { getCurrentTierFloor } from "@/lib/press-ingest/auto-confirm-settings";
 
 export type HealthSignals = {
   // 24h 신규 가입 수
@@ -73,6 +74,8 @@ export type HealthSignals = {
   pressLowDecisions7d: number;
   /** low tier 자동화 floor 판단 힌트. AUTO_CONFIRM_TIER_FLOOR=low 완화 금지/검토 근거. */
   pressLowConfirmRateHint: string;
+  /** 현재 press 자동승인 floor. low 이면 low 후보도 자동승인 대상이다. */
+  pressAutoConfirmFloor: "high" | "mid" | "low";
   /**
    * Instagram OAuth token 가장 임박한 만료까지 일수.
    * null = instagram_oauth_tokens 테이블 빈 상태 (OAuth 미연결 — 알림 X).
@@ -230,6 +233,7 @@ export type ThresholdAlert = {
     | "press_pending"
     | "press_no_show"
     | "press_low_tier"
+    | "press_low_auto_risk"
     | "enrich_stuck"
     | "instagram_token_expiring"
     | "naver_cookies_expiring"
@@ -471,6 +475,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const pressLowDecisions7d =
     pressAutoStats.low_confirmed_7d + pressAutoStats.low_rejected_7d;
   const pressLowConfirmRateHint = pressAutoStats.low_confirm_rate_hint;
+  const pressAutoConfirmFloor = await getCurrentTierFloor();
 
   // 마지막 press cron 흔적 시간차 — 노쇼 진단.
   // 2026-05-14 — press_l2_classify 는 후보 처리한 만큼만 row 쌓여 false positive 위험
@@ -702,6 +707,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     pressLowConfirmRate7d,
     pressLowDecisions7d,
     pressLowConfirmRateHint,
+    pressAutoConfirmFloor,
     instagramTokenExpiresInDays,
     naverCookiesExpiresInDays,
     policyInflow24h,
@@ -842,6 +848,20 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       message: `LLM 신뢰도 'low' 큐 ${s.pressLowTierBacklog}건 (임계 ${PRESS_LOW_TIER_FLOOR}+). cleanup 대상 ${s.pressLowTierCleanupEligible}건, 7d low 결정 ${s.pressLowDecisions7d}건/confirm ${s.pressLowConfirmRate7d}%.`,
       recommendation:
         `${cleanupNote} 최근 low 판단: ${s.pressLowConfirmRateHint}. AUTO_CONFIRM_TIER_FLOOR=low 는 low confirm rate 가 충분히 높을 때만 신중히 검토.`,
+    });
+  }
+
+  // low 자동승인 운영 가드 — floor 자체는 사용자가 명시적으로 켤 수 있지만,
+  // 최근 low 표본이 부족하거나 confirm rate 가 낮아지면 즉시 다시 점검해야 한다.
+  if (
+    s.pressAutoConfirmFloor === "low" &&
+    (s.pressLowDecisions7d < 5 || s.pressLowConfirmRate7d < 50)
+  ) {
+    alerts.push({
+      key: "press_low_auto_risk",
+      message: `AUTO_CONFIRM_TIER_FLOOR=low 상태인데 7d low 결정 ${s.pressLowDecisions7d}건/confirm ${s.pressLowConfirmRate7d}% — 자동승인 품질 표본이 부족하거나 낮음.`,
+      recommendation:
+        "최근 press_l2_confirm/reject audit 표본 확인. 오탐/회수 증가 시 AUTO_CONFIRM_TIER_FLOOR 를 mid 로 되돌리고 press-ingest low 후보를 수동 검수.",
     });
   }
 

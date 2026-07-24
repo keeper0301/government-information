@@ -22,6 +22,7 @@ const BASE_SIGNALS: HealthSignals = {
   pressLowConfirmRate7d: 0,
   pressLowDecisions7d: 0,
   pressLowConfirmRateHint: "데이터 부족",
+  pressAutoConfirmFloor: "mid",
   // 2026-05-12 — null = OAuth 미연결 (alert X). 만료 임박 케이스는 별도 테스트에서.
   instagramTokenExpiresInDays: null,
   // 2026-05-12 — null = 네이버 cookies 미업로드 (alert X). 만료 임박 케이스는 별도 테스트.
@@ -476,6 +477,42 @@ describe("checkThresholds — Phase 1 추가: press_low_tier_backlog", () => {
   it("low tier 29 → 발화 안 함 (boundary)", () => {
     const alerts = checkThresholds({ ...ACTIVE, pressLowTierBacklog: 29 });
     expect(alerts.find((a) => a.key === "press_low_tier")).toBeUndefined();
+  });
+
+  it("AUTO_CONFIRM_TIER_FLOOR=low 에서 low 표본이 부족하면 품질 가드 alert", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      pressAutoConfirmFloor: "low",
+      pressLowTierBacklog: 0,
+      pressLowDecisions7d: 3,
+      pressLowConfirmRate7d: 100,
+    });
+    const a = alerts.find((x) => x.key === "press_low_auto_risk");
+    expect(a).toBeDefined();
+    expect(a?.message).toContain("AUTO_CONFIRM_TIER_FLOOR=low");
+    expect(a?.recommendation).toContain("mid 로 되돌리고");
+  });
+
+  it("AUTO_CONFIRM_TIER_FLOOR=low 에서 confirm rate 가 낮으면 품질 가드 alert", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      pressAutoConfirmFloor: "low",
+      pressLowTierBacklog: 0,
+      pressLowDecisions7d: 12,
+      pressLowConfirmRate7d: 42,
+    });
+    expect(alerts.find((x) => x.key === "press_low_auto_risk")).toBeDefined();
+  });
+
+  it("AUTO_CONFIRM_TIER_FLOOR=low 여도 표본과 confirm rate 가 충분하면 품질 가드 alert 없음", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      pressAutoConfirmFloor: "low",
+      pressLowTierBacklog: 0,
+      pressLowDecisions7d: 11,
+      pressLowConfirmRate7d: 100,
+    });
+    expect(alerts.find((x) => x.key === "press_low_auto_risk")).toBeUndefined();
   });
 });
 
