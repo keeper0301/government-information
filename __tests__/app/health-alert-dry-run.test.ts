@@ -34,6 +34,10 @@ describe("health-alert dry-run wiring", () => {
     expect(workflowSource).toContain(
       'path="/api/cron/scrape-local-press?cities=dongducheon"',
     );
+    expect(workflowSource).toContain("- scrape-local-press-gwacheon-yangpyeong");
+    expect(workflowSource).toContain(
+      'path="/api/cron/scrape-local-press?cities=gwacheon,yangpyeong"',
+    );
     expect(workflowSource).toContain('method="GET"');
   });
 });
