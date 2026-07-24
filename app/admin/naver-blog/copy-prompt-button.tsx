@@ -80,9 +80,15 @@ function buildPrompt(ids: string[], titles: string[]): string {
   });
 
   return [
-    `네이버 블로그 큐에 쌓인 글 ${ids.length}건을 일괄 자동 발행 부탁합니다.`,
+    `네이버 블로그 큐에 쌓인 오래된 글 ${ids.length}건을 순서대로 처리해주세요.`,
     "",
-    "/admin/naver-blog 페이지를 열어서 각 카드의 「전체 복사」 후 새 탭에서 https://blog.naver.com/GoBlogWrite.naver 에 붙여넣고 발행해주세요. 마지막 「발행」 버튼은 제가 직접 클릭하겠습니다 (외부 게시 명시 승인 가드).",
+    "중요 운영 원칙:",
+    "- 아래 순서를 바꾸지 말고 오래된 큐부터 처리해주세요.",
+    "- 각 글은 제목과 본문을 네이버 글쓰기 화면에 입력한 뒤, 마지막 「발행」 버튼 직전에서 멈춰주세요.",
+    "- 마지막 「발행」 버튼은 제가 직접 클릭합니다 (외부 게시 명시 승인 가드).",
+    "- 발행 후에는 /admin/naver-blog 로 돌아와 해당 큐를 「발행 완료」 처리하고 다음 글로 넘어가세요.",
+    "",
+    "/admin/naver-blog 페이지를 열어서 각 카드의 「전체 복사」 후 새 탭에서 https://blog.naver.com/GoBlogWrite.naver 에 붙여넣어주세요.",
     "",
     "발행할 글 목록:",
     ...lines,
