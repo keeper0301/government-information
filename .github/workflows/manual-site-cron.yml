@@ -31,6 +31,7 @@ on:
           - scrape-local-press-dongducheon
           - scrape-local-press-gwacheon-yangpyeong
           - scrape-local-press-gapyeong
+          - scrape-local-press-yeoncheon
           - news-classify
           - news-ai-commentary-backfill
           - user-contact-reminder-dry
@@ -147,6 +148,10 @@ jobs:
               ;;
             scrape-local-press-gapyeong)
               path="/api/cron/scrape-local-press?cities=gapyeong"
+              method="GET"
+              ;;
+            scrape-local-press-yeoncheon)
+              path="/api/cron/scrape-local-press?cities=yeoncheon"
               method="GET"
               ;;
             news-classify)
