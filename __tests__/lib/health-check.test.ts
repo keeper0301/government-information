@@ -809,6 +809,16 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
     expect(a?.recommendation).toContain("/admin/autonomous");
   });
 
+  it("localPressStaleDetail 이 있으면 local_press_stale recommendation 에 도시명을 포함", () => {
+    const alerts = checkThresholds({
+      ...ACTIVE,
+      localPressStaleCities: 10,
+      localPressStaleDetail: "철원군, 포천시",
+    });
+    const a = alerts.find((x) => x.key === "local_press_stale");
+    expect(a?.recommendation).toContain("철원군, 포천시");
+  });
+
   it("localPressStaleCities 9 → 발화 안 함 (boundary)", () => {
     const alerts = checkThresholds({ ...ACTIVE, localPressStaleCities: 9 });
     expect(alerts.find((a) => a.key === "local_press_stale")).toBeUndefined();
