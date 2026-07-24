@@ -67,6 +67,10 @@ jobs:
             exit 1
           fi
 
+          auth_scheme="Bearer"
+          auth_header="Authorization: ${auth_scheme} "
+          auth_header+="${CRON_SECRET}"
+
           call_cron() {
             local label="$1"
             local path="$2"
@@ -76,13 +80,14 @@ jobs:
             http=$(curl -sS \
               --request POST \
               --max-time 780 \
-              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "${auth_header}" \
               -H "Content-Type: application/json" \
               -o "${out}" \
               -w "%{http_code}" \
               "${SITE_BASE_URL}${path}")
             echo "== ${label} =="
             echo "HTTP ${http}"
+
             node - "${out}" <<'NODE'
           const fs = require('fs');
           const file = process.argv[2];
