@@ -10,6 +10,7 @@ describe("admin naver blog queue guidance", () => {
     expect(page).toContain("const estimatedDaysToClear");
     expect(page).toContain("대기열 해소 플랜");
     expect(page).toContain("오래된 글부터 우선 발행");
+    expect(page).toContain("가장 오래된 {Math.min(pending.length, DAILY_SAFE_PUBLISH_TARGET)}건");
     expect(page).toContain("하루 {DAILY_SAFE_PUBLISH_TARGET}건 기준");
   });
 

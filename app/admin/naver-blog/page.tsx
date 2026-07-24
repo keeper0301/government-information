@@ -96,7 +96,7 @@ export default async function AdminNaverBlogPage() {
             </p>
           </div>
           <ol className="grid min-w-[250px] gap-1 font-semibold">
-            <li>1. 상위 {Math.min(pending.length, DAILY_SAFE_PUBLISH_TARGET)}건 복사/자동 입력</li>
+            <li>1. 가장 오래된 {Math.min(pending.length, DAILY_SAFE_PUBLISH_TARGET)}건 복사/자동 입력</li>
             <li>2. 네이버 글쓰기 화면에서 제목·본문 확인</li>
             <li>3. 마지막 발행 버튼은 운영자가 직접 클릭</li>
             <li>4. 발행 URL 기록 후 다음 오래된 글 처리</li>

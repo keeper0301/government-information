@@ -54,7 +54,7 @@ export async function enqueueNaverBlog(blogPostId: string): Promise<boolean> {
 }
 
 /**
- * 어드민 페이지 — pending 항목을 새로운 순서로 N건 조회.
+ * 어드민 페이지 — pending 항목을 오래된 순서로 N건 조회.
  * 각 항목은 변환된 payload (제목·본문) 까지 함께 반환 → UI 가 즉시 복사 가능.
  */
 export async function listPendingNaverQueue(
@@ -67,7 +67,7 @@ export async function listPendingNaverQueue(
       "id, blog_post_id, status, naver_url, published_at, skipped_at, skip_reason, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)",
     )
     .eq("status", "pending")
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: true })
     .limit(limit);
   if (error) {
     throw new Error(`네이버 큐 조회 실패: ${error.message}`);
