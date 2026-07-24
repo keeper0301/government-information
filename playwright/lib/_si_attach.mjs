@@ -23,6 +23,10 @@ const DOWNLOAD_REGEX =
 const EGOV_DOWNFILE_CALL_REGEX =
   /fn_egov_downFile\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
 
+// POST-only eminwon file links: goDownLoad('<user_file_nm>','<sys_file_nm>','<file_path>').
+const EMINWON_GODOWNLOAD_CALL_REGEX =
+  /goDownLoad\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
+
 // PDF 전문 머리의 보도자료 표준 메타를 "총 매수 N쪽" 마커 기준으로 cut.
 export function stripSiPdfMeta(text) {
   const t = text.replace(/\s+/g, " ").trim();
@@ -165,6 +169,46 @@ export async function fetchEgovDownFileAttachBody(html, baseUrl, fetchBin) {
       if (!buf) continue;
       const body = await extractAttachBody(buf);
       if (body) return body;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export function parseEminwonGoDownloadForms(html) {
+  const forms = [];
+  const seen = new Set();
+  let match;
+  const re = new RegExp(EMINWON_GODOWNLOAD_CALL_REGEX.source, "gi");
+
+  while ((match = re.exec(html)) !== null) {
+    const [, userFileName, systemFileName, filePath] = match;
+    const key = `${userFileName}\n${systemFileName}\n${filePath}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    forms.push({ userFileName, systemFileName, filePath });
+  }
+
+  return forms;
+}
+
+export async function fetchEminwonGoDownloadAttachBody(html, endpoint, fetchBin) {
+  for (const form of parseEminwonGoDownloadForms(html)) {
+    try {
+      const body = new URLSearchParams({
+        user_file_nm: form.userFileName,
+        sys_file_nm: form.systemFileName,
+        file_path: form.filePath,
+      });
+      const buf = await fetchBin(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body,
+      });
+      if (!buf) continue;
+      const attachBody = await extractAttachBody(buf);
+      if (attachBody) return attachBody;
     } catch {
       continue;
     }
