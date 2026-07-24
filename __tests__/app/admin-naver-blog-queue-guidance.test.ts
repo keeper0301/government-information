@@ -26,4 +26,10 @@ describe("admin naver blog queue guidance", () => {
     expect(page).toContain("PC/Chrome Extension 미가동 또는 live alarm gate");
     expect(page).toContain("/api/naver-extension/status");
   });
+
+  it("labels blocked pending rows so operators do not confuse them with retryable items", () => {
+    expect(page).toContain("row.attempt_count");
+    expect(page).toContain("Extension 자동 재시도 차단 · 수동 검수 필요");
+    expect(page).toContain("Extension 재시도 가능");
+  });
 });

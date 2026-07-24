@@ -26,6 +26,7 @@ export type NaverQueueRow = {
   published_at: string | null;
   skipped_at: string | null;
   skip_reason: string | null;
+  attempt_count: number | null;
   created_at: string;
   blog_post: BlogPostForNaver;
 };
@@ -64,7 +65,7 @@ export async function listPendingNaverQueue(
   const { data, error } = await admin
     .from("naver_blog_queue")
     .select(
-      "id, blog_post_id, status, naver_url, published_at, skipped_at, skip_reason, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)",
+      "id, blog_post_id, status, naver_url, published_at, skipped_at, skip_reason, attempt_count, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)",
     )
     .eq("status", "pending")
     .order("created_at", { ascending: true })
@@ -89,7 +90,7 @@ export async function listPublishedNaverQueue(
   const { data, error } = await admin
     .from("naver_blog_queue")
     .select(
-      "id, blog_post_id, status, naver_url, published_at, skipped_at, skip_reason, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)",
+      "id, blog_post_id, status, naver_url, published_at, skipped_at, skip_reason, attempt_count, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)",
     )
     .eq("status", "published")
     .order("published_at", { ascending: false })
