@@ -87,6 +87,7 @@ import { scrapeGijangEminwonAndInsert } from "./gijang-eminwon";
 // (BBS_0000012=공동주택 오등록, 0건) 폐기 후 eminwon 으로 재이관 (dead-path swap).
 import { scrapeBsbukguEminwonAndInsert } from "./bsbukgu-eminwon";
 import { scrapeBsjungguEminwonAndInsert } from "./bsjunggu-eminwon";
+import { scrapeBsseoguAndInsert } from "./bsseogu";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -286,6 +287,7 @@ export type CityKey =
   | "gijang"
   | "bsbukgu"
   | "bsjunggu"
+  | "bsseogu"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1025,6 +1027,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "부산 중구청",
     siteUrl: "https://www.bsjunggu.go.kr/index.junggu?menuCd=DOM_000000103001004000",
     fn: scrapeBsjungguEminwonAndInsert,
+  },
+  {
+    key: "bsseogu",
+    city: "부산 서구",
+    ministry: "부산 서구청",
+    siteUrl: "https://www.bsseogu.go.kr/board/list.bsseogu?boardId=BBS_0000011&menuCd=DOM_000000103001015000&contentsSid=880&cpath=",
+    fn: scrapeBsseoguAndInsert,
   },
   {
     key: "yuseong",
