@@ -24,6 +24,7 @@ import { isAdminUser } from "@/lib/admin-auth";
 import {
   listPendingNaverQueue,
   listPublishedNaverQueue,
+  listSkippedExtensionFailedNaverQueue,
   getNaverPublishedStats,
 } from "@/lib/naver-blog/queue";
 import { getNaverExtensionStatus } from "@/lib/naver-blog/extension-status";
@@ -56,9 +57,10 @@ async function requireAdmin() {
 
 export default async function AdminNaverBlogPage() {
   await requireAdmin();
-  const [pending, published, stats, extensionStatus] = await Promise.all([
+  const [pending, published, skippedExtensionFailed, stats, extensionStatus] = await Promise.all([
     listPendingNaverQueue(20),
     listPublishedNaverQueue(10),
+    listSkippedExtensionFailedNaverQueue(10),
     getNaverPublishedStats(),
     getNaverExtensionStatus(),
   ]);
@@ -264,6 +266,43 @@ export default async function AdminNaverBlogPage() {
                       스킵
                     </button>
                   </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-base font-semibold text-grey-900 mb-3">
+          🧯 Extension 실패 스킵 검토
+        </h2>
+        <p className="mb-3 text-xs leading-relaxed text-grey-600">
+          `extension_failed_3_attempts` 로 스킵된 최근 항목입니다. 자동 재큐잉은 하지 않고,
+          제목·시도 횟수·스킵 시각을 먼저 확인해 수동 재발행 또는 별도 재큐잉 작업을 결정합니다.
+        </p>
+        {skippedExtensionFailed.length === 0 ? (
+          <p className="rounded-lg border border-green-100 bg-green-50 p-3 text-sm text-green-800">
+            Extension 3회 실패로 스킵된 항목이 없습니다.
+          </p>
+        ) : (
+          <ul className="divide-y divide-red-100 rounded-lg border border-red-100 bg-red-50">
+            {skippedExtensionFailed.map((row) => (
+              <li key={row.id} className="p-3 text-sm">
+                <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-red-950 truncate">
+                      {row.blog_post.title}
+                    </p>
+                    <p className="text-xs text-red-800">
+                      ID: <code className="font-mono">{row.id.slice(0, 8)}</code> ·
+                      시도 {row.attempt_count ?? 0}회 · 스킵:{" "}
+                      {row.skipped_at ? formatDate(row.skipped_at) : "—"}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-1 text-xs font-bold text-red-700">
+                    수동 검토 필요
+                  </span>
                 </div>
               </li>
             ))}

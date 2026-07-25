@@ -16,4 +16,10 @@ describe("naver blog queue ordering", () => {
   it("selects attempt_count so admin can distinguish retryable and blocked items", () => {
     expect(queueSource).toContain("attempt_count");
   });
+
+  it("lists skipped extension failures as a separate read-only review queue", () => {
+    expect(queueSource).toContain("listSkippedExtensionFailedNaverQueue");
+    expect(queueSource).toContain('.eq("status", "skipped")');
+    expect(queueSource).toContain('.eq("skip_reason", "extension_failed_3_attempts")');
+  });
 });

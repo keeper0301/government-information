@@ -101,6 +101,29 @@ export async function listPublishedNaverQueue(
   return (data ?? []) as unknown as NaverQueueRow[];
 }
 
+/**
+ * 어드민 페이지 — Extension 3회 실패로 skipped 된 항목을 최근순으로 노출.
+ * 재큐잉/상태 변경은 하지 않고 수동 검토 대상만 보여주는 읽기 전용 목록.
+ */
+export async function listSkippedExtensionFailedNaverQueue(
+  limit = 10,
+): Promise<NaverQueueRow[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("naver_blog_queue")
+    .select(
+      "id, blog_post_id, status, naver_url, published_at, skipped_at, skip_reason, attempt_count, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)",
+    )
+    .eq("status", "skipped")
+    .eq("skip_reason", "extension_failed_3_attempts")
+    .order("skipped_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    throw new Error(`네이버 Extension 실패 스킵 큐 조회 실패: ${error.message}`);
+  }
+  return (data ?? []) as unknown as NaverQueueRow[];
+}
+
 export async function markNaverPublished(
   queueId: string,
   actorId: string,
