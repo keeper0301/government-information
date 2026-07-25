@@ -65,6 +65,7 @@ import { scrapeInjeAndInsert } from "./inje";
 import { scrapeGoseongGwAndInsert } from "./goseong_gw";
 import { scrapeYangyangAndInsert } from "./yangyang";
 import { scrapeGunsanAndInsert } from "./gunsan";
+import { scrapeImsilAndInsert } from "./imsil";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
@@ -260,6 +261,7 @@ export type CityKey =
   | "goseong_gw"
   | "yangyang"
   | "gunsan"
+  | "imsil"
   | "wonju"
   | "gwangsan"
   | "gunpo"
@@ -819,6 +821,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "전북특별자치도 군산시청",
     siteUrl: "http://eminwon.gunsan.go.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp?news_epct_yn=1,2",
     fn: scrapeGunsanAndInsert,
+  },
+  {
+    key: "imsil",
+    city: "임실군",
+    ministry: "전북특별자치도 임실군청",
+    siteUrl: "https://www.imsil.go.kr/index.imsil?menuCd=DOM_000000103002001000",
+    fn: scrapeImsilAndInsert,
   },
   // 2026-05-29 — 김포시는 Playwright 프록시 경로로 이관(목록 위젯 혼재·본문 무class td 라
   // 정적 selector 불가). 정적 등록 제거(dual-path 방지).
