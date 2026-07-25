@@ -104,17 +104,22 @@ export function parseEminwonListItems(
     const idM = tr.match(/searchDetail\('(\d+)'\)/);
     if (!idM) continue;
     const newsEpctNo = idM[1];
-    const text = tr
-      .replace(/<[^>]+>/g, "\n")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .split("\n")
-      .map((s) => s.trim())
+    const cells = [...tr.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)]
+      .map((m) => cleanEminwonText(m[1]))
       .filter(Boolean);
+    const text = cells.length >= 3
+      ? cells
+      : tr
+          .replace(/<[^>]+>/g, "\n")
+          .replace(/&nbsp;/g, " ")
+          .replace(/&amp;/g, "&")
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean);
     if (text.length < 3) continue;
     // 일반 순서: [번호, 제목, 부서, 등록일, 조회수]
-    let title = "";
-    let department: string | null = null;
+    let title = cells.length >= 4 ? cells[1] : "";
+    let department: string | null = cells.length >= 4 ? cells[2] : null;
     let publishedDate: string | null = null;
     for (const t of text) {
       if (
@@ -143,7 +148,7 @@ export function parseEminwonListItems(
         department = t;
       }
     }
-    if (!title) {
+    if (!title || !/[가-힣]/.test(title) || title.length < 5) {
       silentSkips?.push(newsEpctNo);
       continue;
     }
