@@ -58,6 +58,10 @@ describe("health-alert dry-run wiring", () => {
     expect(workflowSource).toContain(
       'path="/api/cron/scrape-local-press?cities=yeongwol"',
     );
+    expect(workflowSource).toContain("- scrape-local-press-pyeongchang");
+    expect(workflowSource).toContain(
+      'path="/api/cron/scrape-local-press?cities=pyeongchang"',
+    );
     expect(workflowSource).toContain('method="GET"');
   });
 });
