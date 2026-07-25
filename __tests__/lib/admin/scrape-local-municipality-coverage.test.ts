@@ -76,6 +76,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "강원특별자치도 영월군")?.covered,
     ).toMatchObject({ source: "static", key: "yeongwol" });
     expect(
+      rows.find((row) => row.fullName === "강원특별자치도 평창군")?.covered,
+    ).toMatchObject({ source: "static", key: "pyeongchang" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
