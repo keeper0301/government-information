@@ -19,6 +19,8 @@
 // ============================================================
 
 import { Agent } from "undici";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 import { decodeHtmlEntities } from "@/lib/utils";
 
@@ -200,6 +202,78 @@ function isTransientNetworkFetchError(err: unknown): boolean {
   return err.name === "TypeError" && /^fetch failed$/i.test(err.message ?? "");
 }
 
+function isHttpParserHeaderError(err: unknown): boolean {
+  const cause = (err as { cause?: { name?: string; message?: string; data?: string } })?.cause;
+  return (
+    cause?.name === "HTTPParserError" ||
+    /Response does not match the HTTP\/1\.1 protocol|Unexpected whitespace after header value/i.test(
+      `${cause?.message ?? ""} ${cause?.data ?? ""}`,
+    )
+  );
+}
+
+function decodeAndValidatePage(buf: Uint8Array, url: string, encoding?: string): string {
+  const text =
+    encoding && encoding.toLowerCase() !== "utf-8"
+      ? new TextDecoder(encoding).decode(buf)
+      : new TextDecoder("utf-8").decode(buf);
+  if (text.length < MIN_RESPONSE_SIZE) {
+    throw new Error(`response too small (${text.length} bytes, redirect/alert 의심): ${url}`);
+  }
+  if (text.length < ALERT_GUARD_MAX_SIZE && ALERT_REDIRECT_RE.test(text)) {
+    throw new Error(`alert/redirect 응답 감지 (referer/mid 가드 의심): ${url}`);
+  }
+  return text;
+}
+
+function fetchWithNodeInsecureParser(
+  url: string,
+  encoding?: string,
+  redirects = 0,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const request = parsed.protocol === "http:" ? httpRequest : httpsRequest;
+    const req = request(
+      parsed,
+      {
+        headers: { "User-Agent": USER_AGENT },
+        insecureHTTPParser: true,
+        rejectUnauthorized: false,
+        timeout: 25000,
+      },
+      (res) => {
+        const status = res.statusCode ?? 0;
+        const location = res.headers.location;
+        if (status >= 300 && status < 400 && location && redirects < 3) {
+          res.resume();
+          fetchWithNodeInsecureParser(new URL(location, parsed).href, encoding, redirects + 1)
+            .then(resolve)
+            .catch(reject);
+          return;
+        }
+        if (status < 200 || status >= 300) {
+          res.resume();
+          reject(new Error(`fetch failed (${status}): ${url}`));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        res.on("end", () => {
+          try {
+            resolve(decodeAndValidatePage(new Uint8Array(Buffer.concat(chunks)), url, encoding));
+          } catch (err) {
+            reject(err);
+          }
+        });
+      },
+    );
+    req.on("timeout", () => req.destroy(new Error(`timeout: ${url}`)));
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 export async function fetchPage(
   url: string,
   encoding?: string,
@@ -212,6 +286,9 @@ export async function fetchPage(
   try {
     return await fetchOnce(url, encoding);
   } catch (err) {
+    if (isHttpParserHeaderError(err)) {
+      return await fetchWithNodeInsecureParser(url, encoding);
+    }
     // 정부 사이트 인증서 체인 누락(intermediate CA) → TLS 검증 완화로 1회 retry.
     if (isTlsChainError(err)) {
       return await fetchOnce(url, encoding, true);
