@@ -58,6 +58,7 @@ import { scrapeSokchoAndInsert } from "./sokcho";
 import { scrapeHoengseongAndInsert } from "./hoengseong";
 import { scrapeYeongwolAndInsert } from "./yeongwol";
 import { scrapePyeongchangAndInsert } from "./pyeongchang";
+import { scrapeJeongseonAndInsert } from "./jeongseon";
 import { scrapeWonjuAndInsert } from "./wonju";
 import { scrapeGwangsanAndInsert } from "./gwangsan";
 import { scrapeGunpoAndInsert } from "./gunpo";
@@ -246,6 +247,7 @@ export type CityKey =
   | "hoengseong"
   | "yeongwol"
   | "pyeongchang"
+  | "jeongseon"
   | "wonju"
   | "gwangsan"
   | "gunpo"
@@ -755,6 +757,14 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.pc.go.kr/portal/government/government-press/government-press-press",
     fn: scrapePyeongchangAndInsert,
+  },
+  {
+    key: "jeongseon",
+    city: "정선군",
+    ministry: "강원특별자치도 정선군청",
+    siteUrl:
+      "https://www.jeongseon.go.kr/portal/openadmin/adminnews/pressrelease",
+    fn: scrapeJeongseonAndInsert,
   },
   // 2026-05-29 — 김포시는 Playwright 프록시 경로로 이관(목록 위젯 혼재·본문 무class td 라
   // 정적 selector 불가). 정적 등록 제거(dual-path 방지).
