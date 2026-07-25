@@ -36,6 +36,7 @@ on:
           - scrape-local-press-hoengseong
           - scrape-local-press-yeongwol
           - scrape-local-press-pyeongchang
+          - scrape-local-press-jeongseon
           - news-classify
           - news-ai-commentary-backfill
           - user-contact-reminder-dry
@@ -172,6 +173,10 @@ jobs:
               ;;
             scrape-local-press-pyeongchang)
               path="/api/cron/scrape-local-press?cities=pyeongchang"
+              method="GET"
+              ;;
+            scrape-local-press-jeongseon)
+              path="/api/cron/scrape-local-press?cities=jeongseon"
               method="GET"
               ;;
             news-classify)
