@@ -16,6 +16,7 @@
 // ============================================================
 
 import { toMarkdown } from "@ohah/hwpjs";
+import { Agent } from "undici";
 import type JSZipDefault from "jszip";
 import { parseSiNttBody } from "./_si_ntt_helper";
 
@@ -39,6 +40,40 @@ async function loadUnpdf(): Promise<typeof import("unpdf")> {
 
 const SI_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+const INSECURE_TLS_AGENT = new Agent({ connect: { rejectUnauthorized: false } });
+
+function isTlsChainError(err: unknown): boolean {
+  const code = (err as { cause?: { code?: string } })?.cause?.code ?? "";
+  return /UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_|SELF_SIGNED/.test(code);
+}
+
+async function fetchAttachBuffer(url: string): Promise<Uint8Array | null> {
+  async function fetchOnce(insecureTls = false): Promise<Response> {
+    const init: RequestInit = {
+      headers: { "User-Agent": SI_UA },
+      signal: AbortSignal.timeout(20000),
+    };
+    if (insecureTls) {
+      (init as RequestInit & { dispatcher?: Agent }).dispatcher = INSECURE_TLS_AGENT;
+    }
+    return fetch(url, init);
+  }
+
+  try {
+    let res: Response;
+    try {
+      res = await fetchOnce();
+    } catch (err) {
+      if (!isTlsChainError(err)) throw err;
+      res = await fetchOnce(true);
+    }
+    if (!res.ok) return null;
+    return new Uint8Array(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
 
 // 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do)·
 // 진천 board/download.do·평창 board/article/download 공통.
@@ -177,12 +212,9 @@ export async function fetchSiAttachBody(
   for (const path of paths) {
     try {
       const url = new URL(path, baseDir).href;
-      const res = await fetch(url, {
-        headers: { "User-Agent": SI_UA },
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!res.ok) continue;
-      const body = await extractAttachBody(new Uint8Array(await res.arrayBuffer()));
+      const buf = await fetchAttachBuffer(url);
+      if (!buf) continue;
+      const body = await extractAttachBody(buf);
       if (body) return body;
     } catch {
       continue;
@@ -218,12 +250,9 @@ export async function fetchEgovDownFileAttachBody(
 ): Promise<string | null> {
   for (const url of parseEgovDownFileUrls(html, baseUrl)) {
     try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": SI_UA },
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!res.ok) continue;
-      const body = await extractAttachBody(new Uint8Array(await res.arrayBuffer()));
+      const buf = await fetchAttachBuffer(url);
+      if (!buf) continue;
+      const body = await extractAttachBody(buf);
       if (body) return body;
     } catch {
       continue;
