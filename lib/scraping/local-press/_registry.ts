@@ -86,6 +86,7 @@ import { scrapeGijangEminwonAndInsert } from "./gijang-eminwon";
 // 2026-06-01 — 부산 북구도 eminwon(기장과 동일 OfrAction.do POST). 기존 proxy 경로
 // (BBS_0000012=공동주택 오등록, 0건) 폐기 후 eminwon 으로 재이관 (dead-path swap).
 import { scrapeBsbukguEminwonAndInsert } from "./bsbukgu-eminwon";
+import { scrapeBsjungguEminwonAndInsert } from "./bsjunggu-eminwon";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -284,6 +285,7 @@ export type CityKey =
   | "michuhol_incheon"
   | "gijang"
   | "bsbukgu"
+  | "bsjunggu"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1016,6 +1018,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "부산 북구청",
     siteUrl: "https://eminwon.bsbukgu.go.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp",
     fn: scrapeBsbukguEminwonAndInsert,
+  },
+  {
+    key: "bsjunggu",
+    city: "부산 중구",
+    ministry: "부산 중구청",
+    siteUrl: "https://www.bsjunggu.go.kr/index.junggu?menuCd=DOM_000000103001004000",
+    fn: scrapeBsjungguEminwonAndInsert,
   },
   {
     key: "yuseong",
