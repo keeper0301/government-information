@@ -103,6 +103,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "전북특별자치도 임실군")?.covered,
     ).toMatchObject({ source: "static", key: "imsil" });
     expect(
+      rows.find((row) => row.fullName === "부산광역시 중구")?.covered,
+    ).toMatchObject({ source: "static", key: "bsjunggu" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
@@ -316,7 +319,10 @@ describe("scrape-local municipality coverage", () => {
     // 2026-07-22: 인천 중구 static collector 는 Vercel fetch 에서 /index.html shell 만
     // 받아 stale false-positive 를 만들기 때문에 PC/Playwright 복구 전까지 미구현으로 본다.
     expect(incheonJunggu?.covered).toBeNull();
-    expect(busanJunggu?.covered).toBeNull();
+    expect(busanJunggu?.covered).toMatchObject({
+      source: "static",
+      key: "bsjunggu",
+    });
   });
 
   it("동명 자치구 collector는 광역 alias가 있을 때 해당 광역만 커버한다", () => {
@@ -335,13 +341,15 @@ describe("scrape-local municipality coverage", () => {
     const uncoveredText = buildUncoveredMunicipalityText(rows);
     const csv = buildMunicipalityCoverageCsv(rows);
 
-    expect(uncoveredText).toContain("부산광역시\t중구\t부산광역시 중구");
+    expect(uncoveredText).not.toContain("부산광역시\t중구\t부산광역시 중구");
     expect(uncoveredText).not.toContain("전라남도\t순천시\t전라남도 순천시");
     expect(csv.split("\n")[0]).toBe(
       "provinceCode,provinceName,district,fullName,status,source,collectorKey,ministry,label",
     );
     expect(csv).toContain("jeonnam,전라남도,순천시,전라남도 순천시,covered,static,suncheon");
-    expect(csv).toContain("busan,부산광역시,중구,부산광역시 중구,uncovered,,,,");
+    expect(csv).toContain(
+      "busan,부산광역시,중구,부산광역시 중구,covered,static,bsjunggu",
+    );
   });
 
   it("미구현 지역을 광역별로 많이 남은 순서로 요약한다", () => {
