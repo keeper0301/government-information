@@ -32,4 +32,12 @@ describe("admin naver blog queue guidance", () => {
     expect(page).toContain("Extension 자동 재시도 차단 · 수동 검수 필요");
     expect(page).toContain("Extension 재시도 가능");
   });
+
+  it("shows skipped extension-failed items as read-only manual review candidates", () => {
+    expect(page).toContain("listSkippedExtensionFailedNaverQueue");
+    expect(page).toContain("Extension 실패 스킵 검토");
+    expect(page).toContain("extension_failed_3_attempts");
+    expect(page).toContain("자동 재큐잉은 하지 않고");
+    expect(page).toContain("수동 검토 필요");
+  });
 });
