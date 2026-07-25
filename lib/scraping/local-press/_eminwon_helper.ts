@@ -26,6 +26,8 @@ export type EminwonConfig = {
   sourceCode: string; // "local-press-gijang" 등
   cityKey: string; // slug — makeNewsSlug 용 (gijang / bsbukgu)
   cityName: string; // ScrapeResult.city ("기장군" / "부산 북구")
+  newsEpctYn?: string; // 기본 "1". 일부 시군(군산)은 "1,2".
+  title?: string; // 기본 "보도자료". 일부 시군(군산)은 "보도 및 대응자료".
   // detail POST body 빌더(선택). 미지정 시 표준 detailBody(기장·부산북구).
   // 일부 eminwon 스킨(광주 북구 등)은 form1 전체 필드(subCheck=N + 빈 검색필드)를
   // 요구해, 축약 detailBody 로는 본문 없는 2.7KB 응답만 돌아온다 → 도시별 override.
@@ -40,7 +42,7 @@ export type EminwonListItem = {
 };
 
 // list POST body — 보도자료 list page N.
-function listBody(pageIndex: number): string {
+function listBody(pageIndex: number, newsEpctYn = "1", title = "보도자료"): string {
   const params = new URLSearchParams();
   params.set("pageIndex", String(pageIndex));
   params.set("jndinm", "OfrBcAdvNewsEJB");
@@ -50,13 +52,13 @@ function listBody(pageIndex: number): string {
   params.set("news_epct_no", "");
   params.set("subCheck", "Y");
   params.set("ofr_pageSize", "10");
-  params.set("news_epct_yn", "1");
-  params.set("title", "보도자료");
+  params.set("news_epct_yn", newsEpctYn);
+  params.set("title", title);
   return params.toString();
 }
 
 // detail POST body — news_epct_no=ID 글 1건.
-function detailBody(newsEpctNo: string): string {
+function detailBody(newsEpctNo: string, newsEpctYn = "1", title = "보도자료"): string {
   const params = new URLSearchParams();
   params.set("pageIndex", "");
   params.set("jndinm", "OfrBcAdvNewsEJB");
@@ -66,8 +68,8 @@ function detailBody(newsEpctNo: string): string {
   params.set("news_epct_no", newsEpctNo);
   params.set("subCheck", "Y");
   params.set("ofr_pageSize", "10");
-  params.set("news_epct_yn", "1");
-  params.set("title", "보도자료");
+  params.set("news_epct_yn", newsEpctYn);
+  params.set("title", title);
   params.set("data_open_yn", "1");
   params.set("initValue", "Y");
   params.set("countYn", "Y");
@@ -95,7 +97,7 @@ export function parseEminwonListItems(
   silentSkips?: string[],
 ): EminwonListItem[] {
   const items: EminwonListItem[] = [];
-  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
   let trMatch: RegExpExecArray | null;
   while ((trMatch = trRe.exec(html)) !== null) {
     const tr = trMatch[1];
@@ -182,9 +184,9 @@ export function parseEminwonDetailBody(html: string): string | null {
     return best;
   };
   // 1차: td (기장 등 — 깨끗 본문). 2차: div/textarea/pre (부산북구 — td 본문 부족 시).
-  const td = longest(/<td[^>]*>([\s\S]*?)<\/td>/g);
+  const td = longest(/<td[^>]*>([\s\S]*?)<\/td>/gi);
   if (td.length >= 250) return td.slice(0, 20000);
-  const el = longest(/<(div|textarea|pre)[^>]*>([\s\S]*?)<\/\1>/g);
+  const el = longest(/<(div|textarea|pre)[^>]*>([\s\S]*?)<\/\1>/gi);
   // 본문 cut 20000 — _factory.ts createPressCollector 와 동일 정책.
   return el.length >= 250 ? el.slice(0, 20000) : null;
 }
@@ -192,7 +194,11 @@ export function parseEminwonDetailBody(html: string): string | null {
 // config → eminwon collector. .scrapeAndInsert 가 cron 표준 시그니처.
 export function createEminwonScraper(cfg: EminwonConfig) {
   // detail POST body — 도시별 override 우선, 없으면 표준(기장·부산북구).
-  const buildDetailBody = cfg.detailBodyBuilder ?? detailBody;
+  const newsEpctYn = cfg.newsEpctYn ?? "1";
+  const title = cfg.title ?? "보도자료";
+  const buildDetailBody =
+    cfg.detailBodyBuilder ??
+    ((newsEpctNo: string) => detailBody(newsEpctNo, newsEpctYn, title));
 
   async function scrapeAndInsert(
     admin: SupabaseClient,
@@ -205,7 +211,7 @@ export function createEminwonScraper(cfg: EminwonConfig) {
     let latestFetched: string | null = null;
 
     try {
-      const listHtml = await postFetch(cfg.actionUrl, listBody(1));
+      const listHtml = await postFetch(cfg.actionUrl, listBody(1, newsEpctYn, title));
       const silentSkips: string[] = [];
       const allItems = parseEminwonListItems(listHtml, silentSkips);
       if (silentSkips.length > 0) {
