@@ -88,6 +88,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "강원특별자치도 양구군")?.covered,
     ).toMatchObject({ source: "static", key: "yanggu" });
     expect(
+      rows.find((row) => row.fullName === "강원특별자치도 인제군")?.covered,
+    ).toMatchObject({ source: "static", key: "inje" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
