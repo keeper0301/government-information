@@ -14,9 +14,9 @@ import { toMarkdown } from "@ohah/hwpjs";
 import JSZip from "jszip";
 
 // 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do)·부산 SI
-// CMS(금정 download.geumj)·진천 board/download.do·평창 board/article/download 공통.
+// CMS(금정 download.geumj)·진천 board/download.do·부산 RFC3 board/download.<district>·평창 board/article/download 공통.
 const DOWNLOAD_REGEX =
-  /href="([^"]*(?:downloadBbsFile\.do|fileDown\.do|download\.geumj|board\/download\.do|board\/article\/download)[^"]*)"/gi;
+  /href="([^"]*(?:downloadBbsFile\.do|fileDown\.do|download\.geumj|board\/download(?:\.[a-z]+)?|board\/article\/download)[^"]*)"/gi;
 
 // eGovFrame/YH portal boards may expose attachments as JavaScript calls instead
 // of hrefs: fn_egov_downFile('<atchFileId>','<fileSn>').

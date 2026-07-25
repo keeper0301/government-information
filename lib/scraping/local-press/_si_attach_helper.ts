@@ -76,10 +76,10 @@ async function fetchAttachBuffer(url: string): Promise<Uint8Array | null> {
 }
 
 // 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do)·
-// 진천 board/download.do·평창 board/article/download 공통.
+// 진천 board/download.do·부산 RFC3 board/download.<district>·평창 board/article/download 공통.
 // href 안에 개행/탭이 섞여 \s 제거 + &amp; 디코드 필요.
 const DOWNLOAD_REGEX =
-  /href="([^"]*(?:(?:downloadBbsFile|fileDown|board\/download)\.do|board\/article\/download)[^"]*)"/gi;
+  /href="([^"]*(?:(?:downloadBbsFile|fileDown)\.do|board\/download(?:\.[a-z]+)?|board\/article\/download)[^"]*)"/gi;
 
 // eGovFrame/YH portal boards may expose attachments only as JS calls instead of
 // hrefs: fn_egov_downFile('<atchFileId>','<fileSn>'). The corresponding download
