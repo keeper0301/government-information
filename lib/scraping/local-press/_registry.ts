@@ -93,6 +93,7 @@ import { scrapeBsnamguEminwonAndInsert } from "./bsnamgu-eminwon";
 import { scrapeHaeundaeEminwonAndInsert } from "./haeundae-eminwon";
 import { scrapeSahaAndInsert } from "./saha";
 import { scrapeGangseoBusanAndInsert } from "./gangseo_busan";
+import { scrapeYeonjeAndInsert } from "./yeonje";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -298,6 +299,7 @@ export type CityKey =
   | "haeundae"
   | "saha"
   | "gangseo_busan"
+  | "yeonje"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1079,6 +1081,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "부산 강서구청",
     siteUrl: "https://www.bsgangseo.go.kr/portal/board/post/list.do?bcIdx=526&mid=0501050000",
     fn: scrapeGangseoBusanAndInsert,
+  },
+  {
+    key: "yeonje",
+    city: "부산 연제구",
+    ministry: "부산 연제구청",
+    siteUrl: "https://www.yeonje.go.kr/portal/bbs/list.do?ptIdx=12&mId=0206050000",
+    fn: scrapeYeonjeAndInsert,
   },
   {
     key: "yuseong",
