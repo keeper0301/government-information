@@ -118,6 +118,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "부산광역시 해운대구")?.covered,
     ).toMatchObject({ source: "static", key: "haeundae" });
     expect(
+      rows.find((row) => row.fullName === "부산광역시 사하구")?.covered,
+    ).toMatchObject({ source: "static", key: "saha" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
@@ -358,6 +361,7 @@ describe("scrape-local municipality coverage", () => {
     expect(uncoveredText).not.toContain("부산광역시\t동구\t부산광역시 동구");
     expect(uncoveredText).not.toContain("부산광역시\t남구\t부산광역시 남구");
     expect(uncoveredText).not.toContain("부산광역시\t해운대구\t부산광역시 해운대구");
+    expect(uncoveredText).not.toContain("부산광역시\t사하구\t부산광역시 사하구");
     expect(uncoveredText).not.toContain("전라남도\t순천시\t전라남도 순천시");
     expect(csv.split("\n")[0]).toBe(
       "provinceCode,provinceName,district,fullName,status,source,collectorKey,ministry,label",
@@ -377,6 +381,9 @@ describe("scrape-local municipality coverage", () => {
     );
     expect(csv).toContain(
       "busan,부산광역시,해운대구,부산광역시 해운대구,covered,static,haeundae",
+    );
+    expect(csv).toContain(
+      "busan,부산광역시,사하구,부산광역시 사하구,covered,static,saha",
     );
   });
 
