@@ -92,6 +92,7 @@ import { scrapeBsdongguAndInsert } from "./bsdonggu";
 import { scrapeBsnamguEminwonAndInsert } from "./bsnamgu-eminwon";
 import { scrapeHaeundaeEminwonAndInsert } from "./haeundae-eminwon";
 import { scrapeSahaAndInsert } from "./saha";
+import { scrapeGangseoBusanAndInsert } from "./gangseo_busan";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -296,6 +297,7 @@ export type CityKey =
   | "bsnamgu"
   | "haeundae"
   | "saha"
+  | "gangseo_busan"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1070,6 +1072,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "부산 사하구청",
     siteUrl: "https://www.saha.go.kr/portal/bbs/list.do?ptIdx=24&mId=0301060000",
     fn: scrapeSahaAndInsert,
+  },
+  {
+    key: "gangseo_busan",
+    city: "부산 강서구",
+    ministry: "부산 강서구청",
+    siteUrl: "https://www.bsgangseo.go.kr/portal/board/post/list.do?bcIdx=526&mid=0501050000",
+    fn: scrapeGangseoBusanAndInsert,
   },
   {
     key: "yuseong",
