@@ -27,7 +27,7 @@ const MOCK_DETAIL_HTML = `
 <table class="tableSt_view">
   <tbody>
     <tr><th scope="col" colspan="6" class="title">사하구, 주민 중심 쌍방향 소통을 위한 민선 9기 「통하는 구청장실」 본격 가동</th></tr>
-    <tr><th id="attachedfile">첨부파일</th><td class="box_file"><a href="#" onclick="fn_egov_downFile('FILE_000000000197033','1')">사하구 보도자료.pdf</a></td></tr>
+    <tr><th id="attachedfile">첨부파일</th><td class="box_file"><a href="#">사하구 보도자료.pdf</a></td></tr>
     <tr>
       <td colspan="6">
         <div class="cont_box">
