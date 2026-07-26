@@ -89,6 +89,7 @@ import { scrapeBsbukguEminwonAndInsert } from "./bsbukgu-eminwon";
 import { scrapeBsjungguEminwonAndInsert } from "./bsjunggu-eminwon";
 import { scrapeBsseoguAndInsert } from "./bsseogu";
 import { scrapeBsdongguAndInsert } from "./bsdonggu";
+import { scrapeBsnamguEminwonAndInsert } from "./bsnamgu-eminwon";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -290,6 +291,7 @@ export type CityKey =
   | "bsjunggu"
   | "bsseogu"
   | "bsdonggu"
+  | "bsnamgu"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1043,6 +1045,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "부산 동구청",
     siteUrl: "https://www.bsdonggu.go.kr/board/list.donggu?boardId=BBS_0000025&menuCd=DOM_000000103001006000",
     fn: scrapeBsdongguAndInsert,
+  },
+  {
+    key: "bsnamgu",
+    city: "부산 남구",
+    ministry: "부산 남구청",
+    siteUrl: "https://www.bsnamgu.go.kr/index.namgu?menuCd=DOM_000000105001004000",
+    fn: scrapeBsnamguEminwonAndInsert,
   },
   {
     key: "yuseong",

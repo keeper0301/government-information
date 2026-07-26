@@ -28,6 +28,7 @@ export type EminwonConfig = {
   cityName: string; // ScrapeResult.city ("기장군" / "부산 북구")
   newsEpctYn?: string; // 기본 "1". 일부 시군(군산)은 "1,2".
   title?: string; // 기본 "보도자료". 일부 시군(군산)은 "보도 및 대응자료".
+  listPages?: number; // 기본 1. 최신 페이지가 사진/빈 본문 위주인 시군은 여러 페이지 스캔.
   // detail POST body 빌더(선택). 미지정 시 표준 detailBody(기장·부산북구).
   // 일부 eminwon 스킨(광주 북구 등)은 form1 전체 필드(subCheck=N + 빈 검색필드)를
   // 요구해, 축약 detailBody 로는 본문 없는 2.7KB 응답만 돌아온다 → 도시별 override.
@@ -201,6 +202,7 @@ export function createEminwonScraper(cfg: EminwonConfig) {
   // detail POST body — 도시별 override 우선, 없으면 표준(기장·부산북구).
   const newsEpctYn = cfg.newsEpctYn ?? "1";
   const title = cfg.title ?? "보도자료";
+  const listPages = cfg.listPages ?? 1;
   const buildDetailBody =
     cfg.detailBodyBuilder ??
     ((newsEpctNo: string) => detailBody(newsEpctNo, newsEpctYn, title));
@@ -216,16 +218,29 @@ export function createEminwonScraper(cfg: EminwonConfig) {
     let latestFetched: string | null = null;
 
     try {
-      const listHtml = await postFetch(cfg.actionUrl, listBody(1, newsEpctYn, title));
       const silentSkips: string[] = [];
-      const allItems = parseEminwonListItems(listHtml, silentSkips);
+      const allItems: EminwonListItem[] = [];
+      const seen = new Set<string>();
+      for (let page = 1; page <= listPages; page += 1) {
+        const listHtml = await postFetch(
+          cfg.actionUrl,
+          listBody(page, newsEpctYn, title),
+        );
+        for (const item of parseEminwonListItems(listHtml, silentSkips)) {
+          if (seen.has(item.newsEpctNo)) continue;
+          seen.add(item.newsEpctNo);
+          allItems.push(item);
+        }
+      }
       if (silentSkips.length > 0) {
         errors.push(
           `title 추출 실패 ${silentSkips.length}건 (newsEpctNo: ${silentSkips.slice(0, 5).join(",")})`,
         );
       }
       const items =
-        typeof limit === "number" ? allItems.slice(0, limit) : allItems;
+        typeof limit === "number"
+          ? allItems.slice(0, Math.max(limit, listPages * 10))
+          : allItems;
       fetched = items.length;
       latestFetched = latestPublishedDate(items);
       if (items.length === 0) {
