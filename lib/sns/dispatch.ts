@@ -164,6 +164,109 @@ function buildCheckPoints(title: string, points: string[]): string[] {
   return out;
 }
 
+function normalizePolicyKeyword(title: string): string {
+  const cleaned = normalizeShareText(title)
+    .replace(/^20\d{2}년\s*/, "")
+    .replace(/[:：].*$/, "")
+    .replace(/\s+(가이드|확인|총정리|정리|신청 방법|지원사업|사업|계획)$/g, "")
+    .trim();
+  const known = [
+    "노란우산",
+    "자동차세",
+    "기초연금",
+    "청년 월세",
+    "청년월세",
+    "전세자금",
+    "소상공인",
+    "특례보증",
+    "출산장려금",
+    "학자금대출",
+    "주거급여",
+  ];
+  const hit = known.find((keyword) => cleaned.includes(keyword));
+  if (hit) return hit.replace(/\s+/g, "");
+  const tokens = cleaned
+    .split(/\s+/)
+    .filter((token) => !/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|시|군|구)$/.test(token));
+  return ellipsize(tokens.slice(0, 3).join(" ") || "신청", 14).replace(/…$/, "");
+}
+
+function compactPolicySubject(title: string): string {
+  return ellipsize(
+    normalizeShareText(title)
+      .replace(/^20\d{2}년\s*/, "")
+      .replace(/\s+가이드$/, "")
+      .replace(/\s+확인$/, ""),
+    34,
+  );
+}
+
+function buildPunchBenefitLine(title: string, summary: string): string {
+  const amount = title.match(/(?:최대\s*)?\d[\d,.]*(?:만|억)?\s*원/)?.[0]
+    ?? summary.match(/(?:최대\s*)?\d[\d,.]*(?:만|억)?\s*원/)?.[0];
+  if (amount) return `조건 맞으면 ${amount}까지 받을 수 있어.`;
+  if (/대출|자금|보증|융자/.test(title)) return "조건 맞으면 자금 막힐 때 숨통 트일 수 있어.";
+  if (/세금|공제|환급|이자/.test(title)) return "모르면 그대로 더 내고, 알면 줄일 수 있어.";
+  if (/모집|참여|선정/.test(title)) return "대상 맞으면 지원 기회가 바로 열려.";
+  return ellipsize(summary, 42);
+}
+
+function buildPunchUrgencyLine(title: string): string {
+  if (/마감|접수|신청|모집/.test(title)) return "마감 지나면 그냥 끝이야.";
+  if (/대출|자금|보증|융자/.test(title)) return "자금 필요할 때 모르면 비싼 돈부터 쓰게 돼.";
+  if (/세금|공제|환급|이자/.test(title)) return "늦게 알면 줄일 수 있는 돈도 그냥 새.";
+  return "몰라서 지나가면 받을 돈도 못 받아.";
+}
+
+function buildKeeperPunchThreadsText(post: BlogPostShare): string {
+  const title = normalizeShareText(post.title);
+  const fallback =
+    "대상 조건, 신청 시점, 준비할 내용을 먼저 확인하세요. 해당되는 사람은 마감과 기준이 달라질 수 있어 원문 확인이 필요합니다.";
+  const sentences = splitKoreanSentences(post.description?.trim() ? post.description : fallback);
+  const summary = normalizeShareText(sentences[0] ?? fallback);
+  const subject = compactPolicySubject(title);
+  const keyword = normalizePolicyKeyword(title);
+  const benefit = buildPunchBenefitLine(title, summary);
+  const urgency = buildPunchUrgencyLine(title);
+  const hook = /대출|자금|보증|융자/.test(title)
+    ? "급할 때 빌릴 돈, 비싸게 쓰지 마"
+    : /세금|공제|환급|이자/.test(title)
+      ? "모르면 통장에서 돈이 샌다"
+      : "받을 수 있는 돈, 몰라서 놓치지 마";
+  const lines = [
+    `${hook}.`,
+    "",
+    `${subject} 얘기야.`,
+    benefit,
+    "대상 맞으면 그냥 넘길 일이 아니야.",
+    "",
+    "근데 이게 진짜 아까운 이유는 따로 있어.",
+    "알아서 챙겨주지 않아.",
+    urgency,
+    "",
+    "대상·기간·서류부터 확인해.",
+    "공식 신청처도 같이 봐야 해.",
+    "",
+    "@keepioo_official 인스타에 카드뉴스로 정리해뒀어.",
+    "",
+    `댓글에 **${keyword}** 남겨줘.`,
+  ];
+  const text = lines.join("\n");
+  if (text.length <= THREADS_TEXT_LIMIT) return text;
+  return [
+    `${hook}.`,
+    "",
+    `${subject} 얘기야.`,
+    benefit,
+    urgency,
+    "",
+    "대상·기간·서류·공식 신청처부터 확인해.",
+    "@keepioo_official 인스타에 카드뉴스로 정리해뒀어.",
+    "",
+    `댓글에 **${keyword}** 남겨줘.`,
+  ].join("\n").slice(0, THREADS_TEXT_LIMIT);
+}
+
 function selectLeadVariant(
   seed: string,
   disabledLeadVariants: SnsLeadVariant[] = LEAD_VARIANTS.filter((lead) => !DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead)),
@@ -192,6 +295,7 @@ export function buildThreadsText(
   post: BlogPostShare,
   opts: { disabledLeadVariants?: SnsLeadVariant[]; includeChallengerLeads?: boolean; challengerTrafficPct?: number } = {},
 ): string {
+  if (!opts.includeChallengerLeads) return buildKeeperPunchThreadsText(post);
   const title = normalizeShareText(post.title);
   const defaultDisabled = LEAD_VARIANTS.filter((lead) => !DEFAULT_ACTIVE_LEAD_VARIANTS.includes(lead));
   const disabledLeadVariants = opts.includeChallengerLeads
