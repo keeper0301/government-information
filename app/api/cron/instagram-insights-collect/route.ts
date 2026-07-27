@@ -12,6 +12,7 @@ import { authorizeCronRequest } from "@/lib/cron-auth";
 import { loadValidToken } from "@/lib/instagram/oauth";
 import { collectInstagramMediaInsights } from "@/lib/instagram/insights";
 import { logAdminAction } from "@/lib/admin-actions";
+import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -106,6 +107,38 @@ function judgePerformance(results: Array<{ metrics: ReturnType<typeof summarizeM
   };
 }
 
+function resolveAutoManagement(judgement: ReturnType<typeof judgePerformance>) {
+  const needsAction = ["hook_cta_weak", "no_reach_signal"].includes(judgement.status) && judgement.count >= 10;
+  const severity = judgement.status === "no_reach_signal" ? "action" : needsAction ? "watch" : "ok";
+  const nextAction =
+    judgement.status === "save_share_signal"
+      ? "저장/공유가 발생한 hook/category를 다음 발행 후보 선별과 카드 hook 확대 후보로 기록한다."
+      : judgement.status === "hook_cta_weak"
+        ? "발행량 확대를 멈추고 카드 1 저장/공유 hook, keeper.punch 댓글 키워드, 주제 mix를 우선 개선한다."
+        : judgement.status === "no_reach_signal"
+          ? "발행량/빈도 변경보다 주제 선택과 첫 카드 hook을 먼저 교체한다."
+          : "다음 6h/24h 표본까지 자동 관찰한다.";
+  return {
+    mode: "auto_judgement_audit_and_alert",
+    severity,
+    needsAction,
+    nextAction,
+    alertEligible: needsAction,
+  };
+}
+
+function buildOpsMessage(judgement: ReturnType<typeof judgePerformance>, management: ReturnType<typeof resolveAutoManagement>) {
+  return [
+    `상태: ${judgement.status}`,
+    `표본: ${judgement.count}개 / reach ${judgement.reach} / avg ${judgement.avgReach}`,
+    `저장 ${judgement.saved} · 공유 ${judgement.shares} · 프로필활동 ${judgement.profile_activity}`,
+    `saveRate ${judgement.saveRate} · shareRate ${judgement.shareRate}`,
+    `판단: ${judgement.recommendation}`,
+    `자동 다음 행동: ${management.nextAction}`,
+    "안전선: 이 cron은 성과 수집·audit·알림만 하고 발행/DB blog_posts 변경은 하지 않음.",
+  ].join("\n");
+}
+
 export async function GET(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
@@ -179,6 +212,22 @@ export async function GET(request: Request) {
     },
     { reach: 0, saved: 0, shares: 0, profile_activity: 0, total_interactions: 0 },
   );
+  const judgement = judgePerformance(results);
+  const management = resolveAutoManagement(judgement);
+  let alertResult = null;
+  if (!dryRun) {
+    await logAdminAction({
+      actorId: null,
+      action: "instagram_insights_judgement",
+      details: { judgement, management },
+    });
+    if (management.alertEligible) {
+      alertResult = await sendOpsAlertTelegram({
+        subject: `[Keepioo Instagram] 성과 병목 자동판정: ${judgement.status}`,
+        message: buildOpsMessage(judgement, management),
+      });
+    }
+  }
 
   return NextResponse.json({
     status: "ok",
@@ -188,7 +237,9 @@ export async function GET(request: Request) {
     requestedLimit: limit,
     collectedCount: results.length,
     totals,
-    judgement: judgePerformance(results),
+    judgement,
+    management,
+    alertResult,
     results,
   });
 }

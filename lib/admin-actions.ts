@@ -57,6 +57,7 @@ export type AdminActionType =
   | "instagram_publish_success"  // 인스타 carousel 자동 발행 성공 (media_id + permalink 저장)
   | "instagram_publish_fail"     // 인스타 발행 실패 (3회 누적 시 health-alert 트리거)
   | "instagram_insights_collect" // 인스타 일반글 인사이트 수집 cron 결과 (reach/saves/shares/profile_activity)
+  | "instagram_insights_judgement" // 인스타 성과 자동 판정/운영 추천 (hook_cta_weak 등)
   | "instagram_reel_publish_success" // 인스타 Reels 자동 발행 성공 (media_id + permalink 저장)
   | "instagram_reel_publish_fail"    // 인스타 Reels 발행 실패 (3회 누적 시 점검)
   | "instagram_reel_publish_skipped" // 인스타 Reels 발행 cron skip (disabled/outside_hours/no_pending 등)
@@ -397,6 +398,7 @@ export const ACTION_LABELS: Record<AdminActionType, string> = {
   instagram_publish_success: "인스타 자동 발행 성공",
   instagram_publish_fail: "인스타 자동 발행 실패",
   instagram_insights_collect: "인스타 일반글 인사이트 수집",
+  instagram_insights_judgement: "인스타 성과 자동 판정",
   instagram_reel_publish_success: "인스타 Reels 자동 발행 성공",
   instagram_reel_publish_fail: "인스타 Reels 자동 발행 실패",
   instagram_reel_publish_skipped: "인스타 Reels 발행 cron skip",

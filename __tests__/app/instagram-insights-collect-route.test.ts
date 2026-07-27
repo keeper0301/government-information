@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   loadValidToken: vi.fn(),
   collectInstagramMediaInsights: vi.fn(),
   logAdminAction: vi.fn(),
+  sendOpsAlertTelegram: vi.fn(),
   rows: [
     {
       id: "post-1",
@@ -39,6 +40,9 @@ vi.mock("@/lib/instagram/insights", () => ({
 vi.mock("@/lib/admin-actions", () => ({
   logAdminAction: mocks.logAdminAction,
 }));
+vi.mock("@/lib/notifications/telegram-ops-alert", () => ({
+  sendOpsAlertTelegram: mocks.sendOpsAlertTelegram,
+}));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: (table: string) => {
@@ -56,6 +60,16 @@ function req(path = "/api/cron/instagram-insights-collect?dry=1") {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.rows = [
+    {
+      id: "post-1",
+      slug: "slug-1",
+      title: "title 1",
+      category: "소상공인",
+      instagram_media_id: "media-1",
+      instagram_published_at: "2026-07-19T13:03:39.000Z",
+    },
+  ];
   mocks.authorizeCronRequest.mockReturnValue(null);
   mocks.loadValidToken.mockResolvedValue({ token: "token", userId: "ig-user", username: "keepioo" });
   mocks.collectInstagramMediaInsights.mockResolvedValue({
@@ -64,6 +78,7 @@ beforeEach(() => {
     requestedMetrics: "reach,saved,shares,profile_activity,total_interactions",
     errors: [],
   });
+  mocks.sendOpsAlertTelegram.mockResolvedValue({ ok: true, sent: 1, failed: 0, messageId: 123 });
 });
 
 describe("instagram-insights-collect cron", () => {
@@ -84,9 +99,15 @@ describe("instagram-insights-collect cron", () => {
         shareRate: 0,
         postsWithSaves: 1,
       },
+      management: {
+        severity: "ok",
+        needsAction: false,
+        alertEligible: false,
+      },
     });
     expect(mocks.collectInstagramMediaInsights).toHaveBeenCalledWith("media-1", "token");
     expect(mocks.logAdminAction).not.toHaveBeenCalled();
+    expect(mocks.sendOpsAlertTelegram).not.toHaveBeenCalled();
   });
 
   it("writes compact audit logs outside dry-run", async () => {
@@ -101,6 +122,17 @@ describe("instagram-insights-collect cron", () => {
         details: expect.objectContaining({ mediaId: "media-1" }),
       }),
     );
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: null,
+        action: "instagram_insights_judgement",
+        details: expect.objectContaining({
+          judgement: expect.objectContaining({ status: "save_share_signal" }),
+          management: expect.objectContaining({ alertEligible: false }),
+        }),
+      }),
+    );
+    expect(mocks.sendOpsAlertTelegram).not.toHaveBeenCalled();
   });
 
   it("classifies reach without save/share/profile action as weak hook/CTA signal", async () => {
@@ -121,5 +153,47 @@ describe("instagram-insights-collect cron", () => {
       saveRate: 0,
       shareRate: 0,
     });
+    expect(body.management).toMatchObject({
+      severity: "ok",
+      needsAction: false,
+      alertEligible: false,
+    });
+  });
+
+  it("alerts and writes judgement audit in live mode when weak signal has enough sample", async () => {
+    mocks.rows = Array.from({ length: 10 }, (_, i) => ({
+      id: `post-${i}`,
+      slug: `slug-${i}`,
+      title: `title ${i}`,
+      category: "소상공인",
+      instagram_media_id: `media-${i}`,
+      instagram_published_at: "2026-07-19T13:03:39.000Z",
+    }));
+    mocks.collectInstagramMediaInsights.mockResolvedValue({
+      mediaId: "media-x",
+      metrics: { reach: 2, saved: 0, shares: 0, profile_activity: 0, total_interactions: 0 },
+      requestedMetrics: "reach,saved,shares,profile_activity,total_interactions",
+      errors: [],
+    });
+
+    const res = await GET(req("/api/cron/instagram-insights-collect"));
+    const body = await res.json();
+
+    expect(body.management).toMatchObject({ severity: "watch", needsAction: true, alertEligible: true });
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "instagram_insights_judgement",
+        details: expect.objectContaining({
+          judgement: expect.objectContaining({ status: "hook_cta_weak", count: 10 }),
+        }),
+      }),
+    );
+    expect(mocks.sendOpsAlertTelegram).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: expect.stringContaining("hook_cta_weak"),
+        message: expect.stringContaining("자동 다음 행동"),
+      }),
+    );
+    expect(body.alertResult).toMatchObject({ ok: true, sent: 1 });
   });
 });
