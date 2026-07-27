@@ -46,6 +46,66 @@ function summarizeMetrics(metrics: Record<string, number>) {
   };
 }
 
+function judgePerformance(results: Array<{ metrics: ReturnType<typeof summarizeMetrics>; publishedAt: string }>) {
+  const count = results.length;
+  const totals = results.reduce(
+    (acc, row) => {
+      acc.reach += row.metrics.reach;
+      acc.saved += row.metrics.saved;
+      acc.shares += row.metrics.shares;
+      acc.profile_activity += row.metrics.profile_activity;
+      acc.total_interactions += row.metrics.total_interactions;
+      if (row.metrics.saved > 0) acc.postsWithSaves += 1;
+      if (row.metrics.shares > 0) acc.postsWithShares += 1;
+      if (row.metrics.profile_activity > 0) acc.postsWithProfileActivity += 1;
+      return acc;
+    },
+    {
+      reach: 0,
+      saved: 0,
+      shares: 0,
+      profile_activity: 0,
+      total_interactions: 0,
+      postsWithSaves: 0,
+      postsWithShares: 0,
+      postsWithProfileActivity: 0,
+    },
+  );
+  const sortedPublishedAt = results.map((row) => row.publishedAt).sort();
+  const avgReach = count > 0 ? Number((totals.reach / count).toFixed(2)) : 0;
+  const saveRate = totals.reach > 0 ? Number((totals.saved / totals.reach).toFixed(4)) : 0;
+  const shareRate = totals.reach > 0 ? Number((totals.shares / totals.reach).toFixed(4)) : 0;
+  const status =
+    count === 0
+      ? "no_recent_posts"
+      : totals.reach === 0
+        ? "no_reach_signal"
+        : totals.saved === 0 && totals.shares === 0 && totals.profile_activity === 0
+          ? "hook_cta_weak"
+          : totals.saved + totals.shares > 0
+            ? "save_share_signal"
+            : "watch_profile_activity";
+  const recommendation =
+    status === "save_share_signal"
+      ? "저장/공유 신호가 있으니 해당 hook/category를 확대 후보로 본다."
+      : status === "hook_cta_weak"
+        ? "도달은 있지만 저장·공유·프로필 활동이 없다. 카드 1 저장/공유 이유와 댓글 CTA를 계속 개선해야 한다."
+        : status === "no_reach_signal"
+          ? "도달 자체가 없다. 볼륨 확대보다 주제 선택·표지 hook부터 손본다."
+          : "표본을 더 모은 뒤 6h/24h로 다시 판단한다.";
+  return {
+    status,
+    recommendation,
+    count,
+    avgReach,
+    saveRate,
+    shareRate,
+    oldestPublishedAt: sortedPublishedAt[0] ?? null,
+    newestPublishedAt: sortedPublishedAt.at(-1) ?? null,
+    ...totals,
+  };
+}
+
 export async function GET(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
@@ -128,6 +188,7 @@ export async function GET(request: Request) {
     requestedLimit: limit,
     collectedCount: results.length,
     totals,
+    judgement: judgePerformance(results),
     results,
   });
 }

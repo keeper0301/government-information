@@ -76,6 +76,14 @@ describe("instagram-insights-collect cron", () => {
       dryRun: true,
       collectedCount: 1,
       totals: { reach: 5, saved: 1, shares: 0, profile_activity: 0, total_interactions: 1 },
+      judgement: {
+        status: "save_share_signal",
+        count: 1,
+        avgReach: 5,
+        saveRate: 0.2,
+        shareRate: 0,
+        postsWithSaves: 1,
+      },
     });
     expect(mocks.collectInstagramMediaInsights).toHaveBeenCalledWith("media-1", "token");
     expect(mocks.logAdminAction).not.toHaveBeenCalled();
@@ -93,5 +101,25 @@ describe("instagram-insights-collect cron", () => {
         details: expect.objectContaining({ mediaId: "media-1" }),
       }),
     );
+  });
+
+  it("classifies reach without save/share/profile action as weak hook/CTA signal", async () => {
+    mocks.collectInstagramMediaInsights.mockResolvedValueOnce({
+      mediaId: "media-1",
+      metrics: { reach: 20, saved: 0, shares: 0, profile_activity: 0, total_interactions: 0 },
+      requestedMetrics: "reach,saved,shares,profile_activity,total_interactions",
+      errors: [],
+    });
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body.judgement).toMatchObject({
+      status: "hook_cta_weak",
+      recommendation: expect.stringContaining("저장·공유·프로필 활동이 없다"),
+      avgReach: 20,
+      saveRate: 0,
+      shareRate: 0,
+    });
   });
 });
