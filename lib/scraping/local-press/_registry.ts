@@ -101,6 +101,7 @@ import { scrapeSeoguDaeguAndInsert } from "./seogu_daegu";
 import { scrapeNamguDaeguAndInsert } from "./namgu_daegu";
 import { scrapeBukguDaeguAndInsert } from "./bukgu_daegu";
 import { scrapeSuseongDaeguAndInsert } from "./suseong_daegu";
+import { scrapeDalseoDaeguAndInsert } from "./dalseo_daegu";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -314,6 +315,7 @@ export type CityKey =
   | "namgu_daegu"
   | "bukgu_daegu"
   | "suseong_daegu"
+  | "dalseo_daegu"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1151,6 +1153,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "대구 수성구청",
     siteUrl: "https://www.suseong.kr/index.do?menu_id=00000070",
     fn: scrapeSuseongDaeguAndInsert,
+  },
+  {
+    key: "dalseo_daegu",
+    city: "대구 달서구",
+    ministry: "대구 달서구청",
+    siteUrl: "https://www.dalseo.daegu.kr/index.do?menu_id=10000106",
+    fn: scrapeDalseoDaeguAndInsert,
   },
   {
     key: "yuseong",
