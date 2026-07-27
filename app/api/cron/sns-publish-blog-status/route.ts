@@ -112,7 +112,9 @@ async function run() {
   if (!env.threadsAutoPublishEnabled) blockers.push("threads_auto_publish_disabled");
   if (!threadsCredential.ok) blockers.push(`threads_credentials_${threadsCredential.reason ?? "not_ok"}`);
   if (eligiblePosts.length === 0) blockers.push("no_eligible_blog_posts_in_24h");
-  if (threadsRuns.recent[0]?.reason === "threads_daily_cap_reached") blockers.push("threads_daily_cap_reached");
+  if (threadsRuns.successCount > 0 && threadsRuns.recent[0]?.reason === "threads_daily_cap_reached") {
+    blockers.push("threads_daily_cap_reached");
+  }
   if (threadsRuns.recent[0]?.reason === "threads_min_interval") blockers.push("threads_min_interval");
 
   return NextResponse.json({

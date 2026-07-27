@@ -108,6 +108,28 @@ describe("publishThreadsPost", () => {
     });
   });
 
+  it("publish 직후 resource not ready 400은 짧게 재시도한다", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) return new Response(JSON.stringify({ id: "creation-id" }), { status: 200 });
+      if (calls < 4) {
+        return new Response(
+          JSON.stringify({ error: { message: "The requested resource does not exist", type: "OAuthException" } }),
+          { status: 400 },
+        );
+      }
+      return new Response(JSON.stringify({ id: "published-id" }), { status: 200 });
+    }) as typeof fetch;
+
+    const pending = publishThreadsPost({ text: validText });
+    await vi.advanceTimersByTimeAsync(6_000);
+    await expect(pending).resolves.toEqual({ ok: true, id: "published-id" });
+    expect(calls).toBe(4);
+    vi.useRealTimers();
+  });
+
   it("제목+링크뿐인 얇은 게시물은 발행 전에 차단한다", async () => {
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;

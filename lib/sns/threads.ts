@@ -29,6 +29,15 @@ function normalizeThreadsError(
   return `${stage}_http_${status}: ${body.slice(0, 100)}`;
 }
 
+function isTransientPublishNotReady(status: number, body: string): boolean {
+  const lower = body.toLowerCase();
+  return status === 400 && lower.includes("requested resource does not exist");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export type SnsResult =
   | { ok: true; id?: string }
   | { ok: false; reason: string };
@@ -102,22 +111,31 @@ export async function publishThreadsPost(opts: {
     access_token: accessToken,
   });
 
-  let publishRes: Response;
-  try {
-    publishRes = await fetch(publishUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: publishParams.toString(),
-    });
-  } catch (e) {
-    return { ok: false, reason: `publish_network: ${(e as Error).message.slice(0, 60)}` };
-  }
-  if (!publishRes.ok) {
-    const errText = await publishRes.text().catch(() => "");
+  let publishRes: Response | null = null;
+  let lastPublishError = "";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      publishRes = await fetch(publishUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: publishParams.toString(),
+      });
+    } catch (e) {
+      return { ok: false, reason: `publish_network: ${(e as Error).message.slice(0, 60)}` };
+    }
+    if (publishRes.ok) break;
+    lastPublishError = await publishRes.text().catch(() => "");
+    if (attempt < 3 && isTransientPublishNotReady(publishRes.status, lastPublishError)) {
+      await sleep(2_000 * attempt);
+      continue;
+    }
     return {
       ok: false,
-      reason: normalizeThreadsError("publish", publishRes.status, errText),
+      reason: normalizeThreadsError("publish", publishRes.status, lastPublishError),
     };
+  }
+  if (!publishRes?.ok) {
+    return { ok: false, reason: normalizeThreadsError("publish", publishRes?.status ?? 0, lastPublishError) };
   }
   const publishData = (await publishRes.json().catch(() => null)) as
     | { id?: string }
