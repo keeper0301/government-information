@@ -96,6 +96,7 @@ import { scrapeGangseoBusanAndInsert } from "./gangseo_busan";
 import { scrapeYeonjeAndInsert } from "./yeonje";
 import { scrapeSuyeongEminwonAndInsert } from "./suyeong-eminwon";
 import { scrapeJungguDaeguAndInsert } from "./junggu_daegu";
+import { scrapeDongguDaeguAndInsert } from "./donggu_daegu";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -304,6 +305,7 @@ export type CityKey =
   | "yeonje"
   | "suyeong"
   | "junggu_daegu"
+  | "donggu_daegu"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1106,6 +1108,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "대구 중구청",
     siteUrl: "https://www.jung.daegu.kr/new/pages/administration/page.html?mc=0161",
     fn: scrapeJungguDaeguAndInsert,
+  },
+  {
+    key: "donggu_daegu",
+    city: "대구 동구",
+    ministry: "대구 동구청",
+    siteUrl: "https://www.dong.daegu.kr/portal/contents.do?mid=0201070000",
+    fn: scrapeDongguDaeguAndInsert,
   },
   {
     key: "yuseong",
