@@ -34,7 +34,7 @@ export type SnsResult =
   | { ok: false; reason: string };
 
 function threadsAutoPublishEnabled(): boolean {
-  return process.env.THREADS_AUTO_PUBLISH_ENABLED === "true";
+  return process.env.THREADS_AUTO_PUBLISH_ENABLED !== "false";
 }
 
 export async function publishThreadsPost(opts: {

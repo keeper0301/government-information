@@ -34,8 +34,8 @@ describe("publishThreadsPost", () => {
     globalThis.fetch = originalFetch;
   });
 
-  it("env enable 전에는 Threads API를 호출하지 않고 안전하게 스킵한다", async () => {
-    delete process.env.THREADS_AUTO_PUBLISH_ENABLED;
+  it("env를 명시적으로 false로 둔 경우에만 Threads API를 호출하지 않고 안전하게 스킵한다", async () => {
+    process.env.THREADS_AUTO_PUBLISH_ENABLED = "false";
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
@@ -44,6 +44,18 @@ describe("publishThreadsPost", () => {
       reason: "skipped_disabled",
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("credential이 있으면 enable env가 없어도 기본 자동 발행을 시도한다", async () => {
+    delete process.env.THREADS_AUTO_PUBLISH_ENABLED;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ id: calls === 1 ? "creation-id" : "published-id" }), { status: 200 });
+    }) as typeof fetch;
+
+    await expect(publishThreadsPost({ text: validText })).resolves.toEqual({ ok: true, id: "published-id" });
+    expect(calls).toBe(2);
   });
 
   it("code 190 Failed to decrypt create 오류를 안정적인 invalid token reason으로 정규화한다", async () => {

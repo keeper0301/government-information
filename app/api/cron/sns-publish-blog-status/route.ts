@@ -102,13 +102,14 @@ async function run() {
   const actions = (actionsRes.data ?? []) as AdminActionRow[];
   const threadsRuns = summarizeThreadsRuns(actions);
   const env = {
-    THREADS_AUTO_PUBLISH_ENABLED: process.env.THREADS_AUTO_PUBLISH_ENABLED === "true",
+    THREADS_AUTO_PUBLISH_ENABLED: process.env.THREADS_AUTO_PUBLISH_ENABLED ?? "default_enabled",
+    threadsAutoPublishEnabled: process.env.THREADS_AUTO_PUBLISH_ENABLED !== "false",
     THREADS_DAILY_CAP: process.env.THREADS_DAILY_CAP ?? null,
     THREADS_MIN_HOURS_BETWEEN_POSTS: process.env.THREADS_MIN_HOURS_BETWEEN_POSTS ?? null,
   };
 
   const blockers: string[] = [];
-  if (!env.THREADS_AUTO_PUBLISH_ENABLED) blockers.push("threads_auto_publish_disabled");
+  if (!env.threadsAutoPublishEnabled) blockers.push("threads_auto_publish_disabled");
   if (!threadsCredential.ok) blockers.push(`threads_credentials_${threadsCredential.reason ?? "not_ok"}`);
   if (eligiblePosts.length === 0) blockers.push("no_eligible_blog_posts_in_24h");
   if (threadsRuns.recent[0]?.reason === "threads_daily_cap_reached") blockers.push("threads_daily_cap_reached");
