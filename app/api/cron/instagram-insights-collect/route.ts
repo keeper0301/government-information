@@ -13,6 +13,7 @@ import { loadValidToken } from "@/lib/instagram/oauth";
 import { collectInstagramMediaInsights } from "@/lib/instagram/insights";
 import { logAdminAction } from "@/lib/admin-actions";
 import { sendOpsAlertTelegram } from "@/lib/notifications/telegram-ops-alert";
+import { resolveInstagramCardHook } from "@/lib/instagram/card-hook";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -47,7 +48,50 @@ function summarizeMetrics(metrics: Record<string, number>) {
   };
 }
 
-function judgePerformance(results: Array<{ metrics: ReturnType<typeof summarizeMetrics>; publishedAt: string }>) {
+type InsightResultForJudgement = {
+  category: string | null;
+  cardHook: ReturnType<typeof resolveInstagramCardHook>;
+  metrics: ReturnType<typeof summarizeMetrics>;
+  publishedAt: string;
+};
+
+function buildPerformanceBreakdown(results: InsightResultForJudgement[]) {
+  function reduceBy<T extends "category" | "cardHook">(kind: T) {
+    const rows = new Map<string, { key: string; label: string; posts: number; reach: number; saved: number; shares: number; profile_activity: number; saveRate: number; shareRate: number }>();
+    for (const row of results) {
+      const key = kind === "category" ? row.category ?? "미분류" : row.cardHook.type;
+      const label = kind === "category" ? key : row.cardHook.label;
+      const acc = rows.get(key) ?? { key, label, posts: 0, reach: 0, saved: 0, shares: 0, profile_activity: 0, saveRate: 0, shareRate: 0 };
+      acc.posts += 1;
+      acc.reach += row.metrics.reach;
+      acc.saved += row.metrics.saved;
+      acc.shares += row.metrics.shares;
+      acc.profile_activity += row.metrics.profile_activity;
+      acc.saveRate = acc.reach > 0 ? Number((acc.saved / acc.reach).toFixed(4)) : 0;
+      acc.shareRate = acc.reach > 0 ? Number((acc.shares / acc.reach).toFixed(4)) : 0;
+      rows.set(key, acc);
+    }
+    return Array.from(rows.values()).sort((a, b) => b.posts - a.posts || b.reach - a.reach);
+  }
+
+  const categories = reduceBy("category");
+  const hooks = reduceBy("cardHook");
+  const dominantCategory = categories[0] ?? null;
+  const categorySkew = dominantCategory ? Number((dominantCategory.posts / Math.max(results.length, 1)).toFixed(2)) : 0;
+  return {
+    categories,
+    hooks,
+    dominantCategory: dominantCategory?.key ?? null,
+    categorySkew,
+    categorySkewRisk: categorySkew >= 0.45,
+    topicMixRecommendation:
+      categorySkew >= 0.45
+        ? `최근 표본이 ${dominantCategory?.key}에 쏠렸다. 다음 publish candidate는 청년·주거·육아·노년·교육 쪽을 우선 스캔한다.`
+        : "카테고리 쏠림은 낮다. hook/CTA 신호를 계속 본다.",
+  };
+}
+
+function judgePerformance(results: InsightResultForJudgement[]) {
   const count = results.length;
   const totals = results.reduce(
     (acc, row) => {
@@ -107,14 +151,14 @@ function judgePerformance(results: Array<{ metrics: ReturnType<typeof summarizeM
   };
 }
 
-function resolveAutoManagement(judgement: ReturnType<typeof judgePerformance>) {
-  const needsAction = ["hook_cta_weak", "no_reach_signal"].includes(judgement.status) && judgement.count >= 10;
+function resolveAutoManagement(judgement: ReturnType<typeof judgePerformance>, breakdown: ReturnType<typeof buildPerformanceBreakdown>) {
+  const needsAction = (["hook_cta_weak", "no_reach_signal"].includes(judgement.status) && judgement.count >= 10) || (breakdown.categorySkewRisk && judgement.count >= 10);
   const severity = judgement.status === "no_reach_signal" ? "action" : needsAction ? "watch" : "ok";
   const nextAction =
     judgement.status === "save_share_signal"
       ? "저장/공유가 발생한 hook/category를 다음 발행 후보 선별과 카드 hook 확대 후보로 기록한다."
       : judgement.status === "hook_cta_weak"
-        ? "발행량 확대를 멈추고 카드 1 저장/공유 hook, keeper.punch 댓글 키워드, 주제 mix를 우선 개선한다."
+        ? `발행량 확대를 멈추고 카드 1 저장/공유 hook, keeper.punch 댓글 키워드, 주제 mix를 우선 개선한다. ${breakdown.topicMixRecommendation}`
         : judgement.status === "no_reach_signal"
           ? "발행량/빈도 변경보다 주제 선택과 첫 카드 hook을 먼저 교체한다."
           : "다음 6h/24h 표본까지 자동 관찰한다.";
@@ -124,6 +168,8 @@ function resolveAutoManagement(judgement: ReturnType<typeof judgePerformance>) {
     needsAction,
     nextAction,
     alertEligible: needsAction,
+    categorySkewRisk: breakdown.categorySkewRisk,
+    dominantCategory: breakdown.dominantCategory,
   };
 }
 
@@ -178,11 +224,13 @@ export async function GET(request: Request) {
   for (const row of rows) {
     const insight = await collectInstagramMediaInsights(row.instagram_media_id, creds.token);
     const metrics = summarizeMetrics(insight.metrics);
+    const cardHook = resolveInstagramCardHook({ title: row.title, category: row.category });
     const result = {
       postId: row.id,
       slug: row.slug,
       title: row.title,
       category: row.category,
+      cardHook,
       mediaId: row.instagram_media_id,
       publishedAt: row.instagram_published_at,
       metrics,
@@ -213,13 +261,14 @@ export async function GET(request: Request) {
     { reach: 0, saved: 0, shares: 0, profile_activity: 0, total_interactions: 0 },
   );
   const judgement = judgePerformance(results);
-  const management = resolveAutoManagement(judgement);
+  const breakdown = buildPerformanceBreakdown(results);
+  const management = resolveAutoManagement(judgement, breakdown);
   let alertResult = null;
   if (!dryRun) {
     await logAdminAction({
       actorId: null,
       action: "instagram_insights_judgement",
-      details: { judgement, management },
+      details: { judgement, management, breakdown },
     });
     if (management.alertEligible) {
       alertResult = await sendOpsAlertTelegram({
@@ -238,6 +287,7 @@ export async function GET(request: Request) {
     collectedCount: results.length,
     totals,
     judgement,
+    breakdown,
     management,
     alertResult,
     results,

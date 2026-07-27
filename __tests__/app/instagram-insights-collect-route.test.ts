@@ -104,6 +104,12 @@ describe("instagram-insights-collect cron", () => {
         needsAction: false,
         alertEligible: false,
       },
+      breakdown: {
+        dominantCategory: "소상공인",
+        categorySkewRisk: true,
+        categories: [expect.objectContaining({ key: "소상공인", posts: 1 })],
+        hooks: [expect.objectContaining({ key: "checklist_default" })],
+      },
     });
     expect(mocks.collectInstagramMediaInsights).toHaveBeenCalledWith("media-1", "token");
     expect(mocks.logAdminAction).not.toHaveBeenCalled();
@@ -129,6 +135,7 @@ describe("instagram-insights-collect cron", () => {
         details: expect.objectContaining({
           judgement: expect.objectContaining({ status: "save_share_signal" }),
           management: expect.objectContaining({ alertEligible: false }),
+          breakdown: expect.objectContaining({ dominantCategory: "소상공인" }),
         }),
       }),
     );
@@ -179,12 +186,24 @@ describe("instagram-insights-collect cron", () => {
     const res = await GET(req("/api/cron/instagram-insights-collect"));
     const body = await res.json();
 
-    expect(body.management).toMatchObject({ severity: "watch", needsAction: true, alertEligible: true });
+    expect(body.breakdown).toMatchObject({
+      dominantCategory: "소상공인",
+      categorySkewRisk: true,
+      categorySkew: 1,
+    });
+    expect(body.management).toMatchObject({
+      severity: "watch",
+      needsAction: true,
+      alertEligible: true,
+      categorySkewRisk: true,
+      dominantCategory: "소상공인",
+    });
     expect(mocks.logAdminAction).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "instagram_insights_judgement",
         details: expect.objectContaining({
           judgement: expect.objectContaining({ status: "hook_cta_weak", count: 10 }),
+          breakdown: expect.objectContaining({ categorySkewRisk: true }),
         }),
       }),
     );
