@@ -142,6 +142,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "대구광역시 남구")?.covered,
     ).toMatchObject({ source: "static", key: "namgu_daegu" });
     expect(
+      rows.find((row) => row.fullName === "대구광역시 북구")?.covered,
+    ).toMatchObject({ source: "static", key: "bukgu_daegu" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
@@ -390,6 +393,7 @@ describe("scrape-local municipality coverage", () => {
     expect(uncoveredText).not.toContain("대구광역시\t동구\t대구광역시 동구");
     expect(uncoveredText).not.toContain("대구광역시\t서구\t대구광역시 서구");
     expect(uncoveredText).not.toContain("대구광역시\t남구\t대구광역시 남구");
+    expect(uncoveredText).not.toContain("대구광역시\t북구\t대구광역시 북구");
     expect(uncoveredText).not.toContain("전라남도\t순천시\t전라남도 순천시");
     expect(csv.split("\n")[0]).toBe(
       "provinceCode,provinceName,district,fullName,status,source,collectorKey,ministry,label",
@@ -433,6 +437,9 @@ describe("scrape-local municipality coverage", () => {
     );
     expect(csv).toContain(
       "daegu,대구광역시,남구,대구광역시 남구,covered,static,namgu_daegu",
+    );
+    expect(csv).toContain(
+      "daegu,대구광역시,북구,대구광역시 북구,covered,static,bukgu_daegu",
     );
   });
 
