@@ -104,6 +104,7 @@ import { scrapeSuseongDaeguAndInsert } from "./suseong_daegu";
 import { scrapeDalseoDaeguAndInsert } from "./dalseo_daegu";
 import { scrapeDalseongDaeguAndInsert } from "./dalseong_daegu";
 import { scrapeGunwiDaeguAndInsert } from "./gunwi_daegu";
+import { scrapeJungguUlsanAndInsert } from "./junggu_ulsan";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -320,6 +321,7 @@ export type CityKey =
   | "dalseo_daegu"
   | "dalseong_daegu"
   | "gunwi_daegu"
+  | "junggu_ulsan"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1178,6 +1180,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "대구 군위군청",
     siteUrl: "https://www.gunwi.go.kr/ko/page.do?mnu_uid=106",
     fn: scrapeGunwiDaeguAndInsert,
+  },
+  {
+    key: "junggu_ulsan",
+    city: "울산 중구",
+    ministry: "울산 중구청",
+    siteUrl: "https://www.junggu.ulsan.kr/board/list.ulsan?boardId=BBS_0000090&menuCd=DOM_000000102003002000",
+    fn: scrapeJungguUlsanAndInsert,
   },
   {
     key: "yuseong",
