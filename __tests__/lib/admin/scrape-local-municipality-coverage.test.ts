@@ -127,6 +127,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "부산광역시 연제구")?.covered,
     ).toMatchObject({ source: "static", key: "yeonje" });
     expect(
+      rows.find((row) => row.fullName === "부산광역시 수영구")?.covered,
+    ).toMatchObject({ source: "static", key: "suyeong" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
@@ -370,6 +373,7 @@ describe("scrape-local municipality coverage", () => {
     expect(uncoveredText).not.toContain("부산광역시\t사하구\t부산광역시 사하구");
     expect(uncoveredText).not.toContain("부산광역시\t강서구\t부산광역시 강서구");
     expect(uncoveredText).not.toContain("부산광역시\t연제구\t부산광역시 연제구");
+    expect(uncoveredText).not.toContain("부산광역시\t수영구\t부산광역시 수영구");
     expect(uncoveredText).not.toContain("전라남도\t순천시\t전라남도 순천시");
     expect(csv.split("\n")[0]).toBe(
       "provinceCode,provinceName,district,fullName,status,source,collectorKey,ministry,label",
@@ -399,6 +403,9 @@ describe("scrape-local municipality coverage", () => {
     expect(csv).toContain(
       "busan,부산광역시,연제구,부산광역시 연제구,covered,static,yeonje",
     );
+    expect(csv).toContain(
+      "busan,부산광역시,수영구,부산광역시 수영구,covered,static,suyeong",
+    );
   });
 
   it("미구현 지역을 광역별로 많이 남은 순서로 요약한다", () => {
@@ -409,12 +416,14 @@ describe("scrape-local municipality coverage", () => {
     expect(summary.every((item) => item.uncoveredCount > 0)).toBe(true);
     expect(summary[0]?.uncoveredCount).toBeGreaterThanOrEqual(summary.at(-1)?.uncoveredCount ?? 0);
 
-    const busan = summary.find((item) => item.provinceName === "부산광역시");
-    expect(busan?.totalCount).toBe(
-      rows.filter((row) => row.provinceName === "부산광역시").length,
+    const provinceName = summary[0]?.provinceName;
+    expect(provinceName).toBeTruthy();
+    const province = summary.find((item) => item.provinceName === provinceName);
+    expect(province?.totalCount).toBe(
+      rows.filter((row) => row.provinceName === provinceName).length,
     );
-    expect(busan?.uncoveredCount).toBe(
-      rows.filter((row) => row.provinceName === "부산광역시" && !row.covered).length,
+    expect(province?.uncoveredCount).toBe(
+      rows.filter((row) => row.provinceName === provinceName && !row.covered).length,
     );
   });
 });
