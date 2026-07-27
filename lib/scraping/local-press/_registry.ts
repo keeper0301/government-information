@@ -26,6 +26,7 @@ import { scrapeNamyangjuAndInsert } from "./namyangju";
 import { scrapePajuAndInsert } from "./paju";
 // 2026-06-08 disabled (ASN 차단 → GHA+icn1 playwright 경로 이관): import { scrapePyeongtaekAndInsert } from "./pyeongtaek";
 import { scrapePohangAndInsert } from "./pohang";
+import { scrapeGyeongjuAndInsert } from "./gyeongju";
 import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
 import { scrapeSejongAndInsert } from "./sejong";
@@ -245,6 +246,7 @@ export type CityKey =
   | "paju"
   // | "pyeongtaek" — 2026-06-08 disabled (→ GHA+icn1 playwright 경로)
   | "pohang"
+  | "gyeongju"
   | "iksan"
   | "daegu"
   | "sejong"
@@ -574,6 +576,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl:
       "https://www.pohang.go.kr/news/board/post/list.do?bcIdx=644&mid=0102000000",
     fn: scrapePohangAndInsert,
+  },
+  {
+    key: "gyeongju",
+    city: "경주시",
+    ministry: "경북 경주시청",
+    siteUrl: "https://www.gyeongju.go.kr/news/page.do?mnu_uid=1336",
+    fn: scrapeGyeongjuAndInsert,
   },
   {
     key: "iksan",
