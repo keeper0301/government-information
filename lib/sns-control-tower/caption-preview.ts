@@ -58,11 +58,14 @@ export function buildSnsCaptionPreview(
   row: BlogPreviewRow,
   opts: { disabledLeadVariants?: SnsLeadVariant[] } = {},
 ): SnsCaptionPreview {
-  const text = buildThreadsText({
-    title: row.title,
-    slug: row.slug,
-    description: row.meta_description,
-  }, opts);
+  const text = buildThreadsText(
+    {
+      title: row.title,
+      slug: row.slug,
+      description: row.meta_description,
+    },
+    { disabledLeadVariants: opts.disabledLeadVariants ?? CHALLENGER_LEADS, includeChallengerLeads: true },
+  );
   return {
     slug: row.slug,
     title: row.title,
