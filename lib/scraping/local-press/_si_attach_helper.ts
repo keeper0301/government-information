@@ -48,10 +48,13 @@ function isTlsChainError(err: unknown): boolean {
   return /UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_|SELF_SIGNED/.test(code);
 }
 
-async function fetchAttachBuffer(url: string): Promise<Uint8Array | null> {
+async function fetchAttachBuffer(
+  url: string,
+  extraHeaders?: HeadersInit,
+): Promise<Uint8Array | null> {
   async function fetchOnce(insecureTls = false): Promise<Response> {
     const init: RequestInit = {
-      headers: { "User-Agent": SI_UA },
+      headers: { "User-Agent": SI_UA, ...(extraHeaders ?? {}) },
       signal: AbortSignal.timeout(20000),
     };
     if (insecureTls) {
@@ -76,10 +79,11 @@ async function fetchAttachBuffer(url: string): Promise<Uint8Array | null> {
 }
 
 // 첨부 download 링크 — SI(downloadBbsFile.do)·eGovFrame portal/bbs(fileDown.do)·
-// 진천 board/download.do·부산 RFC3 board/download.<district>·평창 board/article/download 공통.
-// href 안에 개행/탭이 섞여 \s 제거 + &amp; 디코드 필요.
+// 진천 board/download.do·부산 RFC3 board/download.<district>·평창 board/article/download·
+// 대구 중구 download_utf8.php 공통.
+// href 안에 개행/탭이 섞여 \s 제거 + &amp; 디코드 필요. 오래된 게시판은 작은따옴표 href 도 사용.
 const DOWNLOAD_REGEX =
-  /href="([^"]*(?:(?:downloadBbsFile|fileDown)\.do|board\/download(?:\.[a-z]+)?|board\/article\/download)[^"]*)"/gi;
+  /href=["']([^"']*(?:(?:downloadBbsFile|fileDown)\.do|download_utf8\.php|board\/download(?:\.[a-z]+)?|board\/article\/download)[^"']*)["']/gi;
 
 // eGovFrame/YH portal boards may expose attachments only as JS calls instead of
 // hrefs: fn_egov_downFile('<atchFileId>','<fileSn>'). The corresponding download
@@ -201,6 +205,7 @@ async function extractAttachBody(buf: Uint8Array): Promise<string | null> {
 export async function fetchSiAttachBody(
   html: string,
   baseDir: string,
+  extraHeaders?: HeadersInit,
 ): Promise<string | null> {
   const paths = [
     ...new Set(
@@ -212,7 +217,7 @@ export async function fetchSiAttachBody(
   for (const path of paths) {
     try {
       const url = new URL(path, baseDir).href;
-      const buf = await fetchAttachBuffer(url);
+      const buf = await fetchAttachBuffer(url, extraHeaders);
       if (!buf) continue;
       const body = await extractAttachBody(buf);
       if (body) return body;
