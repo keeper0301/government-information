@@ -108,6 +108,7 @@ import { scrapeJungguUlsanAndInsert } from "./junggu_ulsan";
 import { scrapeNamguUlsanAndInsert } from "./namgu_ulsan";
 import { scrapeDongguUlsanAndInsert } from "./donggu_ulsan";
 import { scrapeBukguUlsanAndInsert } from "./bukgu_ulsan";
+import { scrapeUljuUlsanAndInsert } from "./ulju_ulsan";
 import { scrapeYuseongEminwonAndInsert } from "./yuseong-eminwon";
 import { scrapeDongguDaejeonAndInsert } from "./donggu_daejeon";
 import { scrapeJungguDaejeonAndInsert } from "./junggu_daejeon";
@@ -328,6 +329,7 @@ export type CityKey =
   | "namgu_ulsan"
   | "donggu_ulsan"
   | "bukgu_ulsan"
+  | "ulju_ulsan"
   | "yuseong"
   | "donggu_daejeon"
   | "junggu_daejeon"
@@ -1214,6 +1216,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "울산 북구청",
     siteUrl: "https://www.bukgu.ulsan.kr/mrmt/pageCont.do?menuNo=1020000",
     fn: scrapeBukguUlsanAndInsert,
+  },
+  {
+    key: "ulju_ulsan",
+    city: "울산 울주군",
+    ministry: "울산 울주군청",
+    siteUrl: "https://www.ulju.ulsan.kr/ulju/bbs/list.do?ptIdx=146&mId=0404020000",
+    fn: scrapeUljuUlsanAndInsert,
   },
   {
     key: "yuseong",
