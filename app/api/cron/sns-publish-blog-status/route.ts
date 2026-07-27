@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import { checkThreadsCredentials } from "@/lib/sns/credential-check";
+import { buildThreadsText } from "@/lib/sns/dispatch";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -101,6 +102,9 @@ async function run() {
   const eligiblePosts = (eligiblePostsRes.data ?? []) as BlogPostRow[];
   const actions = (actionsRes.data ?? []) as AdminActionRow[];
   const threadsRuns = summarizeThreadsRuns(actions);
+  const latestReason = threadsRuns.recent[0]?.reason ?? null;
+  const dailyCapReached = threadsRuns.successCount > 0 && latestReason === "threads_daily_cap_reached";
+  const minIntervalReached = latestReason === "threads_min_interval";
   const env = {
     THREADS_AUTO_PUBLISH_ENABLED: process.env.THREADS_AUTO_PUBLISH_ENABLED ?? "default_enabled",
     threadsAutoPublishEnabled: process.env.THREADS_AUTO_PUBLISH_ENABLED !== "false",
@@ -112,10 +116,16 @@ async function run() {
   if (!env.threadsAutoPublishEnabled) blockers.push("threads_auto_publish_disabled");
   if (!threadsCredential.ok) blockers.push(`threads_credentials_${threadsCredential.reason ?? "not_ok"}`);
   if (eligiblePosts.length === 0) blockers.push("no_eligible_blog_posts_in_24h");
-  if (threadsRuns.successCount > 0 && threadsRuns.recent[0]?.reason === "threads_daily_cap_reached") {
-    blockers.push("threads_daily_cap_reached");
-  }
-  if (threadsRuns.recent[0]?.reason === "threads_min_interval") blockers.push("threads_min_interval");
+  if (minIntervalReached) blockers.push("threads_min_interval");
+
+  const nextPost = eligiblePosts[0] ?? null;
+  const nextThreadsPreview = nextPost
+    ? {
+        post_id: nextPost.id,
+        title: nextPost.title,
+        text: buildThreadsText({ title: nextPost.title, slug: nextPost.slug, description: null }),
+      }
+    : null;
 
   return NextResponse.json({
     ok: blockers.length === 0,
@@ -132,6 +142,20 @@ async function run() {
     },
     threadsIdentity,
     blockers,
+    cadence: {
+      dailyCapReached,
+      minIntervalReached,
+      status: dailyCapReached ? "capped_until_next_window" : minIntervalReached ? "waiting_min_interval" : "ready",
+    },
+    nextThreadsPreview: nextThreadsPreview
+      ? {
+          ...nextThreadsPreview,
+          length: nextThreadsPreview.text.length,
+          hasKeepiooMention: nextThreadsPreview.text.includes("@keepioo_official"),
+          hasDirectBlogUrl: /https?:\/\/\S+/.test(nextThreadsPreview.text),
+          hasCommentKeywordCta: /댓글에 \*\*.+\*\* 남겨줘\./.test(nextThreadsPreview.text),
+        }
+      : null,
     recentPosts: {
       last7dCountSample: recentPosts.length,
       eligible24hCountSample: eligiblePosts.length,
