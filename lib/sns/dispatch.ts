@@ -170,25 +170,40 @@ function normalizePolicyKeyword(title: string): string {
     .replace(/[:：].*$/, "")
     .replace(/\s+(가이드|확인|총정리|정리|신청 방법|지원사업|사업|계획)$/g, "")
     .trim();
-  const known = [
+  const specific = [
+    "땡겨요",
+    "혼디론",
     "노란우산",
+    "품질보증조달물품",
+    "원산지인증수출자",
+    "탄소저감시설지원자금",
+    "주거 청결서비스",
+    "신기술 육성자금",
+    "기술창업 특례보증",
     "자동차세",
     "기초연금",
     "청년 월세",
     "청년월세",
     "전세자금",
-    "소상공인",
     "특례보증",
     "출산장려금",
     "학자금대출",
     "주거급여",
   ];
-  const hit = known.find((keyword) => cleaned.includes(keyword));
-  if (hit) return hit.replace(/\s+/g, "");
+  const specificHit = specific.find((keyword) => cleaned.includes(keyword));
+  if (specificHit) return ellipsize(specificHit.replace(/\s+/g, ""), 14).replace(/…$/, "");
   const tokens = cleaned
     .split(/\s+/)
-    .filter((token) => !/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|시|군|구)$/.test(token));
-  return ellipsize(tokens.slice(0, 3).join(" ") || "신청", 14).replace(/…$/, "");
+    .map((token) => token.replace(/[,:：]/g, ""))
+    .filter(
+      (token) =>
+        token.length > 0
+        && !/^(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주|춘천|여주|울진|안양|시|군|구)$/.test(token)
+        && !/^(소상공인|중소기업|사업자금|지원|지원사업|가이드|확인|신청|안내|대상|최대|계획)$/.test(token)
+        && !/^\d[\d,.]*(?:만|억)?원?$/.test(token),
+    );
+  const meaningful = tokens.find((token) => /론|보증|자금|공제|연금|월세|이자|장려금|서비스|인증|조달|대출/.test(token)) ?? tokens[0];
+  return ellipsize(meaningful || "신청", 14).replace(/…$/, "");
 }
 
 function compactPolicySubject(title: string): string {

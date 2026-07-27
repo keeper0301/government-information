@@ -63,6 +63,17 @@ describe("buildThreadsText", () => {
     expect(text.length).toBeLessThanOrEqual(500);
   });
 
+  it("댓글 키워드는 소상공인 같은 넓은 분류보다 기억하기 쉬운 정책명을 우선한다", () => {
+    const text = buildThreadsText({
+      title: "2026년 춘천 땡겨요 소상공인 사업자금 최대 5천만원 보증",
+      slug: "2026년-춘천-땡겨요-소상공인-사업자금-최대-5천만원-보증",
+      description: "춘천 땡겨요 소상공인 사업자금은 조건에 맞는 사업자에게 보증을 지원하는 제도입니다.",
+    });
+
+    expect(text).toContain("댓글에 **땡겨요** 남겨줘.");
+    expect(text).not.toContain("댓글에 **소상공인** 남겨줘.");
+  });
+
   it("관리자 preview 모드에서는 기존 A/B 리드 추적용 UTM을 보존한다", () => {
     const text = buildThreadsText(
       {
