@@ -42,6 +42,7 @@ on:
           - user-contact-reminder-dry
           - user-contact-reminder
           - sns-publish-blog
+          - sns-publish-blog-status
           - sns-publish-popular-policy
           - sns-credential-check
           - sns-lead3-activate
@@ -198,6 +199,10 @@ jobs:
             sns-publish-blog)
               path="/api/cron/sns-publish-blog"
               method="POST"
+              ;;
+            sns-publish-blog-status)
+              path="/api/cron/sns-publish-blog-status"
+              method="GET"
               ;;
             sns-publish-popular-policy)
               path="/api/cron/sns-publish-popular-policy"
