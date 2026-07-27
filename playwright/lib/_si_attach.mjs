@@ -17,7 +17,7 @@ import JSZip from "jszip";
 // CMS(금정 download.geumj)·진천 board/download.do·부산 RFC3 board/download.<district>·평창 board/article/download·
 // 대구 중구 download_utf8.php 공통. 오래된 게시판은 작은따옴표 href 도 사용.
 const DOWNLOAD_REGEX =
-  /href=["']([^"']*(?:downloadBbsFile\.do|fileDown\.do|download\.geumj|download_utf8\.php|board\/download(?:\.[a-z]+)?|board\/article\/download)[^"']*)["']/gi;
+  /href=["']([^"']*(?:downloadBbsFile\.do|fileDown\.do|board_download\.do|download\.geumj|download_utf8\.php|board\/download(?:\.[a-z]+)?|board\/article\/download)[^"']*)["']/gi;
 
 // eGovFrame/YH portal boards may expose attachments as JavaScript calls instead
 // of hrefs: fn_egov_downFile('<atchFileId>','<fileSn>').
