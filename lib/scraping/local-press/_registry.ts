@@ -29,6 +29,7 @@ import { scrapePohangAndInsert } from "./pohang";
 import { scrapeGyeongjuAndInsert } from "./gyeongju";
 import { scrapeGimcheonAndInsert } from "./gimcheon";
 import { scrapeAndongAndInsert } from "./andong";
+import { scrapeGumiAndInsert } from "./gumi";
 import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
 import { scrapeSejongAndInsert } from "./sejong";
@@ -251,6 +252,7 @@ export type CityKey =
   | "gyeongju"
   | "gimcheon"
   | "andong"
+  | "gumi"
   | "iksan"
   | "daegu"
   | "sejong"
@@ -601,6 +603,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "경북 안동시청",
     siteUrl: "https://www.andong.go.kr/portal/bbs/list.do?ptIdx=104&mId=0403010000",
     fn: scrapeAndongAndInsert,
+  },
+  {
+    key: "gumi",
+    city: "구미시",
+    ministry: "경북 구미시청",
+    siteUrl: "https://www.gumi.go.kr/portal/board/post/list.do?bcIdx=211&mid=0504020000",
+    fn: scrapeGumiAndInsert,
   },
   {
     key: "iksan",
