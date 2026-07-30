@@ -190,6 +190,9 @@ describe("scrape-local municipality coverage", () => {
       rows.find((row) => row.fullName === "경상북도 영천시")?.covered,
     ).toMatchObject({ source: "static", key: "yeongcheon" });
     expect(
+      rows.find((row) => row.fullName === "경상북도 상주시")?.covered,
+    ).toMatchObject({ source: "static", key: "sangju" });
+    expect(
       rows.find((row) => row.fullName === "대전광역시 유성구")?.covered,
     ).toMatchObject({ source: "static", key: "yuseong" });
     expect(
@@ -454,6 +457,7 @@ describe("scrape-local municipality coverage", () => {
     expect(uncoveredText).not.toContain("경상북도\t구미시\t경상북도 구미시");
     expect(uncoveredText).not.toContain("경상북도\t영주시\t경상북도 영주시");
     expect(uncoveredText).not.toContain("경상북도\t영천시\t경상북도 영천시");
+    expect(uncoveredText).not.toContain("경상북도\t상주시\t경상북도 상주시");
     expect(uncoveredText).not.toContain("전라남도\t순천시\t전라남도 순천시");
     expect(csv.split("\n")[0]).toBe(
       "provinceCode,provinceName,district,fullName,status,source,collectorKey,ministry,label",
