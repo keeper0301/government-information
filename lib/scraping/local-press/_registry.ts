@@ -32,6 +32,7 @@ import { scrapeAndongAndInsert } from "./andong";
 import { scrapeGumiAndInsert } from "./gumi";
 import { scrapeYeongjuAndInsert } from "./yeongju";
 import { scrapeYeongcheonAndInsert } from "./yeongcheon";
+import { scrapeSangjuAndInsert } from "./sangju";
 import { scrapeIksanAndInsert } from "./iksan";
 import { scrapeDaeguAndInsert } from "./daegu";
 import { scrapeSejongAndInsert } from "./sejong";
@@ -257,6 +258,7 @@ export type CityKey =
   | "gumi"
   | "yeongju"
   | "yeongcheon"
+  | "sangju"
   | "iksan"
   | "daegu"
   | "sejong"
@@ -628,6 +630,13 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "경북 영천시청",
     siteUrl: "https://www.yc.go.kr/news/ycNews/list.do?searchCategory=1&mId=0200000000",
     fn: scrapeYeongcheonAndInsert,
+  },
+  {
+    key: "sangju",
+    city: "상주시",
+    ministry: "경북 상주시청",
+    siteUrl: "https://www.sangju.go.kr/page/10330/10640.tc",
+    fn: scrapeSangjuAndInsert,
   },
   {
     key: "iksan",

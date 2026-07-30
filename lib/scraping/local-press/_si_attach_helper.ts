@@ -96,6 +96,12 @@ const EGOV_DOWNFILE_CALL_REGEX =
 const EMINWON_GODOWNLOAD_CALL_REGEX =
   /goDownLoad\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
 
+// TimeCMS pages (Sangju) render file links client-side from calls like:
+// viewFile.putFileHtml("FL...", "1", "name.hwp", "size", "hwp").
+// The real download endpoint is /file/readFile.tc?fileId=...&fileNo=...
+const TIMECMS_PUTFILE_CALL_REGEX =
+  /putFileHtml\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*['"][^'"]*['"]\s*,\s*['"][^'"]*['"]\s*,\s*['"]([^'"]+)['"]\s*\)/gi;
+
 // PDF 전문 머리의 보도자료 표준 메타(자료제공 일시·담당부서·전화·"사진 있음/없음·총 매수 N쪽")
 // 를 "총 매수 N쪽" 마커 기준으로 cut. 마커 부재/cut 후 250 미만이면 전체 유지(전문 확보 우선).
 export function stripSiPdfMeta(text: string): string {
@@ -256,6 +262,45 @@ export async function fetchEgovDownFileAttachBody(
   for (const url of parseEgovDownFileUrls(html, baseUrl)) {
     try {
       const buf = await fetchAttachBuffer(url);
+      if (!buf) continue;
+      const body = await extractAttachBody(buf);
+      if (body) return body;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export function parseTimecmsPutFileUrls(html: string, baseUrl: string): string[] {
+  const origin = new URL(baseUrl).origin;
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+  const re = new RegExp(TIMECMS_PUTFILE_CALL_REGEX.source, "gi");
+
+  while ((match = re.exec(html)) !== null) {
+    const [, fileId, fileNo, ext] = match;
+    if (!/^(?:hwp|hwpx|pdf)$/i.test(ext)) continue;
+    const url = `${origin}/file/readFile.tc?fileId=${encodeURIComponent(
+      fileId,
+    )}&fileNo=${encodeURIComponent(fileNo)}`;
+    if (!seen.has(url)) {
+      seen.add(url);
+      urls.push(url);
+    }
+  }
+
+  return urls;
+}
+
+export async function fetchTimecmsPutFileAttachBody(
+  html: string,
+  baseUrl: string,
+): Promise<string | null> {
+  for (const url of parseTimecmsPutFileUrls(html, baseUrl)) {
+    try {
+      const buf = await fetchAttachBuffer(url, { Referer: baseUrl });
       if (!buf) continue;
       const body = await extractAttachBody(buf);
       if (body) return body;
