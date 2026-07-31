@@ -9,6 +9,8 @@
 export type CardHookType =
   | "money_deadline"
   | "official_route"
+  | "document_save"
+  | "small_business_share"
   | "share_age"
   | "housing_condition"
   | "checklist_default";
@@ -22,7 +24,8 @@ const MONEY_RE = /금액|만원|원\b|최대|한도|지원금|축하금|수당/;
 const DOCUMENT_RE = /서류|준비물|제출|증빙|구비서류|신청서/;
 const YOUTH_RE = /청년|청소년|학생|대학생/;
 const HOUSING_RE = /주거|월세|전세|임대|보증금|무주택/;
-const OFFICIAL_ROUTE_RE = /대출|융자|정책자금|컨설팅|공고|모집/;
+const SMALL_BUSINESS_RE = /소상공인|자영업|자영업자|사업자|중소기업|창업|폐업|상권|신용보증|보증|정책자금|융자|대출/;
+const OFFICIAL_ROUTE_RE = /컨설팅|공고|모집|신청|접수/;
 
 export function resolveInstagramCardHook(input: {
   title: string;
@@ -32,24 +35,28 @@ export function resolveInstagramCardHook(input: {
   const text = `${input.category ?? ""} ${input.title} ${input.description ?? ""}`;
 
   if (MONEY_RE.test(text)) {
-    return { type: "money_deadline", label: "저장 이유 · 금액 · 대상 · 신청 마감" };
+    return { type: "money_deadline", label: "저장/공유 · 금액보다 대상·마감 먼저" };
   }
 
   if (HOUSING_RE.test(text)) {
-    return { type: "housing_condition", label: "공유 이유 · 주거비 · 대상 조건 · 신청처" };
+    return { type: "housing_condition", label: "월세·전세 해당자에게 공유 · 조건 먼저" };
   }
 
   if (YOUTH_RE.test(text)) {
-    return { type: "share_age", label: "공유 이유 · 청년 대상 · 기간 · 신청처" };
+    return { type: "share_age", label: "청년·학생이면 공유 · 나이·기간 확인" };
   }
 
   if (DOCUMENT_RE.test(text)) {
-    return { type: "official_route", label: "저장 이유 · 준비서류 · 기간 · 신청처" };
+    return { type: "document_save", label: "저장 · 제출서류 빠뜨리면 다시 해야 함" };
+  }
+
+  if (SMALL_BUSINESS_RE.test(text)) {
+    return { type: "small_business_share", label: "사장님에게 공유 · 대상·신청처 먼저" };
   }
 
   if (OFFICIAL_ROUTE_RE.test(text)) {
-    return { type: "official_route", label: "저장 이유 · 공식 신청처 · 서류 · 기간" };
+    return { type: "official_route", label: "저장 · 공식 신청처 헷갈림 방지" };
   }
 
-  return { type: "checklist_default", label: "저장 이유 · 대상 여부 · 기간 · 신청처" };
+  return { type: "checklist_default", label: "저장 · 대상/기간/신청처 30초 체크" };
 }
