@@ -56,7 +56,7 @@ const CRON_LIST: { path: string; label: string; schedule: string; desc: string }
   { path: "/api/indexnow-submit-recent", label: "IndexNow 제출", schedule: "매일 07:30 UTC", desc: "Bing/Yandex SEO" },
   // 보강·분석 — 자주 도는 background 작업.
   { path: "/api/enrich", label: "공고 detail 보강", schedule: "매 5분", desc: "bokjiro·youthcenter·mss" },
-  { path: "/api/enrich-thumbnails", label: "naver-news og:image", schedule: "매 5분", desc: "BATCH 50" },
+  { path: "/api/enrich-thumbnails", label: "naver-news og:image", schedule: "기본 중단", desc: "저작권 안전: ENABLE_NEWS_THUMBNAIL_ENRICHMENT=1 일 때만" },
   { path: "/api/enrich-targeting", label: "본문 targeting 분석", schedule: "매일 08시 UTC", desc: "Phase 1.5 income/household 백필" },
   { path: "/api/cron/policy-insight-backfill", label: "정책 자체 해설 백필", schedule: "12회/일 (매 2시간 KST)", desc: "AdSense 큐레이션 시그널 — gpt-4o-mini · 일 1,200건 (5/18 가속)" },
   { path: "/api/cron/news-ai-commentary-backfill", label: "뉴스 AI 자체 해설 백필 (P2)", schedule: "매일 04:30 KST", desc: "ai_commentary NULL row 채워 selective noindex 해제 + scaled content 방어 — gpt-4o-mini · 일 200건 (5/30 도입)" },

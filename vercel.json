@@ -117,8 +117,6 @@
 
     { "path": "/api/enrich", "schedule": "*/5 * * * *" },
 
-    { "path": "/api/enrich-thumbnails", "schedule": "*/5 * * * *" },
-
     { "path": "/api/indexnow-submit-recent", "schedule": "30 7 * * *" },
 
     { "path": "/api/cron/press-ingest", "schedule": "30 1,6,10 * * *" },

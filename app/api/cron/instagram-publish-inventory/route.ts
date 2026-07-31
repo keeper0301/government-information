@@ -31,6 +31,20 @@ type BlogPostInventoryRow = {
   published_at: string | null;
 };
 
+type CountQueryResult = {
+  count: number | null;
+  error: { message: string } | null;
+};
+
+type CountQueryBuilder = PromiseLike<CountQueryResult> & {
+  not(column: string, operator: string, value: unknown): CountQueryBuilder;
+  is(column: string, value: unknown): CountQueryBuilder;
+  eq(column: string, value: unknown): CountQueryBuilder;
+  lt(column: string, value: unknown): CountQueryBuilder;
+  gte(column: string, value: unknown): CountQueryBuilder;
+  or(filters: string): CountQueryBuilder;
+};
+
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -57,9 +71,9 @@ function bump(map: Record<string, number>, key: string | null | undefined) {
   map[k] = (map[k] ?? 0) + 1;
 }
 
-async function countQuery(label: string, build: (query: any) => Promise<{ count: number | null; error: { message: string } | null }>) {
+async function countQuery(label: string, build: (query: CountQueryBuilder) => PromiseLike<CountQueryResult>) {
   const admin = createAdminClient();
-  const query = admin.from("blog_posts").select("id", { count: "exact", head: true });
+  const query = admin.from("blog_posts").select("id", { count: "exact", head: true }) as unknown as CountQueryBuilder;
   const { count, error } = await build(query);
   if (error) throw new Error(`${label}: ${error.message}`);
   return count ?? 0;
