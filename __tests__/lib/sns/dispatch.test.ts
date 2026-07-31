@@ -3,12 +3,17 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("@/lib/sns/twitter", () => ({ publishTweet: vi.fn() }));
 vi.mock("@/lib/sns/facebook", () => ({ publishFacebookPost: vi.fn() }));
 vi.mock("@/lib/sns/threads", () => ({ publishThreadsPost: vi.fn() }));
+vi.mock("@/lib/llm/text", () => ({
+  callLLM: vi.fn(),
+  parseJSONResponse: (text: string) => JSON.parse(text),
+}));
 
 import { buildThreadsText, dispatchBlogToSns } from "@/lib/sns/dispatch";
 import { validateCaption } from "@/lib/validate-caption";
 import * as twitter from "@/lib/sns/twitter";
 import * as facebook from "@/lib/sns/facebook";
 import * as threads from "@/lib/sns/threads";
+import { callLLM } from "@/lib/llm/text";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,12 +28,10 @@ describe("buildThreadsText", () => {
         "매월 25일 지급되는 기초연금이 생활비와 지역 소비로 이어지는 흐름을 정리했습니다. 수급자 개인의 소득 보완을 넘어 동네 가게 매출과 일자리에도 영향을 주는 구조를 짚었습니다.",
     });
 
-    expect(text).toMatch(/^받을 수 있는 돈, 몰라서 놓치지 마\./);
-    expect(text).toContain("기초연금 얘기야.");
-    expect(text).toContain("대상 맞으면 그냥 넘길 일이 아니야.");
-    expect(text).toContain("근데 이게 진짜 아까운 이유는 따로 있어.");
-    expect(text).toContain("@keepioo_official 인스타에 카드뉴스로 정리해뒀어.");
-    expect(text).toContain("댓글에 **기초연금** 남겨줘.");
+    expect(text).toContain("기초연금");
+    expect(text).toContain("@keepioo_official");
+    expect(text).toMatch(/댓글에 \*\*기초연금\*\*|\*\*기초연금\*\*.*댓글/);
+    expect(text).not.toContain("대상 맞으면 그냥 넘길 일이 아니야.\n\n근데 이게 진짜 아까운 이유는 따로 있어.");
     expect(text).not.toContain("https://www.keepioo.com/blog/basic-pension");
     expect(text).not.toContain("utm_source=threads");
     expect(text.length).toBeLessThanOrEqual(500);
@@ -41,9 +44,8 @@ describe("buildThreadsText", () => {
       slug: "2026년-디딤돌-창업중심대학-지원",
     });
 
-    expect(text).toMatch(/^급할 때 빌릴 돈, 비싸게 쓰지 마\./);
     expect(text).toContain("자금 막힐 때 숨통 트일 수 있어.");
-    expect(text).toContain("대상·기간·서류");
+    expect(text).toMatch(/대상|서류|신청처|접수 기간/);
     expect(text).toContain("@keepioo_official");
     expect(text).not.toContain("/blog/2026년");
     expect(text.length).toBeLessThanOrEqual(500);
@@ -57,9 +59,9 @@ describe("buildThreadsText", () => {
         "안양시 장애인가정 출산장려금의 대상과 신청 전 확인할 내용을 정리했습니다. 출산 시점과 거주 요건에 따라 지원 여부가 달라질 수 있습니다.",
     });
 
-    expect(text).toMatch(/^받을 수 있는 돈, 몰라서 놓치지 마\./);
-    expect(text).toContain("안양시 장애인가정 출산장려금 지원 얘기야.");
-    expect(text).toContain("댓글에 **출산장려금** 남겨줘.");
+    expect(text).toMatch(/^장애인가정에 해당된다면|^받을 수 있는 돈|^지역 공고는|^메모용/);
+    expect(text).toContain("안양시 장애인가정 출산장려금 지원");
+    expect(text).toMatch(/댓글에 \*\*출산장려금\*\*|\*\*출산장려금\*\*.*댓글/);
     expect(text.length).toBeLessThanOrEqual(500);
   });
 
@@ -70,8 +72,36 @@ describe("buildThreadsText", () => {
       description: "춘천 땡겨요 소상공인 사업자금은 조건에 맞는 사업자에게 보증을 지원하는 제도입니다.",
     });
 
-    expect(text).toContain("댓글에 **땡겨요** 남겨줘.");
-    expect(text).not.toContain("댓글에 **소상공인** 남겨줘.");
+    expect(text).toMatch(/댓글에 \*\*땡겨요\*\*|\*\*땡겨요\*\*.*댓글/);
+    expect(text).not.toContain("**소상공인**");
+  });
+
+  it("최근 keeper.punch 발행처럼 동일한 문장 뼈대를 연속 반복하지 않는다", () => {
+    const first = buildThreadsText({
+      title: "2026년 기업가형 소상공인 협업보증 최대 2억원 지원",
+      slug: "2026-enterprising-small-business-collaboration-guarantee",
+      description: "기업가형 소상공인 협업보증은 조건에 맞는 사업자에게 최대 2억원 보증을 지원하는 제도입니다. 대상과 신청 전 확인할 내용을 정리했습니다.",
+    });
+    const second = buildThreadsText({
+      title: "2026년 공주시 위기상권 소상공인 교육 컨설팅 신용보증 지원",
+      slug: "2026-gongju-crisis-commercial-area-small-business-guarantee",
+      description: "공주시 위기상권 소상공인 지원은 교육, 컨설팅, 신용보증을 함께 확인해야 하는 사업입니다. 지역과 대상 조건에 따라 신청 가능 여부가 달라질 수 있습니다.",
+    });
+
+    const repeatedMacroLines = [
+      "급할 때 빌릴 돈, 비싸게 쓰지 마.",
+      "대상 맞으면 그냥 넘길 일이 아니야.",
+      "근데 이게 진짜 아까운 이유는 따로 있어.",
+      "알아서 챙겨주지 않아.",
+      "대상·기간·서류부터 확인해.",
+      "공식 신청처도 같이 봐야 해.",
+      "@keepioo_official 인스타에 카드뉴스로 정리해뒀어.",
+    ].filter((line) => first.includes(line) && second.includes(line));
+
+    expect(repeatedMacroLines.length).toBeLessThanOrEqual(1);
+    expect(first.split("\n").slice(0, 2).join("\n")).not.toBe(second.split("\n").slice(0, 2).join("\n"));
+    expect(first).toContain("@keepioo_official");
+    expect(second).toContain("@keepioo_official");
   });
 
   it("관리자 preview 모드에서는 기존 A/B 리드 추적용 UTM을 보존한다", () => {
@@ -156,13 +186,48 @@ describe("buildThreadsText", () => {
 
     expect(text.length).toBeLessThanOrEqual(500);
     expect(text).toContain("@keepioo_official");
-    expect(text).toContain("댓글에 **청년월세** 남겨줘.");
+    expect(text).toMatch(/댓글에 \*\*청년월세\*\*|\*\*청년월세\*\*.*댓글/);
     expect(text.trim().length).toBeGreaterThanOrEqual(120);
     expect(() => validateCaption(text, { source: "threads", requireSubstance: true })).not.toThrow();
   });
 });
 
 describe("dispatchBlogToSns", () => {
+  it("Threads live dispatch는 고정 템플릿 대신 LLM 편집 문구를 우선 사용한다", async () => {
+    vi.mocked(callLLM).mockResolvedValue(JSON.stringify({
+      text: "사장님 자금 공고 볼 때는\n금액보다 조건부터 보는 게 맞아요.\n\n협업보증은 최대 2억원까지 가능하지만\n대상·접수 가능 여부를 먼저 확인해야 합니다.\n\n신청 전 체크할 내용은 @keepioo_official 카드뉴스에 정리해뒀어요.\n댓글에 **협업보증** 남겨두면 다시 보기 편합니다.",
+    }));
+    vi.mocked(threads.publishThreadsPost).mockResolvedValue({ ok: true, id: "th-llm" });
+
+    await dispatchBlogToSns({
+      title: "2026년 기업가형 소상공인 협업보증 최대 2억원 지원",
+      slug: "2026-enterprising-small-business-collaboration-guarantee",
+      description: "기업가형 소상공인 협업보증은 조건에 맞는 사업자에게 최대 2억원 보증을 지원하는 제도입니다.",
+    }, { channels: ["threads"] });
+
+    expect(callLLM).toHaveBeenCalledOnce();
+    expect(threads.publishThreadsPost).toHaveBeenCalledWith({
+      text: expect.stringContaining("금액보다 조건부터"),
+    });
+    expect(vi.mocked(threads.publishThreadsPost).mock.calls[0][0].text).not.toContain("급할 때 빌릴 돈, 비싸게 쓰지 마");
+  });
+
+  it("LLM 편집 실패 시에도 안전한 deterministic fallback으로 발행한다", async () => {
+    vi.mocked(callLLM).mockRejectedValue(new Error("llm down"));
+    vi.mocked(threads.publishThreadsPost).mockResolvedValue({ ok: true, id: "th-fallback" });
+
+    await dispatchBlogToSns({
+      title: "2026년 기업가형 소상공인 협업보증 최대 2억원 지원",
+      slug: "2026-enterprising-small-business-collaboration-guarantee",
+      description: "기업가형 소상공인 협업보증은 조건에 맞는 사업자에게 최대 2억원 보증을 지원하는 제도입니다.",
+    }, { channels: ["threads"] });
+
+    expect(callLLM).toHaveBeenCalledOnce();
+    expect(threads.publishThreadsPost).toHaveBeenCalledWith({
+      text: expect.stringContaining("@keepioo_official"),
+    });
+  });
+
   it("channels 옵션에 지정된 채널만 발행한다", async () => {
     vi.mocked(twitter.publishTweet).mockResolvedValue({ ok: true, id: "t1" });
     vi.mocked(facebook.publishFacebookPost).mockResolvedValue({ ok: true, id: "f1" });
@@ -227,7 +292,7 @@ describe("dispatchBlogToSns", () => {
     expect(tweetText).toContain("utm_source=twitter");
     expect(tweetText.length).toBeLessThanOrEqual(280);
     expect(threadsText).toContain("@keepioo_official");
-    expect(threadsText).toContain("댓글에 **출산장려금** 남겨줘.");
+    expect(threadsText).toMatch(/댓글에 \*\*출산장려금\*\*|\*\*출산장려금\*\*.*댓글/);
     expect(threadsText).not.toContain(encodedUrl);
     expect(threadsText.length).toBeLessThanOrEqual(500);
   });

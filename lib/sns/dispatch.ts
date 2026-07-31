@@ -12,9 +12,9 @@ import {
   CHALLENGER_LEAD_VARIANTS,
   DEFAULT_ACTIVE_LEAD_VARIANTS,
   LEAD_VARIANTS,
-  loadSnsLeadPolicySnapshot,
   type SnsLeadVariant,
 } from "@/lib/sns-control-tower/lead-policy";
+import { callLLM, parseJSONResponse } from "@/lib/llm/text";
 import { publishTweet } from "./twitter";
 import { publishFacebookPost } from "./facebook";
 import { publishThreadsPost } from "./threads";
@@ -233,6 +233,138 @@ function buildPunchUrgencyLine(title: string): string {
   return "몰라서 지나가면 받을 돈도 못 받아.";
 }
 
+type KeeperPunchTopicKind = "money" | "tax" | "deadline" | "local" | "welfare" | "general";
+
+function classifyKeeperPunchTopic(title: string): KeeperPunchTopicKind {
+  if (/세금|공제|환급|이자/.test(title)) return "tax";
+  if (/대출|자금|보증|융자/.test(title)) return "money";
+  if (/마감|접수|신청|모집/.test(title)) return "deadline";
+  if (detectRegion(title)) return "local";
+  if (/복지|연금|월세|장려금|수당|급여|출산|육아|장애인|어르신|노인/.test(title)) return "welfare";
+  return "general";
+}
+
+function keeperPunchCta(keyword: string, variant: number): string {
+  const ctas = [
+    `댓글에 **${keyword}** 남겨줘.`,
+    `필요하면 댓글에 **${keyword}**만 적어둬.`,
+    `헷갈리면 댓글에 **${keyword}** 이렇게 남겨.`,
+    `나중에 찾을 거면 댓글에 **${keyword}** 남겨놔.`,
+  ];
+  return ctas[variant % ctas.length];
+}
+
+function buildKeepiooMention(variant: number): string {
+  const mentions = [
+    "@keepioo_official 인스타에 카드뉴스로 정리해뒀어.",
+    "자세한 조건은 @keepioo_official 카드뉴스에 따로 빼뒀어.",
+    "길게 읽기 전에 @keepioo_official 카드뉴스로 먼저 훑어봐도 돼.",
+    "신청 전 체크할 건 @keepioo_official 쪽에 보기 쉽게 정리해뒀어.",
+  ];
+  return mentions[variant % mentions.length];
+}
+
+function buildKeeperPunchTemplates(input: {
+  title: string;
+  subject: string;
+  summary: string;
+  benefit: string;
+  urgency: string;
+  keyword: string;
+  kind: KeeperPunchTopicKind;
+}): string[][] {
+  const { title, subject, summary, benefit, urgency, keyword, kind } = input;
+  const moneyHook = kind === "money"
+    ? "급한 돈일수록\n비싸게 빌리기 전에 볼 게 있어."
+    : "받을 수 있는 건\n먼저 걸러봐야 해.";
+  const reader = detectAudience(title) ?? "해당될 수 있다면";
+  return [
+    [
+      kind === "money" ? "돈 필요한 공고는\n금액보다 조건부터 봐야 해." : kind === "tax" ? "세금 쪽은\n늦게 알수록 손해야." : "지원 공고는\n나한테 맞는지만 먼저 보면 돼.",
+      "",
+      subject,
+      benefit,
+      "",
+      urgency,
+      "",
+      "읽는 순서만 바꿔도 헛걸음 줄어.",
+      "대상 → 기간 → 신청처.",
+      "",
+      buildKeepiooMention(0),
+      keeperPunchCta(keyword, 0),
+    ],
+    [
+      moneyHook,
+      "",
+      `${subject}.`,
+      benefit,
+      "",
+      "이런 건 금액만 보면 안 돼.",
+      "우리 쪽이 대상인지,",
+      "접수 기간이 남았는지,",
+      "서류가 감당되는지부터 봐야 해.",
+      "",
+      buildKeepiooMention(1),
+      keeperPunchCta(keyword, 1),
+    ],
+    [
+      `${reader}\n이 공고는 저장해둘 만해.`,
+      "",
+      subject,
+      benefit,
+      "",
+      urgency,
+      "그래서 제목보다 먼저 볼 건 조건이야.",
+      "",
+      "대상",
+      "기간",
+      "신청처",
+      "이 세 개만 먼저 걸러도 헛걸음 줄어.",
+      "",
+      buildKeepiooMention(2),
+      keeperPunchCta(keyword, 2),
+    ],
+    [
+      "메모용.",
+      "",
+      subject,
+      "",
+      summary || benefit,
+      "",
+      "확인 순서",
+      "1. 내가 대상인지",
+      "2. 아직 접수 가능한지",
+      "3. 공식 신청처가 맞는지",
+      "",
+      "맞으면 그때 자세히 읽어도 늦지 않아.",
+      buildKeepiooMention(3),
+      keeperPunchCta(keyword, 3),
+    ],
+    [
+      kind === "local" ? "지역 공고는\n전국 지원금보다 더 자주 놓쳐." : "공고문 처음부터 다 읽으면 피곤해.",
+      "",
+      `${subject}은 일단 이렇게 보면 돼.`,
+      "",
+      benefit,
+      urgency,
+      "",
+      "해당 없으면 넘기고,",
+      "대상 맞으면 신청처까지 확인.",
+      "",
+      buildKeepiooMention(1),
+      keeperPunchCta(keyword, 2),
+    ],
+  ];
+}
+
+function fitKeeperPunchText(templates: string[][]): string {
+  for (const lines of templates) {
+    const text = lines.join("\n");
+    if (text.length <= THREADS_TEXT_LIMIT) return text;
+  }
+  return templates[templates.length - 1].join("\n").slice(0, THREADS_TEXT_LIMIT);
+}
+
 function buildKeeperPunchThreadsText(post: BlogPostShare): string {
   const title = normalizeShareText(post.title);
   const fallback =
@@ -243,43 +375,10 @@ function buildKeeperPunchThreadsText(post: BlogPostShare): string {
   const keyword = normalizePolicyKeyword(title);
   const benefit = buildPunchBenefitLine(title, summary);
   const urgency = buildPunchUrgencyLine(title);
-  const hook = /대출|자금|보증|융자/.test(title)
-    ? "급할 때 빌릴 돈, 비싸게 쓰지 마"
-    : /세금|공제|환급|이자/.test(title)
-      ? "모르면 통장에서 돈이 샌다"
-      : "받을 수 있는 돈, 몰라서 놓치지 마";
-  const lines = [
-    `${hook}.`,
-    "",
-    `${subject} 얘기야.`,
-    benefit,
-    "대상 맞으면 그냥 넘길 일이 아니야.",
-    "",
-    "근데 이게 진짜 아까운 이유는 따로 있어.",
-    "알아서 챙겨주지 않아.",
-    urgency,
-    "",
-    "대상·기간·서류부터 확인해.",
-    "공식 신청처도 같이 봐야 해.",
-    "",
-    "@keepioo_official 인스타에 카드뉴스로 정리해뒀어.",
-    "",
-    `댓글에 **${keyword}** 남겨줘.`,
-  ];
-  const text = lines.join("\n");
-  if (text.length <= THREADS_TEXT_LIMIT) return text;
-  return [
-    `${hook}.`,
-    "",
-    `${subject} 얘기야.`,
-    benefit,
-    urgency,
-    "",
-    "대상·기간·서류·공식 신청처부터 확인해.",
-    "@keepioo_official 인스타에 카드뉴스로 정리해뒀어.",
-    "",
-    `댓글에 **${keyword}** 남겨줘.`,
-  ].join("\n").slice(0, THREADS_TEXT_LIMIT);
+  const kind = classifyKeeperPunchTopic(title);
+  const templates = buildKeeperPunchTemplates({ title, subject, summary, benefit, urgency, keyword, kind });
+  const variant = stableBucket(`${post.slug}:${title}:keeper-punch-editorial-v2`, templates.length);
+  return fitKeeperPunchText([...templates.slice(variant), ...templates.slice(0, variant)]);
 }
 
 function selectLeadVariant(
@@ -304,6 +403,86 @@ function selectLeadVariant(
         : DEFAULT_ACTIVE_LEAD_VARIANTS;
   const selected = candidates[stableBucket(seed, candidates.length)];
   return Number(selected.replace("lead_", ""));
+}
+
+type ThreadsEditorialLLMResponse = {
+  text?: unknown;
+};
+
+const THREADS_EDITORIAL_BANNED_PATTERNS = [
+  /급할 때 빌릴 돈, 비싸게 쓰지 마/,
+  /대상 맞으면 그냥 넘길 일이 아니야/,
+  /근데 이게 진짜 아까운 이유는 따로 있어/,
+  /알아서 챙겨주지 않아/,
+  /대상·기간·서류부터 확인해/,
+  /제가 말하고 싶은 건/,
+  /먼저 볼 건 딱/,
+  /여러분/,
+];
+
+function cleanThreadsEditorialText(value: string): string {
+  return value
+    .replace(/^```(?:json|text)?\s*/i, "")
+    .replace(/```$/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+}
+
+function isSafeThreadsEditorialText(text: string, keyword: string): boolean {
+  if (text.length < 120 || text.length > THREADS_TEXT_LIMIT) return false;
+  if (!text.includes("@keepioo_official")) return false;
+  if (!text.includes(keyword)) return false;
+  if (/https?:\/\//.test(text)) return false;
+  return !THREADS_EDITORIAL_BANNED_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function buildThreadsEditorialPrompt(post: BlogPostShare, fallbackText: string): string {
+  const title = normalizeShareText(post.title);
+  const keyword = normalizePolicyKeyword(title);
+  const description = normalizeShareText(post.description ?? "");
+  return `너는 keeper.punch Threads 편집자다. 아래 정책/글 1건을 보고 매번 새로 판단해서 한국 Threads 글 1개를 작성해라.
+
+규칙:
+- 500자 이하, 한국어, 한 게시물로 완결.
+- 정책명만 바꾸는 템플릿 금지. 이전 글과 같은 첫줄/중간 구조/CTA cadence 반복 금지.
+- 아래 금지 표현은 쓰지 마라: "급할 때 빌릴 돈, 비싸게 쓰지 마", "대상 맞으면 그냥 넘길 일이 아니야", "근데 이게 진짜 아까운 이유는 따로 있어", "알아서 챙겨주지 않아", "대상·기간·서류부터 확인해", "여러분", "제가 말하고 싶은 건", "먼저 볼 건 딱".
+- 매번 내부적으로 reader, why now, one job, shape를 새로 고르고 그 판단을 글 표면에 반영해라.
+- 혜택 확정/보장처럼 말하지 마라. 조건·마감·공식 신청처 확인 필요성을 자연스럽게 넣어라.
+- URL은 넣지 마라.
+- @keepioo_official 언급 1회 포함.
+- 댓글 키워드 "${keyword}"를 자연스럽게 포함.
+- 출력은 JSON만: {"text":"..."}
+
+소스:
+제목: ${title}
+요약: ${description || "대상 조건, 신청 시점, 준비할 내용을 확인해야 하는 정책 글"}
+댓글 키워드: ${keyword}
+
+참고용 fallback(복붙 금지, 정보만 참고):
+${fallbackText}`;
+}
+
+async function buildKeeperPunchThreadsTextEditorial(post: BlogPostShare): Promise<string> {
+  const fallbackText = buildKeeperPunchThreadsText(post);
+  const title = normalizeShareText(post.title);
+  const keyword = normalizePolicyKeyword(title);
+  try {
+    const raw = await callLLM({
+      prompt: buildThreadsEditorialPrompt(post, fallbackText),
+      jsonMode: true,
+      maxTokens: 500,
+      timeoutMs: 15000,
+    });
+    const parsed = parseJSONResponse<ThreadsEditorialLLMResponse>(raw);
+    const text = typeof parsed.text === "string" ? cleanThreadsEditorialText(parsed.text) : "";
+    return isSafeThreadsEditorialText(text, keyword) ? text : fallbackText;
+  } catch {
+    return fallbackText;
+  }
 }
 
 export function buildThreadsText(
@@ -402,11 +581,9 @@ export async function dispatchBlogToSns(
   const tweetText = `${tweetTitle}\n\n${twitterUrl}`.slice(0, 280);
   const fbMessage = `${title}\n\n${desc}`.slice(0, 500);
   const channelSet = new Set(opts.channels ?? ALL_CHANNELS);
-  const leadPolicy = channelSet.has("threads") ? await loadSnsLeadPolicySnapshot() : null;
-  const threadsText = buildThreadsText(post, {
-    disabledLeadVariants: leadPolicy?.disabledLeadVariants ?? [],
-    challengerTrafficPct: leadPolicy?.challengerTrafficPct ?? CHALLENGER_LEAD_TRAFFIC_PCT,
-  });
+  const threadsText = channelSet.has("threads")
+    ? await buildKeeperPunchThreadsTextEditorial(post)
+    : "";
 
   const tasks: Array<Promise<SnsDispatchResult>> = [];
   if (channelSet.has("twitter")) {
