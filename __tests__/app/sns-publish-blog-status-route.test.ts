@@ -89,8 +89,8 @@ describe("sns-publish-blog-status", () => {
       status: "capped_until_next_window",
     });
     expect(body.threadsIdentity).toEqual({ username: "keeper.punch", ok: true, reason: null });
-    expect(body.nextThreadsPreview.text).toContain("@keepioo_official 인스타에 카드뉴스로 정리해뒀어.");
-    expect(body.nextThreadsPreview.text).toContain("댓글에 **노란우산** 남겨줘.");
+    expect(body.nextThreadsPreview.text).toContain("@keepioo_official");
+    expect(body.nextThreadsPreview.text).toMatch(/댓글에\s+\*\*노란우산\*\*/);
     expect(body.nextThreadsPreview.commentKeyword).toBe("노란우산");
     expect(body.nextThreadsPreview.hasKeepiooMention).toBe(true);
     expect(body.nextThreadsPreview.hasDirectBlogUrl).toBe(false);

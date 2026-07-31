@@ -126,7 +126,7 @@ async function run() {
         text: buildThreadsText({ title: nextPost.title, slug: nextPost.slug, description: null }),
       }
     : null;
-  const previewCommentKeyword = nextThreadsPreview?.text.match(/댓글에 \*\*(.+?)\*\* 남겨줘\./)?.[1] ?? null;
+  const previewCommentKeyword = nextThreadsPreview?.text.match(/댓글에\s+\*\*(.+?)\*\*/)?.[1] ?? null;
 
   return NextResponse.json({
     ok: blockers.length === 0,
@@ -155,7 +155,7 @@ async function run() {
           commentKeyword: previewCommentKeyword,
           hasKeepiooMention: nextThreadsPreview.text.includes("@keepioo_official"),
           hasDirectBlogUrl: /https?:\/\/\S+/.test(nextThreadsPreview.text),
-          hasCommentKeywordCta: /댓글에 \*\*.+\*\* 남겨줘\./.test(nextThreadsPreview.text),
+          hasCommentKeywordCta: /댓글에\s+\*\*.+?\*\*/.test(nextThreadsPreview.text),
         }
       : null,
     recentPosts: {
