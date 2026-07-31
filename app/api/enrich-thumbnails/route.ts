@@ -1,6 +1,10 @@
 // ============================================================
 // /api/enrich-thumbnails — 네이버 검색 수집 뉴스 og:image 백필 cron
 // ============================================================
+// 2026-07-31 저작권 안전 조치: 외부 언론사 og:image 저장은 기본 중단.
+// 기사 이미지 권리·핫링크 정책이 출처마다 달라, 목록/상세는 텍스트 요약 + 원문 링크만 유지한다.
+// 운영자가 일시 재개해야 하면 ENABLE_NEWS_THUMBNAIL_ENRICHMENT=1 을 명시적으로 설정한다.
+//
 // naver-news-* 의 thumbnail_url=NULL row 를 batch 로 처리:
 //   1) 후보 N건 select (최신순)
 //   2) 각 source_url 에 대해 fetchOgImage 병렬 호출
@@ -26,10 +30,24 @@ import { authorizeCronRequest } from "@/lib/cron-auth";
 
 const BATCH = 50; // 한 cron 당 처리 row 수 (5분 cron + 9,120/일 유입 대응)
 const PROCESS_TIMEOUT_MS = 40_000; // fetch 단계 상한 (DB update 병렬 ~5s + 마진 → 60s 안전)
+const ENABLE_NEWS_THUMBNAIL_ENRICHMENT =
+  process.env.ENABLE_NEWS_THUMBNAIL_ENRICHMENT === "1";
 
 export const maxDuration = 60;
 
 async function runEnrichThumbnails() {
+  if (!ENABLE_NEWS_THUMBNAIL_ENRICHMENT) {
+    return NextResponse.json({
+      processed: 0,
+      upserted: 0,
+      failed: 0,
+      skipped: 0,
+      disabled: true,
+      reason:
+        "External news og:image enrichment disabled by default for copyright safety. Set ENABLE_NEWS_THUMBNAIL_ENRICHMENT=1 to re-enable.",
+    });
+  }
+
   const supabase = createAdminClient();
   const startedAt = Date.now();
 

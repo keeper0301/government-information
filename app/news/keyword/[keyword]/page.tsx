@@ -164,9 +164,11 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
           </div>
         )}
 
-        {/* 공공누리 출처 표기 */}
+        {/* 출처·저작권 안내 — korea.kr 공공누리와 네이버/언론사 뉴스가 섞일 수 있어 일괄 KOGL 표기 금지. */}
         <p className="mt-12 text-[12px] text-grey-600 leading-[1.6] text-center">
-          본 페이지의 뉴스는 공공누리 제1유형(KOGL-Type1) 으로 개방된{" "}
+          정책브리핑 자료는 공공누리 유형에 따라 출처를 표시해 활용합니다. 언론사 뉴스는
+          네이버 뉴스 검색 결과의 제목·요약·원문 링크만 제공하며, 저작권과 이용조건은 각
+          원 출처를 따릅니다. 자세한 내용은 원문 링크에서 확인해 주세요. 관련 공공자료 출처:{" "}
           <a
             href="https://www.korea.kr"
             target="_blank"
@@ -175,7 +177,6 @@ export default async function NewsKeywordPage({ params, searchParams }: Props) {
           >
             정책브리핑(korea.kr)
           </a>
-          의 자료를 활용합니다.
         </p>
       </div>
     </main>

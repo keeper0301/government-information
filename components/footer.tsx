@@ -133,7 +133,8 @@ export async function Footer() {
         </p>
         {!ADSENSE_REVIEW_MODE && (
           <p className="text-grey-700 mt-1">
-            정책 뉴스 섹션의 본문·썸네일은{" "}
+            정책 뉴스 섹션에는 공공누리 자료와 외부 언론사 뉴스 링크가 함께 표시될 수 있습니다.
+            정책브리핑 자료는 출처를 표시해 활용하고, 언론사 뉴스는 제목·요약·원문 링크 중심으로 안내합니다. 공공자료 출처:{" "}
             <a
               href="https://www.korea.kr"
               target="_blank"
@@ -142,7 +143,6 @@ export async function Footer() {
             >
               정책브리핑(korea.kr)
             </a>
-            의 자료를 공공누리 제1유형(KOGL-Type1, 출처표시·상업이용·변형 허용) 으로 활용합니다.
           </p>
         )}
       </div>

@@ -2,6 +2,14 @@
 
 > 변호사 검토를 대체하는 법률 자문이 아니라, 공개 법령·공식 지침 기준의 운영 체크리스트입니다. 실제 분쟁·행정조사·약관 심사 단계에서는 전문가 검토가 필요할 수 있습니다.
 
+## 2026-07-31 저작권 추가 점검 — 정책 뉴스 혼합 출처
+
+- `/news` 목록에는 `korea.kr` 공공누리 자료와 `naver-news-*` 외부 언론사 뉴스 요약이 함께 섞일 수 있어, 하단의 “본 페이지의 뉴스는 공공누리 제1유형” 일괄 문구를 제거했다.
+- `/news`, `/news/keyword/[keyword]`, 공통 footer 문구를 “공공누리 자료 + 외부 뉴스 제목·요약·원문 링크” 혼합 출처 안내로 바꿨다.
+- 네이버/언론사 뉴스는 원문 본문·사진 재게시가 아니라 제목·요약·원문 링크 중심으로 유지한다.
+- 외부 언론사 `og:image` 백필은 저작권·핫링크 위험 때문에 기본 중단했다. `/api/enrich-thumbnails` 는 `ENABLE_NEWS_THUMBNAIL_ENRICHMENT=1` 이 명시된 경우에만 작동하며, Vercel cron 등록도 제거했다.
+- 검증: `npx tsc --noEmit`, 변경 파일 ESLint, `npx vitest run __tests__/og-image.test.ts`, `vercel.json` JSON parse 통과. 전체 `npm run lint -- --max-warnings=0` 은 기존 tmp/live probe 및 instagram inventory route 의 `no-explicit-any` 7건 때문에 실패했다(이번 변경 파일 아님).
+
 ## 확인한 공식/준공식 근거
 
 - 법제처 국가법령정보센터 — 「전자상거래 등에서의 소비자보호에 관한 법률」 제6조(거래기록 보존), 제13조(신원정보·거래조건 표시), 제17조(청약철회 등): https://www.law.go.kr/법령/전자상거래등에서의소비자보호에관한법률
