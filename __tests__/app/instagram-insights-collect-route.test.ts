@@ -108,7 +108,7 @@ describe("instagram-insights-collect cron", () => {
         dominantCategory: "소상공인",
         categorySkewRisk: true,
         categories: [expect.objectContaining({ key: "소상공인", posts: 1 })],
-        hooks: [expect.objectContaining({ key: "checklist_default" })],
+        hooks: [expect.objectContaining({ key: "small_business_share", label: "사장님에게 공유 · 대상·신청처 먼저" })],
       },
     });
     expect(mocks.collectInstagramMediaInsights).toHaveBeenCalledWith("media-1", "token");
