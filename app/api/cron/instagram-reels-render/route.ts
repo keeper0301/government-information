@@ -86,7 +86,7 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminClient();
-  const { data: post, error: queryErr } = await admin
+  const { data: posts, error: queryErr } = await admin
     .from("blog_posts")
     .select("id, slug, title, content, meta_description, category, tags, admin_review_required, instagram_reel_render_attempt_count")
     .not("published_at", "is", null)
@@ -95,15 +95,15 @@ export async function GET(request: Request) {
     .eq("admin_review_required", false)
     .lt("instagram_reel_render_attempt_count", 3)
     .order("published_at", { ascending: true })
-    .limit(1)
-    .maybeSingle<RenderCandidate>();
+    .limit(20)
+    .returns<RenderCandidate[]>();
 
   if (queryErr) {
     await safeLogSkip("query_failed", { error: queryErr.message.slice(0, 200) });
     return NextResponse.json({ error: "DB query 실패", detail: queryErr.message }, { status: 500 });
   }
 
-  if (!post) {
+  if (!posts || posts.length === 0) {
     const { count: blockedByQuality } = await admin
       .from("blog_posts")
       .select("id", { count: "exact", head: true })
@@ -122,19 +122,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending", message: "Reels 영상 생성 대기 글 없음" });
   }
 
-  const assessment = assessExternalPublishQuality(post);
-  if (!assessment.approved) {
+  const assessed = posts.map((candidate) => ({
+    candidate,
+    assessment: assessExternalPublishQuality(candidate),
+  }));
+  const approved = assessed.find((item) => item.assessment.approved);
+  if (!approved) {
+    const first = assessed[0];
     if (dryRun) {
       return dryResponse("quality_gate_rejected", {
-        slug: post.slug,
-        reasons: assessment.reasons,
-        metrics: assessment.metrics,
+        slug: first.candidate.slug,
+        blockedByQuality: assessed.length,
+        reasons: first.assessment.reasons,
+        metrics: first.assessment.metrics,
       });
     }
-    await safeLogSkip("quality_gate_rejected", { slug: post.slug, reasons: assessment.reasons });
-    return NextResponse.json({ status: "quality_gate_rejected", slug: post.slug });
+    await safeLogSkip("quality_gate_rejected", {
+      slug: first.candidate.slug,
+      blockedByQuality: assessed.length,
+      reasons: first.assessment.reasons,
+    });
+    return NextResponse.json({ status: "quality_gate_rejected", slug: first.candidate.slug, blockedByQuality: assessed.length });
   }
 
+  const post = approved.candidate;
   const currentAttempt = post.instagram_reel_render_attempt_count ?? 0;
   if (dryRun) {
     return dryResponse("ready", {

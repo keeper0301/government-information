@@ -125,7 +125,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "daily_cap_reached", todayCount, dailyCap: cap });
   }
 
-  const { data: post, error: queryErr } = await admin
+  const { data: posts, error: queryErr } = await admin
     .from("blog_posts")
     .select("id, slug, title, content, meta_description, category, tags, admin_review_required, instagram_reel_video_url, instagram_reel_attempt_count")
     .not("published_at", "is", null)
@@ -134,15 +134,15 @@ export async function GET(request: Request) {
     .eq("admin_review_required", false)
     .lt("instagram_reel_attempt_count", 3)
     .order("published_at", { ascending: true })
-    .limit(1)
-    .maybeSingle<ReelCandidate>();
+    .limit(20)
+    .returns<ReelCandidate[]>();
 
   if (queryErr) {
     await safeLogSkip("query_failed", { error: queryErr.message.slice(0, 200) });
     return NextResponse.json({ error: "DB query 실패", detail: queryErr.message }, { status: 500 });
   }
 
-  if (!post) {
+  if (!posts || posts.length === 0) {
     const { count: blockedByQuality } = await admin
       .from("blog_posts")
       .select("id", { count: "exact", head: true })
@@ -161,25 +161,40 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_video_pending", message: "instagram_reel_video_url 이 준비된 발행 대기 글 없음" });
   }
 
-  const assessment = assessExternalPublishQuality(post);
-  if (!assessment.approved) {
+  const assessed = posts.map((candidate) => ({
+    candidate,
+    assessment: assessExternalPublishQuality(candidate),
+  }));
+  const approved = assessed.find(
+    (item) => item.assessment.approved && publicVideoUrlOk(item.candidate.instagram_reel_video_url),
+  );
+  if (!approved) {
+    const first = assessed[0];
+    const firstInvalidVideo = first.assessment.approved && !publicVideoUrlOk(first.candidate.instagram_reel_video_url);
     if (dryRun) {
-      return dryResponse("quality_gate_rejected", {
-        slug: post.slug,
-        reasons: assessment.reasons,
-        metrics: assessment.metrics,
+      return dryResponse(firstInvalidVideo ? "no_video_pending" : "quality_gate_rejected", {
+        slug: first.candidate.slug,
+        blockedByQuality: assessed.filter((item) => !item.assessment.approved).length,
+        checkedCandidates: assessed.length,
+        reason: firstInvalidVideo ? "video_url_must_be_https" : undefined,
+        reasons: first.assessment.reasons,
+        metrics: first.assessment.metrics,
       });
     }
-    await safeLogSkip("quality_gate_rejected", { slug: post.slug, reasons: assessment.reasons });
-    return NextResponse.json({ status: "quality_gate_rejected", slug: post.slug });
+    await safeLogSkip(firstInvalidVideo ? "invalid_video_url" : "quality_gate_rejected", {
+      slug: first.candidate.slug,
+      blockedByQuality: assessed.filter((item) => !item.assessment.approved).length,
+      checkedCandidates: assessed.length,
+      reasons: first.assessment.reasons,
+    });
+    return NextResponse.json({
+      status: firstInvalidVideo ? "no_video_pending" : "quality_gate_rejected",
+      slug: first.candidate.slug,
+      checkedCandidates: assessed.length,
+    });
   }
 
-  if (!publicVideoUrlOk(post.instagram_reel_video_url)) {
-    if (dryRun) return dryResponse("no_video_pending", { slug: post.slug, reason: "video_url_must_be_https" });
-    await safeLogSkip("invalid_video_url", { slug: post.slug });
-    return NextResponse.json({ status: "no_video_pending", slug: post.slug, reason: "video_url_must_be_https" });
-  }
-
+  const post = approved.candidate;
   const currentAttempt = post.instagram_reel_attempt_count ?? 0;
   if (dryRun) {
     return dryResponse("ready", {

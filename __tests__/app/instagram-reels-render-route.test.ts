@@ -30,6 +30,17 @@ const mocks = vi.hoisted(() => ({
     admin_review_required: boolean;
     instagram_reel_render_attempt_count: number;
   },
+  candidates: null as null | Array<{
+    id: string;
+    slug: string;
+    title: string;
+    content: string;
+    meta_description: string | null;
+    category: string;
+    tags: string[];
+    admin_review_required: boolean;
+    instagram_reel_render_attempt_count: number;
+  }>,
   blockedByQuality: 0,
 }));
 
@@ -43,6 +54,7 @@ function makeBlogPostsQuery(step: number) {
   query.order = vi.fn(() => query);
   query.limit = vi.fn(() => query);
   query.or = vi.fn(() => Promise.resolve({ count: mocks.blockedByQuality }));
+  query.returns = vi.fn(() => Promise.resolve({ data: mocks.candidates ?? (mocks.candidate ? [mocks.candidate] : []), error: null }));
   query.maybeSingle = vi.fn(() => Promise.resolve({ data: mocks.candidate, error: null }));
   query.update = vi.fn(() => query);
   if (step === 1) query.select = vi.fn(() => Promise.resolve({ data: [{ id: "post-1", instagram_reel_render_attempt_count: 1 }], error: null }));
@@ -108,6 +120,7 @@ beforeEach(() => {
     admin_review_required: false,
     instagram_reel_render_attempt_count: 0,
   };
+  mocks.candidates = null;
   mocks.blockedByQuality = 0;
   process.env.INSTAGRAM_REELS_RENDER_ENABLED = "true";
 });
@@ -131,6 +144,39 @@ describe("instagram-reels-render", () => {
 
     expect(body).toMatchObject({ dryRun: true, status: "disabled" });
     expect(mocks.fromCalls).toHaveLength(0);
+  });
+
+  it("skips quality-rejected FIFO rows and reports the first approved candidate", async () => {
+    mocks.candidates = [
+      { ...mocks.candidate!, id: "post-bad", slug: "bad-slug" },
+      { ...mocks.candidate!, id: "post-good", slug: "good-slug", instagram_reel_render_attempt_count: 1 },
+    ];
+    (mocks.assessExternalPublishQuality as unknown as { mockImplementation: (fn: (post: unknown) => unknown) => void }).mockImplementation((post: unknown) => {
+      const slug = (post as { slug: string }).slug;
+      return {
+        approved: slug === "good-slug",
+        reasons: slug === "good-slug" ? [] : ["content_too_short_for_external_publish"],
+        metrics: {
+          titleLength: 20,
+          plainTextLength: slug === "good-slug" ? 1000 : 0,
+          metaLength: 120,
+          informationSignalCount: 4,
+          hasOfficialActionSignal: true,
+          hasTemplateSmell: false,
+        },
+      };
+    });
+    mocks.assessExternalPublishQuality.mockClear();
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "ready",
+      candidate: { id: "post-good", slug: "good-slug", attempt_count: 1 },
+    });
+    expect(mocks.assessExternalPublishQuality).toHaveBeenCalledTimes(2);
   });
 
   it("renders and uploads mp4 on real run", async () => {
