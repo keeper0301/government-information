@@ -15,6 +15,7 @@ import {
   type SnsLeadVariant,
 } from "@/lib/sns-control-tower/lead-policy";
 import { callLLM, parseJSONResponse } from "@/lib/llm/text";
+import { validateCaption } from "@/lib/validate-caption";
 import { publishTweet } from "./twitter";
 import { publishFacebookPost } from "./facebook";
 import { publishThreadsPost } from "./threads";
@@ -437,7 +438,12 @@ function isSafeThreadsEditorialText(text: string, keyword: string): boolean {
   if (!text.includes("@keepioo_official")) return false;
   if (!text.includes(keyword)) return false;
   if (/https?:\/\//.test(text)) return false;
-  return !THREADS_EDITORIAL_BANNED_PATTERNS.some((pattern) => pattern.test(text));
+  if (THREADS_EDITORIAL_BANNED_PATTERNS.some((pattern) => pattern.test(text))) return false;
+  return validateCaption(text, {
+    source: "threads-editorial",
+    requireSubstance: true,
+    warnOnly: true,
+  }).ok;
 }
 
 function buildThreadsEditorialPrompt(post: BlogPostShare, fallbackText: string): string {

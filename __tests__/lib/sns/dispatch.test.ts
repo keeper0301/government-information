@@ -228,6 +228,24 @@ describe("dispatchBlogToSns", () => {
     });
   });
 
+  it("LLM 편집문이 3줄 미만이면 발행 직전 차단 대신 fallback으로 교체한다", async () => {
+    vi.mocked(callLLM).mockResolvedValue(JSON.stringify({
+      text: "현대백화점 판교점 기획전 참여 기업 모집입니다. 중소기업이면 대상과 준비 서류를 확인하세요. @keepioo_official 댓글에 **현대백화점** 남겨두면 다시 보기 편합니다.",
+    }));
+    vi.mocked(threads.publishThreadsPost).mockResolvedValue({ ok: true, id: "th-fallback-substance" });
+
+    await dispatchBlogToSns({
+      title: "2026년 현대백화점 판교점 기획전, 중소기업 참여 모집",
+      slug: "2026-hyundai-department-store-pangyo-sme-exhibition",
+      description: "현대백화점 판교점 기획전에 참여할 중소기업을 모집하는 공고입니다. 대상 조건과 신청 절차, 준비할 자료를 먼저 확인해야 합니다.",
+    }, { channels: ["threads"] });
+
+    const text = vi.mocked(threads.publishThreadsPost).mock.calls[0][0].text;
+    expect(text).not.toContain("현대백화점 판교점 기획전 참여 기업 모집입니다. 중소기업이면 대상과 준비 서류를 확인하세요.");
+    expect(text).toContain("@keepioo_official");
+    expect(() => validateCaption(text, { source: "threads", requireSubstance: true })).not.toThrow();
+  });
+
   it("channels 옵션에 지정된 채널만 발행한다", async () => {
     vi.mocked(twitter.publishTweet).mockResolvedValue({ ok: true, id: "t1" });
     vi.mocked(facebook.publishFacebookPost).mockResolvedValue({ ok: true, id: "f1" });
