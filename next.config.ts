@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   // OG 이미지 라우트가 process.cwd() 로 폰트를 읽어 — 자동 추적 누락 대비
   outputFileTracingIncludes: {
     "/blog/[slug]/opengraph-image": ["./assets/Pretendard-Bold.woff"],
+    "/api/cron/instagram-reels-render": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/**"],
   },
   // jsdom 은 Node 동적 require 를 다수 사용 — Turbopack 의 외부 모듈 hash
   // mangling 이 'jsdom-<hash>' 별칭으로 변환해 require stack 에서 못 찾는
@@ -21,6 +22,12 @@ const nextConfig: NextConfig = {
   // unpdf 는 내부 import.meta 직접 접근 때문에 webpack 번들 시 Critical dependency warning 발생.
   // cron/collector 서버 런타임에서만 필요하므로 외부화해 node_modules ESM 으로 로드한다.
   serverExternalPackages: ["jsdom", "isomorphic-dompurify", "@ohah/hwpjs", "unpdf"],
+
+  // keepioo 는 정적 페이지가 많아 로컬/CI 작은 러너에서 Next build worker 31개가
+  // thread 한도에 걸릴 수 있다. 기본 4개로 제한하고 필요 시 NEXT_BUILD_CPUS 로 조정.
+  experimental: {
+    cpus: Number.parseInt(process.env.NEXT_BUILD_CPUS ?? "4", 10),
+  },
 
   // IndexNow 표준 — 검색엔진 봇이 root path 의 {key}.txt 를 GET 해 키 검증.
   // /api/indexnow-key 로 rewrite 해 동일 키 응답 (api 라우트가 INDEXNOW_KEY env 반환).

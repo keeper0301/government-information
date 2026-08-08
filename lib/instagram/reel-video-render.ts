@@ -1,12 +1,13 @@
 // ============================================================
 // Instagram Reels MP4 renderer
 // ============================================================
-// sharp 로 1080x1920 PNG 슬라이드를 만들고 ffmpeg-static 으로 H.264/AAC 없는
-// 짧은 mp4 로 합친다. 결과 파일은 Meta Graph API video_url 로 쓰기 전
+// sharp 로 세로 PNG 슬라이드를 만들고 ffmpeg-static 으로 H.264/AAC
+// 내레이션 포함 mp4 로 합친다. 결과 파일은 Meta Graph API video_url 로 쓰기 전
 // Supabase public storage 에 올린다.
 // ============================================================
 
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
@@ -20,9 +21,15 @@ export type RenderReelVideoResult = {
   cleanup: () => Promise<void>;
 };
 
-const WIDTH = 1080;
-const HEIGHT = 1920;
-const FPS = 30;
+// Vercel serverless memory safety: render Reels at 540x960 instead of 1080x1920.
+// Instagram accepts 9:16 MP4 and this avoids sharp/ffmpeg OOM on the cron route.
+const WIDTH = 540;
+const HEIGHT = 960;
+const DESIGN_WIDTH = 1080;
+const DESIGN_HEIGHT = 1920;
+const FPS = 24;
+const OPENAI_TTS_MODEL = "tts-1-hd";
+const OPENAI_TTS_VOICE = "nova";
 
 function escapeXml(input: string): string {
   return input
@@ -72,7 +79,7 @@ function slideSvg(slide: ReelVideoSlide, index: number): string {
   const titleLines = wrapText(slide.title, 15, 3);
   const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 19, 3)).slice(0, 5);
   return `
-<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${DESIGN_WIDTH} ${DESIGN_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="${colors[0]}"/>
@@ -82,7 +89,7 @@ function slideSvg(slide: ReelVideoSlide, index: number): string {
       <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.35"/>
     </filter>
   </defs>
-  <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#bg)"/>
+  <rect width="${DESIGN_WIDTH}" height="${DESIGN_HEIGHT}" fill="url(#bg)"/>
   <circle cx="920" cy="210" r="260" fill="#ffffff" opacity="0.08"/>
   <circle cx="120" cy="1680" r="340" fill="#ffffff" opacity="0.07"/>
   <rect x="70" y="170" width="940" height="1580" rx="56" fill="#0f172a" opacity="0.38" filter="url(#shadow)"/>
@@ -101,8 +108,17 @@ async function renderSlidePng(slide: ReelVideoSlide, index: number, dir: string)
   return path;
 }
 
+function resolveFfmpegPath(): string | null {
+  const candidates = [
+    ffmpegPath,
+    join(process.cwd(), "node_modules", "ffmpeg-static", "ffmpeg"),
+    "/var/task/node_modules/ffmpeg-static/ffmpeg",
+  ].filter(Boolean) as string[];
+  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+}
+
 function runFfmpeg(args: string[]): Promise<void> {
-  const binary = ffmpegPath;
+  const binary = resolveFfmpegPath();
   if (!binary) return Promise.reject(new Error("ffmpeg-static binary unavailable"));
   return new Promise((resolve, reject) => {
     const child = spawn(binary as string, args, { stdio: ["ignore", "ignore", "pipe"] });
@@ -118,10 +134,104 @@ function runFfmpeg(args: string[]): Promise<void> {
   });
 }
 
+function buildNarration(slides: ReelVideoSlide[]): string {
+  const [cover, first, second, third] = slides;
+  return [
+    cover?.title,
+    first?.body,
+    second?.body,
+    third?.body,
+    "자세한 내용은 keepioo에서 확인하세요.",
+  ]
+    .filter(Boolean)
+    .map((part) => String(part).replace(/\n+/g, " ").slice(0, 70))
+    .join(". ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function createNarrationMp3(text: string, outPath: string): Promise<void> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  // 릴스 자동화는 무음 발행 금지. OpenAI TTS 실패 시 Google Translate 한국어 TTS 로 fallback 하고,
+  // 둘 다 실패하면 조용히 무음 MP4를 만들지 않고 실패시킨다.
+  if (apiKey) {
+    try {
+      const res = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: OPENAI_TTS_MODEL,
+          voice: OPENAI_TTS_VOICE,
+          response_format: "mp3",
+          speed: 1.05,
+          input: text,
+        }),
+      });
+      if (!res.ok) throw new Error(`OpenAI TTS HTTP ${res.status}`);
+      await writeFile(outPath, Buffer.from(await res.arrayBuffer()));
+      return;
+    } catch (err) {
+      console.warn(`[instagram-reel-render] OpenAI TTS failed, fallback to Google TTS: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  await writeFile(outPath, await googleTranslateTts(text));
+}
+
+function splitTtsChunks(input: string): string[] {
+  const chunks: string[] = [];
+  let remaining = input;
+  while (remaining.length > 0) {
+    const chunk = remaining.slice(0, 180);
+    const cut = chunk.length === 180 ? Math.max(chunk.lastIndexOf(". "), chunk.lastIndexOf(" ")) : chunk.length;
+    const take = cut > 60 ? cut + 1 : chunk.length;
+    chunks.push(remaining.slice(0, take).trim());
+    remaining = remaining.slice(take).trim();
+  }
+  return chunks;
+}
+
+async function googleTranslateTts(text: string): Promise<Buffer> {
+  const chunks = splitTtsChunks(text);
+  const audio: Buffer[] = [];
+  for (const chunk of chunks) {
+    const url = new URL("https://translate.google.com/translate_tts");
+    url.searchParams.set("ie", "UTF-8");
+    url.searchParams.set("client", "tw-ob");
+    url.searchParams.set("tl", "ko");
+    url.searchParams.set("q", chunk);
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) throw new Error(`Google TTS HTTP ${res.status}`);
+    audio.push(Buffer.from(await res.arrayBuffer()));
+  }
+  return Buffer.concat(audio);
+}
+
+function probeAudioDurationSeconds(filePath: string): Promise<number> {
+  const binary = resolveFfmpegPath();
+  if (!binary) return Promise.reject(new Error("ffmpeg-static binary unavailable"));
+  return new Promise((resolve, reject) => {
+    const child = spawn(binary as string, ["-i", filePath], { stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += String(chunk);
+    });
+    child.on("error", reject);
+    child.on("close", () => {
+      const match = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+      if (!match) return reject(new Error("Unable to parse narration duration"));
+      resolve(Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]));
+    });
+  });
+}
+
 export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderReelVideoResult> {
   const plan = buildReelVideoPlan(post);
   const dir = await mkdtemp(join(tmpdir(), "keepioo-reel-"));
   const listPath = join(dir, "frames.txt");
+  const narrationPath = join(dir, "narration.mp3");
   // slug 는 DB 값이라 정상적으로는 안전하지만, 파일 경로에는 절대 쓰지 않는다.
   // 악의적/손상된 slug(`../`, `/`)가 temp 디렉터리 밖으로 ffmpeg 출력을 쓰는 일을 막는다.
   const outputPath = join(dir, "reel.mp4");
@@ -130,7 +240,10 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
     for (let i = 0; i < plan.slides.length; i += 1) {
       frames.push(await renderSlidePng(plan.slides[i], i, dir));
     }
-    const perSlide = plan.durationSeconds / frames.length;
+    await createNarrationMp3(buildNarration(plan.slides), narrationPath);
+    const narrationDuration = await probeAudioDurationSeconds(narrationPath);
+    const durationSeconds = Math.max(plan.durationSeconds, Math.ceil((narrationDuration + 0.8) * 10) / 10);
+    const perSlide = durationSeconds / frames.length;
     const list = frames
       .map((frame) => `file '${frame.replace(/'/g, "'\\''")}'\nduration ${perSlide.toFixed(2)}`)
       .join("\n") + `\nfile '${frames[frames.length - 1].replace(/'/g, "'\\''")}'\n`;
@@ -143,12 +256,26 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
       "0",
       "-i",
       listPath,
-      "-vf",
-      `fps=${FPS},format=yuv420p,scale=${WIDTH}:${HEIGHT}`,
+      "-i",
+      narrationPath,
+      "-filter_complex",
+      `[0:v]fps=${FPS},format=yuv420p,scale=${WIDTH}:${HEIGHT}[v];[1:a]volume=1.12,apad,aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=mono[a]`,
+      "-map",
+      "[v]",
+      "-map",
+      "[a]",
+      "-t",
+      String(durationSeconds),
       "-c:v",
       "libx264",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-threads",
+      "1",
       "-preset",
-      "veryfast",
+      "ultrafast",
       "-movflags",
       "+faststart",
       "-r",
@@ -157,7 +284,7 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
     ]);
     return {
       filePath: outputPath,
-      durationSeconds: plan.durationSeconds,
+      durationSeconds,
       cleanup: () => rm(dir, { recursive: true, force: true }),
     };
   } catch (err) {

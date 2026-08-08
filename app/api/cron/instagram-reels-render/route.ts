@@ -57,7 +57,15 @@ function siteUrl(): string {
 }
 
 function storagePath(slug: string): string {
-  const safeSlug = slug.toLowerCase().replace(/[^a-z0-9가-힣_-]+/gi, "-").slice(0, 90) || "post";
+  // Supabase Storage key 는 ASCII-safe 로 제한한다. 한글 slug 는 일부 URL/path validator 에서 invalid key 처리될 수 있음.
+  const asciiSlug = slug
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 70);
+  const safeSlug = asciiSlug || `post-${Buffer.from(slug).toString("hex").slice(0, 16)}`;
   const month = new Date().toISOString().slice(0, 7);
   return `${month}/${Date.now()}-${safeSlug}.mp4`;
 }

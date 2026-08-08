@@ -179,15 +179,18 @@ describe("instagram-reels-render", () => {
     expect(mocks.assessExternalPublishQuality).toHaveBeenCalledTimes(2);
   });
 
-  it("renders and uploads mp4 on real run", async () => {
+  it("renders and uploads mp4 on real run with an ASCII-safe storage key", async () => {
+    mocks.candidate = { ...mocks.candidate!, slug: "청년-월세/지원" };
+
     const res = await GET(req("/api/cron/instagram-reels-render"));
     const body = await res.json();
 
     if (body.status === "error") throw new Error(body.error);
-    expect(body).toMatchObject({ status: "ok", slug: "slug-1", durationSeconds: 15 });
+    expect(body).toMatchObject({ status: "ok", slug: "청년-월세/지원", durationSeconds: 15 });
     expect(body.videoUrl).toContain("instagram-reels/");
     expect(mocks.renderReelVideo).toHaveBeenCalledOnce();
     expect(mocks.storageUploads[0]).toMatchObject({ contentType: "video/mp4" });
+    expect(mocks.storageUploads[0].path).toMatch(/^\d{4}-\d{2}\/\d+-post-[0-9a-f]+\.mp4$/);
     expect(mocks.logAdminAction).toHaveBeenCalledWith(expect.objectContaining({ action: "instagram_reel_render_success" }));
   });
 });
