@@ -21,6 +21,8 @@
 //   네이버 SEO 신호 + 도메인 권위 백링크 효과
 // ============================================================
 
+import { applyHumanizeGateToPayload, type HumanizeGateResult } from "@/lib/publishing/humanize-gate";
+
 export type BlogPostForNaver = {
   /** keepioo blog_posts.slug — 백링크 URL 조립용 */
   slug: string;
@@ -43,6 +45,8 @@ export type NaverBlogPayload = {
   body: string;
   /** keepioo 상세 페이지 URL — 백링크 추적용 (본문에도 이미 포함) */
   backlinkUrl: string;
+  /** im-not-ai / humanize-korean 발행 전 게이트 결과 */
+  humanizeGate?: HumanizeGateResult;
 };
 
 const BASE_URL = "https://www.keepioo.com";
@@ -151,11 +155,12 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
 
   const body = (intro + compactChecklist + bodyText + footer).trim();
 
-  return {
+  return applyHumanizeGateToPayload({
     title: softenNaverMarketingCopy(post.title),
+    status: "publish" as const,
     body,
     backlinkUrl,
-  };
+  }, { site: "keepioo", keyword: post.category ?? post.title });
 }
 
 /**

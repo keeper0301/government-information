@@ -12,6 +12,8 @@
 //  - 워드프레스 → keepioo 백링크 = 도메인 권위 ↑
 // ============================================================
 
+import { applyHumanizeGateToPayload, type HumanizeGateResult } from "@/lib/publishing/humanize-gate";
+
 export type BlogPostForWordPress = {
   /** keepioo blog_posts.slug — 백링크 URL 조립용 */
   slug: string;
@@ -39,6 +41,8 @@ export type WordPressPayload = {
   categories: string[];
   /** 워드프레스 태그 배열 (자동 생성됨) */
   tags: string[];
+  /** im-not-ai / humanize-korean 발행 전 게이트 결과 */
+  humanizeGate?: HumanizeGateResult;
 };
 
 const KEEPIOO_BASE = "https://www.keepioo.com";
@@ -89,14 +93,14 @@ export function convertToWordPress(post: BlogPostForWordPress): WordPressPayload
   // 워드프레스 카테고리 slug — keepioo 카테고리와 매핑
   const wpCategories = post.category ? [mapCategory(post.category)] : ["정책"];
 
-  return {
+  return applyHumanizeGateToPayload({
     title: post.title,
-    status: "publish", // 즉시 발행 (검토 큐 안 거침)
+    status: "publish", // 즉시 발행 전 humanize gate; warning이면 draft 로 강등
     content,
     excerpt: post.meta_description ?? post.title,
     categories: wpCategories,
     tags: post.tags ?? [],
-  };
+  }, { site: "keepioo", keyword: post.category ?? post.title });
 }
 
 function mapCategory(keepiooCategory: string): string {
