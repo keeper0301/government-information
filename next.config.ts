@@ -9,7 +9,11 @@ const nextConfig: NextConfig = {
   // OG 이미지 라우트가 process.cwd() 로 폰트를 읽어 — 자동 추적 누락 대비
   outputFileTracingIncludes: {
     "/blog/[slug]/opengraph-image": ["./assets/Pretendard-Bold.woff"],
-    "/api/cron/instagram-reels-render": ["./node_modules/ffmpeg-static/ffmpeg", "./node_modules/ffmpeg-static/**"],
+    "/api/cron/instagram-reels-render": [
+      "./assets/Pretendard-Bold.ttf",
+      "./node_modules/ffmpeg-static/ffmpeg",
+      "./node_modules/ffmpeg-static/**",
+    ],
   },
   // jsdom 은 Node 동적 require 를 다수 사용 — Turbopack 의 외부 모듈 hash
   // mangling 이 'jsdom-<hash>' 별칭으로 변환해 require stack 에서 못 찾는

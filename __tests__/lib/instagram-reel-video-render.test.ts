@@ -8,6 +8,7 @@ import { renderReelVideo } from "@/lib/instagram/reel-video-render";
 
 let fixtureDir: string;
 let narrationFixture: Buffer;
+const originalFetch = globalThis.fetch;
 
 beforeAll(async () => {
   fixtureDir = await mkdtemp(join(tmpdir(), "keepioo-reel-test-"));
@@ -30,10 +31,16 @@ beforeAll(async () => {
 
 beforeEach(() => {
   delete process.env.OPENAI_API_KEY;
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(new Uint8Array(narrationFixture), {
-    status: 200,
-    headers: { "Content-Type": "audio/mpeg" },
-  })));
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.startsWith("https://translate.google.com/translate_tts")) {
+      return new Response(new Uint8Array(narrationFixture), {
+        status: 200,
+        headers: { "Content-Type": "audio/mpeg" },
+      });
+    }
+    return originalFetch(input, init);
+  }));
 });
 
 afterAll(async () => {

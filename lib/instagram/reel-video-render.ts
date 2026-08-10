@@ -14,6 +14,7 @@ import { spawn } from "node:child_process";
 import sharp from "sharp";
 import ffmpegPath from "ffmpeg-static";
 import { buildReelVideoPlan, type ReelVideoPostInput, type ReelVideoSlide } from "./reel-video-plan";
+import { categoryColorOnWhite, getCategoryColor } from "./card-colors";
 
 export type RenderReelVideoResult = {
   filePath: string;
@@ -30,8 +31,9 @@ const DESIGN_HEIGHT = 1920;
 const FPS = 24;
 const OPENAI_TTS_MODEL = "tts-1-hd";
 const OPENAI_TTS_VOICE = "nova";
+const PRETENDARD_TTF = join(process.cwd(), "assets", "Pretendard-Bold.ttf");
 
-function escapeXml(input: string): string {
+function escapeMarkup(input: string): string {
   return input
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -62,49 +64,87 @@ function wrapText(input: string, maxChars: number, maxLines: number): string[] {
   return lines.length ? lines : [""];
 }
 
-function textLinesSvg(lines: string[], x: number, y: number, fontSize: number, lineHeight: number, weight = 700): string {
-  return lines
-    .map((line, idx) => `<text x="${x}" y="${y + idx * lineHeight}" font-size="${fontSize}" font-weight="${weight}" fill="#f8fafc">${escapeXml(line)}</text>`)
-    .join("\n");
-}
-
-function slideSvg(slide: ReelVideoSlide, index: number): string {
-  const colors = [
-    ["#0f172a", "#2563eb"],
-    ["#111827", "#16a34a"],
-    ["#18181b", "#ea580c"],
-    ["#111827", "#9333ea"],
-    ["#020617", "#0ea5e9"],
-  ][index % 5];
-  const titleLines = wrapText(slide.title, 15, 3);
-  const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 19, 3)).slice(0, 5);
+function baseSlideSvg(index: number, accent: string, category: string): string {
+  const fillPct = (index + 1) * 20;
+  const pillWidth = Math.max(160, Math.min(360, 56 + category.length * 42));
+  const pillTextX = 96 + pillWidth / 2;
   return `
-<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${DESIGN_WIDTH} ${DESIGN_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="${colors[0]}"/>
-      <stop offset="100%" stop-color="${colors[1]}"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-  <rect width="${DESIGN_WIDTH}" height="${DESIGN_HEIGHT}" fill="url(#bg)"/>
-  <circle cx="920" cy="210" r="260" fill="#ffffff" opacity="0.08"/>
-  <circle cx="120" cy="1680" r="340" fill="#ffffff" opacity="0.07"/>
-  <rect x="70" y="170" width="940" height="1580" rx="56" fill="#0f172a" opacity="0.38" filter="url(#shadow)"/>
-  <text x="110" y="275" font-size="38" font-weight="800" fill="#bfdbfe">${escapeXml(slide.eyebrow)}</text>
-  ${textLinesSvg(titleLines, 110, 500, 88, 112, 900)}
-  <rect x="110" y="870" width="140" height="10" rx="5" fill="#facc15"/>
-  ${textLinesSvg(bodyLines, 110, 1040, 54, 78, 700)}
-  <text x="110" y="1605" font-size="36" font-weight="700" fill="#dbeafe">저장하고 신청 전 다시 확인</text>
-  <text x="110" y="1665" font-size="32" font-weight="700" fill="#e2e8f0">keepioo.com</text>
+<svg width="${DESIGN_WIDTH}" height="${DESIGN_HEIGHT}" viewBox="0 0 ${DESIGN_WIDTH} ${DESIGN_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${DESIGN_WIDTH}" height="${DESIGN_HEIGHT}" fill="#ffffff"/>
+  <rect x="0" y="0" width="22" height="${DESIGN_HEIGHT}" fill="${accent}"/>
+  <rect x="96" y="150" width="${pillWidth}" height="84" rx="42" fill="${accent}"/>
+  <text x="${pillTextX}" y="205" text-anchor="middle" font-size="44" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${escapeMarkup(category)}</text>
+  <rect x="772" y="156" width="120" height="72" rx="36" fill="#2b2b31"/>
+  <text x="832" y="204" text-anchor="middle" font-size="36" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${index + 1}/5</text>
+  <rect x="96" y="1810" width="888" height="14" rx="7" fill="#e7eaef"/>
+  <rect x="96" y="1810" width="${(888 * fillPct) / 100}" height="14" rx="7" fill="${accent}"/>
 </svg>`;
 }
 
-async function renderSlidePng(slide: ReelVideoSlide, index: number, dir: string): Promise<string> {
+async function textPng(
+  text: string,
+  fontSize: number,
+  width: number,
+  height: number,
+  color: string,
+  align: "left" | "center" = "left",
+): Promise<Buffer> {
+  const markup = `<span foreground="${escapeMarkup(color)}" size="${Math.round(fontSize * 1000)}" font_family="Pretendard">${escapeMarkup(text)}</span>`;
+  const rendered = await sharp({
+    text: {
+      text: markup,
+      fontfile: PRETENDARD_TTF,
+      width,
+      height,
+      align,
+      rgba: true,
+    },
+  }).png().toBuffer();
+  return sharp(rendered)
+    .resize({ width, height, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .withMetadata({ density: 72 })
+    .png()
+    .toBuffer();
+}
+
+function labelFromEyebrow(eyebrow: string, category: string): string {
+  return eyebrow.replace(`${category} · keepioo`, "").trim() || eyebrow;
+}
+
+async function slideComposites(slide: ReelVideoSlide, category: string, accent: string): Promise<sharp.OverlayOptions[]> {
+  const label = labelFromEyebrow(slide.eyebrow, category);
+  const titleLines = wrapText(slide.title, 11, 4);
+  const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 18, 3)).slice(0, 4);
+  const brandColor = categoryColorOnWhite(accent);
+  const overlays: sharp.OverlayOptions[] = [
+    { input: await textPng("@ keepioo · 정책알리미", 46, 888, 70, brandColor), left: 96, top: 1710 },
+  ];
+  if (label) {
+    overlays.push({ input: await textPng(label, 46, 888, 70, brandColor), left: 96, top: 655 });
+  }
+  for (let i = 0; i < titleLines.length; i += 1) {
+    overlays.push({ input: await textPng(titleLines[i], 76, 888, 100, "#191F28"), left: 96, top: 735 + i * 100 });
+  }
+  const boxTop = 735 + titleLines.length * 100 + 50;
+  const boxHeight = Math.max(108, 76 + bodyLines.length * 62);
+  overlays.push({
+    input: Buffer.from(`<svg width="888" height="${boxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${boxHeight}" rx="26" fill="#f4f6f9"/></svg>`),
+    left: 96,
+    top: boxTop,
+  });
+  for (let i = 0; i < bodyLines.length; i += 1) {
+    overlays.push({ input: await textPng(bodyLines[i], 46, 800, 62, "#333d4b"), left: 140, top: boxTop + 38 + i * 62 });
+  }
+  return overlays;
+}
+
+async function renderSlidePng(slide: ReelVideoSlide, index: number, dir: string, category: string, accent: string): Promise<string> {
   const path = join(dir, `slide-${String(index + 1).padStart(2, "0")}.png`);
-  await sharp(Buffer.from(slideSvg(slide, index))).png().toFile(path);
+  const fullSize = await sharp(Buffer.from(baseSlideSvg(index, accent, category)))
+    .composite(await slideComposites(slide, category, accent))
+    .png()
+    .toBuffer();
+  await sharp(fullSize).resize(WIDTH, HEIGHT).png().toFile(path);
   return path;
 }
 
@@ -229,6 +269,8 @@ function probeAudioDurationSeconds(filePath: string): Promise<number> {
 
 export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderReelVideoResult> {
   const plan = buildReelVideoPlan(post);
+  const category = post.category ?? "정책정보";
+  const accent = getCategoryColor(category);
   const dir = await mkdtemp(join(tmpdir(), "keepioo-reel-"));
   const listPath = join(dir, "frames.txt");
   const narrationPath = join(dir, "narration.mp3");
@@ -238,7 +280,7 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
   try {
     const frames: string[] = [];
     for (let i = 0; i < plan.slides.length; i += 1) {
-      frames.push(await renderSlidePng(plan.slides[i], i, dir));
+      frames.push(await renderSlidePng(plan.slides[i], i, dir, category, accent));
     }
     await createNarrationMp3(buildNarration(plan.slides), narrationPath);
     const narrationDuration = await probeAudioDurationSeconds(narrationPath);
