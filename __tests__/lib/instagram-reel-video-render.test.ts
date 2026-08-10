@@ -4,11 +4,19 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import ffmpegPath from "ffmpeg-static";
+import sharp from "sharp";
 import { renderReelVideo } from "@/lib/instagram/reel-video-render";
 
 let fixtureDir: string;
 let narrationFixture: Buffer;
 const originalFetch = globalThis.fetch;
+
+async function pixelAt(path: string, x: number, y: number): Promise<[number, number, number]> {
+  const image = sharp(path).removeAlpha();
+  const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
+  const offset = (y * info.width + x) * info.channels;
+  return [data[offset], data[offset + 1], data[offset + 2]];
+}
 
 beforeAll(async () => {
   fixtureDir = await mkdtemp(join(tmpdir(), "keepioo-reel-test-"));
@@ -67,6 +75,25 @@ describe("renderReelVideo", () => {
       const stderr = probe.stderr ?? "";
       expect(stderr).toContain("Video:");
       expect(stderr).toContain("Audio:");
+      const framePath = join(fixtureDir, "first-frame.png");
+      const frame = spawnSync(ffmpegPath as string, [
+        "-y",
+        "-ss",
+        "1",
+        "-i",
+        rendered.filePath,
+        "-frames:v",
+        "1",
+        framePath,
+      ], { encoding: "utf8" });
+      expect(frame.status, frame.stderr).toBe(0);
+      const [barR, barG, barB] = await pixelAt(framePath, 5, 100);
+      expect(barB).toBeGreaterThan(barR);
+      expect(barB).toBeGreaterThan(barG);
+      const [bgR, bgG, bgB] = await pixelAt(framePath, 270, 100);
+      expect(bgR).toBeGreaterThan(235);
+      expect(bgG).toBeGreaterThan(235);
+      expect(bgB).toBeGreaterThan(235);
     } finally {
       await rendered.cleanup();
     }
