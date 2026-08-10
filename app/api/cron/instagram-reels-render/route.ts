@@ -32,8 +32,11 @@ type RenderCandidate = {
   category: string | null;
   tags: string[] | null;
   admin_review_required: boolean | null;
+  instagram_reel_video_url: string | null;
   instagram_reel_render_attempt_count: number | null;
 };
+
+const REEL_RENDER_VERSION = "readable-v2";
 
 function isDryRunRequest(request: Request): boolean {
   const url = new URL(request.url);
@@ -67,7 +70,11 @@ function storagePath(slug: string): string {
     .slice(0, 70);
   const safeSlug = asciiSlug || `post-${Buffer.from(slug).toString("hex").slice(0, 16)}`;
   const month = new Date().toISOString().slice(0, 7);
-  return `${month}/${Date.now()}-${safeSlug}.mp4`;
+  return `${month}/${REEL_RENDER_VERSION}/${Date.now()}-${safeSlug}.mp4`;
+}
+
+function isCurrentReelVideoUrl(videoUrl: string | null): boolean {
+  return typeof videoUrl === "string" && videoUrl.includes(`/${REEL_RENDER_VERSION}/`);
 }
 
 async function safeLogSkip(reason: string, extra: Record<string, unknown> = {}) {
@@ -96,9 +103,8 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const { data: posts, error: queryErr } = await admin
     .from("blog_posts")
-    .select("id, slug, title, content, meta_description, category, tags, admin_review_required, instagram_reel_render_attempt_count")
+    .select("id, slug, title, content, meta_description, category, tags, admin_review_required, instagram_reel_video_url, instagram_reel_render_attempt_count")
     .not("published_at", "is", null)
-    .is("instagram_reel_video_url", null)
     .is("instagram_reel_published_at", null)
     .eq("admin_review_required", false)
     .lt("instagram_reel_render_attempt_count", 3)
@@ -111,12 +117,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "DB query 실패", detail: queryErr.message }, { status: 500 });
   }
 
-  if (!posts || posts.length === 0) {
+  const staleOrMissingPosts = (posts ?? []).filter((post) => !isCurrentReelVideoUrl(post.instagram_reel_video_url));
+
+  if (staleOrMissingPosts.length === 0) {
     const { count: blockedByQuality } = await admin
       .from("blog_posts")
       .select("id", { count: "exact", head: true })
       .not("published_at", "is", null)
-      .is("instagram_reel_video_url", null)
       .is("instagram_reel_published_at", null)
       .lt("instagram_reel_render_attempt_count", 3)
       .or("admin_review_required.is.null,admin_review_required.eq.true");
@@ -130,7 +137,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "no_pending", message: "Reels 영상 생성 대기 글 없음" });
   }
 
-  const assessed = posts.map((candidate) => ({
+  const assessed = staleOrMissingPosts.map((candidate) => ({
     candidate,
     assessment: assessExternalPublishQuality(candidate),
   }));
@@ -167,7 +174,7 @@ export async function GET(request: Request) {
     .update({ instagram_reel_render_attempt_count: currentAttempt + 1 })
     .eq("id", post.id)
     .eq("instagram_reel_render_attempt_count", currentAttempt)
-    .is("instagram_reel_video_url", null)
+    .is("instagram_reel_published_at", null)
     .select("id, instagram_reel_render_attempt_count");
   if (claim.error || !claim.data || claim.data.length === 0) {
     await safeLogSkip("attempt_claim_failed", {

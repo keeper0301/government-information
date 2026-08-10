@@ -40,6 +40,8 @@ type ReelCandidate = {
   instagram_reel_attempt_count: number | null;
 };
 
+const REEL_RENDER_VERSION = "readable-v2";
+
 function isDryRunRequest(request: Request): boolean {
   const url = new URL(request.url);
   return (
@@ -76,7 +78,7 @@ async function safeLogSkip(reason: string, extra: Record<string, unknown> = {}) 
 
 function publicVideoUrlOk(videoUrl: string): boolean {
   try {
-    return new URL(videoUrl).protocol === "https:";
+    return new URL(videoUrl).protocol === "https:" && videoUrl.includes(`/${REEL_RENDER_VERSION}/`);
   } catch {
     return false;
   }
@@ -176,7 +178,7 @@ export async function GET(request: Request) {
         slug: first.candidate.slug,
         blockedByQuality: assessed.filter((item) => !item.assessment.approved).length,
         checkedCandidates: assessed.length,
-        reason: firstInvalidVideo ? "video_url_must_be_https" : undefined,
+        reason: firstInvalidVideo ? `video_url_must_be_https_and_${REEL_RENDER_VERSION}` : undefined,
         reasons: first.assessment.reasons,
         metrics: first.assessment.metrics,
       });
