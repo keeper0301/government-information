@@ -15,6 +15,7 @@ import sharp from "sharp";
 import ffmpegPath from "ffmpeg-static";
 import { buildReelVideoPlan, type ReelVideoPostInput, type ReelVideoSlide } from "./reel-video-plan";
 import { categoryColorOnWhite, getCategoryColor } from "./card-colors";
+import { resolveInstagramCardHook } from "./card-hook";
 
 export type RenderReelVideoResult = {
   filePath: string;
@@ -81,6 +82,14 @@ function baseSlideSvg(index: number, accent: string, category: string): string {
 </svg>`;
 }
 
+function titleFontSize(title: string): number {
+  return title.length > 50 ? 42 : title.length > 40 ? 46 : title.length > 30 ? 52 : title.length > 18 ? 60 : 68;
+}
+
+function titleMaxChars(fontSize: number): number {
+  return fontSize <= 42 ? 15 : fontSize <= 46 ? 14 : fontSize <= 52 ? 13 : 11;
+}
+
 async function textPng(
   text: string,
   fontSize: number,
@@ -110,37 +119,69 @@ function labelFromEyebrow(eyebrow: string, category: string): string {
   return eyebrow.replace(`${category} · keepioo`, "").trim() || eyebrow;
 }
 
-async function slideComposites(slide: ReelVideoSlide, category: string, accent: string): Promise<sharp.OverlayOptions[]> {
+async function slideComposites(
+  slide: ReelVideoSlide,
+  index: number,
+  category: string,
+  accent: string,
+  hookLabel: string,
+): Promise<sharp.OverlayOptions[]> {
   const label = labelFromEyebrow(slide.eyebrow, category);
-  const titleLines = wrapText(slide.title, 11, 4);
+  const titleSize = titleFontSize(slide.title);
+  const titleLines = wrapText(slide.title, titleMaxChars(titleSize), 4);
   const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 18, 3)).slice(0, 4);
   const brandColor = categoryColorOnWhite(accent);
   const overlays: sharp.OverlayOptions[] = [
-    { input: await textPng("@ keepioo · 정책알리미", 46, 888, 70, brandColor), left: 96, top: 1710 },
+    { input: await textPng("@ keepioo · 정책알리미", 30, 888, 48, brandColor), left: 96, top: 1710 },
   ];
+
+  if (index === 0) {
+    overlays.push({
+      input: Buffer.from(`<svg width="888" height="112" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="112" rx="28" fill="#FFF7ED"/><rect x="2" y="2" width="884" height="108" rx="26" fill="none" stroke="${brandColor}" stroke-width="4"/></svg>`),
+      left: 96,
+      top: 310,
+    });
+    overlays.push({ input: await textPng(hookLabel, 32, 824, 74, brandColor), left: 128, top: 333 });
+    const titleTop = 575;
+    const titleLineHeight = Math.round(titleSize * 1.48);
+    for (let i = 0; i < titleLines.length; i += 1) {
+      overlays.push({ input: await textPng(titleLines[i], titleSize, 888, Math.round(titleSize * 1.45), "#191F28"), left: 96, top: titleTop + i * titleLineHeight });
+    }
+    const boxTop = Math.min(1260, titleTop + titleLines.length * titleLineHeight + 54);
+    overlays.push({
+      input: Buffer.from(`<svg width="888" height="190" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="190" rx="26" fill="#f4f6f9"/></svg>`),
+      left: 96,
+      top: boxTop,
+    });
+    for (let i = 0; i < bodyLines.slice(0, 2).length; i += 1) {
+      overlays.push({ input: await textPng(bodyLines[i], 36, 800, 52, "#333d4b"), left: 140, top: boxTop + 42 + i * 56 });
+    }
+    return overlays;
+  }
+
   if (label) {
-    overlays.push({ input: await textPng(label, 46, 888, 70, brandColor), left: 96, top: 655 });
+    overlays.push({ input: await textPng(label, 34, 888, 54, brandColor), left: 96, top: 555 });
   }
   for (let i = 0; i < titleLines.length; i += 1) {
-    overlays.push({ input: await textPng(titleLines[i], 76, 888, 100, "#191F28"), left: 96, top: 735 + i * 100 });
+    overlays.push({ input: await textPng(titleLines[i], Math.min(titleSize, 52), 888, 76, "#191F28"), left: 96, top: 635 + i * 78 });
   }
-  const boxTop = 735 + titleLines.length * 100 + 50;
-  const boxHeight = Math.max(108, 76 + bodyLines.length * 62);
+  const boxTop = 635 + titleLines.length * 78 + 46;
+  const boxHeight = Math.max(132, 76 + bodyLines.length * 56);
   overlays.push({
     input: Buffer.from(`<svg width="888" height="${boxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${boxHeight}" rx="26" fill="#f4f6f9"/></svg>`),
     left: 96,
     top: boxTop,
   });
   for (let i = 0; i < bodyLines.length; i += 1) {
-    overlays.push({ input: await textPng(bodyLines[i], 46, 800, 62, "#333d4b"), left: 140, top: boxTop + 38 + i * 62 });
+    overlays.push({ input: await textPng(bodyLines[i], 36, 800, 52, "#333d4b"), left: 140, top: boxTop + 38 + i * 56 });
   }
   return overlays;
 }
 
-async function renderSlidePng(slide: ReelVideoSlide, index: number, dir: string, category: string, accent: string): Promise<string> {
+async function renderSlidePng(slide: ReelVideoSlide, index: number, dir: string, category: string, accent: string, hookLabel: string): Promise<string> {
   const path = join(dir, `slide-${String(index + 1).padStart(2, "0")}.png`);
   const fullSize = await sharp(Buffer.from(baseSlideSvg(index, accent, category)))
-    .composite(await slideComposites(slide, category, accent))
+    .composite(await slideComposites(slide, index, category, accent, hookLabel))
     .png()
     .toBuffer();
   await sharp(fullSize).resize(WIDTH, HEIGHT).png().toFile(path);
@@ -270,6 +311,11 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
   const plan = buildReelVideoPlan(post);
   const category = post.category ?? "정책정보";
   const accent = getCategoryColor(category);
+  const hookLabel = resolveInstagramCardHook({
+    title: post.title,
+    description: post.meta_description,
+    category,
+  }).label;
   const dir = await mkdtemp(join(tmpdir(), "keepioo-reel-"));
   const listPath = join(dir, "frames.txt");
   const narrationPath = join(dir, "narration.mp3");
@@ -279,7 +325,7 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
   try {
     const frames: string[] = [];
     for (let i = 0; i < plan.slides.length; i += 1) {
-      frames.push(await renderSlidePng(plan.slides[i], i, dir, category, accent));
+      frames.push(await renderSlidePng(plan.slides[i], i, dir, category, accent, hookLabel));
     }
     await createNarrationMp3(buildNarration(plan.slides), narrationPath);
     const narrationDuration = await probeAudioDurationSeconds(narrationPath);
