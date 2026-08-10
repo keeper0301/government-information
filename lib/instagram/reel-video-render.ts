@@ -101,7 +101,6 @@ async function textPng(
     },
   }).png().toBuffer();
   return sharp(rendered)
-    .resize({ width, height, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .withMetadata({ density: 72 })
     .png()
     .toBuffer();
