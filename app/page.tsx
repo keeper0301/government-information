@@ -163,6 +163,60 @@ async function RecentNewsSection({
   );
 }
 
+function ReviewModeHomeBody() {
+  const guideLinks = [
+    ["정부지원금 신청 전 준비 서류 체크리스트", "/guides/documents-before-government-benefit"],
+    ["소상공인 정책자금 신청에서 자주 막히는 이유", "/guides/small-business-policy-fund-mistakes"],
+    ["마감 임박 정책을 놓치지 않는 방법", "/guides/deadline-policy-not-missing"],
+    ["보조금24와 복지로 차이, 어디서 먼저 찾아야 하나", "/guides/bokjiro-vs-gov24-difference"],
+  ];
+
+  return (
+    <section className="py-[64px] px-6 max-w-content mx-auto lg:py-24 lg:px-10">
+      <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] items-start">
+        <div>
+          <p className="text-[13px] font-bold text-blue-600 mb-3 tracking-[0.08em] uppercase">
+            REVIEW MODE
+          </p>
+          <h2 className="text-[28px] md:text-[36px] font-extrabold text-grey-900 tracking-[-0.8px] leading-[1.25] mb-4">
+            정책을 많이 모으는 것보다,
+            <br />
+            신청 판단을 돕는 데 집중합니다.
+          </h2>
+          <p className="text-[15px] md:text-[17px] leading-[1.8] text-grey-700">
+            keepioo는 정부·지자체 원문을 그대로 복사해 보여주는 목록 사이트가 아니라,
+            신청자가 실제로 확인해야 할 자격·서류·중복 제한·마감 기준을 정리하는
+            정책 안내 서비스입니다. 재심사 기간에는 자동 수집 상세보다 운영자가 선별한
+            대표 가이드와 카테고리 허브를 우선 노출합니다.
+          </p>
+        </div>
+        <div className="rounded-[28px] bg-white border border-grey-100 shadow-[0_12px_40px_rgba(15,23,42,0.06)] p-6 md:p-8">
+          <h3 className="text-[20px] font-extrabold text-grey-900 mb-4">먼저 읽을 대표 가이드</h3>
+          <div className="grid gap-3">
+            {guideLinks.map(([label, href]) => (
+              <Link
+                key={href}
+                href={href}
+                className="block rounded-2xl border border-grey-100 bg-grey-50 px-4 py-3 text-[15px] font-semibold text-grey-900 no-underline hover:border-blue-200 hover:bg-blue-50 transition-colors"
+              >
+                {label} →
+              </Link>
+            ))}
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <Link href="/c/business" className="rounded-2xl bg-blue-600 px-4 py-3 text-white font-bold no-underline text-center">
+              소상공인 허브
+            </Link>
+            <Link href="/guides" className="rounded-2xl bg-grey-900 px-4 py-3 text-white font-bold no-underline text-center">
+              전체 가이드
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default async function Home() {
   // 1) 첫 화면 사용자 분기에 필요한 인증/프로필만 먼저 확보.
   //    아래쪽 콘텐츠 데이터는 각 Suspense 섹션 안에서 별도 스트리밍.
@@ -266,10 +320,10 @@ export default async function Home() {
                 <span aria-hidden="true">→</span>
               </Link>
               <Link
-                href="/welfare"
+                href={ADSENSE_REVIEW_MODE ? "/guides" : "/welfare"}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-white text-grey-900 text-[15px] font-semibold hover:bg-grey-50 transition-colors no-underline border border-grey-200 min-h-[48px]"
               >
-                정책 둘러보기
+                {ADSENSE_REVIEW_MODE ? "대표 가이드 보기" : "정책 둘러보기"}
               </Link>
             </div>
             <div className="fade-up" style={{ animationDelay: "240ms" }}>
@@ -315,18 +369,24 @@ export default async function Home() {
             - sidebar 좌측 끝 = vw - 24 - 300 = vw - 324
             - overlap 조건: (vw - 324) < (vw/2 + 570) → vw < 1788
             → 1800px 안전 round. FHD 1920px 이상 노출. */}
-      <div
-        className="hidden min-[1800px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-hidden"
-        aria-label="인기 정책 사이드 배너"
-      >
-        <Suspense fallback={null}>
-          <HomePopularPicks isLoggedIn={isLoggedIn} />
-        </Suspense>
-      </div>
+      {!ADSENSE_REVIEW_MODE && (
+        <div
+          className="hidden min-[1800px]:block fixed top-[120px] right-6 w-[300px] z-30 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-hidden"
+          aria-label="인기 정책 사이드 배너"
+        >
+          <Suspense fallback={null}>
+            <HomePopularPicks isLoggedIn={isLoggedIn} />
+          </Suspense>
+        </div>
+      )}
 
-      <HomeDiscoveryHub
-        regionMap={<RegionMap />}
-      />
+      {ADSENSE_REVIEW_MODE ? (
+        <ReviewModeHomeBody />
+      ) : (
+        <HomeDiscoveryHub
+          regionMap={<RegionMap />}
+        />
+      )}
 
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[150px]" aria-hidden />}>
@@ -336,11 +396,11 @@ export default async function Home() {
 
       {/* Phase 1.5 자격 정보 입력 유도 — income/household 미입력 사용자에게만.
           24h dismiss 가능 (localStorage). hero 와 narrative 사이라 자연스러운 nudge */}
-      {showEnhanceBanner && <EnhanceProfileBanner />}
+      {!ADSENSE_REVIEW_MODE && showEnhanceBanner && <EnhanceProfileBanner />}
 
       {/* PWA 푸시 구독 유도 — 로그인 + 미구독 사용자에게만 (client-side 판단).
           7일 dismiss. Spec 3 발송 cron 가동 후 subscriber 0 → 첫 구독 가속. */}
-      <PushSubscribeBanner isLoggedIn={isLoggedIn} />
+      {!ADSENSE_REVIEW_MODE && <PushSubscribeBanner isLoggedIn={isLoggedIn} />}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           내러티브 4단계: 문제(Hero 카피) → 해결(Hero+RecommendCard) →
@@ -354,40 +414,48 @@ export default async function Home() {
           placeholder 높이는 실제 컴포넌트 평균 높이로 맞춰 CLS 회귀 방지. */}
 
       {/* [증거 1] HeroStats — 누적 정책뉴스·진행 공고·데이터 출처 큰 숫자 + 카운트업 */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[280px]" aria-hidden />}>
-          <HeroStats />
-        </Suspense>
-      </RevealOnScroll>
+      {!ADSENSE_REVIEW_MODE && (
+        <RevealOnScroll>
+          <Suspense fallback={<div className="h-[280px]" aria-hidden />}>
+            <HeroStats />
+          </Suspense>
+        </RevealOnScroll>
+      )}
 
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
-          <AlertStripSection isLoggedIn={isLoggedIn} />
-        </Suspense>
-      </RevealOnScroll>
+      {!ADSENSE_REVIEW_MODE && (
+        <RevealOnScroll>
+          <Suspense fallback={<div className="h-[60px]" aria-hidden />}>
+            <AlertStripSection isLoggedIn={isLoggedIn} />
+          </Suspense>
+        </RevealOnScroll>
+      )}
 
       {/* [도구 1] Calendar — 이번 달 신청 일정 달력 */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[480px] bg-grey-50" aria-hidden />}>
-          <div className="bg-grey-50">
-            <section className="py-[60px] px-6 max-w-content mx-auto lg:py-20 lg:px-10">
-              <CalendarPreview />
-            </section>
-          </div>
-        </Suspense>
-      </RevealOnScroll>
+      {!ADSENSE_REVIEW_MODE && (
+        <RevealOnScroll>
+          <Suspense fallback={<div className="h-[480px] bg-grey-50" aria-hidden />}>
+            <div className="bg-grey-50">
+              <section className="py-[60px] px-6 max-w-content mx-auto lg:py-20 lg:px-10">
+                <CalendarPreview />
+              </section>
+            </div>
+          </Suspense>
+        </RevealOnScroll>
+      )}
 
       {/* [E2 광고] AdSense in-feed — 인기 정책 다음, Blog 섹션 앞.
           홈 above-the-fold 와 Hero 침범 없고, "콘텐츠 사이" 자연 위치 (CLS 안전).
           env 미설정 시 자동으로 옅은 placeholder 만 렌더. */}
-      <AdSlot placement="home" />
+      {!ADSENSE_REVIEW_MODE && <AdSlot placement="home" />}
 
       {/* [도구 3] Blog — 정책 블로그 (자체 콘텐츠) */}
-      <RevealOnScroll>
-        <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
-          <RecentBlogSection profile={fullProfile} />
-        </Suspense>
-      </RevealOnScroll>
+      {!ADSENSE_REVIEW_MODE && (
+        <RevealOnScroll>
+          <Suspense fallback={<div className="h-[420px]" aria-hidden />}>
+            <RecentBlogSection profile={fullProfile} />
+          </Suspense>
+        </RevealOnScroll>
+      )}
 
       {!ADSENSE_REVIEW_MODE && (
         <RevealOnScroll>

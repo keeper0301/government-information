@@ -69,6 +69,19 @@ describe("AdSense approval guardrails", () => {
     }
   });
 
+  it("tightens review-mode sitemap and homepage around editorial guide content", () => {
+    const sitemap = read("app/sitemap.ts");
+    expect(sitemap).toContain("/welfare·/loan·/blog index 는 대량 목록/자동 생성 인상을 줄 수 있어");
+    expect(sitemap).toContain("reviewModeGuideSlugBlock");
+    expect(sitemap).toContain("slice(0, 20)");
+
+    const home = read("app/page.tsx");
+    expect(home).toContain("ReviewModeHomeBody");
+    expect(home).toContain("정책을 많이 모으는 것보다");
+    expect(home).toContain("!ADSENSE_REVIEW_MODE && <AdSlot");
+    expect(home).toContain("ADSENSE_REVIEW_MODE ? \"/guides\" : \"/welfare\"");
+  });
+
   it("uses the www canonical host for default metadata and schema urls", () => {
     const source = read("app/layout.tsx");
     expect(source).toContain('"https://www.keepioo.com"');

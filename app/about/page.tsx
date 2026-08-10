@@ -179,45 +179,38 @@ export default async function AboutPage() {
           </p>
         </Section>
 
-        {/* 누적 신호 — AdSense 검수자에게 운영 활동 흔적 노출.
-            동적 카운트 (DB 실 카운트) — ISR 1일 갱신으로 매일 정확 숫자 노출. */}
+        {/* 운영 신뢰 — 재심사 기간에는 대량 수치보다 검수·해설 기준을 우선 설명. */}
         <Section title="지금 정책알리미는">
           <p>
-            매일 정부·지자체 정책을 자동 수집·검증·분류하고, 신청에 필요한
-            조건과 주의사항을 함께 정리해 사용자에게 전달합니다.
-            현재 운영 규모와 갱신 주기는 다음과 같습니다.
+            정책알리미는 정부·지자체가 공개한 정책 정보를 모은 뒤, 사용자가 신청 전에
+            판단해야 하는 기준을 다시 정리합니다. 단순히 많은 공고를 나열하는 것보다
+            자격 조건, 준비 서류, 중복 수급 제한, 마감 확인 순서를 분명히 설명하는 데
+            초점을 둡니다.
           </p>
           <ul className="mt-3 space-y-2 text-grey-700">
             <li>
-              <b className="text-grey-900">정책 큐레이션</b>: 활성 복지·대출·
-              지원금 <b className="text-blue-700">{totalPolicies.toLocaleString("ko-KR")}건</b>
-              {" "}(복지 {stats.welfare.toLocaleString("ko-KR")}건 · 대출
-              {" "}{stats.loan.toLocaleString("ko-KR")}건) 을 매일 점검 (마감 지난
-              정책 자동 정리)
+              <b className="text-grey-900">대표 가이드 우선 노출</b>: 재심사 기간에는
+              신청 실수·서류·중복 제한을 해설한 가이드와 카테고리 허브를 중심으로 보여줍니다.
             </li>
             <li>
-              <b className="text-grey-900">정책 가이드 발행</b>: 누적
-              {" "}<b className="text-blue-700">{stats.blog.toLocaleString("ko-KR")}편</b>
-              {ADSENSE_REVIEW_MODE
-                ? " — 재심사 기간에는 자동 발행량보다 신청 실수·서류·중복 제한을 해설한 대표 가이드를 우선 노출"
-                : " (7개 카테고리: 청년·노년·학생·교육·육아·가족·주거·소상공인·건강·복지). 매일 14편 자동 발행 — 한 달 약 420편 페이스"}
+              <b className="text-grey-900">공식 출처 확인</b>: 금액·대상·기간처럼 바뀔 수 있는
+              정보는 원문 링크를 함께 두어 사용자가 기관 페이지에서 다시 확인할 수 있게 합니다.
             </li>
             <li>
-              <b className="text-grey-900">맞춤 추천 + 알림</b>: 가입한
-              사용자에게 마감 임박·새 정책을 이메일로 자동 알림
+              <b className="text-grey-900">중복·마감 정리</b>: 같은 정책의 여러 출처와 이미 끝난
+              정책은 사용자 노출에서 줄여 검색과 신청 판단을 방해하지 않게 합니다.
+            </li>
+            <li>
+              <b className="text-grey-900">맞춤 추천 + 알림</b>: 가입한 사용자에게는 본인 조건과
+              마감일에 맞는 정책을 이메일로 안내합니다.
             </li>
             {!ADSENSE_REVIEW_MODE && (
               <li>
-                <b className="text-grey-900">정책 소식 수집</b>: 17개 광역
-                지자체의 보도자료 누적
-                {" "}<b className="text-blue-700">{stats.news.toLocaleString("ko-KR")}건</b>
-                {" "}— 매일 RSS·공식 페이지에서 자동 수집·분류
+                <b className="text-grey-900">운영 규모</b>: 활성 정책
+                {" "}<b className="text-blue-700">{totalPolicies.toLocaleString("ko-KR")}건</b>,
+                발행 가이드 {stats.blog.toLocaleString("ko-KR")}편을 주기적으로 점검합니다.
               </li>
             )}
-            <li>
-              <b className="text-grey-900">중복 정책 검출</b>: 같은 정책의
-              여러 출처를 자동 감지해 사용자 노출에서 중복 제거
-            </li>
           </ul>
         </Section>
 
@@ -241,9 +234,9 @@ export default async function AboutPage() {
         {/* 운영 방식 */}
         <Section title="운영 방식">
           <p>
-            정책 데이터는 매일 자동 수집됩니다. 마감일이 지난 정책은 자동으로
-            정리되고, 새 정책이 등록되면 사용자 프로필에 맞춰 알림이
-            발송됩니다.
+            정책알리미는 공식 출처에서 확인 가능한 정보를 바탕으로 정책별 대상, 신청 전
+            확인할 조건, 준비해야 할 서류를 정리합니다. 마감이 지난 정책이나 중복 정책은
+            사용자에게 우선 노출하지 않습니다.
           </p>
           <p className="mt-3">
             블로그의 정책 가이드 글은 발행 전 출처 데이터를 기반으로 작성되며,
@@ -343,10 +336,12 @@ export default async function AboutPage() {
         >
           <p className="mb-3 font-semibold text-grey-900">바로 가기</p>
           <ul className="grid grid-cols-2 gap-2">
-            <QuickLink href="/welfare" label="복지정보" />
-            <QuickLink href="/loan" label="대출·지원금" />
+            {!ADSENSE_REVIEW_MODE && <QuickLink href="/welfare" label="복지정보" />}
+            {!ADSENSE_REVIEW_MODE && <QuickLink href="/loan" label="대출·지원금" />}
             {!ADSENSE_REVIEW_MODE && <QuickLink href="/news" label="정책 소식" />}
-            <QuickLink href="/blog" label="정책 블로그" />
+            {!ADSENSE_REVIEW_MODE && <QuickLink href="/blog" label="정책 블로그" />}
+            <QuickLink href="/guides" label="정책 가이드" />
+            <QuickLink href="/c/business" label="소상공인 허브" />
             <QuickLink href="/recommend" label="맞춤 추천" />
             <QuickLink href="/help" label="도움말" />
             <QuickLink href="/contact" label="문의하기" />

@@ -59,9 +59,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages — lastModified 는 SITEMAP_BUILD_TIME 고정 (Google "진짜 변경" 신호 정확화)
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 1.0 },
-    { url: `${baseUrl}/welfare`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/loan`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/blog`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 0.9 },
+    // AdSense 재심사 2차 강화: /welfare·/loan·/blog index 는 대량 목록/자동 생성 인상을 줄 수 있어
+    // sitemap 제출 대상에서 제외한다. 승인 후 live mode 에서 자동 복구.
+    ...(!ADSENSE_REVIEW_MODE
+      ? [
+          { url: `${baseUrl}/welfare`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 },
+          { url: `${baseUrl}/loan`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 },
+          { url: `${baseUrl}/blog`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 },
+        ]
+      : []),
     ...(!ADSENSE_REVIEW_MODE
       ? [{ url: `${baseUrl}/news`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 }]
       : []),
@@ -84,13 +90,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/help`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/contact`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/about`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${baseUrl}/eligibility`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.7 },
+    ...(!ADSENSE_REVIEW_MODE
+      ? [{ url: `${baseUrl}/eligibility`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.7 }]
+      : []),
     { url: `${baseUrl}/guides`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.7 },
   ];
 
   // 정책 종합 가이드 (policy-bible 자산화) — 격주 발행, 영구 자산
   const guides = await getGuides(200);
-  const guidePages: MetadataRoute.Sitemap = guides.map((g) => ({
+  const reviewModeGuideSlugBlock = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const selectedGuides = ADSENSE_REVIEW_MODE
+    ? guides.filter((g) => !reviewModeGuideSlugBlock.test(g.slug)).slice(0, 20)
+    : guides;
+  const guidePages: MetadataRoute.Sitemap = selectedGuides.map((g) => ({
     url: `${baseUrl}/guides/${g.slug}`,
     lastModified: new Date(g.updatedAt),
     changeFrequency: "monthly" as const,
