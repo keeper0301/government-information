@@ -96,7 +96,7 @@ async function run() {
     targetWelfare.length > 0
       ? admin
           .from("welfare_programs")
-          .select("id, title, region, apply_end")
+          .select("id, title, region, apply_end, target, eligibility, benefits, description")
           .in("id", targetWelfare)
       : Promise.resolve({
           data: [] as Array<{
@@ -104,12 +104,16 @@ async function run() {
             title: string;
             region: string | null;
             apply_end: string | null;
+            target?: string | null;
+            eligibility?: string | null;
+            benefits?: string | null;
+            description?: string | null;
           }>,
         }),
     targetLoan.length > 0
       ? admin
           .from("loan_programs")
-          .select("id, title, region, apply_end")
+          .select("id, title, region, apply_end, target, eligibility, loan_amount, interest_rate, description")
           .in("id", targetLoan)
       : Promise.resolve({
           data: [] as Array<{
@@ -117,6 +121,11 @@ async function run() {
             title: string;
             region: string | null;
             apply_end: string | null;
+            target?: string | null;
+            eligibility?: string | null;
+            loan_amount?: string | null;
+            interest_rate?: string | null;
+            description?: string | null;
           }>,
         }),
   ]);
@@ -127,12 +136,21 @@ async function run() {
       title: string;
       region: string | null;
       apply_end: string | null;
+      target?: string | null;
+      eligibility?: string | null;
+      benefits?: string | null;
+      description?: string | null;
     }>).map((r) => ({ ...r, table: "welfare_programs" as const })),
     ...((loanRows.data ?? []) as Array<{
       id: string;
       title: string;
       region: string | null;
       apply_end: string | null;
+      target?: string | null;
+      eligibility?: string | null;
+      loan_amount?: string | null;
+      interest_rate?: string | null;
+      description?: string | null;
     }>).map((r) => ({ ...r, table: "loan_programs" as const })),
   ];
 
