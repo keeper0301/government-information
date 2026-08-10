@@ -119,29 +119,36 @@ export function buildPolicySnsCaption(post: PolicyShare): {
 // 정책 1건 → 3 채널 동시 publish.
 export async function dispatchPolicyToSns(
   post: PolicyShare,
+  opts: { channels?: SnsChannel[] } = {},
 ): Promise<SnsDispatchResult[]> {
   const { tweet, facebook, threads, url } = buildPolicySnsCaption(post);
+  const channelSet = new Set(opts.channels ?? ["twitter", "facebook", "threads"]);
 
-  const tasks: Array<Promise<SnsDispatchResult>> = [
-    publishTweet(tweet).then((r) => ({
+  const tasks: Array<Promise<SnsDispatchResult>> = [];
+  if (channelSet.has("twitter")) {
+    tasks.push(publishTweet(tweet).then((r) => ({
       channel: "twitter" as SnsChannel,
       ok: r.ok,
       id: r.ok ? r.id : undefined,
       reason: r.ok ? undefined : r.reason,
-    })),
-    publishFacebookPost({ message: facebook, link: url }).then((r) => ({
+    })));
+  }
+  if (channelSet.has("facebook")) {
+    tasks.push(publishFacebookPost({ message: facebook, link: url }).then((r) => ({
       channel: "facebook" as SnsChannel,
       ok: r.ok,
       id: r.ok ? r.id : undefined,
       reason: r.ok ? undefined : r.reason,
-    })),
-    publishThreadsPost({ text: threads }).then((r) => ({
+    })));
+  }
+  if (channelSet.has("threads")) {
+    tasks.push(publishThreadsPost({ text: threads }).then((r) => ({
       channel: "threads" as SnsChannel,
       ok: r.ok,
       id: r.ok ? r.id : undefined,
       reason: r.ok ? undefined : r.reason,
-    })),
-  ];
+    })));
+  }
 
   return Promise.all(tasks);
 }

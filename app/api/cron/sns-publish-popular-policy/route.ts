@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { dispatchPolicyToSns, type PolicyShare } from "@/lib/sns/policy-dispatch";
+import { dispatchPolicyToSns, type PolicyShare, type SnsChannel } from "@/lib/sns/policy-dispatch";
 import { logAdminAction } from "@/lib/admin-actions";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
@@ -69,26 +69,71 @@ async function loadAlreadyPublished(
   return ids;
 }
 
-async function run() {
+type ManualTarget = {
+  table: "welfare_programs" | "loan_programs";
+  id: string;
+};
+
+type RunOptions = {
+  targets?: ManualTarget[];
+  channels?: SnsChannel[];
+};
+
+function normalizeChannels(value: unknown): SnsChannel[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const channels = value.filter((item): item is SnsChannel =>
+    item === "twitter" || item === "facebook" || item === "threads",
+  );
+  return channels.length > 0 ? channels : undefined;
+}
+
+function normalizeTargets(value: unknown): ManualTarget[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const targets = value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as Record<string, unknown>;
+      const table = record.table;
+      const id = record.id;
+      if ((table !== "welfare_programs" && table !== "loan_programs") || typeof id !== "string" || !id.trim()) {
+        return null;
+      }
+      return { table, id: id.trim() };
+    })
+    .filter((item): item is ManualTarget => item !== null)
+    .slice(0, 5);
+  return targets.length > 0 ? targets : undefined;
+}
+
+async function run(options: RunOptions = {}) {
   const admin = createAdminClient();
 
-  // 1) 지난 7일 popularity top N 각 카테고리
-  const [welfareIds, loanIds] = await Promise.all([
-    findTopPrograms(admin, "welfare_programs", WELFARE_TOP_N),
-    findTopPrograms(admin, "loan_programs", LOAN_TOP_N),
-  ]);
+  const targetWelfare = options.targets
+    ? options.targets.filter((target) => target.table === "welfare_programs").map((target) => target.id)
+    : [];
+  const targetLoan = options.targets
+    ? options.targets.filter((target) => target.table === "loan_programs").map((target) => target.id)
+    : [];
 
-  if (welfareIds.length === 0 && loanIds.length === 0) {
-    return { success: true, published: 0, skipped: "no_popular_data" };
+  if (!options.targets) {
+    // 1) 지난 7일 popularity top N 각 카테고리
+    const [welfareIds, loanIds] = await Promise.all([
+      findTopPrograms(admin, "welfare_programs", WELFARE_TOP_N),
+      findTopPrograms(admin, "loan_programs", LOAN_TOP_N),
+    ]);
+
+    if (welfareIds.length === 0 && loanIds.length === 0) {
+      return { success: true, published: 0, skipped: "no_popular_data" };
+    }
+
+    // 2) 직전 30일 중복 발행 차단
+    const alreadyIds = await loadAlreadyPublished(admin);
+    targetWelfare.push(...welfareIds.filter((id) => !alreadyIds.has(id)));
+    targetLoan.push(...loanIds.filter((id) => !alreadyIds.has(id)));
   }
 
-  // 2) 직전 30일 중복 발행 차단
-  const alreadyIds = await loadAlreadyPublished(admin);
-  const targetWelfare = welfareIds.filter((id) => !alreadyIds.has(id));
-  const targetLoan = loanIds.filter((id) => !alreadyIds.has(id));
-
   if (targetWelfare.length === 0 && targetLoan.length === 0) {
-    return { success: true, published: 0, skipped: "all_recently_published" };
+    return { success: true, published: 0, skipped: options.targets ? "no_manual_targets" : "all_recently_published" };
   }
 
   // 3) 정책 본문 fetch
@@ -161,7 +206,7 @@ async function run() {
     channels: unknown[];
   }> = [];
   for (const p of policies) {
-    const channels = await dispatchPolicyToSns(p);
+    const channels = await dispatchPolicyToSns(p, { channels: options.channels });
     results.push({ id: p.id, title: p.title.slice(0, 80), channels });
 
     try {
@@ -225,6 +270,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
-  const out = await run();
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const out = await run({
+    targets: normalizeTargets(body?.targets),
+    channels: normalizeChannels(body?.channels),
+  });
   return NextResponse.json(out, { status: out.success ? 200 : 500 });
 }
