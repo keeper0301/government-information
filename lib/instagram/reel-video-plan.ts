@@ -89,6 +89,21 @@ function pickBullets(post: ReelVideoPostInput, count: number): string[] {
   return deduped;
 }
 
+function bodyLine(input: string): string {
+  const cleaned = stripHtml(input)
+    .replace(/해야 합니다\.?/g, "확인")
+    .replace(/확인해야 함니다\.?/g, "확인")
+    .replace(/필요합니다\.?/g, "확인")
+    .replace(/가능합니다\.?/g, "가능")
+    .replace(/제공합니다\.?/g, "지원")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (/대상|조건|자격/.test(cleaned)) return "대상 조건부터 확인";
+  if (/기간|마감|신청/.test(cleaned)) return "신청 기간부터 확인";
+  if (/서류|공식|신청처|문의/.test(cleaned)) return "공식 신청처 확인";
+  return cleaned.slice(0, 28);
+}
+
 function clampTitle(title: string, max = 74): string {
   const clean = stripHtml(title);
   return clean.length > max ? `${clean.slice(0, max - 1).trim()}…` : clean;
@@ -139,23 +154,23 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         body: "놓치기 쉬운 정부지원 정보\n15초로 핵심만 확인하세요",
       },
       {
-        eyebrow: "핵심 1",
-        title: "누가 확인하면 좋을까요?",
-        body: bullets[0],
+        eyebrow: "1단계",
+        title: "대상부터 확인",
+        body: bodyLine(bullets[0]),
       },
       {
-        eyebrow: "핵심 2",
-        title: "신청 전 체크",
-        body: bullets[1],
+        eyebrow: "2단계",
+        title: "기간을 확인",
+        body: bodyLine(bullets[1]),
       },
       {
-        eyebrow: "핵심 3",
-        title: "놓치면 안 되는 점",
-        body: bullets[2],
+        eyebrow: "3단계",
+        title: "서류를 확인",
+        body: bodyLine(bullets[2]),
       },
       {
-        eyebrow: "자세히 보기",
-        title: "keepioo에서 바로 확인",
+        eyebrow: "마지막",
+        title: "상세 글에서 확인",
         body: `프로필 링크에서\n“${clampTitle(post.title, 24)}” 검색`,
       },
     ],

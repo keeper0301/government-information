@@ -21,6 +21,6 @@ describe("reel-video-plan", () => {
     expect(plan.slides[0].title).toContain("청년");
     expect(plan.slides[0].title).toContain("월세 지원");
     expect(plan.slides[0].kicker).toContain("2026년 청년 월세");
-    expect(plan.slides.at(-1)?.eyebrow).toContain("자세히");
+    expect(plan.slides.at(-1)?.eyebrow).toContain("마지막");
   });
 });

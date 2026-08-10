@@ -51,10 +51,6 @@ function loadFrameFonts(): Promise<{ bold: Buffer; medium: Buffer }> {
   return fontDataPromise;
 }
 
-function labelFromEyebrow(eyebrow: string, category: string): string {
-  return eyebrow.replace(`${category} · keepioo`, "").trim() || eyebrow;
-}
-
 function div(style: CSSProperties, children?: ReactNode): ReactElement {
   return h("div", { style: { display: "flex", ...style } }, children);
 }
@@ -117,10 +113,9 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   return frameChrome(index, category, accent,
     div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 585 }, [
       div({ width: 78, height: 6, background: accent, borderRadius: 99, marginBottom: 42 }),
-      div({ display: "flex", color: brandColor, fontSize: 74, fontWeight: 700, lineHeight: 1, marginBottom: 26 }, `${index}.`),
-      div({ display: "flex", color: "#6b7280", fontSize: 28, fontWeight: 700, marginBottom: 30 }, labelFromEyebrow(slide.eyebrow, category)),
+      div({ display: "flex", color: brandColor, fontSize: 74, fontWeight: 700, lineHeight: 1, marginBottom: 42 }, `${index}.`),
       div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 70, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28", marginBottom: 34 }, titleTokens(slide.title)),
-      div({ display: "flex", color: "#4b5563", fontSize: 32, fontWeight: 500, lineHeight: 1.5, maxWidth: 780 }, slide.body.split("\n").filter(Boolean)[0] ?? "자세한 조건은 공고 기준으로 확인하세요."),
+      div({ display: "flex", color: "#4b5563", fontSize: 40, fontWeight: 500, lineHeight: 1.35, maxWidth: 780 }, slide.body.split("\n").filter(Boolean)[0] ?? "공고 기준으로 확인"),
     ]),
   );
 }
