@@ -154,17 +154,17 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         body: "놓치기 쉬운 정부지원 정보\n15초로 핵심만 확인하세요",
       },
       {
-        eyebrow: "1단계",
+        eyebrow: "",
         title: "대상부터 확인",
         body: bodyLine(bullets[0]),
       },
       {
-        eyebrow: "2단계",
+        eyebrow: "",
         title: "기간을 확인",
         body: bodyLine(bullets[1]),
       },
       {
-        eyebrow: "3단계",
+        eyebrow: "",
         title: "서류를 확인",
         body: bodyLine(bullets[2]),
       },
