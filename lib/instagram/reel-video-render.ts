@@ -82,6 +82,21 @@ function titleTokens(title: string): ReactElement {
   );
 }
 
+function infoBulletsForSlide(slide: ReelVideoSlide, index: number): string[] {
+  const explicit = slide.body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line) => line.length > 44 ? line.split(/(?<=요\.|다\.|세요\.)\s+/).map((part) => part.trim()).filter(Boolean) : [line])
+    .slice(0, 3);
+  const fallbacks = index === 1
+    ? ["대상 조건 먼저 확인", "지역·연령 기준 확인", "상세 글에서 예외 확인"]
+    : index === 2
+      ? ["신청 전 마감 확인", "필요 서류 확인", "신청처 링크 확인"]
+      : ["지원 내용 확인", "주의사항 확인", "저장해두고 다시 확인"];
+  return [...explicit, ...fallbacks].slice(0, 3);
+}
+
 function frameChrome(index: number, category: string, accent: string, children: ReactNode): ReactElement {
   const fillPct = (index + 1) * 20;
   const brandColor = categoryColorOnWhite(accent);
@@ -115,9 +130,10 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   if (index === 0) {
     return frameChrome(index, category, accent,
       div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 300, bottom: 245 }, [
-        div({ display: "flex", alignSelf: "flex-start", background: "#FFF7ED", color: brandColor, border: `4px solid ${brandColor}`, borderRadius: 28, padding: "20px 28px", fontSize: 34, fontWeight: 500, lineHeight: 1.35, marginBottom: 64 }, hookLabel),
-        div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 58, fontWeight: 700, lineHeight: 1.34, letterSpacing: "0", color: "#191F28", marginBottom: 74 }, titleTokens(slide.title)),
-        div({ display: "flex", flexDirection: "column", background: "#f4f6f9", borderRadius: 28, padding: "36px 44px", gap: 28, marginTop: "auto" }, [
+        div({ display: "flex", alignSelf: "flex-start", background: "#FFF7ED", color: brandColor, border: `4px solid ${brandColor}`, borderRadius: 28, padding: "20px 28px", fontSize: 32, fontWeight: 500, lineHeight: 1.35, marginBottom: 54 }, hookLabel),
+        div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 64, fontWeight: 700, lineHeight: 1.24, letterSpacing: "-0.01em", color: "#191F28", marginBottom: 28 }, titleTokens(slide.title)),
+        slide.kicker ? div({ display: "flex", color: "#6b7280", fontSize: 26, fontWeight: 500, lineHeight: 1.42, marginBottom: 62, maxWidth: 820 }, slide.kicker) : null,
+        div({ display: "flex", flexDirection: "column", background: "#f4f6f9", borderRadius: 28, padding: "36px 44px", gap: 28, marginTop: 86 }, [
           div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 500 }, "이 카드에서 확인할 것"),
           ...coverChecklist(category).map((item, i) => div({ display: "flex", alignItems: "center", gap: 20, fontSize: 42, fontWeight: 500, color: "#333d4b", lineHeight: 1.35 }, [
             div({ display: "flex", alignItems: "center", justifyContent: "center", width: 46, height: 46, borderRadius: 999, background: brandColor, color: "#fff", fontSize: 24, fontWeight: 700, flexShrink: 0 }, String(i + 1)),
@@ -128,15 +144,15 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
     );
   }
 
-  const bodyLines = slide.body.split("\n").filter(Boolean).slice(0, 3);
+  const bodyLines = infoBulletsForSlide(slide, index);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 480, bottom: 245 }, [
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 430, bottom: 245 }, [
       div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 500, marginBottom: 42 }, labelFromEyebrow(slide.eyebrow, category)),
-      div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 58, fontWeight: 700, lineHeight: 1.34, color: "#191F28", marginBottom: 64 }, titleTokens(slide.title)),
-      div({ display: "flex", flexDirection: "column", background: "#f4f6f9", borderRadius: 28, padding: "38px 44px", gap: 30 }, [
+      div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 56, fontWeight: 700, lineHeight: 1.3, color: "#191F28", marginBottom: 58 }, titleTokens(slide.title)),
+      div({ display: "flex", flexDirection: "column", background: "#f4f6f9", borderRadius: 28, padding: "42px 46px", gap: 32 }, [
         div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 500 }, "핵심 내용"),
-        ...bodyLines.map((line) => div({ display: "flex", alignItems: "flex-start", gap: 18, fontSize: 40, fontWeight: 500, color: "#333d4b", lineHeight: 1.45 }, [
-          div({ display: "flex", width: 12, height: 12, borderRadius: 99, background: brandColor, marginTop: 18, flexShrink: 0 }),
+        ...bodyLines.map((line) => div({ display: "flex", alignItems: "flex-start", gap: 20, fontSize: 38, fontWeight: 500, color: "#333d4b", lineHeight: 1.42 }, [
+          div({ display: "flex", width: 14, height: 14, borderRadius: 99, background: brandColor, marginTop: 18, flexShrink: 0 }),
           div({ display: "flex", flexWrap: "wrap" }, line),
         ])),
       ]),

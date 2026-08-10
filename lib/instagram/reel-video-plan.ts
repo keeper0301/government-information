@@ -14,6 +14,7 @@ export type ReelVideoSlide = {
   eyebrow: string;
   title: string;
   body: string;
+  kicker?: string;
 };
 
 export type ReelVideoPlan = {
@@ -93,16 +94,48 @@ function clampTitle(title: string, max = 74): string {
   return clean.length > max ? `${clean.slice(0, max - 1).trim()}…` : clean;
 }
 
+function titleRegion(title: string): string | null {
+  return title.match(/20\d{2}년\s*([^\s]+구|[^\s]+시|[^\s]+군|[^\s]+도|[^\s]+특별시|[^\s]+광역시)/)?.[1] ?? null;
+}
+
+function titleAudience(title: string, category: string): string {
+  if (/영유아|아동|육아|보육|장난감|가정/.test(title) || /육아|가족|아동|출산|보육/.test(category)) return "영유아 가정";
+  if (/청년/.test(title)) return "청년";
+  if (/소상공|자영|사업자|창업/.test(title) || /창업|소상공|사업|자영/.test(category)) return "사장님";
+  if (/주거|월세|전세|임대/.test(title) || /주거|월세|전세|임대/.test(category)) return "주거 지원 대상자";
+  return "지원 대상자";
+}
+
+function titleBenefit(title: string, category: string): string {
+  if (/장난감|도서|대여/.test(title)) return "무료 장난감 대여";
+  if (/월세|임대료/.test(title)) return "월세 지원";
+  if (/마음|상담|심리/.test(title)) return "상담 지원";
+  if (/대출|융자|자금/.test(title)) return "자금 지원";
+  if (/교육|훈련/.test(title)) return "교육 지원";
+  if (/육아|가족|아동|출산|보육/.test(category)) return "육아 지원";
+  return "정부지원";
+}
+
+function makeReadableCoverTitle(title: string, category: string): string {
+  const clean = stripHtml(title);
+  const region = titleRegion(clean);
+  const audience = titleAudience(clean, category);
+  const benefit = titleBenefit(clean, category);
+  return [region, audience, benefit].filter(Boolean).join(" · ");
+}
+
 export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
   const bullets = pickBullets(post, 3);
   const category = post.category ?? "정책정보";
   const title = clampTitle(post.title);
+  const readableCoverTitle = makeReadableCoverTitle(post.title, category);
   return {
     durationSeconds: 15,
     slides: [
       {
         eyebrow: `${category} · keepioo`,
-        title,
+        kicker: title,
+        title: readableCoverTitle,
         body: "놓치기 쉬운 정부지원 정보\n15초로 핵심만 확인하세요",
       },
       {
