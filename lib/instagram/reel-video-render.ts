@@ -32,7 +32,8 @@ const DESIGN_HEIGHT = 1920;
 const FPS = 24;
 const OPENAI_TTS_MODEL = "tts-1-hd";
 const OPENAI_TTS_VOICE = "nova";
-const PRETENDARD_TTF = join(process.cwd(), "assets", "Pretendard-Bold.ttf");
+const PRETENDARD_BOLD_TTF = join(process.cwd(), "assets", "Pretendard-Bold.ttf");
+const PRETENDARD_MEDIUM_TTF = join(process.cwd(), "assets", "Pretendard-Medium.ttf");
 
 function escapeMarkup(input: string): string {
   return input
@@ -91,11 +92,11 @@ function baseSlideSvg(index: number, accent: string, category: string): string {
 }
 
 function titleFontSize(title: string): number {
-  return title.length > 60 ? 34 : title.length > 50 ? 38 : title.length > 40 ? 42 : title.length > 30 ? 48 : title.length > 18 ? 56 : 64;
+  return title.length > 60 ? 31 : title.length > 50 ? 35 : title.length > 40 ? 39 : title.length > 30 ? 44 : title.length > 18 ? 52 : 60;
 }
 
 function titleMaxChars(fontSize: number): number {
-  return fontSize <= 38 ? 18 : fontSize <= 42 ? 16 : fontSize <= 48 ? 15 : fontSize <= 56 ? 13 : 11;
+  return fontSize <= 35 ? 18 : fontSize <= 39 ? 17 : fontSize <= 44 ? 15 : fontSize <= 52 ? 13 : 11;
 }
 
 function coverChecklist(category: string): string[] {
@@ -112,12 +113,13 @@ async function textPng(
   height: number,
   color: string,
   align: "left" | "center" = "left",
+  fontfile = PRETENDARD_BOLD_TTF,
 ): Promise<Buffer> {
   const markup = `<span foreground="${escapeMarkup(color)}" size="${Math.round(fontSize * 1000)}" font_family="Pretendard">${escapeMarkup(text)}</span>`;
   const rendered = await sharp({
     text: {
       text: markup,
-      fontfile: PRETENDARD_TTF,
+      fontfile,
       width,
       height,
       align,
@@ -147,62 +149,62 @@ async function slideComposites(
   const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 20, 3)).slice(0, 4);
   const brandColor = categoryColorOnWhite(accent);
   const overlays: sharp.OverlayOptions[] = [
-    { input: await textPng("@ keepioo · 정책알리미", 30, 888, 48, brandColor), left: 96, top: 1710 },
+    { input: await textPng("@ keepioo · 정책알리미", 28, 888, 48, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 96, top: 1710 },
   ];
 
   if (index === 0) {
     const hookLines = wrapText(hookLabel, 23, 2);
-    const hookBoxHeight = 72 + hookLines.length * 38;
+    const hookBoxHeight = 82 + hookLines.length * 44;
     overlays.push({
       input: Buffer.from(`<svg width="888" height="${hookBoxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${hookBoxHeight}" rx="28" fill="#FFF7ED"/><rect x="2" y="2" width="884" height="${hookBoxHeight - 4}" rx="26" fill="none" stroke="${brandColor}" stroke-width="4"/></svg>`),
       left: 96,
       top: 310,
     });
     for (let i = 0; i < hookLines.length; i += 1) {
-      overlays.push({ input: await textPng(hookLines[i], 28, 824, 38, brandColor), left: 128, top: 338 + i * 38 });
+      overlays.push({ input: await textPng(hookLines[i], 25, 824, 42, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 128, top: 340 + i * 46 });
     }
-    const titleTop = 500;
-    const titleLineHeight = Math.round(titleSize * 1.42);
+    const titleTop = 510;
+    const titleLineHeight = Math.round(titleSize * 1.66);
     for (let i = 0; i < titleLines.length; i += 1) {
-      overlays.push({ input: await textPng(titleLines[i], titleSize, 888, Math.round(titleSize * 1.36), "#191F28"), left: 96, top: titleTop + i * titleLineHeight });
+      overlays.push({ input: await textPng(titleLines[i], titleSize, 888, Math.round(titleSize * 1.58), "#191F28"), left: 96, top: titleTop + i * titleLineHeight });
     }
-    const boxTop = Math.min(1180, titleTop + titleLines.length * titleLineHeight + 60);
+    const boxTop = Math.min(1195, titleTop + titleLines.length * titleLineHeight + 72);
     const coverBullets = coverChecklist(category);
-    const boxHeight = 116 + coverBullets.length * 66;
+    const boxHeight = 130 + coverBullets.length * 76;
     overlays.push({
       input: Buffer.from(`<svg width="888" height="${boxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${boxHeight}" rx="26" fill="#f4f6f9"/></svg>`),
       left: 96,
       top: boxTop,
     });
-    overlays.push({ input: await textPng("이 카드에서 확인할 것", 28, 800, 42, brandColor), left: 140, top: boxTop + 32 });
+    overlays.push({ input: await textPng("이 카드에서 확인할 것", 25, 800, 44, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 140, top: boxTop + 36 });
     for (let i = 0; i < coverBullets.length; i += 1) {
-      overlays.push({ input: Buffer.from(`<svg width="46" height="46" xmlns="http://www.w3.org/2000/svg"><rect width="46" height="46" rx="23" fill="${brandColor}"/><text x="23" y="31" text-anchor="middle" font-size="24" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${i + 1}</text></svg>`), left: 140, top: boxTop + 88 + i * 66 });
-      overlays.push({ input: await textPng(coverBullets[i], 34, 720, 48, "#333d4b"), left: 204, top: boxTop + 87 + i * 66 });
+      overlays.push({ input: Buffer.from(`<svg width="42" height="42" xmlns="http://www.w3.org/2000/svg"><rect width="42" height="42" rx="21" fill="${brandColor}"/><text x="21" y="29" text-anchor="middle" font-size="22" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${i + 1}</text></svg>`), left: 140, top: boxTop + 102 + i * 76 });
+      overlays.push({ input: await textPng(coverBullets[i], 29, 720, 50, "#333d4b", "left", PRETENDARD_MEDIUM_TTF), left: 204, top: boxTop + 96 + i * 76 });
     }
     return overlays;
   }
 
   if (label) {
-    overlays.push({ input: await textPng(label, 30, 888, 46, brandColor), left: 96, top: 500 });
+    overlays.push({ input: await textPng(label, 27, 888, 46, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 96, top: 480 });
   }
-  const infoTitleSize = Math.min(titleSize, 46);
+  const infoTitleSize = Math.min(titleSize, 40);
   const infoTitleLines = wrapText(slide.title, titleMaxChars(infoTitleSize), 3);
   for (let i = 0; i < titleLines.length; i += 1) {
     if (i >= infoTitleLines.length) break;
-    overlays.push({ input: await textPng(infoTitleLines[i], infoTitleSize, 888, 66, "#191F28"), left: 96, top: 575 + i * 68 });
+    overlays.push({ input: await textPng(infoTitleLines[i], infoTitleSize, 888, 72, "#191F28"), left: 96, top: 565 + i * 80 });
   }
-  const boxTop = 575 + infoTitleLines.length * 68 + 46;
+  const boxTop = 565 + infoTitleLines.length * 80 + 58;
   const infoBullets = bodyLines.length ? bodyLines : ["대상·금액·신청 조건을", "확인하세요"];
-  const boxHeight = Math.max(170, 100 + infoBullets.length * 54);
+  const boxHeight = Math.max(190, 122 + infoBullets.length * 68);
   overlays.push({
     input: Buffer.from(`<svg width="888" height="${boxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${boxHeight}" rx="26" fill="#f4f6f9"/></svg>`),
     left: 96,
     top: boxTop,
   });
-  overlays.push({ input: await textPng("핵심 내용", 27, 800, 38, brandColor), left: 140, top: boxTop + 30 });
+  overlays.push({ input: await textPng("핵심 내용", 25, 800, 42, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 140, top: boxTop + 36 });
   for (let i = 0; i < infoBullets.length; i += 1) {
-    overlays.push({ input: Buffer.from(`<svg width="14" height="14" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="7" fill="${brandColor}"/></svg>`), left: 142, top: boxTop + 88 + i * 54 });
-    overlays.push({ input: await textPng(infoBullets[i], 32, 760, 44, "#333d4b"), left: 172, top: boxTop + 73 + i * 54 });
+    overlays.push({ input: Buffer.from(`<svg width="12" height="12" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="6" fill="${brandColor}"/></svg>`), left: 144, top: boxTop + 104 + i * 68 });
+    overlays.push({ input: await textPng(infoBullets[i], 28, 760, 48, "#333d4b", "left", PRETENDARD_MEDIUM_TTF), left: 176, top: boxTop + 89 + i * 68 });
   }
   return overlays;
 }

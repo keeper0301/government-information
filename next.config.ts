@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "/blog/[slug]/opengraph-image": ["./assets/Pretendard-Bold.woff"],
     "/api/cron/instagram-reels-render": [
       "./assets/Pretendard-Bold.ttf",
+      "./assets/Pretendard-Medium.ttf",
       "./node_modules/ffmpeg-static/ffmpeg",
       "./node_modules/ffmpeg-static/**",
     ],
