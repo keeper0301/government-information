@@ -34,6 +34,12 @@ const OPENAI_TTS_MODEL = "tts-1-hd";
 const OPENAI_TTS_VOICE = "nova";
 const PRETENDARD_BOLD_TTF = join(process.cwd(), "assets", "Pretendard-Bold.ttf");
 const PRETENDARD_MEDIUM_TTF = join(process.cwd(), "assets", "Pretendard-Medium.ttf");
+const TYPE = {
+  title: 38,
+  label: 25,
+  body: 29,
+  foot: 26,
+};
 
 function escapeMarkup(input: string): string {
   return input
@@ -91,12 +97,8 @@ function baseSlideSvg(index: number, accent: string, category: string): string {
 </svg>`;
 }
 
-function titleFontSize(title: string): number {
-  return title.length > 60 ? 31 : title.length > 50 ? 35 : title.length > 40 ? 39 : title.length > 30 ? 44 : title.length > 18 ? 52 : 60;
-}
-
-function titleMaxChars(fontSize: number): number {
-  return fontSize <= 35 ? 18 : fontSize <= 39 ? 17 : fontSize <= 44 ? 15 : fontSize <= 52 ? 13 : 11;
+function titleMaxLines(index: number): number {
+  return index === 0 ? 5 : 3;
 }
 
 function coverChecklist(category: string): string[] {
@@ -144,12 +146,11 @@ async function slideComposites(
   hookLabel: string,
 ): Promise<sharp.OverlayOptions[]> {
   const label = labelFromEyebrow(slide.eyebrow, category);
-  const titleSize = titleFontSize(slide.title);
-  const titleLines = wrapText(slide.title, titleMaxChars(titleSize), index === 0 ? 5 : 4);
+  const titleLines = wrapText(slide.title, 16, titleMaxLines(index));
   const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 20, 3)).slice(0, 4);
   const brandColor = categoryColorOnWhite(accent);
   const overlays: sharp.OverlayOptions[] = [
-    { input: await textPng("@ keepioo · 정책알리미", 28, 888, 48, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 96, top: 1710 },
+    { input: await textPng("@ keepioo · 정책알리미", TYPE.foot, 888, 46, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 96, top: 1712 },
   ];
 
   if (index === 0) {
@@ -161,14 +162,14 @@ async function slideComposites(
       top: 310,
     });
     for (let i = 0; i < hookLines.length; i += 1) {
-      overlays.push({ input: await textPng(hookLines[i], 25, 824, 42, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 128, top: 340 + i * 46 });
+      overlays.push({ input: await textPng(hookLines[i], TYPE.label, 824, 42, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 128, top: 340 + i * 46 });
     }
     const titleTop = 510;
-    const titleLineHeight = Math.round(titleSize * 1.66);
+    const titleLineHeight = 70;
     for (let i = 0; i < titleLines.length; i += 1) {
-      overlays.push({ input: await textPng(titleLines[i], titleSize, 888, Math.round(titleSize * 1.58), "#191F28"), left: 96, top: titleTop + i * titleLineHeight });
+      overlays.push({ input: await textPng(titleLines[i], TYPE.title, 888, 60, "#191F28"), left: 96, top: titleTop + i * titleLineHeight });
     }
-    const boxTop = Math.min(1195, titleTop + titleLines.length * titleLineHeight + 72);
+    const boxTop = 940;
     const coverBullets = coverChecklist(category);
     const boxHeight = 130 + coverBullets.length * 76;
     overlays.push({
@@ -176,24 +177,21 @@ async function slideComposites(
       left: 96,
       top: boxTop,
     });
-    overlays.push({ input: await textPng("이 카드에서 확인할 것", 25, 800, 44, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 140, top: boxTop + 36 });
+    overlays.push({ input: await textPng("이 카드에서 확인할 것", TYPE.label, 800, 44, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 140, top: boxTop + 36 });
     for (let i = 0; i < coverBullets.length; i += 1) {
       overlays.push({ input: Buffer.from(`<svg width="42" height="42" xmlns="http://www.w3.org/2000/svg"><rect width="42" height="42" rx="21" fill="${brandColor}"/><text x="21" y="29" text-anchor="middle" font-size="22" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${i + 1}</text></svg>`), left: 140, top: boxTop + 102 + i * 76 });
-      overlays.push({ input: await textPng(coverBullets[i], 29, 720, 50, "#333d4b", "left", PRETENDARD_MEDIUM_TTF), left: 204, top: boxTop + 96 + i * 76 });
+      overlays.push({ input: await textPng(coverBullets[i], TYPE.body, 720, 50, "#333d4b", "left", PRETENDARD_MEDIUM_TTF), left: 204, top: boxTop + 96 + i * 76 });
     }
     return overlays;
   }
 
   if (label) {
-    overlays.push({ input: await textPng(label, 27, 888, 46, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 96, top: 480 });
+    overlays.push({ input: await textPng(label, TYPE.label, 888, 44, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 96, top: 500 });
   }
-  const infoTitleSize = Math.min(titleSize, 40);
-  const infoTitleLines = wrapText(slide.title, titleMaxChars(infoTitleSize), 3);
   for (let i = 0; i < titleLines.length; i += 1) {
-    if (i >= infoTitleLines.length) break;
-    overlays.push({ input: await textPng(infoTitleLines[i], infoTitleSize, 888, 72, "#191F28"), left: 96, top: 565 + i * 80 });
+    overlays.push({ input: await textPng(titleLines[i], TYPE.title, 888, 60, "#191F28"), left: 96, top: 580 + i * 70 });
   }
-  const boxTop = 565 + infoTitleLines.length * 80 + 58;
+  const boxTop = 840;
   const infoBullets = bodyLines.length ? bodyLines : ["대상·금액·신청 조건을", "확인하세요"];
   const boxHeight = Math.max(190, 122 + infoBullets.length * 68);
   overlays.push({
@@ -201,10 +199,10 @@ async function slideComposites(
     left: 96,
     top: boxTop,
   });
-  overlays.push({ input: await textPng("핵심 내용", 25, 800, 42, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 140, top: boxTop + 36 });
+  overlays.push({ input: await textPng("핵심 내용", TYPE.label, 800, 42, brandColor, "left", PRETENDARD_MEDIUM_TTF), left: 140, top: boxTop + 36 });
   for (let i = 0; i < infoBullets.length; i += 1) {
     overlays.push({ input: Buffer.from(`<svg width="12" height="12" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="6" fill="${brandColor}"/></svg>`), left: 144, top: boxTop + 104 + i * 68 });
-    overlays.push({ input: await textPng(infoBullets[i], 28, 760, 48, "#333d4b", "left", PRETENDARD_MEDIUM_TTF), left: 176, top: boxTop + 89 + i * 68 });
+    overlays.push({ input: await textPng(infoBullets[i], TYPE.body, 760, 48, "#333d4b", "left", PRETENDARD_MEDIUM_TTF), left: 176, top: boxTop + 89 + i * 68 });
   }
   return overlays;
 }
