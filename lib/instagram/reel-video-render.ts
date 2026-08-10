@@ -51,13 +51,6 @@ function loadFrameFonts(): Promise<{ bold: Buffer; medium: Buffer }> {
   return fontDataPromise;
 }
 
-function coverChecklist(category: string): string[] {
-  if (/주거|월세|전세|임대/.test(category)) return ["대상 조건", "지원 금액", "신청 마감"];
-  if (/육아|가족|아동|출산|보육/.test(category)) return ["대상 연령", "이용 방법", "기간·주의사항"];
-  if (/창업|소상공|사업|자영/.test(category)) return ["대상 업종", "지원 내용", "신청처"];
-  return ["대상 조건", "지원 내용", "신청 방법"];
-}
-
 function labelFromEyebrow(eyebrow: string, category: string): string {
   return eyebrow.replace(`${category} · keepioo`, "").trim() || eyebrow;
 }
@@ -82,23 +75,7 @@ function titleTokens(title: string): ReactElement {
   );
 }
 
-function infoBulletsForSlide(slide: ReelVideoSlide, index: number): string[] {
-  const explicit = slide.body
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .flatMap((line) => line.length > 44 ? line.split(/(?<=요\.|다\.|세요\.)\s+/).map((part) => part.trim()).filter(Boolean) : [line])
-    .slice(0, 3);
-  const fallbacks = index === 1
-    ? ["대상 조건 먼저 확인", "지역·연령 기준 확인", "상세 글에서 예외 확인"]
-    : index === 2
-      ? ["신청 전 마감 확인", "필요 서류 확인", "신청처 링크 확인"]
-      : ["지원 내용 확인", "주의사항 확인", "저장해두고 다시 확인"];
-  return [...explicit, ...fallbacks].slice(0, 3);
-}
-
 function frameChrome(index: number, category: string, accent: string, children: ReactNode): ReactElement {
-  const fillPct = (index + 1) * 20;
   const brandColor = categoryColorOnWhite(accent);
   return div(
     {
@@ -113,14 +90,10 @@ function frameChrome(index: number, category: string, accent: string, children: 
       padding: "150px 96px 96px 96px",
     },
     [
-      div({ position: "absolute", left: 0, top: 0, width: 22, height: "100%", background: accent }),
-      div({ position: "absolute", left: 96, top: 150, background: accent, color: "#fff", borderRadius: 999, padding: "20px 42px", fontSize: 40, fontWeight: 700, lineHeight: 1 }, category),
-      div({ position: "absolute", right: 96, top: 156, background: "#2b2b31", color: "#fff", borderRadius: 999, padding: "18px 34px", fontSize: 34, fontWeight: 700, lineHeight: 1 }, `${index + 1}/5`),
+      div({ position: "absolute", left: 0, top: 0, width: 12, height: "100%", background: accent }),
+      div({ position: "absolute", left: 96, top: 160, background: accent, color: "#fff", borderRadius: 999, padding: "18px 36px", fontSize: 30, fontWeight: 700, lineHeight: 1 }, category),
       children,
-      div({ position: "absolute", left: 96, bottom: 150, fontSize: 34, fontWeight: 500, color: brandColor }, "@ keepioo · 정책알리미"),
-      div({ position: "absolute", left: 96, right: 96, bottom: 96, height: 14, borderRadius: 99, background: "#e7eaef" },
-        div({ height: "100%", width: `${fillPct}%`, borderRadius: 99, background: accent }),
-      ),
+      div({ position: "absolute", left: 96, bottom: 150, fontSize: 28, fontWeight: 700, color: brandColor }, "@ keepioo · 정책알리미"),
     ],
   );
 }
@@ -129,33 +102,25 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   const brandColor = categoryColorOnWhite(accent);
   if (index === 0) {
     return frameChrome(index, category, accent,
-      div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 300, bottom: 245 }, [
-        div({ display: "flex", alignSelf: "flex-start", background: "#FFF7ED", color: brandColor, border: `4px solid ${brandColor}`, borderRadius: 28, padding: "20px 28px", fontSize: 32, fontWeight: 500, lineHeight: 1.35, marginBottom: 54 }, hookLabel),
-        div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 64, fontWeight: 700, lineHeight: 1.24, letterSpacing: "-0.01em", color: "#191F28", marginBottom: 28 }, titleTokens(slide.title)),
-        slide.kicker ? div({ display: "flex", color: "#6b7280", fontSize: 26, fontWeight: 500, lineHeight: 1.42, marginBottom: 62, maxWidth: 820 }, slide.kicker) : null,
-        div({ display: "flex", flexDirection: "column", background: "#f4f6f9", borderRadius: 28, padding: "36px 44px", gap: 28, marginTop: 86 }, [
-          div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 500 }, "이 카드에서 확인할 것"),
-          ...coverChecklist(category).map((item, i) => div({ display: "flex", alignItems: "center", gap: 20, fontSize: 42, fontWeight: 500, color: "#333d4b", lineHeight: 1.35 }, [
-            div({ display: "flex", alignItems: "center", justifyContent: "center", width: 46, height: 46, borderRadius: 999, background: brandColor, color: "#fff", fontSize: 24, fontWeight: 700, flexShrink: 0 }, String(i + 1)),
-            div({ display: "flex" }, item),
-          ])),
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 660 }, [
+        div({ width: 78, height: 6, background: accent, borderRadius: 99, marginBottom: 44 }),
+        div({ display: "flex", flexDirection: "column", fontSize: 78, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28", marginBottom: 38 }, [
+          div({}, "신청 전"),
+          div({}, "확인할 순서"),
         ]),
+        div({ display: "flex", color: "#4b5563", fontSize: 32, fontWeight: 500, lineHeight: 1.5, maxWidth: 760 }, "공고는 혜택보다 확인 순서부터 보면 됩니다."),
+        div({ display: "flex", color: brandColor, fontSize: 24, fontWeight: 500, lineHeight: 1.45, marginTop: 44, maxWidth: 740 }, hookLabel),
       ]),
     );
   }
 
-  const bodyLines = infoBulletsForSlide(slide, index);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 430, bottom: 245 }, [
-      div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 500, marginBottom: 42 }, labelFromEyebrow(slide.eyebrow, category)),
-      div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 56, fontWeight: 700, lineHeight: 1.3, color: "#191F28", marginBottom: 58 }, titleTokens(slide.title)),
-      div({ display: "flex", flexDirection: "column", background: "#f4f6f9", borderRadius: 28, padding: "42px 46px", gap: 32 }, [
-        div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 500 }, "핵심 내용"),
-        ...bodyLines.map((line) => div({ display: "flex", alignItems: "flex-start", gap: 20, fontSize: 38, fontWeight: 500, color: "#333d4b", lineHeight: 1.42 }, [
-          div({ display: "flex", width: 14, height: 14, borderRadius: 99, background: brandColor, marginTop: 18, flexShrink: 0 }),
-          div({ display: "flex", flexWrap: "wrap" }, line),
-        ])),
-      ]),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 585 }, [
+      div({ width: 78, height: 6, background: accent, borderRadius: 99, marginBottom: 42 }),
+      div({ display: "flex", color: brandColor, fontSize: 74, fontWeight: 700, lineHeight: 1, marginBottom: 26 }, `${index}.`),
+      div({ display: "flex", color: "#6b7280", fontSize: 28, fontWeight: 700, marginBottom: 30 }, labelFromEyebrow(slide.eyebrow, category)),
+      div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 70, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28", marginBottom: 34 }, titleTokens(slide.title)),
+      div({ display: "flex", color: "#4b5563", fontSize: 32, fontWeight: 500, lineHeight: 1.5, maxWidth: 780 }, slide.body.split("\n").filter(Boolean)[0] ?? "자세한 조건은 공고 기준으로 확인하세요."),
     ]),
   );
 }

@@ -123,7 +123,7 @@ beforeEach(() => {
     category: "청년",
     tags: [],
     admin_review_required: false,
-    instagram_reel_video_url: "https://cdn.keepioo.com/reels/2026-08/readable-v2/123-slug-1.mp4",
+    instagram_reel_video_url: "https://cdn.keepioo.com/reels/2026-08/minimal-sequence-v1/123-slug-1.mp4",
     instagram_reel_attempt_count: 0,
   };
   mocks.candidates = null;
@@ -145,7 +145,7 @@ describe("instagram-reels-publish dry-run", () => {
         id: "post-1",
         slug: "slug-1",
         attempt_count: 0,
-        videoUrl: "https://cdn.keepioo.com/reels/2026-08/readable-v2/123-slug-1.mp4",
+        videoUrl: "https://cdn.keepioo.com/reels/2026-08/minimal-sequence-v1/123-slug-1.mp4",
       },
     });
     expect(mocks.publishReel).not.toHaveBeenCalled();

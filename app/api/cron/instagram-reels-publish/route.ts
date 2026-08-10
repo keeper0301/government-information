@@ -40,7 +40,7 @@ type ReelCandidate = {
   instagram_reel_attempt_count: number | null;
 };
 
-const REEL_RENDER_VERSION = "readable-v2";
+const REEL_RENDER_VERSION = "minimal-sequence-v1";
 
 function isDryRunRequest(request: Request): boolean {
   const url = new URL(request.url);
