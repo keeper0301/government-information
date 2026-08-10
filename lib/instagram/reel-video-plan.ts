@@ -88,7 +88,7 @@ function pickBullets(post: ReelVideoPostInput, count: number): string[] {
   return deduped;
 }
 
-function clampTitle(title: string, max = 44): string {
+function clampTitle(title: string, max = 74): string {
   const clean = stripHtml(title);
   return clean.length > max ? `${clean.slice(0, max - 1).trim()}…` : clean;
 }

@@ -45,7 +45,15 @@ function escapeMarkup(input: string): string {
 
 function wrapText(input: string, maxChars: number, maxLines: number): string[] {
   const normalized = input.replace(/\s+/g, " ").trim();
-  const words = normalized.split(" ").filter(Boolean);
+  const words = normalized
+    .split(" ")
+    .filter(Boolean)
+    .flatMap((word) => {
+      if (word.length <= maxChars) return [word];
+      const chunks: string[] = [];
+      for (let i = 0; i < word.length; i += maxChars) chunks.push(word.slice(i, i + maxChars));
+      return chunks;
+    });
   const lines: string[] = [];
   let current = "";
   for (const word of words) {
@@ -83,11 +91,18 @@ function baseSlideSvg(index: number, accent: string, category: string): string {
 }
 
 function titleFontSize(title: string): number {
-  return title.length > 50 ? 42 : title.length > 40 ? 46 : title.length > 30 ? 52 : title.length > 18 ? 60 : 68;
+  return title.length > 60 ? 34 : title.length > 50 ? 38 : title.length > 40 ? 42 : title.length > 30 ? 48 : title.length > 18 ? 56 : 64;
 }
 
 function titleMaxChars(fontSize: number): number {
-  return fontSize <= 42 ? 15 : fontSize <= 46 ? 14 : fontSize <= 52 ? 13 : 11;
+  return fontSize <= 38 ? 18 : fontSize <= 42 ? 16 : fontSize <= 48 ? 15 : fontSize <= 56 ? 13 : 11;
+}
+
+function coverChecklist(category: string): string[] {
+  if (/주거|월세|전세|임대/.test(category)) return ["대상 조건", "지원 금액", "신청 마감"];
+  if (/육아|가족|아동|출산|보육/.test(category)) return ["대상 연령", "이용 방법", "기간·주의사항"];
+  if (/창업|소상공|사업|자영/.test(category)) return ["대상 업종", "지원 내용", "신청처"];
+  return ["대상 조건", "지원 내용", "신청 방법"];
 }
 
 async function textPng(
@@ -128,52 +143,66 @@ async function slideComposites(
 ): Promise<sharp.OverlayOptions[]> {
   const label = labelFromEyebrow(slide.eyebrow, category);
   const titleSize = titleFontSize(slide.title);
-  const titleLines = wrapText(slide.title, titleMaxChars(titleSize), 4);
-  const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 18, 3)).slice(0, 4);
+  const titleLines = wrapText(slide.title, titleMaxChars(titleSize), index === 0 ? 5 : 4);
+  const bodyLines = slide.body.split("\n").flatMap((part) => wrapText(part, 20, 3)).slice(0, 4);
   const brandColor = categoryColorOnWhite(accent);
   const overlays: sharp.OverlayOptions[] = [
     { input: await textPng("@ keepioo · 정책알리미", 30, 888, 48, brandColor), left: 96, top: 1710 },
   ];
 
   if (index === 0) {
+    const hookLines = wrapText(hookLabel, 23, 2);
+    const hookBoxHeight = 72 + hookLines.length * 38;
     overlays.push({
-      input: Buffer.from(`<svg width="888" height="112" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="112" rx="28" fill="#FFF7ED"/><rect x="2" y="2" width="884" height="108" rx="26" fill="none" stroke="${brandColor}" stroke-width="4"/></svg>`),
+      input: Buffer.from(`<svg width="888" height="${hookBoxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${hookBoxHeight}" rx="28" fill="#FFF7ED"/><rect x="2" y="2" width="884" height="${hookBoxHeight - 4}" rx="26" fill="none" stroke="${brandColor}" stroke-width="4"/></svg>`),
       left: 96,
       top: 310,
     });
-    overlays.push({ input: await textPng(hookLabel, 32, 824, 74, brandColor), left: 128, top: 333 });
-    const titleTop = 575;
-    const titleLineHeight = Math.round(titleSize * 1.48);
-    for (let i = 0; i < titleLines.length; i += 1) {
-      overlays.push({ input: await textPng(titleLines[i], titleSize, 888, Math.round(titleSize * 1.45), "#191F28"), left: 96, top: titleTop + i * titleLineHeight });
+    for (let i = 0; i < hookLines.length; i += 1) {
+      overlays.push({ input: await textPng(hookLines[i], 28, 824, 38, brandColor), left: 128, top: 338 + i * 38 });
     }
-    const boxTop = Math.min(1260, titleTop + titleLines.length * titleLineHeight + 54);
+    const titleTop = 500;
+    const titleLineHeight = Math.round(titleSize * 1.42);
+    for (let i = 0; i < titleLines.length; i += 1) {
+      overlays.push({ input: await textPng(titleLines[i], titleSize, 888, Math.round(titleSize * 1.36), "#191F28"), left: 96, top: titleTop + i * titleLineHeight });
+    }
+    const boxTop = Math.min(1180, titleTop + titleLines.length * titleLineHeight + 60);
+    const coverBullets = coverChecklist(category);
+    const boxHeight = 116 + coverBullets.length * 66;
     overlays.push({
-      input: Buffer.from(`<svg width="888" height="190" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="190" rx="26" fill="#f4f6f9"/></svg>`),
+      input: Buffer.from(`<svg width="888" height="${boxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${boxHeight}" rx="26" fill="#f4f6f9"/></svg>`),
       left: 96,
       top: boxTop,
     });
-    for (let i = 0; i < bodyLines.slice(0, 2).length; i += 1) {
-      overlays.push({ input: await textPng(bodyLines[i], 36, 800, 52, "#333d4b"), left: 140, top: boxTop + 42 + i * 56 });
+    overlays.push({ input: await textPng("이 카드에서 확인할 것", 28, 800, 42, brandColor), left: 140, top: boxTop + 32 });
+    for (let i = 0; i < coverBullets.length; i += 1) {
+      overlays.push({ input: Buffer.from(`<svg width="46" height="46" xmlns="http://www.w3.org/2000/svg"><rect width="46" height="46" rx="23" fill="${brandColor}"/><text x="23" y="31" text-anchor="middle" font-size="24" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">${i + 1}</text></svg>`), left: 140, top: boxTop + 88 + i * 66 });
+      overlays.push({ input: await textPng(coverBullets[i], 34, 720, 48, "#333d4b"), left: 204, top: boxTop + 87 + i * 66 });
     }
     return overlays;
   }
 
   if (label) {
-    overlays.push({ input: await textPng(label, 34, 888, 54, brandColor), left: 96, top: 555 });
+    overlays.push({ input: await textPng(label, 30, 888, 46, brandColor), left: 96, top: 500 });
   }
+  const infoTitleSize = Math.min(titleSize, 46);
+  const infoTitleLines = wrapText(slide.title, titleMaxChars(infoTitleSize), 3);
   for (let i = 0; i < titleLines.length; i += 1) {
-    overlays.push({ input: await textPng(titleLines[i], Math.min(titleSize, 52), 888, 76, "#191F28"), left: 96, top: 635 + i * 78 });
+    if (i >= infoTitleLines.length) break;
+    overlays.push({ input: await textPng(infoTitleLines[i], infoTitleSize, 888, 66, "#191F28"), left: 96, top: 575 + i * 68 });
   }
-  const boxTop = 635 + titleLines.length * 78 + 46;
-  const boxHeight = Math.max(132, 76 + bodyLines.length * 56);
+  const boxTop = 575 + infoTitleLines.length * 68 + 46;
+  const infoBullets = bodyLines.length ? bodyLines : ["대상·금액·신청 조건을", "확인하세요"];
+  const boxHeight = Math.max(170, 100 + infoBullets.length * 54);
   overlays.push({
     input: Buffer.from(`<svg width="888" height="${boxHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="888" height="${boxHeight}" rx="26" fill="#f4f6f9"/></svg>`),
     left: 96,
     top: boxTop,
   });
-  for (let i = 0; i < bodyLines.length; i += 1) {
-    overlays.push({ input: await textPng(bodyLines[i], 36, 800, 52, "#333d4b"), left: 140, top: boxTop + 38 + i * 56 });
+  overlays.push({ input: await textPng("핵심 내용", 27, 800, 38, brandColor), left: 140, top: boxTop + 30 });
+  for (let i = 0; i < infoBullets.length; i += 1) {
+    overlays.push({ input: Buffer.from(`<svg width="14" height="14" xmlns="http://www.w3.org/2000/svg"><circle cx="7" cy="7" r="7" fill="${brandColor}"/></svg>`), left: 142, top: boxTop + 88 + i * 54 });
+    overlays.push({ input: await textPng(infoBullets[i], 32, 760, 44, "#333d4b"), left: 172, top: boxTop + 73 + i * 54 });
   }
   return overlays;
 }
