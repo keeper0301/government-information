@@ -71,6 +71,16 @@ describe("isExternalPublishQualityApproved", () => {
     expect(assessment.metrics.hasTemplateSmell).toBe(true);
   });
 
+  it("본문 중간의 설명형 2인칭 표현은 외부 캡션 게이트 오탐으로 보지 않는다", () => {
+    const assessment = assessExternalPublishQuality({
+      ...approvedPost,
+      content: `${approvedPost.content}<p>2026년 상반기가 마무리되기 전에, 여러분의 노후 계획을 점검해보세요.</p>`,
+    });
+
+    expect(assessment.approved).toBe(true);
+    expect(assessment.metrics.hasTemplateSmell).toBe(false);
+  });
+
   it("프롬프트 금지 문구도 자동 발행 전에 막는다", () => {
     const assessment = assessExternalPublishQuality({
       ...approvedPost,
