@@ -113,8 +113,10 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   return frameChrome(index, category, accent,
     div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 585 }, [
       div({ width: 78, height: 6, background: accent, borderRadius: 99, marginBottom: 42 }),
-      div({ display: "flex", color: brandColor, fontSize: 74, fontWeight: 700, lineHeight: 1, marginBottom: 42 }, `${index}.`),
-      div({ display: "flex", flexWrap: "wrap", width: "100%", fontSize: 70, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28", marginBottom: 34 }, titleTokens(slide.title)),
+      div({ display: "flex", flexDirection: "row", alignItems: "flex-start", width: "100%", marginBottom: 34 }, [
+        div({ display: "flex", color: brandColor, fontSize: 74, fontWeight: 700, lineHeight: 1, flex: "0 0 auto", marginRight: 24 }, `${index}.`),
+        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 70, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28" }, titleTokens(slide.title)),
+      ]),
       div({ display: "flex", color: "#4b5563", fontSize: 40, fontWeight: 500, lineHeight: 1.35, maxWidth: 780 }, slide.body.split("\n").filter(Boolean)[0] ?? "공고 기준으로 확인"),
     ]),
   );
