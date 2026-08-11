@@ -23,6 +23,7 @@ import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { EditorialReviewNote, welfareReviewChecklist } from "@/components/editorial-review-note";
+import { ADSENSE_REVIEW_MODE, reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
 // 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
@@ -42,7 +43,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title: "복지 지원사업 — 정책알리미",
     description: "내가 받을 수 있는 정부·지자체 복지 혜택을 한곳에 모았어요.",
     alternates: { canonical: "/welfare" },
-    ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
+    ...(ADSENSE_REVIEW_MODE
+      ? { robots: reviewModeNoindexRobots() }
+      : isFiltered
+        ? { robots: { index: false, follow: true } }
+        : {}),
   };
 }
 

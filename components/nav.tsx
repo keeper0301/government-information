@@ -21,36 +21,59 @@ import { getNavAuthState } from "@/lib/nav/nav-auth-state";
 // `priority: "core"` 는 md(768)+ 부터 항상 노출 — 폴드7 메인·태블릿 가로에서
 // desktop nav 가 보이도록. `priority: "extra"` 는 lg(1024)+ 에서만 노출.
 // 핵심 4개 = 정책·블로그·달력·검색. 나머지 (AI상담·요금제) 는 lg+ 한정.
+const livePolicyChildren = [
+  { label: "맞춤추천", href: "/policy" },
+  { label: "복지정보", href: "/welfare" },
+  { label: "대출정보", href: "/loan" },
+  { label: "인기정책", href: "/popular" },
+  // Phase C: 자격별 정책 모음 (income·household 8 카테고리)
+  { label: "자격별 정책", href: "/eligibility" },
+] as const;
+
+const reviewModePolicyChildren = [
+  { label: "대표 가이드", href: "/guides" },
+  { label: "청년 정책", href: "/c/youth" },
+  { label: "자영업 정책", href: "/c/business" },
+  { label: "주거 정책", href: "/c/housing" },
+] as const;
+
 const items = [
   {
     label: "정책",
-    href: "/policy",
+    href: ADSENSE_REVIEW_MODE ? "/guides" : "/policy",
     priority: "core",
     // 모바일 햄버거에서만 펼쳐 보여주는 하위 탭. 데스크톱은 평탄.
-    children: [
-      { label: "맞춤추천", href: "/policy" },
-      { label: "복지정보", href: "/welfare" },
-      { label: "대출정보", href: "/loan" },
-      { label: "인기정책", href: "/popular" },
-      // Phase C: 자격별 정책 모음 (income·household 8 카테고리)
-      { label: "자격별 정책", href: "/eligibility" },
-    ],
+    children: ADSENSE_REVIEW_MODE ? reviewModePolicyChildren : livePolicyChildren,
   },
   ADSENSE_REVIEW_MODE
-    ? { label: "블로그", href: "/blog", priority: "core" }
+    ? { label: "가이드", href: "/guides", priority: "core" }
     : { label: "소식", href: "/news", priority: "core" },
-  { label: "달력", href: "/calendar", priority: "core" },
-  { label: "AI상담", href: "/consult", priority: "extra" },
-  { label: "요금제", href: "/pricing", priority: "extra" },
+  ...(ADSENSE_REVIEW_MODE
+    ? ([
+        { label: "청년", href: "/c/youth", priority: "core" },
+        { label: "자영업", href: "/c/business", priority: "extra" },
+      ] as const)
+    : ([
+        { label: "달력", href: "/calendar", priority: "core" },
+        { label: "AI상담", href: "/consult", priority: "extra" },
+        { label: "요금제", href: "/pricing", priority: "extra" },
+      ] as const)),
   // 검색 진입점 — 데스크톱 메뉴 마지막 + 모바일 햄버거에서도 노출.
   // 이전엔 홈 화면에서만 검색 가능했음 → 다른 페이지에서도 진입 가능하게.
-  { label: "검색", href: "/search", priority: "core" },
+  ...(ADSENSE_REVIEW_MODE
+    ? ([{ label: "문의", href: "/contact", priority: "core" }] as const)
+    : ([{ label: "검색", href: "/search", priority: "core" }] as const)),
 ] as const;
 
 // 모바일 햄버거 하단 "기타 메뉴" — 헤더에서 빠진 항목들의 마지막 진입점.
 // 정책 블로그는 헤더 핵심 메뉴로 노출하므로 기타 메뉴에서는 중복 제거.
 // 2026-04-26: "1분 진단" (/quiz) 익명 funnel 추가.
-const mobileExtraItems = [
+const mobileExtraItems = ADSENSE_REVIEW_MODE ? [
+  { label: "도움말", href: "/help" },
+  { label: "서비스 소개", href: "/about" },
+  { label: "문의", href: "/contact" },
+  { label: "이용약관", href: "/terms" },
+] : [
   { label: "1분 진단", href: "/quiz" },
   { label: "알림센터", href: "/alerts" },
   { label: "도움말", href: "/help" },

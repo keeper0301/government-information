@@ -14,7 +14,14 @@ import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
 import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
-const footerLinks = [
+const footerLinks = ADSENSE_REVIEW_MODE ? [
+  { label: "서비스 소개", href: "/about" },
+  { label: "정책 가이드", href: "/guides" },
+  { label: "도움말", href: "/help" },
+  { label: "이용약관", href: "/terms" },
+  { label: "개인정보처리방침", href: "/privacy" },
+  { label: "문의", href: "/contact" },
+] : [
   { label: "1분 진단", href: "/quiz" },
   { label: "서비스 소개", href: "/about" },
   { label: "도움말", href: "/help" },
@@ -117,7 +124,9 @@ export async function Footer() {
           신뢰성 시그널 강화. rel=noopener noreferrer 로 보안 유지. */}
       <div className="text-[13px] text-grey-600 leading-[1.7] mb-6">
         <p className="text-grey-700 font-medium mb-2">
-          매일 새 정부 정책을 모아서 알려드려요.
+          {ADSENSE_REVIEW_MODE
+            ? "공식 출처를 기준으로 신청 판단에 필요한 내용을 정리합니다."
+            : "매일 새 정부 정책을 모아서 알려드려요."}
         </p>
         <p>
           데이터 출처:{" "}

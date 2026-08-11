@@ -37,6 +37,21 @@ describe("AdSense approval guardrails", () => {
     expect(source).toContain("shouldLoadAdsenseScript(window.location.pathname)");
   });
 
+  it("keeps review-mode navigation focused on editorial guides and hubs", () => {
+    const nav = read("components/nav.tsx");
+    const footer = read("components/footer.tsx");
+
+    expect(nav).toContain("reviewModePolicyChildren");
+    expect(nav).toContain('href: ADSENSE_REVIEW_MODE ? "/guides" : "/policy"');
+    expect(nav).toContain('label: "가이드", href: "/guides"');
+    expect(nav).toContain('label: "문의", href: "/contact"');
+    expect(nav).toContain('label: "복지정보", href: "/welfare"');
+    expect(nav).toContain('label: "대출정보", href: "/loan"');
+    expect(nav).toContain('label: "인기정책", href: "/popular"');
+    expect(footer).toContain("const footerLinks = ADSENSE_REVIEW_MODE ?");
+    expect(footer).toContain('label: "정책 가이드", href: "/guides"');
+  });
+
   it("disallows crawl traps and account routes from robots.txt", () => {
     const source = read("app/robots.ts");
     for (const path of [
@@ -78,8 +93,27 @@ describe("AdSense approval guardrails", () => {
     const home = read("app/page.tsx");
     expect(home).toContain("ReviewModeHomeBody");
     expect(home).toContain("정책을 많이 모으는 것보다");
+    expect(home).toContain("원문 확인용 상세 페이지보다");
     expect(home).toContain("!ADSENSE_REVIEW_MODE && <AdSlot");
     expect(home).toContain("ADSENSE_REVIEW_MODE ? \"/guides\" : \"/welfare\"");
+  });
+
+  it("keeps mass listing indexes noindex during AdSense review mode", () => {
+    for (const path of ["app/welfare/page.tsx", "app/loan/page.tsx", "app/blog/page.tsx"]) {
+      const source = read(path);
+      expect(source).toContain("reviewModeNoindexRobots");
+      expect(source).toContain("robots");
+    }
+  });
+
+  it("removes review-mode low-value and automation-smell phrases from public trust surfaces", () => {
+    for (const path of ["app/page.tsx", "app/about/page.tsx", "app/help/page.tsx", "app/privacy/page.tsx", "app/guides/page.tsx"]) {
+      const source = read(path);
+      expect(source).not.toContain("대량 상세 목록");
+    }
+    expect(read("app/help/page.tsx")).toContain("정기적으로 확인해 정리합니다");
+    expect(read("app/privacy/page.tsx")).toContain("접속 기록");
+    expect(read("app/guides/page.tsx")).toContain("대표 주제별 가이드");
   });
 
   it("uses the www canonical host for default metadata and schema urls", () => {
@@ -112,5 +146,14 @@ describe("AdSense approval guardrails", () => {
       "submitSearchConsoleSitemap",
     );
     expect(read("lib/admin/menu.ts")).toContain("/admin/search-console");
+  });
+
+  it("exposes a live AdSense review preflight CLI", () => {
+    expect(read("package.json")).toContain('"diagnose:adsense-review"');
+    const source = read("tools/diagnose-adsense-review.mjs");
+    expect(source).toContain("Mediapartners-Google");
+    expect(source).toContain("DISALLOWED_SITEMAP_PATHS");
+    expect(source).toContain('{ path: "/welfare", robots: "noindex, follow" }');
+    expect(source).toContain('{ path: "/blog", robots: "noindex, follow" }');
   });
 });

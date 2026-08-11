@@ -47,7 +47,7 @@ export default function PrivacyPage() {
             </li>
             <li><b>알림 수신</b>: 휴대폰 번호 (카카오 알림톡 또는 SMS 수신 동의 시)</li>
             <li><b>결제</b>: 카드 정보는 토스페이먼츠에 직접 저장되며 서비스는 빌링키만 보관</li>
-            <li><b>자동 수집</b>: IP 주소, 쿠키, 접속 로그, 기기·브라우저 정보 (이용 분석·보안 목적)</li>
+            <li><b>접속 기록</b>: IP 주소, 쿠키, 접속 로그, 기기·브라우저 정보 (이용 분석·보안 목적)</li>
           </ul>
           {/* 가구상태 민감정보 안내 박스 */}
           <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-[13px] text-grey-700 leading-[1.7]">
@@ -58,9 +58,9 @@ export default function PrivacyPage() {
               외부 제공 없음. 회원 탈퇴 시 즉시 파기됩니다.
             </p>
           </div>
-          {/* 쿠키·자동수집장치 거부 안내 — 개인정보보호법 시행령 제15조 */}
+          {/* 쿠키·접속기록 처리 거부 안내 — 개인정보보호법 시행령 제15조 */}
           <div className="mt-3 rounded-lg bg-grey-50 border border-grey-200 px-4 py-3 text-[13px] text-grey-700 leading-[1.7]">
-            <p className="font-semibold text-grey-900 mb-1">쿠키·자동수집장치 거부 방법</p>
+            <p className="font-semibold text-grey-900 mb-1">쿠키·접속기록 처리 거부 방법</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>
                 브라우저 쿠키 차단: Chrome <i>설정 → 개인정보 및 보안 → 쿠키 및 기타 사이트 데이터</i>
@@ -102,7 +102,7 @@ export default function PrivacyPage() {
             <li>회원가입 폼, 마이페이지 입력</li>
             <li>카카오 / 구글 / 페이스북 소셜 로그인 (사용자 동의 후 각 제공자가 전달)</li>
             <li>토스페이먼츠 결제 흐름 (빌링키 발급 시)</li>
-            <li>서비스 이용 중 자동 생성·수집 (쿠키, 로그)</li>
+            <li>서비스 이용 중 생성되는 접속 기록 (쿠키, 로그)</li>
           </ul>
         </Section>
 

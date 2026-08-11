@@ -29,6 +29,7 @@ import type { ScorableItem } from "@/lib/personalization/score";
 import type { ScoredItem } from "@/lib/personalization/types";
 import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
+import { reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 // 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
 // force-dynamic 없이 캐시하면 첫 사용자 프로필이 다른 사람에게 노출되는 보안 문제 발생.
@@ -41,6 +42,7 @@ export const metadata: Metadata = {
   // 네이버 D.I.A 알고리즘 키워드 시그널 — 7개 카테고리 + 주요 영역
   keywords: "복지, 대출, 지원금, 청년, 노년, 학생, 소상공인, 주거, 의료, 정책 신청, 정책 가이드",
   alternates: { canonical: "/blog" },
+  robots: reviewModeNoindexRobots(),
   authors: [{ name: "정책알리미", url: "https://www.keepioo.com" }],
   openGraph: {
     title: "정책 블로그 | 정책알리미",

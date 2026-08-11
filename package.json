@@ -16,6 +16,7 @@
     "cache:monitor": "node tools/verify-production-cache-headers.mjs",
     "smoke:admin-pageerrors": "node tools/admin-pageerror-smoke.mjs",
     "perf:public": "node tools/measure-public-pages.mjs",
+    "diagnose:adsense-review": "node tools/diagnose-adsense-review.mjs",
     "region:backfill:jeonnam-gwangju": "node tools/backfill-jeonnam-gwangju-region-tags.mjs",
     "agent:resident": "node tools/agent-resident-server.mjs",
     "agent:resident:check": "node tools/agent-resident-server.mjs --check-config",

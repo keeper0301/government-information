@@ -15,6 +15,7 @@ import Link from "next/link";
 import { getGuides } from "@/lib/policy-guides";
 import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export const dynamic = "force-static";
 
@@ -122,22 +123,32 @@ export default async function GuidesPage() {
         </div>
       </section>
 
-      {/* 블로그 카테고리 chip — 7 카테고리 매일 자동 발행 */}
+      {/* review-mode 에서는 대량 블로그 category 대신 대표 주제 hub 로 심사 표면 집중 */}
       <section className="mb-10">
-        <h2 className="text-xl font-bold mb-3">블로그 카테고리</h2>
+        <h2 className="text-xl font-bold mb-3">
+          {ADSENSE_REVIEW_MODE ? "대표 주제별 가이드" : "블로그 카테고리"}
+        </h2>
         <p className="text-sm text-gray-600 mb-4">
-          재심사 기간에는 신청 실수·서류·중복 제한을 설명하는 대표 가이드를 우선 보여줍니다. 카테고리별로 필요한 주제를 모아 보세요.
+          {ADSENSE_REVIEW_MODE
+            ? "신청 실수·서류·중복 제한을 설명하는 대표 가이드와 사용자 그룹별 허브를 우선 보여줍니다."
+            : "재심사 기간에는 신청 실수·서류·중복 제한을 설명하는 대표 가이드를 우선 보여줍니다. 카테고리별로 필요한 주제를 모아 보세요."}
         </p>
         <div className="flex flex-wrap gap-2">
-          {BLOG_CATEGORIES.map((cat) => (
-            <Link
-              key={cat}
-              href={`/blog/category/${encodeURIComponent(cat)}`}
-              className="px-4 py-2 rounded-full bg-white border text-sm text-grey-700 hover:border-blue-400 hover:text-blue-600 no-underline transition-colors"
-            >
-              {cat}
-            </Link>
-          ))}
+          {(ADSENSE_REVIEW_MODE ? CATEGORY_SLUGS : BLOG_CATEGORIES).map((item) => {
+            const href = ADSENSE_REVIEW_MODE
+              ? `/c/${item}`
+              : `/blog/category/${encodeURIComponent(item)}`;
+            const label = ADSENSE_REVIEW_MODE ? CATEGORY_HUBS[item as typeof CATEGORY_SLUGS[number]].label : item;
+            return (
+              <Link
+                key={item}
+                href={href}
+                className="px-4 py-2 rounded-full bg-white border text-sm text-grey-700 hover:border-blue-400 hover:text-blue-600 no-underline transition-colors"
+              >
+                {label}
+              </Link>
+            );
+          })}
         </div>
       </section>
 

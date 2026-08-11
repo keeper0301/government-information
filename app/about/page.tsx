@@ -245,8 +245,8 @@ export default async function AboutPage() {
           </p>
           <p className="mt-3">
             {ADSENSE_REVIEW_MODE
-              ? "재심사 기간에는 대량 상세 목록을 검색엔진 제출 대상에서 줄이고, 사람이 읽을 수 있는 대표 가이드·카테고리 허브·소개/도움말 페이지를 우선 보여줍니다. 정책 상세는 계속 열람할 수 있지만, 자체 해설이 부족한 원문 확인용 상세는 색인보다 내부 탐색 역할에 가깝게 둡니다."
-              : "재심사 모드 해제 후에도 자동 수집 페이지는 선별적으로 운영합니다. 자체 해설·요약·분류가 충분한 정책 소식은 검색엔진에 공개하고, 원문 확인용 짧은 공지나 중복성 높은 자료는 내부 탐색과 참고 링크 중심으로 둡니다."}
+              ? "재심사 기간에는 원문 확인용 상세 페이지를 검색엔진 제출 대상에서 줄이고, 사람이 읽을 수 있는 대표 가이드·카테고리 허브·소개/도움말 페이지를 우선 보여줍니다. 정책 상세는 계속 열람할 수 있지만, 자체 해설이 부족한 원문 확인용 상세는 색인보다 내부 탐색 역할에 가깝게 둡니다."
+              : "재심사 모드 해제 후에도 수집 기반 페이지는 선별적으로 운영합니다. 자체 해설·요약·분류가 충분한 정책 소식은 검색엔진에 공개하고, 원문 확인용 짧은 공지나 중복성 높은 자료는 내부 탐색과 참고 링크 중심으로 둡니다."}
           </p>
         </Section>
 
@@ -342,7 +342,7 @@ export default async function AboutPage() {
             {!ADSENSE_REVIEW_MODE && <QuickLink href="/blog" label="정책 블로그" />}
             <QuickLink href="/guides" label="정책 가이드" />
             <QuickLink href="/c/business" label="소상공인 허브" />
-            <QuickLink href="/recommend" label="맞춤 추천" />
+            {!ADSENSE_REVIEW_MODE && <QuickLink href="/recommend" label="맞춤 추천" />}
             <QuickLink href="/help" label="도움말" />
             <QuickLink href="/contact" label="문의하기" />
           </ul>
