@@ -12,6 +12,15 @@ import {
   PC_ONLY_CITIES,
 } from "@/lib/scraping/local-press/_playwright-city-registry";
 
+function auditCityAliases(entry: { city: string; ministry: string; ministryAliases?: string[] }): string[] {
+  const aliases = [
+    entry.city,
+    entry.ministry.replace(/청$/, ""),
+    ...(entry.ministryAliases ?? []).map((m) => m.replace(/청$/, "")),
+  ];
+  return [...new Set(aliases.filter(Boolean))];
+}
+
 // 프록시 경로(GitHub Actions + icn1)로 "실제 가동 중"인 시·군의 audit city 명 집합.
 // audit details.city = import-press-batch 가 `ministry.replace(/청$/,"")` 로 기록(노원구청→노원구).
 // stale 노쇼 감지용 — 이 목록에 없는 프록시 도시는 collector 가 완전히 죽어도(audit 0) 경보 사각.
@@ -122,7 +131,8 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
   }
 
   const cities: LocalPressCityStat[] = CITY_REGISTRY.map((entry) => {
-    const stat = byCity.get(entry.city);
+    const aliases = auditCityAliases(entry);
+    const stat = aliases.map((city) => byCity.get(city)).find(Boolean);
     return {
       city: entry.city,
       inserted24h: stat?.inserted ?? 0,
@@ -137,7 +147,7 @@ export async function getLocalPressStats(): Promise<LocalPressStats> {
 
   // 2026-05-29 — Playwright 프록시 경로(import-press-batch, trigger=proxy)로 이관한 시·군은
   // 정적 CITY_REGISTRY 에 없으므로, audit 에만 나타난 city 를 추가 표시(가시화).
-  const registryCities = new Set(CITY_REGISTRY.map((e) => e.city));
+  const registryCities = new Set(CITY_REGISTRY.flatMap((e) => auditCityAliases(e)));
   for (const [city, stat] of byCity) {
     if (registryCities.has(city)) continue;
     cities.push({
@@ -273,12 +283,14 @@ export async function getStaleCityNames(windowHours = 72): Promise<string[]> {
   }
 
   // 정적 CITY_REGISTRY + 프록시 경로(import-press-batch) 도시를 함께 stale 판정.
-  // 프록시 도시가 완전히 죽으면(audit 0=노쇼) 감지하려면 정적 목록 필요(audit 기반만으론 노쇼 누락).
-  const targets = new Set<string>(CITY_REGISTRY.map((e) => e.city));
-  for (const c of PROXY_LOCAL_PRESS_CITIES) targets.add(c);
+  // 프록시 도시는 audit 표준명이 이미 ministry.replace(/청$/, "") 형태라 그대로 확인한다.
 
   const stale: string[] = [];
-  for (const city of targets) {
+  for (const entry of CITY_REGISTRY) {
+    const fetched = Math.max(...auditCityAliases(entry).map((city) => maxFetchedByCity.get(city) ?? 0));
+    if (fetched === 0) stale.push(entry.city);
+  }
+  for (const city of PROXY_LOCAL_PRESS_CITIES) {
     if ((maxFetchedByCity.get(city) ?? 0) === 0) {
       stale.push(city);
     }

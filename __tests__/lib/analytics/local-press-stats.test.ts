@@ -75,11 +75,30 @@ describe("getNewsRatio", () => {
   });
 });
 
+describe("getLocalPressStats", () => {
+  it("audit city 가 ministry 축약명이어도 registry city 통계에 매칭한다", async () => {
+    responseQueue.push({
+      data: [
+        { created_at: "2026-08-12T16:30:53Z", details: { city: "경북 경주시", fetched: 10, inserted: 3, errors: [] } },
+      ],
+    });
+
+    const { getLocalPressStats } = await import("@/lib/analytics/local-press-stats");
+    const stats = await getLocalPressStats();
+    const gyeongju = stats.cities.find((c) => c.city === "경주시");
+
+    expect(gyeongju?.fetched24h).toBe(10);
+    expect(gyeongju?.inserted24h).toBe(3);
+    expect(stats.cities.find((c) => c.city === "경북 경주시")).toBeUndefined();
+  });
+});
+
 describe("getStaleCityNames", () => {
   it("최근 72h fetched>0 도시를 stale 목록에서 제외하고 노쇼 도시는 이름으로 반환한다", async () => {
     responseQueue.push({
       data: [
         { details: { city: "노원구", fetched: 3 } },
+        { details: { city: "경북 경주시", fetched: 10 } },
         { details: { city: "없는도시", fetched: 99 } },
       ],
     });
@@ -87,6 +106,8 @@ describe("getStaleCityNames", () => {
     const stale = await getStaleCityNames(72);
 
     expect(stale).not.toContain("노원구");
+    expect(stale).not.toContain("경주시");
+    expect(stale).not.toContain("경북 경주시");
     expect(stale).not.toContain("없는도시");
     expect(stale.length).toBeGreaterThan(0);
   });
