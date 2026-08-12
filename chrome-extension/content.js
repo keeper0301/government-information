@@ -293,8 +293,11 @@ async function publishToSe3(payload, dryRun) {
   debug.stage = "main_publish";
   const mainPublish = mfDoc.querySelector('button[data-click-area="tpb.publish"]');
   if (!mainPublish || !isVisible(mainPublish)) throw new Error("발행 메인 버튼 (tpb.publish) 못 찾음");
-  await clickPublishButtonWithFallback(mainPublish, debug, "main_publish");
-  await sleep(2500);
+  // The first publish button toggles Naver's settings/confirm layer. A full
+  // fallback click sequence can open and immediately close the layer by hitting
+  // the same top-right button twice. Use the dry-run-proven path: DOM click once,
+  // wait for the confirm layer, and only then fall back to a trusted CDP click.
+  await openPublishConfirmLayer(mainPublish, mfDoc, debug);
 
   // 7. 발행 2단계 — confirm 모달
   debug.stage = "confirm_publish";
@@ -518,6 +521,37 @@ async function clickPublishButtonWithFallback(button, debug, label) {
   }
 }
 
+async function openPublishConfirmLayer(mainPublish, mfDoc, debug) {
+  const rect = mainPublish.getBoundingClientRect();
+  debug.main_publish_button_rect = {
+    left: Math.round(rect.left),
+    top: Math.round(rect.top),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
+  debug.main_publish_button_text = String(mainPublish.innerText || mainPublish.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  try {
+    mainPublish.focus?.();
+    mainPublish.click();
+    debug.main_publish = "dom_click_once";
+  } catch (e) {
+    debug.main_publish_dom_click_error = String(e?.message ?? e).slice(0, 120);
+  }
+  let confirmMatch = await waitForPublishConfirmButton(mfDoc, 8000);
+  if (confirmMatch) {
+    debug.main_publish_confirm_visible_after_dom_click = true;
+    return;
+  }
+
+  const clickPoint = computeButtonCenterPoint(mainPublish);
+  debug.main_publish_click_point = clickPoint;
+  const clickRes = await sendRuntimeMessage({ type: "debugger-click", ...clickPoint }, 15_000);
+  debug.main_publish_debugger_click_ok = clickRes?.ok === true;
+  if (!clickRes?.ok) debug.main_publish_debugger_click_error = String(clickRes?.error ?? "unknown").slice(0, 120);
+  confirmMatch = await waitForPublishConfirmButton(mfDoc, 8000);
+  debug.main_publish_confirm_visible_after_debugger_click = Boolean(confirmMatch);
+}
+
 function computeButtonCenterPoint(button) {
   const rect = button.getBoundingClientRect();
   const frameEl = button.ownerDocument.defaultView?.frameElement;
@@ -606,9 +640,13 @@ function isLikelyPublishConfirmButton(el) {
   const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
   const dataClickArea = String(el.getAttribute?.("data-click-area") || "");
   const className = String(el.className || "");
+  // The top-right first-step button is also `발행` with `tpb.publish`.
+  // It is not the modal confirm button; accepting it here makes the live path
+  // click the first-step button repeatedly and then fail URL capture.
+  if (dataClickArea === "tpb.publish") return false;
   if (dataClickArea === "tpb*i.publish") return true;
-  if (dataClickArea.includes("publish") && /발행|게시|확인|완료/.test(text)) return true;
-  if (/발행|게시/.test(text) && /publish|confirm|button|btn/i.test(`${dataClickArea} ${className}`)) return true;
+  if (dataClickArea.includes("publish") && /게시|확인|완료/.test(text)) return true;
+  if (/게시|확인|완료/.test(text) && /publish|confirm|button|btn/i.test(`${dataClickArea} ${className}`)) return true;
   return false;
 }
 

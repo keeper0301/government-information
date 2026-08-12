@@ -35,4 +35,17 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("nFirstLogNo");
     expect(contentScript).toContain("https://blog.naver.com/${blogId}/${logNo}");
   });
+
+  it("does not mistake the top-right first-step publish button for the final confirm", () => {
+    expect(contentScript).toContain('if (dataClickArea === "tpb.publish") return false;');
+    expect(contentScript).not.toContain(
+      'dataClickArea.includes("publish") && /발행|게시|확인|완료/.test(text)',
+    );
+  });
+
+  it("opens the first publish layer with one DOM click before falling back", () => {
+    expect(contentScript).toContain("async function openPublishConfirmLayer(mainPublish, mfDoc, debug)");
+    expect(contentScript).toContain('debug.main_publish = "dom_click_once"');
+    expect(contentScript).toContain("await openPublishConfirmLayer(mainPublish, mfDoc, debug)");
+  });
 });
