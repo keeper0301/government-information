@@ -24,4 +24,10 @@ describe("Naver extension scheduled alarm writer policy", () => {
     expect(backgroundScript).toContain("reuseExistingWriter: msg.reuseExistingWriter === true");
     expect(backgroundScript).toContain("requireExistingWriter: msg.requireExistingWriter === true");
   });
+
+  it("closes the writer tab only after verified live publish success", () => {
+    expect(backgroundScript).toContain("async function closePublishedWriterTab(tabId, reason)");
+    expect(backgroundScript).toContain('closePublishedWriterTab(tab.id, "verified_publish_success")');
+    expect(backgroundScript).toContain('setManualPublishStatus("published_writer_tab_closed"');
+  });
 });

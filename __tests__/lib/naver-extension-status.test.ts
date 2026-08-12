@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({ from: mocks.from })),
 }));
 
-import { getNaverExtensionStatus } from "@/lib/naver-blog/extension-status";
+import { getNaverExtensionStatus, summarizeFailReasons } from "@/lib/naver-blog/extension-status";
 
 type QueryResult = { count?: number | null; data?: unknown[] | null; error?: { message?: string } | null };
 
@@ -52,6 +52,13 @@ describe("getNaverExtensionStatus", () => {
       query({ count: 5 }),
       query({ count: 6 }),
       query(new Error("recent exploded")),
+      query({
+        data: [
+          { error_message: "발행 모달 confirm 버튼 후보 못 찾음", skip_reason: null },
+          { error_message: "발행 확인 실패: 공개 글 URL을 캡처하지 못해 성공 처리 차단", skip_reason: null },
+          { error_message: "발행 모달 confirm 버튼 후보 못 찾음", skip_reason: null },
+        ],
+      }),
     ];
     mocks.from.mockImplementation(() => queries.shift());
 
@@ -63,7 +70,15 @@ describe("getNaverExtensionStatus", () => {
       blockedPending: 1,
       skippedExtensionFailed: 2,
     });
-    expect(status.audit24h).toMatchObject({ success: 4, fail: 5, skipped: 6 });
+    expect(status.audit24h).toMatchObject({
+      success: 4,
+      fail: 5,
+      skipped: 6,
+      failReasons: [
+        { reason: "confirm_not_found", count: 2 },
+        { reason: "url_capture_failed", count: 1 },
+      ],
+    });
     expect(status.recentAudits).toEqual([]);
     expect(status.errors).toEqual([
       "queue.pending: count exploded",

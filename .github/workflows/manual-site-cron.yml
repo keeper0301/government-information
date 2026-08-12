@@ -27,6 +27,7 @@ on:
           - search-console-sitemap-submit
           - health-alert-dry
           - health-alert
+          - scrape-local-press-all
           - scrape-local-press-pocheon-yeoju
           - scrape-local-press-dongducheon
           - scrape-local-press-gwacheon-yangpyeong
@@ -67,7 +68,7 @@ jobs:
   trigger:
     name: ${{ github.event.inputs.endpoint }} 호출
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - name: Whitelist endpoint 선택
         id: endpoint
@@ -138,6 +139,10 @@ jobs:
               ;;
             health-alert)
               path="/api/cron/health-alert"
+              method="GET"
+              ;;
+            scrape-local-press-all)
+              path="/api/cron/scrape-local-press"
               method="GET"
               ;;
             scrape-local-press-pocheon-yeoju)
@@ -295,7 +300,7 @@ jobs:
             -o /tmp/response.json
             -w "%{http_code}"
             --request "${METHOD}"
-            --max-time 420
+            --max-time 780
             -H "${auth_header}"
             -H "Content-Type: application/json"
           )

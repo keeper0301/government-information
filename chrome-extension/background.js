@@ -975,6 +975,9 @@ async function runPublishOnce(dryRun = false, options = {}) {
     };
     const auditOk = await postPublishedAudit(secret, auditPayload, "success_or_dry_run");
     await setManualPublishStatus("published_audit_done", { auditOk, dryRun, verifiedSuccess });
+    if (verifiedSuccess && !dryRun) {
+      await closePublishedWriterTab(tab.id, "verified_publish_success");
+    }
     if (!verifiedSuccess) {
       result = { ok: false, error: "발행 URL 미검증 — success 처리 차단", debug: r.debug, result: r };
     }
@@ -1099,6 +1102,19 @@ async function setManualPublishStatus(stage, extra = {}) {
       ...extra,
     },
   }).catch(() => undefined);
+}
+
+async function closePublishedWriterTab(tabId, reason) {
+  // Only close after a verified live publish URL was captured and audit was posted.
+  // Failure/dry-run paths still preserve tabs to avoid losing unsaved SmartEditor text.
+  try {
+    await chrome.tabs.remove(tabId);
+    await setManualPublishStatus("published_writer_tab_closed", { tabId, reason });
+    return true;
+  } catch (e) {
+    await setManualPublishStatus("published_writer_tab_close_failed", { tabId, reason, error: e?.message ?? String(e) });
+    return false;
+  }
 }
 
 async function closeStaleWriterTabs() {
