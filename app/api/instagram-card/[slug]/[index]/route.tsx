@@ -36,6 +36,7 @@ import {
 } from "@/lib/instagram/card-colors";
 import { sanitizeInstagramPolicyCopy } from "@/lib/instagram/policy-copy";
 import { resolveInstagramCardHook } from "@/lib/instagram/card-hook";
+import { resolveInstagramCommentKeyword } from "@/lib/instagram/caption";
 
 export const runtime = "nodejs";
 
@@ -97,7 +98,7 @@ export async function GET(
       ? renderCoverCard(displayPost.title, displayPost.meta_description, category, color)
       : cardIndex === 2
         ? renderInfoCard(displayPost.title, displayPost.meta_description, color)
-        : renderCtaCard(displayPost.title, color);
+        : renderCtaCard(displayPost.title, category, displayPost.tags, color);
 
   return new ImageResponse(cardElement, {
     ...size,
@@ -303,7 +304,8 @@ function renderInfoCard(
         fontFamily: "Pretendard",
       }}
     >
-      {/* 💡 핵심 정보 pill — white bg + category color text. 노년·문화는
+      {/* 저장 체크 pill — 카드 1 hook 에서 이어지는 저장 이유를 카드 2에서도 반복한다.
+          white bg + category color text. 노년·문화는
           contrast 미달이라 darker shade 분기 (2026-05-16 fix). */}
       <div
         style={{
@@ -318,7 +320,7 @@ function renderInfoCard(
           marginBottom: 60,
         }}
       >
-        💡 핵심 정보
+        ✅ 저장 체크
       </div>
 
       <div
@@ -390,7 +392,8 @@ function renderInfoCard(
  * 카드 3: CTA — keepioo 에서 자세히 확인하라는 안내.
  * 사장님 인스타 프로필 링크 (link in bio) 로 유도.
  */
-function renderCtaCard(title: string, color: string) {
+function renderCtaCard(title: string, category: string, tags: string[] | null, color: string) {
+  const commentKeyword = resolveInstagramCommentKeyword({ title, category, tags });
   return (
     <div
       style={{
@@ -459,6 +462,26 @@ function renderCtaCard(title: string, color: string) {
           }}
         >
           keepioo.com
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            padding: "24px 32px",
+            border: `5px solid ${categoryColorOnWhite(color)}`,
+            borderRadius: 30,
+            color: "#191F28",
+            fontSize: 38,
+            fontWeight: 700,
+            lineHeight: 1.45,
+            letterSpacing: "0",
+          }}
+        >
+          <div style={{ display: "flex" }}>💬 댓글 키워드</div>
+          <div style={{ display: "flex", marginTop: 14, color: categoryColorOnWhite(color) }}>
+            {commentKeyword}
+          </div>
         </div>
 
         {/* 2줄 구성 — line-height 1.7 + 줄 사이 marginTop 28 */}

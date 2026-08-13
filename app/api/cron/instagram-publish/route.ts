@@ -30,6 +30,7 @@ export const maxDuration = 300;
 
 const DEFAULT_NEW_ACCOUNT_DAILY_CAP = 12;
 const DEFAULT_ESTABLISHED_DAILY_CAP = 28;
+const DEFAULT_HOOK_CTA_WEAK_FREEZE_CAP = 4;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
@@ -42,7 +43,17 @@ function resolveDailyCap(isNewAccount: boolean): number {
   const envKey = isNewAccount
     ? "INSTAGRAM_NEW_ACCOUNT_DAILY_CAP"
     : "INSTAGRAM_ESTABLISHED_DAILY_CAP";
-  return parsePositiveInt(process.env[envKey] ?? process.env.INSTAGRAM_DAILY_CAP, fallback);
+  const configuredCap = parsePositiveInt(process.env[envKey] ?? process.env.INSTAGRAM_DAILY_CAP, fallback);
+
+  // hook_cta_weak 운영 원칙: 저장/공유/프로필 활동이 움직이기 전까지는 발행량으로
+  // 해결하지 않는다. 기존 env cap 이 높게 남아 있어도 기본은 4/day 로 동결하고,
+  // 명시적 운영 승인이 있을 때만 INSTAGRAM_ALLOW_VOLUME_EXPANSION=true 로 해제한다.
+  if (process.env.INSTAGRAM_ALLOW_VOLUME_EXPANSION === "true") return configuredCap;
+  const freezeCap = parsePositiveInt(
+    process.env.INSTAGRAM_HOOK_CTA_WEAK_FREEZE_CAP,
+    DEFAULT_HOOK_CTA_WEAK_FREEZE_CAP,
+  );
+  return Math.min(configuredCap, freezeCap);
 }
 
 type PublishCandidate = {

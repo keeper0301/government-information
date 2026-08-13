@@ -156,6 +156,8 @@ beforeEach(() => {
   delete process.env.INSTAGRAM_DAILY_CAP;
   delete process.env.INSTAGRAM_NEW_ACCOUNT_DAILY_CAP;
   delete process.env.INSTAGRAM_ESTABLISHED_DAILY_CAP;
+  delete process.env.INSTAGRAM_HOOK_CTA_WEAK_FREEZE_CAP;
+  delete process.env.INSTAGRAM_ALLOW_VOLUME_EXPANSION;
 });
 
 it("allows authenticated force=1 publish-now requests to bypass the hour guard", async () => {
@@ -176,7 +178,7 @@ describe("instagram-publish dry-run", () => {
     expect(body).toMatchObject({
       dryRun: true,
       status: "ready",
-      dailyCap: 12,
+      dailyCap: 4,
       isNewAccount: true,
       candidate: { id: "post-1", slug: "slug-1", attempt_count: 0 },
     });
@@ -185,9 +187,26 @@ describe("instagram-publish dry-run", () => {
     expect(mocks.logAdminAction).not.toHaveBeenCalled();
   });
 
-  it("uses configurable established-account daily caps in dry-run", async () => {
+  it("keeps established-account cap frozen while hook/CTA remains weak", async () => {
     mocks.firstPub = { instagram_published_at: "2026-01-01T00:00:00.000Z" };
     process.env.INSTAGRAM_ESTABLISHED_DAILY_CAP = "24";
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "ready",
+      dailyCap: 4,
+      isNewAccount: false,
+    });
+    expect(mocks.publishCarousel).not.toHaveBeenCalled();
+  });
+
+  it("allows explicit volume expansion override only after 운영 승인", async () => {
+    mocks.firstPub = { instagram_published_at: "2026-01-01T00:00:00.000Z" };
+    process.env.INSTAGRAM_ESTABLISHED_DAILY_CAP = "24";
+    process.env.INSTAGRAM_ALLOW_VOLUME_EXPANSION = "true";
 
     const res = await GET(req());
     const body = await res.json();
