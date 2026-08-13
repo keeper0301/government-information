@@ -50,6 +50,7 @@ jobs:
 
           success_count=0
           failure_count=0
+          skipped_count=0
           base_url="https://www.keepioo.com/api/publish-blog?count=1"
 
           publish_one() {
@@ -82,9 +83,19 @@ jobs:
               echo ""
 
               if [ "$http_status" -eq 200 ]; then
-                success_count=$((success_count + 1))
-                echo "### ${index}번째 글: 성공 (${label})" >> "$GITHUB_STEP_SUMMARY"
-                return 0
+                json_success=$(python3 -c 'import json,sys; print(int(json.load(open(sys.argv[1])).get("success") or 0))' "$response_file" 2>/dev/null || echo 0)
+                json_skipped=$(python3 -c 'import json,sys; print(int(json.load(open(sys.argv[1])).get("skipped") or 0))' "$response_file" 2>/dev/null || echo 0)
+                if [ "$json_success" -gt 0 ]; then
+                  success_count=$((success_count + json_success))
+                  echo "### ${index}번째 글: 성공 ${json_success}건 (${label})" >> "$GITHUB_STEP_SUMMARY"
+                  return 0
+                fi
+                if [ "$json_skipped" -gt 0 ]; then
+                  skipped_count=$((skipped_count + json_skipped))
+                  echo "### ${index}번째 글: 후보 없음/스킵 ${json_skipped}건 (${label})" >> "$GITHUB_STEP_SUMMARY"
+                  return 0
+                fi
+                echo "::warning::${index}번째 글 발행 HTTP 200 이지만 실제 success/skipped 0건"
               fi
 
               if [ "$attempt" -lt 2 ]; then
@@ -108,15 +119,15 @@ jobs:
           publish_one 7 6 "6일 후 카테고리"
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "성공: ${success_count}건 / 실패: ${failure_count}건" >> "$GITHUB_STEP_SUMMARY"
+          echo "성공: ${success_count}건 / 스킵: ${skipped_count}건 / 실패: ${failure_count}건" >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$success_count" -eq 0 ]; then
-            echo "::error::블로그 발행이 모두 실패했습니다."
+            echo "::error::블로그 실제 발행이 0건입니다. 스킵 ${skipped_count}건 / 실패 ${failure_count}건 — 후보 소진 또는 발행 파이프라인 점검 필요."
             exit 1
           fi
 
           if [ "$failure_count" -gt 0 ]; then
-            echo "::warning::일부 글 발행 실패: 성공 ${success_count}건, 실패 ${failure_count}건"
+            echo "::warning::일부 글 발행 실패: 성공 ${success_count}건, 스킵 ${skipped_count}건, 실패 ${failure_count}건"
           fi
 
-          echo "== 블로그 발행 완료: 성공 ${success_count}건 / 실패 ${failure_count}건 =="
+          echo "== 블로그 발행 완료: 성공 ${success_count}건 / 스킵 ${skipped_count}건 / 실패 ${failure_count}건 =="
