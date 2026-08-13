@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildInstagramCaption,
   getLinkInBioText,
+  resolveInstagramCommentKeyword,
 } from "@/lib/instagram/caption";
 
 describe("buildInstagramCaption", () => {
@@ -30,8 +31,15 @@ describe("buildInstagramCaption", () => {
 
   it("정책 정보 안전 체크리스트와 변동 가능성 안내 포함", () => {
     const caption = buildInstagramCaption(baseInput);
-    expect(caption).toContain("대상·소득 기준·신청 기간·제출 서류");
+    expect(caption).toContain("저장 포인트: 대상·기간·신청처");
+    expect(caption).toContain("공유 포인트: 같은 지역·업종 지인");
     expect(caption).toContain("지역·소득·마감일에 따라 달라질 수");
+  });
+
+  it("카테고리 기반 댓글 키워드를 포함해 댓글 CTA를 명확히 한다", () => {
+    const caption = buildInstagramCaption(baseInput);
+    expect(caption).toContain("💬 댓글 키워드: 청년지원");
+    expect(resolveInstagramCommentKeyword(baseInput)).toBe("청년지원");
   });
 
   it("카테고리별 해시태그 포함", () => {

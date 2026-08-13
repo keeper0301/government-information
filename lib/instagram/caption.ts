@@ -50,10 +50,42 @@ import {
   sanitizeInstagramPolicyTitle,
 } from "./policy-copy";
 
+const CATEGORY_COMMENT_KEYWORDS: Record<string, string> = {
+  청년: "청년지원",
+  소상공인: "사장님지원",
+  주거: "주거지원",
+  "육아·가족": "가족지원",
+  노년: "어르신지원",
+  "학생·교육": "교육지원",
+  문화: "문화지원",
+  큐레이션: "정책정리",
+};
+
+export function resolveInstagramCommentKeyword(input: Pick<CaptionInput, "title" | "category" | "tags">): string {
+  if (input.category && CATEGORY_COMMENT_KEYWORDS[input.category]) {
+    return CATEGORY_COMMENT_KEYWORDS[input.category];
+  }
+
+  const tag = (input.tags ?? [])
+    .map((item) => item.replace(/^#/, "").replace(/\s+/g, ""))
+    .find((item) => item.length >= 2 && item.length <= 8);
+  if (tag) return tag;
+
+  const titleKeyword = sanitizeInstagramPolicyTitle(input.title)
+    .replace(/20\d{2}년?/g, " ")
+    .replace(/[0-9]+(?:만|천|백)?원?/g, " ")
+    .split(/\s+/)
+    .map((item) => item.replace(/[^가-힣A-Za-z]/g, ""))
+    .find((item) => item.length >= 2 && item.length <= 8);
+
+  return titleKeyword || "정책확인";
+}
+
 export function buildInstagramCaption(input: CaptionInput): string {
   const lines: string[] = [];
   const title = sanitizeInstagramPolicyTitle(input.title);
   const metaDescription = sanitizeInstagramPolicyDescription(input.meta_description);
+  const commentKeyword = resolveInstagramCommentKeyword(input);
 
   // 1) Hook — Instagram 발행 표면에서는 저가 클릭 유도 문구를 정책 브랜드형으로 정리한다.
   lines.push(`📌 ${title}`);
@@ -67,11 +99,11 @@ export function buildInstagramCaption(input: CaptionInput): string {
   }
 
   // 3) keepioo 안내 (인스타 캡션 link 클릭 안 되므로 "프로필 링크" 가이드)
-  lines.push("✅ 확인할 것: 대상·소득 기준·신청 기간·제출 서류");
+  lines.push("✅ 저장 포인트: 대상·기간·신청처를 다시 볼 때");
+  lines.push("↗️ 공유 포인트: 같은 지역·업종 지인에게 보내기");
   lines.push("⚠️ 실제 자격과 금액은 지역·소득·마감일에 따라 달라질 수 있어요.");
-  lines.push("👉 자세한 자격·금액·신청 방법은 프로필 링크 (keepioo.com) 에서 확인하세요!");
-  lines.push(`👉 keepioo에서 "${title.slice(0, 28)}" 검색`);
-  lines.push("👉 1분 자격 진단으로 사장님이 받을 수 있는 정책을 즉시 확인 →");
+  lines.push(`💬 댓글 키워드: ${commentKeyword}`);
+  lines.push(`프로필 링크 keepioo.com · keepioo에서 "${title.slice(0, 28)}" 검색`);
   lines.push("");
 
   // 4) 해시태그 — 카테고리 기반 + 공통 + 사용자 tags
