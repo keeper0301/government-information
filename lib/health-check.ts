@@ -108,6 +108,14 @@ export type HealthSignals = {
    */
   loanInflow24h: number;
   /**
+   * 최근 24h loan 전용 collector 가 실제로 읽어온 원본 item 수.
+   * loan_programs.created_at 신규 0이어도 source_fetch_log 가 fresh + count>0이면
+   * collector/cron 노쇼가 아니라 "신규 loan 없음 또는 기존 row refresh"로 본다.
+   */
+  loanCollectorItems24h: number;
+  /** 최근 loan 전용 collector 실행 시간차(hours). 흔적 없으면 999. */
+  loanCollectorLastRunHours: number;
+  /**
    * loan_programs 마지막 created_at 시간차 (hours, source_code IS NOT NULL).
    * 48h+ = loan 수집 cron 사고 (collector + press-ingest 양쪽 path 모두 노쇼).
    * 흔적 없으면 999 (반드시 alert).
@@ -330,6 +338,15 @@ const RATE_LIMIT_ABUSE_FLOOR = Number(process.env.RATE_LIMIT_ABUSE_FLOOR ?? "180
 const LOAN_INFLOW_ZERO_HOURS = Number(
   process.env.LOAN_INFLOW_ZERO_ALERT_HOURS ?? "48",
 );
+const LOAN_COLLECTOR_SOURCES = [
+  "mss",
+  "semas-policy-fund",
+  "koreg-haedream",
+  "sbiz24",
+  "smes",
+  "fsc",
+  "kinfa",
+] as const;
 // 2026-05-14 추가 — 네이버 publish 실패율 임계 (codex 권장 spec).
 // 5/13 사고: 24h 1,734건 시도 중 1,734건 fail (성공률 0.06%) — Vercel Playwright IP 차단 +
 // legacy runner 잔존 가동 패턴. cookies 정상이라 cookies_expiring 임계로 못 잡음.
@@ -584,7 +601,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   //   manual_program_create (사장님 admin/manual) 는 빈도 거의 0 + manual 도 0 이면 사고
   //   진단에 도움 → 모든 INSERT 합산. source_code IS NOT NULL (collector·press-ingest)
   //   가드만 유지.
-  const [welfNew, loanNew, lastLoan] = await Promise.all([
+  const [welfNew, loanNew, lastLoan, loanCollectorLogs] = await Promise.all([
     sb
       .from("welfare_programs")
       .select("*", { count: "exact", head: true })
@@ -603,6 +620,10 @@ export async function getHealthSignals(): Promise<HealthSignals> {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    sb
+      .from("source_fetch_log")
+      .select("source_code,last_fetched_at,last_collected_count,last_error")
+      .in("source_code", [...LOAN_COLLECTOR_SOURCES]),
   ]);
   const welfareInflow24h = welfNew.count ?? 0;
   const loanInflow24h = loanNew.count ?? 0;
@@ -612,6 +633,27 @@ export async function getHealthSignals(): Promise<HealthSignals> {
         (Date.now() - new Date(lastLoan.data.created_at).getTime()) / 3600000,
       )
     : 999;
+  const freshLoanCollectorLogs = (loanCollectorLogs.data ?? []).filter((row) => {
+    if (!row.last_fetched_at || row.last_error) return false;
+    const hours = Math.round(
+      (Date.now() - new Date(row.last_fetched_at).getTime()) / 3600000,
+    );
+    return hours < COLLECT_NO_SHOW_HOURS;
+  });
+  const loanCollectorItems24h = freshLoanCollectorLogs.reduce(
+    (sum, row) => sum + Math.max(0, Number(row.last_collected_count ?? 0)),
+    0,
+  );
+  const loanCollectorLastRunHours = (loanCollectorLogs.data ?? []).reduce(
+    (min, row) => {
+      if (!row.last_fetched_at || row.last_error) return min;
+      const hours = Math.round(
+        (Date.now() - new Date(row.last_fetched_at).getTime()) / 3600000,
+      );
+      return Math.min(min, hours);
+    },
+    999,
+  );
 
   // 2026-05-14 — 네이버 publish 24h 통계 + eligible pending (codex 권장 spec).
   // 발행 가능한 큐가 있는데 시도가 거의 다 fail = 진짜 사고. 셋 다 충족 시만 발화.
@@ -759,6 +801,8 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     policyInflow24h,
     welfareInflow24h,
     loanInflow24h,
+    loanCollectorItems24h,
+    loanCollectorLastRunHours,
     loanLastInflowHours,
     naverPublishAttempts24h,
     naverPublishFails24h,
@@ -1037,6 +1081,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
   if (
     !isWeekend &&
     s.welfareInflow24h >= 1 &&
+    s.loanCollectorItems24h === 0 &&
     s.loanLastInflowHours >= LOAN_INFLOW_ZERO_HOURS
   ) {
     alerts.push({

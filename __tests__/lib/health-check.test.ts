@@ -32,6 +32,8 @@ const BASE_SIGNALS: HealthSignals = {
   // 2026-05-14 — welfare/loan 분리 baseline (정상, alert X).
   welfareInflow24h: 3,
   loanInflow24h: 2,
+  loanCollectorItems24h: 10,
+  loanCollectorLastRunHours: 1,
   // 2026-05-14 — loan 마지막 inflow 1h 전 (정상, alert X). 48h+ 케이스 별도 테스트.
   loanLastInflowHours: 1,
   // 2026-05-14 — 네이버 publish baseline (정상, alert X). 사고 케이스 별도 테스트.
@@ -693,6 +695,8 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
         ...ACTIVE,
         welfareInflow24h: 7, // 정상
         loanInflow24h: 0,
+        loanCollectorItems24h: 0,
+        loanCollectorLastRunHours: 999,
         loanLastInflowHours: 48, // boundary 도달
         // policyInflow24h 는 합산 7 — policy_inflow_zero 안 발화
         policyInflow24h: 7,
@@ -718,6 +722,8 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
         ...ACTIVE,
         welfareInflow24h: 7,
         loanInflow24h: 0,
+        loanCollectorItems24h: 0,
+        loanCollectorLastRunHours: 999,
         loanLastInflowHours: 47,
         policyInflow24h: 7,
       });
@@ -735,6 +741,8 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
         ...ACTIVE,
         welfareInflow24h: 0, // 함께 노쇼 — 둘 다 사고 = policy_inflow_zero
         loanInflow24h: 0,
+        loanCollectorItems24h: 0,
+        loanCollectorLastRunHours: 999,
         loanLastInflowHours: 100,
         policyInflow24h: 0,
       });
@@ -755,6 +763,8 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
         ...ACTIVE,
         welfareInflow24h: 7,
         loanInflow24h: 0,
+        loanCollectorItems24h: 0,
+        loanCollectorLastRunHours: 999,
         loanLastInflowHours: 48,
         policyInflow24h: 7,
       });
@@ -772,6 +782,8 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
         ...ACTIVE,
         welfareInflow24h: 1,
         loanInflow24h: 0,
+        loanCollectorItems24h: 0,
+        loanCollectorLastRunHours: 999,
         loanLastInflowHours: 48,
         policyInflow24h: 1,
       });
@@ -789,6 +801,8 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
         ...ACTIVE,
         welfareInflow24h: 5,
         loanInflow24h: 0,
+        loanCollectorItems24h: 0,
+        loanCollectorLastRunHours: 999,
         loanLastInflowHours: 999,
         policyInflow24h: 5,
       });
@@ -797,6 +811,25 @@ describe("checkThresholds — 2026-05-14: loan_inflow_zero (단독 노쇼)", () 
       vi.useRealTimers();
     }
   });
+  it("loan 신규 row 는 0이어도 loan collector 가 fresh item 을 읽었으면 cron 노쇼로 보지 않음", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(KST_WEDNESDAY);
+    try {
+      const alerts = checkThresholds({
+        ...ACTIVE,
+        welfareInflow24h: 11,
+        loanInflow24h: 0,
+        loanCollectorItems24h: 8,
+        loanCollectorLastRunHours: 0,
+        loanLastInflowHours: 119,
+        policyInflow24h: 11,
+      });
+      expect(alerts.find((a) => a.key === "loan_inflow_zero")).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
 });
 
 describe("checkThresholds — 2026-05-14: naver_publish_failure (codex spec)", () => {
