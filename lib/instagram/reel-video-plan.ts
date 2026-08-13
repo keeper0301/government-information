@@ -35,6 +35,12 @@ const INFO_KEYWORDS = [
   "마감",
 ];
 
+const FALLBACK_FACTS = [
+  "대상 조건은 지역·나이·소득 기준을 먼저 확인하세요.",
+  "지원 금액과 기간은 공고마다 달라 신청 전 확인이 필요합니다.",
+  "신청은 공식 누리집이나 담당 기관 안내를 기준으로 확인하세요.",
+];
+
 export function stripHtml(input: string): string {
   return input
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -80,16 +86,12 @@ function pickBullets(post: ReelVideoPostInput, count: number): string[] {
     if (deduped.length >= count) break;
   }
   while (deduped.length < count) {
-    deduped.push([
-      "대상·신청 기간·제출 서류를 먼저 확인하세요.",
-      "지역과 소득 조건에 따라 실제 지원 내용이 달라질 수 있어요.",
-      "자세한 신청 방법은 keepioo 상세 글에서 확인하세요.",
-    ][deduped.length]);
+    deduped.push(FALLBACK_FACTS[deduped.length]);
   }
   return deduped;
 }
 
-function bodyLine(input: string): string {
+function conciseFact(input: string, max = 62): string {
   const cleaned = stripHtml(input)
     .replace(/해야 합니다\.?/g, "확인")
     .replace(/확인해야 함니다\.?/g, "확인")
@@ -98,10 +100,15 @@ function bodyLine(input: string): string {
     .replace(/제공합니다\.?/g, "지원")
     .replace(/\s+/g, " ")
     .trim();
-  if (/대상|조건|자격/.test(cleaned)) return "대상 조건부터 확인";
-  if (/기간|마감|신청/.test(cleaned)) return "신청 기간부터 확인";
-  if (/서류|공식|신청처|문의/.test(cleaned)) return "공식 신청처 확인";
-  return cleaned.slice(0, 28);
+  return cleaned.length > max ? `${cleaned.slice(0, max - 1).trim()}…` : cleaned;
+}
+
+function findFact(bullets: string[], pattern: RegExp, fallbackIndex: number): string {
+  return bullets.find((bullet) => pattern.test(bullet)) ?? bullets[fallbackIndex] ?? FALLBACK_FACTS[fallbackIndex];
+}
+
+function labeledFact(label: string, fact: string): string {
+  return `${label}\n${conciseFact(fact)}`;
 }
 
 function clampTitle(title: string, max = 74): string {
@@ -144,6 +151,9 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
   const category = post.category ?? "정책정보";
   const title = clampTitle(post.title);
   const readableCoverTitle = makeReadableCoverTitle(post.title, category);
+  const targetFact = findFact(bullets, /대상|조건|자격|소득|청년|소상공|가구|연령/, 0);
+  const benefitFact = findFact(bullets, /지원|금액|월세|대출|융자|장난감|교육|상담|혜택/, 1);
+  const applyFact = findFact(bullets, /신청|기간|마감|서류|문의|공식|누리집|접수/, 2);
   return {
     durationSeconds: 15,
     slides: [
@@ -151,27 +161,27 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         eyebrow: `${category} · keepioo`,
         kicker: title,
         title: readableCoverTitle,
-        body: "놓치기 쉬운 정부지원 정보\n15초로 핵심만 확인하세요",
+        body: `저장 포인트\n${conciseFact(benefitFact, 48)}`,
       },
       {
         eyebrow: "",
-        title: "대상부터 확인",
-        body: bodyLine(bullets[0]),
+        title: "누가 해당?",
+        body: labeledFact("대상", targetFact),
       },
       {
         eyebrow: "",
-        title: "기간을 확인",
-        body: bodyLine(bullets[1]),
+        title: "뭘 지원?",
+        body: labeledFact("지원", benefitFact),
       },
       {
         eyebrow: "",
-        title: "서류를 확인",
-        body: bodyLine(bullets[2]),
+        title: "어디서 신청?",
+        body: labeledFact("신청", applyFact),
       },
       {
         eyebrow: "마지막",
-        title: "상세 글에서 확인",
-        body: `프로필 링크에서\n“${clampTitle(post.title, 24)}” 검색`,
+        title: "저장하고 확인",
+        body: `자격·마감은 바뀔 수 있어요\nkeepioo에서 “${clampTitle(post.title, 22)}” 검색`,
       },
     ],
   };

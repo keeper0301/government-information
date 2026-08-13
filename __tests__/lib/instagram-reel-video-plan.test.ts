@@ -21,6 +21,14 @@ describe("reel-video-plan", () => {
     expect(plan.slides[0].title).toContain("청년");
     expect(plan.slides[0].title).toContain("월세 지원");
     expect(plan.slides[0].kicker).toContain("2026년 청년 월세");
+    expect(plan.slides[0].body).toContain("저장 포인트");
+    expect(plan.slides[1]).toMatchObject({ title: "누가 해당?" });
+    expect(plan.slides[1].body).toContain("대상\n");
+    expect(plan.slides[2]).toMatchObject({ title: "뭘 지원?" });
+    expect(plan.slides[2].body).toContain("지원\n");
+    expect(plan.slides[3]).toMatchObject({ title: "어디서 신청?" });
+    expect(plan.slides[3].body).toContain("신청\n");
     expect(plan.slides.at(-1)?.eyebrow).toContain("마지막");
+    expect(plan.slides.at(-1)?.title).toBe("저장하고 확인");
   });
 });

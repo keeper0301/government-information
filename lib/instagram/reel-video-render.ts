@@ -96,28 +96,33 @@ function frameChrome(index: number, category: string, accent: string, children: 
 
 function renderFrameElement(slide: ReelVideoSlide, index: number, category: string, accent: string, hookLabel: string): ReactElement {
   const brandColor = categoryColorOnWhite(accent);
+  const bodyLines = slide.body.split("\n").filter(Boolean);
   if (index === 0) {
     return frameChrome(index, category, accent,
-      div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 660 }, [
-        div({ width: 78, height: 6, background: accent, borderRadius: 99, marginBottom: 44 }),
-        div({ display: "flex", flexDirection: "column", fontSize: 78, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28", marginBottom: 38 }, [
-          div({}, "신청 전"),
-          div({}, "확인할 순서"),
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 430 }, [
+        div({ display: "flex", border: `3px solid ${accent}`, background: "#f8fbff", color: brandColor, borderRadius: 30, padding: "24px 30px", fontSize: 34, fontWeight: 700, lineHeight: 1.25, marginBottom: 46 }, hookLabel),
+        div({ display: "flex", flexDirection: "column", fontSize: 66, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28", marginBottom: 30 }, titleTokens(slide.title)),
+        div({ display: "flex", flexDirection: "column", background: "#f3f4f6", borderRadius: 34, padding: "34px 36px", gap: 14, maxWidth: 820 }, [
+          div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, bodyLines[0] ?? "저장 포인트"),
+          div({ display: "flex", color: "#374151", fontSize: 36, fontWeight: 500, lineHeight: 1.42 }, bodyLines[1] ?? "지원 내용을 먼저 확인하세요."),
         ]),
-        div({ display: "flex", color: "#4b5563", fontSize: 32, fontWeight: 500, lineHeight: 1.5, maxWidth: 760 }, "공고는 혜택보다 확인 순서부터 보면 됩니다."),
-        div({ display: "flex", color: brandColor, fontSize: 24, fontWeight: 500, lineHeight: 1.45, marginTop: 44, maxWidth: 740 }, hookLabel),
       ]),
     );
   }
 
+  const label = bodyLines[0] ?? "핵심";
+  const fact = bodyLines.slice(1).join(" ") || "공고 기준으로 확인하세요.";
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 585 }, [
-      div({ width: 78, height: 6, background: accent, borderRadius: 99, marginBottom: 42 }),
-      div({ display: "flex", flexDirection: "row", alignItems: "flex-start", width: "100%", marginBottom: 34 }, [
-        div({ display: "flex", color: brandColor, fontSize: 74, fontWeight: 700, lineHeight: 1, flex: "0 0 auto", marginRight: 24 }, `${index}.`),
-        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 70, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28" }, titleTokens(slide.title)),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 480 }, [
+      div({ display: "flex", flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 34 }, [
+        div({ display: "flex", color: brandColor, fontSize: 58, fontWeight: 700, lineHeight: 1, flex: "0 0 auto", marginRight: 18 }, `${index}.`),
+        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 56, fontWeight: 700, lineHeight: 1.16, letterSpacing: "-0.02em", color: "#191F28" }, titleTokens(slide.title)),
       ]),
-      div({ display: "flex", color: "#4b5563", fontSize: 40, fontWeight: 500, lineHeight: 1.35, maxWidth: 780 }, slide.body.split("\n").filter(Boolean)[0] ?? "공고 기준으로 확인"),
+      div({ display: "flex", flexDirection: "column", background: "#f3f4f6", borderRadius: 34, padding: "36px 38px", gap: 18, maxWidth: 840 }, [
+        div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, label),
+        div({ display: "flex", color: "#374151", fontSize: 38, fontWeight: 500, lineHeight: 1.42 }, fact),
+      ]),
+      div({ display: "flex", color: "#6b7280", fontSize: 26, fontWeight: 500, lineHeight: 1.35, marginTop: 34 }, "자격·마감은 공고 기준으로 다시 확인"),
     ]),
   );
 }
