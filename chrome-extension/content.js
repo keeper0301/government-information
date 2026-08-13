@@ -640,13 +640,16 @@ function isLikelyPublishConfirmButton(el) {
   const text = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
   const dataClickArea = String(el.getAttribute?.("data-click-area") || "");
   const className = String(el.className || "");
+  const role = String(el.getAttribute?.("role") || "");
+  const modalLike = Boolean(el.closest?.('[class*="layer"], [class*="Layer"], [class*="modal"], [class*="Modal"], [role="dialog"]'));
   // The top-right first-step button is also `발행` with `tpb.publish`.
   // It is not the modal confirm button; accepting it here makes the live path
   // click the first-step button repeatedly and then fail URL capture.
   if (dataClickArea === "tpb.publish") return false;
   if (dataClickArea === "tpb*i.publish") return true;
-  if (dataClickArea.includes("publish") && /게시|확인|완료/.test(text)) return true;
-  if (/게시|확인|완료/.test(text) && /publish|confirm|button|btn/i.test(`${dataClickArea} ${className}`)) return true;
+  const confirmText = /발행|게시|확인|완료/.test(text);
+  if (dataClickArea.includes("publish") && confirmText) return true;
+  if (confirmText && modalLike && /publish|confirm|button|btn|se-|Button/i.test(`${dataClickArea} ${className} ${role}`)) return true;
   return false;
 }
 

@@ -43,6 +43,12 @@ describe("Naver content publish selectors", () => {
     );
   });
 
+  it("accepts newer modal confirm buttons that only expose 발행 text inside a modal-like root", () => {
+    expect(contentScript).toContain("const confirmText = /발행|게시|확인|완료/.test(text);");
+    expect(contentScript).toContain("confirmText && modalLike");
+    expect(contentScript).toContain('[class*=\"layer\"], [class*=\"Layer\"], [class*=\"modal\"], [class*=\"Modal\"], [role=\"dialog\"]');
+  });
+
   it("opens the first publish layer with one DOM click before falling back", () => {
     expect(contentScript).toContain("async function openPublishConfirmLayer(mainPublish, mfDoc, debug)");
     expect(contentScript).toContain('debug.main_publish = "dom_click_once"');
