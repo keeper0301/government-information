@@ -26,9 +26,9 @@ describe("reel-video-plan", () => {
     expect(plan.slides[1].body).toContain("대상\n");
     expect(plan.slides[2]).toMatchObject({ title: "뭘 지원?" });
     expect(plan.slides[2].body).toContain("지원\n");
-    expect(plan.slides[3]).toMatchObject({ title: "어디서 신청?" });
+    expect(plan.slides[3]).toMatchObject({ title: "신청·마감은?" });
     expect(plan.slides[3].body).toContain("신청\n");
     expect(plan.slides.at(-1)?.eyebrow).toContain("마지막");
-    expect(plan.slides.at(-1)?.title).toBe("저장하고 확인");
+    expect(plan.slides.at(-1)?.title).toBe("주의사항");
   });
 });

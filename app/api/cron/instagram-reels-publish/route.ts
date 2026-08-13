@@ -12,6 +12,7 @@ import { publishReel } from "@/lib/instagram/reels";
 import { logAdminAction } from "@/lib/admin-actions";
 import { assessExternalPublishQuality } from "@/lib/blog/quality-gate";
 import { authorizeCronRequest } from "@/lib/cron-auth";
+import { scoreReelCandidate } from "@/lib/instagram/reel-quality";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -166,9 +167,10 @@ export async function GET(request: Request) {
   const assessed = posts.map((candidate) => ({
     candidate,
     assessment: assessExternalPublishQuality(candidate),
+    reelQuality: scoreReelCandidate(candidate),
   }));
   const approved = assessed.find(
-    (item) => item.assessment.approved && publicVideoUrlOk(item.candidate.instagram_reel_video_url),
+    (item) => item.assessment.approved && item.reelQuality.approved && publicVideoUrlOk(item.candidate.instagram_reel_video_url),
   );
   if (!approved) {
     const first = assessed[0];
@@ -176,18 +178,18 @@ export async function GET(request: Request) {
     if (dryRun) {
       return dryResponse(firstInvalidVideo ? "no_video_pending" : "quality_gate_rejected", {
         slug: first.candidate.slug,
-        blockedByQuality: assessed.filter((item) => !item.assessment.approved).length,
+        blockedByQuality: assessed.filter((item) => !item.assessment.approved || !item.reelQuality.approved).length,
         checkedCandidates: assessed.length,
         reason: firstInvalidVideo ? `video_url_must_be_https_and_${REEL_RENDER_VERSION}` : undefined,
-        reasons: first.assessment.reasons,
-        metrics: first.assessment.metrics,
+        reasons: [...first.assessment.reasons, ...first.reelQuality.reasons],
+        metrics: { ...first.assessment.metrics, reel: first.reelQuality.metrics, reelScore: first.reelQuality.score },
       });
     }
     await safeLogSkip(firstInvalidVideo ? "invalid_video_url" : "quality_gate_rejected", {
       slug: first.candidate.slug,
-      blockedByQuality: assessed.filter((item) => !item.assessment.approved).length,
+      blockedByQuality: assessed.filter((item) => !item.assessment.approved || !item.reelQuality.approved).length,
       checkedCandidates: assessed.length,
-      reasons: first.assessment.reasons,
+      reasons: [...first.assessment.reasons, ...first.reelQuality.reasons],
     });
     return NextResponse.json({
       status: firstInvalidVideo ? "no_video_pending" : "quality_gate_rejected",

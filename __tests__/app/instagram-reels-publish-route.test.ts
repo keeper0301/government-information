@@ -197,6 +197,31 @@ describe("instagram-reels-publish dry-run", () => {
     expect(mocks.assessExternalPublishQuality).toHaveBeenCalledTimes(2);
   });
 
+  it("blocks narrow prepared videos before Graph publish", async () => {
+    mocks.candidates = [
+      {
+        ...mocks.candidate!,
+        id: "post-narrow",
+        slug: "narrow-slug",
+        title: "2026년 양양군 무연고자 귀향 지원 안내",
+        category: "복지",
+        meta_description: "귀향 지원 사업 안내입니다.",
+        content: "무연고자와 행려자의 귀향을 지원합니다. 자세한 내용은 담당 기관에 문의하세요.",
+      },
+    ];
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "quality_gate_rejected",
+      slug: "narrow-slug",
+      reasons: expect.arrayContaining(["reel_narrow_or_sensitive_topic"]),
+    });
+    expect(mocks.publishReel).not.toHaveBeenCalled();
+  });
+
   it("returns quality gate reasons in dry-run", async () => {
     mocks.assessExternalPublishQuality.mockReturnValue({
       approved: false,

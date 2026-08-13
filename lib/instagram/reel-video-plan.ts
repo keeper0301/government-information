@@ -175,13 +175,13 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
       },
       {
         eyebrow: "",
-        title: "어디서 신청?",
+        title: "신청·마감은?",
         body: labeledFact("신청", applyFact),
       },
       {
         eyebrow: "마지막",
-        title: "저장하고 확인",
-        body: `자격·마감은 바뀔 수 있어요\nkeepioo에서 “${clampTitle(post.title, 22)}” 검색`,
+        title: "주의사항",
+        body: `자격·마감은 바뀔 수 있어요\n저장 후 keepioo에서 “${clampTitle(post.title, 20)}” 검색`,
       },
     ],
   };

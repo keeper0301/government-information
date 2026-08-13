@@ -11,6 +11,7 @@ import { authorizeCronRequest } from "@/lib/cron-auth";
 import { logAdminAction } from "@/lib/admin-actions";
 import { assessExternalPublishQuality } from "@/lib/blog/quality-gate";
 import { renderReelVideo } from "@/lib/instagram/reel-video-render";
+import { scoreReelCandidate } from "@/lib/instagram/reel-quality";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -140,22 +141,25 @@ export async function GET(request: Request) {
   const assessed = staleOrMissingPosts.map((candidate) => ({
     candidate,
     assessment: assessExternalPublishQuality(candidate),
+    reelQuality: scoreReelCandidate(candidate),
   }));
-  const approved = assessed.find((item) => item.assessment.approved);
+  const approved = assessed
+    .filter((item) => item.assessment.approved && item.reelQuality.approved)
+    .sort((a, b) => b.reelQuality.score - a.reelQuality.score)[0];
   if (!approved) {
     const first = assessed[0];
     if (dryRun) {
       return dryResponse("quality_gate_rejected", {
         slug: first.candidate.slug,
         blockedByQuality: assessed.length,
-        reasons: first.assessment.reasons,
-        metrics: first.assessment.metrics,
+        reasons: [...first.assessment.reasons, ...first.reelQuality.reasons],
+        metrics: { ...first.assessment.metrics, reel: first.reelQuality.metrics, reelScore: first.reelQuality.score },
       });
     }
     await safeLogSkip("quality_gate_rejected", {
       slug: first.candidate.slug,
       blockedByQuality: assessed.length,
-      reasons: first.assessment.reasons,
+      reasons: [...first.assessment.reasons, ...first.reelQuality.reasons],
     });
     return NextResponse.json({ status: "quality_gate_rejected", slug: first.candidate.slug, blockedByQuality: assessed.length });
   }
