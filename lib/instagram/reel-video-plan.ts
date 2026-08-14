@@ -254,18 +254,18 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
       },
       {
         eyebrow: "",
-        title: "누가 받나",
-        body: labeledFact("대상", facts.target, facts.targetSecondary),
+        title: "대상",
+        body: labeledFact("조건", facts.target, facts.targetSecondary),
       },
       {
         eyebrow: "",
-        title: "무엇을 받나",
-        body: labeledFact("지원", facts.benefit, facts.benefitSecondary),
+        title: "지원",
+        body: labeledFact("혜택", facts.benefit, facts.benefitSecondary),
       },
       {
         eyebrow: "",
-        title: "어떻게 신청하나",
-        body: labeledFact("신청", facts.apply, facts.applySecondary),
+        title: "신청",
+        body: labeledFact("방법", facts.apply, facts.applySecondary),
       },
       {
         eyebrow: "마지막",
