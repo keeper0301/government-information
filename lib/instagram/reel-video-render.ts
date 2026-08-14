@@ -111,16 +111,17 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   }
 
   const label = bodyLines[0] ?? "핵심";
-  const fact = bodyLines.slice(1).join(" ") || "공고 기준으로 확인하세요.";
+  const factLines = bodyLines.slice(1);
+  const factBlocks = (factLines.length > 0 ? factLines : ["공고 기준으로 확인하세요."]).slice(0, 3);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 480 }, [
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 430 }, [
       div({ display: "flex", flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 34 }, [
         div({ display: "flex", color: brandColor, fontSize: 58, fontWeight: 700, lineHeight: 1, flex: "0 0 auto", marginRight: 18 }, `${index}.`),
         div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 56, fontWeight: 700, lineHeight: 1.16, letterSpacing: "-0.02em", color: "#191F28" }, titleTokens(slide.title)),
       ]),
       div({ display: "flex", flexDirection: "column", background: "#f3f4f6", borderRadius: 34, padding: "36px 38px", gap: 18, maxWidth: 840 }, [
         div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, label),
-        div({ display: "flex", color: "#374151", fontSize: 38, fontWeight: 500, lineHeight: 1.42 }, fact),
+        ...factBlocks.map((fact, i) => div({ display: "flex", color: "#374151", fontSize: i === 0 ? 38 : 32, fontWeight: 500, lineHeight: 1.38 }, fact)),
       ]),
       div({ display: "flex", color: "#6b7280", fontSize: 26, fontWeight: 500, lineHeight: 1.35, marginTop: 34 }, "자격·마감은 공고 기준으로 다시 확인"),
     ]),
