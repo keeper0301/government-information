@@ -144,6 +144,9 @@ function conciseFact(input: string, _max = 54): string {
     .replace(/가능합니다\.?/g, "가능")
     .replace(/제공합니다\.?/g, "지원")
     .replace(/등의 기준이 적용될 수 있습니다\.?/g, "등 기준 적용")
+    .replace(/에 실제 거주하는 /g, " 실제 거주 ")
+    .replace(/를 대상으로 하며 /g, " · ")
+    .replace(/기준을 적용할 수 있습니다\.?/g, "기준 적용")
     .replace(/기준이 적용될 수 있습니다\.?/g, "기준 적용")
     .replace(/차등 적용될 수 있습니다\.?/g, "차등 적용")
     .replace(/연중 상시 접수하거나 특정 기간에만 접수하는 경우가 있습니다\.?/g, "연중 상시 또는 특정 기간 접수")
@@ -162,7 +165,7 @@ function twoLineFact(primary: string, secondary?: string | null): string {
   return multiFact([primary, secondary]);
 }
 
-function multiFact(items: Array<string | null | undefined>, limit = 3): string {
+function multiFact(items: Array<string | null | undefined>, limit = 2): string {
   const facts: string[] = [];
   for (const item of items) {
     if (!item) continue;
@@ -293,7 +296,7 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
   const readableCoverTitle = makeReadableCoverTitle(post.title, category);
   const facts = buildArticleFacts(post);
   return {
-    durationSeconds: 18,
+    durationSeconds: 28,
     slides: [
       {
         eyebrow: `${category} · keepioo`,
@@ -302,19 +305,29 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         body: `놓치기 쉬운 조건은 저장\n자격\n금액\n신청`,
       },
       {
-        eyebrow: "",
-        title: "자격",
-        body: multiFact([facts.target, facts.targetSecondary, facts.targetExtra]),
+        eyebrow: "자격 1",
+        title: "누가 받나",
+        body: multiFact([facts.targetSecondary || facts.target], 1),
       },
       {
-        eyebrow: "",
-        title: "금액",
-        body: multiFact([facts.benefit, facts.benefitSecondary, facts.benefitExtra]),
+        eyebrow: "자격 2",
+        title: "기준",
+        body: multiFact([facts.targetExtra, facts.target !== facts.targetSecondary ? facts.target : null], 2),
       },
       {
-        eyebrow: "",
-        title: "신청",
-        body: multiFact([facts.apply, facts.applySecondary, facts.applyExtra]),
+        eyebrow: "지원 1",
+        title: "무엇을 받나",
+        body: multiFact([facts.benefit], 1),
+      },
+      {
+        eyebrow: "지원 2",
+        title: "금액 기준",
+        body: multiFact([facts.benefitSecondary, facts.benefitExtra], 2),
+      },
+      {
+        eyebrow: "신청",
+        title: "어떻게 하나",
+        body: multiFact([facts.apply, facts.applySecondary, facts.applyExtra], 2),
       },
       {
         eyebrow: "마지막",

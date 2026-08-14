@@ -6,7 +6,7 @@ describe("reel-video-plan", () => {
     expect(stripHtml("<p>대상&nbsp;&amp;&nbsp;신청</p><script>x</script>")).toBe("대상 & 신청");
   });
 
-  it("builds a content-first five-slide plan from blog post text", () => {
+  it("builds a readable split-frame plan from blog post text", () => {
     const plan = buildReelVideoPlan({
       slug: "slug-1",
       title: "2026년 가평군 신혼부부 주거자금 대출이자 지원: 최대 얼마까지 받을 수 있나요?",
@@ -26,20 +26,21 @@ describe("reel-video-plan", () => {
 `,
     });
 
-    expect(plan.durationSeconds).toBe(18);
-    expect(plan.slides).toHaveLength(5);
+    expect(plan.durationSeconds).toBe(28);
+    expect(plan.slides).toHaveLength(7);
     expect(plan.slides[0].eyebrow).toContain("주거");
     expect(plan.slides[0].title).toContain("가평군");
     expect(plan.slides[0].title).toContain("신혼부부");
     expect(plan.slides[0].body).toContain("놓치기 쉬운 조건은 저장");
     expect(plan.slides[0].body).toContain("자격\n금액\n신청");
-    expect(plan.slides[1]).toMatchObject({ title: "자격" });
-    expect(plan.slides[1].body).toContain("가평군 거주 일정 요건을 갖춘 신혼부부");
-    expect(plan.slides[1].body).toContain("혼인신고일로부터 7년 이내");
-    expect(plan.slides[2]).toMatchObject({ title: "금액" });
-    expect(plan.slides[2].body).toContain("주거자금 대출 이자 현금 지원");
-    expect(plan.slides[3]).toMatchObject({ title: "신청" });
-    expect(plan.slides[3].body).toContain("방문 신청");
+    expect(plan.slides[1]).toMatchObject({ title: "누가 받나" });
+    expect(plan.slides[1].body).toContain("가평군 실제 거주 신혼부부");
+    expect(plan.slides[2]).toMatchObject({ title: "기준" });
+    expect(plan.slides[2].body).toContain("경기도 가평군");
+    expect(plan.slides[3]).toMatchObject({ title: "무엇을 받나" });
+    expect(plan.slides[3].body).toContain("주거자금 대출 이자 현금 지원");
+    expect(plan.slides[5]).toMatchObject({ title: "어떻게 하나" });
+    expect(plan.slides[5].body).toContain("방문 신청");
     expect(plan.slides.at(-1)?.title).toBe("저장 리스트");
   });
 });

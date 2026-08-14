@@ -36,7 +36,7 @@ export function scoreReelCandidate(post: ReelVideoPostInput): ReelQualityResult 
   const plan = buildReelVideoPlan(post);
   const slideText = plan.slides.map((slide) => `${slide.title}\n${slide.body}`).join("\n");
   const detailFactLines = plan.slides
-    .slice(1, 4)
+    .slice(1, -1)
     .flatMap((slide) => slide.body.split("\n"))
     .map((line) => stripHtml(line).trim())
     .filter((line) => line.length >= 6 && !FALLBACK_RE.test(line));
