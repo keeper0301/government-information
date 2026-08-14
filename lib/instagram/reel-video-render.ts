@@ -87,9 +87,9 @@ function frameChrome(index: number, category: string, accent: string, children: 
     },
     [
       div({ position: "absolute", left: 0, top: 0, width: 12, height: "100%", background: accent }),
-      div({ position: "absolute", left: 96, top: 160, background: accent, color: "#fff", borderRadius: 999, padding: "18px 36px", fontSize: 30, fontWeight: 700, lineHeight: 1 }, category),
+      div({ position: "absolute", left: 88, top: 120, background: accent, color: "#fff", borderRadius: 999, padding: "18px 34px", fontSize: 30, fontWeight: 700, lineHeight: 1 }, category),
       children,
-      div({ position: "absolute", left: 96, bottom: 150, fontSize: 28, fontWeight: 700, color: brandColor }, "@ keepioo · 정책알리미"),
+      div({ position: "absolute", left: 88, bottom: 108, fontSize: 28, fontWeight: 700, color: brandColor }, "@ keepioo · 정책알리미"),
     ],
   );
 }
@@ -99,12 +99,12 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   const bodyLines = slide.body.split("\n").filter(Boolean);
   if (index === 0) {
     return frameChrome(index, category, accent,
-      div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 430 }, [
-        div({ display: "flex", border: `3px solid ${accent}`, background: "#f8fbff", color: brandColor, borderRadius: 30, padding: "24px 30px", fontSize: 34, fontWeight: 700, lineHeight: 1.25, marginBottom: 46 }, hookLabel),
-        div({ display: "flex", flexDirection: "column", fontSize: 66, fontWeight: 700, lineHeight: 1.18, letterSpacing: "-0.02em", color: "#191F28", marginBottom: 30 }, titleTokens(slide.title)),
-        div({ display: "flex", flexDirection: "column", background: "#f3f4f6", borderRadius: 34, padding: "34px 36px", gap: 14, maxWidth: 820 }, [
-          div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, bodyLines[0] ?? "저장 포인트"),
-          div({ display: "flex", color: "#374151", fontSize: 36, fontWeight: 500, lineHeight: 1.42 }, bodyLines[1] ?? "지원 내용을 먼저 확인하세요."),
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 360 }, [
+        div({ display: "flex", border: `3px solid ${accent}`, background: "#f8fbff", color: brandColor, borderRadius: 999, padding: "22px 30px", fontSize: 32, fontWeight: 700, lineHeight: 1.18, marginBottom: 36 }, hookLabel),
+        div({ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.08, letterSpacing: "-0.03em", color: "#191F28", marginBottom: 36 }, titleTokens(slide.title)),
+        div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `4px solid ${accent}`, borderRadius: 34, padding: "34px 38px", gap: 12, maxWidth: 860 }, [
+          div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, bodyLines[0] ?? "핵심"),
+          div({ display: "flex", color: "#111827", fontSize: 44, fontWeight: 700, lineHeight: 1.22 }, bodyLines[1] ?? "지원 내용을 먼저 확인"),
         ]),
       ]),
     );
@@ -112,17 +112,20 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
 
   const label = bodyLines[0] ?? "핵심";
   const factLines = bodyLines.slice(1);
-  const factBlocks = (factLines.length > 0 ? factLines : ["공고 기준으로 확인하세요."]).slice(0, 3);
+  const factBlocks = (factLines.length > 0 ? factLines : ["공고 기준으로 확인"]).slice(0, 2);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 96, right: 96, top: 430 }, [
-      div({ display: "flex", flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 34 }, [
-        div({ display: "flex", color: brandColor, fontSize: 58, fontWeight: 700, lineHeight: 1, flex: "0 0 auto", marginRight: 18 }, `${index}.`),
-        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 56, fontWeight: 700, lineHeight: 1.16, letterSpacing: "-0.02em", color: "#191F28" }, titleTokens(slide.title)),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 345 }, [
+      div({ display: "flex", flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 38 }, [
+        div({ display: "flex", color: brandColor, fontSize: 64, fontWeight: 700, lineHeight: 1, flex: "0 0 auto", marginRight: 20 }, `${index}.`),
+        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 64, fontWeight: 700, lineHeight: 1.08, letterSpacing: "-0.03em", color: "#191F28" }, titleTokens(slide.title)),
       ]),
-      div({ display: "flex", flexDirection: "column", background: "#f3f4f6", borderRadius: 34, padding: "36px 38px", gap: 18, maxWidth: 840 }, [
-        div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, label),
-        ...factBlocks.map((fact, i) => div({ display: "flex", color: "#374151", fontSize: i === 0 ? 38 : 32, fontWeight: 500, lineHeight: 1.38 }, fact)),
-      ]),
+      div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginBottom: 18 }, label),
+      div({ display: "flex", flexDirection: "column", gap: 22, maxWidth: 900 },
+        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: "#ffffff", border: `3px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 34, padding: "32px 34px", gap: 18 }, [
+          div({ display: "flex", width: 18, height: 18, borderRadius: 999, background: accent, marginTop: 18, flex: "0 0 auto" }),
+          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 46 : 38, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.22, letterSpacing: "-0.015em", flex: 1 }, fact),
+        ])),
+      ),
       div({ display: "flex", color: "#6b7280", fontSize: 26, fontWeight: 500, lineHeight: 1.35, marginTop: 34 }, "자격·마감은 공고 기준으로 다시 확인"),
     ]),
   );

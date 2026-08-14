@@ -134,8 +134,9 @@ function sentenceFact(lines: string[], pattern: RegExp, avoid: RegExp | null = n
   return sentences[0] ?? null;
 }
 
-function conciseFact(input: string, max = 74): string {
+function conciseFact(input: string, max = 54): string {
   const cleaned = stripHtml(input)
+    .replace(/^(지원 대상|지원 혜택|지원 내용|신청 방법|지원 지역|대상|혜택|신청)\s+/, "")
     .replace(/확인해야\s*합니다\.?/g, "확인")
     .replace(/해야 합니다\.?/g, "확인")
     .replace(/확인해야 함니다\.?/g, "확인")
@@ -149,9 +150,9 @@ function conciseFact(input: string, max = 74): string {
 }
 
 function twoLineFact(primary: string, secondary?: string | null): string {
-  const first = conciseFact(primary, 58);
-  const second = secondary ? conciseFact(secondary, 62) : "";
-  const duplicate = second && (first.includes(second.slice(0, 24)) || second.includes(first.slice(0, 24)));
+  const first = conciseFact(primary, 46);
+  const second = secondary ? conciseFact(secondary, 48) : "";
+  const duplicate = second && (first.includes(second.slice(0, 18)) || second.includes(first.slice(0, 18)));
   return [first, second && !duplicate ? second : null].filter(Boolean).join("\n");
 }
 
@@ -248,7 +249,7 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         eyebrow: `${category} · keepioo`,
         kicker: title,
         title: readableCoverTitle,
-        body: `본문 핵심\n${conciseFact(facts.benefit, 52)}`,
+        body: `핵심\n${conciseFact(facts.benefit, 42)}`,
       },
       {
         eyebrow: "",
