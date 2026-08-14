@@ -222,7 +222,7 @@ describe("instagram-reels-render", () => {
     expect(body.videoUrl).toContain("instagram-reels/");
     expect(mocks.renderReelVideo).toHaveBeenCalledOnce();
     expect(mocks.storageUploads[0]).toMatchObject({ contentType: "video/mp4" });
-    expect(mocks.storageUploads[0].path).toMatch(/^\d{4}-\d{2}\/article-detail-v12\/\d+-post-[0-9a-f]+\.mp4$/);
+    expect(mocks.storageUploads[0].path).toMatch(/^\d{4}-\d{2}\/article-full-v13\/\d+-post-[0-9a-f]+\.mp4$/);
     expect(mocks.logAdminAction).toHaveBeenCalledWith(expect.objectContaining({ action: "instagram_reel_render_success" }));
   });
 });

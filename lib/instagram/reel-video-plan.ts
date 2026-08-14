@@ -113,8 +113,7 @@ function splitSentences(text: string): string[] {
   return text
     .split(/(?<=[.!?。！？]|다\.|요\.)\s+|[\n•·]+/)
     .map(normalizeLine)
-    .filter((s) => s.length >= 18)
-    .map((s) => (s.length > 118 ? `${s.slice(0, 115).trim()}…` : s));
+    .filter((s) => s.length >= 18);
 }
 
 function scoreSentence(sentence: string): number {
@@ -135,8 +134,8 @@ function sentenceFact(lines: string[], pattern: RegExp, avoid: RegExp | null = n
   return sentences[0] ?? null;
 }
 
-function conciseFact(input: string, max = 54): string {
-  const cleaned = stripHtml(input)
+function conciseFact(input: string, _max = 54): string {
+  return stripHtml(input)
     .replace(/^(지원 대상|지원 혜택|지원 내용|신청 방법|지원 지역|대상|혜택|신청)\s+/, "")
     .replace(/확인해야\s*합니다\.?/g, "확인")
     .replace(/해야 합니다\.?/g, "확인")
@@ -147,7 +146,6 @@ function conciseFact(input: string, max = 54): string {
     .replace(/권장됩니다\.?/g, "권장")
     .replace(/\s+/g, " ")
     .trim();
-  return cleaned.length > max ? `${cleaned.slice(0, max - 1).trim()}…` : cleaned;
 }
 
 function twoLineFact(primary: string, secondary?: string | null): string {
@@ -311,7 +309,7 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
       {
         eyebrow: "마지막",
         title: "저장 리스트",
-        body: `자격 조건\n신청 기간\n제출 서류\nkeepioo에서 “${clampTitle(post.title, 18)}” 검색`,
+        body: `자격 조건\n신청 기간\n제출 서류\nkeepioo에서 정책명 검색`,
       },
     ],
   };

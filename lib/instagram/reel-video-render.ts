@@ -132,12 +132,12 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
 
   const factBlocks = bodyLines.slice(0, 3);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 292, bottom: 178 }, [
-      div({ display: "flex", flexDirection: "column", fontSize: 82, fontWeight: 700, lineHeight: 1.02, letterSpacing: "-0.04em", color: "#191F28", marginBottom: 48 }, titleTokens(slide.title)),
-      div({ display: "flex", flexDirection: "column", gap: 16, maxWidth: 900 },
-        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: i === 0 ? "#ffffff" : "#f9fafb", border: `3px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 30, padding: "30px 34px", gap: 18 }, [
-          div({ display: "flex", width: 18, height: 18, borderRadius: 999, background: accent, marginTop: 16, flex: "0 0 auto" }),
-          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 48 : 38, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.15, letterSpacing: "-0.018em", flex: 1 }, fact),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 78, right: 78, top: 276, bottom: 166 }, [
+      div({ display: "flex", flexDirection: "column", fontSize: 72, fontWeight: 700, lineHeight: 1.02, letterSpacing: "-0.04em", color: "#191F28", marginBottom: 34 }, titleTokens(slide.title)),
+      div({ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 },
+        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: i === 0 ? "#ffffff" : "#f9fafb", border: `3px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 28, padding: "24px 28px", gap: 16 }, [
+          div({ display: "flex", width: 16, height: 16, borderRadius: 999, background: accent, marginTop: 14, flex: "0 0 auto" }),
+          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 38 : 32, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.22, letterSpacing: "-0.018em", flex: 1 }, fact),
         ])),
       ),
     ]),
