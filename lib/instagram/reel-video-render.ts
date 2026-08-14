@@ -116,8 +116,7 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   return frameChrome(index, category, accent,
     div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 345 }, [
       div({ display: "flex", flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 38 }, [
-        div({ display: "flex", color: brandColor, fontSize: 64, fontWeight: 700, lineHeight: 1, flex: "0 0 auto", marginRight: 20 }, `${index}.`),
-        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 64, fontWeight: 700, lineHeight: 1.08, letterSpacing: "-0.03em", color: "#191F28" }, titleTokens(slide.title)),
+        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 72, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.035em", color: "#191F28" }, titleTokens(slide.title)),
       ]),
       div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginBottom: 18 }, label),
       div({ display: "flex", flexDirection: "column", gap: 22, maxWidth: 900 },
