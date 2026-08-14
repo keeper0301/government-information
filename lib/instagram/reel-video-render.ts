@@ -97,7 +97,7 @@ function frameChrome(index: number, category: string, accent: string, children: 
   );
 }
 
-function renderFrameElement(slide: ReelVideoSlide, index: number, category: string, accent: string, hookLabel: string): ReactElement {
+function renderFrameElement(slide: ReelVideoSlide, index: number, totalSlides: number, category: string, accent: string, hookLabel: string): ReactElement {
   const brandColor = categoryColorOnWhite(accent);
   const bodyLines = slide.body.split("\n").filter(Boolean);
   if (index === 0) {
@@ -105,9 +105,9 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
     return frameChrome(index, category, accent,
       div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 310, bottom: 178 }, [
         div({ display: "flex", color: brandColor, fontSize: 32, fontWeight: 700, lineHeight: 1.1, marginBottom: 34 }, hookLabel),
-        div({ display: "flex", flexDirection: "column", fontSize: 82, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 44 }, titleTokens(slide.title)),
-        div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `4px solid ${accent}`, borderRadius: 36, padding: "40px 42px", gap: 8, marginBottom: 34 }, [
-          div({ display: "flex", color: "#111827", fontSize: 46, fontWeight: 700, lineHeight: 1.15 }, bodyLines[0] ?? "놓치기 쉬운 조건은 저장"),
+        div({ display: "flex", flexDirection: "column", fontSize: 88, fontWeight: 700, lineHeight: 1.02, letterSpacing: "-0.04em", color: "#191F28", marginBottom: 52 }, titleTokens(slide.title)),
+        div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `5px solid ${accent}`, borderRadius: 38, padding: "48px 46px", gap: 8, marginBottom: 42 }, [
+          div({ display: "flex", color: "#111827", fontSize: 58, fontWeight: 700, lineHeight: 1.12, letterSpacing: "-0.025em" }, bodyLines[0] ?? "조건만 빠르게 저장"),
         ]),
         div({ display: "flex", flexDirection: "row", gap: 18, marginTop: "auto" },
           chips.map((chip) => div({ display: "flex", flex: 1, justifyContent: "center", alignItems: "center", background: "#f9fafb", border: "3px solid #e5e7eb", borderRadius: 28, padding: "28px 20px", color: "#111827", fontSize: 34, fontWeight: 700, lineHeight: 1 }, chip)),
@@ -116,7 +116,7 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
     );
   }
 
-  if (index === 4) {
+  if (index === totalSlides - 1) {
     const checks = bodyLines.slice(0, 3);
     const cta = bodyLines[3] ?? "keepioo에서 정책명 검색";
     return frameChrome(index, category, accent,
@@ -132,22 +132,23 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
 
   const factBlocks = bodyLines.slice(0, 2);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 72, right: 72, top: 300, bottom: 180 }, [
-      div({ display: "flex", flexDirection: "column", fontSize: 82, fontWeight: 700, lineHeight: 1.02, letterSpacing: "-0.04em", color: "#191F28", marginBottom: 42 }, titleTokens(slide.title)),
-      div({ display: "flex", flexDirection: "column", gap: 18, maxWidth: 936 },
-        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: "#ffffff", border: `4px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 34, padding: "34px 34px", gap: 18 }, [
-          div({ display: "flex", width: 18, height: 18, borderRadius: 999, background: accent, marginTop: 19, flex: "0 0 auto" }),
-          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 50 : 42, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.22, letterSpacing: "-0.02em", flex: 1 }, fact),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 72, right: 72, top: 292, bottom: 180 }, [
+      div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1, marginBottom: 28 }, slide.eyebrow),
+      div({ display: "flex", flexDirection: "column", fontSize: 84, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.045em", color: "#191F28", marginBottom: 54 }, titleTokens(slide.title)),
+      div({ display: "flex", flexDirection: "column", gap: 26, maxWidth: 936 },
+        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: "#ffffff", border: `5px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 38, padding: "48px 44px", gap: 22 }, [
+          div({ display: "flex", width: 22, height: 22, borderRadius: 999, background: accent, marginTop: 25, flex: "0 0 auto" }),
+          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 68 : 56, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.14, letterSpacing: "-0.035em", flex: 1 }, fact),
         ])),
       ),
     ]),
   );
 }
 
-async function renderSlidePng(slide: ReelVideoSlide, index: number, dir: string, category: string, accent: string, hookLabel: string): Promise<string> {
+async function renderSlidePng(slide: ReelVideoSlide, index: number, totalSlides: number, dir: string, category: string, accent: string, hookLabel: string): Promise<string> {
   const path = join(dir, `slide-${String(index + 1).padStart(2, "0")}.png`);
   const { bold, medium } = await loadFrameFonts();
-  const svg = await satori(renderFrameElement(slide, index, category, accent, hookLabel), {
+  const svg = await satori(renderFrameElement(slide, index, totalSlides, category, accent, hookLabel), {
     width: DESIGN_WIDTH,
     height: DESIGN_HEIGHT,
     fonts: [
@@ -297,7 +298,7 @@ export async function renderReelVideo(post: ReelVideoPostInput): Promise<RenderR
   try {
     const frames: string[] = [];
     for (let i = 0; i < plan.slides.length; i += 1) {
-      frames.push(await renderSlidePng(plan.slides[i], i, dir, category, accent, hookLabel));
+      frames.push(await renderSlidePng(plan.slides[i], i, plan.slides.length, dir, category, accent, hookLabel));
     }
     await createNarrationMp3(buildNarration(plan.slides), narrationPath);
     const narrationDuration = await probeAudioDurationSeconds(narrationPath);

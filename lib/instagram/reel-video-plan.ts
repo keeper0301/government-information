@@ -45,6 +45,7 @@ const FALLBACK_FACTS = [
 ];
 
 const BOILERPLATE_RE = /내 조건에 맞는 정부 지원|정책 정보를 큐레이션|데이터 출처|본 서비스는 정보 안내|이 글에서 확인할 수 있는 것|더 자세한 맞춤 정책|자주 묻는 질문|카테고리 다른 글|마감 놓치지 마세요|관심 있는 정책에 알림|공식 출처를 기준/;
+const GENERIC_FACT_RE = /본문에서|공고에서 확인|공식 모집 공고|별도 명시 없음/;
 
 export function stripHtml(input: string): string {
   return input
@@ -109,6 +110,21 @@ function tableValue(lines: string[], labelRe: RegExp): string | null {
   return null;
 }
 
+function rawTableValue(content: string | null, labelRe: RegExp): string | null {
+  if (!content) return null;
+  for (const row of content.split(/\n+/)) {
+    const cells = row
+      .split("|")
+      .map((cell) => stripHtml(cell).trim())
+      .filter(Boolean);
+    if (cells.length < 2) continue;
+    const label = cells[0].replace(/\s+/g, " ").trim();
+    const value = cells.slice(1).join(" · ").replace(/\s+/g, " ").trim();
+    if (labelRe.test(label) && value.length >= 4) return value;
+  }
+  return null;
+}
+
 function splitSentences(text: string): string[] {
   return text
     .split(/(?<=[.!?。！？]|다\.|요\.)\s+|[\n•·]+/)
@@ -134,7 +150,20 @@ function sentenceFact(lines: string[], pattern: RegExp, avoid: RegExp | null = n
   return sentences[0] ?? null;
 }
 
-function conciseFact(input: string, _max = 54): string {
+function sectionFact(lines: string[], headingRe: RegExp, factRe: RegExp | null = null): string | null {
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!headingRe.test(lines[i])) continue;
+    for (const candidate of lines.slice(i + 1, i + 4)) {
+      if (candidate.length < 12) continue;
+      if (BOILERPLATE_RE.test(candidate)) continue;
+      if (factRe && !factRe.test(candidate)) continue;
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function conciseFact(input: string): string {
   return stripHtml(input)
     .replace(/^(지원 대상|지원 혜택|지원 내용|신청 방법|지원 지역|대상|혜택|신청)\s+/, "")
     .replace(/확인해야\s*합니다\.?/g, "확인")
@@ -153,6 +182,7 @@ function conciseFact(input: string, _max = 54): string {
     .replace(/특정 기간에만 접수하는 경우가 있습니다\.?/g, "특정 기간 접수")
     .replace(/경우가 있습니다\.?/g, "경우 있음")
     .replace(/부부 합산 소득과 자산 기준을 모두 충족해야 하며, 무주택 요건도 중요한 심사 기준입니다\.?/g, "부부 합산 소득·자산·무주택 요건 확인")
+    .replace(/중위소득 180% 이내 등의 기준이 적용될 수 있고 무주택 요건도 중요한 심사 기준입니다\.?/g, "중위소득 180% 이내·무주택 요건 확인")
     .replace(/지원 금액은 대출 종류, 금액, 그리고 가구 소득 수준에 따라/g, "대출 종류·금액·소득 수준별")
     .replace(/신청 기간은 /g, "")
     .replace(/^기간은 /g, "")
@@ -161,15 +191,11 @@ function conciseFact(input: string, _max = 54): string {
     .trim();
 }
 
-function twoLineFact(primary: string, secondary?: string | null): string {
-  return multiFact([primary, secondary]);
-}
-
 function multiFact(items: Array<string | null | undefined>, limit = 2): string {
   const facts: string[] = [];
   for (const item of items) {
     if (!item) continue;
-    const fact = conciseFact(item, facts.length === 0 ? 46 : 50);
+    const fact = conciseFact(item);
     if (!fact) continue;
     const duplicate = facts.some((seen) => seen.includes(fact.slice(0, 18)) || fact.includes(seen.slice(0, 18)));
     if (!duplicate) facts.push(fact);
@@ -178,26 +204,29 @@ function multiFact(items: Array<string | null | undefined>, limit = 2): string {
   return facts.join("\n");
 }
 
+function firstConcrete(items: Array<string | null | undefined>): string | null {
+  for (const item of items) {
+    const fact = item ? conciseFact(item) : "";
+    if (fact && !GENERIC_FACT_RE.test(fact)) return fact;
+  }
+  return null;
+}
+
 function distinctSentence(lines: string[], pattern: RegExp, used: Array<string | null | undefined>, avoid: RegExp | null = null): string | null {
   const sentences = splitSentences(lines.join("\n"))
     .filter((sentence) => pattern.test(sentence))
     .filter((sentence) => !avoid || !avoid.test(sentence))
     .sort((a, b) => scoreSentence(b) - scoreSentence(a));
   for (const sentence of sentences) {
-    const fact = conciseFact(sentence, 50);
+    const fact = conciseFact(sentence);
     const duplicate = used.filter(Boolean).some((seen) => {
-      const normalized = conciseFact(String(seen), 50);
+      const normalized = conciseFact(String(seen));
       return normalized.includes(fact.slice(0, 18)) || fact.includes(normalized.slice(0, 18));
     });
     if (!duplicate) return sentence;
   }
   return null;
 }
-
-function labeledFact(label: string, fact: string, secondary?: string | null): string {
-  return `${label}\n${twoLineFact(fact, secondary)}`;
-}
-
 
 function clampTitle(title: string, max = 74): string {
   const clean = stripHtml(title);
@@ -240,14 +269,14 @@ function makeReadableCoverTitle(title: string, category: string): string {
 
 function buildArticleFacts(post: ReelVideoPostInput) {
   const lines = contentLines(post);
-  const targetFromTable = tableValue(lines, /^지원\s*대상|^대상/);
-  const benefitFromTable = tableValue(lines, /^지원\s*(혜택|내용)|^혜택/);
-  const amountFromTable = tableValue(lines, /^지원\s*(금액|한도|액)|^금액|^한도|^지원액/);
-  const applyFromTable = tableValue(lines, /^신청\s*방법|^신청/);
-  const periodFromTable = tableValue(lines, /^신청\s*(기간|마감)|^접수\s*기간|^기간|^마감/);
-  const docsFromTable = tableValue(lines, /^제출\s*서류|^필요\s*서류|^서류/);
-  const placeFromTable = tableValue(lines, /^접수처|^신청\s*(장소|기관|처)|^문의|^담당/);
-  const regionFromTable = tableValue(lines, /^지원\s*지역|^지역/);
+  const targetFromTable = rawTableValue(post.content, /^지원\s*대상|^대상/) || tableValue(lines, /^지원\s*대상|^대상/);
+  const benefitFromTable = rawTableValue(post.content, /^지원\s*(혜택|내용)|^혜택/) || tableValue(lines, /^지원\s*(혜택|내용)|^혜택/);
+  const amountFromTable = rawTableValue(post.content, /^지원\s*(금액|한도|액)|^금액|^한도|^지원액/) || tableValue(lines, /^지원\s*(금액|한도|액)|^금액|^한도|^지원액/);
+  const applyFromTable = rawTableValue(post.content, /^신청\s*방법|^신청/) || tableValue(lines, /^신청\s*방법|^신청/);
+  const periodFromTable = rawTableValue(post.content, /^신청\s*(기간|마감)|^접수\s*기간|^기간|^마감/) || tableValue(lines, /^신청\s*(기간|마감)|^접수\s*기간|^기간|^마감/);
+  const docsFromTable = rawTableValue(post.content, /^제출\s*서류|^필요\s*서류|^서류/) || tableValue(lines, /^제출\s*서류|^필요\s*서류|^서류/);
+  const placeFromTable = rawTableValue(post.content, /^접수처|^신청\s*(장소|기관|처)|^문의|^담당/) || tableValue(lines, /^접수처|^신청\s*(장소|기관|처)|^문의|^담당/);
+  const regionFromTable = rawTableValue(post.content, /^지원\s*지역|^지역/) || tableValue(lines, /^지원\s*지역|^지역/);
 
   const targetSentence = sentenceFact(
     lines,
@@ -255,30 +284,37 @@ function buildArticleFacts(post: ReelVideoPostInput) {
     /반드시|공식 안내|정확한 자격 조건/,
   );
   const targetSecondary = sentenceFact(lines, /소득|무주택|혼인|연령|주민등록|거주|영구임대주택/, /지원 금액|월 최대|총 지원|혜택/);
+  const residenceOrAgeSection = sectionFact(lines, /나이|지역|거주|대상/, /거주|신혼|청년|혼인|연령|대상/);
+  const incomeOrAssetSection = sectionFact(lines, /소득|자격|자산|무주택/, /소득|자산|무주택|중위소득|요건/);
 
   const benefitSentence = sentenceFact(
     lines,
     /지원 금액|지원 내용|지원 혜택|대출 이자|현금 지원|월 최대|최대|프로그램|활동|자원 연계|현물대여|금액|혜택/,
     /구체적인 내용은|확인해야/,
   );
-  const benefitSecondary = sentenceFact(lines, /월 최대|최대|기간|계좌|프로그램|장소|전문가|자원/);
+  const benefitSection = sectionFact(lines, /지원|혜택|금액|내용/, /지원|이자|현금|월 최대|최대|금액|대여|프로그램|혜택/);
+  const benefitSecondary = sentenceFact(lines, /월 최대|최대|한도|금액|계좌|프로그램|장소|전문가|자원/);
 
   const applySentence = sentenceFact(lines, /신청|방문|접수|주민센터|관리사무소|공식|복지로|누리집|마감|기간/);
   const deadlineSentence = sentenceFact(lines, /신청 기간|마감일|상시|연중|현재.*명시|최신 공고/);
+  const applySection = sectionFact(lines, /신청|접수|방법/, /신청|방문|접수|주민센터|누리집|복지로|기간|서류/);
 
-  const target = [targetFromTable, regionFromTable].filter(Boolean).join(" · ") || targetSentence || FALLBACK_FACTS[0];
-  const benefit = benefitFromTable || benefitSentence || FALLBACK_FACTS[1];
-  const apply = applyFromTable || applySentence || FALLBACK_FACTS[2];
-  const targetExtra = distinctSentence(lines, /소득|무주택|혼인|연령|주민등록|거주/, [target, targetSecondary], /지원 금액|월 최대|총 지원|혜택/);
+  const target = targetFromTable || targetSentence || regionFromTable || FALLBACK_FACTS[0];
+  const benefit = benefitFromTable || benefitSection || benefitSentence || FALLBACK_FACTS[1];
+  const apply = applyFromTable || applySection || applySentence || FALLBACK_FACTS[2];
+  const targetDetail = firstConcrete([residenceOrAgeSection, targetSecondary, targetSentence].filter((fact) => fact !== target));
+  const targetExtra = firstConcrete([incomeOrAssetSection, distinctSentence(lines, /소득|무주택|혼인|연령|주민등록/, [target, targetSecondary], /지원 금액|월 최대|총 지원|혜택/)]);
   const amountOrSecondaryRaw = amountFromTable || benefitSecondary;
   const amountOrSecondary = amountOrSecondaryRaw && !/공식 모집 공고에서 확인|공고에서 확인/.test(amountOrSecondaryRaw) ? amountOrSecondaryRaw : null;
-  const benefitExtra = distinctSentence(lines, /월 최대|최대|기간|대출 종류|소득 수준|차등|계좌|프로그램|장소|전문가|자원/, [benefit, amountOrSecondary], /공식 모집 공고에서 확인|공고에서 확인/);
+  const benefitExtra = distinctSentence(lines, /월 최대|최대|한도|금액|대출 종류|소득 수준|차등|계좌|프로그램|장소|전문가|자원/, [benefit, amountOrSecondary], /공식 모집 공고에서 확인|공고에서 확인/);
   const applyPeriod = periodFromTable || deadlineSentence;
   const applyPlaceOrDocs = placeFromTable || docsFromTable;
   const applyExtra = distinctSentence(lines, /서류|접수처|방문|주민센터|누리집|복지로|신청 기간|마감|상시|연중/, [apply, applyPeriod, applyPlaceOrDocs]);
 
   return {
     target,
+    targetRegion: titleRegion(post.title) || regionFromTable,
+    targetDetail: targetDetail && targetDetail !== target ? targetDetail : null,
     targetSecondary: targetSecondary && targetSecondary !== target ? targetSecondary : null,
     targetExtra,
     benefit,
@@ -295,45 +331,62 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
   const title = clampTitle(post.title);
   const readableCoverTitle = makeReadableCoverTitle(post.title, category);
   const facts = buildArticleFacts(post);
-  return {
-    durationSeconds: 28,
-    slides: [
+  const amountBody = multiFact([facts.benefitSecondary || facts.benefitExtra], 1);
+  const slides: ReelVideoSlide[] = [
       {
         eyebrow: `${category} · keepioo`,
         kicker: title,
         title: readableCoverTitle,
-        body: `놓치기 쉬운 조건은 저장\n자격\n금액\n신청`,
+        body: `조건만 빠르게 저장\n대상\n혜택\n신청`,
       },
       {
-        eyebrow: "자격 1",
-        title: "누가 받나",
-        body: multiFact([facts.targetSecondary || facts.target], 1),
+        eyebrow: "자격",
+        title: "대상",
+        body: multiFact([facts.target], 1),
       },
       {
-        eyebrow: "자격 2",
-        title: "기준",
-        body: multiFact([facts.targetExtra, facts.target !== facts.targetSecondary ? facts.target : null], 2),
+        eyebrow: "자격",
+        title: "조건",
+        body: multiFact([facts.targetDetail], 1),
       },
       {
-        eyebrow: "지원 1",
-        title: "무엇을 받나",
+        eyebrow: "자격",
+        title: "소득",
+        body: multiFact([facts.targetExtra], 1),
+      },
+      {
+        eyebrow: "자격",
+        title: "지역",
+        body: multiFact([facts.targetRegion || facts.target], 1),
+      },
+      {
+        eyebrow: "지원",
+        title: "혜택",
         body: multiFact([facts.benefit], 1),
       },
+      ...(amountBody ? [{
+        eyebrow: "지원",
+        title: "금액",
+        body: amountBody,
+      }] : []),
       {
-        eyebrow: "지원 2",
-        title: "금액 기준",
-        body: multiFact([facts.benefitSecondary, facts.benefitExtra], 2),
+        eyebrow: "신청",
+        title: "방법",
+        body: multiFact([facts.apply], 1),
       },
       {
         eyebrow: "신청",
-        title: "어떻게 하나",
-        body: multiFact([facts.apply, facts.applySecondary, facts.applyExtra], 2),
+        title: "기간",
+        body: multiFact([facts.applySecondary || facts.applyExtra], 1),
       },
       {
         eyebrow: "마지막",
         title: "저장 리스트",
         body: `자격 조건\n신청 기간\n제출 서류\nkeepioo에서 정책명 검색`,
       },
-    ],
+    ];
+  return {
+    durationSeconds: Math.max(36, slides.length * 4),
+    slides,
   };
 }

@@ -26,21 +26,25 @@ describe("reel-video-plan", () => {
 `,
     });
 
-    expect(plan.durationSeconds).toBe(28);
-    expect(plan.slides).toHaveLength(7);
+    expect(plan.durationSeconds).toBe(36);
+    expect(plan.slides).toHaveLength(9);
     expect(plan.slides[0].eyebrow).toContain("주거");
     expect(plan.slides[0].title).toContain("가평군");
     expect(plan.slides[0].title).toContain("신혼부부");
-    expect(plan.slides[0].body).toContain("놓치기 쉬운 조건은 저장");
-    expect(plan.slides[0].body).toContain("자격\n금액\n신청");
-    expect(plan.slides[1]).toMatchObject({ title: "누가 받나" });
-    expect(plan.slides[1].body).toContain("가평군 실제 거주 신혼부부");
-    expect(plan.slides[2]).toMatchObject({ title: "기준" });
-    expect(plan.slides[2].body).toContain("경기도 가평군");
-    expect(plan.slides[3]).toMatchObject({ title: "무엇을 받나" });
-    expect(plan.slides[3].body).toContain("주거자금 대출 이자 현금 지원");
-    expect(plan.slides[5]).toMatchObject({ title: "어떻게 하나" });
-    expect(plan.slides[5].body).toContain("방문 신청");
+    expect(plan.slides[0].body).toContain("조건만 빠르게 저장");
+    expect(plan.slides[0].body).toContain("대상\n혜택\n신청");
+    expect(plan.slides[1]).toMatchObject({ title: "대상" });
+    expect(plan.slides[1].body).toContain("가평군 거주 일정 요건");
+    expect(plan.slides[2]).toMatchObject({ title: "조건" });
+    expect(plan.slides[2].body).toContain("혼인신고일로부터 7년 이내");
+    expect(plan.slides[3]).toMatchObject({ title: "소득" });
+    expect(plan.slides[3].body).toContain("중위소득 180% 이내");
+    expect(plan.slides[4]).toMatchObject({ title: "지역" });
+    expect(plan.slides[4].body).toContain("가평군");
+    expect(plan.slides[5]).toMatchObject({ title: "혜택" });
+    expect(plan.slides[5].body).toContain("주거자금 대출 이자 현금 지원");
+    expect(plan.slides[6]).toMatchObject({ title: "방법" });
+    expect(plan.slides[6].body).toContain("방문 신청");
     expect(plan.slides.at(-1)?.title).toBe("저장 리스트");
   });
 });

@@ -97,5 +97,5 @@ describe("renderReelVideo", () => {
     } finally {
       await rendered.cleanup();
     }
-  }, 60_000);
+  }, 120_000);
 });
