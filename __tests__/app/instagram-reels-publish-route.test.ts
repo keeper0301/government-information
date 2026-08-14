@@ -44,6 +44,10 @@ const mocks = vi.hoisted(() => ({
     instagram_reel_attempt_count: number;
   }>,
   blockedByQuality: 0,
+  latestJudgement: null as null | {
+    created_at: string;
+    details: { judgement?: { status?: string }; management?: { nextAction?: string } };
+  },
 }));
 
 function makeBlogPostsQuery(step: number) {
@@ -61,6 +65,16 @@ function makeBlogPostsQuery(step: number) {
   query.maybeSingle = vi.fn(() => Promise.resolve({ data: mocks.candidate, error: null }));
   query.update = vi.fn(() => query);
   if (step > 1) query.select = vi.fn(() => Promise.resolve({ data: [{ id: "post-1", instagram_reel_attempt_count: 1 }], error: null }));
+  return query;
+}
+
+function makeAdminActionsQuery() {
+  const query: Record<string, unknown> = {};
+  query.select = vi.fn(() => query);
+  query.eq = vi.fn(() => query);
+  query.order = vi.fn(() => query);
+  query.limit = vi.fn(() => query);
+  query.returns = vi.fn(() => Promise.resolve({ data: mocks.latestJudgement ? [mocks.latestJudgement] : [], error: null }));
   return query;
 }
 
@@ -83,6 +97,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: (table: string) => {
       mocks.fromCalls.push(table);
+      if (table === "admin_actions") return makeAdminActionsQuery();
       if (table === "blog_posts") return makeBlogPostsQuery(mocks.fromCalls.filter((t) => t === "blog_posts").length - 1);
       throw new Error(`unexpected table ${table}`);
     },
@@ -128,12 +143,35 @@ beforeEach(() => {
   };
   mocks.candidates = null;
   mocks.blockedByQuality = 0;
+  mocks.latestJudgement = null;
   process.env.INSTAGRAM_REELS_AUTO_ENABLED = "true";
   process.env.INSTAGRAM_REELS_BYPASS_HOUR_CHECK = "true";
   delete process.env.INSTAGRAM_REELS_DAILY_CAP;
 });
 
 describe("instagram-reels-publish dry-run", () => {
+  it("freezes Reels publishing while recent Instagram hook/CTA signal is weak", async () => {
+    mocks.latestJudgement = {
+      created_at: new Date().toISOString(),
+      details: {
+        judgement: { status: "hook_cta_weak" },
+        management: { nextAction: "발행량 확대를 멈추고 카드 1 저장/공유 hook 개선" },
+      },
+    };
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "frozen_hook_cta_weak",
+      latestStatus: "hook_cta_weak",
+      freezeWindowHours: 72,
+    });
+    expect(mocks.fromCalls).toEqual(["admin_actions"]);
+    expect(mocks.publishReel).not.toHaveBeenCalled();
+  });
+
   it("reports ready without calling Graph publish", async () => {
     const res = await GET(req());
     const body = await res.json();

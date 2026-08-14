@@ -22,6 +22,7 @@ type ReelsStatus =
   | "outside_hours"
   | "not_configured"
   | "daily_cap_reached"
+  | "frozen_hook_cta_weak"
   | "quality_review_pending"
   | "no_video_pending"
   | "quality_gate_rejected"
@@ -42,6 +43,15 @@ type ReelCandidate = {
 };
 
 const REEL_RENDER_VERSION = "minimal-sequence-v1";
+const WEAK_CTA_FREEZE_WINDOW_HOURS = 72;
+
+type InstagramJudgementAction = {
+  created_at: string | null;
+  details: {
+    judgement?: { status?: string | null } | null;
+    management?: { nextAction?: string | null } | null;
+  } | null;
+};
 
 function isDryRunRequest(request: Request): boolean {
   const url = new URL(request.url);
@@ -63,6 +73,56 @@ function reelsAutoEnabled(): boolean {
 function dailyCap(): number {
   const parsed = Number.parseInt(process.env.INSTAGRAM_REELS_DAILY_CAP ?? "2", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 2;
+}
+
+function freezeOnWeakCtaEnabled(): boolean {
+  return process.env.INSTAGRAM_REELS_FREEZE_ON_WEAK_CTA !== "false";
+}
+
+async function latestWeakCtaFreeze(admin: ReturnType<typeof createAdminClient>): Promise<{
+  frozen: boolean;
+  latestJudgementAt: string | null;
+  latestStatus: string | null;
+  ageHours: number | null;
+  nextAction: string | null;
+  error?: string;
+}> {
+  if (!freezeOnWeakCtaEnabled()) {
+    return { frozen: false, latestJudgementAt: null, latestStatus: null, ageHours: null, nextAction: null };
+  }
+  try {
+    const { data, error } = await admin
+      .from("admin_actions")
+      .select("created_at, details")
+      .eq("action", "instagram_insights_judgement")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .returns<InstagramJudgementAction[]>();
+    if (error) {
+      return { frozen: false, latestJudgementAt: null, latestStatus: null, ageHours: null, nextAction: null, error: error.message };
+    }
+    const latest = data?.[0];
+    const latestJudgementAt = latest?.created_at ?? null;
+    const latestStatus = latest?.details?.judgement?.status ?? null;
+    const nextAction = latest?.details?.management?.nextAction ?? null;
+    const ageHours = latestJudgementAt
+      ? (Date.now() - new Date(latestJudgementAt).getTime()) / 3_600_000
+      : null;
+    const frozen = latestStatus === "hook_cta_weak"
+      && ageHours !== null
+      && Number.isFinite(ageHours)
+      && ageHours <= WEAK_CTA_FREEZE_WINDOW_HOURS;
+    return { frozen, latestJudgementAt, latestStatus, ageHours, nextAction };
+  } catch (error) {
+    return {
+      frozen: false,
+      latestJudgementAt: null,
+      latestStatus: null,
+      ageHours: null,
+      nextAction: null,
+      error: error instanceof Error ? error.message : "unknown",
+    };
+  }
 }
 
 async function safeLogSkip(reason: string, extra: Record<string, unknown> = {}) {
@@ -105,6 +165,24 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminClient();
+  const weakCtaFreeze = await latestWeakCtaFreeze(admin);
+  if (weakCtaFreeze.frozen) {
+    const payload = {
+      latestJudgementAt: weakCtaFreeze.latestJudgementAt,
+      latestStatus: weakCtaFreeze.latestStatus,
+      ageHours: weakCtaFreeze.ageHours === null ? null : Math.round(weakCtaFreeze.ageHours * 10) / 10,
+      nextAction: weakCtaFreeze.nextAction,
+      freezeWindowHours: WEAK_CTA_FREEZE_WINDOW_HOURS,
+    };
+    if (dryRun) return dryResponse("frozen_hook_cta_weak", payload);
+    await safeLogSkip("frozen_hook_cta_weak", payload);
+    return NextResponse.json({
+      status: "frozen_hook_cta_weak",
+      message: "최근 Instagram hook_cta_weak 신호 때문에 Reels 자동 발행을 중단했습니다.",
+      ...payload,
+    });
+  }
+
   const creds = await loadValidToken(admin);
   if (!creds) {
     if (dryRun) return dryResponse("not_configured");
