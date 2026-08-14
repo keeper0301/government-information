@@ -160,9 +160,6 @@ function labeledFact(label: string, fact: string, secondary?: string | null): st
   return `${label}\n${twoLineFact(fact, secondary)}`;
 }
 
-function singleFact(label: string, fact: string): string {
-  return `${label}\n${conciseFact(fact, 48)}`;
-}
 
 function clampTitle(title: string, max = 74): string {
   const clean = stripHtml(title);
@@ -253,27 +250,27 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         eyebrow: `${category} · keepioo`,
         kicker: title,
         title: readableCoverTitle,
-        body: `30초 요약\n대상 · 지원 · 신청만 확인`,
+        body: `신청 전 3개만 보세요\n대상\n지원\n신청`,
       },
       {
         eyebrow: "",
-        title: "대상",
-        body: singleFact("누가 받나", facts.target),
+        title: "누가 받나",
+        body: labeledFact("대상", facts.target, facts.targetSecondary),
       },
       {
         eyebrow: "",
-        title: "지원",
-        body: singleFact("무엇을 받나", facts.benefit),
+        title: "무엇을 받나",
+        body: labeledFact("지원", facts.benefit, facts.benefitSecondary),
       },
       {
         eyebrow: "",
-        title: "신청",
-        body: labeledFact("어떻게 신청하나", facts.apply, facts.applySecondary),
+        title: "어떻게 신청하나",
+        body: labeledFact("신청", facts.apply, facts.applySecondary),
       },
       {
         eyebrow: "마지막",
-        title: "공식 확인",
-        body: `공식 공고 재확인\n자격·마감·서류는 신청 전 다시 확인\nkeepioo에서 “${clampTitle(post.title, 18)}” 검색`,
+        title: "신청 전 체크",
+        body: `자격\n마감\n서류\nkeepioo에서 “${clampTitle(post.title, 18)}” 검색`,
       },
     ],
   };

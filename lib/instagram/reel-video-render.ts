@@ -89,9 +89,9 @@ function frameChrome(index: number, category: string, accent: string, children: 
       div({ position: "absolute", left: 0, top: 0, width: 12, height: "100%", background: accent }),
       div({ position: "absolute", left: 88, top: 120, background: accent, color: "#fff", borderRadius: 999, padding: "18px 34px", fontSize: 30, fontWeight: 700, lineHeight: 1 }, category),
       children,
-      div({ position: "absolute", left: 88, right: 88, bottom: 86, borderTop: "2px solid #e5e7eb", paddingTop: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, [
-        div({ display: "flex", fontSize: 28, fontWeight: 700, color: brandColor }, "@ keepioo · 정책알리미"),
-        div({ display: "flex", fontSize: 24, fontWeight: 500, color: "#6b7280" }, "공식 공고 기준 요약"),
+      div({ position: "absolute", left: 88, right: 88, bottom: 82, borderTop: "2px solid #e5e7eb", paddingTop: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, [
+        div({ display: "flex", fontSize: 28, fontWeight: 700, color: brandColor }, "@ keepioo"),
+        div({ display: "flex", fontSize: 24, fontWeight: 500, color: "#9ca3af" }, "정책알리미"),
       ]),
     ],
   );
@@ -100,45 +100,49 @@ function frameChrome(index: number, category: string, accent: string, children: 
 function renderFrameElement(slide: ReelVideoSlide, index: number, category: string, accent: string, hookLabel: string): ReactElement {
   const brandColor = categoryColorOnWhite(accent);
   const bodyLines = slide.body.split("\n").filter(Boolean);
-  const detailNote = index === 1
-    ? "지역·혼인기간·소득 기준 먼저"
-    : index === 2
-      ? "금액·기간은 공고에서 최종 확인"
-      : index === 3
-        ? "신청 전 서류와 접수처 확인"
-        : "저장 후 신청 전 다시 확인";
   if (index === 0) {
+    const chips = bodyLines.slice(1, 4);
     return frameChrome(index, category, accent,
-      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 340, bottom: 190 }, [
-        div({ display: "flex", border: `3px solid ${accent}`, background: "#f8fbff", color: brandColor, borderRadius: 999, padding: "22px 30px", fontSize: 32, fontWeight: 700, lineHeight: 1.18, marginBottom: 34 }, hookLabel),
-        div({ display: "flex", flexDirection: "column", fontSize: 80, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 48 }, titleTokens(slide.title)),
-        div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `4px solid ${accent}`, borderRadius: 36, padding: "42px 42px", gap: 14, maxWidth: 870 }, [
-          div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, bodyLines[0] ?? "30초 요약"),
-          div({ display: "flex", color: "#111827", fontSize: 48, fontWeight: 700, lineHeight: 1.18 }, bodyLines[1] ?? "대상 · 지원 · 신청만 확인"),
-        ]),
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 320, bottom: 180 }, [
+        div({ display: "flex", border: `3px solid ${accent}`, background: "#f8fbff", color: brandColor, borderRadius: 999, padding: "20px 30px", fontSize: 32, fontWeight: 700, lineHeight: 1.15, marginBottom: 36 }, hookLabel),
+        div({ display: "flex", flexDirection: "column", fontSize: 80, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 44 }, titleTokens(slide.title)),
+        div({ display: "flex", color: "#111827", fontSize: 48, fontWeight: 700, lineHeight: 1.18, marginBottom: 32 }, bodyLines[0] ?? "신청 전 3개만 보세요"),
+        div({ display: "flex", flexDirection: "row", gap: 18, marginTop: "auto" },
+          chips.map((chip) => div({ display: "flex", flex: 1, justifyContent: "center", alignItems: "center", background: "#ffffff", border: `3px solid ${accent}`, borderRadius: 28, padding: "28px 20px", color: brandColor, fontSize: 36, fontWeight: 700, lineHeight: 1 }, chip)),
+        ),
+      ]),
+    );
+  }
+
+  if (index === 4) {
+    const checks = bodyLines.slice(0, 3);
+    const cta = bodyLines[3] ?? "keepioo에서 정책명 검색";
+    return frameChrome(index, category, accent,
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 300, bottom: 180 }, [
+        div({ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 46 }, titleTokens(slide.title)),
+        div({ display: "flex", flexDirection: "column", gap: 18, marginBottom: 34 },
+          checks.map((check) => div({ display: "flex", flexDirection: "row", alignItems: "center", background: "#ffffff", border: "3px solid #e5e7eb", borderRadius: 30, padding: "28px 34px", gap: 18 }, [
+            div({ display: "flex", width: 18, height: 18, borderRadius: 999, background: accent, flex: "0 0 auto" }),
+            div({ display: "flex", color: "#111827", fontSize: 44, fontWeight: 700, lineHeight: 1.16 }, check),
+          ])),
+        ),
+        div({ display: "flex", marginTop: "auto", background: "#f8fbff", border: `3px solid ${accent}`, borderRadius: 34, padding: "34px 38px", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1.24 }, cta),
       ]),
     );
   }
 
   const label = bodyLines[0] ?? "핵심";
-  const factLines = bodyLines.slice(1);
-  const factBlocks = (factLines.length > 0 ? factLines : ["공고 기준으로 확인"]).slice(0, 2);
+  const factBlocks = bodyLines.slice(1, 3);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 300, bottom: 190 }, [
-      div({ display: "flex", flexDirection: "row", alignItems: "center", width: "100%", marginBottom: 32 }, [
-        div({ display: "flex", flexWrap: "wrap", flex: 1, minWidth: 0, fontSize: 76, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28" }, titleTokens(slide.title)),
-      ]),
-      div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginBottom: 18 }, label),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 300, bottom: 180 }, [
+      div({ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 32 }, titleTokens(slide.title)),
+      div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginBottom: 20 }, label),
       div({ display: "flex", flexDirection: "column", gap: 22, maxWidth: 900 },
-        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: i === 0 ? "#ffffff" : "#f9fafb", border: `3px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 34, padding: "34px 36px", gap: 18 }, [
+        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: i === 0 ? "#ffffff" : "#f9fafb", border: `3px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 34, padding: "36px 38px", gap: 18 }, [
           div({ display: "flex", width: 18, height: 18, borderRadius: 999, background: accent, marginTop: 18, flex: "0 0 auto" }),
-          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 48 : 40, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.2, letterSpacing: "-0.015em", flex: 1 }, fact),
+          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 50 : 42, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.18, letterSpacing: "-0.015em", flex: 1 }, fact),
         ])),
       ),
-      div({ display: "flex", marginTop: "auto", background: "#f8fbff", border: `2px solid ${accent}`, borderRadius: 30, padding: "28px 32px", flexDirection: "column", gap: 10 }, [
-        div({ display: "flex", color: brandColor, fontSize: 28, fontWeight: 700, lineHeight: 1.2 }, "체크 포인트"),
-        div({ display: "flex", color: "#374151", fontSize: 32, fontWeight: 500, lineHeight: 1.28 }, detailNote),
-      ]),
     ]),
   );
 }

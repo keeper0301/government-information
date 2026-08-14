@@ -37,7 +37,7 @@ type RenderCandidate = {
   instagram_reel_render_attempt_count: number | null;
 };
 
-const REEL_RENDER_VERSION = "article-dedup-v6";
+const REEL_RENDER_VERSION = "article-story-v7";
 
 function isDryRunRequest(request: Request): boolean {
   const url = new URL(request.url);
