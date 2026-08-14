@@ -103,6 +103,7 @@ function tableValue(lines: string[], labelRe: RegExp): string | null {
       .replace(/^[:\s|]+/, "")
       .replace(/\s+/g, " ")
       .trim();
+    if (/^[은는이가]\s*/.test(cleaned)) continue;
     if (cleaned.length >= 4) return cleaned;
   }
   return null;
@@ -230,7 +231,11 @@ function buildArticleFacts(post: ReelVideoPostInput) {
   const lines = contentLines(post);
   const targetFromTable = tableValue(lines, /^지원\s*대상|^대상/);
   const benefitFromTable = tableValue(lines, /^지원\s*(혜택|내용)|^혜택/);
+  const amountFromTable = tableValue(lines, /^지원\s*(금액|한도|액)|^금액|^한도|^지원액/);
   const applyFromTable = tableValue(lines, /^신청\s*방법|^신청/);
+  const periodFromTable = tableValue(lines, /^신청\s*(기간|마감)|^접수\s*기간|^기간|^마감/);
+  const docsFromTable = tableValue(lines, /^제출\s*서류|^필요\s*서류|^서류/);
+  const placeFromTable = tableValue(lines, /^접수처|^신청\s*(장소|기관|처)|^문의|^담당/);
   const regionFromTable = tableValue(lines, /^지원\s*지역|^지역/);
 
   const targetSentence = sentenceFact(
@@ -254,19 +259,23 @@ function buildArticleFacts(post: ReelVideoPostInput) {
   const benefit = benefitFromTable || benefitSentence || FALLBACK_FACTS[1];
   const apply = applyFromTable || applySentence || FALLBACK_FACTS[2];
   const targetExtra = distinctSentence(lines, /소득|무주택|혼인|연령|주민등록|거주/, [target, targetSecondary], /지원 금액|월 최대|총 지원|혜택/);
-  const benefitExtra = distinctSentence(lines, /월 최대|최대|기간|대출 종류|소득 수준|차등|계좌|프로그램|장소|전문가|자원/, [benefit, benefitSecondary]);
-  const applyExtra = distinctSentence(lines, /서류|접수처|방문|주민센터|누리집|복지로|신청 기간|마감|상시|연중/, [apply, deadlineSentence]);
+  const amountOrSecondaryRaw = amountFromTable || benefitSecondary;
+  const amountOrSecondary = amountOrSecondaryRaw && !/공식 모집 공고에서 확인|공고에서 확인/.test(amountOrSecondaryRaw) ? amountOrSecondaryRaw : null;
+  const benefitExtra = distinctSentence(lines, /월 최대|최대|기간|대출 종류|소득 수준|차등|계좌|프로그램|장소|전문가|자원/, [benefit, amountOrSecondary], /공식 모집 공고에서 확인|공고에서 확인/);
+  const applyPeriod = periodFromTable || deadlineSentence;
+  const applyPlaceOrDocs = placeFromTable || docsFromTable;
+  const applyExtra = distinctSentence(lines, /서류|접수처|방문|주민센터|누리집|복지로|신청 기간|마감|상시|연중/, [apply, applyPeriod, applyPlaceOrDocs]);
 
   return {
     target,
     targetSecondary: targetSecondary && targetSecondary !== target ? targetSecondary : null,
     targetExtra,
     benefit,
-    benefitSecondary: benefitSecondary && benefitSecondary !== benefit ? benefitSecondary : null,
+    benefitSecondary: amountOrSecondary && amountOrSecondary !== benefit ? amountOrSecondary : null,
     benefitExtra,
     apply,
-    applySecondary: deadlineSentence && deadlineSentence !== apply ? deadlineSentence : null,
-    applyExtra,
+    applySecondary: applyPeriod && applyPeriod !== apply ? applyPeriod : null,
+    applyExtra: applyPlaceOrDocs || applyExtra,
   };
 }
 

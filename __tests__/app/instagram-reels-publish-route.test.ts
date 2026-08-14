@@ -133,12 +133,12 @@ beforeEach(() => {
     id: "post-1",
     slug: "slug-1",
     title: "title",
-    content: "대상 신청 기간 서류 문의 공식 지원 금액 ".repeat(40),
+    content: "대상은 19세부터 34세 청년이며 부모와 따로 거주해야 합니다. 중위소득 150% 이하 기준을 적용합니다. 지원 금액은 월 최대 20만원이며 최대 12개월까지 받을 수 있습니다. 신청 기간은 2026년 7월까지입니다. 복지로 또는 주민센터에서 신청할 수 있고 주민등록등본과 임대차계약서를 제출합니다.",
     meta_description: "meta",
     category: "청년",
     tags: [],
     admin_review_required: false,
-    instagram_reel_video_url: "https://cdn.keepioo.com/reels/2026-08/article-ref-v11/123-slug-1.mp4",
+    instagram_reel_video_url: "https://cdn.keepioo.com/reels/2026-08/article-detail-v12/123-slug-1.mp4",
     instagram_reel_attempt_count: 0,
   };
   mocks.candidates = null;
@@ -207,7 +207,7 @@ describe("instagram-reels-publish dry-run", () => {
         id: "post-1",
         slug: "slug-1",
         attempt_count: 0,
-        videoUrl: "https://cdn.keepioo.com/reels/2026-08/article-ref-v11/123-slug-1.mp4",
+        videoUrl: "https://cdn.keepioo.com/reels/2026-08/article-detail-v12/123-slug-1.mp4",
       },
     });
     expect(mocks.publishReel).not.toHaveBeenCalled();
@@ -305,7 +305,7 @@ describe("instagram-reels-publish dry-run", () => {
       dryRun: true,
       status: "quality_gate_rejected",
       slug: "slug-1",
-      reasons: ["content_too_short_for_external_publish"],
+      reasons: expect.arrayContaining(["content_too_short_for_external_publish"]),
       metrics: { plainTextLength: 0 },
     });
     expect(mocks.publishReel).not.toHaveBeenCalled();

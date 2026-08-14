@@ -21,6 +21,7 @@ describe("scoreReelCandidate", () => {
       hasApply: true,
       preferredTopic: true,
       narrowOrSensitiveTopic: false,
+      hasConcreteDetail: true,
     });
   });
 

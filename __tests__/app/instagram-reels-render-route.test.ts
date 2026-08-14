@@ -113,7 +113,7 @@ beforeEach(() => {
     id: "post-1",
     slug: "slug-1",
     title: "title",
-    content: "대상 신청 기간 서류 문의 공식 지원 금액 ".repeat(40),
+    content: "대상은 19세부터 34세 청년이며 부모와 따로 거주해야 합니다. 중위소득 150% 이하 기준을 적용합니다. 지원 금액은 월 최대 20만원이며 최대 12개월까지 받을 수 있습니다. 신청 기간은 2026년 7월까지입니다. 복지로 또는 주민센터에서 신청할 수 있고 주민등록등본과 임대차계약서를 제출합니다.",
     meta_description: "meta",
     category: "청년",
     tags: [],
@@ -197,7 +197,7 @@ describe("instagram-reels-render", () => {
         title: "2026년 서울 청년 월세 지원 신청 안내",
         category: "청년 주거",
         meta_description: "소득 조건을 충족한 청년에게 월 최대 20만원을 지원합니다.",
-        content: "대상은 19세부터 34세 청년이며 부모와 따로 거주해야 합니다. 지원 금액은 월 최대 20만원이며 최대 12개월까지 받을 수 있습니다. 신청 기간은 2026년 7월까지이며 복지로 또는 주민센터에서 신청할 수 있습니다.",
+        content: "대상은 19세부터 34세 청년이며 부모와 따로 거주해야 합니다. 중위소득 150% 이하 기준을 적용합니다. 지원 금액은 월 최대 20만원이며 최대 12개월까지 받을 수 있습니다. 신청 기간은 2026년 7월까지입니다. 복지로 또는 주민센터에서 신청할 수 있고 주민등록등본과 임대차계약서를 제출합니다.",
       },
     ];
 
@@ -222,7 +222,7 @@ describe("instagram-reels-render", () => {
     expect(body.videoUrl).toContain("instagram-reels/");
     expect(mocks.renderReelVideo).toHaveBeenCalledOnce();
     expect(mocks.storageUploads[0]).toMatchObject({ contentType: "video/mp4" });
-    expect(mocks.storageUploads[0].path).toMatch(/^\d{4}-\d{2}\/article-ref-v11\/\d+-post-[0-9a-f]+\.mp4$/);
+    expect(mocks.storageUploads[0].path).toMatch(/^\d{4}-\d{2}\/article-detail-v12\/\d+-post-[0-9a-f]+\.mp4$/);
     expect(mocks.logAdminAction).toHaveBeenCalledWith(expect.objectContaining({ action: "instagram_reel_render_success" }));
   });
 });
