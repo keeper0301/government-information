@@ -101,14 +101,17 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   const brandColor = categoryColorOnWhite(accent);
   const bodyLines = slide.body.split("\n").filter(Boolean);
   if (index === 0) {
-    const chips = bodyLines.slice(1, 4);
+    const chips = bodyLines.slice(2, 5);
     return frameChrome(index, category, accent,
-      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 320, bottom: 180 }, [
-        div({ display: "flex", border: `3px solid ${accent}`, background: "#f8fbff", color: brandColor, borderRadius: 999, padding: "20px 30px", fontSize: 32, fontWeight: 700, lineHeight: 1.15, marginBottom: 36 }, hookLabel),
-        div({ display: "flex", flexDirection: "column", fontSize: 80, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 44 }, titleTokens(slide.title)),
-        div({ display: "flex", color: "#111827", fontSize: 48, fontWeight: 700, lineHeight: 1.18, marginBottom: 32 }, bodyLines[0] ?? "신청 전 3개만 보세요"),
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 310, bottom: 178 }, [
+        div({ display: "flex", color: brandColor, fontSize: 32, fontWeight: 700, lineHeight: 1.1, marginBottom: 34 }, hookLabel),
+        div({ display: "flex", flexDirection: "column", fontSize: 82, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 44 }, titleTokens(slide.title)),
+        div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `4px solid ${accent}`, borderRadius: 36, padding: "40px 42px", gap: 8, marginBottom: 34 }, [
+          div({ display: "flex", color: "#111827", fontSize: 42, fontWeight: 700, lineHeight: 1.15 }, bodyLines[0] ?? "신청 전"),
+          div({ display: "flex", color: brandColor, fontSize: 58, fontWeight: 700, lineHeight: 1.08 }, bodyLines[1] ?? "3가지만 확인"),
+        ]),
         div({ display: "flex", flexDirection: "row", gap: 18, marginTop: "auto" },
-          chips.map((chip) => div({ display: "flex", flex: 1, justifyContent: "center", alignItems: "center", background: "#ffffff", border: `3px solid ${accent}`, borderRadius: 28, padding: "28px 20px", color: brandColor, fontSize: 36, fontWeight: 700, lineHeight: 1 }, chip)),
+          chips.map((chip) => div({ display: "flex", flex: 1, justifyContent: "center", alignItems: "center", background: "#f9fafb", border: "3px solid #e5e7eb", borderRadius: 28, padding: "28px 20px", color: "#111827", fontSize: 34, fontWeight: 700, lineHeight: 1 }, chip)),
         ),
       ]),
     );
@@ -118,29 +121,24 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
     const checks = bodyLines.slice(0, 3);
     const cta = bodyLines[3] ?? "keepioo에서 정책명 검색";
     return frameChrome(index, category, accent,
-      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 300, bottom: 180 }, [
-        div({ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 46 }, titleTokens(slide.title)),
-        div({ display: "flex", flexDirection: "column", gap: 18, marginBottom: 34 },
-          checks.map((check) => div({ display: "flex", flexDirection: "row", alignItems: "center", background: "#ffffff", border: "3px solid #e5e7eb", borderRadius: 30, padding: "28px 34px", gap: 18 }, [
-            div({ display: "flex", width: 18, height: 18, borderRadius: 999, background: accent, flex: "0 0 auto" }),
-            div({ display: "flex", color: "#111827", fontSize: 44, fontWeight: 700, lineHeight: 1.16 }, check),
-          ])),
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 292, bottom: 178 }, [
+        div({ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 42 }, titleTokens(slide.title)),
+        div({ display: "flex", flexDirection: "row", gap: 16, marginBottom: 38 },
+          checks.map((check) => div({ display: "flex", flex: 1, justifyContent: "center", alignItems: "center", background: "#ffffff", border: `3px solid ${accent}`, borderRadius: 30, padding: "34px 18px", color: brandColor, fontSize: 40, fontWeight: 700, lineHeight: 1.08 }, check)),
         ),
-        div({ display: "flex", marginTop: "auto", background: "#f8fbff", border: `3px solid ${accent}`, borderRadius: 34, padding: "34px 38px", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1.24 }, cta),
+        div({ display: "flex", marginTop: "auto", background: "#111827", borderRadius: 34, padding: "38px 40px", color: "#ffffff", fontSize: 34, fontWeight: 700, lineHeight: 1.24 }, cta),
       ]),
     );
   }
 
-  const label = bodyLines[0] ?? "핵심";
-  const factBlocks = bodyLines.slice(1, 3);
+  const factBlocks = bodyLines.slice(0, 2);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 300, bottom: 180 }, [
-      div({ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 32 }, titleTokens(slide.title)),
-      div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1.1, marginBottom: 20 }, label),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 292, bottom: 178 }, [
+      div({ display: "flex", flexDirection: "column", fontSize: 82, fontWeight: 700, lineHeight: 1.02, letterSpacing: "-0.04em", color: "#191F28", marginBottom: 48 }, titleTokens(slide.title)),
       div({ display: "flex", flexDirection: "column", gap: 22, maxWidth: 900 },
-        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: i === 0 ? "#ffffff" : "#f9fafb", border: `3px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 34, padding: "36px 38px", gap: 18 }, [
-          div({ display: "flex", width: 18, height: 18, borderRadius: 999, background: accent, marginTop: 18, flex: "0 0 auto" }),
-          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 50 : 42, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.18, letterSpacing: "-0.015em", flex: 1 }, fact),
+        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: i === 0 ? "#ffffff" : "#f9fafb", border: `4px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 36, padding: "42px 40px", gap: 20 }, [
+          div({ display: "flex", width: 20, height: 20, borderRadius: 999, background: accent, marginTop: 18, flex: "0 0 auto" }),
+          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 52 : 42, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.16, letterSpacing: "-0.018em", flex: 1 }, fact),
         ])),
       ),
     ]),

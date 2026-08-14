@@ -42,7 +42,7 @@ type ReelCandidate = {
   instagram_reel_attempt_count: number | null;
 };
 
-const REEL_RENDER_VERSION = "article-story-v8";
+const REEL_RENDER_VERSION = "article-clean-v9";
 const WEAK_CTA_FREEZE_WINDOW_HOURS = 72;
 
 type InstagramJudgementAction = {
