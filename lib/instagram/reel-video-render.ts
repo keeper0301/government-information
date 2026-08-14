@@ -109,16 +109,12 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
         : "저장 후 신청 전 다시 확인";
   if (index === 0) {
     return frameChrome(index, category, accent,
-      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 320, bottom: 190 }, [
+      div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 340, bottom: 190 }, [
         div({ display: "flex", border: `3px solid ${accent}`, background: "#f8fbff", color: brandColor, borderRadius: 999, padding: "22px 30px", fontSize: 32, fontWeight: 700, lineHeight: 1.18, marginBottom: 34 }, hookLabel),
-        div({ display: "flex", flexDirection: "column", fontSize: 78, fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 38 }, titleTokens(slide.title)),
-        div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `4px solid ${accent}`, borderRadius: 36, padding: "38px 40px", gap: 14, maxWidth: 870, marginBottom: 34 }, [
-          div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, bodyLines[0] ?? "핵심"),
-          div({ display: "flex", color: "#111827", fontSize: 46, fontWeight: 700, lineHeight: 1.2 }, bodyLines[1] ?? "지원 내용을 먼저 확인"),
-        ]),
-        div({ display: "flex", marginTop: "auto", background: "#f9fafb", borderRadius: 30, padding: "30px 34px", flexDirection: "column", gap: 12 }, [
-          div({ display: "flex", color: "#111827", fontSize: 34, fontWeight: 700, lineHeight: 1.2 }, "이 릴스에서 볼 것"),
-          div({ display: "flex", color: "#4b5563", fontSize: 30, fontWeight: 500, lineHeight: 1.35 }, "대상 · 지원내용 · 신청방법만 빠르게 정리"),
+        div({ display: "flex", flexDirection: "column", fontSize: 80, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 48 }, titleTokens(slide.title)),
+        div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `4px solid ${accent}`, borderRadius: 36, padding: "42px 42px", gap: 14, maxWidth: 870 }, [
+          div({ display: "flex", color: brandColor, fontSize: 30, fontWeight: 700, lineHeight: 1.2 }, bodyLines[0] ?? "30초 요약"),
+          div({ display: "flex", color: "#111827", fontSize: 48, fontWeight: 700, lineHeight: 1.18 }, bodyLines[1] ?? "대상 · 지원 · 신청만 확인"),
         ]),
       ]),
     );

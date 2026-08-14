@@ -160,6 +160,10 @@ function labeledFact(label: string, fact: string, secondary?: string | null): st
   return `${label}\n${twoLineFact(fact, secondary)}`;
 }
 
+function singleFact(label: string, fact: string): string {
+  return `${label}\n${conciseFact(fact, 48)}`;
+}
+
 function clampTitle(title: string, max = 74): string {
   const clean = stripHtml(title);
   return clean.length > max ? `${clean.slice(0, max - 1).trim()}…` : clean;
@@ -249,17 +253,17 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         eyebrow: `${category} · keepioo`,
         kicker: title,
         title: readableCoverTitle,
-        body: `핵심\n${conciseFact(facts.benefit, 42)}`,
+        body: `30초 요약\n대상 · 지원 · 신청만 확인`,
       },
       {
         eyebrow: "",
         title: "대상",
-        body: labeledFact("누가 받나", facts.target, facts.targetSecondary),
+        body: singleFact("누가 받나", facts.target),
       },
       {
         eyebrow: "",
         title: "지원",
-        body: labeledFact("무엇을 받나", facts.benefit, facts.benefitSecondary),
+        body: singleFact("무엇을 받나", facts.benefit),
       },
       {
         eyebrow: "",

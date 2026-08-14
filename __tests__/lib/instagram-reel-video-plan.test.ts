@@ -31,11 +31,10 @@ describe("reel-video-plan", () => {
     expect(plan.slides[0].eyebrow).toContain("주거");
     expect(plan.slides[0].title).toContain("가평군");
     expect(plan.slides[0].title).toContain("신혼부부");
-    expect(plan.slides[0].body).toContain("주거자금 대출 이자 현금 지원");
+    expect(plan.slides[0].body).toContain("대상 · 지원 · 신청만 확인");
     expect(plan.slides[1]).toMatchObject({ title: "대상" });
     expect(plan.slides[1].body).toContain("누가 받나");
     expect(plan.slides[1].body).toContain("가평군 거주 일정 요건을 갖춘 신혼부부");
-    expect(plan.slides[1].body).toContain("혼인신고일로부터 7년 이내");
     expect(plan.slides[2]).toMatchObject({ title: "지원" });
     expect(plan.slides[2].body).toContain("무엇을 받나");
     expect(plan.slides[2].body).toContain("주거자금 대출 이자 현금 지원");
