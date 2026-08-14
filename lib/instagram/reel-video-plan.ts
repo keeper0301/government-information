@@ -150,10 +150,36 @@ function conciseFact(input: string, max = 54): string {
 }
 
 function twoLineFact(primary: string, secondary?: string | null): string {
-  const first = conciseFact(primary, 46);
-  const second = secondary ? conciseFact(secondary, 48) : "";
-  const duplicate = second && (first.includes(second.slice(0, 18)) || second.includes(first.slice(0, 18)));
-  return [first, second && !duplicate ? second : null].filter(Boolean).join("\n");
+  return multiFact([primary, secondary]);
+}
+
+function multiFact(items: Array<string | null | undefined>, limit = 3): string {
+  const facts: string[] = [];
+  for (const item of items) {
+    if (!item) continue;
+    const fact = conciseFact(item, facts.length === 0 ? 46 : 50);
+    if (!fact) continue;
+    const duplicate = facts.some((seen) => seen.includes(fact.slice(0, 18)) || fact.includes(seen.slice(0, 18)));
+    if (!duplicate) facts.push(fact);
+    if (facts.length >= limit) break;
+  }
+  return facts.join("\n");
+}
+
+function distinctSentence(lines: string[], pattern: RegExp, used: Array<string | null | undefined>, avoid: RegExp | null = null): string | null {
+  const sentences = splitSentences(lines.join("\n"))
+    .filter((sentence) => pattern.test(sentence))
+    .filter((sentence) => !avoid || !avoid.test(sentence))
+    .sort((a, b) => scoreSentence(b) - scoreSentence(a));
+  for (const sentence of sentences) {
+    const fact = conciseFact(sentence, 50);
+    const duplicate = used.filter(Boolean).some((seen) => {
+      const normalized = conciseFact(String(seen), 50);
+      return normalized.includes(fact.slice(0, 18)) || fact.includes(normalized.slice(0, 18));
+    });
+    if (!duplicate) return sentence;
+  }
+  return null;
 }
 
 function labeledFact(label: string, fact: string, secondary?: string | null): string {
@@ -227,14 +253,20 @@ function buildArticleFacts(post: ReelVideoPostInput) {
   const target = [targetFromTable, regionFromTable].filter(Boolean).join(" · ") || targetSentence || FALLBACK_FACTS[0];
   const benefit = benefitFromTable || benefitSentence || FALLBACK_FACTS[1];
   const apply = applyFromTable || applySentence || FALLBACK_FACTS[2];
+  const targetExtra = distinctSentence(lines, /소득|무주택|혼인|연령|주민등록|거주/, [target, targetSecondary], /지원 금액|월 최대|총 지원|혜택/);
+  const benefitExtra = distinctSentence(lines, /월 최대|최대|기간|대출 종류|소득 수준|차등|계좌|프로그램|장소|전문가|자원/, [benefit, benefitSecondary]);
+  const applyExtra = distinctSentence(lines, /서류|접수처|방문|주민센터|누리집|복지로|신청 기간|마감|상시|연중/, [apply, deadlineSentence]);
 
   return {
     target,
     targetSecondary: targetSecondary && targetSecondary !== target ? targetSecondary : null,
+    targetExtra,
     benefit,
     benefitSecondary: benefitSecondary && benefitSecondary !== benefit ? benefitSecondary : null,
+    benefitExtra,
     apply,
     applySecondary: deadlineSentence && deadlineSentence !== apply ? deadlineSentence : null,
+    applyExtra,
   };
 }
 
@@ -255,17 +287,17 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
       {
         eyebrow: "",
         title: "조건",
-        body: twoLineFact(facts.target, facts.targetSecondary),
+        body: multiFact([facts.target, facts.targetSecondary, facts.targetExtra]),
       },
       {
         eyebrow: "",
         title: "혜택",
-        body: twoLineFact(facts.benefit, facts.benefitSecondary),
+        body: multiFact([facts.benefit, facts.benefitSecondary, facts.benefitExtra]),
       },
       {
         eyebrow: "",
         title: "방법",
-        body: twoLineFact(facts.apply, facts.applySecondary),
+        body: multiFact([facts.apply, facts.applySecondary, facts.applyExtra]),
       },
       {
         eyebrow: "마지막",
