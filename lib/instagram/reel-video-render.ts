@@ -101,14 +101,13 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, category: stri
   const brandColor = categoryColorOnWhite(accent);
   const bodyLines = slide.body.split("\n").filter(Boolean);
   if (index === 0) {
-    const chips = bodyLines.slice(2, 5);
+    const chips = bodyLines.slice(1, 4);
     return frameChrome(index, category, accent,
       div({ display: "flex", flexDirection: "column", position: "absolute", left: 88, right: 88, top: 310, bottom: 178 }, [
         div({ display: "flex", color: brandColor, fontSize: 32, fontWeight: 700, lineHeight: 1.1, marginBottom: 34 }, hookLabel),
         div({ display: "flex", flexDirection: "column", fontSize: 82, fontWeight: 700, lineHeight: 1.04, letterSpacing: "-0.035em", color: "#191F28", marginBottom: 44 }, titleTokens(slide.title)),
         div({ display: "flex", flexDirection: "column", background: "#ffffff", border: `4px solid ${accent}`, borderRadius: 36, padding: "40px 42px", gap: 8, marginBottom: 34 }, [
-          div({ display: "flex", color: "#111827", fontSize: 42, fontWeight: 700, lineHeight: 1.15 }, bodyLines[0] ?? "신청 전"),
-          div({ display: "flex", color: brandColor, fontSize: 58, fontWeight: 700, lineHeight: 1.08 }, bodyLines[1] ?? "3가지만 확인"),
+          div({ display: "flex", color: "#111827", fontSize: 46, fontWeight: 700, lineHeight: 1.15 }, bodyLines[0] ?? "놓치기 쉬운 조건은 저장"),
         ]),
         div({ display: "flex", flexDirection: "row", gap: 18, marginTop: "auto" },
           chips.map((chip) => div({ display: "flex", flex: 1, justifyContent: "center", alignItems: "center", background: "#f9fafb", border: "3px solid #e5e7eb", borderRadius: 28, padding: "28px 20px", color: "#111827", fontSize: 34, fontWeight: 700, lineHeight: 1 }, chip)),

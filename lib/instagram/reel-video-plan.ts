@@ -282,27 +282,27 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
         eyebrow: `${category} · keepioo`,
         kicker: title,
         title: readableCoverTitle,
-        body: `신청 전\n3가지만 확인\n01\n02\n03`,
+        body: `놓치기 쉬운 조건은 저장\n자격\n금액\n신청`,
       },
       {
         eyebrow: "",
-        title: "조건",
+        title: "자격",
         body: multiFact([facts.target, facts.targetSecondary, facts.targetExtra]),
       },
       {
         eyebrow: "",
-        title: "혜택",
+        title: "금액",
         body: multiFact([facts.benefit, facts.benefitSecondary, facts.benefitExtra]),
       },
       {
         eyebrow: "",
-        title: "방법",
+        title: "신청",
         body: multiFact([facts.apply, facts.applySecondary, facts.applyExtra]),
       },
       {
         eyebrow: "마지막",
-        title: "저장 체크",
-        body: `자격\n마감\n서류\nkeepioo에서 “${clampTitle(post.title, 18)}” 검색`,
+        title: "저장 리스트",
+        body: `자격 조건\n신청 기간\n제출 서류\nkeepioo에서 “${clampTitle(post.title, 18)}” 검색`,
       },
     ],
   };
