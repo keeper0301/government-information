@@ -130,15 +130,15 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, totalSlides: n
     );
   }
 
-  const factBlocks = bodyLines.slice(0, 2);
+  const factBlocks = bodyLines.slice(0, 3);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 72, right: 72, top: 292, bottom: 180 }, [
-      div({ display: "flex", color: brandColor, fontSize: 34, fontWeight: 700, lineHeight: 1, marginBottom: 28 }, slide.eyebrow),
-      div({ display: "flex", flexDirection: "column", fontSize: 84, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.045em", color: "#191F28", marginBottom: 54 }, titleTokens(slide.title)),
-      div({ display: "flex", flexDirection: "column", gap: 26, maxWidth: 936 },
-        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: "#ffffff", border: `5px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 38, padding: "48px 44px", gap: 22 }, [
-          div({ display: "flex", width: 22, height: 22, borderRadius: 999, background: accent, marginTop: 25, flex: "0 0 auto" }),
-          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 68 : 56, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.14, letterSpacing: "-0.035em", flex: 1 }, fact),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 72, right: 72, top: 286, bottom: 180 }, [
+      div({ display: "flex", color: brandColor, fontSize: 40, fontWeight: 700, lineHeight: 1, marginBottom: 24 }, slide.eyebrow),
+      div({ display: "flex", flexDirection: "column", fontSize: 88, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.045em", color: "#191F28", marginBottom: 48 }, titleTokens(slide.title)),
+      div({ display: "flex", flexDirection: "column", gap: 22, maxWidth: 936 },
+        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: "#ffffff", border: `5px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 36, padding: "36px 38px", gap: 20 }, [
+          div({ display: "flex", width: 22, height: 22, borderRadius: 999, background: accent, marginTop: 20, flex: "0 0 auto" }),
+          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 58 : 50, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.16, letterSpacing: "-0.03em", flex: 1 }, fact),
         ])),
       ),
     ]),

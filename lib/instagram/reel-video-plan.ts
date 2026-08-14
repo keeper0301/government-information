@@ -212,6 +212,28 @@ function firstConcrete(items: Array<string | null | undefined>): string | null {
   return null;
 }
 
+function concreteFacts(items: Array<string | null | undefined>, limit = 3): string[] {
+  const facts: string[] = [];
+  for (const item of items) {
+    const fact = item ? conciseFact(item) : "";
+    if (!fact || GENERIC_FACT_RE.test(fact)) continue;
+    const duplicate = facts.some((seen) => seen.includes(fact.slice(0, 18)) || fact.includes(seen.slice(0, 18)));
+    if (!duplicate) facts.push(fact);
+    if (facts.length >= limit) break;
+  }
+  return facts;
+}
+
+function benefitDetailFacts(benefit: string | null | undefined): string[] {
+  const fact = benefit ? conciseFact(benefit) : "";
+  const details: string[] = [];
+  if (/대출\s*이자/.test(fact)) details.push("주거자금 대출 이자 부담 완화");
+  if (/현금/.test(fact)) details.push("지원 방식: 현금 지원");
+  if (/월세/.test(fact)) details.push("월세 부담 완화 목적");
+  if (/대여/.test(fact)) details.push("필요 물품을 빌려 쓰는 지원");
+  return details;
+}
+
 function distinctSentence(lines: string[], pattern: RegExp, used: Array<string | null | undefined>, avoid: RegExp | null = null): string | null {
   const sentences = splitSentences(lines.join("\n"))
     .filter((sentence) => pattern.test(sentence))
@@ -331,62 +353,56 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
   const title = clampTitle(post.title);
   const readableCoverTitle = makeReadableCoverTitle(post.title, category);
   const facts = buildArticleFacts(post);
-  const amountBody = multiFact([facts.benefitSecondary || facts.benefitExtra], 1);
+
+  const eligibilityFacts = concreteFacts([
+    facts.target,
+    facts.targetDetail,
+    facts.targetExtra,
+    facts.targetRegion && `지역: ${facts.targetRegion}`,
+  ], 3);
+  const benefitFacts = concreteFacts([
+    facts.benefit,
+    facts.benefitSecondary,
+    facts.benefitExtra,
+    ...benefitDetailFacts(facts.benefit),
+  ], 3);
+  const applyFacts = concreteFacts([
+    facts.apply,
+    facts.applySecondary,
+    facts.applyExtra,
+  ], 3);
+  const searchCue = readableCoverTitle.split(" · ").slice(-2).join(" ") || "정책명";
+
   const slides: ReelVideoSlide[] = [
-      {
-        eyebrow: `${category} · keepioo`,
-        kicker: title,
-        title: readableCoverTitle,
-        body: `조건만 빠르게 저장\n대상\n혜택\n신청`,
-      },
-      {
-        eyebrow: "자격",
-        title: "대상",
-        body: multiFact([facts.target], 1),
-      },
-      {
-        eyebrow: "자격",
-        title: "조건",
-        body: multiFact([facts.targetDetail], 1),
-      },
-      {
-        eyebrow: "자격",
-        title: "소득",
-        body: multiFact([facts.targetExtra], 1),
-      },
-      {
-        eyebrow: "자격",
-        title: "지역",
-        body: multiFact([facts.targetRegion || facts.target], 1),
-      },
-      {
-        eyebrow: "지원",
-        title: "혜택",
-        body: multiFact([facts.benefit], 1),
-      },
-      ...(amountBody ? [{
-        eyebrow: "지원",
-        title: "금액",
-        body: amountBody,
-      }] : []),
-      {
-        eyebrow: "신청",
-        title: "방법",
-        body: multiFact([facts.apply], 1),
-      },
-      {
-        eyebrow: "신청",
-        title: "기간",
-        body: multiFact([facts.applySecondary || facts.applyExtra], 1),
-      },
-      {
-        eyebrow: "마지막",
-        title: "저장 리스트",
-        body: `자격 조건\n신청 기간\n제출 서류\nkeepioo에서 정책명 검색`,
-      },
-    ];
+    {
+      eyebrow: `${category} · keepioo`,
+      kicker: title,
+      title: readableCoverTitle,
+      body: `신청 전 3가지만 확인\n01\n02\n03`,
+    },
+    {
+      eyebrow: "01",
+      title: "조건",
+      body: multiFact(eligibilityFacts, 3),
+    },
+    {
+      eyebrow: "02",
+      title: "혜택",
+      body: multiFact(benefitFacts, 3),
+    },
+    {
+      eyebrow: "03",
+      title: "방법",
+      body: multiFact(applyFacts, 3),
+    },
+    {
+      eyebrow: "저장",
+      title: "체크",
+      body: `자격 조건\n신청 기간\n제출 서류\nkeepioo에서 ${searchCue} 검색`,
+    },
+  ];
   return {
-    durationSeconds: Math.max(36, slides.length * 4),
+    durationSeconds: Math.max(24, slides.length * 5),
     slides,
   };
 }
