@@ -54,6 +54,7 @@ on:
           - instagram-insights-collect
           - instagram-reels-publish-dry
           - instagram-reels-publish
+          - instagram-reels-publish-now
           - instagram-reels-render-dry
           - instagram-reels-render
           - instagram-comment-drafts
@@ -247,6 +248,10 @@ jobs:
               ;;
             instagram-reels-publish)
               path="/api/cron/instagram-reels-publish"
+              method="GET"
+              ;;
+            instagram-reels-publish-now)
+              path="/api/cron/instagram-reels-publish?force=1"
               method="GET"
               ;;
             instagram-reels-render-dry)

@@ -172,6 +172,30 @@ describe("instagram-reels-publish dry-run", () => {
     expect(mocks.publishReel).not.toHaveBeenCalled();
   });
 
+  it("force run bypasses weak CTA freeze and daily cap for explicit manual publish", async () => {
+    mocks.todayCount = 1;
+    process.env.INSTAGRAM_REELS_DAILY_CAP = "1";
+    mocks.latestJudgement = {
+      created_at: new Date().toISOString(),
+      details: {
+        judgement: { status: "hook_cta_weak" },
+        management: { nextAction: "발행량 확대 중단" },
+      },
+    };
+
+    const res = await GET(req("/api/cron/instagram-reels-publish?dry=1&force=1"));
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "ready",
+      todayCount: 1,
+      dailyCap: 1,
+      candidate: { slug: "slug-1" },
+    });
+    expect(mocks.publishReel).not.toHaveBeenCalled();
+  });
+
   it("reports ready without calling Graph publish", async () => {
     const res = await GET(req());
     const body = await res.json();

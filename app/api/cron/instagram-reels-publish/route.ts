@@ -62,6 +62,11 @@ function isDryRunRequest(request: Request): boolean {
   );
 }
 
+function isForceRequest(request: Request): boolean {
+  const url = new URL(request.url);
+  return url.searchParams.get("force") === "1";
+}
+
 function dryResponse(status: ReelsStatus, extra: Record<string, unknown> = {}) {
   return NextResponse.json({ dryRun: true, status, ...extra });
 }
@@ -149,6 +154,7 @@ export async function GET(request: Request) {
   const denied = authorizeCronRequest(request);
   if (denied) return denied;
   const dryRun = isDryRunRequest(request);
+  const forceRun = isForceRequest(request);
 
   if (!reelsAutoEnabled()) {
     if (dryRun) return dryResponse("disabled", { env: "INSTAGRAM_REELS_AUTO_ENABLED" });
@@ -166,7 +172,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
   const weakCtaFreeze = await latestWeakCtaFreeze(admin);
-  if (weakCtaFreeze.frozen) {
+  if (weakCtaFreeze.frozen && !forceRun) {
     const payload = {
       latestJudgementAt: weakCtaFreeze.latestJudgementAt,
       latestStatus: weakCtaFreeze.latestStatus,
@@ -200,7 +206,7 @@ export async function GET(request: Request) {
     .from("blog_posts")
     .select("id", { count: "exact", head: true })
     .gte("instagram_reel_published_at", kstMidnight.toISOString());
-  if ((todayCount ?? 0) >= cap) {
+  if ((todayCount ?? 0) >= cap && !forceRun) {
     if (dryRun) return dryResponse("daily_cap_reached", { todayCount, dailyCap: cap });
     await safeLogSkip("daily_cap_reached", { todayCount, dailyCap: cap });
     return NextResponse.json({ status: "daily_cap_reached", todayCount, dailyCap: cap });
