@@ -199,30 +199,39 @@ function firstConcrete(items: Array<string | null | undefined>): string | null {
   return null;
 }
 
-function concreteFacts(items: Array<string | null | undefined>, limit = 3): string[] {
-  const facts: string[] = [];
+
+type FactSource =
+  | "target"
+  | "targetDetail"
+  | "targetExtra"
+  | "region"
+  | "benefit"
+  | "benefitSecondary"
+  | "benefitExtra"
+  | "apply"
+  | "applySecondary"
+  | "applyExtra";
+
+type LabeledFactCandidate = { label: string; text: string | null | undefined; source: FactSource };
+type LabeledFact = { label: string; text: string; source: FactSource };
+
+function concreteLabeledFacts(items: Array<LabeledFactCandidate | null | undefined>, limit = 3): LabeledFact[] {
+  const facts: LabeledFact[] = [];
   for (const item of items) {
-    const fact = item ? conciseFact(item) : "";
-    if (!fact || GENERIC_FACT_RE.test(fact)) continue;
-    const duplicate = facts.some((seen) => seen.includes(fact.slice(0, 18)) || fact.includes(seen.slice(0, 18)));
-    if (!duplicate) facts.push(fact);
+    const text = item?.text ? conciseFact(item.text) : "";
+    if (!item || !text || GENERIC_FACT_RE.test(text)) continue;
+    const duplicate = facts.some((seen) => {
+      if (item.source === "region") return seen.source === "region" && seen.text === text;
+      return seen.text.includes(text.slice(0, 18)) || text.includes(seen.text.slice(0, 18));
+    });
+    if (!duplicate) facts.push({ label: item.label, text, source: item.source });
     if (facts.length >= limit) break;
   }
   return facts;
 }
 
-function benefitDetailFacts(benefit: string | null | undefined): string[] {
-  const fact = benefit ? conciseFact(benefit) : "";
-  const details: string[] = [];
-  if (/대출\s*이자/.test(fact)) details.push("주거자금 대출 이자 부담 완화");
-  if (/현금/.test(fact)) details.push("지원 방식: 현금 지원");
-  if (/월세/.test(fact)) details.push("월세 부담 완화 목적");
-  if (/대여/.test(fact)) details.push("필요 물품을 빌려 쓰는 지원");
-  return details;
-}
-
-function labeledFacts(labels: string[], facts: string[]): string[] {
-  return facts.map((fact, index) => `${labels[index] ?? "확인"} — ${fact}`);
+function formatLabeledFacts(facts: LabeledFact[]): string {
+  return facts.map((fact) => `${fact.label} — ${fact.text}`).join("\n");
 }
 
 function distinctSentence(lines: string[], pattern: RegExp, used: Array<string | null | undefined>, avoid: RegExp | null = null): string | null {
@@ -345,22 +354,21 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
   const readableCoverTitle = makeReadableCoverTitle(post.title, category);
   const facts = buildArticleFacts(post);
 
-  const eligibilityFacts = concreteFacts([
-    facts.target,
-    facts.targetDetail,
-    facts.targetExtra,
-    facts.targetRegion && `지역: ${facts.targetRegion}`,
+  const eligibilityFacts = concreteLabeledFacts([
+    { label: "대상", text: facts.target, source: "target" },
+    { label: "거주", text: facts.targetDetail, source: "targetDetail" },
+    { label: "소득", text: facts.targetExtra, source: "targetExtra" },
+    facts.targetRegion ? { label: "지역", text: facts.targetRegion, source: "region" } : null,
   ], 3);
-  const benefitFacts = concreteFacts([
-    facts.benefit,
-    facts.benefitSecondary,
-    facts.benefitExtra,
-    ...benefitDetailFacts(facts.benefit),
+  const benefitFacts = concreteLabeledFacts([
+    { label: "지원", text: facts.benefit, source: "benefit" },
+    { label: "금액", text: facts.benefitSecondary, source: "benefitSecondary" },
+    { label: "기준", text: facts.benefitExtra, source: "benefitExtra" },
   ], 3);
-  const applyFacts = concreteFacts([
-    facts.apply,
-    facts.applySecondary,
-    facts.applyExtra,
+  const applyFacts = concreteLabeledFacts([
+    { label: "접수", text: facts.apply, source: "apply" },
+    { label: "기간", text: facts.applySecondary, source: "applySecondary" },
+    { label: "준비", text: facts.applyExtra, source: "applyExtra" },
   ], 3);
   const searchCue = readableCoverTitle.split(" · ").slice(-2).join(" ") || "정책명";
 
@@ -369,22 +377,22 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
       eyebrow: `${category} · keepioo`,
       kicker: title,
       title: readableCoverTitle,
-      body: `저장하면 바로 보는 핵심 3개\n조건\n혜택\n방법`,
+      body: `저장하면 바로 보는 핵심 3개\n01\n02\n03`,
     },
     {
       eyebrow: "01",
       title: "조건",
-      body: labeledFacts(["대상", "거주", "소득"], eligibilityFacts).join("\n"),
+      body: formatLabeledFacts(eligibilityFacts),
     },
     {
       eyebrow: "02",
       title: "혜택",
-      body: labeledFacts(["지원", "효과", "방식"], benefitFacts).join("\n"),
+      body: formatLabeledFacts(benefitFacts),
     },
     {
       eyebrow: "03",
       title: "방법",
-      body: labeledFacts(["접수", "기간", "준비"], applyFacts).join("\n"),
+      body: formatLabeledFacts(applyFacts),
     },
     {
       eyebrow: "저장",

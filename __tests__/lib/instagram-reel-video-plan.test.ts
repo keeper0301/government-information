@@ -32,17 +32,61 @@ describe("reel-video-plan", () => {
     expect(plan.slides[0].title).toContain("가평군");
     expect(plan.slides[0].title).toContain("신혼부부");
     expect(plan.slides[0].body).toContain("저장하면 바로 보는 핵심 3개");
-    expect(plan.slides[0].body).toContain("조건\n혜택\n방법");
+    expect(plan.slides[0].body).toContain("01\n02\n03");
     expect(plan.slides[1]).toMatchObject({ title: "조건" });
     expect(plan.slides[1].body).toContain("대상 — 가평군 거주 일정 요건");
     expect(plan.slides[1].body).toContain("거주 — 가평군 실제 거주 신혼부부");
     expect(plan.slides[1].body).toContain("소득 — 중위소득 180% 이내");
     expect(plan.slides[2]).toMatchObject({ title: "혜택" });
     expect(plan.slides[2].body).toContain("지원 — 주거자금 대출 이자 현금 지원");
-    expect(plan.slides[2].body).toContain("방식 — 지원 방식: 현금 지원");
+    expect(plan.slides[2].body).not.toContain("지원 방식: 현금 지원");
     expect(plan.slides[3]).toMatchObject({ title: "방법" });
     expect(plan.slides[3].body).toContain("접수 — 방문 신청");
     expect(plan.slides[3].body).toContain("기간 — 연중 상시 또는 특정 기간 접수");
     expect(plan.slides.at(-1)?.title).toBe("체크");
+  });
+
+  it("keeps labels source-aligned for sparse article facts", () => {
+    const plan = buildReelVideoPlan({
+      slug: "sparse",
+      title: "2026년 서울시 청년 월세 지원",
+      category: "주거",
+      meta_description: "청년에게 월세를 지원합니다.",
+      content: `
+| 지원 대상 | 서울시 거주 청년 |
+| 지원 혜택 | 월세 지원 |
+| 신청 방법 | 온라인 신청 |
+| 지원 지역 | 서울시 |
+`,
+    });
+
+    expect(plan.slides[1].body).toContain("대상 — 서울시 거주 청년");
+    expect(plan.slides[1].body).not.toContain("거주 — 지역");
+    expect(plan.slides[1].body).not.toContain("소득 — 지역");
+    expect(plan.slides[1].body).not.toContain("거주 — 서울시");
+    expect(plan.slides[1].body).not.toContain("소득 — 서울시");
+    expect(plan.slides[2].body).toBe("지원 — 월세 지원");
+    expect(plan.slides[2].body).not.toMatch(/월세 부담 완화 목적|이자 부담 완화|지원 방식: 현금 지원/);
+    expect(plan.slides[3].body).toBe("접수 — 온라인 신청");
+  });
+
+  it("keeps region-only facts under the region label", () => {
+    const plan = buildReelVideoPlan({
+      slug: "region-only",
+      title: "2026년 부산시 정책 신청 안내",
+      category: "정책정보",
+      meta_description: null,
+      content: `
+| 대상 | 정책 신청 대상자 |
+| 지역 | 부산시 |
+| 혜택 | 상담 지원 |
+| 신청 | 방문 신청 |
+`,
+    });
+
+    expect(plan.slides[1].body).toContain("대상 — 정책 신청 대상자");
+    expect(plan.slides[1].body).toContain("지역 — 부산시");
+    expect(plan.slides[1].body).not.toContain("거주 — 부산시");
+    expect(plan.slides[1].body).not.toContain("소득 — 부산시");
   });
 });
