@@ -132,14 +132,19 @@ function renderFrameElement(slide: ReelVideoSlide, index: number, totalSlides: n
 
   const factBlocks = bodyLines.slice(0, 3);
   return frameChrome(index, category, accent,
-    div({ display: "flex", flexDirection: "column", position: "absolute", left: 72, right: 72, top: 286, bottom: 180 }, [
-      div({ display: "flex", color: brandColor, fontSize: 40, fontWeight: 700, lineHeight: 1, marginBottom: 24 }, slide.eyebrow),
-      div({ display: "flex", flexDirection: "column", fontSize: 88, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.045em", color: "#191F28", marginBottom: 48 }, titleTokens(slide.title)),
-      div({ display: "flex", flexDirection: "column", gap: 22, maxWidth: 936 },
-        factBlocks.map((fact, i) => div({ display: "flex", flexDirection: "row", alignItems: "flex-start", background: "#ffffff", border: `5px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 36, padding: "36px 38px", gap: 20 }, [
-          div({ display: "flex", width: 22, height: 22, borderRadius: 999, background: accent, marginTop: 20, flex: "0 0 auto" }),
-          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 58 : 50, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.16, letterSpacing: "-0.03em", flex: 1 }, fact),
-        ])),
+    div({ display: "flex", flexDirection: "column", position: "absolute", left: 72, right: 72, top: 276, bottom: 180 }, [
+      div({ display: "flex", color: brandColor, fontSize: 42, fontWeight: 700, lineHeight: 1, marginBottom: 22 }, slide.eyebrow),
+      div({ display: "flex", flexDirection: "column", fontSize: 92, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.045em", color: "#191F28", marginBottom: 42 }, titleTokens(slide.title)),
+      div({ display: "flex", flexDirection: "column", gap: 20, maxWidth: 936 },
+        factBlocks.map((fact, i) => {
+          const [rawLabel, ...rest] = fact.split(" — ");
+          const label = rest.length > 0 ? rawLabel : String(i + 1).padStart(2, "0");
+          const text = rest.length > 0 ? rest.join(" — ") : fact;
+          return div({ display: "flex", flexDirection: "row", alignItems: "stretch", background: "#ffffff", border: `5px solid ${i === 0 ? accent : "#e5e7eb"}`, borderRadius: 36, overflow: "hidden" }, [
+          div({ display: "flex", width: 132, background: i === 0 ? accent : "#f3f4f6", color: i === 0 ? "#ffffff" : brandColor, justifyContent: "center", alignItems: "center", fontSize: 34, fontWeight: 700, lineHeight: 1, flex: "0 0 auto" }, label),
+          div({ display: "flex", color: "#111827", fontSize: i === 0 ? 56 : 48, fontWeight: i === 0 ? 700 : 500, lineHeight: 1.17, letterSpacing: "-0.03em", flex: 1, padding: "34px 36px" }, text),
+        ]);
+        }),
       ),
     ]),
   );

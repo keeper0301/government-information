@@ -191,19 +191,6 @@ function conciseFact(input: string): string {
     .trim();
 }
 
-function multiFact(items: Array<string | null | undefined>, limit = 2): string {
-  const facts: string[] = [];
-  for (const item of items) {
-    if (!item) continue;
-    const fact = conciseFact(item);
-    if (!fact) continue;
-    const duplicate = facts.some((seen) => seen.includes(fact.slice(0, 18)) || fact.includes(seen.slice(0, 18)));
-    if (!duplicate) facts.push(fact);
-    if (facts.length >= limit) break;
-  }
-  return facts.join("\n");
-}
-
 function firstConcrete(items: Array<string | null | undefined>): string | null {
   for (const item of items) {
     const fact = item ? conciseFact(item) : "";
@@ -232,6 +219,10 @@ function benefitDetailFacts(benefit: string | null | undefined): string[] {
   if (/월세/.test(fact)) details.push("월세 부담 완화 목적");
   if (/대여/.test(fact)) details.push("필요 물품을 빌려 쓰는 지원");
   return details;
+}
+
+function labeledFacts(labels: string[], facts: string[]): string[] {
+  return facts.map((fact, index) => `${labels[index] ?? "확인"} — ${fact}`);
 }
 
 function distinctSentence(lines: string[], pattern: RegExp, used: Array<string | null | undefined>, avoid: RegExp | null = null): string | null {
@@ -378,22 +369,22 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
       eyebrow: `${category} · keepioo`,
       kicker: title,
       title: readableCoverTitle,
-      body: `신청 전 3가지만 확인\n01\n02\n03`,
+      body: `저장하면 바로 보는 핵심 3개\n조건\n혜택\n방법`,
     },
     {
       eyebrow: "01",
       title: "조건",
-      body: multiFact(eligibilityFacts, 3),
+      body: labeledFacts(["대상", "거주", "소득"], eligibilityFacts).join("\n"),
     },
     {
       eyebrow: "02",
       title: "혜택",
-      body: multiFact(benefitFacts, 3),
+      body: labeledFacts(["지원", "효과", "방식"], benefitFacts).join("\n"),
     },
     {
       eyebrow: "03",
       title: "방법",
-      body: multiFact(applyFacts, 3),
+      body: labeledFacts(["접수", "기간", "준비"], applyFacts).join("\n"),
     },
     {
       eyebrow: "저장",
