@@ -380,13 +380,11 @@ export default async function Home() {
         </div>
       )}
 
-      {ADSENSE_REVIEW_MODE ? (
-        <ReviewModeHomeBody />
-      ) : (
-        <HomeDiscoveryHub
-          regionMap={<RegionMap />}
-        />
-      )}
+      {ADSENSE_REVIEW_MODE && <ReviewModeHomeBody />}
+
+      <HomeDiscoveryHub
+        regionMap={<RegionMap />}
+      />
 
       <RevealOnScroll>
         <Suspense fallback={<div className="h-[150px]" aria-hidden />}>
