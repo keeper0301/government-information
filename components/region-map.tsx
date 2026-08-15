@@ -63,7 +63,7 @@ export async function RegionMap() {
     <section className="max-w-content mx-auto px-6 lg:px-10 py-10 lg:py-16">
       <div className="flex items-baseline justify-between mb-6 max-md:flex-col max-md:items-start max-md:gap-2">
         <h2 className="text-[26px] font-bold tracking-[-0.8px] text-grey-900">
-          지역별 진행 중 지원 공고
+          지역별 지원 정보
         </h2>
         <Link
           href="/welfare"
@@ -104,7 +104,7 @@ export async function RegionMap() {
       </div>
 
       <p className="text-[12px] text-grey-500 mt-3">
-        ※ 시·군 단위 공고는 광역 시·도에 합산. 색이 진할수록 진행 중 공고가 많은 지역.
+        ※ 시·군 단위 정보는 광역 시·도에 합산. 색이 진할수록 지원 정보가 많은 지역.
       </p>
     </section>
   );
@@ -133,7 +133,7 @@ function RegionCell({
       href={`/welfare?region=${encodeURIComponent(name)}`}
       event={EVENTS.HOME_REGION_CARD_CLICKED}
       params={{ region: name }}
-      title={`${name} — 진행 중 공고 ${count.toLocaleString()}건`}
+      title={`${name} — 지원 정보 ${count.toLocaleString()}건`}
       className={`block rounded-xl px-2 py-3 max-md:px-1 max-md:py-2 text-center no-underline transition-all hover:scale-[1.04] hover:shadow-md ${cls}`}
     >
       <div className="text-[12px] max-md:text-[10px] font-bold tracking-[-0.01em] mb-0.5 leading-tight min-h-[1.2em]">

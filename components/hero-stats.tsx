@@ -30,7 +30,7 @@ export async function HeroStats() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 bg-white rounded-3xl shadow-sm px-5 lg:px-8 py-6 lg:py-8">
         {ADSENSE_REVIEW_MODE ? (
           <>
-            <Stat to={totalPrograms} label="진행 중 지원 공고" />
+            <Stat to={totalPrograms} label="정책 정보" />
             <Stat
               to={counts.today_new_welfare + counts.today_new_loan}
               label="오늘 새로 등록"
@@ -39,7 +39,7 @@ export async function HeroStats() {
         ) : (
           <>
             <Stat to={counts.news_total} label="정책 뉴스 큐레이션" />
-            <Stat to={totalPrograms} label="진행 중 지원 공고" />
+            <Stat to={totalPrograms} label="정책 정보" />
           </>
         )}
         <Stat to={PROVINCE_COUNT} label="광역 시·도 커버" suffix="개" />
