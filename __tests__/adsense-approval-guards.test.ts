@@ -98,6 +98,14 @@ describe("AdSense approval guardrails", () => {
     expect(home).toContain("ADSENSE_REVIEW_MODE ? \"/guides\" : \"/welfare\"");
   });
 
+  it("keeps the regional policy map visible during AdSense review mode", () => {
+    const home = read("app/page.tsx");
+    expect(home).toContain("{ADSENSE_REVIEW_MODE && <ReviewModeHomeBody />}");
+    expect(home).toContain("<HomeDiscoveryHub");
+    expect(home).toContain("regionMap={<RegionMap />}");
+    expect(home).not.toContain("ADSENSE_REVIEW_MODE ? (\n        <ReviewModeHomeBody />");
+  });
+
   it("keeps mass listing indexes noindex during AdSense review mode", () => {
     for (const path of ["app/welfare/page.tsx", "app/loan/page.tsx", "app/blog/page.tsx"]) {
       const source = read(path);
