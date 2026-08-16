@@ -31,8 +31,8 @@ describe("reel-video-plan", () => {
     expect(plan.slides[0].eyebrow).toContain("주거");
     expect(plan.slides[0].title).toContain("가평군");
     expect(plan.slides[0].title).toContain("신혼부부");
-    expect(plan.slides[0].body).toContain("저장하면 바로 보는 핵심 3개");
-    expect(plan.slides[0].body).toContain("01\n02\n03");
+    expect(plan.slides[0].body).toContain("해당되면 저장. 신청 전 3개만 확인");
+    expect(plan.slides[0].body).toContain("조건\n혜택\n방법");
     expect(plan.slides[1]).toMatchObject({ title: "조건" });
     expect(plan.slides[1].body).toContain("대상 — 가평군 거주 일정 요건");
     expect(plan.slides[1].body).toContain("거주 — 가평군 실제 거주 신혼부부");

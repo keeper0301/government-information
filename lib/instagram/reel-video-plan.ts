@@ -371,13 +371,14 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
     { label: "준비", text: facts.applyExtra, source: "applyExtra" },
   ], 3);
   const searchCue = readableCoverTitle.split(" · ").slice(-2).join(" ") || "정책명";
+  const commentKeyword = searchCue.replace(/\s+/g, " ").trim() || "정책명";
 
   const slides: ReelVideoSlide[] = [
     {
       eyebrow: `${category} · keepioo`,
       kicker: title,
       title: readableCoverTitle,
-      body: `저장하면 바로 보는 핵심 3개\n01\n02\n03`,
+      body: `해당되면 저장. 신청 전 3개만 확인\n조건\n혜택\n방법`,
     },
     {
       eyebrow: "01",
@@ -397,7 +398,7 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
     {
       eyebrow: "저장",
       title: "체크",
-      body: `자격 조건\n신청 기간\n제출 서류\nkeepioo에서 ${searchCue} 검색`,
+      body: `댓글 키워드\n${commentKeyword}\n저장 후 신청 전 확인\nkeepioo에서 ${searchCue} 검색`,
     },
   ];
   return {

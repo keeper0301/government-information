@@ -34,24 +34,26 @@ export function resolveInstagramCardHook(input: {
 }): ResolvedCardHook {
   const text = `${input.category ?? ""} ${input.title} ${input.description ?? ""}`;
 
-  if (MONEY_RE.test(text)) {
-    return { type: "money_deadline", label: "저장/공유 · 금액보다 대상·마감 먼저" };
-  }
-
+  // hook_cta_weak 대응: 금액 신호가 있어도 먼저 "누구에게 공유할지"가 보이게
+  // audience-specific hook을 우선한다. 금액-only 정책만 money hook으로 보낸다.
   if (HOUSING_RE.test(text)) {
-    return { type: "housing_condition", label: "월세·전세 해당자에게 공유 · 조건 먼저" };
-  }
-
-  if (YOUTH_RE.test(text)) {
-    return { type: "share_age", label: "청년·학생이면 공유 · 나이·기간 확인" };
-  }
-
-  if (DOCUMENT_RE.test(text)) {
-    return { type: "document_save", label: "저장 · 제출서류 빠뜨리면 다시 해야 함" };
+    return { type: "housing_condition", label: "월세·전세 보는 사람에게 공유 · 조건 3개" };
   }
 
   if (SMALL_BUSINESS_RE.test(text)) {
-    return { type: "small_business_share", label: "사장님에게 공유 · 대상·신청처 먼저" };
+    return { type: "small_business_share", label: "사장님이면 저장 · 신청 전 3개" };
+  }
+
+  if (YOUTH_RE.test(text)) {
+    return { type: "share_age", label: "청년·학생에게 공유 · 나이·기간" };
+  }
+
+  if (DOCUMENT_RE.test(text)) {
+    return { type: "document_save", label: "저장 · 제출서류 빠뜨리면 재신청" };
+  }
+
+  if (MONEY_RE.test(text)) {
+    return { type: "money_deadline", label: "저장 · 금액보다 대상·마감 먼저" };
   }
 
   if (OFFICIAL_ROUTE_RE.test(text)) {

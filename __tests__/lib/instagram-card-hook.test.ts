@@ -8,7 +8,7 @@ describe("resolveInstagramCardHook", () => {
         title: "2026년 과천시 초등 입학축하금 10만원",
         category: "육아·가족",
       }),
-    ).toEqual({ type: "money_deadline", label: "저장/공유 · 금액보다 대상·마감 먼저" });
+    ).toEqual({ type: "money_deadline", label: "저장 · 금액보다 대상·마감 먼저" });
   });
 
   it("uses housing condition hook before generic official-route hooks", () => {
@@ -17,7 +17,7 @@ describe("resolveInstagramCardHook", () => {
         title: "2026년 서울 청년 전월세보증금 지원",
         category: "주거",
       }),
-    ).toEqual({ type: "housing_condition", label: "월세·전세 해당자에게 공유 · 조건 먼저" });
+    ).toEqual({ type: "housing_condition", label: "월세·전세 보는 사람에게 공유 · 조건 3개" });
   });
 
   it("uses official route hook for consulting posts", () => {
@@ -35,7 +35,7 @@ describe("resolveInstagramCardHook", () => {
         title: "2026년 공주시 위기상권 소상공인 신용보증 지원",
         category: "소상공인",
       }),
-    ).toEqual({ type: "small_business_share", label: "사장님에게 공유 · 대상·신청처 먼저" });
+    ).toEqual({ type: "small_business_share", label: "사장님이면 저장 · 신청 전 3개" });
   });
 
   it("uses share hook for youth/student posts without amount signal", () => {
@@ -44,7 +44,7 @@ describe("resolveInstagramCardHook", () => {
         title: "2026년 청년 멘토링 참여자 모집",
         category: "청년",
       }),
-    ).toEqual({ type: "share_age", label: "청년·학생이면 공유 · 나이·기간 확인" });
+    ).toEqual({ type: "share_age", label: "청년·학생에게 공유 · 나이·기간" });
   });
 
   it("uses document-focused hook when required documents are the save reason", () => {
@@ -54,7 +54,7 @@ describe("resolveInstagramCardHook", () => {
         description: "신청서와 증빙서류 제출 방법을 정리했습니다.",
         category: "육아·가족",
       }),
-    ).toEqual({ type: "document_save", label: "저장 · 제출서류 빠뜨리면 다시 해야 함" });
+    ).toEqual({ type: "document_save", label: "저장 · 제출서류 빠뜨리면 재신청" });
   });
 
   it("falls back to checklist hook without fear copy", () => {
