@@ -21,6 +21,16 @@ export type NaverExtensionStatus = {
     skip_reason: string | null;
     naver_url: string | null;
   }>;
+  executionGap: {
+    status: "healthy_recent_activity" | "no_retryable_queue" | "idle_with_retryable_queue" | "confirm_selector_blocked" | "recent_failures";
+    severity: "ok" | "watch" | "action";
+    queuePressure: boolean;
+    attempts24h: number;
+    lastAttemptedAt: string | null;
+    lastAttemptAgeHours: number | null;
+    likelyBlocker: string;
+    nextAction: string;
+  };
   errors: string[];
 };
 
@@ -96,6 +106,83 @@ export function summarizeFailReasons(rows: FailReasonRow[]): Array<{ reason: str
     .map(([reason, count]) => ({ reason, count }))
     .sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason))
     .slice(0, 5);
+}
+
+type NaverExecutionGapInput = {
+  retryablePending: number;
+  success24h: number;
+  fail24h: number;
+  skipped24h: number;
+  recentAudits: NaverExtensionStatus["recentAudits"];
+  nowMs?: number;
+};
+
+export function diagnoseNaverExecutionGap(input: NaverExecutionGapInput): NaverExtensionStatus["executionGap"] {
+  const attempts24h = input.success24h + input.fail24h + input.skipped24h;
+  const queuePressure = input.retryablePending >= 50;
+  const latest = input.recentAudits[0] ?? null;
+  const lastAttemptedAt = latest?.attempted_at ?? null;
+  const nowMs = input.nowMs ?? Date.now();
+  const lastAttemptAgeHours = lastAttemptedAt
+    ? Math.max(0, Math.round(((nowMs - new Date(lastAttemptedAt).getTime()) / 3_600_000) * 10) / 10)
+    : null;
+  const latestReason = latest
+    ? normalizeNaverFailReason({ error_message: latest.error_message, skip_reason: latest.skip_reason })
+    : null;
+
+  if (input.retryablePending <= 0) {
+    return {
+      status: "no_retryable_queue",
+      severity: "ok",
+      queuePressure: false,
+      attempts24h,
+      lastAttemptedAt,
+      lastAttemptAgeHours,
+      likelyBlocker: "none",
+      nextAction: "재시도 가능한 Naver 발행 대기열이 없으므로 관찰만 유지한다.",
+    };
+  }
+
+  if (attempts24h === 0 && queuePressure) {
+    const confirmBlocked = latestReason === "confirm_not_found";
+    return {
+      status: confirmBlocked ? "confirm_selector_blocked" : "idle_with_retryable_queue",
+      severity: "action",
+      queuePressure,
+      attempts24h,
+      lastAttemptedAt,
+      lastAttemptAgeHours,
+      likelyBlocker: confirmBlocked ? "confirm_selector_blocked" : "schedule_or_extension_idle",
+      nextAction: confirmBlocked
+        ? "최근 실패가 confirm 버튼 탐색이므로 설치된 Chrome Extension reload 상태와 top-document modal 후보 스냅샷을 먼저 확인한다. live publish 없이 dry-run trigger만 사용한다."
+        : "재시도 큐가 큰데 24h 실행이 없으므로 schedule, extension enabled 상태, alarm/trigger 실행 여부를 먼저 분리한다.",
+    };
+  }
+
+  if (input.fail24h > 0) {
+    const topFailure = latestReason ?? "recent_failures";
+    return {
+      status: "recent_failures",
+      severity: queuePressure ? "action" : "watch",
+      queuePressure,
+      attempts24h,
+      lastAttemptedAt,
+      lastAttemptAgeHours,
+      likelyBlocker: topFailure,
+      nextAction: "최근 실패 사유별로 selector/login/body/url_capture를 나눠 dry-run에서 재현한다.",
+    };
+  }
+
+  return {
+    status: "healthy_recent_activity",
+    severity: "ok",
+    queuePressure,
+    attempts24h,
+    lastAttemptedAt,
+    lastAttemptAgeHours,
+    likelyBlocker: "none",
+    nextAction: "최근 실행 흔적이 있으므로 큐와 실패율만 관찰한다.",
+  };
 }
 
 /**
@@ -214,6 +301,14 @@ export async function getNaverExtensionStatus(): Promise<NaverExtensionStatus> {
     errors.push(`failReasons: ${failReasonRes.error.message ?? "unknown"}`);
   }
   const failReasons = summarizeFailReasons(failReasonRes.data ?? []);
+  const recentAudits = recentRes.data ?? [];
+  const executionGap = diagnoseNaverExecutionGap({
+    retryablePending,
+    success24h: success,
+    fail24h: fail,
+    skipped24h: skipped,
+    recentAudits,
+  });
 
   return {
     checkedAt,
@@ -229,7 +324,8 @@ export async function getNaverExtensionStatus(): Promise<NaverExtensionStatus> {
       skipped,
       failReasons,
     },
-    recentAudits: recentRes.data ?? [],
+    recentAudits,
+    executionGap,
     errors,
   };
 }

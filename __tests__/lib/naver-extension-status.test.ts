@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({ from: mocks.from })),
 }));
 
-import { getNaverExtensionStatus, summarizeFailReasons } from "@/lib/naver-blog/extension-status";
+import { diagnoseNaverExecutionGap, getNaverExtensionStatus } from "@/lib/naver-blog/extension-status";
 
 type QueryResult = { count?: number | null; data?: unknown[] | null; error?: { message?: string } | null };
 
@@ -80,9 +80,44 @@ describe("getNaverExtensionStatus", () => {
       ],
     });
     expect(status.recentAudits).toEqual([]);
+    expect(status.executionGap).toMatchObject({
+      status: "recent_failures",
+      severity: "watch",
+      attempts24h: 15,
+      likelyBlocker: "recent_failures",
+    });
     expect(status.errors).toEqual([
       "queue.pending: count exploded",
       "recentAudits: recent exploded",
     ]);
+  });
+
+  it("재시도 큐가 큰데 24h 시도가 0이고 최근 confirm 실패면 selector blocker로 분리한다", () => {
+    const gap = diagnoseNaverExecutionGap({
+      retryablePending: 784,
+      success24h: 0,
+      fail24h: 0,
+      skipped24h: 0,
+      nowMs: Date.parse("2026-08-16T08:00:00.000Z"),
+      recentAudits: [
+        {
+          attempted_at: "2026-08-12T15:01:42.127Z",
+          result: "fail",
+          error_message: "발행 모달 confirm 버튼 후보 못 찾음",
+          skip_reason: null,
+          naver_url: null,
+        },
+      ],
+    });
+
+    expect(gap).toMatchObject({
+      status: "confirm_selector_blocked",
+      severity: "action",
+      queuePressure: true,
+      attempts24h: 0,
+      likelyBlocker: "confirm_selector_blocked",
+    });
+    expect(gap.lastAttemptAgeHours).toBeGreaterThan(80);
+    expect(gap.nextAction).toContain("live publish 없이 dry-run");
   });
 });
