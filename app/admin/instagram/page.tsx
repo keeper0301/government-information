@@ -25,6 +25,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { buildInstagramCaption, getLinkInBioText } from "@/lib/instagram/caption";
 import { CopyCaption } from "./copy-caption";
+import {
+  getAdminInstagramReelsQualityDashboard,
+  type InstagramReelsQualityCandidate,
+  type InstagramReelsQualityDashboard,
+  type ReelsCandidateStatus,
+} from "@/lib/admin-instagram-reels-quality";
 
 export const metadata: Metadata = {
   title: "인스타 카드뉴스 | 어드민",
@@ -143,10 +149,11 @@ export default async function AdminInstagramPage({
   const oauthSuccess = params.oauth === "success" ? params.user : null;
   const oauthError = params.oauth_error ?? null;
 
-  const [posts, stats, oauth] = await Promise.all([
+  const [posts, stats, oauth, reels] = await Promise.all([
     loadRecentPosts(),
     loadInstaStats(),
     loadOAuthStatus(),
+    getAdminInstagramReelsQualityDashboard(),
   ]);
 
   return (
@@ -205,6 +212,8 @@ export default async function AdminInstagramPage({
         <StatCard label="⏳ 대기 중" value={stats.pending} accent="blue" />
         <StatCard label="❌ 실패 (3회 시도)" value={stats.failed} accent="red" />
       </div>
+
+      <ReelsQualityDashboard data={reels} />
 
       {/* 운영 안내 */}
       <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-xs text-blue-900 leading-[1.7]">
@@ -294,6 +303,178 @@ export default async function AdminInstagramPage({
       )}
     </div>
   );
+}
+
+function ReelsQualityDashboard({ data }: { data: InstagramReelsQualityDashboard }) {
+  const capAccent = data.dailyCapRemaining > 0 ? "green" : "red";
+  return (
+    <section className="mb-6 rounded-xl border border-grey-200 bg-white p-5">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-grey-500">
+            Instagram Reels 자동 발행 품질
+          </div>
+          <h2 className="mt-1 text-lg font-bold tracking-[-0.3px] text-grey-900">
+            렌더·품질 gate·발행 상태 보드
+          </h2>
+          <p className="mt-1 text-xs leading-[1.5] text-grey-500">{data.safetyLine}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
+          <StatePill ok={data.renderEnabled} label={`render ${data.renderEnabled ? "ON" : "OFF"}`} />
+          <StatePill ok={data.publishEnabled} label={`publish ${data.publishEnabled ? "ON" : "OFF"}`} />
+          <StatePill ok={!data.frozenHookCtaWeak} label={data.frozenHookCtaWeak ? "hook_cta_weak freeze" : "freeze clear"} />
+        </div>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-6">
+        <MiniStat label="오늘 발행" value={`${data.todayPublished}/${data.dailyCap}`} accent={capAccent} />
+        <MiniStat label="발행 대기" value={data.counts.readyToPublish} accent="blue" />
+        <MiniStat label="렌더 필요" value={data.counts.needsRender} accent="grey" />
+        <MiniStat label="품질 보류" value={data.counts.qualityBlocked} accent="yellow" />
+        <MiniStat label="retry 제외" value={data.counts.retryExcluded} accent="red" />
+        <MiniStat label="최근 발행" value={data.counts.published} accent="green" />
+      </div>
+
+      {data.latestJudgementStatus && (
+        <div className="mb-4 rounded-lg border border-yellow-100 bg-yellow-50 px-4 py-3 text-xs leading-[1.6] text-yellow-900">
+          최근 성과 판정: <strong>{data.latestJudgementStatus}</strong>
+          {data.latestJudgementAt ? ` · ${formatDateTime(data.latestJudgementAt)}` : ""}
+          {data.latestJudgementNextAction ? ` · 다음 조치: ${data.latestJudgementNextAction}` : ""}
+        </div>
+      )}
+
+      {data.candidates.length === 0 ? (
+        <div className="rounded-lg border border-grey-200 bg-grey-50 p-4 text-sm text-grey-600">
+          최근 30일 Reels 후보가 없습니다.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="text-left text-xs text-grey-500">
+              <tr>
+                <th className="py-2 pr-3">상태</th>
+                <th className="py-2 pr-3">제목</th>
+                <th className="py-2 pr-3 text-right">점수</th>
+                <th className="py-2 pr-3">TTS/오디오</th>
+                <th className="py-2 pr-3">시도</th>
+                <th className="py-2 pr-3">사유</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.candidates.slice(0, 12).map((candidate) => (
+                <ReelsQualityRow key={candidate.id} candidate={candidate} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReelsQualityRow({ candidate }: { candidate: InstagramReelsQualityCandidate }) {
+  const reasonText = candidate.lastError
+    ?? candidate.reasons.slice(0, 2).join(", ")
+    ?? candidate.latestSkipReason
+    ?? "—";
+  return (
+    <tr className="border-t border-grey-100 align-top">
+      <td className="py-2 pr-3">
+        <ReelsStatusBadge status={candidate.status} />
+      </td>
+      <td className="py-2 pr-3 text-grey-900">
+        <div className="max-w-[280px] font-semibold line-clamp-2">{candidate.title}</div>
+        <div className="mt-1 text-[11px] text-grey-500">
+          {candidate.category ?? "미분류"} · {candidate.slug}
+        </div>
+      </td>
+      <td className="py-2 pr-3 text-right tabular-nums">
+        <span className={candidate.reelQualityApproved ? "font-bold text-green-700" : "font-bold text-red-600"}>
+          {candidate.reelScore}
+        </span>
+      </td>
+      <td className="py-2 pr-3">
+        <AudioStatusBadge status={candidate.ttsAudioStatus} />
+        {candidate.durationSeconds ? (
+          <div className="mt-1 text-[11px] text-grey-500">{candidate.durationSeconds}s</div>
+        ) : null}
+      </td>
+      <td className="py-2 pr-3 text-xs text-grey-700">
+        render {candidate.renderAttemptCount}/3
+        <br />
+        publish {candidate.publishAttemptCount}/3
+      </td>
+      <td className="py-2 pr-3 text-xs text-grey-600 max-w-[260px]">
+        <span className="line-clamp-2">{reasonText || "—"}</span>
+      </td>
+    </tr>
+  );
+}
+
+function StatePill({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span className={`rounded-full px-2 py-1 ${ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+      {label}
+    </span>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number | string;
+  accent: "grey" | "green" | "blue" | "red" | "yellow";
+}) {
+  const cls = {
+    grey: "border-grey-200 bg-grey-50",
+    green: "border-green-200 bg-green-50",
+    blue: "border-blue-200 bg-blue-50",
+    red: "border-red-200 bg-red-50",
+    yellow: "border-yellow-200 bg-yellow-50",
+  }[accent];
+  return (
+    <div className={`rounded-lg border ${cls} p-3`}>
+      <div className="text-[11px] text-grey-500">{label}</div>
+      <div className="mt-1 text-lg font-extrabold text-grey-900 tabular-nums">
+        {typeof value === "number" ? value.toLocaleString() : value}
+      </div>
+    </div>
+  );
+}
+
+function ReelsStatusBadge({ status }: { status: ReelsCandidateStatus }) {
+  const map: Record<ReelsCandidateStatus, { label: string; cls: string }> = {
+    published: { label: "발행됨", cls: "bg-green-100 text-green-800" },
+    ready_to_publish: { label: "발행 대기", cls: "bg-blue-100 text-blue-800" },
+    needs_render: { label: "렌더 필요", cls: "bg-grey-100 text-grey-800" },
+    quality_blocked: { label: "품질 보류", cls: "bg-yellow-100 text-yellow-800" },
+    retry_excluded: { label: "retry 제외", cls: "bg-red-100 text-red-800" },
+    invalid_video_url: { label: "URL 오류", cls: "bg-red-100 text-red-800" },
+  };
+  const item = map[status];
+  return <span className={`inline-flex rounded px-2 py-1 text-[11px] font-bold ${item.cls}`}>{item.label}</span>;
+}
+
+function AudioStatusBadge({ status }: { status: "verified" | "unknown" | "missing" }) {
+  const map = {
+    verified: { label: "검증됨", cls: "bg-green-50 text-green-700" },
+    unknown: { label: "확인 필요", cls: "bg-yellow-50 text-yellow-700" },
+    missing: { label: "없음", cls: "bg-grey-100 text-grey-700" },
+  }[status];
+  return <span className={`inline-flex rounded px-2 py-1 text-[11px] font-bold ${map.cls}`}>{map.label}</span>;
+}
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
 }
 
 function formatDate(iso: string): string {
