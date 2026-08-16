@@ -225,6 +225,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true; // async
   }
+  if (msg?.type === "get-runtime-status") {
+    getRuntimeStatus()
+      .then((r) => sendResponse({ ok: true, result: r }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true; // async
+  }
   if (msg?.type === "naver-progress") {
     setManualPublishStatus(msg.stage || "content_progress", msg.details || {})
       .then(() => sendResponse({ ok: true }))
@@ -672,6 +678,51 @@ async function getUpdateStatus() {
     checkedAt: null,
     message: "아직 업데이트 확인 전",
   }), lastManualPublishStatus: last_manual_publish_status ?? null };
+}
+
+async function getRuntimeStatus() {
+  const storage = await chrome.storage.local.get([
+    "alarm_status",
+    "last_publish_alarm",
+    "last_publish_alarm_gate",
+    "last_manual_publish_status",
+    "naver_live_alarm_enabled",
+    "update_status",
+  ]);
+  const alarms = await chrome.alarms.getAll();
+  const publishAlarms = alarms
+    .filter((alarm) => alarm.name?.startsWith("naver-"))
+    .map((alarm) => ({
+      name: alarm.name,
+      scheduledTime: alarm.scheduledTime ? new Date(alarm.scheduledTime).toISOString() : null,
+      periodInMinutes: alarm.periodInMinutes ?? null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const liveAlarmEnabled = storage.naver_live_alarm_enabled === true;
+  const lastAlarm = storage.last_publish_alarm ?? null;
+  const lastGate = storage.last_publish_alarm_gate ?? null;
+  return {
+    version: chrome.runtime.getManifest().version,
+    checkedAt: new Date().toISOString(),
+    alarmCount: publishAlarms.length,
+    publishAlarms,
+    liveAlarmEnabled,
+    lastPublishAlarm: lastAlarm,
+    lastPublishAlarmGate: lastGate,
+    alarmStatus: storage.alarm_status ?? { ok: true, reason: "registered_or_unknown" },
+    lastManualPublishStatus: storage.last_manual_publish_status ?? null,
+    updateStatus: storage.update_status ?? null,
+    likelyBlocker: !liveAlarmEnabled && lastGate?.liveAlarmEnabled === false
+      ? "live_alarm_disabled"
+      : publishAlarms.length === 0
+        ? "alarms_not_registered"
+        : "server_or_editor_path",
+    nextAction: !liveAlarmEnabled && lastGate?.liveAlarmEnabled === false
+      ? "스케줄은 발화했지만 local live gate가 꺼져 서버 /next 호출 없이 중단됐다. 자동 실발행을 켜려면 별도 승인 후 naver_live_alarm_enabled를 true로 전환해야 한다."
+      : publishAlarms.length === 0
+        ? "Chrome Extension을 reload해서 chrome.alarms를 재등록한다."
+        : "서버 /next 또는 SmartEditor 단계의 최신 dry-run 결과를 확인한다.",
+  };
 }
 
 async function checkForExtensionUpdate(options = {}) {

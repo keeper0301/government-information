@@ -109,6 +109,16 @@ document.getElementById("check-update").addEventListener("click", async () => {
   }
 });
 
+document.getElementById("check-runtime").addEventListener("click", async () => {
+  setStatus("🩺 스케줄/게이트 상태 확인 중...");
+  try {
+    const r = await chrome.runtime.sendMessage({ type: "get-runtime-status" });
+    setStatus(formatRuntimeStatus(r?.result ?? r));
+  } catch (e) {
+    setStatus(`❌ 상태 확인 실패: ${e?.message ?? e}`);
+  }
+});
+
 async function refreshUpdateStatus() {
   try {
     const r = await chrome.runtime.sendMessage({ type: "get-update-status" });
@@ -126,6 +136,26 @@ function formatUpdateStatus(status) {
   const version = status.version ? `v${status.version}` : "version unknown";
   const checked = status.checkedAt ? `\n확인: ${status.checkedAt}` : "";
   return `🔄 업데이트 상태: ${version}\n${status.message ?? status.status ?? "알 수 없음"}${checked}`;
+}
+
+function formatRuntimeStatus(status) {
+  if (!status) return "스케줄 상태: 알 수 없음";
+  const lastAlarm = status.lastPublishAlarm;
+  const gate = status.lastPublishAlarmGate;
+  const alarms = status.publishAlarms?.map((alarm) => {
+    return `- ${alarm.name}: ${alarm.scheduledTime ?? "예약 없음"}`;
+  }).join("\n") || "- 등록된 naver alarm 없음";
+  return [
+    `🩺 Naver 스케줄 상태 v${status.version ?? "unknown"}`,
+    `alarm: ${status.alarmCount ?? 0}개`,
+    `live gate: ${status.liveAlarmEnabled ? "ON" : "OFF"}`,
+    `likely: ${status.likelyBlocker ?? "unknown"}`,
+    `last: ${lastAlarm?.name ?? "없음"} / ${lastAlarm?.checkedAt ?? "시간 없음"} / ${lastAlarm?.stoppedReason ?? "중단 사유 없음"}`,
+    gate ? `gate: ${gate.liveAlarmEnabled ? "ON" : "OFF"} / ${gate.checkedAt}` : "gate: 기록 없음",
+    `next: ${status.nextAction ?? "확인 필요"}`,
+    "alarms:",
+    alarms,
+  ].join("\n");
 }
 
 function formatResult(r) {

@@ -30,4 +30,13 @@ describe("Naver extension scheduled alarm writer policy", () => {
     expect(backgroundScript).toContain('closePublishedWriterTab(tab.id, "verified_publish_success")');
     expect(backgroundScript).toContain('setManualPublishStatus("published_writer_tab_closed"');
   });
+
+  it("exposes read-only runtime status for alarm/gate diagnostics", () => {
+    expect(backgroundScript).toContain('if (msg?.type === "get-runtime-status")');
+    expect(backgroundScript).toContain("async function getRuntimeStatus()");
+    expect(backgroundScript).toContain("chrome.alarms.getAll()");
+    expect(backgroundScript).toContain('likelyBlocker: !liveAlarmEnabled && lastGate?.liveAlarmEnabled === false');
+    expect(backgroundScript).toContain('"live_alarm_disabled"');
+    expect(backgroundScript).toContain('"alarms_not_registered"');
+  });
 });
