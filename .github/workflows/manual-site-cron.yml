@@ -58,6 +58,8 @@ on:
           - instagram-reels-render-dry
           - instagram-reels-render
           - instagram-comment-drafts
+          - collect-news
+          - silent-fail-detect
       source:
         description: "감사 로그용 호출 출처"
         required: false
@@ -264,6 +266,14 @@ jobs:
               ;;
             instagram-comment-drafts)
               path="/api/cron/instagram-comment-drafts"
+              method="POST"
+              ;;
+            collect-news)
+              path="/api/collect-news"
+              method="POST"
+              ;;
+            silent-fail-detect)
+              path="/api/cron/silent-fail-detect"
               method="POST"
               ;;
             *)
