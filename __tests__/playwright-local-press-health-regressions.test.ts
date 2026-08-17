@@ -40,6 +40,15 @@ describe("Playwright local-press collector health regressions", () => {
     expect(citiesSource).toContain('detailNavWait: "domcontentloaded"');
   });
 
+  it("uses static icn1-fetch parsing for Jeju in proxy mode to avoid list navigation timeouts", () => {
+    expect(citiesSource).toContain("const scrapeJejuBrowser = makeScraper");
+    expect(citiesSource).toContain("export async function scrapeJeju");
+    expect(citiesSource).toContain("if (!USE_PROXY) return scrapeJejuBrowser");
+    expect(citiesSource).toContain("[제주도] static proxy list matched");
+    expect(citiesSource).toContain("board-news__article");
+    expect(citiesSource).toContain("article-contents");
+  });
+
   it("uses the redesigned Seongnam homepage press slider and detail body/date fields", () => {
     expect(citiesSource).toContain("https://www.seongnam.go.kr/index");
     expect(citiesSource).toContain(".notice-box1 .swiper-slide");

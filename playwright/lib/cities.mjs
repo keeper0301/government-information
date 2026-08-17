@@ -545,7 +545,10 @@ export const scrapeGangnam = makeScraper({
 // 2026-06-08 — 제주도. 정적 collector 가 prod 미수집(ASN 차단, 한국 IP 200). 목록
 // li.board-news__article + 제목 strong.text-ellipsis, 상세 list.htm?act=view&seq= href 직접,
 // 본문 .article-contents. GHA+icn1 경로 이관.
-export const scrapeJeju = makeScraper({
+// 2026-08-17 — GHA+icn1 page.route 프록시에서 list page domcontentloaded 가 45s timeout
+// 되며 list_broken audit 이 반복됨. 목록/상세 HTML 은 서버 렌더라 proxy 모드에서는
+// Chromium DOM 대신 icn1-fetch 결과를 직접 파싱한다. 로컬 smoke 는 기존 browser 유지.
+const scrapeJejuBrowser = makeScraper({
   cityName: "제주도",
   listUrl: "https://www.jeju.go.kr/news/bodo/list.htm",
   listSelectors: ["li.board-news__article"],
@@ -554,6 +557,54 @@ export const scrapeJeju = makeScraper({
   detailTimeout: 45000,
   detailNavWait: "domcontentloaded",
 });
+
+export async function scrapeJeju({ limit = 10, headless = true } = {}) {
+  if (!USE_PROXY) return scrapeJejuBrowser({ limit, headless });
+
+  const listUrl = "https://www.jeju.go.kr/news/bodo/list.htm";
+  const listBytes = await fetchBinViaProxy(listUrl, { userAgent: CHROME_UA });
+  if (!listBytes) return [];
+  const listHtml = Buffer.from(listBytes).toString("utf8");
+  const rowRe = /<li\s+class="[^"]*board-news__article[^"]*"[^>]*>[\s\S]*?href="([^"]*\/news\/bodo\/list\.htm\?act=view&amp;seq=(\d+)[^"]*)"[\s\S]*?<strong\s+class="[^"]*text-ellipsis[^"]*"[^>]*>([\s\S]*?)<\/strong>[\s\S]*?<span\s+class="[^"]*date[^"]*"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<\/li>/g;
+  const rows = [];
+  const seen = new Set();
+  let m;
+  while ((m = rowRe.exec(listHtml)) !== null && rows.length < limit) {
+    const href = m[1].replace(/&amp;/g, "&");
+    const seq = m[2];
+    if (!seq || seen.has(seq)) continue;
+    seen.add(seq);
+    const title = stripHtmlText(m[3]);
+    const dateMatch = stripHtmlText(m[4]).match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
+    if (!title || title.length < 5) continue;
+    rows.push({
+      seq,
+      title,
+      publishedDate: dateMatch ? `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}` : null,
+      sourceUrl: new URL(href, "https://www.jeju.go.kr").toString(),
+    });
+  }
+  console.log(`[제주도] static proxy list matched ${rows.length} rows`);
+
+  const out = [];
+  for (const item of rows) {
+    const detailBytes = await fetchBinViaProxy(item.sourceUrl, { userAgent: CHROME_UA });
+    if (!detailBytes) continue;
+    const html = Buffer.from(detailBytes).toString("utf8");
+    const bodyHtml =
+      (html.match(/<div\s+class="[^"]*article-contents[^"]*"[^>]*>([\s\S]*?)(?:<div\s+class="[^"]*(?:file-preview|article-files|btn|pagination)|<aside|<\/article|<\/section)/i) || [])[1] ||
+      "";
+    const body = stripHtmlText(bodyHtml);
+    if (!/[가-힣]/.test(body) || body.length < 250) continue;
+    out.push({
+      title: item.title,
+      body: body.slice(0, 5000),
+      publishedDate: item.publishedDate,
+      sourceUrl: item.sourceUrl,
+    });
+  }
+  return out;
+}
 
 // 2026-06-08 — 인천 남동구. bbsMsg CMS(report.jsp) + ASN 차단(prod 403, 한국 IP 200).
 //   목록 ul.generalList li + 제목 p.title, 상세 bbsMsgDetail.do?msg_seq= href 직접,
