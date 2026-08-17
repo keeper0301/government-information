@@ -63,10 +63,13 @@ const BASE_URL = "https://www.korea.kr/news/customizedNewsList.do";
 
 type ParsedItem = {
   newsId: string;
+  sourceUrl: string;
   title: string;
   summary: string | null;
   body: string | null;
   thumbnailUrl: string | null;
+  publishedAt: string | null;
+  ministry: string | null;
 };
 
 // 신규 뉴스 insert 시 title + source_id 를 합친 결정론적 slug 생성.
@@ -83,35 +86,40 @@ function deterministicSlug(title: string, sourceId: string): string {
   return `${base}-${sourceId}`.slice(0, 120);
 }
 
-// HTML 에서 뉴스 카드 리스트 파싱. 실제 구조:
-//   <li>
-//     <a href="/news/customizedNewsView.do?newsId=148962831&keyType=KW01">
-//       <span class="thumb"><img src="..."/></span>
-//       <span class="text">
-//         <strong>
-//           <span class="category">청년·대학생</span>
-//           제목 텍스트
-//         </strong>
-//         <span class="lead">요약 텍스트</span>
-//       </span>
-//     </a>
-//   </li>
-// 인기뉴스 사이드바(visualNewsView.do) 는 다른 구조라 href 가
-// customizedNewsView.do 인 것만 매칭해 혼입 방지.
-function parseNewsList(html: string): ParsedItem[] {
+function absolutizeKoreaUrl(path: string): string {
+  return new URL(path.replace(/&amp;/g, "&"), "https://www.korea.kr").href;
+}
+
+function parseKoreaDate(text: string | null): string | null {
+  if (!text) return null;
+  const m = text.match(/(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})/);
+  if (!m) return null;
+  return new Date(
+    Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0),
+  ).toISOString();
+}
+
+// HTML 에서 뉴스 카드 리스트 파싱.
+//
+// 2026-08 운영 확인: korea.kr 키워드 뉴스 목록은 카테고리별로 링크가 다르다.
+// KW01/KW02 는 여전히 `/news/customizedNewsView.do`, KW03 일부는 실제 콘텐츠 URL인
+// `/news/policyNewsView.do` 또는 `/multi/visualNewsView.do` 를 쓴다.
+// 한쪽만 파싱하면 HTML 200 + 카드 0건으로 조용히 실패한다.
+export function parseNewsList(html: string): ParsedItem[] {
   const items: ParsedItem[] = [];
   const cardRe =
-    /<a[^>]+href="\/news\/customizedNewsView\.do\?newsId=(\d+)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+    /<a[^>]+href=["']([^"']*(?:\/news\/customizedNewsView\.do|\/news\/policyNewsView\.do|\/multi\/visualNewsView\.do)\?newsId=(\d+)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/g;
   let m;
   while ((m = cardRe.exec(html)) !== null) {
-    const newsId = m[1];
-    const block = m[2];
+    const href = m[1];
+    const newsId = m[2];
+    const block = m[3];
 
-    // 제목 — <strong>…</strong> 안에서 <span class="category"> 을 제거한 나머지 텍스트
+    // 제목 — <strong>…</strong> 텍스트. 혹시 남아있는 category span 은 제거.
     const strongMatch = block.match(/<strong[^>]*>([\s\S]*?)<\/strong>/);
     if (!strongMatch) continue;
     const titleRaw = strongMatch[1].replace(
-      /<span[^>]*class="category"[^>]*>[^<]*<\/span>/,
+      /<span[^>]*class=["'][^"']*category[^"']*["'][^>]*>[^<]*<\/span>/,
       "",
     );
     const title = cleanDescription(titleRaw).trim();
@@ -119,20 +127,38 @@ function parseNewsList(html: string): ParsedItem[] {
     // 본문 — <span class="lead">…</span> 에는 기사 전문 수준의 긴 텍스트가 들어옴.
     //   body: 전체를 그대로 저장 (상세 페이지 본문용)
     //   summary: 앞 200자 (목록 카드용 — korea-kr.ts 와 동일 규칙)
-    const leadMatch = block.match(/<span[^>]*class="lead"[^>]*>([\s\S]*?)<\/span>/);
+    const leadMatch = block.match(/<span[^>]*class=["'][^"']*lead[^"']*["'][^>]*>([\s\S]*?)<\/span>/);
     const body = leadMatch ? cleanDescription(leadMatch[1]).trim() : null;
     const summary = body ? body.slice(0, 200) : null;
 
     // 썸네일 — 카드 내 첫 의미있는 <img> (인기뉴스 순위 아이콘 등 제외)
     const thumbMatch = block.match(/<img[^>]+src=["']([^"']+)["']/);
-    const thumb = thumbMatch ? thumbMatch[1] : null;
+    const thumb = thumbMatch ? thumbMatch[1].replace(/&amp;/g, "&") : null;
     const thumbnailUrl =
       thumb && /^https?:/i.test(thumb) && !/btn_|icon_|default/i.test(thumb)
         ? thumb
         : null;
 
+    // 출처 — 현재 구조: <span class="source"><span>2026.08.11</span><span>중기부</span></span>
+    const sourceOpen = /<span[^>]*class=["'][^"']*source[^"']*["'][^>]*>/i.exec(block);
+    const sourceSlice = sourceOpen ? block.slice(sourceOpen.index, sourceOpen.index + 500) : "";
+    const sourceParts = [...sourceSlice.matchAll(/<span[^>]*>([\s\S]*?)<\/span>/g)]
+      .map((x) => cleanDescription(x[1]).trim())
+      .filter(Boolean);
+    const publishedAt = parseKoreaDate(sourceParts[0] ?? null);
+    const ministry = sourceParts[1] || null;
+
     if (newsId && title) {
-      items.push({ newsId, title, summary, body, thumbnailUrl });
+      items.push({
+        newsId,
+        sourceUrl: absolutizeKoreaUrl(href),
+        title,
+        summary,
+        body,
+        thumbnailUrl,
+        publishedAt,
+        ministry,
+      });
     }
   }
   return items;
@@ -274,9 +300,9 @@ export async function collectKoreaKrTopics(): Promise<{
       return {
         source_code: "korea-kr-topics",
         source_id: id,
-        source_url: `https://www.korea.kr/news/customizedNewsView.do?newsId=${id}`,
+        source_url: item.sourceUrl,
         category: "news",
-        ministry: null,
+        ministry: item.ministry,
         title: item.title,
         summary: item.summary,
         body: item.body,
@@ -285,7 +311,7 @@ export async function collectKoreaKrTopics(): Promise<{
         benefit_tags: extractBenefitTags(textBlob),
         keywords: extractNewsKeywords([item.title, item.body ?? ""]),
         topic_categories: topics,
-        published_at: nowIso,
+        published_at: item.publishedAt ?? nowIso,
         updated_at: nowIso,
         dedupe_hash: computeDedupeHash(item.title),
       };
