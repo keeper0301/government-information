@@ -54,6 +54,13 @@ const VALID_CATEGORIES = new Set([
   "청년", "소상공인", "주거", "육아·가족", "노년", "학생·교육", "문화", "큐레이션",
 ]);
 
+// 자동 발행 후보 탐색 윈도우.
+// 기존 limit(30)/큐레이션 limit(20)은 상위 최신 후보가 이미 발행된 경우
+// 실제 미사용 후보가 뒤에 있어도 "후보 없음" 으로 오판했다. 페이지 단위로 더
+// 깊게 보되, cron 비용 폭주 방지를 위해 상한을 둔다.
+export const BLOG_PICK_PAGE_SIZE = 100;
+export const BLOG_PICK_SCAN_MAX_ROWS = 5000;
+
 // 요일별 카테고리 순환 (0=일, 1=월, ..., 6=토)
 // 일=큐레이션 외 6일 = 6개 메인 카테고리
 const WEEKDAY_CATEGORY: Record<number, string> = {
@@ -100,6 +107,125 @@ type PickedProgram = {
   programType: "welfare" | "loan";
 };
 
+type WelfareProgramRow = {
+  id: string;
+  title: string;
+  category: string | null;
+  target: string | null;
+  description: string | null;
+  eligibility: string | null;
+  benefits: string | null;
+  apply_method: string | null;
+  apply_url: string | null;
+  apply_start: string | null;
+  apply_end: string | null;
+  source: string | null;
+  region: string | null;
+};
+
+type LoanProgramRow = {
+  id: string;
+  title: string;
+  category: string | null;
+  target: string | null;
+  description: string | null;
+  eligibility: string | null;
+  loan_amount: string | null;
+  interest_rate: string | null;
+  repayment_period: string | null;
+  apply_method: string | null;
+  apply_url: string | null;
+  apply_start: string | null;
+  apply_end: string | null;
+  source: string | null;
+};
+
+type CandidateScanStats = {
+  source: "welfare" | "loan";
+  matched: number;
+  used: number;
+  unused: number;
+  returned: number;
+  pages: number;
+  cutoff: "candidate_limit" | "scan_limit" | null;
+};
+
+type CandidatePageResult<T> = {
+  data: T[] | null;
+  error: { message: string } | null;
+};
+
+function makeEmptyCandidateScanStats(source: CandidateScanStats["source"]): CandidateScanStats {
+  return {
+    source,
+    matched: 0,
+    used: 0,
+    unused: 0,
+    returned: 0,
+    pages: 0,
+    cutoff: null,
+  };
+}
+
+async function collectUnusedCandidates<T extends { id: string }>(opts: {
+  source: CandidateScanStats["source"];
+  maxCandidates: number;
+  usedIds: Set<string>;
+  buildPage: (from: number, to: number) => PromiseLike<CandidatePageResult<T>>;
+  toPicked: (row: T) => PickedProgram;
+}): Promise<{ candidates: PickedProgram[]; stats: CandidateScanStats }> {
+  const candidates: PickedProgram[] = [];
+  const stats = makeEmptyCandidateScanStats(opts.source);
+
+  for (let from = 0; from < BLOG_PICK_SCAN_MAX_ROWS; from += BLOG_PICK_PAGE_SIZE) {
+    const to = from + BLOG_PICK_PAGE_SIZE - 1;
+    const { data, error } = await opts.buildPage(from, to);
+    if (error) {
+      throw new Error(`블로그 발행 후보 조회 실패 (${opts.source}): ${error.message}`);
+    }
+    if (!data || data.length === 0) break;
+
+    stats.pages += 1;
+    stats.matched += data.length;
+
+    for (const row of data) {
+      if (opts.usedIds.has(row.id)) {
+        stats.used += 1;
+        continue;
+      }
+      stats.unused += 1;
+      if (candidates.length < opts.maxCandidates) {
+        candidates.push(opts.toPicked(row));
+      }
+    }
+
+    if (candidates.length >= opts.maxCandidates) {
+      stats.cutoff = "candidate_limit";
+      break;
+    }
+    if (data.length < BLOG_PICK_PAGE_SIZE) break;
+  }
+
+  if (candidates.length < opts.maxCandidates && stats.matched >= BLOG_PICK_SCAN_MAX_ROWS) {
+    stats.cutoff = "scan_limit";
+  }
+
+  stats.returned = candidates.length;
+  return { candidates, stats };
+}
+
+function logCandidateScanDiagnostics(category: string, stats: CandidateScanStats[]) {
+  console.info(
+    "[blog-publish] candidate scan",
+    JSON.stringify({
+      category,
+      pageSize: BLOG_PICK_PAGE_SIZE,
+      scanMaxRows: BLOG_PICK_SCAN_MAX_ROWS,
+      stats,
+    }),
+  );
+}
+
 export async function pickProgramsForCategory(
   category: string,
   maxCandidates: number,
@@ -128,8 +254,6 @@ export async function pickProgramsForCategory(
     else if (p.source_program_type === "loan" && p.source_program_id) usedLoan.add(p.source_program_id);
   }
 
-  const results: PickedProgram[] = [];
-
   // 큐레이션은 별도 처리 (마감 임박 정책 모음 형식).
   // loan 은 큐레이션 대상이 아님 (welfare 만) → usedLoan 전달 안 함.
   if (category === "큐레이션") {
@@ -138,7 +262,7 @@ export async function pickProgramsForCategory(
 
   // 일반 카테고리: 키워드 매칭
   const keywords = CATEGORY_KEYWORDS[category] || [];
-  if (keywords.length === 0) return results;
+  if (keywords.length === 0) return [];
 
   // 키워드를 title/target/description 에 포함하는 정책 (마감 임박순)
   // OR 검색을 위해 .or() 사용. description 까지 보면 매칭 폭이 넓어짐
@@ -154,48 +278,61 @@ export async function pickProgramsForCategory(
   // welfare 우선 시도
   // 정렬: 최신 등록순(published_at DESC) 우선, 같은 날짜는 마감임박순 보조
   // — 사용자 요청: "최신글을 가져오는 게 제일 중요"
-  const { data: welfares } = await admin
-    .from("welfare_programs")
-    .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-    .or(orFilter)
-    .or(datePolicy)
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(30);
+  const welfareScan = await collectUnusedCandidates<WelfareProgramRow>({
+    source: "welfare",
+    maxCandidates,
+    usedIds: usedWelfare,
+    buildPage: (from, to) =>
+      admin
+        .from("welfare_programs")
+        .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
+        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+        .or(orFilter)
+        .or(datePolicy)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("apply_end", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    toPicked: (w) => ({
+      programId: w.id,
+      programType: "welfare",
+      ctx: { type: "welfare", ...w },
+    }),
+  });
 
-  for (const w of welfares || []) {
-    if (results.length >= maxCandidates) return results;
-    if (!usedWelfare.has(w.id)) {
-      results.push({
-        programId: w.id,
-        programType: "welfare",
-        ctx: { type: "welfare", ...w },
-      });
-    }
+  const results = [...welfareScan.candidates];
+  const stats = [welfareScan.stats];
+  if (results.length >= maxCandidates) {
+    logCandidateScanDiagnostics(category, stats);
+    return results;
   }
 
   // welfare 다 사용했으면 loan 시도 (동일 정렬 정책)
-  const { data: loans } = await admin
-    .from("loan_programs")
-    .select("id, title, category, target, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_url, apply_start, apply_end, source")
-    .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-    .or(orFilter)
-    .or(datePolicy)
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(30);
+  const loanScan = await collectUnusedCandidates<LoanProgramRow>({
+    source: "loan",
+    maxCandidates: maxCandidates - results.length,
+    usedIds: usedLoan,
+    buildPage: (from, to) =>
+      admin
+        .from("loan_programs")
+        .select("id, title, category, target, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_url, apply_start, apply_end, source")
+        .not("source_code", "in", LOAN_EXCLUDED_FILTER)
+        .or(orFilter)
+        .or(datePolicy)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("apply_end", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    toPicked: (l) => ({
+      programId: l.id,
+      programType: "loan",
+      ctx: { type: "loan", ...l },
+    }),
+  });
+  results.push(...loanScan.candidates);
+  stats.push(loanScan.stats);
 
-  for (const l of loans || []) {
-    if (results.length >= maxCandidates) return results;
-    if (!usedLoan.has(l.id)) {
-      results.push({
-        programId: l.id,
-        programType: "loan",
-        ctx: { type: "loan", ...l },
-      });
-    }
-  }
+  logCandidateScanDiagnostics(category, stats);
 
   // 키워드 매칭 실패 시: 카테고리 무관 fallback 안 함
   // 잘못된 정책으로 카테고리 글 발행하면 SEO·UX 모두 나쁨
@@ -325,28 +462,31 @@ async function pickCurationPrograms(
   usedWelfare: Set<string>,
   maxCandidates: number,
 ): Promise<PickedProgram[]> {
-  const results: PickedProgram[] = [];
-  // 큐레이션도 동일 — 활성 + 상시 정책 모두 포함, 최신순 우선
-  const { data } = await admin
-    .from("welfare_programs")
-    .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-    .or(`apply_end.is.null,apply_end.gte.${today}`)
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(20);
-
-  for (const w of data || []) {
-    if (results.length >= maxCandidates) return results;
-    if (!usedWelfare.has(w.id)) {
-      results.push({
-        programId: w.id,
-        programType: "welfare",
-        ctx: { type: "welfare", ...w },
-      });
-    }
-  }
-  return results;
+  // 큐레이션도 동일 — 활성 + 상시 정책 모두 포함, 최신순 우선.
+  // 기존 limit(20) 때문에 최신 20건이 이미 발행된 경우 큐레이션 후보 없음으로
+  // 오판했다. 일반 카테고리와 동일하게 페이지 단위로 더 깊게 탐색한다.
+  const scan = await collectUnusedCandidates<WelfareProgramRow>({
+    source: "welfare",
+    maxCandidates,
+    usedIds: usedWelfare,
+    buildPage: (from, to) =>
+      admin
+        .from("welfare_programs")
+        .select("id, title, category, target, description, eligibility, benefits, apply_method, apply_url, apply_start, apply_end, source, region")
+        .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
+        .or(`apply_end.is.null,apply_end.gte.${today}`)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("apply_end", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, to),
+    toPicked: (w) => ({
+      programId: w.id,
+      programType: "welfare",
+      ctx: { type: "welfare", ...w },
+    }),
+  });
+  logCandidateScanDiagnostics("큐레이션", [scan.stats]);
+  return scan.candidates;
 }
 
 // ============================================================
