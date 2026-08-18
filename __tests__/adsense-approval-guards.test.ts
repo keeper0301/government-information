@@ -104,6 +104,24 @@ describe("AdSense approval guardrails", () => {
     expect(home).toContain("<HomeDiscoveryHub");
     expect(home).toContain("regionMap={<RegionMap />}");
     expect(home).not.toContain("ADSENSE_REVIEW_MODE ? (\n        <ReviewModeHomeBody />");
+
+    const regionMap = read("components/region-map.tsx");
+    expect(regionMap).toContain("ADSENSE_REVIEW_MODE ? undefined");
+    expect(regionMap).toContain("대표 지역 현황");
+  });
+
+  it("routes review-mode home and category hubs away from mass listing pages", () => {
+    const targetCards = read("components/home-target-cards.tsx");
+    expect(targetCards).toContain("reviewHref");
+    expect(targetCards).toContain("ADSENSE_REVIEW_MODE ? t.reviewHref : t.href");
+    expect(targetCards).toContain('reviewHref: "/c/business"');
+
+    const categoryHub = read("app/c/[category]/page.tsx");
+    expect(categoryHub).toContain("const showPolicyLists = !ADSENSE_REVIEW_MODE");
+    expect(categoryHub).toContain("{showPolicyLists && recommended.length > 0");
+    expect(categoryHub).toContain("{showPolicyLists && deadlineSoon.length > 0");
+    expect(categoryHub).toContain("{!ADSENSE_REVIEW_MODE && blogPosts.length > 0");
+    expect(categoryHub).toContain("ADSENSE_REVIEW_MODE ? guides.length");
   });
 
   it("keeps mass listing indexes noindex during AdSense review mode", () => {
@@ -161,6 +179,8 @@ describe("AdSense approval guardrails", () => {
     const source = read("tools/diagnose-adsense-review.mjs");
     expect(source).toContain("Mediapartners-Google");
     expect(source).toContain("DISALLOWED_SITEMAP_PATHS");
+    expect(source).toContain("REVIEW_LINK_LEAK_PATHS");
+    expect(source).toContain("ADSENSE_REVIEW_STRICT_LINKS");
     expect(source).toContain('{ path: "/welfare", robots: "noindex, follow" }');
     expect(source).toContain('{ path: "/blog", robots: "noindex, follow" }');
   });

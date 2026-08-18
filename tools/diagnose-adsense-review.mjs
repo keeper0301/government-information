@@ -18,6 +18,21 @@ const DISALLOWED_SITEMAP_PATHS = [
   "/pricing",
   "/eligibility",
 ];
+const REVIEW_LINK_LEAK_PATHS = [
+  "/news",
+  "/blog",
+  "/welfare",
+  "/loan",
+  "/calendar",
+  "/recommend",
+  "/popular",
+  "/consult",
+  "/alerts",
+  "/pricing",
+  "/eligibility",
+  "/search",
+  "/compare",
+];
 const RISKY_PHRASES = [
   "자동 수집",
   "매일 14편",
@@ -26,6 +41,7 @@ const RISKY_PHRASES = [
   "대량 상세 목록",
   "블로그 카테고리",
 ];
+const STRICT_LINKS = process.env.ADSENSE_REVIEW_STRICT_LINKS === "1";
 const PAGE_CHECKS = [
   { path: "/", robots: "index, follow", required: ["신청 판단", "대표 가이드"] },
   { path: "/about", robots: "index, follow", required: ["공식 출처", "대표 가이드", "편집·검수 기준"] },
@@ -38,6 +54,10 @@ const PAGE_CHECKS = [
   { path: "/privacy", robots: "index, follow", required: ["접속 기록"] },
   { path: "/terms", robots: "index, follow" },
   { path: "/contact", robots: "index, follow" },
+  { path: "/c/youth", robots: "index, follow" },
+  { path: "/c/senior", robots: "index, follow" },
+  { path: "/c/business", robots: "index, follow" },
+  { path: "/c/housing", robots: "index, follow" },
 ];
 
 async function fetchText(path) {
@@ -59,6 +79,12 @@ function stripHtml(html) {
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function extractInternalLinks(html) {
+  return [...html.matchAll(/href=["']([^"']+)["']/gi)]
+    .map((m) => m[1])
+    .filter((href) => href.startsWith("/"));
 }
 
 const failures = [];
@@ -91,6 +117,14 @@ for (const check of PAGE_CHECKS) {
   if (check.robots && robotsMeta !== check.robots) failures.push(`${check.path} robots expected ${check.robots}, got ${robotsMeta || "missing"}`);
   for (const phrase of RISKY_PHRASES) {
     if (text.includes(phrase)) failures.push(`${check.path} risky phrase: ${phrase}`);
+  }
+  const links = extractInternalLinks(page.text);
+  for (const leakPath of REVIEW_LINK_LEAK_PATHS) {
+    const count = links.filter((href) => href === leakPath || href.startsWith(`${leakPath}/`) || href.startsWith(`${leakPath}?`)).length;
+    lines.push(`${check.path}.links.${leakPath}=${count}`);
+    if (STRICT_LINKS && count > 0 && ["/", "/help", "/c/youth", "/c/senior", "/c/business", "/c/housing"].includes(check.path)) {
+      failures.push(`${check.path} review link leak ${leakPath}: ${count}`);
+    }
   }
   for (const required of check.required ?? []) {
     if (!text.includes(required)) failures.push(`${check.path} missing required phrase: ${required}`);

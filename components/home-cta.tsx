@@ -42,8 +42,8 @@ export function HomeCTA() {
             매주 이메일로 알려드려요
           </h2>
           <p className="text-[16px] max-md:text-[14px] text-grey-700 leading-[1.65] mb-10 max-md:mb-7 max-w-[480px] mx-auto">
-            한 번만 등록해두면 새 공고가 올라올 때마다 자동으로 매칭해드려요.
-            마감 임박 D-3 알림도 함께.
+            관심 조건을 등록해두면 새로 확인한 공고 중 맞는 항목을 정리해드려요.
+            마감 전에 살펴볼 내용도 함께 안내합니다.
           </p>
 
           {/* 회원가입을 1차 CTA 로 (매주 이메일 알림 가치 강조).
@@ -56,10 +56,10 @@ export function HomeCTA() {
               회원가입하고 알림 받기 →
             </Link>
             <Link
-              href="/policy"
+              href="/guides"
               className="inline-flex items-center justify-center h-14 px-8 max-md:w-full max-md:h-12 max-md:px-6 rounded-2xl bg-white text-blue-600 text-[16px] font-semibold no-underline hover:bg-blue-50 active:scale-[0.98] transition-all"
             >
-              먼저 둘러보기
+              대표 가이드 보기
             </Link>
           </div>
         </div>

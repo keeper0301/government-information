@@ -50,10 +50,10 @@ const SECTIONS: Section[] = [
           <>
             ① 무료 회원가입 → ② 마이페이지에서 나이·지역·관심 분야를 입력 →
             ③ 홈과{" "}
-            <Link href="/recommend" className="text-blue-500 hover:underline">
-              맞춤 추천
+            <Link href={ADSENSE_REVIEW_MODE ? "/guides" : "/recommend"} className="text-blue-500 hover:underline">
+              {ADSENSE_REVIEW_MODE ? "대표 가이드" : "맞춤 추천"}
             </Link>
-            에서 나에게 맞는 정책을 받아보세요. 마감 임박 정책은 알림으로도 알려드려요.
+            에서 내 상황에 가까운 정책 확인 방법을 살펴보세요. 마감 전에 확인할 공고도 안내해드려요.
           </>
         ),
       },
@@ -75,11 +75,11 @@ const SECTIONS: Section[] = [
         a: (
           <>
             마이페이지에 업종·사업 정보를 입력하면{" "}
-            <Link href="/loan" className="text-blue-500 hover:underline">
-              대출·지원금
+            <Link href={ADSENSE_REVIEW_MODE ? "/c/business" : "/loan"} className="text-blue-500 hover:underline">
+              {ADSENSE_REVIEW_MODE ? "소상공인 허브" : "대출·지원금"}
             </Link>
-            영역에서 자격 진단 배지(받을 수 있음/조건 확인)와 함께 맞는 정책을
-            추려드려요. 마감 임박 공고는 알림으로 놓치지 않게 안내합니다.
+            에서 신청 전 챙길 자격·서류·마감 기준을 먼저 확인하세요.
+            마감 임박 공고는 알림으로 놓치지 않게 안내합니다.
           </>
         ),
       },
@@ -111,11 +111,17 @@ const SECTIONS: Section[] = [
             공고 검색·열람·{ADSENSE_REVIEW_MODE ? "정책 가이드" : "정책 뉴스"} 읽기는{" "}
             <strong>누구나 무료</strong>예요.
             <br />
-            맞춤 알림·AI 상담은 플랜별로 제공 범위가 달라요. 자세한 내용은{" "}
-            <Link href="/pricing" className="text-blue-500 hover:underline">
-              요금제 페이지
-            </Link>
-            에서 확인하세요.
+            {ADSENSE_REVIEW_MODE ? (
+              <>대표 가이드는 무료로 볼 수 있고, 알림 기능은 회원 설정에서 확인할 수 있어요.</>
+            ) : (
+              <>
+                맞춤 알림·AI 상담은 플랜별로 제공 범위가 달라요. 자세한 내용은{" "}
+                <Link href="/pricing" className="text-blue-500 hover:underline">
+                  요금제 페이지
+                </Link>
+                에서 확인하세요.
+              </>
+            )}
           </>
         ),
       },
@@ -147,7 +153,7 @@ const SECTIONS: Section[] = [
               마이페이지 → 맞춤 알림
             </Link>{" "}
             에서 관심 조건 (지역·연령·업종·혜택 분야 등) 을 선택하면 끝이에요.
-            조건에 맞는 새 공고가 등록되면 자동으로 알림이 가요.
+            조건에 맞는 새 공고가 확인되면 알림으로 안내해드려요.
             <br />
             <br />
             베이직 이상 플랜에서 이용 가능하고, 카카오 알림톡은 프로 플랜
@@ -374,7 +380,9 @@ export default function HelpPage() {
             원하는 답을 못 찾으셨나요?
           </h2>
           <p className="text-[13px] text-grey-600 mb-5 leading-[1.6]">
-            맞춤 알림부터 시작해 보시거나, 요금제 페이지에서 혜택을 확인해 보세요.
+            {ADSENSE_REVIEW_MODE
+              ? "대표 가이드를 먼저 보시거나, 궁금한 점은 문의로 남겨 주세요."
+              : "맞춤 알림부터 시작해 보시거나, 요금제 페이지에서 혜택을 확인해 보세요."}
           </p>
           <div className="flex gap-2 justify-center flex-wrap">
             <Link
@@ -384,10 +392,10 @@ export default function HelpPage() {
               맞춤 알림 설정
             </Link>
             <Link
-              href="/pricing"
+              href={ADSENSE_REVIEW_MODE ? "/guides" : "/pricing"}
               className="min-h-[44px] inline-flex items-center px-5 bg-white border border-grey-200 text-grey-700 rounded-lg text-[14px] font-bold hover:bg-grey-50 no-underline"
             >
-              요금제 보기
+              {ADSENSE_REVIEW_MODE ? "대표 가이드 보기" : "요금제 보기"}
             </Link>
           </div>
         </section>

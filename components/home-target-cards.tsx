@@ -20,6 +20,7 @@
 
 import Link from "next/link";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import {
   Sparkles,
   Heart,
@@ -31,6 +32,7 @@ import {
 
 const TARGETS: {
   href: string;
+  reviewHref: string;
   label: string;
   desc: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -42,6 +44,7 @@ const TARGETS: {
     // age=청년 (age_tags ARRAY contains) — 2026-04-28 fix: target ilike 24건
     // → age_tags contains 정확 매칭 (welfare/page.tsx 의 ALLOWED_AGES 처리).
     href: "/welfare?age=%EC%B2%AD%EB%85%84",
+    reviewHref: "/c/youth",
     label: "청년",
     desc: "20·30대 정책",
     icon: Sparkles,
@@ -50,6 +53,7 @@ const TARGETS: {
   },
   {
     href: "/eligibility/married",
+    reviewHref: "/c/housing",
     label: "신혼부부",
     desc: "결혼·전세 지원",
     icon: Heart,
@@ -60,6 +64,7 @@ const TARGETS: {
     // category=양육 (DB 정확 매칭 1,053건) — 2026-04-28 fix: target=육아 0건 사고.
     // welfare 의 category 컬럼이 옛 분류 (생계·의료·양육·교육·취업·주거·문화·창업).
     href: "/welfare?category=%EC%96%91%EC%9C%A1",
+    reviewHref: "/c/youth",
     label: "부모·육아",
     desc: "출산·양육비",
     icon: Baby,
@@ -68,6 +73,7 @@ const TARGETS: {
   },
   {
     href: "/loan",
+    reviewHref: "/c/business",
     label: "소상공인",
     desc: "정책자금·대출",
     icon: Store,
@@ -76,6 +82,7 @@ const TARGETS: {
   },
   {
     href: "/eligibility/low-income",
+    reviewHref: "/c/senior",
     label: "저소득",
     desc: "기초생활·차상위",
     icon: HandCoins,
@@ -84,6 +91,7 @@ const TARGETS: {
   },
   {
     href: "/eligibility/single",
+    reviewHref: "/c/housing",
     label: "1인가구",
     desc: "주거·생활 지원",
     icon: User,
@@ -105,7 +113,7 @@ export function HomeTargetCards() {
         내 상황에 맞는 정책 바로가기
       </h2>
       <p className="text-[14px] text-grey-600 mb-6">
-        대상을 누르면 해당 정책이 모인 페이지로 바로 이동해요.
+        대상을 누르면 대표 카테고리 가이드로 이동해요.
       </p>
       {/* 풀폭 6 cards. 모바일 3 cols · 폴드7 메인·태블릿(md~lg) 4 cols · lg+ 6 cols.
           기존 md:grid-cols-6 은 폴드7 메인(884) 에서 카드당 ~130px 좁음 → md 단계 추가. */}
@@ -115,7 +123,7 @@ export function HomeTargetCards() {
           return (
             <Link
               key={t.label}
-              href={t.href}
+              href={ADSENSE_REVIEW_MODE ? t.reviewHref : t.href}
               onClick={() => trackEvent(EVENTS.HOME_TARGET_CARD_CLICKED, { label: t.label })}
               className="group flex flex-col items-center gap-2 rounded-2xl bg-white border border-grey-200 p-4 md:p-5 no-underline hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(49,130,246,0.08)] transition-all"
             >

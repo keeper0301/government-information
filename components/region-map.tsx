@@ -15,6 +15,7 @@ import Link from "next/link";
 import { getWelfareRegionCounts } from "@/lib/home-stats";
 import { TrackedLink } from "./tracked-link";
 import { EVENTS } from "@/lib/analytics";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 // 5×4 grid — 한국 시·도 지리 어림 위치 (위→남, 좌→우).
 // null = 빈 칸. 16개 시·도 + 제주 1 = 17.
@@ -65,12 +66,18 @@ export async function RegionMap() {
         <h2 className="text-[26px] font-bold tracking-[-0.8px] text-grey-900">
           지역별 지원 정보
         </h2>
-        <Link
-          href="/welfare"
-          className="text-sm font-medium text-grey-600 no-underline hover:text-blue-500 transition-colors max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-2 max-md:-mx-2"
-        >
-          복지 전체 보기
-        </Link>
+        {ADSENSE_REVIEW_MODE ? (
+          <span className="text-sm font-medium text-grey-600">
+            대표 지역 현황
+          </span>
+        ) : (
+          <Link
+            href="/welfare"
+            className="text-sm font-medium text-grey-600 no-underline hover:text-blue-500 transition-colors max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-2 max-md:-mx-2"
+          >
+            복지 전체 보기
+          </Link>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm p-6 max-md:p-4">
@@ -88,10 +95,9 @@ export async function RegionMap() {
         {/* 제주 + 전국 별도 카드 (그리드 아래) */}
         <div className="grid grid-cols-2 gap-3 mt-3 max-md:gap-2">
           <RegionCell name="제주" count={counts["제주"] ?? 0} max={max} />
-          <TrackedLink
-            href="/welfare?region=전국"
-            event={EVENTS.HOME_REGION_CARD_CLICKED}
-            params={{ region: "전국" }}
+          <RegionCellFrame
+            href={ADSENSE_REVIEW_MODE ? undefined : "/welfare?region=전국"}
+            region="전국"
             className="block rounded-xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 max-md:py-3 px-4 text-center no-underline group"
           >
             <div className="text-[11px] font-medium text-grey-600 mb-0.5">전국 대상</div>
@@ -99,7 +105,7 @@ export async function RegionMap() {
               {nationwide.toLocaleString()}
               <span className="text-[12px] font-medium text-grey-600 ml-0.5">건</span>
             </div>
-          </TrackedLink>
+          </RegionCellFrame>
         </div>
       </div>
 
@@ -129,10 +135,9 @@ function RegionCell({
   const cls = intensityClass(count, max);
   const labelLines = regionCellLabel(name);
   return (
-    <TrackedLink
-      href={`/welfare?region=${encodeURIComponent(name)}`}
-      event={EVENTS.HOME_REGION_CARD_CLICKED}
-      params={{ region: name }}
+    <RegionCellFrame
+      href={ADSENSE_REVIEW_MODE ? undefined : `/welfare?region=${encodeURIComponent(name)}`}
+      region={name}
       title={`${name} — 지원 정보 ${count.toLocaleString()}건`}
       className={`block rounded-xl px-2 py-3 max-md:px-1 max-md:py-2 text-center no-underline transition-all hover:scale-[1.04] hover:shadow-md ${cls}`}
     >
@@ -146,6 +151,39 @@ function RegionCell({
       <div className="text-[14px] max-md:text-[12px] font-extrabold tabular-nums">
         {count.toLocaleString()}
       </div>
+    </RegionCellFrame>
+  );
+}
+
+function RegionCellFrame({
+  href,
+  region,
+  title,
+  className,
+  children,
+}: {
+  href?: string;
+  region: string;
+  title?: string;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (!href) {
+    return (
+      <div title={title} className={className.replace("hover:scale-[1.04] hover:shadow-md", "")}>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <TrackedLink
+      href={href}
+      event={EVENTS.HOME_REGION_CARD_CLICKED}
+      params={{ region }}
+      title={title}
+      className={className}
+    >
+      {children}
     </TrackedLink>
   );
 }

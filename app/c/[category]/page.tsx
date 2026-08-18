@@ -36,6 +36,7 @@ import {
   CATEGORY_SLUGS,
   getCategoryHub,
 } from "@/lib/category-hubs";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import type { WelfareProgram, LoanProgram } from "@/lib/database.types";
 
 // 4 카테고리 SSG 빌드 — 다른 slug 는 자동 404
@@ -197,6 +198,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
     .slice(0, RECOMMEND_LIMIT);
 
   const guides = guidesAll.slice(0, GUIDE_LIMIT);
+  const showPolicyLists = !ADSENSE_REVIEW_MODE;
   const blogPosts = (blogRes.data ?? []) as Array<{
     slug: string;
     title: string;
@@ -262,13 +264,20 @@ export default async function CategoryHubPage({ params }: PageProps) {
     },
     mainEntity: {
       "@type": "ItemList",
-      numberOfItems: recommended.length + deadlineSoon.length,
-      itemListElement: [...recommended, ...deadlineSoon].map((p, i) => ({
-        "@type": "ListItem",
-        position: i + 1,
-        url: `https://www.keepioo.com/${p.type}/${p.id}`,
-        name: p.title,
-      })),
+      numberOfItems: ADSENSE_REVIEW_MODE ? guides.length : recommended.length + deadlineSoon.length,
+      itemListElement: ADSENSE_REVIEW_MODE
+        ? guides.map((g, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            url: `https://www.keepioo.com/guides/${g.slug}`,
+            name: g.title,
+          }))
+        : [...recommended, ...deadlineSoon].map((p, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            url: `https://www.keepioo.com/${p.type}/${p.id}`,
+            name: p.title,
+          })),
     },
   };
 
@@ -332,7 +341,9 @@ export default async function CategoryHubPage({ params }: PageProps) {
             {hub.hero}
           </p>
           <p className="mt-3 text-[13px] text-grey-600">
-            현재 {hub.shortLabel} 매칭 정책 {allPrograms.length}건 (복지 {welfareRows.length} · 대출 {loanRows.length}) · 매일 갱신
+            {ADSENSE_REVIEW_MODE
+              ? `${hub.shortLabel} 관련 대표 가이드와 확인 포인트를 먼저 정리했습니다.`
+              : `현재 ${hub.shortLabel} 매칭 정책 ${allPrograms.length}건 (복지 ${welfareRows.length} · 대출 ${loanRows.length}) · 매일 갱신`}
           </p>
         </header>
 
@@ -364,7 +375,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
 
         {/* 인사이트 정책 발췌 — unique_insight 보유 정책 view_count 인기순 N건.
             AdSense 검수자 sample 시 "큐레이션 X 재게시" 시그널 강화. 0건이면 섹션 자체 안 보임. */}
-        {insightPrograms.length > 0 && (
+        {!ADSENSE_REVIEW_MODE && insightPrograms.length > 0 && (
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-[20px] font-bold text-grey-900">
@@ -402,7 +413,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
         )}
 
         {/* 추천 정책 5건 */}
-        {recommended.length > 0 && (
+        {showPolicyLists && recommended.length > 0 && (
           <section className="mb-10">
             <h2 className="text-[20px] font-bold text-grey-900 mb-4">
               추천 정책
@@ -416,7 +427,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
         )}
 
         {/* 마감 임박 5건 */}
-        {deadlineSoon.length > 0 && (
+        {showPolicyLists && deadlineSoon.length > 0 && (
           <section className="mb-10">
             <h2 className="text-[20px] font-bold text-grey-900 mb-4">
               마감 임박
@@ -430,7 +441,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
         )}
 
         {/* 비매칭 안내 — 추천·임박 모두 0 일 때 */}
-        {recommended.length === 0 && deadlineSoon.length === 0 && (
+        {showPolicyLists && recommended.length === 0 && deadlineSoon.length === 0 && (
           <div className="rounded-2xl bg-white border border-grey-200 p-8 text-center mb-10">
             <p className="text-grey-700">
               현재 {hub.shortLabel} 카테고리에 매칭되는 활성 정책이 없습니다.
@@ -446,7 +457,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
 
         {/* mid-page 가입 CTA — 마감 임박 직후 가장 자연스러운 conversion 지점.
             "이 정책 놓치지 마세요" 메시지로 가입 유도. */}
-        {deadlineSoon.length > 0 && (
+        {showPolicyLists && deadlineSoon.length > 0 && (
           <CohortCtaBanner
             shortLabel={hub.shortLabel}
             emoji={hub.emoji}
@@ -456,7 +467,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
 
         {/* [E2 광고] AdSense in-feed — 마감 임박 정책 (사용자 핵심 가치) 다음,
             관련 가이드/블로그 (보조 콘텐츠) 사이. 자연 흐름 끊지 않는 위치. */}
-        {(recommended.length > 0 || deadlineSoon.length > 0) && (
+        {showPolicyLists && (recommended.length > 0 || deadlineSoon.length > 0) && (
           <div className="mb-10">
             <AdSlot placement="category" />
           </div>
@@ -486,7 +497,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
         )}
 
         {/* 관련 블로그 — blog_posts.category = hub.blogCategory */}
-        {blogPosts.length > 0 && (
+        {!ADSENSE_REVIEW_MODE && blogPosts.length > 0 && (
           <section className="mb-10">
             <h2 className="text-[20px] font-bold text-grey-900 mb-4">
               {hub.shortLabel} 관련 블로그
