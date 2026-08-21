@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { buildBasicPricingHref } from "@/lib/pricing/cta-links";
 
 export const dynamic = "force-static";
 
@@ -116,7 +117,7 @@ const SECTIONS: Section[] = [
             ) : (
               <>
                 맞춤 알림·AI 상담은 플랜별로 제공 범위가 달라요. 자세한 내용은{" "}
-                <Link href="/pricing" className="text-blue-500 hover:underline">
+                <Link href={buildBasicPricingHref("help")} className="text-blue-500 hover:underline">
                   요금제 페이지
                 </Link>
                 에서 확인하세요.
@@ -392,7 +393,7 @@ export default function HelpPage() {
               맞춤 알림 설정
             </Link>
             <Link
-              href={ADSENSE_REVIEW_MODE ? "/guides" : "/pricing"}
+              href={ADSENSE_REVIEW_MODE ? "/guides" : buildBasicPricingHref("help")}
               className="min-h-[44px] inline-flex items-center px-5 bg-white border border-grey-200 text-grey-700 rounded-lg text-[14px] font-bold hover:bg-grey-50 no-underline"
             >
               {ADSENSE_REVIEW_MODE ? "대표 가이드 보기" : "요금제 보기"}

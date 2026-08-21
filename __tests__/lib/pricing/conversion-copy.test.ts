@@ -5,6 +5,9 @@ describe("parsePricingSource", () => {
   it("allows known conversion sources", () => {
     expect(parsePricingSource({ from: "notifications" })).toBe("notifications");
     expect(parsePricingSource({ from: "business" })).toBe("business");
+    expect(parsePricingSource({ from: "home" })).toBe("home");
+    expect(parsePricingSource({ from: "popular" })).toBe("popular");
+    expect(parsePricingSource({ from: "help" })).toBe("help");
     expect(parsePricingSource({ from: "instagram" })).toBe("instagram");
     expect(parsePricingSource({ from: "threads" })).toBe("threads");
     expect(parsePricingSource({ from: "seo" })).toBe("seo");

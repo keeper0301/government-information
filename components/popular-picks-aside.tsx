@@ -19,6 +19,7 @@ import { Flame, X } from "lucide-react";
 import { TrackedLink } from "./tracked-link";
 import { EVENTS, trackEvent } from "@/lib/analytics";
 import type { PopularPick } from "@/lib/popular-picks";
+import { buildBasicPricingHref } from "@/lib/pricing/cta-links";
 
 // 단일 truth source — lib/popular-picks.ts 의 PopularPick 타입 재export
 export type { PopularPick };
@@ -162,12 +163,12 @@ export function PopularPicksAside({
       {/* 비로그인 시 회원가입 CTA — 작은 풀 너비 푸터 */}
       {!isLoggedIn && (
         <TrackedLink
-          href="/signup"
+          href={buildBasicPricingHref("popular")}
           event={EVENTS.HOME_POPULAR_SIGNUP_CTA}
           className="mt-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors no-underline border border-blue-100"
         >
           <span className="text-[12px] font-bold text-blue-700">
-            회원가입하면 알림 받기
+            내 정책 마감 알림 받기
           </span>
           <span className="text-blue-500 text-[13px] font-bold">→</span>
         </TrackedLink>

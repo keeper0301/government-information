@@ -11,6 +11,7 @@
 // ============================================================
 
 import Link from "next/link";
+import { buildBasicPricingHref } from "@/lib/pricing/cta-links";
 
 export function HomeCTA() {
   return (
@@ -46,14 +47,13 @@ export function HomeCTA() {
             마감 전에 살펴볼 내용도 함께 안내합니다.
           </p>
 
-          {/* 회원가입을 1차 CTA 로 (매주 이메일 알림 가치 강조).
-              "먼저 둘러보기" 는 2차로 — 직진형 → 탐색형 흐름. */}
+          {/* Basic SaaS 전환 CTA — social/SEO CTA 와 같은 pricing funnel 로 통일. */}
           <div className="flex items-center justify-center gap-3 max-md:flex-col max-md:gap-2">
             <Link
-              href="/signup"
+              href={buildBasicPricingHref("home")}
               className="inline-flex items-center justify-center h-14 px-8 max-md:w-full max-md:h-12 max-md:px-6 rounded-2xl bg-blue-500 text-white text-[16px] font-bold no-underline hover:bg-blue-600 active:scale-[0.98] transition-all shadow-blue-glow"
             >
-              회원가입하고 알림 받기 →
+              내 정책 마감 알림 시작하기 →
             </Link>
             <Link
               href="/guides"
