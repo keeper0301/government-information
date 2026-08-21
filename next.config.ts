@@ -118,6 +118,11 @@ const nextConfig: NextConfig = {
   },
 };
 
+// Vercel production builds can OOM while Sentry uploads hundreds of source maps
+// for this large Next app. Keep Sentry runtime capture/tunnel enabled, but allow
+// the deployment command to disable build-time sourcemap work explicitly.
+const disableSentrySourcemaps = process.env.SENTRY_DISABLE_SOURCEMAPS === "1";
+
 // Sentry build-time wrap — source map 업로드 + tunneling 등 활성화
 // 환경변수(SENTRY_ORG·SENTRY_PROJECT·SENTRY_AUTH_TOKEN) 미등록 상태에서도
 // 빌드 자체는 깨지지 않음 (Sentry CLI 단계가 noop 으로 동작).
@@ -131,7 +136,9 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
   tunnelRoute: "/monitoring",
-  sourcemaps: {
-    deleteSourcemapsAfterUpload: true,
-  },
+  sourcemaps: disableSentrySourcemaps
+    ? { disable: true }
+    : {
+        deleteSourcemapsAfterUpload: true,
+      },
 });
