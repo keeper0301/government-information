@@ -96,6 +96,12 @@ export default function PolicyMonitorPage() {
           >
             W6 humanize preview
           </a>
+          <a
+            href="/policy-monitor/operator-review.json"
+            className="rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-700 no-underline hover:bg-indigo-50"
+          >
+            W7 operator review
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -381,6 +387,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-teal-700">안전선</div>
             preview는 발행 승인 아님 · publish=false
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W7 operator review pass/hold/revision preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W7은 humanize preview를 운영자 검토용으로 분리합니다. 통과·보류·수정 필요 상태만 미리 나누며, review_passed_preview도 발행 승인이 아닙니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/operator-review.json"
+            className="w-fit rounded-full bg-indigo-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-indigo-700"
+          >
+            operator review JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-indigo-700">입력</div>
+            W6 humanized_preview_ready item
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-indigo-700">상태</div>
+            review_passed_preview · review_hold · revision_required
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-indigo-700">검토</div>
+            pass/hold/revision checklist 분리
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-indigo-700">안전선</div>
+            검토 preview는 발행 승인 아님 · publish=false
           </div>
         </div>
       </section>
