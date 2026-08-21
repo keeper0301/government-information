@@ -72,6 +72,12 @@ export default function PolicyMonitorPage() {
           >
             Draft queue preview
           </a>
+          <a
+            href="/policy-monitor/readback-preview.json"
+            className="rounded-full border border-purple-200 bg-white px-4 py-2 text-sm font-bold text-purple-700 no-underline hover:bg-purple-50"
+          >
+            W3 readback preview
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -218,6 +224,41 @@ export default function PolicyMonitorPage() {
               <div className="mt-2 text-xs text-amber-700">{item.promotionBlockedReason}</div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-purple-100 bg-purple-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W3 공식 원문 readback preview lane</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W3는 큐 앞쪽 후보만 소량으로 공식 검색 원문에 접속해 성공한 항목만 ready_for_draft 후보로 분리합니다. 이것은 발행 승인이 아니라 초안 가능성 미리보기입니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/readback-preview.json"
+            className="w-fit rounded-full bg-purple-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-purple-700"
+          >
+            live readback JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-purple-700">기본 cap</div>
+            후보 5개 · 출처 2개까지만 확인
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-purple-700">성공 기준</div>
+            공식 검색 URL HTTP 2xx/3xx
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-purple-700">승격 의미</div>
+            ready_for_draft 후보, 발행 승인 아님
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-purple-700">안전선</div>
+            DB/write/GSC/IndexNow/Naver 없음
+          </div>
         </div>
       </section>
     </main>
