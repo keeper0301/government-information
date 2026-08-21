@@ -90,6 +90,12 @@ export default function PolicyMonitorPage() {
           >
             W5 humanize/review queue
           </a>
+          <a
+            href="/policy-monitor/humanize-preview.json"
+            className="rounded-full border border-teal-200 bg-white px-4 py-2 text-sm font-bold text-teal-700 no-underline hover:bg-teal-50"
+          >
+            W6 humanize preview
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -340,6 +346,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-orange-700">안전선</div>
             승인 전 publish=false · 외부 제출 없음
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-teal-100 bg-teal-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W6 humanize preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W6는 humanize/review queue의 문장을 사람말 preview로 바꿔 보여줍니다. 문체 미리보기일 뿐이며, 원문 검토·운영자 승인 전 공개 발행은 계속 막습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/humanize-preview.json"
+            className="w-fit rounded-full bg-teal-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-teal-700"
+          >
+            humanize preview JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-teal-700">입력</div>
+            W5 humanize_required queue item
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-teal-700">출력</div>
+            sourceDraftText · humanizedPreviewText
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-teal-700">품질 gate</div>
+            사실·URL 보존 · 미확인 단정 금지
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-teal-700">안전선</div>
+            preview는 발행 승인 아님 · publish=false
           </div>
         </div>
       </section>
