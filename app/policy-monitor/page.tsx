@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
 import {
+  summarizePolicyDraftQueue,
+} from "@/lib/aihub-policy-draft-queue";
+import {
   buildPolicyExportRows,
   buildPolicyTopicSeeds,
   getPrimaryPolicyOpportunities,
@@ -20,6 +23,8 @@ const topicSeeds = buildPolicyTopicSeeds();
 const exportRows = buildPolicyExportRows(topicSeeds);
 const sampleSeeds = exportRows.slice(0, 8);
 const sampleReadbackCandidates = exportRows.slice(0, 3).flatMap((row) => row.readbackCandidates.slice(0, 2));
+const draftQueue = summarizePolicyDraftQueue();
+const sampleQueueItems = draftQueue.items.slice(0, 6);
 
 export default function PolicyMonitorPage() {
   return (
@@ -60,6 +65,12 @@ export default function PolicyMonitorPage() {
             className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 no-underline hover:bg-blue-50"
           >
             CSV 후보 export
+          </a>
+          <a
+            href="/policy-monitor/queue.json"
+            className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 no-underline hover:bg-emerald-50"
+          >
+            Draft queue preview
           </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
@@ -173,6 +184,39 @@ export default function PolicyMonitorPage() {
               <div className="text-sm font-semibold text-grey-900">{candidate.query}</div>
               <div className="mt-2 text-xs leading-5 text-grey-600">{candidate.reason}</div>
             </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">Draft candidate queue 미리보기</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W2에서는 export row를 초안 후보 큐로 변환하지만, 공식 원문 확인 전에는 모두 needs_fact_readback 상태로 유지합니다.
+            </p>
+          </div>
+          <div className="text-xs font-semibold text-emerald-700">
+            전체 {draftQueue.count}개 · needs_fact_readback {draftQueue.countsByStatus.needs_fact_readback}개
+          </div>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {draftQueue.allowedStatuses.map((status) => (
+            <span key={status} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
+              {status}: {draftQueue.countsByStatus[status]}
+            </span>
+          ))}
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {sampleQueueItems.map((item) => (
+            <div key={item.id} className="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm">
+              <div className="mb-1 text-xs font-bold text-emerald-600">{item.status}</div>
+              <div className="text-sm font-bold text-grey-900">{item.title}</div>
+              <div className="mt-2 text-xs leading-5 text-grey-600">
+                {item.region} · readback 후보 {item.readbackCandidates.length}개 · 발행/DB/GSC/IndexNow/Naver submit 없음
+              </div>
+              <div className="mt-2 text-xs text-amber-700">{item.promotionBlockedReason}</div>
+            </div>
           ))}
         </div>
       </section>
