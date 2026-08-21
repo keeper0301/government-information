@@ -8,7 +8,7 @@
 //   1) DB 에서 pending 의도 행 조회 → tier 추출 (URL 의 tier 신뢰 X)
 //   2) authKey → 영구 빌링키 발급 (토스 API)
 //   3) subscriptions 행 갱신 (status=trialing, trial_ends_at=+7일)
-//   4) 성공 → /mypage/billing?welcome=1 로 redirect
+//   4) 성공 → /checkout/activation?tier=... 로 redirect
 //      (POST-redirect-GET 패턴: 새로고침해도 안전)
 //   5) 실패 → 토스 빌링키 삭제(좀비 정리) + 에러 페이지
 // ============================================================
@@ -133,12 +133,12 @@ export default async function CheckoutSuccessPage({ searchParams }: { searchPara
   if (!updatedRows || updatedRows.length === 0) {
     // 동시 요청/replay 로 pending 이 이미 소진됨 — 이 빌링키는 중복이라 정리
     await deleteBillingKey(billingInfo.billingKey);
-    redirect(`/mypage/billing?welcome=1&tier=${tier}`);
+    redirect(`/checkout/activation?tier=${tier}`);
   }
 
-  // 6) POST-redirect-GET: success URL 흔적 지우고 mypage 로 이동
+  // 6) POST-redirect-GET: success URL 흔적 지우고 activation checklist 로 이동
   // 사용자가 새로고침해도 issueBillingKey 가 다시 호출되지 않음
-  redirect(`/mypage/billing?welcome=1&tier=${tier}`);
+  redirect(`/checkout/activation?tier=${tier}`);
 }
 
 // 에러 상태 안내 (재시도 링크 포함)

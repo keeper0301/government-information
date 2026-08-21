@@ -8,9 +8,11 @@ describe("getPostCheckoutActivationCopy", () => {
     expect(copy.title).toContain("베이직");
     expect(copy.description).toContain("사업자 정보");
     expect(copy.actions.map((action) => action.href)).toEqual([
-      "/mypage/business",
-      "/mypage/notifications",
+      "/mypage/business?from=checkout-success",
+      "/mypage/notifications?from=checkout-success",
     ]);
+    expect(copy.actions[0].description).toContain("받을 가능성 높은 정책");
+    expect(copy.actions[1].label).toContain("감시 조건");
     expect(copy.actions.map((action) => action.analyticsAction)).toEqual([
       "business_profile",
       "notifications",
@@ -24,8 +26,10 @@ describe("getPostCheckoutActivationCopy", () => {
     expect(copy.description).toContain("카카오 알림톡");
     expect(copy.actions.map((action) => action.href)).toEqual([
       "/mypage#consents",
-      "/mypage/notifications",
+      "/mypage/notifications?from=checkout-success",
     ]);
+    expect(copy.actions[0].description).toContain("긴급 공고");
+    expect(copy.actions[1].label).toContain("감시 조건");
     expect(copy.actions.map((action) => action.analyticsAction)).toEqual([
       "kakao_consent",
       "notifications",
