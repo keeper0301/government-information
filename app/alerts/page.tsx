@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AlertList } from "./alert-list";
+import { AlertReliabilityPanel } from "./alert-reliability-panel";
 import { PushToggle } from "@/components/push-toggle";
+import { getUserTier } from "@/lib/subscription";
+import { getUserConsents } from "@/lib/consent";
+import { buildAlertReliabilitySummary } from "@/lib/alerts/reliability";
 
 export const metadata: Metadata = {
   title: "알림센터 — 정책알리미",
@@ -23,6 +27,36 @@ export default async function AlertsPage() {
     redirect("/login?next=/alerts");
   }
 
+  const [tier, { data: businessProfile }, { count: activeAlertRulesCount }, consents] =
+    await Promise.all([
+      getUserTier(user.id),
+      supabase
+        .from("business_profiles")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("user_alert_rules")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_active", true),
+      getUserConsents(user.id),
+    ]);
+
+  const hasKakaoConsent = consents.some(
+    (consent) =>
+      consent.consentType === "kakao_messaging" &&
+      consent.isActive &&
+      !consent.isExpired,
+  );
+  const reliabilitySummary = buildAlertReliabilitySummary({
+    tier,
+    hasBusinessProfile: Boolean(businessProfile),
+    activeAlertRulesCount: activeAlertRulesCount ?? 0,
+    hasEmail: Boolean(user.email),
+    hasKakaoConsent,
+  });
+
   return (
     <main className="max-w-content mx-auto px-5 lg:px-10 pt-[80px] pb-20">
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
@@ -31,6 +65,8 @@ export default async function AlertsPage() {
       <p className="text-[15px] text-grey-600 mb-6">
         등록한 마감 알림을 확인하고 관리하세요
       </p>
+
+      <AlertReliabilityPanel summary={reliabilitySummary} />
 
       {/* 2026-05-31 P3 #8 — 알림센터에 PushToggle prominent 노출.
           마이페이지 계정 탭의 깊은 위치 외에 알림 사용자가 가장 자주 보는
