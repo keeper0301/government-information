@@ -78,6 +78,12 @@ export default function PolicyMonitorPage() {
           >
             W3 readback preview
           </a>
+          <a
+            href="/policy-monitor/draft-cards.json"
+            className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-bold text-rose-700 no-underline hover:bg-rose-50"
+          >
+            W4 draft cards
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -258,6 +264,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-purple-700">안전선</div>
             DB/write/GSC/IndexNow/Naver 없음
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-rose-100 bg-rose-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W4 humanize/review 초안 카드</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W4는 ready_for_draft preview 후보를 공개 발행이 아닌 초안 카드로만 바꿉니다. 모든 카드는 humanize-korean과 운영자 review를 지나야 하며, 글 발행·DB write·외부 제출은 계속 막혀 있습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/draft-cards.json"
+            className="w-fit rounded-full bg-rose-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-rose-700"
+          >
+            draft cards JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">입력</div>
+            W3 ready_for_draft preview 후보
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">카드 상태</div>
+            humanize_required · review_required 전 단계
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">카드 내용</div>
+            outline · factsToVerify · sourceUrls
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">안전선</div>
+            발행 승인 아님 · GSC/IndexNow/Naver 없음
           </div>
         </div>
       </section>
