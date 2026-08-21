@@ -84,6 +84,12 @@ export default function PolicyMonitorPage() {
           >
             W4 draft cards
           </a>
+          <a
+            href="/policy-monitor/humanize-review-queue.json"
+            className="rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-orange-700 no-underline hover:bg-orange-50"
+          >
+            W5 humanize/review queue
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -299,6 +305,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-rose-700">안전선</div>
             발행 승인 아님 · GSC/IndexNow/Naver 없음
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-orange-100 bg-orange-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W5 humanize/review queue</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W5는 초안 카드를 사람말 윤문과 운영자 검토 전용 큐로 넘깁니다. 이 큐도 발행 승인이 아니며, 숫자·지역·기관명·공식 URL 보존과 과장 방지를 먼저 확인합니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/humanize-review-queue.json"
+            className="w-fit rounded-full bg-orange-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-orange-700"
+          >
+            humanize/review queue JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">입력</div>
+            W4 humanize_required 초안 카드
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">윤문 brief</div>
+            자연스러운 한국어 · 사실/URL 보존
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">검토 checklist</div>
+            원문·기간·대상·서류·과장 표현 확인
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">안전선</div>
+            승인 전 publish=false · 외부 제출 없음
           </div>
         </div>
       </section>
