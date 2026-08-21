@@ -8,6 +8,7 @@ describe("pricing CTA links", () => {
     expect(buildBasicPricingHref("threads")).toBe("/pricing?from=threads&recommended=basic");
     expect(buildBasicPricingHref("seo")).toBe("/pricing?from=seo&recommended=basic");
     expect(buildBasicPricingHref("naver")).toBe("/pricing?from=naver&recommended=basic");
+    expect(buildBasicPricingHref("policy-detail")).toBe("/pricing?from=policy-detail&recommended=basic");
   });
 
   it("keeps the Pro helper explicit for upgrade-only surfaces", () => {

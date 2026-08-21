@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/alarm-button", () => ({
-  AlarmButton: () => <button>알림 받기</button>,
+  AlarmButton: () => <button>마감 알림 받기</button>,
 }));
 
 vi.mock("@/components/bookmark-button", () => ({

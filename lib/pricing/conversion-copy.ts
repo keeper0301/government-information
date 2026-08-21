@@ -10,6 +10,7 @@ export type PricingSource =
   | "home"
   | "popular"
   | "help"
+  | "policy-detail"
   | "instagram"
   | "threads"
   | "seo"
@@ -56,6 +57,7 @@ export function parsePricingSource(
     raw === "home" ||
     raw === "popular" ||
     raw === "help" ||
+    raw === "policy-detail" ||
     raw === "instagram" ||
     raw === "threads" ||
     raw === "seo" ||

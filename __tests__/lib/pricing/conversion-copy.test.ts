@@ -8,6 +8,7 @@ describe("parsePricingSource", () => {
     expect(parsePricingSource({ from: "home" })).toBe("home");
     expect(parsePricingSource({ from: "popular" })).toBe("popular");
     expect(parsePricingSource({ from: "help" })).toBe("help");
+    expect(parsePricingSource({ from: "policy-detail" })).toBe("policy-detail");
     expect(parsePricingSource({ from: "instagram" })).toBe("instagram");
     expect(parsePricingSource({ from: "threads" })).toBe("threads");
     expect(parsePricingSource({ from: "seo" })).toBe("seo");

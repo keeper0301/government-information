@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireTier } from "@/lib/subscription";
+import { buildBasicPricingHref } from "@/lib/pricing/cta-links";
 import {
   isJsonBodyTooLargeError,
   readJsonWithLimit,
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
       {
         error: "마감 알림은 베이직 이상 플랜에서 이용 가능해요.",
         needsUpgrade: true,
-        upgradeUrl: "/pricing",
+        upgradeUrl: buildBasicPricingHref("policy-detail"),
       },
       { status: 403 },
     );
