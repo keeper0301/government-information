@@ -19,7 +19,7 @@ import { CheckoutLink } from "./checkout-link";
 
 export const metadata: Metadata = {
   title: "요금제 | 정책알리미",
-  description: "정책알리미 요금제 안내. 무료, 베이직(월 4,900원), 프로(월 9,900원).",
+  description: "사장님 정책 마감·자격 알림 SaaS. 무료 검색, 베이직 월 4,900원, 프로 월 9,900원.",
   // 요금제는 전환 보조 화면이지 공공정책 원문/가이드 콘텐츠가 아닙니다.
   // 재심사 샘플링에서 상업·얇은 페이지로 잡히지 않도록 색인 제외합니다.
   robots: reviewModeNoindexRobots(),
@@ -37,7 +37,7 @@ type PlanInfo = {
 const PLANS: PlanInfo[] = [
   {
     tier: "free",
-    tagline: "정책을 둘러보고 싶은 분",
+    tagline: "내 지역·업종 정책을 먼저 둘러보는 단계",
     features: [
       "복지·대출 정책 전체 조회",
       "검색·필터 무제한",
@@ -48,24 +48,25 @@ const PLANS: PlanInfo[] = [
   {
     // ★ 추천 티어 — 베이직 (자영업자 정책자금 코디 포지셔닝)
     tier: "basic",
-    tagline: "사장님 자격 확인 포인트 + 마감 임박 이메일",
+    tagline: "내 사업자 조건에 맞는 정책을 놓치지 않기",
     highlight: true,
     features: [
       "무료 기능 전부",
-      "🏪 내 가게 자격 확인 포인트 — 매출·직원·업종 기준으로 검토",
+      "사업자 프로필 기반 맞춤 정책 TOP 5",
+      "🏪 내 가게 자격 확인 포인트 — 지역·업종·직원 기준 검토",
       "마감 7일 전 이메일 알림",
-      "맞춤 추천·관심 정책 무제한",
+      "관심 정책 저장·추천 무제한",
     ],
   },
   {
     tier: "pro",
-    tagline: "AI 가 신청서까지 도와드려요",
+    tagline: "알림톡/SMS와 신청 준비까지 필요한 사장님",
     features: [
       "베이직 기능 전부",
       "카카오 알림톡 (자격 매칭 정책만)",
-      "AI 정책 상담 무제한",
       "AI 신청서 초안 작성 보조",
-      "마감 7일 전 SMS 알림 (출시 예정)",
+      "마감 7일 전 SMS 알림",
+      "AI 정책 상담 제한 완화",
     ],
   },
 ];
@@ -101,12 +102,20 @@ export default async function PricingPage({
       <div className="max-w-[1100px] mx-auto px-5">
         {/* 헤더 */}
         <div className="text-center mb-10 md:mb-14">
+          <p className="mb-3 text-[13px] font-bold uppercase tracking-[0.18em] text-blue-600">
+            사장님 정책 놓침 방지 SaaS
+          </p>
           <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-[-0.6px] text-grey-900 mb-3">
             {conversionCopy.heading}
           </h1>
           <p className="text-[15px] md:text-[17px] text-grey-700 leading-[1.6]">
             {conversionCopy.subheading}
           </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2 text-[13px] font-semibold text-grey-700">
+            <span className="rounded-full bg-white px-3 py-1.5 shadow-sm ring-1 ring-grey-100">사업자 프로필 기반 추천</span>
+            <span className="rounded-full bg-white px-3 py-1.5 shadow-sm ring-1 ring-grey-100">마감 7일 전 알림</span>
+            <span className="rounded-full bg-white px-3 py-1.5 shadow-sm ring-1 ring-grey-100">공식 원문 확인 링크</span>
+          </div>
         </div>
 
         {/* 3개 카드 가로 배치 (모바일은 세로 스택) */}
@@ -125,6 +134,9 @@ export default async function PricingPage({
 
         {/* 안내 문구 */}
         <div className="max-w-[720px] mx-auto mt-12 text-center space-y-2">
+          <p className="text-[14px] font-semibold text-grey-800">
+            키피오는 신청 대행이 아니라, 사장님이 놓치기 쉬운 정책을 먼저 찾고 확인하도록 돕는 알림 서비스입니다.
+          </p>
           <p className="text-[13px] text-grey-600">
             결제는 토스페이먼츠로 안전하게 처리됩니다. 카드 정보는 토스에만 저장돼요.
           </p>

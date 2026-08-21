@@ -5,6 +5,10 @@ describe("parsePricingSource", () => {
   it("allows known conversion sources", () => {
     expect(parsePricingSource({ from: "notifications" })).toBe("notifications");
     expect(parsePricingSource({ from: "business" })).toBe("business");
+    expect(parsePricingSource({ from: "instagram" })).toBe("instagram");
+    expect(parsePricingSource({ from: "threads" })).toBe("threads");
+    expect(parsePricingSource({ from: "seo" })).toBe("seo");
+    expect(parsePricingSource({ from: "naver" })).toBe("naver");
   });
 
   it("uses the first value when source is an array", () => {
@@ -40,7 +44,8 @@ describe("getPricingConversionCopy", () => {
     const copy = getPricingConversionCopy({ source: "notifications", recommendedTier: "basic" });
 
     expect(copy.variant).toBe("default");
-    expect(copy.heading).toBe("나에게 맞는 요금제를 골라보세요");
-    expect(copy.planNudgeByTier.pro).toBeUndefined();
+    expect(copy.heading).toBe("사장님 정책 마감, 놓치지 않게 챙겨드릴게요");
+    expect(copy.planNudgeByTier.basic).toContain("마감 7일 전 이메일");
+    expect(copy.ctaLabelByTier.basic).toBe("내 정책 알림 시작하기");
   });
 });
