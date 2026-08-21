@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   AIHUB_POLICY_OPPORTUNITIES,
+  buildPolicyExportCsv,
+  buildPolicyExportRows,
   buildPolicyTopicSeeds,
+  buildPublicReadbackCandidates,
   getPrimaryPolicyOpportunities,
   POLICY_MONITOR_REGIONS,
 } from "@/lib/aihub-policy-opportunities";
@@ -32,5 +35,27 @@ describe("AIHub policy opportunities", () => {
     expect(seeds.every((seed) => seed.needsFactReadback)).toBe(true);
     expect(seeds.map((seed) => seed.title)).toContain("서울특별시 강남구 주민센터 민원 상담 방법");
     expect(seeds.map((seed) => seed.title)).toContain("전라남도 순천시 2026 소상공인 지원사업 제출서류");
+  });
+
+  it("builds official readback candidates before draft promotion", () => {
+    const [seed] = buildPolicyTopicSeeds(["전라남도 순천시"], AIHUB_POLICY_OPPORTUNITIES.slice(0, 1));
+    const candidates = buildPublicReadbackCandidates(seed);
+
+    expect(candidates).toHaveLength(seed.publicReadbackSources.length);
+    expect(candidates.every((candidate) => candidate.requiredBeforeDraft)).toBe(true);
+    expect(candidates.map((candidate) => candidate.sourceName)).toContain("정부24");
+    expect(candidates[0].searchUrl).toContain(encodeURIComponent(seed.title));
+  });
+
+  it("exports needs-fact-readback rows as JSON-ready data and CSV", () => {
+    const rows = buildPolicyExportRows(buildPolicyTopicSeeds(["서울특별시 강남구"]));
+    const csv = buildPolicyExportCsv(rows);
+
+    expect(rows).toHaveLength(AIHUB_POLICY_OPPORTUNITIES.length * 2);
+    expect(rows.every((row) => row.status === "needs_fact_readback")).toBe(true);
+    expect(rows.every((row) => row.year === 2026)).toBe(true);
+    expect(rows.every((row) => row.readbackCandidateCount > 0)).toBe(true);
+    expect(csv).toContain("readbackCandidateUrls");
+    expect(csv).toContain("서울특별시 강남구 주민센터 민원 상담 방법");
   });
 });

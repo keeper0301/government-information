@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import {
+  buildPolicyExportRows,
   buildPolicyTopicSeeds,
   getPrimaryPolicyOpportunities,
 } from "@/lib/aihub-policy-opportunities";
@@ -16,7 +17,9 @@ export const metadata: Metadata = {
 
 const primaryOpportunities = getPrimaryPolicyOpportunities();
 const topicSeeds = buildPolicyTopicSeeds();
-const sampleSeeds = topicSeeds.slice(0, 8);
+const exportRows = buildPolicyExportRows(topicSeeds);
+const sampleSeeds = exportRows.slice(0, 8);
+const sampleReadbackCandidates = exportRows.slice(0, 3).flatMap((row) => row.readbackCandidates.slice(0, 2));
 
 export default function PolicyMonitorPage() {
   return (
@@ -44,6 +47,23 @@ export default function PolicyMonitorPage() {
             <div className="text-2xl font-bold text-grey-900">100%</div>
             <div className="text-sm text-grey-600">Fact Readback 필요 표시</div>
           </div>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <a
+            href="/policy-monitor/export.json"
+            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-blue-700"
+          >
+            JSON 후보 export
+          </a>
+          <a
+            href="/policy-monitor/export.csv"
+            className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 no-underline hover:bg-blue-50"
+          >
+            CSV 후보 export
+          </a>
+          <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
+            초안 큐 전 단계 · 원문 확인 필수
+          </span>
         </div>
       </section>
 
@@ -126,6 +146,33 @@ export default function PolicyMonitorPage() {
                 상태: Fact Readback 필요 · 출처: {seed.publicReadbackSources.slice(0, 2).join(" / ")}
               </div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-blue-100 bg-blue-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">공공 URL readback 후보</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W1에서는 정책 seed마다 공식 검색 URL 후보를 자동으로 붙여 초안 큐 전 검증 경로를 만듭니다.
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-blue-700">샘플 {sampleReadbackCandidates.length}개</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {sampleReadbackCandidates.map((candidate) => (
+            <a
+              key={`${candidate.sourceName}-${candidate.searchUrl}`}
+              href={candidate.searchUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl border border-blue-100 bg-white p-4 no-underline shadow-sm hover:border-blue-200"
+            >
+              <div className="mb-1 text-xs font-bold text-blue-600">{candidate.sourceName}</div>
+              <div className="text-sm font-semibold text-grey-900">{candidate.query}</div>
+              <div className="mt-2 text-xs leading-5 text-grey-600">{candidate.reason}</div>
+            </a>
           ))}
         </div>
       </section>
