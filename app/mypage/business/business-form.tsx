@@ -44,6 +44,7 @@ export function BusinessProfileForm({
   const [form, setForm] = useState<BusinessFormState>(initial);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showNextActions, setShowNextActions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 저장 성공 배지 1.8초 후 자동 해제 (ProfileForm 패턴 동일)
@@ -59,12 +60,14 @@ export function BusinessProfileForm({
   ) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
+    setShowNextActions(false);
   }
 
   // 광역 변경 시 시군구 자동 초기화 (잘못된 시군구 페어 방지)
   function changeRegion(region: string | null) {
     setForm((prev) => ({ ...prev, region, district: null }));
     setSaved(false);
+    setShowNextActions(false);
   }
 
   async function handleSave() {
@@ -89,6 +92,7 @@ export function BusinessProfileForm({
       setError(json.error || '저장 중 문제가 생겼어요. 잠시 후 다시 시도해주세요.');
     } else {
       setSaved(true);
+      setShowNextActions(true);
       router.refresh();
     }
     setSaving(false);
@@ -227,6 +231,31 @@ export function BusinessProfileForm({
           <span className="text-[13px] text-red leading-[1.5]">{error}</span>
         )}
       </div>
+      {showNextActions && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4" role="status">
+          <p className="text-[14px] font-bold text-grey-900">
+            저장 완료. 이제 받을 정책을 확인하거나 마감 알림을 걸어두세요.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href="/recommend?from=business-profile"
+              data-ga-event="business_profile_next_clicked"
+              data-ga-label="맞춤 정책 보기"
+              className="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-blue-600 px-4 text-[14px] font-bold text-white no-underline hover:bg-blue-700"
+            >
+              맞춤 정책 TOP 5 보기
+            </a>
+            <a
+              href="/alerts?from=business-profile"
+              data-ga-event="business_profile_next_clicked"
+              data-ga-label="마감 알림 설정"
+              className="inline-flex min-h-[42px] items-center justify-center rounded-xl border border-blue-200 bg-white px-4 text-[14px] font-bold text-blue-700 no-underline hover:bg-blue-50"
+            >
+              마감 알림 설정하기
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
