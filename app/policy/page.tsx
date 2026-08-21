@@ -64,9 +64,15 @@ export default async function PolicyPage({
       <h1 className="text-[28px] font-bold tracking-[-1px] text-grey-900 mb-2">
         정책 둘러보기
       </h1>
-      <p className="text-[15px] text-grey-600 mb-8">
+      <p className="text-[15px] text-grey-600 mb-4">
         맞춤추천·복지·대출·인기 정책을 한곳에서 빠르게 살펴보세요.
       </p>
+      <Link
+        href="/policy-monitor"
+        className="mb-8 inline-flex rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-[13px] font-semibold text-blue-700 no-underline hover:border-blue-200 hover:bg-blue-100"
+      >
+        AIHub 2026 정책 데이터 모니터링 보기 →
+      </Link>
 
       {/* 탭 네비 — 활성 탭은 버건디 hairline (헤더 active 인디케이터와 동일 톤) */}
       <div className="flex gap-1 mb-8 border-b border-grey-200 overflow-x-auto">
