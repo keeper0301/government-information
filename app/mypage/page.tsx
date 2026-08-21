@@ -24,6 +24,8 @@ import { TrackedLink } from "@/components/tracked-link";
 import { EVENTS } from "@/lib/analytics";
 import { getActivationReminder } from "@/lib/checkout/activation-reminder";
 import { formatProvinceDisplay } from "@/lib/region-display";
+import { buildMypageWatchStatus } from "@/lib/mypage/watch-status";
+import { MypageWatchStatusCard } from "./watch-status-card";
 
 export const metadata: Metadata = {
   title: "내 정보 — 정책알리미",
@@ -69,6 +71,7 @@ export default async function MyPage() {
     referralStats,
     tier,
     { count: activeAlertRulesCount },
+    { count: savedDeadlineAlertsCount },
   ] = await Promise.all([
     supabase
       .from("user_profiles")
@@ -103,6 +106,12 @@ export default async function MyPage() {
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("is_active", true),
+    // 정책 상세에서 직접 켠 마감 알림 수 — 고객이 “맡겨둔 정책”으로 체감하는 지표.
+    supabase
+      .from("alarm_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_active", true),
   ]);
 
   const email = user.email || "";
@@ -119,6 +128,13 @@ export default async function MyPage() {
     hasBusinessProfile: Boolean(businessProfile),
     hasKakaoConsent,
     hasActiveAlertRule: (activeAlertRulesCount ?? 0) > 0,
+  });
+  const watchStatus = buildMypageWatchStatus({
+    tier,
+    hasBusinessProfile: Boolean(businessProfile),
+    activeAlertRulesCount: activeAlertRulesCount ?? 0,
+    savedDeadlineAlertsCount: savedDeadlineAlertsCount ?? 0,
+    hasKakaoConsent,
   });
 
   return (
@@ -168,6 +184,8 @@ export default async function MyPage() {
           </div>
         </div>
       )}
+
+      <MypageWatchStatusCard status={watchStatus} />
 
       <MypageTabs
         profileSlot={
