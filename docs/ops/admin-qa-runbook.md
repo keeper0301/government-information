@@ -53,7 +53,49 @@ rm -f /absolute/path/admin.storageState.json
 - `pageErrors: []`
 - `consoleErrors: []`
 
-## 3. GitHub Actions 분리 smoke
+## 3. keepioo 로그인 SaaS readback
+
+배포 후 `/mypage`, `/alerts`, `/checkout/activation`, 정책 상세 마감 알림 CTA를 실제 로그인 세션으로 확인할 때 사용합니다. CI에는 넣지 않습니다.
+
+로컬 시크릿 파일:
+
+```bash
+/home/user/.hermes/workspace/claude/config/keepioo-test-login.env
+```
+
+필수 권한:
+
+```bash
+chmod 600 /home/user/.hermes/workspace/claude/config/keepioo-test-login.env
+```
+
+필수 키:
+
+```bash
+KEEPIOO_TEST_EMAIL=...
+KEEPIOO_TEST_PASSWORD=...
+```
+
+실행:
+
+```bash
+npm run readback:auth
+```
+
+정상 기준:
+
+- `login.ok: true`
+- `/mypage`, `/alerts`, `/checkout/activation`가 `/login`으로 되돌아가지 않음
+- 정책 상세 `마감 알림 받기` 버튼이 보임
+- 클릭 후 Basic pricing 이동 또는 알림 성공 메시지 표시
+
+주의:
+
+- 테스트 계정/비밀번호/쿠키/storageState는 출력하거나 커밋하지 않습니다.
+- 시크릿 파일이 `0600`이 아니면 도구가 `secret_env_too_permissive`로 중단됩니다.
+- 시크릿이 없으면 `missing_secret:KEEPIOO_TEST_EMAIL`처럼 fail-closed 합니다.
+
+## 4. GitHub Actions 분리 smoke
 
 workflow: `.github/workflows/admin-pageerror-smoke.yml`
 
@@ -67,7 +109,7 @@ workflow: `.github/workflows/admin-pageerror-smoke.yml`
 - GitHub Actions 실패가 남습니다.
 - `CRON_SECRET`이 있으면 `/api/notify-telegram`으로 실패 로그 일부를 보냅니다.
 
-## 4. Vercel 운영 로그 확인
+## 5. Vercel 운영 로그 확인
 
 최근 production 배포 상태:
 
@@ -87,7 +129,7 @@ npx vercel logs https://www.keepioo.com --scope keeper0301-8938s-projects
 - smoke 시간대 `/admin/*` → `/login` 요청은 info 수준
 - error/fatal 로그 없음
 
-## 5. Sentry 확인 루트
+## 6. Sentry 확인 루트
 
 로컬 직접 조회는 아래 env가 있을 때만 가능합니다.
 
@@ -109,7 +151,7 @@ node -e "import('./lib/sentry/daily-summary.ts').then(async m => console.log(awa
 
 주의: 토큰, DSN, storageState, 쿠키 값은 로그나 문서에 남기지 않습니다.
 
-## 6. 재발 시 판단
+## 7. 재발 시 판단
 
 - `/admin*` redirect smoke에서 #418 발생: `/login?next=...` 또는 전역 layout/client component를 우선 확인
 - 로그인 관리자 내부에서만 #418 발생: 해당 관리자 페이지의 시간/숫자/SVG/random/window 의존 렌더링 확인
