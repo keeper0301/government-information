@@ -66,6 +66,8 @@ export type PaidUserDashboardRow = {
   lastPaymentStatus: string | null;
   lastPaymentAmount: number | null;
   lastPaymentAt: string | null;
+  activeAlertRulesCount: number;
+  savedDeadlineAlertsCount: number;
   activationGaps: PaidUserActivationGap[];
   interviewSegment: "basic" | "pro" | "activation_gap" | "payment_risk";
 };
@@ -84,6 +86,8 @@ export type PaidUsersDashboard = {
     missingBusinessProfile: number;
     missingProKakaoConsent: number;
     missingAlertRules: number;
+    missingDeadlineAlerts: number;
+    missingAnyAlertWatch: number;
   };
   rows: PaidUserDashboardRow[];
 };
@@ -237,11 +241,12 @@ export function getActivationGaps(input: {
   hasBusinessProfile: boolean;
   hasKakaoConsent: boolean;
   hasActiveAlertRule: boolean;
+  hasSavedDeadlineAlert?: boolean;
 }): PaidUserActivationGap[] {
   const gaps: PaidUserActivationGap[] = [];
   if (!input.hasBusinessProfile) gaps.push("business_profile");
   if (input.tier === "pro" && !input.hasKakaoConsent) gaps.push("kakao_consent");
-  if (!input.hasActiveAlertRule) gaps.push("notifications");
+  if (!input.hasActiveAlertRule && !input.hasSavedDeadlineAlert) gaps.push("notifications");
   return gaps;
 }
 
@@ -262,11 +267,13 @@ export function buildPaidUsersDashboard(input: {
   businessUserIds: string[];
   kakaoConsentUserIds: string[];
   activeAlertRuleUserIds: string[];
+  activeAlarmSubscriptionUserIds?: string[];
 }): PaidUsersDashboard {
   const userMap = new Map(input.users.map((user) => [user.id, user]));
   const businessSet = new Set(input.businessUserIds);
   const kakaoSet = new Set(input.kakaoConsentUserIds);
-  const alertRuleSet = new Set(input.activeAlertRuleUserIds);
+  const alertRuleCounts = countByUserId(input.activeAlertRuleUserIds);
+  const deadlineAlertCounts = countByUserId(input.activeAlarmSubscriptionUserIds ?? []);
 
   const latestPaymentByUser = new Map<string, PaymentRow>();
   for (const payment of input.payments) {
@@ -283,7 +290,8 @@ export function buildPaidUsersDashboard(input: {
       tier: subscription.tier,
       hasBusinessProfile: businessSet.has(subscription.user_id),
       hasKakaoConsent: kakaoSet.has(subscription.user_id),
-      hasActiveAlertRule: alertRuleSet.has(subscription.user_id),
+      hasActiveAlertRule: (alertRuleCounts.get(subscription.user_id) ?? 0) > 0,
+      hasSavedDeadlineAlert: (deadlineAlertCounts.get(subscription.user_id) ?? 0) > 0,
     });
     const isActive = isPaidActiveStatus(subscription.status);
     const cardLabel =
@@ -308,6 +316,8 @@ export function buildPaidUsersDashboard(input: {
       lastPaymentStatus: payment?.status ?? null,
       lastPaymentAmount: payment?.amount ?? null,
       lastPaymentAt: payment ? payment.paid_at ?? payment.created_at : null,
+      activeAlertRulesCount: alertRuleCounts.get(subscription.user_id) ?? 0,
+      savedDeadlineAlertsCount: deadlineAlertCounts.get(subscription.user_id) ?? 0,
       activationGaps,
       interviewSegment: "basic" as PaidUserDashboardRow["interviewSegment"],
     } satisfies PaidUserDashboardRow;
@@ -341,11 +351,25 @@ export function buildPaidUsersDashboard(input: {
       row.activationGaps.includes("kakao_consent"),
     ).length,
     missingAlertRules: rows.filter((row) =>
+      row.activeAlertRulesCount === 0,
+    ).length,
+    missingDeadlineAlerts: rows.filter((row) =>
+      row.savedDeadlineAlertsCount === 0,
+    ).length,
+    missingAnyAlertWatch: rows.filter((row) =>
       row.activationGaps.includes("notifications"),
     ).length,
   };
 
   return { stats, rows };
+}
+
+function countByUserId(userIds: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const userId of userIds) {
+    counts.set(userId, (counts.get(userId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 export async function getPaidUsersDashboard(): Promise<PaidUsersDashboard> {
@@ -375,10 +399,11 @@ export async function getPaidUsersDashboard(): Promise<PaidUsersDashboard> {
       businessUserIds: [],
       kakaoConsentUserIds: [],
       activeAlertRuleUserIds: [],
+      activeAlarmSubscriptionUserIds: [],
     });
   }
 
-  const [{ data: businessProfiles }, { data: kakaoConsents }, { data: alertRules }] =
+  const [{ data: businessProfiles }, { data: kakaoConsents }, { data: alertRules }, { data: deadlineAlerts }] =
     await Promise.all([
       admin
         .from("business_profiles")
@@ -395,6 +420,11 @@ export async function getPaidUsersDashboard(): Promise<PaidUsersDashboard> {
         .select("user_id")
         .in("user_id", paidUserIds)
         .eq("is_active", true),
+      admin
+        .from("alarm_subscriptions")
+        .select("user_id")
+        .in("user_id", paidUserIds)
+        .eq("is_active", true),
     ]);
 
   return buildPaidUsersDashboard({
@@ -403,7 +433,8 @@ export async function getPaidUsersDashboard(): Promise<PaidUsersDashboard> {
     payments: (payments ?? []) as PaymentRow[],
     businessUserIds: [...new Set((businessProfiles ?? []).map((row) => row.user_id as string))],
     kakaoConsentUserIds: [...new Set((kakaoConsents ?? []).map((row) => row.user_id as string))],
-    activeAlertRuleUserIds: [...new Set((alertRules ?? []).map((row) => row.user_id as string))],
+    activeAlertRuleUserIds: (alertRules ?? []).map((row) => row.user_id as string),
+    activeAlarmSubscriptionUserIds: (deadlineAlerts ?? []).map((row) => row.user_id as string),
   });
 }
 

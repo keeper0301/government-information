@@ -27,6 +27,14 @@ describe("paid users dashboard helpers", () => {
     })).toEqual(["business_profile", "notifications"]);
 
     expect(getActivationGaps({
+      tier: "basic",
+      hasBusinessProfile: true,
+      hasKakaoConsent: false,
+      hasActiveAlertRule: false,
+      hasSavedDeadlineAlert: true,
+    })).toEqual([]);
+
+    expect(getActivationGaps({
       tier: "pro",
       hasBusinessProfile: true,
       hasKakaoConsent: false,
@@ -74,7 +82,8 @@ describe("paid users dashboard helpers", () => {
       ],
       businessUserIds: ["u_basic", "u_pro"],
       kakaoConsentUserIds: [],
-      activeAlertRuleUserIds: ["u_basic"],
+      activeAlertRuleUserIds: [],
+      activeAlarmSubscriptionUserIds: ["u_basic"],
     });
 
     expect(dashboard.stats.totalPaidRows).toBe(2);
@@ -84,6 +93,9 @@ describe("paid users dashboard helpers", () => {
     expect(dashboard.stats.monthlyRevenueEstimate).toBe(4900);
     expect(dashboard.stats.pastDue).toBe(1);
     expect(dashboard.stats.missingProKakaoConsent).toBe(1);
+    expect(dashboard.stats.missingAlertRules).toBe(2);
+    expect(dashboard.stats.missingDeadlineAlerts).toBe(1);
+    expect(dashboard.stats.missingAnyAlertWatch).toBe(1);
     expect(dashboard.rows[0].userId).toBe("u_pro");
     expect(dashboard.rows[0].interviewSegment).toBe("payment_risk");
     expect(dashboard.rows[1].email).toBe("basic@auth.test");
