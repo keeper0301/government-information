@@ -114,6 +114,12 @@ export default function PolicyMonitorPage() {
           >
             W9 approval request preview
           </a>
+          <a
+            href="/policy-monitor/publish-approval-decision-preview.json"
+            className="rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-orange-700 no-underline hover:bg-orange-50"
+          >
+            W10 decision preview
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -503,6 +509,41 @@ export default function PolicyMonitorPage() {
           </div>
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-rose-700">안전선</div>
+            승인 저장 없음 · publish=false
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-orange-100 bg-orange-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W10 publish approval decision preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W10은 W9 승인 요청에 대한 선택 결과를 receipt preview로만 보여줍니다. 선택값은 URL 파라미터로 바꿀 수 있지만 승인 저장·실제 발행·외부 제출은 하지 않습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/publish-approval-decision-preview.json"
+            className="w-fit rounded-full bg-orange-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-orange-700"
+          >
+            decision preview JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">입력</div>
+            W9 approval_request_preview item
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">결정</div>
+            approve · hold · revision 선택 preview
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">영수증</div>
+            decisionRecorded=false · live 승인 별도
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-orange-700">안전선</div>
             승인 저장 없음 · publish=false
           </div>
         </div>
