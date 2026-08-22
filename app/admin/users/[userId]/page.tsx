@@ -37,6 +37,7 @@ import { DeleteUserButton } from "./delete-button";
 // admin sub page 표준 헤더 — kicker · title · description 슬롯 통일
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { formatRegionDisplay } from "@/lib/region-display";
+import { buildUserActivationSummary } from "@/lib/admin/user-activation-summary";
 
 export const metadata: Metadata = {
   title: "사용자 상세 | 어드민 | 정책알리미",
@@ -386,15 +387,18 @@ export default async function AdminUserDetailPage({
 
   const [
     { data: profile },
+    { data: businessProfile },
     { data: subscription },
     { data: aiUsage },
     { data: alertDeliveries },
     { data: alertRules },
+    { data: deadlineAlerts },
     consents,
     adminActions,
     timeline,
   ] = await Promise.all([
     admin.from("user_profiles").select("*").eq("id", userId).maybeSingle(),
+    admin.from("business_profiles").select("user_id").eq("user_id", userId).maybeSingle(),
     admin.from("subscriptions").select("*").eq("user_id", userId).maybeSingle(),
     admin
       .from("ai_usage_log")
@@ -414,6 +418,12 @@ export default async function AdminUserDetailPage({
       .select("id, name, is_active, channels, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
+    admin
+      .from("alarm_subscriptions")
+      .select("id, program_type, program_id, is_active, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20),
     getUserConsents(userId),
     getTargetActions(userId, 20),
     getUserTimeline(userId, 30),
@@ -430,6 +440,26 @@ export default async function AdminUserDetailPage({
     (r: { date: string; count: number }) => r.date === todayKst,
   );
   const hasUsageToday = !!todayUsage && todayUsage.count > 0;
+  const activeAlertRulesCount = (alertRules ?? []).filter(
+    (rule: { is_active?: boolean }) => rule.is_active,
+  ).length;
+  const activeDeadlineAlerts = (deadlineAlerts ?? []).filter(
+    (alarm: { is_active?: boolean }) => alarm.is_active,
+  );
+  const hasKakaoConsent = consents.some(
+    (consent) =>
+      consent.consentType === "kakao_messaging" &&
+      consent.isActive &&
+      !consent.isExpired,
+  );
+  const activationSummary = buildUserActivationSummary({
+    tier: subscription?.tier,
+    subscriptionStatus: subscription?.status,
+    hasBusinessProfile: Boolean(businessProfile),
+    hasKakaoConsent,
+    activeAlertRulesCount,
+    savedDeadlineAlertsCount: activeDeadlineAlerts.length,
+  });
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
@@ -514,6 +544,38 @@ export default async function AdminUserDetailPage({
                 (현재와 동일 선택 시 변경 없음)
               </span>
             </form>
+          </Panel>
+
+          {/* SaaS activation — 유료 전환 후 실제 감시 설정이 켜졌는지 한눈에 확인 */}
+          <Panel title="SaaS 활성화 상태">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                activationSummary.hasAnyWatch
+                  ? "bg-emerald-50 text-emerald-700"
+                  : activationSummary.isActivePaid
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-grey-100 text-grey-700"
+              }`}>
+                {activationSummary.statusLabel}
+              </span>
+              <Link href="/admin/paid-users?segment=no_watch" className="text-xs font-semibold text-blue-500 underline">
+                감시 0개 목록
+              </Link>
+            </div>
+            <Row label="사업자/프로필" value={businessProfile ? "✓ 있음" : "없음"} />
+            <Row label="맞춤 알림 규칙" value={`${activeAlertRulesCount.toLocaleString()}개 활성`} />
+            <Row label="정책 상세 마감 알림" value={`${activeDeadlineAlerts.length.toLocaleString()}개 활성`} />
+            <Row label="카카오 동의" value={hasKakaoConsent ? "✓ 있음" : "없음"} />
+            <Row label="다음 액션" value={activationSummary.nextAction} />
+            {activationSummary.gaps.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {activationSummary.gaps.map((gap) => (
+                  <span key={gap} className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                    {gap}
+                  </span>
+                ))}
+              </div>
+            )}
           </Panel>
 
           {/* 동의 현황 — 5종 (필수 2 + 선택 3) */}
@@ -606,6 +668,52 @@ export default async function AdminUserDetailPage({
                         <td className="py-2">{fmt(d.status ?? d.result)}</td>
                       </tr>
                     ),
+                  )}
+                </tbody>
+              </table>
+            )}
+          </Panel>
+
+          {/* 정책 상세 마감 알림 — 정책 상세 CTA로 저장한 watch. 맞춤 규칙과 별도 activation signal */}
+          <Panel title={`정책 상세 마감 알림 (${activeDeadlineAlerts.length}개 활성)`}>
+            {activeDeadlineAlerts.length === 0 ? (
+              <p className="text-sm text-grey-600 py-2">정책 상세에서 저장한 마감 알림 없음</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-grey-600 border-b border-grey-200">
+                    <th className="py-2 font-medium">정책</th>
+                    <th className="py-2 font-medium">상태</th>
+                    <th className="py-2 font-medium text-right">저장일</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeDeadlineAlerts.map(
+                    (alarm: {
+                      id: string;
+                      program_type?: string | null;
+                      program_id?: string | null;
+                      is_active?: boolean;
+                      created_at?: string | null;
+                    }) => {
+                      const type = alarm.program_type === "loan" ? "loan" : "welfare";
+                      const programId = alarm.program_id ?? "";
+                      return (
+                        <tr key={alarm.id} className="border-b border-grey-100 last:border-b-0">
+                          <td className="py-2 font-mono text-xs">
+                            {programId ? (
+                              <Link href={`/${type}/${programId}`} className="text-blue-500 underline">
+                                {type}/{programId}
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td className="py-2">{alarm.is_active ? "active" : "inactive"}</td>
+                          <td className="py-2 text-right text-xs text-grey-600">{fmtDate(alarm.created_at)}</td>
+                        </tr>
+                      );
+                    },
                   )}
                 </tbody>
               </table>
