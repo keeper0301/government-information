@@ -152,12 +152,13 @@ export function hasNoWatchConfigured(row: Pick<PaidUserDashboardRow, "activeAler
   return row.activeAlertRulesCount === 0 && row.savedDeadlineAlertsCount === 0;
 }
 
-export type OutreachMessageType = "payment_risk" | "activation_gap" | "paid_user";
+export type OutreachMessageType = "payment_risk" | "stale_no_watch" | "activation_gap" | "paid_user";
 
 export function outreachMessageType(
   row: PaidUserDashboardRow,
 ): OutreachMessageType {
   if (row.interviewSegment === "payment_risk") return "payment_risk";
+  if (row.interviewSegment === "stale_no_watch") return "stale_no_watch";
   if (row.interviewSegment === "activation_gap") return "activation_gap";
   return "paid_user";
 }
@@ -165,6 +166,7 @@ export function outreachMessageType(
 export function outreachMessageTypeLabel(type: OutreachMessageType): string {
   const labels: Record<OutreachMessageType, string> = {
     paid_user: "유료 사용자 섭외",
+    stale_no_watch: "24h+ 감시 0개 확인",
     activation_gap: "미설정 사용자 섭외",
     payment_risk: "결제/해지 위험 확인",
   };
@@ -175,6 +177,17 @@ export function buildPaidUserOutreachMessage(row: PaidUserDashboardRow): string 
   const type = outreachMessageType(row);
   const tierName = row.tier === "pro" ? "Pro" : "Basic";
   const emailLine = row.email ? `\n\n대상: ${row.email}` : "";
+
+  if (type === "stale_no_watch") {
+    return [
+      "안녕하세요, 정책알리미 운영자입니다.",
+      `${tierName} 유료 플랜을 시작하신 뒤 아직 정책 마감 감시가 켜지지 않은 것 같아 확인차 연락드립니다.`,
+      `현재 맞춤 알림 규칙 0개, 정책 상세 마감 알림 0개로 보이고 가입 후 ${row.activationAgeDays}일이 지났습니다.`,
+      "알림센터 설정 과정에서 막힌 부분이 있었는지, 어떤 알림이 필요했는지 5~10분만 여쭤보고 싶습니다.",
+      "가능하신 시간 편하게 알려주세요.",
+      emailLine.trimStart(),
+    ].filter(Boolean).join("\n");
+  }
 
   if (type === "activation_gap") {
     const gaps = row.activationGaps.map(activationGapLabel).join(", ");

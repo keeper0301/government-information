@@ -219,8 +219,13 @@ describe("paid users dashboard helpers", () => {
 
     expect(dashboard.stats.missingAnyAlertWatch).toBe(2);
     expect(dashboard.stats.staleNoWatchUsers).toBe(1);
-    expect(dashboard.rows.find((row) => row.userId === "u_stale")?.interviewSegment).toBe("stale_no_watch");
-    expect(dashboard.rows.find((row) => row.userId === "u_stale")?.activationAgeDays).toBe(2);
+    const staleRow = dashboard.rows.find((row) => row.userId === "u_stale")!;
+    expect(staleRow.interviewSegment).toBe("stale_no_watch");
+    expect(staleRow.activationAgeDays).toBe(2);
+    expect(outreachMessageType(staleRow)).toBe("stale_no_watch");
+    expect(buildPaidUserOutreachMessage(staleRow)).toContain("정책 마감 감시가 켜지지 않은 것 같아");
+    expect(buildPaidUserOutreachMessage(staleRow)).toContain("가입 후 2일");
     expect(filterPaidUserRows(dashboard.rows, { segment: "stale_no_watch" }).map((row) => row.userId)).toEqual(["u_stale"]);
+    expect(buildPaidUsersCsv([staleRow])).toContain("stale_no_watch");
   });
 });
