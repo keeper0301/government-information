@@ -69,7 +69,9 @@ export type PaidUserDashboardRow = {
   activeAlertRulesCount: number;
   savedDeadlineAlertsCount: number;
   activationGaps: PaidUserActivationGap[];
-  interviewSegment: "basic" | "pro" | "activation_gap" | "payment_risk";
+  activationAgeDays: number;
+  staleNoWatch: boolean;
+  interviewSegment: "basic" | "pro" | "activation_gap" | "stale_no_watch" | "payment_risk";
 };
 
 export type PaidUsersDashboard = {
@@ -83,6 +85,7 @@ export type PaidUsersDashboard = {
     cancelled: number;
     monthlyRevenueEstimate: number;
     activationGapUsers: number;
+    staleNoWatchUsers: number;
     missingBusinessProfile: number;
     missingProKakaoConsent: number;
     missingAlertRules: number;
@@ -108,6 +111,8 @@ export const PAID_USERS_CSV_HEADER = [
   "active_alert_rules_count",
   "saved_deadline_alerts_count",
   "no_watch_configured",
+  "stale_no_watch",
+  "activation_age_days",
   "last_sign_in_at",
   "current_period_end",
   "admin_user_url",
@@ -131,7 +136,8 @@ export function filterPaidUserRows(
     if (tier && row.tier !== tier) return false;
     if (status && row.status !== status) return false;
     if (segment === "no_watch" && !hasNoWatchConfigured(row)) return false;
-    if (segment && segment !== "no_watch" && row.interviewSegment !== segment) return false;
+    if (segment === "stale_no_watch" && !row.staleNoWatch) return false;
+    if (segment && segment !== "no_watch" && segment !== "stale_no_watch" && row.interviewSegment !== segment) return false;
     if (!query) return true;
 
     const haystack = [row.email, row.customerEmail, row.userId, row.cardLabel]
@@ -234,6 +240,8 @@ export function buildPaidUsersCsv(
         row.activeAlertRulesCount,
         row.savedDeadlineAlertsCount,
         hasNoWatchConfigured(row) ? "yes" : "no",
+        row.staleNoWatch ? "yes" : "no",
+        row.activationAgeDays,
         row.lastSignInAt ?? "",
         row.currentPeriodEnd ?? "",
         baseUrl ? `${baseUrl}${adminPath}` : adminPath,
@@ -265,10 +273,18 @@ function chooseInterviewSegment(row: {
   tier: PaidTier;
   status: string;
   activationGaps: PaidUserActivationGap[];
+  staleNoWatch: boolean;
 }): PaidUserDashboardRow["interviewSegment"] {
   if (row.status === "past_due" || row.status === "cancelled") return "payment_risk";
+  if (row.staleNoWatch) return "stale_no_watch";
   if (row.activationGaps.length > 0) return "activation_gap";
   return row.tier;
+}
+
+export function daysSinceIso(iso: string, nowIso = new Date().toISOString()): number {
+  const elapsed = Date.parse(nowIso) - Date.parse(iso);
+  if (!Number.isFinite(elapsed) || elapsed < 0) return 0;
+  return Math.floor(elapsed / (24 * 60 * 60 * 1000));
 }
 
 export function buildPaidUsersDashboard(input: {
@@ -279,6 +295,7 @@ export function buildPaidUsersDashboard(input: {
   kakaoConsentUserIds: string[];
   activeAlertRuleUserIds: string[];
   activeAlarmSubscriptionUserIds?: string[];
+  nowIso?: string;
 }): PaidUsersDashboard {
   const userMap = new Map(input.users.map((user) => [user.id, user]));
   const businessSet = new Set(input.businessUserIds);
@@ -305,6 +322,9 @@ export function buildPaidUsersDashboard(input: {
       hasSavedDeadlineAlert: (deadlineAlertCounts.get(subscription.user_id) ?? 0) > 0,
     });
     const isActive = isPaidActiveStatus(subscription.status);
+    const activationAgeDays = daysSinceIso(subscription.created_at, input.nowIso);
+    const hasAnyWatch = (alertRuleCounts.get(subscription.user_id) ?? 0) > 0 || (deadlineAlertCounts.get(subscription.user_id) ?? 0) > 0;
+    const staleNoWatch = isActive && !hasAnyWatch && activationAgeDays >= 1;
     const cardLabel =
       subscription.card_company && subscription.card_number_masked
         ? `${subscription.card_company} · ${subscription.card_number_masked}`
@@ -330,6 +350,8 @@ export function buildPaidUsersDashboard(input: {
       activeAlertRulesCount: alertRuleCounts.get(subscription.user_id) ?? 0,
       savedDeadlineAlertsCount: deadlineAlertCounts.get(subscription.user_id) ?? 0,
       activationGaps,
+      activationAgeDays,
+      staleNoWatch,
       interviewSegment: "basic" as PaidUserDashboardRow["interviewSegment"],
     } satisfies PaidUserDashboardRow;
     return { ...row, interviewSegment: chooseInterviewSegment(row) };
@@ -355,6 +377,7 @@ export function buildPaidUsersDashboard(input: {
       0,
     ),
     activationGapUsers: rows.filter((row) => row.activationGaps.length > 0).length,
+    staleNoWatchUsers: rows.filter((row) => row.staleNoWatch).length,
     missingBusinessProfile: rows.filter((row) =>
       row.activationGaps.includes("business_profile"),
     ).length,
@@ -463,6 +486,7 @@ export function interviewSegmentLabel(segment: PaidUserDashboardRow["interviewSe
     basic: "Basic 인터뷰",
     pro: "Pro 인터뷰",
     activation_gap: "미설정 인터뷰",
+    stale_no_watch: "24h+ 감시 0개",
     payment_risk: "결제/해지 위험",
   };
   return labels[segment];

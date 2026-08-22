@@ -85,6 +85,7 @@ describe("paid users dashboard helpers", () => {
       kakaoConsentUserIds: [],
       activeAlertRuleUserIds: [],
       activeAlarmSubscriptionUserIds: ["u_basic"],
+      nowIso: "2026-07-12T00:00:00.000Z",
     });
 
     expect(dashboard.stats.totalPaidRows).toBe(2);
@@ -142,6 +143,7 @@ describe("paid users dashboard helpers", () => {
       kakaoConsentUserIds: [],
       activeAlertRuleUserIds: ["u_basic"],
       activeAlarmSubscriptionUserIds: ["u_basic"],
+      nowIso: "2026-07-02T12:00:00.000Z",
     });
 
     const filtered = filterPaidUserRows(dashboard.rows, {
@@ -168,10 +170,57 @@ describe("paid users dashboard helpers", () => {
 
     const csv = buildPaidUsersCsv(filtered, { baseUrl: "https://www.keepioo.com/" });
     expect(csv).toContain("email,tier,status,interview_segment,activation_gaps");
-    expect(csv).toContain("active_alert_rules_count,saved_deadline_alerts_count,no_watch_configured");
+    expect(csv).toContain("active_alert_rules_count,saved_deadline_alerts_count,no_watch_configured,stale_no_watch,activation_age_days");
     expect(csv).toContain('"pro,quoted@auth.test"');
-    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications,0,0,yes");
+    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications,0,0,yes,no,0");
     expect(csv).toContain("https://www.keepioo.com/admin/users/u_pro");
     expect(csv).toContain("activation_gap");
+  });
+
+
+  it("prioritizes active paid users with zero watch for more than 24 hours", () => {
+    const dashboard = buildPaidUsersDashboard({
+      subscriptions: [
+        {
+          user_id: "u_stale",
+          tier: "basic",
+          status: "active",
+          customer_email: "stale@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-01T00:00:00.000Z",
+          updated_at: "2026-07-01T00:00:00.000Z",
+        },
+        {
+          user_id: "u_fresh",
+          tier: "basic",
+          status: "active",
+          customer_email: "fresh@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-02T18:00:00.000Z",
+          updated_at: "2026-07-02T18:00:00.000Z",
+        },
+      ],
+      users: [],
+      payments: [],
+      businessUserIds: ["u_stale", "u_fresh"],
+      kakaoConsentUserIds: [],
+      activeAlertRuleUserIds: [],
+      activeAlarmSubscriptionUserIds: [],
+      nowIso: "2026-07-03T00:00:00.000Z",
+    });
+
+    expect(dashboard.stats.missingAnyAlertWatch).toBe(2);
+    expect(dashboard.stats.staleNoWatchUsers).toBe(1);
+    expect(dashboard.rows.find((row) => row.userId === "u_stale")?.interviewSegment).toBe("stale_no_watch");
+    expect(dashboard.rows.find((row) => row.userId === "u_stale")?.activationAgeDays).toBe(2);
+    expect(filterPaidUserRows(dashboard.rows, { segment: "stale_no_watch" }).map((row) => row.userId)).toEqual(["u_stale"]);
   });
 });

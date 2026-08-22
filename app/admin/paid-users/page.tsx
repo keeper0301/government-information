@@ -121,7 +121,7 @@ export default async function AdminPaidUsersPage({
       <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard label="활성 유료" value={`${dashboard.stats.activeTotal.toLocaleString()}명`} tone="blue" />
         <MetricCard label="예상 월 반복매출" value={formatWon(dashboard.stats.monthlyRevenueEstimate)} tone="green" />
-        <MetricCard label="감시 미설정" value={`${dashboard.stats.missingAnyAlertWatch.toLocaleString()}명`} tone="amber" />
+        <MetricCard label="24h+ 감시 0개" value={`${dashboard.stats.staleNoWatchUsers.toLocaleString()}명`} tone="amber" />
         <MetricCard label="결제 실패/해지" value={`${(dashboard.stats.pastDue + dashboard.stats.cancelled).toLocaleString()}명`} tone="red" />
       </section>
 
@@ -142,6 +142,7 @@ export default async function AdminPaidUsersPage({
             ["맞춤 알림 규칙 없음", `${dashboard.stats.missingAlertRules.toLocaleString()}명`],
             ["정책 상세 마감 알림 없음", `${dashboard.stats.missingDeadlineAlerts.toLocaleString()}명`],
             ["감시 설정 0개", `${dashboard.stats.missingAnyAlertWatch.toLocaleString()}명`],
+            ["24h+ 감시 0개", `${dashboard.stats.staleNoWatchUsers.toLocaleString()}명`],
           ]}
         />
         <BreakdownCard
@@ -178,6 +179,7 @@ export default async function AdminPaidUsersPage({
               ["pro", "Pro"],
               ["activation_gap", "미설정"],
               ["no_watch", "감시 0개"],
+              ["stale_no_watch", "24h+ 감시 0개"],
               ["payment_risk", "결제/해지 위험"],
             ]}
           />
@@ -341,8 +343,11 @@ function PaidUserTableRow({ row }: { row: PaidUserDashboardRow }) {
           </div>
         )}
         <div className="mt-2 text-[11px] font-semibold text-grey-500">
-          맞춤 규칙 {row.activeAlertRulesCount.toLocaleString()}개 · 정책 마감 {row.savedDeadlineAlertsCount.toLocaleString()}개
+          맞춤 규칙 {row.activeAlertRulesCount.toLocaleString()}개 · 정책 마감 {row.savedDeadlineAlertsCount.toLocaleString()}개 · 가입 후 {row.activationAgeDays.toLocaleString()}일
         </div>
+        {row.staleNoWatch && (
+          <div className="mt-1 text-[11px] font-bold text-amber-700">24h+ 감시 0개 — 우선 연락</div>
+        )}
       </td>
       <td className="px-4 py-4">
         <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700">
