@@ -126,6 +126,12 @@ export default function PolicyMonitorPage() {
           >
             W11 live preflight preview
           </a>
+          <a
+            href="/policy-monitor/live-readback-preview.json"
+            className="rounded-full border border-fuchsia-200 bg-white px-4 py-2 text-sm font-bold text-fuchsia-700 no-underline hover:bg-fuchsia-50"
+          >
+            W12 live readback preview
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -586,6 +592,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-red-700">안전선</div>
             실제 발행 없음 · submit=false
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-fuchsia-100 bg-fuchsia-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W12 live readback preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W12는 실제 발행 후 확인해야 할 공개 URL, 공식 출처, GSC/IndexNow/Naver 제출 readback 계획만 만듭니다. 발행·제출·외부 요청은 모두 별도 승인 전까지 막습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/live-readback-preview.json"
+            className="w-fit rounded-full bg-fuchsia-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-fuchsia-700"
+          >
+            live readback preview JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-fuchsia-700">입력</div>
+            W11 preflight preview item
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-fuchsia-700">확인</div>
+            공개 URL · 공식 출처 · title/meta/body
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-fuchsia-700">측정</div>
+            즉시 · 24h · 72h readback preview
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-fuchsia-700">안전선</div>
+            외부 요청 없음 · submit=false
           </div>
         </div>
       </section>
