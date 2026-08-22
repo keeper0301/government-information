@@ -102,6 +102,12 @@ export default function PolicyMonitorPage() {
           >
             W7 operator review
           </a>
+          <a
+            href="/policy-monitor/publish-package-preview.json"
+            className="rounded-full border border-sky-200 bg-white px-4 py-2 text-sm font-bold text-sky-700 no-underline hover:bg-sky-50"
+          >
+            W8 publish package preview
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -422,6 +428,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-indigo-700">안전선</div>
             검토 preview는 발행 승인 아님 · publish=false
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-sky-100 bg-sky-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W8 publish package preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W8은 review_passed_preview 항목만 발행 승인 패키지 형태로 묶습니다. 제목, 본문 preview, 메타 설명, 공식 출처, 발행 전 승인 체크리스트까지만 만들며 실제 공개 발행은 하지 않습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/publish-package-preview.json"
+            className="w-fit rounded-full bg-sky-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-sky-700"
+          >
+            publish package preview JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-sky-700">입력</div>
+            W7 review_passed_preview item만 사용
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-sky-700">패키지</div>
+            제목 · 본문 preview · 메타 설명
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-sky-700">근거</div>
+            공식 출처 URL · 발행 전 승인 checklist
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-sky-700">안전선</div>
+            실제 발행 없음 · 최종 승인 전 publish=false
           </div>
         </div>
       </section>
