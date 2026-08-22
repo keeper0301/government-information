@@ -459,6 +459,7 @@ export default async function AdminUserDetailPage({
     hasKakaoConsent,
     activeAlertRulesCount,
     savedDeadlineAlertsCount: activeDeadlineAlerts.length,
+    subscriptionCreatedAt: subscription?.created_at,
   });
 
   return (
@@ -558,13 +559,14 @@ export default async function AdminUserDetailPage({
               }`}>
                 {activationSummary.statusLabel}
               </span>
-              <Link href="/admin/paid-users?segment=no_watch" className="text-xs font-semibold text-blue-500 underline">
-                감시 0개 목록
+              <Link href={activationSummary.isStaleNoWatch ? "/admin/paid-users?segment=stale_no_watch" : "/admin/paid-users?segment=no_watch"} className="text-xs font-semibold text-blue-500 underline">
+                {activationSummary.isStaleNoWatch ? "24h+ 감시 0개 목록" : "감시 0개 목록"}
               </Link>
             </div>
             <Row label="사업자/프로필" value={businessProfile ? "✓ 있음" : "없음"} />
             <Row label="맞춤 알림 규칙" value={`${activeAlertRulesCount.toLocaleString()}개 활성`} />
             <Row label="정책 상세 마감 알림" value={`${activeDeadlineAlerts.length.toLocaleString()}개 활성`} />
+            <Row label="구독 후 경과" value={activationSummary.activationAgeDays === null ? "—" : `${activationSummary.activationAgeDays.toLocaleString()}일`} />
             <Row label="카카오 동의" value={hasKakaoConsent ? "✓ 있음" : "없음"} />
             <Row label="다음 액션" value={activationSummary.nextAction} />
             {activationSummary.gaps.length > 0 && (

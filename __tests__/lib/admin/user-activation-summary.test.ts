@@ -10,9 +10,13 @@ describe("user activation summary", () => {
       hasKakaoConsent: false,
       activeAlertRulesCount: 0,
       savedDeadlineAlertsCount: 0,
+      subscriptionCreatedAt: "2026-07-01T00:00:00.000Z",
+      nowIso: "2026-07-02T01:00:00.000Z",
     });
 
-    expect(summary.statusLabel).toBe("유료지만 감시 0개");
+    expect(summary.statusLabel).toBe("24h+ 감시 0개");
+    expect(summary.isStaleNoWatch).toBe(true);
+    expect(summary.activationAgeDays).toBe(1);
     expect(summary.hasAnyWatch).toBe(false);
     expect(summary.gaps).toContain("감시 설정 0개");
     expect(summary.nextAction).toContain("알림센터");
