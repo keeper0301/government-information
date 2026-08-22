@@ -170,9 +170,9 @@ describe("paid users dashboard helpers", () => {
 
     const csv = buildPaidUsersCsv(filtered, { baseUrl: "https://www.keepioo.com/" });
     expect(csv).toContain("email,tier,status,interview_segment,activation_gaps");
-    expect(csv).toContain("active_alert_rules_count,saved_deadline_alerts_count,no_watch_configured,stale_no_watch,activation_age_days");
+    expect(csv).toContain("active_alert_rules_count,saved_deadline_alerts_count,no_watch_configured,stale_no_watch,pending_24h,activation_age_days");
     expect(csv).toContain('"pro,quoted@auth.test"');
-    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications,0,0,yes,no,0");
+    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications,0,0,yes,no,no,0");
     expect(csv).toContain("https://www.keepioo.com/admin/users/u_pro");
     expect(csv).toContain("activation_gap");
   });
@@ -227,5 +227,53 @@ describe("paid users dashboard helpers", () => {
     expect(buildPaidUserOutreachMessage(staleRow)).toContain("가입 후 2일");
     expect(filterPaidUserRows(dashboard.rows, { segment: "stale_no_watch" }).map((row) => row.userId)).toEqual(["u_stale"]);
     expect(buildPaidUsersCsv([staleRow])).toContain("stale_no_watch");
+  });
+
+
+  it("filters recent pending checkout intents for card-registration follow-up", () => {
+    const dashboard = buildPaidUsersDashboard({
+      subscriptions: [
+        {
+          user_id: "u_pending_recent",
+          tier: "basic",
+          status: "pending",
+          customer_email: "pending@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-02T18:00:00.000Z",
+          updated_at: "2026-07-02T18:00:00.000Z",
+        },
+        {
+          user_id: "u_pending_old",
+          tier: "basic",
+          status: "pending",
+          customer_email: "old@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-01T00:00:00.000Z",
+          updated_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+      users: [],
+      payments: [],
+      businessUserIds: [],
+      kakaoConsentUserIds: [],
+      activeAlertRuleUserIds: [],
+      activeAlarmSubscriptionUserIds: [],
+      nowIso: "2026-07-03T00:00:00.000Z",
+    });
+
+    expect(dashboard.stats.pending24hUsers).toBe(1);
+    const rows = filterPaidUserRows(dashboard.rows, { segment: "pending_24h" });
+    expect(rows.map((row) => row.userId)).toEqual(["u_pending_recent"]);
+    expect(outreachMessageType(rows[0])).toBe("pending_24h");
+    expect(buildPaidUserOutreachMessage(rows[0])).toContain("카드 등록이 아직 완료되지 않은 것 같아");
+    expect(buildPaidUsersCsv(rows)).toContain("pending_24h");
   });
 });

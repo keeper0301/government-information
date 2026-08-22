@@ -121,7 +121,7 @@ export default async function AdminPaidUsersPage({
       <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard label="활성 유료" value={`${dashboard.stats.activeTotal.toLocaleString()}명`} tone="blue" />
         <MetricCard label="예상 월 반복매출" value={formatWon(dashboard.stats.monthlyRevenueEstimate)} tone="green" />
-        <MetricCard label="24h+ 감시 0개" value={`${dashboard.stats.staleNoWatchUsers.toLocaleString()}명`} tone="amber" />
+        <MetricCard label="pending 24h" value={`${dashboard.stats.pending24hUsers.toLocaleString()}명`} tone="amber" />
         <MetricCard label="결제 실패/해지" value={`${(dashboard.stats.pastDue + dashboard.stats.cancelled).toLocaleString()}명`} tone="red" />
       </section>
 
@@ -132,6 +132,7 @@ export default async function AdminPaidUsersPage({
             ["Basic 활성", `${dashboard.stats.activeBasic.toLocaleString()}명`],
             ["Pro 활성", `${dashboard.stats.activePro.toLocaleString()}명`],
             ["체험 중", `${dashboard.stats.trialing.toLocaleString()}명`],
+            ["카드 등록 전 pending 24h", `${dashboard.stats.pending24hUsers.toLocaleString()}명`],
           ]}
         />
         <BreakdownCard
@@ -179,6 +180,7 @@ export default async function AdminPaidUsersPage({
               ["pro", "Pro"],
               ["activation_gap", "미설정"],
               ["no_watch", "감시 0개"],
+              ["pending_24h", "pending 24h"],
               ["stale_no_watch", "24h+ 감시 0개"],
               ["payment_risk", "결제/해지 위험"],
             ]}
@@ -345,6 +347,9 @@ function PaidUserTableRow({ row }: { row: PaidUserDashboardRow }) {
         <div className="mt-2 text-[11px] font-semibold text-grey-500">
           맞춤 규칙 {row.activeAlertRulesCount.toLocaleString()}개 · 정책 마감 {row.savedDeadlineAlertsCount.toLocaleString()}개 · 가입 후 {row.activationAgeDays.toLocaleString()}일
         </div>
+        {row.recentPending24h && (
+          <div className="mt-1 text-[11px] font-bold text-amber-700">pending 24h — 카드 등록 전 이탈 확인</div>
+        )}
         {row.staleNoWatch && (
           <div className="mt-1 text-[11px] font-bold text-amber-700">24h+ 감시 0개 — 우선 연락</div>
         )}

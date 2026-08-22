@@ -71,6 +71,7 @@ export type PaidUserDashboardRow = {
   activationGaps: PaidUserActivationGap[];
   activationAgeDays: number;
   staleNoWatch: boolean;
+  recentPending24h: boolean;
   interviewSegment: "basic" | "pro" | "activation_gap" | "stale_no_watch" | "payment_risk";
 };
 
@@ -86,6 +87,7 @@ export type PaidUsersDashboard = {
     monthlyRevenueEstimate: number;
     activationGapUsers: number;
     staleNoWatchUsers: number;
+    pending24hUsers: number;
     missingBusinessProfile: number;
     missingProKakaoConsent: number;
     missingAlertRules: number;
@@ -112,6 +114,7 @@ export const PAID_USERS_CSV_HEADER = [
   "saved_deadline_alerts_count",
   "no_watch_configured",
   "stale_no_watch",
+  "pending_24h",
   "activation_age_days",
   "last_sign_in_at",
   "current_period_end",
@@ -137,7 +140,8 @@ export function filterPaidUserRows(
     if (status && row.status !== status) return false;
     if (segment === "no_watch" && !hasNoWatchConfigured(row)) return false;
     if (segment === "stale_no_watch" && !row.staleNoWatch) return false;
-    if (segment && segment !== "no_watch" && segment !== "stale_no_watch" && row.interviewSegment !== segment) return false;
+    if (segment === "pending_24h" && !row.recentPending24h) return false;
+    if (segment && segment !== "no_watch" && segment !== "stale_no_watch" && segment !== "pending_24h" && row.interviewSegment !== segment) return false;
     if (!query) return true;
 
     const haystack = [row.email, row.customerEmail, row.userId, row.cardLabel]
@@ -152,12 +156,13 @@ export function hasNoWatchConfigured(row: Pick<PaidUserDashboardRow, "activeAler
   return row.activeAlertRulesCount === 0 && row.savedDeadlineAlertsCount === 0;
 }
 
-export type OutreachMessageType = "payment_risk" | "stale_no_watch" | "activation_gap" | "paid_user";
+export type OutreachMessageType = "payment_risk" | "pending_24h" | "stale_no_watch" | "activation_gap" | "paid_user";
 
 export function outreachMessageType(
   row: PaidUserDashboardRow,
 ): OutreachMessageType {
   if (row.interviewSegment === "payment_risk") return "payment_risk";
+  if (row.recentPending24h) return "pending_24h";
   if (row.interviewSegment === "stale_no_watch") return "stale_no_watch";
   if (row.interviewSegment === "activation_gap") return "activation_gap";
   return "paid_user";
@@ -166,6 +171,7 @@ export function outreachMessageType(
 export function outreachMessageTypeLabel(type: OutreachMessageType): string {
   const labels: Record<OutreachMessageType, string> = {
     paid_user: "유료 사용자 섭외",
+    pending_24h: "카드 등록 전 이탈 확인",
     stale_no_watch: "24h+ 감시 0개 확인",
     activation_gap: "미설정 사용자 섭외",
     payment_risk: "결제/해지 위험 확인",
@@ -177,6 +183,16 @@ export function buildPaidUserOutreachMessage(row: PaidUserDashboardRow): string 
   const type = outreachMessageType(row);
   const tierName = row.tier === "pro" ? "Pro" : "Basic";
   const emailLine = row.email ? `\n\n대상: ${row.email}` : "";
+
+  if (type === "pending_24h") {
+    return [
+      "안녕하세요, 정책알리미 운영자입니다.",
+      `${tierName} 결제 시작 화면까지 오셨는데 카드 등록이 아직 완료되지 않은 것 같아 확인차 연락드립니다.`,
+      "결제 오류인지, 가격/기능 설명이 부족했는지, 아니면 아직 고민 중이신지 짧게 확인하고 싶습니다.",
+      "불편했던 지점이 있으면 바로 개선에 반영하겠습니다.",
+      emailLine.trimStart(),
+    ].filter(Boolean).join("\n");
+  }
 
   if (type === "stale_no_watch") {
     return [
@@ -254,6 +270,7 @@ export function buildPaidUsersCsv(
         row.savedDeadlineAlertsCount,
         hasNoWatchConfigured(row) ? "yes" : "no",
         row.staleNoWatch ? "yes" : "no",
+        row.recentPending24h ? "yes" : "no",
         row.activationAgeDays,
         row.lastSignInAt ?? "",
         row.currentPeriodEnd ?? "",
@@ -288,6 +305,7 @@ function chooseInterviewSegment(row: {
   activationGaps: PaidUserActivationGap[];
   staleNoWatch: boolean;
 }): PaidUserDashboardRow["interviewSegment"] {
+  if (row.status === "pending") return "activation_gap";
   if (row.status === "past_due" || row.status === "cancelled") return "payment_risk";
   if (row.staleNoWatch) return "stale_no_watch";
   if (row.activationGaps.length > 0) return "activation_gap";
@@ -338,6 +356,7 @@ export function buildPaidUsersDashboard(input: {
     const activationAgeDays = daysSinceIso(subscription.created_at, input.nowIso);
     const hasAnyWatch = (alertRuleCounts.get(subscription.user_id) ?? 0) > 0 || (deadlineAlertCounts.get(subscription.user_id) ?? 0) > 0;
     const staleNoWatch = isActive && !hasAnyWatch && activationAgeDays >= 1;
+    const recentPending24h = subscription.status === "pending" && activationAgeDays === 0;
     const cardLabel =
       subscription.card_company && subscription.card_number_masked
         ? `${subscription.card_company} · ${subscription.card_number_masked}`
@@ -365,6 +384,7 @@ export function buildPaidUsersDashboard(input: {
       activationGaps,
       activationAgeDays,
       staleNoWatch,
+      recentPending24h,
       interviewSegment: "basic" as PaidUserDashboardRow["interviewSegment"],
     } satisfies PaidUserDashboardRow;
     return { ...row, interviewSegment: chooseInterviewSegment(row) };
@@ -391,6 +411,7 @@ export function buildPaidUsersDashboard(input: {
     ),
     activationGapUsers: rows.filter((row) => row.activationGaps.length > 0).length,
     staleNoWatchUsers: rows.filter((row) => row.staleNoWatch).length,
+    pending24hUsers: rows.filter((row) => row.recentPending24h).length,
     missingBusinessProfile: rows.filter((row) =>
       row.activationGaps.includes("business_profile"),
     ).length,
