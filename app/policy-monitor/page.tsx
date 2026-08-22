@@ -108,6 +108,12 @@ export default function PolicyMonitorPage() {
           >
             W8 publish package preview
           </a>
+          <a
+            href="/policy-monitor/publish-approval-request.json"
+            className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-bold text-rose-700 no-underline hover:bg-rose-50"
+          >
+            W9 approval request preview
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -463,6 +469,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-sky-700">안전선</div>
             실제 발행 없음 · 최종 승인 전 publish=false
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-rose-100 bg-rose-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W9 publish approval request preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W9는 W8 패키지를 운영자 승인 요청 카드로만 감쌉니다. 승인 질문, 선택지, 필수 확인 문구를 보여주지만 승인 저장·실제 발행·외부 제출은 하지 않습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/publish-approval-request.json"
+            className="w-fit rounded-full bg-rose-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-rose-700"
+          >
+            approval request preview JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">입력</div>
+            W8 publish_package_preview item
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">요청</div>
+            승인 질문 · 본문 digest · 공식 출처
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">선택지</div>
+            approve preview · hold · revision
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-rose-700">안전선</div>
+            승인 저장 없음 · publish=false
           </div>
         </div>
       </section>
