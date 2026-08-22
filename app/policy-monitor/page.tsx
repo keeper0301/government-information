@@ -132,6 +132,12 @@ export default function PolicyMonitorPage() {
           >
             W12 live readback preview
           </a>
+          <a
+            href="/policy-monitor/readback-scheduler-preview.json"
+            className="rounded-full border border-violet-200 bg-white px-4 py-2 text-sm font-bold text-violet-700 no-underline hover:bg-violet-50"
+          >
+            W13 scheduler preview
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -627,6 +633,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-fuchsia-700">안전선</div>
             외부 요청 없음 · submit=false
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/60 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W13 readback scheduler preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W13은 W12의 즉시·24h·72h 확인 계획을 예약 카드로만 묶습니다. 실제 cron 생성, 외부 readback, GSC/IndexNow/Naver 제출은 별도 승인 전까지 실행하지 않습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/readback-scheduler-preview.json"
+            className="w-fit rounded-full bg-violet-600 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-violet-700"
+          >
+            scheduler preview JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-violet-700">입력</div>
+            W12 live readback preview item
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-violet-700">예약</div>
+            immediate · 24h · 72h 카드
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-violet-700">차단</div>
+            canCreateCron=false · approval required
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-violet-700">안전선</div>
+            cron 없음 · 외부 요청 없음
           </div>
         </div>
       </section>
