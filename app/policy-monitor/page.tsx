@@ -138,6 +138,12 @@ export default function PolicyMonitorPage() {
           >
             W13 scheduler preview
           </a>
+          <a
+            href="/policy-monitor/readback-execution-preflight-preview.json"
+            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 no-underline hover:bg-slate-50"
+          >
+            W14 execution preflight
+          </a>
           <span className="rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">
             초안 큐 전 단계 · 원문 확인 필수
           </span>
@@ -668,6 +674,41 @@ export default function PolicyMonitorPage() {
           <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
             <div className="mb-1 font-bold text-violet-700">안전선</div>
             cron 없음 · 외부 요청 없음
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-grey-900">W14 readback execution preflight preview</h2>
+            <p className="mt-2 text-sm text-grey-600">
+              W14는 W13 예약 카드가 실제 실행되기 전 필요한 승인·입력·차단 사유를 점검표로만 보여줍니다. 실행, cron 생성, 외부 fetch, 검색 제출은 계속 막습니다.
+            </p>
+          </div>
+          <a
+            href="/policy-monitor/readback-execution-preflight-preview.json"
+            className="w-fit rounded-full bg-slate-800 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-slate-900"
+          >
+            execution preflight JSON 보기
+          </a>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-slate-700">입력</div>
+            W13 schedule card
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-slate-700">승인</div>
+            실행 승인 · 공개 URL · 외부 readback 범위
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-slate-700">차단</div>
+            canRunNow=false · canFetchExternal=false
+          </div>
+          <div className="rounded-xl bg-white p-4 text-sm text-grey-700 shadow-sm">
+            <div className="mb-1 font-bold text-slate-700">안전선</div>
+            점검표만 생성 · 실행 없음
           </div>
         </div>
       </section>
