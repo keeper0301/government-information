@@ -71,36 +71,18 @@ export default async function AdminInsightsPage() {
         💳 24h 결제 신호
       </h2>
       <section className="bg-white rounded-lg border border-grey-200 p-5 mb-8">
-        <dl className="grid grid-cols-3 gap-3">
-          <div>
-            <dt className="text-xs text-grey-500">신규 결제 의도 (첫 진입, 24h)</dt>
-            <dd className="text-2xl font-extrabold text-grey-900 tabular-nums mt-1">
-              {data.subscriptionPulse.newAttempts24h.toLocaleString()}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-grey-500">활성 구독 (전체)</dt>
-            <dd className="text-2xl font-extrabold text-blue-600 tabular-nums mt-1">
-              {data.subscriptionPulse.activeTotal.toLocaleString()}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-grey-500">사용자 해지 (24h)</dt>
-            <dd
-              className={`text-2xl font-extrabold tabular-nums mt-1 ${
-                data.subscriptionPulse.cancelled24h > 0
-                  ? "text-red-500"
-                  : "text-grey-900"
-              }`}
-            >
-              {data.subscriptionPulse.cancelled24h.toLocaleString()}
-            </dd>
-          </div>
+        <dl className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <SubscriptionPulseCell label="신규 결제 의도 (첫 진입, 24h)" value={data.subscriptionPulse.newAttempts24h} />
+          <SubscriptionPulseCell label="카드 등록 전 pending (24h)" value={data.subscriptionPulse.pending24h} tone={data.subscriptionPulse.pending24h > 0 ? "amber" : "default"} />
+          <SubscriptionPulseCell label="활성 구독 (전체)" value={data.subscriptionPulse.activeTotal} tone="blue" />
+          <SubscriptionPulseCell label="활성인데 감시 0개" value={data.subscriptionPulse.activeNoWatch} tone={data.subscriptionPulse.activeNoWatch > 0 ? "amber" : "default"} />
+          <SubscriptionPulseCell label="체험 중 감시 0개" value={data.subscriptionPulse.trialingNoWatch} tone={data.subscriptionPulse.trialingNoWatch > 0 ? "amber" : "default"} />
+          <SubscriptionPulseCell label="사용자 해지 (24h)" value={data.subscriptionPulse.cancelled24h} tone={data.subscriptionPulse.cancelled24h > 0 ? "red" : "default"} />
         </dl>
         <p className="text-xs text-grey-500 mt-3 leading-[1.5]">
-          * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점 (첫 /checkout 진입). 재시도는
-          기존 행 갱신이라 안 잡힘. 활성 = trial 포함 basic/pro 결제 중. 해지 1 이상이면
-          카카오 알림·결제 funnel 점검 필요.
+          * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점. pending 24h는 카드 등록 전 이탈 후보,
+          감시 0개는 맞춤 알림 규칙과 정책 상세 마감 알림이 모두 없는 유료 사용자입니다.
+          수치가 1 이상이면 <Link href="/admin/paid-users?segment=activation_gap" className="text-blue-500 underline">유료 사용자 관리</Link>에서 바로 확인하세요.
         </p>
       </section>
 
@@ -132,6 +114,31 @@ export default async function AdminInsightsPage() {
           ← 어드민 홈
         </Link>
       </p>
+    </div>
+  );
+}
+
+function SubscriptionPulseCell({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "blue" | "amber" | "red";
+}) {
+  const tones = {
+    default: "text-grey-900",
+    blue: "text-blue-600",
+    amber: "text-amber-600",
+    red: "text-red-500",
+  };
+  return (
+    <div>
+      <dt className="text-xs text-grey-500">{label}</dt>
+      <dd className={`text-2xl font-extrabold tabular-nums mt-1 ${tones[tone]}`}>
+        {value.toLocaleString()}
+      </dd>
     </div>
   );
 }

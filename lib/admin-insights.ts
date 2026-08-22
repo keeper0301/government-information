@@ -37,6 +37,9 @@ export type SubscriptionPulse = {
   newAttempts24h: number;     // 24시간 신규 구독 시도 (created_at 기준)
   cancelled24h: number;       // 24시간 사용자 해지 (cancelled_at 기준)
   activeTotal: number;        // 현재 활성 (basic/pro + trialing/active/charging/manual_grant)
+  activeNoWatch: number;      // 활성 유료 중 맞춤 규칙/정책 상세 마감 알림이 둘 다 0명
+  trialingNoWatch: number;    // 체험 중인데 아직 감시 설정이 0명
+  pending24h: number;         // 최근 24h 카드 등록 전 pending 상태
 };
 
 export type AdminInsights = {
@@ -118,12 +121,37 @@ async function calcFunnel(
   };
 }
 
+export function buildSubscriptionPulse(input: {
+  subscriptions: Array<{ user_id: string; status: string; created_at?: string | null }>;
+  activeAlertRuleUserIds: string[];
+  activeAlarmSubscriptionUserIds: string[];
+  now?: Date;
+}): Pick<SubscriptionPulse, "activeNoWatch" | "trialingNoWatch" | "pending24h"> {
+  const now = input.now ?? new Date();
+  const since24Ms = now.getTime() - 24 * 60 * 60 * 1000;
+  const watchSet = new Set([
+    ...input.activeAlertRuleUserIds,
+    ...input.activeAlarmSubscriptionUserIds,
+  ]);
+  const activeStatuses = new Set(["trialing", "active", "charging", "manual_grant"]);
+  const activeRows = input.subscriptions.filter((row) => activeStatuses.has(row.status));
+
+  return {
+    activeNoWatch: activeRows.filter((row) => !watchSet.has(row.user_id)).length,
+    trialingNoWatch: activeRows.filter((row) => row.status === "trialing" && !watchSet.has(row.user_id)).length,
+    pending24h: input.subscriptions.filter((row) => {
+      if (row.status !== "pending" || !row.created_at) return false;
+      return new Date(row.created_at).getTime() >= since24Ms;
+    }).length,
+  };
+}
+
 // Phase 4 — 24h 결제 신호 카드. 매출 직결 작은 변화 (1건 신규/해지) 즉시 가시화.
 async function calcSubscriptionPulse(): Promise<SubscriptionPulse> {
   const admin = createAdminClient();
   const since24Iso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [newAttemptsRes, cancelledRes, activeRes] = await Promise.all([
+  const [newAttemptsRes, cancelledRes, activeRes, subscriptionsRes] = await Promise.all([
     admin
       .from("subscriptions")
       .select("*", { count: "exact", head: true })
@@ -138,12 +166,43 @@ async function calcSubscriptionPulse(): Promise<SubscriptionPulse> {
       .select("*", { count: "exact", head: true })
       .in("status", ["trialing", "active", "charging", "manual_grant"])
       .in("tier", ["basic", "pro"]),
+    admin
+      .from("subscriptions")
+      .select("user_id, status, created_at")
+      .in("tier", ["basic", "pro"]),
   ]);
+
+  const subscriptionRows = (subscriptionsRes.data ?? []) as Array<{
+    user_id: string;
+    status: string;
+    created_at?: string | null;
+  }>;
+  const paidUserIds = [...new Set(subscriptionRows.map((row) => row.user_id))];
+  const [alertRulesRes, deadlineAlertsRes] = paidUserIds.length === 0
+    ? [{ data: [] }, { data: [] }]
+    : await Promise.all([
+        admin
+          .from("user_alert_rules")
+          .select("user_id")
+          .in("user_id", paidUserIds)
+          .eq("is_active", true),
+        admin
+          .from("alarm_subscriptions")
+          .select("user_id")
+          .in("user_id", paidUserIds)
+          .eq("is_active", true),
+      ]);
+  const activationPulse = buildSubscriptionPulse({
+    subscriptions: subscriptionRows,
+    activeAlertRuleUserIds: (alertRulesRes.data ?? []).map((row: { user_id: string }) => row.user_id),
+    activeAlarmSubscriptionUserIds: (deadlineAlertsRes.data ?? []).map((row: { user_id: string }) => row.user_id),
+  });
 
   return {
     newAttempts24h: newAttemptsRes.count ?? 0,
     cancelled24h: cancelledRes.count ?? 0,
     activeTotal: activeRes.count ?? 0,
+    ...activationPulse,
   };
 }
 
