@@ -82,7 +82,7 @@ export default async function AdminInsightsPage() {
         <p className="text-xs text-grey-500 mt-3 leading-[1.5]">
           * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점. pending 24h는 카드 등록 전 이탈 후보,
           감시 0개는 맞춤 알림 규칙과 정책 상세 마감 알림이 모두 없는 유료 사용자입니다.
-          수치가 1 이상이면 <Link href="/admin/paid-users?segment=activation_gap" className="text-blue-500 underline">유료 사용자 관리</Link>에서 바로 확인하세요.
+          수치가 1 이상이면 <Link href="/admin/paid-users?segment=no_watch" className="text-blue-500 underline">감시 0개 사용자</Link>에서 바로 확인하세요.
         </p>
       </section>
 

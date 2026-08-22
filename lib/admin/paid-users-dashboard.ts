@@ -105,6 +105,9 @@ export const PAID_USERS_CSV_HEADER = [
   "status",
   "interview_segment",
   "activation_gaps",
+  "active_alert_rules_count",
+  "saved_deadline_alerts_count",
+  "no_watch_configured",
   "last_sign_in_at",
   "current_period_end",
   "admin_user_url",
@@ -127,7 +130,8 @@ export function filterPaidUserRows(
   return rows.filter((row) => {
     if (tier && row.tier !== tier) return false;
     if (status && row.status !== status) return false;
-    if (segment && row.interviewSegment !== segment) return false;
+    if (segment === "no_watch" && !hasNoWatchConfigured(row)) return false;
+    if (segment && segment !== "no_watch" && row.interviewSegment !== segment) return false;
     if (!query) return true;
 
     const haystack = [row.email, row.customerEmail, row.userId, row.cardLabel]
@@ -136,6 +140,10 @@ export function filterPaidUserRows(
       .toLowerCase();
     return haystack.includes(query);
   });
+}
+
+export function hasNoWatchConfigured(row: Pick<PaidUserDashboardRow, "activeAlertRulesCount" | "savedDeadlineAlertsCount">): boolean {
+  return row.activeAlertRulesCount === 0 && row.savedDeadlineAlertsCount === 0;
 }
 
 export type OutreachMessageType = "payment_risk" | "activation_gap" | "paid_user";
@@ -223,6 +231,9 @@ export function buildPaidUsersCsv(
         row.status,
         row.interviewSegment,
         row.activationGaps.join("|"),
+        row.activeAlertRulesCount,
+        row.savedDeadlineAlertsCount,
+        hasNoWatchConfigured(row) ? "yes" : "no",
         row.lastSignInAt ?? "",
         row.currentPeriodEnd ?? "",
         baseUrl ? `${baseUrl}${adminPath}` : adminPath,

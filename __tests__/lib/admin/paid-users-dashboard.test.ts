@@ -5,6 +5,7 @@ import {
   buildPaidUsersDashboard,
   filterPaidUserRows,
   getActivationGaps,
+  hasNoWatchConfigured,
   isPaidActiveStatus,
   outreachMessageType,
 } from "@/lib/admin/paid-users-dashboard";
@@ -140,6 +141,7 @@ describe("paid users dashboard helpers", () => {
       businessUserIds: ["u_basic", "u_pro"],
       kakaoConsentUserIds: [],
       activeAlertRuleUserIds: ["u_basic"],
+      activeAlarmSubscriptionUserIds: ["u_basic"],
     });
 
     const filtered = filterPaidUserRows(dashboard.rows, {
@@ -147,6 +149,14 @@ describe("paid users dashboard helpers", () => {
       segment: "activation_gap",
       query: "quoted",
     });
+
+    const noWatchRows = filterPaidUserRows(dashboard.rows, {
+      segment: "no_watch",
+    });
+
+    expect(noWatchRows.map((row) => row.userId)).toEqual(["u_pro"]);
+    expect(hasNoWatchConfigured(noWatchRows[0])).toBe(true);
+    expect(hasNoWatchConfigured(dashboard.rows.find((row) => row.userId === "u_basic")!)).toBe(false);
 
     expect(filtered).toHaveLength(1);
     expect(filtered[0].userId).toBe("u_pro");
@@ -158,8 +168,9 @@ describe("paid users dashboard helpers", () => {
 
     const csv = buildPaidUsersCsv(filtered, { baseUrl: "https://www.keepioo.com/" });
     expect(csv).toContain("email,tier,status,interview_segment,activation_gaps");
+    expect(csv).toContain("active_alert_rules_count,saved_deadline_alerts_count,no_watch_configured");
     expect(csv).toContain('"pro,quoted@auth.test"');
-    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications");
+    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications,0,0,yes");
     expect(csv).toContain("https://www.keepioo.com/admin/users/u_pro");
     expect(csv).toContain("activation_gap");
   });

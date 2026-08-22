@@ -177,6 +177,7 @@ export default async function AdminPaidUsersPage({
               ["basic", "Basic"],
               ["pro", "Pro"],
               ["activation_gap", "미설정"],
+              ["no_watch", "감시 0개"],
               ["payment_risk", "결제/해지 위험"],
             ]}
           />
