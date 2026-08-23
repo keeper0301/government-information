@@ -38,7 +38,7 @@ describe("user activation summary", () => {
     expect(summary.gaps).toContain("맞춤 알림 규칙 없음");
   });
 
-  it("prioritizes payment state before activation coaching", () => {
+  it("prioritizes non-pending payment state before activation coaching", () => {
     const summary = buildUserActivationSummary({
       tier: "pro",
       subscriptionStatus: "past_due",
@@ -49,6 +49,43 @@ describe("user activation summary", () => {
     });
 
     expect(summary.statusLabel).toBe("결제/구독 상태 확인 필요");
+    expect(summary.nextAction).toContain("Toss");
+  });
+
+  it("flags recent pending checkout users for card-registration follow-up", () => {
+    const summary = buildUserActivationSummary({
+      tier: "basic",
+      subscriptionStatus: "pending",
+      hasBusinessProfile: true,
+      hasKakaoConsent: false,
+      activeAlertRulesCount: 0,
+      savedDeadlineAlertsCount: 0,
+      subscriptionCreatedAt: "2026-07-02T18:00:00.000Z",
+      nowIso: "2026-07-03T00:00:00.000Z",
+    });
+
+    expect(summary.statusLabel).toBe("pending 24h");
+    expect(summary.isRecentPending24h).toBe(true);
+    expect(summary.isActivePaid).toBe(false);
+    expect(summary.activationAgeDays).toBe(0);
+    expect(summary.nextAction).toContain("카드 등록 전 이탈 후보");
+  });
+
+  it("keeps older pending users in payment follow-up instead of pending 24h", () => {
+    const summary = buildUserActivationSummary({
+      tier: "basic",
+      subscriptionStatus: "pending",
+      hasBusinessProfile: true,
+      hasKakaoConsent: false,
+      activeAlertRulesCount: 0,
+      savedDeadlineAlertsCount: 0,
+      subscriptionCreatedAt: "2026-07-01T18:00:00.000Z",
+      nowIso: "2026-07-03T00:00:00.000Z",
+    });
+
+    expect(summary.statusLabel).toBe("결제/구독 상태 확인 필요");
+    expect(summary.isRecentPending24h).toBe(false);
+    expect(summary.activationAgeDays).toBe(1);
     expect(summary.nextAction).toContain("Toss");
   });
 });

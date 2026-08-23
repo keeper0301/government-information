@@ -15,6 +15,7 @@ export type UserActivationSummary = {
   hasAnyWatch: boolean;
   activationAgeDays: number | null;
   isStaleNoWatch: boolean;
+  isRecentPending24h: boolean;
   statusLabel: string;
   gaps: string[];
   nextAction: string;
@@ -37,6 +38,7 @@ export function buildUserActivationSummary(input: UserActivationSummaryInput): U
   const hasAnyWatch = input.activeAlertRulesCount > 0 || input.savedDeadlineAlertsCount > 0;
   const activationAgeDays = daysSinceIso(input.subscriptionCreatedAt, input.nowIso);
   const isStaleNoWatch = isActivePaid && !hasAnyWatch && (activationAgeDays ?? 0) >= 1;
+  const isRecentPending24h = isPaid && status === "pending" && activationAgeDays === 0;
   const gaps: string[] = [];
 
   if (!input.hasBusinessProfile) gaps.push("사업자/프로필 없음");
@@ -52,6 +54,7 @@ export function buildUserActivationSummary(input: UserActivationSummaryInput): U
       hasAnyWatch,
       activationAgeDays,
       isStaleNoWatch,
+      isRecentPending24h,
       statusLabel: "무료/미구독",
       gaps,
       nextAction: "유료 전환 전이면 pricing CTA·정책 상세 저장 CTA 경로를 확인하세요.",
@@ -65,9 +68,12 @@ export function buildUserActivationSummary(input: UserActivationSummaryInput): U
       hasAnyWatch,
       activationAgeDays,
       isStaleNoWatch,
-      statusLabel: "결제/구독 상태 확인 필요",
+      isRecentPending24h,
+      statusLabel: isRecentPending24h ? "pending 24h" : "결제/구독 상태 확인 필요",
       gaps,
-      nextAction: "구독 상태와 Toss 결제 이력을 먼저 확인하세요.",
+      nextAction: isRecentPending24h
+        ? "카드 등록 전 이탈 후보입니다. 결제 오류·가격/기능 설명 부족·고민 중 여부를 확인하세요."
+        : "구독 상태와 Toss 결제 이력을 먼저 확인하세요.",
     };
   }
 
@@ -78,6 +84,7 @@ export function buildUserActivationSummary(input: UserActivationSummaryInput): U
       hasAnyWatch,
       activationAgeDays,
       isStaleNoWatch,
+      isRecentPending24h,
       statusLabel: isStaleNoWatch ? "24h+ 감시 0개" : "유료지만 감시 0개",
       gaps,
       nextAction: isStaleNoWatch
@@ -93,6 +100,7 @@ export function buildUserActivationSummary(input: UserActivationSummaryInput): U
       hasAnyWatch,
       activationAgeDays,
       isStaleNoWatch,
+      isRecentPending24h,
       statusLabel: "일부 설정 누락",
       gaps,
       nextAction: "이미 감시는 켜졌습니다. 남은 프로필/동의/알림 설정만 보완하면 됩니다.",
@@ -105,6 +113,7 @@ export function buildUserActivationSummary(input: UserActivationSummaryInput): U
     hasAnyWatch,
     activationAgeDays,
     isStaleNoWatch,
+    isRecentPending24h,
     statusLabel: "활성화 완료",
     gaps,
     nextAction: "첫 알림 발송 이력과 정책 매칭 품질을 확인하세요.",

@@ -553,14 +553,27 @@ export default async function AdminUserDetailPage({
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                 activationSummary.hasAnyWatch
                   ? "bg-emerald-50 text-emerald-700"
-                  : activationSummary.isActivePaid
+                  : activationSummary.isRecentPending24h || activationSummary.isActivePaid
                     ? "bg-amber-50 text-amber-700"
                     : "bg-grey-100 text-grey-700"
               }`}>
                 {activationSummary.statusLabel}
               </span>
-              <Link href={activationSummary.isStaleNoWatch ? "/admin/paid-users?segment=stale_no_watch" : "/admin/paid-users?segment=no_watch"} className="text-xs font-semibold text-blue-500 underline">
-                {activationSummary.isStaleNoWatch ? "24h+ 감시 0개 목록" : "감시 0개 목록"}
+              <Link
+                href={
+                  activationSummary.isRecentPending24h
+                    ? "/admin/paid-users?segment=pending_24h"
+                    : activationSummary.isStaleNoWatch
+                      ? "/admin/paid-users?segment=stale_no_watch"
+                      : "/admin/paid-users?segment=no_watch"
+                }
+                className="text-xs font-semibold text-blue-500 underline"
+              >
+                {activationSummary.isRecentPending24h
+                  ? "pending 24h 목록"
+                  : activationSummary.isStaleNoWatch
+                    ? "24h+ 감시 0개 목록"
+                    : "감시 0개 목록"}
               </Link>
             </div>
             <Row label="사업자/프로필" value={businessProfile ? "✓ 있음" : "없음"} />
