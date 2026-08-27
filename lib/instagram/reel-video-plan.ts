@@ -378,7 +378,7 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
       eyebrow: `${category} · keepioo`,
       kicker: title,
       title: readableCoverTitle,
-      body: `해당되면 저장. 신청 전 3개만 확인\n조건\n혜택\n방법`,
+      body: `나/가족 해당되면 저장·공유\n신청 전 3개만 확인\n조건\n혜택\n방법`,
     },
     {
       eyebrow: "01",

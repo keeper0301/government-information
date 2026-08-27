@@ -16,6 +16,8 @@ export type ReelQualityResult = {
     hasApply: boolean;
     hasSpecificNumber: boolean;
     preferredTopic: boolean;
+    audienceMixPriority: boolean;
+    smallBusinessSkewTopic: boolean;
     narrowOrSensitiveTopic: boolean;
     fallbackLikeSlides: number;
     detailFactCount: number;
@@ -28,6 +30,8 @@ const APPLY_RE = /신청|접수|마감|기간|서류|누리집|주민센터|온�
 const TARGET_RE = /대상|자격|조건|소득|연령|청년|소상공|자영|사업자|가구|부모|아동|영유아|학생|신혼|노인|어르신/;
 const BENEFIT_RE = /지원|금액|혜택|지급|대여|상담|교육|훈련|월세|임대료|자금|보증|융자|대출|축하금|바우처/;
 const PREFERRED_TOPIC_RE = /청년|소상공|자영|사업자|주거|월세|전세|육아|영유아|아동|교육|창업|대출|융자|자금/;
+const AUDIENCE_MIX_PRIORITY_RE = /청년|주거|월세|전세|임대|육아|영유아|아동|출산|보육|노년|노인|어르신|교육|학자금|장학|학생/;
+const SMALL_BUSINESS_SKEW_RE = /소상공|자영|사업자|창업|대출|융자|자금|보증/;
 const NARROW_OR_SENSITIVE_RE = /무연고|행려|장례|사망|시신|화장|귀향|노숙|위기\s*가구|긴급복지|정신질환|중독/;
 const FALLBACK_RE = /지역·나이·소득 기준|공고마다 달라|공식 누리집이나 담당 기관|자격·마감은 바뀔 수|본문에서 지원|공식 모집 공고에서 확인/;
 
@@ -49,6 +53,8 @@ export function scoreReelCandidate(post: ReelVideoPostInput): ReelQualityResult 
     hasApply: APPLY_RE.test(slideText) || APPLY_RE.test(haystack),
     hasSpecificNumber: /\d/.test(haystack),
     preferredTopic: PREFERRED_TOPIC_RE.test(haystack),
+    audienceMixPriority: AUDIENCE_MIX_PRIORITY_RE.test(haystack),
+    smallBusinessSkewTopic: SMALL_BUSINESS_SKEW_RE.test(haystack) && !AUDIENCE_MIX_PRIORITY_RE.test(haystack),
     narrowOrSensitiveTopic: NARROW_OR_SENSITIVE_RE.test(haystack),
     fallbackLikeSlides: plan.slides.filter((slide) => FALLBACK_RE.test(slide.body)).length,
     detailFactCount: detailFactLines.length,
@@ -63,6 +69,8 @@ export function scoreReelCandidate(post: ReelVideoPostInput): ReelQualityResult 
   if (metrics.hasDeadlineOrApply) score += 1;
   if (metrics.hasSpecificNumber) score += 1;
   if (metrics.preferredTopic) score += 2;
+  if (metrics.audienceMixPriority) score += 3;
+  if (metrics.smallBusinessSkewTopic) score -= 2;
   if (metrics.hasConcreteDetail) score += 1;
   score -= metrics.fallbackLikeSlides;
   if (metrics.narrowOrSensitiveTopic) score -= 3;

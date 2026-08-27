@@ -211,6 +211,38 @@ describe("instagram-reels-render", () => {
     });
   });
 
+  it("prioritizes youth/housing/parenting/senior/education topics over small-business skew when quality is similar", async () => {
+    mocks.candidates = [
+      {
+        ...mocks.candidate!,
+        id: "post-smallbiz",
+        slug: "smallbiz-slug",
+        title: "2026년 소상공인 경영안정 자금 신청 안내",
+        category: "소상공인 자금",
+        meta_description: "소상공인에게 운영자금을 지원합니다.",
+        content: "대상은 사업자등록을 한 소상공인입니다. 매출과 업종 제한 기준을 확인해야 합니다. 지원 금액은 최대 1,000만원입니다. 신청 기간은 2026년 7월까지입니다. 소상공인 지원 포털에서 온라인 신청하고 사업자등록증과 매출 증빙을 제출합니다.",
+      },
+      {
+        ...mocks.candidate!,
+        id: "post-youth-housing",
+        slug: "youth-housing-slug",
+        title: "2026년 청년 월세 지원 신청 안내",
+        category: "청년 주거",
+        meta_description: "청년에게 월세를 지원합니다.",
+        content: "대상은 19세부터 34세 청년이며 부모와 따로 거주해야 합니다. 중위소득 150% 이하 기준을 적용합니다. 지원 금액은 월 최대 20만원이며 최대 12개월까지 받을 수 있습니다. 신청 기간은 2026년 7월까지입니다. 복지로 또는 주민센터에서 신청할 수 있고 주민등록등본과 임대차계약서를 제출합니다.",
+      },
+    ];
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body).toMatchObject({
+      dryRun: true,
+      status: "ready",
+      candidate: { id: "post-youth-housing", slug: "youth-housing-slug" },
+    });
+  });
+
   it("renders and uploads mp4 on real run with an ASCII-safe storage key", async () => {
     mocks.candidate = { ...mocks.candidate!, slug: "청년-월세/지원" };
 
