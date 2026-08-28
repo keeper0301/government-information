@@ -137,9 +137,22 @@ describe("AdSense approval guardrails", () => {
       const source = read(path);
       expect(source).not.toContain("대량 상세 목록");
     }
+    expect(read("components/home-value-props.tsx")).not.toContain("자동 발송");
     expect(read("app/help/page.tsx")).toContain("정기적으로 확인해 정리합니다");
     expect(read("app/privacy/page.tsx")).toContain("접속 기록");
     expect(read("app/guides/page.tsx")).toContain("대표 주제별 가이드");
+  });
+
+  it("keeps homepage pricing funnel restorable only after AdSense approval", () => {
+    const homeCta = read("components/home-cta.tsx");
+
+    expect(homeCta).toContain("ADSENSE_REVIEW_MODE ? \"/guides\" : buildBasicPricingHref(\"home\")");
+    expect(homeCta).toContain("ADSENSE_REVIEW_MODE ? \"/c/business\" : \"/guides\"");
+    expect(homeCta).toContain("NEXT_PUBLIC_ADSENSE_REVIEW_MODE=adsense-approved-live-ads");
+
+    const reviewMode = read("lib/adsense-review-mode.ts");
+    expect(reviewMode).toContain('ADSENSE_LIVE_ADS_TOKEN = "adsense-approved-live-ads"');
+    expect(reviewMode).toContain("process.env.NEXT_PUBLIC_ADSENSE_REVIEW_MODE !== ADSENSE_LIVE_ADS_TOKEN");
   });
 
   it("uses the www canonical host for default metadata and schema urls", () => {

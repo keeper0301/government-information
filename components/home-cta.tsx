@@ -12,8 +12,16 @@
 
 import Link from "next/link";
 import { buildBasicPricingHref } from "@/lib/pricing/cta-links";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export function HomeCTA() {
+  const primaryHref = ADSENSE_REVIEW_MODE ? "/guides" : buildBasicPricingHref("home");
+  const primaryLabel = ADSENSE_REVIEW_MODE
+    ? "대표 가이드부터 확인하기 →"
+    : "내 정책 마감 알림 시작하기 →";
+  const secondaryHref = ADSENSE_REVIEW_MODE ? "/c/business" : "/guides";
+  const secondaryLabel = ADSENSE_REVIEW_MODE ? "소상공인 가이드 보기" : "대표 가이드 보기";
+
   return (
     <section className="max-w-content mx-auto px-6 lg:px-10 py-12 lg:py-20">
       <div
@@ -47,19 +55,22 @@ export function HomeCTA() {
             마감 전에 살펴볼 내용도 함께 안내합니다.
           </p>
 
-          {/* Basic SaaS 전환 CTA — social/SEO CTA 와 같은 pricing funnel 로 통일. */}
+          {/* Basic SaaS 전환 CTA.
+              AdSense 승인 전 review mode 에서는 pricing funnel 을 숨긴다.
+              승인 후 NEXT_PUBLIC_ADSENSE_REVIEW_MODE=adsense-approved-live-ads 로 바꾸면
+              ADSENSE_REVIEW_MODE=false 가 되어 기존 사이트 구조/pricing CTA 가 자동 복구된다. */}
           <div className="flex items-center justify-center gap-3 max-md:flex-col max-md:gap-2">
             <Link
-              href={buildBasicPricingHref("home")}
+              href={primaryHref}
               className="inline-flex items-center justify-center h-14 px-8 max-md:w-full max-md:h-12 max-md:px-6 rounded-2xl bg-blue-500 text-white text-[16px] font-bold no-underline hover:bg-blue-600 active:scale-[0.98] transition-all shadow-blue-glow"
             >
-              내 정책 마감 알림 시작하기 →
+              {primaryLabel}
             </Link>
             <Link
-              href="/guides"
+              href={secondaryHref}
               className="inline-flex items-center justify-center h-14 px-8 max-md:w-full max-md:h-12 max-md:px-6 rounded-2xl bg-white text-blue-600 text-[16px] font-semibold no-underline hover:bg-blue-50 active:scale-[0.98] transition-all"
             >
-              대표 가이드 보기
+              {secondaryLabel}
             </Link>
           </div>
         </div>

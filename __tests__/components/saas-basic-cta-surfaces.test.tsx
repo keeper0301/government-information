@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { HomeCTA } from "@/components/home-cta";
 import { PopularPicksAside } from "@/components/popular-picks-aside";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...props }: any) => (
+  default: ({
+    href,
+    children,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string | { toString(): string }; children: ReactNode }) => (
     <a href={typeof href === "string" ? href : String(href)} {...props}>
       {children}
     </a>
@@ -19,6 +24,10 @@ vi.mock("@/lib/analytics", () => ({
     HOME_POPULAR_SIGNUP_CTA: "home_popular_signup_cta",
   },
   trackEvent: vi.fn(),
+}));
+
+vi.mock("@/lib/adsense-review-mode", () => ({
+  ADSENSE_REVIEW_MODE: false,
 }));
 
 let container: HTMLDivElement;

@@ -13,8 +13,8 @@
 import { Check } from "lucide-react";
 
 const PROPS = [
-  { label: "무료 사용", desc: "100% 무료 · 광고로 운영" },
-  { label: "마감 7일 전 알림", desc: "이메일 자동 발송" },
+  { label: "무료 사용", desc: "대표 가이드 열람 가능" },
+  { label: "마감 7일 전 알림", desc: "마감 전 확인 안내" },
   { label: "카카오톡 발송", desc: "심사 통과 후 추가" },
 ];
 
