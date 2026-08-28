@@ -21,6 +21,11 @@ export function HomeCTA() {
     : "내 정책 마감 알림 시작하기 →";
   const secondaryHref = ADSENSE_REVIEW_MODE ? "/c/business" : "/guides";
   const secondaryLabel = ADSENSE_REVIEW_MODE ? "소상공인 가이드 보기" : "대표 가이드 보기";
+  const titleLine1 = ADSENSE_REVIEW_MODE ? "마감 전 확인할 내용," : "조건 맞는 정책,";
+  const titleLine2 = ADSENSE_REVIEW_MODE ? "가이드로 정리했어요" : "매주 이메일로 알려드려요";
+  const description = ADSENSE_REVIEW_MODE
+    ? "대표 가이드에서 대상·마감·신청 전 확인점을 먼저 살펴볼 수 있어요. 공식 공고를 확인할 때 놓치기 쉬운 기준도 함께 정리합니다."
+    : "관심 조건을 등록해두면 새로 확인한 공고 중 맞는 항목을 정리해드려요. 마감 전에 살펴볼 내용도 함께 안내합니다.";
 
   return (
     <section className="max-w-content mx-auto px-6 lg:px-10 py-12 lg:py-20">
@@ -46,13 +51,12 @@ export function HomeCTA() {
             START NOW
           </p>
           <h2 className="text-[36px] max-md:text-[26px] font-extrabold text-grey-900 leading-[1.2] tracking-[-1.5px] mb-4">
-            조건 맞는 정책,
+            {titleLine1}
             <br />
-            매주 이메일로 알려드려요
+            {titleLine2}
           </h2>
           <p className="text-[16px] max-md:text-[14px] text-grey-700 leading-[1.65] mb-10 max-md:mb-7 max-w-[480px] mx-auto">
-            관심 조건을 등록해두면 새로 확인한 공고 중 맞는 항목을 정리해드려요.
-            마감 전에 살펴볼 내용도 함께 안내합니다.
+            {description}
           </p>
 
           {/* Basic SaaS 전환 CTA.
