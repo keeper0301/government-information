@@ -71,18 +71,19 @@ export default async function AdminInsightsPage() {
         💳 24h 결제 신호
       </h2>
       <section className="bg-white rounded-lg border border-grey-200 p-5 mb-8">
-        <dl className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <SubscriptionPulseCell label="신규 결제 의도 (첫 진입, 24h)" value={data.subscriptionPulse.newAttempts24h} />
           <SubscriptionPulseCell label="카드 등록 전 pending (24h)" value={data.subscriptionPulse.pending24h} tone={data.subscriptionPulse.pending24h > 0 ? "amber" : "default"} />
+          <SubscriptionPulseCell label="카드 등록 전 pending (24h+)" value={data.subscriptionPulse.pendingOver24h} tone={data.subscriptionPulse.pendingOver24h > 0 ? "red" : "default"} />
           <SubscriptionPulseCell label="활성 구독 (전체)" value={data.subscriptionPulse.activeTotal} tone="blue" />
           <SubscriptionPulseCell label="활성인데 감시 0개" value={data.subscriptionPulse.activeNoWatch} tone={data.subscriptionPulse.activeNoWatch > 0 ? "amber" : "default"} />
           <SubscriptionPulseCell label="체험 중 감시 0개" value={data.subscriptionPulse.trialingNoWatch} tone={data.subscriptionPulse.trialingNoWatch > 0 ? "amber" : "default"} />
           <SubscriptionPulseCell label="사용자 해지 (24h)" value={data.subscriptionPulse.cancelled24h} tone={data.subscriptionPulse.cancelled24h > 0 ? "red" : "default"} />
         </dl>
         <p className="text-xs text-grey-500 mt-3 leading-[1.5]">
-          * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점. pending 24h는 카드 등록 전 이탈 후보,
+          * 신규 결제 의도 = subscriptions 행이 처음 만들어진 시점. pending 24h는 카드 등록 전 신규 이탈 후보, pending 24h+는 오래된 카드 등록 미완료 후보,
           감시 0개는 맞춤 알림 규칙과 정책 상세 마감 알림이 모두 없는 유료 사용자입니다.
-          수치가 1 이상이면 <Link href="/admin/paid-users?segment=pending_24h" className="text-blue-500 underline">pending 24h 사용자</Link> 또는 <Link href="/admin/paid-users?segment=stale_no_watch" className="text-blue-500 underline">24h+ 감시 0개 사용자</Link>에서 바로 확인하세요.
+          수치가 1 이상이면 <Link href="/admin/paid-users?segment=pending_24h" className="text-blue-500 underline">pending 24h 사용자</Link>, <Link href="/admin/paid-users?segment=pending_over_24h" className="text-blue-500 underline">pending 24h+ 사용자</Link> 또는 <Link href="/admin/paid-users?segment=stale_no_watch" className="text-blue-500 underline">24h+ 감시 0개 사용자</Link>에서 바로 확인하세요.
         </p>
       </section>
 

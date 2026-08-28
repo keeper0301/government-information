@@ -170,9 +170,9 @@ describe("paid users dashboard helpers", () => {
 
     const csv = buildPaidUsersCsv(filtered, { baseUrl: "https://www.keepioo.com/" });
     expect(csv).toContain("email,tier,status,interview_segment,activation_gaps");
-    expect(csv).toContain("active_alert_rules_count,saved_deadline_alerts_count,no_watch_configured,stale_no_watch,pending_24h,activation_age_days");
+    expect(csv).toContain("active_alert_rules_count,saved_deadline_alerts_count,no_watch_configured,stale_no_watch,pending_24h,pending_over_24h,activation_age_days");
     expect(csv).toContain('"pro,quoted@auth.test"');
-    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications,0,0,yes,no,no,0");
+    expect(csv).toContain("pro,active,activation_gap,kakao_consent|notifications,0,0,yes,no,no,no,0");
     expect(csv).toContain("https://www.keepioo.com/admin/users/u_pro");
     expect(csv).toContain("activation_gap");
   });
@@ -270,10 +270,18 @@ describe("paid users dashboard helpers", () => {
     });
 
     expect(dashboard.stats.pending24hUsers).toBe(1);
+    expect(dashboard.stats.pendingOver24hUsers).toBe(1);
     const rows = filterPaidUserRows(dashboard.rows, { segment: "pending_24h" });
     expect(rows.map((row) => row.userId)).toEqual(["u_pending_recent"]);
     expect(outreachMessageType(rows[0])).toBe("pending_24h");
     expect(buildPaidUserOutreachMessage(rows[0])).toContain("카드 등록이 아직 완료되지 않은 것 같아");
     expect(buildPaidUsersCsv(rows)).toContain("pending_24h");
+
+    const oldPendingRows = filterPaidUserRows(dashboard.rows, { segment: "pending_over_24h" });
+    expect(oldPendingRows.map((row) => row.userId)).toEqual(["u_pending_old"]);
+    expect(oldPendingRows[0].stalePendingOver24h).toBe(true);
+    expect(outreachMessageType(oldPendingRows[0])).toBe("pending_over_24h");
+    expect(buildPaidUserOutreachMessage(oldPendingRows[0])).toContain("카드 등록이 2일째 완료되지 않아");
+    expect(buildPaidUsersCsv(oldPendingRows)).toContain("pending_over_24h");
   });
 });

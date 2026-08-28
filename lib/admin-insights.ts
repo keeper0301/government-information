@@ -40,6 +40,7 @@ export type SubscriptionPulse = {
   activeNoWatch: number;      // 활성 유료 중 맞춤 규칙/정책 상세 마감 알림이 둘 다 0명
   trialingNoWatch: number;    // 체험 중인데 아직 감시 설정이 0명
   pending24h: number;         // 최근 24h 카드 등록 전 pending 상태
+  pendingOver24h: number;     // 24h 넘게 카드 등록 전 pending 상태
 };
 
 export type AdminInsights = {
@@ -126,7 +127,7 @@ export function buildSubscriptionPulse(input: {
   activeAlertRuleUserIds: string[];
   activeAlarmSubscriptionUserIds: string[];
   now?: Date;
-}): Pick<SubscriptionPulse, "activeNoWatch" | "trialingNoWatch" | "pending24h"> {
+}): Pick<SubscriptionPulse, "activeNoWatch" | "trialingNoWatch" | "pending24h" | "pendingOver24h"> {
   const now = input.now ?? new Date();
   const since24Ms = now.getTime() - 24 * 60 * 60 * 1000;
   const watchSet = new Set([
@@ -142,6 +143,10 @@ export function buildSubscriptionPulse(input: {
     pending24h: input.subscriptions.filter((row) => {
       if (row.status !== "pending" || !row.created_at) return false;
       return new Date(row.created_at).getTime() >= since24Ms;
+    }).length,
+    pendingOver24h: input.subscriptions.filter((row) => {
+      if (row.status !== "pending" || !row.created_at) return false;
+      return new Date(row.created_at).getTime() < since24Ms;
     }).length,
   };
 }

@@ -118,10 +118,11 @@ export default async function AdminPaidUsersPage({
         description="Basic/Pro 구독자, 결제 상태, 활성화 미설정, 인터뷰 후보를 한 화면에서 확인합니다. 상단 KPI는 전체 유료 구독 행 기준이며 아래 필터와 무관하게 계산됩니다."
       />
 
-      <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <MetricCard label="활성 유료" value={`${dashboard.stats.activeTotal.toLocaleString()}명`} tone="blue" />
         <MetricCard label="예상 월 반복매출" value={formatWon(dashboard.stats.monthlyRevenueEstimate)} tone="green" />
         <MetricCard label="pending 24h" value={`${dashboard.stats.pending24hUsers.toLocaleString()}명`} tone="amber" />
+        <MetricCard label="pending 24h+" value={`${dashboard.stats.pendingOver24hUsers.toLocaleString()}명`} tone="red" />
         <MetricCard label="결제 실패/해지" value={`${(dashboard.stats.pastDue + dashboard.stats.cancelled).toLocaleString()}명`} tone="red" />
       </section>
 
@@ -133,6 +134,7 @@ export default async function AdminPaidUsersPage({
             ["Pro 활성", `${dashboard.stats.activePro.toLocaleString()}명`],
             ["체험 중", `${dashboard.stats.trialing.toLocaleString()}명`],
             ["카드 등록 전 pending 24h", `${dashboard.stats.pending24hUsers.toLocaleString()}명`],
+            ["카드 등록 전 pending 24h+", `${dashboard.stats.pendingOver24hUsers.toLocaleString()}명`],
           ]}
         />
         <BreakdownCard
@@ -181,6 +183,7 @@ export default async function AdminPaidUsersPage({
               ["activation_gap", "미설정"],
               ["no_watch", "감시 0개"],
               ["pending_24h", "pending 24h"],
+              ["pending_over_24h", "pending 24h+"],
               ["stale_no_watch", "24h+ 감시 0개"],
               ["payment_risk", "결제/해지 위험"],
             ]}
@@ -349,6 +352,9 @@ function PaidUserTableRow({ row }: { row: PaidUserDashboardRow }) {
         </div>
         {row.recentPending24h && (
           <div className="mt-1 text-[11px] font-bold text-amber-700">pending 24h — 카드 등록 전 이탈 확인</div>
+        )}
+        {row.stalePendingOver24h && (
+          <div className="mt-1 text-[11px] font-bold text-red-600">pending 24h+ — 오래된 카드 등록 이탈</div>
         )}
         {row.staleNoWatch && (
           <div className="mt-1 text-[11px] font-bold text-amber-700">24h+ 감시 0개 — 우선 연락</div>

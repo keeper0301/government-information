@@ -23,6 +23,7 @@ describe("admin insights subscription pulse", () => {
       activeNoWatch: 1,
       trialingNoWatch: 1,
       pending24h: 1,
+      pendingOver24h: 1,
     });
   });
 });
