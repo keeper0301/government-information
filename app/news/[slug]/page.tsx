@@ -322,7 +322,7 @@ export default async function NewsDetailPage({ params }: Props) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={safeThumbnail}
-          alt=""
+          alt={`${cleanTitle} 관련 이미지`}
           className="w-full aspect-[16/9] object-cover rounded-2xl mb-8 bg-grey-100"
         />
       )}

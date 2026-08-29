@@ -4,7 +4,7 @@
 // 끝 괄호: 기관명 제거 / 행정구역 앞으로 / 중간 괄호 유지. 정규식 silent 회귀 방어.
 
 import { describe, it, expect } from "vitest";
-import { cleanPolicyTitle, buildSeoTitle } from "@/lib/policy-title";
+import { cleanPolicyTitle, buildSeoTitle, buildPolicyMetaDescription } from "@/lib/policy-title";
 
 describe("cleanPolicyTitle", () => {
   it("기관명 끝 괄호 제거", () => {
@@ -116,5 +116,45 @@ describe("buildSeoTitle (연도 + 검색의도 키워드)", () => {
     expect(
       buildSeoTitle({ title, applyEnd: "2026-12-31", today, keyword: "신청자격·방법" }),
     ).toBe(`2026년 ${title} — 정책알리미`);
+  });
+
+  it("지역 식별자가 있으면 중복 title 방지를 위해 앞에 붙인다", () => {
+    expect(
+      buildSeoTitle({
+        title: "출산지원금",
+        applyEnd: null,
+        today,
+        keyword: "신청자격·방법",
+        locality: "충청남도 천안시",
+      }),
+    ).toBe("천안시 출산지원금 신청자격·방법 — 정책알리미");
+    expect(
+      buildSeoTitle({
+        title: "천안시 출산지원금",
+        applyEnd: null,
+        today,
+        keyword: "신청자격·방법",
+        locality: "천안시",
+      }),
+    ).toBe("천안시 출산지원금 신청자격·방법 — 정책알리미");
+  });
+});
+
+describe("buildPolicyMetaDescription", () => {
+  it("대상·지원·마감·지역·출처를 붙여 중복 description을 줄인다", () => {
+    const desc = buildPolicyMetaDescription({
+      title: "출산지원금",
+      primary: "출산 가정을 지원하는 제도입니다.",
+      target: "천안시 거주 출산 가정",
+      support: "첫째 30만원",
+      applyEnd: null,
+      locality: "충청남도 천안시",
+      source: "천안시",
+    });
+
+    expect(desc).toContain("대상: 천안시 거주 출산 가정");
+    expect(desc).toContain("지원: 첫째 30만원");
+    expect(desc).toContain("지역: 충청남도 천안시");
+    expect(desc?.length).toBeLessThanOrEqual(160);
   });
 });

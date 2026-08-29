@@ -51,6 +51,7 @@ export function buildSeoTitle(opts: {
   applyEnd: string | null; // 신청 마감일 (YYYY-MM-DD) 또는 null(상시)
   today: string; // 오늘 (YYYY-MM-DD) — 미래/과거 판정 기준
   keyword: string; // 검색의도 키워드 ("신청자격·방법" | "지원대상·한도")
+  locality?: string | null; // 네이버 중복 title 완화용 지역/기관 식별자
 }): string {
   const base = cleanPolicyTitle(opts.title);
   // 마감일이 정상 날짜 형식이고 오늘 이후(미래)일 때만 연도 활용. 앞 10자만 잘라
@@ -62,10 +63,58 @@ export function buildSeoTitle(opts: {
   // 정책명에 이미 4자리 연도가 있으면 중복("2026년 2026 청년...") 방지.
   const hasYearInBase = /20\d\d/.test(base);
   const yearPrefix = isFutureDate && !hasYearInBase ? `${ae.slice(0, 4)}년 ` : "";
-  const core = `${yearPrefix}${base}`;
+  const locality = normalizePolicyLocality(opts.locality);
+  const localizedBase = locality && !base.includes(locality)
+    ? `${locality} ${base}`
+    : base;
+  const core = `${yearPrefix}${localizedBase}`;
   // 네이버 검색결과 제목은 ~40자에서 잘린다. 키워드까지 넣어도 여유 있을 때(core ≤24자)만
   // 검색의도 키워드를 부착해 잘림을 방지. 연도가 붙어 길어지면 키워드는 자연히 생략된다.
   return core.length <= 24
     ? `${core} ${opts.keyword} — 정책알리미`
     : `${core} — 정책알리미`;
+}
+
+function normalizePolicyLocality(value?: string | null): string | null {
+  const normalized = (value ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized || normalized === "전국") return null;
+  // "충청남도 천안시"처럼 들어오면 검색결과 앞부분에 들어갈 가장 구체 지역만 사용.
+  return normalized.split(" ").at(-1) ?? normalized;
+}
+
+function oneLine(value: string | null | undefined): string | null {
+  const normalized = (value ?? "").replace(/\s+/g, " ").trim();
+  return normalized || null;
+}
+
+export function buildPolicyMetaDescription(opts: {
+  title: string;
+  primary?: string | null;
+  target?: string | null;
+  support?: string | null;
+  applyEnd?: string | null;
+  source?: string | null;
+  locality?: string | null;
+  maxLength?: number;
+}): string | undefined {
+  const maxLength = opts.maxLength ?? 160;
+  const target = oneLine(opts.target);
+  const support = oneLine(opts.support);
+  const applyEnd = oneLine(opts.applyEnd);
+  const locality = oneLine(opts.locality);
+  const source = oneLine(opts.source);
+  const segments = [
+    oneLine(opts.primary),
+    target ? `대상: ${target}` : null,
+    support ? `지원: ${support}` : null,
+    applyEnd ? `마감: ${applyEnd}` : "마감: 상시·확인 필요",
+    locality && locality !== "전국" ? `지역: ${locality}` : null,
+    source ? `출처: ${source}` : null,
+  ].filter(Boolean) as string[];
+
+  const fallback = `${cleanPolicyTitle(opts.title)}의 신청 대상, 지원 내용, 마감일을 정책알리미에서 확인하세요.`;
+  const text = segments.length > 0 ? segments.join(" · ") : fallback;
+  return text.length <= maxLength
+    ? text
+    : `${text.slice(0, maxLength - 1).replace(/[\s,.;:·-]+$/u, "")}…`;
 }

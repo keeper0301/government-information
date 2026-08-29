@@ -101,7 +101,7 @@ export function NewsCard({ post }: { post: NewsCardData }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={thumbnailUrl}
-              alt=""
+              alt={`${post.title} 관련 이미지`}
               loading="lazy"
               decoding="async"
               className="w-full aspect-[16/9] object-cover bg-grey-100 rounded-t-3xl"

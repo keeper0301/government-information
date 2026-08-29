@@ -14,7 +14,7 @@ import { calcDday, getRelatedPrograms } from "@/lib/programs";
 import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
 import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
-import { buildSeoTitle } from "@/lib/policy-title";
+import { buildPolicyMetaDescription, buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
 import { ProgramActionCard } from "@/components/program-action-card";
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { data } = await supabase
     .from("loan_programs")
     .select(
-      "title, description, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_start, apply_end, unique_insight",
+      "title, description, target, eligibility, loan_amount, interest_rate, repayment_period, apply_method, apply_start, apply_end, unique_insight, source, region_tags",
     )
     .not("source_code", "in", LOAN_EXCLUDED_FILTER)
     .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — admin client RLS 대체
@@ -83,13 +83,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     applyEnd: data.apply_end,
     today,
     keyword: "지원대상·한도",
+    locality: Array.isArray(data.region_tags) ? data.region_tags[0] : null,
   });
   // 2026-06-11 — 검색결과 스니펫(description)을 unique_insight(keepioo 자체 해설) 우선으로.
   // 정부 원문 그대로면 여러 페이지 "동일 설명문 중복"(네이버 진단) + 딱딱해 CTR 낮음 → 해설로
   // 고유화·매력화. 없으면(noindex sparse) 정부 description fallback. 160자 cut(스니펫 권장).
-  const metaDescription = hasInsight
-    ? (data.unique_insight as string).trim().replace(/\s+/g, " ").slice(0, 160)
-    : data.description || undefined;
+  const metaDescription = buildPolicyMetaDescription({
+    title: data.title,
+    primary: hasInsight ? data.unique_insight : data.description,
+    target: data.target || data.eligibility,
+    support: [data.loan_amount, data.interest_rate].filter(Boolean).join(" · ") || null,
+    applyEnd: data.apply_end,
+    source: data.source,
+    locality: Array.isArray(data.region_tags) ? data.region_tags[0] : null,
+  });
   return {
     title: seoTitle,
     description: metaDescription,
