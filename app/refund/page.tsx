@@ -4,7 +4,7 @@ export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "환불정책 — 정책알리미",
-  description: "정책알리미 유료 구독의 해지, 자동결제, 환불 기준 안내.",
+  description: "정책알리미 유료 구독의 무료체험, 자동결제, 해지 방법, 환불 가능 기준과 환불 신청 절차를 안내합니다.",
   alternates: { canonical: "/refund" },
 };
 

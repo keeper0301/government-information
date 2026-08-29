@@ -17,6 +17,7 @@
     "smoke:admin-pageerrors": "node tools/admin-pageerror-smoke.mjs",
     "perf:public": "node tools/measure-public-pages.mjs",
     "diagnose:adsense-review": "node tools/diagnose-adsense-review.mjs",
+    "diagnose:naver-seo-html": "node tools/naver-seo-html-audit.mjs",
     "readback:auth": "node tools/keepioo-authenticated-readback.mjs",
     "region:backfill:jeonnam-gwangju": "node tools/backfill-jeonnam-gwangju-region-tags.mjs",
     "agent:resident": "node tools/agent-resident-server.mjs",
