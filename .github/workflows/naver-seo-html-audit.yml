@@ -55,4 +55,50 @@ jobs:
           if [ "$FAIL_ON_ISSUES" = "true" ]; then
             args+=(--fail-on-issues)
           fi
-          npm run diagnose:naver-seo-html -- "${args[@]}"
+          npm run diagnose:naver-seo-html -- "${args[@]}" 2>&1 | tee /tmp/naver-seo-html-audit.log
+
+      - name: 실패 시 텔레그램 알림
+        if: failure()
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET 없음 — GitHub Actions 실패 상태만 남김"
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs = require('fs');
+
+          async function main() {
+            let log = '';
+            try { log = fs.readFileSync('/tmp/naver-seo-html-audit.log', 'utf8'); } catch {}
+            const summary = log
+              .split('\n')
+              .filter((line) => /Naver SEO HTML audit:|Issues:|^- |^https:\/\//.test(line.trim()))
+              .slice(0, 14)
+              .join('\n') || 'audit log summary unavailable';
+            const text = [
+              '[keepioo] Naver SEO HTML audit 실패',
+              '크롤러 기준 title/description/H1/img-alt 회귀 가능성 확인 필요',
+              '',
+              summary,
+              '',
+              `run: ${process.env.RUN_URL}`,
+            ].join('\n');
+            const res = await fetch('https://www.keepioo.com/api/notify-telegram', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${process.env.CRON_SECRET}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ text }),
+            });
+            console.log(`notify status: ${res.status}`);
+          }
+
+          main().catch((error) => {
+            console.warn('notify attempt failed:', error instanceof Error ? error.message : String(error));
+          });
+          NODE
