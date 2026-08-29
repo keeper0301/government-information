@@ -22,6 +22,14 @@ on:
         options:
           - "true"
           - "false"
+      fail_on_warning_increase:
+        description: "Fail when warning count or row-level warning signals increase vs previous artifact"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
       extra_urls:
         description: "Additional URLs outside sitemap sample, newline or comma separated"
         required: false
@@ -103,6 +111,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
           REPO: ${{ github.repository }}
+          FAIL_ON_WARNING_INCREASE: ${{ inputs.fail_on_warning_increase || 'false' }}
         run: |
           set -euo pipefail
           if [ ! -s /tmp/naver-seo-html-audit.json ]; then
@@ -147,6 +156,9 @@ jobs:
           ];
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
+          if [ "$FAIL_ON_WARNING_INCREASE" = "true" ]; then
+            node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-warning-increase
+          fi
 
       - name: audit JSON artifact 업로드
         if: always()

@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 import { compareAuditArtifacts } from "../../tools/naver-seo-html-audit-compare.mjs";
 
@@ -96,5 +100,20 @@ describe("naver-seo-html-audit-compare", () => {
       { url: "https://www.keepioo.com/old", signals: ["short_description"] },
     ]);
     expect(result.hasHardRegression).toBe(true);
+  });
+
+  it("can fail only on warning increase when explicitly requested", () => {
+    const dir = mkdtempSync(join(tmpdir(), "naver-seo-compare-"));
+    const before = join(dir, "before.json");
+    const after = join(dir, "after.json");
+    writeFileSync(before, JSON.stringify({ warningCounts: {}, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }] }));
+    writeFileSync(after, JSON.stringify({ warningCounts: { missing_canonical: 1 }, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: ["missing_canonical"] }] }));
+
+    expect(() =>
+      execFileSync("node", ["tools/naver-seo-html-audit-compare.mjs", "--before", before, "--after", after, "--fail-on-warning-increase"], {
+        cwd: process.cwd(),
+        stdio: "pipe",
+      }),
+    ).toThrow();
   });
 });

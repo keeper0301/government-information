@@ -109,15 +109,16 @@ export function compareAuditArtifacts(beforeArtifact, afterArtifact) {
 }
 
 function parseArgs(argv) {
-  const opts = { before: null, after: null, json: false, failOnRegression: false };
+  const opts = { before: null, after: null, json: false, failOnRegression: false, failOnWarningIncrease: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--before') opts.before = argv[++i] ?? null;
     else if (arg === '--after') opts.after = argv[++i] ?? null;
     else if (arg === '--json') opts.json = true;
     else if (arg === '--fail-on-regression') opts.failOnRegression = true;
+    else if (arg === '--fail-on-warning-increase') opts.failOnWarningIncrease = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log('Usage: node tools/naver-seo-html-audit-compare.mjs --before old.json --after new.json [--json] [--fail-on-regression]');
+      console.log('Usage: node tools/naver-seo-html-audit-compare.mjs --before old.json --after new.json [--json] [--fail-on-regression] [--fail-on-warning-increase]');
       process.exit(0);
     }
   }
@@ -165,6 +166,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (opts.json) console.log(JSON.stringify(result, null, 2));
     else printCompareReport(result);
     if (opts.failOnRegression && result.hasHardRegression) process.exitCode = 1;
+    if (opts.failOnWarningIncrease && result.hasWarningIncrease) process.exitCode = 1;
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
