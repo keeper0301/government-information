@@ -29,6 +29,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   audit:
@@ -96,12 +97,65 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
 
+      - name: 이전 audit artifact와 비교
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ ! -s /tmp/naver-seo-html-audit.json ]; then
+            echo "## Naver SEO HTML audit compare" >> "$GITHUB_STEP_SUMMARY"
+            echo "현재 audit JSON 결과가 없어 비교를 건너뜁니다." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          previous_run_id=$(gh run list --repo "$REPO" --workflow naver-seo-html-audit.yml --branch master --status success --limit 20 --json databaseId \
+            | node -e "const fs=require('fs'); const current=String(process.env.RUN_ID); const runs=JSON.parse(fs.readFileSync(0,'utf8')); const prev=runs.find((r)=>String(r.databaseId)!==current); if (prev) process.stdout.write(String(prev.databaseId));")
+          if [ -z "${previous_run_id:-}" ]; then
+            echo "## Naver SEO HTML audit compare" >> "$GITHUB_STEP_SUMMARY"
+            echo "비교할 이전 성공 run이 없어 건너뜁니다." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mkdir -p /tmp/naver-seo-previous
+          if ! gh run download "$previous_run_id" --repo "$REPO" -n naver-seo-html-audit -D /tmp/naver-seo-previous >/tmp/naver-seo-compare-download.log 2>&1; then
+            echo "## Naver SEO HTML audit compare" >> "$GITHUB_STEP_SUMMARY"
+            echo "이전 run ${previous_run_id}의 artifact를 받을 수 없어 비교를 건너뜁니다." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          previous_json=$(find /tmp/naver-seo-previous -name 'naver-seo-html-audit.json' -print -quit)
+          if [ -z "${previous_json:-}" ]; then
+            echo "## Naver SEO HTML audit compare" >> "$GITHUB_STEP_SUMMARY"
+            echo "이전 artifact에 JSON 파일이 없어 비교를 건너뜁니다." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --json > /tmp/naver-seo-html-audit-compare.json
+          PREVIOUS_RUN_ID="$previous_run_id" node - <<'NODE'
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/naver-seo-html-audit-compare.json', 'utf8'));
+          const lines = [
+            '',
+            '## Naver SEO HTML audit compare',
+            '',
+            `- compared with previous successful run: ${process.env.PREVIOUS_RUN_ID || 'unknown'}`,
+            `- hard regression: ${result.hasHardRegression ? 'yes' : 'no'}`,
+            `- warning increase: ${result.hasWarningIncrease ? 'yes' : 'no'}`,
+            `- issue deltas: ${result.issueDeltas.length}`,
+            `- warning deltas: ${result.warningDeltas.length}`,
+            `- added issue rows: ${result.addedIssueRows.length}`,
+            `- added warning rows: ${result.addedWarningRows.length}`,
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+          NODE
+
       - name: audit JSON artifact 업로드
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: naver-seo-html-audit
-          path: /tmp/naver-seo-html-audit.json
+          path: |
+            /tmp/naver-seo-html-audit.json
+            /tmp/naver-seo-html-audit-compare.json
           if-no-files-found: ignore
 
       - name: 실패 시 텔레그램 알림

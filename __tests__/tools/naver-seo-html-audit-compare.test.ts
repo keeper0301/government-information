@@ -35,6 +35,12 @@ describe("naver-seo-html-audit-compare", () => {
     expect(result.hasWarningIncrease).toBe(true);
     expect(result.changedIssueRows).toHaveLength(1);
     expect(result.changedWarningRows).toHaveLength(1);
+    expect(result.addedIssueRows).toEqual([
+      { url: "https://www.keepioo.com/", signals: ["short_description"] },
+    ]);
+    expect(result.addedWarningRows).toEqual([
+      { url: "https://www.keepioo.com/", signals: ["robots_noindex"] },
+    ]);
   });
 
   it("tracks URL coverage changes without treating them as hard regressions", () => {
@@ -60,5 +66,35 @@ describe("naver-seo-html-audit-compare", () => {
     expect(result.urlDelta.added).toEqual(["https://www.keepioo.com/new"]);
     expect(result.urlDelta.removed).toEqual(["https://www.keepioo.com/old"]);
     expect(result.hasHardRegression).toBe(false);
+  });
+
+  it("treats a new issue row as a regression even when total issue counts do not increase", () => {
+    const result = compareAuditArtifacts(
+      {
+        issueCounts: { short_description: 1 },
+        warningCounts: {},
+        rows: [
+          { url: "https://www.keepioo.com/old", issues: ["short_description"], warnings: [] },
+          { url: "https://www.keepioo.com/new", issues: [], warnings: [] },
+        ],
+      },
+      {
+        issueCounts: { short_description: 1 },
+        warningCounts: {},
+        rows: [
+          { url: "https://www.keepioo.com/old", issues: [], warnings: [] },
+          { url: "https://www.keepioo.com/new", issues: ["short_description"], warnings: [] },
+        ],
+      },
+    );
+
+    expect(result.issueDeltas).toEqual([]);
+    expect(result.addedIssueRows).toEqual([
+      { url: "https://www.keepioo.com/new", signals: ["short_description"] },
+    ]);
+    expect(result.resolvedIssueRows).toEqual([
+      { url: "https://www.keepioo.com/old", signals: ["short_description"] },
+    ]);
+    expect(result.hasHardRegression).toBe(true);
   });
 });

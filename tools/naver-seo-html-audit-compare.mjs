@@ -49,6 +49,23 @@ function changedRowSignals(beforeRows = [], afterRows = [], field) {
     .filter(Boolean);
 }
 
+function rowSignalDeltas(beforeRows = [], afterRows = [], field) {
+  const before = countByUrl(beforeRows, field);
+  const after = countByUrl(afterRows, field);
+  const urls = [...new Set([...before.keys(), ...after.keys()])].sort();
+  const added = [];
+  const resolved = [];
+  for (const url of urls) {
+    const previous = new Set(before.get(url) ?? []);
+    const current = new Set(after.get(url) ?? []);
+    const addedSignals = [...current].filter((signal) => !previous.has(signal)).sort();
+    const resolvedSignals = [...previous].filter((signal) => !current.has(signal)).sort();
+    if (addedSignals.length > 0) added.push({ url, signals: addedSignals });
+    if (resolvedSignals.length > 0) resolved.push({ url, signals: resolvedSignals });
+  }
+  return { added, resolved };
+}
+
 export function compareAuditArtifacts(beforeArtifact, afterArtifact) {
   const beforeRows = Array.isArray(beforeArtifact?.rows) ? beforeArtifact.rows : [];
   const afterRows = Array.isArray(afterArtifact?.rows) ? afterArtifact.rows : [];
@@ -60,6 +77,8 @@ export function compareAuditArtifacts(beforeArtifact, afterArtifact) {
   const warningDeltas = diffCountMap(normalizeCountMap(beforeArtifact?.warningCounts), normalizeCountMap(afterArtifact?.warningCounts));
   const changedIssueRows = changedRowSignals(beforeRows, afterRows, 'issues');
   const changedWarningRows = changedRowSignals(beforeRows, afterRows, 'warnings');
+  const issueRowDeltas = rowSignalDeltas(beforeRows, afterRows, 'issues');
+  const warningRowDeltas = rowSignalDeltas(beforeRows, afterRows, 'warnings');
 
   return {
     before: {
@@ -80,8 +99,12 @@ export function compareAuditArtifacts(beforeArtifact, afterArtifact) {
     warningDeltas,
     changedIssueRows,
     changedWarningRows,
-    hasHardRegression: issueDeltas.some((row) => row.delta > 0),
-    hasWarningIncrease: warningDeltas.some((row) => row.delta > 0),
+    addedIssueRows: issueRowDeltas.added,
+    resolvedIssueRows: issueRowDeltas.resolved,
+    addedWarningRows: warningRowDeltas.added,
+    resolvedWarningRows: warningRowDeltas.resolved,
+    hasHardRegression: issueDeltas.some((row) => row.delta > 0) || issueRowDeltas.added.length > 0,
+    hasWarningIncrease: warningDeltas.some((row) => row.delta > 0) || warningRowDeltas.added.length > 0,
   };
 }
 
@@ -127,6 +150,10 @@ export function printCompareReport(result) {
   if (result.urlDelta.removed.length > 0) console.log(`Removed URLs: ${result.urlDelta.removed.length}`);
   if (result.changedIssueRows.length > 0) console.log(`Changed issue rows: ${result.changedIssueRows.length}`);
   if (result.changedWarningRows.length > 0) console.log(`Changed warning rows: ${result.changedWarningRows.length}`);
+  if (result.addedIssueRows.length > 0) console.log(`Added issue rows: ${result.addedIssueRows.length}`);
+  if (result.resolvedIssueRows.length > 0) console.log(`Resolved issue rows: ${result.resolvedIssueRows.length}`);
+  if (result.addedWarningRows.length > 0) console.log(`Added warning rows: ${result.addedWarningRows.length}`);
+  if (result.resolvedWarningRows.length > 0) console.log(`Resolved warning rows: ${result.resolvedWarningRows.length}`);
   if (!result.hasHardRegression) console.log('OK: no hard SEO issue regression');
 }
 
