@@ -76,7 +76,7 @@ const VALID_CATEGORIES = new Set<string>(["news", "policy-doc"]);
 export const metadata: Metadata = {
   title: "정책 소식 | 정책알리미",
   description:
-    "korea.kr 정책뉴스·정책자료 큐레이션. 관심 정책 발표를 한눈에.",
+    "정부 부처 정책뉴스와 정책자료를 날짜·출처·관심 분야별로 모아 보여주는 정책알리미 큐레이션 페이지입니다.",
   alternates: { canonical: "/news" },
   robots: ADSENSE_REVIEW_MODE
     ? {

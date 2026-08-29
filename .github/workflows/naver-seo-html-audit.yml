@@ -22,6 +22,10 @@ on:
         options:
           - "true"
           - "false"
+      extra_urls:
+        description: "Additional URLs outside sitemap sample, newline or comma separated"
+        required: false
+        default: "https://www.keepioo.com/welfare/31d7f2a9-4da2-44b3-8728-9510fe097545,https://www.keepioo.com/loan/region/daegu,https://www.keepioo.com/news"
 
 permissions:
   contents: read
@@ -49,9 +53,13 @@ jobs:
           SITE: ${{ inputs.site || 'https://www.keepioo.com' }}
           LIMIT: ${{ inputs.limit || '32' }}
           FAIL_ON_ISSUES: ${{ inputs.fail_on_issues || 'true' }}
+          EXTRA_URLS: ${{ inputs.extra_urls || 'https://www.keepioo.com/welfare/31d7f2a9-4da2-44b3-8728-9510fe097545,https://www.keepioo.com/loan/region/daegu,https://www.keepioo.com/news' }}
         run: |
           set -euo pipefail
           args=(--site "$SITE" --limit "$LIMIT")
+          if [ -n "${EXTRA_URLS:-}" ]; then
+            args+=(--extra-urls "$EXTRA_URLS")
+          fi
           if [ "$FAIL_ON_ISSUES" = "true" ]; then
             args+=(--fail-on-issues)
           fi

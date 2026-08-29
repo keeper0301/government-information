@@ -75,10 +75,29 @@ export function parseSitemapUrls(xml) {
   return matches.map((match) => match[1].trim()).filter(Boolean);
 }
 
+export function parseExtraUrls(value) {
+  return String(value ?? '')
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/**
+ * @param {string[]} sitemapUrls
+ * @param {string[]} extraUrls
+ * @param {number | null} limit
+ */
+export function mergeAuditUrls(sitemapUrls, extraUrls = [], limit = null) {
+  const normalizedExtras = extraUrls.map((url) => normalizeText(url)).filter(Boolean);
+  const limitedSitemapUrls = sitemapUrls.slice(0, limit ?? undefined);
+  return [...new Set([...limitedSitemapUrls, ...normalizedExtras])];
+}
+
 function parseArgs(argv) {
   const opts = {
     site: DEFAULT_SITE,
     sitemap: null,
+    extraUrls: [],
     limit: null,
     timeoutMs: DEFAULT_TIMEOUT_MS,
     concurrency: DEFAULT_CONCURRENCY,
@@ -89,13 +108,15 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--site') opts.site = argv[++i] ?? opts.site;
     else if (arg === '--sitemap') opts.sitemap = argv[++i] ?? opts.sitemap;
+    else if (arg === '--extra-url') opts.extraUrls.push(argv[++i] ?? '');
+    else if (arg === '--extra-urls') opts.extraUrls.push(...parseExtraUrls(argv[++i] ?? ''));
     else if (arg === '--limit') opts.limit = Number(argv[++i]);
     else if (arg === '--timeout-ms') opts.timeoutMs = Number(argv[++i]);
     else if (arg === '--concurrency') opts.concurrency = Number(argv[++i]);
     else if (arg === '--json') opts.json = true;
     else if (arg === '--fail-on-issues') opts.failOnIssues = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log('Usage: node tools/naver-seo-html-audit.mjs [--site URL] [--sitemap URL] [--limit N] [--json] [--fail-on-issues]');
+      console.log('Usage: node tools/naver-seo-html-audit.mjs [--site URL] [--sitemap URL] [--limit N] [--extra-url URL] [--extra-urls URLS] [--json] [--fail-on-issues]');
       process.exit(0);
     }
   }
@@ -139,7 +160,7 @@ async function mapLimit(items, concurrency, mapper) {
 export async function auditSite(opts = {}) {
   const options = { ...parseArgs([]), ...opts };
   const sitemapXml = await fetchText(options.sitemap, options.timeoutMs);
-  const urls = parseSitemapUrls(sitemapXml).slice(0, options.limit ?? undefined);
+  const urls = mergeAuditUrls(parseSitemapUrls(sitemapXml), options.extraUrls, options.limit);
   const rows = await mapLimit(urls, options.concurrency, async (url) => {
     try {
       const html = await fetchText(url, options.timeoutMs);

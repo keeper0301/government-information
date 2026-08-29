@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeHtml,
   findDuplicateValues,
+  mergeAuditUrls,
+  parseExtraUrls,
   parseSitemapUrls,
 } from "../../tools/naver-seo-html-audit.mjs";
 
@@ -74,5 +76,29 @@ describe("naver-seo-html-audit", () => {
     expect(
       parseSitemapUrls(`<?xml version="1.0"?><urlset><url><loc>https://www.keepioo.com/</loc></url><url><loc>https://www.keepioo.com/news</loc></url></urlset>`),
     ).toEqual(["https://www.keepioo.com/", "https://www.keepioo.com/news"]);
+  });
+
+  it("parses line or comma separated extra URLs", () => {
+    expect(parseExtraUrls("https://www.keepioo.com/a\nhttps://www.keepioo.com/b, https://www.keepioo.com/c"))
+      .toEqual([
+        "https://www.keepioo.com/a",
+        "https://www.keepioo.com/b",
+        "https://www.keepioo.com/c",
+      ]);
+  });
+
+  it("adds extra URLs after the sitemap sample and deduplicates them", () => {
+    expect(
+      mergeAuditUrls(
+        ["https://www.keepioo.com/", "https://www.keepioo.com/guides", "https://www.keepioo.com/refund"],
+        ["https://www.keepioo.com/refund", "https://www.keepioo.com/welfare/example"],
+        2,
+      ),
+    ).toEqual([
+      "https://www.keepioo.com/",
+      "https://www.keepioo.com/guides",
+      "https://www.keepioo.com/refund",
+      "https://www.keepioo.com/welfare/example",
+    ]);
   });
 });
