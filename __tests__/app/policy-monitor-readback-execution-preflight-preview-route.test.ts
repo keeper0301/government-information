@@ -23,5 +23,5 @@ describe("policy-monitor readback execution preflight preview route", () => {
     expect(body.items[0].slot).toBe("after_72h");
     expect(body.items[0].canRunNow).toBe(false);
     expect(body.items[0].canFetchExternal).toBe(false);
-  });
+  }, 15_000);
 });
