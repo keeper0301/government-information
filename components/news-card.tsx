@@ -90,7 +90,7 @@ export function NewsCard({ post }: { post: NewsCardData }) {
     <Link href={`/news/${post.slug}`} className="block no-underline">
       <Card className="bg-white rounded-3xl overflow-hidden shadow-none hover:[box-shadow:0_8px_24px_rgba(17,24,39,0.06)] hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
         {/* 썸네일 — 있으면 이미지, 없으면 카테고리 색상 그라디언트 placeholder.
-            alt="" : 뉴스 제목이 바로 아래 카드 안에 있어 스크린리더 중복 방지.
+            alt: 네이버 진단의 이미지 설명 누락 방지를 위해 제목 기반 설명 제공.
             next/image 미사용 이유: 공공누리 제1유형 재호스팅 금지 → Vercel 최적화
             캐시를 거치지 않도록 <img> 로 외부 URL 직접 참조 (메모리 원칙).
             placeholder: 카드 메타 영역에 카테고리 배지·제목이 이미 노출되니

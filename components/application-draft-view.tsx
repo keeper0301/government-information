@@ -62,10 +62,10 @@ export function ApplicationDraftView({
         </ul>
       </div>
 
-      {/* print 전용 헤더 */}
+      {/* print 전용 헤더 — 화면 헤더 h1 과 중복 집계되지 않도록 h2 사용. */}
       <div className="hidden print:block mb-4">
         <p className="text-[10px] text-grey-700">신청서 초안 (참고용) — keepioo</p>
-        <h1 className="text-[20px] font-bold text-grey-900">{draft.policyTitle}</h1>
+        <h2 className="text-[20px] font-bold text-grey-900">{draft.policyTitle}</h2>
         <p className="text-[11px] text-grey-700">
           {POLICY_TYPE_LABEL[draft.policyType]}
         </p>
