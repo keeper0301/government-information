@@ -23,6 +23,7 @@ export function analyzeHtml(html, url = '') {
   const title = normalizeText($('title').first().text());
   const description = normalizeText($('meta[name="description"]').first().attr('content'));
   const canonical = normalizeText($('link[rel="canonical"]').first().attr('href'));
+  const robots = normalizeText($('meta[name="robots"]').first().attr('content'));
   const h1 = $('h1').map((_, el) => normalizeText($(el).text())).get().filter(Boolean);
   const images = $('img').map((_, el) => {
     const attribs = el.attribs ?? {};
@@ -35,9 +36,12 @@ export function analyzeHtml(html, url = '') {
   const imgEmptyAlt = images.filter((image) => image.hasAlt && !image.alt);
 
   const issues = [];
+  const warnings = [];
   if (!title) issues.push('missing_title');
   if (!description) issues.push('missing_description');
   if (description && description.length < 40) issues.push('short_description');
+  if (!canonical) warnings.push('missing_canonical');
+  if (/\bnoindex\b/i.test(robots)) warnings.push('robots_noindex');
   if (h1.length === 0) issues.push('missing_h1');
   if (h1.length > 1) issues.push('multiple_h1');
   if (imgWithoutAlt.length > 0) issues.push('image_missing_alt');
@@ -48,12 +52,14 @@ export function analyzeHtml(html, url = '') {
     title,
     description,
     canonical,
+    robots,
     h1,
     h1Count: h1.length,
     imageCount: images.length,
     imgWithoutAltCount: imgWithoutAlt.length,
     imgEmptyAltCount: imgEmptyAlt.length,
     issues,
+    warnings,
   };
 }
 
@@ -178,6 +184,10 @@ export async function auditSite(opts = {}) {
     for (const issue of row.issues ?? []) acc[issue] = (acc[issue] ?? 0) + 1;
     return acc;
   }, {});
+  const warningCounts = rows.reduce((acc, row) => {
+    for (const warning of row.warnings ?? []) acc[warning] = (acc[warning] ?? 0) + 1;
+    return acc;
+  }, {});
   if (duplicateTitles.length > 0) issueCounts.duplicate_title = duplicateTitles.reduce((sum, item) => sum + item.count, 0);
   if (duplicateDescriptions.length > 0) issueCounts.duplicate_description = duplicateDescriptions.reduce((sum, item) => sum + item.count, 0);
   return {
@@ -186,9 +196,11 @@ export async function auditSite(opts = {}) {
     urlCount: urls.length,
     okCount: rows.filter((row) => row.ok).length,
     issueCounts,
+    warningCounts,
     duplicateTitles,
     duplicateDescriptions,
     issueRows: rows.filter((row) => (row.issues ?? []).length > 0),
+    warningRows: rows.filter((row) => (row.warnings ?? []).length > 0),
     rows,
   };
 }
@@ -198,17 +210,22 @@ function printTextReport(result) {
   const issueEntries = Object.entries(result.issueCounts).sort((a, b) => b[1] - a[1]);
   if (issueEntries.length === 0) {
     console.log('OK: no crawler-visible title/description/H1/img-alt issues in sitemap sample');
-    return;
+  } else {
+    console.log('Issues:');
+    for (const [issue, count] of issueEntries) console.log(`- ${issue}: ${count}`);
+    for (const row of result.issueRows.slice(0, 10)) {
+      console.log(`\n${row.url}`);
+      console.log(`  issues: ${(row.issues ?? []).join(', ')}`);
+      if (row.title) console.log(`  title: ${truncateText(row.title)}`);
+      if (row.description) console.log(`  description: ${truncateText(row.description)}`);
+      if (row.h1) console.log(`  h1: ${row.h1Count} ${row.h1.map((v) => truncateText(v, 60)).join(' | ')}`);
+      if (row.error) console.log(`  error: ${row.error}`);
+    }
   }
-  console.log('Issues:');
-  for (const [issue, count] of issueEntries) console.log(`- ${issue}: ${count}`);
-  for (const row of result.issueRows.slice(0, 10)) {
-    console.log(`\n${row.url}`);
-    console.log(`  issues: ${(row.issues ?? []).join(', ')}`);
-    if (row.title) console.log(`  title: ${truncateText(row.title)}`);
-    if (row.description) console.log(`  description: ${truncateText(row.description)}`);
-    if (row.h1) console.log(`  h1: ${row.h1Count} ${row.h1.map((v) => truncateText(v, 60)).join(' | ')}`);
-    if (row.error) console.log(`  error: ${row.error}`);
+  const warningEntries = Object.entries(result.warningCounts ?? {}).sort((a, b) => b[1] - a[1]);
+  if (warningEntries.length > 0) {
+    console.log('Warnings:');
+    for (const [warning, count] of warningEntries) console.log(`- ${warning}: ${count}`);
   }
   for (const dup of result.duplicateTitles.slice(0, 5)) {
     console.log(`\nduplicate title (${dup.count}): ${truncateText(dup.value)}`);

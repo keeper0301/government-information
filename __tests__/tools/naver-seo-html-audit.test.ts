@@ -57,6 +57,26 @@ describe("naver-seo-html-audit", () => {
     expect(result.h1Count).toBe(1);
     expect(result.imgWithoutAltCount).toBe(0);
     expect(result.imgEmptyAltCount).toBe(0);
+    expect(result.warnings).toEqual(["missing_canonical"]);
+  });
+
+  it("reports canonical and robots noindex warnings separately from issues", () => {
+    const result = analyzeHtml(
+      `<!doctype html>
+      <html>
+        <head>
+          <title>정책 소식 | 정책알리미</title>
+          <meta name="description" content="정부 부처 정책뉴스와 정책자료를 날짜·출처·관심 분야별로 모아 보여주는 정책알리미 큐레이션 페이지입니다." />
+          <meta name="robots" content="noindex, follow" />
+        </head>
+        <body><h1>정책 소식</h1></body>
+      </html>`,
+      "https://www.keepioo.com/news",
+    );
+
+    expect(result.issues).toEqual([]);
+    expect(result.robots).toBe("noindex, follow");
+    expect(result.warnings).toEqual(["missing_canonical", "robots_noindex"]);
   });
 
   it("keeps enough row fields for JSON artifacts", () => {
@@ -71,6 +91,7 @@ describe("naver-seo-html-audit", () => {
       canonical: "https://www.keepioo.com/",
       h1Count: 1,
       issues: [],
+      warnings: [],
     });
   });
 
