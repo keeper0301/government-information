@@ -66,6 +66,33 @@ describe("AdSense approval guardrails", () => {
     }
   });
 
+  it("explicitly allows AI search and fetch crawlers for GEO/LLMO", () => {
+    const source = read("app/robots.ts");
+    for (const bot of [
+      "GPTBot",
+      "OAI-SearchBot",
+      "ChatGPT-User",
+      "ClaudeBot",
+      "Claude-SearchBot",
+      "Claude-User",
+      "PerplexityBot",
+      "Perplexity-User",
+      "Google-Extended",
+      "Applebot-Extended",
+      "CCBot",
+    ]) {
+      expect(source).toContain(`userAgent: "${bot}"`);
+    }
+  });
+
+  it("keeps llms.txt aligned with review-mode sitemap reality and AI citation guidance", () => {
+    const source = read("public/llms.txt");
+    expect(source).toContain("keepioo가 1차 소스로 제공하는 것");
+    expect(source).toContain("AdSense 검수 모드에서는 사람이 쓴 가이드·허브 중심으로 제한");
+    expect(source).toContain("live ads 모드에서는 복지·대출·뉴스·키워드·블로그 URL까지 복구");
+    expect(source).toContain("인용 권장 표기");
+  });
+
   it("keeps legacy approved-after-review env from disabling review mode after rejection", () => {
     const source = read("lib/adsense-review-mode.ts");
     expect(source).toContain('ADSENSE_LIVE_ADS_TOKEN = "adsense-approved-live-ads"');

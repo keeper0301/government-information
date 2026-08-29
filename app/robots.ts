@@ -29,13 +29,20 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "NaverBot", allow: "/" },
       { userAgent: "Daum", allow: "/" },
       { userAgent: "Daumoa", allow: "/" },
-      // AI Crawlers - explicitly allowed for GEO
+      // AI Crawlers — fire-your-seo-agency GEO/LLMO lane.
+      // 학습·검색 색인·실시간 fetch 봇을 분리해 명시 허용한다.
       { userAgent: "GPTBot", allow: "/" },
+      { userAgent: "OAI-SearchBot", allow: "/" },
       { userAgent: "ChatGPT-User", allow: "/" },
       { userAgent: "ClaudeBot", allow: "/" },
+      { userAgent: "Claude-SearchBot", allow: "/" },
+      { userAgent: "Claude-User", allow: "/" },
       { userAgent: "Claude-Web", allow: "/" },
       { userAgent: "PerplexityBot", allow: "/" },
+      { userAgent: "Perplexity-User", allow: "/" },
       { userAgent: "Google-Extended", allow: "/" },
+      { userAgent: "Applebot-Extended", allow: "/" },
+      { userAgent: "CCBot", allow: "/" },
       { userAgent: "Bytespider", allow: "/" },
       // AdSense 봇 명시 Allow — AdSense 검수자가 봇으로 사이트 검증.
       // 2026-05-11 추가: AdSense 거절 대응 + 검수자 봇 차단 우려 차단.
