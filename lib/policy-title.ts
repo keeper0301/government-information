@@ -104,12 +104,12 @@ export function buildPolicyMetaDescription(opts: {
   const locality = oneLine(opts.locality);
   const source = oneLine(opts.source);
   const segments = [
-    oneLine(opts.primary),
     target ? `대상: ${target}` : null,
     support ? `지원: ${support}` : null,
     applyEnd ? `마감: ${applyEnd}` : "마감: 상시·확인 필요",
     locality && locality !== "전국" ? `지역: ${locality}` : null,
     source ? `출처: ${source}` : null,
+    oneLine(opts.primary),
   ].filter(Boolean) as string[];
 
   const fallback = `${cleanPolicyTitle(opts.title)}의 신청 대상, 지원 내용, 마감일을 정책알리미에서 확인하세요.`;
