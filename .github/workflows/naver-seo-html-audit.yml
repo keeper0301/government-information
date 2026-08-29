@@ -1,0 +1,58 @@
+name: Naver SEO HTML audit
+
+on:
+  schedule:
+    # KST 09:25 — Naver Search Advisor issue counts lag, so keep our own crawler-visible regression audit daily.
+    - cron: "25 0 * * *"
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Audit target site"
+        required: false
+        default: "https://www.keepioo.com"
+      limit:
+        description: "Sitemap URL sample limit"
+        required: false
+        default: "32"
+      fail_on_issues:
+        description: "Fail the run when crawler-visible SEO issues are found"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: sitemap HTML metadata audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v6
+
+      - name: Node 20 설치 + npm cache
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: 의존성 설치 (lockfile 기준)
+        run: npm ci
+
+      - name: Naver SEO HTML audit 실행
+        env:
+          SITE: ${{ inputs.site || 'https://www.keepioo.com' }}
+          LIMIT: ${{ inputs.limit || '32' }}
+          FAIL_ON_ISSUES: ${{ inputs.fail_on_issues || 'true' }}
+        run: |
+          set -euo pipefail
+          args=(--site "$SITE" --limit "$LIMIT")
+          if [ "$FAIL_ON_ISSUES" = "true" ]; then
+            args+=(--fail-on-issues)
+          fi
+          npm run diagnose:naver-seo-html -- "${args[@]}"
