@@ -3,6 +3,7 @@
 // Checks crawler-visible title/description/H1/img-alt issues across sitemap URLs.
 
 import * as cheerio from 'cheerio';
+import { writeFile } from 'node:fs/promises';
 
 const DEFAULT_SITE = 'https://www.keepioo.com';
 const DEFAULT_TIMEOUT_MS = 20_000;
@@ -102,6 +103,7 @@ function parseArgs(argv) {
     timeoutMs: DEFAULT_TIMEOUT_MS,
     concurrency: DEFAULT_CONCURRENCY,
     json: false,
+    jsonOutput: null,
     failOnIssues: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -114,9 +116,10 @@ function parseArgs(argv) {
     else if (arg === '--timeout-ms') opts.timeoutMs = Number(argv[++i]);
     else if (arg === '--concurrency') opts.concurrency = Number(argv[++i]);
     else if (arg === '--json') opts.json = true;
+    else if (arg === '--json-output') opts.jsonOutput = argv[++i] ?? opts.jsonOutput;
     else if (arg === '--fail-on-issues') opts.failOnIssues = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log('Usage: node tools/naver-seo-html-audit.mjs [--site URL] [--sitemap URL] [--limit N] [--extra-url URL] [--extra-urls URLS] [--json] [--fail-on-issues]');
+      console.log('Usage: node tools/naver-seo-html-audit.mjs [--site URL] [--sitemap URL] [--limit N] [--extra-url URL] [--extra-urls URLS] [--json] [--json-output PATH] [--fail-on-issues]');
       process.exit(0);
     }
   }
@@ -186,6 +189,7 @@ export async function auditSite(opts = {}) {
     duplicateTitles,
     duplicateDescriptions,
     issueRows: rows.filter((row) => (row.issues ?? []).length > 0),
+    rows,
   };
 }
 
@@ -219,9 +223,10 @@ function printTextReport(result) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const opts = parseArgs(process.argv.slice(2));
   auditSite(opts)
-    .then((result) => {
+    .then(async (result) => {
       if (opts.json) console.log(JSON.stringify(result, null, 2));
       else printTextReport(result);
+      if (opts.jsonOutput) await writeFile(opts.jsonOutput, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
       if (opts.failOnIssues && Object.keys(result.issueCounts).length > 0) process.exitCode = 1;
     })
     .catch((error) => {

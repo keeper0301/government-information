@@ -63,7 +63,44 @@ jobs:
           if [ "$FAIL_ON_ISSUES" = "true" ]; then
             args+=(--fail-on-issues)
           fi
-          npm run diagnose:naver-seo-html -- "${args[@]}" 2>&1 | tee /tmp/naver-seo-html-audit.log
+          npm run diagnose:naver-seo-html -- "${args[@]}" --json-output /tmp/naver-seo-html-audit.json 2>&1 | tee /tmp/naver-seo-html-audit.log
+
+      - name: GitHub Summary 작성
+        if: always()
+        run: |
+          if [ ! -s /tmp/naver-seo-html-audit.json ]; then
+            echo "## Naver SEO HTML audit" >> "$GITHUB_STEP_SUMMARY"
+            echo "audit JSON 결과가 없습니다." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/naver-seo-html-audit.json', 'utf8'));
+          const issueEntries = Object.entries(result.issueCounts || {}).sort((a, b) => b[1] - a[1]);
+          const lines = [
+            '## Naver SEO HTML audit',
+            '',
+            `- checked: ${result.okCount}/${result.urlCount}`,
+            `- issues: ${issueEntries.length === 0 ? '0' : issueEntries.map(([key, count]) => `${key} ${count}`).join(', ')}`,
+            `- duplicate titles: ${result.duplicateTitles?.length || 0}`,
+            `- duplicate descriptions: ${result.duplicateDescriptions?.length || 0}`,
+          ];
+          if ((result.issueRows || []).length > 0) {
+            lines.push('', '### issue sample');
+            for (const row of result.issueRows.slice(0, 5)) {
+              lines.push(`- ${row.url} — ${(row.issues || []).join(', ')}`);
+            }
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+          NODE
+
+      - name: audit JSON artifact 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: naver-seo-html-audit
+          path: /tmp/naver-seo-html-audit.json
+          if-no-files-found: ignore
 
       - name: 실패 시 텔레그램 알림
         if: failure()

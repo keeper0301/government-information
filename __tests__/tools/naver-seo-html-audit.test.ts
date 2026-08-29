@@ -59,6 +59,21 @@ describe("naver-seo-html-audit", () => {
     expect(result.imgEmptyAltCount).toBe(0);
   });
 
+  it("keeps enough row fields for JSON artifacts", () => {
+    const result = analyzeHtml(
+      `<!doctype html><html><head><title>정책알리미</title><meta name="description" content="정책알리미의 검색엔진 진단 테스트용으로 충분한 길이를 가진 설명 문장입니다." /><link rel="canonical" href="https://www.keepioo.com/" /></head><body><h1>정책알리미</h1></body></html>`,
+      "https://www.keepioo.com/",
+    );
+
+    expect(result).toMatchObject({
+      url: "https://www.keepioo.com/",
+      title: "정책알리미",
+      canonical: "https://www.keepioo.com/",
+      h1Count: 1,
+      issues: [],
+    });
+  });
+
   it("reports duplicate titles and descriptions by URL", () => {
     const rows = [
       { url: "https://www.keepioo.com/a", title: "같은 제목", description: "같은 설명" },
