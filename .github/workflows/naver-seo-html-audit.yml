@@ -161,6 +161,7 @@ jobs:
             `- warning increase: ${result.hasWarningIncrease ? 'yes' : 'no'}`,
             `- issue deltas: ${result.issueDeltas.length}`,
             `- warning deltas: ${result.warningDeltas.length}`,
+            `- scope deltas: ${(result.scopeDeltas || []).length}`,
             `- added issue rows: ${result.addedIssueRows.length}`,
             `- resolved issue rows: ${result.resolvedIssueRows.length}`,
             `- added warning rows: ${result.addedWarningRows.length}`,
@@ -224,7 +225,7 @@ jobs:
               .join('\n') || 'audit log summary unavailable';
             const compareLines = compareLog
               .split('\n')
-              .filter((line) => /Naver SEO HTML audit compare:|Issue deltas:|Warning deltas:|Added issue rows:|Resolved issue rows:|Added warning rows:|Resolved warning rows:|Changed issue rows:|Changed warning rows:|OK: no hard SEO issue regression|FAIL: hard SEO issue regression detected|WARN: warning signal increased|^- /.test(line.trim()));
+              .filter((line) => /Naver SEO HTML audit compare:|Issue deltas:|Warning deltas:|Scope deltas:|Added issue rows:|Resolved issue rows:|Added warning rows:|Resolved warning rows:|Changed issue rows:|Changed warning rows:|OK: no hard SEO issue regression|FAIL: hard SEO issue regression detected|WARN: warning signal increased|WARN: audit scope changed|^- /.test(line.trim()));
             const comparePriority = /^(FAIL:|WARN:)/;
             const compareSummary = [
               ...compareLines.filter((line) => comparePriority.test(line.trim())),

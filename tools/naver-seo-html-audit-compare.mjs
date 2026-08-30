@@ -23,6 +23,36 @@ function asUrlSet(rows = []) {
   return new Set(rows.map((row) => String(row?.url ?? '')).filter(Boolean));
 }
 
+function normalizeString(value) {
+  return value == null ? null : String(value);
+}
+
+function normalizeStringList(value) {
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean).sort() : [];
+}
+
+function compareScalarScope(key, beforeValue, afterValue) {
+  const before = normalizeString(beforeValue);
+  const after = normalizeString(afterValue);
+  return before === after ? null : { key, before, after };
+}
+
+function compareListScope(key, beforeValue, afterValue) {
+  const before = normalizeStringList(beforeValue);
+  const after = normalizeStringList(afterValue);
+  if (before.join('\n') === after.join('\n')) return null;
+  return { key, before, after };
+}
+
+function compareAuditScope(beforeArtifact, afterArtifact) {
+  return [
+    compareScalarScope('site', beforeArtifact?.site, afterArtifact?.site),
+    compareScalarScope('sitemap', beforeArtifact?.sitemap, afterArtifact?.sitemap),
+    compareScalarScope('limit', beforeArtifact?.limit, afterArtifact?.limit),
+    compareListScope('extraUrls', beforeArtifact?.extraUrls, afterArtifact?.extraUrls),
+  ].filter(Boolean);
+}
+
 function countByUrl(rows = [], field) {
   const out = new Map();
   for (const row of rows) {
@@ -95,6 +125,7 @@ export function compareAuditArtifacts(beforeArtifact, afterArtifact) {
       added: addedUrls,
       removed: removedUrls,
     },
+    scopeDeltas: compareAuditScope(beforeArtifact, afterArtifact),
     issueDeltas,
     warningDeltas,
     changedIssueRows,
@@ -141,6 +172,15 @@ function formatRowSignals(row) {
   return `${row.url}: ${(row.signals || []).join(', ')}`;
 }
 
+function formatScopeValue(value) {
+  if (Array.isArray(value)) return value.length === 0 ? '(none)' : value.join(', ');
+  return value == null || value === '' ? '(none)' : String(value);
+}
+
+function formatScopeDelta(row) {
+  return `${row.key}: ${formatScopeValue(row.before)} → ${formatScopeValue(row.after)}`;
+}
+
 function printRowSignalSample(label, rows, limit = 5) {
   if (rows.length === 0) return;
   console.log(`${label}: ${rows.length}`);
@@ -162,6 +202,11 @@ export function printCompareReport(result) {
   }
   if (result.urlDelta.added.length > 0) console.log(`Added URLs: ${result.urlDelta.added.length}`);
   if (result.urlDelta.removed.length > 0) console.log(`Removed URLs: ${result.urlDelta.removed.length}`);
+  if ((result.scopeDeltas ?? []).length > 0) {
+    console.log('Scope deltas:');
+    for (const row of result.scopeDeltas) console.log(`- ${formatScopeDelta(row)}`);
+    console.log('WARN: audit scope changed; verify drift against site/limit/extra URL changes');
+  }
   if (result.changedIssueRows.length > 0) console.log(`Changed issue rows: ${result.changedIssueRows.length}`);
   if (result.changedWarningRows.length > 0) console.log(`Changed warning rows: ${result.changedWarningRows.length}`);
   printRowSignalSample('Added issue rows', result.addedIssueRows);

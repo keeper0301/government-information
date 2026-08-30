@@ -102,6 +102,39 @@ describe("naver-seo-html-audit-compare", () => {
     expect(result.hasHardRegression).toBe(true);
   });
 
+  it("tracks audit scope changes without treating them as hard regressions", () => {
+    const result = compareAuditArtifacts(
+      {
+        site: "https://www.keepioo.com",
+        sitemap: "https://www.keepioo.com/sitemap.xml",
+        limit: 32,
+        extraUrls: ["https://www.keepioo.com/news"],
+        issueCounts: {},
+        warningCounts: {},
+        rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }],
+      },
+      {
+        site: "https://www.keepioo.com",
+        sitemap: "https://www.keepioo.com/sitemap.xml",
+        limit: 64,
+        extraUrls: ["https://www.keepioo.com/news", "https://www.keepioo.com/loan/region/daegu"],
+        issueCounts: {},
+        warningCounts: {},
+        rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }],
+      },
+    );
+
+    expect(result.scopeDeltas).toEqual([
+      { key: "limit", before: "32", after: "64" },
+      {
+        key: "extraUrls",
+        before: ["https://www.keepioo.com/news"],
+        after: ["https://www.keepioo.com/loan/region/daegu", "https://www.keepioo.com/news"],
+      },
+    ]);
+    expect(result.hasHardRegression).toBe(false);
+  });
+
   it("fails on hard regressions when the regression gate is enabled", () => {
     const dir = mkdtempSync(join(tmpdir(), "naver-seo-compare-"));
     const before = join(dir, "before.json");
@@ -172,6 +205,9 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("artifact regression 확인 필요");
     expect(workflow).toContain("FAIL: hard SEO issue regression detected");
     expect(workflow).toContain("WARN: warning signal increased");
+    expect(workflow).toContain("- scope deltas: ${(result.scopeDeltas || []).length}");
+    expect(workflow).toContain("WARN: audit scope changed");
+    expect(workflow).toContain("Scope deltas:");
     expect(workflow).toContain("- resolved issue rows: ${result.resolvedIssueRows.length}");
     expect(workflow).toContain("- resolved warning rows: ${result.resolvedWarningRows.length}");
     expect(workflow).toContain("pushSample('added issue sample', result.addedIssueRows)");
