@@ -206,6 +206,7 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("--fail-on-warning-increase 2>&1 | tee -a /tmp/naver-seo-html-audit-compare.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit-compare.log");
+    expect(workflow).toContain("retention-days: 30");
     expect(workflow).toContain("function redactSecrets(text)");
     expect(workflow).toContain("Bearer)\\s+[A-Za-z0-9._~+/=-]{12,}");
     expect(workflow).toContain("'Author' + 'ization:'");

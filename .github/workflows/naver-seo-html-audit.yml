@@ -211,6 +211,7 @@ jobs:
             /tmp/naver-seo-html-audit.log
             /tmp/naver-seo-html-audit-compare.log
           if-no-files-found: ignore
+          retention-days: 30
 
       - name: 실패 시 텔레그램 알림
         if: failure()
