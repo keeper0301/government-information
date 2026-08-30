@@ -169,6 +169,8 @@ jobs:
           path: |
             /tmp/naver-seo-html-audit.json
             /tmp/naver-seo-html-audit-compare.json
+            /tmp/naver-seo-html-audit.log
+            /tmp/naver-seo-html-audit-compare.log
           if-no-files-found: ignore
 
       - name: 실패 시 텔레그램 알림
