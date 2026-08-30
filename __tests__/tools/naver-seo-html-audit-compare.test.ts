@@ -127,17 +127,21 @@ describe("naver-seo-html-audit-compare", () => {
     writeFileSync(before, JSON.stringify({ warningCounts: {}, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }] }));
     writeFileSync(after, JSON.stringify({ warningCounts: { missing_canonical: 1 }, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: ["missing_canonical"] }] }));
 
-    const output = execFileSync("node", ["tools/naver-seo-html-audit-compare.mjs", "--before", before, "--after", after, "--fail-on-regression"], {
+    const jsonOutput = join(dir, "compare.json");
+    const output = execFileSync("node", ["tools/naver-seo-html-audit-compare.mjs", "--before", before, "--after", after, "--json-output", jsonOutput, "--fail-on-regression"], {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: "pipe",
     });
+    const saved = JSON.parse(readFileSync(jsonOutput, "utf8"));
 
     expect(output).toContain("Warning deltas:");
     expect(output).toContain("Added warning rows: 1");
     expect(output).toContain("https://www.keepioo.com/: missing_canonical");
     expect(output).toContain("OK: no hard SEO issue regression");
     expect(output).toContain("WARN: warning signal increased");
+    expect(saved.hasWarningIncrease).toBe(true);
+    expect(saved.addedWarningRows).toEqual([{ url: "https://www.keepioo.com/", signals: ["missing_canonical"] }]);
   });
 
   it("can fail only on warning increase when explicitly requested", () => {

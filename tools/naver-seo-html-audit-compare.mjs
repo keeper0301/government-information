@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Compare two Naver SEO HTML audit JSON artifacts.
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 
 function normalizeCountMap(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -109,20 +109,22 @@ export function compareAuditArtifacts(beforeArtifact, afterArtifact) {
 }
 
 function parseArgs(argv) {
-  const opts = { before: null, after: null, json: false, failOnRegression: false, failOnWarningIncrease: false };
+  const opts = { before: null, after: null, json: false, jsonOutput: null, failOnRegression: false, failOnWarningIncrease: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--before') opts.before = argv[++i] ?? null;
     else if (arg === '--after') opts.after = argv[++i] ?? null;
     else if (arg === '--json') opts.json = true;
+    else if (arg === '--json-output') opts.jsonOutput = argv[++i] ?? null;
     else if (arg === '--fail-on-regression') opts.failOnRegression = true;
     else if (arg === '--fail-on-warning-increase') opts.failOnWarningIncrease = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log('Usage: node tools/naver-seo-html-audit-compare.mjs --before old.json --after new.json [--json] [--fail-on-regression] [--fail-on-warning-increase]');
+      console.log('Usage: node tools/naver-seo-html-audit-compare.mjs --before old.json --after new.json [--json] [--json-output path] [--fail-on-regression] [--fail-on-warning-increase]');
       process.exit(0);
     }
   }
   if (!opts.before || !opts.after) throw new Error('--before and --after are required');
+  if (opts.jsonOutput === '') throw new Error('--json-output requires a path');
   return opts;
 }
 
@@ -176,6 +178,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     opts = parseArgs(process.argv.slice(2));
     const result = compareAuditArtifacts(await readJson(opts.before), await readJson(opts.after));
+    if (opts.jsonOutput) await writeFile(opts.jsonOutput, `${JSON.stringify(result, null, 2)}\n`);
     if (opts.json) console.log(JSON.stringify(result, null, 2));
     else printCompareReport(result);
     if (opts.failOnRegression && result.hasHardRegression) process.exitCode = 1;
