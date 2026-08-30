@@ -18,10 +18,10 @@ jobs:
       - name: 코드 체크아웃
         uses: actions/checkout@v6
 
-      - name: Node 20 설치
+      - name: Node 24 설치
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: public page fetch timing 측정
         run: |
@@ -58,7 +58,7 @@ jobs:
           done
 
       - name: Lighthouse artifact 업로드
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: keepioo-public-page-lighthouse
           path: lighthouse-reports/

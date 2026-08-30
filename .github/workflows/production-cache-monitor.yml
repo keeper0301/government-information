@@ -18,10 +18,10 @@ jobs:
       - name: 코드 체크아웃
         uses: actions/checkout@v6
 
-      - name: Node 20 설치
+      - name: Node 24 설치
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: production cache headers 확인
         run: |
