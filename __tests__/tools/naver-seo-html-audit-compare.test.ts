@@ -151,9 +151,11 @@ describe("naver-seo-html-audit-compare", () => {
   it("wires the scheduled workflow to fail hard regressions while leaving warning drift optional", () => {
     const workflow = readFileSync(resolve(process.cwd(), ".github/workflows/naver-seo-html-audit.yml"), "utf8");
 
-    expect(workflow).toContain("--fail-on-regression");
+    expect(workflow).toContain("--fail-on-regression 2>&1 | tee /tmp/naver-seo-html-audit-compare.log");
     expect(workflow).toContain("FAIL_ON_WARNING_INCREASE");
-    expect(workflow).toContain("--fail-on-warning-increase");
+    expect(workflow).toContain("--fail-on-warning-increase 2>&1 | tee -a /tmp/naver-seo-html-audit-compare.log");
+    expect(workflow).toContain("artifact regression 확인 필요");
+    expect(workflow).toContain("--- compare ---");
     expect(workflow.indexOf("--fail-on-regression")).toBeLessThan(workflow.indexOf("if [ \"$FAIL_ON_WARNING_INCREASE\" = \"true\" ]"));
   });
 });

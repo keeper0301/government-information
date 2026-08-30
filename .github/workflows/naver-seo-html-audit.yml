@@ -156,9 +156,9 @@ jobs:
           ];
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
-          node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-regression
+          node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-regression 2>&1 | tee /tmp/naver-seo-html-audit-compare.log
           if [ "$FAIL_ON_WARNING_INCREASE" = "true" ]; then
-            node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-warning-increase
+            node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-warning-increase 2>&1 | tee -a /tmp/naver-seo-html-audit-compare.log
           fi
 
       - name: audit JSON artifact 업로드
@@ -188,14 +188,22 @@ jobs:
           async function main() {
             let log = '';
             try { log = fs.readFileSync('/tmp/naver-seo-html-audit.log', 'utf8'); } catch {}
-            const summary = log
+            let compareLog = '';
+            try { compareLog = fs.readFileSync('/tmp/naver-seo-html-audit-compare.log', 'utf8'); } catch {}
+            const auditSummary = log
               .split('\n')
-              .filter((line) => /Naver SEO HTML audit:|Issues:|^- |^https:\/\//.test(line.trim()))
-              .slice(0, 14)
+              .filter((line) => /Naver SEO HTML audit:|Issues:|Warnings:|^- |^https:\/\//.test(line.trim()))
+              .slice(0, 10)
               .join('\n') || 'audit log summary unavailable';
+            const compareSummary = compareLog
+              .split('\n')
+              .filter((line) => /Naver SEO HTML audit compare:|Issue deltas:|Warning deltas:|Added issue rows:|Added warning rows:|Changed issue rows:|Changed warning rows:|OK: no hard SEO issue regression|^- /.test(line.trim()))
+              .slice(0, 10)
+              .join('\n');
+            const summary = [auditSummary, compareSummary].filter(Boolean).join('\n--- compare ---\n');
             const text = [
               '[keepioo] Naver SEO HTML audit 실패',
-              '크롤러 기준 title/description/H1/img-alt 회귀 가능성 확인 필요',
+              '크롤러 기준 title/description/H1/img-alt 또는 artifact regression 확인 필요',
               '',
               summary,
               '',
