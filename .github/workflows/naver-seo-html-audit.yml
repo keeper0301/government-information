@@ -87,9 +87,14 @@ jobs:
           const result = JSON.parse(fs.readFileSync('/tmp/naver-seo-html-audit.json', 'utf8'));
           const issueEntries = Object.entries(result.issueCounts || {}).sort((a, b) => b[1] - a[1]);
           const warningEntries = Object.entries(result.warningCounts || {}).sort((a, b) => b[1] - a[1]);
+          const extraUrls = Array.isArray(result.extraUrls) ? result.extraUrls : [];
           const lines = [
             '## Naver SEO HTML audit',
             '',
+            `- site: ${result.site || 'unknown'}`,
+            `- sitemap: ${result.sitemap || 'unknown'}`,
+            `- limit: ${result.limit ?? 'unknown'}`,
+            `- extra URLs: ${extraUrls.length}`,
             `- checked: ${result.okCount}/${result.urlCount}`,
             `- issues: ${issueEntries.length === 0 ? '0' : issueEntries.map(([key, count]) => `${key} ${count}`).join(', ')}`,
             `- warnings: ${warningEntries.length === 0 ? '0' : warningEntries.map(([key, count]) => `${key} ${count}`).join(', ')}`,
