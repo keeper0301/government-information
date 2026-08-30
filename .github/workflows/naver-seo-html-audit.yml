@@ -146,11 +146,18 @@ jobs:
           const fs = require('fs');
           const result = JSON.parse(fs.readFileSync('/tmp/naver-seo-html-audit-compare.json', 'utf8'));
           const formatSignals = (row) => `${row.url} — ${(row.signals || []).join(', ')}`;
+          const formatScopeValue = (value) => Array.isArray(value) ? (value.length === 0 ? '(none)' : value.join(', ')) : (value ?? '(none)');
           const pushSample = (label, rows) => {
             if (!Array.isArray(rows) || rows.length === 0) return;
             lines.push('', `### ${label}`);
             for (const row of rows.slice(0, 3)) lines.push(`- ${formatSignals(row)}`);
             if (rows.length > 3) lines.push(`- ... ${rows.length - 3} more`);
+          };
+          const pushScopeSample = (rows) => {
+            if (!Array.isArray(rows) || rows.length === 0) return;
+            lines.push('', '### audit scope changes');
+            for (const row of rows.slice(0, 4)) lines.push(`- ${row.key}: ${formatScopeValue(row.before)} → ${formatScopeValue(row.after)}`);
+            if (rows.length > 4) lines.push(`- ... ${rows.length - 4} more`);
           };
           const lines = [
             '',
@@ -167,6 +174,7 @@ jobs:
             `- added warning rows: ${result.addedWarningRows.length}`,
             `- resolved warning rows: ${result.resolvedWarningRows.length}`,
           ];
+          pushScopeSample(result.scopeDeltas);
           pushSample('added issue sample', result.addedIssueRows);
           pushSample('resolved issue sample', result.resolvedIssueRows);
           pushSample('added warning sample', result.addedWarningRows);

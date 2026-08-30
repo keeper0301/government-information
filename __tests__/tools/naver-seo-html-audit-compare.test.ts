@@ -210,6 +210,10 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("Scope deltas:");
     expect(workflow).toContain("- resolved issue rows: ${result.resolvedIssueRows.length}");
     expect(workflow).toContain("- resolved warning rows: ${result.resolvedWarningRows.length}");
+    expect(workflow).toContain("pushScopeSample(result.scopeDeltas)");
+    expect(workflow).toContain("### audit scope changes");
+    expect(workflow).toContain("rows.slice(0, 4)");
+    expect(workflow).toContain("formatScopeValue(row.before)");
     expect(workflow).toContain("pushSample('added issue sample', result.addedIssueRows)");
     expect(workflow).toContain("pushSample('resolved issue sample', result.resolvedIssueRows)");
     expect(workflow).toContain("pushSample('added warning sample', result.addedWarningRows)");
