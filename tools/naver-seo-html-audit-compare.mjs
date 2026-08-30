@@ -135,6 +135,17 @@ function formatDelta(row) {
   return `${row.key}: ${row.before} → ${row.after} (${sign}${row.delta})`;
 }
 
+function formatRowSignals(row) {
+  return `${row.url}: ${(row.signals || []).join(', ')}`;
+}
+
+function printRowSignalSample(label, rows, limit = 5) {
+  if (rows.length === 0) return;
+  console.log(`${label}: ${rows.length}`);
+  for (const row of rows.slice(0, limit)) console.log(`- ${formatRowSignals(row)}`);
+  if (rows.length > limit) console.log(`- ... ${rows.length - limit} more`);
+}
+
 export function printCompareReport(result) {
   console.log(`Naver SEO HTML audit compare: ${result.before.urlCount} → ${result.after.urlCount} URLs`);
   if (result.issueDeltas.length === 0) console.log('Issues: no change');
@@ -151,10 +162,10 @@ export function printCompareReport(result) {
   if (result.urlDelta.removed.length > 0) console.log(`Removed URLs: ${result.urlDelta.removed.length}`);
   if (result.changedIssueRows.length > 0) console.log(`Changed issue rows: ${result.changedIssueRows.length}`);
   if (result.changedWarningRows.length > 0) console.log(`Changed warning rows: ${result.changedWarningRows.length}`);
-  if (result.addedIssueRows.length > 0) console.log(`Added issue rows: ${result.addedIssueRows.length}`);
-  if (result.resolvedIssueRows.length > 0) console.log(`Resolved issue rows: ${result.resolvedIssueRows.length}`);
-  if (result.addedWarningRows.length > 0) console.log(`Added warning rows: ${result.addedWarningRows.length}`);
-  if (result.resolvedWarningRows.length > 0) console.log(`Resolved warning rows: ${result.resolvedWarningRows.length}`);
+  printRowSignalSample('Added issue rows', result.addedIssueRows);
+  printRowSignalSample('Resolved issue rows', result.resolvedIssueRows);
+  printRowSignalSample('Added warning rows', result.addedWarningRows);
+  printRowSignalSample('Resolved warning rows', result.resolvedWarningRows);
   if (!result.hasHardRegression) console.log('OK: no hard SEO issue regression');
 }
 

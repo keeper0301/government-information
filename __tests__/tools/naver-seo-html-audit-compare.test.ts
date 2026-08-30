@@ -131,6 +131,8 @@ describe("naver-seo-html-audit-compare", () => {
     });
 
     expect(output).toContain("Warning deltas:");
+    expect(output).toContain("Added warning rows: 1");
+    expect(output).toContain("https://www.keepioo.com/: missing_canonical");
   });
 
   it("can fail only on warning increase when explicitly requested", () => {
