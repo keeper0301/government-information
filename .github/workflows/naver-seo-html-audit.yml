@@ -197,10 +197,15 @@ jobs:
               .filter((line) => /Naver SEO HTML audit:|Issues:|Warnings:|^- |^https:\/\//.test(line.trim()))
               .slice(0, 10)
               .join('\n') || 'audit log summary unavailable';
-            const compareSummary = compareLog
+            const compareLines = compareLog
               .split('\n')
-              .filter((line) => /Naver SEO HTML audit compare:|Issue deltas:|Warning deltas:|Added issue rows:|Resolved issue rows:|Added warning rows:|Resolved warning rows:|Changed issue rows:|Changed warning rows:|OK: no hard SEO issue regression|FAIL: hard SEO issue regression detected|WARN: warning signal increased|^- /.test(line.trim()))
-              .slice(0, 10)
+              .filter((line) => /Naver SEO HTML audit compare:|Issue deltas:|Warning deltas:|Added issue rows:|Resolved issue rows:|Added warning rows:|Resolved warning rows:|Changed issue rows:|Changed warning rows:|OK: no hard SEO issue regression|FAIL: hard SEO issue regression detected|WARN: warning signal increased|^- /.test(line.trim()));
+            const comparePriority = /^(FAIL:|WARN:)/;
+            const compareSummary = [
+              ...compareLines.filter((line) => comparePriority.test(line.trim())),
+              ...compareLines.filter((line) => !comparePriority.test(line.trim())),
+            ]
+              .slice(0, 14)
               .join('\n');
             const summary = [auditSummary, compareSummary].filter(Boolean).join('\n--- compare ---\n');
             const text = [

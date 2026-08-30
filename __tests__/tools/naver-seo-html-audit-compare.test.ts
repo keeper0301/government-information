@@ -168,6 +168,9 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("WARN: warning signal increased");
     expect(workflow).toContain("Resolved issue rows:");
     expect(workflow).toContain("Resolved warning rows:");
+    expect(workflow).toContain("const comparePriority = /^(FAIL:|WARN:)/");
+    expect(workflow).toContain("...compareLines.filter((line) => comparePriority.test(line.trim()))");
+    expect(workflow).toContain(".slice(0, 14)");
     expect(workflow).toContain("--- compare ---");
     expect(workflow.indexOf("--fail-on-regression")).toBeLessThan(workflow.indexOf("if [ \"$FAIL_ON_WARNING_INCREASE\" = \"true\" ]"));
   });
