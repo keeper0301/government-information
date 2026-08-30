@@ -1,12 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   analyzeHtml,
+  auditSite,
   findDuplicateValues,
   mergeAuditUrls,
   parseExtraUrls,
   parseSitemapUrls,
 } from "../../tools/naver-seo-html-audit.mjs";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("naver-seo-html-audit", () => {
   it("detects crawler-visible heading and image alt issues", () => {
@@ -136,5 +141,37 @@ describe("naver-seo-html-audit", () => {
       "https://www.keepioo.com/refund",
       "https://www.keepioo.com/welfare/example",
     ]);
+  });
+
+  it("keeps audit scope metadata in JSON artifacts", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/sitemap.xml")) {
+        return new Response(
+          `<?xml version="1.0"?><urlset><url><loc>https://www.keepioo.com/</loc></url><url><loc>https://www.keepioo.com/guides</loc></url></urlset>`,
+        );
+      }
+      return new Response(
+        `<!doctype html><html><head><title>정책알리미</title><meta name="description" content="정책알리미의 검색엔진 진단 테스트용으로 충분한 길이를 가진 설명 문장입니다." /><link rel="canonical" href="${url}" /></head><body><h1>정책알리미</h1></body></html>`,
+      );
+    });
+
+    const result = await auditSite({
+      site: "https://www.keepioo.com",
+      sitemap: "https://www.keepioo.com/sitemap.xml",
+      limit: 1,
+      extraUrls: ["https://www.keepioo.com/news"],
+      concurrency: 1,
+    });
+
+    expect(result).toMatchObject({
+      site: "https://www.keepioo.com",
+      sitemap: "https://www.keepioo.com/sitemap.xml",
+      limit: 1,
+      extraUrls: ["https://www.keepioo.com/news"],
+      urlCount: 2,
+      okCount: 2,
+    });
+    expect(result.rows.map((row) => row.url)).toEqual(["https://www.keepioo.com/", "https://www.keepioo.com/news"]);
   });
 });

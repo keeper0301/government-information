@@ -192,7 +192,10 @@ export async function auditSite(opts = {}) {
   if (duplicateDescriptions.length > 0) issueCounts.duplicate_description = duplicateDescriptions.reduce((sum, item) => sum + item.count, 0);
   return {
     checkedAt: new Date().toISOString(),
+    site: options.site,
     sitemap: options.sitemap,
+    limit: options.limit,
+    extraUrls: [...options.extraUrls],
     urlCount: urls.length,
     okCount: rows.filter((row) => row.ok).length,
     issueCounts,
