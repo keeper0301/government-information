@@ -1,0 +1,87 @@
+name: Naver SEO weekly report
+
+on:
+  schedule:
+    # 월요일 09:10 KST
+    - cron: "10 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Number of recent naver_seo_snapshots rows to read"
+        required: false
+        default: "8"
+      notify:
+        description: "Send weekly summary to Telegram when CRON_SECRET is configured"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  weekly-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SNAPSHOT_LIMIT: ${{ inputs.limit || '8' }}
+      SHOULD_NOTIFY: ${{ inputs.notify || 'true' }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v6
+
+      - name: Node 24 설치 + npm cache
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: 의존성 설치 (lockfile 기준)
+        run: npm ci
+
+      - name: 주간 SEO 리포트 생성
+        id: report
+        run: |
+          set -euo pipefail
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            {
+              echo "## Naver SEO weekly report"
+              echo ""
+              echo "Skipped: Supabase snapshot secrets are not configured."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo '{"status":"skipped","reason":"missing_supabase_env"}' > /tmp/naver-seo-weekly-report.json
+            echo 'Naver SEO weekly report skipped: missing Supabase env' > /tmp/naver-seo-weekly-summary.txt
+            printf '%s\n\n%s\n' '# Naver SEO trend dashboard' 'Skipped: Supabase snapshot secrets are not configured.' > /tmp/naver-seo-trend-dashboard.md
+            exit 0
+          fi
+
+          args=(--limit "$SNAPSHOT_LIMIT" --json-output /tmp/naver-seo-weekly-report.json --markdown-output /tmp/naver-seo-trend-dashboard.md --weekly-output /tmp/naver-seo-weekly-summary.txt)
+          if [ "$SHOULD_NOTIFY" = "true" ]; then
+            if [ -n "${CRON_SECRET:-}" ]; then
+              args+=(--notify)
+            else
+              echo "CRON_SECRET missing; weekly report will be generated without Telegram notify."
+            fi
+          fi
+
+          npm run diagnose:naver-seo:snapshots -- "${args[@]}"
+
+          {
+            echo "## Naver SEO weekly report"
+            echo ""
+            cat /tmp/naver-seo-weekly-summary.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 주간 SEO 리포트 artifact 업로드
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: naver-seo-weekly-report
+          retention-days: 7
+          path: |
+            /tmp/naver-seo-weekly-report.json
+            /tmp/naver-seo-trend-dashboard.md
+            /tmp/naver-seo-weekly-summary.txt
