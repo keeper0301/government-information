@@ -145,6 +145,13 @@ jobs:
           PREVIOUS_RUN_ID="$previous_run_id" node - <<'NODE'
           const fs = require('fs');
           const result = JSON.parse(fs.readFileSync('/tmp/naver-seo-html-audit-compare.json', 'utf8'));
+          const formatSignals = (row) => `${row.url} — ${(row.signals || []).join(', ')}`;
+          const pushSample = (label, rows) => {
+            if (!Array.isArray(rows) || rows.length === 0) return;
+            lines.push('', `### ${label}`);
+            for (const row of rows.slice(0, 3)) lines.push(`- ${formatSignals(row)}`);
+            if (rows.length > 3) lines.push(`- ... ${rows.length - 3} more`);
+          };
           const lines = [
             '',
             '## Naver SEO HTML audit compare',
@@ -155,8 +162,14 @@ jobs:
             `- issue deltas: ${result.issueDeltas.length}`,
             `- warning deltas: ${result.warningDeltas.length}`,
             `- added issue rows: ${result.addedIssueRows.length}`,
+            `- resolved issue rows: ${result.resolvedIssueRows.length}`,
             `- added warning rows: ${result.addedWarningRows.length}`,
+            `- resolved warning rows: ${result.resolvedWarningRows.length}`,
           ];
+          pushSample('added issue sample', result.addedIssueRows);
+          pushSample('resolved issue sample', result.resolvedIssueRows);
+          pushSample('added warning sample', result.addedWarningRows);
+          pushSample('resolved warning sample', result.resolvedWarningRows);
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
           warning_status=0

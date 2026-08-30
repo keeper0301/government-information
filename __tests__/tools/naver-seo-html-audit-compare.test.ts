@@ -172,8 +172,13 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("artifact regression 확인 필요");
     expect(workflow).toContain("FAIL: hard SEO issue regression detected");
     expect(workflow).toContain("WARN: warning signal increased");
-    expect(workflow).toContain("Resolved issue rows:");
-    expect(workflow).toContain("Resolved warning rows:");
+    expect(workflow).toContain("- resolved issue rows: ${result.resolvedIssueRows.length}");
+    expect(workflow).toContain("- resolved warning rows: ${result.resolvedWarningRows.length}");
+    expect(workflow).toContain("pushSample('added issue sample', result.addedIssueRows)");
+    expect(workflow).toContain("pushSample('resolved issue sample', result.resolvedIssueRows)");
+    expect(workflow).toContain("pushSample('added warning sample', result.addedWarningRows)");
+    expect(workflow).toContain("pushSample('resolved warning sample', result.resolvedWarningRows)");
+    expect(workflow).toContain("rows.slice(0, 3)");
     expect(workflow).toContain("const comparePriority = /^(FAIL:|WARN:)/");
     expect(workflow).toContain("...compareLines.filter((line) => comparePriority.test(line.trim()))");
     expect(workflow).toContain(".slice(0, 14)");
