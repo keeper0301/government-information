@@ -166,7 +166,9 @@ export function printCompareReport(result) {
   printRowSignalSample('Resolved issue rows', result.resolvedIssueRows);
   printRowSignalSample('Added warning rows', result.addedWarningRows);
   printRowSignalSample('Resolved warning rows', result.resolvedWarningRows);
-  if (!result.hasHardRegression) console.log('OK: no hard SEO issue regression');
+  if (result.hasHardRegression) console.log('FAIL: hard SEO issue regression detected');
+  else console.log('OK: no hard SEO issue regression');
+  if (result.hasWarningIncrease) console.log('WARN: warning signal increased');
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

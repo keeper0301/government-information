@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 import { compareAuditArtifacts } from "../../tools/naver-seo-html-audit-compare.mjs";
 
@@ -109,12 +109,15 @@ describe("naver-seo-html-audit-compare", () => {
     writeFileSync(before, JSON.stringify({ issueCounts: {}, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }] }));
     writeFileSync(after, JSON.stringify({ issueCounts: { short_description: 1 }, rows: [{ url: "https://www.keepioo.com/", issues: ["short_description"], warnings: [] }] }));
 
-    expect(() =>
-      execFileSync("node", ["tools/naver-seo-html-audit-compare.mjs", "--before", before, "--after", after, "--fail-on-regression"], {
-        cwd: process.cwd(),
-        stdio: "pipe",
-      }),
-    ).toThrow();
+    const result = spawnSync("node", ["tools/naver-seo-html-audit-compare.mjs", "--before", before, "--after", after, "--fail-on-regression"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("FAIL: hard SEO issue regression detected");
+    expect(result.stdout).toContain("Added issue rows: 1");
+    expect(result.stdout).toContain("https://www.keepioo.com/: short_description");
   });
 
   it("keeps warning-only increases non-fatal unless explicitly requested", () => {
@@ -133,6 +136,8 @@ describe("naver-seo-html-audit-compare", () => {
     expect(output).toContain("Warning deltas:");
     expect(output).toContain("Added warning rows: 1");
     expect(output).toContain("https://www.keepioo.com/: missing_canonical");
+    expect(output).toContain("OK: no hard SEO issue regression");
+    expect(output).toContain("WARN: warning signal increased");
   });
 
   it("can fail only on warning increase when explicitly requested", () => {
