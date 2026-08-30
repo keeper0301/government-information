@@ -195,6 +195,9 @@ describe("naver-seo-html-audit-compare", () => {
   it("wires the scheduled workflow to fail hard regressions while leaving warning drift optional", () => {
     const workflow = readFileSync(resolve(process.cwd(), ".github/workflows/naver-seo-html-audit.yml"), "utf8");
 
+    expect(workflow).toContain("Node 24 설치 + npm cache");
+    expect(workflow).toContain('node-version: "24"');
+    expect(workflow).not.toContain('node-version: "20"');
     expect(workflow).toContain("- site: ${result.site || 'unknown'}");
     expect(workflow).toContain("- sitemap: ${result.sitemap || 'unknown'}");
     expect(workflow).toContain("- limit: ${result.limit ?? 'unknown'}");
