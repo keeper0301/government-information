@@ -221,11 +221,18 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
 
+          function redactSecrets(text) {
+            return String(text || '')
+              .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/=-]{12,}/gi, '$1 [REDACTED]')
+              .replace(new RegExp('\\b(' + 'Author' + 'ization:' + '\\s*)[^\\n\\r]+', 'gi'), '$1[REDACTED]')
+              .replace(/\b([A-Za-z0-9_.-]*(?:token|secret|password|passwd|api[_-]?key|client[_-]?secret)[A-Za-z0-9_.-]*=)([^\s&]+)/gi, '$1[REDACTED]');
+          }
+
           async function main() {
             let log = '';
-            try { log = fs.readFileSync('/tmp/naver-seo-html-audit.log', 'utf8'); } catch {}
+            try { log = redactSecrets(fs.readFileSync('/tmp/naver-seo-html-audit.log', 'utf8')); } catch {}
             let compareLog = '';
-            try { compareLog = fs.readFileSync('/tmp/naver-seo-html-audit-compare.log', 'utf8'); } catch {}
+            try { compareLog = redactSecrets(fs.readFileSync('/tmp/naver-seo-html-audit-compare.log', 'utf8')); } catch {}
             const auditSummary = log
               .split('\n')
               .filter((line) => /Naver SEO HTML audit:|Issues:|Warnings:|^- |^https:\/\//.test(line.trim()))

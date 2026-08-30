@@ -202,6 +202,12 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("--fail-on-warning-increase 2>&1 | tee -a /tmp/naver-seo-html-audit-compare.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit-compare.log");
+    expect(workflow).toContain("function redactSecrets(text)");
+    expect(workflow).toContain("Bearer)\\s+[A-Za-z0-9._~+/=-]{12,}");
+    expect(workflow).toContain("'Author' + 'ization:'");
+    expect(workflow).toContain("[REDACTED]");
+    expect(workflow).toContain("log = redactSecrets(fs.readFileSync('/tmp/naver-seo-html-audit.log', 'utf8'))");
+    expect(workflow).toContain("compareLog = redactSecrets(fs.readFileSync('/tmp/naver-seo-html-audit-compare.log', 'utf8'))");
     expect(workflow).toContain("artifact regression 확인 필요");
     expect(workflow).toContain("FAIL: hard SEO issue regression detected");
     expect(workflow).toContain("WARN: warning signal increased");
