@@ -138,7 +138,10 @@ jobs:
             echo "이전 artifact에 JSON 파일이 없어 비교를 건너뜁니다." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --json > /tmp/naver-seo-html-audit-compare.json
+          set +e
+          node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --json-output /tmp/naver-seo-html-audit-compare.json --fail-on-regression 2>&1 | tee /tmp/naver-seo-html-audit-compare.log
+          hard_status=${PIPESTATUS[0]}
+          set -e
           PREVIOUS_RUN_ID="$previous_run_id" node - <<'NODE'
           const fs = require('fs');
           const result = JSON.parse(fs.readFileSync('/tmp/naver-seo-html-audit-compare.json', 'utf8'));
@@ -156,9 +159,18 @@ jobs:
           ];
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
-          node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-regression 2>&1 | tee /tmp/naver-seo-html-audit-compare.log
+          warning_status=0
           if [ "$FAIL_ON_WARNING_INCREASE" = "true" ]; then
+            set +e
             node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-warning-increase 2>&1 | tee -a /tmp/naver-seo-html-audit-compare.log
+            warning_status=${PIPESTATUS[0]}
+            set -e
+          fi
+          if [ "$hard_status" -ne 0 ]; then
+            exit "$hard_status"
+          fi
+          if [ "$warning_status" -ne 0 ]; then
+            exit "$warning_status"
           fi
 
       - name: audit JSON artifact 업로드
