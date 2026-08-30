@@ -156,6 +156,7 @@ jobs:
           ];
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
           NODE
+          node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-regression
           if [ "$FAIL_ON_WARNING_INCREASE" = "true" ]; then
             node tools/naver-seo-html-audit-compare.mjs --before "$previous_json" --after /tmp/naver-seo-html-audit.json --fail-on-warning-increase
           fi

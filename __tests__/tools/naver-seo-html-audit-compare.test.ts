@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { compareAuditArtifacts } from "../../tools/naver-seo-html-audit-compare.mjs";
@@ -102,6 +102,37 @@ describe("naver-seo-html-audit-compare", () => {
     expect(result.hasHardRegression).toBe(true);
   });
 
+  it("fails on hard regressions when the regression gate is enabled", () => {
+    const dir = mkdtempSync(join(tmpdir(), "naver-seo-compare-"));
+    const before = join(dir, "before.json");
+    const after = join(dir, "after.json");
+    writeFileSync(before, JSON.stringify({ issueCounts: {}, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }] }));
+    writeFileSync(after, JSON.stringify({ issueCounts: { short_description: 1 }, rows: [{ url: "https://www.keepioo.com/", issues: ["short_description"], warnings: [] }] }));
+
+    expect(() =>
+      execFileSync("node", ["tools/naver-seo-html-audit-compare.mjs", "--before", before, "--after", after, "--fail-on-regression"], {
+        cwd: process.cwd(),
+        stdio: "pipe",
+      }),
+    ).toThrow();
+  });
+
+  it("keeps warning-only increases non-fatal unless explicitly requested", () => {
+    const dir = mkdtempSync(join(tmpdir(), "naver-seo-compare-"));
+    const before = join(dir, "before.json");
+    const after = join(dir, "after.json");
+    writeFileSync(before, JSON.stringify({ warningCounts: {}, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }] }));
+    writeFileSync(after, JSON.stringify({ warningCounts: { missing_canonical: 1 }, rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: ["missing_canonical"] }] }));
+
+    const output = execFileSync("node", ["tools/naver-seo-html-audit-compare.mjs", "--before", before, "--after", after, "--fail-on-regression"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+
+    expect(output).toContain("Warning deltas:");
+  });
+
   it("can fail only on warning increase when explicitly requested", () => {
     const dir = mkdtempSync(join(tmpdir(), "naver-seo-compare-"));
     const before = join(dir, "before.json");
@@ -115,5 +146,14 @@ describe("naver-seo-html-audit-compare", () => {
         stdio: "pipe",
       }),
     ).toThrow();
+  });
+
+  it("wires the scheduled workflow to fail hard regressions while leaving warning drift optional", () => {
+    const workflow = readFileSync(resolve(process.cwd(), ".github/workflows/naver-seo-html-audit.yml"), "utf8");
+
+    expect(workflow).toContain("--fail-on-regression");
+    expect(workflow).toContain("FAIL_ON_WARNING_INCREASE");
+    expect(workflow).toContain("--fail-on-warning-increase");
+    expect(workflow.indexOf("--fail-on-regression")).toBeLessThan(workflow.indexOf("if [ \"$FAIL_ON_WARNING_INCREASE\" = \"true\" ]"));
   });
 });
