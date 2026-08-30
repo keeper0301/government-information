@@ -164,6 +164,10 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("/tmp/naver-seo-html-audit.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit-compare.log");
     expect(workflow).toContain("artifact regression 확인 필요");
+    expect(workflow).toContain("FAIL: hard SEO issue regression detected");
+    expect(workflow).toContain("WARN: warning signal increased");
+    expect(workflow).toContain("Resolved issue rows:");
+    expect(workflow).toContain("Resolved warning rows:");
     expect(workflow).toContain("--- compare ---");
     expect(workflow.indexOf("--fail-on-regression")).toBeLessThan(workflow.indexOf("if [ \"$FAIL_ON_WARNING_INCREASE\" = \"true\" ]"));
   });
