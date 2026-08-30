@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   analyzeHtml,
   auditSite,
+  extractMatchingLinks,
   findDuplicateValues,
   mergeAuditUrls,
   parseExtraUrls,
@@ -143,6 +144,31 @@ describe("naver-seo-html-audit", () => {
     ]);
   });
 
+  it("extracts same-origin links matching configured patterns", () => {
+    expect(
+      extractMatchingLinks(
+        `<a href="/welfare/a#details">A</a><a href="https://evil.example/welfare/b">B</a><a href="/loan/region/seoul">C</a><a href="/help">D</a>`,
+        "https://www.keepioo.com/welfare",
+        ["/welfare/", "/loan/region/"],
+      ),
+    ).toEqual(["https://www.keepioo.com/welfare/a", "https://www.keepioo.com/loan/region/seoul"]);
+  });
+
+  it("adds discovered URLs after sitemap and manual extras", () => {
+    expect(
+      mergeAuditUrls(
+        ["https://www.keepioo.com/", "https://www.keepioo.com/guides"],
+        ["https://www.keepioo.com/news"],
+        1,
+        ["https://www.keepioo.com/welfare/example", "https://www.keepioo.com/news"],
+      ),
+    ).toEqual([
+      "https://www.keepioo.com/",
+      "https://www.keepioo.com/news",
+      "https://www.keepioo.com/welfare/example",
+    ]);
+  });
+
   it("keeps audit scope metadata in JSON artifacts", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
@@ -150,6 +176,9 @@ describe("naver-seo-html-audit", () => {
         return new Response(
           `<?xml version="1.0"?><urlset><url><loc>https://www.keepioo.com/</loc></url><url><loc>https://www.keepioo.com/guides</loc></url></urlset>`,
         );
+      }
+      if (url.endsWith("/welfare")) {
+        return new Response(`<a href="/welfare/discovered">정책</a><a href="/help">도움말</a>`);
       }
       return new Response(
         `<!doctype html><html><head><title>정책알리미</title><meta name="description" content="정책알리미의 검색엔진 진단 테스트용으로 충분한 길이를 가진 설명 문장입니다." /><link rel="canonical" href="${url}" /></head><body><h1>정책알리미</h1></body></html>`,
@@ -161,6 +190,9 @@ describe("naver-seo-html-audit", () => {
       sitemap: "https://www.keepioo.com/sitemap.xml",
       limit: 1,
       extraUrls: ["https://www.keepioo.com/news"],
+      discoverLinksFrom: ["https://www.keepioo.com/welfare"],
+      discoverLinkPatterns: ["/welfare/"],
+      discoverLimit: 2,
       concurrency: 1,
     });
 
@@ -169,9 +201,17 @@ describe("naver-seo-html-audit", () => {
       sitemap: "https://www.keepioo.com/sitemap.xml",
       limit: 1,
       extraUrls: ["https://www.keepioo.com/news"],
-      urlCount: 2,
-      okCount: 2,
+      discoverLinksFrom: ["https://www.keepioo.com/welfare"],
+      discoverLinkPatterns: ["/welfare/"],
+      discoverLimit: 2,
+      discoveredUrls: ["https://www.keepioo.com/welfare/discovered"],
+      urlCount: 3,
+      okCount: 3,
     });
-    expect(result.rows.map((row) => row.url)).toEqual(["https://www.keepioo.com/", "https://www.keepioo.com/news"]);
+    expect(result.rows.map((row) => row.url)).toEqual([
+      "https://www.keepioo.com/",
+      "https://www.keepioo.com/news",
+      "https://www.keepioo.com/welfare/discovered",
+    ]);
   });
 });

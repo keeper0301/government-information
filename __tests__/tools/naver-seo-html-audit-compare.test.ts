@@ -109,6 +109,10 @@ describe("naver-seo-html-audit-compare", () => {
         sitemap: "https://www.keepioo.com/sitemap.xml",
         limit: 32,
         extraUrls: ["https://www.keepioo.com/news"],
+        discoverLinksFrom: ["https://www.keepioo.com/welfare"],
+        discoverLinkPatterns: ["/welfare/"],
+        discoverLimit: 2,
+        discoveredUrls: ["https://www.keepioo.com/welfare/old"],
         issueCounts: {},
         warningCounts: {},
         rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }],
@@ -118,6 +122,10 @@ describe("naver-seo-html-audit-compare", () => {
         sitemap: "https://www.keepioo.com/sitemap.xml",
         limit: 64,
         extraUrls: ["https://www.keepioo.com/news", "https://www.keepioo.com/loan/region/daegu"],
+        discoverLinksFrom: ["https://www.keepioo.com/welfare", "https://www.keepioo.com/loan/region/seoul"],
+        discoverLinkPatterns: ["/loan/region/", "/welfare/"],
+        discoverLimit: 4,
+        discoveredUrls: ["https://www.keepioo.com/welfare/new"],
         issueCounts: {},
         warningCounts: {},
         rows: [{ url: "https://www.keepioo.com/", issues: [], warnings: [] }],
@@ -130,6 +138,22 @@ describe("naver-seo-html-audit-compare", () => {
         key: "extraUrls",
         before: ["https://www.keepioo.com/news"],
         after: ["https://www.keepioo.com/loan/region/daegu", "https://www.keepioo.com/news"],
+      },
+      {
+        key: "discoverLinksFrom",
+        before: ["https://www.keepioo.com/welfare"],
+        after: ["https://www.keepioo.com/loan/region/seoul", "https://www.keepioo.com/welfare"],
+      },
+      {
+        key: "discoverLinkPatterns",
+        before: ["/welfare/"],
+        after: ["/loan/region/", "/welfare/"],
+      },
+      { key: "discoverLimit", before: "2", after: "4" },
+      {
+        key: "discoveredUrls",
+        before: ["https://www.keepioo.com/welfare/old"],
+        after: ["https://www.keepioo.com/welfare/new"],
       },
     ]);
     expect(result.hasHardRegression).toBe(false);
@@ -202,6 +226,11 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("- sitemap: ${result.sitemap || 'unknown'}");
     expect(workflow).toContain("- limit: ${result.limit ?? 'unknown'}");
     expect(workflow).toContain("- extra URLs: ${extraUrls.length}");
+    expect(workflow).toContain("- discovered URLs: ${discoveredUrls.length}");
+    expect(workflow).toContain("DISCOVER_LINKS_FROM");
+    expect(workflow).toContain("--discover-links-from");
+    expect(workflow).toContain("--discover-link-patterns");
+    expect(workflow).toContain("--discover-limit");
     expect(workflow).toContain("--json-output /tmp/naver-seo-html-audit-compare.json --fail-on-regression 2>&1 | tee /tmp/naver-seo-html-audit-compare.log");
     expect(workflow).toContain("hard_status=${PIPESTATUS[0]}");
     expect(workflow).toContain("warning_status=${PIPESTATUS[0]}");
@@ -215,6 +244,9 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("/tmp/naver-seo-html-audit-run.json");
     expect(workflow).toContain("previousRunId: readText('/tmp/naver-seo-html-audit-previous-run-id') || null");
     expect(workflow).toContain("extraUrlCount: Array.isArray(audit.extraUrls) ? audit.extraUrls.length : 0");
+    expect(workflow).toContain("discoveredUrlCount: Array.isArray(audit.discoveredUrls) ? audit.discoveredUrls.length : 0");
+    expect(workflow).toContain("discoverLinksFrom: audit.discoverLinksFrom || []");
+    expect(workflow).toContain("discoverLinkPatterns: audit.discoverLinkPatterns || []");
     expect(workflow).toContain("scopeDeltas: Array.isArray(compare.scopeDeltas) ? compare.scopeDeltas.length : 0");
     expect(workflow).toContain("retention-days: 7");
     expect(workflow).toContain("function redactSecrets(text)");
@@ -223,6 +255,7 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("[REDACTED]");
     expect(workflow).toContain("log = redactSecrets(fs.readFileSync('/tmp/naver-seo-html-audit.log', 'utf8'))");
     expect(workflow).toContain("compareLog = redactSecrets(fs.readFileSync('/tmp/naver-seo-html-audit-compare.log', 'utf8'))");
+    expect(workflow).toContain("Discovered URLs:");
     expect(workflow).toContain("artifact regression 확인 필요");
     expect(workflow).toContain("FAIL: hard SEO issue regression detected");
     expect(workflow).toContain("WARN: warning signal increased");

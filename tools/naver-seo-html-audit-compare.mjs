@@ -50,6 +50,10 @@ function compareAuditScope(beforeArtifact, afterArtifact) {
     compareScalarScope('sitemap', beforeArtifact?.sitemap, afterArtifact?.sitemap),
     compareScalarScope('limit', beforeArtifact?.limit, afterArtifact?.limit),
     compareListScope('extraUrls', beforeArtifact?.extraUrls, afterArtifact?.extraUrls),
+    compareListScope('discoverLinksFrom', beforeArtifact?.discoverLinksFrom, afterArtifact?.discoverLinksFrom),
+    compareListScope('discoverLinkPatterns', beforeArtifact?.discoverLinkPatterns, afterArtifact?.discoverLinkPatterns),
+    compareScalarScope('discoverLimit', beforeArtifact?.discoverLimit, afterArtifact?.discoverLimit),
+    compareListScope('discoveredUrls', beforeArtifact?.discoveredUrls, afterArtifact?.discoveredUrls),
   ].filter(Boolean);
 }
 

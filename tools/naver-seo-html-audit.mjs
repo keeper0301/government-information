@@ -89,15 +89,43 @@ export function parseExtraUrls(value) {
     .filter(Boolean);
 }
 
+export const parseUrlList = parseExtraUrls;
+
+export function matchesAnyPattern(url, patterns = []) {
+  if (patterns.length === 0) return true;
+  return patterns.some((pattern) => url.includes(pattern));
+}
+
+export function extractMatchingLinks(html, pageUrl, patterns = []) {
+  const $ = cheerio.load(html ?? '');
+  const origin = new URL(pageUrl).origin;
+  const links = $('a[href]')
+    .map((_, el) => $(el).attr('href'))
+    .get()
+    .map((href) => {
+      try {
+        return new URL(href, pageUrl).toString();
+      } catch {
+        return '';
+      }
+    })
+    .filter((url) => url.startsWith(origin))
+    .map((url) => url.split('#')[0])
+    .filter((url) => matchesAnyPattern(url, patterns));
+  return [...new Set(links)];
+}
+
 /**
  * @param {string[]} sitemapUrls
  * @param {string[]} extraUrls
  * @param {number | null} limit
+ * @param {string[]} discoveredUrls
  */
-export function mergeAuditUrls(sitemapUrls, extraUrls = [], limit = null) {
+export function mergeAuditUrls(sitemapUrls, extraUrls = [], limit = null, discoveredUrls = []) {
   const normalizedExtras = extraUrls.map((url) => normalizeText(url)).filter(Boolean);
+  const normalizedDiscovered = discoveredUrls.map((url) => normalizeText(url)).filter(Boolean);
   const limitedSitemapUrls = sitemapUrls.slice(0, limit ?? undefined);
-  return [...new Set([...limitedSitemapUrls, ...normalizedExtras])];
+  return [...new Set([...limitedSitemapUrls, ...normalizedExtras, ...normalizedDiscovered])];
 }
 
 function parseArgs(argv) {
@@ -105,6 +133,9 @@ function parseArgs(argv) {
     site: DEFAULT_SITE,
     sitemap: null,
     extraUrls: [],
+    discoverLinksFrom: [],
+    discoverLinkPatterns: [],
+    discoverLimit: 12,
     limit: null,
     timeoutMs: DEFAULT_TIMEOUT_MS,
     concurrency: DEFAULT_CONCURRENCY,
@@ -118,6 +149,10 @@ function parseArgs(argv) {
     else if (arg === '--sitemap') opts.sitemap = argv[++i] ?? opts.sitemap;
     else if (arg === '--extra-url') opts.extraUrls.push(argv[++i] ?? '');
     else if (arg === '--extra-urls') opts.extraUrls.push(...parseExtraUrls(argv[++i] ?? ''));
+    else if (arg === '--discover-links-from') opts.discoverLinksFrom.push(...parseUrlList(argv[++i] ?? ''));
+    else if (arg === '--discover-link-pattern') opts.discoverLinkPatterns.push(argv[++i] ?? '');
+    else if (arg === '--discover-link-patterns') opts.discoverLinkPatterns.push(...parseUrlList(argv[++i] ?? ''));
+    else if (arg === '--discover-limit') opts.discoverLimit = Number(argv[++i]);
     else if (arg === '--limit') opts.limit = Number(argv[++i]);
     else if (arg === '--timeout-ms') opts.timeoutMs = Number(argv[++i]);
     else if (arg === '--concurrency') opts.concurrency = Number(argv[++i]);
@@ -125,7 +160,7 @@ function parseArgs(argv) {
     else if (arg === '--json-output') opts.jsonOutput = argv[++i] ?? opts.jsonOutput;
     else if (arg === '--fail-on-issues') opts.failOnIssues = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log('Usage: node tools/naver-seo-html-audit.mjs [--site URL] [--sitemap URL] [--limit N] [--extra-url URL] [--extra-urls URLS] [--json] [--json-output PATH] [--fail-on-issues]');
+      console.log('Usage: node tools/naver-seo-html-audit.mjs [--site URL] [--sitemap URL] [--limit N] [--extra-url URL] [--extra-urls URLS] [--discover-links-from URLS] [--discover-link-pattern PATTERN] [--discover-link-patterns PATTERNS] [--discover-limit N] [--json] [--json-output PATH] [--fail-on-issues]');
       process.exit(0);
     }
   }
@@ -133,6 +168,7 @@ function parseArgs(argv) {
   opts.concurrency = Number.isFinite(opts.concurrency) && opts.concurrency > 0 ? Math.floor(opts.concurrency) : DEFAULT_CONCURRENCY;
   opts.timeoutMs = Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0 ? Math.floor(opts.timeoutMs) : DEFAULT_TIMEOUT_MS;
   if (!Number.isFinite(opts.limit) || opts.limit <= 0) opts.limit = null;
+  opts.discoverLimit = Number.isFinite(opts.discoverLimit) && opts.discoverLimit > 0 ? Math.floor(opts.discoverLimit) : 0;
   return opts;
 }
 
@@ -166,10 +202,35 @@ async function mapLimit(items, concurrency, mapper) {
   return results;
 }
 
+async function discoverLinksFromPages(seedUrls = [], patterns = [], limit = 0, timeoutMs = DEFAULT_TIMEOUT_MS, concurrency = DEFAULT_CONCURRENCY) {
+  if (seedUrls.length === 0 || limit <= 0) return [];
+  const discovered = [];
+  await mapLimit(seedUrls, concurrency, async (seedUrl) => {
+    if (discovered.length >= limit) return;
+    try {
+      const html = await fetchText(seedUrl, timeoutMs);
+      for (const url of extractMatchingLinks(html, seedUrl, patterns)) {
+        if (discovered.length >= limit) break;
+        if (!discovered.includes(url)) discovered.push(url);
+      }
+    } catch {
+      // Link discovery is coverage expansion only. Do not fail the main audit because a seed page is temporarily unavailable.
+    }
+  });
+  return discovered;
+}
+
 export async function auditSite(opts = {}) {
   const options = { ...parseArgs([]), ...opts };
   const sitemapXml = await fetchText(options.sitemap, options.timeoutMs);
-  const urls = mergeAuditUrls(parseSitemapUrls(sitemapXml), options.extraUrls, options.limit);
+  const discoveredUrls = await discoverLinksFromPages(
+    options.discoverLinksFrom,
+    options.discoverLinkPatterns,
+    options.discoverLimit,
+    options.timeoutMs,
+    options.concurrency,
+  );
+  const urls = mergeAuditUrls(parseSitemapUrls(sitemapXml), options.extraUrls, options.limit, discoveredUrls);
   const rows = await mapLimit(urls, options.concurrency, async (url) => {
     try {
       const html = await fetchText(url, options.timeoutMs);
@@ -196,6 +257,10 @@ export async function auditSite(opts = {}) {
     sitemap: options.sitemap,
     limit: options.limit,
     extraUrls: [...options.extraUrls],
+    discoverLinksFrom: [...options.discoverLinksFrom],
+    discoverLinkPatterns: [...options.discoverLinkPatterns],
+    discoverLimit: options.discoverLimit,
+    discoveredUrls,
     urlCount: urls.length,
     okCount: rows.filter((row) => row.ok).length,
     issueCounts,
@@ -210,6 +275,7 @@ export async function auditSite(opts = {}) {
 
 function printTextReport(result) {
   console.log(`Naver SEO HTML audit: ${result.okCount}/${result.urlCount} URLs fetched`);
+  if ((result.discoveredUrls || []).length > 0) console.log(`Discovered URLs: ${result.discoveredUrls.length}`);
   const issueEntries = Object.entries(result.issueCounts).sort((a, b) => b[1] - a[1]);
   if (issueEntries.length === 0) {
     console.log('OK: no crawler-visible title/description/H1/img-alt issues in sitemap sample');

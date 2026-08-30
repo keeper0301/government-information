@@ -34,6 +34,18 @@ on:
         description: "Additional URLs outside sitemap sample, newline or comma separated"
         required: false
         default: "https://www.keepioo.com/welfare/31d7f2a9-4da2-44b3-8728-9510fe097545,https://www.keepioo.com/loan/region/daegu,https://www.keepioo.com/news"
+      discover_links_from:
+        description: "Seed pages for automatic extra URL discovery, newline or comma separated"
+        required: false
+        default: "https://www.keepioo.com/welfare,https://www.keepioo.com/loan/region/seoul,https://www.keepioo.com/news"
+      discover_link_patterns:
+        description: "Only add discovered links containing one of these patterns"
+        required: false
+        default: "/welfare/,/loan/region/,/news"
+      discover_limit:
+        description: "Maximum automatically discovered URLs to add"
+        required: false
+        default: "12"
 
 permissions:
   contents: read
@@ -63,11 +75,23 @@ jobs:
           LIMIT: ${{ inputs.limit || '32' }}
           FAIL_ON_ISSUES: ${{ inputs.fail_on_issues || 'true' }}
           EXTRA_URLS: ${{ inputs.extra_urls || 'https://www.keepioo.com/welfare/31d7f2a9-4da2-44b3-8728-9510fe097545,https://www.keepioo.com/loan/region/daegu,https://www.keepioo.com/news' }}
+          DISCOVER_LINKS_FROM: ${{ inputs.discover_links_from || 'https://www.keepioo.com/welfare,https://www.keepioo.com/loan/region/seoul,https://www.keepioo.com/news' }}
+          DISCOVER_LINK_PATTERNS: ${{ inputs.discover_link_patterns || '/welfare/,/loan/region/,/news' }}
+          DISCOVER_LIMIT: ${{ inputs.discover_limit || '12' }}
         run: |
           set -euo pipefail
           args=(--site "$SITE" --limit "$LIMIT")
           if [ -n "${EXTRA_URLS:-}" ]; then
             args+=(--extra-urls "$EXTRA_URLS")
+          fi
+          if [ -n "${DISCOVER_LINKS_FROM:-}" ]; then
+            args+=(--discover-links-from "$DISCOVER_LINKS_FROM")
+          fi
+          if [ -n "${DISCOVER_LINK_PATTERNS:-}" ]; then
+            args+=(--discover-link-patterns "$DISCOVER_LINK_PATTERNS")
+          fi
+          if [ -n "${DISCOVER_LIMIT:-}" ]; then
+            args+=(--discover-limit "$DISCOVER_LIMIT")
           fi
           if [ "$FAIL_ON_ISSUES" = "true" ]; then
             args+=(--fail-on-issues)
@@ -88,6 +112,7 @@ jobs:
           const issueEntries = Object.entries(result.issueCounts || {}).sort((a, b) => b[1] - a[1]);
           const warningEntries = Object.entries(result.warningCounts || {}).sort((a, b) => b[1] - a[1]);
           const extraUrls = Array.isArray(result.extraUrls) ? result.extraUrls : [];
+          const discoveredUrls = Array.isArray(result.discoveredUrls) ? result.discoveredUrls : [];
           const lines = [
             '## Naver SEO HTML audit',
             '',
@@ -95,6 +120,7 @@ jobs:
             `- sitemap: ${result.sitemap || 'unknown'}`,
             `- limit: ${result.limit ?? 'unknown'}`,
             `- extra URLs: ${extraUrls.length}`,
+            `- discovered URLs: ${discoveredUrls.length}`,
             `- checked: ${result.okCount}/${result.urlCount}`,
             `- issues: ${issueEntries.length === 0 ? '0' : issueEntries.map(([key, count]) => `${key} ${count}`).join(', ')}`,
             `- warnings: ${warningEntries.length === 0 ? '0' : warningEntries.map(([key, count]) => `${key} ${count}`).join(', ')}`,
@@ -232,6 +258,9 @@ jobs:
               sitemap: audit.sitemap || null,
               limit: audit.limit ?? null,
               extraUrlCount: Array.isArray(audit.extraUrls) ? audit.extraUrls.length : 0,
+              discoveredUrlCount: Array.isArray(audit.discoveredUrls) ? audit.discoveredUrls.length : 0,
+              discoverLinksFrom: audit.discoverLinksFrom || [],
+              discoverLinkPatterns: audit.discoverLinkPatterns || [],
               checked: `${audit.okCount}/${audit.urlCount}`,
               issueCounts: audit.issueCounts || {},
               warningCounts: audit.warningCounts || {},
@@ -291,7 +320,7 @@ jobs:
             try { compareLog = redactSecrets(fs.readFileSync('/tmp/naver-seo-html-audit-compare.log', 'utf8')); } catch {}
             const auditSummary = log
               .split('\n')
-              .filter((line) => /Naver SEO HTML audit:|Issues:|Warnings:|^- |^https:\/\//.test(line.trim()))
+              .filter((line) => /Naver SEO HTML audit:|Discovered URLs:|Issues:|Warnings:|^- |^https:\/\//.test(line.trim()))
               .slice(0, 10)
               .join('\n') || 'audit log summary unavailable';
             const compareLines = compareLog
