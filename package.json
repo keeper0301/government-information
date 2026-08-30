@@ -20,6 +20,7 @@
     "diagnose:naver-seo-html": "node tools/naver-seo-html-audit.mjs",
     "diagnose:naver-seo-html:compare": "node tools/naver-seo-html-audit-compare.mjs",
     "diagnose:naver-seo:trends": "node tools/naver-seo/trends.mjs",
+    "diagnose:naver-seo:snapshots": "node tools/naver-seo/snapshots.mjs",
     "readback:auth": "node tools/keepioo-authenticated-readback.mjs",
     "region:backfill:jeonnam-gwangju": "node tools/backfill-jeonnam-gwangju-region-tags.mjs",
     "agent:resident": "node tools/agent-resident-server.mjs",
