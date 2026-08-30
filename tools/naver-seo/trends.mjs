@@ -108,6 +108,24 @@ function buildTrendPoints(snapshots) {
   }));
 }
 
+function buildActionItems(metrics, lowCtrPages, freshKeywords) {
+  const items = [];
+  if ((metrics.seoIssueDelta ?? 0) > 0) {
+    items.push(`SEO 진단 이슈가 ${metrics.seoIssueDelta}건 늘었습니다. Search Advisor 진단 상세를 먼저 확인하세요.`);
+  }
+  if ((metrics.impressionsDelta ?? 0) > 0 && (metrics.clicksDelta ?? 0) <= 0) {
+    items.push("노출은 늘었는데 클릭이 따라오지 않습니다. 제목/description/상단 CTA를 우선 점검하세요.");
+  }
+  for (const page of lowCtrPages.slice(0, 2)) {
+    items.push(`${page.path} CTR ${page.ctr ?? "n/a"}%입니다. 검색 intent에 맞게 title/description을 다시 써볼 후보입니다.`);
+  }
+  if (freshKeywords.length > 0) {
+    items.push(`새 키워드 ${freshKeywords.slice(0, 3).map((keyword) => keyword.label).join(", ")} 관련 랜딩/콘텐츠를 확인하세요.`);
+  }
+  if (items.length === 0) items.push("이번 주는 급한 SEO 조치 없음. 색인·노출 추세만 계속 관찰하면 됩니다.");
+  return items.slice(0, 5);
+}
+
 export function buildNaverSeoTrendDashboard(inputSnapshots, today = new Date().toISOString().slice(0, 10)) {
   const snapshots = sortSnapshots(inputSnapshots.map(normalizeSnapshot)).filter((snapshot) => snapshot.collectedAt);
   if (snapshots.length === 0) {
@@ -139,6 +157,9 @@ export function buildNaverSeoTrendDashboard(inputSnapshots, today = new Date().t
     seoIssueDelta: delta(current.seoIssueTotal, previous?.seoIssueTotal),
   };
 
+  const lowCtrPages = buildLowCtrPages(current);
+  const freshKeywords = buildFreshKeywords(current, previous);
+
   return {
     generatedAt: today,
     snapshotCount: snapshots.length,
@@ -147,8 +168,9 @@ export function buildNaverSeoTrendDashboard(inputSnapshots, today = new Date().t
     previousAt: previous?.collectedAt ?? null,
     metrics,
     seoIssues: current.seoIssues,
-    lowCtrPages: buildLowCtrPages(current),
-    freshKeywords: buildFreshKeywords(current, previous),
+    lowCtrPages,
+    freshKeywords,
+    actionItems: buildActionItems(metrics, lowCtrPages, freshKeywords),
     trendPoints: buildTrendPoints(snapshots),
   };
 }
@@ -195,16 +217,40 @@ export function renderNaverSeoTrendMarkdown(dashboard) {
   return `${lines.join("\n")}\n`;
 }
 
+export function renderNaverSeoWeeklySummary(dashboard) {
+  if (dashboard.status === "empty") return "네이버 SEO 주간 요약\n\n스냅샷 데이터가 아직 없습니다.";
+  const m = dashboard.metrics;
+  const lines = [
+    `네이버 SEO 주간 요약 (${dashboard.generatedAt})`,
+    "",
+    `색인 ${formatNumber(m.indexedCount)} (${formatDelta(m.indexedDelta)}) · 노출 ${formatNumber(m.totalImpressions)} (${formatDelta(m.impressionsDelta)}) · 클릭 ${formatNumber(m.totalClicks)} (${formatDelta(m.clicksDelta)})`,
+    `CTR ${m.avgCtr ?? "n/a"}% (${formatDelta(m.avgCtrDelta, "%p")}) · SEO 이슈 ${formatNumber(m.seoIssueTotal)} (${formatDelta(m.seoIssueDelta)})`,
+    "",
+    "이번 주 볼 것",
+  ];
+  for (const item of dashboard.actionItems ?? []) lines.push(`- ${item}`);
+  if (dashboard.lowCtrPages.length > 0) {
+    lines.push("", "저CTR 우선 후보");
+    for (const page of dashboard.lowCtrPages.slice(0, 3)) lines.push(`- ${page.path} · 노출 ${formatNumber(page.impression)} · CTR ${page.ctr ?? "n/a"}%`);
+  }
+  if (dashboard.freshKeywords.length > 0) {
+    lines.push("", `새 키워드: ${dashboard.freshKeywords.slice(0, 5).map((keyword) => keyword.label).join(", ")}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 function parseArgs(argv) {
-  const opts = { input: null, jsonOutput: null, markdownOutput: null, json: false };
+  const opts = { input: null, jsonOutput: null, markdownOutput: null, weeklyOutput: null, json: false, weekly: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--input") opts.input = argv[++i] ?? null;
     else if (arg === "--json-output") opts.jsonOutput = argv[++i] ?? null;
     else if (arg === "--markdown-output") opts.markdownOutput = argv[++i] ?? null;
+    else if (arg === "--weekly-output") opts.weeklyOutput = argv[++i] ?? null;
+    else if (arg === "--weekly") opts.weekly = true;
     else if (arg === "--json") opts.json = true;
     else if (arg === "--help" || arg === "-h") {
-      console.log("Usage: node tools/naver-seo/trends.mjs --input snapshots.json [--json] [--json-output PATH] [--markdown-output PATH]");
+      console.log("Usage: node tools/naver-seo/trends.mjs --input snapshots.json [--json] [--weekly] [--json-output PATH] [--markdown-output PATH] [--weekly-output PATH]");
       process.exit(0);
     }
   }
@@ -225,8 +271,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   const dashboard = buildNaverSeoTrendDashboard(rows);
   const markdown = renderNaverSeoTrendMarkdown(dashboard);
+  const weekly = renderNaverSeoWeeklySummary(dashboard);
   if (opts.json) console.log(JSON.stringify(dashboard, null, 2));
-  else console.log(markdown);
+  else console.log(opts.weekly ? weekly : markdown);
   if (opts.jsonOutput) await writeFile(opts.jsonOutput, `${JSON.stringify(dashboard, null, 2)}\n`, "utf8");
   if (opts.markdownOutput) await writeFile(opts.markdownOutput, markdown, "utf8");
+  if (opts.weeklyOutput) await writeFile(opts.weeklyOutput, weekly, "utf8");
 }

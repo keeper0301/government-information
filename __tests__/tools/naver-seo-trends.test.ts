@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildNaverSeoTrendDashboard,
   renderNaverSeoTrendMarkdown,
+  renderNaverSeoWeeklySummary,
 } from "../../tools/naver-seo/trends.mjs";
 
 const snapshots = [
@@ -75,6 +76,10 @@ describe("naver-seo trends", () => {
     expect(dashboard.freshKeywords).toEqual([
       { label: "청년 월세", impression: 120, click: 9, ctr: 7.5 },
     ]);
+    expect(dashboard.actionItems).toEqual([
+      "/welfare/new CTR 3%입니다. 검색 intent에 맞게 title/description을 다시 써볼 후보입니다.",
+      "새 키워드 청년 월세 관련 랜딩/콘텐츠를 확인하세요.",
+    ]);
   });
 
   it("renders a compact markdown dashboard", () => {
@@ -85,6 +90,16 @@ describe("naver-seo trends", () => {
     expect(markdown).toContain("impressions: 1,400 (+400)");
     expect(markdown).toContain("/welfare/new");
     expect(markdown).toContain("청년 월세");
+  });
+
+  it("renders a Telegram-ready weekly summary", () => {
+    const weekly = renderNaverSeoWeeklySummary(buildNaverSeoTrendDashboard(snapshots, "2026-08-30"));
+
+    expect(weekly).toContain("네이버 SEO 주간 요약 (2026-08-30)");
+    expect(weekly).toContain("색인 120 (+20) · 노출 1,400 (+400) · 클릭 70 (+30)");
+    expect(weekly).toContain("이번 주 볼 것");
+    expect(weekly).toContain("저CTR 우선 후보");
+    expect(weekly).toContain("새 키워드: 청년 월세");
   });
 
   it("handles empty snapshot input", () => {
