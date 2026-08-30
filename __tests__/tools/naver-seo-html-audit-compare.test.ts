@@ -207,6 +207,8 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("warning_status=${PIPESTATUS[0]}");
     expect(workflow).toContain("FAIL_ON_WARNING_INCREASE");
     expect(workflow).toContain("--fail-on-warning-increase 2>&1 | tee -a /tmp/naver-seo-html-audit-compare.log");
+    expect(workflow).toContain("actions/upload-artifact@v7");
+    expect(workflow).not.toContain("actions/upload-artifact@v4");
     expect(workflow).toContain("/tmp/naver-seo-html-audit.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit-compare.log");
     expect(workflow).toContain("audit run metadata 작성");
