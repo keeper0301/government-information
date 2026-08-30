@@ -206,6 +206,11 @@ describe("naver-seo-html-audit-compare", () => {
     expect(workflow).toContain("--fail-on-warning-increase 2>&1 | tee -a /tmp/naver-seo-html-audit-compare.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit.log");
     expect(workflow).toContain("/tmp/naver-seo-html-audit-compare.log");
+    expect(workflow).toContain("audit run metadata 작성");
+    expect(workflow).toContain("/tmp/naver-seo-html-audit-run.json");
+    expect(workflow).toContain("previousRunId: readText('/tmp/naver-seo-html-audit-previous-run-id') || null");
+    expect(workflow).toContain("extraUrlCount: Array.isArray(audit.extraUrls) ? audit.extraUrls.length : 0");
+    expect(workflow).toContain("scopeDeltas: Array.isArray(compare.scopeDeltas) ? compare.scopeDeltas.length : 0");
     expect(workflow).toContain("retention-days: 7");
     expect(workflow).toContain("function redactSecrets(text)");
     expect(workflow).toContain("Bearer)\\s+[A-Za-z0-9._~+/=-]{12,}");

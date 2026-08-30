@@ -126,6 +126,7 @@ jobs:
           fi
           previous_run_id=$(gh run list --repo "$REPO" --workflow naver-seo-html-audit.yml --branch master --status success --limit 20 --json databaseId \
             | node -e "const fs=require('fs'); const current=String(process.env.RUN_ID); const runs=JSON.parse(fs.readFileSync(0,'utf8')); const prev=runs.find((r)=>String(r.databaseId)!==current); if (prev) process.stdout.write(String(prev.databaseId));")
+          printf '%s' "${previous_run_id:-}" > /tmp/naver-seo-html-audit-previous-run-id
           if [ -z "${previous_run_id:-}" ]; then
             echo "## Naver SEO HTML audit compare" >> "$GITHUB_STEP_SUMMARY"
             echo "비교할 이전 성공 run이 없어 건너뜁니다." >> "$GITHUB_STEP_SUMMARY"
@@ -200,6 +201,54 @@ jobs:
             exit "$warning_status"
           fi
 
+      - name: audit run metadata 작성
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const readJson = (path) => {
+            try { return JSON.parse(fs.readFileSync(path, 'utf8')); } catch { return null; }
+          };
+          const readText = (path) => {
+            try { return fs.readFileSync(path, 'utf8').trim(); } catch { return ''; }
+          };
+          const audit = readJson('/tmp/naver-seo-html-audit.json');
+          const compare = readJson('/tmp/naver-seo-html-audit-compare.json');
+          const manifest = {
+            generatedAt: new Date().toISOString(),
+            run: {
+              repository: process.env.GITHUB_REPOSITORY || null,
+              workflow: process.env.GITHUB_WORKFLOW || null,
+              runId: process.env.GITHUB_RUN_ID || null,
+              runAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+              eventName: process.env.GITHUB_EVENT_NAME || null,
+              refName: process.env.GITHUB_REF_NAME || null,
+              sha: process.env.GITHUB_SHA || null,
+              actor: process.env.GITHUB_ACTOR || null,
+            },
+            previousRunId: readText('/tmp/naver-seo-html-audit-previous-run-id') || null,
+            audit: audit ? {
+              site: audit.site || null,
+              sitemap: audit.sitemap || null,
+              limit: audit.limit ?? null,
+              extraUrlCount: Array.isArray(audit.extraUrls) ? audit.extraUrls.length : 0,
+              checked: `${audit.okCount}/${audit.urlCount}`,
+              issueCounts: audit.issueCounts || {},
+              warningCounts: audit.warningCounts || {},
+            } : null,
+            compare: compare ? {
+              hasHardRegression: Boolean(compare.hasHardRegression),
+              hasWarningIncrease: Boolean(compare.hasWarningIncrease),
+              issueDeltas: Array.isArray(compare.issueDeltas) ? compare.issueDeltas.length : 0,
+              warningDeltas: Array.isArray(compare.warningDeltas) ? compare.warningDeltas.length : 0,
+              scopeDeltas: Array.isArray(compare.scopeDeltas) ? compare.scopeDeltas.length : 0,
+              addedIssueRows: Array.isArray(compare.addedIssueRows) ? compare.addedIssueRows.length : 0,
+              addedWarningRows: Array.isArray(compare.addedWarningRows) ? compare.addedWarningRows.length : 0,
+            } : null,
+          };
+          fs.writeFileSync('/tmp/naver-seo-html-audit-run.json', `${JSON.stringify(manifest, null, 2)}\n`);
+          NODE
+
       - name: audit JSON artifact 업로드
         if: always()
         uses: actions/upload-artifact@v4
@@ -210,6 +259,7 @@ jobs:
             /tmp/naver-seo-html-audit-compare.json
             /tmp/naver-seo-html-audit.log
             /tmp/naver-seo-html-audit-compare.log
+            /tmp/naver-seo-html-audit-run.json
           if-no-files-found: ignore
           retention-days: 7
 
