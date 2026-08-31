@@ -13,12 +13,14 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendOpsAlertMultichannel } from "@/lib/notifications/ops-alert-multichannel";
 import { authorizeCronRequest } from "@/lib/cron-auth";
+import { hasFreshSuccessfulFetchLog, type FetchLogRow } from "@/lib/analytics/silent-fail-health";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-// 감시 대상 source_code prefix — collector 가 매일 새 row 만들어야 정상.
-// 0 이면 silent fail 의심.
+// 감시 대상 source_code prefix.
+// 대부분은 24h 신규 row 로 판단한다. korea.kr topics 처럼 기존 row refresh 가
+// 정상일 수 있는 collector 는 source_fetch_log 의 fresh fetch evidence 도 인정한다.
 const WATCH_PREFIXES = [
   "local-press-", // 시·군 collector 27개 (audit 사고 영역)
   "naver-news-", // 17 광역 naver-news
@@ -29,7 +31,12 @@ async function run() {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const results: Array<{ prefix: string; count: number; ok: boolean }> = [];
+  const results: Array<{
+    prefix: string;
+    count: number;
+    ok: boolean;
+    freshFetchEvidence?: boolean;
+  }> = [];
   const failedPrefixes: string[] = [];
 
   for (const prefix of WATCH_PREFIXES) {
@@ -40,8 +47,16 @@ async function run() {
       .gte("created_at", since);
 
     const n = count ?? 0;
-    const ok = !error && n > 0;
-    results.push({ prefix, count: n, ok });
+    let freshFetchEvidence = false;
+    if (!error && n === 0) {
+      const { data: fetchLogs } = await admin
+        .from("source_fetch_log")
+        .select("source_code,last_fetched_at,last_collected_count,last_error")
+        .like("source_code", `${prefix}%`);
+      freshFetchEvidence = hasFreshSuccessfulFetchLog((fetchLogs ?? []) as FetchLogRow[]);
+    }
+    const ok = !error && (n > 0 || freshFetchEvidence);
+    results.push({ prefix, count: n, ok, freshFetchEvidence });
     if (!ok) failedPrefixes.push(prefix);
   }
 

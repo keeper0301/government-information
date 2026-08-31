@@ -196,6 +196,7 @@ export async function collectKoreaKrTopics(): Promise<{
   breakdown: Record<string, number>;
 }> {
   const supabase = createAdminClient();
+  const runStartedAt = new Date().toISOString();
 
   const results = await Promise.allSettled(
     TOPIC_CATEGORIES.map(async (cat) => ({
@@ -229,6 +230,18 @@ export async function collectKoreaKrTopics(): Promise<{
 
   const allIds = Array.from(newsIdToTopics.keys());
   if (allIds.length === 0) {
+    await supabase.from("source_fetch_log").upsert(
+      {
+        source_code: "korea-kr-topics",
+        last_fetched_at: runStartedAt,
+        last_source_id: null,
+        last_published_at: null,
+        last_collected_count: 0,
+        last_error: errors > 0 ? `topic category errors=${errors}` : "parsed_zero_items",
+        updated_at: runStartedAt,
+      },
+      { onConflict: "source_code" },
+    );
     return {
       categories: TOPIC_CATEGORIES.length,
       fetched: 0,
@@ -339,6 +352,19 @@ export async function collectKoreaKrTopics(): Promise<{
       .select("id");
     if (!error) inserted = insertedRows?.length ?? 0;
   }
+
+  await supabase.from("source_fetch_log").upsert(
+    {
+      source_code: "korea-kr-topics",
+      last_fetched_at: runStartedAt,
+      last_source_id: allIds[0] ?? null,
+      last_published_at: null,
+      last_collected_count: allIds.length,
+      last_error: errors > 0 ? `topic category errors=${errors}` : null,
+      updated_at: runStartedAt,
+    },
+    { onConflict: "source_code" },
+  );
 
   return {
     categories: TOPIC_CATEGORIES.length,
