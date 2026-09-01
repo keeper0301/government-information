@@ -2,6 +2,8 @@
 // Instagram Reels 영상 기획 — blog_posts 텍스트를 짧은 세로 영상 슬라이드로 변환
 // ============================================================
 
+import { resolveInstagramCardHook } from "./card-hook";
+
 export type ReelVideoPostInput = {
   title: string;
   content: string | null;
@@ -281,6 +283,15 @@ function titleBenefit(title: string, category: string): string {
   return "정부지원";
 }
 
+function commentKeywordForReel(title: string, category: string): string {
+  if (/소상공|자영|사업자|창업|폐업|상권|신용보증|정책자금/.test(title) || /소상공|사업|자영/.test(category)) return "사장님지원";
+  if (/주거|월세|전세|임대|보증금|무주택/.test(title) || /주거|월세|전세|임대/.test(category)) return "주거지원";
+  if (/청년|청소년|학생|대학생/.test(title) || /청년|학생|교육/.test(category)) return "청년지원";
+  if (/육아|가족|아동|출산|보육/.test(title) || /육아|가족|아동|출산|보육/.test(category)) return "가족지원";
+  if (/노인|어르신|장애인/.test(title) || /노년/.test(category)) return "어르신지원";
+  return titleBenefit(title, category).replace(/\s+/g, "") || "정책확인";
+}
+
 function makeReadableCoverTitle(title: string, category: string): string {
   const clean = stripHtml(title);
   const region = titleRegion(clean);
@@ -353,6 +364,11 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
   const title = clampTitle(post.title);
   const readableCoverTitle = makeReadableCoverTitle(post.title, category);
   const facts = buildArticleFacts(post);
+  const coverHook = resolveInstagramCardHook({
+    title: post.title,
+    description: post.meta_description,
+    category,
+  });
 
   const eligibilityFacts = concreteLabeledFacts([
     { label: "대상", text: facts.target, source: "target" },
@@ -371,14 +387,14 @@ export function buildReelVideoPlan(post: ReelVideoPostInput): ReelVideoPlan {
     { label: "준비", text: facts.applyExtra, source: "applyExtra" },
   ], 3);
   const searchCue = readableCoverTitle.split(" · ").slice(-2).join(" ") || "정책명";
-  const commentKeyword = searchCue.replace(/\s+/g, " ").trim() || "정책명";
+  const commentKeyword = commentKeywordForReel(post.title, category);
 
   const slides: ReelVideoSlide[] = [
     {
       eyebrow: `${category} · keepioo`,
       kicker: title,
       title: readableCoverTitle,
-      body: `나/가족 해당되면 저장·공유\n신청 전 3개만 확인\n조건\n혜택\n방법`,
+      body: `${coverHook.label}\n조건\n혜택\n방법`,
     },
     {
       eyebrow: "01",

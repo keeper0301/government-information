@@ -49,6 +49,7 @@ import {
   sanitizeInstagramPolicyDescription,
   sanitizeInstagramPolicyTitle,
 } from "./policy-copy";
+import { resolveInstagramCardHook } from "./card-hook";
 
 const CATEGORY_COMMENT_KEYWORDS: Record<string, string> = {
   청년: "청년지원",
@@ -86,10 +87,15 @@ export function buildInstagramCaption(input: CaptionInput): string {
   const title = sanitizeInstagramPolicyTitle(input.title);
   const metaDescription = sanitizeInstagramPolicyDescription(input.meta_description);
   const commentKeyword = resolveInstagramCommentKeyword(input);
+  const hook = resolveInstagramCardHook({
+    title,
+    description: metaDescription,
+    category: input.category,
+  });
 
   // 1) Hook — Instagram 발행 표면에서는 저가 클릭 유도 문구를 정책 브랜드형으로 정리한다.
   lines.push(`📌 ${title}`);
-  lines.push("놓치기 쉬운 지원 조건은 저장해두고 다시 확인하세요.");
+  lines.push(hook.label);
   lines.push("");
 
   // 2) 핵심 정보 — meta_description 활용
@@ -102,7 +108,7 @@ export function buildInstagramCaption(input: CaptionInput): string {
   lines.push("✅ 저장 포인트: 대상·기간·신청처를 다시 볼 때");
   lines.push("↗️ 공유 포인트: 같은 지역·업종 지인에게 보내기");
   lines.push("⚠️ 실제 자격과 금액은 지역·소득·마감일에 따라 달라질 수 있어요.");
-  lines.push(`💬 댓글 키워드: ${commentKeyword}`);
+  lines.push(`💬 댓글 키워드: ${commentKeyword} — 나중에 다시 찾을 말`);
   lines.push(`프로필 링크 keepioo.com · keepioo에서 "${title.slice(0, 28)}" 검색`);
   lines.push("");
 

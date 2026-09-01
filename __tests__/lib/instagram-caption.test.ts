@@ -17,7 +17,7 @@ describe("buildInstagramCaption", () => {
   it("hook (제목) + 핵심 정보 (meta_description) 포함", () => {
     const caption = buildInstagramCaption(baseInput);
     expect(caption).toContain("📌 2026년 경기도 청년 기본소득");
-    expect(caption).toContain("저장해두고 다시 확인");
+    expect(caption).toContain("청년·학생에게 공유 · 나이·기간");
     expect(caption).toContain("만 24세 경기도 청년에게 분기별 25만원");
   });
 
@@ -38,8 +38,26 @@ describe("buildInstagramCaption", () => {
 
   it("카테고리 기반 댓글 키워드를 포함해 댓글 CTA를 명확히 한다", () => {
     const caption = buildInstagramCaption(baseInput);
-    expect(caption).toContain("💬 댓글 키워드: 청년지원");
+    expect(caption).toContain("💬 댓글 키워드: 청년지원 — 나중에 다시 찾을 말");
     expect(resolveInstagramCommentKeyword(baseInput)).toBe("청년지원");
+  });
+
+  it("사장님·주거 등 audience-first 저장/공유 이유를 캡션 초반에 노출한다", () => {
+    const smallBiz = buildInstagramCaption({
+      ...baseInput,
+      title: "2026년 공주시 위기상권 소상공인 신용보증 지원",
+      meta_description: "소상공인 신용보증 신청 조건과 접수처를 정리했습니다.",
+      category: "소상공인",
+    });
+    expect(smallBiz.split("\n")[1]).toBe("사장님이면 저장 · 신청 전 3개");
+
+    const housing = buildInstagramCaption({
+      ...baseInput,
+      title: "2026년 서울 청년 전월세보증금 지원",
+      meta_description: "무주택 청년의 전월세 보증금 지원 조건 안내.",
+      category: "주거",
+    });
+    expect(housing.split("\n")[1]).toBe("월세·전세 보는 사람에게 공유 · 조건 3개");
   });
 
   it("카테고리별 해시태그 포함", () => {

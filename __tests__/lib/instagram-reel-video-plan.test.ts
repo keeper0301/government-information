@@ -31,7 +31,7 @@ describe("reel-video-plan", () => {
     expect(plan.slides[0].eyebrow).toContain("주거");
     expect(plan.slides[0].title).toContain("가평군");
     expect(plan.slides[0].title).toContain("신혼부부");
-    expect(plan.slides[0].body).toContain("나/가족 해당되면 저장·공유");
+    expect(plan.slides[0].body).toContain("월세·전세 보는 사람에게 공유 · 조건 3개");
     expect(plan.slides[0].body).toContain("조건\n혜택\n방법");
     expect(plan.slides[1]).toMatchObject({ title: "조건" });
     expect(plan.slides[1].body).toContain("대상 — 가평군 거주 일정 요건");
@@ -44,6 +44,7 @@ describe("reel-video-plan", () => {
     expect(plan.slides[3].body).toContain("접수 — 방문 신청");
     expect(plan.slides[3].body).toContain("기간 — 연중 상시 또는 특정 기간 접수");
     expect(plan.slides.at(-1)?.title).toBe("체크");
+    expect(plan.slides.at(-1)?.body).toContain("댓글 키워드\n주거지원");
   });
 
   it("keeps labels source-aligned for sparse article facts", () => {
@@ -88,5 +89,23 @@ describe("reel-video-plan", () => {
     expect(plan.slides[1].body).toContain("지역 — 부산시");
     expect(plan.slides[1].body).not.toContain("거주 — 부산시");
     expect(plan.slides[1].body).not.toContain("소득 — 부산시");
+  });
+
+  it("uses audience-specific comment keywords instead of generic search phrases", () => {
+    const plan = buildReelVideoPlan({
+      slug: "small-business",
+      title: "2026년 공주시 위기상권 소상공인 신용보증 지원",
+      category: "소상공인",
+      meta_description: "소상공인 신용보증 신청 조건과 접수처를 정리했습니다.",
+      content: `
+| 지원 대상 | 공주시 위기상권 소상공인 |
+| 지원 혜택 | 신용보증 지원 |
+| 신청 방법 | 공식 접수처 확인 |
+`,
+    });
+
+    expect(plan.slides[0].body).toContain("사장님이면 저장 · 신청 전 3개");
+    expect(plan.slides.at(-1)?.body).toContain("댓글 키워드\n사장님지원");
+    expect(plan.slides.at(-1)?.body).not.toContain("댓글 키워드\n사장님 정부지원");
   });
 });
