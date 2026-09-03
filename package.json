@@ -16,6 +16,7 @@
     "cache:monitor": "node tools/verify-production-cache-headers.mjs",
     "smoke:admin-pageerrors": "node tools/admin-pageerror-smoke.mjs",
     "perf:public": "node tools/measure-public-pages.mjs",
+    "smoke:conversion-funnel": "node tools/conversion-funnel-smoke.mjs",
     "diagnose:adsense-review": "node tools/diagnose-adsense-review.mjs",
     "diagnose:naver-seo-html": "node tools/naver-seo-html-audit.mjs",
     "diagnose:naver-seo-html:compare": "node tools/naver-seo-html-audit-compare.mjs",
