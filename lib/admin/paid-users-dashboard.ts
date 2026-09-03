@@ -99,6 +99,16 @@ export type PaidUsersDashboard = {
   rows: PaidUserDashboardRow[];
 };
 
+export type ActivationGapActionCard = {
+  key: "stale_no_watch" | "activation_gap" | "pending_checkout" | "payment_risk";
+  title: string;
+  count: number;
+  href: string;
+  tone: "red" | "amber" | "blue";
+  description: string;
+  copyHint: string;
+};
+
 export type PaidUsersFilter = {
   tier?: string;
   status?: string;
@@ -143,9 +153,10 @@ export function filterPaidUserRows(
     if (status && row.status !== status) return false;
     if (segment === "no_watch" && !hasNoWatchConfigured(row)) return false;
     if (segment === "stale_no_watch" && !row.staleNoWatch) return false;
+    if (segment === "pending_checkout" && !row.recentPending24h && !row.stalePendingOver24h) return false;
     if (segment === "pending_24h" && !row.recentPending24h) return false;
     if (segment === "pending_over_24h" && !row.stalePendingOver24h) return false;
-    if (segment && segment !== "no_watch" && segment !== "stale_no_watch" && segment !== "pending_24h" && segment !== "pending_over_24h" && row.interviewSegment !== segment) return false;
+    if (segment && segment !== "no_watch" && segment !== "stale_no_watch" && segment !== "pending_checkout" && segment !== "pending_24h" && segment !== "pending_over_24h" && row.interviewSegment !== segment) return false;
     if (!query) return true;
 
     const haystack = [row.email, row.customerEmail, row.userId, row.cardLabel]
@@ -158,6 +169,51 @@ export function filterPaidUserRows(
 
 export function hasNoWatchConfigured(row: Pick<PaidUserDashboardRow, "activeAlertRulesCount" | "savedDeadlineAlertsCount">): boolean {
   return row.activeAlertRulesCount === 0 && row.savedDeadlineAlertsCount === 0;
+}
+
+export function buildActivationGapActionCards(dashboard: Pick<PaidUsersDashboard, "stats" | "rows">): ActivationGapActionCard[] {
+  const stats = dashboard.stats;
+  const setupGapUsers = dashboard.rows.filter(
+    (row) => row.activationGaps.length > 0 && row.interviewSegment !== "payment_risk",
+  ).length;
+  return [
+    {
+      key: "stale_no_watch",
+      title: "오늘 먼저 연락",
+      count: stats.staleNoWatchUsers,
+      href: "/admin/paid-users?segment=stale_no_watch",
+      tone: "red",
+      description: "유료 플랜 시작 후 24시간이 지났지만 맞춤 규칙·정책 마감 감시가 모두 0개인 사용자입니다.",
+      copyHint: "알림센터 또는 정책 상세 저장 CTA에서 첫 감시 1개를 켜도록 안내하세요.",
+    },
+    {
+      key: "activation_gap",
+      title: "프로필·알림 미완료",
+      count: setupGapUsers,
+      href: "/admin/paid-users?segment=activation_gap",
+      tone: "amber",
+      description: "사업자 정보, Pro 카카오 동의, 알림 조건 중 하나라도 비어 있는 유료 사용자입니다.",
+      copyHint: "미설정 항목을 확인하고 10분 인터뷰 또는 설정 안내 후보로 분류하세요.",
+    },
+    {
+      key: "pending_checkout",
+      title: "카드 등록 이탈",
+      count: stats.pending24hUsers + stats.pendingOver24hUsers,
+      href: "/admin/paid-users?segment=pending_checkout",
+      tone: "amber",
+      description: "Basic/Pro 결제 시작 후 아직 카드 등록이 완료되지 않은 사용자입니다.",
+      copyHint: "가격·기능 설명 부족인지, 결제 오류인지 먼저 확인하세요.",
+    },
+    {
+      key: "payment_risk",
+      title: "결제/해지 위험",
+      count: stats.pastDue + stats.cancelled,
+      href: "/admin/paid-users?segment=payment_risk",
+      tone: "blue",
+      description: "결제 실패 또는 해지 상태라 활성화 안내보다 결제/해지 경험 확인이 먼저인 사용자입니다.",
+      copyHint: "결제 유도보다 막힌 지점 확인용으로 접근하세요.",
+    },
+  ];
 }
 
 export type OutreachMessageType = "payment_risk" | "pending_over_24h" | "pending_24h" | "stale_no_watch" | "activation_gap" | "paid_user";

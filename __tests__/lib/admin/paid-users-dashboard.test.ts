@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildActivationGapActionCards,
   buildPaidUsersCsv,
   buildPaidUserOutreachMessage,
   buildPaidUsersDashboard,
@@ -277,11 +278,112 @@ describe("paid users dashboard helpers", () => {
     expect(buildPaidUserOutreachMessage(rows[0])).toContain("카드 등록이 아직 완료되지 않은 것 같아");
     expect(buildPaidUsersCsv(rows)).toContain("pending_24h");
 
+    const pendingCheckoutRows = filterPaidUserRows(dashboard.rows, { segment: "pending_checkout" });
+    expect(pendingCheckoutRows.map((row) => row.userId).sort()).toEqual(["u_pending_old", "u_pending_recent"]);
+
     const oldPendingRows = filterPaidUserRows(dashboard.rows, { segment: "pending_over_24h" });
     expect(oldPendingRows.map((row) => row.userId)).toEqual(["u_pending_old"]);
     expect(oldPendingRows[0].stalePendingOver24h).toBe(true);
     expect(outreachMessageType(oldPendingRows[0])).toBe("pending_over_24h");
     expect(buildPaidUserOutreachMessage(oldPendingRows[0])).toContain("카드 등록이 2일째 완료되지 않아");
     expect(buildPaidUsersCsv(oldPendingRows)).toContain("pending_over_24h");
+  });
+
+  it("builds activation gap action cards so operators see paid setup gaps before raw revenue KPIs", () => {
+    const dashboard = buildPaidUsersDashboard({
+      subscriptions: [
+        {
+          user_id: "u_stale_no_watch",
+          tier: "basic",
+          status: "active",
+          customer_email: "stale@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-01T00:00:00.000Z",
+          updated_at: "2026-07-01T00:00:00.000Z",
+        },
+        {
+          user_id: "u_pro_gap",
+          tier: "pro",
+          status: "active",
+          customer_email: "pro@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-02T00:00:00.000Z",
+          updated_at: "2026-07-02T00:00:00.000Z",
+        },
+        {
+          user_id: "u_pending",
+          tier: "basic",
+          status: "pending",
+          customer_email: "pending@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-03T00:00:00.000Z",
+          updated_at: "2026-07-03T00:00:00.000Z",
+        },
+        {
+          user_id: "u_past_due",
+          tier: "basic",
+          status: "past_due",
+          customer_email: "risk@keepioo.test",
+          card_company: null,
+          card_number_masked: null,
+          trial_ends_at: null,
+          current_period_end: null,
+          cancelled_at: null,
+          created_at: "2026-07-01T00:00:00.000Z",
+          updated_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+      users: [],
+      payments: [],
+      businessUserIds: ["u_pro_gap", "u_pending", "u_past_due"],
+      kakaoConsentUserIds: [],
+      activeAlertRuleUserIds: ["u_pro_gap"],
+      activeAlarmSubscriptionUserIds: [],
+      nowIso: "2026-07-04T00:00:00.000Z",
+    });
+
+    const cards = buildActivationGapActionCards(dashboard);
+
+    expect(cards.map((card) => card.key)).toEqual([
+      "stale_no_watch",
+      "activation_gap",
+      "pending_checkout",
+      "payment_risk",
+    ]);
+    expect(cards[0]).toMatchObject({
+      title: "오늘 먼저 연락",
+      count: 1,
+      href: "/admin/paid-users?segment=stale_no_watch",
+      tone: "red",
+    });
+    expect(cards[1]).toMatchObject({
+      title: "프로필·알림 미완료",
+      count: 3,
+      href: "/admin/paid-users?segment=activation_gap",
+    });
+    expect(cards[2]).toMatchObject({
+      title: "카드 등록 이탈",
+      count: 1,
+      href: "/admin/paid-users?segment=pending_checkout",
+    });
+    expect(cards[3]).toMatchObject({
+      title: "결제/해지 위험",
+      count: 1,
+      href: "/admin/paid-users?segment=payment_risk",
+    });
+    expect(cards[0].copyHint).toContain("첫 감시 1개");
+    expect(cards[1].copyHint).toContain("10분 인터뷰");
   });
 });

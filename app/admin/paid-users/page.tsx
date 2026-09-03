@@ -6,12 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
 import {
   activationGapLabel,
+  buildActivationGapActionCards,
   buildPaidUserOutreachMessage,
   filterPaidUserRows,
   getPaidUsersDashboard,
   interviewSegmentLabel,
   outreachMessageType,
   outreachMessageTypeLabel,
+  type ActivationGapActionCard as ActivationGapActionCardModel,
   type PaidUserDashboardRow,
 } from "@/lib/admin/paid-users-dashboard";
 import { TIER_NAMES } from "@/lib/subscription";
@@ -100,6 +102,7 @@ export default async function AdminPaidUsersPage({
 
   const dashboard = await getPaidUsersDashboard();
   const rows = filterPaidUserRows(dashboard.rows, filters);
+  const activationActionCards = buildActivationGapActionCards(dashboard);
   const statusOptions = [...new Set(dashboard.rows.map((row) => row.status))].sort();
   const exportParams = new URLSearchParams();
   if (filters.query) exportParams.set("q", filters.query);
@@ -117,6 +120,31 @@ export default async function AdminPaidUsersPage({
         title="유료 사용자 관리"
         description="Basic/Pro 구독자, 결제 상태, 활성화 미설정, 인터뷰 후보를 한 화면에서 확인합니다. 상단 KPI는 전체 유료 구독 행 기준이며 아래 필터와 무관하게 계산됩니다."
       />
+
+      <section className="mb-6 rounded-3xl border border-amber-200 bg-amber-50/60 p-4">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-extrabold tracking-[0.14em] text-amber-700">ACTIVATION GAP FIRST</p>
+            <h2 className="mt-1 text-lg font-extrabold tracking-[-0.03em] text-grey-900">
+              결제/가입 후 미완료 사용자부터 확인
+            </h2>
+            <p className="mt-1 text-sm leading-[1.6] text-grey-700">
+              사업자 프로필·알림·카카오 동의가 비어 있으면 유료 전환보다 이탈이 먼저 옵니다.
+            </p>
+          </div>
+          <Link
+            href="/admin/paid-users?segment=activation_gap"
+            className="rounded-xl bg-grey-900 px-4 py-2 text-sm font-bold text-white no-underline hover:bg-grey-800"
+          >
+            미설정 후보만 보기
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {activationActionCards.map((card) => (
+            <ActivationActionCard key={card.key} card={card} />
+          ))}
+        </div>
+      </section>
 
       <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <MetricCard label="활성 유료" value={`${dashboard.stats.activeTotal.toLocaleString()}명`} tone="blue" />
@@ -182,6 +210,7 @@ export default async function AdminPaidUsersPage({
               ["pro", "Pro"],
               ["activation_gap", "미설정"],
               ["no_watch", "감시 0개"],
+              ["pending_checkout", "카드 등록 이탈"],
               ["pending_24h", "pending 24h"],
               ["pending_over_24h", "pending 24h+"],
               ["stale_no_watch", "24h+ 감시 0개"],
@@ -252,6 +281,32 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
       <p className="text-xs font-bold opacity-80">{label}</p>
       <p className="mt-2 text-2xl font-extrabold tracking-[-0.04em]">{value}</p>
     </div>
+  );
+}
+
+function ActivationActionCard({ card }: { card: ActivationGapActionCardModel }) {
+  const tones = {
+    red: "border-red-200 bg-white text-red-700",
+    amber: "border-amber-200 bg-white text-amber-700",
+    blue: "border-blue-200 bg-white text-blue-700",
+  };
+
+  return (
+    <Link
+      href={card.href}
+      className={`block rounded-2xl border p-4 no-underline shadow-[0_6px_18px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)] ${tones[card.tone]}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-extrabold text-grey-900">{card.title}</p>
+        <span className="rounded-full bg-grey-900 px-2.5 py-1 text-xs font-extrabold text-white">
+          {card.count.toLocaleString()}명
+        </span>
+      </div>
+      <p className="mt-2 text-xs leading-[1.55] text-grey-700">{card.description}</p>
+      <p className="mt-3 rounded-xl bg-grey-50 px-3 py-2 text-xs font-semibold leading-[1.5] text-grey-700">
+        {card.copyHint}
+      </p>
+    </Link>
   );
 }
 
