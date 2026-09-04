@@ -18,6 +18,7 @@
     "perf:public": "node tools/measure-public-pages.mjs",
     "smoke:conversion-funnel": "node tools/conversion-funnel-smoke.mjs",
     "diagnose:adsense-review": "node tools/diagnose-adsense-review.mjs",
+    "diagnose:guide-quality": "node tools/guide-quality-audit.mjs",
     "diagnose:naver-seo-html": "node tools/naver-seo-html-audit.mjs",
     "diagnose:naver-seo-html:compare": "node tools/naver-seo-html-audit-compare.mjs",
     "diagnose:naver-seo:trends": "node tools/naver-seo/trends.mjs",
