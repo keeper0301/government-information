@@ -18,5 +18,8 @@ export default defineConfig({
       'lib/**/__tests__/**/*.test.ts',
       'lib/**/__tests__/**/*.test.tsx',
     ],
+    // __tests__/tmp 는 외부 사이트를 실제 호출하는 임시 live probe 용도라
+    // 기본 CI 에서는 네트워크/DNS 상태에 따라 흔들리지 않도록 제외한다.
+    exclude: ['__tests__/tmp/**'],
   },
 });

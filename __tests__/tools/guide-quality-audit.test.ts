@@ -6,6 +6,7 @@ import {
   parseSitemapGuideUrls,
   stripHtml,
 } from "@/tools/guide-quality-audit.mjs";
+import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 
 describe("guide-quality-audit", () => {
   it("parses only same-origin guide review-surface URLs from sitemap", () => {
@@ -83,5 +84,21 @@ describe("guide-quality-audit", () => {
       failOnIssues: true,
       json: true,
     });
+  });
+
+  it("keeps the previously flagged editorial guides covered for duplicate-limit risk", () => {
+    const previouslyFlagged = new Set([
+      "bokjiro-vs-gov24-difference",
+      "deadline-policy-not-missing",
+      "documents-before-government-benefit",
+      "parents-benefit-check-guide",
+    ]);
+
+    const failures = EDITORIAL_GUIDES.filter((guide) => previouslyFlagged.has(guide.slug)).map((guide) => {
+      const html = `<article><h1>${guide.title}</h1>${guide.posts.map((post) => `<p>${post}</p>`).join("")}</article>`;
+      return analyzeGuideHtml(html, `https://www.keepioo.com/guides/${guide.slug}`);
+    }).filter((result) => result.missing.includes("duplicate_limits"));
+
+    expect(failures.map((result) => ({ slug: result.path.split("/").pop(), missing: result.missing }))).toEqual([]);
   });
 });
