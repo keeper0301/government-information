@@ -73,6 +73,16 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("URL-only paragraph는 OG 카드로 바뀔 수 있음");
   });
 
+  it("records downgrade risks for HTML that SmartEditor silently flattens", () => {
+    expect(contentScript).toContain("naverPasteDowngradeRisk");
+    expect(contentScript).toContain("listItemCount: metrics.listItemCount");
+    expect(contentScript).toContain("styleSheetCount: metrics.styleSheetCount");
+    expect(contentScript).toContain("hasDowngradedHtml");
+    expect(contentScript).toContain("ul/li, pre/code, em, background-color, style은 SmartEditor에서 문단화·손실될 수 있음");
+    expect(contentScript).toContain('doc.querySelectorAll("ul li, ol li")');
+    expect(contentScript).toContain('doc.querySelectorAll("style")');
+  });
+
   it("blocks video-like HTML until a dedicated Naver upload flow exists", () => {
     expect(contentScript).toContain("metrics.videoLikeCount > 0");
     expect(contentScript).toContain("영상은 HTML paste로 보존되지 않음");

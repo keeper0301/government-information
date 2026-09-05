@@ -956,6 +956,16 @@ function validateNaverSmartEditorPastePayload(html, debug) {
       debug,
     );
   }
+  if (metrics.hasDowngradedHtml) {
+    debug.naverPasteDowngradeRisk = {
+      listItemCount: metrics.listItemCount,
+      codeBlockCount: metrics.codeBlockCount,
+      emphasizedCount: metrics.emphasizedCount,
+      backgroundColorCount: metrics.backgroundColorCount,
+      styleSheetCount: metrics.styleSheetCount,
+      advice: "ul/li, pre/code, em, background-color, style은 SmartEditor에서 문단화·손실될 수 있음 — 중요 구조는 plain bullet, 굵게/색상, 또는 webp 이미지로 변환",
+    };
+  }
   if (metrics.linkOnlyParagraphs > 0) {
     debug.naverPasteOgCardRisk = {
       linkOnlyParagraphs: metrics.linkOnlyParagraphs,
@@ -968,6 +978,12 @@ function buildExpectedBodyMetrics(html) {
   const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
   const plain = htmlToPlainText(html);
   const imgs = Array.from(doc.querySelectorAll("img"));
+  const listItemCount = doc.querySelectorAll("ul li, ol li").length;
+  const codeBlockCount = doc.querySelectorAll("pre, code").length;
+  const emphasizedCount = doc.querySelectorAll("em").length;
+  const backgroundColorCount = Array.from(doc.querySelectorAll("[style]"))
+    .filter((el) => /background(?:-color)?\s*:/i.test(el.getAttribute("style") || "")).length;
+  const styleSheetCount = doc.querySelectorAll("style").length;
   const linkOnlyParagraphs = Array.from(doc.querySelectorAll("p")).filter((p) => {
     const text = (p.textContent || "").trim();
     const anchors = Array.from(p.querySelectorAll("a"));
@@ -983,10 +999,12 @@ function buildExpectedBodyMetrics(html) {
     nonRemoteImageCount: imgs.filter((img) => !/^https:\/\//i.test(img.getAttribute("src") || "")).length,
     tableCount: doc.querySelectorAll("table").length,
     videoLikeCount: doc.querySelectorAll("video, source, iframe, embed, object").length,
+    listItemCount: doc.querySelectorAll("ul li, ol li").length,
     codeBlockCount: doc.querySelectorAll("pre, code").length,
     emphasizedCount: doc.querySelectorAll("em").length,
-    backgroundColorCount: Array.from(doc.querySelectorAll("[style]"))
-      .filter((el) => /background(?:-color)?\s*:/i.test(el.getAttribute("style") || "")).length,
+    backgroundColorCount,
+    styleSheetCount: doc.querySelectorAll("style").length,
+    hasDowngradedHtml: listItemCount > 0 || codeBlockCount > 0 || emphasizedCount > 0 || backgroundColorCount > 0 || styleSheetCount > 0,
     emptyFigureCaptionCount: Array.from(doc.querySelectorAll("figure figcaption"))
       .filter((caption) => !(caption.textContent || "").trim()).length,
     linkOnlyParagraphs,
