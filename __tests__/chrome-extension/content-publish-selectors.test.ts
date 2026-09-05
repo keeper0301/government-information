@@ -64,11 +64,19 @@ describe("Naver content publish selectors", () => {
 
   it("blocks raw table paste unless a deployed webp image replacement is present", () => {
     expect(contentScript).toContain("function validateNaverSmartEditorPastePayload(html, debug)");
-    expect(contentScript).toContain("metrics.tableCount > 0 && metrics.webpImageCount === 0");
-    expect(contentScript).toContain("table을 webp 이미지로 배포한 뒤 <img>로 붙여넣어야 함");
+    expect(contentScript).toContain("metrics.tableCount > 0 && metrics.remoteWebpImageCount === 0");
+    expect(contentScript).toContain("table을 배포된 webp 이미지 URL로 바꾼 뒤 <img>로 붙여넣어야 함");
+    expect(contentScript).toContain("metrics.tableCount > 0 && metrics.nonRemoteImageCount > 0");
+    expect(contentScript).toContain("data/blob/file/local 이미지는 배포 URL로 바꿔야 함");
     expect(contentScript).toContain("emptyFigureCaptionCount > 0");
     expect(contentScript).toContain("naverPasteOgCardRisk");
     expect(contentScript).toContain("URL-only paragraph는 OG 카드로 바뀔 수 있음");
+  });
+
+  it("blocks video-like HTML until a dedicated Naver upload flow exists", () => {
+    expect(contentScript).toContain("metrics.videoLikeCount > 0");
+    expect(contentScript).toContain("영상은 HTML paste로 보존되지 않음");
+    expect(contentScript).toContain('doc.querySelectorAll("video, source, iframe, embed, object")');
   });
 
   it("verifies SmartEditor paste completeness against the original body ratio", () => {

@@ -932,9 +932,21 @@ async function pasteHtml(targetEl, html, debug) {
 function validateNaverSmartEditorPastePayload(html, debug) {
   const metrics = buildExpectedBodyMetrics(html);
   debug.naverPasteInputMetrics = metrics;
-  if (metrics.tableCount > 0 && metrics.webpImageCount === 0) {
+  if (metrics.videoLikeCount > 0) {
     throwWithDebug(
-      `Naver SmartEditor paste guard: <table>은 유지되지 않음 — table을 webp 이미지로 배포한 뒤 <img>로 붙여넣어야 함 (tables=${metrics.tableCount})`,
+      `Naver SmartEditor paste guard: 영상은 HTML paste로 보존되지 않음 — 전용 파일 업로드 flow 구현 전까지 차단 (videos=${metrics.videoLikeCount})`,
+      debug,
+    );
+  }
+  if (metrics.tableCount > 0 && metrics.remoteWebpImageCount === 0) {
+    throwWithDebug(
+      `Naver SmartEditor paste guard: <table>은 유지되지 않음 — table을 배포된 webp 이미지 URL로 바꾼 뒤 <img>로 붙여넣어야 함 (tables=${metrics.tableCount})`,
+      debug,
+    );
+  }
+  if (metrics.tableCount > 0 && metrics.nonRemoteImageCount > 0) {
+    throwWithDebug(
+      `Naver SmartEditor paste guard: 네이버는 붙여넣는 순간 이미지를 URL로 가져감 — data/blob/file/local 이미지는 배포 URL로 바꿔야 함 (nonRemote=${metrics.nonRemoteImageCount})`,
       debug,
     );
   }
@@ -967,7 +979,10 @@ function buildExpectedBodyMetrics(html) {
     plainTextLength: plain.length,
     imageCount: imgs.length,
     webpImageCount: imgs.filter((img) => /\.webp(?:[?#]|$)/i.test(img.getAttribute("src") || "")).length,
+    remoteWebpImageCount: imgs.filter((img) => /^https:\/\//i.test(img.getAttribute("src") || "") && /\.webp(?:[?#]|$)/i.test(img.getAttribute("src") || "")).length,
+    nonRemoteImageCount: imgs.filter((img) => !/^https:\/\//i.test(img.getAttribute("src") || "")).length,
     tableCount: doc.querySelectorAll("table").length,
+    videoLikeCount: doc.querySelectorAll("video, source, iframe, embed, object").length,
     codeBlockCount: doc.querySelectorAll("pre, code").length,
     emphasizedCount: doc.querySelectorAll("em").length,
     backgroundColorCount: Array.from(doc.querySelectorAll("[style]"))
