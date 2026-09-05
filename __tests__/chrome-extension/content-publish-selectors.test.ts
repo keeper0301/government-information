@@ -85,6 +85,9 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("naverCoverImageInput");
     expect(contentScript).toContain("coverImageUrl은 배포된 HTTPS 이미지 URL이어야 함");
     expect(contentScript).toContain("data/blob/file/local 이미지는 커버로 붙이지 않음");
+    expect(contentScript).toContain("payload.coverImageUrl && debug.cover_pasted !== true");
+    expect(contentScript).toContain("요청된 coverImageUrl 붙여넣기 실패");
+    expect(contentScript).toContain("커버 없는 글로 진행하지 않음");
   });
 
   it("records downgrade risks for HTML that SmartEditor silently flattens", () => {

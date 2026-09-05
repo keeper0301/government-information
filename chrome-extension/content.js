@@ -134,9 +134,9 @@ async function publishToSe3(payload, dryRun) {
 
   // 3. cover_image — 본문 HTML paste **이전** 에 처리 (C2 race fix).
   //    base64 fetch → clipboard image → SE3 paste → 자동 upload.
-  //    cover fetch/upload가 실패하면 cover가 없는 것과 같으므로 다음 본문 단계에서
-  //    기존 임시글을 clear한다. payload.coverImageUrl 존재만 보고 clear를 건너뛰면
-  //    실패한 cover 뒤에 stale body가 남아 trusted input 검증이 계속 실패한다.
+  //    cover fetch/upload가 실패하면 요청된 커버가 빠진 글이 되므로 fail-closed 처리한다.
+  //    payload.coverImageUrl 존재만 보고 clear를 건너뛰면 실패한 cover 뒤에 stale body가 남아
+  //    trusted input 검증이 계속 실패한다.
   debug.cover_pasted = false;
   if (payload.coverImageUrl) {
     validateNaverCoverImageUrl(payload.coverImageUrl, debug);
@@ -166,6 +166,9 @@ async function publishToSe3(payload, dryRun) {
     } else {
       debug.cover_failed = "body_paragraph_not_found";
     }
+  }
+  if (payload.coverImageUrl && debug.cover_pasted !== true) {
+    throwWithDebug(`Naver SmartEditor paste guard: 요청된 coverImageUrl 붙여넣기 실패 — 커버 없는 글로 진행하지 않음 (${debug.cover_failed || "unknown"})`, debug);
   }
 
   // 4. 본문 입력 — pasteHtml 3중 fallback (C-NEW-1)
