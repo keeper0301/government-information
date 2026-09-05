@@ -54,4 +54,27 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain('debug.main_publish = "dom_click_once"');
     expect(contentScript).toContain("await openPublishConfirmLayer(mainPublish, mfDoc, debug)");
   });
+
+  it("records the 2026 SmartEditor paste survival matrix and keeps HTML clipboard first", () => {
+    expect(contentScript).toContain("NAVER_SMARTEDITOR_PASTE_SURVIVAL_MATRIX");
+    expect(contentScript).toContain('survives: ["h2", "h3", "strong", "font-size", "text-align", "color", "blockquote", "hr", "img", "figure+figcaption"]');
+    expect(contentScript).toContain('discarded: ["table", "ul-li-semantic", "pre-code", "em", "background-color", "style-sheet"]');
+    expect(contentScript).toContain('new ClipboardItem({ "text/html": htmlBlob, "text/plain": plainBlob })');
+  });
+
+  it("blocks raw table paste unless a deployed webp image replacement is present", () => {
+    expect(contentScript).toContain("function validateNaverSmartEditorPastePayload(html, debug)");
+    expect(contentScript).toContain("metrics.tableCount > 0 && metrics.webpImageCount === 0");
+    expect(contentScript).toContain("table을 webp 이미지로 배포한 뒤 <img>로 붙여넣어야 함");
+    expect(contentScript).toContain("emptyFigureCaptionCount > 0");
+  });
+
+  it("verifies SmartEditor paste completeness against the original body ratio", () => {
+    expect(contentScript).toContain("const NAVER_BODY_TEXT_MIN_RATIO = 0.5");
+    expect(contentScript).toContain("const NAVER_BODY_IMAGE_MIN_RATIO = 0.7");
+    expect(contentScript).toContain("function verifyBodyCompleteness(actualText, doc, html)");
+    expect(contentScript).toContain("debug.bodyCompleteness = verifyBodyCompleteness(allBodyText, mfDoc, payload.bodyHtml)");
+    expect(contentScript).toContain("dry-run fail: 본문 paste 불완전");
+    expect(contentScript).not.toContain("expected≥200");
+  });
 });

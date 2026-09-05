@@ -30,6 +30,18 @@ const NAVER_CONFIRM_PUBLISH_FALLBACK_SELECTORS = [
   '[role="button"][data-click-area*="publish"]',
 ];
 
+// 2026-09 SmartEditor ONE 실측 반영:
+// - 살아남음: h2/h3/strong/font-size/text-align/color/blockquote/hr/img/figure+figcaption
+// - 버려짐: table/ul-li semantic/pre-code/em/background-color/style sheet
+// - 운영 원칙: 본문은 text/html clipboard+trusted paste 우선, table은 배포된 webp 이미지로 대체,
+//   검증은 절대 길이보다 원본 대비 텍스트/이미지 비율로 판단한다.
+const NAVER_SMARTEDITOR_PASTE_SURVIVAL_MATRIX = Object.freeze({
+  survives: ["h2", "h3", "strong", "font-size", "text-align", "color", "blockquote", "hr", "img", "figure+figcaption"],
+  discarded: ["table", "ul-li-semantic", "pre-code", "em", "background-color", "style-sheet"],
+});
+const NAVER_BODY_TEXT_MIN_RATIO = 0.5;
+const NAVER_BODY_IMAGE_MIN_RATIO = 0.7;
+
 if (!globalThis.__keepiooNaverPublisherListenerRegisteredV3) {
   globalThis.__keepiooNaverPublisherListenerRegisteredV3 = true;
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -195,6 +207,8 @@ async function publishToSe3(payload, dryRun) {
     debug.body_paste_method = "forced_direct_dom_edit";
     debug.body_after_direct_dom = measureEditorTextLength(bodyEl);
   } else {
+    validateNaverSmartEditorPastePayload(payload.bodyHtml, debug);
+    debug.expectedBody = buildExpectedBodyMetrics(payload.bodyHtml);
     await pasteHtml(bodyEl, payload.bodyHtml, debug);
   }
   await reportProgress("content_paste_done", { method: debug.body_paste_method, afterClick: debug.body_after_debugger_click_insert_text, afterInsert: debug.body_after_debugger_insert_text, afterDom: debug.body_after_direct_dom });
@@ -211,13 +225,15 @@ async function publishToSe3(payload, dryRun) {
   const measuredBodyText = getEditorBodyText(bodyEl);
   const allBodyText = measuredBodyText.length > paragraphText.length ? measuredBodyText : paragraphText;
   debug.bodyLength = allBodyText.length;
-  debug.bodyVerified = bodyContainsExpectedText(allBodyText, payload.bodyHtml);
+  debug.editorImageCount = countEditorImages(mfDoc);
+  debug.bodyCompleteness = verifyBodyCompleteness(allBodyText, mfDoc, payload.bodyHtml);
+  debug.bodyVerified = bodyContainsExpectedText(allBodyText, payload.bodyHtml) && debug.bodyCompleteness.ok;
   debug.bodyStyleProbe = probeSmartEditorStyles(mfDoc);
-  if (!debug.bodyVerified && isTrustedStructuredNaverBody(allBodyText, debug.body_paste_method)) {
+  if (!debug.bodyVerified && debug.bodyCompleteness.ok && isTrustedStructuredNaverBody(allBodyText, debug.body_paste_method)) {
     debug.bodyVerified = true;
     debug.body_verification_relaxed = "trusted_structured_sections";
   }
-  if (!debug.bodyVerified && isTrustedRichStyledNaverBody(allBodyText, debug.body_paste_method, debug.bodyStyleProbe)) {
+  if (!debug.bodyVerified && debug.bodyCompleteness.ok && isTrustedRichStyledNaverBody(allBodyText, debug.body_paste_method, debug.bodyStyleProbe)) {
     debug.bodyVerified = true;
     debug.body_verification_relaxed = "trusted_rich_style_probe";
   }
@@ -243,9 +259,10 @@ async function publishToSe3(payload, dryRun) {
   if (dryRun) {
     debug.stage = "dry_run_verify";
     await reportProgress("content_dry_run_verify", { bodyLength: debug.bodyLength, bodyVerified: debug.bodyVerified });
-    // 정확한 본문 길이 — 위에서 이미 측정. 임계 200 (W-NEW-1 권고)
-    if (debug.bodyLength < 200) {
-      throwWithDebug(`dry-run fail: 본문 paste 실패 의심 (length=${debug.bodyLength}, expected≥200)`, debug);
+    // SmartEditor/clipboard는 외부 클립보드 간섭이나 일부 컴포넌트 손실이 조용히 발생한다.
+    // 절대 길이 200 같은 고정 문턱 대신, 원본 HTML에서 뽑은 기대 텍스트/이미지 대비 비율로 검증한다.
+    if (!debug.bodyCompleteness?.ok) {
+      throwWithDebug(`dry-run fail: 본문 paste 불완전 (${debug.bodyCompleteness?.failures?.join(",") || "unknown"})`, debug);
     }
     const mainPub = mfDoc.querySelector('button[data-click-area="tpb.publish"]');
     if (!mainPub || !isVisible(mainPub)) throwWithDebug("publish 메인 버튼 visible X", debug);
@@ -910,6 +927,77 @@ async function pasteHtml(targetEl, html, debug) {
     debug.body_paste_method = "trusted_input_failed_no_direct_dom";
     debug.body_after_trusted_input_failed = afterLen;
   }
+}
+
+function validateNaverSmartEditorPastePayload(html, debug) {
+  const metrics = buildExpectedBodyMetrics(html);
+  debug.naverPasteInputMetrics = metrics;
+  if (metrics.tableCount > 0 && metrics.webpImageCount === 0) {
+    throwWithDebug(
+      `Naver SmartEditor paste guard: <table>은 유지되지 않음 — table을 webp 이미지로 배포한 뒤 <img>로 붙여넣어야 함 (tables=${metrics.tableCount})`,
+      debug,
+    );
+  }
+  if (metrics.emptyFigureCaptionCount > 0) {
+    throwWithDebug(
+      `Naver SmartEditor paste guard: 빈 <figcaption>은 네이버 기본 안내문이 남을 수 있음 (empty=${metrics.emptyFigureCaptionCount})`,
+      debug,
+    );
+  }
+}
+
+function buildExpectedBodyMetrics(html) {
+  const doc = new DOMParser().parseFromString(String(html || ""), "text/html");
+  const plain = htmlToPlainText(html);
+  const imgs = Array.from(doc.querySelectorAll("img"));
+  const linkOnlyParagraphs = Array.from(doc.querySelectorAll("p")).filter((p) => {
+    const text = (p.textContent || "").trim();
+    const anchors = Array.from(p.querySelectorAll("a"));
+    if (anchors.length !== 1) return false;
+    const hrefText = (anchors[0].textContent || anchors[0].getAttribute("href") || "").trim();
+    return text === hrefText || /^https?:\/\//i.test(text);
+  }).length;
+  return {
+    plainTextLength: plain.length,
+    imageCount: imgs.length,
+    webpImageCount: imgs.filter((img) => /\.webp(?:[?#]|$)/i.test(img.getAttribute("src") || "")).length,
+    tableCount: doc.querySelectorAll("table").length,
+    codeBlockCount: doc.querySelectorAll("pre, code").length,
+    emphasizedCount: doc.querySelectorAll("em").length,
+    backgroundColorCount: Array.from(doc.querySelectorAll("[style]"))
+      .filter((el) => /background(?:-color)?\s*:/i.test(el.getAttribute("style") || "")).length,
+    emptyFigureCaptionCount: Array.from(doc.querySelectorAll("figure figcaption"))
+      .filter((caption) => !(caption.textContent || "").trim()).length,
+    linkOnlyParagraphs,
+  };
+}
+
+function verifyBodyCompleteness(actualText, doc, html) {
+  const expected = buildExpectedBodyMetrics(html);
+  const actualLength = String(actualText || "").replace(/\s+/g, " ").trim().length;
+  const textRatio = expected.plainTextLength > 0 ? actualLength / expected.plainTextLength : 1;
+  const editorImages = countEditorImages(doc);
+  const requiredImages = expected.imageCount >= 3
+    ? Math.ceil(expected.imageCount * NAVER_BODY_IMAGE_MIN_RATIO)
+    : Math.min(expected.imageCount, editorImages);
+  const failures = [];
+  if (textRatio < NAVER_BODY_TEXT_MIN_RATIO) failures.push(`text_ratio:${textRatio.toFixed(2)}<${NAVER_BODY_TEXT_MIN_RATIO}`);
+  if (expected.imageCount >= 3 && editorImages < requiredImages) failures.push(`image_count:${editorImages}<${requiredImages}`);
+  return {
+    ok: failures.length === 0,
+    plainTextLength: expected.plainTextLength,
+    actualLength,
+    textRatio: Number(textRatio.toFixed(3)),
+    expectedImages: expected.imageCount,
+    editorImages,
+    requiredImages,
+    failures,
+  };
+}
+
+function countEditorImages(doc) {
+  const root = doc?.querySelector?.(".se-main-container") || doc;
+  return root?.querySelectorAll?.(".se-image img, img.se-image-resource, img")?.length ?? 0;
 }
 
 function titleContains(targetEl, expected) {
