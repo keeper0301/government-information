@@ -73,6 +73,12 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("URL-only paragraph는 OG 카드로 바뀔 수 있음");
   });
 
+  it("keeps payload safety validation ahead of forced direct DOM diagnostics", () => {
+    expect(contentScript).toContain("Payload safety validation is independent of the input mechanism");
+    expect(contentScript).toContain("validateNaverSmartEditorPastePayload(payload.bodyHtml, debug);\n  debug.expectedBody = buildExpectedBodyMetrics(payload.bodyHtml);\n  if (payload.forceDirectReplace === true)");
+    expect(contentScript).toContain("forced_direct_dom_edit");
+  });
+
   it("requires cover images to be deployed HTTPS URLs before clipboard paste", () => {
     expect(contentScript).toContain("function validateNaverCoverImageUrl(url, debug)");
     expect(contentScript).toContain("validateNaverCoverImageUrl(payload.coverImageUrl, debug)");

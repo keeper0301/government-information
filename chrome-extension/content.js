@@ -203,13 +203,16 @@ async function publishToSe3(payload, dryRun) {
     // cover 뒤에 본문 추가 — cursor 를 본문 영역 끝으로
     focusEditor(bodyEl);
   }
+  // Payload safety validation is independent of the input mechanism.
+  // Even explicit forceDirectReplace/manual diagnostics must surface table/video/local-image
+  // risks before mutating the editor, otherwise the diagnostic path can mask publish-time loss.
+  validateNaverSmartEditorPastePayload(payload.bodyHtml, debug);
+  debug.expectedBody = buildExpectedBodyMetrics(payload.bodyHtml);
   if (payload.forceDirectReplace === true) {
     directInsertHtml(bodyEl, payload.bodyHtml, htmlToPlainText(payload.bodyHtml));
     debug.body_paste_method = "forced_direct_dom_edit";
     debug.body_after_direct_dom = measureEditorTextLength(bodyEl);
   } else {
-    validateNaverSmartEditorPastePayload(payload.bodyHtml, debug);
-    debug.expectedBody = buildExpectedBodyMetrics(payload.bodyHtml);
     await pasteHtml(bodyEl, payload.bodyHtml, debug);
   }
   await reportProgress("content_paste_done", { method: debug.body_paste_method, afterClick: debug.body_after_debugger_click_insert_text, afterInsert: debug.body_after_debugger_insert_text, afterDom: debug.body_after_direct_dom });
