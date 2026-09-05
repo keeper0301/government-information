@@ -564,9 +564,9 @@ async function clickAndInsertTextViaDebugger(tabId, x, y, text) {
     await debuggerAttach(target);
     attached = true;
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
-    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
+    await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: humanClickCount() });
     await debuggerSendCommand(target, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
-    await new Promise((r) => setTimeout(r, 250));
+    await humanDelay(250, 0.35);
     await insertTextViaDebuggerChunks(target, text);
   } finally {
     if (attached) await debuggerDetach(target).catch(() => undefined);
@@ -596,10 +596,24 @@ async function insertTextLineChunks(target, line) {
   for (let i = 0; i < line.length; i += chunkSize) {
     await debuggerSendCommand(target, "Input.insertText", { text: line.slice(i, i + chunkSize) });
     // SmartEditor can drop back-to-back CDP insertText calls while it reconciles
-    // its internal document model. A short pause between smaller chunks keeps
-    // the cursor alive and prevents first-chunk-only truncation.
-    await new Promise((r) => setTimeout(r, 220));
+    // its internal document model. Use a small humanized pause instead of a fixed
+    // fastest-possible loop; real Naver automation is safer when it runs at a
+    // hand-input tempo and avoids identical timing signatures.
+    await humanDelay(220, 0.45);
   }
+}
+
+function humanDelay(baseMs, jitterRatio = 0.3) {
+  const base = Math.max(1, Number(baseMs) || 1);
+  const spread = Math.max(0, Number(jitterRatio) || 0);
+  const multiplier = 1 + Math.random() * spread;
+  return new Promise((r) => setTimeout(r, Math.round(base * multiplier)));
+}
+
+function humanClickCount() {
+  // Rarely allow a double-click shaped event, matching the measured "연타" behavior
+  // without turning every click into a risky repeated action.
+  return Math.random() < 0.08 ? 2 : 1;
 }
 
 async function dispatchEnterViaDebugger(target) {

@@ -944,6 +944,12 @@ function validateNaverSmartEditorPastePayload(html, debug) {
       debug,
     );
   }
+  if (metrics.linkOnlyParagraphs > 0) {
+    debug.naverPasteOgCardRisk = {
+      linkOnlyParagraphs: metrics.linkOnlyParagraphs,
+      advice: "URL-only paragraph는 OG 카드로 바뀔 수 있음 — 원치 않으면 주변 문장과 함께 넣기",
+    };
+  }
 }
 
 function buildExpectedBodyMetrics(html) {

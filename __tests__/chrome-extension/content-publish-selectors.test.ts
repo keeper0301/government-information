@@ -67,6 +67,8 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("metrics.tableCount > 0 && metrics.webpImageCount === 0");
     expect(contentScript).toContain("table을 webp 이미지로 배포한 뒤 <img>로 붙여넣어야 함");
     expect(contentScript).toContain("emptyFigureCaptionCount > 0");
+    expect(contentScript).toContain("naverPasteOgCardRisk");
+    expect(contentScript).toContain("URL-only paragraph는 OG 카드로 바뀔 수 있음");
   });
 
   it("verifies SmartEditor paste completeness against the original body ratio", () => {

@@ -39,4 +39,12 @@ describe("Naver extension scheduled alarm writer policy", () => {
     expect(backgroundScript).toContain('"live_alarm_disabled"');
     expect(backgroundScript).toContain('"alarms_not_registered"');
   });
+
+  it("uses humanized CDP typing cadence instead of fastest fixed delays", () => {
+    expect(backgroundScript).toContain("function humanDelay(baseMs, jitterRatio = 0.3)");
+    expect(backgroundScript).toContain("await humanDelay(220, 0.45)");
+    expect(backgroundScript).toContain("await humanDelay(250, 0.35)");
+    expect(backgroundScript).toContain("function humanClickCount()");
+    expect(backgroundScript).toContain("Math.random() < 0.08 ? 2 : 1");
+  });
 });
