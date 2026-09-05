@@ -66,8 +66,8 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("function validateNaverSmartEditorPastePayload(html, debug)");
     expect(contentScript).toContain("metrics.tableCount > 0 && metrics.remoteWebpImageCount === 0");
     expect(contentScript).toContain("table을 배포된 webp 이미지 URL로 바꾼 뒤 <img>로 붙여넣어야 함");
-    expect(contentScript).toContain("metrics.tableCount > 0 && metrics.nonRemoteImageCount > 0");
-    expect(contentScript).toContain("data/blob/file/local 이미지는 배포 URL로 바꿔야 함");
+    expect(contentScript).toContain("if (metrics.nonRemoteImageCount > 0)");
+    expect(contentScript).toContain("이미지를 HTTPS URL로 가져감");
     expect(contentScript).toContain("emptyFigureCaptionCount > 0");
     expect(contentScript).toContain("naverPasteOgCardRisk");
     expect(contentScript).toContain("URL-only paragraph는 OG 카드로 바뀔 수 있음");

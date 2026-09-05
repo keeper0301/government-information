@@ -944,9 +944,9 @@ function validateNaverSmartEditorPastePayload(html, debug) {
       debug,
     );
   }
-  if (metrics.tableCount > 0 && metrics.nonRemoteImageCount > 0) {
+  if (metrics.nonRemoteImageCount > 0) {
     throwWithDebug(
-      `Naver SmartEditor paste guard: 네이버는 붙여넣는 순간 이미지를 URL로 가져감 — data/blob/file/local 이미지는 배포 URL로 바꿔야 함 (nonRemote=${metrics.nonRemoteImageCount})`,
+      `Naver SmartEditor paste guard: 네이버는 붙여넣는 순간 이미지를 HTTPS URL로 가져감 — data/blob/file/local 이미지는 배포 URL로 바꿔야 함 (nonRemote=${metrics.nonRemoteImageCount})`,
       debug,
     );
   }
