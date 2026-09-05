@@ -3,6 +3,8 @@
 // AdSense 재심사 preflight — live public surface read-only 진단
 // ============================================================
 
+import { runGuideQualityAudit } from "./guide-quality-audit.mjs";
+
 const BASE_URL = process.env.ADSENSE_REVIEW_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 const USER_AGENT = "keepioo-adsense-review-preflight/1.0";
 const DISALLOWED_SITEMAP_PATHS = [
@@ -130,6 +132,22 @@ for (const check of PAGE_CHECKS) {
     if (!text.includes(required)) failures.push(`${check.path} missing required phrase: ${required}`);
   }
 }
+
+const guideQuality = await runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 18 });
+lines.push(`guide_quality.guides=${guideQuality.guideCount}`);
+lines.push(`guide_quality.fetched=${guideQuality.fetched}`);
+lines.push(`guide_quality.passed=${guideQuality.passed}`);
+lines.push(`guide_quality.issues=${guideQuality.issueCount}`);
+for (const [key, count] of Object.entries(guideQuality.missingCounts)) {
+  lines.push(`guide_quality.missing.${key}=${count}`);
+}
+for (const row of guideQuality.results.filter((row) => row.missing.length > 0).slice(0, 10)) {
+  lines.push(`guide_quality.issue.${row.path}=${row.missing.join("|")}`);
+}
+if (guideQuality.status !== "ok") {
+  for (const failure of guideQuality.failures) failures.push(`guide quality ${failure}`);
+}
+if (guideQuality.issueCount > 0) failures.push(`guide quality issues: ${guideQuality.issueCount}`);
 
 console.log("AdSense review preflight");
 console.log(`base=${BASE_URL}`);

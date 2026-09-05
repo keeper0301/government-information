@@ -214,7 +214,7 @@ describe("AdSense approval guardrails", () => {
     expect(read("lib/admin/menu.ts")).toContain("/admin/search-console");
   });
 
-  it("exposes a live AdSense review preflight CLI", () => {
+  it("exposes a live AdSense review preflight CLI with guide-quality summary", () => {
     expect(read("package.json")).toContain('"diagnose:adsense-review"');
     const source = read("tools/diagnose-adsense-review.mjs");
     expect(source).toContain("Mediapartners-Google");
@@ -223,5 +223,8 @@ describe("AdSense approval guardrails", () => {
     expect(source).toContain("ADSENSE_REVIEW_STRICT_LINKS");
     expect(source).toContain('{ path: "/welfare", robots: "noindex, follow" }');
     expect(source).toContain('{ path: "/blog", robots: "noindex, follow" }');
+    expect(source).toContain('runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 18 })');
+    expect(source).toContain("guide_quality.issues");
+    expect(source).toContain("guide quality issues");
   });
 });
