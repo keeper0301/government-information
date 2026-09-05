@@ -139,6 +139,7 @@ async function publishToSe3(payload, dryRun) {
   //    실패한 cover 뒤에 stale body가 남아 trusted input 검증이 계속 실패한다.
   debug.cover_pasted = false;
   if (payload.coverImageUrl) {
+    validateNaverCoverImageUrl(payload.coverImageUrl, debug);
     debug.stage = "cover";
     const coverBodyEl = await waitForBodyParagraph(mfDoc, 8000);
     if (coverBodyEl) {
@@ -926,6 +927,20 @@ async function pasteHtml(targetEl, html, debug) {
   if (afterLen - beforeLen < 100) {
     debug.body_paste_method = "trusted_input_failed_no_direct_dom";
     debug.body_after_trusted_input_failed = afterLen;
+  }
+}
+
+function validateNaverCoverImageUrl(url, debug) {
+  const coverImageUrl = String(url || "").trim();
+  debug.naverCoverImageInput = {
+    hasCoverImageUrl: coverImageUrl.length > 0,
+    isHttps: /^https:\/\//i.test(coverImageUrl),
+  };
+  if (!/^https:\/\//i.test(coverImageUrl)) {
+    throwWithDebug(
+      "Naver SmartEditor paste guard: coverImageUrl은 배포된 HTTPS 이미지 URL이어야 함 — data/blob/file/local 이미지는 커버로 붙이지 않음",
+      debug,
+    );
   }
 }
 

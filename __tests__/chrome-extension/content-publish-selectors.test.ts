@@ -73,6 +73,14 @@ describe("Naver content publish selectors", () => {
     expect(contentScript).toContain("URL-only paragraph는 OG 카드로 바뀔 수 있음");
   });
 
+  it("requires cover images to be deployed HTTPS URLs before clipboard paste", () => {
+    expect(contentScript).toContain("function validateNaverCoverImageUrl(url, debug)");
+    expect(contentScript).toContain("validateNaverCoverImageUrl(payload.coverImageUrl, debug)");
+    expect(contentScript).toContain("naverCoverImageInput");
+    expect(contentScript).toContain("coverImageUrl은 배포된 HTTPS 이미지 URL이어야 함");
+    expect(contentScript).toContain("data/blob/file/local 이미지는 커버로 붙이지 않음");
+  });
+
   it("records downgrade risks for HTML that SmartEditor silently flattens", () => {
     expect(contentScript).toContain("naverPasteDowngradeRisk");
     expect(contentScript).toContain("listItemCount: metrics.listItemCount");
