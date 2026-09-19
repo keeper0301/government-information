@@ -16,6 +16,7 @@ import { getGuides } from "@/lib/policy-guides";
 import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { EligibilityDemoStrip } from "@/components/eligibility-demo-strip";
 
 export const dynamic = "force-static";
 
@@ -64,6 +65,26 @@ export default async function GuidesPage() {
           <li>서류명, 발급 시점, 문의 전 준비 질문을 같이 적어 사용자가 공식 창구에서 다시 확인할 수 있게 합니다.</li>
           <li>최종 신청·선정 여부는 각 기관의 최신 공고와 담당자 안내가 기준임을 분명히 둡니다.</li>
         </ul>
+      </section>
+
+      <section className="mb-10">
+        <EligibilityDemoStrip compact />
+      </section>
+
+      <section className="mb-10 rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 className="text-xl font-bold mb-3">정책을 많이 보여주는 것보다 먼저 거르는 기준</h2>
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            ["자격", "나이·지역·직업·소득·가구 조건이 맞는지 먼저 확인합니다."],
+            ["서류", "주민등록등본·소득증빙·사업자 서류처럼 신청 전 준비물을 따로 봅니다."],
+            ["마감", "상시 접수처럼 보여도 예산 소진·보완 요청 기한이 있는지 확인합니다."],
+          ].map(([title, desc]) => (
+            <div key={title} className="rounded-2xl bg-gray-50 p-4">
+              <h3 className="font-bold text-grey-900 mb-2">{title}</h3>
+              <p className="text-sm leading-relaxed text-gray-700">{desc}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* 정책 가이드 카드 list (있으면 위에 노출) */}

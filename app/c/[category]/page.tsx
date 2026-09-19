@@ -24,12 +24,14 @@ import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { CohortCtaBanner } from "@/components/cohort-cta-banner";
+import { EligibilityDemoStrip } from "@/components/eligibility-demo-strip";
 import { welfareToDisplay, loanToDisplay } from "@/lib/programs";
 import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
 import { getGuides } from "@/lib/policy-guides";
+import { safeJsonLd } from "@/lib/json-ld-safe";
 import {
   buildHubOrClause,
   CATEGORY_HUBS,
@@ -302,19 +304,9 @@ export default async function CategoryHubPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-grey-50 pt-[80px] pb-20">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-        }}
-      />
+      <script type="application/ld+json">{safeJsonLd(jsonLd)}</script>
       {faqJsonLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(faqJsonLd).replace(/</g, "\\u003c"),
-          }}
-        />
+        <script type="application/ld+json">{safeJsonLd(faqJsonLd)}</script>
       )}
 
       <div className="max-w-[1200px] mx-auto px-5">
@@ -370,6 +362,26 @@ export default async function CategoryHubPage({ params }: PageProps) {
             <p className="text-[15px] text-grey-800 leading-[1.8]">
               {hub.curatorNote}
             </p>
+          </section>
+        )}
+
+        <section className="mb-8 grid gap-3 md:grid-cols-4">
+          {[
+            ["추천", "조건에 가까운 정책을 먼저 봅니다."],
+            ["마감", "접수 종료와 예산 소진 위험을 따로 봅니다."],
+            ["서류", "등본·소득·사업자 증빙을 미리 확인합니다."],
+            ["중복", "이미 받은 지원과 충돌할 수 있는지 확인합니다."],
+          ].map(([title, desc]) => (
+            <div key={title} className="rounded-2xl border border-grey-200 bg-white p-4">
+              <div className="text-[15px] font-extrabold text-grey-900 mb-1">{title}</div>
+              <p className="text-[13px] leading-[1.6] text-grey-600">{desc}</p>
+            </div>
+          ))}
+        </section>
+
+        {ADSENSE_REVIEW_MODE && (
+          <section className="mb-10">
+            <EligibilityDemoStrip compact />
           </section>
         )}
 

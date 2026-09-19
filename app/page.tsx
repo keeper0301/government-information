@@ -15,6 +15,7 @@ import { HomeLocalRecommend } from "@/components/home-local-recommend";
 import { HomeValueProps } from "@/components/home-value-props";
 import { HomePopularPicks } from "@/components/home-popular-picks";
 import { HomeJsonLd } from "@/components/home-jsonld";
+import { EligibilityDemoStrip } from "@/components/eligibility-demo-strip";
 import { AdSlot } from "@/components/ad-slot";
 import { BlogCategoryChips } from "@/components/blog-category-chips";
 import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePrompt";
@@ -381,6 +382,10 @@ export default async function Home() {
       )}
 
       {ADSENSE_REVIEW_MODE && <ReviewModeHomeBody />}
+
+      <section className="py-[40px] px-6 max-w-content mx-auto lg:px-10">
+        <EligibilityDemoStrip />
+      </section>
 
       <HomeDiscoveryHub
         regionMap={<RegionMap />}

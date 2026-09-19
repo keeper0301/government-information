@@ -151,6 +151,25 @@ describe("AdSense approval guardrails", () => {
     expect(categoryHub).toContain("ADSENSE_REVIEW_MODE ? guides.length");
   });
 
+  it("shows a clear eligibility diagnosis demo on review-safe content surfaces", () => {
+    const demo = read("components/eligibility-demo-strip.tsx");
+    expect(demo).toContain("1분 자격 진단 미리보기");
+    expect(demo).toContain("정책알리미는 목록보다 먼저");
+    expect(demo).toContain("데모 화면");
+    expect(demo).toContain("마감 임박 정책 먼저 표시");
+
+    const home = read("app/page.tsx");
+    expect(home).toContain("<EligibilityDemoStrip />");
+
+    const guides = read("app/guides/page.tsx");
+    expect(guides).toContain("<EligibilityDemoStrip compact />");
+    expect(guides).toContain("정책을 많이 보여주는 것보다 먼저 거르는 기준");
+
+    const categoryHub = read("app/c/[category]/page.tsx");
+    expect(categoryHub).toContain("<EligibilityDemoStrip compact />");
+    expect(categoryHub).toContain("접수 종료와 예산 소진 위험");
+  });
+
   it("keeps mass listing indexes noindex during AdSense review mode", () => {
     for (const path of ["app/welfare/page.tsx", "app/loan/page.tsx", "app/blog/page.tsx"]) {
       const source = read(path);
