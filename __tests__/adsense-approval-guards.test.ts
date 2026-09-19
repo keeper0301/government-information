@@ -238,6 +238,7 @@ describe("AdSense approval guardrails", () => {
 
   it("exposes a live AdSense review preflight CLI with guide-quality summary", () => {
     expect(read("package.json")).toContain('"diagnose:adsense-review"');
+    expect(read("package.json")).toContain('"diagnose:adsense-review:status"');
     const source = read("tools/diagnose-adsense-review.mjs");
     expect(source).toContain("Mediapartners-Google");
     expect(source).toContain("DISALLOWED_SITEMAP_PATHS");
@@ -248,5 +249,14 @@ describe("AdSense approval guardrails", () => {
     expect(source).toContain('runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 30 })');
     expect(source).toContain("guide_quality.issues");
     expect(source).toContain("guide quality issues");
+  });
+
+  it("exposes a live AdSense review status board generator", () => {
+    const source = read("tools/adsense-review-status.mjs");
+    expect(source).toContain("AdSense 재심사 추적 보드");
+    expect(source).toContain("Manual Site Cron Trigger");
+    expect(source).toContain("search-console-sitemap-submit");
+    expect(source).toContain("ADSENSE_REVIEW_STRICT_LINKS");
+    expect(source).toContain("docs/adsense-review-tracker.md");
   });
 });
