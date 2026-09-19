@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGuideBySlug, getRelatedGuides } from "@/lib/policy-guides";
+import { buildGuideSupplement } from "@/lib/guide-editorial-supplements";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 
 export const revalidate = 60;
@@ -95,6 +96,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
   if (!guide) notFound();
 
   const related = await getRelatedGuides(guide.id, 3);
+  const supplement = buildGuideSupplement(guide);
 
   // Schema.org Article structured data — 검색 노출 강화
   const jsonLd = {
@@ -148,6 +150,38 @@ export default async function GuideDetailPage({ params }: PageProps) {
             {renderBody(post)}
           </section>
         ))}
+
+        <section className="mt-10 rounded-2xl border border-blue-100 bg-blue-50/60 p-5 not-prose">
+          <h2 className="text-xl font-bold text-grey-900 mb-3">신청 전 마지막 확인</h2>
+          <p className="text-[15px] leading-relaxed text-grey-700 mb-4">{supplement.reviewNote}</p>
+          <ul className="list-disc pl-5 space-y-2 text-[15px] leading-relaxed text-grey-700">
+            {supplement.beforeApply.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-grey-200 bg-white p-5 not-prose">
+          <h2 className="text-xl font-bold text-grey-900 mb-3">공식 출처에서 다시 볼 것</h2>
+          <ul className="list-disc pl-5 space-y-2 text-[15px] leading-relaxed text-grey-700">
+            {supplement.sourceChecks.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="mt-4 text-[14px] leading-relaxed text-grey-600">
+            keepioo는 신청 판단을 돕는 해설을 제공하지만, 최종 접수·선정·환수 기준은 공식 기관의 최신 공고와 문의처 답변이 우선합니다.
+          </p>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-amber-100 bg-amber-50/70 p-5 not-prose">
+          <h2 className="text-xl font-bold text-grey-900 mb-3">문의할 때 바로 쓸 질문</h2>
+          <ol className="list-decimal pl-5 space-y-2 text-[15px] leading-relaxed text-grey-700">
+            {supplement.callScript.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ol>
+          <p className="mt-4 text-[15px] leading-relaxed text-grey-700">{supplement.riskMemo}</p>
+        </section>
       </article>
 
       <aside className="mt-12 p-6 border rounded-lg bg-gray-50">

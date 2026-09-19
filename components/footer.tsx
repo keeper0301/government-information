@@ -17,6 +17,9 @@ import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 const footerLinks = ADSENSE_REVIEW_MODE ? [
   { label: "서비스 소개", href: "/about" },
   { label: "정책 가이드", href: "/guides" },
+  { label: "편집 정책", href: "/editorial-policy" },
+  { label: "출처 정책", href: "/source-policy" },
+  { label: "정정 정책", href: "/correction-policy" },
   { label: "도움말", href: "/help" },
   { label: "이용약관", href: "/terms" },
   { label: "개인정보처리방침", href: "/privacy" },
@@ -24,6 +27,10 @@ const footerLinks = ADSENSE_REVIEW_MODE ? [
 ] : [
   { label: "1분 진단", href: "/quiz" },
   { label: "서비스 소개", href: "/about" },
+  { label: "정책 가이드", href: "/guides" },
+  { label: "편집 정책", href: "/editorial-policy" },
+  { label: "출처 정책", href: "/source-policy" },
+  { label: "정정 정책", href: "/correction-policy" },
   { label: "도움말", href: "/help" },
   { label: "이용약관", href: "/terms" },
   { label: "개인정보처리방침", href: "/privacy" },

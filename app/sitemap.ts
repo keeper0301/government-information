@@ -54,7 +54,6 @@ async function paginateAll<T>(
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://keepioo.com";
-  const supabase = await createClient();
 
   // Static pages — lastModified 는 SITEMAP_BUILD_TIME 고정 (Google "진짜 변경" 신호 정확화)
   const staticPages: MetadataRoute.Sitemap = [
@@ -90,6 +89,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/help`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/contact`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/about`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/editorial-policy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/source-policy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/correction-policy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     ...(!ADSENSE_REVIEW_MODE
       ? [{ url: `${baseUrl}/eligibility`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.7 }]
       : []),
@@ -100,7 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const guides = await getGuides(200);
   const reviewModeGuideSlugBlock = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
   const selectedGuides = ADSENSE_REVIEW_MODE
-    ? guides.filter((g) => !reviewModeGuideSlugBlock.test(g.slug)).slice(0, 20)
+    ? guides.filter((g) => !reviewModeGuideSlugBlock.test(g.slug)).slice(0, 30)
     : guides;
   const guidePages: MetadataRoute.Sitemap = selectedGuides.map((g) => ({
     url: `${baseUrl}/guides/${g.slug}`,
@@ -108,6 +110,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly" as const,
     priority: 0.6,
   }));
+
+  // 카테고리 hub 4종 — /c/[slug] (Phase 2 A2, youth/senior/business/housing).
+  // 4 hub 모두 SSG + benefit/age/occupation 세 축 매칭이라 thin-content 위험 낮음.
+  const hubPages: MetadataRoute.Sitemap = CATEGORY_SLUGS.map((slug) => ({
+    url: `${baseUrl}/c/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  // AdSense 재심사 모드: 자동 수집·대량 템플릿 URL은 sitemap 에서 제거한다.
+  // 심사자는 sitemap 을 따라 얇은 정책/뉴스/검색성 페이지를 샘플링하므로,
+  // 직접 작성형 가이드와 핵심 허브만 제출한다.
+  if (ADSENSE_REVIEW_MODE) {
+    return [
+      ...staticPages,
+      ...hubPages,
+      ...guidePages,
+    ];
+  }
+
+  const supabase = await createClient();
 
   // 자격 카테고리 페이지 — Phase 1.5 long-tail SEO (income·household 8 slug)
   const eligibilityPages: MetadataRoute.Sitemap = ELIGIBILITY_SLUGS.map((slug) => ({
@@ -160,26 +184,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
-
-  // 카테고리 hub 4종 — /c/[slug] (Phase 2 A2, youth/senior/business/housing).
-  // 4 hub 모두 SSG + benefit/age/occupation 세 축 매칭이라 thin-content 위험 낮음.
-  const hubPages: MetadataRoute.Sitemap = CATEGORY_SLUGS.map((slug) => ({
-    url: `${baseUrl}/c/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
-
-  // AdSense 재심사 모드: 자동 수집·대량 템플릿 URL은 sitemap 에서 제거한다.
-  // 심사자는 sitemap 을 따라 얇은 정책/뉴스/검색성 페이지를 샘플링하므로,
-  // 직접 작성형 가이드와 핵심 허브만 제출한다.
-  if (ADSENSE_REVIEW_MODE) {
-    return [
-      ...staticPages,
-      ...hubPages,
-      ...guidePages,
-    ];
-  }
 
   // 연령 long-tail 페이지 — 5 age × welfare/loan = 10 페이지.
   // 카운트 ≥ 5 만 sitemap 등록 (thin-content 방지). 카운트 0~4 인 age 는

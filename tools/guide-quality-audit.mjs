@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 const DEFAULT_BASE_URL = "https://www.keepioo.com";
-const DEFAULT_MIN_GUIDES = 18;
+const DEFAULT_MIN_GUIDES = 30;
+const DEFAULT_MIN_TEXT_LENGTH = 2400;
 
 export const GUIDE_QUALITY_CHECKS = [
   {
@@ -40,6 +41,7 @@ export function parseArgs(argv) {
   const out = {
     baseUrl: process.env.GUIDE_QUALITY_BASE_URL || DEFAULT_BASE_URL,
     minGuides: Number(process.env.GUIDE_QUALITY_MIN_GUIDES || DEFAULT_MIN_GUIDES),
+    minTextLength: Number(process.env.GUIDE_QUALITY_MIN_TEXT_LENGTH || DEFAULT_MIN_TEXT_LENGTH),
     json: false,
     failOnIssues: process.env.GUIDE_QUALITY_FAIL_ON_ISSUES === "1",
   };
@@ -48,6 +50,7 @@ export function parseArgs(argv) {
     const arg = argv[i];
     if (arg === "--base-url") out.baseUrl = argv[++i];
     else if (arg === "--min-guides") out.minGuides = Number(argv[++i]);
+    else if (arg === "--min-text-length") out.minTextLength = Number(argv[++i]);
     else if (arg === "--json") out.json = true;
     else if (arg === "--fail-on-issues") out.failOnIssues = true;
     else if (arg === "--help" || arg === "-h") out.help = true;
@@ -55,6 +58,7 @@ export function parseArgs(argv) {
 
   out.baseUrl = String(out.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "");
   if (!Number.isFinite(out.minGuides) || out.minGuides < 1) out.minGuides = DEFAULT_MIN_GUIDES;
+  if (!Number.isFinite(out.minTextLength) || out.minTextLength < 500) out.minTextLength = DEFAULT_MIN_TEXT_LENGTH;
   return out;
 }
 
@@ -96,6 +100,7 @@ function titleFromHtml(html, fallbackUrl) {
 
 export function analyzeGuideHtml(html, url, options = {}) {
   const text = stripHtml(html);
+  const minTextLength = options.minTextLength ?? DEFAULT_MIN_TEXT_LENGTH;
   const title = options.title || titleFromHtml(html, url);
   const checks = GUIDE_QUALITY_CHECKS.map((check) => {
     const matched = check.keywords.filter((keyword) => text.includes(keyword));
@@ -107,6 +112,8 @@ export function analyzeGuideHtml(html, url, options = {}) {
     };
   });
   const missing = checks.filter((check) => !check.ok).map((check) => check.key);
+  const densityOk = text.length >= minTextLength || new URL(url).pathname === "/guides";
+  if (!densityOk) missing.push("content_depth");
   return {
     url,
     path: new URL(url).pathname,
@@ -135,6 +142,7 @@ async function fetchText(url) {
 export async function runGuideQualityAudit(options = {}) {
   const baseUrl = String(options.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "");
   const minGuides = options.minGuides || DEFAULT_MIN_GUIDES;
+  const minTextLength = options.minTextLength || DEFAULT_MIN_TEXT_LENGTH;
   const sitemap = await fetchText(`${baseUrl}/sitemap.xml`);
   const failures = [];
   if (sitemap.status !== 200) failures.push(`sitemap HTTP ${sitemap.status}`);
@@ -151,7 +159,7 @@ export async function runGuideQualityAudit(options = {}) {
         results.push({ url, path: new URL(url).pathname, title: "", textLength: 0, checks: [], missing: GUIDE_QUALITY_CHECKS.map((c) => c.key), ok: false, status: page.status });
         continue;
       }
-      results.push({ ...analyzeGuideHtml(page.text, url), status: page.status });
+      results.push({ ...analyzeGuideHtml(page.text, url, { minTextLength }), status: page.status });
     } catch (error) {
       failures.push(`${new URL(url).pathname} fetch failed: ${error instanceof Error ? error.message : String(error)}`);
       results.push({ url, path: new URL(url).pathname, title: "", textLength: 0, checks: [], missing: GUIDE_QUALITY_CHECKS.map((c) => c.key), ok: false, status: 0 });
@@ -159,10 +167,13 @@ export async function runGuideQualityAudit(options = {}) {
   }
 
   const issueRows = results.filter((row) => row.missing.length > 0);
-  const missingCounts = Object.fromEntries(GUIDE_QUALITY_CHECKS.map((check) => [
-    check.key,
-    issueRows.filter((row) => row.missing.includes(check.key)).length,
-  ]));
+  const missingCounts = Object.fromEntries([
+    ...GUIDE_QUALITY_CHECKS.map((check) => [
+      check.key,
+      issueRows.filter((row) => row.missing.includes(check.key)).length,
+    ]),
+    ["content_depth", issueRows.filter((row) => row.missing.includes("content_depth")).length],
+  ]);
 
   return {
     baseUrl,

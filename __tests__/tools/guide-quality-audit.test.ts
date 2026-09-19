@@ -7,6 +7,7 @@ import {
   stripHtml,
 } from "@/tools/guide-quality-audit.mjs";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
+import { buildGuideSupplement } from "@/lib/guide-editorial-supplements";
 
 describe("guide-quality-audit", () => {
   it("parses only same-origin guide review-surface URLs from sitemap", () => {
@@ -38,6 +39,7 @@ describe("guide-quality-audit", () => {
         </article>
       </body></html>`,
       "https://www.keepioo.com/guides/test",
+      { minTextLength: 1 },
     );
 
     expect(result.title).toBe("청년 월세 지원 신청 전 체크리스트");
@@ -60,6 +62,7 @@ describe("guide-quality-audit", () => {
         <p>신청 전 대상 기준만 확인하세요.</p>
       </body></html>`,
       "https://www.keepioo.com/guides/short",
+      { minTextLength: 1 },
     );
 
     expect(result.ok).toBe(false);
@@ -78,9 +81,10 @@ describe("guide-quality-audit", () => {
   });
 
   it("keeps CLI parsing deterministic", () => {
-    expect(parseArgs(["--base-url", "https://example.com/", "--min-guides", "21", "--fail-on-issues", "--json"])).toMatchObject({
+    expect(parseArgs(["--base-url", "https://example.com/", "--min-guides", "30", "--min-text-length", "2400", "--fail-on-issues", "--json"])).toMatchObject({
       baseUrl: "https://example.com",
-      minGuides: 21,
+      minGuides: 30,
+      minTextLength: 2400,
       failOnIssues: true,
       json: true,
     });
@@ -96,9 +100,27 @@ describe("guide-quality-audit", () => {
 
     const failures = EDITORIAL_GUIDES.filter((guide) => previouslyFlagged.has(guide.slug)).map((guide) => {
       const html = `<article><h1>${guide.title}</h1>${guide.posts.map((post) => `<p>${post}</p>`).join("")}</article>`;
-      return analyzeGuideHtml(html, `https://www.keepioo.com/guides/${guide.slug}`);
+      return analyzeGuideHtml(html, `https://www.keepioo.com/guides/${guide.slug}`, { minTextLength: 500 });
     }).filter((result) => result.missing.includes("duplicate_limits"));
 
     expect(failures.map((result) => ({ slug: result.path.split("/").pop(), missing: result.missing }))).toEqual([]);
+  });
+
+  it("keeps at least 30 editorial guides and adds depth supplements for review pages", () => {
+    expect(EDITORIAL_GUIDES.length).toBeGreaterThanOrEqual(30);
+
+    const failures = EDITORIAL_GUIDES.map((guide) => {
+      const supplement = buildGuideSupplement(guide);
+      const html = `<article><h1>${guide.title}</h1>${guide.posts.map((post) => `<p>${post}</p>`).join("")}
+        <section>${supplement.reviewNote}</section>
+        <ul>${supplement.beforeApply.map((item) => `<li>${item}</li>`).join("")}</ul>
+        <ul>${supplement.sourceChecks.map((item) => `<li>${item}</li>`).join("")}</ul>
+        <ol>${supplement.callScript.map((item) => `<li>${item}</li>`).join("")}</ol>
+        <p>${supplement.riskMemo}</p>
+      </article>`;
+      return analyzeGuideHtml(html, `https://www.keepioo.com/guides/${guide.slug}`);
+    }).filter((result) => !result.ok);
+
+    expect(failures.map((result) => ({ slug: result.path.split("/").pop(), missing: result.missing, textLength: result.textLength }))).toEqual([]);
   });
 });

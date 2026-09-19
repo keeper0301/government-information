@@ -56,6 +56,9 @@ const PAGE_CHECKS = [
   { path: "/privacy", robots: "index, follow", required: ["접속 기록"] },
   { path: "/terms", robots: "index, follow" },
   { path: "/contact", robots: "index, follow" },
+  { path: "/editorial-policy", robots: "index, follow", required: ["편집 정책", "정정 요청"] },
+  { path: "/source-policy", robots: "index, follow", required: ["주요 확인 출처", "공식"] },
+  { path: "/correction-policy", robots: "index, follow", required: ["정정", "제보"] },
   { path: "/c/youth", robots: "index, follow" },
   { path: "/c/senior", robots: "index, follow" },
   { path: "/c/business", robots: "index, follow" },
@@ -133,7 +136,7 @@ for (const check of PAGE_CHECKS) {
   }
 }
 
-const guideQuality = await runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 18 });
+const guideQuality = await runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 30 });
 lines.push(`guide_quality.guides=${guideQuality.guideCount}`);
 lines.push(`guide_quality.fetched=${guideQuality.fetched}`);
 lines.push(`guide_quality.passed=${guideQuality.passed}`);

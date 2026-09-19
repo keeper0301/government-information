@@ -106,7 +106,7 @@ describe("AdSense approval guardrails", () => {
     for (const path of ["/calendar", "/recommend", "/popular", "/consult", "/alerts", "/pricing"]) {
       expect(source).toContain("`${baseUrl}" + path);
     }
-    for (const path of ["/privacy", "/terms", "/refund", "/help", "/contact", "/about", "/welfare", "/loan", "/blog", "/guides"]) {
+    for (const path of ["/privacy", "/terms", "/refund", "/help", "/contact", "/about", "/editorial-policy", "/source-policy", "/correction-policy", "/welfare", "/loan", "/blog", "/guides"]) {
       expect(source).toContain("`${baseUrl}" + path);
     }
   });
@@ -115,7 +115,7 @@ describe("AdSense approval guardrails", () => {
     const sitemap = read("app/sitemap.ts");
     expect(sitemap).toContain("/welfare·/loan·/blog index 는 대량 목록/자동 생성 인상을 줄 수 있어");
     expect(sitemap).toContain("reviewModeGuideSlugBlock");
-    expect(sitemap).toContain("slice(0, 20)");
+    expect(sitemap).toContain("slice(0, 30)");
 
     const home = read("app/page.tsx");
     expect(home).toContain("ReviewModeHomeBody");
@@ -193,12 +193,18 @@ describe("AdSense approval guardrails", () => {
     expect(read("app/terms/page.tsx")).toContain('alternates: { canonical: "/terms" }');
     expect(read("app/refund/page.tsx")).toContain('alternates: { canonical: "/refund" }');
     expect(read("app/contact/page.tsx")).toContain('alternates: { canonical: "/contact" }');
+    expect(read("app/editorial-policy/page.tsx")).toContain('alternates: { canonical: "/editorial-policy" }');
+    expect(read("app/source-policy/page.tsx")).toContain('alternates: { canonical: "/source-policy" }');
+    expect(read("app/correction-policy/page.tsx")).toContain('alternates: { canonical: "/correction-policy" }');
   });
 
   it("keeps contact and editorial signals visible for AdSense review", () => {
     expect(read("app/contact/page.tsx")).toContain("정책 정보 정정 요청");
     expect(read("app/contact/contact-form.tsx")).toContain("/api/support/submit");
     expect(read("components/footer.tsx")).toContain('href: "/contact"');
+    expect(read("components/footer.tsx")).toContain('href: "/editorial-policy"');
+    expect(read("components/footer.tsx")).toContain('href: "/source-policy"');
+    expect(read("components/footer.tsx")).toContain('href: "/correction-policy"');
     expect(read("app/about/page.tsx")).toContain("편집·검수 기준");
     expect(read("app/welfare/page.tsx")).toContain("대상 조건 먼저 확인");
     expect(read("app/loan/page.tsx")).toContain("용도 제한 확인");
@@ -223,7 +229,7 @@ describe("AdSense approval guardrails", () => {
     expect(source).toContain("ADSENSE_REVIEW_STRICT_LINKS");
     expect(source).toContain('{ path: "/welfare", robots: "noindex, follow" }');
     expect(source).toContain('{ path: "/blog", robots: "noindex, follow" }');
-    expect(source).toContain('runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 18 })');
+    expect(source).toContain('runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 30 })');
     expect(source).toContain("guide_quality.issues");
     expect(source).toContain("guide quality issues");
   });
