@@ -216,7 +216,7 @@ describe("AdSense approval guardrails", () => {
   it("exposes deep trust policy pages for AdSense review", () => {
     for (const [path, phrase] of [
       ["app/editorial-policy/page.tsx", "빠른 클릭보다 안전한 확인"],
-      ["app/source-policy/page.tsx", "자동 수집 자료의 처리"],
+      ["app/source-policy/page.tsx", "공개 데이터 자료의 처리"],
       ["app/correction-policy/page.tsx", "수정 후 확인"],
     ] as const) {
       const source = read(path);
