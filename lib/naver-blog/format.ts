@@ -64,9 +64,6 @@ const NAVER_H2_TITLE_STYLE = "border-left:6px solid #d8d8d8;background:#fafafa;p
 const NAVER_H3_TITLE_STYLE = "border-left:4px solid #9a9a9a;padding-left:14px;margin:34px 0 16px;font-size:19px;line-height:1.55;font-weight:700;color:#222;text-align:left;";
 const NAVER_CENTER_CTA_STYLE = "font-size:20px;line-height:1.7;font-weight:800;color:#ff2b00;text-align:center;text-decoration:underline;margin:30px 0 8px;";
 const NAVER_DIVIDER_STYLE = "text-align:center;font-weight:700;color:#888;margin:34px 0 30px;letter-spacing:1px;";
-const NAVER_TABLE_STYLE = "width:100%;border-collapse:collapse;margin:30px 0 36px;font-size:15px;text-align:center;";
-const NAVER_TABLE_HEAD_STYLE = "background:#3f70bd;color:#fff;border:1px solid #2f5597;padding:10px 8px;font-weight:700;";
-const NAVER_TABLE_CELL_STYLE = "border:1px solid #777;padding:10px 8px;color:#111;background:#fff;";
 
 function naverParagraphHtml(text: string): string {
   return `<p style="${NAVER_PARAGRAPH_STYLE}">${escapeHtml(text)}</p>`;
@@ -89,26 +86,17 @@ function naverCenteredCtaHtml(label: string, href: string): string {
   return `<p style="${NAVER_CENTER_CTA_STYLE}"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
 }
 
-function naverCenteredCtaTextHtml(label: string): string {
-  return `<p style="${NAVER_CENTER_CTA_STYLE}">${escapeHtml(label)}</p>`;
-}
-
-function naverCenteredExternalLinkHtml(href: string, label = href): string {
-  return `<p style="font-size:16px;line-height:1.8;text-align:center;margin:0 0 34px;color:#0068c9;"><a href="${escapeAttr(href)}">${escapeHtml(label)}</a></p>`;
-}
-
-function naverStyledTableHtml(rows: string[][]): string {
-  if (rows.length === 0) return "";
-  const normalizedRows = rows.length >= 2 && rows.every((row) => row.length === 2)
-    ? [rows.map((row) => row[0]), rows.map((row) => row[1])]
-    : rows;
-  const head = normalizedRows[0]
-    .map((cell) => `<th style="${NAVER_TABLE_HEAD_STYLE}">${escapeHtml(cell)}</th>`)
-    .join("");
-  const body = normalizedRows.slice(1)
-    .map((row) => `<tr>${row.map((cell) => `<td style="${NAVER_TABLE_CELL_STYLE}">${escapeHtml(cell)}</td>`).join("")}</tr>`)
-    .join("\n");
-  return `<table style="${NAVER_TABLE_STYLE}">\n<tr>${head}</tr>\n${body}\n</table>`;
+function naverFactRowsHtml(rows: string[][]): string {
+  const lines = rows
+    .map((row) => row.map((cell) => cell.trim()).filter(Boolean))
+    .filter((row) => row.length > 0);
+  if (lines.length === 0) return "";
+  return lines.map((row) => {
+    if (row.length >= 2) {
+      return `<p style="${NAVER_PARAGRAPH_STYLE}"><strong>${escapeHtml(row[0])}</strong>: ${escapeHtml(row.slice(1).join(" / "))}</p>`;
+    }
+    return `<p style="${NAVER_PARAGRAPH_STYLE}"><strong>${escapeHtml(row[0])}</strong></p>`;
+  }).join("\n");
 }
 
 /**
@@ -179,10 +167,17 @@ function prepareContentForNaver(html: string, metaDescription?: string | null): 
 function removeLowValueNaverSections(html: string): string {
   // "이 글에서 확인할 수 있는 것"은 웹 페이지용 목차라 네이버 첫 화면에서는
   // 본문 앞 핵심 요약과 중복된다. 다음 h2 전까지만 제거한다.
-  return html.replace(
+  let result = html.replace(
     /<h2[^>]*>\s*이\s*글에서\s*확인할\s*수\s*있는\s*것\s*<\/h2>[\s\S]*?(?=<h2\b|$)/i,
     "",
   );
+  // keepioo 웹 상세 페이지의 FAQ 섹션은 네이버 전용 FAQ를 뒤에서 다시 만들기 때문에
+  // 그대로 두면 "자주 묻는 질문"이 두 번 반복된다.
+  result = result.replace(
+    /<h2[^>]*>\s*자주\s*묻는\s*질문\s*<\/h2>[\s\S]*?(?=<h2\b|$)/gi,
+    "",
+  );
+  return result;
 }
 
 function removeLeadingParagraphSimilarToMeta(html: string, metaDescription?: string | null): string {
@@ -360,11 +355,13 @@ function shortenNaverFact(value: string): string {
 
 function buildNaverChecklistText(html: string): string[] {
   const lines = extractNaverPlainLines(html);
-  const routeLines = lines.filter((line) => !/마감|기간|상반기|하반기|예산\s*소진|놓치지|습관|중요한\s*기회/.test(line));
+  const routeLines = lines.filter((line) =>
+    !/마감|기간|상반기|하반기|예산\s*소진|놓치지|습관|중요한\s*기회|지원\s*비율|금액이\s*따로|별도(?:로)?\s*안내|적혀\s*있지/.test(line)
+  );
   return [
     `대상: ${findNaverFactLine(lines, /대상|자격|조건|나이|연령|지역|거주|소득|사업자/, "공식 공고의 대상 조건 확인", /^지원\s*대상|^대상[:：]/)}`,
     `혜택: ${findNaverFactLine(lines, /지원\s*(금액|내용)|혜택|최대|월\s*\d|분기|만원|원\b/, "금액과 지급 방식 확인", /^지원\s*금액|^지원\s*내용|^혜택[:：]/)}`,
-    `기간: ${findNaverFactLine(lines, /기간|마감|공고|예산\s*소진|선착순|\d{4}[.\-년]/, "신청 마감일과 예산 소진 여부 확인", /^신청\s*기간|^기간[:：]/)}`,
+    `기간: ${findNaverFactLine(lines, /기간|마감|공고|예산\s*소진|선착순|\d{4}[.\-년]/, "공식 페이지의 신청 기간 또는 상시 여부 확인", /^신청\s*기간|^기간[:：]/)}`,
     `서류: ${findNaverFactLine(lines, /서류|제출|준비물|증빙|주민등록|소득\s*증명|사업자등록/, "증빙 필요 여부 확인", /^제출\s*서류|^서류[:：]/)}`,
     `경로: ${findNaverFactLine(routeLines, /홈페이지|누리집|온라인|방문|문의|기관|센터|담당|페이지/, "공식 신청 페이지 또는 담당 기관 확인")}`,
   ];
@@ -496,15 +493,10 @@ export function convertToNaverBlogHtml(
   const answerSummary = post.meta_description
     ? softenNaverMarketingCopy(post.meta_description.trim())
     : buildNaverKeySummaryText(contentForNaver)[0] ?? post.title;
-  const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건 확인");
-  const benefit = stripChecklistLabel(checklistItems[1] ?? "금액과 지급 방식 확인");
-  const period = stripChecklistLabel(checklistItems[2] ?? "신청 마감일과 예산 소진 여부 확인");
   const hookHtml = [
     naverParagraphHtml(answerSummary),
-    naverParagraphHtml(`${target}에 해당한다면 지원 내용(${benefit})과 기간(${period})을 먼저 확인해두는 게 좋아요. 공고마다 세부 조건이 달라질 수 있으니 아래 핵심 정리를 참고하세요.`),
-    naverCenteredCtaTextHtml("자격·신청 조건 바로가기"),
-    `<p style="text-align:center;color:#ff2b00;font-size:18px;line-height:1.4;margin:0 0 10px;">👇👇</p>`,
-    naverCenteredExternalLinkHtml(backlinkUrl),
+    naverParagraphHtml(`대상 조건에 해당할 수 있다면 지원 내용과 제외 기준, 문의처를 먼저 확인해두는 게 좋아요. 아래에 공식 출처 기준으로 핵심만 정리했습니다.`),
+    naverCenteredCtaHtml("자격·신청 조건 바로가기", backlinkUrl),
     naverBlankHtml(),
   ].join("\n");
   const faqHtml = buildNaverAeoFaqHtml(checklistItems);
@@ -523,10 +515,10 @@ export function convertToNaverBlogHtml(
   const ctaHtml = [
     naverBlankHtml(),
     `<p style="${NAVER_DIVIDER_STYLE}">━━━━━━━━━━━━━━━━━━</p>`,
-    naverParagraphHtml("공식 조건은 모집 시점·지역·예산에 따라 달라질 수 있어요."),
-    naverParagraphHtml("신청 전에는 반드시 해당 기관의 최신 공고를 한 번 더 확인하세요."),
+    naverParagraphHtml("정확한 대상 여부와 절차는 공식 출처 또는 담당 기관에서 확인하세요."),
+    naverParagraphHtml("확인되지 않은 신청 기간·금액·서류는 임의로 안내하지 않습니다."),
     naverBlankHtml(),
-    naverCenteredCtaHtml("자세한 자격·금액·신청 방법 정리", backlinkUrl),
+    naverCenteredCtaHtml("지원 대상·문의처 자세히 보기", backlinkUrl),
     naverBlankHtml(),
     naverCenteredCtaHtml("내 조건에 맞는 정책 더 찾기", `${BASE_URL}/recommend`),
     `<p style="${NAVER_DIVIDER_STYLE}">━━━━━━━━━━━━━━━━━━</p>`,
@@ -586,7 +578,7 @@ function transformForSe3(html: string): string {
       ).filter(Boolean);
       if (cells.length > 0) rows.push(cells);
     }
-    return rows.length > 0 ? `\n${naverStyledTableHtml(rows)}\n` : "";
+    return rows.length > 0 ? `\n${naverFactRowsHtml(rows)}\n` : "";
   });
 
   // 5) <ul><li> → <p>• 항목</p> 단락. SE3 가 ul 받지 않아서.
