@@ -24,6 +24,7 @@ type Body = {
   errorMessage?: string | null;
   skipReason?: AuditSkipReason | null;
   details?: Record<string, unknown> | null;
+  contentFingerprint?: string | null;
 };
 
 // audit details — lib/naver-blog/audit.ts 의 AUDIT_SAFE_KEYS single source 사용 (W3 fix)
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     errorMessage: body.errorMessage ?? null,
     skipReason: body.skipReason ?? null,
     details: sanitizeDetails(body.details),
+    contentFingerprint: body.contentFingerprint ?? null,
   });
 
   // 큐 update

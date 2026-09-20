@@ -23,6 +23,43 @@ export type Ga4Row = {
   metricValues?: Array<{ value?: string }>;
 };
 
+const FINGERPRINT_RE = /^[0-9a-f]{16}$/i;
+
+export function resolveNaverPerformanceIdentity(input: {
+  suppliedFingerprint: string;
+  currentFingerprint: string;
+  successfulPublishCount: number;
+  publishedFingerprint: string | null;
+}) {
+  if (input.successfulPublishCount > 1) {
+    return { ok: false, reason: "duplicate_success_audit" as const, historicalFormatterDrift: false };
+  }
+  if (input.successfulPublishCount === 1) {
+    if (!input.publishedFingerprint) {
+      return { ok: false, reason: "published_fingerprint_not_pinned" as const, historicalFormatterDrift: false };
+    }
+    if (input.suppliedFingerprint !== input.publishedFingerprint) {
+      return { ok: false, reason: "supplied_fingerprint_not_published" as const, historicalFormatterDrift: false };
+    }
+    return {
+      ok: true,
+      reason: null,
+      historicalFormatterDrift: input.currentFingerprint !== input.publishedFingerprint,
+    };
+  }
+  return input.suppliedFingerprint === input.currentFingerprint
+    ? { ok: true, reason: null, historicalFormatterDrift: false }
+    : { ok: false, reason: "content_changed_before_publish" as const, historicalFormatterDrift: false };
+}
+
+function auditFingerprint(row: { content_fingerprint?: unknown; details?: unknown } | undefined): string | null {
+  if (!row) return null;
+  if (typeof row.content_fingerprint === "string" && FINGERPRINT_RE.test(row.content_fingerprint)) return row.content_fingerprint;
+  const details = row.details && typeof row.details === "object" ? row.details as Record<string, unknown> : null;
+  const fallback = details?.contentFingerprint;
+  return typeof fallback === "string" && FINGERPRINT_RE.test(fallback) ? fallback : null;
+}
+
 export function summarizeGa4Rows(
   rows: Ga4Row[],
   publishedAt: string,
@@ -183,28 +220,38 @@ export async function getNaverPostPerformanceReadback(input: {
     backlinkUrl: payload.backlinkUrl,
     coverImageUrl: payload.coverImageUrl,
   });
-  const identityMatches = currentFingerprint === input.fingerprint;
-
   const { data: auditRows, error: auditError } = await admin
     .from("naver_publish_audit")
-    .select("attempted_at, naver_url")
+    .select("attempted_at, naver_url, content_fingerprint, details")
     .eq("post_id", input.contentId)
     .eq("result", "success")
     .order("attempted_at", { ascending: true });
   if (auditError) throw new Error(`readback_audit_query_failed:${auditError.message}`);
   const successes = auditRows ?? [];
   const duplicateSuccessCount = Math.max(0, successes.length - 1);
+  const publishedFingerprint = auditFingerprint(successes[0]);
+  const identity = resolveNaverPerformanceIdentity({
+    suppliedFingerprint: input.fingerprint,
+    currentFingerprint,
+    successfulPublishCount: successes.length,
+    publishedFingerprint,
+  });
   const publishedAt = row.published_at ?? successes[0]?.attempted_at ?? null;
   const published = row.status === "published" || successes.length > 0;
 
-  if (!identityMatches) {
+  if (!identity.ok) {
     return {
       checkedAt,
       status: "rollback_required" as const,
-      approval: { state: "fingerprint_mismatch", suppliedFingerprint: input.fingerprint, currentFingerprint },
+      approval: {
+        state: "fingerprint_mismatch",
+        suppliedFingerprint: input.fingerprint,
+        currentFingerprint,
+        publishedFingerprint,
+      },
       publication: { state: published ? "published" : "awaiting_publish", publishedAt, naverUrl: row.naver_url ?? successes[0]?.naver_url ?? null },
       dedupe: { safe: duplicateSuccessCount === 0, successfulPublishCount: successes.length, duplicateSuccessCount },
-      rollback: { required: true, reason: "content_changed_after_exact_approval" },
+      rollback: { required: true, reason: identity.reason },
       windows: { h24: awaitingWindow(), d7: awaitingWindow() },
     };
   }
@@ -213,7 +260,13 @@ export async function getNaverPostPerformanceReadback(input: {
     return {
       checkedAt,
       status: "awaiting_publish" as const,
-      approval: { state: "exact_identity_matched", suppliedFingerprint: input.fingerprint, currentFingerprint },
+      approval: {
+        state: identity.historicalFormatterDrift ? "published_identity_pinned" as const : "exact_identity_matched" as const,
+        suppliedFingerprint: input.fingerprint,
+        currentFingerprint,
+        publishedFingerprint,
+        historicalFormatterDrift: identity.historicalFormatterDrift,
+      },
       publication: { state: "awaiting_publish", publishedAt: null, naverUrl: null, queueStatus: row.status, skipReason: row.skip_reason },
       dedupe: { safe: true, successfulPublishCount: 0, duplicateSuccessCount: 0 },
       rollback: { required: false, reason: null },
@@ -237,10 +290,17 @@ export async function getNaverPostPerformanceReadback(input: {
   return {
     checkedAt,
     status: duplicateSuccessCount > 0 ? "rollback_required" as const : "readback_ready" as const,
-    approval: { state: "exact_identity_matched", suppliedFingerprint: input.fingerprint, currentFingerprint },
+    approval: {
+      state: identity.historicalFormatterDrift ? "published_identity_pinned" as const : "exact_identity_matched" as const,
+      suppliedFingerprint: input.fingerprint,
+      currentFingerprint,
+      publishedFingerprint,
+      historicalFormatterDrift: identity.historicalFormatterDrift,
+    },
     publication: { state: "published", publishedAt, naverUrl: row.naver_url ?? successes[0]?.naver_url ?? null },
     dedupe: { safe: duplicateSuccessCount === 0, successfulPublishCount: successes.length, duplicateSuccessCount },
     rollback: { required: duplicateSuccessCount > 0, reason: duplicateSuccessCount > 0 ? "duplicate_success_audit" : null },
+    warning: identity.historicalFormatterDrift ? "historical_formatter_drift" as const : null,
     windows: { h24, d7 },
   };
 }

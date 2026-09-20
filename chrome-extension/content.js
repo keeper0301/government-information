@@ -146,20 +146,20 @@ async function publishToSe3(payload, dryRun) {
       try {
         coverBodyEl.click();
         await sleep(500);
-        const r = await fetchWithTimeout(payload.coverImageUrl, {}, 10_000);
-        if (r.ok) {
-          const blob = await r.blob();
-          if (blob.type.startsWith("image/")) {
-            await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-            await dispatchPasteEvent(coverBodyEl, { imageBlob: blob });
-            await sleep(5000); // SE3 image upload 대기
-            debug.cover_pasted = true;
-          } else {
-            debug.cover_failed = `not_image:${blob.type}`;
-          }
-        } else {
-          debug.cover_failed = `fetch_${r.status}`;
+        const imageCountBefore = countEditorImages(mfDoc);
+        const fetched = await sendRuntimeMessage({ type: "fetch-cover-image", url: payload.coverImageUrl }, 20_000);
+        if (!fetched?.ok || !fetched.dataUrl || !String(fetched.contentType || "").startsWith("image/")) {
+          throw new Error(fetched?.error || "background cover fetch 응답 없음");
         }
+        const blob = dataUrlToBlob(fetched.dataUrl, fetched.contentType);
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+        await dispatchPasteEvent(coverBodyEl, { imageBlob: blob });
+        debug.cover_fetch_source = "extension_background";
+        debug.cover_image_count_before = imageCountBefore;
+        const imageCountAfter = await waitForEditorImageCount(mfDoc, imageCountBefore + 1, 15_000);
+        debug.cover_image_count_after = imageCountAfter;
+        debug.cover_pasted = imageCountAfter > imageCountBefore;
+        if (!debug.cover_pasted) debug.cover_failed = "editor_image_not_observed_after_paste";
       } catch (e) {
         debug.cover_failed = String(e?.message ?? e).slice(0, 100);
       }
@@ -446,6 +446,26 @@ function normalizeText(value) {
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+function dataUrlToBlob(dataUrl, expectedType) {
+  const match = String(dataUrl || "").match(/^data:(image\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match || match[1] !== expectedType) throw new Error("cover data URL 형식/MIME 불일치");
+  const binary = atob(match[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: match[1] });
+}
+
+async function waitForEditorImageCount(doc, minimum, timeoutMs) {
+  const start = Date.now();
+  let count = countEditorImages(doc);
+  while (Date.now() - start < timeoutMs) {
+    count = countEditorImages(doc);
+    if (count >= minimum) return count;
+    await sleep(300);
+  }
+  return count;
+}
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 10_000) {
   const controller = new AbortController();

@@ -125,7 +125,7 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
     expect(out.body).toContain("대상: 만 24세 경기도 거주 청년");
     expect(out.body).toContain("혜택: 분기 25만원");
     expect(out.body).toContain("기간: 2026-12-31");
-    expect(out.body).toContain("서류: 증빙 필요 여부 확인");
+    expect(out.body).toContain("서류: 공식 출처에 별도 안내 없음");
     expect(out.body).toContain("만 24세 경기도 거주 청년인지 확인해야 하는 사람");
     expect(out.body).toContain("다른 감면·지원과 중복 제한이 있는지 확인");
   });

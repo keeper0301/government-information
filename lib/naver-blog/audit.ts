@@ -35,6 +35,7 @@ export const AUDIT_SAFE_KEYS = new Set([
   "fail_screenshot", "errorMessage", "error",
   "todayCount", "dailyCap", "isNewAccount", "expiresMin",
   "bodyLength", "force",
+  "contentFingerprint", "readbackCorePhrase", "logNo", "reconciledStage",
   // C-NEW-1/2 debug keys
   "clipboard_write_ok", "clipboard_write_error",
   "body_paste_method", "body_after_dispatch", "body_after_insertHTML",
@@ -59,6 +60,7 @@ export type AuditInsert = {
   naverUrl?: string | null;
   skipReason?: AuditSkipReason | null;
   details?: Record<string, unknown> | null;
+  contentFingerprint?: string | null;
 };
 
 /**
@@ -93,6 +95,7 @@ export async function logPublishAudit(input: AuditInsert): Promise<void> {
     skip_reason: input.skipReason ?? null,
     kst_hour: kstHour,
     details: enrichedDetails,
+    content_fingerprint: input.contentFingerprint ?? null,
   });
 
   if (error) {
