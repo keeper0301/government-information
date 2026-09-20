@@ -1103,6 +1103,8 @@ async function fetchCoverImageDataUrl(rawUrl) {
 
 function decodeReadbackHtml(value) {
   return String(value || "")
+    .replace(/&#x([0-9a-f]+);/gi, (_match, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_match, decimal) => String.fromCodePoint(Number.parseInt(decimal, 10)))
     .replace(/\\u0026/gi, "&")
     .replace(/\\u003d/gi, "=")
     .replace(/&amp;|&#38;/gi, "&")

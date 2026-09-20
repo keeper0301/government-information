@@ -14,7 +14,7 @@ const expectation = {
 
 describe("Naver public reconciliation guards", () => {
   it("requires title, core phrase, logNo and exact CTA identity", () => {
-    const html = `<title>${expectation.title}</title><p>${expectation.corePhrase}</p><a href="https://www.keepioo.com/blog/x?utm_content=${expectation.contentId}&amp;utm_id=${expectation.queueId}">보기</a>`;
+    const html = `<title>${expectation.title}</title><p>${expectation.corePhrase}</p><a href="https://www.keepioo.com/blog/x?utm_content&#x3D;${expectation.contentId}&amp;utm_id&#x3D;${expectation.queueId}">보기</a>`;
     expect(verifyNaverPublicPostHtml(html, expectation)).toMatchObject({
       ok: true,
       checks: { title: true, corePhrase: true, exactCtaIdentity: true, logNo: true },
