@@ -179,7 +179,7 @@ export async function GET(request: Request) {
   // 7) Playwright 발행
   const blogPostRaw = row.blog_post as unknown;
   const post = Array.isArray(blogPostRaw) ? blogPostRaw[0] : blogPostRaw;
-  const payload = convertToNaverBlogHtml(post);
+  const payload = convertToNaverBlogHtml(post, { contentId: row.blog_post_id, queueId: row.id });
   const result = await publishToNaverBlog({
     title: payload.title,
     bodyHtml: payload.bodyHtml,

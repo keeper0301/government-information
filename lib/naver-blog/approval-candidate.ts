@@ -1,7 +1,6 @@
-import { createHash } from "node:crypto";
-
 import { assessExternalPublishQuality } from "@/lib/blog/quality-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createNaverContentFingerprint } from "./content-identity";
 import { convertToNaverBlogHtml, type BlogPostForNaver } from "./format";
 
 type CandidatePost = BlogPostForNaver & {
@@ -188,7 +187,7 @@ export async function getNaverApprovalCandidate(): Promise<NaverApprovalCandidat
   const post = normalizePost(row.blog_post);
   if (!post) throw new Error("Naver approval candidate has no joined blog post");
   const quality = assessExternalPublishQuality(post);
-  const payload = convertToNaverBlogHtml(post);
+  const payload = convertToNaverBlogHtml(post, { contentId: row.blog_post_id, queueId: row.id });
   const sourceEvidence = await readSourceEvidence(post);
   const factualRiskReasons = assessApprovalFactRisks({
     title: post.title,
@@ -202,10 +201,14 @@ export async function getNaverApprovalCandidate(): Promise<NaverApprovalCandidat
     .eq("result", "success");
   if (auditError) throw new Error(`Naver duplicate audit query failed: ${auditError.message}`);
 
-  const fingerprint = createHash("sha256")
-    .update(`${row.id}\n${row.blog_post_id}\n${payload.title}\n${payload.bodyHtml}\n${payload.backlinkUrl}\n${payload.coverImageUrl ?? ""}`)
-    .digest("hex")
-    .slice(0, 16);
+  const fingerprint = createNaverContentFingerprint({
+    queueId: row.id,
+    contentId: row.blog_post_id,
+    title: payload.title,
+    bodyHtml: payload.bodyHtml,
+    backlinkUrl: payload.backlinkUrl,
+    coverImageUrl: payload.coverImageUrl,
+  });
   const duplicateCount = successfulAuditCount ?? 0;
   const holdReasons: string[] = [];
   if (!quality.approved) holdReasons.push(...quality.reasons);

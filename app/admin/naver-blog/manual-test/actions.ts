@@ -58,7 +58,10 @@ export async function runManualPublishAction(
     }
 
     // 3) SE3 HTML 변환
-    const payload = convertToNaverBlogHtml(row.blog_post);
+    const payload = convertToNaverBlogHtml(row.blog_post, {
+      contentId: row.blog_post_id,
+      queueId: row.id,
+    });
 
     // 4) Playwright 발행 (dry-run 또는 실제)
     const result = await publishToNaverBlog({

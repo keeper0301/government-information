@@ -116,7 +116,7 @@ export async function GET(request: Request) {
   // attempt_count 는 실제 실패 보고(/published result='fail') 때만 올린다.
   // 이전 구조는 /next 조회 직후 선증가라 Chrome 로그인/SE3 로딩 실패만으로도
   // 3회가 소진되어 status='pending' 인 글이 자동 후보에서 조용히 사라질 수 있었다.
-  const payload = convertToNaverBlogHtml(post);
+  const payload = convertToNaverBlogHtml(post, { contentId: row.blog_post_id, queueId: row.id });
 
   return NextResponse.json({
     status: "ready",

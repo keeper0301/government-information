@@ -176,6 +176,20 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     );
   });
 
+  it("콘텐츠·큐 ID를 네이버 백링크 UTM과 모든 CTA에 정확히 고정한다", () => {
+    const out = convertToNaverBlogHtml(post, {
+      contentId: "37d035ba-6afe-4bc3-b868-10810c861d7c",
+      queueId: "ba7edd39-e246-46ea-989e-19c6db8fe2bf",
+    });
+    const url = new URL(out.backlinkUrl);
+    expect(url.searchParams.get("utm_source")).toBe("naver_blog");
+    expect(url.searchParams.get("utm_medium")).toBe("referral");
+    expect(url.searchParams.get("utm_campaign")).toBe("naver_blog");
+    expect(url.searchParams.get("utm_content")).toBe("37d035ba-6afe-4bc3-b868-10810c861d7c");
+    expect(url.searchParams.get("utm_id")).toBe("ba7edd39-e246-46ea-989e-19c6db8fe2bf");
+    expect(out.bodyHtml.split(out.backlinkUrl)).toHaveLength(3);
+  });
+
   it("도입부는 참고글처럼 짧은 문단 2개와 가운데 빨간 CTA로 들어간다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(`style="font-size:16px;line-height:2.18;color:#222;text-align:left`);
