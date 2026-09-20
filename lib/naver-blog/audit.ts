@@ -82,10 +82,12 @@ export async function logPublishAudit(input: AuditInsert): Promise<void> {
   const kstHour = getKstHour();
 
   // details.runner 가 없으면 default 채움 — 호출자 source 명시 강제.
-  const enrichedDetails =
-    input.details && "runner" in input.details
-      ? input.details
-      : { runner: "unknown", ...(input.details ?? {}) };
+  const baseDetails = input.details && "runner" in input.details
+    ? input.details
+    : { runner: "unknown", ...(input.details ?? {}) };
+  const enrichedDetails = input.contentFingerprint
+    ? { ...baseDetails, contentFingerprint: input.contentFingerprint }
+    : baseDetails;
 
   const { error } = await admin.from("naver_publish_audit").insert({
     post_id: input.postId,
@@ -95,7 +97,6 @@ export async function logPublishAudit(input: AuditInsert): Promise<void> {
     skip_reason: input.skipReason ?? null,
     kst_hour: kstHour,
     details: enrichedDetails,
-    content_fingerprint: input.contentFingerprint ?? null,
   });
 
   if (error) {

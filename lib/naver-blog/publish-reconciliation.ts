@@ -22,6 +22,7 @@ type QueueRow = {
   blog_post_id: string;
   status: string;
   naver_url: string | null;
+  published_at: string | null;
   blog_post: BlogPostForNaver | BlogPostForNaver[];
 };
 
@@ -38,7 +39,7 @@ export async function reconcileNaverPublishSuccess(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("naver_blog_queue")
-    .select("id, blog_post_id, status, naver_url, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)")
+    .select("id, blog_post_id, status, naver_url, published_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image)")
     .eq("id", input.queueId)
     .maybeSingle();
   if (error) throw new Error(`reconcile_queue_query_failed:${error.message}`);
@@ -71,7 +72,7 @@ export async function reconcileNaverPublishSuccess(
 
   const { data: existingRows, error: existingError } = await admin
     .from("naver_publish_audit")
-    .select("id, naver_url, attempted_at, content_fingerprint, details")
+    .select("id, naver_url, attempted_at, details")
     .eq("post_id", input.contentId)
     .eq("result", "success")
     .order("attempted_at", { ascending: true });
@@ -95,25 +96,58 @@ export async function reconcileNaverPublishSuccess(
     && successes.length === 1
     && auditFingerprint === input.contentFingerprint;
   if (!input.dryRun && !alreadyReconciled) {
-    const { error: rpcError } = await admin.rpc("reconcile_naver_publish_success", {
-      p_queue_id: input.queueId,
-      p_content_id: input.contentId,
-      p_naver_url: identity.publicUrl,
-      p_log_no: input.expectedLogNo,
-      p_fingerprint: input.contentFingerprint,
-    });
-    if (rpcError) throw new Error(`reconcile_rpc_failed:${rpcError.message}`);
+    if (successes.length === 0) {
+      const kstHour = Number(new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Seoul", hour: "2-digit", hour12: false,
+      }).format(new Date())) % 24;
+      const { error: insertError } = await admin.from("naver_publish_audit").insert({
+        post_id: input.contentId,
+        result: "success",
+        naver_url: identity.publicUrl,
+        error_message: null,
+        skip_reason: null,
+        kst_hour: kstHour,
+        details: {
+          runner: "server-reconciliation",
+          stage: "edit_public_readback_reconciled",
+          queueId: input.queueId,
+          contentFingerprint: input.contentFingerprint,
+          logNo: input.expectedLogNo,
+        },
+      });
+      if (insertError) throw new Error(`reconcile_audit_insert_failed:${insertError.message}`);
+    } else if (!auditFingerprint) {
+      const previousDetails = successes[0]?.details && typeof successes[0].details === "object"
+        ? successes[0].details as Record<string, unknown> : {};
+      const { error: auditUpdateError } = await admin.from("naver_publish_audit").update({
+        details: {
+          ...previousDetails,
+          reconciledStage: "edit_public_readback_reconciled",
+          contentFingerprint: input.contentFingerprint,
+          logNo: input.expectedLogNo,
+        },
+      }).eq("id", successes[0].id);
+      if (auditUpdateError) throw new Error(`reconcile_audit_update_failed:${auditUpdateError.message}`);
+    }
+    const { error: queueUpdateError } = await admin.from("naver_blog_queue").update({
+      status: "published",
+      published_at: row.published_at ?? new Date().toISOString(),
+      naver_url: identity.publicUrl,
+      last_error: null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", input.queueId).eq("blog_post_id", input.contentId);
+    if (queueUpdateError) throw new Error(`reconcile_queue_update_failed:${queueUpdateError.message}`);
   }
 
   if (!input.dryRun) {
     const [{ data: queueReadback, error: queueError }, { data: auditReadback, error: auditError }] = await Promise.all([
       admin.from("naver_blog_queue").select("status, naver_url").eq("id", input.queueId).maybeSingle(),
-      admin.from("naver_publish_audit").select("id, naver_url, content_fingerprint").eq("post_id", input.contentId).eq("result", "success"),
+      admin.from("naver_publish_audit").select("id, naver_url, details").eq("post_id", input.contentId).eq("result", "success"),
     ]);
     if (queueError || auditError) throw new Error("reconcile_database_readback_failed");
     const rows = auditReadback ?? [];
     if (queueReadback?.status !== "published" || parseOptionalLogNo(queueReadback.naver_url) !== identity.logNo
-      || rows.length !== 1 || rows[0]?.content_fingerprint !== input.contentFingerprint) {
+      || rows.length !== 1 || readAuditFingerprint(rows[0]) !== input.contentFingerprint) {
       throw new Error("reconcile_database_readback_mismatch");
     }
   }

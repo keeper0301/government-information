@@ -222,7 +222,7 @@ export async function getNaverPostPerformanceReadback(input: {
   });
   const { data: auditRows, error: auditError } = await admin
     .from("naver_publish_audit")
-    .select("attempted_at, naver_url, content_fingerprint, details")
+    .select("attempted_at, naver_url, details")
     .eq("post_id", input.contentId)
     .eq("result", "success")
     .order("attempted_at", { ascending: true });
