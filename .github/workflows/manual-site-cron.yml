@@ -24,6 +24,7 @@ on:
           - external-console-check
           - adsense-gmail-watch
           - naver-extension-status
+          - naver-approval-candidate
           - search-console-sitemap-submit
           - health-alert-dry
           - health-alert
@@ -130,6 +131,10 @@ jobs:
               ;;
             naver-extension-status)
               path="/api/cron/naver-extension-status"
+              method="GET"
+              ;;
+            naver-approval-candidate)
+              path="/api/cron/naver-approval-candidate"
               method="GET"
               ;;
             search-console-sitemap-submit)
