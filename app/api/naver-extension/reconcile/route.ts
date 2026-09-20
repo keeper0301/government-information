@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
+import { authorizeCronRequest } from "@/lib/cron-auth";
 import { reconcileNaverPublishSuccess } from "@/lib/naver-blog/publish-reconciliation";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +20,11 @@ type Body = {
 };
 
 export async function POST(request: Request) {
-  const denied = authorizeNaverExtensionRequest(request);
-  if (denied) return denied;
+  const extensionDenied = authorizeNaverExtensionRequest(request);
+  if (extensionDenied) {
+    const cronDenied = authorizeCronRequest(request);
+    if (cronDenied) return extensionDenied;
+  }
   const body = (await request.json().catch(() => ({}))) as Body;
   if (!body.queueId || !body.contentId || !body.contentFingerprint || !body.naverUrl
     || !body.logNo || !body.title || !body.corePhrase) {

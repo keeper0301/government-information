@@ -1,0 +1,34 @@
+name: Keepioo Naver Exact Reconciliation
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only dry-run or exact one-record apply
+        required: true
+        type: choice
+        options: [dry-run, apply]
+        default: dry-run
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reconcile exact published identity
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = "dry-run" ]; then DRY=true; else DRY=false; fi
+          body=$(printf '%s' '{"queueId":"ba7edd39-e246-46ea-989e-19c6db8fe2bf","contentId":"37d035ba-6afe-4bc3-b868-10810c861d7c","contentFingerprint":"45ac01735ff73d7f","naverUrl":"https://blog.naver.com/leclerc23/224417830818","logNo":"224417830818","title":"청주시 저소득 건강보험료·노인장기요양보험료 지원","corePhrase":"청주시 저소득 세대의 국민건강보험료","dryRun":DRY}' | sed "s/DRY/$DRY/")
+          response=$(curl --fail-with-body --silent --show-error \
+            -X POST 'https://www.keepioo.com/api/naver-extension/reconcile' \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H 'Content-Type: application/json' \
+            --data "$body")
+          printf '%s\n' "$response" | python3 -m json.tool
