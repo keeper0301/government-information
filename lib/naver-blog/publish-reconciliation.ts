@@ -155,7 +155,7 @@ export async function reconcileNaverPublishSuccess(
   return {
     ok: true,
     mode: input.dryRun ? "dry_run" as const : "applied" as const,
-    mutation: input.dryRun ? "none" as const : (alreadyReconciled ? "none_idempotent" as const : "one_transaction" as const),
+    mutation: input.dryRun ? "none" as const : (alreadyReconciled ? "none_idempotent" as const : "exact_record_updates" as const),
     alreadyReconciled,
     identity: {
       queueId: input.queueId,
