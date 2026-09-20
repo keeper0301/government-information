@@ -118,8 +118,14 @@ export function convertToNaverBlog(post: BlogPostForNaver): NaverBlogPayload {
     : "";
   const checklistItems = buildNaverChecklistText(contentForNaver);
   const compactChecklist = [
-    "신청 전 핵심 확인",
-    ...checklistItems.slice(0, 5).map((item) => `• ${item}`),
+    "✅ 10초 요약",
+    ...checklistItems.slice(0, 4).map((item) => `• ${item}`),
+    "",
+    "이 글이 필요한 사람",
+    ...buildNaverAudienceText(checklistItems).map((item) => `• ${item}`),
+    "",
+    "신청 전 체크",
+    ...buildNaverApplicationCheckText(checklistItems).map((item, idx) => `${idx + 1}. ${item}`),
     "",
   ].join("\n");
 
@@ -310,8 +316,21 @@ function decodeBasicEntities(s: string): string {
 }
 
 function extractNaverPlainLines(html: string): string[] {
+  const tableFlattened = html.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_, inner: string) => {
+    const rows: string[] = [];
+    const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    for (const rm of inner.matchAll(rowRe)) {
+      const cells = [...rm[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)]
+        .map((m) => stripTags(m[1]).trim())
+        .filter(Boolean);
+      if (cells.length >= 2) rows.push(`${cells[0]}: ${cells.slice(1).join(" / ")}`);
+      else if (cells.length === 1) rows.push(cells[0]);
+    }
+    return `\n${rows.join("\n")}\n`;
+  });
+
   return decodeBasicEntities(stripTags(
-    html
+    tableFlattened
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<br\s*\/?>/gi, "\n")
@@ -330,7 +349,11 @@ function findNaverFactLine(
   preferred?: RegExp,
 ): string {
   const candidates = preferred
-    ? [...lines.filter((line) => preferred.test(line)), ...lines.filter((line) => !preferred.test(line))]
+    ? [
+        ...lines.filter((line) => preferred.test(line) && /[:：]/.test(line)),
+        ...lines.filter((line) => preferred.test(line) && !/[:：]/.test(line)),
+        ...lines.filter((line) => !preferred.test(line)),
+      ]
     : lines;
   for (let i = 0; i < candidates.length; i += 1) {
     const line = candidates[i];
@@ -347,7 +370,7 @@ function findNaverFactLine(
 
 function shortenNaverFact(value: string): string {
   const cleaned = value
-    .replace(/^(지원\s*대상|대상|지원\s*금액|지원\s*내용|혜택|신청\s*기간|기간|문의처?|경로)\s*[:：]?\s*/i, "")
+    .replace(/^(지원\s*대상|대상|지원\s*금액|지원\s*내용|혜택|신청\s*기간|신청\s*마감|기간|문의처?|경로)\s*[:：]?\s*/i, "")
     .replace(/^(제출\s*서류|서류)\s*[:：]\s*/i, "")
     .trim();
   return cleaned.length > 58 ? `${cleaned.slice(0, 58).trim()}…` : cleaned;
@@ -395,26 +418,115 @@ function stripChecklistLabel(item: string): string {
   return item.replace(/^[^:：]+[:：]\s*/, "").trim();
 }
 
-function buildNaverAeoFaqHtml(checklistItems: string[]): string {
+function buildNaverAudienceText(checklistItems: string[]): string[] {
+  const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건을 확인해야 하는 사람");
+  const benefit = stripChecklistLabel(checklistItems[1] ?? "지원 내용이 본인 상황에 맞는지 확인하고 싶은 사람");
+  const period = stripChecklistLabel(checklistItems[2] ?? "신청 기간과 예산 소진 여부를 확인해야 하는 사람");
+  return [
+    `${target}인지 확인해야 하는 사람`,
+    `${benefit}이 필요한 사람`,
+    `신청 기간·마감(${period})을 놓치면 안 되는 사람`,
+  ];
+}
+
+function buildNaverApplicationCheckText(checklistItems: string[]): string[] {
+  const target = stripChecklistLabel(checklistItems[0] ?? "대상 조건");
+  const period = stripChecklistLabel(checklistItems[2] ?? "신청 기간");
+  const documents = stripChecklistLabel(checklistItems[3] ?? "제출 서류");
+  const route = stripChecklistLabel(checklistItems[4] ?? "공식 신청 경로");
+  return [
+    `${target}에 실제로 해당하는지 확인`,
+    `신청 기간·마감(${period})과 예산 소진 여부 확인`,
+    `제출 서류와 ${documents}`,
+    "다른 감면·지원과 중복 제한이 있는지 확인",
+    `${route}에서 최신 공고 확인`,
+  ];
+}
+
+function buildNaverTenSecondSummaryHtml(checklistItems: string[]): string {
+  return [
+    naverSectionTitleHtml("10초 요약"),
+    ...checklistItems.slice(0, 4).map((item) => naverParagraphHtml(`✅ ${item}`)),
+    naverBlankHtml(),
+  ].join("\n");
+}
+
+function buildNaverAudienceHtml(checklistItems: string[]): string {
+  return [
+    naverSectionTitleHtml("이 글이 필요한 사람"),
+    ...buildNaverAudienceText(checklistItems).map((item) => `<p style="${NAVER_PARAGRAPH_STYLE}">• ${escapeHtml(item)}</p>`),
+    naverBlankHtml(),
+  ].join("\n");
+}
+
+function buildNaverApplicationCheckHtml(checklistItems: string[]): string {
+  return [
+    naverSectionTitleHtml("신청 전 체크"),
+    ...buildNaverApplicationCheckText(checklistItems).map((item, idx) => `<p style="${NAVER_PARAGRAPH_STYLE}">${idx + 1}. ${escapeHtml(item)}</p>`),
+    naverBlankHtml(),
+  ].join("\n");
+}
+
+function buildNaverAeoFaqHtml(checklistItems: string[], category?: string | null, title = ""): string {
   const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건 확인");
   const benefit = stripChecklistLabel(checklistItems[1] ?? "금액과 지급 방식 확인");
   const period = stripChecklistLabel(checklistItems[2] ?? "신청 마감일과 예산 소진 여부 확인");
   const route = stripChecklistLabel(checklistItems[4] ?? "공식 신청 페이지 또는 담당 기관 확인");
+  const faqLabels = selectNaverFaqLabels(category, title);
   return [
     `<p>&nbsp;</p>`,
     naverSectionTitleHtml("자주 묻는 질문"),
-    `<p><strong>Q. 누가 신청할 수 있나요?</strong></p>`,
+    `<p><strong>${escapeHtml(faqLabels.target)}</strong></p>`,
     `<p>A. ${escapeHtml(target)}</p>`,
     naverReadingGapHtml(),
-    `<p><strong>Q. 얼마나 지원받을 수 있나요?</strong></p>`,
+    `<p><strong>${escapeHtml(faqLabels.benefit)}</strong></p>`,
     `<p>A. ${escapeHtml(benefit)}</p>`,
     naverReadingGapHtml(),
-    `<p><strong>Q. 언제까지 확인해야 하나요?</strong></p>`,
+    `<p><strong>${escapeHtml(faqLabels.period)}</strong></p>`,
     `<p>A. ${escapeHtml(period)}</p>`,
     naverReadingGapHtml(),
-    `<p><strong>Q. 어디에서 신청하나요?</strong></p>`,
+    `<p><strong>${escapeHtml(faqLabels.route)}</strong></p>`,
     `<p>A. ${escapeHtml(route)}</p>`,
   ].join("\n");
+}
+
+function selectNaverFaqLabels(category?: string | null, title = ""): {
+  target: string;
+  benefit: string;
+  period: string;
+  route: string;
+} {
+  const source = `${category ?? ""} ${title}`;
+  if (/소상공인|자영업|창업|사업|기업|상공/i.test(source)) {
+    return {
+      target: "Q. 개인사업자도 확인해야 하나요?",
+      benefit: "Q. 지원금은 무엇을 기준으로 보나요?",
+      period: "Q. 예산이 소진되면 조기 마감될 수 있나요?",
+      route: "Q. 신청 경로는 어디에서 확인하나요?",
+    };
+  }
+  if (/청년|대학생|월세|주거|전세/i.test(source)) {
+    return {
+      target: "Q. 나이와 거주지 기준은 어떻게 보나요?",
+      benefit: "Q. 얼마까지 지원받을 수 있나요?",
+      period: "Q. 신청일 기준으로 확인해야 하나요?",
+      route: "Q. 어디에서 신청 정보를 확인하나요?",
+    };
+  }
+  if (/복지|저소득|장애|한부모|노인|기초/i.test(source)) {
+    return {
+      target: "Q. 소득·가구 조건을 먼저 봐야 하나요?",
+      benefit: "Q. 어떤 지원을 받을 수 있나요?",
+      period: "Q. 상시 지원인지 마감이 있는지 어떻게 확인하나요?",
+      route: "Q. 문의처는 어디인가요?",
+    };
+  }
+  return {
+    target: "Q. 누가 신청할 수 있나요?",
+    benefit: "Q. 어떤 지원을 받을 수 있나요?",
+    period: "Q. 언제까지 확인해야 하나요?",
+    route: "Q. 어디에서 신청하나요?",
+  };
 }
 
 // ============================================================
@@ -493,13 +605,21 @@ export function convertToNaverBlogHtml(
   const answerSummary = post.meta_description
     ? softenNaverMarketingCopy(post.meta_description.trim())
     : buildNaverKeySummaryText(contentForNaver)[0] ?? post.title;
+  const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건 확인");
+  const benefit = stripChecklistLabel(checklistItems[1] ?? "지원 내용 확인");
   const hookHtml = [
+    naverParagraphHtml(`${target}에 해당할 수 있다면 이 글을 먼저 확인하세요.`),
     naverParagraphHtml(answerSummary),
-    naverParagraphHtml(`대상 조건에 해당할 수 있다면 지원 내용과 제외 기준, 문의처를 먼저 확인해두는 게 좋아요. 아래에 공식 출처 기준으로 핵심만 정리했습니다.`),
+    naverParagraphHtml(`${benefit}을 확인하기 전에 대상·제외 조건·문의처를 먼저 보는 순서로 정리했습니다.`),
     naverCenteredCtaHtml("자격·신청 조건 바로가기", backlinkUrl),
     naverBlankHtml(),
   ].join("\n");
-  const faqHtml = buildNaverAeoFaqHtml(checklistItems);
+  const scanHtml = [
+    buildNaverTenSecondSummaryHtml(checklistItems),
+    buildNaverAudienceHtml(checklistItems),
+  ].join("\n");
+  const applicationCheckHtml = buildNaverApplicationCheckHtml(checklistItems);
+  const faqHtml = buildNaverAeoFaqHtml(checklistItems, post.category, post.title);
 
   // 2) cover image — HTML <img> paste 는 SE3 가 외부 fetch 실패 시 alert 띄움 (2026-05-12 사고).
   //    runner.mjs 가 본문 paste 후 별도로 base64 image paste (SE3 자동 upload).
@@ -527,7 +647,10 @@ export function convertToNaverBlogHtml(
   const bodyHtml = (
     coverHtml +
     hookHtml +
+    scanHtml +
     bodyContentHtml +
+    "\n" +
+    applicationCheckHtml +
     "\n" +
     faqHtml +
     "\n" +
