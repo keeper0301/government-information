@@ -22,6 +22,8 @@ export type NaverPublicReadbackResult = {
 
 function decodeHtml(value: string): string {
   return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, decimal: string) => String.fromCodePoint(Number.parseInt(decimal, 10)))
     .replace(/\\u0026/gi, "&")
     .replace(/\\u003d/gi, "=")
     .replace(/&amp;/gi, "&")
