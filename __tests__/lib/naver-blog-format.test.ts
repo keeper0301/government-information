@@ -190,28 +190,25 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml.split(out.backlinkUrl)).toHaveLength(3);
   });
 
-  it("도입부는 참고글처럼 짧은 문단 2개와 가운데 빨간 CTA로 들어간다", () => {
+  it("도입부는 짧은 문단 2개와 실제 링크 CTA로 들어간다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(`style="font-size:16px;line-height:2.18;color:#222;text-align:left`);
     expect(out.bodyHtml).toContain("만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.");
+    expect(out.bodyHtml).toContain("대상 조건에 해당할 수 있다면 지원 내용과 제외 기준, 문의처를 먼저 확인");
     expect(out.bodyHtml).toContain('text-align:center;text-decoration:underline');
-    expect(out.bodyHtml).toContain(">자격·신청 조건 바로가기</p>");
-    expect(out.bodyHtml).not.toContain(">자격·신청 조건 바로가기</a>");
-    expect(out.bodyHtml).toContain("👇👇");
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/2026-청년-월세-지원"');
+    expect(out.bodyHtml).toContain(">자격·신청 조건 바로가기</a>");
+    expect(out.bodyHtml).not.toContain("👇👇");
+    expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
     const ctaIndex = out.bodyHtml.indexOf("자격·신청 조건 바로가기");
-    const arrowIndex = out.bodyHtml.indexOf("👇👇");
-    const detailLinkIndex = out.bodyHtml.indexOf(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
     const bodySectionIndex = out.bodyHtml.indexOf(">신청 대상</p>");
     expect(ctaIndex).toBeGreaterThanOrEqual(0);
-    expect(arrowIndex).toBeGreaterThan(ctaIndex);
-    expect(detailLinkIndex).toBeGreaterThan(arrowIndex);
-    expect(bodySectionIndex).toBeGreaterThan(detailLinkIndex);
+    expect(bodySectionIndex).toBeGreaterThan(ctaIndex);
     expect(out.bodyHtml).not.toContain("요약 답변");
     expect(out.bodyHtml).not.toContain("검색 핵심 정보");
   });
 
-  it("SE3 HTML 본문은 H2/H3 계층·파란 헤더 표·FAQ를 포함한다", () => {
+  it("SE3 HTML 본문은 H2/H3 계층·문단형 핵심정보·FAQ를 포함한다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(">신청 대상</p>");
     expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
@@ -219,11 +216,10 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain('font-size:24px');
     expect(out.bodyHtml).toContain('border-left:4px solid #9a9a9a');
     expect(out.bodyHtml).toContain('font-size:19px');
-    expect(out.bodyHtml).toContain('<table style="width:100%;border-collapse:collapse');
-    expect(out.bodyHtml).toContain('background:#3f70bd;color:#fff');
-    expect(out.bodyHtml).toContain("<th");
-    expect(out.bodyHtml).toContain("지원 금액");
-    expect(out.bodyHtml).toContain("최대 12개월");
+    expect(out.bodyHtml).not.toContain("<table");
+    expect(out.bodyHtml).not.toContain("<th");
+    expect(out.bodyHtml).toContain("<strong>지원 금액</strong>: 월 20만원");
+    expect(out.bodyHtml).toContain("<strong>지원 기간</strong>: 최대 12개월");
     expect(out.bodyHtml).toContain(">자주 묻는 질문</p>");
     expect(out.bodyHtml).toContain("<strong>Q. 누가 신청할 수 있나요?</strong>");
   });
@@ -291,7 +287,7 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
       'href="https://www.keepioo.com/blog/2026-청년-월세-지원"',
     );
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/recommend"');
-    expect(out.bodyHtml).toContain("자세한 자격·금액·신청 방법 정리");
+    expect(out.bodyHtml).toContain("지원 대상·문의처 자세히 보기");
     expect(out.bodyHtml).toContain("내 조건에 맞는 정책 더 찾기");
     expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/recommend</a>");
   });
@@ -313,6 +309,30 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).not.toContain("신청 전에 먼저 확인해야 할 대상 조건");
     expect(out.bodyHtml).toContain(">신청 대상</p>");
     expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
+  });
+
+  it("웹 원문 FAQ는 제거하고 네이버 전용 FAQ만 1번 생성한다", () => {
+    const out = convertToNaverBlogHtml({
+      ...post,
+      content: `
+        <h2>지원 대상</h2>
+        <p>청주시에 거주하며 국민건강보험공단의 지역가입자인 세대가 대상입니다.</p>
+        <h2>확인할 곳</h2>
+        <p>담당 부서는 청주시청 복지정책과입니다. 문의 전화는 043-201-1824입니다.</p>
+        <h2>지원 내용</h2>
+        <p>복지로 공식 페이지에는 지원 비율이나 금액이 따로 적혀 있지 않습니다.</p>
+        <h2>자주 묻는 질문</h2>
+        <p><strong>누가 지원 대상인가요?</strong></p>
+        <p>웹 상세 페이지용 FAQ입니다.</p>
+      `,
+    });
+    expect(out.bodyHtml.match(/자주 묻는 질문/g)?.length).toBe(1);
+    expect(out.bodyHtml).not.toContain("웹 상세 페이지용 FAQ입니다.");
+    expect(out.bodyHtml).toContain("A. 복지로 공식 페이지에는 지원 비율이나 금액이 따로 적혀 있지 않습니다.");
+    const routeAnswerIndex = out.bodyHtml.indexOf("<p><strong>Q. 어디에서 신청하나요?</strong></p>");
+    const routeAnswer = out.bodyHtml.slice(routeAnswerIndex, routeAnswerIndex + 180);
+    expect(routeAnswer).not.toContain("지원 비율이나 금액");
+    expect(routeAnswer).toContain("A. 담당 부서는 청주시청 복지정책과입니다");
   });
 
   it("SE3 HTML 출력에서 제목·도입부의 과한 CTA 문구를 정보형으로 낮춘다", () => {
