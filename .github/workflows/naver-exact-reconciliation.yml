@@ -26,9 +26,15 @@ jobs:
           set -euo pipefail
           if [ "$MODE" = "dry-run" ]; then DRY=true; else DRY=false; fi
           body=$(printf '%s' '{"queueId":"ba7edd39-e246-46ea-989e-19c6db8fe2bf","contentId":"37d035ba-6afe-4bc3-b868-10810c861d7c","contentFingerprint":"45ac01735ff73d7f","naverUrl":"https://blog.naver.com/leclerc23/224417830818","logNo":"224417830818","title":"청주시 저소득 건강보험료·노인장기요양보험료 지원","corePhrase":"청주시 저소득 세대의 국민건강보험료","dryRun":DRY}' | sed "s/DRY/$DRY/")
-          response=$(curl --fail-with-body --silent --show-error \
+          tmp=$(mktemp)
+          status=$(curl --silent --show-error \
+            -o "$tmp" -w '%{http_code}' \
             -X POST 'https://www.keepioo.com/api/naver-extension/reconcile' \
             -H "Authorization: Bearer $CRON_SECRET" \
             -H 'Content-Type: application/json' \
             --data "$body")
-          printf '%s\n' "$response" | python3 -m json.tool
+          python3 -m json.tool < "$tmp"
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "HTTP $status" >&2
+            exit 1
+          fi
