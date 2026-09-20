@@ -467,8 +467,19 @@ export type NaverBlogHtmlPayload = {
  */
 export function convertToNaverBlogHtml(
   post: BlogPostForNaver & { cover_image?: string | null },
+  attribution?: { contentId: string; queueId: string },
 ): NaverBlogHtmlPayload {
-  const backlinkUrl = `${BASE_URL}/blog/${post.slug}`;
+  const plainBacklinkUrl = `${BASE_URL}/blog/${post.slug}`;
+  let backlinkUrl = plainBacklinkUrl;
+  if (attribution) {
+    const backlink = new URL(plainBacklinkUrl);
+    backlink.searchParams.set("utm_source", "naver_blog");
+    backlink.searchParams.set("utm_medium", "referral");
+    backlink.searchParams.set("utm_campaign", "naver_blog");
+    backlink.searchParams.set("utm_content", attribution.contentId);
+    backlink.searchParams.set("utm_id", attribution.queueId);
+    backlinkUrl = backlink.toString();
+  }
   const contentForNaver = prepareContentForNaver(post.content, post.meta_description);
   // cover_image — 네이버 블로그 전용 1080×1080 정방형 (2026-05-13 신규).
   // /api/naver-thumbnail/{slug} = 카테고리 컬러 + 큰 제목 + hook + 키핍 브랜드.
