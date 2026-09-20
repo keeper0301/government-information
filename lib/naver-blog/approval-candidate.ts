@@ -141,7 +141,7 @@ export async function getNaverApprovalCandidate(): Promise<NaverApprovalCandidat
   const { count: successfulAuditCount, error: auditError } = await admin
     .from("naver_publish_audit")
     .select("id", { count: "exact", head: true })
-    .eq("blog_post_id", row.blog_post_id)
+    .eq("post_id", row.blog_post_id)
     .eq("result", "success");
   if (auditError) throw new Error(`Naver duplicate audit query failed: ${auditError.message}`);
 
