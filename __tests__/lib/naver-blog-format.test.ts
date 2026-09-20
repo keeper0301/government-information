@@ -114,21 +114,25 @@ describe("convertToNaverBlog — keepioo HTML → 네이버 plain text", () => {
     expect(out.body).toContain("📍 이 정책은 무엇인가요?");
   });
 
-  it("본문 초반에 신청 전 핵심 확인 체크리스트가 한 번만 들어간다", () => {
+  it("본문 초반에 10초 요약·필요한 사람·신청 전 체크가 들어간다", () => {
     const out = convertToNaverBlog(basePost);
-    expect(out.body).toContain("신청 전 핵심 확인");
+    expect(out.body).toContain("✅ 10초 요약");
+    expect(out.body).toContain("이 글이 필요한 사람");
+    expect(out.body).toContain("신청 전 체크");
+    expect(out.body).not.toContain("신청 전 핵심 확인");
     expect(out.body).not.toContain("한눈에 보는 핵심");
     expect(out.body).not.toContain("신청 전 체크포인트");
     expect(out.body).toContain("대상: 만 24세 경기도 거주 청년");
     expect(out.body).toContain("혜택: 분기 25만원");
-    expect(out.body).toContain("기간: 신청 마감2026-12-31");
+    expect(out.body).toContain("기간: 2026-12-31");
     expect(out.body).toContain("서류: 증빙 필요 여부 확인");
-    expect(out.body).toContain("경로: 자세한 내용은 공식 신청 페이지에서 확인.");
+    expect(out.body).toContain("만 24세 경기도 거주 청년인지 확인해야 하는 사람");
+    expect(out.body).toContain("다른 감면·지원과 중복 제한이 있는지 확인");
   });
 
   it("meta_description 이 null 이면 도입부 없이 본문 바로 시작", () => {
     const out = convertToNaverBlog({ ...basePost, meta_description: null });
-    expect(out.body).toMatch(/^신청 전 핵심 확인/);
+    expect(out.body).toMatch(/^✅ 10초 요약/);
     expect(out.body).toContain("📍 이 정책은 무엇인가요?");
   });
 
@@ -190,26 +194,33 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml.split(out.backlinkUrl)).toHaveLength(3);
   });
 
-  it("도입부는 짧은 문단 2개와 실제 링크 CTA로 들어간다", () => {
+  it("도입부는 상담형 문단과 실제 링크 CTA로 들어간다", () => {
     const out = convertToNaverBlogHtml(post);
     expect(out.bodyHtml).toContain(`style="font-size:16px;line-height:2.18;color:#222;text-align:left`);
+    expect(out.bodyHtml).toContain("만 19~34세 청년에 해당할 수 있다면 이 글을 먼저 확인하세요.");
     expect(out.bodyHtml).toContain("만 19~34세 청년에게 월 20만원, 최대 12개월 월세 지원.");
-    expect(out.bodyHtml).toContain("대상 조건에 해당할 수 있다면 지원 내용과 제외 기준, 문의처를 먼저 확인");
+    expect(out.bodyHtml).toContain("월 20만원을 확인하기 전에 대상·제외 조건·문의처를 먼저 보는 순서");
     expect(out.bodyHtml).toContain('text-align:center;text-decoration:underline');
     expect(out.bodyHtml).toContain('href="https://www.keepioo.com/blog/2026-청년-월세-지원"');
     expect(out.bodyHtml).toContain(">자격·신청 조건 바로가기</a>");
     expect(out.bodyHtml).not.toContain("👇👇");
     expect(out.bodyHtml).not.toContain(">https://www.keepioo.com/blog/2026-청년-월세-지원</a>");
     const ctaIndex = out.bodyHtml.indexOf("자격·신청 조건 바로가기");
+    const summaryIndex = out.bodyHtml.indexOf(">10초 요약</p>");
     const bodySectionIndex = out.bodyHtml.indexOf(">신청 대상</p>");
     expect(ctaIndex).toBeGreaterThanOrEqual(0);
-    expect(bodySectionIndex).toBeGreaterThan(ctaIndex);
+    expect(summaryIndex).toBeGreaterThan(ctaIndex);
+    expect(bodySectionIndex).toBeGreaterThan(summaryIndex);
     expect(out.bodyHtml).not.toContain("요약 답변");
     expect(out.bodyHtml).not.toContain("검색 핵심 정보");
   });
 
   it("SE3 HTML 본문은 H2/H3 계층·문단형 핵심정보·FAQ를 포함한다", () => {
     const out = convertToNaverBlogHtml(post);
+    expect(out.bodyHtml).toContain(">10초 요약</p>");
+    expect(out.bodyHtml).toContain("✅ 대상: 만 19~34세 청년");
+    expect(out.bodyHtml).toContain(">이 글이 필요한 사람</p>");
+    expect(out.bodyHtml).toContain("만 19~34세 청년인지 확인해야 하는 사람");
     expect(out.bodyHtml).toContain(">신청 대상</p>");
     expect(out.bodyHtml).toContain('border-left:6px solid #d8d8d8');
     expect(out.bodyHtml).toContain('background:#fafafa');
@@ -220,8 +231,10 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).not.toContain("<th");
     expect(out.bodyHtml).toContain("<strong>지원 금액</strong>: 월 20만원");
     expect(out.bodyHtml).toContain("<strong>지원 기간</strong>: 최대 12개월");
+    expect(out.bodyHtml).toContain(">신청 전 체크</p>");
+    expect(out.bodyHtml).toContain("다른 감면·지원과 중복 제한이 있는지 확인");
     expect(out.bodyHtml).toContain(">자주 묻는 질문</p>");
-    expect(out.bodyHtml).toContain("<strong>Q. 누가 신청할 수 있나요?</strong>");
+    expect(out.bodyHtml).toContain("<strong>Q. 나이와 거주지 기준은 어떻게 보나요?</strong>");
   });
 
   it("입력 원문의 inline style/class/id 는 제거하고, 생성된 네이버 기준 스타일만 유지한다", () => {
@@ -253,7 +266,7 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml).toContain(
       '<p style="font-size:16px;line-height:2.18;color:#222;text-align:left;margin:0 0 26px;">만 19~34세 청년</p>\n<p>&nbsp;</p>',
     );
-    expect(out.bodyHtml).toContain("<p>A. 만 19~34세 청년</p>\n<p>&nbsp;</p>\n<p><strong>Q. 얼마나 지원받을 수 있나요?</strong></p>");
+    expect(out.bodyHtml).toContain("<p>A. 만 19~34세 청년</p>\n<p>&nbsp;</p>\n<p><strong>Q. 얼마까지 지원받을 수 있나요?</strong></p>");
     expect(out.bodyHtml).not.toMatch(/(?:<p>&nbsp;<\/p>\s*){3,}/);
   });
 
@@ -314,6 +327,8 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
   it("웹 원문 FAQ는 제거하고 네이버 전용 FAQ만 1번 생성한다", () => {
     const out = convertToNaverBlogHtml({
       ...post,
+      title: "청주시 저소득 건강보험료·장기요양보험료 지원",
+      category: "복지",
       content: `
         <h2>지원 대상</h2>
         <p>청주시에 거주하며 국민건강보험공단의 지역가입자인 세대가 대상입니다.</p>
@@ -329,7 +344,7 @@ describe("convertToNaverBlogHtml — RPA 자동 발행용 SE3 호환 HTML", () =
     expect(out.bodyHtml.match(/자주 묻는 질문/g)?.length).toBe(1);
     expect(out.bodyHtml).not.toContain("웹 상세 페이지용 FAQ입니다.");
     expect(out.bodyHtml).toContain("A. 복지로 공식 페이지에는 지원 비율이나 금액이 따로 적혀 있지 않습니다.");
-    const routeAnswerIndex = out.bodyHtml.indexOf("<p><strong>Q. 어디에서 신청하나요?</strong></p>");
+    const routeAnswerIndex = out.bodyHtml.indexOf("<p><strong>Q. 문의처는 어디인가요?</strong></p>");
     const routeAnswer = out.bodyHtml.slice(routeAnswerIndex, routeAnswerIndex + 180);
     expect(routeAnswer).not.toContain("지원 비율이나 금액");
     expect(routeAnswer).toContain("A. 담당 부서는 청주시청 복지정책과입니다");
