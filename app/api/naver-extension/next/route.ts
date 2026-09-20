@@ -11,6 +11,7 @@ import { convertToNaverBlogHtml } from "@/lib/naver-blog/format";
 import { countTodaySuccess, getKstHour } from "@/lib/naver-blog/audit";
 import { assessExternalPublishQuality } from "@/lib/blog/quality-gate";
 import { authorizeNaverExtensionRequest } from "@/lib/naver-extension-auth";
+import { createNaverContentFingerprint } from "@/lib/naver-blog/content-identity";
 
 export const dynamic = "force-dynamic";
 // safeKeyEqual(node:crypto) 사용 — Edge runtime 미지원이므로 명시.
@@ -117,6 +118,14 @@ export async function GET(request: Request) {
   // 이전 구조는 /next 조회 직후 선증가라 Chrome 로그인/SE3 로딩 실패만으로도
   // 3회가 소진되어 status='pending' 인 글이 자동 후보에서 조용히 사라질 수 있었다.
   const payload = convertToNaverBlogHtml(post, { contentId: row.blog_post_id, queueId: row.id });
+  const contentFingerprint = createNaverContentFingerprint({
+    queueId: row.id,
+    contentId: row.blog_post_id,
+    title: payload.title,
+    bodyHtml: payload.bodyHtml,
+    backlinkUrl: payload.backlinkUrl,
+    coverImageUrl: payload.coverImageUrl,
+  });
 
   return NextResponse.json({
     status: "ready",
@@ -126,6 +135,8 @@ export async function GET(request: Request) {
     bodyHtml: payload.bodyHtml,
     backlinkUrl: payload.backlinkUrl,
     coverImageUrl: payload.coverImageUrl,
+    readbackCorePhrase: payload.readbackCorePhrase,
+    contentFingerprint,
     kstHour,
     todayCount,
     dailyCap,

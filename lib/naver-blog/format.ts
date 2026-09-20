@@ -22,6 +22,7 @@
 // ============================================================
 
 import { applyHumanizeGateToPayload, type HumanizeGateResult } from "@/lib/publishing/humanize-gate";
+import { assertNaverRenderedPayload } from "./rendered-payload-quality";
 
 export type BlogPostForNaver = {
   /** keepioo blog_posts.slug — 백링크 URL 조립용 */
@@ -384,9 +385,9 @@ function buildNaverChecklistText(html: string): string[] {
   return [
     `대상: ${findNaverFactLine(lines, /대상|자격|조건|나이|연령|지역|거주|소득|사업자/, "공식 공고의 대상 조건 확인", /^지원\s*대상|^대상[:：]/)}`,
     `혜택: ${findNaverFactLine(lines, /지원\s*(금액|내용)|혜택|최대|월\s*\d|분기|만원|원\b/, "금액과 지급 방식 확인", /^지원\s*금액|^지원\s*내용|^혜택[:：]/)}`,
-    `기간: ${findNaverFactLine(lines, /기간|마감|공고|예산\s*소진|선착순|\d{4}[.\-년]/, "공식 페이지의 신청 기간 또는 상시 여부 확인", /^신청\s*기간|^기간[:：]/)}`,
-    `서류: ${findNaverFactLine(lines, /서류|제출|준비물|증빙|주민등록|소득\s*증명|사업자등록/, "증빙 필요 여부 확인", /^제출\s*서류|^서류[:：]/)}`,
-    `경로: ${findNaverFactLine(routeLines, /홈페이지|누리집|온라인|방문|문의|기관|센터|담당|페이지/, "공식 신청 페이지 또는 담당 기관 확인")}`,
+    `기간: ${findNaverFactLine(lines, /기간|마감|공고|예산\s*소진|선착순|\d{4}[.\-년]/, "공식 출처에 별도 안내 없음", /^신청\s*기간|^기간[:：]/)}`,
+    `서류: ${findNaverFactLine(lines, /서류|제출|준비물|증빙|주민등록|소득\s*증명|사업자등록/, "공식 출처에 별도 안내 없음", /^제출\s*서류|^서류[:：]/)}`,
+    `경로: ${findNaverFactLine(routeLines, /홈페이지|누리집|온라인|방문|문의|기관|센터|담당|페이지/, "공식 출처 또는 담당 기관 확인")}`,
   ];
 }
 
@@ -418,15 +419,25 @@ function stripChecklistLabel(item: string): string {
   return item.replace(/^[^:：]+[:：]\s*/, "").trim();
 }
 
+function withKoreanObjectParticle(value: string): string {
+  const clean = value.replace(/[.!?。]+$/g, "").trim();
+  const last = clean.charCodeAt(clean.length - 1);
+  const hasBatchim = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0;
+  return `${clean}${hasBatchim ? "을" : "를"}`;
+}
+
 function buildNaverAudienceText(checklistItems: string[]): string[] {
   const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건을 확인해야 하는 사람");
   const benefit = stripChecklistLabel(checklistItems[1] ?? "지원 내용이 본인 상황에 맞는지 확인하고 싶은 사람");
   const period = stripChecklistLabel(checklistItems[2] ?? "신청 기간과 예산 소진 여부를 확인해야 하는 사람");
-  return [
+  const rows = [
     `${target}인지 확인해야 하는 사람`,
     `${benefit}이 필요한 사람`,
-    `신청 기간·마감(${period})을 놓치면 안 되는 사람`,
   ];
+  rows.push(period.includes("별도 안내 없음")
+    ? "공식 출처와 담당 문의처에서 최신 정보를 확인하고 싶은 사람"
+    : `신청 기간·마감(${period})을 놓치면 안 되는 사람`);
+  return rows;
 }
 
 function buildNaverApplicationCheckText(checklistItems: string[]): string[] {
@@ -434,12 +445,21 @@ function buildNaverApplicationCheckText(checklistItems: string[]): string[] {
   const period = stripChecklistLabel(checklistItems[2] ?? "신청 기간");
   const documents = stripChecklistLabel(checklistItems[3] ?? "제출 서류");
   const route = stripChecklistLabel(checklistItems[4] ?? "공식 신청 경로");
+  const periodCheck = period.includes("별도 안내 없음")
+    ? "공식 출처에 신청 기간 안내가 있는지 확인"
+    : `신청 기간·마감(${period})과 예산 소진 여부 확인`;
+  const documentCheck = documents.includes("별도 안내 없음")
+    ? "공식 출처에 제출 서류 안내가 있는지 확인"
+    : `제출 서류와 ${documents}`;
+  const routeCheck = /확인[.!?。]*$/.test(route)
+    ? route
+    : route.includes("공식 출처 또는 담당 기관") ? `${route}에서 최신 정보 확인` : `${route}에서 최신 공고 확인`;
   return [
     `${target}에 실제로 해당하는지 확인`,
-    `신청 기간·마감(${period})과 예산 소진 여부 확인`,
-    `제출 서류와 ${documents}`,
+    periodCheck,
+    documentCheck,
     "다른 감면·지원과 중복 제한이 있는지 확인",
-    `${route}에서 최신 공고 확인`,
+    routeCheck,
   ];
 }
 
@@ -470,8 +490,8 @@ function buildNaverApplicationCheckHtml(checklistItems: string[]): string {
 function buildNaverAeoFaqHtml(checklistItems: string[], category?: string | null, title = ""): string {
   const target = stripChecklistLabel(checklistItems[0] ?? "공식 공고의 대상 조건 확인");
   const benefit = stripChecklistLabel(checklistItems[1] ?? "금액과 지급 방식 확인");
-  const period = stripChecklistLabel(checklistItems[2] ?? "신청 마감일과 예산 소진 여부 확인");
-  const route = stripChecklistLabel(checklistItems[4] ?? "공식 신청 페이지 또는 담당 기관 확인");
+  const period = stripChecklistLabel(checklistItems[2] ?? "공식 출처에 별도 안내 없음");
+  const route = stripChecklistLabel(checklistItems[4] ?? "공식 출처 또는 담당 기관 확인");
   const faqLabels = selectNaverFaqLabels(category, title);
   return [
     `<p>&nbsp;</p>`,
@@ -559,6 +579,8 @@ export type NaverBlogHtmlPayload = {
   backlinkUrl: string;
   /** 썸네일·본문 head 이미지로 사용할 URL (없으면 null) */
   coverImageUrl: string | null;
+  /** 공개 readback에서 반드시 일치해야 하는 본문 핵심 문구 */
+  readbackCorePhrase: string;
 };
 
 /**
@@ -610,7 +632,7 @@ export function convertToNaverBlogHtml(
   const hookHtml = [
     naverParagraphHtml(`${target}에 해당할 수 있다면 이 글을 먼저 확인하세요.`),
     naverParagraphHtml(answerSummary),
-    naverParagraphHtml(`${benefit}을 확인하기 전에 대상·제외 조건·문의처를 먼저 보는 순서로 정리했습니다.`),
+    naverParagraphHtml(`${withKoreanObjectParticle(benefit)} 확인하기 전에 대상·제외 조건·문의처를 먼저 보는 순서로 정리했습니다.`),
     naverCenteredCtaHtml("자격·신청 조건 바로가기", backlinkUrl),
     naverBlankHtml(),
   ].join("\n");
@@ -657,11 +679,20 @@ export function convertToNaverBlogHtml(
     ctaHtml
   ).trim();
 
+  // 최종 렌더 payload 자체를 검사한다. 원문 단계가 깨끗해도 hook/FAQ/CTA 조합에서
+  // 중복·placeholder·문장 결합 오류가 다시 생길 수 있으므로 반환 직전에 fail-closed 한다.
+  assertNaverRenderedPayload(bodyHtml);
+  const readbackCorePhrase = target;
+  if (readbackCorePhrase.length < 8) {
+    throw new Error("naver_readback_core_phrase_too_short");
+  }
+
   return {
     title: softenNaverMarketingCopy(post.title),
     bodyHtml,
     backlinkUrl,
     coverImageUrl,
+    readbackCorePhrase,
   };
 }
 

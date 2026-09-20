@@ -231,6 +231,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
     return true; // async
   }
+  if (msg?.type === "fetch-cover-image") {
+    fetchCoverImageDataUrl(msg.url)
+      .then((r) => sendResponse({ ok: true, ...r }))
+      .catch((e) => sendResponse({ ok: false, error: e?.message ?? String(e) }));
+    return true;
+  }
   if (msg?.type === "naver-progress") {
     setManualPublishStatus(msg.stage || "content_progress", msg.details || {})
       .then(() => sendResponse({ ok: true }))
@@ -1036,7 +1042,8 @@ async function runPublishOnce(dryRun = false, options = {}) {
       naverUrl: r.naverUrl ?? null,
       skipReason: dryRun ? "dry_run" : null,
       errorMessage: verifiedSuccess ? null : "발행 URL 미검증 — success 처리 차단",
-      details: r.debug,
+      contentFingerprint: next.contentFingerprint ?? null,
+      details: { ...(r.debug || {}), contentFingerprint: next.contentFingerprint ?? null, readbackCorePhrase: next.readbackCorePhrase ?? null },
     };
     const auditOk = await postPublishedAudit(secret, auditPayload, "success_or_dry_run");
     await setManualPublishStatus("published_audit_done", { auditOk, dryRun, verifiedSuccess });
@@ -1074,6 +1081,95 @@ async function closeWindowIfNeeded(shouldClose, windowId, stage) {
   if (!shouldClose || !windowId) return false;
   await setManualPublishStatus("window_close_preserved", { stage, windowId, reason: "avoid_beforeunload_prompt" });
   return false;
+}
+
+async function fetchCoverImageDataUrl(rawUrl) {
+  const url = new URL(String(rawUrl || ""));
+  if (url.protocol !== "https:" || url.hostname !== "www.keepioo.com" || !url.pathname.startsWith("/api/naver-thumbnail/")) {
+    throw new Error("cover URL은 https://www.keepioo.com/api/naver-thumbnail/ 만 허용");
+  }
+  const response = await promiseWithTimeout(fetch(url.href, { cache: "no-store", credentials: "omit" }), 15_000, "cover fetch timeout");
+  if (!response.ok) throw new Error(`cover fetch ${response.status}`);
+  const contentType = String(response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  if (!contentType.startsWith("image/")) throw new Error(`cover 응답이 이미지가 아님 (${contentType || "unknown"})`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength === 0 || bytes.byteLength > 8 * 1024 * 1024) throw new Error(`cover 크기 제한 위반 (${bytes.byteLength})`);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+  }
+  return { dataUrl: `data:${contentType};base64,${btoa(binary)}`, contentType, byteLength: bytes.byteLength };
+}
+
+function decodeReadbackHtml(value) {
+  return String(value || "")
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\u003d/gi, "=")
+    .replace(/&amp;|&#38;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ");
+}
+
+function normalizeReadbackText(value) {
+  return decodeReadbackHtml(value).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getEditReadbackIdentity(editUrl, payload) {
+  const edit = new URL(editUrl);
+  const logNo = edit.searchParams.get("logNo") || "";
+  const blogId = edit.searchParams.get("blogId") || "leclerc23";
+  const corePhrase = String(payload?.readbackCorePhrase || payload?.corePhrase || "").trim();
+  const cta = new URL(String(payload?.backlinkUrl || ""));
+  const queueId = String(payload?.queueId || cta.searchParams.get("utm_id") || "");
+  const contentId = String(payload?.contentId || payload?.blogPostId || cta.searchParams.get("utm_content") || "");
+  if (!/^\d{9,}$/.test(logNo) || !/^[A-Za-z0-9_-]+$/.test(blogId)) throw new Error("edit readback logNo/blogId 누락");
+  if (corePhrase.length < 8) throw new Error("edit readback corePhrase 누락");
+  if (!queueId || !contentId || cta.searchParams.get("utm_id") !== queueId || cta.searchParams.get("utm_content") !== contentId) {
+    throw new Error("edit readback CTA queue/content identity 누락 또는 불일치");
+  }
+  return { logNo, blogId, corePhrase, queueId, contentId, publicUrl: `https://m.blog.naver.com/${blogId}/${logNo}` };
+}
+
+function publicHtmlHasExactCta(html, identity) {
+  const candidates = decodeReadbackHtml(html).replace(/\\\//g, "/").match(/https:\/\/www\.keepioo\.com\/[A-Za-z0-9%_./~?&=+\-]+/g) || [];
+  return candidates.some((candidate) => {
+    try {
+      const url = new URL(candidate.replace(/[)'"<>]+$/g, ""));
+      return url.searchParams.get("utm_id") === identity.queueId && url.searchParams.get("utm_content") === identity.contentId;
+    } catch { return false; }
+  });
+}
+
+async function reconcileEditPublicReadback(editUrl, payload, cause) {
+  const identity = getEditReadbackIdentity(editUrl, payload);
+  const expectedTitle = normalizeReadbackText(payload.title);
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const response = await promiseWithTimeout(fetch(identity.publicUrl, { cache: "no-store", credentials: "omit" }), 15_000, "edit public readback timeout");
+    if (response.ok) {
+      const html = await response.text();
+      const text = normalizeReadbackText(html);
+      const checks = {
+        title: text.includes(expectedTitle),
+        corePhrase: text.includes(normalizeReadbackText(identity.corePhrase)),
+        exactCtaIdentity: publicHtmlHasExactCta(html, identity),
+      };
+      if (Object.values(checks).every(Boolean)) {
+        const debug = { stage: "edit_public_readback_reconciled", logNo: identity.logNo, checks, callbackLoss: String(cause?.message ?? cause).slice(0, 160) };
+        await setManualPublishStatus("edit_public_readback_reconciled", { naverUrl: identity.publicUrl, logNo: identity.logNo, checks });
+        return { ok: true, result: { dryRun: false, naverUrl: identity.publicUrl, reconciled: true, debug } };
+      }
+      if (attempt === 6) throw new Error(`edit public readback mismatch: ${Object.entries(checks).filter(([, ok]) => !ok).map(([key]) => key).join(",")}`);
+    } else if (attempt === 6) {
+      throw new Error(`edit public readback HTTP ${response.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+  throw new Error("edit public readback reconciliation exhausted");
+}
+
+function isEditCallbackLoss(value) {
+  return /executeScript result 없음|frame (?:with ID )?\d+ (?:was removed|not found)|No frame|tab (?:was )?closed|edit content\.js 처리 timeout/i.test(String(value?.message ?? value));
 }
 
 async function runEditPost(msg) {
@@ -1118,24 +1214,38 @@ async function runEditPost(msg) {
   await new Promise((r) => setTimeout(r, 2000));
   await chrome.windows.update(win.id, { focused: true, state: "normal" }).catch(() => undefined);
 
-  const result = await promiseWithTimeout(chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: async (editPayload, isDryRun) => {
-      if (typeof globalThis.__keepiooPublishToSe3 !== "function") {
-        return { ok: false, error: "content.js publish 함수 미등록" };
-      }
-      try {
-        const result = await globalThis.__keepiooPublishToSe3(editPayload, isDryRun);
-        return { ok: true, result };
-      } catch (e) {
-        return { ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null };
-      }
-    },
-    args: [payload, dryRun],
-  }).then((rows) => rows?.[0]?.result ?? { ok: false, error: "executeScript result 없음" }), 190_000, "edit content.js 처리 timeout");
+  let result;
+  try {
+    result = await promiseWithTimeout(chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async (editPayload, isDryRun) => {
+        if (typeof globalThis.__keepiooPublishToSe3 !== "function") {
+          return { ok: false, error: "content.js publish 함수 미등록" };
+        }
+        try {
+          const result = await globalThis.__keepiooPublishToSe3(editPayload, isDryRun);
+          return { ok: true, result };
+        } catch (e) {
+          return { ok: false, error: e?.message ?? String(e), debug: e?.debug ?? null };
+        }
+      },
+      args: [payload, dryRun],
+    }).then((rows) => rows?.[0]?.result ?? { ok: false, error: "executeScript result 없음" }), 190_000, "edit content.js 처리 timeout");
+  } catch (error) {
+    if (!dryRun && isEditCallbackLoss(error)) {
+      result = await reconcileEditPublicReadback(editUrl, payload, error);
+    } else {
+      throw error;
+    }
+  }
+  if (!dryRun && result?.ok === false && isEditCallbackLoss(result.error)) {
+    result = await reconcileEditPublicReadback(editUrl, payload, new Error(result.error));
+  }
 
   if (result?.ok) {
-    await setManualPublishStatus("edit_done", { dryRun, result: result.result?.dryRun ? "dry_run" : "submitted", naverUrl: result.result?.naverUrl ?? null });
+    if (result.result?.reconciled !== true) {
+      await setManualPublishStatus("edit_done", { dryRun, result: result.result?.dryRun ? "dry_run" : "submitted", naverUrl: result.result?.naverUrl ?? null });
+    }
   } else {
     await setManualPublishStatus("edit_fail", { error: result?.error ?? "unknown", debug: result?.debug ?? null });
   }

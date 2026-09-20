@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createNaverContentFingerprint } from "@/lib/naver-blog/content-identity";
-import { summarizeGa4Rows } from "@/lib/naver-blog/post-performance-readback";
+import { resolveNaverPerformanceIdentity, summarizeGa4Rows } from "@/lib/naver-blog/post-performance-readback";
 
 describe("Naver post performance readback", () => {
   afterEach(() => vi.useRealTimers());
@@ -34,6 +34,24 @@ describe("Naver post performance readback", () => {
       ctaClicks: 3,
       conversionSignals: 1,
     });
+  });
+
+  it("pins historical performance to the successful audit fingerprint across formatter releases", () => {
+    expect(resolveNaverPerformanceIdentity({
+      suppliedFingerprint: "45ac01735ff73d7f",
+      currentFingerprint: "18f37ea7ccf2f057",
+      successfulPublishCount: 1,
+      publishedFingerprint: "45ac01735ff73d7f",
+    })).toEqual({ ok: true, reason: null, historicalFormatterDrift: true });
+  });
+
+  it("fails closed when the supplied fingerprint is not the published identity", () => {
+    expect(resolveNaverPerformanceIdentity({
+      suppliedFingerprint: "18f37ea7ccf2f057",
+      currentFingerprint: "18f37ea7ccf2f057",
+      successfulPublishCount: 1,
+      publishedFingerprint: "45ac01735ff73d7f",
+    })).toMatchObject({ ok: false, reason: "supplied_fingerprint_not_published" });
   });
 
   it("binds approval identity to queue, content and rendered payload", () => {
