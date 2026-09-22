@@ -211,6 +211,28 @@ describe("AdSense approval guardrails", () => {
     expect(notFound).toContain('action="/search"');
   });
 
+  it("keeps review-mode guide, about, category, and metadata surfaces away from SaaS conversion copy", () => {
+    const layout = read("app/layout.tsx");
+    expect(layout).toContain("ADSENSE_REVIEW_MODE");
+    expect(layout).toContain("공공 지원제도 신청 전 확인할 자격·서류·마감 기준");
+    expect(layout).toContain("한국의 공공 지원제도 신청 전 확인할 기준");
+
+    const guides = read("app/guides/page.tsx");
+    expect(guides).toContain('href={ADSENSE_REVIEW_MODE ? "/editorial-policy" : "/quiz"}');
+    expect(guides).toContain("신청 전 확인할 기준부터 보세요");
+    expect(guides).toContain("편집·검수 기준 보기");
+
+    const about = read("app/about/page.tsx");
+    expect(about).toContain("신청 전 확인 순서");
+    expect(about).toContain("재심사 기간에는 광고·가입 전환보다 정보 품질을 우선합니다");
+    expect(about).toContain('Section title={ADSENSE_REVIEW_MODE ? "운영 기준" : "서비스 운영 비용"}');
+
+    const cohortCta = read("components/cohort-cta-banner.tsx");
+    expect(cohortCta).toContain("if (ADSENSE_REVIEW_MODE)");
+    expect(cohortCta).toContain("정책은 신청 전 기준부터 확인하세요");
+    expect(cohortCta).toContain('href="/guides"');
+  });
+
   it("keeps homepage pricing funnel restorable only after AdSense approval", () => {
     const homeCta = read("components/home-cta.tsx");
 

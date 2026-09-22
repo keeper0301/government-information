@@ -14,6 +14,7 @@
 // ============================================================
 
 import Link from "next/link";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 interface Props {
   shortLabel: string;
@@ -26,6 +27,25 @@ export function CohortCtaBanner({
   emoji,
   variant = "primary",
 }: Props) {
+  if (ADSENSE_REVIEW_MODE) {
+    return (
+      <div className="rounded-2xl bg-blue-50 border border-blue-200 p-5 my-8">
+        <p className="text-[15px] font-semibold text-grey-900">
+          {shortLabel} 정책은 신청 전 기준부터 확인하세요
+        </p>
+        <p className="mt-1 text-[13px] text-grey-700 leading-[1.6]">
+          자격, 준비 서류, 중복 제한, 공식 원문 확인 순서를 대표 가이드와 함께 정리했습니다.
+        </p>
+        <Link
+          href="/guides"
+          className="mt-3 inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg text-[14px] no-underline"
+        >
+          대표 가이드 보기 →
+        </Link>
+      </div>
+    );
+  }
+
   if (variant === "secondary") {
     return (
       <div className="rounded-2xl bg-blue-50 border border-blue-200 p-5 my-8 text-center">

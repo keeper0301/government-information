@@ -10,6 +10,7 @@ import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { Ga4ConversionTracker } from "@/components/ga4-conversion-tracker";
 import { PWARegister } from "@/components/pwa-register";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import "./globals.css";
 
 // ChatbotPanel — 우측 하단 floating 위젯, 즉시 노출 불필요.
@@ -26,7 +27,9 @@ const ChatbotPanel = dynamic(
 export const metadata: Metadata = {
   title: "keepioo · 정책알리미 — 한국의 공공 지원제도 큐레이션",
   description:
-    "보조금24·복지로·기업마당·온통청년 데이터를 한곳에. 내 조건에 맞는 새 정부·지자체 정책을 이메일·알림톡으로 받아보세요.",
+    ADSENSE_REVIEW_MODE
+      ? "보조금24·복지로·기업마당·온통청년 등 공식 출처를 기준으로 공공 지원제도 신청 전 확인할 자격·서류·마감 기준을 정리합니다."
+      : "보조금24·복지로·기업마당·온통청년 데이터를 한곳에. 내 조건에 맞는 새 정부·지자체 정책을 이메일·알림톡으로 받아보세요.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com"),
   applicationName: "keepioo",
   authors: [{ name: "keepioo" }],
@@ -36,7 +39,9 @@ export const metadata: Metadata = {
     url: "/",
     title: "keepioo · 정책알리미",
     description:
-      "한국의 공공 지원제도를 모아 이메일·알림톡으로 전달합니다.",
+      ADSENSE_REVIEW_MODE
+        ? "한국의 공공 지원제도 신청 전 확인할 기준을 공식 출처 중심으로 정리합니다."
+        : "한국의 공공 지원제도를 모아 이메일·알림톡으로 전달합니다.",
     siteName: "keepioo",
     locale: "ko_KR",
     type: "website",
@@ -44,7 +49,9 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "keepioo · 정책알리미",
-    description: "한국의 공공 지원제도를 큐레이션합니다.",
+    description: ADSENSE_REVIEW_MODE
+      ? "공식 출처 기반 공공 지원제도 신청 전 체크 가이드."
+      : "한국의 공공 지원제도를 큐레이션합니다.",
   },
   alternates: {
     canonical: "/",

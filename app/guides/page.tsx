@@ -177,16 +177,18 @@ export default async function GuidesPage() {
       <section className="border-t pt-8">
         <div className="rounded-2xl bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 p-6">
           <h2 className="text-lg font-bold text-grey-900 mb-2">
-            내 조건에 맞는 정책만 골라 보세요
+            {ADSENSE_REVIEW_MODE ? "신청 전 확인할 기준부터 보세요" : "내 조건에 맞는 정책만 골라 보세요"}
           </h2>
           <p className="text-sm text-grey-700 leading-relaxed mb-4">
-            나이·지역·직업·소득을 기반으로 자동 추천 + 마감 임박 정책 이메일 알림. 가입은 무료입니다.
+            {ADSENSE_REVIEW_MODE
+              ? "대표 가이드는 자격, 서류, 마감, 공식 출처 확인 순서처럼 신청 전 놓치기 쉬운 기준을 먼저 정리합니다."
+              : "나이·지역·직업·소득을 기반으로 자동 추천 + 마감 임박 정책 이메일 알림. 가입은 무료입니다."}
           </p>
           <Link
-            href="/quiz"
+            href={ADSENSE_REVIEW_MODE ? "/editorial-policy" : "/quiz"}
             className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm no-underline"
           >
-            1분 진단부터 시작 →
+            {ADSENSE_REVIEW_MODE ? "편집·검수 기준 보기 →" : "1분 진단부터 시작 →"}
           </Link>
         </div>
       </section>
