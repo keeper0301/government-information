@@ -216,6 +216,7 @@ describe("AdSense approval guardrails", () => {
     expect(layout).toContain("ADSENSE_REVIEW_MODE");
     expect(layout).toContain("공공 지원제도 신청 전 확인할 자격·서류·마감 기준");
     expect(layout).toContain("한국의 공공 지원제도 신청 전 확인할 기준");
+    expect(layout).toContain("!ADSENSE_REVIEW_MODE && <ChatbotPanel />");
 
     const guides = read("app/guides/page.tsx");
     expect(guides).toContain('href={ADSENSE_REVIEW_MODE ? "/editorial-policy" : "/quiz"}');

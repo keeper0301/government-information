@@ -146,7 +146,7 @@ export default async function RootLayout({
         <ReconsentBannerContainer />
         {children}
         <Footer />
-        <ChatbotPanel />
+        {!ADSENSE_REVIEW_MODE && <ChatbotPanel />}
         {/* PWA service worker 등록 — offline 캐싱 + 향후 push 알림 listener.
             client only, 시각 출력 없음, dev 모드(localhost)는 자동 skip. */}
         <PWARegister />
