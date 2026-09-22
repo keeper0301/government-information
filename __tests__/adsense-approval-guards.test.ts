@@ -236,6 +236,10 @@ describe("AdSense approval guardrails", () => {
     const loading = read("app/loading.tsx");
     expect(loading).toContain("신청 전 확인할 기준을 정리합니다");
     expect(loading).toContain("사람이 읽기 쉬운 가이드로 정리하고 있어요");
+
+    const ogImage = read("app/opengraph-image.tsx");
+    expect(ogImage).toContain("공공 지원제도 신청 전 확인할 기준 정리");
+    expect(ogImage).toContain("신청 전 기준 정리");
   });
 
   it("keeps homepage pricing funnel restorable only after AdSense approval", () => {
