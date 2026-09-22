@@ -218,6 +218,34 @@ function ReviewModeHomeBody() {
   );
 }
 
+function ReviewModeHeroPanel() {
+  return (
+    <div className="rounded-[28px] bg-white border border-grey-100 shadow-[0_12px_40px_rgba(15,23,42,0.06)] p-6 md:p-8">
+      <p className="text-[13px] font-bold text-blue-600 mb-3 tracking-[0.08em] uppercase">
+        REVIEW FIRST
+      </p>
+      <h2 className="text-[24px] md:text-[28px] font-extrabold text-grey-900 tracking-[-0.7px] leading-[1.3] mb-4">
+        신청 전에 확인할 기준을
+        <br />
+        먼저 정리합니다.
+      </h2>
+      <ul className="space-y-3 text-[15px] leading-[1.65] text-grey-700">
+        <li>• 공식 출처와 공고 변경 여부</li>
+        <li>• 대상·지역·소득·중복 제한</li>
+        <li>• 제출 서류와 마감 전 확인점</li>
+      </ul>
+      <div className="mt-6 grid gap-3">
+        <Link href="/guides" className="rounded-2xl bg-blue-600 px-4 py-3 text-white font-bold no-underline text-center">
+          대표 가이드 읽기
+        </Link>
+        <Link href="/editorial-policy" className="rounded-2xl bg-grey-50 border border-grey-100 px-4 py-3 text-grey-900 font-bold no-underline text-center">
+          편집·검수 기준 보기
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default async function Home() {
   // 1) 첫 화면 사용자 분기에 필요한 인증/프로필만 먼저 확보.
   //    아래쪽 콘텐츠 데이터는 각 Suspense 섹션 안에서 별도 스트리밍.
@@ -283,17 +311,27 @@ export default async function Home() {
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
               style={{ animationDelay: "60ms" }}
             >
-              내 조건에 맞는 정책만{" "}
+              {ADSENSE_REVIEW_MODE ? "신청 전 확인할 기준만" : "내 조건에 맞는 정책만"}{" "}
               <br />
-              먼저 보여드릴게요
+              먼저 정리해둘게요
             </h1>
             <p
               className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-6 max-md:text-[15px]"
               style={{ animationDelay: "120ms" }}
             >
-              지역·소득·가구·직업 정보를 기준으로 맞지 않는 정책은 줄이고,
-              <br />
-              마감 전에 확인해야 할 지원사업을 먼저 보여드려요.
+              {ADSENSE_REVIEW_MODE ? (
+                <>
+                  정부·지자체 공고를 볼 때 놓치기 쉬운 자격·서류·마감 기준을
+                  <br />
+                  대표 가이드와 허브 중심으로 정리합니다.
+                </>
+              ) : (
+                <>
+                  지역·소득·가구·직업 정보를 기준으로 맞지 않는 정책은 줄이고,
+                  <br />
+                  마감 전에 확인해야 할 지원사업을 먼저 보여드려요.
+                </>
+              )}
             </p>
             {/* [발견] 회원가입 가치 카드 3종 — 24h 가입 0건 직격타 (2026-04-28).
                 Hero 카피 바로 아래 inline chip 으로 가치 명시. */}
@@ -307,9 +345,9 @@ export default async function Home() {
               style={{ animationDelay: "180ms" }}
             >
               <Link
-                href={isLoggedIn ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}
+                href={ADSENSE_REVIEW_MODE ? "/guides" : isLoggedIn ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}
                 data-ga-event="cta_clicked"
-                data-ga-label={isLoggedIn ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
+                data-ga-label={ADSENSE_REVIEW_MODE ? "대표 가이드 보기" : isLoggedIn ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
                 data-ga-location="home_hero_primary"
                 data-ga-params={JSON.stringify({
                   is_logged_in: isLoggedIn,
@@ -317,7 +355,7 @@ export default async function Home() {
                 })}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-blue-500 text-white text-[15px] font-bold hover:bg-blue-600 transition-colors no-underline shadow-[0_4px_12px_rgba(49,130,246,0.25)] min-h-[48px]"
               >
-                {isLoggedIn ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
+                {ADSENSE_REVIEW_MODE ? "대표 가이드 보기" : isLoggedIn ? (isProfileEmpty ? "마이페이지 보완하기" : "내 맞춤 정책 전체 보기") : "내 정책 1분 진단"}
                 <span aria-hidden="true">→</span>
               </Link>
               <Link
@@ -327,15 +365,21 @@ export default async function Home() {
                 {ADSENSE_REVIEW_MODE ? "대표 가이드 보기" : "정책 둘러보기"}
               </Link>
             </div>
-            <div className="fade-up" style={{ animationDelay: "240ms" }}>
-              <SearchBox />
-            </div>
+            {!ADSENSE_REVIEW_MODE && (
+              <div className="fade-up" style={{ animationDelay: "240ms" }}>
+                <SearchBox />
+              </div>
+            )}
           </div>
 
           {/* 오른쪽 컬럼: 비로그인=AI 진단 wizard / 로그인+빈프로필=프로필 입력 유도.
               로그인+프로필 사용자는 두 추천 카드를 hero 아래 full-width 2열로 분리(아래
               블록) — 우측 좁은 컬럼(1fr) 폭 부족으로 가로 2열 불가 해소(2026-06-03). */}
-          {!(isLoggedIn && !isProfileEmpty) && (
+          {ADSENSE_REVIEW_MODE ? (
+            <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
+              <ReviewModeHeroPanel />
+            </div>
+          ) : !(isLoggedIn && !isProfileEmpty) && (
             <div className="fade-up lg:mt-14" style={{ animationDelay: "240ms" }}>
               {isLoggedIn ? (
                 // 로그인 + 빈 프로필 — 프로필 작성 유도
@@ -482,7 +526,7 @@ export default async function Home() {
       {/* [참여] WishForm — 좌측 하단 floating 위젯으로 분리.
           본문 섹션 차지 안 하고, 챗봇(우측 하단) 과 충돌 없이 좌측에 떠 있음.
           닫기·24시간 숨기기 지원. */}
-      <FloatingWishWidget />
+      {!ADSENSE_REVIEW_MODE && <FloatingWishWidget />}
 
       {/* [행동] HomeCTA — 사용자가 가져갈 다음 행동 (추천 받기 + 알림 받기) */}
       <RevealOnScroll>

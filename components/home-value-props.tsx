@@ -11,6 +11,7 @@
 // ============================================================
 
 import { Check } from "lucide-react";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 const PROPS = [
   { label: "무료 사용", desc: "대표 가이드 열람 가능" },
@@ -18,10 +19,18 @@ const PROPS = [
   { label: "카카오톡 발송", desc: "심사 통과 후 추가" },
 ];
 
+const REVIEW_MODE_PROPS = [
+  { label: "공식 출처 확인", desc: "정부·지자체 공고 우선" },
+  { label: "신청 전 체크", desc: "자격·서류·마감 기준 정리" },
+  { label: "정정 요청 가능", desc: "오류 제보와 수정 기준 공개" },
+];
+
 export function HomeValueProps() {
+  const props = ADSENSE_REVIEW_MODE ? REVIEW_MODE_PROPS : PROPS;
+
   return (
     <div className="flex flex-wrap items-center gap-2 mb-8 max-md:gap-1.5">
-      {PROPS.map((p) => (
+      {props.map((p) => (
         <div
           key={p.label}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-blue-100 text-[13px] font-semibold text-grey-800 shadow-[0_1px_3px_rgba(49,130,246,0.06)]"

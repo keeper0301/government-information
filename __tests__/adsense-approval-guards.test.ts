@@ -184,9 +184,25 @@ describe("AdSense approval guardrails", () => {
       expect(source).not.toContain("대량 상세 목록");
     }
     expect(read("components/home-value-props.tsx")).not.toContain("자동 발송");
+    expect(read("components/home-value-props.tsx")).toContain("REVIEW_MODE_PROPS");
+    expect(read("components/home-value-props.tsx")).toContain("공식 출처 확인");
     expect(read("app/help/page.tsx")).toContain("정기적으로 확인해 정리합니다");
     expect(read("app/privacy/page.tsx")).toContain("접속 기록");
     expect(read("app/guides/page.tsx")).toContain("대표 주제별 가이드");
+  });
+
+  it("keeps review-mode homepage away from sign-up, search, and floating lead funnels", () => {
+    const home = read("app/page.tsx");
+    expect(home).toContain("ReviewModeHeroPanel");
+    expect(home).toContain('href={ADSENSE_REVIEW_MODE ? "/guides"');
+    expect(home).toContain("<SearchBox />");
+    expect(home).toContain("!ADSENSE_REVIEW_MODE && <FloatingWishWidget />");
+    expect(home).toContain("편집·검수 기준 보기");
+    expect(home).not.toContain('href={isLoggedIn ? (isProfileEmpty ? "/mypage" : "/recommend") : "/quiz"}');
+
+    const featureGrid = read("components/feature-grid.tsx");
+    expect(featureGrid).toContain("reviewModeFeatures");
+    expect(featureGrid).toContain("이렇게 검토해 정리합니다");
   });
 
   it("keeps homepage pricing funnel restorable only after AdSense approval", () => {
