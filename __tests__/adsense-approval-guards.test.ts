@@ -232,6 +232,10 @@ describe("AdSense approval guardrails", () => {
     expect(cohortCta).toContain("if (ADSENSE_REVIEW_MODE)");
     expect(cohortCta).toContain("정책은 신청 전 기준부터 확인하세요");
     expect(cohortCta).toContain('href="/guides"');
+
+    const loading = read("app/loading.tsx");
+    expect(loading).toContain("신청 전 확인할 기준을 정리합니다");
+    expect(loading).toContain("사람이 읽기 쉬운 가이드로 정리하고 있어요");
   });
 
   it("keeps homepage pricing funnel restorable only after AdSense approval", () => {

@@ -16,6 +16,8 @@
 //   - 접근성: role=status + aria-live=polite + sr-only 텍스트
 // ============================================================
 
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+
 export default function Loading() {
   return (
     <div
@@ -32,12 +34,22 @@ export default function Loading() {
             먼저 들어가므로, semantic <main> 대신 중립 <div> shell 로 유지해 실제 페이지
             main landmark 와 충돌하지 않게 한다. */}
         <p className="text-[24px] font-extrabold tracking-[-0.5px] text-grey-900 mb-3">
-          내 조건에 맞는 정부 지원, 30초 만에
+          {ADSENSE_REVIEW_MODE ? "신청 전 확인할 기준을 정리합니다" : "내 조건에 맞는 정부 지원, 30초 만에"}
         </p>
         <p className="text-[14px] text-grey-700 leading-[1.6] mb-8">
-          청년·소상공인·부모·신혼부부 정책을 한곳에 모아
-          <br className="max-md:hidden" />
-          이메일·알림톡으로 마감 전에 알려드려요.
+          {ADSENSE_REVIEW_MODE ? (
+            <>
+              공식 출처, 자격, 서류, 마감 정보를
+              <br className="max-md:hidden" />
+              사람이 읽기 쉬운 가이드로 정리하고 있어요.
+            </>
+          ) : (
+            <>
+              청년·소상공인·부모·신혼부부 정책을 한곳에 모아
+              <br className="max-md:hidden" />
+              이메일·알림톡으로 마감 전에 알려드려요.
+            </>
+          )}
         </p>
 
         {/* 토스 풍 spinner — 16px 굵은 ring + blue-500 강조 + 부드러운 회전 */}
