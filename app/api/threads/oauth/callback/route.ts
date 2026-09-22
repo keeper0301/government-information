@@ -1,10 +1,23 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { exchangeThreadsCode, exchangeThreadsLongToken, getThreadsUser } from "@/lib/threads/oauth";
 
 export const dynamic = "force-dynamic";
 const STATE_COOKIE = "threads_oauth_state";
+
+function validSignedState(state: string): boolean {
+  const secret = process.env.CRON_SECRET;
+  const [prefix, timestamp, signature] = state.split(".");
+  if (!secret || prefix !== "threads-insights" || !timestamp || !signature) return false;
+  const issuedAt = Number(timestamp);
+  if (!Number.isFinite(issuedAt) || Math.abs(Date.now() - issuedAt) > 10 * 60 * 1000) return false;
+  const expected = createHmac("sha256", secret).update(`${prefix}.${timestamp}`).digest("hex");
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+}
 
 function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.keepioo.com";
@@ -28,7 +41,7 @@ export async function GET(request: Request) {
 
   const cookieStore = await cookies();
   const expectedState = cookieStore.get(STATE_COOKIE)?.value;
-  if (!expectedState || state !== expectedState) {
+  if ((!expectedState || state !== expectedState) && !validSignedState(state)) {
     return resultPage("Threads 연결 오류", "보안 상태값이 일치하지 않습니다. 10분 안에 연결을 다시 시작하세요.", false, 400);
   }
   cookieStore.delete(STATE_COOKIE);
