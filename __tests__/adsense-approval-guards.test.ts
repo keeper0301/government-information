@@ -157,6 +157,7 @@ describe("AdSense approval guardrails", () => {
     expect(demo).toContain("정책알리미는 목록보다 먼저");
     expect(demo).toContain("데모 화면");
     expect(demo).toContain("마감 임박 정책 먼저 표시");
+    expect(demo).toContain('ADSENSE_REVIEW_MODE ? "/guides" : "/quiz"');
 
     const home = read("app/page.tsx");
     expect(home).toContain("<EligibilityDemoStrip />");
@@ -203,6 +204,11 @@ describe("AdSense approval guardrails", () => {
     const featureGrid = read("components/feature-grid.tsx");
     expect(featureGrid).toContain("reviewModeFeatures");
     expect(featureGrid).toContain("이렇게 검토해 정리합니다");
+
+    const notFound = read("app/not-found.tsx");
+    expect(notFound).toContain("REVIEW_MODE_LINKS");
+    expect(notFound).toContain("!ADSENSE_REVIEW_MODE && (");
+    expect(notFound).toContain('action="/search"');
   });
 
   it("keeps homepage pricing funnel restorable only after AdSense approval", () => {

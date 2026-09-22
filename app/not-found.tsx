@@ -12,6 +12,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 export const metadata: Metadata = {
   title: "찾으시는 페이지가 없어요 | 정책알리미",
@@ -46,6 +47,33 @@ const LINKS: { href: string; title: string; desc: string; emoji: string }[] = [
   },
 ];
 
+const REVIEW_MODE_LINKS: { href: string; title: string; desc: string; emoji: string }[] = [
+  {
+    href: "/",
+    title: "홈으로",
+    desc: "대표 가이드와 운영 기준",
+    emoji: "🏠",
+  },
+  {
+    href: "/guides",
+    title: "정책 가이드",
+    desc: "신청 전 확인 기준",
+    emoji: "📘",
+  },
+  {
+    href: "/editorial-policy",
+    title: "편집 기준",
+    desc: "검수·수정 원칙",
+    emoji: "🧭",
+  },
+  {
+    href: "/contact",
+    title: "정정 요청",
+    desc: "오류 제보와 문의",
+    emoji: "✉️",
+  },
+];
+
 // 카테고리 hub 4종 — AdSense 검수자가 404 hit 시 정상 운영 시그널 (메인 카테고리 진입 가능).
 const HUB_LINKS = [
   { slug: "youth", label: "청년", emoji: "🎓" },
@@ -55,6 +83,8 @@ const HUB_LINKS = [
 ];
 
 export default function NotFound() {
+  const links = ADSENSE_REVIEW_MODE ? REVIEW_MODE_LINKS : LINKS;
+
   return (
     <main className="min-h-screen bg-grey-50 flex items-center justify-center px-5 py-20">
       <div className="max-w-[640px] w-full text-center">
@@ -73,30 +103,31 @@ export default function NotFound() {
           </p>
         </div>
 
-        {/* 검색 폼 — 사용자/검수자가 즉시 정책 검색 가능 (GET form, JS 없어도 동작) */}
-        <form method="get" action="/search" className="mb-6">
-          <div className="flex items-center gap-2 bg-white border border-grey-200 rounded-2xl p-2 pl-5 max-w-[500px] mx-auto focus-within:border-blue-500 focus-within:shadow-[0_0_0_4px_rgba(49,130,246,0.16)] transition-all">
-            <input
-              type="text"
-              name="q"
-              placeholder="원하는 정책 검색 (예: 청년 월세, 소상공인 대출)"
-              required
-              minLength={2}
-              aria-label="검색어"
-              className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] text-grey-900 text-left"
-            />
-            <button
-              type="submit"
-              className="shrink-0 h-10 px-4 bg-blue-500 text-white border-none rounded-xl text-[14px] font-bold cursor-pointer hover:bg-blue-600 transition-colors"
-            >
-              검색
-            </button>
-          </div>
-        </form>
+        {!ADSENSE_REVIEW_MODE && (
+          <form method="get" action="/search" className="mb-6">
+            <div className="flex items-center gap-2 bg-white border border-grey-200 rounded-2xl p-2 pl-5 max-w-[500px] mx-auto focus-within:border-blue-500 focus-within:shadow-[0_0_0_4px_rgba(49,130,246,0.16)] transition-all">
+              <input
+                type="text"
+                name="q"
+                placeholder="원하는 정책 검색 (예: 청년 월세, 소상공인 대출)"
+                required
+                minLength={2}
+                aria-label="검색어"
+                className="flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] text-grey-900 text-left"
+              />
+              <button
+                type="submit"
+                className="shrink-0 h-10 px-4 bg-blue-500 text-white border-none rounded-xl text-[14px] font-bold cursor-pointer hover:bg-blue-600 transition-colors"
+              >
+                검색
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* 주요 페이지 바로가기 4종 */}
         <div className="grid grid-cols-2 gap-3 text-left mb-6">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}

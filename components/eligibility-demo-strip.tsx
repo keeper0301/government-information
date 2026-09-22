@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 
 const demoSteps = [
   { label: "지역", value: "서울 · 관악구", tone: "bg-blue-50 text-blue-700" },
@@ -13,6 +14,9 @@ const matchedPolicies = [
 ];
 
 export function EligibilityDemoStrip({ compact = false }: { compact?: boolean }) {
+  const primaryHref = ADSENSE_REVIEW_MODE ? "/guides" : "/quiz";
+  const primaryLabel = ADSENSE_REVIEW_MODE ? "진단 기준 가이드 보기 →" : "1분 진단 체험하기 →";
+
   return (
     <section
       className={`rounded-[28px] border border-blue-100 bg-white shadow-[0_14px_45px_rgba(15,23,42,0.06)] ${
@@ -50,10 +54,10 @@ export function EligibilityDemoStrip({ compact = false }: { compact?: boolean })
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/quiz"
+              href={primaryHref}
               className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-[14px] font-extrabold text-white no-underline hover:bg-blue-700"
             >
-              1분 진단 체험하기 →
+              {primaryLabel}
             </Link>
             <Link
               href="/guides"
