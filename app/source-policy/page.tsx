@@ -6,7 +6,8 @@ export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "출처 정책 — 정책알리미",
-  description: "정책알리미가 사용하는 공공 정책 정보 출처와 확인 방식을 안내합니다.",
+  description:
+    "정책알리미가 정부24, 복지로, 기업마당, 지자체 공고처럼 공개된 공공 출처를 어떤 순서로 확인하고 정책 가이드에 반영하는지 안내합니다.",
   alternates: { canonical: "/source-policy" },
   robots: { index: true, follow: true },
 };

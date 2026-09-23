@@ -78,7 +78,7 @@ try {
   latestSitemapSubmit = JSON.parse(sitemapSubmitRun.output || "[]").find((runItem) => runItem.status === "completed") ?? null;
 } catch {}
 
-const status = preflight.ok && latestCi?.conclusion === "success" ? "준비 완료" : "확인 필요";
+const status = preflight.ok && latestCi?.conclusion === "success" ? "심사 대기" : "확인 필요";
 const sitemapGuides = preflightValues.get("sitemap./guides") ?? "unknown";
 const sitemapTotal = preflightValues.get("sitemap.loc_count") ?? "unknown";
 const guideIssues = preflightValues.get("guide_quality.issues") ?? "unknown";
@@ -96,7 +96,7 @@ const markdown = `# AdSense 재심사 추적 보드
 - 대상 사이트: ${baseUrl}
 - 최신 커밋: ${gitHead.ok ? `\`${gitHead.output}\`` : "확인 실패"}
 
-## 제출 전 체크
+## 심사 대기 체크
 
 - AdSense review preflight: **${formatCommandResult(preflight, "통과", "실패")}**
 - GitHub CI: **${latestCi?.conclusion ?? "unknown"}**${latestCi?.url ? ` — ${latestCi.url}` : ""}
@@ -115,16 +115,16 @@ ${trustPageRows.join("\n")}
 
 ## AdSense 콘솔에서 할 일
 
-1. AdSense 콘솔에서 사이트 심사 상태를 확인합니다.
-2. 사이트가 준비됨 상태라면 재심사 요청 버튼을 누릅니다.
-3. 제출 후 이 파일의 기준 시각과 Search Console 제출 run을 운영 기록으로 남깁니다.
-4. 승인되면 \`NEXT_PUBLIC_ADSENSE_REVIEW_MODE=adsense-approved-live-ads\` 복구 절차로 전환합니다.
+1. 현재 사이트는 재심사 요청 제출 후 Google 심사 대기 상태로 관리합니다.
+2. 새 거절 문구가 나오면 해당 문구와 indexed URL 기준으로 다시 진단합니다.
+3. 승인되면 \`docs/adsense-approval-recovery-checklist.md\` 기준으로 review-mode 복구 절차를 진행합니다.
+4. 승인 전에는 pricing/SaaS surface, ad script, 대량 funnel 문구를 다시 노출하지 않습니다.
 
 ## 실패 시 우선 확인
 
 - preflight 실패: \`ADSENSE_REVIEW_STRICT_LINKS=1 npm run diagnose:adsense-review\`
 - sitemap 재제출: GitHub Actions \`Manual Site Cron Trigger\` → \`search-console-sitemap-submit\`
-- 승인 후 복구: pricing/SaaS/sitemap/ad-script 복구 readback 후 진행
+- 승인 후 복구: \`docs/adsense-approval-recovery-checklist.md\` 기준으로 pricing/SaaS/sitemap/ad-script 복구 readback 후 진행
 `;
 
 if (args.write) {

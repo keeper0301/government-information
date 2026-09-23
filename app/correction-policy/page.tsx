@@ -6,7 +6,8 @@ export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "정정·수정 정책 — 정책알리미",
-  description: "정책알리미의 오류 제보, 정정 검토, 수정 반영 기준을 안내합니다.",
+  description:
+    "정책알리미가 정책 마감, 대상, 금액, 신청 링크 오류를 어떻게 접수·검토·수정하고 공식 출처 기준으로 다시 확인하는지 안내합니다.",
   alternates: { canonical: "/correction-policy" },
   robots: { index: true, follow: true },
 };
