@@ -15,6 +15,7 @@ import { CITY_REGISTRY } from "@/lib/scraping/local-press/_registry";
 import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { authorizeCronRequest } from "@/lib/cron-auth";
+import { rotatePressCities } from "@/lib/scraping/local-press/_rotation";
 
 export const dynamic = "force-dynamic";
 // 2026-05-25 region: vercel.json 의 functions.regions=["icn1"] 으로 설정 (project 레벨).
@@ -39,6 +40,7 @@ const BATCH_SIZE = 6;
 const CITY_TIMEOUT_MS = 90_000;
 
 type CityResult = {
+  status: "completed" | "failed" | "timed_out" | "skipped_budget";
   city: string;
   fetched: number;
   inserted: number;
@@ -58,25 +60,27 @@ async function scrapeCity(
   admin: ReturnType<typeof createAdminClient>,
   entry: (typeof CITY_REGISTRY)[number],
 ): Promise<CityResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     // 도시당 wall-clock 상한 — 초과 시 0건 CityResult 로 resolve 하고 다음 도시 진행.
     // entry.fn 의 fetch 는 백그라운드로 계속될 수 있으나(이미 insert 된 row 보존),
     // chunk 가 이 도시로 인해 90s 이상 늘어나지 않도록 보장한다.
     const r = await Promise.race<CityResult>([
-      entry.fn(admin, 10),
-      new Promise<CityResult>((resolve) =>
-        setTimeout(
+      entry.fn(admin, 10).then((result) => ({ ...result, status: "completed" as const })),
+      new Promise<CityResult>((resolve) => {
+        timer = setTimeout(
           () =>
             resolve({
               city: entry.city,
+              status: "timed_out",
               fetched: 0,
               inserted: 0,
               skipped: 0,
               errors: [`city wall-clock timeout ${CITY_TIMEOUT_MS}ms`],
             }),
           CITY_TIMEOUT_MS,
-        ),
-      ),
+        );
+      }),
     ]);
     await logAdminAction({
       actorId: null,
@@ -97,6 +101,7 @@ async function scrapeCity(
     // catch 안에서도 logAdminAction 호출 → /admin/scrape-local 페이지 + silent-fail-detect 가시화.
     const errorMessage = (e as Error).message;
     const errResult: CityResult = {
+      status: "failed",
       city: entry.city,
       fetched: 0,
       inserted: 0,
@@ -114,13 +119,15 @@ async function scrapeCity(
       // audit insert 도 fail 하면 silent — 무한 throw 회피
     }
     return errResult;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 
 // 2026-06-07 코드리뷰 P1 — 전체 wall-clock 예산. 도시당 90s cap 만으론 최악
 // 14 chunk × 90s = 1260s 가 maxDuration 800 을 넘어 Vercel 이 함수를 강제 종료 →
 // registry 끝쪽(서울 자치구 등)이 silent 미실행되던 원래 위험이 부분 재현될 수 있다.
-// 예산 초과 시 잔여 도시를 skip CityResult(가시화) 로 남기고 break — 정상 종료 + 다음 cron 처리.
+// 예산 초과는 미시도로 표시한다. 전체 실행은 날짜별 순환으로 다음 날 시작 위치가 바뀐다.
 const TOTAL_BUDGET_MS = 700_000;
 
 function selectCityEntries(request: Request): (typeof CITY_REGISTRY)[number][] {
@@ -164,24 +171,29 @@ async function runScrape(entries = CITY_REGISTRY) {
   const admin = createAdminClient();
   const results: CityResult[] = [];
   const startedAt = Date.now();
+  // 지역을 지정한 수동 실행은 기존 요청 순서를 보존한다. 전체 실행만 날짜별로 순환한다.
+  const ordered = entries === CITY_REGISTRY
+    ? rotatePressCities(entries, BATCH_SIZE, startedAt)
+    : entries;
 
   // BATCH_SIZE 단위 병렬 처리 — chunk 간 sequential 로 외부 부하 분산.
   // 각 scrapeCity 가 try/catch 내장이라 Promise.all reject X (allSettled 불필요).
-  for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-    if (Date.now() - startedAt > TOTAL_BUDGET_MS) {
+  for (let i = 0; i < ordered.length; i += BATCH_SIZE) {
+    if (Date.now() - startedAt >= TOTAL_BUDGET_MS) {
       // 예산 초과 — 잔여 도시는 강제종료 대신 skip 기록으로 가시화(silent 미실행 방지).
-      for (const entry of entries.slice(i)) {
+      for (const entry of ordered.slice(i)) {
         results.push({
+          status: "skipped_budget",
           city: entry.city,
           fetched: 0,
           inserted: 0,
           skipped: 0,
-          errors: ["wall-clock budget 초과 — 이번 cron skip(다음 cron 처리)"],
+          errors: [],
         });
       }
       break;
     }
-    const chunk = entries.slice(i, i + BATCH_SIZE);
+    const chunk = ordered.slice(i, i + BATCH_SIZE);
     const chunkResults = await Promise.all(
       chunk.map((entry) => scrapeCity(admin, entry)),
     );
@@ -198,11 +210,22 @@ export async function GET(request: Request) {
     const entries = selectCityEntries(request);
     const results = await runScrape(entries);
     const totalInserted = results.reduce((s, r) => s + r.inserted, 0);
-    await auditCronRun("local_press_scrape_run", {
-      cities: results.length,
+    const budgetSkipped = results.filter((r) => r.status === "skipped_budget");
+    // 미시도 목록은 전체 실행 감사에 보관한다. 지역 수집 감사에는 실제 시도만 남긴다.
+    const summary = {
+      cities: results.length - budgetSkipped.length,
+      planned_cities: results.length,
+      attempted_cities: results.length - budgetSkipped.length,
+      completed_cities: results.filter((r) => r.status === "completed").length,
+      timed_out_cities: results.filter((r) => r.status === "timed_out").length,
+      failed_cities: results.filter((r) => r.status === "failed").length,
+      budget_skipped_cities: budgetSkipped.length,
+      budget_skipped: budgetSkipped.map((r) => r.city),
+      rotation_start_city: results[0]?.city ?? null,
       total_inserted: totalInserted,
-    });
-    return NextResponse.json({ ok: true, results });
+    };
+    await auditCronRun("local_press_scrape_run", summary);
+    return NextResponse.json({ ok: true, results, summary });
   } catch (e) {
     return NextResponse.json(
       { error: (e as Error).message },
