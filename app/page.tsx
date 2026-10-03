@@ -36,6 +36,8 @@ import { getUrgentPrograms } from "@/lib/programs";
 import { getProgramCounts } from "@/lib/home-stats";
 import { getDataFreshness, formatFreshness } from "@/lib/data-freshness";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { HomeEditorialShell } from "@/components/home-editorial-shell";
+import Loading from "@/components/page-loading-shell";
 
 // FloatingWishWidget — 좌측 하단 floating 위젯, 즉시 노출 불필요.
 // nextDynamic 으로 청크 분리 → 메인 번들 가벼움.
@@ -246,7 +248,7 @@ function ReviewModeHeroPanel() {
   );
 }
 
-export default async function Home() {
+async function PersonalizedHome() {
   // 1) 첫 화면 사용자 분기에 필요한 인증/프로필만 먼저 확보.
   //    아래쪽 콘텐츠 데이터는 각 Suspense 섹션 안에서 별도 스트리밍.
   const fullProfile = await loadUserProfile();
@@ -307,14 +309,14 @@ export default async function Home() {
                 <HeroIndicator />
               </Suspense>
             </div>
-            <h1
+            <h2
               className="fade-up text-[48px] font-extrabold leading-[1.25] tracking-[-2px] text-grey-900 mb-5 max-md:text-[32px] max-md:tracking-[-1.2px]"
               style={{ animationDelay: "60ms" }}
             >
               {ADSENSE_REVIEW_MODE ? "신청 전 확인할 기준만" : "내 조건에 맞는 정책만"}{" "}
               <br />
               먼저 정리해둘게요
-            </h1>
+            </h2>
             <p
               className="fade-up text-[17px] leading-[1.65] text-grey-600 max-w-[500px] tracking-[-0.3px] mb-6 max-md:text-[15px]"
               style={{ animationDelay: "120ms" }}
@@ -536,4 +538,8 @@ export default async function Home() {
       </RevealOnScroll>
     </main>
   );
+}
+
+export default function Home() {
+  return <><main><HomeEditorialShell /></main>{!ADSENSE_REVIEW_MODE && <Suspense fallback={<Loading />}><PersonalizedHome /></Suspense>}</>;
 }

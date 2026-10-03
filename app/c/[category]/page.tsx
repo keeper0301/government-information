@@ -31,6 +31,7 @@ import {
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
 import { getGuides } from "@/lib/policy-guides";
+import { guideCategorySlugs } from "@/lib/guide-evidence";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 import {
   buildHubOrClause,
@@ -129,7 +130,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
               if (orClause) q = q.or(orClause);
               return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
             })(),
-            getGuides(GUIDE_LIMIT),
+            getGuides(50),
             hub.blogCategory
               ? supabase
                   .from("blog_posts")
@@ -164,7 +165,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
       : await Promise.all([
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
-          getGuides(GUIDE_LIMIT),
+          getGuides(50),
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
@@ -199,7 +200,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
     .filter((p) => !deadlineSoonIds.has(p.id))
     .slice(0, RECOMMEND_LIMIT);
 
-  const guides = guidesAll.slice(0, GUIDE_LIMIT);
+  const guides = guidesAll.filter((guide) => guideCategorySlugs(guide).includes(category)).slice(0, GUIDE_LIMIT);
   const showPolicyLists = !ADSENSE_REVIEW_MODE;
   const blogPosts = (blogRes.data ?? []) as Array<{
     slug: string;

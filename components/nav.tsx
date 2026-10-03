@@ -39,19 +39,19 @@ const reviewModePolicyChildren = [
 
 const items = [
   {
-    label: "정책",
-    href: ADSENSE_REVIEW_MODE ? "/guides" : "/policy",
+    label: "대상별 지원",
+    href: ADSENSE_REVIEW_MODE ? "/c/business" : "/policy",
     priority: "core",
     // 모바일 햄버거에서만 펼쳐 보여주는 하위 탭. 데스크톱은 평탄.
     children: ADSENSE_REVIEW_MODE ? reviewModePolicyChildren : livePolicyChildren,
   },
   ADSENSE_REVIEW_MODE
-    ? { label: "가이드", href: "/guides", priority: "core" }
+    ? { label: "신청 가이드", href: "/guides", priority: "core" }
     : { label: "소식", href: "/news", priority: "core" },
   ...(ADSENSE_REVIEW_MODE
     ? ([
-        { label: "청년", href: "/c/youth", priority: "core" },
-        { label: "자영업", href: "/c/business", priority: "extra" },
+        { label: "운영 기준", href: "/editorial-policy", priority: "core" },
+        { label: "공고 찾기", href: "/welfare", priority: "extra" },
       ] as const)
     : ([
         { label: "달력", href: "/calendar", priority: "core" },
@@ -239,6 +239,9 @@ export function Nav({
       </div>
 
       {/* 모바일 메뉴 패널 (md 미만 — 폰만)
+      */}
+      <noscript><div className="md:hidden flex flex-wrap gap-3 px-5 py-3 bg-white text-sm"><Link href="/guides">신청 가이드</Link><Link href="/c/business">소상공인</Link><Link href="/c/youth">청년</Link><Link href="/editorial-policy">운영 기준</Link></div></noscript>
+      {/*
           - admin 사장님: 메뉴 맨 위 어드민 quick link (스크롤 없이 즉시 진입)
           - 5개 메인 메뉴 (정책은 하위 4개 탭 들여쓰기로 함께 노출 — 한 손가락 동선)
           - 그 아래 알림센터·도움말·이용약관 작은 글씨 묶음

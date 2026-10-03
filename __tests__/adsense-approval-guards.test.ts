@@ -42,8 +42,9 @@ describe("AdSense approval guardrails", () => {
     const footer = read("components/footer.tsx");
 
     expect(nav).toContain("reviewModePolicyChildren");
-    expect(nav).toContain('href: ADSENSE_REVIEW_MODE ? "/guides" : "/policy"');
-    expect(nav).toContain('label: "가이드", href: "/guides"');
+    expect(nav).toContain('href: ADSENSE_REVIEW_MODE ? "/c/business" : "/policy"');
+    expect(nav).toContain('label: "신청 가이드", href: "/guides"');
+    expect(nav).toContain('label: "운영 기준", href: "/editorial-policy"');
     expect(nav).toContain('label: "문의", href: "/contact"');
     expect(nav).toContain('label: "복지정보", href: "/welfare"');
     expect(nav).toContain('label: "대출정보", href: "/loan"');
@@ -87,9 +88,9 @@ describe("AdSense approval guardrails", () => {
 
   it("keeps llms.txt aligned with review-mode sitemap reality and AI citation guidance", () => {
     const source = read("public/llms.txt");
-    expect(source).toContain("keepioo가 1차 소스로 제공하는 것");
-    expect(source).toContain("AdSense 검수 모드에서는 사람이 쓴 가이드·허브 중심으로 제한");
-    expect(source).toContain("live ads 모드에서는 복지·대출·뉴스·키워드·블로그 URL까지 복구");
+    expect(source).toContain("정부 정책 사실의 원출처는 담당 기관의 공고와 신청 안내");
+    expect(source).toContain("현행 색인 제외 정책은 유지");
+    expect(source).toContain("광고계정 승인만으로 전체 URL을 복구하거나 수익화하지 않습니다");
     expect(source).toContain("인용 권장 표기");
   });
 
@@ -225,7 +226,8 @@ describe("AdSense approval guardrails", () => {
 
     const about = read("app/about/page.tsx");
     expect(about).toContain("신청 전 확인 순서");
-    expect(about).toContain("재심사 기간에는 광고·가입 전환보다 정보 품질을 우선합니다");
+    expect(about).toContain("광고·가입 전환보다 신청 전 확인할 정보를 먼저 제공합니다");
+    expect(about).toContain("수집·작성 성공은 사람의 검수 완료를 뜻하지 않습니다");
     expect(about).toContain('Section title={ADSENSE_REVIEW_MODE ? "운영 기준" : "서비스 운영 비용"}');
 
     const cohortCta = read("components/cohort-cta-banner.tsx");
@@ -233,7 +235,7 @@ describe("AdSense approval guardrails", () => {
     expect(cohortCta).toContain("정책은 신청 전 기준부터 확인하세요");
     expect(cohortCta).toContain('href="/guides"');
 
-    const loading = read("app/loading.tsx");
+    const loading = read("components/page-loading-shell.tsx");
     expect(loading).toContain("신청 전 확인할 기준을 정리합니다");
     expect(loading).toContain("사람이 읽기 쉬운 가이드로 정리하고 있어요");
 

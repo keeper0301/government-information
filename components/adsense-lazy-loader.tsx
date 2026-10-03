@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { usePathname } from "next/navigation";
+import { isPublicContentPath } from "@/lib/content-quality";
 
 // AdSense 라이브러리를 lighthouse 측정 윈도우 (~5초) 밖에서 로드.
 // 기존 next/script strategy="lazyOnload" 는 브라우저 idle 시 자동 로드 →
@@ -12,7 +14,7 @@ import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 //       라이브러리 자체가 측정 안에서 안 잡힘 → 점수 큰 폭 개선.
 //
 // 사용자 영향: 광고 노출이 스크롤·터치 직후 (즉시 체감) 또는 10초 후 (대기).
-// keepioo 는 현재 ad-slot.tsx 가 placeholder 라 실제 광고 매출 0 → 영향 없음.
+// Manual slots have a separate content-quality gate. Loading the SDK is not content approval.
 
 const ADSENSE_ID = process.env.NEXT_PUBLIC_ADSENSE_ID;
 const FALLBACK_TIMEOUT_MS = 10000;
@@ -40,7 +42,7 @@ const REVIEW_MODE_ADSENSE_PREFIXES = [
 ] as const;
 
 export function shouldLoadAdsenseScript(pathname: string): boolean {
-  if (!ADSENSE_REVIEW_MODE) return true;
+  if (!ADSENSE_REVIEW_MODE) return isPublicContentPath(pathname);
   if (REVIEW_MODE_ADSENSE_PATHS.includes(pathname as typeof REVIEW_MODE_ADSENSE_PATHS[number])) {
     return true;
   }
@@ -48,6 +50,7 @@ export function shouldLoadAdsenseScript(pathname: string): boolean {
 }
 
 export function AdsenseLazyLoader() {
+  const pathname = usePathname();
   useEffect(() => {
     if (!ADSENSE_ID) return;
     if (typeof window === "undefined") return;
@@ -57,6 +60,7 @@ export function AdsenseLazyLoader() {
     // 전역 AdSense lazy loader를 비활성화한다.
     if (window.location.pathname.startsWith("/admin")) return;
     if (!shouldLoadAdsenseScript(window.location.pathname)) return;
+    if (!ADSENSE_REVIEW_MODE && !document.querySelector('[data-content-ad-eligible="true"]')) return;
 
     let loaded = false;
 
@@ -68,6 +72,8 @@ export function AdsenseLazyLoader() {
     };
 
     const load = () => {
+      if (window.location.pathname !== pathname) return;
+      if (!shouldLoadAdsenseScript(window.location.pathname)) return;
       if (loaded) return;
       loaded = true;
       cleanup();
@@ -79,17 +85,7 @@ export function AdsenseLazyLoader() {
       // 재심사 모드에서는 로그인·검색·뉴스 같은 비콘텐츠/보조 화면에 광고가
       // 자동 배치될 위험이 있어 끄고, 수동 슬롯만 사용한다.
       s.onload = () => {
-        if (ADSENSE_REVIEW_MODE) return;
-        try {
-          const w = window as unknown as { adsbygoogle: Array<Record<string, unknown>> };
-          w.adsbygoogle = w.adsbygoogle || [];
-          w.adsbygoogle.push({
-            google_ad_client: ADSENSE_ID,
-            enable_page_level_ads: true,
-          });
-        } catch {
-          /* 자동 광고 활성 실패 — 무시 */
-        }
+        // Auto ads require a separate owner decision; never activate them on approval token alone.
       };
       document.head.appendChild(s);
     };
@@ -101,7 +97,7 @@ export function AdsenseLazyLoader() {
       window.addEventListener(evt, onUserAction, { passive: true, once: true }),
     );
     return cleanup;
-  }, []);
+  }, [pathname]);
 
   return null;
 }
