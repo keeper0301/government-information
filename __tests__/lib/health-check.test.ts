@@ -1084,3 +1084,11 @@ describe("checkThresholds — rate_limit_abuse", () => {
     expect(alerts.find((a) => a.key === "rate_limit_abuse")).toBeUndefined();
   });
 });
+
+describe("AdSense readiness 충돌 방어", () => {
+  it.each([0.6, 37443 / 56100])("news %s이면 stale readiness true라도 안전 알림 차단", (newsRatio) => {
+    const alerts = checkThresholds({ ...BASE_SIGNALS, newsRatio, adsenseReadyToDisable: true });
+    expect(alerts.some(a => a.key === "adsense_ready_to_disable")).toBe(false);
+    expect(alerts.some(a => a.key === "news_ratio_high")).toBe(true);
+  });
+});

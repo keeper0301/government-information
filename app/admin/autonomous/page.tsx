@@ -67,6 +67,7 @@ import {
   type GeminiSpendingStat,
 } from "@/lib/analytics/gemini-spending";
 import { getLocalPressStats, getNewsRatio } from "@/lib/analytics/local-press-stats";
+import { isAdsenseContentReady, NEWS_RATIO_HIGH_FLOOR } from "@/lib/adsense-readiness";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { LocalPressCard } from "./_components/local-press-card";
 import { getSilentFailStats } from "@/lib/analytics/silent-fail-stats";
@@ -307,7 +308,7 @@ export default async function AdminAutonomousPage() {
         <div className="flex items-center justify-between">
           <span>
             <strong>news 비중</strong>{" "}
-            <span className={newsRatioStats.ratio >= 0.6 ? "text-amber-700 font-semibold" : "text-slate-600"}>
+            <span className={newsRatioStats.ratio >= NEWS_RATIO_HIGH_FLOOR ? "text-amber-700 font-semibold" : "text-slate-600"}>
               {(newsRatioStats.ratio * 100).toFixed(1)}%
             </span>{" "}
             <span className="text-[10px] text-slate-500">
@@ -341,11 +342,11 @@ export default async function AdminAutonomousPage() {
         {/* 2026-06-01 — 80% 도달 + review mode on 시 1-tap OFF 강조 link.
             기존 /api/admin/disable-adsense-review-mode GET → confirm page →
             Vercel env 자동 off + production redeploy 까지 자동. */}
-        {ADSENSE_REVIEW_MODE && newsRatioStats.commentaryBackfillRatio >= 0.8 && (
+        {ADSENSE_REVIEW_MODE && isAdsenseContentReady(newsRatioStats.commentaryBackfillRatio, newsRatioStats.ratio) && (
           <div className="mt-2 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs">
             <div className="flex items-center justify-between gap-3">
               <span className="text-emerald-800 font-semibold">
-                ✅ 백필 80% 도달 — review mode OFF 안전 시점
+                ✅ 백필·news 비중 조건 충족 — Google 승인 후 OFF 검토
               </span>
               <a
                 href="/api/admin/disable-adsense-review-mode"

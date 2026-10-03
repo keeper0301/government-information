@@ -14,6 +14,7 @@ import {
   getHighNullDateCityCount,
   getNewsRatio,
 } from "@/lib/analytics/local-press-stats";
+import { isAdsenseContentReady, NEWS_RATIO_HIGH_FLOOR } from "@/lib/adsense-readiness";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
 import {
@@ -201,7 +202,7 @@ export type HealthSignals = {
   newsRatioDetail: string;
   /**
    * 2026-05-31 추가 — AdSense 자동 트리거 Phase A. ADSENSE_REVIEW_MODE on 상태에서
-   * P2 ai_commentary 백필이 80%+ 도달했는지 (review mode off 안전 가능 시점).
+   * P2 백필 80%+ 및 news 비중 경고 임계치 미만인지 (전환 준비 신호).
    * true = 텔레그램 알림 발화 + 사장님 Vercel env off 안내.
    */
   adsenseReadyToDisable: boolean;
@@ -362,11 +363,6 @@ const NAVER_PUBLISH_FAIL_RATE = Number(
 // 기본 1 = 1개 도시만 발화. baseline noise 발생 시 ENV 로 2~3 으로 상향 가능.
 const LOCAL_PRESS_NULL_DATE_CITY_FLOOR = Number(
   process.env.LOCAL_PRESS_NULL_DATE_CITY_FLOOR ?? "1",
-);
-// 2026-05-31 — news 비중 임계 (Google scaled content 정책 방어). 기본 0.6 = 60%.
-// 1주 baseline 후 사장님 실 비율 확인하고 재조정 가능.
-const NEWS_RATIO_HIGH_FLOOR = Number(
-  process.env.NEWS_RATIO_HIGH_FLOOR ?? "0.6",
 );
 const NAVER_PUBLISH_FAIL_FLOOR_SAFE = Number.isFinite(NAVER_PUBLISH_FAIL_FLOOR)
   ? NAVER_PUBLISH_FAIL_FLOOR
@@ -745,9 +741,9 @@ export async function getHealthSignals(): Promise<HealthSignals> {
   const newsRatioDetail =
     `news ${newsIndexable.toLocaleString()} / total ${newsRatioTotal.toLocaleString()}` +
     ` (welfare ${newsRatioWelfare.toLocaleString()}, loan ${newsRatioLoan.toLocaleString()}, blog ${newsRatioBlog.toLocaleString()})`;
-  // 2026-05-31 — AdSense 자동 트리거 Phase A. review mode on + 백필 ≥80% = off 안전.
+  // 백필과 콘텐츠 구성을 함께 확인. 실제 Google 승인 여부는 별도 확인.
   const adsenseReadyToDisable =
-    ADSENSE_REVIEW_MODE && commentaryBackfillRatio >= 0.8;
+    ADSENSE_REVIEW_MODE && isAdsenseContentReady(commentaryBackfillRatio, newsRatio);
 
   // 2026-05-31 — Vercel PAT 만료 일수 (ENV VERCEL_TOKEN_EXPIRES_AT ISO 날짜).
   const vercelTokenExpiresAt = process.env.VERCEL_TOKEN_EXPIRES_AT;
@@ -1197,10 +1193,10 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     });
   }
 
-  if (s.adsenseReadyToDisable) {
+  if (s.adsenseReadyToDisable && s.newsRatio < NEWS_RATIO_HIGH_FLOOR) {
     alerts.push({
       key: "adsense_ready_to_disable",
-      message: `AdSense P2 ai_commentary 백필 ≥80% 도달 — review mode off 안전 시점.`,
+      message: `AdSense P2 백필 ≥80% 및 news 비중 ${(s.newsRatio * 100).toFixed(1)}% < ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}% — 전환 준비 조건 충족. 실제 Google 승인 후 OFF 검토.`,
       recommendation:
         "사장님 1-tap: https://www.keepioo.com/api/admin/disable-adsense-review-mode (admin 로그인 후 GET 으로 confirm page 진입 → 빨간 버튼 클릭 → Vercel ENV adsense-approved-live-ads + production redeploy). 또는 수동: Vercel settings → env → NEXT_PUBLIC_ADSENSE_REVIEW_MODE=adsense-approved-live-ads + redeploy.",
     });
