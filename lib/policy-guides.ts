@@ -96,7 +96,8 @@ export async function getGuideBySlug(slug: string): Promise<PolicyGuide | null> 
 
   if (error) {
     console.error(`[policy-guides] getGuideBySlug(${slug}) 실패:`, error);
-    return builtin;
+    if (builtin) return builtin;
+    throw new Error("Guide data temporarily unavailable", { cause: error });
   }
   return data ? rowToGuide(data) : builtin;
 }

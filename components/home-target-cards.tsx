@@ -64,7 +64,7 @@ const TARGETS: {
     // category=양육 (DB 정확 매칭 1,053건) — 2026-04-28 fix: target=육아 0건 사고.
     // welfare 의 category 컬럼이 옛 분류 (생계·의료·양육·교육·취업·주거·문화·창업).
     href: "/welfare?category=%EC%96%91%EC%9C%A1",
-    reviewHref: "/c/youth",
+    reviewHref: "/guides/pregnancy-childcare-benefits",
     label: "부모·육아",
     desc: "출산·양육비",
     icon: Baby,
@@ -82,7 +82,7 @@ const TARGETS: {
   },
   {
     href: "/eligibility/low-income",
-    reviewHref: "/c/senior",
+    reviewHref: "/guides/basic-living-medical-expense-guide",
     label: "저소득",
     desc: "기초생활·차상위",
     icon: HandCoins,

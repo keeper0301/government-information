@@ -11,6 +11,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGuideBySlug, getRelatedGuides } from "@/lib/policy-guides";
 import { buildGuideSupplement } from "@/lib/guide-editorial-supplements";
+import { getGuideEvidence } from "@/lib/guide-evidence";
+import { GuideEvidencePanel } from "@/components/guide-evidence-panel";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 
 export const revalidate = 60;
@@ -97,6 +99,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
 
   const related = await getRelatedGuides(guide.id, 3);
   const supplement = buildGuideSupplement(guide);
+  const evidence = getGuideEvidence(guide);
 
   // Schema.org Article structured data — 검색 노출 강화
   const jsonLd = {
@@ -104,8 +107,8 @@ export default async function GuideDetailPage({ params }: PageProps) {
     "@type": "Article",
     headline: guide.title,
     description: guide.posts[0].slice(0, 160),
-    datePublished: guide.publishedAt,
-    dateModified: guide.updatedAt,
+    datePublished: guide.publishedAt || undefined,
+    dateModified: (evidence?.actualUpdatedAt ?? guide.updatedAt) || undefined,
     author: {
       "@type": "Organization",
       name: "정책알리미",
@@ -137,21 +140,22 @@ export default async function GuideDetailPage({ params }: PageProps) {
       <header className="mt-4 mb-6">
         <h1 className="text-3xl font-bold mb-2">{guide.title}</h1>
         <div className="text-sm text-gray-500">
-          {formatDate(guide.publishedAt)} · 5편 시리즈
+          {guide.publishedAt ? `발행 ${formatDate(guide.publishedAt)}` : "발행일 기록 없음"} · {evidence ? "출처·편집 상태 아래 표시" : "출처 대조 상태 확인 필요"}
         </div>
       </header>
 
       <article className="prose prose-gray max-w-none">
+        {evidence ? <GuideEvidencePanel evidence={evidence} /> : <p className="rounded-xl bg-amber-50 p-4 text-sm">이 본문의 출처 대조와 편집 검수 기록은 확인이 필요합니다. 발행일은 검수일이나 현재 신청 가능 상태를 뜻하지 않습니다.</p>}
         {guide.posts.map((post, i) => (
           <section key={i} className="mb-8">
             {POST_HEADERS[i] && (
-              <h2 className="text-xl font-semibold mb-3 mt-8">{POST_HEADERS[i]}</h2>
+              <h2 className="text-xl font-semibold mb-3 mt-8">{evidence?.headings[i] ?? POST_HEADERS[i]}</h2>
             )}
             {renderBody(post)}
           </section>
         ))}
 
-        <section className="mt-10 rounded-2xl border border-blue-100 bg-blue-50/60 p-5 not-prose">
+        {!evidence && <><section className="mt-10 rounded-2xl border border-blue-100 bg-blue-50/60 p-5 not-prose">
           <h2 className="text-xl font-bold text-grey-900 mb-3">신청 전 마지막 확인</h2>
           <p className="text-[15px] leading-relaxed text-grey-700 mb-4">{supplement.reviewNote}</p>
           <ul className="list-disc pl-5 space-y-2 text-[15px] leading-relaxed text-grey-700">
@@ -181,7 +185,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
             ))}
           </ol>
           <p className="mt-4 text-[15px] leading-relaxed text-grey-700">{supplement.riskMemo}</p>
-        </section>
+        </section></>}
       </article>
 
       <aside className="mt-12 p-6 border rounded-lg bg-gray-50">
@@ -208,7 +212,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
                   className="block p-4 border rounded hover:border-gray-400"
                 >
                   <div className="text-xs text-gray-500 mb-1">
-                    {formatDate(r.publishedAt)}
+                    {r.publishedAt ? formatDate(r.publishedAt) : "발행일 기록 없음"}
                   </div>
                   <div className="font-medium">{r.title}</div>
                 </Link>

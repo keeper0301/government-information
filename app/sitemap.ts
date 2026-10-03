@@ -14,7 +14,8 @@ import { cleanDescription } from "@/lib/utils";
 export const revalidate = 86400;
 // 페이지네이션(.range 순회)으로 round-trip 이 늘어 안전망. 일 1회 생성이라 여유 큼.
 export const maxDuration = 60;
-const SITEMAP_BUILD_TIME = new Date();
+// Unknown content modification time is omitted, never replaced with build/request time.
+const SITEMAP_BUILD_TIME = undefined;
 import {
   CROSS_COMBINATIONS,
   ELIGIBILITY_CATALOG,
@@ -106,7 +107,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     : guides;
   const guidePages: MetadataRoute.Sitemap = selectedGuides.map((g) => ({
     url: `${baseUrl}/guides/${g.slug}`,
-    lastModified: new Date(g.updatedAt),
+    lastModified: g.updatedAt ? new Date(g.updatedAt) : undefined,
     changeFrequency: "monthly" as const,
     priority: 0.6,
   }));
@@ -115,7 +116,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 4 hub 모두 SSG + benefit/age/occupation 세 축 매칭이라 thin-content 위험 낮음.
   const hubPages: MetadataRoute.Sitemap = CATEGORY_SLUGS.map((slug) => ({
     url: `${baseUrl}/c/${slug}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
@@ -136,7 +137,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 자격 카테고리 페이지 — Phase 1.5 long-tail SEO (income·household 8 slug)
   const eligibilityPages: MetadataRoute.Sitemap = ELIGIBILITY_SLUGS.map((slug) => ({
     url: `${baseUrl}/eligibility/${slug}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.8,
   }));
@@ -180,7 +181,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
     .map(({ income, household }) => ({
       url: `${baseUrl}/eligibility/cross/${income}/${household}`,
-      lastModified: new Date(),
+      lastModified: undefined,
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
@@ -197,7 +198,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if ((welfareAgeCounts.get(slug) ?? 0) >= 5) {
       agePages.push({
         url: `${baseUrl}/welfare/age/${slug}`,
-        lastModified: new Date(),
+        lastModified: undefined,
         changeFrequency: "daily",
         priority: 0.75,
       });
@@ -205,7 +206,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if ((loanAgeCounts.get(slug) ?? 0) >= 5) {
       agePages.push({
         url: `${baseUrl}/loan/age/${slug}`,
-        lastModified: new Date(),
+        lastModified: undefined,
         changeFrequency: "daily",
         priority: 0.75,
       });
@@ -246,7 +247,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 17 광역 모두 활성 정책 ≥100건 보유 (실측 2026-04-28) — thin-content 위험 0.
   const welfareRegionPages: MetadataRoute.Sitemap = PROVINCES.map((p) => ({
     url: `${baseUrl}/welfare/region/${p.code}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
@@ -279,7 +280,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 17 광역 모두 활성 정책 ≥3건 보유 (세종 3건이 최소, 실측 2026-04-28).
   const loanRegionPages: MetadataRoute.Sitemap = PROVINCES.map((p) => ({
     url: `${baseUrl}/loan/region/${p.code}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
@@ -307,7 +308,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const blogCategoryPages: MetadataRoute.Sitemap = blogCategories.map((c) => ({
     url: `${baseUrl}/blog/category/${encodeURIComponent(c)}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
@@ -349,7 +350,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     keywordPages = getAllKeywords().map((k) => ({
       url: `${baseUrl}/news/keyword/${encodeURIComponent(k)}`,
-      lastModified: new Date(),
+      lastModified: undefined,
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
@@ -359,7 +360,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
     topicPages = TOPIC_CATEGORIES.map((t) => ({
       url: `${baseUrl}/news?topic=${encodeURIComponent(t.name)}`,
-      lastModified: new Date(),
+      lastModified: undefined,
       changeFrequency: "daily" as const,
       priority: 0.6,
     }));
