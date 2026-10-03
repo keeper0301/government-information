@@ -12,7 +12,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getGuides } from "@/lib/policy-guides";
+import { getGuides, getGuideDisplayDates } from "@/lib/policy-guides";
 import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
@@ -34,11 +34,6 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function preview(text: string, maxLen = 100): string {
   const trimmed = text.replace(/\s+/g, " ").trim();
@@ -100,7 +95,7 @@ export default async function GuidesPage() {
                   className="block border rounded-lg p-5 hover:border-gray-400 transition-colors no-underline"
                 >
                   <div className="text-sm text-gray-500 mb-1">
-                    {guide.publishedAt ? formatDate(guide.publishedAt) : "발행일 기록 없음"} · {getGuideEvidence(guide)?.status === "closed" ? "해당 모집 접수 마감 · 출처 확인" : getGuideEvidence(guide)?.status === "source-checked" ? "명시한 출처 확인 · 운영자 검수 대기" : "사업 조건 확인 필요"}
+                    {getGuideDisplayDates(guide).publishedAt?.slice(0, 10) ?? "발행일 기록 없음"} · {getGuideEvidence(guide)?.status === "closed" ? "해당 모집 접수 마감 · 출처 확인" : getGuideEvidence(guide)?.status === "source-checked" ? "명시한 출처 확인 · 운영자 검수 대기" : "사업 조건 확인 필요"}
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-grey-900">{guide.title}</h3>
                   <p className="text-gray-700 leading-relaxed">

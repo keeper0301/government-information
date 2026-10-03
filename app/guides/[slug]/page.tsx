@@ -9,7 +9,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getGuideBySlug, getRelatedGuides } from "@/lib/policy-guides";
+import { getGuideBySlug, getRelatedGuides, getGuideDisplayDates } from "@/lib/policy-guides";
 import { buildGuideSupplement } from "@/lib/guide-editorial-supplements";
 import { getGuideEvidence } from "@/lib/guide-evidence";
 import { GuideEvidencePanel } from "@/components/guide-evidence-panel";
@@ -35,6 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!guide) {
     return { title: "가이드 없음 | 정책알리미" };
   }
+  const dates = getGuideDisplayDates(guide);
   const description = guide.posts[0]
     .replace(/\s+/g, " ")
     .trim()
@@ -48,15 +49,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       type: "article",
       images: guide.ogImageUrl ? [{ url: guide.ogImageUrl }] : undefined,
-      publishedTime: guide.publishedAt,
-      modifiedTime: guide.updatedAt,
+      publishedTime: dates.publishedAt,
+      modifiedTime: dates.updatedAt,
     },
   };
 }
 
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return iso.slice(0, 10);
 }
 
 /**
@@ -100,6 +100,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
   const related = await getRelatedGuides(guide.id, 3);
   const supplement = buildGuideSupplement(guide);
   const evidence = getGuideEvidence(guide);
+  const dates = getGuideDisplayDates(guide);
 
   // Schema.org Article structured data — 검색 노출 강화
   const jsonLd = {
@@ -107,8 +108,8 @@ export default async function GuideDetailPage({ params }: PageProps) {
     "@type": "Article",
     headline: guide.title,
     description: guide.posts[0].slice(0, 160),
-    datePublished: guide.publishedAt || undefined,
-    dateModified: (evidence?.actualUpdatedAt ?? guide.updatedAt) || undefined,
+    datePublished: dates.publishedAt,
+    dateModified: dates.updatedAt,
     author: {
       "@type": "Organization",
       name: "정책알리미",
@@ -140,7 +141,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
       <header className="mt-4 mb-6">
         <h1 className="text-3xl font-bold mb-2">{guide.title}</h1>
         <div className="text-sm text-gray-500">
-          {guide.publishedAt ? `발행 ${formatDate(guide.publishedAt)}` : "발행일 기록 없음"} · {evidence ? "출처·편집 상태 아래 표시" : "출처 대조 상태 확인 필요"}
+          {dates.publishedAt ? `발행 ${formatDate(dates.publishedAt)}` : "발행일 기록 없음"}{dates.updatedAt ? ` · 수정 ${formatDate(dates.updatedAt)}` : ""} · {evidence ? "출처·편집 상태 아래 표시" : "출처 대조 상태 확인 필요"}
         </div>
       </header>
 
@@ -212,7 +213,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
                   className="block p-4 border rounded hover:border-gray-400"
                 >
                   <div className="text-xs text-gray-500 mb-1">
-                    {r.publishedAt ? formatDate(r.publishedAt) : "발행일 기록 없음"}
+                    {getGuideDisplayDates(r).publishedAt?.slice(0, 10) ?? "발행일 기록 없음"}
                   </div>
                   <div className="font-medium">{r.title}</div>
                 </Link>
