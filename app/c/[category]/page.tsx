@@ -130,7 +130,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
               if (orClause) q = q.or(orClause);
               return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
             })(),
-            getGuides(50),
+            getGuides(50, { categorySlugs: [category] }),
             hub.blogCategory
               ? supabase
                   .from("blog_posts")
@@ -165,7 +165,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
       : await Promise.all([
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
-          getGuides(50),
+          getGuides(50, { categorySlugs: [category] }),
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),

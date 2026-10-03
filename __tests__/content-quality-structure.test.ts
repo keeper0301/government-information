@@ -24,7 +24,13 @@ describe('version-bound source evidence', () => {
     const pilots = EDITORIAL_GUIDES.filter(g => getGuideEvidence(g));
     expect(pilots).toHaveLength(3);
     for (const guide of pilots) {
-      expect(getGuideEvidence({ ...guide, posts: ['different DB body'] })).toBeUndefined();
+      expect(getGuideEvidence({ ...guide, posts: ['different database content'] })).toBeUndefined();
+      const original = guide.posts[0];
+      try {
+        guide.posts[0] = original + ' unreviewed local change';
+        expect(getGuideEvidence(guide)).toBeUndefined();
+      } finally { guide.posts[0] = original; }
+      expect(getGuideEvidence(guide)).toBeDefined();
       expect(getGuideEvidence(guide)?.ownerReviewed).toBe(false);
     }
   });
@@ -35,6 +41,12 @@ describe('version-bound source evidence', () => {
     expect(rent.posts.join(' ')).toContain('마감됐습니다');
     expect(getGuideEvidence(rent)?.sources.some(source => source.url.includes('id=95091798'))).toBe(true);
     expect(rent.updatedAt).toBe('2026-10-04');
+  });
+  it('treats inherited-object slugs as unknown rather than editorial evidence', () => {
+    for (const slug of ['__proto__', 'constructor', 'toString']) {
+      expect(guideCategorySlugs({ slug, title: 'unrelated content', programType: 'welfare' })).toEqual([]);
+      expect(getGuideEvidence({ slug, title: 'unrelated content', posts: [] })).toBeUndefined();
+    }
   });
   it('does not manufacture legacy fallback publication dates', () => {
     expect(EDITORIAL_GUIDES.every(g => !g.publishedAt)).toBe(true);

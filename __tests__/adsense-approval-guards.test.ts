@@ -25,15 +25,13 @@ describe("AdSense approval guardrails", () => {
     );
   });
 
-  it("keeps review-mode AdSense script off non-content helper routes", () => {
+  it("blocks the advertising SDK in review mode and requires current-page content approval", () => {
     const source = read("components/adsense-lazy-loader.tsx");
 
-    for (const path of ["/about", "/help", "/contact", "/welfare", "/loan", "/blog", "/guides"]) {
-      expect(source).toContain(`"${path}"`);
-    }
-    for (const path of ["/search", "/compare", "/pricing", "/consult"]) {
-      expect(source).not.toContain(`"${path}"`);
-    }
+    expect(source).toContain("return !ADSENSE_REVIEW_MODE && isPublicContentPath(pathname)");
+    expect(source).toContain("hasEligibleAdsensePage(window.location.pathname)");
+    expect(source).toContain('getAttribute("data-content-ad-path") === pathname');
+    expect(read("app/layout.tsx")).toContain('"google-adsense-account"');
     expect(source).toContain("shouldLoadAdsenseScript(window.location.pathname)");
   });
 

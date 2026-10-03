@@ -10,6 +10,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
+import { getGuideEvidence, guideCategorySlugs } from "@/lib/guide-evidence";
 
 export interface PolicyGuide {
   id: string;
@@ -45,6 +46,12 @@ interface PolicyGuideRow {
 }
 
 export function rowToGuide(row: PolicyGuideRow): PolicyGuide {
+  const body = [row.post_1, row.post_2, row.post_3, row.post_4, row.post_5];
+  if (typeof row.title !== "string" || !row.title.trim() ||
+      body.some(post => typeof post !== "string" || !post.trim()) ||
+      typeof row.slug !== "string" || !row.slug.trim()) {
+    throw new Error("Invalid policy guide content");
+  }
   return {
     id: row.id,
     slug: row.slug,
@@ -60,26 +67,72 @@ export function rowToGuide(row: PolicyGuideRow): PolicyGuide {
   };
 }
 
-/** 발행 순으로 가이드 목록. 첫 시도엔 페이지네이션 X (가이드 50+개 시 추가). */
-export async function getGuides(limit = 50): Promise<PolicyGuide[]> {
-  if (!hasSupabaseAnonEnv()) return EDITORIAL_GUIDES.slice(0, limit);
+/** Reject normalized impossible dates, timezone-free timestamps, and future values. */
+function validGuideDate(value: unknown, now: Date): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|[+-]\d{2}:\d{2}))?$/.exec(value);
+  if (!match) return undefined;
+  const [, year, month, day, hour, minute, second, zone] = match;
+  const calendar = new Date(`${year}-${month}-${day}T00:00:00Z`);
+  if (!Number.isFinite(calendar.getTime()) || calendar.toISOString().slice(0, 10) !== `${year}-${month}-${day}`) return undefined;
+  if (hour && (+hour > 23 || +minute > 59 || +second > 59)) return undefined;
+  if (zone && zone !== "Z" && (+zone.slice(1, 3) > 23 || +zone.slice(4) > 59)) return undefined;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return undefined;
+  if (!hour) return value <= now.toISOString().slice(0, 10) ? value : undefined;
+  return date.getTime() <= now.getTime() ? date.toISOString() : undefined;
+}
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("policy_guides")
-    .select("*")
-    .order("published_at", { ascending: false })
-    .limit(limit);
+/** One date provenance policy for body, OG, JSON-LD and sitemap. */
+export function getGuideDisplayDates(guide: PolicyGuide, now = new Date()): {
+  publishedAt?: string; updatedAt?: string;
+} {
+  const evidence = getGuideEvidence(guide);
+  return {
+    publishedAt: validGuideDate(guide.publishedAt, now),
+    updatedAt: validGuideDate(evidence ? evidence.actualUpdatedAt : guide.updatedAt, now),
+  };
+}
 
-  if (error) {
-    console.error("[policy-guides] getGuides 실패:", error);
-    return EDITORIAL_GUIDES.slice(0, limit);
+interface GuideOptions {
+  categorySlugs?: readonly string[];
+  excludeId?: string;
+}
+
+/** Merge DB-priority versions, filter and curate before applying the caller limit. */
+export async function getGuides(limit = 50, options: GuideOptions = {}): Promise<PolicyGuide[]> {
+  if (!Number.isSafeInteger(limit) || limit < 0) throw new Error("Invalid guide limit");
+  if (limit === 0) return [];
+  const dbGuides: PolicyGuide[] = [];
+  if (hasSupabaseAnonEnv()) {
+    const supabase = await createClient();
+    const pageSize = 200;
+    const safetyCap = 60000;
+    for (let from = 0; ;) {
+      if (from >= safetyCap) throw new Error("Guide pagination safety cap reached; candidates incomplete");
+      const { data, error } = await supabase.from("policy_guides").select("*")
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) {
+        // Never return a partially collected list as a complete candidate set.
+        throw new Error("Guide data temporarily unavailable", { cause: error });
+      }
+      if (!data || data.length === 0) break;
+      dbGuides.push(...data.map(rowToGuide));
+      // Advance by actual rows: PostgREST may enforce a smaller server max-rows.
+      from += data.length;
+    }
   }
-
-  const dbGuides = (data ?? []).map(rowToGuide);
-  const dbSlugs = new Set(dbGuides.map((g) => g.slug));
-  const fallback = EDITORIAL_GUIDES.filter((g) => !dbSlugs.has(g.slug));
-  return [...dbGuides, ...fallback].slice(0, limit);
+  const merged = new Map<string, PolicyGuide>();
+  for (const guide of [...dbGuides, ...EDITORIAL_GUIDES]) {
+    if (!merged.has(guide.slug)) merged.set(guide.slug, guide);
+  }
+  return [...merged.values()]
+    .filter(guide => guide.id !== options.excludeId && (!options.categorySlugs ||
+      guideCategorySlugs(guide).some(category => options.categorySlugs!.includes(category))))
+    .sort((a, b) => Number(!!getGuideEvidence(b)) - Number(!!getGuideEvidence(a)))
+    .slice(0, limit);
 }
 
 /** slug 로 가이드 1개. 없으면 null. */
@@ -102,28 +155,7 @@ export async function getGuideBySlug(slug: string): Promise<PolicyGuide | null> 
   return data ? rowToGuide(data) : builtin;
 }
 
-/** 현재 가이드 외에 최신 발행 N개 (related). */
-export async function getRelatedGuides(
-  currentId: string,
-  limit = 3
-): Promise<PolicyGuide[]> {
-  if (!hasSupabaseAnonEnv()) {
-    return EDITORIAL_GUIDES.filter((g) => g.id !== currentId).slice(0, limit);
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("policy_guides")
-    .select("*")
-    .neq("id", currentId)
-    .order("published_at", { ascending: false })
-    .limit(limit);
-
-  const dbGuides = error ? [] : (data ?? []).map(rowToGuide);
-  if (error) {
-    console.error("[policy-guides] getRelatedGuides 실패:", error);
-  }
-  const dbIds = new Set(dbGuides.map((g) => g.id));
-  const fallback = EDITORIAL_GUIDES.filter((g) => g.id !== currentId && !dbIds.has(g.id));
-  return [...dbGuides, ...fallback].slice(0, limit);
+/** Related candidates use the same version and curation policy. */
+export async function getRelatedGuides(currentId: string, limit = 3): Promise<PolicyGuide[]> {
+  return getGuides(limit, { excludeId: currentId });
 }

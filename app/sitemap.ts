@@ -25,7 +25,7 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
-import { getGuides } from "@/lib/policy-guides";
+import { getGuides, getGuideDisplayDates } from "@/lib/policy-guides";
 import { PROVINCES } from "@/lib/regions";
 import { AGE_SLUGS, getAgeCounts } from "@/lib/age-targeting";
 import { CATEGORY_SLUGS } from "@/lib/category-hubs";
@@ -107,7 +107,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     : guides;
   const guidePages: MetadataRoute.Sitemap = selectedGuides.map((g) => ({
     url: `${baseUrl}/guides/${g.slug}`,
-    lastModified: g.updatedAt ? new Date(g.updatedAt) : undefined,
+    lastModified: getGuideDisplayDates(g).updatedAt,
     changeFrequency: "monthly" as const,
     priority: 0.6,
   }));

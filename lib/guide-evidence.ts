@@ -1,8 +1,10 @@
 import type { PolicyGuide } from "@/lib/policy-guides";
-import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
+import { createHash } from "node:crypto";
 import type { ContentStatus } from "@/lib/content-quality";
 
 export interface GuideEvidence {
+  /** Pinned at evidence review time; never regenerated automatically from current content. */
+  verifiedBodySha256: string;
   question: string;
   answer: string;
   categorySlugs: string[];
@@ -18,6 +20,7 @@ const gov = { agency: "행정안전부 · 정부24", title: "주민등록표 등
 const semas = { agency: "소상공인시장진흥공단", title: "2026년 정책자금 한눈에 보기", url: "https://ols.semas.or.kr/ols/man/SMAN018M/page.do", scope: "2026년 중앙 정책자금 개요. 개별 회차의 세부 공지는 별도 확인해야 합니다.", checkedAt: "2026-10-03" };
 export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
   "documents-before-government-benefit": {
+    verifiedBodySha256: "ede1663857f223967b6074c3d4106756461a198ba06d6b7eeebcac16ceb95f68",
     question: "지원금 신청 서류는 무엇부터 준비해야 하나요?", answer: "신청할 사업의 제출 목록을 먼저 펼치고, 요구하는 서류명·발급일·표시 항목을 정리하세요. 정부24에서 발급할 수 있다는 사실과 그 사업에서 해당 서류를 받는다는 사실은 다릅니다.",
     categorySlugs: ["youth", "senior", "housing", "business"], status: "source-checked", actualUpdatedAt: "2026-10-03", ownerReviewed: false, sources: [gov],
     headings: ["서류 준비의 시작점", "등본과 초본을 구분하기", "제출 규격 확인", "대리 신청과 공동이용", "제출 전 점검"],
@@ -29,6 +32,7 @@ export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
     ], changeLog: "서류 발급 근거와 사업별 제출 요건을 구분하고 온라인 대리 발급 제한을 추가했습니다.",
   },
   "small-business-policy-fund-mistakes": {
+    verifiedBodySha256: "f4219cc1b7ce527094035aba3ddfbd74450e2e0b1fc70db8099e36914e6ffddc",
     question: "소상공인 정책자금 신청 전에 어떤 차이를 봐야 하나요?", answer: "자금명과 직접·대리대출 유형부터 확인하세요. 자금마다 신청요건과 상환 조건이 다릅니다. 신청요건에 맞는다는 것만으로 대출 실행이나 한도가 확정되지는 않습니다.",
     categorySlugs: ["business"], status: "source-checked", actualUpdatedAt: "2026-10-03", ownerReviewed: false, sources: [semas, { ...semas, title: "정책자금 접수 현황과 일정 안내", url: "https://ols.semas.or.kr/ols/man/SMAN010M/page.do", scope: "2026-10-03에 공개된 접수 현황. 이후 접수 상태는 다시 확인해야 합니다." }],
     headings: ["먼저 자금명을 정하기", "대상·제외 업종 확인", "직접·대리대출 비교", "금리·상환 부담 확인", "접수 상태와 제출 기록"],
@@ -42,6 +46,7 @@ export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
     ], changeLog: "2026년 자금 유형별 공식 안내를 연결하고 보편 금리·승인 보장을 제거했습니다.",
   },
   "youth-rent-checklist-2026": {
+    verifiedBodySha256: "8089a5400b942d013d257f537c8d56d638fef1edc5db871c43752663a7e88a86",
     question: "2026년 청년월세 신규 모집은 지금 신청할 수 있나요?", answer: "전국 국토교통부 사업의 2026년 신규 모집은 5월 29일 16:00에 마감됐습니다. 이 글은 마감된 모집의 조건과 서류를 확인하는 안내입니다. 계속사업 전환은 상시 접수를 뜻하지 않으며 다음 회차의 일정·조건은 새 공고로 확인해야 합니다.",
     categorySlugs: ["youth", "housing"], status: "closed", actualUpdatedAt: "2026-10-04", ownerReviewed: false,
     sources: [
@@ -64,11 +69,13 @@ export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
 };
 /** Evidence applies only to the exact locally reviewed body version, not a coincident DB slug. */
 export function getGuideEvidence(guide: Pick<PolicyGuide, "slug" | "title" | "posts">): GuideEvidence | undefined {
-  const builtin = EDITORIAL_GUIDES.find(g => g.slug === guide.slug);
-  return builtin && builtin.title === guide.title && JSON.stringify(builtin.posts) === JSON.stringify(guide.posts) ? GUIDE_EVIDENCE[guide.slug] : undefined;
+  if (!Object.prototype.hasOwnProperty.call(GUIDE_EVIDENCE, guide.slug)) return undefined;
+  const evidence = GUIDE_EVIDENCE[guide.slug];
+  const digest = createHash("sha256").update(JSON.stringify({ slug: guide.slug, title: guide.title, posts: guide.posts })).digest("hex");
+  return digest === evidence.verifiedBodySha256 ? evidence : undefined;
 }
 export function guideCategorySlugs(guide: Pick<PolicyGuide, "slug" | "title" | "programType">): string[] {
-  if (GUIDE_EVIDENCE[guide.slug]) return GUIDE_EVIDENCE[guide.slug].categorySlugs;
+  if (Object.prototype.hasOwnProperty.call(GUIDE_EVIDENCE, guide.slug)) return GUIDE_EVIDENCE[guide.slug].categorySlugs;
   const text = `${guide.slug} ${guide.title}`;
   if (/소상공인|사업자|자영업|business|policy-fund|tax-delinquency/.test(text)) return ["business"];
   if (/월세|전세|주거|rent|housing|lease/.test(text)) return ["housing", "youth"];
