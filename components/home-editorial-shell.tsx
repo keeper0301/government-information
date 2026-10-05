@@ -4,6 +4,8 @@ import { RegionMap } from "@/components/region-map";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { HomeTargetCards } from "@/components/home-target-cards";
 import { getGuides } from "@/lib/policy-guides";
+import { getPublishedNews } from "@/lib/editorial-news";
+import { EditorialNewsCards } from "@/components/news/editorial-news-pages";
 
 /** 로그인 없이 읽을 수 있는 홈에 실제 공개 판정을 통과한 안내만 추천합니다. */
 export async function HomeEditorialShell() {
@@ -36,6 +38,11 @@ export async function HomeEditorialShell() {
       <div className="grid gap-4 md:grid-cols-2">{guides.map(([task, title, slug]) => <Link key={slug} href={`/guides/${slug}`} className="p-6 rounded-2xl border border-grey-200 no-underline hover:border-blue-400 focus-visible:outline-2"><span className="block text-sm text-grey-600 mb-2">{task}</span><span className="font-bold text-grey-900">{title} →</span></Link>)}</div>
     </section>
     <HomeTargetCards publishedSlugs={publishedGuides.map(guide => guide.slug)} />
+    {getPublishedNews().length > 0 && <section className="max-w-content mx-auto px-6 lg:px-10 py-12" aria-labelledby="reviewed-news">
+      <h2 id="reviewed-news" className="text-2xl font-bold mb-6">정책 변화, 무엇을 확인할까요?</h2>
+      <EditorialNewsCards />
+      <Link href="/news" className="inline-block mt-6 text-blue-600 underline">정책뉴스 모두 보기 →</Link>
+    </section>}
     <section className="max-w-content mx-auto px-6 lg:px-10 py-12">
       <h2 className="text-2xl font-bold mb-5">공식 기관에서 신청하는 순서</h2>
       <ol className="list-decimal pl-6 space-y-3 text-grey-700 leading-relaxed"><li>가이드로 준비할 질문과 자료를 정리합니다.</li><li>공식 공고에서 지역·회차·제외 대상·접수 상태를 확인합니다.</li><li>공고가 안내하는 신청처에서 제출하고 접수 결과를 보관합니다.</li></ol>

@@ -11,6 +11,7 @@ import { Ga4ConversionTracker } from "@/components/ga4-conversion-tracker";
 import { PWARegister } from "@/components/pwa-register";
 import { WebSiteSchema, OrganizationSchema } from "@/components/json-ld";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { getPublishedNews } from "@/lib/editorial-news";
 import "./globals.css";
 
 // ChatbotPanel — 우측 하단 floating 위젯, 즉시 노출 불필요.
@@ -142,7 +143,7 @@ export default async function RootLayout({
           alternateName={["keepioo", "키피오"]}
           sameAs={["https://www.instagram.com/keepioo_official"]}
         />
-        <Nav />
+        <Nav hasPublishedNews={getPublishedNews().length > 0} />
         <ReconsentBannerContainer />
         {children}
         <Footer />
