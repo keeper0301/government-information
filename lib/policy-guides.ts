@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 import { getGuideEvidence, guideCategorySlugs } from "@/lib/guide-evidence";
+import { getGuidePublication } from "@/lib/guide-publication";
 
 export interface PolicyGuide {
   id: string;
@@ -97,6 +98,8 @@ export function getGuideDisplayDates(guide: PolicyGuide, now = new Date()): {
 interface GuideOptions {
   categorySlugs?: readonly string[];
   excludeId?: string;
+  /** 공개 목록에서는 사람이 검수한 내용 버전만 선택합니다. */
+  publicationOnly?: boolean;
 }
 
 /** Merge DB-priority versions, filter and curate before applying the caller limit. */
@@ -129,6 +132,7 @@ export async function getGuides(limit = 50, options: GuideOptions = {}): Promise
     if (!merged.has(guide.slug)) merged.set(guide.slug, guide);
   }
   return [...merged.values()]
+    .filter(guide => !options.publicationOnly || getGuidePublication(guide).published)
     .filter(guide => guide.id !== options.excludeId && (!options.categorySlugs ||
       guideCategorySlugs(guide).some(category => options.categorySlugs!.includes(category))))
     .sort((a, b) => Number(!!getGuideEvidence(b)) - Number(!!getGuideEvidence(a)))
@@ -149,7 +153,7 @@ export async function getGuideBySlug(slug: string): Promise<PolicyGuide | null> 
 
   if (error) {
     console.error(`[policy-guides] getGuideBySlug(${slug}) 실패:`, error);
-    if (builtin) return builtin;
+    // 저장된 최신 본문을 확인하지 못하면 예전 내장본의 승인을 재사용하지 않습니다.
     throw new Error("Guide data temporarily unavailable", { cause: error });
   }
   return data ? rowToGuide(data) : builtin;
@@ -157,5 +161,5 @@ export async function getGuideBySlug(slug: string): Promise<PolicyGuide | null> 
 
 /** Related candidates use the same version and curation policy. */
 export async function getRelatedGuides(currentId: string, limit = 3): Promise<PolicyGuide[]> {
-  return getGuides(limit, { excludeId: currentId });
+  return getGuides(limit, { excludeId: currentId, publicationOnly: true });
 }

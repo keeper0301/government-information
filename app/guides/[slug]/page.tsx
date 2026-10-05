@@ -1,227 +1,83 @@
-// ============================================================
-// /guides/[slug] — 정책 종합 가이드 상세
-// ============================================================
-// 5글 묶음 표시. 1편은 헤더 없이 본문 시작 (후킹 효과).
-// 2-5편은 부제 헤더 + 본문.
-// SEO: Article structured data (Schema.org JSON-LD), Metadata API.
-// ============================================================
-
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGuideBySlug, getRelatedGuides, getGuideDisplayDates } from "@/lib/policy-guides";
-import { buildGuideSupplement } from "@/lib/guide-editorial-supplements";
 import { getGuideEvidence } from "@/lib/guide-evidence";
+import { getGuidePublication } from "@/lib/guide-publication";
 import { GuideEvidencePanel } from "@/components/guide-evidence-panel";
+import { GuideArticleBody } from "@/components/guide-article-body";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 
 export const revalidate = 60;
-
-const POST_HEADERS: (string | null)[] = [
-  null, // 1편은 헤더 없음
-  "1편 — 자격 깊이",
-  "2편 — 서류·신청 절차",
-  "3편 — 체감 숫자 + 함정",
-  "4편 — 마감 + 행동",
-];
-
-interface PageProps {
-  params: Promise<{ slug: string }>;
-}
+interface PageProps { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const guide = await getGuideBySlug(slug);
-  if (!guide) {
-    return { title: "가이드 없음 | 정책알리미" };
-  }
+  if (!guide) return { title: "가이드 없음 | 정책알리미", robots: { index: false } };
+  const publication = getGuidePublication(guide);
   const dates = getGuideDisplayDates(guide);
-  const description = guide.posts[0]
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 120);
+  const description = publication.published ? guide.posts[0].replace(/\s+/g, " ").trim().slice(0, 120)
+    : "공식 출처와 내용을 대조하며 편집 검수를 진행하고 있습니다.";
   return {
-    title: `${guide.title} — 종합 가이드 | 정책알리미`,
-    description,
+    title: `${guide.title} — 종합 가이드 | 정책알리미`, description,
     alternates: { canonical: `/guides/${slug}` },
+    robots: { index: publication.published, follow: true },
     openGraph: {
-      title: `${guide.title} — 종합 가이드`,
-      description,
-      type: "article",
-      images: guide.ogImageUrl ? [{ url: guide.ogImageUrl }] : undefined,
-      publishedTime: dates.publishedAt,
-      modifiedTime: dates.updatedAt,
+      title: guide.title, description, type: publication.published ? "article" : "website",
+      publishedTime: publication.published ? dates.publishedAt : undefined,
+      modifiedTime: publication.published ? dates.updatedAt : undefined,
     },
   };
-}
-
-function formatDate(iso: string): string {
-  return iso.slice(0, 10);
-}
-
-/**
- * 본문 \n\n 단락 분리. URL 자동 감지 → 링크.
- */
-function renderBody(text: string): React.ReactNode {
-  const paragraphs = text.split(/\n\n+/);
-  return paragraphs.map((para, i) => (
-    <p key={i} className="mb-4 leading-relaxed whitespace-pre-line">
-      {linkify(para)}
-    </p>
-  ));
-}
-
-function linkify(text: string): React.ReactNode {
-  const urlRegex = /(https?:\/\/[^\s)]+)/g;
-  const parts = text.split(urlRegex);
-  return parts.map((part, i) => {
-    if (urlRegex.test(part)) {
-      return (
-        <a
-          key={i}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline break-all"
-        >
-          {part}
-        </a>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
 }
 
 export default async function GuideDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const guide = await getGuideBySlug(slug);
   if (!guide) notFound();
-
-  const related = await getRelatedGuides(guide.id, 3);
-  const supplement = buildGuideSupplement(guide);
-  const evidence = getGuideEvidence(guide);
+  const publication = getGuidePublication(guide);
+  // 기존 주소를 보존하고 검수 전 본문은 완성된 안내처럼 공개하지 않습니다.
+  if (!publication.published) return (
+    <main className="container mx-auto max-w-3xl px-4 py-8" data-content-ad-eligible="false">
+      <Link href="/guides">← 가이드 목록</Link>
+      <h1 className="mt-6 text-3xl font-bold">{guide.title}</h1>
+      <p className="mt-6 rounded-xl bg-amber-50 p-5">편집 검수 중입니다. 공식 출처와 내용을 대조한 뒤 안내를 공개하겠습니다.</p>
+      <p className="mt-4">현재 신청 가능 여부와 조건은 담당 기관의 최신 공고를 확인하세요.</p>
+      <Link href="/contact" className="mt-6 inline-block text-blue-600 underline">문의하기</Link>
+    </main>
+  );
+  const evidence = getGuideEvidence(guide)!;
   const dates = getGuideDisplayDates(guide);
-
-  // Schema.org Article structured data — 검색 노출 강화
+  const related = await getRelatedGuides(guide.id, 3);
   const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: guide.title,
-    description: guide.posts[0].slice(0, 160),
-    datePublished: dates.publishedAt,
-    dateModified: dates.updatedAt,
-    author: {
-      "@type": "Organization",
-      name: "정책알리미",
-      url: "https://www.keepioo.com",
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "정책알리미",
-      url: "https://www.keepioo.com",
-    },
-    image: guide.ogImageUrl ?? undefined,
+    "@context": "https://schema.org", "@type": "Article", headline: guide.title,
+    description: evidence.answer, datePublished: dates.publishedAt, dateModified: dates.updatedAt,
+    author: { "@type": "Organization", name: "키피오", url: "https://www.keepioo.com/about" },
+    publisher: { "@type": "Organization", name: "키피오", url: "https://www.keepioo.com" },
   };
-
-  // 가입 페이지 UTM
-  const signupUrl =
-    "https://www.keepioo.com/signup?utm_source=policy-bible-guide&utm_medium=organic&utm_campaign=policy-bible-guide-page";
-
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-8">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
-      />
-
-      <Link href="/guides" className="text-sm text-gray-500 hover:underline">
-        ← 가이드 목록
-      </Link>
-
+    <main className="container mx-auto max-w-3xl px-4 py-8"
+      data-content-ad-eligible={String(publication.adEligible)} data-content-ad-path={`/guides/${slug}`}
+      data-editorial-reviewer={publication.reviewer} data-editorial-reviewed-at={publication.reviewedAt}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
+      <Link href="/guides" className="text-sm text-gray-500 hover:underline">← 가이드 목록</Link>
       <header className="mt-4 mb-6">
         <h1 className="text-3xl font-bold mb-2">{guide.title}</h1>
-        <div className="text-sm text-gray-500">
-          {dates.publishedAt ? `발행 ${formatDate(dates.publishedAt)}` : "발행일 기록 없음"}{dates.updatedAt ? ` · 수정 ${formatDate(dates.updatedAt)}` : ""} · {evidence ? "출처·편집 상태 아래 표시" : "출처 대조 상태 확인 필요"}
-        </div>
-      </header>
-
-      <article className="prose prose-gray max-w-none">
-        {evidence ? <GuideEvidencePanel evidence={evidence} /> : <p className="rounded-xl bg-amber-50 p-4 text-sm">이 본문의 출처 대조와 편집 검수 기록은 확인이 필요합니다. 발행일은 검수일이나 현재 신청 가능 상태를 뜻하지 않습니다.</p>}
-        {guide.posts.map((post, i) => (
-          <section key={i} className="mb-8">
-            {POST_HEADERS[i] && (
-              <h2 className="text-xl font-semibold mb-3 mt-8">{evidence?.headings[i] ?? POST_HEADERS[i]}</h2>
-            )}
-            {renderBody(post)}
-          </section>
-        ))}
-
-        {!evidence && <><section className="mt-10 rounded-2xl border border-blue-100 bg-blue-50/60 p-5 not-prose">
-          <h2 className="text-xl font-bold text-grey-900 mb-3">신청 전 마지막 확인</h2>
-          <p className="text-[15px] leading-relaxed text-grey-700 mb-4">{supplement.reviewNote}</p>
-          <ul className="list-disc pl-5 space-y-2 text-[15px] leading-relaxed text-grey-700">
-            {supplement.beforeApply.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="mt-8 rounded-2xl border border-grey-200 bg-white p-5 not-prose">
-          <h2 className="text-xl font-bold text-grey-900 mb-3">공식 출처에서 다시 볼 것</h2>
-          <ul className="list-disc pl-5 space-y-2 text-[15px] leading-relaxed text-grey-700">
-            {supplement.sourceChecks.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <p className="mt-4 text-[14px] leading-relaxed text-grey-600">
-            keepioo는 신청 판단을 돕는 해설을 제공하지만, 최종 접수·선정·환수 기준은 공식 기관의 최신 공고와 문의처 답변이 우선합니다.
-          </p>
-        </section>
-
-        <section className="mt-8 rounded-2xl border border-amber-100 bg-amber-50/70 p-5 not-prose">
-          <h2 className="text-xl font-bold text-grey-900 mb-3">문의할 때 바로 쓸 질문</h2>
-          <ol className="list-decimal pl-5 space-y-2 text-[15px] leading-relaxed text-grey-700">
-            {supplement.callScript.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ol>
-          <p className="mt-4 text-[15px] leading-relaxed text-grey-700">{supplement.riskMemo}</p>
-        </section></>}
-      </article>
-
-      <aside className="mt-12 p-6 border rounded-lg bg-gray-50">
-        <p className="font-semibold mb-2">비슷한 정책 자동 알림 받고 싶으세요?</p>
-        <p className="text-sm text-gray-600 mb-4">
-          정책알리미는 사용자의 나이·지역·직업·소득 조건에 맞는 정책을 카톡·이메일로 보내드려요.
+        <p className="text-sm text-gray-500">
+          {dates.publishedAt ? `발행 ${dates.publishedAt.slice(0, 10)}` : "발행일 기록 없음"}
+          {dates.updatedAt ? ` · 수정 ${dates.updatedAt.slice(0, 10)}` : ""}
         </p>
-        <a
-          href={signupUrl}
-          className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          정책알리미 가입하기
-        </a>
-      </aside>
-
-      {related.length > 0 && (
-        <section className="mt-12">
-          <h3 className="text-lg font-semibold mb-4">다른 가이드</h3>
-          <ul className="space-y-3">
-            {related.map((r) => (
-              <li key={r.id}>
-                <Link
-                  href={`/guides/${r.slug}`}
-                  className="block p-4 border rounded hover:border-gray-400"
-                >
-                  <div className="text-xs text-gray-500 mb-1">
-                    {getGuideDisplayDates(r).publishedAt?.slice(0, 10) ?? "발행일 기록 없음"}
-                  </div>
-                  <div className="font-medium">{r.title}</div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      </header>
+      <article className="prose prose-gray max-w-none">
+        <GuideEvidencePanel evidence={evidence} reviewer={publication.reviewer} reviewedAt={publication.reviewedAt} />
+        <GuideArticleBody posts={guide.posts} headings={evidence.headings} />
+      </article>
+      {related.length > 0 && <section className="mt-12">
+        <h2 className="text-lg font-semibold mb-4">관련 신청 가이드</h2>
+        <ul className="space-y-3">{related.map(item => <li key={item.id}>
+          <Link href={`/guides/${item.slug}`} className="block p-4 border rounded">{item.title}</Link>
+        </li>)}</ul>
+      </section>}
     </main>
   );
 }

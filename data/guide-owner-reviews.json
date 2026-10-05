@@ -1,0 +1,37 @@
+{
+  "documents-before-government-benefit": {
+    "snapshotSha256": "52b39071354ca33cc7794a7ec0c1f667d1358e98aac9a4e15353518b111f9e67",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T04:43:06Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
+  },
+  "small-business-policy-fund-mistakes": {
+    "snapshotSha256": "ffac99da647cea4d1fced35840ade831fb33edee1d2455c00a7ba30d4febb862",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T04:43:06Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
+  },
+  "youth-rent-checklist-2026": {
+    "snapshotSha256": "d11a8346507065792885d0275df175ff740d48f6f27b1fb20165ec3d010d9c2d",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T04:43:06Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
+  },
+  "geunjang-earned-income-tax-credit-check": {
+    "snapshotSha256": "d6d8cda9153a71f7907f1a9c051eb2424290c16045d1c519df011da1af6691b4",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T04:43:06Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
+  },
+  "policy-duplicate-benefit-limits": {
+    "snapshotSha256": "f3b3a84f93489e5c54373cb1c6c9e098bf6a6bbc33e398e8c9c91b0e1b2f757b",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T04:43:06Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
+  }
+}

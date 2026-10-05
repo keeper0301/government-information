@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { pathToFileURL } from 'node:url';
 // Read-only Naver SEO snapshot export/report CLI.
 // Pulls naver_seo_snapshots rows from Supabase and renders the trend dashboard/weekly summary.
 
@@ -90,7 +91,7 @@ function parseArgs(argv) {
   return opts;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const opts = parseArgs(process.argv.slice(2));
   try {
     const rows = await fetchNaverSeoSnapshots(adminFromEnv(), { limit: opts.limit });

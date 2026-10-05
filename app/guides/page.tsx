@@ -42,7 +42,7 @@ function preview(text: string, maxLen = 100): string {
 }
 
 export default async function GuidesPage() {
-  const guides = (await getGuides(50)).sort((a, b) => Number(!!getGuideEvidence(b)) - Number(!!getGuideEvidence(a)));
+  const guides = (await getGuides(50, { publicationOnly: true })).sort((a, b) => Number(!!getGuideEvidence(b)) - Number(!!getGuideEvidence(a)));
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-8">
@@ -84,9 +84,10 @@ export default async function GuidesPage() {
       </section>
 
       {/* 정책 가이드 카드 list (있으면 위에 노출) */}
+      {guides.length === 0 && <p className="mb-10 rounded-xl bg-blue-50 p-5">운영자 검수를 마친 신청 가이드를 준비하고 있습니다. 대상별 확인 순서와 공식 기관의 최신 공고를 먼저 확인하세요.</p>}
       {guides.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-xl font-bold mb-4">최근 발행 가이드</h2>
+          <h2 className="text-xl font-bold mb-4">검수한 신청 가이드</h2>
           <ul className="space-y-4">
             {guides.map((guide) => (
               <li key={guide.id}>
@@ -95,7 +96,7 @@ export default async function GuidesPage() {
                   className="block border rounded-lg p-5 hover:border-gray-400 transition-colors no-underline"
                 >
                   <div className="text-sm text-gray-500 mb-1">
-                    {getGuideDisplayDates(guide).publishedAt?.slice(0, 10) ?? "발행일 기록 없음"} · {getGuideEvidence(guide)?.status === "closed" ? "해당 모집 접수 마감 · 출처 확인" : getGuideEvidence(guide)?.status === "source-checked" ? "명시한 출처 확인 · 운영자 검수 대기" : "사업 조건 확인 필요"}
+                    {getGuideDisplayDates(guide).publishedAt?.slice(0, 10) ?? "발행일 기록 없음"} · 운영자 편집 검수 완료 {getGuideEvidence(guide)?.status === "closed" ? "· 해당 모집 접수 마감" : ""}
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-grey-900">{guide.title}</h3>
                   <p className="text-gray-700 leading-relaxed">

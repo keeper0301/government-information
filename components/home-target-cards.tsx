@@ -100,7 +100,7 @@ const TARGETS: {
   },
 ];
 
-export function HomeTargetCards() {
+export function HomeTargetCards({ publishedSlugs = [] }: { publishedSlugs?: string[] }) {
   return (
     <section
       className="max-w-content mx-auto px-6 lg:px-10 py-8 lg:py-12"
@@ -120,10 +120,12 @@ export function HomeTargetCards() {
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
         {TARGETS.map((t) => {
           const Icon = t.icon;
+          const reviewHref = t.reviewHref.startsWith("/guides/") && !publishedSlugs.includes(t.reviewHref.slice(8))
+            ? "/guides" : t.reviewHref;
           return (
             <Link
               key={t.label}
-              href={ADSENSE_REVIEW_MODE ? t.reviewHref : t.href}
+              href={ADSENSE_REVIEW_MODE ? reviewHref : t.href}
               onClick={() => trackEvent(EVENTS.HOME_TARGET_CARD_CLICKED, { label: t.label })}
               className="group flex flex-col items-center gap-2 rounded-2xl bg-white border border-grey-200 p-4 md:p-5 no-underline hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(49,130,246,0.08)] transition-all"
             >

@@ -100,7 +100,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // 정책 종합 가이드 (policy-bible 자산화) — 격주 발행, 영구 자산
-  const guides = await getGuides(200);
+  const guides = await getGuides(200, { publicationOnly: true });
   const reviewModeGuideSlugBlock = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
   const selectedGuides = ADSENSE_REVIEW_MODE
     ? guides.filter((g) => !reviewModeGuideSlugBlock.test(g.slug)).slice(0, 30)

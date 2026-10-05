@@ -139,7 +139,7 @@ describe("AdSense approval guardrails", () => {
   it("routes review-mode home and category hubs away from mass listing pages", () => {
     const targetCards = read("components/home-target-cards.tsx");
     expect(targetCards).toContain("reviewHref");
-    expect(targetCards).toContain("ADSENSE_REVIEW_MODE ? t.reviewHref : t.href");
+    expect(targetCards).toContain("ADSENSE_REVIEW_MODE ? reviewHref : t.href");
     expect(targetCards).toContain('reviewHref: "/c/business"');
 
     const categoryHub = read("app/c/[category]/page.tsx");

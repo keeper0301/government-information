@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { pathToFileURL } from 'node:url';
 // Naver Search Advisor snapshot trend dashboard/report builder.
 // Pure offline CLI: reads exported naver_seo_snapshots rows or collect.mjs-shaped JSON snapshots.
 
@@ -257,7 +258,7 @@ function parseArgs(argv) {
   return opts;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const opts = parseArgs(process.argv.slice(2));
   if (!opts.input) {
     console.error("--input snapshots.json is required");

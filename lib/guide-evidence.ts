@@ -1,6 +1,7 @@
 import type { PolicyGuide } from "@/lib/policy-guides";
 import { createHash } from "node:crypto";
 import type { ContentStatus } from "@/lib/content-quality";
+import { EXTRA_GUIDE_EVIDENCE } from "@/lib/guide-evidence-extra";
 
 export interface GuideEvidence {
   /** Pinned at evidence review time; never regenerated automatically from current content. */
@@ -19,10 +20,11 @@ export interface GuideEvidence {
 const gov = { agency: "행정안전부 · 정부24", title: "주민등록표 등본(초본) 발급", url: "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000015", scope: "민원 발급 절차. 지원사업의 선정 조건을 확인한 자료는 아닙니다.", checkedAt: "2026-10-03" };
 const semas = { agency: "소상공인시장진흥공단", title: "2026년 정책자금 한눈에 보기", url: "https://ols.semas.or.kr/ols/man/SMAN018M/page.do", scope: "2026년 중앙 정책자금 개요. 개별 회차의 세부 공지는 별도 확인해야 합니다.", checkedAt: "2026-10-03" };
 export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
+  ...EXTRA_GUIDE_EVIDENCE,
   "documents-before-government-benefit": {
-    verifiedBodySha256: "ede1663857f223967b6074c3d4106756461a198ba06d6b7eeebcac16ceb95f68",
+    verifiedBodySha256: "1bd027cd6b68bf832d5c3858c3bba1cb05c5de0dd3f344fbfa07bf3b79029cef",
     question: "지원금 신청 서류는 무엇부터 준비해야 하나요?", answer: "신청할 사업의 제출 목록을 먼저 펼치고, 요구하는 서류명·발급일·표시 항목을 정리하세요. 정부24에서 발급할 수 있다는 사실과 그 사업에서 해당 서류를 받는다는 사실은 다릅니다.",
-    categorySlugs: ["youth", "senior", "housing", "business"], status: "source-checked", actualUpdatedAt: "2026-10-03", ownerReviewed: false, sources: [gov],
+    categorySlugs: ["youth", "senior", "housing", "business"], status: "source-checked", actualUpdatedAt: "2026-10-05", ownerReviewed: false, sources: [gov],
     headings: ["서류 준비의 시작점", "등본과 초본을 구분하기", "제출 규격 확인", "대리 신청과 공동이용", "제출 전 점검"],
     conditions: [
       { item: "발급 서비스·기관", fact: "정부24 주민등록표 등본(초본) 발급 / 행정안전부", interpretation: "지원사업 신청처와 서류 발급처를 별도로 적어 두세요." },
@@ -32,9 +34,9 @@ export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
     ], changeLog: "서류 발급 근거와 사업별 제출 요건을 구분하고 온라인 대리 발급 제한을 추가했습니다.",
   },
   "small-business-policy-fund-mistakes": {
-    verifiedBodySha256: "f4219cc1b7ce527094035aba3ddfbd74450e2e0b1fc70db8099e36914e6ffddc",
+    verifiedBodySha256: "aca92b26b4edfa13a3613c51d6f843e5fc2f4f0b129fe5d7300ef5b86114e722",
     question: "소상공인 정책자금 신청 전에 어떤 차이를 봐야 하나요?", answer: "자금명과 직접·대리대출 유형부터 확인하세요. 자금마다 신청요건과 상환 조건이 다릅니다. 신청요건에 맞는다는 것만으로 대출 실행이나 한도가 확정되지는 않습니다.",
-    categorySlugs: ["business"], status: "source-checked", actualUpdatedAt: "2026-10-03", ownerReviewed: false, sources: [semas, { ...semas, title: "정책자금 접수 현황과 일정 안내", url: "https://ols.semas.or.kr/ols/man/SMAN010M/page.do", scope: "2026-10-03에 공개된 접수 현황. 이후 접수 상태는 다시 확인해야 합니다." }],
+    categorySlugs: ["business"], status: "source-checked", actualUpdatedAt: "2026-10-05", ownerReviewed: false, sources: [semas, { ...semas, title: "정책자금 접수 현황과 일정 안내", url: "https://ols.semas.or.kr/ols/man/SMAN010M/page.do", scope: "2026-10-03에 공개된 접수 현황. 이후 접수 상태는 다시 확인해야 합니다." }],
     headings: ["먼저 자금명을 정하기", "대상·제외 업종 확인", "직접·대리대출 비교", "금리·상환 부담 확인", "접수 상태와 제출 기록"],
     conditions: [
       { item: "기관·범위", fact: "소상공인시장진흥공단의 2026년 중앙 정책자금 개요", interpretation: "지자체 이차보전·보증 상품의 조건으로 확대해서 읽지 마세요." },
@@ -46,10 +48,11 @@ export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
     ], changeLog: "2026년 자금 유형별 공식 안내를 연결하고 보편 금리·승인 보장을 제거했습니다.",
   },
   "youth-rent-checklist-2026": {
-    verifiedBodySha256: "8089a5400b942d013d257f537c8d56d638fef1edc5db871c43752663a7e88a86",
+    verifiedBodySha256: "6de8eca9d702e28e7d7120096ccf44ab53fd02c610a63d120bbfc5b5dd133b75",
     question: "2026년 청년월세 신규 모집은 지금 신청할 수 있나요?", answer: "전국 국토교통부 사업의 2026년 신규 모집은 5월 29일 16:00에 마감됐습니다. 이 글은 마감된 모집의 조건과 서류를 확인하는 안내입니다. 계속사업 전환은 상시 접수를 뜻하지 않으며 다음 회차의 일정·조건은 새 공고로 확인해야 합니다.",
-    categorySlugs: ["youth", "housing"], status: "closed", actualUpdatedAt: "2026-10-04", ownerReviewed: false,
+    categorySlugs: ["youth", "housing"], status: "closed", actualUpdatedAt: "2026-10-05", ownerReviewed: false,
     sources: [
+      { agency: "한국사회보장정보원 · 복지로", title: "2026년 청년월세 지원 신청 안내", url: "https://www.bokjiro.go.kr/ssis-tbu/cms/pc/customer/notice/1309500_1141.html", scope: "2026-03-20 등록 공식 공지. 신규 모집기간·출생연도·소득 구분·기수혜 회차·지급기간·지급규모를 다시 대조했습니다. 재산액·서류·주거급여 차감의 근거는 기존 상세 자료로 구분합니다.", checkedAt: "2026-10-05" },
       { agency: "국토교통부 청년주거정책과", title: "30일부터 청년월세 지원사업 신청하세요! — 2026년 신규 모집", url: "https://www.molit.go.kr/USR/NEWS/m_71/dtl.jsp?id=95091798", scope: "2026-03-18 등록 공고와 첨부 주요 내용. 전국 2026년 신규 모집에 한정합니다.", checkedAt: "2026-10-04" },
       { agency: "복지로 · 국토교통부", title: "청년월세 지원사업 — 기준연도 2026", url: "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004661", scope: "공개 지원대상·서비스 내용·신청방법 탭. 해당 신규 접수는 마감됐습니다.", checkedAt: "2026-10-04" },
       { agency: "서울특별시", title: "2026년 서울시 청년월세지원 모집 공고", url: "https://housing.seoul.go.kr/site/main/board/notice/12667", scope: "별도 서울시 사업임을 대조하기 위한 자료. 전국 사업의 자격 기준으로 적용하지 않습니다. 2026년 모집은 마감됐습니다.", checkedAt: "2026-10-04" },
@@ -61,7 +64,8 @@ export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
       { item: "연령·거주", fact: "부모와 따로 거주하는 무주택 19~34세 청년. 공고상 2026년 신청 가능 출생연도는 1991~2007년생", interpretation: "생일이 지났는지만으로 판단하지 말고 해당 공고의 출생연도 기준을 확인하세요." },
       { item: "소득·재산", fact: "청년가구 중위소득 60% 이하·재산 1.22억원 이하, 원가구 중위소득 100% 이하·재산 4.7억원 이하. 30세 이상·혼인 등 원가구 심사 예외 있음", interpretation: "월급과 통장 잔액만으로 자격을 정하지 마세요. 가구 범위, 소득평가액과 인정 부채는 복지로 상세와 담당 기관에서 확인해야 합니다." },
       { item: "지원액·지급 범위", fact: "실제 월세 범위에서 월 최대 20만원, 최대 24개월(회)·480만원, 생애 1회. 보증금·관리비 제외", interpretation: "최대액은 모든 신청자의 지급액이나 선정 보장이 아닙니다. 2026년 신규 선정자의 지급기간 안내는 2028년 12월까지이며 재개 요건은 공식 상세를 확인하세요." },
-      { item: "제외·중복 지원", fact: "주택 소유, 공공임대, 2촌 이내 혈족 주택 임차 등 제외. 국토부·지자체 청년월세 수혜 중인 경우 제외하고 종료 후 신청 가능. 기존 한시지원 24회 수혜 완료자 제외", interpretation: "종료 후 신청 가능도 해당 접수기간 안에서 읽어야 합니다. 계약 형태별 예외와 기존 지원 이력을 기관에 설명하세요." },
+      { item: "제외·중복 지원", fact: "주택 소유, 공공임대, 2촌 이내 혈족 주택 임차 등 제외. 국토부·지자체 청년월세 수혜 중인 경우 및 기존 한시지원 24회 수혜 완료자 제외", interpretation: "계약 형태별 예외와 기존 지원 이력을 기관에 설명하세요. 이전 회차별 신청 시점은 다음 항목과 공식 공지를 따로 확인하세요." },
+      { item: "이전 1차·2차 수혜", fact: "복지로 2026년 공지는 1차 수혜자의 기지급 회차를 최대 24회에서 빼며, 2차 수혜자는 2차 사업이 끝난 이후에 신청 가능하다고 안내합니다.", interpretation: "개인의 지급 종료와 2차 사업 종료를 혼동하지 마세요. 이후 신청 가능 안내도 마감된 2026년 신규 모집을 지금 다시 여는 것은 아닙니다." },
       { item: "주거급여·2026년 변경", fact: "주거급여 월차임분을 차감한 금액만 지원. 2026년 신규 모집부터 청약통장 가입 요건 삭제", interpretation: "주거급여를 받으면 무조건 제외된다고 읽거나 이전 회차의 청약통장 요건을 그대로 적용하지 마세요." },
       { item: "서류·공식 안내 경로", fact: "신청서, 소득·재산 신고서, 임대차계약서, 최근 3개월 월세 이체증빙, 통장사본, 가족관계증명서 등. 복지로 온라인 또는 주소지 관할 주민센터", interpretation: "아래 복지로 직접 안내에서 매뉴얼과 서식을 대조하세요. 대리 신청·현금 납부·계약 형태의 예외 자료는 공식 창구에 문의하고 개인정보는 keepioo에 보내지 마세요." },
     ], changeLog: "국토교통부 2026년 모집 공고·복지로 상세를 대조해 실제 조건과 서류를 추가하고 접수 마감을 명시했습니다. 서울시 자체 사업은 별도 출처로 구분했습니다.",

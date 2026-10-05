@@ -20,9 +20,9 @@ describe("persistent content-quality boundary", () => {
   });
 });
 describe('version-bound source evidence', () => {
-  it('binds all three pilot bodies but never silently blesses changed DB content', () => {
+  it('binds all five pilot bodies but never silently blesses changed DB content', () => {
     const pilots = EDITORIAL_GUIDES.filter(g => getGuideEvidence(g));
-    expect(pilots).toHaveLength(3);
+    expect(pilots).toHaveLength(5);
     for (const guide of pilots) {
       expect(getGuideEvidence({ ...guide, posts: ['different database content'] })).toBeUndefined();
       const original = guide.posts[0];

@@ -14,6 +14,13 @@ describe("keepioo authenticated readback tool", () => {
       chmodSync(file, 0o600);
       const env = { NODE_ENV: "test" } as NodeJS.ProcessEnv;
 
+      // 윈도우는 이 권한 모드를 구현하지 않습니다. 읽기를 허용하지 않는 기존 보안 동작을 확인합니다.
+      if (process.platform === "win32") {
+        expect(() => loadSecretEnvFile(file, env)).toThrow(/secret_env_too_permissive/);
+        expect(env.KEEPIOO_TEST_PASSWORD).toBeUndefined();
+        return;
+      }
+
       const result = loadSecretEnvFile(file, env);
 
       expect(result.loaded).toBe(true);

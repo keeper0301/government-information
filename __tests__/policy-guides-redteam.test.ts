@@ -4,7 +4,7 @@ import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 import { getGuideEvidence } from "@/lib/guide-evidence";
 import { getGuides, getGuideBySlug, getRelatedGuides, getGuideDisplayDates, rowToGuide } from "@/lib/policy-guides";
 
-const mock = vi.hoisted(() => ({ enabled: true, rows: [] as Record<string, unknown>[], ranges: [] as number[][], orders: [] as string[], failAt: -1, repeat: false }));
+const mock = vi.hoisted(() => ({ enabled: true, rows: [] as Record<string, unknown>[], ranges: [] as number[][], orders: [] as string[], failAt: -1, repeat: false, detailFails: false }));
 vi.mock("@/lib/supabase/env", () => ({ hasSupabaseAnonEnv: () => mock.enabled }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: () => {
   let slug = "";
@@ -12,7 +12,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: () 
     select: () => query,
     order: (column: string) => { mock.orders.push(column); return query; },
     eq: (_: string, value: string) => { slug = value; return query; },
-    maybeSingle: async () => ({ data: mock.rows.find(row => row.slug === slug) ?? null, error: null }),
+    maybeSingle: async () => ({ data: mock.rows.find(row => row.slug === slug) ?? null, error: mock.detailFails ? new Error("조회 실패") : null }),
     range: async (from: number, to: number) => {
       mock.ranges.push([from, to]);
       return { data: mock.repeat ? mock.rows : mock.rows.slice(from, to + 1), error: from === mock.failAt ? new Error("synthetic failure") : null };
@@ -25,7 +25,7 @@ function row(index: number) {
   return { id: `synthetic-${index}`, slug: `unrelated-${index}`, title: "Synthetic unrelated", program_id: "synthetic", program_type: "welfare", post_1: "body 1", post_2: "body 2", post_3: "body 3", post_4: "body 4", post_5: "body 5", rotation_idx: null, threads_url: null, og_image_url: null, published_at: "2025-01-01", updated_at: "2025-01-02" };
 }
 const now = new Date("2026-10-04T12:00:00Z");
-beforeEach(() => { mock.enabled = true; mock.rows = []; mock.ranges = []; mock.orders = []; mock.failAt = -1; mock.repeat = false; });
+beforeEach(() => { mock.enabled = true; mock.rows = []; mock.ranges = []; mock.orders = []; mock.failAt = -1; mock.repeat = false; mock.detailFails = false; });
 
 describe("complete candidate curation", () => {
   it.each([50, 200, 450])("retains evidence-bound pilots with %i unrelated DB rows", async count => {
@@ -70,6 +70,10 @@ describe("complete candidate curation", () => {
 });
 
 describe("validated content and shared date provenance", () => {
+  it("조회 실패 시 승인 가능한 내장 본문으로 돌아가지 않는다", async () => {
+    mock.detailFails = true;
+    await expect(getGuideBySlug("documents-before-government-benefit")).rejects.toThrow("temporarily unavailable");
+  });
   it.each([null, 123, "", "   "])("rejects invalid DB title/body %j", bad => {
     for (const field of ["title", "post_1", "post_2", "post_3", "post_4", "post_5"]) {
       expect(() => rowToGuide({ ...row(0), [field]: bad } as unknown as Parameters<typeof rowToGuide>[0])).toThrow("Invalid policy guide content");
@@ -85,7 +89,7 @@ describe("validated content and shared date provenance", () => {
   });
   it("uses bound actualUpdatedAt ahead of DB timestamps and omits future publication", () => {
     const pilot = EDITORIAL_GUIDES.find(g => getGuideEvidence(g))!;
-    expect(getGuideDisplayDates({ ...pilot, publishedAt: "2099-01-01", updatedAt: "2099-01-01" }, now)).toEqual({ publishedAt: undefined, updatedAt: getGuideEvidence(pilot)!.actualUpdatedAt });
+    expect(getGuideDisplayDates({ ...pilot, publishedAt: "2099-01-01", updatedAt: "2099-01-01" }, new Date("2026-10-05T12:00:00Z"))).toEqual({ publishedAt: undefined, updatedAt: getGuideEvidence(pilot)!.actualUpdatedAt });
   });
   it("accepts leap days and canonicalizes timestamp zones", () => {
     const guide = rowToGuide(row(0));
@@ -93,8 +97,8 @@ describe("validated content and shared date provenance", () => {
   });
   it("wires the shared dates into OG, JSON-LD, body and sitemap and category options into both hub branches", () => {
     const detail = readFileSync("app/guides/[slug]/page.tsx", "utf8");
-    for (const text of ["publishedTime: dates.publishedAt", "modifiedTime: dates.updatedAt", "datePublished: dates.publishedAt", "dateModified: dates.updatedAt", "formatDate(dates.updatedAt)"]) expect(detail).toContain(text);
+    for (const text of ["publishedTime: publication.published ? dates.publishedAt", "modifiedTime: publication.published ? dates.updatedAt", "datePublished: dates.publishedAt", "dateModified: dates.updatedAt", "dates.updatedAt.slice(0, 10)"]) expect(detail).toContain(text);
     expect(readFileSync("app/sitemap.ts", "utf8")).toContain("lastModified: getGuideDisplayDates(g).updatedAt");
-    expect(readFileSync("app/c/[category]/page.tsx", "utf8").match(/getGuides\(50, \{ categorySlugs: \[category\] \}\)/g)).toHaveLength(2);
+    expect(readFileSync("app/c/[category]/page.tsx", "utf8").match(/getGuides\(50, \{ categorySlugs: \[category\], publicationOnly: true \}\)/g)).toHaveLength(2);
   });
 });

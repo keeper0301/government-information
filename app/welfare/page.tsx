@@ -241,7 +241,7 @@ export default async function WelfarePage({ searchParams }: Props) {
           title="복지 혜택은 ‘받을 수 있는지’보다 ‘반려되지 않는지’를 먼저 봅니다"
           description="정책알리미는 단순 공고 목록이 아니라 신청자가 실제로 막히는 조건을 먼저 짚습니다. 아래 네 가지를 확인한 뒤 개별 정책의 원문과 문의처로 최종 확인하세요."
           checklist={welfareReviewChecklist}
-          guideHref="/guides/documents-before-government-benefit"
+          guideHref="/guides"
         />
       </section>
 
