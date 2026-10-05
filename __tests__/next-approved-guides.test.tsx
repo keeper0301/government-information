@@ -18,7 +18,8 @@ const drafts = [
 describe("승인한 다음 세 글의 내용과 화면", () => {
   for (const [slug, filename] of drafts) {
     it(`${slug}의 승인 본문을 그대로 반영하고 표를 읽을 수 있게 표시한다`, () => {
-      const draft = readFileSync(`docs/adsense-recovery/drafts/2026-10-05-${filename}.md`, "utf8");
+      // 윈도우와 운영 검사 서버의 줄바꿈 차이는 본문 변경으로 취급하지 않습니다.
+      const draft = readFileSync(`docs/adsense-recovery/drafts/2026-10-05-${filename}.md`, "utf8").replace(/\r\n/g, "\n");
       const body = draft.split("\n## 본문\n\n")[1].split("\n## 공식 출처와 확인 범위")[0].trim();
       const sections = body.split("\n### ");
       const guide = EDITORIAL_GUIDES.find(item => item.slug === slug)!;
