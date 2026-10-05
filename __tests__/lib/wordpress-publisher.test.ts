@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   upsert: vi.fn(),
   fetch: vi.fn(),
   claim: vi.fn(),
+  lookup: vi.fn(),
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({ from: () => ({ upsert: mocks.upsert }) }),
@@ -19,6 +20,7 @@ vi.mock("@/lib/wordpress/terms", () => ({
   fetchOrCreateTagIds: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/lib/wordpress/claim", () => ({ claimWordPressPublish: mocks.claim }));
+vi.mock("@/lib/wordpress/reconcile-preview", () => ({ findWordPressByBacklink: mocks.lookup }));
 
 import { publishToWordPress } from "@/lib/wordpress/publisher";
 
@@ -46,6 +48,7 @@ describe("WordPress publish truth contract", () => {
     mocks.payloadStatus = "publish";
     mocks.upsert.mockResolvedValue({ error: null });
     mocks.claim.mockResolvedValue(true);
+    mocks.lookup.mockResolvedValue({ kind: "not_found_in_search", matches: [], examined: 0 });
     vi.stubGlobal("fetch", mocks.fetch);
     process.env.WP_API_URL = "https://info.keeper0301.com/wp-json/wp/v2";
     process.env.WP_USERNAME = "test-user";
@@ -112,5 +115,19 @@ describe("WordPress publish truth contract", () => {
     mocks.claim.mockResolvedValueOnce(false);
     expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "claim_unavailable_or_duplicate" });
     expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+  it("recovers a timed-out POST only from one exact public backlink match", async () => {
+    mocks.fetch.mockRejectedValueOnce(Object.assign(new Error("slow"), { name: "AbortError" }));
+    mocks.lookup.mockResolvedValueOnce({ kind: "unique_match", matches: [{ id: 18489, url: wpLink }], examined: 1 });
+    expect(await publishToWordPress(blogId, post)).toEqual({ ok: true, wpPostId: 18489, wpPostUrl: wpLink });
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(mocks.lookup).toHaveBeenCalledWith(post.slug, process.env.WP_API_URL, mocks.fetch, expect.objectContaining({ notBeforeMs: expect.any(Number) }));
+    expect(lastLog()).toMatchObject({ status: "published", wp_post_id: 18489 });
+  });
+  it("leaves an uncertain timeout failed without a second POST", async () => {
+    mocks.fetch.mockRejectedValueOnce(Object.assign(new Error("slow"), { name: "AbortError" }));
+    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "timeout" });
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    expect(lastLog()).toMatchObject({ status: "failed", error_message: expect.stringContaining("public_lookup=not_found_in_search") });
   });
 });

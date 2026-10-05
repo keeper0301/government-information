@@ -18,6 +18,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToWordPress, type BlogPostForWordPress } from "./format";
 import { fetchOrCreateCategoryIds, fetchOrCreateTagIds } from "./terms";
 import { claimWordPressPublish } from "./claim";
+import { findWordPressByBacklink } from "./reconcile-preview";
 
 // 워드프레스 REST API timeout — 15초.
 // cron maxDuration (Vercel 60초) 안에 안전 마진 확보 + 일시 응답 지연이
@@ -99,6 +100,7 @@ export async function publishToWordPress(
   // 5) timeout — 15초 후 abort. 워드프레스 응답 지연이 cron 함수 전체를 막지 않도록.
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), WORDPRESS_TIMEOUT_MS);
+  const postStartedAt = Date.now();
   let res: Response;
   try {
     res = await fetch(postsEndpoint, {
@@ -124,7 +126,21 @@ export async function publishToWordPress(
     // e 가 Error 가 아닌 경우 (string·undefined 등) 대비 — instanceof 가드.
     const err = e instanceof Error ? e : new Error(String(e));
     const isAbort = err.name === "AbortError" || err.name === "TimeoutError";
-    await logFailure(blogPostId, isAbort ? `timeout ${WORDPRESS_TIMEOUT_MS}ms` : `network: ${err.message}`);
+    // POST가 서버에서 성공하고 응답만 늦었을 수 있다. 공개 REST를 읽기만 하여
+    // 정확한 keepioo 백링크가 있는 단일 공개 글만 복구한다. 검색 실패는 재POST 근거가 아니다.
+    if (isAbort && payload.status === "publish") {
+      const preview = await findWordPressByBacklink(post.slug, apiUrl, fetch, { notBeforeMs: postStartedAt });
+      if (preview.kind === "unique_match") {
+        const match = preview.matches[0];
+        if (!(await logSuccess(blogPostId, match.id, match.url))) {
+          return { ok: false, reason: "log_error", wpPostId: match.id, wpPostUrl: match.url };
+        }
+        return { ok: true, wpPostId: match.id, wpPostUrl: match.url };
+      }
+      await logFailure(blogPostId, `timeout ${WORDPRESS_TIMEOUT_MS}ms; public_lookup=${preview.kind}`);
+    } else {
+      await logFailure(blogPostId, isAbort ? `timeout ${WORDPRESS_TIMEOUT_MS}ms` : `network: ${err.message}`);
+    }
     return isAbort
       ? { ok: false, reason: "timeout", error: `${WORDPRESS_TIMEOUT_MS}ms 초과` }
       : { ok: false, reason: "network_error", error: err.message };
