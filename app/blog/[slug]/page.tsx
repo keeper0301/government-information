@@ -18,6 +18,7 @@ import { GaPageTracker } from "@/components/ga-page-tracker";
 import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
 import { getCategoryGradient, getCategoryGradientCss } from "@/lib/blog-cover";
 import { AdSlot } from "@/components/ad-slot";
+import { reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 
@@ -106,6 +107,8 @@ export async function generateMetadata({
     title: post.title,
     description,
     keywords,
+    // Match the curated review-mode sitemap; normal-mode indexing is unchanged.
+    robots: reviewModeNoindexRobots(),
     alternates: { canonical: `/blog/${slug}` },
     authors: [{ name: "정책알리미", url: "https://www.keepioo.com" }],
     openGraph: {
