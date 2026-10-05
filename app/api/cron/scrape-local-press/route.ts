@@ -1,7 +1,7 @@
 // ============================================================
 // /api/cron/scrape-local-press — 시·군 보도자료 매일 자동 수집
 // ============================================================
-// Phase B B1-b. Vercel cron 매일 KST 09:00 (UTC 00:00) 호출.
+// 매일 한국 시간 09:00부터 10:15까지 여섯 묶음으로 나누어 호출한다.
 //
 // 시·군 등록: lib/scraping/local-press/_registry.ts (single source of truth).
 // 추가 시 그 파일에만 1줄 추가.
@@ -16,6 +16,7 @@ import { logAdminAction } from "@/lib/admin-actions";
 import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import { rotatePressCities } from "@/lib/scraping/local-press/_rotation";
+import { selectPressShard } from "@/lib/scraping/local-press/_shards";
 
 export const dynamic = "force-dynamic";
 // 2026-05-25 region: vercel.json 의 functions.regions=["icn1"] 으로 설정 (project 레벨).
@@ -133,6 +134,11 @@ const TOTAL_BUDGET_MS = 700_000;
 function selectCityEntries(request: Request): (typeof CITY_REGISTRY)[number][] {
   const url = new URL(request.url);
   const raw = url.searchParams.get("cities") ?? url.searchParams.get("city");
+  const shard = url.searchParams.get("shard");
+  if (shard !== null) {
+    if (raw !== null) throw new Error("수집 묶음과 개별 지역은 함께 지정할 수 없습니다.");
+    return selectPressShard(CITY_REGISTRY, shard);
+  }
   if (!raw) return CITY_REGISTRY;
 
   const wanted = raw
@@ -213,6 +219,7 @@ export async function GET(request: Request) {
     const budgetSkipped = results.filter((r) => r.status === "skipped_budget");
     // 미시도 목록은 전체 실행 감사에 보관한다. 지역 수집 감사에는 실제 시도만 남긴다.
     const summary = {
+      shard: new URL(request.url).searchParams.get("shard"),
       cities: results.length - budgetSkipped.length,
       planned_cities: results.length,
       attempted_cities: results.length - budgetSkipped.length,

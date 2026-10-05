@@ -185,7 +185,8 @@ import { scrapeOngjinAndInsert } from "./ongjin";
 // recovery, but exclude it from the static cron/stale health target set.
 // import { scrapeJungguIncheonAndInsert } from "./junggu_incheon";
 import { scrapeGanghwaAndInsert } from "./ganghwa";
-import { scrapeDongguIncheonAndInsert } from "./donggu_incheon";
+import { scrapeJemulpoIncheonAndInsert } from "./jemulpo_incheon";
+import { scrapeGeomdanIncheonAndInsert } from "./geomdan_incheon";
 import { scrapeNamguGwangjuAndInsert } from "./namgu_gwangju";
 // 2026-06-07 — 광주 북구도 eminwon 으로 재이관. 기존 board.es(mid=a10402010000=
 // 희망아카데미 강연 안내 오등록, 누적 1건) 폐기 후 eminwon(OfrAction.do POST) 으로
@@ -231,10 +232,83 @@ import { scrapeJungguSeoulAndInsert } from "./junggu_seoul";
 import { scrapeGangdongAndInsert } from "./gangdong";
 // 2026-06-01 — 대전 서구 보도자료 (eGovFrame bbs, fn_search_detail nttId GET).
 import { scrapeSeoguDaejeonAndInsert } from "./seogu_daejeon";
-// disabled 2026-05-24 (review): 의정부 검증 후 재enable
-// import { scrapeUijeongbuAndInsert } from "./uijeongbu";
+
+import { scrapeJinjuAndInsert } from "./jinju";
+import { scrapeTongyeongAndInsert } from "./tongyeong";
+import { scrapeSacheonAndInsert } from "./sacheon";
+import { scrapeMiryangAndInsert } from "./miryang";
+import { scrapeGeojeAndInsert } from "./geoje";
+import { scrapeYangsanAndInsert } from "./yangsan";
+import { scrapeUiryeongAndInsert } from "./uiryeong";
+import { scrapeHamanAndInsert } from "./haman";
+import { scrapeChangnyeongAndInsert } from "./changnyeong";
+import { scrapeGoseongGnAndInsert } from "./goseong_gn";
+import { scrapeNamhaeAndInsert } from "./namhae";
+import { scrapeHadongAndInsert } from "./hadong";
+import { scrapeSancheongAndInsert } from "./sancheong";
+import { scrapeHamyangAndInsert } from "./hamyang";
+import { scrapeGeochangAndInsert } from "./geochang";
+import { scrapeHapcheonAndInsert } from "./hapcheon";
+import { scrapeJungnangAndInsert } from "./jungnang";
+import { scrapeUijeongbuAndInsert } from "./uijeongbu";
+import { scrapeSeogwipoAndInsert } from "./seogwipo";
+
+import { scrapeJejusiAndInsert } from "./jejusi";
+import { scrapeGangbukAndInsert } from "./gangbuk";
+import { scrapeYeongjongIncheonAndInsert } from "./yeongjong_incheon";
+
+import { scrapeMungyeongAndInsert } from "./mungyeong";
+import { scrapeGyeongsanAndInsert } from "./gyeongsan";
+import { scrapeUiseongAndInsert } from "./uiseong";
+import { scrapeCheongsongAndInsert } from "./cheongsong";
+import { scrapeYeongyangAndInsert } from "./yeongyang";
+import { scrapeYeongdeokAndInsert } from "./yeongdeok";
+import { scrapeCheongdoAndInsert } from "./cheongdo";
+import { scrapeGoryeongAndInsert } from "./goryeong";
+import { scrapeSeongjuAndInsert } from "./seongju";
+import { scrapeChilgokAndInsert } from "./chilgok";
+import { scrapeYecheonAndInsert } from "./yecheon";
+import { scrapeBonghwaAndInsert } from "./bonghwa";
+import { scrapeUlleungAndInsert } from "./ulleung";
+import { scrapeUljinAndInsert } from "./uljin";
 
 export type CityKey =
+  | "yeongjong_incheon"
+  | "mungyeong"
+  | "gyeongsan"
+  | "uiseong"
+  | "cheongsong"
+  | "yeongyang"
+  | "yeongdeok"
+  | "cheongdo"
+  | "goryeong"
+  | "seongju"
+  | "chilgok"
+  | "yecheon"
+  | "bonghwa"
+  | "ulleung"
+  | "uljin"
+  | "jejusi"
+  | "gangbuk"
+  | "jinju"
+  | "tongyeong"
+  | "sacheon"
+  | "miryang"
+  | "geoje"
+  | "yangsan"
+  | "uiryeong"
+  | "haman"
+  | "changnyeong"
+  | "goseong_gn"
+  | "namhae"
+  | "hadong"
+  | "sancheong"
+  | "hamyang"
+  | "geochang"
+  | "hapcheon"
+  | "jungnang"
+  | "uijeongbu"
+  | "seogwipo"
   | "suncheon"
   | "gwangju"
   | "seoul"
@@ -409,7 +483,8 @@ export type CityKey =
   | "ongjin"
   // | "junggu_incheon" — 2026-07-22 disabled (static fetch sees /index.html shell; needs PC/Playwright recovery)
   | "ganghwa"
-  | "donggu_incheon"
+  | "jemulpo_incheon"
+  | "geomdan_incheon"
   // 2026-05-31 서울 18 자치구 확장 (패턴 1: eGovFrame portal/bbs)
   | "gwangjin"
   | "dongjak"
@@ -445,7 +520,6 @@ export type CityKey =
   | "gangdong"
   // 2026-06-01 대전 서구 (eGovFrame bbs fn_search_detail)
   | "seogu_daejeon";
-// | "uijeongbu" — disabled 2026-05-24 (review)
 
 export type CityEntry = {
   key: CityKey;
@@ -704,7 +778,7 @@ export const CITY_REGISTRY: CityEntry[] = [
     ministry: "경상북도청",
     ministryAliases: ["경상북도"],
     siteUrl:
-      "https://www.gb.go.kr/Main/page.do?BD_CODE=bbs_bodo&mnu_uid=6792",
+      "https://www.gb.go.kr/page/10107/10004.do",
     fn: scrapeGyeongbukAndInsert,
   },
   {
@@ -995,10 +1069,11 @@ export const CITY_REGISTRY: CityEntry[] = [
   // 2026-05-22 — 인천 서구 56만. 부평구와 동일 system. 18,488+ 보도자료.
   {
     key: "seo_incheon",
-    city: "인천 서구",
-    ministry: "인천 서구청",
+    city: "인천 서해구",
+    ministry: "인천 서해구청",
+    ministryAliases: ["인천 서구청"],
     siteUrl:
-      "https://www.seo.incheon.kr/open_content/main/community/news/report.jsp",
+      "https://www.seohae.go.kr/open_content/main/community/news/report.jsp",
     fn: scrapeSeoIncheonAndInsert,
   },
   // 2026-05-22 — 하남시 32만. SI 표준 selectBbsNttList.
@@ -1059,7 +1134,7 @@ export const CITY_REGISTRY: CityEntry[] = [
     city: "광주 남구",
     ministry: "광주 남구청",
     siteUrl:
-      "https://www.namgu.gwangju.kr/board.es?mid=a10707060200&bid=0001",
+      "https://www.namgu.gwangju.kr/menu.es?mid=a10605050000",
     fn: scrapeNamguGwangjuAndInsert,
   },
   // 2026-06-07 — 광주 북구 41만. eminwon 재이관(기존 board.es=희망아카데미 오등록 폐기).
@@ -1762,24 +1837,22 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.ganghwa.go.kr/open_content/main/bbs/bbsMsgList.do?bcd=report",
     fn: scrapeGanghwaAndInsert,
   },
-  // 2026-05-28 인천 동구 6만. bbsMsgDetail CMS, bcd=press 게시판 사용.
+  // 행정구역 개편 후 폐지된 동구 경로를 제물포구 공식 게시판으로 교체한다.
   {
-    key: "donggu_incheon",
-    city: "인천 동구",
-    ministry: "인천 동구청",
-    siteUrl: "https://www.icdonggu.go.kr/main/bbs/bbsMsgList.do?bcd=press",
-    fn: scrapeDongguIncheonAndInsert,
+    key: "jemulpo_incheon",
+    city: "제물포구",
+    ministry: "제물포구청",
+    ministryAliases: ["인천 동구청"],
+    siteUrl: "https://www.jemulpo.go.kr/main/bbs/bbsMsgList.do?bcd=press",
+    fn: scrapeJemulpoIncheonAndInsert,
   },
-  // 2026-05-24 — 의정부시 45만 (경기). egov portal/bbs (mId=0301020000&ptIdx=1709) + 16,320+ 보도자료.
-  // disabled 2026-05-24: node fetch 차단으로 정적 검증 0. Chrome MCP 으로 실 응답 확인 후 다음 batch 에 인구 순 위치로 재등록.
-  // {
-  //   key: "uijeongbu",
-  //   city: "의정부시",
-  //   ministry: "의정부시청",
-  //   siteUrl:
-  //     "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709",
-  //   fn: scrapeUijeongbuAndInsert,
-  // },
+  {
+    key: "geomdan_incheon",
+    city: "검단구",
+    ministry: "검단구청",
+    siteUrl: "https://www.geomdan.go.kr/main/community/news/report.jsp",
+    fn: scrapeGeomdanIncheonAndInsert,
+  },
   // 2026-05-31 서울 18 자치구 확장 (5/30 정찰 base 활용)
   // 패턴 1: eGovFrame portal/bbs (광진·동작·용산) — dbData 본문 + span.date.
   {
@@ -1925,6 +1998,43 @@ export const CITY_REGISTRY: CityEntry[] = [
     siteUrl: "https://www.seogu.go.kr/bbs/BBSMSTR_000000000277/list.do",
     fn: scrapeSeoguDaejeonAndInsert,
   },
+  // 전국 누락 지역을 공식 보도자료 수집 경로로 연결한다.
+  { key: "jinju", city: "진주시", ministry: "진주시청", siteUrl: "https://www.jinju.go.kr/00138.web", fn: scrapeJinjuAndInsert },
+  { key: "tongyeong", city: "통영시", ministry: "통영시청", siteUrl: "https://www.tongyeong.go.kr/00859.web", fn: scrapeTongyeongAndInsert },
+  { key: "sacheon", city: "사천시", ministry: "사천시청", siteUrl: "https://www.sacheon.go.kr/news/00009/04236.web", fn: scrapeSacheonAndInsert },
+  { key: "miryang", city: "밀양시", ministry: "밀양시청", siteUrl: "https://www.miryang.go.kr/web/index.do?mnNo=20100000000", fn: scrapeMiryangAndInsert },
+  { key: "geoje", city: "거제시", ministry: "거제시청", siteUrl: "https://www.geoje.go.kr/board/list.geoje?boardId=BBS_0000028&menuCd=DOM_000008902003004000", fn: scrapeGeojeAndInsert },
+  { key: "yangsan", city: "양산시", ministry: "양산시청", siteUrl: "https://www.yangsan.go.kr/portal/contents.do?mid=0105010000", fn: scrapeYangsanAndInsert },
+  { key: "uiryeong", city: "의령군", ministry: "의령군청", siteUrl: "https://www.uiryeong.go.kr/board/list.uiryeong?boardId=BBS_0000080&menuCd=DOM_000000203005001000&contentsSid=189", fn: scrapeUiryeongAndInsert },
+  { key: "haman", city: "함안군", ministry: "함안군청", siteUrl: "https://www.haman.go.kr/00958.web", fn: scrapeHamanAndInsert },
+  { key: "changnyeong", city: "창녕군", ministry: "창녕군청", siteUrl: "https://www.cng.go.kr/01541/01552.web", fn: scrapeChangnyeongAndInsert },
+  { key: "goseong_gn", city: "경남 고성군", ministry: "경남 고성군청", siteUrl: "https://www.goseong.go.kr/index.goseong?menuCd=DOM_000000102002008000", fn: scrapeGoseongGnAndInsert },
+  { key: "namhae", city: "남해군", ministry: "남해군청", siteUrl: "https://www.namhae.go.kr/news/pgnews/List.do?pCate1=1000&pageCd=SM0102010000&siteGubun=socialm", fn: scrapeNamhaeAndInsert },
+  { key: "hadong", city: "하동군", ministry: "하동군청", siteUrl: "https://www.hadong.go.kr/media/00013/03607.web", fn: scrapeHadongAndInsert },
+  { key: "sancheong", city: "산청군", ministry: "산청군청", siteUrl: "https://www.sancheong.go.kr/news/selectBbsNttList.do?key=1825&bbsNo=115", fn: scrapeSancheongAndInsert },
+  { key: "hamyang", city: "함양군", ministry: "함양군청", siteUrl: "https://www.hygn.go.kr/01997/02007.web", fn: scrapeHamyangAndInsert },
+  { key: "geochang", city: "거창군", ministry: "거창군청", siteUrl: "https://www.geochang.go.kr/00445/00452.web", fn: scrapeGeochangAndInsert },
+  { key: "hapcheon", city: "합천군", ministry: "합천군청", siteUrl: "https://www.hc.go.kr/04953.web", fn: scrapeHapcheonAndInsert },
+  { key: "jungnang", city: "중랑구", ministry: "중랑구청", siteUrl: "https://www.jungnang.go.kr/portal/bbs/list/B0000151.do?menuNo=200474", fn: scrapeJungnangAndInsert },
+  { key: "uijeongbu", city: "의정부시", ministry: "의정부시청", siteUrl: "https://www.ui4u.go.kr/portal/bbs/list.do?mId=0301020000&ptIdx=1709", fn: scrapeUijeongbuAndInsert },
+  { key: "seogwipo", city: "서귀포시", ministry: "서귀포시청", siteUrl: "https://www.seogwipo.go.kr/news/seogwiponews/sijungnews.htm", fn: scrapeSeogwipoAndInsert },
+  { key: "jejusi", city: "제주시", ministry: "제주시청", siteUrl: "https://www.jejusi.go.kr/news/communite/report.do", fn: scrapeJejusiAndInsert },
+  { key: "gangbuk", city: "강북구", ministry: "강북구청", siteUrl: "https://www.gangbuk.go.kr/portal/bbs/B0000142/list.do?menuNo=200625", fn: scrapeGangbukAndInsert },
+  { key: "yeongjong_incheon", city: "영종구", ministry: "영종구청", siteUrl: "https://www.yeongjong.go.kr/main/pst/list.do?pst_id=mn_news_yj", fn: scrapeYeongjongIncheonAndInsert },
+  { key: "mungyeong", city: "경북 문경시", ministry: "경북 문경시청", siteUrl: "https://www.gbmg.go.kr/portal/mayorForcus/list.do?mId=0302010000", fn: scrapeMungyeongAndInsert },
+  { key: "gyeongsan", city: "경북 경산시", ministry: "경북 경산시청", siteUrl: "https://www.gbgs.go.kr/open_content/ko/page.do?mnu_uid=5904", fn: scrapeGyeongsanAndInsert },
+  { key: "uiseong", city: "경북 의성군", ministry: "경북 의성군청", siteUrl: "https://www.usc.go.kr/ko/page.do?mnu_uid=190", fn: scrapeUiseongAndInsert },
+  { key: "cheongsong", city: "경북 청송군", ministry: "경북 청송군청", siteUrl: "https://www.cs.go.kr/news/00002679/00003478.web", fn: scrapeCheongsongAndInsert },
+  { key: "yeongyang", city: "경북 영양군", ministry: "경북 영양군청", siteUrl: "https://www.yyg.go.kr/www/organization/yyg_news/explanation_data", fn: scrapeYeongyangAndInsert },
+  { key: "yeongdeok", city: "경북 영덕군", ministry: "경북 영덕군청", siteUrl: "https://www.yd.go.kr/?page_id=8844", fn: scrapeYeongdeokAndInsert },
+  { key: "cheongdo", city: "경북 청도군", ministry: "경북 청도군청", siteUrl: "https://www.cheongdo.go.kr/portal/contents.do?mid=0301070000", fn: scrapeCheongdoAndInsert },
+  { key: "goryeong", city: "경북 고령군", ministry: "경북 고령군청", siteUrl: "https://www.goryeong.go.kr/kor/boardList.do?IDX=157&BRD_ID=1062", fn: scrapeGoryeongAndInsert },
+  { key: "seongju", city: "경북 성주군", ministry: "경북 성주군청", siteUrl: "https://www.sj.go.kr/page.do?mnu_uid=3546", fn: scrapeSeongjuAndInsert },
+  { key: "chilgok", city: "경북 칠곡군", ministry: "경북 칠곡군청", siteUrl: "https://www.chilgok.go.kr/portal/contents.do?mId=0202010000", fn: scrapeChilgokAndInsert },
+  { key: "yecheon", city: "경북 예천군", ministry: "경북 예천군청", siteUrl: "https://www.ycg.kr/open.content/ko/administrative/news/headline/", fn: scrapeYecheonAndInsert },
+  { key: "bonghwa", city: "경북 봉화군", ministry: "경북 봉화군청", siteUrl: "https://www.bonghwa.go.kr/portal/contents.do?mid=0201090000", fn: scrapeBonghwaAndInsert },
+  { key: "ulleung", city: "경북 울릉군", ministry: "경북 울릉군청", siteUrl: "https://www.ulleung.go.kr/ko/page.do?mnu_uid=574", fn: scrapeUlleungAndInsert },
+  { key: "uljin", city: "경북 울진군", ministry: "경북 울진군청", siteUrl: "https://www.uljin.go.kr/board/list.uljin?boardId=BBS_NOTICE_UJ&menuCd=DOM_000000103002001000", fn: scrapeUljinAndInsert },
 ];
 
 // key → entry lookup (actions.ts 가 city key 로 검색)

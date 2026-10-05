@@ -1,0 +1,424 @@
+{
+  "checkedAt": "2026-10-05T16:39:29.903Z",
+  "databaseWrites": 0,
+  "results": [
+    {
+      "key": "mungyeong",
+      "count": 10,
+      "details": [
+        {
+          "seq": "4655",
+          "title": "1002 문경시 오후 보도자료",
+          "sourceUrl": "https://www.gbmg.go.kr/portal/mayorForcus/view.do?idx=4655&mId=0302010000",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 2929,
+          "bodyStart": "그림입니다. 원본 그림의 이름: CLP00000c740005.bmp 원본 그림의 크기: 가로 637pixel, 세로 52pixel 그림입니다. 원본 그림의 이름: CLP00000c"
+        },
+        {
+          "seq": "4654",
+          "title": "1002 문경시 오전 보도자료",
+          "sourceUrl": "https://www.gbmg.go.kr/portal/mayorForcus/view.do?idx=4654&mId=0302010000",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 12898,
+          "bodyStart": "그림입니다. 원본 그림의 이름: CLP00000c740005.bmp 원본 그림의 크기: 가로 637pixel, 세로 52pixel 그림입니다. 원본 그림의 이름: CLP00000c"
+        },
+        {
+          "seq": "4653",
+          "title": "1001 문경시 보도자료",
+          "sourceUrl": "https://www.gbmg.go.kr/portal/mayorForcus/view.do?idx=4653&mId=0302010000",
+          "publishedDate": "2026-10-01",
+          "bodyLength": 4846,
+          "bodyStart": "‘2026 문경시파크골프협회 클럽대회’가 오는 10월 3일(토) 영강천변파크골프장에서 열린다. 문경시체육회가 주최하고 문경시파크골프협회가 주관하는 이번 대회는 관내 클럽 소속 선수"
+        }
+      ]
+    },
+    {
+      "key": "gyeongsan",
+      "count": 10,
+      "details": [
+        {
+          "seq": "257933",
+          "title": "10월 2일 보도자료",
+          "sourceUrl": "https://www.gbgs.go.kr/open_content/ko/page.do?pageNo=1&pagePrvNxt=1&pageRef=0&pageOrder=0&step=258&parm_bod_uid=257933&srchVoteType=-1&parm_mnu_uid=0&srchEnable=1&srchBgpUid=-1&srchKeyword=&srchSDate=1960-01-01&srchColumn=&srchEDate=9999-12-31&mnu_uid=5904&",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 1081,
+          "bodyStart": "보 도 자 료 보도 일시 2026년 10월 1일 담당 부서 건강증진과 건강증진과장 전결 2026. 9. 30. ☏ 053-810-6350 권수영 건강증진팀장 ☏ 053-810-63"
+        },
+        {
+          "seq": "257880",
+          "title": "10월 1일 보도자료",
+          "sourceUrl": "https://www.gbgs.go.kr/open_content/ko/page.do?pageNo=1&pagePrvNxt=1&pageRef=0&pageOrder=0&step=258&parm_bod_uid=257880&srchVoteType=-1&parm_mnu_uid=0&srchEnable=1&srchBgpUid=-1&srchKeyword=&srchSDate=1960-01-01&srchColumn=&srchEDate=9999-12-31&mnu_uid=5904&",
+          "publishedDate": "2026-10-01",
+          "bodyLength": 999,
+          "bodyStart": "경산시는 2026년 4분기 경산 희망기업으로 ㈜에프알티로보틱스를 선정하고, 1일 시청 대회의실에서 열린 10월 정례회에서 트로피를 수여했다. 하양읍 경산지식산업지구에 위치한 ㈜에프"
+        },
+        {
+          "seq": "257845",
+          "title": "9월 30일 보도자료",
+          "sourceUrl": "https://www.gbgs.go.kr/open_content/ko/page.do?pageNo=1&pagePrvNxt=1&pageRef=0&pageOrder=0&step=258&parm_bod_uid=257845&srchVoteType=-1&parm_mnu_uid=0&srchEnable=1&srchBgpUid=-1&srchKeyword=&srchSDate=1960-01-01&srchColumn=&srchEDate=9999-12-31&mnu_uid=5904&",
+          "publishedDate": "2026-09-30",
+          "bodyLength": 765,
+          "bodyStart": "경산시(시장 조현일)는 29일 오후 4시 시청 소회의실에서 ‘제1회 청소년 생명지킴 지역안전망 협의회’를 개최했다. 이번 협의회는 청소년의 정신건강 위기와 자살 위험에 더욱 신속하"
+        }
+      ]
+    },
+    {
+      "key": "uiseong",
+      "count": 9,
+      "details": [
+        {
+          "seq": "149668",
+          "title": "고운사, 천년의 역사를 다시 잇다",
+          "sourceUrl": "https://www.usc.go.kr/ko/page.do?srchVote=-1&srchBgpUid=-1&srchEnable=1&srchSDate=&srchKwd=&srchColumn=&listType=&srchEDate=&mnu_uid=190&bod_uid=149668&pageNo=1&cmd=258",
+          "publishedDate": "2026-09-29",
+          "bodyLength": 777,
+          "bodyStart": "의성군(군수 최유철)은 이달 14일 고운사에서 ‘고운사 산불 피해 복구 기본계획 수립 용역’ 중간 보고회를 개최했다고 밝혔다.\n이번 보고회는 대한불교조계종 제16교구 본사 주지 등"
+        },
+        {
+          "seq": "149667",
+          "title": "의성군, 주민자치회장 간담회 개최",
+          "sourceUrl": "https://www.usc.go.kr/ko/page.do?srchVote=-1&srchBgpUid=-1&srchEnable=1&srchSDate=&srchKwd=&srchColumn=&listType=&srchEDate=&mnu_uid=190&bod_uid=149667&pageNo=1&cmd=258",
+          "publishedDate": "2026-09-29",
+          "bodyLength": 710,
+          "bodyStart": "의성군(군수 최유철)은 지난 9월 10일 의성군청 대회의실에서 주민자치회장 간담회를 개최했다.\n이번 간담회는 주민자치회 운영 과정에서 건의 사항을 공유하고 향후 운영 방향을 논의하"
+        },
+        {
+          "seq": "149665",
+          "title": "의성군, 2027년 주요업무계획 보고회 개최",
+          "sourceUrl": "https://www.usc.go.kr/ko/page.do?srchVote=-1&srchBgpUid=-1&srchEnable=1&srchSDate=&srchKwd=&srchColumn=&listType=&srchEDate=&mnu_uid=190&bod_uid=149665&pageNo=1&cmd=258",
+          "publishedDate": "2026-09-29",
+          "bodyLength": 683,
+          "bodyStart": "의성군(군수 최유철)은 지난 9월 2일부터 9일까지 군청 영상 회의실에서 부군수와 실·국장, 부서장, 담당 팀장 등이 참석한 가운데 ‘2027년 주요 업무 계획 보고회’를 개최했다"
+        }
+      ]
+    },
+    {
+      "key": "cheongsong",
+      "count": 10,
+      "details": [
+        {
+          "seq": "379077",
+          "title": "260923보도자료(청송군, 교정시설 유치 위해 진보전통시장서 캠페인 펼쳐 외 2건)",
+          "sourceUrl": "https://www.cs.go.kr/news/00002679/00003478.web?gcode=1091&idx=379077&amode=view&",
+          "publishedDate": "2026-09-23",
+          "bodyLength": 2280,
+          "bodyStart": "청송군(군수 윤경희)은 지역소멸 위기에 대응하고 지역의 새로운 성장 기반을 마련하기 위해 23일 진보면 일원에서 「교정시설 조성부지 조성 공모」 유치를 위한 캠페인을 펼쳤다. 이번"
+        },
+        {
+          "seq": "379076",
+          "title": "260922보도자료(청송군, 추석명절 전통시장 장보기 행사 실시 외 3건)",
+          "sourceUrl": "https://www.cs.go.kr/news/00002679/00003478.web?gcode=1091&idx=379076&amode=view&",
+          "publishedDate": "2026-09-23",
+          "bodyLength": 2861,
+          "bodyStart": "청송군(군수 윤경희)은 추석 명절을 맞아 9월 19일부터 23일까지 지역경제 활성화와 전통시장 이용 촉진을 위한 ‘추석맞이 전통시장 장보기 행사’를 추진하고 있다. 이번 행사는 경"
+        },
+        {
+          "seq": "379075",
+          "title": "260921보도자료(청송군, 안전하고 편안한 추석명절 위해 총력 외 1건)",
+          "sourceUrl": "https://www.cs.go.kr/news/00002679/00003478.web?gcode=1091&idx=379075&amode=view&",
+          "publishedDate": "2026-09-23",
+          "bodyLength": 1937,
+          "bodyStart": "청송군(군수 윤경희)은 다가오는 추석 명절을 맞아 고향을 찾는 귀성객과 군민들이 안전하고 편안한 연휴를 보낼 수 있도록 ‘추석명절 종합대책’을 마련하고 본격적인 대응에 나선다. 군"
+        }
+      ]
+    },
+    {
+      "key": "yeongyang",
+      "count": 15,
+      "details": [
+        {
+          "seq": "168223",
+          "title": "영양군, 가을엔 역시 제1능이",
+          "sourceUrl": "https://www.yyg.go.kr/www/organization/yyg_news/explanation_data?idx=168223&mode=view",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 1032,
+          "bodyStart": "- 제5회 수비능이버섯축제, 자연의 맛부터 지역 농·임특산물까지 한자리에 -\n가을이면 영양군 수비면의 산과 들은 풍성한 먹거리로 채워진다. 그중에서도 깊은 산속에서 자라 특유의 향"
+        },
+        {
+          "seq": "168208",
+          "title": "영양군, 자작나무숲에서 만나는 가을의 맛",
+          "sourceUrl": "https://www.yyg.go.kr/www/organization/yyg_news/explanation_data?idx=168208&mode=view",
+          "publishedDate": "2026-10-01",
+          "bodyLength": 922,
+          "bodyStart": "- 제5회 수비능이버섯축제 10월 9일부터 이틀간 개최 -\n영양군은 오는 10월 9일부터 10일까지 이틀간 수비면 죽파리 자작나무숲 일대에서 「제5회 수비능이버섯축제」를 개최한다."
+        },
+        {
+          "seq": "167962",
+          "title": "「정원 그대로인데 과세소득 20% ‘껑충’... 영양군 노인복지관, 수상한 예산 집행 도마위」 보도 내용 중 사실과 다른 부분에 대해 알려드립니다",
+          "sourceUrl": "https://www.yyg.go.kr/www/organization/yyg_news/explanation_data?idx=167962&mode=view",
+          "publishedDate": "2026-09-14",
+          "bodyLength": 1689,
+          "bodyStart": "※ 사실관계 및 영양군의 입장을 다음과 같이 알려드립니다.\n< 보도 개요 > \n■ 보도 매체 : 영남경제신문(9월 6일자)\n■ 보도 제목 : 「정원 그대로인데 과세소득 20% ‘껑"
+        }
+      ]
+    },
+    {
+      "key": "yeongdeok",
+      "count": 9,
+      "details": [
+        {
+          "seq": "374163",
+          "title": "영덕군, 취약계층 위한 따뜻한 나눔 이어져",
+          "sourceUrl": "https://www.yd.go.kr/?page_id=8844&uid=374163&mod=document",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 785,
+          "bodyStart": "영덕군, 취약계층 위한 따뜻한 나눔 이어져\n- 영덕효요양병원·㈜조양 백미 1,750만 원 상당,\n오십천어린이집 성금 80만 원 기탁 -\n영덕군에 취약계층 지원을 위한 따뜻한 나눔이"
+        },
+        {
+          "seq": "374162",
+          "title": "㈜와이앤피산업, 영덕군 교육발전기금 2억 원 기탁",
+          "sourceUrl": "https://www.yd.go.kr/?page_id=8844&uid=374162&mod=document",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 359,
+          "bodyStart": "㈜와이앤피산업, 영덕군 교육발전기금 2억 원 기탁\n영덕군은 지역 석재 채취업체인 ㈜와이앤피산업(대표 최동연)이 지난 1일 지역 인재 육성과 교육환경 개선을 위해 영덕군 교육발전기금"
+        },
+        {
+          "seq": "374148",
+          "title": "영덕군 지사협 고용·자활분과, 일자리박람회 우수사례 벤치마킹",
+          "sourceUrl": "https://www.yd.go.kr/?page_id=8844&uid=374148&mod=document",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 762,
+          "bodyStart": "영덕군 지사협 고용·자활분과, 일자리박람회 우수사례 벤치마킹\n- 영주시 박람회 운영사례 살펴… 지역 일자리 활성화 방안 모색 -\n영덕군지역사회보장협의체 고용·자활분과는 10월 1일"
+        }
+      ]
+    },
+    {
+      "key": "cheongdo",
+      "count": 10,
+      "details": [
+        {
+          "seq": "319290",
+          "title": "- 올가을, 청도에서 반시의 달콤함과 웃음의 즐거움을 한꺼번에! - 2026청도반시축제 및 청도세계코미디아트페스티벌 개최",
+          "sourceUrl": "https://www.cheongdo.go.kr/portal/board/post/view.do?bcIdx=611&mid=0301070000&idx=319290",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 2096,
+          "bodyStart": "청도군(군수 박권현)은 오는 10월 16일(금)부터 18일(일)까지 3일간 청도야외공연장 일원에서 2026 청도반시축제와 2026 청도세계코미디아트페스티벌을 동시에 개최한다고 밝혔"
+        },
+        {
+          "seq": "319283",
+          "title": "청도읍 새마을3단체, ‘사랑의 집고치기’ 봉사활동 - 송읍리 취약계층 2가구 대상 주거환경 개선에 구슬땀 -",
+          "sourceUrl": "https://www.cheongdo.go.kr/portal/board/post/view.do?bcIdx=611&mid=0301070000&idx=319283",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 588,
+          "bodyStart": "청도군(군수 박권현) 청도읍 새마을3단체는 지난 2일 청도읍 송읍리일원 취약계층 2가구를 대상으로 ‘사랑의 집고치기’봉사활동을 펼쳤다.\n이날 봉사활동은 청도읍 새마을3단체 회원 2"
+        },
+        {
+          "seq": "319282",
+          "title": "운문면 군민체육대회 임원‧이사회의 개최 - 작지만 강한 운문면의 저력 -",
+          "sourceUrl": "https://www.cheongdo.go.kr/portal/board/post/view.do?bcIdx=611&mid=0301070000&idx=319282",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 362,
+          "bodyStart": "청도군(군수 박권현) 운문면 체육회는 지난 10월2일(금) 운문면사무소\n회의실에서 제75회 군민체육대회 준비를 위한 임원‧이사 회의를 개최하였다.\n오는 10월30일 열리는 제75회"
+        }
+      ]
+    },
+    {
+      "key": "goryeong",
+      "count": 9,
+      "details": [
+        {
+          "seq": "40643",
+          "title": "대가야박물관, 2026년 박물관·미술관 박람회서 대가야 역사문화 널리 알려",
+          "sourceUrl": "https://www.goryeong.go.kr/kor/boardView.do?IDX=157&BRD_ID=1062&BOARD_IDX=40643",
+          "publishedDate": "2026-09-23",
+          "bodyLength": 938,
+          "bodyStart": "대가야 역사·문화 체험과 홍보로 관람객 1,400여 명 발길\n대가야박물관은 지난 9월 18일부터 20일까지 3일간 대전 DCC컨벤션센터 제2전시장에서 열린 「2026년 박물관·미술"
+        },
+        {
+          "seq": "40642",
+          "title": "대가야읍 새마을회, 추석맞이 어르신 돼지불고기 나눔 행사",
+          "sourceUrl": "https://www.goryeong.go.kr/kor/boardView.do?IDX=157&BRD_ID=1062&BOARD_IDX=40642",
+          "publishedDate": "2026-09-23",
+          "bodyLength": 546,
+          "bodyStart": "대가야읍 새마을지도자협의회·새마을부녀회(협의회장 전환승·부녀회장 김명숙)는 9월 22일(화) 9시부터 회원 15여 명이 추석을 맞아 관내 어르신들을 위한 돼지불고기 나눔행사를 진행"
+        },
+        {
+          "seq": "40641",
+          "title": "한국농촌지도자 고령군연합회 추석맞이 대창양로원 봉사활동",
+          "sourceUrl": "https://www.goryeong.go.kr/kor/boardView.do?IDX=157&BRD_ID=1062&BOARD_IDX=40641",
+          "publishedDate": "2026-09-23",
+          "bodyLength": 432,
+          "bodyStart": "한국농촌지도자 고령군연합회(회장 김창기)는 추석명절을 맞이하여 9월 22일(화) 경상북도 고령군 쌍림면 매촌리에 위치한 사회복지법인 대창양로원을 방문하여 봉사활동을 하였다.\n이날 "
+        }
+      ]
+    },
+    {
+      "key": "seongju",
+      "count": 10,
+      "details": [
+        {
+          "seq": "623632",
+          "title": "성주군, 재미와 실속 다 잡은 2026년 청렴 교육 펼쳐",
+          "sourceUrl": "https://www.sj.go.kr/page.do?srchEnable=1&srchSDate=&srchKwd=&srchColumn=&srchEDate=&mnu_uid=3546&&srchBgpUid=&srchDept=&bod_uid=623632&pageNo=1&cmd=258",
+          "publishedDate": "2026-09-28",
+          "bodyLength": 648,
+          "bodyStart": "성주군(군수 전화식)이 17일 군청 대강당에서 「2026년 공무원 행동강령 및 반부패·청렴 교육」을 열고, 청렴을 향한 공직사회의 결연하면서도 유쾌한 체질 개선에 나섰다. 이번 교"
+        },
+        {
+          "seq": "623631",
+          "title": "장태훈 재구 벽진면 향우회장, 고향사랑 기부금 100만 원 기탁",
+          "sourceUrl": "https://www.sj.go.kr/page.do?srchEnable=1&srchSDate=&srchKwd=&srchColumn=&srchEDate=&mnu_uid=3546&&srchBgpUid=&srchDept=&bod_uid=623631&pageNo=1&cmd=258",
+          "publishedDate": "2026-09-28",
+          "bodyLength": 387,
+          "bodyStart": "□ 재구 벽진면 향우회 장태훈 회장은 8월 31일 고향사랑 기부제를 통해 성주군에 100만 원을 맡기며 고향에 대한 따뜻한 마음을 전했다. □ 장태훈 회장은 재구 벽진면 향우회장으"
+        },
+        {
+          "seq": "623630",
+          "title": "노인 일자리 ‘스마트 경로당 관리자’ 소양·직무 교육 실시",
+          "sourceUrl": "https://www.sj.go.kr/page.do?srchEnable=1&srchSDate=&srchKwd=&srchColumn=&srchEDate=&mnu_uid=3546&&srchBgpUid=&srchDept=&bod_uid=623630&pageNo=1&cmd=258",
+          "publishedDate": "2026-09-28",
+          "bodyLength": 630,
+          "bodyStart": "(사)대한노인회 성주군 지회(지회장 여상운)는 지난 8월 28일 관내 노인 일자리 스마트 경로당 관리자 180여 명을 대상으로 ‘2026년 노인 일자리 참여자 소양·직무교육’을 실"
+        }
+      ]
+    },
+    {
+      "key": "chilgok",
+      "count": 10,
+      "details": [
+        {
+          "seq": "203892",
+          "title": "“우린 여든 아닌 세 살”…수니와칠공주 3주년",
+          "sourceUrl": "https://www.chilgok.go.kr/portal/bbs/view.do?bIdx=203892&ptIdx=224&mId=0202010000",
+          "publishedDate": "2026-09-30",
+          "bodyLength": 1251,
+          "bodyStart": "인기 방송 출연에 저출생·교통안전 등 사회공헌 활동도\n해외 영화제 수상·온라인 플랫폼 공개…기내 상영도 추진\n한글을 배우다 랩을 시작해 국내 인기 방송을 넘어 해외 온라인 플랫폼까"
+        },
+        {
+          "seq": "203891",
+          "title": "가수 섭외부터 행사 진행까지…주민들이 만든 칠곡 록 축제‘화제’",
+          "sourceUrl": "https://www.chilgok.go.kr/portal/bbs/view.do?bIdx=203891&ptIdx=224&mId=0202010000",
+          "publishedDate": "2026-09-30",
+          "bodyLength": 1145,
+          "bodyStart": "지역 6개 단체가 기획·음향·홍보·안전 등 직접 맡아\n외부 지원 없이 비용까지 직접 부담…관람객 절반 이상 외지인\n경북 칠곡군에서 주민들이 가수 섭외부터 음향과 홍보, 행사 진행,"
+        },
+        {
+          "seq": "203890",
+          "title": "메밀꽃 핀 석적에 5천명 북적…승격 20주년 ‘웃음꽃’",
+          "sourceUrl": "https://www.chilgok.go.kr/portal/bbs/view.do?bIdx=203890&ptIdx=224&mId=0202010000",
+          "publishedDate": "2026-09-30",
+          "bodyLength": 1037,
+          "bodyStart": "1만3천여 읍민 화합의 장…공연·노래자랑·체험행사 어우러져\n하얀 메밀꽃이 흐드러지게 핀 경북 칠곡군 석적읍에 주민과 방문객 5천여 명이 몰려 가을 정취를 즐기며 읍 승격 20주년을"
+        }
+      ]
+    },
+    {
+      "key": "yecheon",
+      "count": 10,
+      "details": [
+        {
+          "seq": "187809",
+          "title": "예천군청 김제덕 선수, 아시안게임서 남자 단체전 ‘금빛 명중’",
+          "sourceUrl": "https://www.ycg.kr/open.content/ko/administrative/news/headline/?i=187809",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 835,
+          "bodyStart": "- 혼성 동메달 이어 남자 단체전 금메달… 아시안게임 남자 단체전 2연패 -\n- 개인전 아쉬움 딛고 대표팀 선수들과 호흡 맞춰 값진 결실 -\n예천군(군수 안병윤)은 군청 양궁팀 소"
+        },
+        {
+          "seq": "187807",
+          "title": "한국후계농업경영인 예천군연합회, 제34회 한마음가족체육대회 개최",
+          "sourceUrl": "https://www.ycg.kr/open.content/ko/administrative/news/headline/?i=187807",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 613,
+          "bodyStart": "- 농업경영인·가족 400여 명 한자리… 화합과 소통으로 결속 다져 -\n예천군(군수 안병윤)은 (사)한국후계농업경영인 예천군연합회(회장 양근호)가 10월 2일 한천체육공원에서 농업"
+        },
+        {
+          "seq": "187804",
+          "title": "예천군, 제23회 경북도지사기 전국 남녀 초·중 양궁대회 개최",
+          "sourceUrl": "https://www.ycg.kr/open.content/ko/administrative/news/headline/?i=187804",
+          "publishedDate": "2026-10-02",
+          "bodyLength": 660,
+          "bodyStart": "- 제2의 김제덕 꿈꾸는 전국 꿈나무 한자리에... 10월 1일부터 6일간 열전 -\n예천군(군수 안병윤)은 10월 1일부터 6일까지 예천진호국제양궁장에서 선수·지도자 및 관계자 8"
+        }
+      ]
+    },
+    {
+      "key": "bonghwa",
+      "count": 9,
+      "details": [
+        {
+          "seq": "203659",
+          "title": "2026년 9월 9일(주민복지과) 봉화군, ‘2026년 봉화 임란의병 추모제’ 거행",
+          "sourceUrl": "https://www.bonghwa.go.kr/portal/board/post/view.do?bcIdx=519&mid=0201090000&idx=203659",
+          "publishedDate": "2026-09-10",
+          "bodyLength": 1012,
+          "bodyStart": "봉화군은 9일 오전 11시 소천면 현동리에 위치한 임란의병 전적지 충렬사에서 ‘2026년 임란의병 추모제’를 엄수하고, \n나라를 위해 목숨을 바친 선열들의 고귀한 넋을 기렸다.\n이"
+        },
+        {
+          "seq": "203658",
+          "title": "9월 6일(미래전략과) 호치민경제대학교 대표단 봉화군 방문, K-베트남 밸리 협력방안 논의",
+          "sourceUrl": "https://www.bonghwa.go.kr/portal/board/post/view.do?bcIdx=519&mid=0201090000&idx=203658",
+          "publishedDate": "2026-09-10",
+          "bodyLength": 704,
+          "bodyStart": "봉화군은 9월 6일 호치민경제대학교(UEH) 대표단이 봉화군을 찾아 K-베트남 밸리 조성 사업 대상지를 둘러보고, 교류 사업 등 향후 협력 방안을 논의했다고 밝혔다.\n이날 방문에는"
+        },
+        {
+          "seq": "203657",
+          "title": "2026년 9월 6일(체육시설사업소) 2026 봉화송이 전국마라톤대회 성황리 종료",
+          "sourceUrl": "https://www.bonghwa.go.kr/portal/board/post/view.do?bcIdx=519&mid=0201090000&idx=203657",
+          "publishedDate": "2026-09-10",
+          "bodyLength": 686,
+          "bodyStart": "봉화군은 봉화공설운동장 일원에서 개최한 ‘2026 봉화송이 전국마라톤대회’가 참가자와 가족, 자원봉사자 등 \n3,000여 명이 함께한 가운데 성황리에 마무리됐다고 밝혔다.\n올해로 "
+        }
+      ]
+    },
+    {
+      "key": "ulleung",
+      "count": 10,
+      "details": [
+        {
+          "seq": "49709",
+          "title": "제57회 울릉군민체육대회 성황리 개최",
+          "sourceUrl": "https://www.ulleung.go.kr/ko/page.do?srchVote=-1&srchBgpuid=-1&srchEnable=1&srchSDate=&srchKwd=&srchColumn=&listType=&srchEDate=&mnu_uid=574&&bod_uid=49709&pageNo=1&cmd=258",
+          "publishedDate": "2026-10-01",
+          "bodyLength": 609,
+          "bodyStart": "제57회 울릉군민체육대회 성황리 개최\n울릉군은 제57회 울릉군민체육대회가 지난 9월 30일(수) 울릉공설운동장에서 울릉군체육회 주최·주관 및 관내 각종 기관단체 후원으로 성황리 개"
+        },
+        {
+          "seq": "49708",
+          "title": "울릉군, 오지마을 치매극복 인식개선 및 배회대처 모의훈...",
+          "sourceUrl": "https://www.ulleung.go.kr/ko/page.do?srchVote=-1&srchBgpuid=-1&srchEnable=1&srchSDate=&srchKwd=&srchColumn=&listType=&srchEDate=&mnu_uid=574&&bod_uid=49708&pageNo=1&cmd=258",
+          "publishedDate": "2026-10-01",
+          "bodyLength": 871,
+          "bodyStart": "울릉군, 오지마을 치매극복 인식개선 및 배회대처 모의훈련 개최\n- 치매 인식개선부터 배회대처까지…지역사회 치매 대응역량 높여 -\n울릉군은 의료·건강 서비스 접근이 어려운 오지마을 "
+        },
+        {
+          "seq": "49707",
+          "title": "‘SMILE for Ulleung ’친절 서약 선포식·...",
+          "sourceUrl": "https://www.ulleung.go.kr/ko/page.do?srchVote=-1&srchBgpuid=-1&srchEnable=1&srchSDate=&srchKwd=&srchColumn=&listType=&srchEDate=&mnu_uid=574&&bod_uid=49707&pageNo=1&cmd=258",
+          "publishedDate": "2026-10-01",
+          "bodyLength": 1016,
+          "bodyStart": "‘SMILE for Ulleung ’친절 서약 선포식·캠페인 개최\n민·관 한마음으로 공정·투명·친절한 울릉군 재도약 선언 -\n울릉군 (군수 남한권) 은 민·관이 한마음으로 앞장서는"
+        }
+      ]
+    },
+    {
+      "key": "uljin",
+      "count": 10,
+      "details": [
+        {
+          "seq": "759851",
+          "title": "2026-2027절기 코로나19 국가예방접종 안내",
+          "sourceUrl": "https://www.uljin.go.kr/board/view.uljin?boardId=BBS_NOTICE_UJ&menuCd=DOM_000000103002001000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1&dataSid=759851",
+          "publishedDate": "2026-10-01",
+          "bodyLength": 0
+        },
+        {
+          "seq": "759297",
+          "title": "평해읍어울림센터(실내 어린이놀이시설) 주말 운영 확대 안내",
+          "sourceUrl": "https://www.uljin.go.kr/board/view.uljin?boardId=BBS_NOTICE_UJ&menuCd=DOM_000000103002001000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1&dataSid=759297",
+          "publishedDate": "2026-09-30",
+          "bodyLength": 0
+        },
+        {
+          "seq": "758762",
+          "title": "2026년 사랑의 그린 PC 보급사업 신청 접수 안내",
+          "sourceUrl": "https://www.uljin.go.kr/board/view.uljin?boardId=BBS_NOTICE_UJ&menuCd=DOM_000000103002001000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1&dataSid=758762",
+          "publishedDate": "2026-09-29",
+          "bodyLength": 795,
+          "bodyStart": "울진군에서는 행정업무용으로 사용하던 중고 PC를 최상의 상태로 정비하여 군내의 기초생활수급자, 차상위 계층, 한부모가정, 사회복지시설 등에 무상으로 보급하는 사랑의 그린PC 보급사"
+        }
+      ]
+    }
+  ]
+}

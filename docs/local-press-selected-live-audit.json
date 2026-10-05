@@ -1,0 +1,426 @@
+[
+  {
+    "key": "gangwon",
+    "result": {
+      "city": "강원특별자치도",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-gangwon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "chungbuk",
+    "result": {
+      "city": "충청북도",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-chungbuk",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "daejeon",
+    "result": {
+      "city": "대전광역시",
+      "fetched": 5,
+      "inserted": 4,
+      "skipped": 1,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-daejeon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "마스터즈 시리즈 8 ‘쇼스타코비치 교향곡 제7번 닌그라드’",
+        "source_url": "https://www.daejeon.go.kr/drh/board/boardNormalView.do?boardId=normal_0189&menuSeq=6825&searchCondition=&searchKeyword=&pageIndex=1&recordCountPerPage=10&ntatcSeq=1523933062",
+        "length": 380
+      },
+      {
+        "title": "‘다름에서 아우름으로’문화를 이해하는 시선",
+        "source_url": "https://www.daejeon.go.kr/drh/board/boardNormalView.do?boardId=normal_0189&menuSeq=6825&searchCondition=&searchKeyword=&pageIndex=1&recordCountPerPage=10&ntatcSeq=1523903429",
+        "length": 281
+      },
+      {
+        "title": "연구와 산업을 잇는‘2026 대전바이오교류회’",
+        "source_url": "https://www.daejeon.go.kr/drh/board/boardNormalView.do?boardId=normal_0189&menuSeq=6825&searchCondition=&searchKeyword=&pageIndex=1&recordCountPerPage=10&ntatcSeq=1523902227",
+        "length": 352
+      },
+      {
+        "title": "아이와 부모가 소통하는‘북스타트’",
+        "source_url": "https://www.daejeon.go.kr/drh/board/boardNormalView.do?boardId=normal_0189&menuSeq=6825&searchCondition=&searchKeyword=&pageIndex=1&recordCountPerPage=10&ntatcSeq=1523859068",
+        "length": 304
+      }
+    ]
+  },
+  {
+    "key": "seoul",
+    "result": {
+      "city": "서울특별시",
+      "fetched": 5,
+      "inserted": 4,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seoul",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "[괴산서울농장] 수확행-표고편 (261024)",
+        "source_url": "https://news.seoul.go.kr/gov/archives/581257",
+        "length": 1491
+      },
+      {
+        "title": "[괴산서울농장] '농며들다(애호박편)-2' 프로그램 (10.9) 추첨결과 안내",
+        "source_url": "https://news.seoul.go.kr/gov/archives/581234",
+        "length": 554
+      },
+      {
+        "title": "[영월서울농장] '파란 가을하늘 보면서 고구마 캐기' 프로그램 (10.9) 추첨결과 안내",
+        "source_url": "https://news.seoul.go.kr/gov/archives/581243",
+        "length": 569
+      },
+      {
+        "title": "2026 서울영상공모전  개최",
+        "source_url": "https://news.seoul.go.kr/gov/archives/581225",
+        "length": 439
+      }
+    ]
+  },
+  {
+    "key": "andong",
+    "result": {
+      "city": "경북 안동시",
+      "fetched": 5,
+      "inserted": 2,
+      "skipped": 3,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-andong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "9월 30일 보도자료",
+        "source_url": "https://www.andong.go.kr/portal/bbs/view.do?bIdx=781485&ptIdx=104&mId=0403010000",
+        "length": 359
+      },
+      {
+        "title": "9월 29일 보도자료",
+        "source_url": "https://www.andong.go.kr/portal/bbs/view.do?bIdx=781484&ptIdx=104&mId=0403010000",
+        "length": 439
+      }
+    ]
+  },
+  {
+    "key": "busan",
+    "result": {
+      "city": "부산광역시",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-busan",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "namgu_gwangju",
+    "result": {
+      "city": "광주 남구",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-namgu-gwangju",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "inje",
+    "result": {
+      "city": "인제군",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-inje",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "hoengseong",
+    "result": {
+      "city": "횡성군",
+      "fetched": 5,
+      "inserted": 1,
+      "skipped": 4,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hoengseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "횡성군정보도자료（2026. 10. 1.）",
+        "source_url": "https://www.hsg.go.kr/www/selectBbsNttView.do?key=827&bbsNo=67&nttNo=425135&pageUnit=10&searchCnd=all",
+        "length": 7811
+      }
+    ]
+  },
+  {
+    "key": "yeoju",
+    "result": {
+      "city": "여주시",
+      "fetched": 5,
+      "inserted": 5,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-yeoju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "(배포)여흥동, 청소년이 안심할 수 있는 지역 만들기 나서",
+        "source_url": "https://www.yeoju.go.kr/www/selectEminwonNewsView.do?pageUnit=10&pageIndex=1&searchCnd=all&key=422&news_epct_no=37087&ofr_pageSize=10",
+        "length": 786
+      },
+      {
+        "title": "(배포)가을꽃이 수놓은 여주 대신섬",
+        "source_url": "https://www.yeoju.go.kr/www/selectEminwonNewsView.do?pageUnit=10&pageIndex=1&searchCnd=all&key=422&news_epct_no=37085&ofr_pageSize=10",
+        "length": 780
+      },
+      {
+        "title": "(배포)여주시, 겨울철 자연 재난 대비 사전 점검",
+        "source_url": "https://www.yeoju.go.kr/www/selectEminwonNewsView.do?pageUnit=10&pageIndex=1&searchCnd=all&key=422&news_epct_no=37073&ofr_pageSize=10",
+        "length": 907
+      },
+      {
+        "title": "(배포)세종대왕면 부녀회, 축제 수익금 이웃과 나눠",
+        "source_url": "https://www.yeoju.go.kr/www/selectEminwonNewsView.do?pageUnit=10&pageIndex=1&searchCnd=all&key=422&news_epct_no=36944&ofr_pageSize=10",
+        "length": 781
+      },
+      {
+        "title": "(배포)여주시, 청소년 자살 예방 위한 지역 안전망 강화",
+        "source_url": "https://www.yeoju.go.kr/www/selectEminwonNewsView.do?pageUnit=10&pageIndex=1&searchCnd=all&key=422&news_epct_no=36838&ofr_pageSize=10",
+        "length": 1012
+      }
+    ]
+  },
+  {
+    "key": "jeongseon",
+    "result": {
+      "city": "정선군",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-09-11",
+      "sourceCode": "local-press-jeongseon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "anseong",
+    "result": {
+      "city": "안성시",
+      "fetched": 5,
+      "inserted": 5,
+      "skipped": 0,
+      "latestFetched": "2026-09-23",
+      "sourceCode": "local-press-anseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "안성시보건소, 생애주기별 맞춤형 비만예방 프로그램 운영",
+        "source_url": "https://www.anseong.go.kr/portal/saeol/newsView.do?newsEpctNo=21574&mId=0502010100",
+        "length": 701
+      },
+      {
+        "title": "안성종합사회복지관, 추석맞이 1인 가구에 명절 음식 나눔",
+        "source_url": "https://www.anseong.go.kr/portal/saeol/newsView.do?newsEpctNo=21555&mId=0502010100",
+        "length": 635
+      },
+      {
+        "title": "안성시, 추석맞이 전통시장 장보기 행사 개최",
+        "source_url": "https://www.anseong.go.kr/portal/saeol/newsView.do?newsEpctNo=21532&mId=0502010100",
+        "length": 749
+      },
+      {
+        "title": "안성시, 2027년 재해예방사업 2개 지구 선정…689억원 규모",
+        "source_url": "https://www.anseong.go.kr/portal/saeol/newsView.do?newsEpctNo=21539&mId=0502010100",
+        "length": 649
+      },
+      {
+        "title": "안성시, 인플루엔자・코로나19 무료 예방접종 실시",
+        "source_url": "https://www.anseong.go.kr/portal/saeol/newsView.do?newsEpctNo=21481&mId=0502010100",
+        "length": 923
+      }
+    ]
+  },
+  {
+    "key": "jangseong",
+    "result": {
+      "city": "전남 장성군",
+      "fetched": 5,
+      "inserted": 4,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jangseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "장성군 노인일자리 참여 어르신, 편백숲에서 ‘힐링’",
+        "source_url": "https://www.jangseong.go.kr/home/www/news/jangseong/bodo/show/86099?page=1&search=&keyword=",
+        "length": 550
+      },
+      {
+        "title": "장성군 “피터팬은 무얼 먹고 달라졌을까?”",
+        "source_url": "https://www.jangseong.go.kr/home/www/news/jangseong/bodo/show/86098?page=1&search=&keyword=",
+        "length": 494
+      },
+      {
+        "title": "장성군, 대통령기 전국 시도대항 조정대회서 ‘금빛 레이스’",
+        "source_url": "https://www.jangseong.go.kr/home/www/news/jangseong/bodo/show/86079?page=1&search=&keyword=",
+        "length": 862
+      },
+      {
+        "title": "장성군 “연극 ‘7시에 만나’ 보러 오세요”",
+        "source_url": "https://www.jangseong.go.kr/home/www/news/jangseong/bodo/show/86078?page=1&search=&keyword=",
+        "length": 697
+      }
+    ]
+  },
+  {
+    "key": "mapo",
+    "result": {
+      "city": "마포구",
+      "fetched": 5,
+      "inserted": 4,
+      "skipped": 1,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-mapo",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "아기 만날 설렘 한가득… 마포구 ‘임산부의 날’ 함께해요",
+        "source_url": "https://www.mapo.go.kr/site/main/board/press/278331",
+        "length": 1500
+      },
+      {
+        "title": "‘마포구 보안관’ 하하부터 프라우드먼까지… 마포구 민선9기 첫 홍보대사 출범",
+        "source_url": "https://www.mapo.go.kr/site/main/board/press/278319",
+        "length": 1772
+      },
+      {
+        "title": "마포중앙도서관 책, 이제 가까운 동문고에서 빌린다",
+        "source_url": "https://www.mapo.go.kr/site/main/board/press/278318",
+        "length": 1364
+      },
+      {
+        "title": "“버스정류장 불편했는데”… 주민 목소리 듣고 생활의 변화 만든 마포구",
+        "source_url": "https://www.mapo.go.kr/site/main/board/press/278317",
+        "length": 1571
+      }
+    ]
+  },
+  {
+    "key": "donggu_gwangju",
+    "result": {
+      "city": "광주 동구",
+      "fetched": 5,
+      "inserted": 4,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-donggu-gwangju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026년 하반기 광견병 예방접종 실시 안내(10.16.~10.30.)",
+        "source_url": "https://www.donggu.kr/board.es?mid=a10402010000&bid=0001&act=view&list_no=49939",
+        "length": 722
+      },
+      {
+        "title": "[ 2026년 10월 충장동 구청장이 찾아가는 '바로바로 현장민원실' 운영 안..",
+        "source_url": "https://www.donggu.kr/board.es?mid=a10402010000&bid=0001&act=view&list_no=49937",
+        "length": 384
+      },
+      {
+        "title": "승강기 자체점검 결과 입력기간 산정기준 변경 사전 안내",
+        "source_url": "https://www.donggu.kr/board.es?mid=a10402010000&bid=0001&act=view&list_no=49918",
+        "length": 551
+      },
+      {
+        "title": "치매예방 어플 「인지케어」 가을맞이 10,000점 챌린지",
+        "source_url": "https://www.donggu.kr/board.es?mid=a10402010000&bid=0001&act=view&list_no=49916",
+        "length": 415
+      }
+    ]
+  },
+  {
+    "key": "junggu_ulsan",
+    "result": {
+      "city": "울산 중구",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-junggu-ulsan",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "saha",
+    "result": {
+      "city": "부산 사하구",
+      "fetched": 5,
+      "inserted": 0,
+      "skipped": 5,
+      "latestFetched": "2026-09-18",
+      "sourceCode": "local-press-saha",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "samcheok",
+    "result": {
+      "city": "강원 삼척시",
+      "fetched": 5,
+      "inserted": 3,
+      "skipped": 2,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-samcheok",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026. 10. 1. 보도자료",
+        "source_url": "https://www.samcheok.go.kr/media/00084/00094.web?gcode=1006&amode=view&idx=143643",
+        "length": 252
+      },
+      {
+        "title": "2026. 9. 30. 보도자료",
+        "source_url": "https://www.samcheok.go.kr/media/00084/00094.web?gcode=1006&amode=view&idx=143584",
+        "length": 293
+      },
+      {
+        "title": "2026. 9. 29. 보도자료",
+        "source_url": "https://www.samcheok.go.kr/media/00084/00094.web?gcode=1006&amode=view&idx=143575",
+        "length": 316
+      }
+    ]
+  }
+]

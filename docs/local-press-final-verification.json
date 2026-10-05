@@ -1,0 +1,87 @@
+{
+  "commitBeforeChange": "ed78da33a17f096ddcd99506539f3949fb6980d9",
+  "checkedAt": "2026-10-05T17:04:02.909Z",
+  "results": {
+    "baseline-tests": {
+      "summary": [
+        "× keeps payload safety validation ahead of forced direct DOM diagnostics 7ms",
+        "× uses a Chrome UA fallback for Geumjeong attachment fetches 6ms",
+        "× downgrades publish payload to draft on review warning 11ms",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯",
+        "FAIL  __tests__/playwright-local-press-health-regressions.test.ts > Playwright local-press collector health regressions > uses a Chrome UA fallback for Geumjeong attachment fetches",
+        "FAIL  __tests__/chrome-extension/content-publish-selectors.test.ts > Naver content publish selectors > keeps payload safety validation ahead of forced direct DOM diagnostics",
+        "FAIL  __tests__/lib/publishing/humanize-gate.test.ts > applyHumanizeGateToPayload > downgrades publish payload to draft on review warning",
+        "Test Files  3 failed (3)",
+        "Tests  3 failed | 21 passed (24)",
+        "Start at  01:52:38",
+        "Duration  1.16s (transform 154ms, setup 0ms, import 210ms, tests 34ms, environment 2.56s)"
+      ],
+      "emptyOutput": false
+    },
+    "browser-final-tests": {
+      "summary": [
+        "Test Files  3 passed (3)",
+        "Tests  16 passed (16)",
+        "Start at  02:01:31",
+        "Duration  3.59s (transform 2.42s, setup 0ms, import 3.04s, tests 76ms, environment 2.55s)"
+      ],
+      "emptyOutput": false,
+      "exitCode": 0
+    },
+    "final-auth": {
+      "summary": [
+        "API route auth audit passed:",
+        "- admin routes: 16 route file(s)",
+        "- cron routes: 62 route file(s)",
+        "- agent mutating routes: 2 route file(s)",
+        "- internal routes: 1 route file(s)"
+      ],
+      "emptyOutput": false,
+      "exitCode": 0
+    },
+    "final-build": {
+      "summary": [
+        "✓ Compiled successfully in 31.8s",
+        "Finished TypeScript in 27.8s ..."
+      ],
+      "emptyOutput": false,
+      "exitCode": 0
+    },
+    "final-lint": {
+      "summary": [],
+      "emptyOutput": true,
+      "exitCode": 0
+    },
+    "final-tests": {
+      "summary": [
+        "× uses a Chrome UA fallback for Geumjeong attachment fetches 9ms",
+        "× downgrades publish payload to draft on review warning 36ms",
+        "× keeps payload safety validation ahead of forced direct DOM diagnostics 9ms",
+        "⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯",
+        "FAIL  __tests__/playwright-local-press-health-regressions.test.ts > Playwright local-press collector health regressions > uses a Chrome UA fallback for Geumjeong attachment fetches",
+        "FAIL  __tests__/chrome-extension/content-publish-selectors.test.ts > Naver content publish selectors > keeps payload safety validation ahead of forced direct DOM diagnostics",
+        "FAIL  __tests__/lib/publishing/humanize-gate.test.ts > applyHumanizeGateToPayload > downgrades publish payload to draft on review warning",
+        "Test Files  3 failed | 511 passed | 4 skipped (518)",
+        "Tests  3 failed | 3212 passed | 17 skipped (3232)",
+        "Start at  01:55:20",
+        "Duration  119.39s (transform 63.44s, setup 0ms, import 113.76s, tests 25.26s, environment 1366.38s)"
+      ],
+      "emptyOutput": false
+    },
+    "final-types": {
+      "summary": [],
+      "emptyOutput": true,
+      "exitCode": 0
+    },
+    "target-tests": {
+      "summary": [
+        "Test Files  74 passed (74)",
+        "Tests  561 passed (561)",
+        "Start at  01:58:36",
+        "Duration  13.58s (transform 22.17s, setup 0ms, import 29.70s, tests 4.93s, environment 132.06s)"
+      ],
+      "emptyOutput": false,
+      "exitCode": 0
+    }
+  }
+}

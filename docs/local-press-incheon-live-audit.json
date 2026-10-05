@@ -1,0 +1,57 @@
+[
+  {
+    "key": "jemulpo_incheon",
+    "result": {
+      "city": "제물포구",
+      "fetched": 3,
+      "inserted": 0,
+      "skipped": 3,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jemulpo-incheon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "geomdan_incheon",
+    "result": {
+      "city": "검단구",
+      "fetched": 3,
+      "inserted": 0,
+      "skipped": 3,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-geomdan-incheon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "seo_incheon",
+    "result": {
+      "city": "인천 서해구",
+      "fetched": 3,
+      "inserted": 3,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seo-incheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "연희동, 학교와 함께하는 금연캠페인 ‘NO담’ 전개",
+        "url": "https://www.seohae.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=19474&bcd=report",
+        "length": 728
+      },
+      {
+        "title": "서해구, 공동주택 종이팩 별도 분리배출제 선제 시행...2027년부터 의무화",
+        "url": "https://www.seohae.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=19473&bcd=report",
+        "length": 835
+      },
+      {
+        "title": "서해구 출범 축하 ‘전국노래자랑’ 31일 열려···예심 참가자 선착순 모집",
+        "url": "https://www.seohae.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=19472&bcd=report",
+        "length": 755
+      }
+    ]
+  }
+]

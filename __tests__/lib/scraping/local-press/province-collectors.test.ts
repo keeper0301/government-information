@@ -197,8 +197,11 @@ describe("province local press collectors", () => {
   it("chungnam maps nttId, title, row-scoped date, and body", () => {
     const items = parseChungnamList(`
       <span>2026-01-01</span>
-      <a href="/cnportal/cnapcPressList/cnapcPress/view.do?nttId=4001&menuNo=500498" class="tit">충남 정책 발표</a>
-      <span>2026-05-20</span>
+      <!-- 실제 충남 목록처럼 글과 날짜를 같은 표의 행에 둡니다. -->
+      <table><tbody><tr>
+        <td><a href="/cnportal/cnapcPressList/cnapcPress/view.do?nttId=4001&menuNo=500498" class="tit" title="충남 정책 발표">충남 정책 발표</a></td>
+        <td>2026-05-20</td>
+      </tr></tbody></table>
     `);
     expect(items[0]).toMatchObject({
       seq: "4001",

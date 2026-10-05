@@ -6,6 +6,8 @@
 //   - 본문: detail page 컨테이너
 // ============================================================
 
+import { load } from "cheerio";
+
 import {
   createPressCollector,
   decodeBasicEntities,
@@ -16,11 +18,6 @@ const BASE_URL = "https://www.chungnam.go.kr";
 const LIST_URL =
   "https://www.chungnam.go.kr/cnportal/cnapcPressList/cnapcPress/list.do?menuNo=500498";
 
-const LIST_ITEM_REGEX =
-  /<a\s+href="\/cnportal\/cnapcPressList\/cnapcPress\/view\.do\?nttId=(\d+)[^"]*"\s+class="tit">([^<]+)<\/a>/g;
-
-const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
-
 // 2026-05-22 fix — site 가 board-view + content_body 새 class 사용.
 // 기존 bbs_view 등 매칭 0. 새 class + legacy fallback.
 const BODY_CONTAINER_REGEX =
@@ -29,35 +26,29 @@ const BODY_CONTAINER_REGEX_LEGACY =
   /<(?:div|td)\s+(?:class|id)="(?:bbs_view|content|board_view|view_content|tbl_view)"[^>]*>([\s\S]*?)<\/(?:div|td)>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
-  // 2026-05-20 subagent review hot-fix — 각 link 매치 위치 +800 char slice 안에서만
-  // date 추출. 옛 코드의 dates[] 전체 array 매칭은 footer/script date 까지 잡혀
-  // items[i] ↔ dates[i] 어긋날 위험.
+  const $ = load(html);
   const items: PressNewsItem[] = [];
   const seen = new Set<string>();
-
-  let m: RegExpExecArray | null;
-  const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
-  while ((m = itemRe.exec(html)) !== null) {
-    const seq = m[1];
-    if (seen.has(seq)) continue;
+  $("a.tit[href*=\"cnapcPress/view.do\"]").each((_, element) => {
+    const link = $(element);
+    const href = link.attr("href") ?? "";
+    const seq = /[?&]nttId=(\d+)/.exec(href)?.[1];
+    const title = link.text().replace(/\s+/g, " ").trim();
+    if (!seq || seen.has(seq) || title.length < 5) return;
+    // 글이 속한 표의 행에서만 날짜를 읽습니다. 속성 순서와 제목 속성 추가에 영향받지 않습니다.
+    const date = /(20\d{2}-\d{2}-\d{2})/.exec(link.closest("tr").text())?.[1] ?? null;
     seen.add(seq);
-    const title = decodeBasicEntities(m[2]).trim();
-    if (!title || title.length < 5) continue;
-    const slice = html.slice(m.index, m.index + 800);
-    const dateMatch = new RegExp(DATE_REGEX.source).exec(slice);
-    const publishedDate = dateMatch ? dateMatch[1] : null;
-    items.push({
-      seq,
-      title,
-      publishedDate,
-      sourceUrl: `${BASE_URL}/cnportal/cnapcPressList/cnapcPress/view.do?nttId=${seq}&menuNo=500498`,
-    });
-  }
-
+    items.push({ seq, title, publishedDate: date, sourceUrl: new URL(href, BASE_URL).href });
+  });
   return items;
 }
 
 export function parseDetailBody(html: string): string | null {
+  const $ = load(html);
+  const modern = $(".board-view .board-view-li").last().find(".board-view-inner").clone();
+  modern.find("script, style").remove();
+  const modernText = modern.text().replace(/\s+/g, " ").trim();
+  if (modernText.length >= 250 && /[가-힣]/.test(modernText)) return modernText.slice(0, 20000);
   const m = BODY_CONTAINER_REGEX.exec(html) ?? BODY_CONTAINER_REGEX_LEGACY.exec(html);
   if (!m) return null;
   const text = decodeBasicEntities(m[1])

@@ -19,7 +19,7 @@
 
 import { scrapeJungnang, scrapeGangbuk, scrapeUijeongbu } from "./lib/cities.mjs";
 
-// PC 전용 도시 — _playwright-city-registry.PC_ONLY_CITIES 와 키 동기화.
+// 개인 컴퓨터 예비 수집 경로 — 세 곳의 정기 수집은 공용 등록부에서도 실행한다.
 const PC_COLLECTORS = [
   { city: "중랑구", key: "jungnang", fn: scrapeJungnang },
   { city: "강북구", key: "gangbuk", fn: scrapeGangbuk },

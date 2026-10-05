@@ -12,6 +12,7 @@
 // - list onclick: javascript:searchDetail('NNNN') → news_epct_no 식별자
 // ============================================================
 
+import { load } from "cheerio";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { makeNewsSourceId, makeNewsSlug } from "@/lib/news/slug-helpers";
 import { latestPublishedDate, type ScrapeResult } from "./_factory";
@@ -97,64 +98,38 @@ export function parseEminwonListItems(
   html: string,
   silentSkips?: string[],
 ): EminwonListItem[] {
+  const $ = load(/<table\b/i.test(html) ? html : `<table>${html}</table>`);
   const items: EminwonListItem[] = [];
-  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let trMatch: RegExpExecArray | null;
-  while ((trMatch = trRe.exec(html)) !== null) {
-    const tr = trMatch[1];
-    const idM = tr.match(/searchDetail\('(\d+)'\)/);
-    if (!idM) continue;
-    const newsEpctNo = idM[1];
-    const cells = [...tr.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)]
-      .map((m) => cleanEminwonText(m[1]))
-      .filter(Boolean);
-    const text = cells.length >= 3
-      ? cells
-      : tr
-          .replace(/<[^>]+>/g, "\n")
-          .replace(/&nbsp;/g, " ")
-          .replace(/&amp;/g, "&")
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean);
-    if (text.length < 3) continue;
-    // 일반 순서: [번호, 제목, 부서, 등록일, 조회수]
-    let title = cells.length >= 4 ? cells[1] : "";
-    let department: string | null = cells.length >= 4 ? cells[2] : null;
-    let publishedDate: string | null = null;
-    for (const t of text) {
-      if (
-        !title &&
-        /[가-힣]/.test(t) &&
-        t.length >= 5 &&
-        !/^\d{4}-\d{2}-\d{2}$/.test(t)
-      ) {
-        title = t;
-        continue;
-      }
-      if (!publishedDate) {
-        const dm = t.match(/(\d{4})-(\d{2})-(\d{2})/);
-        if (dm) {
-          publishedDate = `${dm[1]}-${dm[2]}-${dm[3]}`;
-          continue;
-        }
-      }
-      if (
-        !department &&
-        /[가-힣]/.test(t) &&
-        t !== title &&
-        t.length >= 2 &&
-        t.length <= 30
-      ) {
-        department = t;
-      }
+  const seen = new Set<string>();
+  $("tr").each((_, element) => {
+    const row = $(element);
+    // 중첩 표의 바깥 행을 제외하고 실제 게시글의 칸만 읽습니다.
+    const cells = row.children("td, th");
+    if (cells.find("table").length) return;
+    const id = row.html()?.match(/searchDetail\s*\(\s*['"](\d+)['"]\s*\)/)?.[1];
+    if (!id || seen.has(id)) return;
+    // 행번호가 th로 바뀌어도 제목 링크 자체를 기준으로 읽습니다.
+    let titleCell = cells.filter('.subject, .td_left, .ellipsis, .DATA_TITLE, .skinTb-sbj').first();
+    if (!titleCell.length) {
+      const candidate = row.find('a[onclick*="searchDetail"], a[href*="searchDetail"]').filter((_, link) => /[가-힣]/.test($(link).text()) && $(link).text().trim().length >= 5).first();
+      if (candidate.length) titleCell = cells.filter((_, cell) => cell === candidate.closest("td, th")[0]);
     }
-    if (!title || !/[가-힣]/.test(title) || title.length < 5) {
-      silentSkips?.push(newsEpctNo);
-      continue;
+    if (!titleCell.length) titleCell = cells.eq(1);
+    const titleLink = titleCell.find("a").first();
+    const title = (titleLink.length ? titleLink : titleCell).text().replace(/\s+/g, " ").trim();
+    if (!/[가-힣]/.test(title) || title.length < 5) {
+      silentSkips?.push(id);
+      return;
     }
-    items.push({ newsEpctNo, title, department, publishedDate });
-  }
+    const titleIndex = cells.toArray().indexOf(titleCell[0]);
+    const departmentText = cells.eq(titleIndex + 1).text().replace(/\s+/g, " ").trim();
+    const department = /[가-힣]/.test(departmentText) ? departmentText : null;
+    const dateText = cells.toArray().map(cell => $(cell).text().trim())
+      .find(text => /^\d{4}[-.]\d{2}[-.]\d{2}\.?$/.test(text));
+    const publishedDate = dateText?.replace(/\./g, "-").replace(/-$/, "") ?? null;
+    seen.add(id);
+    items.push({ newsEpctNo: id, title, department, publishedDate });
+  });
   return items;
 }
 
@@ -195,6 +170,15 @@ export function parseEminwonDetailBody(html: string): string | null {
   const el = longest(/<(div|textarea|pre)[^>]*>([\s\S]*?)<\/\1>/gi);
   // 본문 cut 20000 — _factory.ts createPressCollector 와 동일 정책.
   return el.length >= 250 ? el.slice(0, 20000) : null;
+}
+
+// 제목과 날짜가 있는 정상 상세 화면의 빈 본문은 저장하지 않고 건너뜁니다.
+export function isEminwonEmptyArticle(html: string): boolean {
+  const $ = load(html);
+  const cells = $('td.DATA_CONTENT, td[style*="word-break"], td.cont, td.tleft');
+  if (!cells.length) return false;
+  const hasDate = /\d{4}[-.]\d{2}[-.]\d{2}/.test($("td, th, h2, h3").text());
+  return hasDate && cells.toArray().every(cell => $(cell).text().trim().length < 250);
 }
 
 // config → eminwon collector. .scrapeAndInsert 가 cron 표준 시그니처.
@@ -263,7 +247,8 @@ export function createEminwonScraper(cfg: EminwonConfig) {
           );
           const body = parseEminwonDetailBody(detailHtml);
           if (!body) {
-            errors.push(`detail ${it.newsEpctNo} 본문 추출 실패`);
+            if (isEminwonEmptyArticle(detailHtml)) skipped += 1;
+            else errors.push(`detail ${it.newsEpctNo} 본문 추출 실패`);
             continue;
           }
           const sourceUrl = `${cfg.actionUrl}?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=${it.newsEpctNo}`;

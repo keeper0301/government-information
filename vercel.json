@@ -122,7 +122,12 @@
 
     { "path": "/api/cron/press-ingest", "schedule": "30 1,6,10 * * *" },
 
-    { "path": "/api/cron/scrape-local-press", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=0", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=1", "schedule": "15 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=2", "schedule": "30 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=3", "schedule": "45 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=4", "schedule": "0 1 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=5", "schedule": "15 1 * * *" },
 
     { "path": "/api/cron/weekly-scrape-monitor", "schedule": "30 0 * * 1" },
 
