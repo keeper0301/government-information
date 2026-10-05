@@ -125,6 +125,9 @@ describe("AdSense approval guardrails", () => {
   });
 
   it("keeps the regional policy map visible during AdSense review mode", () => {
+    const editorialHome = read("components/home-editorial-shell.tsx");
+    expect(editorialHome).toContain("ADSENSE_REVIEW_MODE &&");
+    expect(editorialHome).toContain("<RegionMap />");
     const home = read("app/page.tsx");
     expect(home).toContain("{ADSENSE_REVIEW_MODE && <ReviewModeHomeBody />}");
     expect(home).toContain("<HomeDiscoveryHub");

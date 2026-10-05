@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { RegionMap } from "@/components/region-map";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { HomeTargetCards } from "@/components/home-target-cards";
 import { getGuides } from "@/lib/policy-guides";
 
@@ -25,6 +28,8 @@ export async function HomeEditorialShell() {
         </div>
       </div>
     </section>
+    {/* 지도 자료를 기다리는 동안에도 신청 가이드는 먼저 보여줍니다. */}
+    {ADSENSE_REVIEW_MODE && <Suspense fallback={<p className="max-w-content mx-auto px-6 py-10" role="status">지역 지도를 불러오는 중입니다.</p>}><RegionMap /></Suspense>}
     <section className="max-w-content mx-auto px-6 lg:px-10 py-12" aria-labelledby="first-guides">
       <h2 id="first-guides" className="text-2xl font-bold mb-6">무엇부터 확인할까요?</h2>
       {guides.length === 0 && <p className="mb-6 leading-relaxed text-grey-700">신청 가이드는 공식 출처 대조와 운영자 검수를 거친 뒤 안내합니다. 지금은 대상별 확인 순서와 공식 기관의 공고를 먼저 확인하세요.</p>}

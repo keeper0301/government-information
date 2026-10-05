@@ -7,6 +7,7 @@ import { HomeEditorialShell } from "@/components/home-editorial-shell";
 
 const state = vi.hoisted(() => ({ published: false }));
 vi.mock("@/lib/supabase/env", () => ({ hasSupabaseAnonEnv: () => false }));
+vi.mock("@/components/region-map", () => ({ RegionMap: () => <section aria-label="지역 지도">서울 · 부산 · 제주</section> }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("페이지 없음"); } }));
 vi.mock("@/lib/guide-publication", async importOriginal => {
   const original = await importOriginal<typeof import("@/lib/guide-publication")>();
@@ -17,6 +18,14 @@ const guide = EDITORIAL_GUIDES.find(item => item.slug === "documents-before-gove
 const props = { params: Promise.resolve({ slug: guide.slug }) };
 
 describe("공개 화면의 검수 경계", () => {
+  it("심사 준비 홈에서도 지역 지도를 보여주고 신청 가이드를 유지한다", async () => {
+    state.published = true;
+    const html = renderToStaticMarkup(await HomeEditorialShell());
+    expect(html).toContain('aria-label="지역 지도"');
+    expect(html).toContain("서울 · 부산 · 제주");
+    expect(html).toContain(`/guides/${guide.slug}`);
+    expect(html).not.toContain("adsbygoogle");
+  });
   it("검수 대기 상세를 검색 제외하고 본문과 기사 정보를 공개하지 않는다", async () => {
     state.published = false;
     expect((await generateMetadata(props)).robots).toEqual({ index: false, follow: true });
