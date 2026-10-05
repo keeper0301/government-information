@@ -1,6 +1,8 @@
 import { EXTRA_PILOT_POSTS } from "@/lib/pilot-guide-posts-extra";
+import { NEXT_GUIDE_POSTS } from "@/lib/next-approved-guide-posts";
 export const PILOT_GUIDE_POSTS: Record<string, string[]> = {
   ...EXTRA_PILOT_POSTS,
+  ...NEXT_GUIDE_POSTS,
   "documents-before-government-benefit": [
     "서류부터 발급하지 말고 신청할 사업의 제출 목록부터 확인하세요. 서류명, 발급일 제한, 주민등록번호 표시 범위, 파일 형식을 한 줄씩 적어 두면 다시 발급하는 일을 줄일 수 있습니다. 이것은 keepioo의 준비 방법 제안이며 모든 사업의 필수 서류 목록은 아닙니다.",
     "등본과 초본은 이름이 비슷해도 공고가 요구하는 문서와 표시 항목이 다를 수 있습니다. 등본을 요구하는지 초본을 요구하는지, 주소 변동 이력이 필요한지 신청처에 확인하세요. 정부24의 주민등록표 등본(초본) 발급 안내는 민원 발급 절차를 설명할 뿐, 지원금 자격을 판단하지 않습니다.",

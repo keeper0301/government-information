@@ -93,7 +93,6 @@ describe("guide-quality-audit", () => {
   it("keeps the previously flagged editorial guides covered for duplicate-limit risk", () => {
     const previouslyFlagged = new Set([
       "bokjiro-vs-gov24-difference",
-      "deadline-policy-not-missing",
       "documents-before-government-benefit",
       "parents-benefit-check-guide",
     ]);
@@ -104,6 +103,15 @@ describe("guide-quality-audit", () => {
     }).filter((result) => result.missing.includes("duplicate_limits"));
 
     expect(failures.map((result) => ({ slug: result.path.split("/").pop(), missing: result.missing }))).toEqual([]);
+  });
+
+  it("마감 안내는 날짜·서류·공식 안내를 점검하고 중복 수급 설명을 강제로 붙이지 않는다", () => {
+    const guide = EDITORIAL_GUIDES.find(item => item.slug === "deadline-policy-not-missing")!;
+    const html = `<article><h1>${guide.title}</h1>${guide.posts.map(post => `<p>${post}</p>`).join("")}</article>`;
+    const result = analyzeGuideHtml(html, `https://www.keepioo.com/guides/${guide.slug}`, { minTextLength: 500 });
+    for (const key of ["official_source", "before_apply", "documents", "deadline"]) {
+      expect(result.checks.find(check => check.key === key)?.ok).toBe(true);
+    }
   });
 
   it("keeps at least 30 editorial guides and adds depth supplements for review pages", () => {

@@ -2,6 +2,7 @@ import type { PolicyGuide } from "@/lib/policy-guides";
 import { createHash } from "node:crypto";
 import type { ContentStatus } from "@/lib/content-quality";
 import { EXTRA_GUIDE_EVIDENCE } from "@/lib/guide-evidence-extra";
+import { NEXT_GUIDE_EVIDENCE } from "@/lib/next-approved-guide-evidence";
 
 export interface GuideEvidence {
   /** Pinned at evidence review time; never regenerated automatically from current content. */
@@ -21,6 +22,7 @@ const gov = { agency: "행정안전부 · 정부24", title: "주민등록표 등
 const semas = { agency: "소상공인시장진흥공단", title: "2026년 정책자금 한눈에 보기", url: "https://ols.semas.or.kr/ols/man/SMAN018M/page.do", scope: "2026년 중앙 정책자금 개요. 개별 회차의 세부 공지는 별도 확인해야 합니다.", checkedAt: "2026-10-03" };
 export const GUIDE_EVIDENCE: Record<string, GuideEvidence> = {
   ...EXTRA_GUIDE_EVIDENCE,
+  ...NEXT_GUIDE_EVIDENCE,
   "documents-before-government-benefit": {
     verifiedBodySha256: "1bd027cd6b68bf832d5c3858c3bba1cb05c5de0dd3f344fbfa07bf3b79029cef",
     question: "지원금 신청 서류는 무엇부터 준비해야 하나요?", answer: "신청할 사업의 제출 목록을 먼저 펼치고, 요구하는 서류명·발급일·표시 항목을 정리하세요. 정부24에서 발급할 수 있다는 사실과 그 사업에서 해당 서류를 받는다는 사실은 다릅니다.",

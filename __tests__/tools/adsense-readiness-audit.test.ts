@@ -21,4 +21,10 @@ describe("재심사 준비 점검", () => {
     expect(result.ready).toBe(false);
     expect(result.issues).toContain("검색 제외 또는 검색 설정 미확인");
   });
+  it("정부24 새 주소를 공식 출처로 인정하되 유사 주소는 거부한다", () => {
+    const prefix = '<meta name="robots" content="index, follow"><main data-editorial-reviewer="운영자" data-editorial-reviewed-at="2026-10-05T08:00:00Z"><article><div data-guide-body="true">안내</div>';
+    const suffix = '</article></main>';
+    expect(analyzeReadinessHtml(prefix + '<a href="https://plus.gov.kr/portal/benefitV2/">혜택알리미</a>' + suffix).ready).toBe(true);
+    expect(analyzeReadinessHtml(prefix + '<a href="https://plus.gov.kr.example.com/portal/benefitV2/">유사 주소</a>' + suffix).officialSourceCount).toBe(0);
+  });
 });

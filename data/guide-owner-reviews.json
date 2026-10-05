@@ -33,5 +33,26 @@
     "reviewedAt": "2026-10-05T04:43:06Z",
     "decision": "approved",
     "originalValueConfirmed": true
+  },
+  "bokjiro-vs-gov24-difference": {
+    "snapshotSha256": "06ddd938e3029b325370f5f4cc09292dfe0909dd75472285c79a1cfc305e653a",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T08:45:10Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
+  },
+  "policy-application-call-script": {
+    "snapshotSha256": "3ab721b761db9f0bc0ed5352d7dc26461c45630f419f5385d7c628a17421bc41",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T08:45:10Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
+  },
+  "deadline-policy-not-missing": {
+    "snapshotSha256": "85086df4c8089f37f12e3bd0e1496baa1a996bd41dac688b51482738d4d3c396",
+    "reviewer": "키피오 운영자",
+    "reviewedAt": "2026-10-05T08:45:10Z",
+    "decision": "approved",
+    "originalValueConfirmed": true
   }
 }

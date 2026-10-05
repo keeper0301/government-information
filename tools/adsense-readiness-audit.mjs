@@ -11,7 +11,7 @@ export function analyzeReadinessHtml(html, now = new Date()) {
   const sourceLinks = article.find("a[href]").toArray().filter(element => {
     try {
       const url = new URL(document(element).attr("href"));
-      return url.protocol === "https:" && (url.hostname.endsWith(".go.kr") || url.hostname === "www.gov.kr" || url.hostname === "ols.semas.or.kr")
+      return url.protocol === "https:" && (url.hostname.endsWith(".go.kr") || url.hostname.endsWith(".gov.kr") || url.hostname === "gov.kr" || url.hostname === "ols.semas.or.kr")
         && url.pathname !== "/";
     } catch { return false; }
   });

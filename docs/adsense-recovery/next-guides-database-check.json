@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-10-05T08:50:56.406Z",
+  "method": "기존 공개 조회 설정으로 읽기만 수행",
+  "results": [
+    {
+      "slug": "bokjiro-vs-gov24-difference",
+      "databaseRows": 0
+    },
+    {
+      "slug": "policy-application-call-script",
+      "databaseRows": 0
+    },
+    {
+      "slug": "deadline-policy-not-missing",
+      "databaseRows": 0
+    }
+  ],
+  "note": "데이터베이스 자료나 설정을 변경하지 않았습니다."
+}

@@ -1,0 +1,118 @@
+{
+  "checkedAt": "2026-10-05T08:54:56.722Z",
+  "environment": "공개 자료 조회 설정을 사용한 로컬 배포용 서버",
+  "pages": [
+    {
+      "slug": "documents-before-government-benefit",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 1,
+      "title": "정부지원금 신청 전 준비 서류 체크리스트",
+      "tables": 0,
+      "quote": 0,
+      "bodyVisible": true,
+      "adEligible": "false"
+    },
+    {
+      "slug": "small-business-policy-fund-mistakes",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 2,
+      "title": "소상공인 정책자금 신청에서 자주 막히는 이유",
+      "tables": 0,
+      "quote": 0,
+      "bodyVisible": true,
+      "adEligible": "false"
+    },
+    {
+      "slug": "youth-rent-checklist-2026",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 4,
+      "title": "2026 청년 월세 지원 신청 전 체크리스트",
+      "tables": 0,
+      "quote": 0,
+      "bodyVisible": true,
+      "adEligible": "false"
+    },
+    {
+      "slug": "geunjang-earned-income-tax-credit-check",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 1,
+      "title": "근로장려금 신청 전 소득·가구 기준 점검",
+      "tables": 0,
+      "quote": 0,
+      "bodyVisible": true,
+      "adEligible": "false"
+    },
+    {
+      "slug": "policy-duplicate-benefit-limits",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 1,
+      "title": "중복 수급 제한을 확인하는 방법",
+      "tables": 0,
+      "quote": 0,
+      "bodyVisible": true,
+      "adEligible": "false"
+    },
+    {
+      "slug": "bokjiro-vs-gov24-difference",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 3,
+      "title": "정부24 혜택알리미와 복지로, 어디서 먼저 찾을까요?",
+      "tables": 1,
+      "quote": 0,
+      "bodyVisible": true,
+      "adEligible": "false"
+    },
+    {
+      "slug": "policy-application-call-script",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 4,
+      "title": "지원사업 문의 전화 전, 어떤 질문을 준비할까요?",
+      "tables": 1,
+      "quote": 1,
+      "bodyVisible": true,
+      "adEligible": "false"
+    },
+    {
+      "slug": "deadline-policy-not-missing",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 3,
+      "title": "지원사업 마감일, 날짜 말고 무엇을 확인할까요?",
+      "tables": 1,
+      "quote": 0,
+      "bodyVisible": true,
+      "adEligible": "false"
+    }
+  ],
+  "sitemapGuides": [
+    "youth-rent-checklist-2026",
+    "small-business-policy-fund-mistakes",
+    "documents-before-government-benefit",
+    "bokjiro-vs-gov24-difference",
+    "deadline-policy-not-missing",
+    "policy-duplicate-benefit-limits",
+    "policy-application-call-script",
+    "geunjang-earned-income-tax-credit-check"
+  ],
+  "pending": {
+    "status": 200,
+    "robots": "noindex, follow",
+    "bodyVisible": false
+  },
+  "ready": true
+}
