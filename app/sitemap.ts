@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { getPublishedNews } from "@/lib/editorial-news";
 import { cleanDescription } from "@/lib/utils";
 
 // 2026-05-21 SC 색인 1,958 페이지 미생성 진단 후속:
@@ -125,10 +126,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 심사자는 sitemap 을 따라 얇은 정책/뉴스/검색성 페이지를 샘플링하므로,
   // 직접 작성형 가이드와 핵심 허브만 제출한다.
   if (ADSENSE_REVIEW_MODE) {
+    const publishedNews = getPublishedNews();
     return [
       ...staticPages,
       ...hubPages,
       ...guidePages,
+      ...publishedNews.map(article => ({ url: `${baseUrl}/news/${article.slug}`, lastModified: article.updatedAt, changeFrequency: "monthly" as const, priority: 0.6 })),
+      ...(publishedNews.length >= 3 ? [{ url: `${baseUrl}/news`, changeFrequency: "weekly" as const, priority: 0.7 }] : []),
     ];
   }
 

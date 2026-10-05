@@ -51,6 +51,7 @@ next-env.d.ts
 data/*
 # 공개 콘텐츠의 승인 기록만 코드와 함께 관리하고 나머지 운영 자료는 제외합니다.
 !data/guide-owner-reviews.json
+!data/news-owner-reviews.json
 scripts/
 .playwright-mcp/
 *.png

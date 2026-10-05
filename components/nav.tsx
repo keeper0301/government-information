@@ -81,6 +81,8 @@ const mobileExtraItems = ADSENSE_REVIEW_MODE ? [
 ] as const;
 
 type NavProps = {
+  // 실제 공개 판정을 통과한 뉴스가 있을 때만 메뉴를 복원합니다.
+  hasPublishedNews?: boolean;
   // 어드민 메뉴 노출 여부 (UI 용 — 실권한은 /admin 서버 가드)
   isAdmin?: boolean;
   // 로그인 여부 (NotificationBell 노출 판정)
@@ -93,7 +95,11 @@ export function Nav({
   isAdmin: isAdminProp = false,
   loggedIn: loggedInProp = false,
   alarmCount: alarmCountProp = 0,
+  hasPublishedNews = false,
 }: NavProps) {
+  const visibleItems = ADSENSE_REVIEW_MODE && hasPublishedNews
+    ? [...items.slice(0, 2), { label: "정책뉴스", href: "/news", priority: "core" } as const, ...items.slice(2)]
+    : items;
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -153,7 +159,7 @@ export function Nav({
             폴드7 메인(~884) · 태블릿 가로(1024) · 태블릿 세로(768) 모두 desktop nav 활성.
             라벨 padding 은 md(좁음) px-2 → lg px-3 → xl px-4 단계적 확대. */}
         <div className="hidden md:flex items-center gap-0.5 lg:gap-1">
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const active = isActive(item.href);
             // extra 항목은 lg(1024)+ 에서만 보임. md~lg 사이는 hidden.
             const visibilityClass =
@@ -273,7 +279,7 @@ export function Nav({
               <span aria-hidden="true">🛠</span> 어드민 대시보드
             </a>
           )}
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <MobileMenuItem
               key={item.href}
               item={item}
@@ -321,7 +327,7 @@ export function Nav({
 // 하위 4개 탭을 들여쓰기로 함께 렌더한다 (탭 전환을 위해 굳이 /policy
 // 진입할 필요 없게).
 // ============================================================
-type MenuItem = (typeof items)[number];
+type MenuItem = (typeof items)[number] | { readonly label: "정책뉴스"; readonly href: "/news"; readonly priority: "core" };
 
 function MobileMenuItem({
   item,

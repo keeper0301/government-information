@@ -30,6 +30,9 @@ import { HiddenNewsNotice } from "./HiddenNewsNotice";
 import { AdminRestoreBanner } from "./AdminRestoreBanner";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { safeNewsThumbnailUrl } from "@/lib/news-thumbnail";
+import { getPublishedNewsBySlug } from "@/lib/editorial-news";
+import { EDITORIAL_NEWS } from "@/lib/editorial-news-data";
+import { EditorialNewsDetail, UnreviewedNewsNotice } from "@/components/news/editorial-news-pages";
 
 export const revalidate = 3600; // 상세는 갱신 적어 1시간 ISR
 
@@ -52,6 +55,16 @@ function safeDecodeSlug(raw: string): string | null {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
+  const editorial = slug ? getPublishedNewsBySlug(slug) : undefined;
+  if (editorial) return {
+    title: `${editorial.title} | 키피오`, description: editorial.answer,
+    alternates: { canonical: `/news/${editorial.slug}` },
+    robots: { index: true, follow: true },
+    openGraph: { title: editorial.title, description: editorial.answer, type: "article" },
+  };
+  if (ADSENSE_REVIEW_MODE) return {
+    title: "정책뉴스 검수 중 | 키피오", robots: { index: false, follow: true },
+  };
   if (!slug) {
     return {
       title: "정책 소식 — 정책알리미",
@@ -140,6 +153,16 @@ export default async function NewsDetailPage({ params }: Props) {
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
   if (!slug) notFound();
+  const editorial = getPublishedNewsBySlug(slug);
+  if (editorial) return <EditorialNewsDetail article={editorial} />;
+  // 초안 본문은 숨기고, 기존 기사는 주소 존재 여부만 확인합니다.
+  if (ADSENSE_REVIEW_MODE) {
+    if (EDITORIAL_NEWS.some(article => article.slug === slug)) return <UnreviewedNewsNotice />;
+    const { data: existing } = await createAdminClient().from("news_posts")
+      .select("slug,category").eq("slug", slug).maybeSingle();
+    if (!existing || existing.category === "press") notFound();
+    return <UnreviewedNewsNotice />;
+  }
 
   // 현재 로그인 사용자 (admin 여부 판별용 — hidden 페이지 분기·우상단 숨김 버튼)
   const supabaseAuth = await createClient();
