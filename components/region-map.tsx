@@ -96,9 +96,9 @@ export async function RegionMap() {
         <div className="grid grid-cols-2 gap-3 mt-3 max-md:gap-2">
           <RegionCell name="제주" count={counts["제주"] ?? 0} max={max} />
           <RegionCellFrame
-            href={ADSENSE_REVIEW_MODE ? undefined : "/welfare?region=전국"}
+            href="/welfare?region=전국"
             region="전국"
-            className="block rounded-xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 max-md:py-3 px-4 text-center no-underline group"
+            className="flex flex-col items-center justify-center rounded-xl bg-grey-50 hover:bg-grey-100 transition-colors py-4 max-md:py-3 px-4 text-center no-underline group"
           >
             <div className="text-[11px] font-medium text-grey-600 mb-0.5">전국 대상</div>
             <div className="text-[18px] max-md:text-[16px] font-extrabold tabular-nums text-grey-900">
@@ -136,10 +136,10 @@ function RegionCell({
   const labelLines = regionCellLabel(name);
   return (
     <RegionCellFrame
-      href={ADSENSE_REVIEW_MODE ? undefined : `/welfare?region=${encodeURIComponent(name)}`}
+      href={`/welfare?region=${encodeURIComponent(name)}`}
       region={name}
       title={`${name} — 지원 정보 ${count.toLocaleString()}건`}
-      className={`block rounded-xl px-2 py-3 max-md:px-1 max-md:py-2 text-center no-underline transition-all hover:scale-[1.04] hover:shadow-md ${cls}`}
+      className={`flex flex-col items-center justify-center rounded-xl px-2 py-3 max-md:px-1 max-md:py-2 text-center no-underline transition-all motion-safe:hover:scale-[1.04] hover:shadow-md ${cls}`}
     >
       <div className="text-[12px] max-md:text-[10px] font-bold tracking-[-0.01em] mb-0.5 leading-tight min-h-[1.2em]">
         {labelLines.map((line) => (
@@ -162,26 +162,21 @@ function RegionCellFrame({
   className,
   children,
 }: {
-  href?: string;
+  href: string;
   region: string;
   title?: string;
   className: string;
   children: React.ReactNode;
 }) {
-  if (!href) {
-    return (
-      <div title={title} className={className.replace("hover:scale-[1.04] hover:shadow-md", "")}>
-        {children}
-      </div>
-    );
-  }
+  // 누르는 반응과 키보드 선택 표시를 모든 지역 버튼에 동일하게 적용합니다.
   return (
     <TrackedLink
       href={href}
       event={EVENTS.HOME_REGION_CARD_CLICKED}
       params={{ region }}
       title={title}
-      className={className}
+      aria-label={`${region} 정책정보 보기`}
+      className={`${className} motion-safe:active:scale-[0.96] active:brightness-90 active:shadow-inner focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transition-none`}
     >
       {children}
     </TrackedLink>

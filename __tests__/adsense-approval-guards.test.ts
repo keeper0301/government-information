@@ -135,7 +135,7 @@ describe("AdSense approval guardrails", () => {
     expect(home).not.toContain("ADSENSE_REVIEW_MODE ? (\n        <ReviewModeHomeBody />");
 
     const regionMap = read("components/region-map.tsx");
-    expect(regionMap).toContain("ADSENSE_REVIEW_MODE ? undefined");
+    expect(regionMap).not.toContain("ADSENSE_REVIEW_MODE ? undefined");
     expect(regionMap).toContain("대표 지역 현황");
   });
 
