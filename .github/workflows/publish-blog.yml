@@ -51,6 +51,8 @@ jobs:
           success_count=0
           failure_count=0
           skipped_count=0
+          wordpress_failure_count=0
+          wordpress_success_count=0
           base_url="https://www.keepioo.com/api/publish-blog?count=1"
 
           publish_one() {
@@ -88,6 +90,21 @@ jobs:
                 if [ "$json_success" -gt 0 ]; then
                   success_count=$((success_count + json_success))
                   echo "### ${index}번째 글: 성공 ${json_success}건 (${label})" >> "$GITHUB_STEP_SUMMARY"
+                  # keepioo 글 생성 성공과 WordPress 실제 발행은 별개다. 여기서
+                  # 재호출하면 keepioo 글이 중복 생성되므로 결과만 집계해 끝에서 실패 처리한다.
+                  wp_status=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("results") or [{}])[0].get("wordpress",{}).get("status","unknown"))' "$response_file" 2>/dev/null || echo unknown)
+                  wp_reason=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("results") or [{}])[0].get("wordpress",{}).get("reason","unknown"))' "$response_file" 2>/dev/null || echo unknown)
+                  case "$wp_status" in
+                    published)
+                      wordpress_success_count=$((wordpress_success_count + 1))
+                      echo "WordPress: 발행 확인" >> "$GITHUB_STEP_SUMMARY" ;;
+                    not_attempted)
+                      echo "WordPress: 품질 게이트로 발행 보류" >> "$GITHUB_STEP_SUMMARY" ;;
+                    *)
+                      wordpress_failure_count=$((wordpress_failure_count + 1))
+                      echo "::error::${index}번째 글 WordPress 발행 실패: ${wp_status} (${wp_reason})"
+                      echo "WordPress: 실패 ${wp_status} (${wp_reason})" >> "$GITHUB_STEP_SUMMARY" ;;
+                  esac
                   return 0
                 fi
                 if [ "$json_skipped" -gt 0 ]; then
@@ -120,6 +137,7 @@ jobs:
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "성공: ${success_count}건 / 스킵: ${skipped_count}건 / 실패: ${failure_count}건" >> "$GITHUB_STEP_SUMMARY"
+          echo "WordPress 발행: ${wordpress_success_count}건 / 실패: ${wordpress_failure_count}건" >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$success_count" -eq 0 ]; then
             echo "::error::블로그 실제 발행이 0건입니다. 스킵 ${skipped_count}건 / 실패 ${failure_count}건 — 후보 소진 또는 발행 파이프라인 점검 필요."
@@ -128,6 +146,11 @@ jobs:
 
           if [ "$failure_count" -gt 0 ]; then
             echo "::warning::일부 글 발행 실패: 성공 ${success_count}건, 스킵 ${skipped_count}건, 실패 ${failure_count}건"
+          fi
+
+          if [ "$wordpress_failure_count" -gt 0 ]; then
+            echo "::error::WordPress 발행 ${wordpress_failure_count}건 실패. keepioo 글은 이미 생성되었으므로 이 workflow를 재실행하지 말고 인증 복구 후 기존 글만 재발행하세요."
+            exit 1
           fi
 
           echo "== 블로그 발행 완료: 성공 ${success_count}건 / 스킵 ${skipped_count}건 / 실패 ${failure_count}건 =="

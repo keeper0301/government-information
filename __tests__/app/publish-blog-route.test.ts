@@ -169,4 +169,33 @@ describe("publish-blog cron route", () => {
       }),
     );
   });
+
+  it("keepioo 성공 뒤 WordPress 401 실패를 별도 결과로 노출한다", async () => {
+    mocks.publishOnePost.mockResolvedValueOnce({
+      dryRun: false,
+      slug: "test-policy",
+      generated: { title: "테스트 정책", category: "청년" },
+      qualityReview: { score: 4, needsReview: false },
+      externalPublishHeld: false,
+      wordpress: { status: "failed", reason: "api_error" },
+    });
+
+    const response = await GET(
+      request("https://www.keepioo.com/api/publish-blog?count=1&offset=0"),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200); // 이미 생성된 글을 재시도하지 않게 한다
+    expect(body).toMatchObject({
+      success: 1,
+      results: [{ ok: true, wordpress: { status: "failed", reason: "api_error" } }],
+    });
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          results: [expect.objectContaining({ wordpress: { status: "failed", reason: "api_error" } })],
+        }),
+      }),
+    );
+  });
 });
