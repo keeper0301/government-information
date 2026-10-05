@@ -42,8 +42,9 @@ async function loadData() {
   const since24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
   const since7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
   const since30d = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const staleClaimBefore = new Date(now - 15 * 60 * 1000).toISOString();
 
-  const [pub24, pub7, pub30, fail24, held24, recentPub, recentFail, recentHeld] = await Promise.all([
+  const [pub24, pub7, pub30, fail24, held24, staleClaims, recentPub, recentFail, recentHeld, recentStale] = await Promise.all([
     admin
       .from("wordpress_publish_log")
       .select("id", { count: "exact", head: true })
@@ -72,6 +73,11 @@ async function loadData() {
       .gte("updated_at", since24h),
     admin
       .from("wordpress_publish_log")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .lt("updated_at", staleClaimBefore),
+    admin
+      .from("wordpress_publish_log")
       .select(
         "id, wp_post_id, wp_post_url, published_at, blog_post:blog_posts!inner(slug, title)",
       )
@@ -93,6 +99,13 @@ async function loadData() {
       .not("wp_post_id", "is", null)
       .order("updated_at", { ascending: false })
       .limit(10),
+    admin
+      .from("wordpress_publish_log")
+      .select("id, updated_at, blog_post:blog_posts!inner(slug, title)")
+      .eq("status", "pending")
+      .lt("updated_at", staleClaimBefore)
+      .order("updated_at", { ascending: true })
+      .limit(10),
   ]);
 
   return {
@@ -102,6 +115,7 @@ async function loadData() {
       published30d: pub30.count ?? 0,
       failed24h: fail24.count ?? 0,
       held24h: held24.count ?? 0,
+      staleClaims: staleClaims.count ?? 0,
     },
     recentPublished: (recentPub.data ?? []) as unknown as Array<{
       id: string;
@@ -120,6 +134,11 @@ async function loadData() {
       id: string;
       wp_post_id: number;
       error_message: string | null;
+      updated_at: string;
+      blog_post: { slug: string; title: string };
+    }>,
+    recentStale: (recentStale.data ?? []) as unknown as Array<{
+      id: string;
       updated_at: string;
       blog_post: { slug: string; title: string };
     }>,
@@ -179,7 +198,7 @@ export default async function AdminWordPressPage() {
       {hasCredentials && <RepublishButton />}
 
       {/* 공개 발행과 WP 초안은 별도로 집계 */}
-      <section className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+      <section className="mb-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <StatCard label="24h 발행" value={data.stats.published24h} tone="ok" />
         <StatCard label="7d 발행" value={data.stats.published7d} tone="ok" />
         <StatCard label="30d 발행" value={data.stats.published30d} tone="ok" />
@@ -193,7 +212,24 @@ export default async function AdminWordPressPage() {
           value={data.stats.held24h}
           tone={data.stats.held24h > 0 ? "warn" : "info"}
         />
+        <StatCard
+          label="15분+ 선점 지연"
+          value={data.stats.staleClaims}
+          tone={data.stats.staleClaims > 0 ? "warn" : "info"}
+        />
       </section>
+
+      {data.recentStale.length > 0 && (
+        <section className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <h2 className="font-semibold mb-2">⚠️ WordPress 발행 선점 지연 ({data.stats.staleClaims}건)</h2>
+          <p className="mb-2">작업이 중단됐을 수 있습니다. 중복 게시 방지를 위해 자동 재발행하지 않습니다. WordPress 실제 게시 여부를 먼저 대조하세요.</p>
+          <ul className="list-disc pl-5 space-y-1">
+            {data.recentStale.map((row) => (
+              <li key={row.id}>{row.blog_post.title} · {formatDate(row.updated_at)}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {data.recentHeld.length > 0 && (
         <section className="mb-6">

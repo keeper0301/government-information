@@ -809,6 +809,7 @@ async function publishWithCandidate(
     status: "published" | "failed" | "held_for_review" | "not_attempted";
     reason?: string;
     url?: string;
+    wpPostId?: number;
   } = { status: "not_attempted" };
   if (inserted?.id && qualityApproved) {
     try {
@@ -829,7 +830,7 @@ async function publishWithCandidate(
         category: generated.category || category,
       });
       wordpress = result.ok
-        ? { status: "published", url: result.wpPostUrl }
+        ? { status: "published", url: result.wpPostUrl, wpPostId: result.wpPostId }
         : result.reason === "held_for_review"
           ? { status: "held_for_review", url: result.wpPostUrl }
           : { status: "failed", reason: result.reason };

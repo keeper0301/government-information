@@ -37,9 +37,13 @@ jobs:
     # 1회 재시도하고, 7개 중 1개 이상 성공하면 workflow 는 성공으로 본다.
 
     steps:
+      - name: 공개 발행 검증 코드 체크아웃
+        uses: actions/checkout@v6
+
       - name: 7개 카테고리 글 발행
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          WP_PUBLIC_ORIGIN: https://info.keeper0301.com
         run: |
           set -euo pipefail
 
@@ -97,8 +101,17 @@ jobs:
                   wp_reason=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("results") or [{}])[0].get("wordpress",{}).get("reason","unknown"))' "$response_file" 2>/dev/null || echo unknown)
                   case "$wp_status" in
                     published)
-                      wordpress_success_count=$((wordpress_success_count + 1))
-                      echo "WordPress: 발행 확인" >> "$GITHUB_STEP_SUMMARY" ;;
+                      # POST 응답만으로 공개 글을 단정하지 않는다. WordPress의
+                      # 비인증 REST GET으로 ID/status/link를 최대 2회 읽는다.
+                      # 실패해도 POST를 다시 호출하지 않는다 (중복 발행 방지).
+                      if python3 scripts/verify_wordpress_public.py "$response_file"; then
+                        wordpress_success_count=$((wordpress_success_count + 1))
+                        echo "WordPress: 공개 REST 읽기 검증" >> "$GITHUB_STEP_SUMMARY"
+                      else
+                        wordpress_failure_count=$((wordpress_failure_count + 1))
+                        echo "::error::${index}번째 글 WordPress 응답은 발행이지만 공개 REST 검증 실패. 기존 글 ID를 대조하고, 전체 워크플로를 재실행하지 마세요."
+                        echo "WordPress: 공개 REST 미검증" >> "$GITHUB_STEP_SUMMARY"
+                      fi ;;
                     not_attempted|held_for_review)
                       wordpress_held_count=$((wordpress_held_count + 1))
                       echo "WordPress: 공개 발행 보류 (${wp_status})" >> "$GITHUB_STEP_SUMMARY" ;;
