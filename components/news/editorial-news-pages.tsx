@@ -3,31 +3,42 @@ import { getPublishedNews, getPublishedNewsReview } from "@/lib/editorial-news";
 import type { EditorialNews } from "@/lib/editorial-news-data";
 import { getGuides } from "@/lib/policy-guides";
 import { safeJsonLd } from "@/lib/json-ld-safe";
+import { NewsCard } from "@/components/news-card";
+import { EditorialNewsFilters } from "@/components/news/editorial-news-filters";
+import { filterEditorialNews, normalizeNewsFilters, type NewsFilters } from "@/lib/editorial-news-filters";
 
-export function EditorialNewsCards() {
-  return <div className="grid gap-5 md:grid-cols-2">{getPublishedNews().map(article =>
-    <article key={article.slug} className="rounded-2xl border border-grey-200 bg-white p-6">
-      <p className="text-sm text-grey-600 mb-3">공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt}</p>
-      <h2 className="text-xl font-bold mb-3"><Link href={`/news/${article.slug}`} className="no-underline hover:text-blue-600">{article.title}</Link></h2>
-      <p className="text-grey-700 leading-relaxed">{article.answer}</p>
-      <p className="text-sm text-grey-600 mt-4">대상: {article.audience}</p>
+export function EditorialNewsCards({ articles = getPublishedNews() }: { articles?: EditorialNews[] } = {}) {
+  return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{articles.map(article =>
+    <article key={article.slug}>
+      <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
+        category: "news", ministry: "키피오 편집", source_outlet: null, thumbnail_url: null,
+        published_at: getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
+      <p className="text-sm text-grey-600 mt-3 leading-relaxed">공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt}</p>
     </article>
   )}</div>;
 }
 
-export function EditorialNewsIndex() {
+export function EditorialNewsIndex({ filters = {} }: { filters?: NewsFilters } = {}) {
   const articles = getPublishedNews();
-  return <main className="max-w-content mx-auto px-6 pt-28 pb-16">
+  const selected = normalizeNewsFilters(filters);
+  const filtered = filterEditorialNews(articles, selected);
+  return <main className="min-h-screen bg-grey-50 pt-28 pb-16"><div className="max-w-content mx-auto px-6 lg:px-10">
     <p className="text-sm text-blue-600 mb-3">키피오 · 정책 변화와 확인할 행동</p>
     <h1 className="text-3xl font-extrabold mb-5">정책뉴스</h1>
     <p className="max-w-3xl text-grey-700 leading-relaxed mb-8">공식 발표에서 무엇이 바뀌었는지, 누구에게 해당하는지, 무엇을 확인해야 하는지 정리합니다. 출처 대조와 운영자 검수를 거친 글만 공개합니다.</p>
-    {articles.length ? <EditorialNewsCards /> : <section className="rounded-2xl bg-blue-50 p-6">
+    <EditorialNewsFilters articles={articles} filters={selected} />
+    {articles.length > 0 && <p role="status" className="text-sm text-grey-600 mb-5">검색 결과 {filtered.length}건 · 공개된 검수 뉴스 {articles.length}건</p>}
+    {filtered.length ? <EditorialNewsCards articles={filtered} /> : articles.length ? <section className="rounded-2xl bg-white p-6 border border-grey-200">
+      <h2 className="text-xl font-bold mb-3">조건에 맞는 정책뉴스가 없습니다</h2>
+      <p className="text-grey-700 mb-4">다른 검색어를 입력하거나 분야·지역 선택을 해제해보세요.</p>
+      <Link href="/news" className="text-blue-600 underline">전체 뉴스 보기 →</Link>
+    </section> : <section className="rounded-2xl bg-blue-50 p-6">
       <h2 className="text-xl font-bold mb-3">정책뉴스를 검수하고 있습니다</h2>
       <p className="leading-relaxed text-grey-700 mb-4">공식 발표와 신청 조건을 대조한 뒤 소식을 안내하겠습니다. 신청 준비가 필요하다면 먼저 공개된 가이드를 확인하세요.</p>
       <Link href="/guides" className="text-blue-600 underline">신청 가이드 보기 →</Link>
     </section>}
     <p className="mt-8 text-sm text-grey-600"><Link href="/source-policy" className="underline">출처 기준</Link> · <Link href="/correction-policy" className="underline">정정 절차</Link></p>
-  </main>;
+  </div></main>;
 }
 
 export function UnreviewedNewsNotice() {

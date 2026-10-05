@@ -153,8 +153,8 @@ function newsToScorable(p: {
 
 export default async function NewsIndexPage({ searchParams }: Props) {
   // 재심사 기간에는 자동 수집 목록 대신 검수된 편집 뉴스만 보여줍니다.
-  if (ADSENSE_REVIEW_MODE) return <EditorialNewsIndex />;
   const params = await searchParams;
+  if (ADSENSE_REVIEW_MODE) return <EditorialNewsIndex filters={{ q: params.q, benefit: params.benefit, province: params.province }} />;
   const activeCategory =
     params.category && VALID_CATEGORIES.has(params.category)
       ? params.category

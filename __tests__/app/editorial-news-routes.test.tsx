@@ -20,6 +20,23 @@ vi.mock("@/lib/policy-guides", () => ({ getGuides: async () => [] }));
 afterEach(() => { state.published = false; });
 
 describe("재심사 정책뉴스 화면", () => {
+  it("검색어와 선택 분야를 실제 목록에 적용한다", async () => {
+    state.published = true;
+    const { default: Page } = await import("@/app/news/page");
+    const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ q: "온누리", benefit: "금융", province: "nationwide" }) })).replace(/<!--.*?-->/g, "");
+    expect(html).toContain("검색 결과 1건");
+    expect(html).toContain('value="온누리"');
+    expect(html).toContain('value="금융"');
+    expect(html).toContain('value="nationwide"');
+    expect(html).toContain(EDITORIAL_NEWS[0].title);
+  });
+  it("일치하지 않는 검색은 안내와 전체 보기만 제공한다", async () => {
+    state.published = true;
+    const { default: Page } = await import("@/app/news/page");
+    const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ q: "없는내용" }) }));
+    expect(html).toContain("조건에 맞는 정책뉴스가 없습니다");
+    expect(html).not.toContain(EDITORIAL_NEWS[0].title);
+  });
   it("검색 제출 목록에는 승인된 상세만 포함한다", async () => {
     const { default: sitemap } = await import("@/app/sitemap");
     expect((await sitemap()).some(item => item.url.includes("/news"))).toBe(false);
