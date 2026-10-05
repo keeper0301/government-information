@@ -4,18 +4,27 @@ import type { EditorialNews } from "@/lib/editorial-news-data";
 import { getGuides } from "@/lib/policy-guides";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 import { NewsCard } from "@/components/news-card";
+import { EDITORIAL_NEWS_IMAGES } from "@/lib/editorial-news-images";
 import { EditorialNewsFilters } from "@/components/news/editorial-news-filters";
 import { filterEditorialNews, normalizeNewsFilters, type NewsFilters } from "@/lib/editorial-news-filters";
 
 export function EditorialNewsCards({ articles = getPublishedNews() }: { articles?: EditorialNews[] } = {}) {
-  return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{articles.map(article =>
+  return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{articles.map(article => {
+    const photo = EDITORIAL_NEWS_IMAGES[article.slug];
+    return (
     <article key={article.slug}>
       <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
-        category: "news", ministry: "키피오 편집", source_outlet: null, thumbnail_url: null,
+        category: "news", ministry: "키피오 편집", source_outlet: null,
+        thumbnail_url: photo?.url ?? null, thumbnail_alt: photo?.alt,
         published_at: getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
       <p className="text-sm text-grey-600 mt-3 leading-relaxed">공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt}</p>
+      {photo && <p className="text-xs text-grey-600 mt-2 leading-relaxed">
+        {photo.caption} · 사진: {photo.author} · <a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">사진 출처</a>
+        {" · "}<a href="https://creativecommons.org/licenses/by-sa/3.0/deed.ko" target="_blank" rel="noopener noreferrer" className="underline">저작자 표시·동일조건 변경 허락 3.0</a>
+        {" · 크기·형식 변경, 카드에서 일부 잘림"}
+      </p>}
     </article>
-  )}</div>;
+  ); })}</div>;
 }
 
 export function EditorialNewsIndex({ filters = {} }: { filters?: NewsFilters } = {}) {

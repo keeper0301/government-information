@@ -14,6 +14,9 @@ export function safeNewsThumbnailUrl(
   // 외부 언론사 카드·상세는 안정적인 카테고리 placeholder 를 사용한다.
   if (sourceOutlet) return null;
 
+  // 출처와 이용 허가를 확인하여 사이트에 저장한 자료사진만 허용합니다.
+  if (thumbnailUrl === "/images/news/jeongeup-market.webp") return thumbnailUrl;
+
   let url: URL;
   try {
     url = new URL(thumbnailUrl);

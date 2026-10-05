@@ -20,6 +20,16 @@ vi.mock("@/lib/policy-guides", () => ({ getGuides: async () => [] }));
 afterEach(() => { state.published = false; });
 
 describe("재심사 정책뉴스 화면", () => {
+  it("공개한 뉴스에만 자료사진과 이용 조건을 표시한다", async () => {
+    const { EditorialNewsIndex } = await import("@/components/news/editorial-news-pages");
+    expect(renderToStaticMarkup(<EditorialNewsIndex />)).not.toContain("jeongeup-market.webp");
+    state.published = true;
+    const html = renderToStaticMarkup(<EditorialNewsIndex />);
+    expect(html).toContain('src="/images/news/jeongeup-market.webp"');
+    expect(html).toContain("2011년 자료사진");
+    expect(html).toContain("Ulrich Lange");
+    expect(html).toContain("https://creativecommons.org/licenses/by-sa/3.0/deed.ko");
+  });
   it("검색어와 선택 분야를 실제 목록에 적용한다", async () => {
     state.published = true;
     const { default: Page } = await import("@/app/news/page");
