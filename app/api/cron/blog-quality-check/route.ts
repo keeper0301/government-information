@@ -14,6 +14,7 @@ import {
 import { logAdminAction } from "@/lib/admin-actions";
 import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
+import { shouldAutoReleaseToWordPress } from "@/lib/wordpress/retry-safety";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
@@ -68,13 +69,15 @@ async function releaseApprovedPostToExternalChannels(
 
   try {
     const admin = createAdminClient();
-    const { data } = await admin
+    const { data, error } = await admin
       .from("wordpress_publish_log")
-      .select("status")
+      .select("status, wp_post_id, error_message")
       .eq("blog_post_id", post.id)
-      .eq("status", "published")
       .maybeSingle();
-    if (data) return result;
+    // WP가 이미 초안/공개 글을 만든 경우나 응답 미확정(timeout·network)인 경우
+    // 자동 재호출은 중복 글을 만들 수 있다. 401/403처럼 생성 전 인증 실패만 재시도.
+    // 조회 실패도 fail-closed: 로그를 못 읽으면 중복 여부를 판단할 수 없다.
+    if (!shouldAutoReleaseToWordPress(data, error)) return result;
 
     result.wordpressAttempted = true;
     await publishToWordPress(post.id, {

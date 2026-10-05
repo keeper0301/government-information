@@ -806,7 +806,7 @@ async function publishWithCandidate(
   // 네이버 블로그 발행 큐에 자동 enqueue — 실패해도 블로그 발행 자체는 성공으로
   // 처리 (백링크용 부가 작업이 핵심 경로를 막지 않게). UNIQUE 위반은 정상 무시.
   let wordpress: {
-    status: "published" | "failed" | "not_attempted";
+    status: "published" | "failed" | "held_for_review" | "not_attempted";
     reason?: string;
     url?: string;
   } = { status: "not_attempted" };
@@ -830,7 +830,9 @@ async function publishWithCandidate(
       });
       wordpress = result.ok
         ? { status: "published", url: result.wpPostUrl }
-        : { status: "failed", reason: result.reason };
+        : result.reason === "held_for_review"
+          ? { status: "held_for_review", url: result.wpPostUrl }
+          : { status: "failed", reason: result.reason };
     } catch (e) {
       wordpress = { status: "failed", reason: "unexpected_error" };
       console.warn(`[blog-publish] wordpress 발행 실패 (블로그 발행은 성공): ${(e as Error).message}`);

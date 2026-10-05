@@ -53,6 +53,7 @@ jobs:
           skipped_count=0
           wordpress_failure_count=0
           wordpress_success_count=0
+          wordpress_held_count=0
           base_url="https://www.keepioo.com/api/publish-blog?count=1"
 
           publish_one() {
@@ -98,8 +99,9 @@ jobs:
                     published)
                       wordpress_success_count=$((wordpress_success_count + 1))
                       echo "WordPress: 발행 확인" >> "$GITHUB_STEP_SUMMARY" ;;
-                    not_attempted)
-                      echo "WordPress: 품질 게이트로 발행 보류" >> "$GITHUB_STEP_SUMMARY" ;;
+                    not_attempted|held_for_review)
+                      wordpress_held_count=$((wordpress_held_count + 1))
+                      echo "WordPress: 공개 발행 보류 (${wp_status})" >> "$GITHUB_STEP_SUMMARY" ;;
                     *)
                       wordpress_failure_count=$((wordpress_failure_count + 1))
                       echo "::error::${index}번째 글 WordPress 발행 실패: ${wp_status} (${wp_reason})"
@@ -137,7 +139,7 @@ jobs:
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "성공: ${success_count}건 / 스킵: ${skipped_count}건 / 실패: ${failure_count}건" >> "$GITHUB_STEP_SUMMARY"
-          echo "WordPress 발행: ${wordpress_success_count}건 / 실패: ${wordpress_failure_count}건" >> "$GITHUB_STEP_SUMMARY"
+          echo "WordPress 공개 발행: ${wordpress_success_count}건 / 보류: ${wordpress_held_count}건 / 실패: ${wordpress_failure_count}건" >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$success_count" -eq 0 ]; then
             echo "::error::블로그 실제 발행이 0건입니다. 스킵 ${skipped_count}건 / 실패 ${failure_count}건 — 후보 소진 또는 발행 파이프라인 점검 필요."
@@ -150,6 +152,11 @@ jobs:
 
           if [ "$wordpress_failure_count" -gt 0 ]; then
             echo "::error::WordPress 발행 ${wordpress_failure_count}건 실패. keepioo 글은 이미 생성되었으므로 이 workflow를 재실행하지 말고 인증 복구 후 기존 글만 재발행하세요."
+            exit 1
+          fi
+
+          if [ "$wordpress_success_count" -eq 0 ]; then
+            echo "::error::WordPress 공개 발행 0건 — 품질 검토 보류 ${wordpress_held_count}건. 초안을 공개 발행 성공으로 집계하지 않습니다."
             exit 1
           fi
 

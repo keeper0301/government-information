@@ -43,7 +43,7 @@ async function loadData() {
   const since7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
   const since30d = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [pub24, pub7, pub30, fail24, recentPub, recentFail] = await Promise.all([
+  const [pub24, pub7, pub30, fail24, held24, recentPub, recentFail, recentHeld] = await Promise.all([
     admin
       .from("wordpress_publish_log")
       .select("id", { count: "exact", head: true })
@@ -66,6 +66,12 @@ async function loadData() {
       .gte("failed_at", since24h),
     admin
       .from("wordpress_publish_log")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "skipped")
+      .not("wp_post_id", "is", null)
+      .gte("updated_at", since24h),
+    admin
+      .from("wordpress_publish_log")
       .select(
         "id, wp_post_id, wp_post_url, published_at, blog_post:blog_posts!inner(slug, title)",
       )
@@ -80,6 +86,13 @@ async function loadData() {
       .eq("status", "failed")
       .order("failed_at", { ascending: false })
       .limit(10),
+    admin
+      .from("wordpress_publish_log")
+      .select("id, wp_post_id, error_message, updated_at, blog_post:blog_posts!inner(slug, title)")
+      .eq("status", "skipped")
+      .not("wp_post_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(10),
   ]);
 
   return {
@@ -88,6 +101,7 @@ async function loadData() {
       published7d: pub7.count ?? 0,
       published30d: pub30.count ?? 0,
       failed24h: fail24.count ?? 0,
+      held24h: held24.count ?? 0,
     },
     recentPublished: (recentPub.data ?? []) as unknown as Array<{
       id: string;
@@ -100,6 +114,13 @@ async function loadData() {
       id: string;
       error_message: string | null;
       failed_at: string;
+      blog_post: { slug: string; title: string };
+    }>,
+    recentHeld: (recentHeld.data ?? []) as unknown as Array<{
+      id: string;
+      wp_post_id: number;
+      error_message: string | null;
+      updated_at: string;
       blog_post: { slug: string; title: string };
     }>,
   };
@@ -157,8 +178,8 @@ export default async function AdminWordPressPage() {
       {/* 검증용 — 최신 글 재발행 트리거 (환경변수 등록 직후 즉시 검증에 사용) */}
       {hasCredentials && <RepublishButton />}
 
-      {/* 통계 카드 4개 */}
-      <section className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* 공개 발행과 WP 초안은 별도로 집계 */}
+      <section className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatCard label="24h 발행" value={data.stats.published24h} tone="ok" />
         <StatCard label="7d 발행" value={data.stats.published7d} tone="ok" />
         <StatCard label="30d 발행" value={data.stats.published30d} tone="ok" />
@@ -167,7 +188,36 @@ export default async function AdminWordPressPage() {
           value={data.stats.failed24h}
           tone={data.stats.failed24h > 0 ? "warn" : "info"}
         />
+        <StatCard
+          label="24h 초안·검토"
+          value={data.stats.held24h}
+          tone={data.stats.held24h > 0 ? "warn" : "info"}
+        />
       </section>
+
+      {data.recentHeld.length > 0 && (
+        <section className="mb-6">
+          <h2 className="text-base font-semibold text-grey-900 mb-3">
+            📝 WordPress 초안·검토 대기 ({data.recentHeld.length}건)
+          </h2>
+          <ul className="space-y-2">
+            {data.recentHeld.map((row) => (
+              <li key={row.id} className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs">
+                <p className="font-medium text-grey-900">{row.blog_post.title}</p>
+                <p className="text-amber-900 mt-1">{row.error_message ?? "공개 발행 보류"}</p>
+                <a
+                  href={`${new URL(process.env.WP_API_URL ?? "https://info.keeper0301.com").origin}/wp-admin/post.php?post=${row.wp_post_id}&action=edit`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-700 underline mt-1 inline-block"
+                >
+                  WordPress에서 초안 검토 →
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* 최근 실패 (있으면) */}
       {data.recentFailed.length > 0 && (

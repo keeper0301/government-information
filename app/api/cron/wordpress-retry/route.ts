@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizePrivateCronRequest } from "@/lib/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
+import { shouldAutoReleaseToWordPress } from "@/lib/wordpress/retry-safety";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -20,11 +21,11 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: log, error: logError } = await admin
     .from("wordpress_publish_log")
-    .select("status, wp_post_id")
+    .select("status, wp_post_id, error_message")
     .eq("blog_post_id", blogPostId)
     .maybeSingle();
   if (logError) return NextResponse.json({ ok: false, reason: "log_lookup_failed" }, { status: 500 });
-  if (!log || log.status !== "failed" || log.wp_post_id != null) {
+  if (!log || !shouldAutoReleaseToWordPress(log, null)) {
     return NextResponse.json({ ok: false, reason: "not_a_failed_unpublished_post" }, { status: 409 });
   }
 
@@ -48,7 +49,10 @@ export async function POST(request: Request) {
       category: post.category,
     });
     if (!result.ok) {
-      return NextResponse.json({ ok: false, reason: result.reason }, { status: 502 });
+      return NextResponse.json(
+        { ok: false, reason: result.reason },
+        { status: result.reason === "held_for_review" || result.reason === "claim_unavailable_or_duplicate" ? 409 : 502 },
+      );
     }
     const targetHost = new URL(process.env.WP_API_URL!).hostname;
     if (new URL(result.wpPostUrl).hostname !== targetHost) {

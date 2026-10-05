@@ -17,6 +17,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToWordPress, type BlogPostForWordPress } from "./format";
 import { fetchOrCreateCategoryIds, fetchOrCreateTagIds } from "./terms";
+import { claimWordPressPublish } from "./claim";
 
 // 워드프레스 REST API timeout — 15초.
 // cron maxDuration (Vercel 60초) 안에 안전 마진 확보 + 일시 응답 지연이
@@ -25,6 +26,9 @@ const WORDPRESS_TIMEOUT_MS = 15_000;
 
 export type PublishResult =
   | { ok: true; wpPostId: number; wpPostUrl: string }
+  | { ok: false; reason: "held_for_review"; wpPostId: number; wpPostUrl: string }
+  | { ok: false; reason: "log_error"; wpPostId: number; wpPostUrl: string }
+  | { ok: false; reason: "claim_unavailable_or_duplicate" }
   | { ok: false; reason: "skipped_no_credentials"; error?: undefined }
   | { ok: false; reason: "skipped_invalid_url"; error: string }
   | { ok: false; reason: "api_error"; error: string }
@@ -54,8 +58,14 @@ export async function publishToWordPress(
 
   // 2) URL 검증 — wordpress.com 또는 self-hosted 도메인이 wp-json/wp/v2 endpoint 갖고 있어야 함
   let postsEndpoint: string;
+  let targetOrigin: string;
   try {
     const base = new URL(apiUrl);
+    if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash ||
+        base.pathname.replace(/\/$/, "") !== "/wp-json/wp/v2") {
+      throw new Error("HTTPS WordPress REST API 주소가 아닙니다");
+    }
+    targetOrigin = base.origin;
     postsEndpoint = `${base.origin}${base.pathname.replace(/\/$/, "")}/posts`;
   } catch (e) {
     return {
@@ -79,6 +89,12 @@ export async function publishToWordPress(
     fetchOrCreateCategoryIds(payload.categories, apiBase, authHeader),
     fetchOrCreateTagIds(payload.tags, apiBase, authHeader),
   ]);
+
+  // Two concurrent cron/quality-check requests must not both create a WP post.
+  // A failed auth attempt may be claimed again; drafts, timeouts and known IDs may not.
+  if (!(await claimWordPressPublish(blogPostId))) {
+    return { ok: false, reason: "claim_unavailable_or_duplicate" };
+  }
 
   // 5) timeout — 15초 후 abort. 워드프레스 응답 지연이 cron 함수 전체를 막지 않도록.
   const ctrl = new AbortController();
@@ -127,22 +143,67 @@ export async function publishToWordPress(
   const json: unknown = await res.json().catch(() => ({}));
   const wpPostId = extractNumberField(json, "id");
   const wpPostUrl = extractStringField(json, "link");
-  if (wpPostId === null || !wpPostUrl) {
+  if (wpPostId === null || !Number.isSafeInteger(wpPostId) || wpPostId <= 0 || !wpPostUrl) {
     const message = "응답에서 post.id/link 누락";
     await logFailure(blogPostId, message);
     return { ok: false, reason: "api_error", error: message };
   }
 
+  // 201만으로 공개 발행을 보증할 수 없다. humanize gate가 draft로
+  // 강등했거나 WordPress가 status를 바꿨다면 별도 검토 상태로 남긴다.
+  let linkOrigin: string;
+  try {
+    const link = new URL(wpPostUrl);
+    if (link.protocol !== "https:") throw new Error("non_https_link");
+    linkOrigin = link.origin;
+  } catch {
+    await logFailure(blogPostId, "WordPress 응답 link 형식 오류", wpPostId, wpPostUrl);
+    return { ok: false, reason: "api_error", error: "WordPress 응답 link 형식 오류" };
+  }
+  if (linkOrigin !== targetOrigin) {
+    await logFailure(blogPostId, "WordPress 응답 link 호스트 불일치", wpPostId, wpPostUrl);
+    return { ok: false, reason: "api_error", error: "WordPress 응답 link 호스트 불일치" };
+  }
+  const wpStatus = extractStringField(json, "status");
+  if (wpStatus === "draft" || wpStatus === "pending" || wpStatus === "future" || wpStatus === "private") {
+    if (!(await logHeld(blogPostId, wpPostId, wpPostUrl, wpStatus))) {
+      return { ok: false, reason: "log_error", wpPostId, wpPostUrl };
+    }
+    return { ok: false, reason: "held_for_review", wpPostId, wpPostUrl };
+  }
+  if (wpStatus !== "publish" || payload.status !== "publish") {
+    await logFailure(blogPostId, "WordPress 발행 상태 불일치", wpPostId, wpPostUrl);
+    return { ok: false, reason: "api_error", error: "WordPress 발행 상태 불일치" };
+  }
+
   // 6) 성공 기록 — wordpress_publish_log 에 INSERT
-  await logSuccess(blogPostId, wpPostId, wpPostUrl);
+  if (!(await logSuccess(blogPostId, wpPostId, wpPostUrl))) {
+    return { ok: false, reason: "log_error", wpPostId, wpPostUrl };
+  }
   return { ok: true, wpPostId, wpPostUrl };
+}
+
+async function logHeld(blogPostId: string, wpPostId: number, wpPostUrl: string, wpStatus: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { error } = await admin.from("wordpress_publish_log").upsert({
+    blog_post_id: blogPostId,
+    status: "skipped",
+    wp_post_id: wpPostId,
+    wp_post_url: wpPostUrl,
+    published_at: null,
+    failed_at: null,
+    error_message: `WordPress ${wpStatus} — 관리자 검토 필요`,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "blog_post_id" });
+  if (error) console.warn(`[wordpress-publish] log held 실패: ${error.message}`);
+  return !error;
 }
 
 async function logSuccess(
   blogPostId: string,
   wpPostId: number,
   wpPostUrl: string,
-): Promise<void> {
+): Promise<boolean> {
   const admin = createAdminClient();
   const now = new Date().toISOString();
   const { error } = await admin
@@ -154,6 +215,8 @@ async function logSuccess(
         wp_post_id: wpPostId,
         wp_post_url: wpPostUrl,
         published_at: now,
+        failed_at: null,
+        error_message: null,
         updated_at: now,
       },
       { onConflict: "blog_post_id" },
@@ -161,9 +224,10 @@ async function logSuccess(
   if (error) {
     console.warn(`[wordpress-publish] log success 실패: ${error.message}`);
   }
+  return !error;
 }
 
-async function logFailure(blogPostId: string, message: string): Promise<void> {
+async function logFailure(blogPostId: string, message: string, wpPostId?: number, wpPostUrl?: string): Promise<void> {
   const admin = createAdminClient();
   const now = new Date().toISOString();
   const { error } = await admin
@@ -172,6 +236,7 @@ async function logFailure(blogPostId: string, message: string): Promise<void> {
       {
         blog_post_id: blogPostId,
         status: "failed",
+        ...(wpPostId != null && { wp_post_id: wpPostId, wp_post_url: wpPostUrl }),
         failed_at: now,
         error_message: message.slice(0, 1000),
         updated_at: now,

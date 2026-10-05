@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin-auth";
 import { publishToWordPress, type PublishResult } from "@/lib/wordpress/publisher";
+import { shouldAutoReleaseToWordPress } from "@/lib/wordpress/retry-safety";
 
 export type RepublishState =
   | { kind: "idle" }
@@ -22,7 +23,7 @@ async function ensureAdmin(): Promise<void> {
 }
 
 /**
- * 검증용 — keepioo 최신 발행 블로그 글 1건을 워드프레스에 즉시 재발행 시도.
+ * 검증용 — 최신 글이 WP 인증 실패(401/403) 상태일 때만 안전하게 재시도.
  *
  * 환경변수 (WP_API_URL 등) 등록 직후 가동 검증에 사용. 자동 cron 을 기다리지 않고
  * 즉시 publishToWordPress 흐름을 한 번 돌려 결과를 화면에 명시적으로 표시.
@@ -50,7 +51,7 @@ export async function republishLatestBlogAction(
   // 1) 최신 발행 글 1건
   const { data: post, error: selectErr } = await admin
     .from("blog_posts")
-    .select("id, slug, title, meta_description, content, tags, category")
+    .select("id, slug, title, meta_description, content, tags, category, admin_review_required, published_at")
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
@@ -63,10 +64,26 @@ export async function republishLatestBlogAction(
     };
   }
 
-  // 2) 기존 publish_log 행 제거 — 재시도 가능하도록
-  await admin.from("wordpress_publish_log").delete().eq("blog_post_id", post.id);
+  if (post.admin_review_required !== false || !post.published_at) {
+    return { kind: "fail", reason: "not_approved", message: "품질 검토 중인 글은 발행할 수 없습니다." };
+  }
 
-  // 3) 워드프레스 재발행 시도
+  // 로그를 삭제하면 이미 공개된 글·초안의 ID를 잃고 중복 게시한다.
+  // 인증 실패만 다시 시도하고, 미확정 timeout/network는 현장 확인으로 넘긴다.
+  const { data: log, error: logError } = await admin
+    .from("wordpress_publish_log")
+    .select("status, wp_post_id, error_message")
+    .eq("blog_post_id", post.id)
+    .maybeSingle();
+  if (!log || !shouldAutoReleaseToWordPress(log, logError)) {
+    return {
+      kind: "fail",
+      reason: "not_safe_to_retry",
+      message: "재발행 차단: 이미 WordPress 글이 있거나 상태가 불확정입니다. 발행 이력을 먼저 확인하세요.",
+    };
+  }
+
+  // 3) 워드프레스 발행 시도 (publisher가 DB 원자적 선점 후 POST)
   const result: PublishResult = await publishToWordPress(post.id, {
     slug: post.slug,
     title: post.title,
@@ -110,6 +127,12 @@ function formatFailMessage(result: Extract<PublishResult, { ok: false }>): strin
       return `네트워크 오류: ${result.error}`;
     case "api_error":
       return `워드프레스 API 거부: ${result.error}. 401 이면 사용자명/Application Password 재발급, 404 면 WP_API_URL 끝이 /wp-json/wp/v2 인지 확인.`;
+    case "held_for_review":
+      return "WordPress 초안으로 저장됐습니다. 관리자 검토 후 수동 공개하세요.";
+    case "claim_unavailable_or_duplicate":
+      return "다른 발행 시도가 진행 중이거나 중복 글이 확인돼 재시도를 막았습니다.";
+    case "log_error":
+      return `WordPress 응답을 받았지만 발행 이력 기록에 실패했습니다 (글 ID ${result.wpPostId}). 중복 재시도하지 말고 WordPress에서 확인하세요.`;
     default:
       return `발행 실패: ${JSON.stringify(result)}`;
   }

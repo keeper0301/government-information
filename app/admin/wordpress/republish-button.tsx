@@ -25,10 +25,10 @@ export function RepublishButton() {
         disabled={isPending}
         className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {isPending ? "🔄 발행 시도 중..." : "🚀 최신 글 워드프레스 재발행 (검증용)"}
+        {isPending ? "🔄 안전 재시도 중..." : "🔁 최신 글 인증 실패만 안전 재시도"}
       </button>
       <p className="mt-2 text-xs text-grey-500">
-        keepioo 최신 발행 글 1건을 워드프레스에 즉시 재발행 시도. 결과는 아래 박스에 표시됩니다.
+        최근 글이 WordPress 인증 오류(401/403)로 실패했을 때만 재시도합니다. 이미 공개된 글·초안·응답 불확정 글은 차단합니다.
       </p>
 
       {/* 결과 표시 — 성공·실패 모두 명시적으로 노출 */}

@@ -46,12 +46,12 @@ describe("WordPress single failed-post retry", () => {
     expect(mocks.publish).not.toHaveBeenCalled();
   });
   it("requires prior failure and approved published source", async () => {
-    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null })).mockReturnValueOnce(row({ ...post, admin_review_required: true }));
+    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message: "HTTP 401: rest_cannot_create" })).mockReturnValueOnce(row({ ...post, admin_review_required: true }));
     expect((await POST(request(id))).status).toBe(409);
     expect(mocks.publish).not.toHaveBeenCalled();
   });
   it("retries only the existing post and reports the target link", async () => {
-    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null })).mockReturnValueOnce(row(post));
+    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message: "HTTP 401: rest_cannot_create" })).mockReturnValueOnce(row(post));
     mocks.publish.mockResolvedValueOnce({ ok: true, wpPostId: 18488, wpPostUrl: "https://info.keeper0301.com/test-policy/" });
     const response = await POST(request(id));
     expect(response.status).toBe(200);
@@ -60,10 +60,23 @@ describe("WordPress single failed-post retry", () => {
     expect(mocks.publish).toHaveBeenCalledWith(id, expect.objectContaining({ slug: "test-policy" }));
   });
   it("returns WordPress failure without creating another keepioo post", async () => {
-    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null })).mockReturnValueOnce(row(post));
+    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message: "HTTP 401: rest_cannot_create" })).mockReturnValueOnce(row(post));
     mocks.publish.mockResolvedValueOnce({ ok: false, reason: "api_error" });
     const response = await POST(request(id));
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ ok: false, reason: "api_error" });
+  });
+  it("rejects timeout failures because WordPress might have created the post", async () => {
+    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message: "timeout 15000ms" }));
+    const response = await POST(request(id));
+    expect(response.status).toBe(409);
+    expect(mocks.publish).not.toHaveBeenCalled();
+  });
+  it("reports a WordPress draft as held, not published or retriable failure", async () => {
+    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message: "HTTP 401: rest_cannot_create" })).mockReturnValueOnce(row(post));
+    mocks.publish.mockResolvedValueOnce({ ok: false, reason: "held_for_review", wpPostId: 18489, wpPostUrl: "https://info.keeper0301.com/test-policy/" });
+    const response = await POST(request(id));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ ok: false, reason: "held_for_review" });
   });
 });
