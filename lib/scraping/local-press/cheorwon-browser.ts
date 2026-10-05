@@ -32,7 +32,8 @@ export async function scrapeCheorwonBrowserAndInsert(
     // 철원은 첫 화면에서 공식 언론보도 메뉴를 눌러야 연결이 안정적입니다.
     await openCheorwonPage(page, "https://www.cwg.go.kr/www/index.do");
     await page.locator('a[href="/www/selectBbsNttList.do?bbsNo=32&key=218"]').first().evaluate(link => (link as HTMLAnchorElement).click());
-    await page.waitForURL(LIST_URL, { timeout: 12000 });
+    // 본문 화면이 준비되면 진행하고 외부 이미지 등의 로딩은 기다리지 않습니다.
+    await page.waitForURL(LIST_URL, { waitUntil: "domcontentloaded", timeout: 12000 });
     await page.waitForSelector('a[href*="nttNo="]', { timeout: 15000 });
     const listHtml = await page.content();
     const items = parseListPage(listHtml).slice(0, limit);
