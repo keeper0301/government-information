@@ -109,27 +109,47 @@ export async function sendOpsAlertSms({
       }),
     });
   } catch (e) {
-    const message = (e as Error).message;
+    const message = sanitizeOpsAlertSmsError(e);
     return { ok: false, reason: "network_error", error: message };
   }
 
   const json: unknown = await res.json().catch(() => ({}));
 
-  if (!res.ok) {
-    const errCode = extractStringField(json, "errorCode") ?? `http_${res.status}`;
-    const errMessage = extractStringField(json, "errorMessage") ?? "";
+  const errorCode = extractStringField(json, "errorCode");
+  const statusCode = extractStringField(json, "statusCode");
+  // SOLAPI: 2000 accepted, 3000 carrier accepted/report pending, 4000 received.
+  // An ID can also belong to a rejected message (e.g. 1062 sender unregistered).
+  const statusRejected = !!statusCode && !["2000", "3000", "4000"].includes(statusCode);
+  // HTTP success alone must not hide an explicit provider rejection.
+  if (!res.ok || errorCode || statusRejected) {
+    const errCode = errorCode ?? (statusRejected ? statusCode : `http_${res.status}`);
+    const errMessage = extractStringField(json, "errorMessage") ?? extractStringField(json, "statusMessage") ?? "";
     return {
       ok: false,
       reason: "api_error",
-      error: `${errCode}: ${errMessage}`.slice(0, 300),
+      error: sanitizeOpsAlertSmsError(`${errCode}: ${errMessage}`),
     };
   }
 
   const messageId =
-    extractStringField(json, "messageId") ??
-    extractStringField(json, "groupId") ??
+    extractStringField(json, "messageId") ||
+    extractStringField(json, "groupId") ||
     "";
+  if (!messageId.trim()) {
+    return { ok: false, reason: "api_error", error: "invalid_response: missing messageId/groupId" };
+  }
+  // Submission accepted by Solapi; handset delivery requires status readback.
   return { ok: true, messageId };
+}
+
+/** Keep provider diagnostics without exposing configured credentials or phones. */
+export function sanitizeOpsAlertSmsError(error: unknown): string {
+  let text = error instanceof Error ? error.message : String(error ?? "unknown");
+  for (const key of ["SOLAPI_API_KEY", "SOLAPI_API_SECRET"]) {
+    const secret = process.env[key];
+    if (secret) text = text.split(secret).join("[redacted]");
+  }
+  return text.replace(/\b01[016789][\s-]?\d{3,4}[\s-]?\d{4}\b/g, "[phone]").slice(0, 300);
 }
 
 function extractStringField(json: unknown, key: string): string | null {
