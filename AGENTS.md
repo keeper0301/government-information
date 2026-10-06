@@ -33,3 +33,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 4. dead 파일 같은 commit 에 `git rm` (e883604 사고 패턴 회피)
 5. 본문 cut `20000` + 본문 min `250` 통일 (factory `BODY_MIN_LEN` + AdSense P2 일관)
 6. POST 호출 사이 `setTimeout(200)` polite delay (서버 부담 ↓)
+
+## 개인 컴퓨터 지역 수집
+
+중랑·밀양 예약 수집의 실행 조건과 결과 확인 방법은 [운영 안내](docs/pc-press-recovery.md)를 참고합니다.
