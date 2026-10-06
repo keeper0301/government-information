@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 import { getGuideEvidence } from "@/lib/guide-evidence";
 import GuidePage, { generateMetadata } from "@/app/guides/[slug]/page";
-import { HomeEditorialShell } from "@/components/home-editorial-shell";
+import { HomeEditorialShell, HomePublishedGuides } from "@/components/home-editorial-shell";
 
 const state = vi.hoisted(() => ({ published: false }));
 vi.mock("@/lib/supabase/env", () => ({ hasSupabaseAnonEnv: () => false }));
@@ -20,7 +20,7 @@ const props = { params: Promise.resolve({ slug: guide.slug }) };
 describe("공개 화면의 검수 경계", () => {
   it("심사 준비 홈에서도 지역 지도를 보여주고 신청 가이드를 유지한다", async () => {
     state.published = true;
-    const html = renderToStaticMarkup(await HomeEditorialShell());
+    const html = renderToStaticMarkup(HomeEditorialShell()) + renderToStaticMarkup(await HomePublishedGuides());
     expect(html).toContain('aria-label="지역 지도"');
     expect(html).toContain("서울 · 부산 · 제주");
     expect(html).toContain(`/guides/${guide.slug}`);
@@ -46,7 +46,7 @@ describe("공개 화면의 검수 경계", () => {
   });
   it("홈에서 미검수 가이드를 추천하지 않는다", async () => {
     state.published = false;
-    const html = renderToStaticMarkup(await HomeEditorialShell());
+    const html = renderToStaticMarkup(HomeEditorialShell()) + renderToStaticMarkup(await HomePublishedGuides());
     for (const item of EDITORIAL_GUIDES) expect(html).not.toContain(`/guides/${item.slug}`);
     expect(html).toContain("검수");
   });

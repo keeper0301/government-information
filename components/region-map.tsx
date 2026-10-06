@@ -171,6 +171,7 @@ function RegionCellFrame({
   // 누르는 반응과 키보드 선택 표시를 모든 지역 버튼에 동일하게 적용합니다.
   return (
     <TrackedLink
+      prefetch={false}
       href={href}
       event={EVENTS.HOME_REGION_CARD_CLICKED}
       params={{ region }}

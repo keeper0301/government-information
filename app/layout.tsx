@@ -144,9 +144,9 @@ export default async function RootLayout({
           sameAs={["https://www.instagram.com/keepioo_official"]}
         />
         <Nav hasPublishedNews={getPublishedNews().length > 0} />
-        <ReconsentBannerContainer />
+        <Suspense fallback={null}><ReconsentBannerContainer /></Suspense>
         {children}
-        <Footer />
+        <Suspense fallback={null}><Footer /></Suspense>
         {!ADSENSE_REVIEW_MODE && <ChatbotPanel />}
         {/* PWA service worker 등록 — offline 캐싱 + 향후 push 알림 listener.
             client only, 시각 출력 없음, dev 모드(localhost)는 자동 skip. */}

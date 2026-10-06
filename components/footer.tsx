@@ -87,7 +87,7 @@ export async function Footer() {
                 {link.label}
               </a>
             ) : (
-              <Link key={link.label} href={link.href} className={className}>
+              <Link prefetch={false} key={link.label} href={link.href} className={className}>
                 {link.label}
               </Link>
             );
@@ -106,8 +106,7 @@ export async function Footer() {
           {CATEGORY_SLUGS.map((slug) => {
             const hub = CATEGORY_HUBS[slug];
             return (
-              <Link
-                key={slug}
+              <Link prefetch={false} key={slug}
                 href={`/c/${slug}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-grey-200 text-[13px] text-grey-700 hover:border-blue-400 hover:text-blue-600 no-underline transition-colors"
               >

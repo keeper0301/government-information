@@ -123,8 +123,7 @@ export function HomeTargetCards({ publishedSlugs = [] }: { publishedSlugs?: stri
           const reviewHref = t.reviewHref.startsWith("/guides/") && !publishedSlugs.includes(t.reviewHref.slice(8))
             ? "/guides" : t.reviewHref;
           return (
-            <Link
-              key={t.label}
+            <Link prefetch={false} key={t.label}
               href={ADSENSE_REVIEW_MODE ? reviewHref : t.href}
               onClick={() => trackEvent(EVENTS.HOME_TARGET_CARD_CLICKED, { label: t.label })}
               className="group flex flex-col items-center gap-2 rounded-2xl bg-white border border-grey-200 p-4 md:p-5 no-underline hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(49,130,246,0.08)] transition-all"

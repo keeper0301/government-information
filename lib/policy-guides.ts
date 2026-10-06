@@ -12,6 +12,7 @@ import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 import { getGuideEvidence, guideCategorySlugs } from "@/lib/guide-evidence";
 import { getGuidePublication } from "@/lib/guide-publication";
+import guideReviewRecords from "@/data/guide-owner-reviews.json";
 
 export interface PolicyGuide {
   id: string;
@@ -113,7 +114,10 @@ export async function getGuides(limit = 50, options: GuideOptions = {}): Promise
     const safetyCap = 60000;
     for (let from = 0; ;) {
       if (from >= safetyCap) throw new Error("Guide pagination safety cap reached; candidates incomplete");
-      const { data, error } = await supabase.from("policy_guides").select("*")
+      let candidates = supabase.from("policy_guides").select("*");
+      // 승인 기록이 없는 주소는 공개될 수 없습니다. 최신 본문은 계속 직접 대조합니다.
+      if (options.publicationOnly) candidates = candidates.in("slug", Object.keys(guideReviewRecords));
+      const { data, error } = await candidates
         .order("published_at", { ascending: false, nullsFirst: false })
         .order("id", { ascending: true })
         .range(from, from + pageSize - 1);
