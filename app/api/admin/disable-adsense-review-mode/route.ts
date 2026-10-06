@@ -10,7 +10,7 @@
 //
 // 안전 가드:
 // - GET = confirm UI 만 (부작용 X). 사장님이 button 클릭해야 POST 실행.
-// - POST = admin 인증 + 백필 비율 ≥80% 재확인 + Vercel API 호출.
+// - POST = admin 인증 + 백필 비율 ≥80% 및 news 비중 임계치 미만 재확인 + Vercel API 호출.
 // - audit log: adsense_review_mode_disabled action 으로 기록.
 // ============================================================
 
@@ -23,6 +23,7 @@ import { getNewsRatio } from "@/lib/analytics/local-press-stats";
 import { logAdminAction } from "@/lib/admin-actions";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin-auth";
+import { isAdsenseContentReady, NEWS_RATIO_HIGH_FLOOR } from "@/lib/adsense-readiness";
 import { ADSENSE_LIVE_ADS_TOKEN } from "@/lib/adsense-review-mode";
 
 export const dynamic = "force-dynamic";
@@ -33,9 +34,16 @@ export const maxDuration = 60;
 export async function GET(): Promise<NextResponse> {
   // 현재 백필 비율 확인 (사장님 시각 정보)
   let backfillPct = "?";
+  let newsPct = "?";
+  let newsDetail = "조회 실패";
+  let contentReady = false;
   try {
     const r = await getNewsRatio();
     backfillPct = (r.commentaryBackfillRatio * 100).toFixed(1);
+    newsPct = (r.ratio * 100).toFixed(1);
+    const total = r.welfare + r.loan + r.blog + r.newsIndexable;
+    newsDetail = `news ${r.newsIndexable.toLocaleString()} / total ${total.toLocaleString()}`;
+    contentReady = isAdsenseContentReady(r.commentaryBackfillRatio, r.ratio);
   } catch {
     // graceful
   }
@@ -57,11 +65,14 @@ export async function GET(): Promise<NextResponse> {
   <h1>⚠️ AdSense Review Mode OFF 확정</h1>
   <div class="info">
     <strong>현재 AI 자체 해설 백필: ${backfillPct}%</strong><br />
+    <strong>index 가능 콘텐츠 기준 news 비중: ${newsPct}% (${newsDetail})</strong><br />
+    전환 기준: 백필 ≥80%, news 비중 &lt; ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}%. 실제 Google 승인 후에만 전환하세요.<br />
+    ${contentReady ? "콘텐츠 수치 조건 충족 (승인 보장 아님)." : "전환 보류: 백필 또는 news 비중 기준 미충족 / 통계 확인 불가."}<br />
     이 버튼을 누르면 Vercel ENV 가 ${ADSENSE_LIVE_ADS_TOKEN} 로 변경 + production redeploy 됩니다.
     사이트 광고가 즉시 가동 시작되고 sitemap selective 가 ai_commentary 채워진 news 진입을 시작합니다.
   </div>
   <form method="POST">
-    <button type="submit">🔴 OFF 확정 + Vercel 자동 redeploy</button>
+    <button type="submit"${contentReady ? "" : " disabled"}>🔴 OFF 확정 + Vercel 자동 redeploy</button>
   </form>
   <p class="small">취소: 이 페이지 닫기 (POST 안 누르면 영향 0).</p>
 </body>
@@ -72,7 +83,7 @@ export async function GET(): Promise<NextResponse> {
   });
 }
 
-// POST — 실제 실행. CSRF(Origin) + admin 인증 + 백필 ≥80% 재확인 + Vercel API 호출.
+// POST — 실제 실행. CSRF(Origin) + admin 인증 + 백필 ≥80% 및 news 비중 재확인 + Vercel API 호출.
 export async function POST(request: Request): Promise<NextResponse> {
   // 0. CSRF Origin 검증 — same-origin 요청만 허용 (악성 사이트 form 자동 submit 차단).
   const origin = request.headers.get("origin");
@@ -99,7 +110,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "admin only" }, { status: 401 });
   }
 
-  // 2. 백필 비율 ≥80% 재확인 (사장님 실수 차단).
+  // 2. 백필 비율 ≥80% 및 news 비중 임계치 미만 재확인 (사장님 실수 차단).
   const ratio = await getNewsRatio();
   if (ratio.commentaryBackfillRatio < 0.8) {
     return NextResponse.json(
@@ -110,6 +121,15 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
       { status: 400 },
     );
+  }
+
+  if (!isAdsenseContentReady(ratio.commentaryBackfillRatio, ratio.ratio)) {
+    return NextResponse.json({
+      error: "콘텐츠 구성 기준 미충족",
+      news_ratio: ratio.ratio,
+      commentary_backfill_ratio: ratio.commentaryBackfillRatio,
+      message: `news 비중 ${(ratio.ratio * 100).toFixed(1)}%: ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}% 미만이어야 합니다. review mode off 보류.`,
+    }, { status: 400 });
   }
 
   // 3. Vercel API: ENV update + redeploy.
@@ -144,6 +164,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       action: "adsense_review_mode_disabled",
       details: {
         commentary_backfill_ratio: ratio.commentaryBackfillRatio,
+        news_ratio: ratio.ratio,
         env_updated: envUpdated,
         redeployed,
         deployment_id: deploymentId,
