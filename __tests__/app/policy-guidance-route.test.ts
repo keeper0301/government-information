@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGuideDraft, programSnapshot } from '@/lib/policy/evidence-guide';
 const mocks = vi.hoisted(() => ({ user: vi.fn(), row: null as Record<string, unknown> | null,
-  save: vi.fn(), refreshed: vi.fn(), saveRows: [{ id: 'saved' }] as unknown[], error: null as unknown }));
+  save: vi.fn(), rpc: vi.fn(), refreshed: vi.fn(), saveRows: [{ id: 'saved' }] as unknown[], error: null as unknown }));
 vi.mock('@/lib/admin-auth-server', () => ({ requireAdminUser: mocks.user }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.refreshed }));
 vi.mock('@/lib/policy/guidance-storage', () => ({
@@ -10,7 +10,7 @@ vi.mock('@/lib/policy/guidance-storage', () => ({
     mocks.save({ policy_guidance: guidance }); return mocks.saveRows.length > 0;
   },
 }));
-vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: () => ({
+vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ rpc: mocks.rpc, from: () => ({
   select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: mocks.row, error: mocks.error }) }) }),
   update: (patch: unknown) => {
     mocks.save(patch);
@@ -32,6 +32,7 @@ describe('관리자 원문 검수와 변경 충돌 방어', () => {
   beforeEach(() => {
     mocks.user.mockResolvedValue({ id: '운영자' }); mocks.save.mockClear(); mocks.refreshed.mockClear();
     mocks.saveRows = [{ id }]; mocks.error = null;
+    mocks.rpc.mockReset(); mocks.rpc.mockReturnValue({ abortSignal: async () => ({ data: true, error: null }) });
     const row = { id, title: '청년 월세', source_url: 'https://www.gwgs.go.kr/notice?id=123',
       description: '고성군 거주 청년 대상', updated_at: '2026-10-06' };
     mocks.row = { ...row, policy_guidance: createGuideDraft(row, { url: row.source_url, title: row.title,
@@ -64,5 +65,20 @@ describe('관리자 원문 검수와 변경 충돌 방어', () => {
   it('다른 작업이 먼저 저장했다면 충돌로 보고한다', async () => {
     mocks.saveRows = [];
     expect((await POST(request())).status).toBe(409); expect(mocks.refreshed).not.toHaveBeenCalled();
+  });
+  it('저장하지 않은 주소로 대조한 초안의 승인을 거절한다', async () => {
+    expect((await POST(request({ sourceUrl: 'https://www.gwgs.go.kr/notice?id=456' }))).status).toBe(409);
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it('주소 교정은 이전 검수와 공개 상태를 함께 확인한다', async () => {
+    const response = await POST(request({ action: 'source', sourceUrl: 'https://www.gwgs.go.kr/notice?id=456' }));
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('replace_policy_guidance_link', expect.objectContaining({
+      target_table: 'welfare_programs', target_id: id, expected_revision: '현재검수', link_kind: 'source' }));
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+  it('주소 교정 충돌은 기존 자료를 덮어쓰지 않는다', async () => {
+    mocks.rpc.mockReturnValue({ abortSignal: async () => ({ data: false, error: null }) });
+    expect((await POST(request({ action: 'source', sourceUrl: 'https://www.gwgs.go.kr/notice?id=456' }))).status).toBe(409);
   });
 });

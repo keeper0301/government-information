@@ -19,6 +19,7 @@ import { resolveApplyUrl, isPublicDomain } from "./url-fallback";
 // Spec 1 — 학습된 tier_floor 조회 (env > DB > 'high' default)
 import { getCurrentTierFloor } from "./auto-confirm-settings";
 import { ministryToSourceName } from "@/lib/source-display";
+import { groundedApplicationUrl, holdApplicationReview } from './source-grounding';
 
 export type PressCandidateStatus =
   | "pending"
@@ -67,6 +68,7 @@ export type PressCandidateForConfirm = {
     ministry: string | null;
     slug: string | null;
     source_url?: string | null;
+    body?: string | null;
   };
 };
 
@@ -111,6 +113,7 @@ type PressCandidateDbRow = {
     ministry: string | null;
     slug: string | null;
     source_url?: string | null;
+    body?: string | null;
   };
 };
 
@@ -515,7 +518,7 @@ export async function getPressCandidateForConfirm(
   const { data, error } = await admin
     .from("press_ingest_candidates")
     .select(
-      "id, news_id, status, program_type, title, category, classified_payload, news_posts!inner(id, ministry, slug, source_url)",
+      "id, news_id, status, program_type, title, category, classified_payload, news_posts!inner(id, ministry, slug, source_url, body)",
     )
     .eq("id", candidateId)
     .maybeSingle();
@@ -535,6 +538,7 @@ export async function getPressCandidateForConfirm(
       ministry: row.news_posts.ministry,
       slug: row.news_posts.slug,
       source_url: row.news_posts.source_url,
+      body: row.news_posts.body,
     },
   };
 }
@@ -546,6 +550,10 @@ export async function confirmPressCandidate(
 ): Promise<{ table: "welfare_programs" | "loan_programs"; id: string }> {
   const candidate = await getPressCandidateForConfirm(candidateId);
   if (!candidate) throw new Error("후보를 찾을 수 없습니다.");
+  // 자동 등록은 최종 재조회한 내용으로 대조한다. 사람의 수동 검수 경로는 유지한다.
+  if (actorId === null && !groundedApplicationUrl(candidate.classified_payload.apply_url, candidate.news.body)) {
+    throw new Error('자동 등록 직전 신청 주소의 원문 근거가 바뀌었습니다.');
+  }
   const admin = createAdminClient();
   const table =
     candidate.program_type === "welfare" ? "welfare_programs" : "loan_programs";
@@ -565,6 +573,7 @@ export async function confirmPressCandidate(
     })
     .eq("id", candidateId)
     .eq("status", "pending")
+    .eq('classified_payload', JSON.stringify(candidate.classified_payload))
     .select("id")
     .single();
   if (claimError) {
@@ -681,6 +690,7 @@ export async function autoConfirmPendingPressCandidates({
       "id, classified_payload, confidence_tier, news_posts!inner(id, slug, ministry, body)",
     )
     .eq("status", "pending")
+    .or('skip_reason.is.null,skip_reason.neq.application_source_unverified')
     .in("program_type", ["welfare", "loan"])
     .in("confidence_tier", eligibleTiers)
     .order("classified_at", { ascending: true })
@@ -713,7 +723,8 @@ export async function autoConfirmPendingPressCandidates({
     if (!shouldAutoConfirm(tier, currentFloor)) {
       continue;
     }
-    let applyUrl = row.classified_payload?.apply_url ?? null;
+    // 이전에 저장된 후보도 자동 등록 직전에 실제 본문의 주소와 다시 대조한다.
+    let applyUrl = groundedApplicationUrl(row.classified_payload?.apply_url, row.news_posts.body);
 
     // 보안 (코드리뷰 P1 2026-06-08): 기존 apply_url 이 정부 도메인 화이트리스트
     // 밖이면(legacy 후보 방어) 신뢰하지 않고 null 로 강등해 fallback chain 으로
@@ -728,7 +739,8 @@ export async function autoConfirmPendingPressCandidates({
     if (!applyUrl) {
       const fallback = resolveApplyUrl({
         llmApplyUrl: null,
-        bodyUrls: row.classified_payload?.body_urls ?? [],
+        bodyUrls: (row.classified_payload?.body_urls ?? []).filter(url =>
+          groundedApplicationUrl(url, row.news_posts.body) !== null),
         body: row.news_posts.body,
         ministry: row.news_posts.ministry,
         sourceUrl: newsSourceUrl({
@@ -739,8 +751,10 @@ export async function autoConfirmPendingPressCandidates({
       // 보안 (코드리뷰 P1 #5 2026-06-08): 최후 fallback(source_url=keepioo 자체
       // 뉴스 URL)으로만 채워지면 '신청하기'가 자기참조가 되므로 자동 confirm 하지
       // 않고 pending 유지(사장님이 /admin/press-ingest 에서 수동 검토).
-      if (fallback.source === "source_url") {
+      if (fallback.source === "source_url" || !groundedApplicationUrl(fallback.url, row.news_posts.body)) {
         result.skipped_no_url += 1;
+        const holdError = await holdApplicationReview(admin, row);
+        if (holdError) result.errors.push({ candidate_id: row.id, message: holdError });
         continue;
       }
       applyUrl = fallback.url;
@@ -755,7 +769,10 @@ export async function autoConfirmPendingPressCandidates({
           classified_payload: updatedPayload,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", row.id);
+        .eq("id", row.id)
+        .eq('status', 'pending')
+        .eq('classified_payload', JSON.stringify(row.classified_payload))
+        .select('id').single();
       if (updateErr) {
         result.errors.push({
           candidate_id: row.id,
