@@ -47,6 +47,14 @@ describe("buildGa4Alerts", () => {
     expect(out.alerts[0].key).toBe("ga4_no_traffic");
   });
 
+  it("소표본 97% 이탈률은 장애 알림 대신 KPI에 표본 부족으로 남긴다", () => {
+    const out = buildGa4Alerts({ activeUsers: 5, sessions: 12, bounceRate: 0.97 });
+    expect(out.alerts.find((a) => a.key === "ga4_high_bounce")).toBeUndefined();
+    expect(out.kpis.bounce_sample_sufficient).toBe(false);
+    const atBoundary = buildGa4Alerts({ activeUsers: 10, sessions: 30, bounceRate: 0.97 });
+    expect(atBoundary.alerts.find((a) => a.key === "ga4_high_bounce")).toBeDefined();
+  });
+
   it("bounceRate 반올림 (3자리)", () => {
     const out = buildGa4Alerts({
       activeUsers: 10,
