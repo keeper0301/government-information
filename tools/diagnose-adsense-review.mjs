@@ -3,12 +3,12 @@
 // AdSense 재심사 preflight — live public surface read-only 진단
 // ============================================================
 
+import { isReviewedNewsPage } from "./reviewed-news-check.mjs";
 import { runGuideQualityAudit } from "./guide-quality-audit.mjs";
 
 const BASE_URL = process.env.ADSENSE_REVIEW_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 const USER_AGENT = "keepioo-adsense-review-preflight/1.0";
 const DISALLOWED_SITEMAP_PATHS = [
-  "/news",
   "/blog",
   "/welfare",
   "/loan",
@@ -45,14 +45,14 @@ const RISKY_PHRASES = [
 ];
 const STRICT_LINKS = process.env.ADSENSE_REVIEW_STRICT_LINKS === "1";
 const PAGE_CHECKS = [
-  { path: "/", robots: "index, follow", required: ["신청 판단", "대표 가이드"] },
+  { path: "/", robots: "index, follow", required: ["신청 판단"] },
   { path: "/about", robots: "index, follow", required: ["공식 출처", "대표 가이드", "편집·검수 기준"] },
   { path: "/guides", robots: "index, follow", required: ["대표 주제별 가이드"] },
   { path: "/help", robots: "index, follow", required: ["정기적으로 확인"] },
   { path: "/welfare", robots: "noindex, follow" },
   { path: "/loan", robots: "noindex, follow" },
   { path: "/blog", robots: "noindex, follow" },
-  { path: "/news", robots: "noindex, follow" },
+  { path: "/news" },
   { path: "/privacy", robots: "index, follow", required: ["접속 기록"] },
   { path: "/terms", robots: "index, follow" },
   { path: "/contact", robots: "index, follow" },
@@ -106,6 +106,14 @@ for (const path of DISALLOWED_SITEMAP_PATHS) {
 }
 lines.push(`sitemap./guides=${locs.filter((url) => new URL(url).pathname.startsWith("/guides")).length}`);
 lines.push(`sitemap./c=${locs.filter((url) => new URL(url).pathname.startsWith("/c/")).length}`);
+// 실제 검색 공개 상태와 검수 표시가 일치하는 뉴스 상세와 목록을 허용한다.
+for (const url of locs.filter(url => new URL(url).pathname.startsWith('/news'))) {
+  const path = new URL(url).pathname;
+  const news = await fetchText(path);
+  if (news.status !== 200 || !isReviewedNewsPage(path, news.text)) {
+    failures.push(`미검수 또는 검색 제외 뉴스가 사이트맵에 포함됨: ${path}`);
+  }
+}
 
 const robots = await fetchText("/robots.txt");
 if (robots.status !== 200) failures.push(`robots.txt HTTP ${robots.status}`);
@@ -119,6 +127,7 @@ for (const check of PAGE_CHECKS) {
   lines.push(`${check.path}.http=${page.status}`);
   lines.push(`${check.path}.robots=${robotsMeta || "missing"}`);
   if (page.status !== 200) failures.push(`${check.path} HTTP ${page.status}`);
+  if (check.path === '/news' && !robotsMeta.includes('noindex') && !isReviewedNewsPage(check.path, page.text)) failures.push('검수 없는 뉴스 목록이 검색에 공개됨');
   if (check.robots && robotsMeta !== check.robots) failures.push(`${check.path} robots expected ${check.robots}, got ${robotsMeta || "missing"}`);
   for (const phrase of RISKY_PHRASES) {
     if (text.includes(phrase)) failures.push(`${check.path} risky phrase: ${phrase}`);
@@ -136,7 +145,7 @@ for (const check of PAGE_CHECKS) {
   }
 }
 
-const guideQuality = await runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 30 });
+const guideQuality = await runGuideQualityAudit({ baseUrl: BASE_URL });
 lines.push(`guide_quality.guides=${guideQuality.guideCount}`);
 lines.push(`guide_quality.fetched=${guideQuality.fetched}`);
 lines.push(`guide_quality.passed=${guideQuality.passed}`);

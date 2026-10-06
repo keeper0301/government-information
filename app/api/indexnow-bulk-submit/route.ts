@@ -7,7 +7,7 @@
 // 복지·대출이 빠져 있던 갭 보완.)
 //
 // 색인 대상 필터(상세 페이지·sitemap 과 동일):
-//   - unique_insight 있음(80자+ noindex 면제) — thin/noindex URL 제외
+//   - 원문 대조와 사람 검수가 유효한 설명만 제출
 //   - source_code 제외(stale/404 source 제외)
 // 우선순위: view_count DESC (인기 정책 먼저).
 //
@@ -20,6 +20,9 @@
 // 안정성: INDEXNOW_KEY 미설정 시 submitToIndexNow 가 skip(운영 영향 0).
 // ============================================================
 
+import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
+import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { getPublishedNews } from "@/lib/editorial-news";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { submitToIndexNow } from "@/lib/indexnow";
@@ -55,18 +58,18 @@ async function fetchIds(
     const end = Math.min(offset + PAGE, limit) - 1;
     const { data, error } = await admin
       .from(table)
-      .select("id")
+      .select("*")
       .not("source_code", "in", excluded)
-      // sitemap 과 동일 기준 — unique_insight_at(백필이 80자+ 응답만 기록)으로 색인 대상 판정.
-      // unique_insight is null 만 보면 80자 미만(상세 페이지 noindex)도 통과하는 불일치 방지.
-      .not("unique_insight_at", "is", null)
+      // 승인 표시뿐 아니라 내용 변경 여부도 아래에서 다시 확인한다.
+      .eq("policy_guidance->>status", "approved")
       .not("is_hidden", "is", true) // 회수(숨김=404) 정책 미제출 — 검색엔진 404 push 방지
       .is("duplicate_of_id", null) // 중복 정책 미제출 — 중복 콘텐츠 색인 방지
       .order("view_count", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true })
       .range(offset, end);
     if (error || !data || data.length === 0) break;
-    ids.push(...(data as { id: string }[]).map((r) => r.id));
+    ids.push(...(data as unknown as (EvidenceProgram & { id: string })[])
+      .filter(row => getPublishedGuide(row)).map(row => row.id));
     if (data.length < PAGE) break; // 마지막 페이지
   }
   return ids;
@@ -76,13 +79,13 @@ async function run(limit: number) {
   const admin = createAdminClient();
   // 대출(색인 대상 ~1,100 으로 적음)을 먼저 전부, 나머지 공간을 복지에 — limit 낭비 없이
   // 색인 대상 전체 커버. (절반 배분 시 대출 공간이 남아 복지를 다 못 보내던 문제 회피.)
-  const lnIds = await fetchIds(
+  const lnIds = ADSENSE_REVIEW_MODE ? [] : await fetchIds(
     admin,
     "loan_programs",
     LOAN_EXCLUDED_FILTER,
     Math.min(limit, 2000),
   );
-  const wfIds = await fetchIds(
+  const wfIds = ADSENSE_REVIEW_MODE ? [] : await fetchIds(
     admin,
     "welfare_programs",
     WELFARE_EXCLUDED_FILTER,
@@ -92,10 +95,8 @@ async function run(limit: number) {
   // 허브(최우선) + 색인 대상 복지·대출 상세
   const urls: string[] = [
     `${SITE}/`,
-    `${SITE}/welfare`,
-    `${SITE}/loan`,
-    `${SITE}/news`,
-    `${SITE}/blog`,
+    ...(!ADSENSE_REVIEW_MODE ? [`${SITE}/welfare`, `${SITE}/loan`, `${SITE}/blog`] : []),
+    ...(!ADSENSE_REVIEW_MODE || getPublishedNews().length >= 3 ? [`${SITE}/news`] : []),
     ...wfIds.map((id) => `${SITE}/welfare/${id}`),
     ...lnIds.map((id) => `${SITE}/loan/${id}`),
   ];

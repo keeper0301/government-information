@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { getPublishedNews } from "@/lib/editorial-news";
+import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
 import { cleanDescription } from "@/lib/utils";
 
 // 2026-05-21 SC 색인 1,958 페이지 미생성 진단 후속:
@@ -218,26 +219,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Welfare programs — 2026-05-18 AdSense 재거절 후 엄격 강화.
-  // unique_insight 보유 페이지만 sitemap 등록 (detail page noindex 정책과 일관).
+  // 원문 근거와 사람 검수가 유효한 설명만 사이트맵에 등록한다.
   // welfare/[id]/page.tsx 의 isSparse 가 !hasInsight 면 noindex 처리 → sitemap 에서
   // 같은 row 빼지 않으면 Search Console "Indexed, though blocked by noindex" 경고 +
   // AdSense 검수자가 sitemap → noindex URL 도달 시 부정 시그널.
   // 2026-06-14 — .limit(15000) 이 PostgREST max-rows(1000) 에 막혀 welfare 가 1,000 에서
   // 잘리던 사고(10,223 중 9,223 누락) fix. .range() 페이지네이션으로 전체 수집.
-  const welfare = await paginateAll<{ id: string; updated_at: string; unique_insight_at: string | null }>(
+  const welfare = await paginateAll<EvidenceProgram & { id: string; updated_at: string }>(
     (from) =>
       supabase
         .from("welfare_programs")
-        .select("id, updated_at, unique_insight_at")
+        .select("*")
         .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-        .not("unique_insight_at", "is", null)
+        .eq("policy_guidance->>status", "approved")
         .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세는 404 라 sitemap 에 두면 SC 404 경고
         .is("duplicate_of_id", null) // 중복 정책 제외 — 목록과 동일 기준(중복 콘텐츠 색인 방지)
         .order("id", { ascending: true }) // .range() 안정 정렬(페이지 경계 중복/누락 방지)
         .range(from, from + 999),
   );
-  const welfarePages: MetadataRoute.Sitemap = welfare.map((w) => {
-    const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at!;
+  const welfarePages: MetadataRoute.Sitemap = welfare.filter(row => getPublishedGuide(row)).map((w) => {
+    const insightAt = getPublishedGuide(w)!.reviewedAt!;
     const lastModSrc = new Date(insightAt) > new Date(w.updated_at) ? insightAt : w.updated_at;
     return {
       url: `${baseUrl}/welfare/${w.id}`,
@@ -257,20 +258,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Loan programs — welfare 와 동일 패턴 + 동일 페이지네이션 fix (1000 cap 우회).
-  const loans = await paginateAll<{ id: string; updated_at: string; unique_insight_at: string | null }>(
+  const loans = await paginateAll<EvidenceProgram & { id: string; updated_at: string }>(
     (from) =>
       supabase
         .from("loan_programs")
-        .select("id, updated_at, unique_insight_at")
+        .select("*")
         .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-        .not("unique_insight_at", "is", null)
+        .eq("policy_guidance->>status", "approved")
         .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세 404 와 정합
         .is("duplicate_of_id", null) // 중복 정책 제외 — 중복 콘텐츠 색인 방지
         .order("id", { ascending: true })
         .range(from, from + 999),
   );
-  const loanPages: MetadataRoute.Sitemap = loans.map((l) => {
-    const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at!;
+  const loanPages: MetadataRoute.Sitemap = loans.filter(row => getPublishedGuide(row)).map((l) => {
+    const insightAt = getPublishedGuide(l)!.reviewedAt!;
     const lastModSrc = new Date(insightAt) > new Date(l.updated_at) ? insightAt : l.updated_at;
     return {
       url: `${baseUrl}/loan/${l.id}`,
