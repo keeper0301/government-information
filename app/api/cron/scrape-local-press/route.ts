@@ -18,6 +18,7 @@ import { authorizeCronRequest } from "@/lib/cron-auth";
 import { rotatePressCities } from "@/lib/scraping/local-press/_rotation";
 import { selectPressShard } from "@/lib/scraping/local-press/_shards";
 import { describeScrapeError } from "@/lib/scraping/local-press/_error-details";
+import { probeBlockedPressSites } from "@/lib/scraping/local-press/_network-probe";
 
 export const dynamic = "force-dynamic";
 // 2026-05-25 region: vercel.json 의 functions.regions=["icn1"] 으로 설정 (project 레벨).
@@ -214,6 +215,9 @@ export async function GET(request: Request) {
   if (authErr) return authErr;
 
   try {
+    if (new URL(request.url).searchParams.get("networkProbe") === "1") {
+      return NextResponse.json({ ok: true, results: await probeBlockedPressSites() });
+    }
     const entries = selectCityEntries(request);
     const results = await runScrape(entries);
     const totalInserted = results.reduce((s, r) => s + r.inserted, 0);

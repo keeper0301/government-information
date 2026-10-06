@@ -55,7 +55,11 @@ export async function scrapeCheorwonBrowserAndInsert(
       const stream = await (await pending).createReadStream();
       const chunks: Buffer[] = [];
       for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-      const text = await readGangwonHwpx(Buffer.concat(chunks));
+      const buffer = Buffer.concat(chunks);
+      if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+        throw new Error(`철원 글 ${item.seq} 첨부 형식 오류: ${buffer.length}바이트, 시작값 ${buffer.subarray(0, 8).toString("hex")}`);
+      }
+      const text = await readGangwonHwpx(buffer);
       if (text) bodies.set(html, text);
     }
     return await processProvidedHtml({ cityName: "강원 철원군", region: "강원", ministry: "강원 철원군청",
