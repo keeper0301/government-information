@@ -1366,7 +1366,7 @@ export const CITY_REGISTRY: CityEntry[] = [
     key: "yuseong",
     city: "대전 유성구",
     ministry: "대전 유성구청",
-    siteUrl: "https://eminwon.yuseong.go.kr/emwp/jsp/ofr/OfrNewsEpctLSub.jsp",
+    siteUrl: "https://www.yuseong.go.kr/bbs/BBSMSTR_000000000103/list.do",
     fn: scrapeYuseongEminwonAndInsert,
   },
   {

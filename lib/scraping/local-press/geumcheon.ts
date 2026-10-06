@@ -14,7 +14,8 @@
 // ============================================================
 
 import {
-  createPressCollector,
+  fetchPage,
+  processProvidedHtml,
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
@@ -67,8 +68,21 @@ export function parseListPage(html: string): PressNewsItem[] {
 // 본문 파싱은 SI selectBbsNttView 공용 헬퍼 사용 (bbs_content 셀).
 export const parseDetailBody = parseSiNttBody;
 
-export const { scrapeAndInsert: scrapeGeumcheonAndInsert } =
-  createPressCollector({
+export async function scrapeGeumcheonAndInsert(
+  admin: Parameters<typeof processProvidedHtml>[1], limit = 10,
+) {
+  const listHtml = await fetchPage(LIST_URL);
+  const items = parseListPage(listHtml).slice(0, limit);
+  const details: Record<string, string> = {};
+  const errors: string[] = [];
+  // 본문 10개를 직렬로 읽으면 90초를 넘습니다. 두 개씩만 동시에 읽습니다.
+  for (let index = 0; index < items.length; index += 2) {
+    await Promise.all(items.slice(index, index + 2).map(async item => {
+      try { details[item.seq] = await fetchPage(item.sourceUrl); }
+      catch (error) { errors.push(`글 ${item.seq} 읽기 실패: ${(error as Error).message}`); }
+    }));
+  }
+  const result = await processProvidedHtml({
     cityName: "금천구",
     region: "서울",
     ministry: "금천구청",
@@ -77,4 +91,6 @@ export const { scrapeAndInsert: scrapeGeumcheonAndInsert } =
     listUrl: LIST_URL,
     parseListItems: parseListPage,
     parseDetailBody,
-  });
+  }, admin, listHtml, details, limit);
+  return { ...result, errors: [...errors, ...result.errors].slice(0, 20) };
+}

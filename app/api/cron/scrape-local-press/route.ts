@@ -17,6 +17,7 @@ import { auditCronRun } from "@/lib/ops/audit-cron-run";
 import { authorizeCronRequest } from "@/lib/cron-auth";
 import { rotatePressCities } from "@/lib/scraping/local-press/_rotation";
 import { selectPressShard } from "@/lib/scraping/local-press/_shards";
+import { describeScrapeError } from "@/lib/scraping/local-press/_error-details";
 
 export const dynamic = "force-dynamic";
 // 2026-05-25 region: vercel.json 의 functions.regions=["icn1"] 으로 설정 (project 레벨).
@@ -100,7 +101,7 @@ async function scrapeCity(
   } catch (e) {
     // 2026-05-22 fix — throw 시 invisible silent fail (audit 미기록) 사고 해소.
     // catch 안에서도 logAdminAction 호출 → /admin/scrape-local 페이지 + silent-fail-detect 가시화.
-    const errorMessage = (e as Error).message;
+    const errorMessage = describeScrapeError(e);
     const errResult: CityResult = {
       status: "failed",
       city: entry.city,
