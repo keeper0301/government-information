@@ -53,7 +53,8 @@ describe("재심사 정책뉴스 화면", () => {
     state.published = true;
     const items = await sitemap();
     expect(items.some(item => item.url.endsWith(`/news/${EDITORIAL_NEWS[0].slug}`))).toBe(true);
-    expect(items.some(item => item.url.endsWith("/news"))).toBe(false);
+    // 이 검사에서는 모든 편집 초안을 승인된 것으로 흉내 내므로 세 편이 되면 목록도 포함된다.
+    expect(items.some(item => item.url.endsWith("/news"))).toBe(EDITORIAL_NEWS.length >= 3);
   });
   it("승인 전 목록은 검수 안내만 보여준다", async () => {
     const { default: Page } = await import("@/app/news/page");

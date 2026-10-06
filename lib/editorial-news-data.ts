@@ -1,3 +1,5 @@
+import { NEXT_EDITORIAL_NEWS } from './editorial-news-next';
+
 export interface EditorialNews {
   slug: string;
   title: string;
@@ -43,4 +45,4 @@ export const EDITORIAL_NEWS: EditorialNews[] = [{
     ] },
   ],
   guideSlug: "small-business-policy-fund-mistakes",
-}];
+}, ...NEXT_EDITORIAL_NEWS];

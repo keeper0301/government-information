@@ -14,6 +14,10 @@ describe("정책뉴스 공개 검수", () => {
   it("초안은 승인 없이 공개하지 않는다", () => {
     expect(isNewsPublished(article, {}, now)).toBe(false);
   });
+  it("추가한 두 초안에는 아직 공개 승인 기록이 없다", () => {
+    const published = getPublishedNews().map(item => item.slug);
+    for (const draft of EDITORIAL_NEWS.slice(1)) expect(published).not.toContain(draft.slug);
+  });
   it("실제 운영자 승인 기록과 현재 초안이 일치한다", () => {
     expect(getPublishedNews().map(item => item.slug)).toContain(article.slug);
   });

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { approveGuide, createGuideDraft, programSnapshot, type EvidenceGuide, type EvidenceSection } from '@/lib/policy/evidence-guide';
 import { generatePolicyGuide } from '@/lib/policy/ai-guide';
 import { readPrivateReview, savePrivateReview } from '@/lib/policy/guidance-storage';
+import { applicationCorrection, sourceCorrection } from '@/lib/policy/source-correction';
 
 export const maxDuration = 60;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,9 +38,27 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: '저장소 준비와 정책 조회 상태를 확인하세요.' }, { status: 503 });
   if (!row) return NextResponse.json({ error: '정책을 찾을 수 없습니다.' }, { status: 404 });
   if (body.snapshot !== programSnapshot(row)) return NextResponse.json({ error: '정책이 바뀌었습니다. 다시 불러오세요.' }, { status: 409 });
+  if (['approve', 'draft', 'generate'].includes(body.action)
+    && ((typeof body.sourceUrl === 'string' && body.sourceUrl !== (row.source_url ?? ''))
+      || (typeof body.applyUrl === 'string' && body.applyUrl !== (row.apply_url ?? '')))) {
+    return NextResponse.json({ error: '편집한 주소를 먼저 저장하고 다시 불러오세요.' }, { status: 409 });
+  }
   try {
     const review = await readPrivateReview(admin, selected.table, selected.id);
     const old = (review?.guidance ?? row.policy_guidance) as EvidenceGuide;
+    if (body.action === 'source' || body.action === 'application') {
+      const correction = body.action === 'source' ? sourceCorrection(body.sourceUrl, body.sourceChecked)
+        : applicationCorrection(body.applyUrl, body.sourceChecked);
+      const result = await admin.rpc('replace_policy_guidance_link', {
+        target_table: selected.table, target_id: row.id, expected_updated_at: row.updated_at,
+        expected_public: row.policy_guidance ?? null, expected_revision: review?.revision ?? null,
+        link_kind: body.action, link_url_new: correction.url,
+      }).abortSignal(AbortSignal.timeout(5000));
+      if (result.error) return NextResponse.json({ error: '원문 주소 저장 기능의 준비 상태를 확인하세요.' }, { status: 503 });
+      if (result.data !== true) return NextResponse.json({ error: '자료가 변경되었습니다. 다시 불러오세요.' }, { status: 409 });
+      revalidatePath(`/${body.type}/${row.id}`);
+      return NextResponse.json({ ok: true, sourceChanged: true });
+    }
     let guidance: EvidenceGuide;
     if (body.action === 'approve') {
       if (body.sourceChecked !== true || body.contentSnapshot !== old?.contentSnapshot) {
