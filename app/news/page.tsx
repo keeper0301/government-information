@@ -97,8 +97,6 @@ export const metadata: Metadata = {
 // force-dynamic 없이 revalidate=60 을 쓰면 캐시된 첫 사용자의 프로필이
 // 다른 사용자에게도 노출되는 보안 문제가 생김.
 export const dynamic = "force-dynamic";
-// 뉴스 저장소와 같은 지역에서 실행합니다. 상세 숨김 확인은 그대로 유지합니다.
-export const preferredRegion = "icn1";
 
 type Props = {
   searchParams: Promise<{

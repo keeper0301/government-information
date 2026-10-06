@@ -52,8 +52,6 @@ const FloatingWishWidget = nextDynamic(
 // 홈페이지는 로그인 사용자·비로그인 사용자마다 프로필 자동 채움이 달라서
 // ISR 대신 요청마다 렌더링 (매 요청 ~수십ms, 성능 영향 미미)
 export const dynamic = "force-dynamic";
-// 공개 화면의 저장소는 서울에 있어 서버도 같은 지역에서 실행합니다.
-export const preferredRegion = "icn1";
 
 async function HeroIndicator() {
   const [programCountsResult, freshnessResult] = await Promise.allSettled([

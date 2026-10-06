@@ -56,8 +56,6 @@ const PER_PAGE = 20;
 // force-dynamic 없이 revalidate=60 을 쓰면 캐시된 첫 사용자의 프로필이
 // 다른 사용자에게도 노출되는 보안 문제가 생김.
 export const dynamic = "force-dynamic";
-// 정책 저장소와 가까운 서울에서 실행합니다. 개인화 화면은 계속 개별 생성합니다.
-export const preferredRegion = "icn1";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | undefined }>;
