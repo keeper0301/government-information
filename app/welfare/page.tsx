@@ -6,8 +6,7 @@ import { ProgramRow } from "@/components/program-row";
 import { AdSlot } from "@/components/ad-slot";
 import { FilterBar } from "./filter-bar";
 import { Pagination } from "@/components/pagination";
-import { getRegionMatchPatterns } from "@/lib/regions";
-import { getProgramCategoryCounts } from "@/lib/category-counts";
+import { loadWelfarePublicListing, loadWelfareRecommendationPool, parseWelfarePage } from "@/lib/welfare-listing";
 import { CategoryChipBar } from "@/components/category-chip-bar";
 import { loadUserProfile } from "@/lib/personalization/load-profile";
 import { scoreAndFilterWithPopularity } from "@/lib/personalization/filter";
@@ -20,8 +19,6 @@ import { EmptyProfilePrompt } from "@/components/personalization/EmptyProfilePro
 import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { WelfareProgram } from "@/lib/database.types";
 import { type ScorableItem } from "@/lib/personalization/score";
-import { REGION_ALIASES } from "@/lib/personalization/region-match";
-import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { EditorialReviewNote, welfareReviewChecklist } from "@/components/editorial-review-note";
 import { ADSENSE_REVIEW_MODE, reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
@@ -59,6 +56,8 @@ const PER_PAGE = 20;
 // force-dynamic 없이 revalidate=60 을 쓰면 캐시된 첫 사용자의 프로필이
 // 다른 사용자에게도 노출되는 보안 문제가 생김.
 export const dynamic = "force-dynamic";
+// 정책 저장소와 가까운 서울에서 실행합니다. 개인화 화면은 계속 개별 생성합니다.
+export const preferredRegion = "icn1";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | undefined }>;
@@ -105,88 +104,16 @@ export default async function WelfarePage({ searchParams }: Props) {
   const rawAge = params.age || "";
   const age = ALLOWED_AGES.has(rawAge) ? rawAge : null;
   const search = params.q || "";
-  const page = parseInt(params.page || "1", 10);
+  const page = parseWelfarePage(params.page);
 
-  const supabase = await createClient();
-
-  // ─── 공통 필터 빌더 ──────────────────────────────────────────────────────────
-  // 기존 query 와 점수 매칭용 풀 query 에 동일 필터를 중복 없이 적용하기 위한 함수
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function applyFilters(q: any): any {
-    if (category !== "전체") q = q.eq("category", category);
-    if (region !== "전체") {
-      if (region === "전국") {
-        q = q.or("region.eq.전국,region.is.null");
-      } else {
-        const patterns = getRegionMatchPatterns(region);
-        const orClause = patterns.map((p) => `region.ilike.%${p}%`).join(",");
-        q = q.or(orClause);
-      }
-    }
-    if (target !== "전체") q = q.ilike("target", `%${target}%`);
-    // age 필터 — age_tags ARRAY contains. PostgREST 의 cs 연산자 사용.
-    // 정확 매칭 (target ilike 의 free-text 24건 vs age_tags contains 수백 건).
-    if (age) q = q.contains("age_tags", [age]);
-    if (search) {
-      const tokens = search
-        .trim()
-        .split(/\s+/)
-        .map((t) => t.replace(/[,()%:*]/g, ""))
-        .filter((t) => t.length > 0);
-      for (const token of tokens) {
-        q = q.or(`title.ilike.%${token}%,description.ilike.%${token}%`);
-      }
-    }
-    return q;
-  }
-
-  const today = new Date().toISOString().split("T")[0];
-
-  // ─── 기존 페이지네이션 query ──────────────────────────────────────────────────
-  let query = supabase
-    .from("welfare_programs")
-    .select("*", { count: "exact" })
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-    .is("duplicate_of_id", null); // 중복 정책 (Phase 3 B3) 사용자 노출 차단
-  query = applyFilters(query);
-  query = query
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
-
-  // 분리 섹션 pool 쿼리는 사용자 region 의존이라 profile 을 먼저 fetch.
-  // 추가 RTT 1 (~50ms) 만큼만 비용 — 사장님 케이스(전남 순천시) 처럼 default
-  // region="전체" pool 100건이 다른 광역으로 가득 차 분리 섹션이 항상 0건이던
-  // 회귀 차단 (홈 hero hot-fix 와 동일 원리, 2026-04-26).
-  const profile = await loadUserProfile();
-
-  // ─── 점수 매칭용 풀 query (limit 100) ────────────────────────────────────────
-  // 페이지네이션 없이 같은 필터 적용한 상위 100건 — 사용자 개인화 점수 계산용.
-  // 사용자가 region 필터를 직접 누르면 그 선택 그대로 (자연스러움 보존).
-  // region="전체" + 사용자 프로필 region 있으면 사용자 광역+전국 우선 pool 로 좁힘.
-  let poolQuery = supabase
-    .from("welfare_programs")
-    .select("*")
-    .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-    .is("duplicate_of_id", null); // 중복 정책 (Phase 3 B3) 사용자 노출 차단
-  poolQuery = applyFilters(poolQuery);
-  if (region === "전체" && profile?.signals.region) {
-    const aliases = REGION_ALIASES[profile.signals.region] ?? [profile.signals.region];
-    const regionOr = ["region.ilike.%전국%", ...aliases.map((a) => `region.ilike.%${a}%`)].join(",");
-    poolQuery = poolQuery.or(regionOr);
-  }
-  poolQuery = poolQuery
-    .or(`apply_end.gte.${today},apply_end.is.null`)
-    .order("apply_end", { ascending: true, nullsFirst: false })
-    .limit(100);
-
-  // ─── 병렬 fetch ───────────────────────────────────────────────────────────────
-  // 본 query·카테고리 카운트·풀 query 를 동시에 요청해 RTT 절약 (profile 은 위에서 처리)
-  const [{ data, count }, categoryCounts, { data: poolData }] = await Promise.all([
-    query,
-    getProgramCategoryCounts(supabase, "welfare_programs"),
-    poolQuery,
+  // 공개 자료와 프로필 확인을 함께 시작하고, 추천 자료는 필요한 회원만 읽습니다.
+  const filters = { category, region, target, age, search, page };
+  const [{ data, count, categoryCounts }, profile] = await Promise.all([
+    loadWelfarePublicListing(filters), loadUserProfile(),
   ]);
+  const poolData = profile && !profile.isEmpty
+    ? await loadWelfareRecommendationPool(await createClient(), filters, profile)
+    : [];
 
   const programs = (data || []).map(welfareToDisplay);
   const totalPages = Math.ceil((count || 0) / PER_PAGE);

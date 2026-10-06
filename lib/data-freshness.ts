@@ -9,7 +9,7 @@
 // ============================================================
 
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { readPublicLatestTimestamp } from "@/lib/public-home-data";
 import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 
 export type DataFreshness = {
@@ -24,40 +24,10 @@ export const getDataFreshness = cache(async (): Promise<DataFreshness> => {
     return { latest_at: null, minutes_ago: null };
   }
 
-  const supabase = await createClient();
+  let latest: string | null;
+  try { latest = await readPublicLatestTimestamp(); } catch { latest = null; }
+  if (!latest) return { latest_at: null, minutes_ago: null };
 
-  const [w, l, n] = await Promise.all([
-    supabase
-      .from("welfare_programs")
-      .select("created_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("loan_programs")
-      .select("created_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("news_posts")
-      .select("created_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-
-  const candidates = [
-    w.data?.created_at,
-    l.data?.created_at,
-    n.data?.created_at,
-  ].filter((c): c is string => !!c);
-
-  if (candidates.length === 0) {
-    return { latest_at: null, minutes_ago: null };
-  }
-
-  const latest = candidates.sort().at(-1)!;
   const minutes = Math.floor((Date.now() - new Date(latest).getTime()) / 60_000);
   return { latest_at: latest, minutes_ago: Math.max(minutes, 0) };
 });

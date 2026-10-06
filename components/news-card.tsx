@@ -86,9 +86,11 @@ export function NewsCard({ post }: { post: NewsCardData }) {
   const categoryColor = NEWS_CATEGORY_COLOR[post.category];
   const dateLabel = formatKoreanDate(post.published_at);
   const thumbnailUrl = safeNewsThumbnailUrl(post.thumbnail_url, post.source_outlet);
+  // 변경 허락을 확인한 자체 자료사진에만 작은 파일을 제공합니다.
+  const hasResponsivePhoto = thumbnailUrl === "/images/news/jeongeup-market.webp";
 
   return (
-    <Link href={`/news/${post.slug}`} className="block no-underline">
+    <Link prefetch={false} href={`/news/${post.slug}`} className="block no-underline">
       <Card className="bg-white rounded-3xl overflow-hidden shadow-none hover:[box-shadow:0_8px_24px_rgba(17,24,39,0.06)] hover:-translate-y-0.5 transition-all duration-200 ring-0 gap-0 py-0 h-full">
         {/* 썸네일 — 있으면 이미지, 없으면 카테고리 색상 그라디언트 placeholder.
             alt: 네이버 진단의 이미지 설명 누락 방지를 위해 제목 기반 설명 제공.
@@ -101,7 +103,9 @@ export function NewsCard({ post }: { post: NewsCardData }) {
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={thumbnailUrl}
+              src={hasResponsivePhoto ? "/images/news/jeongeup-market-480.webp" : thumbnailUrl}
+              srcSet={hasResponsivePhoto ? "/images/news/jeongeup-market-480.webp 480w, /images/news/jeongeup-market-640.webp 640w" : undefined}
+              sizes={hasResponsivePhoto ? "(max-width: 767px) calc(100vw - 48px), (max-width: 1023px) 45vw, 360px" : undefined}
               alt={post.thumbnail_alt ?? `${post.title} 관련 이미지`}
               loading="lazy"
               decoding="async"

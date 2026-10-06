@@ -8,14 +8,16 @@ const mock = vi.hoisted(() => ({ enabled: true, rows: [] as Record<string, unkno
 vi.mock("@/lib/supabase/env", () => ({ hasSupabaseAnonEnv: () => mock.enabled }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: () => {
   let slug = "";
+  let candidates: string[] | undefined;
   const query = {
     select: () => query,
+    in: (_: string, slugs: string[]) => { candidates = slugs; return query; },
     order: (column: string) => { mock.orders.push(column); return query; },
     eq: (_: string, value: string) => { slug = value; return query; },
     maybeSingle: async () => ({ data: mock.rows.find(row => row.slug === slug) ?? null, error: mock.detailFails ? new Error("조회 실패") : null }),
     range: async (from: number, to: number) => {
       mock.ranges.push([from, to]);
-      return { data: mock.repeat ? mock.rows : mock.rows.slice(from, to + 1), error: from === mock.failAt ? new Error("synthetic failure") : null };
+      return { data: mock.repeat ? mock.rows : mock.rows.filter(row => !candidates || candidates.includes(String(row.slug))).slice(from, to + 1), error: from === mock.failAt ? new Error("synthetic failure") : null };
     },
   };
   return query;
@@ -28,6 +30,14 @@ const now = new Date("2026-10-04T12:00:00Z");
 beforeEach(() => { mock.enabled = true; mock.rows = []; mock.ranges = []; mock.orders = []; mock.failAt = -1; mock.repeat = false; mock.detailFails = false; });
 
 describe("complete candidate curation", () => {
+  it("공개 목록은 검수 후보만 조회하되 변경된 최신 본문을 숨긴다", async () => {
+    const slug = "documents-before-government-benefit";
+    mock.rows = Array.from({ length: 450 }, (_, index) => row(index));
+    mock.rows.push({ ...row(451), slug, title: "승인 후 바뀐 본문" });
+    const guides = await getGuides(50, { publicationOnly: true });
+    expect(guides.some(guide => guide.slug === slug)).toBe(false);
+    expect(mock.ranges).toHaveLength(2);
+  });
   it.each([50, 200, 450])("retains evidence-bound pilots with %i unrelated DB rows", async count => {
     mock.rows = Array.from({ length: count }, (_, i) => row(i));
     const guides = await getGuides(50);

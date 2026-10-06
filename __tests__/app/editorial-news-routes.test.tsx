@@ -25,7 +25,7 @@ describe("재심사 정책뉴스 화면", () => {
     expect(renderToStaticMarkup(<EditorialNewsIndex />)).not.toContain("jeongeup-market.webp");
     state.published = true;
     const html = renderToStaticMarkup(<EditorialNewsIndex />);
-    expect(html).toContain('src="/images/news/jeongeup-market.webp"');
+    expect(html).toContain('src="/images/news/jeongeup-market-480.webp"');
     expect(html).toContain("2011년 자료사진");
     expect(html).toContain("Ulrich Lange");
     expect(html).toContain("https://creativecommons.org/licenses/by-sa/3.0/deed.ko");
