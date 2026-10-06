@@ -76,6 +76,9 @@
     }
   ],
   "functions": {
+    "app/page.tsx": { "regions": ["icn1"] },
+    "app/welfare/page.tsx": { "regions": ["icn1"] },
+    "app/news/page.tsx": { "regions": ["icn1"] },
     "app/api/cron/scrape-local-press/route.ts": { "regions": ["icn1"] },
     "app/api/internal/icn1-fetch/route.ts": { "regions": ["icn1"] }
   },
