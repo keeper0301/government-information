@@ -15,6 +15,7 @@
 
 import {
   sendOpsAlertSms,
+  sanitizeOpsAlertSmsError,
   type OpsAlertSmsResult,
 } from "./sms-ops-alert";
 import {
@@ -59,7 +60,7 @@ export async function sendOpsAlertMultichannel({
   const sms: OpsAlertSmsResult | null =
     smsSettled.status === "fulfilled"
       ? smsSettled.value
-      : { ok: false, reason: "network_error", error: (smsSettled.reason as Error).message };
+      : { ok: false, reason: "network_error", error: sanitizeOpsAlertSmsError(smsSettled.reason) };
 
   const telegram: OpsAlertTelegramResult | null =
     telegramSettled.status === "fulfilled"
@@ -68,6 +69,17 @@ export async function sendOpsAlertMultichannel({
 
   // 1 채널이라도 도달하면 anyDelivered=true (메타 안전책 보장 명시).
   const anyDelivered = (sms?.ok ?? false) || (telegram?.ok ?? false);
+
+  // Callers may ignore channel results. Keep an independent diagnostic even
+  // when Telegram succeeds, without turning successful fallback into failure.
+  // Intentional skips are policy/configuration states, not submission errors.
+  if (sms && !sms.ok && sms.error) {
+    console.warn("[ops-alert] SMS failed", {
+      reason: sms.reason,
+      error: sanitizeOpsAlertSmsError(sms.error),
+      telegramOk: telegram?.ok ?? false,
+    });
+  }
 
   return { anyDelivered, sms, telegram };
 }
