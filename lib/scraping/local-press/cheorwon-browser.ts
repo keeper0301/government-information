@@ -2,7 +2,7 @@ import { chromium, type Page } from "playwright-core";
 import { processProvidedHtml, type ScrapeResult } from "./_factory";
 import { LIST_URL, parseListPage } from "./cheorwon";
 import { parseSiNttBody } from "./_si_ntt_helper";
-import { readGangwonHwpx } from "./_gangwon_hwpx";
+import { extractAttachBody } from "./_si_attach_helper";
 
 export async function openCheorwonPage(page: Page, url: string): Promise<void> {
   // 자동 수집 시간 안에서 공식 사이트의 일시적인 연결 오류를 한 번 재시도합니다.
@@ -40,7 +40,9 @@ export async function scrapeCheorwonBrowserAndInsert(
     if (!items.length) throw new Error("철원군 보도자료 목록을 읽지 못했습니다.");
     const details: Record<string, string> = {};
     const bodies = new Map<string, string>();
+    const errors: string[] = [];
     for (const item of items) {
+      try {
       await openCheorwonPage(page, item.sourceUrl);
       await page.waitForSelector(".p-table__content", { timeout: 15000 });
       const html = await page.content();
@@ -56,14 +58,20 @@ export async function scrapeCheorwonBrowserAndInsert(
       const chunks: Buffer[] = [];
       for await (const chunk of stream) chunks.push(Buffer.from(chunk));
       const buffer = Buffer.concat(chunks);
-      if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
-        throw new Error(`철원 글 ${item.seq} 첨부 형식 오류: ${buffer.length}바이트, 시작값 ${buffer.subarray(0, 8).toString("hex")}`);
+      // 파일 이름이 새 한글 문서여도 실제 내용은 옛 한글 형식일 수 있습니다.
+      const text = await extractAttachBody(buffer);
+      if (!text) throw new Error(`철원 글 ${item.seq} 첨부 형식 오류: 본문을 읽지 못했습니다.`);
+      bodies.set(html, text);
+      } catch (error) {
+        // 한 첨부의 오류 때문에 앞서 읽은 정상 원문까지 버리지 않습니다.
+        const message = (error as Error).message;
+        errors.push(`철원 글 ${item.seq} 읽기 실패: ${message}`);
+        if (/Target page, context or browser has been closed/.test(message)) break;
       }
-      const text = await readGangwonHwpx(buffer);
-      if (text) bodies.set(html, text);
     }
-    return await processProvidedHtml({ cityName: "강원 철원군", region: "강원", ministry: "강원 철원군청",
+    const result = await processProvidedHtml({ cityName: "강원 철원군", region: "강원", ministry: "강원 철원군청",
       sourceOutlet: "강원 철원군청", sourceCode: "local-press-cheorwon", listUrl: LIST_URL,
       parseListItems: parseListPage, parseDetailBody: html => bodies.get(html) ?? null }, admin, listHtml, details, limit);
+    return { ...result, errors: [...errors, ...result.errors].slice(0, 20) };
   } finally { clearTimeout(deadline); await browser.close(); }
 }
