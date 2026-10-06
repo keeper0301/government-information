@@ -37,3 +37,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## 개인 컴퓨터 지역 수집
 
 중랑·밀양 예약 수집의 실행 조건과 결과 확인 방법은 [운영 안내](docs/pc-press-recovery.md)를 참고합니다.
+
+## 정책 원문과 설명 검수
+
+관리자 검수, 비공개 초안 저장과 출처 복구의 운영 방법은 [검수 안내](docs/policy-guidance-review.md)를 참고합니다.

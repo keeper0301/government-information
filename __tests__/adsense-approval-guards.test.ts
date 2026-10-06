@@ -321,7 +321,7 @@ describe("AdSense approval guardrails", () => {
     expect(source).toContain("ADSENSE_REVIEW_STRICT_LINKS");
     expect(source).toContain('{ path: "/welfare", robots: "noindex, follow" }');
     expect(source).toContain('{ path: "/blog", robots: "noindex, follow" }');
-    expect(source).toContain('runGuideQualityAudit({ baseUrl: BASE_URL, minGuides: 30 })');
+    expect(source).toContain('runGuideQualityAudit({ baseUrl: BASE_URL })');
     expect(source).toContain("guide_quality.issues");
     expect(source).toContain("guide quality issues");
   });

@@ -1,15 +1,18 @@
 // ============================================================
-// 정책 상세 자체 가치 박스 — keepioo 자체 작성 콘텐츠
+// 정책 상세 안내 — 원문 근거와 운영자 검수가 있는 설명만 공개한다.
 // ============================================================
-// ai_tips/ai_faq/ai_checklist 가 있으면 3 섹션 렌더.
-// 모두 NULL 이면 template fallback (자체 가치 0 보다 나음).
+// 기존 자동 설명은 보존하되 공개하지 않는다.
+// 검수 전에는 원문 확인이 진행 중이라는 안내만 표시한다.
 // ============================================================
+
+import type { EvidenceGuide } from '@/lib/policy/evidence-guide';
 
 type Props = {
   tips: string | null;
   faq: string | null;
   checklist: string | null;
   category?: string | null;
+  guide?: EvidenceGuide | null;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -23,8 +26,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function PolicyGuideBox({ tips, faq, checklist, category }: Props) {
-  const hasAny = Boolean(tips || faq || checklist);
+export function PolicyGuideBox({ guide }: Props) {
 
   return (
     <section className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-8 mb-6 max-md:p-6">
@@ -37,17 +39,20 @@ export function PolicyGuideBox({ tips, faq, checklist, category }: Props) {
         </span>
       </div>
 
-      {hasAny ? (
+      {guide ? (
         <>
-          {tips && <Row label="이용 팁" value={tips} />}
-          {faq && <Row label="자주 묻는 거절 사유" value={faq} />}
-          {checklist && <Row label="신청 체크리스트" value={checklist} />}
+          {guide.sections.map((section, index) => <div key={index}>
+            <Row label={section.label} value={section.text} />
+            <details className="text-sm mb-4"><summary>공고 근거 확인</summary>
+              <blockquote>{section.quote}</blockquote>
+              <a href={guide.source.url} target="_blank" rel="noopener noreferrer">확인한 원문 보기</a>
+            </details>
+          </div>)}
+          <p className="text-xs">운영자 검수일: {guide.reviewedAt?.slice(0, 10)}</p>
         </>
       ) : (
         <div className="text-[14px] text-grey-800 leading-[1.7]">
-          {category ? `${category} ` : ""}지원 정책은 대상 조건·마감일·필요 서류를
-          미리 확인하면 신청이 수월합니다. 신청 자격과 제출 서류는 아래 공고 내용에서
-          확인하고, 최종 신청·확인은 공식 사이트에서 진행해 주세요.
+          이 사업의 신청 안내는 원문 대조와 검수 중입니다. 확인되지 않은 서류나 거절 사유를 안내하지 않습니다.
         </div>
       )}
     </section>

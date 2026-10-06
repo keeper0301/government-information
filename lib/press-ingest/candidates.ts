@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-actions";
-import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
+import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import {
   extractAgeTags,
   extractBenefitTags,
@@ -66,6 +66,7 @@ export type PressCandidateForConfirm = {
     id: string;
     ministry: string | null;
     slug: string | null;
+    source_url?: string | null;
   };
 };
 
@@ -109,6 +110,7 @@ type PressCandidateDbRow = {
     id: string;
     ministry: string | null;
     slug: string | null;
+    source_url?: string | null;
   };
 };
 
@@ -376,7 +378,7 @@ export function buildWelfareInsertPayload(
     apply_start: sanitizeDateForDb(result.apply_start),
     apply_end: sanitizeDateForDb(result.apply_end),
     source: ministryToSource(candidate.news.ministry),
-    source_url: newsSourceUrl(candidate.news),
+    source_url: sanitizeApplyUrl(candidate.news.source_url),
     region: candidate.news.ministry,
     district: districtMatch?.district ?? null,
     source_code: SOURCE_CODE,
@@ -429,7 +431,7 @@ export function buildLoanInsertPayload(
     apply_start: sanitizeDateForDb(result.apply_start),
     apply_end: sanitizeDateForDb(result.apply_end),
     source: ministryToSource(candidate.news.ministry),
-    source_url: newsSourceUrl(candidate.news),
+    source_url: sanitizeApplyUrl(candidate.news.source_url),
     region: provinceName,
     district: districtMatch?.district ?? null,
     source_code: SOURCE_CODE,
@@ -470,7 +472,7 @@ export async function listPressCandidates(
   let query = admin
     .from("press_ingest_candidates")
     .select(
-      "id, news_id, status, program_type, title, category, classified_payload, skip_reason, error_message, classified_at, created_at, updated_at, confidence_tier, news_posts!inner(id, ministry, slug)",
+      "id, news_id, status, program_type, title, category, classified_payload, skip_reason, error_message, classified_at, created_at, updated_at, confidence_tier, news_posts!inner(id, ministry, slug, source_url)",
     )
     .eq("status", "pending");
   if (opts?.tier) {
@@ -501,6 +503,7 @@ export async function listPressCandidates(
       id: row.news_posts.id,
       ministry: row.news_posts.ministry,
       slug: row.news_posts.slug,
+      source_url: row.news_posts.source_url,
     },
   }));
 }
@@ -512,7 +515,7 @@ export async function getPressCandidateForConfirm(
   const { data, error } = await admin
     .from("press_ingest_candidates")
     .select(
-      "id, news_id, status, program_type, title, category, classified_payload, news_posts!inner(id, ministry, slug)",
+      "id, news_id, status, program_type, title, category, classified_payload, news_posts!inner(id, ministry, slug, source_url)",
     )
     .eq("id", candidateId)
     .maybeSingle();
@@ -531,6 +534,7 @@ export async function getPressCandidateForConfirm(
       id: row.news_posts.id,
       ministry: row.news_posts.ministry,
       slug: row.news_posts.slug,
+      source_url: row.news_posts.source_url,
     },
   };
 }
@@ -637,6 +641,7 @@ type AutoConfirmRow = {
   news_posts: {
     id: string;
     slug: string | null;
+    source_url?: string | null;
     ministry: string | null;
     body: string | null;
   };
@@ -713,7 +718,7 @@ export async function autoConfirmPendingPressCandidates({
     // 보안 (코드리뷰 P1 2026-06-08): 기존 apply_url 이 정부 도메인 화이트리스트
     // 밖이면(legacy 후보 방어) 신뢰하지 않고 null 로 강등해 fallback chain 으로
     // 재해결한다. LLM 이 본문(신뢰 불가 외부 데이터)에서 뽑은 악성·광고 url 차단.
-    if (applyUrl && !isPublicDomain(applyUrl)) {
+    if (applyUrl && (!isPublicDomain(applyUrl) || !isDeepLink(applyUrl) || !sanitizeApplyUrl(applyUrl))) {
       applyUrl = null;
     }
 

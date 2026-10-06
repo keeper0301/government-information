@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 const DEFAULT_BASE_URL = "https://www.keepioo.com";
-const DEFAULT_MIN_GUIDES = 30;
-const DEFAULT_MIN_TEXT_LENGTH = 2400;
+// 내부 조사에 공개 글이 있는지 확인한다. 구글의 승인 개수·글자 수 기준이 아니다.
+const DEFAULT_MIN_GUIDES = 1;
+const DEFAULT_MIN_TEXT_LENGTH = 0;
 
 export const GUIDE_QUALITY_CHECKS = [
   {
@@ -58,7 +59,7 @@ export function parseArgs(argv) {
 
   out.baseUrl = String(out.baseUrl || DEFAULT_BASE_URL).replace(/\/$/, "");
   if (!Number.isFinite(out.minGuides) || out.minGuides < 1) out.minGuides = DEFAULT_MIN_GUIDES;
-  if (!Number.isFinite(out.minTextLength) || out.minTextLength < 500) out.minTextLength = DEFAULT_MIN_TEXT_LENGTH;
+  if (!Number.isFinite(out.minTextLength) || out.minTextLength < 0) out.minTextLength = DEFAULT_MIN_TEXT_LENGTH;
   return out;
 }
 
@@ -111,7 +112,8 @@ export function analyzeGuideHtml(html, url, options = {}) {
       matched,
     };
   });
-  const missing = checks.filter((check) => !check.ok).map((check) => check.key);
+  // 중복 수급 제한이 없는 안내 글에 임의의 제한 내용을 추가하도록 요구하지 않는다.
+  const missing = checks.filter((check) => !check.ok && check.key !== 'duplicate_limits').map((check) => check.key);
   const densityOk = text.length >= minTextLength || new URL(url).pathname === "/guides";
   if (!densityOk) missing.push("content_depth");
   return {

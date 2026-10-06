@@ -11,35 +11,42 @@
 // 표시했는데 사용자 입장에선 빈약한 카드 보고 답답해진 후에야 안내가 나와서
 // 순서가 거꾸로였음.)
 
+import { isDeepLink, sanitizeApplyUrl } from '@/lib/utils/apply-url';
+
 type Props = {
   sourceLink: string | null;
   source: string;
   variant: "very-sparse" | "sparse";
+  sourceVerified?: boolean;
   // very-sparse: description<100 AND filledSummary<=1 (본문도 핵심도 거의 없음)
   // sparse:      filledSummary<=1 (본문은 있지만 핵심 정보가 빈약)
 };
 
-export function SparseDataNotice({ sourceLink, source, variant }: Props) {
+export function SparseDataNotice({ sourceLink, source, variant, sourceVerified = false }: Props) {
+  const safe = sanitizeApplyUrl(sourceLink);
+  const url = safe ? new URL(safe) : null;
+  const internal = url && ['keepioo.com', 'www.keepioo.com'].includes(url.hostname);
+  const label = !safe || !url ? '' : internal ? '관련 키피오 뉴스 확인'
+    : !isDeepLink(safe) ? `기관 홈페이지 (${url.hostname})`
+    : sourceVerified ? '확인한 원문 보기' : '수집 출처 확인';
   const isVerySparse = variant === "very-sparse";
   const headline = isVerySparse
     ? "이 공고는 요약 정보만 수집된 상태예요"
-    : "자세한 자격·혜택 정보는 원문에서 확인할 수 있어요";
-  const body = isVerySparse
-    ? `${source} 원문 페이지에는 자격 요건·필요 서류·문의처 등 자세한 내용이 정리돼 있어요. 원문을 함께 확인해 주세요.`
-    : "수집된 핵심 정보 외에 자격 요건·서류 등 세부 내용은 원문 페이지에 있어요. 신청 전 반드시 함께 확인하세요.";
+    : "신청 전 세부 조건을 확인해 주세요";
+  const body = '수집된 정보만으로 신청 자격과 제출 서류를 확정할 수 없습니다. 해당 사업의 공식 공고나 담당 기관에 확인해 주세요.';
 
   return (
     <div className="bg-blue-50 border border-blue-100 rounded-2xl px-6 py-5 mb-6">
       <div className="text-[15px] font-bold text-grey-900 mb-1">{headline}</div>
       <p className="text-[13px] text-grey-700 leading-[1.6] mb-4">{body}</p>
-      {sourceLink ? (
+      {safe ? (
         <a
-          href={sourceLink}
+          href={safe}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-500 text-white text-[14px] font-semibold rounded-lg no-underline hover:bg-blue-600 transition-colors"
         >
-          원문 페이지 열기
+          {label}
           <span aria-hidden="true">↗</span>
         </a>
       ) : (

@@ -16,6 +16,7 @@
 //   - publish-blog 와 분리 — publish 안정성 영향 0
 // ============================================================
 
+import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { submitToIndexNow } from "@/lib/indexnow";
@@ -71,28 +72,27 @@ async function runSubmitRecent() {
     news = newsData ?? [];
   }
 
-  // 2026-06-12 고도화 — 최근 24h 신규 enrich(색인 가능해진) 복지·대출도 IndexNow push.
-  // 기준: unique_insight_at >= since(=색인 가능 전환 시점) + sitemap 과 동일 EXCLUDED 필터
-  // + unique_insight_at not null. 이전엔 블로그·뉴스만 다뤄 신규 정책 색인이 크롤 대기(수주)
-  // 였던 갭 해소. welfare/loan 은 review mode 와 무관(항상 색인 대상).
+  // 최근 사람 검수를 통과했고 현재 조건과 내용이 같은 정책만 제출한다.
   const fetchRecentPolicy = async (
     table: "welfare_programs" | "loan_programs",
     filter: string,
   ) => {
     const { data, error } = await supabase
       .from(table)
-      .select("id, unique_insight_at")
-      .gte("unique_insight_at", since)
-      .not("unique_insight_at", "is", null)
+      .select("*")
+      .gte("policy_guidance->>reviewedAt", since)
+      .eq("policy_guidance->>status", "approved")
       .not("source_code", "in", filter)
       .not("is_hidden", "is", true) // 회수(숨김=404) 정책 미제출
       .is("duplicate_of_id", null) // 중복 정책 미제출
-      .order("unique_insight_at", { ascending: false })
+      .order("policy_guidance->>reviewedAt", { ascending: false })
+      .order("id")
       .limit(POLICY_LIMIT);
     if (error) console.error(`[indexnow-submit-recent] ${table} select 실패:`, error);
-    return (data ?? []) as Array<{ id: string }>;
+    return ((data ?? []) as unknown as (EvidenceProgram & { id: string })[])
+      .filter(row => getPublishedGuide(row));
   };
-  const [welfare, loan] = await Promise.all([
+  const [welfare, loan] = ADSENSE_REVIEW_MODE ? [[], []] : await Promise.all([
     fetchRecentPolicy("welfare_programs", WELFARE_EXCLUDED_FILTER),
     fetchRecentPolicy("loan_programs", LOAN_EXCLUDED_FILTER),
   ]);

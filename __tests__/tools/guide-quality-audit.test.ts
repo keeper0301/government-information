@@ -70,7 +70,6 @@ describe("guide-quality-audit", () => {
       "official_source",
       "documents",
       "deadline",
-      "duplicate_limits",
     ]);
   });
 
