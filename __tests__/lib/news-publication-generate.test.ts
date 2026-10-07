@@ -15,6 +15,18 @@ const draft = { kind: 'application', title: '청년 근로자 지원, 대상과 
 const quality = () => Object.fromEntries(['scope','timeliness','usefulness','clarity','nonRepetition','coverage'].map(key => [key,
   { passed: true, reason: '대상 설명과 개인별 지원 확정을 구분하고 실제 확인할 내용을 안내했습니다.', excerptIndex: 2 }]));
 
+it('별도 검사 요청에는 작성 도구가 요구하는 자료 형식 출력 지시를 명시한다', async () => {
+  // 실제 서버가 자료 형식 출력 지시를 빠뜨린 요청을 거절하는 조건을 재현합니다.
+  mock.call.mockImplementation(async input => {
+    if (input.jsonMode && !/\bJSON\b/i.test(input.prompt)) throw new Error('검사 요청 형식 오류');
+    return JSON.stringify(input.jsonMode ? { supported: true, originalValue: true, quality: quality(), issues: [],
+      checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) } : draft);
+  });
+  await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).resolves.toHaveProperty('editorialReview');
+  expect(mock.call).toHaveBeenCalledTimes(2);
+});
+
 it('작성에 30초가 걸려도 시간 안에 응답하면 별도 검사를 거쳐 통과한다', async () => {
   vi.useFakeTimers();
   mock.call.mockImplementation(input => new Promise((resolve, reject) => {
