@@ -7,6 +7,7 @@ import { NewsCard } from "@/components/news-card";
 import { EditorialPhotoCredit, EditorialPhotoFigure } from "@/components/news/editorial-news-photo";
 import { getEditorialNewsPhoto } from "@/lib/editorial-news-images";
 import { EditorialNewsFilters } from "@/components/news/editorial-news-filters";
+import { EditorialAdditionalSources, verifiedAdditionalSources } from "@/components/news/editorial-news-sources";
 import { filterEditorialNews, normalizeNewsFilters, type NewsFilters } from "@/lib/editorial-news-filters";
 
 export function EditorialNewsCards({ articles = getPublishedNews() }: { articles?: EditorialNews[] } = {}) {
@@ -60,13 +61,15 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
     ? { reviewedAt: article.automaticPublication.checkedAt, reviewer: "자동 근거 검사·사실 대조" }
     : getPublishedNewsReview(article);
   const photo = getEditorialNewsPhoto(article);
+  const additionalSources = verifiedAdditionalSources(article);
   const schema = review ? {
     "@context": "https://schema.org", "@type": "Article",
     headline: article.title, description: article.answer,
     image: `https://www.keepioo.com${photo.url}`,
     datePublished: review.reviewedAt, dateModified: article.editorialCorrection?.correctedAt ?? review.reviewedAt,
     author: { "@type": "Organization", name: "키피오 편집", url: "https://keepioo.com/about" },
-    mainEntityOfPage: `https://keepioo.com/news/${article.slug}`, citation: article.sourceUrl,
+    mainEntityOfPage: `https://keepioo.com/news/${article.slug}`,
+    citation: additionalSources.length ? [article.sourceUrl, ...additionalSources.map(source => source.url)] : article.sourceUrl,
   } : null;
   return <main className="max-w-3xl mx-auto px-6 pt-28 pb-16">
     {schema && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(schema) }} />}
@@ -91,6 +94,7 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
         <h2 className="font-bold text-xl mb-3">공식 근거와 정정</h2>
         <p className="leading-relaxed mb-3">{article.sourceAgency} · 발표 {article.sourcePublishedAt} · 확인 {article.checkedAt}</p>
         <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{article.sourceTitle} — 공식 원문 보기</a>
+        <EditorialAdditionalSources article={article} />
         <p className="text-sm text-grey-600 leading-relaxed mt-4">공식 자료의 사실과 키피오의 점검·안내 예시를 구분해 작성했습니다. 원문 사진과 본문 전체는 옮기지 않았습니다. 오류는 <Link href="/contact" className="underline">문의하기</Link>로 알려주세요.</p>
         {guide && <p className="mt-6"><Link href={`/guides/${guide.slug}`} className="text-blue-600 underline">함께 확인할 가이드: {guide.title}</Link></p>}
       </aside>

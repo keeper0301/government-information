@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { validateNewsDraft } from '@/lib/news-publication/validation';
+import { validateNewsDraft, newsDraftIssue } from '@/lib/news-publication/validation';
 import { validateEditorialQuality } from '@/lib/news-publication/quality';
 
 const source = '행사 참여자에게 10월 중 맞춤형 채용 정보를 제공합니다.';
@@ -15,6 +15,16 @@ const quality = () => Object.fromEntries(['scope','timeliness','usefulness','cla
   { passed: true, reason: '참여자 대상 후속 지원과 일반 구직자의 별도 확인을 구분했습니다.', excerpt: draft.answer }]));
 it('짧고 구체적인 행사 설명은 불필요한 분량 없이 통과한다', () => {
   expect(validateNewsDraft(draft, source)).not.toBeNull();
+});
+it.each(['코드를 수정하세요.', '검수자가 봐도 서비스 목적이 드러나도록 작성하세요.',
+  '이 문단을 구현하고 배포하세요.', '본문에 이 설명을 추가하세요.', '프롬프트 지침을 따르세요.'])
+('작성·개발 작업 지시가 독자용 글에 섞이면 보류한다: %s', instruction => {
+  const leaked = { ...draft, answer: instruction };
+  expect(newsDraftIssue(leaked, source)).toContain('작업 지시');
+});
+it('독자에게 필요한 서류 준비·신청 안내는 작업 지시로 오인하지 않는다', () => {
+  const readerAdvice = { ...draft, answer: '상담 전에 이력서를 준비하세요. 기관의 공식 신청 화면에서 예약할 수 있습니다.' };
+  expect(validateNewsDraft(readerAdvice, source)).not.toBeNull();
 });
 it('문장 부호 없이 같은 구절로 분량을 채우는 초안도 차단한다', () => {
   const padded = { ...draft, sections: draft.sections.map(s => ({ ...s, paragraphs: ['대상 조건을 살펴보세요'.repeat(15)] })) };

@@ -41,6 +41,14 @@ export function newsDraftIssue(value: unknown, body: string): string | null {
   }
   const prose = [draft.title, draft.question, draft.answer, draft.audience,
     ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])].join(' ');
+  // 독자의 신청 안내와 구분해, 작성자·개발자에게 내리는 내부 작업 지시만 차단합니다.
+  const internalInstructions = [
+    /(?:코드|컴포넌트|소스\s*파일)(?:를|을|에)?[^.!?\n]{0,35}(?:수정|구현|추가|삭제|배포)(?:하|해)/u,
+    /(?:검수자가|심사자가)[^.!?\n]{0,60}(?:보|인식|드러나|판단)/u,
+    /(?:이\s*문단|본문에|기사에)[^.!?\n]{0,30}(?:작성|추가|구현|배포)(?:하|해)/u,
+    /(?:프롬프트\s*지침|시스템\s*프롬프트|코딩\s*작업\s*지시|quoteIndex)/u,
+  ];
+  if (internalInstructions.some(pattern => pattern.test(prose))) return '작성·개발 작업 지시가 본문에 섞였습니다.';
   if (prose.length < 300 || prose.length > 1800) return `설명 분량이 기준 밖입니다: ${prose.length}자.`;
   // 같은 숫자의 천 단위 쉼표만 지웁니다. 금액이나 단위 변환은 하지 않습니다.
   const comparableNumber = (text: string) => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g, value => value.replace(/,/g, ''));
