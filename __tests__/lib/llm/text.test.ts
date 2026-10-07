@@ -60,6 +60,22 @@ describe("callLLM", () => {
     await expect(callLLM({ prompt: "t" })).rejects.toThrow(/OpenAI API 오류 429/);
   });
 
+  it('응답 본문을 읽는 중 시간 초과가 나도 빈 응답으로 숨기지 않는다', async () => {
+    const deadline = new DOMException('검사용-비밀값', 'TimeoutError');
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort(deadline));
+    global.fetch = vi.fn(async () => ({ ...okRes(''), json: async () => {
+      throw new DOMException('검사용-비밀값', 'AbortError');
+    } })) as never;
+    await expect(callLLM({ prompt: '검사', timeoutMs: 20000 })).rejects.toThrow('OpenAI 응답 타임아웃 (20000ms)');
+  });
+  it.each([
+    [new SyntaxError('검사용-비밀값'), 'OpenAI 응답 본문 형식 오류'],
+    [new TypeError('검사용-비밀값'), 'OpenAI 응답 본문 읽기 실패'],
+  ])('본문 읽기 오류를 빈 응답과 구분하고 원래 문장은 전달하지 않는다', async (error, expected) => {
+    global.fetch = vi.fn(async () => ({ ...okRes(''), json: async () => { throw error; } })) as never;
+    await expect(callLLM({ prompt: '검사' })).rejects.toThrow(expected);
+  });
+
   it("apiKey 누락 → throw", async () => {
     delete process.env.OPENAI_API_KEY;
     await expect(callLLM({ prompt: "t" })).rejects.toThrow(/OPENAI_API_KEY/);
