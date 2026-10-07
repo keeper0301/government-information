@@ -45,6 +45,7 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
     body.response_format = { type: "json_object" };
   }
 
+  const signal = AbortSignal.timeout(opts.timeoutMs ?? 20000);
   let res: Response;
   try {
     res = await fetch(OPENAI_API_URL, {
@@ -55,12 +56,12 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
       },
       body: JSON.stringify(body),
       // 1건 hang 격리 — welfare insight cap 100 등 대량 호출이 maxDuration 에 묶이지 않게.
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 20000),
+      signal,
     });
   } catch (e) {
     const err = e as Error;
     throw new Error(
-      err.name === "TimeoutError"
+      err.name === "TimeoutError" || (signal.aborted && signal.reason?.name === 'TimeoutError')
         ? `OpenAI 응답 타임아웃 (${opts.timeoutMs ?? 20000}ms)`
         : `OpenAI 호출 실패: ${err.message}`,
     );
@@ -71,7 +72,13 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
     throw new Error(`OpenAI API 오류 ${res.status}: ${errText.slice(0, 300)}`);
   }
 
-  const json: unknown = await res.json().catch(() => ({}));
+  // 응답 머리말 이후의 시간 초과·연결 끊김도 원래 문장을 노출하지 않고 구분합니다.
+  const json: unknown = await res.json().catch(error => {
+    if ((error instanceof Error && error.name === 'TimeoutError')
+      || (signal.aborted && signal.reason?.name === 'TimeoutError'))
+      throw new Error(`OpenAI 응답 타임아웃 (${opts.timeoutMs ?? 20000}ms)`);
+    throw new Error(error instanceof SyntaxError ? 'OpenAI 응답 본문 형식 오류' : 'OpenAI 응답 본문 읽기 실패');
+  });
   const text = extractMessageText(json);
   if (!text) throw new Error("OpenAI 응답에서 텍스트 추출 실패");
   return text;
