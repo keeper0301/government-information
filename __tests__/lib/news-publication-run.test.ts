@@ -19,6 +19,13 @@ beforeEach(() => {
     ? { data: claimed ? null : (claimed = true, row), error: null } : { data: true, error: null });
 });
 afterEach(() => vi.unstubAllEnvs());
+it('100초를 사용했으면 다음 후보를 예약하지 않고 현재 결과를 돌려준다', async () => {
+  const clock = vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(100000);
+  try {
+    expect(await runNewsPublication()).toMatchObject({ attempted: 1, published: 1 });
+    expect(mock.rpc.mock.calls.filter(([name]) => name === 'claim_editorial_news')).toHaveLength(1);
+  } finally { clock.mockRestore(); }
+});
 it('작성 도구 설정이 없으면 후보 예약 전에 멈춰 하루 한도를 소비하지 않는다', async () => {
   vi.stubEnv('OPENAI_API_KEY', '');
   await expect(runNewsPublication()).rejects.toThrow('설정이 없습니다');

@@ -89,7 +89,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
   let issue = '';
   // 초안 검사에 실패한 글은 한 번만 바로잡습니다. 검사는 매번 동일합니다.
   for (let attempt = 0; attempt < 2; attempt++) {
-    const raw = await callLLM({ model: 'gpt-4.1-mini', responseSchema: newsDraftResponse, maxTokens: 3200, timeoutMs: attempt ? 20000 : 25000,
+    const raw = await callLLM({ model: 'gpt-4.1-mini', responseSchema: newsDraftResponse, maxTokens: 3200, timeoutMs: attempt ? 25000 : 40000,
       prompt: attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n조건을 모두 지킨 기사 전체를 다시 작성하세요.` : prompt });
     value = parseJSONResponse(raw);
     if (value && typeof value === 'object' && (value as { skip?: unknown }).skip === true)
