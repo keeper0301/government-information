@@ -5,6 +5,7 @@ import { PROVINCES, INTEGRATED_JEONNAM_GWANGJU_REGION, getRegionPageByCode } fro
 export interface NewsFilters { q?: string; benefit?: string; province?: string }
 export const NEWS_REGIONS = [
   { code: "nationwide", name: "전국" },
+  { code: "unclassified", name: "지역 범위 확인 중" },
   INTEGRATED_JEONNAM_GWANGJU_REGION,
   ...PROVINCES.filter(region => region.code !== "gwangju" && region.code !== "jeonnam")
     .map(region => ({ code: region.code, name: getRegionPageByCode(region.code)!.shortName })),
@@ -26,7 +27,7 @@ export function filterEditorialNews(articles: EditorialNews[], filters: NewsFilt
   const { q, benefit, province } = normalizeNewsFilters(filters);
   const terms = q.toLocaleLowerCase("ko").split(/\s+/).filter(Boolean);
   return articles.filter(article => {
-    const classification = classifications[article.slug];
+    const classification = article.classification ?? classifications[article.slug];
     if (benefit && !classification?.benefits.includes(benefit)) return false;
     if (province && !classification?.regions.includes(province)) return false;
     const text = [article.title, article.question, article.answer, article.audience, article.sourceAgency,

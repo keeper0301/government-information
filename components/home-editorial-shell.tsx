@@ -4,7 +4,7 @@ import { RegionMap } from "@/components/region-map";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { HomeTargetCards } from "@/components/home-target-cards";
 import { getGuides } from "@/lib/policy-guides";
-import { getPublishedNews } from "@/lib/editorial-news";
+import { loadPublishedNews } from "@/lib/news-publication/feed";
 import { EditorialNewsCards } from "@/components/news/editorial-news-pages";
 
 /** 로그인 없이 읽을 수 있는 홈에 실제 공개 판정을 통과한 안내만 추천합니다. */
@@ -24,11 +24,7 @@ export function HomeEditorialShell() {
     {/* 지도 자료를 기다리는 동안에도 신청 가이드는 먼저 보여줍니다. */}
     {ADSENSE_REVIEW_MODE && <Suspense fallback={<p className="max-w-content mx-auto px-6 py-10" role="status">지역 지도를 불러오는 중입니다.</p>}><RegionMap /></Suspense>}
     <Suspense fallback={<p className="max-w-content mx-auto px-6 py-6" role="status">신청 가이드를 확인하고 있습니다.</p>}><HomePublishedGuides /></Suspense>
-    {getPublishedNews().length > 0 && <section className="max-w-content mx-auto px-6 lg:px-10 py-12" aria-labelledby="reviewed-news">
-      <h2 id="reviewed-news" className="text-2xl font-bold mb-6">정책 변화, 무엇을 확인할까요?</h2>
-      <EditorialNewsCards />
-      <Link href="/news" className="inline-block mt-6 text-blue-600 underline">정책뉴스 모두 보기 →</Link>
-    </section>}
+    <Suspense fallback={null}><HomePublishedNews /></Suspense>
     <section className="max-w-content mx-auto px-6 lg:px-10 py-12">
       <h2 className="text-2xl font-bold mb-5">공식 기관에서 신청하는 순서</h2>
       <ol className="list-decimal pl-6 space-y-3 text-grey-700 leading-relaxed"><li>가이드로 준비할 질문과 자료를 정리합니다.</li><li>공식 공고에서 지역·회차·제외 대상·접수 상태를 확인합니다.</li><li>공고가 안내하는 신청처에서 제출하고 접수 결과를 보관합니다.</li></ol>
@@ -56,4 +52,15 @@ export async function HomePublishedGuides() {
     </section>
     <HomeTargetCards publishedSlugs={publishedGuides.map(guide => guide.slug)} />
   </>;
+}
+
+// 새 뉴스 조회는 가이드와 지도의 표시를 기다리게 하지 않습니다.
+async function HomePublishedNews() {
+  const articles = await loadPublishedNews();
+  if (!articles.length) return null;
+  return <section className="max-w-content mx-auto px-6 lg:px-10 py-12" aria-labelledby="reviewed-news">
+    <h2 id="reviewed-news" className="text-2xl font-bold mb-6">정책 변화, 무엇을 확인할까요?</h2>
+    <EditorialNewsCards articles={articles.slice(0, 3)} />
+    <Link href="/news" className="inline-block mt-6 text-blue-600 underline">정책뉴스 모두 보기 →</Link>
+  </section>;
 }

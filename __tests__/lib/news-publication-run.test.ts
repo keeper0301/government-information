@@ -1,0 +1,52 @@
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+const mock = vi.hoisted(() => ({ rpc: vi.fn(), read: vi.fn(), generate: vi.fn() }));
+vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ rpc: mock.rpc }) }));
+vi.mock('@/lib/news-publication/source', () => ({ readOfficialNews: mock.read }));
+vi.mock('@/lib/news-publication/generate', () => ({ generateVerifiedNews: mock.generate }));
+import { runNewsPublication } from '@/lib/news-publication/run';
+
+const row = { id: '후보', source_id: '148972915', title: '군 복무 청년 지원',
+  source_url: 'https://www.korea.kr/news/customizedNewsView.do?newsId=148972915',
+  published_at: '2026-10-06T00:00:00Z', updated_at: null, ministry: '담당 기관', benefit_tags: ['의료'], lease_token: '예약번호' };
+beforeEach(() => {
+  vi.stubEnv('OPENAI_API_KEY', '검사용설정');
+  vi.clearAllMocks();
+  mock.read.mockResolvedValue({ title: row.title, url: row.source_url, body: '검증할 원문', hash: '같은본문', publishedAt: '2026-10-06' });
+  mock.generate.mockResolvedValue({ question: '질문', answer: '설명', audience: '군 복무 청년', sections: [{ heading: '확인', paragraphs: ['해설'], quote: '근거' }] });
+  let claimed = false;
+  mock.rpc.mockImplementation(async (name) => name === 'claim_editorial_news'
+    ? { data: claimed ? null : (claimed = true, row), error: null } : { data: true, error: null });
+});
+afterEach(() => vi.unstubAllEnvs());
+it('작성 도구 설정이 없으면 후보 예약 전에 멈춰 하루 한도를 소비하지 않는다', async () => {
+  vi.stubEnv('OPENAI_API_KEY', '');
+  await expect(runNewsPublication()).rejects.toThrow('설정이 없습니다');
+  expect(mock.rpc).not.toHaveBeenCalled();
+});
+it('원문을 두 번 읽고 같은 경우에만 자동 확인 표시와 함께 공개한다', async () => {
+  expect(await runNewsPublication()).toMatchObject({ published: 1, held: 0 });
+  expect(mock.read).toHaveBeenCalledTimes(2);
+  const saved = mock.rpc.mock.calls.find(call => call[0] === 'finish_editorial_news')![1];
+  expect(saved.p_article.automaticPublication.sourceHash).toBe('같은본문');
+  expect(saved.p_article.classification.regions).toEqual(['unclassified']);
+  expect(saved.p_evidence.sections[0].quote).toBe('근거');
+});
+it('원문이 바뀌거나 날짜가 다르면 공개하지 않는다', async () => {
+  mock.read.mockResolvedValueOnce({ title: row.title, hash: '옛본문', publishedAt: '2026-10-06' });
+  expect(await runNewsPublication()).toMatchObject({ published: 0, held: 1 });
+  mock.read.mockResolvedValue({ title: row.title, hash: '같은본문', publishedAt: '2026-10-05' });
+  mock.rpc.mockResolvedValueOnce({ data: row }).mockResolvedValueOnce({ data: true }).mockResolvedValueOnce({ data: null });
+  expect(await runNewsPublication()).toMatchObject({ published: 0, held: 1 });
+});
+it('한 후보가 실패해도 다음 후보를 처리하며 저장 충돌을 발행으로 세지 않는다', async () => {
+  mock.generate.mockRejectedValueOnce(new Error('근거 불충분'));
+  let count = 0;
+  mock.rpc.mockImplementation(async (name) => name === 'claim_editorial_news'
+    ? { data: count++ < 2 ? row : null } : { data: count === 1 });
+  expect(await runNewsPublication()).toMatchObject({ attempted: 2, held: 1, published: 0, conflicts: 1 });
+});
+it('예약할 자료가 없으면 작성 도구를 부르지 않는다', async () => {
+  mock.rpc.mockResolvedValue({ data: null });
+  expect(await runNewsPublication()).toMatchObject({ attempted: 0, published: 0 });
+  expect(mock.generate).not.toHaveBeenCalled();
+});

@@ -41,3 +41,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## 정책 원문과 설명 검수
 
 관리자 검수, 비공개 초안 저장과 출처 복구의 운영 방법은 [검수 안내](docs/policy-guidance-review.md)를 참고합니다.
+
+## 정책뉴스 자동 발행
+
+공식 정책뉴스의 자동 작성·근거 검사·예약 공개와 실패 확인 방법은 [자동 발행 안내](docs/news-auto-publication.md)를 참고합니다.
