@@ -30,7 +30,7 @@ import { HiddenNewsNotice } from "./HiddenNewsNotice";
 import { AdminRestoreBanner } from "./AdminRestoreBanner";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { safeNewsThumbnailUrl } from "@/lib/news-thumbnail";
-import { getPublishedNewsBySlug } from "@/lib/editorial-news";
+import { loadPublishedNewsBySlug } from "@/lib/news-publication/feed";
 import { EDITORIAL_NEWS } from "@/lib/editorial-news-data";
 import { EditorialNewsDetail, UnreviewedNewsNotice } from "@/components/news/editorial-news-pages";
 
@@ -55,7 +55,7 @@ function safeDecodeSlug(raw: string): string | null {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
-  const editorial = slug ? getPublishedNewsBySlug(slug) : undefined;
+  const editorial = slug ? await loadPublishedNewsBySlug(slug) : undefined;
   if (editorial) return {
     title: `${editorial.title} | 키피오`, description: editorial.answer,
     alternates: { canonical: `/news/${editorial.slug}` },
@@ -153,7 +153,7 @@ export default async function NewsDetailPage({ params }: Props) {
   const { slug: rawSlug } = await params;
   const slug = safeDecodeSlug(rawSlug);
   if (!slug) notFound();
-  const editorial = getPublishedNewsBySlug(slug);
+  const editorial = await loadPublishedNewsBySlug(slug);
   if (editorial) return <EditorialNewsDetail article={editorial} />;
   // 초안 본문은 숨기고, 기존 기사는 주소 존재 여부만 확인합니다.
   if (ADSENSE_REVIEW_MODE) {

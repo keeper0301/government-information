@@ -14,6 +14,8 @@ export interface EditorialNews {
   updatedAt: string;
   sections: { heading: string; paragraphs: string[] }[];
   guideSlug: string;
+  automaticPublication?: { checkedAt: string; sourceHash: string };
+  classification?: { benefits: string[]; regions: string[] };
 }
 
 // 자동 수집 기사와 분리한 편집 초안입니다. 운영자 승인 기록이 있어야 공개됩니다.

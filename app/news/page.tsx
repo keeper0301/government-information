@@ -42,7 +42,7 @@ import { MatchBadge } from "@/components/personalization/MatchBadge";
 import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
-import { getPublishedNews } from "@/lib/editorial-news";
+import { loadPublishedNews } from "@/lib/news-publication/feed";
 import { EditorialNewsIndex } from "@/components/news/editorial-news-pages";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
@@ -75,14 +75,16 @@ const CATEGORIES: { key: "all" | NewsCategory; label: string }[] = [
 // URL 에서 들어온 카테고리 값이 유효한지 — 잘못된 값 또는 press 는 "전체" 로 fallback
 const VALID_CATEGORIES = new Set<string>(["news", "policy-doc"]);
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const articles = await loadPublishedNews();
+  return {
   title: ADSENSE_REVIEW_MODE ? "정책뉴스 | 키피오" : "정책 소식 | 정책알리미",
   description:
-    ADSENSE_REVIEW_MODE ? "공식 정책 발표의 변화와 대상, 확인할 행동을 출처와 함께 정리합니다. 운영자 검수를 거친 정책뉴스만 공개합니다." : "정부 부처 정책뉴스와 정책자료를 날짜·출처·관심 분야별로 모아 보여주는 정책알리미 큐레이션 페이지입니다.",
+    ADSENSE_REVIEW_MODE ? "공식 정책 발표의 변화와 대상, 확인할 행동을 출처와 함께 정리합니다. 편집 검수 또는 자동 근거 검사를 통과한 정책뉴스를 공개합니다." : "정부 부처 정책뉴스와 정책자료를 날짜·출처·관심 분야별로 모아 보여주는 정책알리미 큐레이션 페이지입니다.",
   alternates: { canonical: "/news" },
   robots: ADSENSE_REVIEW_MODE
     ? {
-        index: getPublishedNews().length >= 3,
+        index: articles.length >= 3,
         follow: true,
       }
     : undefined,
@@ -92,6 +94,8 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
+}
 
 // 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
 // force-dynamic 없이 revalidate=60 을 쓰면 캐시된 첫 사용자의 프로필이
@@ -154,7 +158,7 @@ function newsToScorable(p: {
 export default async function NewsIndexPage({ searchParams }: Props) {
   // 재심사 기간에는 자동 수집 목록 대신 검수된 편집 뉴스만 보여줍니다.
   const params = await searchParams;
-  if (ADSENSE_REVIEW_MODE) return <EditorialNewsIndex filters={{ q: params.q, benefit: params.benefit, province: params.province }} />;
+  if (ADSENSE_REVIEW_MODE) return <EditorialNewsIndex articles={await loadPublishedNews()} filters={{ q: params.q, benefit: params.benefit, province: params.province }} />;
   const activeCategory =
     params.category && VALID_CATEGORIES.has(params.category)
       ? params.category

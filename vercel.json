@@ -83,6 +83,7 @@
     "app/api/internal/icn1-fetch/route.ts": { "regions": ["icn1"] }
   },
   "crons": [
+    { "path": "/api/cron/editorial-news-publish", "schedule": "10 2,8 * * *" },
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
     { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
     { "path": "/api/cron/health-alert", "schedule": "15 0 * * *" },

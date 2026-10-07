@@ -2,19 +2,13 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
-import { getPublishedNews } from "@/lib/editorial-news";
+import { loadPublishedNews } from "@/lib/news-publication/feed";
 import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
 import { cleanDescription } from "@/lib/utils";
 
-// 2026-05-21 SC 색인 1,958 페이지 미생성 진단 후속:
-// 정적·hub 페이지 lastModified 가 매 sitemap fetch 마다 new Date() 로 갱신되어
-// Google 이 "진짜 변경 아님" 의심 → 색인 우선순위 ↓.
-//
-// revalidate 86400 = 24h 단위 build-time 고정. module-level SITEMAP_BUILD_TIME 이
-// 24h 동안 같은 값 보장 (Next.js App Router force-static 패턴). 정책 detail
-// (welfare/loan/news/blog) 의 updated_at 기준은 그대로 유지.
-export const revalidate = 86400;
-// 페이지네이션(.range 순회)으로 round-trip 이 늘어 안전망. 일 1회 생성이라 여유 큼.
+// 새 자동 발행 글이 검색 제출 목록에 반영되도록 한 시간마다 갱신합니다.
+export const revalidate = 3600;
+// 전체 자료를 여러 번 나누어 읽으므로 실행 시간을 충분히 확보합니다.
 export const maxDuration = 60;
 // Unknown content modification time is omitted, never replaced with build/request time.
 const SITEMAP_BUILD_TIME = undefined;
@@ -127,7 +121,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 심사자는 sitemap 을 따라 얇은 정책/뉴스/검색성 페이지를 샘플링하므로,
   // 직접 작성형 가이드와 핵심 허브만 제출한다.
   if (ADSENSE_REVIEW_MODE) {
-    const publishedNews = getPublishedNews();
+    const publishedNews = await loadPublishedNews(true);
     return [
       ...staticPages,
       ...hubPages,

@@ -1,0 +1,45 @@
+export interface NewsDraft {
+  question: string; answer: string; audience: string;
+  sections: { heading: string; paragraphs: string[]; quote: string }[];
+}
+
+// 수집 주소에서 공식 기사 번호만 읽습니다. 생성된 주소는 사용하지 않습니다.
+export function officialNewsId(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.hostname !== 'www.korea.kr' || url.username || url.password
+      || !/^\/news\/(policyNewsView|customizedNewsView)\.do$/.test(url.pathname)) return null;
+    const id = url.searchParams.get('newsId');
+    return id && /^\d{9}$/.test(id) ? id : null;
+  } catch { return null; }
+}
+
+export const normalizeSourceText = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+// 정확한 인용·숫자·분량을 먼저 검사하고 별도 사실 대조 결과도 요구합니다.
+export function validateNewsDraft(value: unknown, body: string): NewsDraft | null {
+  if (!value || typeof value !== 'object') return null;
+  const draft = value as NewsDraft;
+  const validText = (text: unknown) => typeof text === 'string' && text.trim().length >= 5
+    && /[가-힣]/.test(text) && !/[<>]|https?:\/\//.test(text);
+  if (![draft.question, draft.answer, draft.audience].every(validText)
+    || !Array.isArray(draft.sections) || draft.sections.length !== 3) return null;
+  const source = normalizeSourceText(body);
+  for (const section of draft.sections) {
+    if (!section || !validText(section.heading) || !Array.isArray(section.paragraphs)
+      || section.paragraphs.length < 1 || section.paragraphs.length > 3
+      || !section.paragraphs.every(validText) || !validText(section.quote)
+      || section.quote.length > 300 || !source.includes(normalizeSourceText(section.quote))) return null;
+  }
+  const prose = [draft.question, draft.answer, draft.audience,
+    ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])].join(' ');
+  if (prose.length < 600 || prose.length > 2400) return null;
+  const numbers = prose.match(/\d[\d,.]*(?:\s*(?:%|만원|억원|원|년|월|일|명|세|개월))?/g) ?? [];
+  if (numbers.some(number => !source.replace(/\s/g, '').includes(number.replace(/\s/g, '')))) return null;
+  const sentences = prose.split(/[.!?。]|(?:하세요|습니다|입니다)\./).map(normalizeSourceText).filter(text => text.length > 15);
+  if (new Set(sentences).size !== sentences.length) return null;
+  for (let offset = 0; offset + 50 <= prose.length; offset++) {
+    if (source.includes(prose.slice(offset, offset + 50))) return null;
+  }
+  return draft;
+}

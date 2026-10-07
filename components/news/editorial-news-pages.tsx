@@ -16,7 +16,7 @@ export function EditorialNewsCards({ articles = getPublishedNews() }: { articles
       <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
         category: "news", ministry: "키피오 편집", source_outlet: null,
         thumbnail_url: photo?.url ?? null, thumbnail_alt: photo?.alt,
-        published_at: getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
+        published_at: article.automaticPublication?.checkedAt ?? getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
       <p className="text-sm text-grey-600 mt-3 leading-relaxed">공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt}</p>
       {photo && <p className="text-xs text-grey-600 mt-2 leading-relaxed">
         {photo.caption} · 사진: {photo.author} · <a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">사진 출처</a>
@@ -27,14 +27,13 @@ export function EditorialNewsCards({ articles = getPublishedNews() }: { articles
   ); })}</div>;
 }
 
-export function EditorialNewsIndex({ filters = {} }: { filters?: NewsFilters } = {}) {
-  const articles = getPublishedNews();
+export function EditorialNewsIndex({ filters = {}, articles = getPublishedNews() }: { filters?: NewsFilters; articles?: EditorialNews[] } = {}) {
   const selected = normalizeNewsFilters(filters);
   const filtered = filterEditorialNews(articles, selected);
   return <main className="min-h-screen bg-grey-50 pt-28 pb-16"><div className="max-w-content mx-auto px-6 lg:px-10">
     <p className="text-sm text-blue-600 mb-3">키피오 · 정책 변화와 확인할 행동</p>
     <h1 className="text-3xl font-extrabold mb-5">정책뉴스</h1>
-    <p className="max-w-3xl text-grey-700 leading-relaxed mb-8">공식 발표에서 무엇이 바뀌었는지, 누구에게 해당하는지, 무엇을 확인해야 하는지 정리합니다. 출처 대조와 운영자 검수를 거친 글만 공개합니다.</p>
+    <p className="max-w-3xl text-grey-700 leading-relaxed mb-8">공식 발표에서 무엇이 바뀌었는지, 누구에게 해당하는지, 무엇을 확인해야 하는지 정리합니다. 공식 원문을 대조하고 편집 검수 또는 자동 근거 검사를 통과한 글을 공개합니다.</p>
     <EditorialNewsFilters articles={articles} filters={selected} />
     {articles.length > 0 && <p role="status" className="text-sm text-grey-600 mb-5">검색 결과 {filtered.length}건 · 공개된 검수 뉴스 {articles.length}건</p>}
     {filtered.length ? <EditorialNewsCards articles={filtered} /> : articles.length ? <section className="rounded-2xl bg-white p-6 border border-grey-200">
@@ -60,7 +59,9 @@ export function UnreviewedNewsNotice() {
 
 export async function EditorialNewsDetail({ article }: { article: EditorialNews }) {
   const guide = (await getGuides(50, { publicationOnly: true })).find(item => item.slug === article.guideSlug);
-  const review = getPublishedNewsReview(article);
+  const review = article.automaticPublication
+    ? { reviewedAt: article.automaticPublication.checkedAt, reviewer: "자동 근거 검사·사실 대조" }
+    : getPublishedNewsReview(article);
   const schema = review ? {
     "@context": "https://schema.org", "@type": "Article",
     headline: article.title, description: article.answer,
@@ -74,10 +75,11 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
     <article className="mt-6">
       <h1 className="text-3xl font-extrabold leading-snug mb-5">{article.title}</h1>
       <p className="text-sm text-grey-600 mb-5">작성: 키피오 편집 · 공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt} · 내용 수정 {article.updatedAt}</p>
-      {review && <p className="text-sm text-grey-600 mb-5">키피오 발행·검수일: {review.reviewedAt.slice(0, 10)} · 검수: {review.reviewer}</p>}
+      {review && <p className="text-sm text-grey-600 mb-5">키피오 발행·확인일: {review.reviewedAt.slice(0, 10)} · 확인: {review.reviewer}</p>}
       <h2 className="text-xl font-bold mb-3">{article.question}</h2>
       <p className="rounded-2xl bg-blue-50 p-6 leading-relaxed mb-6">{article.answer}</p>
       <p className="text-grey-600 mb-8">대상: {article.audience}</p>
+      {article.automaticPublication && <p className="text-sm text-grey-600 mb-6">자동 작성 후 원문 근거와 사실을 기계적으로 대조한 글입니다. 사람의 검수와 다르며, 실제 신청은 공식 기관의 최신 안내를 확인하세요.</p>}
       {article.sections.map(section => <section key={section.heading} className="mb-9">
         <h2 className="text-2xl font-bold mb-4">{section.heading}</h2>
         {section.paragraphs.map(paragraph => <p key={paragraph} className="text-grey-700 leading-[1.9] mb-4">{paragraph}</p>)}
