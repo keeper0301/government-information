@@ -14,6 +14,7 @@ import { Newspaper, Megaphone, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cleanDescription, formatKoreanDate, stripHtmlTags } from "@/lib/utils";
+import { EDITORIAL_PHOTO_URLS } from "@/lib/editorial-news-images";
 import { safeNewsThumbnailUrl } from "@/lib/news-thumbnail";
 
 export type NewsCategory = "news" | "press" | "policy-doc";
@@ -87,7 +88,7 @@ export function NewsCard({ post }: { post: NewsCardData }) {
   const dateLabel = formatKoreanDate(post.published_at);
   const thumbnailUrl = safeNewsThumbnailUrl(post.thumbnail_url, post.source_outlet);
   // 변경 허락을 확인한 자체 자료사진에만 작은 파일을 제공합니다.
-  const hasResponsivePhoto = thumbnailUrl === "/images/news/jeongeup-market.webp";
+  const hasResponsivePhoto = thumbnailUrl !== null && EDITORIAL_PHOTO_URLS.includes(thumbnailUrl);
 
   return (
     <Link prefetch={false} href={`/news/${post.slug}`} className="block no-underline">
@@ -103,8 +104,8 @@ export function NewsCard({ post }: { post: NewsCardData }) {
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={hasResponsivePhoto ? "/images/news/jeongeup-market-480.webp" : thumbnailUrl}
-              srcSet={hasResponsivePhoto ? "/images/news/jeongeup-market-480.webp 480w, /images/news/jeongeup-market-640.webp 640w" : undefined}
+              src={hasResponsivePhoto ? thumbnailUrl.replace(".webp", "-480.webp") : thumbnailUrl}
+              srcSet={hasResponsivePhoto ? `${thumbnailUrl.replace(".webp", "-480.webp")} 480w, ${thumbnailUrl.replace(".webp", "-640.webp")} 640w` : undefined}
               sizes={hasResponsivePhoto ? "(max-width: 767px) calc(100vw - 48px), (max-width: 1023px) 45vw, 360px" : undefined}
               alt={post.thumbnail_alt ?? `${post.title} 관련 이미지`}
               loading="lazy"

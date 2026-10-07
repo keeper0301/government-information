@@ -1,3 +1,5 @@
+import { EDITORIAL_PHOTO_URLS } from "@/lib/editorial-news-images";
+
 const FIRST_PARTY_NEWS_THUMBNAIL_HOSTS = new Set([
   "www.korea.kr",
   "korea.kr",
@@ -15,7 +17,7 @@ export function safeNewsThumbnailUrl(
   if (sourceOutlet) return null;
 
   // 출처와 이용 허가를 확인하여 사이트에 저장한 자료사진만 허용합니다.
-  if (thumbnailUrl === "/images/news/jeongeup-market.webp") return thumbnailUrl;
+  if (EDITORIAL_PHOTO_URLS.includes(thumbnailUrl)) return thumbnailUrl;
 
   let url: URL;
   try {
