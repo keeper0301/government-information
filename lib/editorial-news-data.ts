@@ -14,6 +14,7 @@ export interface EditorialNews {
   updatedAt: string;
   sections: { heading: string; paragraphs: string[] }[];
   guideSlug: string;
+  editorialCorrection?: { correctedAt: string; summary: string };
   automaticPublication?: { checkedAt: string; sourceHash: string };
   classification?: { benefits: string[]; regions: string[] };
 }

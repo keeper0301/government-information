@@ -37,7 +37,7 @@ export async function runNewsPublication() {
         .map(region => ['jeonnam', 'gwangju'].includes(region.code) ? 'jeonnam-gwangju' : region.code))];
       if (locationText.includes('전국')) regions.push('nationwide');
       const article: EditorialNews = {
-        slug: `policy-brief-${item.source_id}`, title: `${source.title} — 확인할 조건과 준비 순서`,
+        slug: `policy-brief-${item.source_id}`, title: draft.title,
         question: draft.question, answer: draft.answer, audience: draft.audience,
         sourceAgency: item.ministry || '대한민국 정책브리핑', sourceTitle: source.title,
         sourceUrl: source.url, sourcePublishedAt: source.publishedAt, checkedAt: today, updatedAt: today,
@@ -46,7 +46,7 @@ export async function runNewsPublication() {
         classification: { benefits: item.benefit_tags ?? [], regions: regions.length ? regions : ['unclassified'] },
       };
       const saved = await admin.rpc('finish_editorial_news', { p_source_id: item.source_id, p_token: item.lease_token,
-        p_article: article, p_hash: source.hash, p_evidence: { body: source.body, sections: draft.sections }, p_reason: null,
+        p_article: article, p_hash: source.hash, p_evidence: { body: source.body, sections: draft.sections, kind: draft.kind, editorialReview: draft.editorialReview }, p_reason: null,
         p_title: item.title, p_url: item.source_url, p_updated_at: item.updated_at });
       if (saved.error) throw new Error('뉴스 공개 저장에 실패했습니다.');
       if (saved.data !== true) { result.conflicts++; continue; }

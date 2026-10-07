@@ -4,13 +4,14 @@ import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
 import { getGuideEvidence } from "@/lib/guide-evidence";
 import { getGuides, getGuideBySlug, getRelatedGuides, getGuideDisplayDates, rowToGuide } from "@/lib/policy-guides";
 
-const mock = vi.hoisted(() => ({ enabled: true, rows: [] as Record<string, unknown>[], ranges: [] as number[][], orders: [] as string[], failAt: -1, repeat: false, detailFails: false }));
+const mock = vi.hoisted(() => ({ enabled: true, rows: [] as Record<string, unknown>[], ranges: [] as number[][], orders: [] as string[], signals: [] as AbortSignal[], failAt: -1, repeat: false, detailFails: false }));
 vi.mock("@/lib/supabase/env", () => ({ hasSupabaseAnonEnv: () => mock.enabled }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: () => {
   let slug = "";
   let candidates: string[] | undefined;
   const query = {
     select: () => query,
+    abortSignal: (signal: AbortSignal) => { mock.signals.push(signal); return query; },
     in: (_: string, slugs: string[]) => { candidates = slugs; return query; },
     order: (column: string) => { mock.orders.push(column); return query; },
     eq: (_: string, value: string) => { slug = value; return query; },
@@ -27,9 +28,14 @@ function row(index: number) {
   return { id: `synthetic-${index}`, slug: `unrelated-${index}`, title: "Synthetic unrelated", program_id: "synthetic", program_type: "welfare", post_1: "body 1", post_2: "body 2", post_3: "body 3", post_4: "body 4", post_5: "body 5", rotation_idx: null, threads_url: null, og_image_url: null, published_at: "2025-01-01", updated_at: "2025-01-02" };
 }
 const now = new Date("2026-10-04T12:00:00Z");
-beforeEach(() => { mock.enabled = true; mock.rows = []; mock.ranges = []; mock.orders = []; mock.failAt = -1; mock.repeat = false; mock.detailFails = false; });
+beforeEach(() => { mock.enabled = true; mock.rows = []; mock.ranges = []; mock.orders = []; mock.signals = []; mock.failAt = -1; mock.repeat = false; mock.detailFails = false; });
 
 describe("complete candidate curation", () => {
+  it("조회 제한 신호를 실제 저장소 요청에 전달한다", async () => {
+    const signal = AbortSignal.timeout(10000);
+    await getGuides(50, { publicationOnly: true, signal });
+    expect(mock.signals).toEqual([signal]);
+  });
   it("공개 목록은 검수 후보만 조회하되 변경된 최신 본문을 숨긴다", async () => {
     const slug = "documents-before-government-benefit";
     mock.rows = Array.from({ length: 450 }, (_, index) => row(index));
@@ -109,6 +115,6 @@ describe("validated content and shared date provenance", () => {
     const detail = readFileSync("app/guides/[slug]/page.tsx", "utf8");
     for (const text of ["publishedTime: publication.published ? dates.publishedAt", "modifiedTime: publication.published ? dates.updatedAt", "datePublished: dates.publishedAt", "dateModified: dates.updatedAt", "dates.updatedAt.slice(0, 10)"]) expect(detail).toContain(text);
     expect(readFileSync("app/sitemap.ts", "utf8")).toContain("lastModified: getGuideDisplayDates(g).updatedAt");
-    expect(readFileSync("app/c/[category]/page.tsx", "utf8").match(/getGuides\(50, \{ categorySlugs: \[category\], publicationOnly: true \}\)/g)).toHaveLength(2);
+    expect(readFileSync("app/c/[category]/page.tsx", "utf8").match(/loadCategoryGuides\(category\)/g)).toHaveLength(2);
   });
 });

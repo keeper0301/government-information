@@ -30,7 +30,7 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
-import { getGuides } from "@/lib/policy-guides";
+import { loadCategoryGuides } from "@/lib/category-guides";
 import { guideCategorySlugs } from "@/lib/guide-evidence";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 import {
@@ -105,7 +105,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
   // ============================================================
   // Supabase env 가 없는 로컬/CI 정적 build 에서는 DB 의존 섹션을 빈 상태로 렌더한다.
   // 실제 Vercel/운영 env 에서는 기존 query 경로 그대로 실행된다.
-  const [welfareRes, loanRes, guidesAll, blogRes, insightWelfareRes, insightLoanRes] =
+  const [welfareRes, loanRes, guideResult, blogRes, insightWelfareRes, insightLoanRes] =
     hasSupabaseAnonEnv()
       ? await (async () => {
           const supabase = await createClient();
@@ -130,7 +130,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
               if (orClause) q = q.or(orClause);
               return q.order("apply_end", { ascending: true, nullsFirst: false }).limit(20);
             })(),
-            getGuides(50, { categorySlugs: [category], publicationOnly: true }),
+            loadCategoryGuides(category),
             hub.blogCategory
               ? supabase
                   .from("blog_posts")
@@ -165,7 +165,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
       : await Promise.all([
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
-          getGuides(50, { categorySlugs: [category], publicationOnly: true }),
+          loadCategoryGuides(category),
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
           Promise.resolve(emptyResult),
@@ -200,7 +200,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
     .filter((p) => !deadlineSoonIds.has(p.id))
     .slice(0, RECOMMEND_LIMIT);
 
-  const guides = guidesAll.filter((guide) => guideCategorySlugs(guide).includes(category)).slice(0, GUIDE_LIMIT);
+  const guides = guideResult.guides.filter((guide) => guideCategorySlugs(guide).includes(category)).slice(0, GUIDE_LIMIT);
   const showPolicyLists = !ADSENSE_REVIEW_MODE;
   const blogPosts = (blogRes.data ?? []) as Array<{
     slug: string;
@@ -487,6 +487,9 @@ export default async function CategoryHubPage({ params }: PageProps) {
         )}
 
         {/* 관련 가이드 — policy_guides 최신 N건 (정책 바이블 자산) */}
+        {guideResult.unavailable && <p role="status" className="text-sm text-grey-600 mb-6">
+          관련 가이드를 지금 불러올 수 없습니다. 잠시 후 다시 확인해주세요.
+        </p>}
         {guides.length > 0 && (
           <section className="mb-10">
             <h2 className="text-[20px] font-bold text-grey-900 mb-4">

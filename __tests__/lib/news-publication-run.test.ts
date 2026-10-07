@@ -13,7 +13,7 @@ beforeEach(() => {
   vi.stubEnv('OPENAI_API_KEY', '검사용설정');
   vi.clearAllMocks();
   mock.read.mockResolvedValue({ title: row.title, url: row.source_url, body: '검증할 원문', hash: '같은본문', publishedAt: '2026-10-06' });
-  mock.generate.mockResolvedValue({ question: '질문', answer: '설명', audience: '군 복무 청년', sections: [{ heading: '확인', paragraphs: ['해설'], quote: '근거' }] });
+  mock.generate.mockResolvedValue({ kind: 'change', title: '전역 후 청년 보험 지원 변경', editorialReview: { scope: { passed: true } }, question: '질문', answer: '설명', audience: '군 복무 청년', sections: [{ heading: '확인', paragraphs: ['해설'], quote: '근거' }] });
   let claimed = false;
   mock.rpc.mockImplementation(async (name) => name === 'claim_editorial_news'
     ? { data: claimed ? null : (claimed = true, row), error: null } : { data: true, error: null });
@@ -28,6 +28,8 @@ it('원문을 두 번 읽고 같은 경우에만 자동 확인 표시와 함께 
   expect(await runNewsPublication()).toMatchObject({ published: 1, held: 0 });
   expect(mock.read).toHaveBeenCalledTimes(2);
   const saved = mock.rpc.mock.calls.find(call => call[0] === 'finish_editorial_news')![1];
+  expect(saved.p_article.title).toBe('전역 후 청년 보험 지원 변경');
+  expect(saved.p_evidence.editorialReview.scope.passed).toBe(true);
   expect(saved.p_article.automaticPublication.sourceHash).toBe('같은본문');
   expect(saved.p_article.classification.regions).toEqual(['unclassified']);
   expect(saved.p_evidence.sections[0].quote).toBe('근거');
