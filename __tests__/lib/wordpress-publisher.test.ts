@@ -61,6 +61,11 @@ describe("WordPress publish truth contract", () => {
     }
   });
 
+  it.each([401, 403, 500, 502])("preserves the actual HTTP %s without exposing the response body in summaries", async (status) => {
+    mocks.fetch.mockResolvedValueOnce(new Response("fixture failure", { status }));
+    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "api_error", httpStatus: status });
+    expect(lastLog().error_message).toBe(`HTTP ${status}: fixture failure`);
+  });
   it("publishes only when WordPress confirms publish and the expected host", async () => {
     wpReply("publish");
     expect(await publishToWordPress(blogId, post)).toEqual({ ok: true, wpPostId: 18489, wpPostUrl: wpLink });
@@ -82,12 +87,12 @@ describe("WordPress publish truth contract", () => {
   });
   it("rejects a wrong-host link but preserves the created ID to block blind retry", async () => {
     wpReply("publish", "https://keeper0301.com/test-policy/");
-    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "api_error" });
+    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "api_error", wpPostId: 18489 });
     expect(lastLog()).toMatchObject({ status: "failed", wp_post_id: 18489 });
   });
   it("rejects missing status but preserves the created ID", async () => {
     wpReply("");
-    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "api_error" });
+    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "api_error", wpPostId: 18489 });
     expect(lastLog()).toMatchObject({ status: "failed", wp_post_id: 18489 });
   });
   it("does not call a post published when the DB log write failed", async () => {
@@ -103,7 +108,7 @@ describe("WordPress publish truth contract", () => {
   it("reports a WordPress publish response that violated a requested draft", async () => {
     mocks.payloadStatus = "draft";
     wpReply("publish");
-    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "api_error" });
+    expect(await publishToWordPress(blogId, post)).toMatchObject({ ok: false, reason: "api_error", wpPostId: 18489 });
     expect(lastLog()).toMatchObject({ status: "failed", wp_post_id: 18489 });
   });
   it("rejects malformed WP URLs before sending an application password", async () => {
