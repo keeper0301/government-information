@@ -21,6 +21,7 @@ export async function previewNewsDraft(_previous: NewsPreviewResult, form: FormD
   const sourceId = String(form.get('sourceId') ?? '').trim();
   if (!/^\d{9}$/.test(sourceId)) return { status: 'error', message: '공식 기사 번호 9자리를 입력하세요.' };
   let source: OfficialNewsSource | undefined;
+  let stage = '수집 기사 조회';
   try {
     // 입력 주소를 직접 요청하지 않고 이미 수집한 기사의 공식 주소만 사용합니다.
     const { data, error } = await createAdminClient().from('news_posts')
@@ -28,9 +29,11 @@ export async function previewNewsDraft(_previous: NewsPreviewResult, form: FormD
     if (error || !data) return { status: 'error', message: '검사할 수집 기사를 찾지 못했습니다.' };
     if (officialNewsId(data.source_url) !== sourceId)
       return { status: 'error', message: '수집 번호와 공식 기사 번호가 다릅니다.' };
+    stage = '공식 원문 읽기';
     source = await readOfficialNews(data.source_url, data.title);
     if (source.publishedAt !== data.published_at?.slice(0, 10))
       return { status: 'error', message: '수집 날짜와 공식 발표 날짜가 다릅니다.' };
+    stage = '초안 작성·검사';
     const draft = await generateVerifiedNews(source);
     return { status: 'passed', message: '초안이 자동 검사를 통과했습니다. 공개하지 않았습니다.',
       source, draft, evidenceText: JSON.stringify(draft, null, 2) };
@@ -41,7 +44,18 @@ export async function previewNewsDraft(_previous: NewsPreviewResult, form: FormD
       return { status: 'held', message: error.message, source, draft: draft ?? undefined,
         evidenceText: JSON.stringify(error.evidence, null, 2) };
     }
-    // 작성 도구의 원래 오류에는 인증·서버 정보가 있을 수 있어 화면에 전달하지 않습니다.
-    return { status: 'error', message: '원문 읽기 또는 작성 도구 호출에 실패했습니다. 공개하지 않았습니다.' };
+    // 원래 오류를 기록하지 않고 정해 둔 단계와 종류만 화면·서버 기록에 남깁니다.
+    let reason = '호출에 실패했습니다.';
+    if (error instanceof Error) {
+      const providerStatus = error.message.match(/^OpenAI API 오류 (\d{3}):/)?.[1];
+      if (error.name === 'TimeoutError' || /^OpenAI 응답 타임아웃 \(\d+ms\)$/.test(error.message))
+        reason = '응답 대기 시간이 초과됐습니다.';
+      else if (providerStatus === '401' || providerStatus === '403') reason = '작성 도구 인증을 확인해야 합니다.';
+      else if (providerStatus === '429') reason = '작성 도구 사용 한도에 도달했습니다.';
+      else if (providerStatus?.startsWith('5')) reason = '작성 도구 서버가 응답하지 못했습니다.';
+      else if (error.message.startsWith('JSON 파싱 실패:')) reason = '작성 결과 형식을 읽지 못했습니다.';
+    }
+    console.warn('정책뉴스 비공개 검사 실패', { stage, reason });
+    return { status: 'error', message: `${stage} 단계에서 ${reason} 공개하지 않았습니다.` };
   }
 }
