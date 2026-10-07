@@ -15,6 +15,31 @@ const draft = { kind: 'application', title: '청년 근로자 지원, 대상과 
 const quality = () => Object.fromEntries(['scope','timeliness','usefulness','clarity','nonRepetition','coverage'].map(key => [key,
   { passed: true, reason: '대상 설명과 개인별 지원 확정을 구분하고 실제 확인할 내용을 안내했습니다.', excerptIndex: 2 }]));
 
+it('작성에 30초가 걸려도 시간 안에 응답하면 별도 검사를 거쳐 통과한다', async () => {
+  vi.useFakeTimers();
+  mock.call.mockImplementation(input => new Promise((resolve, reject) => {
+    const judgment = { supported: true, originalValue: true, quality: quality(), issues: [],
+      checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) };
+    const deadline = setTimeout(() => reject(new Error('응답 시간 초과')), input.timeoutMs);
+    setTimeout(() => { clearTimeout(deadline); resolve(JSON.stringify(input.prompt.startsWith('작성자와 분리된') ? judgment : draft)); },
+      input.prompt.startsWith('작성자와 분리된') ? 1000 : 30000);
+  }));
+  const outcome = generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' }).then(value => ({ value }), error => ({ error }));
+  await vi.advanceTimersByTimeAsync(31000);
+  expect(await outcome).toHaveProperty('value.editorialReview');
+  expect(mock.call).toHaveBeenCalledTimes(2);
+});
+it('재작성해도 세 호출의 대기 시간 합계는 90초이며 사실 검사를 생략하지 않는다', async () => {
+  mock.call.mockResolvedValueOnce(JSON.stringify({ ...draft, title: '제'.repeat(81) }))
+    .mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true,
+      originalValue: true, quality: quality(), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
+  await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' });
+  expect(mock.call.mock.calls.map(([input]) => input.timeoutMs)).toEqual([40000, 25000, 25000]);
+  expect(mock.call.mock.calls[2][0].prompt).toContain('작성자와 분리된 정책 사실 검증 역할');
+});
+
 it('긴 문단은 문장 내용을 보존해 나누며 별도 사실 검사를 그대로 요구한다', async () => {
   // 실제 초안에서 240자 제한을 네 글자 넘었던 문단입니다. 사실 판정은 모의 응답으로 분리합니다.
   const paragraph = '행사는 관광 통역 안내, 호텔 고객서비스 컨시어지, MICE 운영 행사 기획, 의료 관광 코디네이터, 여행 상품 기획 운영의 5대 유망 직무를 중심으로 구성됐다. 1부 토크콘서트에서는 현직 전문가들이 중장년층의 경험과 소통 능력이 관광산업에서 강점임을 설명하며 참가자들과 소통했다. 2부에서는 별도로 마련된 직무별 부스에서 1:1 멘토링이 진행돼 자격증 취득, 진입 장벽, 근무 형태 등 실무에 관한 구체적 정보를 얻는 기회를 제공했다.';
