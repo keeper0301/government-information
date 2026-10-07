@@ -37,7 +37,7 @@ export async function previewNewsDraft(_previous: NewsPreviewResult, form: FormD
   } catch (error) {
     if (error instanceof NewsDraftError) {
       const evidence = error.evidence as { draft?: unknown } | null;
-      const draft = source ? validateNewsDraft(evidence?.draft, source.body) : null;
+      const draft = source ? validateNewsDraft(evidence?.draft, source.body, source.publishedAt) : null;
       return { status: 'held', message: error.message, source, draft: draft ?? undefined,
         evidenceText: JSON.stringify(error.evidence, null, 2) };
     }

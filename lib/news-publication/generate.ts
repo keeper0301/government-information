@@ -33,6 +33,8 @@ export async function generateVerifiedNews(source: OfficialNewsSource) {
 국가적 과제·체계적 지원·로드맵 같은 배경 문구로 분량을 채우지 말고 해당 기사에서 확인할 수 있는 구체적 차이를 설명하세요.
 지원금과 대출, 발표와 시행, 신청과 선정, 최고 한도와 확정 금액을 구별하세요.
 원문의 예정·방침·개선안은 이미 시행 중인 혜택으로 단정하지 마세요. 별도 가입이 필요 없다는 설명을 신청·심사가 없다는 뜻으로 확대하지 마세요.
+시행 예정일이 있으면 핵심 답변 첫 문장과 해당 본문에 날짜와 '예정'을 함께 쓰세요. 마지막 문장의 예정 안내로 앞 문장의 '도입했습니다·지원합니다'를 보완하지 마세요. 예정일을 확정 시행일로 바꾸지 마세요.
+지원 연령 연장은 연령 제한 폐지가 아닙니다. 원문에 없는 '시행 전 세부 안내 예정' 같은 후속 공고 계획도 만들지 마세요.
 원문에 없는 계정·자격·추가 서류·협력 기관·인과성 제한을 만들지 마세요. 원문의 완화된 조건을 제한 조건으로 뒤집지 마세요.
 서류·기간·기관·대상·숫자는 원문에 있는 것만. 원문 밖의 행동 제안은 '키피오의 제안'으로 구분하세요.
 각 부분에 해당 설명을 뒷받침하는 원문 근거 번호 quoteIndex를 선택하세요. 인용문을 직접 쓰거나 생략 표시를 넣지 마세요.
@@ -59,9 +61,9 @@ JSON 형식: {"kind":"application 또는 change 또는 report", "title":"기사�
       value = { ...value, sections: sections.map(section => ({ ...section,
         quote: Number.isInteger(section?.quoteIndex) ? quotes[section.quoteIndex as number] : undefined })) };
     }
-    draft = validateNewsDraft(value, source.body);
+    draft = validateNewsDraft(value, source.body, source.publishedAt);
     if (draft) break;
-    issue = newsDraftIssue(value, source.body) ?? '초안 검사 보류';
+    issue = newsDraftIssue(value, source.body, source.publishedAt) ?? '초안 검사 보류';
   }
   if (!draft) throw new NewsDraftError(issue, { draft: value });
   // 검사 도구도 문장을 다시 쓰지 않고 실제 원문·초안의 문장 번호를 선택합니다.
@@ -83,6 +85,7 @@ JSON 형식: {"kind":"application 또는 change 또는 report", "title":"기사�
 제목·질문·답변·대상까지 포함하여 글의 모든 단정, 대상, 지역, 연도, 일정, 금액, 이자, 서류, 시행 상태를 원문과 대조하세요.
 각 부분의 quote가 그 부분의 해설을 실제로 뒷받침하는지도 확인하세요.
 반드시 반례를 찾는 검사입니다. 발표의 예정·방침을 현재 시행으로 바꾸거나, 별도 가입 불필요를 신청·심사 불필요로 확대하면 supported=false.
+첫 답변이나 본문이 현재 혜택을 단정하면 다른 문장의 예정 안내로 합격시키지 마세요. 예정일을 확정 시행일로 바꾸거나 지원 연령 연장을 연령 제한 폐지로 확대하거나 원문에 없는 후속 공고 계획을 만들면 supported=false.
 완화된 인과성 조건을 제한으로 바꾸거나 원문에 없는 계정·서류·자격·협력 관계를 만들면 supported=false.
 한 부분에 사실과 추측이 섞이면 그 부분 전체를 supported=false로 판정하세요. 문장 중 하나라도 입증되지 않으면 공개하지 않습니다.
 키피오의 제안은 정책 의무와 명확히 구분되어야 합니다. 해당 사업의 판단에 도움이 되는 설명이

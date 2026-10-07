@@ -32,10 +32,12 @@ it('선택한 근거 번호를 원문 그대로 연결하고 별도 사실 검�
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-10-06T16:00:00Z'));
   mock.call.mockReset();
-  mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, quality: quality(), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
+  mock.call.mockResolvedValueOnce(JSON.stringify({ ...draft, question: '2026년 발표된 지원의 대상과 지급 결정은 어떻게 구분하나요?' }))
+    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, quality: quality(), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
   const result = await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' });
   expect(result.sections.map(section => section.quote)).toEqual([quote, quote, quote]);
+  expect(result.question).toContain('2026년');
   expect(mock.call.mock.calls.every(([input]) => input.prompt.includes('한국 시간 기준 검사일: 2026-10-07'))).toBe(true);
   expect(mock.call.mock.calls[1][0].prompt).toContain(quote);
   expect(mock.call.mock.calls[1][0].model).toBe('gpt-4.1-mini');
