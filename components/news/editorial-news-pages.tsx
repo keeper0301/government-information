@@ -8,11 +8,12 @@ import { EditorialPhotoCredit, EditorialPhotoFigure } from "@/components/news/ed
 import { getEditorialNewsPhoto } from "@/lib/editorial-news-images";
 import { EditorialNewsFilters } from "@/components/news/editorial-news-filters";
 import { EditorialAdditionalSources, verifiedAdditionalSources } from "@/components/news/editorial-news-sources";
+import { EditorialNewsSections } from "@/components/news/editorial-news-sections";
 import { filterEditorialNews, normalizeNewsFilters, type NewsFilters } from "@/lib/editorial-news-filters";
 
 export function EditorialNewsCards({ articles = getPublishedNews() }: { articles?: EditorialNews[] } = {}) {
   return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{articles.map(article => {
-    const photo = getEditorialNewsPhoto(article);
+    const photo = article.photoPolicy === 'official-only' ? null : getEditorialNewsPhoto(article);
     return (
     <article key={article.slug}>
       <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
@@ -20,7 +21,7 @@ export function EditorialNewsCards({ articles = getPublishedNews() }: { articles
         thumbnail_url: photo?.url ?? null, thumbnail_alt: photo?.alt,
         published_at: article.automaticPublication?.checkedAt ?? getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
       <p className="text-sm text-grey-600 mt-3 leading-relaxed">공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt}</p>
-      <EditorialPhotoCredit photo={photo} />
+      {photo && <EditorialPhotoCredit photo={photo} />}
     </article>
   ); })}</div>;
 }
@@ -60,12 +61,12 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
   const review = article.automaticPublication
     ? { reviewedAt: article.automaticPublication.checkedAt, reviewer: "자동 근거 검사·사실 대조" }
     : getPublishedNewsReview(article);
-  const photo = getEditorialNewsPhoto(article);
+  const photo = article.photoPolicy === 'official-only' ? null : getEditorialNewsPhoto(article);
   const additionalSources = verifiedAdditionalSources(article);
   const schema = review ? {
     "@context": "https://schema.org", "@type": "Article",
     headline: article.title, description: article.answer,
-    image: `https://www.keepioo.com${photo.url}`,
+    ...(photo ? { image: `https://www.keepioo.com${photo.url}` } : {}),
     datePublished: review.reviewedAt, dateModified: article.editorialCorrection?.correctedAt ?? review.reviewedAt,
     author: { "@type": "Organization", name: "키피오 편집", url: "https://keepioo.com/about" },
     mainEntityOfPage: `https://keepioo.com/news/${article.slug}`,
@@ -81,15 +82,14 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
       {article.editorialCorrection && <p className="text-sm text-grey-700 bg-blue-50 rounded-xl p-4 mb-5">
         원문 대조 정정 · {article.editorialCorrection.correctedAt.slice(0, 10)}: {article.editorialCorrection.summary}
       </p>}
-      <EditorialPhotoFigure photo={photo} />
+      {photo ? <EditorialPhotoFigure photo={photo} /> : <p className="mb-6">
+        <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">공식 기사에서 현장 사진 보기 →</a>
+      </p>}
       <h2 className="text-xl font-bold mb-3">{article.question}</h2>
       <p className="rounded-2xl bg-blue-50 p-6 leading-relaxed mb-6">{article.answer}</p>
       <p className="text-grey-600 mb-8">대상: {article.audience}</p>
       {article.automaticPublication && <p className="text-sm text-grey-600 mb-6">자동 작성 후 원문 근거와 사실을 기계적으로 대조한 글입니다. 사람의 검수와 다르며, 실제 신청은 공식 기관의 최신 안내를 확인하세요.</p>}
-      {article.sections.map(section => <section key={section.heading} className="mb-9">
-        <h2 className="text-2xl font-bold mb-4">{section.heading}</h2>
-        {section.paragraphs.map(paragraph => <p key={paragraph} className="text-grey-700 leading-[1.9] mb-4">{paragraph}</p>)}
-      </section>)}
+      <EditorialNewsSections article={article} />
       <aside className="border-t border-grey-200 pt-6">
         <h2 className="font-bold text-xl mb-3">공식 근거와 정정</h2>
         <p className="leading-relaxed mb-3">{article.sourceAgency} · 발표 {article.sourcePublishedAt} · 확인 {article.checkedAt}</p>

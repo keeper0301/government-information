@@ -12,7 +12,9 @@ export interface EditorialNews {
   sourcePublishedAt: string;
   checkedAt: string;
   updatedAt: string;
-  sections: { heading: string; paragraphs: string[] }[];
+  sections: { heading: string; paragraphs: string[];
+    table?: { caption: string; columns: string[]; rows: string[][] } }[];
+  photoPolicy?: 'official-only';
   guideSlug: string;
   editorialCorrection?: { correctedAt: string; summary: string };
   additionalSources?: { title: string; url: string; checkedAt: string; scope: string }[];
