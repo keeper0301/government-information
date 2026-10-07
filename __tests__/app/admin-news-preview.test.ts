@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ authorize: vi.fn(), from: vi.fn(), read: vi.fn(), generate: vi.fn() }));
 vi.mock('@/lib/admin-auth-server', () => ({ requireAdminUser: mocks.authorize }));
@@ -24,6 +24,7 @@ beforeEach(() => {
   mocks.from.mockReturnValue(query); mocks.read.mockResolvedValue(source);
   mocks.generate.mockResolvedValue({ title: '비공개 검사 초안' });
 });
+afterEach(() => vi.restoreAllMocks());
 it('관리자가 아니면 저장소와 작성 도구에 접근하지 않는다', async () => {
   mocks.authorize.mockResolvedValue(null);
   expect(await run()).toMatchObject({ status: 'error', message: '관리자 로그인이 필요합니다.' });
@@ -64,4 +65,22 @@ it('외부 도구의 원래 오류에 있는 인증 정보는 결과에 포함�
   mocks.generate.mockRejectedValue(new Error('외부 오류: 검사용-비밀값'));
   const result = await run(); expect(result.status).toBe('error');
   expect(JSON.stringify(result)).not.toContain('검사용-비밀값');
+});
+it.each([
+  ['원문', new Error('접속 실패: 검사용-비밀값'), '공식 원문 읽기 단계에서 호출에 실패했습니다.'],
+  ['작성', new Error('OpenAI 응답 타임아웃 (25000ms)'), '초안 작성·검사 단계에서 응답 대기 시간이 초과됐습니다.'],
+  ['작성', new Error('OpenAI API 오류 401: 검사용-비밀값'), '초안 작성·검사 단계에서 작성 도구 인증을 확인해야 합니다.'],
+  ['작성', new Error('OpenAI API 오류 429: 검사용-비밀값'), '초안 작성·검사 단계에서 작성 도구 사용 한도에 도달했습니다.'],
+  ['작성', new Error('OpenAI API 오류 503: 검사용-비밀값'), '초안 작성·검사 단계에서 작성 도구 서버가 응답하지 못했습니다.'],
+  ['작성', new Error('JSON 파싱 실패: 검사용-비밀값'), '초안 작성·검사 단계에서 작성 결과 형식을 읽지 못했습니다.'],
+])('실패 단계와 종류만 알리고 비밀값은 화면과 기록에 남기지 않는다: %s', async (stage, error, message) => {
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  if (stage === '원문') mocks.read.mockRejectedValue(error);
+  else mocks.generate.mockRejectedValue(error);
+  const result = await run();
+  expect(result).toEqual({ status: 'error', message: `${message} 공개하지 않았습니다.` });
+  expect(warning).toHaveBeenCalledExactlyOnceWith('정책뉴스 비공개 검사 실패', { stage: stage === '원문' ? '공식 원문 읽기' : '초안 작성·검사', reason: message.split(' 단계에서 ')[1] });
+  expect(JSON.stringify([result, warning.mock.calls])).not.toContain('검사용-비밀값');
+  expect(mocks.from).toHaveBeenCalledExactlyOnceWith('news_posts');
+  if (stage === '원문') expect(mocks.generate).not.toHaveBeenCalled();
 });
