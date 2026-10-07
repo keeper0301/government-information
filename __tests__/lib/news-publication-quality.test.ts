@@ -16,6 +16,14 @@ const quality = () => Object.fromEntries(['scope','timeliness','usefulness','cla
 it('짧고 구체적인 행사 설명은 불필요한 분량 없이 통과한다', () => {
   expect(validateNewsDraft(draft, source)).not.toBeNull();
 });
+it('공식 발표일에 확인된 연도만 숫자 근거로 인정한다', () => {
+  const dated = { ...draft, question: '2026년 발표된 행사에서 무엇을 확인할 수 있나요?' };
+  expect(validateNewsDraft(dated, source)).toBeNull();
+  expect(validateNewsDraft(dated, source, '2026-10-06')).not.toBeNull();
+  expect(validateNewsDraft({ ...dated, question: dated.question.replace('2026년', '2027년') }, source, '2026-10-06')).toBeNull();
+  expect(validateNewsDraft(dated, source, '임의의 날짜')).toBeNull();
+  expect(validateNewsDraft(dated, source, '2026-02-30')).toBeNull();
+});
 it('현장·사례 설명이 추가된 네 부분 기사를 허용하고 일곱 부분은 제한한다', () => {
   const extra = { heading: '경험을 비교할 때 주의할 점', paragraphs: ['참가자가 이야기한 경력 전환 경험은 개인의 사례입니다. 모든 구직자에게 같은 결과가 생긴다는 뜻이 아니므로 본인 경력과 구분하여 읽는 편이 좋습니다.'], quote: source };
   expect(validateNewsDraft({ ...draft, sections: [...draft.sections, extra] }, source)).not.toBeNull();

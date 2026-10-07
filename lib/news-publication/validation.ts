@@ -19,7 +19,7 @@ export function officialNewsId(value: string): string | null {
 export const normalizeSourceText = (text: string) => text.replace(/\s+/g, ' ').trim();
 
 // 정확한 인용·숫자·분량을 먼저 검사하고 별도 사실 대조 결과도 요구합니다.
-export function newsDraftIssue(value: unknown, body: string): string | null {
+export function newsDraftIssue(value: unknown, body: string, publishedAt?: string): string | null {
   if (!value || typeof value !== 'object') return '초안이 글 형식이 아닙니다.';
   const draft = value as NewsDraft;
   const validText = (text: unknown) => typeof text === 'string' && text.trim().length >= 5
@@ -55,6 +55,11 @@ export function newsDraftIssue(value: unknown, body: string): string | null {
   const comparableNumber = (text: string) => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g, value => value.replace(/,/g, ''));
   const numberPattern = /\d(?:[\d,.]*\d)?(?:%|만원|억원|원|년|월|일|명|세|개월)?/g;
   const sourceNumbers = new Set(comparableNumber(source).match(numberPattern) ?? []);
+  // 본문에 연도가 없어도 공식 기사 머리말에서 확인한 발표 연도는 근거입니다.
+  // 다른 연도·금액·날짜를 함께 허용하지 않고 검증된 날짜의 연도만 추가합니다.
+  if (publishedAt && /^\d{4}-\d{2}-\d{2}$/.test(publishedAt)
+    && Number.isFinite(Date.parse(publishedAt)) && new Date(publishedAt).toISOString().slice(0, 10) === publishedAt)
+    sourceNumbers.add(`${publishedAt.slice(0, 4)}년`);
   const numbers = comparableNumber(prose).match(numberPattern) ?? [];
   const unsupported = numbers.filter(number => !sourceNumbers.has(number));
   if (unsupported.length) return `원문에서 확인하지 못한 숫자: ${unsupported.slice(0, 3).join(', ')}.`;
@@ -66,6 +71,6 @@ export function newsDraftIssue(value: unknown, body: string): string | null {
   return null;
 }
 
-export function validateNewsDraft(value: unknown, body: string): NewsDraft | null {
-  return newsDraftIssue(value, body) === null ? value as NewsDraft : null;
+export function validateNewsDraft(value: unknown, body: string, publishedAt?: string): NewsDraft | null {
+  return newsDraftIssue(value, body, publishedAt) === null ? value as NewsDraft : null;
 }
