@@ -1,6 +1,6 @@
 import type { NewsDraft } from './validation';
 
-export const EDITORIAL_QUALITY_KEYS = ['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition'] as const;
+export const EDITORIAL_QUALITY_KEYS = ['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage'] as const;
 
 // 합격 표시만 받아들이지 않고 항목별 이유와 실제 초안의 문장을 요구합니다.
 export function validateEditorialQuality(value: unknown, draft: NewsDraft): boolean {
