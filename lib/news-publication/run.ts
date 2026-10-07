@@ -17,7 +17,7 @@ export async function runNewsPublication() {
   const admin = createAdminClient();
   const result = { attempted: 0, published: 0, held: 0, conflicts: 0, slugs: [] as string[] };
   const started = Date.now();
-  for (let index = 0; index < 6 && Date.now() - started < 160000; index++) {
+  for (let index = 0; index < 6 && Date.now() - started < 120000; index++) {
     const claim = await admin.rpc('claim_editorial_news');
     if (claim.error) throw new Error('뉴스 발행 후보를 예약하지 못했습니다.');
     if (!claim.data) break;
