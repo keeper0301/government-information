@@ -35,8 +35,12 @@ export function newsDraftIssue(value: unknown, body: string): string | null {
   const prose = [draft.question, draft.answer, draft.audience,
     ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])].join(' ');
   if (prose.length < 600 || prose.length > 2400) return `설명 분량이 기준 밖입니다: ${prose.length}자.`;
-  const numbers = prose.match(/\d[\d,.]*(?:\s*(?:%|만원|억원|원|년|월|일|명|세|개월))?/g) ?? [];
-  const unsupported = numbers.filter(number => !source.replace(/\s/g, '').includes(number.replace(/\s/g, '')));
+  // 같은 숫자의 천 단위 쉼표만 지웁니다. 금액이나 단위 변환은 하지 않습니다.
+  const comparableNumber = (text: string) => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g, value => value.replace(/,/g, ''));
+  const numberPattern = /\d(?:[\d,.]*\d)?(?:%|만원|억원|원|년|월|일|명|세|개월)?/g;
+  const sourceNumbers = new Set(comparableNumber(source).match(numberPattern) ?? []);
+  const numbers = comparableNumber(prose).match(numberPattern) ?? [];
+  const unsupported = numbers.filter(number => !sourceNumbers.has(number));
   if (unsupported.length) return `원문에서 확인하지 못한 숫자: ${unsupported.slice(0, 3).join(', ')}.`;
   const sentences = prose.split(/[.!?。]|(?:하세요|습니다|입니다)\./).map(normalizeSourceText).filter(text => text.length > 15);
   if (new Set(sentences).size !== sentences.length) return '같은 설명 문장을 반복했습니다.';
