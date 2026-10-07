@@ -15,6 +15,8 @@ export type CallLLMOptions = {
   maxTokens?: number;
   /** true 면 response_format json_object 강제 — content 가 보장된 JSON 문자열 */
   jsonMode?: boolean;
+  /** 필요한 작업만 필수 응답 항목을 지정합니다. 기존 호출 방식은 그대로 유지합니다. */
+  responseSchema?: { name: string; schema: Record<string, unknown> };
   /** model override. 기본 gpt-4o-mini */
   model?: string;
   /** fetch 타임아웃(ms). 기본 20000 — 1건 hang 이 maxDuration 전체를 잡지 않게 격리 */
@@ -37,7 +39,9 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
     max_tokens: opts.maxTokens ?? 300,
     messages: [{ role: "user", content: opts.prompt }],
   };
-  if (opts.jsonMode) {
+  if (opts.responseSchema) {
+    body.response_format = { type: 'json_schema', json_schema: { ...opts.responseSchema, strict: true } };
+  } else if (opts.jsonMode) {
     body.response_format = { type: "json_object" };
   }
 
