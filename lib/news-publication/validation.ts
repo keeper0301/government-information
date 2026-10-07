@@ -1,5 +1,7 @@
 export interface NewsDraft {
+  kind: 'application' | 'change' | 'report'; title: string;
   question: string; answer: string; audience: string;
+  editorialReview?: unknown;
   sections: { heading: string; paragraphs: string[]; quote: string }[];
 }
 
@@ -24,17 +26,22 @@ export function newsDraftIssue(value: unknown, body: string): string | null {
     && /[가-힣]/.test(text) && !/[<>]|https?:\/\//.test(text);
   if (![draft.question, draft.answer, draft.audience].every(validText)
     || !Array.isArray(draft.sections) || draft.sections.length !== 3) return '질문·답변·대상 또는 세 부분의 형식이 맞지 않습니다.';
+  if (!['application', 'change', 'report'].includes(draft.kind) || !validText(draft.title)
+    || draft.title.length > 80) return '기사 종류 또는 제목이 맞지 않습니다.';
+  if (draft.answer.length > 180) return '핵심 답변을 180자 이내로 줄여주세요.';
   const source = normalizeSourceText(body);
   for (const section of draft.sections) {
     if (!section || !validText(section.heading) || !Array.isArray(section.paragraphs)
       || section.paragraphs.length < 1 || section.paragraphs.length > 3
       || !section.paragraphs.every(validText) || !validText(section.quote)
       || section.quote.length > 300) return '단락 또는 인용문의 형식이 맞지 않습니다.';
+    if (section.paragraphs.some(text => text.length > 240)) return '한 문단이 너무 깁니다. 짧은 문단으로 나눠주세요.';
+    if (section.paragraphs.some(text => /(.{12,60})\1\1/u.test(text.replace(/\s+/g, '')))) return '같은 구절로 설명을 반복했습니다.';
     if (!source.includes(normalizeSourceText(section.quote))) return '인용문이 공식 원문과 일치하지 않습니다.';
   }
-  const prose = [draft.question, draft.answer, draft.audience,
+  const prose = [draft.title, draft.question, draft.answer, draft.audience,
     ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])].join(' ');
-  if (prose.length < 600 || prose.length > 2400) return `설명 분량이 기준 밖입니다: ${prose.length}자.`;
+  if (prose.length < 300 || prose.length > 1800) return `설명 분량이 기준 밖입니다: ${prose.length}자.`;
   // 같은 숫자의 천 단위 쉼표만 지웁니다. 금액이나 단위 변환은 하지 않습니다.
   const comparableNumber = (text: string) => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g, value => value.replace(/,/g, ''));
   const numberPattern = /\d(?:[\d,.]*\d)?(?:%|만원|억원|원|년|월|일|명|세|개월)?/g;

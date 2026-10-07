@@ -20,6 +20,18 @@ vi.mock("@/lib/policy-guides", () => ({ getGuides: async () => [] }));
 afterEach(() => { state.published = false; });
 
 describe("재심사 정책뉴스 화면", () => {
+  it("정정한 글은 정정 사유와 수정 시각을 표시하고 최초 발행일을 유지한다", async () => {
+    state.published = true;
+    const { EditorialNewsDetail } = await import("@/components/news/editorial-news-pages");
+    const article = { ...EDITORIAL_NEWS[0], editorialCorrection: {
+      correctedAt: "2026-10-07T02:00:00Z", summary: "행사 참여자 대상 후속 안내로 바로잡았습니다.",
+    } };
+    const html = renderToStaticMarkup(await EditorialNewsDetail({ article }));
+    expect(html).toContain("원문 대조 정정");
+    expect(html).toContain(article.editorialCorrection.summary);
+    expect(html).toContain('"dateModified":"2026-10-07T02:00:00Z"');
+    expect(html).toContain('"datePublished":"2026-10-05T14:00:00Z"');
+  });
   it("공개한 뉴스에만 자료사진과 이용 조건을 표시한다", async () => {
     const { EditorialNewsIndex } = await import("@/components/news/editorial-news-pages");
     expect(renderToStaticMarkup(<EditorialNewsIndex />)).not.toContain("jeongeup-market.webp");
