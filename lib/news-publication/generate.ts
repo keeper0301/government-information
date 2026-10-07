@@ -23,8 +23,10 @@ export async function generateVerifiedNews(source: OfficialNewsSource) {
 먼저 기사 종류를 구분하세요: application=현재 신청 안내, change=제도 변경, report=행사·사례 소개.
 이미 끝난 행사를 모집 중인 사업으로 바꾸지 마세요. 원문에 명시된 참여자 대상 후속 지원을 일반 구직자·시민에게 확대하지 마세요.
 기사 종류에 맞는 구체적인 제목을 80자 이내로 작성하세요. 원문의 제목을 그대로 붙이거나 일괄적으로 '조건과 준비 순서'를 덧붙이지 마세요.
-핵심 답변은 180자 이내 두세 문장으로 작성하고 첫 문장에서 지금 이용 가능한 내용과 대상 범위를 밝히세요.
-부분별 최소 분량을 맞추지 마세요. 한 문단은 240자 이내로 짧게 쓰고 구체적 사실·독자가 할 수 있는 행동·중요한 한계를 서로 다른 세 질문으로 설명하세요.
+핵심 답변은 180자 이내 두세 문장으로 작성하세요. 신청형은 현재 이용 가능 여부와 대상, 변경형은 구체적 변경점과 적용 상태, 행사형은 현장에서 있었던 일과 후속 지원 범위를 첫 문장에 밝히세요.
+본문은 내용에 따라 3~6개 부분으로 구성하고 전체 글은 2600자 이내로 쓰세요. 부분별 최소 분량은 없습니다. 한 문단은 240자 이내이며, 질문형 제목을 모든 부분에 강제하지 않습니다.
+제도 변경은 핵심 조치와 변경 전후의 차이, 적용 대상과 시행 상태를 보존하세요. 행사·사례는 진행 내용, 소개된 직무나 활동, 원문에 있는 참가 사례와 후속 지원을 보존하세요.
+원문 참가 사례를 넣으면 원문 취재임을 밝히고 가명 표기를 유지하세요. 키피오가 직접 인터뷰한 것처럼 쓰거나 한 사람의 사례를 일반적 결과로 확대하지 마세요.
 신청형은 대상·지원 내용·기간·신청 방법을 원문으로 확인해야 합니다. 핵심 이용 정보를 확인할 수 없는 자료는 {"skip":true}.
 행사·사례형은 행사 종료 여부와 후속 지원 대상, 일반 독자의 이용 가능 여부를 구분하세요. 단순 행사 홍보만 있고 독자가 활용할 정보가 없으면 {"skip":true}.
 원문에 없는 지원금·대출·서류를 '확인되지 않음' 목록으로 길게 늘어놓지 마세요.
@@ -36,7 +38,7 @@ export async function generateVerifiedNews(source: OfficialNewsSource) {
 각 부분에 해당 설명을 뒷받침하는 원문 근거 번호 quoteIndex를 선택하세요. 인용문을 직접 쓰거나 생략 표시를 넣지 마세요.
 선택 가능한 원문 근거: ${JSON.stringify(quotes.map((quote, quoteIndex) => ({ quoteIndex, quote })))}
 해설에서는 50자 이상 원문 복사 금지.
-서로 다른 질문 3개로 구성하고 반복 문장으로 분량을 채우지 마세요.
+아래는 최소 구성 예시입니다. 원문의 주요 변화나 사례를 보존하는 데 필요하면 부분을 최대 6개까지 추가하세요. 일반적인 확인 조언 때문에 원문의 핵심 내용을 삭제하지 마세요.
 JSON 형식: {"kind":"application 또는 change 또는 report", "title":"기사에 맞는 구체적인 제목", "question":"핵심 질문", "answer":"질문에 대한 답변", "audience":"대상",
 "sections":[
 {"heading":"이 기사에서 독자가 궁금해할 구체적인 첫 질문", "paragraphs":["대상에 대한 구체적인 해설"], "quoteIndex":0},
@@ -48,7 +50,7 @@ JSON 형식: {"kind":"application 또는 change 또는 report", "title":"기사�
   // 초안 검사에 실패한 글은 한 번만 바로잡습니다. 검사는 매번 동일합니다.
   for (let attempt = 0; attempt < 2; attempt++) {
     const raw = await callLLM({ model: 'gpt-4.1-mini', jsonMode: true, maxTokens: 3200, timeoutMs: attempt ? 20000 : 25000,
-      prompt: attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n조건을 모두 지킨 세 부분 전체를 다시 작성하세요.` : prompt });
+      prompt: attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n조건을 모두 지킨 기사 전체를 다시 작성하세요.` : prompt });
     value = parseJSONResponse(raw);
     if (value && typeof value === 'object' && (value as { skip?: unknown }).skip === true)
       throw new NewsDraftError('독자가 활용할 핵심 정보가 부족해 보류했습니다.', { draft: value });
@@ -75,20 +77,21 @@ JSON 형식: {"kind":"application 또는 change 또는 report", "title":"기사�
 완화된 인과성 조건을 제한으로 바꾸거나 원문에 없는 계정·서류·자격·협력 관계를 만들면 supported=false.
 한 부분에 사실과 추측이 섞이면 그 부분 전체를 supported=false로 판정하세요. 문장 중 하나라도 입증되지 않으면 공개하지 않습니다.
 키피오의 제안은 정책 의무와 명확히 구분되어야 합니다. 해당 사업의 판단에 도움이 되는 설명이
-세 부분에 있고 단순 요약·재작성·일반 서류 준비 문구를 넘어설 때만 originalValue=true.
-사실 검사와 별도로 품질 다섯 항목을 각각 검사하세요. quality의 각 항목에는 passed, 구체적인 판정 이유 reason, 해당 초안에서 정확히 복사한 8~160자 excerpt가 필요합니다.
+본문에 있고 단순 요약·재작성·일반 서류 준비 문구를 넘어설 때만 originalValue=true.
+사실 검사와 별도로 품질 여섯 항목을 각각 검사하세요. quality의 각 항목에는 passed, 구체적인 판정 이유 reason, 해당 초안에서 정확히 복사한 8~160자 excerpt가 필요합니다.
 scope: 원문 지원 대상·범위를 확대하지 않았는가? '행사 참여자'를 일반 구직자로 바꾸면 실패입니다.
 timeliness: 종료 행사·예정 제도·진행 중 신청을 구분하고 제목과 기사 종류도 그 상태에 맞는가?
 usefulness: 독자가 지금 활용할 구체적 정보가 있는가? '기관에 문의하세요·서류를 준비하세요'라는 일반 조언만으로는 합격할 수 없습니다. 신청 경로·이용 조건·절차 또는 발표 전후의 구체적 차이가 원문으로 입증되어야 합니다.
 clarity: 첫 답변이 질문에 바로 답하고 문단이 짧고 이해하기 쉬운가? 작성자·개발자에게 내리는 작업 지시, 내부 검수용 설명, 작성 계획이 독자용 본문에 섞이면 실패입니다.
 nonRepetition: 표현만 바꾼 같은 설명이나 기사와 관련 없는 '확인 안 됨' 목록으로 분량을 채우지 않았는가?
+coverage: 원문의 핵심 내용을 보존했는가? 변경형은 주요 조치·구체적 차이·적용 상태, 신청형은 대상·지원·기간·경로, 행사형은 현장 활동·소개 직무·참가 사례·후속 지원 중 원문에 있는 중요한 내용을 대조하세요. 원문에 없는 항목을 필수로 요구하지 마세요. 일반적인 확인 조언만 남기고 주요 변화나 사례를 누락했다면 실패입니다. reason에 보존한 핵심 내용과 누락 여부를 구체적으로 쓰세요.
 문장 하나라도 대상·현재 가능 여부가 모호하거나 두 부분이 같은 내용을 반복하면 해당 품질 항목은 passed=false입니다.
-원문에 없는 신청 자격이나 서류는 추측하지 마세요. checks는 제목·질문·답변·대상(part=0)과 세 부분(part=1,2,3) 각각의 모든 사실을 대조한 결과입니다.
+원문에 없는 신청 자격이나 서류는 추측하지 마세요. checks는 제목·질문·답변·대상(part=0)과 본문의 모든 부분(part=1부터 ${draft.sections.length}까지) 각각의 모든 사실을 대조한 결과이며 총 ${draft.sections.length + 1}개가 필요합니다. 아래 예시보다 본문이 많으면 검사 항목도 추가하세요.
 각 quote는 해당 부분의 사실을 뒷받침하는 원문에서 정확히 복사한 10~300자 문장입니다.
-JSON: {"supported":true 또는 false,"originalValue":true 또는 false,"issues":["문제"],"quality":{"scope":{"passed":true 또는 false,"reason":"범위 판정 이유","excerpt":"초안의 해당 문장"},"timeliness":{"passed":true 또는 false,"reason":"시점 판정 이유","excerpt":"초안 문장"},"usefulness":{"passed":true 또는 false,"reason":"독자 효용 판정 이유","excerpt":"초안 문장"},"clarity":{"passed":true 또는 false,"reason":"가독성 판정 이유","excerpt":"초안 문장"},"nonRepetition":{"passed":true 또는 false,"reason":"중복 판정 이유","excerpt":"초안 문장"}},"checks":[{"part":0,"supported":true 또는 false,"quote":"원문 근거"},{"part":1,"supported":true 또는 false,"quote":"원문 근거"},{"part":2,"supported":true 또는 false,"quote":"원문 근거"},{"part":3,"supported":true 또는 false,"quote":"원문 근거"}]}` }));
+JSON: {"supported":true 또는 false,"originalValue":true 또는 false,"issues":["문제"],"quality":{"scope":{"passed":true 또는 false,"reason":"범위 판정 이유","excerpt":"초안의 해당 문장"},"timeliness":{"passed":true 또는 false,"reason":"시점 판정 이유","excerpt":"초안 문장"},"usefulness":{"passed":true 또는 false,"reason":"독자 효용 판정 이유","excerpt":"초안 문장"},"clarity":{"passed":true 또는 false,"reason":"가독성 판정 이유","excerpt":"초안 문장"},"nonRepetition":{"passed":true 또는 false,"reason":"중복 판정 이유","excerpt":"초안 문장"},"coverage":{"passed":true 또는 false,"reason":"주요 내용 보존과 누락 여부","excerpt":"초안 문장"}},"checks":[{"part":0,"supported":true 또는 false,"quote":"원문 근거"},{"part":1,"supported":true 또는 false,"quote":"원문 근거"},{"part":2,"supported":true 또는 false,"quote":"원문 근거"},{"part":3,"supported":true 또는 false,"quote":"원문 근거"}]}` }));
   const checks = judgment.checks;
-  const verifiedParts = Array.isArray(checks) && checks.length === 4
-    && [0, 1, 2, 3].every(part => checks.some(check => check?.part === part && check.supported === true
+  const verifiedParts = Array.isArray(checks) && checks.length === draft.sections.length + 1
+    && Array.from({ length: draft.sections.length + 1 }, (_, part) => part).every(part => checks.some(check => check?.part === part && check.supported === true
       && typeof check.quote === 'string' && check.quote.length >= 10 && check.quote.length <= 300
       && source.body.replace(/\s+/g, ' ').includes(check.quote.replace(/\s+/g, ' '))));
   if (!verifiedParts || judgment.supported !== true || judgment.originalValue !== true || !Array.isArray(judgment.issues) || judgment.issues.length)
