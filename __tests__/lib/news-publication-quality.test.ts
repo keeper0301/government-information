@@ -16,6 +16,18 @@ const quality = () => Object.fromEntries(['scope','timeliness','usefulness','cla
 it('짧고 구체적인 행사 설명은 불필요한 분량 없이 통과한다', () => {
   expect(validateNewsDraft(draft, source)).not.toBeNull();
 });
+it('나이 단위를 빠뜨리면 보류하면서 원문 표기를 재작성 안내에 넣는다', () => {
+  const missingUnit = { ...draft, answer: '기자단이 소개한 참가자는 54·가명과 51·가명입니다. 행사 경험은 개인의 사례입니다.' };
+  const original = `${source} 참가자는 54세와 51세입니다.`;
+  expect(validateNewsDraft(missingUnit, original)).toBeNull();
+  expect(newsDraftIssue(missingUnit, original)).toContain('54 → 54세, 51 → 51세');
+  expect(validateNewsDraft({ ...missingUnit, answer: missingUnit.answer.replace('54·', '54세·').replace('51·', '51세·') }, original)).not.toBeNull();
+});
+it('원문 숫자가 없거나 같은 숫자에 여러 단위가 있으면 단위를 추측하지 않는다', () => {
+  const ambiguous = { ...draft, answer: '기자단은 참가자 54의 사례를 소개했습니다. 행사 경험은 개인의 사례입니다.' };
+  expect(newsDraftIssue(ambiguous, `${source} 54세와 54명입니다.`)).toBe('원문에서 확인하지 못한 숫자: 54.');
+  expect(newsDraftIssue(ambiguous, source)).toBe('원문에서 확인하지 못한 숫자: 54.');
+});
 it('공식 발표일에 확인된 연도만 숫자 근거로 인정한다', () => {
   const dated = { ...draft, question: '2026년 발표된 행사에서 무엇을 확인할 수 있나요?' };
   expect(validateNewsDraft(dated, source)).toBeNull();

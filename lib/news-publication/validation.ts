@@ -62,7 +62,17 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
     sourceNumbers.add(`${publishedAt.slice(0, 4)}년`);
   const numbers = comparableNumber(prose).match(numberPattern) ?? [];
   const unsupported = numbers.filter(number => !sourceNumbers.has(number));
-  if (unsupported.length) return `원문에서 확인하지 못한 숫자: ${unsupported.slice(0, 3).join(', ')}.`;
+  if (unsupported.length) {
+    // 단위가 빠졌고 원문 표기가 하나일 때만 고칠 표기를 알려줍니다. 초안은 계속 보류합니다.
+    const unitHints = [...new Set(unsupported)].flatMap(number => {
+      if (!/^\d(?:[\d,.]*\d)?$/.test(number)) return [];
+      const originals = [...sourceNumbers].filter(original =>
+        original.match(/^(\d(?:[\d,.]*\d)?)(%|만원|억원|원|년|월|일|명|세|개월)$/)?.[1] === number);
+      return originals.length === 1 ? [`${number} → ${originals[0]}`] : [];
+    });
+    const hint = unitHints.length ? ` 원문 숫자와 단위를 함께 쓰세요: ${unitHints.slice(0, 3).join(', ')}.` : '';
+    return `원문에서 확인하지 못한 숫자: ${unsupported.slice(0, 3).join(', ')}.${hint}`;
+  }
   const sentences = prose.split(/[.!?。]|(?:하세요|습니다|입니다)\./).map(normalizeSourceText).filter(text => text.length > 15);
   if (new Set(sentences).size !== sentences.length) return '같은 설명 문장을 반복했습니다.';
   for (let offset = 0; offset + 50 <= prose.length; offset++) {
