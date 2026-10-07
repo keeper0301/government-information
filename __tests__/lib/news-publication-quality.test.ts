@@ -16,6 +16,44 @@ const quality = () => Object.fromEntries(['scope','timeliness','usefulness','cla
 it('짧고 구체적인 행사 설명은 불필요한 분량 없이 통과한다', () => {
   expect(validateNewsDraft(draft, source)).not.toBeNull();
 });
+it.each(['10월 한 달간', '10월 내내'])('월 중 안내를 월 전체 지원으로 확대하면 보류한다: %s', period => {
+  const expanded = { ...draft, answer: `${period} 맞춤형 채용 정보가 제공됩니다. 후속 안내는 기존 행사 참여자를 대상으로 합니다.` };
+  expect(newsDraftIssue(expanded, source)).toContain('월 전체');
+});
+it('원문에 월 전체 기간이 명시되면 해당 안내를 허용한다', () => {
+  const original = `${source} 10월 한 달간 채용 정보를 제공합니다.`;
+  expect(validateNewsDraft({ ...draft, answer: '10월 한 달간 맞춤형 채용 정보가 제공됩니다. 후속 안내는 기존 행사 참여자를 대상으로 합니다.' }, original)).not.toBeNull();
+});
+it.each(['행사 참여자만 이용할 수 있습니다.', '참가자에게만 채용 정보를 제공합니다.'])
+('대상 안내만으로 비참여자를 배제하면 보류한다: %s', claim => {
+  expect(newsDraftIssue({ ...draft, answer: claim }, source)).toContain('이용 제한');
+});
+it('원문에 명시된 제한과 제한 여부가 미확인이라는 설명은 구분한다', () => {
+  const restricted = { ...draft, answer: '행사 참여자만 이용할 수 있습니다.' };
+  expect(validateNewsDraft(restricted, `${source} 행사 참여자만 이용할 수 있습니다.`)).not.toBeNull();
+  expect(validateNewsDraft({ ...draft, answer: '행사 참여자만 이용할 수 있다는 뜻은 아닙니다. 일반 구직자 이용 가능 여부는 확인이 필요합니다.' }, source)).not.toBeNull();
+});
+it('원문이 배제 조건을 부정하면 긍정하는 초안의 근거가 될 수 없다', () => {
+  expect(newsDraftIssue({ ...draft, answer: '행사 참여자만 이용할 수 있습니다.' },
+    `${source} 행사 참여자만 이용할 수 있다는 뜻은 아닙니다.`)).toContain('이용 제한');
+});
+it('원문이 월 전체 기간을 부정하면 긍정하는 초안의 근거가 될 수 없다', () => {
+  expect(newsDraftIssue({ ...draft, answer: '10월 한 달간 지원합니다.' },
+    `${source} 10월 한 달간이라는 뜻은 아닙니다.`)).toContain('월 전체');
+});
+it('다른 조건의 부정으로 월 전체 지원이라는 단정을 숨길 수 없다', () => {
+  expect(newsDraftIssue({ ...draft, answer: '10월 한 달간 지원하지만 참여자만 이용한다는 뜻은 아닙니다.' }, source)).toContain('월 전체');
+});
+it.each(['지원한다는', '제공한다는'])('월 전체 기간에 직접 붙은 부정 동사도 허용한다: %s', verb => {
+  expect(validateNewsDraft({ ...draft, answer: `10월 한 달간 ${verb} 뜻은 아닙니다. 원문은 10월 중 후속 지원을 안내합니다.` }, source)).not.toBeNull();
+});
+it('월 전체 지원을 부정하는 설명과 서로 다른 월의 숫자 경계를 구분한다', () => {
+  expect(validateNewsDraft({ ...draft, answer: '10월 한 달간 이용할 수 있다는 뜻은 아닙니다. 원문은 10월 중 후속 지원을 안내합니다.' }, source)).not.toBeNull();
+  const otherMonth = '행사 참여자에게 11월 중 정보를 제공합니다. 1월 행사는 종료됐습니다.';
+  const separate = { ...draft, answer: '1월 한 달간 지원한 행사와 후속 안내는 구분해야 합니다.',
+    sections: draft.sections.map(section => ({ ...section, paragraphs: section.paragraphs.map(text => text.replace('10월', '11월')), quote: otherMonth })) };
+  expect(newsDraftIssue(separate, otherMonth)).toBeNull();
+});
 it('나이 단위를 빠뜨리면 보류하면서 원문 표기를 재작성 안내에 넣는다', () => {
   const missingUnit = { ...draft, answer: '기자단이 소개한 참가자는 54·가명과 51·가명입니다. 행사 경험은 개인의 사례입니다.' };
   const original = `${source} 참가자는 54세와 51세입니다.`;

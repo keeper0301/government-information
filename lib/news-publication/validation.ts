@@ -42,6 +42,29 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   }
   const prose = [draft.title, draft.question, draft.answer, draft.audience,
     ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])].join(' ');
+  // '월 중'은 월 전체를 보장하지 않습니다. 확인된 원문 기간을 임의로 늘리면 보류합니다.
+  const negationEnding = '(?:다는|이라는|라는)\\s*(?:뜻|의미)(?:은|는|이|가)?\\s*아(?:닙니다|니다)';
+  // 해당 기간 표현 바로 뒤의 부정만 인정합니다. 다른 조건의 부정으로 기간 오류를 덮지 않습니다.
+  const negatesPeriod = (tail: string) => new RegExp(`^\\s*(?:(?:이용할\\s*수\\s*있|지원한|지원받는|지원된|제공한|제공된))?${negationEnding}`, 'u').test(tail);
+  const sentencesToCheck = prose.split(/[.!?。]/u);
+  for (const sentence of sentencesToCheck) {
+    for (const period of sentence.matchAll(/(?<!\d)(\d{1,2})월\s*(?:한\s*달(?:간|동안)?|내내)/gu)) {
+      if (negatesPeriod(sentence.slice(period.index + period[0].length))) continue;
+      const month = period[1];
+      const originalWholePeriods = [...source.matchAll(new RegExp(`(?<!\\d)${month}월\\s*(?:한\\s*달(?:간|동안)?|내내)`, 'gu'))];
+      if (new RegExp(`(?<!\\d)${month}월\\s*중`, 'u').test(source)
+        && !originalWholePeriods.some(original => !negatesPeriod(source.slice(original.index + original[0].length))))
+        return '원문의 월 중 안내를 월 전체 지원으로 확대했습니다. 원문 기간을 유지하세요.';
+    }
+  }
+  // 참여자를 대상으로 한다는 안내만으로 다른 사람의 이용 불가를 확정하지 않습니다.
+  const exclusiveSupport = /(?:행사\s*)?(?:참여자|참가자)(?:에게)?만[^.!?。]{0,60}(?:이용|신청|지원|제공)[^.!?。]*/gu;
+  const negatesRestriction = (claim: string) => new RegExp(`^(?:행사\\s*)?(?:참여자|참가자)(?:에게)?만\\s*(?:이용할\\s*수\\s*있|신청할\\s*수\\s*있|지원받는|지원된|제공된|제공한)${negationEnding}`, 'u').test(claim);
+  const originalRestrictions = (source.match(exclusiveSupport) ?? []).filter(claim => !negatesRestriction(claim));
+  for (const claim of prose.matchAll(exclusiveSupport)) {
+    if (!originalRestrictions.length && !negatesRestriction(claim[0]))
+      return '원문 대상 안내를 확인되지 않은 이용 제한으로 바꿨습니다. 비참여자의 이용 가능 여부를 단정하지 마세요.';
+  }
   // 독자의 신청 안내와 구분해, 작성자·개발자에게 내리는 내부 작업 지시만 차단합니다.
   const internalInstructions = [
     /(?:코드|컴포넌트|소스\s*파일)(?:를|을|에)?[^.!?\n]{0,35}(?:수정|구현|추가|삭제|배포)(?:하|해)/u,
