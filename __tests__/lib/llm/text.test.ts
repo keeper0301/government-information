@@ -74,6 +74,16 @@ describe("callLLM", () => {
     await callLLM({ prompt: "t", jsonMode: true });
     expect(body.response_format).toEqual({ type: "json_object" });
   });
+  it("필수 응답 형식을 지정하면 일반 자료 형식보다 우선해 서버에 전달한다", async () => {
+    let body: Record<string, unknown> = {};
+    global.fetch = vi.fn(async (_u: unknown, i: RequestInit) => {
+      body = JSON.parse(i.body as string); return okRes('{"quoteIndex":0}');
+    }) as never;
+    const schema = { type: 'object', properties: { quoteIndex: { type: 'integer' } }, required: ['quoteIndex'], additionalProperties: false };
+    await callLLM({ prompt: '근거 번호를 빠뜨리지 마세요.', jsonMode: true,
+      responseSchema: { name: 'required_evidence', schema } });
+    expect(body.response_format).toEqual({ type: 'json_schema', json_schema: { name: 'required_evidence', strict: true, schema } });
+  });
 });
 
 describe("parseJSONResponse", () => {

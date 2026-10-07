@@ -33,6 +33,11 @@ it('긴 문단은 문장 내용을 보존해 나누며 별도 사실 검사를 �
   expect(result.sections.slice(1)).toEqual(draft.sections.slice(1).map(section => ({ ...section, quote })));
   expect(mock.call.mock.calls[1][0].prompt).toContain(JSON.stringify(result.sections[0].paragraphs));
   expect(mock.call).toHaveBeenCalledTimes(2);
+  // 글의 일부가 늘어나도 모든 본문 부분의 원문 근거 번호가 필수여야 합니다.
+  const response = mock.call.mock.calls[0][0].responseSchema;
+  expect(response.schema.required).toContain('sections');
+  expect(response.schema.properties.sections.items.required).toContain('quoteIndex');
+  expect(mock.call.mock.calls[1][0].responseSchema).toBeUndefined();
 });
 
 it.each(['긴 문장', '네 문단 이상'])('문단을 나눠도 기존 제한을 넘는 초안은 보류한다: %s', async kind => {
@@ -127,4 +132,13 @@ it('원문 문장을 품질 근거로 대신 쓰거나 초안 밖 번호를 선�
     quality: { ...quality(), coverage: { passed: true, reason: '원문의 중요한 내용을 보존했다고 주장합니다.', excerpt: quote, excerptIndex: -1 } } }));
   await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).rejects.toThrow('독자 관점 품질');
+});
+
+it('형식을 요구해도 근거 번호가 없는 응답은 기존 검사에서 보류한다', async () => {
+  const missingEvidence = { ...draft, sections: draft.sections.map((section, index) =>
+    index === 2 ? { heading: section.heading, paragraphs: section.paragraphs } : section) };
+  mock.call.mockResolvedValue(JSON.stringify(missingEvidence));
+  await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).rejects.toThrow('단락 또는 인용문');
+  expect(mock.call).toHaveBeenCalledTimes(2);
 });
