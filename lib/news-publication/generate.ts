@@ -4,6 +4,25 @@ import { validateNewsDraft, newsDraftIssue } from './validation';
 import { NewsDraftError } from './errors';
 import { EDITORIAL_QUALITY_KEYS, validateEditorialQuality } from './quality';
 
+// 내용은 바꾸지 않고 완성된 문장 사이에서 긴 문단만 나눕니다.
+// 한 문장 자체가 길거나 문단이 너무 많아지는 경우는 기존 검사에서 계속 보류합니다.
+function splitLongParagraphs(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.flatMap(text => {
+    if (typeof text !== 'string' || text.length <= 240) return [text];
+    const paragraphs: string[] = [];
+    let paragraph = '';
+    for (const sentence of text.split(/(?<=[.!?。])\s+/u)) {
+      if (paragraph && paragraph.length + 1 + sentence.length > 240) {
+        paragraphs.push(paragraph);
+        paragraph = sentence;
+      } else paragraph += `${paragraph ? ' ' : ''}${sentence}`;
+    }
+    if (paragraph) paragraphs.push(paragraph);
+    return paragraphs;
+  });
+}
+
 // 기존 글 작성 도구를 사용하며, 기사마다 작성·대조를 각 1회 처리하고 초안 오류 수정은 1회로 제한합니다.
 export async function generateVerifiedNews(source: OfficialNewsSource) {
   // 발표 당시의 상태를 오늘도 유효한 것으로 오해하지 않도록 두 검사에 같은 날짜를 전달합니다.
@@ -60,6 +79,7 @@ JSON 형식: {"kind":"application 또는 change 또는 report", "title":"기사�
     if (value && typeof value === 'object' && Array.isArray((value as { sections?: unknown }).sections)) {
       const sections = (value as { sections: Record<string, unknown>[] }).sections;
       value = { ...value, sections: sections.map(section => ({ ...section,
+        paragraphs: splitLongParagraphs(section?.paragraphs),
         quote: Number.isInteger(section?.quoteIndex) ? quotes[section.quoteIndex as number] : undefined })) };
     }
     draft = validateNewsDraft(value, source.body, source.publishedAt);
