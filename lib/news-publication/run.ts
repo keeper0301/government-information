@@ -4,6 +4,7 @@ import { generateVerifiedNews } from './generate';
 import { readOfficialNews } from './source';
 import { officialNewsId } from './validation';
 import { PROVINCES } from '@/lib/regions';
+import { NewsDraftError } from './errors';
 
 interface Candidate {
   id: string; source_id: string; title: string; source_url: string; published_at: string;
@@ -16,7 +17,7 @@ export async function runNewsPublication() {
   const admin = createAdminClient();
   const result = { attempted: 0, published: 0, held: 0, conflicts: 0, slugs: [] as string[] };
   const started = Date.now();
-  for (let index = 0; index < 6 && Date.now() - started < 160000; index++) {
+  for (let index = 0; index < 6 && Date.now() - started < 120000; index++) {
     const claim = await admin.rpc('claim_editorial_news');
     if (claim.error) throw new Error('뉴스 발행 후보를 예약하지 못했습니다.');
     if (!claim.data) break;
@@ -52,7 +53,7 @@ export async function runNewsPublication() {
       result.published++; result.slugs.push(article.slug);
     } catch (error) {
       const held = await admin.rpc('finish_editorial_news', { p_source_id: item.source_id, p_token: item.lease_token,
-        p_article: null, p_hash: null, p_evidence: null,
+        p_article: null, p_hash: null, p_evidence: error instanceof NewsDraftError ? error.evidence : null,
         p_reason: error instanceof Error && !/API|OpenAI|fetch/i.test(error.message) ? error.message.slice(0, 180) : '작성 도구 또는 원문 읽기 실패',
         p_title: item.title, p_url: item.source_url, p_updated_at: item.updated_at });
       if (held.error || held.data !== true) result.conflicts++;

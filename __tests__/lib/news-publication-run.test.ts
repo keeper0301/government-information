@@ -4,6 +4,7 @@ vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ rpc: mock.r
 vi.mock('@/lib/news-publication/source', () => ({ readOfficialNews: mock.read }));
 vi.mock('@/lib/news-publication/generate', () => ({ generateVerifiedNews: mock.generate }));
 import { runNewsPublication } from '@/lib/news-publication/run';
+import { NewsDraftError } from '@/lib/news-publication/errors';
 
 const row = { id: '후보', source_id: '148972915', title: '군 복무 청년 지원',
   source_url: 'https://www.korea.kr/news/customizedNewsView.do?newsId=148972915',
@@ -49,4 +50,13 @@ it('예약할 자료가 없으면 작성 도구를 부르지 않는다', async (
   mock.rpc.mockResolvedValue({ data: null });
   expect(await runNewsPublication()).toMatchObject({ attempted: 0, published: 0 });
   expect(mock.generate).not.toHaveBeenCalled();
+});
+
+it('검사에 걸린 실제 초안과 이유는 비공개 저장소에만 남긴다', async () => {
+  mock.generate.mockRejectedValueOnce(new NewsDraftError('설명 분량이 기준 밖입니다: 400자.', { draft: { answer: '공개하면 안 되는 초안' } }));
+  expect(await runNewsPublication()).toMatchObject({ published: 0, held: 1, slugs: [] });
+  const held = mock.rpc.mock.calls.find(call => call[0] === 'finish_editorial_news')![1];
+  expect(held.p_article).toBeNull();
+  expect(held.p_reason).toContain('400자');
+  expect(held.p_evidence.draft.answer).toBe('공개하면 안 되는 초안');
 });
