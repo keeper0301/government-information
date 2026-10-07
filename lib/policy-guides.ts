@@ -97,6 +97,7 @@ export function getGuideDisplayDates(guide: PolicyGuide, now = new Date()): {
 }
 
 interface GuideOptions {
+  signal?: AbortSignal;
   categorySlugs?: readonly string[];
   excludeId?: string;
   /** 공개 목록에서는 사람이 검수한 내용 버전만 선택합니다. */
@@ -117,13 +118,14 @@ export async function getGuides(limit = 50, options: GuideOptions = {}): Promise
       let candidates = supabase.from("policy_guides").select("*");
       // 승인 기록이 없는 주소는 공개될 수 없습니다. 최신 본문은 계속 직접 대조합니다.
       if (options.publicationOnly) candidates = candidates.in("slug", Object.keys(guideReviewRecords));
-      const { data, error } = await candidates
+      if (options.signal) candidates = candidates.abortSignal(options.signal);
+      const { data, error, status } = await candidates
         .order("published_at", { ascending: false, nullsFirst: false })
         .order("id", { ascending: true })
         .range(from, from + pageSize - 1);
       if (error) {
         // Never return a partially collected list as a complete candidate set.
-        throw new Error("Guide data temporarily unavailable", { cause: error });
+        throw new Error("Guide data temporarily unavailable", { cause: { ...error, status } });
       }
       if (!data || data.length === 0) break;
       dbGuides.push(...data.map(rowToGuide));
