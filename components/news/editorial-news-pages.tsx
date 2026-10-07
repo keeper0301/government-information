@@ -4,13 +4,14 @@ import type { EditorialNews } from "@/lib/editorial-news-data";
 import { getGuides } from "@/lib/policy-guides";
 import { safeJsonLd } from "@/lib/json-ld-safe";
 import { NewsCard } from "@/components/news-card";
-import { EDITORIAL_NEWS_IMAGES } from "@/lib/editorial-news-images";
+import { EditorialPhotoCredit, EditorialPhotoFigure } from "@/components/news/editorial-news-photo";
+import { getEditorialNewsPhoto } from "@/lib/editorial-news-images";
 import { EditorialNewsFilters } from "@/components/news/editorial-news-filters";
 import { filterEditorialNews, normalizeNewsFilters, type NewsFilters } from "@/lib/editorial-news-filters";
 
 export function EditorialNewsCards({ articles = getPublishedNews() }: { articles?: EditorialNews[] } = {}) {
   return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{articles.map(article => {
-    const photo = EDITORIAL_NEWS_IMAGES[article.slug];
+    const photo = getEditorialNewsPhoto(article);
     return (
     <article key={article.slug}>
       <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
@@ -18,11 +19,7 @@ export function EditorialNewsCards({ articles = getPublishedNews() }: { articles
         thumbnail_url: photo?.url ?? null, thumbnail_alt: photo?.alt,
         published_at: article.automaticPublication?.checkedAt ?? getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
       <p className="text-sm text-grey-600 mt-3 leading-relaxed">공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt}</p>
-      {photo && <p className="text-xs text-grey-600 mt-2 leading-relaxed">
-        {photo.caption} · 사진: {photo.author} · <a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">사진 출처</a>
-        {" · "}<a href="https://creativecommons.org/licenses/by-sa/3.0/deed.ko" target="_blank" rel="noopener noreferrer" className="underline">저작자 표시·동일조건 변경 허락 3.0</a>
-        {" · 크기·형식 변경, 카드에서 일부 잘림"}
-      </p>}
+      <EditorialPhotoCredit photo={photo} />
     </article>
   ); })}</div>;
 }
@@ -62,9 +59,11 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
   const review = article.automaticPublication
     ? { reviewedAt: article.automaticPublication.checkedAt, reviewer: "자동 근거 검사·사실 대조" }
     : getPublishedNewsReview(article);
+  const photo = getEditorialNewsPhoto(article);
   const schema = review ? {
     "@context": "https://schema.org", "@type": "Article",
     headline: article.title, description: article.answer,
+    image: `https://www.keepioo.com${photo.url}`,
     datePublished: review.reviewedAt, dateModified: review.reviewedAt,
     author: { "@type": "Organization", name: "키피오 편집", url: "https://keepioo.com/about" },
     mainEntityOfPage: `https://keepioo.com/news/${article.slug}`, citation: article.sourceUrl,
@@ -76,6 +75,7 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
       <h1 className="text-3xl font-extrabold leading-snug mb-5">{article.title}</h1>
       <p className="text-sm text-grey-600 mb-5">작성: 키피오 편집 · 공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt} · 내용 수정 {article.updatedAt}</p>
       {review && <p className="text-sm text-grey-600 mb-5">키피오 발행·확인일: {review.reviewedAt.slice(0, 10)} · 확인: {review.reviewer}</p>}
+      <EditorialPhotoFigure photo={photo} />
       <h2 className="text-xl font-bold mb-3">{article.question}</h2>
       <p className="rounded-2xl bg-blue-50 p-6 leading-relaxed mb-6">{article.answer}</p>
       <p className="text-grey-600 mb-8">대상: {article.audience}</p>
