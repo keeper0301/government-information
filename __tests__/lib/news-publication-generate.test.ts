@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => { vi.useRealTimers(); mock.call.mockReset(); });
 const mock = vi.hoisted(() => ({ call: vi.fn() }));
 vi.mock('@/lib/llm/text', () => ({ callLLM: mock.call, parseJSONResponse: JSON.parse }));
 import { generateVerifiedNews } from '@/lib/news-publication/generate';
@@ -14,6 +14,39 @@ const draft = { kind: 'application', title: '청년 근로자 지원, 대상과 
   ] };
 const quality = () => Object.fromEntries(['scope','timeliness','usefulness','clarity','nonRepetition','coverage'].map(key => [key,
   { passed: true, reason: '대상 설명과 개인별 지원 확정을 구분하고 실제 확인할 내용을 안내했습니다.', excerptIndex: 2 }]));
+
+it('긴 문단은 문장 내용을 보존해 나누며 별도 사실 검사를 그대로 요구한다', async () => {
+  // 실제 초안에서 240자 제한을 네 글자 넘었던 문단입니다. 사실 판정은 모의 응답으로 분리합니다.
+  const paragraph = '행사는 관광 통역 안내, 호텔 고객서비스 컨시어지, MICE 운영 행사 기획, 의료 관광 코디네이터, 여행 상품 기획 운영의 5대 유망 직무를 중심으로 구성됐다. 1부 토크콘서트에서는 현직 전문가들이 중장년층의 경험과 소통 능력이 관광산업에서 강점임을 설명하며 참가자들과 소통했다. 2부에서는 별도로 마련된 직무별 부스에서 1:1 멘토링이 진행돼 자격증 취득, 진입 장벽, 근무 형태 등 실무에 관한 구체적 정보를 얻는 기회를 제공했다.';
+  expect(paragraph).toHaveLength(244);
+  const formattedDraft = { ...draft, sections: draft.sections.map((section, index) =>
+    index === 0 ? { ...section, paragraphs: [paragraph] } : section) };
+  mock.call.mockReset();
+  mock.call.mockImplementation(async input => JSON.stringify(input.prompt.startsWith('작성자와 분리된 정책 사실 검증 역할')
+    ? { supported: true, originalValue: true, quality: quality(), issues: [],
+      checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) } : formattedDraft));
+  const result = await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: `${quote} 5대 직무, 1부와 2부의 1:1 상담입니다.`, hash: '원문 식별값', publishedAt: '2026-10-06' });
+  expect(result.sections[0].paragraphs.length).toBeGreaterThan(1);
+  expect(result.sections[0].paragraphs.every(text => text.length <= 240)).toBe(true);
+  expect(result.sections[0].paragraphs.join(' ')).toBe(paragraph);
+  expect(result.sections.slice(1)).toEqual(draft.sections.slice(1).map(section => ({ ...section, quote })));
+  expect(mock.call.mock.calls[1][0].prompt).toContain(JSON.stringify(result.sections[0].paragraphs));
+  expect(mock.call).toHaveBeenCalledTimes(2);
+});
+
+it.each(['긴 문장', '네 문단 이상'])('문단을 나눠도 기존 제한을 넘는 초안은 보류한다: %s', async kind => {
+  const prose = kind === '긴 문장'
+    ? draft.sections.flatMap(section => section.paragraphs).join(' ').replace(/[.!?。]/g, '')
+    : Array.from({ length: 4 }, () => draft.sections[0].paragraphs[0] + ' ' + draft.sections[1].paragraphs[0]).join(' ');
+  const invalidDraft = { ...draft, sections: draft.sections.map((section, index) =>
+    index === 0 ? { ...section, paragraphs: [prose] } : section) };
+  mock.call.mockReset(); mock.call.mockResolvedValue(JSON.stringify(invalidDraft));
+  await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).rejects.toThrow(
+    kind === '긴 문장' ? '한 문단이 너무 깁니다' : '단락 또는 인용문');
+  expect(mock.call).toHaveBeenCalledTimes(2);
+});
 
 it('최소 구성 예시는 세 부분이며 한 부분 초안은 보류한다', async () => {
   mock.call.mockResolvedValue(JSON.stringify({ question: '무엇을 확인하나요?', answer: '공식 발표를 확인하세요.',
