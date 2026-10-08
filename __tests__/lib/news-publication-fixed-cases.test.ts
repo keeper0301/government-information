@@ -132,6 +132,11 @@ it('확인된 글은 새 사실 생성 없이 조립하고 활용 가치 근거�
   const core = collectReportCore(sourceBody, sourceQuotes)!;
   expect(core).not.toBeNull();
   mock.call.mockImplementation(async input => {
+    if (input.responseSchema.name === 'policy_news_claim_review') {
+      const claims = JSON.parse(input.prompt.split('검사할 문장: ')[1]);
+      return JSON.stringify({ checks: claims.map((claim: { index: number }) =>
+        ({ index: claim.index, supported: true, difference: '원문 사실과 작성 문장의 대상·시점을 대조했습니다.' })) });
+    }
     expect(input.jsonMode).toBe(true);
     const final = JSON.parse(input.prompt.split('검사할 글: ')[1].split('\n제목·질문')[0]);
     expect(final.sections).toHaveLength(5);
@@ -152,7 +157,7 @@ it('확인된 글은 새 사실 생성 없이 조립하고 활용 가치 근거�
   const result = await generateVerifiedNews({ title: '공식 행사 소개', body: sourceBody, publishedAt: '2026-10-06',
     url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972905', hash: '원문 식별값' });
   expect(result.sections).toHaveLength(5);
-  expect(mock.call).toHaveBeenCalledTimes(1);
+  expect(mock.call).toHaveBeenCalledTimes(2);
   const quality = result.editorialReview as Record<string, { evidence: string[]; evidenceIndexes: Record<string, number> }>;
   expect(quality.timeliness.evidence).toHaveLength(2);
   expect(quality.coverage.evidence).toHaveLength(6);
@@ -164,6 +169,11 @@ it('확인된 글은 새 사실 생성 없이 조립하고 활용 가치 근거�
   }
   expect(fixedCaseReviewIssue({ quality: { ...quality, timeliness: { ...quality.timeliness,
     excerptIndex: indexOfAnalysis(result) } } }, collectFixedCases(collectSourceFacts(sourceBody, sourceQuotes), sourceQuotes), result)).toBe(true);
+  mock.call.mockResolvedValueOnce(JSON.stringify({ checks: [] }));
+  await expect(generateVerifiedNews({ title: '공식 행사 소개', body: sourceBody, publishedAt: '2026-10-06',
+    url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972905', hash: '원문 식별값' }))
+    .rejects.toThrow('문장별 사실 대조에서 보류됐습니다.');
+  expect(mock.call).toHaveBeenCalledTimes(3);
 });
 function indexOfAnalysis(result: { answer: string; sections: { paragraphs: string[] }[] }) {
   return [result.answer, ...result.sections[0].paragraphs].flatMap(text => text.match(/[\s\S]{8,160}/g) ?? []).length;
