@@ -8,7 +8,7 @@ import { collectReportCore, reportCoreIssue, reportAnalysisParagraphs } from './
 import { makeCopyRepair, applyCopyRepair, copyRepairIssue, type CopyRepairPlan } from './copy-repair';
 import { collectSourceList, attachSourceList, sourceListIssue, sourceListSchema } from './source-list';
 import { collectFixedCases, attachFixedCases, fixedCaseIssue, fixedCaseJudgmentSchema, fixedCaseReviewIssue, fixedReportDraft, fixedCaseQuality, fixedCaseSourceIssue } from './fixed-cases';
-// 원문 근거를 빠뜨린 부분이 생기지 않도록 작성 응답의 필수 항목을 지정합니다.
+import { reviewFixedClaims } from './claim-review';
 // 형식이 맞아도 사실·숫자·내용 품질 검사는 기존과 같이 별도로 수행합니다.
 const newsDraftResponse = { name: 'policy_news_draft', schema: {
   type: 'object', additionalProperties: false,
@@ -121,7 +121,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
       throw new NewsDraftError('복사 오류의 본문 수정 위치를 확인하지 못해 보류했습니다.', { draft: value });
   }
   if (!draft) throw new NewsDraftError(issue, { draft: value });
-  // 검사 도구도 문장을 다시 쓰지 않고 실제 원문·초안의 문장 번호를 선택합니다.
+  if (fixedCases) await reviewFixedClaims(draft, quotes);
   const excerpts = [draft.answer, ...draft.sections.flatMap(section => section.paragraphs)]
     .flatMap(text => text.match(/[\s\S]{8,160}/g) ?? []);
   const scopeOnlyStart = excerpts.length;
