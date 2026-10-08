@@ -15,6 +15,17 @@ const draft = { answer: '참여자를 대상으로 채용 정보를 안내합니
     { sourceCase: true, quote: quotes[2], paragraphs: ['', '', '참가자는 단기 교육 확대를 바랐습니다. 기관이 확정한 계획은 아닙니다.'] }] } as NewsDraft;
 const positive = (index: number) => ({ index, supported: true, difference: '원문의 대상·시점·발언 주체와 작성 문장이 일치합니다.' });
 
+it.each([9, 10])('근거의 앞뒤 공백을 제외하고 최소 10자 경계를 검사한다: %s자', async length => {
+  mock.call.mockImplementation(async input => {
+    const claims = JSON.parse(input.prompt.split('검사할 문장: ')[1]);
+    return JSON.stringify({ checks: claims.map((claim: { index: number }) => ({ ...positive(claim.index),
+      ...(claim.index === 0 ? { difference: `  ${'가'.repeat(length)}  ` } : {}) })) });
+  });
+  if (length === 9) await expect(reviewFixedClaims(draft, quotes)).rejects.toThrow('문장별 사실 대조에서 보류됐습니다.');
+  else await expect(reviewFixedClaims(draft, quotes)).resolves.toBeDefined();
+  expect(mock.call).toHaveBeenCalledTimes(1);
+});
+
 it('오류 문장과 올바른 조언을 분리하고 원래 오류 표현을 검사 요청에 보존한다', async () => {
   const changed = { ...draft, answer: draft.answer.replace('참여자를', '모든 구직자를') };
   mock.call.mockImplementation(async input => {

@@ -1,4 +1,4 @@
-import { normalizeSourceText } from './validation';
+import { normalizeSourceText, newsNumberPattern } from './validation';
 
 interface CopyTarget { sectionIndex: number; paragraphIndex: number; text: string; copied: string[] }
 export interface CopyRepairPlan {
@@ -35,7 +35,7 @@ export function makeCopyRepair(value: unknown, body: string, issue = ''): CopyRe
         coveredEnd = Math.max(coveredEnd, end);
       }
       if (copied.length) return [{ sectionIndex, paragraphIndex, text, copied }];
-      const numbers: string[] = (text.replace(/\s/g, '').match(/\d(?:[\d,.]*\d)?(?:여명|%|만원|억원|원|년|월|일|명|세|개월)?/g) ?? [])
+      const numbers: string[] = (text.replace(/\s/g, '').match(newsNumberPattern) ?? [])
         .map(number => number.replace(/\d{1,3}(?:,\d{3})+/g, digits => digits.replace(/,/g, '')));
       if (wrongNumbers.some(number => numbers.includes(number))
         || issue === '한 문단이 너무 깁니다. 짧은 문단으로 나눠주세요.' && text.length > 240)
