@@ -58,12 +58,29 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
     }
   }
   // 참여자를 대상으로 한다는 안내만으로 다른 사람의 이용 불가를 확정하지 않습니다.
-  const exclusiveSupport = /(?:행사\s*)?(?:참여자|참가자)(?:에게)?만[^.!?。]{0,60}(?:이용|신청|지원|제공)[^.!?。]*/gu;
-  const negatesRestriction = (claim: string) => new RegExp(`^(?:행사\\s*)?(?:참여자|참가자)(?:에게)?만\\s*(?:이용할\\s*수\\s*있|신청할\\s*수\\s*있|지원받는|지원된|제공된|제공한)${negationEnding}`, 'u').test(claim);
+  const restrictedAudience = '(?:행사\\s*)?(?:참여자|참가자)(?:(?:에게)?만|(?:를)?\\s*대상으로만|(?:를)?\\s*대상으로\\s*(?=한정)|(?:에)?\\s*한(?:해|하여))';
+  const exclusiveSupport = new RegExp(`${restrictedAudience}[^.!?。]{0,60}(?:이용|신청|지원|제공|이루어|한정)[^.!?。]*`, 'gu');
+  const negatesRestriction = (claim: string) => new RegExp(`^${restrictedAudience}\\s*(?:이용할\\s*수\\s*있|신청할\\s*수\\s*있|지원받는|지원된|제공된|제공한|이루어진|한정된|한정되는)${negationEnding}`, 'u').test(claim);
   const originalRestrictions = (source.match(exclusiveSupport) ?? []).filter(claim => !negatesRestriction(claim));
   for (const claim of prose.matchAll(exclusiveSupport)) {
     if (!originalRestrictions.length && !negatesRestriction(claim[0]))
       return '원문 대상 안내를 확인되지 않은 이용 제한으로 바꿨습니다. 비참여자의 이용 가능 여부를 단정하지 마세요.';
+  }
+  // 행사 원문에 이름·나이·가명이 함께 명시된 사례만 검사합니다. 일반 단어에서 인명을 추측하지 않습니다.
+  if (draft.kind === 'report') {
+    const paragraphs = draft.sections.flatMap(section => section.paragraphs);
+    const cases = [...source.matchAll(/([가-힣]{2,4})\s*\(\s*\d{1,3}세\s*[,·]\s*가명\s*\)/gu)];
+    for (const person of cases) {
+      const name = person[1];
+      const mentions = paragraphs.filter(text => text.includes(name));
+      if (!mentions.length) return `원문 참가 사례 ${name}의 본문 설명을 누락했습니다. 경력과 경험을 원문 근거로 보존하세요.`;
+      // 다른 사람의 가명 표시를 빌리지 않고, 해당 이름에 직접 붙은 앞·뒤 표시만 인정합니다.
+      const pseudonymLabel = new RegExp(`(?:가명(?:으로)?\\s*(?:소개한|표시한)?\\s*${name}|${name}\\s*(?:씨\\s*)?(?:\\(\\s*(?:\\d{1,3}세\\s*[,·]\\s*)?가명\\s*\\)|[,·]\\s*가명))`, 'u');
+      if (mentions.some(text => !pseudonymLabel.test(text)))
+        return `원문 참가 사례 ${name}의 가명 표시를 유지하세요.`;
+      if (mentions.some(text => !/(?:정책브리핑\s*기자단|원문(?:에서|이|의)?\s*(?:소개|취재))/u.test(text)))
+        return `원문 참가 사례 ${name}의 원문 취재 주체를 밝혀주세요. 키피오의 직접 취재로 오해되지 않게 설명하세요.`;
+    }
   }
   // 독자의 신청 안내와 구분해, 작성자·개발자에게 내리는 내부 작업 지시만 차단합니다.
   const internalInstructions = [
@@ -76,7 +93,7 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   if (prose.length < 300 || prose.length > 2600) return `설명 분량이 기준 밖입니다: ${prose.length}자.`;
   // 같은 숫자의 천 단위 쉼표만 지웁니다. 금액이나 단위 변환은 하지 않습니다.
   const comparableNumber = (text: string) => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g, value => value.replace(/,/g, ''));
-  const numberPattern = /\d(?:[\d,.]*\d)?(?:%|만원|억원|원|년|월|일|명|세|개월)?/g;
+  const numberPattern = /\d(?:[\d,.]*\d)?(?:여명|%|만원|억원|원|년|월|일|명|세|개월)?/g;
   const sourceNumbers = new Set(comparableNumber(source).match(numberPattern) ?? []);
   // 본문에 연도가 없어도 공식 기사 머리말에서 확인한 발표 연도는 근거입니다.
   // 다른 연도·금액·날짜를 함께 허용하지 않고 검증된 날짜의 연도만 추가합니다.
@@ -88,6 +105,10 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   if (unsupported.length) {
     // 단위가 빠졌고 원문 표기가 하나일 때만 고칠 표기를 알려줍니다. 초안은 계속 보류합니다.
     const unitHints = [...new Set(unsupported)].flatMap(number => {
+      // 대략 인원을 확정 인원으로 쓰지는 못합니다. 원문의 '여 명' 표기를 안내합니다.
+      const approximate = [...sourceNumbers].filter(original => /여명$/u.test(original)
+        && original.replace(/여(?=명$)/u, '') === number);
+      if (approximate.length === 1) return [`${number} → ${approximate[0]}`];
       if (!/^\d(?:[\d,.]*\d)?$/.test(number)) return [];
       const originals = [...sourceNumbers].filter(original =>
         original.match(/^(\d(?:[\d,.]*\d)?)(%|만원|억원|원|년|월|일|명|세|개월)$/)?.[1] === number);

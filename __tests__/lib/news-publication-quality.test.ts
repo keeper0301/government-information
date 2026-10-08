@@ -103,3 +103,71 @@ it('전체 합격 표시로 개별 품질 검사 누락·실패·가짜 근거�
   expect(validateEditorialQuality({ ...quality(), clarity: { passed: true, reason: '충분한 구체적인 판정 이유입니다.', excerpt: '검사할 글 어디에도 없는 설명입니다.' } }, draft)).toBe(false);
   expect(validateEditorialQuality({ ...quality(), clarity: { passed: true, reason: '충분한 구체적인 판정 이유입니다.', excerpt: `${draft.title} ${draft.question}` } }, draft)).toBe(false);
 });
+
+it.each(['맞춤 채용 정보는 행사 참여자 대상으로만 이루어집니다.', '참가자를 대상으로만 채용 정보를 제공합니다.'])
+('대상으로만이라는 표현도 근거 없는 이용 제한으로 보류한다: %s', claim => {
+  expect(newsDraftIssue({ ...draft, answer: claim }, source)).toContain('이용 제한');
+});
+it('대상으로만이라는 제한이 원문에 명시되면 허용한다', () => {
+  const claim = '행사 참여자 대상으로만 채용 정보를 제공합니다.';
+  expect(validateNewsDraft({ ...draft, answer: claim }, `${source} ${claim}`)).not.toBeNull();
+});
+it('대상으로만이라는 제한을 직접 부정하면 잘못된 단정으로 보지 않는다', () => {
+  expect(validateNewsDraft({ ...draft, answer: '행사 참여자 대상으로만 제공된다는 뜻은 아닙니다. 일반 이용 여부는 별도 확인이 필요합니다.' }, source)).not.toBeNull();
+});
+it('실제 초안의 참여자를 대상으로 한정한다는 표현도 근거 없이 허용하지 않는다', () => {
+  const claim = '후속 지원은 행사 참여자를 대상으로 한정되며 일반 구직자 대상 확대 여부는 확인되지 않습니다.';
+  expect(newsDraftIssue({ ...draft, answer: claim }, source)).toContain('이용 제한');
+  const supported = '후속 지원은 행사 참여자를 대상으로 한정됩니다.';
+  expect(validateNewsDraft({ ...draft, answer: supported }, `${source} ${supported}`)).not.toBeNull();
+  expect(validateNewsDraft({ ...draft, answer: '행사 참여자를 대상으로 한정된다는 뜻은 아닙니다.' }, source)).not.toBeNull();
+});
+const caseSource = `${source} 박진우(54세, 가명) 씨는 영업 경력을 살렸습니다. 정은숙(51세, 가명) 씨는 병원 행정 경험을 소개했습니다.`;
+const caseDraft = { ...draft, sections: [...draft.sections, { heading: '원문이 소개한 경력 전환 사례',
+  paragraphs: ['정책브리핑 기자단이 소개한 박진우(54세, 가명) 씨는 영업 경력의 활용을 고민했습니다.',
+    '원문에서 소개한 정은숙(51세, 가명) 씨는 병원 행정 경험과 다른 직무의 연결을 살펴봤습니다.'], quote: source }] };
+it('원문에 명시된 두 가명 사례와 취재 주체를 보존하면 허용한다', () => {
+  expect(validateNewsDraft(caseDraft, caseSource)).not.toBeNull();
+});
+it('행사 원문의 가명 사례를 통째로 누락하면 재작성을 요구한다', () => {
+  expect(newsDraftIssue(draft, caseSource)).toContain('참가 사례');
+});
+it('한 사람만 소개하고 다른 가명 사례를 누락해도 보류한다', () => {
+  const partial = { ...caseDraft, sections: [...draft.sections, { ...caseDraft.sections[3], paragraphs: [caseDraft.sections[3].paragraphs[0]] }] };
+  expect(newsDraftIssue(partial, caseSource)).toContain('정은숙');
+});
+it('본문에 이름을 쓰면서 가명 표시를 빠뜨리면 보류한다', () => {
+  const missing = { ...caseDraft, sections: caseDraft.sections.map(section => ({ ...section,
+    paragraphs: section.paragraphs.map(text => text.replace('정은숙(51세, 가명)', '정은숙 씨')) })) };
+  expect(newsDraftIssue(missing, caseSource)).toContain('가명');
+});
+it('원문 인용문에 있는 이름으로 본문 사례 누락을 덮을 수 없다', () => {
+  expect(newsDraftIssue({ ...draft, sections: draft.sections.map(section => ({ ...section, quote: caseSource })) }, caseSource)).toContain('참가 사례');
+});
+it('사례 문단에 원문 취재임을 밝히지 않으면 보류한다', () => {
+  const unattributed = { ...caseDraft, sections: caseDraft.sections.map(section => ({ ...section,
+    paragraphs: section.paragraphs.map(text => text.replace('정책브리핑 기자단이 소개한 ', '').replace('원문에서 소개한 ', '')) })) };
+  expect(newsDraftIssue(unattributed, caseSource)).toContain('원문 취재');
+});
+it('가명 사례가 없는 공식 원문에는 임의 사례를 필수로 요구하지 않는다', () => {
+  expect(validateNewsDraft(draft, `${source} 병원 행정 경험을 소개했습니다.`)).not.toBeNull();
+});
+it('가명으로 소개한이라는 이름 앞의 표시도 인정한다', () => {
+  const beforeName = { ...caseDraft, sections: caseDraft.sections.map(section => ({ ...section,
+    paragraphs: section.paragraphs.map(text => text.replace('소개한 박진우(54세, 가명)', '가명으로 소개한 박진우')) })) };
+  expect(validateNewsDraft(beforeName, caseSource)).not.toBeNull();
+});
+it('다른 사람에게 붙은 가명 표시를 해당 사람의 표시로 오인하지 않는다', () => {
+  const shared = { ...caseDraft, sections: [...draft.sections, { ...caseDraft.sections[3],
+    paragraphs: ['정책브리핑 기자단이 소개한 박진우 씨와 정은숙(가명) 씨가 경력 전환 경험을 설명했습니다.'] }] };
+  expect(newsDraftIssue(shared, caseSource)).toContain('박진우의 가명');
+});
+it.each(['timeliness', 'usefulness', 'coverage'])('대상 이름만으로 내용 품질의 근거를 대신할 수 없다: %s', key => {
+  expect(validateEditorialQuality({ ...quality(), [key]: { passed: true, reason: '충분한 구체적인 판정 이유입니다.', excerpt: draft.audience } }, draft)).toBe(false);
+});
+it.each([draft.title, draft.question, draft.sections[0].heading])('제목·질문·소제목만으로 품질을 입증할 수 없다: %s', excerpt => {
+  expect(validateEditorialQuality({ ...quality(), coverage: { passed: true, reason: '충분한 구체적인 판정 이유입니다.', excerpt } }, draft)).toBe(false);
+});
+it('적용 범위 항목에서는 실제 대상 문구도 근거로 허용한다', () => {
+  expect(validateEditorialQuality({ ...quality(), scope: { passed: true, reason: '공식 대상과 초안 대상이 같음을 대조했습니다.', excerpt: draft.audience } }, draft)).toBe(true);
+});
