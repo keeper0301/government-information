@@ -18,6 +18,9 @@ export function officialNewsId(value: string): string | null {
 
 export const normalizeSourceText = (text: string) => text.replace(/\s+/g, ' ').trim();
 
+// 긴 단위를 먼저 읽어 보험 세대와 천만 원 금액을 나이·단위 없는 숫자로 자르지 않습니다.
+export const newsNumberPattern = /\d(?:[\d,.]*\d)?(?:여명|%|천만원|만원|억원|원|년|월|일|명|세대|세|개월)?/g;
+
 // 정확한 인용·숫자·분량을 먼저 검사하고 별도 사실 대조 결과도 요구합니다.
 export function newsDraftIssue(value: unknown, body: string, publishedAt?: string): string | null {
   if (!value || typeof value !== 'object') return '초안이 글 형식이 아닙니다.';
@@ -93,14 +96,13 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   if (prose.length < 300 || prose.length > 2600) return `설명 분량이 기준 밖입니다: ${prose.length}자.`;
   // 같은 숫자의 천 단위 쉼표만 지웁니다. 금액이나 단위 변환은 하지 않습니다.
   const comparableNumber = (text: string) => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g, value => value.replace(/,/g, ''));
-  const numberPattern = /\d(?:[\d,.]*\d)?(?:여명|%|만원|억원|원|년|월|일|명|세|개월)?/g;
-  const sourceNumbers = new Set(comparableNumber(source).match(numberPattern) ?? []);
+  const sourceNumbers = new Set(comparableNumber(source).match(newsNumberPattern) ?? []);
   // 본문에 연도가 없어도 공식 기사 머리말에서 확인한 발표 연도는 근거입니다.
   // 다른 연도·금액·날짜를 함께 허용하지 않고 검증된 날짜의 연도만 추가합니다.
   if (publishedAt && /^\d{4}-\d{2}-\d{2}$/.test(publishedAt)
     && Number.isFinite(Date.parse(publishedAt)) && new Date(publishedAt).toISOString().slice(0, 10) === publishedAt)
     sourceNumbers.add(`${publishedAt.slice(0, 4)}년`);
-  const numbers = comparableNumber(prose).match(numberPattern) ?? [];
+  const numbers = comparableNumber(prose).match(newsNumberPattern) ?? [];
   const unsupported = numbers.filter(number => !sourceNumbers.has(number));
   if (unsupported.length) {
     // 단위가 빠졌고 원문 표기가 하나일 때만 고칠 표기를 알려줍니다. 초안은 계속 보류합니다.
