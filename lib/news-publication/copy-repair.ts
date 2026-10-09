@@ -1,4 +1,5 @@
 import { normalizeSourceText, newsNumberPattern } from './validation';
+import { comparableSourceDates } from './date-notation';
 
 interface CopyTarget { sectionIndex: number; paragraphIndex: number; text: string; copied: string[] }
 export interface CopyRepairPlan {
@@ -29,10 +30,13 @@ export function makeCopyRepair(value: unknown, body: string, issue = '', publish
     if (publishedAt && /^\d{4}-\d{2}-\d{2}$/.test(publishedAt) && Number.isFinite(Date.parse(publishedAt))
       && new Date(publishedAt).toISOString().slice(0, 10) === publishedAt) sourceNumbers.add(`${publishedAt.slice(0, 4)}년`);
     const labels = [value.title, value.question, value.answer, value.audience,
-      ...value.sections.map(section => section.heading)].filter(text => typeof text === 'string').join('');
+      ...value.sections.map(section => section.heading)].filter(text => typeof text === 'string')
+      .map(text => comparableSourceDates(text, body)).join(' ');
     const labelNumbers = numbersOf(labels);
     // 오류 안내의 앞 세 개 요약을 쓰지 않고 공개 문장 전체의 숫자를 대조합니다.
-    const unsupported = numbersOf(`${labels} ${value.sections.flatMap(section => section.paragraphs).join(' ')}`)
+    // 최종 검사와 같은 날짜 비교를 각 필드에 적용하며 원래 글과 수정 위치는 바꾸지 않습니다.
+    const unsupported = numbersOf(`${labels} ${value.sections.flatMap(section => section.paragraphs)
+      .map(text => comparableSourceDates(text, body)).join(' ')}`)
       .filter(number => !sourceNumbers.has(number));
     if (!unsupported.length || unsupported.some(number => !wrongNumbers.includes(number))
       || wrongNumbers.some(number => labelNumbers.includes(number))) return null;
