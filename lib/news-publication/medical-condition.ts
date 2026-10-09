@@ -7,10 +7,21 @@ export function medicalConditionIssue(draft: NewsDraft, body: string): string | 
   const restricted = sourceSentences.some(sentence =>
     /중증난치성질환에한해/u.test(sentence) && /본인부담금(?:의)?50%/u.test(sentence));
   if (!restricted) return null;
+  const fullSupport = sourceSentences.some(sentence =>
+    /인과성이인정(?:돼야|되면|된경우).{0,40}진료비(?:를)?전액지원(?:받았다|한다|했다|된다|됐다)$/u.test(sentence));
   const texts = [draft.title, draft.question, draft.answer, draft.audience,
     ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])];
   for (const text of texts) {
     for (const sentence of text.split(/[.!?。]/u).map(normalize)) {
+      if (fullSupport) {
+        for (const claim of sentence.matchAll(/인과성(?:이|은)?인정(?:된|되면|돼).{0,80}?(?:본인부담금|의료비|진료비)(?:의)?(?:일부|50%)만?(?:을|를)?지원/gu)) {
+          // 미인정 조건으로 넘어간 설명과 해당 단정 자체를 부정하는 문장은 구분합니다.
+          if (/전액(?:을)?지원.{0,30}(?:인정되지|미인정)/u.test(claim[0])) continue;
+          const tail = sentence.slice(claim.index + claim[0].length);
+          if (/^(?:됐|되었|했|한|받았)다는(?:뜻|의미)(?:은|는|이|가)?아(?:닙니다|니다)$/u.test(tail)) continue;
+          return '군 복무와 인과성이 인정된 경우의 원문 전액 지원 조건을 일부 지원으로 바꾸지 마세요.';
+        }
+      }
       if (!/본인부담금(?:의)?50%/u.test(sentence) || !/지원/u.test(sentence)) continue;
       const bothConditions = /중증(?:질환)?(?:및|또는)?난치성질환/u.test(sentence);
       const widened = /(?:모든|전체|일반)질환|질환(?:종류)?(?:와|과)에?관계없이/u.test(sentence);
