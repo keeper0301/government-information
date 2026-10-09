@@ -112,12 +112,24 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   const numbers = comparableNumber(prose).match(newsNumberPattern) ?? [];
   const unsupported = numbers.filter(number => !sourceNumbers.has(number));
   if (unsupported.length) {
-    // 단위가 빠졌고 원문 표기가 하나일 때만 고칠 표기를 알려줍니다. 초안은 계속 보류합니다.
+    // 단위가 빠졌거나 같은 금액의 원문 표기가 하나일 때만 수정 안내를 줍니다. 초안은 계속 보류합니다.
     const unitHints = [...new Set(unsupported)].flatMap(number => {
       // 대략 인원을 확정 인원으로 쓰지는 못합니다. 원문의 '여 명' 표기를 안내합니다.
       const approximate = [...sourceNumbers].filter(original => /여명$/u.test(original)
         && original.replace(/여(?=명$)/u, '') === number);
       if (approximate.length === 1) return [`${number} → ${approximate[0]}`];
+      const shortenedAmount = /^(\d+)천만원$/u.exec(number);
+      if (shortenedAmount) {
+        const won = Number(shortenedAmount[1]) * 10000000;
+        if (!Number.isSafeInteger(won)) return [];
+        const sameAmounts = [...sourceNumbers].filter(original => {
+          const amount = /^(\d+(?:\.\d+)?)(원|만원|억원)$/u.exec(original);
+          if (!amount) return false;
+          const sourceWon = Number(amount[1]) * ({ 원: 1, 만원: 10000, 억원: 100000000 }[amount[2]] ?? 0);
+          return Number.isSafeInteger(sourceWon) && sourceWon === won;
+        });
+        return sameAmounts.length === 1 ? [`${number} → ${sameAmounts[0]}`] : [];
+      }
       if (!/^\d(?:[\d,.]*\d)?$/.test(number)) return [];
       const originals = [...sourceNumbers].filter(original =>
         original.match(/^(\d(?:[\d,.]*\d)?)(%|만원|억원|원|년|월|일|명|세|개월)$/)?.[1] === number);
