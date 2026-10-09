@@ -592,7 +592,7 @@ export async function scrapeJeju({ limit = 10, headless = true } = {}) {
     if (!detailBytes) continue;
     const html = Buffer.from(detailBytes).toString("utf8");
     const bodyHtml =
-      (html.match(/<div\s+class="[^"]*article-contents[^"]*"[^>]*>([\s\S]*?)(?:<div\s+class="[^"]*(?:file-preview|article-files|btn|pagination)|<aside|<\/article|<\/section)/i) || [])[1] ||
+      (html.match(/<div\b[^>]*\bclass="[^"]*\barticle-contents\b[^"]*"[^>]*>([\s\S]*?)(?:<div\b[^>]*\bclass="[^"]*(?:news-info|article-files|btn|pagination)|<aside|<\/article|<\/section)/i) || [])[1] ||
       "";
     const body = stripHtmlText(bodyHtml);
     if (!/[가-힣]/.test(body) || body.length < 250) continue;
