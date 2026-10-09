@@ -10,6 +10,7 @@ import { collectSourceList, attachSourceList, sourceListIssue, sourceListSchema 
 import { collectFixedCases, attachFixedCases, fixedCaseIssue, fixedCaseJudgmentSchema, fixedCaseReviewIssue, fixedReportDraft, fixedCaseQuality, fixedCaseSourceIssue } from './fixed-cases';
 import { reviewFixedClaims } from './claim-review';
 import { makePlannedRepair, applyPlannedRepair } from './planned-repair';
+import { restoreSourceAmounts } from './source-amounts';
 const newsDraftResponse = { name: 'policy_news_draft', schema: {
   type: 'object', additionalProperties: false,
   required: ['skip', 'kind', 'title', 'question', 'answer', 'audience', 'sections'],
@@ -26,7 +27,6 @@ const newsDraftResponse = { name: 'policy_news_draft', schema: {
 } };
 
 export async function generateVerifiedNews(source: OfficialNewsSource) {
-  // 발표 당시의 상태를 오늘도 유효한 것으로 오해하지 않도록 두 검사에 같은 날짜를 전달합니다.
   const reviewDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   // 인용문은 작성 도구가 다시 쓰지 않고 원문 문장 번호로 선택합니다.
   const quotes = source.body.split(/(?<=[.!?。])\s+|\n+/).map(text => text.trim())
@@ -108,7 +108,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
     if (value && typeof value === 'object' && (value as { skip?: unknown }).skip === true)
       throw new NewsDraftError('독자가 활용할 핵심 정보가 부족해 보류했습니다.', { draft: value });
     const prepared = prepareSourceDraft(attachFixedCases(value, fixedCases), sourceFacts, quotes);
-    value = attachSourceList(prepared.value, sourceList);
+    value = restoreSourceAmounts(attachSourceList(prepared.value, sourceList), source.body);
     const coreIssue = fixedCaseIssue(value, fixedCases) ?? sourceListIssue(value, sourceList) ?? reportCoreIssue(reportCore, value)
       ?? (reportCore && !reportAnalysisParagraphs(reportCore, value).length ? '원문 사례를 비교한 키피오의 해설 본문이 필요합니다.' : null);
     draft = prepared.issue || coreIssue ? null : validateNewsDraft(value, source.body, source.publishedAt);
@@ -116,7 +116,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
     issue = prepared.issue ?? coreIssue ?? newsDraftIssue(value, source.body, source.publishedAt) ?? '초안 검사 보류';
     plannedRepair = issue.startsWith('제목과 첫 답변에 시행 예정') || issue.startsWith('시행 예정인 혜택을') ? makePlannedRepair(value, source.body) : null;
     copyRepair = issue === '원문 문장을 길게 그대로 옮겼습니다.' || issue.startsWith('원문에서 확인하지 못한 숫자:') || (sourceList && issue === '한 문단이 너무 깁니다. 짧은 문단으로 나눠주세요.')
-      ? makeCopyRepair(value, source.body, issue) : null;
+      ? makeCopyRepair(value, source.body, issue, source.publishedAt) : null;
     if (!attempt && issue === '원문 문장을 길게 그대로 옮겼습니다.' && !copyRepair)
       throw new NewsDraftError('복사 오류의 본문 수정 위치를 확인하지 못해 보류했습니다.', { draft: value });
   }

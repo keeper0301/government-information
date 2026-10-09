@@ -11,7 +11,7 @@ const record = (value: unknown): value is Record<string, unknown> => Boolean(val
   && typeof value === 'object' && !Array.isArray(value);
 
 // 기존 복사 검사와 같은 50자 연속 구절로 본문 위치를 찾습니다. 위치를 추측하지 않습니다.
-export function makeCopyRepair(value: unknown, body: string, issue = ''): CopyRepairPlan | null {
+export function makeCopyRepair(value: unknown, body: string, issue = '', publishedAt?: string): CopyRepairPlan | null {
   if (!record(value) || !Array.isArray(value.sections) || !value.sections.every(section =>
     record(section) && Array.isArray(section.paragraphs) && section.paragraphs.every(text => typeof text === 'string')))
     return null;
@@ -21,6 +21,22 @@ export function makeCopyRepair(value: unknown, body: string, issue = ''): CopyRe
   // 원문 표기를 하나로 특정한 숫자 오류만 함께 수정합니다. 추측한 숫자는 쓰지 않습니다.
   const wrongNumbers = issue.startsWith('원문에서 확인하지 못한 숫자:')
     ? [...issue.matchAll(/(\d[\d,.]*(?:%|천만원|만원|억원|원|년|월|일|명|세|개월)?)\s*→\s*\d/gu)].map(match => match[1]) : [];
+  // 원문 표기를 특정하지 못한 숫자는 본문 일부 수정으로 해결했다고 처리하지 않습니다.
+  if (issue.startsWith('원문에서 확인하지 못한 숫자:')) {
+    const numbersOf = (text: string): string[] => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g,
+      digits => digits.replace(/,/g, '')).match(newsNumberPattern) ?? [];
+    const sourceNumbers = new Set(numbersOf(body));
+    if (publishedAt && /^\d{4}-\d{2}-\d{2}$/.test(publishedAt) && Number.isFinite(Date.parse(publishedAt))
+      && new Date(publishedAt).toISOString().slice(0, 10) === publishedAt) sourceNumbers.add(`${publishedAt.slice(0, 4)}년`);
+    const labels = [value.title, value.question, value.answer, value.audience,
+      ...value.sections.map(section => section.heading)].filter(text => typeof text === 'string').join('');
+    const labelNumbers = numbersOf(labels);
+    // 오류 안내의 앞 세 개 요약을 쓰지 않고 공개 문장 전체의 숫자를 대조합니다.
+    const unsupported = numbersOf(`${labels} ${value.sections.flatMap(section => section.paragraphs).join(' ')}`)
+      .filter(number => !sourceNumbers.has(number));
+    if (!unsupported.length || unsupported.some(number => !wrongNumbers.includes(number))
+      || wrongNumbers.some(number => labelNumbers.includes(number))) return null;
+  }
   const targets = value.sections.flatMap((section, sectionIndex) =>
     (section.paragraphs as string[]).flatMap((text, paragraphIndex) => {
       const copied: string[] = [];

@@ -1,5 +1,6 @@
 import { plannedStateIssue } from './planned-state';
 import { medicalConditionIssue } from './medical-condition';
+import { sourceAmountHint } from './source-amounts';
 
 export interface NewsDraft {
   kind: 'application' | 'change' | 'report'; title: string;
@@ -120,15 +121,8 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
       if (approximate.length === 1) return [`${number} → ${approximate[0]}`];
       const shortenedAmount = /^(\d+)천만원$/u.exec(number);
       if (shortenedAmount) {
-        const won = Number(shortenedAmount[1]) * 10000000;
-        if (!Number.isSafeInteger(won)) return [];
-        const sameAmounts = [...sourceNumbers].filter(original => {
-          const amount = /^(\d+(?:\.\d+)?)(원|만원|억원)$/u.exec(original);
-          if (!amount) return false;
-          const sourceWon = Number(amount[1]) * ({ 원: 1, 만원: 10000, 억원: 100000000 }[amount[2]] ?? 0);
-          return Number.isSafeInteger(sourceWon) && sourceWon === won;
-        });
-        return sameAmounts.length === 1 ? [`${number} → ${sameAmounts[0]}`] : [];
+        const original = sourceAmountHint(number, body, prose);
+        return original ? [`${number} → ${comparableNumber(original)}`] : [];
       }
       if (!/^\d(?:[\d,.]*\d)?$/.test(number)) return [];
       const originals = [...sourceNumbers].filter(original =>
