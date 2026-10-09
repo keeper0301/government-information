@@ -1,3 +1,6 @@
+import { plannedStateIssue } from './planned-state';
+import { medicalConditionIssue } from './medical-condition';
+
 export interface NewsDraft {
   kind: 'application' | 'change' | 'report'; title: string;
   question: string; answer: string; audience: string;
@@ -45,6 +48,10 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   }
   const prose = [draft.title, draft.question, draft.answer, draft.audience,
     ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])].join(' ');
+  const plannedIssue = plannedStateIssue(draft, body);
+  if (plannedIssue) return plannedIssue;
+  const medicalIssue = medicalConditionIssue(draft, body);
+  if (medicalIssue) return medicalIssue;
   // '월 중'은 월 전체를 보장하지 않습니다. 확인된 원문 기간을 임의로 늘리면 보류합니다.
   const negationEnding = '(?:다는|이라는|라는)\\s*(?:뜻|의미)(?:은|는|이|가)?\\s*아(?:닙니다|니다)';
   // 해당 기간 표현 바로 뒤의 부정만 인정합니다. 다른 조건의 부정으로 기간 오류를 덮지 않습니다.
