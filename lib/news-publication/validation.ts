@@ -1,6 +1,7 @@
 import { plannedStateIssue } from './planned-state';
 import { medicalConditionIssue } from './medical-condition';
 import { sourceAmountHint } from './source-amounts';
+import { comparableSourceDates } from './date-notation';
 
 export interface NewsDraft {
   kind: 'application' | 'change' | 'report'; title: string;
@@ -47,8 +48,9 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
     if (section.paragraphs.some(text => /(.{12,60})\1\1/u.test(text.replace(/\s+/g, '')))) return '같은 구절로 설명을 반복했습니다.';
     if (!source.includes(normalizeSourceText(section.quote))) return '인용문이 공식 원문과 일치하지 않습니다.';
   }
-  const prose = [draft.title, draft.question, draft.answer, draft.audience,
-    ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])].join(' ');
+  const proseParts = [draft.title, draft.question, draft.answer, draft.audience,
+    ...draft.sections.flatMap(section => [section.heading, ...section.paragraphs])];
+  const prose = proseParts.join(' ');
   const plannedIssue = plannedStateIssue(draft, body);
   if (plannedIssue) return plannedIssue;
   const medicalIssue = medicalConditionIssue(draft, body);
@@ -112,7 +114,9 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   if (publishedAt && /^\d{4}-\d{2}-\d{2}$/.test(publishedAt)
     && Number.isFinite(Date.parse(publishedAt)) && new Date(publishedAt).toISOString().slice(0, 10) === publishedAt)
     sourceNumbers.add(`${publishedAt.slice(0, 4)}년`);
-  const numbers = comparableNumber(prose).match(newsNumberPattern) ?? [];
+  // 날짜 전체가 원문과 같을 때만 비교 표기를 맞추며, 월·일을 개별 허용하지 않습니다.
+  const numberProse = proseParts.map(text => comparableSourceDates(text, body)).join(' ');
+  const numbers = comparableNumber(numberProse).match(newsNumberPattern) ?? [];
   const unsupported = numbers.filter(number => !sourceNumbers.has(number));
   if (unsupported.length) {
     // 단위가 빠졌거나 같은 금액의 원문 표기가 하나일 때만 수정 안내를 줍니다. 초안은 계속 보류합니다.
