@@ -11,6 +11,7 @@ import { collectFixedCases, attachFixedCases, fixedCaseIssue, fixedCaseJudgmentS
 import { reviewFixedClaims } from './claim-review';
 import { makePlannedRepair, applyPlannedRepair } from './planned-repair';
 import { restoreSourceAmounts } from './source-amounts';
+import { sourceCheckIssue } from './source-check-issue';
 const newsDraftResponse = { name: 'policy_news_draft', schema: {
   type: 'object', additionalProperties: false,
   required: ['skip', 'kind', 'title', 'question', 'answer', 'audience', 'sections'],
@@ -184,12 +185,10 @@ coverage: 원문의 핵심 내용을 보존했는가? 변경형은 주요 조치
     return [key, check];
   }));
   const judgment = { ...rawJudgment, checks, quality };
-  const verifiedParts = Array.isArray(checks) && checks.length === draft.sections.length + 1
-    && Array.from({ length: draft.sections.length + 1 }, (_, part) => part).every(part => checks.some(check => check?.part === part && check.supported === true
-      && typeof check.quote === 'string' && check.quote.length >= 10 && check.quote.length <= 300
-      && source.body.replace(/\s+/g, ' ').includes(check.quote.replace(/\s+/g, ' '))));
-  if (!verifiedParts || fixedCaseSourceIssue(checks, fixedCases, draft, quotes) || judgment.supported !== true || judgment.originalValue !== true || !Array.isArray(judgment.issues) || judgment.issues.length)
-    throw new NewsDraftError('별도 사실 대조에서 보류됐습니다.', { draft, judgment });
+  const sourceIssue = sourceCheckIssue(checks, draft.sections.length, source.body)
+    || (fixedCaseSourceIssue(checks, fixedCases, draft, quotes) ? '고정 참가 사례·현장 설명의 원문 근거 번호가 맞지 않습니다.' : null);
+  if (sourceIssue || judgment.supported !== true || judgment.originalValue !== true || !Array.isArray(judgment.issues) || judgment.issues.length)
+    throw new NewsDraftError(`별도 사실 대조에서 보류됐습니다.${sourceIssue ? ` ${sourceIssue}` : ''}`, { draft, judgment });
   if (!validateEditorialQuality(judgment.quality, draft) || fixedCaseReviewIssue(judgment, fixedCases, draft))
     throw new NewsDraftError('독자 관점 품질 검사에서 보류됐습니다.', { draft, judgment });
   if (reportCore && !reportAnalysisParagraphs(reportCore, draft).some(text =>
