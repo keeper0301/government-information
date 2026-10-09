@@ -33,3 +33,17 @@ it('가짜 기관 주소·실행 주소·인증 정보가 있는 보충 링크�
     expect(verifiedAdditionalSources({ ...article, additionalSources: [{ ...article.additionalSources![0], url }] })).toEqual([]);
   }
 });
+
+it('확인한 공식 이용 화면은 상세 링크와 검색용 근거에 함께 연결한다', async () => {
+  // 보호: 공식 이용 경로 표시. 실패: 기관 허용 누락·인용 불일치. 이유: 기존 검사는 관광 상담만 확인. 별도 시험 구조: 없음.
+  for (const url of ['https://www.korean.go.kr/front/imprv/refineList.do?mn_id=158',
+    'https://nip.kdca.go.kr/irhp/index.html', 'https://www.welchon.com/event/tourismpilot.do']) {
+    const updated = { ...article, additionalSources: [{ ...article.additionalSources![0], url }] };
+    expect(verifiedAdditionalSources(updated)).toHaveLength(1);
+    const html = renderToStaticMarkup(await EditorialNewsDetail({ article: updated }));
+    expect(html).toContain(`href="${url}"`);
+    expect(html).toContain(JSON.stringify(url));
+    expect(verifiedAdditionalSources({ ...updated, additionalSources: [{ ...updated.additionalSources[0],
+      url: url.replace(new URL(url).hostname, new URL(url).hostname + '.example.com') }] })).toEqual([]);
+  }
+});

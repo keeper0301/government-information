@@ -5,7 +5,7 @@ import { filterEditorialNews, normalizeNewsFilters, newsFilterUrl } from "@/lib/
 describe("검수 뉴스 검색과 분류", () => {
   it("제목과 자체 설명을 검색하고 여러 단어를 함께 찾는다", () => {
     expect(filterEditorialNews(EDITORIAL_NEWS, { q: "온누리 할인" })).toHaveLength(1);
-    expect(filterEditorialNews(EDITORIAL_NEWS, { q: "가맹점 관리 창구" })).toHaveLength(1);
+    expect(filterEditorialNews(EDITORIAL_NEWS, { q: "가맹 상태" })).toHaveLength(1);
     expect(filterEditorialNews(EDITORIAL_NEWS, { q: "존재하지않는내용" })).toHaveLength(0);
   });
   it("분야와 지역을 동시에 적용하며 전국 발표를 지역 기사로 바꾸지 않는다", () => {

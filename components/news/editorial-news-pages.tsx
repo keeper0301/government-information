@@ -19,7 +19,7 @@ export function EditorialNewsCards({ articles = getPublishedNews() }: { articles
       <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
         category: "news", ministry: "키피오 편집", source_outlet: null,
         thumbnail_url: photo?.url ?? null, thumbnail_alt: photo?.alt,
-        published_at: article.automaticPublication?.checkedAt ?? getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
+        published_at: article.automaticPublication?.checkedAt ?? getPublishedNewsReview(article)?.publishedAt ?? getPublishedNewsReview(article)?.reviewedAt ?? article.updatedAt }} />
       <p className="text-sm text-grey-600 mt-3 leading-relaxed">공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt}</p>
       {photo && <EditorialPhotoCredit photo={photo} />}
     </article>
@@ -63,11 +63,12 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
     : getPublishedNewsReview(article);
   const photo = getEditorialNewsPhoto(article);
   const additionalSources = verifiedAdditionalSources(article);
+  const publishedAt = review && ('publishedAt' in review ? review.publishedAt ?? review.reviewedAt : review.reviewedAt);
   const schema = review ? {
     "@context": "https://schema.org", "@type": "Article",
     headline: article.title, description: article.answer,
     ...(photo ? { image: `https://www.keepioo.com${photo.url}` } : {}),
-    datePublished: review.reviewedAt, dateModified: article.editorialCorrection?.correctedAt ?? review.reviewedAt,
+    datePublished: publishedAt, dateModified: article.editorialCorrection?.correctedAt ?? review.reviewedAt,
     author: { "@type": "Organization", name: "키피오 편집", url: "https://keepioo.com/about" },
     mainEntityOfPage: `https://keepioo.com/news/${article.slug}`,
     citation: additionalSources.length ? [article.sourceUrl, ...additionalSources.map(source => source.url)] : article.sourceUrl,
@@ -79,6 +80,7 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
       <h1 className="text-3xl font-extrabold leading-snug mb-5">{article.title}</h1>
       <p className="text-sm text-grey-600 mb-5">작성: 키피오 편집 · 공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt} · 내용 수정 {article.updatedAt}</p>
       {review && <p className="text-sm text-grey-600 mb-5">키피오 발행·확인일: {review.reviewedAt.slice(0, 10)} · 확인: {review.reviewer}</p>}
+      {publishedAt && publishedAt !== review?.reviewedAt && <p className="text-sm text-grey-600 mb-5">최초 발행일: {publishedAt.slice(0, 10)}</p>}
       {article.editorialCorrection && <p className="text-sm text-grey-700 bg-blue-50 rounded-xl p-4 mb-5">
         원문 대조 정정 · {article.editorialCorrection.correctedAt.slice(0, 10)}: {article.editorialCorrection.summary}
       </p>}

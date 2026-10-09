@@ -1,8 +1,9 @@
 {
   "onnuri-reform-shop-checklist-2026": {
-    "snapshotSha256": "f53dce1c7a55f12b2c76a071e21c6d9e0b70b7749c72f44c4008acae4f237a1c",
-    "reviewer": "운영자",
-    "reviewedAt": "2026-10-05T14:24:12Z",
+    "snapshotSha256": "c9a6fecf1db36063f889c79f66f800ad9a237b0b695319691b3ba99e441701b8",
+    "reviewer": "운영자 승인에 따른 갱신 · 자동 원문 대조",
+    "reviewedAt": "2026-10-09T10:17:28.925Z",
+    "publishedAt": "2026-10-05T14:24:12Z",
     "decision": "approved",
     "originalValueConfirmed": true
   }
