@@ -6,6 +6,7 @@ export interface NewsOwnerReview {
   snapshotSha256: string;
   reviewer: string;
   reviewedAt: string;
+  publishedAt?: string;
   decision: string;
   originalValueConfirmed: boolean;
 }
@@ -34,6 +35,14 @@ export function isNewsPublished(
     || !Number.isFinite(reviewed.getTime()) || reviewed.toISOString().replace(".000Z", "Z") !== review.reviewedAt.replace(".000Z", "Z")
     || reviewed > now) return false;
   const reviewDay = review.reviewedAt.slice(0, 10);
+  // 최초 발행일은 갱신 확인일보다 늦거나 원문 발표일보다 빠를 수 없습니다.
+  if (review.publishedAt) {
+    const published = new Date(review.publishedAt);
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(review.publishedAt)
+      || !Number.isFinite(published.getTime())
+      || published.toISOString().replace('.000Z', 'Z') !== review.publishedAt.replace('.000Z', 'Z')
+      || published > reviewed || review.publishedAt.slice(0, 10) < article.sourcePublishedAt) return false;
+  }
   if (![article.sourcePublishedAt, article.checkedAt, article.updatedAt].every(validDay)
     || article.sourcePublishedAt > article.checkedAt || article.checkedAt > reviewDay
     || article.updatedAt > reviewDay) return false;

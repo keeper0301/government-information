@@ -9,7 +9,7 @@ vi.mock("@/lib/editorial-news", async () => {
   return {
     getPublishedNews: () => state.published ? EDITORIAL_NEWS : [],
     getPublishedNewsBySlug: (slug: string) => state.published ? EDITORIAL_NEWS.find(item => item.slug === slug) : undefined,
-    getPublishedNewsReview: () => state.published ? { reviewer: "운영자", reviewedAt: "2026-10-05T14:00:00Z" } : undefined,
+    getPublishedNewsReview: () => state.published ? { reviewer: "운영자", reviewedAt: "2026-10-09T10:00:00Z", publishedAt: "2026-10-05T14:00:00Z" } : undefined,
   };
 });
 // 재심사 페이지에서 자동 수집 자료를 조회하면 검사를 실패시킵니다.
@@ -31,6 +31,7 @@ describe("재심사 정책뉴스 화면", () => {
     expect(html).toContain(article.editorialCorrection.summary);
     expect(html).toContain('"dateModified":"2026-10-07T02:00:00Z"');
     expect(html).toContain('"datePublished":"2026-10-05T14:00:00Z"');
+    expect(html).toContain('최초 발행일: 2026-10-05');
   });
   it("공개한 뉴스에만 자료사진과 이용 조건을 표시한다", async () => {
     const { EditorialNewsIndex } = await import("@/components/news/editorial-news-pages");
@@ -82,10 +83,15 @@ describe("재심사 정책뉴스 화면", () => {
   });
   it("승인된 목록과 상세에는 자체 안내와 공식 출처가 나온다", async () => {
     state.published = true;
-    const { EditorialNewsIndex, EditorialNewsDetail } = await import("@/components/news/editorial-news-pages");
+    const { EditorialNewsIndex, EditorialNewsDetail, EditorialNewsCards } = await import("@/components/news/editorial-news-pages");
     expect(renderToStaticMarkup(<EditorialNewsIndex />)).toContain(EDITORIAL_NEWS[0].title);
+    // 보호: 최초 발행일 유지. 실패: 확인일을 카드 날짜로 사용. 이유: 상세 검사로는 목록 누락을 못 잡음. 별도 시험 구조: 없음.
+    const card = renderToStaticMarkup(<EditorialNewsCards articles={[EDITORIAL_NEWS[0]]} />);
+    expect(card).toContain('2026년 10월 5일');
+    expect(card).not.toContain('2026년 10월 9일');
     const html = renderToStaticMarkup(await EditorialNewsDetail({ article: EDITORIAL_NEWS[0] }));
-    expect(html).toContain("고객에게 안내하기 전 점검표");
+    expect(html).toContain("할인 안내문을 붙이기 전에 확인할 순서");
+    expect(html).toContain("상권별 발표 혜택 비교");
     expect(html).toContain(EDITORIAL_NEWS[0].sourceUrl.replaceAll("&", "&amp;"));
     expect(html).not.toContain("adsbygoogle");
     expect(html).toContain('"@type":"Article"');

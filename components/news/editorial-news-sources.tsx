@@ -8,7 +8,8 @@ export function verifiedAdditionalSources(article: EditorialNews) {
     try {
       const url = new URL(source.url);
       return url.protocol === 'https:' && !url.username && !url.password && !url.port
-        && ['academy.visitkorea.or.kr', 'www.work24.go.kr'].includes(url.hostname);
+        && ['academy.visitkorea.or.kr', 'www.work24.go.kr', 'www.korean.go.kr',
+          'nip.kdca.go.kr', 'www.welchon.com'].includes(url.hostname);
     } catch { return false; }
   });
 }
