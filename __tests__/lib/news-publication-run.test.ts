@@ -48,6 +48,18 @@ it('원문이 바뀌거나 날짜가 다르면 공개하지 않는다', async ()
   mock.rpc.mockResolvedValueOnce({ data: row }).mockResolvedValueOnce({ data: true }).mockResolvedValueOnce({ data: null });
   expect(await runNewsPublication()).toMatchObject({ published: 0, held: 1 });
 });
+it('주소가 있는 원문 근거는 비공개 자료에만 저장하고 공개 글에서 제외한다', async () => {
+  const quote = '공식 안내 https://example.go.kr/apply 에서 참여 방법을 확인합니다.';
+  mock.generate.mockResolvedValueOnce({ kind: 'application', title: '참여 방법 안내', question: '어떻게 참여하나요?',
+    answer: '공식 참여 방법을 확인하세요.', audience: '참여를 준비하는 청년',
+    sections: [{ heading: '참여 방법 확인', paragraphs: ['기관의 참여 안내를 확인합니다.'], quote }] });
+  expect(await runNewsPublication()).toMatchObject({ published: 1, held: 0 });
+  const saved = mock.rpc.mock.calls.find(call => call[0] === 'finish_editorial_news')![1];
+  expect(saved.p_evidence.sections[0].quote).toBe(quote);
+  expect(saved.p_article.sections).toEqual([{ heading: '참여 방법 확인', paragraphs: ['기관의 참여 안내를 확인합니다.'] }]);
+  expect(JSON.stringify(saved.p_article)).not.toContain('example.go.kr');
+  expect(mock.read.mock.calls.every(([url]) => url === row.source_url)).toBe(true);
+});
 it('한 후보가 실패해도 다음 후보를 처리하며 저장 충돌을 발행으로 세지 않는다', async () => {
   mock.generate.mockRejectedValueOnce(new Error('근거 불충분'));
   let count = 0;
