@@ -44,3 +44,35 @@ it.each([
 it('원문에 질환 제한이 없으면 제한을 새로 만들지 않는다', () => {
   expect(medicalConditionIssue(draft('본인부담금의 50%를 지원한다.'), '본인부담금의 50%를 지원한다.')).toBeNull();
 });
+
+const fullSource = '군 복무와 질병의 인과성이 인정돼야 진료비를 전액 지원받았다. ' + source;
+it.each([
+  '기존에는 인과성이 인정된 질병과 중증·난치성 질환에 본인부담금 일부만 지원됐다.',
+  '인과성이 인정된 질병은 의료비 일부를 지원받았다.',
+  '군 복무와 인과성이 인정되면 진료비의 50%만 지원됐다.',
+])('원문의 전액 지원 조건을 일부 지원으로 바꾸면 보류한다: %s', text => {
+  expect(medicalConditionIssue(draft(text), fullSource)).toContain('전액 지원');
+});
+it.each([
+  '인과성이 인정되면 진료비 전액을 지원받았다. 인정되지 않으면 중증·난치성 질환에 본인부담금의 50%를 지원했다.',
+  '인과성이 인정된 질병에는 의료비 일부만 지원됐다는 뜻은 아닙니다.',
+  '복무 중 발병 또는 상해 여부와 관계없이 전역 이후 지원할 예정이다.',
+])('원문 조건 구분과 원문에 있는 범위 설명은 임의로 바꾸지 않는다: %s', text => {
+  expect(medicalConditionIssue(draft(text), fullSource)).toBeNull();
+});
+
+it('미인정 조건을 섞어도 인정 조건의 전액 지원을 일부로 바꿀 수 없다', () => {
+  expect(medicalConditionIssue(draft('인과성이 인정된 질병은 미인정 질병과 함께 의료비 일부만 지원됐다.'), fullSource)).toContain('전액 지원');
+});
+it('전액 지원을 부정한 원문을 긍정 근거로 추정하지 않는다', () => {
+  expect(medicalConditionIssue(draft('인과성이 인정된 질병은 의료비 일부만 지원됐다.'),
+    '인과성이 인정돼도 진료비를 전액 지원받지 못했다. ' + source)).toBeNull();
+});
+it('같은 문장의 인정 전액과 미인정 일부 지원 설명을 구분한다', () => {
+  expect(medicalConditionIssue(draft('인과성이 인정되면 진료비 전액 지원을 받고 미인정 중증·난치성 질환에는 본인부담금 50%를 지원했다.'), fullSource)).toBeNull();
+});
+
+it('전액 지원한다는 뜻이 아니라는 원문도 긍정 근거로 쓰지 않는다', () => {
+  expect(medicalConditionIssue(draft('인과성이 인정된 질병은 의료비 일부만 지원됐다.'),
+    '인과성이 인정되면 진료비를 전액 지원한다는 뜻은 아니다. ' + source)).toBeNull();
+});

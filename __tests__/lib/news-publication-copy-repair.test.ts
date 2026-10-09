@@ -121,6 +121,25 @@ it('문단 수정에서 새 숫자를 만들어도 기존 전체 검사를 우�
   expect(mock.call).toHaveBeenCalledTimes(2);
 });
 
+it.each([true, false])('복사 구절이 제목과 질문에 걸치면 전체를 한 번 고치고 다시 검사한다: %s', async succeeds => {
+  const acrossFields = { ...article, title: copied.slice(0, copied.indexOf(' ', 32)),
+    question: copied.slice(copied.indexOf(' ', 32) + 1),
+    sections: article.sections.map((section, index) => index ? section : { ...section, paragraphs: [replacement] }) };
+  const corrected = { ...article, sections: acrossFields.sections };
+  expect(makeCopyRepair(acrossFields, source.body)).toBeNull();
+  mock.call.mockResolvedValueOnce(JSON.stringify(acrossFields))
+    .mockResolvedValueOnce(JSON.stringify(succeeds ? corrected : acrossFields))
+    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, issues: [],
+      quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage'].map(key =>
+        [key, { passed: true, reason: '신청과 개별 지원 결정의 차이를 본문에서 구분했습니다.', excerptIndex: 1 }])),
+      checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
+  const run = generateVerifiedNews(source);
+  if (succeeds) await expect(run).resolves.toHaveProperty('editorialReview');
+  else await expect(run).rejects.toThrow('원문 문장을 길게');
+  expect(mock.call).toHaveBeenCalledTimes(succeeds ? 3 : 2);
+  expect(mock.call.mock.calls[1][0].responseSchema.name).not.toBe('policy_news_copy_repair');
+});
+
 it('정확한 원문 숫자 안내가 있는 문단과 드러난 복사 문단을 함께 선택한다', () => {
   const value = { ...draft, sections: [...draft.sections,
     { heading: '인원 안내', paragraphs: ['행사에는 약 70명이 참석했습니다. 다른 숫자 170명은 서로 다릅니다.'] }] };

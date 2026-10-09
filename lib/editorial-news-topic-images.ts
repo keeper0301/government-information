@@ -1,0 +1,53 @@
+import type { EditorialNewsPhoto } from './editorial-news-images';
+
+// 이용 조건을 직접 확인한 주제별 자료사진입니다. 기사 현장이나 정책 대상을 뜻하지 않습니다.
+export const NEWS_TOPIC_PHOTOS: Record<string, EditorialNewsPhoto> = {
+  tourism: {
+    url: '/images/news/tour-guide.webp', width: 1134, height: 759,
+    alt: '영국의 관광 안내자가 방문객에게 설명하는 모습 — 2004년 자료사진',
+    caption: '영국 관광 안내자 · 2004년 자료사진', author: 'Si Griffiths',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Tour_Guide.jpg',
+    licenseName: '저작자 표시·동일조건 변경 허락 3.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0/deed.ko',
+  },
+  language: {
+    url: '/images/news/hangul.webp', width: 1200, height: 900,
+    alt: '훈민정음 해례본의 펼친 지면 — 자료사진',
+    caption: '훈민정음 해례본 · 2007년 공개된 자료사진', author: 'Kbarends',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Hunminjeongeumhaerye.jpg',
+    licenseName: '저작자가 제한 없이 이용 허락',
+    licenseUrl: 'https://commons.wikimedia.org/wiki/File:Hunminjeongeumhaerye.jpg#Licensing',
+  },
+  vaccination: {
+    url: '/images/news/vaccination.webp', width: 1200, height: 675,
+    alt: '영국의 첫 코로나19 예방접종에 사용된 주사기와 백신병 전시 — 2024년 자료사진',
+    caption: '영국 코로나19 예방접종 도구 전시 · 2024년 자료사진', author: 'The wub',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Vial_and_syringe_used_for_first_COVID-19_vaccination.jpg',
+    licenseName: '저작자 표시·동일조건 변경 허락 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/deed.ko',
+  },
+  exhibition: {
+    url: '/images/news/sarangchae.webp', width: 1200, height: 726,
+    alt: '청와대 사랑채 건물 외관 — 2014년 자료사진',
+    caption: '청와대 사랑채 외관 · 2014년 자료사진', author: '코리아넷·해외문화홍보원 전한',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Korea_Cheongwadae_Sarangchae_02_(14276967121).jpg',
+    licenseName: '저작자 표시·동일조건 변경 허락 2.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/2.0/deed.ko',
+  },
+  animal: {
+    url: '/images/news/dog.webp', width: 800, height: 450,
+    alt: '풀밭에 서 있는 반려견 두 마리 — 2010년 자료사진',
+    caption: '반려견 두 마리 · 2010년 자료사진', author: 'Ken Billington',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Dog_(Canis_lupus_familiaris)_(5).JPG',
+    licenseName: '저작자 표시·동일조건 변경 허락 3.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0/deed.ko',
+  },
+  rural: {
+    url: '/images/news/rural-trip.webp', width: 1200, height: 900,
+    alt: '전남 고흥의 논과 산이 보이는 농촌 풍경 — 2006년 자료사진',
+    caption: '전남 고흥 농촌 풍경 · 2006년 자료사진', author: 'Steve46814',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Korea-Goheung-Rice_fields_in_rural_Goheung.JPG',
+    licenseName: '저작자 표시·동일조건 변경 허락 3.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0/deed.ko',
+  },
+};

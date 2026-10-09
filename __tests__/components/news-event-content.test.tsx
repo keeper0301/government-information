@@ -16,14 +16,16 @@ it('원문 참가 사례·가명 출처·직무별 질문을 뉴스 상세에 �
   expect(article.sections.find(section => section.table)?.table?.rows).toHaveLength(5);
 });
 
-it('공식 사진만 요청한 글에는 무관한 자료사진과 잘못된 사진 검색 정보가 나오지 않는다', async () => {
+it('허가된 관광 자료사진으로 바꾸고 무관한 서울 사진을 표시하지 않는다', async () => {
   const detail = renderToStaticMarkup(await EditorialNewsDetail({ article }));
   const card = renderToStaticMarkup(<EditorialNewsCards articles={[article]} />);
   for (const html of [detail, card]) {
     expect(html).not.toContain('seoul-city');
     expect(html).not.toContain('BI3QWQ');
-    expect(html).not.toContain('"image":');
+    expect(html).toContain('tour-guide');
   }
-  expect(detail).toContain('공식 기사에서 현장 사진 보기');
+  expect(detail).toContain('기사 현장 사진이 아닙니다');
+  expect(detail).toContain('Si Griffiths');
+  expect(detail).toContain('https://creativecommons.org/licenses/by-sa/3.0/deed.ko');
   expect(detail).toContain(article.sourceUrl.replace(/&/g, '&amp;'));
 });

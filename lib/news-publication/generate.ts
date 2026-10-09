@@ -117,8 +117,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
     plannedRepair = issue.startsWith('제목과 첫 답변에 시행 예정') || issue.startsWith('시행 예정인 혜택을') ? makePlannedRepair(value, source.body) : null;
     copyRepair = issue === '원문 문장을 길게 그대로 옮겼습니다.' || issue.startsWith('원문에서 확인하지 못한 숫자:') || (sourceList && issue === '한 문단이 너무 깁니다. 짧은 문단으로 나눠주세요.')
       ? makeCopyRepair(value, source.body, issue, source.publishedAt) : null;
-    if (!attempt && issue === '원문 문장을 길게 그대로 옮겼습니다.' && !copyRepair)
-      throw new NewsDraftError('복사 오류의 본문 수정 위치를 확인하지 못해 보류했습니다.', { draft: value });
+    // 복사가 공개 필드 경계에 걸치면 전체를 한 번 재작성하고 동일한 검사를 적용합니다.
   }
   if (!draft) throw new NewsDraftError(issue, { draft: value });
   if (fixedCases) await reviewFixedClaims(draft, quotes);

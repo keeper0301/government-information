@@ -13,7 +13,7 @@ import { filterEditorialNews, normalizeNewsFilters, type NewsFilters } from "@/l
 
 export function EditorialNewsCards({ articles = getPublishedNews() }: { articles?: EditorialNews[] } = {}) {
   return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{articles.map(article => {
-    const photo = article.photoPolicy === 'official-only' ? null : getEditorialNewsPhoto(article);
+    const photo = getEditorialNewsPhoto(article);
     return (
     <article key={article.slug}>
       <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
@@ -61,7 +61,7 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
   const review = article.automaticPublication
     ? { reviewedAt: article.automaticPublication.checkedAt, reviewer: "자동 근거 검사·사실 대조" }
     : getPublishedNewsReview(article);
-  const photo = article.photoPolicy === 'official-only' ? null : getEditorialNewsPhoto(article);
+  const photo = getEditorialNewsPhoto(article);
   const additionalSources = verifiedAdditionalSources(article);
   const schema = review ? {
     "@context": "https://schema.org", "@type": "Article",
