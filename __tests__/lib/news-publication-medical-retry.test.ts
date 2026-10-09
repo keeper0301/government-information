@@ -34,16 +34,18 @@ it('재작성 후에도 조건 누락이 남으면 두 호출에서 보류한다
   await expect(generateVerifiedNews(source)).rejects.toThrow('질환 조건');
   expect(mock.call).toHaveBeenCalledTimes(2);
 });
+// Value: protects=기존 예정 오류의 수정 횟수와 별도 검사 보류; fails_when=추가 재작성 또는 검사 우회;
+// why_new=기존 자료의 기사 전체 응답을 지정 위치 응답 계약으로 갱신함; seam=none
 it.each([false, true])('시행 예정 오류도 같은 한 번 재작성 경로와 보류 제한을 유지한다: %s', corrected => {
   const plannedSource = { ...source, body: `내년 7월부터 본격 시행 예정\n${body}` };
   const initial = { ...valid, title: '새 보험 도입 예정과 확인 기준', answer: '새 보험을 도입합니다.' };
   const revised = { ...initial, answer: '새 보험을 도입할 예정입니다.' };
   mock.call.mockResolvedValueOnce(JSON.stringify(initial))
-    .mockResolvedValueOnce(JSON.stringify(corrected ? revised : initial));
+    .mockResolvedValueOnce(JSON.stringify({ edits: { answer: corrected ? revised.answer : initial.answer } }));
   if (corrected) mock.call.mockResolvedValueOnce(JSON.stringify({ supported: false, originalValue: false, issues: ['미확인'], checks: [] }));
   return expect(generateVerifiedNews(plannedSource)).rejects.toThrow(corrected ? '별도 사실 대조' : '시행 예정')
     .then(() => {
       expect(mock.call).toHaveBeenCalledTimes(corrected ? 3 : 2);
-      expect(mock.call.mock.calls[1][0].prompt).toContain('제목과 첫 답변에 시행 예정');
+      expect(mock.call.mock.calls[1][0].responseSchema.schema.properties.edits.required).toEqual(['answer']);
     });
 });
