@@ -23,6 +23,10 @@ export function officialNewsId(value: string): string | null {
 
 export const normalizeSourceText = (text: string) => text.replace(/\s+/g, ' ').trim();
 
+// 비공개 근거에는 원문의 주소를 보존합니다. 실제 원문과의 일치는 별도로 검사합니다.
+export const validSourceQuote = (text: unknown): text is string => typeof text === 'string'
+  && text.trim().length >= 5 && text.length <= 300 && /[가-힣]/.test(text) && !/[<>]/.test(text);
+
 // 긴 단위를 먼저 읽어 보험 세대와 천만 원 금액을 나이·단위 없는 숫자로 자르지 않습니다.
 export const newsNumberPattern = /\d(?:[\d,.]*\d)?(?:여명|%|천만원|만원|억원|원|년|월|일|명|세대|세|개월)?/g;
 
@@ -42,8 +46,7 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   for (const section of draft.sections) {
     if (!section || !validText(section.heading) || !Array.isArray(section.paragraphs)
       || section.paragraphs.length < 1 || section.paragraphs.length > 3
-      || !section.paragraphs.every(validText) || !validText(section.quote)
-      || section.quote.length > 300) return '단락 또는 인용문의 형식이 맞지 않습니다.';
+      || !section.paragraphs.every(validText) || !validSourceQuote(section.quote)) return '단락 또는 인용문의 형식이 맞지 않습니다.';
     if (section.paragraphs.some(text => text.length > 240)) return '한 문단이 너무 깁니다. 짧은 문단으로 나눠주세요.';
     if (section.paragraphs.some(text => /(.{12,60})\1\1/u.test(text.replace(/\s+/g, '')))) return '같은 구절로 설명을 반복했습니다.';
     if (!source.includes(normalizeSourceText(section.quote))) return '인용문이 공식 원문과 일치하지 않습니다.';

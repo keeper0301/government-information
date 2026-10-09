@@ -1,4 +1,4 @@
-import { normalizeSourceText } from './validation';
+import { normalizeSourceText, validSourceQuote } from './validation';
 
 export interface SourceFacts {
   periods: { text: string; quoteIndexes: number[] }[];
@@ -60,7 +60,7 @@ export function prepareSourceDraft(value: unknown, facts: SourceFacts, quotes: s
     && /[가-힣]/u.test(text) && !/[<>]|https?:\/\//u.test(text);
   if (sections.length < 3 || sections.length > 6 || !sections.every(section => {
     const part = section as Record<string, unknown> | null;
-    return part && validText(part.heading) && validText(part.quote) && (part.quote as string).length <= 300
+    return part && validText(part.heading) && validSourceQuote(part.quote)
       && Array.isArray(part.paragraphs) && part.paragraphs.length >= 1 && part.paragraphs.length <= 3
       && part.paragraphs.every(validText);
   })) return { value: mapped, issue: null };
