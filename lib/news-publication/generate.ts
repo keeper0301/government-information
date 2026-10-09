@@ -9,7 +9,7 @@ import { makeCopyRepair, applyCopyRepair, copyRepairIssue, type CopyRepairPlan }
 import { collectSourceList, attachSourceList, sourceListIssue, sourceListSchema } from './source-list';
 import { collectFixedCases, attachFixedCases, fixedCaseIssue, fixedCaseJudgmentSchema, fixedCaseReviewIssue, fixedReportDraft, fixedCaseQuality, fixedCaseSourceIssue } from './fixed-cases';
 import { reviewFixedClaims } from './claim-review';
-// 형식이 맞아도 사실·숫자·내용 품질 검사는 기존과 같이 별도로 수행합니다.
+import { makePlannedRepair, applyPlannedRepair } from './planned-repair';
 const newsDraftResponse = { name: 'policy_news_draft', schema: {
   type: 'object', additionalProperties: false,
   required: ['skip', 'kind', 'title', 'question', 'answer', 'audience', 'sections'],
@@ -25,7 +25,6 @@ const newsDraftResponse = { name: 'policy_news_draft', schema: {
   },
 } };
 
-// 기존 글 작성 도구를 사용하며, 기사마다 작성·대조를 각 1회 처리하고 초안 오류 수정은 1회로 제한합니다.
 export async function generateVerifiedNews(source: OfficialNewsSource) {
   // 발표 당시의 상태를 오늘도 유효한 것으로 오해하지 않도록 두 검사에 같은 날짜를 전달합니다.
   const reviewDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
@@ -95,14 +94,15 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
   let draft = null;
   let value: unknown;
   let issue = '';
-  let copyRepair: CopyRepairPlan | null = null;
-  // 초안 검사에 실패한 글은 한 번만 바로잡습니다. 검사는 매번 동일합니다.
+  let copyRepair: CopyRepairPlan | null = null, plannedRepair: ReturnType<typeof makePlannedRepair> = null;
+  // 오류 위치만 한 번 바로잡고 동일한 전체 검사를 적용합니다.
   for (let attempt = 0; attempt < 2; attempt++) {
-    const raw = fixedCases ? JSON.stringify(fixedReportDraft(fixedCases, reportCore)) : await callLLM({ model: 'gpt-4.1-mini', responseSchema: copyRepair?.responseSchema ?? responseSchema,
+    const raw = fixedCases ? JSON.stringify(fixedReportDraft(fixedCases, reportCore)) : await callLLM({ model: 'gpt-4.1-mini', responseSchema: plannedRepair?.responseSchema ?? copyRepair?.responseSchema ?? responseSchema,
       maxTokens: copyRepair ? 1800 : 3200, timeoutMs: attempt ? 25000 : 40000,
-      prompt: copyRepair?.prompt ?? (attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n오류에 해당하는 답변과 본문 표현을 원문으로 다시 대조해 고치세요. 이전 초안의 잘못된 표현을 그대로 옮기지 마세요. 원문에 없는 이용 제한·기간 확대·확정 계획을 추가하지 말고, 참가 사례를 보존한 기사 전체를 반환하세요.` : prompt) });
+      prompt: plannedRepair?.prompt ?? copyRepair?.prompt ?? (attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n오류에 해당하는 답변과 본문 표현을 원문으로 다시 대조해 고치세요. 이전 초안의 잘못된 표현을 그대로 옮기지 마세요. 원문에 없는 이용 제한·기간 확대·확정 계획을 추가하지 말고, 참가 사례를 보존한 기사 전체를 반환하세요.` : prompt) });
     const response = parseJSONResponse(raw);
-    const repaired = copyRepair ? applyCopyRepair(value, response, copyRepair) : response;
+    const repaired = plannedRepair ? applyPlannedRepair(value, response, plannedRepair) : copyRepair ? applyCopyRepair(value, response, copyRepair) : response;
+    if (plannedRepair && !repaired) throw new NewsDraftError('예정 상태 수정 응답의 위치나 형식이 달라 보류했습니다.', { draft: value });
     if (copyRepair && !repaired) throw new NewsDraftError(`문단 수정 보류: ${copyRepairIssue(value, response, copyRepair)}`, { draft: value });
     value = repaired;
     if (value && typeof value === 'object' && (value as { skip?: unknown }).skip === true)
@@ -114,7 +114,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
     draft = prepared.issue || coreIssue ? null : validateNewsDraft(value, source.body, source.publishedAt);
     if (draft) break;
     issue = prepared.issue ?? coreIssue ?? newsDraftIssue(value, source.body, source.publishedAt) ?? '초안 검사 보류';
-    // 복사 구절이나 정확한 원문 숫자 안내가 있는 문단만 선택합니다. 다른 오류는 기존 경로를 유지합니다.
+    plannedRepair = issue.startsWith('제목과 첫 답변에 시행 예정') || issue.startsWith('시행 예정인 혜택을') ? makePlannedRepair(value, source.body) : null;
     copyRepair = issue === '원문 문장을 길게 그대로 옮겼습니다.' || issue.startsWith('원문에서 확인하지 못한 숫자:') || (sourceList && issue === '한 문단이 너무 깁니다. 짧은 문단으로 나눠주세요.')
       ? makeCopyRepair(value, source.body, issue) : null;
     if (!attempt && issue === '원문 문장을 길게 그대로 옮겼습니다.' && !copyRepair)
