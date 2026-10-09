@@ -2,6 +2,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ call: vi.fn() }));
 vi.mock('@/lib/llm/text', () => ({ callLLM: mock.call, parseJSONResponse: JSON.parse }));
 import { generateVerifiedNews } from '@/lib/news-publication/generate';
+import { restoreSourceAmounts } from '@/lib/news-publication/source-amounts';
+import { makeCopyRepair } from '@/lib/news-publication/copy-repair';
 afterEach(() => mock.call.mockReset());
 
 const body = '청년 근로자가 신청할 수 있습니다.';
@@ -19,6 +21,21 @@ const judgment = (parts: number[]) => ({ supported: true, originalValue: true, i
   quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
     .map(key => [key, { passed: true, reason: '대상 안내와 개인별 지원 결정을 구분하는 해설이 있습니다.', excerptIndex: 0 }])),
   checks: parts.map(part => ({ part, supported: true, quoteIndex: 0 })),
+});
+
+// 보호 대상: 답변의 잘못된 연도가 본문 금액 수정에 가려지지 않도록 실제 작성 연결을 확인합니다.
+it('금액과 원문에 없는 연도가 함께 있으면 본문만 고치지 않고 전체 초안을 한 번 수정한다', async () => {
+  const invalid = structuredClone(draft);
+  invalid.answer = '2024년부터 청년 근로자가 신청할 수 있으며 개인별 지급 결정은 구분해야 합니다.';
+  invalid.sections[1].paragraphs[0] += ' 단체 보험 한도는 5천만 원입니다.';
+  const corrected = structuredClone(draft);
+  corrected.sections[1].paragraphs[0] += ' 단체 보험 한도는 5000만 원입니다.';
+  mock.call.mockResolvedValueOnce(JSON.stringify(invalid)).mockResolvedValueOnce(JSON.stringify(corrected))
+    .mockResolvedValueOnce(JSON.stringify(judgment([0, 1, 2, 3, 4])));
+  await expect(generateVerifiedNews({ ...source, body: `${body}\n단체 보험은 5000만 원을 보장합니다.` }))
+    .resolves.toHaveProperty('answer', corrected.answer);
+  expect(mock.call.mock.calls[1][0].responseSchema.name).toBe('policy_news_draft');
+  expect(mock.call).toHaveBeenCalledTimes(3);
 });
 
 // Value: protects=본문 개수에 따라 달라지는 판정 개수와 부분 번호 계약;
@@ -60,18 +77,98 @@ it('허용 범위 밖 원문 번호는 합격 표시가 있어도 보류한다',
   mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify(invalid));
   await expect(generateVerifiedNews(source)).rejects.toThrow('별도 사실 대조');
 });
-it.each([true, false])('금액 수정 안내는 해당 문단만 한 번 고치고 숫자·별도 사실 검사를 유지한다: %s', corrected => {
+it.each([true, false])('같은 금액만 원문 표기로 복원하고 다른 금액은 재작성 후에도 보류한다: %s', corrected => {
   const invalid = structuredClone(draft);
   invalid.sections[1].paragraphs[0] = '단체 보험 보장 한도는 5천만 원입니다. 최고 한도는 누구나 같은 금액을 받는다는 의미가 아니므로, 개인별 지급 여부와 보장 항목을 구분해 읽어야 합니다. 원문에서 확인된 금액 표기를 보존하세요.';
-  const fixedText = invalid.sections[1].paragraphs[0].replace('5천만 원', corrected ? '5000만 원' : '6천만 원');
-  mock.call.mockResolvedValueOnce(JSON.stringify(invalid)).mockResolvedValueOnce(JSON.stringify({ edits: { paragraph_0: fixedText } }));
-  if (corrected) mock.call.mockResolvedValueOnce(JSON.stringify(judgment([0, 1, 2, 3, 4])));
+  if (!corrected) invalid.sections[1].paragraphs[0] = invalid.sections[1].paragraphs[0].replace('5천', '6천');
+  const fixedText = invalid.sections[1].paragraphs[0].replace('5천만 원', '5000만 원');
+  mock.call.mockResolvedValueOnce(JSON.stringify(invalid)).mockResolvedValueOnce(JSON.stringify(
+    corrected ? judgment([0, 1, 2, 3, 4]) : invalid));
   const outcome = generateVerifiedNews({ ...source, body: `${body}\n단체 보험은 5000만 원을 보장합니다.` });
   return (corrected ? expect(outcome).resolves.toHaveProperty('sections.1.paragraphs.0', fixedText)
     : expect(outcome).rejects.toThrow('확인하지 못한 숫자')).then(() => {
-    expect(mock.call).toHaveBeenCalledTimes(corrected ? 3 : 2);
-    const repair = mock.call.mock.calls[1][0];
-    expect(repair.responseSchema.schema.properties.edits.required).toEqual(['paragraph_0']);
-    expect(repair.prompt).toContain('5천만원 → 5000만원');
+    expect(mock.call).toHaveBeenCalledTimes(2);
+    expect(mock.call.mock.calls[1][0].responseSchema.name).toBe(corrected ? 'policy_news_judgment' : 'policy_news_draft');
   });
+});
+
+// 보호 대상: 공개 문장의 금액만 복원하고 원문 인용·위치 번호·정상 문장·입력 객체를 보존합니다.
+it.each(['5000만 원', '50,000,000원', '0.5억 원'])('원문의 유일한 동액 표기 %s를 모든 공개 위치에 복원한다', original => {
+  const input = structuredClone(draft);
+  for (const field of ['title', 'question', 'answer', 'audience'] as const) input[field] += ' 5천 만 원';
+  input.sections[0].heading += ' 5천만 원';
+  input.sections[0].paragraphs[0] += ' 5천만 원';
+  const snapshot = JSON.stringify(input);
+  const result = restoreSourceAmounts(input, `${body} 한도는 ${original}입니다. ${original} 한도입니다.`) as typeof input;
+  for (const field of ['title', 'question', 'answer', 'audience'] as const) expect(result[field]).toBe(input[field].replace('5천 만 원', original));
+  expect(result.sections[0].paragraphs[0]).toBe(input.sections[0].paragraphs[0].replace('5천만 원', original));
+  expect(result.sections[0].heading).toBe(input.sections[0].heading.replace('5천만 원', original));
+  expect(result.sections[0].quoteIndex).toBe(input.sections[0].quoteIndex);
+  expect(result.sections.slice(1)).toEqual(input.sections.slice(1));
+  expect(JSON.stringify(input)).toBe(snapshot);
+});
+it.each(['-5천만 원', '+5천만 원', '1억 5천만 원', '15천만 원'])('초안의 부호·복합금액·긴 숫자 %s를 다른 금액으로 복원하지 않는다', amount => {
+  const input = { ...draft, answer: `지원 한도는 ${amount}입니다.` };
+  expect(restoreSourceAmounts(input, '5000만 원')).toEqual(input);
+});
+it.each(['1억 5000만 원', '-5000만 원', '4999.9999999999999999만 원'])('실제 작성에서도 안전하지 않은 원문 %s로 부분 금액 수정을 권하지 않는다', async amount => {
+  const input = { ...draft, answer: '지원 금액은 5천만 원이며 개인별 지급 결정과 구분합니다.' };
+  mock.call.mockResolvedValueOnce(JSON.stringify(input)).mockResolvedValueOnce(JSON.stringify(input));
+  await expect(generateVerifiedNews({ ...source, body: `${body} 지원 금액은 ${amount}입니다.` })).rejects.toThrow('확인하지 못한 숫자');
+  expect(mock.call).toHaveBeenCalledTimes(2);
+  expect(mock.call.mock.calls[1][0].responseSchema.name).toBe('policy_news_draft');
+  expect(mock.call.mock.calls[1][0].prompt).not.toContain('5천만원 →');
+});
+it.each(['-5천만 원', '+5천만 원', '1억 5천만 원'])('실제 작성의 부호·복합금액 %s를 수정 안내가 우회하지 못한다', async amount => {
+  const input = { ...draft, answer: `지원 금액은 ${amount}이며 개인별 지급 결정과 구분합니다.` };
+  mock.call.mockResolvedValueOnce(JSON.stringify(input)).mockResolvedValueOnce(JSON.stringify(input));
+  await expect(generateVerifiedNews({ ...source, body: `${body} 지원 금액은 5000만 원입니다.` })).rejects.toThrow('확인하지 못한 숫자');
+  expect(mock.call).toHaveBeenCalledTimes(2);
+  expect(mock.call.mock.calls[1][0].responseSchema.name).toBe('policy_news_draft');
+  expect(mock.call.mock.calls[1][0].prompt).not.toContain('5천만원 →');
+});
+it('지원하지 않는 큰 복합 단위의 일부를 독립 금액으로 복원하지 않는다', () => {
+  const input = { ...draft, answer: '총예산은 50000천만 원입니다.' };
+  expect(restoreSourceAmounts(input, '총예산은 1조 5000억 원입니다.')).toEqual(input);
+});
+it.each(['2026-10-06', '2026-02-30', '2026-13-01', undefined])('정상 발표연도 근거만 부분 숫자 수정 경로에 허용한다: %s', publishedAt => {
+  const input = { sections: [{ heading: '인원 안내', paragraphs: ['2026년 행사에는 70명이 참석했습니다.'] }] };
+  const plan = makeCopyRepair(input, '행사에는 70여 명이 참석했습니다.',
+    '원문에서 확인하지 못한 숫자: 70명. 원문 숫자와 단위를 함께 쓰세요: 70명 → 70여명.', publishedAt);
+  if (publishedAt === '2026-10-06') expect(plan?.targets.map(target => target.text)).toEqual(input.sections[0].paragraphs);
+  else expect(plan).toBeNull();
+});
+it.each(['5000만 원과 0.5억 원', '6000만 원', '5천만 원', '9007199260000000원',
+  '1억 5000만 원', '1억 원 5000만 원', '-5000만 원', '− 5000만 원', '4999.9999999999999999만 원'])('다른 금액·여러 표기·이미 같은 표기는 추측해 바꾸지 않는다: %s', amounts => {
+  const input = { ...draft, answer: '5천만 원과 2024년의 안내를 비교합니다.' };
+  expect(restoreSourceAmounts(input, amounts)).toEqual(input);
+});
+// 보호 대상: 오류 요약의 세 숫자 뒤에 숨은 미확인 연도도 전체 수정 경로로 보냅니다.
+it('오류 안내에 연도가 생략되어도 본문 전체 숫자를 확인한다', () => {
+  const input = { sections: [{ heading: '금액 안내', paragraphs: ['5000, 5000, 5000 안내는 2027년부터입니다.'] }] };
+  expect(makeCopyRepair(input, '지원 금액은 5000만원입니다.',
+    '원문에서 확인하지 못한 숫자: 5000, 5000, 5000. 원문 숫자와 단위를 함께 쓰세요: 5000 → 5000만원.')).toBeNull();
+});
+it('정밀도가 보장되지 않는 큰 금액과 소수 천만원은 변환하지 않는다', () => {
+  const input = { ...draft, answer: '900719926천만원과 1.5천만원은 그대로 검사합니다.' };
+  expect(restoreSourceAmounts(input, '9007199260000000원과 1500만원')).toEqual(input);
+});
+it('인용문은 공개 금액 표기 복원 대상이 아니다', () => {
+  const input = { sections: [{ heading: '금액 안내', paragraphs: ['5천만 원입니다.'], quote: '5천만 원입니다.', quoteIndex: 7 }] };
+  expect(restoreSourceAmounts(input, '5000만 원') as typeof input).toHaveProperty('sections.0.quote', '5천만 원입니다.');
+});
+it.each([null, [], { sections: [null] }, { sections: [{ paragraphs: [1] }] }])('잘못된 초안 구조는 복원하지 않는다: %j', input => {
+  expect(restoreSourceAmounts(input, '5000만원')).toBe(input);
+});
+it('숫자 오류가 제목에 있거나 원문 표기를 특정할 수 없으면 본문만 수정하지 않는다', () => {
+  const input = { ...draft, answer: '70명 지원 안내를 비교합니다.' };
+  const issue = '원문에서 확인하지 못한 숫자: 70명. 원문 숫자와 단위를 함께 쓰세요: 70명 → 70여명.';
+  expect(makeCopyRepair(input, body, issue)).toBeNull();
+  expect(makeCopyRepair(draft, body, '원문에서 확인하지 못한 숫자: 2024년.')).toBeNull();
+});
+it('같은 금액을 복원해도 별도 사실 판정이 실패하면 공개하지 않는다', async () => {
+  const input = { ...draft, answer: '단체 보험 한도는 5천만 원이며 개인별 지급은 별도입니다.' };
+  mock.call.mockResolvedValueOnce(JSON.stringify(input)).mockResolvedValueOnce(JSON.stringify({ ...judgment([0, 1, 2, 3, 4]), supported: false }));
+  await expect(generateVerifiedNews({ ...source, body: `${body} 단체 보험 한도는 5000만 원입니다.` })).rejects.toThrow('별도 사실 대조');
+  expect(mock.call).toHaveBeenCalledTimes(2);
 });

@@ -124,12 +124,13 @@ it('문단 수정에서 새 숫자를 만들어도 기존 전체 검사를 우�
 it('정확한 원문 숫자 안내가 있는 문단과 드러난 복사 문단을 함께 선택한다', () => {
   const value = { ...draft, sections: [...draft.sections,
     { heading: '인원 안내', paragraphs: ['행사에는 약 70명이 참석했습니다. 다른 숫자 170명은 서로 다릅니다.'] }] };
-  const plan = makeCopyRepair(value, copied, '원문에서 확인하지 못한 숫자: 70명. 원문 숫자와 단위를 함께 쓰세요: 70명 → 70여명.');
+  const body = `${copied} 참석자는 70여 명입니다. 별도 자료 인원은 170명입니다. 참가자는 1000여 명입니다.`;
+  const plan = makeCopyRepair(value, body, '원문에서 확인하지 못한 숫자: 70명. 원문 숫자와 단위를 함께 쓰세요: 70명 → 70여명.');
   expect(plan?.targets.map(target => [target.sectionIndex, target.paragraphIndex])).toEqual([[0, 0], [2, 0]]);
   const onlyDifferent = { sections: [{ paragraphs: ['행사에는 170명 또는 70여 명이 참석했습니다.'] }] };
   expect(makeCopyRepair(onlyDifferent, copied, '원문 숫자 안내: 70명 → 70여명.')).toBeNull();
   expect(makeCopyRepair(onlyDifferent, copied, '원문에서 확인하지 못한 숫자: 70명. 원문 표기: 70명 → 70여명.')).toBeNull();
-  expect(makeCopyRepair({ sections: [{ paragraphs: ['참가자는 약 1,000명이었습니다.'] }] }, copied,
+  expect(makeCopyRepair({ sections: [{ paragraphs: ['참가자는 약 1,000명이었습니다.'] }] }, body,
     '원문에서 확인하지 못한 숫자: 1000명. 원문 표기: 1000명 → 1000여명.')?.targets).toHaveLength(1);
 });
 
