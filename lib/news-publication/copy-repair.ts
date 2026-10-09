@@ -20,7 +20,7 @@ export function makeCopyRepair(value: unknown, body: string, issue = ''): CopyRe
   try { original = JSON.stringify(value); } catch { return null; }
   // 원문 표기를 하나로 특정한 숫자 오류만 함께 수정합니다. 추측한 숫자는 쓰지 않습니다.
   const wrongNumbers = issue.startsWith('원문에서 확인하지 못한 숫자:')
-    ? [...issue.matchAll(/(\d[\d,.]*(?:%|만원|억원|원|년|월|일|명|세|개월)?)\s*→\s*\d/gu)].map(match => match[1]) : [];
+    ? [...issue.matchAll(/(\d[\d,.]*(?:%|천만원|만원|억원|원|년|월|일|명|세|개월)?)\s*→\s*\d/gu)].map(match => match[1]) : [];
   const targets = value.sections.flatMap((section, sectionIndex) =>
     (section.paragraphs as string[]).flatMap((text, paragraphIndex) => {
       const copied: string[] = [];

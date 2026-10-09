@@ -139,8 +139,8 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
           required: ['passed', 'reason', 'excerptIndex'], properties: { passed: { type: 'boolean' }, reason: { type: 'string' },
             excerptIndex: { type: 'integer', enum: [-1, ...excerpts.flatMap((text, index) => key === 'scope' || index < scopeOnlyStart
               && (key !== 'usefulness' || !reportCore || analysisParagraphs.some(paragraph => paragraph.includes(text))) ? [index] : [])] } } }])) },
-      checks: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['part', 'supported', 'quoteIndex'],
-        properties: { part: { type: 'integer' }, supported: { type: 'boolean' }, quoteIndex: { type: 'integer' } } } },
+      checks: { type: 'array', minItems: draft.sections.length + 1, maxItems: draft.sections.length + 1, items: { type: 'object', additionalProperties: false, required: ['part', 'supported', 'quoteIndex'],
+        properties: { part: { type: 'integer', enum: Array.from({ length: draft.sections.length + 1 }, (_, part) => part) }, supported: { type: 'boolean' }, quoteIndex: { type: 'integer', enum: [-1, ...quotes.map((_, index) => index)] } } } },
     } } };
   const rawJudgment = parseJSONResponse<{ supported?: boolean; originalValue?: boolean;
     quality?: Record<string, { passed?: unknown; reason?: unknown; decision?: unknown; detail?: unknown; excerptIndex?: unknown; evidenceIndexes?: unknown }>;
