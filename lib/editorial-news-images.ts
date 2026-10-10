@@ -44,6 +44,9 @@ export const EDITORIAL_NEWS_IMAGES: Record<string, EditorialNewsPhoto> = {
   'policy-brief-148973033': NEWS_TOPIC_PHOTOS.exhibition,
   'policy-brief-148973136': NEWS_TOPIC_PHOTOS.animal,
   'policy-brief-148973211': NEWS_TOPIC_PHOTOS.rural,
+  'policy-brief-148973175': NEWS_TOPIC_PHOTOS.palace,
+  'policy-brief-148973216': NEWS_TOPIC_PHOTOS.education,
+  'policy-brief-148973020': NEWS_TOPIC_PHOTOS.gyeongju,
 };
 export const EDITORIAL_PHOTO_URLS = [market.url, city.url, calculator.url,
   ...Object.values(NEWS_TOPIC_PHOTOS).map(photo => photo.url)];

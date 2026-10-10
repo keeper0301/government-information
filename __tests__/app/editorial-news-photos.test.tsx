@@ -13,6 +13,25 @@ const automatic = { ...EDITORIAL_NEWS[0], slug: "policy-brief-148972905",
   title: "중장년 구직자 관광산업 취업 지원", automaticPublication: { checkedAt: "2026-10-07T00:00:00Z", sourceHash: "검사용" } };
 
 describe("자동 뉴스 자료사진", () => {
+  it.each([
+    ['148973175', 'deoksugung', 'Mobius6', '2024', '특별전 내부 사진이 아닙니다', 'Deoksugung_Palace_20240409_048.jpg', 'licenses/by/4.0'],
+    ['148973216', 'education-books', 'Hussy~B', '2023', '협력 참여 대학을 뜻하지 않습니다', 'Library_books_1.jpg', 'publicdomain/zero/1.0'],
+    ['148973020', 'bulguksa', 'Bernard Gagnon', '2022', '회랑', 'Bulguksa_04.jpg', 'publicdomain/zero/1.0'],
+  ])('새 공개 기사 %s의 목록·상세·검색 자료에 사진과 맥락을 표시한다', async (id, file, author, year, context, source, license) => {
+    const article = { ...automatic, slug: `policy-brief-${id}` };
+    const card = renderToStaticMarkup(<EditorialNewsCards articles={[article]} />);
+    const detail = renderToStaticMarkup(await EditorialNewsDetail({ article }));
+    for (const html of [card, detail]) {
+      expect(html).toContain(`${file}-`);
+      expect(html).toContain(author);
+      expect(html).toContain(year);
+      expect(html).toContain(context);
+      expect(html).toContain(`https://commons.wikimedia.org/wiki/File:${source}`);
+      expect(html).toContain(`https://creativecommons.org/${license}/deed.ko`);
+      expect(html).toContain('기사 현장 사진이 아닙니다');
+    }
+    expect(detail).toContain(`"image":"https://www.keepioo.com/images/news/${file}.webp"`);
+  });
   it("새 주소의 목록과 상세에 사진과 출처·이용 조건을 함께 제공한다", async () => {
     const card = renderToStaticMarkup(<EditorialNewsCards articles={[automatic]} />);
     const detail = renderToStaticMarkup(await EditorialNewsDetail({ article: automatic }));
