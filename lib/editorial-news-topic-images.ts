@@ -2,6 +2,30 @@ import type { EditorialNewsPhoto } from './editorial-news-images';
 
 // 이용 조건을 직접 확인한 주제별 자료사진입니다. 기사 현장이나 정책 대상을 뜻하지 않습니다.
 export const NEWS_TOPIC_PHOTOS: Record<string, EditorialNewsPhoto> = {
+  palace: {
+    url: '/images/news/deoksugung.webp', width: 1200, height: 912,
+    alt: '덕수궁 돈덕전 외관 — 2024년 자료사진, 특별전 내부 사진이 아닙니다',
+    caption: '덕수궁 돈덕전 외관 · 2024년 자료사진', author: 'Mobius6',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Deoksugung_Palace_20240409_048.jpg',
+    licenseName: '저작자 표시 이용 허락 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by/4.0/deed.ko',
+  },
+  education: {
+    url: '/images/news/education-books.webp', width: 1200, height: 1393,
+    alt: '나이지리아 대학 도서관의 서가 — 2023년 자료사진, 협력 참여 대학을 뜻하지 않습니다',
+    caption: '나이지리아 대학 도서관 서가 · 2023년 자료사진', author: 'Hussy~B',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Library_books_1.jpg',
+    licenseName: '저작자가 제한 없이 이용 허락 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/deed.ko',
+  },
+  gyeongju: {
+    url: '/images/news/bulguksa.webp', width: 1200, height: 829,
+    alt: '경주 불국사의 회랑과 연등 — 2022년 자료사진',
+    caption: '경주 불국사 회랑 · 2022년 자료사진', author: 'Bernard Gagnon',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Bulguksa_04.jpg',
+    licenseName: '저작자가 제한 없이 이용 허락 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/deed.ko',
+  },
   tourism: {
     url: '/images/news/tour-guide.webp', width: 1134, height: 759,
     alt: '영국의 관광 안내자가 방문객에게 설명하는 모습 — 2004년 자료사진',
