@@ -116,7 +116,7 @@ it.each(['짧은 문단', '긴 문단'])('작성 경로는 직무 목록을 자�
     return JSON.stringify({ supported: true, originalValue: true, issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
         .map(key => [key, { passed: true, reason: '경험과 관심 직무의 활동을 비교할 구체적인 기준을 제안했습니다.', excerptIndex: index }])),
-      checks: [0, 1, 2, 3, 4].map(part => ({ part, supported: true, quoteIndex: 0 })) });
+      checks: [0, 0, 2, 1, 2].map((quoteIndex, part) => ({ part, supported: true, quoteIndex })) });
   });
   const result = await generateVerifiedNews({ title: '공식 직무 소개', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972905',
     body: sourceBody, hash: '원문 식별값', publishedAt: '2026-10-06' });

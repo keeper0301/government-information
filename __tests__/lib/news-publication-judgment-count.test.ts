@@ -51,21 +51,26 @@ it.each([3, 4, 6])('본문 %i부분은 핵심 안내를 포함한 정확한 판�
   await expect(generateVerifiedNews(source)).resolves.toHaveProperty('editorialReview');
   const checks = mock.call.mock.calls[1][0].responseSchema.schema.properties.checks;
   expect(checks.minItems).toBe(count + 1); expect(checks.maxItems).toBe(count + 1);
-  expect(checks.items.properties.part.enum).toEqual(parts);
-  expect(checks.items.properties.quoteIndex.enum).toEqual([-1, 0]);
+  expect(checks.items.anyOf.map((item: { properties: { part: { enum: number[] } } }) => item.properties.part.enum[0])).toEqual(parts);
+  expect(checks.items.anyOf.every((item: { properties: { quoteIndex: { enum: number[] } } }) =>
+    JSON.stringify(item.properties.quoteIndex.enum) === JSON.stringify([-1, 0]))).toBe(true);
   expect(mock.call).toHaveBeenCalledTimes(2);
 });
 // Value: protects=여러 원문 근거의 전체 번호 목록과 마지막 근거 연결 계약;
 // fails_when=첫 원문 번호만 허용하거나 마지막 근거 번호를 누락함;
 // why_new=기존 형식 검사는 원문 근거 하나만 사용함; seam=none
-it.each([2, 3])('원문 근거 %i개의 모든 번호를 허용하고 마지막 근거로 사실을 대조한다', async count => {
+it.each([2, 3])('원문 근거 %i개 중 본문에 연결한 마지막 근거로 사실을 대조한다', async count => {
   const quotes = [body, '지원 확정 여부는 담당 기관이 따로 판단합니다.', '신청 대상이라는 설명과 실제 지급 결과는 구분됩니다.'].slice(0, count);
   const review = judgment([0, 1, 2, 3, 4]);
   review.checks.forEach(check => { check.quoteIndex = count - 1; });
-  mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify(review));
+  const linked = { ...draft, sections: draft.sections.map(section => ({ ...section, quoteIndex: count - 1 })) };
+  mock.call.mockResolvedValueOnce(JSON.stringify(linked)).mockResolvedValueOnce(JSON.stringify(review));
   await expect(generateVerifiedNews({ ...source, body: quotes.join('\n') })).resolves.toHaveProperty('editorialReview');
   const checks = mock.call.mock.calls[1][0].responseSchema.schema.properties.checks;
-  expect(checks.items.properties.quoteIndex.enum).toEqual([-1, ...quotes.map((_, index) => index)]);
+  expect(checks.items.anyOf[0].properties.quoteIndex.enum).toEqual([-1, ...quotes.map((_, index) => index)]);
+  expect(checks.items.anyOf[1].properties.quoteIndex.enum).toEqual([-1, count - 1]);
+  const example = JSON.parse(mock.call.mock.calls[1][0].prompt.split('검사 응답 형식: ')[1]);
+  expect(example.checks.slice(1).map((check: { quoteIndex: number }) => check.quoteIndex)).toEqual(draft.sections.map(() => count - 1));
   expect(mock.call).toHaveBeenCalledTimes(2);
 });
 it.each([[0, 1, 2, 3], [0, 1, 2, 3, 3], [0, 1, 2, 3, 5]])('형식 우회한 누락·중복·범위 밖 판정은 서버에서 보류한다: %j', async (...parts) => {
