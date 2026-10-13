@@ -183,12 +183,12 @@ export async function getNewsRatio(): Promise<{
   blog: number;
   newsIndexable: number;
   ratio: number; // newsIndexable / 전체 (0~1)
-  // 2026-05-30 P2 — newsIndexable 중 ai_commentary 채워진 비율 (백필 cron 진행률).
-  // review mode off 직전 사장님 점검 신호. 1.0 도달 = sitemap 100% 진입 가능.
+  // summary+classified_at가 있는 비-press 뉴스 중 ai_commentary가 채워진 비율.
+  // 백필 진행률이며 사람 검수·현재 사이트맵 포함·Google 승인을 뜻하지 않는다.
   commentaryBackfillRatio: number;
 }> {
   const admin = createAdminClient();
-  const [w, l, b, n, nc] = await Promise.all([
+  const [w, l, b, n, candidates] = await Promise.all([
     admin.from("welfare_programs").select("id", { count: "exact", head: true }),
     admin.from("loan_programs").select("id", { count: "exact", head: true }),
     admin.from("blog_posts").select("id", { count: "exact", head: true }),
@@ -204,19 +204,30 @@ export async function getNewsRatio(): Promise<{
       .select("id", { count: "exact", head: true })
       .neq("category", "press")
       .not("summary", "is", null)
-      .not("classified_at", "is", null)
-      .not("ai_commentary", "is", null),
+      .not("classified_at", "is", null),
   ]);
+  // Supabase returns errors in the result; null counts are not verified zeroes.
+  if ([w, l, b, n, candidates].some(result => result.error || result.count === null || !Number.isSafeInteger(result.count) || result.count! < 0)) {
+    throw new Error("AdSense 콘텐츠 통계 조회 실패");
+  }
   const welfare = w.count ?? 0;
   const loan = l.count ?? 0;
   const blog = b.count ?? 0;
   const newsIndexable = n.count ?? 0;
-  const newsWithCommentary = nc.count ?? 0;
+  const newsCandidates = candidates.count ?? 0;
   const total = welfare + loan + blog + newsIndexable;
   const ratio = total > 0 ? newsIndexable / total : 0;
   const commentaryBackfillRatio =
-    newsIndexable > 0 ? newsWithCommentary / newsIndexable : 0;
+    newsCandidates > 0 ? newsIndexable / newsCandidates : 0;
   return { welfare, loan, blog, newsIndexable, ratio, commentaryBackfillRatio };
+}
+
+// Monitoring must keep unrelated signals alive. NaN means unavailable, never a verified zero.
+export async function getNewsRatioForMonitoring(): Promise<Awaited<ReturnType<typeof getNewsRatio>>> {
+  try { return await getNewsRatio(); }
+  catch {
+    return { welfare: 0, loan: 0, blog: 0, newsIndexable: 0, ratio: Number.NaN, commentaryBackfillRatio: Number.NaN };
+  }
 }
 
 // 2026-05-30 — health-alert silent → audible 세 번째 단계. 도시별 null_date 누적이

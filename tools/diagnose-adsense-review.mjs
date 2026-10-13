@@ -111,7 +111,7 @@ for (const url of locs.filter(url => new URL(url).pathname.startsWith('/news')))
   const path = new URL(url).pathname;
   const news = await fetchText(path);
   if (news.status !== 200 || !isReviewedNewsPage(path, news.text)) {
-    failures.push(`미검수 또는 검색 제외 뉴스가 사이트맵에 포함됨: ${path}`);
+    failures.push(`뉴스 공개·확인 표시 또는 검색 설정 점검 실패: ${path}`);
   }
 }
 
@@ -127,7 +127,7 @@ for (const check of PAGE_CHECKS) {
   lines.push(`${check.path}.http=${page.status}`);
   lines.push(`${check.path}.robots=${robotsMeta || "missing"}`);
   if (page.status !== 200) failures.push(`${check.path} HTTP ${page.status}`);
-  if (check.path === '/news' && !robotsMeta.includes('noindex') && !isReviewedNewsPage(check.path, page.text)) failures.push('검수 없는 뉴스 목록이 검색에 공개됨');
+  if (check.path === '/news' && !robotsMeta.includes('noindex') && !isReviewedNewsPage(check.path, page.text)) failures.push('뉴스 목록의 공개 표시 점검 실패 (검수 품질은 별도 확인)');
   if (check.robots && robotsMeta !== check.robots) failures.push(`${check.path} robots expected ${check.robots}, got ${robotsMeta || "missing"}`);
   for (const phrase of RISKY_PHRASES) {
     if (text.includes(phrase)) failures.push(`${check.path} risky phrase: ${phrase}`);
