@@ -136,7 +136,8 @@ export async function runAutoIngest(): Promise<IngestResult> {
           ministry: c.ministry,
           sourceUrl: newsSourceUrl({ id: c.id, slug: c.slug }),
         });
-        classified.apply_url = fallback.url;
+        // 참고 출처를 신청 주소로 등록하지 않는다. 미확인 후보는 검토 대기한다.
+        classified.apply_url = fallback.source === "source_url" ? null : fallback.url;
       }
 
       const upsert = buildCandidateUpsert({ newsId: c.id, result: classified });

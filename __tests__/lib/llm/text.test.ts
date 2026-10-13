@@ -60,6 +60,22 @@ describe("callLLM", () => {
     await expect(callLLM({ prompt: "t" })).rejects.toThrow(/OpenAI API 오류 429/);
   });
 
+  it('응답 본문을 읽는 중 시간 초과가 나도 빈 응답으로 숨기지 않는다', async () => {
+    const deadline = new DOMException('검사용-비밀값', 'TimeoutError');
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort(deadline));
+    global.fetch = vi.fn(async () => ({ ...okRes(''), json: async () => {
+      throw new DOMException('검사용-비밀값', 'AbortError');
+    } })) as never;
+    await expect(callLLM({ prompt: '검사', timeoutMs: 20000 })).rejects.toThrow('OpenAI 응답 타임아웃 (20000ms)');
+  });
+  it.each([
+    [new SyntaxError('검사용-비밀값'), 'OpenAI 응답 본문 형식 오류'],
+    [new TypeError('검사용-비밀값'), 'OpenAI 응답 본문 읽기 실패'],
+  ])('본문 읽기 오류를 빈 응답과 구분하고 원래 문장은 전달하지 않는다', async (error, expected) => {
+    global.fetch = vi.fn(async () => ({ ...okRes(''), json: async () => { throw error; } })) as never;
+    await expect(callLLM({ prompt: '검사' })).rejects.toThrow(expected);
+  });
+
   it("apiKey 누락 → throw", async () => {
     delete process.env.OPENAI_API_KEY;
     await expect(callLLM({ prompt: "t" })).rejects.toThrow(/OPENAI_API_KEY/);
@@ -73,6 +89,16 @@ describe("callLLM", () => {
     }) as never;
     await callLLM({ prompt: "t", jsonMode: true });
     expect(body.response_format).toEqual({ type: "json_object" });
+  });
+  it("필수 응답 형식을 지정하면 일반 자료 형식보다 우선해 서버에 전달한다", async () => {
+    let body: Record<string, unknown> = {};
+    global.fetch = vi.fn(async (_u: unknown, i: RequestInit) => {
+      body = JSON.parse(i.body as string); return okRes('{"quoteIndex":0}');
+    }) as never;
+    const schema = { type: 'object', properties: { quoteIndex: { type: 'integer' } }, required: ['quoteIndex'], additionalProperties: false };
+    await callLLM({ prompt: '근거 번호를 빠뜨리지 마세요.', jsonMode: true,
+      responseSchema: { name: 'required_evidence', schema } });
+    expect(body.response_format).toEqual({ type: 'json_schema', json_schema: { name: 'required_evidence', strict: true, schema } });
   });
 });
 

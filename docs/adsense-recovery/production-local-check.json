@@ -1,0 +1,34 @@
+[
+  {
+    "address": "/",
+    "status": 200,
+    "noindex": false,
+    "pending": false,
+    "guideBody": false,
+    "guideLocations": 0
+  },
+  {
+    "address": "/guides",
+    "status": 200,
+    "noindex": false,
+    "pending": false,
+    "guideBody": false,
+    "guideLocations": 0
+  },
+  {
+    "address": "/guides/documents-before-government-benefit",
+    "status": 200,
+    "noindex": true,
+    "pending": true,
+    "guideBody": false,
+    "guideLocations": 0
+  },
+  {
+    "address": "/sitemap.xml",
+    "status": 200,
+    "noindex": false,
+    "pending": false,
+    "guideBody": false,
+    "guideLocations": 0
+  }
+]

@@ -253,6 +253,7 @@ export async function POST(request: NextRequest) {
       sourceProgramType: result.sourceProgramType,
       qualityReview: result.qualityReview,
       externalPublishHeld: result.externalPublishHeld,
+      wordpress: result.wordpress,
       url: result.dryRun ? null : `/blog/${result.slug}`,
       // dryRun 일 때만 본문·FAQ·meta 도 응답에 포함 (검토용)
       ...(result.dryRun && {
@@ -333,6 +334,7 @@ export async function GET(request: NextRequest) {
         url: `/blog/${s.value.slug}`,
         qualityReview: s.value.qualityReview,
         externalPublishHeld: s.value.externalPublishHeld,
+        wordpress: s.value.wordpress,
         // Gemini 비용 추적 (5/17, autonomous hub 카드)
         usage: s.value.generated._usage ?? null,
         // 어느 LLM 으로 생성됐는지 — "openai" 면 Gemini 실패로 비상 백업 발동 (2026-06-05)
@@ -368,6 +370,7 @@ export async function GET(request: NextRequest) {
       skipped: r.ok ? false : r.skipped,
       slug: r.ok ? r.slug : null,
       externalPublishHeld: r.ok ? r.externalPublishHeld : null,
+      wordpress: r.ok ? r.wordpress : null,
       error: r.ok ? null : String(r.error).slice(0, 160),
       // Gemini token 누적 (autonomous hub Gemini 지출 카드)
       usage: r.ok ? r.usage : null,

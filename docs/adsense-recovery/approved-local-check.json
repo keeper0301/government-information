@@ -1,0 +1,69 @@
+{
+  "checkedAt": "2026-10-05T04:51:41.596Z",
+  "environment": "배포용 파일을 사용한 로컬 서버와 기존 공개 자료 조회 설정",
+  "pages": [
+    {
+      "slug": "documents-before-government-benefit",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 1,
+      "bodyCharacters": 760,
+      "adEligible": "false",
+      "schemaArticles": 1
+    },
+    {
+      "slug": "small-business-policy-fund-mistakes",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 2,
+      "bodyCharacters": 748,
+      "adEligible": "false",
+      "schemaArticles": 1
+    },
+    {
+      "slug": "youth-rent-checklist-2026",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 4,
+      "bodyCharacters": 1112,
+      "adEligible": "false",
+      "schemaArticles": 1
+    },
+    {
+      "slug": "geunjang-earned-income-tax-credit-check",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 1,
+      "bodyCharacters": 897,
+      "adEligible": "false",
+      "schemaArticles": 1
+    },
+    {
+      "slug": "policy-duplicate-benefit-limits",
+      "status": 200,
+      "ready": true,
+      "issues": [],
+      "officialSourceCount": 1,
+      "bodyCharacters": 980,
+      "adEligible": "false",
+      "schemaArticles": 1
+    }
+  ],
+  "sitemapGuides": [
+    "youth-rent-checklist-2026",
+    "small-business-policy-fund-mistakes",
+    "documents-before-government-benefit",
+    "policy-duplicate-benefit-limits",
+    "geunjang-earned-income-tax-credit-check"
+  ],
+  "pending": {
+    "status": 200,
+    "robots": "noindex, follow",
+    "bodyVisible": false
+  },
+  "ready": true
+}

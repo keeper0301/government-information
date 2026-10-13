@@ -85,6 +85,9 @@ export async function updateSession(request: NextRequest) {
     });
   }
 
+  // 공개 뉴스 목록은 세션 확인이 필요 없습니다. 상세 숨김·계정 보호는 아래에서 유지합니다.
+  if (request.nextUrl.pathname === "/news") return supabaseResponse;
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

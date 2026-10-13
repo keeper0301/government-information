@@ -20,6 +20,7 @@ import {
   LOAN_EXCLUDED_FILTER,
 } from '@/lib/listing-sources';
 import { safeJsonLd } from '@/lib/json-ld-safe';
+import { reviewModeNoindexRobots } from '@/lib/adsense-review-mode';
 
 // 6시간 ISR — 정책 추가/마감 빈도 고려. revalidate-on-demand 까지 가지 않아도 충분.
 export const revalidate = 21600;
@@ -49,6 +50,8 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // Template hubs are outside the curated review-mode sitemap.
+    robots: reviewModeNoindexRobots(),
     alternates: { canonical: `https://www.keepioo.com/eligibility/${slug}` },
     openGraph: {
       title,

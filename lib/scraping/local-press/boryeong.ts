@@ -7,6 +7,7 @@
 // 본문: 보도자료 상세조회 table 내 colspan="4" 본문 td
 // ============================================================
 
+import { load } from "cheerio";
 import {
   createPressCollector,
   decodeBasicEntities,
@@ -55,6 +56,19 @@ function makeDetailUrl(seq: string): string {
 export function parseListPage(html: string): PressNewsItem[] {
   const items: PressNewsItem[] = [];
   const seen = new Set<string>();
+  const $ = load(html);
+  // 새 목록은 시청 내부의 안정적인 상세 주소를 제공합니다.
+  $('a[href*="view.do?mgtno="]').each((_, element) => {
+    const link = $(element);
+    const url = new URL(link.attr("href")!, LIST_URL);
+    const seq = url.searchParams.get("mgtno");
+    const title = link.text().replace(/\s+/g, " ").trim();
+    const date = link.closest("tr").find("td.date").text().trim();
+    if (!seq || title.length < 5 || seen.has(seq)) return;
+    seen.add(seq);
+    items.push({ seq, title, publishedDate: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null, sourceUrl: url.href });
+  });
+  if (items.length) return items;
 
   let match: RegExpExecArray | null;
   const rowRe = new RegExp(ROW_REGEX.source, "g");
@@ -96,6 +110,7 @@ export function parseDetailBody(html: string): string | null {
   if (!bodyHtml) return null;
 
   const body = stripHtml(bodyHtml);
+  if (body.length < 250) return null;
   const text = [title, datePrefix, body].filter(Boolean).join("\n").trim();
   if (text.length < 250 || !/[가-힣]/.test(text)) return null;
   return text.slice(0, 20000);

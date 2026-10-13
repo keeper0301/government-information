@@ -111,6 +111,12 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     summary: "정책 등록, 보도자료, 블로그와 SNS 발행",
     items: [
       {
+        href: "/admin/policy-guidance",
+        label: "정책 원문·해설 검수",
+        icon: "🔍",
+        description: "공고 근거 대조와 설명 초안 검수",
+      },
+      {
         href: "/admin/press-ingest",
         label: "보도자료 후보",
         icon: "📰",

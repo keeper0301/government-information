@@ -263,7 +263,7 @@ export default async function LoanPage({ searchParams }: Props) {
           title="정책자금은 금리보다 ‘심사에서 막히는 지점’을 먼저 확인합니다"
           description="정책알리미는 대출·지원금 공고를 낮은 금리 홍보 문구로만 보지 않습니다. 업종, 용도, 체납, 보증 절차를 함께 봐야 실제 실행 가능성이 생깁니다."
           checklist={loanReviewChecklist}
-          guideHref="/guides/small-business-policy-fund-mistakes"
+          guideHref="/guides"
         />
       </section>
 

@@ -86,8 +86,15 @@ describe("buildSearchConsoleAlerts", () => {
       position: 50,
     });
     expect(out.alerts.find((a) => a.key === "sc_low_ctr")).toBeUndefined();
-    // 클릭 0 alert 는 별개로 떠야 함
-    expect(out.alerts.find((a) => a.key === "sc_no_clicks")).toBeDefined();
+    expect(out.alerts.find((a) => a.key === "sc_no_clicks")).toBeUndefined();
+    expect(out.kpis.no_clicks_sample_sufficient).toBe(false);
+  });
+
+  it("3일 노출 6회·0클릭은 알림 없음, 100회부터 신호로 취급", () => {
+    const tiny = buildSearchConsoleAlerts({ clicks: 0, impressions: 6, ctr: 0, position: 10 });
+    expect(tiny.alerts).toHaveLength(0);
+    const enough = buildSearchConsoleAlerts({ clicks: 0, impressions: 100, ctr: 0, position: 10 });
+    expect(enough.alerts.map((a) => a.key)).toContain("sc_no_clicks");
   });
 
   it("kpis 반올림 — ctr 4자리 / position 2자리", () => {

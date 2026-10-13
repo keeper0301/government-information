@@ -18,6 +18,8 @@ import type { ConsoleCheckResult, ConsoleAlert } from "./types";
 const GA4_API = "https://analyticsdata.googleapis.com/v1beta";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const FETCH_TIMEOUT_MS = 15000;
+// 하루 세션 수가 작으면 극단적인 이탈률이 쉽게 만들어진다.
+const HIGH_BOUNCE_MIN_SESSIONS = 30;
 
 interface GA4MetricValue {
   value?: string;
@@ -111,7 +113,7 @@ export function buildGa4Alerts(input: {
     });
   }
 
-  if (activeUsers > 0 && bounceRate >= 0.9) {
+  if (activeUsers > 0 && sessions >= HIGH_BOUNCE_MIN_SESSIONS && bounceRate >= 0.9) {
     alerts.push({
       key: "ga4_high_bounce",
       message: `GA4 24h 이탈률 ${Math.round(bounceRate * 100)}% (≥90%). 페이지 품질·로딩 속도 점검 필요.`,
@@ -126,6 +128,7 @@ export function buildGa4Alerts(input: {
       active_users: activeUsers,
       sessions,
       bounce_rate: Number(bounceRate.toFixed(3)),
+      bounce_sample_sufficient: sessions >= HIGH_BOUNCE_MIN_SESSIONS,
     },
   };
 }

@@ -40,10 +40,10 @@ describe("ProgramActionCard helpers", () => {
     ).toMatchObject({ label: "마감 D-0", tone: "urgent" });
   });
 
-  it("신청 링크가 있는 상시 정책은 상시 신청으로 표시한다", () => {
+  it("마감일 없는 기관 홈을 상시 신청으로 단정하지 않는다", () => {
     expect(
       buildActionStatus({ applyUrl: "https://example.com", isClosed: false, dday: null }),
-    ).toMatchObject({ label: "상시 신청", tone: "open" });
+    ).toMatchObject({ label: "신청처 확인 필요", tone: "unknown" });
   });
 
   it("신청 링크가 없으면 확인 필요로 표시한다", () => {
@@ -78,7 +78,7 @@ describe("ProgramActionCard rendering", () => {
 
     expect(html).toContain("마감 D-5");
     expect(html).toContain("https://example.com/apply");
-    expect(html).toContain("신청하러 가기");
+    expect(html).toContain("신청 안내 확인");
   });
 
   it("마감된 정책은 직접 신청 링크 대신 신청 방법 검색 링크를 렌더한다", () => {

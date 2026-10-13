@@ -716,6 +716,7 @@ async function publishWithCandidate(
       sourceProgramType: picked.programType,
       qualityReview: null,
       externalPublishHeld: false,
+      wordpress: { status: "not_attempted" as const },
     };
   }
 
@@ -804,6 +805,12 @@ async function publishWithCandidate(
 
   // 네이버 블로그 발행 큐에 자동 enqueue — 실패해도 블로그 발행 자체는 성공으로
   // 처리 (백링크용 부가 작업이 핵심 경로를 막지 않게). UNIQUE 위반은 정상 무시.
+  let wordpress: {
+    status: "published" | "failed" | "held_for_review" | "not_attempted";
+    reason?: string;
+    url?: string;
+    wpPostId?: number;
+  } = { status: "not_attempted" };
   if (inserted?.id && qualityApproved) {
     try {
       await enqueueNaverBlog(inserted.id);
@@ -814,7 +821,7 @@ async function publishWithCandidate(
     // 워드프레스 자동 발행 — 환경변수 설정 시 즉시 발행, 실패해도 핵심 경로 영향 0.
     // 발행 결과 (성공·실패 모두) 는 publisher 가 wordpress_publish_log 에 기록.
     try {
-      await publishToWordPress(inserted.id, {
+      const result = await publishToWordPress(inserted.id, {
         slug,
         title: generated.title,
         meta_description: generated.meta_description,
@@ -822,7 +829,13 @@ async function publishWithCandidate(
         tags: generated.tags ?? null,
         category: generated.category || category,
       });
+      wordpress = result.ok
+        ? { status: "published", url: result.wpPostUrl, wpPostId: result.wpPostId }
+        : result.reason === "held_for_review"
+          ? { status: "held_for_review", url: result.wpPostUrl }
+          : { status: "failed", reason: result.reason };
     } catch (e) {
+      wordpress = { status: "failed", reason: "unexpected_error" };
       console.warn(`[blog-publish] wordpress 발행 실패 (블로그 발행은 성공): ${(e as Error).message}`);
     }
   } else if (inserted?.id) {
@@ -840,5 +853,6 @@ async function publishWithCandidate(
     sourceProgramType: picked.programType,
     qualityReview,
     externalPublishHeld: Boolean(inserted?.id && !qualityApproved),
+    wordpress,
   };
 }

@@ -115,6 +115,8 @@ export function extractDistrict(text: string | null | undefined): DistrictMatch 
         };
       }
     }
+    // 명시된 광역에 없는 옛 구 이름을 다른 광역의 동명 구로 잘못 분류하지 않는다.
+    return null;
   }
 
   // Case 2: 광역 없이 시·군만 → PROVINCES 순서 첫 match. 각 광역 안에서도

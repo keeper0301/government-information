@@ -12,6 +12,7 @@ import {
 export { calcDday } from "@/lib/utils";
 import { calcDday } from "@/lib/utils";
 import { formatSourceName } from "@/lib/source-display";
+import { getPublishedGuide, type EvidenceProgram } from '@/lib/policy/evidence-guide';
 
 // 홈 개인화용 경량 프로필 타입 (user_profiles 에서 select 한 세 필드만)
 export type ProfileLite = {
@@ -92,7 +93,7 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     summaryShort:
       (w as { summary_short?: string | null }).summary_short ?? null,
     uniqueInsight:
-      (w as { unique_insight?: string | null }).unique_insight ?? null,
+      getPublishedGuide(w as unknown as EvidenceProgram)?.sections.map(section => section.text).join('\n') ?? null,
   };
 }
 
@@ -116,7 +117,7 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     summaryShort:
       (l as { summary_short?: string | null }).summary_short ?? null,
     uniqueInsight:
-      (l as { unique_insight?: string | null }).unique_insight ?? null,
+      getPublishedGuide(l as unknown as EvidenceProgram)?.sections.map(section => section.text).join('\n') ?? null,
   };
 }
 

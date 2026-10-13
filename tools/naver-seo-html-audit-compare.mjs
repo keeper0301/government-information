@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { pathToFileURL } from 'node:url';
 // Compare two Naver SEO HTML audit JSON artifacts.
 
 import { readFile, writeFile } from 'node:fs/promises';
@@ -222,7 +223,7 @@ export function printCompareReport(result) {
   if (result.hasWarningIncrease) console.log('WARN: warning signal increased');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let opts;
   try {
     opts = parseArgs(process.argv.slice(2));

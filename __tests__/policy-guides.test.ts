@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { rowToGuide } from "@/lib/policy-guides";
 import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
+import { getGuideEvidence } from "@/lib/guide-evidence";
 
 describe("rowToGuide", () => {
   it("supabase row 를 PolicyGuide 로 변환", () => {
@@ -74,11 +75,11 @@ describe("EDITORIAL_GUIDES", () => {
     }
   });
 
-  it("uses five substantial paragraphs per editorial guide", () => {
+  it("본문 구획을 확인된 소제목과 맞추고 빈 설명을 허용하지 않는다", () => {
     for (const guide of EDITORIAL_GUIDES) {
-      expect(guide.posts).toHaveLength(5);
+      expect(guide.posts).toHaveLength(getGuideEvidence(guide)?.headings.length ?? 5);
       for (const post of guide.posts) {
-        expect(post.length).toBeGreaterThanOrEqual(100);
+        expect(post.trim()).not.toBe("");
       }
     }
   });

@@ -25,6 +25,8 @@ const DEFAULT_SITEMAP_URL = "https://www.keepioo.com/sitemap.xml";
 const MS_PER_DAY = 86_400_000;
 const LOW_CTR_THRESHOLD = 0.005;       // 0.5%
 const LOW_CTR_MIN_IMPRESSIONS = 100;
+// 소수 노출에서 클릭이 0인 것은 색인 차단의 증거가 아니다.
+const NO_CLICKS_MIN_IMPRESSIONS = 100;
 
 interface SearchAnalyticsRow {
   clicks?: number;
@@ -150,7 +152,7 @@ export function buildSearchConsoleAlerts(input: {
   const alerts: ConsoleAlert[] = [];
 
   // 클릭 0 — 색인 제외·robots 차단·도메인 사고 의심
-  if (clicks === 0) {
+  if (clicks === 0 && impressions >= NO_CLICKS_MIN_IMPRESSIONS) {
     alerts.push({
       key: "sc_no_clicks",
       message: `Search Console 최근 3일 클릭 0 (노출 ${impressions}). 색인·robots·도메인 차단 의심.`,
@@ -180,6 +182,7 @@ export function buildSearchConsoleAlerts(input: {
       impressions,
       ctr: Number(ctr.toFixed(4)),
       avg_position: Number(position.toFixed(2)),
+      no_clicks_sample_sufficient: impressions >= NO_CLICKS_MIN_IMPRESSIONS,
     },
   };
 }

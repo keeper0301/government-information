@@ -14,7 +14,8 @@ import { createPressCollector } from "./_factory";
 import { createBbsMsgDetailCollector } from "./_bbs_msg_detail_helper";
 import { fetchSiAttachBody } from "./_si_attach_helper";
 
-const BASE_URL = "https://www.seo.incheon.kr";
+// 2026년 행정구역 개편에 맞춰 서해구의 공식 주소를 사용한다.
+const BASE_URL = "https://www.seohae.go.kr";
 const LIST_URL = `${BASE_URL}/open_content/main/community/news/report.jsp`;
 
 // list 파싱은 bbsMsgDetail 공용 헬퍼 재사용 (bcd·msg_seq 순서 무관 매칭·날짜 window 동일).
@@ -23,9 +24,9 @@ const listHelper = createBbsMsgDetailCollector({
   baseUrl: BASE_URL,
   listPath: "/open_content/main/community/news/report.jsp",
   detailBasePath: "/open_content/main/bbs",
-  cityName: "인천 서구",
+  cityName: "인천 서해구",
   region: "인천",
-  ministry: "인천 서구청",
+  ministry: "인천 서해구청",
   sourceCode: "local-press-seo-incheon",
 });
 
@@ -38,10 +39,10 @@ export async function parseDetailBody(html: string): Promise<string | null> {
 }
 
 export const { scrapeAndInsert: scrapeSeoIncheonAndInsert } = createPressCollector({
-  cityName: "인천 서구",
+  cityName: "인천 서해구",
   region: "인천",
-  ministry: "인천 서구청",
-  sourceOutlet: "인천 서구청",
+  ministry: "인천 서해구청",
+  sourceOutlet: "인천 서해구청",
   sourceCode: "local-press-seo-incheon",
   listUrl: LIST_URL,
   parseListItems: listHelper.parseListItems,

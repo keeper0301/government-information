@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { pathToFileURL } from 'node:url';
 // Naver Search Advisor HTML regression audit.
 // Checks crawler-visible title/description/H1/img-alt issues across sitemap URLs.
 
@@ -306,7 +307,7 @@ function printTextReport(result) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const opts = parseArgs(process.argv.slice(2));
   auditSite(opts)
     .then(async (result) => {

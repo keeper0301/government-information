@@ -38,8 +38,8 @@ export function EligibilityDemoStrip({ compact = false }: { compact?: boolean })
           </h2>
           <p className="text-[15px] leading-[1.8] text-grey-700 mb-5">
             나이·지역·직업·소득·가구 정보를 5문항으로 받아서 마감 임박 정책,
-            신청 전 확인할 서류, 중복 제한 가능성을 함께 정리합니다. 그래서 검수자가
-            봐도 단순 공고 복사 목록이 아니라 사용자의 판단을 돕는 서비스 목적이 바로 드러납니다.
+            신청 전 확인할 서류, 중복 제한 가능성을 함께 정리합니다.
+            관심 있는 정책을 골라 대상 조건과 신청 준비 사항을 살펴볼 수 있습니다.
           </p>
           <div className="flex flex-wrap gap-2 mb-5">
             {demoSteps.map((step) => (

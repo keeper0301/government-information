@@ -1,0 +1,39 @@
+[
+  {
+    "attempt": 1,
+    "ms": 43267,
+    "error": "Error: page.goto: net::ERR_CONNECTION_TIMED_OUT at https://www.cwg.go.kr/www/index.do\nCall log:\n\u001b[2m  - navigating to \"https://www.cwg.go.kr/www/index.do\", waiting until \"domcontentloaded\"\u001b[22m\n"
+  },
+  {
+    "attempt": 2,
+    "ms": 5027,
+    "result": {
+      "city": "강원 철원군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-cheorwon",
+      "errors": []
+    },
+    "bodyLengths": [
+      541
+    ]
+  },
+  {
+    "attempt": 3,
+    "ms": 4502,
+    "result": {
+      "city": "강원 철원군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-cheorwon",
+      "errors": []
+    },
+    "bodyLengths": [
+      541
+    ]
+  }
+]

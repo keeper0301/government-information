@@ -1,3 +1,5 @@
+import { EDITORIAL_PHOTO_URLS } from "@/lib/editorial-news-images";
+
 const FIRST_PARTY_NEWS_THUMBNAIL_HOSTS = new Set([
   "www.korea.kr",
   "korea.kr",
@@ -13,6 +15,9 @@ export function safeNewsThumbnailUrl(
   // 깨진 이미지/ERR_CERT_DATE_INVALID 를 사용자 브라우저에 만들지 않기 위해
   // 외부 언론사 카드·상세는 안정적인 카테고리 placeholder 를 사용한다.
   if (sourceOutlet) return null;
+
+  // 출처와 이용 허가를 확인하여 사이트에 저장한 자료사진만 허용합니다.
+  if (EDITORIAL_PHOTO_URLS.includes(thumbnailUrl)) return thumbnailUrl;
 
   let url: URL;
   try {

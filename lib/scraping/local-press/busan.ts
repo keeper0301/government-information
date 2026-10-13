@@ -4,6 +4,7 @@
 // CMS: /nbtnewsBU/{seq} 직접 link 패턴 (가장 단순).
 // ============================================================
 
+import { load } from "cheerio";
 import {
   createPressCollector,
   decodeBasicEntities,
@@ -13,55 +14,26 @@ import {
 const LIST_URL = "https://www.busan.go.kr/nbtnewsBU";
 const DETAIL_BASE = "https://www.busan.go.kr/nbtnewsBU/";
 
-// 2026-05-26 fix: inner content 가 nested HTML (span/i/img) 으로 625~1038 char.
-// 이전 `[^<]{8,}` 은 nested tag 시 매칭 0 → list 0건 silent fail.
-// lazy + 2000 limit + parseListPage 의 tag strip 으로 정확 추출.
-const LIST_ITEM_REGEX =
-  /<a\s+href="\/nbtnewsBU\/(\d+)[^"]*"[^>]*>([\s\S]{0,2000}?)<\/a>/g;
-
-// 날짜: YYYY-MM-DD 별도 위치
-const DATE_REGEX = /(\d{4}-\d{2}-\d{2})/g;
-
 export function parseListPage(html: string): PressNewsItem[] {
-  const items: Array<Omit<PressNewsItem, "publishedDate"> & { idx: number }> =
-    [];
+  const $ = load(html);
+  const items: PressNewsItem[] = [];
   const seen = new Set<string>();
-  const dates: string[] = [];
-
-  let m: RegExpExecArray | null;
-  const itemRe = new RegExp(LIST_ITEM_REGEX.source, "g");
-  let idx = 0;
-  while ((m = itemRe.exec(html)) !== null) {
-    const seq = m[1];
-    if (seen.has(seq)) continue; // 같은 seq 중복 link 무시
-    // 2026-06-03 fix — anchor inner 통째(썸네일 alt=본문·부서·작성자·전화·날짜·◈본문)를
-    // 제목으로 잡던 버그. 제목은 div.bTitle 만. + decodeBasicEntities(&quot; 등).
-    const bTitle = /<div\s+class="bTitle"[^>]*>([\s\S]*?)<\/div>/i.exec(m[2]);
-    const title = decodeBasicEntities(
-      (bTitle ? bTitle[1] : m[2]).replace(/<[^>]+>/g, " ").replace(/\s+/g, " "),
-    ).trim();
-    if (!title || title.length < 5 || !/[가-힣]/.test(title)) continue;
+  $('a[href^="/nbtnewsBU/"]').each((_, element) => {
+    const link = $(element);
+    const seq = link.attr("href")?.match(/\/nbtnewsBU\/(\d+)/)?.[1];
+    if (!seq || seen.has(seq)) return;
+    const row = link.closest("li, tr");
+    if (row.find(".notice, .board-notice").length) return;
+    const titleNode = link.find(".bTitle").first();
+    const title = (titleNode.length ? titleNode : link).text().replace(/\s+/g, " ").trim();
+    if (title.length < 5 || !/[가-힣]/.test(title)) return;
+    // 각 카드의 작성정보에서 날짜를 읽습니다. 다른 기사 날짜와 섞이지 않습니다.
+    const dateText = link.find(".writer").text() || row.text() || link.next("span").text();
+    const publishedDate = dateText.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? null;
     seen.add(seq);
-    items.push({
-      idx,
-      seq,
-      title,
-      sourceUrl: `${DETAIL_BASE}${seq}`,
-    });
-    idx += 1;
-  }
-
-  const dateRe = new RegExp(DATE_REGEX.source, "g");
-  while ((m = dateRe.exec(html)) !== null) {
-    dates.push(m[1]);
-  }
-
-  return items.map((it) => ({
-    seq: it.seq,
-    title: it.title,
-    publishedDate: dates[it.idx] ?? null,
-    sourceUrl: it.sourceUrl,
-  }));
+    items.push({ seq, title, publishedDate, sourceUrl: DETAIL_BASE + seq });
+  });
+  return items;
 }
 
 // 2026-06-02 fix — 본문은 boardView 의 `<dt>부제목</dt><dd>...◈ 개조식 본문...</dd>` 에 존재.

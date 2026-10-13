@@ -167,4 +167,21 @@ describe("지역 수집 순환과 시간 예산", () => {
     expect((await invalid.json()).error).toContain("unknown local press city");
     expect(mocks.admin).not.toHaveBeenCalled();
   });
+  it("예약된 여섯 수집 묶음이 전체 지역을 중복 없이 실행한다", async () => {
+    for (let shard = 0; shard < 6; shard++) {
+      const response = await GET(request(`?shard=${shard}`));
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.summary.shard).toBe(String(shard));
+      expect(body.summary.budget_skipped_cities).toBe(0);
+    }
+    expect(mocks.calls).toHaveLength(185);
+    expect(new Set(mocks.calls).size).toBe(185);
+  });
+  it("잘못된 묶음이나 지역과 묶음의 혼합 요청을 실행하지 않는다", async () => {
+    for (const query of ["?shard=6", "?shard=-1", "?shard=abc", "?shard=0&city=key-1"]) {
+      expect((await GET(request(query))).status).toBe(500);
+    }
+    expect(mocks.calls).toHaveLength(0);
+  });
 });

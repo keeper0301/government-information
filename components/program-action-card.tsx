@@ -37,9 +37,9 @@ export function buildActionStatus(input: {
       helper: "마감이 가까워요. 자격과 서류를 먼저 확인하세요.",
     };
   }
-  if (input.applyUrl) {
+  if (input.applyUrl && isDeepLink(input.applyUrl)) {
     return {
-      label: input.dday === null ? "상시 신청" : "신청 가능",
+      label: input.dday === null ? "신청 기간 확인 필요" : "신청 기간 안내",
       tone: "open",
       helper: "공식 신청 페이지로 이동하기 전 대상 조건을 확인하세요.",
     };
@@ -84,7 +84,7 @@ export function ProgramActionCard({
 }: Props) {
   const status = buildActionStatus({ applyUrl, isClosed, dday });
   const programTable = kind === "welfare" ? "welfare_programs" : "loan_programs";
-  const applyLabel = kind === "loan" ? "신청하러 가기" : "신청하기";
+  const applyLabel = "신청 안내 확인";
   const sourceName = source || "공식 기관";
   const fallbackSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
     `${sourceName} ${title} 신청`,
@@ -122,11 +122,11 @@ export function ProgramActionCard({
             <div className="rounded-xl bg-white/80 p-3 ring-1 ring-grey-100">
               <dt className="text-[12px] font-bold text-grey-500">신청 링크</dt>
               <dd className="mt-1 text-[14px] font-bold text-grey-900">
-                {applyUrl ? (isDeepLink(applyUrl) ? "공식 신청 바로가기" : "기관 홈페이지 확인") : "검색으로 확인"}
+                {applyUrl ? (isDeepLink(applyUrl) ? "신청 안내 링크" : "기관 홈페이지 확인") : "검색으로 확인"}
               </dd>
             </div>
             <div className="rounded-xl bg-white/80 p-3 ring-1 ring-grey-100">
-              <dt className="text-[12px] font-bold text-grey-500">마지막 확인</dt>
+              <dt className="text-[12px] font-bold text-grey-500">자료 갱신일</dt>
               <dd className="mt-1 text-[14px] font-bold text-grey-900">
                 {formatActionDate(updatedAt)}
               </dd>
@@ -147,7 +147,7 @@ export function ProgramActionCard({
                   : "bg-grey-900 text-white hover:bg-grey-800"
               }`}
             >
-              {isDeepLink(applyUrl) ? applyLabel : `${sourceName} 홈페이지 방문`}
+              {isDeepLink(applyUrl) ? applyLabel : `기관 홈페이지 (${new URL(applyUrl).hostname})`}
             </ApplyClickTracker>
           ) : (
             <a

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 import type { User } from "@supabase/supabase-js";
 
 // 로그인 상태에 따라 다른 UI를 보여주는 컴포넌트
@@ -28,12 +29,14 @@ export function UserMenu({
 }: UserMenuProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasSupabaseAnonEnv);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // 현재 로그인 상태 확인 + 로그인/로그아웃 이벤트 구독
   useEffect(() => {
+    // Optional authentication must not crash the public reading surface in local/CI.
+    if (!hasSupabaseAnonEnv()) return;
     const supabase = createClient();
     // 최초 렌더 시 현재 유저 조회
     supabase.auth.getUser().then(({ data }) => {

@@ -1,0 +1,3764 @@
+[
+  {
+    "key": "suncheon",
+    "result": {
+      "city": "순천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-suncheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "순천시, 명예동물보호관 역량 강화 교육…현장대응력 높인다",
+        "source_url": "http://www.suncheon.go.kr/kr/news/0006/0001/?mode=view&seq=72068",
+        "length": 640
+      }
+    ]
+  },
+  {
+    "key": "daejeon",
+    "result": {
+      "city": "대전광역시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-daejeon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "incheon",
+    "result": {
+      "city": "인천광역시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-incheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "민선 9기 100일, 시민 100명에게 묻습니다",
+        "source_url": "https://www.incheon.go.kr/IC010205/view?repSeq=DOM_0000000015694199&curPage=1",
+        "length": 843
+      }
+    ]
+  },
+  {
+    "key": "gwangju",
+    "result": {
+      "city": "광주광역시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "′이게 되네′ 민선 8기 광주시 빛나는 순간들…군공항-반도체 양손에…기회도시 광주 도약",
+        "source_url": "https://www.gwangju.go.kr/boardView.do?pageId=www789&boardId=BD_0000000027&seq=22219",
+        "length": 5630
+      }
+    ]
+  },
+  {
+    "key": "seoul",
+    "result": {
+      "city": "서울특별시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seoul",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "busan",
+    "result": {
+      "city": "부산광역시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2025-09-02",
+      "sourceCode": "local-press-busan",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "hwaseong",
+    "result": {
+      "city": "화성특례시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hwaseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "화성특례시, 궁평오솔로캠핑장 임시개장... 체류형 관광 기반 확대",
+        "source_url": "https://www.hscity.go.kr/www/user/bbs/BD_selectBbs.do?q_bbsCode=1051&q_bbscttSn=20261002145604010",
+        "length": 922
+      }
+    ]
+  },
+  {
+    "key": "cheongju",
+    "result": {
+      "city": "청주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-cheongju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "청주시 기업애로해소지원단, ㈜본시스와 현장대화",
+        "source_url": "https://www.cheongju.go.kr/www/selectBbsNttView.do?key=23485&bbsNo=40&nttNo=272536",
+        "length": 593
+      }
+    ]
+  },
+  {
+    "key": "yongin",
+    "result": {
+      "city": "용인특례시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-04",
+      "sourceCode": "local-press-yongin",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "이상일 용인특례시장, 함평군 대표단과 SK하이닉스 용인 반도체클러스터 현장 찾아 반도체 산단 조성 선진 사례...",
+        "source_url": "https://www.yongin.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1020&q_bbscttSn=20261004174335317",
+        "length": 2015
+      }
+    ]
+  },
+  {
+    "key": "goyang",
+    "result": {
+      "city": "고양특례시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-goyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "고양시, 제6대 오후석 제2부시장 취임",
+        "source_url": "https://www.goyang.go.kr/news/user/bbs/BD_selectBbs.do?q_bbsCode=1090&q_estnColumn1=All&q_bbscttSn=20261001154526899",
+        "length": 1146
+      }
+    ]
+  },
+  {
+    "key": "jeonju",
+    "result": {
+      "city": "전주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-jeonju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "전주시 치매안심센터, 대한적십자사와 함께 ‘치매안심이웃+’ 온정 나눔",
+        "source_url": "https://www.jeonju.go.kr/planweb/board/view.9is?dataUid=9be517a8a0cba6ef01a0f12bbfd56c24&contentUid=ff8080818990c349018b041a87fe3960&boardUid=ff8080818b5bc5cf018ba8ca7216641f",
+        "length": 760
+      }
+    ]
+  },
+  {
+    "key": "ulsan",
+    "result": {
+      "city": "울산광역시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-ulsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2027년도 국가예산 확보·지역현안 해결 협력 강화",
+        "source_url": "https://www.ulsan.go.kr/u/rep/bbs/view.ulsan?bbsId=BBS_0000000000000027&dataId=184291&mId=001004003001000000",
+        "length": 1481
+      }
+    ]
+  },
+  {
+    "key": "pohang",
+    "result": {
+      "city": "포항시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-pohang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "포항 오천읍에서 경북 착한가게 5,000호 탄생…따뜻한 나눔 이어져",
+        "source_url": "https://www.pohang.go.kr/news/board/post/view.do?bcIdx=644&mid=0102000000&idx=1021250",
+        "length": 815
+      }
+    ]
+  },
+  {
+    "key": "paju",
+    "result": {
+      "city": "파주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-paju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "파주시 10월 2일 보도자료입니다.",
+        "source_url": "https://www.paju.go.kr/news/user/board/BD_board.view.do?bbsCd=1023&seq=20261002081722902",
+        "length": 459
+      }
+    ]
+  },
+  {
+    "key": "namyangju",
+    "result": {
+      "city": "남양주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-06-26",
+      "sourceCode": "local-press-namyangju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "남양주시, 제76주년 6·25전쟁 기념식 개최… “잊지 않겠습니다, 호국영웅의 희생”",
+        "source_url": "https://www.nyj.go.kr/www/selectBbsNttView.do?key=2498&bbsNo=68&nttNo=543924",
+        "length": 583
+      }
+    ]
+  },
+  {
+    "key": "gimhae",
+    "result": {
+      "city": "김해시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gimhae",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "김해시, 어르신 주거 불편 돕는 ‘정성껏 해드림센터’ 운영",
+        "source_url": "https://www.gimhae.go.kr/03360/00023/00025.web?gcode=1172&amode=view&idx=2594525",
+        "length": 1060
+      }
+    ]
+  },
+  {
+    "key": "gyeongju",
+    "result": {
+      "city": "경북 경주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gyeongju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "경주시, 파리서 ‘천년 신라’ 알린다… 석굴암 특별전 개막",
+        "source_url": "https://www.gyeongju.go.kr/news/page.do?pageNo=1&pagePrvNxt=1&pageRef=0&pageOrder=0&step=258&parm_bod_uid=336374&srchVoteType=-1&parm_mnu_uid=0&srchEnable=1&srchBgpUid=-1&srchKeyword=&srchSDate=&srchColumn=&srchEDate=&mnu_uid=1336&",
+        "length": 1045
+      }
+    ]
+  },
+  {
+    "key": "gimcheon",
+    "result": {
+      "city": "경북 김천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-gimcheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "보도자료(9. 21.)",
+        "source_url": "https://www.gc.go.kr/portal/bbs/view.do?bIdx=4536188&ptIdx=1944&mId=1203060000",
+        "length": 1146
+      }
+    ]
+  },
+  {
+    "key": "yeongcheon",
+    "result": {
+      "city": "경북 영천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-yeongcheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "영천시, 2027년 교육경비보조금 심의위원 - 2027년 교육경비보조금 등 24억 8천만...",
+        "source_url": "https://www.yc.go.kr/news/ycNews/list.do?searchCategory=1&mId=0200000000#ycnews-29833",
+        "length": 690
+      }
+    ]
+  },
+  {
+    "key": "gumi",
+    "result": {
+      "city": "경북 구미시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-gumi",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "구미시 '베테랑 팀장', 행정혁신 모범사례로 자리매김",
+        "source_url": "https://www.gumi.go.kr/portal/board/post/view.do?bcIdx=211&mid=0504020000&idx=842983",
+        "length": 1305
+      }
+    ]
+  },
+  {
+    "key": "iksan",
+    "result": {
+      "city": "익산시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-iksan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "익산의 오늘을 만든 시민, 새로운 미래도 함께",
+        "source_url": "http://www.iksan.go.kr/board/post/view.do?boardUid=ff80808199dd1d7d0199e1532f0c0a24&menuUid=ff80808198eafcbd019902ab80c32c06&postUid=4028a6119fd50cff01a0fa6360992a48",
+        "length": 1961
+      }
+    ]
+  },
+  {
+    "key": "yeongju",
+    "result": {
+      "city": "경북 영주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yeongju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026. 10. 2.(금) 보도자료",
+        "source_url": "https://www.yeongju.go.kr/open_content/main/page.do?pageNo=1&pagePrvNxt=1&pageRef=0&pageOrder=0&step=258&parm_bod_uid=1217569&srchVoteType=-1&srchEnable=-1&srchBgpUid=-1&srchKeyword=&srchSDate=1990-01-01&srchColumn=&srchEDate=2100-01-01&mnu_uid=1524&",
+        "length": 522
+      }
+    ]
+  },
+  {
+    "key": "andong",
+    "result": {
+      "city": "경북 안동시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-andong",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "sangju",
+    "result": {
+      "city": "경북 상주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-sangju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "보도자료(10. 2.)",
+        "source_url": "https://www.sangju.go.kr/page/10330/10640.tc?pageDtlOrdrNo=1&boardNo=2000144320&boardMngNo=407&importUrl=%2Fboard%2Fview.tc",
+        "length": 5401
+      }
+    ]
+  },
+  {
+    "key": "gyeonggi",
+    "result": {
+      "city": "경기도",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-gyeonggi",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "경기도, 용인 SK하이닉스 가동 전 수질 선제 점검",
+        "source_url": "https://gnews.gg.go.kr/briefing/brief_gongbo_view.do?BS_CODE=s017&number=71641&subject_Code=BO01",
+        "length": 2539
+      }
+    ]
+  },
+  {
+    "key": "sejong",
+    "result": {
+      "city": "세종특별자치시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-sejong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "장애인-비장애인 체육으로 하나되는 소통의 장 열려",
+        "source_url": "https://www.sejong.go.kr/bbs/R0079/view.do?mno=sub02_0401&nttId=B000000162635Of1mQ3f",
+        "length": 632
+      }
+    ]
+  },
+  {
+    "key": "jeonbuk",
+    "result": {
+      "city": "전북특별자치도",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-jeonbuk",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "국가가 설립·운영하는  의학전문대학원, 남원에 세운다",
+        "source_url": "https://www.jeonbuk.go.kr/board/view.jeonbuk?boardId=BBS_0000090&menuCd=DOM_000001101000000000&dataSid=671162",
+        "length": 1823
+      }
+    ]
+  },
+  {
+    "key": "daegu",
+    "result": {
+      "city": "대구광역시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대구시, 친환경차 보급에 힘 싣는다… 추석 직후 1,691대 추가 지원",
+        "source_url": "http://info.daegu.go.kr/newshome/mtnmain.php?mtnkey=articleview&mkey=scatelist&mkey2=2&aid=278992",
+        "length": 1235
+      }
+    ]
+  },
+  {
+    "key": "gyeongnam",
+    "result": {
+      "city": "경상남도",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-gyeongnam",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“지역에 꼭 필요한 집을 짓는다” 경남도, 특화 공공임대주택 공모 ‘맞춤 전략’ 가동",
+        "source_url": "https://www.gyeongnam.go.kr/board/view.gyeong?boardId=BBS_0000060&menuCd=DOM_000000135002001000&dataSid=42419073",
+        "length": 1408
+      }
+    ]
+  },
+  {
+    "key": "jeonnam",
+    "result": {
+      "city": "전라남도",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-07-01",
+      "sourceCode": "local-press-jeonnam",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "민형배 초대 통합특별시장, ‘압도적 성장’ 새 역사 문 활짝",
+        "source_url": "https://www.jeonnam.go.kr/M7116/boardView.do?seq=1961852&menuId=jeonnam0202000000",
+        "length": 2392
+      }
+    ]
+  },
+  {
+    "key": "chungnam",
+    "result": {
+      "city": "충청남도",
+      "fetched": 0,
+      "inserted": 0,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-chungnam",
+      "errors": [
+        "list 0건 — site HTML size 202298 bytes 인데 regex 매칭 0. site 구조 변경 의심"
+      ]
+    },
+    "bodies": []
+  },
+  {
+    "key": "gyeongbuk",
+    "result": {
+      "city": "경상북도",
+      "fetched": 0,
+      "inserted": 0,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-gyeongbuk",
+      "errors": [
+        "list 0건 — site HTML size 421059 bytes 인데 regex 매칭 0. site 구조 변경 의심"
+      ]
+    },
+    "bodies": []
+  },
+  {
+    "key": "gangwon",
+    "result": {
+      "city": "강원특별자치도",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-gangwon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "chungbuk",
+    "result": {
+      "city": "충청북도",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-chungbuk",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "anyang",
+    "result": {
+      "city": "안양시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-anyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "안양시, 제15기 주민자치대학 개강식 개최…주민자치 역량 강화",
+        "source_url": "https://anyang.go.kr/main/selectPressRelease.do?key=4107&nttNo=459129&bbsNo=1687",
+        "length": 745
+      }
+    ]
+  },
+  {
+    "key": "songpa",
+    "result": {
+      "city": "송파구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-songpa",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“스스로 멈추는 힘, 마음 근육 키우기” 송파구, 자녀 중독 예방 학부모 특강",
+        "source_url": "https://www.songpa.go.kr/www/selectBbsNttView.do?bbsNo=96&nttNo=19279478&key=2781",
+        "length": 1185
+      }
+    ]
+  },
+  {
+    "key": "uiwang",
+    "result": {
+      "city": "의왕시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-uiwang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "의왕시, 축제로 잇고 특산물로 넓히고 자매도시 상생협력 강화",
+        "source_url": "https://www.uiwang.go.kr/UWKORINFO0201/7005687/?curPage=1",
+        "length": 1102
+      }
+    ]
+  },
+  {
+    "key": "pocheon",
+    "result": {
+      "city": "포천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-pocheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "제24회 포천시민의 날 기념 표창 시상식 개최",
+        "source_url": "https://www.pocheon.go.kr/www/selectBbsNttView.do?bbsNo=5014&nttNo=804554&key=3731&pageUnit=10&pageIndex=1",
+        "length": 597
+      }
+    ]
+  },
+  {
+    "key": "icheon",
+    "result": {
+      "city": "이천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-icheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "이천시, 우주 태양전지 기업 '플렉셀스페이스(주)' 방문",
+        "source_url": "https://www.icheon.go.kr/news/board/post/view.do?bcIdx=785&mid=0301000000&idx=321562",
+        "length": 1039
+      }
+    ]
+  },
+  {
+    "key": "gwangju_gyeonggi",
+    "result": {
+      "city": "경기 광주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gwangju-gyeonggi",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "광주시정신건강복지센터, 정신질환 당사자·가족 회복 지원 캠프 운영",
+        "source_url": "https://www.gjcity.go.kr/portal/bbs/view.do?mId=0203010000&bIdx=347773&ptIdx=22",
+        "length": 590
+      }
+    ]
+  },
+  {
+    "key": "osan",
+    "result": {
+      "city": "오산시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-osan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026년 10월 1일 보도자료",
+        "source_url": "https://www.osan.go.kr/portal/bbs/view.do?mId=0301080000&bIdx=277805&ptIdx=588",
+        "length": 613
+      }
+    ]
+  },
+  {
+    "key": "anseong",
+    "result": {
+      "city": "안성시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 0,
+      "latestFetched": "2026-09-23",
+      "sourceCode": "local-press-anseong",
+      "errors": [
+        "seq=21574: fetch fetch failed"
+      ]
+    },
+    "bodies": []
+  },
+  {
+    "key": "gwacheon",
+    "result": {
+      "city": "과천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gwacheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "과천시, 제30회 노인의 날 기념식 성황리 개최",
+        "source_url": "https://www.gccity.go.kr/portal/newsList/view.do?mId=0301140100&idx=2454",
+        "length": 878
+      }
+    ]
+  },
+  {
+    "key": "yeoncheon",
+    "result": {
+      "city": "연천군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-18",
+      "sourceCode": "local-press-yeoncheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "연천군, 추석 맞이 전곡전통시장 관계기관 합동 안전 점검",
+        "source_url": "https://www.yeoncheon.go.kr/www/selectBbsNttView.do?key=3398&bbsNo=29&nttNo=109081&pageIndex=1",
+        "length": 692
+      }
+    ]
+  },
+  {
+    "key": "yangpyeong",
+    "result": {
+      "city": "양평군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-yangpyeong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "양평군가족센터, 느린학습자 인식개선 캠페인 및 이해교육 성료",
+        "source_url": "https://www.yp21.go.kr/www/selectBbsNttView.do?key=1112&bbsNo=2&nttNo=313598&searchCtgry=&searchCnd=all&searchKrwd=&pageIndex=1&integrDeptCode=",
+        "length": 845
+      }
+    ]
+  },
+  {
+    "key": "gapyeong",
+    "result": {
+      "city": "가평군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gapyeong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "가평군 보도자료(10월 2일자)",
+        "source_url": "https://gp.go.kr/portal/selectBbsNttView.do?key=787&bbsNo=127&nttNo=289649&searchCtgry=&searchCnd=all&searchKrwd=&pageIndex=1&integrDeptCode=",
+        "length": 6804
+      }
+    ]
+  },
+  {
+    "key": "dongducheon",
+    "result": {
+      "city": "동두천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-dongducheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "동두천시, 시민 편익을 높인 적극행정 우수 공무원 5명 선발",
+        "source_url": "https://www.ddc.go.kr/ddc/selectBbsNttView.do?key=1914&bbsNo=95&nttNo=160425&searchCtgry=&searchCnd=all&searchKrwd=&pageIndex=1&integrDeptCode=",
+        "length": 1486
+      }
+    ]
+  },
+  {
+    "key": "yeoju",
+    "error": "TypeError: fetch failed",
+    "bodies": []
+  },
+  {
+    "key": "yeongwol",
+    "result": {
+      "city": "영월군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-yeongwol",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "20260930 영월군 보도자료",
+        "source_url": "https://www.yw.go.kr/www/selectBbsNttView.do?key=21&bbsNo=19&nttNo=158300&searchCtgry=&searchCnd=all&searchKrwd=&pageIndex=1&integrDeptCode=&pageUnit=10",
+        "length": 3505
+      }
+    ]
+  },
+  {
+    "key": "sokcho",
+    "result": {
+      "city": "속초시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-sokcho",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "모래로 그리는 나만의 작품… 속초시립박물관 샌드아트 강좌 운영",
+        "source_url": "https://sokcho.go.kr/sc/portal/sokchonews/pressrelease?articleSeq=819274",
+        "length": 700
+      }
+    ]
+  },
+  {
+    "key": "jeongseon",
+    "result": {
+      "city": "정선군",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-09-11",
+      "sourceCode": "local-press-jeongseon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "hoengseong",
+    "result": {
+      "city": "횡성군",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hoengseong",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "pyeongchang",
+    "result": {
+      "city": "평창군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-pyeongchang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "10월 2일 보도자료",
+        "source_url": "https://www.pc.go.kr/portal/government/government-press/government-press-press?articleSeq=331933",
+        "length": 7590
+      }
+    ]
+  },
+  {
+    "key": "hwacheon",
+    "result": {
+      "city": "화천군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hwacheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026/10/02",
+        "source_url": "https://www.ihc.go.kr/media/selectBbsNttView.do?key=900&bbsNo=91&nttNo=188927&pageIndex=1",
+        "length": 1418
+      }
+    ]
+  },
+  {
+    "key": "inje",
+    "result": {
+      "city": "인제군",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-inje",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "goseong_gw",
+    "result": {
+      "city": "고성군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-goseong-gw",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "(2026.10.2.일자 보도자료) 토성면 지역사회보장협의체, ＇빵그레 웃는 날＇ 나눔 확대",
+        "source_url": "https://www.gwgs.go.kr/prog/bbsArticle/BBSMSTR_000000003771/view.do?nttId=B000000080720Ou6dB1s",
+        "length": 958
+      }
+    ]
+  },
+  {
+    "key": "yangyang",
+    "result": {
+      "city": "양양군",
+      "fetched": 10,
+      "inserted": 10,
+      "skipped": 0,
+      "latestFetched": "2026-09-23",
+      "sourceCode": "local-press-yangyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "가을 단풍철 오색지구 특별 교통관리… 불법 주정차 '무관용' 단속",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8746",
+        "length": 962
+      },
+      {
+        "title": "2026 양양송이연어축제 체험 사전예약 9월 28일 시작",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8745",
+        "length": 1176
+      },
+      {
+        "title": "2026년 하반기 민방위 보충 1차 교육 실시",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8744",
+        "length": 654
+      },
+      {
+        "title": "추석 연휴 종합 대책 추진 … “안전하고 쾌적한 명절 만든다”",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8743",
+        "length": 775
+      },
+      {
+        "title": "전 직원 대상 ‘예산실무교육’ 추진",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8742",
+        "length": 686
+      },
+      {
+        "title": "강원특별자치도 행정국, 추석맞이 양양전통시장 장보기 행사 실시",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8741",
+        "length": 1098
+      },
+      {
+        "title": "독감(인플루엔자) 유행 조기 확산에 예방접종 앞당긴다",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8740",
+        "length": 1191
+      },
+      {
+        "title": "‘2027년도 창의시책 보고회’ 개최",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8739",
+        "length": 1029
+      },
+      {
+        "title": "38선 역사 따라 걷는 ‘38선을 걷다’ 첫 개최",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8738",
+        "length": 952
+      },
+      {
+        "title": "남문리(새한공업사~구터미널) 인도 설치 공사 완료 … “보행 안전과 교통 편의 개선”",
+        "source_url": "https://eminwon.yangyang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8737",
+        "length": 628
+      }
+    ]
+  },
+  {
+    "key": "imsil",
+    "result": {
+      "city": "임실군",
+      "fetched": 10,
+      "inserted": 2,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-imsil",
+      "errors": [
+        "detail 17193 본문 추출 실패",
+        "detail 17110 본문 추출 실패",
+        "detail 17109 본문 추출 실패",
+        "detail 17108 본문 추출 실패",
+        "detail 17107 본문 추출 실패",
+        "detail 17106 본문 추출 실패",
+        "detail 17105 본문 추출 실패",
+        "detail 17104 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "임실군, 삼계면서 친환경 벼 ‘해담쌀’ 첫 수확",
+        "source_url": "https://eminwon.imsil.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=17141",
+        "length": 575
+      },
+      {
+        "title": "임실군, 9월 7일부터‘농어촌 기본소득’신청·접수",
+        "source_url": "https://eminwon.imsil.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=17192",
+        "length": 1386
+      }
+    ]
+  },
+  {
+    "key": "yanggu",
+    "result": {
+      "city": "양구군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yanggu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "15일 2천 명이 '금강산 가는 옛길' 걷는다",
+        "source_url": "https://www.yanggu.go.kr/user_sub?gfnc=www&pg=1&bk=TPHQQ261002105918120&mu_idx=232&bt=rd&pgsize=10&bcd=press",
+        "length": 1158
+      }
+    ]
+  },
+  {
+    "key": "gunsan",
+    "result": {
+      "city": "군산시",
+      "fetched": 10,
+      "inserted": 2,
+      "skipped": 0,
+      "latestFetched": "2026-10-06",
+      "sourceCode": "local-press-gunsan",
+      "errors": [
+        "detail 35115 본문 추출 실패",
+        "detail 35133 본문 추출 실패",
+        "detail 35132 본문 추출 실패",
+        "detail 35131 본문 추출 실패",
+        "detail 35130 본문 추출 실패",
+        "detail 35129 본문 추출 실패",
+        "detail 35128 본문 추출 실패",
+        "detail 35127 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "“지원금 준다며 신분증 요구”… 군산시, 민생지원과 사칭 보이스피싱 주의...",
+        "source_url": "http://eminwon.gunsan.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=35125",
+        "length": 756
+      },
+      {
+        "title": "군산시, 수도업무 종사자 실무교육 실시",
+        "source_url": "http://eminwon.gunsan.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=35124",
+        "length": 997
+      }
+    ]
+  },
+  {
+    "key": "yeonsu",
+    "result": {
+      "city": "연수구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yeonsu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "연수구, 9~10일 ‘제10회 사회복지 박람회’ 개최",
+        "source_url": "https://www.yeonsu.go.kr/main/community/notify/report.asp?page=v&seq=29478",
+        "length": 474
+      }
+    ]
+  },
+  {
+    "key": "gwangsan",
+    "result": {
+      "city": "광산구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gwangsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "광산구, 장애인 의료‧요양 통합돌봄 ‘순항’",
+        "source_url": "https://www.gwangsan.go.kr/boardView.do?boardId=REPORT_NEW&pageId=www16&seq=5714925",
+        "length": 1261
+      }
+    ]
+  },
+  {
+    "key": "wonju",
+    "result": {
+      "city": "원주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-wonju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "원주시 시민서로돕기 천사운동본부, ‘2026 천사의 날’ 기념식 개최",
+        "source_url": "https://www.wonju.go.kr/www/selectBbsNttView.do?bbsNo=145&nttNo=492982&key=222",
+        "length": 817
+      }
+    ]
+  },
+  {
+    "key": "gunpo",
+    "result": {
+      "city": "군포시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-gunpo",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "군포시, 민선 9기 첫 당정협의회 개최… 7대 현안 논의",
+        "source_url": "https://www.gunpo.go.kr/www/selectBbsNttView.do?bbsNo=685&nttNo=326855&key=3893",
+        "length": 837
+      }
+    ]
+  },
+  {
+    "key": "yangju",
+    "result": {
+      "city": "양주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-yangju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "양주시립장욱진미술관, ‘댕댕이와 함께 미술관 산책’ 개최",
+        "source_url": "https://www.yangju.go.kr/www/selectBbsNttView.do?bbsNo=13&nttNo=208726&key=202",
+        "length": 1077
+      }
+    ]
+  },
+  {
+    "key": "bupyeong",
+    "result": {
+      "city": "부평구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-bupyeong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "부평구립 청천도서관에서 스페인의 문화와 축구를 만나다. 서형욱 작가와의 만남 참가자 모집",
+        "source_url": "https://www.icbp.go.kr/main/bbs/bbsMsgDetail.do?msg_seq=25554&bcd=report",
+        "length": 828
+      }
+    ]
+  },
+  {
+    "key": "guri",
+    "result": {
+      "city": "구리시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-guri",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "구리시청소년재단, 청소년의 미래 이끌 새 대표이사 찾는다",
+        "source_url": "https://guri.go.kr/www/selectBbsNttView.do?bbsNo=42&nttNo=148875&key=393",
+        "length": 696
+      }
+    ]
+  },
+  {
+    "key": "mokpo",
+    "result": {
+      "city": "목포시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-mokpo",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "(재)목포인재육성재단, 2026년 임시이사회 개최",
+        "source_url": "https://www.mokpo.go.kr/www/mokpo_news/press_release/report_material?idx=549134&amp;mode=view",
+        "length": 5000
+      }
+    ]
+  },
+  {
+    "key": "chungju",
+    "result": {
+      "city": "충주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-chungju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "이동석 충주시장, 안주 없이 책임 다하는 공직마인드 강조",
+        "source_url": "https://www.chungju.go.kr/www/selectBbsNttView.do?bbsNo=6&nttNo=325612&key=494",
+        "length": 546
+      }
+    ]
+  },
+  {
+    "key": "yeosu",
+    "result": {
+      "city": "여수시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yeosu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "여수시청 요트팀 김창주·이경진, 아이치·나고야 아시안게임 은메달 쾌거",
+        "source_url": "https://yeosu.go.kr/www/govt/news/release/press?idx=582956&mode=view",
+        "length": 754
+      }
+    ]
+  },
+  {
+    "key": "seo_incheon",
+    "result": {
+      "city": "인천 서해구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seo-incheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "연희동, 학교와 함께하는 금연캠페인 ‘NO담’ 전개",
+        "source_url": "https://www.seohae.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=19474&bcd=report",
+        "length": 728
+      }
+    ]
+  },
+  {
+    "key": "hanam",
+    "result": {
+      "city": "하남시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hanam",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "하남시, “2026년 하반기 반려동물 광견병 예방접종” 실시 하남시(시장 이현재)는 가을철을 맞아 10월 1일부터 23일까지 3주간 관내 지정 동물병원 33개소에서 ‘2026년 하반기 광견병 예방접종’을 실시하고 있다고 밝혔다. 광견병은 감염된 동물에게 물리거나 할퀴었을 때 사람에게도 전파될 수 있는 치명적인 인수공통전염병으로, 반려동물과 시민의 안전을 위해 예방접종을 통한 사전 예방이 중요하다. 이번 예방접종은 하남시에 동물등록이 완료된 생후 2개월령 이상의 개·고양이 전두수를 대상으로 한다. 보호자는 접종비 1만원을 지참해 가까운 지정 동물병원을 방문하면 수의사의 상담을 거쳐 예방접종을 받을 수 있다. 시는 원활한 예방접종을 위해 2천50마리분의 광견병 백신을 지원하고 있다. 접종은 백신이 소진될 때까지 진행하며, 동물병원별 백신 잔여량에 따라 조기에 소진될 수 있다. 보호자는 병원을 방문하기 전에 해당 동물병원에 전화해 백신 잔여량을 확인하는 것이 좋다. 지정 동물병원 33개소",
+        "source_url": "https://www.hanam.go.kr/sosik/selectBbsNttView.do?bbsNo=1164&nttNo=503072&key=10048",
+        "length": 785
+      }
+    ]
+  },
+  {
+    "key": "namgu_gwangju",
+    "result": {
+      "city": "광주 남구",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-namgu-gwangju",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "gyeyang_incheon",
+    "result": {
+      "city": "계양구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gyeyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "동양도서관, 인공지능(AI) 활용 그림책, 책 소개 영상(북 트레일러) 성과 작품 전시회 개최",
+        "source_url": "https://www.gyeyang.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=16256&bcd=board_111",
+        "length": 1147
+      }
+    ]
+  },
+  {
+    "key": "seogu_gwangju",
+    "result": {
+      "city": "광주 서구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seogu-gwangju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "서구, 아파트 공사·용역 ‘업체 선정까지’ 기술자문",
+        "source_url": "https://www.seogu.gwangju.kr/board.es?mid=c50501000000&bid=0154&act=view&list_no=143844",
+        "length": 1069
+      }
+    ]
+  },
+  {
+    "key": "donggu_gwangju",
+    "result": {
+      "city": "광주 동구",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-donggu-gwangju",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "bukgu_gwangju",
+    "result": {
+      "city": "광주 북구",
+      "fetched": 7,
+      "inserted": 2,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-bukgu-gwangju",
+      "errors": [
+        "title 추출 실패 3건 (newsEpctNo: 11254,11251,11249)",
+        "detail 11257 본문 추출 실패",
+        "detail 11256 본문 추출 실패",
+        "detail 11255 본문 추출 실패",
+        "detail 11252 본문 추출 실패",
+        "detail 11248 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "소상공인지원과",
+        "source_url": "https://eminwon.bukgu.gwangju.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=11253",
+        "length": 729
+      },
+      {
+        "title": "주민자치과",
+        "source_url": "https://eminwon.bukgu.gwangju.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=11250",
+        "length": 944
+      }
+    ]
+  },
+  {
+    "key": "gwangyang",
+    "result": {
+      "city": "광양시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gwangyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "광양시, 여수·순천과 미래산업 육성·지역상생 공동협력 제안",
+        "source_url": "https://gwangyang.go.kr/board.es?mid=a11007000000&bid=0057&act=view&list_no=210403",
+        "length": 1212
+      }
+    ]
+  },
+  {
+    "key": "michuhol_incheon",
+    "result": {
+      "city": "미추홀구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-michuhol",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "관교노인복지관, 경로의 달 맞아 '제7회 승학골 경로잔치' 개최",
+        "source_url": "https://www.michuhol.go.kr/main/board/view.do?sq=315802&board_code=news_item",
+        "length": 673
+      }
+    ]
+  },
+  {
+    "key": "bsdonggu",
+    "result": {
+      "city": "부산 동구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-bsdonggu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "부산 동구, “밤길을 밝혀라” 노후 건물번호판 축광형으로 교체",
+        "source_url": "https://www.bsdonggu.go.kr/board/view.donggu?boardId=BBS_0000025&menuCd=DOM_000000103001006000&paging=ok&startPage=1&dataSid=5097962",
+        "length": 445
+      }
+    ]
+  },
+  {
+    "key": "bsjunggu",
+    "result": {
+      "city": "부산 중구",
+      "fetched": 10,
+      "inserted": 10,
+      "skipped": 0,
+      "latestFetched": "2026-09-11",
+      "sourceCode": "local-press-bsjunggu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "'부평동 새마을지도자협의회, 부녀회' 추석맞이 도시환경 정비 실시",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2603",
+        "length": 599
+      },
+      {
+        "title": "부산 중구 영주1동 새마을문고분회, 홀로 어르신 「사랑의 생신 롤케이크」...",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2602",
+        "length": 322
+      },
+      {
+        "title": "부산 중구 보수동 자율방재단, 개학기 보수초등학교 주변 안전점검 실시",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2601",
+        "length": 262
+      },
+      {
+        "title": "부산 중구, 아동 비만 예방‘건강한 돌봄 놀이터’성료",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2600",
+        "length": 363
+      },
+      {
+        "title": "부산 중구 부평동, 행락철 관광객 맞이 도시환경 정비의 날 운영",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2599",
+        "length": 456
+      },
+      {
+        "title": "부산 중구 중앙동 지역사회보장협의체, 시원한 여름나기 지원사업 성품 전달",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2598",
+        "length": 375
+      },
+      {
+        "title": "광복동 지역사회보장협의체, 혹서기 취약계층을 위한‘건강한 여름 나기’보양...",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2597",
+        "length": 395
+      },
+      {
+        "title": "대청동 새마을부녀회, 여름맞이 환경 정비 실시",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2596",
+        "length": 329
+      },
+      {
+        "title": "중구 영주2동 새마을부녀회, 여름맞이 초화 식재 및 환경 정비 활동 펼쳐",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2595",
+        "length": 324
+      },
+      {
+        "title": "대청동 복병산 행복마을, 여름 맞이 '사랑의 상추 나눔’ 실천",
+        "source_url": "https://eminwon.bsjunggu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=2594",
+        "length": 500
+      }
+    ]
+  },
+  {
+    "key": "bsbukgu",
+    "result": {
+      "city": "부산 북구",
+      "fetched": 10,
+      "inserted": 10,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-bsbukgu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "부산 북구 폐현수막이 새활용 공유우산으로 다시 태어난다",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12270",
+        "length": 663
+      },
+      {
+        "title": "부산 북구 쾌적한 이용 환경 조성 위해 노후 어린이공원 3개소 정비 완료",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12269",
+        "length": 531
+      },
+      {
+        "title": "부산 북구 카카오 알림톡으로 지방세 환급금 받으세요_예시사진",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12268",
+        "length": 577
+      },
+      {
+        "title": "부산 북구 찾아가는 이동 구청장실 첫 운영 주민 곁에서 현장 소통",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12267",
+        "length": 793
+      },
+      {
+        "title": "덕천천 악취저감시설 시범사업 완료... 10월부터 본격 운영",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12266",
+        "length": 552
+      },
+      {
+        "title": "부산 북구 부산과기대와 손잡고 제1회 구포 AI 영상제 개최 추진",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12265",
+        "length": 822
+      },
+      {
+        "title": "부산 북구 민관협력으로 취약계층 반려가구 지원 반려동물 친화문화 조성 나...",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12264",
+        "length": 612
+      },
+      {
+        "title": "부산북구자원봉사센터 9월 풍성한 한가위 정성담은 한 끼 활동 진행",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12263",
+        "length": 672
+      },
+      {
+        "title": "저마다의 속도로 흐르는 청년의 리듬 제5회 북구 청년주간 행사 성황리 마...",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12262",
+        "length": 876
+      },
+      {
+        "title": "부산 북구청 여자유도단 제주전국실업유도선수권대회 단체전 준우승",
+        "source_url": "https://eminwon.bsbukgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=12261",
+        "length": 601
+      }
+    ]
+  },
+  {
+    "key": "gijang",
+    "result": {
+      "city": "기장군",
+      "fetched": 10,
+      "inserted": 10,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-gijang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "국제구호개발 NGO‘월드쉐어’, 기장군 드림스타트 아동에 명절선물세트 기탁",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5189",
+        "length": 506
+      },
+      {
+        "title": "기장군, 지역 인재 육성 나선다…2026년 하반기 장학생 모집",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5188",
+        "length": 856
+      },
+      {
+        "title": "우성빈 기장군수, 용산 대학생 연합기숙사 건립 현장 긴급 방문",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5187",
+        "length": 1362
+      },
+      {
+        "title": "기장군, 추석 명절 대비 물가안정 캠페인 개최",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5186",
+        "length": 522
+      },
+      {
+        "title": "기장군, 추석 연휴 전방위 종합대책 추진 … 군민 안전과 생활 편의 집중",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5185",
+        "length": 934
+      },
+      {
+        "title": "기장군 수산자원연구센터, ‘2027년 연구·교습어장’국비 공모 사업 선정",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5184",
+        "length": 1018
+      },
+      {
+        "title": "우성빈 기장군수, 기장향교서 추기 석전대제 초헌관 맡아",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5183",
+        "length": 913
+      },
+      {
+        "title": "㈜한림기업, 부산 기장군에 500만원 상당 백미(10kg)142포 기탁",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5182",
+        "length": 621
+      },
+      {
+        "title": "우성빈 기장군수, 추석 앞두고 기장시장 찾아 민생현장 살펴",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5181",
+        "length": 868
+      },
+      {
+        "title": "기장 보림사, 부산 기장군에 이웃돕기 성금 500만원 기탁",
+        "source_url": "https://eminwon.gijang.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=5180",
+        "length": 478
+      }
+    ]
+  },
+  {
+    "key": "bsseogu",
+    "result": {
+      "city": "부산 서구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-bsseogu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "충무동 김차순장학회, 지역 학생들에게 460만 원 상당 체육용품 전달",
+        "source_url": "https://www.bsseogu.go.kr/board/view.bsseogu?boardId=BBS_0000011&menuCd=DOM_000000103001015000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1&dataSid=276571",
+        "length": 318
+      }
+    ]
+  },
+  {
+    "key": "suyeong",
+    "result": {
+      "city": "부산 수영구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-09",
+      "sourceCode": "local-press-suyeong-eminwon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "배움이 축제가 되는 수영, 미래를 잇다! 2026년 수영구 평생학습 & 희망교육 페스티벌 개최",
+        "source_url": "https://eminwon.suyeong.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=9072",
+        "length": 606
+      }
+    ]
+  },
+  {
+    "key": "gangseo_busan",
+    "result": {
+      "city": "부산 강서구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gangseo-busan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "강서구, 발달장애인 취업지원 문 연다…장애인 고용지원체계 구축을 위한 업무협약 체결",
+        "source_url": "https://www.bsgangseo.go.kr/portal/board/post/view.do?bcIdx=526&mid=0501050000&idx=409915",
+        "length": 892
+      }
+    ]
+  },
+  {
+    "key": "saha",
+    "result": {
+      "city": "부산 사하구",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-09-18",
+      "sourceCode": "local-press-saha",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "yeonje",
+    "result": {
+      "city": "부산 연제구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yeonje",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "동 보도자료 모음[2026. 10. 2.(금)]",
+        "source_url": "https://www.yeonje.go.kr/portal/bbs/view.do?bIdx=131931&ptIdx=12&mId=0206050000",
+        "length": 3017
+      }
+    ]
+  },
+  {
+    "key": "bsnamgu",
+    "result": {
+      "city": "부산 남구",
+      "fetched": 40,
+      "inserted": 17,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-bsnamgu",
+      "errors": [
+        "detail 13527 본문 추출 실패",
+        "detail 13520: HTTP 400",
+        "detail 13519 본문 추출 실패",
+        "detail 13518 본문 추출 실패",
+        "detail 13517 본문 추출 실패",
+        "detail 13523: HTTP 400",
+        "detail 13516 본문 추출 실패",
+        "detail 13515 본문 추출 실패",
+        "detail 13514 본문 추출 실패",
+        "detail 13513 본문 추출 실패",
+        "detail 13512 본문 추출 실패",
+        "detail 13511 본문 추출 실패",
+        "detail 13510 본문 추출 실패",
+        "detail 13509 본문 추출 실패",
+        "detail 13484 본문 추출 실패",
+        "detail 13483 본문 추출 실패",
+        "detail 13482 본문 추출 실패",
+        "detail 13481 본문 추출 실패",
+        "detail 13480 본문 추출 실패",
+        "detail 13479 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "양화옥’, 남구에 500만 원 상당 이웃돕기 성품 전달",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13526",
+        "length": 528
+      },
+      {
+        "title": "오륙도페이 가맹 착한가격업소 이용 시 추가 5% 캐시백 지급",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13525",
+        "length": 780
+      },
+      {
+        "title": "반려동물 친화도시 남구, 「제2회 유엔펫스타(반려동물 문화축제)」개최",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13524",
+        "length": 662
+      },
+      {
+        "title": "부산 남구 ‘잠깐돌보미’ 20명 양성, 생활 속 돌봄 공백 지원",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13522",
+        "length": 643
+      },
+      {
+        "title": "부산 남구, 주민의 눈으로 민선 9기 공약 꼼꼼히 살폈다",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13521",
+        "length": 530
+      },
+      {
+        "title": "부산 남구, 추석 명절 대비 「전통시장 농·수산물 원산지표시 및 축산물 ...",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13508",
+        "length": 480
+      },
+      {
+        "title": "부산남구문화재단, 올해 공모사업 6건 선정",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13507",
+        "length": 740
+      },
+      {
+        "title": "부산 남구, 청년의 날 기념「대학생 교류 한마당」 개최",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13506",
+        "length": 636
+      },
+      {
+        "title": "디딤돌 봉사단, 추석맞이 행복꾸러미 전달",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13505",
+        "length": 553
+      },
+      {
+        "title": "대한주택건설협회 부산광역시회, 한부모가족 성금 1천만원 전달",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13504",
+        "length": 530
+      },
+      {
+        "title": "부산남구, 건전한 부동산 거래 질서 확립에 팔 걷어붙여",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13503",
+        "length": 546
+      },
+      {
+        "title": "부산남구, 현장중심 취업지원으로 구민 일자리 연결 강화",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13502",
+        "length": 774
+      },
+      {
+        "title": "부산 남구, 추석 맞이 전통시장 장보기 행사 진행",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13501",
+        "length": 630
+      },
+      {
+        "title": "남구 드림스타트 「우리가족 행복충전 드림패밀리 가족체험」진행",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13500",
+        "length": 579
+      },
+      {
+        "title": "오륙도인생후반전지원센터, 제2회 커뮤니티 페스티벌 ‘UN 남구 모두 모여...",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13499",
+        "length": 890
+      },
+      {
+        "title": "부산 남구, 청년의 날 기념「청년담(談)장 토크콘서트」 개최",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13498",
+        "length": 598
+      },
+      {
+        "title": "부산 남구여성단체협의회, 결혼이민여성과 함께하는‘다문화가족 남구투어’성료",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13497",
+        "length": 610
+      }
+    ]
+  },
+  {
+    "key": "haeundae",
+    "result": {
+      "city": "부산 해운대구",
+      "fetched": 50,
+      "inserted": 7,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-haeundae",
+      "errors": [
+        "detail 8816 본문 추출 실패",
+        "detail 8814 본문 추출 실패",
+        "detail 8815 본문 추출 실패",
+        "detail 8811 본문 추출 실패",
+        "detail 8810 본문 추출 실패",
+        "detail 8809 본문 추출 실패",
+        "detail 8808 본문 추출 실패",
+        "detail 8807 본문 추출 실패",
+        "detail 8806 본문 추출 실패",
+        "detail 8813 본문 추출 실패",
+        "detail 8812 본문 추출 실패",
+        "detail 8805 본문 추출 실패",
+        "detail 8804 본문 추출 실패",
+        "detail 8803 본문 추출 실패",
+        "detail 8800 본문 추출 실패",
+        "detail 8798 본문 추출 실패",
+        "detail 8792 본문 추출 실패",
+        "detail 8789 본문 추출 실패",
+        "detail 8799 본문 추출 실패",
+        "detail 8797 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "해운대구, 제28회 동백가족글자랑 대회 개최",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8802",
+        "length": 633
+      },
+      {
+        "title": "탄소중립 생활 수칙, 우리 함께 실천해요",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8801",
+        "length": 398
+      },
+      {
+        "title": "해운대구, 개학기 맞아 청소년 유해환경 점검·...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8782",
+        "length": 626
+      },
+      {
+        "title": "해운대구 체납관리단, 출범 2개월여 만에 체납...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8781",
+        "length": 547
+      },
+      {
+        "title": "해운대구, 부산청년 메가 채용박람회 홍보관 운...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8780",
+        "length": 732
+      },
+      {
+        "title": "해운대구도시재생지원센터, 추석맞이 반송2동 환...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8779",
+        "length": 284
+      },
+      {
+        "title": "해운대구, 청년주간 페스티벌 호응 속 개최",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8777",
+        "length": 1047
+      }
+    ]
+  },
+  {
+    "key": "donggu_daegu",
+    "result": {
+      "city": "대구 동구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-donggu-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대구 동구 안심3동 주민자치위원회 가을밤 감성충만 별빛음악회 개최",
+        "source_url": "https://www.dong.daegu.kr/portal/saeol/news/view.do?newsEpctNo=10902&mid=0201070000",
+        "length": 369
+      }
+    ]
+  },
+  {
+    "key": "namgu_daegu",
+    "result": {
+      "city": "대구 남구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-namgu-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대구 남구, 2026 대만 신섬유박람회 참가",
+        "source_url": "https://www.nam.daegu.kr/index.do?menu_id=00000854&menu_link=%2Ficms%2Fbbs%2FselectBoardArticle.do&bbsId=BBSMSTR_000000000216&nttId=192772&bbsTyCode=BBST03&bbsAttrbCode=BBSA01",
+        "length": 1006
+      }
+    ]
+  },
+  {
+    "key": "junggu_daegu",
+    "result": {
+      "city": "대구 중구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-21",
+      "sourceCode": "local-press-junggu-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "추석 연휴, 즐거움과 휴식이 함께하는 대구 중구 근대골목",
+        "source_url": "https://www.jung.daegu.kr/new/pages/administration/page.html?mc=161&no=5541&mode=view&bbs_id=board_8&start=0&key=&keyword=&category=&search_date_start=&search_date_end=&dongcode=&DEP_CODE=",
+        "length": 780
+      }
+    ]
+  },
+  {
+    "key": "seogu_daegu",
+    "result": {
+      "city": "대구 서구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-10",
+      "sourceCode": "local-press-seogu-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대구 서구청, '주민 중심 현장 행정' 본격 시동",
+        "source_url": "https://www.dgs.go.kr/portal/board/post/view.do?bcIdx=526&mid=0601080000&idx=252055",
+        "length": 637
+      }
+    ]
+  },
+  {
+    "key": "bukgu_daegu",
+    "result": {
+      "city": "대구 북구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-28",
+      "sourceCode": "local-press-bukgu-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대구 북구청, ‘산격3동 공영주차장’ 준공식 개최",
+        "source_url": "https://www.buk.daegu.kr/index.do?menu_id=00000201&menu_link=%2Ficms%2Fbbs%2FselectBoardArticle.do&bbsId=BBSMSTR_000000001178&nttId=73771&bbsTyCode=BBST01&bbsAttrbCode=BBSA03",
+        "length": 911
+      }
+    ]
+  },
+  {
+    "key": "suseong_daegu",
+    "result": {
+      "city": "대구 수성구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-suseong-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "만촌3동 협의체, 취약계층에 극세사 이불 세트 전달",
+        "source_url": "https://www.suseong.kr/index.do?menu_id=00000070&menu_link=%2Ficms%2Fbbs%2FselectBoardArticle.do&bbsId=BBSMSTR_000000000019&nttId=139546&bbsTyCode=BBST03&bbsAttrbCode=BBSA03",
+        "length": 526
+      }
+    ]
+  },
+  {
+    "key": "junggu_ulsan",
+    "result": {
+      "city": "울산 중구",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-junggu-ulsan",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "dalseong_daegu",
+    "result": {
+      "city": "대구 달성군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-dalseong-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026년 10월 1일_달성문화재단, 여가를 문화로 채운다, ...",
+        "source_url": "https://www.dalseong.daegu.kr/index.do?menu_id=00000195&menu_link=%2Ficms%2Fbbs%2FselectBoardArticle.do&bbsId=BBS_00071&nttId=54785&bbsTyCode=BBST03&bbsAttrbCode=BBSA03",
+        "length": 779
+      }
+    ]
+  },
+  {
+    "key": "gunwi_daegu",
+    "result": {
+      "city": "대구 군위군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gunwi-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "10월 2일 보도자료",
+        "source_url": "https://www.gunwi.go.kr/ko/page.do?cmd=258&bod_uid=141925&pageSize=&srchEnable=1&srchSDate=&initDay=&srchKwd=&srchColumn=&listType=&initYear=&srchVote=-1&initMonth=&pageNo=&srchOrder=&srchBgpUid=-1&srchEDate=&mnu_uid=106",
+        "length": 6006
+      }
+    ]
+  },
+  {
+    "key": "dalseo_daegu",
+    "result": {
+      "city": "대구 달서구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-dalseo-daegu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "달서구 두류1·2동, 적극행정으로 방치 빈집 수목 말끔히 정비",
+        "source_url": "https://www.dalseo.daegu.kr/index.do?menu_id=10000106&menu_link=%2Ficms%2Fbbs%2FselectBoardArticle.do&bbsId=BBS_00038&nttId=106662&bbsTyCode=BBST03&bbsAttrbCode=BBSA03",
+        "length": 797
+      }
+    ]
+  },
+  {
+    "key": "donggu_ulsan",
+    "result": {
+      "city": "울산 동구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-donggu-ulsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "동구, 2026년 주민자치 아카데미 개최",
+        "source_url": "https://www.donggu.ulsan.kr/cop/bbs/selectBoardArticle.do?bbsId=BBSMSTR_000000000322&nttId=212656",
+        "length": 410
+      }
+    ]
+  },
+  {
+    "key": "namgu_ulsan",
+    "result": {
+      "city": "울산 남구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-namgu-ulsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "신정장애인보호작업장, 개소 25주년 기념식 개최",
+        "source_url": "https://www.ulsannamgu.go.kr/cop/bbs/selectBoardArticle.do?bbsId=press&nttId=535403",
+        "length": 695
+      }
+    ]
+  },
+  {
+    "key": "daedeok",
+    "result": {
+      "city": "대전 대덕구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-daedeok",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대전 대덕구 비래동체육회, 노인의 날 기념 어르신 사랑 효 잔치 개최",
+        "source_url": "https://www.daedeok.go.kr/dpt/dpt04/DPT040301_cmmBoardView.do?boardId=DPT_000001&pageIndex=1&ntatcSeq=1108495820",
+        "length": 736
+      }
+    ]
+  },
+  {
+    "key": "ulju_ulsan",
+    "result": {
+      "city": "울산 울주군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-ulju-ulsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "울주군, 행안부 ‘AI 챔피언 블루’ 인증 공무원 배출",
+        "source_url": "https://www.ulju.ulsan.kr/ulju/bbs/view.do?ptIdx=146&mId=0404020000&bIdx=69600",
+        "length": 659
+      }
+    ]
+  },
+  {
+    "key": "junggu_daejeon",
+    "result": {
+      "city": "대전 중구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-junggu-daejeon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "중구 부사동 ‘쉴만한 물가’ 부사골 잔치 성료",
+        "source_url": "https://www.djjunggu.go.kr/prog/bbsArticle/BBSMSTR_000000000137/view.do?nttId=B000000229281Gc9zU9&mno=sub03_07",
+        "length": 694
+      }
+    ]
+  },
+  {
+    "key": "yuseong",
+    "result": {
+      "city": "대전 유성구",
+      "fetched": 10,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2014-03-12",
+      "sourceCode": "local-press-yuseong",
+      "errors": [
+        "detail 927 본문 추출 실패",
+        "detail 926 본문 추출 실패",
+        "detail 925 본문 추출 실패",
+        "detail 924 본문 추출 실패",
+        "detail 923 본문 추출 실패",
+        "detail 922 본문 추출 실패",
+        "detail 921 본문 추출 실패",
+        "detail 920 본문 추출 실패",
+        "detail 919 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "유성구, 평생학습 분위기 확산",
+        "source_url": "https://eminwon.yuseong.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=928",
+        "length": 1075
+      }
+    ]
+  },
+  {
+    "key": "donggu_daejeon",
+    "result": {
+      "city": "대전 동구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-23",
+      "sourceCode": "local-press-donggu-daejeon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대전 동구, ‘제6기 지역사회보장계획’ 확정… 4대 핵심 전략 추진",
+        "source_url": "https://donggu.go.kr/dg/kor/article/newsNSEW/143519",
+        "length": 860
+      }
+    ]
+  },
+  {
+    "key": "bukgu_ulsan",
+    "result": {
+      "city": "울산 북구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-04",
+      "sourceCode": "local-press-bukgu-ulsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "북구, 드림스타트 가족 대상 가족사진 촬영 프로그램",
+        "source_url": "https://www.bukgu.ulsan.kr/mrmt/cop/bbs/selectBoardArticle.do?nttId=48049&bbsId=BBSMSTR_000000000002&menuNo=1020000",
+        "length": 563
+      }
+    ]
+  },
+  {
+    "key": "boryeong",
+    "result": {
+      "city": "충남 보령시",
+      "fetched": 0,
+      "inserted": 0,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-boryeong",
+      "errors": [
+        "list 0건 — site HTML size 103043 bytes 인데 regex 매칭 0. site 구조 변경 의심"
+      ]
+    },
+    "bodies": []
+  },
+  {
+    "key": "gongju",
+    "result": {
+      "city": "충남 공주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-gongju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "세계유산 공산성에서 깨어나는 1500년 전 웅진백제의 밤",
+        "source_url": "https://www.gongju.go.kr/prog/saeolNews/sub04_02_01/view.do?newsEpctNo=22145",
+        "length": 1246
+      }
+    ]
+  },
+  {
+    "key": "nonsan",
+    "result": {
+      "city": "충남 논산시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-nonsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“오늘보다 나은 내일의 희망, 실천과 성과로 만들겠다” 논산시, 10월 월례모임 개최 논산시(시장 백성현)는 2일 논산아트센터 대공연장에서 시민과 공직자 등 400여 명이 모인 가운데 10월 월례모임을 개최했다. 10월 월례모임은 개회 및 국민의례, '2027 논산세계딸기산업엑스포 홍보대사 위촉', 표창 ...",
+        "source_url": "https://www.nonsan.go.kr/kor/html/sub03/030106.html?mode=V&no=e57911e8f15837253464289a7a1dacd7",
+        "length": 1614
+      }
+    ]
+  },
+  {
+    "key": "gyeryong",
+    "result": {
+      "city": "충남 계룡시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-28",
+      "sourceCode": "local-press-gyeryong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "계룡시, ‘2026년 찾아가는 안전체험교실’ 운영",
+        "source_url": "https://www.gyeryong.go.kr/kr/html/sub03/030105.html?mode=V&no=46eea2e99e30c0f1e29a6103891ffe05&GotoPage=1",
+        "length": 962
+      }
+    ]
+  },
+  {
+    "key": "dangjin",
+    "result": {
+      "city": "충남 당진시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-dangjin",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "당진시, 송악읍 지역총화협의회 개최",
+        "source_url": "https://www.dangjin.go.kr/cop/bbs/BBSMSTR_000000000014/selectBoardArticle.do?nttId=1135660",
+        "length": 761
+      }
+    ]
+  },
+  {
+    "key": "asan",
+    "result": {
+      "city": "충남 아산시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-asan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "아산시, 용화체육공원 민간특례사업 부지 내 ‘아산용화생활체육관’ 명칭 확정",
+        "source_url": "https://media.asan.go.kr/develop/m_news/?m_mode=view&pds_no=2026100507591683703&PageNo=1&cate=news",
+        "length": 896
+      }
+    ]
+  },
+  {
+    "key": "seocheon",
+    "result": {
+      "city": "충남 서천군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seocheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "서천군민 3500여 명 한자리에… 군민의 날·군민체육대회 화합 한마당",
+        "source_url": "https://www.seocheon.go.kr/bbs/BBSMSTR_000000000270/view.do?nttId=B000000202388El5yT2",
+        "length": 1459
+      }
+    ]
+  },
+  {
+    "key": "cheongyang",
+    "result": {
+      "city": "충남 청양군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-07",
+      "sourceCode": "local-press-cheongyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "청양군, 제78회 충청남도민체육대회 종합 11위 달성",
+        "source_url": "https://www.cheongyang.go.kr/cop/bbs/BBSMSTR_000000000064/selectBoardArticle.do?nttId=211335",
+        "length": 1183
+      }
+    ]
+  },
+  {
+    "key": "geumsan",
+    "result": {
+      "city": "충남 금산군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-geumsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "금산군, 부리면 금강누리 문화센터 조성사업 공모 선정 20억 원 확보",
+        "source_url": "https://www.geumsan.go.kr/media/html/sub01/0102.html?mode=V&nes_dta_key=c1ec51081b85e797a6d1dd4c90cba6c7",
+        "length": 814
+      }
+    ]
+  },
+  {
+    "key": "yesan",
+    "result": {
+      "city": "충남 예산군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yesan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "예산군문예회관, 사랑과 연희로 무대 달군다… 창작 마당극 ‘오작교 아리랑’",
+        "source_url": "https://www.yesan.go.kr/bbs/BBSMSTR_000000000047/view.do?nttId=B000000179770Cj3pP9",
+        "length": 727
+      }
+    ]
+  },
+  {
+    "key": "hongseong",
+    "result": {
+      "city": "충남 홍성군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hongseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026 홍성군 구인구직 만남의 날, 큰 호응 속에 마쳐",
+        "source_url": "https://www.hongseong.go.kr/bbs/BBSMSTR_000000000842/view.do?nttId=B000000284095Bj8tR3",
+        "length": 762
+      }
+    ]
+  },
+  {
+    "key": "buyeo",
+    "result": {
+      "city": "충남 부여군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-buyeo",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "부여군민 700여 명, 국립부여호국원 유치 염원 모았다",
+        "source_url": "https://www.buyeo.go.kr/_prog/_board/?mode=V&no=oB-PWhUsGJomSjxti4aKYQ&code=news_07&site_dvs_cd=kr&menu_dvs_cd=0408",
+        "length": 1688
+      }
+    ]
+  },
+  {
+    "key": "jinan",
+    "result": {
+      "city": "전북 진안군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-28",
+      "sourceCode": "local-press-jinan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "진안, 청년농업인 경영실습 임대농장 살펴",
+        "source_url": "https://www.jinan.go.kr/board/view.jinan?boardId=BBS_0000034&menuCd=DOM_000000107002002000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1&dataSid=216215",
+        "length": 726
+      }
+    ]
+  },
+  {
+    "key": "taean",
+    "result": {
+      "city": "충남 태안군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-taean",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "‘살아봐야 진짜 태안을 안다’ 태안군, 귀농․귀촌 1번지 비결 전수",
+        "source_url": "https://www.taean.go.kr/cop/bbs/BBSMSTR_000000000040/selectBoardArticle.do?nttId=1514301591",
+        "length": 1293
+      }
+    ]
+  },
+  {
+    "key": "wanju",
+    "result": {
+      "city": "전북 완주군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-wanju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "완주군시설관리공단, 근로자 경미 부상 치료비 지원",
+        "source_url": "https://www.wanju.go.kr/news/planweb/board/view.9is?dataUid=4028a6029dcd686101a0f62895ee0865&contentUid=ff808081898ba9ba0189f1e5b91101a9&tmpField14=&boardUid=ff8080818b024d8e018b1c99655f1226&page=1",
+        "length": 827
+      }
+    ]
+  },
+  {
+    "key": "namwon",
+    "result": {
+      "city": "전북 남원시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-22",
+      "sourceCode": "local-press-namwon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "남원시, 추석 명절 맞아 군부대‧복지시설 위문",
+        "source_url": "https://www.namwon.go.kr/board/post/view.do?boardUid=ff8080818ea1fec5018ea24651660037&menuUid=ff8080818e3beff0018e407936b40088&postUid=9be51b0f9f7cf24d01a0c6beb43a0225",
+        "length": 490
+      }
+    ]
+  },
+  {
+    "key": "gimje",
+    "result": {
+      "city": "전북 김제시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gimje",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "제28회 김제지평선축제, 뜨거운 열기 속 화려한 개막!",
+        "source_url": "https://www.gimje.go.kr/board/view.gimje?boardId=BBS_0000046&menuCd=DOM_000000104005000000&paging=ok&startPage=1&dataSid=363840",
+        "length": 1352
+      }
+    ]
+  },
+  {
+    "key": "jeongeup",
+    "result": {
+      "city": "전북 정읍시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jeongeup",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "정읍 농소동에 세 번째 다함께돌봄센터…운영 시작",
+        "source_url": "https://www.jeongeup.go.kr/board/view.jeongeup?boardId=BBS_0000019&menuCd=DOM_000000101002001000&paging=ok&startPage=1&dataSid=1420386",
+        "length": 792
+      }
+    ]
+  },
+  {
+    "key": "naju",
+    "result": {
+      "city": "전남 나주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-04",
+      "sourceCode": "local-press-naju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "나주시, 세계 호남인과 손잡고 글로벌 교류 지평 넓힌다",
+        "source_url": "https://www.naju.go.kr/www/administration/reporting/coverage?idx=611933&mode=view",
+        "length": 1938
+      }
+    ]
+  },
+  {
+    "key": "buan",
+    "result": {
+      "city": "전북 부안군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-buan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "부안군, 청년농업인 R&D 기술창업 통합관리 지원 사업 신청자 모집",
+        "source_url": "https://www.buan.go.kr/board/view.buan?boardId=BBS_0000059&menuCd=DOM_000000103002001000&paging=ok&startPage=1&dataSid=369546",
+        "length": 589
+      }
+    ]
+  },
+  {
+    "key": "jangsu",
+    "result": {
+      "city": "전북 장수군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jangsu",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "장수군, 공약이행평가 군민배심원단 위촉식 및 회의 개최",
+        "source_url": "https://www.jangsu.go.kr/board/view.jangsu?boardId=BBS_0000041&menuCd=DOM_000000102001012000&orderBy=REGISTER_DATE%20DESC&paging=ok&startPage=1&dataSid=579462",
+        "length": 1222
+      }
+    ]
+  },
+  {
+    "key": "gochang",
+    "result": {
+      "city": "전북 고창군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-22",
+      "sourceCode": "local-press-gochang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "추석맞이 전통시장 장보기 행사",
+        "source_url": "https://www.gochang.go.kr/board/view.gochang?boardId=BBS_0000179&menuCd=DOM_000000102002001000&paging=ok&startPage=1&dataSid=834274",
+        "length": 357
+      }
+    ]
+  },
+  {
+    "key": "muju",
+    "result": {
+      "city": "전북 무주군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-04",
+      "sourceCode": "local-press-muju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "한국4-H무주군본부, 가족 한마음 대회",
+        "source_url": "https://www.muju.go.kr/planweb/board/view.9is?dataUid=4028a6d2928a60a501a105ffaf687c25&page=1&boardUid=ff8080816d3d662f016d4218d1360434&contentUid=ff8080816c5f9d47016cbd3baf240074&layoutUid=&searchType=&keyword=&categoryUid1=&categoryUid2=&cateogryUid3=",
+        "length": 639
+      }
+    ]
+  },
+  {
+    "key": "sunchang",
+    "result": {
+      "city": "전북 순창군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-08-21",
+      "sourceCode": "local-press-sunchang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "순창군, 2026년 을지연습 실제훈련 실시",
+        "source_url": "https://www.sunchang.go.kr/board/post/view.do?boardUid=ff8080819a2f0e3b019a71a46284217a&menuUid=ff8080819a2f0e3b019a5d1bb7da1652&postUid=4028a6f09f4b44cb01a021f84f3d78ca",
+        "length": 754
+      }
+    ]
+  },
+  {
+    "key": "gokseong",
+    "result": {
+      "city": "전남 곡성군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-gokseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "곡성군미래교육재단, 평생학습 실무협의회 3분기 정기회의 개최",
+        "source_url": "https://www.gokseong.go.kr/kr/board/view.do?bbsId=BBS_000000000000151&pageIndex=1&nttId=113174&menuNo=102001002000&searchCategory1=&searchCategory2=&searchCategory3=",
+        "length": 653
+      }
+    ]
+  },
+  {
+    "key": "hwasun",
+    "result": {
+      "city": "전남 화순군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hwasun",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "화순군, 군민 목소리 듣고 즉시 대응... 소통행정 강화",
+        "source_url": "https://www.hwasun.go.kr/gallery.do?S=S01&M=020101000000&b_code=0000000001&v_type=SK3&b_list=10&act=view&list_no=21043&nPage=1&vlist_no_npage=1&keyField=&keyWord=&orderby=REG_DATE&cg_code=%EC%A0%9C4%EC%9C%A0%ED%98%95",
+        "length": 1403
+      }
+    ]
+  },
+  {
+    "key": "damyang",
+    "result": {
+      "city": "전남 담양군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-damyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "담양군, 제30회 노인의 날 기념행사 12개 읍면 순차 개최",
+        "source_url": "https://www.damyang.go.kr/board/getBoardDetail?dataSid=821545&boardId=BBS_0000007&getOfficeNm=true",
+        "length": 1184
+      }
+    ]
+  },
+  {
+    "key": "gurye",
+    "result": {
+      "city": "전남 구례군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-17",
+      "sourceCode": "local-press-gurye",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "구례군, 제3기 로컬크리에이터 성과평가회 개최!",
+        "source_url": "https://www.gurye.go.kr/board/view.do?bbsId=BBS_0000000000000300&pageIndex=1&nttId=82568&menuNo=115004006000&searchCategory1=&searchCategory2=&searchCategory3=",
+        "length": 1006
+      }
+    ]
+  },
+  {
+    "key": "boseong",
+    "result": {
+      "city": "전남 보성군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-boseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "보성군, ‘하자놀자’ 프로그램 참여자 20명 선착순 모집 가드닝, 드로잉 프로그램 운영(도시개발과)",
+        "source_url": "https://www.boseong.go.kr/www/open_administration/city_news/press_release?idx=1160253&mode=view",
+        "length": 843
+      }
+    ]
+  },
+  {
+    "key": "goheung",
+    "result": {
+      "city": "전남 고흥군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-goheung",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "고흥군, 고흥 5GW·여수 5GW 연계해 10GW 재생에너지 시대 선도",
+        "source_url": "https://www.goheung.go.kr/boardView.do?pageId=www102&boardId=BD_00025&seq=1655609&movePage=1",
+        "length": 1746
+      }
+    ]
+  },
+  {
+    "key": "jangseong",
+    "result": {
+      "city": "전남 장성군",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jangseong",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "gangjin",
+    "result": {
+      "city": "전남 강진군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-gangjin",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "강진원 강진군수, 추석 장바구니에 ‘지역경제 활력’ 담다",
+        "source_url": "https://www.gangjin.go.kr/www/government/news/press?idx=668684&mode=view",
+        "length": 1300
+      }
+    ]
+  },
+  {
+    "key": "yeonggwang",
+    "result": {
+      "city": "전남 영광군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yeonggwang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "집중호우 피해 특별재난지역 지적측량수수료 감면",
+        "source_url": "https://www.yeonggwang.go.kr/bbs/?b_id=news_data&site=headquarter_new&mn=9056&type=view&bs_idx=1176130",
+        "length": 669
+      }
+    ]
+  },
+  {
+    "key": "yeongam",
+    "result": {
+      "city": "전남 영암군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yeongam",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "영암 삼호시장 설계안 공개, 주민들 주차·교통 대책 제안",
+        "source_url": "https://www.yeongam.go.kr/home/www/open_information/yeongam_news/bodo/show/m7ms2tej8hoickhvhmkd",
+        "length": 859
+      }
+    ]
+  },
+  {
+    "key": "muan",
+    "result": {
+      "city": "전남 무안군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-muan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "무안군청소년수련관, 9월 상설 프로그램 ‘가을을 빚다’ 운영",
+        "source_url": "https://www.muan.go.kr/www/openmuan/new/report?idx=15206605&mode=view",
+        "length": 616
+      }
+    ]
+  },
+  {
+    "key": "jangheung",
+    "result": {
+      "city": "전남 장흥군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-23",
+      "sourceCode": "local-press-jangheung",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "가족의 변화를 돕는 상담, 함께 고민하다. 장흥군가족센터, 상담 사례 슈퍼비전으로 상담 전문성 강화에 나서",
+        "source_url": "https://www.jangheung.go.kr/www/organization/news/jh_news?idx=392799&mode=view",
+        "length": 576
+      }
+    ]
+  },
+  {
+    "key": "hampyeong",
+    "result": {
+      "city": "전남 함평군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-hampyeong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“걸어오신 길에 존경을! 함께 할 날들에 행복을!”…함평군, 제30회 노인의 날 기념행사 ...",
+        "source_url": "https://www.hampyeong.go.kr/boardView.do?pageId=www275&boardId=NEWS&seq=4536031&movePage=1&recordCnt=10",
+        "length": 559
+      }
+    ]
+  },
+  {
+    "key": "seosan",
+    "result": {
+      "city": "충남 서산시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-21",
+      "sourceCode": "local-press-seosan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "서산시, 2026년 하반기 영농 부산물 안전처리 지원사업 추진",
+        "source_url": "https://www.seosan.go.kr/www/selectBbsNttView.do?key=1260&bbsNo=101&nttNo=339710",
+        "length": 536
+      }
+    ]
+  },
+  {
+    "key": "haenam",
+    "result": {
+      "city": "전남 해남군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-haenam",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "해남의 가을은 축제로 물든다 맛과 멋, 즐거움 가득한 해남축제 4선",
+        "source_url": "https://www.haenam.go.kr/planweb/board/view.9is?dataUid=18e3368f5d542987015d63ee65c202ff&pBoardId=BBSMSTR_000000000131&nttId=124580&contentUid=&boardUid=18e3368f5fb80fdc015fdc4c2ac203e7&layoutUid=&nowPageNum=1&recordCountPerPage=10",
+        "length": 1669
+      }
+    ]
+  },
+  {
+    "key": "shinan",
+    "result": {
+      "city": "전남 신안군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-shinan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "㈜신호 이용섭 대표, 신안군에 고향사랑기부금 1천만 원 기탁..'...",
+        "source_url": "https://www.shinan.go.kr/home/www/openinfo/participation_07/participation_07_03/show/144125?page=1&search=&keyword=",
+        "length": 753
+      }
+    ]
+  },
+  {
+    "key": "jindo",
+    "result": {
+      "city": "전남 진도군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-04",
+      "sourceCode": "local-press-jindo",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "진도군, 노인복지관서 ‘노인의 날’ 기념행사 성황리 개최",
+        "source_url": "https://jindo.go.kr/home/board/B0016.cs?act=read&articleId=197038&categoryId=0&m=626&searchCondition=&searchKeyword=&pageIndex=1",
+        "length": 965
+      }
+    ]
+  },
+  {
+    "key": "wando",
+    "result": {
+      "city": "전남 완도군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-wando",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "10월 9일~11일 청정 완도로 ‘가을 섬 여행’ 오세요!",
+        "source_url": "https://www.wando.go.kr/wando/sub.cs?m=1023&nttId=10014331&pBoardId=BBSMSTR_000000000036",
+        "length": 1375
+      }
+    ]
+  },
+  {
+    "key": "chuncheon",
+    "result": {
+      "city": "강원 춘천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-chuncheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "감자밭 따라 춘천 여행, 수원서 '밭캉스' 즐기자",
+        "source_url": "https://www.chuncheon.go.kr/mayor/newsroom/press-release/?bbsId=BBSMSTR_000000000335&nttId=530082&flag=view",
+        "length": 1542
+      }
+    ]
+  },
+  {
+    "key": "taebaek",
+    "result": {
+      "city": "강원 태백시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-taebaek",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "태백시, 2026년 6월 기준 개별주택가격 공시 및 이의신청 접수",
+        "source_url": "https://www.taebaek.go.kr/www/selectBbsNttView.do?key=359&bbsNo=31&nttNo=185738",
+        "length": 678
+      }
+    ]
+  },
+  {
+    "key": "samcheok",
+    "result": {
+      "city": "강원 삼척시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-samcheok",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "gangneung",
+    "result": {
+      "city": "강원 강릉시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gangneung",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "10.2.(금) 보도자료",
+        "source_url": "https://www.gn.go.kr/www/selectBbsNttView.do?key=277&bbsNo=23&nttNo=236618",
+        "length": 416
+      }
+    ]
+  },
+  {
+    "key": "cheorwon",
+    "error": "TypeError: fetch failed",
+    "bodies": []
+  },
+  {
+    "key": "hongcheon",
+    "result": {
+      "city": "강원 홍천군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-hongcheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "홍천군, 영농 부산물 안전 처리 지원사업 전국 최우수 기관 수상",
+        "source_url": "https://www.hongcheon.go.kr/www/selectEminwonNewsView.do?key=283&ofr_pageSize=10&news_epct_no=21339",
+        "length": 1054
+      }
+    ]
+  },
+  {
+    "key": "donghae",
+    "result": {
+      "city": "강원 동해시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-donghae",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "동해시, AI데이터센터 1차 100MW 건축허가 완료",
+        "source_url": "https://www.dh.go.kr/www/selectBbsNttView.do?key=489&bbsNo=95&nttNo=205445",
+        "length": 755
+      }
+    ]
+  },
+  {
+    "key": "goesan",
+    "result": {
+      "city": "충북 괴산군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-goesan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "‘스마트폰 쏙 들어간 신분증’… 괴산군, IC주민등록증",
+        "source_url": "https://www.goesan.go.kr/www/selectBbsNttView.do?key=136&bbsNo=213&nttNo=139098",
+        "length": 914
+      }
+    ]
+  },
+  {
+    "key": "okcheon",
+    "result": {
+      "city": "충북 옥천군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-okcheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "황규철 옥천군수, 국회 찾아 지역 현안 해결 ‘총력’",
+        "source_url": "https://oc.go.kr/www/selectBbsNttView.do?key=252&bbsNo=44&nttNo=194592",
+        "length": 1083
+      }
+    ]
+  },
+  {
+    "key": "jecheon",
+    "result": {
+      "city": "충북 제천시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jecheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "제천시, 지역 소비와 공연을 연계한 ‘별이 빛나는 밤, 콘서트’ 개최",
+        "source_url": "https://www.jecheon.go.kr/www/selectBbsNttView.do?key=112&bbsNo=287&nttNo=404478",
+        "length": 856
+      }
+    ]
+  },
+  {
+    "key": "danyang",
+    "result": {
+      "city": "충북 단양군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-danyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“고구려의 기상, 단양서 깨어난다”… 제28회 단양온달문화축제 팡파르",
+        "source_url": "https://www.danyang.go.kr/dy21/984?action=read&action-value=7ab74213ed23b1538b67ee9d12bf92f4",
+        "length": 1384
+      }
+    ]
+  },
+  {
+    "key": "boeun",
+    "result": {
+      "city": "충북 보은군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-boeun",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "(10.2.)보은군 회남면, 10월 10일 ‘농산물 축제’ 개최",
+        "source_url": "https://www.boeun.go.kr/www/selectBbsNttView.do?key=138&bbsNo=209&nttNo=222198",
+        "length": 784
+      }
+    ]
+  },
+  {
+    "key": "ongjin",
+    "result": {
+      "city": "옹진군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-ongjin",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026년 자월면민 체육대회 성황리 개최",
+        "source_url": "https://www.ongjin.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=13626&bcd=report",
+        "length": 691
+      }
+    ]
+  },
+  {
+    "key": "yeongdong",
+    "result": {
+      "city": "충북 영동군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-yeongdong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "행복가득노인교실 시니어모델, 대전효문화뿌리축제에서 당당한 ...",
+        "source_url": "https://www.yd21.go.kr/kr/html/sub02/02010601.html?mode=V&no=72132996c88e858e3a695ce41880aae5&GotoPage=1",
+        "length": 689
+      }
+    ]
+  },
+  {
+    "key": "jincheon",
+    "result": {
+      "city": "충북 진천군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jincheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "10월 2일 보도자료",
+        "source_url": "https://www.jincheon.go.kr/home/sub.do?menukey=247&mode=view&no=107788304",
+        "length": 2553
+      }
+    ]
+  },
+  {
+    "key": "jeungpyeong",
+    "result": {
+      "city": "충북 증평군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jeungpyeong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "㈜한인엠시티, 증평복지재단에 100만 원 기탁",
+        "source_url": "https://www.jp.go.kr/kor/cop/bbs/BBSMSTR_000000000135/selectBoardArticle.do?nttId=B00000061371ry6cZ6zg",
+        "length": 407
+      }
+    ]
+  },
+  {
+    "key": "eumseong",
+    "result": {
+      "city": "충북 음성군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-eumseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "음성군생활개선회, 음성군장애인복지관에 뻥튀기 240봉 전달",
+        "source_url": "https://www.eumseong.go.kr/www/selectBbsNttView.do?key=353&bbsNo=27&nttNo=190843",
+        "length": 616
+      }
+    ]
+  },
+  {
+    "key": "ganghwa",
+    "result": {
+      "city": "강화군",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-ganghwa",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대광위 이어 국회까지… 강화 M버스 ‘투 트랙’ 총력전",
+        "source_url": "https://www.ganghwa.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=23063&bcd=report",
+        "length": 973
+      }
+    ]
+  },
+  {
+    "key": "geomdan_incheon",
+    "result": {
+      "city": "검단구",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-geomdan-incheon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "jemulpo_incheon",
+    "result": {
+      "city": "제물포구",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jemulpo-incheon",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "yongsan",
+    "result": {
+      "city": "용산구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-yongsan",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "창업 준비부터 사업 운영까지 돕는 '창업아카데미' 개최",
+        "source_url": "https://www.yongsan.go.kr/portal/bbs/B0000043/view.do?nttId=769195&menuNo=200230&pageUnit=10&pageIndex=1",
+        "length": 1036
+      }
+    ]
+  },
+  {
+    "key": "gwangjin",
+    "result": {
+      "city": "광진구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-gwangjin",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "[보도자료] 광진구, “아차산과 일상속 여가”를 즐겨요",
+        "source_url": "https://www.gwangjin.go.kr/portal/bbs/B0000002/view.do?nttId=6626828&menuNo=200191&pageIndex=1",
+        "length": 884
+      }
+    ]
+  },
+  {
+    "key": "mapo",
+    "result": {
+      "city": "마포구",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-03",
+      "sourceCode": "local-press-mapo",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "dongjak",
+    "result": {
+      "city": "동작구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-dongjak",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "갈등 예방부터 분쟁 조정까지… 동작구, ‘정비사업 갈등관리위원회’ 출범",
+        "source_url": "https://www.dongjak.go.kr/portal/bbs/B0000171/view.do?nttId=10757437&menuNo=200647&pageIndex=1",
+        "length": 1070
+      }
+    ]
+  },
+  {
+    "key": "yeongdeungpo",
+    "result": {
+      "city": "영등포구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-yeongdeungpo",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "영등포구, “병원 대신 정든 내 집에서!” … 맞춤형 ‘통합돌봄사업’ 적극 추진",
+        "source_url": "https://www.ydp.go.kr/www/selectBbsNttView.do?bbsNo=45&nttNo=419990&key=2868",
+        "length": 1440
+      }
+    ]
+  },
+  {
+    "key": "seodaemun",
+    "result": {
+      "city": "서대문구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seodaemun",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "2026년 서대문구 원어민 화상영어 11~12월 수강생 모집",
+        "source_url": "https://www.sdm.go.kr/news/news.do?mode=view&sdmBoardSeq=315639",
+        "length": 1224
+      }
+    ]
+  },
+  {
+    "key": "geumcheon",
+    "result": {
+      "city": "금천구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-geumcheon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“금천의 내일을 그리다”… 금천구, 2027년 주요 업무계획 보고회",
+        "source_url": "https://www.geumcheon.go.kr/portal/selectBbsNttView.do?bbsNo=8&nttNo=271223&key=297",
+        "length": 1878
+      }
+    ]
+  },
+  {
+    "key": "gwanak",
+    "result": {
+      "city": "관악구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-gwanak",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "관악구, 이륜차 점검부터 쉼터까지…이동노동자 ‘안전·휴식’ 빈틈없이 지원(2026.10.01.)",
+        "source_url": "https://www.gwanak.go.kr/site/gwanak/ex/bbs/View.do?cbIdx=295&bcIdx=205596",
+        "length": 1849
+      }
+    ]
+  },
+  {
+    "key": "dobong",
+    "result": {
+      "city": "도봉구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-dobong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "도봉구 기업 4곳, 송도 ‘세계한상대회’서 국내외 판로 개척 나서",
+        "source_url": "https://www.dobong.go.kr/bbs.asp?bmode=D&pcode=12746685&code=10008782",
+        "length": 937
+      }
+    ]
+  },
+  {
+    "key": "gangseo",
+    "result": {
+      "city": "강서구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gangseo",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“비가 와도, 운동장이 좁아도 맘껏 뛰어놀아요” 강서구, ‘디지털 놀이체육’으로 아이들 건강 챙긴다",
+        "source_url": "https://www.gangseo.seoul.kr/gs040201/324376",
+        "length": 963
+      }
+    ]
+  },
+  {
+    "key": "seocho",
+    "result": {
+      "city": "서초구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-seocho",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "서초구 청소 퍼레이드, 300만 누리꾼 마음 움직이며 또다시 화제",
+        "source_url": "https://www.seocho.go.kr/site/seocho/ex/bbs/View.do?cbIdx=61&bcIdx=411653",
+        "length": 1774
+      }
+    ]
+  },
+  {
+    "key": "gangdong",
+    "result": {
+      "city": "강동구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-01",
+      "sourceCode": "local-press-gangdong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "강동구, 12년 만에 결실 맺은 ‘동명근린공원 공영주차장’ 준공식 개최",
+        "source_url": "https://www.gangdong.go.kr/web/newportal/press/15522",
+        "length": 803
+      }
+    ]
+  },
+  {
+    "key": "junggu_seoul",
+    "result": {
+      "city": "서울 중구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-junggu-seoul",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“학생부부터 내신？모평 성적까지 분석” 중구, 27학년도 대입 모의면접 참가자 모집",
+        "source_url": "https://www.junggu.seoul.kr/content.do?cmsid=14390&mode=view&cid=1478755008",
+        "length": 1154
+      }
+    ]
+  },
+  {
+    "key": "jongno",
+    "result": {
+      "city": "종로구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-jongno",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "(10.2.)종로구, 취약가구 '집 안 안전' 직접 살핀다",
+        "source_url": "https://www.jongno.go.kr/portal/bbs/selectBoardArticle.do?bbsId=BBSMSTR_000000001618&menuId=388338&menuNo=388338&nttId=250661",
+        "length": 794
+      }
+    ]
+  },
+  {
+    "key": "guro",
+    "result": {
+      "city": "구로구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-guro",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "구로구, 중장년일드림센터 10월 프로그램 수강생 모집",
+        "source_url": "https://www.guro.go.kr/www/selectBbsNttView.do?bbsNo=665&nttNo=240971&key=1793",
+        "length": 914
+      }
+    ]
+  },
+  {
+    "key": "seogu_daejeon",
+    "result": {
+      "city": "대전 서구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-30",
+      "sourceCode": "local-press-seogu-daejeon",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "대전 서구, 1일부터 대전 최초 무인민원발급기 서류 122종 수수료 무료화",
+        "source_url": "https://www.seogu.go.kr/bbs/BBSMSTR_000000000277/view.do?nttId=B000000219550Tk4wT5",
+        "length": 726
+      }
+    ]
+  }
+]

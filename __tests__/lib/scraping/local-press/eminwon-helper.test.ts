@@ -8,6 +8,7 @@ import { describe, it, expect } from "vitest";
 import {
   parseEminwonListItems,
   parseEminwonDetailBody,
+  isEminwonEmptyArticle,
 } from "@/lib/scraping/local-press/_eminwon_helper";
 
 const BODY =
@@ -60,5 +61,47 @@ describe("parseEminwonListItems", () => {
     expect(items[0].newsEpctNo).toBe("11809");
     expect(items[0].title).toContain("여름철 안전점검");
     expect(items[0].publishedDate).toBe("2026-05-22");
+  });
+});
+
+// 광주 북구의 행번호가 th인 실제 구조에서는 칸 위치가 달라집니다.
+describe("새올 제목 칸 구조 변화", () => {
+  it("행번호가 th인 목록에서도 부서가 아닌 제목 링크를 읽는다", () => {
+    const html = `<table><tr><th class="num">11184</th>
+      <td class="subject"><a onclick="searchDetail('11256')">북구, 골목상권 활성화 협약식</a></td>
+      <td class="class">소상공인지원과</td><td class="date">2026-10-01</td><td>6</td></tr></table>`;
+    expect(parseEminwonListItems(html)[0]).toEqual({
+      newsEpctNo: "11256", title: "북구, 골목상권 활성화 협약식",
+      department: "소상공인지원과", publishedDate: "2026-10-01",
+    });
+  });
+  it("모든 칸에 클릭 함수가 있는 중첩 표를 중복 없이 읽는다", () => {
+    const row = `<tr><td onclick="searchDetail('17193')">17145</td>
+      <td onclick="searchDetail('17193')"><p>임실군의회, 민간위원 위촉</p></td>
+      <td onclick="searchDetail('17193')">의회사무과</td><td>2026-09-29</td><td>8</td></tr>`;
+    const html = '<table><tr><td><table>' + row + row + '</table></td></tr></table>';
+    const items = parseEminwonListItems(html);
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toBe("임실군의회, 민간위원 위촉");
+    expect(items[0].department).toBe("의회사무과");
+  });
+});
+
+describe("새올 빈 원문 구분", () => {
+  it("정상 상세에 날짜와 비어 있는 본문 칸이 있으면 원문 누락으로 건너뛴다", () => {
+    const html = '<table><tr><td>등록일자</td><td>2026-09-29</td></tr>' +
+      '<tr><td>제목</td><td>임실군의회, 민간위원 위촉</td></tr>' +
+      '<tr><td style="word-break:break-all" colspan="4"></td></tr></table>';
+    expect(parseEminwonDetailBody(html)).toBeNull();
+    expect(isEminwonEmptyArticle(html)).toBe(true);
+  });
+  it("접근 차단 응답은 빈 기사로 숨기지 않는다", () => {
+    expect(isEminwonEmptyArticle('<html>잘못된 접근입니다.</html>')).toBe(false);
+  });
+  it("유성의 실제 내용 칸에 본문이 있으면 정상 추출한다", () => {
+    const html = '<table><tr><td class="REGISTER_DATE">2014-03-12</td></tr>' +
+      '<tr><td class="DATA_CONTENT">' + BODY + '</td></tr></table>';
+    expect(parseEminwonDetailBody(html)).toContain("만덕2동");
+    expect(isEminwonEmptyArticle(html)).toBe(false);
   });
 });

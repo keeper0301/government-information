@@ -2,19 +2,16 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { loadPublishedNews } from "@/lib/news-publication/feed";
+import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
 import { cleanDescription } from "@/lib/utils";
 
-// 2026-05-21 SC 색인 1,958 페이지 미생성 진단 후속:
-// 정적·hub 페이지 lastModified 가 매 sitemap fetch 마다 new Date() 로 갱신되어
-// Google 이 "진짜 변경 아님" 의심 → 색인 우선순위 ↓.
-//
-// revalidate 86400 = 24h 단위 build-time 고정. module-level SITEMAP_BUILD_TIME 이
-// 24h 동안 같은 값 보장 (Next.js App Router force-static 패턴). 정책 detail
-// (welfare/loan/news/blog) 의 updated_at 기준은 그대로 유지.
-export const revalidate = 86400;
-// 페이지네이션(.range 순회)으로 round-trip 이 늘어 안전망. 일 1회 생성이라 여유 큼.
+// 새 자동 발행 글이 검색 제출 목록에 반영되도록 한 시간마다 갱신합니다.
+export const revalidate = 3600;
+// 전체 자료를 여러 번 나누어 읽으므로 실행 시간을 충분히 확보합니다.
 export const maxDuration = 60;
-const SITEMAP_BUILD_TIME = new Date();
+// Unknown content modification time is omitted, never replaced with build/request time.
+const SITEMAP_BUILD_TIME = undefined;
 import {
   CROSS_COMBINATIONS,
   ELIGIBILITY_CATALOG,
@@ -24,7 +21,7 @@ import {
   WELFARE_EXCLUDED_FILTER,
   LOAN_EXCLUDED_FILTER,
 } from "@/lib/listing-sources";
-import { getGuides } from "@/lib/policy-guides";
+import { getGuides, getGuideDisplayDates } from "@/lib/policy-guides";
 import { PROVINCES } from "@/lib/regions";
 import { AGE_SLUGS, getAgeCounts } from "@/lib/age-targeting";
 import { CATEGORY_SLUGS } from "@/lib/category-hubs";
@@ -99,14 +96,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // 정책 종합 가이드 (policy-bible 자산화) — 격주 발행, 영구 자산
-  const guides = await getGuides(200);
+  const guides = await getGuides(200, { publicationOnly: true });
   const reviewModeGuideSlugBlock = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
   const selectedGuides = ADSENSE_REVIEW_MODE
     ? guides.filter((g) => !reviewModeGuideSlugBlock.test(g.slug)).slice(0, 30)
     : guides;
   const guidePages: MetadataRoute.Sitemap = selectedGuides.map((g) => ({
     url: `${baseUrl}/guides/${g.slug}`,
-    lastModified: new Date(g.updatedAt),
+    lastModified: getGuideDisplayDates(g).updatedAt,
     changeFrequency: "monthly" as const,
     priority: 0.6,
   }));
@@ -115,7 +112,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 4 hub 모두 SSG + benefit/age/occupation 세 축 매칭이라 thin-content 위험 낮음.
   const hubPages: MetadataRoute.Sitemap = CATEGORY_SLUGS.map((slug) => ({
     url: `${baseUrl}/c/${slug}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
@@ -124,10 +121,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 심사자는 sitemap 을 따라 얇은 정책/뉴스/검색성 페이지를 샘플링하므로,
   // 직접 작성형 가이드와 핵심 허브만 제출한다.
   if (ADSENSE_REVIEW_MODE) {
+    const publishedNews = await loadPublishedNews(true);
     return [
       ...staticPages,
       ...hubPages,
       ...guidePages,
+      ...publishedNews.map(article => ({ url: `${baseUrl}/news/${article.slug}`, lastModified: article.updatedAt, changeFrequency: "monthly" as const, priority: 0.6 })),
+      ...(publishedNews.length >= 3 ? [{ url: `${baseUrl}/news`, changeFrequency: "weekly" as const, priority: 0.7 }] : []),
     ];
   }
 
@@ -136,7 +136,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 자격 카테고리 페이지 — Phase 1.5 long-tail SEO (income·household 8 slug)
   const eligibilityPages: MetadataRoute.Sitemap = ELIGIBILITY_SLUGS.map((slug) => ({
     url: `${baseUrl}/eligibility/${slug}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.8,
   }));
@@ -180,7 +180,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
     .map(({ income, household }) => ({
       url: `${baseUrl}/eligibility/cross/${income}/${household}`,
-      lastModified: new Date(),
+      lastModified: undefined,
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
@@ -197,7 +197,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if ((welfareAgeCounts.get(slug) ?? 0) >= 5) {
       agePages.push({
         url: `${baseUrl}/welfare/age/${slug}`,
-        lastModified: new Date(),
+        lastModified: undefined,
         changeFrequency: "daily",
         priority: 0.75,
       });
@@ -205,7 +205,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if ((loanAgeCounts.get(slug) ?? 0) >= 5) {
       agePages.push({
         url: `${baseUrl}/loan/age/${slug}`,
-        lastModified: new Date(),
+        lastModified: undefined,
         changeFrequency: "daily",
         priority: 0.75,
       });
@@ -213,26 +213,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Welfare programs — 2026-05-18 AdSense 재거절 후 엄격 강화.
-  // unique_insight 보유 페이지만 sitemap 등록 (detail page noindex 정책과 일관).
+  // 원문 근거와 사람 검수가 유효한 설명만 사이트맵에 등록한다.
   // welfare/[id]/page.tsx 의 isSparse 가 !hasInsight 면 noindex 처리 → sitemap 에서
   // 같은 row 빼지 않으면 Search Console "Indexed, though blocked by noindex" 경고 +
   // AdSense 검수자가 sitemap → noindex URL 도달 시 부정 시그널.
   // 2026-06-14 — .limit(15000) 이 PostgREST max-rows(1000) 에 막혀 welfare 가 1,000 에서
   // 잘리던 사고(10,223 중 9,223 누락) fix. .range() 페이지네이션으로 전체 수집.
-  const welfare = await paginateAll<{ id: string; updated_at: string; unique_insight_at: string | null }>(
+  const welfare = await paginateAll<EvidenceProgram & { id: string; updated_at: string }>(
     (from) =>
       supabase
         .from("welfare_programs")
-        .select("id, updated_at, unique_insight_at")
+        .select("*")
         .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
-        .not("unique_insight_at", "is", null)
+        .eq("policy_guidance->>status", "approved")
         .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세는 404 라 sitemap 에 두면 SC 404 경고
         .is("duplicate_of_id", null) // 중복 정책 제외 — 목록과 동일 기준(중복 콘텐츠 색인 방지)
         .order("id", { ascending: true }) // .range() 안정 정렬(페이지 경계 중복/누락 방지)
         .range(from, from + 999),
   );
-  const welfarePages: MetadataRoute.Sitemap = welfare.map((w) => {
-    const insightAt = (w as { unique_insight_at?: string | null }).unique_insight_at!;
+  const welfarePages: MetadataRoute.Sitemap = welfare.filter(row => getPublishedGuide(row)).map((w) => {
+    const insightAt = getPublishedGuide(w)!.reviewedAt!;
     const lastModSrc = new Date(insightAt) > new Date(w.updated_at) ? insightAt : w.updated_at;
     return {
       url: `${baseUrl}/welfare/${w.id}`,
@@ -246,26 +246,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 17 광역 모두 활성 정책 ≥100건 보유 (실측 2026-04-28) — thin-content 위험 0.
   const welfareRegionPages: MetadataRoute.Sitemap = PROVINCES.map((p) => ({
     url: `${baseUrl}/welfare/region/${p.code}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
 
   // Loan programs — welfare 와 동일 패턴 + 동일 페이지네이션 fix (1000 cap 우회).
-  const loans = await paginateAll<{ id: string; updated_at: string; unique_insight_at: string | null }>(
+  const loans = await paginateAll<EvidenceProgram & { id: string; updated_at: string }>(
     (from) =>
       supabase
         .from("loan_programs")
-        .select("id, updated_at, unique_insight_at")
+        .select("*")
         .not("source_code", "in", LOAN_EXCLUDED_FILTER)
-        .not("unique_insight_at", "is", null)
+        .eq("policy_guidance->>status", "approved")
         .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — 상세 404 와 정합
         .is("duplicate_of_id", null) // 중복 정책 제외 — 중복 콘텐츠 색인 방지
         .order("id", { ascending: true })
         .range(from, from + 999),
   );
-  const loanPages: MetadataRoute.Sitemap = loans.map((l) => {
-    const insightAt = (l as { unique_insight_at?: string | null }).unique_insight_at!;
+  const loanPages: MetadataRoute.Sitemap = loans.filter(row => getPublishedGuide(row)).map((l) => {
+    const insightAt = getPublishedGuide(l)!.reviewedAt!;
     const lastModSrc = new Date(insightAt) > new Date(l.updated_at) ? insightAt : l.updated_at;
     return {
       url: `${baseUrl}/loan/${l.id}`,
@@ -279,7 +279,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 17 광역 모두 활성 정책 ≥3건 보유 (세종 3건이 최소, 실측 2026-04-28).
   const loanRegionPages: MetadataRoute.Sitemap = PROVINCES.map((p) => ({
     url: `${baseUrl}/loan/region/${p.code}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
@@ -307,7 +307,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const blogCategoryPages: MetadataRoute.Sitemap = blogCategories.map((c) => ({
     url: `${baseUrl}/blog/category/${encodeURIComponent(c)}`,
-    lastModified: new Date(),
+    lastModified: undefined,
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
@@ -349,7 +349,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     keywordPages = getAllKeywords().map((k) => ({
       url: `${baseUrl}/news/keyword/${encodeURIComponent(k)}`,
-      lastModified: new Date(),
+      lastModified: undefined,
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
@@ -359,7 +359,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
     topicPages = TOPIC_CATEGORIES.map((t) => ({
       url: `${baseUrl}/news?topic=${encodeURIComponent(t.name)}`,
-      lastModified: new Date(),
+      lastModified: undefined,
       changeFrequency: "daily" as const,
       priority: 0.6,
     }));

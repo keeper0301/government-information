@@ -14,6 +14,8 @@ import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { buildPolicyMetaDescription, buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
+import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
+import { PolicySourcePanel } from "@/components/policy/PolicySourcePanel";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
 import { ProgramActionCard } from "@/components/program-action-card";
 import { buildPolicyFaqs } from "@/lib/policy-faq";
@@ -45,11 +47,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createAdminClient();
   // AdSense "thin content" 거절 대응 — sparse 페이지는 검수자 sample 에서 빠지도록
   // robots noindex. 본문 + 핵심 정보 카드 채움 정도로 판정 (page render 와 같은 기준).
-  // 2026-05-11: unique_insight (keepioo 자체 해설) 있는 페이지는 본문 풍부 (200~400자 추가)
-  // → sparse 판정에서 면제. 백필 cron 진행과 함께 자연스럽게 index 페이지 확대.
+  // 원문 대조와 사람 검수가 유효한 설명만 공개 설명으로 인정한다.
   const { data } = await supabase
     .from("welfare_programs")
-    .select("title, description, target, eligibility, benefits, apply_method, apply_start, apply_end, unique_insight, source, region")
+    .select("*")
     .not("source_code", "in", WELFARE_EXCLUDED_FILTER)
     .not("is_hidden", "is", true) // 회수(숨김) 정책 제외 — admin client 라 RLS 대체 명시
     .eq("id", id)
@@ -60,9 +61,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const period = data.apply_start && data.apply_end ? "x" : data.apply_start || data.apply_end || null;
   const summaryFields = [data.eligibility, data.benefits, period, data.apply_method];
   const filledCount = summaryFields.filter((v) => v && !isSubstantiallyDuplicate(v as string, data.description)).length;
-  const hasInsight = !!(data.unique_insight && (data.unique_insight as string).trim().length >= 80);
+  const metadataGuide = getPublishedGuide(data as unknown as EvidenceProgram);
+  const hasInsight = !!metadataGuide;
   // "thin" 임계 — 2026-05-18 AdSense 재거절 후 엄격 강화.
-  // unique_insight 없으면 무조건 noindex (정부 원문 복붙 페이지 검수자 노출 차단).
+  // 검수된 해설이 없으면 검색 제외 상태를 유지한다.
   // filledCount/descLen 충실 보조 조건은 폐기 — AdSense "low value content" 정책상
   // 정부 데이터 가공만으로는 부가가치 불충분 판정. 백필 완료 row 만 index.
   const isSparse = !hasInsight;
@@ -81,12 +83,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     keyword: "신청자격·방법",
     locality: data.region,
   });
-  // 2026-06-11 — 검색결과 스니펫(description)을 unique_insight(keepioo 자체 해설) 우선으로.
+  // 검색 설명에도 본문과 동일한 검수 조건을 적용한다.
   // 정부 원문 그대로면 여러 페이지 "동일 설명문 중복"(네이버 진단) + 딱딱해 CTR 낮음 → 해설로
   // 고유화·매력화. 없으면(noindex sparse) 정부 description fallback. 160자 cut(스니펫 권장).
   const metaDescription = buildPolicyMetaDescription({
     title: data.title,
-    primary: hasInsight ? data.unique_insight : data.description,
+    primary: metadataGuide ? metadataGuide.sections.map(section => section.text).join(" ") : data.description,
     target: data.target || data.eligibility,
     support: data.benefits,
     applyEnd: data.apply_end,
@@ -132,6 +134,7 @@ export default async function WelfareDetailPage({ params }: Props) {
     ? `~ ${program.apply_end}`
     : null;
 
+  const publishedGuide = getPublishedGuide(program as unknown as EvidenceProgram);
   const sourceLink = program.source_url || program.apply_url;
   // 외부 apply_url 스킴 검증 — javascript:/data: 등 위험 스킴·깨진 URL 이면 null
   // → 신청 버튼 대신 Google 검색 fallback (XSS·피싱·깨진 링크 방지)
@@ -281,6 +284,7 @@ export default async function WelfareDetailPage({ params }: Props) {
       {/* 빈약 안내 박스 — 카드 위 배치 유지 (loan 과 동일). */}
       {sparseVariant && (
         <SparseDataNotice
+            sourceVerified={!!publishedGuide}
           sourceLink={sourceLink}
           source={program.source}
           variant={sparseVariant}
@@ -302,39 +306,17 @@ export default async function WelfareDetailPage({ params }: Props) {
 
       {/* 출처 + 큐레이션 고지 — 핵심 정보 바로 아래 (loan 과 동일).
           AdSense "재게시 사이트" 의심 차단 — 출처 명시 + 정리·해설 큐레이션 시그널. */}
-      <div className="bg-white border border-grey-200 rounded-xl px-6 py-4 mb-6">
-        <div className="text-[14px] font-semibold text-grey-900 mb-0.5">
-          원문 출처: {program.source} <span className="text-[12px] font-normal text-grey-700">(정부 공식)</span>
-        </div>
-        <div className="text-[13px] text-grey-700 leading-[1.6]">
-          최종 확인일: {new Date(program.updated_at).toLocaleDateString("ko-KR")}
-          {" · "}정부 공식 자료를 바탕으로 keepioo 가 정리·구조화한 안내입니다.
-          공식 신청·확인은 출처 사이트에서 진행해 주세요.
-        </div>
-      </div>
+      <PolicySourcePanel source={program.source} sourceUrl={program.source_url} updatedAt={program.updated_at} guide={publishedGuide} />
 
       {/* keepioo 자체 해설 — 정부 원문 위에 배치 (큐레이션 시그널 강화).
           AdSense 검수자가 위→아래 스캔 시 "재게시 X, 큐레이션 O" 인식.
           DDL 083 미적용 / 백필 미완료 row 는 unique_insight=NULL → 자연 생략. */}
-      {program.unique_insight && (
-        <section className="bg-blue-50/40 border border-blue-200 rounded-2xl p-8 mb-6 max-md:p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-[17px] font-bold text-grey-900 tracking-[-0.3px]">
-              이 정책을 한눈에
-            </h2>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-              keepioo 정리
-            </span>
-          </div>
-          <div className="text-[15px] text-grey-800 leading-[1.8] whitespace-pre-line">
-            {program.unique_insight}
-          </div>
-        </section>
-      )}
+
 
       {/* keepioo 자체 가치 박스 — AI 생성 팁/거절 사유/체크리스트.
           백필 전 row 는 3 필드 NULL → template fallback. */}
       <PolicyGuideBox
+          guide={publishedGuide}
         tips={(program as { ai_tips?: string | null }).ai_tips ?? null}
         faq={(program as { ai_faq?: string | null }).ai_faq ?? null}
         checklist={(program as { ai_checklist?: string | null }).ai_checklist ?? null}
@@ -346,7 +328,7 @@ export default async function WelfareDetailPage({ params }: Props) {
         const cleaned = stripCardDuplicates(cleanDescription(program.description));
         if (!cleaned) return null;
         return (
-          <InfoSection title="공고 내용 (정부 원문)">
+          <InfoSection title="수집된 정책 내용">
             <p className="text-[16px] font-medium text-grey-800 leading-[1.8] max-md:text-[15px] whitespace-pre-wrap">
               {cleaned}
             </p>

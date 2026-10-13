@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const citiesSource = readFileSync(
   join(process.cwd(), "playwright/lib/cities.mjs"),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const factorySource = readFileSync(
   join(process.cwd(), "playwright/lib/_factory.mjs"),
   "utf8",

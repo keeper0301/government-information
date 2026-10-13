@@ -12,7 +12,7 @@ import { getAuthUsersCached } from "@/lib/admin-stats";
 import {
   getStaleCityNames,
   getHighNullDateCityCount,
-  getNewsRatio,
+  getNewsRatioForMonitoring,
 } from "@/lib/analytics/local-press-stats";
 import { isAdsenseContentReady, NEWS_RATIO_HIGH_FLOOR } from "@/lib/adsense-readiness";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
@@ -261,6 +261,7 @@ export type ThresholdAlert = {
     | "local_press_cron_cadence"
     | "local_press_null_date"
     | "news_ratio_high"
+    | "adsense_stats_unavailable"
     | "adsense_ready_to_disable"
     | "vercel_token_expiring"
     | "blog_publish_stalled"
@@ -735,10 +736,10 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     newsIndexable,
     ratio: newsRatio,
     commentaryBackfillRatio,
-  } = await getNewsRatio();
+  } = await getNewsRatioForMonitoring();
   const newsRatioTotal =
     newsRatioWelfare + newsRatioLoan + newsRatioBlog + newsIndexable;
-  const newsRatioDetail =
+  const newsRatioDetail = !Number.isFinite(newsRatio) ? "콘텐츠 통계 조회 실패" :
     `news ${newsIndexable.toLocaleString()} / total ${newsRatioTotal.toLocaleString()}` +
     ` (welfare ${newsRatioWelfare.toLocaleString()}, loan ${newsRatioLoan.toLocaleString()}, blog ${newsRatioBlog.toLocaleString()})`;
   // 백필과 콘텐츠 구성을 함께 확인. 실제 Google 승인 여부는 별도 확인.
@@ -1191,6 +1192,10 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       recommendation:
         "Vercel account settings → Tokens → 새 PAT 발급 (1년) → Vercel 환경변수 VERCEL_TOKEN 갱신 + VERCEL_TOKEN_EXPIRES_AT (ISO 날짜) 동시 갱신 → production redeploy. project scope 필수.",
     });
+  }
+
+  if (!Number.isFinite(s.newsRatio)) {
+    alerts.push({ key: "adsense_stats_unavailable", message: "AdSense 콘텐츠 통계 확인 불가 — 전환 보류.", recommendation: "DB count 조회 오류를 확인하세요. 수치 미확인은 0건이나 심사 준비 완료가 아닙니다." });
   }
 
   if (s.adsenseReadyToDisable && s.newsRatio < NEWS_RATIO_HIGH_FLOOR) {

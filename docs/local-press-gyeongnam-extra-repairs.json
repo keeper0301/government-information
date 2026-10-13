@@ -1,0 +1,59 @@
+[
+  {
+    "key": "busan",
+    "count": 12,
+    "first": {
+      "seq": "1757962",
+      "title": "부산시, 주한스웨덴대사 접견… 해양·산업 등 다양한 분야 교류·협력 논의",
+      "publishedDate": "2026-10-05",
+      "sourceUrl": "https://www.busan.go.kr/nbtnewsBU/1757962"
+    },
+    "bodyLengths": [
+      1479,
+      973
+    ],
+    "note": "PDF 전문은 실제 Node 실행에서 확인. 검사 도구 안의 지연 모듈 읽기는 제한되어 별도 실행으로 검증함."
+  },
+  {
+    "key": "gangwon",
+    "count": 15,
+    "first": {
+      "seq": "9180",
+      "title": "강원특별자치도, 철원에서 통일쌀 벼베기… 평화와 교류의 의미 되새겨",
+      "publishedDate": "2026-10-03",
+      "sourceUrl": "https://state.gwd.go.kr/portal/briefing/pressRelease?seq=9180"
+    },
+    "bodyLengths": [
+      1075,
+      1131
+    ]
+  },
+  {
+    "key": "chungbuk",
+    "count": 10,
+    "first": {
+      "seq": "442350",
+      "title": "충북도・청주시・셀트리온그룹, 투자협약 체결",
+      "publishedDate": "2026-10-02",
+      "sourceUrl": "https://www.chungbuk.go.kr/www/selectBbsNttView.do?key=429&bbsNo=65&nttNo=442350"
+    },
+    "bodyLengths": [
+      1278,
+      1192
+    ]
+  },
+  {
+    "key": "boryeong",
+    "count": 10,
+    "first": {
+      "seq": "16336",
+      "title": "보령시, 명천1지구 급경사지 정비사업 9월 재착공",
+      "publishedDate": "2026-09-28",
+      "sourceUrl": "https://www.brcn.go.kr/prog/eminwon/kor/AA/sub04_02/view.do?mgtno=16336"
+    },
+    "bodyLengths": [
+      558,
+      778
+    ]
+  }
+]

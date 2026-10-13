@@ -64,7 +64,7 @@ const TARGETS: {
     // category=양육 (DB 정확 매칭 1,053건) — 2026-04-28 fix: target=육아 0건 사고.
     // welfare 의 category 컬럼이 옛 분류 (생계·의료·양육·교육·취업·주거·문화·창업).
     href: "/welfare?category=%EC%96%91%EC%9C%A1",
-    reviewHref: "/c/youth",
+    reviewHref: "/guides/pregnancy-childcare-benefits",
     label: "부모·육아",
     desc: "출산·양육비",
     icon: Baby,
@@ -82,7 +82,7 @@ const TARGETS: {
   },
   {
     href: "/eligibility/low-income",
-    reviewHref: "/c/senior",
+    reviewHref: "/guides/basic-living-medical-expense-guide",
     label: "저소득",
     desc: "기초생활·차상위",
     icon: HandCoins,
@@ -100,7 +100,7 @@ const TARGETS: {
   },
 ];
 
-export function HomeTargetCards() {
+export function HomeTargetCards({ publishedSlugs = [] }: { publishedSlugs?: string[] }) {
   return (
     <section
       className="max-w-content mx-auto px-6 lg:px-10 py-8 lg:py-12"
@@ -120,10 +120,11 @@ export function HomeTargetCards() {
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
         {TARGETS.map((t) => {
           const Icon = t.icon;
+          const reviewHref = t.reviewHref.startsWith("/guides/") && !publishedSlugs.includes(t.reviewHref.slice(8))
+            ? "/guides" : t.reviewHref;
           return (
-            <Link
-              key={t.label}
-              href={ADSENSE_REVIEW_MODE ? t.reviewHref : t.href}
+            <Link prefetch={false} key={t.label}
+              href={ADSENSE_REVIEW_MODE ? reviewHref : t.href}
               onClick={() => trackEvent(EVENTS.HOME_TARGET_CARD_CLICKED, { label: t.label })}
               className="group flex flex-col items-center gap-2 rounded-2xl bg-white border border-grey-200 p-4 md:p-5 no-underline hover:border-blue-300 hover:shadow-[0_4px_12px_rgba(49,130,246,0.08)] transition-all"
             >

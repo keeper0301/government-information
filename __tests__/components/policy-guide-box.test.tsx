@@ -1,34 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
-
-describe("PolicyGuideBox", () => {
-  it("3 필드가 있으면 세 섹션을 모두 렌더한다", () => {
-    const html = renderToStaticMarkup(
-      <PolicyGuideBox
-        tips="신청 전 소득을 확인하세요"
-        faq="서류 누락이 흔한 거절 사유"
-        checklist="등본·계약서·소득증빙"
-        category="주거"
-      />,
-    );
-    expect(html).toContain("신청 전 소득");
-    expect(html).toContain("서류 누락");
-    expect(html).toContain("등본");
-  });
-
-  it("모두 null 이면 template fallback 안내를 렌더한다", () => {
-    const html = renderToStaticMarkup(
-      <PolicyGuideBox tips={null} faq={null} checklist={null} category="주거" />,
-    );
-    expect(html.length).toBeGreaterThan(50);
-    expect(html).toContain("공식");
-  });
-
-  it("일부 필드만 있으면 있는 섹션만 렌더한다", () => {
-    const html = renderToStaticMarkup(
-      <PolicyGuideBox tips="팁만 있음" faq={null} checklist={null} />,
-    );
-    expect(html).toContain("팁만 있음");
-  });
+import { createGuideDraft, approveGuide } from "@/lib/policy/evidence-guide";
+it("검수된 설명과 원문 근거를 함께 보여준다", () => {
+  const row = { title: "청년 주거", source_url: "https://www.gwgs.go.kr/notice?id=123" };
+  const guide = approveGuide(row, createGuideDraft(row, { url: row.source_url, title: row.title,
+    body: "지원 대상은 고성군 거주 청년입니다.", checkedAt: "2026-10-06T00:00:00Z" },
+    [{ label: "대상 확인", text: "거주 조건을 먼저 확인하세요.", quote: "고성군 거주 청년" }]), "운영자");
+  const html = renderToStaticMarkup(<PolicyGuideBox guide={guide} tips={null} faq={null} checklist={null} />);
+  expect(html).toContain("거주 조건을 먼저"); expect(html).toContain("고성군 거주 청년");
+  expect(html).toContain(row.source_url); expect(html).toContain("운영자 검수일");
+});
+it("검수 전에는 구체적 사실을 추정한 대체 설명을 만들지 않는다", () => {
+  const html = renderToStaticMarkup(<PolicyGuideBox tips={null} faq={null} checklist={null} />);
+  expect(html).toContain("검수 중"); expect(html).not.toContain("자주 묻는 거절 사유");
 });

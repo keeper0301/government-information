@@ -12,11 +12,12 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getGuides } from "@/lib/policy-guides";
+import { getGuides, getGuideDisplayDates } from "@/lib/policy-guides";
 import { CATEGORY_HUBS, CATEGORY_SLUGS } from "@/lib/category-hubs";
 import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { EligibilityDemoStrip } from "@/components/eligibility-demo-strip";
+import { getGuideEvidence } from "@/lib/guide-evidence";
 
 export const dynamic = "force-static";
 
@@ -34,11 +35,6 @@ export const metadata: Metadata = {
   },
 };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function preview(text: string, maxLen = 100): string {
   const trimmed = text.replace(/\s+/g, " ").trim();
   if (trimmed.length <= maxLen) return trimmed;
@@ -46,7 +42,7 @@ function preview(text: string, maxLen = 100): string {
 }
 
 export default async function GuidesPage() {
-  const guides = await getGuides(50);
+  const guides = (await getGuides(50, { publicationOnly: true })).sort((a, b) => Number(!!getGuideEvidence(b)) - Number(!!getGuideEvidence(a)));
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-8">
@@ -88,9 +84,10 @@ export default async function GuidesPage() {
       </section>
 
       {/* 정책 가이드 카드 list (있으면 위에 노출) */}
+      {guides.length === 0 && <p className="mb-10 rounded-xl bg-blue-50 p-5">운영자 검수를 마친 신청 가이드를 준비하고 있습니다. 대상별 확인 순서와 공식 기관의 최신 공고를 먼저 확인하세요.</p>}
       {guides.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-xl font-bold mb-4">최근 발행 가이드</h2>
+          <h2 className="text-xl font-bold mb-4">검수한 신청 가이드</h2>
           <ul className="space-y-4">
             {guides.map((guide) => (
               <li key={guide.id}>
@@ -99,7 +96,7 @@ export default async function GuidesPage() {
                   className="block border rounded-lg p-5 hover:border-gray-400 transition-colors no-underline"
                 >
                   <div className="text-sm text-gray-500 mb-1">
-                    {formatDate(guide.publishedAt)} · 5편 시리즈
+                    {getGuideDisplayDates(guide).publishedAt?.slice(0, 10) ?? "발행일 기록 없음"} · 운영자 편집 검수 완료 {getGuideEvidence(guide)?.status === "closed" ? "· 해당 모집 접수 마감" : ""}
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-grey-900">{guide.title}</h3>
                   <p className="text-gray-700 leading-relaxed">
@@ -152,7 +149,7 @@ export default async function GuidesPage() {
         <p className="text-sm text-gray-600 mb-4">
           {ADSENSE_REVIEW_MODE
             ? "신청 실수·서류·중복 제한을 설명하는 대표 가이드와 사용자 그룹별 허브를 우선 보여줍니다."
-            : "재심사 기간에는 신청 실수·서류·중복 제한을 설명하는 대표 가이드를 우선 보여줍니다. 카테고리별로 필요한 주제를 모아 보세요."}
+            : "카테고리별로 필요한 주제를 모아 보세요. 사업별 조건은 공식 공고에서 확인해야 합니다."}
         </p>
         <div className="flex flex-wrap gap-2">
           {(ADSENSE_REVIEW_MODE ? CATEGORY_SLUGS : BLOG_CATEGORIES).map((item) => {

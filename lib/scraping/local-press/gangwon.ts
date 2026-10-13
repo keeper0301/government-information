@@ -4,6 +4,7 @@ import {
   type PressNewsItem,
 } from "./_factory";
 import { toMarkdown } from "@ohah/hwpjs";
+import { readGangwonHwpx } from "./_gangwon_hwpx";
 
 const BASE_URL = "https://state.gwd.go.kr";
 const LIST_URL = "https://state.gwd.go.kr/portal/briefing/pressRelease";
@@ -89,6 +90,8 @@ async function fetchHwpBody(html: string): Promise<string | null> {
     });
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
+    // 새 한글 문서 형식도 원본 첨부의 문장만 읽습니다.
+    if (buf[0] === 0x50 && buf[1] === 0x4b) return await readGangwonHwpx(buf);
     // OLE(hwp5) 매직 D0CF 확인 — 다운로드가 HTML 에러페이지일 때 방어.
     if (buf[0] !== 0xd0 || buf[1] !== 0xcf) return null;
     const { markdown } = toMarkdown(buf, { image: "base64", useHtml: false });

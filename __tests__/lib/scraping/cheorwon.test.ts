@@ -52,8 +52,8 @@ describe("cheorwon parseListPage", () => {
 });
 
 describe("cheorwon parseDetailBody", () => {
-  it("p-table__content 본문에서 한국어 전문을 추출한다", () => {
-    const body = parseDetailBody(MOCK_DETAIL_HTML);
+  it("p-table__content 본문에서 한국어 전문을 추출한다", async () => {
+    const body = await parseDetailBody(MOCK_DETAIL_HTML);
 
     expect(body).not.toBeNull();
     expect(body!.length).toBeGreaterThanOrEqual(250);

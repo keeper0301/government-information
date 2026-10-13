@@ -9,6 +9,8 @@
 // 사이트 전체 칩 정렬이 일관되도록 (welfare/loan/news 만 적용. blog 는 인구통계 축).
 // ============================================================
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { createPublicClient } from "@/lib/supabase/public";
 import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
 
 export type CategoryCount = { category: string; n: number };
@@ -48,6 +50,17 @@ export async function getProgramCategoryCounts(
   const { data } = await supabase.rpc(rpcName);
   return reorderByTaxonomy(fromRpc(data));
 }
+
+/** 이용자 정보와 무관한 공개 분류 수만 1분 동안 재사용합니다. */
+export const getPublicProgramCategoryCounts = unstable_cache(async (
+  table: "welfare_programs" | "loan_programs",
+): Promise<CategoryCount[]> => {
+  const { data, error } = await createPublicClient().rpc(
+    table === "welfare_programs" ? "welfare_category_counts" : "loan_category_counts",
+  );
+  if (error) throw new Error("정책 분류 조회 실패", { cause: error });
+  return reorderByTaxonomy(fromRpc(data));
+}, ["public-program-category-counts-v1"], { revalidate: 60 });
 
 /** news_posts.benefit_tags 별 건수. press 제외. RPC 호출. */
 export async function getNewsBenefitTagCounts(

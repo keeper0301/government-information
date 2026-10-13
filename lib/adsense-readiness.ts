@@ -7,5 +7,6 @@ export const NEWS_RATIO_HIGH_FLOOR =
 
 // 백필 완료는 콘텐츠 구성 점검을 대체하지 않으며 AdSense 승인을 의미하지 않는다.
 export function isAdsenseContentReady(commentaryBackfillRatio: number, newsRatio: number): boolean {
-  return commentaryBackfillRatio >= 0.8 && newsRatio >= 0 && newsRatio < NEWS_RATIO_HIGH_FLOOR;
+  return Number.isFinite(commentaryBackfillRatio) && commentaryBackfillRatio >= 0.8 && commentaryBackfillRatio <= 1
+    && Number.isFinite(newsRatio) && newsRatio >= 0 && newsRatio < NEWS_RATIO_HIGH_FLOOR;
 }

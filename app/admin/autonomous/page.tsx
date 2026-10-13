@@ -66,7 +66,7 @@ import {
   GEMINI_KEEPIOO_CAP_KRW,
   type GeminiSpendingStat,
 } from "@/lib/analytics/gemini-spending";
-import { getLocalPressStats, getNewsRatio } from "@/lib/analytics/local-press-stats";
+import { getLocalPressStats, getNewsRatioForMonitoring } from "@/lib/analytics/local-press-stats";
 import { isAdsenseContentReady, NEWS_RATIO_HIGH_FLOOR } from "@/lib/adsense-readiness";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { LocalPressCard } from "./_components/local-press-card";
@@ -182,7 +182,7 @@ export default async function AdminAutonomousPage() {
     getSnsEnvStatus(),
     getGeminiSpendingStats(28),
     getLocalPressStats(),
-    getNewsRatio(),
+    getNewsRatioForMonitoring(),
     getPressIngestTierStats(),
     getBlogPublishStats(),
     getNaverPublishStats(),
@@ -294,7 +294,7 @@ export default async function AdminAutonomousPage() {
       {/* 2026-05-31 Critical 가드 — review mode off + 백필 < 80% 사고 차단. */}
       {!ADSENSE_REVIEW_MODE && newsRatioStats.commentaryBackfillRatio < 0.8 && (
         <div className="mb-3 rounded border-2 border-red-400 bg-red-50 px-3 py-2.5 text-xs text-red-900">
-          <div className="font-bold mb-1">⚠️ AdSense review mode 가 꺼져 있는데 AI 자체 해설 백필이 {(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}% (목표 80%+)</div>
+          <div className="font-bold mb-1">⚠️ AdSense review mode 가 꺼져 있는데 AI 자체 해설 백필이 {Number.isFinite(newsRatioStats.commentaryBackfillRatio) ? `${(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}%` : "조회 실패"} (목표 80%+)</div>
           <div className="text-[11px] leading-relaxed">
             ai_commentary NULL news 는 sitemap·index 에서 자동 제외돼 Google 색인 진행이 정체됩니다.
             즉시 Vercel env <code className="bg-white px-1 rounded">NEXT_PUBLIC_ADSENSE_REVIEW_MODE=on</code> 으로 되돌리고 redeploy 권장 →
@@ -309,9 +309,9 @@ export default async function AdminAutonomousPage() {
           <span>
             <strong>news 비중</strong>{" "}
             <span className={newsRatioStats.ratio >= NEWS_RATIO_HIGH_FLOOR ? "text-amber-700 font-semibold" : "text-slate-600"}>
-              {(newsRatioStats.ratio * 100).toFixed(1)}%
+              {Number.isFinite(newsRatioStats.ratio) ? `${(newsRatioStats.ratio * 100).toFixed(1)}%` : "조회 실패 — 전환 보류"}
             </span>{" "}
-            <span className="text-[10px] text-slate-500">
+            <span hidden={!Number.isFinite(newsRatioStats.ratio)} className="text-[10px] text-slate-500">
               (welfare {newsRatioStats.welfare.toLocaleString()} · loan {newsRatioStats.loan.toLocaleString()} · blog {newsRatioStats.blog.toLocaleString()} · news {newsRatioStats.newsIndexable.toLocaleString()})
             </span>
           </span>
@@ -322,14 +322,13 @@ export default async function AdminAutonomousPage() {
           <span>
             <strong>AI 자체 해설 백필</strong>{" "}
             <span className={newsRatioStats.commentaryBackfillRatio >= 0.8 ? "text-emerald-700 font-semibold" : "text-amber-700"}>
-              {(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}%
+              {Number.isFinite(newsRatioStats.commentaryBackfillRatio) ? `${(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}%` : "조회 실패"}
             </span>
             {/* 2026-05-31 Major 7 — 80% 도달까지 ETA (BATCH 100/일 가정). 자율 운영 가시화. */}
             {newsRatioStats.commentaryBackfillRatio < 0.8 && newsRatioStats.newsIndexable > 0 && (
               <span className="ml-1.5 text-[10px] text-slate-500">
                 (80% 도달까지 약 {Math.ceil(
-                  (0.8 * newsRatioStats.newsIndexable -
-                    newsRatioStats.commentaryBackfillRatio * newsRatioStats.newsIndexable) /
+                  ((0.8 / newsRatioStats.commentaryBackfillRatio - 1) * newsRatioStats.newsIndexable) /
                   100
                 )}일, 매일 +100건 가정)
               </span>

@@ -76,10 +76,14 @@
     }
   ],
   "functions": {
+    "app/page.tsx": { "regions": ["icn1"] },
+    "app/welfare/page.tsx": { "regions": ["icn1"] },
+    "app/news/page.tsx": { "regions": ["icn1"] },
     "app/api/cron/scrape-local-press/route.ts": { "regions": ["icn1"] },
     "app/api/internal/icn1-fetch/route.ts": { "regions": ["icn1"] }
   },
   "crons": [
+    { "path": "/api/cron/editorial-news-publish", "schedule": "10 2,8 * * *" },
     { "path": "/api/collect-news", "schedule": "0 2 * * *" },
     { "path": "/api/finalize-deletions", "schedule": "0 6 * * *" },
     { "path": "/api/cron/health-alert", "schedule": "15 0 * * *" },
@@ -122,7 +126,12 @@
 
     { "path": "/api/cron/press-ingest", "schedule": "30 1,6,10 * * *" },
 
-    { "path": "/api/cron/scrape-local-press", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=0", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=1", "schedule": "15 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=2", "schedule": "30 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=3", "schedule": "45 0 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=4", "schedule": "0 1 * * *" },
+    { "path": "/api/cron/scrape-local-press?shard=5", "schedule": "15 1 * * *" },
 
     { "path": "/api/cron/weekly-scrape-monitor", "schedule": "30 0 * * 1" },
 

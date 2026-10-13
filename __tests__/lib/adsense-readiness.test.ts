@@ -12,6 +12,8 @@ describe("AdSense 콘텐츠 전환 준비", () => {
     [0.79, 0.3, false],
     [0, 0, false],
     [0.85, Number.NaN, false],
+    [Number.POSITIVE_INFINITY, 0.3, false],
+    [1.01, 0.3, false],
   ])("백필 %s / news %s → %s", (backfill, news, ready) => {
     expect(isAdsenseContentReady(backfill, news)).toBe(ready);
   });

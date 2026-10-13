@@ -6,6 +6,7 @@
 //   - 본문: detail page 표준 컨테이너
 // ============================================================
 
+import { load } from "cheerio";
 import {
   createPressCollector,
   decodeBasicEntities,
@@ -62,14 +63,19 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(html: string): string | null {
+  const $ = load(html);
+  // 본문 안의 중첩 표와 사진 컨테이너를 끝까지 읽고 첨부목록은 제외합니다.
+  const body = $(".contenttext").first().clone();
+  if (body.length) {
+    body.find("script, style, .attach_item, .p-photo__wrap").remove();
+    body.find("br").replaceWith("\n");
+    const text = body.text().replace(/사진\s*확대보기/g, "").replace(/\s+/g, " ").trim();
+    return text.length >= 250 ? text.slice(0, 20000) : null;
+  }
   const m = BODY_CONTAINER_REGEX.exec(html);
   if (!m) return null;
-  const text = decodeBasicEntities(m[1])
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length >= 50 ? text : null;
+  const text = decodeBasicEntities(m[1]).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return text.length >= 250 ? text.slice(0, 20000) : null;
 }
 
 export const { scrapeAndInsert: scrapeChungbukAndInsert } = createPressCollector({

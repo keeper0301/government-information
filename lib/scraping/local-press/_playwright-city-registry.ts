@@ -194,6 +194,6 @@ export const PLAYWRIGHT_CITY_REGISTRY: Record<
   },
 };
 
-// PC 러너 전용 도시(가정용 IP) — GHA workflow/runner 엔 미등록. import-press-batch 수용 위해
-// registry 엔 등록하되, registry-sync 테스트의 workflow 일치 검증에서 제외한다.
+// 아래 세 곳은 공용 정기 수집에 연결되었으며 개인 컴퓨터 수집 경로도 예비용으로 유지한다.
+// 이 목록은 개인 컴퓨터 실행기와의 호환용이며 별도 자동 실행 목록 비교에서 제외한다.
 export const PC_ONLY_CITIES = ["jungnang", "gangbuk", "uijeongbu"] as const;

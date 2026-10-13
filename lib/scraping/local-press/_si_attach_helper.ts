@@ -177,7 +177,7 @@ export async function extractHwpxBody(
 
 // 첨부 버퍼 → PDF(unpdf)/hwp5(@ohah) 전문. 250+ 한글이면 반환, 아니면 null(hwp·HTML 에러
 // 페이지·짧은 첨부 방어).
-async function extractAttachBody(buf: Uint8Array): Promise<string | null> {
+export async function extractAttachBody(buf: Uint8Array): Promise<string | null> {
   // PDF (%PDF)
   if (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) {
     // unpdf 는 내부에서 import.meta 직접 접근을 사용한다. route/module graph 에 걸면

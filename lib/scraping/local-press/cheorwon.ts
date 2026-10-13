@@ -7,15 +7,16 @@
 // 본문: SI 공용 헬퍼(p-table__content 셀)
 // ============================================================
 
+import { load } from "cheerio";
 import {
-  createPressCollector,
   decodeBasicEntities,
   type PressNewsItem,
 } from "./_factory";
 import { parseSiNttBody } from "./_si_ntt_helper";
+import { readGangwonHwpx } from "./_gangwon_hwpx";
 
 const BASE_URL = "https://www.cwg.go.kr";
-const LIST_URL = `${BASE_URL}/www/selectBbsNttList.do?bbsNo=32&key=218`;
+export const LIST_URL = `${BASE_URL}/www/selectBbsNttList.do?bbsNo=32&key=218`;
 
 const LIST_ITEM_REGEX =
   /<a[^>]*href="[^"]*selectBbsNttView\.do(?:;[^?"]*)?\?(?=[^"]*bbsNo=32(?:&|&amp;|"))[^"]*?nttNo=(\d+)[^"]*"[^>]*>([\s\S]{0,1200}?)<\/a>/g;
@@ -57,16 +58,29 @@ export function parseListPage(html: string): PressNewsItem[] {
   return items;
 }
 
-export const parseDetailBody = parseSiNttBody;
+export async function parseDetailBody(html: string): Promise<string | null> {
+  const body = parseSiNttBody(html);
+  if (body && body.length >= 250) return body;
+  // 철원은 본문 화면에 요약만 싣고 원문을 새 한글 문서에 첨부합니다.
+  const $ = load(html);
+  const attachment = $(".p-attach__item").filter((_, element) => /\.hwpx\s*$/i.test($(element).find(".p-attach__link").text())).first();
+  const href = attachment.find("a.p-attach__link").attr("href");
+  if (!href) return null;
+  const url = new URL(decodeBasicEntities(href), `${BASE_URL}/www/`);
+  if (url.origin !== BASE_URL || url.pathname !== "/www/downloadBbsFile.do") return null;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    if (!response.ok) return null;
+    return await readGangwonHwpx(Buffer.from(await response.arrayBuffer()));
+  } catch {
+    return null;
+  }
+}
 
-export const { scrapeAndInsert: scrapeCheorwonAndInsert } =
-  createPressCollector({
-    cityName: "강원 철원군",
-    region: "강원",
-    ministry: "강원 철원군청",
-    sourceOutlet: "강원 철원군청",
-    sourceCode: "local-press-cheorwon",
-    listUrl: LIST_URL,
-    parseListItems: parseListPage,
-    parseDetailBody,
-  });
+// 직접 접속이 불안정하므로 첫 화면을 거친 브라우저 연결을 사용합니다.
+export async function scrapeCheorwonAndInsert(
+  admin: Parameters<typeof import("./_factory").processProvidedHtml>[1], limit = 10,
+) {
+  const { scrapeCheorwonBrowserAndInsert } = await import("./cheorwon-browser");
+  return scrapeCheorwonBrowserAndInsert(admin, limit);
+}

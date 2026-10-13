@@ -33,3 +33,15 @@ This version has breaking changes — APIs, conventions, and file structure may 
 4. dead 파일 같은 commit 에 `git rm` (e883604 사고 패턴 회피)
 5. 본문 cut `20000` + 본문 min `250` 통일 (factory `BODY_MIN_LEN` + AdSense P2 일관)
 6. POST 호출 사이 `setTimeout(200)` polite delay (서버 부담 ↓)
+
+## 개인 컴퓨터 지역 수집
+
+중랑·밀양 예약 수집의 실행 조건과 결과 확인 방법은 [운영 안내](docs/pc-press-recovery.md)를 참고합니다.
+
+## 정책 원문과 설명 검수
+
+관리자 검수, 비공개 초안 저장과 출처 복구의 운영 방법은 [검수 안내](docs/policy-guidance-review.md)를 참고합니다.
+
+## 정책뉴스 자동 발행
+
+공식 정책뉴스의 자동 작성·근거 검사·예약 공개와 실패 확인 방법은 [자동 발행 안내](docs/news-auto-publication.md)를 참고합니다.

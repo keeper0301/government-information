@@ -118,8 +118,8 @@ describe("resolveApplyUrl — 4 layer fallback chain", () => {
       sourceUrl: SOURCE_URL,
     });
     expect(r).toEqual({
-      url: "https://www.seoul.go.kr",
-      source: "province",
+      url: SOURCE_URL,
+      source: "source_url",
     });
   });
 
@@ -156,7 +156,7 @@ describe("resolveApplyUrl — 4 layer fallback chain", () => {
     });
   });
 
-  it("Layer 4 — 광역 도청 매핑", () => {
+  it("광역 도청 홈페이지는 신청 주소로 채우지 않음", () => {
     const r = resolveApplyUrl({
       llmApplyUrl: null,
       bodyUrls: [],
@@ -165,8 +165,8 @@ describe("resolveApplyUrl — 4 layer fallback chain", () => {
       sourceUrl: SOURCE_URL,
     });
     expect(r).toEqual({
-      url: "https://www.jeonnam.go.kr",
-      source: "province",
+      url: SOURCE_URL,
+      source: "source_url",
     });
   });
 
@@ -204,7 +204,7 @@ describe("resolveApplyUrl — 4 layer fallback chain", () => {
       ministry: "경기도",
       sourceUrl: SOURCE_URL,
     });
-    expect(r.source).toBe("province");
-    expect(r.url).toBe("https://www.gg.go.kr");
+    expect(r.source).toBe("source_url");
+    expect(r.url).toBe(SOURCE_URL);
   });
 });

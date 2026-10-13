@@ -81,6 +81,8 @@ export type ScrapeResult = {
   fetched: number;
   inserted: number;
   skipped: number;
+  // 본문 누락·길이 미달을 정상 중복 제외와 구분합니다.
+  invalidBodyCount?: number;
   errors: string[];
   // 사이트에서 가져온 글 중 가장 최신 발행일(YYYY-MM-DD). insert-stop auto-triage 가
   // "사이트 최신 vs DB 최신" 비교로 "새 글 없음(정상)" 을 suppress 하는 데 쓴다(헛경보 제거).
@@ -317,6 +319,7 @@ export async function processProvidedHtml(
   const now = new Date().toISOString();
   let inserted = 0;
   let skipped = 0;
+  let invalidBodyCount = 0;
   const errors: string[] = [];
 
   if (list.length === 0 && listHtml.length > 5000) {
@@ -339,6 +342,7 @@ export async function processProvidedHtml(
     if (body) body = decodeHtmlEntities(body);
     if (!body || body.length < BODY_MIN_LEN) {
       skipped += 1;
+      invalidBodyCount += 1;
       continue;
     }
     const sourceId = makeNewsSourceId(item.sourceUrl);
@@ -376,6 +380,7 @@ export async function processProvidedHtml(
     fetched: list.length,
     inserted,
     skipped,
+    invalidBodyCount,
     latestFetched: latestPublishedDate(list),
     sourceCode: cfg.sourceCode,
     // 2026-05-26 review fix: 3 → 20. 경북 5/25 cron 에서 10건 detail 모두 fail 인데
@@ -396,6 +401,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
 
     let inserted = 0;
     let skipped = 0;
+    let invalidBodyCount = 0;
     const errors: string[] = [];
 
     // 2026-05-25 review fix: list 0건 silent skip 방지 — site HTML 구조 변경 (예: dataSid → dataIdx)
@@ -420,6 +426,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
       }
       if (!body || body.length < BODY_MIN_LEN) {
         skipped += 1;
+        invalidBodyCount += 1;
         continue;
       }
       // NOT NULL 가드 — source_id / category / slug 추가 (audit 2026-05-22).
@@ -463,6 +470,7 @@ export function createPressCollector(cfg: PressCollectorConfig) {
       fetched: list.length,
       inserted,
       skipped,
+      invalidBodyCount,
       latestFetched: latestPublishedDate(list),
       sourceCode: cfg.sourceCode,
       // 2026-05-26 review fix: 3 → 20 (silent_fail 정확 진단)

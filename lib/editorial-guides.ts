@@ -1,20 +1,23 @@
 import type { PolicyGuide } from "@/lib/policy-guides";
+import { PILOT_GUIDE_POSTS } from "@/lib/pilot-guide-posts";
+import { NEXT_GUIDE_TITLES } from "@/lib/next-approved-guide-posts";
 
-const now = "2026-06-17T00:00:00.000Z";
+// Publication date of legacy fallback drafts is not evidenced; do not fabricate it.
+const now = "";
 
 function guide(slug: string, title: string, posts: string[]): PolicyGuide {
   return {
     id: `editorial-${slug}`,
     slug,
-    title,
+    title: NEXT_GUIDE_TITLES[slug] ?? title,
     programId: "editorial",
     programType: "welfare",
-    posts,
+    posts: PILOT_GUIDE_POSTS[slug] ?? posts,
     rotationIdx: null,
     threadsUrl: null,
     ogImageUrl: null,
     publishedAt: now,
-    updatedAt: now,
+    updatedAt: NEXT_GUIDE_TITLES[slug] ? "2026-10-05" : PILOT_GUIDE_POSTS[slug] ? (slug === "youth-rent-checklist-2026" ? "2026-10-04" : "2026-10-03") : now,
   };
 }
 

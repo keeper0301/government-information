@@ -69,9 +69,12 @@ export async function GET(): Promise<NextResponse> {
     전환 기준: 백필 ≥80%, news 비중 &lt; ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}%. 실제 Google 승인 후에만 전환하세요.<br />
     ${contentReady ? "콘텐츠 수치 조건 충족 (승인 보장 아님)." : "전환 보류: 백필 또는 news 비중 기준 미충족 / 통계 확인 불가."}<br />
     이 버튼을 누르면 Vercel ENV 가 ${ADSENSE_LIVE_ADS_TOKEN} 로 변경 + production redeploy 됩니다.
-    사이트 광고가 즉시 가동 시작되고 sitemap selective 가 ai_commentary 채워진 news 진입을 시작합니다.
+    승인 후에도 페이지별 검수 조건을 충족한 경우에만 광고가 허용됩니다. 사이트맵 공개 범위도 변경됩니다.
   </div>
   <form method="POST">
+    <label><input type="checkbox" name="google_approval" value="keepioo.com-ready" required />
+      AdSense 사이트 화면에서 keepioo.com이 광고 게재 가능 상태임을 직접 확인했습니다.
+      계정 승인이나 콘텐츠 수치 충족만으로 체크하지 마세요.</label><br />
     <button type="submit"${contentReady ? "" : " disabled"}>🔴 OFF 확정 + Vercel 자동 redeploy</button>
   </form>
   <p class="small">취소: 이 페이지 닫기 (POST 안 누르면 영향 0).</p>
@@ -111,7 +114,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   // 2. 백필 비율 ≥80% 및 news 비중 임계치 미만 재확인 (사장님 실수 차단).
-  const ratio = await getNewsRatio();
+  let ratio: Awaited<ReturnType<typeof getNewsRatio>>;
+  try {
+    ratio = await getNewsRatio();
+  } catch {
+    return NextResponse.json({ error: "콘텐츠 통계 확인 불가", message: "전환 보류: 통계 조회를 복구한 뒤 다시 확인하세요." }, { status: 503 });
+  }
   if (ratio.commentaryBackfillRatio < 0.8) {
     return NextResponse.json(
       {
@@ -130,6 +138,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       commentary_backfill_ratio: ratio.commentaryBackfillRatio,
       message: `news 비중 ${(ratio.ratio * 100).toFixed(1)}%: ${(NEWS_RATIO_HIGH_FLOOR * 100).toFixed(0)}% 미만이어야 합니다. review mode off 보류.`,
     }, { status: 400 });
+  }
+
+  // Internal metrics are not a Google decision. Require a site-specific owner attestation.
+  let approval: FormDataEntryValue | null;
+  try { approval = (await request.formData()).get("google_approval"); }
+  catch { return NextResponse.json({ error: "승인 확인 형식 오류" }, { status: 400 }); }
+  if (approval !== "keepioo.com-ready") {
+    return NextResponse.json({ error: "keepioo.com 사이트 승인 직접 확인 필요" }, { status: 400 });
   }
 
   // 3. Vercel API: ENV update + redeploy.
@@ -165,6 +181,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       details: {
         commentary_backfill_ratio: ratio.commentaryBackfillRatio,
         news_ratio: ratio.ratio,
+        google_approval_attestation: "keepioo.com-ready",
         env_updated: envUpdated,
         redeployed,
         deployment_id: deploymentId,
@@ -200,7 +217,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   <div class="info">
     <strong>Vercel ENV ${ADSENSE_LIVE_ADS_TOKEN} 변경 + production redeploy 모두 성공</strong><br />
     백필 시점: ${(ratio.commentaryBackfillRatio * 100).toFixed(1)}%<br />
-    수 분 안에 새 build 가 완료되면 사이트 광고 게재가 시작됩니다.
+    배포가 완료돼야 설정이 반영됩니다. 광고는 페이지별 검수 조건도 충족해야 합니다.
   </div>
   <p>다음 단계 자동 진행:</p>
   <ul>

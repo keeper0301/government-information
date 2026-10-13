@@ -14,6 +14,7 @@
 // ============================================================
 
 import { PROVINCE_DEFAULT_URLS } from "./province-default-urls";
+import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
 
 // 정부·공공기관 도메인 화이트리스트 (suffix 매칭)
 // .go.kr  : 정부 부처·시도청·시군청 (대부분 광역 보도자료가 가리킴)
@@ -62,7 +63,7 @@ export function resolveProvinceFallback(
 /** url 후보 배열에서 정부 도메인 url 첫 번째 반환 */
 function pickFirstPublicUrl(urls: string[]): string | null {
   for (const u of urls) {
-    if (isPublicDomain(u)) return u;
+    if (isPublicDomain(u) && sanitizeApplyUrl(u) && isDeepLink(u)) return u;
   }
   return null;
 }
@@ -105,7 +106,8 @@ export function resolveApplyUrl(input: ResolveApplyUrlInput): ResolveApplyUrlRes
   if (
     input.llmApplyUrl &&
     /^https?:\/\//i.test(input.llmApplyUrl) &&
-    isPublicDomain(input.llmApplyUrl)
+    isPublicDomain(input.llmApplyUrl) &&
+    sanitizeApplyUrl(input.llmApplyUrl) && isDeepLink(input.llmApplyUrl)
   ) {
     return { url: input.llmApplyUrl, source: "llm" };
   }
@@ -123,12 +125,7 @@ export function resolveApplyUrl(input: ResolveApplyUrlInput): ResolveApplyUrlRes
     return { url: fromRegex, source: "body_regex" };
   }
 
-  // Layer 4 — 광역 도청 매핑
-  const province = resolveProvinceFallback(input.ministry);
-  if (province) {
-    return { url: province, source: "province" };
-  }
-
-  // Layer 5 — source_url 최후 fallback (항상 채워짐)
+  // 원문 확인용 주소만 돌려준다. 호출자는 신청처 미확인으로 보류한다.
+  // 광역 홈페이지는 시군의 신청처가 아니므로 자동으로 채우지 않는다.
   return { url: input.sourceUrl, source: "source_url" };
 }

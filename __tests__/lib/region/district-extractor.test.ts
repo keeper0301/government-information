@@ -258,10 +258,15 @@ describe("District Phase C — 동명 자치구 정확 매칭 (false positive 0)
     expect(m?.district).toBe("중구");
   });
 
-  it("'인천광역시 동구' → incheon/동구 (다른 광역 동구 아님)", () => {
-    const m = extractDistrict("인천광역시 동구 청년 지원");
+  it("개편 후 인천 제물포구를 정확히 찾는다", () => {
+    const m = extractDistrict("인천광역시 제물포구 청년 지원");
     expect(m?.province).toBe("incheon");
-    expect(m?.district).toBe("동구");
+    expect(m?.district).toBe("제물포구");
+  });
+  it("폐지된 인천 구 이름을 다른 광역의 구로 분류하지 않는다", () => {
+    for (const name of ["중구", "동구", "서구"]) {
+      expect(extractDistrict(`인천광역시 ${name} 청년 지원`)).toBeNull();
+    }
   });
 });
 

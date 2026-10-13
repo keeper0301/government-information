@@ -400,12 +400,13 @@ describe("scrape-local municipality coverage", () => {
 
     const seoulJunggu = rows.find((row) => row.fullName === "서울특별시 중구");
     const busanJunggu = rows.find((row) => row.fullName === "부산광역시 중구");
-    const incheonJunggu = rows.find((row) => row.fullName === "인천광역시 중구");
+    const incheonJemulpo = rows.find((row) => row.fullName === "인천광역시 제물포구");
 
     expect(seoulJunggu?.covered?.key).toBe("junggu_seoul");
     // 2026-07-22: 인천 중구 static collector 는 Vercel fetch 에서 /index.html shell 만
     // 받아 stale false-positive 를 만들기 때문에 PC/Playwright 복구 전까지 미구현으로 본다.
-    expect(incheonJunggu?.covered).toBeNull();
+    expect(rows.some((row) => row.fullName === "인천광역시 중구")).toBe(false);
+    expect(incheonJemulpo?.covered?.key).toBe("jemulpo_incheon");
     expect(busanJunggu?.covered).toMatchObject({
       source: "static",
       key: "bsjunggu",
@@ -517,7 +518,10 @@ describe("scrape-local municipality coverage", () => {
   });
 
   it("미구현 지역을 광역별로 많이 남은 순서로 요약한다", () => {
-    const rows = buildMunicipalityCoverageRows();
+    // 전국 연결 후에도 누락이 생겼을 때의 집계를 검증하도록 일부 지역을 예제로 비웁니다.
+    const rows = buildMunicipalityCoverageRows().map((row) => ({
+      ...row, covered: ["경상북도", "경상남도"].includes(row.provinceName) ? null : row.covered,
+    }));
     const summary = buildUncoveredProvinceSummary(rows);
 
     expect(summary.length).toBeGreaterThan(0);

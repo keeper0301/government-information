@@ -36,6 +36,9 @@ jobs:
       - name: 로컬과 동일 검증 (tsc + vitest)
         run: npm run ci
 
+      - name: WordPress 공개 발행 readback 검증기 테스트
+        run: python3 -m unittest discover -s scripts/tests -p 'test_verify_wordpress_public.py'
+
   capacitor-android:
     name: Capacitor Android sync
     runs-on: ubuntu-latest

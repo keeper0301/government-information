@@ -28,7 +28,7 @@ import { MatchBadge } from "@/components/personalization/MatchBadge";
 import type { ScorableItem } from "@/lib/personalization/score";
 import type { ScoredItem } from "@/lib/personalization/types";
 import { isBlogCohortFit } from "@/lib/personalization/blog-cohort";
-import { EDITORIAL_GUIDES } from "@/lib/editorial-guides";
+import { getGuides } from "@/lib/policy-guides";
 import { reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
 
 // 사용자별 개인화 분리 섹션이 있으므로 per-request SSR 강제.
@@ -110,6 +110,7 @@ export default async function BlogIndexPage({
 }) {
   const { category, q } = await searchParams;
   const activeCategory = category && category !== "all" ? category : "all";
+  const publishedGuides = await getGuides(6, { publicationOnly: true });
 
   // 통합 검색 ?q= 토큰 AND 매칭 (lib/search.ts 와 동일 패턴)
   const queryRaw = (q ?? "").trim();
@@ -226,7 +227,7 @@ export default async function BlogIndexPage({
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {EDITORIAL_GUIDES.slice(0, 6).map((guide) => (
+            {publishedGuides.map((guide) => (
               <Link
                 key={guide.slug}
                 href={`/guides/${guide.slug}`}

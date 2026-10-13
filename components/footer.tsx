@@ -87,7 +87,7 @@ export async function Footer() {
                 {link.label}
               </a>
             ) : (
-              <Link key={link.label} href={link.href} className={className}>
+              <Link prefetch={false} key={link.label} href={link.href} className={className}>
                 {link.label}
               </Link>
             );
@@ -106,8 +106,7 @@ export async function Footer() {
           {CATEGORY_SLUGS.map((slug) => {
             const hub = CATEGORY_HUBS[slug];
             return (
-              <Link
-                key={slug}
+              <Link prefetch={false} key={slug}
                 href={`/c/${slug}`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-grey-200 text-[13px] text-grey-700 hover:border-blue-400 hover:text-blue-600 no-underline transition-colors"
               >
@@ -121,8 +120,7 @@ export async function Footer() {
 
       {/* 데이터 신선도 — 활성 운영 시그널 (AdSense·검색 봇·사용자 신뢰 모두 ↑) */}
       <div className="inline-flex items-center gap-1.5 text-[12px] text-grey-600 mb-4 px-2.5 py-1 rounded-full bg-grey-50 border border-grey-100">
-        <span aria-hidden="true" className="w-[6px] h-[6px] rounded-full bg-emerald-500 animate-pulse" />
-        <span>📡 데이터 {formatFreshness(freshness.minutes_ago)}</span>
+        <span>{freshness.latest_at ? `최근 자료 수집: ${formatFreshness(freshness.minutes_ago)}` : "자료 수집 시각 확인 필요"} · 글별 출처 확인·편집 검수와 별개</span>
       </div>
 
       {/* 데이터 출처 + 공공누리 라이선스 — Pretendard 단일 톤
@@ -133,7 +131,7 @@ export async function Footer() {
         <p className="text-grey-700 font-medium mb-2">
           {ADSENSE_REVIEW_MODE
             ? "공식 출처를 기준으로 신청 판단에 필요한 내용을 정리합니다."
-            : "매일 새 정부 정책을 모아서 알려드려요."}
+            : "공공 지원제도를 찾고 신청 전 확인할 질문을 정리합니다."}
         </p>
         <p>
           데이터 출처:{" "}

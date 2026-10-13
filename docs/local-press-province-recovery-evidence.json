@@ -1,0 +1,96 @@
+{
+  "checkedAt": "2026-10-05T16:49:12.946Z",
+  "databaseWrites": 0,
+  "province": [
+    {
+      "key": "gyeongbuk",
+      "count": 10,
+      "rows": [
+        {
+          "seq": "1370350",
+          "title": "세계경주포럼, ‘문화의 다보스’로 도약한다",
+          "publishedDate": "2026-10-05",
+          "sourceUrl": "https://www.gb.go.kr/page/10107/10004.do?importUrl=%2Fboard%2Fview.do&boardMngNo=12&pageDtlOrdrNo=1&boardNo=1370350",
+          "bodyLength": 1381,
+          "bodyStart": "경상북도는 7일 경주 라한호텔에서 ‘2026 세계경주포럼 비전선언식’을 열고 경주를 세계 문화 의제를 논의하는 ‘문화의 다보스"
+        },
+        {
+          "seq": "1370349",
+          "title": "예천 한우농가서 구제역 추가 발생, 경북도 긴급 방역",
+          "publishedDate": "2026-10-05",
+          "sourceUrl": "https://www.gb.go.kr/page/10107/10004.do?importUrl=%2Fboard%2Fview.do&boardMngNo=12&pageDtlOrdrNo=1&boardNo=1370349",
+          "bodyLength": 590,
+          "bodyStart": "경상북도는 예천군 한우농가 1호에서 구제역이 추가로 확인돼 긴급 방역조치에 들어갔다고 밝혔다. 해당 농가는 한우 98두를 사육"
+        }
+      ]
+    },
+    {
+      "key": "chungnam",
+      "count": 10,
+      "rows": [
+        {
+          "seq": "2184185",
+          "title": "재선충병 피해목 긴급 방제 추진",
+          "publishedDate": "2026-10-05",
+          "sourceUrl": "https://www.chungnam.go.kr/cnportal/cnapcPressList/cnapcPress/view.do?nttId=2184185&menuNo=500498&pageIndex=1",
+          "bodyLength": 752,
+          "bodyStart": "충남도가 산림청과 함께 소나무재선충병 피해목 긴급 방제를 위한 산업화 방제에 본격 나선다. 박수현 지사는 5일 태안군 근흥면 "
+        },
+        {
+          "seq": "2184186",
+          "title": "충남소방, 부여 백제문화제 현장점검",
+          "publishedDate": "2026-10-05",
+          "sourceUrl": "https://www.chungnam.go.kr/cnportal/cnapcPressList/cnapcPress/view.do?nttId=2184186&menuNo=500498&pageIndex=1",
+          "bodyLength": 397,
+          "bodyStart": "충남소방본부는 5일 제72회 부여 백제문화제 행사장 내 소방안전대책 추진상황을 점검했다. 현장을 찾은 백승두 본부장은 주무대와"
+        }
+      ]
+    }
+  ],
+  "pdfDirectNode": [
+    {
+      "key": "inje",
+      "count": 15,
+      "rows": [
+        {
+          "seq": "254620",
+          "title": "인제군 보도자료[2026년 10월 2일(금)]",
+          "publishedDate": "2026-10-02",
+          "sourceUrl": "https://www.inje.go.kr/portal/inje-news/inje-pr/briefing?articleSeq=254620",
+          "bodyLength": 3161,
+          "bodyStart": "보도자료(10월 2일, 금요일) 자료제공 : 인제군 기획예산담당관 기획예산담당관 채진석 460-2010 배포일자 : 2026. 10. 1.(목) 군정홍보팀장 김종근 460-4011"
+        },
+        {
+          "seq": "254568",
+          "title": "인제군 보도자료[2026년 10월 1일(목)]",
+          "publishedDate": "2026-10-01",
+          "sourceUrl": "https://www.inje.go.kr/portal/inje-news/inje-pr/briefing?articleSeq=254568",
+          "bodyLength": 2608,
+          "bodyStart": "보도자료(10월 1일, 목요일) 자료제공 : 인제군 기획예산담당관 기획예산담당관 채진석 460-2010 배포일자 : 2026. 9. 30.(수) 군정홍보팀장 김종근 460-4011"
+        }
+      ]
+    },
+    {
+      "key": "jeongseon",
+      "count": 15,
+      "rows": [
+        {
+          "seq": "311015",
+          "title": "9월 10일 정선군 보도자료",
+          "publishedDate": "2026-09-11",
+          "sourceUrl": "https://www.jeongseon.go.kr/portal/openadmin/adminnews/pressrelease?articleSeq=311015",
+          "bodyLength": 8790,
+          "bodyStart": "1 희망찬 아침 평온한 저녁 행복한 정선 정선군 보도자료 ◇ 송신정보 ㅇ 제공부서 : 정선군 기획관실 공보팀 (Fax: 033-560-2592, Tel: 033-560-2227) "
+        },
+        {
+          "seq": "311014",
+          "title": "9월 9일 정선군 보도자료",
+          "publishedDate": "2026-09-11",
+          "sourceUrl": "https://www.jeongseon.go.kr/portal/openadmin/adminnews/pressrelease?articleSeq=311014",
+          "bodyLength": 6717,
+          "bodyStart": "1 희망찬 아침 평온한 저녁 행복한 정선 정선군 보도자료 ◇ 송신정보 ㅇ 제공부서 : 정선군 기획관실 공보팀 (Fax: 033-560-2592, Tel: 033-560-2227) "
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,470 @@
+[
+  {
+    "key": "chungnam",
+    "result": {
+      "city": "충청남도",
+      "fetched": 0,
+      "inserted": 0,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-chungnam",
+      "errors": [
+        "list 0건 — site HTML size 202298 bytes 인데 regex 매칭 0. site 구조 변경 의심"
+      ]
+    },
+    "bodies": []
+  },
+  {
+    "key": "gyeongbuk",
+    "result": {
+      "city": "경상북도",
+      "fetched": 0,
+      "inserted": 0,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-gyeongbuk",
+      "errors": [
+        "list 0건 — site HTML size 421059 bytes 인데 regex 매칭 0. site 구조 변경 의심"
+      ]
+    },
+    "bodies": []
+  },
+  {
+    "key": "busan",
+    "result": {
+      "city": "부산광역시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2025-09-02",
+      "sourceCode": "local-press-busan",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "gyeongnam",
+    "result": {
+      "city": "경상남도",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-gyeongnam",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "“지역에 꼭 필요한 집을 짓는다” 경남도, 특화 공공임대주택 공모 ‘맞춤 전략’ 가동",
+        "source_url": "https://www.gyeongnam.go.kr/board/view.gyeong?boardId=BBS_0000060&menuCd=DOM_000000135002001000&dataSid=42419073",
+        "length": 1408
+      }
+    ]
+  },
+  {
+    "key": "anseong",
+    "result": {
+      "city": "안성시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-23",
+      "sourceCode": "local-press-anseong",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "안성시보건소, 생애주기별 맞춤형 비만예방 프로그램 운영",
+        "source_url": "https://www.anseong.go.kr/portal/saeol/newsView.do?newsEpctNo=21574&mId=0502010100",
+        "length": 701
+      }
+    ]
+  },
+  {
+    "key": "yeoju",
+    "result": {
+      "city": "여주시",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-yeoju",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "(배포)여흥동, 청소년이 안심할 수 있는 지역 만들기 나서",
+        "source_url": "https://www.yeoju.go.kr/www/selectEminwonNewsView.do?pageUnit=10&pageIndex=1&searchCnd=all&key=422&news_epct_no=37087&ofr_pageSize=10",
+        "length": 786
+      }
+    ]
+  },
+  {
+    "key": "imsil",
+    "result": {
+      "city": "임실군",
+      "fetched": 10,
+      "inserted": 2,
+      "skipped": 0,
+      "latestFetched": "2026-09-29",
+      "sourceCode": "local-press-imsil",
+      "errors": [
+        "detail 17193 본문 추출 실패",
+        "detail 17110 본문 추출 실패",
+        "detail 17109 본문 추출 실패",
+        "detail 17108 본문 추출 실패",
+        "detail 17107 본문 추출 실패",
+        "detail 17106 본문 추출 실패",
+        "detail 17105 본문 추출 실패",
+        "detail 17104 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "임실군, 삼계면서 친환경 벼 ‘해담쌀’ 첫 수확",
+        "source_url": "https://eminwon.imsil.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=17141",
+        "length": 575
+      },
+      {
+        "title": "임실군, 9월 7일부터‘농어촌 기본소득’신청·접수",
+        "source_url": "https://eminwon.imsil.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=17192",
+        "length": 1386
+      }
+    ]
+  },
+  {
+    "key": "gunsan",
+    "result": {
+      "city": "군산시",
+      "fetched": 10,
+      "inserted": 2,
+      "skipped": 0,
+      "latestFetched": "2026-10-06",
+      "sourceCode": "local-press-gunsan",
+      "errors": [
+        "detail 35115 본문 추출 실패",
+        "detail 35133 본문 추출 실패",
+        "detail 35132 본문 추출 실패",
+        "detail 35131 본문 추출 실패",
+        "detail 35130 본문 추출 실패",
+        "detail 35129 본문 추출 실패",
+        "detail 35128 본문 추출 실패",
+        "detail 35127 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "“지원금 준다며 신분증 요구”… 군산시, 민생지원과 사칭 보이스피싱 주의...",
+        "source_url": "http://eminwon.gunsan.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=35125",
+        "length": 756
+      },
+      {
+        "title": "군산시, 수도업무 종사자 실무교육 실시",
+        "source_url": "http://eminwon.gunsan.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=35124",
+        "length": 997
+      }
+    ]
+  },
+  {
+    "key": "gyeyang_incheon",
+    "result": {
+      "city": "계양구",
+      "fetched": 1,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-gyeyang",
+      "errors": []
+    },
+    "bodies": [
+      {
+        "title": "동양도서관, 인공지능(AI) 활용 그림책, 책 소개 영상(북 트레일러) 성과 작품 전시회 개최",
+        "source_url": "https://www.gyeyang.go.kr/open_content/main/bbs/bbsMsgDetail.do?msg_seq=16256&bcd=board_111",
+        "length": 1147
+      }
+    ]
+  },
+  {
+    "key": "bukgu_gwangju",
+    "result": {
+      "city": "광주 북구",
+      "fetched": 7,
+      "inserted": 2,
+      "skipped": 0,
+      "latestFetched": "2026-10-05",
+      "sourceCode": "local-press-bukgu-gwangju",
+      "errors": [
+        "title 추출 실패 3건 (newsEpctNo: 11254,11251,11249)",
+        "detail 11257 본문 추출 실패",
+        "detail 11256 본문 추출 실패",
+        "detail 11255 본문 추출 실패",
+        "detail 11252 본문 추출 실패",
+        "detail 11248 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "소상공인지원과",
+        "source_url": "https://eminwon.bukgu.gwangju.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=11253",
+        "length": 729
+      },
+      {
+        "title": "주민자치과",
+        "source_url": "https://eminwon.bukgu.gwangju.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=11250",
+        "length": 944
+      }
+    ]
+  },
+  {
+    "key": "bsnamgu",
+    "result": {
+      "city": "부산 남구",
+      "fetched": 40,
+      "inserted": 17,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-bsnamgu",
+      "errors": [
+        "detail 13527 본문 추출 실패",
+        "detail 13520 본문 추출 실패",
+        "detail 13519 본문 추출 실패",
+        "detail 13518 본문 추출 실패",
+        "detail 13517 본문 추출 실패",
+        "detail 13516 본문 추출 실패",
+        "detail 13515 본문 추출 실패",
+        "detail 13514: HTTP 400",
+        "detail 13513 본문 추출 실패",
+        "detail 13512 본문 추출 실패",
+        "detail 13511 본문 추출 실패",
+        "detail 13510 본문 추출 실패",
+        "detail 13509 본문 추출 실패",
+        "detail 13503: HTTP 400",
+        "detail 13484 본문 추출 실패",
+        "detail 13483 본문 추출 실패",
+        "detail 13482 본문 추출 실패",
+        "detail 13481 본문 추출 실패",
+        "detail 13480 본문 추출 실패",
+        "detail 13479 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "양화옥’, 남구에 500만 원 상당 이웃돕기 성품 전달",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13526",
+        "length": 528
+      },
+      {
+        "title": "오륙도페이 가맹 착한가격업소 이용 시 추가 5% 캐시백 지급",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13525",
+        "length": 780
+      },
+      {
+        "title": "반려동물 친화도시 남구, 「제2회 유엔펫스타(반려동물 문화축제)」개최",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13524",
+        "length": 662
+      },
+      {
+        "title": "부산 남구, 꿈나무다함께돌봄센터 위·수탁 협약 체결",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13523",
+        "length": 347
+      },
+      {
+        "title": "부산 남구 ‘잠깐돌보미’ 20명 양성, 생활 속 돌봄 공백 지원",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13522",
+        "length": 643
+      },
+      {
+        "title": "부산 남구, 주민의 눈으로 민선 9기 공약 꼼꼼히 살폈다",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13521",
+        "length": 530
+      },
+      {
+        "title": "부산 남구, 추석 명절 대비 「전통시장 농·수산물 원산지표시 및 축산물 ...",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13508",
+        "length": 480
+      },
+      {
+        "title": "부산남구문화재단, 올해 공모사업 6건 선정",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13507",
+        "length": 740
+      },
+      {
+        "title": "부산 남구, 청년의 날 기념「대학생 교류 한마당」 개최",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13506",
+        "length": 636
+      },
+      {
+        "title": "디딤돌 봉사단, 추석맞이 행복꾸러미 전달",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13505",
+        "length": 553
+      },
+      {
+        "title": "대한주택건설협회 부산광역시회, 한부모가족 성금 1천만원 전달",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13504",
+        "length": 530
+      },
+      {
+        "title": "부산남구, 현장중심 취업지원으로 구민 일자리 연결 강화",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13502",
+        "length": 774
+      },
+      {
+        "title": "부산 남구, 추석 맞이 전통시장 장보기 행사 진행",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13501",
+        "length": 630
+      },
+      {
+        "title": "남구 드림스타트 「우리가족 행복충전 드림패밀리 가족체험」진행",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13500",
+        "length": 579
+      },
+      {
+        "title": "오륙도인생후반전지원센터, 제2회 커뮤니티 페스티벌 ‘UN 남구 모두 모여...",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13499",
+        "length": 890
+      },
+      {
+        "title": "부산 남구, 청년의 날 기념「청년담(談)장 토크콘서트」 개최",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13498",
+        "length": 598
+      },
+      {
+        "title": "부산 남구여성단체협의회, 결혼이민여성과 함께하는‘다문화가족 남구투어’성료",
+        "source_url": "https://eminwon.bsnamgu.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=13497",
+        "length": 610
+      }
+    ]
+  },
+  {
+    "key": "haeundae",
+    "result": {
+      "city": "부산 해운대구",
+      "fetched": 50,
+      "inserted": 7,
+      "skipped": 0,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-haeundae",
+      "errors": [
+        "detail 8816 본문 추출 실패",
+        "detail 8814 본문 추출 실패",
+        "detail 8815 본문 추출 실패",
+        "detail 8811 본문 추출 실패",
+        "detail 8810 본문 추출 실패",
+        "detail 8809 본문 추출 실패",
+        "detail 8808 본문 추출 실패",
+        "detail 8807 본문 추출 실패",
+        "detail 8806 본문 추출 실패",
+        "detail 8813 본문 추출 실패",
+        "detail 8812 본문 추출 실패",
+        "detail 8805 본문 추출 실패",
+        "detail 8804 본문 추출 실패",
+        "detail 8803 본문 추출 실패",
+        "detail 8800 본문 추출 실패",
+        "detail 8798 본문 추출 실패",
+        "detail 8792 본문 추출 실패",
+        "detail 8789 본문 추출 실패",
+        "detail 8799 본문 추출 실패",
+        "detail 8797 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "해운대구, 제28회 동백가족글자랑 대회 개최",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8802",
+        "length": 633
+      },
+      {
+        "title": "탄소중립 생활 수칙, 우리 함께 실천해요",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8801",
+        "length": 398
+      },
+      {
+        "title": "해운대구, 개학기 맞아 청소년 유해환경 점검·...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8782",
+        "length": 626
+      },
+      {
+        "title": "해운대구 체납관리단, 출범 2개월여 만에 체납...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8781",
+        "length": 547
+      },
+      {
+        "title": "해운대구, 부산청년 메가 채용박람회 홍보관 운...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8780",
+        "length": 732
+      },
+      {
+        "title": "해운대구도시재생지원센터, 추석맞이 반송2동 환...",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8779",
+        "length": 284
+      },
+      {
+        "title": "해운대구, 청년주간 페스티벌 호응 속 개최",
+        "source_url": "https://eminwon.haeundae.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=8777",
+        "length": 1047
+      }
+    ]
+  },
+  {
+    "key": "boryeong",
+    "result": {
+      "city": "충남 보령시",
+      "fetched": 0,
+      "inserted": 0,
+      "skipped": 0,
+      "latestFetched": null,
+      "sourceCode": "local-press-boryeong",
+      "errors": [
+        "list 0건 — site HTML size 103043 bytes 인데 regex 매칭 0. site 구조 변경 의심"
+      ]
+    },
+    "bodies": []
+  },
+  {
+    "key": "samcheok",
+    "result": {
+      "city": "강원 삼척시",
+      "fetched": 1,
+      "inserted": 0,
+      "skipped": 1,
+      "latestFetched": "2026-10-02",
+      "sourceCode": "local-press-samcheok",
+      "errors": []
+    },
+    "bodies": []
+  },
+  {
+    "key": "yuseong",
+    "result": {
+      "city": "대전 유성구",
+      "fetched": 10,
+      "inserted": 1,
+      "skipped": 0,
+      "latestFetched": "2014-03-12",
+      "sourceCode": "local-press-yuseong",
+      "errors": [
+        "detail 927 본문 추출 실패",
+        "detail 926 본문 추출 실패",
+        "detail 925 본문 추출 실패",
+        "detail 924 본문 추출 실패",
+        "detail 923 본문 추출 실패",
+        "detail 922 본문 추출 실패",
+        "detail 921 본문 추출 실패",
+        "detail 920 본문 추출 실패",
+        "detail 919 본문 추출 실패"
+      ]
+    },
+    "bodies": [
+      {
+        "title": "유성구, 평생학습 분위기 확산",
+        "source_url": "https://eminwon.yuseong.go.kr/emwp/gov/mogaha/ntis/web/ofr/action/OfrAction.do?method=selectOfrNews&jndinm=OfrBcAdvNewsEJB&news_epct_no=928",
+        "length": 1075
+      }
+    ]
+  },
+  {
+    "key": "cheorwon",
+    "error": "TypeError: fetch failed",
+    "bodies": []
+  }
+]

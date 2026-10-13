@@ -18,7 +18,8 @@ function gateScript(code: number): string {
 }
 
 describe("applyHumanizeGateToPayload", () => {
-  it("downgrades publish payload to draft on review warning", () => {
+  // 리눅스 실행 표시를 사용하는 파일 검사는 리눅스 자동 검사에서 실행합니다.
+  it.skipIf(process.platform === "win32")("downgrades publish payload to draft on review warning", () => {
     vi.stubEnv("KEEPIOO_HUMANIZE_GATE_ENABLED", "1");
     vi.stubEnv("KEEPIOO_HUMANIZE_GATE_PATH", gateScript(1));
 

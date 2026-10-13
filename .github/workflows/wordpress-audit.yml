@@ -1,0 +1,62 @@
+name: WordPress 발행 지연 감사 (읽기 전용)
+
+on:
+  schedule:
+    # 블로그 발행(22:07/06:07 UTC) 이후 공개 검색 색인 지연을 다시 확인.
+    - cron: "50 22 * * *"
+    - cron: "50 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: WordPress 지연 공개 증거 확인
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 최근 타임아웃 5건 및 선점 지연 읽기
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET 누락"
+            exit 1
+          fi
+          result_file="$(mktemp)"
+          trap 'rm -f "$result_file"' EXIT
+          status=$(curl -sS --max-time 48 --retry 1 --retry-delay 2 --retry-all-errors \
+            -o "$result_file" -w '%{http_code}' \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            'https://www.keepioo.com/api/cron/wordpress-audit?limit=5&offset=0')
+          if [ "$status" != "200" ]; then
+            echo "::error::WordPress 지연 감사 조회 실패 (HTTP ${status}). 발행 워크플로를 재실행하지 마세요."
+            exit 1
+          fi
+          python3 - "$result_file" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          kinds=data.get('kinds') or {}
+          candidates=data.get('candidates')
+          matches=data.get('uniqueMatches') or []
+          if not data.get('ok') or not isinstance(candidates,int) or candidates!=sum(kinds.values()) or len(matches)!=kinds.get('unique_match',0):
+              print('::error::WordPress 감사 응답의 집계가 일치하지 않습니다.')
+              sys.exit(1)
+          stale=data.get('staleClaims',0);held=data.get('heldDrafts',0)
+          with open(sys.argv[2],'a',encoding='utf-8') as summary:
+              summary.write('## WordPress 지연 공개 감사 (읽기 전용)\n')
+              summary.write(f'최근 48시간 타임아웃 {data.get("totalRecentTimeouts",0)}건 중 {candidates}건 확인 · 유일 공개 매칭 {len(matches)}건 · 선점 지연 {stale}건 · 초안 검토 {held}건\n')
+              summary.write(f'분류: {json.dumps(kinds,ensure_ascii=False)}\n')
+              if data.get('hasMore'):
+                  summary.write('추가 페이지가 남았습니다. 이번 실행만으로 전체 감사 완료를 주장하지 않습니다.\n')
+              for match in matches:
+                  summary.write(f'- 원본 글 {match["blogPostId"]}: WordPress ID {match["wpPostId"]} (재발행 금지, 기록 대조 필요)\n')
+          if data.get('hasMore') or matches or stale or kinds.get('ambiguous',0) or kinds.get('unavailable',0) or kinds.get('inconclusive',0):
+              print('::error::WordPress 지연 공개/선점 이상 발견. POST 재시도나 전체 발행 재실행 없이 관리자 검토가 필요합니다.')
+              sys.exit(1)
+          if held:
+              print(f'::warning::WordPress 초안 검토 대기 {held}건')
+          print('WordPress 지연 감사 완료: 공개 검색 결과 없음은 미게시 증거가 아닙니다.')
+          PY

@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { EDITORIAL_NEWS } from "@/lib/editorial-news-data";
+import { getNewsSnapshot, isNewsPublished, getPublishedNews } from "@/lib/editorial-news";
+
+const article = EDITORIAL_NEWS[0];
+const now = new Date("2026-10-10T00:00:00Z");
+const approval = {
+  snapshotSha256: getNewsSnapshot(article), reviewer: "운영자",
+  reviewedAt: "2026-10-09T14:00:00Z", decision: "approved",
+  originalValueConfirmed: true,
+};
+
+describe("정책뉴스 공개 검수", () => {
+  it("갱신한 글도 최초 발행일을 보존하며 잘못된 시각은 거부한다", () => {
+    const valid = { ...approval, publishedAt: '2026-10-05T14:24:12Z' };
+    expect(isNewsPublished(article, { [article.slug]: valid }, now)).toBe(true);
+    for (const publishedAt of ['잘못된 날짜', '2026-02-30T00:00:00Z',
+      '2026-09-30T00:00:00Z', '2026-10-10T00:00:00Z']) {
+      expect(isNewsPublished(article, { [article.slug]: { ...valid, publishedAt } }, now)).toBe(false);
+    }
+  });
+  it("초안은 승인 없이 공개하지 않는다", () => {
+    expect(isNewsPublished(article, {}, now)).toBe(false);
+  });
+  it("추가한 두 초안에는 아직 공개 승인 기록이 없다", () => {
+    const published = getPublishedNews().map(item => item.slug);
+    for (const draft of EDITORIAL_NEWS.slice(1)) expect(published).not.toContain(draft.slug);
+  });
+  it("실제 운영자 승인 기록과 현재 초안이 일치한다", () => {
+    expect(getPublishedNews().map(item => item.slug)).toContain(article.slug);
+  });
+  it("현재 본문과 출처를 승인한 글만 공개한다", () => {
+    expect(isNewsPublished(article, { [article.slug]: approval }, now)).toBe(true);
+  });
+  it("본문이나 출처가 바뀌면 과거 승인은 무효다", () => {
+    const records = { [article.slug]: approval };
+    expect(isNewsPublished({ ...article, answer: "바뀐 설명" }, records, now)).toBe(false);
+    expect(isNewsPublished({ ...article, sourceUrl: "https://example.com" }, records, now)).toBe(false);
+  });
+  it("미래·잘못된 날짜와 비어 있는 검수자는 거부한다", () => {
+    for (const change of [
+      { reviewedAt: "2026-10-11T00:00:00Z" }, { reviewedAt: "잘못된 날짜" },
+      { reviewer: " " }, { decision: "draft" }, { originalValueConfirmed: false },
+    ]) expect(isNewsPublished(article, { [article.slug]: { ...approval, ...change } }, now)).toBe(false);
+  });
+  it("공식 출처가 아니거나 확인일이 미래면 승인해도 공개하지 않는다", () => {
+    for (const change of [
+      { sourceUrl: "https://korea.kr.example.com/news" }, { checkedAt: "2026-10-11" },
+      { sourcePublishedAt: "2026-02-30" }, { updatedAt: "2026-10-11" },
+    ]) {
+      const changed = { ...article, ...change };
+      expect(isNewsPublished(changed, { [article.slug]: { ...approval, snapshotSha256: getNewsSnapshot(changed) } }, now)).toBe(false);
+    }
+  });
+});

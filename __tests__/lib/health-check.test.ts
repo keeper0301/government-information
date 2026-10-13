@@ -1092,3 +1092,10 @@ describe("AdSense readiness 충돌 방어", () => {
     expect(alerts.some(a => a.key === "news_ratio_high")).toBe(true);
   });
 });
+
+it("통계 미확인 경고와 다른 운영 경고를 함께 유지한다", () => {
+  const alerts = checkThresholds({ ...BASE_SIGNALS, newsRatio: Number.NaN, adsenseReadyToDisable: true, blogPublishStaleHours: 100 });
+  expect(alerts.some(a => a.key === "adsense_stats_unavailable")).toBe(true);
+  expect(alerts.some(a => a.key === "blog_publish_stalled")).toBe(true);
+  expect(alerts.some(a => a.key === "adsense_ready_to_disable")).toBe(false);
+});

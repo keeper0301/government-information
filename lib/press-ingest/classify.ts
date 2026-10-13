@@ -6,6 +6,7 @@
 // ============================================================
 
 import { callLLM, parseJSONResponse } from "@/lib/llm/text";
+import { groundedApplicationUrl } from './source-grounding';
 
 export type ClassifyResult = {
   /** 사용자가 직접 신청 가능한 정책 사업인가? false 면 나머지 필드 의미 X */
@@ -204,8 +205,9 @@ export async function classifyPressNews(input: {
     eligibility: parsed.eligibility || "",
     benefits: parsed.benefits || "",
     apply_method: parsed.apply_method || "",
-    apply_url: parsed.apply_url || null,
-    body_urls: bodyUrls,
+    // 모델의 주소 목록도 실제 입력 원문과 대조한다. 첫 화면과 만들어낸 주소는 제외한다.
+    apply_url: groundedApplicationUrl(parsed.apply_url, input.body),
+    body_urls: bodyUrls.filter(url => groundedApplicationUrl(url, input.body) !== null),
     apply_start: parsed.apply_start || null,
     apply_end: parsed.apply_end || null,
     category,

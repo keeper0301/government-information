@@ -1,27 +1,23 @@
-// instrumentation-client.ts
-// ============================================================
-// 브라우저 사이드 Sentry init — Next.js 15.x 부터 별도 파일 표준
-// ============================================================
-// Next.js 가 클라이언트 번들 빌드 시 자동으로 이 파일을 entry 로 포함.
-// 브라우저에서 발생하는 unhandled error·promise rejection·React render
-// 에러를 Sentry 에 전송한다.
-//
-// NEXT_PUBLIC_ prefix 가 붙은 환경변수만 클라이언트에 노출 가능.
-// DSN 은 공개돼도 안전 (read-only 에러 ingest 키, 서버측 토큰 아님).
-//
-// Session Replay 는 비용·개인정보 보호를 위해 0 으로 비활성화.
-// 추후 필요 시 replaysOnErrorSampleRate 만 0.1 정도로 켜면 됨.
-// ============================================================
+import { captureBrowserError, loadBrowserErrorRecorder } from "@/lib/browser-error-reporting";
 
-import * as Sentry from "@sentry/nextjs";
+// 첫 화면을 먼저 읽고, 여유 시간이 생기면 오류 기록 도구를 준비합니다.
+// 준비 전에 생긴 오류는 직접 전달하므로 기록을 놓치지 않습니다.
+if (process.env.NEXT_PUBLIC_SENTRY_DSN && typeof window !== "undefined") {
+  const reportError = (event: ErrorEvent) => { void captureBrowserError(event.error ?? event.message); };
+  const reportRejection = (event: PromiseRejectionEvent) => { void captureBrowserError(event.reason); };
+  window.addEventListener("error", reportError);
+  window.addEventListener("unhandledrejection", reportRejection);
+  const prepare = () => {
+    void loadBrowserErrorRecorder().then(recorder => {
+      if (!recorder) return;
+      window.removeEventListener("error", reportError);
+      window.removeEventListener("unhandledrejection", reportRejection);
+    });
+  };
+  if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(prepare, { timeout: 1500 });
+  else setTimeout(prepare, 1500);
+}
 
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  // 브라우저 트레이스 — prod 0.1 비율 (서버와 동일)
-  tracesSampleRate: 0.1,
-  // Session Replay 모두 비활성 (비용·개인정보 신중)
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 0,
-});
-
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export function onRouterTransitionStart(...arguments_: Parameters<typeof import("@sentry/nextjs").captureRouterTransitionStart>) {
+  void loadBrowserErrorRecorder().then(recorder => recorder?.captureRouterTransitionStart(...arguments_));
+}

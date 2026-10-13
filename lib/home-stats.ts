@@ -7,7 +7,7 @@
 // ============================================================
 
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { readPublicProgramCounts, readPublicRegionCounts } from "@/lib/public-home-data";
 import { hasSupabaseAnonEnv } from "@/lib/supabase/env";
 
 export type ProgramCounts = {
@@ -41,14 +41,17 @@ async function withTimeout<T>(
   ms: number,
   fallback: T,
 ): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
-      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+      new Promise<T>((resolve) => { timer = setTimeout(() => resolve(fallback), ms); }),
     ]);
   } catch (e) {
     console.error("[home-stats] withTimeout caught error", e);
     return fallback;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -56,34 +59,12 @@ async function withTimeout<T>(
 export const getProgramCounts = cache(async (): Promise<ProgramCounts> => {
   if (!hasSupabaseAnonEnv()) return EMPTY_COUNTS;
 
-  const supabase = await createClient();
-  return withTimeout(
-    supabase.rpc("get_program_counts").then(({ data, error }) => {
-      if (error || !data) {
-        console.error("[home-stats] get_program_counts failed", error);
-        return EMPTY_COUNTS;
-      }
-      return data as ProgramCounts;
-    }),
-    RPC_TIMEOUT_MS,
-    EMPTY_COUNTS,
-  );
+  return withTimeout(readPublicProgramCounts(), RPC_TIMEOUT_MS, EMPTY_COUNTS);
 });
 
 // 시·도 + 전국 카운트. region prefix 매칭. RegionMap 용.
 export const getWelfareRegionCounts = cache(async (): Promise<RegionCounts> => {
   if (!hasSupabaseAnonEnv()) return {};
 
-  const supabase = await createClient();
-  return withTimeout(
-    supabase.rpc("get_welfare_region_counts").then(({ data, error }) => {
-      if (error || !data) {
-        console.error("[home-stats] get_welfare_region_counts failed", error);
-        return {} as RegionCounts;
-      }
-      return data as RegionCounts;
-    }),
-    RPC_TIMEOUT_MS,
-    {} as RegionCounts,
-  );
+  return withTimeout(readPublicRegionCounts(), RPC_TIMEOUT_MS, {});
 });

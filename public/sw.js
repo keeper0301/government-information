@@ -1,91 +1,42 @@
-// keepioo PWA service worker — offline 캐싱 + push 이벤트 listener.
-//
-// 캐싱 전략:
-//  · install 시 / 와 /offline 두 페이지를 미리 캐시 (precache)
-//  · stale-while-revalidate — 캐시 응답을 우선 반환 + 백그라운드 갱신
-//  · GET 요청 + 동일 origin 만 캐시 (보안·안정성)
-//  · /api/* 와 /_next/data/* 는 캐시 미적용 (실시간 데이터 stale 위험)
-//
-// push 이벤트:
-//  · 1단계 — listener 만 등록. 실제 발송은 사용자 동의 + VAPID 셋업 후 phase
-//
-// 버전 관리:
-//  · CACHE_NAME 의 v1 을 올리면 activate 단계에서 옛 캐시 자동 삭제
-
-const CACHE_NAME = "keepioo-v1";
+// 고정 파일만 저장합니다. 정책·계정 화면은 서버의 최신 응답을 사용합니다.
+const CACHE_NAME = "keepioo-v2-static";
 const OFFLINE_URL = "/offline";
-const PRECACHE = ["/", "/offline"];
-
-// install — 핵심 페이지를 미리 캐시. 실패해도 활성화는 진행 (catch).
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE))
-      .catch(() => {
-        // precache 실패는 무시 — 첫 실행 시 네트워크 이슈일 수 있음
-      }),
-  );
-  // 새 sw 가 즉시 활성화되도록 대기 단계 skip
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.add(OFFLINE_URL)).catch(() => {}));
   self.skipWaiting();
 });
-
-// activate — 옛 버전 캐시 정리 + 즉시 클라이언트 제어권 획득
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
-      ),
-    ),
-  );
-  self.clients.claim();
+self.addEventListener("activate", event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("keepioo-") && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
-// fetch — stale-while-revalidate 패턴
-//  1) 캐시에 있으면 즉시 반환
-//  2) 동시에 네트워크에서 새 응답을 받아 캐시 갱신
-//  3) 네트워크 실패 시 캐시 또는 /offline fallback
-self.addEventListener("fetch", (event) => {
-  // GET 만 캐시 (POST/PUT 은 캐시 자체가 의미 없음)
-  if (event.request.method !== "GET") return;
-
-  // 같은 origin 만 (외부 광고·CDN 등은 브라우저 기본 처리)
-  if (!event.request.url.startsWith(self.location.origin)) return;
-
-  // API/RSC 데이터는 캐시 제외 — stale 데이터 위험
-  // 인증 영역 (/mypage·/admin) HTML 도 제외 — 본인 단말 재방문 시 옛 본인
-  // 데이터 노출 가드 (두 영역은 force-dynamic 으로 SSR 매번 fresh 가 정상)
-  const url = new URL(event.request.url);
-  if (
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_next/data/") ||
-    url.pathname.startsWith("/mypage") ||
-    url.pathname.startsWith("/admin")
-  ) {
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (url.searchParams.has("_rsc") || request.headers.get("RSC") === "1") return;
+  // 화면 내용은 저장하지 않습니다. 통신 실패 때만 저장된 안내로 돌아갑니다.
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(async () => {
+      const offline = await caches.match(OFFLINE_URL).catch(() => undefined);
+      if (offline) return offline;
+      return new Response("인터넷 연결을 확인한 뒤 다시 시도해 주세요.", {
+        status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }));
     return;
   }
-
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fresh = fetch(event.request)
-        .then((res) => {
-          // 정상 응답 (200, basic = 같은 origin 일반 응답) 만 캐시 저장
-          if (res && res.status === 200 && res.type === "basic") {
-            const copy = res.clone();
-            caches
-              .open(CACHE_NAME)
-              .then((cache) => cache.put(event.request, copy));
-          }
-          return res;
-        })
-        .catch(() => {
-          // 네트워크 실패 → 캐시 → 그래도 없으면 offline 페이지
-          return cached || caches.match(OFFLINE_URL);
-        });
-      return cached || fresh;
-    }),
-  );
+  if (!url.pathname.startsWith("/_next/static/") && url.pathname !== OFFLINE_URL) return;
+  // 저장 기능을 사용할 수 없는 브라우저에서도 통신으로 정상 파일을 전달합니다.
+  event.respondWith(caches.open(CACHE_NAME).catch(() => undefined).then(async cache => {
+    const cached = cache ? await cache.match(request).catch(() => undefined) : undefined;
+    if (cached) return cached;
+    const response = await fetch(request);
+    const policy = response.headers.get("Cache-Control") ?? "";
+    if (cache && response.status === 200 && response.type === "basic" && !/private|no-store/i.test(policy)) {
+      // 저장 공간이 부족해도 이미 받은 정상 파일은 화면에 전달합니다.
+      await cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  }));
 });
 
 // push — 서버에서 푸시 발송 시 호출 (사용자 동의 + VAPID 키 셋업 필요)

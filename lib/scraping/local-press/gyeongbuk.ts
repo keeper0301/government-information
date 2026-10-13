@@ -7,6 +7,8 @@
 //   - 본문: detail page 의 본문 (parseDetailBody 에서 추출)
 // ============================================================
 
+import { load } from "cheerio";
+
 import {
   createPressCollector,
   decodeBasicEntities,
@@ -17,7 +19,7 @@ const BASE_URL = "https://www.gb.go.kr";
 // 2026-05-26 — 정확 LIST_URL fix. 이전 LARGE_CODE=720 등 잘못된 query 파라미터로
 // "이미 삭제된 글" alert page 반환 (5/25 cron seq 508041401 alert 발화 진단).
 const LIST_URL =
-  "https://www.gb.go.kr/Main/page.do?BD_CODE=bbs_bodo&mnu_uid=6792";
+  "https://www.gb.go.kr/page/10107/10004.do";
 
 // 2026-05-26 — 전체 href 추출 (V_NUM, B_STEP 동적 포함).
 // 이전 V_NUM=14274 고정 detail URL 으로 "존재하지 않는 글" alert 진단.
@@ -33,6 +35,19 @@ const LIST_ITEM_REGEX =
 const CONT_VIEW_OPEN = /<div[^>]*\bclass="[^"]*\bcont_view\b[^"]*"[^>]*>/i;
 
 export function parseListPage(html: string): PressNewsItem[] {
+  // 새 도청 게시판은 링크 대신 글 번호로 이동합니다. 각 항목의 날짜를 함께 읽습니다.
+  const $ = load(html);
+  const modern: PressNewsItem[] = [];
+  $(".webzine_list a[onclick*=\"boardList.view\"]").each((_, element) => {
+    const link = $(element);
+    const seq = /boardList\.view\(['"](\d+)['"]\)/.exec(link.attr("onclick") ?? "")?.[1];
+    const date = /(20\d{2}-\d{2}-\d{2})/.exec(link.find(".classify").text())?.[1] ?? null;
+    const title = (link.attr("title") || link.find(".tit").text()).trim();
+    if (!seq || !title || modern.some((item) => item.seq === seq)) return;
+    modern.push({ seq, title, publishedDate: date, sourceUrl:
+      BASE_URL + "/page/10107/10004.do?importUrl=%2Fboard%2Fview.do&boardMngNo=12&pageDtlOrdrNo=1&boardNo=" + seq });
+  });
+  if (modern.length) return modern;
   // 2026-05-20 subagent review hot-fix — 각 link 매치 위치 +800 char slice 안에서만
   // date 추출. 옛 코드의 dates[] 전체 array 매칭은 footer/script date 까지 잡혀
   // items[i] ↔ dates[i] 어긋날 위험.
@@ -78,6 +93,12 @@ export function parseListPage(html: string): PressNewsItem[] {
 }
 
 export function parseDetailBody(htmlRaw: string): string | null {
+  // 새 게시판의 본문 영역만 추출해 첨부와 다음 글 메뉴가 섞이지 않게 합니다.
+  const $ = load(htmlRaw);
+  const modern = $(".board_view .text").first().clone();
+  modern.find("script, style").remove();
+  const modernText = modern.text().replace(/\s+/g, " ").trim();
+  if (modernText.length >= 250 && /[가-힣]/.test(modernText)) return modernText.slice(0, 20000);
   // 핵심: 주석 먼저 제거 — 주석 안 `</div-->` 가 깊이 추적을 오염시킴(제목 조기종료).
   const html = htmlRaw.replace(/<!--[\s\S]*?-->/g, " ");
   const open = CONT_VIEW_OPEN.exec(html);
