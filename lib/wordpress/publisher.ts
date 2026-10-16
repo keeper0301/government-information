@@ -32,7 +32,7 @@ export type PublishResult =
   | { ok: false; reason: "claim_unavailable_or_duplicate" }
   | { ok: false; reason: "skipped_no_credentials"; error?: undefined }
   | { ok: false; reason: "skipped_invalid_url"; error: string }
-  | { ok: false; reason: "api_error"; error: string }
+  | { ok: false; reason: "api_error"; error: string; httpStatus?: number; wpPostId?: number; wpPostUrl?: string }
   | { ok: false; reason: "network_error"; error: string }
   | { ok: false; reason: "timeout"; error: string };
 
@@ -152,7 +152,7 @@ export async function publishToWordPress(
     const errText = await res.text().catch(() => "");
     const message = `HTTP ${res.status}: ${errText.slice(0, 500)}`;
     await logFailure(blogPostId, message);
-    return { ok: false, reason: "api_error", error: message };
+    return { ok: false, reason: "api_error", error: message, httpStatus: res.status };
   }
 
   // 5) 성공 응답 파싱
@@ -162,7 +162,7 @@ export async function publishToWordPress(
   if (wpPostId === null || !Number.isSafeInteger(wpPostId) || wpPostId <= 0 || !wpPostUrl) {
     const message = "응답에서 post.id/link 누락";
     await logFailure(blogPostId, message);
-    return { ok: false, reason: "api_error", error: message };
+    return { ok: false, reason: "api_error", error: message, httpStatus: res.status };
   }
 
   // 201만으로 공개 발행을 보증할 수 없다. humanize gate가 draft로
@@ -174,11 +174,11 @@ export async function publishToWordPress(
     linkOrigin = link.origin;
   } catch {
     await logFailure(blogPostId, "WordPress 응답 link 형식 오류", wpPostId, wpPostUrl);
-    return { ok: false, reason: "api_error", error: "WordPress 응답 link 형식 오류" };
+    return { ok: false, reason: "api_error", error: "WordPress 응답 link 형식 오류", httpStatus: res.status, wpPostId };
   }
   if (linkOrigin !== targetOrigin) {
     await logFailure(blogPostId, "WordPress 응답 link 호스트 불일치", wpPostId, wpPostUrl);
-    return { ok: false, reason: "api_error", error: "WordPress 응답 link 호스트 불일치" };
+    return { ok: false, reason: "api_error", error: "WordPress 응답 link 호스트 불일치", httpStatus: res.status, wpPostId };
   }
   const wpStatus = extractStringField(json, "status");
   if (wpStatus === "draft" || wpStatus === "pending" || wpStatus === "future" || wpStatus === "private") {
@@ -189,7 +189,7 @@ export async function publishToWordPress(
   }
   if (wpStatus !== "publish" || payload.status !== "publish") {
     await logFailure(blogPostId, "WordPress 발행 상태 불일치", wpPostId, wpPostUrl);
-    return { ok: false, reason: "api_error", error: "WordPress 발행 상태 불일치" };
+    return { ok: false, reason: "api_error", error: "WordPress 발행 상태 불일치", httpStatus: res.status, wpPostId };
   }
 
   // 6) 성공 기록 — wordpress_publish_log 에 INSERT

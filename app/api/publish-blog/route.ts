@@ -227,6 +227,8 @@ export async function POST(request: NextRequest) {
         failed: 0,
         externalPublishHeld: result.externalPublishHeld,
         qualityScore: result.qualityReview?.score ?? null,
+        blogPostId: result.blogPostId,
+        wordpress: result.wordpress,
         slug: result.slug,
         sourceProgramId: result.sourceProgramId,
         sourceProgramType: result.sourceProgramType,
@@ -244,6 +246,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: result.dryRun ? "Dry run 성공 (DB 저장 안 함)" : "글 발행 완료",
+      blogPostId: result.blogPostId,
       slug: result.slug,
       title: result.generated.title,
       category: result.generated.category,
@@ -329,6 +332,7 @@ export async function GET(request: NextRequest) {
         category: categories[i],
         ok: true,
         skipped: false,
+        blogPostId: s.value.blogPostId,
         slug: s.value.slug,
         title: s.value.generated.title,
         url: `/blog/${s.value.slug}`,
@@ -368,6 +372,7 @@ export async function GET(request: NextRequest) {
       category: r.category,
       ok: r.ok,
       skipped: r.ok ? false : r.skipped,
+      blogPostId: r.ok ? r.blogPostId : null,
       slug: r.ok ? r.slug : null,
       externalPublishHeld: r.ok ? r.externalPublishHeld : null,
       wordpress: r.ok ? r.wordpress : null,
@@ -419,6 +424,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(
     {
       message: status === 200 ? "발행 완료" : "모든 카테고리 발행 실패",
+      offset,
       count,
       success: results.filter((r) => r.ok).length,
       failed: failures.length,

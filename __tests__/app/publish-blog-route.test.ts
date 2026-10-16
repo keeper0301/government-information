@@ -73,6 +73,13 @@ describe("publish-blog cron route", () => {
     restoreEnv();
   });
 
+  it("returns and audits offset, existing ID and WordPress failure details", async () => {
+    const wordpress = { status: "failed", reason: "api_error", httpStatus: 500, retryEligible: false };
+    mocks.publishOnePost.mockResolvedValueOnce({ blogPostId: "existing-id", slug: "existing-slug", generated: { title: "정책" }, wordpress });
+    const response = await GET(request("https://www.keepioo.com/api/publish-blog?count=1&offset=2"));
+    expect(await response.json()).toMatchObject({ offset: 2, results: [{ blogPostId: "existing-id", wordpress }] });
+    expect(mocks.logAdminAction).toHaveBeenCalledWith(expect.objectContaining({ details: expect.objectContaining({ offset: 2, results: [expect.objectContaining({ blogPostId: "existing-id", wordpress })] }) }));
+  });
   it("정책 풀이 소진된 카테고리는 cron 실패 알림 없이 skipped 로 기록한다", async () => {
     mocks.publishOnePost.mockRejectedValueOnce(
       new Error(

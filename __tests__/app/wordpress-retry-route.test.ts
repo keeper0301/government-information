@@ -66,6 +66,17 @@ describe("WordPress single failed-post retry", () => {
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ ok: false, reason: "api_error" });
   });
+  it.each(["HTTP 500: database connection failed", "HTTP 502: bad gateway", "network: reset", "api_error"])("blocks unsafe existing failure %s", async (error_message) => {
+    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message }));
+    expect((await POST(request(id))).status).toBe(409);
+    expect(mocks.publish).not.toHaveBeenCalled();
+  });
+  it("allows an existing 403 rejection through the same single-post path", async () => {
+    mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message: "HTTP 403: forbidden" })).mockReturnValueOnce(row(post));
+    mocks.publish.mockResolvedValueOnce({ ok: true, wpPostId: 42, wpPostUrl: "https://info.keeper0301.com/post/" });
+    expect((await POST(request(id))).status).toBe(200);
+    expect(mocks.publish).toHaveBeenCalledWith(id, expect.objectContaining({ slug: post.slug }));
+  });
   it("rejects timeout failures because WordPress might have created the post", async () => {
     mocks.from.mockReturnValueOnce(row({ status: "failed", wp_post_id: null, error_message: "timeout 15000ms" }));
     const response = await POST(request(id));

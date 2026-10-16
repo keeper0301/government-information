@@ -21,6 +21,7 @@ import {
 import { makeSlug, estimateReadingTime, sanitizeHtml } from "@/lib/utils";
 import { sanitizeBlogHtml } from "@/lib/html-sanitize";
 import { enqueueNaverBlog } from "@/lib/naver-blog/queue";
+import { summarizeWordPressResult } from "@/lib/wordpress/result-summary";
 import { publishToWordPress } from "@/lib/wordpress/publisher";
 import { getRecentQualityImprovementHints } from "@/lib/blog/quality-learning";
 import { getRecentBlogTrendHints } from "@/lib/blog/trend-learning";
@@ -709,6 +710,7 @@ async function publishWithCandidate(
   if (opts.dryRun) {
     return {
       dryRun: true,
+      blogPostId: null,
       slug,
       generated,
       reading,
@@ -810,6 +812,8 @@ async function publishWithCandidate(
     reason?: string;
     url?: string;
     wpPostId?: number;
+    httpStatus?: number;
+    retryEligible?: boolean;
   } = { status: "not_attempted" };
   if (inserted?.id && qualityApproved) {
     try {
@@ -829,11 +833,7 @@ async function publishWithCandidate(
         tags: generated.tags ?? null,
         category: generated.category || category,
       });
-      wordpress = result.ok
-        ? { status: "published", url: result.wpPostUrl, wpPostId: result.wpPostId }
-        : result.reason === "held_for_review"
-          ? { status: "held_for_review", url: result.wpPostUrl }
-          : { status: "failed", reason: result.reason };
+      wordpress = summarizeWordPressResult(result);
     } catch (e) {
       wordpress = { status: "failed", reason: "unexpected_error" };
       console.warn(`[blog-publish] wordpress 발행 실패 (블로그 발행은 성공): ${(e as Error).message}`);
@@ -846,6 +846,7 @@ async function publishWithCandidate(
 
   return {
     dryRun: false,
+    blogPostId: inserted?.id ?? null,
     slug,
     generated,
     reading,
