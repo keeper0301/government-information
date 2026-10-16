@@ -151,6 +151,7 @@ async function run() {
     })),
     sms_ok: smsResult?.ok ?? null,
     sms_reason: smsResult?.ok === false ? smsResult.reason : undefined,
+    sms_error: smsResult?.ok === false ? smsResult.error : undefined,
     telegram_ok: telegramResult?.ok ?? null,
     telegram_reason:
       telegramResult?.ok === false ? telegramResult.reason : undefined,
