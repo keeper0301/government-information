@@ -13,6 +13,24 @@ const draft = { kind: 'report' as const, title: '관광 직무 행사 종료…�
   ] };
 const quality = () => Object.fromEntries(['scope','timeliness','usefulness','clarity','nonRepetition','coverage'].map(key => [key,
   { passed: true, reason: '참여자 대상 후속 지원과 일반 구직자의 별도 확인을 구분했습니다.', excerpt: draft.answer }]));
+it.each(['품질 기준을 충족하지 못합니다. 해당 항목은 보류해야 합니다.',
+  '검사 결과: 불합격입니다. 독자가 활용할 설명을 보완해야 합니다.',
+  '본문의 구체적인 활용 설명이 부족합니다. 이 품질 항목은 통과할 수 없습니다.'])
+('통과 표시와 명시적인 실패 설명이 모순되면 보류한다: %s', reason => {
+  expect(validateEditorialQuality({ ...quality(), usefulness: { ...quality().usefulness, reason } }, draft)).toBe(false);
+});
+it.each(['품질 기준을 충족하지 못한다는 뜻은 아닙니다. 후속 지원 범위를 구분했습니다.',
+  '검사 결과: 불합격이 아닙니다. 원문의 참여자 대상 범위를 유지했습니다.',
+  '원문에서 이용 정보를 확인하기 부족하다는 점을 설명하며 임의로 확대하지 않았습니다.',
+  '신청자는 소득 요건을 충족하지 못합니다. 본문에서 이 제외 조건을 명확히 설명하므로 대상 안내 기준을 충족합니다.',
+  '본문에 적힌 전년도 검사 결과: 불합격입니다. 올해 신청 기준과 과거 결과를 구분해서 설명하므로 혼동이 없습니다.'])
+('실패의 직접 부정과 원문의 한계 설명은 유지한다: %s', reason => {
+  expect(validateEditorialQuality({ ...quality(), usefulness: { ...quality().usefulness, reason } }, draft)).toBe(true);
+});
+it.each(['scope', 'timeliness', 'clarity', 'nonRepetition', 'coverage'])('다른 품질 항목 %s의 모순도 보류한다', key => {
+  const checks = quality(); checks[key].reason = '검사 결과: 불합격입니다. 근거를 보완해야 합니다.';
+  expect(validateEditorialQuality(checks, draft)).toBe(false);
+});
 it('짧고 구체적인 행사 설명은 불필요한 분량 없이 통과한다', () => {
   expect(validateNewsDraft(draft, source)).not.toBeNull();
 });
