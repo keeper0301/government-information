@@ -1,3 +1,4 @@
+import { isBlogPublic } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 네이버 블로그 자동 발행 cron — RPA Playwright
 // ============================================================
@@ -133,9 +134,12 @@ export async function GET(request: Request) {
   const { data: row, error: queryErr } = await admin
     .from("naver_blog_queue")
     .select(
-      "id, blog_post_id, attempt_count, blog_post:blog_posts!inner(slug, title, content, meta_description, category)",
+      "id, blog_post_id, attempt_count, blog_post:blog_posts!inner(slug, title, content, meta_description, category, tags, faqs, published_at, admin_review_required, admin_reviewed_at)",
     )
     .eq("status", "pending")
+    .eq("blog_post.admin_review_required", false)
+    .not("blog_post.published_at", "is", null)
+    .not("blog_post.admin_reviewed_at", "is", null)
     .lt("attempt_count", 3)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -155,6 +159,10 @@ export async function GET(request: Request) {
     await skip("no_pending_queue", {});
     return NextResponse.json({ status: "no_pending_queue" });
   }
+
+  const blogPostRaw = row.blog_post as unknown;
+  const post = Array.isArray(blogPostRaw) ? blogPostRaw[0] : blogPostRaw;
+  if (!post || !isBlogPublic(post)) return NextResponse.json({status:"held_for_review"});
 
   // 6) attempt_count 증가 — .select() 로 영향 row 검증 (인스타 사고 패턴).
   // dry-run 시 attempt_count 안 올림 (검증인데 큐 cap 줄이지 않음).
@@ -177,8 +185,6 @@ export async function GET(request: Request) {
   }
 
   // 7) Playwright 발행
-  const blogPostRaw = row.blog_post as unknown;
-  const post = Array.isArray(blogPostRaw) ? blogPostRaw[0] : blogPostRaw;
   const payload = convertToNaverBlogHtml(post, { contentId: row.blog_post_id, queueId: row.id });
   const result = await publishToNaverBlog({
     title: payload.title,

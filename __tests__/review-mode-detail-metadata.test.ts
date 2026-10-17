@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: async () => ({
-    from: () => ({ select: () => ({ eq: () => ({ not: () => ({
-      maybeSingle: async () => ({ data: { title: '정책 안내', meta_description: '신청 안내', tags: [], cover_image: null } }),
-    }) }) }) }),
-  }),
+  createClient: async () => ({ from: () => {
+    const query = { select: () => query, eq: () => query, not: () => query,
+      maybeSingle: async () => ({ data: {
+        title: '정책 안내', content: '본문', meta_description: '신청 안내',
+        tags: [], faqs: [], category: null, cover_image: null,
+        published_at: '2026-01-01', admin_review_required: false,
+        admin_reviewed_at: null, admin_review_score: null,
+      } }),
+    };
+    return query;
+  } }),
 }));
 
 vi.mock('@/components/ga-page-tracker', () => ({ GaPageTracker: () => null }));

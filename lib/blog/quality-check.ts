@@ -5,6 +5,7 @@
 // score ≤ 2 → admin_review_required=true. 사장님 /admin/blog 검수 큐.
 // 비용: ~$0.0007/글 (Haiku 의 ~1/7). 매일 10~30글 → ~$0.02/일.
 
+import { hasUnfinishedAmount, type BlogPublicFields } from "./publication-eligibility";
 import { callLLM, parseJSONResponse } from "@/lib/llm/text";
 
 export interface BlogQualityResult {
@@ -14,12 +15,6 @@ export interface BlogQualityResult {
   improvements: string[];
 }
 
-const NEUTRAL: BlogQualityResult = {
-  score: 3,
-  needsReview: false,
-  reason: "skipped",
-  improvements: [],
-};
 
 export function getSeasonalMarketingFocus(now = new Date()): string {
   const month = now.getMonth() + 1;
@@ -42,7 +37,7 @@ export function getSeasonalMarketingFocus(now = new Date()): string {
 }
 
 export function buildBlogQualityPrompt(
-  post: { title: string; content: string },
+  post: BlogPublicFields & { title: string; content: string },
   now = new Date(),
 ): string {
   const year = now.getFullYear();
@@ -73,17 +68,17 @@ JSON 만 반환:
 
 제목: ${post.title}
 
-본문 (앞 2400자):
-${post.content.slice(0, 2400)}`;
+공개 메타·태그·FAQ: ${JSON.stringify({meta:post.meta_description,tags:post.tags,faqs:post.faqs})}
+
+본문 전체:
+${post.content}`;
 }
 
 export async function evaluateBlogQuality(
-  post: {
-    title: string;
-    content: string;
-  },
+  post: BlogPublicFields & { title: string; content: string },
   opts: { failClosed?: boolean } = {},
 ): Promise<BlogQualityResult> {
+  if (hasUnfinishedAmount(post)) return { score: 2, needsReview: true, reason: "미완성 금액 문구", improvements: ["원문에서 금액을 확인하고 모든 공개 필드를 수정하세요."] };
   const prompt = buildBlogQualityPrompt(post);
 
   let parsed: { score?: number; reason?: string; improvements?: unknown };
@@ -94,24 +89,24 @@ export async function evaluateBlogQuality(
     const text = await callLLM({ prompt, maxTokens: 220, jsonMode: true, timeoutMs: 12000 });
     parsed = parseJSONResponse<{ score?: number; reason?: string }>(text);
   } catch (e) {
-    if (opts.failClosed) {
-      return {
+    if (!opts.failClosed) return {score:3,needsReview:false,reason:String(e instanceof Error ? e.message : e).slice(0,80),improvements:[]};
+    return {
         score: 2,
         needsReview: true,
-        reason: `품질 검수 실패: ${(e as Error).message.slice(0, 80)}`,
+        reason: `품질 검수 실패: ${String(e instanceof Error ? e.message : e).slice(0, 80)}`,
         improvements: [
           "품질 검수 LLM 호출을 재시도한 뒤 외부 채널 발행 여부를 판단하세요.",
         ],
-      };
-    }
-    return { ...NEUTRAL, reason: (e as Error).message.slice(0, 80) };
+    };
   }
 
-  const rawScore =
-    typeof parsed.score === "number" && Number.isInteger(parsed.score)
-      ? parsed.score
-      : 3;
-  const score = Math.max(1, Math.min(5, rawScore));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
+      !Number.isInteger(parsed.score) || typeof parsed.score !== "number" || parsed.score < 1 || parsed.score > 5 ||
+      typeof parsed.reason !== "string" || !parsed.reason.trim() ||
+      !Array.isArray(parsed.improvements) || parsed.improvements.some(item => typeof item !== "string")) {
+    return {score:2, needsReview:true, reason:"품질 검수 실패: invalid response", improvements:["검수 응답을 재시도하세요."]};
+  }
+  const score = parsed.score;
   return {
     score,
     needsReview: score <= 2,

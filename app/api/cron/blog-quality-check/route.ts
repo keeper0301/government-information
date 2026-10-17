@@ -28,6 +28,8 @@ const BATCH_SIZE = 4;
 
 interface BlogPost {
   id: string;
+  updated_at: string;
+  faqs?: unknown;
   slug: string;
   title: string;
   content: string;
@@ -106,7 +108,7 @@ async function run(request: Request) {
   // 24h 발행 + 미검수 글 fetch
   const { data: recentPosts, error } = await admin
     .from("blog_posts")
-    .select("id, slug, title, content, meta_description, tags, category")
+    .select("id, slug, title, content, meta_description, tags, category, faqs, updated_at")
     .gte("published_at", since24h)
     .is("admin_reviewed_at", null)
     .limit(BATCH_LIMIT);
@@ -123,7 +125,7 @@ async function run(request: Request) {
   const [instagramPending, naverPending] = await Promise.all([
     admin
       .from("blog_posts")
-      .select("id, slug, title, content, meta_description, tags, category")
+      .select("id, slug, title, content, meta_description, tags, category, faqs, updated_at")
       .not("published_at", "is", null)
       .is("instagram_published_at", null)
       .is("admin_reviewed_at", null)
@@ -131,7 +133,7 @@ async function run(request: Request) {
     admin
       .from("naver_blog_queue")
       .select(
-        "blog_post:blog_posts!inner(id, slug, title, content, meta_description, tags, category, admin_reviewed_at)",
+        "blog_post:blog_posts!inner(id, slug, title, content, meta_description, tags, category, faqs, updated_at, admin_reviewed_at)",
       )
       .eq("status", "pending")
       .is("blog_post.admin_reviewed_at", null)
@@ -183,12 +185,12 @@ async function run(request: Request) {
     wordpressReleased: boolean;
   }> {
     const result = await evaluateBlogQuality(
-      { title: p.title, content: p.content ?? "" },
+      { ...p, content: p.content ?? "" },
       { failClosed: true },
     );
     const isTransientQualityFailure = isTransientQualityReviewFailure(result);
 
-    const { error: updateErr } = await admin
+    const { data: saved, error: updateErr } = await admin
       .from("blog_posts")
       .update({
         admin_review_score: result.score,
@@ -197,9 +199,11 @@ async function run(request: Request) {
           ? null
           : new Date().toISOString(),
       })
-      .eq("id", p.id);
+      .eq("id", p.id)
+      .eq("updated_at", p.updated_at)
+      .select("id");
 
-    if (updateErr) {
+    if (updateErr || saved?.length !== 1) {
       return { score: result.score, flagged: false, naverReleased: false, wordpressReleased: false };
     }
 

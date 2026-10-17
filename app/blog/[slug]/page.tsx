@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // /blog/[slug] — 블로그 글 상세
 // ============================================================
@@ -70,14 +71,14 @@ export async function generateMetadata({
   }
 
   const supabase = await createClient();
-  const { data: post } = await supabase
+  const { data: post } = await publicBlogQuery(supabase
     .from("blog_posts")
-    .select("title, meta_description, published_at, updated_at, tags, cover_image")
+    .select("title, meta_description, published_at, updated_at, tags, cover_image, content, faqs, category, admin_review_required, admin_reviewed_at, admin_review_score"))
     .eq("slug", slug)
     .not("published_at", "is", null)
     .maybeSingle();
 
-  if (!post) {
+  if (!post || !isBlogReadable(post)) {
     return { title: "글을 찾을 수 없어요 | 정책알리미" };
   }
 
@@ -144,26 +145,26 @@ export default async function BlogPostPage({
   if (!slug) notFound();
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await publicBlogQuery(supabase
     .from("blog_posts")
-    .select("*")
+    .select("*"))
     .eq("slug", slug)
     .not("published_at", "is", null)
     .maybeSingle();
 
-  if (!data) notFound();
+  if (!data || !isBlogReadable(data)) notFound();
   const post = data as BlogPost;
 
   // 같은 카테고리의 다른 최신 글 3개 (내부 링크용)
-  const { data: relatedRaw } = await supabase
+  const { data: relatedRaw } = await publicBlogQuery(supabase
     .from("blog_posts")
-    .select("slug, title, category, published_at")
+    .select("slug, title, category, published_at, content, meta_description, tags, faqs, cover_image, admin_review_required, admin_reviewed_at, admin_review_score"))
     .not("published_at", "is", null)
     .neq("slug", post.slug)
     .eq("category", post.category || "")
     .order("published_at", { ascending: false })
     .limit(3);
-  const related = relatedRaw || [];
+  const related = (relatedRaw || []).filter(isBlogReadable);
 
   const url = `${SITE_URL}/blog/${post.slug}`;
   const dateLabel = post.published_at ? formatKoreanDate(post.published_at) : "";

@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/prepublish-quality-gate-20261013": false
+    }
+  },
   "buildCommand": "NODE_OPTIONS=--max-old-space-size=4096 SENTRY_DISABLE_SOURCEMAPS=1 NEXT_BUILD_CPUS=2 npm run build",
   "headers": [
     {

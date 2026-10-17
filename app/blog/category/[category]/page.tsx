@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // /blog/category/[category] — 블로그 카테고리별 SEO long-tail 페이지
 // ============================================================
@@ -114,15 +115,15 @@ export default async function BlogCategoryPage({ params }: PageProps) {
   if (hasSupabaseAnonEnv()) {
     const supabase = await createClient();
 
-    const { data: posts } = await supabase
+    const { data: posts } = await publicBlogQuery(supabase
       .from("blog_posts")
-      .select("slug, title, meta_description, category, reading_time_min, published_at, cover_image")
+      .select("slug, title, meta_description, category, reading_time_min, published_at, cover_image, content, tags, faqs, admin_review_required, admin_reviewed_at, admin_review_score"))
       .eq("category", category)
       .not("published_at", "is", null)
       .order("published_at", { ascending: false })
       .limit(50);
 
-    list = (posts || []) as BlogCardData[];
+    list = (posts || []).filter(isBlogReadable) as BlogCardData[];
   }
 
   // CollectionPage + ItemList JSON-LD — 네이버·Google 검색 리치 카드 시그널

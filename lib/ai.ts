@@ -248,7 +248,7 @@ const SYSTEM_INSTRUCTION_BODY = `## 글의 목적
 <p>대상·금액·마감·신청 경로를 차례대로 확인하면 됩니다. 과장된 권유보다 실제 확인 순서를 안내합니다.</p>
 
 <h2>지원 내용은 무엇인가요?</h2>
-<table><tr><th>지원 대상</th><th>지원 금액</th><th>신청 기간</th><th>신청 방법</th></tr><tr><td>...</td><td><strong>월 N만 원</strong></td><td>...</td><td>온라인/방문</td></tr></table>
+<table><tr><th>지원 대상</th><th>지원 금액</th><th>신청 기간</th><th>신청 방법</th></tr><tr><td>...</td><td><strong>공식 공고에서 확인한 월 지원액</strong></td><td>...</td><td>온라인/방문</td></tr></table>
 
 <h2>신청 자격 한눈에</h2>
 <ul>
@@ -264,7 +264,7 @@ const SYSTEM_INSTRUCTION_BODY = `## 글의 목적
 <ul><li><strong>중위소득 120%</strong> 이하 가구</li>...</ul>
 
 <h2>얼마 · 언제 받나요?</h2>
-<p>... <strong>최대 N만 원</strong> 까지 ...</p>
+<p>... <strong>공식 공고에서 확인한 최대 지원액</strong> 까지 ...</p>
 
 <h2>어떻게 신청하나요?</h2>
 <ol>

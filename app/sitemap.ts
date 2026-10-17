@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
@@ -287,12 +288,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Blog posts (발행된 글만) — 한글 slug 는 percent-encode 해서 XML sitemap 표준 준수
   // (일부 크롤러가 raw 한글을 CP949 등으로 재인코딩하는 문제 회피)
   // 2026-05-21 — limit 명시 (현재 201 row 라 영향 미미, 미래 확장 안전망)
-  const { data: posts } = await supabase
+  const { data: posts } = await publicBlogQuery(supabase
     .from("blog_posts")
-    .select("slug, updated_at, published_at")
+    .select("slug, updated_at, published_at, title, content, meta_description, tags, faqs, category, cover_image, admin_review_required, admin_reviewed_at, admin_review_score"))
     .not("published_at", "is", null)
     .limit(5000);
-  const blogPages: MetadataRoute.Sitemap = (posts || []).map((p) => ({
+  const blogPages: MetadataRoute.Sitemap = (posts || []).filter(isBlogReadable).map((p) => ({
     url: `${baseUrl}/blog/${encodeURIComponent(p.slug)}`,
     lastModified: new Date(p.updated_at),
     changeFrequency: "weekly" as const,

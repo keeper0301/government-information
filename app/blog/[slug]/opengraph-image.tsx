@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 블로그 글 OG 이미지 자동 생성
 // ============================================================
@@ -62,14 +63,15 @@ export default async function Image({
   // slug decode 실패 시 DB 조회 스킵하고 fallback 으로 진행
   // DB 에서 제목·카테고리 가져오기 (없으면 fallback)
   const supabase = await createClient();
-  const { data: post } = slug
-    ? await supabase
+  const { data: candidate } = slug
+    ? await publicBlogQuery(supabase
         .from("blog_posts")
-        .select("title, category")
+        .select("title, category, content, meta_description, tags, faqs, cover_image, published_at, admin_review_required, admin_reviewed_at, admin_review_score"))
         .eq("slug", slug)
         .maybeSingle()
     : { data: null };
 
+  const post = candidate && isBlogReadable(candidate) ? candidate : null;
   const title = post?.title || "정책알리미";
   const category = post?.category || "정책 블로그";
   const color = getCategoryColor(category);

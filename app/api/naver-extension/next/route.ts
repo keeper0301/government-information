@@ -59,10 +59,12 @@ export async function GET(request: Request) {
   const { data: row, error } = await admin
     .from("naver_blog_queue")
     .select(
-      "id, blog_post_id, attempt_count, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image, admin_review_required)",
+      "id, blog_post_id, attempt_count, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image, tags, faqs, published_at, admin_reviewed_at, admin_review_required)",
     )
     .eq("status", "pending")
     .eq("blog_post.admin_review_required", false)
+    .not("blog_post.published_at", "is", null)
+    .not("blog_post.admin_reviewed_at", "is", null)
     .lt("attempt_count", 3)
     .order("created_at", { ascending: true })
     .limit(1)

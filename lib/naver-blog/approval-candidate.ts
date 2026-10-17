@@ -163,10 +163,12 @@ export async function getNaverApprovalCandidate(): Promise<NaverApprovalCandidat
   const { data, error } = await admin
     .from("naver_blog_queue")
     .select(
-      "id, blog_post_id, status, attempt_count, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image, admin_review_required, source_program_id, source_program_type)",
+      "id, blog_post_id, status, attempt_count, created_at, blog_post:blog_posts!inner(slug, title, content, meta_description, category, cover_image, tags, faqs, published_at, admin_reviewed_at, admin_review_required, source_program_id, source_program_type)",
     )
     .eq("status", "pending")
     .eq("blog_post.admin_review_required", false)
+    .not("blog_post.published_at", "is", null)
+    .not("blog_post.admin_reviewed_at", "is", null)
     .lt("attempt_count", 3)
     .order("created_at", { ascending: true })
     .limit(1)
