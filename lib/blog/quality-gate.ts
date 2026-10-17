@@ -1,3 +1,4 @@
+import { hasUnfinishedAmount, type BlogPublicFields } from "./publication-eligibility";
 // ============================================================
 // 외부 발행 품질 게이트
 // ============================================================
@@ -6,7 +7,7 @@
 // 채널별 최소 정보량·템플릿 냄새·검색 의도 조건을 한 번 더 fail-closed로 본다.
 // ============================================================
 
-export type BlogQualityGateInput = {
+export type BlogQualityGateInput = BlogPublicFields & {
   admin_review_required: boolean | null;
   title?: string | null;
   content?: string | null;
@@ -83,6 +84,7 @@ export function assessExternalPublishQuality(
   const hasTemplateSmell = TEMPLATE_SMELL_RE.some((re) => re.test(combined));
 
   const reasons: string[] = [];
+  if (hasUnfinishedAmount(post)) reasons.push("unfinished_amount");
   if (post.admin_review_required !== false) reasons.push("llm_quality_review_not_approved");
   if (title.length < MIN_TITLE_LENGTH) reasons.push("title_too_short");
   if (title.length > MAX_TITLE_LENGTH) reasons.push("title_too_long");

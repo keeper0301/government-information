@@ -1,3 +1,4 @@
+import { isBlogPublic, hasUnfinishedAmount } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 워드프레스 REST API 발행 클라이언트
 // ============================================================
@@ -29,6 +30,7 @@ export type PublishResult =
   | { ok: true; wpPostId: number; wpPostUrl: string }
   | { ok: false; reason: "held_for_review"; wpPostId: number; wpPostUrl: string }
   | { ok: false; reason: "log_error"; wpPostId: number; wpPostUrl: string }
+  | { ok: false; reason: "quality_not_approved" }
   | { ok: false; reason: "claim_unavailable_or_duplicate" }
   | { ok: false; reason: "skipped_no_credentials"; error?: undefined }
   | { ok: false; reason: "skipped_invalid_url"; error: string }
@@ -74,6 +76,19 @@ export async function publishToWordPress(
       reason: "skipped_invalid_url",
       error: `WP_API_URL 형식 오류: ${(e as Error).message}`,
     };
+  }
+
+  // Read the canonical approved content before any external call (including terms).
+  try {
+    const { data: latest, error } = await createAdminClient().from("blog_posts")
+      .select("slug,title,content,meta_description,tags,category,faqs,cover_image,published_at,admin_review_required,admin_reviewed_at")
+      .eq("id", blogPostId).maybeSingle();
+    if (error || !latest || !isBlogPublic(latest) || hasUnfinishedAmount(post)) {
+      return { ok: false, reason: "quality_not_approved" };
+    }
+    post = latest;
+  } catch {
+    return { ok: false, reason: "quality_not_approved" };
   }
 
   // 3) Application Password Basic Auth — Buffer.from 으로 base64 인코딩

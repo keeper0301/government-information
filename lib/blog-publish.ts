@@ -1,3 +1,4 @@
+import { isBlogPublicationApproved } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 블로그 자동 발행 — 정책 선택 + AI 생성 + DB 저장
 // ============================================================
@@ -740,7 +741,10 @@ async function publishWithCandidate(
       faqs: generated.faqs,
       reading_time_min: reading,
       cover_image: coverImage,
-      published_at: now,
+      published_at: null,
+      admin_review_required: true,
+      admin_reviewed_at: null,
+      updated_at: now,
       source_program_id: picked.programId,
       source_program_type: picked.programType,
     })
@@ -751,35 +755,40 @@ async function publishWithCandidate(
     throw new Error(`DB 저장 실패: ${error.message}`);
   }
 
-  let qualityApproved = true;
+  let qualityApproved = false;
   let qualityReview: BlogQualityResult | null = null;
   if (inserted?.id) {
     const quality = await evaluateBlogQuality(
       {
-        title: generated.title,
-        content: generated.content,
+        ...generated,
       },
       {
         failClosed: true,
       },
     );
     qualityReview = quality;
-    qualityApproved = !quality.needsReview;
+    const reviewedAt = new Date().toISOString();
+    const approved = !quality.needsReview && isBlogPublicationApproved({ ...generated, admin_review_required: false, admin_reviewed_at: reviewedAt });
     const isTransientQualityFailure = isTransientQualityReviewFailure(quality);
 
-    const { error: qualityUpdateErr } = await admin
+    const { data: qualitySaved, error: qualityUpdateErr } = await admin
       .from("blog_posts")
       .update({
         admin_review_score: quality.score,
-        admin_review_required: quality.needsReview,
+        admin_review_required: !approved,
+        published_at: approved ? reviewedAt : null,
         admin_reviewed_at: isTransientQualityFailure
           ? null
           : new Date().toISOString(),
       })
-      .eq("id", inserted.id);
-    if (qualityUpdateErr) {
+      .eq("id", inserted.id)
+      .eq("updated_at", now)
+      .is("published_at", null)
+      .select("id");
+    qualityApproved = approved && !qualityUpdateErr && qualitySaved?.length === 1;
+    if (qualityUpdateErr || qualitySaved?.length !== 1) {
       console.warn(
-        `[blog-publish] inline quality update 실패: ${qualityUpdateErr.message}`,
+        `[blog-publish] inline quality update 실패: ${qualityUpdateErr?.message ?? "row changed or missing"}`,
       );
     }
 
@@ -833,6 +842,8 @@ async function publishWithCandidate(
         ? { status: "published", url: result.wpPostUrl, wpPostId: result.wpPostId }
         : result.reason === "held_for_review"
           ? { status: "held_for_review", url: result.wpPostUrl }
+          : result.reason === "quality_not_approved"
+            ? { status: "held_for_review", reason: result.reason }
           : { status: "failed", reason: result.reason };
     } catch (e) {
       wordpress = { status: "failed", reason: "unexpected_error" };
@@ -852,7 +863,7 @@ async function publishWithCandidate(
     sourceProgramId: picked.programId,
     sourceProgramType: picked.programType,
     qualityReview,
-    externalPublishHeld: Boolean(inserted?.id && !qualityApproved),
+    externalPublishHeld: Boolean(inserted?.id && (!qualityApproved || wordpress.status === "held_for_review")),
     wordpress,
   };
 }
