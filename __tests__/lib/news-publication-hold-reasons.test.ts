@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ call: vi.fn(), fixedError: false }));
 vi.mock('@/lib/llm/text', () => ({ callLLM: mock.call, parseJSONResponse: JSON.parse }));
@@ -21,7 +22,7 @@ const draft = { kind: 'application', title: '신청 대상과 실제 지원 확�
   ] };
 const source = { title: '공식 신청 안내', body, hash: '원문 식별값', publishedAt: '2026-10-06',
   url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915' };
-const judgment = { supported: true, originalValue: true, issues: [],
+const judgment = { supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
   quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
     .map(key => [key, { passed: true, reason: '대상 안내와 개인별 지원 결정을 구분하는 해설이 있습니다.', excerptIndex: 0 }])),
   checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) };

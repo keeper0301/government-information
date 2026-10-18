@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { collectSourceFacts } from '@/lib/news-publication/source-facts';
 import { collectFixedCases, attachFixedCases, fixedCaseIssue, fixedReportDraft, fixedCaseJudgmentSchema, fixedCaseReviewIssue } from '@/lib/news-publication/fixed-cases';
@@ -145,7 +146,7 @@ it('확인된 글은 새 사실 생성 없이 조립하고 활용 가치 근거�
     const candidates = JSON.parse(input.prompt.split('선택 가능한 초안 문장: ')[1].split('. scopeOnly=true인')[0]);
     const index = candidates.find((candidate: { usefulnessEligible: boolean }) => candidate.usefulnessEligible).excerptIndex;
     const items = input.responseSchema.schema.properties.quality.properties;
-    return JSON.stringify({ supported: true, originalValue: true, issues: [],
+    return JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(input.responseSchema.schema.properties.checks.items.anyOf.length - 1), issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
         .map(key => [key, { decision: items[key].properties.decision.enum[0], detail: '원문 경력·활용 능력과 관심 직무의 구체적인 비교를 확인했습니다.',
           excerptIndex: key === 'timeliness' || key === 'coverage' ? 0 : index,
