@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ call: vi.fn() }));
 vi.mock('@/lib/llm/text', () => ({ callLLM: mock.call, parseJSONResponse: JSON.parse }));
@@ -17,7 +18,7 @@ const draft = { kind: 'change', title: '군 복무 청년 보험 도입 예정�
   ] };
 const answer = '정부는 군 복무 청년 보험을 도입할 예정입니다. 발표와 실제 이용 가능 상태를 구별해야 합니다.';
 const paragraph = draft.sections[1].paragraphs[0].replace('도입합니다.', '도입할 예정입니다.');
-const judgment = { supported: true, originalValue: true, issues: [],
+const judgment = { supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
   quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
     .map(key => [key, { passed: true, reason: '발표와 실제 이용 상태를 구별하는 구체적인 설명이 있습니다.', excerptIndex: 0 }])),
   checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 2 })) };

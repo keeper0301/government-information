@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { newsDraftIssue, type NewsDraft } from '@/lib/news-publication/validation';
 import { currentStateIssue } from '@/lib/news-publication/current-state';
@@ -112,7 +113,7 @@ it('부제 없는 실제 작성 경로에서도 같은 오류를 재작성 후 �
 it('기존 한 번 재작성에서 단정을 제거하면 전체 검사와 별도 사실·품질 대조를 유지한다', async () => {
   const withIndexes = (value: NewsDraft) => ({ ...value, sections: value.sections.map(section => ({ ...section, quoteIndex: 0, caseIndex: -1 })) });
   mock.call.mockResolvedValueOnce(JSON.stringify(withIndexes(draft))).mockResolvedValueOnce(JSON.stringify(withIndexes(corrected())))
-    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, issues: [],
+    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
         .map(key => [key, { passed: true, reason: '협력 추진 방향과 실제 운영 상태를 구분한 해설입니다.', excerptIndex: 0 }])),
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));

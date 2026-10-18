@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 afterEach(() => { vi.useRealTimers(); mock.call.mockReset(); });
 const mock = vi.hoisted(() => ({ call: vi.fn() }));
@@ -33,7 +34,7 @@ it('별도 검사 요청에는 작성 도구가 요구하는 자료 형식 출�
   // 실제 서버가 자료 형식 출력 지시를 빠뜨린 요청을 거절하는 조건을 재현합니다.
   mock.call.mockImplementation(async input => {
     if (input.jsonMode && !/\bJSON\b/i.test(input.prompt)) throw new Error('검사 요청 형식 오류');
-    return JSON.stringify(input.jsonMode ? { supported: true, originalValue: true, quality: quality(), issues: [],
+    return JSON.stringify(input.jsonMode ? { supported: true, originalValue: true, contentDepth: contentDepthFixture(3), quality: quality(), issues: [],
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) } : draft);
   });
   await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
@@ -44,7 +45,7 @@ it('별도 검사 요청에는 작성 도구가 요구하는 자료 형식 출�
 it('작성에 30초가 걸려도 시간 안에 응답하면 별도 검사를 거쳐 통과한다', async () => {
   vi.useFakeTimers();
   mock.call.mockImplementation(input => new Promise((resolve, reject) => {
-    const judgment = { supported: true, originalValue: true, quality: quality(), issues: [],
+    const judgment = { supported: true, originalValue: true, contentDepth: contentDepthFixture(3), quality: quality(), issues: [],
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) };
     const deadline = setTimeout(() => reject(new Error('응답 시간 초과')), input.timeoutMs);
     setTimeout(() => { clearTimeout(deadline); resolve(JSON.stringify(input.prompt.startsWith('작성자와 분리된') ? judgment : draft)); },
@@ -59,7 +60,7 @@ it('작성에 30초가 걸려도 시간 안에 응답하면 별도 검사를 거
 it('재작성해도 세 호출의 대기 시간 합계는 90초이며 사실 검사를 생략하지 않는다', async () => {
   mock.call.mockResolvedValueOnce(JSON.stringify({ ...draft, title: '제'.repeat(81) }))
     .mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true,
-      originalValue: true, quality: quality(), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
+      originalValue: true, contentDepth: contentDepthFixture(3), quality: quality(), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
   await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' });
   expect(mock.call.mock.calls.map(([input]) => input.timeoutMs)).toEqual([40000, 25000, 25000]);
@@ -74,7 +75,7 @@ it('긴 문단은 문장 내용을 보존해 나누며 별도 사실 검사를 �
     index === 0 ? { ...section, paragraphs: [paragraph] } : section) };
   mock.call.mockReset();
   mock.call.mockImplementation(async input => JSON.stringify(input.prompt.startsWith('작성자와 분리된 정책 사실 검증 역할')
-    ? { supported: true, originalValue: true, quality: quality(), issues: [],
+    ? { supported: true, originalValue: true, contentDepth: contentDepthFixture(3), quality: quality(), issues: [],
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) } : formattedDraft));
   const result = await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: `${quote} 5대 직무, 1부와 2부의 1:1 상담입니다.`, hash: '원문 식별값', publishedAt: '2026-10-06' });
@@ -122,7 +123,7 @@ it('선택한 근거 번호를 원문 그대로 연결하고 별도 사실 검�
   vi.setSystemTime(new Date('2026-10-06T16:00:00Z'));
   mock.call.mockReset();
   mock.call.mockResolvedValueOnce(JSON.stringify({ ...draft, question: '2026년 발표된 지원의 대상과 지급 결정은 어떻게 구분하나요?' }))
-    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, quality: quality(), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
+    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), quality: quality(), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
   const result = await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' });
   expect(result.sections.map(section => section.quote)).toEqual([quote, quote, quote]);
@@ -137,14 +138,14 @@ it.each(['누락', '원문 밖 인용', '개별 불일치'])('전체 합격이�
   mock.call.mockReset();
   const checks = kind === '누락' ? [] : [0, 1, 2, 3].map(part => ({ part,
     supported: !(kind === '개별 불일치' && part === 2), quoteIndex: kind === '원문 밖 인용' ? -1 : 0 }));
-  mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, issues: [], checks }));
+  mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [], checks }));
   await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).rejects.toThrow('별도 사실 대조');
 });
 
 it('사실 합격이어도 독자 품질 검사에서 범위 확대를 판정하면 공개하지 않는다', async () => {
   mock.call.mockReset();
-  mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true,
+  mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3),
     issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })), quality: { ...quality(), scope: { passed: false } } }));
   await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).rejects.toThrow('독자 관점 품질');
@@ -166,7 +167,7 @@ it.each(['전체 대조', '마지막 부분 누락', '부분 번호 중복'])('�
   const checks = Array.from({ length: kind === '마지막 부분 누락' ? 6 : 7 }, (_, part) => ({
     part: kind === '부분 번호 중복' && part === 6 ? 5 : part, supported: true, quoteIndex: 0 }));
   mock.call.mockResolvedValueOnce(JSON.stringify(extended)).mockResolvedValueOnce(JSON.stringify({
-    supported: true, originalValue: true, quality: quality(), issues: [], checks }));
+    supported: true, originalValue: true, contentDepth: contentDepthFixture(6), quality: quality(), issues: [], checks }));
   const result = generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' });
   if (kind === '전체 대조') await expect(result).resolves.toMatchObject({ sections: expect.any(Array) });
@@ -179,7 +180,7 @@ it.each(['전체 대조', '마지막 부분 누락', '부분 번호 중복'])('�
 it('원문 문장을 품질 근거로 대신 쓰거나 초안 밖 번호를 선택하면 보류한다', async () => {
   mock.call.mockReset();
   mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true,
-    originalValue: true, issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })),
+    originalValue: true, contentDepth: contentDepthFixture(3), issues: [], checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })),
     quality: { ...quality(), coverage: { passed: true, reason: '원문의 중요한 내용을 보존했다고 주장합니다.', excerpt: quote, excerptIndex: -1 } } }));
   await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
     body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).rejects.toThrow('독자 관점 품질');

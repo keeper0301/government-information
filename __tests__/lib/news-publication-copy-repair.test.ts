@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { makeCopyRepair, applyCopyRepair, copyRepairIssue } from '@/lib/news-publication/copy-repair';
 import { collectReportCore } from '@/lib/news-publication/report-core';
@@ -97,7 +98,7 @@ const source = { title: '공식 발표', url: 'https://www.korea.kr/news/policyN
 
 it('실제 작성 경로에서 복사 문단만 수정하고 나머지 글은 최종 판정까지 유지한다', async () => {
   mock.call.mockImplementation(async input => {
-    if (input.jsonMode) return JSON.stringify({ supported: true, originalValue: true, issues: [],
+    if (input.jsonMode) return JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage'].map(key =>
         [key, { passed: true, reason: '신청과 개별 지원 결정의 차이를 본문에서 구분했습니다.', excerptIndex: 1 }])),
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) });
@@ -129,7 +130,7 @@ it.each([true, false])('복사 구절이 제목과 질문에 걸치면 전체를
   expect(makeCopyRepair(acrossFields, source.body)).toBeNull();
   mock.call.mockResolvedValueOnce(JSON.stringify(acrossFields))
     .mockResolvedValueOnce(JSON.stringify(succeeds ? corrected : acrossFields))
-    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, issues: [],
+    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage'].map(key =>
         [key, { passed: true, reason: '신청과 개별 지원 결정의 차이를 본문에서 구분했습니다.', excerptIndex: 1 }])),
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
@@ -169,7 +170,7 @@ it.each(['해설 근거', '일반 요약'])('판정 후보에서 해설 근거�
       expect(input.responseSchema.schema.properties.quality.properties.usefulness.properties.excerptIndex.enum)
         .toEqual([-1, ...eligible.map((candidate: { excerptIndex: number }) => candidate.excerptIndex)]);
       const excerptIndex = choice === '해설 근거' ? eligible[0].excerptIndex : 0;
-      return JSON.stringify({ supported: true, originalValue: true, issues: [],
+      return JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
         quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage'].map(key =>
           [key, { passed: true, reason: '본문에서 신청과 지원 결정의 구분을 설명했습니다.', excerptIndex }])),
         checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) });

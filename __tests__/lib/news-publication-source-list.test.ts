@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { collectSourceList, attachSourceList, sourceListIssue, sourceListSchema } from '@/lib/news-publication/source-list';
 import { collectReportCore } from '@/lib/news-publication/report-core';
@@ -113,7 +114,7 @@ it.each(['짧은 문단', '긴 문단'])('작성 경로는 직무 목록을 자�
     expect(input.prompt).toContain('원문에서 확인한 직무');
     expect(candidates.filter((candidate: { usefulnessEligible: boolean; excerpt: string }) => candidate.usefulnessEligible)
       .every((candidate: { excerpt: string }) => article.sections[1].paragraphs[0].includes(candidate.excerpt))).toBe(true);
-    return JSON.stringify({ supported: true, originalValue: true, issues: [],
+    return JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(4), issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
         .map(key => [key, { passed: true, reason: '경험과 관심 직무의 활동을 비교할 구체적인 기준을 제안했습니다.', excerptIndex: index }])),
       checks: [0, 0, 2, 1, 2].map((quoteIndex, part) => ({ part, supported: true, quoteIndex })) });

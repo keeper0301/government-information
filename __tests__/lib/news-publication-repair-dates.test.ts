@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { makeCopyRepair, applyCopyRepair } from '@/lib/news-publication/copy-repair';
 import { newsDraftIssue } from '@/lib/news-publication/validation';
@@ -58,7 +59,7 @@ it('본문 밖에 있는 잘못된 숫자는 기존 전체 재작성 대상으�
 it('작성 경로에서 전체 재작성 대신 숫자 문단만 고치고 별도 사실 검사를 거친다', async () => {
   const value = input();
   mock.call.mockImplementation(async request => {
-    if (request.jsonMode) return JSON.stringify({ supported: true, originalValue: true, issues: [],
+    if (request.jsonMode) return JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage'].map(key =>
         [key, { passed: true, reason: '상담 참여 규모와 개인별 지원 결정의 차이를 본문에서 설명했습니다.', excerptIndex: 1 }])),
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) });

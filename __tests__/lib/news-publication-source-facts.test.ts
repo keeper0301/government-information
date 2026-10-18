@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { collectSourceFacts, prepareSourceDraft } from '@/lib/news-publication/source-facts';
 import { newsDraftIssue } from '@/lib/news-publication/validation';
@@ -117,7 +118,7 @@ it('실제 작성 함수도 조립한 최종 본문을 별도 사실·품질 검
     const finalDraft = JSON.parse(text);
     expect(finalDraft.sections[0].paragraphs[0]).toContain('원문에서 소개한 박진우(54세, 가명)');
     expect(finalDraft.sections[1].paragraphs[0]).toContain('원문에서 소개한 정은숙(51세, 가명)');
-    return JSON.stringify({ supported: true, originalValue: true, issues: [],
+    return JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [],
       quality: Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage'].map(key =>
         [key, { passed: true, reason: '원문에서 확인한 두 참가자의 경력과 후속 정보의 범위를 보존했습니다.', excerptIndex: 2 }])),
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: part ? part - 1 : 2 })) });

@@ -1,3 +1,4 @@
+import { contentDepthFixture } from './news-content-depth-fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ call: vi.fn() }));
 vi.mock('@/lib/llm/text', () => ({ callLLM: mock.call, parseJSONResponse: JSON.parse }));
@@ -23,7 +24,7 @@ it('질환 조건 누락을 한 번 재작성하고 별도 사실·품질 검사
   const quality = Object.fromEntries(['scope', 'timeliness', 'usefulness', 'clarity', 'nonRepetition', 'coverage']
     .map(key => [key, { passed: true, reason: '지원 비율과 질환 조건을 구별하고 범위를 확인하는 설명입니다.', excerptIndex: 0 }]));
   mock.call.mockResolvedValueOnce(JSON.stringify(invalid)).mockResolvedValueOnce(JSON.stringify(valid))
-    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, issues: [], quality,
+    .mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [], quality,
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) }));
   await expect(generateVerifiedNews(source)).resolves.toHaveProperty('editorialReview');
   expect(mock.call).toHaveBeenCalledTimes(3);
