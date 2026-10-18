@@ -3,7 +3,7 @@ import type { EditorialNews } from '@/lib/editorial-news-data';
 import { generateVerifiedNews } from './generate';
 import { readOfficialNews } from './source';
 import { officialNewsId } from './validation';
-import { PROVINCES } from '@/lib/regions';
+import { classifyEditorialNews } from './classification';
 import { NewsDraftError } from './errors';
 
 interface Candidate {
@@ -32,11 +32,6 @@ export async function runNewsPublication() {
       const current = await readOfficialNews(item.source_url, item.title);
       if (current.hash !== source.hash) throw new Error('작성 중 공식 원문이 변경됐습니다.');
       const today = new Date().toISOString().slice(0, 10);
-      // 제목과 대상에 명시된 지역만 분류하고, 없다고 전국 사업으로 추측하지 않습니다.
-      const locationText = `${source.title} ${draft.audience}`;
-      const regions: string[] = [...new Set(PROVINCES.filter(region => locationText.includes(region.name))
-        .map(region => ['jeonnam', 'gwangju'].includes(region.code) ? 'jeonnam-gwangju' : region.code))];
-      if (locationText.includes('전국')) regions.push('nationwide');
       const article: EditorialNews = {
         slug: `policy-brief-${item.source_id}`, title: draft.title,
         question: draft.question, answer: draft.answer, audience: draft.audience,
@@ -44,7 +39,7 @@ export async function runNewsPublication() {
         sourceUrl: source.url, sourcePublishedAt: source.publishedAt, checkedAt: today, updatedAt: today,
         sections: draft.sections.map(({ heading, paragraphs }) => ({ heading, paragraphs })), guideSlug: '',
         automaticPublication: { checkedAt: new Date().toISOString(), sourceHash: source.hash },
-        classification: { benefits: item.benefit_tags ?? [], regions: regions.length ? regions : ['unclassified'] },
+        classification: classifyEditorialNews(draft.title),
       };
       const saved = await admin.rpc('finish_editorial_news', { p_source_id: item.source_id, p_token: item.lease_token,
         p_article: article, p_hash: source.hash, p_evidence: { body: source.body, sections: draft.sections, kind: draft.kind, editorialReview: draft.editorialReview, contentDepth: draft.contentDepth }, p_reason: null,
