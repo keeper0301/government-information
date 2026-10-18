@@ -74,6 +74,12 @@ it('예약할 자료가 없으면 작성 도구를 부르지 않는다', async (
   expect(await runNewsPublication()).toMatchObject({ attempted: 0, published: 0 });
   expect(mock.generate).not.toHaveBeenCalled();
 });
+it('수집 태그와 전국 순위 표현을 공개 분류에 복사하지 않는다', async () => {
+  mock.generate.mockResolvedValueOnce({ title: '부산 동래온천, 전국 네 번째 온천도시', sections: [] });
+  await runNewsPublication();
+  const saved = mock.rpc.mock.calls.find(call => call[0] === 'finish_editorial_news')![1];
+  expect(saved.p_article.classification).toEqual({ benefits: ['문화'], regions: ['busan'] });
+});
 
 it('검사에 걸린 실제 초안과 이유는 비공개 저장소에만 남긴다', async () => {
   mock.generate.mockRejectedValueOnce(new NewsDraftError('설명 분량이 기준 밖입니다: 400자.', { draft: { answer: '공개하면 안 되는 초안' } }));
