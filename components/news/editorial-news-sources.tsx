@@ -9,7 +9,7 @@ export function verifiedAdditionalSources(article: EditorialNews) {
       const url = new URL(source.url);
       return url.protocol === 'https:' && !url.username && !url.password && !url.port
         && ['academy.visitkorea.or.kr', 'www.work24.go.kr', 'www.korean.go.kr',
-          'nip.kdca.go.kr', 'www.welchon.com'].includes(url.hostname);
+          'nip.kdca.go.kr', 'www.welchon.com', 'www.childinfo.go.kr', 'www.hipass.co.kr'].includes(url.hostname);
     } catch { return false; }
   });
 }

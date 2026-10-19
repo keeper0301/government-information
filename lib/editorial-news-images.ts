@@ -1,5 +1,6 @@
 import type { EditorialNews } from "@/lib/editorial-news-data";
 import { NEWS_TOPIC_PHOTOS } from './editorial-news-topic-images';
+import { NEWS_PLACE_PHOTOS } from './editorial-news-place-images';
 
 export type EditorialNewsPhoto = {
   url: string; alt: string; caption: string; author: string; sourceUrl: string;
@@ -49,11 +50,15 @@ export const EDITORIAL_NEWS_IMAGES: Record<string, EditorialNewsPhoto> = {
   'policy-brief-148973020': NEWS_TOPIC_PHOTOS.gyeongju,
 };
 export const EDITORIAL_PHOTO_URLS = [market.url, city.url, calculator.url,
+  ...Object.values(NEWS_PLACE_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_TOPIC_PHOTOS).map(photo => photo.url)];
 export function getEditorialNewsPhoto(article: Pick<EditorialNews, "slug" | "title" | "photoPolicy">): EditorialNewsPhoto | null {
   if (EDITORIAL_NEWS_IMAGES[article.slug]) return EDITORIAL_NEWS_IMAGES[article.slug];
   // 이번에 확인·승인한 지정 사진 외에는 기존 공식 사진 전용 조건을 지킵니다.
   if (article.photoPolicy === 'official-only') return null;
+  if (/동래온천/.test(article.title)) return NEWS_PLACE_PHOTOS.dongnae;
+  if (/공산성/.test(article.title)) return NEWS_PLACE_PHOTOS.gongsanseong;
+  if (/하이패스|고속도로.*할인|통행료/.test(article.title)) return NEWS_PLACE_PHOTOS.hipass;
   if (/백신|예방접종/.test(article.title)) return NEWS_TOPIC_PHOTOS.vaccination;
   if (/우리말|한글|외래어|다듬은 말|국어/.test(article.title)) return NEWS_TOPIC_PHOTOS.language;
   if (/반려동물|반려견|유기견|동물보호|동물사랑/.test(article.title)) return NEWS_TOPIC_PHOTOS.animal;

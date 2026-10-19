@@ -1,4 +1,5 @@
 import { DISTRICTS_BY_PROVINCE, PROVINCES, PROVINCE_CODE_TO_SHORT } from '@/lib/regions';
+import { findNewsRegionEvidence } from './region-evidence';
 
 // 본문의 방문 수단·사례·비유가 주제 분류로 번지는 것을 막습니다.
 // 원문 대조를 마친 공개 제목만 사용하며, 불명확한 주제는 기타로 남깁니다.
@@ -59,9 +60,11 @@ function classifyRegions(title: string) {
   return regions.size ? [...regions] : ['unclassified'];
 }
 
-export function classifyEditorialNews(title: string) {
+export function classifyEditorialNews(title: string, sourceBody = '') {
   // 관광업 구직 안내의 혜택은 여행이 아니라 취업입니다.
   const subject = title.replace(/관광(?:업|산업|분야)/g, '').replace(/건강보험/g, '의료').replace(/고용보험/g, '고용');
   const benefits = BENEFIT_RULES.filter(([, rule]) => rule.test(subject)).map(([name]) => name);
-  return { benefits: benefits.length ? benefits : ['기타'], regions: classifyRegions(title) };
+  const regions = classifyRegions(title);
+  const evidence = regions.includes('unclassified') ? findNewsRegionEvidence(title, sourceBody) : null;
+  return { benefits: benefits.length ? benefits : ['기타'], regions, ...evidence };
 }

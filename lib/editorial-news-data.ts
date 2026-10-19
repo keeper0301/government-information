@@ -16,10 +16,11 @@ export interface EditorialNews {
     table?: { caption: string; columns: string[]; rows: string[][] } }[];
   photoPolicy?: 'official-only';
   guideSlug: string;
+  schedule?: { start: string; end: string; evidence: string };
   editorialCorrection?: { correctedAt: string; summary: string };
   additionalSources?: { title: string; url: string; checkedAt: string; scope: string }[];
   automaticPublication?: { checkedAt: string; sourceHash: string };
-  classification?: { benefits: string[]; regions: string[] };
+  classification?: { benefits: string[]; regions: string[]; regionEvidence?: string };
 }
 
 // 자동 수집 기사와 분리한 편집 초안입니다. 운영자 승인 기록이 있어야 공개됩니다.

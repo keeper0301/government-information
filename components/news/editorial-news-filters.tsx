@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { EditorialNews } from "@/lib/editorial-news-data";
 import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
+import { NEWS_STATUSES } from '@/lib/editorial-news-status';
 import { filterEditorialNews, NEWS_REGIONS, newsFilterUrl, normalizeNewsFilters, type NewsFilters } from "@/lib/editorial-news-filters";
 
-export function EditorialNewsFilters({ articles, filters }: { articles: EditorialNews[]; filters: NewsFilters }) {
+export function EditorialNewsFilters({ articles, filters, counts }: { articles: EditorialNews[]; filters: NewsFilters; counts?: Record<string, number> }) {
   const selected = normalizeNewsFilters(filters);
   const chipClass = (active: boolean) => `inline-flex items-center min-h-11 px-3 text-sm rounded-full no-underline ${active ? "bg-blue-600 text-white font-semibold" : "bg-grey-50 text-grey-700 border border-grey-100 hover:bg-grey-100"}`;
   return <>
@@ -14,6 +15,7 @@ export function EditorialNewsFilters({ articles, filters }: { articles: Editoria
       </div>
       {selected.benefit && <input type="hidden" name="benefit" value={selected.benefit} />}
       {selected.province && <input type="hidden" name="province" value={selected.province} />}
+      {selected.status && <input type="hidden" name="status" value={selected.status} />}
       <button type="submit" className="min-h-11 px-5 rounded-xl bg-blue-600 text-white font-semibold">검색</button>
       <Link href="/news" className="min-h-11 px-3 inline-flex items-center text-blue-600 underline">전체 보기</Link>
     </form>
@@ -22,8 +24,15 @@ export function EditorialNewsFilters({ articles, filters }: { articles: Editoria
       <div className="flex flex-wrap gap-2">
         <Link href={newsFilterUrl(selected, { benefit: "" })} aria-current={!selected.benefit ? "page" : undefined} className={chipClass(!selected.benefit)}>전체 분야</Link>
         {BENEFIT_TAGS.map(benefit => <Link key={benefit} href={newsFilterUrl(selected, { benefit })} aria-current={selected.benefit === benefit ? "page" : undefined} className={chipClass(selected.benefit === benefit)}>
-          {benefit} ({filterEditorialNews(articles, { ...selected, benefit }).length})
+          {benefit} ({counts?.[benefit] ?? filterEditorialNews(articles, { ...selected, benefit }).length})
         </Link>)}
+      </div>
+    </section>
+    <section aria-label="뉴스 일정 필터" className="mb-6 bg-white rounded-2xl border border-grey-100 p-5">
+      <h2 className="text-lg font-bold mb-3">일정으로 찾기</h2>
+      <div className="flex flex-wrap gap-2">
+        <Link href={newsFilterUrl(selected, { status: '' })} className={chipClass(!selected.status)} aria-current={!selected.status ? 'page' : undefined}>전체 일정</Link>
+        {NEWS_STATUSES.map(item => <Link key={item.code} href={newsFilterUrl(selected, { status: item.code })} className={chipClass(selected.status === item.code)} aria-current={selected.status === item.code ? 'page' : undefined}>{item.name}</Link>)}
       </div>
     </section>
     <section aria-label="뉴스 지역 필터" className="mb-8 bg-white rounded-2xl border border-grey-100 p-5">
