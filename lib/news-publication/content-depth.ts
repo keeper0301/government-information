@@ -1,7 +1,9 @@
 import type { NewsDraft } from './validation';
+import { NUMBER_NOTATION_GUIDANCE } from './count-notation';
 
 // 분량 대신 기사별 실제 정보와 원문의 핵심 누락을 별도 판정합니다.
 export const CONTENT_GENERATION_GUIDANCE = `내용 충실도 작성 기준:
+${NUMBER_NOTATION_GUIDANCE}
 확대 여부를 검토한다는 원문은 확대 전망·예상으로 바꾸지 마세요. 협약을 체결한다는 예고는 날짜가 지났어도 완료 사실로 추정하지 마세요. 제목의 축약 표현보다 원문 본문의 상태를 우선하고 발표 당시의 예정임을 표시하세요.
 본문의 절반 이상, 최소 두 부분은 이 기사에서만 알 수 있는 서로 다른 구체적 정보를 설명하세요. 같은 종료·예정 안내나 '공식 공고를 확인하세요'를 여러 부분으로 늘리지 마세요.
 신청형은 대상별 조건과 지원 내용, 실제 접수 경로·일정 중 원문에 있는 정보를 연결하고 신청·심사·선정의 차이를 설명하세요.

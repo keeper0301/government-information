@@ -25,11 +25,14 @@ export async function runNewsPublication() {
     if (!claim.data) break;
     const item = claim.data as Candidate;
     result.attempted++;
+    let completedEvidence: Record<string, unknown> | null = null;
     try {
       if (officialNewsId(item.source_url) !== item.source_id) throw new Error('수집 번호와 원문 번호가 다릅니다.');
       const source = await readOfficialNews(item.source_url, item.title);
       if (source.publishedAt !== item.published_at.slice(0, 10)) throw new Error('수집 날짜와 공식 발표 날짜가 다릅니다.');
       const draft = await generateVerifiedNews(source);
+      completedEvidence = { body: source.body, sections: draft.sections, kind: draft.kind,
+        editorialReview: draft.editorialReview, contentDepth: draft.contentDepth, reviewAudit: draft.reviewAudit };
       const current = await readOfficialNews(item.source_url, item.title);
       if (current.hash !== source.hash) throw new Error('작성 중 공식 원문이 변경됐습니다.');
       const today = new Date().toISOString().slice(0, 10);
@@ -44,14 +47,14 @@ export async function runNewsPublication() {
         classification: classifyEditorialNews(draft.title, source.body),
       };
       const saved = await admin.rpc('finish_editorial_news', { p_source_id: item.source_id, p_token: item.lease_token,
-        p_article: article, p_hash: source.hash, p_evidence: { body: source.body, sections: draft.sections, kind: draft.kind, editorialReview: draft.editorialReview, contentDepth: draft.contentDepth }, p_reason: null,
+        p_article: article, p_hash: source.hash, p_evidence: completedEvidence, p_reason: null,
         p_title: item.title, p_url: item.source_url, p_updated_at: item.updated_at });
       if (saved.error) throw new Error('뉴스 공개 저장에 실패했습니다.');
       if (saved.data !== true) { result.conflicts++; continue; }
       result.published++; result.slugs.push(article.slug);
     } catch (error) {
       const held = await admin.rpc('finish_editorial_news', { p_source_id: item.source_id, p_token: item.lease_token,
-        p_article: null, p_hash: null, p_evidence: error instanceof NewsDraftError ? error.evidence : null,
+        p_article: null, p_hash: null, p_evidence: error instanceof NewsDraftError ? error.evidence : completedEvidence,
         p_reason: error instanceof Error && !/API|OpenAI|fetch/i.test(error.message) ? error.message.slice(0, 180) : '작성 도구 또는 원문 읽기 실패',
         p_title: item.title, p_url: item.source_url, p_updated_at: item.updated_at });
       if (held.error || held.data !== true) result.conflicts++;

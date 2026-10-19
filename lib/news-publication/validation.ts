@@ -4,6 +4,7 @@ import { sourceAmountHint } from './source-amounts';
 import { comparableSourceDates } from './date-notation';
 import { currentStateIssue } from './current-state';
 import { sourceStateIssue } from './source-state';
+import { countNotationIssue } from './count-notation';
 
 export interface NewsDraft {
   kind: 'application' | 'change' | 'report'; title: string;
@@ -33,7 +34,7 @@ export const validSourceQuote = (text: unknown): text is string => typeof text =
 export const newsNumberPattern = /\d(?:[\d,.]*\d)?(?:여명|%|천만원|만원|억원|원|년|월|일|명|세대|세|개월)?/g;
 
 // 정확한 인용·숫자·분량을 먼저 검사하고 별도 사실 대조 결과도 요구합니다.
-export function newsDraftIssue(value: unknown, body: string, publishedAt?: string): string | null {
+export function newsDraftIssue(value: unknown, body: string, publishedAt?: string, recordSourceState?: (issue: string | null) => void): string | null {
   if (!value || typeof value !== 'object') return '초안이 글 형식이 아닙니다.';
   const draft = value as NewsDraft;
   const validText = (text: unknown) => typeof text === 'string' && text.trim().length >= 5
@@ -61,6 +62,7 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   const currentIssue = currentStateIssue(draft, body);
   if (currentIssue) return currentIssue;
   const sourceState = sourceStateIssue(draft, body);
+  recordSourceState?.(sourceState);
   if (sourceState) return sourceState;
   const medicalIssue = medicalConditionIssue(draft, body);
   if (medicalIssue) return medicalIssue;
@@ -115,6 +117,8 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   ];
   if (internalInstructions.some(pattern => pattern.test(prose))) return '작성·개발 작업 지시가 본문에 섞였습니다.';
   if (prose.length < 300 || prose.length > 2600) return `설명 분량이 기준 밖입니다: ${prose.length}자.`;
+  const countIssue = countNotationIssue(prose, source);
+  if (countIssue) return countIssue;
   // 같은 숫자의 천 단위 쉼표만 지웁니다. 금액이나 단위 변환은 하지 않습니다.
   const comparableNumber = (text: string) => text.replace(/\s/g, '').replace(/\d{1,3}(?:,\d{3})+/g, value => value.replace(/,/g, ''));
   const sourceNumbers = new Set(comparableNumber(source).match(newsNumberPattern) ?? []);

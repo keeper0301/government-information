@@ -1,7 +1,8 @@
 import { CONTENT_GENERATION_GUIDANCE, CONTENT_REVIEW_GUIDANCE, contentDepthSchema, contentDepthIssue } from './content-depth';
 import { callLLM, parseJSONResponse } from '@/lib/llm/text';
 import type { OfficialNewsSource } from './source';
-import { validateNewsDraft, newsDraftIssue } from './validation';
+import { newsDraftIssue, type NewsDraft } from './validation';
+import { withNewsReviewAudit, type NewsReviewAudit } from './audit';
 import { NewsDraftError } from './errors';
 import { EDITORIAL_QUALITY_KEYS, validateEditorialQuality } from './quality';
 import { collectSourceFacts, prepareSourceDraft } from './source-facts';
@@ -28,6 +29,10 @@ const newsDraftResponse = { name: 'policy_news_draft', schema: {
   },
 } };
 export async function generateVerifiedNews(source: OfficialNewsSource) {
+  return withNewsReviewAudit(audit => generateNews(source, audit));
+}
+
+async function generateNews(source: OfficialNewsSource, audit: NewsReviewAudit) {
   const reviewDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   // 인용문은 작성 도구가 다시 쓰지 않고 원문 문장 번호로 선택합니다.
   const quotes = source.body.split(/(?<=[.!?。])\s+|\n+/).map(text => text.trim())
@@ -98,6 +103,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
   let copyRepair: CopyRepairPlan | null = null, plannedRepair: ReturnType<typeof makePlannedRepair> = null;
   // 오류 위치만 한 번 바로잡고 동일한 전체 검사를 적용합니다.
   for (let attempt = 0; attempt < 2; attempt++) {
+    audit.nextAttempt();
     const raw = fixedCases ? JSON.stringify(fixedReportDraft(fixedCases, reportCore)) : await callLLM({ model: 'gpt-4.1-mini', responseSchema: plannedRepair?.responseSchema ?? copyRepair?.responseSchema ?? responseSchema,
       maxTokens: copyRepair ? 1800 : 3200, timeoutMs: attempt ? 25000 : 40000,
       prompt: plannedRepair?.prompt ?? copyRepair?.prompt ?? (attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n오류에 해당하는 답변과 본문 표현을 원문으로 다시 대조해 고치세요. 이전 초안의 잘못된 표현을 그대로 옮기지 마세요. 원문에 없는 이용 제한·기간 확대·확정 계획을 추가하지 말고, 참가 사례를 보존한 기사 전체를 반환하세요.` : prompt) });
@@ -112,16 +118,20 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
     value = restoreSourceAmounts(attachSourceList(prepared.value, sourceList), source.body);
     const coreIssue = fixedCaseIssue(value, fixedCases) ?? sourceListIssue(value, sourceList) ?? reportCoreIssue(reportCore, value)
       ?? (reportCore && !reportAnalysisParagraphs(reportCore, value).length ? '원문 사례를 비교한 키피오의 해설 본문이 필요합니다.' : null);
-    draft = prepared.issue || coreIssue ? null : validateNewsDraft(value, source.body, source.publishedAt);
+    audit.pass('generation');
+    audit.start('draft');
+    issue = prepared.issue ?? coreIssue ?? newsDraftIssue(value, source.body, source.publishedAt, issue => audit.sourceState(issue)) ?? '';
+    draft = issue ? null : value as NewsDraft;
+    if (issue) audit.hold('draft', issue); else audit.pass('draft');
     if (draft) break;
-    issue = prepared.issue ?? coreIssue ?? newsDraftIssue(value, source.body, source.publishedAt) ?? '초안 검사 보류';
     plannedRepair = issue.startsWith('제목과 첫 답변에 시행 예정') || issue.startsWith('시행 예정인 혜택을') ? makePlannedRepair(value, source.body) : null;
     copyRepair = issue === '원문 문장을 길게 그대로 옮겼습니다.' || issue.startsWith('원문에서 확인하지 못한 숫자:') || (sourceList && issue === '한 문단이 너무 깁니다. 짧은 문단으로 나눠주세요.')
       ? makeCopyRepair(value, source.body, issue, source.publishedAt) : null;
     // 복사가 공개 필드 경계에 걸치면 전체를 한 번 재작성하고 동일한 검사를 적용합니다.
   }
   if (!draft) throw new NewsDraftError(issue, { draft: value });
-  if (fixedCases) await reviewFixedClaims(draft, quotes);
+  if (fixedCases) { audit.start('caseClaims'); await reviewFixedClaims(draft, quotes); audit.pass('caseClaims'); }
+  audit.start('facts');
   const excerpts = [draft.answer, ...draft.sections.flatMap(section => section.paragraphs)]
     .flatMap(text => text.match(/[\s\S]{8,160}/g) ?? []);
   const scopeOnlyStart = excerpts.length;
@@ -189,12 +199,17 @@ coverage: 원문의 핵심 내용을 보존했는가? 변경형은 주요 조치
     || (fixedCaseSourceIssue(checks, fixedCases, draft, quotes) ? '고정 참가 사례·현장 설명의 원문 근거 번호가 맞지 않습니다.' : null);
   if (sourceIssue || judgment.supported !== true || judgment.originalValue !== true || !Array.isArray(judgment.issues) || judgment.issues.length)
     throw new NewsDraftError(`별도 사실 대조에서 보류됐습니다.${sourceIssue ? ` ${sourceIssue}` : ''}`, { draft, judgment });
+  audit.pass('facts');
+  audit.start('quality');
   if (!validateEditorialQuality(judgment.quality, draft) || fixedCaseReviewIssue(judgment, fixedCases, draft))
     throw new NewsDraftError('독자 관점 품질 검사에서 보류됐습니다.', { draft, judgment });
   if (reportCore && !reportAnalysisParagraphs(reportCore, draft).some(text =>
     text.includes(quality.usefulness.excerpt ?? '근거 없는 판정')))
     throw new NewsDraftError('독자의 활용 가치가 별도 해설 본문으로 입증되지 않았습니다.', { draft, judgment });
+  audit.pass('quality');
+  audit.start('contentDepth');
   const depthIssue = contentDepthIssue(rawJudgment.contentDepth, draft);
   if (depthIssue) throw new NewsDraftError(depthIssue, { draft, judgment });
+  audit.pass('contentDepth');
   return { ...draft, editorialReview: judgment.quality, contentDepth: rawJudgment.contentDepth };
 }
