@@ -2,6 +2,14 @@ import type { EditorialNewsPhoto } from './editorial-news-images';
 
 // 현장 사진과 구분해 표시하는 허가된 자료사진입니다. 크기·형식 변경본에도 원본 이용 조건을 적용합니다.
 export const NEWS_PLACE_PHOTOS: Record<string, EditorialNewsPhoto> = {
+  solar: {
+    url: '/images/news/solar-panels.webp', width: 1200, height: 900,
+    alt: '금속 지붕에 설치된 태양광 패널 — 2023년 해외 자료사진',
+    caption: '지붕 태양광 패널 · 2023년 해외 자료사진 · 해당 학교 현장 사진이 아닙니다',
+    author: 'Wikideas1', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Solar_panels_on_metal_roof.jpg',
+    licenseName: '저작자가 제한 없이 이용 허락 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/deed.ko',
+  },
   dongnae: {
     url: '/images/news/dongnae.webp', width: 1200, height: 900,
     alt: '동래온천 거리 — 2018년 자료사진', caption: '동래온천 거리 · 2018년 자료사진',
