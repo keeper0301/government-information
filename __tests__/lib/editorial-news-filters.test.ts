@@ -17,7 +17,7 @@ describe("검수 뉴스 검색과 분류", () => {
     expect(filterEditorialNews([], { q: "온누리" })).toEqual([]);
   });
   it("잘못된 필터는 해제하고 기존 통합 지역 주소를 유지한다", () => {
-    expect(normalizeNewsFilters({ benefit: "잘못된분야", province: "unknown", q: "  온누리  " })).toEqual({ q: "온누리", benefit: "", province: "" });
+    expect(normalizeNewsFilters({ benefit: "잘못된분야", province: "unknown", q: "  온누리  " })).toEqual({ q: "온누리", benefit: "", province: "", status: "" });
     expect(normalizeNewsFilters({ province: "jeonnam" }).province).toBe("jeonnam-gwangju");
   });
   it("분야를 바꿀 때 검색어와 지역을 보존한다", () => {

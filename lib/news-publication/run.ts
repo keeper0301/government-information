@@ -5,6 +5,7 @@ import { readOfficialNews } from './source';
 import { officialNewsId } from './validation';
 import { classifyEditorialNews } from './classification';
 import { NewsDraftError } from './errors';
+import { relatedNewsGuide, officialNewsActions } from './reader-context';
 
 interface Candidate {
   id: string; source_id: string; title: string; source_url: string; published_at: string;
@@ -37,9 +38,10 @@ export async function runNewsPublication() {
         question: draft.question, answer: draft.answer, audience: draft.audience,
         sourceAgency: item.ministry || '대한민국 정책브리핑', sourceTitle: source.title,
         sourceUrl: source.url, sourcePublishedAt: source.publishedAt, checkedAt: today, updatedAt: today,
-        sections: draft.sections.map(({ heading, paragraphs }) => ({ heading, paragraphs })), guideSlug: '',
+        sections: draft.sections.map(({ heading, paragraphs }) => ({ heading, paragraphs })), guideSlug: relatedNewsGuide(draft.title),
+        additionalSources: officialNewsActions(draft.title, source.body, today),
         automaticPublication: { checkedAt: new Date().toISOString(), sourceHash: source.hash },
-        classification: classifyEditorialNews(draft.title),
+        classification: classifyEditorialNews(draft.title, source.body),
       };
       const saved = await admin.rpc('finish_editorial_news', { p_source_id: item.source_id, p_token: item.lease_token,
         p_article: article, p_hash: source.hash, p_evidence: { body: source.body, sections: draft.sections, kind: draft.kind, editorialReview: draft.editorialReview, contentDepth: draft.contentDepth }, p_reason: null,

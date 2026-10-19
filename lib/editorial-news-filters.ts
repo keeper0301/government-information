@@ -1,8 +1,9 @@
 import type { EditorialNews } from "@/lib/editorial-news-data";
 import { BENEFIT_TAGS } from "@/lib/tags/taxonomy";
+import { getNewsStatus, NEWS_STATUSES } from './editorial-news-status';
 import { PROVINCES, INTEGRATED_JEONNAM_GWANGJU_REGION, getRegionPageByCode } from "@/lib/regions";
 
-export interface NewsFilters { q?: string; benefit?: string; province?: string }
+export interface NewsFilters { q?: string; benefit?: string; province?: string; status?: string }
 export const NEWS_REGIONS = [
   { code: "nationwide", name: "전국" },
   { code: "unclassified", name: "지역 범위 확인 중" },
@@ -18,15 +19,16 @@ const classifications: Record<string, { benefits: string[]; regions: string[] }>
 
 export function normalizeNewsFilters(filters: NewsFilters): Required<NewsFilters> {
   const province = ["gwangju", "jeonnam"].includes(filters.province ?? "") ? "jeonnam-gwangju" : filters.province;
-  return { q: filters.q?.trim() ?? "",
+  return { q: filters.q?.trim().slice(0, 200) ?? "", status: NEWS_STATUSES.some(item => item.code === filters.status) ? filters.status! : "",
     benefit: BENEFIT_TAGS.some(tag => tag === filters.benefit) ? filters.benefit! : "",
     province: NEWS_REGIONS.some(region => region.code === province) ? province! : "" };
 }
 
 export function filterEditorialNews(articles: EditorialNews[], filters: NewsFilters) {
-  const { q, benefit, province } = normalizeNewsFilters(filters);
+  const { q, benefit, province, status } = normalizeNewsFilters(filters);
   const terms = q.toLocaleLowerCase("ko").split(/\s+/).filter(Boolean);
   return articles.filter(article => {
+    if (status && getNewsStatus(article) !== status) return false;
     const classification = article.classification ?? classifications[article.slug];
     if (benefit && !classification?.benefits.includes(benefit)) return false;
     if (province && !classification?.regions.includes(province)) return false;

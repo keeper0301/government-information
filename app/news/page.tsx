@@ -42,7 +42,7 @@ import { MatchBadge } from "@/components/personalization/MatchBadge";
 import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
-import { loadPublishedNews } from "@/lib/news-publication/feed";
+import { searchPublishedNews } from "@/lib/news-publication/search";
 import { EditorialNewsIndex } from "@/components/news/editorial-news-pages";
 
 const PER_PAGE = 18; // 2×9 or 3×6 깔끔 배수
@@ -76,7 +76,7 @@ const CATEGORIES: { key: "all" | NewsCategory; label: string }[] = [
 const VALID_CATEGORIES = new Set<string>(["news", "policy-doc"]);
 
 export async function generateMetadata(): Promise<Metadata> {
-  const articles = await loadPublishedNews();
+  const result = await searchPublishedNews({});
   return {
   title: ADSENSE_REVIEW_MODE ? "정책뉴스 | 키피오" : "정책 소식 | 정책알리미",
   description:
@@ -84,7 +84,7 @@ export async function generateMetadata(): Promise<Metadata> {
   alternates: { canonical: "/news" },
   robots: ADSENSE_REVIEW_MODE
     ? {
-        index: articles.length >= 3,
+        index: !result.unavailable && result.allCount >= 3,
         follow: true,
       }
     : undefined,
@@ -107,6 +107,7 @@ type Props = {
     category?: string;
     benefit?: string; // BENEFIT_TAGS 14종 중 하나
     province?: string;
+    status?: string;
     page?: string;
     q?: string; // 통합 검색에서 넘어왔을 때 적용
   }>;
@@ -158,7 +159,10 @@ function newsToScorable(p: {
 export default async function NewsIndexPage({ searchParams }: Props) {
   // 재심사 기간에는 자동 수집 목록 대신 검수된 편집 뉴스만 보여줍니다.
   const params = await searchParams;
-  if (ADSENSE_REVIEW_MODE) return <EditorialNewsIndex articles={await loadPublishedNews()} filters={{ q: params.q, benefit: params.benefit, province: params.province }} />;
+  if (ADSENSE_REVIEW_MODE) {
+    const filters = { q: params.q, benefit: params.benefit, province: params.province, status: params.status };
+    return <EditorialNewsIndex result={await searchPublishedNews(filters, params.page)} filters={filters} />;
+  }
   const activeCategory =
     params.category && VALID_CATEGORIES.has(params.category)
       ? params.category

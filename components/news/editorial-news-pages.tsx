@@ -9,6 +9,9 @@ import { getEditorialNewsPhoto } from "@/lib/editorial-news-images";
 import { EditorialNewsFilters } from "@/components/news/editorial-news-filters";
 import { EditorialAdditionalSources, verifiedAdditionalSources } from "@/components/news/editorial-news-sources";
 import { EditorialNewsSections } from "@/components/news/editorial-news-sections";
+import { EditorialNewsStatus } from './editorial-news-status';
+import { EditorialNewsPagination } from './editorial-news-pagination';
+import type { NewsSearchPage } from '@/lib/news-publication/search';
 import { filterEditorialNews, normalizeNewsFilters, type NewsFilters } from "@/lib/editorial-news-filters";
 
 export function EditorialNewsCards({ articles = getPublishedNews() }: { articles?: EditorialNews[] } = {}) {
@@ -16,6 +19,7 @@ export function EditorialNewsCards({ articles = getPublishedNews() }: { articles
     const photo = getEditorialNewsPhoto(article);
     return (
     <article key={article.slug}>
+      <EditorialNewsStatus article={article} />
       <NewsCard post={{ slug: article.slug, title: article.title, summary: article.answer,
         category: "news", ministry: "키피오 편집", source_outlet: null,
         thumbnail_url: photo?.url ?? null, thumbnail_alt: photo?.alt,
@@ -26,16 +30,19 @@ export function EditorialNewsCards({ articles = getPublishedNews() }: { articles
   ); })}</div>;
 }
 
-export function EditorialNewsIndex({ filters = {}, articles = getPublishedNews() }: { filters?: NewsFilters; articles?: EditorialNews[] } = {}) {
+export function EditorialNewsIndex({ filters = {}, articles = getPublishedNews(), result }: { filters?: NewsFilters; articles?: EditorialNews[]; result?: NewsSearchPage } = {}) {
   const selected = normalizeNewsFilters(filters);
-  const filtered = filterEditorialNews(articles, selected);
+  const filtered = result?.articles ?? filterEditorialNews(articles, selected);
+  const allCount = result?.allCount ?? articles.length;
+  const total = result?.total ?? filtered.length;
   return <main className="min-h-screen bg-grey-50 pt-28 pb-16"><div className="max-w-content mx-auto px-6 lg:px-10">
     <p className="text-sm text-blue-600 mb-3">키피오 · 정책 변화와 확인할 행동</p>
     <h1 className="text-3xl font-extrabold mb-5">정책뉴스</h1>
     <p className="max-w-3xl text-grey-700 leading-relaxed mb-8">공식 발표에서 무엇이 바뀌었는지, 누구에게 해당하는지, 무엇을 확인해야 하는지 정리합니다. 공식 원문을 대조하고 편집 검수 또는 자동 근거 검사를 통과한 글을 공개합니다.</p>
-    <EditorialNewsFilters articles={articles} filters={selected} />
-    {articles.length > 0 && <p role="status" className="text-sm text-grey-600 mb-5">검색 결과 {filtered.length}건 · 공개된 검수 뉴스 {articles.length}건</p>}
-    {filtered.length ? <EditorialNewsCards articles={filtered} /> : articles.length ? <section className="rounded-2xl bg-white p-6 border border-grey-200">
+    <EditorialNewsFilters articles={articles} filters={selected} counts={result?.counts} />
+    {result?.unavailable && <p role="alert" className="mb-5 rounded-xl bg-blue-50 p-4">자동 발행 뉴스 조회가 일시적으로 지연되고 있습니다. 아래는 조회 가능한 편집 뉴스이며, 전체 검색 결과가 아닙니다. 잠시 후 다시 확인해주세요.</p>}
+    {allCount > 0 && <p role="status" className="text-sm text-grey-600 mb-5">검색 결과 {total}건 · 공개된 검수 뉴스 {allCount}건</p>}
+    {filtered.length ? <EditorialNewsCards articles={filtered} /> : allCount ? <section className="rounded-2xl bg-white p-6 border border-grey-200">
       <h2 className="text-xl font-bold mb-3">조건에 맞는 정책뉴스가 없습니다</h2>
       <p className="text-grey-700 mb-4">다른 검색어를 입력하거나 분야·지역 선택을 해제해보세요.</p>
       <Link href="/news" className="text-blue-600 underline">전체 뉴스 보기 →</Link>
@@ -44,6 +51,7 @@ export function EditorialNewsIndex({ filters = {}, articles = getPublishedNews()
       <p className="leading-relaxed text-grey-700 mb-4">공식 발표와 신청 조건을 대조한 뒤 소식을 안내하겠습니다. 신청 준비가 필요하다면 먼저 공개된 가이드를 확인하세요.</p>
       <Link href="/guides" className="text-blue-600 underline">신청 가이드 보기 →</Link>
     </section>}
+    {result && <EditorialNewsPagination page={result.page} total={total} filters={selected} />}
     <p className="mt-8 text-sm text-grey-600"><Link href="/source-policy" className="underline">출처 기준</Link> · <Link href="/correction-policy" className="underline">정정 절차</Link></p>
   </div></main>;
 }
@@ -78,6 +86,7 @@ export async function EditorialNewsDetail({ article }: { article: EditorialNews 
     <Link href="/news" className="text-blue-600 underline">정책뉴스 목록 →</Link>
     <article className="mt-6">
       <h1 className="text-3xl font-extrabold leading-snug mb-5">{article.title}</h1>
+      <EditorialNewsStatus article={article} detail />
       <p className="text-sm text-grey-600 mb-5">작성: 키피오 편집 · 공식 발표 {article.sourcePublishedAt} · 출처 확인 {article.checkedAt} · 내용 수정 {article.updatedAt}</p>
       {review && <p className="text-sm text-grey-600 mb-5">키피오 발행·확인일: {review.reviewedAt.slice(0, 10)} · 확인: {review.reviewer}</p>}
       {publishedAt && publishedAt !== review?.reviewedAt && <p className="text-sm text-grey-600 mb-5">최초 발행일: {publishedAt.slice(0, 10)}</p>}
