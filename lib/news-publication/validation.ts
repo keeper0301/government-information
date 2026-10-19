@@ -3,6 +3,7 @@ import { medicalConditionIssue } from './medical-condition';
 import { sourceAmountHint } from './source-amounts';
 import { comparableSourceDates } from './date-notation';
 import { currentStateIssue } from './current-state';
+import { sourceStateIssue } from './source-state';
 
 export interface NewsDraft {
   kind: 'application' | 'change' | 'report'; title: string;
@@ -59,6 +60,8 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   if (plannedIssue) return plannedIssue;
   const currentIssue = currentStateIssue(draft, body);
   if (currentIssue) return currentIssue;
+  const sourceState = sourceStateIssue(draft, body);
+  if (sourceState) return sourceState;
   const medicalIssue = medicalConditionIssue(draft, body);
   if (medicalIssue) return medicalIssue;
   // '월 중'은 월 전체를 보장하지 않습니다. 확인된 원문 기간을 임의로 늘리면 보류합니다.

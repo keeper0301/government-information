@@ -38,6 +38,7 @@ const calculator: EditorialNewsPhoto = {
 
 // 기사별로 확인한 자료사진을 우선합니다. 기존 승인 기사의 내용·검수 기록은 바꾸지 않습니다.
 export const EDITORIAL_NEWS_IMAGES: Record<string, EditorialNewsPhoto> = {
+  'policy-brief-148973472': NEWS_PLACE_PHOTOS.solar,
   "onnuri-reform-shop-checklist-2026": market,
   'policy-brief-148972905': NEWS_TOPIC_PHOTOS.tourism,
   'policy-brief-148972990': NEWS_TOPIC_PHOTOS.language,
@@ -56,6 +57,7 @@ export function getEditorialNewsPhoto(article: Pick<EditorialNews, "slug" | "tit
   if (EDITORIAL_NEWS_IMAGES[article.slug]) return EDITORIAL_NEWS_IMAGES[article.slug];
   // 이번에 확인·승인한 지정 사진 외에는 기존 공식 사진 전용 조건을 지킵니다.
   if (article.photoPolicy === 'official-only') return null;
+  if (/태양광/.test(article.title)) return NEWS_PLACE_PHOTOS.solar;
   if (/동래온천/.test(article.title)) return NEWS_PLACE_PHOTOS.dongnae;
   if (/공산성/.test(article.title)) return NEWS_PLACE_PHOTOS.gongsanseong;
   if (/하이패스|고속도로.*할인|통행료/.test(article.title)) return NEWS_PLACE_PHOTOS.hipass;
