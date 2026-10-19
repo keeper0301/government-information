@@ -19,6 +19,17 @@ beforeEach(() => {
     ? { data: claimed ? null : (claimed = true, row), error: null } : { data: true, error: null });
 });
 afterEach(() => vi.unstubAllEnvs());
+it('검사 뒤 원문 변경으로 보류돼도 완료된 검수 근거를 보존한다', async () => {
+  const reviewAudit = { version: '검사용', status: 'passed', events: [{ attempt: 1, stage: 'contentDepth', status: 'passed' }] };
+  mock.generate.mockResolvedValueOnce({ reviewAudit, sections: [], editorialReview: {}, contentDepth: {} });
+  mock.read.mockResolvedValueOnce({ title: row.title, hash: '처음', publishedAt: '2026-10-06' })
+    .mockResolvedValueOnce({ title: row.title, hash: '바뀜', publishedAt: '2026-10-06' });
+  expect(await runNewsPublication()).toMatchObject({ held: 1, published: 0 });
+  const saved = mock.rpc.mock.calls.find(call => call[0] === 'finish_editorial_news')![1];
+  expect(saved.p_evidence.reviewAudit).toEqual(reviewAudit);
+  expect(saved.p_reason).toContain('원문이 변경');
+  expect(saved.p_article).toBeNull();
+});
 it('100초를 사용했으면 다음 후보를 예약하지 않고 현재 결과를 돌려준다', async () => {
   const clock = vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(100000);
   try {
@@ -32,6 +43,8 @@ it('작성 도구 설정이 없으면 후보 예약 전에 멈춰 하루 한도�
   expect(mock.rpc).not.toHaveBeenCalled();
 });
 it('원문을 두 번 읽고 같은 경우에만 자동 확인 표시와 함께 공개한다', async () => {
+  const original = await mock.generate();
+  mock.generate.mockResolvedValue({ ...original, reviewAudit: { version: '검사용', status: 'passed', events: [] } });
   expect(await runNewsPublication()).toMatchObject({ published: 1, held: 0 });
   expect(mock.read).toHaveBeenCalledTimes(2);
   const saved = mock.rpc.mock.calls.find(call => call[0] === 'finish_editorial_news')![1];
@@ -39,6 +52,8 @@ it('원문을 두 번 읽고 같은 경우에만 자동 확인 표시와 함께 
   expect(saved.p_evidence.editorialReview.scope.passed).toBe(true);
   expect(saved.p_evidence.contentDepth).toEqual({ missingFacts: [], sections: [] });
   expect(saved.p_article).not.toHaveProperty("contentDepth");
+  expect(saved.p_article).not.toHaveProperty('reviewAudit');
+  expect(saved.p_evidence.reviewAudit.version).toBe('검사용');
   expect(saved.p_article.automaticPublication.sourceHash).toBe('같은본문');
   expect(saved.p_article.classification.regions).toEqual(['unclassified']);
   expect(saved.p_evidence.sections[0].quote).toBe('근거');

@@ -226,6 +226,7 @@ export default async function AdminNewsPage({
           description="매일 KST 11:00 cron 이 korea.kr RSS 3개 피드를 자동 수집해요. 수집 문제를 확인하거나 즉시 반영이 필요할 때 수동 실행할 수 있어요."
         />
 
+        <Link href="/admin/news/review" className="mb-4 inline-block text-blue-600 underline">자동 발행 검수 현황 보기</Link>
         {/* 상태 카드 4개 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <StatCard label="전체" value={stats.total.toLocaleString()} />

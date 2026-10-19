@@ -1,6 +1,7 @@
 import type { EditorialNews } from "@/lib/editorial-news-data";
 import { NEWS_TOPIC_PHOTOS } from './editorial-news-topic-images';
 import { NEWS_PLACE_PHOTOS } from './editorial-news-place-images';
+import { NEWS_FAMILY_PHOTOS } from './editorial-news-family-images';
 
 export type EditorialNewsPhoto = {
   url: string; alt: string; caption: string; author: string; sourceUrl: string;
@@ -38,6 +39,8 @@ const calculator: EditorialNewsPhoto = {
 
 // 기사별로 확인한 자료사진을 우선합니다. 기존 승인 기사의 내용·검수 기록은 바꾸지 않습니다.
 export const EDITORIAL_NEWS_IMAGES: Record<string, EditorialNewsPhoto> = {
+  'policy-brief-148973548': NEWS_FAMILY_PHOTOS.childcare,
+  'policy-brief-148973657': NEWS_FAMILY_PHOTOS.housing,
   'policy-brief-148973472': NEWS_PLACE_PHOTOS.solar,
   "onnuri-reform-shop-checklist-2026": market,
   'policy-brief-148972905': NEWS_TOPIC_PHOTOS.tourism,
@@ -51,12 +54,15 @@ export const EDITORIAL_NEWS_IMAGES: Record<string, EditorialNewsPhoto> = {
   'policy-brief-148973020': NEWS_TOPIC_PHOTOS.gyeongju,
 };
 export const EDITORIAL_PHOTO_URLS = [market.url, city.url, calculator.url,
+  ...Object.values(NEWS_FAMILY_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_PLACE_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_TOPIC_PHOTOS).map(photo => photo.url)];
 export function getEditorialNewsPhoto(article: Pick<EditorialNews, "slug" | "title" | "photoPolicy">): EditorialNewsPhoto | null {
   if (EDITORIAL_NEWS_IMAGES[article.slug]) return EDITORIAL_NEWS_IMAGES[article.slug];
   // 이번에 확인·승인한 지정 사진 외에는 기존 공식 사진 전용 조건을 지킵니다.
   if (article.photoPolicy === 'official-only') return null;
+  if (/어린이집|유치원/.test(article.title)) return NEWS_FAMILY_PHOTOS.childcare;
+  if (/공공주택|공공분양|공공임대|주택.*(?:모집|공급)|(?:모집|공급).*주택/.test(article.title)) return NEWS_FAMILY_PHOTOS.housing;
   if (/태양광/.test(article.title)) return NEWS_PLACE_PHOTOS.solar;
   if (/동래온천/.test(article.title)) return NEWS_PLACE_PHOTOS.dongnae;
   if (/공산성/.test(article.title)) return NEWS_PLACE_PHOTOS.gongsanseong;

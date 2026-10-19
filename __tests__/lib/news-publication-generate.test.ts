@@ -4,6 +4,7 @@ afterEach(() => { vi.useRealTimers(); mock.call.mockReset(); });
 const mock = vi.hoisted(() => ({ call: vi.fn() }));
 vi.mock('@/lib/llm/text', () => ({ callLLM: mock.call, parseJSONResponse: JSON.parse }));
 import { generateVerifiedNews } from '@/lib/news-publication/generate';
+import { newsDraftIssue } from '@/lib/news-publication/validation';
 
 const quote = '청년 근로자가 신청할 수 있습니다.';
 const draft = { kind: 'application', title: '청년 근로자 지원, 대상과 지급 결정 구분',
@@ -15,6 +16,12 @@ const draft = { kind: 'application', title: '청년 근로자 지원, 대상과 
   ] };
 const quality = () => Object.fromEntries(['scope','timeliness','usefulness','clarity','nonRepetition','coverage'].map(key => [key,
   { passed: true, reason: '대상 설명과 개인별 지원 확정을 구분하고 실제 확인할 내용을 안내했습니다.', excerptIndex: 2 }]));
+
+it('최종 초안 검사에서도 원문 건수 범위를 확정값으로 바꾼 경우 보류한다', () => {
+  const value = { ...draft, answer: '신청 건수는 20건입니다. 대상과 지원 여부를 구분하세요.',
+    sections: draft.sections.map(section => ({ ...section, quote })) };
+  expect(newsDraftIssue(value, `${quote} 신청 건수는 10건~20건입니다.`)).toContain('건수 표기');
+});
 
 it('복사한 구절은 재작성 요청에만 넣고 공개 보류 이유에는 노출하지 않는다', async () => {
   const copied = '정부 발표는 청년 근로자를 대상으로 하는 상담과 신청 안내를 구분하여 제공하고 지원 확정 여부는 담당 기관이 별도로 판단한다고 설명했습니다.';
@@ -37,8 +44,11 @@ it('별도 검사 요청에는 작성 도구가 요구하는 자료 형식 출�
     return JSON.stringify(input.jsonMode ? { supported: true, originalValue: true, contentDepth: contentDepthFixture(3), quality: quality(), issues: [],
       checks: [0, 1, 2, 3].map(part => ({ part, supported: true, quoteIndex: 0 })) } : draft);
   });
-  await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
-    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).resolves.toHaveProperty('editorialReview');
+  const result = await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' });
+  expect(result).toHaveProperty('editorialReview');
+  for (const stage of ['sourceState', 'facts', 'quality', 'contentDepth'])
+    expect(result.reviewAudit.events).toContainEqual({ attempt: 1, stage, status: 'passed' });
   expect(mock.call).toHaveBeenCalledTimes(2);
 });
 
@@ -139,8 +149,11 @@ it.each(['누락', '원문 밖 인용', '개별 불일치'])('전체 합격이�
   const checks = kind === '누락' ? [] : [0, 1, 2, 3].map(part => ({ part,
     supported: !(kind === '개별 불일치' && part === 2), quoteIndex: kind === '원문 밖 인용' ? -1 : 0 }));
   mock.call.mockResolvedValueOnce(JSON.stringify(draft)).mockResolvedValueOnce(JSON.stringify({ supported: true, originalValue: true, contentDepth: contentDepthFixture(3), issues: [], checks }));
-  await expect(generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
-    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' })).rejects.toThrow('별도 사실 대조');
+  const error = await generateVerifiedNews({ title: '공식 발표', url: 'https://www.korea.kr/news/policyNewsView.do?newsId=148972915',
+    body: quote, hash: '원문 식별값', publishedAt: '2026-10-06' }).catch(error => error);
+  expect(error.message).toContain('별도 사실 대조');
+  expect(error.evidence.reviewAudit.events).toContainEqual(expect.objectContaining({ stage: 'facts', status: 'held' }));
+  expect(error.evidence.reviewAudit.events).not.toContainEqual(expect.objectContaining({ stage: 'contentDepth' }));
 });
 
 it('사실 합격이어도 독자 품질 검사에서 범위 확대를 판정하면 공개하지 않는다', async () => {

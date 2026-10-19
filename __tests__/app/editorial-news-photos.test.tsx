@@ -14,6 +14,8 @@ const automatic = { ...EDITORIAL_NEWS[0], slug: "policy-brief-148972905",
 
 describe("자동 뉴스 자료사진", () => {
   it.each([
+    ['148973548', 'child-blocks', 'Bobjgalindo', '2010', '해당 어린이집·유치원 사진이 아닙니다', 'A_pile_of_alphabet_wooden_blocks.jpg', 'licenses/by/4.0'],
+    ['148973657', 'housing-apartments', 'Samuel Orchard', '2008', '기사에서 모집하는 주택이나 지역을 뜻하지 않습니다', 'Apartment_blocks_in_Eomgung-dong_of_Busan,_Korea-01.jpg', 'licenses/by-sa/2.0'],
     ['148973175', 'deoksugung', 'Mobius6', '2024', '특별전 내부 사진이 아닙니다', 'Deoksugung_Palace_20240409_048.jpg', 'licenses/by/4.0'],
     ['148973216', 'education-books', 'Hussy~B', '2023', '협력 참여 대학을 뜻하지 않습니다', 'Library_books_1.jpg', 'publicdomain/zero/1.0'],
     ['148973020', 'bulguksa', 'Bernard Gagnon', '2022', '회랑', 'Bulguksa_04.jpg', 'publicdomain/zero/1.0'],
@@ -86,6 +88,9 @@ describe("자동 뉴스 자료사진", () => {
   });
   it.each([
     ['코로나19 국가예방접종 안내', 'vaccination'], ['쉬운 우리말 사용 안내', 'hangul'],
+    ['어린이집 입소 신청', 'child-blocks'], ['유치원 모집 안내', 'child-blocks'],
+    ['공공주택 공급', 'housing-apartments'], ['주택 입주자 모집', 'housing-apartments'],
+    ['공급 예정 주택 안내', 'housing-apartments'],
     ['동물보호의 날 체험', 'dog'], ['청와대 사랑채 전시', 'sarangchae'],
     ['농촌 여행상품 확인', 'rural-trip'], ['관광산업 취업 지원', 'tour-guide'],
   ])("새 기사는 제목 주제에 맞는 자료사진을 고른다: %s", (title, file) => {
