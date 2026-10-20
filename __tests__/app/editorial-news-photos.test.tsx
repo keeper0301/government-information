@@ -22,13 +22,24 @@ describe("자동 뉴스 자료사진", () => {
       expect(html).toContain('publicdomain/zero/1.0/deed.ko');
       expect(getEditorialNewsPhoto({ ...article, photoPolicy: 'official-only' })).toBeNull();
     });
-  it('공주 여행의 본문 방문지를 확인하며 다른 공주 언급으로 사진을 선택하지 않는다', () => {
+  it('공주 여행의 요약 방문지를 확인하며 다른 공주 언급으로 사진을 선택하지 않는다', () => {
     const article = { slug: 'new-travel', title: '제철 밤을 즐기는 공주 여행',
-      sections: [{ heading: '방문지', paragraphs: ['공산성에서 백제 성곽을 살펴볼 수 있다.'] }] };
+      answer: '공산성에서 백제 성곽을 살펴볼 수 있다.' };
     expect(getEditorialNewsPhoto(article)?.url).toContain('gongsanseong');
-    expect(getEditorialNewsPhoto({ ...article, sections: [] })).toBeNull();
+    expect(getEditorialNewsPhoto({ ...article, answer: '' })).toBeNull();
     expect(getEditorialNewsPhoto({ ...article, title: '동화 속 공주 이야기' })).toBeNull();
     expect(getEditorialNewsPhoto({ ...article, photoPolicy: 'official-only' })).toBeNull();
+  });
+  it('본문이 빠진 목록에도 상세와 같은 공산성 사진과 출처를 표시한다', async () => {
+    const article = { ...automatic, slug: 'new-gongju', title: '제철 밤을 즐기는 공주 여행',
+      answer: '공주에서는 공산성과 마곡사를 비교해 여행을 계획할 수 있습니다.',
+      sections: [{ heading: '방문지', paragraphs: ['공산성에서 백제 성곽을 살펴볼 수 있습니다.'] }] };
+    const card = renderToStaticMarkup(<EditorialNewsCards articles={[{ ...article, sections: [] }]} />);
+    const detail = renderToStaticMarkup(await EditorialNewsDetail({ article }));
+    for (const html of [card, detail]) {
+      expect(html).toContain('gongsanseong-');
+      expect(html).toContain('Gongsanjeong_Pavilion_of_Gongsanseong_Fortress.jpg');
+    }
   });
   it.each([
     ['148973548', 'child-blocks', 'Bobjgalindo', '2010', '해당 어린이집·유치원 사진이 아닙니다', 'A_pile_of_alphabet_wooden_blocks.jpg', 'licenses/by/4.0'],
