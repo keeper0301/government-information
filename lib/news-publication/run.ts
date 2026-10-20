@@ -6,6 +6,7 @@ import { officialNewsId } from './validation';
 import { classifyEditorialNews } from './classification';
 import { NewsDraftError } from './errors';
 import { relatedNewsGuide, officialNewsActions } from './reader-context';
+import { getEditorialNewsPhoto } from '@/lib/editorial-news-images';
 
 interface Candidate {
   id: string; source_id: string; title: string; source_url: string; published_at: string;
@@ -46,6 +47,12 @@ export async function runNewsPublication() {
         automaticPublication: { checkedAt: new Date().toISOString(), sourceHash: source.hash },
         classification: classifyEditorialNews(draft.title, source.body),
       };
+      // 관련 자료사진과 이용 조건을 확인하지 못하면 사진 없는 글을 공개하지 않습니다.
+      const photo = getEditorialNewsPhoto(article);
+      completedEvidence.photoReview = photo
+        ? { status: 'passed', url: photo.url, sourceUrl: photo.sourceUrl, licenseUrl: photo.licenseUrl }
+        : { status: 'held', reason: '주제에 맞는 허가된 자료사진이 없습니다.' };
+      if (!photo) throw new Error('주제에 맞는 허가된 자료사진이 없어 공개를 보류했습니다.');
       const saved = await admin.rpc('finish_editorial_news', { p_source_id: item.source_id, p_token: item.lease_token,
         p_article: article, p_hash: source.hash, p_evidence: completedEvidence, p_reason: null,
         p_title: item.title, p_url: item.source_url, p_updated_at: item.updated_at });

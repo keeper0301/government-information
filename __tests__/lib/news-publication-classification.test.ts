@@ -2,6 +2,9 @@ import { expect, it } from 'vitest';
 import { classifyEditorialNews } from '@/lib/news-publication/classification';
 
 it.each([
+  ['제21회 임산부의 날 기념행사와 지원 서비스', ['양육'], ['unclassified']],
+  ['임신 출산 지원 안내', ['양육'], ['unclassified']],
+  ['고위험 산모 의료비 지원', ['의료', '양육'], ['unclassified']],
   ['부산 동래온천지구, 전국 네 번째 온천도시 지정', ['문화'], ['busan']],
   ['공주 공산성에서 부여 왕릉원까지 백제 여행', ['문화'], ['chungnam']],
   ['다자녀 고속도로 할인…차량 1대·카드 1개 등록과 선불·후불 처리 차이', ['교통'], ['unclassified']],

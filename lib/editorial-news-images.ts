@@ -57,10 +57,17 @@ export const EDITORIAL_PHOTO_URLS = [market.url, city.url, calculator.url,
   ...Object.values(NEWS_FAMILY_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_PLACE_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_TOPIC_PHOTOS).map(photo => photo.url)];
-export function getEditorialNewsPhoto(article: Pick<EditorialNews, "slug" | "title" | "photoPolicy">): EditorialNewsPhoto | null {
+export function getEditorialNewsPhoto(article: Pick<EditorialNews, "slug" | "title" | "photoPolicy">
+  & Partial<Pick<EditorialNews, "sections">>): EditorialNewsPhoto | null {
   if (EDITORIAL_NEWS_IMAGES[article.slug]) return EDITORIAL_NEWS_IMAGES[article.slug];
   // 이번에 확인·승인한 지정 사진 외에는 기존 공식 사진 전용 조건을 지킵니다.
   if (article.photoPolicy === 'official-only') return null;
+  if (/한복/.test(article.title)) return NEWS_FAMILY_PHOTOS.hanbok;
+  if (/임산부|임신|산모|산후조리/.test(article.title)) return NEWS_FAMILY_PHOTOS.pregnancy;
+  // 공주 여행이라는 제목과 본문의 실제 방문지가 함께 맞을 때만 장소 사진을 씁니다.
+  const body = article.sections?.flatMap(section => section.paragraphs).join(' ') ?? '';
+  if (/공주/.test(article.title) && /여행|관광|명소/.test(article.title) && /공산성/.test(body))
+    return NEWS_PLACE_PHOTOS.gongsanseong;
   if (/어린이집|유치원/.test(article.title)) return NEWS_FAMILY_PHOTOS.childcare;
   if (/공공주택|공공분양|공공임대|주택.*(?:모집|공급)|(?:모집|공급).*주택/.test(article.title)) return NEWS_FAMILY_PHOTOS.housing;
   if (/태양광/.test(article.title)) return NEWS_PLACE_PHOTOS.solar;
