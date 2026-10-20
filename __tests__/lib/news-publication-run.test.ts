@@ -12,13 +12,24 @@ const row = { id: '후보', source_id: '148972915', title: '군 복무 청년 �
 beforeEach(() => {
   vi.stubEnv('OPENAI_API_KEY', '검사용설정');
   vi.clearAllMocks();
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { headers: { 'content-type': 'image/webp' } })));
   mock.read.mockResolvedValue({ title: row.title, url: row.source_url, body: '검증할 원문', hash: '같은본문', publishedAt: '2026-10-06' });
   mock.generate.mockResolvedValue({ kind: 'change', title: '전역 후 청년 보험 지원 변경', editorialReview: { scope: { passed: true } }, contentDepth: { missingFacts: [], sections: [] }, question: '질문', answer: '설명', audience: '군 복무 청년', sections: [{ heading: '확인', paragraphs: ['해설'], quote: '근거' }] });
   let claimed = false;
-  mock.rpc.mockImplementation(async (name) => name === 'claim_editorial_news'
+  mock.rpc.mockImplementation(async (name) => name === 'claim_editorial_news_with_status'
     ? { data: claimed ? null : (claimed = true, row), error: null } : { data: true, error: null });
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+it('후보가 없을 때 예약 잠금 안에서 반환된 종료 이유를 보존한다', async () => {
+  mock.rpc.mockResolvedValueOnce({ data: { stopReason: 'daily_limit' }, error: null });
+  expect(await runNewsPublication()).toMatchObject({ attempted: 0, published: 0, stopReason: 'daily_limit' });
+  expect(mock.generate).not.toHaveBeenCalled();
+});
+it('한 편 공개 후 다음 예약이 실패해도 공개 건수와 주소를 보존한다', async () => {
+  mock.rpc.mockResolvedValueOnce({ data: row }).mockResolvedValueOnce({ data: true })
+    .mockResolvedValueOnce({ error: { message: '비공개 내부 오류' } });
+  expect(await runNewsPublication()).toMatchObject({ published: 1, stopReason: 'failed', slugs: [`policy-brief-${row.source_id}`] });
+});
 it('검사 뒤 원문 변경으로 보류돼도 완료된 검수 근거를 보존한다', async () => {
   const reviewAudit = { version: '검사용', status: 'passed', events: [{ attempt: 1, stage: 'contentDepth', status: 'passed' }] };
   mock.generate.mockResolvedValueOnce({ reviewAudit, sections: [], editorialReview: {}, contentDepth: {} });
@@ -34,7 +45,7 @@ it('100초를 사용했으면 다음 후보를 예약하지 않고 현재 결과
   const clock = vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(100000);
   try {
     expect(await runNewsPublication()).toMatchObject({ attempted: 1, published: 1 });
-    expect(mock.rpc.mock.calls.filter(([name]) => name === 'claim_editorial_news')).toHaveLength(1);
+    expect(mock.rpc.mock.calls.filter(([name]) => name === 'claim_editorial_news_with_status')).toHaveLength(1);
   } finally { clock.mockRestore(); }
 });
 it('작성 도구 설정이 없으면 후보 예약 전에 멈춰 하루 한도를 소비하지 않는다', async () => {
@@ -94,7 +105,7 @@ it('사진 없는 신규 주제는 공개하지 않고 기존 검수와 사진 �
 it('한 후보가 실패해도 다음 후보를 처리하며 저장 충돌을 발행으로 세지 않는다', async () => {
   mock.generate.mockRejectedValueOnce(new Error('근거 불충분'));
   let count = 0;
-  mock.rpc.mockImplementation(async (name) => name === 'claim_editorial_news'
+  mock.rpc.mockImplementation(async (name) => name === 'claim_editorial_news_with_status'
     ? { data: count++ < 2 ? row : null } : { data: count === 1 });
   expect(await runNewsPublication()).toMatchObject({ attempted: 2, held: 1, published: 0, conflicts: 1 });
 });
