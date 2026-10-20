@@ -1,3 +1,4 @@
+import { hasUnfinishedAmount } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 네이버 블로그 RPA — Playwright 자동 발행
 // ============================================================
@@ -94,6 +95,7 @@ export type PublishFailReason =
  *       모든 selector wait 에 timeout (네이버 UI 변경 시 hang 회피).
  */
 export async function publishToNaverBlog(opts: PublishOptions): Promise<PublishResult> {
+  if (hasUnfinishedAmount({ title: opts.title, content: opts.bodyHtml })) return { ok: false, reason: "publish_failed", error: "unfinished_amount", details: {} };
   let browser: Browser | null = null;
   let context: BrowserContext | null = null;
   const debug: Record<string, unknown> = { dryRun: opts.dryRun === true };

@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 인스타그램 카드뉴스 자동 생성
 // ============================================================
@@ -75,13 +76,13 @@ export async function GET(
   }
 
   const supabase = await createClient();
-  const { data: post } = await supabase
+  const { data: post } = await publicBlogQuery(supabase
     .from("blog_posts")
-    .select("title, meta_description, category, tags, faqs")
+    .select("title, meta_description, category, tags, faqs, content, cover_image, published_at, admin_review_required, admin_reviewed_at, admin_review_score"))
     .eq("slug", slug)
     .maybeSingle();
 
-  if (!post) {
+  if (!post || !isBlogReadable(post)) {
     return NextResponse.json({ error: "post not found" }, { status: 404 });
   }
 

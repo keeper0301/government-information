@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 네이버 블로그 썸네일 자동 생성 — 1080×1080 정방형
 // ============================================================
@@ -57,13 +58,13 @@ export async function GET(
   }
 
   const supabase = await createClient();
-  const { data: post } = await supabase
+  const { data: post } = await publicBlogQuery(supabase
     .from("blog_posts")
-    .select("title, meta_description, category")
+    .select("title, meta_description, category, content, tags, faqs, cover_image, published_at, admin_review_required, admin_reviewed_at, admin_review_score"))
     .eq("slug", slug)
     .maybeSingle();
 
-  if (!post) {
+  if (!post || !isBlogReadable(post)) {
     return NextResponse.json({ error: "post not found" }, { status: 404 });
   }
 

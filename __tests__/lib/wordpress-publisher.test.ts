@@ -3,12 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   payloadStatus: "publish" as "publish" | "draft",
   upsert: vi.fn(),
+  readPost: vi.fn(),
   fetch: vi.fn(),
   claim: vi.fn(),
   lookup: vi.fn(),
 }));
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ from: () => ({ upsert: mocks.upsert }) }),
+  createAdminClient: () => ({ from: () => ({ upsert: mocks.upsert, select: () => ({eq: () => ({maybeSingle: mocks.readPost})}) }) }),
 }));
 vi.mock("@/lib/wordpress/format", () => ({
   convertToWordPress: () => ({
@@ -46,6 +47,7 @@ describe("WordPress publish truth contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.payloadStatus = "publish";
+    mocks.readPost.mockResolvedValue({data:{...post,admin_review_required:false,admin_reviewed_at:"2026-10-13",published_at:"2026-10-13"},error:null});
     mocks.upsert.mockResolvedValue({ error: null });
     mocks.claim.mockResolvedValue(true);
     mocks.lookup.mockResolvedValue({ kind: "not_found_in_search", matches: [], examined: 0 });
@@ -61,6 +63,18 @@ describe("WordPress publish truth contract", () => {
     }
   });
 
+  it.each([null, {published_at:null}, {admin_review_required:true}, {admin_reviewed_at:null}, {title:"N만원"}, {faqs:[{answer:"N만 원"}]}])("blocks ineligible canonical post %j", async state => {
+    mocks.readPost.mockResolvedValue({data:state===null?null:{...post,published_at:"2026-10-13",admin_reviewed_at:"2026-10-13",admin_review_required:false,...state},error:null});
+    expect(await publishToWordPress(blogId,post)).toMatchObject({ok:false,reason:"quality_not_approved"});
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.claim).not.toHaveBeenCalled();
+  });
+  it("holds a DB read exception before external side effects", async () => {
+    mocks.readPost.mockRejectedValueOnce(new Error("fixture read failure"));
+    expect(await publishToWordPress(blogId, post)).toMatchObject({reason:"quality_not_approved"});
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.claim).not.toHaveBeenCalled();
+  });
   it("publishes only when WordPress confirms publish and the expected host", async () => {
     wpReply("publish");
     expect(await publishToWordPress(blogId, post)).toEqual({ ok: true, wpPostId: 18489, wpPostUrl: wpLink });

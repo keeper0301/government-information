@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 맞춤추천 매칭 로직 (API 라우트 / 서버 컴포넌트 공용)
 // ============================================================
@@ -456,17 +457,17 @@ export async function getRelatedBlogs(opts: {
   if (candidates.length === 0) candidates.push("큐레이션");
 
   // pool 100 fetch — 모든 published 글 최신순 (cohort + score 가 좁혀줌)
-  const { data } = await supabase
+  const { data } = await publicBlogQuery(supabase
     .from("blog_posts")
     .select(
-      "slug, title, meta_description, category, tags, published_at, cover_image, reading_time_min",
-    )
+      "slug, title, meta_description, category, tags, published_at, cover_image, reading_time_min, content, faqs, admin_review_required, admin_reviewed_at, admin_review_score",
+    ))
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(100);
 
   if (!data || data.length === 0) return [];
-  const pool = data as (BlogCardData & { tags: string[] | null })[];
+  const pool = data.filter(isBlogReadable) as (BlogCardData & { tags: string[] | null })[];
 
   // ① cohort 필터 (30대 자영업자에 청년·학생 글 노출되던 사고 방지)
   const cohortFiltered = pool.filter((p) =>

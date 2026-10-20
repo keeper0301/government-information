@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // /c/[category] — 카테고리 hub (청년·노년·자영업·주거)
 // ============================================================
@@ -132,9 +133,9 @@ export default async function CategoryHubPage({ params }: PageProps) {
             })(),
             loadCategoryGuides(category),
             hub.blogCategory
-              ? supabase
+              ? publicBlogQuery(supabase
                   .from("blog_posts")
-                  .select("slug, title, category, published_at")
+                  .select("slug, title, category, published_at, content, meta_description, tags, faqs, cover_image, admin_review_required, admin_reviewed_at, admin_review_score"))
                   .eq("category", hub.blogCategory)
                   .not("published_at", "is", null)
                   .order("published_at", { ascending: false })
@@ -202,7 +203,7 @@ export default async function CategoryHubPage({ params }: PageProps) {
 
   const guides = guideResult.guides.filter((guide) => guideCategorySlugs(guide).includes(category)).slice(0, GUIDE_LIMIT);
   const showPolicyLists = !ADSENSE_REVIEW_MODE;
-  const blogPosts = (blogRes.data ?? []) as Array<{
+  const blogPosts = (blogRes.data ?? []).filter(isBlogReadable) as Array<{
     slug: string;
     title: string;
     category: string | null;

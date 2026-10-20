@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // /api/indexnow-submit-recent — 최근 24h 발행 글 자동 색인 ping
 // ============================================================
@@ -43,9 +44,9 @@ async function runSubmitRecent() {
   const since = new Date(Date.now() - RECENT_HOURS * 60 * 60 * 1000).toISOString();
 
   // 1) 최근 24h blog_posts
-  const { data: blogs, error: blogErr } = await supabase
+  const { data: blogs, error: blogErr } = await publicBlogQuery(supabase
     .from("blog_posts")
-    .select("slug, published_at, updated_at")
+    .select("slug, published_at, updated_at, title, content, meta_description, tags, faqs, category, cover_image, admin_review_required, admin_reviewed_at, admin_review_score"))
     .gte("published_at", since)
     .not("published_at", "is", null)
     .order("published_at", { ascending: false });
@@ -99,7 +100,8 @@ async function runSubmitRecent() {
 
   // URL list — keepioo 절대 URL
   const urls: string[] = [];
-  for (const b of blogs || []) {
+  const safeBlogs = (blogs ?? []).filter(isBlogReadable);
+  for (const b of safeBlogs) {
     urls.push(`${SITE_URL}/blog/${b.slug}`);
   }
   for (const n of news) {
@@ -121,7 +123,7 @@ async function runSubmitRecent() {
 
   return NextResponse.json({
     timestamp: new Date().toISOString(),
-    blog_count: blogs?.length ?? 0,
+    blog_count: safeBlogs.length,
     news_count: news.length,
     welfare_count: welfare.length,
     loan_count: loan.length,

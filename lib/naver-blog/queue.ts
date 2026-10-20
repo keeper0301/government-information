@@ -1,3 +1,4 @@
+import { isBlogPublic } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // 네이버 블로그 발행 큐 — DB 인터페이스
 // ============================================================
@@ -43,6 +44,10 @@ export type NaverQueueRowWithPayload = NaverQueueRow & {
  */
 export async function enqueueNaverBlog(blogPostId: string): Promise<boolean> {
   const admin = createAdminClient();
+  const { data: post, error: readError } = await admin.from("blog_posts")
+    .select("title,content,meta_description,tags,faqs,category,cover_image,published_at,admin_review_required,admin_reviewed_at")
+    .eq("id", blogPostId).maybeSingle();
+  if (readError || !post || !isBlogPublic(post)) return false;
   const { error } = await admin
     .from("naver_blog_queue")
     .insert({ blog_post_id: blogPostId, status: "pending" });

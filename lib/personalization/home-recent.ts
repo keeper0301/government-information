@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // lib/personalization/home-recent.ts
 // ============================================================
 // 홈 화면 below-the-fold "최근 정책 소식 / 정책 블로그" 섹션 personalization.
@@ -106,17 +107,17 @@ export async function getPersonalizedRecentBlogs(
   limit: number = 3,
 ): Promise<BlogCardData[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await publicBlogQuery(supabase
     .from("blog_posts")
     .select(
-      "slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image",
-    )
+      "slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image, content, faqs, admin_review_required, admin_reviewed_at, admin_review_score",
+    ))
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(POOL_LIMIT);
 
   if (!data || data.length === 0) return [];
-  const pool = data as (BlogCardData & { tags: string[] | null })[];
+  const pool = data.filter(isBlogReadable) as (BlogCardData & { tags: string[] | null })[];
 
   // 빈 프로필 또는 비로그인 → 그대로 최신순
   if (!profile || profile.isEmpty) {

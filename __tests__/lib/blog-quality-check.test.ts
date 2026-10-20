@@ -60,7 +60,7 @@ describe("buildBlogQualityPrompt", () => {
     expect(prompt).toContain("improvements");
   });
 
-  it("본문은 2400자로 잘라 LLM 비용과 지연을 제한한다", () => {
+  it("본문 전체를 검수한다", () => {
     const content = "가".repeat(3000);
     const prompt = buildBlogQualityPrompt(
       {
@@ -71,12 +71,12 @@ describe("buildBlogQualityPrompt", () => {
     );
 
     expect(prompt).toContain("가".repeat(2400));
-    expect(prompt).not.toContain("가".repeat(2401));
+    expect(prompt).toContain("가".repeat(3000));
   });
 });
 
 describe("evaluateBlogQuality", () => {
-  it("기본 검수 모드는 LLM 실패 시 발행 파이프라인을 막지 않는다", async () => {
+  it("기본 검수 계약은 호출 실패 시 기존 neutral 결과를 유지한다", async () => {
     vi.mocked(callLLM).mockRejectedValueOnce(new Error("temporary llm outage"));
 
     const result = await evaluateBlogQuality({

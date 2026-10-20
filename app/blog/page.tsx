@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // /blog — 블로그 글 목록
 // ============================================================
@@ -120,9 +121,9 @@ export default async function BlogIndexPage({
 
   // ─── 기본 목록 query (카테고리 필터 포함) ───────────────────────────────────────
   // tags 컬럼도 추가 — 개인화 점수 계산의 benefit_tags 소스로 사용
-  let query = supabase
+  let query = publicBlogQuery(supabase
     .from("blog_posts")
-    .select("slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image")
+    .select("slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image, content, faqs, admin_review_required, admin_reviewed_at, admin_review_score"))
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(50);
@@ -140,9 +141,9 @@ export default async function BlogIndexPage({
   // 사장님 멘탈 모델 — "소상공인" 필터 클릭 시 추천도 소상공인 글 안에서.
   // 이전엔 카테고리 무관 전체 풀이라 "소상공인 (1)" 필터에서 "주거" 카테고리 글이
   // 추천에 떠 사용자 혼란.
-  let poolQuery = supabase
+  let poolQuery = publicBlogQuery(supabase
     .from("blog_posts")
-    .select("slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image")
+    .select("slug, title, meta_description, category, tags, reading_time_min, published_at, cover_image, content, faqs, admin_review_required, admin_reviewed_at, admin_review_score"))
     .not("published_at", "is", null)
     .order("published_at", { ascending: false })
     .limit(100);
@@ -160,7 +161,7 @@ export default async function BlogIndexPage({
     ]);
 
   // BlogCardData 로 사용할 목록 (tags 는 BlogCard 에서 불필요하므로 포함해도 무방)
-  const list = (posts || []) as (BlogCardData & { tags: string[] | null })[];
+  const list = (posts || []).filter(isBlogReadable) as (BlogCardData & { tags: string[] | null })[];
 
   // ─── 개인화 점수 매칭 ─────────────────────────────────────────────────────────
   // profile 이 있고 비어있지 않을 때만 점수 계산 (비로그인·빈 프로필은 skip)
@@ -172,7 +173,7 @@ export default async function BlogIndexPage({
   if (profile && !profile.isEmpty) {
     // ① cohort 필터로 부적합 글 제거 (30대 자영업자에 청년·학생 글 노출되던 문제 해결).
     //    score.ts 본문 기반 cohort 검사는 blog 짧은 description 으론 약해 별도 필터 적용.
-    const cohortFiltered = (poolData || []).filter((p) =>
+    const cohortFiltered = (poolData || []).filter(isBlogReadable).filter((p) =>
       isBlogCohortFit(
         {
           category: p.category,
@@ -198,7 +199,7 @@ export default async function BlogIndexPage({
 
   // slug → 원본 BlogCardData 매핑 — 분리 섹션 렌더 시 원본 카드 데이터 복원용
   const poolMap = new Map(
-    (poolData || []).map((p) => [p.slug, p as BlogCardData & { tags: string[] | null }])
+    (poolData || []).filter(isBlogReadable).map((p) => [p.slug, p as BlogCardData & { tags: string[] | null }])
   );
 
   // 분리 섹션에 노출된 slug 집합 — 전체 리스트에서 MatchBadge 표시 대상 확정

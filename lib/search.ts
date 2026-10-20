@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // 통합 검색 헬퍼 — /api/search (자동완성) 와 /search (결과 페이지) 가 공유.
 // 한국어 검색을 위해 검색어를 공백으로 토큰 분리 후 각 토큰마다
 // (필드 OR 매칭) AND 결합. 이유: ILIKE 정확 문자열 매칭이라 "창업 지원금"
@@ -151,12 +152,12 @@ export async function searchAll(
         .neq("category", "press")
     : null;
   let blogQ = activeTypes.has("blog")
-    ? supabase
+    ? publicBlogQuery(supabase
         .from("blog_posts")
         .select(
-          "slug, title, meta_description, category, published_at, cover_image, reading_time_min",
+          "slug, title, meta_description, category, published_at, cover_image, reading_time_min, content, tags, faqs, admin_review_required, admin_reviewed_at, admin_review_score",
           countOption,
-        )
+        ))
         .not("published_at", "is", null)
     : null;
 
@@ -206,7 +207,7 @@ export async function searchAll(
   const welfareDisplay = (welfareRes.data || []).map(welfareToDisplay);
   const loanDisplay = (loanRes.data || []).map(loanToDisplay);
   const newsList = (newsRes.data || []) as NewsHit[];
-  const blogList = (blogRes.data || []) as BlogHit[];
+  const blogList = (blogRes.data || []).filter(isBlogReadable) as BlogHit[];
 
   // includeCount=false 면 count 가 null/undefined → 표시용 0 으로 fallback.
   // 표시 측에서 includeCount 와 함께 계산되므로 0 이어도 사용자에게 잘못 안 보임.

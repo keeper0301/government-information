@@ -1,3 +1,5 @@
+import { prepareBlogSave } from "@/lib/blog/prepare-save";
+import { hasUnfinishedAmount, isBlogPublicationApproved } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // /admin/blog/[id] — 블로그 글 편집
 // ============================================================
@@ -93,24 +95,22 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
     const safeContent = await sanitizeBlogHtml(content);
 
     const admin2 = createAdminClient();
-    const { error: updateError } = await admin2
-      .from("blog_posts")
-      .update({
-        title,
-        meta_description: metaDescription || null,
-        category,
-        tags: tags.length > 0 ? tags : null,
-        cover_image: coverImage,
-        content: safeContent,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    if (updateError) {
-      redirect(
-        `/admin/blog/${id}?error=${encodeURIComponent(`저장 실패: ${updateError.message}`)}`,
-      );
+    const {data: latest, error: readError} = await admin2.from("blog_posts").select("*").eq("id",id).maybeSingle();
+    if (readError || !latest) redirect("/admin/blog/"+id+"?error=read_failed");
+    let patch: Record<string, unknown> | null;
+    try {
+      patch = await prepareBlogSave(latest, {
+        title, meta_description:metaDescription || null, category,
+        tags:tags.length > 0 ? tags : null, cover_image:coverImage, content:safeContent,
+      }, post!.updated_at);
+    } catch (error) {
+      redirect("/admin/blog/"+id+"?error="+encodeURIComponent(error instanceof Error ? error.message : "저장 검수 실패"));
     }
+    if (!patch) redirect("/admin/blog/"+id+"?saved=1");
+    const {data:saved, error:updateError} = await admin2.from("blog_posts")
+      .update({...patch,updated_at:new Date().toISOString()})
+      .eq("id",id).eq("updated_at",latest.updated_at).select("id");
+    if (updateError || saved?.length !== 1) redirect("/admin/blog/"+id+"?error=save_failed_or_stale");
 
     await logAdminAction({
       actorId: user.id,
@@ -135,19 +135,22 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
     "use server";
     const user = await requireAdmin();
     const admin2 = createAdminClient();
-    const nowPublished = !!post!.published_at;
+    const { data: latest, error: readError } = await admin2.from("blog_posts").select("*").eq("id", id).maybeSingle();
+    if (readError || !latest) redirect("/admin/blog/"+id+"?error=read_failed");
+    const nowPublished = !!latest.published_at;
+    if (!nowPublished && !isBlogPublicationApproved(latest)) redirect("/admin/blog/"+id+"?error=quality_not_approved");
 
-    const { error: updateError } = await admin2
+    const { data: saved, error: updateError } = await admin2
       .from("blog_posts")
       .update({
         published_at: nowPublished ? null : new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id).eq("updated_at", latest.updated_at).select("id");
 
-    if (updateError) {
+    if (updateError || saved?.length !== 1) {
       redirect(
-        `/admin/blog/${id}?error=${encodeURIComponent(`상태 변경 실패: ${updateError.message}`)}`,
+        `/admin/blog/${id}?error=${encodeURIComponent(`상태 변경 실패: ${updateError?.message ?? "stale_content"}`)}`,
       );
     }
 
@@ -168,18 +171,20 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
     const user = await requireAdmin();
     const admin2 = createAdminClient();
 
-    const { error: updateError } = await admin2
+    const { data: latest, error: readError } = await admin2.from("blog_posts").select("*").eq("id", id).maybeSingle();
+    if (readError || !latest || hasUnfinishedAmount(latest)) redirect("/admin/blog/"+id+"?error=quality_not_approved");
+    const { data: saved, error: updateError } = await admin2
       .from("blog_posts")
       .update({
         admin_review_required: false,
         admin_reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id).eq("updated_at", latest.updated_at).select("id");
 
-    if (updateError) {
+    if (updateError || saved?.length !== 1) {
       redirect(
-        `/admin/blog/${id}?error=${encodeURIComponent(`품질 승인 실패: ${updateError.message}`)}`,
+        `/admin/blog/${id}?error=${encodeURIComponent(`품질 승인 실패: ${updateError?.message ?? "stale_content"}`)}`,
       );
     }
 
@@ -209,7 +214,7 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
 
     const { data: latest, error: readError } = await admin2
       .from("blog_posts")
-      .select("id, slug, title, content, admin_review_score, admin_review_required")
+      .select("*")
       .eq("id", id)
       .maybeSingle();
 
@@ -220,12 +225,12 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
     }
 
     const result = await evaluateBlogQuality(
-      { title: latest.title, content: latest.content ?? "" },
+      { ...latest, content: latest.content ?? "" },
       { failClosed: true },
     );
     const isTransientFailure = isTransientQualityReviewFailure(result);
 
-    const { error: updateError } = await admin2
+    const { data: saved, error: updateError } = await admin2
       .from("blog_posts")
       .update({
         admin_review_score: result.score,
@@ -233,11 +238,11 @@ export default async function AdminBlogEditPage({ params, searchParams }: Props)
         admin_reviewed_at: isTransientFailure ? null : new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id).eq("updated_at", latest.updated_at).select("id");
 
-    if (updateError) {
+    if (updateError || saved?.length !== 1) {
       redirect(
-        `/admin/blog/${id}?error=${encodeURIComponent(`품질 재검수 저장 실패: ${updateError.message}`)}`,
+        `/admin/blog/${id}?error=${encodeURIComponent(`품질 재검수 저장 실패: ${updateError?.message ?? "stale_content"}`)}`,
       );
     }
 

@@ -1,3 +1,4 @@
+import { publicBlogQuery, isBlogReadable } from "@/lib/blog/publication-eligibility";
 // ============================================================
 // /rss — RSS 2.0 피드 (네이버 검색 로봇·RSS 리더용)
 // ============================================================
@@ -35,9 +36,9 @@ export async function GET() {
           .select("slug, title, summary, published_at")
           .order("published_at", { ascending: false })
           .limit(30),
-    supabase
+    publicBlogQuery(supabase
       .from("blog_posts")
-      .select("slug, title, meta_description, published_at")
+      .select("slug, title, meta_description, published_at, content, tags, faqs, category, cover_image, admin_review_required, admin_reviewed_at, admin_review_score"))
       .not("published_at", "is", null)
       .order("published_at", { ascending: false })
       .limit(ADSENSE_REVIEW_MODE ? 40 : 10),
@@ -81,7 +82,7 @@ export async function GET() {
     category: "정책소식",
   }));
 
-  const blogItems: FeedItem[] = (blogRes.data ?? []).map((b) => ({
+  const blogItems: FeedItem[] = (blogRes.data ?? []).filter(isBlogReadable).map((b) => ({
     title: b.title,
     description: b.meta_description ?? "",
     link: `${baseUrl}/blog/${encodeURIComponent(b.slug)}`,
