@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { runNewsPublication } from '@/lib/news-publication/run';
+import { saveNewsRun } from '@/lib/news-publication/run-log';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 240;
@@ -12,11 +13,13 @@ export async function GET(request: Request) {
   if (denied) return denied;
   try {
     const result = await runNewsPublication();
+    const runRecorded = await saveNewsRun(result);
     if (result.published) {
       for (const path of ['/', '/news', ...result.slugs.map(slug => `/news/${slug}`)]) revalidatePath(path);
     }
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, runRecorded }, { status: result.stopReason === 'failed' ? 500 : 200 });
   } catch {
+    await saveNewsRun({ stopReason: 'failed' });
     return NextResponse.json({ error: '정책뉴스 자동 발행 작업에 실패했습니다.' }, { status: 500 });
   }
 }

@@ -157,6 +157,8 @@
 
 ## 정책뉴스 분류 기준
 
+운영 상태·사진 파일·보류 복구·발행 후 재확인 절차는 [발행 후 운영 점검](news-operations-followup.md)을 따른다.
+
 지역 원문 근거, 관련 가이드·공식 창구, 일정 표시와 전체 검색의 세부 규칙은 [뉴스 탐색 운영 기준](news-reader-improvements.md)을 따른다.
 
 - 자동 공개 직전에 `lib/news-publication/classification.ts`로 분류한다. 수집 자료의 본문 단어 태그는 공개 글에 복사하지 않는다.

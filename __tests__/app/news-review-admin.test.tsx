@@ -1,14 +1,15 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-const mock = vi.hoisted(() => ({ auth: vi.fn(), from: vi.fn(), limit: vi.fn() }));
+const mock = vi.hoisted(() => ({ auth: vi.fn(), from: vi.fn(), limit: vi.fn(), rpc: vi.fn() }));
 vi.mock('@/lib/admin-auth-server', () => ({ requireAdminUser: mock.auth }));
-vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: mock.from }) }));
+vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ from: mock.from, rpc: mock.rpc }) }));
 vi.mock('next/navigation', () => ({ redirect: () => { throw Error('로그인 필요'); } }));
 import Page from '@/app/admin/news/review/page';
 import { reviewLines } from '@/lib/news-publication/review-display';
 beforeEach(() => {
   vi.clearAllMocks();
   mock.auth.mockResolvedValue({ id: '관리자' });
+  mock.rpc.mockResolvedValue({ data: { reason: 'daily_limit' } });
   mock.from.mockReturnValue({ select: () => ({ order: () => ({ limit: mock.limit }) }) });
 });
 it('관리자가 아니면 비공개 자료 조회 전에 차단한다', async () => {
@@ -28,6 +29,11 @@ it('조회 오류를 빈 결과로 숨기지 않는다', async () => {
   const html = renderToStaticMarkup(await Page());
   expect(html).toContain('불러오지 못했습니다');
   expect(html).not.toContain('비공개 내부 오류');
+});
+it('최근 확인한 미분류 기사도 지역 재확인 대상으로 표시한다', async () => {
+  mock.limit.mockResolvedValue({ data: [{ source_id: '148973720', status: 'published', article_title: '임산부 서비스 소개',
+    article_answer: '서비스 안내', checked_at: '2099-01-01', classification: { regions: ['unclassified'], benefits: ['양육'] } }] });
+  expect(renderToStaticMarkup(await Page())).toContain('적용 지역의 근거를 다시 확인할 대상');
 });
 it('처리 자료가 없으면 빈 현황을 안내한다', async () => {
   mock.limit.mockResolvedValue({ data: [], error: null });

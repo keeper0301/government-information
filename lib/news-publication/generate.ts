@@ -14,6 +14,7 @@ import { reviewFixedClaims } from './claim-review';
 import { makePlannedRepair, applyPlannedRepair } from './planned-repair';
 import { restoreSourceAmounts } from './source-amounts';
 import { sourceCheckIssue, sourceAffinitySchema } from './source-check-issue';
+import { newsRetryGuidance } from './retry-guidance';
 const newsDraftResponse = { name: 'policy_news_draft', schema: {
   type: 'object', additionalProperties: false,
   required: ['skip', 'kind', 'title', 'question', 'answer', 'audience', 'sections'],
@@ -106,7 +107,8 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
     audit.nextAttempt();
     const raw = fixedCases ? JSON.stringify(fixedReportDraft(fixedCases, reportCore)) : await callLLM({ model: 'gpt-4.1-mini', responseSchema: plannedRepair?.responseSchema ?? copyRepair?.responseSchema ?? responseSchema,
       maxTokens: copyRepair ? 1800 : 3200, timeoutMs: attempt ? 25000 : 40000,
-      prompt: plannedRepair?.prompt ?? copyRepair?.prompt ?? (attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n오류에 해당하는 답변과 본문 표현을 원문으로 다시 대조해 고치세요. 이전 초안의 잘못된 표현을 그대로 옮기지 마세요. 원문에 없는 이용 제한·기간 확대·확정 계획을 추가하지 말고, 참가 사례를 보존한 기사 전체를 반환하세요.` : prompt) });
+      prompt: (plannedRepair?.prompt ?? copyRepair?.prompt ?? (attempt ? `${prompt}\n이전 초안: ${JSON.stringify(value)}\n수정할 오류: ${issue}\n오류에 해당하는 답변과 본문 표현을 원문으로 다시 대조해 고치세요. 이전 초안의 잘못된 표현을 그대로 옮기지 마세요. 원문에 없는 이용 제한·기간 확대·확정 계획을 추가하지 말고, 참가 사례를 보존한 기사 전체를 반환하세요.` : prompt))
+        + (attempt ? `\n${newsRetryGuidance(issue)}` : '') });
     const response = parseJSONResponse(raw);
     const repaired = plannedRepair ? applyPlannedRepair(value, response, plannedRepair) : copyRepair ? applyCopyRepair(value, response, copyRepair) : response;
     if (plannedRepair && !repaired) throw new NewsDraftError('예정 상태 수정 응답의 위치나 형식이 달라 보류했습니다.', { draft: value });
