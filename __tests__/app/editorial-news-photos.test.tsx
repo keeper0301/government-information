@@ -13,6 +13,23 @@ const automatic = { ...EDITORIAL_NEWS[0], slug: "policy-brief-148972905",
   title: "중장년 구직자 관광산업 취업 지원", automaticPublication: { checkedAt: "2026-10-07T00:00:00Z", sourceHash: "검사용" } };
 
 describe("자동 뉴스 자료사진", () => {
+  it.each([['한복문화주간 행사 안내', 'hanbok'], ['임산부의 날 지원 서비스', 'pregnancy']])(
+    '새 자동 기사에 관련 사진과 출처를 연결한다: %s', async (title, file) => {
+      const article = { ...automatic, slug: 'new-automatic-topic', title };
+      const html = renderToStaticMarkup(await EditorialNewsDetail({ article }));
+      expect(html).toContain(`/images/news/${file}.webp`);
+      expect(html).toContain('자료사진');
+      expect(html).toContain('publicdomain/zero/1.0/deed.ko');
+      expect(getEditorialNewsPhoto({ ...article, photoPolicy: 'official-only' })).toBeNull();
+    });
+  it('공주 여행의 본문 방문지를 확인하며 다른 공주 언급으로 사진을 선택하지 않는다', () => {
+    const article = { slug: 'new-travel', title: '제철 밤을 즐기는 공주 여행',
+      sections: [{ heading: '방문지', paragraphs: ['공산성에서 백제 성곽을 살펴볼 수 있다.'] }] };
+    expect(getEditorialNewsPhoto(article)?.url).toContain('gongsanseong');
+    expect(getEditorialNewsPhoto({ ...article, sections: [] })).toBeNull();
+    expect(getEditorialNewsPhoto({ ...article, title: '동화 속 공주 이야기' })).toBeNull();
+    expect(getEditorialNewsPhoto({ ...article, photoPolicy: 'official-only' })).toBeNull();
+  });
   it.each([
     ['148973548', 'child-blocks', 'Bobjgalindo', '2010', '해당 어린이집·유치원 사진이 아닙니다', 'A_pile_of_alphabet_wooden_blocks.jpg', 'licenses/by/4.0'],
     ['148973657', 'housing-apartments', 'Samuel Orchard', '2008', '기사에서 모집하는 주택이나 지역을 뜻하지 않습니다', 'Apartment_blocks_in_Eomgung-dong_of_Busan,_Korea-01.jpg', 'licenses/by-sa/2.0'],

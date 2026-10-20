@@ -1,6 +1,6 @@
 import { NewsDraftError } from './errors';
 
-export const NEWS_REVIEW_VERSION = '2026-10-19-source-state-v1';
+export const NEWS_REVIEW_VERSION = '2026-10-20-event-state-v2';
 export type ReviewStage = 'generation' | 'draft' | 'sourceState' | 'caseClaims' | 'facts' | 'quality' | 'contentDepth';
 export type ReviewEvent = { attempt: number; stage: ReviewStage; status: 'started' | 'passed' | 'held'; reason?: string };
 

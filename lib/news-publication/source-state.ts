@@ -1,4 +1,5 @@
 import type { NewsDraft } from './validation';
+import { eventStateIssue } from './event-state';
 
 // 검토를 확대 전망으로, 체결 예고를 완료 사실로 바꾸는 실제 실패 유형을 차단합니다.
 const sentences = (text: string) => text.split(/[.!?。\n]/u).map(part => part.trim()).filter(Boolean);
@@ -18,6 +19,8 @@ function asserts(sentence: string, pattern: RegExp): boolean {
 }
 
 export function sourceStateIssue(draft: NewsDraft, body: string): string | null {
+  const eventIssue = eventStateIssue(draft, body);
+  if (eventIssue) return eventIssue;
   const sourceSentences = sentences(body);
   const expansionUnderReview = sourceSentences.some(text => /확대\s*(?:적용\s*)?여부[^.!?。]*검토/u.test(text));
   const agreementPlanned = sourceSentences.some(text => plannedAgreement.test(text));
