@@ -4,9 +4,10 @@ export function newsToolFailure(error: unknown) {
   const statusMatch = /^OpenAI API 오류 ([45]\d{2}):/.exec(message);
   if (statusMatch) {
     const httpStatus = Number(statusMatch[1]);
-    const kind = httpStatus === 401 ? 'authentication' : httpStatus === 403 ? 'permission'
+    const kind = httpStatus === 408 ? 'timeout' : httpStatus === 401 ? 'authentication' : httpStatus === 403 ? 'permission'
       : httpStatus === 429 ? 'rate_or_quota' : httpStatus >= 500 ? 'provider_unavailable' : 'request_rejected';
     const reasons = {
+      timeout: '작성 도구 응답 대기 시간이 초과됐습니다.',
       authentication: '작성 도구 인증에 실패했습니다.', permission: '작성 도구 사용 권한이 거부됐습니다.',
       rate_or_quota: '작성 도구 요청량 또는 사용 한도에 걸렸습니다.',
       provider_unavailable: '작성 도구 제공 서버에서 오류가 발생했습니다.',

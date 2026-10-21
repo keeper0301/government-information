@@ -6,7 +6,7 @@ import { NewsDraftError } from '@/lib/news-publication/errors';
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 it.each([
-  [400, 'request_rejected'], [401, 'authentication'], [403, 'permission'],
+  [400, 'request_rejected'], [401, 'authentication'], [403, 'permission'], [408, 'timeout'],
   [429, 'rate_or_quota'], [500, 'provider_unavailable'],
 ])('작성 서버의 %s 오류를 비밀값 없이 구분한다', async (status, kind) => {
   vi.stubEnv('OPENAI_API_KEY', '검사용-비밀키');
