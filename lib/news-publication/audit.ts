@@ -1,4 +1,5 @@
 import { NewsDraftError } from './errors';
+import { newsToolFailure } from './tool-failure';
 
 export const NEWS_REVIEW_VERSION = '2026-10-20-event-state-v2';
 export type ReviewStage = 'generation' | 'draft' | 'sourceState' | 'caseClaims' | 'facts' | 'quality' | 'contentDepth';
@@ -31,8 +32,11 @@ export async function withNewsReviewAudit<T>(work: (audit: NewsReviewAudit) => P
     return { ...result, reviewAudit: audit.snapshot('passed') };
   } catch (error) {
     // 작성 도구의 원시 오류에는 비밀값이 포함될 수 있으므로 저장하지 않습니다.
-    const reason = error instanceof NewsDraftError ? error.message : '작성 도구 호출 또는 응답 처리에 실패했습니다.';
-    const evidence = error instanceof NewsDraftError && error.evidence && typeof error.evidence === 'object' ? error.evidence : {};
+    const failure = newsToolFailure(error);
+    const reason = error instanceof NewsDraftError ? error.message : failure.reason;
+    const evidence = error instanceof NewsDraftError
+      ? (error.evidence && typeof error.evidence === 'object' ? error.evidence : {})
+      : { toolFailure: failure.detail };
     throw new NewsDraftError(reason, { ...evidence, reviewAudit: audit.fail(reason) });
   }
 }
