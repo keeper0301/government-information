@@ -4,6 +4,17 @@ export function newsToolFailure(error: unknown) {
   const statusMatch = /^OpenAI API 오류 ([45]\d{2}):/.exec(message);
   if (statusMatch) {
     const httpStatus = Number(statusMatch[1]);
+    // 온전한 오류 객체의 알려진 코드만 해석합니다. 잘린 응답은 원인을 추측하지 않습니다.
+    if (httpStatus === 429) {
+      try {
+        const body = JSON.parse(message.slice(statusMatch[0].length));
+        if (body?.error?.code === 'credit_balance_exhausted')
+          return { reason: '작성 도구의 결제 잔액이 소진됐습니다.', detail: { kind: 'credit_exhausted', httpStatus } };
+        if (body?.error?.code === 'insufficient_quota' || body?.error?.type === 'insufficient_quota')
+          return { reason: '작성 도구 사용 한도가 부족합니다. 잔액과 한도 설정 확인이 필요합니다.',
+            detail: { kind: 'insufficient_quota', httpStatus } };
+      } catch { /* 응답 본문은 기록하지 않고 일반적인 요청량·한도 오류로 남깁니다. */ }
+    }
     const kind = httpStatus === 408 ? 'timeout' : httpStatus === 401 ? 'authentication' : httpStatus === 403 ? 'permission'
       : httpStatus === 429 ? 'rate_or_quota' : httpStatus >= 500 ? 'provider_unavailable' : 'request_rejected';
     const reasons = {
