@@ -40,13 +40,14 @@ import {
   POST,
 } from "@/app/api/admin/disable-adsense-review-mode/route";
 
-function postReq(opts: { origin?: string; host?: string } = {}): Request {
+function postReq(opts: { origin?: string; host?: string; approval?: string } = {}): Request {
   const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" });
   if (opts.origin) headers.set("origin", opts.origin);
   if (opts.host) headers.set("host", opts.host);
   return new Request("https://www.keepioo.com/api/admin/disable-adsense-review-mode", {
     method: "POST",
     headers,
+    body: new URLSearchParams({ google_approval: opts.approval ?? "keepioo.com-ready" }),
   });
 }
 
@@ -60,17 +61,60 @@ beforeEach(() => {
 });
 
 describe("GET — confirm HTML page", () => {
+  it("고비율이면 실제 비율 표시와 버튼 차단", async () => {
+    mocks.getNewsRatio.mockResolvedValue({ welfare: 18657, loan: 0, blog: 0, newsIndexable: 37443, ratio: 37443 / 56100, commentaryBackfillRatio: 0.8 });
+    const html = await (await GET()).text();
+    expect(html).toContain("66.7%");
+    expect(html).toContain("37,443 / total 56,100");
+    expect(html).toContain('type="submit" disabled');
+  });
+  it("통계 조회 실패 시 버튼 차단", async () => {
+    mocks.getNewsRatio.mockRejectedValue(new Error("unavailable"));
+    expect(await (await GET()).text()).toContain('type="submit" disabled');
+  });
   it("백필 % 가 HTML 안에 표시", async () => {
-    mocks.getNewsRatio.mockResolvedValue({ commentaryBackfillRatio: 0.85 });
+    mocks.getNewsRatio.mockResolvedValue({ welfare: 500, loan: 150, blog: 50, newsIndexable: 300, ratio: 0.3, commentaryBackfillRatio: 0.85 });
     const res = await GET();
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("85.0%");
     expect(html).toContain("OFF 확정");
+    expect(html).toContain("30.0%");
+    expect(html).toContain("300 / total 1,000");
+    expect(html).not.toContain('type="submit" disabled');
   });
 });
 
 describe("POST — security gates", () => {
+  it("통계 조회 실패는 503으로 반환하고 환경값과 배포를 변경하지 않는다", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { email: "a@b.com", id: "u1" } } });
+    mocks.isAdminUser.mockReturnValue(true);
+    mocks.getNewsRatio.mockRejectedValue(new Error("unavailable"));
+    expect((await POST(postReq())).status).toBe(503);
+    expect(mocks.updateProjectEnvByKey).not.toHaveBeenCalled();
+    expect(mocks.triggerProductionRedeploy).not.toHaveBeenCalled();
+  });
+  it.each(["", "account-ready", "other-site-ready"])("사이트 승인 확인 %s 없으면 수치 충족만으로 전환하지 않는다", async approval => {
+    mocks.getUser.mockResolvedValue({ data: { user: { email: "a@b.com", id: "u1" } } });
+    mocks.isAdminUser.mockReturnValue(true);
+    mocks.getNewsRatio.mockResolvedValue({ welfare: 500, loan: 150, blog: 50, newsIndexable: 300, ratio: 0.3, commentaryBackfillRatio: 0.85 });
+    expect((await POST(postReq({ approval }))).status).toBe(400);
+    expect(mocks.updateProjectEnvByKey).not.toHaveBeenCalled();
+    expect(mocks.triggerProductionRedeploy).not.toHaveBeenCalled();
+  });
+
+  it.each([0.6, 37443 / 56100])("백필 80%라도 news %s이면 OFF와 배포 차단", async (newsRatio) => {
+    mocks.getUser.mockResolvedValue({ data: { user: { email: "a@b.com", id: "u1" } } });
+    mocks.isAdminUser.mockReturnValue(true);
+    mocks.getNewsRatio.mockResolvedValue({ welfare: 18657, loan: 0, blog: 0, newsIndexable: 37443, ratio: newsRatio, commentaryBackfillRatio: 0.8 });
+    const res = await POST(postReq());
+    expect(res.status).toBe(400);
+    expect((await res.json()).news_ratio).toBe(newsRatio);
+    expect(mocks.updateProjectEnvByKey).not.toHaveBeenCalled();
+    expect(mocks.triggerProductionRedeploy).not.toHaveBeenCalled();
+    expect(mocks.logAdminAction).not.toHaveBeenCalled();
+  });
+
   it("cross-origin Origin 헤더 → 403 (CSRF)", async () => {
     const res = await POST(
       postReq({ origin: "https://evil.com", host: "www.keepioo.com" }),
@@ -97,7 +141,7 @@ describe("POST — security gates", () => {
   it("백필 < 80% → 400 (안전 차단)", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { email: "a@b.com", id: "u1" } } });
     mocks.isAdminUser.mockReturnValue(true);
-    mocks.getNewsRatio.mockResolvedValue({ commentaryBackfillRatio: 0.5 });
+    mocks.getNewsRatio.mockResolvedValue({ welfare: 500, loan: 150, blog: 50, newsIndexable: 300, ratio: 0.3, commentaryBackfillRatio: 0.5 });
     const res = await POST(postReq());
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -109,7 +153,7 @@ describe("POST — Vercel API 경로", () => {
   beforeEach(() => {
     mocks.getUser.mockResolvedValue({ data: { user: { email: "a@b.com", id: "u1" } } });
     mocks.isAdminUser.mockReturnValue(true);
-    mocks.getNewsRatio.mockResolvedValue({ commentaryBackfillRatio: 0.85 });
+    mocks.getNewsRatio.mockResolvedValue({ welfare: 500, loan: 150, blog: 50, newsIndexable: 300, ratio: 0.3, commentaryBackfillRatio: 0.85 });
   });
 
   it("정상 → 200 HTML success page (emerald)", async () => {
