@@ -10,7 +10,29 @@ beforeEach(() => {
   vi.clearAllMocks();
   mock.auth.mockResolvedValue({ id: '관리자' });
   mock.rpc.mockResolvedValue({ data: { reason: 'daily_limit' } });
-  mock.from.mockReturnValue({ select: () => ({ order: () => ({ limit: mock.limit }) }) });
+  const ordered = { order: () => ({ limit: mock.limit }) };
+  mock.from.mockReturnValue({ select: () => ({ ...ordered, eq: () => ordered }) });
+});
+it('한도 도달 상태에서도 최근 공통 장애와 필요한 조치를 함께 표시한다', async () => {
+  mock.rpc.mockResolvedValue({ data: { reason: 'attempt_limit' } });
+  mock.limit.mockResolvedValueOnce({ data: [{ published_at: '2026-10-20T02:11:00Z' }] })
+    .mockResolvedValueOnce({ data: [] }).mockResolvedValueOnce({ data: [{
+      source_id: '148973397', status: 'held', reason: '작성 도구의 결제 잔액이 소진됐습니다.',
+      attempted_at: '2026-10-26T02:10:00Z', tool_failure: { kind: 'credit_exhausted' },
+    }] });
+  const html = renderToStaticMarkup(await Page());
+  expect(html).toContain('후보 검사 한도');
+  expect(html).toContain('최근 기사 시도에서 확인한 공통 장애');
+  expect(html).toContain('결제 잔액과 사용 한도');
+  expect(html).toContain('과거 시도 기록');
+  expect(html).toContain('마지막 자동 공개');
+  expect(html).toContain('다음 예약 시각');
+});
+it('최신 시도가 성공하면 오래된 공통 장애를 현재 안내로 남기지 않는다', async () => {
+  mock.limit.mockResolvedValueOnce({ data: [] }).mockResolvedValueOnce({ data: [] })
+    .mockResolvedValueOnce({ data: [{ status: 'published', source_id: '148973398' },
+      { status: 'held', source_id: '148973397', tool_failure: { kind: 'credit_exhausted' } }] });
+  expect(renderToStaticMarkup(await Page())).not.toContain('최근 기사 시도에서 확인한 공통 장애');
 });
 it('관리자가 아니면 비공개 자료 조회 전에 차단한다', async () => {
   mock.auth.mockResolvedValue(null);

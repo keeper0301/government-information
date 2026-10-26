@@ -20,6 +20,35 @@ beforeEach(() => {
     ? { data: claimed ? null : (claimed = true, row), error: null } : { data: true, error: null });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+it.each(['credit_exhausted', 'insufficient_quota', 'authentication', 'permission'])
+('공통 장애 %s는 근거를 저장하고 다음 후보를 예약하지 않는다', async kind => {
+  const evidence = { toolFailure: { kind }, reviewAudit: { events: [{ stage: 'generation', status: 'held' }] } };
+  mock.generate.mockRejectedValueOnce(new NewsDraftError('작성 서비스 공통 장애', evidence));
+  expect(await runNewsPublication()).toMatchObject({ attempted: 1, held: 1, published: 0, stopReason: kind });
+  expect(mock.rpc.mock.calls.filter(([name]) => name === 'claim_editorial_news_with_status')).toHaveLength(1);
+  expect(mock.rpc.mock.calls.find(([name]) => name === 'finish_editorial_news')?.[1].p_evidence).toEqual(evidence);
+});
+it('공통 장애 보류 저장이 충돌해도 다음 후보를 소비하지 않는다', async () => {
+  mock.generate.mockRejectedValueOnce(new NewsDraftError('잔액 소진', { toolFailure: { kind: 'credit_exhausted' } }));
+  mock.rpc.mockResolvedValueOnce({ data: row }).mockResolvedValueOnce({ data: false });
+  expect(await runNewsPublication()).toMatchObject({ attempted: 1, held: 0, conflicts: 1, stopReason: 'credit_exhausted' });
+  expect(mock.rpc).toHaveBeenCalledTimes(2);
+});
+it('첫 글 공개 후 공통 장애가 발생하면 이미 공개한 주소와 건수를 유지한다', async () => {
+  // 첫 글은 공개하고 두 번째 호출에서만 공통 장애를 재현합니다.
+  mock.generate.mockReset().mockResolvedValueOnce({ title: '한복문화주간 행사', sections: [] })
+    .mockRejectedValueOnce(new NewsDraftError('잔액 소진', { toolFailure: { kind: 'credit_exhausted' } }));
+  mock.rpc.mockImplementation(async name => ({ data: name === 'claim_editorial_news_with_status' ? row : true }));
+  expect(await runNewsPublication()).toMatchObject({ attempted: 2, published: 1, held: 1,
+    stopReason: 'credit_exhausted', slugs: [`policy-brief-${row.source_id}`] });
+});
+it('일시적 요청 제한은 공통 설정 장애로 단정하지 않고 다음 후보를 처리한다', async () => {
+  mock.generate.mockRejectedValueOnce(new NewsDraftError('일시 제한', { toolFailure: { kind: 'rate_or_quota' } }));
+  let claims = 0;
+  mock.rpc.mockImplementation(async name => ({ data: name === 'claim_editorial_news_with_status'
+    ? claims++ < 2 ? row : { stopReason: 'no_candidates' } : true }));
+  expect(await runNewsPublication()).toMatchObject({ attempted: 2, published: 1, held: 1, stopReason: 'no_candidates' });
+});
 it('후보가 없을 때 예약 잠금 안에서 반환된 종료 이유를 보존한다', async () => {
   mock.rpc.mockResolvedValueOnce({ data: { stopReason: 'daily_limit' }, error: null });
   expect(await runNewsPublication()).toMatchObject({ attempted: 0, published: 0, stopReason: 'daily_limit' });
