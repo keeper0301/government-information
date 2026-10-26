@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { checkNewsPhoto } from '@/lib/news-publication/photo-check';
-import { queueStatusLabel } from '@/lib/news-publication/queue-status';
+import { queueStatusLabel, sharedNewsFailure, nextNewsRun } from '@/lib/news-publication/queue-status';
 import { newsFollowupReasons, compareNewsSource } from '@/lib/news-publication/followup';
 import { newsRetryGuidance } from '@/lib/news-publication/retry-guidance';
 import type { EditorialNews } from '@/lib/editorial-news-data';
@@ -12,6 +12,20 @@ const article: EditorialNews = { slug: '검사용', title: '한복문화주간 �
   updatedAt: '2026-10-20', guideSlug: '',
   sections: [], classification: { benefits: ['문화'], regions: ['unclassified'] } };
 afterEach(() => vi.unstubAllGlobals());
+it('확인된 공통 장애만 중단 대상으로 삼고 원시 오류를 표시하지 않는다', () => {
+  expect(sharedNewsFailure({ toolFailure: { kind: 'credit_exhausted' } })).toBe('credit_exhausted');
+  for (const value of [null, {}, { toolFailure: null }, { toolFailure: { kind: 'rate_or_quota' } },
+    { toolFailure: { kind: 'timeout' } }, { toolFailure: { kind: '비밀 원시 응답' } }])
+    expect(sharedNewsFailure(value)).toBeNull();
+  expect(queueStatusLabel({ reason: 'credit_exhausted' })).toContain('결제 잔액');
+});
+it('한국 시간 예약 경계와 다음 날짜를 계산한다', () => {
+  expect(nextNewsRun(new Date('2026-10-26T02:09:59Z'))).toContain('11:10');
+  expect(nextNewsRun(new Date('2026-10-26T02:10:00Z'))).toContain('5:10');
+  const tomorrow = nextNewsRun(new Date('2026-10-26T08:10:00Z'));
+  expect(tomorrow).toContain('27');
+  expect(tomorrow).toContain('11:10');
+});
 it('원본과 두 반응형 사진을 모두 확인하며 한 파일 실패도 보류한다', async () => {
   const request = vi.fn().mockResolvedValue(new Response(null, { headers: { 'content-type': 'image/webp' } }));
   vi.stubGlobal('fetch', request);

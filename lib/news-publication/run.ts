@@ -7,6 +7,7 @@ import { classifyEditorialNews } from './classification';
 import { NewsDraftError } from './errors';
 import { relatedNewsGuide, officialNewsActions } from './reader-context';
 import { checkNewsPhoto } from './photo-check';
+import { sharedNewsFailure } from './queue-status';
 
 interface Candidate {
   id: string; source_id: string; title: string; source_url: string; published_at: string;
@@ -66,6 +67,9 @@ export async function runNewsPublication() {
           p_title: item.title, p_url: item.source_url, p_updated_at: item.updated_at });
         if (held.error || held.data !== true) result.conflicts++;
         else result.held++;
+        // 공통 장애의 근거를 저장한 뒤 멈춰 나머지 후보를 불필요하게 예약하지 않습니다.
+        const sharedFailure = error instanceof NewsDraftError ? sharedNewsFailure(error.evidence) : null;
+        if (sharedFailure) { result.stopReason = sharedFailure; break; }
       }
     }
   } catch {
