@@ -309,6 +309,15 @@ function buildImprovementCandidates(
           SEVERITY_RANK[severity] < SEVERITY_RANK[existing.severity]
             ? severity
             : existing.severity;
+        // 최신/과거 순서와 무관하게 더 엄격한 분류를 보존합니다.
+        const incomingLane = laneFor(existing.severity, action);
+        const retainedLane = laneFor(existing.severity, existing.action);
+        if (incomingLane === "blocked" || retainedLane === "blocked" || existing.lane === "blocked") {
+          if (incomingLane === "blocked" && existing.lane !== "blocked") existing.action = action;
+          existing.lane = "blocked";
+        } else {
+          existing.lane = retainedLane;
+        }
       } else {
         grouped.set(key, {
           key,
@@ -345,8 +354,11 @@ function buildImprovementCandidates(
         lastSeenAt: row.created_at,
         evidence,
         action: stringValue(row.details?.decision_reason) || "Review agent policy decision.",
-        lane: laneFor(severity, action),
+        lane: row.details?.decision_mode === "blocked" ? "blocked" : laneFor(severity, action),
       });
+    } else if (row.details?.decision_mode === "blocked") {
+      // 같은 근거의 더 최근 기록이 먼저 들어왔어도 실제 정책 차단은 보존합니다.
+      grouped.get(key)!.lane = "blocked";
     }
   }
 

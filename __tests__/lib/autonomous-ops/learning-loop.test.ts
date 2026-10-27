@@ -132,3 +132,20 @@ describe("buildLearningLoopSnapshotFromRows", () => {
     expect(snapshot.healthScore).toBeLessThan(50);
   });
 });
+
+it.each([true, false])('preserves blocked lane when repeated guidance changes (%s)', reverse => {
+  const scans = [
+    row('autonomous_improvement_scan_run', NOW, { recommendations: [{ title: 'Same task', area: 'ops', evidence: 'same', severity: 'low', action: 'read status' }] }),
+    row('autonomous_improvement_scan_run', '2026-05-18T00:00:00Z', { recommendations: [{ title: 'Same task', area: 'ops', evidence: 'same', severity: 'high', action: 'rotate secret' }] }),
+  ];
+  const snapshot = buildLearningLoopSnapshotFromRows({ rows24h: [], scanRows7d: reverse ? scans.reverse() : scans, spending: null, generatedAt: NOW });
+  expect(snapshot.candidates[0]).toMatchObject({ severity: 'high', lane: 'blocked', occurrences: 2 });
+  expect(snapshot.autoExecutableCount).toBe(0);
+});
+it('keeps an execution-policy block when the action name has no blocked keyword', () => {
+  const snapshot = buildLearningLoopSnapshotFromRows({ rows24h: [row('agent_execute_run', NOW, {
+    action: 'content_generate_with_quality_gate', decision_mode: 'blocked', decision_risk: 'high', evidence: 'quality gate failed',
+  })], scanRows7d: [], spending: null, generatedAt: NOW });
+  expect(snapshot.candidates[0].lane).toBe('blocked');
+  expect(snapshot.autoExecutableCount).toBe(0);
+});

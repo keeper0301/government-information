@@ -254,7 +254,7 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
         .select("id", { count: "exact", head: true })
         .eq("confidence_tier", "low")
         .eq("status", "confirmed")
-        .gte("created_at", since7d),
+        .gte("confirmed_at", since7d),
     ),
     safe(
       admin
@@ -262,7 +262,7 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
         .select("id", { count: "exact", head: true })
         .eq("confidence_tier", "low")
         .eq("status", "rejected")
-        .gte("created_at", since7d),
+        .gte("rejected_at", since7d),
     ),
   ]);
   const lowDecided7d = lowConfirmed7d + lowRejected7d;
@@ -272,11 +272,7 @@ export async function getPressIngestTierStats(): Promise<PressIngestTierStats> {
   const lowConfirmRateHint =
     lowDecided7d < 5
       ? "데이터 부족"
-      : lowConfirmRate7d > 50
-        ? "LLM 보수적 — AUTO_CONFIRM_TIER_FLOOR=low 검토"
-        : lowConfirmRate7d < 30
-          ? "LLM 정확 — 현 상태 유지"
-          : "관찰 중";
+      : "자동 결정 포함 — 사람 검수 표본 별도 확인";
 
   const midRevokeRateWarning = midRevokeRate7d > 5;
 

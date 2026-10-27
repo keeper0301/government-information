@@ -51,8 +51,9 @@ export async function GET(request: Request) {
       auto_confirmed: result.auto_confirmed,
       skipped_existing: result.skipped_existing,
       errors_count: result.errors.length,
+      ...(result.stop_reason ? { stop_reason: result.stop_reason } : {}),
     });
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: !result.stop_reason && result.errors.length === 0, ...result });
   } catch (e) {
     const msg = (e as Error).message;
     console.error("[cron/press-ingest] 실패:", msg);
