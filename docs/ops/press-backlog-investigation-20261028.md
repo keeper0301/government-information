@@ -94,3 +94,19 @@ W2 미활성·미등록 dispatcher 차단은 유지한다.
 - 차단 원본 로그: https://github.com/keeper0301/government-information/actions/runs/40451942527
 - 분류 잔액 오류 로그: https://github.com/keeper0301/government-information/actions/runs/40457570469
 - 운영 DB: press_ingest_candidates, admin_actions, news_posts 읽기 전용 집계.
+
+## 10월 28일 후속 점검
+
+- 이전 PR head `9e8122371137d7b86e2a4e22508496c18ccfee61`의 GitHub CI run
+  `40532780933` 성공 확인. 당시 PR은 초안·미병합이고 제출된 리뷰는 없었다.
+- 로컬 철원 테스트는 Chromium launch만 모의 처리하면서 서버용 바이너리 압축 해제는
+  실제 실행해 `/tmp/fonts` chown에서 실패했다. 테스트에서 `@sparticuz/chromium`도
+  모의 처리해 외부 바이너리·파일 권한에 의존하지 않게 했다. 수집 제품 코드는 변경하지 않았다.
+  잘못된 첨부 오류 보존과 다음 정상 글 저장 검증은 그대로 유지한다.
+- 2026-10-28 17:04 KST 읽기 전용 조회: pending 114건 유지, 최신 정책 분류 실행 성공 0건.
+  같은 날 새 failed 후보 100건에서 credit_balance_exhausted 확인(마지막 생성 15:31 KST).
+  결제 잔액 문제는 아직 복구되지 않았으며 새 PR 코드도 운영에 반영되지 않았다.
+- 보류 114건 전부 application_source_unverified 유지. 추출된 신청 마감일이 지난 후보 1건이
+  있으나 원문 대조 전에는 확정 판정하지 않고, 승인·거절·삭제는 실행하지 않았다.
+- 후속 전체 검사: 593개 파일·4,062개 테스트 통과, 실패 0, 17개 테스트 건너뜀.
+  자료형 검사·변경 테스트 ESLint·diff check도 통과했다. 앞 절의 최초 환경 오류는 해소됐다.

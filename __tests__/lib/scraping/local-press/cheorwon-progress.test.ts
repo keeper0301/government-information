@@ -3,6 +3,10 @@ import { expect, it, vi } from "vitest";
 import { scrapeCheorwonBrowserAndInsert } from "@/lib/scraping/local-press/cheorwon-browser";
 
 const state = vi.hoisted(() => ({ url: "" }));
+// 브라우저 실행을 모의 처리하므로 바이너리 압축 해제·/tmp 권한 변경도 실행하지 않습니다.
+vi.mock("@sparticuz/chromium", () => ({ default: {
+  executablePath: async () => "/test/chromium", args: [],
+} }));
 vi.mock("playwright-core", () => ({ chromium: { launch: async () => ({
   close: async () => {},
   newPage: async () => ({
