@@ -3,7 +3,7 @@
 const RULES: { topic: RegExp; evidence: RegExp; regions: string[] }[] = [
   { topic: /한복문화주간/, evidence: /공모로 선정된 기획프로그램도 전국 곳곳에서 만나볼 수 있다/, regions: ['nationwide'] },
   { topic: /수도권.*(?:주택|착공|청약|입주|모집)/, evidence: /[^.。\n]*수도권에서[^.。\n]*주택[^.。\n]*모집[^.。\n]*/, regions: ['seoul', 'incheon', 'gyeonggi'] },
-  { topic: /궁중문화축전/, evidence: /4대 궁\(경복궁·창덕궁·덕수궁·창경궁\)과 종묘에서[^.。\n]*/, regions: ['seoul'] },
+  { topic: /궁중문화축전/, evidence: /4대 궁\(경복궁[·\s]+창덕궁[·\s]+덕수궁[·\s]+창경궁\)과 종묘에서[^.。\n]*/, regions: ['seoul'] },
   { topic: /한글.*(?:박물관|전시)/, evidence: /대한민국역사박물관 3층 주제관에서[^.。\n]*/, regions: ['seoul'] },
   { topic: /코리안\s*페스티벌/, evidence: /송도 센트럴파크 잔디광장에서 열린[^.。\n]*/, regions: ['incheon'] },
   { topic: /돌봄의 디자인/, evidence: /문화역서울284에서 개최[^.。\n]*/, regions: ['seoul'] },
