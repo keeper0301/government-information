@@ -101,6 +101,14 @@ export const EVENTS = {
   CHECKOUT_TERMS_TOGGLED: "checkout_terms_toggled",
   CHECKOUT_CARD_REGISTRATION_CLICKED: "checkout_card_registration_clicked",
   CHECKOUT_TOSS_REDIRECT_FAILED: "checkout_toss_redirect_failed",
+  // 정책 상세 신청 실행 카드. user_events 와 같은 이름·policy_id 로
+  // (apply_click + apply_call_click) / program_view 를 계산한다.
+  PROGRAM_VIEW: "program_view",
+  APPLY_CLICK: "apply_click",
+  APPLY_CALL_CLICK: "apply_call_click",
+  APPLY_VISIT_INFO_VIEW: "apply_visit_info_view",
+  ALIMTALK_SIGNUP_CLICK: "alimtalk_signup_click",
+  SIGNUP_FROM_DETAIL: "signup_from_detail",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

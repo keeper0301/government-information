@@ -19,16 +19,10 @@ import {
   readJsonWithLimit,
 } from "@/lib/http/json";
 import { checkRateLimit, getClientIp } from "@/lib/support/rate-limit";
+import { isUserEventType } from "@/lib/analytics/policy-events";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
-
-const VALID_EVENT_TYPES = new Set([
-  "program_view",
-  "apply_click",
-  "recommend_click",
-  "home_recommend_click",
-]);
 
 const VALID_PROGRAM_TABLES = new Set([
   "welfare_programs",
@@ -63,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   const eventType = String(body.event_type ?? "");
-  if (!VALID_EVENT_TYPES.has(eventType)) {
+  if (!isUserEventType(eventType)) {
     return NextResponse.json({ error: "invalid_event_type" }, { status: 400 });
   }
 

@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { trackEvent } from "@/lib/analytics/track-client";
+import { trackPolicyDetailEvent } from "@/lib/analytics/policy-detail-events";
 
 type Props = {
   programId: string;
@@ -17,11 +17,11 @@ type Props = {
 
 export function ProgramViewTracker({ programId, programTable, sourcePage }: Props) {
   useEffect(() => {
-    trackEvent({
-      event_type: "program_view",
-      program_id: programId,
-      program_table: programTable,
-      source_page: sourcePage,
+    trackPolicyDetailEvent({
+      eventType: "program_view",
+      programId,
+      programTable,
+      sourcePage,
     });
     // 의도적으로 deps 비움 — mount 시 1회만
     // eslint-disable-next-line react-hooks/exhaustive-deps
