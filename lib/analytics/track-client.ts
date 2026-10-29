@@ -6,11 +6,9 @@
 
 "use client";
 
-type EventType =
-  | "program_view"
-  | "apply_click"
-  | "recommend_click"
-  | "home_recommend_click";
+import type { UserEventType } from "@/lib/analytics/policy-events";
+
+type EventType = UserEventType;
 
 type TrackInput = {
   event_type: EventType;

@@ -13,6 +13,7 @@ type Props = {
   checklist: string | null;
   category?: string | null;
   guide?: EvidenceGuide | null;
+  hideReviewStamp?: boolean;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -26,7 +27,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function PolicyGuideBox({ guide }: Props) {
+export function PolicyGuideBox({ guide, hideReviewStamp = false }: Props) {
 
   return (
     <section className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-8 mb-6 max-md:p-6">
@@ -48,7 +49,7 @@ export function PolicyGuideBox({ guide }: Props) {
               <a href={guide.source.url} target="_blank" rel="noopener noreferrer">확인한 원문 보기</a>
             </details>
           </div>)}
-          <p className="text-xs">운영자 검수일: {guide.reviewedAt?.slice(0, 10)}</p>
+          {!hideReviewStamp && <p className="text-xs">운영자 검수일: {guide.reviewedAt?.slice(0, 10)}</p>}
         </>
       ) : (
         <div className="text-[14px] text-grey-800 leading-[1.7]">

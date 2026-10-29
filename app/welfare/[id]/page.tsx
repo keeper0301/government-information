@@ -2,22 +2,17 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { ShareButton } from "@/components/share-button";
-import { InfoSection } from "@/components/info-section";
 import { RelatedPrograms } from "@/components/related-programs";
 import { GovernmentServiceSchema, BreadcrumbSchema, FAQSchema } from "@/components/json-ld";
 import { ProgramViewTracker } from "@/components/analytics/program-view-tracker";
-import { SummaryItem } from "@/components/summary-item";
-import { SparseDataNotice } from "@/components/sparse-data-notice";
+import { BookmarkButton } from "@/components/bookmark-button";
 import { calcDday, getRelatedPrograms } from "@/lib/programs";
-import { cleanDescription, isSubstantiallyDuplicate, stripCardDuplicates } from "@/lib/utils";
-import { sanitizeApplyUrl } from "@/lib/utils/apply-url";
+import { isSubstantiallyDuplicate } from "@/lib/utils";
 import { WELFARE_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { buildPolicyMetaDescription, buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
-import { PolicySourcePanel } from "@/components/policy/PolicySourcePanel";
-import { PolicyGuideBox } from "@/components/policy/PolicyGuideBox";
-import { ProgramActionCard } from "@/components/program-action-card";
+import { ApplyActionDetail } from "@/components/policy/apply-action-detail";
 import { buildPolicyFaqs } from "@/lib/policy-faq";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import type { Metadata } from "next";
@@ -135,10 +130,6 @@ export default async function WelfareDetailPage({ params }: Props) {
     : null;
 
   const publishedGuide = getPublishedGuide(program as unknown as EvidenceProgram);
-  const sourceLink = program.source_url || program.apply_url;
-  // 외부 apply_url 스킴 검증 — javascript:/data: 등 위험 스킴·깨진 URL 이면 null
-  // → 신청 버튼 대신 Google 검색 fallback (XSS·피싱·깨진 링크 방지)
-  const safeApplyUrl = sanitizeApplyUrl(program.apply_url);
   // 정적 ISR — 관련정책은 비개인화(profile signals 없이). 모든 방문자 동일 추천.
   const related = await getRelatedPrograms(
     "welfare",
@@ -163,21 +154,12 @@ export default async function WelfareDetailPage({ params }: Props) {
   // FAQ 구조화 데이터 — 충실한 핵심정보만 Q&A 로 (AI 검색·네이버 이해 보조, 2026-06-15 CTR).
   const faqs = buildPolicyFaqs(filledSummary);
 
-  // 데이터 빈약도 판정 — 본문 길이 + 핵심 정보 카드 채움 정도로 분류 (loan 과 동일).
-  const descLen = (program.description || "").length;
-  const sparseVariant: "very-sparse" | "sparse" | null =
-    filledSummary.length <= 1 && descLen <= 100
-      ? "very-sparse"
-      : filledSummary.length <= 1
-      ? "sparse"
-      : null;
-
   // 마감 판정 — apply_end 있고 오늘보다 이전이면 "마감됨"
   const today = new Date().toISOString().split("T")[0];
   const isClosed = !!(program.apply_end && program.apply_end < today);
 
   return (
-    <main className="pt-28 pb-20 max-w-content mx-auto px-6 lg:px-10">
+    <main className="bg-grey-50 pt-28 pb-8">
       <GovernmentServiceSchema
         name={program.title}
         description={program.description || ""}
@@ -194,6 +176,7 @@ export default async function WelfareDetailPage({ params }: Props) {
       />
       {faqs.length > 0 && <FAQSchema questions={faqs} />}
 
+      <div className="mx-auto max-w-content px-5 lg:px-10">
       {/* Breadcrumb */}
       <nav className="text-sm text-grey-700 mb-6">
         <Link href="/welfare" className="font-medium no-underline hover:text-blue-500 transition-colors">복지 지원사업</Link>
@@ -213,170 +196,60 @@ export default async function WelfareDetailPage({ params }: Props) {
         />
       )}
 
-      {/* Badges */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-[13px] font-semibold px-2.5 py-1 rounded-md bg-blue-50 text-blue-600">
-          {program.category}
-        </span>
-        {program.target && (
-          <span className="text-[13px] font-semibold px-2.5 py-1 rounded-md bg-grey-100 text-grey-600">
-            {program.target}
-          </span>
-        )}
-        {program.region && program.region !== "전국" && (
-          <span className="text-[13px] font-semibold px-2.5 py-1 rounded-md bg-grey-100 text-grey-600">
-            {program.region}
-          </span>
-        )}
-      </div>
-
-      {/* Title */}
-      <h1 className="text-[32px] font-bold tracking-[-1.2px] text-grey-900 mb-3 max-md:text-[24px]">
-        {program.title}
-      </h1>
-
-      {/* Phase A 클릭 분석 — 페이지 진입 시 program_view event 자동 기록 */}
       <ProgramViewTracker
         programId={program.id}
         programTable="welfare_programs"
         sourcePage={`/welfare/${program.id}`}
       />
 
-      {/* D-day + Source + View count */}
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        {dday !== null && (
-          <span className={`text-sm font-bold px-2.5 py-1 rounded-md ${dday <= 7 ? "bg-[#FFEEEE] text-red" : "bg-blue-50 text-blue-600"}`}>
-            D-{dday}
-          </span>
-        )}
-        {dday === null && !program.apply_end && (
-          <span className="text-sm font-bold px-2.5 py-1 rounded-md bg-grey-100 text-grey-700">상시</span>
-        )}
-        <span className="text-sm font-medium text-grey-700">{program.source}</span>
-        {program.view_count > 0 && (
-          <span className="text-sm text-grey-600">조회 {program.view_count.toLocaleString()}회</span>
-        )}
-      </div>
-
-      {/* 마감 공고 경고 배너 */}
-      {isClosed && (
-        <div className="bg-[#FFEEEE] border border-red/30 rounded-xl px-5 py-4 mb-6 text-[14px] text-red leading-[1.6] font-medium">
-          <span className="font-bold">⚠ 이 공고는 신청이 마감됐습니다</span>
-          {program.apply_end && (
-            <span className="font-normal"> · 마감일: {program.apply_end}</span>
-          )}
-        </div>
-      )}
-
-      <ProgramActionCard
+      <ApplyActionDetail
         kind="welfare"
         programId={program.id}
-        title={program.title}
-        source={program.source}
         sourcePage={`/welfare/${program.id}`}
-        applyUrl={safeApplyUrl}
+        title={program.title}
+        target={program.target}
+        region={program.region}
+        district={program.district}
+        source={program.source}
+        sourceUrl={program.source_url}
+        updatedAt={program.updated_at}
+        eligibility={program.eligibility}
+        benefits={program.benefits}
+        loanAmount={null}
+        interestRate={null}
+        applyMethod={program.apply_method}
+        applyUrl={program.apply_url}
+        applyStart={program.apply_start}
         applyEnd={program.apply_end}
+        contactInfo={program.contact_info}
+        description={program.description}
+        detailedContent={program.detailed_content}
+        selectionCriteria={program.selection_criteria}
+        requiredDocuments={program.required_documents}
+        repaymentPeriod={null}
         dday={dday}
         isClosed={isClosed}
-        updatedAt={program.updated_at}
+        guide={publishedGuide}
+        reviewCheckedAt={publishedGuide?.source.checkedAt ?? null}
+        reviewReviewedAt={publishedGuide?.reviewedAt ?? null}
       />
 
-      {/* 빈약 안내 박스 — 카드 위 배치 유지 (loan 과 동일). */}
-      {sparseVariant && (
-        <SparseDataNotice
-            sourceVerified={!!publishedGuide}
-          sourceLink={sourceLink}
-          source={program.source}
-          variant={sparseVariant}
-        />
-      )}
-
-      {/* 핵심 정보 카드 — 페이지 최상단 (description 위). 자격·혜택·기간·방법을 먼저 보여줘
-          "내가 받을 수 있는가" 판단을 즉시 가능케 함. */}
-      {filledSummary.length > 0 && (
-        <div className="bg-white border border-grey-200 rounded-2xl p-8 mb-4 max-md:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-          <h2 className="text-[17px] font-bold text-grey-900 mb-2 tracking-[-0.3px]">핵심 정보</h2>
-          <div className="grid grid-cols-2 gap-x-10 max-md:grid-cols-1 divide-y divide-grey-100 md:divide-y-0">
-            {filledSummary.map((f) => (
-              <SummaryItem key={f.label} label={f.label} value={f.value} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 출처 + 큐레이션 고지 — 핵심 정보 바로 아래 (loan 과 동일).
-          AdSense "재게시 사이트" 의심 차단 — 출처 명시 + 정리·해설 큐레이션 시그널. */}
-      <PolicySourcePanel source={program.source} sourceUrl={program.source_url} updatedAt={program.updated_at} guide={publishedGuide} />
-
-      {/* keepioo 자체 해설 — 정부 원문 위에 배치 (큐레이션 시그널 강화).
-          AdSense 검수자가 위→아래 스캔 시 "재게시 X, 큐레이션 O" 인식.
-          DDL 083 미적용 / 백필 미완료 row 는 unique_insight=NULL → 자연 생략. */}
-
-
-      {/* keepioo 자체 가치 박스 — AI 생성 팁/거절 사유/체크리스트.
-          백필 전 row 는 3 필드 NULL → template fallback. */}
-      <PolicyGuideBox
-          guide={publishedGuide}
-        tips={(program as { ai_tips?: string | null }).ai_tips ?? null}
-        faq={(program as { ai_faq?: string | null }).ai_faq ?? null}
-        checklist={(program as { ai_checklist?: string | null }).ai_checklist ?? null}
-        category={program.category}
-      />
-
-      {/* Description — InfoSection 통일 디자인. 카드 중복 라인 제거. 결과 비면 생략. */}
-      {(() => {
-        const cleaned = stripCardDuplicates(cleanDescription(program.description));
-        if (!cleaned) return null;
-        return (
-          <InfoSection title="수집된 정책 내용">
-            <p className="text-[16px] font-medium text-grey-800 leading-[1.8] max-md:text-[15px] whitespace-pre-wrap">
-              {cleaned}
-            </p>
-          </InfoSection>
-        );
-      })()}
-
-      {/* 상세 내용 — description 과 substantially 같으면 숨김 (사장님 캡쳐 사고). */}
-      {program.detailed_content &&
-        !isSubstantiallyDuplicate(program.detailed_content, program.description) && (
-          <InfoSection title="상세 내용">
-            {cleanDescription(program.detailed_content)}
-          </InfoSection>
-        )}
-
-      {program.selection_criteria && (
-        <InfoSection title="선정 기준">
-          {cleanDescription(program.selection_criteria)}
-        </InfoSection>
-      )}
-
-      {program.required_documents && (
-        <InfoSection title="필요 서류">
-          {cleanDescription(program.required_documents)}
-        </InfoSection>
-      )}
-
-      {program.contact_info && (
-        <InfoSection title="문의처">
-          {cleanDescription(program.contact_info)}
-        </InfoSection>
-      )}
-
-      {/* 신청/알림/북마크 CTA 는 상단 ProgramActionCard 로 단일화. */}
-      <div className="flex gap-3 flex-wrap mb-10 mt-6">
+      <div className="mb-8 mt-4 flex flex-wrap gap-3">
         <ShareButton />
-        {/* Pro 신청서 초안 — 모든 사용자에게 노출, 비Pro 는 server 가드가 /pricing redirect.
-            ISR 유지 위해 tier 분기는 client/redirect 로 처리. */}
+        <BookmarkButton programType="welfare" programId={program.id} />
         <Link
           href={`/welfare/${program.id}/draft`}
-          className="px-6 py-3 bg-blue-50 text-blue-700 text-[15px] font-semibold rounded-xl no-underline hover:bg-blue-100 transition-colors inline-flex items-center gap-1.5"
+          className="inline-flex min-h-12 items-center gap-1.5 rounded-xl bg-blue-50 px-5 text-[15px] font-semibold text-blue-700 no-underline"
         >
-          📄 Pro 신청서 초안
+          Pro 신청서 초안
         </Link>
       </div>
 
-      {/* Related Programs */}
       <RelatedPrograms programs={related} />
+      <p className="mt-8 mb-4 text-[12px] leading-[1.6] text-grey-500">
+        정보는 자동 수집·정리된 안내입니다. 최종 신청 조건은 공식 기관 공고에서 다시 확인하세요.
+      </p>
+      </div>
     </main>
   );
 }

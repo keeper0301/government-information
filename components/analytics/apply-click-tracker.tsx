@@ -6,7 +6,7 @@
 
 "use client";
 
-import { trackEvent } from "@/lib/analytics/track-client";
+import { trackPolicyDetailEvent } from "@/lib/analytics/policy-detail-events";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -27,11 +27,11 @@ export function ApplyClickTracker({
   children,
 }: Props) {
   function onClick() {
-    trackEvent({
-      event_type: "apply_click",
-      program_id: programId,
-      program_table: programTable,
-      source_page: sourcePage,
+    trackPolicyDetailEvent({
+      eventType: "apply_click",
+      programId,
+      programTable,
+      sourcePage,
     });
     // navigate 는 anchor 가 처리 (preventDefault X)
   }
