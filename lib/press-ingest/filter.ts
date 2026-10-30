@@ -278,6 +278,7 @@ export type PressAutoConfirmStats = {
   low_confirm_rate_7d: number;
   /** lowConfirmRate 해석 힌트 (4 enum) — UI/SMS 자동 안내 */
   low_confirm_rate_hint:
+    | "자동 결정 포함 — 사람 검수 표본 별도 확인"
     | "데이터 부족"
     | "LLM 정확 — 현 상태 유지"
     | "관찰 중"
@@ -308,19 +309,19 @@ export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats>
       .eq("status", "confirmed")
       .is("confirmed_by", null)
       .gte("confirmed_at", since7d),
-    // LOW tier 사장님 검수 7d — tier 튜닝 결정 input
+    // LOW 결정 시각 기준 7d. 자동 승인·정리도 포함하므로 사람 검수 표본과 다릅니다.
     admin
       .from("press_ingest_candidates")
       .select("id", { count: "exact", head: true })
       .eq("confidence_tier", "low")
       .eq("status", "confirmed")
-      .gte("created_at", since7d),
+      .gte("confirmed_at", since7d),
     admin
       .from("press_ingest_candidates")
       .select("id", { count: "exact", head: true })
       .eq("confidence_tier", "low")
       .eq("status", "rejected")
-      .gte("created_at", since7d),
+      .gte("rejected_at", since7d),
   ]);
 
   // 광역 매핑 의존도 — apply_url 이 PROVINCE_DEFAULT_URLS 의 value 와 정확히 일치하는 비율
@@ -338,7 +339,7 @@ export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats>
     total === 0 ? 0 : Math.round((provinceCount / total) * 100);
 
   // LOW tier 검수 결과 — 메모리 가이드 (project_press_tier_1week_monitoring_2026_05_10):
-  // < 30% LLM 정확 / 30~50% 관찰 / > 50% LLM 보수적 (AUTO_CONFIRM_TIER_FLOOR=low)
+  // 자동 정리·승인이 섞인 비율로 LLM 정확도나 기준 완화를 추천하지 않습니다.
   const low_confirmed_7d = lowConfirmed.count ?? 0;
   const low_rejected_7d = lowRejected.count ?? 0;
   const lowDecided7d = low_confirmed_7d + low_rejected_7d;
@@ -347,11 +348,7 @@ export async function getPressAutoConfirmStats(): Promise<PressAutoConfirmStats>
   const low_confirm_rate_hint: PressAutoConfirmStats["low_confirm_rate_hint"] =
     lowDecided7d < 5
       ? "데이터 부족"
-      : low_confirm_rate_7d > 50
-        ? "LLM 보수적 — AUTO_CONFIRM_TIER_FLOOR=low 검토"
-        : low_confirm_rate_7d < 30
-          ? "LLM 정확 — 현 상태 유지"
-          : "관찰 중";
+      : "자동 결정 포함 — 사람 검수 표본 별도 확인";
 
   return {
     auto_confirmed_24h: conf24.count ?? 0,

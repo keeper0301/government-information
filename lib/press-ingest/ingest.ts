@@ -14,6 +14,8 @@
 // 비용: 후보 30건/일 × $0.003 = $0.09/일 = ~$3/월
 // ============================================================
 
+import { newsToolFailure } from "@/lib/news-publication/tool-failure";
+import { sharedNewsFailure } from "@/lib/news-publication/queue-status";
 import { logAdminAction } from "@/lib/admin-actions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPressIngestCandidates } from "./filter";
@@ -68,6 +70,7 @@ export type IngestResult = {
   /** 자동 승인 보류 — fallback 후에도 url 0 인 사례 (이론상 거의 0) */
   auto_skipped_no_url: number;
   errors: string[];
+  stop_reason?: string;
 };
 
 // 메인 — cron 이 호출
@@ -162,6 +165,15 @@ export async function runAutoIngest(): Promise<IngestResult> {
         result.errors.push(`[${c.id}] audit: ${(auditErr as Error).message}`);
       }
     } catch (e) {
+      const failure = newsToolFailure(e);
+      const shared = sharedNewsFailure({ toolFailure: failure.detail });
+      if (shared) {
+        // 서비스 장애를 개별 후보의 영구 분류 실패로 저장하지 않습니다.
+        // 미처리 후보와 기존 검토 보류는 그대로 두고 다음 정상 예약에서 재확인합니다.
+        result.stop_reason = shared;
+        result.errors.push(failure.reason);
+        return result;
+      }
       const message = (e as Error).message;
       result.skipped_classify_error += 1;
       result.errors.push(`[${c.id}] classify: ${message}`);

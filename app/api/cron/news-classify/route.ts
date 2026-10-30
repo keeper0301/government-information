@@ -3,6 +3,8 @@
 // 안전: cap 200 + 동시 5 batch + classified_at 채워진 글 재분류 안 됨.
 // oldest-first (ASC) — 14k backlog 우선 흡수, 신규 ~245/일 < 1,200/일 수용량.
 
+import { newsToolFailure } from "@/lib/news-publication/tool-failure";
+import { sharedNewsFailure } from "@/lib/news-publication/queue-status";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -28,6 +30,7 @@ type ClassifyResult = {
   kept: number;
   failed: number;
   errors: string[];
+  stop_reason?: string;
 };
 
 type NewsRow = {
@@ -96,7 +99,10 @@ async function classifyOne(
     result.classified += 1;
   } catch (e) {
     result.failed += 1;
-    const message = (e as Error).message;
+    const failure = newsToolFailure(e);
+    const shared = sharedNewsFailure({ toolFailure: failure.detail });
+    if (shared) result.stop_reason ??= shared;
+    const message = shared ? failure.reason : (e as Error).message;
     if (result.errors.length < 50) {
       // errors cap 50 — 200건 처리 시 response 크기 폭주 방지
       result.errors.push(`[${news.id}] ${message.slice(0, 200)}`);
@@ -143,6 +149,7 @@ async function run(): Promise<NextResponse> {
   for (let i = 0; i < newsRows.length; i += CONCURRENCY) {
     const chunk = newsRows.slice(i, i + CONCURRENCY);
     await Promise.allSettled(chunk.map((news) => classifyOne(news, admin, result)));
+    if (result.stop_reason) break;
   }
 
   // cron run 통계 audit — 매 실행마다 1건. cap 미달 (fetched < CAP_PER_CRON) +
@@ -159,6 +166,7 @@ async function run(): Promise<NextResponse> {
         auto_hidden: result.auto_hidden,
         kept: result.kept,
         failed: result.failed,
+        ...(result.stop_reason ? { stop_reason: result.stop_reason } : {}),
         errors_truncated: result.failed > result.errors.length,
         duration_ms: durationMs,
       },
@@ -167,7 +175,7 @@ async function run(): Promise<NextResponse> {
     // audit 실패는 cron 자체 실패 아님 (조용히 무시)
   }
 
-  return NextResponse.json({ ok: true, duration_ms: durationMs, ...result });
+  return NextResponse.json({ ok: result.failed === 0, duration_ms: durationMs, ...result });
 }
 
 export async function GET(request: Request) {
