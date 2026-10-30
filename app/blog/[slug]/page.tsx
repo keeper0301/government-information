@@ -11,6 +11,7 @@
 // ============================================================
 
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ArticleSchema, FAQSchema, BreadcrumbSchema } from "@/components/json-ld";
@@ -18,7 +19,7 @@ import { GaPageTracker } from "@/components/ga-page-tracker";
 import { formatKoreanDate, stripHtmlTags } from "@/lib/utils";
 import { getCategoryGradient, getCategoryGradientCss } from "@/lib/blog-cover";
 import { AdSlot } from "@/components/ad-slot";
-import { reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
+import { isBlogSearchPublic } from "@/lib/search-publication";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.keepioo.com";
 
@@ -55,6 +56,15 @@ type BlogPost = {
   view_count: number;
 };
 
+// 검색 판정과 화면이 요청 안에서 동일한 글을 읽도록 합니다.
+const getBlogPost = cache(async (slug: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("blog_posts").select("*")
+    .eq("slug", slug).not("published_at", "is", null).maybeSingle();
+  if (error) throw new Error("정책 글을 읽지 못했습니다.");
+  return data as BlogPost | null;
+});
+
 // 빌드 시점 + 동적 생성 패턴: 정적 메타 태그
 export async function generateMetadata({
   params,
@@ -69,13 +79,7 @@ export async function generateMetadata({
     return { title: "글을 찾을 수 없어요 | 정책알리미" };
   }
 
-  const supabase = await createClient();
-  const { data: post } = await supabase
-    .from("blog_posts")
-    .select("title, meta_description, published_at, updated_at, tags, cover_image")
-    .eq("slug", slug)
-    .not("published_at", "is", null)
-    .maybeSingle();
+  const post = await getBlogPost(slug);
 
   if (!post) {
     return { title: "글을 찾을 수 없어요 | 정책알리미" };
@@ -107,8 +111,8 @@ export async function generateMetadata({
     title: post.title,
     description,
     keywords,
-    // Match the curated review-mode sitemap; normal-mode indexing is unchanged.
-    robots: reviewModeNoindexRobots(),
+    // 사이트맵과 같은 검수 결과를 사용하며 광고 상태에는 의존하지 않습니다.
+    robots: { index: isBlogSearchPublic(post), follow: true },
     alternates: { canonical: `/blog/${slug}` },
     authors: [{ name: "정책알리미", url: "https://www.keepioo.com" }],
     openGraph: {
@@ -143,16 +147,9 @@ export default async function BlogPostPage({
   // slug decode 실패 (비정상 인코딩) → 404 (500 대신)
   if (!slug) notFound();
 
+  const post = await getBlogPost(slug);
+  if (!post) notFound();
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("blog_posts")
-    .select("*")
-    .eq("slug", slug)
-    .not("published_at", "is", null)
-    .maybeSingle();
-
-  if (!data) notFound();
-  const post = data as BlogPost;
 
   // 같은 카테고리의 다른 최신 글 3개 (내부 링크용)
   const { data: relatedRaw } = await supabase

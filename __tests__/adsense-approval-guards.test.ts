@@ -99,9 +99,10 @@ describe("AdSense approval guardrails", () => {
     expect(source).not.toContain('!== "approved-after-review"');
   });
 
-  it("keeps noindex helper pages out of review-mode sitemap but leaves an approval restore path", () => {
+  it("검색 제외 목록과 글별 공개를 광고 승인에서 분리한다", () => {
     const source = read("app/sitemap.ts");
-    expect(source).toContain("!ADSENSE_REVIEW_MODE");
+    expect(source).toContain("!SEARCH_REVIEW_MODE");
+    expect(source).toContain("loadReviewedSearchPages(baseUrl)");
     for (const path of ["/calendar", "/recommend", "/popular", "/consult", "/alerts", "/pricing"]) {
       expect(source).toContain("`${baseUrl}" + path);
     }

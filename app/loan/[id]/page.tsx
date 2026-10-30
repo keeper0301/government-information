@@ -15,7 +15,7 @@ import { buildPolicyMetaDescription, buildSeoTitle } from "@/lib/policy-title";
 import { AdminAutoConfirmBadge } from "@/components/admin/admin-auto-confirm-badge";
 import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
 import { ApplyActionDetail } from "@/components/policy/apply-action-detail";
-import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { isPolicySearchPublic } from "@/lib/search-publication";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -98,7 +98,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
     // 모든 상세가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
     alternates: { canonical: `/loan/${id}` },
-    ...(ADSENSE_REVIEW_MODE || isSparse ? { robots: { index: false, follow: true } } : {}),
+    ...(isSparse || !isPolicySearchPublic(data as unknown as EvidenceProgram) ? { robots: { index: false, follow: true } } : {}),
   };
 }
 

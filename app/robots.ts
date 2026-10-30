@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { SEARCH_REVIEW_MODE } from "@/lib/search-review-mode";
 
 // robots.txt — 검색엔진 봇별 명시 Allow.
 // 한국 검색 점유율 1위 네이버는 Yeti (모바일은 Yeti-Mobile) 사용.
@@ -20,7 +20,7 @@ export default function robots(): MetadataRoute.Robots {
           "/signup",
           "/checkout",
           "/mypage",
-          ...(ADSENSE_REVIEW_MODE ? ["/search", "/compare"] : []),
+          ...(SEARCH_REVIEW_MODE ? ["/search", "/compare"] : []),
         ],
       },
       // 한국 검색엔진 — 네이버 (Yeti) / 다음 (Daum) 명시 Allow
