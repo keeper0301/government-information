@@ -15,6 +15,8 @@ vi.mock("@/lib/editorial-news", async () => {
 // 재심사 페이지에서 자동 수집 자료를 조회하면 검사를 실패시킵니다.
 vi.mock("@/lib/supabase/server", () => ({ createClient: () => { throw new Error("미검수 자료 조회 금지"); } }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => { throw new Error("미검수 자료 조회 금지"); } }));
+// 검수된 정책·블로그 조회는 별도 시험에서 검증합니다. 원시 뉴스 조회 금지는 유지합니다.
+vi.mock("@/lib/search-sitemap", () => ({ loadReviewedSearchPages: async () => [] }));
 vi.mock("@/lib/policy-guides", () => ({ getGuides: async () => [] }));
 
 afterEach(() => { state.published = false; });
