@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAllKeywords } from "@/lib/news-keywords";
-import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { SEARCH_REVIEW_MODE } from "@/lib/search-review-mode";
+import { loadReviewedSearchPages } from "@/lib/search-sitemap";
 import { loadPublishedNews } from "@/lib/news-publication/feed";
 import { getPublishedGuide, type EvidenceProgram } from "@/lib/policy/evidence-guide";
 import { cleanDescription } from "@/lib/utils";
@@ -56,21 +57,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily", priority: 1.0 },
     // AdSense 재심사 2차 강화: /welfare·/loan·/blog index 는 대량 목록/자동 생성 인상을 줄 수 있어
-    // sitemap 제출 대상에서 제외한다. 승인 후 live mode 에서 자동 복구.
-    ...(!ADSENSE_REVIEW_MODE
+    // 목록은 검색 검수 전까지 제외하고 승인된 상세 글만 별도로 복구합니다.
+    ...(!SEARCH_REVIEW_MODE
       ? [
           { url: `${baseUrl}/welfare`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 },
           { url: `${baseUrl}/loan`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 },
           { url: `${baseUrl}/blog`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 },
         ]
       : []),
-    ...(!ADSENSE_REVIEW_MODE
+    ...(!SEARCH_REVIEW_MODE
       ? [{ url: `${baseUrl}/news`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.9 }]
       : []),
     // AdSense 재심사 대응: 검색/비교/추천/달력/요금제/상담처럼 사용자 입력·로그인·전환
     // 목적이 큰 보조 화면은 meta noindex 와 맞춰 review mode sitemap 에 싣지 않는다.
-    // 승인 후 ADSENSE_LIVE_ADS_TOKEN 으로 review mode 가 꺼지면 자동 복구된다.
-    ...(!ADSENSE_REVIEW_MODE
+    // 광고 승인만으로 보조 화면을 검색 공개하지 않습니다.
+    ...(!SEARCH_REVIEW_MODE
       ? [
           { url: `${baseUrl}/calendar`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
           { url: `${baseUrl}/recommend`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "daily" as const, priority: 0.8 },
@@ -89,7 +90,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/editorial-policy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/source-policy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
     { url: `${baseUrl}/correction-policy`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "monthly", priority: 0.5 },
-    ...(!ADSENSE_REVIEW_MODE
+    ...(!SEARCH_REVIEW_MODE
       ? [{ url: `${baseUrl}/eligibility`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly" as const, priority: 0.7 }]
       : []),
     { url: `${baseUrl}/guides`, lastModified: SITEMAP_BUILD_TIME, changeFrequency: "weekly", priority: 0.7 },
@@ -98,7 +99,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 정책 종합 가이드 (policy-bible 자산화) — 격주 발행, 영구 자산
   const guides = await getGuides(200, { publicationOnly: true });
   const reviewModeGuideSlugBlock = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-  const selectedGuides = ADSENSE_REVIEW_MODE
+  const selectedGuides = SEARCH_REVIEW_MODE
     ? guides.filter((g) => !reviewModeGuideSlugBlock.test(g.slug)).slice(0, 30)
     : guides;
   const guidePages: MetadataRoute.Sitemap = selectedGuides.map((g) => ({
@@ -120,10 +121,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // AdSense 재심사 모드: 자동 수집·대량 템플릿 URL은 sitemap 에서 제거한다.
   // 심사자는 sitemap 을 따라 얇은 정책/뉴스/검색성 페이지를 샘플링하므로,
   // 직접 작성형 가이드와 핵심 허브만 제출한다.
-  if (ADSENSE_REVIEW_MODE) {
+  if (SEARCH_REVIEW_MODE) {
     const publishedNews = await loadPublishedNews(true);
+    const reviewedPages = await loadReviewedSearchPages(baseUrl);
     return [
       ...staticPages,
+      ...reviewedPages,
       ...hubPages,
       ...guidePages,
       ...publishedNews.map(article => ({ url: `${baseUrl}/news/${article.slug}`, lastModified: article.updatedAt, changeFrequency: "monthly" as const, priority: 0.6 })),
@@ -316,7 +319,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let keywordPages: MetadataRoute.Sitemap = [];
   let topicPages: MetadataRoute.Sitemap = [];
 
-  if (!ADSENSE_REVIEW_MODE) {
+  if (!SEARCH_REVIEW_MODE) {
     // 2026-05-30 selective sitemap — summary + classified_at + ai_commentary(P2)
     // 셋 다 채워진 news 만 포함. review mode off 직후 "갑작스러운 대량 thin page" 가
     // Google 에 일제히 색인되는 위험 차단. AI 백필 cron 진행에 맞춰 점진 ramp-up.

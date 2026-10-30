@@ -18,6 +18,7 @@ import { BLOG_CATEGORIES } from "@/lib/blog-categories";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { EligibilityDemoStrip } from "@/components/eligibility-demo-strip";
 import { getGuideEvidence } from "@/lib/guide-evidence";
+import { ReviewedSearchLinks } from "@/components/reviewed-search-links";
 
 export const dynamic = "force-static";
 
@@ -52,6 +53,7 @@ export default async function GuidesPage() {
           정부·지자체 복지·대출·지원금 정책을 카테고리별로 정리했어요. 단순 공고 요약이 아니라 자격·서류·중복 제한·마감 함정까지 직접 해설합니다.
         </p>
       </header>
+      <ReviewedSearchLinks />
 
       <section className="mb-10 rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
         <h2 className="text-xl font-bold mb-3">정책알리미가 가이드를 쓰는 기준</h2>
