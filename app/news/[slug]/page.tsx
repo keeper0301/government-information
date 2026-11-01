@@ -29,6 +29,7 @@ import { HideNewsButton } from "./HideNewsButton";
 import { HiddenNewsNotice } from "./HiddenNewsNotice";
 import { AdminRestoreBanner } from "./AdminRestoreBanner";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { SEARCH_REVIEW_MODE } from "@/lib/search-review-mode";
 import { safeNewsThumbnailUrl } from "@/lib/news-thumbnail";
 import { loadPublishedNewsBySlug } from "@/lib/news-publication/feed";
 import { EDITORIAL_NEWS } from "@/lib/editorial-news-data";
@@ -62,13 +63,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     robots: { index: true, follow: true },
     openGraph: { title: editorial.title, description: editorial.answer, type: "article" },
   };
-  if (ADSENSE_REVIEW_MODE) return {
+  if (SEARCH_REVIEW_MODE) return {
     title: "정책뉴스 검수 중 | 키피오", robots: { index: false, follow: true },
   };
   if (!slug) {
     return {
       title: "정책 소식 — 정책알리미",
-      robots: ADSENSE_REVIEW_MODE ? { index: false, follow: true } : undefined,
+      robots: SEARCH_REVIEW_MODE ? { index: false, follow: true } : undefined,
     };
   }
 
@@ -85,7 +86,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!data || data.category === "press") {
     return {
       title: "정책 소식 — 정책알리미",
-      robots: ADSENSE_REVIEW_MODE ? { index: false, follow: true } : undefined,
+      robots: SEARCH_REVIEW_MODE ? { index: false, follow: true } : undefined,
     };
   }
 
@@ -127,8 +128,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${metaTitle} | 정책알리미`,
     description: metaDesc,
     alternates: { canonical: `/news/${slug}` },
-    // ADSENSE_REVIEW_MODE 또는 isThin(분류·summary 미완) 시 noindex follow.
-    robots: ADSENSE_REVIEW_MODE || isThin
+    // SEARCH_REVIEW_MODE 또는 isThin(분류·summary 미완) 시 noindex follow.
+    robots: SEARCH_REVIEW_MODE || isThin
       ? {
           index: false,
           follow: true,
@@ -156,7 +157,7 @@ export default async function NewsDetailPage({ params }: Props) {
   const editorial = await loadPublishedNewsBySlug(slug);
   if (editorial) return <EditorialNewsDetail article={editorial} />;
   // 초안 본문은 숨기고, 기존 기사는 주소 존재 여부만 확인합니다.
-  if (ADSENSE_REVIEW_MODE) {
+  if (SEARCH_REVIEW_MODE) {
     if (EDITORIAL_NEWS.some(article => article.slug === slug)) return <UnreviewedNewsNotice />;
     const { data: existing } = await createAdminClient().from("news_posts")
       .select("slug,category").eq("slug", slug).maybeSingle();

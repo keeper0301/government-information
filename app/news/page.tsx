@@ -42,6 +42,7 @@ import { MatchBadge } from "@/components/personalization/MatchBadge";
 import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
+import { SEARCH_REVIEW_MODE } from "@/lib/search-review-mode";
 import { searchPublishedNews } from "@/lib/news-publication/search";
 import { EditorialNewsIndex } from "@/components/news/editorial-news-pages";
 
@@ -78,19 +79,19 @@ const VALID_CATEGORIES = new Set<string>(["news", "policy-doc"]);
 export async function generateMetadata(): Promise<Metadata> {
   const result = await searchPublishedNews({});
   return {
-  title: ADSENSE_REVIEW_MODE ? "정책뉴스 | 키피오" : "정책 소식 | 정책알리미",
+  title: SEARCH_REVIEW_MODE ? "정책뉴스 | 키피오" : "정책 소식 | 정책알리미",
   description:
-    ADSENSE_REVIEW_MODE ? "공식 정책 발표의 변화와 대상, 확인할 행동을 출처와 함께 정리합니다. 편집 검수 또는 자동 근거 검사를 통과한 정책뉴스를 공개합니다." : "정부 부처 정책뉴스와 정책자료를 날짜·출처·관심 분야별로 모아 보여주는 정책알리미 큐레이션 페이지입니다.",
+    SEARCH_REVIEW_MODE ? "공식 정책 발표의 변화와 대상, 확인할 행동을 출처와 함께 정리합니다. 편집 검수 또는 자동 근거 검사를 통과한 정책뉴스를 공개합니다." : "정부 부처 정책뉴스와 정책자료를 날짜·출처·관심 분야별로 모아 보여주는 정책알리미 큐레이션 페이지입니다.",
   alternates: { canonical: "/news" },
-  robots: ADSENSE_REVIEW_MODE
+  robots: SEARCH_REVIEW_MODE
     ? {
         index: !result.unavailable && result.allCount >= 3,
         follow: true,
       }
     : undefined,
   openGraph: {
-    title: ADSENSE_REVIEW_MODE ? "정책뉴스 | 키피오" : "정책 소식 | 정책알리미",
-    description: ADSENSE_REVIEW_MODE ? "공식 정책 발표와 확인할 행동을 검수해 안내합니다." : "정부 부처의 최신 정책 발표를 한눈에.",
+    title: SEARCH_REVIEW_MODE ? "정책뉴스 | 키피오" : "정책 소식 | 정책알리미",
+    description: SEARCH_REVIEW_MODE ? "공식 정책 발표와 확인할 행동을 검수해 안내합니다." : "정부 부처의 최신 정책 발표를 한눈에.",
     type: "website",
   },
 };
@@ -157,9 +158,9 @@ function newsToScorable(p: {
 }
 
 export default async function NewsIndexPage({ searchParams }: Props) {
-  // 재심사 기간에는 자동 수집 목록 대신 검수된 편집 뉴스만 보여줍니다.
+  // 검색 검수 설정에 따라 검수된 편집 뉴스만 보여줍니다.
   const params = await searchParams;
-  if (ADSENSE_REVIEW_MODE) {
+  if (SEARCH_REVIEW_MODE) {
     const filters = { q: params.q, benefit: params.benefit, province: params.province, status: params.status };
     return <EditorialNewsIndex result={await searchPublishedNews(filters, params.page)} filters={filters} />;
   }

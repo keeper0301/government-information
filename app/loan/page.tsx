@@ -23,7 +23,7 @@ import { type ScorableItem } from "@/lib/personalization/score";
 import { REGION_ALIASES } from "@/lib/personalization/region-match";
 import { LOAN_EXCLUDED_FILTER } from "@/lib/listing-sources";
 import { EditorialReviewNote, loanReviewChecklist } from "@/components/editorial-review-note";
-import { ADSENSE_REVIEW_MODE, reviewModeNoindexRobots } from "@/lib/adsense-review-mode";
+import { SEARCH_REVIEW_MODE, searchReviewNoindexRobots } from "@/lib/search-review-mode";
 
 // 자기참조 canonical — 미지정 시 layout 의 canonical:"/" 를 상속해
 // 허브가 "루트의 중복" 으로 색인 거부됨 (2026-06-05 SC 미색인 진단).
@@ -41,8 +41,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title: "소상공인 대출·지원금 — 정책알리미",
     description: "소상공인·자영업자가 받을 수 있는 정부 대출과 지원금을 모았어요.",
     alternates: { canonical: "/loan" },
-    ...(ADSENSE_REVIEW_MODE
-      ? { robots: reviewModeNoindexRobots() }
+    ...(SEARCH_REVIEW_MODE
+      ? { robots: searchReviewNoindexRobots() }
       : isFiltered
         ? { robots: { index: false, follow: true } }
         : {}),

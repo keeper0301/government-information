@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EDITORIAL_NEWS } from "@/lib/editorial-news-data";
 
-const state = vi.hoisted(() => ({ published: false }));
-vi.mock("@/lib/adsense-review-mode", () => ({ ADSENSE_REVIEW_MODE: true }));
+const state = vi.hoisted(() => ({ published: false, adsReview: true }));
+vi.mock("@/lib/adsense-review-mode", () => ({ get ADSENSE_REVIEW_MODE() { return state.adsReview; } }));
 vi.mock("@/lib/editorial-news", async () => {
   const { EDITORIAL_NEWS } = await import("@/lib/editorial-news-data");
   return {
@@ -19,7 +19,7 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => { throw new Er
 vi.mock("@/lib/search-sitemap", () => ({ loadReviewedSearchPages: async () => [] }));
 vi.mock("@/lib/policy-guides", () => ({ getGuides: async () => [] }));
 
-afterEach(() => { state.published = false; });
+afterEach(() => { state.published = false; state.adsReview = true; });
 
 describe("재심사 정책뉴스 화면", () => {
   it("정정한 글은 정정 사유와 수정 시각을 표시하고 최초 발행일을 유지한다", async () => {
@@ -105,4 +105,22 @@ describe("재심사 정책뉴스 화면", () => {
     expect(metadata.robots).toEqual({ index: true, follow: true });
     expect(metadata.title).toContain(EDITORIAL_NEWS[0].title);
   });
+});
+
+// 광고 승인으로 원시 뉴스가 공개되는 회귀를 막습니다.
+it.each([true, false])("광고 심사 상태 %s에서도 검색 검수 기준을 유지한다", async adsReview => {
+  state.adsReview = adsReview;
+  const list = await import("@/app/news/page");
+  const detail = await import("@/app/news/[slug]/page");
+  const keyword = await import("@/app/news/keyword/[keyword]/page");
+  expect((await list.generateMetadata()).robots).toEqual({ index: false, follow: true });
+  expect((await detail.generateMetadata({ params: Promise.resolve({ slug: "미검수" }) })).robots)
+    .toEqual({ index: false, follow: true });
+  expect((await keyword.generateMetadata({ params: Promise.resolve({ keyword: "청년" }), searchParams: Promise.resolve({}) })).robots)
+    .toEqual({ index: false, follow: true });
+  expect(renderToStaticMarkup(await list.default({ searchParams: Promise.resolve({}) })))
+    .toContain("정책뉴스를 검수하고 있습니다");
+  state.published = true;
+  expect((await detail.generateMetadata({ params: Promise.resolve({ slug: EDITORIAL_NEWS[0].slug }) })).robots)
+    .toEqual({ index: true, follow: true });
 });
