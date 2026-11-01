@@ -177,7 +177,7 @@ describe("AdSense approval guardrails", () => {
   it("keeps mass listing indexes noindex during AdSense review mode", () => {
     for (const path of ["app/welfare/page.tsx", "app/loan/page.tsx", "app/blog/page.tsx"]) {
       const source = read(path);
-      expect(source).toContain("reviewModeNoindexRobots");
+      expect(source).toContain(path === "app/blog/page.tsx" ? "reviewModeNoindexRobots" : "searchReviewNoindexRobots");
       expect(source).toContain("robots");
     }
   });

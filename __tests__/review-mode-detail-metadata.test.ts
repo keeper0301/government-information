@@ -68,3 +68,14 @@ describe('review-mode detail metadata matches curated sitemap policy', () => {
   expect(metadata.robots).toEqual({ index: true, follow: true });
   expect(metadata.alternates?.canonical).toBe('/blog/policy-guide');
 });
+
+it.each(['on', 'adsense-approved-live-ads'])('광고 설정 %s와 무관하게 미검수 대량 목록을 검색 제외한다', async value => {
+  vi.stubEnv('NEXT_PUBLIC_ADSENSE_REVIEW_MODE', value);
+  vi.resetModules();
+  const welfare = await import('@/app/welfare/page');
+  const loan = await import('@/app/loan/page');
+  for (const page of [welfare, loan]) {
+    const result = await page.generateMetadata({ searchParams: Promise.resolve({}) });
+    expect(result.robots).toEqual({ index: false, follow: true });
+  }
+});
