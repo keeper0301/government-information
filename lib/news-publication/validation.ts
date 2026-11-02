@@ -6,6 +6,7 @@ import { currentStateIssue } from './current-state';
 import { sourceStateIssue } from './source-state';
 import { expiredEventIssue } from './expired-event';
 import { countNotationIssue } from './count-notation';
+import { reporterExperienceIssue } from './reporter-experience';
 
 export interface NewsDraft {
   kind: 'application' | 'change' | 'report'; title: string;
@@ -66,6 +67,8 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   const sourceState = expiredEventIssue(draft, body, publishedAt, reviewDate) ?? sourceStateIssue(draft, body);
   recordSourceState?.(sourceState);
   if (sourceState) return sourceState;
+  const experienceIssue = reporterExperienceIssue(draft, body);
+  if (experienceIssue) return experienceIssue;
   const medicalIssue = medicalConditionIssue(draft, body);
   if (medicalIssue) return medicalIssue;
   // '월 중'은 월 전체를 보장하지 않습니다. 확인된 원문 기간을 임의로 늘리면 보류합니다.

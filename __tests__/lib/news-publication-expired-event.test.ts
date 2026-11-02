@@ -40,3 +40,19 @@ it('다른 연도를 뜻하는 생략 날짜와 잘못된 달력 날짜는 추�
     expect(expiredEventIssue(value, quote, '2026-10-28', '2026-11-01')).toBeNull();
   }
 });
+it('같은 행사 근거로 작성한 날짜 없는 요약의 현재 안내를 보류한다', () => {
+  const value = draft('발표 당시 일정으로 소개했다.');
+  value.answer = '이 전시는 무료로 입장할 수 있다.';
+  expect(expiredEventIssue(value, source, '2026-10-28', '2026-11-01')).toContain('2026-10-29');
+});
+it('점 표기 일정도 검수에 연결한다', () => {
+  const quote = '창덕궁 전시 기간은 9.22.~11.8.이다.';
+  const value = draft('전시가 운영된다.');
+  value.sections[0].quote = quote;
+  expect(expiredEventIssue(value, quote, '2026-10-28', '2026-11-09')).toContain('2026-11-08');
+  expect(expiredEventIssue(value, quote, '2026-10-28', '2026-11-02')).toBeNull();
+});
+it('현재 운영 주장의 부정은 허용하지만 별도 긍정 주장은 차단한다', () => {
+  expect(expiredEventIssue(draft('현재 운영 중이라는 뜻은 아닙니다.'), source, '2026-10-28', '2026-11-01')).toBeNull();
+  expect(expiredEventIssue(draft('현재 운영 중이라는 뜻은 아니며 무료로 입장할 수 있다.'), source, '2026-10-28', '2026-11-01')).not.toBeNull();
+});

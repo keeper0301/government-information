@@ -4,6 +4,7 @@ import { getEditorialNewsPhoto } from '@/lib/editorial-news-images';
 import { safeNewsThumbnailUrl } from '@/lib/news-thumbnail';
 
 const cases = [
+  ['148974407', '창덕궁 성정각에서 만나는 왕세자의 하루', 'seongjeonggak'],
   ['148974379', "전통공예품을 우리 집에! 'K-CRAFT, 일상이 되다'", 'korean-pottery'],
   ['148974473', "에스토니아의 신부 마이, '고결' 제1호 부부 됐다!", 'palace-museum'],
   ['148974454', '양육비 선지급제 소득기준 폐지', 'calculator'],
@@ -26,6 +27,7 @@ describe('사진 부족으로 보류된 기사', () => {
     expect(getEditorialNewsPhoto({ slug: `policy-brief-${id}`, title, photoPolicy: 'official-only' })).toBeNull();
   });
   it.each([
+    ['창덕궁 성정각 왕세자의 하루 전시', 'seongjeonggak'],
     ['전승공예품 전시 소개', 'korean-pottery'],
     ['국립고궁박물관 결혼식 안내', 'palace-museum'],
     ['양육비 선지급 신청 안내', 'calculator'],
@@ -35,7 +37,7 @@ describe('사진 부족으로 보류된 기사', () => {
     expect(getEditorialNewsPhoto(article)?.url).toBe(`/images/news/${file}.webp`);
     expect(getEditorialNewsPhoto({ ...article, photoPolicy: 'official-only' })).toBeNull();
   });
-  it.each(['일반 결혼식 안내', '병원 시설 확충', '도자기 산업 수출'])('무관한 제목에는 배정하지 않는다: %s', title => {
+  it.each(['일반 결혼식 안내', '병원 시설 확충', '도자기 산업 수출', '창덕궁 일반 안내'])('무관한 제목에는 배정하지 않는다: %s', title => {
     expect(getEditorialNewsPhoto({ slug: 'new-article', title })).toBeNull();
   });
   it('아동 보호 자료사진을 피해 아동이나 병원 현장으로 설명하지 않는다', () => {

@@ -1,9 +1,11 @@
 import type { NewsDraft } from './validation';
+import { REPORTER_EXPERIENCE_GUIDANCE } from './reporter-experience';
 import { NUMBER_NOTATION_GUIDANCE } from './count-notation';
 
 // 분량 대신 기사별 실제 정보와 원문의 핵심 누락을 별도 판정합니다.
 export const CONTENT_GENERATION_GUIDANCE = `내용 충실도 작성 기준:
 ${NUMBER_NOTATION_GUIDANCE}
+${REPORTER_EXPERIENCE_GUIDANCE}
 개막식·시상·공연·참여 예고는 개최했다·열렸다·수여되었다·참여했다로 바꾸지 마세요. 행사 주간의 시작과 개막식 날짜를 구분하고 원문의 예정 표현을 유지하세요.
 확대 여부를 검토한다는 원문은 확대 전망·예상으로 바꾸지 마세요. 협약을 체결한다는 예고는 날짜가 지났어도 완료 사실로 추정하지 마세요. 제목의 축약 표현보다 원문 본문의 상태를 우선하고 발표 당시의 예정임을 표시하세요.
 본문의 절반 이상, 최소 두 부분은 이 기사에서만 알 수 있는 서로 다른 구체적 정보를 설명하세요. 같은 종료·예정 안내나 '공식 공고를 확인하세요'를 여러 부분으로 늘리지 마세요.
@@ -14,6 +16,7 @@ ${NUMBER_NOTATION_GUIDANCE}
 일반 조언을 제거해도 독자가 배울 내용이 남아야 합니다. 원문이 빈약해 이를 충족할 수 없으면 skip=true로 보류하세요.`;
 
 export const CONTENT_REVIEW_GUIDANCE = `내용 충실도는 contentDepth로 별도 검사합니다. 원문 전체를 먼저 읽고 독자 판단에 중요한 누락 사실을 missingFacts에 적으세요. 없을 때만 빈 배열입니다. 원문에 없는 항목은 요구하지 마세요.
+${REPORTER_EXPERIENCE_GUIDANCE} 이를 어기면 사실 확인과 본문 충실도 모두 불합격입니다.
 모든 행사·시상·공연 문장의 예정과 완료를 따로 확인하세요. 첫 답변에 일정이 맞아도 본문의 열렸다·수여되었다·참여했다가 원문 예고를 완료로 바꾸면 불합격입니다. 음식인 밤을 야간 관광으로 바꾼 제목처럼 주제의 뜻이 달라져도 불합격입니다.
 검토·예정·완료를 문장별로 대조하세요. '확대 여부 검토'를 '더 많은 대상에게 확대될 전망'으로 바꾸거나 체결 예고를 '체결했다'로 바꾸면 불합격입니다. 발표일 이후라는 이유나 다른 문장의 예정 표시로 해당 단정을 허용하지 마세요.
 sections는 본문 번호를 키로 하는 객체입니다. "0", "1" 등 각 지정 칸에 해당 sectionIndex(0부터)의 판정을 정확히 한 번 기록하세요. 각 부분 안에서 0부터 세는 실제 본문 paragraphIndex(다른 검사 excerptIndex와 다름)와 15~240자의 구체적 reason을 제시하세요. 판정 예시를 복사하지 마세요.
