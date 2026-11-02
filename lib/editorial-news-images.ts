@@ -2,6 +2,7 @@ import type { EditorialNews } from "@/lib/editorial-news-data";
 import { NEWS_TOPIC_PHOTOS } from './editorial-news-topic-images';
 import { NEWS_PLACE_PHOTOS } from './editorial-news-place-images';
 import { NEWS_FAMILY_PHOTOS } from './editorial-news-family-images';
+import { NEWS_ADDITIONAL_PHOTOS } from './editorial-news-additional-images';
 
 export type EditorialNewsPhoto = {
   url: string; alt: string; caption: string; author: string; sourceUrl: string;
@@ -57,6 +58,7 @@ export const EDITORIAL_NEWS_IMAGES: Record<string, EditorialNewsPhoto> = {
   'policy-brief-148973020': NEWS_TOPIC_PHOTOS.gyeongju,
 };
 export const EDITORIAL_PHOTO_URLS = [market.url, city.url, calculator.url,
+  ...Object.values(NEWS_ADDITIONAL_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_FAMILY_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_PLACE_PHOTOS).map(photo => photo.url),
   ...Object.values(NEWS_TOPIC_PHOTOS).map(photo => photo.url)];
@@ -65,6 +67,12 @@ export function getEditorialNewsPhoto(article: Pick<EditorialNews, "slug" | "tit
   if (EDITORIAL_NEWS_IMAGES[article.slug]) return EDITORIAL_NEWS_IMAGES[article.slug];
   // 이번에 확인·승인한 지정 사진 외에는 기존 공식 사진 전용 조건을 지킵니다.
   if (article.photoPolicy === 'official-only') return null;
+  // 원문을 확인한 고결 기사와 명시적으로 박물관을 다룬 결혼식만 연결합니다.
+  if (article.slug === 'policy-brief-148974473'
+    || (/고궁박물관/.test(article.title) && /결혼|예식/.test(article.title))) return NEWS_ADDITIONAL_PHOTOS.museum;
+  if (/전통공예품|전승공예품|K-CRAFT/i.test(article.title)) return NEWS_ADDITIONAL_PHOTOS.pottery;
+  if (/새싹지킴이병원|아동학대/.test(article.title)) return NEWS_ADDITIONAL_PHOTOS.childProtection;
+  if (/양육비\s*선지급/.test(article.title)) return calculator;
   if (/한복/.test(article.title)) return NEWS_FAMILY_PHOTOS.hanbok;
   if (/임산부|임신|산모|산후조리/.test(article.title)) return NEWS_FAMILY_PHOTOS.pregnancy;
   // 목록은 본문을 제외하므로 두 화면에 공통인 검수된 요약에서 방문지를 확인합니다.
