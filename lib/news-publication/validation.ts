@@ -4,6 +4,7 @@ import { sourceAmountHint } from './source-amounts';
 import { comparableSourceDates } from './date-notation';
 import { currentStateIssue } from './current-state';
 import { sourceStateIssue } from './source-state';
+import { expiredEventIssue } from './expired-event';
 import { countNotationIssue } from './count-notation';
 
 export interface NewsDraft {
@@ -34,7 +35,8 @@ export const validSourceQuote = (text: unknown): text is string => typeof text =
 export const newsNumberPattern = /\d(?:[\d,.]*\d)?(?:여명|%|천만원|만원|억원|원|년|월|일|명|세대|세|개월)?/g;
 
 // 정확한 인용·숫자·분량을 먼저 검사하고 별도 사실 대조 결과도 요구합니다.
-export function newsDraftIssue(value: unknown, body: string, publishedAt?: string, recordSourceState?: (issue: string | null) => void): string | null {
+export function newsDraftIssue(value: unknown, body: string, publishedAt?: string, recordSourceState?: (issue: string | null) => void,
+  reviewDate = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })): string | null {
   if (!value || typeof value !== 'object') return '초안이 글 형식이 아닙니다.';
   const draft = value as NewsDraft;
   const validText = (text: unknown) => typeof text === 'string' && text.trim().length >= 5
@@ -61,7 +63,7 @@ export function newsDraftIssue(value: unknown, body: string, publishedAt?: strin
   if (plannedIssue) return plannedIssue;
   const currentIssue = currentStateIssue(draft, body);
   if (currentIssue) return currentIssue;
-  const sourceState = sourceStateIssue(draft, body);
+  const sourceState = expiredEventIssue(draft, body, publishedAt, reviewDate) ?? sourceStateIssue(draft, body);
   recordSourceState?.(sourceState);
   if (sourceState) return sourceState;
   const medicalIssue = medicalConditionIssue(draft, body);
