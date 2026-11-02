@@ -67,6 +67,9 @@ export function getEditorialNewsPhoto(article: Pick<EditorialNews, "slug" | "tit
   if (EDITORIAL_NEWS_IMAGES[article.slug]) return EDITORIAL_NEWS_IMAGES[article.slug];
   // 이번에 확인·승인한 지정 사진 외에는 기존 공식 사진 전용 조건을 지킵니다.
   if (article.photoPolicy === 'official-only') return null;
+  if (article.slug === 'policy-brief-148974407'
+    || (/창덕궁/.test(article.title) && /성정각|왕세자의 하루/.test(`${article.title} ${article.answer ?? ''}`)))
+    return NEWS_ADDITIONAL_PHOTOS.seongjeonggak;
   // 원문을 확인한 고결 기사와 명시적으로 박물관을 다룬 결혼식만 연결합니다.
   if (article.slug === 'policy-brief-148974473'
     || (/고궁박물관/.test(article.title) && /결혼|예식/.test(article.title))) return NEWS_ADDITIONAL_PHOTOS.museum;

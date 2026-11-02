@@ -3,6 +3,14 @@ import { NEWS_FAMILY_PHOTOS } from './editorial-news-family-images';
 
 // 행사 현장과 구분하며, 원본의 이용 조건을 변경본에도 적용합니다.
 export const NEWS_ADDITIONAL_PHOTOS: Record<string, EditorialNewsPhoto> = {
+  seongjeonggak: {
+    url: '/images/news/seongjeonggak.webp', width: 1200, height: 800,
+    alt: '창덕궁 성정각 일원 자료사진',
+    caption: '창덕궁 성정각 일원 · 2015년 자료사진 · 이번 전시·체험 현장 사진이 아닙니다 · 크기·형식 변경',
+    author: 'Wei-Te Wong', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Seongjeonggak.jpg',
+    licenseName: '저작자 표시·동일조건 변경 허락 2.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-sa/2.0/deed.ko',
+  },
   pottery: {
     url: '/images/news/korean-pottery.webp', width: 1200, height: 900,
     alt: '국립중앙박물관에 전시된 한국 도자기 자료사진',
