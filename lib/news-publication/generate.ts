@@ -122,7 +122,7 @@ JSON 형식: {"skip":false, "kind":"application 또는 change 또는 report", "t
       ?? (reportCore && !reportAnalysisParagraphs(reportCore, value).length ? '원문 사례를 비교한 키피오의 해설 본문이 필요합니다.' : null);
     audit.pass('generation');
     audit.start('draft');
-    issue = prepared.issue ?? coreIssue ?? newsDraftIssue(value, source.body, source.publishedAt, issue => audit.sourceState(issue)) ?? '';
+    issue = prepared.issue ?? coreIssue ?? newsDraftIssue(value, source.body, source.publishedAt, issue => audit.sourceState(issue), reviewDate) ?? '';
     draft = issue ? null : value as NewsDraft;
     if (issue) audit.hold('draft', issue); else audit.pass('draft');
     if (draft) break;
