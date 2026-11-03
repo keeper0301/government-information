@@ -10,6 +10,7 @@ import {
   ShieldCheckIcon,
 } from "./icons";
 import type { DisplayProgram } from "@/lib/programs";
+import { isApplicationClosed } from "@/lib/policy/application-date";
 import { cleanDescription } from "@/lib/utils";
 import { EligibilityBadges } from "./personalization/EligibilityBadges";
 import { BusinessMatchBadge } from "./personalization/BusinessMatchBadge";
@@ -36,13 +37,13 @@ const iconMap = {
 const ICON_BG_CLASS = "bg-blue-50";
 const ICON_TEXT_CLASS = "text-blue-600";
 
-function DdayLabel({ dday }: { dday: number | null }) {
+function DdayLabel({ dday, closed }: { dday: number | null; closed: boolean }) {
   // 마감 정보는 사용자가 가장 먼저 봐야 할 시그널이라 12px·semibold 로 키움.
   // 11px 은 한국어 본문 13~15px 와 너무 격차가 커서 노안·40·50대가 놓치기 쉬움.
   if (dday === null) {
     return (
       <span className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-grey-100 text-grey-600">
-        상시
+        {closed ? "마감" : "기간 미확인"}
       </span>
     );
   }
@@ -80,6 +81,7 @@ export function ProgramRow({
   trackingSourcePage?: string;
 }) {
   const Icon = iconMap[program.icon];
+  const isClosed = isApplicationClosed(program.applyEnd);
   // 마감 7일 이내면 좌측 액센트를 항상 빨강으로 — 긴박성 시각 신호.
   // 그 외엔 hover 시에만 blue 액센트 등장 (정적 상태 차분).
   const isUrgent = program.dday !== null && program.dday <= 7;
@@ -102,7 +104,7 @@ export function ProgramRow({
   const ariaLabel = compactText(
     [
       program.title,
-      program.dday === null ? "상시" : `D-${program.dday}`,
+      program.dday === null ? (isClosed ? "마감" : "기간 미확인") : `D-${program.dday}`,
       visibleDescription,
       program.source,
     ].filter(Boolean).join(" · "),
@@ -153,7 +155,7 @@ export function ProgramRow({
             <div className="text-[17px] font-bold text-grey-900 tracking-[-0.3px] truncate transition-colors group-hover:text-blue-600 max-md:text-[15px]">
               {program.title}
             </div>
-            <DdayLabel dday={program.dday} />
+            <DdayLabel closed={isClosed} dday={program.dday} />
           </div>
           {/* 자격 배지 라인 — 자영업자 매칭이 가장 앞 (사용자 본인 자격 시그널이 가장 강함).
               두 컴포넌트 모두 데이터 없으면 null 반환 → empty:hidden 으로 wrap 자체 숨김. */}

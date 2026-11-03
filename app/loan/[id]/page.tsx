@@ -1,3 +1,4 @@
+import { isApplicationClosed } from "@/lib/policy/application-date";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
@@ -153,9 +154,8 @@ export default async function LoanDetailPage({ params }: Props) {
   // FAQ 구조화 데이터 — 충실한 핵심정보만 Q&A 로 (AI 검색·네이버 이해 보조, 2026-06-15 CTR).
   const faqs = buildPolicyFaqs(filledSummary);
 
-  // 마감 판정 — apply_end 있고 오늘보다 이전이면 "마감됨". null 이면 상시라 마감 아님.
-  const today = new Date().toISOString().split("T")[0];
-  const isClosed = !!(program.apply_end && program.apply_end < today);
+  // Date-only deadlines stay open through the final day in Korea.
+  const isClosed = isApplicationClosed(program.apply_end);
 
   return (
     <main className="bg-grey-50 pt-28 pb-8">

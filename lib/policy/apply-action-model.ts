@@ -1,6 +1,7 @@
 // 정책 상세 "신청 실행 카드" 뷰 모델.
 // 요약 4줄·단계·근거는 DB 에 있는 문장만 쓴다. 금액·서류는 만들지 않는다.
 
+import { validApplicationDate } from "./application-date";
 import { cleanDescription } from "@/lib/utils";
 import { isDeepLink, sanitizeApplyUrl } from "@/lib/utils/apply-url";
 
@@ -77,7 +78,7 @@ export type ApplyActionModel = {
 
 const MISSING_WHO = "공식 공고의 대상 조건";
 const MISSING_AMOUNT = "공식 공고의 지원 내용";
-const UNKNOWN_WHEN = "상시 또는 기관 확인";
+const UNKNOWN_WHEN = "신청기간 미확인 · 공식 공고 확인";
 const CONFIRM_STEP = "최종 조건은 공식 공고에서 한 번 더 확인하세요.";
 
 const PHONE_RE = /(?:\(0\d{1,2}\)|0\d{1,2})[-\s.]?\d{3,4}[-\s.]?\d{4}|1[568]\d{2}[-\s.]?\d{4}/;
@@ -88,7 +89,9 @@ const SELF_AUDIENCE = /청년|대학생|직장|근로자|소상공인|자영업|
 export function formatDotDate(value: string | null | undefined): string | null {
   if (!value) return null;
   const trimmed = value.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed.replace(/-/g, ".");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return validApplicationDate(trimmed)?.replace(/-/g, ".") ?? null;
+  }
   const date = new Date(trimmed);
   if (Number.isNaN(date.getTime())) return null;
   const formatted = new Intl.DateTimeFormat("en-CA", {
@@ -188,7 +191,7 @@ function buildWhen(input: ApplyActionInput): { text: string; urgent: boolean } {
     const end = formatDotDate(input.applyEnd);
     return { text: end ? `마감됨 · ${end}` : "마감됨", urgent: true };
   }
-  if (input.dday !== null && input.dday <= 7) {
+  if (input.dday !== null && input.dday >= 0 && input.dday <= 7) {
     return { text: `D-${input.dday}`, urgent: true };
   }
   const start = formatDotDate(input.applyStart);
@@ -196,6 +199,14 @@ function buildWhen(input: ApplyActionInput): { text: string; urgent: boolean } {
   if (start && end) return { text: `${start} ~ ${end}`, urgent: false };
   if (end) return { text: `${end} 마감`, urgent: false };
   if (start) return { text: `${start}부터`, urgent: false };
+  // Only an explicit, standalone application-period line supports a rolling label.
+  // Other uses (e.g. 상시근로자) and missing dates are not evidence of open recruitment.
+  const periodText = [input.applyMethod, input.description, input.detailedContent]
+    .map((value) => cleanDescription(value || "")).join("\n");
+  if (!input.applyStart && !input.applyEnd &&
+      /(?:^|\n)\s*신청\s*기간\s*[:：]\s*(?:상시|연중\s*상시|상시\s*(?:접수|신청))\s*(?:$|\n)/.test(periodText)) {
+    return { text: "상시 신청 · 공식 공고 확인", urgent: false };
+  }
   return { text: UNKNOWN_WHEN, urgent: false };
 }
 

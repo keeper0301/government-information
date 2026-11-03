@@ -30,6 +30,7 @@ export type DisplayProgram = {
   amount: string;
   source: string;
   dday: number | null;
+  applyEnd?: string | null;
   icon: "house" | "briefcase" | "heart" | "medical" | "coin" | "store" | "shield";
   type: "welfare" | "loan";
   sourceCode: string | null;
@@ -83,6 +84,7 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     amount: w.benefits || "",
     source: formatSourceName(w.source),
     dday: calcDday(w.apply_end),
+    applyEnd: w.apply_end,
     icon: categoryIconMap[w.category] || "house",
     type: "welfare",
     sourceCode: w.source_code ?? null,
@@ -108,6 +110,7 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     amount: parts.join(" · "),
     source: formatSourceName(l.source),
     dday: calcDday(l.apply_end),
+    applyEnd: l.apply_end,
     icon: categoryIconMap[l.category] || "coin",
     type: "loan",
     sourceCode: l.source_code ?? null,
