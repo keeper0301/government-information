@@ -13,6 +13,7 @@
 // ============================================================
 
 import * as Sentry from "@sentry/nextjs";
+import { shouldDropOAuthTelemetry } from "./lib/security/oauth-telemetry";
 
 export async function register() {
   // Node.js runtime — API routes·Server Actions·일반 SSR
@@ -21,6 +22,8 @@ export async function register() {
       dsn: process.env.SENTRY_DSN,
       // SSR/RSC 트레이스 — prod 0.1 비율로 비용 가드 (Free tier 5K/월 보호)
       tracesSampleRate: 0.1,
+      beforeSend: (event) => shouldDropOAuthTelemetry(event) ? null : event,
+      beforeSendTransaction: (event) => shouldDropOAuthTelemetry(event) ? null : event,
     });
   }
 
@@ -29,6 +32,8 @@ export async function register() {
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
       tracesSampleRate: 0.1,
+      beforeSend: (event) => shouldDropOAuthTelemetry(event) ? null : event,
+      beforeSendTransaction: (event) => shouldDropOAuthTelemetry(event) ? null : event,
     });
   }
 }

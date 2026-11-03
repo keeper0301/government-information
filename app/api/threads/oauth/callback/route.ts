@@ -33,6 +33,10 @@ function resultPage(title: string, message: string, ok: boolean, status = 200): 
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  if (url.searchParams.get("state")?.startsWith("keeper-punch-v1.")) {
+    const { keeperHandlers } = await import("@/lib/threads/keeper-punch-runtime");
+    return keeperHandlers.callback(request);
+  }
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error");
