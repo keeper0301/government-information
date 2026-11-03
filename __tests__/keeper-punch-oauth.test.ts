@@ -1,23 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import { createKeeperHandlers, SCOPES, type KeeperStore } from '../lib/threads/keeper-punch-oauth';
 const env = { KEEPER_PUNCH_THREADS_APP_ID: 'app', KEEPER_PUNCH_THREADS_APP_SECRET: 'app-secret', KEEPER_PUNCH_THREADS_USER_ID: '123', KEEPER_PUNCH_OAUTH_CONTROL_SECRET: 'control-secret' };
-function fixture(options: { user?: string; id?: string; shortId?: string; app?: string; denied?: boolean; failure?: boolean; oversized?: boolean } = {}) {
+function fixture(options: { user?: string; id?: string; shortId?: string | number; app?: string; denied?: boolean; failure?: boolean; oversized?: boolean; expired?: boolean; debugUser?: string; type?: string; expectedId?: string; failCall?: number } = {}) {
   const rows = new Map<string, any>(); let clock = 1000000; let calls = 0;
   const store: KeeperStore = {
     async insert(i) { rows.set(i.nonce, structuredClone(i)); },
     async get(n) { return structuredClone(rows.get(n) ?? null); },
     async cas(n, from, value) { if (rows.get(n)?.status !== from) return false; rows.set(n, structuredClone(value)); return true; },
   };
-  const h = createKeeperHandlers({ env, store, now: () => clock, nonce: () => 'a'.repeat(64), fetch: (async (url: any, init: any) => {
+  const expectedId = options.expectedId ?? '123';
+  const h = createKeeperHandlers({ env: options.expectedId ? { ...env, KEEPER_PUNCH_THREADS_USER_ID: expectedId } : env, store, now: () => clock, nonce: () => 'a'.repeat(64), fetch: (async (url: any, init: any) => {
     calls++; expect(init.redirect).toBe('error');
+    if (calls === options.failCall) throw Error('provider-secret-body-query');
     if (options.failure) return new Response('secret-provider-code', { status: 400 });
     if (options.oversized) return new Response('x'.repeat(40000));
+    if (init.body instanceof URLSearchParams && init.body.get('grant_type') === 'client_credentials') {
+      expect(String(url)).toBe('https://graph.threads.net/oauth/access_token');
+      expect(init.method).toBe('POST');
+      return Response.json({ access_token: 'generated-app-token' });
+    }
     if (String(url).includes('/oauth/')) return Response.json({ access_token: 'short-secret', user_id: options.shortId ?? '123' });
     if (String(url).includes('/access_token')) return Response.json({ access_token: 'long-secret', expires_in: 3600 });
-    if (String(url).includes('/debug_token')) return Response.json({ data: { app_id: options.app ?? 'app', user_id: '123', is_valid: true } });
-    expect(init.headers.Authorization).toBe('Bearer long-secret');
-    if (String(url).includes('/permissions')) return Response.json({ data: SCOPES.map(permission => ({ permission, status: options.denied ? 'declined' : 'granted' })) });
-    return Response.json({ id: options.id ?? '123', username: options.user ?? 'keeper.punch' });
+    if (String(url).includes('/debug_token')) {
+      expect(String(url)).toBe('https://graph.threads.net/v1.0/debug_token?input_token=long-secret');
+      expect(init.headers.Authorization).toBe('Bearer generated-app-token');
+      return Response.json({ data: { ...(options.app ? { app_id: options.app } : {}), type: options.type ?? 'USER', user_id: options.debugUser ?? expectedId, is_valid: true, expires_at: options.expired ? 999 : 2000, scopes: options.denied ? [] : SCOPES } });
+    }
+    expect(String(url)).toBe('https://graph.threads.net/v1.0/me?fields=id,username');
+    expect(['Bearer short-secret', 'Bearer long-secret']).toContain(init.headers.Authorization);
+    return Response.json({ id: options.id ?? expectedId, username: options.user ?? 'keeper.punch' });
   }) as typeof fetch });
   const auth = { 'x-keeper-punch-control': 'control-secret' };
   const start = () => h.start(new Request('https://local/start', { method: 'POST', headers: auth }));
@@ -28,6 +39,16 @@ function fixture(options: { user?: string; id?: string; shortId?: string; app?: 
 const stateOf = async (f: ReturnType<typeof fixture>) => new URL((await (await f.start()).json()).authorization_url).searchParams.get('state')!;
 
 describe('keeper isolated public handlers', () => {
+  it.each(['short_exchange', 'short_identity', 'long_exchange', 'app_token', 'debug', 'long_identity'])('records exact safe failure stage %s without retry', async stage => {
+    const stages = ['short_exchange', 'short_identity', 'long_exchange', 'app_token', 'debug', 'long_identity'];
+    const f = fixture({ failCall: stages.indexOf(stage) + 1 });
+    const state = await stateOf(f);
+    expect((await f.cb(state)).status).toBe(400);
+    expect(f.rows.get('a'.repeat(64)).failure_stage).toBe(stage);
+    const calls = f.calls();
+    expect((await f.cb(state)).status).toBe(409); expect(f.calls()).toBe(calls);
+    expect(JSON.stringify(f.rows.get('a'.repeat(64)))).not.toContain('provider-secret');
+  });
   it('encrypts complete credential; tampering, AAD/nonce and key changes fail closed', async () => {
     const f = fixture(); const s = await stateOf(f); expect((await f.cb(s)).status).toBe(200);
     const row = f.rows.get('a'.repeat(64));
@@ -48,7 +69,7 @@ describe('keeper isolated public handlers', () => {
     const f = fixture(); const s = await stateOf(f);
     const results = await Promise.all([f.cb(s), f.cb(s)]);
     expect(results.map(r => r.status).sort()).toEqual([200, 409]);
-    expect(f.calls()).toBe(5);
+    expect(f.calls()).toBe(6);
     expect((await f.cb(s)).status).toBe(409);
     for (let i = 0; i < 2; i++) {
       const r = await f.handoff(); expect(r.status).toBe(200);
@@ -56,11 +77,20 @@ describe('keeper isolated public handlers', () => {
       expect(r.headers.get('referrer-policy')).toBe('no-referrer');
       expect((await r.json()).access_token).toBe('long-secret');
     }
-    f.advance(3600001); expect((await f.handoff()).status).toBe(410);
+    expect((await (await f.handoff()).json()).expires_at).toBe(2000000);
+    f.advance(1000001); expect((await f.handoff()).status).toBe(410);
   });
-  it.each([{ user: 'other' }, { app: 'other' }, { id: '999' }, { shortId: '999' }, { denied: true }, { failure: true }, { oversized: true }])('terminal failure with no leak or retry: %j', async options => {
+  it('uses exact short /me identity despite realistic unsafe numeric exchange metadata', async () => {
+    const f = fixture({ shortId: 17841405793187218, expectedId: '17841405793187218' });
+    expect((await f.cb(await stateOf(f))).status).toBe(200);
+  });
+  it.each([{ user: 'other' }, { app: 'other' }, { id: '999' }, { shortId: '999' }, { denied: true }, { failure: true }, { oversized: true }, { expired: true }, { debugUser: '999' }, { type: 'APP' }])('terminal failure with no leak or retry: %j', async options => {
     const f = fixture(options); const s = await stateOf(f); const r = await f.cb(s);
     expect(r.status).toBe(400); expect(await r.text()).toBe('{"error":"oauth_failed"}');
+    const row = f.rows.get('a'.repeat(64));
+    expect(row.status).toBe('unknown');
+    expect(['short_exchange', 'short_identity', 'long_exchange', 'app_token', 'debug', 'long_identity', 'persist']).toContain(row.failure_stage);
+    expect(JSON.stringify(row)).not.toMatch(/secret-provider|short-secret|long-secret|code-secret/);
     const count = f.calls(); expect((await f.cb(s)).status).toBe(409); expect(f.calls()).toBe(count);
     expect((await f.handoff()).status).toBe(409);
   });

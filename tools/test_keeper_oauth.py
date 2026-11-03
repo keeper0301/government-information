@@ -12,18 +12,46 @@ class HandoffTests(unittest.TestCase):
         with self.assertRaises(k.SafeError):
             k.validate_config({})
 
+    def test_debug_contract_failures_and_missing_secret_preserve_source(self):
+        for change in ({'app_id': 'wrong'}, {'user_id': '999'}, {'scopes': []}, {'expires_at': 0}, {'expires_at': float('nan')}, {'type': 'APP'}, {'is_valid': False}):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as root:
+                p, raw, c, credential = self.fixture(root)
+                def proof(url, headers, body=None):
+                    result = self.proof(url, headers, body)
+                    if '/debug_token' in url:
+                        assert isinstance(result['data'], dict)
+                        result['data'].update(change)
+                    return result
+                with self.assertRaises(k.SafeError): k.persist(c, credential, {'nonce': 'a'*64}, proof)
+                self.assertEqual(p.read_bytes(), raw)
+        with tempfile.TemporaryDirectory() as root:
+            p, raw, c, credential = self.fixture(root)
+            raw = raw.replace(b'THREADS_APP_SECRET=fixture-secret\n', b'')
+            p.write_bytes(raw)
+            with patch.object(k, 'transport') as connect:
+                with self.assertRaises(k.SafeError): k.persist(c, credential, {'nonce': 'a'*64}, connect)
+                connect.assert_not_called()
+            self.assertEqual(p.read_bytes(), raw)
+
     def fixture(self, root):
         p = Path(root) / 'canonical.env'
-        raw = b'# untouched\nTHREADS_APP_ID=app\nTHREADS_ACCOUNT_ID=123\nTHREADS_ACCESS_TOKEN=old\nPERMIT=disabled\n'
+        raw = b'# untouched\nTHREADS_APP_ID=app\nTHREADS_APP_SECRET=fixture-secret\nTHREADS_ACCOUNT_ID=123\nTHREADS_ACCESS_TOKEN=old\nPERMIT=disabled\n'
         p.write_bytes(raw); p.chmod(0o600)
         c = dict(site='https://www.keepioo.com', canonical_env=str(p), control_secret='private-control', expected_user_id='123', expected_username='keeper.punch', app_id='app')
         credential = dict(nonce='a'*64, app_id='app', user_id='123', username='keeper.punch', access_token='new-token', scopes=list(k.SCOPES), expires_at=(k.time.time()+3600)*1000)
         return p, raw, c, credential
 
     def proof(self, url, headers, body=None):
+        if url == 'https://graph.threads.net/oauth/access_token':
+            assert isinstance(body, bytes)
+            self.assertIn(b'client_secret=fixture-secret', body)
+            self.assertEqual(headers['Content-Type'], 'application/x-www-form-urlencoded')
+            return {'access_token': 'generated-app-token'}
+        if '/debug_token' in url:
+            self.assertEqual(url, 'https://graph.threads.net/v1.0/debug_token?input_token=new-token')
+            self.assertEqual(headers['Authorization'], 'Bearer generated-app-token')
+            return {'data': dict(type='USER', user_id='123', is_valid=True, expires_at=k.time.time()+1800, scopes=list(k.SCOPES))}
         self.assertEqual(headers['Authorization'], 'Bearer new-token')
-        if '/permissions' in url:
-            return {'data': [dict(permission=s, status='granted') for s in k.SCOPES]}
         return dict(id='123', username='keeper.punch')
 
     def test_persist_proofs_backup_scoped_update_and_private_modes(self):
@@ -33,7 +61,7 @@ class HandoffTests(unittest.TestCase):
             def request(*args):
                 calls.append(args[0]); return self.proof(*args)
             k.persist(c, credential, {'nonce': 'a'*64}, request)
-            self.assertEqual(len(calls), 3)
+            self.assertEqual(len(calls), 4)
             self.assertIn(b'PERMIT=disabled\n', p.read_bytes())
             self.assertIn(b'# untouched\n', p.read_bytes())
             self.assertIn(b'THREADS_ACCESS_TOKEN=new-token\n', p.read_bytes())
@@ -138,6 +166,11 @@ class HandoffTests(unittest.TestCase):
             ('https://graph.threads.net/v1.0/me_unintended', None),
             ('https://graph.threads.net/v1.0/me?access_token=not-a-real-token', None),
             ('https://graph.threads.net/v1.0/me/permissions?extra=1', None),
+            ('https://graph.threads.net/v1.0/me/permissions', None),
+            ('https://graph.threads.net/debug_token?input_token=fixture', None),
+            ('https://graph.threads.net/v1.0/debug_token?input_token=', None),
+            ('https://graph.threads.net/v1.0/debug_token?input_token=one&input_token=two', None),
+            ('https://graph.threads.net/v1.0/debug_token?input_token=one&access_token=two', None),
             ('https://graph.threads.net/v1.0/me', b'{}'),
             ('https://www.keepioo.com/api/threads/keeper-punch/oauth/start-extra', b'{}'),
             ('https://www.keepioo.com/api/threads/keeper-punch/oauth/start', None),
@@ -154,8 +187,10 @@ class HandoffTests(unittest.TestCase):
             p, raw, c, credential = self.fixture(root)
             credential['access_token'] = 'fixture-token_123.safe'
             def proof(url, headers, body=None):
-                if url.endswith('/permissions'):
-                    return {'data': [dict(permission=s, status='granted') for s in k.SCOPES]}
+                if url == 'https://graph.threads.net/oauth/access_token':
+                    return {'access_token': 'generated-app-token'}
+                if '/debug_token' in url:
+                    return {'data': dict(type='USER', user_id='123', is_valid=True, expires_at=k.time.time()+1800, scopes=list(k.SCOPES))}
                 return dict(id='123', username='keeper.punch')
             k.persist(c, credential, {'nonce': 'a'*64}, proof)
             proc = subprocess.run(['bash', '-c', '. "$1"; printf "%s" "$THREADS_ACCESS_TOKEN"', 'fixture', str(p)], capture_output=True, text=True, timeout=3)

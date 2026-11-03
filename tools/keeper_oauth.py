@@ -5,6 +5,7 @@ import contextlib
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -97,10 +98,19 @@ def transport(url, headers, body=None):
     exact_graph = parsed.scheme == 'https' and parsed.netloc == 'graph.threads.net'
     site_allowed = (exact_site and body is not None and not parsed.query and
                     parsed.path in ('/api/threads/keeper-punch/oauth/start', '/api/threads/keeper-punch/oauth/handoff'))
+    query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    debug_allowed = (parsed.path == '/v1.0/debug_token' and len(query) == 1 and
+                     query[0][0] == 'input_token' and re.fullmatch(r'[A-Za-z0-9_.-]{1,8192}', query[0][1]) is not None)
+    form = urllib.parse.parse_qsl(body.decode('ascii'), keep_blank_values=True) if exact_graph and isinstance(body, bytes) else []
+    app_allowed = (exact_graph and parsed.path == '/oauth/access_token' and not parsed.query and
+                   headers.get('Content-Type') == 'application/x-www-form-urlencoded' and len(form) == 3 and
+                   sorted(key for key, _ in form) == ['client_id', 'client_secret', 'grant_type'] and
+                   all(value and not re.search(r'[\s\x00-\x1f\x7f]', value) for _, value in form) and
+                   dict(form).get('grant_type') == 'client_credentials')
     graph_allowed = (exact_graph and body is None and
                      ((parsed.path == '/v1.0/me' and parsed.query in ('', 'fields=id,username')) or
-                      (parsed.path == '/v1.0/me/permissions' and not parsed.query)))
-    if parsed.fragment or not (site_allowed or graph_allowed):
+                      debug_allowed))
+    if parsed.fragment or not (site_allowed or graph_allowed or app_allowed):
         raise SafeError('transport_target_rejected')
     req = urllib.request.Request(url, data=body, headers=headers, method='POST' if body is not None else 'GET')
     try:
@@ -140,15 +150,17 @@ def bound_env(raw, c):
     ids = [env[k] for k in ('THREADS_ACCOUNT_ID', 'THREADS_USER_ID') if k in env]
     if not ids or any(v != c['expected_user_id'] for v in ids) or env.get('THREADS_APP_ID') != c['app_id']:
         raise SafeError('canonical_binding_mismatch')
+    if not env.get('THREADS_APP_SECRET') or env['THREADS_APP_SECRET'] != env['THREADS_APP_SECRET'].strip():
+        raise SafeError('canonical_app_secret_required')
     return env
 
 def persist(c, credential, intent, request=transport):
     # Lock source across provider proof and scoped atomic update; re-check digest before replace.
     with locked(c['canonical_env']):
-        raw = private_read(c['canonical_env']); bound_env(raw, c)
+        raw = private_read(c['canonical_env']); env = bound_env(raw, c)
         if (credential.get('nonce') != intent.get('nonce') or credential.get('app_id') != c['app_id'] or
             credential.get('user_id') != c['expected_user_id'] or credential.get('username') != 'keeper.punch' or
-            not isinstance(credential.get('expires_at'), (int, float)) or credential['expires_at'] <= time.time() * 1000 or
+            type(credential.get('expires_at')) not in (int, float) or not math.isfinite(credential['expires_at']) or credential['expires_at'] <= time.time() * 1000 or
             not set(SCOPES).issubset(credential.get('scopes', []))):
             raise SafeError('credential_binding_failed')
         token = credential.get('access_token')
@@ -159,13 +171,24 @@ def persist(c, credential, intent, request=transport):
             me = request('https://graph.threads.net/v1.0/me?fields=id,username', headers)
             if me.get('id') != c['expected_user_id'] or me.get('username') != 'keeper.punch':
                 raise SafeError('identity_proof_failed')
-        grants = request('https://graph.threads.net/v1.0/me/permissions', headers)
-        if not all(any(g.get('permission') == s and g.get('status') == 'granted' for g in grants.get('data', [])) for s in SCOPES):
+        app_token = request('https://graph.threads.net/oauth/access_token', {'Content-Type': 'application/x-www-form-urlencoded'},
+                            urllib.parse.urlencode({'client_id': c['app_id'], 'client_secret': env['THREADS_APP_SECRET'], 'grant_type': 'client_credentials'}).encode('ascii'))
+        if not isinstance(app_token.get('access_token'), str) or not app_token['access_token']:
+            raise SafeError('app_token_failed')
+        debug = request('https://graph.threads.net/v1.0/debug_token?' + urllib.parse.urlencode({'input_token': token}),
+                        {'Authorization': 'Bearer ' + app_token['access_token']})
+        d = debug.get('data')
+        if (not isinstance(d, dict) or d.get('is_valid') is not True or d.get('type') != 'USER' or
+            d.get('user_id') != c['expected_user_id'] or ('app_id' in d and d['app_id'] != c['app_id']) or
+            type(d.get('expires_at')) not in (int, float) or not math.isfinite(d['expires_at']) or
+            not math.isfinite(d['expires_at'] * 1000) or d['expires_at'] * 1000 <= time.time() * 1000 or
+            not isinstance(d.get('scopes'), list) or not all(s in d['scopes'] for s in SCOPES)):
             raise SafeError('grant_proof_failed')
-        if credential['expires_at'] <= time.time() * 1000:
+        expires_at = min(credential['expires_at'], d['expires_at'] * 1000)
+        if expires_at <= time.time() * 1000:
             raise SafeError('credential_expired')
         # Only token and token metadata; no permits, timers, app/account ids or publish controls.
-        updates = {'THREADS_ACCESS_TOKEN': token, 'THREADS_TOKEN_EXPIRES_AT': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(credential['expires_at'] / 1000)), 'THREADS_SCOPES': ','.join(SCOPES)}
+        updates = {'THREADS_ACCESS_TOKEN': token, 'THREADS_TOKEN_EXPIRES_AT': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(expires_at / 1000)), 'THREADS_SCOPES': ','.join(SCOPES)}
         lines = raw.decode().splitlines(keepends=True)
         for key, value in updates.items():
             found = False
