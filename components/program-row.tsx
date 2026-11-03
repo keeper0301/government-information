@@ -10,7 +10,6 @@ import {
   ShieldCheckIcon,
 } from "./icons";
 import type { DisplayProgram } from "@/lib/programs";
-import { isApplicationClosed } from "@/lib/policy/application-date";
 import { cleanDescription } from "@/lib/utils";
 import { EligibilityBadges } from "./personalization/EligibilityBadges";
 import { BusinessMatchBadge } from "./personalization/BusinessMatchBadge";
@@ -81,7 +80,7 @@ export function ProgramRow({
   trackingSourcePage?: string;
 }) {
   const Icon = iconMap[program.icon];
-  const isClosed = isApplicationClosed(program.applyEnd);
+  const isClosed = program.isClosed === true;
   // 마감 7일 이내면 좌측 액센트를 항상 빨강으로 — 긴박성 시각 신호.
   // 그 외엔 hover 시에만 blue 액센트 등장 (정적 상태 차분).
   const isUrgent = !isClosed && program.dday !== null && program.dday <= 7;

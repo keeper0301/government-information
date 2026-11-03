@@ -11,6 +11,7 @@ import {
 } from "@/lib/listing-sources";
 export { calcDday } from "@/lib/utils";
 import { calcDday } from "@/lib/utils";
+import { isApplicationClosed } from "@/lib/policy/application-date";
 import { formatSourceName } from "@/lib/source-display";
 import { getPublishedGuide, type EvidenceProgram } from '@/lib/policy/evidence-guide';
 
@@ -30,7 +31,8 @@ export type DisplayProgram = {
   amount: string;
   source: string;
   dday: number | null;
-  applyEnd?: string | null;
+  // Server snapshot: keep cached SSR and initial client markup consistent.
+  isClosed?: boolean;
   icon: "house" | "briefcase" | "heart" | "medical" | "coin" | "store" | "shield";
   type: "welfare" | "loan";
   sourceCode: string | null;
@@ -84,7 +86,7 @@ export function welfareToDisplay(w: WelfareProgram): DisplayProgram {
     amount: w.benefits || "",
     source: formatSourceName(w.source),
     dday: calcDday(w.apply_end),
-    applyEnd: w.apply_end,
+    isClosed: isApplicationClosed(w.apply_end),
     icon: categoryIconMap[w.category] || "house",
     type: "welfare",
     sourceCode: w.source_code ?? null,
@@ -110,7 +112,7 @@ export function loanToDisplay(l: LoanProgram): DisplayProgram {
     amount: parts.join(" · "),
     source: formatSourceName(l.source),
     dday: calcDday(l.apply_end),
-    applyEnd: l.apply_end,
+    isClosed: isApplicationClosed(l.apply_end),
     icon: categoryIconMap[l.category] || "coin",
     type: "loan",
     sourceCode: l.source_code ?? null,
