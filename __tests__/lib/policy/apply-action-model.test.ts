@@ -36,12 +36,20 @@ const base: ApplyActionInput = {
 };
 
 describe("신청 실행 카드 상태", () => {
-  it("명시적인 신청기간 상시 문장만 상시로 구분한다", () => {
-    expect(buildApplyActionModel({ ...base, description: "신청기간: 상시" }).summary.when.text).toBe("상시 신청 · 공식 공고 확인");
-    for (const description of ["상시근로자 5명 이상", "상시 신청이 아닙니다", "신청기간: 상시 접수 종료", "문의기간: 상시"]) {
+  it("독립된 상시 표기는 본문 인용으로만 전달한다", () => {
+    expect(buildApplyActionModel({ ...base, description: "신청기간: 상시" }).summary.when.text).toBe("본문 표기: 상시 · 현재 접수 여부 확인");
+    for (const description of ["상시근로자 5명 이상", "상시 신청이 아닙니다", "신청기간: 상시 접수 종료", "문의기간: 상시", "예시 신청기간: 상시", "신청기간: 상시\n현재 접수 종료", "신청기간: 상시\n신청기간: 2026년 6월"]) {
       expect(buildApplyActionModel({ ...base, description }).summary.when.text).toContain("미확인");
     }
     expect(buildApplyActionModel({ ...base, description: "신청기간: 상시", isClosed: true }).summary.when.text).toBe("마감됨");
+  });
+
+  it.each([
+    { applyStart: "2026-07-01", applyEnd: "2026-06-30", dday: 3 },
+    { applyStart: null, applyEnd: "2026-2-30", dday: null },
+    { applyStart: "2026-06-01", applyEnd: "2026-02-30", dday: 3 },
+  ])("모순되거나 잘못된 기간은 D-day나 정상 기간으로 표시하지 않는다", (period) => {
+    expect(buildApplyActionModel({ ...base, ...period }).summary.when.text).toContain("미확인");
   });
 
   it("잘못된 날짜와 음수 D-day는 모집 중으로 표시하지 않는다", () => {

@@ -191,21 +191,26 @@ function buildWhen(input: ApplyActionInput): { text: string; urgent: boolean } {
     const end = formatDotDate(input.applyEnd);
     return { text: end ? `마감됨 · ${end}` : "마감됨", urgent: true };
   }
-  if (input.dday !== null && input.dday >= 0 && input.dday <= 7) {
+  const startDate = validApplicationDate(input.applyStart);
+  const endDate = validApplicationDate(input.applyEnd);
+  if ((input.applyStart && !startDate) || (input.applyEnd && !endDate) ||
+      (startDate && endDate && startDate > endDate)) {
+    return { text: UNKNOWN_WHEN, urgent: false };
+  }
+  if (endDate && input.dday !== null && input.dday >= 0 && input.dday <= 7) {
     return { text: `D-${input.dday}`, urgent: true };
   }
-  const start = formatDotDate(input.applyStart);
-  const end = formatDotDate(input.applyEnd);
+  const start = startDate?.replace(/-/g, ".");
+  const end = endDate?.replace(/-/g, ".");
   if (start && end) return { text: `${start} ~ ${end}`, urgent: false };
   if (end) return { text: `${end} 마감`, urgent: false };
   if (start) return { text: `${start}부터`, urgent: false };
-  // Only an explicit, standalone application-period line supports a rolling label.
-  // Other uses (e.g. 상시근로자) and missing dates are not evidence of open recruitment.
-  const periodText = [input.applyMethod, input.description, input.detailedContent]
-    .map((value) => cleanDescription(value || "")).join("\n");
-  if (!input.applyStart && !input.applyEnd &&
-      /(?:^|\n)\s*신청\s*기간\s*[:：]\s*(?:상시|연중\s*상시|상시\s*(?:접수|신청))\s*(?:$|\n)/.test(periodText)) {
-    return { text: "상시 신청 · 공식 공고 확인", urgent: false };
+  // Legacy prose is not verified recruitment status. Quote only a whole-field
+  // period statement; examples, surrounding prose and conflicting lines stay unknown.
+  const hasRollingStatement = [input.applyMethod, input.description, input.detailedContent]
+    .some((value) => /^신청[ \t]*기간[ \t]*[:：][ \t]*(?:상시|연중[ \t]*상시|상시[ \t]*(?:접수|신청))$/.test(cleanDescription(value || "").trim()));
+  if (hasRollingStatement) {
+    return { text: "본문 표기: 상시 · 현재 접수 여부 확인", urgent: false };
   }
   return { text: UNKNOWN_WHEN, urgent: false };
 }

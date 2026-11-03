@@ -40,7 +40,7 @@ const ICON_TEXT_CLASS = "text-blue-600";
 function DdayLabel({ dday, closed }: { dday: number | null; closed: boolean }) {
   // 마감 정보는 사용자가 가장 먼저 봐야 할 시그널이라 12px·semibold 로 키움.
   // 11px 은 한국어 본문 13~15px 와 너무 격차가 커서 노안·40·50대가 놓치기 쉬움.
-  if (dday === null) {
+  if (closed || dday === null) {
     return (
       <span className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-grey-100 text-grey-600">
         {closed ? "마감" : "기간 미확인"}
@@ -84,7 +84,7 @@ export function ProgramRow({
   const isClosed = isApplicationClosed(program.applyEnd);
   // 마감 7일 이내면 좌측 액센트를 항상 빨강으로 — 긴박성 시각 신호.
   // 그 외엔 hover 시에만 blue 액센트 등장 (정적 상태 차분).
-  const isUrgent = program.dday !== null && program.dday <= 7;
+  const isUrgent = !isClosed && program.dday !== null && program.dday <= 7;
 
   // 자격 진단 — businessProfile 있을 때만 평가 (없으면 null → 배지 미노출)
   // server-side 평가라 React render 마다 호출되지만, evaluateBusinessMatch 는
@@ -104,7 +104,7 @@ export function ProgramRow({
   const ariaLabel = compactText(
     [
       program.title,
-      program.dday === null ? (isClosed ? "마감" : "기간 미확인") : `D-${program.dday}`,
+      isClosed ? "마감" : program.dday === null ? "기간 미확인" : `D-${program.dday}`,
       visibleDescription,
       program.source,
     ].filter(Boolean).join(" · "),

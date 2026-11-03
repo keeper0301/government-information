@@ -16,6 +16,13 @@ describe("목록 신청기간", () => {
     expect(html).toContain("기간 미확인");
     expect(html).not.toContain("상시");
   });
+  it("만료된 날짜는 캐시에 남은 D-day보다 우선한다", () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-30T15:00:00Z"));
+    const html = renderToStaticMarkup(<ProgramRow program={{ ...program, applyEnd: "2026-06-30", dday: 0 }} />);
+    expect(html).toContain('aria-label="지원 사업 · 마감');
+    expect(html).toContain(">마감</span>");
+    expect(html).not.toContain("D-0");
+  });
   it("지난 날짜는 접근성 이름과 배지 모두 마감으로 표시한다", () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-30T15:00:00Z"));
     const html = renderToStaticMarkup(<ProgramRow program={{ ...program, applyEnd: "2026-06-30" }} />);
