@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // 단순한 mock — query 가 호출되면 미리 주입된 응답 큐에서 순서대로 반환.
-const responseQueue: Array<{ count?: number | null; data?: unknown[] }> = [];
+const responseQueue: Array<{ count?: number | null; data?: unknown[]; error?: { message: string } }> = [];
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -32,6 +32,7 @@ function makeBuilder(): unknown {
 
 import {
   getNewsRatio,
+  getNewsRatioForMonitoring,
   getHighNullDateCityCount,
   getStaleCityNames,
 } from "@/lib/analytics/local-press-stats";
@@ -41,6 +42,19 @@ beforeEach(() => {
 });
 
 describe("getNewsRatio", () => {
+  it.each([0, 1, 2, 3, 4])("count 조회 %s 실패는 0건으로 위장하지 않는다", async (index) => {
+    for (let i = 0; i < 5; i++) responseQueue.push(i === index ? { count: null, error: { message: "unavailable" } } : { count: 20 });
+    await expect(getNewsRatio()).rejects.toThrow("AdSense 콘텐츠 통계 조회 실패");
+  });
+  it("오류 없는 null count도 미확인 통계로 차단한다", async () => {
+    responseQueue.push({ count: null }, ...Array.from({ length: 4 }, () => ({ count: 20 })));
+    await expect(getNewsRatio()).rejects.toThrow("AdSense 콘텐츠 통계 조회 실패");
+  });
+  it("해설 20건 / 분류된 뉴스 100건은 백필 20%다", async () => {
+    responseQueue.push({ count: 100 }, { count: 50 }, { count: 30 }, { count: 20 }, { count: 100 });
+    expect((await getNewsRatio()).commentaryBackfillRatio).toBe(0.2);
+  });
+
   it("분모 0 → ratio 0, commentaryBackfillRatio 0", async () => {
     // 4 count + 1 count = 5 응답 (welfare/loan/blog/newsIndexable/newsWithCommentary)
     for (let i = 0; i < 5; i++) responseQueue.push({ count: 0 });
@@ -162,5 +176,14 @@ describe("getHighNullDateCityCount threshold", () => {
       ],
     });
     expect(await getHighNullDateCityCount(5, 24)).toBe(1);
+  });
+});
+
+describe("통계 오류 모니터링 격리", () => {
+  it("count 실패는 unknown으로 전달하고 다른 운영 점검을 중단하지 않는다", async () => {
+    responseQueue.push({ count: null, error: { message: "timeout" } }, ...Array.from({ length: 4 }, () => ({ count: 20 })));
+    const stats = await getNewsRatioForMonitoring();
+    expect(Number.isNaN(stats.ratio)).toBe(true);
+    expect(Number.isNaN(stats.commentaryBackfillRatio)).toBe(true);
   });
 });

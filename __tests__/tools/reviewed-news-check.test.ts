@@ -16,3 +16,8 @@ it('상세는 실제 검수 표시와 색인 상태를 모두 요구한다', () 
 it('스크립트 안의 검수 문구는 공개 표시로 인정하지 않는다', () => {
   expect(isReviewedNewsPage('/news', html('<script>공개된 검수 뉴스 3건</script>'))).toBe(false);
 });
+
+it('현재 발행·확인 표시와 React가 나눈 목록 숫자를 인식한다', () => {
+  expect(isReviewedNewsPage('/news/example', html('키피오 발행·확인일: 2026-10-09'))).toBe(true);
+  expect(isReviewedNewsPage('/news', html('공개된 검수 뉴스 <!-- -->26<!-- -->건'))).toBe(true);
+});
