@@ -73,9 +73,9 @@ config/marketing.json      # 시리즈별 활성/비활성 토글
 **왜:** 이 단계 없이는 코드를 짜도 못 돌림. 환경변수가 채워져야 다음 task 진행 가능.
 
 - [ ] **Step 1: 정책알리미 Supabase에서 read-only API 키 준비**
-  - Supabase 대시보드 → `fpnaptuhulcggournikc` 프로젝트(`government_infomation`) → Settings → API Keys → Legacy 탭
+  - Supabase 대시보드 → `<SUPABASE_PROJECT_REF>` 프로젝트 → Settings → API Keys → Legacy 탭
   - `anon (public)` 키 복사 (RLS로 보호되니 노출 OK)
-  - URL: `https://fpnaptuhulcggournikc.supabase.co`
+  - URL: `<SUPABASE_PROJECT_URL>`
 
 - [ ] **Step 2: Threads API 토큰 발급**
   - `keepio_agent/scripts/get-threads-token.js` 이미 있음 → 실행해서 토큰 얻기
@@ -83,8 +83,8 @@ config/marketing.json      # 시리즈별 활성/비활성 토글
 
 - [ ] **Step 3: keepio_agent의 `.env`에 다음 추가**
   ```
-  # 정책알리미 DB (정확한 프로젝트 ID는 government_infomation)
-  GOV_SUPABASE_URL=https://fpnaptuhulcggournikc.supabase.co
+  # 정책알리미 DB (프로젝트 URL은 대시보드에서 확인해 환경변수로만 보관)
+  GOV_SUPABASE_URL=<SUPABASE_PROJECT_URL>
   GOV_SUPABASE_ANON_KEY=<위에서 복사한 anon key>
 
   # OpenAI (BlogFury에서 쓰던 것)
@@ -101,7 +101,7 @@ config/marketing.json      # 시리즈별 활성/비활성 토글
 
 - [ ] **Step 4: `openai` 패키지 설치**
   ```bash
-  cd C:/Users/cgc09/projects/keepio_agent
+  cd <KEEPIO_AGENT_DIR>
   npm install openai
   ```
 
@@ -443,7 +443,7 @@ async function runMondayReport() {
     - `https://localhost` redirect URI 거부됨 → `https://www.keepioo.com/` 으로 통과.
     - User Token Generator 로 토큰 직접 발급 (사장님 keeper.punch 인스타 → keepio 앱
       Threads 테스터 등록 상태였음). 60일 long-lived token, 200자, User ID
-      26508378702091549.
+      `<THREADS_USER_ID>`.
     - `.env` 자동 작성 (PowerShell + 클립보드 우회 — 사장님 보안 정책에 의해
       JWT 자동 마스킹·credential 파일 직접 읽기 차단. 클립보드 읽기 권한 1회 허용).
     - 첫 자동 발행: https://www.threads.com/@keeper.punch/post/DXmV67gk_4A.
