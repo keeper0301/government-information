@@ -36,6 +36,27 @@ const base: ApplyActionInput = {
 };
 
 describe("신청 실행 카드 상태", () => {
+  it("독립된 상시 표기는 본문 인용으로만 전달한다", () => {
+    expect(buildApplyActionModel({ ...base, description: "신청기간: 상시" }).summary.when.text).toBe("본문 표기: 상시 · 현재 접수 여부 확인");
+    for (const description of ["상시근로자 5명 이상", "상시 신청이 아닙니다", "신청기간: 상시 접수 종료", "문의기간: 상시", "예시 신청기간: 상시", "신청기간: 상시\n현재 접수 종료", "신청기간: 상시\n신청기간: 2026년 6월"]) {
+      expect(buildApplyActionModel({ ...base, description }).summary.when.text).toContain("미확인");
+    }
+    expect(buildApplyActionModel({ ...base, description: "신청기간: 상시", isClosed: true }).summary.when.text).toBe("마감됨");
+  });
+
+  it.each([
+    { applyStart: "2026-07-01", applyEnd: "2026-06-30", dday: 3 },
+    { applyStart: null, applyEnd: "2026-2-30", dday: null },
+    { applyStart: "2026-06-01", applyEnd: "2026-02-30", dday: 3 },
+  ])("모순되거나 잘못된 기간은 D-day나 정상 기간으로 표시하지 않는다", (period) => {
+    expect(buildApplyActionModel({ ...base, ...period }).summary.when.text).toContain("미확인");
+  });
+
+  it("잘못된 날짜와 음수 D-day는 모집 중으로 표시하지 않는다", () => {
+    expect(buildApplyActionModel({ ...base, applyEnd: "2026-02-30", dday: null }).summary.when.text).toContain("미확인");
+    expect(buildApplyActionModel({ ...base, dday: -1 }).summary.when.text).not.toContain("D--");
+  });
+
   it("방문 신청은 요약 4줄, 전화 링크, 알림톡 버튼을 만든다", () => {
     const model = buildApplyActionModel(base);
 
@@ -44,7 +65,7 @@ describe("신청 실행 카드 상태", () => {
     expect(model.sourceLine).toContain("자료 갱신");
     expect(model.summary.who).toBe("계양구 1년 이상 거주 100세 어르신");
     expect(model.summary.amount).toBe("1인 100만원 (1회)");
-    expect(model.summary.when).toEqual({ text: "상시 또는 기관 확인", urgent: false });
+    expect(model.summary.when).toEqual({ text: "신청기간 미확인 · 공식 공고 확인", urgent: false });
     expect(model.summary.when.text).not.toContain("확인 필요");
     expect(model.route).toBe("visit");
     expect(model.steps.map((step) => step.text)).toEqual([
@@ -92,14 +113,14 @@ describe("신청 실행 카드 상태", () => {
     expect(model.summary.when).toEqual({ text: "D-7", urgent: true });
   });
 
-  it("마감일이 없으면 확인 필요를 강조하지 않는다", () => {
+  it("마감일이 없으면 상시로 추정하지 않는다", () => {
     const model = buildApplyActionModel({
       ...base,
       applyStart: null,
       applyEnd: null,
       dday: null,
     });
-    expect(model.summary.when.text).toBe("상시 또는 기관 확인");
+    expect(model.summary.when.text).toBe("신청기간 미확인 · 공식 공고 확인");
     expect(JSON.stringify(model)).not.toContain("확인 필요");
     expect(JSON.stringify(model)).not.toContain("검수 전");
   });

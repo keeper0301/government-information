@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/application-period-20261103": false
+    }
+  },
   "buildCommand": "NODE_OPTIONS=--max-old-space-size=4096 SENTRY_DISABLE_SOURCEMAPS=1 NEXT_BUILD_CPUS=2 npm run build",
   "headers": [
     {
