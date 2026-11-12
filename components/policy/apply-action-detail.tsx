@@ -128,6 +128,46 @@ function StepItem({
   );
 }
 
+function ApplyHowSection({
+  steps,
+  contactAction,
+  programId,
+  programTable,
+  sourcePage,
+}: {
+  steps: ApplyStep[];
+  contactAction: ApplySecondary | null;
+  programId: string;
+  programTable: "welfare_programs" | "loan_programs";
+  sourcePage: string;
+}) {
+  return (
+    <>
+      <SectionTitle index={2}>신청은 이렇게 해요</SectionTitle>
+      <ol className="grid gap-3">
+        {steps.map((step, index) => (
+          <StepItem
+            key={`${index}-${step.text}`}
+            step={step}
+            index={index + 1}
+            programId={programId}
+            programTable={programTable}
+            sourcePage={sourcePage}
+          />
+        ))}
+      </ol>
+      {contactAction && (
+        <ContactButton
+          action={contactAction}
+          programId={programId}
+          programTable={programTable}
+          sourcePage={sourcePage}
+        />
+      )}
+    </>
+  );
+}
+
 export function ApplyActionDetail(props: Props) {
   const model = buildApplyActionModel(props);
   const programTable = props.kind === "welfare" ? "welfare_programs" : "loan_programs";
@@ -186,32 +226,21 @@ export function ApplyActionDetail(props: Props) {
         </dl>
       </section>
 
-      <section className="mb-3 rounded-2xl border border-grey-200 bg-white p-5">
-        <SectionTitle index={2}>신청은 이렇게 해요</SectionTitle>
-        {model.route === "visit" && (
-          <VisitInfoTracker programId={props.programId} programTable={programTable} sourcePage={props.sourcePage} />
-        )}
-        <ol className="grid gap-3">
-          {model.steps.map((step, index) => (
-            <StepItem
-              key={`${index}-${step.text}`}
-              step={step}
-              index={index + 1}
-              programId={props.programId}
-              programTable={programTable}
-              sourcePage={props.sourcePage}
-            />
-          ))}
-        </ol>
-        {model.contactAction && (
-          <ContactButton
-            action={model.contactAction}
-            programId={props.programId}
-            programTable={programTable}
-            sourcePage={props.sourcePage}
-          />
-        )}
-      </section>
+      <VisitInfoTracker
+        active={model.route === "visit"}
+        className="mb-3 rounded-2xl border border-grey-200 bg-white p-5"
+        programId={props.programId}
+        programTable={programTable}
+        sourcePage={props.sourcePage}
+      >
+        <ApplyHowSection
+          steps={model.steps}
+          contactAction={model.contactAction}
+          programId={props.programId}
+          programTable={programTable}
+          sourcePage={props.sourcePage}
+        />
+      </VisitInfoTracker>
 
       <section className="mb-3 rounded-2xl border border-grey-200 bg-white p-5">
         <SectionTitle index={3}>믿을 수 있는 정보인가요?</SectionTitle>

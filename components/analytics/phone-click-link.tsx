@@ -24,14 +24,15 @@ export function PhoneClickLink({
     <a
       href={href}
       className={className}
-      onClick={() =>
+      onClick={() => {
+        // 동기 호출. trackPolicyDetailEvent 가 sendBeacon 으로 tel: 이동 전에 큐에 넣는다.
         trackPolicyDetailEvent({
           eventType: "apply_call_click",
           programId,
           programTable,
           sourcePage,
-        })
-      }
+        });
+      }}
     >
       {children}
     </a>

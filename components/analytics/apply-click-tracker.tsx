@@ -27,13 +27,13 @@ export function ApplyClickTracker({
   children,
 }: Props) {
   function onClick() {
+    // 동기 호출. 외부 탭 이동은 sendBeacon 으로 남긴다.
     trackPolicyDetailEvent({
       eventType: "apply_click",
       programId,
       programTable,
       sourcePage,
     });
-    // navigate 는 anchor 가 처리 (preventDefault X)
   }
 
   return (

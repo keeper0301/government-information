@@ -32,6 +32,7 @@ export function ApplyBottomBar({ programId, programTable, sourcePage, primary, s
   async function startAlimtalk() {
     if (pending) return;
     setPending(true);
+    // OAuth·로그인 이동보다 먼저. beacon 이라 리다이렉트 후에도 남는다.
     trackPolicyDetailEvent({
       eventType: "alimtalk_signup_click",
       programId,
