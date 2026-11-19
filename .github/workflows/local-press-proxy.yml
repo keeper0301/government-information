@@ -54,77 +54,36 @@ jobs:
           KEEPIOO_RUNNER_CITIES: ${{ github.event.inputs.cities || 'nowon,dongnae,busanjin,geumjeong,sasang,sasang_news,gimpo,seongnam,cheonan,ansan,changwon,yeongdo,suwon,pyeongtaek,yangcheon,eunpyeong,gangnam,seongdong,dongdaemun,seongbuk,jeju,namdong_incheon,bucheon,siheung,gwangmyeong' }}
         run: node runner.mjs
 
-      - name: Drain news queues after successful scrape
-        if: success()
-        working-directory: .
+  classify:
+    needs: [scrape]
+    if: ${{ !cancelled() && needs.scrape.result == 'success' }}
+    runs-on: ubuntu-latest
+    # Independent budget; no production retries. Commentary follows completed classification.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Drain classify queue
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SITE_BASE_URL: https://www.keepioo.com
-        run: |
-          set -euo pipefail
-          if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::error::CRON_SECRET secret is required for post-scrape queue drain."
-            exit 1
-          fi
+        run: bash tools/drain-news-queue.sh /api/cron/news-classify
 
-          auth_scheme="Bearer"
-          auth_header="Authorization: ${auth_scheme} "
-          auth_header+="${CRON_SECRET}"
-
-          call_cron() {
-            local label="$1"
-            local path="$2"
-            local out
-            out="$(mktemp)"
-            local http
-            http=$(curl -sS \
-              --request POST \
-              --max-time 780 \
-              -H "${auth_header}" \
-              -H "Content-Type: application/json" \
-              -o "${out}" \
-              -w "%{http_code}" \
-              "${SITE_BASE_URL}${path}") || {
-              rm -f "${out}"
-              echo "::error::${label} request failed"
-              return 1
-            }
-            echo "== ${label} =="
-            echo "HTTP ${http}"
-
-            node - "${out}" <<'NODE'
-          const fs = require('fs');
-          const file = process.argv[2];
-          const body = fs.readFileSync(file, 'utf8');
-          try {
-            const json = JSON.parse(body);
-            const safe = {
-              ok: json.ok,
-              duration_ms: json.duration_ms,
-              fetched: json.fetched,
-              classified: json.classified,
-              auto_hidden: json.auto_hidden,
-              kept: json.kept,
-              failed: json.failed,
-              updated: json.updated,
-              sentinel_filled: json.sentinel_filled,
-              llm_failed: json.llm_failed,
-              update_failed: json.update_failed,
-              errors: Array.isArray(json.errors) ? json.errors.slice(0, 3) : undefined,
-            };
-            console.log(JSON.stringify(safe, null, 2));
-          } catch {
-            console.log(body.slice(0, 1000));
-          }
-          NODE
-            rm -f "${out}"
-            if [ "${http}" -lt 200 ] || [ "${http}" -ge 300 ]; then
-              echo "::error::${label} failed with HTTP ${http}"
-              return 1
-            fi
-          }
-
-          drain_failed=0
-          call_cron "news-classify post-scrape drain" "/api/cron/news-classify" || drain_failed=1
-          call_cron "news-ai-commentary post-scrape drain" "/api/cron/news-ai-commentary-backfill" || drain_failed=1
-          exit "${drain_failed}"
+  commentary:
+    needs: [scrape, classify]
+    if: ${{ !cancelled() && needs.scrape.result == 'success' && (needs.classify.result == 'success' || needs.classify.result == 'failure') }}
+    runs-on: ubuntu-latest
+    # Independent budget; no production retries. Commentary follows completed classification.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Drain commentary queue
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_BASE_URL: https://www.keepioo.com
+        run: bash tools/drain-news-queue.sh /api/cron/news-ai-commentary-backfill
