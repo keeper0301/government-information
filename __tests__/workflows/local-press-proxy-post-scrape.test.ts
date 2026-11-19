@@ -30,3 +30,39 @@ describe("local-press-proxy post-scrape queue drain", () => {
     expect(workflowSource).toContain('exit 1');
   });
 });
+
+import { spawnSync } from "node:child_process";
+
+it.each([
+  [500, 200, 1],
+  [200, 500, 1],
+  [200, 200, 0],
+  [0, 200, 1],
+  [200, 0, 1],
+])("attempts both independent drains (%i/%i) before exiting %i", (classifier, commentary, expected) => {
+  const script = workflowSource.split("        run: |\n").at(-1)!
+    .split("\n").map(line => line.replace(/^          /, "")).join("\n");
+  const fakeCurl = `
+curl() {
+  local out=""
+  while [ "$#" -gt 1 ]; do
+    if [ "$1" = "-o" ]; then out="$2"; shift; fi
+    shift
+  done
+  echo "called:$1" >&2
+  echo '{}' > "$out"
+  case "$1" in
+    */news-classify) printf '${classifier}'; [ '${classifier}' -ne 0 ] ;;
+    */news-ai-commentary-backfill) printf '${commentary}'; [ '${commentary}' -ne 0 ] ;;
+    *) return 99 ;;
+  esac
+}
+`;
+  const result = spawnSync("bash", ["-c", fakeCurl + script], {
+    encoding: "utf8",
+    env: { ...process.env, CRON_SECRET: "test-only", SITE_BASE_URL: "https://example.invalid" },
+  });
+  expect(result.stderr).toContain("called:https://example.invalid/api/cron/news-classify");
+  expect(result.stderr).toContain("called:https://example.invalid/api/cron/news-ai-commentary-backfill");
+  expect(result.status).toBe(expected);
+});

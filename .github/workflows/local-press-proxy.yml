@@ -84,7 +84,11 @@ jobs:
               -H "Content-Type: application/json" \
               -o "${out}" \
               -w "%{http_code}" \
-              "${SITE_BASE_URL}${path}")
+              "${SITE_BASE_URL}${path}") || {
+              rm -f "${out}"
+              echo "::error::${label} request failed"
+              return 1
+            }
             echo "== ${label} =="
             echo "HTTP ${http}"
 
@@ -116,9 +120,11 @@ jobs:
             rm -f "${out}"
             if [ "${http}" -lt 200 ] || [ "${http}" -ge 300 ]; then
               echo "::error::${label} failed with HTTP ${http}"
-              exit 1
+              return 1
             fi
           }
 
-          call_cron "news-classify post-scrape drain" "/api/cron/news-classify"
-          call_cron "news-ai-commentary post-scrape drain" "/api/cron/news-ai-commentary-backfill"
+          drain_failed=0
+          call_cron "news-classify post-scrape drain" "/api/cron/news-classify" || drain_failed=1
+          call_cron "news-ai-commentary post-scrape drain" "/api/cron/news-ai-commentary-backfill" || drain_failed=1
+          exit "${drain_failed}"
