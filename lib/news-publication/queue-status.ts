@@ -4,6 +4,7 @@ const LABELS: Record<string, string> = {
   insufficient_quota: '작성 서비스 사용 한도 부족으로 이번 실행을 중단했습니다. 잔액과 한도 설정을 확인해 주세요.',
   authentication: '작성 서비스 인증 실패로 이번 실행을 중단했습니다. 운영 인증 설정을 확인해 주세요.',
   permission: '작성 서비스 권한 오류로 이번 실행을 중단했습니다. 운영 계정 권한을 확인해 주세요.',
+  rate_or_quota: '작성 서비스 요청 제한으로 이번 실행을 중단했습니다. 다음 예약 실행에서 상태를 다시 확인합니다.',
   daily_limit: '오늘 공개 한도 3편을 채웠습니다.',
   processing: '다른 후보의 검사와 저장이 끝나기를 기다립니다.',
   ready: '다음 정상 예약 실행에서 검사할 후보가 있습니다.',
@@ -14,11 +15,12 @@ const LABELS: Record<string, string> = {
   candidate_limit: '이번 실행의 후보 처리 횟수를 채웠습니다.',
   failed: '실행 중 오류가 발생했습니다. 처리된 기사와 서버 기록을 확인해 주세요.',
 };
-// 기사별 품질 문제나 일시적인 요청 지연은 서비스 전체 장애로 단정하지 않습니다.
+// 작성 서비스의 429 응답을 받으면 같은 실행에서 다른 후보의 요청을 이어가지 않습니다.
 export function sharedNewsFailure(evidence: unknown): string | null {
   if (!evidence || typeof evidence !== 'object' || !('toolFailure' in evidence)) return null;
   const failure = evidence.toolFailure;
   if (!failure || typeof failure !== 'object' || !('kind' in failure)) return null;
+  if (failure.kind === 'rate_or_quota' && 'httpStatus' in failure && failure.httpStatus === 429) return failure.kind;
   return typeof failure.kind === 'string'
     && ['credit_exhausted', 'insufficient_quota', 'authentication', 'permission'].includes(failure.kind)
     ? failure.kind : null;
