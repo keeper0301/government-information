@@ -129,7 +129,7 @@ export function AlertList() {
                     <div className="text-[13px] text-grey-600">
                       {sub.program_type === "welfare" ? "복지" : "대출"} · 마감{" "}
                       {sub.notify_before_days}일 전 알림 ·{" "}
-                      {program?.apply_end || "상시"}
+                      {program?.apply_end || "신청기간 미확인"}
                     </div>
                   </div>
                   <button

@@ -9,6 +9,7 @@
 //   - searchCnt=0 → 전체 데이터 (1,400건+)
 // ============================================================
 
+import { validApplicationDate } from "@/lib/policy/application-date";
 import type { Collector, CollectedItem } from "./index";
 import { fetchWithTimeout } from "./index";
 import { inferRegionFromTitle } from "@/lib/regions";
@@ -72,12 +73,25 @@ export function parsePubDate(raw: string | undefined | null): string | null {
 // 신청기간 "20220727 ~ 20220930" → {start, end}
 // 단위 테스트에서 직접 호출하기 위해 export.
 export function parsePeriod(raw: string | undefined | null): { start: string | null; end: string | null } {
-  if (!raw) return { start: null, end: null };
-  const matches = raw.match(/(\d{8})/g);
-  if (!matches || matches.length === 0) return { start: null, end: null };
-  const fmt = (s: string) => `${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}`;
-  if (matches.length === 1) return { start: fmt(matches[0]), end: null };
-  return { start: fmt(matches[0]), end: fmt(matches[matches.length - 1]) };
+  const unknown = { start: null, end: null };
+  if (!raw) return unknown;
+  // Only complete date fields/ranges are unambiguous. Never pick dates out of prose.
+  const token = String.raw`(?:\d{8}|\d{4}-\d{1,2}-\d{1,2}|\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.?)`;
+  const match = raw.trim().match(new RegExp(`^(${token})(?:\\s*[~～–—-]\\s*(${token}))?$`));
+  // A lone date could mean either a start or a deadline; do not invent its role.
+  if (!match || !match[2]) return unknown;
+  const normalize = (value: string): string | null => {
+    const digits = value.replace(/\D/g, "");
+    if (/^\d{8}$/.test(value)) {
+      return validApplicationDate(`${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`);
+    }
+    const parts = value.match(/\d+/g)!;
+    return validApplicationDate(`${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`);
+  };
+  const start = normalize(match[1]);
+  const end = match[2] ? normalize(match[2]) : null;
+  if (!start || (match[2] && !end) || (end && start > end)) return unknown;
+  return { start, end };
 }
 
 // hashTags 파싱 + 표준 태그 매핑

@@ -59,6 +59,8 @@ describe("ApplyActionDetail", () => {
       />,
     );
 
+    expect(html).toContain("신청기간 미확인 · 공식 공고 확인");
+    expect(html).not.toContain("상시 또는");
     expect(html).toContain("한 줄 요약");
     expect(html).toContain("신청은 이렇게 해요");
     expect(html).toContain("믿을 수 있는 정보인가요?");

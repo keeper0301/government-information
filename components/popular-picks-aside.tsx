@@ -46,7 +46,7 @@ function getServerSnoozeSnapshot(): boolean {
 
 // 마감일 → 사람 읽기 쉬운 D-X 문자열 (KST 기준)
 function formatDeadline(apply_end: string | null): string {
-  if (!apply_end) return "상시 모집";
+  if (!apply_end) return "신청기간 미확인";
   const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
   const todayKst = new Date(Date.now() + KST_OFFSET_MS);
   const todayY = todayKst.getUTCFullYear();
