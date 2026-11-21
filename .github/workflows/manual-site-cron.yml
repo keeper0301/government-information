@@ -59,6 +59,7 @@ on:
           - instagram-reels-render-dry
           - instagram-reels-render
           - instagram-comment-drafts
+          - editorial-news-publish
           - collect-news
           - silent-fail-detect
       source:
@@ -272,6 +273,10 @@ jobs:
             instagram-comment-drafts)
               path="/api/cron/instagram-comment-drafts"
               method="POST"
+              ;;
+            editorial-news-publish)
+              path="/api/cron/editorial-news-publish"
+              method="GET"
               ;;
             collect-news)
               path="/api/collect-news"
