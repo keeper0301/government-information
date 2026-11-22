@@ -16,7 +16,7 @@ interface Candidate {
 
 // 한 글이 실패해도 다음 후보를 처리합니다. 시간·한도·중복은 저장소와 함께 제한합니다.
 export async function runNewsPublication() {
-  if (!process.env.OPENAI_API_KEY?.trim()) throw new Error('뉴스 작성 도구 설정이 없습니다.');
+  if (!process.env.GEMINI_API_KEY?.trim()) throw new Error('뉴스 작성 도구 설정이 없습니다.');
   const admin = createAdminClient();
   const result = { attempted: 0, published: 0, held: 0, conflicts: 0, slugs: [] as string[], stopReason: 'candidate_limit' };
   const started = Date.now();

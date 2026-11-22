@@ -140,7 +140,7 @@ it('선택한 근거 번호를 원문 그대로 연결하고 별도 사실 검�
   expect(result.question).toContain('2026년');
   expect(mock.call.mock.calls.every(([input]) => input.prompt.includes('한국 시간 기준 검사일: 2026-10-07'))).toBe(true);
   expect(mock.call.mock.calls[1][0].prompt).toContain(quote);
-  expect(mock.call.mock.calls[1][0].model).toBe('gpt-4.1-mini');
+  expect(mock.call.mock.calls[1][0].provider).toBe('gemini');
   expect(mock.call).toHaveBeenCalledTimes(2);
 });
 

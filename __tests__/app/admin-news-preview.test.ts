@@ -78,7 +78,7 @@ it.each([
   ['작성', new Error('OpenAI 응답에서 텍스트 추출 실패'), '초안 작성·검사 단계에서 작성 도구가 읽을 수 있는 글을 반환하지 않았습니다.'],
   ['작성', new Error('OpenAI 응답 본문 읽기 실패'), '초안 작성·검사 단계에서 작성 응답을 끝까지 읽지 못했습니다.'],
   ['작성', new Error('OpenAI 응답 본문 형식 오류'), '초안 작성·검사 단계에서 작성 응답 본문 형식을 읽지 못했습니다.'],
-  ['작성', new Error('OPENAI_API_KEY 환경변수 누락'), '초안 작성·검사 단계에서 작성 도구 인증 설정이 없습니다.'],
+  ['작성', new Error('GEMINI_API_KEY 환경변수 누락'), '초안 작성·검사 단계에서 작성 도구 인증 설정이 없습니다.'],
 ])('실패 단계와 종류만 알리고 비밀값은 화면과 기록에 남기지 않는다: %s', async (stage, error, message) => {
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
   if (stage === '원문') mocks.read.mockRejectedValue(error);

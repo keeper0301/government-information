@@ -5,6 +5,8 @@
 // 2026-05-10 Anthropic 크레딧 소진 사고 후 OpenAI 전환 일괄 적용.
 // ============================================================
 
+import { callGeminiNews } from './gemini-news';
+
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-4o-mini";
 
@@ -19,6 +21,7 @@ export type CallLLMOptions = {
   responseSchema?: { name: string; schema: Record<string, unknown> };
   /** model override. 기본 gpt-4o-mini */
   model?: string;
+  provider?: 'gemini';
   /** fetch 타임아웃(ms). 기본 20000 — 1건 hang 이 maxDuration 전체를 잡지 않게 격리 */
   timeoutMs?: number;
 };
@@ -29,6 +32,7 @@ export type CallLLMOptions = {
  * - graceful skip 은 호출 측에서 try/catch 로 결정 (각 cron 별 정책 다름)
  */
 export async function callLLM(opts: CallLLMOptions): Promise<string> {
+  if (opts.provider === 'gemini') return callGeminiNews(opts);
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY 환경변수 누락");

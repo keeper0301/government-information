@@ -1,7 +1,7 @@
 // 공통 작성 도구가 만든 고정 접두사만 읽고 원시 응답·키·본문은 버립니다.
 export function newsToolFailure(error: unknown) {
   const message = error instanceof Error ? error.message : '';
-  const statusMatch = /^OpenAI API 오류 ([45]\d{2}):/.exec(message);
+  const statusMatch = /^(?:OpenAI|재미나이) API 오류 ([45]\d{2}):/.exec(message);
   if (statusMatch) {
     const httpStatus = Number(statusMatch[1]);
     // 온전한 오류 객체의 알려진 코드만 해석합니다. 잘린 응답은 원인을 추측하지 않습니다.
@@ -27,6 +27,11 @@ export function newsToolFailure(error: unknown) {
     return { reason: reasons[kind], detail: { kind, httpStatus } };
   }
   const known = [
+    ['GEMINI_API_KEY 환경변수 누락', 'missing_key', '작성 도구 인증 설정이 없습니다.'],
+    ['재미나이 응답 시간 초과', 'timeout', '작성 도구 응답 대기 시간이 초과됐습니다.'],
+    ['재미나이 연결 실패', 'connection', '작성 도구 연결에 실패했습니다.'],
+    ['재미나이 응답 형식 오류', 'response_format', '작성 도구 응답 형식을 읽지 못했습니다.'],
+    ['재미나이 응답에서 완료된 텍스트', 'empty_response', '작성 도구 응답에서 완료된 글을 찾지 못했습니다.'],
     ['OPENAI_API_KEY 환경변수 누락', 'missing_key', '작성 도구 인증 설정이 없습니다.'],
     ['OpenAI 응답 타임아웃 (', 'timeout', '작성 도구 응답 대기 시간이 초과됐습니다.'],
     ['OpenAI 호출 실패:', 'connection', '작성 도구 연결에 실패했습니다.'],
