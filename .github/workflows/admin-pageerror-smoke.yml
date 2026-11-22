@@ -12,7 +12,7 @@ permissions:
 jobs:
   smoke:
     name: protected admin redirect pageerrors
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: 코드 체크아웃
@@ -28,14 +28,16 @@ jobs:
         run: npm ci
 
       - name: Playwright Chromium 설치
-        run: npx playwright install --with-deps chromium
+        run: |
+          set -o pipefail
+          npx playwright install --with-deps chromium 2>&1 | tee admin-pageerror-smoke.log
 
       - name: production admin pageerror smoke
         env:
           ADMIN_SMOKE_BASE_URL: https://www.keepioo.com
         run: |
           set -euo pipefail
-          npm run smoke:admin-pageerrors | tee admin-pageerror-smoke.log
+          npm run smoke:admin-pageerrors 2>&1 | tee admin-pageerror-smoke.log
 
       - name: GitHub summary 작성
         if: always()
