@@ -29,14 +29,14 @@ it('연결 성공은 고정 요청 한 번만 확인하고 발행이나 실행 �
   vi.mocked(callLLM).mockResolvedValue('확인');
   const response = await POST(request());
   expect(await response.json()).toMatchObject({ connected: true });
-  expect(callLLM).toHaveBeenCalledExactlyOnceWith({ prompt: '연결 확인입니다. 확인이라고만 답하세요.', maxTokens: 8, timeoutMs: 15000 });
+  expect(callLLM).toHaveBeenCalledExactlyOnceWith({ provider: 'gemini', prompt: '연결 확인입니다. 확인이라고만 답하세요.', maxTokens: 8, timeoutMs: 15000 });
   expect(response.headers.get('Cache-Control')).toBe('no-store');
   expect(runNewsPublication).not.toHaveBeenCalled();
   expect(saveNewsRun).not.toHaveBeenCalled();
 });
 it('실패 시 비밀값 대신 안전한 원인만 반환하며 기사는 건드리지 않는다', async () => {
   vi.stubEnv('CRON_SECRET', 'test-cron-secret');
-  vi.mocked(callLLM).mockRejectedValue(new Error('OpenAI API 오류 429: 비밀값포함'));
+  vi.mocked(callLLM).mockRejectedValue(new Error('재미나이 API 오류 429: 비밀값포함'));
   const response = await POST(request());
   const body = await response.json();
   expect(response.status).toBe(502);

@@ -10,7 +10,7 @@ const row = { id: '후보', source_id: '148972915', title: '군 복무 청년 �
   source_url: 'https://www.korea.kr/news/customizedNewsView.do?newsId=148972915',
   published_at: '2026-10-06T00:00:00Z', updated_at: null, ministry: '담당 기관', benefit_tags: ['의료'], lease_token: '예약번호' };
 beforeEach(() => {
-  vi.stubEnv('OPENAI_API_KEY', '검사용설정');
+  vi.stubEnv('GEMINI_API_KEY', '검사용설정');
   vi.clearAllMocks();
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { headers: { 'content-type': 'image/webp' } })));
   mock.read.mockResolvedValue({ title: row.title, url: row.source_url, body: '검증할 원문', hash: '같은본문', publishedAt: '2026-10-06' });
@@ -78,7 +78,7 @@ it('100초를 사용했으면 다음 후보를 예약하지 않고 현재 결과
   } finally { clock.mockRestore(); }
 });
 it('작성 도구 설정이 없으면 후보 예약 전에 멈춰 하루 한도를 소비하지 않는다', async () => {
-  vi.stubEnv('OPENAI_API_KEY', '');
+  vi.stubEnv('GEMINI_API_KEY', '');
   await expect(runNewsPublication()).rejects.toThrow('설정이 없습니다');
   expect(mock.rpc).not.toHaveBeenCalled();
 });

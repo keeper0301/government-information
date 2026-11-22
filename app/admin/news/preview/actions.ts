@@ -59,7 +59,7 @@ export async function previewNewsDraft(_previous: NewsPreviewResult, form: FormD
       else if (error.message === 'OpenAI 응답에서 텍스트 추출 실패') reason = '작성 도구가 읽을 수 있는 글을 반환하지 않았습니다.';
       else if (error.message === 'OpenAI 응답 본문 읽기 실패') reason = '작성 응답을 끝까지 읽지 못했습니다.';
       else if (error.message === 'OpenAI 응답 본문 형식 오류') reason = '작성 응답 본문 형식을 읽지 못했습니다.';
-      else if (error.message === 'OPENAI_API_KEY 환경변수 누락') reason = '작성 도구 인증 설정이 없습니다.';
+      else if (error.message === 'GEMINI_API_KEY 환경변수 누락') reason = '작성 도구 인증 설정이 없습니다.';
     }
     console.warn('정책뉴스 비공개 검사 실패', { stage, reason });
     return { status: 'error', message: `${stage} 단계에서 ${reason} 공개하지 않았습니다.` };

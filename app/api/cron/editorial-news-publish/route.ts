@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   if (denied) return denied;
   const headers = { 'Cache-Control': 'no-store' };
   try {
-    await callLLM({ prompt: '연결 확인입니다. 확인이라고만 답하세요.', maxTokens: 8, timeoutMs: 15000 });
+    await callLLM({ provider: 'gemini', prompt: '연결 확인입니다. 확인이라고만 답하세요.', maxTokens: 8, timeoutMs: 15000 });
     return NextResponse.json({ connected: true, checkedAt: new Date().toISOString() }, { headers });
   } catch (error) {
     const failure = newsToolFailure(error);
