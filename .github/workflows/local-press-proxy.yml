@@ -88,36 +88,18 @@ jobs:
             echo "== ${label} =="
             echo "HTTP ${http}"
 
-            node - "${out}" <<'NODE'
-          const fs = require('fs');
-          const file = process.argv[2];
-          const body = fs.readFileSync(file, 'utf8');
-          try {
-            const json = JSON.parse(body);
-            const safe = {
-              ok: json.ok,
-              duration_ms: json.duration_ms,
-              fetched: json.fetched,
-              classified: json.classified,
-              auto_hidden: json.auto_hidden,
-              kept: json.kept,
-              failed: json.failed,
-              updated: json.updated,
-              sentinel_filled: json.sentinel_filled,
-              llm_failed: json.llm_failed,
-              update_failed: json.update_failed,
-              errors: Array.isArray(json.errors) ? json.errors.slice(0, 3) : undefined,
-            };
-            console.log(JSON.stringify(safe, null, 2));
-          } catch {
-            console.log(body.slice(0, 1000));
-          }
-          NODE
-            rm -f "${out}"
             if [ "${http}" -lt 200 ] || [ "${http}" -ge 300 ]; then
+              rm -f "${out}"
               echo "::error::${label} failed with HTTP ${http}"
               exit 1
             fi
+            # A successful HTTP status does not imply successful classification.
+            # In particular, rate-limit failures can return {ok:false, failed:5}.
+            if ! node tools/assert-queue-drain-result.mjs "${out}" "${label}"; then
+              rm -f "${out}"
+              exit 1
+            fi
+            rm -f "${out}"
           }
 
           call_cron "news-classify post-scrape drain" "/api/cron/news-classify"
