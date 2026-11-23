@@ -175,7 +175,13 @@ async function run(): Promise<NextResponse> {
     // audit 실패는 cron 자체 실패 아님 (조용히 무시)
   }
 
-  return NextResponse.json({ ok: result.failed === 0, duration_ms: durationMs, ...result });
+  // Surface runs with no completed classifications to HTTP-based cron monitors.
+  // Preserve HTTP 200 for partial progress and empty queues.
+  const status = result.failed > 0 && result.classified === 0 ? 500 : 200;
+  return NextResponse.json(
+    { ok: result.failed === 0, duration_ms: durationMs, ...result },
+    { status },
+  );
 }
 
 export async function GET(request: Request) {
