@@ -1,0 +1,19 @@
+title = "keepioo"
+
+[extend]
+useDefault = true
+
+# Public Geumsan CMS document ids. `nes_dta_key=` plus 32 hex is a municipal
+# press-release content id in test fixtures, not a credential.
+#
+# targetRules keeps this allowlist off the global path skip list, so other
+# secrets under __tests__/ are still scanned. condition = "AND" requires both
+# the fixture path and the nes_dta_key= pattern. Requires gitleaks >= 8.25.0
+# (targetRules). Do not move this to a global path allowlist.
+[[allowlists]]
+description = "Public CMS document ids (nes_dta_key) in __tests__ fixtures"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+regexes = ['''nes_dta_key=[a-fA-F0-9]{32}''']
+paths = ['''(^|/)__tests__/''']
