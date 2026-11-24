@@ -1,9 +1,15 @@
 # AdSense 재심사 추적 보드
 
-- 상태: **심사 대기**
-- 기준 시각: 2026. 9. 23. 12시 35분 32초
+- 상태: **2026-10-12 광고 게재 불승인 통지 수신 / 구체 반려 사유 미확인**
+- 기준 시각: 2026-10-13 11:50 KST
 - 대상 사이트: https://www.keepioo.com
-- 최신 커밋: `18a1c6bc fix(adsense): make default og copy editorial`
+- 실제 반려 사유: AdSense Sites 상세 화면 확인 필요. 현재 조사 브라우저에는 로그인 세션이 없음.
+- 운영 deployment: `dpl_FVkEuLQW6TasA1oDZQbFUAMU8acr`, READY, SHA `82165673e108c424d65cf1bd06941477bf5be5e6`
+- PR #366·#367은 운영 커밋에 포함. PR #365의 readiness 가드는 미병합·운영 미반영.
+- 광고 모드 전환·재심사 요청·DB 변경은 실행하지 않음.
+- 상세 조사: [2026-10-13 조사 기록](adsense-rejection-investigation-20261013.md)
+
+아래 9월 기록은 과거 점검 결과이며 현재 심사 상태나 콘텐츠 품질을 증명하지 않습니다.
 
 ## 심사 대기 체크
 

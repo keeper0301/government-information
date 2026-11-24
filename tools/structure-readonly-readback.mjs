@@ -8,7 +8,7 @@ export const READBACK_ROUTES = ['/', '/guides', '/guides/documents-before-govern
 export const EXPECTED_PILOT_SOURCES = {
   '/guides/documents-before-government-benefit': ['https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000015'],
   '/guides/small-business-policy-fund-mistakes': ['https://ols.semas.or.kr/ols/man/SMAN018M/page.do', 'https://ols.semas.or.kr/ols/man/SMAN010M/page.do'],
-  '/guides/youth-rent-checklist-2026': ['https://www.molit.go.kr/USR/NEWS/m_71/dtl.jsp?id=95091798', 'https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004661', 'https://housing.seoul.go.kr/site/main/board/notice/12667'],
+  '/guides/youth-rent-checklist-2026': ['https://www.bokjiro.go.kr/ssis-tbu/cms/pc/customer/notice/1309500_1141.html', 'https://www.molit.go.kr/USR/NEWS/m_71/dtl.jsp?id=95091798', 'https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004661', 'https://housing.seoul.go.kr/site/main/board/notice/12667'],
 };
 export function validateReadbackBase(input) {
   const url = new URL(input);

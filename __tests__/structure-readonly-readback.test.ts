@@ -48,3 +48,16 @@ describe('read-only public verification evidence', () => {
     await expect(fetchReadbackRoute('https://www.keepioo.com', '/', async () => new Response('too big'), 2)).rejects.toThrow('size limit');
   });
 });
+
+it('승인 기록에 포함된 2026 복지로 공지를 정확한 출처로 허용한다', () => {
+  const route = '/guides/youth-rent-checklist-2026';
+  const links = [
+    'https://www.bokjiro.go.kr/ssis-tbu/cms/pc/customer/notice/1309500_1141.html',
+    'https://www.molit.go.kr/USR/NEWS/m_71/dtl.jsp?id=95091798',
+    'https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004661',
+    'https://housing.seoul.go.kr/site/main/board/notice/12667',
+  ];
+  const page = `<main><h1>월세 가이드</h1><section aria-label="출처와 확인 범위">${links.map(url => `<a href="${url}">공식 안내</a>`).join('')}</section></main><link rel="canonical" href="https://www.keepioo.com${route}"><meta name="robots" content="index, follow">`;
+  expect(analyzePublicResponse(route, { ...response, html: page }).issues).toEqual([]);
+  expect(analyzePublicResponse(route, { ...response, html: page.replace(links[0], 'https://attacker.example/') }).issues).toContain('unexpected_evidence_source');
+});
