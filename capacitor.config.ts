@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
   // 앱 고유 ID(역도메인). 스토어 등록 후에는 변경 불가에 가까우니 신중히 고정.
   appId: "com.keepioo.app",
   // 네이티브 프로젝트·기기 표시용 이름(스토어 노출명은 스토어에서 따로 지정).
-  appName: "keepioo",
+  appName: "키피오",
   // server.url 을 쓰지만 Capacitor 는 기본 웹 폴더 존재를 요구 → 로딩 셸 폴더.
   webDir: "capacitor-shell",
   server: {
