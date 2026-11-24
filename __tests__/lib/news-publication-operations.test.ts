@@ -14,7 +14,10 @@ const article: EditorialNews = { slug: '검사용', title: '한복문화주간 �
 afterEach(() => vi.unstubAllGlobals());
 it('확인된 공통 장애만 중단 대상으로 삼고 원시 오류를 표시하지 않는다', () => {
   expect(sharedNewsFailure({ toolFailure: { kind: 'credit_exhausted' } })).toBe('credit_exhausted');
+  expect(sharedNewsFailure({ toolFailure: { kind: 'rate_limited', httpStatus: 429 } })).toBe('rate_limited');
+  expect(queueStatusLabel({ reason: 'rate_limited' })).toContain('요청 속도 제한');
   for (const value of [null, {}, { toolFailure: null }, { toolFailure: { kind: 'rate_or_quota' } },
+    { toolFailure: { kind: 'rate_limited' } },
     { toolFailure: { kind: 'timeout' } }, { toolFailure: { kind: '비밀 원시 응답' } }])
     expect(sharedNewsFailure(value)).toBeNull();
   expect(queueStatusLabel({ reason: 'credit_exhausted' })).toContain('결제 잔액');

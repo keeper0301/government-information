@@ -5,6 +5,7 @@ const LABELS: Record<string, string> = {
   authentication: '작성 서비스 인증 실패로 이번 실행을 중단했습니다. 운영 인증 설정을 확인해 주세요.',
   permission: '작성 서비스 권한 오류로 이번 실행을 중단했습니다. 운영 계정 권한을 확인해 주세요.',
   rate_or_quota: '작성 서비스 요청 제한으로 이번 실행을 중단했습니다. 다음 예약 실행에서 상태를 다시 확인합니다.',
+  rate_limited: '작성 서비스의 요청 속도 제한으로 이번 실행을 중단했습니다. 다음 예약 실행에서 상태를 다시 확인합니다.',
   daily_limit: '오늘 공개 한도 3편을 채웠습니다.',
   processing: '다른 후보의 검사와 저장이 끝나기를 기다립니다.',
   ready: '다음 정상 예약 실행에서 검사할 후보가 있습니다.',
@@ -20,7 +21,8 @@ export function sharedNewsFailure(evidence: unknown): string | null {
   if (!evidence || typeof evidence !== 'object' || !('toolFailure' in evidence)) return null;
   const failure = evidence.toolFailure;
   if (!failure || typeof failure !== 'object' || !('kind' in failure)) return null;
-  if (failure.kind === 'rate_or_quota' && 'httpStatus' in failure && failure.httpStatus === 429) return failure.kind;
+  if ((failure.kind === 'rate_or_quota' || failure.kind === 'rate_limited')
+    && 'httpStatus' in failure && failure.httpStatus === 429) return failure.kind;
   return typeof failure.kind === 'string'
     && ['credit_exhausted', 'insufficient_quota', 'authentication', 'permission'].includes(failure.kind)
     ? failure.kind : null;

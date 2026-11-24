@@ -70,6 +70,7 @@ it('본문 품질 보류를 도구 장애로 바꾸지 않고 기존 근거를 �
 it.each([
   ['{"error":{"code":"credit_balance_exhausted","message":"검사용-비밀"}}', 'credit_exhausted'],
   ['{"error":{"type":"insufficient_quota","message":"검사용-비밀"}}', 'insufficient_quota'],
+  ['{"error":{"code":"rate_limit_exceeded","message":"검사용-비밀"}}', 'rate_limited'],
   ['{"error":{"code":"credit_balance_exhausted"', 'rate_or_quota'],
 ])('온전한 결제 오류와 잘린 응답을 구분한다', async (body, kind) => {
   const error = await withNewsReviewAudit(async audit => {

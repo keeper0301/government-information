@@ -13,6 +13,9 @@ export function newsToolFailure(error: unknown) {
         if (body?.error?.code === 'insufficient_quota' || body?.error?.type === 'insufficient_quota')
           return { reason: '작성 도구 사용 한도가 부족합니다. 잔액과 한도 설정 확인이 필요합니다.',
             detail: { kind: 'insufficient_quota', httpStatus } };
+        if (body?.error?.code === 'rate_limit_exceeded' || body?.error?.type === 'rate_limit_exceeded')
+          return { reason: '작성 도구의 요청 속도 제한에 걸렸습니다. 다음 예약 실행에서 확인합니다.',
+            detail: { kind: 'rate_limited', httpStatus } };
       } catch { /* 응답 본문은 기록하지 않고 일반적인 요청량·한도 오류로 남깁니다. */ }
     }
     const kind = httpStatus === 408 ? 'timeout' : httpStatus === 401 ? 'authentication' : httpStatus === 403 ? 'permission'

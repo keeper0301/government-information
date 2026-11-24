@@ -72,8 +72,20 @@ export async function callLLM(opts: CallLLMOptions): Promise<string> {
   }
 
   if (!res.ok) {
+    // Never propagate the raw provider response (which may contain request data).
+    // Preserve only known machine-readable 429 codes for safe quota/rate diagnosis.
     const errText = await res.text().catch(() => "");
-    throw new Error(`OpenAI API 오류 ${res.status}: ${errText.slice(0, 300)}`);
+    let errorCode: string | undefined;
+    if (res.status === 429) {
+      try {
+        const parsed = JSON.parse(errText) as { error?: { code?: unknown; type?: unknown } };
+        const known = new Set(['credit_balance_exhausted', 'insufficient_quota', 'rate_limit_exceeded']);
+        for (const value of [parsed?.error?.code, parsed?.error?.type]) {
+          if (typeof value === 'string' && known.has(value)) { errorCode = value; break; }
+        }
+      } catch { /* Unknown/truncated responses remain generic, never guessed. */ }
+    }
+    throw new Error(`OpenAI API 오류 ${res.status}: ${JSON.stringify({ error: errorCode ? { code: errorCode } : {} })}`);
   }
 
   // 응답 머리말 이후의 시간 초과·연결 끊김도 원래 문장을 노출하지 않고 구분합니다.

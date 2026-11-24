@@ -901,7 +901,7 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
       key: "news_backlog",
       message: `news 미분류 backlog ${s.newsBacklogTotal.toLocaleString()}건 (임계 ${NEWS_BACKLOG_FLOOR}+).`,
       recommendation:
-        "/admin/cron-trigger 에서 news-classify 수동 실행 또는 news_classify_run audit 의 duration_ms 확인 (timeout 추정 시 maxDuration 상향)",
+        "news_classify_run audit 의 stop_reason·failed·classified 확인 → 429 한도/속도 제한이면 제공사 설정을 먼저 확인하고 수동 재실행 금지. timeout 이면 duration_ms·실패 범위를 확인한 뒤 실행 시간 조정 검토",
     });
   }
 

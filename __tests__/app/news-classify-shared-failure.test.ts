@@ -18,6 +18,13 @@ it('quota failure stops after the in-flight batch and audits a safe reason', asy
   expect(m.update).not.toHaveBeenCalled();
   expect(m.audit).toHaveBeenCalledWith(expect.objectContaining({ details: expect.objectContaining({ stop_reason: 'credit_exhausted', failed: 5 }) }));
 });
+it('explicit rate limit stops this run without processing the rest of the queue', async () => {
+  m.classify.mockRejectedValue(new Error('OpenAI API 오류 429: {"error":{"code":"rate_limit_exceeded"}}'));
+  const result = await (await GET(new Request('https://example.test'))).json();
+  expect(result).toMatchObject({ ok: false, fetched: 12, classified: 0, failed: 5, stop_reason: 'rate_limited' });
+  expect(m.classify).toHaveBeenCalledTimes(5);
+  expect(m.update).not.toHaveBeenCalled();
+});
 it('ordinary per-item errors continue through the bounded batch', async () => {
   m.classify.mockRejectedValue(new Error('JSON 파싱 실패: bad item'));
   const result = await (await GET(new Request('https://example.test'))).json();

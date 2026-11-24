@@ -60,6 +60,30 @@ describe("callLLM", () => {
     await expect(callLLM({ prompt: "t" })).rejects.toThrow(/OpenAI API 오류 429/);
   });
 
+  it('긴 429 응답에서도 한도 코드를 보존하고 원문은 노출하지 않는다', async () => {
+    global.fetch = vi.fn(async () => ({ ok: false, status: 429,
+      text: async () => JSON.stringify({ error: { message: '검사용-비밀'.repeat(80), code: 'insufficient_quota' } }),
+    })) as never;
+    const error = await callLLM({ prompt: '검사' }).then(
+      () => { throw new Error('expected failure'); },
+      (e: unknown) => e as Error,
+    );
+    expect(error.message).toContain('insufficient_quota');
+    expect(error.message).not.toContain('검사용-비밀');
+  });
+
+  it('요청 제한 코드만 남기고 외부 오류 필드·원문은 버린다', async () => {
+    global.fetch = vi.fn(async () => ({ ok: false, status: 429,
+      text: async () => JSON.stringify({ error: { type: 'rate_limit_exceeded', message: '검사용-비밀', api_key: '검사용-키' } }),
+    })) as never;
+    const error = await callLLM({ prompt: '검사' }).then(
+      () => { throw new Error('expected failure'); },
+      (e: unknown) => e as Error,
+    );
+    expect(error.message).toContain('rate_limit_exceeded');
+    expect(error.message).not.toContain('검사용-');
+  });
+
   it('응답 본문을 읽는 중 시간 초과가 나도 빈 응답으로 숨기지 않는다', async () => {
     const deadline = new DOMException('검사용-비밀값', 'TimeoutError');
     vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort(deadline));

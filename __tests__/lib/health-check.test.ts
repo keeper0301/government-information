@@ -402,6 +402,7 @@ describe("checkThresholds — Phase 1 자동 진단", () => {
     const a = alerts.find((x) => x.key === "news_backlog");
     expect(a).toBeDefined();
     expect(a?.recommendation).toContain("news_classify_run");
+    expect(a?.recommendation).toContain("수동 재실행 금지");
   });
 
   it("news backlog 5000 미만이면 alert 안 발송 (적체 흡수 중 false positive 차단)", () => {
