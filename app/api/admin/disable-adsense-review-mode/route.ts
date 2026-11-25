@@ -10,7 +10,7 @@
 //
 // 안전 가드:
 // - GET = confirm UI 만 (부작용 X). 사장님이 button 클릭해야 POST 실행.
-// - POST = admin 인증 + 백필 비율 ≥80% 재확인 + Vercel API 호출.
+// - POST = admin 인증 + Google 사이트 READY + 백필 지표 재확인 + Vercel API 호출.
 // - audit log: adsense_review_mode_disabled action 으로 기록.
 // ============================================================
 
@@ -19,6 +19,7 @@ import {
   updateProjectEnvByKey,
   triggerProductionRedeploy,
 } from "@/lib/vercel/api";
+import { getKeepiooAdSenseSiteState } from "@/lib/external-console/adsense";
 import { getNewsRatio } from "@/lib/analytics/local-press-stats";
 import { logAdminAction } from "@/lib/admin-actions";
 import { createClient } from "@/lib/supabase/server";
@@ -31,11 +32,11 @@ export const maxDuration = 60;
 
 // GET — confirm page (간단 HTML). 사장님 1-tap 흐름: 텔레그램 link 클릭 → 이 page.
 export async function GET(): Promise<NextResponse> {
-  // 현재 백필 비율 확인 (사장님 시각 정보)
+  // 신청 준비 참고값만 표시합니다. Google 사이트 상태는 POST에서 별도로 확인합니다.
   let backfillPct = "?";
   try {
     const r = await getNewsRatio();
-    backfillPct = (r.commentaryBackfillRatio * 100).toFixed(1);
+    if (Number.isFinite(r.commentaryBackfillRatio)) backfillPct = (r.commentaryBackfillRatio * 100).toFixed(1);
   } catch {
     // graceful
   }
@@ -58,7 +59,7 @@ export async function GET(): Promise<NextResponse> {
   <div class="info">
     <strong>현재 AI 자체 해설 백필: ${backfillPct}%</strong><br />
     이 버튼을 누르면 Vercel ENV 가 ${ADSENSE_LIVE_ADS_TOKEN} 로 변경 + production redeploy 됩니다.
-    사이트 광고가 즉시 가동 시작되고 sitemap selective 가 ai_commentary 채워진 news 진입을 시작합니다.
+    Google에서 keepioo.com 사이트가 승인(READY)된 경우에만 진행합니다. 해설 진행률은 승인과 다르며, 검색 공개 설정은 바뀌지 않습니다.
   </div>
   <form method="POST">
     <button type="submit">🔴 OFF 확정 + Vercel 자동 redeploy</button>
@@ -72,7 +73,7 @@ export async function GET(): Promise<NextResponse> {
   });
 }
 
-// POST — 실제 실행. CSRF(Origin) + admin 인증 + 백필 ≥80% 재확인 + Vercel API 호출.
+// POST — 실제 실행. CSRF(Origin) + admin 인증 + Google 사이트 READY + 백필 재확인.
 export async function POST(request: Request): Promise<NextResponse> {
   // 0. CSRF Origin 검증 — same-origin 요청만 허용 (악성 사이트 form 자동 submit 차단).
   const origin = request.headers.get("origin");
@@ -99,8 +100,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "admin only" }, { status: 401 });
   }
 
-  // 2. 백필 비율 ≥80% 재확인 (사장님 실수 차단).
-  const ratio = await getNewsRatio();
+  // 계정 READY나 내부 백필은 이 도메인의 Google 사이트 승인이 아닙니다.
+  if (await getKeepiooAdSenseSiteState() !== "READY") {
+    return NextResponse.json({ error: "keepioo.com 사이트의 Google 승인을 확인하지 못했습니다. 심사 모드를 유지합니다." }, { status: 409 });
+  }
+  const ratio = await getNewsRatio().catch(() => null);
+  if (!ratio || !Number.isFinite(ratio.commentaryBackfillRatio) || ratio.commentaryBackfillRatio > 1) {
+    return NextResponse.json({ error: "콘텐츠 통계를 확인하지 못했습니다. 심사 모드를 유지합니다." }, { status: 503 });
+  }
   if (ratio.commentaryBackfillRatio < 0.8) {
     return NextResponse.json(
       {

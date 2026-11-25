@@ -76,16 +76,21 @@ const CATEGORIES: { key: "all" | NewsCategory; label: string }[] = [
 // URL 에서 들어온 카테고리 값이 유효한지 — 잘못된 값 또는 press 는 "전체" 로 fallback
 const VALID_CATEGORIES = new Set<string>(["news", "policy-doc"]);
 
-export async function generateMetadata(): Promise<Metadata> {
-  const result = await searchPublishedNews({});
+export async function generateMetadata({ searchParams }: Partial<Props> = {}): Promise<Metadata> {
+  const params = await searchParams;
+  // Search and facet combinations are useful for readers, but not standalone pages.
+  // Do not suppress articles or unfiltered news pagination.
+  const filtered = (["q", "benefit", "province", "status", "category"] as const)
+    .some(key => Boolean(params?.[key]));
+  const result = SEARCH_REVIEW_MODE && !filtered ? await searchPublishedNews({}) : undefined;
   return {
   title: SEARCH_REVIEW_MODE ? "정책뉴스 | 키피오" : "정책 소식 | 정책알리미",
   description:
     SEARCH_REVIEW_MODE ? "공식 정책 발표의 변화와 대상, 확인할 행동을 출처와 함께 정리합니다. 편집 검수 또는 자동 근거 검사를 통과한 정책뉴스를 공개합니다." : "정부 부처 정책뉴스와 정책자료를 날짜·출처·관심 분야별로 모아 보여주는 정책알리미 큐레이션 페이지입니다.",
   alternates: { canonical: "/news" },
-  robots: SEARCH_REVIEW_MODE
+  robots: SEARCH_REVIEW_MODE || filtered
     ? {
-        index: !result.unavailable && result.allCount >= 3,
+        index: !filtered && !!result && !result.unavailable && result.allCount >= 3,
         follow: true,
       }
     : undefined,

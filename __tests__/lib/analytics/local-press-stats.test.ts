@@ -41,9 +41,18 @@ beforeEach(() => {
 });
 
 describe("getNewsRatio", () => {
+  it("집계 분모와 빈 해설을 구분한다", async () => {
+    for (const count of [10, 10, 10, 4, 5, 1]) responseQueue.push({ count });
+    expect((await getNewsRatio()).commentaryBackfillRatio).toBe(0.2);
+  });
+  it("조회 불가를 집계 0으로 바꾸지 않는다", async () => {
+    for (const count of [10, 10, 10, 4, null, 1]) responseQueue.push({ count });
+    await expect(getNewsRatio()).rejects.toThrow("통계 조회 실패");
+  });
+
   it("분모 0 → ratio 0, commentaryBackfillRatio 0", async () => {
-    // 4 count + 1 count = 5 응답 (welfare/loan/blog/newsIndexable/newsWithCommentary)
-    for (let i = 0; i < 5; i++) responseQueue.push({ count: 0 });
+    // 4 count + 2 counts: all candidates and nonempty commentary.
+    for (let i = 0; i < 6; i++) responseQueue.push({ count: 0 });
     const r = await getNewsRatio();
     expect(r.ratio).toBe(0);
     expect(r.commentaryBackfillRatio).toBe(0);
@@ -56,7 +65,8 @@ describe("getNewsRatio", () => {
     responseQueue.push({ count: 50 }); // loan
     responseQueue.push({ count: 30 }); // blog
     responseQueue.push({ count: 20 }); // newsIndexable (summary+classified_at+ai_commentary)
-    responseQueue.push({ count: 20 }); // newsWithCommentary
+    responseQueue.push({ count: 20 }); // candidates
+    responseQueue.push({ count: 20 }); // usable
     const r = await getNewsRatio();
     expect(r.welfare).toBe(100);
     expect(r.newsIndexable).toBe(20);

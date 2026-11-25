@@ -335,6 +335,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           .not("summary", "is", null)
           .not("classified_at", "is", null)
           .not("ai_commentary", "is", null)
+          .neq("ai_commentary", "") // Exclude the same empty sentinel as news detail metadata.
           .order("slug", { ascending: true })
           .range(from, from + 999),
     );

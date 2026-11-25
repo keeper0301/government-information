@@ -48,6 +48,7 @@ async function getAccessToken(): Promise<string> {
 
   const res = await fetch(TOKEN_URL, {
     method: "POST",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: clientId,
@@ -85,6 +86,40 @@ async function googleFetch<T>(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Site review is separate from account approval. A read error must never authorize ads.
+export async function getKeepiooAdSenseSiteState(): Promise<string | null> {
+  const publisher = /^ca-(pub-\d+)$/.exec(process.env.NEXT_PUBLIC_ADSENSE_ID ?? "")?.[1];
+  if (!publisher || !process.env.ADSENSE_CLIENT_ID || !process.env.ADSENSE_CLIENT_SECRET ||
+      !process.env.ADSENSE_REFRESH_TOKEN) return null;
+  try {
+    const token = await getAccessToken();
+    const endpoint = `${ADSENSE_API}/accounts/${publisher}/sites`;
+    let state: string | null = null;
+    let found = false;
+    let pageToken: string | undefined;
+    const seen = new Set<string>();
+    for (let page = 0; page < 3; page++) {
+      const url = new URL(endpoint);
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      const result = await googleFetch<{ sites?: { domain?: string; state?: string }[]; nextPageToken?: string }>(url.toString(), token);
+      if (result.sites !== undefined && !Array.isArray(result.sites)) return null;
+      for (const site of result.sites ?? []) {
+        if (site?.domain?.toLowerCase() !== "keepioo.com") continue;
+        if (found || typeof site.state !== "string") return null;
+        found = true;
+        state = site.state;
+      }
+      if (result.nextPageToken === undefined || result.nextPageToken === "") return state;
+      if (typeof result.nextPageToken !== "string" || seen.has(result.nextPageToken)) return null;
+      pageToken = result.nextPageToken;
+      seen.add(pageToken);
+    }
+  } catch {
+    // Do not expose provider body, tokens or app credentials.
+  }
+  return null;
 }
 
 // pure function — fetch 결과 → alerts/kpis. 단위 테스트 + checkAdsense 둘 다 호출.

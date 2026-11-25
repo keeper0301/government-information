@@ -135,7 +135,7 @@ export async function Footer() {
         </p>
         <p>
           데이터 출처:{" "}
-          <a href="https://www.gov.kr/portal/onestopSvc/subsidy" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">보조금24</a>{" "}·{" "}
+          <a href="https://plus.gov.kr/portal/benefitV2/benefitTotalSrvcList/" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">정부24 혜택알리미</a>{" "}·{" "}
           <a href="https://www.bokjiro.go.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">복지로</a>{" "}·{" "}
           <a href="https://www.bizinfo.go.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">기업마당</a>{" "}·{" "}
           <a href="https://www.semas.or.kr" target="_blank" rel="noopener noreferrer" className="underline hover:text-grey-900">소상공인진흥공단</a>{" "}·{" "}

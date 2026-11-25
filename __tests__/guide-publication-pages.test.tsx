@@ -26,6 +26,19 @@ describe("공개 화면의 검수 경계", () => {
     expect(html).toContain(`/guides/${guide.slug}`);
     expect(html).not.toContain("adsbygoogle");
   });
+  it("홈 상단에서 신청 체크리스트와 검수한 답변을 지도보다 먼저 보여준다", async () => {
+    state.published = true;
+    const shell = renderToStaticMarkup(HomeEditorialShell());
+    expect(shell).toContain("신청 전 3가지 확인");
+    expect(shell.indexOf("신청 전 3가지 확인")).toBeLessThan(shell.indexOf('aria-label="지역 지도"'));
+    const html = renderToStaticMarkup(await HomePublishedGuides());
+    const evidence = getGuideEvidence(guide)!;
+    expect(html).toContain(evidence.question);
+    expect(html).toContain(evidence.answer);
+    expect(html).toContain(evidence.sources[0].checkedAt);
+    expect(html).toContain("해당 모집 마감");
+  });
+
   it("검수 대기 상세를 검색 제외하고 본문과 기사 정보를 공개하지 않는다", async () => {
     state.published = false;
     expect((await generateMetadata(props)).robots).toEqual({ index: false, follow: true });

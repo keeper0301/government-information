@@ -66,7 +66,7 @@ import {
   GEMINI_KEEPIOO_CAP_KRW,
   type GeminiSpendingStat,
 } from "@/lib/analytics/gemini-spending";
-import { getLocalPressStats, getNewsRatio } from "@/lib/analytics/local-press-stats";
+import { getLocalPressStats, getNewsRatioForMonitoring } from "@/lib/analytics/local-press-stats";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { LocalPressCard } from "./_components/local-press-card";
 import { getSilentFailStats } from "@/lib/analytics/silent-fail-stats";
@@ -181,7 +181,7 @@ export default async function AdminAutonomousPage() {
     getSnsEnvStatus(),
     getGeminiSpendingStats(28),
     getLocalPressStats(),
-    getNewsRatio(),
+    getNewsRatioForMonitoring(),
     getPressIngestTierStats(),
     getBlogPublishStats(),
     getNaverPublishStats(),
@@ -308,59 +308,21 @@ export default async function AdminAutonomousPage() {
           <span>
             <strong>news 비중</strong>{" "}
             <span className={newsRatioStats.ratio >= 0.6 ? "text-amber-700 font-semibold" : "text-slate-600"}>
-              {(newsRatioStats.ratio * 100).toFixed(1)}%
+              {Number.isFinite(newsRatioStats.ratio) ? `${(newsRatioStats.ratio * 100).toFixed(1)}%` : "확인 불가"}
             </span>{" "}
-            <span className="text-[10px] text-slate-500">
+            {Number.isFinite(newsRatioStats.ratio) && <span className="text-[10px] text-slate-500">
               (welfare {newsRatioStats.welfare.toLocaleString()} · loan {newsRatioStats.loan.toLocaleString()} · blog {newsRatioStats.blog.toLocaleString()} · news {newsRatioStats.newsIndexable.toLocaleString()})
-            </span>
+            </span>}
           </span>
-          <span className="text-[10px] text-slate-500">임계 60% (Google scaled content)</span>
+          <span className="text-[10px] text-slate-500">내부 구성 지표 · Google 판정 아님</span>
         </div>
-        {/* 2026-05-30 P2 — AI 자체 해설 백필 진행률. review mode off 전 80%+ 권장. */}
-        <div className="mt-1.5 flex items-center justify-between text-[11px]">
-          <span>
-            <strong>AI 자체 해설 백필</strong>{" "}
-            <span className={newsRatioStats.commentaryBackfillRatio >= 0.8 ? "text-emerald-700 font-semibold" : "text-amber-700"}>
-              {(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}%
-            </span>
-            {/* 2026-05-31 Major 7 — 80% 도달까지 ETA (BATCH 100/일 가정). 자율 운영 가시화. */}
-            {newsRatioStats.commentaryBackfillRatio < 0.8 && newsRatioStats.newsIndexable > 0 && (
-              <span className="ml-1.5 text-[10px] text-slate-500">
-                (80% 도달까지 약 {Math.ceil(
-                  (0.8 * newsRatioStats.newsIndexable -
-                    newsRatioStats.commentaryBackfillRatio * newsRatioStats.newsIndexable) /
-                  100
-                )}일, 매일 +100건 가정)
-              </span>
-            )}
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px]">
+          <span><strong>AI 해설 작업 진행률</strong>{" "}
+            {Number.isFinite(newsRatioStats.commentaryBackfillRatio) ? `${(newsRatioStats.commentaryBackfillRatio * 100).toFixed(1)}%` : "확인 불가"}
           </span>
-          <span className="text-[10px] text-slate-500">
-            review mode off 전 ≥80% 권장 (cron KST 04:30 매일 ~100건)
-          </span>
+          <span className="text-slate-500">콘텐츠 검수 및 Google 사이트 승인과 별개입니다.</span>
         </div>
-        {/* 2026-06-01 — 80% 도달 + review mode on 시 1-tap OFF 강조 link.
-            기존 /api/admin/disable-adsense-review-mode GET → confirm page →
-            Vercel env 자동 off + production redeploy 까지 자동. */}
-        {ADSENSE_REVIEW_MODE && newsRatioStats.commentaryBackfillRatio >= 0.8 && (
-          <div className="mt-2 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-emerald-800 font-semibold">
-                ✅ 백필 80% 도달 — review mode OFF 안전 시점
-              </span>
-              <a
-                href="/api/admin/disable-adsense-review-mode"
-                className="shrink-0 rounded bg-emerald-600 px-3 py-1 text-white font-semibold hover:bg-emerald-700 text-[11px]"
-              >
-                🚀 자동 OFF 1-tap ↗
-              </a>
-            </div>
-            <p className="mt-1 text-[10px] text-emerald-700">
-              admin 로그인 후 GET 진입 → confirm page → Vercel env 자동 off +
-              production redeploy. 수동 백업: Vercel settings → env →
-              NEXT_PUBLIC_ADSENSE_REVIEW_MODE off.
-            </p>
-          </div>
-        )}
+        {ADSENSE_REVIEW_MODE && <p className="mt-2 text-xs text-slate-600">광고 심사 모드 유지 중. Google AdSense에서 사이트 상태를 별도로 확인하세요.</p>}
       </div>
       <div className="mb-4">
         <LocalPressCard stats={localPressStats} />
