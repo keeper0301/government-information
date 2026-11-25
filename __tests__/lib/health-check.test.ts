@@ -61,7 +61,7 @@ const BASE_SIGNALS: HealthSignals = {
   newsRatio: 0.3,
   newsRatioDetail: "news 300 / total 1,000 (welfare 500, loan 150, blog 50)",
   // 2026-05-31 — baseline false (백필 미달 or review mode off, alert X). true 별도 테스트.
-  adsenseReadyToDisable: false,
+  adsenseBackfillMilestone: false,
   // 2026-05-31 — baseline null (ENV 미설정 = alert X). 7일/만료 케이스 별도.
   vercelTokenExpiresInDays: null,
   // 2026-05-17 — baseline 1h (방금 발행, alert X). 60h+ 케이스는 별도 테스트.
@@ -952,15 +952,16 @@ describe("checkThresholds — 2026-05-17: local_press_stale", () => {
     expect(alerts.find((a) => a.key === "news_ratio_high")).toBeFalsy();
   });
 
-  it("adsenseReadyToDisable true → adsense_ready_to_disable alert (AdSense Phase A)", () => {
-    const alerts = checkThresholds({ ...ACTIVE, adsenseReadyToDisable: true });
+  it("adsenseBackfillMilestone true → adsense_ready_to_disable alert (AdSense Phase A)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, adsenseBackfillMilestone: true });
     const alert = alerts.find((a) => a.key === "adsense_ready_to_disable");
     expect(alert).toBeTruthy();
-    expect(alert?.recommendation).toContain("adsense-approved-live-ads");
+    expect(alert?.recommendation).toContain("사이트 상세");
+    expect(alert?.recommendation).not.toContain("adsense-approved-live-ads");
   });
 
-  it("adsenseReadyToDisable false → 발화 안 함 (정상, 미달 or off)", () => {
-    const alerts = checkThresholds({ ...ACTIVE, adsenseReadyToDisable: false });
+  it("adsenseBackfillMilestone false → 발화 안 함 (정상, 미달 or off)", () => {
+    const alerts = checkThresholds({ ...ACTIVE, adsenseBackfillMilestone: false });
     expect(alerts.find((a) => a.key === "adsense_ready_to_disable")).toBeFalsy();
   });
 

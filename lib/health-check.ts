@@ -12,7 +12,7 @@ import { getAuthUsersCached } from "@/lib/admin-stats";
 import {
   getStaleCityNames,
   getHighNullDateCityCount,
-  getNewsRatio,
+  getNewsRatioForMonitoring,
 } from "@/lib/analytics/local-press-stats";
 import { ADSENSE_REVIEW_MODE } from "@/lib/adsense-review-mode";
 import { getBlogPublishStats } from "@/lib/analytics/blog-publish-stats";
@@ -200,11 +200,10 @@ export type HealthSignals = {
   /** newsRatio 산출 상세 — news/(welfare+loan+blog+news) count 를 dry-run 에 노출. */
   newsRatioDetail: string;
   /**
-   * 2026-05-31 추가 — AdSense 자동 트리거 Phase A. ADSENSE_REVIEW_MODE on 상태에서
-   * P2 ai_commentary 백필이 80%+ 도달했는지 (review mode off 안전 가능 시점).
-   * true = 텔레그램 알림 발화 + 사장님 Vercel env off 안내.
+   * 심사 모드에서 AI 해설 작업이 80%에 도달했는지 표시하는 운영 지표.
+   * Google 사이트 승인이나 광고 활성화 가능 여부를 뜻하지 않습니다.
    */
-  adsenseReadyToDisable: boolean;
+  adsenseBackfillMilestone: boolean;
   /**
    * 2026-05-31 추가 — Vercel PAT(VERCEL_TOKEN) 만료까지 일수. ENV
    * VERCEL_TOKEN_EXPIRES_AT (ISO 날짜) 미설정 시 null = alert X.
@@ -739,14 +738,14 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     newsIndexable,
     ratio: newsRatio,
     commentaryBackfillRatio,
-  } = await getNewsRatio();
+  } = await getNewsRatioForMonitoring();
   const newsRatioTotal =
     newsRatioWelfare + newsRatioLoan + newsRatioBlog + newsIndexable;
   const newsRatioDetail =
-    `news ${newsIndexable.toLocaleString()} / total ${newsRatioTotal.toLocaleString()}` +
-    ` (welfare ${newsRatioWelfare.toLocaleString()}, loan ${newsRatioLoan.toLocaleString()}, blog ${newsRatioBlog.toLocaleString()})`;
-  // 2026-05-31 — AdSense 자동 트리거 Phase A. review mode on + 백필 ≥80% = off 안전.
-  const adsenseReadyToDisable =
+    Number.isFinite(newsRatio) ? `news ${newsIndexable.toLocaleString()} / total ${newsRatioTotal.toLocaleString()}` +
+    ` (welfare ${newsRatioWelfare.toLocaleString()}, loan ${newsRatioLoan.toLocaleString()}, blog ${newsRatioBlog.toLocaleString()})` : "콘텐츠 집계 확인 불가";
+  // 2026-05-31 — AdSense 자동 트리거 Phase A. review mode 중 백필 진행 상태만 안내합니다.
+  const adsenseBackfillMilestone =
     ADSENSE_REVIEW_MODE && commentaryBackfillRatio >= 0.8;
 
   // 2026-05-31 — Vercel PAT 만료 일수 (ENV VERCEL_TOKEN_EXPIRES_AT ISO 날짜).
@@ -820,7 +819,7 @@ export async function getHealthSignals(): Promise<HealthSignals> {
     localPressNullDateCities,
     newsRatio,
     newsRatioDetail,
-    adsenseReadyToDisable,
+    adsenseBackfillMilestone,
     vercelTokenExpiresInDays,
     blogPublishStaleHours,
     selfLearningCronRunsLast7d,
@@ -1197,12 +1196,12 @@ export function checkThresholds(s: HealthSignals): ThresholdAlert[] {
     });
   }
 
-  if (s.adsenseReadyToDisable) {
+  if (s.adsenseBackfillMilestone) {
     alerts.push({
       key: "adsense_ready_to_disable",
-      message: `AdSense P2 ai_commentary 백필 ≥80% 도달 — review mode off 안전 시점.`,
+      message: `AI 해설 백필 80% 도달 — Google 사이트 승인과는 별개입니다.`,
       recommendation:
-        "사장님 1-tap: https://www.keepioo.com/api/admin/disable-adsense-review-mode (admin 로그인 후 GET 으로 confirm page 진입 → 빨간 버튼 클릭 → Vercel ENV adsense-approved-live-ads + production redeploy). 또는 수동: Vercel settings → env → NEXT_PUBLIC_ADSENSE_REVIEW_MODE=adsense-approved-live-ads + redeploy.",
+        "공개 가이드와 원문 출처를 검수하고, Google AdSense 사이트 상세에서 keepioo.com 상태를 별도로 확인하세요.",
     });
   }
 

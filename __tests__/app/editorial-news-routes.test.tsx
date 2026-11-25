@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EDITORIAL_NEWS } from "@/lib/editorial-news-data";
 
-const state = vi.hoisted(() => ({ published: false, adsReview: true }));
+const state = vi.hoisted(() => ({ published: false, adsReview: true, searchAvailable: false }));
 vi.mock("@/lib/adsense-review-mode", () => ({ get ADSENSE_REVIEW_MODE() { return state.adsReview; } }));
 vi.mock("@/lib/editorial-news", async () => {
   const { EDITORIAL_NEWS } = await import("@/lib/editorial-news-data");
@@ -14,12 +14,15 @@ vi.mock("@/lib/editorial-news", async () => {
 });
 // 재심사 페이지에서 자동 수집 자료를 조회하면 검사를 실패시킵니다.
 vi.mock("@/lib/supabase/server", () => ({ createClient: () => { throw new Error("미검수 자료 조회 금지"); } }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => { throw new Error("미검수 자료 조회 금지"); } }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => {
+  if (!state.searchAvailable) throw new Error("미검수 자료 조회 금지");
+  return { rpc: async () => ({ data: { articles: [], total: 0, allCount: 0, page: 1, counts: {} }, error: null }) };
+} }));
 // 검수된 정책·블로그 조회는 별도 시험에서 검증합니다. 원시 뉴스 조회 금지는 유지합니다.
 vi.mock("@/lib/search-sitemap", () => ({ loadReviewedSearchPages: async () => [] }));
 vi.mock("@/lib/policy-guides", () => ({ getGuides: async () => [] }));
 
-afterEach(() => { state.published = false; state.adsReview = true; });
+afterEach(() => { state.published = false; state.adsReview = true; state.searchAvailable = false; });
 
 describe("재심사 정책뉴스 화면", () => {
   it("정정한 글은 정정 사유와 수정 시각을 표시하고 최초 발행일을 유지한다", async () => {
@@ -55,6 +58,18 @@ describe("재심사 정책뉴스 화면", () => {
     expect(html).toContain('value="nationwide"');
     expect(html).toContain(EDITORIAL_NEWS[0].title);
   });
+  it("검색·필터 조합은 noindex이고 검수 목록 본체는 검색에 열어 둔다", async () => {
+    state.published = true;
+    state.searchAvailable = true;
+    const { generateMetadata } = await import("@/app/news/page");
+    expect((await generateMetadata({ searchParams: Promise.resolve({}) })).robots).toEqual({ index: true, follow: true });
+    for (const params of [{ q: "온누리" }, { benefit: "금융" }, { province: "nationwide" }, { status: "open" }, { category: "news" }]) {
+      const meta = await generateMetadata({ searchParams: Promise.resolve(params) });
+      expect(meta.robots).toEqual({ index: false, follow: true });
+      expect(meta.alternates?.canonical).toBe("/news");
+    }
+  });
+
   it("일치하지 않는 검색은 안내와 전체 보기만 제공한다", async () => {
     state.published = true;
     const { default: Page } = await import("@/app/news/page");

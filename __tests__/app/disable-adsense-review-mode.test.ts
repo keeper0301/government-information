@@ -7,11 +7,15 @@ const mocks = vi.hoisted(() => ({
   isAdminUser: vi.fn(),
   getUser: vi.fn(),
   getNewsRatio: vi.fn(),
+  getKeepiooAdSenseSiteState: vi.fn(),
   updateProjectEnvByKey: vi.fn(),
   triggerProductionRedeploy: vi.fn(),
   logAdminAction: vi.fn(async () => undefined),
 }));
 
+vi.mock("@/lib/external-console/adsense", () => ({
+  getKeepiooAdSenseSiteState: mocks.getKeepiooAdSenseSiteState,
+}));
 vi.mock("@/lib/admin-auth", () => ({
   isAdminUser: mocks.isAdminUser,
 }));
@@ -54,6 +58,7 @@ beforeEach(() => {
   mocks.isAdminUser.mockReset();
   mocks.getUser.mockReset();
   mocks.getNewsRatio.mockReset();
+  mocks.getKeepiooAdSenseSiteState.mockReset().mockResolvedValue("READY");
   mocks.updateProjectEnvByKey.mockReset();
   mocks.triggerProductionRedeploy.mockReset();
   mocks.logAdminAction.mockReset();
@@ -92,6 +97,16 @@ describe("POST — security gates", () => {
     mocks.isAdminUser.mockReturnValue(false);
     const res = await POST(postReq());
     expect(res.status).toBe(401);
+  });
+
+  it.each(["NEEDS_ATTENTION", "GETTING_READY", null])("계정 수치가 높아도 사이트 미승인 상태 %s는 차단", async (state) => {
+    mocks.getUser.mockResolvedValue({ data: { user: { email: "admin@example.test" } } });
+    mocks.isAdminUser.mockReturnValue(true);
+    mocks.getNewsRatio.mockResolvedValue({ commentaryBackfillRatio: 1 });
+    mocks.getKeepiooAdSenseSiteState.mockResolvedValue(state);
+    expect((await POST(postReq())).status).toBe(409);
+    expect(mocks.updateProjectEnvByKey).not.toHaveBeenCalled();
+    expect(mocks.triggerProductionRedeploy).not.toHaveBeenCalled();
   });
 
   it("백필 < 80% → 400 (안전 차단)", async () => {
