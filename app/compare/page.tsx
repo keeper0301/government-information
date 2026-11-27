@@ -288,7 +288,7 @@ function renderWelfareCell(
     if (p.apply_start && p.apply_end) return `${p.apply_start} ~ ${p.apply_end}`;
     if (p.apply_start) return `${p.apply_start} ~`;
     if (p.apply_end) return `~ ${p.apply_end}`;
-    return "상시";
+    return "신청기간 미확인";
   }
   if (key === "dday") {
     const d = calcDday(p.apply_end);
@@ -366,7 +366,7 @@ function renderLoanCell(
     if (p.apply_start && p.apply_end) return `${p.apply_start} ~ ${p.apply_end}`;
     if (p.apply_start) return `${p.apply_start} ~`;
     if (p.apply_end) return `~ ${p.apply_end}`;
-    return "상시";
+    return "신청기간 미확인";
   }
   if (key === "dday") {
     const d = calcDday(p.apply_end);

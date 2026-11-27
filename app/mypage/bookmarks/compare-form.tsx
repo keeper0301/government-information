@@ -177,7 +177,7 @@ function DdayBadge({ dday }: { dday: number | null }) {
   if (dday === null) {
     return (
       <span className="text-[12px] font-semibold px-2 py-0.5 rounded bg-grey-100 text-grey-600">
-        상시
+        신청기간 미확인
       </span>
     );
   }
